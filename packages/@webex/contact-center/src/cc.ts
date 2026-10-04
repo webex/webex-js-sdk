@@ -643,6 +643,17 @@ export default class ContactCenter extends WebexPlugin implements IContactCenter
   }
 
   private handleRTDWebsocketMessage = (event: string) => {
+    let payload: unknown;
+    try {
+      payload = JSON.parse(event);
+    } catch {
+      // TaskManager retains its existing malformed RTD message handling.
+    }
+
+    if (isRecord(payload) && this.handleWellnessBreakWebsocketPayload(payload)) {
+      return;
+    }
+
     this.taskManager.handleRealtimeWebsocketEvent(event);
   };
 
@@ -730,7 +741,12 @@ export default class ContactCenter extends WebexPlugin implements IContactCenter
         method: METHODS.REGISTER,
       });
 
-      return resp;
+      // Registration can silently restore a station session without emitting a
+      // relogin event. Project the active session for consumers that must
+      // recover session-scoped state after a page refresh.
+      return resp.isAgentLoggedIn && this.currentAgentSessionId
+        ? {...resp, agentSessionId: this.currentAgentSessionId}
+        : resp;
     } catch (error) {
       this.metricsManager.trackEvent(
         METRIC_EVENT_NAMES.WEBSOCKET_REGISTER_FAILED,
@@ -1004,6 +1020,7 @@ export default class ContactCenter extends WebexPlugin implements IContactCenter
           accessBuddyTeam: this.agentConfig.accessBuddyTeam,
         },
         enableWxBetterTogether: this.isWxBetterTogetherEnabled(),
+        getWxAppUsersubPublished: () => this.webexCrossClientService.isAnswerCallsStateActive(),
       };
       this.taskManager.setConfigFlags(configFlags);
       // TODO: Make profile a singleton to make it available throughout app/sdk so we dont need to inject info everywhere
@@ -1018,12 +1035,14 @@ export default class ContactCenter extends WebexPlugin implements IContactCenter
       /**
        * RTD websocket currently supports realtime transcripts and suggested responses.
        * Extend this condition when additional AI RTD features are introduced.
+       * Wellness break notifications also arrive on this websocket.
        */
       if (
         this.agentConfig.aiFeature?.realtimeTranscripts?.enable ||
         this.agentConfig.aiFeature?.suggestedResponses?.enable ||
         this.agentConfig.aiFeature?.generatedSummaries?.wrapUpSummariesEnabled === true ||
-        this.agentConfig.aiFeature?.generatedSummaries?.consultTransferSummariesEnabled === true
+        this.agentConfig.aiFeature?.generatedSummaries?.consultTransferSummariesEnabled === true ||
+        this.agentConfig.isWellnessBreakEnabled
       ) {
         LoggerProxy.info('Connecting to RTD websocket', {
           module: CC_FILE,
@@ -1778,6 +1797,7 @@ export default class ContactCenter extends WebexPlugin implements IContactCenter
         await this.publishAnswerOnWebexCrossClientState(true);
         publishedEnable = true;
         this.taskManager.syncWxAppMuteFromCallDetailsForAllTasks();
+        this.taskManager.refreshWxAppOfferObservabilityForAllTasks();
       } else {
         await this.publishAnswerOnWebexCrossClientState(false);
         this.wxAppTelephonyMercurySync.unsubscribe();
@@ -1859,6 +1879,7 @@ export default class ContactCenter extends WebexPlugin implements IContactCenter
         await this.publishAnswerOnWebexCrossClientState(true);
         publishedEnable = true;
         this.taskManager.syncWxAppMuteFromCallDetailsForAllTasks();
+        this.taskManager.refreshWxAppOfferObservabilityForAllTasks();
 
         const mercurySubscribed = this.wxAppTelephonyMercurySync.isSubscribed();
         const usersubPublished = this.webexCrossClientService.isAnswerCallsStateActive();
@@ -1877,7 +1898,13 @@ export default class ContactCenter extends WebexPlugin implements IContactCenter
         if (sessionInitReady) {
           this.metricsManager.trackEvent(
             METRIC_EVENT_NAMES.WXAPP_SESSION_INIT_SUCCESS,
-            {loginOption, enableWxBetterTogether: true},
+            {
+              loginOption,
+              enableWxBetterTogether: true,
+              usersubPublished,
+              mercurySubscribed,
+              telephonyTaskType,
+            },
             ['operational', 'behavioral']
           );
         } else {
@@ -1886,6 +1913,9 @@ export default class ContactCenter extends WebexPlugin implements IContactCenter
             {
               loginOption,
               enableWxBetterTogether: true,
+              usersubPublished,
+              mercurySubscribed,
+              telephonyTaskType,
               skipReason: !usersubPublished ? 'usersub_not_published' : 'mercury_not_subscribed',
             },
             ['operational', 'behavioral']
@@ -1929,6 +1959,9 @@ export default class ContactCenter extends WebexPlugin implements IContactCenter
           {
             loginOption,
             enableWxBetterTogether: true,
+            usersubPublished: this.webexCrossClientService.isAnswerCallsStateActive(),
+            mercurySubscribed: this.wxAppTelephonyMercurySync.isSubscribed(),
+            telephonyTaskType,
             skipReason: sessionInitFailureReason,
             error: error instanceof Error ? error.toString() : String(error),
           },
@@ -1939,8 +1972,7 @@ export default class ContactCenter extends WebexPlugin implements IContactCenter
           enableWxBetterTogether: true,
           loginOption,
           wxAppHooksApplied: false,
-          usersubPublished:
-            publishedEnable && this.webexCrossClientService.isAnswerCallsStateActive(),
+          usersubPublished: this.webexCrossClientService.isAnswerCallsStateActive(),
           mercurySubscribed: this.wxAppTelephonyMercurySync.isSubscribed(),
           telephonyTaskType,
           skipReason: sessionInitFailureReason,
@@ -2188,7 +2220,7 @@ export default class ContactCenter extends WebexPlugin implements IContactCenter
 
       this.metricsManager.trackEvent(
         METRIC_EVENT_NAMES.WXAPP_MERCURY_SUBSCRIBE_FAILED,
-        {error: 'agentId unavailable'},
+        {error: 'agentId unavailable', mercurySubscribed: false},
         ['operational', 'behavioral']
       );
 
@@ -2207,7 +2239,10 @@ export default class ContactCenter extends WebexPlugin implements IContactCenter
       });
       this.metricsManager.trackEvent(
         METRIC_EVENT_NAMES.WXAPP_MERCURY_SUBSCRIBE_FAILED,
-        {error: error instanceof Error ? error.toString() : String(error)},
+        {
+          error: error instanceof Error ? error.toString() : String(error),
+          mercurySubscribed: false,
+        },
         ['operational', 'behavioral']
       );
       this.wxAppTelephonyMercurySync.unsubscribe();
@@ -2235,6 +2270,7 @@ export default class ContactCenter extends WebexPlugin implements IContactCenter
           METRIC_EVENT_NAMES.WXAPP_USERSUB_PUBLISH_FAILED,
           {
             enableWxBetterTogether: true,
+            usersubPublished: this.webexCrossClientService.isAnswerCallsStateActive(),
             skipReason: 'user_id_unavailable',
             error: 'User ID is unavailable for cross-client publish',
           },

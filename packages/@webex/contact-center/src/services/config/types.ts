@@ -1246,6 +1246,8 @@ export type Profile = {
   maskSensitiveData?: boolean;
   /** Whether agent is currently logged in */
   isAgentLoggedIn?: boolean;
+  /** Active station session after a successful registered relogin. */
+  agentSessionId?: string;
   /** Last auxiliary code ID used for state change */
   lastStateAuxCodeId?: string;
   /** Timestamp of last state change */

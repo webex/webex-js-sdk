@@ -1,0 +1,30 @@
+{
+  "schema_version": 2,
+  "note": "Provenance for the template content this bundle carries. The sdd-legacy profile is frozen in templates/component-repo. As a temporary promotion safeguard, repo-standards bundles only the 17 upstream files its resolver consumes under templates/repo-standards-upstream; config/template-normalization.json remains authoritative for that profile's pin and the snapshot's own .source.json records its checksums. The top-level source_repo/source_branch/source_commit/library_version keys are the sdd-legacy pin and stay the single place it is recorded.",
+  "source_repo": "WebexDevPlatform/RepoAnnotation-Templates",
+  "source_branch": "main",
+  "source_commit": "0aa65d93f019e5313ec2ddfac9b0c7352a2882cc",
+  "library_version": "0.2.2",
+  "synced_at": "2026-07-31",
+  "profiles": {
+    "sdd-legacy": {
+      "kind": "vendored",
+      "root": "templates/component-repo",
+      "source_host": "sqbu-github.cisco.com",
+      "pin_recorded_in": "this file's top-level source_repo/source_branch/source_commit keys",
+      "frozen": true,
+      "frozen_reason": "RepoAnnotation-Templates moved to WebexTools/repo-standards, where the same document model was normalized. This profile stays pinned to the last reviewed commit of the old home so repositories already generated against it keep validating unchanged. The vendored tree is byte-identical to the commit the top-level keys name; nothing generated is written into it. New pins land on the repo-standards profile."
+    },
+    "repo-standards": {
+      "kind": "bundled-upstream",
+      "root": "templates/repo-standards-upstream",
+      "source_repo": "WebexTools/repo-standards",
+      "source_host": "github.com",
+      "pin_recorded_in": "config/template-normalization.json",
+      "snapshot_provenance": "templates/repo-standards-upstream/.source.json",
+      "resolved_by": "scripts/resolve_templates.py",
+      "stored_content": "17 resolver-required upstream files",
+      "stored_content_reason": "Temporary packaging and promotion safeguard: setup must work without network or private-repository credentials. The resolver rejects missing, extra, or checksum-mismatched files. This is not a copy of the complete repo-standards templates tree."
+    }
+  }
+}

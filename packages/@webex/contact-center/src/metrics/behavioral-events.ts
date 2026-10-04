@@ -405,6 +405,12 @@ const eventTaxonomyMap: Record<string, BehavioralEventTaxonomy> = {
     target: 'webex_together_mercury_subscribe',
     verb: 'fail',
   },
+  [METRIC_EVENT_NAMES.WXAPP_OFFER_PARTICIPANT_FIELDS_MISSING]: {
+    product,
+    agent: 'user',
+    target: 'webex_together_offer_participant_fields',
+    verb: 'fail',
+  },
 
   // Conference Tasks
   [METRIC_EVENT_NAMES.TASK_CONFERENCE_START_SUCCESS]: {

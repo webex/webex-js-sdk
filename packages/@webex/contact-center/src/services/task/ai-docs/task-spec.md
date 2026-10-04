@@ -635,6 +635,8 @@ This keeps transcript and suggestion delivery aligned on the same per-task event
 
 **wxApp consumer contract (WXCC-6026):** Hosts enable `enableWxBetterTogether` at init (Phase 1 init-only; re-init to change), bind UI to `task.uiControls` (including optional `main.keypad`), and call **`task.accept()`**, **`task.decline()`**, **`task.toggleMute({ muted? })`**, **`task.transmitDtmf({ dtmf })`**. SDK routes wxApp telephony internally on `Voice`. Shared-line `lineOwnerId` defaults from the wxApp agent participant when omitted.
 
+**wxApp OFFERED diagnostics:** `Voice.updateUiControls` delegates offer-decision logging and deferred participant-mismatch WARN/metric to `voice/wxAppOfferObservability.ts` (500 ms grace; observability only). After usersub publish, `TaskManager.refreshWxAppOfferObservabilityForAllTasks()` re-invokes the observer without emitting UI controls. `removeTaskFromCollection` calls `disposeWxAppOfferObservability()` so a pending grace timer cannot emit after the task is dropped (including `CONTACT_MERGED` child removal). Dispose is terminal: the observer sets a disposed guard (timer cancel plus no-op `handleUiControlsUpdate`) so a later `updateUiControls` / refresh cannot schedule a new grace timer.
+
 **wxApp offer UI (`uiControlsComputer`):** `wxAppAcceptInFlight` disables accept/decline during the accept REST call. `wxAppAnswerPending` additionally disables accept and decline for **inbound** offers until ASSIGN; wxApp **outdial** keeps decline enabled during the post-accept "Calling…" phase so `cancelTask` remains available.
 
 **wxApp decline observability:** Inbound wxApp offers decline via telephony `rejectCall` (`runWxAppReject` → `WXAPP_TASK_DECLINE_*`). wxApp outdial cancellations use CC routing `cancelTask` (`runWxAppOutdialDecline` → additive `WXAPP_TASK_DECLINE_*` plus existing `TASK_DECLINE_*`).
@@ -941,15 +943,17 @@ guards. The state-machine transition table lives in
 Primary-Agent promotion remains backend-authoritative and follows the two-event
 desktop contract. `ContactOwnerChanged` updates the promoted Agent; TaskManager
 prefers an exact task, then one unique related task resolved through nested
-main/parent identifiers or the `mainCall` media-map identity. A related
-candidate is eligible when its current
+main/parent identifiers, the task collection key, or the `mainCall` media-map
+identity. A related candidate is eligible when its current
 snapshot contains the current Agent's participant entry with `hasLeft !== true`
 and membership on the `mType: mainCall` leg. The incoming snapshot can provide
 that evidence only when it also names the current Agent as `interaction.owner`;
 this permits an authoritative promotion payload to repair a stale child-keyed
 snapshot while still excluding consult-only tasks. The update keeps the
 surviving main interaction identity even when the notification names a
-promoted-Agent child interaction.
+promoted-Agent child interaction. Conflicting main identifiers, ambiguous
+matches, and a canonical key occupied by a distinct task are ignored rather
+than replacing an existing task.
 
 If no related task exists, TaskManager recovers only the promoted current Agent
 from a non-terminal telephony `ContactOwnerChanged` payload that provides the same

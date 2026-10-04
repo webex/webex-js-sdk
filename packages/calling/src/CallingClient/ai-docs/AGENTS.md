@@ -35,7 +35,7 @@ Applications create a `CallingClient` via the `createClient()` factory function 
 
 | Capability | Description  |
 | ----------- | ----------- |
-| **Mobius Discovery**         | Performs region-based Mobius server discovery to select optimal primary and backup endpoints for registration, calls, and media.                                 |
+| **Mobius Discovery**         | Requests the U2C Mobius service link first, then remaining catalog clusters on non-final failure, to select primary and backup endpoints for registration, calls, and media. |
 | **Line Registration**        | Creates and registers Lines with Mobius, establishing signaling sessions, subscribing for events, and managing registration/status. Includes Line keepalives and failover routines. |
 | **Media Engine Management**  | Initializes and configures the `@webex/internal-media-core` engine to negotiate, establish, and manage WebRTC media streams for audio and video calls.           |
 | **Call Keepalive**           | Periodically sends keepalive messages for both Lines and active Calls, ensuring session continuity and timely detection of network or signaling issues.           |

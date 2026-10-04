@@ -307,6 +307,59 @@
           <div class="u-mv">
             <button onclick="holdResumeCall()" id="hold-resume" class="btn--yellow" disabled>Hold</button>
             <button onclick="muteUnmute()" id="mute-unmute" class="btn--yellow" disabled>Mute</button>
+            <span class="task-keypad-wrap">
+              <button onclick="toggleTaskKeypad()" id="keypad-toggle" class="btn--yellow" disabled>Keypad</button>
+              <div id="task-keypad-panel" class="task-keypad-panel" hidden>
+                <input id="task-keypad-input" placeholder="Enter the number" autocomplete="off" aria-label="Enter the number" onkeydown="handleTaskKeypadInputKeydown(event)">
+                <div class="task-keypad-keys">
+                  <button type="button" class="task-keypad-key" onclick="pressTaskKeypadDigit('1')">
+                    <span class="task-keypad-digit">1</span>
+                  </button>
+                  <button type="button" class="task-keypad-key" onclick="pressTaskKeypadDigit('2')">
+                    <span class="task-keypad-digit">2</span>
+                    <span class="task-keypad-letters">ABC</span>
+                  </button>
+                  <button type="button" class="task-keypad-key" onclick="pressTaskKeypadDigit('3')">
+                    <span class="task-keypad-digit">3</span>
+                    <span class="task-keypad-letters">DEF</span>
+                  </button>
+                  <button type="button" class="task-keypad-key" onclick="pressTaskKeypadDigit('4')">
+                    <span class="task-keypad-digit">4</span>
+                    <span class="task-keypad-letters">GHI</span>
+                  </button>
+                  <button type="button" class="task-keypad-key" onclick="pressTaskKeypadDigit('5')">
+                    <span class="task-keypad-digit">5</span>
+                    <span class="task-keypad-letters">JKL</span>
+                  </button>
+                  <button type="button" class="task-keypad-key" onclick="pressTaskKeypadDigit('6')">
+                    <span class="task-keypad-digit">6</span>
+                    <span class="task-keypad-letters">MNO</span>
+                  </button>
+                  <button type="button" class="task-keypad-key" onclick="pressTaskKeypadDigit('7')">
+                    <span class="task-keypad-digit">7</span>
+                    <span class="task-keypad-letters">PQRS</span>
+                  </button>
+                  <button type="button" class="task-keypad-key" onclick="pressTaskKeypadDigit('8')">
+                    <span class="task-keypad-digit">8</span>
+                    <span class="task-keypad-letters">TUV</span>
+                  </button>
+                  <button type="button" class="task-keypad-key" onclick="pressTaskKeypadDigit('9')">
+                    <span class="task-keypad-digit">9</span>
+                    <span class="task-keypad-letters">WXYZ</span>
+                  </button>
+                  <button type="button" class="task-keypad-key" onclick="pressTaskKeypadDigit('*')">
+                    <span class="task-keypad-digit">*</span>
+                  </button>
+                  <button type="button" class="task-keypad-key" onclick="pressTaskKeypadDigit('0')">
+                    <span class="task-keypad-digit">0</span>
+                    <span class="task-keypad-letters">+</span>
+                  </button>
+                  <button type="button" class="task-keypad-key" onclick="pressTaskKeypadDigit('#')">
+                    <span class="task-keypad-digit">#</span>
+                  </button>
+                </div>
+              </div>
+            </span>
             <button onclick="showInitiateConsultDialog()" id="consult" class="btn--blue" disabled>Consult</button>
             <button onclick="toggleTransferOptions()" id="transfer" class="btn--blue" disabled>Transfer</button>
             <button onclick="endConsult()" id="end-consult" class="btn--red" style="display: none;">End Consult</button>
@@ -537,7 +590,7 @@
               <button id="wellness-restore" type="button" disabled>Restore previous state</button>
             </div>
             <details class="wellness-event-details">
-              <summary>Latest normalized SDK event</summary>
+              <summary>Latest wellness event action</summary>
               <pre id="wellness-event-output">No wellness event received.</pre>
             </details>
           </section>
