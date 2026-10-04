@@ -9,7 +9,7 @@ doc_kind: module-spec
 generated_from: module-spec@0.3.0
 generated_by: claude-code
 approved_by: rsarika@cisco.com
-updated_at: 2026-10-03T20:17:51Z
+updated_at: 2026-10-04T00:00:00Z
 validation_status: not-run
 -->
 
@@ -26,11 +26,11 @@ Related context: [documentation index](../../docs/index.md) ·
 
 | Field         | Value                                                        |
 | ------------- | ------------------------------------------------------------ |
-| Owner         | `@webex/web-client` (`.github/CODEOWNERS:28`)                |
+| Owner         | `@webex/web-client`, assigned in `.github/CODEOWNERS`        |
 | Source path   | `src`                                                        |
 | Resource kind | package (published npm library)                              |
 | Status        | Active                                                       |
-| Last verified | 2026-10-03 at `c622eb6612`                                   |
+| Last verified | 2026-10-04 at `c622eb6612` (src/index.js unchanged since)  |
 | Module id     | `src`                                                        |
 | Parent spec   | —                                                            |
 | Doc kind      | Module spec                                                  |
@@ -45,7 +45,7 @@ of guessing.
 
 | Condition ID                         | Status     | Evidence or reason | Owned section                 |
 | ------------------------------------ | ---------- | ------------------ | ----------------------------- |
-| `module.has_tiers` | N/A | No tier annotation or per-module SLO config; .github/CODEOWNERS:28 assigns an owner but no tier | Tier |
+| `module.has_tiers` | N/A | No tier annotation or per-module SLO config; .github/CODEOWNERS assigns an owner but no tier | Tier |
 | `module.has_ui` | N/A | No components, templates, or stylesheets in src/ | UI use-case flow |
 | `module.crosses_service_boundaries` | N/A | No HTTP, RPC, or queue client; the only external call target is the same-origin localStorage API | Cross-boundary use-case flow |
 | `module.holds_client_state` | N/A | src/index.js holds only WeakMap binding metadata, not application state | Client state model |
@@ -79,7 +79,7 @@ Mark unresolved statements as `[NEEDS HUMAN INPUT]`; do not infer missing behavi
 | ../../../webex-core/src/lib/storage/decorators.js | `@persist` writes decorated state through `boundedStorage.put` (lines 53, 57), which is what routes credentials into this adapter in a browser. |
 | ../../../../webex/src/config-storage.shim.js | Line 9 wires `new LocalStorageStoreAdapter('webex')` as the browser `boundedAdapter`. |
 | ../../../../webex/package.json | The `browser` field substitutes the shim for `config-storage.js`, so the wiring above applies only to browser bundles. |
-| .github/CODEOWNERS:28 | Ownership by `@webex/web-client`. |
+| .github/CODEOWNERS | Ownership by `@webex/web-client`, on the line matching this package path. |
 | Measured command run, 2026-10-01, Node v22.14.0 | `test:style` exit 0 (clean); `build:src` exit 0 (1 file emitted); `test:unit` exit 0 with 21 skipped / 0 executed; `test:browser` exit 0 with 0 tests completed and a `beforeAll is not defined` error in both browsers; `test` exit 1 on the undefined `test:integration` script. |
 | Ad-hoc behavior probe, 2026-10-01, Node v22.14.0 | Characterization against a `localStorage` stand-in and against a bare Node process. Not a committed artifact and not a regression guard; used here only to confirm observable behavior that source reading already implied. |
 
@@ -118,10 +118,10 @@ declarations instead of copying them.
 | -------- | ---------- | ------------------------ | -------- |
 | `StorageAdapterLocalStorage` (default export) | `@webex/webex`, `@webex/recipe-private-web-client`, authorization-browser automation fixtures | Published npm surface; the constructor signature `(basekey)` and the adapter shape are what host configuration depends on | `package.json`, implemented at src/index.js |
 | `new StorageAdapterLocalStorage(basekey)` | Host configuration code | `basekey` selects the single `localStorage` entry holding every namespace for this instance; changing it orphans previously written data | src/index.js |
-| `adapter.bind(namespace, options)` | `webex-core` `WebexStore._getBinding` | Resolves a new bound store; rejects when `namespace` is falsy or `options.logger` is missing | src/index.js |
-| `bound.get(key)` | `webex-core` `WebexStore.get` | Resolves any stored value, including `0`, `false`, `null`, and `''`; rejects `NotFoundError` when the key is absent | src/index.js |
-| `bound.put(key, value)` | `webex-core` `WebexStore.put` | Stores a JSON-serializable value and resolves with no value | src/index.js |
-| `bound.del(key)` | `webex-core` `WebexStore.del` | Removes one key from the bound namespace only | src/index.js |
+| `adapter.bind(namespace, options)` | `webex-core` `WebexStore._getBinding` | Resolves a new bound store without touching storage; rejects when `namespace` is falsy or `options.logger` is missing, but **throws synchronously** when a supplied logger lacks `debug` (`MOD-015`). Namespaces must not be `Object.prototype` property names (`MOD-016`) | src/index.js |
+| `bound.get(key)` | `webex-core` `WebexStore.get` | Resolves any stored value, including `0`, `false`, `null`, and `''`; rejects `NotFoundError` when the key is absent. Two preconditions: the key must not be an `Object.prototype` property name (`MOD-016`), and the stored document must be schema-conforming (`MOD-017`). Outside them `get` may resolve a value that was never stored | src/index.js |
+| `bound.put(key, value)` | `webex-core` `WebexStore.put` | Stores a JSON-serializable value and resolves with no value; rewrites the whole document, so sibling namespaces are preserved only across a lossless JSON round trip (`INV-003`) | src/index.js |
+| `bound.del(key)` | `webex-core` `WebexStore.del` | Targets one key in the bound namespace only, under the same whole-document rewrite and round-trip caveat as `put` | src/index.js |
 | `bound.clear()` | `webex-core` `WebexStore.clear` | Removes the entire `basekey` entry — every namespace, not only the bound one. Takes no parameter despite its JSDoc | src/index.js |
 
 The adapter is registered in `.sdd/manifest.json` as contract `storage-adapter-local-storage-sdk`
@@ -149,16 +149,25 @@ distinguish verified behavior from approved unknowns.
 | `MOD-003` | `bind()` rejects with ``Error('`options.logger` is required')`` when no logger is supplied; `options` itself defaults to `{}`. | Every operation calls the logger unconditionally, so a missing logger would fail later at an unrelated point instead of at bind time. | src/index.js | Declared at storage-adapter-spec/src/index.js; not executed | — | Present |
 | `MOD-004` | `bind()` resolves a **new** `Bound` instance on every call; this module performs no binding cache or deduplication. | Caching is the host's concern — `WebexStore._getBinding` already memoizes one binding per namespace behind `@oneFlight`. | src/index.js | None executing | Callers that bind repeatedly will accumulate instances; harmless because all state lives in the shared document | Present |
 | `MOD-005` | `get()` resolves any value that is not `undefined`, including the falsey values `0`, `false`, `null`, and `''`. | The shared contract explicitly declares falsey primitives as legitimate stored values, so a truthiness test would corrupt them into not-found. | src/index.js | Declared at storage-adapter-spec/src/index.js; not executed | — | Present |
-| `MOD-006` | `get()` rejects with `NotFoundError` carrying the message `` No value found for `<key>` `` when the key is absent. | Callers, including `@persist` rehydration, branch on the not-found type to distinguish "never stored" from "storage failed". | src/index.js | Declared at storage-adapter-spec/src/index.js; not executed | — | Present |
-| `MOD-007` | `put()` stores the value under the bound namespace and resolves with no value. | The host treats the resolution as a write acknowledgement; `WebexStore.put` supplies its own return value. | src/index.js | Declared at storage-adapter-spec/src/index.js; not executed | — | Present |
-| `MOD-008` | Writing `undefined` through `put()` leaves the key **absent** rather than present-with-undefined, so a following `get()` rejects `NotFoundError`. | `_save` serializes with `JSON.stringify`, which omits properties whose value is `undefined`; the removal is a consequence of the chosen encoding, not an explicit branch. | src/index.js | Declared at storage-adapter-spec/src/index.js, but that case also calls del(), so it would not isolate the behavior even if it ran | No test isolates this; it is an emergent property of JSON encoding and could regress silently if the encoding changed | Present |
-| `MOD-009` | `del()` removes one key from the bound namespace and leaves every other namespace and key intact. | Deleting one credential or device record must not disturb unrelated namespaces sharing the document. | src/index.js | Declared at storage-adapter-spec/src/index.js; not executed | — | Present |
+| `MOD-006` | `get()` rejects with `NotFoundError` carrying the message `` No value found for `<key>` `` when the key is absent. Two preconditions bound this, both because the lookup is the bare expression `typeof data[key] !== 'undefined'` with no own-property test and no shape check: the key must not be an `Object.prototype` property name (`MOD-016`), and the stored document must conform to the `{ namespace: { key: value } }` schema (`MOD-017`). Outside those preconditions the result is unspecified (`MOD-017`): `get` may resolve a value that was never stored, or reject a different error type. | Callers, including `@persist` rehydration, branch on the not-found type to distinguish "never stored" from "storage failed". | src/index.js | Declared at storage-adapter-spec/src/index.js; not executed | The declared cases use ordinary key names, so they would not detect the prototype-name exception even if they ran | Present |
+| `MOD-007` | Against a schema-conforming document, `put()` stores the value under the bound namespace and resolves with no value. Both halves hold only within the `MOD-017` precondition. Outside it the behavior is unspecified: `put` may reject `TypeError` before `setItem`, or resolve and call `setItem` without storing the value. | The host treats the resolution as a write acknowledgement; `WebexStore.put` supplies its own return value. | src/index.js | Declared at storage-adapter-spec/src/index.js; not executed | — | Present |
+| `MOD-008` | Writing `undefined` through `put()` leaves the key **absent** rather than present-with-undefined, so a following `get()` rejects `NotFoundError` — **provided the key is not an `Object.prototype` property name** (`MOD-016`). Both halves require the `MOD-017` precondition, and the read half additionally requires a non-prototype key. Measured 2026-10-04 against the built `dist/index.js`: on `{"a":{}}`, `put('ordinary', undefined)` wrote `{"a":{}}` and the following `get('ordinary')` rejected `NotFoundError` as stated; but `put('toString', undefined)` wrote the same `{"a":{}}` and the following `get('toString')` **resolved the inherited function** (`MOD-016`). Outside the precondition the write may not reach `setItem` at all. Stating the guarantee without that precondition is what made this requirement wrong. | `_save` serializes with `JSON.stringify`, which omits properties whose value is `undefined`; the removal is a consequence of the chosen encoding, not an explicit branch. | src/index.js | Declared at storage-adapter-spec/src/index.js, but that case also calls del(), so it would not isolate the behavior even if it ran | No test isolates this; it is an emergent property of JSON encoding and could regress silently if the encoding changed | Present |
+| `MOD-009` | Against a schema-conforming document, `del()` removes one key from the bound namespace. It targets no other key or namespace, but it does rewrite the whole document, so siblings are preserved only up to a JSON parse/stringify round trip — see the qualifier in `INV-003`. Like `put`, this holds only within the `MOD-017` precondition; outside it `del` may reject `TypeError` or mutate the stored value in a way that is not a key removal. | Deleting one credential or device record must not disturb unrelated namespaces sharing the document, and the rewrite makes that a round-trip guarantee rather than an untouched-bytes guarantee. | src/index.js | Declared at storage-adapter-spec/src/index.js; not executed | The declared case stores only round-trip-stable values, so it would not detect the `INV-003` edge cases even if it ran | Present |
 | `MOD-010` | `clear()` removes the entire `basekey` entry, destroying **every** namespace stored under it — not only the bound namespace. | `[NEEDS HUMAN INPUT]` — the code establishes the behavior but not the intent. Commit history is not admissible rationale for this module (`category: cat2-legacy`). | src/index.js | Declared at storage-adapter-spec/src/index.js, but every declared case writes and checks a single key, so namespace-wide scope is never observed; not executed either way | Diverges from `MemoryStoreAdapter`, whose `clear()` affects only its own map (`webex-core/src/lib/storage/memory-store-adapter.js` lines 38–42). `README.md` describes the namespace-scoped behavior, which is wrong. | Present (behavior) / Approved unknown (rationale) |
 | `MOD-011` | `clear()` accepts no parameter; any argument a caller passes is ignored. | The method signature takes nothing and the body references only `basekey`. | src/index.js | None executing. Measured 2026-10-04: calling clear with an argument removed every namespace, identically to calling it with none. | Observable behavior is certain. What is unresolved is the *intended* contract: the JSDoc at src/index.js line 72 declares `@param {string} key`, and the shared suite calls clear both ways (with no argument at storage-adapter-spec/src/index.js line 137, with one at lines 144 and 149). | Present (observed behavior) / Weak (intended contract) |
-| `MOD-012` | *Logically*, `get`, `put`, and `del` read and mutate only `allData[namespace]`, so two bindings of the same adapter can hold the same key with different values. *Physically*, all three parse the entire shared document; only `put` and `del` rewrite it with `setItem`. `get` never writes, and `clear` neither parses nor serializes — it calls `removeItem` alone. | Namespaces are the host's isolation unit; webex-core binds one namespace per plugin. The physical scope is what makes write cost and the cross-context race document-wide rather than namespace-wide. | src/index.js | Declared at storage-adapter-spec/src/index.js, but that case does not return its inner promise chain, so its assertions would never be awaited even if it ran | — | Present |
+| `MOD-012` | *Logically*, `get`, `put`, and `del` address only `allData[namespace]`, so two bindings of the same adapter can hold the same key with different values. *Physically*, all three parse the entire shared document; only `put` and `del` rewrite it with `setItem`. `get` never writes, `bind` touches no storage, and `clear` neither parses nor serializes — it calls `removeItem` alone. Three qualifiers apply to the logical partition: the document shape is a precondition the code never validates, so none of this holds outside it (`MOD-017`); the rewrite is a parse/stringify round trip, so sibling values are preserved only as far as that round trip is lossless (`INV-003`); and namespace selection is a plain property read with no own-property check, so inherited `Object.prototype` names do not partition as distinct namespaces (`MOD-016`). | Namespaces are the host's isolation unit; webex-core binds one namespace per plugin. The physical scope is what makes write cost and the cross-context race document-wide rather than namespace-wide. | src/index.js | Declared at storage-adapter-spec/src/index.js, but that case does not return its inner promise chain, so its assertions would never be awaited even if it ran | — | Present |
 | `MOD-013` | Only JSON-serializable data survives a write/read round trip; values pass through `JSON.stringify` on write and `JSON.parse` on read. | The backing store holds strings only, so encoding is mandatory and lossy for non-JSON types. | src/index.js | None executing | Functions, `Symbol`, `undefined` members, `Date`, and `Map` do not round-trip; nothing warns the caller | Present |
 | `MOD-014` | Every operation logs through the logger captured at bind time: `get` and `put` at `debug`, `del` and `clear` at `info`, and `bind` itself at `debug`. | Storage reads and writes are a common source of auth and device bugs, so each operation is traceable through the host logger. | src/index.js | None executing | The `info` level on `del`/`clear` versus `debug` elsewhere is inconsistent; no stated reason | Present |
 | `MOD-015` | The Promise contract has two synchronous-throw holes. Without a `localStorage` global, `get`, `put`, and `del` reject with `ReferenceError` while `clear()` throws **synchronously**. The same split applies to an incomplete logger: `del` rejects while `clear` and `bind` throw synchronously. | `get`/`put`/`del` do their work inside a `new Promise` executor, which converts a throw into a rejection; `clear()` evaluates `localStorage.removeItem(basekey)` as an argument to `Promise.resolve`, before any promise exists. | src/index.js versus line 86,102,122 | None executing. Measured 2026-10-01 in a bare Node process. | `adapter.clear().catch(...)` does not catch this failure, unlike the other three methods. No guard or feature detection exists. | Present |
+| `MOD-016` | **Within the `MOD-017` precondition on document shape**, neither key lookup nor namespace lookup checks *own* properties, so `Object.prototype` property names leak through as if they were stored data. The empty-slice defaults `_getRawData`/`_load` substitute are object literals `{}`, and a conforming `JSON.parse` result is likewise an ordinary object; all of them inherit from `Object.prototype`, and nothing uses `Object.create(null)` or an own-property test. Measured 2026-10-04 against the built `dist/index.js` with **empty** storage: `get('toString')` and `get('constructor')` resolved inherited functions instead of rejecting `NotFoundError`, while `get('missing')` rejected correctly; `bind('toString')` made `_load` return `Object.prototype.toString` itself, so `get('name')` resolved the string `'toString'` and `get('call')` resolved a function; and `put` under namespace `__proto__` assigned the prototype rather than an own property, so `JSON.stringify` emitted `{}` and the write was silently discarded. An *explicitly stored* own key of the same name shadows the inherited one and reads back correctly — `put('toString', 'mine')` then `get('toString')` resolved `'mine'`. **Accepted constraint:** callers must use key and namespace names that are not `Object.prototype` properties — in practice `constructor`, `hasOwnProperty`, `isPrototypeOf`, `propertyIsEnumerable`, `toLocaleString`, `toString`, `valueOf`, and `__proto__`. Every host-supplied name observed in this repo (webex-core namespaces, `@persist` attribute names) satisfies it, which is why the defect has not surfaced. | This records current behavior, not intended behavior. `get` promises `NotFoundError` for absent keys (`MOD-006`) and namespaces are meant to partition values (`MOD-012`); both break on these names. Hardening is a code change with tests, deliberately out of scope for this spec-only pass, and it is larger than it first looks: a complete fix has to cover **all four** read and write paths — the namespace lookup in `_load`, the key lookup in `get`, the namespace assignment in `_save` (the `__proto__` write path), and the objects `JSON.parse` returns. Switching only the `{}` defaults to `Object.create(null)` does not help, because a parsed document still carries `Object.prototype`; and adding a `hasOwnProperty` test only in `get` leaves `_load` and `_save` unfixed. The workable combinations are an own-property test at every lookup plus a prototype-stripping step applied to each parse result, or a reviver/`Object.setPrototypeOf(..., null)` pass in `_getRawData` plus a guarded assignment in `_save`. | src/index.js | None executing. Measured 2026-10-04 against the built dist with a localStorage stand-in. | No committed test pins any of this; a hardening change would alter every observed behavior above and nothing would catch a regression in either direction | Present (observed behavior) / Approved unknown (intended contract) |
+| `MOD-017` | **The adapter states a precondition on its input and validates none of it.** It requires (a) a document matching `{ "<namespace>": { "<key>": <json-value> } }` and (b) namespace and key names that are not `Object.prototype` property names. `_getRawData` returns whatever `JSON.parse` yields and `_load` applies only `allData[namespace] || {}`, so nothing checks either condition. **Behavior on input outside this precondition is unspecified.** Three consequence classes are guaranteed only in the negative — the adapter does not prevent them and gives no signal when they occur: a read may resolve a value that was never stored; a write may resolve, and call `setItem`, without storing the value given; and a rejection may carry a type other than the documented `NotFoundError`/`SyntaxError`, typically `TypeError`. `clear()` is the only method outside this precondition, because it parses nothing. No guarantee is made about which input produces which outcome, and none should be inferred from the examples below. | `localStorage` is origin-wide, so any script can write a conflicting shape, and the reserved-name hazard is reachable through any caller-chosen name. Stating a precondition plus unspecified behavior is deliberate and replaces an earlier enumeration of observed outcomes: the code validates nothing, so the behavior space is the product of document shape, namespace name, and key name, and any enumeration of it is both unbounded and non-binding. A caller cannot rely on observed behavior here, so the specification does not offer it as a contract. Shape validation, own-property tests, and failing closed are the implementation decisions that would let this requirement make positive guarantees; none has been made. | src/index.js | None executing. Characterized 2026-10-04 against the built dist; see the non-normative examples below. | The precondition is undocumented in `README.md` and unenforced in code, so nothing stops a caller or a co-resident script from violating it. No test covers any violation | Present (precondition and non-guarantee) / Approved unknown (intended handling) |
+
+The examples below characterize the **current build only** for input that violates the `MOD-017` precondition. They are **non-normative**: they are observations of `dist/index.js` as built on 2026-10-04, not a contract, and they may change without notice because no test pins them and no code enforces them. They are recorded so a future contributor can recognize the symptoms, not so a caller can depend on them.
+
+- Reads that fabricate: with `{"a":"hi"}`, `bind('a').get('0')` resolved `"h"` and `get('length')` resolved `2`. With empty storage, `get('toString')` and `get('constructor')` resolved inherited functions, and `bind('toString').get('name')` resolved `'toString'`. An explicitly stored own key of the same name shadows the inherited one and reads back correctly.
+- Writes that resolve without storing: under an array namespace slice or array document root, a non-index name resolved and called `setItem` while `JSON.stringify` dropped the value; an index name mutated the array instead (`put('0', 1)` on `{"a":[7,8]}` wrote `{"a":[1,8]}`). A `put` under namespace `__proto__` assigned the prototype and wrote `{}`.
+- Rejections of an unexpected type: a truthy primitive namespace slice, or a primitive or `null` root, rejected `TypeError` before `setItem` — the practical determinant was whether the value `_load` returned was assignable, not whether any container was an array.
+- Writes do not reliably repair or preserve a non-conforming document (`INV-004`): `{"a":0}` became the conforming `{"a":{"x":1}}`, while `[1,2]` was re-persisted unchanged.
 
 ## Design overview
 
@@ -179,17 +188,32 @@ them, and entries disappear when a binding is collected. The practical consequen
 carries no enumerable own properties, so it cannot be serialized or inspected to discover which
 namespace it serves.
 
-Every operation is a full-document cycle. `_getRawData` reads the single entry and parses it,
+Document access is per-method, not uniform. `_getRawData` reads the single entry and parses it,
 substituting `{}` when absent (`src/index.js` lines 40–44); `_load` narrows that to the binding's own
 namespace (lines 50–54); `_save` re-reads the whole document, replaces this namespace's slice, and
-writes everything back (lines 61–67). Reads therefore pay the parse cost of all namespaces combined
-and writes pay parse plus serialize, rather than the cost of the value alone — acceptable for
-credentials and device records, and the reason `clear()` can be a single `removeItem` with no parse
-at all.
+writes everything back (lines 61–67). The four public methods therefore divide into four distinct
+access patterns:
 
-Three of the four public methods wrap their work in `new Promise(executor)`; `clear()` instead
-returns `Promise.resolve(<expression>)`. That difference is not cosmetic: it is why `clear()` alone
-fails synchronously when the backing global is missing (see `MOD-015`).
+| Method | `getItem` + parse | `setItem` + serialize | `removeItem` |
+| ------ | ----------------- | --------------------- | ------------ |
+| `bind` | no | no | no — it touches no storage at all |
+| `get` | once, via `_load` | no | no |
+| `put` / `del` | twice — once in `_load`, once inside `_save` | once, whole document | no |
+| `clear` | no | no | once, on `basekey` |
+
+Measured 2026-10-04: `get` issued one `getItem` and zero `setItem`/`removeItem` calls, while `clear`
+issued zero `getItem`/`setItem` and one `removeItem`. So `get` pays the parse cost of all namespaces
+combined and the two write methods pay parse plus serialize, rather than the cost of the value alone
+— acceptable for credentials and device records. `bind` and `clear` pay neither, which is why
+`clear()` can be a single `removeItem` with no parse at all and still works on a document this
+adapter cannot parse (`INV-004`).
+
+Three of the four bound methods wrap their work in `new Promise(executor)`; `clear()` instead
+returns `Promise.resolve(<expression>)`, whose argument is evaluated first. That difference is not
+cosmetic: it is why `clear()` alone fails synchronously when the backing global is missing.
+`bind()` has the same shape of hole for a different reason — it calls `options.logger.debug`
+directly, outside any promise — so the Promise contract has two synchronous-throw exits, not one
+(see `MOD-015`).
 
 ## Data flow and sequence coverage
 
@@ -200,10 +224,10 @@ read-modify-write, and the purge bypasses the document entirely.
 
 | Operation group | Entry and outcome | Diagram or evidence | Failure and recovery coverage |
 | --------------- | ----------------- | ------------------- | ----------------------------- |
-| Bind | `bind(namespace, options)` → resolved `Bound`, or rejection on a missing argument | Diagram below; src/index.js | Both argument rejections covered; no storage access, so it cannot fail on a missing backing store |
-| Read | `get(key)` → stored value, or `NotFoundError` | Diagram below; src/index.js | Absent key covered; missing-global rejection covered |
+| Bind | `bind(namespace, options)` → resolved `Bound`, or rejection on a missing argument | Diagram below; src/index.js | Both argument rejections covered; no storage access, so it cannot fail on a missing backing store. Not covered: a *present* logger lacking `debug`, which throws synchronously past `.catch()` (`MOD-015`) |
+| Read | `get(key)` → stored value, or `NotFoundError` | Diagram below; src/index.js | Absent key covered; missing-global rejection covered. Not covered: `Object.prototype` key names, which resolve inherited members instead of rejecting (`MOD-016`) |
 | Write / delete | `put(key, value)` or `del(key)` → resolved, document rewritten | Diagram below; src/index.js | Missing-global rejection covered; no quota-exceeded handling exists |
-| Purge | `clear()` → whole `basekey` entry removed | Diagram below; src/index.js | Synchronous throw on a missing global — the one path a caller's `.catch()` will not see |
+| Purge | `clear()` → whole `basekey` entry removed | Diagram below; src/index.js | Synchronous throw on a missing global — the only method that fails this way on an absent backing store, though `bind` throws the same way on an incomplete logger, so `.catch()` has holes on both paths |
 
 ```mermaid
 flowchart LR
@@ -281,9 +305,9 @@ classDiagram
 | ID        | Invariant                            | WHY         | Enforcement source | Test evidence |
 | --------- | ------------------------------------ | ----------- | ------------------ | ------------- |
 | `INV-001` | A binding is never created without both a truthy namespace and a logger. | Both are read unconditionally afterwards; validating at bind time keeps the failure at the point of misuse. | src/index.js | Declared at storage-adapter-spec/src/index.js; not executed |
-| `INV-002` | Only `undefined` means "absent"; every other stored value, however falsey, is a hit. | Guarantees `0`, `false`, `null`, and `''` round-trip rather than degrading to `NotFoundError`. | src/index.js | Declared at storage-adapter-spec/src/index.js; not executed |
-| `INV-003` | `get`, `put`, and `del` never *change* a value outside `allData[namespace]`. They all parse the whole shared document, and `put`/`del` re-serialize and rewrite all of it, so sibling namespaces survive **semantically** — their parsed values are unchanged — but not byte-for-byte. Measured 2026-10-04: a hand-formatted sibling entry kept value `2` while its whitespace was stripped, `1e3` was rewritten as `1000`, and key order changed. | Namespace isolation is the only partitioning the shared document has, and it is enforced by key selection, not by storage-level separation. Anything that depends on the exact bytes of another namespace's region — a hash, a signature, a formatting convention — is not preserved. | src/index.js | Declared at storage-adapter-spec/src/index.js, but that case never awaits its assertions; not executed |
-| `INV-004` | Any document **this adapter wrote** is valid JSON, because `_save` produces it with `JSON.stringify`. The adapter does not and cannot guarantee the entry is valid JSON in general: `localStorage` is shared origin-wide, so another script may overwrite the key with anything. | `_getRawData` parses unconditionally, so externally corrupted content makes `get`, `put`, and `del` reject with `SyntaxError`. `clear()` is exempt — it calls `removeItem` without parsing — which makes it the in-adapter recovery operation, at the cost of destroying every namespace. Measured 2026-10-04. | src/index.js | None |
+| `INV-002` | Only `undefined` means "absent"; every other value *reachable* at `data[key]` is a hit. "Reachable" is the precise word, and it is weaker than "stored": the test is `typeof data[key] !== 'undefined'` with no own-property check and no shape check, so it reports a hit on anything that expression can reach. It reaches an inherited `Object.prototype` member (`MOD-016`), and outside the `MOD-017` precondition it can reach a property of whatever non-object value is stored. Read as an absence contract, the invariant holds only within that precondition and for non-prototype keys; read as a presence contract — no stored value is ever mistaken for absent — it holds unconditionally. | Guarantees `0`, `false`, `null`, and `''` round-trip rather than degrading to `NotFoundError` — the reason truthiness is not used. The false-hit cases are the cost of that same unguarded property read. | src/index.js | Declared at storage-adapter-spec/src/index.js; not executed |
+| `INV-003` | `get`, `put`, and `del` never *target* a value outside `allData[namespace]`, but `put`/`del` do rewrite the whole document, so the preservation guarantee for sibling namespaces is exactly this: **a sibling value survives a write in another namespace if, and only if, it is unchanged by a `JSON.parse` → `JSON.stringify` round trip.** Preservation is neither byte-for-byte nor universally value-for-value. Measured 2026-10-04 (byte-level): a hand-formatted sibling kept value `2` while its whitespace was stripped, `1e3` was rewritten as `1000`, and key order changed. Measured 2026-10-04 (value-level): given the externally written document `{"b":{"neg":-0,"big":1e400}}`, a `put` in namespace `a` left namespace `b` holding `neg: 0` — `Object.is(-0, 0)` is `false`, so the parsed value changed — and `big: null`, because `1e400` parses to `Infinity` and `JSON.stringify(Infinity)` is `null`. A sibling value that `JSON.parse` already degrades on read (`1e-400` → `0`, integers beyond 2^53) is lost on first read regardless of any write. | Namespace isolation is the only partitioning the shared document has, and it is enforced by key selection, not by storage-level separation. Anything that depends on the exact bytes of another namespace's region — a hash, a signature, a formatting convention — or on a value outside the JSON number/value model is not preserved. Callers storing only values this adapter itself wrote are unaffected, because `_save` already emitted them through `JSON.stringify`; the exposure is to documents written by another script on the origin. | src/index.js | Declared at storage-adapter-spec/src/index.js, but that case never awaits its assertions; not executed |
+| `INV-004` | **Validity:** whenever `_save` reaches `setItem`, the string it writes is valid JSON — it is `JSON.stringify` output over a value that came from `JSON.parse` or a fresh object literal. This holds unconditionally for adapter-origin writes. **Conformance does not follow from it, in either direction.** `_save` mutates the parsed existing document in place and re-stringifies it; it neither validates nor normalizes the result. So a write carries no guarantee that a non-conforming entry will be repaired, and no guarantee that it will be left alone — both outcomes occur, and which one applies is unspecified (`MOD-017`). The adapter can therefore re-persist a non-conforming document it did not create. Nothing at all is guaranteed for an entry the adapter never wrote: `localStorage` is origin-wide, so any script may replace the key. | Validity and conformance fail separately and are handled differently. Invalid JSON rejects loudly with `SyntaxError` on the next `get`/`put`/`del`, which is recoverable and visible. A document that is valid but violates the `MOD-017` precondition is processed silently instead, and because writes make no normalization promise, a caller can neither assume the adapter will clean up after a foreign writer nor that it will preserve what that writer left. `clear()` is the only operation that removes such a document unconditionally. The silent case is the more dangerous of the two precisely because nothing signals it. | `_getRawData` parses unconditionally, so externally corrupted content makes `get`, `put`, and `del` reject with `SyntaxError`. `clear()` is exempt — it calls `removeItem` without parsing — which makes it the in-adapter recovery operation, at the cost of destroying every namespace. Measured 2026-10-04. | src/index.js | None |
 | `INV-005` | `clear()` is scoped to the `basekey` entry, never to a namespace. | Stated here as the actual contract so callers do not assume the namespace scope that `README.md` describes. | src/index.js | Declared cases never observe namespace-wide scope; not executed |
 
 ## Concurrency and reactive flow
@@ -305,16 +329,18 @@ classDiagram
   sharing the origin — a second tab, or an iframe — two cycles can interleave at the `localStorage`
   level and the later `setItem` silently discards the other's changes. Nothing in this module
   detects or mitigates that.
-- Blocking restrictions: `localStorage` is synchronous and blocks the main thread. Because every
-  operation serializes and writes the *whole* document, cost grows with total stored size across all
-  namespaces, not with the value being written. Large values therefore slow down unrelated
-  namespaces' operations.
+- Blocking restrictions: `localStorage` is synchronous and blocks the main thread. The cost is
+  method-specific. `put` and `del` parse and re-serialize the *whole* document, so their cost grows
+  with total stored size across all namespaces, not with the value being written; a large value in
+  one namespace therefore slows every other namespace's writes. `get` pays the parse half of that
+  cost but never serializes. `bind` and `clear` pay neither — `bind` touches no storage and `clear`
+  is a single `removeItem`.
 
 ## Data, schema, and migration discipline
 
 | Store or schema | Owned entities or keys | Source of truth | Migration and compatibility rule |
 | --------------- | ---------------------- | --------------- | -------------------------------- |
-| `localStorage[basekey]` — one JSON document shaped `{ "<namespace>": { "<key>": <json-value> } }` | Every namespace the host binds through this adapter. In the browser `webex` bundle the basekey is `webex` and the entities are the `@persist`ed Credentials (including `supertoken`), Device, and User records. | src/index.js | Registered as contract `local-storage-bounded-document` (internal). Current behavior only: the document persists across page loads and across releases, and the code carries no version field, no migration step, and no schema validation. `_getRawData` parses whatever is present and `_load` returns `{}` for an unknown namespace, so changing the encoding would surface as missing or malformed values at read time rather than as a detected upgrade. Whether remaining readable across releases is a committed promise is an owner decision that has not been made — see the `[NEEDS HUMAN INPUT]` item below. Do not treat the current format as a guaranteed contract on the strength of this row. |
+| `localStorage[basekey]` — one JSON document shaped `{ "<namespace>": { "<key>": <json-value> } }` | Every namespace the host binds through this adapter. In the browser `webex` bundle the basekey is `webex` and the entities are the `@persist`ed Credentials (including `supertoken`), Device, and User records. | src/index.js | Registered as contract `local-storage-bounded-document` (internal). Current behavior only: the document persists across page loads and across releases, and the code carries no version field, no migration step, and no schema validation. `_getRawData` parses whatever is present and `_load` returns `{}` for an unknown namespace, so changing the encoding would surface as missing or malformed values at read time rather than as a detected upgrade. The absence of schema validation is not only a migration concern: because the shape is never checked, a valid-but-non-conforming document from any other script on the origin is processed silently and can fabricate reads or swallow writes — see `MOD-017` for the measured matrix. Whether remaining readable across releases is a committed promise is an owner decision that has not been made — see the `[NEEDS HUMAN INPUT]` item below. Do not treat the current format as a guaranteed contract on the strength of this row. |
 
 Retention, deletion, backfill, rollback, and cache behavior:
 
@@ -324,8 +350,9 @@ Retention, deletion, backfill, rollback, and cache behavior:
   namespace, while `clear()` removes the whole entry for every namespace (`MOD-010`).
 - There is no backfill or rollback mechanism. A write is immediately durable; nothing journals the
   prior value.
-- The adapter caches nothing. `_getRawData` re-reads and re-parses the entry on every operation, so
-  a subsequent `get` returns whatever is in storage at that moment — including a value written by
+- The adapter caches nothing. `_getRawData` re-reads and re-parses the entry on every operation
+  that touches the document — `get`, `put`, and `del`; `bind` and `clear` never call it — so a
+  subsequent `get` returns whatever is in storage at that moment, including a value written by
   another tab. Measured 2026-10-04: a binding created before an external write returned the new
   value on its next `get`. What `webex-core` caches is the *binding object*, not stored values
   (`make-webex-store.js` lines 114-130). What the module does not do is *notify*: it registers no
@@ -343,13 +370,16 @@ Retention, deletion, backfill, rollback, and cache behavior:
 | ----------- | ---------------- | --------------- | ----------------- | -------- |
 | Falsy `namespace` passed to `bind` | Rejected promise, ``Error('`namespace` is required')`` | Fix the call site; this is programmer error | Not retryable | src/index.js |
 | `options.logger` missing | Rejected promise, ``Error('`options.logger` is required')`` | Supply the host logger | Not retryable | src/index.js |
-| Key absent on `get` | Rejected promise, `NotFoundError` with `` No value found for `<key>` `` | Treat as "never stored" and fall back to a default; this is the expected cold-start path | Not an error condition | src/index.js |
+| Key absent on `get`, for any key that is not an `Object.prototype` property name | Rejected promise, `NotFoundError` with `` No value found for `<key>` `` | Treat as "never stored" and fall back to a default; this is the expected cold-start path | Not an error condition | src/index.js |
+| `get` called with an `Object.prototype` property name (`toString`, `constructor`, `valueOf`, `hasOwnProperty`, …) | **No rejection.** Resolves the inherited `Object.prototype` member even when nothing was ever stored — `get('toString')` and `get('constructor')` resolve functions | Caller receives a function where it expected stored data or a `NotFoundError`, and a `catch`-based "not stored" branch never runs | Not retryable; avoid these key names. No guard exists (`MOD-016`). Measured 2026-10-04 against empty storage. | src/index.js |
+| `bind` called with an `Object.prototype` property name as the namespace | **No rejection.** `_load` returns the inherited member instead of `{}`, so `get` reads properties of that member — `bind('toString').get('name')` resolves `'toString'` with nothing stored. Namespace `__proto__` is worse: `put` assigns the prototype rather than an own property, `JSON.stringify` emits `{}`, and the write is silently discarded with no error | Reads return fabricated values and writes to `__proto__` are lost without a signal | Not retryable; avoid these namespace names. No guard exists (`MOD-016`). Measured 2026-10-04. | src/index.js |
 | No `localStorage` global, on `get`/`put`/`del` | Rejected promise, `ReferenceError: localStorage is not defined` | Indicates the adapter was configured outside a browser; use `MemoryStoreAdapter` instead | Not retryable | src/index.js; measured 2026-10-01 |
 | No `localStorage` global, on `clear` | **Synchronous throw**, `ReferenceError` | A caller using `adapter.clear().catch(...)` will not catch it and the exception escapes | Not retryable; requires `try`/`catch` rather than `.catch()` | src/index.js; measured 2026-10-01 |
 | `options.logger` lacks `debug` | **Synchronous throw** from `bind`, `TypeError: options.logger.debug is not a function` | Supply a logger implementing `debug`; `bind().catch(...)` will not catch this | Not retryable. Unlike the missing-logger case, which rejects, an incomplete logger escapes the promise. Measured 2026-10-04. | src/index.js |
 | `options.logger` lacks `info`, on `del` | Rejected promise, `TypeError` | Supply a logger implementing `info` | Not retryable. `bind`, `get`, and `put` succeed with such a logger, so the defect surfaces only on first delete. Measured 2026-10-04. | src/index.js |
 | `options.logger` lacks `info`, on `clear` | **Synchronous throw**, `TypeError` | Supply a logger implementing `info`; `.catch()` will not see it | Not retryable. Measured 2026-10-04. | src/index.js |
 | Entry contains non-JSON content | `SyntaxError` from `JSON.parse` inside the executor, surfacing as a rejected promise from `get`, `put`, and `del` | Call `clear()` to recover | `clear()` removes the entry without parsing it, so it succeeds on a corrupt document and the adapter is usable again immediately afterwards. Measured 2026-10-04. The cost is its scope: recovery destroys every namespace under the basekey, so it trades all persisted state for a working store. | src/index.js |
+| Entry is valid JSON but violates the `MOD-017` precondition (wrong document shape, or a reserved `Object.prototype` name) | **Unspecified, and in the common cases silent.** A read may resolve a value that was never stored; a write may resolve and call `setItem` without storing the value given; a rejection may carry `TypeError` rather than `NotFoundError`. Nothing distinguishes any of these from success at the call site | The caller cannot detect the condition from the adapter's result, so it must avoid violating the precondition rather than handle it. Treat stored data as untrustworthy if any other script writes the origin's `basekey` | Not retryable. `clear()` recovers unconditionally, at the cost of every namespace, because it parses nothing. No validation exists; see the non-normative characterization under Requirements | src/index.js |
 | `localStorage` quota exceeded on write | Browser throws `QuotaExceededError` from `setItem`, surfacing as a rejected promise | Unhandled by this module | None implemented | src/index.js |
 
 ## Pitfalls and constraints
@@ -360,14 +390,45 @@ Retention, deletion, backfill, rollback, and cache behavior:
   already removed everything.
 - `README.md` contradicts the code here, describing `clear()` as clearing "all data for this
   namespace". Treat this specification as authoritative; the README is registered as reference-only.
-- `clear()` fails differently from every other method — synchronously, not as a rejection. Code that
-  relies on `.catch()` for storage errors has a hole exactly on the purge path.
+- The Promise contract has **two** synchronous-throw holes, not one, so code that relies on
+  `.catch()` for storage errors has a hole on both the bind path and the purge path (`MOD-015`):
+  - `clear()` evaluates `localStorage.removeItem(basekey)` as an argument to `Promise.resolve`
+    (`src/index.js` line 77), before any promise exists. It therefore throws synchronously on a missing
+    `localStorage` global and on a logger missing `info`. A missing global is the one failure unique
+    to `clear()`: `get`/`put`/`del` reject on it because their work runs inside a
+    `new Promise` executor.
+  - `bind()` calls `options.logger.debug(...)` directly (`src/index.js` line 150), outside any promise.
+    A *present* logger that lacks `debug` therefore throws `TypeError` synchronously, even though a
+    *missing* logger on the line above rejects. `bind().catch(...)` will not see it.
+
+  Treat `try`/`catch` around `bind()` and `clear()` as the only complete handling; `.catch()` alone
+  is sufficient only for `get`, `put`, and `del`.
 - `MemoryStoreAdapter`, the default adapter, scopes `clear()` to its own map
   (`memory-store-adapter.js` lines 38–42). Behavior that passes with the default adapter can therefore
   destroy data with this one.
-- Reads parse the entire document and writes additionally re-serialize and rewrite all of it, so
-  writing one small key costs the size of all namespaces combined, on the main thread. `clear()` is
-  the cheap exception: it calls `removeItem` without parsing or serializing anything.
+- Cost differs per method. `get` parses the entire document; `put` and `del` parse it twice and
+  re-serialize all of it, so writing one small key costs the size of all namespaces combined, on the
+  main thread. `bind` and `clear` are the cheap exceptions: `bind` touches no storage and `clear`
+  calls `removeItem` without parsing or serializing anything.
+- Namespace isolation is not value-exact. Because `put` and `del` rewrite the whole document, a
+  sibling namespace's values survive only as far as a `JSON.parse` → `JSON.stringify` round trip is
+  lossless. A write in one namespace turns an externally written `-0` into `0` and `1e400` into
+  `null` in another (`INV-003`). This only bites when another script on the origin writes the entry;
+  values this adapter wrote have already been through `JSON.stringify`.
+- The document shape and the key/namespace naming rule are a **precondition the code never checks**
+  (`MOD-017`). `_getRawData` hands back whatever `JSON.parse` returns and `_load` only applies
+  `allData[namespace] || {}`, so a conflicting shape written by any other script on the origin is
+  processed rather than rejected. Behavior there is unspecified: a read can resolve a value that was
+  never stored, a write can resolve without storing one, and neither is visible at the call site.
+  Only `clear()` is immune, because it parses nothing. Do not read `MOD-006`'s not-found contract or
+  `MOD-012`'s partitioning as holding outside the precondition, and do not rely on the characterized
+  examples — they are non-normative.
+- Do not use `Object.prototype` property names — `toString`, `constructor`, `valueOf`,
+  `hasOwnProperty`, `__proto__`, and the rest — as keys or namespaces. Nothing checks own
+  properties, so `get('toString')` resolves an inherited function instead of rejecting
+  `NotFoundError`, `bind('toString')` reads properties off that function, and a `put` under
+  namespace `__proto__` is silently discarded (`MOD-016`). The names webex-core actually supplies
+  avoid this, so the hazard is latent rather than active.
 - There is no cross-tab safety. Two tabs on the same origin can interleave read-modify-write cycles
   and silently lose updates; no `storage` event is observed.
 - Only JSON-serializable values survive. A `Date` returns as a string and a `Map` returns as `{}`,
@@ -404,7 +465,7 @@ Retention, deletion, backfill, rollback, and cache behavior:
 | --------------------- | ---------- | --------- | ------------------------------- | ------------------------- |
 | Default export `StorageAdapterLocalStorage` | `@webex/webex` browser bundle, `@webex/recipe-private-web-client`, authorization-browser automation fixtures | Stable published surface | Released with the monorepo's automated versioning; the constructor signature and the `bind`/`get`/`put`/`del`/`clear` shape are what host configuration binds to | `package.json` (main: dist/index.js) |
 | `src/index.js` via `devMain` | Workspace consumers building from source | Internal to the workspace | Follows the same source; not an independent compatibility surface | `package.json` (devMain) |
-| `dist/index.js` + `dist/index.js.map` | npm consumers | Build output, regenerated by `build:src` | Not version-controlled (`.gitignore:24`); emitted at publish time | `package.json` build:src |
+| `dist/index.js` + `dist/index.js.map` | npm consumers | Build output, regenerated by `build:src` | Not version-controlled — the repository-root `.gitignore` ignores `dist`; emitted at publish time | `package.json` build:src |
 
 The package ships no `.d.ts` and no API report, so `package.json` is the only machine-readable
 declaration of the published surface. Any change to the constructor signature or the bound-store
@@ -454,6 +515,8 @@ method set is a breaking change for every consumer listed above.
 | `MOD-013` / `INV-004` | — | none found | none found | No test covers non-JSON values or a corrupt document |
 | `MOD-014` | — | none found | none found | Logging is unobserved |
 | `MOD-015` | — | none found | none found | No test covers the missing-global path; the synchronous-throw asymmetry is unguarded |
+| `MOD-016` | — | none found | none found | No test uses an `Object.prototype` name as a key or namespace, so neither the inherited-value reads nor the discarded `__proto__` write would be caught; hardening would also go unnoticed |
+| `MOD-017` | — | none found | none found | No test violates the precondition in either direction, so nothing would catch a change in the unspecified behavior — or confirm that validation had been added. The widest unverified area in the module after `MOD-010` |
 
 **The decisive gap: neither of this package's own test routes executes a single case.** Measured
 2026-10-01 with Node v22.14.0:
