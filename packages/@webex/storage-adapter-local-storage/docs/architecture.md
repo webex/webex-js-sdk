@@ -298,6 +298,12 @@ Architectural controls and their absence:
   module spec (`MOD-010`).
 - Node safety: the adapter is unreachable in Node builds, so server-side token persistence through
   this path is not possible.
+- Prototype pollution (CWE-1321): binding the namespace `__proto__` and calling `put` installs the
+  key as an own property of `Object.prototype`, which is then observable on every object in the
+  realm; `clear()` does not undo it. The module applies no own-property guard. No exploit path
+  exists in this repository as configured, because `webex-core` passes fixed plugin names, but that
+  is a property of the callers rather than of the adapter. Tracked as a code defect in the module
+  specification (`MOD-016`), not as accepted behavior.
 
 Applications that cannot accept plaintext token persistence should configure a different bounded
 adapter rather than modifying this one, since changing the stored representation would break the
