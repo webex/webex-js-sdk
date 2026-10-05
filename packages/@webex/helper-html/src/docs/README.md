@@ -10,7 +10,7 @@ generated_from: module-spec@0.3.0
 generated_by: cursor
 approved_by: repository user
 updated_at: 2026-10-01T11:15:00Z
-validation_status: pass-with-warnings
+validation_status: not-run
 -->
 
 # HTML helper
@@ -32,7 +32,7 @@ Related context: [documentation index](../../docs/index.md) · [package agent in
 | Parent spec   | —                                                            |
 | Doc kind      | Module spec                                                  |
 | Coverage score | 93.3% assessed 2026-10-01 — 14 of 15 mandatory fields PRESENT; test strategy is WEAK because the unit spec is skipped in Node |
-| Validation status | pass-with-warnings |
+| Validation status | not-run |
 
 ## Applicability
 
@@ -131,7 +131,7 @@ Call shape for the four filter exports, from the `function` parameter lists in `
 | MOD-007 | `href` and `src` that fail the scheme check cause the element to be removed and its children kept. | A scriptable URL should not remain on an element. | `src/html.shim.js` `isAllowedUrlAttribute` and `reparent` | Unit cases that expect `javascript:` links to become plain text. |
 | MOD-008 | `javascript`, `vbscript`, and `data` are never added from `additionalAllowedUrlSchemes`. Other schemes that match the scheme pattern are added. | Callers must not reopen those three schemes by config. | `src/html.shim.js` `BLOCKED_URL_SCHEMES` | Unit cases `blocks javascript: even when listed` and `allows a custom URL scheme from config`. |
 | MOD-009 | An empty `html` string returns an empty string without throwing the missing-argument `Error`. | The unit spec requires blank input to be accepted. | `src/html.shim.js` | Unit case `accepts blank strings`. |
-| MOD-010 | When `html` is non-empty and `allowedTags`, `allowedStyles`, or `html` is missing, the browser sync functions throw `Error` with message `` `allowedTags`, `allowedStyles`, and `html` must be provided ``. | Callers need a stable failure instead of a partial parse. | `src/html.shim.js` | Source inspection. The unit spec does not assert this throw. |
+| MOD-010 | When `html` is a non-empty string and `allowedTags` or `allowedStyles` is missing, the browser sync functions throw `Error` with message `` `allowedTags`, `allowedStyles`, and `html` must be provided ``. | Callers need a stable failure instead of a partial parse. A null or undefined `html` throws `TypeError` on `html.length` and is listed under caller-visible failure modes. An empty string is `MOD-009`. | `src/html.shim.js` | Source inspection. The unit spec does not assert this throw. |
 
 ## Design overview
 
