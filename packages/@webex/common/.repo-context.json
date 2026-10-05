@@ -1,0 +1,364 @@
+{
+  "$schema": "./schemas/repo-context.schema.json",
+  "version": 1,
+  "repository": {
+    "name": "@webex/common",
+    "purpose": "Zero-Webex-dependency shared helpers that more than one Webex JS SDK plugin needs. Sits at the bottom of the workspace dependency graph: src/ imports no @webex/* package at runtime."
+  },
+  "commands": {
+    "compile": "yarn workspace @webex/common build:src",
+    "build": "yarn workspace @webex/common build",
+    "unit-test": "yarn workspace @webex/common test:unit",
+    "lint": "yarn workspace @webex/common test:style",
+    "deploy": "yarn workspace @webex/common deploy:npm"
+  },
+  "public_interfaces": [
+    {
+      "name": "@webex/common package barrel",
+      "kind": "package_export",
+      "source": "src/index.js",
+      "entrypoints": [
+        "import {\u2026} from '@webex/common'"
+      ],
+      "audience": "33 workspace packages across 104 import sites, plus external npm consumers",
+      "notes": "39 named exports. README.md documents 6 as the externally supported subset; the rest is internal-consumer surface."
+    },
+    {
+      "name": "package scripts",
+      "kind": "npm_scripts",
+      "source": "package.json",
+      "entrypoints": [
+        "build",
+        "build:src",
+        "test:style",
+        "test:unit",
+        "deploy:npm"
+      ],
+      "audience": "contributors and CI",
+      "notes": "Do not run the aggregate `test` script: it chains undefined test:integration and test:browser."
+    }
+  ],
+  "source_of_truth": [
+    {
+      "surface": "module implementation",
+      "paths": [
+        "src"
+      ],
+      "generated_artifacts": [
+        "dist"
+      ],
+      "refresh_with": [
+        "yarn workspace @webex/common build:src"
+      ],
+      "validate_with": [
+        "yarn workspace @webex/common test:unit",
+        "yarn workspace @webex/common test:style"
+      ]
+    },
+    {
+      "surface": "module specification",
+      "paths": [
+        "src/docs/README.md"
+      ],
+      "generated_artifacts": [],
+      "refresh_with": [
+        "update alongside the behavior change in the same commit"
+      ],
+      "validate_with": [
+        "spec-validator on an independent runtime"
+      ]
+    }
+  ],
+  "generated_artifacts": [
+    {
+      "path": "dist",
+      "generated_from": "src",
+      "refresh_with": "yarn workspace @webex/common build:src"
+    },
+    {
+      "path": ".sdd/templates/repo-standards/template-map.json",
+      "generated_from": "WebexTools/repo-standards",
+      "refresh_with": "repo-annotation setup-skills.sh --target . --sdd-root ."
+    }
+  ],
+  "validation_matrix": [
+    {
+      "paths": [
+        "src/**"
+      ],
+      "minimum": [
+        "yarn workspace @webex/common test:unit"
+      ],
+      "recommended": [
+        "yarn workspace @webex/common test:style",
+        "yarn workspace @webex/common build:src"
+      ]
+    },
+    {
+      "paths": [
+        "src/index.js"
+      ],
+      "minimum": [
+        "yarn workspace @webex/common test:unit"
+      ],
+      "recommended": [
+        "review the 104 consumer import sites before removing or renaming an export"
+      ]
+    },
+    {
+      "paths": [
+        "src/uuid-utils.js",
+        "src/oauth-state.js",
+        "src/base64.js"
+      ],
+      "minimum": [
+        "yarn workspace @webex/common test:unit"
+      ],
+      "recommended": [
+        "confirm the encoding is unchanged; both formats are unversioned and persisted by consumers"
+      ]
+    }
+  ],
+  "change_impact": [
+    {
+      "paths": [
+        "src/index.js"
+      ],
+      "affects": [
+        "33 workspace packages",
+        "104 import sites",
+        "external npm consumers"
+      ],
+      "refresh_with": [
+        "yarn workspace @webex/common build:src"
+      ],
+      "validate_with": [
+        "yarn workspace @webex/common test:unit"
+      ],
+      "avoid_direct_edits": [
+        "dist"
+      ],
+      "notes": "The barrel is the public surface. Adding is safe; removing or renaming is broadly breaking."
+    },
+    {
+      "paths": [
+        "src/uuid-utils.js"
+      ],
+      "affects": [
+        "every consumer that persists or compares Hydra ids"
+      ],
+      "refresh_with": [
+        "yarn workspace @webex/common build:src"
+      ],
+      "validate_with": [
+        "yarn workspace @webex/common test:unit"
+      ],
+      "avoid_direct_edits": [
+        "dist"
+      ],
+      "notes": "Encoding is unversioned and has no test coverage. Pin behavior with a characterization test first."
+    }
+  ],
+  "evidence_rules": [
+    {
+      "claim_category": "command_name",
+      "sources": [
+        "package.json"
+      ],
+      "requirement": "The script must exist in package.json scripts. test:integration and test:browser are referenced but undefined.",
+      "notes": "Never cite the aggregate `test` script as runnable."
+    },
+    {
+      "claim_category": "import_path",
+      "sources": [
+        "src/index.js"
+      ],
+      "requirement": "A symbol is public only if re-exported from the barrel.",
+      "notes": "Consumers import from the package root; there are no subpath entry points."
+    },
+    {
+      "claim_category": "behavior_claim",
+      "sources": [
+        "src",
+        "test/unit/spec"
+      ],
+      "requirement": "Ground every behavioral claim in source or test evidence.",
+      "notes": "Commit history was ruled out as an evidence source during onboarding; unsupported rationale is marked [NEEDS HUMAN INPUT]."
+    }
+  ],
+  "negative_guidance": [
+    {
+      "rule": "Do not import any @webex/* package from src/ at runtime.",
+      "why": "This package is the bottom of the dependency graph; an import creates a cycle for its 33 consumers. No automated check enforces it."
+    },
+    {
+      "rule": "Do not treat Exception as having a static extend().",
+      "why": "README.md documents Exception.extend(), which does not exist and has zero call sites. Subclass with `class X extends Exception {}`."
+    },
+    {
+      "rule": "Do not change the ciscospark:// Hydra encoding or the OAuth state encoding.",
+      "why": "Both are unversioned and persisted by consumers, so a change invalidates existing values."
+    },
+    {
+      "rule": "Do not rely on `deprecated` at runtime in production.",
+      "why": "src/deprecated.js substitutes an empty decorator when NODE_ENV is production."
+    },
+    {
+      "rule": "Do not use `tap` for validation.",
+      "why": "src/tap.js swallows callback errors by design and always resolves with the original value."
+    }
+  ],
+  "confidence_policy": {
+    "high": {
+      "action": "update",
+      "expectation": "Source and test evidence both support the change, and the affected export surface is covered by a unit spec."
+    },
+    "medium": {
+      "action": "narrow-scope",
+      "expectation": "Only source evidence exists. Pin current behavior with a characterization test before modifying; omit rationale that evidence cannot support."
+    },
+    "low": {
+      "action": "noop",
+      "expectation": "Neither source nor tests settle the question. Stop and report the gap; 17 of 25 source files have no dedicated unit spec."
+    }
+  },
+  "repository_topology": {
+    "main_entrypoints": [
+      {
+        "name": "package barrel",
+        "path": "src/index.js",
+        "purpose": "Single public entry point re-exporting 39 symbols",
+        "notes": "No subpath exports."
+      }
+    ],
+    "workspace_packages": [
+      {
+        "name": "@webex/common",
+        "paths": [
+          "src",
+          "test"
+        ],
+        "notes": "One module; this SDD root is the package directory inside the webex-js-sdk monorepo."
+      }
+    ],
+    "source_surfaces": [
+      {
+        "name": "implementation",
+        "paths": [
+          "src"
+        ],
+        "notes": "Flat set of single-purpose files plus src/in-browser/."
+      },
+      {
+        "name": "unit tests",
+        "paths": [
+          "test/unit/spec"
+        ],
+        "notes": "8 spec files covering 8 of 25 source files."
+      }
+    ],
+    "generated_surfaces": [
+      {
+        "name": "build output",
+        "paths": [
+          "dist"
+        ],
+        "generated_from": "src",
+        "refresh_with": "yarn workspace @webex/common build:src",
+        "notes": "JavaScript and source maps only; no .d.ts is emitted."
+      },
+      {
+        "name": "repo-standards template snapshot",
+        "paths": [
+          ".sdd/templates/repo-standards"
+        ],
+        "generated_from": "WebexTools/repo-standards",
+        "refresh_with": "repo-annotation setup-skills.sh --target . --sdd-root .",
+        "notes": "Bundled, checksum-verified snapshot. Upstream-owned; do not hand-edit."
+      }
+    ],
+    "validation_entrypoints": [
+      {
+        "name": "unit tests",
+        "command": "yarn workspace @webex/common test:unit",
+        "scope": "test/unit/spec",
+        "notes": "jest via @webex/jest-config-legacy."
+      },
+      {
+        "name": "lint",
+        "command": "yarn workspace @webex/common test:style",
+        "scope": "src",
+        "notes": "eslint via the local root .eslintrc.js."
+      }
+    ],
+    "sync_paths": [
+      {
+        "source": "WebexTools/repo-standards",
+        "targets": [
+          ".sdd/templates/repo-standards"
+        ],
+        "mechanism": "repo-annotation setup-skills.sh --target . --sdd-root .",
+        "notes": "Network-free copy from the bundled plugin snapshot."
+      }
+    ]
+  },
+  "folder_readme_contract": {
+    "required_sections": [
+      "purpose",
+      "boundaries",
+      "key-files",
+      "common-tasks"
+    ],
+    "rules": [
+      "Orient the reader before describing detail.",
+      "Link to the module specification rather than duplicating it."
+    ],
+    "example_policy": "Examples are allowed only when verified against src/ or test/unit/spec/.",
+    "fallback": "Omit a section rather than inventing content; mark unresolved facts [NEEDS HUMAN INPUT]."
+  },
+  "surface_owners": [
+    {
+      "surface": "module implementation and specification",
+      "owner": "@webex/web-client, @webex/web-sdk",
+      "edit_boundary": "Owners per the monorepo .github/CODEOWNERS line 8."
+    }
+  ],
+  "do_not_edit": [
+    "dist",
+    ".sdd/templates/repo-standards"
+  ],
+  "marker_scopes": {
+    "sdd": [
+      ".sdd/manifest.json",
+      "src/docs/README.md",
+      "docs"
+    ]
+  },
+  "fallback_rules": [
+    "When source and tests disagree, code is the referee and the disagreement is recorded rather than silently resolved.",
+    "When neither source nor tests settle a question, mark it [NEEDS HUMAN INPUT] instead of inferring.",
+    "Commit history is not a valid rationale source for this package."
+  ],
+  "downstream_context_pack": {
+    "required_human_surfaces": [
+      "README.md",
+      "docs/index.md",
+      "docs/architecture.md",
+      "src/docs/README.md"
+    ],
+    "required_agent_operational_surfaces": [
+      "AGENTS.md",
+      "docs/specs/README.md"
+    ],
+    "required_machine_readable_surface": ".sdd/manifest.json",
+    "recommended_machine_readable_sections": [
+      "public_interfaces",
+      "change_impact",
+      "evidence_rules",
+      "negative_guidance",
+      "confidence_policy",
+      "repository_topology",
+      "folder_readme_contract"
+    ]
+  }
+}
