@@ -53,6 +53,28 @@ export interface Configuration {
   namedMediaGroup?: NamedMediaGroup;
 }
 
+export const getRemoteMediaManagerConfigForLogging = (config?: Configuration) => {
+  if (!config) {
+    return config;
+  }
+
+  const {initialLayoutId, layouts} = config.video;
+
+  return {
+    ...config,
+    video: {
+      ...config.video,
+      layouts: {
+        count: Object.keys(layouts).length,
+        initial: {
+          id: initialLayoutId,
+          definition: layouts[initialLayoutId],
+        },
+      },
+    },
+  };
+};
+
 /* Predefined layouts: */
 
 // An "all equal" grid, with size up to 3 x 3 = 9:
@@ -335,7 +357,7 @@ export class RemoteMediaManager extends EventsScope {
 
     LoggerProxy.logger.log(
       `RemoteMediaManager#constructor --> RemoteMediaManager created with config: ${JSON.stringify(
-        this.config
+        getRemoteMediaManagerConfigForLogging(this.config)
       )}`
     );
   }
