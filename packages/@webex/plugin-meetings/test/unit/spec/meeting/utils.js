@@ -12,6 +12,7 @@ import * as BrowserDetectionModule from '@webex/plugin-meetings/src/common/brows
 import PasswordError from '@webex/plugin-meetings/src/common/errors/password-error';
 import CaptchaError from '@webex/plugin-meetings/src/common/errors/captcha-error';
 import {ServerRoles} from '@webex/plugin-meetings/src/member/types';
+import {WebexHttpError} from '@webex/webex-core';
 
 describe('plugin-meetings', () => {
   let webex;
@@ -779,7 +780,15 @@ describe('plugin-meetings', () => {
       });
 
       it('should post client event with error when join fails', async () => {
-        const joinError = new Error('Join failed');
+        const joinError = new WebexHttpError.TooManyRequests({
+          statusCode: 429,
+          body: {message: 'Locus rate limited'},
+          options: {
+            method: 'POST',
+            headers: {},
+            uri: 'https://locus.example.com/locus/api/v1/loci/call',
+          },
+        });
         meeting.meetingRequest.joinMeeting.rejects(joinError);
         meeting.meetingInfo = {meetingLookupUrl: 'test-lookup-url'};
 
