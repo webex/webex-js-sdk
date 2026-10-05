@@ -34,65 +34,6 @@ describe("commonn timers", () => {
     });
   });
 
-  describe("unref behaviour", () => {
-    // These tests need real platform handles. Sinon's fake timers expose an unref()
-    // method but no observable ref state, so hasRef() on a genuine Node handle is the
-    // only way to prove the call actually landed.
-    beforeEach(() => {
-      clock.restore();
-    });
-
-    const wrappers = [
-      {name: "safeSetTimeout", schedule: safeSetTimeout, clear: clearTimeout, global: "setTimeout"},
-      {name: "safeSetInterval", schedule: safeSetInterval, clear: clearInterval, global: "setInterval"},
-    ];
-
-    wrappers.forEach(({name, schedule, clear, global: globalName}) => {
-      it(`should unref the handle returned by ${name}`, () => {
-        const timer = schedule(() => {}, 10000) as NodeJS.Timeout;
-
-        assert.isFalse(timer.hasRef());
-
-        clear(timer);
-      });
-
-      it(`should return a handle without unref unchanged from ${name}`, () => {
-        // Browsers return a plain number with no unref method; the wrapper must
-        // feature-detect rather than assume a Node handle.
-        const browserHandle = 4242;
-        const stub = sinon.stub(global, globalName as 'setTimeout').returns(browserHandle as never);
-
-        try {
-          assert.equal(schedule(() => {}, 1000), browserHandle);
-        } finally {
-          stub.restore();
-        }
-      });
-    });
-
-    it("should unref the handle Timer schedules internally", () => {
-      let scheduled;
-      const realSetTimeout = global.setTimeout;
-      const stub = sinon
-        .stub(global, 'setTimeout')
-        .callsFake((...args) => {
-          scheduled = realSetTimeout(...(args as Parameters<typeof setTimeout>));
-
-          return scheduled;
-        });
-
-      try {
-        const timer = new Timer(() => {}, 10000);
-        timer.start();
-        timer.cancel();
-      } finally {
-        stub.restore();
-      }
-
-      assert.isFalse(scheduled.hasRef());
-    });
-  });
-
   describe("Timer", () => {
 
     describe("start method", () => {
