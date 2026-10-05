@@ -747,9 +747,7 @@ export default class MeetingInfoV2 {
             payload: {
               identifiers: {
                 meetingLookupUrl: response?.url,
-                ...(response?.body?.locusClusterUrl && {
-                  locusCluster: response.body.locusClusterUrl,
-                }),
+                locusCluster: response?.body?.locusClusterUrl,
               },
             },
             options: {

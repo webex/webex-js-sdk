@@ -891,7 +891,7 @@ describe('plugin-meetings', () => {
                 payload: {
                   identifiers: {
                     meetingLookupUrl: result?.url,
-                    ...(locusClusterUrl ? {locusCluster: 'locus-k.wbx2.com'} : {}),
+                    locusCluster: locusClusterUrl,
                   },
                 },
                 options: {
@@ -1027,6 +1027,7 @@ describe('plugin-meetings', () => {
           payload: {
             identifiers: {
               meetingLookupUrl: result?.url,
+              locusCluster: undefined,
             },
           },
           options: {
