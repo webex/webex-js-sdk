@@ -119,7 +119,3 @@ export interface WebE2EEInstance {
 export interface ModuleInstance {
   WebE2EE: new () => WebE2EEInstance;
 }
-
-export type ModuleFactory = (moduleOverrides?: {
-  locateFile?: (path: string) => string;
-}) => Promise<ModuleInstance>;

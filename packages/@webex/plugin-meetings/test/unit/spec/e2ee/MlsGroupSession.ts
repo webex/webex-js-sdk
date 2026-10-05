@@ -5,6 +5,7 @@ import 'jsdom-global/register';
 import {assert} from '@webex/test-helper-chai';
 import sinon from 'sinon';
 import MlsGroupSession from '@webex/plugin-meetings/src/e2ee/MlsGroupSession';
+import WasmLoader from '@webex/plugin-meetings/src/common/wasm-loader';
 
 const flushPromises = () => new Promise((resolve) => setTimeout(resolve, 0));
 
@@ -71,11 +72,10 @@ describe('plugin-meetings', () => {
       fakeE2ee = buildFakeE2ee();
       const module = {WebE2EE: sinon.stub().returns(fakeE2ee)};
 
-      wasmLoader = {
-        get: sinon.stub().resolves(module),
-        preload: sinon.stub().resolves(),
-        isLoaded: sinon.stub().returns(true),
-      };
+      wasmLoader = sinon.createStubInstance(WasmLoader);
+      wasmLoader.get.resolves(module);
+      wasmLoader.preload.resolves();
+      wasmLoader.isLoaded.returns(true);
       httpClient = {request: sinon.stub().resolves(new Uint8Array([1, 2, 3]))};
       timers = {setTimeout: sinon.stub()};
       logger = {
@@ -84,7 +84,7 @@ describe('plugin-meetings', () => {
         error: sinon.stub(),
         debug: sinon.stub(),
       };
-      session = new MlsGroupSession({httpClient, wasmLoader, timers, logger});
+      session = new MlsGroupSession({httpClient, wasmLoader, wasmUrl: '/wasm/e2ee.wasm', timers, logger});
     });
 
     afterEach(() => {
@@ -95,7 +95,7 @@ describe('plugin-meetings', () => {
       it('loads the module, wires callbacks and initializes with defaults', async () => {
         await session.initialize(config);
 
-        assert.calledOnce(wasmLoader.get);
+        assert.calledOnceWithExactly(wasmLoader.get, '/wasm/e2ee.wasm');
         assert.calledOnceWithExactly(
           fakeE2ee.initialize,
           'user-1',

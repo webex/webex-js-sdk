@@ -9,15 +9,16 @@ meetings:
 
 ## How these files are consumed
 
-`plugin-meetings` does not serve static files itself. At runtime
-[`WasmLoader`](../src/e2ee/WasmLoader.ts) dynamically imports `e2ee.js` and loads
-`e2ee.wasm` from a URL (default `/wasm/e2ee.wasm`). The **consuming application**
-is responsible for serving these files at that URL — typically by copying this
-folder into its static output during its own build (e.g. via
-`copy-webpack-plugin`).
+`plugin-meetings` does not serve static files itself. At runtime the generic
+[`WasmLoader`](../src/common/wasm-loader.ts) dynamically imports `e2ee.js` and
+loads `e2ee.wasm` from a URL (the E2EE module uses `E2EE_WASM_URL`, default
+`/wasm/e2ee.wasm`). The **consuming application** is responsible for serving
+these files at that URL — typically by copying this folder into its static
+output during its own build (e.g. via `copy-webpack-plugin`).
 
-To point the loader at a different served location, pass a `wasmUrl` to
-`WasmLoader` (the `.js` loader path is derived from it by replacing `.wasm`).
+`WasmLoader` identifies each module by its `.wasm` URL (the `.js` loader path is
+derived from it by replacing `.wasm`), so the served location is changed by
+passing a different URL to `get(wasmUrl)` / `preload(wasmUrl)`.
 
 ## Git / size note
 

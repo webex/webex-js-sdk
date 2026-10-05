@@ -9,9 +9,9 @@ import MlsGroupSession from './MlsGroupSession';
 import MediaEncryptionService from './MediaEncryptionService';
 import E2eeSignaling from './E2eeSignaling';
 import E2eeRosterReconciler from './E2eeRosterReconciler';
-import {MEDIA_SERVICE_DEVICE_TYPE} from './constants';
+import {E2EE_WASM_URL, MEDIA_SERVICE_DEVICE_TYPE} from './constants';
 import type E2eeIdentityProvider from './E2eeIdentityProvider';
-import type {IWasmLoader} from './WasmLoader';
+import type WasmLoader from '../common/wasm-loader';
 import type {E2eeConfig, E2eeState} from './types';
 
 const DEVICE_TYPE = 'WEB';
@@ -28,7 +28,7 @@ export default class E2eeMeeting {
 
   private readonly webex: any;
 
-  private readonly wasmLoader: IWasmLoader;
+  private readonly wasmLoader: WasmLoader;
 
   private readonly identityProvider: E2eeIdentityProvider;
 
@@ -50,7 +50,7 @@ export default class E2eeMeeting {
    * @param {Object} deps
    * @param {Object} deps.meeting - The owning meeting.
    * @param {Object} deps.webex - The parent webex instance.
-   * @param {IWasmLoader} deps.wasmLoader - Shared (pre-warmed) WASM loader.
+   * @param {WasmLoader} deps.wasmLoader - Shared (pre-warmed) WASM loader.
    * @param {E2eeIdentityProvider} deps.identityProvider - Shared identity/credential provider.
    * @param {E2eeConfig} deps.config - The meetings plugin config.
    */
@@ -63,7 +63,7 @@ export default class E2eeMeeting {
   }: {
     meeting: any;
     webex: any;
-    wasmLoader: IWasmLoader;
+    wasmLoader: WasmLoader;
     identityProvider: E2eeIdentityProvider;
     config: E2eeConfig;
   }) {
@@ -150,14 +150,18 @@ export default class E2eeMeeting {
     this.setState('initializing');
 
     try {
-      await this.wasmLoader.get();
+      await this.wasmLoader.get(E2EE_WASM_URL);
 
       const {device} = this.webex.internal;
       const credentials = await this.identityProvider.getCredentials(device.userId);
       const httpClient = new MediaEncryptionService({
         webexRequest: this.webex.request.bind(this.webex),
       });
-      const session = new MlsGroupSession({httpClient, wasmLoader: this.wasmLoader});
+      const session = new MlsGroupSession({
+        httpClient,
+        wasmLoader: this.wasmLoader,
+        wasmUrl: E2EE_WASM_URL,
+      });
 
       this.session = session;
       this.wireSessionEvents(session);

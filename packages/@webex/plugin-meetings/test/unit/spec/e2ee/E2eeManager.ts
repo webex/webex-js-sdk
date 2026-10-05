@@ -5,7 +5,8 @@ import 'jsdom-global/register';
 import {assert} from '@webex/test-helper-chai';
 import sinon from 'sinon';
 import E2eeManager from '@webex/plugin-meetings/src/e2ee/E2eeManager';
-import WasmLoader from '@webex/plugin-meetings/src/e2ee/WasmLoader';
+import WasmLoader from '@webex/plugin-meetings/src/common/wasm-loader';
+import {E2EE_WASM_URL} from '@webex/plugin-meetings/src/e2ee/constants';
 
 describe('plugin-meetings', () => {
   describe('E2eeManager', () => {
@@ -14,11 +15,14 @@ describe('plugin-meetings', () => {
       config: {meetings: {enableE2ee}},
       request: sinon.stub().resolves({body: ''}),
     });
-    let preloadStub;
+    const makeWasmLoader = () => {
+      const wasmLoader = sinon.createStubInstance(WasmLoader);
+      wasmLoader.preload.resolves();
+      wasmLoader.get.resolves({});
+      wasmLoader.isLoaded.returns(false);
 
-    beforeEach(() => {
-      preloadStub = sinon.stub(WasmLoader.prototype, 'preload').resolves();
-    });
+      return wasmLoader;
+    };
 
     afterEach(() => {
       sinon.restore();
@@ -26,33 +30,35 @@ describe('plugin-meetings', () => {
 
     describe('isEnabled', () => {
       it('reflects webex.config.meetings.enableE2ee', () => {
-        assert.isTrue(new E2eeManager({webex: makeWebex(true)}).isEnabled);
-        assert.isFalse(new E2eeManager({webex: makeWebex(false)}).isEnabled);
-        assert.isFalse(new E2eeManager({webex: makeWebex()}).isEnabled);
+        assert.isTrue(new E2eeManager({webex: makeWebex(true), wasmLoader: makeWasmLoader()}).isEnabled);
+        assert.isFalse(new E2eeManager({webex: makeWebex(false), wasmLoader: makeWasmLoader()}).isEnabled);
+        assert.isFalse(new E2eeManager({webex: makeWebex(), wasmLoader: makeWasmLoader()}).isEnabled);
       });
     });
 
     describe('preload', () => {
       it('warms the WASM module when enabled', async () => {
-        const manager = new E2eeManager({webex: makeWebex(true)});
+        const wasmLoader = makeWasmLoader();
+        const manager = new E2eeManager({webex: makeWebex(true), wasmLoader});
 
         await manager.preload();
 
-        assert.calledOnce(preloadStub);
+        assert.calledOnceWithExactly(wasmLoader.preload, E2EE_WASM_URL);
       });
 
       it('does nothing when disabled', async () => {
-        const manager = new E2eeManager({webex: makeWebex(false)});
+        const wasmLoader = makeWasmLoader();
+        const manager = new E2eeManager({webex: makeWebex(false), wasmLoader});
 
         await manager.preload();
 
-        assert.notCalled(preloadStub);
+        assert.notCalled(wasmLoader.preload);
       });
     });
 
     describe('createE2eeMeeting', () => {
       it('returns a per-meeting E2EE facade', () => {
-        const manager = new E2eeManager({webex: makeWebex(true)});
+        const manager = new E2eeManager({webex: makeWebex(true), wasmLoader: makeWasmLoader()});
         const meeting = {
           members: {
             membersCollection: {get: () => undefined},

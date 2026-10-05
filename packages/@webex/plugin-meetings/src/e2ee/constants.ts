@@ -29,6 +29,9 @@ export const CERTIFICATE_AUTHORITY_SERVICE = 'webex-certificate-authority';
 /** MLS roster device type identifying a media service (breaks zero-trust). */
 export const MEDIA_SERVICE_DEVICE_TYPE = 'MEDIA_SERVICE';
 
+/** URL of the e2ee WASM binary, served by the host app (the `.js` loader URL is derived from it). */
+export const E2EE_WASM_URL = '/wasm/e2ee.wasm';
+
 /** Locus join-request device capability advertising support for large (1K) E2EE meetings. */
 export const E2EE_1K_SUPPORTED = 'E2EE_1K_SUPPORTED';
 

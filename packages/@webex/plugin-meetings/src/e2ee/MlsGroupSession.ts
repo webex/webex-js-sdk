@@ -5,7 +5,7 @@
 import EventEmitter from 'events';
 
 import LoggerProxy from '../common/logs/logger-proxy';
-import type {IWasmLoader} from './WasmLoader';
+import type WasmLoader from '../common/wasm-loader';
 import type {
   E2eeKey,
   E2eeRosterMember,
@@ -17,6 +17,7 @@ import type {
 import type {
   EpochInfo,
   HTTPRequest,
+  ModuleInstance,
   RosterMember,
   TransactionResult,
   WebE2EEInstance,
@@ -71,7 +72,9 @@ const defaultTimers: ITimers = {
  * timers), and all outputs are emitted as typed events. This keeps it unit-testable in isolation.
  */
 export default class MlsGroupSession {
-  private readonly wasmLoader: IWasmLoader;
+  private readonly wasmLoader: WasmLoader;
+
+  private readonly wasmUrl: string;
 
   private readonly httpClient: IMlsHttpClient;
 
@@ -88,23 +91,27 @@ export default class MlsGroupSession {
   /**
    * @param {Object} deps
    * @param {IMlsHttpClient} deps.httpClient - Transport for the engine's protocol requests.
-   * @param {IWasmLoader} deps.wasmLoader - Loader for the (pre-warmed) WASM module.
+   * @param {WasmLoader} deps.wasmLoader - Loader for the (pre-warmed) WASM module.
+   * @param {string} deps.wasmUrl - URL identifying the e2ee WASM module to load.
    * @param {ITimers} [deps.timers] - Timer abstraction; defaults to global setTimeout.
    * @param {ILogger} [deps.logger] - Logger for WASM log output.
    */
   constructor({
     httpClient,
     wasmLoader,
+    wasmUrl,
     timers = defaultTimers,
     logger,
   }: {
     httpClient: IMlsHttpClient;
-    wasmLoader: IWasmLoader;
+    wasmLoader: WasmLoader;
+    wasmUrl: string;
     timers?: ITimers;
     logger?: ILogger;
   }) {
     this.httpClient = httpClient;
     this.wasmLoader = wasmLoader;
+    this.wasmUrl = wasmUrl;
     this.timers = timers;
     this.logger = logger ?? LoggerProxy.logger;
   }
@@ -156,7 +163,7 @@ export default class MlsGroupSession {
    */
   async initialize(config: MlsGroupSessionConfig): Promise<void> {
     this.logger.info('e2ee: MlsGroupSession --> initialize: loading WASM and instantiating engine');
-    const module = await this.wasmLoader.get();
+    const module = await this.wasmLoader.get<ModuleInstance>(this.wasmUrl);
 
     this.e2ee = new module.WebE2EE();
     this.setupCallbacks();

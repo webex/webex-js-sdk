@@ -98,8 +98,9 @@ per-meeting `E2eeMeeting` facade (alongside `Members` and `MediaProperties`).
 ```mermaid
 graph TD
     Meetings[Meetings plugin] -->|creates| Meeting[Meeting]
+    Meetings -->|owns| WasmLoader[WasmLoader common/]
     Meetings -->|owns singleton| Mgr[E2eeManager]
-    Mgr -->|owns| WasmLoader
+    WasmLoader -.->|injected| Mgr
     Mgr -->|owns| Ident[E2eeIdentityProvider]
     Mgr -->|createE2eeMeeting| E2eeMeeting[E2eeMeeting facade]
     Meeting -->|owns this.e2ee| E2eeMeeting
@@ -110,8 +111,9 @@ graph TD
 
 ### Per-meeting E2EE components
 
-The `E2eeMeeting` facade orchestrates five collaborators and reuses the two shared singletons
-(`E2eeIdentityProvider`, `WasmLoader`) owned by `E2eeManager`.
+The `E2eeMeeting` facade orchestrates five collaborators and reuses the shared `E2eeIdentityProvider`
+(owned by `E2eeManager`) and the generic `WasmLoader` (owned by `Meetings`, injected via
+`E2eeManager`).
 
 ```mermaid
 graph TD
@@ -121,7 +123,7 @@ graph TD
     E2eeMeeting --> Recon[E2eeRosterReconciler]
     E2eeMeeting --> MediaCtl[E2eeMediaController]
     E2eeMeeting -.->|shared singleton| Ident[E2eeIdentityProvider]
-    E2eeMeeting -.->|shared singleton| WasmLoader
+    E2eeMeeting -.->|shared loader| WasmLoader[WasmLoader common/]
 
     style MLS fill:#e8f5e9
     style Recon fill:#e3f2fd
@@ -160,11 +162,10 @@ breakout moves).
 ```
 packages/@webex/plugin-meetings/src/e2ee/
 ├── index.ts                  # barrel exports
-├── E2eeManager.ts            # Meetings-level SINGLETON: owns WasmLoader + IdentityProvider,
+├── E2eeManager.ts            # Meetings-level SINGLETON: owns IdentityProvider + injected WasmLoader,
 │                             #   preloads WASM in register(), factory for E2eeMeeting
 ├── E2eeMeeting.ts            # per-meeting facade / orchestrator (this.e2ee on Meeting)
 ├── MlsGroupSession.ts        # WASM protocol engine (refactor of mls.ts E2EEMeetingClient)
-├── WasmLoader.ts             # injectable WASM module loader with preload() + cache
 ├── E2eeSignaling.ts          # LLM adapter (webex.internal.llm media_encryption.* events)
 ├── MediaEncryptionService.ts # HTTP adapter (webex.request service:'media-encryption')
 ├── E2eeIdentityProvider.ts   # CSR/CA credentials + trust anchors (singleton, cached)
@@ -172,13 +173,16 @@ packages/@webex/plugin-meetings/src/e2ee/
 ├── E2eeMediaController.ts     # key injection into IE2eeMediaConnection (buffers keys)
 ├── IE2eeMediaConnection.ts   # interface contract implemented by internal-media-core
 ├── types.ts                  # shared E2EE types
-├── constants.ts              # e2ee constants (event / mercury names, timeouts)
+├── constants.ts              # e2ee constants (E2EE_WASM_URL, event / mercury names, timeouts)
 └── wasm.d.ts                 # existing WASM typings (keep)
 ```
 
+The generic `WasmLoader` is **not** E2EE-specific and lives outside this folder in
+`common/wasm-loader.ts`; `Meetings` owns it and injects it into `E2eeManager`.
+
 - The `e2ee/mls.ts` from POC code becomes `MlsGroupSession.ts` (stripped of webex/HTTP/LLM).
-- `loadWasmModule` (and the module-cache globals) become `WasmLoader.preload()` / `get()`,
-  warmed once per session.
+- `loadWasmModule` (and the module-cache globals) become `WasmLoader.preload(wasmUrl)` /
+  `get(wasmUrl)`, warmed once per session and keyed by URL so one loader can serve many modules.
 - The shared `WebexRequestMethod` type (a bound `webex.request`) lives in `common/types.ts`
   (reused by `hashTree` and the e2ee HTTP adapters), not under `e2ee/`.
 
@@ -229,25 +233,27 @@ interface E2eeMeetingConfig {
 
 ## Module APIs
 
-### `WasmLoader` (injectable; session-scoped)
+### `WasmLoader` (generic; owned by Meetings, lives in `common/wasm-loader.ts`)
 
 ```ts
-constructor(deps: { wasmUrl?: string; logger?: ILogger });
-preload(): Promise<void>;         // loads + caches the module (the slow part); idempotent
-get(): Promise<ModuleInstance>;   // returns the cached module or awaits preload
-isLoaded(): boolean;
+constructor(options?: { importModule?: ModuleImporter });  // importModule override for tests
+preload(wasmUrl: string): Promise<void>;     // loads + caches the module (the slow part); idempotent
+get<TModule>(wasmUrl: string): Promise<TModule>;  // returns the cached module or awaits its load
+isLoaded(wasmUrl: string): boolean;
 ```
 
-Refactor of `loadWasmModule` + the `moduleInstance` / `moduleLoadPromise` globals into
-instance state.
+Refactor of `loadWasmModule` + the `moduleInstance` / `moduleLoadPromise` globals into instance
+state. Each module is uniquely identified by its `.wasm` URL (the `.js` loader URL is derived by
+replacing the `.wasm` suffix), so a single loader can load and cache multiple distinct modules. The
+E2EE module is loaded via the `E2EE_WASM_URL` constant (default `/wasm/e2ee.wasm`).
 
 ### `E2eeManager` (Meetings-level singleton)
 
 ```ts
-constructor(deps: { webex });      // reads enableE2ee lazily from webex.config.meetings
+constructor(deps: { webex; wasmLoader });  // wasmLoader injected (owned by Meetings)
 get isEnabled(): boolean;         // webex.config.meetings.enableE2ee
 preload(): Promise<void>;         // called from Meetings.register(); if isEnabled ->
-                                  //   wasmLoader.preload() only; must NOT block/fail registration
+                                  //   wasmLoader.preload(E2EE_WASM_URL) only; must NOT block/fail registration
                                   //   (credentials stay lazy - cached on first E2EE meeting)
 createE2eeMeeting(meeting): E2eeMeeting; // factory; injects shared wasmLoader + identityProvider
 ```
@@ -261,13 +267,14 @@ facade whose `start()` is a no-op when `!isEnabled`, keeping `Meeting` code unif
 constructor(deps: {
   httpClient: IMlsHttpClient;
   wasmLoader: WasmLoader;
+  wasmUrl: string;            // which cached module to load (E2EE_WASM_URL)
   timers?: ITimers;
   logger?: ILogger;
 });
 
 initialize(cfg: {
   participantId; deviceUrl; deviceType; correlationId; displayName; serviceUrl;
-  credentials?; trustAnchors?; joinTimeout?; coalesceWindow?; wasmUrl?;
+  credentials?; trustAnchors?; joinTimeout?; coalesceWindow?;
 }): Promise<void>;
 
 join(): void;

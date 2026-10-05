@@ -7,6 +7,7 @@ import sinon from 'sinon';
 import E2eeMeeting from '@webex/plugin-meetings/src/e2ee/E2eeMeeting';
 import MlsGroupSession from '@webex/plugin-meetings/src/e2ee/MlsGroupSession';
 import E2eeSignaling from '@webex/plugin-meetings/src/e2ee/E2eeSignaling';
+import WasmLoader from '@webex/plugin-meetings/src/common/wasm-loader';
 import Trigger from '@webex/plugin-meetings/src/common/events/trigger-proxy';
 import {EVENT_TRIGGERS} from '@webex/plugin-meetings/src/constants';
 
@@ -56,11 +57,10 @@ describe('plugin-meetings', () => {
       signalingStopStub = sinon.stub(E2eeSignaling.prototype, 'stop');
       triggerStub = sinon.stub(Trigger, 'trigger');
 
-      wasmLoader = {
-        get: sinon.stub().resolves({}),
-        preload: sinon.stub().resolves(),
-        isLoaded: sinon.stub().returns(true),
-      };
+      wasmLoader = sinon.createStubInstance(WasmLoader);
+      wasmLoader.get.resolves({});
+      wasmLoader.preload.resolves();
+      wasmLoader.isLoaded.returns(true);
       identityProvider = {
         getCredentials: sinon
           .stub()
