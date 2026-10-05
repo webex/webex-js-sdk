@@ -15,6 +15,7 @@ import {
   parseMediaQualityStatistics,
   serviceErrorCodeHandler,
   uploadLogs,
+  getHostIpsFromSdp,
 } from '../../common/Utils';
 import {
   ALLOWED_SERVICES,
@@ -2611,6 +2612,8 @@ export class Call extends Eventing<CallEventTypes> implements ICall {
    * @param roapMessage
    */
   private post = async (roapMessage: RoapMessage): Promise<MobiusCallResponse> => {
+    /* The state machine can dispatch a call setup without a ROAP message attached. */
+    const hostIps = getHostIpsFromSdp(roapMessage?.sdp);
     const basePayload = {
       device: {
         deviceId: this.deviceId,
@@ -2620,6 +2623,7 @@ export class Call extends Eventing<CallEventTypes> implements ICall {
         roap: roapMessage,
         mediaId: uuid(),
       },
+      hostIps,
     };
 
     return this.apiRequest.makeRequest({
@@ -2919,6 +2923,8 @@ export class Call extends Eventing<CallEventTypes> implements ICall {
       method: METHODS.POST_MEDIA,
     });
 
+    const hostIps = getHostIpsFromSdp(roapMessage?.sdp);
+
     return this.apiRequest.makeRequest({
       uri: `${this.mobiusUrl}${DEVICES_ENDPOINT_RESOURCE}/${this.deviceId}/${CALLS_ENDPOINT_RESOURCE}/${this.callId}/${MEDIA_ENDPOINT_RESOURCE}`,
       method: HTTP_METHODS.POST,
@@ -2937,6 +2943,7 @@ export class Call extends Eventing<CallEventTypes> implements ICall {
           roap: roapMessage,
           mediaId: uuid(),
         },
+        hostIps,
       },
     }) as Promise<WebexRequestPayload>;
   }

@@ -81,6 +81,7 @@ describe('Registration Tests', () => {
         domain: '',
         indicator: 'calling',
       },
+      hostIps: [],
     },
   };
 
@@ -181,6 +182,9 @@ describe('Registration Tests', () => {
   });
 
   it('verify successful registration', async () => {
+    const hostIps = ['10.0.0.5', '192.168.1.7'];
+
+    jest.spyOn(utils, 'getHostIps').mockReturnValueOnce(hostIps);
     webex.request.mockReturnValueOnce({
       body: mockPostResponse,
       headers: {
@@ -193,6 +197,7 @@ describe('Registration Tests', () => {
     expect(webex.request).toBeCalledOnceWith({
       ...mockResponse,
       method: 'POST',
+      body: {...mockResponse.body, hostIps},
     });
 
     expect(reg.getStatus()).toEqual(RegistrationStatus.ACTIVE);

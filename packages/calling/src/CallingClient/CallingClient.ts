@@ -5,6 +5,7 @@ import * as Media from '@webex/internal-media-core';
 import {Mutex} from 'async-mutex';
 import {METHOD_START_MESSAGE} from '../common/constants';
 import {
+  discoverHostIps,
   filterMobiusUris,
   handleCallingClientErrors,
   normalizeMobiusUris,
@@ -230,6 +231,15 @@ export class CallingClient extends Eventing<CallingClientEventTypes> implements 
       }
     }
 
+    /*
+     * Started before the server discovery so that it runs while those requests are in flight, and
+     * awaited before the line is created so that the registration the client issues afterwards can
+     * report the addresses.
+     */
+    const hostIpsDiscovered = this.sdkConfig?.localAudioStream
+      ? discoverHostIps(this.sdkConfig.localAudioStream)
+      : Promise.resolve([]);
+
     await this.getMobiusServers();
     if (this.apiRequest.isSocketEnabled()) {
       this.apiRequest.registerMobiusSocketConnectionListener({
@@ -257,6 +267,8 @@ export class CallingClient extends Eventing<CallingClientEventTypes> implements 
     if (!isValidServiceDomain(this.serviceData)) {
       throw new Error('Invalid service domain.');
     }
+
+    await hostIpsDiscovered;
 
     await this.createLine();
     this.setupNetworkEventListeners();

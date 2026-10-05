@@ -1245,6 +1245,37 @@ describe('CallingClient Tests', () => {
     });
   });
 
+  describe('Host ip discovery', () => {
+    let discoverHostIpsSpy: jest.SpyInstance;
+    const localAudioStream = {
+      outputStream: {getAudioTracks: () => [{id: 'audio-track'}]},
+    } as unknown as Media.LocalMicrophoneStream;
+
+    beforeEach(() => {
+      discoverHostIpsSpy = jest.spyOn(utils, 'discoverHostIps').mockResolvedValue([]);
+    });
+
+    afterEach(() => {
+      callManager.removeAllListeners();
+      discoverHostIpsSpy.mockRestore();
+    });
+
+    it('discovers the host ips with the given stream before fetching the mobius servers', async () => {
+      await createClient(webex, {localAudioStream});
+
+      expect(discoverHostIpsSpy).toBeCalledOnceWith(localAudioStream);
+      expect(discoverHostIpsSpy.mock.invocationCallOrder[0]).toBeLessThan(
+        webex.request.mock.invocationCallOrder[0]
+      );
+    });
+
+    it('skips the discovery when no stream is given', async () => {
+      await createClient(webex);
+
+      expect(discoverHostIpsSpy).not.toHaveBeenCalled();
+    });
+  });
+
   describe('windowsChromiumIceWarmup', () => {
     let origRTCPeerConnection: any;
 

@@ -52,3 +52,7 @@ export const WEBEX_API_CONFIG_INT_URL = `${WEBEX_API_BTS}/v1/uc/config`;
 export const WEBEX_API_CONFIG_PROD_URL = `${WEBEX_API_PROD}/v1/uc/config`;
 export const WEBEX_API_CONFIG_FEDRAMP_URL = `${WEBEX_API_FEDRAMP}/v1/uc/config`;
 export const METHOD_START_MESSAGE = 'invoking';
+/* Maximum number of host ip addresses accepted by the Mobius API. */
+export const MAX_HOST_IPS = 10;
+/* Address used in place of an IPv4 candidate when an SDP carries none. */
+export const IPV4_FALLBACK_ADDRESS = '192.1.1.1';
