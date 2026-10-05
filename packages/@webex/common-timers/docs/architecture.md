@@ -170,13 +170,14 @@ The measurable expectations that fit a dependency-free utility package of this s
 | Platform compatibility    | The same build runs on Node `>=18` and in a browser, with no conditional export or bundler shim                            | `package.json`, `src/index.ts`, `process`   |
 | Process-exit safety       | No timer created through this package extends process lifetime                                                            | `src/index.ts`                              |
 | Lifecycle correctness     | Every invalid `Timer` transition is rejected rather than ignored; all six rejection branches are covered by unit tests     | `test/unit/spec/index.ts`                   |
-| Process-exit verification | The `unref` contract is asserted directly on both the Node and the handle-without-unref branch, and mutation-checked      | `test/unit/spec/index.ts`, `test/unit/spec/characterization.ts` |
-| Test verification         | 41 unit cases across two suites, all passing. No coverage threshold gates the package — coverage collection is disabled in its jest config | `test/unit/spec/index.ts`, `test/unit/spec/characterization.ts`, `jest.config.js` |
+| Process-exit verification | **Not verified by test.** No assertion covers the `unref` contract on either platform branch       | `src/index.ts` (code reading only)          |
+| Test verification         | 13 unit cases in one suite, all passing. No coverage threshold gates the package — coverage collection is disabled in its jest config | `test/unit/spec/index.ts`, `jest.config.js` |
 
-Process-exit safety is the attribute that most needed proving, and it now is: a characterization
-baseline pins the boundary and the `unref` assertions were mutation-checked, so removing the call
-from the source turns them red. Per-requirement evidence and the one remaining negative-case gap are
-recorded in the module specification's `Verification` section.
+Process-exit safety is the attribute that most needs proving and is the one still unproven: the
+`unref` calls in `src/index.ts` carry no test, so removing them would not turn the suite red. The
+attribute is supported by code reading alone. Lifecycle correctness, by contrast, is thoroughly
+covered. Per-requirement evidence and the full list of coverage gaps are recorded in the module
+specification's `Verification` section.
 
 ## Shared and base libraries
 

@@ -96,9 +96,8 @@ Definition of done:
 - `src/index.ts`: the entire module — `safeSetTimeout`, `safeSetInterval`, and `Timer`. There is no
   other source file.
 - `src/docs/README.md`: the module specification. Update it in the same change that alters behavior.
-- `test/unit/spec/index.ts`: intended-behaviour tests mirroring `src/`.
-- `test/unit/spec/characterization.ts`: the characterization baseline. 41 jest cases across the two
-  files.
+- `test/unit/spec/index.ts`: intended-behaviour tests mirroring `src/`. 13 jest cases, and the only
+  test file in the package. This module has no characterization baseline.
 - `docs/`: package-wide standing documentation (index, architecture, getting started, spec registry,
   ADR index).
 - `.sdd/`: the SDD manifest and the hidden Repo Standards template snapshot. Never publish templates
@@ -147,14 +146,13 @@ Testing rules:
 - Cover failure paths and edge cases, not only happy paths. Every rejected `Timer` transition already
   has a test; keep it that way.
 - Use `sinon.useFakeTimers()` to control time, as the existing suite does. Do not introduce real
-  waits. The exception is the `unref` assertions: sinon's fake handles expose `unref()` but no
-  observable ref state, so those tests restore the clock and assert `hasRef()` on a real handle.
-- `test/unit/spec/characterization.ts` is this module's characterization baseline — a golden master
-  of current behaviour, recorded in `.sdd/manifest.json`. If a change turns it red, the change
-  altered behaviour a consumer may already depend on. Decide deliberately and update it in the same
-  commit; never edit it just to make a build pass.
-- **Rebuild before trusting a green run.** Both suites import the package by name, which resolves
-  through `main` to `dist/`. They validate the built artifact, so run
+  waits. If you add `unref` assertions, note that sinon's fake handles expose `unref()` but no
+  observable ref state, so such a test must restore the clock and assert `hasRef()` on a real handle.
+- **The `unref` contract is not covered by any test.** Removing the `unref()` call from
+  `src/index.ts` leaves the suite green, so a green run does not prove the package still does the one
+  thing it exists for. Verify that behaviour by reading `src/index.ts` until assertions exist.
+- **Rebuild before trusting a green run.** The suite imports the package by name, which resolves
+  through `main` to `dist/`. It validates the built artifact, so run
   `yarn workspace @webex/common-timers build:src` after a source change or you will be testing the
   previous build.
 - Do not remove tests to make CI pass.
@@ -229,8 +227,9 @@ PR checklist:
   the constructor accepts `undefined`, `null`, `0`, negative numbers and `NaN`, all of which
   produce a timer that fires immediately. It was triaged on 2026-09-24 as fix-separately because
   rejecting those values is breaking for any caller relying on the coercion. If you are picking
-  that work up, it needs its own requirement, its own error-mode rows, and a deliberate update to
-  `test/unit/spec/characterization.ts` — see the module spec's Pitfalls and constraints.
+  that work up, it needs its own requirement, its own error-mode rows, and tests covering the
+  rejected durations — see the module spec's Pitfalls and constraints. No test currently pins the
+  present behaviour, so changing it will not turn the suite red on its own.
 
 ### Never
 

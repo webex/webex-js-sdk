@@ -107,9 +107,10 @@ yarn workspace @webex/common-timers test:style
 2. Run `yarn workspace @webex/common-timers test:unit`.
 3. Run `yarn workspace @webex/common-timers build:src` and confirm `dist/index.js` exists.
 
-Expected result: the unit suite reports **41 passed, 41 total** across two suites — the intended
-behaviour spec and the characterization baseline — covering `safeSetTimeout`, `safeSetInterval`, the
-`unref` contract on both platform branches, and the three `Timer` methods. The build writes `dist/`.
+Expected result: the unit suite reports **13 passed, 13 total** from the single suite at
+`test/unit/spec/index.ts`, covering `safeSetTimeout` callback delivery, `safeSetInterval` repetition,
+and the three `Timer` methods with all six rejected transitions. The `unref` contract is not
+asserted anywhere; see the module spec's `Verification` section. The build writes `dist/`.
 
 ## Next steps
 

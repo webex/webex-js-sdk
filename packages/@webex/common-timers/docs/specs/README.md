@@ -52,13 +52,16 @@ Generator-side field measurement for `src` is complete: 100% (14 of 14 mandatory
 2026-09-24, with critical field coverage at 9 of 9. The score, date, and evidence summary are
 recorded in the module specification's `Coverage score` metadata row and in `.sdd/manifest.json`.
 
-The two gates that previously held promotion are now closed: a green characterization baseline
-exists at `test/unit/spec/characterization.ts`, and direct `unref` assertions cover the requirements
-that had no test. Independent validation (validator `codex`, 2026-09-24) returned blocked across two
-runs, raising three findings in total — consumer-inventory drift, an onboarding command with no
-manifest entry, and evidence-column anchors that were not repository file paths. All three were
-repaired and the third run returned pass-with-warnings. `src` stays `Partial` until a re-validation
-covers the new tests.
+Two gates still hold promotion open. This module has no characterization baseline, and the `unref`
+requirements (`MOD-002`, `MOD-004`, `MOD-012`) together with the re-entrancy requirement (`MOD-009`)
+have no automated evidence; the sole test file, `test/unit/spec/index.ts`, is pre-existing and covers
+the `Timer` lifecycle rather than the `unref` contract. Independent validation (validator `codex`,
+2026-09-24) returned blocked across two runs, raising three findings in total — consumer-inventory
+drift, an onboarding command with no manifest entry, and evidence-column anchors that were not
+repository file paths. All three were repaired and the third run returned pass-with-warnings. A later
+run assessed a test suite that has since been withdrawn from this change, so that result is stale.
+`src` stays `Partial` until the missing assertions and a characterization baseline exist and a fresh
+validation covers them.
 
 ## Change and verification routing
 

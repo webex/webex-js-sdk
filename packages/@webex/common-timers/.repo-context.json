@@ -88,8 +88,7 @@
     {
       "surface": "unit test suite",
       "paths": [
-        "test/unit/spec/index.ts",
-        "test/unit/spec/characterization.ts"
+        "test/unit/spec/index.ts"
       ],
       "generated_artifacts": [],
       "refresh_with": [],
@@ -150,8 +149,7 @@
     },
     {
       "paths": [
-        "test/unit/spec/index.ts",
-        "test/unit/spec/characterization.ts"
+        "test/unit/spec/index.ts"
       ],
       "minimum": [
         "yarn workspace @webex/common-timers test:unit"
@@ -348,12 +346,12 @@
       "why": "Authoring templates stay hidden; only instantiated, repository-grounded documents belong in the visible documentation tree."
     },
     {
-      "rule": "Do not edit test/unit/spec/characterization.ts to make a build pass.",
-      "why": "It is the module's characterization baseline: a golden master of current observable behaviour. A red result means behaviour changed, which is a decision to make deliberately and record, not a test to adjust."
+      "rule": "Do not treat a green unit run as proof that the unref contract still holds.",
+      "why": "No test asserts that unref() is called, so removing it from src/index.ts leaves the suite green. The module's core guarantee is currently supported by code reading only; see the Verification section of src/docs/README.md."
     },
     {
       "rule": "Do not trust a green unit run after changing src without rebuilding first.",
-      "why": "Both suites import the package by name, which resolves through main to dist/, so they validate the built artifact rather than the source."
+      "why": "The suite imports the package by name, which resolves through main to dist/, so it validates the built artifact rather than the source."
     }
   ],
   "confidence_policy": {

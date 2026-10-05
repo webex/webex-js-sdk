@@ -38,8 +38,8 @@ Related context: [repository architecture](../../docs/architecture.md) ·
 | Module id         | `src`                                                                                     |
 | Parent spec       | —                                                                                         |
 | Doc kind          | Module spec                                                                               |
-| Coverage score    | 100% assessed 2026-09-24; 14 of 14 mandatory fields present, critical fields 9 of 9. Test and characterization coverage closed by direct `unref` assertions and a green characterization baseline |
-| Validation status | pass; assessed 2026-09-28 by validator `codex`; 0 findings. All source-and-specification findings are repaired, and the constructor timeout behaviour remains accepted-and-deferred as specified under [Pitfalls and constraints](#pitfalls-and-constraints) |
+| Coverage score    | Field coverage 100% assessed 2026-09-24; 14 of 14 mandatory fields present, critical fields 9 of 9. Test coverage is **not** closed: the `unref` contract carries no automated assertion and this module has no characterization baseline |
+| Validation status | stale; last assessed 2026-09-28 by validator `codex` against a test suite that has since been withdrawn from this change. Revalidation is required before promotion. The constructor timeout behaviour remains accepted-and-deferred as specified under [Pitfalls and constraints](#pitfalls-and-constraints) |
 
 ## Applicability
 
@@ -142,18 +142,18 @@ of which ship in the published artifact.
 
 | ID        | WHAT                                                                                                                       | WHY                                                                                                                                       | Source evidence | Test or example evidence  | Assumptions or gaps                                                                             | Confidence |
 | --------- | -------------------------------------------------------------------------------------------------------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------- | --------------- | ------------------------- | ------------------------------------------------------------------------------------------------- | ---------- |
-| `MOD-001` | `safeSetTimeout` forwards its arguments unchanged to the platform `setTimeout` and returns that call's handle               | Consumers pass the handle straight to `clearTimeout`; returning anything else would break every cancellation site                          | `src/index.ts`  | `test/unit/spec/index.ts`, `test/unit/spec/characterization.ts` | none. Trailing-argument forwarding is asserted                                                     | Present    |
-| `MOD-002` | `safeSetTimeout` calls `unref()` on the returned handle whenever that method exists                                        | A pending timeout must not keep a Node process alive after the SDK's work is done — this is the package's stated reason to exist           | `src/index.ts`  | `test/unit/spec/index.ts`, `test/unit/spec/characterization.ts` | none. Both the Node branch and the handle-without-unref branch are asserted, and the assertion is mutation-checked | Present    |
-| `MOD-003` | `safeSetInterval` forwards its arguments unchanged to the platform `setInterval` and returns that call's handle             | Same cancellation contract as `MOD-001`, using `clearInterval`                                                                            | `src/index.ts`  | `test/unit/spec/index.ts`, `test/unit/spec/characterization.ts` | none. Trailing-argument forwarding is asserted                                                     | Present    |
-| `MOD-004` | `safeSetInterval` calls `unref()` on the returned handle whenever that method exists                                       | A repeating interval is the worst case for a wedged process, because it never stops on its own                                            | `src/index.ts`  | `test/unit/spec/index.ts`, `test/unit/spec/characterization.ts` | none. Both platform branches are asserted                                                          | Present    |
+| `MOD-001` | `safeSetTimeout` forwards its arguments unchanged to the platform `setTimeout` and returns that call's handle               | Consumers pass the handle straight to `clearTimeout`; returning anything else would break every cancellation site                          | `src/index.ts`  | `test/unit/spec/index.ts` | Partial. Callback delivery and the returned handle are asserted; trailing-argument forwarding is not | Present    |
+| `MOD-002` | `safeSetTimeout` calls `unref()` on the returned handle whenever that method exists                                        | A pending timeout must not keep a Node process alive after the SDK's work is done — this is the package's stated reason to exist           | `src/index.ts`  | none                      | Uncovered. No automated assertion that `unref()` is called, and none that a handle without `unref` is returned untouched. Supported by code reading only | Weak       |
+| `MOD-003` | `safeSetInterval` forwards its arguments unchanged to the platform `setInterval` and returns that call's handle             | Same cancellation contract as `MOD-001`, using `clearInterval`                                                                            | `src/index.ts`  | `test/unit/spec/index.ts` | Partial. Repetition and the returned handle are asserted; trailing-argument forwarding is not        | Present    |
+| `MOD-004` | `safeSetInterval` calls `unref()` on the returned handle whenever that method exists                                       | A repeating interval is the worst case for a wedged process, because it never stops on its own                                            | `src/index.ts`  | none                      | Uncovered. Same gap as `MOD-002`, on the interval branch                                            | Weak       |
 | `MOD-005` | Constructing a `Timer` schedules nothing; the timer is created in `init` and only `start()` arms it                        | Consumers build the timer inside a promise executor before wiring listeners, and must not race a callback that fires during setup          | `src/index.ts`  | `test/unit/spec/index.ts` | none                                                                                               | Present    |
 | `MOD-006` | `start()` arms the timer and moves it to `running`; calling it from any other state throws                                 | A second `start()` would leak the first handle and fire the callback twice, which neither consumer can tolerate                            | `src/index.ts`  | `test/unit/spec/index.ts` | none                                                                                               | Present    |
 | `MOD-007` | `reset()` clears the pending timer and re-arms it for the full original timeout, leaving the state `running`               | This is how both consumers implement an idle deadline: every inbound event pushes the deadline out by a whole timeout, not by the remainder | `src/index.ts`  | `test/unit/spec/index.ts` | none                                                                                               | Present    |
 | `MOD-008` | `cancel()` clears the pending timer and makes the state `done`                                                             | A cancelled timer must be indistinguishable from an expired one, so a later `start` or `reset` is rejected the same way                    | `src/index.ts`  | `test/unit/spec/index.ts` | none                                                                                               | Present    |
-| `MOD-009` | On expiry the timer moves to `done` **before** the caller's callback runs                                                  | The callback frequently tears down the surrounding operation; if it re-entered `reset()` the timer must already be terminal                | `src/index.ts`  | `test/unit/spec/index.ts`, `test/unit/spec/characterization.ts` | none. Both `start()` and `reset()` are called from inside the expiry callback                      | Present    |
+| `MOD-009` | On expiry the timer moves to `done` **before** the caller's callback runs                                                  | The callback frequently tears down the surrounding operation; if it re-entered `reset()` the timer must already be terminal                | `src/index.ts`  | none                      | Uncovered. No test calls `start()` or `reset()` from inside the expiry callback. Supported by code reading only | Weak       |
 | `MOD-010` | `done` is terminal: no method moves a timer out of it, and every method called on it throws                                | A `Timer` is single-use by contract; consumers create a new one rather than recycling                                                     | `src/index.ts`  | `test/unit/spec/index.ts` | none                                                                                               | Present    |
 | `MOD-011` | Each rejection message names the operation and the state that rejected it, for example `Can't reset the timer when it's in done state` | Consumers surface these strings in logs; the unit suite matches them by regular expression, so the wording is part of the contract         | `src/index.ts`  | `test/unit/spec/index.ts` | none                                                                                               | Present    |
-| `MOD-012` | `Timer` arms itself through `safeSetTimeout`, so a managed timer inherits the same non-blocking process semantics          | A consumer must not have to choose between lifecycle safety and process-exit safety                                                       | `src/index.ts`  | `test/unit/spec/index.ts`, `test/unit/spec/characterization.ts` | none. The handle the timer schedules is captured and asserted directly, not inferred from `MOD-002` | Present    |
+| `MOD-012` | `Timer` arms itself through `safeSetTimeout`, so a managed timer inherits the same non-blocking process semantics          | A consumer must not have to choose between lifecycle safety and process-exit safety                                                       | `src/index.ts`  | none                      | Uncovered. No test captures the handle `Timer` schedules, so the inherited `unref` behaviour rests on code reading | Weak       |
 
 ## Design overview
 
@@ -362,8 +362,8 @@ The two free functions have **no** failure mode of their own. They never throw, 
   falling back to the default, so a `null` from JSON or remote configuration makes every request
   reject on its deadline immediately. The resulting error names a timeout while the real cause is a
   missing configuration value, which points diagnosis away from the fault. Validate the duration at
-  the call site until the constructor does. Triaged 2026-09-24 as fix-separately; pinned in
-  `test/unit/spec/characterization.ts`.
+  the call site until the constructor does. Triaged 2026-09-24 as fix-separately. Not pinned by any
+  test; evidence is `src/index.ts`, which performs no duration validation.
 - **A pending timer will not keep the process alive.** This is the point of the package, and it is
   also the trap: in a short-lived Node script or a test harness, a `safeSetTimeout` callback may
   simply never run because nothing else held the event loop open. Code that genuinely needs to block
@@ -412,49 +412,49 @@ platforms because the only platform-specific behavior — `unref` — is feature
 
 | Requirement or invariant                          | Test level | Positive evidence                                    | Negative or boundary evidence                                                    | Gap                                                                                       |
 | ------------------------------------------------- | ---------- | ---------------------------------------------------- | -------------------------------------------------------------------------------- | ------------------------------------------------------------------------------------------- |
-| `MOD-001` timeout callback delivery and handle    | Unit       | `test/unit/spec/index.ts`, `test/unit/spec/characterization.ts` — trailing arguments are forwarded to the callback | `test/unit/spec/characterization.ts` — a handle with no unref method is returned unchanged | none |
-| `MOD-002` timeout handle is unref-ed              | Unit       | `test/unit/spec/index.ts`, `test/unit/spec/characterization.ts` — a real Node handle reports hasRef false | `test/unit/spec/characterization.ts` — the browser-shaped branch passes a plain number through untouched | none |
-| `MOD-003` interval repetition and handle          | Unit       | `test/unit/spec/index.ts`, `test/unit/spec/characterization.ts` — trailing arguments are forwarded to the callback | `test/unit/spec/characterization.ts` — a handle with no unref method is returned unchanged | Repetition is asserted at two ticks only; no long-run or clear-mid-flight case |
-| `MOD-004` interval handle is unref-ed             | Unit       | `test/unit/spec/index.ts`, `test/unit/spec/characterization.ts` — a real Node handle reports hasRef false | `test/unit/spec/characterization.ts` — the browser-shaped branch passes a plain number through untouched | none |
+| `MOD-001` timeout callback delivery and handle    | Unit       | `test/unit/spec/index.ts` — the callback fires once when the timer expires, and the handle is accepted by `clearTimeout` | none                                                                             | Trailing-argument forwarding is not asserted |
+| `MOD-002` timeout handle is unref-ed              | Unit       | none                                                 | none                                                                             | Uncovered. No assertion that `unref()` is called, and none for the handle-without-unref branch |
+| `MOD-003` interval repetition and handle          | Unit       | `test/unit/spec/index.ts` — the callback fires twice across two ticks, and the handle is accepted by `clearInterval` | none                                                                             | Repetition is asserted at two ticks only; no long-run or clear-mid-flight case, and trailing-argument forwarding is not asserted |
+| `MOD-004` interval handle is unref-ed             | Unit       | none                                                 | none                                                                             | Uncovered. Same gap as `MOD-002`, on the interval branch |
 | `MOD-005` construction schedules nothing          | Unit       | `test/unit/spec/index.ts`                            | `test/unit/spec/index.ts` — reset and cancel before start both throw | none                                                                                        |
 | `MOD-006` `start()` arms once                     | Unit       | `test/unit/spec/index.ts`                            | `test/unit/spec/index.ts` — throws from running, from done after cancel, and from done after expiry | none                                                             |
 | `MOD-007` `reset()` restores the full timeout     | Unit       | `test/unit/spec/index.ts` — advances 500ms, resets, then proves the callback needs another full 1000ms | `test/unit/spec/index.ts` — throws from init and from done | none                                                                                        |
 | `MOD-008` `cancel()` clears and terminates        | Unit       | `test/unit/spec/index.ts`                            | `test/unit/spec/index.ts` — throws from init and on a second cancel | none                                                                                        |
-| `MOD-009` state is `done` before the callback runs | Unit       | `test/unit/spec/characterization.ts` — start called from inside the expiry callback reports the done state | `test/unit/spec/characterization.ts` — reset from inside the expiry callback is rejected the same way | none |
+| `MOD-009` state is `done` before the callback runs | Unit       | none                                                 | none                                                                             | Uncovered. No test re-enters the timer from inside the expiry callback |
 | `MOD-010` `done` is terminal                      | Unit       | `test/unit/spec/index.ts` — all three methods rejected from done | same                                                             | none                                                                                        |
 | `MOD-011` rejection messages name the state       | Unit       | `test/unit/spec/index.ts` — every assertion matches the message by regular expression | same                                             | none                                                                                        |
-| `MOD-012` `Timer` inherits the unref behavior     | Unit       | `test/unit/spec/index.ts`, `test/unit/spec/characterization.ts` — the handle Timer schedules reports hasRef false | none found                                        | No case constructs a Timer against a handle that has no unref method; that branch is asserted only for the free functions |
+| `MOD-012` `Timer` inherits the unref behavior     | Unit       | none                                                 | none                                                                             | Uncovered. No case captures the handle `Timer` schedules, and none constructs a `Timer` against a handle with no `unref` method |
 
-**Test routing.** `yarn workspace @webex/common-timers test:unit` runs two jest suites — 41 cases
-in total, all passing as of 2026-09-28. The package declares no integration or browser tier, and
+**Test routing.** `yarn workspace @webex/common-timers test:unit` runs one jest suite — 13 cases in
+total, all passing as of 2026-10-05. The package declares no integration or browser tier, and
 coverage collection is disabled for it by the resolved `jest.config.js`, so no coverage threshold
 gates this module.
 
 | Suite | Role |
 | ----- | ---- |
-| `test/unit/spec/index.ts` | Intended behaviour: callback delivery, interval repetition, the `unref` contract on both platform branches, and every `Timer` lifecycle transition |
-| `test/unit/spec/characterization.ts` | Characterization baseline. Pins current observable behaviour at the public boundary as a golden master, including edges nobody designed. Recorded in `.sdd/manifest.json` as this module's `characterization_baseline` |
+| `test/unit/spec/index.ts` | Intended behaviour: timeout callback delivery, interval repetition, and every `Timer` lifecycle transition including all six rejected ones. Pre-existing suite; not authored by this specification change |
 
-**The suites exercise the built artifact, not the source.** Both import the package by name, which
+**The suite exercises the built artifact, not the source.** It imports the package by name, which
 resolves through `main` to `dist/`. A green run after a source change proves nothing until
-`yarn workspace @webex/common-timers build:src` has been run — this was confirmed by mutating the
-`unref` call in `src/index.ts`, observing the suite stay green against a stale `dist/`, and seeing
-it turn red only after a rebuild.
+`yarn workspace @webex/common-timers build:src` has been run. Evidence: the `@webex/common-timers`
+import in `test/unit/spec/index.ts` and the `main` field in `package.json`.
 
-**Overall gap.** Every recorded requirement has positive test evidence and none is scored Weak.
-Every `Timer` lifecycle branch is covered including all six rejected transitions, the `unref`
-contract is asserted directly on both the Node and the browser-shaped branch, and a characterization
-baseline pins the boundary so a regression in the wrappers is caught before it reaches consumers.
-The `unref` assertions were mutation-checked: removing the call from `src/index.ts` and rebuilding
-turns them red.
+**Overall gap.** Coverage is materially incomplete, and the gaps are concentrated on the behaviour
+this package exists for. `MOD-002`, `MOD-004`, `MOD-009` and `MOD-012` have no automated evidence at
+all and are scored Weak; `MOD-001` and `MOD-003` are only partly covered. Nothing asserts that
+`unref()` is ever called, so the package's entire reason to exist — that a pending timer will not
+hold a Node process open — currently rests on reading `src/index.ts` rather than on a test. A
+regression that dropped the `unref` call would not turn this suite red.
 
-One narrow negative-case gap remains and is recorded above rather than smoothed over: no test
-constructs a `Timer` against a handle that exposes no `unref` method. That branch is asserted for
-the free functions only, and `Timer` reaches it through the same wrapper, so the risk is low — but
-it is not directly covered.
+What *is* well covered is the `Timer` state machine: all six rejected transitions, the full-timeout
+reset semantics, and the exact rejection wording are asserted by the pre-existing suite.
 
-The characterization suite also pins one behaviour that was raised as a suspected defect rather
-than a coverage gap: the `Timer` constructor validates nothing. It was triaged on 2026-09-24 as
-fix-separately, so the behaviour stays pinned and the caller-facing hazard is specified under
-[Pitfalls and constraints](#pitfalls-and-constraints). Adding validation is a breaking change and
-belongs in its own change with its own requirement and review.
+This module has no characterization baseline. The `Timer` constructor's missing duration validation
+is therefore specified but unpinned: it was triaged on 2026-09-24 as fix-separately, and the
+caller-facing hazard is recorded under [Pitfalls and constraints](#pitfalls-and-constraints), but no
+executable case holds the behaviour in place. Adding validation is a breaking change and belongs in
+its own change with its own requirement and review.
+
+Closing these gaps — `unref` assertions on both platform branches, argument forwarding, re-entrancy
+from the expiry callback, and a characterization baseline — is tracked as follow-up work and is a
+precondition for promoting this module beyond its current coverage state.
