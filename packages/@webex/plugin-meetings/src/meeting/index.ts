@@ -158,6 +158,7 @@ import {
   Configuration as RemoteMediaManagerConfiguration,
   RemoteMediaManager,
   Event as RemoteMediaManagerEvent,
+  getRemoteMediaManagerConfigForLogging,
 } from '../multistream/remoteMediaManager';
 import {
   Reaction,
@@ -9051,9 +9052,16 @@ export default class Meeting extends StatelessWebexPlugin {
 
     this.hasMediaConnectionConnectedAtLeastOnce = false;
     const LOG_HEADER = 'Meeting:index#addMedia -->';
+    const optionsForLogging = {
+      ...options,
+      remoteMediaManagerConfig: getRemoteMediaManagerConfigForLogging(
+        options.remoteMediaManagerConfig
+      ),
+    };
+
     LoggerProxy.logger.info(
       `${LOG_HEADER} called with: options=${JSON.stringify(
-        options
+        optionsForLogging
       )}, turnServerInfo=${JSON.stringify(
         turnServerInfo
       )}, forceTurnDiscovery=${forceTurnDiscovery}, iceTransportPolicy=${iceTransportPolicy}`
