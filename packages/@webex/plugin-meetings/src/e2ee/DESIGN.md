@@ -26,6 +26,41 @@ just calls `meeting.joinWithMedia()` as usual. The SDK must:
    Locus DTO E2EE flags, the E2EE (MLS) state, and `hasMediaServices`. `Calculating` is
    reported while a zero-trust meeting's MLS join is still in progress.
 
+### Capability signalling flow (how a meeting becomes E2EE)
+
+Whether a given meeting is E2EE is negotiated with **Locus** through capabilities the client
+advertises on the **join request** and flags Locus returns on the **Locus DTO**. All of the
+outbound signalling is gated on the `enableE2ee` config, so a client that hasn't enabled E2EE never
+advertises it.
+
+**Outbound (client → Locus), set in the join request** (`meeting/request.ts` `joinMeeting`, only
+when `enableE2ee` is on):
+
+- `supportsV2E2EEncryption: true` — tells Locus this client supports **E2EE**
+- `E2EE_1K_SUPPORTED` device capability — advertises support for E2EE meetings; pushed onto `deviceCapabilities`.
+
+**Inbound (Locus → client), parsed from the Locus DTO `info` onto `locusInfo.info`:**
+
+- `isV2E2EEncrypted` — this meeting is an E2EE meeting, so an **MLS join and Sframe encryption for media is
+  required**.
+- `isBestEffortE2EEncryption` — the meeting uses **adaptive ("best effort")** E2EE; drives the
+  `Adaptive*` trust states.
+- `mediaEncryptionGroupUrl` — the **MLS group service URL** to join
+
+The SDK only performs an actual MLS join when **`enableE2ee` is on AND `isV2E2EEncrypted` is true
+AND `mediaEncryptionGroupUrl` is present** (see `E2eeMeeting.required()`). `isV2E2EEncrypted` and
+`isBestEffortE2EEncryption` together (plus `hasMediaServices`) drive the `e2eeTrustState` getter.
+
+**No SFrame ↔ SRTP upgrade/downgrade.** Once a meeting is joined with MLS, we **keep using the MLS
+session and SFrame media encryption for the whole meeting** — there is no switching back to plain
+SRTP mid-meeting (and no switching the other way). This holds even when the meeting's overall trust
+level is **downgraded from "zero trust" to "strong"**: in an adaptive (`isBestEffortE2EEncryption`)
+meeting this happens when a non-E2EE-capable client joins and **Homer** (a media service) handles
+encryption on its behalf — the meeting is no longer fully zero-trust (`hasMediaServices` becomes
+true, so `e2eeTrustState` drops `AdaptiveZeroTrust → AdaptiveStrong`), but our own media stays
+SFrame-encrypted via the existing MLS session. The downgrade only changes the reported trust state,
+not the media encryption path.
+
 The WASM MLS engine is assumed already relocated into the SDK; moving it and decision on 
 how/where it will be hosted is **not** part of this design doc.
 
