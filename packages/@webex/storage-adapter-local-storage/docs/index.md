@@ -26,8 +26,9 @@ npm ES module export declared in `package.json`.
 ## Decisions
 
 No architectural decision records exist for this package yet. When one is needed, add it as a
-concrete file under `docs/adr/`; the blank ADR template stays under
-`.sdd/templates/repo-standards/`.
+concrete file under `docs/adr/`. Repo Annotation generates blank ADR templates locally under
+`.sdd/templates/repo-standards/`; that cache is ignored by Git. Regenerate it with the plugin setup
+before running template-based SDD checks in a fresh clone.
 
 ## Specifications and contracts
 

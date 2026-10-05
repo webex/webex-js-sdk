@@ -103,7 +103,9 @@ Definition of done:
   abstract suite and skips it under Node.
 - `docs/`: package-level standing documentation (index, architecture, getting started, spec registry).
 - `.sdd/manifest.json`: SDD manifest — modules, contracts, layout, coverage state.
-- `.sdd/templates/repo-standards/`: the seeded template snapshot. Do not edit or generate from it by hand.
+- `.sdd/templates/repo-standards/`: a local generated template cache, ignored by Git. In a fresh clone,
+  regenerate it with the Repo Annotation plugin setup before running template-based SDD checks.
+  Do not edit or generate its contents by hand.
 - `process`: a one-line CommonJS file exporting `{browser: true}` for the browserify/envify transform.
 - `README.md`: npm-facing reference. Reference-only, not authoritative.
 
