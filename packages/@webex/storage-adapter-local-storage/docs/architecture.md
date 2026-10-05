@@ -299,8 +299,9 @@ Architectural controls and their absence:
 - Node safety: the adapter is unreachable in Node builds, so server-side token persistence through
   this path is not possible.
 - Prototype pollution (CWE-1321): binding the namespace `__proto__` and calling `put` installs the
-  key as an own property of the stored document root's prototype, which is then observable on every
-  value sharing it. The target follows the stored data rather than being fixed — `Object.prototype`
+  key as an own property of the stored document root's prototype, which is then observable on the
+  values that inherit from it — universally for `Object.prototype`, but only on arrays when
+  `Array.prototype` is the target. The target follows the stored data rather than being fixed — `Object.prototype`
   for an absent or object root, `Array.prototype` for an array root, and the matching wrapper
   prototype for a primitive root; a `null` root rejects instead. `clear()` does not undo it. The module applies no own-property guard. No exploit path
   exists in this repository as configured, because `webex-core` passes fixed plugin names, but that
