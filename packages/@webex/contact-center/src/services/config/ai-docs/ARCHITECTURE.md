@@ -29,27 +29,23 @@ sequenceDiagram
     CC->>Cfg: getAgentConfig(orgId, agentId)
 
     par Wave 1 — fire immediately
-        Cfg->>WR: getUserUsingCI
-        Cfg->>WR: getOrgInfo
-        Cfg->>WR: getOrganizationSetting
-        Cfg->>WR: getTenantData
-        Cfg->>WR: getURLMapping
+        Cfg->>WR: getUserDesktopLoginConfig
+        Cfg->>WR: getOrgDesktopLoginConfig
         Cfg->>WR: getAllAuxCodes
     end
 
-    WR->>API: 6 parallel API calls
+    WR->>API: 3 parallel API calls
     API-->>WR: Responses
-    Note over Cfg: await userConfigData (needed for wave 2)
+    Note over Cfg: await userConfig (supplies dbId, siteId, dialPlanEnabled)
 
-    par Wave 2 — depends on userConfigData
-        Cfg->>WR: getDesktopProfileById(agentProfileId)
-        Cfg->>WR: getSiteInfo(siteId)
-        Cfg->>WR: getAllTeams(teamIds)
+    par Wave 2 — depends on userConfig
+        Cfg->>WR: getSiteInfo(user.siteId)
+        Cfg->>WR: getAllTeams(user.dbId)
+        Cfg->>WR: getDialPlanData (only if agentProfile.dialPlanEnabled)
     end
 
-    Note over Cfg: getDialPlanData chained off agentProfile<br/>(fires only if dialPlanEnabled)
-
-    Note over Cfg: Single Promise.all() awaits all 9 promises<br/>(wave 1 + wave 2 + conditional dialPlan)
+    Note over Cfg: Single Promise.all() awaits 5 promises<br/>(org aggregate + aux codes + site + teams + conditional dialPlan)
+    Note over Cfg: multimediaProfileId = team value, else site value
 
     WR->>API: Remaining API calls
     API-->>WR: Responses
@@ -64,10 +60,11 @@ sequenceDiagram
 
 The config service uses multiple API endpoints to fetch agent configuration data. These endpoints are defined in `constants.ts` and include:
 
-- **Core user data**: User profile, agent settings, site information
-- **Team & organization**: Team memberships, organization settings, tenant configuration
+- **User desktop-login aggregate**: agent identity plus the `agentProfile` section in one call
+- **Organization desktop-login aggregate**: organization info, organization settings, tenant configuration, URL mappings, AI feature, Microsoft/Webex config in one call
+- **Team & site**: Team memberships filtered by the agent's `userId`, plus site information
 - **Auxiliary codes**: Idle codes and wrap-up codes with pagination
-- **Communication settings**: Dial plans, URL mappings, multimedia profiles
+- **Communication settings**: Dial plans, multimedia profiles
 - **Outbound features**: Queue lists, entry points, address books, outdial ANI entries
 
 ### Endpoint Definitions
@@ -76,55 +73,43 @@ All endpoints are relative to the WCC API Gateway base URL. Query parameters lik
 
 **Example Usage:**
 ```typescript
-// Fetch user data
-const resource = endPointMap.userByCI('org-123', 'agent-456');
-// Result: "organization/org-123/user/by-ci-user-id/agent-456"
+// Fetch the user desktop-login aggregate
+const resource = endPointMap.userDesktopLogin('org-123', 'agent-456');
+// Result: "organization/org-123/v2/user/by-ci-user-id/agent-456/desktop-login"
 
-// Fetch teams with pagination and filtering
-const resource = endPointMap.listTeams('org-123', 0, 100, ['team-1', 'team-2']);
-// Result: "organization/org-123/v2/team?page=0&pageSize=100&filter=id=in=(team-1,team-2)"
+// Fetch teams with pagination, filtered by the user's database id
+const resource = endPointMap.listTeams('org-123', 0, 100, 'user-db-id');
+// Result: "organization/org-123/v2/team?page=0&pageSize=100&agentView=true&filter=userId==user-db-id"
 
-// Fetch organization settings
-const resource = endPointMap.orgSettings('org-123');
-// Result: "organization/org-123/v2/organization-setting?agentView=true"
+// Fetch the organization desktop-login aggregate
+const resource = endPointMap.orgDesktopLogin('org-123');
+// Result: "organization/org-123/desktop-login"
 ```
 
 **Full Endpoint Map:**
 ```typescript
 export const endPointMap = {
-  userByCI: (orgId: string, agentId: string) =>
-    `organization/${orgId}/user/by-ci-user-id/${agentId}`,
+  orgDesktopLogin: (orgId: string) =>
+    `organization/${orgId}/desktop-login`,
 
-  desktopProfile: (orgId: string, desktopProfileId: string) =>
-    `organization/${orgId}/agent-profile/${desktopProfileId}`,
+  userDesktopLogin: (orgId: string, ciUserId: string) =>
+    `organization/${orgId}/v2/user/by-ci-user-id/${ciUserId}/desktop-login`,
 
   multimediaProfile: (orgId: string, multimediaProfileId: string) =>
     `organization/${orgId}/multimedia-profile/${multimediaProfileId}`,
 
-  listTeams: (orgId: string, page: number, pageSize: number, filter: string[]) =>
-    `organization/${orgId}/v2/team?page=${page}&pageSize=${pageSize}${
-      filter && filter.length > 0 ? `&filter=id=in=(${filter})` : ''
-    }`,
+  // The filter value must stay unquoted — the quoted form returns HTTP 400.
+  listTeams: (orgId: string, page: number, pageSize: number, userDbId: string) =>
+    `organization/${orgId}/v2/team?page=${page}&pageSize=${pageSize}` +
+    `&agentView=true&filter=userId==${userDbId}`,
 
   listAuxCodes: (orgId: string, page: number, pageSize: number, filter: string[], attributes: string[]) =>
     `organization/${orgId}/v2/auxiliary-code?page=${page}&pageSize=${pageSize}${
       filter && filter.length > 0 ? `&filter=id=in=(${filter})` : ''
     }&attributes=${attributes}`,
 
-  orgInfo: (orgId: string) =>
-    `organization/${orgId}`,
-
-  orgSettings: (orgId: string) =>
-    `organization/${orgId}/v2/organization-setting?agentView=true`,
-
   siteInfo: (orgId: string, siteId: string) =>
     `organization/${orgId}/site/${siteId}`,
-
-  tenantData: (orgId: string) =>
-    `organization/${orgId}/v2/tenant-configuration?agentView=true`,
-
-  urlMapping: (orgId: string) =>
-    `organization/${orgId}/v2/org-url-mapping?sort=name,ASC`,
 
   dialPlan: (orgId: string) =>
     `organization/${orgId}/dial-plan?agentView=true`,
@@ -190,16 +175,12 @@ The service fetches data from multiple APIs with these response structures:
 
 | API Method | Response Type | Key Fields | Usage |
 |------------|---------------|------------|-------|
-| `getUserUsingCI` | `AgentResponse` | `ciUserId`, `id`, `firstName`, `lastName`, `email`, `teamIds`, `agentProfileId`, `siteId` | Primary agent identity and profile references |
-| `getDesktopProfileById` | `DesktopProfileResponse` | `dialPlanEnabled`, `autoAnswer`, `accessWrapUpCode`, `wrapUpCodes`, `accessIdleCode`, `idleCodes`, `loginVoiceOptions` | Agent desktop settings and feature enablement |
-| `getAllTeams` | `TeamList[]` | `id`, `name`, `type`, `channelMap` (+ 10 more fields) | Full team details with channel configurations |
-| `getTenantData` | `TenantData` | `outdialEnabled`, `forceDefaultDn`, `privacyShieldVisible`, `timeoutDesktopInactivityEnabled` | Tenant-level feature flags |
-| `getOrgInfo` | `OrgInfo` | `tenantId`, `timezone` | Organization metadata |
+| `getUserDesktopLoginConfig` | `UserDesktopLoginResponse` | `user`: `ciUserId`, `id`, `dbId`, `firstName`, `lastName`, `email`, `agentProfileId`, `siteId`. `agentProfile`: `dialPlanEnabled`, `accessWrapUpCode`, `accessIdleCode`, `loginVoiceOptions`, `viewableStatistics` | Agent identity, team-filter id, site reference, and desktop settings in one call |
+| `getOrgDesktopLoginConfig` | `OrgDesktopLoginResponse` | `organization`: `tenantId`, `timezone`. `organizationSetting`: `webRtcEnabled`, `maskSensitiveData`, `campaignManagerEnabled`, `aiAssistantQuantity`. `tenantConfiguration`: `outdialEnabled`, `forceDefaultDn`, `privacyShieldVisible`, `timeoutDesktopInactivityEnabled`. Optional `urlMappings`, `aiFeature`, `microsoftConfig`, `webexConfig` | All organization-, tenant- and feature-scoped configuration in one call |
+| `getAllTeams` | `TeamList[]` | `id`, `name`, `teamType`, `siteId`, `siteName`, `multiMediaProfileId` (+ more) | Team details for the teams the agent belongs to |
 | `getAllAuxCodes` | `AuxCode[]` | `id`, `name`, `workTypeCode`, `active`, `isSystemCode`, `defaultCode` | Auxiliary codes for idle/wrap-up states |
-| `getOrganizationSetting` | `OrgSettings` | `webRtcEnabled`, `maskSensitiveData`, `campaignManagerEnabled` | Organization-level feature flags |
-| `getDialPlanData` | `DialPlanEntity[]` | `id`, `name`, `regularExpression`, `prefix`, `strippedChars` | Dial plan rules for outbound calling |
-| `getURLMapping` | `URLMapping[]` | `name`, `url` | External service URL mappings |
-| `getSiteInfo` | `SiteInfo` | Site-specific configuration | Site details |
+| `getDialPlanData` | `DialPlanEntity[]` | `id`, `name`, `regularExpression`, `prefix`, `strippedChars`, `active` | Dial plan rules for outbound calling |
+| `getSiteInfo` | `SiteInfo` | Site-specific configuration | Site details, including the `multimediaProfileId` fallback |
 
 These responses are parsed and aggregated into a single `Profile` object by the `parseAgentConfigs` function.
 
@@ -208,28 +189,32 @@ These responses are parsed and aggregated into a single `Profile` object by the 
 ```typescript
 // See full implementation in Util.ts
 function parseAgentConfigs(profileData: {
-  userData: AgentResponse;        // See types.ts:AgentResponse
-  teamData: Team[];               // NOTE: Declared as Team[] (teamId, teamName) but receives TeamList[] (id, name, + 12 more fields) at runtime
-  tenantData: TenantData;         // See types.ts:TenantData
-  orgInfoData: OrgInfo;           // See types.ts:OrgInfo
-  auxCodes: AuxCode[];            // See types.ts:AuxCode
-  orgSettingsData: OrgSettings;   // See types.ts:OrgSettings
-  agentProfileData: DesktopProfileResponse;  // See types.ts:DesktopProfileResponse
-  dialPlanData: DialPlanEntity[]; // See types.ts:DialPlanEntity
-  urlMapping: URLMapping[];       // See types.ts:URLMapping
+  orgConfig: OrgDesktopLoginResponse;   // See types.ts:OrgDesktopLoginResponse
+  userData: AgentResponse;              // `user` section; see types.ts:AgentResponse
+  agentProfileData: AgentProfile;       // `agentProfile` section; see types.ts:AgentProfile
+  teamData: Team[];                     // NOTE: Declared as Team[] (teamId, teamName) but receives TeamList[] (id, name, + 12 more fields) at runtime
+  auxCodes: AuxCode[];                  // See types.ts:AuxCode
+  dialPlanData: DialPlanEntity[];       // See types.ts:DialPlanEntity
   multimediaProfileId: string;
-}): Profile {                     // See types.ts:Profile
-  const { userData, teamData, tenantData, orgInfoData, auxCodes,
-          orgSettingsData, agentProfileData, dialPlanData, urlMapping } = profileData;
+}): Profile {                           // See types.ts:Profile
+  const { orgConfig, userData, agentProfileData, teamData, auxCodes,
+          dialPlanData } = profileData;
+  const {
+    organization: orgInfoData,
+    organizationSetting: orgSettingsData,
+    tenantConfiguration: tenantData,
+    urlMappings,
+    aiFeature,
+    microsoftConfig,
+    webexConfig,
+  } = orgConfig;
 
   // Aux code filtering via getFilterAuxCodes():
-  //   - checks auxCode.active
-  //   - checks specificCodes access level (ALL → no filter, SPECIFIC → include list)
+  //   - checks auxCode.workTypeCode and auxCode.active
+  //   - the aggregate returns the full org pool, so no per-agent restriction is applied
   //   - maps to Entity {id, name, isSystem, isDefault}
-  const wrapupCodes = getFilterAuxCodes(auxCodes, WRAP_UP_CODE,
-    agentProfileData.accessWrapUpCode === 'ALL' ? [] : agentProfileData.wrapUpCodes);
-  const idleCodes = getFilterAuxCodes(auxCodes, IDLE_CODE,
-    agentProfileData.accessIdleCode === 'ALL' ? [] : agentProfileData.idleCodes);
+  const wrapupCodes = getFilterAuxCodes(auxCodes, WRAP_UP_CODE);
+  const idleCodes = getFilterAuxCodes(auxCodes, IDLE_CODE);
 
   // Hardcoded "Available" state always appended to idle codes
   idleCodes.push({ id: '0', name: 'Available', isSystem: false, isDefault: false });
@@ -258,14 +243,17 @@ function parseAgentConfigs(profileData: {
 Each method follows consistent error handling:
 
 ```typescript
-public async getUserUsingCI(orgId: string, agentId: string): Promise<AgentResponse> {
-  LoggerProxy.info('Fetching user data using CI', {
+public async getUserDesktopLoginConfig(
+  orgId: string,
+  ciUserId: string
+): Promise<UserDesktopLoginResponse> {
+  LoggerProxy.info('Fetching user desktop-login configuration', {
     module: CONFIG_FILE_NAME,
-    method: METHODS.GET_USER_USING_CI,
+    method: METHODS.GET_USER_DESKTOP_LOGIN_CONFIG,
   });
 
   try {
-    const resource = endPointMap.userByCI(orgId, agentId);
+    const resource = endPointMap.userDesktopLogin(orgId, ciUserId);
     const response = await this.webexReq.request({
       service: WCC_API_GATEWAY,
       resource,
@@ -276,16 +264,16 @@ public async getUserUsingCI(orgId: string, agentId: string): Promise<AgentRespon
       throw new Error(`API call failed with ${response.statusCode}`);
     }
 
-    LoggerProxy.log('getUserUsingCI api success.', {
+    LoggerProxy.log('getUserDesktopLoginConfig api success.', {
       module: CONFIG_FILE_NAME,
-      method: METHODS.GET_USER_USING_CI,
+      method: METHODS.GET_USER_DESKTOP_LOGIN_CONFIG,
     });
 
     return Promise.resolve(response.body);
   } catch (error) {
-    LoggerProxy.error(`getUserUsingCI API call failed with ${error}`, {
+    LoggerProxy.error(`getUserDesktopLoginConfig API call failed with ${error}`, {
       module: CONFIG_FILE_NAME,
-      method: METHODS.GET_USER_USING_CI,
+      method: METHODS.GET_USER_DESKTOP_LOGIN_CONFIG,
     });
     throw error;
   }
@@ -309,8 +297,8 @@ public async getUserUsingCI(orgId: string, agentId: string): Promise<AgentRespon
 "module": "config/index.ts", "method": "getAgentConfig"
 
 // Specific API method failures
-"getUserUsingCI API call failed"
-"getDesktopProfileById API call failed"
+"getUserDesktopLoginConfig API call failed"
+"getOrgDesktopLoginConfig API call failed"
 "getAllTeams API call failed"
 "getAllAuxCodes API call failed"
 
@@ -341,7 +329,7 @@ public async getUserUsingCI(orgId: string, agentId: string): Promise<AgentRespon
 
 **Solution**:
 1. Check `totalPages` in first response
-2. Verify filter array contains valid team/aux code IDs
+2. Verify the team filter carries a valid `userDbId` (`user.dbId`, not the CI user id) and that aux-code filters contain valid IDs
 3. Check if pageSize is appropriate (default: 100)
 4. Ensure all pages are fetched in Promise.all()
 
@@ -351,8 +339,8 @@ public async getUserUsingCI(orgId: string, agentId: string): Promise<AgentRespon
 
 **Log patterns:**
 ```typescript
-"getOrganizationSetting api success"
-"getTenantData api success"
+"getOrgDesktopLoginConfig api success."
+"getUserDesktopLoginConfig api success."
 ```
 
 **Solution**:
@@ -370,9 +358,7 @@ public async getUserUsingCI(orgId: string, agentId: string): Promise<AgentRespon
 2. Verify dial plans are assigned in agent profile configuration
 3. Note: dial plan fetch only happens if `dialPlanEnabled === true`
 
-#### Issue: Incorrect auxiliary code filtering
-
-**Cause**: Access level set to 'SPECIFIC' but missing code IDs
+#### Issue: Expected auxiliary codes missing from the returned pool
 
 **Log patterns:**
 ```typescript
@@ -380,11 +366,10 @@ public async getUserUsingCI(orgId: string, agentId: string): Promise<AgentRespon
 ```
 
 **Solution**:
-1. Check `agentProfileData.accessWrapUpCode` (should be 'ALL' or 'SPECIFIC')
-2. Check `agentProfileData.accessIdleCode`
-3. If 'SPECIFIC', verify `wrapUpCodes` and `idleCodes` arrays contain valid IDs
-4. Ensure aux codes have `active: true` status
-5. Note: "Available" state is always appended to idle codes
+1. `getFilterAuxCodes` no longer applies a per-agent restriction list — the full organization pool is returned for every agent
+2. `Profile.idleCodesAccess` / `wrapupCodesAccess` still report `ALL` or `SPECIFIC` from `agentProfileData`
+3. Ensure aux codes have `active: true` status and the expected `workTypeCode`
+4. Note: "Available" state is always appended to idle codes
 
 ---
 
@@ -396,9 +381,11 @@ The config service defines comprehensive TypeScript types for all data structure
 
 **Configuration Types:**
 - `Profile` - Unified agent profile after aggregation
-- `AgentResponse` - User data from userByCI endpoint
-- `DesktopProfileResponse` - Agent desktop settings
-- `TeamList` - Team data with full details (id, name, type, channelMap, etc.)
+- `OrgDesktopLoginResponse` - Organization desktop-login aggregate
+- `UserDesktopLoginResponse` - User desktop-login aggregate (`user` + `agentProfile`)
+- `AgentResponse` - `user` section of the user aggregate
+- `AgentProfile` - `agentProfile` section of the user aggregate
+- `TeamList` - Team data with full details (id, name, teamType, siteId, multiMediaProfileId, etc.)
 - `Team` - Simplified team reference (teamId, teamName, desktopLayoutId)
 - `AuxCode` - Auxiliary code definition
 - `Entity` - Filtered code entity (used for idle/wrapup codes in Profile)
@@ -410,8 +397,9 @@ The config service defines comprehensive TypeScript types for all data structure
 - `SiteInfo` - Site-specific configuration
 
 **Communication Types:**
-- `DialPlanEntity` - Dial plan rule definition
-- `URLMapping` - External service URL mapping
+- `DialPlanEntity` - Dial plan rule definition (includes `active`)
+- `OrgUrlMappings` - Keyed external service URL mappings
+- `OrgMicrosoftConfig` / `OrgWebexConfig` - Org-level presence configuration
 - `MultimediaProfile` - Multimedia profile configuration
 
 **Note:** The config service itself does not emit events. For agent and task events, see the Agent and Task services. Event constants are defined in [types.ts](../types.ts) under `CC_AGENT_EVENTS` and `CC_TASK_EVENTS`.

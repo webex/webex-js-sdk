@@ -6,6 +6,7 @@ import {CONFIG_FILE_NAME} from '../../../../../src/constants';
 import MockWebex from '@webex/test-helper-mock-webex';
 import LoggerProxy from '../../../../../src/logger-proxy';
 import * as util from '../../../../../src/services/config/Util';
+import {DEFAULT_AUXCODE_ATTRIBUTES} from '../../../../../src/services/config/constants';
 
 jest.mock('../../../../../src/logger-proxy', () => ({
   __esModule: true,
@@ -44,35 +45,38 @@ describe('AgentConfigService', () => {
     jest.clearAllMocks();
   });
 
-  describe('getUserUsingCI', () => {
-    it('should return AgentResponse on success', async () => {
+  describe('getOrgDesktopLoginConfig', () => {
+    it('should return OrgDesktopLoginResponse on success', async () => {
       const mockResponse = {
         statusCode: 200,
         body: {
-          firstName: 'John',
-          lastName: 'Doe',
-          agentProfileId: 'profile123',
-          email: 'john.doe@example.com',
-          teamIds: ['123', '456'],
+          organization: {tenantId: 'tenant123', timezone: 'America/New_York'},
+          organizationSetting: {webRtcEnabled: true},
+          tenantConfiguration: {forceDefaultDn: false},
+          urlMappings: {},
+          aiFeature: {realtimeTranscripts: {enable: false}},
         },
       };
       (mockWebexRequest.request as jest.Mock).mockResolvedValue(mockResponse);
 
-      const result = await agentConfigService.getUserUsingCI(mockOrgId, mockAgentId);
+      const result = await agentConfigService.getOrgDesktopLoginConfig(mockOrgId);
 
       expect(mockWebexRequest.request).toHaveBeenCalledWith({
         service: mockWccAPIURL,
-        resource: `organization/${mockOrgId}/user/by-ci-user-id/${mockAgentId}`,
+        resource: `organization/${mockOrgId}/desktop-login`,
         method: 'GET',
       });
       expect(result).toEqual(mockResponse.body);
-      expect(LoggerProxy.info).toHaveBeenCalledWith('Fetching user data using CI', {
+      expect(LoggerProxy.info).toHaveBeenCalledWith(
+        'Fetching organization desktop-login configuration',
+        {
+          module: CONFIG_FILE_NAME,
+          method: 'getOrgDesktopLoginConfig',
+        }
+      );
+      expect(LoggerProxy.log).toHaveBeenCalledWith('getOrgDesktopLoginConfig api success.', {
         module: CONFIG_FILE_NAME,
-        method: 'getUserUsingCI',
-      });
-      expect(LoggerProxy.log).toHaveBeenCalledWith('getUserUsingCI api success.', {
-        module: CONFIG_FILE_NAME,
-        method: 'getUserUsingCI',
+        method: 'getOrgDesktopLoginConfig',
       });
     });
 
@@ -80,56 +84,58 @@ describe('AgentConfigService', () => {
       const mockError = new Error('API call failed');
       (mockWebexRequest.request as jest.Mock).mockRejectedValue(mockError);
 
-      await expect(agentConfigService.getUserUsingCI(mockOrgId, mockAgentId)).rejects.toThrow(
+      await expect(agentConfigService.getOrgDesktopLoginConfig(mockOrgId)).rejects.toThrow(
         'API call failed'
+      );
+      expect(LoggerProxy.error).toHaveBeenCalledWith(
+        'getOrgDesktopLoginConfig API call failed with Error: API call failed',
+        {module: CONFIG_FILE_NAME, method: 'getOrgDesktopLoginConfig'}
       );
     });
 
-    it('should throw an error if the getUserUsingCI call fails with other than 200', async () => {
-      const mockResponse = {
-        statusCode: 400,
-      };
-      (mockWebexRequest.request as jest.Mock).mockResolvedValue(mockResponse);
+    it('should throw an error if the call fails with other than 200', async () => {
+      (mockWebexRequest.request as jest.Mock).mockResolvedValue({statusCode: 403});
 
-      try {
-        await agentConfigService.getUserUsingCI(mockOrgId, mockAgentId);
-      } catch (error) {
-        expect(error).toEqual(new Error(`API call failed with ${mockResponse.statusCode}`));
-      }
+      await expect(agentConfigService.getOrgDesktopLoginConfig(mockOrgId)).rejects.toThrow(
+        'API call failed with 403'
+      );
     });
   });
 
-  describe('getDesktopProfileById', () => {
-    const desktopProfileId = 'profile123';
-
-    it('should return DesktopProfileResponse on success', async () => {
+  describe('getUserDesktopLoginConfig', () => {
+    it('should return UserDesktopLoginResponse on success', async () => {
       const mockResponse = {
         statusCode: 200,
         body: {
-          loginVoiceOptions: ['option1', 'option2'],
-          accessWrapUpCode: 'ALL',
-          accessIdleCode: 'SPECIFIC',
-          wrapUpCodes: ['code1', 'code2'],
-          idleCodes: ['idle1', 'idle2'],
+          user: {
+            ciUserId: mockAgentId,
+            dbId: 'db123',
+            firstName: 'John',
+            lastName: 'Doe',
+            agentProfileId: 'profile123',
+            email: 'john.doe@example.com',
+            siteId: 'site123',
+          },
+          agentProfile: {accessIdleCode: 'ALL', dialPlanEnabled: true},
         },
       };
       (mockWebexRequest.request as jest.Mock).mockResolvedValue(mockResponse);
 
-      const result = await agentConfigService.getDesktopProfileById(mockOrgId, desktopProfileId);
+      const result = await agentConfigService.getUserDesktopLoginConfig(mockOrgId, mockAgentId);
 
       expect(mockWebexRequest.request).toHaveBeenCalledWith({
         service: mockWccAPIURL,
-        resource: `organization/${mockOrgId}/agent-profile/${desktopProfileId}`,
+        resource: `organization/${mockOrgId}/v2/user/by-ci-user-id/${mockAgentId}/desktop-login`,
         method: 'GET',
       });
       expect(result).toEqual(mockResponse.body);
-      expect(LoggerProxy.info).toHaveBeenCalledWith('Fetching desktop profile', {
+      expect(LoggerProxy.info).toHaveBeenCalledWith('Fetching user desktop-login configuration', {
         module: CONFIG_FILE_NAME,
-        method: 'getDesktopProfileById',
+        method: 'getUserDesktopLoginConfig',
       });
-      expect(LoggerProxy.log).toHaveBeenCalledWith('getDesktopProfileById api success.', {
+      expect(LoggerProxy.log).toHaveBeenCalledWith('getUserDesktopLoginConfig api success.', {
         module: CONFIG_FILE_NAME,
-        method: 'getDesktopProfileById',
+        method: 'getUserDesktopLoginConfig',
       });
     });
 
@@ -137,47 +143,44 @@ describe('AgentConfigService', () => {
       const mockError = new Error('API call failed');
       (mockWebexRequest.request as jest.Mock).mockRejectedValue(mockError);
 
-      try {
-        await agentConfigService.getDesktopProfileById(mockOrgId, desktopProfileId);
-      } catch (error) {
-        expect(error).toEqual(mockError);
-      }
+      await expect(
+        agentConfigService.getUserDesktopLoginConfig(mockOrgId, mockAgentId)
+      ).rejects.toThrow('API call failed');
+      expect(LoggerProxy.error).toHaveBeenCalledWith(
+        'getUserDesktopLoginConfig API call failed with Error: API call failed',
+        {module: CONFIG_FILE_NAME, method: 'getUserDesktopLoginConfig'}
+      );
     });
 
-    it('should throw an error if the getDesktopProfileById call fails with other than 200', async () => {
-      const mockResponse = {
-        statusCode: 400,
-      };
-      (mockWebexRequest.request as jest.Mock).mockResolvedValue(mockResponse);
+    it.each([403, 404])('should throw an error if the call fails with %i', async (statusCode) => {
+      (mockWebexRequest.request as jest.Mock).mockResolvedValue({statusCode});
 
-      try {
-        await agentConfigService.getDesktopProfileById(mockOrgId, desktopProfileId);
-      } catch (error) {
-        expect(error).toEqual(new Error(`API call failed with ${mockResponse.statusCode}`));
-      }
+      await expect(
+        agentConfigService.getUserDesktopLoginConfig(mockOrgId, mockAgentId)
+      ).rejects.toThrow(`API call failed with ${statusCode}`);
     });
   });
 
   describe('getListOfTeams', () => {
     const page = 0;
     const pageSize = 10;
-    const filter: string[] = ['123'];
+    const userDbId = 'db123';
 
-    it('should return team on success', async () => {
+    it('should filter by unquoted userId and return teams on success', async () => {
       const mockResponse = {
         statusCode: 200,
-        body: [
-          {id: '123', name: 'Team 1'},
-          {id: '12345', name: 'Team 2'},
-        ],
+        body: {
+          data: [{id: '123', name: 'Team 1', multiMediaProfileId: 'mm1', siteName: 'Site 1'}],
+          meta: {totalPages: 1},
+        },
       };
       (mockWebexRequest.request as jest.Mock).mockResolvedValue(mockResponse);
 
-      const result = await agentConfigService.getListOfTeams(mockOrgId, page, pageSize, filter);
+      const result = await agentConfigService.getListOfTeams(mockOrgId, page, pageSize, userDbId);
 
       expect(mockWebexRequest.request).toHaveBeenCalledWith({
         service: mockWccAPIURL,
-        resource: `organization/${mockOrgId}/v2/team?page=${page}&pageSize=${pageSize}&filter=id=in=(${filter})`,
+        resource: `organization/${mockOrgId}/v2/team?page=${page}&pageSize=${pageSize}&agentView=true&filter=userId==${userDbId}`,
         method: 'GET',
       });
       expect(result).toEqual(mockResponse.body);
@@ -196,7 +199,7 @@ describe('AgentConfigService', () => {
       (mockWebexRequest.request as jest.Mock).mockRejectedValue(mockError);
 
       try {
-        await agentConfigService.getListOfTeams(mockOrgId, page, pageSize, filter);
+        await agentConfigService.getListOfTeams(mockOrgId, page, pageSize, userDbId);
       } catch (error) {
         expect(error).toEqual(mockError);
       }
@@ -209,7 +212,7 @@ describe('AgentConfigService', () => {
       (mockWebexRequest.request as jest.Mock).mockResolvedValue(mockResponse);
 
       try {
-        await agentConfigService.getListOfTeams(mockOrgId, page, pageSize, filter);
+        await agentConfigService.getListOfTeams(mockOrgId, page, pageSize, userDbId);
       } catch (error) {
         expect(error).toEqual(new Error(`API call failed with ${mockResponse.statusCode}`));
       }
@@ -298,237 +301,6 @@ describe('AgentConfigService', () => {
     });
   });
 
-  describe('getOrgInfo', () => {
-    it('should return organization info successfully', async () => {
-      const mockResponse = {
-        statusCode: 200,
-        body: {
-          id: 'org123',
-          name: 'Organization 123',
-          description: 'Description',
-          type: 'type',
-          status: 'status',
-          created: '2021-01-01',
-        },
-      };
-      mockWebexRequest.request.mockResolvedValue(mockResponse);
-
-      const result = await agentConfigService.getOrgInfo(mockOrgId);
-      expect(result).toEqual(mockResponse.body);
-      expect(LoggerProxy.log).toHaveBeenCalledWith('getOrgInfo api success.', {
-        module: CONFIG_FILE_NAME,
-        method: 'getOrgInfo',
-      });
-    });
-
-    it('should throw an error if API call returns non-200 status code', async () => {
-      const mockError = {statusCode: 500};
-      mockWebexRequest.request.mockResolvedValue(mockError);
-
-      await expect(agentConfigService.getOrgInfo(mockOrgId)).rejects.toThrow(
-        'API call failed with 500'
-      );
-      expect(LoggerProxy.error).toHaveBeenCalledWith(
-        'getOrgInfo API call failed with Error: API call failed with 500',
-        {module: CONFIG_FILE_NAME, method: 'getOrgInfo'}
-      );
-    });
-
-    it('should handle network errors gracefully', async () => {
-      const networkError = new Error('Network Error');
-      mockWebexRequest.request.mockRejectedValue(networkError);
-
-      await expect(agentConfigService.getOrgInfo(mockOrgId)).rejects.toThrow('Network Error');
-      expect(LoggerProxy.error).toHaveBeenCalledWith(
-        'getOrgInfo API call failed with Error: Network Error',
-        {module: CONFIG_FILE_NAME, method: 'getOrgInfo'}
-      );
-    });
-
-    it('should handle timeout errors gracefully', async () => {
-      const timeoutError = new Error('Timeout Error');
-      mockWebexRequest.request.mockRejectedValue(timeoutError);
-
-      await expect(agentConfigService.getOrgInfo(mockOrgId)).rejects.toThrow('Timeout Error');
-      expect(LoggerProxy.error).toHaveBeenCalledWith(
-        'getOrgInfo API call failed with Error: Timeout Error',
-        {module: CONFIG_FILE_NAME, method: 'getOrgInfo'}
-      );
-    });
-  });
-
-  describe('getOrganizationSetting', () => {
-    it('should return organization settings successfully', async () => {
-      const mockResponse = {statusCode: 200, body: {data: [{}]}}; // Adjust data accordingly
-      mockWebexRequest.request.mockResolvedValue(mockResponse);
-
-      const result = await agentConfigService.getOrganizationSetting();
-      expect(result).toEqual(mockResponse.body.data[0]);
-      expect(LoggerProxy.log).toHaveBeenCalledWith('getOrganizationSetting api success.', {
-        module: CONFIG_FILE_NAME,
-        method: 'getOrganizationSetting',
-      });
-    });
-
-    it('should throw an error if API call returns non-200 status code', async () => {
-      const mockError = {statusCode: 500};
-      mockWebexRequest.request.mockResolvedValue(mockError);
-
-      await expect(agentConfigService.getOrganizationSetting(mockOrgId)).rejects.toThrow(
-        'API call failed with 500'
-      );
-      expect(LoggerProxy.error).toHaveBeenCalledWith(
-        'getOrganizationSetting API call failed with Error: API call failed with 500',
-        {module: CONFIG_FILE_NAME, method: 'getOrganizationSetting'}
-      );
-    });
-
-    it('should handle network errors gracefully', async () => {
-      const networkError = new Error('Network Error');
-      mockWebexRequest.request.mockRejectedValue(networkError);
-
-      await expect(agentConfigService.getOrganizationSetting(mockOrgId)).rejects.toThrow(
-        'Network Error'
-      );
-      expect(LoggerProxy.error).toHaveBeenCalledWith(
-        'getOrganizationSetting API call failed with Error: Network Error',
-        {module: CONFIG_FILE_NAME, method: 'getOrganizationSetting'}
-      );
-    });
-
-    it('should handle timeout errors gracefully', async () => {
-      const timeoutError = new Error('Timeout Error');
-      mockWebexRequest.request.mockRejectedValue(timeoutError);
-
-      await expect(agentConfigService.getOrganizationSetting(mockOrgId)).rejects.toThrow(
-        'Timeout Error'
-      );
-      expect(LoggerProxy.error).toHaveBeenCalledWith(
-        'getOrganizationSetting API call failed with Error: Timeout Error',
-        {module: CONFIG_FILE_NAME, method: 'getOrganizationSetting'}
-      );
-    });
-  });
-
-  describe('getTenantData', () => {
-    it('should return tenant successfully', async () => {
-      const mockResponse = {statusCode: 200, body: {data: [{}]}}; // Adjust data accordingly
-      mockWebexRequest.request.mockResolvedValue(mockResponse);
-
-      const result = await agentConfigService.getTenantData(mockOrgId);
-      expect(result).toEqual(mockResponse.body.data[0]);
-      expect(LoggerProxy.log).toHaveBeenCalledWith('getTenantData api success.', {
-        module: CONFIG_FILE_NAME,
-        method: 'getTenantData',
-      });
-    });
-
-    it('should throw an error if API call returns non-200 status code', async () => {
-      const mockError = {statusCode: 500};
-      mockWebexRequest.request.mockResolvedValue(mockError);
-
-      await expect(agentConfigService.getTenantData(mockOrgId)).rejects.toThrow(
-        'API call failed with 500'
-      );
-      expect(LoggerProxy.error).toHaveBeenCalledWith(
-        'getTenantData API call failed with Error: API call failed with 500',
-        {module: CONFIG_FILE_NAME, method: 'getTenantData'}
-      );
-    });
-
-    it('should handle network errors gracefully', async () => {
-      const networkError = new Error('Network Error');
-      mockWebexRequest.request.mockRejectedValue(networkError);
-
-      await expect(agentConfigService.getTenantData(mockOrgId)).rejects.toThrow('Network Error');
-      expect(LoggerProxy.error).toHaveBeenCalledWith(
-        'getTenantData API call failed with Error: Network Error',
-        {module: CONFIG_FILE_NAME, method: 'getTenantData'}
-      );
-    });
-  });
-
-  describe(`getURLMapping`, () => {
-    it('should return URL mapping successfully', async () => {
-      const mockResponse = {statusCode: 200, body: {data: {}}}; // Adjust data accordingly
-      mockWebexRequest.request.mockResolvedValue(mockResponse);
-
-      const result = await agentConfigService.getURLMapping(mockOrgId);
-      expect(result).toEqual(mockResponse.body.data);
-      expect(LoggerProxy.log).toHaveBeenCalledWith('getURLMapping api success.', {
-        module: CONFIG_FILE_NAME,
-        method: 'getURLMapping',
-      });
-    });
-
-    it('should throw an error if API call returns non-200 status code', async () => {
-      const mockError = {statusCode: 500};
-      mockWebexRequest.request.mockResolvedValue(mockError);
-
-      await expect(agentConfigService.getURLMapping(mockOrgId)).rejects.toThrow(
-        'API call failed with 500'
-      );
-      expect(LoggerProxy.error).toHaveBeenCalledWith(
-        'getURLMapping API call failed with Error: API call failed with 500',
-        {module: CONFIG_FILE_NAME, method: 'getURLMapping'}
-      );
-    });
-
-    it('should handle network errors gracefully', async () => {
-      const networkError = new Error('Network Error');
-      mockWebexRequest.request.mockRejectedValue(networkError);
-
-      await expect(agentConfigService.getURLMapping(mockOrgId)).rejects.toThrow('Network Error');
-      expect(LoggerProxy.error).toHaveBeenCalledWith(
-        'getURLMapping API call failed with Error: Network Error',
-        {module: CONFIG_FILE_NAME, method: 'getURLMapping'}
-      );
-    });
-  });
-
-  describe('getAIFeatureFlags', () => {
-    it('should return AI feature flags successfully', async () => {
-      const mockResponse = {
-        statusCode: 200,
-        body: {
-          data: [{realtimeTranscripts: {enable: true}}],
-        },
-      };
-      mockWebexRequest.request.mockResolvedValue(mockResponse);
-
-      const result = await agentConfigService.getAIFeatureFlags(mockOrgId);
-      expect(result).toEqual(mockResponse.body);
-      expect(LoggerProxy.log).toHaveBeenCalledWith('getAIFeatureFlags api success.', {
-        module: CONFIG_FILE_NAME,
-        method: 'getAIFeatureFlags',
-      });
-    });
-
-    it('should throw an error if API call returns non-200 status code', async () => {
-      const mockError = {statusCode: 500};
-      mockWebexRequest.request.mockResolvedValue(mockError);
-
-      await expect(agentConfigService.getAIFeatureFlags(mockOrgId)).rejects.toThrow(
-        'API call failed with 500'
-      );
-      expect(LoggerProxy.error).toHaveBeenCalledWith(
-        'getAIFeatureFlags API call failed with Error: API call failed with 500',
-        {module: CONFIG_FILE_NAME, method: 'getAIFeatureFlags'}
-      );
-    });
-
-    it('should handle network errors gracefully', async () => {
-      const networkError = new Error('Network Error');
-      mockWebexRequest.request.mockRejectedValue(networkError);
-
-      await expect(agentConfigService.getAIFeatureFlags(mockOrgId)).rejects.toThrow('Network Error');
-      expect(LoggerProxy.error).toHaveBeenCalledWith(
-        'getAIFeatureFlags API call failed with Error: Network Error',
-        {module: CONFIG_FILE_NAME, method: 'getAIFeatureFlags'}
-      );
-    });
-  });
-
   describe(`getDialPlanData`, () => {
     it('should return dial plan data successfully', async () => {
       const mockResponse = {statusCode: 200, body: {data: {}}}; // Adjust data accordingly
@@ -568,10 +340,10 @@ describe('AgentConfigService', () => {
   });
 
   describe(`getAllTeams`, () => {
+    const userDbId = 'db123';
+
     it('should return all teams successfully', async () => {
       const pageSize = 10;
-      const filter = ['filter1'];
-      const attributes = ['attribute1'];
 
       const mockResponseFirst = {
         body: {
@@ -590,7 +362,7 @@ describe('AgentConfigService', () => {
         .mockResolvedValueOnce(mockResponseFirst)
         .mockResolvedValue(mockResponseOther);
 
-      const result = await agentConfigService.getAllTeams(mockOrgId, pageSize, filter, attributes);
+      const result = await agentConfigService.getAllTeams(mockOrgId, pageSize, userDbId);
       expect(result).toEqual([
         ...mockResponseFirst.body.data,
         ...mockResponseOther.body.data,
@@ -616,15 +388,13 @@ describe('AgentConfigService', () => {
 
     it('should throw an error if API call returns non-200 status code', async () => {
       const pageSize = 10;
-      const filter = ['filter1'];
-      const attributes = ['attribute1'];
 
       const mockError = {statusCode: 500};
       (mockWebexRequest.request as jest.Mock).mockResolvedValue(mockError);
 
-      await expect(
-        agentConfigService.getAllTeams(mockOrgId, pageSize, filter, attributes)
-      ).rejects.toThrow('API call failed with 500');
+      await expect(agentConfigService.getAllTeams(mockOrgId, pageSize, userDbId)).rejects.toThrow(
+        'API call failed with 500'
+      );
       expect(LoggerProxy.error).toHaveBeenCalledWith(
         'getListOfTeams API call failed with Error: API call failed with 500',
         {module: CONFIG_FILE_NAME, method: 'getListOfTeams'}
@@ -774,30 +544,103 @@ describe('AgentConfigService', () => {
   });
 
   describe('getAgentConfig', () => {
-    const mockTeamData = [
-      {id: 'team1', name: 'Support Team'},
-      {id: 'team2', name: 'Sales Team'},
-    ];
-
-    const mockOrgInfo = {
-      tenantId: 'tenant123',
-      timezone: 'GMT',
-      environment: 'produs1',
-    };
-
     const mockSiteInfo = {
       id: 'c6a5451f-5ba7-49a1-aee8-fbef70c19ece',
       name: 'Site-1',
       multimediaProfileId: 'c5888e6f-5661-4871-9936-cbcec7658d41',
     };
 
-    const mockURLMapping = [
-      {key: 'ACQUEON_API_URL', url: 'https://api.example.com'},
-      {key: 'ACQUEON_CONSOLE_URL', url: 'https://console.example.com'},
+    const mockOrgConfig = {
+      organization: {tenantId: 'tenant123', timezone: 'GMT'},
+      organizationSetting: {
+        campaignManagerEnabled: true,
+        webRtcEnabled: true,
+        maskSensitiveData: false,
+      },
+      tenantConfiguration: {
+        timeoutDesktopInactivityEnabled: false,
+        forceDefaultDn: true,
+        dnDefaultRegex: 'regexUS',
+        dnOtherRegex: 'regexOther',
+        privacyShieldVisible: true,
+        outdialEnabled: true,
+        endCallEnabled: true,
+        endConsultEnabled: true,
+        callVariablesSuppressed: false,
+        lostConnectionRecoveryTimeout: 120000,
+      },
+      urlMappings: {},
+      aiFeature: {realtimeTranscripts: {enable: true}},
+      webexConfig: {showUserDetails: false, stateSynchronization: true},
+    };
+
+    const mockUser = {
+      ciUserId: 'agent001',
+      firstName: 'John',
+      lastName: 'Doe',
+      email: 'john.doe@example.com',
+      agentProfileId: 'profile123',
+      skillProfileId: 'skillProfile456',
+      siteId: 'site789',
+      dbId: 'db123',
+      deafultDialledNumber: '1234567890',
+      id: 'user001',
+    };
+
+    const mockAgentProfile = {
+      timeoutDesktopInactivityCustomEnabled: true,
+      timeoutDesktopInactivityMins: 10,
+      accessWrapUpCode: 'ALL',
+      accessIdleCode: 'ALL',
+      autoWrapUp: true,
+      autoWrapAfterSeconds: 30,
+      lastAgentRouting: true,
+      allowAutoWrapUpExtension: false,
+      outdialEnabled: true,
+      dialPlanEnabled: false,
+      agentAvailableAfterOutdial: true,
+      outdialEntryPointId: 'entryPoint123',
+      consultToQueue: true,
+      viewableStatistics: {agentStats: true},
+      addressBookId: 'addressBook123',
+      outdialANIId: 'ani123',
+      loginVoiceOptions: ['BROWSER', 'EXTENSION'],
+      agentDNValidation: 'PROVISIONED_VALUE',
+    };
+
+    const mockTeamData = [
+      {id: 'team1', name: 'Support Team', multiMediaProfileId: 'mmTeam123'},
     ];
 
-    const mockAIFeatureFlags = {
-      data: [{realtimeTranscripts: {enable: true}}],
+    const mockAuxCodes = [
+      {id: 'aux1', workTypeCode: 'WRAP_UP_CODE', name: 'Wrap Up Code 1', active: true},
+      {id: 'aux2', workTypeCode: 'IDLE_CODE', name: 'Idle Code 1', active: true},
+    ];
+
+    const mockDialPlanData = [
+      {
+        id: 'dialPlan1',
+        name: 'Plan 1',
+        regularExpression: '[0-9]+',
+        prefix: '1',
+        strippedChars: '( )-',
+        active: true,
+      },
+    ];
+
+    /** Stubs every call getAgentConfig makes, so each test overrides only what it exercises. */
+    const stubConfigCalls = ({
+      agentProfile = mockAgentProfile,
+      teamData = mockTeamData,
+    }: {agentProfile?: object; teamData?: object[]} = {}) => {
+      agentConfigService.getOrgDesktopLoginConfig = jest.fn().mockResolvedValue(mockOrgConfig);
+      agentConfigService.getUserDesktopLoginConfig = jest
+        .fn()
+        .mockResolvedValue({user: mockUser, agentProfile});
+      agentConfigService.getAllAuxCodes = jest.fn().mockResolvedValue(mockAuxCodes);
+      agentConfigService.getSiteInfo = jest.fn().mockResolvedValue(mockSiteInfo);
+      agentConfigService.getAllTeams = jest.fn().mockResolvedValue(teamData);
+      agentConfigService.getDialPlanData = jest.fn().mockResolvedValue(mockDialPlanData);
     };
 
     beforeEach(() => {
@@ -805,99 +648,13 @@ describe('AgentConfigService', () => {
     });
 
     it('should fetch and parse agent configuration successfully', async () => {
-      const mockAgentId = 'agent001';
-      const mockUserConfig = {
-        ciUserId: 'agent001',
-        firstName: 'John',
-        lastName: 'Doe',
-        email: 'john.doe@example.com',
-        agentProfileId: 'profile123',
-        siteId: 'site789',
-        dbId: 'db123',
-        deafultDialledNumber: '1234567890',
-        id: 'user001',
-        teamIds: ['team1', 'team2'],
-      };
-
-      const mockAgentProfile = {
-        timeoutDesktopInactivityCustomEnabled: true,
-        timeoutDesktopInactivityMins: 10,
-        accessWrapUpCode: 'SPECIFIC',
-        wrapUpCodes: ['aux1'],
-        accessIdleCode: 'SPECIFIC',
-        idleCodes: ['aux2'],
-        autoWrapUp: true,
-        autoWrapAfterSeconds: 30,
-        lastAgentRouting: true,
-        allowAutoWrapUpExtension: false,
-        outdialEnabled: true,
-        dialPlanEnabled: false,
-        agentAvailableAfterOutdial: true,
-        outdialEntryPointId: 'entryPoint123',
-        consultToQueue: true,
-        addressBookId: 'addressBook123',
-        outdialANIId: 'ani123',
-        dialPlans: ['plan1', 'plan2'],
-        agentDNValidation: 'validation123',
-      };
-
-      const mockDialPlanData = [];
-
-      const mockTeamData = [
-        {id: 'team1', name: 'Support Team'},
-        {id: 'team2', name: 'Sales Team'},
-      ];
-
-      const mockOrgInfo = {
-        tenantId: 'tenant123',
-        timezone: 'GMT',
-        environment: 'produs1',
-      };
-
-      const mockOrgSettings = {
-        campaignManagerEnabled: true,
-        webRtcEnabled: true,
-        maskSensitiveData: false,
-      };
-
-      const mockTenantData = {
-        timeoutDesktopInactivityEnabled: false,
-        timeoutDesktopInactivityMins: 15,
-        forceDefaultDn: true,
-        dnDefaultRegex: 'regexUS',
-        dnOtherRegex: 'regexOther',
-        privacyShieldVisible: true,
-        outdialEnabled: true,
-        endCallEnabled: true,
-        endConsultEnabled: true,
-        callVariablesSuppressed: false,
-      };
-
-      const mockAuxCodes = [
-        {id: 'aux1', type: 'WRAP_UP_CODE', name: 'Wrap Up Code 1', isDefault: true},
-        {id: 'aux2', type: 'IDLE_CODE', name: 'Idle Code 1', isDefault: true},
-      ];
-      const mockAIFeatureFlags = {
-        data: [{realtimeTranscripts: {enable: true}}],
-      };
-
       const parseAgentConfigsSpy = jest.spyOn(util, 'parseAgentConfigs');
-      agentConfigService.getUserUsingCI = jest.fn().mockResolvedValue(mockUserConfig);
-      agentConfigService.getOrgInfo = jest.fn().mockResolvedValue(mockOrgInfo);
-      agentConfigService.getOrganizationSetting = jest.fn().mockResolvedValue(mockOrgSettings);
-      agentConfigService.getSiteInfo = jest.fn().mockResolvedValue(mockSiteInfo);
-      agentConfigService.getTenantData = jest.fn().mockResolvedValue(mockTenantData);
-      agentConfigService.getURLMapping = jest.fn().mockResolvedValue(mockURLMapping);
-      agentConfigService.getAIFeatureFlags = jest.fn().mockResolvedValue(mockAIFeatureFlags);
-      agentConfigService.getAllAuxCodes = jest.fn().mockResolvedValue(mockAuxCodes);
-      agentConfigService.getDesktopProfileById = jest.fn().mockResolvedValue(mockAgentProfile);
-      agentConfigService.getDialPlanData = jest.fn().mockResolvedValue(mockDialPlanData);
-      agentConfigService.getAllTeams = jest.fn().mockResolvedValue(mockTeamData);
+      stubConfigCalls();
 
-      const result = await agentConfigService.getAgentConfig(mockOrgId, mockAgentId);
+      await agentConfigService.getAgentConfig(mockOrgId, mockAgentId);
 
       expect(LoggerProxy.info).toHaveBeenCalledWith(
-        `Fetched user data, userId: ${mockUserConfig.ciUserId}`,
+        `Fetched user data, userId: ${mockUser.ciUserId}`,
         {
           module: CONFIG_FILE_NAME,
           method: 'getAgentConfig',
@@ -918,171 +675,116 @@ describe('AgentConfigService', () => {
       expect(parseAgentConfigsSpy).toHaveBeenCalledTimes(1);
 
       expect(parseAgentConfigsSpy).toHaveBeenCalledWith({
-        userData: mockUserConfig,
-        teamData: mockTeamData,
-        tenantData: mockTenantData,
-        orgInfoData: mockOrgInfo,
-        auxCodes: mockAuxCodes,
-        orgSettingsData: mockOrgSettings,
+        orgConfig: mockOrgConfig,
+        userData: mockUser,
         agentProfileData: mockAgentProfile,
-        dialPlanData: mockDialPlanData,
-        urlMapping: mockURLMapping,
-        multimediaProfileId: mockSiteInfo.multimediaProfileId,
-        aiFeatureFlags: mockAIFeatureFlags,
+        teamData: mockTeamData,
+        auxCodes: mockAuxCodes,
+        dialPlanData: [],
+        multimediaProfileId: 'mmTeam123',
       });
     });
 
-    it('should fetch and parse agent configuration with different values and conditions successfully', async () => {
-      const mockAgentId = 'agent001';
-      const mockUserConfig = {
-        ciUserId: 'agent001',
-        firstName: 'John',
-        lastName: 'Doe',
-        email: 'john.doe@example.com',
-        agentProfileId: 'profile123',
-        skillProfileId: 'skillProfile456',
-        siteId: 'site789',
-        dbId: 'db123',
-        deafultDialledNumber: '1234567890',
-        id: 'user001',
-        teamIds: ['team1', 'team2'],
-      };
+    it('should request both aggregates and the aux-code pool for the given org and agent', async () => {
+      stubConfigCalls();
 
-      const mockAgentProfile = {
-        timeoutDesktopInactivityCustomEnabled: false,
-        timeoutDesktopInactivityMins: 10,
-        accessWrapUpCode: 'ALL',
-        wrapUpCodes: [],
-        accessIdleCode: 'ALL',
-        idleCodes: [],
-        autoWrapUp: true,
-        autoWrapAfterSeconds: 30,
-        lastAgentRouting: true,
-        allowAutoWrapUpExtension: false,
-        outdialEnabled: true,
-        dialPlanEnabled: true,
-        agentAvailableAfterOutdial: true,
-        outdialEntryPointId: 'entryPoint123',
-        consultToQueue: true,
-        viewableStatistics: {agentStats: true},
-        addressBookId: 'addressBook123',
-        outdialANIId: 'ani123',
-        loginVoiceOptions: ['option1', 'option2'],
-        dialPlans: ['dialPlan1', 'dialPlan2'],
-        agentDNValidation: 'validation123',
-      };
+      await agentConfigService.getAgentConfig(mockOrgId, mockAgentId);
 
-      const mockDialPlanData = [
-        {id: 'dialPlan1', name: 'Plan 1'},
-        {id: 'dialPlan2', name: 'Plan 2'},
-      ];
+      expect(agentConfigService.getOrgDesktopLoginConfig).toHaveBeenCalledWith(mockOrgId);
+      expect(agentConfigService.getUserDesktopLoginConfig).toHaveBeenCalledWith(
+        mockOrgId,
+        mockAgentId
+      );
+      expect(agentConfigService.getAllAuxCodes).toHaveBeenCalledWith(
+        mockOrgId,
+        100,
+        [],
+        DEFAULT_AUXCODE_ATTRIBUTES
+      );
+    });
 
-      const mockTeamData = [
-        {id: 'team1', name: 'Support Team'},
-        {id: 'team2', name: 'Sales Team'},
-      ];
+    it('should query teams by the user dbId and the site by the user siteId', async () => {
+      stubConfigCalls();
 
-      const mockOrgInfo = {
-        tenantId: 'tenant123',
-        timezone: 'GMT',
-        environment: 'produs1',
-      };
+      await agentConfigService.getAgentConfig(mockOrgId, mockAgentId);
 
-      const mockOrgSettings = {
-        campaignManagerEnabled: true,
-        webRtcEnabled: true,
-        maskSensitiveData: true,
-      };
+      expect(agentConfigService.getAllTeams).toHaveBeenCalledWith(mockOrgId, 100, mockUser.dbId);
+      expect(agentConfigService.getSiteInfo).toHaveBeenCalledWith(mockOrgId, mockUser.siteId);
+    });
 
-      const mockTenantData = {
-        timeoutDesktopInactivityEnabled: true,
-        timeoutDesktopInactivityMins: 15,
-        forceDefaultDn: true,
-        dnDefaultRegex: 'regexUS',
-        dnOtherRegex: 'regexOther',
-        privacyShieldVisible: true,
-        outdialEnabled: true,
-        endCallEnabled: true,
-        endConsultEnabled: true,
-        callVariablesSuppressed: false,
-        lostConnectionRecoveryTimeout: 30,
-      };
+    it.each([
+      {dialPlanEnabled: true, expectedCalls: 1},
+      {dialPlanEnabled: false, expectedCalls: 0},
+    ])(
+      'should issue the dial-plan call $expectedCalls time(s) when dialPlanEnabled is $dialPlanEnabled',
+      async ({dialPlanEnabled, expectedCalls}) => {
+        stubConfigCalls({agentProfile: {...mockAgentProfile, dialPlanEnabled}});
 
-      const mockAuxCodes = [
-        {id: 'aux1', type: 'WRAP_UP_CODE', name: 'Wrap Up Code 1'},
-        {id: 'aux2', type: 'IDLE_CODE', name: 'Idle Code 1'},
-      ];
-      const mockAIFeatureFlags = {
-        data: [{realtimeTranscripts: {enable: true}}],
-      };
+        await agentConfigService.getAgentConfig(mockOrgId, mockAgentId);
 
+        expect(agentConfigService.getDialPlanData).toHaveBeenCalledTimes(expectedCalls);
+      }
+    );
+
+    it.each([
+      {
+        scenario: 'the team value when the agent has a team',
+        teamData: mockTeamData,
+        expected: 'mmTeam123',
+      },
+      {
+        scenario: 'the site value when the agent has no team',
+        teamData: [],
+        expected: mockSiteInfo.multimediaProfileId,
+      },
+      {
+        scenario: 'the site value when the team carries no multimedia profile',
+        teamData: [{id: 'team1', name: 'Support Team'}],
+        expected: mockSiteInfo.multimediaProfileId,
+      },
+    ])('should resolve multimediaProfileId to $scenario', async ({teamData, expected}) => {
       const parseAgentConfigsSpy = jest.spyOn(util, 'parseAgentConfigs');
-      agentConfigService.getUserUsingCI = jest.fn().mockResolvedValue(mockUserConfig);
-      agentConfigService.getOrgInfo = jest.fn().mockResolvedValue(mockOrgInfo);
-      agentConfigService.getOrganizationSetting = jest.fn().mockResolvedValue(mockOrgSettings);
-      agentConfigService.getSiteInfo = jest.fn().mockResolvedValue(mockSiteInfo);
-      agentConfigService.getTenantData = jest.fn().mockResolvedValue(mockTenantData);
-      agentConfigService.getURLMapping = jest.fn().mockResolvedValue(mockURLMapping);
-      agentConfigService.getAIFeatureFlags = jest.fn().mockResolvedValue(mockAIFeatureFlags);
-      agentConfigService.getAllAuxCodes = jest.fn().mockResolvedValue(mockAuxCodes);
-      agentConfigService.getDesktopProfileById = jest.fn().mockResolvedValue(mockAgentProfile);
-      agentConfigService.getDialPlanData = jest.fn().mockResolvedValue(mockDialPlanData);
-      agentConfigService.getAllTeams = jest.fn().mockResolvedValue(mockTeamData);
+      stubConfigCalls({teamData});
+
+      await agentConfigService.getAgentConfig(mockOrgId, mockAgentId);
+
+      expect(parseAgentConfigsSpy).toHaveBeenCalledWith(
+        expect.objectContaining({multimediaProfileId: expected})
+      );
+    });
+
+    it('should build the dial plan from the dial-plan response when dial planning is enabled', async () => {
+      const parseAgentConfigsSpy = jest.spyOn(util, 'parseAgentConfigs');
+      stubConfigCalls({agentProfile: {...mockAgentProfile, dialPlanEnabled: true}});
 
       const result = await agentConfigService.getAgentConfig(mockOrgId, mockAgentId);
 
-      expect(LoggerProxy.info).toHaveBeenCalledWith(
-        `Fetched user data, userId: ${mockUserConfig.ciUserId}`,
-        {
-          module: CONFIG_FILE_NAME,
-          method: 'getAgentConfig',
-        }
+      expect(parseAgentConfigsSpy).toHaveBeenCalledWith(
+        expect.objectContaining({dialPlanData: mockDialPlanData})
       );
-      expect(LoggerProxy.info).toHaveBeenCalledWith('Fetched all required data', {
-        module: CONFIG_FILE_NAME,
-        method: 'getAgentConfig',
-      });
-      expect(LoggerProxy.info).toHaveBeenCalledWith('Parsing completed for agent-config', {
-        module: CONFIG_FILE_NAME,
-        method: 'getAgentConfig',
-      });
-      expect(LoggerProxy.info).toHaveBeenCalledWith('Fetched configuration data successfully', {
-        module: CONFIG_FILE_NAME,
-        method: 'getAgentConfig',
-      });
-      expect(parseAgentConfigsSpy).toHaveBeenCalledTimes(1);
-
-      expect(parseAgentConfigsSpy).toHaveBeenCalledWith({
-        userData: mockUserConfig,
-        teamData: mockTeamData,
-        tenantData: mockTenantData,
-        orgInfoData: mockOrgInfo,
-        auxCodes: mockAuxCodes,
-        orgSettingsData: mockOrgSettings,
-        agentProfileData: mockAgentProfile,
-        dialPlanData: mockDialPlanData,
-        urlMapping: mockURLMapping,
-        multimediaProfileId: mockSiteInfo.multimediaProfileId,
-        aiFeatureFlags: mockAIFeatureFlags,
+      expect(result.dialPlan).toEqual({
+        type: 'adhocDial',
+        dialPlanEntity: [{regex: '[0-9]+', prefix: '1', strippedChars: '( )-', name: 'Plan 1'}],
       });
     });
 
-    it('should throw an error if any of the API calls fail', async () => {
-      const mockAgentId = 'agent001';
+    it.each([
+      'getOrgDesktopLoginConfig',
+      'getUserDesktopLoginConfig',
+      'getAllAuxCodes',
+      'getSiteInfo',
+      'getAllTeams',
+    ])('should throw an error if %s fails', async (failingCall) => {
       const mockError = new Error('API call failed');
-      agentConfigService.getUserUsingCI = jest.fn().mockRejectedValue(mockError);
-      agentConfigService.getOrgInfo = jest.fn().mockResolvedValue({});
-      agentConfigService.getOrganizationSetting = jest.fn().mockResolvedValue({});
-      agentConfigService.getTenantData = jest.fn().mockResolvedValue({});
-      agentConfigService.getURLMapping = jest.fn().mockResolvedValue({});
-      agentConfigService.getAIFeatureFlags = jest.fn().mockResolvedValue({data: []});
-      agentConfigService.getAllAuxCodes = jest.fn().mockResolvedValue({});
-      agentConfigService.getDesktopProfileById = jest.fn().mockResolvedValue({});
-      agentConfigService.getDialPlanData = jest.fn().mockResolvedValue({});
-      agentConfigService.getAllTeams = jest.fn().mockResolvedValue({});
+      stubConfigCalls();
+      agentConfigService[failingCall] = jest.fn().mockRejectedValue(mockError);
 
       await expect(agentConfigService.getAgentConfig(mockOrgId, mockAgentId)).rejects.toThrow(
         'API call failed'
+      );
+      expect(LoggerProxy.error).toHaveBeenCalledWith(
+        'getAgentConfig call failed with Error: API call failed',
+        {module: CONFIG_FILE_NAME, method: 'getAgentConfig'}
       );
     });
   });

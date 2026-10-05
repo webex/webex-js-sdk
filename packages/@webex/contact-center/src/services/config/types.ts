@@ -251,7 +251,7 @@ export type WebSocketEvent = {
 };
 
 /**
- * Represents the response from getUserUsingCI method.
+ * Agent identity carried by the `user` section of the user desktop-login aggregate.
  */
 export type AgentResponse = {
   /**
@@ -285,19 +285,9 @@ export type AgentResponse = {
   email: string;
 
   /**
-   * Team IDs assigned to the agent.
-   */
-  teamIds: string[];
-
-  /**
-   * Multimedia profile ID associated with the agent.
-   */
-  multimediaProfileId: string;
-
-  /**
    * Skill profile ID of the agent.
    */
-  skillProfileId: string;
+  skillProfileId?: string;
 
   /**
    * Site ID of the agent.
@@ -305,9 +295,10 @@ export type AgentResponse = {
   siteId: string;
 
   /**
-   * Database ID of the agent.
+   * Database ID of the agent, distinct from `ciUserId`. Passed as `userDbId` to the team lookup,
+   * which sends it as the backend's `filter=userId==` value.
    */
-  dbId?: string;
+  dbId: string;
 
   /**
    * The default dialed number of the agent.
@@ -317,36 +308,12 @@ export type AgentResponse = {
 };
 
 /**
- * Represents the response from getDesktopProfileById method.
+ * Desktop Profile settings carried by the `agentProfile` section of the user desktop-login
+ * aggregate.
  */
-export type DesktopProfileResponse = {
+export type AgentProfile = {
   /**
-   * Unique identifier of the agent profile configuration.
-   */
-  id: string;
-
-  /**
-   * Display name for the agent profile.
-   */
-  name: string;
-
-  /**
-   * Description of the agent profile.
-   */
-  description: string;
-
-  /**
-   * Parent entity type for the profile (for example ORGANIZATION).
-   */
-  parentType: string;
-
-  /**
-   * Indicates whether screen pop is enabled.
-   */
-  screenPopup: boolean;
-
-  /**
-   * Represents the voice options of an agent.
+   * Represents the voice options of an agent. The order is nondeterministic; treat as a set.
    */
   loginVoiceOptions: LoginOption[];
 
@@ -359,16 +326,6 @@ export type DesktopProfileResponse = {
    * Idle codes that the agents can select in Agent Desktop. It can take one of these values: ALL - To make all idle codes available. SPECIFIC - To make specific codes available.
    */
   accessIdleCode: string;
-
-  /**
-   * Wrap-up codes list that the agents can select when they wrap up a contact.
-   */
-  wrapUpCodes: string[];
-
-  /**
-   * Idle codes list that the agents can select in Agent Desktop.
-   */
-  idleCodes: string[];
 
   /**
    * Dial plan enabled for the agent.
@@ -388,12 +345,7 @@ export type DesktopProfileResponse = {
   /**
    * Whether the agent personal greeting is enabled.
    */
-  agentPersonalGreeting: boolean;
-
-  /**
-   * Auto answer allowed.
-   */
-  autoAnswer: boolean;
+  agentPersonalGreeting?: boolean;
 
   /**
    * Auto wrap-up after seconds.
@@ -416,29 +368,14 @@ export type DesktopProfileResponse = {
   accessQueue: CollaborationAccess;
 
   /**
-   * Queue identifiers available to the agent when access is SPECIFIC.
-   */
-  queues: string[];
-
-  /**
    * Access control for entry points assigned to the agent.
    */
   accessEntryPoint: CollaborationAccess;
 
   /**
-   * Entry point identifiers available to the agent when access is SPECIFIC.
-   */
-  entryPoints: string[];
-
-  /**
    * Access control for buddy teams assigned to the agent.
    */
   accessBuddyTeam: CollaborationAccess;
-
-  /**
-   * Buddy team identifiers available to the agent when access is SPECIFIC.
-   */
-  buddyTeams: string[];
 
   /**
    * Outdial enabled for the agent.
@@ -456,6 +393,11 @@ export type DesktopProfileResponse = {
   outdialANIId: string;
 
   /**
+   * Whether the agent can schedule and manage callbacks.
+   */
+  scheduleAndManageCallBack?: boolean;
+
+  /**
    * Consult to queue allowed.
    */
   consultToQueue: boolean;
@@ -463,35 +405,20 @@ export type DesktopProfileResponse = {
   /**
    * Address book ID of the agent.
    */
-  addressBookId: string;
+  addressBookId?: string;
 
   /**
    * Viewable statistics of the agent.
    */
   viewableStatistics: {
-    id: string;
     agentStats: boolean;
-    accessQueueStats: string;
-    contactServiceQueues: string[];
-    loggedInTeamStats: boolean;
-    accessTeamStats: string;
-    teams: string[];
+    aiAgentPerformance?: boolean;
   };
 
   /**
    * Agent DN validation of the agent.
    */
   agentDNValidation: string;
-
-  /**
-   * Additional DN validation criteria configured for the agent.
-   */
-  agentDNValidationCriterions: string[];
-
-  /**
-   * Dial plans of the agent.
-   */
-  dialPlans: string[];
 
   /**
    * Timeout desktop inactivity custom enabled.
@@ -501,52 +428,7 @@ export type DesktopProfileResponse = {
   /**
    * Timeout desktop inactivity minutes.
    */
-  timeoutDesktopInactivityMins: number;
-
-  /**
-   * Show user details in Microsoft enabled or not.
-   */
-  showUserDetailsMS: boolean;
-
-  /**
-   * State synchronization in Microsoft enabled or not.
-   */
-  stateSynchronizationMS: boolean;
-
-  /**
-   * Show user details in Webex enabled or not.
-   */
-  showUserDetailsWebex: boolean;
-
-  /**
-   * State synchronization in Webex enabled or not.
-   */
-  stateSynchronizationWebex: boolean;
-
-  /**
-   * Threshold rules configured for the agent profile.
-   */
-  thresholdRules: Array<Record<string, string | number>>;
-
-  /**
-   * Whether the agent profile is currently active.
-   */
-  active: boolean;
-
-  /**
-   * Whether this profile is the system default.
-   */
-  systemDefault: boolean;
-
-  /**
-   * Timestamp when the profile was created.
-   */
-  createdTime: number;
-
-  /**
-   * Timestamp when the profile was last updated.
-   */
-  lastUpdatedTime: number;
+  timeoutDesktopInactivityMins?: number;
 };
 
 /**
@@ -706,7 +588,8 @@ export type ListTeamsResponse = {
 };
 
 /**
- * Basic organization information in the contact center system
+ * Basic organization information carried by the `organization` section of the org desktop-login
+ * aggregate.
  * @private
  * @ignore
  */
@@ -715,12 +598,11 @@ export type OrgInfo = {
   tenantId: string;
   /** Organization timezone */
   timezone: string;
-  /** Current environment (e.g., 'produs1', 'intgus1') */
-  environment: string;
 };
 
 /**
- * Organization-wide feature settings and configurations
+ * Organization-wide feature settings carried by the `organizationSetting` section of the org
+ * desktop-login aggregate.
  * @private
  */
 export type OrgSettings = {
@@ -752,12 +634,13 @@ export type SiteInfo = {
 };
 
 /**
- * Tenant-level configuration data and settings
+ * Tenant-level configuration carried by the `tenantConfiguration` section of the org
+ * desktop-login aggregate.
  * @private
  */
 export type TenantData = {
-  /** Desktop inactivity timeout in minutes */
-  timeoutDesktopInactivityMins: number;
+  /** Desktop inactivity timeout in minutes. Omitted when the timeout is not enabled. */
+  timeoutDesktopInactivityMins?: number;
   /** Whether default DN is enforced */
   forceDefaultDn: boolean;
   /** Regex pattern for default DN validation */
@@ -781,16 +664,46 @@ export type TenantData = {
 };
 
 /**
- * URL mapping configuration for external integrations
+ * URL mappings carried by the `urlMappings` section of the org desktop-login aggregate, keyed by
+ * mapping name. The aggregate returns `{}` when the organization has no Acqueon configuration.
  * @public
  */
-export type URLMapping = {
-  id: string;
-  name: string;
-  url: string;
-  links: string[]; // Assuming 'links' is an array of strings, adjust if necessary
-  createdTime: number; // Assuming timestamps are represented as numbers
-  lastUpdatedTime: number;
+export type OrgUrlMappings = {
+  /** Acqueon API endpoint URL */
+  ACQUEON_API_URL?: string;
+  /** Acqueon console URL */
+  ACQUEON_CONSOLE_URL?: string;
+};
+
+/**
+ * Organization-level Microsoft Teams integration configuration carried by the `microsoftConfig`
+ * section of the org desktop-login aggregate. The whole section is absent when the organization
+ * has no Microsoft integration.
+ * @public
+ */
+export type OrgMicrosoftConfig = {
+  /** Whether to show user details in Teams */
+  showUserDetails?: boolean;
+  /** Whether to sync agent state with Teams */
+  stateSynchronization?: boolean;
+  /** Whether the integration is enabled organization-wide */
+  active?: boolean;
+  /** Idle codes mapped to Teams presence states */
+  idleCodes?: Record<string, string>;
+};
+
+/**
+ * Organization-level Webex integration configuration carried by the `webexConfig` section of the
+ * org desktop-login aggregate.
+ * @public
+ */
+export type OrgWebexConfig = {
+  /** Whether to show user details in Webex */
+  showUserDetails?: boolean;
+  /** Whether to sync agent state with Webex */
+  stateSynchronization?: boolean;
+  /** Idle codes mapped to Webex presence states */
+  idleCodes?: Record<string, string>;
 };
 
 /**
@@ -888,6 +801,8 @@ export type DialPlanEntity = {
   strippedChars: string;
   /** Name of the dial plan */
   name: string;
+  /** Whether the dial plan is active */
+  active: boolean;
 };
 
 /**
@@ -1031,11 +946,12 @@ export type URLMappings = {
 };
 
 /**
- * AI feature resource row returned by /v2/ai-feature API.
+ * AI feature flags carried by the `aiFeature` section of the org desktop-login aggregate.
  * @public
  */
 export type AIFeatureFlags = {
-  id: string;
+  /** Not carried by the aggregate; retained for responses that still supply a record id. */
+  id?: string;
   realtimeTranscripts?: {
     enable?: boolean;
     agentInclusionType?: string;
@@ -1060,27 +976,42 @@ export type AIFeatureFlags = {
     queuesInclusionType?: string;
     surveyDataSource?: string;
   };
-  links?: string[];
-  createdTime?: number;
-  lastUpdatedTime?: number;
 };
 
 /**
- * Response type for list AI feature resources API.
+ * Aggregated organization configuration returned by `organization/{orgId}/desktop-login`.
+ * Replaces the separate organization, organization-setting, tenant-configuration,
+ * org-url-mapping and ai-feature calls.
  * @public
  */
-export type AIFeatureFlagsResponse = {
-  meta?: {
-    orgid?: string;
-    page?: number;
-    pageSize?: number;
-    totalPages?: number;
-    totalRecords?: number;
-    links?: {
-      self?: string;
-    };
-  };
-  data: AIFeatureFlags[];
+export type OrgDesktopLoginResponse = {
+  /** Organization identity and timezone */
+  organization: OrgInfo;
+  /** Organization-wide feature settings */
+  organizationSetting: OrgSettings;
+  /** Tenant-level configuration */
+  tenantConfiguration: TenantData;
+  /** External integration URLs, keyed by mapping name */
+  urlMappings?: OrgUrlMappings;
+  /** AI feature flags */
+  aiFeature?: AIFeatureFlags;
+  /** Microsoft Teams integration configuration; absent when not configured */
+  microsoftConfig?: OrgMicrosoftConfig;
+  /** Webex integration configuration */
+  webexConfig?: OrgWebexConfig;
+};
+
+/**
+ * Aggregated user configuration returned by
+ * `organization/{orgId}/v2/user/by-ci-user-id/{ciUserId}/desktop-login`.
+ * Replaces the separate user and agent-profile calls.
+ * @public
+ */
+export type UserDesktopLoginResponse = {
+  /** Agent identity */
+  user: AgentResponse;
+  /** Desktop Profile settings for the agent */
+  agentProfile: AgentProfile;
 };
 
 /**
@@ -1220,8 +1151,6 @@ export type Profile = {
   isAnalyzerEnabled?: boolean;
   /** Tenant timezone */
   tenantTimezone?: string;
-  /** Current environment (e.g., 'produs1', 'intgus1') */
-  environment?: string;
   /** Available voice login options */
   loginVoiceOptions?: LoginOption[];
   /** Current login device type */
