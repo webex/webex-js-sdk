@@ -486,6 +486,10 @@ export default class CallDiagnosticMetrics extends StatelessWebexPlugin {
       identifiers.webexSiteName = meeting.meetingInfo?.siteName;
     }
 
+    if (meeting?.meetingInfo?.locusClusterUrl) {
+      identifiers.locusCluster = meeting.meetingInfo.locusClusterUrl;
+    }
+
     if (mediaConnections) {
       identifiers.mediaAgentAlias = mediaConnections?.[0]?.mediaAgentAlias;
       identifiers.mediaAgentGroupId = mediaConnections?.[0]?.mediaAgentGroupId;

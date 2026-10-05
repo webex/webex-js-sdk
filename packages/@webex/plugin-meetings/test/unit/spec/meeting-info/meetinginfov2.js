@@ -815,8 +815,14 @@ describe('plugin-meetings', () => {
           {meetingId: '123', sendCAevents: false, shouldSendCAevents: false},
           {shouldSendCAevents: false},
           {meetingId: '123', sendCAevents: true, shouldSendCAevents: true, confIdStr: '999'},
+          {
+            meetingId: '123',
+            sendCAevents: true,
+            shouldSendCAevents: true,
+            locusClusterUrl: 'locus-k.wbx2.com',
+          },
         ],
-        ({meetingId, sendCAevents, shouldSendCAevents, confIdStr}) => {
+        ({meetingId, sendCAevents, shouldSendCAevents, confIdStr, locusClusterUrl}) => {
           it('should send CA metric if meetingId is provided and send CA events is authorized', async () => {
             const requestResponse = {
               statusCode: 200,
@@ -824,6 +830,9 @@ describe('plugin-meetings', () => {
             };
             if (confIdStr) {
               requestResponse.body.confIdStr = confIdStr;
+            }
+            if (locusClusterUrl) {
+              requestResponse.body.locusClusterUrl = locusClusterUrl;
             }
             const extraParams = {mtid: 'm9fe0afd8c435e892afcce9ea25b97046', joinTXId: 'TSmrX61wNF'};
 
@@ -882,6 +891,7 @@ describe('plugin-meetings', () => {
                 payload: {
                   identifiers: {
                     meetingLookupUrl: result?.url,
+                    ...(locusClusterUrl ? {locusCluster: 'locus-k.wbx2.com'} : {}),
                   },
                 },
                 options: {

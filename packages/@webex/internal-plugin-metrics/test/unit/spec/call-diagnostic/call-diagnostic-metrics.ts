@@ -715,6 +715,35 @@ describe('internal-plugin-metrics', () => {
         });
       });
 
+      it('should build identifiers correctly with a meeting that has meetingInfo with locusClusterUrl', () => {
+        const res = cd.getIdentifiers({
+          mediaConnections: [
+            {mediaAgentAlias: 'mediaAgentAlias', mediaAgentGroupId: 'mediaAgentGroupId'},
+          ],
+          meeting: {
+            ...fakeMeeting,
+            meetingInfo: {
+              ...fakeMeeting.meetingInfo,
+              locusClusterUrl: 'locus-k.wbx2.com',
+            },
+          },
+        });
+
+        assert.deepEqual(res, {
+          correlationId: 'correlationId',
+          deviceId: 'deviceUrl',
+          locusCluster: 'locus-k.wbx2.com',
+          locusId: 'url',
+          locusSessionId: 'locusSessionId',
+          locusStartTime: 'lastActive',
+          locusUrl: 'locus/url',
+          mediaAgentAlias: 'mediaAgentAlias',
+          mediaAgentGroupId: 'mediaAgentGroupId',
+          orgId: 'orgId',
+          userId: 'userId',
+        });
+      });
+
       it('should build identifiers correctly with a meeting that has sessionCorrelationId', () => {
         const res = cd.getIdentifiers({
           mediaConnections: [
