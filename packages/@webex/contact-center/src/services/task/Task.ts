@@ -264,35 +264,45 @@ export default abstract class Task extends EventEmitter implements ITask {
   }
 
   public requestPostCallSummary(): Promise<AISummary> {
-    return this.requestSummary('POST_CALL_SUMMARY');
+    return this.requestSummary(
+      'POST_CALL_SUMMARY',
+      METRIC_EVENT_NAMES.AI_SUMMARY_GET_POST_CALL_SUCCESS,
+      METRIC_EVENT_NAMES.AI_SUMMARY_GET_POST_CALL_FAILED,
+      {operation: METHODS.REQUEST_POST_CALL_SUMMARY}
+    );
   }
 
   public sendPostCallSummaryResponse(response: AISummaryResponse): Promise<void> {
-    return this.sendSummaryResponse('POST_CALL_SUMMARY', response);
+    return this.sendSummaryResponse(
+      'POST_CALL_SUMMARY',
+      response,
+      METRIC_EVENT_NAMES.AI_SUMMARY_POST_CALL_RESPONSE_SUCCESS,
+      METRIC_EVENT_NAMES.AI_SUMMARY_POST_CALL_RESPONSE_FAILED,
+      {operation: METHODS.SEND_POST_CALL_SUMMARY_RESPONSE}
+    );
   }
 
   public requestMidCallSummary(action: AISummaryAction): Promise<AISummary> {
-    return this.requestSummary('MID_CALL_SUMMARY', action);
+    return this.requestSummary(
+      'MID_CALL_SUMMARY',
+      METRIC_EVENT_NAMES.AI_SUMMARY_GET_MID_CALL_SUCCESS,
+      METRIC_EVENT_NAMES.AI_SUMMARY_GET_MID_CALL_FAILED,
+      {operation: METHODS.REQUEST_MID_CALL_SUMMARY, actionType: action},
+      action
+    );
   }
 
   private async requestSummary(
     summaryType: 'POST_CALL_SUMMARY' | 'MID_CALL_SUMMARY',
+    successMetric: METRIC_EVENT_NAMES,
+    failureMetric: METRIC_EVENT_NAMES,
+    metricFields: Record<string, unknown>,
     action?: AISummaryAction
   ): Promise<AISummary> {
     const isPostCall = summaryType === 'POST_CALL_SUMMARY';
-    const successMetric = isPostCall
-      ? METRIC_EVENT_NAMES.AI_SUMMARY_GET_POST_CALL_SUCCESS
-      : METRIC_EVENT_NAMES.AI_SUMMARY_GET_MID_CALL_SUCCESS;
-    const failureMetric = isPostCall
-      ? METRIC_EVENT_NAMES.AI_SUMMARY_GET_POST_CALL_FAILED
-      : METRIC_EVENT_NAMES.AI_SUMMARY_GET_MID_CALL_FAILED;
-    const metricFields: Record<string, unknown> = {
-      operation: isPostCall ? METHODS.REQUEST_POST_CALL_SUMMARY : METHODS.REQUEST_MID_CALL_SUMMARY,
-    };
 
     try {
       this.metricsManager.timeEvent([successMetric, failureMetric]);
-      if (action) Object.assign(metricFields, {actionType: action});
 
       const interactionId = this.data.interactionId;
       const conversationId = this.data.interaction?.mainInteractionId || interactionId;
@@ -367,30 +377,28 @@ export default abstract class Task extends EventEmitter implements ITask {
     response: AISummaryResponse,
     action: AISummaryAction
   ): Promise<void> {
-    return this.sendSummaryResponse('MID_CALL_SUMMARY', response, action);
+    return this.sendSummaryResponse(
+      'MID_CALL_SUMMARY',
+      response,
+      METRIC_EVENT_NAMES.AI_SUMMARY_MID_CALL_RESPONSE_SUCCESS,
+      METRIC_EVENT_NAMES.AI_SUMMARY_MID_CALL_RESPONSE_FAILED,
+      {operation: METHODS.SEND_MID_CALL_SUMMARY_RESPONSE, actionType: action},
+      action
+    );
   }
 
   private async sendSummaryResponse(
     summaryType: 'POST_CALL_SUMMARY' | 'MID_CALL_SUMMARY',
     response: AISummaryResponse,
+    successMetric: METRIC_EVENT_NAMES,
+    failureMetric: METRIC_EVENT_NAMES,
+    metricFields: Record<string, unknown>,
     action?: AISummaryAction
   ): Promise<void> {
     const isPostCall = summaryType === 'POST_CALL_SUMMARY';
-    const successMetric = isPostCall
-      ? METRIC_EVENT_NAMES.AI_SUMMARY_POST_CALL_RESPONSE_SUCCESS
-      : METRIC_EVENT_NAMES.AI_SUMMARY_MID_CALL_RESPONSE_SUCCESS;
-    const failureMetric = isPostCall
-      ? METRIC_EVENT_NAMES.AI_SUMMARY_POST_CALL_RESPONSE_FAILED
-      : METRIC_EVENT_NAMES.AI_SUMMARY_MID_CALL_RESPONSE_FAILED;
-    const metricFields: Record<string, unknown> = {
-      operation: isPostCall
-        ? METHODS.SEND_POST_CALL_SUMMARY_RESPONSE
-        : METHODS.SEND_MID_CALL_SUMMARY_RESPONSE,
-    };
 
     try {
       this.metricsManager.timeEvent([successMetric, failureMetric]);
-      if (action) Object.assign(metricFields, {actionType: action});
       const retainedContext = this.summaryResponseContexts.get(summaryType);
       const context = retainedContext ?? {
         conversationId: this.data.interaction?.mainInteractionId || this.data.interactionId,
