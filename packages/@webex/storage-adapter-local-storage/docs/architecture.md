@@ -303,7 +303,10 @@ Architectural controls and their absence:
   values that inherit from it — universally for `Object.prototype`, but only on arrays when
   `Array.prototype` is the target. The target follows the stored data rather than being fixed — `Object.prototype`
   for an absent or object root, `Array.prototype` for an array root, and the matching wrapper
-  prototype for a primitive root; a `null` root rejects instead. `clear()` does not undo it. The module applies no own-property guard. No exploit path
+  prototype for a primitive root; a `null` root rejects instead. The key `__proto__` is a second and
+  worse variant: it re-parents the target prototype rather than adding a property, which succeeds for
+  every built-in prototype except the immutable `Object.prototype` — splicing a caller-supplied
+  object into a built-in type's chain, or severing it. `clear()` does not undo either variant. The module applies no own-property guard. No exploit path
   exists in this repository as configured, because `webex-core` passes fixed plugin names, but that
   is a property of the callers rather than of the adapter. Tracked as a code defect in the module
   specification (`MOD-016`), not as accepted behavior.
