@@ -167,7 +167,11 @@
     "minimum_independence": "different-runtime",
     "blocking_severities": [
       "Blocking"
-    ]
+    ],
+    "validator_runtime": "codex",
+    "validator_runtime_source": "invocation-input",
+    "runtime_fallback_tier": "different-runtime",
+    "source_commit": "e4b54a349291d3dede458c08ea105f961bed845c"
   },
   "layout": {
     "sdd_root": ".sdd",

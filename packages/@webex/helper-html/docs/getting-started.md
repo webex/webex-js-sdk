@@ -10,7 +10,7 @@ generated_from: getting-started@0.3.0
 generated_by: cursor
 approved_by: repository user
 updated_at: 2026-10-01T11:15:00Z
-validation_status: not-run
+validation_status: pass-with-warnings
 -->
 
 # Getting started
