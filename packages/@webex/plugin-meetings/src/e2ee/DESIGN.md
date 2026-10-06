@@ -123,7 +123,7 @@ graph TD
     E2eeMeeting --> Sig[E2eeSignaling LLM adapter]
     E2eeMeeting --> Svc[MediaEncryptionService HTTP adapter]
     E2eeMeeting --> Recon[E2eeRosterReconciler]
-    E2eeMeeting --> MediaCtl[E2eeMediaController]
+    E2eeMeeting --> MediaCtl[MediaKeyController]
     E2eeMeeting -.->|shared instance| Ident[E2eeIdentityProvider]
     E2eeMeeting -.->|shared loader| WasmLoader[WasmLoader common/]
 
@@ -138,7 +138,7 @@ How the MLS engine's outputs reach media and members, and how the adapters reach
 
 ```mermaid
 graph LR
-    MLS[MlsGroupSession] -->|SFrame keys| MediaCtl[E2eeMediaController]
+    MLS[MlsGroupSession] -->|SFrame keys| MediaCtl[MediaKeyController]
     MediaCtl -->|IE2eeMediaConnection| MediaProps[MediaProperties.webrtcMediaConnection]
     MLS -->|roster updates| Recon[E2eeRosterReconciler]
     Recon <-->|verify by device.url| Members
@@ -172,7 +172,7 @@ packages/@webex/plugin-meetings/src/e2ee/
 ├── MediaEncryptionService.ts # HTTP adapter (webex.request service:'media-encryption')
 ├── E2eeIdentityProvider.ts   # CSR/CA credentials + trust anchors (one instance, cached)
 ├── E2eeRosterReconciler.ts   # MLS roster <-> Members reconciliation
-├── E2eeMediaController.ts     # key injection into IE2eeMediaConnection (buffers keys)
+├── MediaKeyController.ts      # key injection into IE2eeMediaConnection (buffers keys)
 ├── IE2eeMediaConnection.ts   # interface contract implemented by internal-media-core
 ├── types.ts                  # shared E2EE types
 ├── constants.ts              # e2ee constants (E2EE_WASM_URL, event / mercury names, timeouts)
@@ -422,7 +422,7 @@ Design choice: pass the **full key set** on every call (idempotent — replaces 
 key table). This is resilient to reconnect, out-of-order delivery, and epoch rotation, and
 pairs cleanly with the controller's buffer.
 
-### `E2eeMediaController` (buffers keys; survives media reconnect)
+### `MediaKeyController` (buffers keys; survives media reconnect)
 
 ```ts
 constructor();
@@ -477,7 +477,7 @@ detachMediaConnection(): void;
    `  trustAnchors: identityProvider.getTrustAnchors(), joinTimeout, coalesceWindow })`
 7. the reconciler is already created + registered as the Members pre-emit processor in the facade
    constructor (see `E2eeRosterReconciler`); `start()` only wires its roster events
-8. `mediaController = new E2eeMediaController();` if
+8. `mediaController = new MediaKeyController();` if
    `meeting.mediaProperties.webrtcMediaConnection` present → attach
 9. wire session events:
    - `joinSuccess` → `mediaController.setSframeParams(sframe)`; `addKey(key)`;
@@ -651,7 +651,7 @@ mock webex. (Filenames below are illustrative — each maps to a spec under `tes
 - `E2eeIdentityProvider.test.ts` — mock `webexRequest` (CA request); assert CSR built, caching, trust anchors.
 - `E2eeRosterReconciler.test.ts` — fake members collection + roster; assert out-of-order both
   directions, per-device match by URL, aggregate state, reapply on `MEMBERS_UPDATE`.
-- `E2eeMediaController.test.ts` — fake `IE2eeMediaConnection`; keys-before-media buffering,
+- `MediaKeyController.test.ts` — fake `IE2eeMediaConnection`; keys-before-media buffering,
   replay on attach, reconnect replay, purge / active epoch.
 - `E2eeMeeting.test.ts` — wire fakes; `start` guarded by `required()` + flag; happy path + failure;
   `hasMediaServices` derived from roster (media-service device type present/absent) + change event.
@@ -667,7 +667,7 @@ mock webex. (Filenames below are illustrative — each maps to a spec under `tes
 | **P2** | `MediaEncryptionService` + `E2eeIdentityProvider` (one instance) + `E2eeSignaling` (I/O adapters). |
 | **P3** | `E2eeMeeting` facade + `Meeting` wiring (start/stop, `getSecurityCode`, events) — **security code works end-to-end**. |
 | **P4** | `E2eeRosterReconciler` + `Member` extension + verification events. |
-| **P5** | `IE2eeMediaConnection` contract + `E2eeMediaController` (media key injection); media-core impl (new `setEncryptionKeys` method) tracked separately (out of scope). |
+| **P5** | `IE2eeMediaConnection` contract + `MediaKeyController` (media key injection); media-core impl (new `setEncryptionKeys` method) tracked separately (out of scope). |
 | **P6** | Reconnection + force-leave failure policy (reasons/errors/events) + `keepAlive` hardening. |
 
 ## Design principles applied
