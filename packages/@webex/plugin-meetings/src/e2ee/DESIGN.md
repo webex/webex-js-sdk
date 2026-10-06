@@ -85,6 +85,9 @@ not the media encryption path.
 
 - Exact name/shape of the new `internal-media-core` key API (`setEncryptionKeys`?) —
   align with the media team.
+- Identity may be a separate plugin concern. Keep the identity provider separate from MLS group
+  logic within `plugin-meetings` for now, and revisit a separate plugin after confirming how
+  participant certificate information is obtained.
 
 ## Architecture overview
 
