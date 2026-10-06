@@ -122,7 +122,7 @@ graph TD
     E2eeMeeting[E2eeMeeting facade] --> MLS[MlsGroupSession WASM engine]
     E2eeMeeting --> Sig[E2eeSignaling LLM adapter]
     E2eeMeeting --> Svc[MediaEncryptionService HTTP adapter]
-    E2eeMeeting --> Recon[E2eeRosterReconciler]
+    E2eeMeeting --> Recon[MemberMLSReconciler]
     E2eeMeeting --> MediaCtl[MediaKeyController]
     E2eeMeeting -.->|shared instance| Ident[E2eeIdentityProvider]
     E2eeMeeting -.->|shared loader| WasmLoader[WasmLoader common/]
@@ -140,7 +140,7 @@ How the MLS engine's outputs reach media and members, and how the adapters reach
 graph LR
     MLS[MlsGroupSession] -->|SFrame keys| MediaCtl[MediaKeyController]
     MediaCtl -->|IE2eeMediaConnection| MediaProps[MediaProperties.webrtcMediaConnection]
-    MLS -->|roster updates| Recon[E2eeRosterReconciler]
+    MLS -->|roster updates| Recon[MemberMLSReconciler]
     Recon <-->|verify by device.url| Members
 
     Sig[E2eeSignaling] -->|media_encryption.* events| LLM[webex.internal.llm]
@@ -171,7 +171,7 @@ packages/@webex/plugin-meetings/src/e2ee/
 ├── E2eeSignaling.ts          # LLM adapter (webex.internal.llm media_encryption.* events)
 ├── MediaEncryptionService.ts # HTTP adapter (webex.request service:'media-encryption')
 ├── E2eeIdentityProvider.ts   # CSR/CA credentials + trust anchors (one instance, cached)
-├── E2eeRosterReconciler.ts   # MLS roster <-> Members reconciliation
+├── MemberMLSReconciler.ts   # MLS roster <-> Members reconciliation
 ├── MediaKeyController.ts      # key injection into IE2eeMediaConnection (buffers keys)
 ├── IE2eeMediaConnection.ts   # interface contract implemented by internal-media-core
 ├── types.ts                  # shared E2EE types
@@ -359,7 +359,7 @@ getTrustAnchors(): { webexCaRoots; domainNameRoots; userIdentityRoots };
 Moves `WEBEX_CA_PRODUCTION_ROOTS`, `generateCsrWithPkijs`, and the PEM helpers here.
 `domainNameRoots` / `userIdentityRoots` are TBD from the service (currently `''`).
 
-### `E2eeRosterReconciler`
+### `MemberMLSReconciler`
 
 ```ts
 constructor(deps: { membersCollection; reportMembersUpdated: (members) => void });
@@ -476,7 +476,7 @@ detachMediaConnection(): void;
    `  serviceUrl: meeting.locusInfo.info.mediaEncryptionGroupUrl, credentials: creds,`
    `  trustAnchors: identityProvider.getTrustAnchors(), joinTimeout, coalesceWindow })`
 7. the reconciler is already created + registered as the Members pre-emit processor in the facade
-   constructor (see `E2eeRosterReconciler`); `start()` only wires its roster events
+   constructor (see `MemberMLSReconciler`); `start()` only wires its roster events
 8. `mediaController = new MediaKeyController();` if
    `meeting.mediaProperties.webrtcMediaConnection` present → attach
 9. wire session events:
@@ -602,7 +602,7 @@ to surface the meeting's zero-trust state.
   - `MEETING_E2EE_MEDIA_SERVICES_CHANGED: 'meeting:e2ee:mediaServicesChanged'` (payload `{ hasMediaServices }`)
   - `MEETING_E2EE_FAILURE: 'meeting:e2ee:failure'` (payload `{ reason }`)
   - Member verification is surfaced via the existing `members:update` (no dedicated event); see
-    `E2eeRosterReconciler`.
+    `MemberMLSReconciler`.
 - `constants.ts` `MEETING_REMOVED_REASON`: add `E2EE_JOIN_FAILURE`, `E2EE_EVICTED`,
   `E2EE_TIMEOUT` (used as leave/removed reasons on force-leave, so `meeting:removed`
   carries the cause).
@@ -649,7 +649,7 @@ mock webex. (Filenames below are illustrative — each maps to a spec under `tes
 - `E2eeSignaling.test.ts` — mock `llm` (`on/off/isConnected/getLocusUrl`) + a `getLocusUrl`
   callback; assert subscription, locus-URL guard, forwarding, teardown.
 - `E2eeIdentityProvider.test.ts` — mock `webexRequest` (CA request); assert CSR built, caching, trust anchors.
-- `E2eeRosterReconciler.test.ts` — fake members collection + roster; assert out-of-order both
+- `MemberMLSReconciler.test.ts` — fake members collection + roster; assert out-of-order both
   directions, per-device match by URL, aggregate state, reapply on `MEMBERS_UPDATE`.
 - `MediaKeyController.test.ts` — fake `IE2eeMediaConnection`; keys-before-media buffering,
   replay on attach, reconnect replay, purge / active epoch.
@@ -666,7 +666,7 @@ mock webex. (Filenames below are illustrative — each maps to a spec under `tes
 | **P1** | Extract/refactor `MlsGroupSession` (engine) + `types` + WASM-loader use (no behavior change vs PoC). |
 | **P2** | `MediaEncryptionService` + `E2eeIdentityProvider` (one instance) + `E2eeSignaling` (I/O adapters). |
 | **P3** | `E2eeMeeting` facade + `Meeting` wiring (start/stop, `getSecurityCode`, events) — **security code works end-to-end**. |
-| **P4** | `E2eeRosterReconciler` + `Member` extension + verification events. |
+| **P4** | `MemberMLSReconciler` + `Member` extension + verification events. |
 | **P5** | `IE2eeMediaConnection` contract + `MediaKeyController` (media key injection); media-core impl (new `setEncryptionKeys` method) tracked separately (out of scope). |
 | **P6** | Reconnection + force-leave failure policy (reasons/errors/events) + `keepAlive` hardening. |
 

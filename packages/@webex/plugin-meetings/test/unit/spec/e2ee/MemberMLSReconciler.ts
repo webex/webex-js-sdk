@@ -3,12 +3,12 @@
  */
 import {assert} from '@webex/test-helper-chai';
 import sinon from 'sinon';
-import E2eeRosterReconciler from '@webex/plugin-meetings/src/e2ee/E2eeRosterReconciler';
+import MemberMLSReconciler from '@webex/plugin-meetings/src/e2ee/MemberMLSReconciler';
 import MembersCollection from '@webex/plugin-meetings/src/members/collection';
 import Member from '@webex/plugin-meetings/src/member';
 
 describe('plugin-meetings', () => {
-  describe('E2eeRosterReconciler', () => {
+  describe('MemberMLSReconciler', () => {
     let membersCollection;
     let reportMembersUpdated;
     let reconciler;
@@ -32,7 +32,7 @@ describe('plugin-meetings', () => {
     beforeEach(() => {
       membersCollection = new MembersCollection();
       reportMembersUpdated = sinon.stub();
-      reconciler = new E2eeRosterReconciler({membersCollection, reportMembersUpdated});
+      reconciler = new MemberMLSReconciler({membersCollection, reportMembersUpdated});
     });
 
     afterEach(() => {

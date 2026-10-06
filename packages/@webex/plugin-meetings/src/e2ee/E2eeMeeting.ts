@@ -8,7 +8,7 @@ import {EVENT_TRIGGERS} from '../constants';
 import MlsGroupSession from './MlsGroupSession';
 import MediaEncryptionService from './MediaEncryptionService';
 import E2eeSignaling from './E2eeSignaling';
-import E2eeRosterReconciler from './E2eeRosterReconciler';
+import MemberMLSReconciler from './MemberMLSReconciler';
 import {E2EE_WASM_URL, MEDIA_SERVICE_DEVICE_TYPE} from './constants';
 import type E2eeIdentityProvider from './E2eeIdentityProvider';
 import type WasmLoader from '../common/wasm-loader';
@@ -38,7 +38,7 @@ export default class E2eeMeeting {
 
   private signaling?: E2eeSignaling;
 
-  private reconciler?: E2eeRosterReconciler;
+  private reconciler?: MemberMLSReconciler;
 
   private currentState: E2eeState = 'disabled';
 
@@ -77,7 +77,7 @@ export default class E2eeMeeting {
       // Created eagerly (not on join) and registered as the Members pre-emit processor, so member
       // verification is stamped into every members:update - even for member changes outside a
       // joined meeting. Roster-driven verification changes are reported back through Members too.
-      this.reconciler = new E2eeRosterReconciler({
+      this.reconciler = new MemberMLSReconciler({
         membersCollection: meeting.members.membersCollection,
         reportMembersUpdated: (members) => meeting.members.reportMembersUpdated(members),
       });

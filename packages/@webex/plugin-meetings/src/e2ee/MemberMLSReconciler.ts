@@ -26,7 +26,7 @@ interface MembersUpdatePayload {
  *    reverse index); members whose verification actually changed are handed to
  *    `reportMembersUpdated` so Members emits a `members:update` for them.
  */
-export default class E2eeRosterReconciler {
+export default class MemberMLSReconciler {
   private readonly membersCollection: MembersCollection;
 
   private readonly reportMembersUpdated: (updatedMembers: any[]) => void;
@@ -79,7 +79,7 @@ export default class E2eeRosterReconciler {
       if (
         member?.setE2eeDeviceVerification?.(
           entry.url,
-          E2eeRosterReconciler.toDeviceVerification(entry)
+          MemberMLSReconciler.toDeviceVerification(entry)
         )
       ) {
         changed.add(member);
@@ -87,7 +87,7 @@ export default class E2eeRosterReconciler {
     });
 
     LoggerProxy.logger.info(
-      `e2ee: E2eeRosterReconciler#applyRosterAdded --> ${added.length} added (roster size ${this.rosterByDeviceUrl.size})`
+      `e2ee: MemberMLSReconciler#applyRosterAdded --> ${added.length} added (roster size ${this.rosterByDeviceUrl.size})`
     );
     this.report(changed);
   }
@@ -112,7 +112,7 @@ export default class E2eeRosterReconciler {
     });
 
     LoggerProxy.logger.info(
-      `e2ee: E2eeRosterReconciler#applyRosterRemoved --> ${urls.length} removed (roster size ${this.rosterByDeviceUrl.size})`
+      `e2ee: MemberMLSReconciler#applyRosterRemoved --> ${urls.length} removed (roster size ${this.rosterByDeviceUrl.size})`
     );
     this.report(changed);
   }
@@ -124,7 +124,7 @@ export default class E2eeRosterReconciler {
   getDeviceVerification(deviceUrl: string): E2eeDeviceVerification | undefined {
     const rosterEntry = this.rosterByDeviceUrl.get(deviceUrl);
 
-    return rosterEntry ? E2eeRosterReconciler.toDeviceVerification(rosterEntry) : undefined;
+    return rosterEntry ? MemberMLSReconciler.toDeviceVerification(rosterEntry) : undefined;
   }
 
   /**
@@ -158,7 +158,7 @@ export default class E2eeRosterReconciler {
       const rosterEntry = device?.url ? this.rosterByDeviceUrl.get(device.url) : undefined;
 
       if (rosterEntry) {
-        verifications.push(E2eeRosterReconciler.toDeviceVerification(rosterEntry));
+        verifications.push(MemberMLSReconciler.toDeviceVerification(rosterEntry));
       }
     });
 
