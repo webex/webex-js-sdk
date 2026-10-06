@@ -9,8 +9,8 @@ doc_kind: standing-doc
 generated_from: architecture@0.3.0
 generated_by: claude-code
 approved_by: rsarika@cisco.com
-updated_at: 2026-10-04T00:00:00Z
-validation_status: not-run
+updated_at: 2026-10-06T06:09:53Z
+validation_status: pass-with-warnings
 -->
 
 # @webex/storage-adapter-local-storage architecture
@@ -65,9 +65,11 @@ safely assume a browser global.
 
 The one consequential internal decision is that every namespace shares a single `localStorage`
 entry named by the constructor `basekey`. It makes a full purge trivial and needs no key-prefixing
-convention, at the cost of whole-document reads and rewrites on `get`/`put`/`del`, a `clear()`
-whose blast radius exceeds the binding that calls it, and an isolation guarantee that is weaker than
-it looks. A rewrite round-trips sibling namespaces through `JSON.parse`/`JSON.stringify`; namespace
+convention, at the cost of whole-document access on every `get`, `put`, and `del` (a read and parse
+for `get`, which never writes, and a read-modify-write for `put` and `del`, as the module's
+operation inventory records), a `clear()` whose blast radius exceeds the binding that calls it, and
+an isolation guarantee that is weaker than it looks. A rewrite round-trips sibling namespaces
+through `JSON.parse`/`JSON.stringify`; namespace
 and key lookup do not check own properties, so `Object.prototype` names are not usable; and the
 document shape is never validated, so valid JSON written by another script on the origin in a
 different shape is processed rather than rejected — which can fabricate a read or let a write resolve
