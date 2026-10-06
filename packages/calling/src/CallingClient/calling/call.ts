@@ -11,12 +11,11 @@ import {RtcMetrics} from '@webex/internal-plugin-metrics';
 import {ERROR_LAYER, ERROR_TYPE, ErrorContext} from '../../Errors/types';
 import {
   handleCallErrors,
-  modifySdpForIPv4,
   parseMediaQualityStatistics,
   serviceErrorCodeHandler,
   uploadLogs,
-  getHostIpsFromSdp,
 } from '../../common/Utils';
+import {getHostIpsFromSdp, modifySdpForIPv4} from '../../common/callUtils';
 import {
   ALLOWED_SERVICES,
   CallDetails,
