@@ -1,19 +1,29 @@
 ---
 type: ADR
-title: Retain the product README
+title: ADR-0001 - Retain the product README
 description: Stage 0 keeps README.md as product documentation and does not route it as a spec source.
-tags: [adr, spec-source-policy]
+tags: [adr]
+timestamp: 2026-10-06T00:00:00Z
+status: accepted
 ---
 <!-- sdd-generated-metadata
 doc_kind: standing-doc
 generated_from: adr@0.3.0
 generated_by: claude-cowork
 approved_by: akulakum@cisco.com
-updated_at: 2026-10-06T09:40:00Z
+updated_at: 2026-10-06T10:35:00Z
 validation_status: pending
 -->
 
 # ADR-0001 - Retain the product README
+
+| Field         | Value |
+| ------------- | ----- |
+| Status        | Accepted |
+| Decision date | 2026-10-06 |
+| Deciders      | akulakum@cisco.com (bootstrap questionnaire) |
+| Supersedes    | N/A |
+| Superseded by | N/A |
 
 ## Context
 

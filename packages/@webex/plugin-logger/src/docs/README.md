@@ -9,7 +9,7 @@ doc_kind: module-spec
 generated_from: module-spec@0.3.0
 generated_by: claude-cowork
 approved_by: akulakum@cisco.com
-updated_at: 2026-10-06T09:40:00Z
+updated_at: 2026-10-06T10:35:00Z
 validation_status: pending
 -->
 
@@ -124,14 +124,14 @@ Contract `plugin-logger-sdk` is published and its native artifact is `package.js
 | ID | What | Why | Evidence | Verification | Confidence |
 | -- | ---- | --- | -------- | ------------ | ---------- |
 | MOD-001 | Importing the package registers `Logger` as the `logger` plugin with `replace: true` and merges `src/config.js` into webex config. | `@webex/webex-core` registers a fallback logger first. Without `replace`, `registerPlugin` returns early and the fallback stays. | `src/index.js`; webex-core src/lib/webex-core-plugin-mixin.js | No direct test. Unit spec builds the plugin through `MockWebex` instead. | High |
-| MOD-002 | The SDK level resolves in this order: truthy `config.level`; `WEBEX_LOG_LEVEL` when it is in `levels`; `trace` when `NODE_ENV` is `test`; the developer feature `log-level` when it is in `levels`; otherwise `error`. | Integrators and server toggles can raise verbosity without code changes. | `src/logger.js` `getCurrentLevel` | `#shouldPrint()` cases: `prefers the config specified logger.level`, `uses the WEBEX_LOG_LEVEL environment varable`, `logs at TRACE in test environments`, `checks the developer feature toggle`, `defaults to "error"` | High |
+| MOD-002 | The SDK level resolves in this order: truthy `config.level`; `WEBEX_LOG_LEVEL` when it is in `levels`; `trace` when `NODE_ENV` is `test`; the developer feature `log-level` when it is in `levels`; otherwise the default level (`INV-003`). | Integrators and server toggles can raise verbosity without code changes. | `src/logger.js` `getCurrentLevel` | `#shouldPrint()` cases: `prefers the config specified logger.level`, `uses the WEBEX_LOG_LEVEL environment varable`, `logs at TRACE in test environments`, `checks the developer feature toggle`, `defaults to "error"` | High |
 | MOD-003 | The client level is `config.clientLevel` when truthy, otherwise the SDK level. | Client apps can log at a different level from the SDK. | `src/logger.js` `getCurrentClientLevel` | `factors in log type when passed in as client` | High |
 | MOD-004 | A message prints when `precedence[level] <= precedence[current level]` for its type. | One ordered scale controls output. | `src/logger.js` `shouldPrint` | `indicates whether or not the desired log should be printed` | High |
-| MOD-005 | A message is buffered when `precedence[level] <= precedence[config.bufferLogLevel || 'info']`, independent of the print level. | Uploaded logs keep useful context while excluding high-volume `debug` and `trace` by default. | `src/logger.js` `shouldBuffer` | `#shouldBuffer()` cases | High |
-| MOD-006 | Before output, every non-`Error` argument is deep-cloned, keys matching `/[Aa]uthorization/` are deleted, email addresses are replaced with `[REDACTED]`, and MTID values become `MTID=[REDACTED]`. | Tokens and personal data must not reach the console or the uploaded buffer. | `src/logger.js` `filter` and `walkAndFilter` | `#filter`, `removes authorization data`, `#walkAndFilter` cases | High |
+| MOD-005 | A message is buffered when `precedence[level] <= precedence[config.bufferLogLevel]`, or the default threshold (`INV-002`) when `bufferLogLevel` is unset, independent of the print level. | The upload buffer keeps a level set chosen for support, separate from developer console output. Rationale and cost are under Key design trade-off. | `src/logger.js` `shouldBuffer` | `#shouldBuffer()` cases | High |
+| MOD-006 | Before output, every non-`Error` argument is deep-cloned, authorization keys (`INV-004`) are deleted, email addresses are replaced with `[REDACTED]`, and MTID values become `MTID=[REDACTED]`. | Tokens and personal data must not reach the console or the uploaded buffer. | `src/logger.js` `filter` and `walkAndFilter` | `#filter`, `removes authorization data`, `#walkAndFilter` cases | High |
 | MOD-007 | `Error` arguments bypass redaction. In the buffer they become `toString()`. | The source comment states `WebexHttpError` already removes tokens. | `src/logger.js` `filter` and `makeLoggerMethod` | `buffers custom errors in a readable fashion`, `formats Errors correctly` | Medium |
 | MOD-008 | Object arguments are `JSON.stringify`-ed with repeated object references dropped. A stringify failure yields `Failed to stringify: <value>`. | Buffers and browser output hold a snapshot, not a live reference. | `src/logger.js` `makeLoggerMethod` | `formats objects as strings`, `w/ circular reference`, `handle circular references` | High |
-| MOD-009 | When a buffer exceeds its history length, the oldest entries are removed and `nextIndex` and `lastSubmitted` are reduced by the removed count, clamped at 0. | Memory stays bounded and diff uploads keep pointing at the same entries. | `src/logger.js` `makeLoggerMethod` | `prevents the buffer from overflowing`, `adjusts lastSubmitted when buffer overflows`, `clamps lastSubmitted to 0`, `limit` cases | High |
+| MOD-009 | On overflow (`INV-006`), the oldest entries are removed and `nextIndex` and `lastSubmitted` are reduced by the removed count, clamped at 0. | Diff uploads keep pointing at the same entries after trimming. | `src/logger.js` `makeLoggerMethod` | `prevents the buffer from overflowing`, `adjusts lastSubmitted when buffer overflows`, `clamps lastSubmitted to 0`, `limit` cases | High |
 | MOD-010 | With `separateLogBuffers`, SDK methods write to `sdkBuffer` and `client_` methods write to `clientBuffer`. Otherwise both write to `buffer`. | Client and SDK logs can be capped separately. | `src/logger.js` `makeLoggerMethod` | `stores the specified message in the client and sdk log buffer`, `prevents the client and sdk buffer from overflowing` | High |
 | MOD-011 | `formatLogs({diff: true})` returns only entries from `nextIndex` onward and advances `nextIndex`. With separate buffers, entries are merged in timestamp order and an SDK entry wins a tie. | Support uploads send only new logs per interval in time order. | `src/logger.js` `formatLogs` | `#formatLogs()` and `diff vs full logs` cases | High |
 | MOD-012 | `updateLastSubmittedIndex()` sets `lastSubmitted = nextIndex`. `resetBufferToLastSuccessfulUpload()` sets `nextIndex = lastSubmitted`. Both act on the active buffer set. | A failed upload can be retried at the next interval without losing logs. | `src/logger.js`; internal-plugin-support src/support.js | `#updateLastSubmittedIndex()` and `#resetBufferToLastSuccessfulUpload()` cases | High |
@@ -224,10 +224,9 @@ classDiagram
 
 | Component | Relationship |
 | --------- | ------------ |
-| `Logger` | Extends `WebexPlugin` from `@webex/webex-core` |
+| `Logger` | Subclass created with `WebexPlugin.extend`; owns the session state and the public methods |
 | `makeLoggerMethod` | Module-private factory. Creates every level method and closes over `level`, `impl`, `type`, `neverPrint`, and `alwaysBuffer`. |
 | `walkAndFilter` | Module-private recursive redactor used by `Logger#filter` |
-| `patterns`, `inBrowser` | Imported from `@webex/common` |
 | `src/config.js` | Supplied to `registerPlugin` as `options.config` |
 
 ## Use cases and flows
@@ -271,6 +270,19 @@ classDiagram
 
 Changing the entry order or the timestamp index breaks `formatLogs` merging and the unit spec, which splits lines on `,` and reads index 3.
 
+## Pitfalls and constraints
+
+- `walkAndFilter` stores primitives in its `visited` list. A string value identical to one already visited in the same call is returned without email or MTID redaction. Executing a copy of `walkAndFilter` with the `@webex/common` patterns gives `{a: '[REDACTED]', b: 'x@y.com'}` for `{a: 'x@y.com', b: 'x@y.com'}`. No unit test covers repeated strings.
+- A string that contains an email has only its emails redacted. Its MTID is left in place, because the MTID branch is an `else`.
+- `/[Aa]uthorization/` does not match `AUTHORIZATION`.
+- Because `Error` arguments skip redaction (`MOD-007`), an error that is not a `WebexHttpError` and carries a token or email in its message reaches the console and buffer unchanged.
+- `logToBuffer` and `client_logToBuffer` pass `levels.info`, which is `undefined` because `levels` is an array. They work because the never-print and always-buffer flags skip the level checks.
+- With `separateLogBuffers`, `clientHistoryLength` caps the SDK buffer as well as the client buffer.
+- `config.level` is not validated against `levels`. An unknown value makes `precedence[...]` `undefined`, so nothing prints.
+- `src/config.js` reads `process.env.WEBEX_LOG_LEVEL` once at module load. Its JSDoc says `historyLength` defaults to `1000`, but the value is `10000`.
+- A shorter `historyLength` takes effect on the next buffered write, not immediately.
+- `test:style` runs `eslint ./src/**/*.*`. Keep this spec under `src/docs/` as Markdown only.
+
 ## Module-specific rules
 
 - Route every new log level through `levels` and `makeLoggerMethod` so the `client_` twin and redaction come with it.
@@ -281,7 +293,7 @@ Changing the entry order or the timestamp index breaks `formatLogs` merging and 
 
 ## Export stability
 
-The published bindings are the default `Logger` and the named `levels` from `src/index.js`. Importing the package also has the registration side effect. Removing `replace: true` would leave the webex-core fallback logger in place, which has no buffers or `formatLogs`.
+The published bindings are the default `Logger` and the named `levels` from `src/index.js`. Importing the package also has the registration side effect described in `MOD-001`. The webex-core fallback logger it replaces has no buffers, no `client_` methods, and no `formatLogs`, so consumers that need those depend on this side effect.
 
 Level method names, `formatLogs`, the two cursor methods, and the seven `config.logger` keys are the behavior consumers rely on. Adding a level or config key is backward compatible. Renaming or removing one breaks callers such as `@webex/internal-plugin-support`.
 
@@ -290,19 +302,6 @@ Level method names, `formatLogs`, the two cursor methods, and the seven `config.
 Buffering excludes `debug` and `trace` by default. The source comment says those logs are numerous and push useful information out of uploaded logs. The cost is that a support upload lacks debug detail unless the integrator sets `bufferLogLevel`.
 
 In browsers the logger prints the stringified values instead of live objects. The source comment says a logged browser object is a live reference, so it can show later state. The cost is that browser consoles show JSON strings rather than expandable objects. Node prints the filtered objects.
-
-## Pitfalls and constraints
-
-- `walkAndFilter` stores primitives in its `visited` list. A string value identical to one already visited in the same call is returned without email or MTID redaction. Executing a copy of `walkAndFilter` with the `@webex/common` patterns gives `{a: '[REDACTED]', b: 'x@y.com'}` for `{a: 'x@y.com', b: 'x@y.com'}`. No unit test covers repeated strings.
-- A string that contains an email has only its emails redacted. Its MTID is left in place, because the MTID branch is an `else`.
-- `/[Aa]uthorization/` does not match `AUTHORIZATION`.
-- `Error` arguments are not redacted. A non-`WebexHttpError` error that carries a token in its message reaches the output unchanged.
-- `logToBuffer` and `client_logToBuffer` pass `levels.info`, which is `undefined` because `levels` is an array. They work because the never-print and always-buffer flags skip the level checks.
-- With `separateLogBuffers`, `clientHistoryLength` caps the SDK buffer as well as the client buffer.
-- `config.level` is not validated against `levels`. An unknown value makes `precedence[...]` `undefined`, so nothing prints.
-- `src/config.js` reads `process.env.WEBEX_LOG_LEVEL` once at module load. Its JSDoc says `historyLength` defaults to `1000`, but the value is `10000`.
-- A shorter `historyLength` takes effect on the next buffered write, not immediately.
-- `test:style` runs `eslint ./src/**/*.*`. Keep this spec under `src/docs/` as Markdown only.
 
 ## Verification
 

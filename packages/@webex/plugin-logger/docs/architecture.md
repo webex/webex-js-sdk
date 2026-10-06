@@ -9,7 +9,7 @@ doc_kind: standing-doc
 generated_from: architecture@0.3.0
 generated_by: claude-cowork
 approved_by: akulakum@cisco.com
-updated_at: 2026-10-06T09:40:00Z
+updated_at: 2026-10-06T10:35:00Z
 validation_status: pending
 -->
 
@@ -129,13 +129,13 @@ Details are in the module spec.
 
 ### Security
 
-Redaction runs before any output. It removes keys matching `/[Aa]uthorization/`, replaces email addresses with `[REDACTED]`, and replaces MTID values. `Error` arguments are not redacted here; the source relies on `WebexHttpError` for token removal. Known redaction gaps are listed in the module spec under Pitfalls and constraints.
+The trust boundary is the point where caller-supplied values leave the process: the console and the upload buffer. Every log method crosses it only through `Logger#filter`. The controls and their gaps are listed under Security architecture.
 
 The package does not authenticate users, store secrets, or verify certificates.
 
 ### Observability and operations
 
-This package is the SDK's logging layer. It emits no metrics or traces. Its own failures are reported through `console.warn` with `failed to execute Logger#<level>`.
+This package is the SDK's logging layer; its signal conventions are under Observability patterns. Operationally, it has no runtime to deploy or monitor. A failure inside a log method is reported through `console.warn` with `failed to execute Logger#<level>` and does not reach the caller.
 
 ### Quality attributes
 
@@ -169,11 +169,11 @@ flowchart TD
 
 ## Shared and base libraries
 
-| Library | Used for | Source |
-| ------- | -------- | ------ |
-| `@webex/webex-core` | `WebexPlugin`, `registerPlugin` | `package.json` dependencies |
-| `@webex/common` | `inBrowser`, `patterns` | `package.json` dependencies |
-| `lodash` | object helpers | `package.json` dependencies |
+| Inherited stack | What this package inherits | Source |
+| --------------- | -------------------------- | ------ |
+| `WebexPlugin` base class | Ampersand session state, `this.config` bound to `config.logger`, and the `this.webex` reference | `src/logger.js` |
+| Legacy build and lint configs | `@webex/babel-config-legacy`, `@webex/eslint-config-legacy`, `@webex/jest-config-legacy` | `babel.config.js`, `.eslintrc.js`, `jest.config.js` |
+| Legacy tooling | `webex-legacy-tools` build and test runners | `package.json` scripts |
 
 ## Platform matrix
 
