@@ -73,11 +73,33 @@ export const E2eeValidationResult = {
 export type E2eeValidationResult = Enum<typeof E2eeValidationResult>;
 
 /** A member of the MLS roster. A `validationResult` of `Success` means the member is verified. */
+export interface E2eeCertificateInfo {
+  primaryName: string;
+  commonName: string;
+  organizationName: string;
+  emailAddresses: string[];
+  domainNames: string[];
+  notBefore: number;
+  notAfter: number;
+  signatureAlgorithm: string;
+  publicKeyAlgorithm: string;
+  identityType?: number;
+  der: Uint8Array;
+}
+
+export interface E2eeCertificateResult {
+  result: E2eeValidationResult;
+  memberCerts: E2eeCertificateInfo[];
+  failedCertIndex?: number;
+}
+
+/** A member of the MLS roster. A `validationResult` of `Success` means the member is verified. */
 export interface E2eeRosterMember {
   url: string;
   displayName: string;
   deviceType: string;
   validationResult: E2eeValidationResult;
+  certificates?: E2eeCertificateResult[];
 }
 
 /** Per-device E2EE verification result, derived from the MLS roster and applied onto a Member. */
@@ -86,6 +108,7 @@ export interface E2eeDeviceVerification {
   validationResult: E2eeValidationResult;
   displayName?: string;
   deviceType?: string;
+  certificates?: E2eeCertificateResult[];
 }
 
 /** A member's aggregate E2EE verification state across all of their devices. */

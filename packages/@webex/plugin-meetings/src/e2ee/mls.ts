@@ -393,6 +393,27 @@ export default class MLS {
       displayName: member.display_name,
       deviceType: member.device_type,
       validationResult: member.validation_result,
+      ...(member.x509 && {
+        certificates: member.x509.map((certificateResult) => ({
+          result: certificateResult.result,
+          memberCerts: certificateResult.member_certs.map((certificate) => ({
+            primaryName: certificate.primary_name,
+            commonName: certificate.common_name,
+            organizationName: certificate.organization_name,
+            emailAddresses: certificate.email_addresses,
+            domainNames: certificate.domain_names,
+            notBefore: certificate.not_before,
+            notAfter: certificate.not_after,
+            signatureAlgorithm: certificate.signature_algorithm,
+            publicKeyAlgorithm: certificate.public_key_algorithm,
+            identityType: certificate.identity_type,
+            der: new Uint8Array(certificate.der),
+          })),
+          ...(certificateResult.failed_cert_index !== undefined && {
+            failedCertIndex: certificateResult.failed_cert_index,
+          }),
+        })),
+      }),
     };
   }
 }

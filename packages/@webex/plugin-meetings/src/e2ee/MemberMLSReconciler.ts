@@ -185,6 +185,7 @@ export default class MemberMLSReconciler {
       validationResult: rosterEntry.validationResult,
       displayName: rosterEntry.displayName,
       deviceType: rosterEntry.deviceType,
+      ...(rosterEntry.certificates && {certificates: rosterEntry.certificates}),
     };
   }
 }

@@ -16,11 +16,12 @@ describe('plugin-meetings', () => {
     const makeMember = (id, deviceUrls) =>
       new Member({id, controls: {}, status: {}, devices: deviceUrls.map((url) => ({url}))});
 
-    const rosterMember = (url, validationResult) => ({
+    const rosterMember = (url, validationResult, certificates) => ({
       url,
       displayName: 'Alice',
       deviceType: 'WEB',
       validationResult,
+      ...(certificates && {certificates}),
     });
 
     // Adds a member to the collection and stamps it via the Members processor path.
@@ -49,6 +50,22 @@ describe('plugin-meetings', () => {
       assert.equal(member.getE2eeDeviceVerification('device-b').validationResult, 1);
       assert.equal(member.e2eeVerificationState, 'partiallyVerified');
       assert.calledWith(reportMembersUpdated, [member]);
+    });
+
+    it('copies certificate information from the MLS roster onto the matching device', () => {
+      const member = makeMember('m1', ['device-a']);
+      const certificates = [
+        {
+          result: 0,
+          memberCerts: [{primaryName: 'alice@example.com', der: new Uint8Array([1, 2, 3])}],
+        },
+      ];
+      addMember(member);
+
+      reconciler.applyRosterAdded([rosterMember('device-a', 0, certificates)]);
+
+      assert.deepEqual(member.getE2eeDeviceVerification('device-a').certificates, certificates);
+      assert.deepEqual(reconciler.getDeviceVerification('device-a').certificates, certificates);
     });
 
     it("leaves a member 'unknown' (and reports nothing) when none of its devices are in the roster", () => {

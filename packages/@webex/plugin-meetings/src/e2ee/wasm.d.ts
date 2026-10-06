@@ -55,11 +55,32 @@ export interface EpochInfo {
   sec_code: string;
 }
 
+export interface CertificateInfo {
+  primary_name: string;
+  common_name: string;
+  organization_name: string;
+  email_addresses: string[];
+  domain_names: string[];
+  not_before: number;
+  not_after: number;
+  signature_algorithm: string;
+  public_key_algorithm: string;
+  identity_type?: number;
+  der: Uint8Array;
+}
+
+export interface CertificateResult {
+  result: E2eeValidationResult;
+  member_certs: CertificateInfo[];
+  failed_cert_index?: number;
+}
+
 export interface RosterMember {
   url: string;
   display_name: string;
   device_type: string;
   validation_result: E2eeValidationResult;
+  x509?: CertificateResult[];
 }
 
 export interface WebE2EEInstance {

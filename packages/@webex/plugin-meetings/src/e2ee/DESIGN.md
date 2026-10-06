@@ -209,6 +209,27 @@ interface E2eeRosterMember {
   displayName: string;
   deviceType: string;
   validationResult: E2eeValidationResult;
+  certificates?: E2eeCertificateResult[]; // parsed X.509 chains, including leaf identity and DER
+}
+
+interface E2eeCertificateResult {
+  result: E2eeValidationResult;
+  memberCerts: E2eeCertificateInfo[]; // leaf first
+  failedCertIndex?: number;
+}
+
+interface E2eeCertificateInfo {
+  primaryName: string;
+  commonName: string;
+  organizationName: string;
+  emailAddresses: string[];
+  domainNames: string[];
+  notBefore: number; // Unix milliseconds
+  notAfter: number; // Unix milliseconds
+  signatureAlgorithm: string;
+  publicKeyAlgorithm: string;
+  identityType?: number; // set only for the leaf certificate
+  der: Uint8Array;
 }
 
 interface E2eeDeviceVerification {
@@ -216,6 +237,7 @@ interface E2eeDeviceVerification {
   validationResult: E2eeValidationResult;  // Success means the device's identity is verified
   displayName?: string;
   deviceType?: string;
+  certificates?: E2eeCertificateResult[];
 }
 
 type E2eeMemberVerificationState =
@@ -393,6 +415,8 @@ Matching key: **`MLS RosterMember.url === Member.participant.devices[i].url`** (
 Verified rule: `validationResult === E2eeValidationResult.Success`. Ordering between MLS roster events and Locus member
 updates does not matter — roster entries with no matching member yet remain pending in the map and
 are applied when that member is next processed.
+The roster's parsed X.509 chain data is retained on each device verification so clients can display
+identity, domain, partner, certificate validity, and fingerprint details without reparsing the DER.
 
 The `E2eeMeeting` facade creates the reconciler in its **constructor** (gated on
 `config.enableE2ee`) and registers the processor there, so member verification is stamped for the

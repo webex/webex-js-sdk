@@ -105,7 +105,7 @@ describe('plugin-meetings', () => {
 
       it('applies credentials, trust anchors, device type and custom timeouts', async () => {
         const privateKey = new Uint8Array([9]);
-        const certChain = [new Uint8Array([1]).buffer, new Uint8Array([2]).buffer];
+        const certChain = [new Uint8Array([1]), new Uint8Array([2])];
 
         await session.initialize({
           ...config,
@@ -209,12 +209,62 @@ describe('plugin-meetings', () => {
         session.on('rosterAdded', addedSpy);
         session.on('rosterRemoved', removedSpy);
         callbacks.addRoster([
-          {url: 'd1', display_name: 'Bob', device_type: 'WEB', validation_result: 0},
+          {
+            url: 'd1',
+            display_name: 'Bob',
+            device_type: 'WEB',
+            validation_result: 0,
+            x509: [
+              {
+                result: 0,
+                member_certs: [
+                  {
+                    primary_name: 'alice@example.com',
+                    common_name: 'Alice',
+                    organization_name: 'Example',
+                    email_addresses: ['alice@example.com'],
+                    domain_names: ['example.com'],
+                    not_before: 1000,
+                    not_after: 2000,
+                    signature_algorithm: 'rsa-sha256',
+                    public_key_algorithm: 'rsaEncryption',
+                    identity_type: 2,
+                    der: new Uint8Array([1, 2, 3]),
+                  },
+                ],
+              },
+            ],
+          },
         ]);
         callbacks.removeRoster(['d2']);
 
         assert.calledOnceWithExactly(addedSpy, [
-          {url: 'd1', displayName: 'Bob', deviceType: 'WEB', validationResult: 0},
+          {
+            url: 'd1',
+            displayName: 'Bob',
+            deviceType: 'WEB',
+            validationResult: 0,
+            certificates: [
+              {
+                result: 0,
+                memberCerts: [
+                  {
+                    primaryName: 'alice@example.com',
+                    commonName: 'Alice',
+                    organizationName: 'Example',
+                    emailAddresses: ['alice@example.com'],
+                    domainNames: ['example.com'],
+                    notBefore: 1000,
+                    notAfter: 2000,
+                    signatureAlgorithm: 'rsa-sha256',
+                    publicKeyAlgorithm: 'rsaEncryption',
+                    identityType: 2,
+                    der: new Uint8Array([1, 2, 3]),
+                  },
+                ],
+              },
+            ],
+          },
         ]);
         assert.calledOnceWithExactly(removedSpy, {urls: ['d2']});
       });
