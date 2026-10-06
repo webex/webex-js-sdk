@@ -5,7 +5,7 @@
 import Trigger from '../common/events/trigger-proxy';
 import LoggerProxy from '../common/logs/logger-proxy';
 import {EVENT_TRIGGERS} from '../constants';
-import MlsGroupSession from './MlsGroupSession';
+import MLS from './mls';
 import MediaEncryptionService from './MediaEncryptionService';
 import E2eeSignaling from './E2eeSignaling';
 import MemberMLSReconciler from './MemberMLSReconciler';
@@ -34,7 +34,7 @@ export default class E2eeMeeting {
 
   private readonly config: E2eeConfig;
 
-  private session?: MlsGroupSession;
+  private session?: MLS;
 
   private signaling?: E2eeSignaling;
 
@@ -157,7 +157,7 @@ export default class E2eeMeeting {
       const httpClient = new MediaEncryptionService({
         webexRequest: this.webex.request.bind(this.webex),
       });
-      const session = new MlsGroupSession({
+      const session = new MLS({
         httpClient,
         wasmLoader: this.wasmLoader,
         wasmUrl: E2EE_WASM_URL,
@@ -221,10 +221,10 @@ export default class E2eeMeeting {
   }
 
   /**
-   * @param {MlsGroupSession} session
+   * @param {MLS} session
    * @returns {void}
    */
-  private wireSessionEvents(session: MlsGroupSession): void {
+  private wireSessionEvents(session: MLS): void {
     session.on('joinSuccess', ({securityCode}) => {
       this.securityCode = securityCode;
       this.emit(EVENT_TRIGGERS.MEETING_E2EE_SECURITY_CODE_UPDATED, {securityCode});

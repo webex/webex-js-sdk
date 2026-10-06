@@ -5,7 +5,7 @@ import 'jsdom-global/register';
 import {assert} from '@webex/test-helper-chai';
 import sinon from 'sinon';
 import E2eeMeeting from '@webex/plugin-meetings/src/e2ee/E2eeMeeting';
-import MlsGroupSession from '@webex/plugin-meetings/src/e2ee/MlsGroupSession';
+import MLS from '@webex/plugin-meetings/src/e2ee/mls';
 import E2eeSignaling from '@webex/plugin-meetings/src/e2ee/E2eeSignaling';
 import WasmLoader from '@webex/plugin-meetings/src/common/wasm-loader';
 import Trigger from '@webex/plugin-meetings/src/common/events/trigger-proxy';
@@ -46,11 +46,11 @@ describe('plugin-meetings', () => {
     beforeEach(() => {
       sessionHandlers = {};
       membersById = {};
-      initializeStub = sinon.stub(MlsGroupSession.prototype, 'initialize').resolves();
-      joinStub = sinon.stub(MlsGroupSession.prototype, 'join');
-      leaveStub = sinon.stub(MlsGroupSession.prototype, 'leave');
-      rosterStub = sinon.stub(MlsGroupSession.prototype, 'getRoster').returns([]);
-      sinon.stub(MlsGroupSession.prototype, 'on').callsFake((event, handler) => {
+      initializeStub = sinon.stub(MLS.prototype, 'initialize').resolves();
+      joinStub = sinon.stub(MLS.prototype, 'join');
+      leaveStub = sinon.stub(MLS.prototype, 'leave');
+      rosterStub = sinon.stub(MLS.prototype, 'getRoster').returns([]);
+      sinon.stub(MLS.prototype, 'on').callsFake((event, handler) => {
         sessionHandlers[event] = handler;
       });
       signalingStartStub = sinon.stub(E2eeSignaling.prototype, 'start');

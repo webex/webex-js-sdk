@@ -107,7 +107,7 @@ export interface E2eeTrustAnchors {
 }
 
 /** Configuration for initializing an MLS group session. */
-export interface MlsGroupSessionConfig {
+export interface MLSConfig {
   participantId: string;
   deviceUrl: string;
   deviceType?: string;

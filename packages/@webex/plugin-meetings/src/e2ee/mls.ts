@@ -11,7 +11,7 @@ import type {
   E2eeRosterMember,
   E2eeSignalingSource,
   IMlsHttpClient,
-  MlsGroupSessionConfig,
+  MLSConfig,
   SframeParams,
 } from './types';
 import type {
@@ -43,8 +43,8 @@ export interface ITimers {
   setTimeout(handler: () => void, milliseconds: number): void;
 }
 
-/** Payloads for each event emitted by {@link MlsGroupSession}. */
-export interface MlsGroupSessionEventMap {
+/** Payloads for each event emitted by {@link MLS}. */
+export interface MLSEventMap {
   joinSuccess: {epoch: number; securityCode: string; sframe: SframeParams; key: E2eeKey};
   joinFailure: {reason: string};
   newKey: E2eeKey;
@@ -58,7 +58,7 @@ export interface MlsGroupSessionEventMap {
   securityCodeChanged: {code: string};
 }
 
-export type MlsGroupSessionEvent = keyof MlsGroupSessionEventMap;
+export type MLSEvent = keyof MLSEventMap;
 
 const defaultTimers: ITimers = {
   setTimeout: (handler, milliseconds) => {
@@ -71,7 +71,7 @@ const defaultTimers: ITimers = {
  * dependencies: all I/O flows through injected collaborators (an {@link IMlsHttpClient} and
  * timers), and all outputs are emitted as typed events. This keeps it unit-testable in isolation.
  */
-export default class MlsGroupSession {
+export default class MLS {
   private readonly wasmLoader: WasmLoader;
 
   private readonly wasmUrl: string;
@@ -118,51 +118,42 @@ export default class MlsGroupSession {
 
   /**
    * Subscribe to an engine event.
-   * @param {MlsGroupSessionEvent} event
+   * @param {MLSEvent} event
    * @param {Function} listener
    * @returns {void}
    */
-  on<K extends MlsGroupSessionEvent>(
-    event: K,
-    listener: (payload: MlsGroupSessionEventMap[K]) => void
-  ): void {
+  on<K extends MLSEvent>(event: K, listener: (payload: MLSEventMap[K]) => void): void {
     this.emitter.on(event, listener as (payload: unknown) => void);
   }
 
   /**
    * Unsubscribe from an engine event.
-   * @param {MlsGroupSessionEvent} event
+   * @param {MLSEvent} event
    * @param {Function} listener
    * @returns {void}
    */
-  off<K extends MlsGroupSessionEvent>(
-    event: K,
-    listener: (payload: MlsGroupSessionEventMap[K]) => void
-  ): void {
+  off<K extends MLSEvent>(event: K, listener: (payload: MLSEventMap[K]) => void): void {
     this.emitter.off(event, listener as (payload: unknown) => void);
   }
 
   /**
-   * @param {MlsGroupSessionEvent} event
+   * @param {MLSEvent} event
    * @param {*} [payload]
    * @returns {void}
    */
-  private emitEvent<K extends MlsGroupSessionEvent>(
-    event: K,
-    payload?: MlsGroupSessionEventMap[K]
-  ): void {
-    this.logger.info(`e2ee: MlsGroupSession --> emitting event: ${event}`);
+  private emitEvent<K extends MLSEvent>(event: K, payload?: MLSEventMap[K]): void {
+    this.logger.info(`e2ee: MLS --> emitting event: ${event}`);
     this.emitter.emit(event, payload);
   }
 
   /**
    * Loads the WASM module, instantiates the engine, wires its callbacks, and applies credentials,
    * trust anchors and timeouts. Must be called before {@link join}.
-   * @param {MlsGroupSessionConfig} config
+   * @param {MLSConfig} config
    * @returns {Promise<void>}
    */
-  async initialize(config: MlsGroupSessionConfig): Promise<void> {
-    this.logger.info('e2ee: MlsGroupSession --> initialize: loading WASM and instantiating engine');
+  async initialize(config: MLSConfig): Promise<void> {
+    this.logger.info('e2ee: MLS --> initialize: loading WASM and instantiating engine');
     const module = await this.wasmLoader.get<ModuleInstance>(this.wasmUrl);
 
     this.e2ee = new module.WebE2EE();
@@ -195,7 +186,7 @@ export default class MlsGroupSession {
     this.e2ee.setJoinTimeout(config.joinTimeout ?? DEFAULT_JOIN_TIMEOUT);
     this.e2ee.setCoalesceWindow(config.coalesceWindow ?? DEFAULT_COALESCE_WINDOW);
 
-    this.logger.info('e2ee: MlsGroupSession --> initialize: engine initialized');
+    this.logger.info('e2ee: MLS --> initialize: engine initialized');
   }
 
   /**
@@ -278,7 +269,7 @@ export default class MlsGroupSession {
     });
 
     e2ee.setOnAddRoster((added: RosterMember[]) => {
-      this.emitEvent('rosterAdded', added.map(MlsGroupSession.toRosterMember));
+      this.emitEvent('rosterAdded', added.map(MLS.toRosterMember));
       this.emitSecurityCodeIfChanged();
     });
 
@@ -297,7 +288,7 @@ export default class MlsGroupSession {
 
     e2ee.setOnMissingCommit((mlsEpoch, useKeyEpoch) => {
       this.logger.warn(
-        `e2ee: MlsGroupSession --> missing commit (mlsEpoch=${mlsEpoch}, useKeyEpoch=${useKeyEpoch})`
+        `e2ee: MLS --> missing commit (mlsEpoch=${mlsEpoch}, useKeyEpoch=${useKeyEpoch})`
       );
     });
 
@@ -338,7 +329,7 @@ export default class MlsGroupSession {
    * @returns {void}
    */
   join(): void {
-    this.logger.info('e2ee: MlsGroupSession --> join: starting MLS join');
+    this.logger.info('e2ee: MLS --> join: starting MLS join');
     this.assertInitialized().join();
   }
 
@@ -347,7 +338,7 @@ export default class MlsGroupSession {
    * @returns {void}
    */
   leave(): void {
-    this.logger.info('e2ee: MlsGroupSession --> leave: leaving MLS group');
+    this.logger.info('e2ee: MLS --> leave: leaving MLS group');
     this.assertInitialized().leave();
   }
 
@@ -359,7 +350,7 @@ export default class MlsGroupSession {
    */
   handleEvent(eventData: Uint8Array, source: E2eeSignalingSource): void {
     this.logger.info(
-      `e2ee: MlsGroupSession --> handleEvent: forwarding ${eventData.length} bytes from ${source} to engine`
+      `e2ee: MLS --> handleEvent: forwarding ${eventData.length} bytes from ${source} to engine`
     );
     this.assertInitialized().handle(new Uint8Array(eventData));
   }
@@ -370,7 +361,7 @@ export default class MlsGroupSession {
    * @returns {void}
    */
   setLlmConnectedBeforeJoin(connected: boolean): void {
-    this.logger.info(`e2ee: MlsGroupSession --> setLlmConnectedBeforeJoin: ${connected}`);
+    this.logger.info(`e2ee: MLS --> setLlmConnectedBeforeJoin: ${connected}`);
     this.assertInitialized().setLlmConnectedBeforeJoin(connected);
   }
 
@@ -379,7 +370,7 @@ export default class MlsGroupSession {
    * @returns {void}
    */
   notifyLlmConnected(): void {
-    this.logger.info('e2ee: MlsGroupSession --> notifyLlmConnected');
+    this.logger.info('e2ee: MLS --> notifyLlmConnected');
     this.assertInitialized().llmConnected();
   }
 
@@ -388,7 +379,7 @@ export default class MlsGroupSession {
    * @returns {void}
    */
   keepAlive(): void {
-    this.logger.info('e2ee: MlsGroupSession --> keepAlive');
+    this.logger.info('e2ee: MLS --> keepAlive');
     this.assertInitialized().keepAlive();
   }
 
@@ -403,7 +394,7 @@ export default class MlsGroupSession {
    * @returns {E2eeRosterMember[]} the current MLS roster, or [] if not initialized.
    */
   getRoster(): E2eeRosterMember[] {
-    return this.e2ee ? this.e2ee.roster().map(MlsGroupSession.toRosterMember) : [];
+    return this.e2ee ? this.e2ee.roster().map(MLS.toRosterMember) : [];
   }
 
   /**
@@ -418,7 +409,7 @@ export default class MlsGroupSession {
    */
   private assertInitialized(): WebE2EEInstance {
     if (!this.e2ee) {
-      throw new Error('MlsGroupSession not initialized');
+      throw new Error('MLS not initialized');
     }
 
     return this.e2ee;

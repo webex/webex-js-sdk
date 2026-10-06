@@ -119,7 +119,7 @@ The `E2eeMeeting` facade orchestrates five collaborators and reuses the shared `
 
 ```mermaid
 graph TD
-    E2eeMeeting[E2eeMeeting facade] --> MLS[MlsGroupSession WASM engine]
+    E2eeMeeting[E2eeMeeting facade] --> MLS[MLS WASM engine]
     E2eeMeeting --> Sig[E2eeSignaling LLM adapter]
     E2eeMeeting --> Svc[MediaEncryptionService HTTP adapter]
     E2eeMeeting --> Recon[MemberMLSReconciler]
@@ -138,7 +138,7 @@ How the MLS engine's outputs reach media and members, and how the adapters reach
 
 ```mermaid
 graph LR
-    MLS[MlsGroupSession] -->|SFrame keys| MediaCtl[MediaKeyController]
+    MLS[MLS] -->|SFrame keys| MediaCtl[MediaKeyController]
     MediaCtl -->|IE2eeMediaConnection| MediaProps[MediaProperties.webrtcMediaConnection]
     MLS -->|roster updates| Recon[MemberMLSReconciler]
     Recon <-->|verify by device.url| Members
@@ -149,7 +149,7 @@ graph LR
     Ident[E2eeIdentityProvider] -->|CSR / cert| CA[webex.request certificate-authority]
 ```
 
-Key property: `MlsGroupSession` (the WASM protocol engine) has **no** webex / LLM /
+Key property: `MLS` (the WASM protocol engine) has **no** webex / LLM /
 HTTP dependencies — all I/O flows through injected adapters, so the engine is fully
 unit-testable. The media-core coupling is isolated behind `IE2eeMediaConnection`.
 
@@ -167,7 +167,7 @@ packages/@webex/plugin-meetings/src/e2ee/
 ├── E2eeManager.ts            # One instance per Meetings plugin: owns IdentityProvider + injected WasmLoader,
 │                             #   preloads WASM in register(), factory for E2eeMeeting
 ├── E2eeMeeting.ts            # per-meeting facade / orchestrator (this.e2ee on Meeting)
-├── MlsGroupSession.ts        # WASM protocol engine (refactor of mls.ts E2EEMeetingClient)
+├── mls.ts                    # MLS WASM protocol engine (refactor of the POC mls.ts)
 ├── E2eeSignaling.ts          # LLM adapter (webex.internal.llm media_encryption.* events)
 ├── MediaEncryptionService.ts # HTTP adapter (webex.request service:'media-encryption')
 ├── E2eeIdentityProvider.ts   # CSR/CA credentials + trust anchors (one instance, cached)
@@ -182,7 +182,7 @@ packages/@webex/plugin-meetings/src/e2ee/
 The generic `WasmLoader` is **not** E2EE-specific and lives outside this folder in
 `common/wasm-loader.ts`; `Meetings` owns it and injects it into `E2eeManager`.
 
-- The `e2ee/mls.ts` from POC code becomes `MlsGroupSession.ts` (stripped of webex/HTTP/LLM).
+- The `e2ee/mls.ts` from POC code becomes `mls.ts` (stripped of webex/HTTP/LLM).
 - `loadWasmModule` (and the module-cache globals) become `WasmLoader.preload(wasmUrl)` /
   `get(wasmUrl)`, warmed once per session and keyed by URL so one loader can serve many modules.
 - The shared `WebexRequestMethod` type (a bound `webex.request`) lives in `common/types.ts`
@@ -262,7 +262,7 @@ createE2eeMeeting(meeting): E2eeMeeting; // factory; injects shared wasmLoader +
 Owns the shared `WasmLoader` and `E2eeIdentityProvider`. `createE2eeMeeting` returns a
 facade whose `start()` is a no-op when `!isEnabled`, keeping `Meeting` code uniform.
 
-### `MlsGroupSession` (pure engine; no webex/HTTP/LLM deps)
+### `MLS` (pure engine; no webex/HTTP/LLM deps)
 
 ```ts
 constructor(deps: {
@@ -325,7 +325,7 @@ constructor(deps: {
   llm;                              // webex.internal.llm (ILlmChannel: on/off/isConnected/getLocusUrl)
   mercury;                          // webex.internal.mercury (IMercuryChannel: on/off)
   getLocusUrl: () => string | undefined; // reads the meeting's live locus url (callback, not a ref)
-  session: MlsGroupSession;
+  session: MLS;
 });
 start(): void;
 stop(): void;
@@ -470,7 +470,7 @@ detachMediaConnection(): void;
 2. `await wasmLoader.get()` (already preloaded in `register()` → fast)
 3. `creds = await identityProvider.getCredentials(webex.internal.device.userId)` (cached)
 4. `httpClient = new MediaEncryptionService({ webexRequest: webex.request.bind(webex) })`
-5. `session = new MlsGroupSession({ httpClient, wasmLoader })`
+5. `session = new MLS({ httpClient, wasmLoader })`
 6. `await session.initialize({ participantId: device.userId, deviceUrl: device.url,`
    `  deviceType: 'WEB', correlationId: meeting.correlationId, displayName: <self name>,`
    `  serviceUrl: meeting.locusInfo.info.mediaEncryptionGroupUrl, credentials: creds,`
@@ -643,7 +643,7 @@ mock webex. (Filenames below are illustrative — each maps to a spec under `tes
 - `WasmLoader.test.ts` — `preload` caches, `get()` awaits/returns cache, idempotent, error resets.
 - `E2eeManager.test.ts` — `isEnabled` from config; `preload` warms WASM only, only when
   enabled, and never rejects; `createE2eeMeeting` injects shared instances; disabled → no-op facade.
-- `MlsGroupSession.test.ts` — mock `WasmLoader` returning a fake `WebE2EE`; assert callbacks
+- `MLS.test.ts` — mock `WasmLoader` returning a fake `WebE2EE`; assert callbacks
   map to emitted events; HTTP/wait routed to injected deps. Pure, no webex.
 - `MediaEncryptionService.test.ts` — mock `webexRequest`; assert service/url/body encode+decode.
 - `E2eeSignaling.test.ts` — mock `llm` (`on/off/isConnected/getLocusUrl`) + a `getLocusUrl`
@@ -663,7 +663,7 @@ mock webex. (Filenames below are illustrative — each maps to a spec under `tes
 | Phase | Scope |
 |-------|-------|
 | **P0** | `enableE2ee` config + `E2eeManager` + `WasmLoader` + `Meetings.register()` preload wiring (no per-meeting behavior yet; proves early WASM warm-up + single-instance plumbing). |
-| **P1** | Extract/refactor `MlsGroupSession` (engine) + `types` + WASM-loader use (no behavior change vs PoC). |
+| **P1** | Extract/refactor `MLS` (engine) + `types` + WASM-loader use (no behavior change vs PoC). |
 | **P2** | `MediaEncryptionService` + `E2eeIdentityProvider` (one instance) + `E2eeSignaling` (I/O adapters). |
 | **P3** | `E2eeMeeting` facade + `Meeting` wiring (start/stop, `getSecurityCode`, events) — **security code works end-to-end**. |
 | **P4** | `MemberMLSReconciler` + `Member` extension + verification events. |

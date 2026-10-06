@@ -4,13 +4,13 @@
 import 'jsdom-global/register';
 import {assert} from '@webex/test-helper-chai';
 import sinon from 'sinon';
-import MlsGroupSession from '@webex/plugin-meetings/src/e2ee/MlsGroupSession';
+import MLS from '@webex/plugin-meetings/src/e2ee/mls';
 import WasmLoader from '@webex/plugin-meetings/src/common/wasm-loader';
 
 const flushPromises = () => new Promise((resolve) => setTimeout(resolve, 0));
 
 describe('plugin-meetings', () => {
-  describe('MlsGroupSession', () => {
+  describe('MLS', () => {
     let fakeE2ee;
     let callbacks;
     let wasmLoader;
@@ -84,7 +84,7 @@ describe('plugin-meetings', () => {
         error: sinon.stub(),
         debug: sinon.stub(),
       };
-      session = new MlsGroupSession({httpClient, wasmLoader, wasmUrl: '/wasm/e2ee.wasm', timers, logger});
+      session = new MLS({httpClient, wasmLoader, wasmUrl: '/wasm/e2ee.wasm', timers, logger});
     });
 
     afterEach(() => {
