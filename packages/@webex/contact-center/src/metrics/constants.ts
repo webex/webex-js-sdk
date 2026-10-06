@@ -156,6 +156,7 @@ export const METRIC_EVENT_NAMES = {
   WXAPP_USERSUB_PUBLISH_FAILED: 'WxApp Usersub Publish Failed',
   WXAPP_MERCURY_SUBSCRIBE_SUCCESS: 'WxApp Mercury Subscribe Success',
   WXAPP_MERCURY_SUBSCRIBE_FAILED: 'WxApp Mercury Subscribe Failed',
+  WXAPP_OFFER_PARTICIPANT_FIELDS_MISSING: 'WxApp Offer Participant Fields Missing',
 
   UPLOAD_LOGS_SUCCESS: 'Upload Logs Success',
   UPLOAD_LOGS_FAILED: 'Upload Logs Failed',
@@ -203,6 +204,11 @@ export const METRIC_EVENT_NAMES = {
   AI_ASSISTANT_FETCH_HISTORIC_TRANSCRIPTS_SUCCESS:
     'AI Assistant Fetch Historic Transcripts Success',
   AI_ASSISTANT_FETCH_HISTORIC_TRANSCRIPTS_FAILED: 'AI Assistant Fetch Historic Transcripts Failed',
+  AI_ASSISTANT_WELLNESS_ACTION_ACCEPTED: 'AI Assistant Wellness Action Accepted',
+  AI_ASSISTANT_WELLNESS_ACTION_FAILED: 'AI Assistant Wellness Action Failed',
+  AI_ASSISTANT_WELLNESS_EVENT_INVALID: 'AI Assistant Wellness Event Invalid',
+  WELLBEING_BREAK_IDLE_CODE_FETCH_SUCCESS: 'Wellbeing Break Idle Code Fetch Success',
+  WELLBEING_BREAK_IDLE_CODE_FETCH_FAILED: 'Wellbeing Break Idle Code Fetch Failed',
 
   // User Preference API Events
   USER_PREFERENCE_GET_SUCCESS: 'User Preference Get Success',

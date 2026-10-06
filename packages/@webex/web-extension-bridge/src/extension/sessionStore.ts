@@ -13,26 +13,30 @@ import type {ChromeStorageArea} from './platform';
 export class SessionStore<T> {
   private queue: Promise<unknown> = Promise.resolve();
 
-  public constructor(
+  /**
+   * @param area - Storage area to read and write through.
+   * @param key - The single `chrome.storage.session` key this instance owns.
+   * @param fallback - Value returned when the key is absent or unreadable.
+   * @param onWriteError - Called when a write is refused (quota exceeded, area
+   *   unavailable, shutting down). A write failure must not break message handling, but
+   *   must not be invisible either — without this hook, a full session quota just
+   *   silently stops buffering.
+   */
+  constructor(
     private readonly area: ChromeStorageArea,
     private readonly key: string,
     private readonly fallback: T,
-    /**
-     * Called when a write is refused by the storage area — quota exceeded, area
-     * unavailable, extension shutting down. A write failure must not break message
-     * handling, but it must not be invisible either: without this hook a bridge whose
-     * session quota is full simply stops buffering and nothing anywhere says so.
-     */
     private readonly onWriteError?: (error: unknown) => void
   ) {}
 
   /**
-   * Reads join the write chain, so a caller can never observe state that an already
-   * accepted update is still writing. Without this, a `CONNECT` immediately followed by
-   * a `PUSH` looks like a push from an unknown tab and is dropped.
+   * Read the stored value, ordered behind any write already accepted.
    *
-   * @returns The stored value, or the fallback when absent or unreadable. Storage is
-   *   never allowed to throw into an event handler.
+   * Reads join the write chain, so a caller can never observe state that an already
+   * accepted update is still writing — without this, a `CONNECT` immediately followed
+   * by a `PUSH` looks like a push from an unknown tab and is dropped.
+   *
+   * @returns The stored value, or the fallback when absent or unreadable.
    */
   public read(): Promise<T> {
     const next = this.queue.then(() => this.load());
@@ -58,9 +62,8 @@ export class SessionStore<T> {
       try {
         await this.area.set({[this.key]: updated});
       } catch (error) {
-        // A full or unavailable session store must not break message handling; the
-        // buffer is a convenience (FR8), not a delivery guarantee. It is reported
-        // rather than swallowed, so "buffering silently stopped" is diagnosable.
+        // Reported rather than swallowed: the buffer is a convenience (FR8), not a
+        // delivery guarantee, but "buffering silently stopped" must stay diagnosable.
         this.onWriteError?.(error);
       }
 

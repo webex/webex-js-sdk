@@ -1,0 +1,74 @@
+:root{
+    --toast-position-bottom:200px;
+}
+imi-toast .toast .toast-text
+{
+    width: auto;
+    margin: auto;
+    text-align: center;;padding:5px;
+    z-index: 999;
+}
+imi-toast .toast {
+    font-family:   var(--default-font-family);;
+    visibility: hidden;
+    background-color: rgba(0,0,0,0.5);
+    color: #fff;
+    text-align: center;
+    border-radius: 10px;
+    padding: 5px;
+    position: fixed;
+    z-index: 9999999;
+    margin: 20px;
+    bottom: var( --toast-position-bottom);
+    font-size: 12px;
+}
+
+imi-toast .toast.show {
+    visibility: visible;
+    -webkit-animation: fadein 0.5s, fadeout 0.5s 2.5s;
+    animation: fadein 0.5s, fadeout 0.5s 2.5s;
+}
+
+@-webkit-keyframes fadein {
+    from {
+        bottom: 0;
+        opacity: 0;
+    }
+    to {
+        bottom: var( --toast-position-bottom);
+        opacity: 1;
+    }
+}
+
+@keyframes fadein {
+    from {
+        bottom: 0;
+        opacity: 0;
+    }
+    to {
+        bottom: var( --toast-position-bottom);
+        opacity: 1;
+    }
+}
+
+@-webkit-keyframes fadeout {
+    from {
+        bottom: var( --toast-position-bottom);
+        opacity: 1;
+    }
+    to {
+        bottom: 0;
+        opacity: 0;
+    }
+}
+
+@keyframes fadeout {
+    from {
+        bottom: var( --toast-position-bottom);
+        opacity: 1;
+    }
+    to {
+        bottom: 0;
+        opacity: 0;
+    }
+}

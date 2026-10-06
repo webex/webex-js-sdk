@@ -10,7 +10,7 @@ import type {ChromeLike, ChromeSender} from './platform';
 
 /**
  * @param chromeApi - Platform object.
- * @param sender - Reported sender.
+ * @param sender - Sender reported for the message.
  * @returns Whether the message came from this extension at all.
  */
 export function isOwnExtension(chromeApi: ChromeLike, sender: ChromeSender | undefined): boolean {
@@ -19,10 +19,10 @@ export function isOwnExtension(chromeApi: ChromeLike, sender: ChromeSender | und
 
 /**
  * @param chromeApi - Platform object.
- * @param sender - Reported sender.
+ * @param sender - Sender reported for the message.
  * @returns Whether the message came from an extension page (popup, options, side
- *   panel). Such messages have no `tab`, which is what distinguishes them from a
- *   content script that may be running in a hostile page.
+ *   panel) — such messages have no `tab`, unlike a content script that may be
+ *   running in a hostile page.
  */
 export function isFromExtensionPage(
   chromeApi: ChromeLike,
@@ -33,7 +33,7 @@ export function isFromExtensionPage(
 
 /**
  * @param chromeApi - Platform object.
- * @param sender - Reported sender.
+ * @param sender - Sender reported for the message.
  * @returns Whether the message came from one of our content scripts, narrowing the
  *   sender so `tab.id` is known to be present.
  */
@@ -45,12 +45,11 @@ export function isFromContentScript(
 }
 
 /**
- * @param allowed - Configured runtime allow-list. Required: the background bridge
- *   refuses to construct without one, so there is no "defer to the manifest" mode for
- *   this check to fall back to.
- * @param origin - Reported sender origin.
- * @returns Whether the origin is on the list. A sender that reports no origin at all
- *   is refused rather than waved through — an unknown origin is not an allowed one.
+ * @param allowed - Configured runtime allow-list. Required — the background bridge
+ *   refuses to construct without one.
+ * @param origin - Origin reported for the sender.
+ * @returns Whether the origin is on the list. A sender reporting no origin is refused
+ *   rather than waved through.
  */
 export function isOriginAllowed(allowed: Set<string>, origin: string | undefined): boolean {
   return typeof origin === 'string' && allowed.has(origin);

@@ -9,7 +9,7 @@ import {BridgeError, toWireError} from '../core/errors';
 import {createIdFactory} from '../core/ids';
 import {clampMaxPayloadBytes} from '../core/limits';
 import {createLogger} from '../core/logger';
-import type {LogSink} from '../core/logger';
+import type {LogLevelSetting, LogSink} from '../core/logger';
 import {EnvelopeKind, EnvelopeSource, createEnvelope} from '../core/protocol';
 import type {Envelope} from '../core/protocol';
 import {RateLimiter, rateLimitKey} from '../core/rateLimit';
@@ -42,6 +42,9 @@ const ACCEPTED_FROM_PAGE = [
 
 export interface ContentRelayOptions {
   channel?: string;
+  /** As {@link WebBridgeOptions.logLevel}. */
+  logLevel?: LogLevelSetting;
+  /** Alias for `logLevel: 'debug'`. Ignored when `logLevel` is given. */
   debug?: boolean;
   maxPayloadBytes?: number;
   /** Inbound push budget per topic, enforced before anything reaches the worker. */
@@ -57,15 +60,15 @@ export interface ContentRelay {
   /**
    * Counters for what the relay itself dropped, which no other hop can see.
    *
-   * The relay sits between the page's `publish()` and the worker, and both of its
-   * failure modes are invisible from either end: a push refused by the relay's rate
-   * limiter never reaches the worker's counters, and a `runtime.sendMessage` that
-   * rejects because the worker is gone never reaches anything at all. Neither is
-   * recoverable at this hop — the page has already been told `publish()` succeeded,
-   * and buffering here would just relocate the flood — so the least this layer owes an
-   * operator is a count of what it threw away.
+   * A push refused by the relay's rate limiter never reaches the worker's counters, and
+   * a failed `runtime.sendMessage` never reaches anything at all. Neither is recoverable
+   * here — `publish()` already told the page it succeeded — so a count is the least this
+   * layer owes an operator.
+   *
+   * @returns A snapshot of the relay's own drop counts.
    */
   getCounters(): Record<string, number>;
+  /** Tear down the relay: detach every listener and tell both the worker and the page. */
   destroy(): void;
 }
 
@@ -75,18 +78,18 @@ interface PendingRelay {
 }
 
 /**
- * Create the page-to-worker relay.
+ * Create the page-to-worker relay, which validates and forwards but carries no
+ * product logic of its own.
  *
- * This is the security-critical component: it is the only thing that speaks to the
- * privileged service worker, and it runs in the extension's isolated world so page
- * scripts can neither read its state nor monkey-patch the references it captured.
- * It carries no product logic — it validates and forwards, nothing else.
+ * This is the security-critical component: the only thing that speaks to the
+ * privileged service worker, running in the extension's isolated world so page scripts
+ * can neither read its state nor monkey-patch its captured references.
  *
  * @internal Exposed for tests and for `startContentRelay`.
  * @param win - The page window to relay for.
  * @param chromeApi - Extension platform object.
  * @param options - Relay options.
- * @returns A handle for teardown.
+ * @returns The relay.
  */
 export function createContentRelay(
   win: PageWindowLike,
@@ -103,6 +106,7 @@ export function createContentRelay(
   const maxPayloadBytes = clampMaxPayloadBytes(options.maxPayloadBytes);
   const logger = createLogger({
     debug: options.debug === true,
+    ...(options.logLevel === undefined ? {} : {logLevel: options.logLevel}),
     prefix: '[web-extension-bridge:content]',
     ...(options.logSink ? {sink: options.logSink} : {}),
   });
@@ -126,12 +130,9 @@ export function createContentRelay(
   let destroyed = false;
   let reannounceTimer: ReturnType<typeof setTimeout> | undefined;
   /**
-   * Consecutive `runtime.sendMessage` rejections. Reset by the first success.
-   *
-   * A single rejection is normal — an MV3 worker that has been evicted is revived by
-   * the very message that failed, so the next one usually lands. A run of them is not:
-   * it means the worker is not coming back for this page (extension reloaded, updated,
-   * or disabled), and the page believing it is still connected is then simply wrong.
+   * Consecutive `runtime.sendMessage` rejections, reset by the first success. A single
+   * rejection is normal (an evicted MV3 worker is revived by the very message that
+   * failed); a run of them means the worker isn't coming back for this page.
    */
   let consecutiveWorkerFailures = 0;
 
@@ -153,15 +154,12 @@ export function createContentRelay(
   };
 
   const notifyWorker = (message: RelayToWorker): void => {
-    // Best-effort by design: the worker may be evicted or still spinning up, and a
-    // rejected sendMessage must never surface as an unhandled rejection in the page.
-    //
-    // "Best-effort" is not the same as "unobserved", though. Swallowing every
-    // rejection meant that after an extension reload the page stayed `isConnected`
-    // while nothing it published reached the worker — the one failure mode a consumer
-    // has no way to detect from the outside. Each failure is now counted, and a run of
-    // them tells the page it has been disconnected so `onDisconnected` fires and the
-    // handshake can start again.
+    // Best-effort by design (the worker may be evicted or still spinning up, and a
+    // rejected sendMessage must never surface as an unhandled rejection in the page),
+    // but not unobserved: each failure is counted, and a run of them tells the page
+    // it's disconnected so `onDisconnected` fires and the handshake restarts — without
+    // this, the page stayed `isConnected` after an extension reload with nothing it
+    // published actually reaching the worker.
     void Promise.resolve(chromeApi.runtime.sendMessage(message)).then(
       () => {
         consecutiveWorkerFailures = 0;
@@ -177,9 +175,8 @@ export function createContentRelay(
         });
 
         if (consecutiveWorkerFailures >= MAX_WORKER_NOTIFY_FAILURES) {
-          // `markPageGone` re-enters `notifyWorker` with a DISCONNECT that will fail
-          // too; the counter is cleared first so that failure cannot re-trigger this
-          // branch and recurse.
+          // Cleared first: `markPageGone` re-enters here with a DISCONNECT that will
+          // fail too, and that failure must not re-trigger this branch and recurse.
           consecutiveWorkerFailures = 0;
           markPageGone('worker-unreachable', true);
         }
@@ -204,6 +201,8 @@ export function createContentRelay(
     if (!entry) {
       // Unknown or already-settled correlation: a stale or forged response cannot
       // resolve a live request.
+      logger.debug('ignored response for unknown correlation', {channel, correlationId: id});
+
       return false;
     }
 
@@ -220,15 +219,15 @@ export function createContentRelay(
     }
 
     pageConnected = true;
-    logger.debug('page attached', {channel});
+    logger.info('page attached', {channel});
     notifyWorker(relayMessage(RelayKind.CONNECT));
   };
 
   /**
-   * @param reason - Why the page is no longer considered attached.
-   * @param tellPage - Whether the page needs to be told. `false` when the page is the
-   *   one that said goodbye and already knows; `true` when the relay decided, in which
-   *   case the page is still reporting `isConnected` and must be corrected.
+   * @param reason - Logged reason the page is considered gone.
+   * @param tellPage - Whether the page needs to be told: `false` when the page said
+   *   goodbye and already knows; `true` when the relay decided on its own and the page
+   *   is still reporting `isConnected`.
    */
   const markPageGone = (reason: string, tellPage = false): void => {
     if (!pageConnected) {
@@ -236,7 +235,7 @@ export function createContentRelay(
     }
 
     pageConnected = false;
-    logger.debug('page detached', {channel, reason});
+    logger.info('page detached', {channel, reason});
     notifyWorker(relayMessage(RelayKind.DISCONNECT, {reason}));
 
     if (tellPage) {
@@ -286,10 +285,9 @@ export function createContentRelay(
 
       case EnvelopeKind.PUSH:
         if (!pushLimiter.allow(rateLimitKey(undefined, envelope.topic))) {
-          // Counted, not just logged. `publish()` has already returned to the page by
-          // the time the envelope arrives here, so there is nothing left to propagate
-          // backpressure to; a counter is the only way an operator can tell a quiet
-          // page from a throttled one. See the delivery-guarantee table in the README.
+          // Counted, not just logged: `publish()` already returned to the page, so
+          // there's no backpressure left to propagate — a counter is the only way to
+          // tell a quiet page from a throttled one.
           counters.increment(CounterName.RELAY_DROPPED, 'RATE_LIMITED');
           logger.warn('push rate limited', {channel, topic: envelope.topic});
           break;
@@ -325,6 +323,8 @@ export function createContentRelay(
     });
 
     if (!validated.ok) {
+      logger.warn('rejected relay request from worker', {channel, reason: validated.reason});
+
       const rejected: RelayResult = {
         ok: false,
         error: toWireError(new BridgeError('INVALID_PAYLOAD')),
@@ -335,7 +335,15 @@ export function createContentRelay(
       return false;
     }
 
+    const {envelope} = validated;
+
     if (!pageConnected) {
+      logger.debug('relay request while page is detached', {
+        channel,
+        topic: envelope.topic,
+        id: envelope.id,
+      });
+
       const rejected: RelayResult = {
         ok: false,
         error: toWireError(new BridgeError('NOT_CONNECTED')),
@@ -346,7 +354,6 @@ export function createContentRelay(
       return false;
     }
 
-    const {envelope} = validated;
     let settled = false;
     const settle = (result: RelayResult): void => {
       if (settled) {
@@ -361,6 +368,7 @@ export function createContentRelay(
     // the other disappears mid-flight.
     const timer = setTimeout(() => {
       pending.delete(envelope.id);
+      logger.debug('relay request timed out', {channel, topic: envelope.topic, id: envelope.id});
       settle({ok: false, error: toWireError(new BridgeError('TIMEOUT'))});
     }, request.timeoutMs);
 
@@ -398,6 +406,8 @@ export function createContentRelay(
   win.addEventListener('message', onPageMessage);
   chromeApi.runtime.onMessage.addListener(onRuntimeMessage);
 
+  logger.info('content relay started', {channel, origin: documentOrigin});
+
   // Announce immediately, then once more shortly after, so a page bridge constructed
   // after document_start still receives a token without polling.
   control(EnvelopeKind.HELLO, session);
@@ -405,6 +415,7 @@ export function createContentRelay(
     reannounceTimer = undefined;
 
     if (!destroyed && !pageConnected) {
+      logger.debug('reannouncing hello', {channel});
       control(EnvelopeKind.HELLO, session);
     }
   }, HELLO_REANNOUNCE_DELAY_MS);
@@ -434,6 +445,7 @@ export function createContentRelay(
       pageSeenIds.clear();
       runtimeSeenIds.clear();
       forgetStartedRelay(relay);
+      logger.info('content relay destroyed', {channel});
     },
   };
 
@@ -445,16 +457,15 @@ const started = new Map<string, ContentRelay>();
 /**
  * Drop a destroyed relay from the started registry.
  *
- * Without this, `destroy()` unhooked the listeners but left the handle in the map, so
- * the next `startContentRelay()` for that channel handed back the dead relay instead
- * of building a live one — no listeners, no handshake, silently forwarding nothing.
- * That is the normal path during extension hot-reload in development, where the whole
- * point of calling `destroy()` is to start again.
+ * Without this, `destroy()` unhooked the listeners but left the dead handle in the map,
+ * so the next `startContentRelay()` for that channel — the normal path during extension
+ * hot-reload — handed back a relay with no listeners and no handshake instead of
+ * building a live one.
  *
- * Matched by identity, not by channel, so a relay destroyed after its channel has
- * already been re-registered cannot evict its replacement.
+ * Matched by identity, not by channel, so a relay destroyed after its channel was
+ * already re-registered can't evict its replacement.
  *
- * @param relay - The relay being torn down.
+ * @param relay - The relay instance to remove.
  */
 function forgetStartedRelay(relay: ContentRelay): void {
   for (const [channel, candidate] of started) {

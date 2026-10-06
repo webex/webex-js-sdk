@@ -11,8 +11,8 @@
 | Doc kind | Module spec |
 | Coverage score | Partial (manifest-authoritative); 15/15 required document fields present |
 | Generated from | `module-spec` @ SDLC template library `0.2.1` |
-| generated_by / approved_by / updated_at | Codex generator / developer-approved follow-up review remediation / 2026-07-21 |
-| Validation status | Follow-up validation passed (independent Claude fallback, 2026-07-21); coverage remains Partial |
+| generated_by / approved_by / updated_at | Codex generator / developer-approved Agent Wellness Break delta / 2026-09-02 |
+| Validation status | Agent Wellness Break v0.4 delta independently validated by claude-code on 2026-09-07; coverage remains Partial until the remaining baseline promotion criteria are satisfied |
 
 ## Evidence Rules
 Every requirement cites stable source and test file paths. Code/tests are the behavioral referee; routed source text supplies explicit intent and rationale. Missing or contradictory evidence blocks promotion.
@@ -246,6 +246,7 @@ All event names are defined in `METRIC_EVENT_NAMES` (`constants.ts`). Events fol
 | `WXAPP_SESSION_SKIPPED` | `'WxApp Session Skipped'` | Webex Together session skipped (`wxcc_sdk.user.webex_together_session_init.ignore`) |
 | `WXAPP_USERSUB_PUBLISH_SUCCESS` / `FAILED` | `'WxApp Usersub Publish ...'` | Cross-client usersub publish (`wxcc_sdk.user.webex_together_usersub_publish.complete\|fail`). Preflight failures (missing `userId` or device URL before HTTP publish) emit `WXAPP_USERSUB_PUBLISH_FAILED` with `skipReason` (`user_id_unavailable` / `device_url_unavailable`) and no `timeEvent` timer. Stale-generation discards (teardown or concurrent disable while HTTP publish is in flight) call `cancelTimedEvent` without emitting success/fail only when the completing publish still owns the active timer (`usersubPublishMetricsId` guard — a newer overlapping publish must not have its timer cleared). |
 | `WXAPP_MERCURY_SUBSCRIBE_SUCCESS` / `FAILED` | `'WxApp Mercury Subscribe ...'` | Telephony Mercury mute-sync subscribe (`wxcc_sdk.user.webex_together_mercury_subscribe.complete\|fail`) |
+| `WXAPP_OFFER_PARTICIPANT_FIELDS_MISSING` | `'WxApp Offer Participant Fields Missing'` | Read-only observability when usersub is active but inbound OFFERED participant **still** lacks valid wxApp fields after a **500 ms grace period** (orchestrated in `voice/wxAppOfferObservability.ts`; avoids false alarms from transient WS ordering). After usersub publish, `TaskManager.refreshWxAppOfferObservabilityForAllTasks()` re-runs the observer so a pre-publish OFFERED task can still schedule grace. Task removal calls `disposeWxAppOfferObservability()` so a pending timer cannot emit after `CONTACT_MERGED` / collection drop. Emitted with matching `[CC wxApp] participant fields mismatch` WARN (`wxcc_sdk.user.webex_together_offer_participant_fields.fail`) |
 | `TASK_CONFERENCE_START_SUCCESS` / `FAILED` | `'Task Conference Start ...'` | Conference start result |
 | `TASK_CONFERENCE_END_SUCCESS` / `FAILED` | `'Task Conference End ...'` | Conference end result |
 | `TASK_CONFERENCE_TRANSFER_SUCCESS` / `FAILED` | `'Task Conference Transfer ...'` | Conference transfer result |
@@ -260,6 +261,9 @@ All event names are defined in `METRIC_EVENT_NAMES` (`constants.ts`). Events fol
 | `ADDRESSBOOK_FETCH_SUCCESS` / `FAILED` | `'AddressBook Fetch ...'` | Address book fetch result |
 | `QUEUE_FETCH_SUCCESS` / `FAILED` | `'Queue Fetch ...'` | Queue fetch result |
 | `OUTDIAL_ANI_EP_FETCH_SUCCESS` / `FAILED` | `'Outdial ANI Entries Fetch ...'` | Outdial ANI entries fetch result |
+| `AI_ASSISTANT_WELLNESS_ACTION_ACCEPTED` / `FAILED` | `'AI Assistant Wellness Action ...'` | Direct wellness custom-event result |
+| `AI_ASSISTANT_WELLNESS_EVENT_INVALID` | `'AI Assistant Wellness Event Invalid'` | Malformed or mismatched wellness notification ignored |
+| `WELLBEING_BREAK_IDLE_CODE_FETCH_SUCCESS` / `FAILED` | `'Wellbeing Break Idle Code Fetch ...'` | System wellness idle-code lookup result |
 
 All event names are defined in `constants.ts` as `METRIC_EVENT_NAMES`. Events follow a `{Domain} {Action} {Success|Failed}` naming convention:
 
@@ -298,6 +302,7 @@ All event names are defined in `constants.ts` as `METRIC_EVENT_NAMES`. Events fo
 | WxApp Session Init     | `WXAPP_SESSION_INIT_SUCCESS`           | `WXAPP_SESSION_INIT_FAILED`            |
 | WxApp Usersub Publish  | `WXAPP_USERSUB_PUBLISH_SUCCESS`        | `WXAPP_USERSUB_PUBLISH_FAILED`         |
 | WxApp Mercury Subscribe | `WXAPP_MERCURY_SUBSCRIBE_SUCCESS`     | `WXAPP_MERCURY_SUBSCRIBE_FAILED`       |
+| WxApp Offer Participant Fields | —                              | `WXAPP_OFFER_PARTICIPANT_FIELDS_MISSING` |
 | Upload Logs            | `UPLOAD_LOGS_SUCCESS`                  | `UPLOAD_LOGS_FAILED`                   |
 | WebSocket Deregister   | `WEBSOCKET_DEREGISTER_SUCCESS`         | `WEBSOCKET_DEREGISTER_FAIL`            |
 | Device Type Update     | `AGENT_DEVICE_TYPE_UPDATE_SUCCESS`     | `AGENT_DEVICE_TYPE_UPDATE_FAILED`      |
@@ -319,8 +324,47 @@ Webex Together events (`WXAPP_*` constants) use `*_webex_together` compound targ
 | Usersub publish | `webex_together_usersub_publish` | `wxcc_sdk.user.webex_together_usersub_publish.complete` | `wxcc_sdk.user.webex_together_usersub_publish.fail` | — |
 | Mercury subscribe | `webex_together_mercury_subscribe` | `wxcc_sdk.user.webex_together_mercury_subscribe.complete` | `wxcc_sdk.user.webex_together_mercury_subscribe.fail` | — |
 | Session init | `webex_together_session_init` | `wxcc_sdk.user.webex_together_session_init.complete` | `wxcc_sdk.user.webex_together_session_init.fail` | `wxcc_sdk.user.webex_together_session_init.ignore` |
+| Offer participant fields | `webex_together_offer_participant_fields` | — | `wxcc_sdk.user.webex_together_offer_participant_fields.fail` | — |
 
 Operational and business wire names are unchanged (`WXCC_SDK_WXAPP_*`).
+
+### WxApp metric payload fields (operational / behavioral tags)
+
+| Event | Payload fields (booleans/enums; no raw IDs) |
+|---|---|
+| `WXAPP_SESSION_INIT_SUCCESS` | `loginOption`, `enableWxBetterTogether`, `usersubPublished`, `mercurySubscribed`, `telephonyTaskType` |
+| `WXAPP_SESSION_INIT_FAILED` | above + `skipReason` (`usersub_not_published`, `mercury_not_subscribed`, `mercury_subscribe_failed`, `publish_failed`) + optional `error`. `usersubPublished` reflects **retained session state** (`isAnswerCallsStateActive()` / `answerCallsState`), including on catch-path failures — not gated on the current init attempt's `publishedEnable`. |
+| `WXAPP_USERSUB_PUBLISH_SUCCESS` | `enableWxBetterTogether`, `usersubPublished` |
+| `WXAPP_USERSUB_PUBLISH_FAILED` | `enableWxBetterTogether`, `usersubPublished`, optional `skipReason`, `error`. `usersubPublished` reflects **retained session state** (`answerCallsState`), not the requested enable value — a failed disable/refresh while usersub remains active reports `true`. |
+| `WXAPP_MERCURY_SUBSCRIBE_SUCCESS` | `mercurySubscribed: true` |
+| `WXAPP_MERCURY_SUBSCRIBE_FAILED` | `mercurySubscribed: false`, `error` |
+| `WXAPP_TASK_ACCEPT_*` / `DECLINE_*` | `taskId`, `hasDeviceCallId`, `hasDeviceId`, optional `acceptReason`; failures add `trackingId` when available. `acceptReason` is captured **before** the telephony REST call (not hard-coded `wxApp_offer_ready`) so success and failure both retain `wxApp_answer_pending` / `wxApp_accept_in_flight` when those flags were already set. Outdial-cancel AQM failures (`error.details`) include the same participant context fields via `getWxAppTelephonyMetricContext` merged with AQM correlation fields. Outdial cancel during post-accept pending phase may report `acceptReason: wxApp_answer_pending`. |
+| `WXAPP_TASK_MUTE_*` / `DTMF_*` | `taskId`, `hasDeviceCallId`, `hasDeviceId`; failures add `trackingId` when available |
+| `WXAPP_OFFER_PARTICIPANT_FIELDS_MISSING` | `taskId`, `usersubPublished`, `hasDeviceCallId`, `hasDeviceId`, `acceptReason` |
+
+### Customer console log triage (MMT / support)
+
+Customers often embed with `logger.level: 'log'`. wxApp diagnostics use **`LoggerProxy.log`** / **`warn`** / **`error`** with prefix **`[CC wxApp]`** and grep-friendly `key=value` suffixes on the message string (fields also appear in structured `data`).
+
+| Search in browser console | Meaning |
+|---|---|
+| `[CC wxApp]` | All wxApp diagnostic lines (primary search) |
+| `WXCC_SDK_WXAPP` | Operational metric wire names (name only in console; payloads go to backend) |
+| `session readiness` | usersub + Mercury state after station login |
+| `offer decision` | Why Accept is visible/enabled; includes `acceptReason`, `hasDeviceCallId`, `usersubPublished` |
+| `participant fields mismatch` | usersub active but WS participant **still** missing wxApp triple after ~500 ms (transient gaps on first OFFERED tick are normal — look for `wxApp_offer_ready` within 1 s) |
+| `telephony accept failed` | REST answer failure; includes `trackingId` when available |
+
+Do **not** search `WXAPP` alone — it matches metric wire names but misses `[CC wxApp]` diagnostic lines.
+
+Example lines at `logger.level: 'log'`:
+
+```text
+PLUGIN_CC - [LOG]: ... [CC wxApp] session readiness usersubPublished=true mercurySubscribed=true loginOption=EXTENSION ...
+PLUGIN_CC - [LOG]: ... [CC wxApp] offer decision acceptReason=wxApp_offer_ready hasDeviceCallId=true usersubPublished=true interactionId=...
+PLUGIN_CC - [WARN]: ... [CC wxApp] participant fields mismatch usersubPublished=true hasDeviceCallId=false acceptReason=extension_non_wxApp_offer interactionId=...
+PLUGIN_CC - [LOG]: ... operational-events -> @submitEvent. Submit event: WXCC_SDK_WXAPP_TASK_ACCEPT_SUCCESS
+```
 
 Special events (no success/failure pair):
 
@@ -334,11 +378,11 @@ Special events (no success/failure pair):
 
 - `WXAPP_SESSION_SKIPPED` — has behavioral taxonomy (`wxcc_sdk.user.webex_together_session_init.ignore`)
 
-Of the 107 defined metric names, 96 have behavioral taxonomy and 11 do not. Events **without** an `eventTaxonomyMap` entry are the eight `AI_ASSISTANT_*` names plus `WEBSOCKET_DEREGISTER_SUCCESS`, `WEBSOCKET_DEREGISTER_FAIL`, and `WEBSOCKET_EVENT_RECEIVED`.
+Of the 113 defined metric names, 97 have behavioral taxonomy and 16 do not. Events **without** an `eventTaxonomyMap` entry are the original eight `AI_ASSISTANT_*` names, the three Agent Wellness Break `AI_ASSISTANT_WELLNESS_*` names, the two `WELLBEING_BREAK_IDLE_CODE_FETCH_*` names, plus `WEBSOCKET_DEREGISTER_SUCCESS`, `WEBSOCKET_DEREGISTER_FAIL`, and `WEBSOCKET_EVENT_RECEIVED`. The Agent Wellness Break names are intentionally operational-only and therefore have no `eventTaxonomyMap` entries.
 
 ### Complete METRIC_EVENT_NAMES catalog
 
-This table contains all 107 names from `src/metrics/constants.ts`; taxonomy presence is checked against `src/metrics/behavioral-events.ts`: 96 mapped and 11 unmapped.
+This table contains all 113 names from `src/metrics/constants.ts`; taxonomy presence is checked against `src/metrics/behavioral-events.ts`: 97 mapped and 16 unmapped.
 
 | Constant | Emitted name | Behavioral taxonomy? |
 |---|---|---|
@@ -412,6 +456,7 @@ This table contains all 107 names from `src/metrics/constants.ts`; taxonomy pres
 | `WXAPP_USERSUB_PUBLISH_FAILED` | `WxApp Usersub Publish Failed` | yes |
 | `WXAPP_MERCURY_SUBSCRIBE_SUCCESS` | `WxApp Mercury Subscribe Success` | yes |
 | `WXAPP_MERCURY_SUBSCRIBE_FAILED` | `WxApp Mercury Subscribe Failed` | yes |
+| `WXAPP_OFFER_PARTICIPANT_FIELDS_MISSING` | `WxApp Offer Participant Fields Missing` | yes |
 | `UPLOAD_LOGS_SUCCESS` | `Upload Logs Success` | yes |
 | `UPLOAD_LOGS_FAILED` | `Upload Logs Failed` | yes |
 | `WEBSOCKET_DEREGISTER_SUCCESS` | `Websocket Deregister Success` | no |
@@ -441,6 +486,11 @@ This table contains all 107 names from `src/metrics/constants.ts`; taxonomy pres
 | `AI_ASSISTANT_SEND_REAL_TIME_ASSISTANCE_USER_ACTION_FAILED` | `AI Assistant Send Real Time Assistance User Action Failed` | no |
 | `AI_ASSISTANT_FETCH_HISTORIC_TRANSCRIPTS_SUCCESS` | `AI Assistant Fetch Historic Transcripts Success` | no |
 | `AI_ASSISTANT_FETCH_HISTORIC_TRANSCRIPTS_FAILED` | `AI Assistant Fetch Historic Transcripts Failed` | no |
+| `AI_ASSISTANT_WELLNESS_ACTION_ACCEPTED` | `AI Assistant Wellness Action Accepted` | no |
+| `AI_ASSISTANT_WELLNESS_ACTION_FAILED` | `AI Assistant Wellness Action Failed` | no |
+| `AI_ASSISTANT_WELLNESS_EVENT_INVALID` | `AI Assistant Wellness Event Invalid` | no |
+| `WELLBEING_BREAK_IDLE_CODE_FETCH_SUCCESS` | `Wellbeing Break Idle Code Fetch Success` | no |
+| `WELLBEING_BREAK_IDLE_CODE_FETCH_FAILED` | `Wellbeing Break Idle Code Fetch Failed` | no |
 | `USER_PREFERENCE_GET_SUCCESS` | `User Preference Get Success` | yes |
 | `USER_PREFERENCE_GET_FAILED` | `User Preference Get Failed` | yes |
 | `USER_PREFERENCE_CREATE_SUCCESS` | `User Preference Create Success` | yes |
@@ -450,7 +500,7 @@ This table contains all 107 names from `src/metrics/constants.ts`; taxonomy pres
 | `USER_PREFERENCE_DELETE_SUCCESS` | `User Preference Delete Success` | yes |
 | `USER_PREFERENCE_DELETE_FAILED` | `User Preference Delete Failed` | yes |
 
-Defined names without an `eventTaxonomyMap` entry: `AI_ASSISTANT_FETCH_HISTORIC_TRANSCRIPTS_FAILED`, `AI_ASSISTANT_FETCH_HISTORIC_TRANSCRIPTS_SUCCESS`, `AI_ASSISTANT_GET_REAL_TIME_ASSISTANCE_FAILED`, `AI_ASSISTANT_GET_REAL_TIME_ASSISTANCE_SUCCESS`, `AI_ASSISTANT_SEND_EVENT_FAILED`, `AI_ASSISTANT_SEND_EVENT_SUCCESS`, `AI_ASSISTANT_SEND_REAL_TIME_ASSISTANCE_USER_ACTION_FAILED`, `AI_ASSISTANT_SEND_REAL_TIME_ASSISTANCE_USER_ACTION_SUCCESS`, `WEBSOCKET_DEREGISTER_FAIL`, `WEBSOCKET_DEREGISTER_SUCCESS`, `WEBSOCKET_EVENT_RECEIVED`.
+Defined names without an `eventTaxonomyMap` entry: `WEBSOCKET_DEREGISTER_SUCCESS`, `WEBSOCKET_DEREGISTER_FAIL`, `WEBSOCKET_EVENT_RECEIVED`, all eight AI Assistant request names, and the seven Agent Wellness Break notification/action/system-code/ASC names listed above.
 
 ## Requires (dependencies)
 - `webex.internal.newMetrics` submission APIs
@@ -473,6 +523,7 @@ Defined names without an `eventTaxonomyMap` entry: `AI_ASSISTANT_FETCH_HISTORIC_
 | METRICS-R-003 | When metrics are disabled, clear pending events and make `timeEvent` plus all tracking methods return without recording/submitting. | Telemetry must never block or alter product behavior and disablement must be comprehensive. | `src/metrics/MetricsManager.ts` | `test/unit/spec/metrics/MetricsManager.ts` | None; source and test evidence rechecked during the 2026-07-09 remediation; independent document revalidation pending. | PRESENT |
 | METRICS-R-004 | Queue submissions until the host SDK is ready and flush through the correct behavioral/operational/business service. | Early lifecycle telemetry must not be lost solely because the host is not ready. | `src/metrics/MetricsManager.ts` | `test/unit/spec/metrics/MetricsManager.ts` | None; source and test evidence rechecked during the 2026-07-09 remediation; independent document revalidation pending. | PRESENT |
 | METRICS-R-005 | Submit through the host SDK's `webex.internal.newMetrics` client without storing credentials or implementing authorization policy in MetricsManager. | Host-owned authentication keeps telemetry credential handling outside the Contact Center metrics module. | `src/metrics/MetricsManager.ts` | `test/unit/spec/metrics/MetricsManager.ts` | None; authentication is inherited and credential ownership is explicitly N/A. | PRESENT |
+| METRICS-R-006 | Track wellness action, invalid notification, system-code lookup, and ASC state-change outcomes as operational metrics using fixed names and reason-only/context-minimized payloads. | The feature needs diagnosable lifecycle signals without logging wellness payloads or agent PII. | `src/metrics/constants.ts`, `src/cc.ts`, `src/services/ApiAiAssistant.ts` | `test/unit/spec/cc.ts`, `test/unit/spec/services/ApiAiAssistant.ts` | These names intentionally have no behavioral taxonomy. | PRESENT |
 
 ## Design Overview
 Metrics separates its stable consumption boundary from collaborators so ownership and failure behavior stay explicit. Telemetry is deliberately non-blocking and queue-backed so product behavior never waits for metrics; failures are logged rather than propagated.
@@ -495,18 +546,7 @@ Each behavioral event maps to a structured taxonomy in `behavioral-events.ts`:
 
 **Example**: `STATION_LOGIN_SUCCESS` maps to `wxcc_sdk.user.station_login.complete`
 
-> **Note**: The following events do **not** have behavioral taxonomy mappings in `behavioral-events.ts`:
-> - `AI_ASSISTANT_SEND_EVENT_SUCCESS`
-> - `AI_ASSISTANT_SEND_EVENT_FAILED`
-> - `AI_ASSISTANT_GET_REAL_TIME_ASSISTANCE_SUCCESS`
-> - `AI_ASSISTANT_GET_REAL_TIME_ASSISTANCE_FAILED`
-> - `AI_ASSISTANT_SEND_REAL_TIME_ASSISTANCE_USER_ACTION_SUCCESS`
-> - `AI_ASSISTANT_SEND_REAL_TIME_ASSISTANCE_USER_ACTION_FAILED`
-> - `AI_ASSISTANT_FETCH_HISTORIC_TRANSCRIPTS_SUCCESS`
-> - `AI_ASSISTANT_FETCH_HISTORIC_TRANSCRIPTS_FAILED`
-> - `WEBSOCKET_DEREGISTER_SUCCESS`
-> - `WEBSOCKET_DEREGISTER_FAIL`
-> - `WEBSOCKET_EVENT_RECEIVED`
+> **Note**: The 20 names catalogued above as lacking `eventTaxonomyMap` entries, including all nine new wellness-related names, are operational-only.
 >
 > Calling `trackBehavioralEvent` with these event names will push an event with an `undefined` taxonomy.
 
@@ -796,7 +836,7 @@ MetricsManager holds three pending queues, running timing entries, a readiness f
 
 ## Business Rules & Invariants
 - `timeEvent` and every tracking method return immediately while metrics are disabled.
-- Only names present in `eventTaxonomyMap` receive behavioral taxonomy; 73 of 82 names are mapped and the six AI Assistant plus three WebSocket names are intentionally catalogued as unmapped.
+- Only names present in `eventTaxonomyMap` receive behavioral taxonomy; 81 of 101 names are mapped and all 20 exceptions are explicitly catalogued as unmapped.
 - `submittingEvents` prevents overlapping queue-drain executions.
 - Authentication is inherited from the host Webex SDK's metrics client; MetricsManager owns no credentials, tokens, or authorization policy.
 
@@ -831,7 +871,7 @@ stateDiagram-v2
 - **metricsDisabled**: When `true`, `timeEvent` and all `track*` methods return early, and `clearPendingEvents()` empties all queues.
 
 ## Pitfalls
-- `METRIC_EVENT_NAMES` and `eventTaxonomyMap` are different inventories: eleven defined names intentionally have no behavioral taxonomy.
+- `METRIC_EVENT_NAMES` and `eventTaxonomyMap` are different inventories: 20 defined names intentionally have no behavioral taxonomy.
 - `setMetricsDisabled(true)` clears pending queues but does not create a delivery receipt; callers must not infer that previously submitted events were accepted.
 - Submission helpers hand events to `webex.internal.newMetrics` without a module-level retry/requeue policy, so telemetry must remain non-blocking and non-authoritative.
 
@@ -892,10 +932,11 @@ Use `test/unit/spec/metrics/MetricsManager.ts` for readiness queues, timing/trac
 | Behavior / Requirement | Existing test evidence | Gap |
 |---|---|---|
 | `METRICS-R-001` | `test/unit/spec/metrics/MetricsManager.ts` | Add a catalog parity assertion if constants change. |
-| `METRICS-R-002` | `test/unit/spec/metrics/behavioral-events.ts` | Keep explicit coverage for all eleven unmapped names. |
+| `METRICS-R-002` | `test/unit/spec/metrics/behavioral-events.ts` | Keep explicit coverage for all 20 unmapped names. |
 | `METRICS-R-003` | `test/unit/spec/metrics/MetricsManager.ts` | None. |
 | `METRICS-R-004` | `test/unit/spec/metrics/MetricsManager.ts` | None. |
 | `METRICS-R-005` | `test/unit/spec/metrics/MetricsManager.ts` | Authentication ownership is verified indirectly through the host metrics client. |
+| `METRICS-R-006` | `test/unit/spec/cc.ts`, `test/unit/spec/services/ApiAiAssistant.ts` | Add direct catalog-parity coverage if metrics constants receive a dedicated test. |
 
 ## Traceability
 - Repo architecture: `../../../ai-docs/ARCHITECTURE.md` · Registry: `../../../ai-docs/SPEC_INDEX.md`

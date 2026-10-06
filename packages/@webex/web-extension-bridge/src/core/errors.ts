@@ -77,7 +77,7 @@ export class BridgeError extends Error {
    *   {@link toWireError} for that.
    * @param topic - Topic the failure relates to, when there is one.
    */
-  public constructor(code: BridgeErrorCode, message?: string, topic?: string) {
+  constructor(code: BridgeErrorCode, message?: string, topic?: string) {
     super(message ?? REDACTED_MESSAGES.get(code) ?? code);
     this.name = 'BridgeError';
     this.code = code;
@@ -96,14 +96,14 @@ export function isBridgeError(value: unknown): value is BridgeError {
 }
 
 /**
- * Reduce any failure to a code and a fixed message.
+ * Reduce any failure to a code and a fixed, wire-safe message.
  *
- * Anything thrown by a page handler funnels through here, which is what keeps
- * stack traces, internal object shapes and handler-authored messages on their own
- * side of the boundary (T6).
+ * Anything thrown by a page handler funnels through here, keeping stack traces,
+ * internal object shapes and handler-authored messages on their own side of the
+ * trust boundary (T6).
  *
- * @param cause - The original failure. Only its code is used, if it has one.
- * @returns A redacted, sendable error.
+ * @param cause - Anything thrown or rejected with.
+ * @returns A redacted `{code, message}` error.
  */
 export function toWireError(cause: unknown): WireError {
   const code = isBridgeError(cause) ? cause.code : 'HANDLER_ERROR';
@@ -117,12 +117,12 @@ export function toWireError(cause: unknown): WireError {
 /**
  * Rebuild a `BridgeError` from an untrusted wire error.
  *
- * An unrecognised code is mapped to `HANDLER_ERROR` rather than trusted, so a
- * hostile peer cannot invent codes that a consumer's `switch` does not expect.
+ * An unrecognised code maps to `HANDLER_ERROR` rather than being trusted, so a
+ * hostile peer can't invent codes a consumer's `switch` doesn't expect.
  *
  * @param value - The `error` field of an inbound `RESPONSE`.
  * @param topic - Topic of the request being settled.
- * @returns A `BridgeError` with a known code.
+ * @returns A `BridgeError` with a known code, or `HANDLER_ERROR` when unrecognised.
  */
 export function fromWireError(value: unknown, topic?: string): BridgeError {
   const code = readOwn(value, 'code');

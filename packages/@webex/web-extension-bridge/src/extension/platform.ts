@@ -106,6 +106,8 @@ export function requireTabs(chromeApi: ChromeLike): ChromeTabsLike {
  * @param chromeApi - Platform object.
  * @returns The session storage area. Never `sync`: the buffer is per-browser-session
  *   state and must not be replicated to other devices.
+ * @throws BridgeError `INSECURE_CONFIG` when unavailable, which means `"storage"` is
+ *   missing from the manifest permissions.
  */
 export function requireSessionStorage(chromeApi: ChromeLike): ChromeStorageArea {
   const area = chromeApi.storage?.session;

@@ -1,0 +1,24 @@
+# Dependencies
+node_modules/
+
+# Build output
+dist/
+
+# Test / coverage
+coverage/
+junit.xml
+
+# Logs
+*.log
+
+# Editor / OS
+.idea
+.DS_Store
+
+# Env files
+.env
+.env.test
+.env.production
+
+# Caches
+.eslintcache

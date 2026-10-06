@@ -208,8 +208,8 @@ interface CallingClientConfig {
 | Property                | Required | Default       | Description                                                 |
 | ----------------------- | -------- | ------------- | ----------------------------------------------------------- |
 | `logger.level`          | No       | `ERROR`       | Log verbosity level                                         |
-| `discovery.country`     | No       | Auto-detected | Override country for Mobius discovery                       |
-| `discovery.region`      | No       | Auto-detected | Override region for Mobius discovery                        |
+| `discovery.country`     | No       | Auto-detected | Sets `countryCode` on the Mobius discovery query. Does not choose the discovery host. |
+| `discovery.region`      | No       | Auto-detected | Sets `regionCode` on the Mobius discovery query. Does not choose the discovery host. |
 | `serviceData.indicator` | No       | `CALLING`     | Service flow: `calling`, `guestcalling`, or `contactcenter` |
 | `serviceData.domain`    | No       | `''`          | RTMS domain required for contact center flow                |
 | `jwe`                   | No       | -             | JSON Web Encryption token having destination information. This is only required for guest calling flow |
@@ -250,7 +250,7 @@ interface CallingClientConfig {
 
 | ID | WHAT | WHY | Source Evidence | Test / Example Evidence | Assumptions / Gaps | Confidence |
 |---|---|---|---|---|---|---|
-| CALLINGCLIEN-R-001 | Performs region-based Mobius server discovery to select optimal primary and backup endpoints for registration, calls, and media. | Regional primary/backup discovery minimizes signaling distance and supplies failover endpoints when the preferred Mobius cluster is unavailable. | `src/CallingClient/CallingClient.ts` | `src/CallingClient/CallingClient.test.ts` | none identified | PRESENT |
+| CALLINGCLIEN-R-001 | Discovers Mobius servers by first requesting the U2C `serviceLinks.mobius` host (`_serviceUrls.mobius`), then walking remaining catalog clusters only if that request fails with a non-final error. `discovery.region` / `discovery.country` set query params only; they do not select the discovery host. Final errors (for example 401) abort discovery. | Preferring the U2C service link keeps discovery on the account's home cluster instead of catalog order, which can send a US account to an EU cluster when one region is down. | `src/CallingClient/CallingClient.ts` | `src/CallingClient/CallingClient.test.ts` | none identified | PRESENT |
 | CALLINGCLIEN-R-002 | Creates and registers Lines with Mobius, establishing signaling sessions, subscribing for events, and managing registration/status. Includes Line keepalives and failover routines. | A Line boundary keeps registration, device identity, and call routing scoped to the provisioned line instead of mixing state across devices. | `src/CallingClient/CallingClient.ts` | `src/CallingClient/CallingClient.test.ts` | none identified | PRESENT |
 | CALLINGCLIEN-R-003 | Initializes and configures the `@webex/internal-media-core` engine to negotiate, establish, and manage WebRTC media streams for audio and video calls. | Using the shared media engine centralizes ROAP/WebRTC negotiation and keeps media lifecycle behavior consistent with the rest of the SDK. | `src/CallingClient/CallingClient.ts` | `src/CallingClient/CallingClient.test.ts` | none identified | PRESENT |
 | CALLINGCLIEN-R-004 | Periodically sends keepalive messages for both Lines and active Calls, ensuring session continuity and timely detection of network or signaling issues. | Keepalives detect stale device and call sessions early enough to trigger recovery before the application assumes an unusable session is healthy. | `src/CallingClient/CallingClient.ts` | `src/CallingClient/CallingClient.test.ts` | none identified | PRESENT |
@@ -267,7 +267,7 @@ interface CallingClientConfig {
 
 | Capability | Description  |
 | ----------- | ----------- |
-| **Mobius Discovery**         | Performs region-based Mobius server discovery to select optimal primary and backup endpoints for registration, calls, and media.                                 |
+| **Mobius Discovery**         | Requests the U2C Mobius service link first, then remaining catalog clusters on non-final failure, to select primary and backup endpoints for registration, calls, and media. |
 | **Host IP Discovery**        | Negotiates a throwaway local offer when a line registers to read this client's local interface addresses off its ICE host candidates, and reports them to Mobius in the registration. Requires `CallingClientConfig.localAudioStream`, which `init()` forwards to the line; skipped without it. |
 | **Line Registration**        | Creates and registers Lines with Mobius, establishing signaling sessions, subscribing for events, and managing registration/status. Includes Line keepalives and failover routines. |
 | **Media Engine Management**  | Initializes and configures the `@webex/internal-media-core` engine to negotiate, establish, and manage WebRTC media streams for audio and video calls.           |
@@ -505,11 +505,20 @@ sequenceDiagram
 
     CC->>CC: init()
     CC->>CC: windowsChromiumIceWarmup() [if Windows Chromium]
-
-    CC->>DS: getClientRegionInfo()
-    DS-->>CC: {region, countryCode}
-    CC->>Mobius: getMobiusServers(region)
-    Mobius-->>CC: {primary: [...], backup: [...],<br/>primaryWss: [...], backupWss: [...]}
+    Note over CC: discovery.region / country from SDK config<br/>are query params only; host is always U2C serviceLinks.mobius
+    alt no config region/country
+        CC->>DS: getClientRegionInfo()
+        DS-->>CC: {region, countryCode}
+    end
+    CC->>Mobius: GET U2C serviceLinks.mobius /calling/web/?regionCode&countryCode
+    alt service link succeeds
+        Mobius-->>CC: {primary: [...], backup: [...],<br/>primaryWss: [...], backupWss: [...]}
+    else non-final error (for example 500)
+        CC->>Mobius: remaining catalog clusters (same query)
+        Mobius-->>CC: {primary: [...], backup: [...],<br/>primaryWss: [...], backupWss: [...]}
+    else final error (for example 401)
+        Note over CC: abort; default to first catalog cluster
+    end
 
     opt apiRequest.isSocketEnabled()
         CC->>CC: connectToMobiusSocket()<br/>(walk primaryWssMobiusUris only;<br/>returns early if list is empty;<br/>backupWssMobiusUris never consulted here)
@@ -790,7 +799,7 @@ const callingClient = await createClient(webex, {
 The `createClient` factory instantiates `CallingClient` and calls `init()`, which:
 
 1. Performs ICE warmup (Windows Chromium only)
-2. Discovers Mobius servers for the client region (via `ds.ciscospark.com`)
+2. Discovers Mobius servers: requests the U2C `serviceLinks.mobius` host first (region/country from SDK config or `ds.ciscospark.com`), then remaining catalog clusters only on non-final failure
 3. Creates a Line object internally, handing it `localAudioStream` so that it can discover the client's host ip addresses when it registers
 
 **Note:** `init()` does NOT register the line. The application must call `line.register()` explicitly after obtaining the line via `getLines()`.
