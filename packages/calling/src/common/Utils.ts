@@ -1827,34 +1827,22 @@ export function getHostIps(): string[] {
 }
 
 /**
- * Drops addresses that carry no information for the server, deduplicates across interfaces and
- * caps the result at the maximum number of addresses the Mobius API accepts.
- *
- * @param addresses - Addresses as reported by the browser.
- */
-function normalizeHostIps(addresses: string[]): string[] {
-  const normalized: string[] = [];
-
-  addresses.forEach((address) => {
-    if (!EXCLUDED_HOST_IPS.includes(address) && !normalized.includes(address)) {
-      normalized.push(address);
-    }
-  });
-
-  return normalized.slice(0, MAX_HOST_IPS);
-}
-
-/**
- * Returns the host ip addresses advertised by the host candidates of an SDP.
+ * Returns the host ip addresses advertised by the host candidates of an SDP, dropping the ones
+ * that carry no information for the server, deduplicating across interfaces and capping the
+ * result at the maximum number of addresses the Mobius API accepts.
  *
  * @param sdp - Session Description Protocol string.
  */
 export function getHostIpsFromSdp(sdp?: string): string[] {
   const candidates = sdp?.match(SDP_HOST_CANDIDATE_REGEX) || [];
 
-  return normalizeHostIps(
-    candidates.map((candidate) => candidate.split(' ')[CANDIDATE_ADDRESS_INDEX])
-  );
+  return candidates
+    .map((candidate) => candidate.split(' ')[CANDIDATE_ADDRESS_INDEX])
+    .filter(
+      (address, index, addresses) =>
+        !EXCLUDED_HOST_IPS.includes(address) && addresses.indexOf(address) === index
+    )
+    .slice(0, MAX_HOST_IPS);
 }
 
 /**

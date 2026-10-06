@@ -201,6 +201,7 @@ interface CallingClientConfig {
   discovery?: {country: string; region: string};
   serviceData?: {indicator: ServiceIndicator; domain?: string};
   jwe?: string;
+  localAudioStream?: LocalMicrophoneStream;
 }
 ```
 
@@ -212,6 +213,7 @@ interface CallingClientConfig {
 | `serviceData.indicator` | No       | `CALLING`     | Service flow: `calling`, `guestcalling`, or `contactcenter` |
 | `serviceData.domain`    | No       | `''`          | RTMS domain required for contact center flow                |
 | `jwe`                   | No       | -             | JSON Web Encryption token having destination information. This is only required for guest calling flow |
+| `localAudioStream`      | No       | -             | Microphone stream used during `init()` to discover this client's host ip addresses, which are then reported on registration. Omit it to skip that discovery — without a stream the browser masks the addresses as mDNS hostnames, so there is nothing to report. See [Host IP Discovery](#host-ip-discovery). |
 
 ## Requires (dependencies)
 
@@ -259,12 +261,14 @@ interface CallingClientConfig {
 | CALLINGCLIEN-R-009 | Supports various service flows and user types (`calling`, `guestcalling`, `contactcenter`) through the `ServiceIndicator`, enabling correct registration and feature availability based on license and context. | ServiceIndicator gates backend and feature behavior so calling, guest-calling, and contact-center sessions do not use incompatible registration or call flows. | `src/CallingClient/CallingClient.ts` | `src/CallingClient/CallingClient.test.ts` | none identified | PRESENT |
 | CALLINGCLIEN-R-010 | Routes Mobius traffic over either HTTP (`webex.request`) or the Mobius WebSocket transport (`mobius-socket`) based on the WDM feature flag `webrtc-calling-over-ws-CALL-219562` (with a localStorage override on allow-listed origins). The `isMobiusSocketEnabled` flag is seeded from the feature flag at `APIRequest` construction time, but `Registration.attemptRegistrationWithServers` overrides it per server group via `apiRequest.setSocketEnabled(servers[0].startsWith('wss://'))` — so HTTP and WSS can be used for different groups within the same session. All `register`, `keepalive`, `call setup/state/media/status`, supplementary services, and `deregister` traffic flows through the same `APIRequest.makeRequest()` API regardless of transport. | Feature-gated WSS adoption retains the proven HTTP fallback while allowing controlled rollout and diagnostic overrides on approved development origins. | `src/CallingClient/CallingClient.ts` | `src/CallingClient/CallingClient.test.ts` | none identified | PRESENT |
 | CALLINGCLIEN-R-011 | When WSS is enabled, subscribes to `MobiusSocket`'s `event:async_event` via `APIRequest.registerMobiusSocketListener` and fans events out: `registration.down` → `Registration.handleRegistrationDownEvent`, all other event types → `CallManager.dequeueWsEvents`. | A single async-event fan-out preserves the existing Registration and CallManager handlers while changing only the transport that delivered the event. | `src/CallingClient/CallingClient.ts` | `src/CallingClient/CallingClient.test.ts` | none identified | PRESENT |
+| CALLINGCLIEN-R-012 | When `CallingClientConfig.localAudioStream` is supplied, `init()` starts `discoverHostIps(localAudioStream)` before Mobius server discovery so the two overlap, and awaits it before creating the `Line` so that the client's host ip addresses are available to the first registration. Without a stream the discovery is skipped entirely and registration reports `hostIps: []`. The addresses are cached in `common/Utils.ts` for the session and read synchronously by `Registration.postRegistration` through `getHostIps()`; call and media payloads derive their own from the live SDP instead. | Mobius needs the client's local interface addresses for media correlation, and ICE candidates are the only browser surface that exposes them — which requires media capture permission, so the stream the application already owns is what makes the addresses real rather than mDNS hostnames. Starting the discovery early hides its latency behind discovery requests, and awaiting it before the line exists is what prevents registration from racing it. | `src/CallingClient/CallingClient.ts`; `src/common/Utils.ts` | `src/CallingClient/CallingClient.test.ts`; `src/common/Utils.test.ts` | Addresses are gathered once per session and can be stale after a network change | PRESENT |
 
 ### Key Capabilities
 
 | Capability | Description  |
 | ----------- | ----------- |
 | **Mobius Discovery**         | Performs region-based Mobius server discovery to select optimal primary and backup endpoints for registration, calls, and media.                                 |
+| **Host IP Discovery**        | Negotiates a throwaway local offer during `init()` to read this client's local interface addresses off its ICE host candidates, and reports them to Mobius on registration. Requires `CallingClientConfig.localAudioStream`; skipped without it. |
 | **Line Registration**        | Creates and registers Lines with Mobius, establishing signaling sessions, subscribing for events, and managing registration/status. Includes Line keepalives and failover routines. |
 | **Media Engine Management**  | Initializes and configures the `@webex/internal-media-core` engine to negotiate, establish, and manage WebRTC media streams for audio and video calls.           |
 | **Call Keepalive**           | Periodically sends keepalive messages for both Lines and active Calls, ensuring session continuity and timely detection of network or signaling issues.           |
@@ -354,6 +358,25 @@ For detailed documentation on specific subsystems:
 | `MOBIUS_SOCKET_MESSAGE_TYPE` | `utils/constants.ts` | Enum of WSS request/response types: `register`, `unregister`, `device_status`, `device_get`, `device_list`, `call_setup`, `call_state`, `call_status`, `call_media`, `call_hold`, `call_resume`, `call_transfer`, `call_delete`, plus their `.response` counterparts and `UNKNOWN`. |
 | `MOBIUS_SOCKET_ACTION` | `Metrics/types.ts` | Telemetry actions used by `submitMobiusSocketMetric`: `connect`, `disconnect`, `listener_registered`, `listener_unregistered`, `registration_down`. |
 | WSS close codes used by `CallingClient` / `Registration` | `mobius-socket` | `3050` with reason `'done (permanent)'` is used for permanent disconnects (failover, failback, registration-down, restoring previous registration); other codes are documented in [`mobius-socket/ai-docs/ARCHITECTURE.md`](../../mobius-socket/ai-docs/ARCHITECTURE.md). |
+
+### Host IP Discovery
+
+Mobius needs the host ip addresses of this client in the `/device`, `/call` and `/media` payloads so that it can correlate the client's local interfaces for media routing. ICE candidates are the only surface a browser exposes those addresses on, and gathering only starts once a local description is set — so an offer has to be produced to obtain them.
+
+The SDK gets them from two places, both reading the host candidates (`typ host`) off an SDP:
+
+| Payload | Source of the addresses | How |
+|---|---|---|
+| `POST /device` (registration) | A throwaway offer negotiated during `init()` | `discoverHostIps(localAudioStream)` in `common/Utils.ts` creates a `RoapMediaConnection` configured exactly like a call's, reads the addresses off the offer it emits, then closes the connection. `Registration.postRegistration` reads the result synchronously via `getHostIps()`. |
+| `POST /devices/{id}/call`, `POST /devices/{id}/calls/{id}/media` | The actual call's ROAP offer or answer | `getHostIpsFromSdp(roapMessage?.sdp)` in `Call.post` / `Call.postMedia`. These never consult `getHostIps()` — a call that starts on a different network than `init()` reports the addresses of the network it is actually on. |
+
+Properties that matter when changing this:
+
+- **The stream is required for the addresses to be real.** Without media capture permission the browser masks host candidates as `<uuid>.local` mDNS hostnames. `CallingClientConfig.localAudioStream` is what grants the permission, so when it is absent `init()` skips the discovery entirely rather than gathering useless hostnames.
+- **The `init()` await is load-bearing.** `getHostIps()` is a synchronous read of a module-level cache in `common/Utils.ts`. `init()` starts the discovery before `getMobiusServers()` so the two overlap, but awaits it before creating the `Line`; dropping that await would let registration race the discovery and send `hostIps: []`.
+- **Registration-time addresses are cached for the session.** `discoverHostIps` is single-flight: concurrent and later callers share one negotiation. The addresses can therefore go stale after a network change, which is tolerated because every subsequent `/call` and `/media` payload derives its addresses from a fresh SDP.
+- **Addresses are filtered before being sent.** `getHostIpsFromSdp` drops the unspecified and loopback addresses (`0.0.0.0`, `::`, `127.0.0.1`, `::1`) and `IPV4_FALLBACK_ADDRESS` (`192.1.1.1`, which `modifySdpForIPv4` synthesises and which belongs to no interface), deduplicates across interfaces, and caps the result at `MAX_HOST_IPS` (10) because that is the Mobius schema maximum.
+- **`hostIps` is always present, possibly empty.** All three Mobius schemas declare it optional with `minItems: 0`, so the SDK sends `hostIps: []` rather than omitting the field.
 
 ### Subdirectory Architecture Docs
 
@@ -480,6 +503,11 @@ sequenceDiagram
 
     CC->>CC: init()
     CC->>CC: windowsChromiumIceWarmup() [if Windows Chromium]
+
+    opt sdkConfig.localAudioStream
+        CC->>CC: discoverHostIps(localAudioStream)<br/>(started, not awaited — runs while<br/>the discovery requests are in flight)
+    end
+
     CC->>DS: getClientRegionInfo()
     DS-->>CC: {region, countryCode}
     CC->>Mobius: getMobiusServers(region)
@@ -493,6 +521,8 @@ sequenceDiagram
         CC->>API: apiRequest.registerMobiusSocketListener(handleMobiusAsyncEvent)
         API->>MS: on('event:async_event', handleMobiusAsyncEvent)
     end
+
+    CC->>CC: await hostIpsDiscovered<br/>(so getHostIps() is populated before<br/>the line can register)
 
     CC->>Line: new Line(userId, deviceUri, mutex,<br/>primaryUris (wss-normalized if WSS),<br/>backupUris (wss-normalized if WSS), ...)
     activate Line
@@ -752,19 +782,26 @@ The CallingClient module follows a layered architecture: **Application → Calli
 ```typescript
 import {createClient, ServiceIndicator} from '@webex/calling';
 
+const localAudioStream = await createMicrophoneStream({audio: true});
+
 const callingClient = await createClient(webex, {
   logger: {level: 'info'},
   serviceData: {indicator: ServiceIndicator.CALLING, domain: ''},
+  localAudioStream,
 });
 ```
 
 The `createClient` factory instantiates `CallingClient` and calls `init()`, which:
 
 1. Performs ICE warmup (Windows Chromium only)
-2. Discovers Mobius servers for the client region (via `ds.ciscospark.com`)
-3. Creates a Line object internally
+2. Starts host ip discovery when `localAudioStream` is configured, so it overlaps with the discovery requests below
+3. Discovers Mobius servers for the client region (via `ds.ciscospark.com`)
+4. Awaits the host ip discovery, so the addresses are available to the first registration
+5. Creates a Line object internally
 
 **Note:** `init()` does NOT register the line. The application must call `line.register()` explicitly after obtaining the line via `getLines()`.
+
+**Note:** `localAudioStream` is optional, but passing it is what lets the client report its host ip addresses on registration — see [Host IP Discovery](#host-ip-discovery). Acquiring it before `createClient` moves the browser's microphone prompt to initialization time; the same stream can be reused for `call.dial()` and `call.answer()`.
 
 ### Register a Line and Listen for Events
 
@@ -1034,6 +1071,7 @@ Unit tests are co-located under `src/CallingClient/` and exercise positive, nega
 | CALLINGCLIEN-R-009 | `src/CallingClient/CallingClient.test.ts` | Re-check negative/error edge coverage during independent validation |
 | CALLINGCLIEN-R-010 | `src/CallingClient/CallingClient.test.ts` | Re-check negative/error edge coverage during independent validation |
 | CALLINGCLIEN-R-011 | `src/CallingClient/CallingClient.test.ts` | Re-check negative/error edge coverage during independent validation |
+| CALLINGCLIEN-R-012 | `src/CallingClient/CallingClient.test.ts`; `src/common/Utils.test.ts` | Covered for the configured and omitted stream, the start ordering, and the discovery's own success/failure paths; no coverage that registration observes the addresses end to end |
 
 ## Traceability
 

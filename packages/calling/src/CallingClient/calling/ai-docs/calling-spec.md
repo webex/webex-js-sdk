@@ -113,7 +113,7 @@ All paths are relative to `CallingClient/calling/` (the directory containing `ca
 | `Eventing` | `../../Events/impl` |
 | `CallError`, `createCallError` | `../../Errors/catalog/CallError` |
 | `ERROR_LAYER`, `ERROR_TYPE`, `ErrorContext` | `../../Errors/types` |
-| `handleCallErrors`, `modifySdpForIPv4`, `parseMediaQualityStatistics`, `serviceErrorCodeHandler`, `uploadLogs` | `../../common/Utils` |
+| `getHostIpsFromSdp`, `handleCallErrors`, `modifySdpForIPv4`, `parseMediaQualityStatistics`, `serviceErrorCodeHandler`, `uploadLogs` | `../../common/Utils` |
 | `CallDetails`, `CallDirection`, `CallId`, `CorrelationId`, `DisplayInformation`, `HTTP_METHODS`, `ServiceIndicator`, `WebexRequestPayload`, `ALLOWED_SERVICES` | `../../common/types` |
 | `SDKConnector` | `../../SDKConnector` |
 | `ISDKConnector`, `WebexSDK` | `../../SDKConnector/types` |
@@ -299,10 +299,10 @@ These are internal methods on the `Call` class. They are not exposed via `ICall`
 
 | Method | Signature | Description |
 |--------|-----------|-------------|
-| `post` | `private post = async (roapMessage: RoapMessage): Promise<MobiusCallResponse>` | POST `/devices/{deviceId}/call` -- outgoing call setup with ROAP offer |
+| `post` | `private post = async (roapMessage: RoapMessage): Promise<MobiusCallResponse>` | POST `/devices/{deviceId}/call` -- outgoing call setup with ROAP offer; reports the offer's host candidate addresses as `hostIps` via `getHostIpsFromSdp()` |
 | `patch` | `private async patch(state: MobiusCallState): Promise<PatchResponse>` | PATCH `/devices/{deviceId}/calls/{callId}` -- update call state (alerting, connected) |
 | `delete` | `private async delete(): Promise<MobiusCallResponse>` | DELETE `/devices/{deviceId}/calls/{callId}` -- disconnect call with metrics and reason |
-| `postMedia` | `private async postMedia(roapMessage: RoapMessage): Promise<WebexRequestPayload>` | POST `/devices/{deviceId}/calls/{callId}/media` -- send ROAP message, applies `modifySdpForIPv4()` for SDP payloads |
+| `postMedia` | `private async postMedia(roapMessage: RoapMessage): Promise<WebexRequestPayload>` | POST `/devices/{deviceId}/calls/{callId}/media` -- send ROAP message, applies `modifySdpForIPv4()` for SDP payloads; reports the message's host candidate addresses as `hostIps` via `getHostIpsFromSdp()` |
 
 ### Metrics and Utilities
 
@@ -636,6 +636,7 @@ enum MOBIUS_MIDCALL_STATE {
 | CALLING-R-001 | Supports hold/resume, transfer, mute, DTMF, and media updates during active calls. | Routing mid-call actions through the Call lifecycle prevents hold, transfer, DTMF, mute, or media updates from bypassing signaling and media state guards. | `src/CallingClient/calling/call.ts` | `src/CallingClient/calling/call.test.ts`; `src/CallingClient/calling/callManager.test.ts` | Partial coverage; re-check negative/error edge coverage during independent validation | PRESENT |
 | CALLING-R-002 | Resolves caller display details from SIP headers (`p-asserted-identity`, `from`) and BroadWorks metadata. | Early caller detail makes incoming-call UI usable while asynchronous enrichment can improve the display without delaying call handling. | `src/CallingClient/calling/CallerId/index.ts` | `src/CallingClient/calling/CallerId/index.test.ts` | Partial coverage; re-check negative/error edge coverage during independent validation | PRESENT |
 | CALLING-R-003 | Gives `P-Asserted-Identity` precedence over the `From` fallback when resolving a SIP identity. | Network-asserted identity must take precedence so a weaker fallback cannot overwrite the identity selected by the signaling service. | `src/CallingClient/calling/CallerId/index.ts` | `src/CallingClient/calling/CallerId/index.test.ts` | Partial coverage; re-check malformed-header and fallback edge coverage during independent validation | PRESENT |
+| CALLING-R-004 | `post` and `postMedia` report the host candidate addresses of the ROAP message they are sending as `hostIps`, derived from that message's SDP by `getHostIpsFromSdp()`. The field is always present and is `[]` when the message carries no SDP or no message was attached at all. Neither call path reads the addresses `CallingClient.init()` discovered for registration. | Mobius correlates media routing against the addresses of the offer or answer it is actually negotiating, so deriving them from the SDP at hand keeps the payload correct for a call that starts on a different network than initialization did, and an unconditional empty array avoids a conditional payload shape the Mobius schema does not require. | `src/CallingClient/calling/call.ts`; `src/common/Utils.ts` | `src/CallingClient/calling/call.test.ts`; `src/common/Utils.test.ts` | none identified | PRESENT |
 
 ### 4. Mid-Call Operations and Supplementary Services
 
@@ -1286,9 +1287,12 @@ ROAP publish payload shape:
   "localMedia": {
     "roap": { "seq": 1, "messageType": "OFFER|ANSWER|OK", "sdp": "..." },
     "mediaId": "..."
-  }
+  },
+  "hostIps": ["10.0.0.5", "192.168.1.7"]
 }
 ```
+
+`hostIps` carries the addresses of the `typ host` candidates of `localMedia.roap.sdp`, extracted by `getHostIpsFromSdp()` (`common/Utils.ts`). It is always present and is `[]` whenever the ROAP message carries no SDP — a `messageType: OK`, an error report, or a call setup the state machine dispatched without a message attached. Call and media payloads derive their addresses only from the SDP at hand; they never reuse the addresses `CallingClient.init()` discovered for registration, so a call that starts on a different network reports the network it is actually on. See [CallingClient spec — Host IP Discovery](../../ai-docs/calling-client-spec.md#host-ip-discovery).
 
 ## Class / Component Relationships
 
@@ -1968,6 +1972,7 @@ Unit tests are co-located under `src/CallingClient/calling/` and exercise positi
 | CALLING-R-001 | `src/CallingClient/calling/call.test.ts`; `src/CallingClient/calling/callManager.test.ts` | Re-check negative/error edge coverage during independent validation |
 | CALLING-R-002 | `src/CallingClient/calling/CallerId/index.test.ts` | Re-check negative/error edge coverage during independent validation |
 | CALLING-R-003 | `src/CallingClient/calling/CallerId/index.test.ts` | Re-check malformed-header and fallback edge coverage during independent validation |
+| CALLING-R-004 | `src/CallingClient/calling/call.test.ts`; `src/common/Utils.test.ts` | Parametrized over both methods for the populated, no-sdp, and no-message cases |
 
 ## Traceability
 
