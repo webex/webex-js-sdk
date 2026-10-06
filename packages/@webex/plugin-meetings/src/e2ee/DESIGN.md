@@ -523,7 +523,7 @@ private required(): boolean {
 `joinSuccess` event. `session.join()` moves `state` to `'joining'`; every roster change is
 checked for our own device URL, which flips `state` to `'joined'` (and emits `STATE_CHANGED`).
 This is the single source of truth for "MLS join complete" that `Meeting.e2eeTrustState`
-(Option B) relies on to move a zero-trust meeting from `Calculating` to `ZeroTrust`.
+relies on to move a zero-trust meeting from `Calculating` to `ZeroTrust`.
 
 `hasMediaServices` is derived from the MLS roster: `true` when any roster member's
 `deviceType` is `'MEDIA_SERVICE'` (recording / transcoding / streaming server). It is
@@ -584,7 +584,7 @@ to surface the meeting's zero-trust state.
   `get e2eeState() { return this.e2ee?.state ?? 'disabled'; }`;
   `get e2eeHasMediaServices() { return this.e2ee?.hasMediaServices ?? false; }` (drives the
   app's zero-trust UI indicator). `getMembers()` unchanged.
-- `get e2eeTrustState(): E2eeTrustState` — derived **live** (Option B) from `locusInfo.info`
+- `get e2eeTrustState(): E2eeTrustState` — derived **live** from `locusInfo.info`
   flags plus `this.e2ee`:
   - `isBestEffortE2EEncryption` → `Adaptive*` (true) vs non-adaptive (false)
   - `isV2E2EEncrypted` → zero-trust (true) vs strong (false)
@@ -599,7 +599,7 @@ to surface the meeting's zero-trust state.
   const info = this.locusInfo?.info;
   const adaptive = !!info?.isBestEffortE2EEncryption;
   const isV2 = !!info?.isV2E2EEncrypted;
-  // Option B (live): a zero-trust meeting isn't zero-trust until our MLS join completes.
+  // a zero-trust meeting isn't zero-trust until our MLS join completes.
   if (isV2 && this.e2ee?.state !== 'joined') return 'Calculating';
   const zeroTrust = isV2 && !this.e2ee?.hasMediaServices;
   if (adaptive) return zeroTrust ? 'AdaptiveZeroTrust' : 'AdaptiveStrong';
