@@ -61,8 +61,10 @@ true, so `e2eeTrustState` drops `AdaptiveZeroTrust → AdaptiveStrong`), but our
 SFrame-encrypted via the existing MLS session. The downgrade only changes the reported trust state,
 not the media encryption path.
 
-The WASM MLS engine is assumed already relocated into the SDK; moving it and decision on 
-how/where it will be hosted is **not** part of this design doc.
+### Assumptions
+
+- The WASM MLS engine is already relocated into the SDK. Moving it and deciding how or where it
+  will be hosted are outside this design.
 
 ## Confirmed decisions
 
