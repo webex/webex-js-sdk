@@ -1,0 +1,307 @@
+{
+  "manifest_version": 1,
+  "repository": {
+    "name": "@webex/storage-adapter-local-forage",
+    "purpose": "A localforage-backed (IndexedDB first) implementation of the Webex storage-adapter interface, published to npm so a browser host can persist Webex JS SDK storage namespaces across page reloads and browser restarts.",
+    "category": "cat2-legacy",
+    "primary_languages": [
+      "javascript"
+    ]
+  },
+  "topology": "Single-repo",
+  "commands": {
+    "install": {
+      "command": "yarn install",
+      "source_file": "package.json",
+      "role": "install"
+    },
+    "compile": "[NEEDS HUMAN INPUT] -- no standalone compile step exists; build:src transpiles src into dist and emits the distributable output in one step, so there is no compile-only command.",
+    "unit-test": "[NEEDS HUMAN INPUT] -- package.json defines no test:unit script although its aggregate test script chains one; the owner confirmed on 2026-10-06 that no canonical unit-test command exists and declined to adopt test:browser for this role.",
+    "build": {
+      "command": "yarn workspace @webex/storage-adapter-local-forage build",
+      "source_file": "package.json",
+      "role": "package"
+    },
+    "lint": {
+      "command": "yarn workspace @webex/storage-adapter-local-forage test:style",
+      "source_file": "package.json",
+      "role": "lint"
+    },
+    "browser-test": {
+      "command": "yarn workspace @webex/storage-adapter-local-forage test:browser",
+      "source_file": "package.json",
+      "role": "other"
+    },
+    "deploy": {
+      "command": "yarn workspace @webex/storage-adapter-local-forage deploy:npm",
+      "source_file": "package.json",
+      "role": "deploy"
+    }
+  },
+  "toolchain": [
+    {
+      "name": "node",
+      "version": ">=18",
+      "origin": "repo-config",
+      "source_file": "package.json"
+    }
+  ],
+  "tests": {
+    "qa": {
+      "location": "test/unit/spec/storage-adapter-local-forage.js is the package's only test file. It runs the shared conformance suite from @webex/storage-adapter-spec against the adapter and declares no case of its own.",
+      "notes": "Derived from code on 2026-10-06, not measured (the generation worktree had no installed dependencies). No automated test executes this module: package.json defines no test:unit script; under the shared Jest configuration (testEnvironment node) the suite is wrapped in skipInNode and skipped; test:browser runs Karma with the Mocha framework while the shared suite calls the Jest-only beforeAll hook, so the suite cannot load. The aggregate test script chains test:unit and test:integration, which this package does not define."
+    }
+  },
+  "quality_gates": {
+    "code_coverage": {
+      "origin": "none",
+      "declared_by": "rsarika@cisco.com via bootstrap questionnaire 2026-10-06, corroborated by code: package.json defines no test:coverage script, the shared legacy Jest configuration sets collectCoverage false, and the CI coverage job runs test:coverage only in workspaces that define it."
+    }
+  },
+  "coverage_status_definitions": {
+    "specced": ">=80% public surface specced, drift <5% - spec is authoritative",
+    "partial": "40-80% specced - spec is a hint, cross-check code",
+    "untracked": "<40% specced - code is the source of truth"
+  },
+  "modules": [
+    {
+      "path": "src/",
+      "coverage_status": "Untracked",
+      "coverage_evidence": "Generator-side field measurement complete 2026-10-06: 93%, 13 of 14 mandatory fields PRESENT, critical 7 of 7. The canonical spec at src/docs/README.md records 13 requirements and 1 invariant. The one WEAK field is test and characterization coverage: no automated test executes the module (the shared suite is skipped in Node and cannot load under Karma with Mocha) and no characterization baseline exists; one is required before risky modification. Independent validation on 2026-10-06 found no Blocking spec/code drift; status remains Untracked while the behavioral test and characterization gaps remain.",
+      "canonical_spec": "src/docs/README.md",
+      "contracts": {
+        "provides": [
+          "local-forage-storage-adapter",
+          "local-forage-indexeddb-store"
+        ],
+        "requires": [
+          "storage-adapter-spec-suite",
+          "webex-common-js-api",
+          "webex-core-storage-layer",
+          "localforage-api"
+        ]
+      },
+      "last_assessed": "2026-10-06",
+      "section_profile": {
+        "has_ui": false,
+        "crosses_service_boundaries": false,
+        "enforces_domain_rules": true,
+        "is_concurrent_async": true,
+        "owns_persistence": true,
+        "returns_caller_errors": true,
+        "has_design_tradeoff": true,
+        "stateful_transitions": false,
+        "exposes_wire_protocol": false,
+        "ui_multi_screen": false,
+        "large_data_model": false,
+        "has_tiers": false,
+        "module_specific_conventions": true,
+        "published_package": true,
+        "embedded_in_host": true,
+        "holds_client_state": true,
+        "resolved_by": "claude-code/claude-opus-5-5 (host metadata; bootstrap questionnaire)",
+        "resolved_at": "2026-10-06T11:27:43Z",
+        "has_submodules": false,
+        "has_submodules_computed_by": "scripts/module_tree.py",
+        "has_submodules_computed_at": "2026-10-06T11:38:37Z"
+      }
+    }
+  ],
+  "contract_catalog": {
+    "index_path": "docs/architecture.md",
+    "definitions": {
+      "local-forage-storage-adapter": {
+        "kind": "sdk",
+        "publication": "published",
+        "source_kind": "repository-path",
+        "source": "package.json",
+        "summary": "The published npm surface: the default export StorageAdapterLocalForage (constructor arguments ignored), whose bind(namespace, options) resolves a binding exposing get, put, del, and clear. package.json declares the entry points (main dist/index.js, devMain src/index.js); src/index.js is the authoritative definition of the exported shape, and the owning module spec specifies its behavior."
+      },
+      "local-forage-indexeddb-store": {
+        "kind": "file",
+        "publication": "published",
+        "source_kind": "repository-path",
+        "source": "src/index.js",
+        "summary": "The on-device record layout the adapter owns: one record per namespace/key pair, keyed by the template literal namespace + '/' + key, in the origin's default localforage database (name localforage, store keyvaluepairs; IndexedDB, else WebSQL, else localStorage). Values are stored unencrypted and unversioned, persist across sessions and releases, and are erased wholesale by clear(). src/index.js is its only authoritative definition."
+      },
+      "storage-adapter-spec-suite": {
+        "kind": "sdk",
+        "publication": "published",
+        "source_kind": "external",
+        "source": "Workspace package @webex/storage-adapter-spec (workspace path packages/@webex/storage-adapter-spec/src/index.js; canonical spec packages/@webex/storage-adapter-spec/src/docs/README.md)",
+        "summary": "The executable conformance suite defining the Webex storage-adapter interface, run by this package's test. Owned and specified by @webex/storage-adapter-spec; recorded here only as a requirement."
+      },
+      "webex-common-js-api": {
+        "kind": "sdk",
+        "publication": "published",
+        "source_kind": "external",
+        "source": "Workspace package @webex/common (workspace path packages/@webex/common/src/one-flight.js; canonical spec packages/@webex/common/src/docs/README.md)",
+        "summary": "The @webex/common export surface; this package uses only the oneFlight decorator, which de-duplicates concurrent calls per instance, method, and keyFactory key and evicts the flight when it settles."
+      },
+      "webex-core-storage-layer": {
+        "kind": "sdk",
+        "publication": "published",
+        "source_kind": "external",
+        "source": "Workspace package @webex/webex-core (workspace paths packages/@webex/webex-core/src/lib/storage/errors.js and packages/@webex/webex-core/src/lib/storage/make-webex-store.js; no canonical spec exists)",
+        "summary": "The SDK storage layer that drives the adapter: it calls bind(namespace, {logger}) once per namespace, caches the binding, routes get/put/del/clear to it, and treats a NotFoundError rejection as no data. It also exports the NotFoundError class this package rejects with."
+      },
+      "localforage-api": {
+        "kind": "sdk",
+        "publication": "published",
+        "source_kind": "external",
+        "source": "npm package localforage ^1.7.3, resolved to 1.10.0 by the workspace lockfile",
+        "summary": "Promise-based key-value storage over IndexedDB, WebSQL, or localStorage. The adapter uses getItem, setItem, removeItem, keys, and clear on the default instance; with no usable driver every call rejects with 'No available storage method found.'"
+      }
+    }
+  },
+  "spec_policy": {
+    "require_what_and_why": true,
+    "require_provenance": true,
+    "protected_specs": [
+      "src/docs/README.md"
+    ]
+  },
+  "validation": {
+    "generator_runtime": "claude-code",
+    "generator_model": "claude-opus-5-5",
+    "generator_run_id": "38a5740d-1d53-4ce6-aa9a-25bf0a1911e4",
+    "generator_runtime_source": "host-metadata",
+    "minimum_independence": "different-runtime",
+    "blocking_severities": [
+      "Blocking"
+    ],
+    "source_commit": "94dd92abed",
+    "base_ref": "next",
+    "head_ref": "next",
+    "validator_runtime": "codex",
+    "validator_model": "gpt-6-luna",
+    "validator_run_id": "01a111fe-ab8c-7e43-b354-ab86e2a218e4",
+    "validator_runtime_source": "host-metadata",
+    "runtime_fallback_tier": "different-runtime",
+    "status": "pass-with-warnings",
+    "assessed_at": "2026-10-06",
+    "blocking_count": 0,
+    "warning_count": 2,
+    "evidence_summary": "Independent code/spec validation found no Blocking drift; two Important findings remain: no executable behavioral test evidence, and the install command source_file does not substantiate the workspace-level yarn install command."
+  },
+  "layout": {
+    "sdd_root": ".sdd",
+    "docs_root": "docs",
+    "agent_entry_path": "AGENTS.md",
+    "standing_docs_root": "docs",
+    "spec_index_path": "docs/specs/README.md",
+    "module_docs_strategy": "source-local",
+    "module_docs_relative_path": "docs/README.md",
+    "module_docs_decision": {
+      "basis": "repo-standards-default",
+      "reason": "The package has no module-local documentation folder, documentation build, or protected authored file, so the repo-standards source-local default src/docs/README.md applies unchanged; the owner confirmed it with the module map on 2026-10-06. The file falls inside the test:style glob ./src/**/*.*, but the shared ESLint configuration ignores *.md, and build:src processes only js and ts sources.",
+      "decided_by": "rsarika@cisco.com (bootstrap questionnaire)",
+      "decided_at": "2026-10-06T11:32:37Z"
+    },
+    "repo_context_decision": {
+      "path": ".repo-context.json",
+      "schema_path": "schemas/repo-context.schema.json",
+      "action": "create",
+      "schema_action": "create",
+      "reason": "Neither the operational context nor its schema exists in this package; both are created from the Repo Standards templates and verified package evidence.",
+      "decided_by": "claude-code (bootstrap questionnaire)",
+      "decided_at": "2026-10-06T11:32:37Z"
+    },
+    "artifact_decisions": [
+      {
+        "path": "docs/service.md",
+        "action": "omit",
+        "reason": "The package is a published browser library, not a deployable service; package.json declares no runtime entry point, container, or deployment manifest.",
+        "decided_by": "claude-code (bootstrap questionnaire)",
+        "decided_at": "2026-10-06T11:32:37Z"
+      },
+      {
+        "path": "mkdocs.yml",
+        "action": "omit",
+        "reason": "No package-level documentation site exists; documentation publishing is owned at the workspace root.",
+        "decided_by": "claude-code (bootstrap questionnaire)",
+        "decided_at": "2026-10-06T11:32:37Z"
+      },
+      {
+        "path": "api-specs/openapi.yaml",
+        "action": "omit",
+        "reason": "The package serves no HTTP routes and makes no network calls; its published contracts are the npm package surface (package.json) and the on-device record layout (src/index.js).",
+        "decided_by": "claude-code (bootstrap questionnaire)",
+        "decided_at": "2026-10-06T11:32:37Z"
+      },
+      {
+        "path": "SECURITY.md",
+        "action": "omit",
+        "reason": "No security policy exists in this package or at the workspace root, so a package copy would invent a reporting contact; the security posture of stored data is documented in docs/architecture.md.",
+        "decided_by": "claude-code (bootstrap questionnaire)",
+        "decided_at": "2026-10-06T11:32:37Z"
+      },
+      {
+        "path": "CONTRIBUTING.md",
+        "action": "omit",
+        "reason": "Contribution instructions are owned at the workspace root and linked from the package README.md.",
+        "decided_by": "claude-code (bootstrap questionnaire)",
+        "decided_at": "2026-10-06T11:32:37Z"
+      },
+      {
+        "path": "CHANGELOG.md",
+        "action": "omit",
+        "reason": "Changelog generation is owned at the workspace root; no package-level changelog exists.",
+        "decided_by": "claude-code (bootstrap questionnaire)",
+        "decided_at": "2026-10-06T11:32:37Z"
+      },
+      {
+        "path": "CTO_CHECKLIST.yml",
+        "action": "omit",
+        "reason": "The CTO readiness workflow applies to deployable services; this package is a published library.",
+        "decided_by": "claude-code (bootstrap questionnaire)",
+        "decided_at": "2026-10-06T11:32:37Z"
+      },
+      {
+        "path": "schemas/cto-checklist.schema.json",
+        "action": "omit",
+        "reason": "Selected together with CTO_CHECKLIST.yml, which is omitted.",
+        "decided_by": "claude-code (bootstrap questionnaire)",
+        "decided_at": "2026-10-06T11:32:37Z"
+      }
+    ],
+    "template_roots": {
+      "canonical": ".sdd/templates/repo-standards"
+    },
+    "repo_skills_root": ".sdd/skills",
+    "contract_index_path": "docs/architecture.md"
+  },
+  "substrate": {
+    "source": "WebexTools/repo-standards@d89a7fe59126ae3ad9bac9ca352aa7f12b4c85dc",
+    "consumed": [
+      "the workspace-root .sdd/templates/repo-standards snapshot, shared rather than copied into this package by owner instruction (verified against the bundled snapshot on 2026-10-06)",
+      "@webex/eslint-config-legacy via .eslintrc.js",
+      "@webex/babel-config-legacy via babel.config.js",
+      "@webex/jest-config-legacy via jest.config.js",
+      "@webex/legacy-tools build and test runner via package.json",
+      "the existing package README.md as repository-owned governance evidence"
+    ],
+    "compliance_tier": "baseline"
+  },
+  "section_profiles": {
+    "repo": {
+      "owns_datastore": true,
+      "holds_client_state": true,
+      "components_interact": false,
+      "domain_data_across_components": false,
+      "caches_data": false,
+      "observability_convention": true,
+      "deploys_to_infra": false,
+      "shared_base_libs": true,
+      "is_monorepo": false,
+      "multi_platform": false,
+      "published_package": true,
+      "embedded_in_host": true,
+      "cross_repo_deps_material": false,
+      "security_arch_warranted": true,
+      "exposes_commands_or_artifacts": true
+    },
+    "resolved_by": "claude-code/claude-opus-5-5 (host metadata; bootstrap questionnaire)",
+    "resolved_at": "2026-10-06T11:27:43Z"
+  }
+}
