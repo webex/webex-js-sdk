@@ -4444,13 +4444,13 @@ export default class Meeting extends StatelessWebexPlugin {
   public get e2eeTrustState(): E2eeTrustState {
     const info: any = this.locusInfo?.info;
     const adaptive = !!info?.isBestEffortE2EEncryption;
-    const isV2 = !!info?.isV2E2EEncrypted;
+    const isEncrypted = !!info?.isV2E2EEncrypted;
 
-    if (isV2 && this.e2ee?.state !== 'joined') {
+    if (isEncrypted && this.e2ee?.state !== 'joined') {
       return 'Calculating';
     }
 
-    const zeroTrust = isV2 && !this.e2ee?.hasMediaServices;
+    const zeroTrust = isEncrypted && !this.e2ee?.hasMediaServices;
 
     if (adaptive) {
       return zeroTrust ? 'AdaptiveZeroTrust' : 'AdaptiveStrong';

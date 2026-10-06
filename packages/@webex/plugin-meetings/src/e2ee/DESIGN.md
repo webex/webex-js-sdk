@@ -598,14 +598,14 @@ to surface the meeting's zero-trust state.
   ```ts
   const info = this.locusInfo?.info;
   const adaptive = !!info?.isBestEffortE2EEncryption;
-  const isV2 = !!info?.isV2E2EEncrypted;
+  const isEncrypted = !!info?.isV2E2EEncrypted;
   // a zero-trust meeting isn't zero-trust until our MLS join completes.
-  if (isV2 && this.e2ee?.state !== 'joined') return 'Calculating';
-  const zeroTrust = isV2 && !this.e2ee?.hasMediaServices;
+  if (isEncrypted && this.e2ee?.state !== 'joined') return 'Calculating';
+  const zeroTrust = isEncrypted && !this.e2ee?.hasMediaServices;
   if (adaptive) return zeroTrust ? 'AdaptiveZeroTrust' : 'AdaptiveStrong';
   return zeroTrust ? 'ZeroTrust' : 'Strong';
   ```
-  (Non-V2 `Strong` / `AdaptiveStrong` meetings do no MLS join, so they report immediately.)
+  (`Strong` / `AdaptiveStrong` meetings do no MLS join, so they report immediately.)
   The app should re-read `e2eeTrustState` on `MEETING_E2EE_STATE_CHANGED` and
   `MEETING_E2EE_MEDIA_SERVICES_CHANGED`.
 
