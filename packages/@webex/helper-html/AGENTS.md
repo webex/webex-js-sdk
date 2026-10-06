@@ -2,7 +2,7 @@
 doc_kind: agent-entry
 generated_from: agents@0.3.0
 generated_by: cursor
-approved_by: repository user
+approved_by: akulakum@cisco.com
 updated_at: 2026-10-01T11:15:00Z
 validation_status: pass-with-warnings
 -->
@@ -36,13 +36,13 @@ Follow `.sdd/manifest.json` for each contract's publication state and canonical 
 
 Use only documented commands. Do not invent alternatives when a command is missing. Run workspace commands from the monorepo root.
 
-| Task                   | Command             |
-| ---------------------- | ------------------- |
-| Install dependencies   | `yarn install` (workspace root) |
-| Start dev environment  | N/A — library package with no runnable dev server |
-| Run tests              | `yarn workspace @webex/helper-html test:browser` |
-| Run linters            | `yarn workspace @webex/helper-html test:style` |
-| Build/release artifact | `yarn workspace @webex/helper-html build:src` |
+| Task                   | Command                                                                      |
+| ---------------------- | ---------------------------------------------------------------------------- |
+| Install dependencies   | `yarn install` (workspace root)                                              |
+| Start dev environment  | N/A — library package with no runnable dev server                            |
+| Run tests              | `yarn workspace @webex/helper-html test:browser`                             |
+| Run linters            | `yarn workspace @webex/helper-html test:style`                               |
+| Build/release artifact | `yarn workspace @webex/helper-html build:src`                                |
 | Format code            | N/A — no format script; `prettier` is a devDependency invoked through eslint |
 
 `package.json` `scripts.test` chains `test:unit` and `test:integration`. Neither script is defined, so that aggregate script is not a verification command. The unit spec is `test/unit/spec/html.js`. It is skipped in Node and is launched by the browser command above (`webex-legacy-tools test --unit --runner karma`).
@@ -70,12 +70,12 @@ Definition of done:
 
 ### Tech Stack
 
-| Area             | Tooling     | Version     |
-| ---------------- | ----------- | ----------- |
-| Language runtime | node        | `>=18` (`package.json` engines) |
-| Build tool       | `@webex/legacy-tools` over babel | `@babel/core` `^7.17.10` |
-| Test framework   | mocha via `@webex/test-helper-mocha`, chai via `@webex/test-helper-chai`, karma via `test:browser` | workspace |
-| Lint/format      | eslint via `@webex/eslint-config-legacy`, prettier | eslint `^8.24.0`, prettier `^2.7.1` |
+| Area             | Tooling                                                                                            | Version                             |
+| ---------------- | -------------------------------------------------------------------------------------------------- | ----------------------------------- |
+| Language runtime | node                                                                                               | `>=18` (`package.json` engines)     |
+| Build tool       | `@webex/legacy-tools` over babel                                                                   | `@babel/core` `^7.17.10`            |
+| Test framework   | mocha via `@webex/test-helper-mocha`, chai via `@webex/test-helper-chai`, karma via `test:browser` | workspace                           |
+| Lint/format      | eslint via `@webex/eslint-config-legacy`, prettier                                                 | eslint `^8.24.0`, prettier `^2.7.1` |
 
 ### Project Map
 

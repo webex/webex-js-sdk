@@ -8,7 +8,7 @@ tags: [architecture]
 doc_kind: standing-doc
 generated_from: architecture@0.3.0
 generated_by: cursor
-approved_by: repository user
+approved_by: akulakum@cisco.com
 updated_at: 2026-10-01T11:15:00Z
 validation_status: pass-with-warnings
 -->
