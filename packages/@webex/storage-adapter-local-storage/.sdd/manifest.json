@@ -89,7 +89,7 @@
     {
       "path": "src",
       "coverage_status": "Partial",
-      "coverage_evidence": "The canonical spec at src/docs/README.md is structurally complete against the module-spec template, with every public surface, invariant, and failure mode mapped to a source file. Coverage is held at Partial rather than Specced because neither of this package's own test routes executes a case: test:unit skips all 21 declared cases under Node (skipInNode) and test:browser completes 0 tests because the shared abstract suite calls the Jest global beforeAll under mocha, both measured 2026-10-01 and confirmed independently 2026-10-04. That measurement covers this package's routes only; a repository-wide claim that nothing anywhere executes the adapter is not established, since authorization-browser automation fixtures also import it. Holding at Partial also reflects the recorded thresholds: the partial_to_specced rule requires a clean drift record across touching PRs, and independent validation has so far returned blocked. Requiring an executing verification route before promotion is a recommendation from this assessment, not a threshold in coverage_status_definitions.",
+      "coverage_evidence": "The canonical spec at src/docs/README.md is structurally complete against the module-spec template, with every public surface, invariant, and failure mode mapped to a source file. Coverage is held at Partial rather than Specced because neither of this package's own test routes executes a case: test:unit skips all 21 declared cases under Node (skipInNode) and test:browser completes 0 tests because the shared abstract suite calls the Jest global beforeAll under mocha, both measured 2026-10-01 and confirmed independently 2026-10-04. That measurement covers this package's routes only; a repository-wide claim that nothing anywhere executes the adapter is not established, since authorization-browser automation fixtures also import it. Holding at Partial also reflects the recorded thresholds: the partial_to_specced rule requires a clean drift record across touching PRs, and independent validation on 2026-10-06 passed with warnings (0 Blocking, 3 Important, 1 Medium) under runtime 01a10f92-381f-7211-8991-8b2425672ee1. Requiring an executing verification route before promotion is a recommendation from this assessment, not a threshold in coverage_status_definitions.",
       "canonical_spec": "src/docs/README.md",
       "last_assessed": "2026-10-04",
       "contracts": {
@@ -180,12 +180,17 @@
     "generator_model": "claude-opus-5[1m]",
     "generator_run_id": "e8887ad7-222e-4457-a435-0f4676db3f8d",
     "generator_runtime_source": "host-metadata",
+    "validator_runtime": "01a10f92-381f-7211-8991-8b2425672ee1",
+    "validator_run_id": "01a10f92-381f-7211-8991-8b2425672ee1",
+    "validator_runtime_source": "invocation-input",
+    "runtime_fallback_tier": "different-runtime",
     "minimum_independence": "different-runtime",
     "blocking_severities": [
       "Blocking"
     ],
     "source_commit": "c622eb661258aaeccbfa06ed9dee3c18be0f4d40",
-    "base_ref": "next"
+    "base_ref": "next",
+    "head_ref": "77d86ff048dfbfb74ffd394e522b943ef34ff4e7"
   },
   "layout": {
     "sdd_root": ".sdd",
