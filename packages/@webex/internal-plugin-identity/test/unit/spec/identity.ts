@@ -64,8 +64,8 @@ describe('plugin-identity', () => {
         // The raw EC P-256 key is bytes 36..67 of the PKCS#8 DER.
         assert.deepEqual(Array.from(credentials.privateKey), Array.from(privKeyDer.slice(36, 68)));
         assert.equal(credentials.certChain.length, 2);
-        assert.deepEqual(Array.from(new Uint8Array(credentials.certChain[0])), [65, 66, 67]);
-        assert.deepEqual(Array.from(new Uint8Array(credentials.certChain[1])), [68, 69, 70]);
+        assert.deepEqual(Array.from(credentials.certChain[0]), [65, 66, 67]);
+        assert.deepEqual(Array.from(credentials.certChain[1]), [68, 69, 70]);
       });
 
       it('caches credentials per contact and only requests once', async () => {

@@ -138,8 +138,7 @@ export default class MLS {
     );
 
     if (config.credentials) {
-      const {privateKey} = config.credentials;
-      const certChain = config.credentials.certChain.map((cert) => new Uint8Array(cert));
+      const {privateKey, certChain} = config.credentials;
 
       this.e2ee.addX509Credential(privateKey, certChain);
     }

@@ -4,7 +4,7 @@
 
 export interface IdentityCredentials {
   privateKey: Uint8Array;
-  certChain: ArrayBuffer[];
+  certChain: Uint8Array[];
 }
 
 export interface IdentityTrustAnchors {

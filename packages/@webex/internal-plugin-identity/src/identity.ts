@@ -6,7 +6,7 @@ import {WebexPlugin} from '@webex/webex-core';
 
 import {CERTIFICATE_AUTHORITY_SERVICE, WEBEX_CA_PRODUCTION_ROOTS} from './constants';
 import type {CertSigningRequest, IdentityCredentials, IdentityTrustAnchors} from './types';
-import {generateCsrWithPkijs, pemToArrayBuffers} from './utils';
+import {generateCsrWithPkijs, pemToUint8Arrays} from './utils';
 
 // PKCS#8 P-256: the raw 32-byte EC private key starts at this offset in the DER encoding.
 const PKCS8_P256_RAW_KEY_OFFSET = 36;
@@ -88,7 +88,7 @@ const Identity = WebexPlugin.extend({
       PKCS8_P256_RAW_KEY_OFFSET + RAW_EC_P256_KEY_LENGTH
     );
 
-    return {privateKey, certChain: pemToArrayBuffers(response.body)};
+    return {privateKey, certChain: pemToUint8Arrays(response.body)};
   },
 });
 

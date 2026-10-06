@@ -349,7 +349,7 @@ reference) so the check stays correct when the locus URL changes, e.g. moving be
 
 ```ts
 // Available as webex.internal.identity; registered by plugin-meetings.
-getCredentials(contactId: string): Promise<{ privateKey: Uint8Array; certChain: ArrayBuffer[] }>;
+getCredentials(contactId: string): Promise<{ privateKey: Uint8Array; certChain: Uint8Array[] }>;
 //  -> generate EC P-256 CSR (pkijs/asn1js)
 //  -> webex.request({ service:'webex-certificate-authority', resource:'certificates',
 //                    headers:{ 'include-root-cert':'true' } })

@@ -32,17 +32,17 @@ export async function generateCsrWithPkijs(contactId: string): Promise<CertSigni
   await pkcs10.sign(keyPair.privateKey, 'SHA-256');
 
   const csrDer = pkcs10.toSchema().toBER(false);
-  const csr = btoa(String.fromCharCode(...new Uint8Array(csrDer)));
+  const csr = Buffer.from(csrDer).toString('base64');
 
   return {privKeyDer: new Uint8Array(privKeyDer), csr};
 }
 
 /**
- * Converts one PEM certificate block to DER.
+ * Converts one PEM certificate block to DER bytes.
  * @param {string} pem
- * @returns {ArrayBuffer}
+ * @returns {Uint8Array}
  */
-export function pemToArrayBuffer(pem: string): ArrayBuffer {
+export function pemToUint8Array(pem: string): Uint8Array {
   const contents = pem
     .split('\n')
     .filter((line) => !line.includes('-----BEGIN') && !line.includes('-----END'))
@@ -54,17 +54,17 @@ export function pemToArrayBuffer(pem: string): ArrayBuffer {
     bytes[i] = binary.charCodeAt(i);
   }
 
-  return bytes.buffer;
+  return bytes;
 }
 
 /**
- * Converts concatenated PEM certificates to DER buffers.
+ * Converts concatenated PEM certificates to DER byte arrays.
  * @param {string} pemString
- * @returns {ArrayBuffer[]}
+ * @returns {Uint8Array[]}
  */
-export function pemToArrayBuffers(pemString: string): ArrayBuffer[] {
+export function pemToUint8Arrays(pemString: string): Uint8Array[] {
   const matches =
     pemString.match(/-----BEGIN CERTIFICATE-----[\s\S]*?-----END CERTIFICATE-----/g) ?? [];
 
-  return matches.map(pemToArrayBuffer);
+  return matches.map(pemToUint8Array);
 }
