@@ -1,0 +1,442 @@
+{
+  "manifest_version": 1,
+  "repository": {
+    "name": "@webex/internal-plugin-mercury",
+    "purpose": "Internal Webex JS SDK plugin that keeps the client's Mercury WebSocket connections open. It registers webex.internal.mercury, connects one socket per session id after device registration, authorizes and keeps each socket alive with ping/pong, reconnects with exponential backoff according to close codes, routes incoming envelopes to autowired plugin handlers and to session-suffixed events, and switches sockets make-before-break when the server announces shutdown.",
+    "category": "cat2-legacy",
+    "primary_languages": [
+      "javascript"
+    ]
+  },
+  "topology": "Single-repo",
+  "commands": {
+    "install": {
+      "command": "yarn install",
+      "source_file": "package.json",
+      "role": "install"
+    },
+    "compile": {
+      "command": "yarn workspace @webex/internal-plugin-mercury build:src",
+      "source_file": "package.json",
+      "role": "compile"
+    },
+    "build": {
+      "command": "yarn workspace @webex/internal-plugin-mercury build",
+      "source_file": "package.json",
+      "role": "package"
+    },
+    "unit-test": {
+      "command": "yarn workspace @webex/internal-plugin-mercury test:unit",
+      "source_file": "package.json",
+      "role": "unit-test"
+    },
+    "browser-test": {
+      "command": "yarn workspace @webex/internal-plugin-mercury test:browser",
+      "source_file": "package.json",
+      "role": "other"
+    },
+    "lint": {
+      "command": "yarn workspace @webex/internal-plugin-mercury test:style",
+      "source_file": "package.json",
+      "role": "lint"
+    },
+    "deploy": {
+      "command": "yarn workspace @webex/internal-plugin-mercury deploy:npm",
+      "source_file": "package.json",
+      "role": "deploy"
+    }
+  },
+  "toolchain": [
+    {
+      "name": "node",
+      "version": ">=18",
+      "origin": "repo-config",
+      "source_file": "package.json"
+    },
+    {
+      "name": "babel",
+      "version": "^7.17.10",
+      "origin": "repo-config",
+      "source_file": "package.json"
+    },
+    {
+      "name": "eslint",
+      "version": "^8.24.0",
+      "origin": "repo-config",
+      "source_file": "package.json"
+    },
+    {
+      "name": "prettier",
+      "version": "^2.7.1",
+      "origin": "repo-config",
+      "source_file": "package.json"
+    }
+  ],
+  "tests": {
+    "unit": {
+      "command_ref": "unit-test",
+      "dir": "test/unit/spec",
+      "framework": "mocha"
+    }
+  },
+  "quality_gates": {
+    "code_coverage": {
+      "origin": "none",
+      "declared_by": "akulakum@cisco.com via bootstrap questionnaire (delegated check: test:unit runs webex-legacy-tools with --runner mocha and the legacy-tools Mocha config has no coverage reporter; jest.config.js re-exports @webex/jest-config-legacy, which sets collectCoverage false and no coverageThreshold; package.json defines no coverage script)"
+    }
+  },
+  "coverage_status_definitions": {
+    "specced": ">=80% public surface specced, drift <5% - spec is authoritative",
+    "partial": "40-80% specced - spec is a hint, cross-check code",
+    "untracked": "<40% specced - code is the source of truth"
+  },
+  "spec_source_policy": {
+    "mode": "keep-separate",
+    "migrated_source_disposition": "retain",
+    "disposition_decided_by": "akulakum@cisco.com",
+    "disposition_decided_at": "2026-10-06T23:20:11Z",
+    "decided_by": "akulakum@cisco.com",
+    "decided_at": "2026-10-06T23:20:11Z",
+    "decision_record": "docs/adr/0001-retain-product-readme.md"
+  },
+  "spec_sources": [],
+  "modules": [
+    {
+      "path": "src",
+      "canonical_spec": "src/docs/README.md",
+      "coverage_status": "Partial",
+      "coverage_evidence": "Field coverage 93.3% (14/15) assessed 2026-10-06 by the generator; critical field coverage 8/8. The one WEAK field is test strategy: test/unit/spec/mercury.js and test/unit/spec/mercury-events.js cover connect, retries, failure classes, URL preparation, close codes, routing, logout, disconnect, and switchover, but the forced-close reconnect after disconnect, the real _prepareAndOpenSocket path during switchover, the accessors other than getLastError, INV-001 (session-suffixed event names), the sockets-map deletion by a non-active close, INV-004 (1006 suppression), and INV-005 (config defaults) have no test, and no characterization baseline exists. Held at Partial: independent validation has not run and no spec-drift record exists yet.",
+      "last_assessed": "2026-10-06",
+      "contracts": {
+        "provides": [
+          "mercury-sdk",
+          "mercury-plugin-events"
+        ],
+        "requires": [
+          "mercury-socket-transport",
+          "webex-core-plugin-host",
+          "webex-device-registration",
+          "webex-feature-toggles",
+          "webex-metrics",
+          "webex-common-sdk",
+          "backoff",
+          "lodash"
+        ]
+      },
+      "section_profile": {
+        "has_tiers": false,
+        "has_ui": false,
+        "crosses_service_boundaries": true,
+        "holds_client_state": true,
+        "enforces_domain_rules": true,
+        "is_concurrent_async": true,
+        "owns_persistence": false,
+        "stateful_transitions": true,
+        "exposes_wire_protocol": true,
+        "ui_multi_screen": false,
+        "large_data_model": false,
+        "returns_caller_errors": true,
+        "module_specific_conventions": true,
+        "published_package": true,
+        "embedded_in_host": false,
+        "has_design_tradeoff": true,
+        "resolved_by": "claude-cowork (code evidence; bootstrap questionnaire)",
+        "resolved_at": "2026-10-06T23:20:11Z",
+        "has_submodules": true,
+        "has_submodules_computed_by": "scripts/module_tree.py",
+        "has_submodules_computed_at": "2026-10-06T23:20:11Z"
+      }
+    },
+    {
+      "path": "src/socket",
+      "canonical_spec": "src/socket/docs/README.md",
+      "coverage_status": "Partial",
+      "coverage_evidence": "Field coverage 93.3% (14/15) assessed 2026-10-06 by the generator; critical field coverage 8/8. The one WEAK field is test strategy: test/unit/spec/socket.js covers open validation, error mapping, authorization, acks, sequence numbers, ping/pong, send, and close, but the Node and browser constructor hooks, the 1005 to UnknownResponse mapping, and a non-readiness first message have no test, and no characterization baseline exists. Held at Partial: independent validation has not run and no spec-drift record exists yet.",
+      "last_assessed": "2026-10-06",
+      "contracts": {
+        "provides": [
+          "mercury-socket-transport",
+          "mercury-wire-protocol"
+        ],
+        "requires": [
+          "webex-common-sdk",
+          "webex-common-timers",
+          "ws",
+          "lodash",
+          "uuid"
+        ]
+      },
+      "section_profile": {
+        "has_tiers": false,
+        "has_ui": false,
+        "crosses_service_boundaries": true,
+        "holds_client_state": true,
+        "enforces_domain_rules": true,
+        "is_concurrent_async": true,
+        "owns_persistence": false,
+        "stateful_transitions": true,
+        "exposes_wire_protocol": true,
+        "ui_multi_screen": false,
+        "large_data_model": false,
+        "returns_caller_errors": true,
+        "module_specific_conventions": true,
+        "published_package": false,
+        "embedded_in_host": false,
+        "has_design_tradeoff": true,
+        "resolved_by": "claude-cowork (code evidence; bootstrap questionnaire)",
+        "resolved_at": "2026-10-06T23:20:11Z",
+        "has_submodules": false,
+        "has_submodules_computed_by": "scripts/module_tree.py",
+        "has_submodules_computed_at": "2026-10-06T23:20:11Z"
+      }
+    }
+  ],
+  "contract_catalog": {
+    "index_path": "docs/architecture.md",
+    "definitions": {
+      "mercury-sdk": {
+        "kind": "sdk",
+        "publication": "published",
+        "source_kind": "repository-path",
+        "source": "package.json",
+        "summary": "Published npm package. main is dist/index.js, devMain is src/index.js, and the browser field swaps src/socket/socket.js for src/socket/socket.shim.js. Importing the package registers Mercury as the internal plugin 'mercury' with src/config.js and an onBeforeLogout hook that calls logout(). The barrel exports Mercury as default and named, Socket, config, and the BadRequest, ConnectionError, Forbidden, NotAuthorized, and UnknownResponse error classes. Per-export behavior is in src/docs/README.md."
+      },
+      "mercury-plugin-events": {
+        "kind": "event",
+        "publication": "published",
+        "source_kind": "repository-path",
+        "source": "src/mercury.js",
+        "summary": "Events triggered on webex.internal.mercury: online, offline, offline.permanent, offline.transient, offline.replaced, connection_failed, sequence-mismatch, ping-pong-latency, event, event:<namespace>, event:<eventType>, and the event:mercury_shutdown_imminent, event:mercury_shutdown_switchover_complete, and event:mercury_shutdown_switchover_failed events. Events for a non-default session carry a :<sessionId> suffix."
+      },
+      "mercury-socket-transport": {
+        "kind": "sdk",
+        "publication": "internal",
+        "source_kind": "repository-path",
+        "source": "src/socket/socket-base.js",
+        "summary": "Socket class used by Mercury: open(url, options), close(options), send(data), the readyState/url/protocol/extensions/bufferedAmount/binaryType proxies, and the close, message, pong, sequence-mismatch, and ping-pong-latency events. Also exported through the package barrel, where mercury-sdk owns its stability."
+      },
+      "mercury-wire-protocol": {
+        "kind": "rpc",
+        "publication": "internal",
+        "source_kind": "repository-path",
+        "source": "src/socket/socket-base.js",
+        "summary": "JSON text frames exchanged with the Mercury service: authorization, ping, ack, pong, the mercury.buffer_state / mercury.registration_status readiness events, sequenceNumber on inbound messages, and the close codes 1005, 4400, 4401, and 4403 mapped to error classes before open completes."
+      },
+      "webex-core-plugin-host": {
+        "kind": "rpc",
+        "publication": "internal",
+        "source_kind": "external",
+        "source": "@webex/webex-core (WebexPlugin, registerInternalPlugin, webex.credentials, webex.internal.services)",
+        "summary": "Host contract consumed by Mercury: WebexPlugin.extend supplies config, session state, logger, and trigger/on; registerInternalPlugin installs the plugin; webex.credentials supplies getUserToken and refresh; webex.internal.services supplies convertUrlToPriorityHostUrl, isValidHost, markFailedUrl, switchActiveClusterIds, and invalidateCache."
+      },
+      "webex-device-registration": {
+        "kind": "sdk",
+        "publication": "internal",
+        "source_kind": "external",
+        "source": "@webex/internal-plugin-device (webex.internal.device)",
+        "summary": "Mercury reads registered and webSocketUrl and calls register() and refresh() on webex.internal.device. Device registration supplies the default WebSocket URL."
+      },
+      "webex-feature-toggles": {
+        "kind": "sdk",
+        "publication": "internal",
+        "source_kind": "external",
+        "source": "@webex/internal-plugin-feature (webex.internal.feature)",
+        "summary": "Mercury calls getFeature('developer', 'web-high-availability') and getFeature('developer', 'web-shared-mercury') to shape the connection URL and failure handling, and updateFeature() for featureToggle_update events."
+      },
+      "webex-metrics": {
+        "kind": "sdk",
+        "publication": "internal",
+        "source_kind": "external",
+        "source": "@webex/internal-plugin-metrics (webex.internal.metrics and webex.internal.newMetrics)",
+        "summary": "Mercury submits the client metric JS_SDK_MERCURY_CLOSE_4000 through webex.internal.metrics.submitClientMetrics and reports connected status through webex.internal.newMetrics.callDiagnosticMetrics.setMercuryConnectedStatus."
+      },
+      "webex-common-sdk": {
+        "kind": "sdk",
+        "publication": "published",
+        "source_kind": "external",
+        "source": "@webex/common (packages/@webex/common/src/docs/README.md)",
+        "summary": "Consumed exports: Exception (base of ConnectionError), checkRequired (Socket#open option check), and the deprecated decorator (listen and stopListening). Owned and specified by @webex/common."
+      },
+      "webex-common-timers": {
+        "kind": "sdk",
+        "publication": "published",
+        "source_kind": "external",
+        "source": "@webex/common-timers (packages/@webex/common-timers/src/docs/README.md)",
+        "summary": "Consumed export safeSetTimeout, used for the ping, pong, and forced-close timers in src/socket/socket-base.js. Owned and specified by @webex/common-timers."
+      },
+      "backoff": {
+        "kind": "sdk",
+        "publication": "published",
+        "source_kind": "external",
+        "source": "backoff@^2.5.0 (npm)",
+        "summary": "backoff.call with ExponentialStrategy drives connection retries in src/mercury.js; failAfter applies maxRetries and initialConnectionMaxRetries."
+      },
+      "lodash": {
+        "kind": "sdk",
+        "publication": "published",
+        "source_kind": "external",
+        "source": "lodash@^4.17.21 (npm)",
+        "summary": "src/mercury.js imports camelCase, get, and set; src/socket/socket-base.js imports defaults, has, and isObject."
+      },
+      "uuid": {
+        "kind": "sdk",
+        "publication": "published",
+        "source_kind": "external",
+        "source": "uuid@^3.3.2 (npm)",
+        "summary": "uuid.v4 generates authorization message ids and ping ids in src/socket/socket-base.js."
+      },
+      "ws": {
+        "kind": "sdk",
+        "publication": "published",
+        "source_kind": "external",
+        "source": "ws@^8.17.1 (npm)",
+        "summary": "Node WebSocket constructor returned by src/socket/socket.js. Browser builds use the global WebSocket through src/socket/socket.shim.js instead."
+      }
+    }
+  },
+  "spec_policy": {
+    "require_what_and_why": true,
+    "require_provenance": true,
+    "protected_specs": [
+      "src/docs/README.md",
+      "src/socket/docs/README.md"
+    ]
+  },
+  "validation": {
+    "generator_runtime": "claude-cowork",
+    "generator_model": "claude-opus-5-5",
+    "generator_runtime_source": "host-metadata",
+    "generator_run_id": "spark-853121-sdd-stage0-2026-10-06",
+    "minimum_independence": "different-runtime",
+    "runtime_fallback_tier": "different-runtime",
+    "blocking_severities": [
+      "Blocking"
+    ],
+    "base_ref": "next",
+    "head_ref": "Webex_Internal_Plugin_Mememory_SDD"
+  },
+  "layout": {
+    "sdd_root": ".sdd",
+    "docs_root": "docs",
+    "agent_entry_path": "AGENTS.md",
+    "standing_docs_root": "docs",
+    "spec_index_path": "docs/specs/README.md",
+    "module_docs_strategy": "source-local",
+    "module_docs_relative_path": "docs/README.md",
+    "module_docs_decision": {
+      "basis": "repo-standards-default",
+      "reason": "No module-local documentation existed. The source-local default gives src/docs/README.md and src/socket/docs/README.md. test:style runs eslint ./src/**/*.* and build:src processes -js -ts only, so Markdown under src/ does not enter the lint or build output.",
+      "decided_by": "akulakum@cisco.com (bootstrap questionnaire)",
+      "decided_at": "2026-10-06T23:20:11Z"
+    },
+    "repo_context_decision": {
+      "path": ".repo-context.json",
+      "schema_path": "schemas/repo-context.schema.json",
+      "action": "create",
+      "schema_action": "create",
+      "reason": "Neither the operational context nor its schema existed in this package. The context is created from package evidence and the schema is copied from packages/@webex/common/schemas/repo-context.schema.json (Repo Standards 0.3.0).",
+      "decided_by": "akulakum@cisco.com (bootstrap questionnaire)",
+      "decided_at": "2026-10-06T23:20:11Z"
+    },
+    "artifact_decisions": [
+      {
+        "path": "docs/service.md",
+        "action": "omit",
+        "reason": "Library package, not a deployable service. package.json has no start script, container, or deployment descriptor.",
+        "decided_by": "claude-cowork (code evidence)",
+        "decided_at": "2026-10-06T23:20:11Z"
+      },
+      {
+        "path": "mkdocs.yml",
+        "action": "omit",
+        "reason": "No package-level documentation site exists. Documentation publishing stays with the workspace.",
+        "decided_by": "akulakum@cisco.com (bootstrap questionnaire)",
+        "decided_at": "2026-10-06T23:20:11Z"
+      },
+      {
+        "path": "api-specs/openapi.yaml",
+        "action": "omit",
+        "reason": "The package serves no HTTP routes. It is a WebSocket client; its published surface is the npm export described by mercury-sdk and the events described by mercury-plugin-events.",
+        "decided_by": "claude-cowork (code evidence)",
+        "decided_at": "2026-10-06T23:20:11Z"
+      },
+      {
+        "path": "SECURITY.md",
+        "action": "omit",
+        "reason": "No package-level security policy exists. The workspace root SECURITY.md is not overwritten and a per-package copy would duplicate it.",
+        "decided_by": "akulakum@cisco.com (bootstrap questionnaire)",
+        "decided_at": "2026-10-06T23:20:11Z"
+      },
+      {
+        "path": "CONTRIBUTING.md",
+        "action": "omit",
+        "reason": "Contribution instructions are owned at the workspace root and linked from this package README.md.",
+        "decided_by": "akulakum@cisco.com (bootstrap questionnaire)",
+        "decided_at": "2026-10-06T23:20:11Z"
+      },
+      {
+        "path": "CHANGELOG.md",
+        "action": "omit",
+        "reason": "Changelog generation is owned at the workspace root. This package has no changelog file.",
+        "decided_by": "akulakum@cisco.com (bootstrap questionnaire)",
+        "decided_at": "2026-10-06T23:20:11Z"
+      },
+      {
+        "path": "CTO_CHECKLIST.yml",
+        "action": "omit",
+        "reason": "The CTO readiness checklist applies to deployable services. This package is a library.",
+        "decided_by": "claude-cowork (code evidence)",
+        "decided_at": "2026-10-06T23:20:11Z"
+      },
+      {
+        "path": "schemas/cto-checklist.schema.json",
+        "action": "omit",
+        "reason": "Omitted together with CTO_CHECKLIST.yml.",
+        "decided_by": "claude-cowork (code evidence)",
+        "decided_at": "2026-10-06T23:20:11Z"
+      }
+    ],
+    "template_roots": {
+      "canonical": ".sdd/templates/repo-standards"
+    },
+    "repo_skills_root": ".sdd/skills",
+    "contract_index_path": "docs/architecture.md"
+  },
+  "coverage_ratchet": {
+    "enabled": true,
+    "waivers": []
+  },
+  "substrate": {
+    "source": "WebexTools/repo-standards@d89a7fe59126ae3ad9bac9ca352aa7f12b4c85dc",
+    "consumed": [
+      "@webex/eslint-config-legacy via .eslintrc.js",
+      "@webex/babel-config-legacy via babel.config.js",
+      "@webex/jest-config-legacy via jest.config.js",
+      "@webex/legacy-tools build and test runner via package.json",
+      "package README.md",
+      "Repo Standards 0.3.0 templates at the JS SDK root .sdd/templates/repo-standards"
+    ],
+    "compliance_tier": "baseline"
+  },
+  "section_profiles": {
+    "repo": {
+      "owns_datastore": false,
+      "holds_client_state": true,
+      "components_interact": true,
+      "domain_data_across_components": false,
+      "caches_data": false,
+      "observability_convention": true,
+      "deploys_to_infra": false,
+      "shared_base_libs": true,
+      "is_monorepo": false,
+      "multi_platform": true,
+      "published_package": true,
+      "embedded_in_host": false,
+      "cross_repo_deps_material": true,
+      "security_arch_warranted": true,
+      "exposes_commands_or_artifacts": true
+    },
+    "resolved_by": "claude-cowork (code evidence; bootstrap questionnaire)",
+    "resolved_at": "2026-10-06T23:20:11Z"
+  }
+}
