@@ -1116,6 +1116,14 @@ export default class Meeting extends StatelessWebexPlugin {
      * @memberof Meeting
      */
     this.e2ee = attrs.e2eeManager?.createE2eeMeeting(this);
+    if (this.e2ee) {
+      [
+        EVENT_TRIGGERS.MEETING_E2EE_SECURITY_CODE_UPDATED,
+        EVENT_TRIGGERS.MEETING_E2EE_STATE_CHANGED,
+        EVENT_TRIGGERS.MEETING_E2EE_MEDIA_SERVICES_CHANGED,
+        EVENT_TRIGGERS.MEETING_E2EE_FAILURE,
+      ].forEach((event) => this.forwardEvent(this.e2ee, event, event));
+    }
     /**
      * indicates if an SDP exchange is happening
      *
@@ -4402,36 +4410,6 @@ export default class Meeting extends StatelessWebexPlugin {
    */
   public getMembers() {
     return this.members;
-  }
-
-  /**
-   * Returns the meeting security code (E2EE), once available.
-   * @returns {String|undefined}
-   * @public
-   * @memberof Meeting
-   */
-  public getSecurityCode(): string | undefined {
-    return this.e2ee?.getSecurityCode();
-  }
-
-  /**
-   * The E2EE lifecycle state for this meeting.
-   * @returns {String}
-   * @public
-   * @memberof Meeting
-   */
-  public get e2eeState(): string {
-    return this.e2ee?.state ?? 'disabled';
-  }
-
-  /**
-   * Whether the MLS roster contains a media service (drives the zero-trust UI indicator).
-   * @returns {Boolean}
-   * @public
-   * @memberof Meeting
-   */
-  public get e2eeHasMediaServices(): boolean {
-    return this.e2ee?.hasMediaServices ?? false;
   }
 
   /**

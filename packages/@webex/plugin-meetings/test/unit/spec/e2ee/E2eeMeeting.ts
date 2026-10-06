@@ -188,6 +188,16 @@ describe('plugin-meetings', () => {
         assert.deepEqual(calls[0].args[3], {securityCode: 'SEC-1'});
       });
 
+      it('emits E2EE events from the facade for direct consumers', () => {
+        const listener = sinon.spy();
+
+        triggerStub.restore();
+        e2ee.on(EVENT_TRIGGERS.MEETING_E2EE_SECURITY_CODE_UPDATED, listener);
+        emitSession('securityCodeChanged', {code: 'SEC-3'});
+
+        assert.calledOnceWithExactly(listener, {securityCode: 'SEC-3'});
+      });
+
       it('updates the security code on securityCodeChanged', () => {
         emitSession('securityCodeChanged', {code: 'SEC-2'});
 

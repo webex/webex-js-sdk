@@ -341,6 +341,44 @@ describe('plugin-meetings', () => {
   describe('meeting index', () => {
     describe('Public Api Contract', () => {
       describe('#constructor', () => {
+        it('forwards E2EE facade events and keeps facade APIs off Meeting', () => {
+          TriggerProxy.trigger.restore();
+          const e2ee = new EventEmitter();
+          const e2eeManager = {createE2eeMeeting: sinon.stub().returns(e2ee)};
+          const meetingWithE2ee = new Meeting(
+            {
+              userId: uuid1,
+              resource: uuid2,
+              deviceUrl: uuid3,
+              locus: {url: url1},
+              destination: testDestination,
+              destinationType: DESTINATION_TYPE.MEETING_ID,
+              correlationId,
+              selfId: uuid1,
+              e2eeManager,
+            },
+            {parent: webex}
+          );
+          const events = [
+            [EVENT_TRIGGERS.MEETING_E2EE_SECURITY_CODE_UPDATED, {securityCode: 'SEC'}],
+            [EVENT_TRIGGERS.MEETING_E2EE_STATE_CHANGED, {state: 'joined'}],
+            [EVENT_TRIGGERS.MEETING_E2EE_MEDIA_SERVICES_CHANGED, {hasMediaServices: true}],
+            [EVENT_TRIGGERS.MEETING_E2EE_FAILURE, {reason: 'joinFailure'}],
+          ];
+
+          events.forEach(([event, payload]) => {
+            const listener = sinon.spy();
+
+            meetingWithE2ee.on(event, listener);
+            e2ee.emit(event, payload);
+            assert.calledOnceWithExactly(listener, payload);
+          });
+
+          assert.isUndefined(meetingWithE2ee.getSecurityCode);
+          assert.isUndefined(meetingWithE2ee.e2eeState);
+          assert.isUndefined(meetingWithE2ee.e2eeHasMediaServices);
+        });
+
         it('should have created a meeting object with public properties', () => {
           assert.exists(meeting);
           assert.exists(meeting.webex);

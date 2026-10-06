@@ -4,6 +4,7 @@
 
 import type {IdentityProvider} from '@webex/internal-plugin-identity';
 
+import EventsScope from '../common/events/events-scope';
 import Trigger from '../common/events/trigger-proxy';
 import LoggerProxy from '../common/logs/logger-proxy';
 import {EVENT_TRIGGERS} from '../constants';
@@ -24,7 +25,7 @@ const TRIGGER_SCOPE = {file: 'e2ee/E2eeMeeting', function: 'e2ee'};
  * presence and lifecycle state, and re-emits E2EE events on the meeting. Its start() is a no-op
  * unless the meeting requires E2EE (a V2/zero-trust meeting) and E2EE is enabled in config.
  */
-export default class E2eeMeeting {
+export default class E2eeMeeting extends EventsScope {
   private readonly meeting: any;
 
   private readonly webex: any;
@@ -68,6 +69,7 @@ export default class E2eeMeeting {
     identityProvider: IdentityProvider;
     config: E2eeConfig;
   }) {
+    super();
     this.meeting = meeting;
     this.webex = webex;
     this.wasmLoader = wasmLoader;
@@ -114,6 +116,16 @@ export default class E2eeMeeting {
    */
   getSecurityCode(): string | undefined {
     return this.securityCode;
+  }
+
+  /**
+   * Emits an E2EE event on the facade so it can be observed directly or forwarded by Meeting.
+   * @param {string} event
+   * @param {object} payload
+   * @returns {void}
+   */
+  trigger(event: string, payload: object): void {
+    this.emit(TRIGGER_SCOPE, event, payload);
   }
 
   /**
@@ -195,7 +207,7 @@ export default class E2eeMeeting {
     } catch (error) {
       LoggerProxy.logger.error(`e2ee: E2eeMeeting#start --> failed to start E2EE: ${error}`);
       this.setState('failed');
-      this.emit(EVENT_TRIGGERS.MEETING_E2EE_FAILURE, {reason: 'startFailed'});
+      this.emitE2eeEvent(EVENT_TRIGGERS.MEETING_E2EE_FAILURE, {reason: 'startFailed'});
     }
   }
 
@@ -232,13 +244,13 @@ export default class E2eeMeeting {
   private wireSessionEvents(session: MLS): void {
     session.on('joinSuccess', ({securityCode}) => {
       this.securityCode = securityCode;
-      this.emit(EVENT_TRIGGERS.MEETING_E2EE_SECURITY_CODE_UPDATED, {securityCode});
+      this.emitE2eeEvent(EVENT_TRIGGERS.MEETING_E2EE_SECURITY_CODE_UPDATED, {securityCode});
       this.updateFromRoster();
     });
 
     session.on('securityCodeChanged', ({code}) => {
       this.securityCode = code;
-      this.emit(EVENT_TRIGGERS.MEETING_E2EE_SECURITY_CODE_UPDATED, {securityCode: code});
+      this.emitE2eeEvent(EVENT_TRIGGERS.MEETING_E2EE_SECURITY_CODE_UPDATED, {securityCode: code});
     });
 
     session.on('rosterAdded', (added) => {
@@ -272,7 +284,7 @@ export default class E2eeMeeting {
 
     if (hasMediaServices !== this.mediaServicesPresent) {
       this.mediaServicesPresent = hasMediaServices;
-      this.emit(EVENT_TRIGGERS.MEETING_E2EE_MEDIA_SERVICES_CHANGED, {hasMediaServices});
+      this.emitE2eeEvent(EVENT_TRIGGERS.MEETING_E2EE_MEDIA_SERVICES_CHANGED, {hasMediaServices});
     }
 
     if (this.currentState === 'joining') {
@@ -294,7 +306,7 @@ export default class E2eeMeeting {
       `e2ee: E2eeMeeting --> fatal E2EE error: state=${state} reason=${reason}`
     );
     this.setState(state);
-    this.emit(EVENT_TRIGGERS.MEETING_E2EE_FAILURE, {reason});
+    this.emitE2eeEvent(EVENT_TRIGGERS.MEETING_E2EE_FAILURE, {reason});
   }
 
   /**
@@ -318,16 +330,16 @@ export default class E2eeMeeting {
       `e2ee: E2eeMeeting --> state changed: ${this.currentState} -> ${state}`
     );
     this.currentState = state;
-    this.emit(EVENT_TRIGGERS.MEETING_E2EE_STATE_CHANGED, {state});
+    this.emitE2eeEvent(EVENT_TRIGGERS.MEETING_E2EE_STATE_CHANGED, {state});
   }
 
   /**
    * @param {string} event
-   * @param {Object} payload
+   * @param {object} payload
    * @returns {void}
    */
-  private emit(event: string, payload: object): void {
+  private emitE2eeEvent(event: string, payload: object): void {
     LoggerProxy.logger.info(`e2ee: E2eeMeeting --> emitting event: ${event}`);
-    Trigger.trigger(this.meeting, TRIGGER_SCOPE, event, payload);
+    Trigger.trigger(this, TRIGGER_SCOPE, event, payload);
   }
 }

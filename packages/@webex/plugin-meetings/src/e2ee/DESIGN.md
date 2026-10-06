@@ -76,7 +76,7 @@ not the media encryption path.
 | D1 | Media-key injection: **define the interface** `plugin-meetings` needs; assume `@webex/internal-media-core` implements it. The internal-media-core implementation is **out of scope**. The new internal-media-core method will be something like `MultistreamConnection.setEncryptionKeys(...)`. |
 | D2 | Ownership: E2EE is a **per-meeting component** composed inside `Meeting` (`this.e2ee`), analogous to `this.members` / `this.roap`. |
 | D3 | Member verification: public API **extends `Member`**, but internally MLS roster data lives in a **separate registry keyed by device URL**, because Locus member updates and MLS roster updates arrive independently, in any order, and either can be delayed. A reconciler merges them. |
-| D4 | Security Code: `meeting.getSecurityCode()` getter **plus** a change event. |
+| D4 | Security Code and E2EE facade state are read from `meeting.e2ee`; E2EE events are also forwarded on `Meeting`. |
 | D5 | Identity/credentials: a **separate identity/credential provider** (CSR / CA / trust anchors), split from MLS group-session logic. |
 | D6 | The SDK creates a **single `Identity` plugin instance per Webex client session**. It caches the CSR + CA certificate per contact and reuses credentials across meetings. |
 | D7 | Verification: a `validationResult` of `E2eeValidationResult.Success` means **verified**. Surface per-device data **and** an aggregated state on `Member`. |
@@ -111,7 +111,7 @@ graph TD
     Mgr -->|uses shared instance| Ident
     Mgr -->|createE2eeMeeting| E2eeMeeting[E2eeMeeting facade]
     Meeting -->|owns this.e2ee| E2eeMeeting
-    App[SDK client / web app] -->|join / getSecurityCode / events| Meeting
+    App[SDK client / web app] -->|join / e2ee API / events| Meeting
     Meeting --- Members
     Meeting --- MediaProps[MediaProperties.webrtcMediaConnection]
 ```
@@ -462,6 +462,7 @@ get state(): E2eeState;
 get isEnabled(): boolean;
 getSecurityCode(): string | undefined;
 get hasMediaServices(): boolean;   // true if the MLS roster contains a media service
+on(event: string, listener: (payload: object) => void): this;
 start(): Promise<void>;   // idempotent; guarded by required() + config.enableE2ee
 stop(): Promise<void>;
 attachMediaConnection(mc): void;
@@ -577,10 +578,10 @@ to surface the meeting's zero-trust state.
   `this.e2ee.attachMediaConnection(this.mediaProperties.webrtcMediaConnection)`.
 - `closePeerConnections()`: `this.e2ee.detachMediaConnection()` before `mc.close()`.
 - `clearMeetingData()`: `await this.e2ee.stop()`.
-- Public: `getSecurityCode(): string | undefined { return this.e2ee?.getSecurityCode(); }`;
-  `get e2eeState() { return this.e2ee?.state ?? 'disabled'; }`;
-  `get e2eeHasMediaServices() { return this.e2ee?.hasMediaServices ?? false; }` (drives the
-  app's zero-trust UI indicator). `getMembers()` unchanged.
+- E2EE facade methods and state are accessed through `meeting.e2ee` (for example,
+  `meeting.e2ee.getSecurityCode()`, `meeting.e2ee.state`, and
+  `meeting.e2ee.hasMediaServices`). E2EE facade events are forwarded by `Meeting.forwardEvent()`
+  and remain available on the `Meeting` event emitter. `getMembers()` is unchanged.
 - `get e2eeTrustState(): E2eeTrustState` — derived **live** from `locusInfo.info`
   flags plus `this.e2ee`:
   - `isBestEffortE2EEncryption` → `Adaptive*` (true) vs non-adaptive (false)
@@ -677,7 +678,7 @@ mock webex. (Filenames below are illustrative — each maps to a spec under `tes
 | **P0** | `enableE2ee` config + `E2eeManager` + `WasmLoader` + `Meetings.register()` preload wiring (no per-meeting behavior yet; proves early WASM warm-up + single-instance plumbing). |
 | **P1** | Extract/refactor `MLS` (engine) + `types` + WASM-loader use (no behavior change vs PoC). |
 | **P2** | `MediaEncryptionService` + `internal-plugin-identity` (one instance per client) + `E2eeSignaling` (I/O adapters). |
-| **P3** | `E2eeMeeting` facade + `Meeting` wiring (start/stop, `getSecurityCode`, events) — **security code works end-to-end**. |
+| **P3** | `E2eeMeeting` facade + `Meeting` wiring (start/stop, direct facade API, forwarded events) — **security code works end-to-end**. |
 | **P4** | `MemberMLSReconciler` + `Member` extension + verification events. |
 | **P5** | `IE2eeMediaConnection` contract + `MediaKeyController` (media key injection); media-core impl (new `setEncryptionKeys` method) tracked separately (out of scope). |
 | **P6** | Reconnection + force-leave failure policy (reasons/errors/events) + `keepAlive` hardening. |
