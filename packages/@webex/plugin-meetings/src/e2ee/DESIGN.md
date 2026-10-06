@@ -430,7 +430,15 @@ detachMediaConnection(): void;                         // on closePeerConnection
 addKey(k: E2eeKey): void;                              // buffer, then flush()
 setActiveEpoch(epoch: number): void;                   // buffer, then flush()
 purgeBefore(epoch: number): void;                      // drop from buffer, then flush()
-// private flush(): if (mc && params) mc.setEncryptionKeys({ ...params, keys:[...], activeEncryptionEpoch })
+private flush(): void {
+  if (this.mc && this.params) {
+    this.mc.setEncryptionKeys({
+      ...this.params,
+      keys: [...this.keys.values()],
+      activeEncryptionEpoch: this.activeEpoch,
+    });
+  }
+}
 ```
 
 State: `mc?`, `params?: SframeParams`, `keys: Map<epoch, E2eeKey>`, `activeEpoch?`.
@@ -455,10 +463,13 @@ start(): Promise<void>;   // idempotent; guarded by required() + config.enableE2
 stop(): Promise<void>;
 attachMediaConnection(mc): void;
 detachMediaConnection(): void;
-// private required(): boolean =
-//   config.enableE2ee &&
-//   !!meeting.locusInfo?.info?.isV2E2EEncrypted &&        // MLS join only for V2/zero-trust meetings
-//   !!meeting.locusInfo?.info?.mediaEncryptionGroupUrl    // group URL is the MLS serviceUrl
+private required(): boolean {
+  return (
+    this.config.enableE2ee &&
+    !!this.meeting.locusInfo?.info?.isV2E2EEncrypted && // MLS join only for V2/zero-trust meetings
+    !!this.meeting.locusInfo?.info?.mediaEncryptionGroupUrl // group URL is the MLS serviceUrl
+  );
+}
 ```
 
 `start()`:
