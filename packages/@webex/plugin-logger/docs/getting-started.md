@@ -9,8 +9,8 @@ doc_kind: standing-doc
 generated_from: getting-started@0.3.0
 generated_by: claude-cowork
 approved_by: akulakum@cisco.com
-updated_at: 2026-10-06T10:57:01Z
-validation_status: pass-with-warnings
+updated_at: 2026-10-06T11:20:00Z
+validation_status: pending
 -->
 
 # Getting started
@@ -25,7 +25,7 @@ The unit spec is `test/unit/spec/logger.js`. `test:unit` runs it under jest in N
 | -------------- | ---------------------- |
 | Node.js | `>=18`, declared in `package.json` `engines` |
 | Yarn | Workspaces are used, so install from the workspace root rather than this directory |
-| Browser for `test:browser` | The karma runner used by `webex-legacy-tools test --unit --runner karma` |
+| Browser for `test:browser` | A local browser for the karma runner that `test:browser` starts through `@webex/legacy-tools` |
 | Container, registry, VPN, or account | N/A — no external account is required to build, lint, or unit-test this package |
 
 ## Install
@@ -46,7 +46,7 @@ Compile sources to `dist/`:
 yarn workspace @webex/plugin-logger build
 ```
 
-`scripts.build` runs `build:src`, which calls `webex-legacy-tools build -dest "./dist" -src "./src" -js -ts -maps`. The manifest records `build:src` as the compile role and `build` as the package role.
+`scripts.build` runs `build:src`, which uses the `@webex/legacy-tools` builder to compile `src/` into `dist/` with source maps. That builder call is a script internal. The manifest records `build:src` as the compile role and `build` as the package role.
 
 ## Run
 
@@ -59,7 +59,7 @@ Import the package from a consumer. `webex` and `webex-node` import it so that `
 | Tier | Command | What it covers |
 | ---- | ------- | -------------- |
 | Unit (Node) | `yarn workspace @webex/plugin-logger test:unit` | `test/unit/spec/logger.js` under jest, including `nodeOnly` cases |
-| Unit (browser) | `yarn workspace @webex/plugin-logger test:browser` | The same spec under karma, including `browserOnly` cases |
+| Unit (browser) | `yarn workspace @webex/plugin-logger test:browser` | The same spec under karma, including `browserOnly` cases. Recorded as manifest `commands.browser-test` (role `other`) because the SDD manifest `tests` schema has no browser tier (`unit`, `integration`, `e2e`, `qa` only). |
 | Lint | `yarn workspace @webex/plugin-logger test:style` | eslint over `src/` |
 | Integration | N/A — `package.json` does not define `test:integration` | — |
 

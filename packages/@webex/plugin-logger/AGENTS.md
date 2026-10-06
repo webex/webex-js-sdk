@@ -3,8 +3,8 @@ doc_kind: agent-entry
 generated_from: agents@0.3.0
 generated_by: claude-cowork
 approved_by: akulakum@cisco.com
-updated_at: 2026-10-06T10:57:01Z
-validation_status: pass-with-warnings
+updated_at: 2026-10-06T11:20:00Z
+validation_status: pending
 -->
 
 # AI Agent Instructions
@@ -103,6 +103,8 @@ Run checks in this order:
 1. `yarn workspace @webex/plugin-logger test:unit`
 2. `yarn workspace @webex/plugin-logger test:style`
 3. `yarn workspace @webex/plugin-logger test:browser` when a karma browser is available. No integration tier is defined.
+
+The browser run is recorded in `.sdd/manifest.json` as `commands.browser-test` (role `other`), not under `tests`, because the SDD manifest `tests` schema has no browser tier.
 
 Testing rules:
 

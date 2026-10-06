@@ -9,8 +9,8 @@ doc_kind: standing-doc
 generated_from: architecture@0.3.0
 generated_by: claude-cowork
 approved_by: akulakum@cisco.com
-updated_at: 2026-10-06T10:57:01Z
-validation_status: pass-with-warnings
+updated_at: 2026-10-06T11:20:00Z
+validation_status: pending
 -->
 
 # @webex/plugin-logger architecture
@@ -186,7 +186,7 @@ flowchart TD
 
 ## Release and versioning
 
-The package is published with `yarn workspace @webex/plugin-logger deploy:npm`, which runs `yarn npm publish`. The license field is `MIT`. There is no package-local changelog; workspace release tooling owns changelog generation.
+The package is published with `yarn workspace @webex/plugin-logger deploy:npm`. That script wraps Yarn's npm publish; the wrapped call is a script internal, not a separate manifest command. The license field is `MIT`. There is no package-local changelog; workspace release tooling owns changelog generation.
 
 Export stability is described in the module spec.
 

@@ -9,8 +9,8 @@ doc_kind: module-spec
 generated_from: module-spec@0.3.0
 generated_by: claude-cowork
 approved_by: akulakum@cisco.com
-updated_at: 2026-10-06T10:57:01Z
-validation_status: pass-with-warnings
+updated_at: 2026-10-06T11:20:00Z
+validation_status: pending
 -->
 
 # Logger plugin
@@ -32,7 +32,7 @@ Related context: [documentation index](../../docs/index.md) · [package agent in
 | Parent spec       | — |
 | Doc kind          | Module spec |
 | Coverage score    | 93.8% assessed 2026-10-06 — 15 of 16 mandatory fields PRESENT, critical 8 of 8; test strategy is WEAK because registration, the catch branch, group indentation, and known redaction gaps are untested |
-| Validation status | pass-with-warnings — 2026-10-06, validator runtime `current-session` |
+| Validation status | pending |
 
 ## Applicability
 
@@ -281,7 +281,7 @@ Changing the entry order or the timestamp index breaks `formatLogs` merging and 
 - `config.level` is not validated against `levels`. An unknown value makes `precedence[...]` `undefined`, so nothing prints.
 - `src/config.js` reads `process.env.WEBEX_LOG_LEVEL` once at module load. Its JSDoc says `historyLength` defaults to `1000`, but the value is `10000`.
 - A shorter `historyLength` takes effect on the next buffered write, not immediately.
-- `test:style` runs `eslint ./src/**/*.*`. Keep this spec under `src/docs/` as Markdown only.
+- `test:style` runs eslint over every file under `src/`. Keep this spec under `src/docs/` as Markdown only; eslint reports it as ignored.
 
 ## Module-specific rules
 
@@ -317,4 +317,4 @@ In browsers the logger prints the stringified values instead of live objects. Th
 | Browser output | `yarn workspace @webex/plugin-logger test:browser` | `browserOnly` cases | Requires a karma browser |
 | Lint | `yarn workspace @webex/plugin-logger test:style` | `src/` | — |
 
-Do not use `yarn workspace @webex/plugin-logger test`. It chains `test:integration`, which `package.json` does not define.
+Do not run the aggregate `test` script from `package.json` as a verification command. It chains `test:integration`, which `package.json` does not define, so it is intentionally not a manifest command.
