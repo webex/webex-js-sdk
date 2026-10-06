@@ -2,6 +2,8 @@
  * Copyright (c) 2015-2026 Cisco Systems, Inc. See LICENSE file.
  */
 
+import type {IdentityCredentials, IdentityTrustAnchors} from '@webex/internal-plugin-identity';
+
 import type {Enum} from '../constants';
 
 /**
@@ -93,25 +95,6 @@ export type E2eeMemberVerificationState =
   | 'unverified'
   | 'partiallyVerified';
 
-/** X.509 credentials (private key + certificate chain) used to join the MLS group. */
-export interface E2eeCredentials {
-  privateKey: Uint8Array;
-  certChain: ArrayBuffer[];
-}
-
-/** Trust anchors (PEM) used to validate member certificates. */
-export interface E2eeTrustAnchors {
-  webexCaRoots?: string;
-  domainNameRoots?: string;
-  userIdentityRoots?: string;
-}
-
-/** Methods Meetings uses from the shared internal identity plugin. */
-export interface E2eeIdentityProvider {
-  getCredentials(contactId: string): Promise<E2eeCredentials>;
-  getTrustAnchors(): E2eeTrustAnchors;
-}
-
 /** Configuration for initializing an MLS group session. */
 export interface MLSConfig {
   participantId: string;
@@ -120,8 +103,8 @@ export interface MLSConfig {
   correlationId: string;
   displayName: string;
   serviceUrl: string;
-  credentials?: E2eeCredentials;
-  trustAnchors?: E2eeTrustAnchors;
+  credentials?: IdentityCredentials;
+  trustAnchors?: IdentityTrustAnchors;
   joinTimeout?: number;
   coalesceWindow?: number;
 }

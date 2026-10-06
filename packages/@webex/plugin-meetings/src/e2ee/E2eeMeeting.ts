@@ -2,6 +2,8 @@
  * Copyright (c) 2015-2026 Cisco Systems, Inc. See LICENSE file.
  */
 
+import type {IdentityProvider} from '@webex/internal-plugin-identity';
+
 import Trigger from '../common/events/trigger-proxy';
 import LoggerProxy from '../common/logs/logger-proxy';
 import {EVENT_TRIGGERS} from '../constants';
@@ -11,7 +13,7 @@ import E2eeSignaling from './E2eeSignaling';
 import MemberMLSReconciler from './MemberMLSReconciler';
 import {isE2eeEnabledAndSupported, E2EE_WASM_URL, MEDIA_SERVICE_DEVICE_TYPE} from './constants';
 import type WasmLoader from '../common/wasm-loader';
-import type {E2eeConfig, E2eeIdentityProvider, E2eeState} from './types';
+import type {E2eeConfig, E2eeState} from './types';
 
 const DEVICE_TYPE = 'WEB';
 const TRIGGER_SCOPE = {file: 'e2ee/E2eeMeeting', function: 'e2ee'};
@@ -29,7 +31,7 @@ export default class E2eeMeeting {
 
   private readonly wasmLoader: WasmLoader;
 
-  private readonly identityProvider: E2eeIdentityProvider;
+  private readonly identityProvider: IdentityProvider;
 
   private readonly config: E2eeConfig;
 
@@ -50,7 +52,7 @@ export default class E2eeMeeting {
    * @param {Object} deps.meeting - The owning meeting.
    * @param {Object} deps.webex - The parent webex instance.
    * @param {WasmLoader} deps.wasmLoader - Shared (pre-warmed) WASM loader.
-   * @param {E2eeIdentityProvider} deps.identityProvider - Shared identity/credential provider.
+   * @param {IdentityProvider} deps.identityProvider - Shared identity/credential provider.
    * @param {E2eeConfig} deps.config - The meetings plugin config.
    */
   constructor({
@@ -63,7 +65,7 @@ export default class E2eeMeeting {
     meeting: any;
     webex: any;
     wasmLoader: WasmLoader;
-    identityProvider: E2eeIdentityProvider;
+    identityProvider: IdentityProvider;
     config: E2eeConfig;
   }) {
     this.meeting = meeting;

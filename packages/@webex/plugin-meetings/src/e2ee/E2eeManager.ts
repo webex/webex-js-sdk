@@ -2,11 +2,12 @@
  * Copyright (c) 2015-2026 Cisco Systems, Inc. See LICENSE file.
  */
 
+import type {IdentityProvider} from '@webex/internal-plugin-identity';
+
 import LoggerProxy from '../common/logs/logger-proxy';
 import WasmLoader from '../common/wasm-loader';
 import E2eeMeeting from './E2eeMeeting';
 import {E2EE_WASM_URL, isE2eeEnabledAndSupported} from './constants';
-import type {E2eeIdentityProvider} from './types';
 
 /**
  * Owns the shared, session-scoped E2EE identity provider, warms the E2EE WASM during registration
@@ -19,7 +20,7 @@ export default class E2eeManager {
 
   private readonly wasmLoader: WasmLoader;
 
-  private readonly identityProvider: E2eeIdentityProvider;
+  private readonly identityProvider: IdentityProvider;
 
   /**
    * @param {Object} deps

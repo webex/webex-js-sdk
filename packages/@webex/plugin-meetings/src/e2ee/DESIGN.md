@@ -455,7 +455,7 @@ Created by `E2eeManager.createE2eeMeeting(meeting)`.
 ```ts
 constructor(deps: {
   meeting; webex; wasmLoader: WasmLoader;
-  identityProvider: E2eeIdentityProvider; config;
+  identityProvider: IdentityProvider; config;
 });
 
 get state(): E2eeState;
