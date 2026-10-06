@@ -17,7 +17,7 @@ import {
   AISummary,
 } from './types';
 import {TASK_MANAGER_FILE} from '../../constants';
-import {AI_SUMMARY_DURATION_MS, METHODS, TRANSCRIPT_EVENT_MAP} from './constants';
+import {METHODS, TRANSCRIPT_EVENT_MAP} from './constants';
 import {CC_EVENTS, CC_TASK_EVENTS, WrapupData} from '../config/types';
 import {ConfigFlags, LoginOption, AIAssistantEventType, AIAssistantEventName} from '../../types';
 import LoggerProxy from '../../logger-proxy';
@@ -26,7 +26,6 @@ import {
   isCampaignPreviewTask,
   isCampaignPreviewReservation,
   isSecondaryEpDnAgent,
-  isNonEmptyString,
   shouldAutoAnswerTask,
 } from './TaskUtils';
 import TaskFactory from './TaskFactory';
@@ -62,11 +61,6 @@ const PARTICIPANT_LEAVE_WRAP_STATES = new Set<TaskState>([
   TaskState.CONFERENCING,
 ]);
 
-type TimedAISummaryPayload<Payload> = {
-  payload: Payload;
-  timeoutId?: ReturnType<typeof setTimeout>;
-};
-
 /** @internal */
 export default class TaskManager extends EventEmitter {
   private call: ICall;
@@ -89,12 +83,10 @@ export default class TaskManager extends EventEmitter {
   private webRtcEnabled: boolean;
   private answerCallOnWebexService?: AnswerCallOnWebexService;
   private apiAIAssistant?: ApiAIAssistant;
-  private receivingSummaryBuffer = new Map<string, TimedAISummaryPayload<AISummary>>();
+  private receivingSummaryBuffer = new Map<string, AISummary>();
 
   // RTD feature frames can arrive before AQM creates the task.
   private pendingFeatureEnablement = new Map<string, AISummaryFeatureEnablement>();
-
-  private aiSummaryInboundActive = true;
 
   /**
    * @param contact - Routing Contact layer. Talks to AQMReq layer to convert events to promises
@@ -126,15 +118,23 @@ export default class TaskManager extends EventEmitter {
 
       switch (payload?.type) {
         case CC_TASK_EVENTS.FEATURE_ENABLEMENT: {
-          if (!this.aiSummaryInboundActive) return;
+          const enablement: AISummaryFeatureEnablement = payload?.data?.data;
+          if (!enablement?.interactionId) return;
 
-          this.handleFeatureEnablementEvent(payload?.data?.data);
+          const task = this.taskCollection[enablement.interactionId];
+          if (task) {
+            this.pendingFeatureEnablement.delete(enablement.interactionId);
+            task.setFeatureEnablement?.(enablement);
+            task.emit(TASK_EVENTS.TASK_FEATURE_ENABLEMENT, enablement);
+          } else {
+            this.pendingFeatureEnablement.set(enablement.interactionId, enablement);
+          }
 
           return;
         }
         case CC_TASK_EVENTS.POST_CALL_SUMMARY:
         case CC_TASK_EVENTS.MID_CALL_SUMMARY: {
-          if (!this.aiSummaryInboundActive || !payload?.data?.data?.conversationId) return;
+          if (!payload?.data?.data?.conversationId) return;
 
           this.apiAIAssistant?.resolveFromRtdEvent(
             payload.type,
@@ -145,13 +145,18 @@ export default class TaskManager extends EventEmitter {
           return;
         }
         case CC_TASK_EVENTS.MID_CALL_SUMMARY_RESPONSE_SUBSEQUENT_AGENT: {
-          if (!this.aiSummaryInboundActive || !payload?.data?.data?.conversationId) return;
+          if (!payload?.data?.data?.conversationId) return;
 
-          const summaryPayload = payload.data.data;
-          this.routeReceivingSummary(
-            summaryPayload,
-            this.selectReceivingSummaryTasks(summaryPayload.conversationId)
-          );
+          const summary: AISummary = payload.data.data;
+          const {conversationId} = summary;
+          const task = this.taskCollection[conversationId];
+
+          if (task) {
+            this.receivingSummaryBuffer.delete(conversationId);
+            task.emit(TASK_EVENTS.TASK_MID_CALL_SUMMARY_RECEIVED, summary);
+          } else {
+            this.receivingSummaryBuffer.set(conversationId, summary);
+          }
 
           return;
         }
@@ -190,170 +195,18 @@ export default class TaskManager extends EventEmitter {
     }
   }
 
-  private removeTimedAISummaryEntry<T extends {timeoutId?: ReturnType<typeof setTimeout>}>(
-    entries: Map<string, T>,
-    key: string
-  ): T | undefined {
-    const entry = entries.get(key);
-
-    if (!entry) {
-      return undefined;
-    }
-
-    if (entry.timeoutId) {
-      clearTimeout(entry.timeoutId);
-    }
-
-    entries.delete(key);
-
-    return entry;
-  }
-
-  private handleFeatureEnablementEvent(payload?: AISummaryFeatureEnablement): void {
-    if (!payload?.interactionId) {
-      return;
-    }
-
-    const matchingTask = Object.values(this.taskCollection).find((task) => {
-      return task?.data?.interactionId === payload.interactionId;
-    });
-
-    if (matchingTask) {
-      this.pendingFeatureEnablement.delete(payload.interactionId);
-      matchingTask.setFeatureEnablement?.(payload);
-      matchingTask.emit(TASK_EVENTS.TASK_FEATURE_ENABLEMENT, payload);
-
-      return;
-    }
-
-    this.pendingFeatureEnablement.set(payload.interactionId, payload);
-  }
-
-  private deliverReceivingSummary(
-    conversationId: string,
-    payload: AISummary,
-    matchingTasks: ReadonlyArray<Pick<ITask, 'data' | 'emit'>>
-  ): boolean {
-    if (matchingTasks.length === 0) {
-      return false;
-    }
-
-    this.removeTimedAISummaryEntry(this.receivingSummaryBuffer, conversationId);
-
-    if (matchingTasks.length === 1) {
-      matchingTasks[0].emit(TASK_EVENTS.TASK_MID_CALL_SUMMARY_RECEIVED, payload);
-    }
-
-    return true;
-  }
-
-  private routeReceivingSummary(
-    payload: AISummary,
-    matchingTasks: ReadonlyArray<Pick<ITask, 'data' | 'emit'>>
-  ): void {
-    const conversationId = payload.conversationId;
-
-    if (this.deliverReceivingSummary(conversationId, payload, matchingTasks)) {
-      return;
-    }
-
-    this.removeTimedAISummaryEntry(this.receivingSummaryBuffer, conversationId);
-    const entry = {
-      payload,
-      timeoutId: setTimeout(() => {
-        this.removeTimedAISummaryEntry(this.receivingSummaryBuffer, conversationId);
-      }, AI_SUMMARY_DURATION_MS),
-    };
-    this.receivingSummaryBuffer.set(conversationId, entry);
-  }
-
-  private flushReceivingSummary(conversationId: string): void {
-    const entry = this.receivingSummaryBuffer.get(conversationId);
-
-    if (!entry) {
-      return;
-    }
-
-    this.deliverReceivingSummary(
-      conversationId,
-      entry.payload,
-      this.selectReceivingSummaryTasks(conversationId)
-    );
-  }
-
   /**
    * Set config flags for task creation
    */
   public setConfigFlags(configFlags: ConfigFlags) {
     this.configFlags = configFlags;
-    this.aiSummaryInboundActive = true;
   }
 
   public clearAISummaryState(): void {
-    this.aiSummaryInboundActive = false;
     this.apiAIAssistant?.clearAllRtdRequests();
     Object.values(this.taskCollection).forEach((task) => task.clearFeatureEnablement?.());
-    Array.from(this.receivingSummaryBuffer.keys()).forEach((conversationId) => {
-      this.removeTimedAISummaryEntry(this.receivingSummaryBuffer, conversationId);
-    });
+    this.receivingSummaryBuffer.clear();
     this.pendingFeatureEnablement.clear();
-  }
-
-  private selectReceivingSummaryTasks(conversationId: string): ITask[] {
-    const matchingTasks = Object.values(this.taskCollection).filter((task) => {
-      const taskConversationId =
-        task?.data?.interaction?.mainInteractionId || task?.data?.interactionId;
-
-      return taskConversationId === conversationId;
-    });
-
-    if (matchingTasks.length <= 1) {
-      return matchingTasks;
-    }
-
-    const parentInteractionIds = new Set<string>();
-    matchingTasks.forEach((task) => {
-      const parentInteractionId =
-        task.data?.interaction?.callProcessingDetails?.parentInteractionId;
-
-      if (isNonEmptyString(parentInteractionId)) {
-        parentInteractionIds.add(parentInteractionId);
-      }
-    });
-
-    const leafTasks = matchingTasks.filter((task) => {
-      const interactionId = task.data?.interactionId;
-
-      return isNonEmptyString(interactionId) && !parentInteractionIds.has(interactionId);
-    });
-
-    return leafTasks.length === 1 ? leafTasks : matchingTasks;
-  }
-
-  private applyPendingFeatureEnablement(task: ITask): void {
-    const interactionId = task?.data?.interactionId;
-
-    if (!interactionId) {
-      return;
-    }
-
-    const payload = this.pendingFeatureEnablement.get(interactionId);
-    if (payload) {
-      task.setFeatureEnablement?.(payload);
-    }
-  }
-
-  private flushPendingFeatureEnablement(task: ITask): void {
-    const interactionId = task?.data?.interactionId;
-    if (!interactionId) {
-      return;
-    }
-
-    const payload = this.pendingFeatureEnablement.get(interactionId);
-    if (payload) {
-      this.pendingFeatureEnablement.delete(interactionId);
-      task.emit(TASK_EVENTS.TASK_FEATURE_ENABLEMENT, payload);
-    }
   }
 
   /**
@@ -938,8 +791,11 @@ export default class TaskManager extends EventEmitter {
         task.sendStateMachineEvent(stateMachineEvent);
       }
 
-      const conversationId = task.data.interaction?.mainInteractionId || task.data.interactionId;
-      this.flushReceivingSummary(conversationId);
+      const bufferedSummary = this.receivingSummaryBuffer.get(task.data.interactionId);
+      if (bufferedSummary) {
+        this.receivingSummaryBuffer.delete(task.data.interactionId);
+        task.emit(TASK_EVENTS.TASK_MID_CALL_SUMMARY_RECEIVED, bufferedSummary);
+      }
 
       // Emit TASK_POST_CALL_ACTIVITY for ParticipantPostCallActivity events so
       // consumers (Widgets) can detect the interaction state change to post_call.
@@ -1396,7 +1252,6 @@ export default class TaskManager extends EventEmitter {
     } as TaskEventPayload);
 
     this.setupTaskListeners(task);
-    this.applyPendingFeatureEnablement(task);
     context.payload = taskData;
     context.stateMachineEvent = {
       type: TaskEvent.CONTACT_OWNER_CHANGED,
@@ -1500,7 +1355,6 @@ export default class TaskManager extends EventEmitter {
       );
       this.setupTaskListeners(task);
       this.taskCollection[payload.interactionId] = task;
-      this.applyPendingFeatureEnablement(task);
     } else {
       task = this.updateTaskData(task, payload);
     }
@@ -1543,7 +1397,6 @@ export default class TaskManager extends EventEmitter {
 
     this.setupTaskListeners(task);
     this.taskCollection[payload.interactionId] = task;
-    this.applyPendingFeatureEnablement(task);
 
     return {task};
   }
@@ -1586,7 +1439,6 @@ export default class TaskManager extends EventEmitter {
       );
       this.setupTaskListeners(task);
       this.taskCollection[payload.interactionId] = task;
-      this.applyPendingFeatureEnablement(task);
     }
 
     return {task};
@@ -1620,7 +1472,10 @@ export default class TaskManager extends EventEmitter {
       }
     });
     this.taskCollection[taskData.interactionId] = task;
-    this.applyPendingFeatureEnablement(task);
+    const enablement = this.pendingFeatureEnablement.get(task.data.interactionId);
+    if (enablement) {
+      task.setFeatureEnablement?.(enablement);
+    }
 
     return task;
   }
@@ -1630,38 +1485,46 @@ export default class TaskManager extends EventEmitter {
    * This replaces the previous callback injection pattern
    */
   private setupTaskListeners(task: ITask): void {
-    // Listen for TASK_INCOMING and re-emit so webex.cc can notify consumers
-    task.on(TASK_EVENTS.TASK_INCOMING, (t: ITask) => {
-      LoggerProxy.log(`Task incoming event received`, {
-        module: TASK_MANAGER_FILE,
-        method: METHODS.REGISTER_TASK_LISTENERS,
-        interactionId: t.data?.interactionId,
+    // Apply flags before publication; retain the frame until consumers can attach listeners.
+    const enablement = this.pendingFeatureEnablement.get(task.data.interactionId);
+    if (enablement) {
+      task.setFeatureEnablement?.(enablement);
+    }
+
+    [
+      TASK_EVENTS.TASK_INCOMING,
+      TASK_EVENTS.TASK_CAMPAIGN_PREVIEW_RESERVATION,
+      TASK_EVENTS.TASK_HYDRATE,
+      TASK_EVENTS.TASK_ASSIGNED,
+    ].forEach((eventName) => {
+      task.on(eventName, (t: ITask) => {
+        if (
+          eventName === TASK_EVENTS.TASK_INCOMING ||
+          eventName === TASK_EVENTS.TASK_CAMPAIGN_PREVIEW_RESERVATION
+        ) {
+          LoggerProxy.log(
+            eventName === TASK_EVENTS.TASK_INCOMING
+              ? 'Task incoming event received'
+              : 'Campaign preview reservation event received',
+            {
+              module: TASK_MANAGER_FILE,
+              method: METHODS.REGISTER_TASK_LISTENERS,
+              interactionId: t.data?.interactionId,
+            }
+          );
+        }
+
+        // Assignment is already emitted on the task; the other events publish it to consumers.
+        if (eventName !== TASK_EVENTS.TASK_ASSIGNED) {
+          this.emit(eventName, t);
+        }
+
+        const pendingEnablement = this.pendingFeatureEnablement.get(task.data.interactionId);
+        if (pendingEnablement) {
+          this.pendingFeatureEnablement.delete(task.data.interactionId);
+          task.emit(TASK_EVENTS.TASK_FEATURE_ENABLEMENT, pendingEnablement);
+        }
       });
-
-      this.emit(TASK_EVENTS.TASK_INCOMING, t);
-      this.flushPendingFeatureEnablement(task);
-    });
-
-    task.on(TASK_EVENTS.TASK_CAMPAIGN_PREVIEW_RESERVATION, (t: ITask) => {
-      LoggerProxy.log(`Campaign preview reservation event received`, {
-        module: TASK_MANAGER_FILE,
-        method: METHODS.REGISTER_TASK_LISTENERS,
-        interactionId: t.data?.interactionId,
-      });
-
-      this.emit(TASK_EVENTS.TASK_CAMPAIGN_PREVIEW_RESERVATION, t);
-      this.flushPendingFeatureEnablement(task);
-    });
-
-    // Listen for TASK_HYDRATE on the task and re-emit on TaskManager
-    task.on(TASK_EVENTS.TASK_HYDRATE, (t: ITask) => {
-      // Task data is already updated by the task itself before emitting
-      this.emit(TASK_EVENTS.TASK_HYDRATE, t);
-      this.flushPendingFeatureEnablement(task);
-    });
-
-    task.on(TASK_EVENTS.TASK_ASSIGNED, () => {
-      this.flushPendingFeatureEnablement(task);
     });
 
     task.on(TASK_EVENTS.TASK_MULTI_LOGIN_HYDRATE, (t: ITask) => {
@@ -1683,7 +1546,7 @@ export default class TaskManager extends EventEmitter {
   }
 
   private removeTaskFromCollection(task: ITask) {
-    const conversationId = task?.data?.interaction?.mainInteractionId || task?.data?.interactionId;
+    task.clearFeatureEnablement?.();
     task.disposeWxAppOfferObservability?.();
     if (typeof task.cancelAutoWrapupTimer === 'function') {
       task.cancelAutoWrapupTimer();
@@ -1700,10 +1563,6 @@ export default class TaskManager extends EventEmitter {
         method: METHODS.REMOVE_TASK_FROM_COLLECTION,
         interactionId: task.data.interactionId,
       });
-    }
-
-    if (conversationId) {
-      this.flushReceivingSummary(conversationId);
     }
   }
 
@@ -1770,14 +1629,15 @@ export default class TaskManager extends EventEmitter {
       } as TaskEventPayload);
 
       this.setupTaskListeners(task);
-      this.applyPendingFeatureEnablement(task);
     }
 
     if (task) {
       this.emit(TASK_EVENTS.TASK_MERGED, task);
-      this.flushPendingFeatureEnablement(task);
-      const conversationId = task.data.interaction?.mainInteractionId || task.data.interactionId;
-      this.flushReceivingSummary(conversationId);
+      const enablement = this.pendingFeatureEnablement.get(task.data.interactionId);
+      if (enablement) {
+        this.pendingFeatureEnablement.delete(task.data.interactionId);
+        task.emit(TASK_EVENTS.TASK_FEATURE_ENABLEMENT, enablement);
+      }
     }
 
     return {task};

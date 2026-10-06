@@ -683,7 +683,13 @@ describe('Voice Task', () => {
         midCallEnabled: true,
       }
     ) => {
-      (adapter as any).isGeneratedSummaryEnabled = jest.fn(() => true);
+      adapter.aiFeature = {
+        id: 'summary-flags',
+        generatedSummaries: {
+          wrapUpSummariesEnabled: true,
+          consultTransferSummariesEnabled: true,
+        },
+      };
       (voice as any).apiAIAssistant = adapter;
       voice.setFeatureEnablement(featureEnablement);
 

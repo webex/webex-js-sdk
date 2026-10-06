@@ -98,25 +98,6 @@ describe('ApiAIAssistant', () => {
     apiAIAssistant = new ApiAIAssistant(mockWebex, () => wellnessContext);
   });
 
-  it('uses the current organization flags for generated summary requests', () => {
-    expect(apiAIAssistant.isGeneratedSummaryEnabled('POST_CALL_SUMMARY')).toBe(false);
-    expect(apiAIAssistant.isGeneratedSummaryEnabled('MID_CALL_SUMMARY')).toBe(false);
-
-    apiAIAssistant.setAIFeatureFlags({
-      id: 'feature-flags',
-      generatedSummaries: {wrapUpSummariesEnabled: true, consultTransferSummariesEnabled: false},
-    });
-    expect(apiAIAssistant.isGeneratedSummaryEnabled('POST_CALL_SUMMARY')).toBe(true);
-    expect(apiAIAssistant.isGeneratedSummaryEnabled('MID_CALL_SUMMARY')).toBe(false);
-
-    apiAIAssistant.setAIFeatureFlags({
-      id: 'feature-flags',
-      generatedSummaries: {wrapUpSummariesEnabled: false, consultTransferSummariesEnabled: true},
-    });
-    expect(apiAIAssistant.isGeneratedSummaryEnabled('POST_CALL_SUMMARY')).toBe(false);
-    expect(apiAIAssistant.isGeneratedSummaryEnabled('MID_CALL_SUMMARY')).toBe(true);
-  });
-
   it('sends a summary request and resolves it from the matching RTD event', async () => {
     (mockWebex.request as jest.Mock).mockResolvedValue({body: {accepted: true}});
 

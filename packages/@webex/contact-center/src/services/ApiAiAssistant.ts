@@ -40,7 +40,8 @@ type WellnessBreakContextProvider = () => {
 export class ApiAIAssistant {
   private webex: WebexSDK;
   private metricsManager: MetricsManager;
-  private aiFeature: AIFeatureFlags;
+  /** @internal Current AI flags from the agent configuration. */
+  public aiFeature: AIFeatureFlags;
   private pendingRtdRequests = new Map<string, PendingRtdRequest<unknown>>();
   private readonly wellnessContextProvider?: WellnessBreakContextProvider;
 
@@ -64,15 +65,6 @@ export class ApiAIAssistant {
 
   public setAIFeatureFlags(aiFeature: AIFeatureFlags): void {
     this.aiFeature = aiFeature;
-  }
-
-  /** @internal Whether the organization enables this summary request. */
-  public isGeneratedSummaryEnabled(type: 'POST_CALL_SUMMARY' | 'MID_CALL_SUMMARY'): boolean {
-    const flags = this.aiFeature?.generatedSummaries;
-
-    return type === 'POST_CALL_SUMMARY'
-      ? flags?.wrapUpSummariesEnabled === true
-      : flags?.consultTransferSummariesEnabled === true;
   }
 
   private async sendWellnessBreakAction(

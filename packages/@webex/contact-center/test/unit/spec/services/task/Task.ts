@@ -1062,11 +1062,7 @@ describe('Task AI summary APIs', () => {
     apiAIAssistant: any,
     flags: {wrapUpSummariesEnabled?: boolean; consultTransferSummariesEnabled?: boolean}
   ) => {
-    apiAIAssistant.isGeneratedSummaryEnabled = jest.fn((type) =>
-      type === 'POST_CALL_SUMMARY'
-        ? flags.wrapUpSummariesEnabled === true
-        : flags.consultTransferSummariesEnabled === true
-    );
+    apiAIAssistant.aiFeature = {id: 'summary-flags', generatedSummaries: flags};
     (task as any).apiAIAssistant = apiAIAssistant;
   };
 
@@ -1707,7 +1703,7 @@ describe('Task AI summary APIs', () => {
     }
   );
 
-  it('uses the assistant’s current generated-summary flags for each request', async () => {
+  it('uses the agent configuration’s current generated-summary flags for each request', async () => {
     const firstFlags = {
       wrapUpSummariesEnabled: false,
       consultTransferSummariesEnabled: true,
@@ -1720,12 +1716,7 @@ describe('Task AI summary APIs', () => {
       sendEvent: jest.fn().mockResolvedValue(undefined),
       pendingRequests: new Map(),
     };
-    let currentFlags = firstFlags;
-    adapter.isGeneratedSummaryEnabled = jest.fn((type) =>
-      type === 'POST_CALL_SUMMARY'
-        ? currentFlags.wrapUpSummariesEnabled
-        : currentFlags.consultTransferSummariesEnabled
-    );
+    adapter.aiFeature = {id: 'summary-flags', generatedSummaries: firstFlags};
     const featureEnablement = {interactionId: 'interaction-1', postCallEnabled: true};
     const coordinator = adapter;
     let resolveResult: (payload: any) => void = () => undefined;
@@ -1765,7 +1756,7 @@ describe('Task AI summary APIs', () => {
     );
     expect(adapter.sendEvent).not.toHaveBeenCalled();
 
-    currentFlags = secondFlags;
+    adapter.aiFeature = {id: 'summary-flags', generatedSummaries: secondFlags};
     const request = task.requestPostCallSummary();
 
     await Promise.resolve();
@@ -1887,7 +1878,7 @@ describe('Task AI summary APIs', () => {
     });
   });
 
-  it('serializes post-call responses from retained request context after TaskManager cleanup state is gone', async () => {
+  it('serializes post-call responses after request cleanup', async () => {
     const task = new DummyTask(dummyContact, createAISummaryTaskData());
     const taskRegistry: Record<string, DummyTask> = {'interaction-1': task};
     const metrics = spyOnAISummaryMetrics(task);
@@ -1903,13 +1894,6 @@ describe('Task AI summary APIs', () => {
 
     delete taskRegistry['interaction-1'];
     coordinator.clear('task-owner-1', 'conversation-1');
-    task.updateTaskData(
-      createAISummaryTaskData({
-        interactionId: 'current-interaction',
-        interaction: {mainInteractionId: 'current-conversation'} as any,
-      }),
-      true
-    );
     const responsePayload = createPostCallResponsePayload({
       summary: {humanAuthoredSectionKeySentinel: 'human-authored-section-value-sentinel'} as any,
     });
@@ -1968,7 +1952,7 @@ describe('Task AI summary APIs', () => {
     expect(adapter.sendEvent).toHaveBeenCalledTimes(1);
   });
 
-  it('uses current correlation for direct post-call responses that have no retained request context', async () => {
+  it('uses task IDs for direct post-call responses', async () => {
     const task = new DummyTask(dummyContact, createAISummaryTaskData());
     const {adapter} = createSummaryMocks(task);
 
@@ -1983,7 +1967,7 @@ describe('Task AI summary APIs', () => {
     });
   });
 
-  it('serializes mid-call responses from retained request context after task data changes', async () => {
+  it('serializes mid-call responses after a summary request', async () => {
     const task = new DummyTask(dummyContact, createAISummaryTaskData());
     const {adapter, coordinator} = createRealSummaryMocks(task);
     const midCallRequest = task.requestMidCallSummary('CONSULT');
@@ -1998,14 +1982,6 @@ describe('Task AI summary APIs', () => {
     ).toBe('resolved');
     await expect(midCallRequest).resolves.toEqual(createMidCallSummaryPayload());
 
-    task.updateTaskData(
-      createAISummaryTaskData({
-        interactionId: 'current-interaction',
-        interaction: {mainInteractionId: 'current-conversation'} as any,
-      }),
-      true
-    );
-
     await expect(
       task.sendMidCallSummaryResponse(createMidCallResponsePayload(), 'CONSULT')
     ).resolves.toBeUndefined();
@@ -2017,34 +1993,13 @@ describe('Task AI summary APIs', () => {
     });
   });
 
-  it('retains independent response contexts when mid-call and post-call flows overlap', async () => {
+  it('uses the same task IDs for mid-call and post-call responses', async () => {
     const task = new DummyTask(dummyContact, createAISummaryTaskData());
     const {adapter} = createSummaryMocks(task);
 
     await expect(task.requestMidCallSummary('CONSULT')).resolves.toBeDefined();
 
-    task.updateTaskData(
-      createAISummaryTaskData({
-        interactionId: 'post-call-interaction',
-        interaction: {mainInteractionId: 'post-call-conversation'} as any,
-      }),
-      true
-    );
-    task.setFeatureEnablement({
-      interactionId: 'post-call-interaction',
-      postCallEnabled: true,
-      midCallEnabled: true,
-    });
-
     await expect(task.requestPostCallSummary()).resolves.toBeDefined();
-
-    task.updateTaskData(
-      createAISummaryTaskData({
-        interactionId: 'current-interaction',
-        interaction: {mainInteractionId: 'current-conversation'} as any,
-      }),
-      true
-    );
 
     await expect(
       task.sendMidCallSummaryResponse(createMidCallResponsePayload(), 'CONSULT')
@@ -2059,13 +2014,13 @@ describe('Task AI summary APIs', () => {
       eventName: AIAssistantEventName.MID_CALL_CONSULT_SUMMARY_RESPONSE,
     });
     expect(getSummaryEventPayload(adapter, 3)).toMatchObject({
-      interactionId: 'post-call-interaction',
-      conversationId: 'post-call-conversation',
+      interactionId: 'interaction-1',
+      conversationId: 'conversation-1',
       eventName: AIAssistantEventName.POST_CALL_SUMMARY_RESPONSE,
     });
   });
 
-  it('does not retain correlation when a post-call summary request fails', async () => {
+  it('sends a post-call response after a summary request fails', async () => {
     const task = new DummyTask(dummyContact, createAISummaryTaskData());
     const {adapter} = createSummaryMocks(task);
     const requestError = createAISummaryError(
@@ -2076,20 +2031,12 @@ describe('Task AI summary APIs', () => {
 
     await expect(task.requestPostCallSummary()).rejects.toBe(requestError);
 
-    task.updateTaskData(
-      createAISummaryTaskData({
-        interactionId: 'current-interaction',
-        interaction: {mainInteractionId: 'current-conversation'} as any,
-      }),
-      true
-    );
-
     await expect(
       task.sendPostCallSummaryResponse(createPostCallResponsePayload())
     ).resolves.toBeUndefined();
     expect(getSummaryEventPayload(adapter, 1)).toMatchObject({
-      interactionId: 'current-interaction',
-      conversationId: 'current-conversation',
+      interactionId: 'interaction-1',
+      conversationId: 'conversation-1',
     });
   });
 

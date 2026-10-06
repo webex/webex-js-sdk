@@ -307,11 +307,13 @@
     {
       "path": "src/services/task",
       "coverage_status": "Partial",
-      "coverage_evidence": "Canonical spec is structurally complete with 15/15 required documentation fields and source/test evidence mapped by requirement. Independent PR #5088 remediation validation completed on claude-code (2026-07-15); coverage remains Partial until post-baseline promotion criteria are satisfied.",
+      "coverage_evidence": "Canonical spec is structurally complete with 15/15 required documentation fields and source/test evidence mapped by requirement. Independent PR #5088 remediation validation completed on claude-code (2026-07-15); AI summary method, delivery, enablement, and cleanup updates are pending independent review (2026-10-06); coverage remains Partial until post-baseline promotion criteria are satisfied.",
       "canonical_spec": "src/services/task/ai-docs/task-spec.md",
       "contracts": {
         "provides": [
-          "Task/Voice/WebRTC/Digital lifecycle APIs; TaskManager lifecycle correlation, narrowly scoped backend-authoritative ContactOwnerChanged recovery, and task-event publication, including routing owner-changing ContactUpdated through the existing task:hydrate event; TaskManager/Voice stamp wrapUpRequired on wrap-up ingress so task:wrapup and profile-gated auto wrap-up can start; task events/types; ordered action-specific consult/transfer destination controls; call-control and dialer operations including acceptPreviewContact, skipPreviewContact, and removePreviewContact"
+          "Task/Voice/WebRTC/Digital lifecycle APIs; TaskManager lifecycle correlation, narrowly scoped backend-authoritative ContactOwnerChanged recovery, and task-event publication, including routing owner-changing ContactUpdated through the existing task:hydrate event; TaskManager/Voice stamp wrapUpRequired on wrap-up ingress so task:wrapup and profile-gated auto wrap-up can start; task events/types; ordered action-specific consult/transfer destination controls; call-control and dialer operations including acceptPreviewContact, skipPreviewContact, and removePreviewContact",
+          "task.ai-summary: receiving-agent summary events delivered directly to taskCollection[conversationId]; latest payload for an unavailable task retained without expiry until its collection key is registered or session cleanup; creation/merge replay follows public task publication; cleanup cancels requests and clears task flags and pending maps; ContactCenter deregistration removes the RTD listener",
+          "contact-center.task-ai-summary: four dedicated request/response methods; request methods directly check current agent configuration generated-summary flags on the shared ApiAIAssistant.aiFeature field; responses use the current task interaction ID and main interaction ID with an interaction ID fallback for conversation ID; per-task enablement survives data updates, consults, re-keying, and wrapup, then clears on task removal or session cleanup"
         ],
         "requires": [
           "Contact/dialer AqmReqs; WebSocket managers; @webex/calling; MetricsManager; XState task-state module"

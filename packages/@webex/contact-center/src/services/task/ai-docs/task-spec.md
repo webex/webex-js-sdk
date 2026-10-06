@@ -11,8 +11,8 @@
 | Doc kind | Module spec |
 | Coverage score | Partial (manifest-authoritative); 15/15 required document fields present |
 | Generated from | `module-spec` @ SDLC template library `0.2.1` |
-| generated_by / approved_by / updated_at | Codex generator / developer-approved follow-up review remediation / 2026-07-21 |
-| Validation status | Follow-up validation passed (independent Claude fallback, 2026-07-21); 1 existing test-coverage gap; coverage remains Partial |
+| generated_by / approved_by / updated_at | Codex generator / developer-approved follow-up review remediation / 2026-10-06 |
+| Validation status | AI summary methods, delivery, and cleanup updates pending independent review (2026-10-06); prior follow-up validation passed (independent Claude fallback, 2026-07-21); 1 existing test-coverage gap; coverage remains Partial |
 
 ## Evidence Rules
 Every requirement cites stable source and test file paths. Code/tests are the behavioral referee; routed source text supplies explicit intent and rationale. Missing or contradictory evidence blocks promotion.
@@ -212,7 +212,15 @@ Compatibility notes:
 - `requestMidCallSummary(action: AISummaryAction): Promise<AISummary>` requests a consult or transfer summary.
 - `sendMidCallSummaryResponse(response: AISummaryResponse, action: AISummaryAction): Promise<void>` reports the corresponding mid-call outcome.
 
-Summary requests require both the organization-level generated-summary flag and the task-level feature enablement flag. A request resolves only after the event POST succeeds and the matching RTD payload arrives; otherwise it rejects with the applicable disabled, transport, or timeout error. Receiving-agent summaries are delivered separately through `task:midCallSummaryReceived`. Summary content is application data and must not be written to logs or metrics.
+Summary requests require both the organization-level generated-summary flag and the task-level feature enablement flag. The dedicated request methods read the current organization flags directly from the existing `ApiAIAssistant.aiFeature` field, populated by ContactCenter from the agent configuration. They check `generatedSummaries.wrapUpSummariesEnabled` or `generatedSummaries.consultTransferSummariesEnabled`; missing flags disable the corresponding request. No separate feature-flags argument or task-local organization configuration is needed. A request resolves only after the event POST succeeds and the matching RTD payload arrives; otherwise it rejects with the applicable disabled, transport, or timeout error. Receiving-agent summaries are delivered separately through `task:midCallSummaryReceived`. Summary content is application data and must not be written to logs or metrics.
+
+Task-level feature flags survive `updateTaskData()`, including interaction ID changes during consults or task re-keying. Flags remain available throughout wrapup for post-call summary requests, and TaskManager clears them when the task is removed after wrapup completion or another terminal lifecycle event. Session cleanup also clears them.
+
+Each dedicated Task summary method owns its event selection, payload construction, metrics, and error handling. The request methods call `ApiAIAssistant.requestAndWaitForRtd()`. Both response methods read `interactionId` from the current task data and use `interaction.mainInteractionId` as `conversationId`, falling back to `interactionId`. They call `ApiAIAssistant.sendEvent()` directly without caching request IDs on the task.
+
+TaskManager reads the receiving task directly from `taskCollection[summary.conversationId]`; the RTD conversation ID is the task's collection key (`task.data.interactionId`). It emits `task:midCallSummaryReceived` immediately when that task exists. Otherwise it stores the latest summary for that ID in an in-memory map without an expiry timer, so an RTD frame can wait for task creation. The common AQM event-processing path replays the stored payload after task creation, updates that register the task under that ID, or merge publication. Replay after creation or merge follows the public task event so consumers can attach listeners. Delivery removes the stored summary, and session cleanup clears all pending summaries.
+
+`clearAISummaryState()` cancels pending summary requests, clears task feature enablement, and empties both pending maps. ContactCenter's `deregister()` removes the RTD message listener synchronously before asynchronous teardown. RTD listener registration and removal control inbound delivery; `setConfigFlags()` only supplies task configuration.
 
 Initiate outbound call.
 

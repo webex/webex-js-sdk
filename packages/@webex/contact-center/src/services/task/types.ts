@@ -1910,7 +1910,7 @@ export interface ITask extends IEventEmitter {
   setFeatureEnablement?(enablement: AISummaryFeatureEnablement): void;
 
   /**
-   * Clears the task-local AI-summary feature flags during session cleanup.
+   * Clears the task-local AI-summary feature flags on task removal or session cleanup.
    * @internal
    */
   clearFeatureEnablement?(): void;
