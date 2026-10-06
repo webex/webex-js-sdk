@@ -1,0 +1,330 @@
+{
+  "manifest_version": 1,
+  "repository": {
+    "name": "@webex/plugin-logger",
+    "purpose": "Logger plugin for the Cisco Webex JS SDK. It replaces the minimal webex-core logger with leveled console output, redaction of authorization keys, email addresses, and MTID values, and in-memory log buffers that internal-plugin-support formats and uploads.",
+    "category": "cat2-legacy",
+    "primary_languages": [
+      "javascript"
+    ]
+  },
+  "topology": "Single-repo",
+  "commands": {
+    "install": {
+      "command": "yarn install",
+      "source_file": "package.json",
+      "role": "install"
+    },
+    "compile": {
+      "command": "yarn workspace @webex/plugin-logger build:src",
+      "source_file": "package.json",
+      "role": "compile"
+    },
+    "build": {
+      "command": "yarn workspace @webex/plugin-logger build",
+      "source_file": "package.json",
+      "role": "package"
+    },
+    "unit-test": {
+      "command": "yarn workspace @webex/plugin-logger test:unit",
+      "source_file": "package.json",
+      "role": "unit-test"
+    },
+    "browser-test": {
+      "command": "yarn workspace @webex/plugin-logger test:browser",
+      "source_file": "package.json",
+      "role": "other"
+    },
+    "lint": {
+      "command": "yarn workspace @webex/plugin-logger test:style",
+      "source_file": "package.json",
+      "role": "lint"
+    },
+    "deploy": {
+      "command": "yarn workspace @webex/plugin-logger deploy:npm",
+      "source_file": "package.json",
+      "role": "deploy"
+    }
+  },
+  "toolchain": [
+    {
+      "name": "node",
+      "version": ">=18",
+      "origin": "repo-config",
+      "source_file": "package.json"
+    },
+    {
+      "name": "babel",
+      "version": "^7.17.10",
+      "origin": "repo-config",
+      "source_file": "package.json"
+    },
+    {
+      "name": "eslint",
+      "version": "^8.24.0",
+      "origin": "repo-config",
+      "source_file": "package.json"
+    },
+    {
+      "name": "prettier",
+      "version": "^2.7.1",
+      "origin": "repo-config",
+      "source_file": "package.json"
+    }
+  ],
+  "tests": {
+    "unit": {
+      "command_ref": "unit-test",
+      "dir": "test/unit/spec",
+      "framework": "jest"
+    }
+  },
+  "quality_gates": {
+    "code_coverage": {
+      "origin": "none",
+      "declared_by": "akulakum@cisco.com via bootstrap questionnaire (delegated check: jest.config.js re-exports @webex/jest-config-legacy, which sets collectCoverage false and no coverageThreshold; package.json defines no coverage script)"
+    }
+  },
+  "coverage_status_definitions": {
+    "specced": ">=80% public surface specced, drift <5% - spec is authoritative",
+    "partial": "40-80% specced - spec is a hint, cross-check code",
+    "untracked": "<40% specced - code is the source of truth"
+  },
+  "spec_source_policy": {
+    "mode": "keep-separate",
+    "migrated_source_disposition": "retain",
+    "disposition_decided_by": "akulakum@cisco.com",
+    "disposition_decided_at": "2026-10-06T09:40:00Z",
+    "decided_by": "akulakum@cisco.com",
+    "decided_at": "2026-10-06T09:40:00Z",
+    "decision_record": "docs/adr/0001-retain-product-readme.md"
+  },
+  "spec_sources": [],
+  "modules": [
+    {
+      "path": "src",
+      "canonical_spec": "src/docs/README.md",
+      "coverage_status": "Partial",
+      "coverage_evidence": "Field coverage 93.8% (15/16) assessed 2026-10-06 by the generator; critical field coverage 8/8. The one WEAK field is test strategy: test/unit/spec/logger.js covers level resolution, buffering, formatting, cursors, and basic redaction, but registration (MOD-001), the non-throwing catch branch (MOD-014), group indentation, and the repeated-string and uppercase AUTHORIZATION redaction gaps have no test. Held at Partial: independent validation has not run and no spec-drift record exists yet.",
+      "last_assessed": "2026-10-06",
+      "contracts": {
+        "provides": [
+          "plugin-logger-sdk",
+          "log-buffer-format"
+        ],
+        "requires": [
+          "webex-core-plugin-host",
+          "webex-common-js-api",
+          "lodash"
+        ]
+      },
+      "section_profile": {
+        "has_tiers": false,
+        "has_ui": false,
+        "crosses_service_boundaries": false,
+        "holds_client_state": true,
+        "enforces_domain_rules": true,
+        "is_concurrent_async": false,
+        "owns_persistence": false,
+        "stateful_transitions": false,
+        "exposes_wire_protocol": true,
+        "ui_multi_screen": false,
+        "large_data_model": false,
+        "returns_caller_errors": false,
+        "module_specific_conventions": true,
+        "published_package": true,
+        "embedded_in_host": false,
+        "has_design_tradeoff": true,
+        "resolved_by": "claude-cowork (code evidence; bootstrap questionnaire)",
+        "resolved_at": "2026-10-06T09:40:00Z",
+        "has_submodules": false,
+        "has_submodules_computed_by": "scripts/module_tree.py",
+        "has_submodules_computed_at": "2026-10-06T09:40:00Z"
+      }
+    }
+  ],
+  "contract_catalog": {
+    "index_path": "docs/architecture.md",
+    "definitions": {
+      "plugin-logger-sdk": {
+        "kind": "sdk",
+        "publication": "published",
+        "source_kind": "repository-path",
+        "source": "package.json",
+        "summary": "Published npm package. main is dist/index.js and devMain is src/index.js. Importing the package registers Logger as the webex 'logger' plugin with replace: true and merges src/config.js into webex config. The barrel exports the Logger constructor as default and the named levels array."
+      },
+      "log-buffer-format": {
+        "kind": "file",
+        "publication": "internal",
+        "source_kind": "repository-path",
+        "source": "src/logger.js",
+        "summary": "In-memory buffer entries and the newline-joined string returned by formatLogs(). Each entry is an array of group indent, ISO-8601 timestamp, client name, then stringified arguments. formatLogs() joins entries with newlines, so Array#toString joins fields with commas. Consumed by @webex/internal-plugin-support for log upload."
+      },
+      "webex-core-plugin-host": {
+        "kind": "rpc",
+        "publication": "internal",
+        "source_kind": "external",
+        "source": "@webex/webex-core (WebexPlugin, registerPlugin, webex.internal.device.features.developer)",
+        "summary": "Host plugin contract consumed by this module. WebexPlugin.extend supplies config, session state, and the webex reference. registerPlugin with replace: true overwrites the fallback logger registered by webex-core src/plugins/logger.js. The developer feature toggle 'log-level' is read through webex.internal.device when present."
+      },
+      "webex-common-js-api": {
+        "kind": "sdk",
+        "publication": "published",
+        "source_kind": "external",
+        "source": "@webex/common (packages/@webex/common/src/docs/README.md)",
+        "summary": "Consumed exports inBrowser and patterns (containsEmails, containsMTID). Owned and specified by @webex/common."
+      },
+      "lodash": {
+        "kind": "sdk",
+        "publication": "published",
+        "source_kind": "external",
+        "source": "lodash@^4.17.21 (npm)",
+        "summary": "Runtime dependency. src/logger.js imports cloneDeep, has, isArray, isObject, and isString."
+      }
+    }
+  },
+  "spec_policy": {
+    "require_what_and_why": true,
+    "require_provenance": true,
+    "protected_specs": [
+      "src/docs/README.md"
+    ]
+  },
+  "validation": {
+    "generator_runtime": "claude-cowork",
+    "generator_model": "claude-opus-5-5",
+    "generator_runtime_source": "host-metadata",
+    "generator_run_id": "spark-853115-sdd-stage0-2026-10-06",
+    "minimum_independence": "different-runtime",
+    "blocking_severities": [
+      "Blocking"
+    ],
+    "source_commit": "94dd92abeda463a88eb835c49fdf7eafe662528e",
+    "base_ref": "next",
+    "head_ref": "SDD_WEBEX_PLUGIN_LOGGER"
+  },
+  "layout": {
+    "sdd_root": ".sdd",
+    "docs_root": "docs",
+    "agent_entry_path": "AGENTS.md",
+    "standing_docs_root": "docs",
+    "spec_index_path": "docs/specs/README.md",
+    "module_docs_strategy": "source-local",
+    "module_docs_relative_path": "docs/README.md",
+    "module_docs_decision": {
+      "basis": "repo-standards-default",
+      "reason": "Single module rooted at src/ with no existing module-local docs folder. The default source-local route src/docs/README.md is unambiguous. test:style runs eslint ./src/**/*.* and build:src processes -js -ts only, so Markdown under src/docs/ does not enter the lint or build output.",
+      "decided_by": "akulakum@cisco.com (bootstrap questionnaire)",
+      "decided_at": "2026-10-06T09:40:00Z"
+    },
+    "repo_context_decision": {
+      "path": ".repo-context.json",
+      "schema_path": "schemas/repo-context.schema.json",
+      "action": "create",
+      "schema_action": "create",
+      "reason": "Neither the operational context nor its schema existed in this package. Both are created from the Repo Standards 0.3.0 schema and package evidence.",
+      "decided_by": "akulakum@cisco.com (bootstrap questionnaire)",
+      "decided_at": "2026-10-06T09:40:00Z"
+    },
+    "artifact_decisions": [
+      {
+        "path": "docs/service.md",
+        "action": "omit",
+        "reason": "Library package, not a deployable service. package.json has no start script, container, or deployment descriptor.",
+        "decided_by": "claude-cowork (code evidence)",
+        "decided_at": "2026-10-06T09:40:00Z"
+      },
+      {
+        "path": "mkdocs.yml",
+        "action": "omit",
+        "reason": "No package-level documentation site exists. Documentation publishing stays with the workspace.",
+        "decided_by": "akulakum@cisco.com (bootstrap questionnaire)",
+        "decided_at": "2026-10-06T09:40:00Z"
+      },
+      {
+        "path": "api-specs/openapi.yaml",
+        "action": "omit",
+        "reason": "The package serves no HTTP routes. Its published surface is the npm export described by plugin-logger-sdk.",
+        "decided_by": "claude-cowork (code evidence)",
+        "decided_at": "2026-10-06T09:40:00Z"
+      },
+      {
+        "path": "SECURITY.md",
+        "action": "omit",
+        "reason": "No package-level security policy exists. A per-package copy would duplicate workspace governance.",
+        "decided_by": "akulakum@cisco.com (bootstrap questionnaire)",
+        "decided_at": "2026-10-06T09:40:00Z"
+      },
+      {
+        "path": "CONTRIBUTING.md",
+        "action": "omit",
+        "reason": "Contribution instructions are owned at the workspace root and linked from this package README.md.",
+        "decided_by": "akulakum@cisco.com (bootstrap questionnaire)",
+        "decided_at": "2026-10-06T09:40:00Z"
+      },
+      {
+        "path": "CHANGELOG.md",
+        "action": "omit",
+        "reason": "Changelog generation is owned at the workspace root. This package has no changelog file.",
+        "decided_by": "akulakum@cisco.com (bootstrap questionnaire)",
+        "decided_at": "2026-10-06T09:40:00Z"
+      },
+      {
+        "path": "CTO_CHECKLIST.yml",
+        "action": "omit",
+        "reason": "The CTO readiness checklist applies to deployable services. This package is a library.",
+        "decided_by": "claude-cowork (code evidence)",
+        "decided_at": "2026-10-06T09:40:00Z"
+      },
+      {
+        "path": "schemas/cto-checklist.schema.json",
+        "action": "omit",
+        "reason": "Omitted together with CTO_CHECKLIST.yml.",
+        "decided_by": "claude-cowork (code evidence)",
+        "decided_at": "2026-10-06T09:40:00Z"
+      }
+    ],
+    "template_roots": {
+      "canonical": ".sdd/templates/repo-standards"
+    },
+    "repo_skills_root": ".sdd/skills",
+    "contract_index_path": "docs/architecture.md"
+  },
+  "coverage_ratchet": {
+    "enabled": true,
+    "waivers": []
+  },
+  "substrate": {
+    "source": "WebexTools/repo-standards@d89a7fe59126ae3ad9bac9ca352aa7f12b4c85dc",
+    "consumed": [
+      "@webex/eslint-config-legacy via .eslintrc.js",
+      "@webex/babel-config-legacy via babel.config.js",
+      "@webex/jest-config-legacy via jest.config.js",
+      "@webex/legacy-tools build and test runner via package.json",
+      "package README.md",
+      "Repo Standards 0.3.0 templates at the JS SDK root .sdd/templates/repo-standards"
+    ],
+    "compliance_tier": "baseline"
+  },
+  "section_profiles": {
+    "repo": {
+      "owns_datastore": false,
+      "holds_client_state": true,
+      "components_interact": true,
+      "domain_data_across_components": false,
+      "caches_data": false,
+      "observability_convention": true,
+      "deploys_to_infra": false,
+      "shared_base_libs": true,
+      "is_monorepo": false,
+      "multi_platform": true,
+      "published_package": true,
+      "embedded_in_host": false,
+      "cross_repo_deps_material": true,
+      "security_arch_warranted": true,
+      "exposes_commands_or_artifacts": true
+    },
+    "resolved_by": "claude-cowork (code evidence; bootstrap questionnaire)",
+    "resolved_at": "2026-10-06T09:40:00Z"
+  }
+}
