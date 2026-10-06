@@ -333,25 +333,38 @@ describe('plugin-meetings', () => {
       });
 
       it('maps WASM log levels to the plugin logger', () => {
-        const logger = {
-          info: sinon.stub(LoggerProxy.logger, 'info'),
-          warn: sinon.stub(LoggerProxy.logger, 'warn'),
-          error: sinon.stub(LoggerProxy.logger, 'error'),
-          debug: sinon.stub(LoggerProxy.logger, 'debug'),
+        const logger = LoggerProxy.logger;
+        const originalLoggerMethods = {
+          info: logger.info,
+          warn: logger.warn,
+          error: logger.error,
+          debug: logger.debug,
         };
 
-        // Engine LogLevel: fatal=1, error=2, warn=3, info=4, debug=5.
-        callbacks.log(1, 'a fatal');
-        callbacks.log(2, 'an error');
-        callbacks.log(3, 'a warning');
-        callbacks.log(4, 'an info');
-        callbacks.log(5, 'a debug');
+        logger.info = sinon.stub();
+        logger.warn = sinon.stub();
+        logger.error = sinon.stub();
+        logger.debug = sinon.stub();
 
-        assert.calledWithMatch(logger.error, 'a fatal');
-        assert.calledWithMatch(logger.error, 'an error');
-        assert.calledWithMatch(logger.warn, 'a warning');
-        assert.calledWithMatch(logger.info, 'an info');
-        assert.calledWithMatch(logger.debug, 'a debug');
+        try {
+          // Engine LogLevel: fatal=1, error=2, warn=3, info=4, debug=5.
+          callbacks.log(1, 'a fatal');
+          callbacks.log(2, 'an error');
+          callbacks.log(3, 'a warning');
+          callbacks.log(4, 'an info');
+          callbacks.log(5, 'a debug');
+
+          assert.calledWithMatch(logger.error, 'a fatal');
+          assert.calledWithMatch(logger.error, 'an error');
+          assert.calledWithMatch(logger.warn, 'a warning');
+          assert.calledWithMatch(logger.info, 'an info');
+          assert.calledWithMatch(logger.debug, 'a debug');
+        } finally {
+          logger.info = originalLoggerMethods.info;
+          logger.warn = originalLoggerMethods.warn;
+          logger.error = originalLoggerMethods.error;
+          logger.debug = originalLoggerMethods.debug;
+        }
       });
     });
 

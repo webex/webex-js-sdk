@@ -81,7 +81,7 @@ describe('plugin-meetings', () => {
         const credentials = await provider.getCredentials('user-1');
 
         assert.equal(credentials.certChain.length, 1);
-        assert.calledTwice(webex.request);
+        assert.calledTwice(webexRequest);
       });
     });
   });

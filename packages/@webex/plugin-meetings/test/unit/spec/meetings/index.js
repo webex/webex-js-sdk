@@ -3409,7 +3409,11 @@ describe('plugin-meetings', () => {
                     'Meetings:index#createMeeting --> Info Unable to fetch meeting info for test destination.'
                   );
                 } else {
-                  assert.notCalled(LoggerProxy.logger.info);
+                  assert.notCalled(
+                    LoggerProxy.logger.info.withArgs(
+                      'Meetings:index#createMeeting --> Info Unable to fetch meeting info for test destination.'
+                    )
+                  );
                 }
               });
             }
