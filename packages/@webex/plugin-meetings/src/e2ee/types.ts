@@ -106,6 +106,12 @@ export interface E2eeTrustAnchors {
   userIdentityRoots?: string;
 }
 
+/** Methods Meetings uses from the shared internal identity plugin. */
+export interface E2eeIdentityProvider {
+  getCredentials(contactId: string): Promise<E2eeCredentials>;
+  getTrustAnchors(): E2eeTrustAnchors;
+}
+
 /** Configuration for initializing an MLS group session. */
 export interface MLSConfig {
   participantId: string;

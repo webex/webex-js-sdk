@@ -14,7 +14,13 @@ describe('plugin-meetings', () => {
     let supportsWasmStub;
 
     const makeWebex = (enableE2ee?: boolean) => ({
-      internal: {device: {}},
+      internal: {
+        device: {},
+        identity: {
+          getCredentials: sinon.stub(),
+          getTrustAnchors: sinon.stub(),
+        },
+      },
       config: {meetings: {enableE2ee}},
       request: sinon.stub().resolves({body: ''}),
     });

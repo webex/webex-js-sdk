@@ -4,9 +4,9 @@
 
 import LoggerProxy from '../common/logs/logger-proxy';
 import WasmLoader from '../common/wasm-loader';
-import E2eeIdentityProvider from './E2eeIdentityProvider';
 import E2eeMeeting from './E2eeMeeting';
 import {E2EE_WASM_URL, isE2eeEnabledAndSupported} from './constants';
+import type {E2eeIdentityProvider} from './types';
 
 /**
  * Owns the shared, session-scoped E2EE identity provider, warms the E2EE WASM during registration
@@ -29,9 +29,7 @@ export default class E2eeManager {
   constructor({webex, wasmLoader}: {webex: any; wasmLoader: WasmLoader}) {
     this.webex = webex;
     this.wasmLoader = wasmLoader;
-    this.identityProvider = new E2eeIdentityProvider({
-      webexRequest: webex.request.bind(webex),
-    });
+    this.identityProvider = webex.internal.identity;
   }
 
   /**

@@ -78,7 +78,7 @@ not the media encryption path.
 | D3 | Member verification: public API **extends `Member`**, but internally MLS roster data lives in a **separate registry keyed by device URL**, because Locus member updates and MLS roster updates arrive independently, in any order, and either can be delayed. A reconciler merges them. |
 | D4 | Security Code: `meeting.getSecurityCode()` getter **plus** a change event. |
 | D5 | Identity/credentials: a **separate identity/credential provider** (CSR / CA / trust anchors), split from MLS group-session logic. |
-| D6 | The Meetings plugin creates a **single `E2eeIdentityProvider` instance** (owned by `E2eeManager`), so the CSR + CA cert is generated once per session and reused across meetings. |
+| D6 | The SDK creates a **single `Identity` plugin instance per Webex client session**. It caches the CSR + CA certificate per contact and reuses credentials across meetings. |
 | D7 | Verification: a `validationResult` of `E2eeValidationResult.Success` means **verified**. Surface per-device data **and** an aggregated state on `Member`. |
 | D8 | Failure policy: on MLS `join_failure` / `evicted` / `timeout`, **force-leave** the meeting via `meeting.leave()` with **new dedicated leave reasons**, emit a **new failure event**, and surface a **new error class** so the app understands what happened. The meeting does **not** continue unencrypted. |
 | D9 | A **new config entry** (`enableE2ee`, default `false`) gates the feature. |
@@ -88,15 +88,13 @@ not the media encryption path.
 
 - Exact name/shape of the new `internal-media-core` key API (`setEncryptionKeys`?) —
   align with the media team.
-- Identity may be a separate plugin concern. Keep the identity provider separate from MLS group
-  logic within `plugin-meetings` for now, and revisit a separate plugin after confirming how
-  participant certificate information is obtained.
 
 ## Architecture overview
 
-All new code lives under `packages/@webex/plugin-meetings/src/e2ee/`. The design is shown as three
-focused views: **ownership/composition**, the **per-meeting components**, and the **runtime data
-flow** across the engine and external boundaries.
+E2EE integration code lives under `packages/@webex/plugin-meetings/src/e2ee/`; identity and
+certificate issuance live in `packages/@webex/internal-plugin-identity/`. The design is shown as
+three focused views: **ownership/composition**, the **per-meeting components**, and the **runtime
+data flow** across the engine and external boundaries.
 
 ### Ownership & composition
 
@@ -109,7 +107,8 @@ graph TD
     Meetings -->|owns| WasmLoader[WasmLoader common/]
     Meetings -->|owns one| Mgr[E2eeManager]
     WasmLoader -.->|injected| Mgr
-    Mgr -->|owns| Ident[E2eeIdentityProvider]
+    Webex -->|registers| Ident[internal-plugin-identity]
+    Mgr -->|uses shared instance| Ident
     Mgr -->|createE2eeMeeting| E2eeMeeting[E2eeMeeting facade]
     Meeting -->|owns this.e2ee| E2eeMeeting
     App[SDK client / web app] -->|join / getSecurityCode / events| Meeting
@@ -119,8 +118,8 @@ graph TD
 
 ### Per-meeting E2EE components
 
-The `E2eeMeeting` facade orchestrates five collaborators and reuses the shared `E2eeIdentityProvider`
-(owned by `E2eeManager`) and the generic `WasmLoader` (owned by `Meetings`, injected via
+The `E2eeMeeting` facade orchestrates five collaborators and reuses the shared `Identity` plugin
+(registered on the Webex client) and the generic `WasmLoader` (owned by `Meetings`, injected via
 `E2eeManager`).
 
 ```mermaid
@@ -130,7 +129,7 @@ graph TD
     E2eeMeeting --> Svc[MediaEncryptionService HTTP adapter]
     E2eeMeeting --> Recon[MemberMLSReconciler]
     E2eeMeeting --> MediaCtl[MediaKeyController]
-    E2eeMeeting -.->|shared instance| Ident[E2eeIdentityProvider]
+    E2eeMeeting -.->|shared instance| Ident[internal-plugin-identity]
     E2eeMeeting -.->|shared loader| WasmLoader[WasmLoader common/]
 
     style MLS fill:#e8f5e9
@@ -152,16 +151,15 @@ graph LR
     Sig[E2eeSignaling] -->|media_encryption.* events| LLM[webex.internal.llm]
     Sig -->|media_encryption.* events| Mercury[webex.internal.mercury]
     Svc[MediaEncryptionService] -->|POST| MES[webex.request media-encryption]
-    Ident[E2eeIdentityProvider] -->|CSR / cert| CA[webex.request certificate-authority]
+    Ident[internal-plugin-identity] -->|CSR / cert| CA[webex.request certificate-authority]
 ```
 
 Key property: `MLS` (the WASM protocol engine) has **no** webex / LLM /
 HTTP dependencies — all I/O flows through injected adapters, so the engine is fully
 unit-testable. The media-core coupling is isolated behind `IE2eeMediaConnection`.
 
-The adapters themselves take only the slice of webex they need, not the whole object: the HTTP
-adapters (`MediaEncryptionService`, `E2eeIdentityProvider`) receive a **bound `webex.request`**
-(the shared `WebexRequestMethod` type), and `E2eeSignaling` receives `webex.internal.llm` and
+`MediaEncryptionService` receives a bound `webex.request`; the identity plugin uses the request
+method on its parent Webex client. `E2eeSignaling` receives `webex.internal.llm` and
 `webex.internal.mercury` plus a `getLocusUrl()` callback (so it tracks the live locus URL across
 breakout moves).
 
@@ -176,7 +174,6 @@ packages/@webex/plugin-meetings/src/e2ee/
 ├── mls.ts                    # MLS WASM protocol engine (refactor of the POC mls.ts)
 ├── E2eeSignaling.ts          # LLM adapter (webex.internal.llm media_encryption.* events)
 ├── MediaEncryptionService.ts # HTTP adapter (webex.request service:'media-encryption')
-├── E2eeIdentityProvider.ts   # CSR/CA credentials + trust anchors (one instance, cached)
 ├── MemberMLSReconciler.ts   # MLS roster <-> Members reconciliation
 ├── MediaKeyController.ts      # key injection into IE2eeMediaConnection (buffers keys)
 ├── IE2eeMediaConnection.ts   # interface contract implemented by internal-media-core
@@ -265,7 +262,7 @@ preload(): Promise<void>;         // called from Meetings.register(); if isEnabl
 createE2eeMeeting(meeting): E2eeMeeting; // factory; injects shared wasmLoader + identityProvider
 ```
 
-Owns the shared `WasmLoader` and `E2eeIdentityProvider`. `createE2eeMeeting` returns a
+Uses the shared `WasmLoader` and `webex.internal.identity` plugin. `createE2eeMeeting` returns a
 facade whose `start()` is a no-op when `!isEnabled`, keeping `Meeting` code uniform.
 
 ### `MLS` (pure engine; no webex/HTTP/LLM deps)
@@ -348,19 +345,19 @@ Online handling (LLM-only): if `llm.isConnected()` and the locus URL matches thi
 Guard: `getLocusUrl() === llm.getLocusUrl()`. `getLocusUrl` is a callback (not a stored meeting
 reference) so the check stays correct when the locus URL changes, e.g. moving between breakouts.
 
-### `E2eeIdentityProvider` (credentials; one instance owned by `E2eeManager`)
+### `@webex/internal-plugin-identity` (credentials; one instance per Webex client)
 
 ```ts
-constructor(deps: { webexRequest: WebexRequestMethod; generateCsr? }); // bound webex.request; generateCsr injectable for tests
+// Available as webex.internal.identity; registered by plugin-meetings.
 getCredentials(contactId: string): Promise<{ privateKey: Uint8Array; certChain: ArrayBuffer[] }>;
 //  -> generate EC P-256 CSR (pkijs/asn1js)
-//  -> webexRequest({ service:'webex-certificate-authority', resource:'certificates',
+//  -> webex.request({ service:'webex-certificate-authority', resource:'certificates',
 //                    headers:{ 'include-root-cert':'true' } })
 //  -> parse PEM chain; CACHE result (per device/user) for reuse across meetings.
 getTrustAnchors(): { webexCaRoots; domainNameRoots; userIdentityRoots };
 ```
 
-Moves `WEBEX_CA_PRODUCTION_ROOTS`, `generateCsrWithPkijs`, and the PEM helpers here.
+The plugin owns `WEBEX_CA_PRODUCTION_ROOTS`, `generateCsrWithPkijs`, and the PEM helpers.
 `domainNameRoots` / `userIdentityRoots` are TBD from the service (currently `''`).
 
 ### `MemberMLSReconciler`
@@ -663,7 +660,7 @@ mock webex. (Filenames below are illustrative — each maps to a spec under `tes
 - `MediaEncryptionService.test.ts` — mock `webexRequest`; assert service/url/body encode+decode.
 - `E2eeSignaling.test.ts` — mock `llm` (`on/off/isConnected/getLocusUrl`) + a `getLocusUrl`
   callback; assert subscription, locus-URL guard, forwarding, teardown.
-- `E2eeIdentityProvider.test.ts` — mock `webexRequest` (CA request); assert CSR built, caching, trust anchors.
+- `internal-plugin-identity/test/unit/spec/identity.ts` — mock `webex.request` (CA request); assert CSR built, caching, trust anchors.
 - `MemberMLSReconciler.test.ts` — fake members collection + roster; assert out-of-order both
   directions, per-device match by URL, aggregate state, reapply on `MEMBERS_UPDATE`.
 - `MediaKeyController.test.ts` — fake `IE2eeMediaConnection`; keys-before-media buffering,
@@ -679,7 +676,7 @@ mock webex. (Filenames below are illustrative — each maps to a spec under `tes
 |-------|-------|
 | **P0** | `enableE2ee` config + `E2eeManager` + `WasmLoader` + `Meetings.register()` preload wiring (no per-meeting behavior yet; proves early WASM warm-up + single-instance plumbing). |
 | **P1** | Extract/refactor `MLS` (engine) + `types` + WASM-loader use (no behavior change vs PoC). |
-| **P2** | `MediaEncryptionService` + `E2eeIdentityProvider` (one instance) + `E2eeSignaling` (I/O adapters). |
+| **P2** | `MediaEncryptionService` + `internal-plugin-identity` (one instance per client) + `E2eeSignaling` (I/O adapters). |
 | **P3** | `E2eeMeeting` facade + `Meeting` wiring (start/stop, `getSecurityCode`, events) — **security code works end-to-end**. |
 | **P4** | `MemberMLSReconciler` + `Member` extension + verification events. |
 | **P5** | `IE2eeMediaConnection` contract + `MediaKeyController` (media key injection); media-core impl (new `setEncryptionKeys` method) tracked separately (out of scope). |

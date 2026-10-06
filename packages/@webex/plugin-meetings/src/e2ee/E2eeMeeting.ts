@@ -10,9 +10,8 @@ import MediaEncryptionService from './MediaEncryptionService';
 import E2eeSignaling from './E2eeSignaling';
 import MemberMLSReconciler from './MemberMLSReconciler';
 import {isE2eeEnabledAndSupported, E2EE_WASM_URL, MEDIA_SERVICE_DEVICE_TYPE} from './constants';
-import type E2eeIdentityProvider from './E2eeIdentityProvider';
 import type WasmLoader from '../common/wasm-loader';
-import type {E2eeConfig, E2eeState} from './types';
+import type {E2eeConfig, E2eeIdentityProvider, E2eeState} from './types';
 
 const DEVICE_TYPE = 'WEB';
 const TRIGGER_SCOPE = {file: 'e2ee/E2eeMeeting', function: 'e2ee'};

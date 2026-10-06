@@ -8148,6 +8148,29 @@ __metadata:
   languageName: unknown
   linkType: soft
 
+"@webex/internal-plugin-identity@workspace:*, @webex/internal-plugin-identity@workspace:packages/@webex/internal-plugin-identity":
+  version: 0.0.0-use.local
+  resolution: "@webex/internal-plugin-identity@workspace:packages/@webex/internal-plugin-identity"
+  dependencies:
+    "@babel/core": ^7.17.10
+    "@webex/babel-config-legacy": "workspace:*"
+    "@webex/common": "workspace:*"
+    "@webex/eslint-config-legacy": "workspace:*"
+    "@webex/jest-config-legacy": "workspace:*"
+    "@webex/legacy-tools": "workspace:*"
+    "@webex/test-helper-chai": "workspace:*"
+    "@webex/test-helper-mock-webex": "workspace:*"
+    "@webex/webex-core": "workspace:*"
+    asn1js: 3.0.10
+    eslint: ^8.24.0
+    jsdom: 19.0.0
+    jsdom-global: 3.0.2
+    pkijs: 3.3.3
+    prettier: ^2.7.1
+    sinon: ^9.2.4
+  languageName: unknown
+  linkType: soft
+
 "@webex/internal-plugin-llm@workspace:*, @webex/internal-plugin-llm@workspace:packages/@webex/internal-plugin-llm":
   version: 0.0.0-use.local
   resolution: "@webex/internal-plugin-llm@workspace:packages/@webex/internal-plugin-llm"
@@ -8922,6 +8945,7 @@ __metadata:
     "@webex/internal-media-core": 2.30.1
     "@webex/internal-plugin-conversation": "workspace:*"
     "@webex/internal-plugin-device": "workspace:*"
+    "@webex/internal-plugin-identity": "workspace:*"
     "@webex/internal-plugin-llm": "workspace:*"
     "@webex/internal-plugin-mercury": "workspace:*"
     "@webex/internal-plugin-metrics": "workspace:*"
@@ -8942,7 +8966,6 @@ __metadata:
     "@webex/web-capabilities": ^1.13.1
     "@webex/webex-core": "workspace:*"
     ampersand-collection: ^2.0.2
-    asn1js: 3.0.10
     bowser: ^2.11.0
     btoa: ^1.2.1
     chai: ^4.3.4
@@ -8957,7 +8980,6 @@ __metadata:
     jsdom-global: 3.0.2
     jwt-decode: 3.1.2
     lodash: ^4.17.21
-    pkijs: 3.3.3
     prettier: ^2.7.1
     sinon: ^9.2.4
     typed-emitter: ^2.1.0
