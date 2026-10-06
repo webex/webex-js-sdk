@@ -116,7 +116,6 @@ describe('member', () => {
   describe('e2ee verification', () => {
     const makeVerification = (deviceUrl, verified) => ({
       deviceUrl,
-      verified,
       validationResult: verified ? 0 : 1,
       displayName: 'Alice',
       deviceType: 'WEB',
@@ -189,8 +188,8 @@ describe('member', () => {
 
         freshMember.setE2eeDeviceVerification('device-b', makeVerification('device-b', false));
 
-        assert.isTrue(freshMember.getE2eeDeviceVerification('device-a').verified);
-        assert.isFalse(freshMember.getE2eeDeviceVerification('device-b').verified);
+        assert.equal(freshMember.getE2eeDeviceVerification('device-a').validationResult, 0);
+        assert.equal(freshMember.getE2eeDeviceVerification('device-b').validationResult, 1);
         assert.equal(freshMember.e2eeVerificationState, 'partiallyVerified');
       });
 

@@ -2,6 +2,7 @@
  * Copyright (c) 2015-2020 Cisco Systems, Inc. See LICENSE file.
  */
 import {MEETINGS, _IN_LOBBY_, _NOT_IN_MEETING_, _IN_MEETING_, _OBSERVE_} from '../constants';
+import {E2eeValidationResult} from '../e2ee/types';
 import type {E2eeDeviceVerification, E2eeMemberVerificationState} from '../e2ee/types';
 import {IExternalRoles, IMediaStatus, Participant, ParticipantUrl} from './types';
 
@@ -604,7 +605,9 @@ export default class Member {
       return;
     }
 
-    const verifiedCount = verifications.filter((verification) => verification.verified).length;
+    const verifiedCount = verifications.filter(
+      (verification) => verification.validationResult === E2eeValidationResult.Success
+    ).length;
 
     if (verifiedCount === verifications.length) {
       this.e2eeVerificationState = 'verified';

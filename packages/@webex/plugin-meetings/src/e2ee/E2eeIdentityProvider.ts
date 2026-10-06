@@ -87,9 +87,9 @@ function pemToArrayBuffers(pemString: string): ArrayBuffer[] {
 }
 
 /**
- * Meetings-plugin-level singleton that provides the per-device E2EE identity: it generates a CSR,
- * has it signed by the Webex Certificate Authority, and returns the resulting credentials (cached
- * per user for reuse across meetings) plus the MLS trust anchors.
+ * Provides the per-device E2EE identity: it generates a CSR, has it signed by the Webex
+ * Certificate Authority, and returns the resulting credentials (cached per user for reuse across
+ * meetings) plus the MLS trust anchors. The Meetings plugin creates a single instance of this.
  */
 export default class E2eeIdentityProvider {
   private readonly webexRequest: WebexRequestMethod;

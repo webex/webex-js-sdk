@@ -9,10 +9,10 @@ import E2eeMeeting from './E2eeMeeting';
 import {E2EE_WASM_URL} from './constants';
 
 /**
- * Meetings-plugin-level singleton that owns the shared, session-scoped E2EE resources (the
- * identity provider), warms the E2EE WASM during registration so per-meeting init stays off the
- * join path, and acts as the factory for per-meeting {@link E2eeMeeting} facades. The WASM loader
- * is owned by `Meetings` (it is not E2EE-specific) and injected here.
+ * Owns the shared, session-scoped E2EE identity provider, warms the E2EE WASM during registration
+ * so per-meeting init stays off the join path, and acts as the factory for per-meeting
+ * {@link E2eeMeeting} facades. The Meetings plugin creates a single instance of this. The WASM
+ * loader is owned by `Meetings` (it is not E2EE-specific) and injected here.
  */
 export default class E2eeManager {
   private readonly webex: any;

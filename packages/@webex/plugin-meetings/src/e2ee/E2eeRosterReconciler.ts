@@ -182,7 +182,6 @@ export default class E2eeRosterReconciler {
   private static toDeviceVerification(rosterEntry: E2eeRosterMember): E2eeDeviceVerification {
     return {
       deviceUrl: rosterEntry.url,
-      verified: rosterEntry.validationResult === 0,
       validationResult: rosterEntry.validationResult,
       displayName: rosterEntry.displayName,
       deviceType: rosterEntry.deviceType,

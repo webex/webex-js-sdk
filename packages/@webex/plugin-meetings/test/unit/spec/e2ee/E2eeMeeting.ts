@@ -245,7 +245,6 @@ describe('plugin-meetings', () => {
       };
       const expectedVerification = {
         deviceUrl: OWN_DEVICE_URL,
-        verified: true,
         validationResult: 0,
         displayName: 'Alice',
         deviceType: 'WEB',

@@ -45,9 +45,8 @@ describe('plugin-meetings', () => {
 
       reconciler.applyRosterAdded([rosterMember('device-a', 0), rosterMember('device-b', 1)]);
 
-      assert.isTrue(member.getE2eeDeviceVerification('device-a').verified);
-      assert.isFalse(member.getE2eeDeviceVerification('device-b').verified);
       assert.equal(member.getE2eeDeviceVerification('device-a').validationResult, 0);
+      assert.equal(member.getE2eeDeviceVerification('device-b').validationResult, 1);
       assert.equal(member.e2eeVerificationState, 'partiallyVerified');
       assert.calledWith(reportMembersUpdated, [member]);
     });
@@ -127,12 +126,11 @@ describe('plugin-meetings', () => {
 
       assert.deepEqual(reconciler.getDeviceVerification('device-a'), {
         deviceUrl: 'device-a',
-        verified: true,
         validationResult: 0,
         displayName: 'Alice',
         deviceType: 'WEB',
       });
-      assert.isFalse(reconciler.getDeviceVerification('device-b').verified);
+      assert.equal(reconciler.getDeviceVerification('device-b').validationResult, 5);
       assert.isUndefined(reconciler.getDeviceVerification('device-missing'));
     });
 

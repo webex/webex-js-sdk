@@ -2,6 +2,8 @@
  * Copyright (c) 2015-2026 Cisco Systems, Inc. See LICENSE file.
  */
 
+import type {E2eeValidationResult} from './types';
+
 /**
  * Raw WebAssembly (WebE2EE) boundary types. These mirror the emscripten-generated MLS engine API
  * exactly (including its snake_case fields); the SDK-facing camelCase shapes live in types.ts.
@@ -57,7 +59,7 @@ export interface RosterMember {
   url: string;
   display_name: string;
   device_type: string;
-  validation_result: number;
+  validation_result: E2eeValidationResult;
 }
 
 export interface WebE2EEInstance {

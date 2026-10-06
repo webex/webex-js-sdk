@@ -73,10 +73,10 @@ how/where it will be hosted is **not** part of this design doc.
 | D3 | Member verification: public API **extends `Member`**, but internally MLS roster data lives in a **separate registry keyed by device URL**, because Locus member updates and MLS roster updates arrive independently, in any order, and either can be delayed. A reconciler merges them. |
 | D4 | Security Code: `meeting.getSecurityCode()` getter **plus** a change event. |
 | D5 | Identity/credentials: a **separate identity/credential provider** (CSR / CA / trust anchors), split from MLS group-session logic. |
-| O1 | `E2eeIdentityProvider` is a **singleton within the Meetings plugin** (owned by `E2eeManager`), so the CSR + CA cert is generated once per session and reused across meetings. |
-| O3 | Verification: `validation_result === 0` means **verified**. Surface per-device data **and** an aggregated state on `Member`. |
-| O4 | Failure policy: on MLS `join_failure` / `evicted` / `timeout`, **force-leave** the meeting via `meeting.leave()` with **new dedicated leave reasons**, emit a **new failure event**, and surface a **new error class** so the app understands what happened. The meeting does **not** continue unencrypted. |
-| O6 | A **new config entry** (`enableE2ee`, default `false`) gates the feature. |
+| D6 | The Meetings plugin creates a **single `E2eeIdentityProvider` instance** (owned by `E2eeManager`), so the CSR + CA cert is generated once per session and reused across meetings. |
+| D7 | Verification: a `validationResult` of `E2eeValidationResult.Success` means **verified**. Surface per-device data **and** an aggregated state on `Member`. |
+| D8 | Failure policy: on MLS `join_failure` / `evicted` / `timeout`, **force-leave** the meeting via `meeting.leave()` with **new dedicated leave reasons**, emit a **new failure event**, and surface a **new error class** so the app understands what happened. The meeting does **not** continue unencrypted. |
+| D9 | A **new config entry** (`enableE2ee`, default `false`) gates the feature. |
 | — | **WASM preloading**: the WASM load is slow, so it must **not** happen at join time. When `enableE2ee` is set, `Meetings.register()` preloads the WASM module so per-meeting init is fast. Credentials are **not** pre-warmed — they are generated + cached lazily on the first E2EE meeting. |
 
 ## Still-open items
@@ -92,14 +92,14 @@ flow** across the engine and external boundaries.
 
 ### Ownership & composition
 
-Who creates and owns what. `E2eeManager` is a Meetings-plugin singleton; each `Meeting` owns a
+Who creates and owns what. The Meetings plugin creates one `E2eeManager` instance; each `Meeting` owns a
 per-meeting `E2eeMeeting` facade (alongside `Members` and `MediaProperties`).
 
 ```mermaid
 graph TD
     Meetings[Meetings plugin] -->|creates| Meeting[Meeting]
     Meetings -->|owns| WasmLoader[WasmLoader common/]
-    Meetings -->|owns singleton| Mgr[E2eeManager]
+    Meetings -->|owns one| Mgr[E2eeManager]
     WasmLoader -.->|injected| Mgr
     Mgr -->|owns| Ident[E2eeIdentityProvider]
     Mgr -->|createE2eeMeeting| E2eeMeeting[E2eeMeeting facade]
@@ -122,7 +122,7 @@ graph TD
     E2eeMeeting --> Svc[MediaEncryptionService HTTP adapter]
     E2eeMeeting --> Recon[E2eeRosterReconciler]
     E2eeMeeting --> MediaCtl[E2eeMediaController]
-    E2eeMeeting -.->|shared singleton| Ident[E2eeIdentityProvider]
+    E2eeMeeting -.->|shared instance| Ident[E2eeIdentityProvider]
     E2eeMeeting -.->|shared loader| WasmLoader[WasmLoader common/]
 
     style MLS fill:#e8f5e9
@@ -162,13 +162,13 @@ breakout moves).
 ```
 packages/@webex/plugin-meetings/src/e2ee/
 ├── index.ts                  # barrel exports
-├── E2eeManager.ts            # Meetings-level SINGLETON: owns IdentityProvider + injected WasmLoader,
+├── E2eeManager.ts            # One instance per Meetings plugin: owns IdentityProvider + injected WasmLoader,
 │                             #   preloads WASM in register(), factory for E2eeMeeting
 ├── E2eeMeeting.ts            # per-meeting facade / orchestrator (this.e2ee on Meeting)
 ├── MlsGroupSession.ts        # WASM protocol engine (refactor of mls.ts E2EEMeetingClient)
 ├── E2eeSignaling.ts          # LLM adapter (webex.internal.llm media_encryption.* events)
 ├── MediaEncryptionService.ts # HTTP adapter (webex.request service:'media-encryption')
-├── E2eeIdentityProvider.ts   # CSR/CA credentials + trust anchors (singleton, cached)
+├── E2eeIdentityProvider.ts   # CSR/CA credentials + trust anchors (one instance, cached)
 ├── E2eeRosterReconciler.ts   # MLS roster <-> Members reconciliation
 ├── E2eeMediaController.ts     # key injection into IE2eeMediaConnection (buffers keys)
 ├── IE2eeMediaConnection.ts   # interface contract implemented by internal-media-core
@@ -203,13 +203,12 @@ interface E2eeRosterMember {
   url: string;
   displayName: string;
   deviceType: string;
-  validationResult: number;
+  validationResult: E2eeValidationResult;
 }
 
 interface E2eeDeviceVerification {
   deviceUrl: string;
-  verified: boolean;            // validationResult === 0
-  validationResult: number;
+  validationResult: E2eeValidationResult;  // Success means the device's identity is verified
   displayName?: string;
   deviceType?: string;
 }
@@ -247,7 +246,7 @@ state. Each module is uniquely identified by its `.wasm` URL (the `.js` loader U
 replacing the `.wasm` suffix), so a single loader can load and cache multiple distinct modules. The
 E2EE module is loaded via the `E2EE_WASM_URL` constant (default `/wasm/e2ee.wasm`).
 
-### `E2eeManager` (Meetings-level singleton)
+### `E2eeManager` (one instance per Meetings plugin)
 
 ```ts
 constructor(deps: { webex; wasmLoader });  // wasmLoader injected (owned by Meetings)
@@ -343,7 +342,7 @@ Online handling (LLM-only): if `llm.isConnected()` and the locus URL matches thi
 Guard: `getLocusUrl() === llm.getLocusUrl()`. `getLocusUrl` is a callback (not a stored meeting
 reference) so the check stays correct when the locus URL changes, e.g. moving between breakouts.
 
-### `E2eeIdentityProvider` (credentials; singleton owned by `E2eeManager`)
+### `E2eeIdentityProvider` (credentials; one instance owned by `E2eeManager`)
 
 ```ts
 constructor(deps: { webexRequest: WebexRequestMethod; generateCsr? }); // bound webex.request; generateCsr injectable for tests
@@ -388,7 +387,7 @@ surfaced through the existing `members:update`, which is always emitted by `Memb
   `Members` to emit a `members:update` (with those members in `delta.updated`).
 
 Matching key: **`MLS RosterMember.url === Member.participant.devices[i].url`** (per-device).
-Verified rule: `validationResult === 0`. Ordering between MLS roster events and Locus member
+Verified rule: `validationResult === E2eeValidationResult.Success`. Ordering between MLS roster events and Locus member
 updates does not matter — roster entries with no matching member yet remain pending in the map and
 are applied when that member is next processed.
 
@@ -641,7 +640,7 @@ mock webex. (Filenames below are illustrative — each maps to a spec under `tes
 
 - `WasmLoader.test.ts` — `preload` caches, `get()` awaits/returns cache, idempotent, error resets.
 - `E2eeManager.test.ts` — `isEnabled` from config; `preload` warms WASM only, only when
-  enabled, and never rejects; `createE2eeMeeting` injects shared singletons; disabled → no-op facade.
+  enabled, and never rejects; `createE2eeMeeting` injects shared instances; disabled → no-op facade.
 - `MlsGroupSession.test.ts` — mock `WasmLoader` returning a fake `WebE2EE`; assert callbacks
   map to emitted events; HTTP/wait routed to injected deps. Pure, no webex.
 - `MediaEncryptionService.test.ts` — mock `webexRequest`; assert service/url/body encode+decode.
@@ -661,9 +660,9 @@ mock webex. (Filenames below are illustrative — each maps to a spec under `tes
 
 | Phase | Scope |
 |-------|-------|
-| **P0** | `enableE2ee` config + `E2eeManager` + `WasmLoader` + `Meetings.register()` preload wiring (no per-meeting behavior yet; proves early WASM warm-up + singleton plumbing). |
+| **P0** | `enableE2ee` config + `E2eeManager` + `WasmLoader` + `Meetings.register()` preload wiring (no per-meeting behavior yet; proves early WASM warm-up + single-instance plumbing). |
 | **P1** | Extract/refactor `MlsGroupSession` (engine) + `types` + WASM-loader use (no behavior change vs PoC). |
-| **P2** | `MediaEncryptionService` + `E2eeIdentityProvider` (singleton) + `E2eeSignaling` (I/O adapters). |
+| **P2** | `MediaEncryptionService` + `E2eeIdentityProvider` (one instance) + `E2eeSignaling` (I/O adapters). |
 | **P3** | `E2eeMeeting` facade + `Meeting` wiring (start/stop, `getSecurityCode`, events) — **security code works end-to-end**. |
 | **P4** | `E2eeRosterReconciler` + `Member` extension + verification events. |
 | **P5** | `IE2eeMediaConnection` contract + `E2eeMediaController` (media key injection); media-core impl (new `setEncryptionKeys` method) tracked separately (out of scope). |

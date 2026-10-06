@@ -2,6 +2,8 @@
  * Copyright (c) 2015-2026 Cisco Systems, Inc. See LICENSE file.
  */
 
+import type {Enum} from '../constants';
+
 /**
  * SDK-facing E2EE types (camelCase), mapped from the raw WASM boundary shapes in wasm.d.ts.
  */
@@ -44,19 +46,42 @@ export interface SframeParams {
   epochBits: number;
 }
 
-/** A member of the MLS roster. `validationResult === 0` means the member is verified. */
+/**
+ * Identity-validation outcome for an MLS roster member. Mirrors (by ordinal) the C++
+ * `RosterStatus::ValidationResult` enum in libe2ee (`common/include/e2ee_common/types.h`) — keep
+ * the two in sync. `Success` means the member's identity is verified.
+ */
+export const E2eeValidationResult = {
+  Success: 0,
+  PartialSuccess: 1,
+  Failure: 2,
+  ParseError: 3,
+  UnknownIssuer: 4,
+  UnknownPublicKey: 5,
+  InvalidSignature: 6,
+  Expired: 7,
+  Inactive: 8,
+  Revoked: 9,
+  UnsupportedCaType: 10,
+  InvalidKeypackageSignature: 11,
+  UnsupportedCredentialType: 12,
+  MissingDisplayNameExtension: 13,
+} as const;
+
+export type E2eeValidationResult = Enum<typeof E2eeValidationResult>;
+
+/** A member of the MLS roster. A `validationResult` of `Success` means the member is verified. */
 export interface E2eeRosterMember {
   url: string;
   displayName: string;
   deviceType: string;
-  validationResult: number;
+  validationResult: E2eeValidationResult;
 }
 
 /** Per-device E2EE verification result, derived from the MLS roster and applied onto a Member. */
 export interface E2eeDeviceVerification {
   deviceUrl: string;
-  verified: boolean;
-  validationResult: number;
+  validationResult: E2eeValidationResult;
   displayName?: string;
   deviceType?: string;
 }
