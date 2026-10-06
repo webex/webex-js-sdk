@@ -6,6 +6,7 @@ import {assert} from '@webex/test-helper-chai';
 import sinon from 'sinon';
 import MLS from '@webex/plugin-meetings/src/e2ee/mls';
 import WasmLoader from '@webex/plugin-meetings/src/common/wasm-loader';
+import LoggerProxy from '@webex/plugin-meetings/src/common/logs/logger-proxy';
 
 const flushPromises = () => new Promise((resolve) => setTimeout(resolve, 0));
 
@@ -15,8 +16,6 @@ describe('plugin-meetings', () => {
     let callbacks;
     let wasmLoader;
     let httpClient;
-    let timers;
-    let logger;
     let session;
 
     const config = {
@@ -77,14 +76,7 @@ describe('plugin-meetings', () => {
       wasmLoader.preload.resolves();
       wasmLoader.isLoaded.returns(true);
       httpClient = {request: sinon.stub().resolves(new Uint8Array([1, 2, 3]))};
-      timers = {setTimeout: sinon.stub()};
-      logger = {
-        info: sinon.stub(),
-        warn: sinon.stub(),
-        error: sinon.stub(),
-        debug: sinon.stub(),
-      };
-      session = new MLS({httpClient, wasmLoader, wasmUrl: '/wasm/e2ee.wasm', timers, logger});
+      session = new MLS({httpClient, wasmLoader, wasmUrl: '/wasm/e2ee.wasm'});
     });
 
     afterEach(() => {
@@ -320,14 +312,16 @@ describe('plugin-meetings', () => {
         assert.equal(message, 'nope');
       });
 
-      it('schedules a wait via the injected timers and completes it', () => {
+      it('schedules a wait and completes it', () => {
+        const setTimeoutStub = sinon.stub(global, 'setTimeout');
+
         callbacks.wait(1500, 11);
 
-        assert.calledOnce(timers.setTimeout);
-        assert.equal(timers.setTimeout.firstCall.args[1], 1500);
+        assert.calledOnce(setTimeoutStub);
+        assert.equal(setTimeoutStub.firstCall.args[1], 1500);
         assert.notCalled(fakeE2ee.completeWait);
 
-        timers.setTimeout.firstCall.args[0]();
+        setTimeoutStub.firstCall.args[0]();
 
         assert.calledOnceWithExactly(fakeE2ee.completeWait, 11);
       });
@@ -338,7 +332,14 @@ describe('plugin-meetings', () => {
         await session.initialize(config);
       });
 
-      it('maps WASM log levels to the logger', () => {
+      it('maps WASM log levels to the plugin logger', () => {
+        const logger = {
+          info: sinon.stub(LoggerProxy.logger, 'info'),
+          warn: sinon.stub(LoggerProxy.logger, 'warn'),
+          error: sinon.stub(LoggerProxy.logger, 'error'),
+          debug: sinon.stub(LoggerProxy.logger, 'debug'),
+        };
+
         // Engine LogLevel: fatal=1, error=2, warn=3, info=4, debug=5.
         callbacks.log(1, 'a fatal');
         callbacks.log(2, 'an error');

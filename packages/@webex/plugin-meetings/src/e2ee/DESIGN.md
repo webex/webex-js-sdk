@@ -269,8 +269,6 @@ constructor(deps: {
   httpClient: IMlsHttpClient;
   wasmLoader: WasmLoader;
   wasmUrl: string;            // which cached module to load (E2EE_WASM_URL)
-  timers?: ITimers;
-  logger?: ILogger;
 });
 
 initialize(cfg: {

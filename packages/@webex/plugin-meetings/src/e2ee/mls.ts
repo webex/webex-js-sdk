@@ -30,19 +30,6 @@ const DEFAULT_DEVICE_TYPE = 'WEB';
 // WASM log levels, indexed by the numeric level the engine emits (see LogLevel in libe2ee).
 const WASM_LOG_LEVELS = ['', 'FATAL', 'ERROR', 'WARN', 'INFO', 'DEBUG'];
 
-/** Minimal logger the engine needs; defaults to the plugin logger. */
-export interface ILogger {
-  info(...args: any[]): void;
-  warn(...args: any[]): void;
-  error(...args: any[]): void;
-  debug(...args: any[]): void;
-}
-
-/** Timer abstraction, injectable so tests can control scheduling. */
-export interface ITimers {
-  setTimeout(handler: () => void, milliseconds: number): void;
-}
-
 /** Payloads for each event emitted by {@link MLS}. */
 export interface MLSEventMap {
   joinSuccess: {epoch: number; securityCode: string; sframe: SframeParams; key: E2eeKey};
@@ -60,16 +47,10 @@ export interface MLSEventMap {
 
 export type MLSEvent = keyof MLSEventMap;
 
-const defaultTimers: ITimers = {
-  setTimeout: (handler, milliseconds) => {
-    setTimeout(handler, milliseconds);
-  },
-};
-
 /**
  * Pure MLS protocol engine wrapping the WebE2EE WASM module. It has no webex/HTTP/LLM
- * dependencies: all I/O flows through injected collaborators (an {@link IMlsHttpClient} and
- * timers), and all outputs are emitted as typed events. This keeps it unit-testable in isolation.
+ * dependencies: all I/O flows through the injected {@link IMlsHttpClient}, and all outputs are
+ * emitted as typed events. This keeps it unit-testable in isolation.
  */
 export default class MLS {
   private readonly wasmLoader: WasmLoader;
@@ -77,10 +58,6 @@ export default class MLS {
   private readonly wasmUrl: string;
 
   private readonly httpClient: IMlsHttpClient;
-
-  private readonly timers: ITimers;
-
-  private readonly logger: ILogger;
 
   private readonly emitter = new EventEmitter();
 
@@ -93,27 +70,19 @@ export default class MLS {
    * @param {IMlsHttpClient} deps.httpClient - Transport for the engine's protocol requests.
    * @param {WasmLoader} deps.wasmLoader - Loader for the (pre-warmed) WASM module.
    * @param {string} deps.wasmUrl - URL identifying the e2ee WASM module to load.
-   * @param {ITimers} [deps.timers] - Timer abstraction; defaults to global setTimeout.
-   * @param {ILogger} [deps.logger] - Logger for WASM log output.
    */
   constructor({
     httpClient,
     wasmLoader,
     wasmUrl,
-    timers = defaultTimers,
-    logger,
   }: {
     httpClient: IMlsHttpClient;
     wasmLoader: WasmLoader;
     wasmUrl: string;
-    timers?: ITimers;
-    logger?: ILogger;
   }) {
     this.httpClient = httpClient;
     this.wasmLoader = wasmLoader;
     this.wasmUrl = wasmUrl;
-    this.timers = timers;
-    this.logger = logger ?? LoggerProxy.logger;
   }
 
   /**
@@ -142,7 +111,7 @@ export default class MLS {
    * @returns {void}
    */
   private emitEvent<K extends MLSEvent>(event: K, payload?: MLSEventMap[K]): void {
-    this.logger.info(`e2ee: MLS --> emitting event: ${event}`);
+    LoggerProxy.logger.info(`e2ee: MLS --> emitting event: ${event}`);
     this.emitter.emit(event, payload);
   }
 
@@ -153,7 +122,7 @@ export default class MLS {
    * @returns {Promise<void>}
    */
   async initialize(config: MLSConfig): Promise<void> {
-    this.logger.info('e2ee: MLS --> initialize: loading WASM and instantiating engine');
+    LoggerProxy.logger.info('e2ee: MLS --> initialize: loading WASM and instantiating engine');
     const module = await this.wasmLoader.get<ModuleInstance>(this.wasmUrl);
 
     this.e2ee = new module.WebE2EE();
@@ -186,7 +155,7 @@ export default class MLS {
     this.e2ee.setJoinTimeout(config.joinTimeout ?? DEFAULT_JOIN_TIMEOUT);
     this.e2ee.setCoalesceWindow(config.coalesceWindow ?? DEFAULT_COALESCE_WINDOW);
 
-    this.logger.info('e2ee: MLS --> initialize: engine initialized');
+    LoggerProxy.logger.info('e2ee: MLS --> initialize: engine initialized');
   }
 
   /**
@@ -240,7 +209,7 @@ export default class MLS {
     });
 
     e2ee.setOnWait((milliseconds, handlerId) => {
-      this.timers.setTimeout(() => {
+      setTimeout(() => {
         this.e2ee?.completeWait(handlerId);
       }, milliseconds);
     });
@@ -287,7 +256,7 @@ export default class MLS {
     });
 
     e2ee.setOnMissingCommit((mlsEpoch, useKeyEpoch) => {
-      this.logger.warn(
+      LoggerProxy.logger.warn(
         `e2ee: MLS --> missing commit (mlsEpoch=${mlsEpoch}, useKeyEpoch=${useKeyEpoch})`
       );
     });
@@ -298,16 +267,16 @@ export default class MLS {
       switch (level) {
         case 1:
         case 2:
-          this.logger.error(`e2ee: [E2EE ${label}] ${message}`);
+          LoggerProxy.logger.error(`e2ee: [E2EE ${label}] ${message}`);
           break;
         case 3:
-          this.logger.warn(`e2ee: [E2EE ${label}] ${message}`);
+          LoggerProxy.logger.warn(`e2ee: [E2EE ${label}] ${message}`);
           break;
         case 5:
-          this.logger.debug(`e2ee: [E2EE ${label}] ${message}`);
+          LoggerProxy.logger.debug(`e2ee: [E2EE ${label}] ${message}`);
           break;
         default:
-          this.logger.info(`e2ee: [E2EE ${label}] ${message}`);
+          LoggerProxy.logger.info(`e2ee: [E2EE ${label}] ${message}`);
       }
     });
   }
@@ -329,7 +298,7 @@ export default class MLS {
    * @returns {void}
    */
   join(): void {
-    this.logger.info('e2ee: MLS --> join: starting MLS join');
+    LoggerProxy.logger.info('e2ee: MLS --> join: starting MLS join');
     this.assertInitialized().join();
   }
 
@@ -338,7 +307,7 @@ export default class MLS {
    * @returns {void}
    */
   leave(): void {
-    this.logger.info('e2ee: MLS --> leave: leaving MLS group');
+    LoggerProxy.logger.info('e2ee: MLS --> leave: leaving MLS group');
     this.assertInitialized().leave();
   }
 
@@ -349,7 +318,7 @@ export default class MLS {
    * @returns {void}
    */
   handleEvent(eventData: Uint8Array, source: E2eeSignalingSource): void {
-    this.logger.info(
+    LoggerProxy.logger.info(
       `e2ee: MLS --> handleEvent: forwarding ${eventData.length} bytes from ${source} to engine`
     );
     this.assertInitialized().handle(new Uint8Array(eventData));
@@ -361,7 +330,7 @@ export default class MLS {
    * @returns {void}
    */
   setLlmConnectedBeforeJoin(connected: boolean): void {
-    this.logger.info(`e2ee: MLS --> setLlmConnectedBeforeJoin: ${connected}`);
+    LoggerProxy.logger.info(`e2ee: MLS --> setLlmConnectedBeforeJoin: ${connected}`);
     this.assertInitialized().setLlmConnectedBeforeJoin(connected);
   }
 
@@ -370,7 +339,7 @@ export default class MLS {
    * @returns {void}
    */
   notifyLlmConnected(): void {
-    this.logger.info('e2ee: MLS --> notifyLlmConnected');
+    LoggerProxy.logger.info('e2ee: MLS --> notifyLlmConnected');
     this.assertInitialized().llmConnected();
   }
 
@@ -379,7 +348,7 @@ export default class MLS {
    * @returns {void}
    */
   keepAlive(): void {
-    this.logger.info('e2ee: MLS --> keepAlive');
+    LoggerProxy.logger.info('e2ee: MLS --> keepAlive');
     this.assertInitialized().keepAlive();
   }
 
