@@ -1182,6 +1182,7 @@ describe('webex.cc', () => {
           webRtcEnabled: configuredProfile.webRtcEnabled,
           autoWrapup: configuredProfile.wrapUpData.wrapUpProps.autoWrapup ?? false,
           aiFeature,
+          getWxAppUsersubPublished: expect.any(Function),
           consultTransfer: {
             allowConsultToQueue: configuredProfile.allowConsultToQueue,
             accessQueue: configuredProfile.accessQueue,
@@ -1219,24 +1220,19 @@ describe('webex.cc', () => {
       const webCallingService = new EventEmitterDouble();
       const transportDeferreds: Deferred<void>[] = [];
       const pendingRequests = new Map<string, any>();
-      let aiFeatureFlags: AIFeatureFlags = {
-        id: 'test-ai-feature',
-        generatedSummaries: {
-          wrapUpSummariesEnabled: true,
-          consultTransferSummariesEnabled: true,
-        },
-      };
       const apiAIAssistant: any = {
+        aiFeature: {
+          id: 'test-ai-feature',
+          generatedSummaries: {
+            wrapUpSummariesEnabled: true,
+            consultTransferSummariesEnabled: true,
+          },
+        },
         getSuggestedResponse: jest.fn(),
         fetchHistoricTranscripts: jest.fn(),
         setAIFeatureFlags: jest.fn((flags: AIFeatureFlags) => {
-          aiFeatureFlags = flags;
+          apiAIAssistant.aiFeature = flags;
         }),
-        isGeneratedSummaryEnabled: jest.fn((type: 'POST_CALL_SUMMARY' | 'MID_CALL_SUMMARY') =>
-          type === 'POST_CALL_SUMMARY'
-            ? aiFeatureFlags.generatedSummaries?.wrapUpSummariesEnabled === true
-            : aiFeatureFlags.generatedSummaries?.consultTransferSummariesEnabled === true
-        ),
         setAgentId: jest.fn(),
         pendingRequests,
         sendEvent: jest.fn((_agentId: string, _interactionId: string, _eventType: string, eventName: string) => {
@@ -1595,7 +1591,7 @@ describe('webex.cc', () => {
         conversationId: 'queued-before-deregister',
         summaryText: sentinels[0],
       });
-      expect(jest.getTimerCount()).toBe(1);
+      expect(jest.getTimerCount()).toBe(0);
       expect(harness.task.aiSummaryCapabilities).toEqual({
         midCallEnabled: true,
         postCallEnabled: true,
@@ -1606,7 +1602,7 @@ describe('webex.cc', () => {
         receiving: 1,
         featureEnablement: 1,
       });
-      expect(jest.getTimerCount()).toBe(1);
+      expect(jest.getTimerCount()).toBe(0);
 
       await webex.cc.deregister();
 
@@ -1636,7 +1632,7 @@ describe('webex.cc', () => {
 
       const harness = createSummaryHarness();
       const interactionId = 'receiver-arrival-interaction';
-      const conversationId = 'receiver-arrival-conversation';
+      const conversationId = interactionId;
       const receivingPayload = {
         conversationId,
         summaryText: sentinels[0],
@@ -1656,7 +1652,7 @@ describe('webex.cc', () => {
         receiving: 1,
         featureEnablement: 0,
       });
-      expect(jest.getTimerCount()).toBe(1);
+      expect(jest.getTimerCount()).toBe(0);
 
       harness.taskManager.on(TASK_EVENTS.TASK_INCOMING, (task: Task) => {
         publishedTask = task;
@@ -1738,7 +1734,7 @@ describe('webex.cc', () => {
       expectSentinelsNotObserved();
     });
 
-    it('keeps post-call response context after real Task cleanup removes manager state', async () => {
+    it('sends post-call responses using current task data after manager cleanup', async () => {
       jest.useFakeTimers();
 
       const harness = createSummaryHarness();
@@ -1822,11 +1818,13 @@ describe('webex.cc', () => {
       expect(jest.getTimerCount()).toBe(0);
 
       const requestCallsAfterRemoval = (apiAIAssistant as any).pendingRequests.size;
+      const responseInteractionId = 'post-call-response-current-interaction';
+      const responseConversationId = 'post-call-response-current-conversation';
 
       retainedTask.updateTaskData(
         createAISummaryLifecycleTaskData({
-          interactionId: 'post-call-response-current-interaction',
-          conversationId: 'post-call-response-current-conversation',
+          interactionId: responseInteractionId,
+          conversationId: responseConversationId,
         }),
         true
       );
@@ -1850,11 +1848,11 @@ describe('webex.cc', () => {
       expect(harness.apiAIAssistant.sendEvent).toHaveBeenNthCalledWith(
         2,
         'agent-1',
-        interactionId,
+        responseInteractionId,
         AIAssistantEventType.CTI_EVENT,
         AIAssistantEventName.POST_CALL_SUMMARY_RESPONSE,
         {
-          conversationId,
+          conversationId: responseConversationId,
           clientType: 'WxCC',
           action: AIAssistantEventName.POST_CALL_SUMMARY_RESPONSE,
           summary: {initialContactReason: 'resolved'},
