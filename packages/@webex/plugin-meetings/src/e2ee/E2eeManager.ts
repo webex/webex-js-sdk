@@ -6,7 +6,7 @@ import LoggerProxy from '../common/logs/logger-proxy';
 import WasmLoader from '../common/wasm-loader';
 import E2eeIdentityProvider from './E2eeIdentityProvider';
 import E2eeMeeting from './E2eeMeeting';
-import {E2EE_WASM_URL} from './constants';
+import {E2EE_WASM_URL, isE2eeEnabledAndSupported} from './constants';
 
 /**
  * Owns the shared, session-scoped E2EE identity provider, warms the E2EE WASM during registration
@@ -38,7 +38,7 @@ export default class E2eeManager {
    * @returns {boolean} whether E2EE is enabled via config.
    */
   get isEnabled(): boolean {
-    return !!this.webex?.config?.meetings?.enableE2ee;
+    return isE2eeEnabledAndSupported(!!this.webex?.config?.meetings?.enableE2ee);
   }
 
   /**

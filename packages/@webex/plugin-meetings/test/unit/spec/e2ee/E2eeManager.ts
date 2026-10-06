@@ -7,9 +7,12 @@ import sinon from 'sinon';
 import E2eeManager from '@webex/plugin-meetings/src/e2ee/E2eeManager';
 import WasmLoader from '@webex/plugin-meetings/src/common/wasm-loader';
 import {E2EE_WASM_URL} from '@webex/plugin-meetings/src/e2ee/constants';
+import {CapabilityState, WebCapabilities} from '@webex/web-capabilities';
 
 describe('plugin-meetings', () => {
   describe('E2eeManager', () => {
+    let supportsWasmStub;
+
     const makeWebex = (enableE2ee?: boolean) => ({
       internal: {device: {}},
       config: {meetings: {enableE2ee}},
@@ -24,6 +27,12 @@ describe('plugin-meetings', () => {
       return wasmLoader;
     };
 
+    beforeEach(() => {
+      supportsWasmStub = sinon
+        .stub(WebCapabilities, 'supportsWasm')
+        .returns(CapabilityState.CAPABLE);
+    });
+
     afterEach(() => {
       sinon.restore();
     });
@@ -33,6 +42,12 @@ describe('plugin-meetings', () => {
         assert.isTrue(new E2eeManager({webex: makeWebex(true), wasmLoader: makeWasmLoader()}).isEnabled);
         assert.isFalse(new E2eeManager({webex: makeWebex(false), wasmLoader: makeWasmLoader()}).isEnabled);
         assert.isFalse(new E2eeManager({webex: makeWebex(), wasmLoader: makeWasmLoader()}).isEnabled);
+      });
+
+      it('disables E2EE when the browser cannot run WebAssembly', () => {
+        supportsWasmStub.returns(CapabilityState.NOT_CAPABLE);
+
+        assert.isFalse(new E2eeManager({webex: makeWebex(true), wasmLoader: makeWasmLoader()}).isEnabled);
       });
     });
 

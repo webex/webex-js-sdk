@@ -2,6 +2,16 @@
  * Copyright (c) 2015-2026 Cisco Systems, Inc. See LICENSE file.
  */
 
+import {CapabilityState, WebCapabilities} from '@webex/web-capabilities';
+
+/**
+ * E2EE can only be enabled when requested and WebAssembly is available in this browser.
+ * @param {boolean} configured - Whether the SDK's E2EE config is enabled.
+ * @returns {boolean} whether E2EE can run in this browser.
+ */
+export const isE2eeEnabledAndSupported = (configured: boolean): boolean =>
+  configured && WebCapabilities.supportsWasm() === CapabilityState.CAPABLE;
+
 /** LLM mercury events carrying MLS protocol messages, forwarded to the engine. */
 export const MEDIA_ENCRYPTION_MERCURY_EVENTS = [
   'event:media_encryption.leader_nominated',

@@ -29,15 +29,18 @@ just calls `meeting.joinWithMedia()` as usual. The SDK must:
 ### Capability signalling flow (how a meeting becomes E2EE)
 
 Whether a given meeting is E2EE is negotiated with **Locus** through capabilities the client
-advertises on the **join request** and flags Locus returns on the **Locus DTO**. All of the
-outbound signalling is gated on the `enableE2ee` config, so a client that hasn't enabled E2EE never
-advertises it.
+advertises on the **join request** and flags Locus returns on the **Locus DTO**. Outbound signalling
+requires both the `enableE2ee` config and WebAssembly support reported by
+`WebCapabilities.supportsWasm()`. A client that has not enabled E2EE, or cannot run WebAssembly,
+does not advertise E2EE support and does not start an MLS session.
 
 **Outbound (client → Locus), set in the join request** (`meeting/request.ts` `joinMeeting`, only
 when `enableE2ee` is on):
 
 - `supportsV2E2EEncryption: true` — tells Locus this client supports **E2EE**
 - `E2EE_1K_SUPPORTED` device capability — advertises support for E2EE meetings; pushed onto `deviceCapabilities`.
+
+Both fields are set only when `WebCapabilities.supportsWasm()` reports `CAPABLE`.
 
 **Inbound (Locus → client), parsed from the Locus DTO `info` onto `locusInfo.info`:**
 

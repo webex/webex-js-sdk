@@ -9,6 +9,7 @@ import uuid from 'uuid';
 import {merge} from 'lodash';
 import {IP_VERSION} from '@webex/plugin-meetings/src/constants';
 import {CallDiagnosticUtils} from '@webex/internal-plugin-metrics';
+import {CapabilityState, WebCapabilities} from '@webex/web-capabilities';
 
 describe('plugin-meetings', () => {
   let meetingsRequest;
@@ -383,6 +384,20 @@ describe('plugin-meetings', () => {
 
         assert.deepEqual(requestParams.body.deviceCapabilities, undefined);
         assert.equal(requestParams.body.supportsV2E2EEncryption, false);
+      });
+
+      it('does not advertise E2EE when WebAssembly is unavailable', async () => {
+        webex.meetings.config.enableE2ee = true;
+        const supportsWasmStub = sinon
+          .stub(WebCapabilities, 'supportsWasm')
+          .returns(CapabilityState.NOT_CAPABLE);
+
+        await meetingsRequest.joinMeeting({});
+        const requestParams = meetingsRequest.request.getCall(0).args[0];
+
+        assert.deepEqual(requestParams.body.deviceCapabilities, undefined);
+        assert.equal(requestParams.body.supportsV2E2EEncryption, false);
+        supportsWasmStub.restore();
       });
 
       it('adds deviceCapabilities and locale to request when they are provided', async () => {
