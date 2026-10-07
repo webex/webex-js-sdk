@@ -1,0 +1,345 @@
+{
+  "manifest_version": 1,
+  "repository": {
+    "name": "@webex/internal-plugin-llm",
+    "purpose": "Internal Webex JS SDK plugin that manages LLM data-channel connections for meetings. It registers webex.internal.llm, a Mercury subclass that registers each session with the data-channel service over HTTP, connects the returned WebSocket through Mercury, and keeps per-session URLs, binding, owner meeting, and token-refresh handler, plus a session-keyed data-channel token cache guarded by owner-meeting checks.",
+    "category": "cat2-legacy",
+    "primary_languages": [
+      "typescript"
+    ]
+  },
+  "topology": "Single-repo",
+  "commands": {
+    "install": {
+      "command": "yarn install",
+      "source_file": "package.json",
+      "role": "install"
+    },
+    "compile": {
+      "command": "yarn workspace @webex/internal-plugin-llm build:src",
+      "source_file": "package.json",
+      "role": "compile"
+    },
+    "build": {
+      "command": "yarn workspace @webex/internal-plugin-llm build",
+      "source_file": "package.json",
+      "role": "package"
+    },
+    "unit-test": {
+      "command": "yarn workspace @webex/internal-plugin-llm test:unit",
+      "source_file": "package.json",
+      "role": "unit-test"
+    },
+    "browser-test": {
+      "command": "yarn workspace @webex/internal-plugin-llm test:browser",
+      "source_file": "package.json",
+      "role": "other"
+    },
+    "lint": {
+      "command": "yarn workspace @webex/internal-plugin-llm test:style",
+      "source_file": "package.json",
+      "role": "lint"
+    },
+    "deploy": {
+      "command": "yarn workspace @webex/internal-plugin-llm deploy:npm",
+      "source_file": "package.json",
+      "role": "deploy"
+    }
+  },
+  "toolchain": [
+    {
+      "name": "node",
+      "version": ">=18",
+      "origin": "repo-config",
+      "source_file": "package.json"
+    },
+    {
+      "name": "babel",
+      "version": "^7.17.10",
+      "origin": "repo-config",
+      "source_file": "package.json"
+    },
+    {
+      "name": "eslint",
+      "version": "^8.24.0",
+      "origin": "repo-config",
+      "source_file": "package.json"
+    },
+    {
+      "name": "prettier",
+      "version": "^2.7.1",
+      "origin": "repo-config",
+      "source_file": "package.json"
+    }
+  ],
+  "tests": {
+    "unit": {
+      "command_ref": "unit-test",
+      "dir": "test/unit/spec",
+      "framework": "jest"
+    }
+  },
+  "quality_gates": {
+    "code_coverage": {
+      "origin": "none",
+      "declared_by": "akulakum@cisco.com via bootstrap questionnaire (generator check: test:unit runs webex-legacy-tools with --runner jest; jest.config.js re-exports @webex/jest-config-legacy, which sets collectCoverage false and no coverageThreshold; package.json defines no coverage script)"
+    }
+  },
+  "coverage_status_definitions": {
+    "specced": ">=80% public surface specced, drift <5% - spec is authoritative",
+    "partial": "40-80% specced - spec is a hint, cross-check code",
+    "untracked": "<40% specced - code is the source of truth"
+  },
+  "spec_source_policy": {
+    "mode": "keep-separate",
+    "migrated_source_disposition": "retain",
+    "disposition_decided_by": "akulakum@cisco.com",
+    "disposition_decided_at": "2026-10-07T06:33:15Z",
+    "decided_by": "akulakum@cisco.com",
+    "decided_at": "2026-10-07T06:33:15Z",
+    "decision_record": "docs/adr/0001-retain-product-readme.md"
+  },
+  "spec_sources": [],
+  "modules": [
+    {
+      "path": "src",
+      "canonical_spec": "src/docs/README.md",
+      "coverage_status": "Partial",
+      "coverage_evidence": "Field coverage 93.3% (14/15) assessed 2026-10-07 by the generator; critical field coverage 8/8. The one WEAK field is test strategy: test/unit/spec/llm.js covers register and connect, timing, accessors, owner setters, refresh handlers, multi-session disconnect, and URL lookup, but the plugin registration, clearDatachannelToken, refused-owner token and refresh-handler calls, INV-003 (tokens survive disconnect), INV-005 (config defaults), and suffixed event names have no test, two disconnectLLM cases exercise a stand-in object instead of LLMChannel, test:browser collects no files, and no characterization baseline exists. Independent validation has not run. Held at Partial: no characterization baseline and no spec-drift record exist yet.",
+      "last_assessed": "2026-10-07",
+      "contracts": {
+        "provides": [
+          "llm-sdk",
+          "llm-plugin-events",
+          "llm-datachannel-protocol"
+        ],
+        "requires": [
+          "mercury-plugin-base",
+          "webex-core-plugin-host",
+          "webex-device-registration",
+          "webex-feature-toggles"
+        ]
+      },
+      "section_profile": {
+        "has_tiers": false,
+        "has_ui": false,
+        "crosses_service_boundaries": true,
+        "holds_client_state": true,
+        "enforces_domain_rules": true,
+        "is_concurrent_async": true,
+        "owns_persistence": false,
+        "stateful_transitions": true,
+        "exposes_wire_protocol": true,
+        "ui_multi_screen": false,
+        "large_data_model": false,
+        "returns_caller_errors": true,
+        "module_specific_conventions": true,
+        "published_package": true,
+        "embedded_in_host": false,
+        "has_design_tradeoff": true,
+        "resolved_by": "claude-cowork (code evidence; bootstrap questionnaire)",
+        "resolved_at": "2026-10-07T06:33:15Z",
+        "has_submodules": false,
+        "has_submodules_computed_by": "scripts/module_tree.py",
+        "has_submodules_computed_at": "2026-10-07T06:40:11Z"
+      }
+    }
+  ],
+  "contract_catalog": {
+    "index_path": "docs/architecture.md",
+    "definitions": {
+      "llm-sdk": {
+        "kind": "sdk",
+        "publication": "published",
+        "source_kind": "repository-path",
+        "source": "package.json",
+        "summary": "Published npm package. main is dist/index.js and devMain is src/index.ts. Importing the package registers LLMChannel as internal plugin 'llm' with the config object from src/llm.ts. The barrel exports LLMChannel as default, DataChannelTokenType, LLM_DEFAULT_SESSION, LLM_PRACTICE_SESSION, and the RegisterAndConnectTiming type. Per-method behavior is in src/docs/README.md."
+      },
+      "llm-plugin-events": {
+        "kind": "event",
+        "publication": "published",
+        "source_kind": "repository-path",
+        "source": "src/llm.ts",
+        "summary": "Events triggered on webex.internal.llm. LLMChannel inherits event emission from Mercury and sets the default session id to llm-default-session, so default-session events keep plain names (online, offline, event, event:<namespace>, event:<eventType>) and other sessions add a :<sessionId> suffix."
+      },
+      "llm-datachannel-protocol": {
+        "kind": "rpc",
+        "publication": "internal",
+        "source_kind": "repository-path",
+        "source": "src/llm.ts",
+        "summary": "Registration POST to the caller-supplied data-channel URL with body deviceUrl and, behind the data-channel-with-jwt-token toggle, the Data-Channel-Auth-Token header; response fields webSocketUrl and binding; and the subscriptionAwareSubchannels query added to the WebSocket URL behind the same toggle."
+      },
+      "mercury-plugin-base": {
+        "kind": "sdk",
+        "publication": "published",
+        "source_kind": "external",
+        "source": "@webex/internal-plugin-mercury (packages/@webex/internal-plugin-mercury/src/mercury.js)",
+        "summary": "Superclass of LLMChannel. Supplies connect, disconnect, disconnectAll, getSocket, session-suffixed event emission, retries, keepalive config consumption, and close-code handling. Owned by @webex/internal-plugin-mercury."
+      },
+      "webex-core-plugin-host": {
+        "kind": "rpc",
+        "publication": "internal",
+        "source_kind": "external",
+        "source": "@webex/webex-core (registerInternalPlugin, WebexPlugin request, logger, config)",
+        "summary": "registerInternalPlugin installs the plugin; the plugin base supplies this.request for the registration POST, this.logger, and this.config resolved from webex.config.llm."
+      },
+      "webex-device-registration": {
+        "kind": "sdk",
+        "publication": "internal",
+        "source_kind": "external",
+        "source": "@webex/internal-plugin-device (webex.internal.device)",
+        "summary": "LLMChannel sends webex.internal.device.url as deviceUrl in the registration body. Mercury connect also registers the device when needed."
+      },
+      "webex-feature-toggles": {
+        "kind": "sdk",
+        "publication": "internal",
+        "source_kind": "external",
+        "source": "@webex/internal-plugin-feature (webex.internal.feature)",
+        "summary": "LLMChannel calls getFeature('developer', 'data-channel-with-jwt-token') before registration and again before connect."
+      }
+    }
+  },
+  "spec_policy": {
+    "require_what_and_why": true,
+    "require_provenance": true,
+    "protected_specs": [
+      "src/docs/README.md"
+    ]
+  },
+  "validation": {
+    "generator_runtime": "claude-cowork",
+    "generator_model": "claude-opus-5-5",
+    "generator_runtime_source": "host-metadata",
+    "generator_run_id": "spark-853121-llm-sdd-stage0-2026-10-07",
+    "minimum_independence": "different-runtime",
+    "blocking_severities": [
+      "Blocking"
+    ],
+    "base_ref": "next",
+    "head_ref": "LLM_WEBEX_INTERNAL_PLUGIN_SDD"
+  },
+  "layout": {
+    "sdd_root": ".sdd",
+    "docs_root": "docs",
+    "agent_entry_path": "AGENTS.md",
+    "standing_docs_root": "docs",
+    "spec_index_path": "docs/specs/README.md",
+    "module_docs_strategy": "source-local",
+    "module_docs_relative_path": "docs/README.md",
+    "module_docs_decision": {
+      "basis": "repo-standards-default",
+      "reason": "No module-local documentation existed. The source-local default gives src/docs/README.md. test:style runs eslint ./src/**/*.* and build:src processes -js -ts only, so Markdown under src/ does not enter the lint or build output.",
+      "decided_by": "akulakum@cisco.com (bootstrap questionnaire)",
+      "decided_at": "2026-10-07T06:33:15Z"
+    },
+    "repo_context_decision": {
+      "path": ".repo-context.json",
+      "schema_path": "schemas/repo-context.schema.json",
+      "action": "create",
+      "schema_action": "create",
+      "reason": "Neither the operational context nor its schema existed in this package. The context is created from package evidence and the schema is copied from packages/@webex/common/schemas/repo-context.schema.json (Repo Standards 0.3.0).",
+      "decided_by": "akulakum@cisco.com (bootstrap questionnaire)",
+      "decided_at": "2026-10-07T06:33:15Z"
+    },
+    "artifact_decisions": [
+      {
+        "path": "docs/service.md",
+        "action": "omit",
+        "reason": "Library package, not a deployable service. package.json has no start script, container, or deployment descriptor.",
+        "decided_by": "claude-cowork (code evidence)",
+        "decided_at": "2026-10-07T06:33:15Z"
+      },
+      {
+        "path": "mkdocs.yml",
+        "action": "omit",
+        "reason": "No package-level documentation site exists. Documentation publishing stays with the workspace.",
+        "decided_by": "akulakum@cisco.com (bootstrap questionnaire)",
+        "decided_at": "2026-10-07T06:33:15Z"
+      },
+      {
+        "path": "api-specs/openapi.yaml",
+        "action": "omit",
+        "reason": "The package serves no HTTP routes. It is an HTTP and WebSocket client; its published surface is the npm export described by llm-sdk and the events described by llm-plugin-events.",
+        "decided_by": "claude-cowork (code evidence)",
+        "decided_at": "2026-10-07T06:33:15Z"
+      },
+      {
+        "path": "SECURITY.md",
+        "action": "omit",
+        "reason": "No package-level security policy exists. The workspace root SECURITY.md is not overwritten and a per-package copy would duplicate it.",
+        "decided_by": "akulakum@cisco.com (bootstrap questionnaire)",
+        "decided_at": "2026-10-07T06:33:15Z"
+      },
+      {
+        "path": "CONTRIBUTING.md",
+        "action": "omit",
+        "reason": "Contribution instructions are owned at the workspace root and linked from this package README.md.",
+        "decided_by": "akulakum@cisco.com (bootstrap questionnaire)",
+        "decided_at": "2026-10-07T06:33:15Z"
+      },
+      {
+        "path": "CHANGELOG.md",
+        "action": "omit",
+        "reason": "Changelog generation is owned at the workspace root. This package has no changelog file.",
+        "decided_by": "akulakum@cisco.com (bootstrap questionnaire)",
+        "decided_at": "2026-10-07T06:33:15Z"
+      },
+      {
+        "path": "CTO_CHECKLIST.yml",
+        "action": "omit",
+        "reason": "The CTO readiness checklist applies to deployable services. This package is a library.",
+        "decided_by": "claude-cowork (code evidence)",
+        "decided_at": "2026-10-07T06:33:15Z"
+      },
+      {
+        "path": "schemas/cto-checklist.schema.json",
+        "action": "omit",
+        "reason": "Omitted together with CTO_CHECKLIST.yml.",
+        "decided_by": "claude-cowork (code evidence)",
+        "decided_at": "2026-10-07T06:33:15Z"
+      }
+    ],
+    "template_roots": {
+      "canonical": ".sdd/templates/repo-standards"
+    },
+    "repo_skills_root": ".sdd/skills",
+    "contract_index_path": "docs/architecture.md"
+  },
+  "coverage_ratchet": {
+    "enabled": true,
+    "waivers": []
+  },
+  "substrate": {
+    "source": "WebexTools/repo-standards@d89a7fe59126ae3ad9bac9ca352aa7f12b4c85dc",
+    "consumed": [
+      "@webex/eslint-config-legacy via .eslintrc.js",
+      "@webex/babel-config-legacy via babel.config.js",
+      "@webex/jest-config-legacy via jest.config.js",
+      "@webex/legacy-tools build and test runner via package.json",
+      "package README.md",
+      "Repo Standards 0.3.0 templates at the JS SDK root .sdd/templates/repo-standards"
+    ],
+    "compliance_tier": "baseline"
+  },
+  "section_profiles": {
+    "repo": {
+      "owns_datastore": false,
+      "holds_client_state": true,
+      "components_interact": true,
+      "domain_data_across_components": false,
+      "caches_data": true,
+      "observability_convention": true,
+      "deploys_to_infra": false,
+      "shared_base_libs": true,
+      "is_monorepo": false,
+      "multi_platform": false,
+      "published_package": true,
+      "embedded_in_host": false,
+      "cross_repo_deps_material": true,
+      "security_arch_warranted": true,
+      "exposes_commands_or_artifacts": true
+    },
+    "resolved_by": "claude-cowork (code evidence; bootstrap questionnaire)",
+    "resolved_at": "2026-10-07T06:33:15Z"
+  }
+}
