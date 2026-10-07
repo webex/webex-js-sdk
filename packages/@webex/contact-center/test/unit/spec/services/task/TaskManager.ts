@@ -130,6 +130,8 @@ jest.mock('../../../../../src/services/task/state-machine', () => {
   };
 
   const TaskState = {
+    IDLE: 'IDLE',
+    OFFERED: 'OFFERED',
     CONNECTED: 'CONNECTED',
     HOLD_INITIATING: 'HOLD_INITIATING',
     HELD: 'HELD',
@@ -138,6 +140,7 @@ jest.mock('../../../../../src/services/task/state-machine', () => {
     CONSULTING: 'CONSULTING',
     CONF_INITIATING: 'CONF_INITIATING',
     CONFERENCING: 'CONFERENCING',
+    TERMINATED: 'TERMINATED',
   };
 
   return {
@@ -363,6 +366,20 @@ describe('TaskManager', () => {
       [TaskEvent.WRAPUP_COMPLETE]: TASK_EVENTS.TASK_WRAPPEDUP,
     };
 
+    // Mirrors the real state machine's offered (ringing) and answered states.
+    const taskStateMap: Partial<Record<TaskEvent, string>> = {
+      [TaskEvent.TASK_INCOMING]: TaskState.OFFERED,
+      [TaskEvent.TASK_OFFERED]: TaskState.OFFERED,
+      [TaskEvent.OFFER_CONSULT]: TaskState.OFFERED,
+      [TaskEvent.ASSIGN]: TaskState.CONNECTED,
+      [TaskEvent.CONSULTING_ACTIVE]: TaskState.CONSULTING,
+      [TaskEvent.HYDRATE]: TaskState.CONNECTED,
+      // Offers that end without being answered.
+      [TaskEvent.RONA]: TaskState.TERMINATED,
+      [TaskEvent.ASSIGN_FAILED]: TaskState.TERMINATED,
+      [TaskEvent.CONSULT_END]: TaskState.TERMINATED,
+    };
+
     task.sendStateMachineEvent = jest.fn().mockImplementation((event) => {
       if (event.taskData) {
         task.updateTaskData(event.taskData);
@@ -422,6 +439,11 @@ describe('TaskManager', () => {
       if (shouldCleanup) {
         const removeFromCollection = eventType !== TaskEvent.CONTACT_ENDED;
         task.emit(TASK_EVENTS.TASK_CLEANUP, task, {removeFromCollection});
+      }
+
+      // Like Task's state machine subscriber, `state` updates after the transition's emissions.
+      if (taskStateMap[eventType]) {
+        task.state = {value: taskStateMap[eventType]};
       }
     });
 
@@ -1206,11 +1228,13 @@ describe('TaskManager', () => {
   });
 
   it.each(['target-first', 'other-first'] as const)(
-    'should emit a receiving summary on the task indexed by conversation id for %s order',
+    'should emit a receiving summary immediately on the answered task indexed by conversation id for %s order',
     (registryOrder) => {
       const conversationId = 'conversation-1';
       const receivingTask = createStateMachineTask({...taskDataMock, interactionId: conversationId});
       const otherTask = createStateMachineTask({...taskDataMock, interactionId: 'other-conversation'});
+      receivingTask.state = {value: TaskState.CONNECTED};
+      otherTask.state = {value: TaskState.CONNECTED};
 
       taskManager.taskCollection =
         registryOrder === 'target-first'
@@ -1275,6 +1299,7 @@ describe('TaskManager', () => {
       sections: {[sectionKeySentinel]: sectionValueSentinel},
       error: {message: arbitraryErrorSentinel},
     };
+    validPeerTask.state = {value: TaskState.CONNECTED};
     const invalidEmitSpy = jest.spyOn(invalidTask, 'emit');
     const validPeerEmitSpy = jest.spyOn(validPeerTask, 'emit');
 
@@ -1316,12 +1341,72 @@ describe('TaskManager', () => {
     });
   });
 
-  it('should store a receiving summary until the task with its conversation id registers', () => {
-    taskManager.taskCollection = {};
-    const receivingPayload = {
-      conversationId: 'conversation-1',
-      summaryText: 'buffered receiver summary',
-    };
+  it.each([
+    ['transferred call', [], CC_EVENTS.AGENT_CONTACT_ASSIGNED, TASK_EVENTS.TASK_ASSIGNED],
+    [
+      'consult',
+      [CC_EVENTS.AGENT_OFFER_CONSULT],
+      CC_EVENTS.AGENT_CONSULTING,
+      TASK_EVENTS.TASK_CONSULT_ACCEPTED,
+    ],
+  ] as const)(
+    'should keep a receiving summary while the %s is ringing and emit it right after it is answered',
+    (_name, ringingUpdates, answerEvent, answeredTaskEvent) => {
+      taskManager.taskCollection = {};
+      const receivingPayload = {
+        conversationId: 'conversation-1',
+        summaryText: 'buffered receiver summary',
+      };
+
+      taskManager.handleRealtimeWebsocketEvent(
+        JSON.stringify({
+          type: CC_TASK_EVENTS.MID_CALL_SUMMARY_RESPONSE_SUBSEQUENT_AGENT,
+          data: {data: receivingPayload},
+        })
+      );
+
+      const task = createStateMachineTask({
+        ...taskDataMock,
+        interactionId: receivingPayload.conversationId,
+        interaction: {
+          mediaType: 'telephony',
+          callProcessingDetails: {},
+        },
+      });
+      const observedOrder: string[] = [];
+      task.on(answeredTaskEvent, () => observedOrder.push('answered'));
+      task.on(TASK_EVENTS.TASK_MID_CALL_SUMMARY_RECEIVED, (payload) =>
+        observedOrder.push(`receiver-summary:${payload.summaryText}`)
+      );
+      (TaskFactory.createTask as jest.Mock).mockReturnValueOnce(task);
+
+      [CC_EVENTS.AGENT_CONTACT_RESERVED, ...ringingUpdates].forEach((ringingEvent) => {
+        webSocketManagerMock.emit('message', JSON.stringify({data: {...task.data, type: ringingEvent}}));
+      });
+
+      expect(task.state).toEqual({value: TaskState.OFFERED});
+      expect(observedOrder).toEqual([]);
+      expect((taskManager as any).receivingSummaryBuffer.get(receivingPayload.conversationId)).toEqual(
+        receivingPayload
+      );
+
+      webSocketManagerMock.emit('message', JSON.stringify({data: {...task.data, type: answerEvent}}));
+
+      expect(observedOrder).toEqual(['answered', 'receiver-summary:buffered receiver summary']);
+      expect((taskManager as any).receivingSummaryBuffer.has(receivingPayload.conversationId)).toBe(
+        false
+      );
+    }
+  );
+
+  it('should keep a receiving summary that arrives while its task is ringing until the task is answered', () => {
+    const conversationId = 'conversation-1';
+    const task = createStateMachineTask({...taskDataMock, interactionId: conversationId});
+    task.state = {value: TaskState.OFFERED};
+    taskManager.taskCollection = {[conversationId]: task};
+    const receiverHandler = jest.fn();
+    task.on(TASK_EVENTS.TASK_MID_CALL_SUMMARY_RECEIVED, receiverHandler);
+    const receivingPayload = {conversationId, summaryText: 'ringing receiver summary'};
 
     taskManager.handleRealtimeWebsocketEvent(
       JSON.stringify({
@@ -1330,26 +1415,65 @@ describe('TaskManager', () => {
       })
     );
 
-    const task = createStateMachineTask({
-      ...taskDataMock,
-      interactionId: receivingPayload.conversationId,
-      interaction: {
-        mediaType: 'telephony',
-        callProcessingDetails: {},
-      },
-    });
-    const taskEmitSpy = jest.spyOn(task, 'emit');
-    (TaskFactory.createTask as jest.Mock).mockReturnValueOnce(task);
+    expect(receiverHandler).not.toHaveBeenCalled();
+    expect((taskManager as any).receivingSummaryBuffer.get(conversationId)).toEqual(receivingPayload);
+
     webSocketManagerMock.emit(
       'message',
-      JSON.stringify({data: {...task.data, type: CC_EVENTS.AGENT_CONTACT_RESERVED}})
+      JSON.stringify({data: {...task.data, type: CC_EVENTS.AGENT_CONTACT_ASSIGNED}})
     );
 
-    expect(taskEmitSpy).toHaveBeenCalledWith(
-      TASK_EVENTS.TASK_MID_CALL_SUMMARY_RECEIVED,
-      receivingPayload
-    );
+    expect(receiverHandler).toHaveBeenCalledTimes(1);
+    expect(receiverHandler).toHaveBeenCalledWith(receivingPayload);
   });
+
+  it.each([
+    ['the offer is not answered in time (RONA)', [], CC_EVENTS.AGENT_CONTACT_OFFER_RONA],
+    ['the offer is declined', [], CC_EVENTS.AGENT_CONTACT_ASSIGN_FAILED],
+    [
+      'the consult is cancelled before it is accepted',
+      [CC_EVENTS.AGENT_OFFER_CONSULT],
+      CC_EVENTS.AGENT_CONSULT_ENDED,
+    ],
+  ] as const)(
+    'should drop a receiving summary held for a ringing task when %s',
+    (_name, ringingUpdates, endEvent) => {
+      taskManager.taskCollection = {};
+      const receivingPayload = {
+        conversationId: 'conversation-1',
+        summaryText: 'unanswered receiver summary',
+      };
+
+      taskManager.handleRealtimeWebsocketEvent(
+        JSON.stringify({
+          type: CC_TASK_EVENTS.MID_CALL_SUMMARY_RESPONSE_SUBSEQUENT_AGENT,
+          data: {data: receivingPayload},
+        })
+      );
+
+      const task = createStateMachineTask({
+        ...taskDataMock,
+        interactionId: receivingPayload.conversationId,
+        isConsulted: ringingUpdates.length > 0,
+        interaction: {
+          mediaType: 'telephony',
+          callProcessingDetails: {},
+        },
+      });
+      const receiverHandler = jest.fn();
+      task.on(TASK_EVENTS.TASK_MID_CALL_SUMMARY_RECEIVED, receiverHandler);
+      (TaskFactory.createTask as jest.Mock).mockReturnValueOnce(task);
+
+      [CC_EVENTS.AGENT_CONTACT_RESERVED, ...ringingUpdates, endEvent].forEach((event) => {
+        webSocketManagerMock.emit('message', JSON.stringify({data: {...task.data, type: event}}));
+      });
+
+      expect(receiverHandler).not.toHaveBeenCalled();
+      expect((taskManager as any).receivingSummaryBuffer.has(receivingPayload.conversationId)).toBe(
+        false
+      );
+    }
+  );
 
   it('should keep a stored receiving summary while an unrelated task is updated', () => {
     jest.useFakeTimers();
@@ -1535,7 +1659,7 @@ describe('TaskManager', () => {
     expect(jest.getTimerCount()).toBe(0);
   });
 
-  it('should retain the latest unmatched receiving summary until a task is created without an expiry timer', () => {
+  it('should retain the latest unmatched receiving summary until its task is answered without an expiry timer', () => {
     jest.useFakeTimers();
     const unmatchedTask = createStateMachineTask({...taskDataMock, interactionId: 'other-conversation'});
     const unmatchedTaskEmitSpy = jest.spyOn(unmatchedTask, 'emit');
@@ -1592,6 +1716,16 @@ describe('TaskManager', () => {
       JSON.stringify({data: {...receiverTask.data, type: CC_EVENTS.AGENT_CONTACT_RESERVED}})
     );
 
+    expect(receiverHandler).not.toHaveBeenCalled();
+    expect((taskManager as any).receivingSummaryBuffer.get(receivingPayload.conversationId)).toEqual(
+      latestPayload
+    );
+
+    webSocketManagerMock.emit(
+      'message',
+      JSON.stringify({data: {...receiverTask.data, type: CC_EVENTS.AGENT_CONTACT_ASSIGNED}})
+    );
+
     expect(receiverHandler).toHaveBeenCalledTimes(1);
     expect(receiverHandler).toHaveBeenCalledWith(latestPayload);
     expect(
@@ -1618,19 +1752,62 @@ describe('TaskManager', () => {
       'receiver-reserved-task',
     ],
     [
-      'agent contact hydrate',
-      CC_EVENTS.AGENT_CONTACT,
-      TASK_EVENTS.TASK_HYDRATE,
-      'receiver-agent-contact-task',
-    ],
-    [
       'campaign preview reservation',
       CC_EVENTS.AGENT_OFFER_CAMPAIGN_RESERVATION,
       TASK_EVENTS.TASK_CAMPAIGN_PREVIEW_RESERVATION,
       'receiver-campaign-task',
     ],
   ] as const)(
-    'should flush buffered receiving summaries once after %s publication',
+    'should keep buffered receiving summaries after %s publication until the task is answered',
+    (_name, eventType, publicationEvent, interactionId) => {
+      taskManager.taskCollection = {};
+      const receivingPayload = {
+        conversationId: interactionId,
+        summaryText: `buffered summary for ${interactionId}`,
+      };
+      const deliveryHandler = jest.fn();
+
+      taskManager.handleRealtimeWebsocketEvent(
+        JSON.stringify({
+          type: CC_TASK_EVENTS.MID_CALL_SUMMARY_RESPONSE_SUBSEQUENT_AGENT,
+          data: {data: receivingPayload},
+        })
+      );
+
+      taskManager.on(publicationEvent, (publishedTask) => {
+        publishedTask.on(TASK_EVENTS.TASK_MID_CALL_SUMMARY_RECEIVED, deliveryHandler);
+      });
+
+      webSocketManagerMock.emit(
+        'message',
+        JSON.stringify({
+          data: {
+            ...taskDataMock,
+            type: eventType,
+            interactionId,
+            mediaResourceId: interactionId,
+            interaction: {
+              mediaType: 'telephony',
+              callProcessingDetails: {},
+            },
+          },
+        })
+      );
+
+      expect(deliveryHandler).not.toHaveBeenCalled();
+      expect((taskManager as any).receivingSummaryBuffer.get(interactionId)).toEqual(receivingPayload);
+    }
+  );
+
+  it.each([
+    [
+      'agent contact hydrate',
+      CC_EVENTS.AGENT_CONTACT,
+      TASK_EVENTS.TASK_HYDRATE,
+      'receiver-agent-contact-task',
+    ],
+  ] as const)(
+    'should flush buffered receiving summaries once after %s publication of an answered task',
     (_name, eventType, publicationEvent, interactionId) => {
       jest.useFakeTimers();
       taskManager.taskCollection = {};

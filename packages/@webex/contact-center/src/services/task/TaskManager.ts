@@ -150,8 +150,10 @@ export default class TaskManager extends EventEmitter {
           const summary: AISummary = payload.data.data;
           const {conversationId} = summary;
           const task = this.taskCollection[conversationId];
+          const taskState = task?.state?.value;
 
-          if (task) {
+          // Emit only once the task is answered; until then it waits for the answer event.
+          if (task && taskState !== TaskState.IDLE && taskState !== TaskState.OFFERED) {
             this.receivingSummaryBuffer.delete(conversationId);
             task.emit(TASK_EVENTS.TASK_MID_CALL_SUMMARY_RECEIVED, summary);
           } else {
@@ -791,8 +793,11 @@ export default class TaskManager extends EventEmitter {
         task.sendStateMachineEvent(stateMachineEvent);
       }
 
+      // A receiving summary held while the task rang is emitted right after the answer
+      // event above (AgentContactAssigned / AgentConsulting) has been emitted.
       const bufferedSummary = this.receivingSummaryBuffer.get(task.data.interactionId);
-      if (bufferedSummary) {
+      const taskState = task.state?.value;
+      if (bufferedSummary && taskState !== TaskState.IDLE && taskState !== TaskState.OFFERED) {
         this.receivingSummaryBuffer.delete(task.data.interactionId);
         task.emit(TASK_EVENTS.TASK_MID_CALL_SUMMARY_RECEIVED, bufferedSummary);
       }
@@ -1553,6 +1558,9 @@ export default class TaskManager extends EventEmitter {
     }
     if (task?.data?.interactionId) {
       this.pendingFeatureEnablement.delete(task.data.interactionId);
+      // An offer that ends unanswered (RONA, declined, consult cancelled) is removed here,
+      // so its held receiving summary is dropped instead of being emitted.
+      this.receivingSummaryBuffer.delete(task.data.interactionId);
       Object.entries(this.taskCollection).forEach(([taskId, candidate]) => {
         if (candidate === task) {
           delete this.taskCollection[taskId];

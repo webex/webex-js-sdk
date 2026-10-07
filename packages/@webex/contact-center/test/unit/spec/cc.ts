@@ -1627,7 +1627,7 @@ describe('webex.cc', () => {
       expectSentinelsNotObserved();
     });
 
-    it('flushes a buffered receiving summary through real TaskManager task publication', () => {
+    it('flushes a buffered receiving summary through real TaskManager task publication once the task is answered', () => {
       jest.useFakeTimers();
 
       const harness = createSummaryHarness();
@@ -1639,6 +1639,7 @@ describe('webex.cc', () => {
         adaptiveCard: {body: [{text: sentinels[3]}]},
       };
       const receiverHandler = jest.fn();
+      const observedOrder: string[] = [];
       let publishedTask: Task | undefined;
       let receiverEmitSpy: jest.SpyInstance | undefined;
 
@@ -1657,7 +1658,11 @@ describe('webex.cc', () => {
       harness.taskManager.on(TASK_EVENTS.TASK_INCOMING, (task: Task) => {
         publishedTask = task;
         receiverEmitSpy = jest.spyOn(task, 'emit');
-        task.on(TASK_EVENTS.TASK_MID_CALL_SUMMARY_RECEIVED, receiverHandler);
+        task.on(TASK_EVENTS.TASK_ASSIGNED, () => observedOrder.push('answered'));
+        task.on(TASK_EVENTS.TASK_MID_CALL_SUMMARY_RECEIVED, (payload) => {
+          observedOrder.push('receiver-summary');
+          receiverHandler(payload);
+        });
       });
 
       emitTaskLifecycleEvent(harness, CC_EVENTS.AGENT_CONTACT_RESERVED, {
@@ -1667,6 +1672,15 @@ describe('webex.cc', () => {
 
       expect(publishedTask).toBe(harness.taskManager.getTask(interactionId));
       expect(publishedTask).toBeInstanceOf(Task);
+      expect(receiverHandler).not.toHaveBeenCalled();
+      expect(harness.getSummaryMapCounts().receiving).toBe(1);
+
+      emitTaskLifecycleEvent(harness, CC_EVENTS.AGENT_CONTACT_ASSIGNED, {
+        interactionId,
+        conversationId,
+      });
+
+      expect(observedOrder).toEqual(['answered', 'receiver-summary']);
       expect(receiverHandler).toHaveBeenCalledTimes(1);
       expect(receiverHandler).toHaveBeenCalledWith(receivingPayload);
       expect(
