@@ -105,7 +105,7 @@
       "path": "src",
       "canonical_spec": "src/docs/README.md",
       "coverage_status": "Partial",
-      "coverage_evidence": "Field coverage 93.3% (14/15) assessed 2026-10-07 by the generator; critical field coverage 8/8. The one WEAK field is test strategy: test/unit/spec/llm.js covers register and connect, timing, accessors, owner setters, refresh handlers, multi-session disconnect, and URL lookup, but the plugin registration, clearDatachannelToken, refused-owner token and refresh-handler calls, INV-003 (tokens survive disconnect), INV-005 (config defaults), and suffixed event names have no test, two disconnectLLM cases exercise a stand-in object instead of LLMChannel, test:browser collects no files, and no characterization baseline exists. Independent validation has not run. Held at Partial: no characterization baseline and no spec-drift record exist yet.",
+      "coverage_evidence": "Field coverage 93.3% (14/15) assessed 2026-10-07 by the generator; critical field coverage 8/8. The one WEAK field is test strategy: test/unit/spec/llm.js covers register and connect, timing, accessors, owner setters, refresh handlers, multi-session disconnect, and URL lookup, but the plugin registration, clearDatachannelToken, refused-owner token and refresh-handler calls, INV-003 (tokens survive disconnect), INV-005 (config defaults), and suffixed event names have no test, two disconnectLLM cases exercise a stand-in object instead of LLMChannel, test:browser collects no files, and no characterization baseline exists. Independent validation passed with warnings on 2026-10-07. Held at Partial: no characterization baseline and no spec-drift record exist yet.",
       "last_assessed": "2026-10-07",
       "contracts": {
         "provides": [
@@ -211,6 +211,10 @@
     "generator_model": "claude-opus-5-5",
     "generator_runtime_source": "host-metadata",
     "generator_run_id": "spark-853121-llm-sdd-stage0-2026-10-07",
+    "validator_runtime": "current-session",
+    "validator_runtime_source": "invocation-input",
+    "runtime_fallback_tier": "different-runtime",
+    "source_commit": "22b5a650d22ad9efca14cfc73055bb2ed90e823c",
     "minimum_independence": "different-runtime",
     "blocking_severities": [
       "Blocking"

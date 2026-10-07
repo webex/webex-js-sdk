@@ -9,8 +9,8 @@ doc_kind: module-spec
 generated_from: module-spec@0.3.0
 generated_by: claude-cowork
 approved_by: akulakum@cisco.com
-updated_at: 2026-10-07T06:33:15Z
-validation_status: not-run
+updated_at: 2026-10-07T07:05:22Z
+validation_status: pass-with-warnings
 -->
 
 # LLM channel plugin
@@ -36,7 +36,7 @@ Related context: [documentation index](../../docs/index.md) ·
 | Parent spec       | — |
 | Doc kind          | Module spec |
 | Coverage score    | 93.3% assessed 2026-10-07 — 14 of 15 mandatory fields PRESENT, critical 8 of 8; test strategy is WEAK because registration, `clearDatachannelToken`, refused-owner token and handler calls, `INV-003`, `INV-005`, and suffixed events are untested, two disconnect cases use a stand-in object, and no characterization baseline exists |
-| Validation status | not-run; independent spec-validator pending |
+| Validation status | pass-with-warnings; assessed 2026-10-07 by current-session |
 
 ## Applicability
 
