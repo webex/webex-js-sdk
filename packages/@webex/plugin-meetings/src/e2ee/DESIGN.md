@@ -437,10 +437,12 @@ entry when present (libe2ee sorts successful X.509 results first, but consumers 
 displayed identity status. UCF treats Webex user and machine identities as verified, partner
 verified identities as partner-verified, and anonymous identities as unverified. If no X.509
 result succeeded, UCF falls back to the first X.509 result and displays its failure status. This
-selection is per device. The current `Member.e2eeVerificationState` separately aggregates device
-results and considers only an overall `Success` verified. To make that member-level summary match
-UCF, an app should first derive each device's display status using the selected identity result and
-identity type, then aggregate those derived per-device statuses across the Webex `Member`'s devices.
+selection is per device. `Member.e2eeVerificationState` derives each device's identity status from
+the selected result and leaf identity type, then aggregates those device states across the Webex
+`Member`'s devices. Devices with no X.509 result or an unrecognized identity type are `unknown`; if
+all devices are unknown, the member state is `unknown`. If no device is verified and at least one
+is known to be unverified, the member state is `unverified`. A mix of verified and
+non-verified/unknown devices is `partiallyVerified`.
 
 The `E2eeMeeting` facade creates the reconciler in its **constructor** (gated on
 `config.enableE2ee`) and registers the processor there, so member verification is stamped for the

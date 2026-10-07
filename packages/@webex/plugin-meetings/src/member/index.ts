@@ -2,7 +2,7 @@
  * Copyright (c) 2015-2020 Cisco Systems, Inc. See LICENSE file.
  */
 import {MEETINGS, _IN_LOBBY_, _NOT_IN_MEETING_, _IN_MEETING_, _OBSERVE_} from '../constants';
-import {E2eeValidationResult} from '../e2ee/types';
+import {E2eeIdentityType, E2eeValidationResult} from '../e2ee/types';
 import type {E2eeDeviceVerification, E2eeMemberVerificationState} from '../e2ee/types';
 import {IExternalRoles, IMediaStatus, Participant, ParticipantUrl} from './types';
 
@@ -589,9 +589,9 @@ export default class Member {
   }
 
   /**
-   * Recomputes the aggregate E2EE verification state from the per-device verifications:
-   * `verified` (all devices verified), `unverified` (none), `partiallyVerified` (some), or
-   * `unknown` (no devices present in the MLS roster yet).
+   * Recomputes the aggregate E2EE verification state from the per-device X.509 identity results.
+   * A successful X.509 result is classified by its leaf identity type, matching UCF's per-device
+   * identity display; the resulting device states are then aggregated across this Member's devices.
    * @returns {undefined}
    * @private
    * @memberof Member
@@ -605,16 +605,61 @@ export default class Member {
       return;
     }
 
-    const verifiedCount = verifications.filter(
-      (verification) => verification.validationResult === E2eeValidationResult.Success
-    ).length;
+    const deviceStates = verifications.map((verification) =>
+      this.getE2eeDeviceVerificationState(verification)
+    );
+    const verifiedCount = deviceStates.filter((state) => state === 'verified').length;
 
-    if (verifiedCount === verifications.length) {
+    if (verifiedCount === deviceStates.length) {
       this.e2eeVerificationState = 'verified';
     } else if (verifiedCount === 0) {
-      this.e2eeVerificationState = 'unverified';
+      this.e2eeVerificationState = deviceStates.every((state) => state === 'unknown')
+        ? 'unknown'
+        : 'unverified';
     } else {
       this.e2eeVerificationState = 'partiallyVerified';
+    }
+  }
+
+  /**
+   * Derives the identity status for one device using the same X.509 result selection and identity
+   * type rules as UCF. `validationResult` is the aggregate credential result, so it is not enough
+   * to classify MultiCredential identities on its own.
+   * @param {E2eeDeviceVerification} verification
+   * @returns {'verified' | 'unverified' | 'unknown'}
+   * @private
+   * @memberof Member
+   */
+  private getE2eeDeviceVerificationState(
+    verification: E2eeDeviceVerification
+  ): 'verified' | 'unverified' | 'unknown' {
+    const identityResults = verification.identityResults ?? [];
+
+    if (identityResults.length === 0) {
+      return 'unknown';
+    }
+
+    const identityResult =
+      identityResults.find((result) => result.result === E2eeValidationResult.Success) ??
+      identityResults[0];
+
+    if (!identityResult) {
+      return 'unknown';
+    }
+
+    if (identityResult.result !== E2eeValidationResult.Success) {
+      return 'unverified';
+    }
+
+    switch (identityResult.certificateChain[0]?.identityType) {
+      case E2eeIdentityType.WebexMachineIdentity:
+      case E2eeIdentityType.WebexUserIdentity:
+      case E2eeIdentityType.ExternalVerifiedIdentity:
+        return 'verified';
+      case E2eeIdentityType.WebexAnonymousIdentity:
+        return 'unverified';
+      default:
+        return 'unknown';
     }
   }
 

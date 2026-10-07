@@ -49,9 +49,10 @@ export interface SframeParams {
 }
 
 /**
- * Identity-validation outcome for an MLS roster member. Mirrors (by ordinal) the C++
+ * Credential-validation outcome for an MLS roster member. Mirrors (by ordinal) the C++
  * `RosterStatus::ValidationResult` enum in libe2ee (`common/include/e2ee_common/types.h`) — keep
- * the two in sync. `Success` means the member's identity is verified.
+ * the two in sync. For MultiCredential, `PartialSuccess` means at least one credential passed and
+ * at least one failed; X.509 identity verification is derived from the individual X.509 results.
  */
 export const E2eeValidationResult = {
   Success: 0,
@@ -72,6 +73,19 @@ export const E2eeValidationResult = {
 
 export type E2eeValidationResult = Enum<typeof E2eeValidationResult>;
 
+/**
+ * Identity type attached to the leaf X.509 certificate. Mirrors the C++ `IdentityType` enum in
+ * libe2ee (`common/include/e2ee_common/types.h`) — keep the ordinals in sync.
+ */
+export const E2eeIdentityType = {
+  WebexAnonymousIdentity: 0,
+  WebexMachineIdentity: 1,
+  WebexUserIdentity: 2,
+  ExternalVerifiedIdentity: 3,
+} as const;
+
+export type E2eeIdentityType = Enum<typeof E2eeIdentityType>;
+
 /** Parsed X.509 certificate details from a member's certificate chain. */
 export interface E2eeCertificateInfo {
   primaryName: string;
@@ -83,7 +97,7 @@ export interface E2eeCertificateInfo {
   notAfter: number;
   signatureAlgorithm: string;
   publicKeyAlgorithm: string;
-  identityType?: number;
+  identityType?: E2eeIdentityType;
   der: Uint8Array;
 }
 

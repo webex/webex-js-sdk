@@ -16,12 +16,17 @@ describe('plugin-meetings', () => {
     const makeMember = (id, deviceUrls) =>
       new Member({id, controls: {}, status: {}, devices: deviceUrls.map((url) => ({url}))});
 
-    const rosterMember = (url, validationResult, identityResults) => ({
+    const rosterMember = (url, validationResult, identityResults = [
+      {
+        result: validationResult === 1 ? 2 : validationResult,
+        certificateChain: validationResult === 0 ? [{identityType: 2}] : [],
+      },
+    ]) => ({
       url,
       displayName: 'Alice',
       deviceType: 'WEB',
       validationResult,
-      ...(identityResults && {identityResults}),
+      identityResults,
     });
 
     // Adds a member to the collection and stamps it via the Members processor path.
@@ -152,6 +157,7 @@ describe('plugin-meetings', () => {
         validationResult: 0,
         displayName: 'Alice',
         deviceType: 'WEB',
+        identityResults: [{result: 0, certificateChain: [{identityType: 2}]}],
       });
       assert.equal(reconciler.getDeviceVerification('device-b').validationResult, 5);
       assert.isUndefined(reconciler.getDeviceVerification('device-missing'));

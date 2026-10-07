@@ -7,7 +7,7 @@ import * as asn1js from 'asn1js';
 import * as pkijs from 'pkijs';
 import {assert} from '@webex/test-helper-chai';
 
-import {generateCsrWithPkijs, pemToArrayBuffer, pemToArrayBuffers} from '../../../src/utils';
+import {generateCsrWithPkijs, pemToUint8Array, pemToUint8Arrays} from '../../../src/utils';
 
 describe('identity utils', () => {
   describe('generateCsrWithPkijs', () => {
@@ -25,15 +25,15 @@ describe('identity utils', () => {
     });
   });
 
-  describe('pemToArrayBuffer', () => {
+  describe('pemToUint8Array', () => {
     it('decodes one PEM certificate block to DER bytes', () => {
       const pem = '-----BEGIN CERTIFICATE-----\nQU\nJD\n-----END CERTIFICATE-----';
 
-      assert.deepEqual(Array.from(new Uint8Array(pemToArrayBuffer(pem))), [65, 66, 67]);
+      assert.deepEqual(Array.from(pemToUint8Array(pem)), [65, 66, 67]);
     });
   });
 
-  describe('pemToArrayBuffers', () => {
+  describe('pemToUint8Arrays', () => {
     it('decodes each certificate in a concatenated PEM chain', () => {
       const pem = [
         '-----BEGIN CERTIFICATE-----\nQUJD\n-----END CERTIFICATE-----',
@@ -41,7 +41,7 @@ describe('identity utils', () => {
       ].join('\n');
 
       assert.deepEqual(
-        pemToArrayBuffers(pem).map((certificate) => Array.from(new Uint8Array(certificate))),
+        pemToUint8Arrays(pem).map((certificate) => Array.from(certificate)),
         [
           [65, 66, 67],
           [68, 69, 70],
@@ -50,7 +50,7 @@ describe('identity utils', () => {
     });
 
     it('returns an empty chain when the response has no certificate blocks', () => {
-      assert.deepEqual(pemToArrayBuffers('no certificates'), []);
+      assert.deepEqual(pemToUint8Arrays('no certificates'), []);
     });
   });
 });

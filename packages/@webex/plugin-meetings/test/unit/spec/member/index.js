@@ -114,11 +114,17 @@ describe('member', () => {
   });
 
   describe('e2ee verification', () => {
-    const makeVerification = (deviceUrl, verified) => ({
+    const makeVerification = (deviceUrl, verified, validationResult = verified ? 0 : 1) => ({
       deviceUrl,
-      validationResult: verified ? 0 : 1,
+      validationResult,
       displayName: 'Alice',
       deviceType: 'WEB',
+      identityResults: [
+        {
+          result: verified ? 0 : 2,
+          certificateChain: verified ? [{identityType: 2}] : [],
+        },
+      ],
     });
 
     it('defaults to an empty verification map and unknown state', () => {
@@ -175,20 +181,24 @@ describe('member', () => {
     describe('per-device set/remove', () => {
       it('upserts a single device verification and returns true when it changes', () => {
         const freshMember = new Member({controls: {}, status: {}});
-        const verification = makeVerification('device-a', true);
+        const verification = makeVerification('device-a', true, 1);
 
         assert.isTrue(freshMember.setE2eeDeviceVerification('device-a', verification));
         assert.deepEqual(freshMember.getE2eeDeviceVerification('device-a'), verification);
+        assert.equal(freshMember.getE2eeDeviceVerification('device-a').validationResult, 1);
         assert.equal(freshMember.e2eeVerificationState, 'verified');
       });
 
       it('keeps other devices when upserting one', () => {
         const freshMember = new Member({controls: {}, status: {}});
-        freshMember.setE2eeDeviceVerification('device-a', makeVerification('device-a', true));
+        freshMember.setE2eeDeviceVerification(
+          'device-a',
+          makeVerification('device-a', true, 1)
+        );
 
         freshMember.setE2eeDeviceVerification('device-b', makeVerification('device-b', false));
 
-        assert.equal(freshMember.getE2eeDeviceVerification('device-a').validationResult, 0);
+        assert.equal(freshMember.getE2eeDeviceVerification('device-a').validationResult, 1);
         assert.equal(freshMember.getE2eeDeviceVerification('device-b').validationResult, 1);
         assert.equal(freshMember.e2eeVerificationState, 'partiallyVerified');
       });

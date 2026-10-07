@@ -2,7 +2,7 @@
  * Copyright (c) 2015-2026 Cisco Systems, Inc. See LICENSE file.
  */
 
-import type {E2eeValidationResult} from './types';
+import type {E2eeIdentityType, E2eeValidationResult} from './types';
 
 /**
  * Raw WebAssembly (WebE2EE) boundary types. These mirror the emscripten-generated MLS engine API
@@ -65,7 +65,7 @@ export interface CertificateInfo {
   not_after: number;
   signature_algorithm: string;
   public_key_algorithm: string;
-  identity_type?: number;
+  identity_type?: E2eeIdentityType;
   der: Uint8Array;
 }
 
