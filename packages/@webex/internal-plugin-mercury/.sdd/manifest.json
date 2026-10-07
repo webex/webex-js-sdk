@@ -105,7 +105,7 @@
       "path": "src",
       "canonical_spec": "src/docs/README.md",
       "coverage_status": "Partial",
-      "coverage_evidence": "Field coverage 93.3% (14/15) assessed 2026-10-06 by the generator; critical field coverage 8/8. The one WEAK field is test strategy: test/unit/spec/mercury.js and test/unit/spec/mercury-events.js cover connect, retries, failure classes, URL preparation, close codes, routing, logout, disconnect, and switchover, but the forced-close reconnect after disconnect, the real _prepareAndOpenSocket path during switchover, the accessors other than getLastError, INV-001 (session-suffixed event names), the sockets-map deletion by a non-active close, INV-004 (1006 suppression), and INV-005 (config defaults) have no test, and no characterization baseline exists. Held at Partial: independent validation has not run and no spec-drift record exists yet.",
+      "coverage_evidence": "Field coverage 93.3% (14/15) assessed 2026-10-06 by the generator; critical field coverage 8/8. The one WEAK field is test strategy: test/unit/spec/mercury.js and test/unit/spec/mercury-events.js cover connect, retries, failure classes, URL preparation, close codes, routing, logout, disconnect, and switchover, but the forced-close reconnect after disconnect, the real _prepareAndOpenSocket path during switchover, the accessors other than getLastError, INV-001 (session-suffixed event names), the sockets-map deletion by a non-active close, INV-004 (1006 suppression), and INV-005 (config defaults) have no test, and no characterization baseline exists. Independent validation (spec-validator, runtime current-session) returned pass-with-warnings on 2026-10-07 with 0 Blocking. Held at Partial: no characterization baseline and no spec-drift record exist yet.",
       "last_assessed": "2026-10-06",
       "contracts": {
         "provides": [
@@ -151,7 +151,7 @@
       "path": "src/socket",
       "canonical_spec": "src/socket/docs/README.md",
       "coverage_status": "Partial",
-      "coverage_evidence": "Field coverage 93.3% (14/15) assessed 2026-10-06 by the generator; critical field coverage 8/8. The one WEAK field is test strategy: test/unit/spec/socket.js covers open validation, error mapping, authorization, acks, sequence numbers, ping/pong, send, and close, but the Node and browser constructor hooks, the 1005 to UnknownResponse mapping, and a non-readiness first message have no test, and no characterization baseline exists. Held at Partial: independent validation has not run and no spec-drift record exists yet.",
+      "coverage_evidence": "Field coverage 93.3% (14/15) assessed 2026-10-06 by the generator; critical field coverage 8/8. The one WEAK field is test strategy: test/unit/spec/socket.js covers open validation, error mapping, authorization, acks, sequence numbers, ping/pong, send, and close, but the Node and browser constructor hooks, the 1005 to UnknownResponse mapping, and a non-readiness first message have no test, and no characterization baseline exists. Independent validation (spec-validator, runtime current-session) returned pass-with-warnings on 2026-10-07 with 0 Blocking. Held at Partial: no characterization baseline and no spec-drift record exist yet.",
       "last_assessed": "2026-10-06",
       "contracts": {
         "provides": [

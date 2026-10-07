@@ -9,7 +9,7 @@ doc_kind: standing-doc
 generated_from: spec-index@0.3.0
 generated_by: claude-cowork
 approved_by: akulakum@cisco.com
-updated_at: 2026-10-07T00:19:43Z
+updated_at: 2026-10-07T00:24:39Z
 validation_status: pass-with-warnings
 -->
 
@@ -49,7 +49,7 @@ package is a library published to npm, so that artifact is omitted in `.sdd/mani
 | `src/` | Mercury sessions, reconnect policy, envelope routing, and shutdown switchover | Partial | `src/docs/README.md` |
 | ↳ `src/socket/` | One WebSocket connection: handshake, keepalive, acks, and close codes | Partial | `src/socket/docs/README.md` |
 
-Generator-side field measurement is complete. Field coverage measured 2026-10-06 is 93.3% across both modules (28 of 30 mandatory fields PRESENT; `src` 14 of 15, `src/socket` 14 of 15). Critical fields are 16 of 16 PRESENT. The WEAK field in each module is test strategy: untested paths are listed in each spec's Verification section, and no characterization baseline exists. Coverage state stays `Partial` until independent validation runs and a spec-drift record exists.
+Generator-side field measurement is complete. Field coverage measured 2026-10-06 is 93.3% across both modules (28 of 30 mandatory fields PRESENT; `src` 14 of 15, `src/socket` 14 of 15). Critical fields are 16 of 16 PRESENT. The WEAK field in each module is test strategy: untested paths are listed in each spec's Verification section, and no characterization baseline exists. Independent validation returned pass-with-warnings on 2026-10-07 with 0 Blocking. Coverage state stays `Partial` until a characterization baseline and a spec-drift record exist.
 
 ## Change and verification routing
 
