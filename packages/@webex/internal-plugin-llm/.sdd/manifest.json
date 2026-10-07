@@ -70,6 +70,12 @@
       "version": "^2.7.1",
       "origin": "repo-config",
       "source_file": "package.json"
+    },
+    {
+      "name": "sinon",
+      "version": "^9.2.4",
+      "origin": "repo-config",
+      "source_file": "package.json"
     }
   ],
   "tests": {
