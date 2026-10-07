@@ -1,0 +1,606 @@
+{
+  "manifest_version": 1,
+  "repository": {
+    "name": "@webex/webex-core",
+    "purpose": "Core library of the Cisco Webex JS SDK: the plugin host and WebexCore class, the HTTP interceptor pipeline, OAuth credentials and token lifecycle, U2C service discovery (v1 and opt-in v2), and the pluggable storage layer that every other SDK plugin builds on.",
+    "category": "cat2-legacy",
+    "primary_languages": [
+      "javascript",
+      "typescript"
+    ]
+  },
+  "topology": "Single-repo",
+  "commands": {
+    "install": {
+      "command": "yarn install",
+      "source_file": "package.json",
+      "role": "install"
+    },
+    "compile": {
+      "command": "yarn workspace @webex/webex-core build:src",
+      "source_file": "package.json",
+      "role": "compile"
+    },
+    "build": {
+      "command": "yarn workspace @webex/webex-core build",
+      "source_file": "package.json",
+      "role": "build"
+    },
+    "unit-test": {
+      "command": "yarn workspace @webex/webex-core test:unit",
+      "source_file": "package.json",
+      "role": "unit-test"
+    },
+    "integration-test": {
+      "command": "yarn workspace @webex/webex-core test:integration",
+      "source_file": "package.json",
+      "role": "integration-test"
+    },
+    "browser-test": {
+      "command": "yarn workspace @webex/webex-core test:browser",
+      "source_file": "package.json",
+      "role": "other"
+    },
+    "lint": {
+      "command": "yarn workspace @webex/webex-core test:style",
+      "source_file": "package.json",
+      "role": "lint"
+    },
+    "test-all": {
+      "command": "yarn workspace @webex/webex-core test",
+      "source_file": "package.json",
+      "role": "other"
+    },
+    "deploy": {
+      "command": "yarn workspace @webex/webex-core deploy:npm",
+      "source_file": "package.json",
+      "role": "deploy"
+    }
+  },
+  "toolchain": [
+    {
+      "name": "node",
+      "version": ">=18",
+      "origin": "repo-config",
+      "source_file": "package.json"
+    }
+  ],
+  "tests": {
+    "unit": {
+      "command_ref": "unit-test",
+      "dir": "test/unit",
+      "framework": "jest"
+    },
+    "integration": {
+      "command_ref": "integration-test",
+      "dir": "test/integration",
+      "framework": "mocha",
+      "external_deps": [
+        "provisioned Webex test users via @webex/test-helper-test-users",
+        "live Webex U2C and identity-broker services",
+        "local fixture server via @webex/test-helper-make-local-url"
+      ]
+    }
+  },
+  "quality_gates": {
+    "code_coverage": {
+      "origin": "none",
+      "declared_by": "rsarika@cisco.com via bootstrap questionnaire"
+    }
+  },
+  "coverage_status_definitions": {
+    "specced": ">=80% public surface specced, drift <5% - spec is authoritative",
+    "partial": "40-80% specced - spec is a hint, cross-check code",
+    "untracked": "<40% specced - code is the source of truth"
+  },
+  "modules": [
+    {
+      "path": "src",
+      "coverage_status": "Partial",
+      "coverage_evidence": "Generator-side field measurement 15/16 (93.8%), critical 8/8; thin tests: 5 of 23 requirement rows untested (config overrides, proxies), no characterization baseline. Independent validation completed 2026-10-07 with warnings; drift remains unmeasured, so Partial only. Validator status: Pass with warnings; 0 Blocking, 8 Important, 3 Medium findings.",
+      "canonical_spec": "src/docs/README.md",
+      "contracts": {
+        "provides": [
+          "webex-core-sdk"
+        ],
+        "requires": [
+          "http-core-sdk",
+          "webex-common-js-api",
+          "ampersand-state-library",
+          "storage-adapter-spec-suite",
+          "webex-core-interceptors",
+          "webex-core-credentials",
+          "webex-core-services",
+          "webex-core-services-v2",
+          "webex-core-storage"
+        ]
+      },
+      "last_assessed": "2026-10-07",
+      "section_profile": {
+        "has_tiers": false,
+        "has_ui": false,
+        "crosses_service_boundaries": true,
+        "holds_client_state": true,
+        "enforces_domain_rules": true,
+        "is_concurrent_async": true,
+        "owns_persistence": false,
+        "stateful_transitions": true,
+        "exposes_wire_protocol": false,
+        "ui_multi_screen": false,
+        "large_data_model": false,
+        "returns_caller_errors": true,
+        "module_specific_conventions": true,
+        "published_package": true,
+        "embedded_in_host": false,
+        "has_design_tradeoff": true,
+        "resolved_by": "claude-code/claude-sonnet-5-5 (host metadata; bootstrap questionnaire)",
+        "resolved_at": "2026-10-07T11:00:00Z",
+        "has_submodules": true,
+        "has_submodules_computed_by": "scripts/module_tree.py",
+        "has_submodules_computed_at": "2026-10-07T11:58:25Z"
+      }
+    },
+    {
+      "path": "src/interceptors",
+      "coverage_status": "Partial",
+      "coverage_evidence": "Generator-side field measurement 15/16 (93.8%), critical 8/8; thin tests: 6 of 28 rows untested, 10 lack negative-path evidence, no characterization baseline. Independent validation completed 2026-10-07 with warnings; drift remains unmeasured, so Partial only. Validator status: Pass with warnings; 0 Blocking, 8 Important, 3 Medium findings.",
+      "canonical_spec": "src/interceptors/docs/README.md",
+      "contracts": {
+        "provides": [
+          "webex-core-interceptors"
+        ],
+        "requires": [
+          "http-core-sdk",
+          "webex-common-js-api",
+          "webex-core-credentials",
+          "webex-core-services",
+          "idbroker-oauth-service"
+        ]
+      },
+      "last_assessed": "2026-10-07",
+      "section_profile": {
+        "has_tiers": false,
+        "has_ui": false,
+        "crosses_service_boundaries": true,
+        "holds_client_state": true,
+        "enforces_domain_rules": true,
+        "is_concurrent_async": true,
+        "owns_persistence": false,
+        "stateful_transitions": false,
+        "exposes_wire_protocol": true,
+        "ui_multi_screen": false,
+        "large_data_model": false,
+        "returns_caller_errors": true,
+        "module_specific_conventions": true,
+        "published_package": true,
+        "embedded_in_host": false,
+        "has_design_tradeoff": true,
+        "resolved_by": "claude-code/claude-sonnet-5-5 (host metadata; bootstrap questionnaire)",
+        "resolved_at": "2026-10-07T11:00:00Z",
+        "has_submodules": false,
+        "has_submodules_computed_by": "scripts/module_tree.py",
+        "has_submodules_computed_at": "2026-10-07T11:58:25Z"
+      }
+    },
+    {
+      "path": "src/lib/credentials",
+      "coverage_status": "Partial",
+      "coverage_evidence": "Generator-side field measurement 15/16 (93.8%), critical 8/8; thin tests: 6 of 43 rows untested, 25 lack negative-path evidence, no characterization baseline. Independent validation completed 2026-10-07 with warnings; drift remains unmeasured, so Partial only. Validator status: Pass with warnings; 0 Blocking, 8 Important, 3 Medium findings.",
+      "canonical_spec": "src/lib/credentials/docs/README.md",
+      "contracts": {
+        "provides": [
+          "webex-core-credentials"
+        ],
+        "requires": [
+          "http-core-sdk",
+          "webex-common-js-api",
+          "common-timers-sdk",
+          "idbroker-oauth-service",
+          "ampersand-state-library",
+          "webex-core-storage"
+        ]
+      },
+      "last_assessed": "2026-10-07",
+      "section_profile": {
+        "has_tiers": false,
+        "has_ui": false,
+        "crosses_service_boundaries": true,
+        "holds_client_state": true,
+        "enforces_domain_rules": true,
+        "is_concurrent_async": true,
+        "owns_persistence": true,
+        "stateful_transitions": true,
+        "exposes_wire_protocol": true,
+        "ui_multi_screen": false,
+        "large_data_model": false,
+        "returns_caller_errors": true,
+        "module_specific_conventions": true,
+        "published_package": true,
+        "embedded_in_host": false,
+        "has_design_tradeoff": true,
+        "resolved_by": "claude-code/claude-sonnet-5-5 (host metadata; bootstrap questionnaire)",
+        "resolved_at": "2026-10-07T11:00:00Z",
+        "has_submodules": false,
+        "has_submodules_computed_by": "scripts/module_tree.py",
+        "has_submodules_computed_at": "2026-10-07T11:58:25Z"
+      }
+    },
+    {
+      "path": "src/lib/services",
+      "coverage_status": "Partial",
+      "coverage_evidence": "Generator-side field measurement 16/16 (100%), critical 8/8; tests map 17 of 18 rows; no characterization baseline. Independent validation completed 2026-10-07 with warnings; drift remains unmeasured, so Partial only. Validator status: Pass with warnings; 0 Blocking, 8 Important, 3 Medium findings.",
+      "canonical_spec": "src/lib/services/docs/README.md",
+      "contracts": {
+        "provides": [
+          "webex-core-services"
+        ],
+        "requires": [
+          "http-core-sdk",
+          "webex-core-credentials",
+          "u2c-service",
+          "idbroker-oauth-service",
+          "ampersand-state-library"
+        ]
+      },
+      "last_assessed": "2026-10-07",
+      "section_profile": {
+        "has_tiers": false,
+        "has_ui": false,
+        "crosses_service_boundaries": true,
+        "holds_client_state": true,
+        "enforces_domain_rules": true,
+        "is_concurrent_async": true,
+        "owns_persistence": true,
+        "stateful_transitions": true,
+        "exposes_wire_protocol": false,
+        "ui_multi_screen": false,
+        "large_data_model": false,
+        "returns_caller_errors": true,
+        "module_specific_conventions": true,
+        "published_package": true,
+        "embedded_in_host": false,
+        "has_design_tradeoff": true,
+        "resolved_by": "claude-code/claude-sonnet-5-5 (host metadata; bootstrap questionnaire)",
+        "resolved_at": "2026-10-07T11:00:00Z",
+        "has_submodules": false,
+        "has_submodules_computed_by": "scripts/module_tree.py",
+        "has_submodules_computed_at": "2026-10-07T11:58:25Z"
+      }
+    },
+    {
+      "path": "src/lib/services-v2",
+      "coverage_status": "Partial",
+      "coverage_evidence": "Generator-side field measurement 16/16 (100%), critical 8/8; tests map 18 of 20 rows; no characterization baseline. Independent validation completed 2026-10-07 with warnings; drift remains unmeasured, so Partial only. Validator status: Pass with warnings; 0 Blocking, 8 Important, 3 Medium findings.",
+      "canonical_spec": "src/lib/services-v2/docs/README.md",
+      "contracts": {
+        "provides": [
+          "webex-core-services-v2"
+        ],
+        "requires": [
+          "http-core-sdk",
+          "u2c-service",
+          "idbroker-oauth-service",
+          "ampersand-state-library",
+          "webex-core-credentials",
+          "webex-core-services"
+        ]
+      },
+      "last_assessed": "2026-10-07",
+      "section_profile": {
+        "has_tiers": false,
+        "has_ui": false,
+        "crosses_service_boundaries": true,
+        "holds_client_state": true,
+        "enforces_domain_rules": true,
+        "is_concurrent_async": true,
+        "owns_persistence": true,
+        "stateful_transitions": true,
+        "exposes_wire_protocol": false,
+        "ui_multi_screen": false,
+        "large_data_model": false,
+        "returns_caller_errors": true,
+        "module_specific_conventions": true,
+        "published_package": true,
+        "embedded_in_host": false,
+        "has_design_tradeoff": true,
+        "resolved_by": "claude-code/claude-sonnet-5-5 (host metadata; bootstrap questionnaire)",
+        "resolved_at": "2026-10-07T11:00:00Z",
+        "has_submodules": false,
+        "has_submodules_computed_by": "scripts/module_tree.py",
+        "has_submodules_computed_at": "2026-10-07T11:58:25Z"
+      }
+    },
+    {
+      "path": "src/lib/storage",
+      "coverage_status": "Partial",
+      "coverage_evidence": "Generator-side field measurement 15/16 (93.8%), critical 8/8; thin tests: 10 of 23 rows untested incl. error paths, no characterization baseline. Independent validation completed 2026-10-07 with warnings; drift remains unmeasured, so Partial only. Validator status: Pass with warnings; 0 Blocking, 8 Important, 3 Medium findings.",
+      "canonical_spec": "src/lib/storage/docs/README.md",
+      "contracts": {
+        "provides": [
+          "webex-core-storage"
+        ],
+        "requires": [
+          "webex-common-js-api",
+          "ampersand-state-library",
+          "storage-adapter-spec-suite"
+        ]
+      },
+      "last_assessed": "2026-10-07",
+      "section_profile": {
+        "has_tiers": false,
+        "has_ui": false,
+        "crosses_service_boundaries": false,
+        "holds_client_state": true,
+        "enforces_domain_rules": true,
+        "is_concurrent_async": true,
+        "owns_persistence": true,
+        "stateful_transitions": true,
+        "exposes_wire_protocol": false,
+        "ui_multi_screen": false,
+        "large_data_model": false,
+        "returns_caller_errors": true,
+        "module_specific_conventions": true,
+        "published_package": true,
+        "embedded_in_host": false,
+        "has_design_tradeoff": true,
+        "resolved_by": "claude-code/claude-sonnet-5-5 (host metadata; bootstrap questionnaire)",
+        "resolved_at": "2026-10-07T11:00:00Z",
+        "has_submodules": false,
+        "has_submodules_computed_by": "scripts/module_tree.py",
+        "has_submodules_computed_at": "2026-10-07T11:58:25Z"
+      }
+    }
+  ],
+  "contract_catalog": {
+    "index_path": "docs/architecture.md",
+    "definitions": {
+      "webex-core-sdk": {
+        "kind": "sdk",
+        "publication": "published",
+        "source_kind": "repository-path",
+        "source": "package.json",
+        "summary": "Published npm entry declared by main and devMain (src/index.js): the default WebexCore class, registerPlugin and registerInternalPlugin, the plugin base classes, Batcher, Page, WebexHttpError, the default config object, and re-exports of the child module surfaces. Per-export detail lives in the src module spec Public surface."
+      },
+      "webex-core-interceptors": {
+        "kind": "sdk",
+        "publication": "published",
+        "source_kind": "repository-path",
+        "source": "package.json",
+        "summary": "Sixteen request/response Interceptor subclasses re-exported by the package entry (auth, catalog-url, default-options, embargo, network-timing, payload-transformer, proxy, rate-limit, redirect, request-event, request-logger, request-timing, response-logger, user-agent, webex-tracking-id, webex-user-agent) plus the webexTrackingIdSequenceNumbers counter map. Native declaration: src/index.js (re-exported by the package entry point declared in package.json)."
+      },
+      "webex-core-credentials": {
+        "kind": "sdk",
+        "publication": "published",
+        "source_kind": "repository-path",
+        "source": "package.json",
+        "summary": "Credentials plugin, Token, grantErrors, filterScope and sortScope: OAuth supertoken and scoped user-token lifecycle, refresh, downscope, revoke and login/logout URL building. Native declaration: src/lib/credentials/index.js (re-exported by the package entry point declared in package.json)."
+      },
+      "webex-core-services": {
+        "kind": "sdk",
+        "publication": "published",
+        "source_kind": "repository-path",
+        "source": "package.json",
+        "summary": "v1 services plugin and its ServiceCatalog, ServiceRegistry, ServiceState, ServiceHost and ServiceUrl classes, plus the ServiceInterceptor, HostMapInterceptor and ServerErrorInterceptor: U2C catalog collection, name/URL resolution and host failover. Native declaration: src/lib/services/index.js (re-exported by the package entry point declared in package.json)."
+      },
+      "webex-core-services-v2": {
+        "kind": "sdk",
+        "publication": "published",
+        "source_kind": "repository-path",
+        "source": "package.json",
+        "summary": "Opt-in v2 services plugin: ServicesV2, ServiceCatalogV2 and ServiceDetail over the U2CV2 hostmap. Not registered by default; a host must register it with replace. Native declaration: src/lib/services-v2/index.ts (re-exported by the package entry point declared in package.json)."
+      },
+      "webex-core-storage": {
+        "kind": "sdk",
+        "publication": "published",
+        "source_kind": "repository-path",
+        "source": "package.json",
+        "summary": "persist and waitForValue decorators, makeWebexStore, makeWebexPluginStore, MemoryStoreAdapter, StorageError and NotFoundError: the pluggable bounded/unbounded storage layer. Native declaration: src/lib/storage/index.js (re-exported by the package entry point declared in package.json)."
+      },
+      "http-core-sdk": {
+        "kind": "sdk",
+        "publication": "published",
+        "source_kind": "external",
+        "source": "@webex/http-core workspace package; module spec packages/@webex/http-core/src/docs/README.md",
+        "summary": "Promise-based HTTP client, the Interceptor base class and the HttpError taxonomy that webex-core builds its request pipeline on."
+      },
+      "webex-common-js-api": {
+        "kind": "sdk",
+        "publication": "published",
+        "source_kind": "external",
+        "source": "@webex/common workspace package; module spec packages/@webex/common/src/docs/README.md",
+        "summary": "Shared SDK primitives (Exception, Defer, oneFlight, whileInFlight, make and related helpers) used across webex-core."
+      },
+      "common-timers-sdk": {
+        "kind": "sdk",
+        "publication": "published",
+        "source_kind": "external",
+        "source": "@webex/common-timers workspace package; module spec packages/@webex/common-timers/src/docs/README.md",
+        "summary": "Unref-ing timer primitives and the restartable Timer used for token expiry and refresh scheduling."
+      },
+      "storage-adapter-spec-suite": {
+        "kind": "sdk",
+        "publication": "published",
+        "source_kind": "external",
+        "source": "@webex/storage-adapter-spec workspace package; module spec packages/@webex/storage-adapter-spec/src/docs/README.md",
+        "summary": "Shared conformance suite that the storage unit test runs against MemoryStoreAdapter. Declared as a runtime dependency but imported only by tests."
+      },
+      "u2c-service": {
+        "kind": "rpc",
+        "publication": "published",
+        "source_kind": "external",
+        "source": "Webex U2C service-discovery HTTP API (hostmap endpoint configured by services.discovery.u2c in src/config.js)",
+        "summary": "External HTTP catalog API that returns service hostmaps; consumed by both services plugins."
+      },
+      "idbroker-oauth-service": {
+        "kind": "rpc",
+        "publication": "published",
+        "source_kind": "external",
+        "source": "Webex identity-broker OAuth HTTP API (token, revoke and authorize endpoints derived by src/credentials-config.js)",
+        "summary": "External OAuth/token HTTP API used by the credentials module for grants, refresh, downscope and revoke."
+      },
+      "ampersand-state-library": {
+        "kind": "sdk",
+        "publication": "published",
+        "source_kind": "external",
+        "source": "ampersand-state, ampersand-collection and ampersand-events (npm)",
+        "summary": "Third-party observable-state library that WebexCore, plugins, Token and the services models extend."
+      }
+    }
+  },
+  "spec_source_policy": {
+    "mode": "keep-separate",
+    "migrated_source_disposition": "retain",
+    "disposition_decided_by": "rsarika@cisco.com",
+    "disposition_decided_at": "2026-10-07T11:00:00Z",
+    "decided_by": "rsarika@cisco.com",
+    "decided_at": "2026-10-07T11:00:00Z",
+    "decision_record": "No prior intent or design spec exists in this package. README.md is a usage document and src/lib/services-v2/README.md is a three-line work-in-progress note; both are preserved byte-for-byte and used only as corroborating evidence, never routed as spec source. The read-only migration footprint probe found no prior Repo Annotation output and no AGENTS.md occupied the fixed target."
+  },
+  "spec_sources": [],
+  "spec_policy": {
+    "require_what_and_why": true,
+    "require_provenance": true,
+    "protected_specs": [
+      "src/docs/README.md",
+      "src/interceptors/docs/README.md",
+      "src/lib/credentials/docs/README.md",
+      "src/lib/services/docs/README.md",
+      "src/lib/services-v2/docs/README.md",
+      "src/lib/storage/docs/README.md"
+    ]
+  },
+  "validation": {
+    "generator_runtime": "claude-code",
+    "generator_model": "claude-sonnet-5-5",
+    "generator_run_id": "a636d1f4-e59a-4851-9359-1c4b7a1f75d1",
+    "generator_runtime_source": "host-metadata",
+    "minimum_independence": "different-runtime",
+    "blocking_severities": [
+      "Blocking"
+    ],
+    "validator_runtime": "01a1166d-02d9-7772-bc25-1a801fb5f1d1",
+    "validator_run_id": "01a1166d-02d9-7772-bc25-1a801fb5f1d1",
+    "validator_runtime_source": "invocation-input",
+    "runtime_fallback_tier": "different-runtime"
+  },
+  "layout": {
+    "sdd_root": ".sdd",
+    "docs_root": "docs",
+    "agent_entry_path": "AGENTS.md",
+    "standing_docs_root": "docs",
+    "spec_index_path": "docs/specs/README.md",
+    "module_docs_strategy": "source-local",
+    "module_docs_relative_path": "docs/README.md",
+    "module_docs_decision": {
+      "basis": "repo-standards-default",
+      "reason": "The default source-local route is used for every module, consistent with the sibling @webex packages. src already holds non-code Markdown (src/lib/services-v2/README.md) and the build/lint globs target js and ts sources only.",
+      "decided_by": "claude-code (bootstrap questionnaire)",
+      "decided_at": "2026-10-07T11:00:00Z"
+    },
+    "repo_context_decision": {
+      "path": ".repo-context.json",
+      "schema_path": "schemas/repo-context.schema.json",
+      "action": "create",
+      "schema_action": "create",
+      "reason": "Neither the operational context nor its schema exists in this package or at the monorepo root; both are created from the bundled Repo Standards schema and verified repository evidence.",
+      "decided_by": "claude-code (bootstrap questionnaire)",
+      "decided_at": "2026-10-07T11:00:00Z"
+    },
+    "artifact_decisions": [
+      {
+        "path": "docs/service.md",
+        "action": "omit",
+        "reason": "The package is a published library, not a deployable service; package.json declares no container, deployment manifest or start command.",
+        "decided_by": "claude-code (code evidence)",
+        "decided_at": "2026-10-07T11:00:00Z"
+      },
+      {
+        "path": "mkdocs.yml",
+        "action": "omit",
+        "reason": "No package-level documentation build exists; documentation publishing is owned by the surrounding workspace.",
+        "decided_by": "claude-code (code evidence)",
+        "decided_at": "2026-10-07T11:00:00Z"
+      },
+      {
+        "path": "api-specs/openapi.yaml",
+        "action": "omit",
+        "reason": "The package serves no HTTP routes; its published contracts are npm package exports described by the webex-core-* contracts.",
+        "decided_by": "claude-code (code evidence)",
+        "decided_at": "2026-10-07T11:00:00Z"
+      },
+      {
+        "path": "SECURITY.md",
+        "action": "omit",
+        "reason": "No SECURITY.md exists anywhere in this repository; a package-local copy would invent policy.",
+        "decided_by": "claude-code (code evidence)",
+        "decided_at": "2026-10-07T11:00:00Z"
+      },
+      {
+        "path": "CONTRIBUTING.md",
+        "action": "omit",
+        "reason": "Contribution instructions are owned at the monorepo root.",
+        "decided_by": "claude-code (code evidence)",
+        "decided_at": "2026-10-07T11:00:00Z"
+      },
+      {
+        "path": "CHANGELOG.md",
+        "action": "omit",
+        "reason": "Changelog generation is owned at the monorepo root.",
+        "decided_by": "claude-code (code evidence)",
+        "decided_at": "2026-10-07T11:00:00Z"
+      },
+      {
+        "path": "CTO_CHECKLIST.yml",
+        "action": "omit",
+        "reason": "The CTO readiness workflow applies to deployable services; this package is a library.",
+        "decided_by": "claude-code (code evidence)",
+        "decided_at": "2026-10-07T11:00:00Z"
+      },
+      {
+        "path": "schemas/cto-checklist.schema.json",
+        "action": "omit",
+        "reason": "Selected together with CTO_CHECKLIST.yml, which is omitted.",
+        "decided_by": "claude-code (code evidence)",
+        "decided_at": "2026-10-07T11:00:00Z"
+      }
+    ],
+    "template_roots": {
+      "canonical": ".sdd/templates/repo-standards"
+    },
+    "repo_skills_root": ".sdd/skills",
+    "contract_index_path": "docs/architecture.md"
+  },
+  "substrate": {
+    "source": "WebexTools/repo-standards@d89a7fe59126ae3ad9bac9ca352aa7f12b4c85dc",
+    "consumed": [
+      "the repository-root .sdd/templates/repo-standards snapshot, shared rather than copied into this package by owner decision",
+      "@webex/eslint-config-legacy via .eslintrc.js",
+      "@webex/babel-config-legacy via babel.config.js",
+      "@webex/jest-config-legacy via jest.config.js",
+      "@webex/legacy-tools build and test runner via package.json",
+      "package README.md as repository-owned usage evidence"
+    ],
+    "compliance_tier": "baseline"
+  },
+  "section_profiles": {
+    "repo": {
+      "owns_datastore": false,
+      "holds_client_state": true,
+      "components_interact": true,
+      "domain_data_across_components": false,
+      "caches_data": true,
+      "observability_convention": true,
+      "deploys_to_infra": false,
+      "shared_base_libs": true,
+      "is_monorepo": true,
+      "multi_platform": true,
+      "published_package": true,
+      "embedded_in_host": true,
+      "cross_repo_deps_material": false,
+      "security_arch_warranted": true,
+      "exposes_commands_or_artifacts": false
+    },
+    "resolved_by": "claude-code/claude-sonnet-5-5 (host metadata; bootstrap questionnaire)",
+    "resolved_at": "2026-10-07T11:00:00Z"
+  }
+}
