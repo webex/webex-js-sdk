@@ -152,7 +152,32 @@ describe('webex-core', () => {
           it('should return a rejected promise', () => {
             const promise = interceptor.onRequest(options);
 
-            assert.isRejected(promise);
+            return assert.isRejected(
+              promise,
+              Error,
+              "service-interceptor: 'example' is not a known service"
+            );
+          });
+        });
+
+        describe('when the service lookup failed because the token was rejected', () => {
+          beforeEach(() => {
+            const authError = new Error(
+              "The access token is invalid or was revoked. Sign in again before calling 'example'."
+            );
+
+            authError.reason = 'invalid_token';
+            waitForService.rejects(authError);
+          });
+
+          it('should reject with the token error', () => {
+            const promise = interceptor.onRequest(options);
+
+            return assert.isRejected(
+              promise,
+              Error,
+              "The access token is invalid or was revoked. Sign in again before calling 'example'."
+            );
           });
         });
       });

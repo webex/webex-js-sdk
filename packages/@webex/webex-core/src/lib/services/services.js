@@ -22,6 +22,7 @@ const DEFAULT_CLUSTER_IDENTIFIER =
   process.env.WEBEX_CONVERSATION_DEFAULT_CLUSTER || `${DEFAULT_CLUSTER}:${CLUSTER_SERVICE}`;
 const CATALOG_CACHE_KEY_V1 = 'services.v1.u2cHostMap';
 const CATALOG_TTL_MS = 24 * 60 * 60 * 1000; // 24 hours
+const catalogAuthFailures = new WeakMap();
 
 /* eslint-disable no-underscore-dangle */
 /**
@@ -112,6 +113,63 @@ const Services = WebexPlugin.extend({
    */
   _getCatalog() {
     return this._catalogs.get(this.webex);
+  },
+
+  /**
+   * Remember a postauth catalog failure caused by a rejected access token.
+   * Other failures clear any previously stored auth failure.
+   *
+   * @private
+   * @param {Error} error
+   * @returns {void}
+   */
+  _recordCatalogAuthFailure(error) {
+    const status = error && (error.statusCode || error.status);
+
+    if (status === 401 || status === 403) {
+      catalogAuthFailures.set(this, {
+        status,
+        reason: 'invalid_token',
+      });
+
+      return;
+    }
+
+    catalogAuthFailures.delete(this);
+  },
+
+  /**
+   * @private
+   * @returns {{status: number, reason: string}|null}
+   */
+  _getCatalogAuthFailure() {
+    return catalogAuthFailures.get(this) || null;
+  },
+
+  /**
+   * Build the rejection for a service that could not be resolved.
+   * A stored catalog auth failure replaces the generic not-found text.
+   *
+   * @private
+   * @param {string} name
+   * @param {string} fallbackMessage
+   * @returns {Error}
+   */
+  _serviceLookupError(name, fallbackMessage) {
+    const authFailure = this._getCatalogAuthFailure();
+
+    if (authFailure && authFailure.reason === 'invalid_token') {
+      const authError = new Error(
+        `The access token is invalid or was revoked. Sign in again before calling '${name}'.`
+      );
+
+      authError.reason = 'invalid_token';
+      authError.statusCode = authFailure.status;
+
+      return authError;
+    }
+
+    return new Error(fallbackMessage);
   },
 
   /**
@@ -810,7 +868,10 @@ const Services = WebexPlugin.extend({
       });
 
       return Promise.reject(
-        new Error(`services: service '${name}' was not found in any of the catalogs`)
+        this._serviceLookupError(
+          name,
+          `services: service '${name}' was not found in any of the catalogs`
+        )
       );
     }
 
@@ -833,7 +894,9 @@ const Services = WebexPlugin.extend({
         this.webex.internal.metrics.submitClientMetrics(METRICS.JS_SDK_SERVICE_NOT_FOUND, {
           fields: {service_name: name},
         });
-        reject(new Error(`services: service '${name}' was not found after waiting`));
+        reject(
+          this._serviceLookupError(name, `services: service '${name}' was not found after waiting`)
+        );
       });
     });
   },
@@ -1388,10 +1451,12 @@ const Services = WebexPlugin.extend({
             // timeout race still marks the catalog ready once it completes.
             return this.updateServices()
               .then(() => {
+                catalogAuthFailures.delete(this);
                 catalog.isReady = true;
               })
-              .catch(() => {
+              .catch((error) => {
                 this.initFailed = true;
+                this._recordCatalogAuthFailure(error);
                 this.logger.warn('services: cannot retrieve postauth catalog');
               });
           }
