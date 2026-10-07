@@ -3681,6 +3681,41 @@ describe('plugin-meetings', () => {
           assert.exists(meeting.addMedia);
         });
 
+        it('logs a compact remote media manager configuration', async () => {
+          const loggerInfoStub = sinon.stub(LoggerProxy.logger, 'info');
+          const remoteMediaManagerConfig = {
+            audio: {
+              numOfActiveSpeakerStreams: 3,
+              numOfScreenShareStreams: 1,
+            },
+            video: {
+              preferLiveVideo: true,
+              initialLayoutId: 'initial',
+              layouts: {
+                initial: {activeSpeakerVideoPaneGroups: []},
+                excluded: {activeSpeakerVideoPaneGroups: []},
+              },
+            },
+          };
+
+          const error = await assert.isRejected(
+            meeting.addMediaInternal(() => 'JOIN_MEETING_FINAL', false, undefined, undefined, {
+              remoteMediaManagerConfig,
+            })
+          );
+
+          assert.instanceOf(error, MeetingNotActiveError);
+          assert.calledOnceWithExactly(
+            loggerInfoStub,
+            `Meeting:index#addMedia --> called with: options=${JSON.stringify({
+              remoteMediaManagerConfig:
+                RemoteMediaManagerModule.getRemoteMediaManagerConfigForLogging(
+                  remoteMediaManagerConfig
+                ),
+            })}, turnServerInfo=undefined, forceTurnDiscovery=false, iceTransportPolicy=undefined`
+          );
+        });
+
         it('should reject promise if meeting is not active and the meeting in lobby is not enabled', async () => {
           const result = await assert.isRejected(meeting.addMedia({allowMediaInLobby: false}));
 

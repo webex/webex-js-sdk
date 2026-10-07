@@ -50,6 +50,7 @@ constructor(
   logLevel: LOGGER,                            // Log verbosity
   serviceDataConfig?: CallingClientConfig['serviceData'],  // Backend config
   jwe?: string,                                // Optional JWE token
+  localAudioStream?: LocalMicrophoneStream,    // Optional mic stream, used by register() for host ip discovery
   phoneNumber?: string,                        // Optional initial phone number (from provisioning)
   extension?: string,                          // Optional initial extension
   voicemail?: string,                          // Optional voicemail number

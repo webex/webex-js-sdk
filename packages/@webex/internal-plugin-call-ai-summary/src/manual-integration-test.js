@@ -12,7 +12,9 @@
  *   WEBEX_TOKEN='<token>' node src/manual-integration-test.js
  */
 
-/* eslint-disable no-console, require-jsdoc */
+// Standalone Node dev script: it loads the built package by name and uses CommonJS
+// requires, so the module-graph rules below do not apply.
+/* eslint-disable no-console, require-jsdoc, import/no-extraneous-dependencies, @typescript-eslint/no-var-requires */
 
 require('@webex/internal-plugin-call-ai-summary');
 

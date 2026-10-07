@@ -64,9 +64,16 @@ import {
   SDP_OFFER_CREATION_ERROR_MAP,
   CALL_FEATURE_LOG_IDENTIFIER,
   CALL_FEATURE_EVENT_FAILED_TO_SEND,
+  LOCUS_RATE_LIMITED_OUTGOING_CLIENT_CODE,
+  LOCUS_UNAVAILABLE_CLIENT_CODE,
 } from './config';
 
 const {getOSVersion, getBrowserName, getBrowserVersion} = BrowserDetection();
+
+const LOCUS_HTTP_STATUS_TO_CLIENT_ERROR_CODE: Partial<Record<number, number>> = {
+  429: LOCUS_RATE_LIMITED_OUTGOING_CLIENT_CODE,
+  503: LOCUS_UNAVAILABLE_CLIENT_CODE,
+};
 
 type GetOriginOptions = {
   clientType: ClientType;
@@ -719,7 +726,7 @@ export default class CallDiagnosticMetrics extends StatelessWebexPlugin {
    * @param arg.clientErrorCode
    * @param arg.serviceErrorCode
    * @param arg.payloadOverrides
-   * @param arg.httpStatusCode
+   * @param arg.httpCode
    * @returns
    */
   public getErrorPayloadForClientErrorCode({
@@ -728,14 +735,14 @@ export default class CallDiagnosticMetrics extends StatelessWebexPlugin {
     serviceErrorName,
     rawErrorMessage,
     payloadOverrides,
-    httpStatusCode,
+    httpCode,
   }: {
     clientErrorCode: number;
     serviceErrorCode: any;
     serviceErrorName?: any;
     rawErrorMessage?: string;
     payloadOverrides?: any;
-    httpStatusCode?: number;
+    httpCode?: number;
   }): ClientEventError {
     let error: ClientEventError;
 
@@ -749,7 +756,7 @@ export default class CallDiagnosticMetrics extends StatelessWebexPlugin {
           serviceErrorName ? {errorData: {errorName: serviceErrorName}} : {},
           {serviceErrorCode},
           {rawErrorMessage},
-          httpStatusCode === undefined ? {} : {httpStatusCode},
+          httpCode === undefined ? {} : {httpCode},
           partialParsedError,
           payloadOverrides || {}
         );
@@ -918,7 +925,12 @@ export default class CallDiagnosticMetrics extends StatelessWebexPlugin {
     }
 
     const rawErrorMessage = rawError.message;
-    const httpStatusCode = rawError.statusCode;
+    const httpCode = rawError.statusCode;
+    const serviceErrorCode =
+      rawError?.error?.body?.errorCode ||
+      rawError?.body?.errorCode ||
+      rawError?.body?.code ||
+      rawError?.body?.reason?.reasonCode;
     let payload;
 
     if (rawError.name) {
@@ -928,7 +940,7 @@ export default class CallDiagnosticMetrics extends StatelessWebexPlugin {
           clientErrorCode: BROWSER_MEDIA_ERROR_NAME_TO_CLIENT_ERROR_CODES_MAP[rawError.name],
           serviceErrorName: rawError.name,
           rawErrorMessage,
-          httpStatusCode,
+          httpCode,
         });
       }
     }
@@ -943,15 +955,9 @@ export default class CallDiagnosticMetrics extends StatelessWebexPlugin {
           SDP_OFFER_CREATION_ERROR_MAP[causeType] || SDP_OFFER_CREATION_ERROR_MAP.GENERAL,
         serviceErrorName: rawError.name,
         rawErrorMessage,
-        httpStatusCode,
+        httpCode,
       });
     }
-
-    const serviceErrorCode =
-      rawError?.error?.body?.errorCode ||
-      rawError?.body?.errorCode ||
-      rawError?.body?.code ||
-      rawError?.body?.reason?.reasonCode;
 
     if (serviceErrorCode) {
       const clientErrorCode = SERVICE_ERROR_CODES_TO_CLIENT_ERROR_CODES_MAP[serviceErrorCode];
@@ -960,17 +966,30 @@ export default class CallDiagnosticMetrics extends StatelessWebexPlugin {
           clientErrorCode,
           serviceErrorCode,
           rawErrorMessage,
-          httpStatusCode,
+          httpCode,
         });
       }
+    }
 
+    const locusHttpClientErrorCode = LOCUS_HTTP_STATUS_TO_CLIENT_ERROR_CODE[httpCode];
+    const requestUrl = rawError.options?.uri || rawError.options?.url;
+    if (locusHttpClientErrorCode && !payload && requestUrl?.includes('locus')) {
+      payload = this.getErrorPayloadForClientErrorCode({
+        clientErrorCode: locusHttpClientErrorCode,
+        serviceErrorCode,
+        rawErrorMessage,
+        httpCode,
+      });
+    }
+
+    if (serviceErrorCode) {
       // by default, if it is locus error, return new locus err
       if (isLocusServiceErrorCode(serviceErrorCode) && !payload) {
         payload = this.getErrorPayloadForClientErrorCode({
           clientErrorCode: NEW_LOCUS_ERROR_CLIENT_CODE,
           serviceErrorCode,
           rawErrorMessage,
-          httpStatusCode,
+          httpCode,
         });
       }
     }
@@ -980,7 +999,7 @@ export default class CallDiagnosticMetrics extends StatelessWebexPlugin {
         clientErrorCode: MEETING_INFO_LOOKUP_ERROR_CLIENT_CODE,
         serviceErrorCode,
         rawErrorMessage,
-        httpStatusCode,
+        httpCode,
       });
     }
 
@@ -990,7 +1009,7 @@ export default class CallDiagnosticMetrics extends StatelessWebexPlugin {
         serviceErrorCode,
         payloadOverrides: rawError.payloadOverrides,
         rawErrorMessage,
-        httpStatusCode,
+        httpCode,
       });
     }
 
@@ -1000,7 +1019,7 @@ export default class CallDiagnosticMetrics extends StatelessWebexPlugin {
         serviceErrorCode,
         payloadOverrides: rawError.payloadOverrides,
         rawErrorMessage,
-        httpStatusCode,
+        httpCode,
       });
     }
 
@@ -1012,7 +1031,7 @@ export default class CallDiagnosticMetrics extends StatelessWebexPlugin {
         serviceErrorName: rawError?.name,
         payloadOverrides: rawError.payloadOverrides,
         rawErrorMessage,
-        httpStatusCode,
+        httpCode,
       });
     }
 
