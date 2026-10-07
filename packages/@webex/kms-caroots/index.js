@@ -12,6 +12,8 @@ const {URL} = require('url');
 
 const DEFAULT_BUNDLE_URL =
   'https://www.cisco.com/security/pki/trs/current/ios_union/ios_union.p7b';
+const DEFAULT_MOZILLA_BUNDLE_URL =
+  'https://hg.mozilla.org/projects/nss/raw-file/tip/lib/ckfw/builtins/certdata.txt';
 const DOWNLOAD_TIMEOUT_MS = 30000;
 const MAX_REDIRECTS = 5;
 
@@ -172,9 +174,10 @@ function ensureOpenssl() {
 /**
  * Disable OpenSSL's default trust locations while keeping the pinned CA file.
  * OpenSSL 1.1.1 has no CA store option, so include it only when supported.
+ * @param {string} workDir
  * @returns {string[]}
  */
-function cmsTrustOptions() {
+function cmsTrustOptions(workDir) {
   const {error, stdout, stderr} = spawnSync('openssl', ['cms', '-help'], {encoding: 'utf8'});
 
   if (error) {
@@ -184,14 +187,20 @@ function cmsTrustOptions() {
   const help = `${stdout || ''}${stderr || ''}`;
 
   if (!help.includes('-no-CAfile') || !help.includes('-no-CApath')) {
-    throw new Error('OpenSSL cms cannot disable its default CA file and directory');
+    const {stdout: version} = spawnSync('openssl', ['version'], {encoding: 'utf8'});
+
+    if (!version.startsWith('LibreSSL ')) {
+      throw new Error('OpenSSL cms cannot disable its default CA file and directory');
+    }
+
+    const emptyCaPath = path.join(workDir, 'empty-ca-path');
+
+    fs.mkdirSync(emptyCaPath);
+
+    return ['-CApath', emptyCaPath];
   }
 
-  return [
-    '-no-CAfile',
-    '-no-CApath',
-    ...(help.includes('-no-CAstore') ? ['-no-CAstore'] : []),
-  ];
+  return ['-no-CAfile', '-no-CApath', ...(help.includes('-no-CAstore') ? ['-no-CAstore'] : [])];
 }
 
 /**
@@ -237,11 +246,19 @@ function verifyAndExtract(workDir, bundle, anchorsPem) {
   execFileSync(
     'openssl',
     [
-      'cms', '-verify', '-inform', 'DER', '-purpose', 'any',
-      '-in', bundlePath,
-      '-CAfile', anchorsPath,
-      ...cmsTrustOptions(),
-      '-out', contentPath,
+      'cms',
+      '-verify',
+      '-inform',
+      'DER',
+      '-purpose',
+      'any',
+      '-in',
+      bundlePath,
+      '-CAfile',
+      anchorsPath,
+      ...cmsTrustOptions(workDir),
+      '-out',
+      contentPath,
     ],
     {stdio: ['ignore', 'ignore', 'ignore']}
   );
@@ -294,34 +311,122 @@ function decodeCertificates(certsPem) {
 }
 
 /**
+ * Decode an NSS MULTILINE_OCTAL value into raw base64 (DER).
+ * @param {string} value
+ * @returns {string}
+ */
+function decodeMozillaOctal(value) {
+  const bytes = [];
+  const unexpected = value.replace(/\\([0-7]{3})/g, (match, octal) => {
+    bytes.push(parseInt(octal, 8));
+
+    return '';
+  });
+
+  if (unexpected.trim()) {
+    throw new Error('Mozilla certdata contains an invalid MULTILINE_OCTAL value');
+  }
+
+  return Buffer.from(bytes).toString('base64');
+}
+
+/**
+ * Extract certificates trusted by Mozilla for TLS server authentication.
+ * @param {string} certdata
+ * @returns {string[]}
+ */
+function decodeMozillaCertificates(certdata) {
+  const certificates = new Map();
+  const trustedLabels = new Set();
+  const objects = certdata.split(/(?=^CKA_CLASS )/m);
+
+  objects.forEach((object) => {
+    const label = object.match(/^CKA_LABEL UTF8 (.+)$/m)?.[1];
+
+    if (!label) {
+      return;
+    }
+
+    if (object.startsWith('CKA_CLASS CK_OBJECT_CLASS CKO_CERTIFICATE')) {
+      const value = object.match(/^CKA_VALUE MULTILINE_OCTAL\n([\s\S]*?)^END$/m)?.[1];
+
+      if (value) {
+        certificates.set(label, decodeMozillaOctal(value));
+      }
+    } else if (
+      object.startsWith('CKA_CLASS CK_OBJECT_CLASS CKO_NSS_TRUST') &&
+      /^CKA_TRUST_SERVER_AUTH CK_TRUST CKT_NSS_TRUSTED_DELEGATOR$/m.test(object)
+    ) {
+      trustedLabels.add(label);
+    }
+  });
+
+  const trustedCertificates = [...trustedLabels]
+    .map((label) => certificates.get(label))
+    .filter(Boolean);
+
+  if (trustedCertificates.length === 0) {
+    throw new Error('No TLS server CA certificates were extracted from Mozilla certdata');
+  }
+
+  return trustedCertificates;
+}
+
+/**
+ * Keep only Cisco Union roots that Mozilla also trusts for TLS servers.
+ * @param {string[]} unionCertificates
+ * @param {string[]} mozillaCertificates
+ * @returns {string[]}
+ */
+function filterToMozillaRoots(unionCertificates, mozillaCertificates) {
+  const mozillaRoots = new Set(mozillaCertificates);
+  const filtered = unionCertificates.filter((certificate) => mozillaRoots.has(certificate));
+
+  if (filtered.length === 0) {
+    throw new Error('Cisco Union and Mozilla trust stores contain no matching CA roots');
+  }
+
+  return filtered;
+}
+
+/**
  * Download, verify, and decode the Cisco Trusted Root Store "Union" bundle into
  * the format expected by the `encryption.caroots` Webex SDK config option: an
  * array of raw base64-encoded (DER) certificates.
  *
  * Requires the `openssl` binary on PATH.
  *
- * @param {{bundleUrl?: string}} [options]
+ * @param {{bundleUrl?: string, mozillaBundleUrl?: string}} [options]
  * @returns {Promise<string[]>}
  */
 async function generateKmsCaroots(options = {}) {
   const bundleUrl = options.bundleUrl || DEFAULT_BUNDLE_URL;
+  const mozillaBundleUrl = options.mozillaBundleUrl || DEFAULT_MOZILLA_BUNDLE_URL;
 
   ensureOpenssl();
 
-  const bundle = await downloadWithRetry(bundleUrl);
-  const anchorsPem = await fetchVerifiedAnchors();
+  const [bundle, mozillaBundle, anchorsPem] = await Promise.all([
+    downloadWithRetry(bundleUrl),
+    downloadWithRetry(mozillaBundleUrl),
+    fetchVerifiedAnchors(),
+  ]);
   const workDir = fs.mkdtempSync(path.join(os.tmpdir(), 'kms-caroots-'));
 
   try {
     const certsPem = verifyAndExtract(workDir, bundle, anchorsPem);
+    const unionCertificates = decodeCertificates(certsPem);
+    const mozillaCertificates = decodeMozillaCertificates(mozillaBundle.toString('utf8'));
 
-    return decodeCertificates(certsPem);
+    return filterToMozillaRoots(unionCertificates, mozillaCertificates);
   } finally {
     fs.rmSync(workDir, {recursive: true, force: true});
   }
 }
 
 module.exports = {
+  __esModule: true,
+  default: require('./caroots'),
   generateKmsCaroots,
   DEFAULT_BUNDLE_URL,
+  DEFAULT_MOZILLA_BUNDLE_URL,
 };

@@ -37,22 +37,18 @@ configuration options on the `encryption` config:
 
 - `shouldValidateKMSCertificate` — whether to validate the KMS certificate
   chain. Defaults to `true` as a secure default. When enabled the SDK **fails
-  closed**: a `caroots` bundle must be configured and the chain must validate
-  against it, otherwise the ECDH negotiation fails. Set to `false` to
-  temporarily opt out of validation, for example while upgrading and wiring up
-  the CA root bundle.
-- `caroots` — an array of raw base64-encoded CA root certificates. Required when
-  `shouldValidateKMSCertificate` is `true`.
+  closed**: the chain must validate against `caroots`, otherwise the ECDH
+  negotiation fails. Set to `false` to temporarily opt out of validation.
+- `caroots` — an array of raw base64-encoded CA root certificates. Defaults to
+  the bundle shipped by `@webex/kms-caroots` and can be overridden by consumers.
 - `carootsReportOnly` — an additional array of CA roots validated alongside
   `caroots`. A failure here is only reported as a metric instead of failing the
   negotiation, which lets a new bundle be trialled in parallel with the enforced
   `caroots`.
 
-Supplying the CA roots is the responsibility of the consuming application. The
-SDK does not ship a bundle, so that certificate updates don't require an SDK
-upgrade. Cisco first-party clients should source their roots from the Cisco
-Trusted Root Store, using the **Union** bundle:
-<https://www.cisco.com/security/pki/trs/readme.html>
+The bundled roots are the intersection of the Cisco Trusted Root Store
+**Union** bundle and Mozilla's TLS server trust store. Applications can use the
+default bundle without additional configuration.
 
 ### Generating the CA roots
 
@@ -82,9 +78,8 @@ const caroots = await generateKmsCaroots();
 const webex = new WebexCore({config: {encryption: {caroots}}});
 ```
 
-The SDK itself does no file or network I/O to obtain roots — supplying them is a
-build/config concern for the consuming application (important since a prebuilt
-library cannot read files in the browser).
+The SDK performs no runtime file or network I/O to obtain roots. The generated
+bundle is included at build time and can be replaced through configuration.
 
 The SDK's own integration/browser tests generate these roots automatically: the
 test runner (`@webex/legacy-tools`) calls `@webex/kms-caroots` and configures

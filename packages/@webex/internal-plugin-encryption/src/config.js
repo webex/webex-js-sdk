@@ -2,6 +2,8 @@
  * Copyright (c) 2015-2020 Cisco Systems, Inc. See LICENSE file.
  */
 
+import caroots from '@webex/kms-caroots';
+
 export default {
   encryption: {
     joseOptions: {
@@ -58,19 +60,12 @@ export default {
     shouldValidateKMSCertificate: true,
 
     /**
-     * CA root bundle used to validate the KMS certificate chain, as an array of
-     * raw base64-encoded certificates (the DER body, without the
-     * -----BEGIN/END CERTIFICATE----- lines). Required when
-     * `shouldValidateKMSCertificate` is true.
-     *
-     * Supplied by the consuming application at build/config time; the SDK does
-     * not ship a bundle and does no file/network I/O to obtain one. Cisco
-     * first-party clients should source these roots from the Cisco Trusted Root
-     * Store Union bundle. See the plugin README, tooling/generate-kms-caroots.js,
-     * and https://www.cisco.com/security/pki/trs/readme.html for details.
-     * @type {?string[]}
+     * Bundled CA roots used to validate the KMS certificate chain, as an array
+     * of raw base64-encoded certificates (the DER body, without the
+     * -----BEGIN/END CERTIFICATE----- lines).
+     * @type {string[]}
      */
-    caroots: undefined,
+    caroots,
 
     /**
      * An additional CA root bundle validated alongside `caroots`. Unlike

@@ -5,6 +5,8 @@
 export interface GenerateKmsCarootsOptions {
   /** Override the Cisco bundle URL. Defaults to the Union bundle. */
   bundleUrl?: string;
+  /** Override the Mozilla NSS certdata URL. */
+  mozillaBundleUrl?: string;
 }
 
 /**
@@ -14,5 +16,12 @@ export interface GenerateKmsCarootsOptions {
  */
 export function generateKmsCaroots(options?: GenerateKmsCarootsOptions): Promise<string[]>;
 
+declare const caroots: string[];
+
+export default caroots;
+
 /** The default Cisco Trusted Root Store "Union" bundle URL. */
 export const DEFAULT_BUNDLE_URL: string;
+
+/** The default Mozilla NSS certdata URL. */
+export const DEFAULT_MOZILLA_BUNDLE_URL: string;
