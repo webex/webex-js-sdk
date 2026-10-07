@@ -9,7 +9,7 @@ doc_kind: standing-doc
 generated_from: spec-index@0.3.0
 generated_by: claude-cowork
 approved_by: akulakum@cisco.com
-updated_at: 2026-10-07T00:24:39Z
+updated_at: 2026-10-07T00:34:58Z
 validation_status: pass-with-warnings
 -->
 
