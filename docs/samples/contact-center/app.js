@@ -1,6 +1,7 @@
 // Globals
 let webex = undefined;
 let sdk;
+let voiceConnectionLogClient;
 let agentDeviceType;
 let deviceId;
 let agentStatusId;
@@ -3817,6 +3818,7 @@ function initWebex(e) {
 
   webex.once('ready', async () => {
     console.log('Authentication#initWebex() :: Webex Ready');
+    attachVoiceConnectionStateLogging();
 
     authStatusElm.innerText = 'Saved access token!';
     registerStatus.innerHTML = 'Not Subscribed';
@@ -3826,6 +3828,20 @@ function initWebex(e) {
   });
 
   return false;
+}
+
+function attachVoiceConnectionStateLogging() {
+  const cc = webex?.cc;
+
+  if (!cc || voiceConnectionLogClient === cc) {
+    return;
+  }
+
+  cc.on('voice:connectionStateChange', (state) => {
+    console.log('[Contact Center] Browser voice state changed:', state);
+  });
+  console.log('[Contact Center] Current browser voice state:', cc.getVoiceConnectionState());
+  voiceConnectionLogClient = cc;
 }
 
 credentialsFormElm.addEventListener('submit', initWebex);
@@ -5006,6 +5022,7 @@ function doAgentLogin() {
   })
   .then((response) => {
     console.log('Agent Logged in successfully', response);
+    console.log('[Contact Center] Voice state after station login:', webex.cc.getVoiceConnectionState());
     captureWellnessSession(response);
     loginAgentElm.disabled = true;
     logoutAgentElm.classList.remove('hidden');
@@ -5045,6 +5062,12 @@ function setAgentStatus() {
     updateTaskList();
   }).catch(error => {
     console.error('Agent status set failed', error);
+    if (error?.code === 'BROWSER_VOICE_NOT_READY') {
+      console.log(
+        '[Contact Center] Agent state change was blocked because browser voice is unavailable:',
+        webex.cc.getVoiceConnectionState()
+      );
+    }
   });
 }
 
