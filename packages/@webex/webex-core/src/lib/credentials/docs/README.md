@@ -8,7 +8,7 @@ tags: [module, specification]
 doc_kind: module-spec
 generated_from: module-spec@0.3.0
 generated_by: claude-code
-approved_by: pending
+approved_by: rsarika@cisco.com
 updated_at: 2026-10-07T13:20:21Z
 validation_status: pass-with-warnings
 -->

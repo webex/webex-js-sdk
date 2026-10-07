@@ -2,7 +2,7 @@
 doc_kind: standing-doc
 generated_from: adr-index@0.3.0
 generated_by: claude-code
-approved_by: pending
+approved_by: rsarika@cisco.com
 updated_at: 2026-10-07T13:20:21Z
 validation_status: pass-with-warnings
 -->
