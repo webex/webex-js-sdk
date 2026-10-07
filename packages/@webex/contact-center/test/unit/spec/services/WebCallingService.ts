@@ -6,9 +6,10 @@ import {
   ILine,
   LINE_EVENTS,
   CALL_EVENT_KEYS,
+  CALLING_CLIENT_EVENT_KEYS,
   LocalMicrophoneStream,
 } from '@webex/calling';
-import { WebexSDK} from '../../../../src/types';
+import {VOICE_CONNECTION_EVENTS, VOICE_CONNECTION_STATUS, WebexSDK} from '../../../../src/types';
 import LoggerProxy from '../../../../src/logger-proxy';
 import {WEB_CALLING_SERVICE_FILE} from '../../../../src/constants';
 jest.mock('@webex/calling');
@@ -40,12 +41,15 @@ describe('WebCallingService', () => {
       internal: {
         services: {
           waitForCatalog: jest.fn().mockResolvedValue(undefined),
-          get: jest.fn()
+          get: jest.fn(),
         },
       },
     } as unknown as WebexSDK;
 
     callingClient = {
+      on: jest.fn(),
+      off: jest.fn(),
+      isMobiusSocketConnected: jest.fn().mockReturnValue(false),
       getLines: jest.fn().mockReturnValue({
         line1: {
           on: jest.fn(),
@@ -57,9 +61,7 @@ describe('WebCallingService', () => {
 
     (createClient as jest.Mock).mockResolvedValue(callingClient);
 
-    webRTCCalling = new WebCallingService(
-      webex,
-    );
+    webRTCCalling = new WebCallingService(webex);
 
     mockCall = {
       on: jest.fn(),
@@ -81,8 +83,8 @@ describe('WebCallingService', () => {
   });
 
   describe('registerWebCallingLine', () => {
-
     it('should register the web calling line successfully', async () => {
+      webRTCCalling.setLoginOption('BROWSER');
       webex.internal.services.get.mockReturnValue(undefined); // this is to test fallback to default rtms domain
       line = callingClient.getLines().line1 as ILine;
       const deviceInfo = {
@@ -104,6 +106,12 @@ describe('WebCallingService', () => {
 
       await expect(webRTCCalling.registerWebCallingLine()).resolves.toBeUndefined();
 
+      expect(webRTCCalling.getVoiceConnectionState()).toEqual({
+        status: VOICE_CONNECTION_STATUS.READY,
+        lineStatus: 'registered',
+        mobiusSocketStatus: 'not-in-use',
+      });
+
       expect(createClient).toHaveBeenCalledWith(webex, {
         logger: {
           level: 'info',
@@ -122,7 +130,7 @@ describe('WebCallingService', () => {
     }, 20000); // Increased timeout to 20 seconds
 
     it('should register WebCallingLine with custom rtms url', async () => {
-      webex.internal.services.get.mockReturnValue('sip://rtw.prod-us2.rtmsprod.net'); 
+      webex.internal.services.get.mockReturnValue('sip://rtw.prod-us2.rtmsprod.net');
 
       line = callingClient.getLines().line1 as ILine;
       const deviceInfo = {
@@ -160,7 +168,7 @@ describe('WebCallingService', () => {
     }, 20000); // Increased timeout to 20 seconds
 
     it('should handle error when invalid rtms url is provided', async () => {
-      webex.internal.services.get.mockReturnValue('invalid-url'); 
+      webex.internal.services.get.mockReturnValue('invalid-url');
 
       line = callingClient.getLines().line1 as ILine;
       const deviceInfo = {
@@ -195,7 +203,6 @@ describe('WebCallingService', () => {
         `Invalid URL from u2c catalogue: invalid-url so falling back to default domain`,
         {module: WEB_CALLING_SERVICE_FILE, method: 'getRTMSDomain'}
       );
-
     });
 
     it('should reject if registration times out', async () => {
@@ -210,6 +217,121 @@ describe('WebCallingService', () => {
       const promise = webRTCCalling.registerWebCallingLine();
 
       await expect(promise).rejects.toThrow('WebCallingService Registration timed out');
+      expect(webRTCCalling.getVoiceConnectionState()).toEqual({
+        status: VOICE_CONNECTION_STATUS.NOT_REQUIRED,
+        lineStatus: 'error',
+        mobiusSocketStatus: 'not-in-use',
+        reason: 'REGISTRATION_TIMEOUT',
+        retryable: true,
+      });
+    });
+
+    it('should report initial registration failure and reject registration', async () => {
+      webRTCCalling.setLoginOption('BROWSER');
+      line = callingClient.getLines().line1 as ILine;
+      const registration = webRTCCalling.registerWebCallingLine();
+      const error = new Error('Registration failed');
+      line.register.mockRejectedValue(error);
+
+      await expect(registration).rejects.toThrow('Registration failed');
+      expect(webRTCCalling.getVoiceConnectionState()).toEqual({
+        status: VOICE_CONNECTION_STATUS.UNAVAILABLE,
+        lineStatus: 'error',
+        mobiusSocketStatus: 'not-in-use',
+        reason: 'Registration failed',
+      });
+    });
+
+    it.each([
+      ['transient', true],
+      ['permanent', false],
+      ['replaced', false],
+    ])('should report Mobius socket %s with retryable=%s', async (reason, retryable) => {
+      webRTCCalling.setLoginOption('BROWSER');
+      line = callingClient.getLines().line1 as ILine;
+      jest.spyOn(line, 'on').mockImplementation((event, handler) => {
+        if (event === LINE_EVENTS.REGISTERED) {
+          handler({mobiusDeviceId: 'device123'});
+        }
+      });
+
+      await webRTCCalling.registerWebCallingLine();
+      const disconnectedHandler = callingClient.on.mock.calls.find(
+        ([event]) => event === CALLING_CLIENT_EVENT_KEYS.MOBIUS_SOCKET_DISCONNECTED
+      )[1];
+
+      disconnectedHandler({reason});
+
+      expect(webRTCCalling.getVoiceConnectionState()).toEqual({
+        status: VOICE_CONNECTION_STATUS.UNAVAILABLE,
+        lineStatus: 'registered',
+        mobiusSocketStatus: 'disconnected',
+        reason: `MOBIUS_SOCKET_${reason.toUpperCase()}`,
+        retryable,
+      });
+    });
+
+    it('should return to ready and emit an update after Mobius reconnects', async () => {
+      webRTCCalling.setLoginOption('BROWSER');
+      line = callingClient.getLines().line1 as ILine;
+      jest.spyOn(line, 'on').mockImplementation((event, handler) => {
+        if (event === LINE_EVENTS.REGISTERED) {
+          handler({mobiusDeviceId: 'device123'});
+        }
+      });
+      const stateChangeListener = jest.fn();
+      webRTCCalling.on(VOICE_CONNECTION_EVENTS.STATE_CHANGE, stateChangeListener);
+
+      await webRTCCalling.registerWebCallingLine();
+      const disconnectedHandler = callingClient.on.mock.calls.find(
+        ([event]) => event === CALLING_CLIENT_EVENT_KEYS.MOBIUS_SOCKET_DISCONNECTED
+      )[1];
+      const connectedHandler = callingClient.on.mock.calls.find(
+        ([event]) => event === CALLING_CLIENT_EVENT_KEYS.MOBIUS_SOCKET_CONNECTED
+      )[1];
+
+      disconnectedHandler({reason: 'transient'});
+      connectedHandler();
+
+      expect(webRTCCalling.getVoiceConnectionState()).toEqual({
+        status: VOICE_CONNECTION_STATUS.READY,
+        lineStatus: 'registered',
+        mobiusSocketStatus: 'connected',
+      });
+      expect(stateChangeListener).toHaveBeenLastCalledWith(webRTCCalling.getVoiceConnectionState());
+    });
+
+    it('should update line reconnect and unregistration states', async () => {
+      webRTCCalling.setLoginOption('BROWSER');
+      line = callingClient.getLines().line1 as ILine;
+      jest.spyOn(line, 'on').mockImplementation((event, handler) => {
+        if (event === LINE_EVENTS.REGISTERED) {
+          handler({mobiusDeviceId: 'device123'});
+        }
+      });
+
+      await webRTCCalling.registerWebCallingLine();
+      const handlers = new Map(line.on.mock.calls.map(([event, handler]) => [event, handler]));
+      handlers.get(LINE_EVENTS.RECONNECTING)();
+      expect(webRTCCalling.getVoiceConnectionState()).toEqual({
+        status: VOICE_CONNECTION_STATUS.UNAVAILABLE,
+        lineStatus: 'reconnecting',
+        mobiusSocketStatus: 'not-in-use',
+        reason: 'LINE_RECONNECTING',
+        retryable: true,
+      });
+
+      handlers.get(LINE_EVENTS.RECONNECTED)();
+      expect(webRTCCalling.getVoiceConnectionState().status).toBe(VOICE_CONNECTION_STATUS.READY);
+
+      handlers.get(LINE_EVENTS.UNREGISTERED)();
+      expect(webRTCCalling.getVoiceConnectionState()).toEqual({
+        status: VOICE_CONNECTION_STATUS.UNAVAILABLE,
+        lineStatus: 'unregistered',
+        mobiusSocketStatus: 'not-in-use',
+        reason: 'LINE_UNREGISTERED',
+        retryable: false,
+      });
     });
 
     it('should handle incoming calls', async () => {

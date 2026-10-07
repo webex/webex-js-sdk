@@ -400,6 +400,49 @@ export interface WebexSDK {
   logger: Logger;
 }
 
+/** Contact Center browser voice state event names. @public */
+export enum VOICE_CONNECTION_EVENTS {
+  STATE_CHANGE = 'voice:connectionStateChange',
+}
+
+/** Current browser voice availability. @public */
+export enum VOICE_CONNECTION_STATUS {
+  READY = 'ready',
+  UNAVAILABLE = 'unavailable',
+  NOT_REQUIRED = 'not-required',
+}
+
+/** Stable error codes for browser voice availability failures. @public */
+export const VOICE_CONNECTION_ERROR = {
+  NOT_READY: 'BROWSER_VOICE_NOT_READY',
+} as const;
+
+/** Browser voice line registration states. @public */
+export type VoiceLineStatus =
+  | 'unknown'
+  | 'connecting'
+  | 'registered'
+  | 'reconnecting'
+  | 'reconnected'
+  | 'unregistered'
+  | 'error';
+
+/** Mobius socket states reported by the Calling SDK. @public */
+export type VoiceMobiusSocketStatus = 'unknown' | 'not-in-use' | 'connected' | 'disconnected';
+
+/**
+ * Current browser voice availability and the underlying line and Mobius states.
+ * Mobius socket state is separate from Contact Center WebSocket health.
+ * @public
+ */
+export type VoiceConnectionState = {
+  status: VOICE_CONNECTION_STATUS;
+  lineStatus: VoiceLineStatus;
+  mobiusSocketStatus: VoiceMobiusSocketStatus;
+  reason?: string;
+  retryable?: boolean;
+};
+
 /**
  * An interface for the `ContactCenter` class.
  * The `ContactCenter` package is designed to provide a set of APIs to perform various operations for the Agent flow within Webex Contact Center.
@@ -423,6 +466,13 @@ export interface IContactCenter {
 
   /** Returns the system-managed WellbeingBreak idle code for the registered session. */
   getWellbeingBreakIdleCode(): Promise<Entity>;
+
+  /**
+   * Returns the current browser voice availability snapshot.
+   * @returns Current browser voice state, including line and Mobius socket status
+   * @public
+   */
+  getVoiceConnectionState(): VoiceConnectionState;
 }
 
 /**

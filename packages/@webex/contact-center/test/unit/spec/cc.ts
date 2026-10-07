@@ -5,6 +5,9 @@ import {
   LoginOption,
   StationLogoutResponse,
   WebexSDK,
+  VOICE_CONNECTION_EVENTS,
+  VOICE_CONNECTION_STATUS,
+  VOICE_CONNECTION_ERROR,
 } from '../../../src/types';
 import ContactCenter from '../../../src/cc';
 import EntryPoint from '../../../src/services/EntryPoint';
@@ -2116,6 +2119,37 @@ describe('webex.cc', () => {
   });
 
   describe('setAgentStatus', () => {
+    it('should reject browser voice state changes while WebRTC registration is unavailable', async () => {
+      const webCallingService = webex.cc.webCallingService;
+      jest.spyOn(webCallingService, 'isBrowserVoiceRequired').mockReturnValue(true);
+      jest.spyOn(webCallingService, 'isVoiceReady').mockReturnValue(false);
+      const stateChangeSpy = jest.spyOn(webex.cc.services.agent, 'stateChange');
+
+      await expect(
+        webex.cc.setAgentState({state: 'Available', auxCodeId: '0'})
+      ).rejects.toMatchObject({
+        code: VOICE_CONNECTION_ERROR.NOT_READY,
+        message:
+          'Browser voice is not ready. Wait for the voice connection state to become ready, then try again.',
+      });
+
+      expect(stateChangeSpy).not.toHaveBeenCalled();
+    });
+
+    it('should preserve state changes when browser voice registration is not required', async () => {
+      const webCallingService = webex.cc.webCallingService;
+      jest.spyOn(webCallingService, 'isBrowserVoiceRequired').mockReturnValue(false);
+      jest.spyOn(webCallingService, 'isVoiceReady').mockReturnValue(false);
+      const expectedPayload = {state: 'Meeting', auxCodeId: '12345', agentId: '123'};
+      const stateChangeSpy = jest
+        .spyOn(webex.cc.services.agent, 'stateChange')
+        .mockResolvedValue({data: expectedPayload});
+
+      await webex.cc.setAgentState(expectedPayload);
+
+      expect(stateChangeSpy).toHaveBeenCalledWith({data: expectedPayload});
+    });
+
     it('should set agent status successfully when status is Available', async () => {
       const expectedPayload = {
         state: 'Available',
@@ -2693,7 +2727,7 @@ describe('webex.cc', () => {
       expect(webex.cc.agentConfig.lastIdleCodeChangeTimestamp).toStrictEqual(12345);
       expect(webex.cc.agentConfig.deviceType).toBe(LoginOption.BROWSER);
       expect(registerWebCallingLineSpy).toHaveBeenCalled();
-      expect(setLoginOptionSpy).toHaveBeenCalledWith(LoginOption.BROWSER);
+      expect(setLoginOptionSpy).toHaveBeenCalledWith(LoginOption.BROWSER, false);
       // TODO: https://jira-eng-gpk2.cisco.com/jira/browse/SPARK-626777 Implement the de-register method and close the listener there
       // expect(incomingTaskListenerSpy).toHaveBeenCalled();
       // expect(webSocketManagerOnSpy).toHaveBeenCalledWith('message', expect.any(Function));
@@ -3621,11 +3655,29 @@ describe('webex.cc', () => {
 
       messageCallback(JSON.stringify(payload));
 
-      expect(setLoginOptionSpy).toHaveBeenCalledWith(deviceType);
+      expect(setLoginOptionSpy).toHaveBeenCalledWith(deviceType, false);
     });
   });
 
   describe('API property exposure', () => {
+    it('should expose the current voice connection snapshot and state change event', () => {
+      const state = {
+        status: VOICE_CONNECTION_STATUS.READY,
+        lineStatus: 'registered',
+        mobiusSocketStatus: 'connected',
+      } as const;
+      jest.spyOn(webex.cc.webCallingService, 'getVoiceConnectionState').mockReturnValue(state);
+      const triggerSpy = jest.spyOn(webex.cc, 'trigger');
+      expect(webex.cc.webCallingService.on).toHaveBeenCalledWith(
+        VOICE_CONNECTION_EVENTS.STATE_CHANGE,
+        expect.any(Function)
+      );
+
+      expect(webex.cc.getVoiceConnectionState()).toEqual(state);
+      webex.cc['handleVoiceConnectionStateChange'](state);
+      expect(triggerSpy).toHaveBeenCalledWith(VOICE_CONNECTION_EVENTS.STATE_CHANGE, state);
+    });
+
     it('should provide getEntryPoints wrapper that delegates to EntryPoint', async () => {
       const spy = jest
         .spyOn(EntryPoint.prototype, 'getEntryPoints')
