@@ -8,8 +8,8 @@ tags: [specifications, registry]
 doc_kind: standing-doc
 generated_from: spec-index@0.3.0
 generated_by: claude-code
-approved_by: pending
-updated_at: 2026-10-07T05:05:58Z
+approved_by: riag@cisco.com
+updated_at: 2026-10-07T15:08:52Z
 validation_status: pass
 -->
 
@@ -50,14 +50,16 @@ human-readable mirror and the reconciliation surface for `check_spec_index.py`.
 | --- | --- | --- | --- |
 | `src/` | Device registration with the WDM service (register, refresh, unregister, stale-device cleanup), device-derived state and feature toggles, the `cisco-device-url` request header, inactivity logout, and IP network detection | Partial | `src/docs/README.md` |
 
-Generator-side field measurement for `src` is complete: 73.3% (11 of 15 mandatory fields) assessed 2026-10-07,
+Generator-side field measurement for `src` is complete: 80.0% (12 of 15 mandatory fields) assessed 2026-10-07,
 with critical field coverage at 6 of 7. The score, date, and evidence summary are recorded in the module
-specification's `Coverage score` metadata row and in `.sdd/manifest.json`.
+specification's `Coverage score` metadata row and in `.sdd/manifest.json`. Independent validation returned `pass`
+for this documentation set; that is separate from the coverage measurement.
 
-Independent semantic validation passed on 2026-10-07 with no findings. Gates that still hold coverage promotion
-open: the module has no characterization baseline; the external WDM contract has no committed machine-readable
-source; requirements `MOD-015`, `MOD-026`, `INV-004`, and `INV-005` have no automated evidence; and human approval
-is pending. The improvement decision recorded for this onboarding is `pending`.
+Three fields remain weak. The external WDM integration has no committed machine-readable contract and the owner
+has stated none can be provided, so it is recorded as an approved unknown. The design rationale needs owner input
+(no ADR exists). Test and characterization coverage lacks a baseline, and `MOD-015`, `MOD-026`, `INV-004`, and
+`INV-005` have no automated evidence. Promotion to `Specced` stays held while a critical field is weak and no drift
+measurement exists. The improvement decision recorded for this onboarding is `deferred`.
 
 ## Change and verification routing
 

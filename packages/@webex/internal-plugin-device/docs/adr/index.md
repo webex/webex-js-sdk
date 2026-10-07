@@ -2,8 +2,8 @@
 doc_kind: standing-doc
 generated_from: adr-index@0.3.0
 generated_by: claude-code
-approved_by: pending
-updated_at: 2026-10-07T05:05:58Z
+approved_by: riag@cisco.com
+updated_at: 2026-10-07T15:08:52Z
 validation_status: pass
 -->
 

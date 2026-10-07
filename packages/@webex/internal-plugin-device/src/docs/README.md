@@ -8,8 +8,8 @@ tags: [module, specification]
 doc_kind: module-spec
 generated_from: module-spec@0.3.0
 generated_by: claude-code
-approved_by: pending
-updated_at: 2026-10-07T05:05:58Z
+approved_by: riag@cisco.com
+updated_at: 2026-10-07T15:08:52Z
 validation_status: pass
 -->
 
@@ -27,7 +27,7 @@ Related context: [documentation index](../../docs/index.md) ·
 
 | Field             | Value                                                                                  |
 | ----------------- | -------------------------------------------------------------------------------------- |
-| Owner             | Webex JS SDK maintainers (`webex/webex-js-sdk`, per the `package.json` repository field) |
+| Owner             | Webex JS SDK maintainers (`webex/webex-js-sdk`), confirmed by riag@cisco.com |
 | Source path       | `src/`                                                                                 |
 | Resource kind     | package (internal Webex SDK plugin, registered as `webex.internal.device`)             |
 | Status            | Draft                                                                                  |
@@ -35,7 +35,7 @@ Related context: [documentation index](../../docs/index.md) ·
 | Module id         | `src`                                                                                  |
 | Parent spec       | —                                                                                      |
 | Doc kind          | Module spec                                                                            |
-| Coverage score    | 73.3% assessed 2026-10-07: 11 of 15 mandatory fields present, critical 6 of 7; no characterization baseline |
+| Coverage score    | 80.0% assessed 2026-10-07: 12 of 15 mandatory fields present, critical 6 of 7; no characterization baseline |
 | Validation status | pass — validator `01a114a2-39d4-73f2-b1b0-e0a3d977933d`, assessed 2026-10-07; 0 findings |
 
 ## Applicability

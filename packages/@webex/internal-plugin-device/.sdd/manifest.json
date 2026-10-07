@@ -81,7 +81,7 @@
     {
       "path": "src/",
       "coverage_status": "Partial",
-      "coverage_evidence": "Generator-side field measurement 73.3% (11 of 15 mandatory fields PRESENT, critical 6 of 7) assessed 2026-10-07. WEAK: external WDM integration (no committed machine-readable contract), test and characterization coverage (no baseline; MOD-015, INV-004, INV-005, MOD-026 untested), design rationale (no ADR), provenance (approver pending). Independent validation passed on 2026-10-07 with 0 findings; coverage promotion remains held by the recorded gaps and pending human approval.",
+      "coverage_evidence": "Generator-side field measurement 80.0% (12 of 15 mandatory fields PRESENT, critical 6 of 7) assessed 2026-10-07. WEAK: external WDM integration (no committed machine-readable contract; owner states none can be provided, recorded as an approved unknown), test and characterization coverage (no baseline; MOD-015, INV-004, INV-005, MOD-026 untested), and design rationale (no accepted ADR). Provenance is PRESENT now that approval is recorded. Promotion to Specced held: a critical field is weak and no drift measurement exists.",
       "canonical_spec": "src/docs/README.md",
       "contracts": {
         "provides": [
