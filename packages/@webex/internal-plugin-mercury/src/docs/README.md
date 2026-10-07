@@ -9,8 +9,8 @@ doc_kind: module-spec
 generated_from: module-spec@0.3.0
 generated_by: claude-cowork
 approved_by: akulakum@cisco.com
-updated_at: 2026-10-06T23:49:26Z
-validation_status: pending
+updated_at: 2026-10-07T00:19:43Z
+validation_status: pass-with-warnings
 -->
 
 # Mercury plugin
@@ -37,7 +37,7 @@ Related context: [documentation index](../../docs/index.md) ·
 | Parent spec       | — |
 | Doc kind          | Module spec |
 | Coverage score    | 93.3% assessed 2026-10-06 — 14 of 15 mandatory fields PRESENT, critical 8 of 8; test strategy is WEAK because the forced-close reconnect after disconnect, the real switchover socket bookkeeping, the accessors, the session suffix `INV-001`, the `sockets` deletion by a non-active close, `INV-004`, and `INV-005` are untested and no characterization baseline exists |
-| Validation status | pending |
+| Validation status | pass-with-warnings; 2026-10-07; validator runtime: current-session |
 
 ## Applicability
 

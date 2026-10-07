@@ -313,7 +313,11 @@
       "Blocking"
     ],
     "base_ref": "next",
-    "head_ref": "Webex_Internal_Plugin_Mememory_SDD"
+    "head_ref": "Webex_Internal_Plugin_Mememory_SDD",
+    "validator_runtime": "current-session",
+    "validator_runtime_source": "invocation-input",
+    "validator_run_id": "spark-853121-spec-validator-2026-10-07-01",
+    "source_commit": "6781f8979571709a80e993f10addbf2d111d2daa"
   },
   "layout": {
     "sdd_root": ".sdd",
