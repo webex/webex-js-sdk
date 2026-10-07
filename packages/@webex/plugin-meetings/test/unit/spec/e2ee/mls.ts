@@ -244,10 +244,10 @@ describe('plugin-meetings', () => {
             displayName: 'Bob',
             deviceType: 'WEB',
             validationResult: 0,
-            certificates: [
+            identityResults: [
               {
                 result: 0,
-                memberCerts: [
+                certificateChain: [
                   {
                     primaryName: 'alice@example.com',
                     commonName: 'Alice',

@@ -394,9 +394,9 @@ export default class MLS {
       deviceType: member.device_type,
       validationResult: member.validation_result,
       ...(member.x509 && {
-        certificates: member.x509.map((certificateResult) => ({
+        identityResults: member.x509.map((certificateResult) => ({
           result: certificateResult.result,
-          memberCerts: certificateResult.member_certs.map((certificate) => ({
+          certificateChain: certificateResult.member_certs.map((certificate) => ({
             primaryName: certificate.primary_name,
             commonName: certificate.common_name,
             organizationName: certificate.organization_name,

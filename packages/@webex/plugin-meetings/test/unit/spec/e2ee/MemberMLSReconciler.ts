@@ -16,12 +16,12 @@ describe('plugin-meetings', () => {
     const makeMember = (id, deviceUrls) =>
       new Member({id, controls: {}, status: {}, devices: deviceUrls.map((url) => ({url}))});
 
-    const rosterMember = (url, validationResult, certificates) => ({
+    const rosterMember = (url, validationResult, identityResults) => ({
       url,
       displayName: 'Alice',
       deviceType: 'WEB',
       validationResult,
-      ...(certificates && {certificates}),
+      ...(identityResults && {identityResults}),
     });
 
     // Adds a member to the collection and stamps it via the Members processor path.
@@ -54,18 +54,24 @@ describe('plugin-meetings', () => {
 
     it('copies certificate information from the MLS roster onto the matching device', () => {
       const member = makeMember('m1', ['device-a']);
-      const certificates = [
+      const identityResults = [
         {
           result: 0,
-          memberCerts: [{primaryName: 'alice@example.com', der: new Uint8Array([1, 2, 3])}],
+          certificateChain: [{primaryName: 'alice@example.com', der: new Uint8Array([1, 2, 3])}],
         },
       ];
       addMember(member);
 
-      reconciler.applyRosterAdded([rosterMember('device-a', 0, certificates)]);
+      reconciler.applyRosterAdded([rosterMember('device-a', 0, identityResults)]);
 
-      assert.deepEqual(member.getE2eeDeviceVerification('device-a').certificates, certificates);
-      assert.deepEqual(reconciler.getDeviceVerification('device-a').certificates, certificates);
+      assert.deepEqual(
+        member.getE2eeDeviceVerification('device-a').identityResults,
+        identityResults
+      );
+      assert.deepEqual(
+        reconciler.getDeviceVerification('device-a').identityResults,
+        identityResults
+      );
     });
 
     it("leaves a member 'unknown' (and reports nothing) when none of its devices are in the roster", () => {

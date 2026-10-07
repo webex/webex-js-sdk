@@ -72,7 +72,7 @@ export const E2eeValidationResult = {
 
 export type E2eeValidationResult = Enum<typeof E2eeValidationResult>;
 
-/** A member of the MLS roster. A `validationResult` of `Success` means the member is verified. */
+/** Parsed X.509 certificate details from a member's certificate chain. */
 export interface E2eeCertificateInfo {
   primaryName: string;
   commonName: string;
@@ -87,28 +87,30 @@ export interface E2eeCertificateInfo {
   der: Uint8Array;
 }
 
-export interface E2eeCertificateResult {
+export interface E2eeIdentityResult {
+  /** Result for this X.509 credential, which may differ from the overall MultiCredential result. */
   result: E2eeValidationResult;
-  memberCerts: E2eeCertificateInfo[];
+  certificateChain: E2eeCertificateInfo[];
   failedCertIndex?: number;
 }
 
-/** A member of the MLS roster. A `validationResult` of `Success` means the member is verified. */
+/** A member of the MLS roster and its overall libe2ee credential validation result. */
 export interface E2eeRosterMember {
   url: string;
   displayName: string;
   deviceType: string;
   validationResult: E2eeValidationResult;
-  certificates?: E2eeCertificateResult[];
+  identityResults?: E2eeIdentityResult[];
 }
 
 /** Per-device E2EE verification result, derived from the MLS roster and applied onto a Member. */
 export interface E2eeDeviceVerification {
   deviceUrl: string;
+  /** Overall libe2ee result for this device's credential or MultiCredential. */
   validationResult: E2eeValidationResult;
   displayName?: string;
   deviceType?: string;
-  certificates?: E2eeCertificateResult[];
+  identityResults?: E2eeIdentityResult[];
 }
 
 /** A member's aggregate E2EE verification state across all of their devices. */

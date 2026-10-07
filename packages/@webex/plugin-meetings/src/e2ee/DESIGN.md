@@ -209,12 +209,12 @@ interface E2eeRosterMember {
   displayName: string;
   deviceType: string;
   validationResult: E2eeValidationResult;
-  certificates?: E2eeCertificateResult[]; // parsed X.509 chains, including leaf identity and DER
+  identityResults?: E2eeIdentityResult[]; // one result per X.509 credential in a MultiCredential
 }
 
-interface E2eeCertificateResult {
+interface E2eeIdentityResult {
   result: E2eeValidationResult;
-  memberCerts: E2eeCertificateInfo[]; // leaf first
+  certificateChain: E2eeCertificateInfo[]; // leaf first
   failedCertIndex?: number;
 }
 
@@ -234,10 +234,10 @@ interface E2eeCertificateInfo {
 
 interface E2eeDeviceVerification {
   deviceUrl: string;
-  validationResult: E2eeValidationResult;  // Success means the device's identity is verified
+  validationResult: E2eeValidationResult;  // overall libe2ee result for this device's credential(s)
   displayName?: string;
   deviceType?: string;
-  certificates?: E2eeCertificateResult[];
+  identityResults?: E2eeIdentityResult[];
 }
 
 type E2eeMemberVerificationState =
@@ -412,11 +412,35 @@ surfaced through the existing `members:update`, which is always emitted by `Memb
   `Members` to emit a `members:update` (with those members in `delta.updated`).
 
 Matching key: **`MLS RosterMember.url === Member.participant.devices[i].url`** (per-device).
-Verified rule: `validationResult === E2eeValidationResult.Success`. Ordering between MLS roster events and Locus member
-updates does not matter — roster entries with no matching member yet remain pending in the map and
-are applied when that member is next processed.
+The `validationResult` on a device is libe2ee's overall result for its credential or MultiCredential.
+Ordering between MLS roster events and Locus member updates does not matter — roster entries with
+no matching member yet remain pending in the map and are applied when that member is next processed.
 The roster's parsed X.509 chain data is retained on each device verification so clients can display
 identity, domain, partner, certificate validity, and fingerprint details without reparsing the DER.
+
+For a MultiCredential, `identityResults` contains one result per X.509 credential; each result's
+`certificateChain` contains that credential's chain, leaf first. A single credential with a
+three-certificate chain therefore has one `identityResults` entry with three certificates in its
+`certificateChain`. The current WASM and SDK roster shape carries X.509 results only.
+
+The libe2ee verifier used by UCF also validates the `userinfo_vc_draft_00` credential type and
+includes those outcomes in the overall MultiCredential result. UCF's MediaEncryptionService
+presentation path currently consumes X.509 results only; it does not surface the VC results. To
+expose VC details in the SDK, the WASM roster binding must also carry `RosterStatus.vc`, then the SDK
+can add a typed result for that credential type. That would extend beyond UCF's current identity
+display behavior.
+
+`PartialSuccess` means at least one credential binding succeeded and at least one failed. An app
+that wants to match UCF's per-device identity display should select a successful `identityResults`
+entry when present (libe2ee sorts successful X.509 results first, but consumers should check
+`result`), then use that entry's `certificateChain` and leaf `identityType` to determine the
+displayed identity status. UCF treats Webex user and machine identities as verified, partner
+verified identities as partner-verified, and anonymous identities as unverified. If no X.509
+result succeeded, UCF falls back to the first X.509 result and displays its failure status. This
+selection is per device. The current `Member.e2eeVerificationState` separately aggregates device
+results and considers only an overall `Success` verified. To make that member-level summary match
+UCF, an app should first derive each device's display status using the selected identity result and
+identity type, then aggregate those derived per-device statuses across the Webex `Member`'s devices.
 
 The `E2eeMeeting` facade creates the reconciler in its **constructor** (gated on
 `config.enableE2ee`) and registers the processor there, so member verification is stamped for the
