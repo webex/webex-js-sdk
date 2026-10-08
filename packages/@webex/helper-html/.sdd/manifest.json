@@ -171,7 +171,7 @@
     "validator_runtime": "codex",
     "validator_runtime_source": "invocation-input",
     "runtime_fallback_tier": "different-runtime",
-    "source_commit": "e4b54a349291d3dede458c08ea105f961bed845c"
+    "source_commit": "6c486bb089b30890585d49d43f99e4af11728c4e"
   },
   "layout": {
     "sdd_root": ".sdd",
