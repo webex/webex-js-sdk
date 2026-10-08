@@ -49,6 +49,13 @@ describe('plugin-identity', () => {
     });
 
     describe('getCredentials', () => {
+      it('creates a credential cache for each plugin instance', () => {
+        const secondWebex = MockWebex({children: {identity: Identity}});
+        const secondIdentity = secondWebex.internal.identity;
+
+        assert.notStrictEqual(identity.credentialsCache, secondIdentity.credentialsCache);
+      });
+
       it('generates a CSR, submits it to the CA and returns the raw key + cert chain', async () => {
         const credentials = await identity.getCredentials('user-1');
 

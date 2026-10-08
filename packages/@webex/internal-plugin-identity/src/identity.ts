@@ -17,14 +17,14 @@ import {
 const PKCS8_P256_RAW_KEY_OFFSET = 36;
 const RAW_EC_P256_KEY_LENGTH = 32;
 
-const Identity = WebexPlugin.extend({
-  namespace: 'Identity',
+class Identity extends WebexPlugin {
+  namespace = 'Identity';
+  credentialsCache: Map<string, Promise<IdentityCredentials>>;
 
-  /** @returns {undefined} */
-  initialize(...args) {
-    Reflect.apply(WebexPlugin.prototype.initialize, this, args);
+  constructor(...args) {
+    super(...args);
     this.credentialsCache = new Map();
-  },
+  }
 
   /**
    * @returns {IdentityTrustAnchors} trust anchors for validating member certificates.
@@ -37,7 +37,7 @@ const Identity = WebexPlugin.extend({
       domainNameRoots: '', // todo (ucf uses domain_name_roots.p7b file)
       userIdentityRoots: '',
     };
-  },
+  }
 
   /**
    * Returns credentials for the given contact, generating and caching them on first use.
@@ -68,7 +68,7 @@ const Identity = WebexPlugin.extend({
     this.logger.info('identity: getCredentials: cache miss, requesting new credentials');
 
     return this._cacheCredentials(contactId);
-  },
+  }
 
   /**
    * Returns whether the cached leaf certificate is near expiry.
@@ -80,7 +80,7 @@ const Identity = WebexPlugin.extend({
     const leafCertificate = credentials.certChain[0];
 
     return !leafCertificate || isCertificateExpiringSoon(leafCertificate);
-  },
+  }
 
   /**
    * Replaces a cached credential request if it is still the current cache entry. This prevents
@@ -99,7 +99,7 @@ const Identity = WebexPlugin.extend({
     }
 
     return this._cacheCredentials(contactId);
-  },
+  }
 
   /**
    * Requests credentials and caches the in-flight promise so concurrent callers share it.
@@ -118,7 +118,7 @@ const Identity = WebexPlugin.extend({
     });
 
     return credentials;
-  },
+  }
 
   /**
    * CSR generation is an overridable seam for unit tests and alternate identity backends.
@@ -128,7 +128,7 @@ const Identity = WebexPlugin.extend({
    */
   _generateCsr(contactId: string): Promise<CertSigningRequest> {
     return generateCsrWithPkijs(contactId);
-  },
+  }
 
   /**
    * @param {string} contactId
@@ -155,7 +155,12 @@ const Identity = WebexPlugin.extend({
     );
 
     return {privateKey, certChain: pemToUint8Arrays(response.body)};
-  },
-});
+  }
+}
+
+interface Identity {
+  logger: any;
+  webex: any;
+}
 
 export default Identity;
