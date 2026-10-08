@@ -103,7 +103,7 @@
     {
       "path": ".sdd/templates/repo-standards/template-map.json",
       "generated_from": "WebexTools/repo-standards@d89a7fe59126ae3ad9bac9ca352aa7f12b4c85dc",
-      "refresh_with": "No package copy, directory, or symlink. Map and bodies live at JS SDK root .sdd/templates/repo-standards from PR 5246."
+      "refresh_with": "Package symlink .sdd/templates/repo-standards points to the JS SDK root .sdd/templates/repo-standards snapshot (PR 5246); no package copy. Refresh the root snapshot, not the link."
     }
   ],
   "validation_matrix": [
@@ -292,8 +292,8 @@
           ".sdd/templates/repo-standards"
         ],
         "generated_from": "WebexTools/repo-standards@d89a7fe59126ae3ad9bac9ca352aa7f12b4c85dc",
-        "refresh_with": "No package copy, directory, or symlink. Map and bodies live at JS SDK root .sdd/templates/repo-standards from PR 5246.",
-        "notes": "No package copy, directory, or symlink. Map and bodies live at JS SDK root .sdd/templates/repo-standards from PR 5246."
+        "refresh_with": "Package symlink .sdd/templates/repo-standards points to the JS SDK root .sdd/templates/repo-standards snapshot (PR 5246); no package copy. Refresh the root snapshot, not the link.",
+        "notes": "Package symlink .sdd/templates/repo-standards points to the JS SDK root .sdd/templates/repo-standards snapshot (PR 5246); no package copy. Refresh the root snapshot, not the link."
       }
     ],
     "validation_entrypoints": [
@@ -330,8 +330,8 @@
         "targets": [
           ".sdd/templates/repo-standards"
         ],
-        "mechanism": "No package copy, directory, or symlink. Map and bodies live at JS SDK root .sdd/templates/repo-standards from PR 5246.",
-        "notes": "No package copy, directory, or symlink. Map and bodies live at JS SDK root .sdd/templates/repo-standards from PR 5246."
+        "mechanism": "Package symlink .sdd/templates/repo-standards points to the JS SDK root .sdd/templates/repo-standards snapshot (PR 5246); no package copy. Refresh the root snapshot, not the link.",
+        "notes": "Package symlink .sdd/templates/repo-standards points to the JS SDK root .sdd/templates/repo-standards snapshot (PR 5246); no package copy. Refresh the root snapshot, not the link."
       }
     ]
   },

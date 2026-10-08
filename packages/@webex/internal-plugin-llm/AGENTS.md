@@ -194,5 +194,5 @@ PR checklist:
 - Edit `dist/` by hand.
 - Commit secrets, tokens, or credentials, including in test fixtures.
 - Log data-channel tokens.
-- Create a package-level `.sdd/templates` directory, copy, or symlink. Use the repository-root
-  `.sdd/templates/repo-standards` snapshot.
+- Copy template files into the package or replace the `.sdd/templates/repo-standards` symlink with a
+  directory. It points to the repository-root `.sdd/templates/repo-standards` snapshot.
