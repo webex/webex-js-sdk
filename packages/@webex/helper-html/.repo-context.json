@@ -79,7 +79,7 @@
     {
       "path": ".sdd/templates/repo-standards/template-map.json",
       "generated_from": "WebexTools/repo-standards@d89a7fe59126ae3ad9bac9ca352aa7f12b4c85dc",
-      "refresh_with": "Use the repository-root .sdd/templates/repo-standards snapshot. Do not add a package-level .sdd/templates directory, copy, or symlink."
+      "refresh_with": "A symlink to the monorepo-root template set, so this package holds no template copies of its own."
     }
   ],
   "validation_matrix": [
@@ -241,8 +241,8 @@
           ".sdd/templates/repo-standards"
         ],
         "generated_from": "WebexTools/repo-standards@d89a7fe59126ae3ad9bac9ca352aa7f12b4c85dc",
-        "refresh_with": "Use the repository-root .sdd/templates/repo-standards snapshot. Do not add a package-level .sdd/templates directory, copy, or symlink.",
-        "notes": "The shared snapshot lives at the JS SDK repository root .sdd/templates/repo-standards. This package does not vendor or symlink it."
+        "refresh_with": "A symlink to the monorepo-root template set, so this package holds no template copies of its own.",
+        "notes": "A symlink to the monorepo-root template set, so this package holds no template copies of its own."
       }
     ],
     "validation_entrypoints": [
@@ -265,8 +265,8 @@
         "targets": [
           ".sdd/templates/repo-standards"
         ],
-        "mechanism": "Use the repository-root .sdd/templates/repo-standards snapshot. Do not add a package-level templates directory or symlink.",
-        "notes": "Do not create a package-level .sdd/templates directory, copy, or symlink."
+        "mechanism": "symlink .sdd/templates/repo-standards to the repository-root .sdd/templates/repo-standards snapshot",
+        "notes": "Reached through the symlink to the monorepo root; never seeded per package."
       }
     ]
   },
