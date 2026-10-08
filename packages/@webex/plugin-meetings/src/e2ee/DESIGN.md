@@ -379,7 +379,10 @@ getCredentials(contactId: string): Promise<{ privateKey: Uint8Array; certChain: 
 getTrustAnchors(): { webexCaRoots; domainNameRoots; userIdentityRoots };
 ```
 
-The plugin owns `WEBEX_CA_PRODUCTION_ROOTS`, `generateCsrWithPkijs`, and the PEM helpers.
+The plugin owns the production, FedRAMP and integration Webex CA roots. It selects the integration
+roots when `webex.internal.services.isIntegrationEnvironment()` is true; other environments use
+production plus FedRAMP roots, matching UCF's environment-specific root selection. It also owns
+`generateCsrWithPkijs` and the PEM helpers.
 `domainNameRoots` / `userIdentityRoots` are TBD from the service (currently `''`).
 
 ### `MemberMLSReconciler`

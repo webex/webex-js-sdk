@@ -6,7 +6,11 @@ import {assert} from '@webex/test-helper-chai';
 import MockWebex from '@webex/test-helper-mock-webex';
 import sinon from 'sinon';
 import Identity from '../../../src/identity';
-import {WEBEX_CA_PRODUCTION_ROOTS} from '@webex/internal-plugin-identity/src/constants';
+import {
+  WEBEX_CA_FEDRAMP_ROOTS,
+  WEBEX_CA_INTEGRATION_ROOTS,
+  WEBEX_CA_PRODUCTION_ROOTS,
+} from '@webex/internal-plugin-identity/src/constants';
 import * as identityUtils from '../../../src/utils';
 
 // 'ABC' -> base64 'QUJD'; 'DEF' -> base64 'REVG'.
@@ -30,6 +34,9 @@ describe('plugin-identity', () => {
       webex = MockWebex();
       webexRequest = sinon.stub().resolves({body: `${LEAF_PEM}\n${ROOT_PEM}`});
       webex.request = webexRequest;
+      webex.internal = {
+        services: {isIntegrationEnvironment: sinon.stub().returns(false)},
+      };
       identity = new Identity({webex}, {parent: webex}, {generateCsr});
       sinon.stub(identityUtils, 'isCertificateExpiringSoon').returns(false);
     });
@@ -41,7 +48,17 @@ describe('plugin-identity', () => {
     describe('getTrustAnchors', () => {
       it('returns the Webex CA root and empty domain/user anchors', () => {
         assert.deepEqual(identity.getTrustAnchors(), {
-          webexCaRoots: WEBEX_CA_PRODUCTION_ROOTS,
+          webexCaRoots: `${WEBEX_CA_PRODUCTION_ROOTS}\n${WEBEX_CA_FEDRAMP_ROOTS}`,
+          domainNameRoots: '',
+          userIdentityRoots: '',
+        });
+      });
+
+      it('returns the integration CA roots for integration environments', () => {
+        webex.internal.services.isIntegrationEnvironment.returns(true);
+
+        assert.deepEqual(identity.getTrustAnchors(), {
+          webexCaRoots: WEBEX_CA_INTEGRATION_ROOTS,
           domainNameRoots: '',
           userIdentityRoots: '',
         });

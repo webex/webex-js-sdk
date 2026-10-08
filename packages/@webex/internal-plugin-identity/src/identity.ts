@@ -4,7 +4,12 @@
 
 import {WebexPlugin} from '@webex/webex-core';
 
-import {CERTIFICATE_AUTHORITY_SERVICE, WEBEX_CA_PRODUCTION_ROOTS} from './constants';
+import {
+  CERTIFICATE_AUTHORITY_SERVICE,
+  WEBEX_CA_FEDRAMP_ROOTS,
+  WEBEX_CA_INTEGRATION_ROOTS,
+  WEBEX_CA_PRODUCTION_ROOTS,
+} from './constants';
 import type {IdentityCredentials, IdentityTrustAnchors} from './types';
 import {
   CERTIFICATE_RENEWAL_WINDOW_MS,
@@ -37,9 +42,14 @@ class Identity extends WebexPlugin {
    */
   getTrustAnchors(): IdentityTrustAnchors {
     this.logger.info('identity: getTrustAnchors');
+    const isIntegrationEnvironment =
+      this.webex.internal?.services?.isIntegrationEnvironment?.() ?? false;
+    const webexCaRoots = isIntegrationEnvironment
+      ? WEBEX_CA_INTEGRATION_ROOTS
+      : `${WEBEX_CA_PRODUCTION_ROOTS}\n${WEBEX_CA_FEDRAMP_ROOTS}`;
 
     return {
-      webexCaRoots: WEBEX_CA_PRODUCTION_ROOTS,
+      webexCaRoots,
       domainNameRoots: '', // todo (ucf uses domain_name_roots.p7b file)
       userIdentityRoots: '',
     };
