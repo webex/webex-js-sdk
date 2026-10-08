@@ -488,6 +488,10 @@ export default class CallDiagnosticMetrics extends StatelessWebexPlugin {
       identifiers.webexSiteName = meeting.meetingInfo?.siteName;
     }
 
+    if (meeting?.meetingInfo?.locusClusterUrl) {
+      identifiers.locusCluster = meeting.meetingInfo.locusClusterUrl;
+    }
+
     if (mediaConnections) {
       identifiers.mediaAgentAlias = mediaConnections?.[0]?.mediaAgentAlias;
       identifiers.mediaAgentGroupId = mediaConnections?.[0]?.mediaAgentGroupId;
@@ -501,11 +505,8 @@ export default class CallDiagnosticMetrics extends StatelessWebexPlugin {
       identifiers.globalMeetingId = globalMeetingId;
     }
 
-    // pre-join events have no meeting yet, so the client passes the App API cluster as an option
-    const resolvedLocusCluster = meeting?.meetingInfo?.locusClusterUrl || locusCluster;
-
-    if (resolvedLocusCluster) {
-      identifiers.locusCluster = resolvedLocusCluster;
+    if (!identifiers?.locusCluster && locusCluster) {
+      identifiers.locusCluster = locusCluster;
     }
 
     if (identifiers.correlationId === undefined) {
@@ -1072,6 +1073,7 @@ export default class CallDiagnosticMetrics extends StatelessWebexPlugin {
       globalMeetingId,
       webexConferenceIdStr,
       sessionCorrelationId,
+      locusCluster,
     } = options;
 
     // @ts-ignore
@@ -1105,6 +1107,7 @@ export default class CallDiagnosticMetrics extends StatelessWebexPlugin {
       webexConferenceIdStr,
       globalMeetingId,
       sessionCorrelationId,
+      locusCluster,
     });
 
     // create common event object structure

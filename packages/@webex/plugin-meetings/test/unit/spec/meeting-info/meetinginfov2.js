@@ -891,7 +891,6 @@ describe('plugin-meetings', () => {
                 payload: {
                   identifiers: {
                     meetingLookupUrl: result?.url,
-                    locusCluster: locusClusterUrl,
                   },
                 },
                 options: {
@@ -900,6 +899,7 @@ describe('plugin-meetings', () => {
                   webexConferenceIdStr: confIdStr
                     ? requestResponse.body?.confIdStr
                     : requestResponse.body?.confID,
+                  locusCluster: locusClusterUrl,
                 },
               });
             } else {
@@ -1027,13 +1027,13 @@ describe('plugin-meetings', () => {
           payload: {
             identifiers: {
               meetingLookupUrl: result?.url,
-              locusCluster: undefined,
             },
           },
           options: {
             meetingId: 'meetingId',
             globalMeetingId: requestResponse.body?.meetingId,
             webexConferenceIdStr: requestResponse.body?.confID,
+            locusCluster: undefined,
           },
         });
       });
