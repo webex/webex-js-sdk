@@ -9,7 +9,10 @@ export interface IdentityCredentials {
 
 export interface IdentityTrustAnchors {
   webexCaRoots?: string;
+  /** PEM-encoded domain-name trust anchors. */
   domainNameRoots?: string;
+  /** Signed PKCS#7 domain-name trust-anchor bundle. */
+  domainNameRootsP7b?: Uint8Array;
   userIdentityRoots?: string;
 }
 

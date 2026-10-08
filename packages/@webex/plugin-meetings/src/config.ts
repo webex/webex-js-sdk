@@ -82,6 +82,7 @@ export default {
     enableExtmap: false,
     enableAutomaticLLM: false,
     enableE2ee: false,
+    assetsBaseUrl: '/assets/',
     installedOrgID: undefined,
     multipartSitePrefixList: ['.my.', '.mydmz.', '.mybts.', '.mydev.', '.myats2.', '.myats.'],
     experimental: {

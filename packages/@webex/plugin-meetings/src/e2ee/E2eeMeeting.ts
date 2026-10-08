@@ -7,12 +7,18 @@ import type {IdentityProvider} from '@webex/internal-plugin-identity';
 import EventsScope from '../common/events/events-scope';
 import Trigger from '../common/events/trigger-proxy';
 import LoggerProxy from '../common/logs/logger-proxy';
+import StaticAssetLoader from '../common/static-asset-loader';
 import {EVENT_TRIGGERS} from '../constants';
 import MLS, {type MLSEvent, type MLSEventMap} from './mls';
 import MediaEncryptionService from './MediaEncryptionService';
 import E2eeSignaling from './E2eeSignaling';
 import MemberMLSReconciler from './MemberMLSReconciler';
-import {isE2eeEnabledAndSupported, E2EE_WASM_URL, MEDIA_SERVICE_DEVICE_TYPE} from './constants';
+import {
+  DOMAIN_NAME_ROOTS_P7B_ASSET,
+  E2EE_WASM_ASSET,
+  isE2eeEnabledAndSupported,
+  MEDIA_SERVICE_DEVICE_TYPE,
+} from './constants';
 import type WasmLoader from '../common/wasm-loader';
 import type {E2eeConfig, E2eeState} from './types';
 
@@ -31,6 +37,8 @@ export default class E2eeMeeting extends EventsScope {
   private readonly webex: any;
 
   private readonly wasmLoader: WasmLoader;
+
+  private readonly assetLoader: StaticAssetLoader;
 
   private readonly identityProvider: IdentityProvider;
 
@@ -55,6 +63,7 @@ export default class E2eeMeeting extends EventsScope {
    * @param {Object} deps.meeting - The owning meeting.
    * @param {Object} deps.webex - The parent webex instance.
    * @param {WasmLoader} deps.wasmLoader - Shared (pre-warmed) WASM loader.
+   * @param {StaticAssetLoader} deps.assetLoader - Shared loader for plugin-meetings static assets.
    * @param {IdentityProvider} deps.identityProvider - Shared identity/credential provider.
    * @param {E2eeConfig} deps.config - The meetings plugin config.
    */
@@ -62,12 +71,14 @@ export default class E2eeMeeting extends EventsScope {
     meeting,
     webex,
     wasmLoader,
+    assetLoader,
     identityProvider,
     config,
   }: {
     meeting: any;
     webex: any;
     wasmLoader: WasmLoader;
+    assetLoader: StaticAssetLoader;
     identityProvider: IdentityProvider;
     config: E2eeConfig;
   }) {
@@ -75,6 +86,7 @@ export default class E2eeMeeting extends EventsScope {
     this.meeting = meeting;
     this.webex = webex;
     this.wasmLoader = wasmLoader;
+    this.assetLoader = assetLoader;
     this.identityProvider = identityProvider;
     this.config = config;
 
@@ -171,17 +183,20 @@ export default class E2eeMeeting extends EventsScope {
     this.setState('initializing');
 
     try {
-      await this.wasmLoader.get(E2EE_WASM_URL);
-
+      const wasmUrl = this.assetLoader.getUrl(E2EE_WASM_ASSET);
       const {device} = this.webex.internal;
-      const credentials = await this.identityProvider.getCredentials(device.userId);
+      const [, credentials, domainNameRootsP7b] = await Promise.all([
+        this.wasmLoader.get(wasmUrl),
+        this.identityProvider.getCredentials(device.userId),
+        this.assetLoader.getBytes(DOMAIN_NAME_ROOTS_P7B_ASSET),
+      ]);
       const httpClient = new MediaEncryptionService({
         webexRequest: this.webex.request.bind(this.webex),
       });
       const session = new MLS({
         httpClient,
         wasmLoader: this.wasmLoader,
-        wasmUrl: E2EE_WASM_URL,
+        wasmUrl,
       });
 
       this.session = session;
@@ -195,7 +210,10 @@ export default class E2eeMeeting extends EventsScope {
         displayName: this.getSelfDisplayName(),
         serviceUrl: this.meeting.locusInfo.info.mediaEncryptionGroupUrl,
         credentials,
-        trustAnchors: this.identityProvider.getTrustAnchors(),
+        trustAnchors: {
+          ...this.identityProvider.getTrustAnchors(),
+          domainNameRootsP7b,
+        },
       });
 
       this.signaling = new E2eeSignaling({

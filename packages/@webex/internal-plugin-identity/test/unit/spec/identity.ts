@@ -46,10 +46,9 @@ describe('plugin-identity', () => {
     });
 
     describe('getTrustAnchors', () => {
-      it('returns the Webex CA root and empty domain/user anchors', () => {
+      it('returns the Webex CA root and empty user identity anchors', () => {
         assert.deepEqual(identity.getTrustAnchors(), {
           webexCaRoots: `${WEBEX_CA_PRODUCTION_ROOTS}\n${WEBEX_CA_FEDRAMP_ROOTS}`,
-          domainNameRoots: '',
           userIdentityRoots: '',
         });
       });
@@ -59,7 +58,6 @@ describe('plugin-identity', () => {
 
         assert.deepEqual(identity.getTrustAnchors(), {
           webexCaRoots: WEBEX_CA_INTEGRATION_ROOTS,
-          domainNameRoots: '',
           userIdentityRoots: '',
         });
       });

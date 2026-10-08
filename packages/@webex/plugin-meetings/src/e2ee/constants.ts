@@ -38,8 +38,12 @@ export const MEDIA_ENCRYPTION_SERVICE = 'media-encryption';
 /** MLS roster device type identifying a media service (breaks zero-trust). */
 export const MEDIA_SERVICE_DEVICE_TYPE = 'MEDIA_SERVICE';
 
-/** URL of the e2ee WASM binary, served by the host app (the `.js` loader URL is derived from it). */
-export const E2EE_WASM_URL = '/wasm/e2ee.wasm';
+/** Static asset filenames published with plugin-meetings. */
+export const E2EE_WASM_ASSET = 'e2ee.wasm';
+export const DOMAIN_NAME_ROOTS_P7B_ASSET = 'domain_name_roots.p7b';
+
+/** Default URL of the e2ee WASM binary (the `.js` loader URL is derived from it). */
+export const E2EE_WASM_URL = `/assets/${E2EE_WASM_ASSET}`;
 
 /** Locus join-request device capability advertising support for large (1K) E2EE meetings. */
 export const E2EE_1K_SUPPORTED = 'E2EE_1K_SUPPORTED';

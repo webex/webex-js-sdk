@@ -8,6 +8,7 @@ import E2eeMeeting from '@webex/plugin-meetings/src/e2ee/E2eeMeeting';
 import MLS from '@webex/plugin-meetings/src/e2ee/mls';
 import E2eeSignaling from '@webex/plugin-meetings/src/e2ee/E2eeSignaling';
 import WasmLoader from '@webex/plugin-meetings/src/common/wasm-loader';
+import StaticAssetLoader from '@webex/plugin-meetings/src/common/static-asset-loader';
 import Trigger from '@webex/plugin-meetings/src/common/events/trigger-proxy';
 import {EVENT_TRIGGERS} from '@webex/plugin-meetings/src/constants';
 
@@ -17,6 +18,7 @@ describe('plugin-meetings', () => {
     let meeting;
     let membersById;
     let wasmLoader;
+    let assetLoader;
     let identityProvider;
     let config;
     let e2ee;
@@ -65,6 +67,9 @@ describe('plugin-meetings', () => {
       wasmLoader.get.resolves({});
       wasmLoader.preload.resolves();
       wasmLoader.isLoaded.returns(true);
+      assetLoader = sinon.createStubInstance(StaticAssetLoader);
+      assetLoader.getUrl.returns('/assets/e2ee.wasm');
+      assetLoader.getBytes.resolves(new Uint8Array([1, 2, 3]));
       identityProvider = {
         getCredentials: sinon
           .stub()
@@ -102,7 +107,7 @@ describe('plugin-meetings', () => {
       };
       config = {enableE2ee: true};
 
-      e2ee = new E2eeMeeting({meeting, webex, wasmLoader, identityProvider, config});
+      e2ee = new E2eeMeeting({meeting, webex, wasmLoader, assetLoader, identityProvider, config});
     });
 
     afterEach(() => {
@@ -159,6 +164,7 @@ describe('plugin-meetings', () => {
           webexCaRoots: 'ca',
           domainNameRoots: '',
           userIdentityRoots: '',
+          domainNameRootsP7b: new Uint8Array([1, 2, 3]),
         });
 
         assert.calledOnce(signalingStartStub);

@@ -13,6 +13,8 @@ import type {Enum} from '../constants';
 /** E2EE feature config (a slice of the meetings plugin config). */
 export interface E2eeConfig {
   enableE2ee?: boolean;
+  /** Base URL from which plugin-meetings static assets are served. */
+  assetsBaseUrl?: string;
 }
 
 /** Lifecycle state of a per-meeting MLS session. */

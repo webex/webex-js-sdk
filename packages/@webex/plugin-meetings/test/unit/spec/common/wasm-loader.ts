@@ -8,8 +8,8 @@ import WasmLoader from '@webex/plugin-meetings/src/common/wasm-loader';
 
 describe('plugin-meetings', () => {
   describe('WasmLoader', () => {
-    const WASM_URL = '/wasm/e2ee.wasm';
-    const OTHER_WASM_URL = '/wasm/other.wasm';
+    const WASM_URL = '/assets/e2ee.wasm';
+    const OTHER_WASM_URL = '/assets/other.wasm';
 
     let factory;
     let importModule;
@@ -31,7 +31,7 @@ describe('plugin-meetings', () => {
 
         const result = await loader.get(WASM_URL);
 
-        assert.calledOnceWithExactly(importModule, '/wasm/e2ee.js');
+        assert.calledOnceWithExactly(importModule, '/assets/e2ee.js');
         assert.calledOnce(factory);
         const {locateFile} = factory.firstCall.args[0];
         assert.equal(locateFile('e2ee.wasm'), WASM_URL);
@@ -62,9 +62,9 @@ describe('plugin-meetings', () => {
       it('loads distinct urls independently', async () => {
         const otherInstance = {name: 'other-module'};
         importModule
-          .withArgs('/wasm/e2ee.js')
+          .withArgs('/assets/e2ee.js')
           .resolves({default: factory})
-          .withArgs('/wasm/other.js')
+          .withArgs('/assets/other.js')
           .resolves({default: sinon.stub().resolves(otherInstance)});
         const loader = new WasmLoader({importModule});
 
@@ -72,8 +72,8 @@ describe('plugin-meetings', () => {
         const other = await loader.get(OTHER_WASM_URL);
 
         assert.calledTwice(importModule);
-        assert.calledWith(importModule, '/wasm/e2ee.js');
-        assert.calledWith(importModule, '/wasm/other.js');
+        assert.calledWith(importModule, '/assets/e2ee.js');
+        assert.calledWith(importModule, '/assets/other.js');
         assert.strictEqual(e2ee, moduleInstance);
         assert.strictEqual(other, otherInstance);
       });
@@ -83,7 +83,7 @@ describe('plugin-meetings', () => {
         importModule.onFirstCall().rejects(error).onSecondCall().resolves({default: factory});
         const loader = new WasmLoader({importModule});
 
-        await assert.isRejected(loader.get(WASM_URL), /Failed to load WASM module \/wasm\/e2ee\.wasm/);
+        await assert.isRejected(loader.get(WASM_URL), /Failed to load WASM module \/assets\/e2ee\.wasm/);
         assert.isFalse(loader.isLoaded(WASM_URL));
 
         const result = await loader.get(WASM_URL);
@@ -99,7 +99,7 @@ describe('plugin-meetings', () => {
 
         await loader.preload(WASM_URL);
 
-        assert.calledOnceWithExactly(importModule, '/wasm/e2ee.js');
+        assert.calledOnceWithExactly(importModule, '/assets/e2ee.js');
         assert.isTrue(loader.isLoaded(WASM_URL));
       });
     });

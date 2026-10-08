@@ -178,12 +178,16 @@ packages/@webex/plugin-meetings/src/e2ee/
 ├── MediaKeyController.ts      # key injection into IE2eeMediaConnection (buffers keys)
 ├── IE2eeMediaConnection.ts   # interface contract implemented by internal-media-core
 ├── types.ts                  # shared E2EE types
-├── constants.ts              # e2ee constants (E2EE_WASM_URL, event / mercury names, timeouts)
+├── constants.ts              # e2ee constants (static asset names, event / mercury names, timeouts)
 └── wasm.d.ts                 # existing WASM typings (keep)
 ```
 
 The generic `WasmLoader` is **not** E2EE-specific and lives outside this folder in
-`common/wasm-loader.ts`; `Meetings` owns it and injects it into `E2eeManager`.
+`common/wasm-loader.ts`; `Meetings` owns it and injects it into `E2eeManager`. The generic
+`StaticAssetLoader` in `common/static-asset-loader.ts` resolves and caches binary assets from
+`meetings.assetsBaseUrl`. It joins the configured base URL with an asset filename and fetches the
+response as bytes. Concurrent and later requests for the same URL share a cached successful
+response; failed requests are evicted so they can be retried. The default base URL is `/assets/`.
 
 - The `e2ee/mls.ts` from POC code becomes `mls.ts` (stripped of webex/HTTP/LLM).
 - `loadWasmModule` (and the module-cache globals) become `WasmLoader.preload(wasmUrl)` /
@@ -271,7 +275,8 @@ isLoaded(wasmUrl: string): boolean;
 Refactor of `loadWasmModule` + the `moduleInstance` / `moduleLoadPromise` globals into instance
 state. Each module is uniquely identified by its `.wasm` URL (the `.js` loader URL is derived by
 replacing the `.wasm` suffix), so a single loader can load and cache multiple distinct modules. The
-E2EE module is loaded via the `E2EE_WASM_URL` constant (default `/wasm/e2ee.wasm`).
+E2EE module is loaded from `e2ee.wasm` under `meetings.assetsBaseUrl` (default `/assets/`). The
+same asset directory contains `e2ee.js` and the signed `domain_name_roots.p7b` bundle.
 
 ### `E2eeManager` (one instance per Meetings plugin)
 
@@ -279,8 +284,8 @@ E2EE module is loaded via the `E2EE_WASM_URL` constant (default `/wasm/e2ee.wasm
 constructor(deps: { webex; wasmLoader });  // wasmLoader injected (owned by Meetings)
 get isEnabled(): boolean;         // webex.config.meetings.enableE2ee
 preload(): Promise<void>;         // called from Meetings.register(); if isEnabled ->
-                                  //   wasmLoader.preload(E2EE_WASM_URL) only; must NOT block/fail registration
-                                  //   (credentials stay lazy - cached on first E2EE meeting)
+                                  //   warms the WASM module; failure must not block registration
+                                  //   (credentials and trust-root bundle stay lazy)
 createE2eeMeeting(meeting): E2eeMeeting; // factory; injects shared wasmLoader + identityProvider
 ```
 
@@ -293,7 +298,7 @@ facade whose `start()` is a no-op when `!isEnabled`, keeping `Meeting` code unif
 constructor(deps: {
   httpClient: IMlsHttpClient;
   wasmLoader: WasmLoader;
-  wasmUrl: string;            // which cached module to load (E2EE_WASM_URL)
+  wasmUrl: string;            // module URL resolved from meetings.assetsBaseUrl
 });
 
 initialize(cfg: {
@@ -376,14 +381,33 @@ getCredentials(contactId: string): Promise<{ privateKey: Uint8Array; certChain: 
 //                    headers:{ 'include-root-cert':'true' } })
 //  -> parse PEM chain; CACHE result (per device/user) for reuse across meetings.
 //  -> before reuse, check the leaf certificate's notAfter; renew when less than one day remains.
-getTrustAnchors(): { webexCaRoots; domainNameRoots; userIdentityRoots };
+getTrustAnchors(): { webexCaRoots; userIdentityRoots };
 ```
 
 The plugin owns the production, FedRAMP and integration Webex CA roots. It selects the integration
 roots when `webex.internal.services.isIntegrationEnvironment()` is true; other environments use
 production plus FedRAMP roots, matching UCF's environment-specific root selection. It also owns
-`generateCsrWithPkijs` and the PEM helpers.
-`domainNameRoots` / `userIdentityRoots` are TBD from the service (currently `''`).
+`generateCsrWithPkijs` and the PEM helpers. `userIdentityRoots` is currently empty. The signed
+domain-name P7B bundle is loaded separately as a binary static asset and passed to the WASM trust
+anchor API for signature verification and extraction.
+
+The consuming application hosts `plugin-meetings/dist/assets` and configures
+`meetings.assetsBaseUrl`. Use a version-pinned URL for CDN hosting so the assets remain compatible
+with the JavaScript SDK version. CDN hosts must allow cross-origin requests from the application
+and serve `e2ee.js` with a JavaScript MIME type:
+
+```ts
+meetings: {
+  assetsBaseUrl: 'https://cdn.example.com/webex-js-sdk/1.2.3/plugin-meetings/assets/',
+}
+```
+
+These files are runtime assets, not part of the SDK JavaScript bundle. The plugin build copies the
+contents of `plugin-meetings/assets` into `plugin-meetings/dist/assets`; the consuming application
+then publishes that directory and serves it at the configured base URL. For local SDK samples,
+`samples:serve` maps the source `plugin-meetings/assets` directory to `/assets`, so the default URL
+works without first building the plugin package. Other development or deployment servers need to
+provide the same URL mapping (or configure `assetsBaseUrl` to their hosted location).
 
 ### `MemberMLSReconciler`
 

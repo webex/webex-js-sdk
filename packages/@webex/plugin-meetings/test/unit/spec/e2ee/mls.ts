@@ -75,7 +75,7 @@ describe('plugin-meetings', () => {
       wasmLoader.preload.resolves();
       wasmLoader.isLoaded.returns(true);
       httpClient = {request: sinon.stub().resolves(new Uint8Array([1, 2, 3]))};
-      session = new MLS({httpClient, wasmLoader, wasmUrl: '/wasm/e2ee.wasm'});
+      session = new MLS({httpClient, wasmLoader, wasmUrl: '/assets/e2ee.wasm'});
     });
 
     afterEach(() => {
@@ -86,7 +86,7 @@ describe('plugin-meetings', () => {
       it('loads the module, wires callbacks and initializes with defaults', async () => {
         await session.initialize(config);
 
-        assert.calledOnceWithExactly(wasmLoader.get, '/wasm/e2ee.wasm');
+        assert.calledOnceWithExactly(wasmLoader.get, '/assets/e2ee.wasm');
         assert.calledOnceWithExactly(
           fakeE2ee.initialize,
           'user-1',
@@ -121,7 +121,13 @@ describe('plugin-meetings', () => {
 
         assert.equal(passedKey, privateKey);
         assert.instanceOf(passedChain[0], Uint8Array);
-        assert.calledOnceWithExactly(fakeE2ee.setTrustAnchors, 'ca-roots', '', '');
+        assert.calledOnceWithExactly(
+          fakeE2ee.setTrustAnchors,
+          'ca-roots',
+          '',
+          '',
+          new Uint8Array()
+        );
         assert.calledOnceWithExactly(fakeE2ee.setJoinTimeout, 5000);
         assert.calledOnceWithExactly(fakeE2ee.setCoalesceWindow, 100);
       });

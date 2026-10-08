@@ -94,7 +94,12 @@ export interface WebE2EEInstance {
   ): void;
 
   addX509Credential(privateKey: Uint8Array, certChain: Uint8Array[]): void;
-  setTrustAnchors(webexCaRoots: string, domainNameRoots: string, userIdentityRoots: string): void;
+  setTrustAnchors(
+    webexCaRoots: string,
+    domainNameRoots: string,
+    userIdentityRoots: string,
+    domainNameRootsP7b: Uint8Array
+  ): void;
 
   join(): void;
   leave(): void;

@@ -147,7 +147,8 @@ export default class MLS {
       this.e2ee.setTrustAnchors(
         config.trustAnchors.webexCaRoots || '',
         config.trustAnchors.domainNameRoots || '',
-        config.trustAnchors.userIdentityRoots || ''
+        config.trustAnchors.userIdentityRoots || '',
+        config.trustAnchors.domainNameRootsP7b || new Uint8Array()
       );
     }
 

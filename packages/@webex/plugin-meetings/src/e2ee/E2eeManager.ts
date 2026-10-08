@@ -5,15 +5,16 @@
 import type {IdentityProvider} from '@webex/internal-plugin-identity';
 
 import LoggerProxy from '../common/logs/logger-proxy';
+import StaticAssetLoader from '../common/static-asset-loader';
 import WasmLoader from '../common/wasm-loader';
 import E2eeMeeting from './E2eeMeeting';
-import {E2EE_WASM_URL, isE2eeEnabledAndSupported} from './constants';
+import {E2EE_WASM_ASSET, isE2eeEnabledAndSupported} from './constants';
 
 /**
- * Owns the shared, session-scoped E2EE identity provider, warms the E2EE WASM during registration
- * so per-meeting init stays off the join path, and acts as the factory for per-meeting
- * {@link E2eeMeeting} facades. The Meetings plugin creates a single instance of this. The WASM
- * loader is owned by `Meetings` (it is not E2EE-specific) and injected here.
+ * Owns the shared, session-scoped E2EE identity provider and static-asset loader, warms the E2EE
+ * WASM during registration so per-meeting init stays off the join path, and acts as the factory for
+ * per-meeting {@link E2eeMeeting} facades. The Meetings plugin creates a single instance of this.
+ * The WASM loader is owned by `Meetings` (it is not E2EE-specific) and injected here.
  */
 export default class E2eeManager {
   private readonly webex: any;
@@ -21,6 +22,8 @@ export default class E2eeManager {
   private readonly wasmLoader: WasmLoader;
 
   private readonly identityProvider: IdentityProvider;
+
+  private readonly assetLoader: StaticAssetLoader;
 
   /**
    * @param {Object} deps
@@ -31,6 +34,7 @@ export default class E2eeManager {
     this.webex = webex;
     this.wasmLoader = wasmLoader;
     this.identityProvider = webex.internal.identity;
+    this.assetLoader = new StaticAssetLoader(webex.config?.meetings?.assetsBaseUrl);
   }
 
   /**
@@ -53,7 +57,7 @@ export default class E2eeManager {
     }
 
     LoggerProxy.logger.info('e2ee: E2eeManager#preload --> preloading WASM module');
-    await this.wasmLoader.preload(E2EE_WASM_URL);
+    await this.wasmLoader.preload(this.assetLoader.getUrl(E2EE_WASM_ASSET));
     LoggerProxy.logger.info('e2ee: E2eeManager#preload --> WASM module preloaded');
   }
 
@@ -70,6 +74,7 @@ export default class E2eeManager {
       meeting,
       webex: this.webex,
       wasmLoader: this.wasmLoader,
+      assetLoader: this.assetLoader,
       identityProvider: this.identityProvider,
       config: this.webex.config.meetings,
     });

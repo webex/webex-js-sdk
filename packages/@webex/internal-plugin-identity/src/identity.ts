@@ -50,7 +50,6 @@ class Identity extends WebexPlugin {
 
     return {
       webexCaRoots,
-      domainNameRoots: '', // todo (ucf uses domain_name_roots.p7b file)
       userIdentityRoots: '',
     };
   }
