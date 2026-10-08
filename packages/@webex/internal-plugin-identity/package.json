@@ -40,8 +40,9 @@
   },
   "scripts": {
     "build": "yarn build:src",
-    "build:src": "webex-legacy-tools build -dest \"./dist\" -src \"./src\" -js -ts -maps",
+    "build:src": "yarn run -T tsc --declaration true --declarationDir ./dist/types -p ./tsconfig.json && webex-legacy-tools build -dest \"./dist\" -src \"./src\" -js -ts -maps",
     "deploy:npm": "yarn npm publish",
+    "typecheck": "yarn run -T tsc --noEmit --emitDeclarationOnly false -p ./tsconfig.json",
     "test:style": "eslint ./src/**/*.*",
     "test:unit": "webex-legacy-tools test --unit --runner jest"
   }
