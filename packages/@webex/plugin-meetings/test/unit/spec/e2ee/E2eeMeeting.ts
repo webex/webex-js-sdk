@@ -23,6 +23,7 @@ describe('plugin-meetings', () => {
     let sessionHandlers;
     let rosterStub;
     let initializeStub;
+    let offStub;
     let joinStub;
     let leaveStub;
     let signalingStartStub;
@@ -52,6 +53,9 @@ describe('plugin-meetings', () => {
       rosterStub = sinon.stub(MLS.prototype, 'getRoster').returns([]);
       sinon.stub(MLS.prototype, 'on').callsFake((event, handler) => {
         sessionHandlers[event] = handler;
+      });
+      offStub = sinon.stub(MLS.prototype, 'off').callsFake((event) => {
+        delete sessionHandlers[event];
       });
       signalingStartStub = sinon.stub(E2eeSignaling.prototype, 'start');
       signalingStopStub = sinon.stub(E2eeSignaling.prototype, 'stop');
@@ -171,6 +175,17 @@ describe('plugin-meetings', () => {
         assert.equal(emitted(EVENT_TRIGGERS.MEETING_E2EE_FAILURE).length, 1);
         assert.notCalled(joinStub);
       });
+
+      it('cleans up the initialized session when startup fails', async () => {
+        initializeStub.rejects(new Error('MLS init failed'));
+
+        await e2ee.start();
+
+        assert.equal(e2ee.state, 'failed');
+        assert.calledOnce(leaveStub);
+        assert.equal(offStub.callCount, 6);
+        assert.deepEqual(Object.keys(sessionHandlers), []);
+      });
     });
 
     describe('session events', () => {
@@ -236,21 +251,31 @@ describe('plugin-meetings', () => {
         assert.deepEqual(calls[0].args[3], {hasMediaServices: true});
       });
 
-      it('goes to failed on joinFailure and evicted on evicted', () => {
+      it('cleans up the session on joinFailure', () => {
         emitSession('joinSuccess', {securityCode: 'SEC-1'});
         emitSession('joinFailure', {reason: 'join_failure'});
         assert.equal(e2ee.state, 'failed');
         assert.isUndefined(e2ee.getSecurityCode());
+        assert.calledOnce(signalingStopStub);
+        assert.calledOnce(leaveStub);
+        assert.equal(offStub.callCount, 6);
+        assert.deepEqual(Object.keys(sessionHandlers), []);
 
         const securityCodeCalls = emitted(EVENT_TRIGGERS.MEETING_E2EE_SECURITY_CODE_UPDATED);
 
         assert.deepEqual(securityCodeCalls[securityCodeCalls.length - 1].args[3], {
           securityCode: undefined,
         });
+        assert.equal(emitted(EVENT_TRIGGERS.MEETING_E2EE_FAILURE).length, 1);
+      });
 
+      it('cleans up the session when evicted', () => {
         emitSession('evicted');
         assert.equal(e2ee.state, 'evicted');
-        assert.equal(emitted(EVENT_TRIGGERS.MEETING_E2EE_FAILURE).length, 2);
+        assert.calledOnce(signalingStopStub);
+        assert.calledOnce(leaveStub);
+        assert.equal(offStub.callCount, 6);
+        assert.equal(emitted(EVENT_TRIGGERS.MEETING_E2EE_FAILURE).length, 1);
       });
     });
 
@@ -322,9 +347,12 @@ describe('plugin-meetings', () => {
         emitSession('joinSuccess', {securityCode: 'SEC-1'});
 
         await e2ee.stop();
+        emitSession('securityCodeChanged', {code: 'SEC-STALE'});
 
         assert.calledOnce(signalingStopStub);
         assert.calledOnce(leaveStub);
+        assert.equal(offStub.callCount, 6);
+        assert.deepEqual(Object.keys(sessionHandlers), []);
         assert.equal(e2ee.state, 'left');
         assert.isUndefined(e2ee.getSecurityCode());
         assert.isFalse(e2ee.hasMediaServices);

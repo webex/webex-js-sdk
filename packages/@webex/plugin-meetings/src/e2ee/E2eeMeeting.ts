@@ -8,7 +8,7 @@ import EventsScope from '../common/events/events-scope';
 import Trigger from '../common/events/trigger-proxy';
 import LoggerProxy from '../common/logs/logger-proxy';
 import {EVENT_TRIGGERS} from '../constants';
-import MLS from './mls';
+import MLS, {type MLSEvent, type MLSEventMap} from './mls';
 import MediaEncryptionService from './MediaEncryptionService';
 import E2eeSignaling from './E2eeSignaling';
 import MemberMLSReconciler from './MemberMLSReconciler';
@@ -41,6 +41,8 @@ export default class E2eeMeeting extends EventsScope {
   private signaling?: E2eeSignaling;
 
   private reconciler?: MemberMLSReconciler;
+
+  private sessionUnsubscribers: Array<() => void> = [];
 
   private currentState: E2eeState = 'disabled';
 
@@ -206,8 +208,7 @@ export default class E2eeMeeting extends EventsScope {
       session.join();
     } catch (error) {
       LoggerProxy.logger.error(`e2ee: E2eeMeeting#start --> failed to start E2EE: ${error}`);
-      this.setState('failed');
-      this.emitE2eeEvent(EVENT_TRIGGERS.MEETING_E2EE_FAILURE, {reason: 'startFailed'});
+      this.handleFatal('failed', 'startFailed');
     }
   }
 
@@ -217,20 +218,7 @@ export default class E2eeMeeting extends EventsScope {
    */
   async stop(): Promise<void> {
     LoggerProxy.logger.info('e2ee: E2eeMeeting#stop --> stopping E2EE session');
-    this.signaling?.stop();
-
-    try {
-      this.session?.leave();
-    } catch (error) {
-      LoggerProxy.logger.warn(`e2ee: E2eeMeeting#stop --> error leaving MLS session: ${error}`);
-    }
-
-    this.reconciler?.reset();
-
-    this.signaling = undefined;
-    this.session = undefined;
-    this.clearSecurityCode();
-    this.mediaServicesPresent = false;
+    this.cleanupSession();
 
     if (this.currentState !== 'disabled') {
       this.setState('left');
@@ -242,28 +230,36 @@ export default class E2eeMeeting extends EventsScope {
    * @returns {void}
    */
   private wireSessionEvents(session: MLS): void {
-    session.on('joinSuccess', ({securityCode}) => {
+    const subscribe = <K extends MLSEvent>(
+      event: K,
+      listener: (payload: MLSEventMap[K]) => void
+    ) => {
+      session.on(event, listener);
+      this.sessionUnsubscribers.push(() => session.off(event, listener));
+    };
+
+    subscribe('joinSuccess', ({securityCode}) => {
       this.securityCode = securityCode;
       this.emitE2eeEvent(EVENT_TRIGGERS.MEETING_E2EE_SECURITY_CODE_UPDATED, {securityCode});
       this.updateFromRoster();
     });
 
-    session.on('securityCodeChanged', ({code}) => {
+    subscribe('securityCodeChanged', ({code}) => {
       this.securityCode = code;
       this.emitE2eeEvent(EVENT_TRIGGERS.MEETING_E2EE_SECURITY_CODE_UPDATED, {securityCode: code});
     });
 
-    session.on('rosterAdded', (added) => {
+    subscribe('rosterAdded', (added) => {
       this.reconciler?.applyRosterAdded(added);
       this.updateFromRoster();
     });
-    session.on('rosterRemoved', ({urls}) => {
+    subscribe('rosterRemoved', ({urls}) => {
       this.reconciler?.applyRosterRemoved(urls);
       this.updateFromRoster();
     });
 
-    session.on('joinFailure', ({reason}) => this.handleFatal('failed', reason));
-    session.on('evicted', () => this.handleFatal('evicted', 'evicted'));
+    subscribe('joinFailure', ({reason}) => this.handleFatal('failed', reason));
+    subscribe('evicted', () => this.handleFatal('evicted', 'evicted'));
   }
 
   /**
@@ -301,13 +297,62 @@ export default class E2eeMeeting extends EventsScope {
    * @param {string} reason
    * @returns {void}
    */
-  private handleFatal(state: E2eeState, reason: string): void {
+  private handleFatal(state: 'failed' | 'evicted', reason: string): void {
     LoggerProxy.logger.error(
       `e2ee: E2eeMeeting --> fatal E2EE error: state=${state} reason=${reason}`
     );
-    this.clearSecurityCode();
+    this.cleanupSession();
     this.setState(state);
     this.emitE2eeEvent(EVENT_TRIGGERS.MEETING_E2EE_FAILURE, {reason});
+  }
+
+  /**
+   * Stops signaling, detaches session listeners, leaves the MLS group, and resets roster state.
+   * @returns {void}
+   */
+  private cleanupSession(): void {
+    try {
+      this.signaling?.stop();
+    } catch (error) {
+      LoggerProxy.logger.warn(`e2ee: E2eeMeeting --> error stopping signaling: ${error}`);
+    }
+    this.signaling = undefined;
+
+    this.sessionUnsubscribers.forEach((unsubscribe) => {
+      try {
+        unsubscribe();
+      } catch (error) {
+        LoggerProxy.logger.warn(
+          `e2ee: E2eeMeeting --> error removing MLS listener: ${error}`
+        );
+      }
+    });
+    this.sessionUnsubscribers = [];
+
+    const session = this.session;
+
+    this.session = undefined;
+
+    try {
+      session?.leave();
+    } catch (error) {
+      LoggerProxy.logger.warn(`e2ee: E2eeMeeting --> error leaving MLS session: ${error}`);
+    }
+
+    try {
+      this.reconciler?.reset();
+    } catch (error) {
+      LoggerProxy.logger.warn(
+        `e2ee: E2eeMeeting --> error resetting member verification: ${error}`
+      );
+    }
+
+    if (this.mediaServicesPresent) {
+      this.mediaServicesPresent = false;
+      this.emitE2eeEvent(EVENT_TRIGGERS.MEETING_E2EE_MEDIA_SERVICES_CHANGED, {
+        hasMediaServices: false,
+      });
+    }
   }
 
   /**
@@ -342,6 +387,11 @@ export default class E2eeMeeting extends EventsScope {
     if (this.currentState === state) {
       return;
     }
+
+    if (state === 'failed' || state === 'evicted' || state === 'left') {
+      this.clearSecurityCode();
+    }
+
     LoggerProxy.logger.info(
       `e2ee: E2eeMeeting --> state changed: ${this.currentState} -> ${state}`
     );
