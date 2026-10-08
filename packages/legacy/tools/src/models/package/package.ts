@@ -1,9 +1,7 @@
 import glob from 'glob';
 import path from 'path';
 
-import {
-  Jest, Karma, KmsCaroots, Mocha,
-} from '../../utils';
+import { Jest, Karma, Mocha } from '../../utils';
 
 import PackageFile from '../package-file';
 
@@ -124,59 +122,40 @@ class Package {
       })
       : Promise.resolve([]);
 
-    return Promise.all([unitTestFileCollector, integrationTestFileCollector])
-      .then(async ([unitFiles, integrationFiles]) => {
-        // Integration tests validate the KMS certificate chain, so supply the
-        // real CA roots by configuring webex-core before any test constructs a
-        // WebexCore instance. Prepended so it runs first under mocha and karma.
-        const needsCaroots = config.integration
-          && integrationFiles.length > 0
-          && (config.runner === 'mocha' || config.runner === 'karma');
-        const carootsBootstrap = needsCaroots
-          ? await KmsCaroots.prepareTestBootstrap(this.data.packageRoot)
-          : undefined;
-        const bootstrapFiles = carootsBootstrap ? [carootsBootstrap.file] : [];
+    return Promise.all([unitTestFileCollector, integrationTestFileCollector]).then(
+      async ([unitFiles, integrationFiles]) => {
+        if (config.runner === 'jest') {
+          const testFiles = [...unitFiles];
 
-        try {
-          if (config.runner === 'jest') {
-            const testFiles = [...unitFiles];
-
-            if (testFiles.length > 0) {
-              await Jest.test({ files: testFiles });
-            }
+          if (testFiles.length > 0) {
+            await Jest.test({ files: testFiles });
           }
+        }
 
-          if (config.runner === 'mocha') {
-            const testFiles = [...unitFiles, ...integrationFiles];
+        if (config.runner === 'mocha') {
+          const testFiles = [...unitFiles, ...integrationFiles];
 
-            if (testFiles.length > 0) {
-              await Mocha.test({ files: [...bootstrapFiles, ...testFiles] });
-            }
+          if (testFiles.length > 0) {
+            await Mocha.test({ files: testFiles });
           }
+        }
 
-          if (config.runner === 'karma') {
-            const testFiles = [...unitFiles, ...integrationFiles];
+        if (config.runner === 'karma') {
+          const testFiles = [...unitFiles, ...integrationFiles];
 
-            if (testFiles.length > 0) {
-              await Karma.test({
-                browsers: config.karmaBrowsers,
-                debug: config.karmaDebug,
-                files: [...bootstrapFiles, ...testFiles],
-                port: config.karmaPort,
-              });
-            }
-          }
-        } finally {
-          // Karma.test resolves on run completion (single-run), so this runs
-          // after the run. In karma watch/debug mode it resolves early and the
-          // bootstrap must stay, so skip cleanup there (it is gitignored).
-          if (carootsBootstrap && !config.karmaDebug) {
-            carootsBootstrap.cleanup();
+          if (testFiles.length > 0) {
+            await Karma.test({
+              browsers: config.karmaBrowsers,
+              debug: config.karmaDebug,
+              files: testFiles,
+              port: config.karmaPort,
+            });
           }
         }
 
         return this;
-      });
+      },
+    );
   }
 
   /**

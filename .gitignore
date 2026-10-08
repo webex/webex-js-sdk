@@ -37,8 +37,6 @@ tasks/selenium
 .grunt
 .github-publish
 .idea
-.kms-caroots.json
-kms-caroots.bootstrap.js
 .npm
 .nvm
 .python-version

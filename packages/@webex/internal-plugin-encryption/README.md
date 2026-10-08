@@ -81,10 +81,8 @@ const webex = new WebexCore({config: {encryption: {caroots}}});
 The SDK performs no runtime file or network I/O to obtain roots. The generated
 bundle is included at build time and can be replaced through configuration.
 
-The SDK's own integration/browser tests generate these roots automatically: the
-test runner (`@webex/legacy-tools`) calls `@webex/kms-caroots` and configures
-webex-core before the tests run, so the KMS certificate is validated against the
-real trust store.
+The SDK's integration and browser tests use the same bundled roots as consumers,
+so they require no separate certificate download or bootstrap phase.
 
 ### Configuring manually
 

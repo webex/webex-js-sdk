@@ -28,12 +28,6 @@ let haveFetchedAll = false;
 // Connect to Webex and listen for message events.
 function authorize() {
   webex = Webex.init({
-    config: {
-      // Samples don't ship a KMS CA root bundle, so disable cert validation.
-      encryption: {
-        shouldValidateKMSCertificate: false,
-      },
-    },
     credentials: {
       access_token: document.getElementById('access-token').value
     }

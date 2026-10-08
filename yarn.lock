@@ -8606,7 +8606,6 @@ __metadata:
     "@webex/esbuild-config": "workspace:*"
     "@webex/eslint-config": "workspace:*"
     "@webex/jasmine-config": "workspace:*"
-    "@webex/kms-caroots": "workspace:*"
     "@webex/nyc-config": "workspace:*"
     "@webex/typescript-config": "workspace:*"
     babelify: ^10.0.0

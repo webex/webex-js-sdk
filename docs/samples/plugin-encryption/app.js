@@ -68,10 +68,6 @@ async function initWebex(e) {
       logger: {
         level: 'debug', // set the desired log level
       },
-      // Samples don't ship a KMS CA root bundle, so disable cert validation.
-      encryption: {
-        shouldValidateKMSCertificate: false,
-      },
     },
     credentials: {
       access_token: tokenElm.value

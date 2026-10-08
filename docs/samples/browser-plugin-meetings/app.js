@@ -141,10 +141,6 @@ function generateWebexConfig({credentials}) {
       },
       enableAutomaticLLM: enableLLM.checked,
     },
-    // Samples don't ship a KMS CA root bundle, so disable cert validation.
-    encryption: {
-      shouldValidateKMSCertificate: false,
-    },
     credentials,
     // Any other sdk config we need
   };
