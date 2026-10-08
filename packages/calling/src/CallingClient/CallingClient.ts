@@ -915,7 +915,8 @@ export class CallingClient extends Eventing<CallingClientEventTypes> implements 
       backupUris,
       this.getLoggingLevel(),
       this.serviceData,
-      this.sdkConfig?.jwe
+      this.sdkConfig?.jwe,
+      this.sdkConfig?.localAudioStream
     );
 
     this.lineDict[line.lineId] = line;
