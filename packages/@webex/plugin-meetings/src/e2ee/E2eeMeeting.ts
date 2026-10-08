@@ -229,7 +229,7 @@ export default class E2eeMeeting extends EventsScope {
 
     this.signaling = undefined;
     this.session = undefined;
-    this.securityCode = undefined;
+    this.clearSecurityCode();
     this.mediaServicesPresent = false;
 
     if (this.currentState !== 'disabled') {
@@ -305,8 +305,24 @@ export default class E2eeMeeting extends EventsScope {
     LoggerProxy.logger.error(
       `e2ee: E2eeMeeting --> fatal E2EE error: state=${state} reason=${reason}`
     );
+    this.clearSecurityCode();
     this.setState(state);
     this.emitE2eeEvent(EVENT_TRIGGERS.MEETING_E2EE_FAILURE, {reason});
+  }
+
+  /**
+   * Clears a security code that is no longer valid for the current MLS session.
+   * @returns {void}
+   */
+  private clearSecurityCode(): void {
+    if (this.securityCode === undefined) {
+      return;
+    }
+
+    this.securityCode = undefined;
+    this.emitE2eeEvent(EVENT_TRIGGERS.MEETING_E2EE_SECURITY_CODE_UPDATED, {
+      securityCode: undefined,
+    });
   }
 
   /**

@@ -237,8 +237,16 @@ describe('plugin-meetings', () => {
       });
 
       it('goes to failed on joinFailure and evicted on evicted', () => {
+        emitSession('joinSuccess', {securityCode: 'SEC-1'});
         emitSession('joinFailure', {reason: 'join_failure'});
         assert.equal(e2ee.state, 'failed');
+        assert.isUndefined(e2ee.getSecurityCode());
+
+        const securityCodeCalls = emitted(EVENT_TRIGGERS.MEETING_E2EE_SECURITY_CODE_UPDATED);
+
+        assert.deepEqual(securityCodeCalls[securityCodeCalls.length - 1].args[3], {
+          securityCode: undefined,
+        });
 
         emitSession('evicted');
         assert.equal(e2ee.state, 'evicted');
@@ -320,6 +328,13 @@ describe('plugin-meetings', () => {
         assert.equal(e2ee.state, 'left');
         assert.isUndefined(e2ee.getSecurityCode());
         assert.isFalse(e2ee.hasMediaServices);
+
+        const securityCodeCalls = emitted(EVENT_TRIGGERS.MEETING_E2EE_SECURITY_CODE_UPDATED);
+
+        assert.equal(securityCodeCalls.length, 2);
+        assert.deepEqual(securityCodeCalls[securityCodeCalls.length - 1].args[3], {
+          securityCode: undefined,
+        });
       });
 
       it('resets the roster on stop, clearing and reporting verified members', async () => {
