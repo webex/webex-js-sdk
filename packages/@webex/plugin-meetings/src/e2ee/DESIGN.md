@@ -458,7 +458,6 @@ interface IE2eeMediaConnection {
     keys: Array<{ epoch: number; baseKey: Uint8Array; index: number; indexBits: number }>;
     activeEncryptionEpoch?: number;   // undefined => decrypt-only (no egress encryption yet)
   }): void;
-  disableE2ee(): void;
 }
 
 function hasE2eeSupport(mc): mc is IE2eeMediaConnection; // feature-detect during rollout
