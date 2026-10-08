@@ -3,7 +3,7 @@ doc_kind: agent-entry
 generated_from: agents@0.3.0
 generated_by: claude-cowork
 approved_by: akulakum@cisco.com
-updated_at: 2026-10-07T00:34:58Z
+updated_at: 2026-10-08T09:14:01Z
 validation_status: pass-with-warnings
 -->
 
@@ -199,5 +199,5 @@ PR checklist:
 - Edit `dist/` by hand.
 - Commit secrets, tokens, or credentials, including in test fixtures.
 - Log the access token or the authorization frame.
-- Create a package-level `.sdd/templates` directory, copy, or symlink. Use the repository-root
-  `.sdd/templates/repo-standards` snapshot.
+- Replace the `.sdd/templates/repo-standards` symlink with copied templates. It points at the
+  repository-root `.sdd/templates/repo-standards` snapshot, which is the only template source.
