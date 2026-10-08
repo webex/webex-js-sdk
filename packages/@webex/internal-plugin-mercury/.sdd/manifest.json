@@ -316,8 +316,8 @@
     "head_ref": "Webex_Internal_Plugin_Mememory_SDD",
     "validator_runtime": "current-session",
     "validator_runtime_source": "invocation-input",
-    "validator_run_id": "spark-853121-spec-validator-2026-10-07-02",
-    "source_commit": "b72e01b325b3d0e87df85946e8dbc85411e0a1f1"
+    "validator_run_id": "spark-853121-spec-validator-2026-10-08-03",
+    "source_commit": "b2abfcb09e476ccf7c732b3e4038cdbd34dadd6c"
   },
   "layout": {
     "sdd_root": ".sdd",

@@ -9,7 +9,7 @@ doc_kind: module-spec
 generated_from: module-spec@0.3.0
 generated_by: claude-cowork
 approved_by: akulakum@cisco.com
-updated_at: 2026-10-07T00:34:58Z
+updated_at: 2026-10-08T09:47:58Z
 validation_status: pass-with-warnings
 -->
 
@@ -38,7 +38,7 @@ Related context: [documentation index](../../../docs/index.md) ·
 | Parent spec       | [src/docs/README.md](../../docs/README.md) |
 | Doc kind          | Module spec |
 | Coverage score    | 93.3% assessed 2026-10-06 — 14 of 15 mandatory fields PRESENT, critical 8 of 8; test strategy is WEAK because neither platform hook, the 1005 to `UnknownResponse` mapping, nor a non-readiness first message is tested and no characterization baseline exists |
-| Validation status | pass-with-warnings; 2026-10-07; validator runtime: current-session |
+| Validation status | pass-with-warnings; 2026-10-08; validator runtime: current-session |
 
 ## Applicability
 
