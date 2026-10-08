@@ -3,8 +3,8 @@ doc_kind: agent-entry
 generated_from: agents@0.3.0
 generated_by: claude-cowork
 approved_by: akulakum@cisco.com
-updated_at: 2026-10-06T12:29:56Z
-validation_status: pass-with-warnings
+updated_at: 2026-10-08T09:00:00Z
+validation_status: pending
 -->
 
 # AI Agent Instructions
@@ -172,4 +172,4 @@ PR checklist:
 - Edit `dist/` by hand.
 - Commit secrets, tokens, or credentials, including in test fixtures.
 - Log raw arguments without redaction.
-- Create a package-level `.sdd/templates` directory, copy, or symlink. Use the repository-root `.sdd/templates/repo-standards` snapshot.
+- Copy template bodies into this package or replace `.sdd/templates/repo-standards` with a real directory. It is a symlink to the repository-root `.sdd/templates/repo-standards` snapshot and must stay one.

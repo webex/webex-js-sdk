@@ -306,7 +306,7 @@
       "@webex/jest-config-legacy via jest.config.js",
       "@webex/legacy-tools build and test runner via package.json",
       "package README.md",
-      "Repo Standards 0.3.0 templates at the JS SDK root .sdd/templates/repo-standards"
+      "Repo Standards 0.3.0 templates at the JS SDK root .sdd/templates/repo-standards, reached through the package symlink .sdd/templates/repo-standards"
     ],
     "compliance_tier": "baseline"
   },
