@@ -1170,7 +1170,6 @@ describe('internal-plugin-metrics', () => {
           webexConferenceIdStr: undefined,
           sessionCorrelationId: undefined,
           globalMeetingId: undefined,
-          locusCluster: undefined,
         });
         assert.notCalled(generateClientEventErrorPayloadSpy);
         assert.calledWith(
@@ -1325,7 +1324,6 @@ describe('internal-plugin-metrics', () => {
           webexConferenceIdStr: undefined,
           sessionCorrelationId: undefined,
           globalMeetingId: undefined,
-          locusCluster: undefined,
         });
         assert.notCalled(generateClientEventErrorPayloadSpy);
         assert.calledWith(
@@ -1480,7 +1478,6 @@ describe('internal-plugin-metrics', () => {
           webexConferenceIdStr: undefined,
           globalMeetingId: undefined,
           sessionCorrelationId: undefined,
-          locusCluster: undefined,
         });
         assert.notCalled(generateClientEventErrorPayloadSpy);
         assert.calledWith(
@@ -1637,7 +1634,6 @@ describe('internal-plugin-metrics', () => {
           webexConferenceIdStr: undefined,
           globalMeetingId: undefined,
           sessionCorrelationId: undefined,
-          locusCluster: undefined,
         });
         assert.notCalled(generateClientEventErrorPayloadSpy);
         assert.calledWith(
@@ -1794,7 +1790,6 @@ describe('internal-plugin-metrics', () => {
           webexConferenceIdStr: undefined,
           globalMeetingId: undefined,
           sessionCorrelationId: undefined,
-          locusCluster: undefined,
         });
         assert.notCalled(generateClientEventErrorPayloadSpy);
         assert.calledWith(
@@ -2198,7 +2193,7 @@ describe('internal-plugin-metrics', () => {
         );
       });
 
-      it('should add locusCluster from options to an in-meeting client event when the meeting has none', () => {
+      it('should ignore the locusCluster option for an in-meeting client event', () => {
         const prepareDiagnosticEventSpy = sinon.spy(cd, 'prepareDiagnosticEvent');
         sinon.stub(cd, 'getOrigin').returns({origin: 'fake-origin'});
 
@@ -2207,10 +2202,7 @@ describe('internal-plugin-metrics', () => {
           options: {meetingId: fakeMeeting.id, locusCluster: 'locus-k.wbx2.com'},
         });
 
-        assert.equal(
-          prepareDiagnosticEventSpy.firstCall.args[0].identifiers.locusCluster,
-          'locus-k.wbx2.com'
-        );
+        assert.notProperty(prepareDiagnosticEventSpy.firstCall.args[0].identifiers, 'locusCluster');
       });
 
       it('should submit client event successfully with emailInput and userNameInput as options', () => {
@@ -4630,6 +4622,18 @@ describe('internal-plugin-metrics', () => {
     });
 
     describe('#buildClientEventFetchRequestOptions', () => {
+      it('should add the locusCluster option to a pre-meeting event', async () => {
+        const fetchOptions = await cd.buildClientEventFetchRequestOptions({
+          name: 'client.interstitial-window.launched',
+          options: {correlationId: 'correlationId', locusCluster: 'locus-k.wbx2.com'},
+        });
+
+        assert.equal(
+          fetchOptions.body.metrics[0].eventPayload.event.identifiers.locusCluster,
+          'locus-k.wbx2.com'
+        );
+      });
+
       [undefined, 'myPreLoginId'].forEach((preLoginId) => {
         it('returns expected options without preLoginId', async () => {
           const options = {
