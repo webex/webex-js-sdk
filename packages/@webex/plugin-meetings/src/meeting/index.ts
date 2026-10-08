@@ -633,6 +633,7 @@ export default class Meeting extends StatelessWebexPlugin {
   meetingRequest: MeetingRequest;
   members: Members;
   e2ee?: E2eeMeeting;
+  private lastE2eeTrustState?: E2eeTrustState;
   options: object;
   orgId: string;
   owner: string;
@@ -1116,13 +1117,20 @@ export default class Meeting extends StatelessWebexPlugin {
      * @memberof Meeting
      */
     this.e2ee = attrs.e2eeManager?.createE2eeMeeting(this);
-    if (this.e2ee) {
+    const {e2ee} = this;
+
+    if (e2ee) {
       [
         EVENT_TRIGGERS.MEETING_E2EE_SECURITY_CODE_UPDATED,
         EVENT_TRIGGERS.MEETING_E2EE_STATE_CHANGED,
         EVENT_TRIGGERS.MEETING_E2EE_MEDIA_SERVICES_CHANGED,
         EVENT_TRIGGERS.MEETING_E2EE_FAILURE,
-      ].forEach((event) => this.forwardEvent(this.e2ee, event, event));
+      ].forEach((event) => this.forwardEvent(e2ee, event, event));
+
+      [
+        EVENT_TRIGGERS.MEETING_E2EE_STATE_CHANGED,
+        EVENT_TRIGGERS.MEETING_E2EE_MEDIA_SERVICES_CHANGED,
+      ].forEach((event) => e2ee.on(event, () => this.updateE2eeTrustState()));
     }
     /**
      * indicates if an SDP exchange is happening
@@ -1647,6 +1655,7 @@ export default class Meeting extends StatelessWebexPlugin {
 
     this.setUpLocusInfoListeners();
     this.locusInfo.init(attrs.locus ? attrs.locus : {});
+    this.lastE2eeTrustState = this.e2eeTrustState;
     this.hasJoinedOnce = false;
 
     /**
@@ -3780,6 +3789,7 @@ export default class Meeting extends StatelessWebexPlugin {
       }
     });
     this.locusInfo.on(LOCUSINFO.EVENTS.MEETING_INFO_UPDATED, ({isInitializing}) => {
+      this.updateE2eeTrustState();
       this.updateMeetingActions();
       this.recordingController.setDisplayHints(this.userDisplayHints);
       this.recordingController.setUserPolicy(this.selfUserPolicies);
@@ -4435,6 +4445,36 @@ export default class Meeting extends StatelessWebexPlugin {
     }
 
     return zeroTrust ? 'zeroTrust' : 'strong';
+  }
+
+  /**
+   * Emits when a Locus or MLS update changes the meeting's overall E2EE trust state.
+   * @returns {void}
+   * @private
+   */
+  private updateE2eeTrustState(): void {
+    const {e2eeTrustState} = this;
+
+    if (this.lastE2eeTrustState === undefined) {
+      this.lastE2eeTrustState = e2eeTrustState;
+
+      return;
+    }
+
+    if (this.lastE2eeTrustState === e2eeTrustState) {
+      return;
+    }
+
+    this.lastE2eeTrustState = e2eeTrustState;
+    Trigger.trigger(
+      this,
+      {
+        file: 'meeting/index',
+        function: 'updateE2eeTrustState',
+      },
+      EVENT_TRIGGERS.MEETING_E2EE_TRUST_STATE_CHANGED,
+      {e2eeTrustState}
+    );
   }
 
   /**
