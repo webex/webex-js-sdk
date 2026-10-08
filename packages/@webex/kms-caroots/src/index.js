@@ -1,1 +1,4 @@
-module.exports = require('../caroots');
+module.exports = {
+  __esModule: true,
+  default: require('../caroots'),
+};

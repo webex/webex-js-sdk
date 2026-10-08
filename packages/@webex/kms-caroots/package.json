@@ -12,6 +12,7 @@
   },
   "type": "commonjs",
   "main": "./index.js",
+  "browser": "./src/index.js",
   "types": "./index.d.ts",
   "bin": {
     "webex-kms-caroots": "./cli.js"
