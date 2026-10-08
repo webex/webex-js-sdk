@@ -1,0 +1,332 @@
+{
+  "$schema": "./schemas/repo-context.schema.json",
+  "version": 1,
+  "repository": {
+    "name": "@webex/helper-html",
+    "purpose": "Browser HTML allow-list filter for the Cisco Webex JS SDK. The browser build sanitizes tags, attributes, styles, and URL schemes. The Node build returns the input string for the filter exports, while escape and escapeSync always encode angle brackets and ampersands."
+  },
+  "commands": {
+    "install": "yarn install",
+    "compile": "yarn workspace @webex/helper-html build:src",
+    "build": "yarn workspace @webex/helper-html build:src",
+    "unit-test": "yarn workspace @webex/helper-html test:browser",
+    "lint": "yarn workspace @webex/helper-html test:style",
+    "deploy": "yarn workspace @webex/helper-html deploy:npm"
+  },
+  "public_interfaces": [
+    {
+      "name": "@webex/helper-html package barrel",
+      "kind": "package_export",
+      "source": "src/index.js",
+      "entrypoints": [
+        "import { escape, escapeSync, filter, filterSync, filterEscape, filterEscapeSync, DEFAULT_ALLOWED_URL_SCHEMES } from '@webex/helper-html'"
+      ],
+      "audience": "Workspace consumers, including @webex/internal-plugin-conversation, plus external npm consumers",
+      "notes": "Seven named exports. package.json browser field replaces src/html.js and dist/html.js with the shim."
+    },
+    {
+      "name": "package scripts",
+      "kind": "npm_scripts",
+      "source": "package.json",
+      "entrypoints": [
+        "build",
+        "build:src",
+        "test:style",
+        "test:browser",
+        "deploy:npm"
+      ],
+      "audience": "contributors and CI",
+      "notes": "package.json scripts.test chains test:unit and test:integration, which are not defined. The unit spec runs through test:browser."
+    }
+  ],
+  "source_of_truth": [
+    {
+      "surface": "module implementation",
+      "paths": [
+        "src"
+      ],
+      "generated_artifacts": [
+        "dist"
+      ],
+      "refresh_with": [
+        "yarn workspace @webex/helper-html build:src"
+      ],
+      "validate_with": [
+        "yarn workspace @webex/helper-html test:browser",
+        "yarn workspace @webex/helper-html test:style"
+      ]
+    },
+    {
+      "surface": "module specification",
+      "paths": [
+        "src/docs/README.md"
+      ],
+      "generated_artifacts": [],
+      "refresh_with": [
+        "update alongside the behavior change in the same commit"
+      ],
+      "validate_with": [
+        "spec-validator on an independent runtime"
+      ]
+    }
+  ],
+  "generated_artifacts": [
+    {
+      "path": "dist",
+      "generated_from": "src",
+      "refresh_with": "yarn workspace @webex/helper-html build:src"
+    },
+    {
+      "path": ".sdd/templates/repo-standards/template-map.json",
+      "generated_from": "WebexTools/repo-standards@d89a7fe59126ae3ad9bac9ca352aa7f12b4c85dc",
+      "refresh_with": "A symlink to the monorepo-root template set, so this package holds no template copies of its own."
+    }
+  ],
+  "validation_matrix": [
+    {
+      "paths": [
+        "src/**"
+      ],
+      "minimum": [
+        "yarn workspace @webex/helper-html test:browser"
+      ],
+      "recommended": [
+        "yarn workspace @webex/helper-html test:style",
+        "yarn workspace @webex/helper-html build:src"
+      ]
+    },
+    {
+      "paths": [
+        "src/html.shim.js"
+      ],
+      "minimum": [
+        "yarn workspace @webex/helper-html test:browser"
+      ],
+      "recommended": [
+        "confirm URL scheme and tag allow-list cases in test/unit/spec/html.js"
+      ]
+    }
+  ],
+  "change_impact": [
+    {
+      "paths": [
+        "src/index.js",
+        "src/html.js",
+        "src/html.shim.js",
+        "src/html-base.js"
+      ],
+      "affects": [
+        "@webex/internal-plugin-conversation",
+        "external npm consumers of @webex/helper-html"
+      ],
+      "refresh_with": [
+        "yarn workspace @webex/helper-html build:src"
+      ],
+      "validate_with": [
+        "yarn workspace @webex/helper-html test:browser"
+      ],
+      "avoid_direct_edits": [
+        "dist"
+      ],
+      "notes": "Conversation imports filter and filterEscape from the package root. Removing or renaming an export is breaking."
+    }
+  ],
+  "evidence_rules": [
+    {
+      "claim_category": "command_name",
+      "sources": [
+        "package.json"
+      ],
+      "requirement": "A documented command must exist in package.json scripts or be the workspace install command.",
+      "notes": "test:unit and test:integration are named by scripts.test and are not defined."
+    },
+    {
+      "claim_category": "import_path",
+      "sources": [
+        "src/index.js"
+      ],
+      "requirement": "A symbol is public only if re-exported from the barrel.",
+      "notes": "Consumers import from the package root. There are no subpath exports."
+    },
+    {
+      "claim_category": "behavior_claim",
+      "sources": [
+        "src",
+        "test/unit/spec"
+      ],
+      "requirement": "Ground every behavioral claim in source or the browser unit spec.",
+      "notes": "README.md is a retained product document and is not the behavioral authority."
+    }
+  ],
+  "negative_guidance": [
+    {
+      "rule": "Do not treat the Node filter exports as a sanitizer.",
+      "why": "src/html.js returns the original html string. Sanitizing behavior lives in src/html.shim.js, selected by the package.json browser field."
+    },
+    {
+      "rule": "Do not document filter as a three-argument function of allowed tags, styles, and html.",
+      "why": "The implementation curries with arity 4 and the first argument is processCallback. The product README describes a different signature and is retained unchanged."
+    },
+    {
+      "rule": "Do not allow javascript, vbscript, or data URL schemes through additionalAllowedUrlSchemes.",
+      "why": "src/html.shim.js drops those schemes even when the caller lists them."
+    },
+    {
+      "rule": "Do not run package.json scripts.test as the verification command.",
+      "why": "It chains test:unit and test:integration, which this package.json does not define."
+    }
+  ],
+  "confidence_policy": {
+    "high": {
+      "action": "update",
+      "expectation": "Source and the browser unit spec both support the change."
+    },
+    "medium": {
+      "action": "narrow-scope",
+      "expectation": "Only source evidence exists, which is the case for the Node noop path because the unit spec is skipped in Node."
+    },
+    "low": {
+      "action": "noop",
+      "expectation": "Neither source nor the unit spec settles the question. Stop and report the gap."
+    }
+  },
+  "repository_topology": {
+    "main_entrypoints": [
+      {
+        "name": "package barrel",
+        "path": "src/index.js",
+        "purpose": "Re-exports the HTML filter and escape functions",
+        "notes": "No subpath exports in package.json."
+      }
+    ],
+    "workspace_packages": [
+      {
+        "name": "@webex/helper-html",
+        "paths": [
+          "src",
+          "test"
+        ],
+        "notes": "One module. This SDD root is the package directory inside the webex-js-sdk workspace."
+      }
+    ],
+    "source_surfaces": [
+      {
+        "name": "implementation",
+        "paths": [
+          "src"
+        ],
+        "notes": "src/html-base.js escapes text. src/html.js is the Node noop. src/html.shim.js is the browser filter."
+      },
+      {
+        "name": "unit tests",
+        "paths": [
+          "test/unit/spec"
+        ],
+        "notes": "One Mocha spec, skipped in Node via skipInNode, launched by the karma browser script."
+      }
+    ],
+    "generated_surfaces": [
+      {
+        "name": "build output",
+        "paths": [
+          "dist"
+        ],
+        "generated_from": "src",
+        "refresh_with": "yarn workspace @webex/helper-html build:src",
+        "notes": "Produced by webex-legacy-tools. Do not edit by hand."
+      },
+      {
+        "name": "repo-standards template map",
+        "paths": [
+          ".sdd/templates/repo-standards"
+        ],
+        "generated_from": "WebexTools/repo-standards@d89a7fe59126ae3ad9bac9ca352aa7f12b4c85dc",
+        "refresh_with": "A symlink to the monorepo-root template set, so this package holds no template copies of its own.",
+        "notes": "A symlink to the monorepo-root template set, so this package holds no template copies of its own."
+      }
+    ],
+    "validation_entrypoints": [
+      {
+        "name": "browser unit tests",
+        "command": "yarn workspace @webex/helper-html test:browser",
+        "scope": "test/unit/spec",
+        "notes": "webex-legacy-tools test --unit --runner karma. The spec uses Mocha and chai."
+      },
+      {
+        "name": "lint",
+        "command": "yarn workspace @webex/helper-html test:style",
+        "scope": "src",
+        "notes": "eslint via the local .eslintrc.js."
+      }
+    ],
+    "sync_paths": [
+      {
+        "source": "WebexTools/repo-standards@d89a7fe59126ae3ad9bac9ca352aa7f12b4c85dc",
+        "targets": [
+          ".sdd/templates/repo-standards"
+        ],
+        "mechanism": "symlink .sdd/templates/repo-standards to the repository-root .sdd/templates/repo-standards snapshot",
+        "notes": "Reached through the symlink to the monorepo root; never seeded per package."
+      }
+    ]
+  },
+  "folder_readme_contract": {
+    "required_sections": [
+      "purpose",
+      "boundaries",
+      "key-files",
+      "common-tasks"
+    ],
+    "rules": [
+      "Orient the reader before describing detail.",
+      "Link to the module specification rather than duplicating it."
+    ],
+    "example_policy": "Examples are allowed only when verified against src/ or test/unit/spec/html.js.",
+    "fallback": "Omit a section rather than inventing content."
+  },
+  "surface_owners": [
+    {
+      "surface": "module implementation and specification",
+      "owner": "@webex/web-client",
+      "edit_boundary": "Owner recorded in .github/CODEOWNERS for packages/@webex/helper-html."
+    }
+  ],
+  "do_not_edit": [
+    "dist",
+    ".sdd/templates/repo-standards"
+  ],
+  "marker_scopes": {
+    "sdd": [
+      ".sdd/manifest.json",
+      "src/docs/README.md",
+      "docs"
+    ]
+  },
+  "fallback_rules": [
+    "When source and the unit spec disagree, code is the referee and the disagreement is recorded.",
+    "When neither source nor the unit spec settles a question, stop instead of inferring.",
+    "README.md is retained product documentation and is not a routed spec source."
+  ],
+  "downstream_context_pack": {
+    "required_human_surfaces": [
+      "README.md",
+      "docs/index.md",
+      "docs/architecture.md",
+      "src/docs/README.md"
+    ],
+    "required_agent_operational_surfaces": [
+      "AGENTS.md",
+      "docs/specs/README.md"
+    ],
+    "required_machine_readable_surface": ".sdd/manifest.json",
+    "recommended_machine_readable_sections": [
+      "public_interfaces",
+      "change_impact",
+      "evidence_rules",
+      "negative_guidance",
+      "confidence_policy",
+      "repository_topology",
+      "folder_readme_contract"
+    ]
+  }
+}
