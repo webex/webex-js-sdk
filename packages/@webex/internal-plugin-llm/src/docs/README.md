@@ -9,7 +9,7 @@ doc_kind: module-spec
 generated_from: module-spec@0.3.0
 generated_by: claude-cowork
 approved_by: akulakum@cisco.com
-updated_at: 2026-10-07T07:23:05Z
+updated_at: 2026-10-08T10:12:58Z
 validation_status: pass-with-warnings
 -->
 
@@ -36,7 +36,7 @@ Related context: [documentation index](../../docs/index.md) ·
 | Parent spec       | — |
 | Doc kind          | Module spec |
 | Coverage score    | 93.3% assessed 2026-10-07 — 14 of 15 mandatory fields PRESENT, critical 8 of 8; test strategy is WEAK because registration, `clearDatachannelToken`, refused-owner token and handler calls, `INV-003`, `INV-005`, and suffixed events are untested, two disconnect cases use a stand-in object, and no characterization baseline exists |
-| Validation status | pass-with-warnings; assessed 2026-10-07 by current-session (round 2) |
+| Validation status | pass-with-warnings; assessed 2026-10-08 by current-session (round 3) |
 
 ## Applicability
 

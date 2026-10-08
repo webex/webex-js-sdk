@@ -9,7 +9,7 @@ doc_kind: standing-doc
 generated_from: spec-index@0.3.0
 generated_by: claude-cowork
 approved_by: akulakum@cisco.com
-updated_at: 2026-10-07T07:23:05Z
+updated_at: 2026-10-08T10:12:58Z
 validation_status: pass-with-warnings
 -->
 
@@ -46,7 +46,7 @@ package is a library published to npm, so that artifact is omitted in `.sdd/mani
 | --- | --- | --- | --- |
 | `src/` | LLM data-channel registration, session metadata, ownership, token cache, and URL lookup | Partial | `src/docs/README.md` |
 
-Generator-side field measurement is complete. Field coverage measured 2026-10-07 is 93.3% (14 of 15 mandatory fields PRESENT for `src`). Critical fields are 8 of 8 PRESENT. The WEAK field is test strategy: untested paths are listed in the module spec's Verification section, and no characterization baseline exists. Independent validation round 2 passed with warnings on 2026-10-07. Coverage state stays `Partial` until a characterization baseline and a spec-drift record exist.
+Generator-side field measurement is complete. Field coverage measured 2026-10-07 is 93.3% (14 of 15 mandatory fields PRESENT for `src`). Critical fields are 8 of 8 PRESENT. The WEAK field is test strategy: untested paths are listed in the module spec's Verification section, and no characterization baseline exists. Independent validation round 3 passed with warnings on 2026-10-08. Coverage state stays `Partial` until a characterization baseline and a spec-drift record exist.
 
 ## Change and verification routing
 
