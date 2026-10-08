@@ -107,9 +107,11 @@ export default class E2eeMeeting extends EventsScope {
   }
 
   /**
-   * @returns {boolean} whether the MLS roster currently contains a media service.
+   * @returns {boolean} whether the MLS roster contains a media service currently considered untrusted.
    */
-  get hasMediaServices(): boolean {
+  get hasUntrustedMediaServices(): boolean {
+    // For now, assume every media service is untrusted. Determining which services are trusted is
+    // tracked by SPARK-863974.
     return this.mediaServicesPresent;
   }
 
@@ -322,14 +324,12 @@ export default class E2eeMeeting extends EventsScope {
       try {
         unsubscribe();
       } catch (error) {
-        LoggerProxy.logger.warn(
-          `e2ee: E2eeMeeting --> error removing MLS listener: ${error}`
-        );
+        LoggerProxy.logger.warn(`e2ee: E2eeMeeting --> error removing MLS listener: ${error}`);
       }
     });
     this.sessionUnsubscribers = [];
 
-    const session = this.session;
+    const {session} = this;
 
     this.session = undefined;
 

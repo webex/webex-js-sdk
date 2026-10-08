@@ -4428,7 +4428,7 @@ export default class Meeting extends StatelessWebexPlugin {
       return 'calculating';
     }
 
-    const zeroTrust = isEncrypted && !this.e2ee?.hasMediaServices;
+    const zeroTrust = isEncrypted && !this.e2ee?.hasUntrustedMediaServices;
 
     if (adaptive) {
       return zeroTrust ? 'adaptiveZeroTrust' : 'adaptiveStrong';

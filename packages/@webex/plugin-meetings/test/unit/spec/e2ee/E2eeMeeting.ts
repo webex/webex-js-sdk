@@ -237,14 +237,14 @@ describe('plugin-meetings', () => {
       });
 
       it('detects media services in the roster and emits a change', () => {
-        assert.isFalse(e2ee.hasMediaServices);
+        assert.isFalse(e2ee.hasUntrustedMediaServices);
 
         rosterStub.returns([
           {url: 'ms', deviceType: 'MEDIA_SERVICE', displayName: '', validationResult: 0},
         ]);
         emitSession('rosterAdded', []);
 
-        assert.isTrue(e2ee.hasMediaServices);
+        assert.isTrue(e2ee.hasUntrustedMediaServices);
         const calls = emitted(EVENT_TRIGGERS.MEETING_E2EE_MEDIA_SERVICES_CHANGED);
 
         assert.equal(calls.length, 1);
@@ -355,7 +355,7 @@ describe('plugin-meetings', () => {
         assert.deepEqual(Object.keys(sessionHandlers), []);
         assert.equal(e2ee.state, 'left');
         assert.isUndefined(e2ee.getSecurityCode());
-        assert.isFalse(e2ee.hasMediaServices);
+        assert.isFalse(e2ee.hasUntrustedMediaServices);
 
         const securityCodeCalls = emitted(EVENT_TRIGGERS.MEETING_E2EE_SECURITY_CODE_UPDATED);
 
