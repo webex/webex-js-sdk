@@ -4425,16 +4425,16 @@ export default class Meeting extends StatelessWebexPlugin {
     const isEncrypted = !!info?.isV2E2EEncrypted;
 
     if (isEncrypted && this.e2ee?.state !== 'joined') {
-      return 'Calculating';
+      return 'calculating';
     }
 
     const zeroTrust = isEncrypted && !this.e2ee?.hasMediaServices;
 
     if (adaptive) {
-      return zeroTrust ? 'AdaptiveZeroTrust' : 'AdaptiveStrong';
+      return zeroTrust ? 'adaptiveZeroTrust' : 'adaptiveStrong';
     }
 
-    return zeroTrust ? 'ZeroTrust' : 'Strong';
+    return zeroTrust ? 'zeroTrust' : 'strong';
   }
 
   /**

@@ -27,11 +27,11 @@ export type E2eeState =
 
 /** The meeting's overall E2EE trust state, surfaced to the app for its UI indicator. */
 export type E2eeTrustState =
-  | 'Calculating'
-  | 'Strong'
-  | 'ZeroTrust'
-  | 'AdaptiveStrong'
-  | 'AdaptiveZeroTrust';
+  | 'calculating'
+  | 'strong'
+  | 'zeroTrust'
+  | 'adaptiveStrong'
+  | 'adaptiveZeroTrust';
 
 /** A media-encryption (SFrame) key for a given MLS epoch. */
 export interface E2eeKey {

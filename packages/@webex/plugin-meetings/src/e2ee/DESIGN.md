@@ -21,9 +21,9 @@ just calls `meeting.joinWithMedia()` as usual. The SDK must:
    servers) are present in the MLS roster, and expose it as a boolean on the
    meeting. Their presence means the meeting is not fully zero-trust, so the app
    needs this to indicate the meeting's zero-trust state in the UI.
-5. Expose the meeting's **E2EE trust state** (`Calculating` | `Strong` | `ZeroTrust` |
-   `AdaptiveStrong` | `AdaptiveZeroTrust`) as a getter on `Meeting`, derived **live** from the
-   Locus DTO E2EE flags, the E2EE (MLS) state, and `hasMediaServices`. `Calculating` is
+5. Expose the meeting's **E2EE trust state** (`calculating` | `strong` | `zeroTrust` |
+   `adaptiveStrong` | `adaptiveZeroTrust`) as a getter on `Meeting`, derived **live** from the
+   Locus DTO E2EE flags, the E2EE (MLS) state, and `hasMediaServices`. `calculating` is
    reported while a zero-trust meeting's MLS join is still in progress.
 
 ### Capability signalling flow (how a meeting becomes E2EE)
@@ -60,7 +60,7 @@ SRTP mid-meeting (and no switching the other way). This holds even when the meet
 level is **downgraded from "zero trust" to "strong"**: in an adaptive (`isBestEffortE2EEncryption`)
 meeting this happens when a non-E2EE-capable client joins and **Homer** (a media service) handles
 encryption on its behalf — the meeting is no longer fully zero-trust (`hasMediaServices` becomes
-true, so `e2eeTrustState` drops `AdaptiveZeroTrust → AdaptiveStrong`), but our own media stays
+true, so `e2eeTrustState` drops `adaptiveZeroTrust → adaptiveStrong`), but our own media stays
 SFrame-encrypted via the existing MLS session. The downgrade only changes the reported trust state,
 not the media encryption path.
 
@@ -247,7 +247,7 @@ type E2eeState =
   | 'disabled' | 'initializing' | 'joining' | 'joined' | 'failed' | 'evicted' | 'left';
 
 type E2eeTrustState =
-  | 'Calculating' | 'Strong' | 'ZeroTrust' | 'AdaptiveStrong' | 'AdaptiveZeroTrust';
+  | 'calculating' | 'strong' | 'zeroTrust' | 'adaptiveStrong' | 'adaptiveZeroTrust';
 
 interface E2eeMeetingConfig {
   serviceUrl: string;
@@ -571,7 +571,7 @@ private required(): boolean {
 `joinSuccess` event. `session.join()` moves `state` to `'joining'`; every roster change is
 checked for our own device URL, which flips `state` to `'joined'` (and emits `STATE_CHANGED`).
 This is the single source of truth for "MLS join complete" that `Meeting.e2eeTrustState`
-relies on to move a zero-trust meeting from `Calculating` to `ZeroTrust`.
+relies on to move a zero-trust meeting from `calculating` to `zeroTrust`.
 
 `hasMediaServices` is derived from the MLS roster: `true` when any roster member's
 `deviceType` is `'MEDIA_SERVICE'` (recording / transcoding / streaming server). It is
@@ -636,11 +636,11 @@ to surface the meeting's zero-trust state.
   flags plus `this.e2ee`:
   - `isBestEffortE2EEncryption` → `Adaptive*` (true) vs non-adaptive (false)
   - `isV2E2EEncrypted` → zero-trust (true) vs strong (false)
-  - A zero-trust (`isV2E2EEncrypted`) meeting reports `Calculating` until MLS join is
+  - A zero-trust (`isV2E2EEncrypted`) meeting reports `calculating` until MLS join is
     complete (`this.e2ee.state === 'joined'` — i.e. our own device URL is in the roster,
-    see "MLS join completion" below). Only then is it eligible for `ZeroTrust`.
+    see "MLS join completion" below). Only then is it eligible for `zeroTrust`.
   - `hasMediaServices` downgrades a completed zero-trust result to the matching strong value
-    (`ZeroTrust` → `Strong`, `AdaptiveZeroTrust` → `AdaptiveStrong`), since (untrusted)
+    (`zeroTrust` → `strong`, `adaptiveZeroTrust` → `adaptiveStrong`), since (untrusted)
     media services break zero trust.
 
   ```ts
@@ -648,12 +648,12 @@ to surface the meeting's zero-trust state.
   const adaptive = !!info?.isBestEffortE2EEncryption;
   const isEncrypted = !!info?.isV2E2EEncrypted;
   // a zero-trust meeting isn't zero-trust until our MLS join completes.
-  if (isEncrypted && this.e2ee?.state !== 'joined') return 'Calculating';
+  if (isEncrypted && this.e2ee?.state !== 'joined') return 'calculating';
   const zeroTrust = isEncrypted && !this.e2ee?.hasMediaServices;
-  if (adaptive) return zeroTrust ? 'AdaptiveZeroTrust' : 'AdaptiveStrong';
-  return zeroTrust ? 'ZeroTrust' : 'Strong';
+  if (adaptive) return zeroTrust ? 'adaptiveZeroTrust' : 'adaptiveStrong';
+  return zeroTrust ? 'zeroTrust' : 'strong';
   ```
-  (`Strong` / `AdaptiveStrong` meetings do no MLS join, so they report immediately.)
+  (`strong` / `adaptiveStrong` meetings do no MLS join, so they report immediately.)
   The app should re-read `e2eeTrustState` on `MEETING_E2EE_STATE_CHANGED` and
   `MEETING_E2EE_MEDIA_SERVICES_CHANGED`.
 
