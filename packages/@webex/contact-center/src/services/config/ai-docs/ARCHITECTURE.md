@@ -192,7 +192,7 @@ function parseAgentConfigs(profileData: {
   orgConfig: OrgDesktopLoginResponse;   // See types.ts:OrgDesktopLoginResponse
   userData: AgentResponse;              // `user` section; see types.ts:AgentResponse
   agentProfileData: AgentProfile;       // `agentProfile` section; see types.ts:AgentProfile
-  teamData: Team[];                     // NOTE: Declared as Team[] (teamId, teamName) but receives TeamList[] (id, name, + 12 more fields) at runtime
+  teamData: TeamList[];                 // See types.ts:TeamList
   auxCodes: AuxCode[];                  // See types.ts:AuxCode
   dialPlanData: DialPlanEntity[];       // See types.ts:DialPlanEntity
   multimediaProfileId: string;
@@ -223,7 +223,7 @@ function parseAgentConfigs(profileData: {
     agentId: userData.ciUserId,          // NOTE: uses ciUserId for agent identification
     analyserUserId: userData.id,         // NOTE: userData.id is used for analytics/reporting
     agentName: `${userData.firstName} ${userData.lastName}`,
-    teams: teamData,                     // NOTE: Raw TeamList[] passed directly without mapping
+    teams: teamData,                     // TeamList[] straight from the team API; Profile.teams is TeamList[]
     idleCodes,                           // NOTE: Filtered via getFilterAuxCodes() + hardcoded "Available" state
     wrapupCodes,                         // NOTE: Filtered via getFilterAuxCodes()
     webRtcEnabled: orgSettingsData.webRtcEnabled,
@@ -386,7 +386,6 @@ The config service defines comprehensive TypeScript types for all data structure
 - `AgentResponse` - `user` section of the user aggregate
 - `AgentProfile` - `agentProfile` section of the user aggregate
 - `TeamList` - Team data with full details (id, name, teamType, siteId, multiMediaProfileId, etc.)
-- `Team` - Simplified team reference (teamId, teamName, desktopLayoutId)
 - `AuxCode` - Auxiliary code definition
 - `Entity` - Filtered code entity (used for idle/wrapup codes in Profile)
 
@@ -399,7 +398,7 @@ The config service defines comprehensive TypeScript types for all data structure
 **Communication Types:**
 - `DialPlanEntity` - Dial plan rule definition (includes `active`)
 - `OrgUrlMappings` - Keyed external service URL mappings
-- `OrgMicrosoftConfig` / `OrgWebexConfig` - Org-level presence configuration
+- `MicrosoftConfig` / `WebexConfig` - Org-level presence configuration
 - `MultimediaProfile` - Multimedia profile configuration
 
 **Note:** The config service itself does not emit events. For agent and task events, see the Agent and Task services. Event constants are defined in [types.ts](../types.ts) under `CC_AGENT_EVENTS` and `CC_TASK_EVENTS`.

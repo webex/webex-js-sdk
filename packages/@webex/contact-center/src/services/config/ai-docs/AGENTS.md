@@ -171,8 +171,8 @@ Types used by the config service, all defined in [`types.ts`](../types.ts):
 | `TenantData` | Tenant-level config — inactivity timeout, `forceDefaultDn`, `outdialEnabled` |
 | `SiteInfo` | Site config — `id`, `name`, `multimediaProfileId` |
 | `OrgUrlMappings` | Keyed external URL mappings — `ACQUEON_API_URL`, `ACQUEON_CONSOLE_URL` |
-| `OrgMicrosoftConfig` | Org-level Microsoft presence config — `showUserDetails`, `stateSynchronization` |
-| `OrgWebexConfig` | Org-level Webex presence config — `showUserDetails`, `stateSynchronization` |
+| `MicrosoftConfig` | Org-level Microsoft presence config — `showUserDetails`, `stateSynchronization` |
+| `WebexConfig` | Org-level Webex presence config — `showUserDetails`, `stateSynchronization` |
 | `MultimediaProfileResponse` | Multimedia profile — channel capacities and settings |
 | `AuxCode` | Auxiliary code record — `id`, `name`, `description`, `workTypeCode` |
 | `ListAuxCodesResponse` | Paginated wrapper around `AuxCode[]` with `meta` |
@@ -180,7 +180,6 @@ Types used by the config service, all defined in [`types.ts`](../types.ts):
 | `Entity` | Basic entity info — `isSystem`, `name`, `id`, `description` |
 | `WrapupData` | Wrap-up config — auto-wrapup settings, available wrapup codes |
 | `OutdialAniParams` | Parameters for `getOutdialAniEntries()` — ANI ID, pagination, filtering |
-| `Team` | Simplified team shape in `Profile` — `teamId`, `teamName`, `desktopLayoutId` |
 
 ## Events (CC_EVENTS)
 

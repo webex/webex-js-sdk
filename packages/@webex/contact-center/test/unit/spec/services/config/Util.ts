@@ -4,6 +4,7 @@ import {
   AuxCode,
   DialPlanEntity,
   OrgDesktopLoginResponse,
+  TeamList,
 } from '../../../../../src/services/config/types';
 
 const baseAgentProfile: AgentProfile = {
@@ -71,7 +72,7 @@ const baseProfileData = {
     id: 'user-1',
   },
   agentProfileData: baseAgentProfile,
-  teamData: [{id: 'team-1', name: 'Support'}],
+  teamData: [{id: 'team-1', name: 'Support'}] as TeamList[],
   auxCodes: [] as AuxCode[],
   dialPlanData: [] as DialPlanEntity[],
   multimediaProfileId: 'mm-1',
@@ -313,10 +314,10 @@ describe('parseAgentConfigs', () => {
       expect(parseAgentConfigs(baseProfileData)).not.toHaveProperty('autoAnswer');
     });
 
-    it('falls back to null when the aggregate omits skillProfileId', () => {
+    it('falls back to null when the agent has no skill profile', () => {
       const profile = parseAgentConfigs({
         ...baseProfileData,
-        userData: {...baseProfileData.userData, skillProfileId: undefined},
+        userData: {...baseProfileData.userData, skillProfileId: ''},
       });
 
       expect(profile.skillProfileId).toBeNull();
@@ -405,7 +406,7 @@ describe('parseAgentConfigs', () => {
     });
 
     it.each(['accessIdleCode', 'accessWrapUpCode'] as const)(
-      'returns the full pool but still reports %s when access is SPECIFIC',
+      'returns the supplied pool unfiltered but still reports %s when access is SPECIFIC',
       (accessField) => {
         const profile = parseAgentConfigs({
           ...baseProfileData,

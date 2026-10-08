@@ -203,8 +203,8 @@ Types used by the config service, all defined in [`types.ts`](../types.ts):
 | `TenantData` | Tenant-level config — inactivity timeout, `forceDefaultDn`, `outdialEnabled` |
 | `SiteInfo` | Site config — `id`, `name`, `multimediaProfileId` |
 | `OrgUrlMappings` | Keyed external URL mappings — `ACQUEON_API_URL`, `ACQUEON_CONSOLE_URL` |
-| `OrgMicrosoftConfig` | Org-level Microsoft presence config — `showUserDetails`, `stateSynchronization` |
-| `OrgWebexConfig` | Org-level Webex presence config — `showUserDetails`, `stateSynchronization` |
+| `MicrosoftConfig` | Org-level Microsoft presence config — `showUserDetails`, `stateSynchronization` |
+| `WebexConfig` | Org-level Webex presence config — `showUserDetails`, `stateSynchronization` |
 | `MultimediaProfileResponse` | Multimedia profile — channel capacities and settings |
 | `AuxCode` | Auxiliary code record — `id`, `name`, `description`, `workTypeCode` |
 | `ListAuxCodesResponse` | Paginated wrapper around `AuxCode[]` with `meta` |
@@ -212,7 +212,6 @@ Types used by the config service, all defined in [`types.ts`](../types.ts):
 | `Entity` | Basic entity info — `isSystem`, `name`, `id`, `description` |
 | `WrapupData` | Wrap-up config — auto-wrapup settings, available wrapup codes |
 | `OutdialAniParams` | Parameters for `getOutdialAniEntries()` — ANI ID, pagination, filtering |
-| `Team` | Simplified team shape in `Profile` — `teamId`, `teamName`, `desktopLayoutId` |
 
 ```typescript
 // In register() -> connectWebsocket()
@@ -273,7 +272,7 @@ function parseAgentConfigs(profileData: {
   orgConfig: OrgDesktopLoginResponse;   // See types.ts:OrgDesktopLoginResponse
   userData: AgentResponse;              // `user` section; see types.ts:AgentResponse
   agentProfileData: AgentProfile;       // `agentProfile` section; see types.ts:AgentProfile
-  teamData: Team[];                     // NOTE: Declared as Team[] (teamId, teamName) but receives TeamList[] (id, name, + 12 more fields) at runtime
+  teamData: TeamList[];                 // See types.ts:TeamList
   auxCodes: AuxCode[];                  // See types.ts:AuxCode
   dialPlanData: DialPlanEntity[];       // See types.ts:DialPlanEntity
   multimediaProfileId: string;
@@ -304,7 +303,7 @@ function parseAgentConfigs(profileData: {
     agentId: userData.ciUserId,          // NOTE: uses ciUserId for agent identification
     analyserUserId: userData.id,         // NOTE: userData.id is used for analytics/reporting
     agentName: `${userData.firstName} ${userData.lastName}`,
-    teams: teamData,                     // NOTE: Raw TeamList[] passed directly without mapping
+    teams: teamData,                     // TeamList[] straight from the team API; Profile.teams is TeamList[]
     idleCodes,                           // NOTE: Filtered via getFilterAuxCodes() + hardcoded "Available" state
     wrapupCodes,                         // NOTE: Filtered via getFilterAuxCodes()
     webRtcEnabled: orgSettingsData.webRtcEnabled,

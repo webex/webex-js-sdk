@@ -9,7 +9,6 @@ import {
   ListAuxCodesResponse,
   OrgDesktopLoginResponse,
   UserDesktopLoginResponse,
-  Team,
   TeamList,
   DialPlanEntity,
   Profile,
@@ -92,9 +91,7 @@ export default class AgentConfigService {
         orgConfig,
         userData,
         agentProfileData,
-        // Profile.teams declares Team[] while the team API returns TeamList rows; the raw rows
-        // are intentionally what reaches public output. See config-spec.md.
-        teamData: userTeamData as unknown as Team[],
+        teamData: userTeamData,
         auxCodes: auxCodesData,
         dialPlanData: userDialPlanData,
         multimediaProfileId,

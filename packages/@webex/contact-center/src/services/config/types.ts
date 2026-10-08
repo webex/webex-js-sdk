@@ -287,7 +287,7 @@ export type AgentResponse = {
   /**
    * Skill profile ID of the agent.
    */
-  skillProfileId?: string;
+  skillProfileId: string;
 
   /**
    * Site ID of the agent.
@@ -681,7 +681,7 @@ export type OrgUrlMappings = {
  * has no Microsoft integration.
  * @public
  */
-export type OrgMicrosoftConfig = {
+export type MicrosoftConfig = {
   /** Whether to show user details in Teams */
   showUserDetails?: boolean;
   /** Whether to sync agent state with Teams */
@@ -697,7 +697,7 @@ export type OrgMicrosoftConfig = {
  * org desktop-login aggregate.
  * @public
  */
-export type OrgWebexConfig = {
+export type WebexConfig = {
   /** Whether to show user details in Webex */
   showUserDetails?: boolean;
   /** Whether to sync agent state with Webex */
@@ -911,19 +911,6 @@ export type WrapupData = {
 };
 
 /**
- * Team configuration information
- * @public
- */
-export type Team = {
-  /** Unique team identifier */
-  teamId: string;
-  /** Team display name */
-  teamName: string;
-  /** Optional desktop layout configuration identifier */
-  desktopLayoutId?: string;
-};
-
-/**
  * Basic queue configuration information
  * @public
  */
@@ -996,9 +983,9 @@ export type OrgDesktopLoginResponse = {
   /** AI feature flags */
   aiFeature?: AIFeatureFlags;
   /** Microsoft Teams integration configuration; absent when not configured */
-  microsoftConfig?: OrgMicrosoftConfig;
+  microsoftConfig?: MicrosoftConfig;
   /** Webex integration configuration */
-  webexConfig?: OrgWebexConfig;
+  webexConfig?: WebexConfig;
 };
 
 /**
@@ -1034,8 +1021,8 @@ export type Profile = {
     /** Whether to sync agent state with Webex */
     stateSynchronizationWebex?: boolean;
   };
-  /** List of teams the agent belongs to */
-  teams: Team[];
+  /** List of teams the agent belongs to, as returned by the team API */
+  teams: TeamList[];
   /** Agent's default dial number */
   defaultDn: string;
   dn?: string;

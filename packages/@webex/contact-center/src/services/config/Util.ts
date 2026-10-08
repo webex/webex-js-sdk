@@ -9,34 +9,34 @@ import {
   Entity,
   IDLE_CODE,
   OrgDesktopLoginResponse,
-  OrgMicrosoftConfig,
-  OrgWebexConfig,
   Profile,
-  Team,
+  TeamList,
+  MicrosoftConfig,
+  WebexConfig,
   WRAP_UP_CODE,
 } from './types';
 
 /**
  * Get the MSFT configuration
- * @param {OrgMicrosoftConfig} orgMicrosoftConfig
+ * @param {MicrosoftConfig} microsoftConfig
  * @returns {Object}
  */
-const getMsftConfig = (orgMicrosoftConfig?: OrgMicrosoftConfig) => {
+const getMsftConfig = (microsoftConfig?: MicrosoftConfig) => {
   return {
-    showUserDetailsMS: orgMicrosoftConfig?.showUserDetails ?? false,
-    stateSynchronizationMS: orgMicrosoftConfig?.stateSynchronization ?? false,
+    showUserDetailsMS: microsoftConfig?.showUserDetails ?? false,
+    stateSynchronizationMS: microsoftConfig?.stateSynchronization ?? false,
   };
 };
 
 /**
  * Get the Webex configuration
- * @param {OrgWebexConfig} orgWebexConfig
+ * @param {WebexConfig} webexConfig
  * @returns {Object}
  */
-const getWebexConfig = (orgWebexConfig?: OrgWebexConfig) => {
+const getWebexConfig = (webexConfig?: WebexConfig) => {
   return {
-    showUserDetailsWebex: orgWebexConfig?.showUserDetails ?? false,
-    stateSynchronizationWebex: orgWebexConfig?.stateSynchronization ?? false,
+    showUserDetailsWebex: webexConfig?.showUserDetails ?? false,
+    stateSynchronizationWebex: webexConfig?.stateSynchronization ?? false,
   };
 };
 
@@ -115,7 +115,7 @@ function parseAgentConfigs(profileData: {
   orgConfig: OrgDesktopLoginResponse;
   userData: AgentResponse;
   agentProfileData: AgentProfile;
-  teamData: Team[];
+  teamData: TeamList[];
   auxCodes: AuxCode[];
   dialPlanData: DialPlanEntity[];
   multimediaProfileId: string;

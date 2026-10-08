@@ -221,9 +221,9 @@ export type {
   /** Tenant configuration, the `tenantConfiguration` section of the org desktop-login aggregate */
   TenantData,
   /** Microsoft Teams integration configuration, from the org desktop-login aggregate */
-  OrgMicrosoftConfig,
+  MicrosoftConfig,
   /** Webex integration configuration, from the org desktop-login aggregate */
-  OrgWebexConfig,
+  WebexConfig,
   /** External integration URLs, the `urlMappings` section of the org desktop-login aggregate */
   OrgUrlMappings,
   /** Response from getDialPlanData */
