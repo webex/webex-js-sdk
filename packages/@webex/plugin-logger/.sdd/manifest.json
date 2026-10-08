@@ -198,12 +198,12 @@
     "minimum_independence": "different-runtime",
     "validator_runtime": "current-session",
     "validator_runtime_source": "invocation-input",
-    "validator_run_id": "spec-validator-plugin-logger-2026-10-06-r3",
+    "validator_run_id": "spec-validator-plugin-logger-2026-10-08-r4",
     "runtime_fallback_tier": "different-runtime",
     "blocking_severities": [
       "Blocking"
     ],
-    "source_commit": "58a90702584b06541890f8f5ff8a66a7f33edfc2",
+    "source_commit": "86bc3fc323b312404bcd2f53a0cd8d55ffb2bdaf",
     "base_ref": "next",
     "head_ref": "SDD_WEBEX_PLUGIN_LOGGER"
   },
