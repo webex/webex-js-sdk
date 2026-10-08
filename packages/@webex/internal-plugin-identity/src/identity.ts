@@ -5,7 +5,7 @@
 import {WebexPlugin} from '@webex/webex-core';
 
 import {CERTIFICATE_AUTHORITY_SERVICE, WEBEX_CA_PRODUCTION_ROOTS} from './constants';
-import type {CertSigningRequest, IdentityCredentials, IdentityTrustAnchors} from './types';
+import type {IdentityCredentials, IdentityTrustAnchors} from './types';
 import {
   CERTIFICATE_RENEWAL_WINDOW_MS,
   generateCsrWithPkijs,
@@ -20,10 +20,16 @@ const RAW_EC_P256_KEY_LENGTH = 32;
 class Identity extends WebexPlugin {
   namespace = 'Identity';
   credentialsCache: Map<string, Promise<IdentityCredentials>>;
+  private readonly generateCsr: typeof generateCsrWithPkijs;
 
-  constructor(...args) {
-    super(...args);
+  constructor(
+    attrs = {},
+    options = {},
+    dependencies: {generateCsr?: typeof generateCsrWithPkijs} = {}
+  ) {
+    super(attrs, options);
     this.credentialsCache = new Map();
+    this.generateCsr = dependencies.generateCsr ?? generateCsrWithPkijs;
   }
 
   /**
@@ -51,7 +57,9 @@ class Identity extends WebexPlugin {
       this.logger.info('identity: getCredentials: checking cached certificate expiry');
 
       return cachedCredentials.then((credentials) => {
-        if (!this._isCredentialExpiringSoon(credentials)) {
+        const leafCertificate = credentials.certChain[0];
+
+        if (leafCertificate && !isCertificateExpiringSoon(leafCertificate)) {
           this.logger.info('identity: getCredentials: returning cached credentials');
 
           return credentials;
@@ -61,25 +69,13 @@ class Identity extends WebexPlugin {
           `identity: getCredentials: cached certificate expires within ${CERTIFICATE_RENEWAL_WINDOW_MS}ms, requesting new credentials`
         );
 
-        return this._refreshCredentials(contactId, cachedCredentials);
+        return this.refreshCredentials(contactId, cachedCredentials);
       });
     }
 
     this.logger.info('identity: getCredentials: cache miss, requesting new credentials');
 
-    return this._cacheCredentials(contactId);
-  }
-
-  /**
-   * Returns whether the cached leaf certificate is near expiry.
-   * @param {IdentityCredentials} credentials
-   * @returns {boolean}
-   * @private
-   */
-  _isCredentialExpiringSoon(credentials: IdentityCredentials): boolean {
-    const leafCertificate = credentials.certChain[0];
-
-    return !leafCertificate || isCertificateExpiringSoon(leafCertificate);
+    return this.cacheCredentials(contactId);
   }
 
   /**
@@ -88,27 +84,25 @@ class Identity extends WebexPlugin {
    * @param {string} contactId
    * @param {Promise<IdentityCredentials>} cachedCredentials
    * @returns {Promise<IdentityCredentials>}
-   * @private
    */
-  _refreshCredentials(
+  private refreshCredentials(
     contactId: string,
     cachedCredentials: Promise<IdentityCredentials>
   ): Promise<IdentityCredentials> {
     if (this.credentialsCache.get(contactId) !== cachedCredentials) {
-      return this.credentialsCache.get(contactId) ?? this._cacheCredentials(contactId);
+      return this.credentialsCache.get(contactId) ?? this.cacheCredentials(contactId);
     }
 
-    return this._cacheCredentials(contactId);
+    return this.cacheCredentials(contactId);
   }
 
   /**
    * Requests credentials and caches the in-flight promise so concurrent callers share it.
    * @param {string} contactId
    * @returns {Promise<IdentityCredentials>}
-   * @private
    */
-  _cacheCredentials(contactId: string): Promise<IdentityCredentials> {
-    const credentials = this._requestCredentials(contactId);
+  private cacheCredentials(contactId: string): Promise<IdentityCredentials> {
+    const credentials = this.requestCredentials(contactId);
 
     this.credentialsCache.set(contactId, credentials);
     credentials.catch(() => {
@@ -121,23 +115,13 @@ class Identity extends WebexPlugin {
   }
 
   /**
-   * CSR generation is an overridable seam for unit tests and alternate identity backends.
-   * @param {string} contactId
-   * @returns {Promise<CertSigningRequest>}
-   * @private
-   */
-  _generateCsr(contactId: string): Promise<CertSigningRequest> {
-    return generateCsrWithPkijs(contactId);
-  }
-
-  /**
+   * Requests credentials from the CA and returns the certificate chain and raw key.
    * @param {string} contactId
    * @returns {Promise<IdentityCredentials>}
-   * @private
    */
-  async _requestCredentials(contactId: string): Promise<IdentityCredentials> {
+  private async requestCredentials(contactId: string): Promise<IdentityCredentials> {
     this.logger.info('identity: requestCredentials: generating CSR');
-    const {privKeyDer, csr} = await this._generateCsr(contactId);
+    const {privKeyDer, csr} = await this.generateCsr(contactId);
 
     this.logger.info('identity: requestCredentials: requesting certificate from CA');
     const response = await this.webex.request({

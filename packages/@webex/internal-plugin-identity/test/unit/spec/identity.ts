@@ -5,8 +5,9 @@ import 'jsdom-global/register';
 import {assert} from '@webex/test-helper-chai';
 import MockWebex from '@webex/test-helper-mock-webex';
 import sinon from 'sinon';
-import Identity from '@webex/internal-plugin-identity';
+import Identity from '../../../src/identity';
 import {WEBEX_CA_PRODUCTION_ROOTS} from '@webex/internal-plugin-identity/src/constants';
+import * as identityUtils from '../../../src/utils';
 
 // 'ABC' -> base64 'QUJD'; 'DEF' -> base64 'REVG'.
 const LEAF_PEM = '-----BEGIN CERTIFICATE-----\nQUJD\n-----END CERTIFICATE-----';
@@ -26,12 +27,11 @@ describe('plugin-identity', () => {
         privKeyDer[i] = i;
       }
       generateCsr = sinon.stub().resolves({privKeyDer, csr: 'BASE64CSR'});
-      webex = MockWebex({children: {identity: Identity}});
+      webex = MockWebex();
       webexRequest = sinon.stub().resolves({body: `${LEAF_PEM}\n${ROOT_PEM}`});
       webex.request = webexRequest;
-      identity = webex.internal.identity;
-      identity._generateCsr = generateCsr;
-      identity._isCredentialExpiringSoon = sinon.stub().returns(false);
+      identity = new Identity({webex}, {parent: webex}, {generateCsr});
+      sinon.stub(identityUtils, 'isCertificateExpiringSoon').returns(false);
     });
 
     afterEach(() => {
@@ -50,8 +50,12 @@ describe('plugin-identity', () => {
 
     describe('getCredentials', () => {
       it('creates a credential cache for each plugin instance', () => {
-        const secondWebex = MockWebex({children: {identity: Identity}});
-        const secondIdentity = secondWebex.internal.identity;
+        const secondWebex = MockWebex();
+        const secondIdentity = new Identity(
+          {webex: secondWebex},
+          {parent: secondWebex},
+          {generateCsr}
+        );
 
         assert.notStrictEqual(identity.credentialsCache, secondIdentity.credentialsCache);
       });
@@ -86,7 +90,7 @@ describe('plugin-identity', () => {
       });
 
       it('renews credentials when the cached leaf certificate is within one day of expiry', async () => {
-        identity._isCredentialExpiringSoon.onCall(0).returns(true);
+        identityUtils.isCertificateExpiringSoon.onCall(0).returns(true);
 
         const first = await identity.getCredentials('user-1');
         const renewed = await identity.getCredentials('user-1');
@@ -100,7 +104,7 @@ describe('plugin-identity', () => {
 
       it('shares one renewal when concurrent callers find a near-expiry certificate', async () => {
         await identity.getCredentials('user-1');
-        identity._isCredentialExpiringSoon.returns(true);
+        identityUtils.isCertificateExpiringSoon.returns(true);
 
         const [first, second] = await Promise.all([
           identity.getCredentials('user-1'),
