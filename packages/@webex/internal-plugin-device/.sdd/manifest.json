@@ -1,0 +1,335 @@
+{
+  "manifest_version": 1,
+  "repository": {
+    "name": "@webex/internal-plugin-device",
+    "purpose": "Device registration for the Webex JS SDK: registers, refreshes, and unregisters this client's device with the WDM service and exposes the device-derived state (URLs, feature toggles, organization policy) as the webex.internal.device plugin.",
+    "category": "cat2-legacy",
+    "primary_languages": [
+      "javascript",
+      "typescript"
+    ]
+  },
+  "topology": "Single-repo",
+  "commands": {
+    "compile": {
+      "command": "yarn workspace @webex/internal-plugin-device build:src",
+      "source_file": "package.json",
+      "role": "compile"
+    },
+    "build": {
+      "command": "yarn workspace @webex/internal-plugin-device build",
+      "source_file": "package.json",
+      "role": "package"
+    },
+    "unit-test": {
+      "command": "yarn workspace @webex/internal-plugin-device test:unit",
+      "source_file": "package.json",
+      "role": "unit-test"
+    },
+    "browser-test": {
+      "command": "yarn workspace @webex/internal-plugin-device test:browser",
+      "source_file": "package.json",
+      "role": "integration-test"
+    },
+    "lint": {
+      "command": "yarn workspace @webex/internal-plugin-device test:style",
+      "source_file": "package.json",
+      "role": "lint"
+    },
+    "deploy": {
+      "command": "yarn workspace @webex/internal-plugin-device deploy:npm",
+      "source_file": "package.json",
+      "role": "deploy"
+    }
+  },
+  "toolchain": [
+    {
+      "name": "node",
+      "version": ">=18",
+      "origin": "repo-config",
+      "source_file": "package.json"
+    }
+  ],
+  "tests": {
+    "unit": {
+      "command_ref": "unit-test",
+      "dir": "test/unit",
+      "framework": "jest"
+    },
+    "integration": {
+      "command_ref": "browser-test",
+      "dir": "test/integration",
+      "framework": "mocha (karma runner)",
+      "external_deps": [
+        "Provisioned Webex test users via @webex/test-helper-test-users",
+        "Network access to Webex services"
+      ]
+    }
+  },
+  "quality_gates": {
+    "code_coverage": {
+      "origin": "none",
+      "declared_by": "riag@cisco.com via bootstrap questionnaire"
+    }
+  },
+  "coverage_status_definitions": {
+    "specced": ">=80% public surface specced, drift <5% — spec is authoritative",
+    "partial": "40-80% specced — spec is a hint, cross-check code",
+    "untracked": "<40% specced — code is the source of truth"
+  },
+  "modules": [
+    {
+      "path": "src/",
+      "coverage_status": "Partial",
+      "coverage_evidence": "Generator-side field measurement 80.0% (12 of 15 mandatory fields PRESENT, critical 6 of 7) assessed 2026-10-07. WEAK: external WDM integration (no committed machine-readable contract; owner states none can be provided, recorded as an approved unknown), test and characterization coverage (no baseline; MOD-015, INV-004, INV-005, MOD-026 untested), and design rationale (no accepted ADR). Provenance is PRESENT now that approval is recorded. Promotion to Specced held: a critical field is weak and no drift measurement exists.",
+      "canonical_spec": "src/docs/README.md",
+      "contracts": {
+        "provides": [
+          "device-plugin-sdk",
+          "device-registration-events",
+          "cisco-device-url-header"
+        ],
+        "requires": [
+          "wdm-device-registration-service",
+          "webex-core-plugin-host",
+          "webex-common-sdk",
+          "common-timers-sdk",
+          "http-core-sdk",
+          "internal-plugin-metrics-sdk"
+        ]
+      },
+      "last_assessed": "2026-10-07",
+      "section_profile": {
+        "has_ui": false,
+        "crosses_service_boundaries": true,
+        "enforces_domain_rules": true,
+        "is_concurrent_async": true,
+        "owns_persistence": false,
+        "returns_caller_errors": true,
+        "has_design_tradeoff": false,
+        "stateful_transitions": true,
+        "exposes_wire_protocol": false,
+        "ui_multi_screen": false,
+        "large_data_model": false,
+        "has_tiers": false,
+        "module_specific_conventions": true,
+        "published_package": true,
+        "embedded_in_host": false,
+        "holds_client_state": true,
+        "has_submodules": false,
+        "has_submodules_computed_by": "scripts/module_tree.py",
+        "has_submodules_computed_at": "2026-10-07T04:04:09Z",
+        "resolved_by": "claude-code/claude-sonnet-5-5 (host metadata; bootstrap questionnaire)",
+        "resolved_at": "2026-10-07T04:04:09Z"
+      }
+    }
+  ],
+  "contract_catalog": {
+    "index_path": "docs/architecture.md",
+    "definitions": {
+      "device-plugin-sdk": {
+        "kind": "sdk",
+        "publication": "published",
+        "source_kind": "repository-path",
+        "source": "package.json",
+        "summary": "Published npm package surface declared by package.json (main: dist/index.js, devMain: src/index.js): the default Device plugin registered as webex.internal.device, the config namespace webex.config.device, constants, CatalogDetails, DeviceRegistrationOptions, DeviceUrlInterceptor, and the feature classes exported from src/index.js. Internal plugin: semantic versioning is not strictly followed. Per-export detail lives in the owning module spec Public surface."
+      },
+      "device-registration-events": {
+        "kind": "event",
+        "publication": "published",
+        "source_kind": "repository-path",
+        "source": "src/device.js",
+        "summary": "Events on webex.internal.device: registration:success (name declared as DEVICE_EVENT_REGISTRATION_SUCCESS in src/constants.js, triggered in src/device.js), change and change:features (re-emitted by src/device.js), and change:<collection> for the developer, entitlement, and user feature collections (emitted by src/features/features-model.js; collection names declared in src/constants.js)."
+      },
+      "cisco-device-url-header": {
+        "kind": "http",
+        "publication": "internal",
+        "source_kind": "repository-path",
+        "source": "src/interceptors/device-url.js",
+        "summary": "cisco-device-url request header carrying the registered device URL, added by DeviceUrlInterceptor to outbound requests for catalog services other than idbroker, oauth, and saml."
+      },
+      "wdm-device-registration-service": {
+        "kind": "http",
+        "publication": "internal",
+        "source_kind": "external",
+        "source": "WDM service (Webex web device manager), reached through the wdm entry of the services catalog; no machine-readable contract is committed in this repository, and the response shape is exercised by the fixture test/unit/spec/wdm-dto.json",
+        "summary": "Device registration endpoints consumed by this module: POST wdm/devices to register, PUT and DELETE on the device url to refresh and unregister, and GET wdm/devices to list devices for cleanup."
+      },
+      "webex-core-plugin-host": {
+        "kind": "sdk",
+        "publication": "published",
+        "source_kind": "external",
+        "source": "@webex/webex-core (workspace package; no module spec, so source was used: WebexPlugin, persist, waitForValue, registerInternalPlugin, services plugin)",
+        "summary": "Plugin host contract consumed by this module: the WebexPlugin base model, the persist and waitForValue decorators, registerInternalPlugin, webex.request, and the services methods waitForCatalog, get, waitForService, getServiceFromUrl, convertUrlToPriorityHostUrl, and markFailedUrl."
+      },
+      "webex-common-sdk": {
+        "kind": "sdk",
+        "publication": "published",
+        "source_kind": "external",
+        "source": "@webex/common (workspace package; module spec consulted: oneFlight, deprecated, inBrowser, deviceType)",
+        "summary": "Shared primitives used here: oneFlight and deprecated decorators, the inBrowser flag, and the deviceType constants."
+      },
+      "common-timers-sdk": {
+        "kind": "sdk",
+        "publication": "published",
+        "source_kind": "external",
+        "source": "@webex/common-timers (workspace package; module spec consulted: safeSetTimeout)",
+        "summary": "safeSetTimeout, a setTimeout wrapper that unrefs the handle, used for the ephemeral refresh timer, the logout timer, and the registration wait."
+      },
+      "http-core-sdk": {
+        "kind": "sdk",
+        "publication": "published",
+        "source_kind": "external",
+        "source": "@webex/http-core (workspace package; module spec consulted: Interceptor)",
+        "summary": "The Interceptor base class extended by DeviceUrlInterceptor."
+      },
+      "internal-plugin-metrics-sdk": {
+        "kind": "sdk",
+        "publication": "published",
+        "source_kind": "external",
+        "source": "@webex/internal-plugin-metrics (workspace package; no module spec, so source was used: newMetrics.submitInternalEvent, newMetrics.callDiagnosticMetrics.setDeviceInfo, metrics.submitClientMetrics)",
+        "summary": "Metrics plugin API called during registration for internal events, call-diagnostic device info, and client metrics."
+      }
+    }
+  },
+  "spec_policy": {
+    "require_what_and_why": true,
+    "require_provenance": true,
+    "protected_specs": [
+      "src/docs/README.md"
+    ]
+  },
+  "validation": {
+    "generator_runtime": "claude-code",
+    "generator_model": "claude-sonnet-5-5",
+    "generator_run_id": "080ee7e9-bd3c-4dfc-a1ac-81cc28eec83f",
+    "generator_runtime_source": "host-metadata",
+    "validator_runtime": "01a114a2-39d4-73f2-b1b0-e0a3d977933d",
+    "validator_run_id": "01a114a2-39d4-73f2-b1b0-e0a3d977933d",
+    "validator_runtime_source": "host-metadata",
+    "minimum_independence": "different-runtime",
+    "runtime_fallback_tier": "different-runtime",
+    "blocking_severities": [
+      "Blocking"
+    ]
+  },
+  "layout": {
+    "sdd_root": ".sdd",
+    "docs_root": "docs",
+    "agent_entry_path": "AGENTS.md",
+    "standing_docs_root": "docs",
+    "spec_index_path": "docs/specs/README.md",
+    "module_docs_strategy": "source-local",
+    "module_docs_relative_path": "docs/README.md",
+    "module_docs_decision": {
+      "basis": "repo-standards-default",
+      "reason": "The package has no module-local documentation folder (the existing docs and src/docs directories were empty), documentation build, or protected authored file that collides with the source-local default.",
+      "decided_by": "claude-code (bootstrap questionnaire)",
+      "decided_at": "2026-10-07T04:04:09Z"
+    },
+    "repo_context_decision": {
+      "path": ".repo-context.json",
+      "schema_path": "schemas/repo-context.schema.json",
+      "action": "create",
+      "schema_action": "create",
+      "reason": "Neither the operational context nor its schema exists in this package; both are created from the bundled Repo Standards templates and verified repository evidence.",
+      "decided_by": "claude-code (bootstrap questionnaire)",
+      "decided_at": "2026-10-07T04:04:09Z"
+    },
+    "artifact_decisions": [
+      {
+        "path": "docs/service.md",
+        "action": "omit",
+        "reason": "The package is a published library, not a deployable service; it declares no deployment descriptor, container, or runtime entry point.",
+        "decided_by": "claude-code (bootstrap questionnaire)",
+        "decided_at": "2026-10-07T04:04:09Z"
+      },
+      {
+        "path": "mkdocs.yml",
+        "action": "omit",
+        "reason": "No documentation build exists for this package.",
+        "decided_by": "claude-code (bootstrap questionnaire)",
+        "decided_at": "2026-10-07T04:04:09Z"
+      },
+      {
+        "path": "api-specs/openapi.yaml",
+        "action": "omit",
+        "reason": "The package serves no HTTP routes; its published surface is the npm package declared in package.json, so no OpenAPI source applies.",
+        "decided_by": "claude-code (bootstrap questionnaire)",
+        "decided_at": "2026-10-07T04:04:09Z"
+      },
+      {
+        "path": "SECURITY.md",
+        "action": "omit",
+        "reason": "Absent at the package; the questionnaire did not select a security-policy artifact and no reporting contact is established.",
+        "decided_by": "claude-code (bootstrap questionnaire)",
+        "decided_at": "2026-10-07T04:04:09Z"
+      },
+      {
+        "path": "CONTRIBUTING.md",
+        "action": "omit",
+        "reason": "No package-level contribution guide exists; contribution rules are owned at the surrounding monorepo root.",
+        "decided_by": "claude-code (bootstrap questionnaire)",
+        "decided_at": "2026-10-07T04:04:09Z"
+      },
+      {
+        "path": "CHANGELOG.md",
+        "action": "omit",
+        "reason": "No package-level changelog exists; release notes are owned at the surrounding monorepo root.",
+        "decided_by": "claude-code (bootstrap questionnaire)",
+        "decided_at": "2026-10-07T04:04:09Z"
+      },
+      {
+        "path": "CTO_CHECKLIST.yml",
+        "action": "omit",
+        "reason": "The CTO readiness workflow applies to deployable services; this package is a published library.",
+        "decided_by": "claude-code (bootstrap questionnaire)",
+        "decided_at": "2026-10-07T04:04:09Z"
+      },
+      {
+        "path": "schemas/cto-checklist.schema.json",
+        "action": "omit",
+        "reason": "Selected together with CTO_CHECKLIST.yml, which is omitted.",
+        "decided_by": "claude-code (bootstrap questionnaire)",
+        "decided_at": "2026-10-07T04:04:09Z"
+      }
+    ],
+    "template_roots": {
+      "canonical": ".sdd/templates/repo-standards"
+    },
+    "repo_skills_root": ".sdd/skills",
+    "contract_index_path": "docs/architecture.md"
+  },
+  "substrate": {
+    "source": "WebexTools/repo-standards@d89a7fe59126ae3ad9bac9ca352aa7f12b4c85dc",
+    "consumed": [
+      "@webex/eslint-config-legacy and ESLint through package.json scripts",
+      "@webex/babel-config-legacy via babel.config.js",
+      "@webex/jest-config-legacy via jest.config.js",
+      "@webex/legacy-tools build and test runner via package.json",
+      "package README.md"
+    ],
+    "compliance_tier": "baseline"
+  },
+  "section_profiles": {
+    "repo": {
+      "owns_datastore": false,
+      "holds_client_state": true,
+      "components_interact": true,
+      "domain_data_across_components": false,
+      "caches_data": true,
+      "observability_convention": true,
+      "deploys_to_infra": false,
+      "shared_base_libs": false,
+      "is_monorepo": false,
+      "multi_platform": true,
+      "published_package": true,
+      "embedded_in_host": false,
+      "cross_repo_deps_material": false,
+      "security_arch_warranted": false,
+      "exposes_commands_or_artifacts": false
+    },
+    "resolved_by": "claude-code/claude-sonnet-5-5 (host metadata; bootstrap questionnaire)",
+    "resolved_at": "2026-10-07T04:04:09Z"
+  }
+}
