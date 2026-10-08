@@ -7,6 +7,31 @@ import * as asn1js from 'asn1js';
 
 import type {CertSigningRequest} from './types';
 
+export const CERTIFICATE_RENEWAL_WINDOW_MS = 24 * 60 * 60 * 1000;
+
+/**
+ * Returns whether an X.509 certificate expires within the renewal window.
+ * An unreadable certificate is treated as expiring so malformed cached credentials are refreshed.
+ * @param {Uint8Array} certificateDer
+ * @param {number} [now]
+ * @returns {boolean}
+ */
+export function isCertificateExpiringSoon(certificateDer: Uint8Array, now = Date.now()): boolean {
+  try {
+    const {offset, result} = asn1js.fromBER(certificateDer);
+
+    if (offset === -1) {
+      return true;
+    }
+
+    const certificate = new pkijs.Certificate({schema: result});
+
+    return certificate.notAfter.value.getTime() - now < CERTIFICATE_RENEWAL_WINDOW_MS;
+  } catch (_error) {
+    return true;
+  }
+}
+
 /**
  * Generates an EC P-256 key pair and a matching PKCS#10 CSR (subject CN = "email:<contactId>").
  * @param {string} contactId

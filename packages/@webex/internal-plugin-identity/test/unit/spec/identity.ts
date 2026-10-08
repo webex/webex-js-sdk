@@ -31,6 +31,7 @@ describe('plugin-identity', () => {
       webex.request = webexRequest;
       identity = webex.internal.identity;
       identity._generateCsr = generateCsr;
+      identity._isCredentialExpiringSoon = sinon.stub().returns(false);
     });
 
     afterEach(() => {
@@ -75,6 +76,33 @@ describe('plugin-identity', () => {
         assert.equal(first, second);
         assert.calledOnce(generateCsr);
         assert.calledOnce(webexRequest);
+      });
+
+      it('renews credentials when the cached leaf certificate is within one day of expiry', async () => {
+        identity._isCredentialExpiringSoon.onCall(0).returns(true);
+
+        const first = await identity.getCredentials('user-1');
+        const renewed = await identity.getCredentials('user-1');
+        const cachedRenewal = await identity.getCredentials('user-1');
+
+        assert.notEqual(first, renewed);
+        assert.equal(renewed, cachedRenewal);
+        assert.calledTwice(generateCsr);
+        assert.calledTwice(webexRequest);
+      });
+
+      it('shares one renewal when concurrent callers find a near-expiry certificate', async () => {
+        await identity.getCredentials('user-1');
+        identity._isCredentialExpiringSoon.returns(true);
+
+        const [first, second] = await Promise.all([
+          identity.getCredentials('user-1'),
+          identity.getCredentials('user-1'),
+        ]);
+
+        assert.equal(first, second);
+        assert.calledTwice(generateCsr);
+        assert.calledTwice(webexRequest);
       });
 
       it('does not cache a failed attempt', async () => {

@@ -78,7 +78,7 @@ not the media encryption path.
 | D3 | Member verification: public API **extends `Member`**, but internally MLS roster data lives in a **separate registry keyed by device URL**, because Locus member updates and MLS roster updates arrive independently, in any order, and either can be delayed. A reconciler merges them. |
 | D4 | Security Code and E2EE facade state are read from `meeting.e2ee`; E2EE events are also forwarded on `Meeting`. |
 | D5 | Identity/credentials: a **separate identity/credential provider** (CSR / CA / trust anchors), split from MLS group-session logic. |
-| D6 | The SDK creates a **single `Identity` plugin instance per Webex client session**. It caches the CSR + CA certificate per contact and reuses credentials across meetings. |
+| D6 | The SDK creates a **single `Identity` plugin instance per Webex client session**. It caches credentials per contact and reuses them across meetings; when the cached leaf certificate expires in less than one day, the plugin generates a new CSR and requests replacement credentials. |
 | D7 | Verification: a `validationResult` of `E2eeValidationResult.Success` means **verified**. Surface per-device data **and** an aggregated state on `Member`. |
 | D8 | Failure policy: on MLS `join_failure` / `evicted` / `timeout`, **force-leave** the meeting via `meeting.leave()` with **new dedicated leave reasons**, emit a **new failure event**, and surface a **new error class** so the app understands what happened. The meeting does **not** continue unencrypted. |
 | D9 | A **new config entry** (`enableE2ee`, default `false`) gates the feature. |
@@ -376,6 +376,7 @@ getCredentials(contactId: string): Promise<{ privateKey: Uint8Array; certChain: 
 //  -> webex.request({ service:'webex-certificate-authority', resource:'certificates',
 //                    headers:{ 'include-root-cert':'true' } })
 //  -> parse PEM chain; CACHE result (per device/user) for reuse across meetings.
+//  -> before reuse, check the leaf certificate's notAfter; renew when less than one day remains.
 getTrustAnchors(): { webexCaRoots; domainNameRoots; userIdentityRoots };
 ```
 
@@ -530,7 +531,8 @@ private required(): boolean {
 1. `if (!required()) return;` (state stays `disabled`; `required()` already checks
    `config.enableE2ee` + `isV2E2EEncrypted` + `mediaEncryptionGroupUrl`)
 2. `await wasmLoader.get()` (already preloaded in `register()` → fast)
-3. `creds = await identityProvider.getCredentials(webex.internal.device.userId)` (cached)
+3. `creds = await identityProvider.getCredentials(webex.internal.device.userId)` (cached unless
+   the leaf certificate expires in less than one day, in which case credentials are renewed)
 4. `httpClient = new MediaEncryptionService({ webexRequest: webex.request.bind(webex) })`
 5. `session = new MLS({ httpClient, wasmLoader })`
 6. `await session.initialize({ participantId: device.userId, deviceUrl: device.url,`

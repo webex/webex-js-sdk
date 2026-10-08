@@ -7,9 +7,66 @@ import * as asn1js from 'asn1js';
 import * as pkijs from 'pkijs';
 import {assert} from '@webex/test-helper-chai';
 
-import {generateCsrWithPkijs, pemToUint8Array, pemToUint8Arrays} from '../../../src/utils';
+import {
+  generateCsrWithPkijs,
+  isCertificateExpiringSoon,
+  pemToUint8Array,
+  pemToUint8Arrays,
+} from '../../../src/utils';
+
+async function makeCertificate(notAfter: Date): Promise<Uint8Array> {
+  const certificate = new pkijs.Certificate();
+
+  certificate.version = 2;
+  certificate.serialNumber = new asn1js.Integer({value: 1});
+  certificate.issuer.typesAndValues.push(
+    new pkijs.AttributeTypeAndValue({
+      type: '2.5.4.3',
+      value: new asn1js.Utf8String({value: 'Test'}),
+    })
+  );
+  certificate.subject.typesAndValues.push(
+    new pkijs.AttributeTypeAndValue({
+      type: '2.5.4.3',
+      value: new asn1js.Utf8String({value: 'Test'}),
+    })
+  );
+  certificate.notBefore.value = new Date('2026-01-01T00:00:00Z');
+  certificate.notAfter.value = notAfter;
+
+  const keyPair = await crypto.subtle.generateKey(
+    {name: 'ECDSA', namedCurve: 'P-256'},
+    true,
+    ['sign', 'verify']
+  );
+
+  await certificate.subjectPublicKeyInfo.importKey(keyPair.publicKey);
+  await certificate.sign(keyPair.privateKey, 'SHA-256');
+
+  return new Uint8Array(certificate.toSchema().toBER(false));
+}
 
 describe('identity utils', () => {
+  describe('isCertificateExpiringSoon', () => {
+    it('returns true when the leaf certificate expires within one day', async () => {
+      const now = new Date('2026-10-08T12:00:00Z');
+      const certificate = await makeCertificate(new Date(now.getTime() + 23 * 60 * 60 * 1000));
+
+      assert.isTrue(isCertificateExpiringSoon(certificate, now.getTime()));
+    });
+
+    it('returns false when the leaf certificate expires after one day', async () => {
+      const now = new Date('2026-10-08T12:00:00Z');
+      const certificate = await makeCertificate(new Date(now.getTime() + 25 * 60 * 60 * 1000));
+
+      assert.isFalse(isCertificateExpiringSoon(certificate, now.getTime()));
+    });
+
+    it('treats an unreadable certificate as needing renewal', () => {
+      assert.isTrue(isCertificateExpiringSoon(new Uint8Array([1, 2, 3])));
+    });
+  });
+
   describe('generateCsrWithPkijs', () => {
     it('generates a P-256 CSR with the contact ID as subject and a valid signature', async () => {
       const contactId = 'user@example.com';

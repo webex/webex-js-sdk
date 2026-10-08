@@ -6,7 +6,12 @@ import {WebexPlugin} from '@webex/webex-core';
 
 import {CERTIFICATE_AUTHORITY_SERVICE, WEBEX_CA_PRODUCTION_ROOTS} from './constants';
 import type {CertSigningRequest, IdentityCredentials, IdentityTrustAnchors} from './types';
-import {generateCsrWithPkijs, pemToUint8Arrays} from './utils';
+import {
+  CERTIFICATE_RENEWAL_WINDOW_MS,
+  generateCsrWithPkijs,
+  isCertificateExpiringSoon,
+  pemToUint8Arrays,
+} from './utils';
 
 // PKCS#8 P-256: the raw 32-byte EC private key starts at this offset in the DER encoding.
 const PKCS8_P256_RAW_KEY_OFFSET = 36;
@@ -40,16 +45,77 @@ const Identity = WebexPlugin.extend({
    * @returns {Promise<IdentityCredentials>}
    */
   getCredentials(contactId: string): Promise<IdentityCredentials> {
-    let credentials = this.credentialsCache.get(contactId);
+    const cachedCredentials = this.credentialsCache.get(contactId);
 
-    if (!credentials) {
-      this.logger.info('identity: getCredentials: cache miss, requesting new credentials');
-      credentials = this._requestCredentials(contactId);
-      this.credentialsCache.set(contactId, credentials);
-      credentials.catch(() => this.credentialsCache.delete(contactId));
-    } else {
-      this.logger.info('identity: getCredentials: returning cached credentials');
+    if (cachedCredentials) {
+      this.logger.info('identity: getCredentials: checking cached certificate expiry');
+
+      return cachedCredentials.then((credentials) => {
+        if (!this._isCredentialExpiringSoon(credentials)) {
+          this.logger.info('identity: getCredentials: returning cached credentials');
+
+          return credentials;
+        }
+
+        this.logger.info(
+          `identity: getCredentials: cached certificate expires within ${CERTIFICATE_RENEWAL_WINDOW_MS}ms, requesting new credentials`
+        );
+
+        return this._refreshCredentials(contactId, cachedCredentials);
+      });
     }
+
+    this.logger.info('identity: getCredentials: cache miss, requesting new credentials');
+
+    return this._cacheCredentials(contactId);
+  },
+
+  /**
+   * Returns whether the cached leaf certificate is near expiry.
+   * @param {IdentityCredentials} credentials
+   * @returns {boolean}
+   * @private
+   */
+  _isCredentialExpiringSoon(credentials: IdentityCredentials): boolean {
+    const leafCertificate = credentials.certChain[0];
+
+    return !leafCertificate || isCertificateExpiringSoon(leafCertificate);
+  },
+
+  /**
+   * Replaces a cached credential request if it is still the current cache entry. This prevents
+   * concurrent callers from triggering duplicate renewals for the same contact.
+   * @param {string} contactId
+   * @param {Promise<IdentityCredentials>} cachedCredentials
+   * @returns {Promise<IdentityCredentials>}
+   * @private
+   */
+  _refreshCredentials(
+    contactId: string,
+    cachedCredentials: Promise<IdentityCredentials>
+  ): Promise<IdentityCredentials> {
+    if (this.credentialsCache.get(contactId) !== cachedCredentials) {
+      return this.credentialsCache.get(contactId) ?? this._cacheCredentials(contactId);
+    }
+
+    return this._cacheCredentials(contactId);
+  },
+
+  /**
+   * Requests credentials and caches the in-flight promise so concurrent callers share it.
+   * @param {string} contactId
+   * @returns {Promise<IdentityCredentials>}
+   * @private
+   */
+  _cacheCredentials(contactId: string): Promise<IdentityCredentials> {
+    const credentials = this._requestCredentials(contactId);
+
+    this.credentialsCache.set(contactId, credentials);
+    credentials.catch(() => {
+      if (this.credentialsCache.get(contactId) === credentials) {
+        this.credentialsCache.delete(contactId);
+      }
+    });
 
     return credentials;
   },
