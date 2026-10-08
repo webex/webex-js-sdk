@@ -429,7 +429,7 @@ describe('plugin-meetings', () => {
         session.leave();
         session.handleEvent(event, 'llm');
         session.setLlmConnectedBeforeJoin(true);
-        session.notifyLlmConnected();
+        session.llmConnected();
 
         assert.calledOnce(fakeE2ee.join);
         assert.calledOnce(fakeE2ee.leave);

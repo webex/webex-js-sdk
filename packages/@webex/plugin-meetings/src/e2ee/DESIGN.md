@@ -305,7 +305,7 @@ join(): void;
 leave(): void;
 handleEvent(bytes: Uint8Array, source: E2eeSignalingSource): void;
 setLlmConnectedBeforeJoin(b: boolean): void;
-notifyLlmConnected(): void;
+llmConnected(): void;
 getSecurityCode(): string;
 getRoster(): E2eeRosterMember[];
 isLeader(): boolean;
@@ -362,7 +362,7 @@ each envelope to `session.handleEvent(bytes, source)`, tagging `source` as `'llm
 
 Online handling (LLM-only): if `llm.isConnected()` and the locus URL matches this meeting, call
 `session.setLlmConnectedBeforeJoin(true)`; otherwise listen once for `'online'`
-(locus-URL matched, like the PoC `onceLLMOnline`) and call `session.notifyLlmConnected()`.
+(locus-URL matched, like the PoC `onceLLMOnline`) and call `session.llmConnected()`.
 Guard: `getLocusUrl() === llm.getLocusUrl()`. `getLocusUrl` is a callback (not a stored meeting
 reference) so the check stays correct when the locus URL changes, e.g. moving between breakouts.
 

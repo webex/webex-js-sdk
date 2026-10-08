@@ -337,8 +337,8 @@ export default class MLS {
    * Notifies the engine that the signaling channel is now connected.
    * @returns {void}
    */
-  notifyLlmConnected(): void {
-    LoggerProxy.logger.info('e2ee: MLS --> notifyLlmConnected');
+  llmConnected(): void {
+    LoggerProxy.logger.info('e2ee: MLS --> llmConnected');
     this.assertInitialized().llmConnected();
   }
 

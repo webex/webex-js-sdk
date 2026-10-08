@@ -31,7 +31,7 @@ describe('plugin-meetings', () => {
       session = {
         handleEvent: sinon.stub(),
         setLlmConnectedBeforeJoin: sinon.stub(),
-        notifyLlmConnected: sinon.stub(),
+        llmConnected: sinon.stub(),
       };
       signaling = new E2eeSignaling({llm, mercury, getLocusUrl: () => 'locus-1', session});
     });
@@ -101,12 +101,12 @@ describe('plugin-meetings', () => {
       llm.isConnected.returns(true);
       llm.getLocusUrl.returns('other-locus');
       onOnline();
-      assert.notCalled(session.notifyLlmConnected);
+      assert.notCalled(session.llmConnected);
 
       // Online for our meeting -> notify.
       llm.getLocusUrl.returns('locus-1');
       onOnline();
-      assert.calledOnce(session.notifyLlmConnected);
+      assert.calledOnce(session.llmConnected);
     });
 
     it('removes all subscriptions on stop', () => {

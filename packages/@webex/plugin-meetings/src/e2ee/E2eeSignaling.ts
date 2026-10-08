@@ -9,7 +9,7 @@ import type {E2eeSignalingSource} from './types';
 export interface IMlsSignalingTarget {
   handleEvent(bytes: Uint8Array, source: E2eeSignalingSource): void;
   setLlmConnectedBeforeJoin(connected: boolean): void;
-  notifyLlmConnected(): void;
+  llmConnected(): void;
 }
 
 /** The subset of a mercury-style channel (`webex.internal.mercury` / `webex.internal.llm`) the
@@ -140,7 +140,7 @@ export default class E2eeSignaling {
    */
   private onLlmOnline = (): void => {
     if (this.isLlmOnlineForThisMeeting()) {
-      this.session.notifyLlmConnected();
+      this.session.llmConnected();
     }
   };
 
