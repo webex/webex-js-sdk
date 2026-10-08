@@ -106,6 +106,9 @@ export interface WebE2EEInstance {
   roster(): RosterMember[];
   handle(event: Uint8Array): void;
   isLeader(): boolean;
+  /**
+   * Used by backend services such as Homer; client SDKs do not need to call this.
+   */
   keepAlive(): void;
   llmConnected(): void;
   setLlmConnectedBeforeJoin(connected: boolean): void;

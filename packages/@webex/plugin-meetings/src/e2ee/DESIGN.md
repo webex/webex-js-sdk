@@ -306,7 +306,6 @@ leave(): void;
 handleEvent(bytes: Uint8Array, source: E2eeSignalingSource): void;
 setLlmConnectedBeforeJoin(b: boolean): void;
 notifyLlmConnected(): void;
-keepAlive(): void;
 getSecurityCode(): string;
 getRoster(): E2eeRosterMember[];
 isLeader(): boolean;
@@ -694,8 +693,8 @@ to surface the meeting's zero-trust state.
 - Roster/Member out-of-order: solved by the reconciler map + reapply on `MEMBERS_UPDATE`.
 - Failures: `joinFailure` / `evicted` / `timeout` → `handleFatal` → state +
   `MEETING_E2EE_FAILURE { reason }` + force-leave with an `E2EE_*` reason + `E2eeError`.
-- `keepAlive`: the session may need a periodic `keepAlive()` timer while joined — confirm
-  from the WASM engine.
+- The WASM engine exposes `keepAlive()` for backend services such as Homer. The client SDK does not
+  call it; backend services own that keep-alive behavior.
 
 ## Test strategy
 
@@ -732,7 +731,7 @@ mock webex. (Filenames below are illustrative — each maps to a spec under `tes
 | **P3** | `E2eeMeeting` facade + `Meeting` wiring (start/stop, direct facade API, forwarded events) — **security code works end-to-end**. |
 | **P4** | `MemberMLSReconciler` + `Member` extension + verification events. |
 | **P5** | `IE2eeMediaConnection` contract + `MediaKeyController` (media key injection); media-core impl (new `setEncryptionKeys` method) tracked separately (out of scope). |
-| **P6** | Reconnection + force-leave failure policy (reasons/errors/events) + `keepAlive` hardening. |
+| **P6** | Reconnection + force-leave failure policy (reasons/errors/events). |
 
 ## Design principles applied
 

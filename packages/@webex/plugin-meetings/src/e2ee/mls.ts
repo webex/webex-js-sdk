@@ -343,15 +343,6 @@ export default class MLS {
   }
 
   /**
-   * Sends an engine keep-alive.
-   * @returns {void}
-   */
-  keepAlive(): void {
-    LoggerProxy.logger.info('e2ee: MLS --> keepAlive');
-    this.assertInitialized().keepAlive();
-  }
-
-  /**
    * @returns {string} the current security code, or '' if not initialized.
    */
   getSecurityCode(): string {

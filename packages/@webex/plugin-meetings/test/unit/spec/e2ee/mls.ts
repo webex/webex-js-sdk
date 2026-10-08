@@ -42,7 +42,6 @@ describe('plugin-meetings', () => {
         join: sinon.stub(),
         leave: sinon.stub(),
         handle: sinon.stub(),
-        keepAlive: sinon.stub(),
         llmConnected: sinon.stub(),
         setLlmConnectedBeforeJoin: sinon.stub(),
         securityCode: sinon.stub().returns('CODE-1'),
@@ -429,7 +428,6 @@ describe('plugin-meetings', () => {
         session.join();
         session.leave();
         session.handleEvent(event, 'llm');
-        session.keepAlive();
         session.setLlmConnectedBeforeJoin(true);
         session.notifyLlmConnected();
 
@@ -437,7 +435,6 @@ describe('plugin-meetings', () => {
         assert.calledOnce(fakeE2ee.leave);
         assert.calledOnce(fakeE2ee.handle);
         assert.deepEqual(Array.from(fakeE2ee.handle.firstCall.args[0]), [1, 2, 3]);
-        assert.calledOnce(fakeE2ee.keepAlive);
         assert.calledOnceWithExactly(fakeE2ee.setLlmConnectedBeforeJoin, true);
         assert.calledOnce(fakeE2ee.llmConnected);
       });
