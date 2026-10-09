@@ -116,7 +116,7 @@ Responsibilities:
 | Method | Visibility | Purpose |
 |--------|------------|---------|
 | `fetchCallerDetails(callerId)` | Public | Main entrypoint: resets fields, applies header priority parsing, emits initial data, triggers async BroadWorks enrichment |
-| `parseSipUri(paid)` | Private | Parses name and number from SIP-like header string |
+| `parseSipUri(paid)` | Private | Parses name and number from a SIP-like header string using anchored, bounded parsing: the addr-spec is the content between the first `<` and its matching `>` (or the whole string when no angle brackets are present), the display name is only the text before the first `<` (a bare `sip:user@host` form yields no name), and the number is only accepted when the addr-spec starts with the literal `sip:` scheme and the user part between `sip:` and the first `@` fully matches `VALID_PHONE_REGEX` |
 | `parseRemotePartyInfo(data)` | Private | Extracts BroadWorks `externalId` and starts SCIM lookup |
 | `resolveCallerId(filter)` | Private async | Performs SCIM enrichment and emits only when resolved fields differ |
 
@@ -137,6 +137,7 @@ Responsibilities:
 | CALLERID-R-003 | Resets callerInfo (id, avatarSrc, name, num) before processing a new event. | Resetting before each event prevents identity fields from a previous call leaking into a new caller result. | `src/CallingClient/calling/CallerId/index.ts` | `src/CallingClient/calling/CallerId/index.test.ts` | none identified | PRESENT |
 | CALLERID-R-004 | Resolution preserves header priority, non-blocking SCIM enrichment, typed callbacks, shared display types, and contextual logging. | Preserving priority, non-blocking enrichment, shared types, and contextual logging keeps immediate and enriched callback ordering stable for Call consumers. | `src/CallingClient/calling/CallerId/index.ts` | `src/CallingClient/calling/CallerId/index.test.ts` | none identified | PRESENT |
 | CALLERID-R-005 | Uses the callback-based update mechanism rather than direct Call mutations. | The callback boundary decouples identity resolution from Call mutation and the diff check prevents duplicate caller-id notifications. | `src/CallingClient/calling/CallerId/index.ts` | `src/CallingClient/calling/CallerId/index.test.ts` | none identified | PRESENT |
+| CALLERID-R-006 | `parseSipUri` uses anchored, bounded parsing: the addr-spec is the content between the first `<` and its matching `>` (or the whole input when absent), the name is only the text before the first `<`, the number is only read when the addr-spec starts with the literal `sip:` scheme, and the number is accepted only when the whole candidate matches `VALID_PHONE_REGEX`. | Anchoring on the `sip:` scheme and requiring a full-string phone match prevents crafted SIP URIs from producing unexpected name/number values, while valid URIs still yield the same name and num. | `src/CallingClient/calling/CallerId/index.ts` | `src/CallingClient/calling/CallerId/index.test.ts` | none identified | PRESENT |
 
 ### 1. Deterministic Header Priority Resolution
 
@@ -146,9 +147,10 @@ Responsibilities:
 
 ### 2. SIP URI Parsing for Name/Number
 
-- Extracts display name from quoted/header prefix.
-- Extracts number from SIP URI local part.
-- Validates parsed phone tokens using `VALID_PHONE_REGEX`.
+- Determines the addr-spec as the content between the first `<` and its matching `>`, falling back to the whole input when no angle brackets are present (bare `sip:user@host` form).
+- Extracts the display name only from the text preceding the first `<` (with surrounding quotes stripped); a bare `sip:` string carries no display name.
+- Extracts the number only when the addr-spec begins with the literal `sip:` scheme, taking the user part between `sip:` and the first `@` host delimiter and ignoring any trailing `;params`.
+- Accepts the number only when the candidate fully matches `VALID_PHONE_REGEX` (the whole candidate, not a substring), so crafted SIP URIs cannot yield unexpected name/number values while valid URIs continue to parse to the same name and num.
 
 ### Resolution Rules (Source of Truth)
 
@@ -371,6 +373,7 @@ Tests for this module should cover:
 | CALLERID-R-003 | `src/CallingClient/calling/CallerId/index.test.ts` | Re-check negative/error edge coverage during independent validation |
 | CALLERID-R-004 | `src/CallingClient/calling/CallerId/index.test.ts` | Re-check negative/error edge coverage during independent validation |
 | CALLERID-R-005 | `src/CallingClient/calling/CallerId/index.test.ts` | Re-check negative/error edge coverage during independent validation |
+| CALLERID-R-006 | `src/CallingClient/calling/CallerId/index.test.ts` | Re-check crafted-SIP-URI negative coverage during independent validation |
 
 ## Traceability
 
