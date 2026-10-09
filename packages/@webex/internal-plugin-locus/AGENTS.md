@@ -3,7 +3,7 @@ doc_kind: agent-entry
 generated_from: agents@0.3.0
 generated_by: claude-cowork
 approved_by: akulakum@cisco.com
-updated_at: 2026-10-09T07:03:45Z
+updated_at: 2026-10-09T07:21:56Z
 validation_status: pass-with-warnings
 -->
 
