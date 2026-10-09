@@ -45,7 +45,7 @@
     "@webex/internal-plugin-mercury": "workspace:*",
     "@webex/test-helper-file": "workspace:*",
     "@webex/webex-core": "workspace:*",
-    "asn1js": "^2.0.26",
+    "asn1js": "^3.0.10",
     "debug": "^4.3.4",
     "isomorphic-webcrypto": "^2.3.8",
     "lodash": "^4.17.21",
