@@ -28,9 +28,6 @@ let haveFetchedAll = false;
 // Connect to Webex and listen for message events.
 function authorize() {
   webex = Webex.init({
-    config: {
-
-    },
     credentials: {
       access_token: document.getElementById('access-token').value
     }

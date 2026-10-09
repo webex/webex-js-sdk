@@ -122,8 +122,8 @@ class Package {
       })
       : Promise.resolve([]);
 
-    return Promise.all([unitTestFileCollector, integrationTestFileCollector])
-      .then(async ([unitFiles, integrationFiles]) => {
+    return Promise.all([unitTestFileCollector, integrationTestFileCollector]).then(
+      async ([unitFiles, integrationFiles]) => {
         if (config.runner === 'jest') {
           const testFiles = [...unitFiles];
 
@@ -154,7 +154,8 @@ class Package {
         }
 
         return this;
-      });
+      },
+    );
   }
 
   /**

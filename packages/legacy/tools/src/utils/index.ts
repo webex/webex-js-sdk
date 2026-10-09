@@ -9,11 +9,5 @@ import {
 import Mocha from './mocha';
 
 export {
-  Jest,
-  Karma,
-  Mocha,
-  startServer,
-  stopServer,
-  findWorkspaceRoot,
-  getServerPath,
+  Jest, Karma, Mocha, startServer, stopServer, findWorkspaceRoot, getServerPath,
 };

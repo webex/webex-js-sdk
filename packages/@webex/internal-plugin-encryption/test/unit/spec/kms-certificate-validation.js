@@ -40,7 +40,7 @@ const VALID_JWT_SAN = {
   e: 'AQAB',
 };
 
-const validate = validateCert(caroots);
+const validate = validateCert({caroots});
 
 describe('internal-plugin-encryption', () => {
   describe('kms-certificate-validation', () => {
@@ -152,14 +152,22 @@ describe('internal-plugin-encryption', () => {
       return assert.isRejected(validate(jwt), KMSError);
     });
 
-    it('accepts self signed certificate if no CA roots.', () => {
+    it('rejects when validation is required but no CA roots are configured', () =>
+      assert.isRejected(validateCert()(VALID_JWT), KMSError));
+
+    it('rejects when validation is required and CA roots are empty', () =>
+      assert.isRejected(validateCert({caroots: []})(VALID_JWT), KMSError));
+
+    it('accepts self signed certificate when signature validation is disabled', () => {
       const jwt = {
         ...VALID_JWT,
         x5c: x5cSelfSigned,
         n: x5cSelfSignedModulus,
       };
 
-      return validateCert()(jwt).then((results) => assert.equal(results, jwt));
+      return validateCert({validateSignature: false})(jwt).then((results) =>
+        assert.equal(results, jwt)
+      );
     });
   });
 });

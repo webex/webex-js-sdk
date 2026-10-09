@@ -2,11 +2,7 @@ const glob = require('glob');
 const path = require('path');
 
 const {
-  Jest,
-  Karma,
-  Mocha,
-  Package,
-  PackageFile,
+  Jest, Karma, Mocha, Package, PackageFile,
 } = require('@webex/legacy-tools');
 
 describe('Package', () => {
@@ -259,9 +255,11 @@ describe('Package', () => {
       it('should call "Mocha.test()" with files if the located unit and integration files are greater than 0 when runner is set to "mocha"', () => pack.test({ ...config, runner: 'mocha' })
         .then(() => {
           expect(spies.Mocha.test).toHaveBeenCalledTimes(1);
-          expect(spies.Mocha.test.calls.all()[0].args).toEqual([{
-            files: [...results.Package.getFiles, ...results.Package.getFiles],
-          }]);
+          expect(spies.Mocha.test.calls.all()[0].args).toEqual([
+            {
+              files: [...results.Package.getFiles, ...results.Package.getFiles],
+            },
+          ]);
         }));
 
       it('should not call "Mocha.test()" with files if the located unit and integration files 0 or less when runner is set to "mocha"', () => {
@@ -287,8 +285,10 @@ describe('Package', () => {
             expect(spies.Karma.test.calls.all()[0].args[0].browsers).toEqual(karmaBrowsers);
             expect(spies.Karma.test.calls.all()[0].args[0].debug).toBe(karmaDebug);
             expect(spies.Karma.test.calls.all()[0].args[0].port).toBe(karmaPort);
-            expect(spies.Karma.test.calls.all()[0].args[0].files)
-              .toEqual([...results.Package.getFiles, ...results.Package.getFiles]);
+            expect(spies.Karma.test.calls.all()[0].args[0].files).toEqual([
+              ...results.Package.getFiles,
+              ...results.Package.getFiles,
+            ]);
           });
       });
 
