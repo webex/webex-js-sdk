@@ -33,7 +33,7 @@ yarn install
 
 ## Configuration & Secrets
 
-- Unit tests use mocks/fixtures. Playwright journeys require approved runtime accounts/tokens and environment configuration; obtain them through the team mechanism and never store them in source or logs.
+- Unit tests use mocks/fixtures. Jest resolves selected `@webex/*` workspace dependencies to local stub mocks under `test/mocks/` (`internal-plugin-metrics`, `internal-plugin-device`, and `internal-plugin-feature`) and maps others (`media-helpers`, `common`, `common-timers`, and `test-helper-*`) to their workspace source so specs run without the real plugins. Playwright journeys require approved runtime accounts/tokens and environment configuration; obtain them through the team mechanism and never store them in source or logs.
 
 ## Dev Environment
 

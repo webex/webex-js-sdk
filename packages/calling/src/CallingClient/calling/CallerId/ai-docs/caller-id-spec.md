@@ -314,6 +314,7 @@ A `CallerId` instance owns one mutable `callerInfo` record for the current resol
 - P-Asserted-Identity fills name/number before the From fallback.
 - BroadWorks `externalId` enrichment is non-blocking and emits only changed data.
 - SIP identity headers and SCIM profile fields are sensitive caller data: use them for display resolution only, do not log raw headers, and rely on the initialized SDK for SCIM authorization. Evidence: `src/CallingClient/calling/CallerId/index.ts`.
+- **SCIM filter injection prevention (AC-1 / CAI-8461):** The `externalId` token extracted from the `x-broadworks-remote-party-info` SIP header is passed through `escapeScimFilterValue` (from `src/common/Utils.ts`) before interpolation into the `id eq "..."` SCIM filter string. This escapes `\` and `"` so a maliciously crafted header value cannot terminate the quoted literal or inject additional SCIM filter clauses. Legitimate opaque identifiers (e.g. UUIDs) are unaffected.
 - Configuration/rollout is N/A: CallerId has no feature flag, environment variable, or mutable runtime configuration; behavior is selected solely by the supplied identity headers and availability of BroadWorks `externalId`. Evidence: `src/CallingClient/calling/CallerId/index.ts`, `src/CallingClient/calling/CallerId/types.ts`.
 
 ## Concurrency & Reactive Flow
