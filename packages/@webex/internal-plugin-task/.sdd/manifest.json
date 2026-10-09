@@ -240,7 +240,12 @@
       "Blocking"
     ],
     "base_ref": "next",
-    "head_ref": "TASK_INTERNAL_PLUGIN_SDD"
+    "head_ref": "TASK_INTERNAL_PLUGIN_SDD",
+    "validator_runtime": "current-session",
+    "validator_runtime_source": "invocation-input",
+    "validator_run_id": "spark-853128-task-spec-validator-2026-10-09-round-2",
+    "runtime_fallback_tier": "different-runtime",
+    "source_commit": "6e7d6a9ec46e4b6d489ace0a057617e4b274bbef"
   },
   "layout": {
     "sdd_root": ".sdd",

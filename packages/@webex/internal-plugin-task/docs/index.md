@@ -6,8 +6,8 @@ doc_kind: standing-doc
 generated_from: docs-index@0.3.0
 generated_by: claude-cowork
 approved_by: akulakum@cisco.com
-updated_at: 2026-10-09T14:40:25Z
-validation_status: pending
+updated_at: 2026-10-09T16:00:49Z
+validation_status: pass-with-warnings
 -->
 
 # @webex/internal-plugin-task documentation

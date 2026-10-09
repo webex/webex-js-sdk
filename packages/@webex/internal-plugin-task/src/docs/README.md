@@ -9,8 +9,8 @@ doc_kind: module-spec
 generated_from: module-spec@0.3.0
 generated_by: claude-cowork
 approved_by: akulakum@cisco.com
-updated_at: 2026-10-09T14:40:25Z
-validation_status: pending
+updated_at: 2026-10-09T16:00:49Z
+validation_status: pass-with-warnings
 -->
 
 # Task plugin
@@ -36,7 +36,7 @@ Related context: [documentation index](../../docs/index.md) ·
 | Parent spec       | — |
 | Doc kind          | Module spec |
 | Coverage score    | 93.3% assessed 2026-10-09 — 14 of 15 mandatory fields PRESENT, critical 8 of 8; test strategy is WEAK (gaps listed under Verification) and no characterization baseline exists. Independent validation: see the Validation status row |
-| Validation status | pending; independent spec-validator run not yet recorded |
+| Validation status | Pass-with-warnings; 2026-10-09; validator runtime `current-session`; 0 Blocking, 3 Minor tooling warnings |
 
 ## Applicability
 
