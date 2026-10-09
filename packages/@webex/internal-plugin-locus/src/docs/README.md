@@ -73,9 +73,9 @@ Related context: [documentation index](../../docs/index.md) ·
 | `test/unit/lib/BasicSeqCmp.json` | 88 basic `compareSequence` comparisons |
 | `test/unit/lib/SeqCmp.json` | 25 `compareSequence` comparisons, 21 `compare` update actions, and the descriptions of the ACCEPT_NEW, KEEP_CURRENT, and DESYNC actions |
 | Sibling package webex-core, file src/lib/webex-plugin.js | `WebexPlugin#request` delegates to `webex.request` |
-| Sibling package webex-core, file src/interceptors/auth.js | The authorization header is added only for catalog or allowed-domain URLs |
-| Sibling package webex-core, files src/webex-core.js, src/interceptors/catalog-url.js, and src/config.js | The opt-in `CatalogUrlInterceptor`, active with `config.services.validateCatalogUrls` (default `false`) and the default interceptor set or a `config.interceptors` set that lists it, rejects non-catalog URLs |
-| Sibling package webex-core, files src/interceptors/redirect.js and src/config.js | Redirects on a `cisco-location` header or Locus `errorCode` 2000002 re-issue the request, capped by `maxAppLevelRedirects` (10) and `maxLocusRedirects` (5) |
+| Sibling package webex-core, file src/interceptors/auth.js | The authorization header is added when the credentials check passes (catalog service, allowed domain, or the u2c service), unless a header or `auth` option is already present |
+| Sibling package webex-core, files src/webex-core.js and src/config.js | The default interceptor set, its replacement by a host-supplied `config.interceptors`, and the `validateCatalogUrls`, `maxAppLevelRedirects`, and `maxLocusRedirects` defaults |
+| Sibling package webex-core, files src/interceptors/catalog-url.js and src/interceptors/redirect.js | The opt-in catalog URL rejection, and the three redirect forms that share one redirect counter per call |
 | Sibling package http-core, file src/http-error-subtypes.js | Builds the subtype tree in which `Conflict` (409) extends `BadRequest` |
 | Sibling package webex-core, file src/lib/webex-http-error.js | Applies that subtype tree to `WebexHttpError`, giving `WebexHttpError.Conflict` |
 | Sibling package internal-plugin-mercury, SDD module spec src/docs/README.md | The Mercury plugin registered by the side-effect import |
@@ -134,7 +134,7 @@ Contract `locus-sdk` is published with native artifact `package.json`. Required 
 
 | Dependency | Why it is required | Failure behavior |
 | ---------- | ------------------ | ---------------- |
-| `@webex/webex-core` (`webex-core-plugin-host`) | `WebexPlugin`, `registerInternalPlugin`, `request`, and `WebexHttpError.Conflict` | HTTP failures reject with the `WebexHttpError` subtype built by the sibling package http-core |
+| `@webex/webex-core` (`webex-core-plugin-host`) | `WebexPlugin`, `registerInternalPlugin`, `request`, and `WebexHttpError.Conflict` | With webex-core's default interceptor set, HTTP failures reject with the `WebexHttpError` subtype built by the sibling package http-core, and the catalog check and redirects behave as the architecture Security architecture describes. A host-supplied `config.interceptors` set replaces the defaults; without `HttpStatusInterceptor`, any status of 400 or above resolves instead of rejecting, so the HTTP failure rows below and `INV-006` do not apply |
 | Locus service (`locus-service-http`) | Every call and participant operation | Rejections propagate, except 409 Conflict on `decline` and `leave` (`INV-006`) |
 | Janus service (`janus-history-http`) | `getCallHistory` | Rejections propagate |
 | `webex.internal.device` (`webex-device-registration`) | `url` sent as the device URL (`INV-007`) | Not a declared dependency; it is registered transitively because the Mercury index imports the device plugin (sibling package internal-plugin-mercury, file src/index.js). If it is absent, reading `url` throws a TypeError |
@@ -409,9 +409,9 @@ classDiagram
 | `create` without `options.correlationId` | Synchronous `Error('options.correlationId is required')`, not a rejected promise | Pass a correlation id; wrap in try or call inside a promise chain | None | `src/locus.js` |
 | `join` with no correlation id on the Locus or options | Synchronous `Error('locus.correlationId or options.correlationId is required')` | Same as above | None | `src/locus.js` |
 | `compareSequence` missing an argument | Throws `` `current` is required `` or `` `incoming` is required `` | Pass both sequences | None | `src/locus.js` |
-| Any HTTP failure | Promise rejects with the `WebexHttpError` subtype for the status | Inspect the class or status | None here | `src/locus.js` |
-| `CatalogUrlInterceptor` is active (`config.services.validateCatalogUrls` is `true` with the default interceptor set, or a `config.interceptors` set that lists it) and a DTO or redirect URL is not a catalog service or allowed domain | Promise rejects with a plain `Error` whose message starts `Request blocked: URL not in service catalog or allowed domains`, before any request is sent | Treat as a configuration or DTO problem, not an HTTP status | None here; the `decline` and `leave` Conflict recovery does not apply | `src/locus.js` |
-| More than `maxLocusRedirects` (5) Locus redirects (`errorCode` 2000002) or `maxAppLevelRedirects` (10) `cisco-location` redirects for one call | Promise rejects with a plain `Error('Maximum redirects exceeded')` | Treat as a service or routing problem | None here | `src/locus.js` |
+| Any HTTP failure (default interceptor set; see Dependencies) | Promise rejects with the `WebexHttpError` subtype for the status | Inspect the class or status | None here | `src/locus.js` |
+| `CatalogUrlInterceptor` is active (see Dependencies) and a DTO or redirect URL is outside the catalog and allowed domains | Promise rejects with a plain `Error` whose message starts `Request blocked: URL not in service catalog or allowed domains`, before the request to that URL is sent (for a redirect, after the original response) | Treat as a configuration or DTO problem, not an HTTP status | None here; the `decline` and `leave` Conflict recovery does not apply | `src/locus.js` |
+| A call's redirects, which share one counter, exceed the limit of the redirect form being handled: `maxAppLevelRedirects` (10) for `cisco-location` header redirects, `maxLocusRedirects` (5) for Locus `errorCode` 2000002 and App API `code` 404100 redirects | Promise rejects with a plain `Error('Maximum redirects exceeded')` | Treat as a service or routing problem | None here | `src/locus.js` |
 | 409 on `decline` or `leave` | Resolves with the current Locus (`INV-006`) | Treat as success with fresh state | A failed follow-up GET rejects with its own error | `src/locus.js` |
 | `sync` returns no body | Resolves `{}` | Do not pass `{}` to `compare`; it has no sequence | Call `get` instead | `src/locus.js` |
 | `getCallHistory` with an invalid `from` | Synchronous RangeError from `toISOString` | Pass a date or millisecond number | None | `src/locus.js` |

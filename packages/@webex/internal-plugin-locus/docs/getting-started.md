@@ -22,7 +22,7 @@ Onboarding for **@webex/internal-plugin-locus**. Commands run from the webex-js-
 | Tool or access | Version or requirement |
 | -------------- | ---------------------- |
 | Node.js | 22.14, required for working in this repository by the workspace root `AGENTS.md`; the root `.nvmrc` selects the Node 22 LTS line |
-| Yarn | Workspaces are used, so install from the workspace root rather than this directory |
+| Yarn | The version pinned by the workspace root `packageManager` field, provided through Corepack: enable Corepack for the selected Node.js version, as the workspace root `CONTRIBUTING.md` setup steps require. Workspaces are used, so install from the workspace root rather than this directory |
 | Browser for `test:browser` | A local browser for the karma runner that `test:browser` starts through `@webex/legacy-tools` |
 
 The `package.json` `engines` value `>=18` is the floor for applications that install the package,
@@ -92,7 +92,8 @@ yarn workspace @webex/internal-plugin-locus test:unit
 
 ## First-run verification
 
-1. Select Node.js 22.14 and run `yarn install` from the workspace root.
+1. Select Node.js 22.14, enable Corepack (see Prerequisites), and run `yarn install` from the
+   workspace root.
 2. Run the workspace root `prebuild:modules` script. `yarn install` does not build the
    `webex-legacy-tools` CLI that this package's scripts call, because its binary lives in the
    untracked build output of the workspace legacy tools package. That root script installs again,
