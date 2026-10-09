@@ -823,7 +823,7 @@ describe('TaskManager', () => {
 
     taskManager.handleRealtimeWebsocketEvent(
       JSON.stringify({
-        type: CC_TASK_EVENTS.FEATURE_ENABLEMENT,
+        type: 'FEATURE_ENABLEMENT',
         data: {data: featurePayload},
       })
     );
@@ -988,7 +988,7 @@ describe('TaskManager', () => {
   it.each([
     [
       'post-call',
-      CC_TASK_EVENTS.POST_CALL_SUMMARY,
+      'POST_CALL_SUMMARY',
       'POST_CALL_SUMMARY',
       'POST_CALL_SUMMARY_TIMEOUT',
       {
@@ -1009,7 +1009,7 @@ describe('TaskManager', () => {
     ],
     [
       'mid-call',
-      CC_TASK_EVENTS.MID_CALL_SUMMARY,
+      'MID_CALL_SUMMARY',
       'MID_CALL_SUMMARY',
       'MID_CALL_SUMMARY_TIMEOUT',
       {
@@ -1250,7 +1250,7 @@ describe('TaskManager', () => {
 
       taskManager.handleRealtimeWebsocketEvent(
         JSON.stringify({
-          type: CC_TASK_EVENTS.MID_CALL_SUMMARY_RESPONSE_SUBSEQUENT_AGENT,
+          type: 'MID_CALL_SUMMARY_RESPONSE_SUBSEQUENT_AGENT',
           data: {data: receivingPayload},
         })
       );
