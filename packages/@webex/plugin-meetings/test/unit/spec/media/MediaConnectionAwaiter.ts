@@ -3,7 +3,10 @@ import {assert} from '@webex/test-helper-chai';
 import sinon from 'sinon';
 import {ConnectionState, MediaConnectionEventNames} from '@webex/internal-media-core';
 import testUtils from '../../../utils/testUtils';
-import {ICE_AND_DTLS_CONNECTION_TIMEOUT} from '@webex/plugin-meetings/src/constants';
+import {
+  DTLS_CONNECTION_TIMEOUT,
+  ICE_CONNECTION_TIMEOUT,
+} from '@webex/plugin-meetings/src/constants';
 import MediaConnectionAwaiter from '../../../../src/media/MediaConnectionAwaiter';
 import Metrics from '../../../../src/metrics';
 import BEHAVIORAL_METRICS from '../../../../src/metrics/constants';
@@ -96,7 +99,7 @@ describe('MediaConnectionAwaiter', () => {
       mockMC.getIceGatheringState.returns('complete');
       iceGatheringListener();
 
-      await clock.tickAsync(ICE_AND_DTLS_CONNECTION_TIMEOUT);
+      await clock.tickAsync(ICE_CONNECTION_TIMEOUT);
       await testUtils.flushPromises();
 
       assert.equal(promiseResolved, false);
@@ -195,7 +198,7 @@ describe('MediaConnectionAwaiter', () => {
       mockMC.getIceConnectionState.returns('connected');
       iceConnectionListener();
 
-      await clock.tickAsync(ICE_AND_DTLS_CONNECTION_TIMEOUT);
+      await clock.tickAsync(DTLS_CONNECTION_TIMEOUT);
       await testUtils.flushPromises();
 
       assert.equal(promiseResolved, false);
@@ -226,11 +229,143 @@ describe('MediaConnectionAwaiter', () => {
       mockMC.getIceConnectionState.returns('completed');
       iceConnectionListener();
 
-      await clock.tickAsync(ICE_AND_DTLS_CONNECTION_TIMEOUT);
+      await clock.tickAsync(DTLS_CONNECTION_TIMEOUT);
       await testUtils.flushPromises();
 
       assert.equal(promiseRejected, true);
       assert.equal(rejectedIceConnected, true);
+    });
+
+    it('switches to the shorter DTLS timeout once ICE connects', async () => {
+      mockMC.getConnectionState.returns(ConnectionState.Connecting);
+      mockMC.getIceGatheringState.returns('complete');
+
+      const setTimeoutSpy = sinon.spy(clock, 'setTimeout');
+      const clearTimeoutSpy = sinon.spy(clock, 'clearTimeout');
+
+      let promiseResolved = false;
+      let promiseRejected = false;
+
+      mediaConnectionAwaiter
+        .waitForMediaConnectionConnected()
+        .then(() => {
+          promiseResolved = true;
+        })
+        .catch(() => {
+          promiseRejected = true;
+        });
+
+      await testUtils.flushPromises();
+
+      // the initial timer uses the longer ICE timeout
+      assert.calledOnceWithExactly(setTimeoutSpy, sinon.match.func, ICE_CONNECTION_TIMEOUT);
+
+      const iceConnectionListener = mockMC.on.getCall(1).args[1];
+
+      // ICE connects - the ICE timer should be replaced with the shorter DTLS timer
+      mockMC.getIceConnectionState.returns('connected');
+      iceConnectionListener();
+
+      assert.calledOnce(clearTimeoutSpy);
+      assert.calledTwice(setTimeoutSpy);
+      assert.calledWithExactly(setTimeoutSpy.secondCall, sinon.match.func, DTLS_CONNECTION_TIMEOUT);
+
+      // just before the DTLS timeout elapses nothing happens
+      await clock.tickAsync(DTLS_CONNECTION_TIMEOUT - 1);
+      await testUtils.flushPromises();
+
+      assert.equal(promiseResolved, false);
+      assert.equal(promiseRejected, false);
+
+      // once the DTLS timeout elapses the promise rejects
+      await clock.tickAsync(1);
+      await testUtils.flushPromises();
+
+      assert.equal(promiseResolved, false);
+      assert.equal(promiseRejected, true);
+    });
+
+    it('retries once with the DTLS timeout if ICE gathering has not completed when ICE is connected', async () => {
+      mockMC.getConnectionState.returns(ConnectionState.Connecting);
+      mockMC.getIceGatheringState.returns('gathering');
+
+      const setTimeoutSpy = sinon.spy(clock, 'setTimeout');
+
+      let promiseResolved = false;
+      let promiseRejected = false;
+
+      mediaConnectionAwaiter
+        .waitForMediaConnectionConnected()
+        .then(() => {
+          promiseResolved = true;
+        })
+        .catch(() => {
+          promiseRejected = true;
+        });
+
+      await testUtils.flushPromises();
+
+      const iceConnectionListener = mockMC.on.getCall(1).args[1];
+
+      // ICE connects (but gathering still not complete) - switches to DTLS timeout
+      mockMC.getIceConnectionState.returns('connected');
+      iceConnectionListener();
+
+      // first DTLS timeout elapses while gathering is still incomplete - it retries
+      // once with the DTLS timeout instead of rejecting
+      await clock.tickAsync(DTLS_CONNECTION_TIMEOUT);
+      await testUtils.flushPromises();
+
+      assert.equal(promiseResolved, false);
+      assert.equal(promiseRejected, false);
+
+      // the retry uses the DTLS timeout again
+      assert.calledWithExactly(setTimeoutSpy.lastCall, sinon.match.func, DTLS_CONNECTION_TIMEOUT);
+
+      // second DTLS timeout elapses - now it rejects
+      await clock.tickAsync(DTLS_CONNECTION_TIMEOUT);
+      await testUtils.flushPromises();
+
+      assert.equal(promiseResolved, false);
+      assert.equal(promiseRejected, true);
+    });
+
+    it('resolves when DTLS completes within the shorter DTLS timeout after ICE connects', async () => {
+      mockMC.getConnectionState.returns(ConnectionState.Connecting);
+      mockMC.getIceGatheringState.returns('gathering');
+
+      let promiseResolved = false;
+      let promiseRejected = false;
+
+      mediaConnectionAwaiter
+        .waitForMediaConnectionConnected()
+        .then(() => {
+          promiseResolved = true;
+        })
+        .catch(() => {
+          promiseRejected = true;
+        });
+
+      await testUtils.flushPromises();
+
+      const connectionStateListener = mockMC.on.getCall(0).args[1];
+      const iceConnectionListener = mockMC.on.getCall(1).args[1];
+
+      // ICE connects - switches to the DTLS timeout
+      mockMC.getIceConnectionState.returns('connected');
+      iceConnectionListener();
+
+      // DTLS completes within the DTLS timeout
+      await clock.tickAsync(DTLS_CONNECTION_TIMEOUT - 1);
+      mockMC.getConnectionState.returns(ConnectionState.Connected);
+      connectionStateListener();
+
+      await testUtils.flushPromises();
+
+      assert.equal(promiseResolved, true);
+      assert.equal(promiseRejected, false);
+
+      assert.calledThrice(mockMC.off);
     });
 
     ['connected', 'completed'].forEach((iceState) => {
@@ -251,7 +386,7 @@ describe('MediaConnectionAwaiter', () => {
           });
 
         // no ICE connection state events fired - the flag should be set from the initial state
-        await clock.tickAsync(ICE_AND_DTLS_CONNECTION_TIMEOUT);
+        await clock.tickAsync(DTLS_CONNECTION_TIMEOUT);
         await testUtils.flushPromises();
 
         assert.equal(promiseRejected, true);
@@ -287,7 +422,7 @@ describe('MediaConnectionAwaiter', () => {
 
       mockMC.getConnectionState.returns(ConnectionState.Connected);
 
-      await clock.tickAsync(ICE_AND_DTLS_CONNECTION_TIMEOUT);
+      await clock.tickAsync(ICE_CONNECTION_TIMEOUT);
       await testUtils.flushPromises();
 
       assert.equal(promiseResolved, true);
@@ -374,7 +509,7 @@ describe('MediaConnectionAwaiter', () => {
 
       mockMC.getConnectionState.returns(ConnectionState.Connected);
 
-      await clock.tickAsync(ICE_AND_DTLS_CONNECTION_TIMEOUT);
+      await clock.tickAsync(ICE_CONNECTION_TIMEOUT);
       await testUtils.flushPromises();
 
       assert.equal(promiseResolved, true);
@@ -427,7 +562,7 @@ describe('MediaConnectionAwaiter', () => {
 
       mockMC.getConnectionState.returns(ConnectionState.Connected);
 
-      await clock.tickAsync(ICE_AND_DTLS_CONNECTION_TIMEOUT);
+      await clock.tickAsync(ICE_CONNECTION_TIMEOUT);
       await testUtils.flushPromises();
 
       assert.equal(promiseResolved, true);
@@ -468,7 +603,7 @@ describe('MediaConnectionAwaiter', () => {
       assert.equal(mockMC.on.getCall(1).args[0], MediaConnectionEventNames.ICE_CONNECTION_STATE_CHANGED);
       assert.equal(mockMC.on.getCall(2).args[0], MediaConnectionEventNames.ICE_GATHERING_STATE_CHANGED);
 
-      await clock.tickAsync(ICE_AND_DTLS_CONNECTION_TIMEOUT * 2);
+      await clock.tickAsync(ICE_CONNECTION_TIMEOUT * 2);
       await testUtils.flushPromises();
 
       assert.equal(promiseResolved, false);
