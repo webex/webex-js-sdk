@@ -1,0 +1,358 @@
+{
+  "manifest_version": 1,
+  "repository": {
+    "name": "@webex/internal-plugin-locus",
+    "purpose": "Internal Webex JS SDK plugin for the Locus call and meeting state service. It registers webex.internal.locus, wraps the Locus REST operations (create, join, alert, decline, leave, get, list, sync, media update, DTMF, and floor grant) and the Janus call-history query, compares Locus sequence objects to decide whether an incoming Locus DTO replaces, is ignored, or requires a fetch, merges Locus delta DTOs into a caller-held working copy, and exports the list of Locus event names.",
+    "category": "cat2-legacy",
+    "primary_languages": [
+      "javascript"
+    ]
+  },
+  "topology": "Single-repo",
+  "commands": {
+    "install": {
+      "command": "yarn install",
+      "source_file": "package.json",
+      "role": "install"
+    },
+    "compile": {
+      "command": "yarn workspace @webex/internal-plugin-locus build:src",
+      "source_file": "package.json",
+      "role": "compile"
+    },
+    "build": {
+      "command": "yarn workspace @webex/internal-plugin-locus build",
+      "source_file": "package.json",
+      "role": "package"
+    },
+    "unit-test": {
+      "command": "yarn workspace @webex/internal-plugin-locus test:unit",
+      "source_file": "package.json",
+      "role": "unit-test"
+    },
+    "browser-test": {
+      "command": "yarn workspace @webex/internal-plugin-locus test:browser",
+      "source_file": "package.json",
+      "role": "other"
+    },
+    "lint": {
+      "command": "yarn workspace @webex/internal-plugin-locus test:style",
+      "source_file": "package.json",
+      "role": "lint"
+    },
+    "deploy": {
+      "command": "yarn workspace @webex/internal-plugin-locus deploy:npm",
+      "source_file": "package.json",
+      "role": "deploy"
+    }
+  },
+  "toolchain": [
+    {
+      "name": "node",
+      "version": "22.14",
+      "origin": "human-declared",
+      "declared_by": "akulakum@cisco.com (bootstrap instruction 'nvm use 22.14.0'; the workspace root AGENTS.md requires Node 22.14 for development; package.json engines >=18 is the consumer floor)"
+    },
+    {
+      "name": "babel",
+      "version": "^7.17.10",
+      "origin": "repo-config",
+      "source_file": "package.json"
+    },
+    {
+      "name": "eslint",
+      "version": "^8.24.0",
+      "origin": "repo-config",
+      "source_file": "package.json"
+    },
+    {
+      "name": "prettier",
+      "version": "^2.7.1",
+      "origin": "repo-config",
+      "source_file": "package.json"
+    }
+  ],
+  "tests": {
+    "unit": {
+      "command_ref": "unit-test",
+      "dir": "test/unit/spec",
+      "framework": "jest"
+    }
+  },
+  "quality_gates": {
+    "code_coverage": {
+      "origin": "none",
+      "declared_by": "akulakum@cisco.com via bootstrap questionnaire (delegated check: jest.config.js re-exports @webex/jest-config-legacy, which sets collectCoverage false and no coverageThreshold; test:unit runs webex-legacy-tools with --runner jest; package.json defines no coverage script)"
+    }
+  },
+  "coverage_status_definitions": {
+    "specced": ">=80% public surface specced, drift <5% - spec is authoritative",
+    "partial": "40-80% specced - spec is a hint, cross-check code",
+    "untracked": "<40% specced - code is the source of truth"
+  },
+  "spec_source_policy": {
+    "mode": "keep-separate",
+    "migrated_source_disposition": "retain",
+    "disposition_decided_by": "akulakum@cisco.com",
+    "disposition_decided_at": "2026-10-09T06:22:13Z",
+    "decided_by": "akulakum@cisco.com",
+    "decided_at": "2026-10-09T06:22:13Z",
+    "decision_record": "docs/adr/0001-retain-product-readme.md"
+  },
+  "spec_sources": [],
+  "modules": [
+    {
+      "path": "src",
+      "canonical_spec": "src/docs/README.md",
+      "coverage_status": "Partial",
+      "coverage_evidence": "Field coverage 93.3% (14/15) assessed 2026-10-09 by the generator; critical field coverage 8/8. The one WEAK field is test strategy: test/unit/spec/locus.js runs 134 fixture cases that cover compareSequence and compare (including the delta and empty-sequence paths), but no test exercises registration, any REST wrapper, the Conflict recovery in decline and leave, merge, getCallHistory, or eventKeys, and no characterization baseline exists. Independent validation (spec-validator, runtime current-session) returned pass-with-warnings on 2026-10-09 with 0 Blocking. Held at Partial: untested REST and merge behavior, no characterization baseline, and no spec-drift record.",
+      "last_assessed": "2026-10-09",
+      "contracts": {
+        "provides": [
+          "locus-sdk"
+        ],
+        "requires": [
+          "locus-service-http",
+          "janus-history-http",
+          "webex-core-plugin-host",
+          "webex-device-registration",
+          "mercury-sdk",
+          "lodash",
+          "uuid"
+        ]
+      },
+      "section_profile": {
+        "has_tiers": false,
+        "has_ui": false,
+        "crosses_service_boundaries": true,
+        "holds_client_state": false,
+        "enforces_domain_rules": true,
+        "is_concurrent_async": true,
+        "owns_persistence": false,
+        "stateful_transitions": false,
+        "exposes_wire_protocol": true,
+        "ui_multi_screen": false,
+        "large_data_model": false,
+        "returns_caller_errors": true,
+        "module_specific_conventions": true,
+        "published_package": true,
+        "embedded_in_host": false,
+        "has_design_tradeoff": true,
+        "resolved_by": "claude-cowork (code evidence; bootstrap questionnaire)",
+        "resolved_at": "2026-10-09T06:22:13Z",
+        "has_submodules": false,
+        "has_submodules_computed_by": "scripts/module_tree.py",
+        "has_submodules_computed_at": "2026-10-09T06:22:13Z"
+      }
+    }
+  ],
+  "contract_catalog": {
+    "index_path": "docs/architecture.md",
+    "definitions": {
+      "locus-sdk": {
+        "kind": "sdk",
+        "publication": "published",
+        "source_kind": "repository-path",
+        "source": "package.json",
+        "summary": "Published npm package. main is dist/index.js and devMain is src/index.js. Importing the package imports @webex/internal-plugin-mercury for its side effect and registers Locus as the internal plugin 'locus' with no config. The barrel src/index.js exports Locus as default, eventKeys from src/event-keys.js, and the constants USE_INCOMING, USE_CURRENT, EQUAL, FETCH, GREATER_THAN, LESS_THAN, and DESYNC from src/locus.js. Per-method behavior is in src/docs/README.md."
+      },
+      "locus-service-http": {
+        "kind": "http",
+        "publication": "internal",
+        "source_kind": "external",
+        "source": "Locus service REST API (catalog service 'locus' and the URLs carried in Locus DTOs)",
+        "summary": "Consumed, not served. Calls POST loci/call and GET loci on service locus; POST <locus.url>/participant; PUT <locus.url>/participant/alert and /participant/decline; GET <locus.url>; GET <locus.syncUrl>; PUT <locus.self.url>/leave and /media; POST <locus.self.url>/sendDtmf; PUT <share.url> with a floor body. Request bodies are listed under Protocol and wire format in src/docs/README.md."
+      },
+      "janus-history-http": {
+        "kind": "http",
+        "publication": "internal",
+        "source_kind": "external",
+        "source": "Janus service REST API (catalog service 'janus')",
+        "summary": "Consumed, not served. getCallHistory calls GET history/userSessions on service janus with query from set to an ISO-8601 timestamp."
+      },
+      "webex-core-plugin-host": {
+        "kind": "rpc",
+        "publication": "internal",
+        "source_kind": "external",
+        "source": "@webex/webex-core (WebexPlugin, registerInternalPlugin, WebexHttpError)",
+        "summary": "Host contract consumed by Locus: WebexPlugin.extend supplies this.webex and request(), which delegates to webex.request; registerInternalPlugin installs the plugin; WebexHttpError.Conflict is the 409 subtype built by the sibling http-core makeSubTypes and is checked in decline and leave."
+      },
+      "webex-device-registration": {
+        "kind": "sdk",
+        "publication": "internal",
+        "source_kind": "external",
+        "source": "@webex/internal-plugin-device (webex.internal.device)",
+        "summary": "Locus reads webex.internal.device.url as the deviceUrl in request bodies. The device plugin is not a declared dependency of this package; it is registered transitively because src/index.js imports @webex/internal-plugin-mercury, whose index imports the device plugin."
+      },
+      "mercury-sdk": {
+        "kind": "sdk",
+        "publication": "published",
+        "source_kind": "external",
+        "source": "@webex/internal-plugin-mercury (packages/@webex/internal-plugin-mercury/src/docs/README.md)",
+        "summary": "Imported only for its registration side effect in src/index.js. Locus calls no Mercury method and subscribes to no Mercury event. Owned and specified by @webex/internal-plugin-mercury."
+      },
+      "lodash": {
+        "kind": "sdk",
+        "publication": "published",
+        "source_kind": "external",
+        "source": "lodash@^4.17.21 (npm)",
+        "summary": "src/locus.js imports cloneDeep (merge), difference, first, last, and memoize (compareSequence)."
+      },
+      "uuid": {
+        "kind": "sdk",
+        "publication": "published",
+        "source_kind": "external",
+        "source": "uuid@^3.3.2 (npm)",
+        "summary": "uuid.v4 generates the dtmf.correlationId in sendDtmf."
+      }
+    }
+  },
+  "spec_policy": {
+    "require_what_and_why": true,
+    "require_provenance": true,
+    "protected_specs": [
+      "src/docs/README.md"
+    ]
+  },
+  "validation": {
+    "generator_runtime": "claude-cowork",
+    "generator_model": "claude-opus-5-5",
+    "generator_runtime_source": "host-metadata",
+    "generator_run_id": "spark-853128-sdd-stage0-2026-10-09",
+    "minimum_independence": "different-runtime",
+    "runtime_fallback_tier": "different-runtime",
+    "blocking_severities": [
+      "Blocking"
+    ],
+    "base_ref": "next",
+    "head_ref": "LOCUS_WEBEX_INTERNAL_PLUGIN_SDD",
+    "validator_runtime": "current-session",
+    "validator_runtime_source": "invocation-input",
+    "validator_run_id": "spark-853128-spec-validator-2026-10-09-session-b-round-5",
+    "source_commit": "faa76ad731183046e2c46b4fa389c3df3307c778"
+  },
+  "layout": {
+    "sdd_root": ".sdd",
+    "docs_root": "docs",
+    "agent_entry_path": "AGENTS.md",
+    "standing_docs_root": "docs",
+    "spec_index_path": "docs/specs/README.md",
+    "module_docs_strategy": "source-local",
+    "module_docs_relative_path": "docs/README.md",
+    "module_docs_decision": {
+      "basis": "repo-standards-default",
+      "reason": "No module-local documentation existed. The source-local default gives src/docs/README.md. test:style runs eslint ./src/**/*.* and build:src processes -js -ts only, so Markdown under src/ does not enter the build output, and eslint reports it as ignored.",
+      "decided_by": "akulakum@cisco.com (bootstrap questionnaire)",
+      "decided_at": "2026-10-09T06:22:13Z"
+    },
+    "repo_context_decision": {
+      "path": ".repo-context.json",
+      "schema_path": "schemas/repo-context.schema.json",
+      "action": "create",
+      "schema_action": "create",
+      "reason": "Neither the operational context nor its schema existed in this package. The context is created from package evidence and the schema is copied from packages/@webex/common/schemas/repo-context.schema.json (Repo Standards 0.3.0).",
+      "decided_by": "akulakum@cisco.com (bootstrap questionnaire)",
+      "decided_at": "2026-10-09T06:22:13Z"
+    },
+    "artifact_decisions": [
+      {
+        "path": "docs/service.md",
+        "action": "omit",
+        "reason": "Library package, not a deployable service. package.json has no start script, container, or deployment descriptor.",
+        "decided_by": "claude-cowork (code evidence)",
+        "decided_at": "2026-10-09T06:22:13Z"
+      },
+      {
+        "path": "mkdocs.yml",
+        "action": "omit",
+        "reason": "No package-level documentation site exists. Documentation publishing stays with the workspace.",
+        "decided_by": "akulakum@cisco.com (bootstrap questionnaire)",
+        "decided_at": "2026-10-09T06:22:13Z"
+      },
+      {
+        "path": "api-specs/openapi.yaml",
+        "action": "omit",
+        "reason": "The package serves no HTTP routes. It is a client of the Locus and Janus services, recorded as the external internal-publication contracts locus-service-http and janus-history-http; its published surface is the npm export described by locus-sdk.",
+        "decided_by": "claude-cowork (code evidence)",
+        "decided_at": "2026-10-09T06:22:13Z"
+      },
+      {
+        "path": "SECURITY.md",
+        "action": "omit",
+        "reason": "No package-level security policy exists. The workspace root SECURITY.md is not overwritten and a per-package copy would duplicate it.",
+        "decided_by": "akulakum@cisco.com (bootstrap questionnaire)",
+        "decided_at": "2026-10-09T06:22:13Z"
+      },
+      {
+        "path": "CONTRIBUTING.md",
+        "action": "omit",
+        "reason": "Contribution instructions are owned at the workspace root and linked from this package README.md.",
+        "decided_by": "akulakum@cisco.com (bootstrap questionnaire)",
+        "decided_at": "2026-10-09T06:22:13Z"
+      },
+      {
+        "path": "CHANGELOG.md",
+        "action": "omit",
+        "reason": "Changelog generation is owned at the workspace root. This package has no changelog file.",
+        "decided_by": "akulakum@cisco.com (bootstrap questionnaire)",
+        "decided_at": "2026-10-09T06:22:13Z"
+      },
+      {
+        "path": "CTO_CHECKLIST.yml",
+        "action": "omit",
+        "reason": "The CTO readiness checklist applies to deployable services. This package is a library.",
+        "decided_by": "claude-cowork (code evidence)",
+        "decided_at": "2026-10-09T06:22:13Z"
+      },
+      {
+        "path": "schemas/cto-checklist.schema.json",
+        "action": "omit",
+        "reason": "Omitted together with CTO_CHECKLIST.yml.",
+        "decided_by": "claude-cowork (code evidence)",
+        "decided_at": "2026-10-09T06:22:13Z"
+      }
+    ],
+    "template_roots": {
+      "canonical": ".sdd/templates/repo-standards"
+    },
+    "repo_skills_root": ".sdd/skills",
+    "contract_index_path": "docs/architecture.md"
+  },
+  "coverage_ratchet": {
+    "enabled": true,
+    "waivers": []
+  },
+  "substrate": {
+    "source": "WebexTools/repo-standards@d89a7fe59126ae3ad9bac9ca352aa7f12b4c85dc",
+    "consumed": [
+      "@webex/eslint-config-legacy via .eslintrc.js",
+      "@webex/babel-config-legacy via babel.config.js",
+      "@webex/jest-config-legacy via jest.config.js",
+      "@webex/legacy-tools build and test runner via package.json",
+      "package README.md",
+      "Repo Standards 0.3.0 templates at the JS SDK root .sdd/templates/repo-standards, reached through the package symlink .sdd/templates/repo-standards"
+    ],
+    "compliance_tier": "baseline"
+  },
+  "section_profiles": {
+    "repo": {
+      "owns_datastore": false,
+      "holds_client_state": false,
+      "components_interact": false,
+      "domain_data_across_components": false,
+      "caches_data": false,
+      "observability_convention": false,
+      "deploys_to_infra": false,
+      "shared_base_libs": true,
+      "is_monorepo": false,
+      "multi_platform": false,
+      "published_package": true,
+      "embedded_in_host": false,
+      "cross_repo_deps_material": true,
+      "security_arch_warranted": true,
+      "exposes_commands_or_artifacts": true
+    },
+    "resolved_by": "claude-cowork (code evidence; bootstrap questionnaire)",
+    "resolved_at": "2026-10-09T06:22:13Z"
+  }
+}
