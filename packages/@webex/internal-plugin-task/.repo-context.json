@@ -1,0 +1,444 @@
+{
+  "$schema": "./schemas/repo-context.schema.json",
+  "version": 1,
+  "repository": {
+    "name": "@webex/internal-plugin-task",
+    "purpose": "Internal Webex JS SDK plugin for the Raindrop task service. It registers webex.internal.task, wraps the task REST operations (list, get, create, update, delete, accept, and reject) on catalog service raindrop, encrypts task title and notes with a KMS key before create and update and decrypts them in responses through webex.internal.encryption, and offers register and unregister calls that register the device, connect Mercury, and emit task:registered and task:unregistered without subscribing to any task event."
+  },
+  "commands": {
+    "install": "yarn install",
+    "compile": "yarn workspace @webex/internal-plugin-task build:src",
+    "build": "yarn workspace @webex/internal-plugin-task build",
+    "unit-test": "yarn workspace @webex/internal-plugin-task test:unit",
+    "integration-test": "yarn workspace @webex/internal-plugin-task test:integration",
+    "browser-test": "yarn workspace @webex/internal-plugin-task test:browser",
+    "lint": "yarn workspace @webex/internal-plugin-task test:style",
+    "deploy": "yarn workspace @webex/internal-plugin-task deploy:npm"
+  },
+  "public_interfaces": [
+    {
+      "name": "@webex/internal-plugin-task package barrel",
+      "kind": "package_export",
+      "source": "src/index.js",
+      "entrypoints": [
+        "import Task from '@webex/internal-plugin-task'"
+      ],
+      "audience": "the sibling package webex, which lists this package as a dependency and requires it in src/webex.js",
+      "notes": "Importing the package also imports the device, encryption, and conversation plugins for their side effects and registers Task as internal plugin 'task' with config {task: {}}. The event-name constants are not re-exported."
+    },
+    {
+      "name": "webex.internal.task runtime methods",
+      "kind": "plugin_api",
+      "source": "src/task.js",
+      "entrypoints": [
+        "webex.internal.task.acceptTask()",
+        "webex.internal.task.createTask()",
+        "webex.internal.task.deleteTask()",
+        "webex.internal.task.getTask()",
+        "webex.internal.task.listMyTasks()",
+        "webex.internal.task.register()",
+        "webex.internal.task.rejectTask()",
+        "webex.internal.task.unregister()",
+        "webex.internal.task.updateTask()"
+      ],
+      "audience": "SDK plugins and applications that manage Webex tasks",
+      "notes": "REST methods resolve the whole response; every method except deleteTask decrypts title and notes in body. createTask and updateTask encrypt the caller's object in place. listenForEvents and stopListeningForEvents are JSDoc-private and empty."
+    },
+    {
+      "name": "plugin events",
+      "kind": "event",
+      "source": "src/constants.js",
+      "entrypoints": [
+        "task:registered",
+        "task:unregistered"
+      ],
+      "audience": "listeners on webex.internal.task",
+      "notes": "Emitted on the plugin with no payload by register and unregister."
+    },
+    {
+      "name": "package scripts",
+      "kind": "npm_scripts",
+      "source": "package.json",
+      "entrypoints": [
+        "build",
+        "build:src",
+        "test:style",
+        "test:unit",
+        "test:integration",
+        "test:browser",
+        "deploy:npm"
+      ],
+      "audience": "contributors and CI",
+      "notes": "Do not use the aggregate test script as a verification command; it chains every tier including the browser run. test:unit needs this package's build output and the sibling packages' build output."
+    }
+  ],
+  "source_of_truth": [
+    {
+      "surface": "Task plugin implementation",
+      "paths": [
+        "src/index.js",
+        "src/task.js",
+        "src/constants.js",
+        "src/config.js",
+        "src/helpers/encrypt.helper.js",
+        "src/helpers/decrypt.helper.js"
+      ],
+      "generated_artifacts": [
+        "dist"
+      ],
+      "refresh_with": [
+        "yarn workspace @webex/internal-plugin-task build:src"
+      ],
+      "validate_with": [
+        "yarn workspace @webex/internal-plugin-task test:unit",
+        "yarn workspace @webex/internal-plugin-task test:style"
+      ]
+    },
+    {
+      "surface": "module specification",
+      "paths": [
+        "src/docs/README.md"
+      ],
+      "generated_artifacts": [],
+      "refresh_with": [
+        "update alongside the behavior change in the same commit"
+      ],
+      "validate_with": [
+        "spec-validator on an independent runtime"
+      ]
+    }
+  ],
+  "generated_artifacts": [
+    {
+      "path": "dist",
+      "generated_from": "src",
+      "refresh_with": "yarn workspace @webex/internal-plugin-task build:src"
+    },
+    {
+      "path": ".sdd/templates/repo-standards/template-map.json",
+      "generated_from": "WebexTools/repo-standards@d89a7fe59126ae3ad9bac9ca352aa7f12b4c85dc",
+      "refresh_with": "Symlink to the JS SDK root .sdd/templates/repo-standards (Repo Standards 0.3.0 snapshot from PR 5246). Do not replace it with a package copy."
+    }
+  ],
+  "validation_matrix": [
+    {
+      "paths": [
+        "src/**"
+      ],
+      "minimum": [
+        "yarn workspace @webex/internal-plugin-task test:unit"
+      ],
+      "recommended": [
+        "yarn workspace @webex/internal-plugin-task test:style",
+        "yarn workspace @webex/internal-plugin-task build:src"
+      ]
+    },
+    {
+      "paths": [
+        "src/helpers/**"
+      ],
+      "minimum": [
+        "yarn workspace @webex/internal-plugin-task test:unit"
+      ],
+      "recommended": [
+        "add a helper unit case for the existing-key path and for encryption or decryption failures, because none exists today"
+      ]
+    }
+  ],
+  "change_impact": [
+    {
+      "paths": [
+        "src/helpers/encrypt.helper.js",
+        "src/helpers/decrypt.helper.js"
+      ],
+      "affects": [
+        "which task fields leave the client in plaintext",
+        "the KMS key used for each task"
+      ],
+      "refresh_with": [
+        "yarn workspace @webex/internal-plugin-task build:src"
+      ],
+      "validate_with": [
+        "yarn workspace @webex/internal-plugin-task test:unit"
+      ],
+      "avoid_direct_edits": [
+        "dist"
+      ],
+      "notes": "title and notes must stay encrypted before any request that carries them."
+    },
+    {
+      "paths": [
+        "src/task.js"
+      ],
+      "affects": [
+        "Raindrop request shapes",
+        "the registered state and plugin events"
+      ],
+      "refresh_with": [
+        "yarn workspace @webex/internal-plugin-task build:src"
+      ],
+      "validate_with": [
+        "yarn workspace @webex/internal-plugin-task test:unit"
+      ],
+      "avoid_direct_edits": [
+        "dist"
+      ],
+      "notes": "REST methods resolve the whole response; changing that breaks callers that read response.body."
+    },
+    {
+      "paths": [
+        "src/index.js",
+        "src/constants.js"
+      ],
+      "affects": [
+        "the package export",
+        "the internal plugin name 'task'",
+        "the event names"
+      ],
+      "refresh_with": [
+        "yarn workspace @webex/internal-plugin-task build:src"
+      ],
+      "validate_with": [
+        "yarn workspace @webex/internal-plugin-task test:unit"
+      ],
+      "avoid_direct_edits": [
+        "dist"
+      ],
+      "notes": "Renaming the plugin or an event is a breaking change for importers and listeners."
+    }
+  ],
+  "evidence_rules": [
+    {
+      "claim_category": "command_name",
+      "sources": [
+        "package.json"
+      ],
+      "requirement": "The script must exist in package.json scripts.",
+      "notes": "Never cite the aggregate test script as a verification command."
+    },
+    {
+      "claim_category": "import_path",
+      "sources": [
+        "src/index.js"
+      ],
+      "requirement": "A binding is public only if exported from src/index.js.",
+      "notes": "Only the default Task export exists; there are no subpath entry points."
+    },
+    {
+      "claim_category": "behavior_claim",
+      "sources": [
+        "src",
+        "test/unit/spec"
+      ],
+      "requirement": "Ground every behavioral claim in source or unit test evidence.",
+      "notes": "Commit history is not an evidence source for this package. README.md is retained product documentation, not the behavioral authority. test/integration/spec/task.js tests its own mock and is not evidence of plugin behavior."
+    }
+  ],
+  "negative_guidance": [
+    {
+      "rule": "Do not reuse a task object after passing it to createTask or updateTask.",
+      "why": "The encrypt helper replaces title and notes with ciphertext in place, so a retry encrypts them again."
+    },
+    {
+      "rule": "Do not call updateTask without the task's encryptionKeyUrl when the existing key must be kept.",
+      "why": "Without it the helper creates a new unbound key for that update."
+    },
+    {
+      "rule": "Do not expect task events after register.",
+      "why": "listenForEvents is empty; register only registers the device, connects Mercury, and emits task:registered."
+    },
+    {
+      "rule": "Do not treat README.md as the behavioral reference.",
+      "why": "It omits registration, encryption, and return shapes. See docs/adr/0001-retain-product-readme.md."
+    },
+    {
+      "rule": "Do not infer a coverage threshold for this package.",
+      "why": "No coverage gate applies: jest-config-legacy sets collectCoverage false and package.json has no coverage script."
+    }
+  ],
+  "confidence_policy": {
+    "high": {
+      "action": "update",
+      "expectation": "Source and unit test evidence both support the change, for example request shapes and the decrypt helper."
+    },
+    "medium": {
+      "action": "narrow-scope",
+      "expectation": "Only source evidence exists, for example acceptTask, rejectTask, the register guards, and the existing-key encryption path. Pin current behavior with a characterization test before modifying."
+    },
+    "low": {
+      "action": "noop",
+      "expectation": "Neither source nor tests settle the question, for example a Raindrop response shape or whether the service binds the created key. Stop and report the gap."
+    }
+  },
+  "repository_topology": {
+    "main_entrypoints": [
+      {
+        "name": "package barrel",
+        "path": "src/index.js",
+        "purpose": "Imports the device, encryption, and conversation plugins for their side effects, registers the plugin, and re-exports Task",
+        "notes": "No subpath exports."
+      }
+    ],
+    "workspace_packages": [
+      {
+        "name": "@webex/internal-plugin-task",
+        "paths": [
+          "src",
+          "test"
+        ],
+        "notes": "One module; this SDD root is the package directory inside the webex-js-sdk monorepo."
+      }
+    ],
+    "source_surfaces": [
+      {
+        "name": "Task plugin",
+        "paths": [
+          "src"
+        ],
+        "notes": "index.js, task.js, constants.js, config.js, helpers/. Specified at src/docs/README.md."
+      },
+      {
+        "name": "tests",
+        "paths": [
+          "test/unit/spec",
+          "test/integration/spec"
+        ],
+        "notes": "Three Jest specs; one mocha spec over an in-file mock."
+      }
+    ],
+    "generated_surfaces": [
+      {
+        "name": "build output",
+        "paths": [
+          "dist"
+        ],
+        "generated_from": "src",
+        "refresh_with": "yarn workspace @webex/internal-plugin-task build:src",
+        "notes": "Produced by webex-legacy-tools. Do not edit by hand."
+      },
+      {
+        "name": "repo-standards template map",
+        "paths": [
+          ".sdd/templates/repo-standards"
+        ],
+        "generated_from": "WebexTools/repo-standards@d89a7fe59126ae3ad9bac9ca352aa7f12b4c85dc",
+        "refresh_with": "Symlink to the JS SDK root .sdd/templates/repo-standards (Repo Standards 0.3.0 snapshot from PR 5246). Do not replace it with a package copy.",
+        "notes": "Symlink to the JS SDK root .sdd/templates/repo-standards (Repo Standards 0.3.0 snapshot from PR 5246). Do not replace it with a package copy."
+      }
+    ],
+    "validation_entrypoints": [
+      {
+        "name": "unit tests",
+        "command": "yarn workspace @webex/internal-plugin-task test:unit",
+        "scope": "test/unit/spec",
+        "notes": "Jest via webex-legacy-tools --runner jest."
+      },
+      {
+        "name": "integration tests",
+        "command": "yarn workspace @webex/internal-plugin-task test:integration",
+        "scope": "test/integration/spec",
+        "notes": "mocha via webex-legacy-tools --integration; the spec does not import this package."
+      },
+      {
+        "name": "browser tests",
+        "command": "yarn workspace @webex/internal-plugin-task test:browser",
+        "scope": "unit and integration specs",
+        "notes": "karma via webex-legacy-tools --integration --unit."
+      },
+      {
+        "name": "lint",
+        "command": "yarn workspace @webex/internal-plugin-task test:style",
+        "scope": "src",
+        "notes": "eslint via the local root .eslintrc.js."
+      }
+    ],
+    "sync_paths": [
+      {
+        "source": "WebexTools/repo-standards@d89a7fe59126ae3ad9bac9ca352aa7f12b4c85dc",
+        "targets": [
+          ".sdd/templates/repo-standards"
+        ],
+        "mechanism": "Symlink to the JS SDK root .sdd/templates/repo-standards (Repo Standards 0.3.0 snapshot from PR 5246). Do not replace it with a package copy.",
+        "notes": "Symlink to the JS SDK root .sdd/templates/repo-standards (Repo Standards 0.3.0 snapshot from PR 5246). Do not replace it with a package copy."
+      }
+    ]
+  },
+  "folder_readme_contract": {
+    "required_sections": [
+      "purpose",
+      "boundaries",
+      "key-files",
+      "common-tasks"
+    ],
+    "rules": [
+      "Orient the reader before describing detail.",
+      "Link to the module specification rather than duplicating it."
+    ],
+    "example_policy": "Examples are allowed only when verified against src/ or test/.",
+    "fallback": "Omit a section rather than inventing content; report unresolved facts as gaps."
+  },
+  "regression_feedback_rules": [
+    {
+      "trigger": "Plaintext title or notes reach the Raindrop service, or a response is returned still encrypted.",
+      "required_followups": [
+        "Add a helper unit case in test/unit/spec/helpers that reproduces the input",
+        "Update INV-001 to INV-003 in src/docs/README.md"
+      ],
+      "notes": "The existing-key path and failure paths have no test today."
+    },
+    {
+      "trigger": "A task method resolves a different shape or sends a different request.",
+      "required_followups": [
+        "Add or update the request-shape case in test/unit/spec/task.js",
+        "Record the change in src/docs/README.md"
+      ],
+      "notes": "acceptTask and rejectTask have no test today."
+    }
+  ],
+  "surface_owners": [
+    {
+      "surface": "module implementation and specification",
+      "owner": "@webex/web-sdk",
+      "edit_boundary": "The monorepo .github/CODEOWNERS has no entry for packages/@webex/internal-plugin-task, so the default * rule applies."
+    }
+  ],
+  "do_not_edit": [
+    "dist",
+    ".sdd/templates/repo-standards"
+  ],
+  "marker_scopes": {
+    "sdd": [
+      ".sdd/manifest.json",
+      "src/docs/README.md",
+      "docs"
+    ]
+  },
+  "fallback_rules": [
+    "When source and tests disagree, code is the referee and the disagreement is recorded rather than silently resolved.",
+    "When neither source nor tests settle a question, report it as a gap instead of inferring.",
+    "Commit history is not a valid rationale source for this package."
+  ],
+  "downstream_context_pack": {
+    "required_human_surfaces": [
+      "README.md",
+      "docs/index.md",
+      "docs/architecture.md",
+      "src/docs/README.md"
+    ],
+    "required_agent_operational_surfaces": [
+      "AGENTS.md",
+      "docs/specs/README.md"
+    ],
+    "required_machine_readable_surface": ".sdd/manifest.json",
+    "recommended_machine_readable_sections": [
+      "public_interfaces",
+      "change_impact",
+      "evidence_rules",
+      "negative_guidance",
+      "confidence_policy",
+      "repository_topology",
+      "folder_readme_contract",
+      "regression_feedback_rules"
+    ]
+  }
+}

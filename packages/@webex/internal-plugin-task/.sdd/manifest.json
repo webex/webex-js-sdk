@@ -1,0 +1,369 @@
+{
+  "manifest_version": 1,
+  "repository": {
+    "name": "@webex/internal-plugin-task",
+    "purpose": "Internal Webex JS SDK plugin for the Raindrop task service. It registers webex.internal.task, wraps the task REST operations (list, get, create, update, delete, accept, and reject) on catalog service raindrop, encrypts task title and notes with a KMS key before create and update and decrypts them in responses through webex.internal.encryption, and offers register and unregister calls that register the device, connect Mercury, and emit task:registered and task:unregistered without subscribing to any task event.",
+    "category": "cat2-legacy",
+    "primary_languages": [
+      "javascript"
+    ]
+  },
+  "topology": "Single-repo",
+  "commands": {
+    "install": {
+      "command": "yarn install",
+      "source_file": "package.json",
+      "role": "install"
+    },
+    "compile": {
+      "command": "yarn workspace @webex/internal-plugin-task build:src",
+      "source_file": "package.json",
+      "role": "compile"
+    },
+    "build": {
+      "command": "yarn workspace @webex/internal-plugin-task build",
+      "source_file": "package.json",
+      "role": "package"
+    },
+    "unit-test": {
+      "command": "yarn workspace @webex/internal-plugin-task test:unit",
+      "source_file": "package.json",
+      "role": "unit-test"
+    },
+    "integration-test": {
+      "command": "yarn workspace @webex/internal-plugin-task test:integration",
+      "source_file": "package.json",
+      "role": "integration-test"
+    },
+    "browser-test": {
+      "command": "yarn workspace @webex/internal-plugin-task test:browser",
+      "source_file": "package.json",
+      "role": "other"
+    },
+    "lint": {
+      "command": "yarn workspace @webex/internal-plugin-task test:style",
+      "source_file": "package.json",
+      "role": "lint"
+    },
+    "deploy": {
+      "command": "yarn workspace @webex/internal-plugin-task deploy:npm",
+      "source_file": "package.json",
+      "role": "deploy"
+    }
+  },
+  "toolchain": [
+    {
+      "name": "node",
+      "version": "22.14",
+      "origin": "human-declared",
+      "declared_by": "akulakum@cisco.com (bootstrap instruction 'nvm use 22.14.0'; the workspace root AGENTS.md requires Node 22.14 for development; package.json engines >=18 is the consumer floor)"
+    },
+    {
+      "name": "babel",
+      "version": "^7.17.10",
+      "origin": "repo-config",
+      "source_file": "package.json"
+    },
+    {
+      "name": "eslint",
+      "version": "^8.24.0",
+      "origin": "repo-config",
+      "source_file": "package.json"
+    },
+    {
+      "name": "prettier",
+      "version": "^2.7.1",
+      "origin": "repo-config",
+      "source_file": "package.json"
+    },
+    {
+      "name": "sinon",
+      "version": "^9.2.4",
+      "origin": "repo-config",
+      "source_file": "package.json"
+    }
+  ],
+  "tests": {
+    "unit": {
+      "command_ref": "unit-test",
+      "dir": "test/unit/spec",
+      "framework": "jest"
+    },
+    "integration": {
+      "command_ref": "integration-test",
+      "dir": "test/integration/spec",
+      "framework": "mocha"
+    }
+  },
+  "quality_gates": {
+    "code_coverage": {
+      "origin": "none",
+      "declared_by": "akulakum@cisco.com via bootstrap questionnaire (delegated check: jest.config.js re-exports @webex/jest-config-legacy, which sets collectCoverage false and no coverageThreshold; test:unit runs webex-legacy-tools with --runner jest; package.json defines no coverage script)"
+    }
+  },
+  "coverage_status_definitions": {
+    "specced": ">=80% public surface specced, drift <5% - spec is authoritative",
+    "partial": "40-80% specced - spec is a hint, cross-check code",
+    "untracked": "<40% specced - code is the source of truth"
+  },
+  "spec_source_policy": {
+    "mode": "keep-separate",
+    "migrated_source_disposition": "retain",
+    "disposition_decided_by": "akulakum@cisco.com",
+    "disposition_decided_at": "2026-10-09T14:40:25Z",
+    "decided_by": "akulakum@cisco.com",
+    "decided_at": "2026-10-09T14:40:25Z",
+    "decision_record": "docs/adr/0001-retain-product-readme.md"
+  },
+  "spec_sources": [],
+  "modules": [
+    {
+      "path": "src",
+      "canonical_spec": "src/docs/README.md",
+      "coverage_status": "Partial",
+      "coverage_evidence": "Field coverage 93.3% (14/15) assessed 2026-10-09 by the generator; critical field coverage 8/8. The one WEAK field is test strategy: 17 unit tests cover request shapes for five REST methods, the happy register and unregister paths, and the helpers' basic branches, but no test exercises acceptTask, rejectTask, the register guards or failures, the existing-key encryption path, encryption or decryption failures, or caller-object mutation; the integration spec tests its own mock, and no characterization baseline exists. Independent validation is recorded in the module spec Validation status row. Held at Partial: weak test strategy, no characterization baseline, and no spec-drift record.",
+      "last_assessed": "2026-10-09",
+      "contracts": {
+        "provides": [
+          "task-sdk"
+        ],
+        "requires": [
+          "raindrop-tasks-http",
+          "webex-core-plugin-host",
+          "encryption-sdk",
+          "webex-device-registration",
+          "mercury-sdk",
+          "conversation-sdk",
+          "lodash"
+        ]
+      },
+      "section_profile": {
+        "has_tiers": false,
+        "has_ui": false,
+        "crosses_service_boundaries": true,
+        "holds_client_state": false,
+        "enforces_domain_rules": true,
+        "is_concurrent_async": true,
+        "owns_persistence": false,
+        "stateful_transitions": true,
+        "exposes_wire_protocol": true,
+        "ui_multi_screen": false,
+        "large_data_model": false,
+        "returns_caller_errors": true,
+        "module_specific_conventions": true,
+        "published_package": true,
+        "embedded_in_host": false,
+        "has_design_tradeoff": true,
+        "resolved_by": "claude-cowork (code evidence; bootstrap questionnaire)",
+        "resolved_at": "2026-10-09T14:40:25Z",
+        "has_submodules": false,
+        "has_submodules_computed_by": "scripts/module_tree.py",
+        "has_submodules_computed_at": "2026-10-09T14:42:14Z"
+      }
+    }
+  ],
+  "contract_catalog": {
+    "index_path": "docs/architecture.md",
+    "definitions": {
+      "task-sdk": {
+        "kind": "sdk",
+        "publication": "published",
+        "source_kind": "repository-path",
+        "source": "package.json",
+        "summary": "Published npm package. main is dist/index.js and devMain is src/index.js. Importing the package imports @webex/internal-plugin-device, @webex/internal-plugin-encryption, and @webex/internal-plugin-conversation for their side effects and registers Task as the internal plugin 'task' with config {task: {}} and empty payload-transformer predicate and transform lists. The barrel src/index.js exports only Task as default. Per-method behavior is in src/docs/README.md."
+      },
+      "raindrop-tasks-http": {
+        "kind": "http",
+        "publication": "internal",
+        "source_kind": "external",
+        "source": "Raindrop task service REST API (catalog service 'raindrop')",
+        "summary": "Consumed, not served. Calls GET tasks (query from the caller's options), GET tasks/{id}, POST tasks, PATCH tasks/{id}, DELETE tasks/{id}, POST tasks/{id}/accept, and POST tasks/{id}/reject on service raindrop. Request and response fields read by this package are listed under Protocol and wire format in src/docs/README.md."
+      },
+      "webex-core-plugin-host": {
+        "kind": "rpc",
+        "publication": "internal",
+        "source_kind": "external",
+        "source": "@webex/webex-core (WebexPlugin, registerInternalPlugin, webex.request, credentials.canAuthorize)",
+        "summary": "Host contract consumed by Task: WebexPlugin.extend supplies this.webex, this.logger, the ampersand event methods, and request(), which delegates to webex.request; registerInternalPlugin installs the plugin and merges its config; webex.canAuthorize gates register()."
+      },
+      "encryption-sdk": {
+        "kind": "sdk",
+        "publication": "internal",
+        "source_kind": "external",
+        "source": "@webex/internal-plugin-encryption (webex.internal.encryption)",
+        "summary": "The helpers call encryption.encryptText(keyUri, plaintext), encryption.decryptText(keyUri, ciphertext), and encryption.kms.createUnboundKeys({count: 1}). Key retrieval, caching, and the KMS exchange are owned by internal-plugin-encryption."
+      },
+      "webex-device-registration": {
+        "kind": "sdk",
+        "publication": "internal",
+        "source_kind": "external",
+        "source": "@webex/internal-plugin-device (packages/@webex/internal-plugin-device/src/docs/README.md)",
+        "summary": "register() calls webex.internal.device.register() before connecting Mercury. Imported for its registration side effect in src/index.js. Owned and specified by @webex/internal-plugin-device."
+      },
+      "mercury-sdk": {
+        "kind": "sdk",
+        "publication": "internal",
+        "source_kind": "external",
+        "source": "@webex/internal-plugin-mercury (packages/@webex/internal-plugin-mercury/src/docs/README.md)",
+        "summary": "register() calls webex.internal.mercury.connect() with no arguments. Not a declared dependency of this package; the plugin is registered transitively because internal-plugin-encryption's index imports it. Task subscribes to no Mercury event. Owned and specified by @webex/internal-plugin-mercury."
+      },
+      "conversation-sdk": {
+        "kind": "sdk",
+        "publication": "internal",
+        "source_kind": "external",
+        "source": "@webex/internal-plugin-conversation (webex.internal.conversation)",
+        "summary": "Imported only for its registration side effect in src/index.js. Task calls no conversation method."
+      },
+      "lodash": {
+        "kind": "sdk",
+        "publication": "published",
+        "source_kind": "external",
+        "source": "lodash@^4.17.21 (npm)",
+        "summary": "src/helpers/encrypt.helper.js imports isArray to read the first key from createUnboundKeys."
+      }
+    }
+  },
+  "spec_policy": {
+    "require_what_and_why": true,
+    "require_provenance": true,
+    "protected_specs": [
+      "src/docs/README.md"
+    ]
+  },
+  "validation": {
+    "generator_runtime": "claude-cowork",
+    "generator_model": "claude-opus-5-5",
+    "generator_runtime_source": "host-metadata",
+    "generator_run_id": "spark-853128-task-sdd-stage0-2026-10-09",
+    "minimum_independence": "different-runtime",
+    "blocking_severities": [
+      "Blocking"
+    ],
+    "base_ref": "next",
+    "head_ref": "TASK_INTERNAL_PLUGIN_SDD"
+  },
+  "layout": {
+    "sdd_root": ".sdd",
+    "docs_root": "docs",
+    "agent_entry_path": "AGENTS.md",
+    "standing_docs_root": "docs",
+    "spec_index_path": "docs/specs/README.md",
+    "module_docs_strategy": "source-local",
+    "module_docs_relative_path": "docs/README.md",
+    "module_docs_decision": {
+      "basis": "repo-standards-default",
+      "reason": "No module-local documentation existed. The source-local default gives src/docs/README.md. test:style runs eslint ./src/**/*.* and build:src processes -js -ts only, so Markdown under src/ does not enter the build output, and eslint reports it as ignored.",
+      "decided_by": "akulakum@cisco.com (bootstrap questionnaire)",
+      "decided_at": "2026-10-09T14:40:25Z"
+    },
+    "repo_context_decision": {
+      "path": ".repo-context.json",
+      "schema_path": "schemas/repo-context.schema.json",
+      "action": "create",
+      "schema_action": "create",
+      "reason": "Neither the operational context nor its schema existed in this package. The context is created from package evidence and the schema is copied from packages/@webex/common/schemas/repo-context.schema.json (Repo Standards 0.3.0).",
+      "decided_by": "akulakum@cisco.com (bootstrap questionnaire)",
+      "decided_at": "2026-10-09T14:40:25Z"
+    },
+    "artifact_decisions": [
+      {
+        "path": "docs/service.md",
+        "action": "omit",
+        "reason": "Library package, not a deployable service. package.json has no start script, container, or deployment descriptor.",
+        "decided_by": "claude-cowork (code evidence)",
+        "decided_at": "2026-10-09T14:40:25Z"
+      },
+      {
+        "path": "mkdocs.yml",
+        "action": "omit",
+        "reason": "No package-level documentation site exists. Documentation publishing stays with the workspace.",
+        "decided_by": "akulakum@cisco.com (bootstrap questionnaire)",
+        "decided_at": "2026-10-09T14:40:25Z"
+      },
+      {
+        "path": "api-specs/openapi.yaml",
+        "action": "omit",
+        "reason": "The package serves no HTTP routes. It is a client of the Raindrop task service, recorded as the external internal-publication contract raindrop-tasks-http; its published surface is the npm export described by task-sdk.",
+        "decided_by": "claude-cowork (code evidence)",
+        "decided_at": "2026-10-09T14:40:25Z"
+      },
+      {
+        "path": "SECURITY.md",
+        "action": "omit",
+        "reason": "Neither this package nor the workspace root has a SECURITY.md; a security policy is outside the scope of this package's documentation and is not created here.",
+        "decided_by": "akulakum@cisco.com (bootstrap questionnaire)",
+        "decided_at": "2026-10-09T14:40:25Z"
+      },
+      {
+        "path": "CONTRIBUTING.md",
+        "action": "omit",
+        "reason": "Contribution instructions are owned at the workspace root and linked from this package README.md.",
+        "decided_by": "akulakum@cisco.com (bootstrap questionnaire)",
+        "decided_at": "2026-10-09T14:40:25Z"
+      },
+      {
+        "path": "CHANGELOG.md",
+        "action": "omit",
+        "reason": "Changelog generation is owned at the workspace root. This package has no changelog file.",
+        "decided_by": "akulakum@cisco.com (bootstrap questionnaire)",
+        "decided_at": "2026-10-09T14:40:25Z"
+      },
+      {
+        "path": "CTO_CHECKLIST.yml",
+        "action": "omit",
+        "reason": "The CTO readiness checklist applies to deployable services. This package is a library.",
+        "decided_by": "claude-cowork (code evidence)",
+        "decided_at": "2026-10-09T14:40:25Z"
+      },
+      {
+        "path": "schemas/cto-checklist.schema.json",
+        "action": "omit",
+        "reason": "Omitted together with CTO_CHECKLIST.yml.",
+        "decided_by": "claude-cowork (code evidence)",
+        "decided_at": "2026-10-09T14:40:25Z"
+      }
+    ],
+    "template_roots": {
+      "canonical": ".sdd/templates/repo-standards"
+    },
+    "repo_skills_root": ".sdd/skills",
+    "contract_index_path": "docs/architecture.md"
+  },
+  "coverage_ratchet": {
+    "enabled": true,
+    "waivers": []
+  },
+  "substrate": {
+    "source": "WebexTools/repo-standards@d89a7fe59126ae3ad9bac9ca352aa7f12b4c85dc",
+    "consumed": [
+      "@webex/eslint-config-legacy via .eslintrc.js",
+      "@webex/babel-config-legacy via babel.config.js",
+      "@webex/jest-config-legacy via jest.config.js",
+      "@webex/legacy-tools build and test runner via package.json",
+      "package README.md",
+      "Repo Standards 0.3.0 templates at the JS SDK root .sdd/templates/repo-standards, reached through the package symlink .sdd/templates/repo-standards"
+    ],
+    "compliance_tier": "baseline"
+  },
+  "section_profiles": {
+    "repo": {
+      "owns_datastore": false,
+      "holds_client_state": false,
+      "components_interact": false,
+      "domain_data_across_components": false,
+      "caches_data": false,
+      "observability_convention": true,
+      "deploys_to_infra": false,
+      "shared_base_libs": true,
+      "is_monorepo": false,
+      "multi_platform": false,
+      "published_package": true,
+      "embedded_in_host": false,
+      "cross_repo_deps_material": true,
+      "security_arch_warranted": true,
+      "exposes_commands_or_artifacts": true
+    },
+    "resolved_by": "claude-cowork (code evidence; bootstrap questionnaire)",
+    "resolved_at": "2026-10-09T14:40:25Z"
+  }
+}
