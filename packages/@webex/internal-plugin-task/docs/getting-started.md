@@ -79,7 +79,10 @@ yarn workspace @webex/internal-plugin-task test:unit
 - Enforcement source: none. `jest.config.js` re-exports `@webex/jest-config-legacy`, which sets
   `collectCoverage: false` and no threshold.
 - Test environment or QA dependencies: none beyond the workspace; `test/unit/spec/task.js` imports
-  this package by name, so see First-run verification for the build it needs.
+  this package by name, which resolves to the build output, so a stale build tests old code. See
+  First-run verification for the first build, and run
+  `yarn workspace @webex/internal-plugin-task build:src` again after any `src/` change before
+  `test:unit`.
 
 ## Configuration and secrets
 

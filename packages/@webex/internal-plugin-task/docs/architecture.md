@@ -163,7 +163,7 @@ surface is served, so `api-specs/openapi.yaml` is omitted.
 
 | Signal  | Convention or required fields | Propagation or naming rule | Primary evidence |
 | ------- | ----------------------------- | -------------------------- | ---------------- |
-| Logs    | `this.logger` (`webex.logger`, or `console` when absent) at `info` and `error`; messages carry no task content | Prefix `Task->method#LEVEL,` followed by the reason; `register` failures append the error message. Request and response logging is added by webex-core only when `ENABLE_NETWORK_LOGGING` or `ENABLE_VERBOSE_NETWORK_LOGGING` is set | `src/task.js` |
+| Logs    | `this.logger` (`webex.logger`, or `console` when absent) at `info` and `error`; messages carry no task content | Prefix `Task->method#LEVEL,` followed by the reason; `register` failures append the error message. With webex-core's default interceptor set, request and response logging is added only when `ENABLE_NETWORK_LOGGING` or `ENABLE_VERBOSE_NETWORK_LOGGING` is set; a host that supplies `config.interceptors` can install webex-core's logging interceptors itself | `src/task.js` |
 | Metrics | N/A — none emitted | — | `src/task.js` |
 | Traces  | N/A — none in this package; tracking ids come from webex-core's `WebexTrackingIdInterceptor` | — | `src/task.js` |
 | Audit   | N/A — none | — | `src/task.js` |

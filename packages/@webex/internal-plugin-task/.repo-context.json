@@ -90,6 +90,7 @@
         "yarn workspace @webex/internal-plugin-task build:src"
       ],
       "validate_with": [
+        "yarn workspace @webex/internal-plugin-task build:src",
         "yarn workspace @webex/internal-plugin-task test:unit",
         "yarn workspace @webex/internal-plugin-task test:style"
       ]
@@ -126,11 +127,11 @@
         "src/**"
       ],
       "minimum": [
+        "yarn workspace @webex/internal-plugin-task build:src",
         "yarn workspace @webex/internal-plugin-task test:unit"
       ],
       "recommended": [
-        "yarn workspace @webex/internal-plugin-task test:style",
-        "yarn workspace @webex/internal-plugin-task build:src"
+        "yarn workspace @webex/internal-plugin-task test:style"
       ]
     },
     {
@@ -138,6 +139,7 @@
         "src/helpers/**"
       ],
       "minimum": [
+        "yarn workspace @webex/internal-plugin-task build:src",
         "yarn workspace @webex/internal-plugin-task test:unit"
       ],
       "recommended": [
@@ -159,6 +161,7 @@
         "yarn workspace @webex/internal-plugin-task build:src"
       ],
       "validate_with": [
+        "yarn workspace @webex/internal-plugin-task build:src",
         "yarn workspace @webex/internal-plugin-task test:unit"
       ],
       "avoid_direct_edits": [
@@ -178,6 +181,7 @@
         "yarn workspace @webex/internal-plugin-task build:src"
       ],
       "validate_with": [
+        "yarn workspace @webex/internal-plugin-task build:src",
         "yarn workspace @webex/internal-plugin-task test:unit"
       ],
       "avoid_direct_edits": [
@@ -199,6 +203,7 @@
         "yarn workspace @webex/internal-plugin-task build:src"
       ],
       "validate_with": [
+        "yarn workspace @webex/internal-plugin-task build:src",
         "yarn workspace @webex/internal-plugin-task test:unit"
       ],
       "avoid_direct_edits": [
@@ -331,7 +336,7 @@
         "name": "unit tests",
         "command": "yarn workspace @webex/internal-plugin-task test:unit",
         "scope": "test/unit/spec",
-        "notes": "Jest via webex-legacy-tools --runner jest."
+        "notes": "Jest via webex-legacy-tools --runner jest. Run build:src first: test/unit/spec/task.js imports the package by name, which resolves to dist/."
       },
       {
         "name": "integration tests",

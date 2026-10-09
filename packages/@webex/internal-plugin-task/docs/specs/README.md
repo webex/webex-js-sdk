@@ -56,10 +56,10 @@ until the missing tests and a characterization baseline exist and a spec-drift r
 | -------------- | --------------- | ------------------ |
 | Package boundaries or cross-cutting architecture | `docs/architecture.md` and applicable ADRs | `yarn workspace @webex/internal-plugin-task test:unit` and `yarn workspace @webex/internal-plugin-task test:style` |
 | A deployable service surface or operating posture | Not applicable — no deployable service exists in this package | Not applicable |
-| A REST wrapper or request shape | `src/docs/README.md` | `yarn workspace @webex/internal-plugin-task test:unit` |
-| Encrypted fields or key selection | `src/docs/README.md` and the architecture Security architecture | `yarn workspace @webex/internal-plugin-task test:unit`, after adding the missing helper cases |
-| `register`, `unregister`, or the event names | `src/docs/README.md` | `yarn workspace @webex/internal-plugin-task test:unit` |
-| The default export or the plugin name | `src/docs/README.md` and `docs/architecture.md`; check the sibling package webex | `yarn workspace @webex/internal-plugin-task test:unit` |
+| A REST wrapper or request shape | `src/docs/README.md` | `yarn workspace @webex/internal-plugin-task build:src`, then `yarn workspace @webex/internal-plugin-task test:unit` |
+| Encrypted fields or key selection | `src/docs/README.md` and the architecture Security architecture | `yarn workspace @webex/internal-plugin-task build:src`, then `yarn workspace @webex/internal-plugin-task test:unit`, after adding the missing helper cases |
+| `register`, `unregister`, or the event names | `src/docs/README.md` | `yarn workspace @webex/internal-plugin-task build:src`, then `yarn workspace @webex/internal-plugin-task test:unit` |
+| The default export or the plugin name | `src/docs/README.md` and `docs/architecture.md`; check the sibling package webex | `yarn workspace @webex/internal-plugin-task build:src`, then `yarn workspace @webex/internal-plugin-task test:unit` |
 
 ## Module and contract registration
 

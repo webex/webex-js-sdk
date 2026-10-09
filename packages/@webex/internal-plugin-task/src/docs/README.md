@@ -175,8 +175,9 @@ specified under State machine.
 Every REST method follows one shape: optionally run the encrypt helper over the caller's object,
 send one request through `this.request`, run the matching decrypt helper over the body, and resolve
 the response (`INV-004`). `listMyTasks` calls `this.webex.request`, the function that `this.request`
-delegates to, so the behavior is the same. The helpers return no value of their own; they write
-into the objects they receive.
+delegates to, so the behavior is the same. The helpers change the objects they receive, and Task
+ignores their resolved values: arrays from `Promise.all` when fields are encrypted or decrypted, or
+`undefined` when decryption is skipped.
 
 Field encryption is done by the helpers rather than by payload transformers; the cost of that choice
 is under Key design trade-off.
@@ -408,7 +409,8 @@ stateDiagram-v2
 | `register` when the device or Mercury rejects | Rejects with the same error; logged with its message | Inspect the dependency error | Call again; `registered` is still false | `src/task.js` |
 | `createTask` or `updateTask` without `data` | Synchronous TypeError reading `encryptionKeyUrl`, not a rejected promise | Pass an object | None | `src/helpers/encrypt.helper.js` |
 | Key creation or encryption fails | Rejects with the encryption plugin's error; no request is sent | Inspect the error | Retry with a fresh object (see Pitfalls) | `src/helpers/encrypt.helper.js` |
-| HTTP failure (default interceptor set; see Dependencies) | Rejects with the `WebexHttpError` subtype for the final status (`NetworkOrCORSError` for a network failure), after any 401 refresh-and-replay or redirect that webex-core performs | Inspect the class or status | None here | `src/task.js`; sibling package webex-core, files src/interceptors/auth.js and src/interceptors/redirect.js |
+| HTTP failure status (default interceptor set; see Dependencies) | Rejects with the `WebexHttpError` subtype for the final status (`NetworkOrCORSError` for a network failure), after any 401 refresh-and-replay or redirect that webex-core performs | Inspect the class or status | None here | `src/task.js`; sibling package http-core, file src/interceptors/http-status.js |
+| webex-core retry or redirect limit reached (default interceptor set) | Rejects with a plain `Error`, not a `WebexHttpError`: `Failed after N replay attempts` when 401 replays exceed `maxAuthenticationReplays`, or `Maximum redirects exceeded` when redirects exceed their limit | Treat as an authentication or routing problem | None here | Sibling package webex-core, files src/interceptors/auth.js and src/interceptors/redirect.js |
 | The catalog has no `raindrop` service (default set) | Rejects with a plain `Error` whose message is `service-interceptor: 'raindrop' is not a known service` | Treat as an environment problem | None here | Sibling package webex-core, file src/lib/interceptors/service.js |
 | Decryption of a response fails | Rejects with the encryption plugin's error, even though the server already applied the request | Do not assume the write failed | Read the task again | `src/helpers/decrypt.helper.js` |
 
@@ -475,5 +477,6 @@ No TypeScript declaration or API report exists for this package.
 | `MOD-001`, `MOD-002` | none | none found | none found | No registration test |
 | Integration tier | Integration | `test/integration/spec/task.js` passes | none found | The spec tests its own mock and never imports this package |
 
-Unit checks run with `yarn workspace @webex/internal-plugin-task test:unit`. The test tiers and the
-first-run build they need are described in [Getting started](../../docs/getting-started.md).
+Unit checks run with `yarn workspace @webex/internal-plugin-task build:src` followed by
+`yarn workspace @webex/internal-plugin-task test:unit`. The reason for building first, the test tiers,
+and the first-run build are described in [Getting started](../../docs/getting-started.md).

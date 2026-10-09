@@ -112,8 +112,12 @@ Definition of done:
 
 Run checks in this order:
 
-1. `yarn workspace @webex/internal-plugin-task test:unit`
-2. `yarn workspace @webex/internal-plugin-task test:style`
+1. `yarn workspace @webex/internal-plugin-task build:src`
+2. `yarn workspace @webex/internal-plugin-task test:unit`
+3. `yarn workspace @webex/internal-plugin-task test:style`
+
+Rebuild before the unit run after any `src/` change; [`docs/getting-started.md`](docs/getting-started.md)
+under Tests explains why.
 
 The browser run is recorded in `.sdd/manifest.json` as `commands.browser-test` (role `other`), not
 under `tests`, because the SDD manifest `tests` schema allows only `unit`, `integration`, `e2e`, and
