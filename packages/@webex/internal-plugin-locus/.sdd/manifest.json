@@ -228,8 +228,8 @@
     "head_ref": "LOCUS_WEBEX_INTERNAL_PLUGIN_SDD",
     "validator_runtime": "current-session",
     "validator_runtime_source": "invocation-input",
-    "validator_run_id": "spark-853128-spec-validator-2026-10-09-session-b-round-2",
-    "source_commit": "b5880dca8de0c6ebc31a5c22ee2c6f8ea18e4138"
+    "validator_run_id": "spark-853128-spec-validator-2026-10-09-session-b-round-3",
+    "source_commit": "fe11734a26f4799cd4bf33ca9acdb1ea079cdb5f"
   },
   "layout": {
     "sdd_root": ".sdd",
