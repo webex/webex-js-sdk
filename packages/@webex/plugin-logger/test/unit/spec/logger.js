@@ -7,7 +7,19 @@ import {assert} from '@webex/test-helper-chai';
 import MockWebex from '@webex/test-helper-mock-webex';
 import sinon from 'sinon';
 import {browserOnly, nodeOnly, inBrowser} from '@webex/test-helper-mocha';
-import Logger, {levels} from '@webex/plugin-logger';
+import Logger, {
+  createEventId,
+  EVENT_INITIATOR_TYPES,
+  EVENT_TRIGGER_TYPES,
+  getEventIdPrefix,
+  isValidEventId,
+  isValidOpenTelemetrySpanId,
+  isValidOpenTelemetryTraceId,
+  levels,
+  LOG_ATTRIBUTE_KEYS,
+  logRecordSchema,
+  openTelemetryLogFormatter,
+} from '@webex/plugin-logger';
 import {WebexHttpError} from '@webex/webex-core';
 
 describe('plugin-logger', () => {
@@ -83,20 +95,20 @@ describe('plugin-logger', () => {
     it('stores the specified message in the log buffer', () => {
       webex.logger.log('test');
       assert.lengthOf(webex.logger.buffer.buffer, 1);
-      assert.match(webex.logger.buffer.buffer[0][3], /test/);
+      assert.match(webex.logger.buffer.buffer[0].record.message, /test/);
     });
 
     it('adds the date to the beggining of the buffer entry', () => {
       webex.logger.log('test date');
 
       // Convert string back to date object
-      const logDate = new Date(webex.logger.buffer.buffer[0][1]);
+      const logDate = new Date(webex.logger.buffer.buffer[0].record.timestamp);
 
-      // eslint-disable-next-line no-restricted-globals
-      assert.isTrue(logDate instanceof Date && isNaN(webex.logger.buffer.buffer[0][1]));
-      assert.isString(webex.logger.buffer.buffer[0][0]);
-      assert.isString(webex.logger.buffer.buffer[0][1]);
-      assert.match(webex.logger.buffer.buffer[0][3], /test date/);
+      assert.isTrue(logDate instanceof Date && !Number.isNaN(logDate.getTime()));
+      assert.isNumber(webex.logger.buffer.buffer[0].record.timestamp);
+      assert.isString(webex.logger.buffer.buffer[0].legacyLine[0]);
+      assert.isString(webex.logger.buffer.buffer[0].legacyLine[1]);
+      assert.match(webex.logger.buffer.buffer[0].record.message, /test date/);
     });
 
     it('stores the specified message in the client and sdk log buffer', () => {
@@ -105,15 +117,15 @@ describe('plugin-logger', () => {
       webex.logger.log('testsdk');
       webex.logger.client_log('testclient');
       assert.lengthOf(webex.logger.sdkBuffer.buffer, 1);
-      assert.isString(webex.logger.sdkBuffer.buffer[0][0]);
-      assert.isString(webex.logger.sdkBuffer.buffer[0][1]);
-      assert.match(webex.logger.sdkBuffer.buffer[0][2], /wx-js-sdk/);
-      assert.match(webex.logger.sdkBuffer.buffer[0][3], /testsdk/);
+      assert.isString(webex.logger.sdkBuffer.buffer[0].legacyLine[0]);
+      assert.isString(webex.logger.sdkBuffer.buffer[0].legacyLine[1]);
+      assert.match(webex.logger.sdkBuffer.buffer[0].record.name, /wx-js-sdk/);
+      assert.match(webex.logger.sdkBuffer.buffer[0].record.message, /testsdk/);
       assert.lengthOf(webex.logger.clientBuffer.buffer, 1);
-      assert.isString(webex.logger.clientBuffer.buffer[0][0]);
-      assert.isString(webex.logger.clientBuffer.buffer[0][1]);
-      assert.match(webex.logger.clientBuffer.buffer[0][2], /someclient/);
-      assert.match(webex.logger.clientBuffer.buffer[0][3], /testclient/);
+      assert.isString(webex.logger.clientBuffer.buffer[0].legacyLine[0]);
+      assert.isString(webex.logger.clientBuffer.buffer[0].legacyLine[1]);
+      assert.match(webex.logger.clientBuffer.buffer[0].record.name, /someclient/);
+      assert.match(webex.logger.clientBuffer.buffer[0].record.message, /testclient/);
     });
 
     it('prevents the buffer from overflowing', () => {
@@ -124,8 +136,8 @@ describe('plugin-logger', () => {
       assert.lengthOf(webex.logger.buffer.buffer, 2);
       webex.logger.log(3);
       assert.lengthOf(webex.logger.buffer.buffer, 2);
-      assert.equal(webex.logger.buffer.buffer[0][3], 2);
-      assert.equal(webex.logger.buffer.buffer[1][3], 3);
+      assert.equal(webex.logger.buffer.buffer[0].record.message, '2');
+      assert.equal(webex.logger.buffer.buffer[1].record.message, '3');
     });
 
     it('adjusts lastSubmitted when buffer overflows in single buffer mode', () => {
@@ -206,10 +218,10 @@ describe('plugin-logger', () => {
       webex.logger.client_log(1);
       assert.lengthOf(webex.logger.sdkBuffer.buffer, 2);
       assert.lengthOf(webex.logger.clientBuffer.buffer, 2);
-      assert.equal(webex.logger.sdkBuffer.buffer[0][3], 2);
-      assert.equal(webex.logger.sdkBuffer.buffer[1][3], 3);
-      assert.equal(webex.logger.sdkBuffer.buffer[0][3], 2);
-      assert.equal(webex.logger.clientBuffer.buffer[1][3], 1);
+      assert.equal(webex.logger.sdkBuffer.buffer[0].record.message, '2');
+      assert.equal(webex.logger.sdkBuffer.buffer[1].record.message, '3');
+      assert.equal(webex.logger.clientBuffer.buffer[0].record.message, '2');
+      assert.equal(webex.logger.clientBuffer.buffer[1].record.message, '1');
     });
 
     // Node handles custom errors correctly, so this test is browser specific
@@ -246,7 +258,7 @@ describe('plugin-logger', () => {
 
       webex.logger.log(error);
       assert.lengthOf(webex.logger.buffer.buffer, 1);
-      assert.match(webex.logger.buffer.buffer[0][3], /WebexHttpError/g);
+      assert.match(webex.logger.buffer.buffer[0].record.message, /WebexHttpError/g);
     });
 
     it('formats objects as strings passed to the logger for readability not [Object object]', async () => {
@@ -264,12 +276,12 @@ describe('plugin-logger', () => {
 
       webex.logger.log('foo', 'bar', obj);
       assert.lengthOf(webex.logger.buffer.buffer, 1);
-      assert.lengthOf(webex.logger.buffer.buffer[0], 6);
-      assert.deepEqual(webex.logger.buffer.buffer[0][2], 'wx-js-sdk');
-      assert.deepEqual(webex.logger.buffer.buffer[0][3], 'foo');
-      assert.deepEqual(webex.logger.buffer.buffer[0][4], 'bar');
+      assert.lengthOf(webex.logger.buffer.buffer[0].legacyLine, 6);
+      assert.deepEqual(webex.logger.buffer.buffer[0].legacyLine[2], 'wx-js-sdk');
+      assert.deepEqual(webex.logger.buffer.buffer[0].legacyLine[3], 'foo');
+      assert.deepEqual(webex.logger.buffer.buffer[0].legacyLine[4], 'bar');
       assert.deepEqual(
-        webex.logger.buffer.buffer[0][5],
+        webex.logger.buffer.buffer[0].legacyLine[5],
         '{"headers":{"trackingid":"123"},"test":"object","nested":{"test2":"object2"}}'
       );
     });
@@ -291,12 +303,12 @@ describe('plugin-logger', () => {
 
       webex.logger.log('foo', 'bar', obj);
       assert.lengthOf(webex.logger.buffer.buffer, 1);
-      assert.lengthOf(webex.logger.buffer.buffer[0], 6);
-      assert.deepEqual(webex.logger.buffer.buffer[0][2], 'wx-js-sdk');
-      assert.deepEqual(webex.logger.buffer.buffer[0][3], 'foo');
-      assert.deepEqual(webex.logger.buffer.buffer[0][4], 'bar');
+      assert.lengthOf(webex.logger.buffer.buffer[0].legacyLine, 6);
+      assert.deepEqual(webex.logger.buffer.buffer[0].legacyLine[2], 'wx-js-sdk');
+      assert.deepEqual(webex.logger.buffer.buffer[0].legacyLine[3], 'foo');
+      assert.deepEqual(webex.logger.buffer.buffer[0].legacyLine[4], 'bar');
       assert.deepEqual(
-        webex.logger.buffer.buffer[0][5],
+        webex.logger.buffer.buffer[0].legacyLine[5],
         '{"headers":{"trackingid":"123"},"test":"object","nested":{"test2":"object2"}}'
       );
     });
@@ -307,9 +319,12 @@ describe('plugin-logger', () => {
 
       webex.logger.log('I got this error:', err);
       assert.lengthOf(webex.logger.buffer.buffer, 1);
-      assert.deepEqual(webex.logger.buffer.buffer[0][2], 'wx-js-sdk');
-      assert.deepEqual(webex.logger.buffer.buffer[0][3], 'I got this error:');
-      assert.deepEqual(webex.logger.buffer.buffer[0][4], 'Error: fake error for testing');
+      assert.deepEqual(webex.logger.buffer.buffer[0].legacyLine[2], 'wx-js-sdk');
+      assert.deepEqual(webex.logger.buffer.buffer[0].legacyLine[3], 'I got this error:');
+      assert.deepEqual(
+        webex.logger.buffer.buffer[0].legacyLine[4],
+        'Error: fake error for testing'
+      );
     });
   });
 
@@ -628,6 +643,333 @@ describe('plugin-logger', () => {
       const shouldBuffer = webex.logger.shouldBuffer('debug');
 
       assert.isTrue(shouldBuffer);
+    });
+  });
+
+  describe('configured transports', () => {
+    let clock;
+    let write;
+
+    beforeEach(() => {
+      clock = sinon.useFakeTimers();
+      write = sinon.spy();
+      webex.logger.config.transports = [{write}];
+    });
+
+    afterEach(() => {
+      clock.restore();
+    });
+
+    it('replaces console and buffer output with the configured transports', () => {
+      webex.logger.info('sdk message', {attempt: 1});
+      clock.tick(1000);
+      webex.logger.client_warn('client message');
+
+      assert.calledTwice(write);
+      assert.deepEqual(write.firstCall.args[0], {
+        schemaVersion: 1,
+        timestamp: 0,
+        level: 'info',
+        type: 'sdk',
+        name: 'wx-js-sdk',
+        message: 'sdk message {"attempt":1}',
+      });
+      assert.deepEqual(write.secondCall.args[0], {
+        schemaVersion: 1,
+        timestamp: 1000,
+        level: 'warn',
+        type: 'client',
+        name: 'client',
+        message: 'client message',
+      });
+      assert.lengthOf(webex.logger.buffer.buffer, 0);
+      assert.notCalled(console.info);
+      assert.notCalled(console.warn);
+    });
+
+    it('does not receive records rejected by the non-console log level', () => {
+      webex.logger.config.level = 'trace';
+      webex.logger.config.bufferLogLevel = 'info';
+
+      webex.logger.debug('filtered');
+
+      assert.notCalled(console.debug);
+      assert.notCalled(write);
+      assert.lengthOf(webex.logger.buffer.buffer, 0);
+    });
+
+    it('continues to later transports when one throws', () => {
+      const secondWrite = sinon.spy();
+
+      webex.logger.config.transports = [
+        {write: sinon.stub().throws(new Error('transport failed'))},
+        {write: secondWrite},
+      ];
+
+      assert.doesNotThrow(() => webex.logger.info('still delivered'));
+      assert.calledOnce(secondWrite);
+      assert.equal(secondWrite.firstCall.args[0].message, 'still delivered');
+      assert.lengthOf(webex.logger.buffer.buffer, 0);
+    });
+
+    it('ignores invalid entries in the configured transport array', () => {
+      webex.logger.config.transports = [{}];
+
+      assert.doesNotThrow(() => webex.logger.info('discarded'));
+      assert.lengthOf(webex.logger.buffer.buffer, 0);
+      assert.notCalled(console.info);
+    });
+
+    it('uses an empty transport array to discard logs', () => {
+      webex.logger.config.transports = [];
+
+      webex.logger.info('discarded');
+
+      assert.notCalled(write);
+      assert.lengthOf(webex.logger.buffer.buffer, 0);
+      assert.notCalled(console.info);
+    });
+
+    it('routes logToBuffer calls to the configured transports without buffering', () => {
+      webex.logger.logToBuffer('forced');
+
+      assert.calledOnce(write);
+      assert.equal(write.firstCall.args[0].message, 'forced');
+      assert.lengthOf(webex.logger.buffer.buffer, 0);
+      assert.notCalled(console.info);
+    });
+
+    it('applies the formatter once before delivering to every transport', () => {
+      const secondWrite = sinon.spy();
+      const formatter = sinon.spy((record) => ({body: record.message}));
+
+      webex.logger.config.formatter = formatter;
+      webex.logger.config.transports = [{write}, {write: secondWrite}];
+
+      webex.logger.info('formatted');
+
+      assert.calledOnce(formatter);
+      assert.calledOnceWithExactly(write, {body: 'formatted'});
+      assert.calledOnceWithExactly(secondWrite, {body: 'formatted'});
+    });
+
+    it('does not deliver when the formatter throws', () => {
+      webex.logger.config.formatter = sinon.stub().throws(new Error('formatter failed'));
+
+      assert.doesNotThrow(() => webex.logger.info('discarded'));
+      assert.notCalled(write);
+      assert.lengthOf(webex.logger.buffer.buffer, 0);
+    });
+
+    it('preserves structured client metadata for the configured transport', () => {
+      webex.logger.config.clientName = 'web-client';
+
+      webex.logger.client_logRecord({
+        level: 'info',
+        message: 'meeting joined',
+        eventName: 'meeting.join',
+        eventIdPrefix: 'joinMeeting',
+        attributes: {
+          'webex.module': 'meeting',
+          'code.line.number': 42,
+          successful: true,
+          [LOG_ATTRIBUTE_KEYS.EVENT_INITIATOR_TYPE]: EVENT_INITIATOR_TYPES.USER,
+          [LOG_ATTRIBUTE_KEYS.EVENT_TRIGGER_TYPE]: EVENT_TRIGGER_TYPES.UI,
+          [LOG_ATTRIBUTE_KEYS.OPERATION_ID]: 'joinMeeting_00000000-0000-4000-8000-000000000001',
+          email: 'person@example.com',
+          Authorization: 'Basic secret',
+          nested: {ignored: true},
+          invalidNumber: Number.NaN,
+          'webex.logger.type': 'overridden',
+          'webex.event.id': 'overridden',
+        },
+      });
+
+      assert.calledOnce(write);
+      const record = write.firstCall.args[0];
+
+      assert.deepInclude(record, {
+        schemaVersion: 1,
+        timestamp: 0,
+        level: 'info',
+        type: 'client',
+        name: 'web-client',
+        message: 'meeting joined',
+        eventName: 'meeting.join',
+        attributes: {
+          'webex.module': 'meeting',
+          'code.line.number': 42,
+          successful: true,
+          [LOG_ATTRIBUTE_KEYS.EVENT_INITIATOR_TYPE]: 'user',
+          [LOG_ATTRIBUTE_KEYS.EVENT_TRIGGER_TYPE]: 'ui',
+          [LOG_ATTRIBUTE_KEYS.OPERATION_ID]: 'joinMeeting_00000000-0000-4000-8000-000000000001',
+          email: '[REDACTED]',
+        },
+      });
+      assert.match(record.eventId, /^joinMeeting_/);
+      assert.isTrue(isValidEventId(record.eventId));
+      assert.notProperty(record.attributes, 'invalidNumber');
+      assert.notProperty(record.attributes, 'webex.logger.type');
+      assert.notProperty(record.attributes, 'webex.event.id');
+      assert.lengthOf(webex.logger.buffer.buffer, 0);
+    });
+
+    it('drops invalid taxonomy and readable operation identifiers', () => {
+      webex.logger.client_logRecord({
+        level: 'info',
+        message: 'invalid metadata',
+        attributes: {
+          [LOG_ATTRIBUTE_KEYS.EVENT_INITIATOR_TYPE]: 'browser',
+          [LOG_ATTRIBUTE_KEYS.EVENT_TRIGGER_TYPE]: 'fetch',
+          [LOG_ATTRIBUTE_KEYS.OPERATION_ID]: 'joinMeeting_trace',
+          retained: true,
+        },
+      });
+
+      assert.deepEqual(write.firstCall.args[0].attributes, {retained: true});
+    });
+
+    it('validates structured client records', () => {
+      assert.throws(
+        () => webex.logger.client_logRecord({level: 'verbose', message: 'invalid'}),
+        TypeError
+      );
+      assert.throws(() => webex.logger.client_logRecord({level: 'info', message: {}}), TypeError);
+      assert.throws(
+        () =>
+          webex.logger.client_logRecord({
+            level: 'info',
+            message: 'invalid event',
+            eventName: 'joinMeeting_123',
+          }),
+        TypeError
+      );
+      assert.throws(
+        () =>
+          webex.logger.client_logRecord({
+            level: 'info',
+            message: 'invalid identifier',
+            eventIdPrefix: 'joinMeeting',
+          }),
+        TypeError
+      );
+      assert.notCalled(write);
+    });
+
+    it('redacts sensitive values embedded in Error messages before transport', () => {
+      webex.logger.error(
+        new Error('request failed for person@example.com with Bearer secret-token')
+      );
+
+      assert.calledOnce(write);
+      assert.equal(
+        write.firstCall.args[0].message,
+        'Error: request failed for [REDACTED] with Bearer [REDACTED]'
+      );
+    });
+  });
+
+  describe('OpenTelemetry formatter', () => {
+    let clock;
+
+    beforeEach(() => {
+      clock = sinon.useFakeTimers();
+    });
+
+    afterEach(() => {
+      clock.restore();
+    });
+
+    it('maps the SDK structure to an OpenTelemetry-compatible record', () => {
+      const record = openTelemetryLogFormatter({
+        schemaVersion: 1,
+        timestamp: 0,
+        level: 'warn',
+        type: 'client',
+        name: 'web-client',
+        message: 'meeting joined',
+        eventName: 'meeting.join',
+        eventId: 'joinMeeting_00000000-0000-4000-8000-000000000001',
+        attributes: {
+          'webex.module': 'meeting',
+          'code.line.number': 42,
+          'webex.logger.type': 'overridden',
+        },
+      });
+
+      assert.deepEqual(record, {
+        timestamp: new Date(0),
+        observedTimestamp: new Date(0),
+        severityNumber: 13,
+        severityText: 'WARN',
+        body: 'meeting joined',
+        eventName: 'meeting.join',
+        attributes: {
+          'webex.logger.schema_version': 1,
+          'webex.logger.type': 'client',
+          'webex.logger.name': 'web-client',
+          'webex.event.id': 'joinMeeting_00000000-0000-4000-8000-000000000001',
+          'webex.module': 'meeting',
+          'code.line.number': 42,
+        },
+      });
+    });
+
+    it('uses the OpenTelemetry info severity for unknown levels', () => {
+      const record = openTelemetryLogFormatter({
+        schemaVersion: 1,
+        timestamp: 0,
+        level: 'unknown',
+        type: 'sdk',
+        name: 'wx-js-sdk',
+        message: 'fallback',
+      });
+
+      assert.equal(record.severityNumber, 9);
+      assert.equal(record.severityText, 'UNKNOWN');
+    });
+  });
+
+  describe('structured log schema', () => {
+    it('publishes a closed versioned canonical record schema', () => {
+      assert.equal(logRecordSchema.$id, 'https://webex.com/schemas/logger/log-record-v1.json');
+      assert.isFalse(logRecordSchema.additionalProperties);
+      assert.includeMembers(logRecordSchema.required, [
+        'schemaVersion',
+        'timestamp',
+        'level',
+        'type',
+        'name',
+        'message',
+      ]);
+      assert.equal(logRecordSchema.properties.attributes.maxProperties, 128);
+      assert.deepEqual(
+        logRecordSchema.properties.attributes.properties[LOG_ATTRIBUTE_KEYS.EVENT_INITIATOR_TYPE]
+          .enum,
+        Object.values(EVENT_INITIATOR_TYPES)
+      );
+      assert.deepEqual(
+        logRecordSchema.properties.attributes.properties[LOG_ATTRIBUTE_KEYS.EVENT_TRIGGER_TYPE]
+          .enum,
+        Object.values(EVENT_TRIGGER_TYPES)
+      );
+    });
+
+    it('creates readable event instance IDs from stable event names or explicit prefixes', () => {
+      assert.equal(getEventIdPrefix('webex.meeting.join'), 'meetingJoin');
+      assert.equal(getEventIdPrefix('webex.meeting.media_connected'), 'meetingMediaConnected');
+
+      const eventId = createEventId('joinMeeting');
+
+      assert.match(eventId, /^joinMeeting_/);
+      assert.isTrue(isValidEventId(eventId));
+    });
+
+    it('validates OpenTelemetry trace and span identifiers without changing their format', () => {
+      assert.isTrue(isValidOpenTelemetryTraceId('4bf92f3577b34da6a3ce929d0e0e4736'));
+      assert.isTrue(isValidOpenTelemetrySpanId('00f067aa0ba902b7'));
+      assert.isFalse(isValidOpenTelemetryTraceId('joinMeeting_trace'));
+      assert.isFalse(isValidOpenTelemetrySpanId('0000000000000000'));
     });
   });
 
@@ -1316,7 +1658,7 @@ describe('plugin-logger', () => {
   });
   describe('limit', () => {
     function logMessages() {
-      return webex.logger.buffer.buffer.map((item) => item[3]);
+      return webex.logger.buffer.buffer.map((item) => Number(item.record.message));
     }
 
     it('can be increased in runtime', () => {
