@@ -204,9 +204,11 @@ flowchart LR
   catalog[services catalog and allowed domains] -->|requiresCredentials| auth[webex-core auth interceptor]
   request --> catUrl[webex-core catalog URL interceptor, opt-in]
   catalog -->|getServiceFromUrl and allowed domains| catUrl
-  catUrl -->|blocks non-catalog URLs when enabled| auth
+  catUrl -->|blocks non-catalog URLs when active| auth
   request --> auth
-  auth -->|authorization header only for catalog or allowed hosts| svc[Locus and Janus services]
+  auth -->|first request: header only for catalog or allowed hosts| svc[Locus and Janus services]
+  svc -->|redirect: cisco-location header or Locus errorCode 2000002| redirect[webex-core redirect interceptor]
+  redirect -->|re-request with cloned options and existing header| request
 ```
 
 Controls:
@@ -214,15 +216,24 @@ Controls:
 - This package never reads or sends a token itself. Authorization is added by the sibling package
   webex-core auth interceptor, which adds the header only when the request URL resolves to a catalog
   service or an allowed domain (sibling package webex-core, file src/interceptors/auth.js).
-- When the host sets `config.services.validateCatalogUrls` to `true`, webex-core also installs
-  `CatalogUrlInterceptor`, which rejects a request whose URL is neither a catalog service nor an
-  allowed domain (sibling package webex-core, files src/webex-core.js and
-  src/interceptors/catalog-url.js). The option defaults to `false` in that package's
+- `CatalogUrlInterceptor` rejects a request whose URL is neither a catalog service nor an allowed
+  domain (sibling package webex-core, file src/interceptors/catalog-url.js). It is active only when
+  `config.services.validateCatalogUrls` is `true` and the host uses webex-core's default interceptor
+  set, or supplies its own `config.interceptors` that lists `CatalogUrlInterceptor`; a custom set
+  that omits it never installs it (sibling package webex-core, file src/webex-core.js, and its unit
+  spec test/unit/spec/webex-core.js). The option defaults to `false` in that package's
   src/config.js, so by default no host check blocks the request.
 - Absolute URLs (`locus.url`, `locus.self.url`, `locus.syncUrl`, `share.url`) are taken from DTOs
   without validation in this package; the two webex-core interceptors above are the only host
-  checks. The caller-visible rejection is listed in the Locus plugin spec Caller-visible failure
+  checks. The caller-visible rejections are listed in the Locus plugin spec Caller-visible failure
   modes.
+- Known gap, redirects: when a response carries a `cisco-location` header, or a Locus body with
+  `errorCode` 2000002 and `location`, the webex-core redirect interceptor shallow-clones the request
+  options, which already hold the authorization header, sets the new URI, and calls `webex.request`
+  again (sibling package webex-core, file src/interceptors/redirect.js). The auth interceptor keeps
+  an existing header without checking the host (file src/interceptors/auth.js), so the token is sent
+  to the redirect URI. Only an active `CatalogUrlInterceptor`, which runs again on the re-request,
+  blocks a redirect host outside the catalog and allowed domains.
 
 Known gaps are recorded where the code lives: DTO-shape assumptions in the Locus plugin spec
 Pitfalls. The workspace root `SECURITY.md` is the security
