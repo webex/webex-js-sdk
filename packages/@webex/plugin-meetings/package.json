@@ -80,7 +80,7 @@
     "ampersand-collection": "^2.0.2",
     "bowser": "^2.11.0",
     "btoa": "^1.2.1",
-    "dotenv": "^4.0.0",
+    "dotenv": "^17.4.2",
     "global": "^4.4.0",
     "ip-anonymize": "^0.1.0",
     "javascript-state-machine": "^3.1.0",
