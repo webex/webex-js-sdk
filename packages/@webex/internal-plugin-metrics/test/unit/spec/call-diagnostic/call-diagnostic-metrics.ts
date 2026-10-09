@@ -1986,6 +1986,7 @@ describe('internal-plugin-metrics', () => {
             webClientPreload: undefined,
             isAutomatedUser: false,
             userActivation: undefined,
+            meetingJoinPhase: 'pre-join',
           },
           options
         );
@@ -2012,6 +2013,7 @@ describe('internal-plugin-metrics', () => {
             webClientPreload: undefined,
             isAutomatedUser: false,
             userActivation: undefined,
+            meetingJoinPhase: 'pre-join',
           },
           eventId: 'my-fake-id',
           origin: {
@@ -2090,6 +2092,7 @@ describe('internal-plugin-metrics', () => {
             webClientPreload: undefined,
             isAutomatedUser: false,
             userActivation: undefined,
+            meetingJoinPhase: 'pre-join',
           },
           options
         );
@@ -2121,6 +2124,7 @@ describe('internal-plugin-metrics', () => {
               webClientPreload: undefined,
               isAutomatedUser: false,
               userActivation: undefined,
+              meetingJoinPhase: 'pre-join',
             },
           },
           options.preLoginId
@@ -2187,6 +2191,7 @@ describe('internal-plugin-metrics', () => {
             webClientPreload: undefined,
             isAutomatedUser: false,
             userActivation: undefined,
+            meetingJoinPhase: 'pre-join',
           },
           options
         );
@@ -2220,6 +2225,7 @@ describe('internal-plugin-metrics', () => {
               webClientPreload: undefined,
               isAutomatedUser: false,
               userActivation: undefined,
+              meetingJoinPhase: 'pre-join',
             },
           },
           options.preLoginId
@@ -2387,6 +2393,7 @@ describe('internal-plugin-metrics', () => {
             webClientPreload: true,
             isAutomatedUser: false,
             userActivation: undefined,
+            meetingJoinPhase: 'pre-join',
           },
           options
         );
@@ -2413,6 +2420,7 @@ describe('internal-plugin-metrics', () => {
             webClientPreload: true,
             isAutomatedUser: false,
             userActivation: undefined,
+            meetingJoinPhase: 'pre-join',
           },
           eventId: 'my-fake-id',
           origin: {
@@ -2863,6 +2871,7 @@ describe('internal-plugin-metrics', () => {
             webClientPreload: undefined,
             isAutomatedUser: false,
             userActivation: undefined,
+            meetingJoinPhase: 'pre-join',
           },
           eventId: 'my-fake-id',
           origin: {
@@ -2941,6 +2950,7 @@ describe('internal-plugin-metrics', () => {
             webClientPreload: undefined,
             isAutomatedUser: false,
             userActivation: undefined,
+            meetingJoinPhase: 'pre-join',
           },
           eventId: 'my-fake-id',
           origin: {
