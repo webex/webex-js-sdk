@@ -85,6 +85,9 @@ export {CC_AGENT_EVENTS} from './services/config/types';
 export {CC_EVENTS} from './services/config/types';
 export type {CC_EVENTS as ContactCenterEvents} from './services/config/types';
 
+/** Browser voice connection state event and status values */
+export {VOICE_CONNECTION_ERROR, VOICE_CONNECTION_EVENTS, VOICE_CONNECTION_STATUS} from './types';
+
 // Interfaces
 /** Main types and interfaces for Contact Center functionality */
 export type {
@@ -94,6 +97,9 @@ export type {
   CCPluginConfig,
   /** WebexSDK interface */
   WebexSDK,
+  VoiceConnectionState,
+  VoiceLineStatus,
+  VoiceMobiusSocketStatus,
 } from './types';
 
 // Types

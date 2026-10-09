@@ -29,6 +29,10 @@ import {
   WellnessBreakEvent,
   WellnessBreakNotificationAction,
   WELLNESS_BREAK_NOTIFICATION_ACTIONS,
+  VoiceConnectionState,
+  VOICE_CONNECTION_EVENTS,
+  VOICE_CONNECTION_STATUS,
+  VOICE_CONNECTION_ERROR,
 } from './types';
 import {
   READY,
@@ -455,6 +459,10 @@ export default class ContactCenter extends WebexPlugin implements IContactCenter
       });
 
       this.webCallingService = new WebCallingService(this.$webex);
+      this.webCallingService.on(
+        VOICE_CONNECTION_EVENTS.STATE_CHANGE,
+        this.handleVoiceConnectionStateChange
+      );
       this.answerCallOnWebexService = new AnswerCallOnWebexService(this.$webex);
       this.webexCrossClientService = new WebexCrossClientService(this.$webex);
       this.wxAppTelephonyMercurySync = new WxAppTelephonyMercurySync(this.$webex);
@@ -492,6 +500,12 @@ export default class ContactCenter extends WebexPlugin implements IContactCenter
   private handleIncomingTask = (task: ITask) => {
     // @ts-ignore
     this.trigger(TASK_EVENTS.TASK_INCOMING, task);
+  };
+
+  private handleVoiceConnectionStateChange = (state: VoiceConnectionState): void => {
+    // WebexPlugin exposes `trigger` at runtime, though it is missing from its TypeScript types.
+    // @ts-ignore
+    this.trigger(VOICE_CONNECTION_EVENTS.STATE_CHANGE, state);
   };
 
   /**
@@ -1192,6 +1206,13 @@ export default class ContactCenter extends WebexPlugin implements IContactCenter
         },
       });
 
+      if (data.loginOption === LoginOption.BROWSER) {
+        this.webCallingService.setLoginOption(
+          data.loginOption,
+          this.agentConfig.webRtcEnabled === true && !this.isWebRTCRegistrationDisabled()
+        );
+      }
+
       if (
         this.agentConfig.webRtcEnabled &&
         data.loginOption === LoginOption.BROWSER &&
@@ -1227,7 +1248,12 @@ export default class ContactCenter extends WebexPlugin implements IContactCenter
         notifsTrackingId: resp.trackingId,
       };
 
-      this.webCallingService.setLoginOption(data.loginOption);
+      this.webCallingService.setLoginOption(
+        data.loginOption,
+        data.loginOption === LoginOption.BROWSER &&
+          this.agentConfig.webRtcEnabled === true &&
+          !this.isWebRTCRegistrationDisabled()
+      );
       if (this.agentConfig) {
         this.agentConfig.deviceType = data.loginOption;
         if (
@@ -1414,6 +1440,17 @@ export default class ContactCenter extends WebexPlugin implements IContactCenter
    * ```
    */
   public async setAgentState(data: StateChange): Promise<SetStateResponse> {
+    if (
+      this.webCallingService?.isBrowserVoiceRequired() &&
+      !this.webCallingService.isVoiceReady()
+    ) {
+      const error = new Error(
+        'Browser voice is not ready. Wait for the voice connection state to become ready, then try again.'
+      ) as Error & {code: string};
+      error.code = VOICE_CONNECTION_ERROR.NOT_READY;
+      throw error;
+    }
+
     LoggerProxy.info('Setting agent state', {
       module: CC_FILE,
       method: METHODS.SET_AGENT_STATE,
@@ -1540,6 +1577,33 @@ export default class ContactCenter extends WebexPlugin implements IContactCenter
   }
 
   /**
+   * Returns the current browser voice connection state.
+   * Subscribe to `voice:connectionStateChange` to receive updates. The snapshot keeps line
+   * registration separate from Mobius socket connectivity and does not represent the Contact
+   * Center WebSocket connection.
+   *
+   * @returns {VoiceConnectionState} Current browser voice status and underlying connection states
+   * @fires voice:connectionStateChange When browser voice availability changes
+   * @public
+   * @example
+   * ```typescript
+   * cc.on('voice:connectionStateChange', onVoiceStateChange);
+   * const state = cc.getVoiceConnectionState();
+   * ```
+   */
+  public getVoiceConnectionState(): VoiceConnectionState {
+    const state = this.webCallingService?.getVoiceConnectionState();
+
+    return (
+      state ?? {
+        status: VOICE_CONNECTION_STATUS.NOT_REQUIRED,
+        lineStatus: 'unknown',
+        mobiusSocketStatus: 'unknown',
+      }
+    );
+  }
+
+  /**
    * Processes incoming websocket messages and emits corresponding events
    * Handles various event types including agent state changes, login events,
    * and other agent-related notifications
@@ -1619,7 +1683,12 @@ export default class ContactCenter extends WebexPlugin implements IContactCenter
           },
           notifsTrackingId: eventData.trackingId,
         };
-        this.webCallingService.setLoginOption(loginData.deviceType as LoginOption);
+        this.webCallingService.setLoginOption(
+          loginData.deviceType as LoginOption,
+          loginData.deviceType === LoginOption.BROWSER &&
+            this.agentConfig?.webRtcEnabled === true &&
+            !this.isWebRTCRegistrationDisabled()
+        );
         // @ts-ignore
         this.emit(AGENT_EVENTS.AGENT_STATION_LOGIN_SUCCESS, stationLoginData);
         break;
@@ -2430,7 +2499,12 @@ export default class ContactCenter extends WebexPlugin implements IContactCenter
    * @private
    */
   private async handleDeviceType(deviceType: LoginOption, dn: string): Promise<void> {
-    this.webCallingService.setLoginOption(deviceType);
+    this.webCallingService.setLoginOption(
+      deviceType,
+      deviceType === LoginOption.BROWSER &&
+        this.agentConfig.webRtcEnabled === true &&
+        !this.isWebRTCRegistrationDisabled()
+    );
     this.agentConfig.deviceType = deviceType;
     switch (deviceType) {
       case LoginOption.BROWSER:
