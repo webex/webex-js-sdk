@@ -324,6 +324,12 @@ const MeetingUtil = {
       .then((res) => {
         const parsed = MeetingUtil.parseLocusJoin(res);
         meeting.setLocus(parsed);
+
+        // The unmatched-locus-event deferral in Meetings#handleLocusEvent gives up and creates a
+        // placeholder meeting for this locusUrl if this join() takes longer than its timeout; now
+        // that join() has actually completed, get rid of that duplicate if one was created for us.
+        meeting.selfHealDuplicateMeeting();
+
         meeting.isoLocalClientMeetingJoinTime = res?.headers?.date; // read from header if exist, else fall back to system clock : https://jira-eng-gpk2.cisco.com/jira/browse/SPARK-555657
         const socketUrlInfo = MeetingUtil.getSocketUrlInfo(webex);
         webex.internal.newMetrics.submitClientEvent({
