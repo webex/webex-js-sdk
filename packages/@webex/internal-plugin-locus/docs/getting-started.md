@@ -21,9 +21,12 @@ Onboarding for **@webex/internal-plugin-locus**. Commands run from the webex-js-
 
 | Tool or access | Version or requirement |
 | -------------- | ---------------------- |
-| Node.js | `>=18`, declared in `package.json` `engines` |
+| Node.js | 22.14, required for working in this repository by the workspace root `AGENTS.md`; the root `.nvmrc` selects the Node 22 LTS line |
 | Yarn | Workspaces are used, so install from the workspace root rather than this directory |
 | Browser for `test:browser` | A local browser for the karma runner that `test:browser` starts through `@webex/legacy-tools` |
+
+The `package.json` `engines` value `>=18` is the floor for applications that install the package,
+not the development runtime.
 
 ## Install
 
@@ -72,8 +75,8 @@ yarn workspace @webex/internal-plugin-locus test:unit
   `collectCoverage: false` and no threshold.
 - Test environment or QA dependencies: none beyond the workspace. The unit spec imports
   `@webex/test-helper-chai`, `@webex/test-helper-mock-webex`, and this package by name, and those
-  names resolve to each package's build output, so build the workspace packages first in a fresh
-  clone.
+  names resolve to each package's build output, so a fresh clone needs the workspace build described
+  in First-run verification.
 
 ## Configuration and secrets
 
@@ -89,10 +92,15 @@ yarn workspace @webex/internal-plugin-locus test:unit
 
 ## First-run verification
 
-1. Run `yarn install` from the workspace root.
-2. Run `yarn workspace @webex/internal-plugin-locus build` and check that the build output contains
+1. Select Node.js 22.14 and run `yarn install` from the workspace root.
+2. Run the workspace root `prebuild:modules` script. `yarn install` does not build the
+   `webex-legacy-tools` CLI that this package's scripts call, because its binary lives in the
+   untracked build output of the workspace legacy tools package. That root script installs again,
+   then builds the workspace tools, the legacy tools, webex-core, and the `build:src` output of every
+   workspace package, including the helpers that the unit spec imports.
+3. Run `yarn workspace @webex/internal-plugin-locus build` and check that the build output contains
    `index.js`.
-3. Run `yarn workspace @webex/internal-plugin-locus test:unit`.
+4. Run `yarn workspace @webex/internal-plugin-locus test:unit`.
 
 Expected result: Jest reports the `plugin-locus` suite passing, 134 tests across the basic, sequence,
 and delta sequence comparison groups.

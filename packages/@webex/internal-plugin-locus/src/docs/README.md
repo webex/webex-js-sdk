@@ -74,6 +74,7 @@ Related context: [documentation index](../../docs/index.md) ·
 | `test/unit/lib/SeqCmp.json` | 25 `compareSequence` comparisons, 21 `compare` update actions, and the descriptions of the ACCEPT_NEW, KEEP_CURRENT, and DESYNC actions |
 | Sibling package webex-core, file src/lib/webex-plugin.js | `WebexPlugin#request` delegates to `webex.request` |
 | Sibling package webex-core, file src/interceptors/auth.js | The authorization header is added only for catalog or allowed-domain URLs |
+| Sibling package webex-core, files src/webex-core.js, src/interceptors/catalog-url.js, and src/config.js | The opt-in `CatalogUrlInterceptor`, enabled by `config.services.validateCatalogUrls` (default `false`), rejects non-catalog URLs |
 | Sibling package http-core, file src/http-error-subtypes.js | Builds the subtype tree in which `Conflict` (409) extends `BadRequest` |
 | Sibling package webex-core, file src/lib/webex-http-error.js | Applies that subtype tree to `WebexHttpError`, giving `WebexHttpError.Conflict` |
 | Sibling package internal-plugin-mercury, SDD module spec src/docs/README.md | The Mercury plugin registered by the side-effect import |
@@ -408,6 +409,7 @@ classDiagram
 | `join` with no correlation id on the Locus or options | Synchronous `Error('locus.correlationId or options.correlationId is required')` | Same as above | None | `src/locus.js` |
 | `compareSequence` missing an argument | Throws `` `current` is required `` or `` `incoming` is required `` | Pass both sequences | None | `src/locus.js` |
 | Any HTTP failure | Promise rejects with the `WebexHttpError` subtype for the status | Inspect the class or status | None here | `src/locus.js` |
+| `config.services.validateCatalogUrls` is `true` and a DTO URL is not a catalog service or allowed domain | Promise rejects with a plain `Error` whose message starts `Request blocked: URL not in service catalog or allowed domains`, before any request is sent | Treat as a configuration or DTO problem, not an HTTP status | None here; the `decline` and `leave` Conflict recovery does not apply | `src/locus.js` |
 | 409 on `decline` or `leave` | Resolves with the current Locus (`INV-006`) | Treat as success with fresh state | A failed follow-up GET rejects with its own error | `src/locus.js` |
 | `sync` returns no body | Resolves `{}` | Do not pass `{}` to `compare`; it has no sequence | Call `get` instead | `src/locus.js` |
 | `getCallHistory` with an invalid `from` | Synchronous RangeError from `toISOString` | Pass a date or millisecond number | None | `src/locus.js` |

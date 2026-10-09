@@ -49,9 +49,9 @@
   "toolchain": [
     {
       "name": "node",
-      "version": ">=18",
-      "origin": "repo-config",
-      "source_file": "package.json"
+      "version": "22.14",
+      "origin": "human-declared",
+      "declared_by": "akulakum@cisco.com (bootstrap instruction 'nvm use 22.14.0'; the workspace root AGENTS.md requires Node 22.14 for development; package.json engines >=18 is the consumer floor)"
     },
     {
       "name": "babel",

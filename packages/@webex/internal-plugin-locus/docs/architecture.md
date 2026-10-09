@@ -194,13 +194,17 @@ These are sibling workspace packages and external services outside this package-
 
 ## Security architecture
 
-Threat addressed: sending the user's access token to a host taken from a server DTO.
+Threats addressed: sending the user's access token to a host taken from a server DTO, and requests
+to hosts outside the service catalog (server-side request forgery).
 
 ```mermaid
 flowchart LR
   dto[Locus DTO and share URLs] -->|uri| locus[Locus plugin]
   locus -->|request options| request[webex.request]
   catalog[services catalog and allowed domains] -->|requiresCredentials| auth[webex-core auth interceptor]
+  request --> catUrl[webex-core catalog URL interceptor, opt-in]
+  catalog -->|getServiceFromUrl and allowed domains| catUrl
+  catUrl -->|blocks non-catalog URLs when enabled| auth
   request --> auth
   auth -->|authorization header only for catalog or allowed hosts| svc[Locus and Janus services]
 ```
@@ -210,8 +214,15 @@ Controls:
 - This package never reads or sends a token itself. Authorization is added by the sibling package
   webex-core auth interceptor, which adds the header only when the request URL resolves to a catalog
   service or an allowed domain (sibling package webex-core, file src/interceptors/auth.js).
+- When the host sets `config.services.validateCatalogUrls` to `true`, webex-core also installs
+  `CatalogUrlInterceptor`, which rejects a request whose URL is neither a catalog service nor an
+  allowed domain (sibling package webex-core, files src/webex-core.js and
+  src/interceptors/catalog-url.js). The option defaults to `false` in that package's
+  src/config.js, so by default no host check blocks the request.
 - Absolute URLs (`locus.url`, `locus.self.url`, `locus.syncUrl`, `share.url`) are taken from DTOs
-  without validation in this package; the interceptor above is the only host check.
+  without validation in this package; the two webex-core interceptors above are the only host
+  checks. The caller-visible rejection is listed in the Locus plugin spec Caller-visible failure
+  modes.
 
 Known gaps are recorded where the code lives: DTO-shape assumptions in the Locus plugin spec
 Pitfalls. The workspace root `SECURITY.md` is the security

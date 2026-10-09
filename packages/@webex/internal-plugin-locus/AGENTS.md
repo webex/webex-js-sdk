@@ -81,7 +81,7 @@ Definition of done:
 
 | Area             | Tooling | Version |
 | ---------------- | ------- | ------- |
-| Language runtime | node | `>=18` (`package.json` engines) |
+| Language runtime | node | 22.14 for development (workspace root `AGENTS.md`); `>=18` for consumers (`package.json` engines) |
 | Build tool       | `@webex/legacy-tools` over babel | `@babel/core` `^7.17.10` |
 | Test framework   | Jest via `webex-legacy-tools` (`test:unit`); karma via `test:browser`; chai and `@webex/test-helper-mock-webex` | workspace versions |
 | Lint/format      | eslint via `@webex/eslint-config-legacy`, prettier | eslint `^8.24.0`, prettier `^2.7.1` |
