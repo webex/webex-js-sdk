@@ -197,11 +197,6 @@ export class Call extends Eventing<CallEventTypes> implements ICall {
       {file: CALL_FILE, method: METHODS.MEDIA_ROAP_EVENTS_LISTENER}
     );
 
-    log.info(`SDP message to send : \n ${event.roapMessage?.sdp}`, {
-      file: CALL_FILE,
-      method: METHODS.MEDIA_ROAP_EVENTS_LISTENER,
-    });
-
     switch (event.roapMessage.messageType) {
       case RoapScenario.OK: {
         const mediaOk = {
