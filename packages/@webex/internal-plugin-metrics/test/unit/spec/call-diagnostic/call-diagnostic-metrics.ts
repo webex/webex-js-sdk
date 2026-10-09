@@ -81,12 +81,20 @@ describe('internal-plugin-metrics', () => {
       emailInput: 'test@test.com',
     };
 
+    const fakeMeeting6 = {
+      ...fakeMeeting,
+      id: '6',
+      correlationId: 'correlationId6',
+      callStateForMetrics: {meetingJoinPhase: 'in-meeting'},
+    };
+
     const fakeMeetings = {
       1: fakeMeeting,
       2: fakeMeeting2,
       3: fakeMeeting3,
       4: fakeMeeting4,
       5: fakeMeeting5,
+      6: fakeMeeting6,
     };
 
     let webex;
@@ -1978,6 +1986,7 @@ describe('internal-plugin-metrics', () => {
             webClientPreload: undefined,
             isAutomatedUser: false,
             userActivation: undefined,
+            meetingJoinPhase: 'pre-join',
           },
           options
         );
@@ -2004,6 +2013,7 @@ describe('internal-plugin-metrics', () => {
             webClientPreload: undefined,
             isAutomatedUser: false,
             userActivation: undefined,
+            meetingJoinPhase: 'pre-join',
           },
           eventId: 'my-fake-id',
           origin: {
@@ -2082,6 +2092,7 @@ describe('internal-plugin-metrics', () => {
             webClientPreload: undefined,
             isAutomatedUser: false,
             userActivation: undefined,
+            meetingJoinPhase: 'pre-join',
           },
           options
         );
@@ -2113,6 +2124,7 @@ describe('internal-plugin-metrics', () => {
               webClientPreload: undefined,
               isAutomatedUser: false,
               userActivation: undefined,
+              meetingJoinPhase: 'pre-join',
             },
           },
           options.preLoginId
@@ -2179,6 +2191,7 @@ describe('internal-plugin-metrics', () => {
             webClientPreload: undefined,
             isAutomatedUser: false,
             userActivation: undefined,
+            meetingJoinPhase: 'pre-join',
           },
           options
         );
@@ -2212,6 +2225,7 @@ describe('internal-plugin-metrics', () => {
               webClientPreload: undefined,
               isAutomatedUser: false,
               userActivation: undefined,
+              meetingJoinPhase: 'pre-join',
             },
           },
           options.preLoginId
@@ -2379,6 +2393,7 @@ describe('internal-plugin-metrics', () => {
             webClientPreload: true,
             isAutomatedUser: false,
             userActivation: undefined,
+            meetingJoinPhase: 'pre-join',
           },
           options
         );
@@ -2405,6 +2420,7 @@ describe('internal-plugin-metrics', () => {
             webClientPreload: true,
             isAutomatedUser: false,
             userActivation: undefined,
+            meetingJoinPhase: 'pre-join',
           },
           eventId: 'my-fake-id',
           origin: {
@@ -2855,6 +2871,7 @@ describe('internal-plugin-metrics', () => {
             webClientPreload: undefined,
             isAutomatedUser: false,
             userActivation: undefined,
+            meetingJoinPhase: 'pre-join',
           },
           eventId: 'my-fake-id',
           origin: {
@@ -2933,6 +2950,7 @@ describe('internal-plugin-metrics', () => {
             webClientPreload: undefined,
             isAutomatedUser: false,
             userActivation: undefined,
+            meetingJoinPhase: 'pre-join',
           },
           eventId: 'my-fake-id',
           origin: {
@@ -4733,6 +4751,56 @@ describe('internal-plugin-metrics', () => {
           fetchOptions.body.metrics[0].eventPayload.event.meetingJoinPhase,
           options.meetingJoinPhase
         );
+      });
+
+      it('includes expected meetingJoinPhase from meeting callStateForMetrics when in-meeting', async () => {
+        // meetingId means in-meeting
+        const options = {
+          meetingId: fakeMeeting6.id,
+        };
+
+        const fetchOptions = await cd.buildClientEventFetchRequestOptions({
+          name: 'client.exit.app',
+          payload: {trigger: 'user-interaction', canProceed: false},
+          options,
+        });
+
+        assert.equal(fetchOptions.body.metrics[0].eventPayload.event.meetingJoinPhase, 'in-meeting');
+      });
+
+      it('prioritizes meetingJoinPhase from options over meeting callStateForMetrics', async () => {
+        // meetingId means in-meeting
+        const options = {
+          meetingId: fakeMeeting6.id,
+          meetingJoinPhase: 'join',
+        };
+
+        const fetchOptions = await cd.buildClientEventFetchRequestOptions({
+          name: 'client.exit.app',
+          payload: {trigger: 'user-interaction', canProceed: false},
+          options,
+        });
+
+        assert.equal(
+          fetchOptions.body.metrics[0].eventPayload.event.meetingJoinPhase,
+          options.meetingJoinPhase
+        );
+      });
+
+      it('defaults meetingJoinPhase to pre-join during prejoin when not provided in options', async () => {
+        // correlationId and no meeting id means prejoin
+        const options = {
+          correlationId: 'myCorrelationId',
+          preLoginId: 'myPreLoginId',
+        };
+
+        const fetchOptions = await cd.buildClientEventFetchRequestOptions({
+          name: 'client.exit.app',
+          payload: {trigger: 'user-interaction', canProceed: false},
+          options,
+        });
+
+        assert.equal(fetchOptions.body.metrics[0].eventPayload.event.meetingJoinPhase, 'pre-join');
       });
 
       it('builds request options before webex is ready (no meetings plugin or internal metrics config)', async () => {
