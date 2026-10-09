@@ -341,6 +341,93 @@ describe('plugin-meetings', () => {
   describe('meeting index', () => {
     describe('Public Api Contract', () => {
       describe('#constructor', () => {
+        it('forwards E2EE facade events and keeps facade APIs off Meeting', () => {
+          TriggerProxy.trigger.restore();
+          const e2ee = new EventEmitter();
+          const e2eeManager = {createE2eeMeeting: sinon.stub().returns(e2ee)};
+          const meetingWithE2ee = new Meeting(
+            {
+              userId: uuid1,
+              resource: uuid2,
+              deviceUrl: uuid3,
+              locus: {url: url1},
+              destination: testDestination,
+              destinationType: DESTINATION_TYPE.MEETING_ID,
+              correlationId,
+              selfId: uuid1,
+              e2eeManager,
+            },
+            {parent: webex}
+          );
+          const events = [
+            [EVENT_TRIGGERS.MEETING_E2EE_SECURITY_CODE_UPDATED, {securityCode: 'SEC'}],
+            [EVENT_TRIGGERS.MEETING_E2EE_STATE_CHANGED, {state: 'joined'}],
+            [EVENT_TRIGGERS.MEETING_E2EE_MEDIA_SERVICES_CHANGED, {hasMediaServices: true}],
+            [EVENT_TRIGGERS.MEETING_E2EE_FAILURE, {reason: 'joinFailure'}],
+          ];
+
+          events.forEach(([event, payload]) => {
+            const listener = sinon.spy();
+
+            meetingWithE2ee.on(event, listener);
+            e2ee.emit(event, payload);
+            assert.calledOnceWithExactly(listener, payload);
+          });
+
+          assert.isUndefined(meetingWithE2ee.getSecurityCode);
+          assert.isUndefined(meetingWithE2ee.e2eeState);
+          assert.isUndefined(meetingWithE2ee.e2eeHasMediaServices);
+        });
+
+        it('emits trust state changes caused by Locus and E2EE updates', () => {
+          TriggerProxy.trigger.restore();
+          const e2ee = new EventEmitter();
+
+          e2ee.state = 'joined';
+          e2ee.hasUntrustedMediaServices = false;
+          const meetingWithE2ee = new Meeting(
+            {
+              userId: uuid1,
+              resource: uuid2,
+              deviceUrl: uuid3,
+              locus: {url: url1},
+              destination: testDestination,
+              destinationType: DESTINATION_TYPE.MEETING_ID,
+              correlationId,
+              selfId: uuid1,
+              e2eeManager: {createE2eeMeeting: sinon.stub().returns(e2ee)},
+            },
+            {parent: webex}
+          );
+          const listener = sinon.spy();
+
+          meetingWithE2ee.on(EVENT_TRIGGERS.MEETING_E2EE_TRUST_STATE_CHANGED, listener);
+          meetingWithE2ee.locusInfo.info = {isV2E2EEncrypted: true};
+          meetingWithE2ee.locusInfo.emitScoped(
+            {},
+            LOCUSINFO.EVENTS.MEETING_INFO_UPDATED,
+            {isInitializing: false}
+          );
+
+          assert.equal(meetingWithE2ee.e2eeTrustState, 'zeroTrust');
+          assert.deepEqual(listener.args, [[{e2eeTrustState: 'zeroTrust'}]]);
+
+          e2ee.state = 'joining';
+          e2ee.emit(EVENT_TRIGGERS.MEETING_E2EE_STATE_CHANGED, {state: 'joining'});
+
+          assert.equal(meetingWithE2ee.e2eeTrustState, 'calculating');
+          assert.calledTwice(listener);
+          assert.calledWithExactly(listener.secondCall, {e2eeTrustState: 'calculating'});
+
+          e2ee.state = 'joined';
+          e2ee.hasUntrustedMediaServices = true;
+          e2ee.emit(EVENT_TRIGGERS.MEETING_E2EE_MEDIA_SERVICES_CHANGED, {hasMediaServices: true});
+
+          assert.equal(meetingWithE2ee.e2eeTrustState, 'strong');
+          assert.calledThrice(listener);
+          assert.calledWithExactly(listener.thirdCall, {e2eeTrustState: 'strong'});
+        });
+
         it('should have created a meeting object with public properties', () => {
           assert.exists(meeting);
           assert.exists(meeting.webex);

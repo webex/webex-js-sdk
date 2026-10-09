@@ -116,5 +116,55 @@ describe('plugin-meetings', () => {
         assert.equal(allMembers.member2, member2);
       });
     });
+
+    describe('getMemberByDeviceUrl (reverse index)', () => {
+      const withDevices = (id, deviceUrls) =>
+        new Member({id, controls: {}, status: {}, devices: deviceUrls.map((url) => ({url}))});
+
+      it('resolves a member by any of its device urls', () => {
+        const member = withDevices('m1', ['device-a', 'device-b']);
+
+        collection.set('m1', member);
+
+        assert.equal(collection.getMemberByDeviceUrl('device-a'), member);
+        assert.equal(collection.getMemberByDeviceUrl('device-b'), member);
+        assert.isUndefined(collection.getMemberByDeviceUrl('device-missing'));
+      });
+
+      it('drops a members device urls when it is removed', () => {
+        const member = withDevices('m1', ['device-a']);
+        collection.set('m1', member);
+
+        collection.remove('m1');
+
+        assert.isUndefined(collection.getMemberByDeviceUrl('device-a'));
+      });
+
+      it('updates the index when a member is replaced with different devices', () => {
+        collection.set('m1', withDevices('m1', ['device-a']));
+
+        const updated = withDevices('m1', ['device-b']);
+        collection.set('m1', updated);
+
+        assert.isUndefined(collection.getMemberByDeviceUrl('device-a'));
+        assert.equal(collection.getMemberByDeviceUrl('device-b'), updated);
+      });
+
+      it('clears the index on reset', () => {
+        collection.set('m1', withDevices('m1', ['device-a']));
+
+        collection.reset();
+
+        assert.isUndefined(collection.getMemberByDeviceUrl('device-a'));
+      });
+
+      it('rebuilds the index on setAll', () => {
+        const member = withDevices('m1', ['device-a']);
+
+        collection.setAll({m1: member});
+
+        assert.equal(collection.getMemberByDeviceUrl('device-a'), member);
+      });
+    });
   });
 });

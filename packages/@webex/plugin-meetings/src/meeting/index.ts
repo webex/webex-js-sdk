@@ -86,6 +86,8 @@ import ReconnectionManager from '../reconnection-manager';
 import ReconnectionNotStartedError from '../common/errors/reconnection-not-started';
 import MeetingRequest from './request';
 import Members from '../members/index';
+import E2eeMeeting from '../e2ee/E2eeMeeting';
+import type {E2eeTrustState} from '../e2ee/types';
 import MeetingUtil from './util';
 import MeetingsUtil from '../meetings/util';
 import RecordingUtil from '../recording-controller/util';
@@ -631,6 +633,8 @@ export default class Meeting extends StatelessWebexPlugin {
   meetingInfo: any;
   meetingRequest: MeetingRequest;
   members: Members;
+  e2ee?: E2eeMeeting;
+  private lastE2eeTrustState?: E2eeTrustState;
   options: object;
   orgId: string;
   owner: string;
@@ -1105,6 +1109,30 @@ export default class Meeting extends StatelessWebexPlugin {
      */
     // @ts-ignore - Fix type
     this.roap = new Roap({}, {parent: this.webex});
+
+    /**
+     * The per-meeting E2EE facade (undefined when no E2EE manager is provided).
+     * @instance
+     * @type {E2eeMeeting}
+     * @private
+     * @memberof Meeting
+     */
+    this.e2ee = attrs.e2eeManager?.createE2eeMeeting(this);
+    const {e2ee} = this;
+
+    if (e2ee) {
+      [
+        EVENT_TRIGGERS.MEETING_E2EE_SECURITY_CODE_UPDATED,
+        EVENT_TRIGGERS.MEETING_E2EE_STATE_CHANGED,
+        EVENT_TRIGGERS.MEETING_E2EE_MEDIA_SERVICES_CHANGED,
+        EVENT_TRIGGERS.MEETING_E2EE_FAILURE,
+      ].forEach((event) => this.forwardEvent(e2ee, event, event));
+
+      [
+        EVENT_TRIGGERS.MEETING_E2EE_STATE_CHANGED,
+        EVENT_TRIGGERS.MEETING_E2EE_MEDIA_SERVICES_CHANGED,
+      ].forEach((event) => e2ee.on(event, () => this.updateE2eeTrustState()));
+    }
     /**
      * indicates if an SDP exchange is happening
      *
@@ -1628,6 +1656,7 @@ export default class Meeting extends StatelessWebexPlugin {
 
     this.setUpLocusInfoListeners();
     this.locusInfo.init(attrs.locus ? attrs.locus : {});
+    this.lastE2eeTrustState = this.e2eeTrustState;
     this.hasJoinedOnce = false;
 
     /**
@@ -2846,6 +2875,20 @@ export default class Meeting extends StatelessWebexPlugin {
 
       // If user moved to a JOINED state and there is a pending floor grant trigger it
       this.requestScreenShareFloorIfPending();
+
+      // Start the E2EE MLS join only once Locus confirms self has transitioned to JOINED. Joining
+      // earlier (e.g. right after the join request, or while in the lobby) is too early and fails.
+      const wasSelfJoined = payload.oldSelf?.state === MEETING_STATE.STATES.JOINED;
+      const isSelfJoined = payload.newSelf?.state === MEETING_STATE.STATES.JOINED;
+
+      if (!wasSelfJoined && isSelfJoined) {
+        this.e2ee?.start().catch((error) => {
+          LoggerProxy.logger.error(
+            'Meeting:index#setUpLocusSelfListener --> E2EE start failed',
+            error
+          );
+        });
+      }
     });
   }
 
@@ -3747,6 +3790,7 @@ export default class Meeting extends StatelessWebexPlugin {
       }
     });
     this.locusInfo.on(LOCUSINFO.EVENTS.MEETING_INFO_UPDATED, ({isInitializing}) => {
+      this.updateE2eeTrustState();
       this.updateMeetingActions();
       this.recordingController.setDisplayHints(this.userDisplayHints);
       this.recordingController.setUserPolicy(this.selfUserPolicies);
@@ -4377,6 +4421,61 @@ export default class Meeting extends StatelessWebexPlugin {
    */
   public getMembers() {
     return this.members;
+  }
+
+  /**
+   * The meeting's overall E2EE trust state, derived from the Locus E2EE flags, the MLS join state
+   * and media-service presence.
+   * @returns {E2eeTrustState}
+   * @public
+   * @memberof Meeting
+   */
+  public get e2eeTrustState(): E2eeTrustState {
+    const info: any = this.locusInfo?.info;
+    const adaptive = !!info?.isBestEffortE2EEncryption;
+    const isEncrypted = !!info?.isV2E2EEncrypted;
+
+    if (isEncrypted && this.e2ee?.state !== 'joined') {
+      return 'calculating';
+    }
+
+    const zeroTrust = isEncrypted && !this.e2ee?.hasUntrustedMediaServices;
+
+    if (adaptive) {
+      return zeroTrust ? 'adaptiveZeroTrust' : 'adaptiveStrong';
+    }
+
+    return zeroTrust ? 'zeroTrust' : 'strong';
+  }
+
+  /**
+   * Emits when a Locus or MLS update changes the meeting's overall E2EE trust state.
+   * @returns {void}
+   * @private
+   */
+  private updateE2eeTrustState(): void {
+    const {e2eeTrustState} = this;
+
+    if (this.lastE2eeTrustState === undefined) {
+      this.lastE2eeTrustState = e2eeTrustState;
+
+      return;
+    }
+
+    if (this.lastE2eeTrustState === e2eeTrustState) {
+      return;
+    }
+
+    this.lastE2eeTrustState = e2eeTrustState;
+    Trigger.trigger(
+      this,
+      {
+        file: 'meeting/index',
+        function: 'updateE2eeTrustState',
+      },
+      EVENT_TRIGGERS.MEETING_E2EE_TRUST_STATE_CHANGED,
+      {e2eeTrustState}
+    );
   }
 
   /**
@@ -10558,6 +10657,8 @@ export default class Meeting extends StatelessWebexPlugin {
     this.clearDataChannelToken();
 
     await this.cleanupLLMConneciton({throwOnError: false});
+
+    await this.e2ee?.stop();
   };
 
   /**

@@ -72,6 +72,7 @@ const toggleUnifiedMeetings = document.getElementById('toggle-unified-meeting');
 const currentMeetingInfoStatus = document.getElementById('current-meeting-info-status');
 
 const enableLLM = document.getElementById('meetings-enable-llm');
+const enableE2ee = document.getElementById('meetings-enable-e2ee');
 const enableTranscript = document.getElementById('meetings-enable-transcription');
 const spokenLangNote = document.getElementById('only-host-spoken-language');
 
@@ -140,6 +141,7 @@ function generateWebexConfig({credentials}) {
         tls: tlsReachabilityConfigElm.checked,
       },
       enableAutomaticLLM: enableLLM.checked,
+      enableE2ee: enableE2ee.checked,
     },
     credentials,
     // Any other sdk config we need

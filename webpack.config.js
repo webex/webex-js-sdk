@@ -89,7 +89,15 @@ module.exports = (env = {NODE_ENV: process.env.NODE_ENV || 'production'}) => ({
   devServer: {
     https: true,
     port: process.env.PORT || 8000,
-    static: './docs',
+    static: [
+      './docs',
+      {
+        // Serve the e2ee WASM module at /wasm so the samples can load it (WasmLoader defaults to
+        // /wasm/e2ee.wasm). Files live in the plugin-meetings package, not under ./docs.
+        directory: path.resolve(__dirname, 'packages/@webex/plugin-meetings/wasm'),
+        publicPath: '/wasm',
+      },
+    ],
   },
   resolve: {
     fallback: {
