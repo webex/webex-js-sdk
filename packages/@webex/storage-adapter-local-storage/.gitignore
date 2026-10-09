@@ -1,0 +1,20 @@
+# Re-include the SDD documentation tree for this package.
+#
+# The repository root ignores `packages/**/docs/` (.gitignore:2), which would otherwise make the
+# canonical module spec and the repo-standards standing docs unversionable. The SDD manifest
+# schema enumerates `docs_root: docs`,
+# `standing_docs_root: docs`, and `spec_index_path: docs/specs/README.md`, so relocating them is not
+# permitted; they are re-included here instead.
+#
+# Generated run records under `.generated/` stay ignored by the root rule and are deliberately not
+# re-included.
+
+# Standing docs and the canonical module spec.
+!/docs/
+!/docs/**
+!/src/docs/
+!/src/docs/**
+
+# Repo Annotation generates this local template cache. Regenerate it before running
+# template-based SDD checks in a fresh clone; keep it out of version control.
+/.sdd/templates/
