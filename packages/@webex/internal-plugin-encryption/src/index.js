@@ -12,11 +12,11 @@ import '@webex/internal-plugin-device';
 
 import '@webex/internal-plugin-mercury';
 
-import {registerInternalPlugin} from '@webex/webex-core';
+import WebexCore, {registerInternalPlugin} from '@webex/webex-core';
 import {has, isObject, isString} from 'lodash';
 
 import Encryption from './encryption';
-import config from './config';
+import config, {applyEncryptionConfigOverrides} from './config';
 import {DryError} from './kms-errors';
 
 import KmsDryErrorInterceptor from './kms-dry-error-interceptor';
@@ -28,6 +28,30 @@ if (process.env.NODE_ENV === 'test') {
     KmsDryErrorInterceptor: KmsDryErrorInterceptor.create,
   };
 }
+
+let encryptionConfigNormalizationInstalled = false;
+
+function installEncryptionConfigNormalization() {
+  if (encryptionConfigNormalizationInstalled) {
+    return;
+  }
+
+  encryptionConfigNormalizationInstalled = true;
+
+  const {initialize, setConfig} = WebexCore.prototype;
+
+  WebexCore.prototype.initialize = function initializeWithEncryptionConfig(attrs = {}) {
+    initialize.call(this, attrs);
+    applyEncryptionConfigOverrides(this.config, attrs.config);
+  };
+
+  WebexCore.prototype.setConfig = function setConfigWithEncryptionConfig(newConfig = {}) {
+    setConfig.call(this, newConfig);
+    applyEncryptionConfigOverrides(this.config, newConfig);
+  };
+}
+
+installEncryptionConfigNormalization();
 
 registerInternalPlugin('encryption', Encryption, {
   payloadTransformer: {

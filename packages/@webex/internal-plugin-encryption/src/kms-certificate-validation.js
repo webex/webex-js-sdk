@@ -221,12 +221,14 @@ const validateKMS =
       validateCommonName(certificates, jwt);
       validatePublicCertificate(certificates, jwt);
 
-      // Skip validating signatures if no CA roots were provided
-      const promise = caroots
-        ? validateCertificatesSignature(certificates, caroots)
-        : Promise.resolve();
+      // Fail closed: without trusted CA roots the x5c chain cannot be
+      // authenticated, and an attacker-supplied self-signed certificate
+      // would satisfy every other check above.
+      if (!isArray(caroots) || caroots.length === 0) {
+        throwError('no trusted CA roots configured; cannot validate KMS certificate chain');
+      }
 
-      return promise.then(() => jwt);
+      return validateCertificatesSignature(certificates, caroots).then(() => jwt);
     });
 
 export default validateKMS;
