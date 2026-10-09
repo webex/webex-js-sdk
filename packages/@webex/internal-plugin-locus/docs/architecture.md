@@ -165,7 +165,7 @@ surface is served, so `api-specs/openapi.yaml` is omitted.
 
 | Artifact | Publish target | Versioning rule | Deprecation window | Changelog or migration obligation |
 | -------- | -------------- | --------------- | ------------------ | --------------------------------- |
-| `@webex/internal-plugin-locus` | npm, through the `deploy:npm` script, which wraps Yarn's npm publish | Workspace release tooling; README says the internal plugin does not strictly follow semver | None declared in code | No package-local changelog; workspace tooling owns it |
+| `@webex/internal-plugin-locus` | npm, through the `deploy:npm` script (manifest `commands.deploy`) | Workspace release tooling; README says the internal plugin does not strictly follow semver | None declared in code | No package-local changelog; workspace tooling owns it |
 
 ## Commands and generated artifacts
 
@@ -177,7 +177,7 @@ surface is served, so `api-specs/openapi.yaml` is omitted.
 | `yarn workspace @webex/internal-plugin-locus test:unit` | package | `test/unit/spec/` | Jest result | — |
 | `yarn workspace @webex/internal-plugin-locus test:browser` | package | integration specs (none exist) | karma result | Needs a browser |
 | `yarn workspace @webex/internal-plugin-locus test:style` | package | files under `src/` | eslint result | Markdown is reported as ignored |
-| `yarn workspace @webex/internal-plugin-locus deploy:npm` | package | build output, `package.json` | npm publish | Release pipeline only |
+| `yarn workspace @webex/internal-plugin-locus deploy:npm` | package | build output, `package.json` | Publishes the package to the npm registry | Release pipeline only |
 
 ## Cross-repository topology
 
