@@ -13,6 +13,9 @@
   "engines": {
     "node": ">=18"
   },
+  "browser": {
+    "isbot": "isbot/index.js"
+  },
   "browserify": {
     "transform": [
       "babelify",
