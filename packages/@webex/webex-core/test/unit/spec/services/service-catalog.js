@@ -124,11 +124,12 @@ describe('parseCatalogUrl()', () => {
     assert.isNull(parseCatalogUrl('not-a-url'));
   });
 
-  it('memoizes results, returning the same reference for repeated calls', () => {
-    const first = parseCatalogUrl('https://memoized.example.com/api/v1');
-    const second = parseCatalogUrl('https://memoized.example.com/api/v1');
+  it('does not retain parsed results between calls', () => {
+    const first = parseCatalogUrl('https://example.com/api/v1');
+    const second = parseCatalogUrl('https://example.com/api/v1');
 
-    assert.strictEqual(first, second);
+    assert.deepEqual(first, second);
+    assert.notStrictEqual(first, second);
   });
 });
 
@@ -462,6 +463,103 @@ describe('webex-core', () => {
         hosts: [{host: 'example1.com'}, {host: 'example2.com'}],
       };
 
+      it('parses the candidate URL once for the full catalog scan', () => {
+        const candidate = 'https://example.com/resource/id';
+        const OriginalURL = globalThis.URL;
+        let candidateParseCount = 0;
+
+        class CountingURL extends OriginalURL {
+          constructor(input, base) {
+            if (input === candidate) {
+              candidateParseCount += 1;
+            }
+
+            super(input, base);
+          }
+        }
+
+        globalThis.URL = CountingURL;
+
+        try {
+          catalog.serviceGroups.postauth.push(otherService, {
+            defaultUrl: 'https://example.com/resource',
+            hosts: [],
+          });
+
+          catalog.findServiceUrlFromUrl(candidate);
+        } finally {
+          globalThis.URL = OriginalURL;
+        }
+
+        assert.equal(candidateParseCount, 1);
+      });
+
+      it('does not parse catalog URLs whose host metadata cannot match', () => {
+        const skippedService = {
+          matchHost: 'other.example.com',
+          get defaultUrl() {
+            throw new Error('mismatched catalog URL should not be parsed');
+          },
+          hosts: [],
+        };
+        const expectedService = {
+          matchHost: 'example.com',
+          defaultUrl: 'https://example.com/resource',
+          hosts: [],
+        };
+
+        catalog.serviceGroups.postauth.push(skippedService, expectedService);
+
+        assert.equal(
+          catalog.findServiceUrlFromUrl('https://example.com/resource/id'),
+          expectedService
+        );
+      });
+
+      it('uses refreshed host metadata when an existing service URL is updated', () => {
+        const serviceName = 'example';
+
+        catalog.updateServiceUrls('postauth', [
+          {
+            name: serviceName,
+            defaultUrl: 'https://old.example.com/resource',
+            hosts: [],
+          },
+        ]);
+
+        const service = catalog._getUrl(serviceName, 'postauth');
+
+        catalog.updateServiceUrls('postauth', [
+          {
+            name: serviceName,
+            defaultUrl: 'https://new.example.com/resource',
+            hosts: [],
+          },
+        ]);
+
+        assert.equal(catalog._getUrl(serviceName, 'postauth'), service);
+        assert.equal(service.matchHost, 'new.example.com');
+        assert.equal(catalog.findServiceUrlFromUrl('https://new.example.com/resource/id'), service);
+      });
+
+      it('derives canonical default and alternate match hosts during ingestion', () => {
+        catalog.updateServiceUrls('postauth', [
+          {
+            name: 'example',
+            defaultUrl: 'https://BASE.EXAMPLE.COM:8443/resource',
+            hosts: [{host: 'ALTERNATE.EXAMPLE.COM'}, {host: 'b\u00fccher.example'}],
+          },
+        ]);
+
+        const service = catalog._getUrl('example', 'postauth');
+
+        assert.equal(service.matchHost, 'base.example.com:8443');
+        assert.deepEqual(
+          service.hosts.map(({matchHost}) => matchHost),
+          ['alternate.example.com:8443', 'xn--bcher-kva.example:8443']
+        );
+      });
+
       it.each([
         'discovery',
         'preauth',
@@ -503,6 +601,63 @@ describe('webex-core', () => {
         const service = catalog.findServiceUrlFromUrl(url);
 
         assert.equal(service, exampleService);
+      });
+
+      it('matches an alternate host using the non-default port from the default url', () => {
+        const exampleService = {
+          defaultUrl: 'https://example.com:8443/resource',
+          hosts: [{host: 'alternate.example.com'}],
+        };
+
+        catalog.serviceGroups.postauth.push(exampleService);
+
+        assert.equal(
+          catalog.findServiceUrlFromUrl('https://alternate.example.com:8443/resource/id'),
+          exampleService
+        );
+      });
+
+      it('matches the default url when separate host metadata disagrees', () => {
+        const exampleService = {
+          defaultHost: 'stale.example.com',
+          defaultUrl: 'https://actual.example.com/resource',
+          hosts: [],
+        };
+
+        catalog.serviceGroups.postauth.push(exampleService);
+
+        assert.equal(
+          catalog.findServiceUrlFromUrl('https://actual.example.com/resource/id'),
+          exampleService
+        );
+      });
+
+      it('normalizes the case of an alternate hostname before matching', () => {
+        const exampleService = {
+          defaultUrl: 'https://example.com/resource',
+          hosts: [{host: 'ALTERNATE.EXAMPLE.COM'}],
+        };
+
+        catalog.serviceGroups.postauth.push(exampleService);
+
+        assert.equal(
+          catalog.findServiceUrlFromUrl('https://alternate.example.com/resource/id'),
+          exampleService
+        );
+      });
+
+      it('normalizes an internationalized alternate hostname before matching', () => {
+        const exampleService = {
+          defaultUrl: 'https://example.com/resource',
+          hosts: [{host: 'b\u00fccher.example'}],
+        };
+
+        catalog.serviceGroups.postauth.push(exampleService);
+
+        assert.equal(
+          catalog.findServiceUrlFromUrl('https://xn--bcher-kva.example/resource/id'),
+          exampleService
+        );
       });
 
       describe('security: origin validation', () => {

@@ -64,6 +64,7 @@
     "uuid": "^3.3.2"
   },
   "scripts": {
+    "benchmark:service-url-lookups": "yarn build:src && node ./benchmarks/service-url-lookups.js",
     "build": "yarn build:src",
     "build:src": "webex-legacy-tools build -dest \"./dist\" -src \"./src\" -js -ts -maps",
     "deploy:npm": "yarn npm publish",
