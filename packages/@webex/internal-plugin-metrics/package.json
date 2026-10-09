@@ -14,7 +14,7 @@
     "node": ">=18"
   },
   "browser": {
-    "isbot": "isbot"
+    "isbot": "isbot/index.js"
   },
   "browserify": {
     "transform": [
