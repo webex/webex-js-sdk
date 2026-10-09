@@ -44,7 +44,7 @@ package is a library published to npm, so that artifact is omitted in `.sdd/mani
 | --- | --- | --- | --- |
 | `src/` | Locus REST wrappers, sequence comparison, delta merge, and event names | Partial | `src/docs/README.md` |
 
-Generator-side field measurement is complete. Field coverage measured 2026-10-09 is 93.3% (14 of 15 mandatory fields PRESENT for `src`). Critical fields are 8 of 8 PRESENT. The WEAK field is test strategy: the 134 unit cases cover only sequence comparison, and the untested paths are listed in the module spec's Verification section. Independent validation is pending. Coverage state stays `Partial` until REST and merge behavior is tested, a characterization baseline exists, and a spec-drift record exists.
+Generator-side field measurement is complete. Field coverage measured 2026-10-09 is 93.3% (14 of 15 mandatory fields PRESENT for `src`). Critical fields are 8 of 8 PRESENT. The WEAK field is test strategy: the 134 unit cases cover only sequence comparison, and the untested paths are listed in the module spec's Verification section. Independent validation returned pass-with-warnings on 2026-10-09 with 0 Blocking. Coverage state stays `Partial` until REST and merge behavior is tested, a characterization baseline exists, and a spec-drift record exists.
 
 ## Change and verification routing
 

@@ -105,7 +105,7 @@
       "path": "src",
       "canonical_spec": "src/docs/README.md",
       "coverage_status": "Partial",
-      "coverage_evidence": "Field coverage 93.3% (14/15) assessed 2026-10-09 by the generator; critical field coverage 8/8. The one WEAK field is test strategy: test/unit/spec/locus.js runs 134 fixture cases that cover compareSequence and compare (including the delta and empty-sequence paths), but no test exercises registration, any REST wrapper, the Conflict recovery in decline and leave, merge, getCallHistory, or eventKeys, and no characterization baseline exists. Independent validation is pending (spec-validator on a different runtime). Held at Partial: untested REST and merge behavior, no characterization baseline, and no spec-drift record.",
+      "coverage_evidence": "Field coverage 93.3% (14/15) assessed 2026-10-09 by the generator; critical field coverage 8/8. The one WEAK field is test strategy: test/unit/spec/locus.js runs 134 fixture cases that cover compareSequence and compare (including the delta and empty-sequence paths), but no test exercises registration, any REST wrapper, the Conflict recovery in decline and leave, merge, getCallHistory, or eventKeys, and no characterization baseline exists. Independent validation (spec-validator, runtime current-session) returned pass-with-warnings on 2026-10-09 with 0 Blocking. Held at Partial: untested REST and merge behavior, no characterization baseline, and no spec-drift record.",
       "last_assessed": "2026-10-09",
       "contracts": {
         "provides": [
