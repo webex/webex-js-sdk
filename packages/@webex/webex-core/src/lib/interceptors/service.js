@@ -47,9 +47,15 @@ export default class ServiceInterceptor extends Interceptor {
 
         return options;
       })
-      .catch(() =>
-        Promise.reject(new Error(`service-interceptor: '${service}' is not a known service`))
-      );
+      .catch((error) => {
+        if (error && error.reason === 'invalid_token') {
+          return Promise.reject(error);
+        }
+
+        return Promise.reject(
+          new Error(`service-interceptor: '${service}' is not a known service`)
+        );
+      });
   }
 
   /* eslint-disable class-methods-use-this */

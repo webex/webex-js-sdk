@@ -611,6 +611,71 @@ describe('webex-core', () => {
 
         sinon.assert.calledWith(services.collectPreauthCatalog, {orgId: 'orgId'});
         sinon.assert.calledWith(services.logger.warn, 'services: cannot retrieve postauth catalog');
+        assert.isNull(services._getCatalogAuthFailure());
+      });
+
+      it('stores invalid_token when the postauth catalog fails with 401', async () => {
+        const error = new Error('unauthorized');
+
+        error.statusCode = 401;
+
+        services.webex.credentials = {
+          getOrgId: sinon.stub().returns('orgId'),
+          canAuthorize: true,
+        };
+
+        services.collectPreauthCatalog = sinon.stub().resolves();
+        services.updateServices = sinon.stub().rejects(error);
+
+        await services.initServiceCatalogs();
+
+        assert.isTrue(services.initFailed);
+        assert.deepEqual(services._getCatalogAuthFailure(), {status: 401, reason: 'invalid_token'});
+      });
+
+      it('stores invalid_token when the postauth catalog fails with 403', async () => {
+        const error = new Error('forbidden');
+
+        error.status = 403;
+
+        services.webex.credentials = {
+          getOrgId: sinon.stub().returns('orgId'),
+          canAuthorize: true,
+        };
+
+        services.collectPreauthCatalog = sinon.stub().resolves();
+        services.updateServices = sinon.stub().rejects(error);
+
+        await services.initServiceCatalogs();
+
+        assert.deepEqual(services._getCatalogAuthFailure(), {status: 403, reason: 'invalid_token'});
+      });
+    });
+
+    describe('#waitForService', () => {
+      it('rejects with invalid_token when the postauth catalog failed with 401 and the service is missing', async () => {
+        services.webex.config.services = {
+          servicesNotNeedValidation: [],
+        };
+        services.webex.internal.metrics = {
+          submitClientMetrics: sinon.stub(),
+        };
+        services._recordCatalogAuthFailure(
+          Object.assign(new Error('unauthorized'), {statusCode: 401})
+        );
+        catalog.isReady = true;
+
+        try {
+          await services.waitForService({name: 'wcc-api-gateway'});
+          assert.fail('expected waitForService to reject');
+        } catch (error) {
+          assert.equal(error.reason, 'invalid_token');
+          assert.equal(error.statusCode, 401);
+          assert.equal(
+            error.message,
+            "The access token is invalid or was revoked. Sign in again before calling 'wcc-api-gateway'."
+          );
+        }
       });
     });
 
