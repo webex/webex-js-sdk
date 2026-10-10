@@ -170,7 +170,7 @@ import type {
  *
  *     // Login with browser-based calling
  *     await cc.stationLogin({
- *       teamId: profile.teams[0].teamId,
+ *       teamId: profile.teams[0].id,
  *       loginOption: 'BROWSER'
  *     });
  *
@@ -701,12 +701,12 @@ export default class ContactCenter extends WebexPlugin implements IContactCenter
    *
    * console.log('Agent ID:', profile.agentId);
    * console.log('Default DN:', profile.defaultDn);
-   * console.log('Teams:', profile.teams.map(t => t.teamId));
+   * console.log('Teams:', profile.teams.map(t => t.id));
    * console.log('WebRTC Enabled:', profile.webRtcEnabled);
    * console.log('Supported Login Options:', profile.loginVoiceOptions);
    *
    * // Now you can proceed with station login, state changes, etc.
-   * await cc.stationLogin({ teamId: profile.teams[0].teamId, loginOption: 'BROWSER' });
+   * await cc.stationLogin({ teamId: profile.teams[0].id, loginOption: 'BROWSER' });
    * ```
    */
   public async register(): Promise<Profile> {
@@ -1436,7 +1436,7 @@ export default class ContactCenter extends WebexPlugin implements IContactCenter
         {
           ...MetricsManager.getCommonTrackingFieldForAQMResponse(agentStatusResponse),
           requestedState: data.state,
-          teamId: this.agentConfig?.teams[0]?.teamId ?? EMPTY_STRING,
+          teamId: this.agentConfig?.teams[0]?.id ?? EMPTY_STRING,
           status: agentStatusResponse.data?.status,
           subStatus: agentStatusResponse.data?.subStatus,
           auxCodeId: data.auxCodeId,
