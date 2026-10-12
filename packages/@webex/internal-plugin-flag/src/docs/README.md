@@ -9,8 +9,8 @@ doc_kind: module-spec
 generated_from: module-spec@0.3.0
 generated_by: claude-cowork
 approved_by: akulakum@cisco.com
-updated_at: 2026-10-12T14:19:08Z
-validation_status: PASS-WITH-WARNINGS
+updated_at: 2026-10-12T14:24:10Z
+validation_status: pass-with-warnings
 -->
 
 # Flag plugin
@@ -38,7 +38,7 @@ Related context: [documentation index](../../docs/index.md) ·
 | Parent spec       | — |
 | Doc kind          | Module spec |
 | Coverage score    | 93.3% assessed 2026-10-12 — 14 of 15 mandatory fields PRESENT, critical 8 of 8; test strategy is WEAK (gaps listed under Verification) and no characterization baseline exists. Independent validation: see the Validation status row |
-| Validation status | PASS-WITH-WARNINGS; assessed 2026-10-12 by validator current-session; 0 Blocking, 6 Minor |
+| Validation status | pass-with-warnings; assessed 2026-10-12 by validator current-session; 0 Blocking, 6 Minor |
 
 ## Applicability
 
@@ -46,7 +46,7 @@ Related context: [documentation index](../../docs/index.md) ·
 | ------------------------------------ | ---------- | ------------------ | ------------- |
 | `module.has_tiers`                   | N/A        | No tier policy exists in this package or its `package.json` | Tier |
 | `module.has_ui`                      | N/A        | No view or screen | UI use-case flow |
-| `module.crosses_service_boundaries`  | Applicable | Once its guards pass, each method calls webex.request against the user-apps flags service, a flag URL, or a conversation host; mapToActivities sends nothing when no flag passes INV-003 (`src/flag.js`) | Cross-boundary use-case flow |
+| `module.crosses_service_boundaries`  | Applicable | Once its guards pass, each method calls webex.request against the user-apps flags service, a flag URL, or a conversation host; mapToActivities sends no bulk fetch when no flag passes INV-003 (its catalog wait can still send service-catalog requests) (`src/flag.js`) | Cross-boundary use-case flow |
 | `module.holds_client_state`          | N/A        | No state is kept between calls; each method builds its request from its arguments | Client state model |
 | `module.enforces_domain_rules`       | Applicable | Required url fields, the conversation-host rule, the fixed state values, and the multistatus '200' filter (`src/flag.js`) | Business rules and invariants |
 | `module.is_concurrent_async`         | Applicable | Each method returns a promise unless reading a property of its argument throws (the synchronous TypeError cases under Caller-visible failure modes); mapToActivities sends one bulk fetch per conversation URL in parallel | Concurrency and reactive flow |
@@ -158,8 +158,8 @@ Declared dependencies that `src/` does not import are listed in the architecture
 `Flag` is built with `WebexPlugin.extend` and mounted by webex-core as a child of `webex.internal`.
 Each method is stateless. `create`, `list`, `archive`, `unflag`, and `delete` check their input,
 build one request object, and return the `webex.request` promise mapped to the part of the response
-they need (`MOD-003` to `MOD-006`). `mapToActivities` sends one request per accepted conversation
-URL, or none.
+they need (`MOD-003` to `MOD-006`). `mapToActivities` sends one bulk fetch per accepted
+conversation URL, or none.
 
 Two request styles are used. `create` and `list` name the catalog service `userApps` and a resource,
 so webex-core resolves the host. `archive`, `unflag`, and `delete` send to the `url` of a flag object
@@ -383,8 +383,8 @@ classDiagram
 - The unit `describe` titles `#flag()` and `#remove()` test `create` and `delete`.
 - The unit spec imports `sinon`, which this package's `package.json` does not declare; it resolves
   from the workspace root install.
-- The three test helpers are declared under `dependencies`, not `devDependencies`, so importers
-  install them.
+- The three test helpers are declared under `dependencies` as well as `devDependencies`, so
+  importers install them.
 - The aggregate `test` script calls `test:integration`, which is not defined (see Getting started
   Tests).
 - The integration spec calls the test-users helper in `beforeEach`; missing client credentials make

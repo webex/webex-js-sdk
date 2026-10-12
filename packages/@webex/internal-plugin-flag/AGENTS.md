@@ -4,7 +4,7 @@ generated_from: agents@0.3.0
 generated_by: claude-cowork
 approved_by: akulakum@cisco.com
 updated_at: 2026-10-12T14:19:08Z
-validation_status: PASS-WITH-WARNINGS
+validation_status: pass-with-warnings
 -->
 
 # AI Agent Instructions
