@@ -128,11 +128,10 @@
       ],
       "minimum": [
         "yarn workspace @webex/internal-plugin-task build:src",
-        "yarn workspace @webex/internal-plugin-task test:unit"
-      ],
-      "recommended": [
+        "yarn workspace @webex/internal-plugin-task test:unit",
         "yarn workspace @webex/internal-plugin-task test:style"
-      ]
+      ],
+      "recommended": []
     },
     {
       "paths": [
@@ -140,7 +139,8 @@
       ],
       "minimum": [
         "yarn workspace @webex/internal-plugin-task build:src",
-        "yarn workspace @webex/internal-plugin-task test:unit"
+        "yarn workspace @webex/internal-plugin-task test:unit",
+        "yarn workspace @webex/internal-plugin-task test:style"
       ],
       "recommended": [
         "add a helper unit case for the existing-key path and for encryption or decryption failures, because none exists today"
@@ -162,7 +162,8 @@
       ],
       "validate_with": [
         "yarn workspace @webex/internal-plugin-task build:src",
-        "yarn workspace @webex/internal-plugin-task test:unit"
+        "yarn workspace @webex/internal-plugin-task test:unit",
+        "yarn workspace @webex/internal-plugin-task test:style"
       ],
       "avoid_direct_edits": [
         "dist"
@@ -182,7 +183,8 @@
       ],
       "validate_with": [
         "yarn workspace @webex/internal-plugin-task build:src",
-        "yarn workspace @webex/internal-plugin-task test:unit"
+        "yarn workspace @webex/internal-plugin-task test:unit",
+        "yarn workspace @webex/internal-plugin-task test:style"
       ],
       "avoid_direct_edits": [
         "dist"
@@ -204,7 +206,8 @@
       ],
       "validate_with": [
         "yarn workspace @webex/internal-plugin-task build:src",
-        "yarn workspace @webex/internal-plugin-task test:unit"
+        "yarn workspace @webex/internal-plugin-task test:unit",
+        "yarn workspace @webex/internal-plugin-task test:style"
       ],
       "avoid_direct_edits": [
         "dist"

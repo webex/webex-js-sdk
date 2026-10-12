@@ -9,8 +9,8 @@ doc_kind: standing-doc
 generated_from: architecture@0.3.0
 generated_by: claude-cowork
 approved_by: akulakum@cisco.com
-updated_at: 2026-10-12T06:29:01Z
-validation_status: pass-with-warnings
+updated_at: 2026-10-12T07:10:49Z
+validation_status: pending
 -->
 
 # @webex/internal-plugin-task architecture
@@ -27,7 +27,7 @@ Related context: [specification registry](specs/README.md) ·
 | Condition ID                         | Status     | Evidence or reason | Owned section |
 | ------------------------------------ | ---------- | ------------------ | ------------- |
 | `repo.owns_datastore`                | N/A        | No database, file store, or migration in `src/` | Repository data and schema |
-| `repo.holds_client_state`            | N/A        | The only state is the module's in-memory `registered` flag, specified in the module Client state model | Client state model |
+| `repo.holds_client_state`            | Applicable | The Task plugin keeps an in-memory `registered` flag across calls (`src/task.js`) | Client state model |
 | `repo.components_interact`           | N/A        | One module. The import graph is shown under Interaction and execution flows. | Dependency and interaction topology |
 | `repo.domain_data_across_components` | N/A        | Task DTOs are passed through to the caller, not owned | Object and data ownership |
 | `repo.caches_data`                   | N/A        | No cache in `src/`; KMS key caching belongs to internal-plugin-encryption | Caching catalog |
@@ -134,6 +134,15 @@ package.
 
 `task-sdk` entry points: `main` points at the build output and `devMain` at `src/index.js`. No HTTP
 surface is served, so `api-specs/openapi.yaml` is omitted.
+
+## Client state model
+
+| State or slice | Owner | Transition triggers | Persistence or reset boundary |
+| -------------- | ----- | ------------------- | ----------------------------- |
+| `registered` | Task plugin module (`src`) | `register` and `unregister` | Memory only; not reset by logout |
+
+Owner details, guards, and event timing are in the module spec
+[Client state model and State machine](../src/docs/README.md).
 
 ## Cross-cutting architecture
 
