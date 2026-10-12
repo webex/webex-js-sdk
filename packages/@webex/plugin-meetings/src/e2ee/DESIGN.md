@@ -190,8 +190,8 @@ response as bytes. Concurrent and later requests for the same URL share a cached
 response; failed requests are evicted so they can be retried. The default base URL is `/assets/`.
 
 - The `e2ee/mls.ts` from POC code becomes `mls.ts` (stripped of webex/HTTP/LLM).
-- `loadWasmModule` (and the module-cache globals) become `WasmLoader.preload(wasmUrl)` /
-  `get(wasmUrl)`, warmed once per session and keyed by URL so one loader can serve many modules.
+- `loadWasmModule` become `WasmLoader.preload(wasmUrl)` / `get(wasmUrl)`, warmed once per session
+  and keyed by URL so one loader can serve many modules.
 - The shared `WebexRequestMethod` type (a bound `webex.request`) lives in `common/types.ts`
   (reused by `hashTree` and the e2ee HTTP adapters), not under `e2ee/`.
 
@@ -342,8 +342,7 @@ request(url: string, body: Uint8Array): Promise<Uint8Array>;
 //     then re-encode response.body to Uint8Array (matches the PoC makeHttpRequest).
 ```
 
-Requests use the standard webex auth (`Authorization` bearer token added by
-webex-core), matching the PoC — no custom auth header is needed.
+Requests use the standard webex auth (`Authorization` bearer token added by webex-core).
 
 ### `E2eeSignaling` (LLM + mercury adapter)
 
@@ -367,7 +366,7 @@ each envelope to `session.handleEvent(bytes, source)`, tagging `source` as `'llm
 
 Online handling (LLM-only): if `llm.isConnected()` and the locus URL matches this meeting, call
 `session.setLlmConnectedBeforeJoin(true)`; otherwise listen once for `'online'`
-(locus-URL matched, like the PoC `onceLLMOnline`) and call `session.llmConnected()`.
+(locus-URL matched) and call `session.llmConnected()`.
 Guard: `getLocusUrl() === llm.getLocusUrl()`. `getLocusUrl` is a callback (not a stored meeting
 reference) so the check stays correct when the locus URL changes, e.g. moving between breakouts.
 
