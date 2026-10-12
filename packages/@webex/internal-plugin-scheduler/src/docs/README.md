@@ -271,7 +271,7 @@ classDiagram
 
 | ID | Invariant | WHY | Enforcement source | Test evidence |
 | -- | --------- | --- | ------------------ | ------------- |
-| `INV-001` | The plugin name, the `namespace` value, and the config key are all `scheduler`, from `CONSTANTS.NAMESPACE`. | webex-core mounts the plugin and reads its config by this name. | `src/scheduler/scheduler.constants.js`, `src/index.js`, `src/scheduler/scheduler.js`, `src/scheduler/scheduler.config.js` | Gap: the unit spec mounts the class under the literal child name `scheduler` |
+| `INV-001` | The plugin name (`src/index.js`) and the `namespace` value (`src/scheduler/scheduler.js`) come from `CONSTANTS.NAMESPACE`, which is `scheduler`. The config key is a separate literal `scheduler` in `src/scheduler/scheduler.config.js`, which does not import the constant; it must stay equal to `CONSTANTS.NAMESPACE`. | webex-core mounts the plugin under the registration name and reads `this.config` by the lower-cased namespace, so a key that differs leaves the defaults under the old name. | `src/scheduler/scheduler.constants.js`, `src/index.js`, `src/scheduler/scheduler.js`, `src/scheduler/scheduler.config.js` | Gap: no test checks the equality; the unit spec mounts the class under the literal child name `scheduler` |
 | `INV-002` | A predicate applies only in its direction (no direction applies to both). It matches when the object passed to `webex.transform` has a truthy field: `value` for `exampleGeneralPredicate`, `inboundValue` for `exampleInboundPredicate`, `outboundValue` for `exampleOutboundPredicate`. On a match, that field's value is passed to the transform of the same name. | Shows predicate gating and extraction. | `src/payloadTransformer/predicates.js` | Gap: no test |
 | `INV-003` | `exampleGeneralTransformer` (both directions) calls `ctx.transform('exampleInboundTransformer')`; `exampleInboundTransformer` (inbound) and `exampleOutboundTransformer` (outbound) call `ctx.transform('exampleGeneralTransformer')`. Each then passes the result to `ctx.webex.internal.encryption.example`. | Shows named-transform chaining. | `src/payloadTransformer/transformers.js` | Gap: no test |
 
@@ -330,7 +330,8 @@ classDiagram
 
 - Do: put startup work in `initialize` listeners, not in the constructor, as the scaffold comments
   say; call `WebexPlugin`'s `initialize` when overriding it.
-- Do: keep the plugin name, `namespace`, and config key on `CONSTANTS.NAMESPACE` (`INV-001`).
+- Do: keep the plugin name and `namespace` on `CONSTANTS.NAMESPACE`, and change the literal config key
+  in `src/scheduler/scheduler.config.js` in the same edit (`INV-001`).
 - Do: remove listeners with the same function reference that was added.
 - Do not: call the example methods from product code or ship new behavior on top of them.
 - Do not: add a predicate or transform without a test (`INV-002`).

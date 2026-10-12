@@ -51,7 +51,13 @@
       "name": "node",
       "version": "22.14",
       "origin": "human-declared",
-      "declared_by": "akulakum@cisco.com (bootstrap instruction 'nvm use 22.14.0'; the workspace root AGENTS.md requires Node 22.14 for development; package.json engines >=14 is stale for consumers because webex-core and internal-plugin-encryption declare >=18)"
+      "declared_by": "akulakum@cisco.com (bootstrap instruction 'nvm use 22.14.0'; the workspace root AGENTS.md requires Node 22.14 for development; consumer floor: see docs/getting-started.md Prerequisites)"
+    },
+    {
+      "name": "yarn",
+      "version": "3.4.1",
+      "origin": "human-declared",
+      "declared_by": "akulakum@cisco.com (workspace setup evidence: the JS SDK root package.json packageManager yarn@3.4.1 and the root .yarnrc.yml yarnPath .yarn/releases/yarn-3.4.1.cjs; provided through Corepack per the root CONTRIBUTING.md; root files are not cited as source_file because they sit outside this package)"
     },
     {
       "name": "babel",
@@ -82,6 +88,16 @@
       "version": "^9.2.4",
       "origin": "repo-config",
       "source_file": "package.json"
+    }
+  ],
+  "registries": [
+    {
+      "name": "npm-public",
+      "type": "npm",
+      "host": "registry.npmjs.org",
+      "egress_required": true,
+      "origin": "human-declared",
+      "declared_by": "akulakum@cisco.com (workspace setup evidence: the JS SDK root .yarnrc.yml npmRegistryServer https://registry.npmjs.org; no auth variables; the Yarn cache is not committed, so yarn install needs network access)"
     }
   ],
   "tests": {

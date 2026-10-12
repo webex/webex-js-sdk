@@ -80,7 +80,7 @@ Definition of done:
 
 | Area             | Tooling | Version |
 | ---------------- | ------- | ------- |
-| Language runtime | node | 22.14 for development (workspace root `AGENTS.md` and `.nvmrc`); 18 or later for consumers (see [`docs/getting-started.md`](docs/getting-started.md) Prerequisites) |
+| Language runtime | node | 22.14 for development (workspace root `AGENTS.md`); consumer floor: see [`docs/getting-started.md`](docs/getting-started.md) Prerequisites |
 | Package manager  | Yarn through Corepack | 3.4.1, pinned by the workspace root `packageManager` field and run from the `.yarnrc.yml` `yarnPath` release |
 | Build tool       | `@webex/legacy-tools` over babel | `@babel/core` `^7.17.10` |
 | Test framework   | Jest via `webex-legacy-tools` (`test:unit`); karma (`test:browser`) | workspace versions; `chai` `^4.3.4`, `sinon` `^9.2.4` |
@@ -100,7 +100,8 @@ Definition of done:
 
 ### Critical Constraints
 
-- Follow the module spec Module-specific rules, including the plugin name rule `INV-001`.
+- Follow the module spec Module-specific rules, including `INV-001`: renaming the plugin also needs
+  the separate config-key edit in `src/scheduler/scheduler.config.js`.
 - Treat a change to the predicates or transforms as a change to the shared webex-core payload
   pipeline (`INV-002`, `INV-003`).
 - Known defects, such as the example transforms calling a missing encryption method and calling each

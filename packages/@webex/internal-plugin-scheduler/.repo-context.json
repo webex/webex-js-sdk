@@ -225,7 +225,7 @@
       "avoid_direct_edits": [
         "dist"
       ],
-      "notes": "Renaming the plugin is a breaking change for importers."
+      "notes": "Renaming the plugin is a breaking change for importers. CONSTANTS.NAMESPACE sets the plugin name and namespace, but the config key in scheduler.config.js is a separate literal; change both together (INV-001)."
     },
     {
       "paths": [

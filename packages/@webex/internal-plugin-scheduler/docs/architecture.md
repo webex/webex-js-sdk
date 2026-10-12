@@ -159,7 +159,7 @@ HTTP surface is served, so `api-specs/openapi.yaml` is omitted.
 
 | Platform | Shared versus platform-specific boundary | Entry or build | Support and compatibility constraints |
 | -------- | ---------------------------------------- | -------------- | ------------------------------------- |
-| Node.js | All of `src/` is shared; no platform-specific code | `main` build output from `yarn workspace @webex/internal-plugin-scheduler build:src`; tested by `test:unit` (Jest) | Node 18 or later for consumers (see [Getting started](getting-started.md) Prerequisites); Node 22.14 for development |
+| Node.js | All of `src/` is shared; no platform-specific code | `main` build output from `yarn workspace @webex/internal-plugin-scheduler build:src`; tested by `test:unit` (Jest) | Consumer floor: see [Getting started](getting-started.md) Prerequisites; Node 22.14 for development |
 | Browser | Same `src/`, bundled by the consumer through the `browserify` transforms (`babelify`, `envify`) in `package.json` | `yarn workspace @webex/internal-plugin-scheduler test:browser` (karma), with the package-root `process` browser-testing file | Not verified in this Stage 0; see [Getting started](getting-started.md) Tests |
 
 ## Release and versioning
