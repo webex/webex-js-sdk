@@ -6,8 +6,8 @@ doc_kind: standing-doc
 generated_from: docs-index@0.3.0
 generated_by: claude-cowork
 approved_by: akulakum@cisco.com
-updated_at: 2026-10-12T12:11:00Z
-validation_status: pending
+updated_at: 2026-10-12T14:19:08Z
+validation_status: PASS-WITH-WARNINGS
 -->
 
 # @webex/internal-plugin-flag documentation

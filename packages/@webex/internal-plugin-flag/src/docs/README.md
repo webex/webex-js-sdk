@@ -9,8 +9,8 @@ doc_kind: module-spec
 generated_from: module-spec@0.3.0
 generated_by: claude-cowork
 approved_by: akulakum@cisco.com
-updated_at: 2026-10-12T14:02:13Z
-validation_status: pending
+updated_at: 2026-10-12T14:19:08Z
+validation_status: PASS-WITH-WARNINGS
 -->
 
 # Flag plugin
@@ -38,7 +38,7 @@ Related context: [documentation index](../../docs/index.md) ·
 | Parent spec       | — |
 | Doc kind          | Module spec |
 | Coverage score    | 93.3% assessed 2026-10-12 — 14 of 15 mandatory fields PRESENT, critical 8 of 8; test strategy is WEAK (gaps listed under Verification) and no characterization baseline exists. Independent validation: see the Validation status row |
-| Validation status | pending |
+| Validation status | PASS-WITH-WARNINGS; assessed 2026-10-12 by validator current-session; 0 Blocking, 6 Minor |
 
 ## Applicability
 
