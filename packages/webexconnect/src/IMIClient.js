@@ -2140,7 +2140,13 @@ var timeStampInterval = 30000; //in milliseconds
         }
       },
       uninit: function () {
-        var _appNameToRemove = _imiconnect && _imiconnect.appName;
+        // _imiconnect is only assigned by startup(), so there is nothing to tear
+        // down before it runs. Still resolve, callers may chain on the result.
+        if (!_imiconnect) {
+          return Promise.resolve();
+        }
+
+        var _appNameToRemove = _imiconnect.appName;
 
         try {
           if (IMI._authTokenManager
@@ -2150,10 +2156,8 @@ var timeStampInterval = 30000; //in milliseconds
         } catch (ex) {
           IMI.log(ex);
         }
-       
-        if (_imiconnect) {
-          _imiconnect._pendingPushReplay = null;
-        }
+
+        _imiconnect._pendingPushReplay = null;
 
         try {
           var _mi = IMI.ICMessaging.getInstance();
@@ -2231,31 +2235,29 @@ var timeStampInterval = 30000; //in milliseconds
 
         IMI._swScope = null;
 
-        if (_imiconnect) {
-          _imiconnect.webpush = null;
-          _imiconnect.backgroundService = null;
-          _imiconnect.icConfig = null;
-          _imiconnect.iCDeviceProfile = null;
-          _imiconnect.isRTEnabled = false;
-          _imiconnect.isLocationEnabled = false;
-          _imiconnect.isEncryptionEnabled = false;
-          _imiconnect.isPushEnabled = false;
-          _imiconnect.isMultiProfileEnabled = false;
-          _imiconnect.isFirebaseConfigAvailable = false;
-          _imiconnect.enableAuthTokenExchange = false;
-          _imiconnect.appName = null;
-          _imiconnect.appSecret = null;
-          _imiconnect.clientId = null;
-          _imiconnect.accessToken = "";
-          _imiconnect.refreshToken = "";
-          _imiconnect.securityToken = null;
-          _imiconnect.serverInboxVersion = null;
-          _imiconnect.encryptionType = null;
-          _imiconnect.encryptionKey = null;
-          _imiconnect.encriptionKey = null;
-          _imiconnect.appDomain = null;
-          _imiconnect.profileTTL = null;
-        }
+        _imiconnect.webpush = null;
+        _imiconnect.backgroundService = null;
+        _imiconnect.icConfig = null;
+        _imiconnect.iCDeviceProfile = null;
+        _imiconnect.isRTEnabled = false;
+        _imiconnect.isLocationEnabled = false;
+        _imiconnect.isEncryptionEnabled = false;
+        _imiconnect.isPushEnabled = false;
+        _imiconnect.isMultiProfileEnabled = false;
+        _imiconnect.isFirebaseConfigAvailable = false;
+        _imiconnect.enableAuthTokenExchange = false;
+        _imiconnect.appName = null;
+        _imiconnect.appSecret = null;
+        _imiconnect.clientId = null;
+        _imiconnect.accessToken = "";
+        _imiconnect.refreshToken = "";
+        _imiconnect.securityToken = null;
+        _imiconnect.serverInboxVersion = null;
+        _imiconnect.encryptionType = null;
+        _imiconnect.encryptionKey = null;
+        _imiconnect.encriptionKey = null;
+        _imiconnect.appDomain = null;
+        _imiconnect.profileTTL = null;
 
    
         return _firebaseDeletePromise.catch(function (e) { IMI.log(e); });
