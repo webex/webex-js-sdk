@@ -4424,12 +4424,16 @@ export default class Meeting extends StatelessWebexPlugin {
 
   /**
    * The meeting's overall E2EE trust state, derived from the Locus E2EE flags, the MLS join state
-   * and media-service presence.
-   * @returns {E2eeTrustState}
+   * and media-service presence. Undefined when the local device is not joined to the meeting.
+   * @returns {E2eeTrustState | undefined}
    * @public
    * @memberof Meeting
    */
-  public get e2eeTrustState(): E2eeTrustState {
+  public get e2eeTrustState(): E2eeTrustState | undefined {
+    if (!this.isJoined()) {
+      return undefined;
+    }
+
     const info: any = this.locusInfo?.info;
     const adaptive = !!info?.isBestEffortE2EEncryption;
     const isEncrypted = !!info?.isV2E2EEncrypted;
@@ -4454,12 +4458,6 @@ export default class Meeting extends StatelessWebexPlugin {
    */
   private updateE2eeTrustState(): void {
     const {e2eeTrustState} = this;
-
-    if (this.lastE2eeTrustState === undefined) {
-      this.lastE2eeTrustState = e2eeTrustState;
-
-      return;
-    }
 
     if (this.lastE2eeTrustState === e2eeTrustState) {
       return;

@@ -658,8 +658,9 @@ to surface the meeting's zero-trust state.
   `meeting.e2ee.getSecurityCode()`, `meeting.e2ee.state`, and
   `meeting.e2ee.hasUntrustedMediaServices`). E2EE facade events are forwarded by `Meeting.forwardEvent()`
   and remain available on the `Meeting` event emitter. `getMembers()` is unchanged.
-- `get e2eeTrustState(): E2eeTrustState` — derived **live** from `locusInfo.info`
+- `get e2eeTrustState(): E2eeTrustState | undefined` — derived **live** from `locusInfo.info`
   flags plus `this.e2ee`:
+  - Returns `undefined` while the local device is not joined to the meeting, including after leaving.
   - `isBestEffortE2EEncryption` → `Adaptive*` (true) vs non-adaptive (false)
   - `isV2E2EEncrypted` → zero-trust (true) vs strong (false)
   - A zero-trust (`isV2E2EEncrypted`) meeting reports `calculating` until MLS join is
@@ -673,6 +674,7 @@ to surface the meeting's zero-trust state.
   const info = this.locusInfo?.info;
   const adaptive = !!info?.isBestEffortE2EEncryption;
   const isEncrypted = !!info?.isV2E2EEncrypted;
+  if (!this.isJoined()) return undefined;
   // a zero-trust meeting isn't zero-trust until our MLS join completes.
   if (isEncrypted && this.e2ee?.state !== 'joined') return 'calculating';
   const zeroTrust = isEncrypted && !this.e2ee?.hasUntrustedMediaServices;

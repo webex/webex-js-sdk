@@ -401,6 +401,7 @@ describe('plugin-meetings', () => {
           );
           const listener = sinon.spy();
 
+          meetingWithE2ee.joinedWith = {state: 'JOINED'};
           meetingWithE2ee.on(EVENT_TRIGGERS.MEETING_E2EE_TRUST_STATE_CHANGED, listener);
           meetingWithE2ee.locusInfo.info = {isV2E2EEncrypted: true};
           meetingWithE2ee.locusInfo.emitScoped(
@@ -426,6 +427,36 @@ describe('plugin-meetings', () => {
           assert.equal(meetingWithE2ee.e2eeTrustState, 'strong');
           assert.calledThrice(listener);
           assert.calledWithExactly(listener.thirdCall, {e2eeTrustState: 'strong'});
+        });
+
+        it('returns undefined for the E2EE trust state when the local device is not joined', () => {
+          const e2ee = new EventEmitter();
+
+          e2ee.state = 'joining';
+          const meetingWithE2ee = new Meeting(
+            {
+              userId: uuid1,
+              resource: uuid2,
+              deviceUrl: uuid3,
+              locus: {url: url1},
+              destination: testDestination,
+              destinationType: DESTINATION_TYPE.MEETING_ID,
+              correlationId,
+              selfId: uuid1,
+              e2eeManager: {createE2eeMeeting: sinon.stub().returns(e2ee)},
+            },
+            {parent: webex}
+          );
+
+          meetingWithE2ee.locusInfo.info = {isV2E2EEncrypted: true};
+
+          assert.isUndefined(meetingWithE2ee.e2eeTrustState);
+
+          meetingWithE2ee.joinedWith = {state: 'JOINED'};
+          assert.equal(meetingWithE2ee.e2eeTrustState, 'calculating');
+
+          meetingWithE2ee.joinedWith = {state: 'NOT_JOINED'};
+          assert.isUndefined(meetingWithE2ee.e2eeTrustState);
         });
 
         it('should have created a meeting object with public properties', () => {
