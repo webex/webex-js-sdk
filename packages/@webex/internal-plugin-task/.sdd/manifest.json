@@ -141,7 +141,7 @@
         "has_tiers": false,
         "has_ui": false,
         "crosses_service_boundaries": true,
-        "holds_client_state": false,
+        "holds_client_state": true,
         "enforces_domain_rules": true,
         "is_concurrent_async": true,
         "owns_persistence": false,
@@ -154,11 +154,11 @@
         "published_package": true,
         "embedded_in_host": false,
         "has_design_tradeoff": true,
-        "resolved_by": "claude-cowork (code evidence; bootstrap questionnaire)",
-        "resolved_at": "2026-10-09T14:40:25Z",
+        "resolved_by": "claude-cowork (code evidence; bootstrap questionnaire; Codex review on PR 5280)",
+        "resolved_at": "2026-10-12T06:10:19Z",
         "has_submodules": false,
         "has_submodules_computed_by": "scripts/module_tree.py",
-        "has_submodules_computed_at": "2026-10-09T14:42:14Z"
+        "has_submodules_computed_at": "2026-10-12T06:10:19Z"
       }
     }
   ],

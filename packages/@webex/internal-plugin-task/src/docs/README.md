@@ -9,8 +9,8 @@ doc_kind: module-spec
 generated_from: module-spec@0.3.0
 generated_by: claude-cowork
 approved_by: akulakum@cisco.com
-updated_at: 2026-10-09T16:00:49Z
-validation_status: pass-with-warnings
+updated_at: 2026-10-12T06:11:53Z
+validation_status: pending
 -->
 
 # Task plugin
@@ -31,12 +31,12 @@ Related context: [documentation index](../../docs/index.md) ·
 | Source path       | `src` |
 | Resource kind     | package |
 | Status            | Draft |
-| Last verified     | 2026-10-09 at `5e9a2555af` |
+| Last verified     | 2026-10-12 at `e43027978a` |
 | Module id         | `internal-plugin-task` |
 | Parent spec       | — |
 | Doc kind          | Module spec |
 | Coverage score    | 93.3% assessed 2026-10-09 — 14 of 15 mandatory fields PRESENT, critical 8 of 8; test strategy is WEAK (gaps listed under Verification) and no characterization baseline exists. Independent validation: see the Validation status row |
-| Validation status | Pass-with-warnings; 2026-10-09; validator runtime `current-session`; 0 Blocking, 3 Minor tooling warnings |
+| Validation status | pending; re-validation required after the 2026-10-12 content change (previous round: pass-with-warnings at `6e7d6a9`) |
 
 ## Applicability
 
@@ -45,7 +45,7 @@ Related context: [documentation index](../../docs/index.md) ·
 | `module.has_tiers`                   | N/A        | No tier policy exists in this package or its `package.json` | Tier |
 | `module.has_ui`                      | N/A        | No view or screen. The module issues requests and transforms their payloads. | UI use-case flow |
 | `module.crosses_service_boundaries`  | Applicable | Every task method calls the Raindrop service through webex.request; register calls the device and Mercury plugins; the helpers call the encryption plugin | Cross-boundary use-case flow |
-| `module.holds_client_state`          | N/A        | The only state is the registered flag, which State machine specifies. Task DTOs are returned to the caller, not kept. | Client state model |
+| `module.holds_client_state`          | Applicable | The plugin keeps the in-memory registered flag across calls in `src/task.js`; Task DTOs are returned to the caller, not kept | Client state model |
 | `module.enforces_domain_rules`       | Applicable | Which task fields are encrypted, how the key is chosen, and which responses are decrypted, in `src/helpers/encrypt.helper.js` and `src/helpers/decrypt.helper.js` | Business rules and invariants |
 | `module.is_concurrent_async`         | Applicable | Every public method returns a promise; field encryption and decryption run in parallel | Concurrency and reactive flow |
 | `module.owns_persistence`            | N/A        | Nothing is stored by this package | Data, schema, and migration |
@@ -131,7 +131,7 @@ behavior to a requirement.
 | `listMyTasks`, `getTask` | Readers | Resolve the response with decrypted fields (`MOD-005`, `MOD-006`) | `src/task.js` |
 | `createTask`, `updateTask` | Writers | Encrypt, send, and decrypt (`MOD-007`, `MOD-008`) | `src/task.js` |
 | `deleteTask` | Writers | Resolve the response (`MOD-009`) | `src/task.js` |
-| `acceptTask`, `rejectTask` | Assignees | Resolve the response with decrypted fields (`MOD-010`) | `src/task.js` |
+| `acceptTask`, `rejectTask` | Assignees | Resolve the response, decrypting a keyed body when present (`MOD-010`) | `src/task.js` |
 | `listenForEvents`, `stopListeningForEvents` | None; JSDoc-private | Empty (`MOD-003`, `MOD-004`) | `src/task.js` |
 
 Contract `task-sdk` is published with native artifact `package.json`. Required contracts:
@@ -164,13 +164,13 @@ Contract `task-sdk` is published with native artifact `package.json`. Required c
 | `MOD-007` | `createTask(data)` encrypts `data` by `INV-001` and `INV-002`, then sends the create request with `data` as the body, decrypts the response body by `INV-003`, and resolves the response. | `title` and `notes`, when set, are sent only as ciphertext. | `src/task.js`, `src/helpers/encrypt.helper.js` | `test/unit/spec/task.js` #createTask() (request shape); `test/unit/spec/helpers/encrypt.helper.js` (new key path) | The test asserts against the same object the helper changed, so it does not check the encrypted values | Present |
 | `MOD-008` | `updateTask(id, data)` does the same as `MOD-007` with the update request. | Same as `MOD-007` for edits. | `src/task.js` | `test/unit/spec/task.js` #updateTask() (request shape) | Key choice per `INV-002`; see Pitfalls | Present |
 | `MOD-009` | `deleteTask(id)` sends the delete request and resolves the response without decryption. | Deletes a task. | `src/task.js` | `test/unit/spec/task.js` #deleteTask() (request shape) | Whether Raindrop returns a task body on delete is not in this repository | Present |
-| `MOD-010` | `acceptTask(id)` and `rejectTask(id)` send the accept and reject requests, decrypt the response body by `INV-003`, and resolve the response. | An assignee accepts or declines a task assigned to them. | `src/task.js` | none found | No unit test | Present |
+| `MOD-010` | `acceptTask(id)` and `rejectTask(id)` send the accept and reject requests, decrypt the response body by `INV-003`, and resolve the response. | An assignee accepts or declines a task assigned to them. | `src/task.js` | none found | No unit test; the response body shape is unverified | Present |
 | `MOD-011` | The plugin emits `task:registered` and `task:unregistered` on itself, with no payload. | Callers can wait for registration without polling `registered`. | `src/constants.js`, `src/task.js` | `test/unit/spec/task.js` should-trigger cases assert that each event fires once | The tests do not assert the absence of a payload | Present |
 
 ## Design overview
 
 `Task` is created with `WebexPlugin.extend`. Its only state is the plain `registered` property,
-specified under State machine.
+specified under Client state model and State machine.
 
 Every REST method follows one shape: optionally run the encrypt helper over the caller's object,
 send one request through `this.request`, run the matching decrypt helper over the body, and resolve
@@ -330,7 +330,7 @@ classDiagram
 | `UC-001` | Client creating a task | Calls `createTask({title, notes, dueDate})`; a key is created, the text is encrypted, the task is posted, and the response arrives with readable text | See Caller-visible failure modes and Pitfalls | `src/task.js`, `src/helpers/encrypt.helper.js` |
 | `UC-002` | Client editing a task | Calls `updateTask(id, {title, encryptionKeyUrl})` with the task's existing key URL so the same key is reused | See Pitfalls | `src/task.js`, `src/helpers/encrypt.helper.js` |
 | `UC-003` | Task list view | Calls `listMyTasks({orderBy: 'createdAt:desc'})` and reads `response.body.items` | A task without `encryptionKeyUrl` is returned as received | `src/task.js`, `src/helpers/decrypt.helper.js`, `README.md` |
-| `UC-004` | Assignee | Calls `acceptTask(id)` or `rejectTask(id)` and reads the updated task from the response | HTTP rejection propagates | `src/task.js` |
+| `UC-004` | Assignee | Calls `acceptTask(id)` or `rejectTask(id)` and receives the response; its body shape is not documented here (see Protocol and wire format) | HTTP rejection propagates | `src/task.js` |
 | `UC-005` | Client that wants task events | Calls `register()` after authentication and listens for `task:registered` | No task event is delivered afterwards (see Key design trade-off) | `src/task.js` |
 
 ### Cross-boundary use-case flow
@@ -341,6 +341,12 @@ classDiagram
 | Encryption plugin and KMS | In-process promises; the KMS exchange is owned by internal-plugin-encryption | Key creation, then encryption, before the request; decryption after the response | None here | None here |
 | Device plugin | In-process promise | First step of `register` | None here | See Caller-visible failure modes |
 | Mercury plugin | In-process promise | After the device | None here | See Caller-visible failure modes |
+
+## Client state model
+
+| State or slice | Owner | Initial state | Transition triggers | Reset or persistence boundary |
+| -------------- | ----- | ------------- | ------------------- | ----------------------------- |
+| `registered` | The `Task` plugin instance (`webex.internal.task`) | `false` | A successful `register` and an acting `unregister`; transitions and guards are in State machine | Memory only, never persisted; a new plugin instance starts at `false`. Logout does not reset it, because `src/index.js` registers no `onBeforeLogout` hook |
 
 ## Business rules and invariants
 
@@ -367,7 +373,7 @@ classDiagram
 
 ## State machine
 
-The plugin has two states, held in the `registered` property (initially `false`). Events are
+The plugin has two states, held in the `registered` property (see Client state model). Events are
 emitted on the plugin.
 
 ```mermaid
@@ -392,12 +398,12 @@ stateDiagram-v2
 
 | Message or frame | Version | Producer or serializer | Consumer or parser | Compatibility and ordering rule |
 | ---------------- | ------- | ---------------------- | ------------------ | ------------------------------- |
-| List request | Unversioned | `src/task.js` | Raindrop service | GET resource `tasks`; `qs` is the caller's options or `{}`. Response body `{items: [task]}`; the decrypt helper fixture also carries `offset`, `limit`, and `hasMore`. |
-| Get request | Unversioned | `src/task.js` | Raindrop service | GET `tasks/{id}`; response body is one task. |
-| Create request | Unversioned | `src/task.js` | Raindrop service | POST `tasks`; body is the caller's object after `INV-001` and `INV-002`. Response body is one task. |
+| List request | Unversioned | `src/task.js` | Raindrop service | GET resource `tasks`; `qs` is the caller's options or `{}`. The code reads `body.items`; the unit-test mock and decrypt helper fixture use `{items: [task]}`, and the fixture also carries `offset`, `limit`, and `hasMore`. No service schema exists in this repository. |
+| Get request | Unversioned | `src/task.js` | Raindrop service | GET `tasks/{id}`; the response body is one task in the unit-test mock. No service schema exists in this repository. |
+| Create request | Unversioned | `src/task.js` | Raindrop service | POST `tasks`; body is the caller's object after `INV-001` and `INV-002`. The response body is one task in the unit-test mock; no service schema exists in this repository. |
 | Update request | Unversioned | `src/task.js` | Raindrop service | PATCH `tasks/{id}`; body as create. |
 | Delete request | Unversioned | `src/task.js` | Raindrop service | DELETE `tasks/{id}`; no body. |
-| Accept and reject requests | Unversioned | `src/task.js` | Raindrop service | POST `tasks/{id}/accept` and `tasks/{id}/reject`; no body. Response body is one task. |
+| Accept and reject requests | Unversioned | `src/task.js` | Raindrop service | POST `tasks/{id}/accept` and `tasks/{id}/reject`; no body. The response shape is not defined in this repository (no test, mock, or API definition); whatever body is returned is decrypted when it has `encryptionKeyUrl`. |
 | Task fields | Unversioned | Caller and Raindrop service | `src/helpers/encrypt.helper.js`, `src/helpers/decrypt.helper.js` | `title` and `notes` travel as the ciphertext strings returned by `encryptText`; `encryptionKeyUrl` is the KMS key URI. Other fields (for example `dueDate` in the README) are not read here. |
 | Plugin events | Unversioned | `src/task.js` | Listeners on the plugin | `task:registered`, `task:unregistered`, no payload. |
 
@@ -426,6 +432,10 @@ stateDiagram-v2
 - `register` has no in-flight guard. Two calls made before the first completes both run the chain;
   the device and Mercury plugins deduplicate the in-flight registration and connection, but Task
   calls `listenForEvents` twice and emits `task:registered` twice.
+- On webex logout the device plugin unregisters and Mercury runs its own logout, through their
+  `onBeforeLogout` hooks (sibling packages internal-plugin-device and internal-plugin-mercury, file
+  src/index.js of each), but `registered` stays `true` (see Client state model). A later `register`
+  on the same instance then resolves without registering the device or connecting Mercury.
 - The JSDoc of `listenForEvents` and `stopListeningForEvents` says they register and unregister task
   events through Mercury; both bodies are empty.
 - The unit test named "should call mercury.unregister and device.unregister" asserts that

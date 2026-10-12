@@ -9,8 +9,8 @@ doc_kind: standing-doc
 generated_from: architecture@0.3.0
 generated_by: claude-cowork
 approved_by: akulakum@cisco.com
-updated_at: 2026-10-09T16:00:49Z
-validation_status: pass-with-warnings
+updated_at: 2026-10-12T06:11:53Z
+validation_status: pending
 -->
 
 # @webex/internal-plugin-task architecture
@@ -27,7 +27,7 @@ Related context: [specification registry](specs/README.md) ·
 | Condition ID                         | Status     | Evidence or reason | Owned section |
 | ------------------------------------ | ---------- | ------------------ | ------------- |
 | `repo.owns_datastore`                | N/A        | No database, file store, or migration in `src/` | Repository data and schema |
-| `repo.holds_client_state`            | N/A        | The only state is the module's `registered` flag, specified in the module State machine | Client state model |
+| `repo.holds_client_state`            | N/A        | The only state is the module's in-memory `registered` flag, specified in the module Client state model | Client state model |
 | `repo.components_interact`           | N/A        | One module. The import graph is shown under Interaction and execution flows. | Dependency and interaction topology |
 | `repo.domain_data_across_components` | N/A        | Task DTOs are passed through to the caller, not owned | Object and data ownership |
 | `repo.caches_data`                   | N/A        | No cache in `src/`; KMS key caching belongs to internal-plugin-encryption | Caching catalog |
