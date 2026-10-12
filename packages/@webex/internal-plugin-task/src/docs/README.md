@@ -9,8 +9,8 @@ doc_kind: module-spec
 generated_from: module-spec@0.3.0
 generated_by: claude-cowork
 approved_by: akulakum@cisco.com
-updated_at: 2026-10-12T07:10:49Z
-validation_status: pending
+updated_at: 2026-10-12T07:35:11Z
+validation_status: pass-with-warnings
 -->
 
 # Task plugin
@@ -31,12 +31,12 @@ Related context: [documentation index](../../docs/index.md) ·
 | Source path       | `src` |
 | Resource kind     | package |
 | Status            | Draft |
-| Last verified     | 2026-10-12 at `4bdd8d4f49` |
+| Last verified     | 2026-10-12 at `645f0e1388353263926d9ae7c85111f9d899e75f` |
 | Module id         | `internal-plugin-task` |
 | Parent spec       | — |
 | Doc kind          | Module spec |
 | Coverage score    | 93.3% assessed 2026-10-09 — 14 of 15 mandatory fields PRESENT, critical 8 of 8; test strategy is WEAK (gaps listed under Verification) and no characterization baseline exists. Independent validation: see the Validation status row |
-| Validation status | pending; re-validation required after the 2026-10-12 round-3 content change (previous round: pass-with-warnings at `55c2f31`) |
+| Validation status | PASS-WITH-WARNINGS; 2026-10-12; validator runtime `current-session`; 0 Blocking, 3 Minor |
 
 ## Applicability
 
