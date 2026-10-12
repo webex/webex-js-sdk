@@ -9,8 +9,8 @@ doc_kind: standing-doc
 generated_from: getting-started@0.3.0
 generated_by: claude-cowork
 approved_by: akulakum@cisco.com
-updated_at: 2026-10-12T07:35:11Z
-validation_status: pass-with-warnings
+updated_at: 2026-10-12T07:56:23Z
+validation_status: pending
 -->
 
 # Getting started
@@ -90,7 +90,9 @@ yarn workspace @webex/internal-plugin-task test:unit
   no environment variable, and no feature toggle.
 - Secret source: none in this package. The access token is attached by the webex-core request
   pipeline at runtime, and encryption keys come from the encryption plugin.
-- Package or artifact access: N/A — workspace dependencies only.
+- Package or artifact access: no private registry or credentials. `yarn install` needs network access
+  to the public npm registry set in the workspace root `.yarnrc.yml`, because the Yarn cache is not
+  committed and the package depends on public packages such as `lodash`, `uuid`, and `eslint`.
 - Required neighboring repositories or workspace layout: the webex-js-sdk workspace, because sibling
   packages such as webex-core and internal-plugin-encryption are `workspace:*` dependencies.
 - Platform, simulator, device, or SDK setup: N/A.

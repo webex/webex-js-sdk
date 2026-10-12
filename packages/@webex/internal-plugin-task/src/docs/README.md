@@ -9,8 +9,8 @@ doc_kind: module-spec
 generated_from: module-spec@0.3.0
 generated_by: claude-cowork
 approved_by: akulakum@cisco.com
-updated_at: 2026-10-12T07:35:11Z
-validation_status: pass-with-warnings
+updated_at: 2026-10-12T07:56:23Z
+validation_status: pending
 -->
 
 # Task plugin
@@ -31,12 +31,12 @@ Related context: [documentation index](../../docs/index.md) ·
 | Source path       | `src` |
 | Resource kind     | package |
 | Status            | Draft |
-| Last verified     | 2026-10-12 at `645f0e1388353263926d9ae7c85111f9d899e75f` |
+| Last verified     | 2026-10-12 at `619c672463` |
 | Module id         | `internal-plugin-task` |
 | Parent spec       | — |
 | Doc kind          | Module spec |
 | Coverage score    | 93.3% assessed 2026-10-09 — 14 of 15 mandatory fields PRESENT, critical 8 of 8; test strategy is WEAK (gaps listed under Verification) and no characterization baseline exists. Independent validation: see the Validation status row |
-| Validation status | PASS-WITH-WARNINGS; 2026-10-12; validator runtime `current-session`; 0 Blocking, 3 Minor |
+| Validation status | pending; re-validation required after the 2026-10-12 round-4 content change (previous round: pass-with-warnings at `645f0e1`) |
 
 ## Applicability
 
@@ -114,7 +114,7 @@ Related context: [documentation index](../../docs/index.md) ·
 | `src/config.js` | Default export `{task: {}}` |
 | `test/unit/spec/task.js`, `test/unit/spec/helpers/encrypt.helper.js`, `test/unit/spec/helpers/decrypt.helper.js` | Jest specs for the plugin and the two helpers |
 | `test/integration/spec/task.js` | Mocha spec over an in-file mock |
-| `process` | Stray tracked file (see Pitfalls) |
+| `process` | Legacy-tools browser-testing file containing `module.exports = {browser: true};` (see Pitfalls) |
 
 ## Public surface
 
@@ -159,7 +159,7 @@ Contract `task-sdk` is published with native artifact `package.json`. Required c
 | `MOD-002` | The barrel exports only `Task` as default. The event-name constants are not re-exported. | Callers reach the plugin through `webex.internal.task`; the class export exists for tests and extension. | `src/index.js` | `test/unit/spec/task.js` imports Task from the package | Listeners must use the literal event names or import `src/constants.js` by path | Present |
 | `MOD-003` | `register()` checks `INV-005`, then registers the device, connects Mercury, calls `listenForEvents`, emits `task:registered`, and sets `registered`. A failure in that chain is logged and rejects with the same error. | Task events would arrive over Mercury, which needs a registered device and an authorized user. | `src/task.js` | `test/unit/spec/task.js` #register() cases (device called once, registered true, event fired) | No test for the authorization gate, the already-registered path, or a failure | Present |
 | `MOD-004` | `unregister()` resolves at once when not registered; otherwise it calls `stopListeningForEvents`, emits `task:unregistered`, clears `registered`, and resolves. It does not disconnect Mercury or unregister the device. | Other plugins share the device and Mercury connection. | `src/task.js` | `test/unit/spec/task.js` #unregister() cases (event fired; mercury.off not called) | No test for the not-registered path | Present |
-| `MOD-005` | `listMyTasks(options)` sends the list request with the caller's options as the query, or an empty query when `options` is falsy, decrypts the list body by `INV-003`, and resolves the response (`INV-004`). | Lists the user's tasks with readable titles and notes. | `src/task.js`, `src/helpers/decrypt.helper.js` | `test/unit/spec/task.js` #listMyTasks() (request shape with an empty query) | The option names in the JSDoc (orderBy, offset, limit) are passed through and not checked | Present |
+| `MOD-005` | `listMyTasks(options)` sends the list request with the caller's options as the query, or an empty query when `options` is falsy, decrypts the list body by `INV-003`, and resolves the response (`INV-004`). | Lists the user's tasks, with `title` and `notes` decrypted for each task that carries `encryptionKeyUrl`. | `src/task.js`, `src/helpers/decrypt.helper.js` | `test/unit/spec/task.js` #listMyTasks() (request shape with an empty query) | The option names in the JSDoc (orderBy, offset, limit) are passed through and not checked | Present |
 | `MOD-006` | `getTask(id)` sends the get request, decrypts the body by `INV-003`, and resolves the response. | Reads one task. | `src/task.js` | `test/unit/spec/task.js` #getTask() (request shape and decrypted title) | The JSDoc says it resolves an array; it resolves one response | Present |
 | `MOD-007` | `createTask(data)` encrypts `data` by `INV-001` and `INV-002`, then sends the create request with `data` as the body, decrypts the response body by `INV-003`, and resolves the response. | `title` and `notes`, when set, are sent only as ciphertext. | `src/task.js`, `src/helpers/encrypt.helper.js` | `test/unit/spec/task.js` #createTask() (request shape); `test/unit/spec/helpers/encrypt.helper.js` (new key path) | The test asserts against the same object the helper changed, so it does not check the encrypted values | Present |
 | `MOD-008` | `updateTask(id, data)` does the same as `MOD-007` with the update request. | Same as `MOD-007` for edits. | `src/task.js` | `test/unit/spec/task.js` #updateTask() (request shape) | Key choice per `INV-002`; see Pitfalls | Present |
@@ -327,7 +327,7 @@ classDiagram
 
 | Use case | Actor or caller | Primary steps and outcome | Failure or boundary behavior | Evidence |
 | -------- | --------------- | ------------------------- | ---------------------------- | -------- |
-| `UC-001` | Client creating a task | Calls `createTask({title, notes, dueDate})`; a key is created, the text is encrypted, the task is posted, and the response arrives with readable text | See Caller-visible failure modes and Pitfalls | `src/task.js`, `src/helpers/encrypt.helper.js` |
+| `UC-001` | Client creating a task | Calls `createTask({title, notes, dueDate})`; a key is created, the text is encrypted, the task is posted, and the response is decrypted when it carries `encryptionKeyUrl` | See Caller-visible failure modes and Pitfalls | `src/task.js`, `src/helpers/encrypt.helper.js` |
 | `UC-002` | Client editing a task | Calls `updateTask(id, {title, encryptionKeyUrl})` with the task's existing key URL so the same key is reused | See Pitfalls | `src/task.js`, `src/helpers/encrypt.helper.js` |
 | `UC-003` | Task list view | Calls `listMyTasks({orderBy: 'createdAt:desc'})` and reads `response.body.items` | A task without `encryptionKeyUrl` is returned as received | `src/task.js`, `src/helpers/decrypt.helper.js`, `README.md` |
 | `UC-004` | Assignee | Calls `acceptTask(id)` or `rejectTask(id)` and receives the response; its body shape is not documented here (see Protocol and wire format) | HTTP rejection propagates | `src/task.js` |
@@ -354,7 +354,7 @@ classDiagram
 | -- | --------- | --- | ------------------ | ------------- |
 | `INV-001` | Only `title` and `notes` are encrypted, and each only when its value is truthy; every other field is sent as given. | These are the free-text fields; other task fields are sent in the clear. | `src/helpers/encrypt.helper.js` | `test/unit/spec/helpers/encrypt.helper.js` (both fields set only) |
 | `INV-002` | When `data.encryptionKeyUrl` is set, it is the encryption key. Otherwise one unbound key is created with `kms.createUnboundKeys({count: 1})`, its `uri` is written to `data.encryptionKeyUrl`, and that key is used. | The server needs the key URL to let recipients decrypt. | `src/helpers/encrypt.helper.js` | `test/unit/spec/helpers/encrypt.helper.js` (new key only) |
-| `INV-003` | A task is decrypted only when it has a truthy `encryptionKeyUrl`; then its truthy `title` and `notes` are replaced with plaintext using that key. A list body is decrypted item by item from `items`; a missing body or empty `items` is left alone. | Tasks without a key are plaintext and must not be passed to the decrypter. | `src/helpers/decrypt.helper.js` | `test/unit/spec/helpers/decrypt.helper.js` |
+| `INV-003` | A task is decrypted only when it has a truthy `encryptionKeyUrl`; then its truthy `title` and `notes` are replaced with plaintext using that key. A list body is decrypted item by item from `items`; a missing body or empty `items` is left alone. | A task without a key URL cannot be decrypted here, so it is returned unchanged; that such tasks carry plaintext is a service assumption not verified in this repository. | `src/helpers/decrypt.helper.js` | `test/unit/spec/helpers/decrypt.helper.js` (the missing-key case sets `encryptionKeyUrl` to undefined and asserts only that the promise resolves undefined; it does not assert that `title` and `notes` are unchanged) |
 | `INV-004` | Every REST method resolves the whole response object; for the decrypting methods, the decrypted values are written into `response.body`. | Callers read `body` and can also read status and headers. | `src/task.js` | `test/unit/spec/task.js` (reads of res.body) |
 | `INV-005` | `register` checks first that `webex.canAuthorize` is true and rejects with `Error('SDK cannot authorize')` when it is false, even when already registered; it then resolves with no work when `registered` is true, and proceeds otherwise. | Device registration needs credentials, and a second registration is not needed. | `src/task.js` | Gap: no test |
 | `INV-006` | Every request uses service `raindrop`, and its resource is `tasks` or `tasks/{id}` with an optional `/accept` or `/reject`. `{id}` is the caller's value, inserted without encoding. | Raindrop is the task service in the catalog. | `src/task.js` | `test/unit/spec/task.js` (request shapes for five methods) |
@@ -441,8 +441,9 @@ stateDiagram-v2
 - The unit test named "should call mercury.unregister and device.unregister" asserts that
   `mercury.off` is called zero times; the name does not match the behavior.
 - No method validates `id`; an undefined id sends `tasks/undefined` (`INV-006`).
-- The tracked `process` file contains `module.exports = {browser: true};` and is read by nothing in
-  this package. It is left as found.
+- The package-root `process` file is the browser-testing file that the README of the sibling package
+  legacy-tools recommends for consumers; many other workspace packages carry the same file. Nothing in `src/` reads it. Do not remove it without running
+  `yarn workspace @webex/internal-plugin-task test:browser`.
 
 ## Module-specific rules
 

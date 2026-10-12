@@ -145,6 +145,19 @@
       "recommended": [
         "add a helper unit case for the existing-key path and for encryption or decryption failures, because none exists today"
       ]
+    },
+    {
+      "paths": [
+        "package.json"
+      ],
+      "minimum": [
+        "yarn workspace @webex/internal-plugin-task build:src",
+        "yarn workspace @webex/internal-plugin-task test:unit",
+        "yarn workspace @webex/internal-plugin-task test:style"
+      ],
+      "recommended": [
+        "yarn workspace @webex/internal-plugin-task test:integration"
+      ]
     }
   ],
   "change_impact": [
@@ -213,6 +226,28 @@
         "dist"
       ],
       "notes": "Renaming the plugin or an event is a breaking change for importers and listeners."
+    },
+    {
+      "paths": [
+        "package.json"
+      ],
+      "affects": [
+        "the published entry points (main, devMain)",
+        "package scripts and the manifest commands that call them",
+        "runtime dependencies resolved by importers"
+      ],
+      "refresh_with": [
+        "yarn workspace @webex/internal-plugin-task build:src"
+      ],
+      "validate_with": [
+        "yarn workspace @webex/internal-plugin-task build:src",
+        "yarn workspace @webex/internal-plugin-task test:unit",
+        "yarn workspace @webex/internal-plugin-task test:style"
+      ],
+      "avoid_direct_edits": [
+        "dist"
+      ],
+      "notes": "package.json is the native artifact of the published task-sdk contract; update .sdd/manifest.json commands and docs/getting-started.md when a script changes."
     }
   ],
   "evidence_rules": [

@@ -9,8 +9,8 @@ doc_kind: standing-doc
 generated_from: spec-index@0.3.0
 generated_by: claude-cowork
 approved_by: akulakum@cisco.com
-updated_at: 2026-10-12T07:35:11Z
-validation_status: pass-with-warnings
+updated_at: 2026-10-12T07:56:23Z
+validation_status: pending
 -->
 
 # Specification registry
@@ -56,10 +56,10 @@ until the missing tests and a characterization baseline exist and a spec-drift r
 | -------------- | --------------- | ------------------ |
 | Package boundaries or cross-cutting architecture | `docs/architecture.md` and applicable ADRs | `yarn workspace @webex/internal-plugin-task build:src`, then `yarn workspace @webex/internal-plugin-task test:unit` and `yarn workspace @webex/internal-plugin-task test:style` |
 | A deployable service surface or operating posture | Not applicable — no deployable service exists in this package | Not applicable |
-| A REST wrapper or request shape | `src/docs/README.md` | `yarn workspace @webex/internal-plugin-task build:src`, then `yarn workspace @webex/internal-plugin-task test:unit` |
-| Encrypted fields or key selection | `src/docs/README.md` and the architecture Security architecture | `yarn workspace @webex/internal-plugin-task build:src`, then `yarn workspace @webex/internal-plugin-task test:unit`, after adding the missing helper cases |
-| `register`, `unregister`, or the event names | `src/docs/README.md` | `yarn workspace @webex/internal-plugin-task build:src`, then `yarn workspace @webex/internal-plugin-task test:unit` |
-| The default export or the plugin name | `src/docs/README.md` and `docs/architecture.md`; check the sibling package webex | `yarn workspace @webex/internal-plugin-task build:src`, then `yarn workspace @webex/internal-plugin-task test:unit` |
+| A REST wrapper or request shape | `src/docs/README.md` | `yarn workspace @webex/internal-plugin-task build:src`, then `yarn workspace @webex/internal-plugin-task test:unit` and `yarn workspace @webex/internal-plugin-task test:style` |
+| Encrypted fields or key selection | `src/docs/README.md` and the architecture Security architecture | `yarn workspace @webex/internal-plugin-task build:src`, then `yarn workspace @webex/internal-plugin-task test:unit` and `yarn workspace @webex/internal-plugin-task test:style`, after adding the missing helper cases |
+| `register`, `unregister`, or the event names | `src/docs/README.md` | `yarn workspace @webex/internal-plugin-task build:src`, then `yarn workspace @webex/internal-plugin-task test:unit` and `yarn workspace @webex/internal-plugin-task test:style` |
+| The default export or the plugin name | `src/docs/README.md` and `docs/architecture.md`; check the sibling package webex | `yarn workspace @webex/internal-plugin-task build:src`, then `yarn workspace @webex/internal-plugin-task test:unit` and `yarn workspace @webex/internal-plugin-task test:style` |
 
 ## Module and contract registration
 

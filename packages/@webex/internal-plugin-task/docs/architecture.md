@@ -9,8 +9,8 @@ doc_kind: standing-doc
 generated_from: architecture@0.3.0
 generated_by: claude-cowork
 approved_by: akulakum@cisco.com
-updated_at: 2026-10-12T07:35:11Z
-validation_status: pass-with-warnings
+updated_at: 2026-10-12T07:56:23Z
+validation_status: pending
 -->
 
 # @webex/internal-plugin-task architecture
@@ -35,7 +35,7 @@ Related context: [specification registry](specs/README.md) ·
 | `repo.deploys_to_infra`              | N/A        | Library published to npm. No service runtime. | Runtime and infrastructure |
 | `repo.shared_base_libs`              | Applicable | Inherits `WebexPlugin` and the legacy build, lint, and test stack | Shared and base libraries |
 | `repo.is_monorepo`                   | N/A        | This SDD root is one package. The workspace around it is out of scope. | Package map and dependencies |
-| `repo.multi_platform`                | N/A        | No platform-specific code in `src/`; the `package.json` `browserify` field lists only build transforms | Platform matrix |
+| `repo.multi_platform`                | Applicable | The same `src/` targets Node (`package.json` engines, Jest and mocha runs) and browsers (the `browserify` transforms, `test:browser`, and the `process` browser-testing file) | Platform matrix |
 | `repo.published_package`             | Applicable | `package.json` `name` is `@webex/internal-plugin-task` and `deploy:npm` publishes it | Release and versioning |
 | `repo.embedded_in_host`              | N/A        | No host theme or embed API | Host integration and theming |
 | `repo.exposes_commands_or_artifacts` | Applicable | `build:src` writes the build output directory | Commands and generated artifacts |
@@ -184,6 +184,13 @@ Owner details, guards, and event timing are in the module spec
 | `WebexPlugin` from `@webex/webex-core` | `this.webex`, `this.logger`, events, and `request()` delegating to `webex.request` | `src/task.js` | workspace | Follow webex-core plugin conventions |
 | `@webex/babel-config-legacy`, `@webex/eslint-config-legacy`, `@webex/jest-config-legacy` | Build, lint, and Jest config passthroughs | `babel.config.js`, `.eslintrc.js`, `jest.config.js` | workspace | Change upstream, not in the passthrough files |
 | `@webex/legacy-tools` | `webex-legacy-tools` build and test runners | `package.json` scripts | workspace | Scripts call it; do not replace locally |
+
+## Platform matrix
+
+| Platform | Shared versus platform-specific boundary | Entry or build | Support and compatibility constraints |
+| -------- | ---------------------------------------- | -------------- | ------------------------------------- |
+| Node.js | All of `src/` is shared; no platform-specific code | `main` build output from `yarn workspace @webex/internal-plugin-task build:src`; tested by `test:unit` (Jest) and `test:integration` (mocha) | `engines` `>=18` for consumers; Node 22.14 for development |
+| Browser | Same `src/`, bundled by the consumer through the `browserify` transforms (`babelify`, `envify`) in `package.json` | `yarn workspace @webex/internal-plugin-task test:browser` (karma), with the package-root `process` browser-testing file | Unit-spec behavior under karma: see [Getting started](getting-started.md) Tests |
 
 ## Release and versioning
 
