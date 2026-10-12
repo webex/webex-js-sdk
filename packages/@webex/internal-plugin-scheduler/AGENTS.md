@@ -47,7 +47,7 @@ commands from the monorepo root.
 | ---------------------- | ------- |
 | Install dependencies   | `yarn install` (workspace root) |
 | Start dev environment  | N/A — library package with no start script in `package.json` |
-| Run tests              | `yarn workspace @webex/internal-plugin-scheduler test:unit` (Jest); `yarn workspace @webex/internal-plugin-scheduler test:browser` (karma, integration specs). No `test:integration` script exists |
+| Run tests              | `yarn workspace @webex/internal-plugin-scheduler test:unit` (Jest); `yarn workspace @webex/internal-plugin-scheduler test:browser` (karma, the integration tier). No `test:integration` script exists |
 | Run linters            | `yarn workspace @webex/internal-plugin-scheduler test:style` |
 | Build/release artifact | `yarn workspace @webex/internal-plugin-scheduler build` (runs `build:src`) |
 | Format code            | N/A — no format script; `prettier` is a devDependency used through eslint |
@@ -80,7 +80,7 @@ Definition of done:
 
 | Area             | Tooling | Version |
 | ---------------- | ------- | ------- |
-| Language runtime | node | 22.14 for development (workspace root `AGENTS.md` and `.nvmrc`); `>=14` for consumers (`package.json` engines) |
+| Language runtime | node | 22.14 for development (workspace root `AGENTS.md` and `.nvmrc`); 18 or later for consumers (see [`docs/getting-started.md`](docs/getting-started.md) Prerequisites) |
 | Package manager  | Yarn through Corepack | 3.4.1, pinned by the workspace root `packageManager` field and run from the `.yarnrc.yml` `yarnPath` release |
 | Build tool       | `@webex/legacy-tools` over babel | `@babel/core` `^7.17.10` |
 | Test framework   | Jest via `webex-legacy-tools` (`test:unit`); karma (`test:browser`) | workspace versions; `chai` `^4.3.4`, `sinon` `^9.2.4` |
@@ -114,7 +114,7 @@ Run checks in this order:
 2. `yarn workspace @webex/internal-plugin-scheduler test:unit`
 3. `yarn workspace @webex/internal-plugin-scheduler test:style`
 
-The browser run is not in this order; see [`docs/getting-started.md`](docs/getting-started.md) Tests.
+The integration tier (`test:browser`) is not in this order; see [`docs/getting-started.md`](docs/getting-started.md) Tests.
 
 Testing rules:
 

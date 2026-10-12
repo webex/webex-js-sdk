@@ -10,7 +10,7 @@
     "compile": "yarn workspace @webex/internal-plugin-scheduler build:src",
     "build": "yarn workspace @webex/internal-plugin-scheduler build",
     "unit-test": "yarn workspace @webex/internal-plugin-scheduler test:unit",
-    "browser-test": "yarn workspace @webex/internal-plugin-scheduler test:browser",
+    "integration-test": "yarn workspace @webex/internal-plugin-scheduler test:browser",
     "lint": "yarn workspace @webex/internal-plugin-scheduler test:style",
     "deploy": "yarn workspace @webex/internal-plugin-scheduler deploy:npm"
   },
@@ -373,10 +373,10 @@
         "notes": "Jest via webex-legacy-tools --runner jest. Build first: the spec imports the package by name, which resolves to dist/."
       },
       {
-        "name": "browser tests",
+        "name": "integration tests",
         "command": "yarn workspace @webex/internal-plugin-scheduler test:browser",
         "scope": "test/integration/spec",
-        "notes": "karma via webex-legacy-tools --integration; the unit spec is not collected. Needs a browser, network access, and the WEBEX_CLIENT_ID and WEBEX_CLIENT_SECRET environment variables required by the workspace test-users helper."
+        "notes": "karma via webex-legacy-tools --integration (no test:integration script exists); the unit spec is not collected. Needs Chrome and Firefox (the karma-browsers default), network access, and the WEBEX_CLIENT_ID and WEBEX_CLIENT_SECRET environment variables required by the workspace test-users helper."
       },
       {
         "name": "lint",

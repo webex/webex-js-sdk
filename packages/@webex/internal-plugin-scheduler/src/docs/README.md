@@ -320,7 +320,8 @@ classDiagram
 - The integration specs call the test-users helper in `beforeEach`. Missing client credentials make
   the hook throw and fail every case; a later rejection of the user creation is not returned from
   the hook and does not fail the placeholder case.
-- `package.json` `description` is empty.
+- `package.json` `description` is empty, and its `engines` value `>=14` is lower than the effective
+  consumer floor recorded in Getting started Prerequisites.
 - The package-root `process` file is the browser-testing file that the README of the sibling package
   legacy-tools recommends; nothing in `src/` reads it. Do not remove it without running
   `yarn workspace @webex/internal-plugin-scheduler test:browser`.
@@ -354,7 +355,7 @@ No TypeScript declaration or API report exists for this package.
 | `MOD-004` to `MOD-007` | none | none found | none found | No test of `initialize` or the example methods |
 | `MOD-008`, `INV-002`, `INV-003` | none | none found | none found | No test runs a predicate or transform |
 | `MOD-009` | none | none found | none found | No config test |
-| Integration tier | Integration (run by `test:browser`) | Placeholder cases only | none found | No integration behavior |
+| Integration tier | Integration (`test:browser`, karma) | Placeholder cases only | none found | No integration behavior |
 
 Test tiers, the build-before-unit order, and the first-run build are described in
 [Getting started](../../docs/getting-started.md).

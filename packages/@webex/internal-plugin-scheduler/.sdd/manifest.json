@@ -30,10 +30,10 @@
       "source_file": "package.json",
       "role": "unit-test"
     },
-    "browser-test": {
+    "integration-test": {
       "command": "yarn workspace @webex/internal-plugin-scheduler test:browser",
       "source_file": "package.json",
-      "role": "other"
+      "role": "integration-test"
     },
     "lint": {
       "command": "yarn workspace @webex/internal-plugin-scheduler test:style",
@@ -51,7 +51,7 @@
       "name": "node",
       "version": "22.14",
       "origin": "human-declared",
-      "declared_by": "akulakum@cisco.com (bootstrap instruction 'nvm use 22.14.0'; the workspace root AGENTS.md requires Node 22.14 for development; package.json engines >=14 is the consumer floor)"
+      "declared_by": "akulakum@cisco.com (bootstrap instruction 'nvm use 22.14.0'; the workspace root AGENTS.md requires Node 22.14 for development; package.json engines >=14 is stale for consumers because webex-core and internal-plugin-encryption declare >=18)"
     },
     {
       "name": "babel",
@@ -89,6 +89,16 @@
       "command_ref": "unit-test",
       "dir": "test/unit/spec",
       "framework": "jest"
+    },
+    "integration": {
+      "command_ref": "integration-test",
+      "dir": "test/integration/spec",
+      "framework": "karma",
+      "external_deps": [
+        "browsers: Chrome and Firefox (legacy-tools karma-browsers default)",
+        "network access",
+        "env: WEBEX_CLIENT_ID, WEBEX_CLIENT_SECRET (test-users helper)"
+      ]
     }
   },
   "quality_gates": {

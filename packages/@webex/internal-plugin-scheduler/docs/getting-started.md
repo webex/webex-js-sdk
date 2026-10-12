@@ -24,10 +24,11 @@ root.
 | -------------- | ---------------------- |
 | Node.js | 22.14, required for working in this repository by the workspace root `AGENTS.md`; the root `.nvmrc` selects the Node 22 LTS line. The workspace root `package.json` `engines` field still says `18.x`; follow the root `AGENTS.md` |
 | Yarn | 3.4.1, pinned by the workspace root `packageManager` field and run from the release that the root `.yarnrc.yml` `yarnPath` names, provided through Corepack: enable Corepack for the selected Node.js version, as the workspace root `CONTRIBUTING.md` setup steps require. Workspaces are used, so install from the workspace root rather than this directory |
-| Browser for `test:browser` | A local browser for the karma runner that `test:browser` starts through `@webex/legacy-tools` |
+| Browsers for `test:browser` | Chrome and Firefox. The script passes no browser list, so the legacy-tools `karma-browsers` option keeps its default of both (sibling package legacy-tools, file src/commands/run-tests/run-tests.constants.ts) and karma starts both headless launchers (file src/utils/karma/browsers/browsers.ts of the same package). Overriding `karma-browsers` on the command line passes a string that the browser setup cannot iterate, so a run cannot currently be limited to one browser |
 
-The `package.json` `engines` value `>=14` is the floor for applications that install the package,
-not the development runtime.
+Applications that install the package need Node 18 or later. This package's `package.json` `engines`
+says `>=14`, but its direct dependencies webex-core and internal-plugin-encryption declare `>=18`, so
+the package's own value is out of date. Neither value is the development runtime.
 
 ## Install
 
@@ -63,13 +64,12 @@ yarn workspace @webex/internal-plugin-scheduler test:unit
 | Tier | Command | Test location | Framework | External dependencies |
 | ---- | ------- | ------------- | --------- | --------------------- |
 | Unit | `yarn workspace @webex/internal-plugin-scheduler test:unit` | `test/unit/spec` | Jest | This package's build output and the built workspace packages it imports |
-| Integration | N/A — `package.json` defines no `test:integration` script | `test/integration/spec` | mocha-style specs, collected in this package by the browser run | — |
-| Browser | `yarn workspace @webex/internal-plugin-scheduler test:browser` | `test/integration/spec` | karma | A browser, network access, and the `WEBEX_CLIENT_ID` and `WEBEX_CLIENT_SECRET` environment variables that the workspace test-users helper requires |
+| Integration | `yarn workspace @webex/internal-plugin-scheduler test:browser` | `test/integration/spec` | karma | Chrome and Firefox (see Prerequisites), network access, and the `WEBEX_CLIENT_ID` and `WEBEX_CLIENT_SECRET` environment variables that the workspace test-users helper requires |
 | Lint | `yarn workspace @webex/internal-plugin-scheduler test:style` | `src/` | eslint | None |
 
-- The browser run is manifest `commands.browser-test` with role `other`, because the SDD manifest
-  `tests` schema allows only `unit`, `integration`, `e2e`, and `qa`. It passes `--integration` only,
-  so it collects the integration specs and not the unit spec (sibling package legacy-tools, file
+- The integration tier is manifest `commands.integration-test` and `tests.integration`. The package has
+  no `test:integration` script; `test:browser` passes `--integration` only, so it collects the
+  integration specs and not the unit spec (sibling package legacy-tools, file
   src/models/package/package.ts). Its result was not verified in this Stage 0.
 - The integration specs are placeholders: each has one case that asserts `true`.
 - Do not use the `package.json` script `test` as a verification command; it chains every tier and
@@ -79,7 +79,7 @@ yarn workspace @webex/internal-plugin-scheduler test:unit
 - Coverage or quality gate: N/A — no coverage threshold.
 - Enforcement source: none. `jest.config.js` re-exports `@webex/jest-config-legacy`, which sets
   `collectCoverage: false` and no threshold.
-- Test environment or QA dependencies: none beyond the workspace for the unit tier; the browser tier
+- Test environment or QA dependencies: none beyond the workspace for the unit tier; the integration tier
   needs the variables in its table row. `test/unit/spec/scheduler/scheduler.js`
   imports this package by name, which resolves to the build output, so a stale build tests old code.
   Run `yarn workspace @webex/internal-plugin-scheduler build` again after any `src/` change before
@@ -87,10 +87,10 @@ yarn workspace @webex/internal-plugin-scheduler test:unit
 
 ## Configuration and secrets
 
-- Required configuration: none for build, unit, and lint. The browser tier needs the variables in
+- Required configuration: none for build, unit, and lint. The integration tier needs the variables in
   Tests. `src/` reads no config key, environment variable, or feature toggle.
 - Secret source: none in this package; see the architecture Security architecture. Supply the
-  browser-tier client credentials from your environment, never from a committed file.
+  integration-tier client credentials from your environment, never from a committed file.
 - Package or artifact access: no private registry or credentials. `yarn install` needs network access
   to the public npm registry set in the workspace root `.yarnrc.yml`, because the Yarn cache is not
   committed.
