@@ -26,6 +26,7 @@ export default class ResponseLoggerInterceptor extends Interceptor {
    * @returns {Object}
    */
   onResponse(options, response) {
+    if (options.skipLogging) return response;
     const now = new Date();
 
     this.printResponseHeader(options, response);
@@ -56,6 +57,7 @@ export default class ResponseLoggerInterceptor extends Interceptor {
    * @returns {Object}
    */
   onResponseError(options, reason) {
+    if (options.skipLogging) return Promise.reject(reason);
     const now = new Date();
 
     this.printResponseHeader(options, reason);
@@ -82,6 +84,7 @@ export default class ResponseLoggerInterceptor extends Interceptor {
    * @returns {undefined}
    */
   printResponseHeader(options, response) {
+    if (options.skipLogging) return;
     const logger = get(this, 'webex.logger', console);
 
     logger.info('Status Code:', response.statusCode);

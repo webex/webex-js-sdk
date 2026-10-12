@@ -318,3 +318,14 @@ In browsers the logger prints the stringified values instead of live objects. Th
 | Lint | `yarn workspace @webex/plugin-logger test:style` | `src/` | — |
 
 Do not run the aggregate `test` script from `package.json` as a verification command. It chains `test:integration`, which `package.json` does not define, so it is intentionally not a manifest command.
+
+
+## Structured retained-record access
+
+The Logger also exposes `setLogContext(attributes)`, `client_logWithMetadata(level, metadata, ...args)` and `createLogReader(name)`. Context is filtered and owned before use; each accepted append captures filtered attributes/native event name, logical source, severity, timestamp and one logger-wide sequence. Metadata is held in a Logger-session WeakMap keyed by retained entry arrays, preserving their indexed layout and legacy text formatting. New TypeScript helpers own value snapshots and Reader progress; they have no OTel, network, timer or callback-registration dependency.
+
+A named Reader captures owned records in sequence order across active physical buffers. `read({maxEstimatedBytes,maxRecords})` selects a bounded prefix (at least one record); its one live Receipt supports cumulative monotonic `commit(n)` and idempotent `release()`. Only completed source records are committed. Named absolute progress survives close/reopen, independent from legacy support-upload indexes. Buffer base offsets account for eviction; selected records survive eviction until Receipt release, while unselected losses are counted. Releasing an evicted uncommitted selection counts that loss. `close()` is idempotent; duplicate open, live-receipt misuse and invalid budgets/prefixes throw to the Reader caller. Ordinary log methods retain their nonthrowing behavior.
+
+Arrays/maps/bytes are supported as generic log values. Metadata reuses existing authorization/email/MTID filtering and owns nested values; invalid values/cycles are omitted. A byte array returned in a Receipt is a detached copy. Source bodies remain `String(retainedEntry)` and existing support history is never removed by consumer commits. `setLogContext` requires neither credentials nor Reader/buffer acquisition and is usable before global SDK readiness.
+
+Public port types are published through `index.d.ts`; the existing default Logger/levels runtime exports retain their meaning. Build/package inspection must include the referenced TypeScript type source files. No test or runtime-validation result is claimed by this description.

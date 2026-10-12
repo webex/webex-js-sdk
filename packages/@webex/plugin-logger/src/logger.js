@@ -5,6 +5,8 @@
 import {inBrowser, patterns} from '@webex/common';
 import {WebexPlugin} from '@webex/webex-core';
 import {cloneDeep, has, isArray, isObject, isString} from 'lodash';
+import {captureMetadata, copyAttributes} from './log-record';
+import {createLogReader} from './log-reader';
 
 const precedence = {
   silent: 0,
@@ -34,6 +36,7 @@ const LOG_TYPES = {
 };
 
 const SDK_LOG_TYPE_NAME = 'wx-js-sdk';
+const metadataMethods = Object.create(null);
 
 const authTokenKeyPattern = /[Aa]uthorization/;
 
@@ -100,6 +103,12 @@ const Logger = WebexPlugin.extend({
     },
   },
   session: {
+    recordState: {
+      type: 'object',
+      default() {
+        return {sequence: 0, context: {}, entries: new WeakMap(), readers: new Map()};
+      },
+    },
     // for when configured to use single buffer
     buffer: {
       type: 'object',
@@ -108,6 +117,7 @@ const Logger = WebexPlugin.extend({
           buffer: [],
           nextIndex: 0,
           lastSubmitted: 0,
+          baseIndex: 0,
         };
       },
     },
@@ -125,6 +135,7 @@ const Logger = WebexPlugin.extend({
           buffer: [],
           nextIndex: 0,
           lastSubmitted: 0,
+          baseIndex: 0,
         };
       },
     },
@@ -135,9 +146,27 @@ const Logger = WebexPlugin.extend({
           buffer: [],
           nextIndex: 0,
           lastSubmitted: 0,
+          baseIndex: 0,
         };
       },
     },
+  },
+
+  setLogContext(attributes) {
+    this.recordState.context = Object.freeze(
+      copyAttributes(attributes, (value) => this.filter(value)[0])
+    );
+  },
+
+  client_logWithMetadata(level, metadata, ...args) {
+    metadataMethods[level]?.call(this, metadata, ...args);
+  },
+
+  createLogReader(name) {
+    const getBuffers = () =>
+      this.config.separateLogBuffers ? [this.sdkBuffer, this.clientBuffer] : [this.buffer];
+
+    return createLogReader(name, getBuffers, this.recordState.entries, this.recordState.readers);
   },
 
   /**
@@ -364,16 +393,25 @@ const Logger = WebexPlugin.extend({
  * @param {string} type type of log, SDK or client
  * @param {bool} neverPrint function never prints to console
  * @param {bool} alwaysBuffer function always logs to log buffer
+ * @param {bool} withMetadata consumes explicit metadata before body arguments
  * @instance
  * @memberof Logger
  * @private
  * @memberof Logger
  * @returns {function} logger method with specified params
  */
-function makeLoggerMethod(level, impl, type, neverPrint = false, alwaysBuffer = false) {
+function makeLoggerMethod(
+  level,
+  impl,
+  type,
+  neverPrint = false,
+  alwaysBuffer = false,
+  withMetadata = false
+) {
   // Much of the complexity in the following function is due to a test-mode-only
   // helper
   return function wrappedConsoleMethod(...args) {
+    const metadata = withMetadata ? args.shift() : undefined;
     // it would be easier to just pass in the name and buffer here, but the config isn't completely initialized
     // in Ampersand, even if the initialize method is used to set this up.  so we keep the type to achieve
     // a sort of late binding to allow retrieving a name from config.
@@ -450,16 +488,30 @@ function makeLoggerMethod(level, impl, type, neverPrint = false, alwaysBuffer = 
       }
 
       if (shouldBuffer) {
+        const recordMetadata = captureMetadata(
+          metadata,
+          this.recordState.context,
+          (value) => this.filter(value)[0]
+        );
         const logDate = new Date();
 
         stringified.unshift(logDate.toISOString());
         stringified.unshift('|  '.repeat(this.groupLevel));
+        this.recordState.sequence += 1;
+        this.recordState.entries.set(stringified, {
+          ...recordMetadata,
+          seq: this.recordState.sequence,
+          timestamp: logDate.getTime(),
+          level,
+          source: logType,
+        });
         bufferRef.buffer.push(stringified);
         if (bufferRef.buffer.length > historyLength) {
           // we've gone over the buffer limit, trim it down
           const deleteCount = bufferRef.buffer.length - historyLength;
 
           bufferRef.buffer.splice(0, deleteCount);
+          bufferRef.baseIndex += deleteCount;
 
           // and adjust the corresponding buffer index used for log diff uploads
           bufferRef.nextIndex -= deleteCount;
@@ -500,21 +552,16 @@ levels.forEach((level) => {
   // eslint-disable-next-line complexity
   Logger.prototype[`client_${level}`] = makeLoggerMethod(level, impl, LOG_TYPES.CLIENT);
   Logger.prototype[level] = makeLoggerMethod(level, impl, LOG_TYPES.SDK);
+  metadataMethods[level] = makeLoggerMethod(level, impl, LOG_TYPES.CLIENT, false, false, true);
 });
 
 Logger.prototype.client_logToBuffer = makeLoggerMethod(
-  levels.info,
-  levels.info,
+  'info',
+  'info',
   LOG_TYPES.CLIENT,
   true,
   true
 );
-Logger.prototype.logToBuffer = makeLoggerMethod(
-  levels.info,
-  levels.info,
-  LOG_TYPES.SDK,
-  true,
-  true
-);
+Logger.prototype.logToBuffer = makeLoggerMethod('info', 'info', LOG_TYPES.SDK, true, true);
 
 export default Logger;

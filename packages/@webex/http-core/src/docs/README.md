@@ -483,3 +483,7 @@ What remains is not measurement: independent semantic validation by `codex` ran 
 returned `pass-with-warnings` with no Blocking finding against this module. Promotion from `Partial`
 to `Specced` remains held because a characterization baseline should be recorded before any risky
 modification.
+
+## Per-request logging opt-out
+
+`skipLogging: true` suppresses `Interceptor.logOptions` output for that request, even when verbose network logging is enabled. It does not bypass interceptors, authentication, request events, timing, retries, or error classification. The request transport applies the same option to its own diagnostics.
