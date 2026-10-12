@@ -9,7 +9,7 @@ doc_kind: module-spec
 generated_from: module-spec@0.3.0
 generated_by: claude-cowork
 approved_by: akulakum@cisco.com
-updated_at: 2026-10-12T14:24:10Z
+updated_at: 2026-10-12T14:57:45Z
 validation_status: pass-with-warnings
 -->
 

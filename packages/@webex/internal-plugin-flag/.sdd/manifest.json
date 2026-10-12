@@ -243,9 +243,9 @@
     "head_ref": "FLAG_INTERNAL_PLUGIN_SDD",
     "validator_runtime": "current-session",
     "validator_runtime_source": "invocation-input",
-    "validator_run_id": "spark-853128-flag-spec-validator-2026-10-12-round-4",
+    "validator_run_id": "spark-853128-flag-spec-validator-2026-10-12-round-5",
     "runtime_fallback_tier": "different-runtime",
-    "source_commit": "66d5c49e6b652fd4377700a439722d111b74ebec"
+    "source_commit": "078b54e6d963fdacc45a6f06402ae28f630b7907"
   },
   "layout": {
     "sdd_root": ".sdd",
