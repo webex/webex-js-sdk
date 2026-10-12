@@ -66,8 +66,9 @@ not the media encryption path.
 
 ### Assumptions
 
-- The WASM MLS engine is already relocated into the SDK. Moving it and deciding how or where it
-  will be hosted are outside this design.
+- The building of the WASM module e2ee.wasm (with e2ee.js loader) is outside of the scope of this design doc.
+  It is assumed that the module is already built (by building the libe2ee, mlspp v3,v4 and v5 c++ libraries)
+  and is placed in `packages/@webex/plugin-meetings/assets` folder.
 
 ## Confirmed decisions
 
@@ -456,11 +457,9 @@ three-certificate chain therefore has one `identityResults` entry with three cer
 `certificateChain`. The current WASM and SDK roster shape carries X.509 results only.
 
 The libe2ee verifier used by UCF also validates the `userinfo_vc_draft_00` credential type and
-includes those outcomes in the overall MultiCredential result. UCF's MediaEncryptionService
-presentation path currently consumes X.509 results only; it does not surface the VC results. To
-expose VC details in the SDK, the WASM roster binding must also carry `RosterStatus.vc`, then the SDK
-can add a typed result for that credential type. That would extend beyond UCF's current identity
-display behavior.
+includes those outcomes in the overall MultiCredential result. However, it's been confirmed
+that this is not needed and this UCF code will be deleted and we don't have to support VC identities
+on web.
 
 `PartialSuccess` means at least one credential binding succeeded and at least one failed. An app
 that wants to match UCF's per-device identity display should select a successful `identityResults`
