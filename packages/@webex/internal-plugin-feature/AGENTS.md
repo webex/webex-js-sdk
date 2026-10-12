@@ -184,5 +184,5 @@ PR checklist:
 
 - Edit `dist/` by hand.
 - Commit secrets, tokens, or credentials, including in test fixtures.
-- Copy template files into the package or replace the `.sdd/templates` symlink with a directory. It
-  points to the repository-root `.sdd/templates` snapshot.
+- Copy template files into the package or replace the `.sdd/templates/repo-standards` symlink with a directory. It
+  points to the repository-root `.sdd/templates/repo-standards` snapshot.
