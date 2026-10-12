@@ -7,6 +7,8 @@ import type {IdentityProvider} from '@webex/internal-plugin-identity';
 import EventsScope from '../common/events/events-scope';
 import Trigger from '../common/events/trigger-proxy';
 import LoggerProxy from '../common/logs/logger-proxy';
+import Metrics from '../metrics';
+import BEHAVIORAL_METRICS from '../metrics/constants';
 import StaticAssetLoader from '../common/static-asset-loader';
 import {EVENT_TRIGGERS} from '../constants';
 import MLS, {type MLSEvent, type MLSEventMap} from './mls';
@@ -158,6 +160,31 @@ export default class E2eeMeeting extends EventsScope {
   }
 
   /**
+   * Loads the signed domain-name roots bundle. This bundle is used to verify some remote
+   * participant identities, but is optional for joining the MLS group.
+   * @returns {Promise<Uint8Array>}
+   */
+  private async loadDomainNameRootsP7b(): Promise<Uint8Array> {
+    try {
+      return await this.assetLoader.getBytes(DOMAIN_NAME_ROOTS_P7B_ASSET);
+    } catch (error) {
+      const reason = error instanceof Error ? error.message : String(error);
+
+      LoggerProxy.logger.warn(
+        `e2ee: E2eeMeeting#loadDomainNameRootsP7b --> failed to load ${DOMAIN_NAME_ROOTS_P7B_ASSET}; continuing without it`,
+        error
+      );
+
+      Metrics.sendBehavioralMetric(BEHAVIORAL_METRICS.E2EE_DOMAIN_NAME_ROOTS_LOAD_FAILURE, {
+        correlationId: this.meeting.correlationId,
+        reason,
+      });
+
+      return new Uint8Array();
+    }
+  }
+
+  /**
    * Starts the MLS session for this meeting. Idempotent and self-guarded: a no-op unless the
    * meeting requires E2EE. Never rejects — failures transition to the `failed` state and emit an
    * E2EE failure event.
@@ -188,7 +215,7 @@ export default class E2eeMeeting extends EventsScope {
       const [, credentials, domainNameRootsP7b] = await Promise.all([
         this.wasmLoader.get(wasmUrl),
         this.identityProvider.getCredentials(device.userId),
-        this.assetLoader.getBytes(DOMAIN_NAME_ROOTS_P7B_ASSET),
+        this.loadDomainNameRootsP7b(),
       ]);
       const httpClient = new MediaEncryptionService({
         webexRequest: this.webex.request.bind(this.webex),

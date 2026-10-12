@@ -187,7 +187,10 @@ The generic `WasmLoader` is **not** E2EE-specific and lives outside this folder 
 `StaticAssetLoader` in `common/static-asset-loader.ts` resolves and caches binary assets from
 `meetings.assetsBaseUrl`. It joins the configured base URL with an asset filename and fetches the
 response as bytes. Concurrent and later requests for the same URL share a cached successful
-response; failed requests are evicted so they can be retried. The default base URL is `/assets/`.
+response; failed requests are evicted so they can be retried. It rejects HTML responses by MIME
+type and also checks the response body for an HTML document prefix, since some servers return an
+HTML not-found page with a successful status and a generic binary MIME type. This makes E2EE startup
+reject that response before its bytes reach libe2ee. The default base URL is `/assets/`.
 
 - The `e2ee/mls.ts` from POC code becomes `mls.ts` (stripped of webex/HTTP/LLM).
 - `loadWasmModule` become `WasmLoader.preload(wasmUrl)` / `get(wasmUrl)`, warmed once per session
@@ -388,7 +391,10 @@ roots when `webex.internal.services.isIntegrationEnvironment()` is true; other e
 production plus FedRAMP roots, matching UCF's environment-specific root selection. It also owns
 `generateCsrWithPkijs` and the PEM helpers. `userIdentityRoots` is currently empty. The signed
 domain-name P7B bundle is loaded separately as a binary static asset and passed to the WASM trust
-anchor API for signature verification and extraction.
+anchor API for signature verification and extraction. If it cannot be loaded, E2EE startup reports
+the failure through `js_sdk_e2ee_domain_name_roots_load_failure` and continues with an empty bundle.
+The meeting can still join MLS, though identity verification for some remote participants may be
+unavailable.
 
 The consuming application hosts `plugin-meetings/dist/assets` and configures
 `meetings.assetsBaseUrl`. Use a version-pinned URL for CDN hosting so the assets remain compatible

@@ -5,6 +5,17 @@
 const DEFAULT_ASSETS_BASE_URL = '/assets/';
 
 /**
+ * Detects an HTML document prefix in an otherwise successful binary asset response.
+ * @param {ArrayBuffer} buffer
+ * @returns {boolean}
+ */
+function looksLikeHtmlDocument(buffer: ArrayBuffer): boolean {
+  const prefix = new TextDecoder().decode(buffer.slice(0, 256)).trimStart();
+
+  return prefix.startsWith('<');
+}
+
+/**
  * Resolves and fetches binary static assets published with plugin-meetings. Requests are shared
  * between callers and cached after a successful response.
  */
@@ -13,6 +24,9 @@ export default class StaticAssetLoader {
 
   private readonly assets = new Map<string, Promise<ArrayBuffer>>();
 
+  /**
+   * @param {string} [baseUrl='/assets/'] - Base URL for plugin-meetings static assets.
+   */
   constructor(baseUrl = DEFAULT_ASSETS_BASE_URL) {
     this.baseUrl = baseUrl.replace(/\/+$/, '');
   }
@@ -37,12 +51,34 @@ export default class StaticAssetLoader {
 
     if (!asset) {
       asset = fetch(url)
-        .then((response) => {
+        .then(async (response) => {
           if (!response.ok) {
             throw new Error(`Failed to fetch static asset ${url}: HTTP ${response.status}`);
           }
 
-          return response.arrayBuffer();
+          const contentType = response.headers
+            .get('content-type')
+            ?.split(';')[0]
+            .trim()
+            .toLowerCase();
+
+          if (contentType === 'text/html' || contentType === 'application/xhtml+xml') {
+            throw new Error(
+              `Failed to fetch static asset ${url}: unexpected HTML content type "${contentType}"`
+            );
+          }
+
+          const buffer = await response.arrayBuffer();
+
+          // Some static servers return an HTML fallback page with a successful status and a
+          // generic binary content type. Reject it before callers pass those bytes to WASM.
+          if (looksLikeHtmlDocument(buffer)) {
+            throw new Error(
+              `Failed to fetch static asset ${url}: response body looks like an HTML document`
+            );
+          }
+
+          return buffer;
         })
         .catch((error) => {
           this.assets.delete(url);
