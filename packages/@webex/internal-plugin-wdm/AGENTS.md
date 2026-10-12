@@ -88,6 +88,7 @@ Definition of done:
 - `test/unit/spec/` and `test/integration/spec/`: a placeholder unit test and an integration test
 - `docs/`: package architecture, getting started, registry, and ADRs
 - `.sdd/manifest.json`: machine-readable SDD manifest; `.repo-context.json`: operational context for agents
+- `.sdd/templates/repo-standards`: symlink to the monorepo root templates; do not replace it with a copy
 - `README.md`: the package's own deprecation notice and usage text (kept separate from the generated docs)
 
 ### Critical Constraints

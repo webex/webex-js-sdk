@@ -28,7 +28,7 @@ Doc map for developers and agents working on the deprecated Webex JS SDK WDM ali
 - [architecture.md](architecture.md) — canonical package architecture and the contract index
 - [specs/README.md](specs/README.md) — manifest-backed module and contract registry
 - [src/docs/README.md](../src/docs/README.md) — the owning specification beside the module's code
-- [adr/](adr/index.md) — concrete architectural decisions; blank ADR templates remain under the monorepo root `.sdd/` templates
+- [adr/](adr/index.md) — concrete architectural decisions; blank ADR templates remain in the monorepo root `.sdd/` templates, reached from this package through the `.sdd/templates/repo-standards` symlink
 
 No service specification or OpenAPI document exists: this package is a library, not a deployable service, and it
 owns no HTTP contract. The published SDK surface is described by `package.json` and the module's `Public surface`

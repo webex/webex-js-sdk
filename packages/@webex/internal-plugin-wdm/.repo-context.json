@@ -289,7 +289,7 @@
         ],
         "generated_from": "WebexTools/repo-standards@d89a7fe59126ae3ad9bac9ca352aa7f12b4c85dc",
         "refresh_with": "Run the setup script of the active Repo Annotation installation against the monorepo root",
-        "notes": "Resolved from the monorepo root .sdd directory; no package-level copy exists."
+        "notes": "A symlink at .sdd/templates/repo-standards points to the monorepo root .sdd/templates/repo-standards; no package-level copy exists."
       }
     ],
     "sync_paths": [
@@ -299,7 +299,7 @@
           ".sdd/templates/repo-standards"
         ],
         "mechanism": "Setup script of the active Repo Annotation installation",
-        "notes": "Run at the monorepo root."
+        "notes": "Run at the monorepo root; the package-level symlink follows the refreshed root templates."
       }
     ],
     "validation_entrypoints": [

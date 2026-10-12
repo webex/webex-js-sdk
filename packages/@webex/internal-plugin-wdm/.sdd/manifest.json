@@ -206,7 +206,7 @@
       "schema_path": "schemas/repo-context.schema.json",
       "action": "create",
       "schema_action": "create",
-      "reason": "Neither the operational context nor its schema exists in this package; both are created from the Repo Standards templates resolved at the monorepo root and verified repository evidence.",
+      "reason": "Neither the operational context nor its schema exists in this package; both are created from the Repo Standards templates resolved at the monorepo root (reached through the package symlink .sdd/templates/repo-standards) and verified repository evidence.",
       "decided_by": "claude-code (bootstrap questionnaire)",
       "decided_at": "2026-10-12T14:36:00Z"
     },
