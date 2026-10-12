@@ -1,6 +1,6 @@
 import {Mutex} from 'async-mutex';
 import {METHOD_START_MESSAGE} from '../../common/constants';
-import {emitFinalFailure, handleRegistrationErrors, uploadLogs} from '../../common';
+import {emitFinalFailure, getHostIps, handleRegistrationErrors, uploadLogs} from '../../common';
 import webWorkerStr from './webWorkerStr';
 
 import {
@@ -41,7 +41,6 @@ import {
   REG_TRY_BACKUP_TIMER_VAL_IN_SEC,
   MINUTES_TO_SEC_MFACTOR,
   REG_429_RETRY_UTIL,
-  REG_FAILBACK_429_MAX_RETRIES,
   FAILBACK_UTIL,
   REGISTRATION_FILE,
   DEFAULT_REHOMING_INTERVAL_MIN,
@@ -56,6 +55,7 @@ import {
   URL_ENDPOINT,
   RECONNECT_ON_FAILURE_UTIL,
   FAILOVER_CACHE_PREFIX,
+  REG_FAILBACK_429_MAX_RETRIES,
 } from '../constants';
 import {LINE_EVENTS, LineEmitterCallback} from '../line/types';
 import {LineError} from '../../Errors/catalog/LineError';
@@ -278,10 +278,12 @@ export class Registration implements IRegistration {
    *
    */
   private async postRegistration(url: string) {
+    const hostIps = getHostIps();
     const deviceInfo = {
       userId: this.userId,
       clientDeviceUri: this.webex.internal.device.url,
       serviceData: this.jwe ? {...this.serviceData, jwe: this.jwe} : this.serviceData,
+      hostIps,
     };
 
     return this.apiRequest.makeRequest({

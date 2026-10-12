@@ -107,6 +107,7 @@ let call;
 let callTransferObj;
 let broadworksCorrelationInfo;
 let localAudioStream;
+let lineRegistered = false;
 let effect;
 
 const devicesById = {};
@@ -338,6 +339,17 @@ async function initCalling(e) {
     serviceData.guestName = guestName.value
   }
 
+  /*
+   * Created ahead of the client so that it can discover this client's host ip addresses from a
+   * local offer and report them to Mobius on registration. The same stream is then reused for
+   * dialling and answering.
+   */
+  try {
+    localAudioStream = await Calling.createMicrophoneStream({audio: true});
+  } catch (error) {
+    console.error('Authentication#initCalling() :: unable to get the microphone stream', error);
+  }
+
   const callingClientConfig = {
     logger: loggerConfig,
     discovery: {
@@ -349,6 +361,7 @@ async function initCalling(e) {
     iceGathering: {
       reduceTimeoutForIceLite: true,
     },
+    localAudioStream,
   };
 
   if (callingClientConfig.discovery.country === 'Country') {
@@ -440,6 +453,15 @@ function toggleDisplay(elementId, status) {
   }
 }
 
+/*
+ * Dialling needs a registered line and a microphone stream. The stream is captured during
+ * initialization, so registering is what normally unblocks the button, but that capture can be
+ * denied and retried later with getMediaStreams().
+ */
+function refreshMakeCallState() {
+  makeCallBtn.disabled = !(lineRegistered && localAudioStream);
+}
+
 const callNotifyEvent = new CustomEvent('line:incoming_call', {
   detail: {
     callObject: call,
@@ -494,6 +516,8 @@ function createDevice() {
         ? `Registered, deviceId: ${deviceInfo.mobiusDeviceId}`
         : 'Not Registered';
     unregisterElm.disabled = false;
+    lineRegistered = true;
+    refreshMakeCallState();
   });
 
   line.on('error', (error) => {
@@ -513,6 +537,8 @@ function createDevice() {
       reason?.type === 'session_superseded'
         ? 'Session superseded by another tab or device'
         : 'Not Registered';
+    lineRegistered = false;
+    refreshMakeCallState();
   });
 
   // Start listening for incoming calls
@@ -532,7 +558,7 @@ function createDevice() {
 
     call.on('disconnect', () => {
       callDetailsElm.innerText = `${correlationId}: Call Disconnected`;
-      makeCallBtn.disabled = false;
+      refreshMakeCallState();
       endElm.disabled = true;
       muteElm.value = 'Mute';
       holdResumeElm.value = 'Hold';
@@ -557,7 +583,7 @@ function endCall() {
   call.end();
   callDetailsElm.innerText = `${call.getCorrelationId()}: Call Disconnected`;
   outboundEndElm.disabled = true;
-  makeCallBtn.disabled = false;
+  refreshMakeCallState();
   endElm.disabled = true;
   answerElm.disabled = true;
   muteElm.value = 'Mute';
@@ -730,7 +756,7 @@ function createCall(e) {
   });
   call.on('disconnect', (correlationId) => {
     callDetailsElm.innerText = `${correlationId}: Call Disconnected`;
-    makeCallBtn.disabled = false;
+    refreshMakeCallState();
     endElm.disabled = true;
     muteElm.value = 'Mute';
     outboundEndElm.disabled = true;
@@ -892,10 +918,12 @@ function initiateTransfer() {
 }
 
 async function getMediaStreams() {
-  localAudioStream  = await Calling.createMicrophoneStream({audio: true});
+  if (!localAudioStream) {
+    localAudioStream = await Calling.createMicrophoneStream({audio: true});
+  }
 
   localAudioElem.srcObject = localAudioStream.outputStream;
-  makeCallBtn.disabled = false;
+  refreshMakeCallState();
 }
 
 async function toggleNoiseReductionEffect() {
