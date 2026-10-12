@@ -3,7 +3,7 @@ doc_kind: agent-entry
 generated_from: agents@0.3.0
 generated_by: claude-cowork
 approved_by: akulakum@cisco.com
-updated_at: 2026-10-12T12:11:00Z
+updated_at: 2026-10-12T13:12:33Z
 validation_status: pending
 -->
 
@@ -145,10 +145,12 @@ Pattern example:
 ```text
 Preferred:
 - Check the required url field and return a rejected promise before building the request.
-- Check a data-derived host with the services plugin before sending to it.
+- Keep the services-plugin host check before the bulk fetch in `mapToActivities` (`INV-003`).
 
 Avoid:
-- Sending to a URL taken from flag or activity data without the host check.
+- Sending the bulk fetch to a URL built from `flag-item` without the host check. (`archive`,
+  `unflag`, and `delete` send to `flag.url` without one today; adding a check is a separate,
+  tested behavior change.)
 - Passing request settings through the options argument and expecting them to apply.
 ```
 
@@ -182,7 +184,7 @@ PR checklist:
 - Adding dependencies or external services.
 - Large refactors or schema migrations.
 - Security-sensitive changes (auth, encryption, secrets handling), including the activity host check
-  and any request whose URL comes from data.
+  in `mapToActivities` and any change to how `flag.url` requests are sent.
 - Any destructive data or infrastructure operation.
 - Changing an export, a method name, or the plugin name.
 

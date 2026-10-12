@@ -9,7 +9,7 @@ doc_kind: module-spec
 generated_from: module-spec@0.3.0
 generated_by: claude-cowork
 approved_by: akulakum@cisco.com
-updated_at: 2026-10-12T12:11:00Z
+updated_at: 2026-10-12T13:12:33Z
 validation_status: pending
 -->
 
@@ -151,7 +151,7 @@ Declared dependencies that `src/` does not import are listed in the architecture
 | `MOD-006` | `delete(flag, options)` applies `INV-002` to `flag.url`, then sends DELETE to that URL through `this.request` and resolves with the response body. | Removes a flag. | `src/flag.js`; sibling package webex-core, file src/lib/webex-plugin.js | Unit: #remove() rejection; live: #remove() and the afterEach cleanup | `this.request` delegates to `webex.request`, so the pipeline is the same as the other methods | Present |
 | `MOD-007` | `mapToActivities(flags)` waits for the `postauth` catalog, groups the `flag-item` URLs that pass `INV-003` by conversation URL, warns and skips the rest, sends one POST to `<conversation URL>/bulk_activities_fetch` per group in parallel, keeps the activities allowed by `INV-005`, and resolves with them as one flat array (groups in first-seen order). | Shows the flagged activities while refusing to send a request to a host that the catalog does not name as `conversation`. | `src/flag.js` | Unit: five #mapToActivities() cases; live: #mapToActivities() | No test of the catalog wait, `'200'` filtering, multiple groups, or a failed fetch | Present |
 | `MOD-008` | The config under the `INV-001` key is an empty object; webex-core merges it into `webex.config`, and `src/` reads no key. | Reserves the plugin's config namespace. | `src/config.js` | none found | — | Present |
-| `MOD-009` | `create`, `list`, `archive`, `unflag`, and `delete` default `options` to `{}` and put it under the request key `options`; they do not merge it into the request. | Matches the method signatures; see Pitfalls for the effect. | `src/flag.js` | none found | No interceptor in the workspace or http-core reads a request-level `options` key today | Present |
+| `MOD-009` | `create`, `list`, `archive`, `unflag`, and `delete` default `options` to `{}` and put it under the request key `options`; they do not merge it into the request. | Matches the method signatures; see Pitfalls for the effect. | `src/flag.js` | none found | Transport settings inside the nested object, such as headers and `qs`, are not applied; see Pitfalls for the conversation `deferDecrypt` check | Present |
 
 ## Design overview
 
@@ -327,7 +327,8 @@ classDiagram
 
 ## Concurrency and reactive flow
 
-- Execution model: single JavaScript event loop; every method returns a promise.
+- Execution model: single JavaScript event loop. Each method returns a promise when its argument
+  reads succeed; the synchronous `TypeError` cases are listed under Caller-visible failure modes.
 - Ordering guarantees: `mapToActivities` starts all bulk fetches together after the catalog wait.
   The result keeps group order (first-seen conversation URL) and, within a group, response order.
 - Idempotency and retry: none in this package (Cross-boundary use-case flow).
@@ -364,8 +365,12 @@ classDiagram
 
 - The README usage line `webex.internal.flag.WHATEVER` is a placeholder, not a method (Purpose and
   boundary lists the real methods).
-- The caller's `options` argument does not change the request (`MOD-009`). Headers, query, or other
-  request settings passed there are not read by any interceptor in the workspace today.
+- The caller's `options` argument is not merged into the request (`MOD-009`), so headers, `qs`, or
+  other transport settings passed there are not applied. The conversation plugin's inbound predicates
+  check `deferDecrypt` on `response.options`, which http-core sets to the request object itself
+  (sibling package internal-plugin-conversation, file src/index.js; sibling package http-core, file
+  src/request/request.js). They read the request's top-level `deferDecrypt` key, so a
+  `deferDecrypt` passed inside the nested `options` object is not seen either.
 - `delete` calls `this.request` while the other methods call `this.webex.request`. Both reach the
   same pipeline today; keep them equal if one changes.
 - `INV-005` compares `status` with the string `'200'`. A numeric status from the service would drop
@@ -390,8 +395,9 @@ classDiagram
 
 - Do: check a method's required `url` field and return a rejected promise before building a request
   (`INV-002`).
-- Do: keep the host check before any request whose URL comes from flag data (`INV-003`); keep the
-  SECURITY unit cases passing.
+- Do: keep the host check before the bulk fetch, whose URL is built from `flag-item` (`INV-003`);
+  keep the SECURITY unit cases passing. `archive`, `unflag`, and `delete` send to `flag.url` without
+  a host check today; adding one is a behavior change that needs its own change and tests.
 - Do: change the plugin name, `namespace`, and config key together (`INV-001`).
 - Do not: send a bulk fetch to a catalog `priorityUrl` or another derived host without updating
   `INV-003` and its tests.
