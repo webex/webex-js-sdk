@@ -83,7 +83,7 @@ export function captureMetadata(
 }
 
 export function snapshotRecord(
-  entry: object,
+  entry: object | string,
   metadata: EntryMetadata,
   observedTimestamp: number
 ): LogRecord {

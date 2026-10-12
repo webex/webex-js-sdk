@@ -6,7 +6,7 @@ import {inBrowser, patterns} from '@webex/common';
 import {WebexPlugin} from '@webex/webex-core';
 import {cloneDeep, has, isArray, isObject, isString} from 'lodash';
 import {captureMetadata, copyAttributes} from './log-record';
-import {createLogReader, notifyLogReaders} from './log-reader';
+import {createLogNotifications, snapshotEntries} from './log-entries';
 
 const precedence = {
   silent: 0,
@@ -106,7 +106,12 @@ const Logger = WebexPlugin.extend({
     recordState: {
       type: 'object',
       default() {
-        return {sequence: 0, context: {}, entries: new WeakMap(), readers: new Map()};
+        return {
+          sequence: 0,
+          context: {},
+          entries: new WeakMap(),
+          notifications: createLogNotifications(),
+        };
       },
     },
     // for when configured to use single buffer
@@ -117,7 +122,6 @@ const Logger = WebexPlugin.extend({
           buffer: [],
           nextIndex: 0,
           lastSubmitted: 0,
-          baseIndex: 0,
         };
       },
     },
@@ -135,7 +139,6 @@ const Logger = WebexPlugin.extend({
           buffer: [],
           nextIndex: 0,
           lastSubmitted: 0,
-          baseIndex: 0,
         };
       },
     },
@@ -146,7 +149,6 @@ const Logger = WebexPlugin.extend({
           buffer: [],
           nextIndex: 0,
           lastSubmitted: 0,
-          baseIndex: 0,
         };
       },
     },
@@ -162,11 +164,16 @@ const Logger = WebexPlugin.extend({
     metadataMethods[level]?.call(this, metadata, ...args);
   },
 
-  createLogReader(name) {
-    const getBuffers = () =>
-      this.config.separateLogBuffers ? [this.sdkBuffer, this.clientBuffer] : [this.buffer];
+  getEntries() {
+    const buffers = this.config.separateLogBuffers
+      ? [this.sdkBuffer, this.clientBuffer]
+      : [this.buffer];
 
-    return createLogReader(name, getBuffers, this.recordState.entries, this.recordState.readers);
+    return snapshotEntries(buffers, this.recordState.entries);
+  },
+
+  onEntry(listener) {
+    return this.recordState.notifications.onEntry(listener);
   },
 
   /**
@@ -498,20 +505,21 @@ function makeLoggerMethod(
         stringified.unshift(logDate.toISOString());
         stringified.unshift('|  '.repeat(this.groupLevel));
         this.recordState.sequence += 1;
-        this.recordState.entries.set(stringified, {
+        const entryMetadata = {
           ...recordMetadata,
           seq: this.recordState.sequence,
           timestamp: logDate.getTime(),
           level,
           source: logType,
-        });
+        };
+
+        this.recordState.entries.set(stringified, entryMetadata);
         bufferRef.buffer.push(stringified);
         if (bufferRef.buffer.length > historyLength) {
           // we've gone over the buffer limit, trim it down
           const deleteCount = bufferRef.buffer.length - historyLength;
 
           bufferRef.buffer.splice(0, deleteCount);
-          bufferRef.baseIndex += deleteCount;
 
           // and adjust the corresponding buffer index used for log diff uploads
           bufferRef.nextIndex -= deleteCount;
@@ -526,7 +534,7 @@ function makeLoggerMethod(
         }
         if (level === 'group') this.groupLevel += 1;
         if (level === 'groupEnd' && this.groupLevel > 0) this.groupLevel -= 1;
-        notifyLogReaders(this.recordState.readers);
+        this.recordState.notifications.notify(stringified, entryMetadata);
       }
     } catch (reason) {
       if (!neverPrint) {
