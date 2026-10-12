@@ -225,6 +225,11 @@
     "generator_model": "claude-opus-5-5",
     "generator_runtime_source": "host-metadata",
     "generator_run_id": "spark-853128-scheduler-sdd-stage0-2026-10-12",
+    "validator_runtime": "current-session",
+    "validator_runtime_source": "invocation-input",
+    "validator_run_id": "spark-853128-scheduler-spec-validator-2026-10-12-round-3",
+    "runtime_fallback_tier": "different-runtime",
+    "source_commit": "1a026a6324341bf715970cad8db851d741abf272",
     "minimum_independence": "different-runtime",
     "blocking_severities": [
       "Blocking"
