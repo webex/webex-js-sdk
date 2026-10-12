@@ -9,6 +9,7 @@ export interface LogReceipt {
 export interface LogReader {
   read(options: {maxEstimatedBytes: number; maxRecords: number}): LogReceipt | undefined;
   hasPending(): boolean;
+  onAvailable(listener: () => void): () => void;
   readonly dropped: number;
   close(): void;
 }
@@ -29,6 +30,17 @@ export interface ReaderState {
   positions: Map<BufferState, number>;
   dropped: number;
   open: boolean;
+  notify?: () => void;
+}
+
+export function notifyLogReaders(readers: ReadonlyMap<string, ReaderState>): void {
+  for (const reader of [...readers.values()]) {
+    try {
+      reader.notify?.();
+    } catch {
+      // A consumer must not interrupt logging or another Reader's notification.
+    }
+  }
 }
 
 export function createLogReader(
@@ -51,6 +63,31 @@ export function createLogReader(
   cursor.open = true;
   let closed = false;
   let selection: Selection | undefined;
+  const listeners = new Set<() => void>();
+
+  cursor.notify = () => {
+    for (const listener of [...listeners]) {
+      if (!closed && listeners.has(listener)) {
+        try {
+          listener();
+        } catch {
+          // Availability is advisory; consumer failures cannot change source logging.
+        }
+      }
+    }
+  };
+
+  function onAvailable(listener: () => void): () => void {
+    if (closed) throw new Error('Log reader is closed');
+    if (typeof listener !== 'function') throw new TypeError('A log listener is required');
+    const subscription = () => listener();
+
+    listeners.add(subscription);
+
+    return () => {
+      listeners.delete(subscription);
+    };
+  }
 
   function refresh(): BufferState[] {
     const buffers = getBuffers();
@@ -169,14 +206,20 @@ export function createLogReader(
 
   function close(): void {
     if (closed) return;
-    releaseSelection();
-    cursor.open = false;
-    closed = true;
+    try {
+      releaseSelection();
+    } finally {
+      listeners.clear();
+      delete cursor.notify;
+      cursor.open = false;
+      closed = true;
+    }
   }
 
   return {
     read,
     hasPending,
+    onAvailable,
     close,
     get dropped() {
       if (!closed) refresh();

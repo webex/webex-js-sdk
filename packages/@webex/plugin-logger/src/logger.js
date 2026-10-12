@@ -6,7 +6,7 @@ import {inBrowser, patterns} from '@webex/common';
 import {WebexPlugin} from '@webex/webex-core';
 import {cloneDeep, has, isArray, isObject, isString} from 'lodash';
 import {captureMetadata, copyAttributes} from './log-record';
-import {createLogReader} from './log-reader';
+import {createLogReader, notifyLogReaders} from './log-reader';
 
 const precedence = {
   silent: 0,
@@ -526,6 +526,7 @@ function makeLoggerMethod(
         }
         if (level === 'group') this.groupLevel += 1;
         if (level === 'groupEnd' && this.groupLevel > 0) this.groupLevel -= 1;
+        notifyLogReaders(this.recordState.readers);
       }
     } catch (reason) {
       if (!neverPrint) {
