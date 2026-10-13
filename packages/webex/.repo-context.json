@@ -120,7 +120,7 @@
         "edit by hand; these files are not built"
       ],
       "validate_with": [
-        "yarn workspace webex test:integration"
+        "add a test with the change: no runnable test covers env.js (its integration spec requires the unexported webex/env subpath) or browser.js"
       ]
     },
     {
@@ -180,7 +180,6 @@
     },
     {
       "paths": [
-        "env.js",
         "src/webex.js",
         "src/index.js"
       ],
@@ -190,6 +189,18 @@
       "recommended": [
         "yarn workspace webex test:integration"
       ]
+    },
+    {
+      "paths": [
+        "env.js",
+        "browser.js"
+      ],
+      "minimum": [
+        "yarn workspace webex test:style"
+      ],
+      "recommended": [
+        "add a test with the change; test/integration/spec/env.js requires the unexported webex/env subpath and cannot reach env.js"
+      ]
     }
   ],
   "change_impact": [
@@ -197,12 +208,11 @@
       "paths": [
         "src/webex.js",
         "src/meetings.js",
-        "src/encryption.js",
         "src/webex-first-party.js"
       ],
       "affects": [
-        "which namespaces instances expose",
-        "the UMD bundles built from these entries"
+        "which public namespaces constructors extended after this entry expose, and which internal namespaces later instances expose",
+        "umd/webex.min.js, umd/meetings.min.js, and umd/webex-first-party.min.js (the last only in the umd build)"
       ],
       "refresh_with": [
         "yarn workspace webex build:src"
@@ -214,7 +224,27 @@
         "dist",
         "umd"
       ],
-      "notes": "Plugin registration is shared across entries in one realm; adding or removing a require changes every constructor loaded alongside it."
+      "notes": "Registration is shared through the loaded webex-core copy. A public plugin reaches only constructors whose entry calls WebexCore.extend after the plugin registered; an internal plugin reaches every instance constructed after it registered (module spec INV-002)."
+    },
+    {
+      "paths": [
+        "src/encryption.js"
+      ],
+      "affects": [
+        "dist/encryption.js only; it has no exports entry",
+        "not umd/encryption.min.js, which the workspace root webpack config builds from packages/@webex/plugin-encryption/src/webex.js"
+      ],
+      "refresh_with": [
+        "yarn workspace webex build:src"
+      ],
+      "validate_with": [
+        "yarn workspace webex test:unit"
+      ],
+      "avoid_direct_edits": [
+        "dist",
+        "umd"
+      ],
+      "notes": "A change to the UMD encryption bundle belongs in the sibling package plugin-encryption, file src/webex.js. Plugin registration follows module spec INV-002."
     },
     {
       "paths": [

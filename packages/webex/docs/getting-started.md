@@ -9,7 +9,7 @@ doc_kind: standing-doc
 generated_from: getting-started@0.3.0
 generated_by: claude-cowork
 approved_by: akulakum@cisco.com
-updated_at: 2026-10-13T05:14:36Z
+updated_at: 2026-10-13T07:26:27Z
 validation_status: not-run
 -->
 
@@ -23,7 +23,7 @@ webex-js-sdk workspace root.
 | Tool or access | Version or requirement |
 | -------------- | ---------------------- |
 | Node.js | 22.14, required for working in this repository by the workspace root `AGENTS.md`; the root `.nvmrc` selects the Node 22 LTS line |
-| Yarn | The version pinned by the workspace root `packageManager` field, provided through Corepack: enable Corepack for the selected Node.js version, as the workspace root `CONTRIBUTING.md` setup steps require. Workspaces are used, so install from the workspace root rather than this directory |
+| Yarn | 3.4.1, the version pinned by the workspace root `packageManager` field, provided through Corepack: enable Corepack for the selected Node.js version, as the workspace root `CONTRIBUTING.md` setup steps require. Workspaces are used, so install from the workspace root rather than this directory |
 | Test-user access for `test:integration` | `WEBEX_CLIENT_ID` and `WEBEX_CLIENT_SECRET` (described in the workspace root `CONTRIBUTING.md` and `ENV.md`), and network access to Webex services |
 | Browser for the karma run | A local browser for the karma runner that `test:browser:broken` starts through `@webex/legacy-tools` |
 

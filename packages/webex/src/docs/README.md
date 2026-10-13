@@ -9,7 +9,7 @@ doc_kind: module-spec
 generated_from: module-spec@0.3.0
 generated_by: claude-cowork
 approved_by: akulakum@cisco.com
-updated_at: 2026-10-13T05:14:36Z
+updated_at: 2026-10-13T07:26:27Z
 validation_status: not-run
 -->
 
@@ -321,7 +321,7 @@ classDiagram
 | -------- | --------------- | ------------------------- | ---------------------------- | -------- |
 | `UC-001` | Node or bundled app | Requires `webex`, calls `Webex.init({credentials})`, uses `webex.rooms` and other namespaces | Credentials handling is webex-core's | `src/webex.js`, `test/integration/spec/init.js` |
 | `UC-002` | Meetings-only app | Imports `webex/meetings` and calls `init` | The 11 packages and what they load; another entry loaded earlier can add public plugins (`INV-002`) | `src/meetings.js` |
-| `UC-003` | Calling app with its own SDK | `Calling.init({webexConfig, callingConfig})`, waits for `ready`, calls `register()` | Register failures are only logged | `src/calling.js` |
+| `UC-003` | Calling app with its own SDK | `Calling.init({webexConfig, callingConfig})`, waits for `ready`, calls `register()` | Register failures are only logged; a client failure leaves `registered` true | `src/calling.js` |
 | `UC-004` | Calling app sharing an SDK | `Calling.init({webex, callingConfig})`; clients exist on resolve | The shared instance must already be registered for clients to work | `src/calling.js` |
 | `UC-005` | Script-tag page | Loads `umd/webex.min.js` and uses global `Webex` | — | `umd/webex.min.js`, `umd/calling.min.js` |
 | `UC-006` | Shell script in Node | Sets `WEBEX_ACCESS_TOKEN` and requires the package file `env.js` by path | Throws in browsers; the `webex/env` subpath is not exported | `env.js` |
@@ -332,14 +332,14 @@ classDiagram
 | -------- | --------- | -------- | ----------------- | -------- |
 | Device registration | In-process call into `webex.internal.device` | Before Mercury (`INV-005`) | None here; owned by the device plugin | Logged at warn; caller must call `register` again |
 | Mercury connection | In-process call into `webex.internal.mercury` | After device; before client creation | None here; owned by the Mercury plugin | Same as above |
-| Calling clients | In-process factories in `@webex/calling` | After Mercury | None here | Logged at warn |
+| Calling clients | In-process factories in `@webex/calling` | After Mercury and after `registered` is set | None here | Logged at warn; `registered` stays true |
 
 ## Client state model
 
 | State or slice | Owner | Initial state | Transition triggers | Reset or persistence boundary |
 | -------------- | ----- | ------------- | ------------------- | ----------------------------- |
 | `registered` | `Calling` | `false` | `true` after Mercury connects; `false` after device unregister | In memory only |
-| `callingClient`, `contactClient`, `callHistoryClient`, `voicemailClient`, `callSettingsClient`, `callRecordingClient` | `Calling` | unset | `initializeClients()` per `INV-004` | Replaced on each call; never cleared |
+| `callingClient`, `contactClient`, `callHistoryClient`, `voicemailClient`, `callSettingsClient`, `callRecordingClient` | `Calling` | unset | `initializeClients()` per `INV-004` | Each call assigns the fields in order (`callingClient` first, awaited); a field whose flag is falsy is set to `undefined`, clearing an earlier client. If `createClient` rejects, the call stops and the later fields keep their previous values. In memory only |
 | `log` | `Calling` | calling package `Logger` | Switched to `webex.logger` on `ready` when Calling built its own instance | In memory only |
 | `webex` | `Calling` | Caller's or a new instance | Constructor only | In memory only |
 
@@ -351,7 +351,7 @@ classDiagram
 | `INV-002` | Registration is global to the loaded copy of webex-core (one per workspace install; Jest gives each test file its own), and the first registration of a name wins unless the plugin passes `replace`. A public namespace exists on a constructor's instances only if its plugin was registered before that entry file called `WebexCore.extend`, because ampersand-state copies the parent's children map at extend time. An internal namespace exists if its plugin was registered before the instance was constructed, because each instance builds a new webex-core `WebexInternalCore`. | Entry files differ only in which packages they load, and their load order decides what a later or earlier entry sees. | Each entry file; sibling package webex-core files src/lib/webex-core-plugin-mixin.js and src/lib/webex-internal-core-plugin-mixin.js; the ampersand-state `extend` function | none found; `test/integration/spec/commonjs.js` checks presence only |
 | `INV-003` | `src/index.js`, `src/webex-first-party.js`, `src/meetings.js`, and `src/encryption.js` require `@babel/polyfill` only when `global._babelPolyfill` is falsy. `src/webex.js` and `src/calling.js` do not load it. | Avoid loading the polyfill twice. | Those files | none found |
 | `INV-004` | Each Calling client is created only when its `clientConfig` flag is truthy: `calling` (awaited `createClient(webex, callingClientConfig)`), `contact`, `callHistory`, `voicemail`, `callSettings`, `callRecording`. An undefined `callRecording` is first set to `false` on the caller's object. | Apps opt in per client. | `src/calling.js` | none found |
-| `INV-005` | `register()` runs device `register`, then Mercury `connect`, then `initializeClients`; each failure is logged at warn and the returned promise resolves. | Calling requires both before clients start. | `src/calling.js` | none found |
+| `INV-005` | `register()` runs device `register`, then Mercury `connect`, sets `registered` to true, then runs `initializeClients`; each failure is logged at warn and the returned promise resolves. | Calling requires both before clients start. | `src/calling.js` | none found |
 
 ## Concurrency and reactive flow
 
@@ -373,7 +373,8 @@ classDiagram
 | `new Calling` or `Calling.init` without `callingConfig.logger` | TypeError reading `level` (a rejected promise from `init`) | Always pass `callingConfig.logger` | None | `src/calling.js` |
 | `Calling` without `webex` and without `webexConfig` | TypeError reading `config` | Pass one of the two | None | `src/calling.js` |
 | `deregister()` while registered and no calling client | TypeError from `Object.values(undefined)`, a rejected promise | Enable `clientConfig.calling` or guard the call | None | `src/calling.js` |
-| Device registration, Mercury, or client creation fails in `register()` | Warn log only; promise resolves; `registered` may stay false | Check `registered` after `register()` | Call `register()` again | `src/calling.js` |
+| Device registration or Mercury connection fails in `register()` | Warn log only; promise resolves; `registered` stays false | Check `registered` after `register()` | Call `register()` again | `src/calling.js` |
+| Client creation fails in `register()` after Mercury connected | Warn log only; promise resolves; `registered` is already true | `registered` does not reveal it; check the client fields | Call `initializeClients()` again rather than `register()` | `src/calling.js` |
 | A required plugin package is missing | `require` throws at load | Install the workspace dependency | None | `src/webex.js` |
 
 ## Pitfalls and constraints

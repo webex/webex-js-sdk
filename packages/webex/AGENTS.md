@@ -3,7 +3,7 @@ doc_kind: agent-entry
 generated_from: agents@0.3.0
 generated_by: claude-cowork
 approved_by: akulakum@cisco.com
-updated_at: 2026-10-13T05:14:36Z
+updated_at: 2026-10-13T07:26:27Z
 validation_status: not-run
 -->
 
@@ -116,7 +116,9 @@ Run checks in this order:
 
 1. `yarn workspace webex test:unit`
 2. `yarn workspace webex test:style`
-3. `yarn workspace webex test:integration` when a change touches loading, `init`, or `env.js`
+3. `yarn workspace webex test:integration` when a change touches loading or `init`. It is not a
+   verification route for `env.js` today: `test/integration/spec/env.js` requires `webex/env`, which
+   the `exports` map does not list, so that spec cannot reach `env.js` (module spec Pitfalls).
 
 The karma run is recorded in `.sdd/manifest.json` as `commands.browser-test` (role `other`), not
 under `tests`, because the SDD manifest `tests` schema allows only `unit`, `integration`, `e2e`, and

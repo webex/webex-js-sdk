@@ -9,7 +9,7 @@ doc_kind: standing-doc
 generated_from: spec-index@0.3.0
 generated_by: claude-cowork
 approved_by: akulakum@cisco.com
-updated_at: 2026-10-13T05:14:36Z
+updated_at: 2026-10-13T07:26:27Z
 validation_status: not-run
 -->
 
@@ -56,7 +56,7 @@ Generator-side field measurement is complete. Field coverage measured 2026-10-13
 | The plugin set or `init` of an entry file | `src/docs/README.md` | `yarn workspace webex test:unit`, then `yarn workspace webex test:integration` |
 | `Calling` | `src/docs/README.md` | `yarn workspace webex test:unit`, after adding the missing unit case |
 | The `exports` map, `browser` field, or UMD globals | `src/docs/README.md` and `docs/architecture.md` | `yarn workspace webex build` and `yarn workspace webex test:unit` |
-| `env.js` or `browser.js` | `src/docs/README.md` | `yarn workspace webex test:integration` |
+| `env.js` or `browser.js` | `src/docs/README.md` | None runnable today: no test covers `browser.js`, and the `env.js` integration spec requires the unexported `webex/env` subpath; add a test with the change |
 
 ## Module and contract registration
 
