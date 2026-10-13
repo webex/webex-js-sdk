@@ -13,7 +13,9 @@
     "integration-test": "yarn workspace webex test:integration",
     "browser-test": "yarn workspace webex test:browser:broken",
     "lint": "yarn workspace webex test:style",
-    "deploy": "yarn workspace webex deploy:npm"
+    "deploy": "yarn workspace webex deploy:npm",
+    "workspace-prebuild": "yarn prebuild:modules",
+    "umd-refresh": "yarn build:script"
   },
   "public_interfaces": [
     {
@@ -145,8 +147,8 @@
     },
     {
       "path": "umd",
-      "generated_from": "workspace root webpack.config.js entries: ./packages/webex (the package main; src/index.js in development mode) for webex, and packages/webex/src/webex-first-party.js, src/meetings.js, src/calling.js, plus packages/@webex/plugin-encryption/src/webex.js for encryption",
-      "refresh_with": "the workspace root build:script script (it runs the --umd webpack build that writes packages/webex/umd)"
+      "generated_from": "workspace root webpack.config.js entries: ./packages/webex for webex, which the config's resolve.alias maps to packages/webex/src/index in production and development; packages/webex/src/webex-first-party.js, src/meetings.js, src/calling.js; and packages/@webex/plugin-encryption/src/webex.js for encryption",
+      "refresh_with": "yarn build:script"
     },
     {
       "path": ".sdd/templates/repo-standards/template-map.json",
@@ -196,7 +198,7 @@
         "browser.js"
       ],
       "minimum": [
-        "yarn workspace webex test:style"
+        "lint the changed file with the workspace eslint configuration; yarn workspace webex test:style covers src/ only and does not inspect env.js or browser.js"
       ],
       "recommended": [
         "add a test with the change; test/integration/spec/env.js requires the unexported webex/env subpath and cannot reach env.js"
@@ -207,16 +209,17 @@
     {
       "paths": [
         "src/webex.js",
+        "src/index.js",
         "src/meetings.js",
         "src/webex-first-party.js"
       ],
       "affects": [
         "which public namespaces constructors extended after this entry expose, and which internal namespaces later instances expose",
-        "umd/webex.min.js, umd/meetings.min.js, and umd/webex-first-party.min.js (the last only in the umd build)"
+        "umd/webex.min.js (built from src/index.js through the webpack alias), umd/meetings.min.js, and umd/webex-first-party.min.js (the last only in the umd build)"
       ],
       "refresh_with": [
         "yarn workspace webex build:src",
-        "the workspace root build:script script (it runs the --umd webpack build that writes packages/webex/umd)"
+        "yarn build:script"
       ],
       "validate_with": [
         "yarn workspace webex test:unit",
@@ -241,7 +244,7 @@
         "yarn workspace webex build:src"
       ],
       "validate_with": [
-        "yarn workspace webex test:unit"
+        "a new focused test that loads src/encryption.js (no existing test does), then yarn workspace webex test:unit"
       ],
       "avoid_direct_edits": [
         "dist",
@@ -259,7 +262,7 @@
       ],
       "refresh_with": [
         "yarn workspace webex build:src",
-        "the workspace root build:script script (it runs the --umd webpack build that writes packages/webex/umd)"
+        "yarn build:script"
       ],
       "validate_with": [
         "yarn workspace webex test:unit"
@@ -440,8 +443,8 @@
         "paths": [
           "umd"
         ],
-        "generated_from": "workspace root webpack.config.js entries: ./packages/webex (the package main; src/index.js in development mode) for webex, and packages/webex/src/webex-first-party.js, src/meetings.js, src/calling.js, plus packages/@webex/plugin-encryption/src/webex.js for encryption",
-        "refresh_with": "the workspace root build:script script (it runs the --umd webpack build that writes packages/webex/umd)",
+        "generated_from": "workspace root webpack.config.js entries: ./packages/webex for webex, which the config's resolve.alias maps to packages/webex/src/index in production and development; packages/webex/src/webex-first-party.js, src/meetings.js, src/calling.js; and packages/@webex/plugin-encryption/src/webex.js for encryption",
+        "refresh_with": "yarn build:script",
         "notes": "Committed build output."
       },
       {
@@ -478,6 +481,18 @@
         "command": "yarn workspace webex test:style",
         "scope": "src",
         "notes": "eslint via the workspace root configuration."
+      },
+      {
+        "name": "workspace prebuild",
+        "command": "yarn prebuild:modules",
+        "scope": "workspace root",
+        "notes": "Builds the legacy tools and every package's build:src output; required before test:unit on a fresh clone."
+      },
+      {
+        "name": "UMD refresh",
+        "command": "yarn build:script",
+        "scope": "workspace root",
+        "notes": "Runs the --umd webpack build that writes packages/webex/umd."
       }
     ],
     "sync_paths": [

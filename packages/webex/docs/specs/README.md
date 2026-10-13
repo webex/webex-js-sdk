@@ -9,7 +9,7 @@ doc_kind: standing-doc
 generated_from: spec-index@0.3.0
 generated_by: claude-cowork
 approved_by: akulakum@cisco.com
-updated_at: 2026-10-13T08:08:34Z
+updated_at: 2026-10-13T08:34:04Z
 validation_status: not-run
 -->
 
@@ -45,7 +45,7 @@ package is a library published to npm, so that artifact is omitted in `.sdd/mani
 | --- | --- | --- | --- |
 | `src/` | Entry files, package config, storage choice, and the `Calling` wrapper | Partial | `src/docs/README.md` |
 
-Generator-side field measurement is complete. Field coverage measured 2026-10-13 is 93.3% (14 of 15 mandatory fields PRESENT for `src`). Critical fields are 8 of 8 PRESENT. The WEAK field is test strategy: 4 unit cases and four integration specs cover the main entry only, and the untested entries are listed in the module spec's Verification section. Independent validation: see the Validation status row of the module spec. Coverage state stays `Partial` until the other entries and `Calling` are tested, a characterization baseline exists, and a spec-drift record exists.
+Generator-side field measurement is complete. Field coverage measured 2026-10-13 is 93.3% (14 of 15 mandatory fields PRESENT for `src`). Critical fields are 8 of 8 PRESENT. The WEAK field is test strategy: 4 unit cases and three runnable integration specs (`commonjs.js`, `init.js`, `request.js`) cover the main entry only; the fourth integration spec, `env.js`, requires the unexported `webex/env` subpath and cannot reach `env.js`, and the untested entries are listed in the module spec's Verification section. Independent validation: see the Validation status row of the module spec. Coverage state stays `Partial` until the other entries and `Calling` are tested, a characterization baseline exists, and a spec-drift record exists.
 
 ## Change and verification routing
 
@@ -56,7 +56,7 @@ Generator-side field measurement is complete. Field coverage measured 2026-10-13
 | The plugin set or `init` of `src/webex.js` or `src/index.js` | `src/docs/README.md` | `yarn workspace webex test:unit`, then `yarn workspace webex test:integration` with the `--targets` option (workspace root `AGENTS.md`) for `commonjs.js`, `init.js`, and `request.js` |
 | The plugin set or `init` of `src/meetings.js`, `src/encryption.js`, or `src/webex-first-party.js` | `src/docs/README.md` | No existing test loads these entries; add a focused test that loads the changed entry, then run `yarn workspace webex test:unit` |
 | `Calling` | `src/docs/README.md` | `yarn workspace webex test:unit`, after adding the missing unit case |
-| The `exports` map, `browser` field, or UMD globals | `src/docs/README.md` and `docs/architecture.md` | `yarn workspace webex build` and `yarn workspace webex test:unit` |
+| The `exports` map, `browser` field, or UMD globals | `src/docs/README.md` and `docs/architecture.md` | `yarn workspace webex build` and `yarn workspace webex test:unit` for `dist/`; `yarn build:script` from the workspace root for the `umd/` bundles and globals |
 | `env.js` or `browser.js` | `src/docs/README.md` | None runnable today: no test covers `browser.js`, and the `env.js` integration spec requires the unexported `webex/env` subpath; add a test with the change |
 
 ## Module and contract registration

@@ -3,7 +3,7 @@ doc_kind: agent-entry
 generated_from: agents@0.3.0
 generated_by: claude-cowork
 approved_by: akulakum@cisco.com
-updated_at: 2026-10-13T08:08:34Z
+updated_at: 2026-10-13T08:34:04Z
 validation_status: not-run
 -->
 

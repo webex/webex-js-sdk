@@ -9,7 +9,7 @@ doc_kind: standing-doc
 generated_from: architecture@0.3.0
 generated_by: claude-cowork
 approved_by: akulakum@cisco.com
-updated_at: 2026-10-13T08:08:34Z
+updated_at: 2026-10-13T08:34:04Z
 validation_status: not-run
 -->
 
@@ -136,8 +136,12 @@ package. `package.json` lists `webex` itself as a devDependency so tests can imp
 | `babel-polyfill`, `lodash` (required) | SDK | npm | Entry files | See Dependency topology | npm |
 
 `webex-sdk` entry points: `main` and `.` point at `dist/index.js`, `./meetings` and `./calling` at
-their `dist/` files, `./package` at `package.json`, and `devMain` at `src/index.js`. No HTTP surface is served, so
-`api-specs/openapi.yaml` is omitted.
+their `dist/` files, `./package` at `package.json`, and `devMain` at `src/index.js`. Under `./calling`, `webex-sdk` also
+exposes the `Calling` class operations `new Calling`, `register`, `deregister`, `initializeClients`,
+`Calling.init`, `Calling.createMicrophoneStream`, and `Calling.createNoiseReductionEffect`, and the
+`ready` event that `Calling` emits when it builds its own SDK instance; behavior is in the module spec
+(`MOD-010` to `MOD-014`, `INV-004`, `INV-005`). No HTTP surface is served, so `api-specs/openapi.yaml`
+is omitted.
 
 ## Cross-cutting architecture
 
@@ -201,6 +205,8 @@ their `dist/` files, `./package` at `package.json`, and `devMain` at `src/index.
 | `yarn workspace webex test:browser:broken` | package | `test/integration/spec/` | karma result | Name marks it broken |
 | `yarn workspace webex test:style` | package | files under `src/` | eslint result | Markdown is reported as ignored |
 | `yarn workspace webex deploy:npm` | package | `dist/`, `umd/`, `package.json` | Publishes the package to the npm registry | Release pipeline only |
+| `yarn prebuild:modules` | workspace root | root `package.json` script | Installs, then builds the legacy tools, webex-core, and every package's `build:src` output | Run from the workspace root before `test:unit` on a fresh clone |
+| `yarn build:script` | workspace root | root `package.json` script, workspace root webpack config | Runs the `--umd` webpack build that writes `umd/` | Run from the workspace root; refreshes the committed bundles |
 | `umd/*.min.js` | workspace root webpack config | entry files | Committed bundles and source maps | Do not edit by hand |
 
 ## Cross-repository topology

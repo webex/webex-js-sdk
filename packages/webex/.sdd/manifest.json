@@ -49,7 +49,9 @@
       "command": "yarn workspace webex deploy:npm",
       "source_file": "package.json",
       "role": "deploy"
-    }
+    },
+    "workspace-prebuild": "yarn prebuild:modules",
+    "umd-refresh": "yarn build:script"
   },
   "toolchain": [
     {
@@ -127,7 +129,7 @@
       "path": "src",
       "canonical_spec": "src/docs/README.md",
       "coverage_status": "Partial",
-      "coverage_evidence": "Field coverage 93.3% (14/15) assessed 2026-10-13 by the generator; critical field coverage 8/8. The one WEAK field is test strategy: test/unit/spec/webex.js runs 4 Jest cases (version and fedramp) and the four Mocha integration specs cover commonjs loading, init merge, the user-agent header, and webex/env, but no test exercises meetings, encryption, first-party, Calling, the storage choice, or the UMD bundles, and no characterization baseline exists. Independent validation: see the Validation status row of the module spec. Held at Partial: untested entries, no characterization baseline, and no spec-drift record.",
+      "coverage_evidence": "Field coverage 93.3% (14/15) assessed 2026-10-13 by the generator; critical field coverage 8/8. The one WEAK field is test strategy: test/unit/spec/webex.js runs 4 Jest cases (version and fedramp) and three runnable Mocha integration specs cover commonjs loading, init merge, and the user-agent header (the fourth, test/integration/spec/env.js, requires the unexported webex/env subpath and cannot reach env.js), but no test exercises meetings, encryption, first-party, Calling, the storage choice, or the UMD bundles, and no characterization baseline exists. Independent validation: see the Validation status row of the module spec. Held at Partial: untested entries, no characterization baseline, and no spec-drift record.",
       "last_assessed": "2026-10-13",
       "contracts": {
         "provides": [
