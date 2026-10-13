@@ -2,6 +2,7 @@ import sha256 from 'crypto-js/sha256';
 
 import {union, forEach} from 'lodash';
 import WebexPlugin from '../webex-plugin';
+import {OAuthError} from '../credentials/grant-errors';
 
 import METRICS from '../metrics';
 import ServiceCatalog from './service-catalog';
@@ -23,6 +24,20 @@ const DEFAULT_CLUSTER_IDENTIFIER =
 const CATALOG_CACHE_KEY_V1 = 'services.v1.u2cHostMap';
 const CATALOG_TTL_MS = 24 * 60 * 60 * 1000; // 24 hours
 const catalogAuthFailures = new WeakMap();
+const catalogAuthReplayLimit = /^Failed after \d+ replay attempts$/;
+
+/**
+ * A catalog 401 can be replaced by token refresh before this layer sees it.
+ * An OAuth refresh failure and the auth replay limit are that replacement.
+ * @param {Error} error
+ * @returns {boolean}
+ */
+function isWrappedCatalogAuthFailure(error) {
+  return (
+    error instanceof OAuthError ||
+    (typeof error?.message === 'string' && catalogAuthReplayLimit.test(error.message))
+  );
+}
 
 /* eslint-disable no-underscore-dangle */
 /**
@@ -118,8 +133,9 @@ const Services = WebexPlugin.extend({
   /**
    * Remember a postauth catalog failure caused by HTTP 401 or 403.
    * 401 means the access token was rejected. 403 means the token can be
-   * valid and the caller still has no access. Other failures clear any
-   * previously stored auth failure.
+   * valid and the caller still has no access. A refresh or replay failure
+   * that replaced a catalog 401 is recorded as invalid_access_token.
+   * Other failures clear any previously stored auth failure.
    *
    * @private
    * @param {Error} error
@@ -137,6 +153,15 @@ const Services = WebexPlugin.extend({
       catalogAuthFailures.set(this, {
         status,
         reason,
+      });
+
+      return;
+    }
+
+    if (isWrappedCatalogAuthFailure(error)) {
+      catalogAuthFailures.set(this, {
+        status: 401,
+        reason: 'invalid_access_token',
       });
 
       return;

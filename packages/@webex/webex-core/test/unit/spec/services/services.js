@@ -6,6 +6,7 @@ import {assert} from '@webex/test-helper-chai';
 import MockWebex from '@webex/test-helper-mock-webex';
 import sinon from 'sinon';
 import {Services, ServiceRegistry, ServiceState} from '@webex/webex-core';
+import grantErrors from '@webex/webex-core/dist/lib/credentials/grant-errors';
 import {NewMetrics} from '@webex/internal-plugin-metrics';
 
 const waitForAsync = () =>
@@ -783,6 +784,63 @@ describe('webex-core', () => {
           assert.deepEqual(services._getCatalogAuthFailure(), {status, reason});
         }
       );
+
+      it('stores invalid_access_token when a postauth update fails with InvalidGrantError', async () => {
+        const error = new grantErrors.InvalidGrantError({
+          body: {
+            error: 'invalid_grant',
+            error_description: 'The refresh token is invalid',
+          },
+        });
+
+        sinon.stub(services, '_fetchNewServiceHostmap').rejects(error);
+
+        try {
+          await services.updateServices();
+          assert.fail('expected updateServices to reject');
+        } catch (rejected) {
+          assert.equal(rejected, error);
+        }
+
+        assert.deepEqual(services._getCatalogAuthFailure(), {
+          status: 401,
+          reason: 'invalid_access_token',
+        });
+      });
+
+      it('stores invalid_access_token when a postauth update fails after the auth replay limit', async () => {
+        const error = new Error('Failed after 1 replay attempts');
+
+        sinon.stub(services, '_fetchNewServiceHostmap').rejects(error);
+
+        try {
+          await services.updateServices();
+          assert.fail('expected updateServices to reject');
+        } catch (rejected) {
+          assert.equal(rejected, error);
+        }
+
+        assert.deepEqual(services._getCatalogAuthFailure(), {
+          status: 401,
+          reason: 'invalid_access_token',
+        });
+      });
+
+      it('clears a stored auth failure when a postauth update fails with a statusless error', async () => {
+        const error = new Error('catalog failed');
+
+        recordAuthFailure(401);
+        sinon.stub(services, '_fetchNewServiceHostmap').rejects(error);
+
+        try {
+          await services.updateServices();
+          assert.fail('expected updateServices to reject');
+        } catch (rejected) {
+          assert.equal(rejected, error);
+        }
+
+        assert.isNull(services._getCatalogAuthFailure());
+      });
 
       it.each([
         {label: 'preauth', args: {from: 'limited', query: {orgId: 'urn:EXAMPLE:org'}}},
