@@ -785,6 +785,27 @@ describe('webex-core', () => {
         }
       );
 
+      it('stores invalid_access_token when a refresh 403 replaced a catalog 401', async () => {
+        const error = new Error('forbidden');
+
+        error.statusCode = 403;
+        error.catalogAuthStatus = 401;
+        sinon.stub(services, '_fetchNewServiceHostmap').rejects(error);
+
+        try {
+          await services.updateServices();
+          assert.fail('expected updateServices to reject');
+        } catch (rejected) {
+          assert.equal(rejected, error);
+          assert.equal(rejected.statusCode, 403);
+        }
+
+        assert.deepEqual(services._getCatalogAuthFailure(), {
+          status: 401,
+          reason: 'invalid_access_token',
+        });
+      });
+
       it('stores invalid_access_token when a postauth update fails with InvalidGrantError', async () => {
         const error = new grantErrors.InvalidGrantError({
           body: {

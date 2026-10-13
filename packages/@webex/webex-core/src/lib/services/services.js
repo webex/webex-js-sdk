@@ -135,6 +135,7 @@ const Services = WebexPlugin.extend({
    * 401 means the access token was rejected. 403 means the token can be
    * valid and the caller still has no access. A refresh or replay failure
    * that replaced a catalog 401 is recorded as invalid_access_token.
+   * A refresh 403 keeps that original 401 on error.catalogAuthStatus.
    * Other failures clear any previously stored auth failure.
    *
    * @private
@@ -142,7 +143,7 @@ const Services = WebexPlugin.extend({
    * @returns {void}
    */
   _recordCatalogAuthFailure(error) {
-    const status = error && (error.statusCode || error.status);
+    const status = error && (error.catalogAuthStatus || error.statusCode || error.status);
     const reasonByStatus = {
       401: 'invalid_access_token',
       403: 'access_denied',
