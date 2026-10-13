@@ -162,22 +162,31 @@ describe('webex-core', () => {
 
         describe('when the service lookup failed because the token was rejected', () => {
           beforeEach(() => {
-            const authError = new Error(
-              "The access token is invalid or was revoked. Sign in again before calling 'example'."
-            );
+            const authError = new Error('invalid_access_token');
 
-            authError.reason = 'invalid_token';
+            authError.reason = 'invalid_access_token';
             waitForService.rejects(authError);
           });
 
-          it('should reject with the token error', () => {
+          it('should reject with invalid_access_token', () => {
             const promise = interceptor.onRequest(options);
 
-            return assert.isRejected(
-              promise,
-              Error,
-              "The access token is invalid or was revoked. Sign in again before calling 'example'."
-            );
+            return assert.isRejected(promise, Error, 'invalid_access_token');
+          });
+        });
+
+        describe('when the service lookup failed because access was denied', () => {
+          beforeEach(() => {
+            const authError = new Error('access_denied');
+
+            authError.reason = 'access_denied';
+            waitForService.rejects(authError);
+          });
+
+          it('should reject with access_denied', () => {
+            const promise = interceptor.onRequest(options);
+
+            return assert.isRejected(promise, Error, 'access_denied');
           });
         });
       });

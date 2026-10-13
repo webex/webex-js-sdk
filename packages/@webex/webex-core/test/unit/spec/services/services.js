@@ -614,7 +614,7 @@ describe('webex-core', () => {
         assert.isNull(services._getCatalogAuthFailure());
       });
 
-      it('stores invalid_token when the postauth catalog fails with 401', async () => {
+      it('stores invalid_access_token when the postauth catalog fails with 401', async () => {
         const error = new Error('unauthorized');
 
         error.statusCode = 401;
@@ -630,10 +630,13 @@ describe('webex-core', () => {
         await services.initServiceCatalogs();
 
         assert.isTrue(services.initFailed);
-        assert.deepEqual(services._getCatalogAuthFailure(), {status: 401, reason: 'invalid_token'});
+        assert.deepEqual(services._getCatalogAuthFailure(), {
+          status: 401,
+          reason: 'invalid_access_token',
+        });
       });
 
-      it('stores invalid_token when the postauth catalog fails with 403', async () => {
+      it('stores access_denied when the postauth catalog fails with 403', async () => {
         const error = new Error('forbidden');
 
         error.status = 403;
@@ -648,12 +651,12 @@ describe('webex-core', () => {
 
         await services.initServiceCatalogs();
 
-        assert.deepEqual(services._getCatalogAuthFailure(), {status: 403, reason: 'invalid_token'});
+        assert.deepEqual(services._getCatalogAuthFailure(), {status: 403, reason: 'access_denied'});
       });
     });
 
     describe('#waitForService', () => {
-      it('rejects with invalid_token when the postauth catalog failed with 401 and the service is missing', async () => {
+      it('rejects with invalid_access_token when the postauth catalog failed with 401 and the service is missing', async () => {
         services.webex.config.services = {
           servicesNotNeedValidation: [],
         };
@@ -669,12 +672,29 @@ describe('webex-core', () => {
           await services.waitForService({name: 'wcc-api-gateway'});
           assert.fail('expected waitForService to reject');
         } catch (error) {
-          assert.equal(error.reason, 'invalid_token');
+          assert.equal(error.reason, 'invalid_access_token');
           assert.equal(error.statusCode, 401);
-          assert.equal(
-            error.message,
-            "The access token is invalid or was revoked. Sign in again before calling 'wcc-api-gateway'."
-          );
+          assert.equal(error.message, 'invalid_access_token');
+        }
+      });
+
+      it('rejects with access_denied when the postauth catalog failed with 403 and the service is missing', async () => {
+        services.webex.config.services = {
+          servicesNotNeedValidation: [],
+        };
+        services.webex.internal.metrics = {
+          submitClientMetrics: sinon.stub(),
+        };
+        services._recordCatalogAuthFailure(Object.assign(new Error('forbidden'), {statusCode: 403}));
+        catalog.isReady = true;
+
+        try {
+          await services.waitForService({name: 'wcc-api-gateway'});
+          assert.fail('expected waitForService to reject');
+        } catch (error) {
+          assert.equal(error.reason, 'access_denied');
+          assert.equal(error.statusCode, 403);
+          assert.equal(error.message, 'access_denied');
         }
       });
     });

@@ -48,7 +48,10 @@ export default class ServiceInterceptor extends Interceptor {
         return options;
       })
       .catch((error) => {
-        if (error && error.reason === 'invalid_token') {
+        if (
+          error &&
+          (error.reason === 'invalid_access_token' || error.reason === 'access_denied')
+        ) {
           return Promise.reject(error);
         }
 

@@ -116,8 +116,10 @@ const Services = WebexPlugin.extend({
   },
 
   /**
-   * Remember a postauth catalog failure caused by a rejected access token.
-   * Other failures clear any previously stored auth failure.
+   * Remember a postauth catalog failure caused by HTTP 401 or 403.
+   * 401 means the access token was rejected. 403 means the token can be
+   * valid and the caller still has no access. Other failures clear any
+   * previously stored auth failure.
    *
    * @private
    * @param {Error} error
@@ -125,11 +127,16 @@ const Services = WebexPlugin.extend({
    */
   _recordCatalogAuthFailure(error) {
     const status = error && (error.statusCode || error.status);
+    const reasonByStatus = {
+      401: 'invalid_access_token',
+      403: 'access_denied',
+    };
+    const reason = reasonByStatus[status];
 
-    if (status === 401 || status === 403) {
+    if (reason) {
       catalogAuthFailures.set(this, {
         status,
-        reason: 'invalid_token',
+        reason,
       });
 
       return;
@@ -151,19 +158,19 @@ const Services = WebexPlugin.extend({
    * A stored catalog auth failure replaces the generic not-found text.
    *
    * @private
-   * @param {string} name
    * @param {string} fallbackMessage
    * @returns {Error}
    */
-  _serviceLookupError(name, fallbackMessage) {
+  _serviceLookupError(fallbackMessage) {
     const authFailure = this._getCatalogAuthFailure();
 
-    if (authFailure && authFailure.reason === 'invalid_token') {
-      const authError = new Error(
-        `The access token is invalid or was revoked. Sign in again before calling '${name}'.`
-      );
+    if (
+      authFailure &&
+      (authFailure.reason === 'invalid_access_token' || authFailure.reason === 'access_denied')
+    ) {
+      const authError = new Error(authFailure.reason);
 
-      authError.reason = 'invalid_token';
+      authError.reason = authFailure.reason;
       authError.statusCode = authFailure.status;
 
       return authError;
@@ -868,10 +875,7 @@ const Services = WebexPlugin.extend({
       });
 
       return Promise.reject(
-        this._serviceLookupError(
-          name,
-          `services: service '${name}' was not found in any of the catalogs`
-        )
+        this._serviceLookupError(`services: service '${name}' was not found in any of the catalogs`)
       );
     }
 
@@ -894,9 +898,7 @@ const Services = WebexPlugin.extend({
         this.webex.internal.metrics.submitClientMetrics(METRICS.JS_SDK_SERVICE_NOT_FOUND, {
           fields: {service_name: name},
         });
-        reject(
-          this._serviceLookupError(name, `services: service '${name}' was not found after waiting`)
-        );
+        reject(this._serviceLookupError(`services: service '${name}' was not found after waiting`));
       });
     });
   },
