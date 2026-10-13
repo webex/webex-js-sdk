@@ -9,7 +9,7 @@ doc_kind: module-spec
 generated_from: module-spec@0.3.0
 generated_by: claude-cowork
 approved_by: akulakum@cisco.com
-updated_at: 2026-10-13T09:23:39Z
+updated_at: 2026-10-13T09:38:17Z
 validation_status: not-run
 -->
 
@@ -84,7 +84,7 @@ Related context: [documentation index](../../docs/index.md) ·
 | Workspace file packages/legacy/babel/static/plugins/inject-package-version.js | For `build:src` and Jest, `PACKAGE_VERSION` becomes the version in the `package.json` of the working directory, or `0.0.0` when that file has no version |
 | Workspace file packages/@webex/webex-core/src/webex-core.js | `WebexCore.version = PACKAGE_VERSION` as a static, compiled with webex-core's own version |
 | Workspace root files babel.config.json and tooling/babel-plugin-inject-package-version.js | The UMD build injects versions with a different plugin; the committed `umd/webex.min.js` contains `version:"undefined"` for `WebexCore` and `Webex` |
-| Workspace file packages/calling/src/index.ts | `createClient` and the other client factories that `Calling#initializeClients` calls |
+| Workspace files packages/calling/src/index.ts, packages/calling/src/CallingClient/CallingClient.ts, and packages/calling/src/Voicemail/Voicemail.ts | `createClient` and the other client factories that `Calling#initializeClients` calls |
 | Workspace root file webpack.config.js | UMD entries, library names, and output paths for `umd/` |
 | `README.md` | Retained product documentation, not the behavioral authority. See ADR 0001. |
 
@@ -180,7 +180,7 @@ Contracts provided: `webex-sdk` (native artifact `package.json`) and `webex-umd-
 | `MOD-011` | `register()` runs `INV-005` and sets `registered` to true after Mercury `connect()` resolves. | Calling needs device registration and a resolved Mercury `connect()` before clients start; the Mercury plugin owns whether the socket is open at that point (its `connect()` also resolves while a socket is still connecting). | `src/calling.js` | none found | — | Present |
 | `MOD-012` | `deregister()` resolves at once when `registered` is false. Otherwise it calls `deregister(true)` on every line whose status is `active`, disconnects Mercury, unregisters the device, and sets `registered` to false; a failure in the last two is logged at warn and the promise resolves. | Release service resources in order. | `src/calling.js` | none found | Throws without a calling client (see Pitfalls) | Present |
 | `MOD-013` | `initializeClients()` creates each client by `INV-004` and stores it on the instance. | Apps enable only the clients they need. | `src/calling.js` | none found | — | Present |
-| `MOD-014` | `Calling.init(attrs)` constructs `Calling`; when `attrs.webex` is given it also awaits `initializeClients()` before resolving. `Calling.createMicrophoneStream` returns the factory that the calling package re-exports from `@webex/media-helpers` and `Calling.createNoiseReductionEffect(options)` returns a new `NoiseReductionEffect`. | With a shared instance, clients are usable on resolve; otherwise the app calls `register`. | `src/calling.js` | none found | — | Present |
+| `MOD-014` | `Calling.init(attrs)` constructs `Calling`; when `attrs.webex` is given it also awaits `initializeClients()` before resolving. `Calling.createMicrophoneStream` returns the factory that the calling package re-exports from `@webex/media-helpers` and `Calling.createNoiseReductionEffect(options)` returns a new `NoiseReductionEffect`. | With a shared instance, the enabled client references exist on resolve; otherwise the app calls `register`. Readiness of each client is owned by `@webex/calling`: its `createClient` awaits the calling client's own `init()`, while `createVoicemailClient` returns a voicemail client whose `init()` the app must still call. | `src/calling.js` | none found | — | Present |
 | `MOD-015` | Through the `browser` field, bundlers map `config-storage` to the shim; Node uses `MemoryStoreAdapter` for both storage kinds. | Browser persistence of bounded data under the `webex` namespace. | `package.json`, `src/config-storage.js`, `src/config-storage.shim.js` | none found | Not applied at runtime (see Pitfalls) | Present |
 | `MOD-016` | `env.js` throws `webex/env cannot be used in browser environments` when `inBrowser` is true; otherwise it exports `new Webex({credentials: process.env.WEBEX_ACCESS_TOKEN})`. | Shell and script quick start. | `env.js` | none found | `test/integration/spec/env.js` requires `webex/env`, which the `exports` map does not list, so Node's exports resolution rejects that require; the spec was not run here (see Pitfalls) | Present |
 | `MOD-017` | `browser.js` assigns the constructor to `window.webex` and exports it. | Global access for bundled pages. | `browser.js` | none found | The UMD global is `Webex` | Present |
@@ -331,7 +331,7 @@ classDiagram
 | `UC-001` | Node or bundled app | Requires `webex`, calls `Webex.init({credentials})`, uses `webex.rooms` and other namespaces | Credentials handling is webex-core's | `src/webex.js`, `test/integration/spec/init.js` |
 | `UC-002` | Meetings-only app | Imports `webex/meetings` and calls `init` | The 11 packages and what they load; another entry loaded earlier can add public plugins (`INV-002`) | `src/meetings.js` |
 | `UC-003` | Calling app with its own SDK | `Calling.init({webexConfig, callingConfig})`, waits for `ready`, calls `register()` | Register failures are only logged; a client failure leaves `registered` true | `src/calling.js` |
-| `UC-004` | Calling app sharing an SDK | `Calling.init({webex, callingConfig})`; clients exist on resolve | The shared instance must already be registered for clients to work | `src/calling.js` |
+| `UC-004` | Calling app sharing an SDK | `Calling.init({webex, callingConfig})`; the enabled client references exist on resolve | The shared instance must already be registered for clients to work; the voicemail client still needs its own `init()` (`MOD-014`) | `src/calling.js` |
 | `UC-005` | Script-tag page | Loads `umd/webex.min.js` and uses global `Webex` | — | `umd/webex.min.js`, `umd/calling.min.js` |
 | `UC-006` | Shell script in Node | Sets `WEBEX_ACCESS_TOKEN` and requires the package file `env.js` by path | Throws in browsers; the `webex/env` subpath is not exported | `env.js` |
 
