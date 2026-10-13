@@ -1463,12 +1463,10 @@ const Services = WebexPlugin.extend({
             // timeout race still marks the catalog ready once it completes.
             return this.updateServices()
               .then(() => {
-                catalogAuthFailures.delete(this);
                 catalog.isReady = true;
               })
-              .catch((error) => {
+              .catch(() => {
                 this.initFailed = true;
-                this._recordCatalogAuthFailure(error);
                 this.logger.warn('services: cannot retrieve postauth catalog');
               });
           }

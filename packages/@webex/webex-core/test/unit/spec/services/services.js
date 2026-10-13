@@ -614,45 +614,80 @@ describe('webex-core', () => {
         assert.isNull(services._getCatalogAuthFailure());
       });
 
-      it('stores invalid_access_token when the postauth catalog fails with 401', async () => {
-        const error = new Error('unauthorized');
+      it.each([
+        {statusField: 'statusCode', status: 401, reason: 'invalid_access_token'},
+        {statusField: 'status', status: 403, reason: 'access_denied'},
+      ])(
+        'stores $reason when the postauth catalog fails with $status',
+        async ({statusField, status, reason}) => {
+          const error = new Error('catalog failed');
 
-        error.statusCode = 401;
+          error[statusField] = status;
 
-        services.webex.credentials = {
-          getOrgId: sinon.stub().returns('orgId'),
-          canAuthorize: true,
-        };
+          services.webex.credentials = {
+            getOrgId: sinon.stub().returns('orgId'),
+            canAuthorize: true,
+          };
+          services.collectPreauthCatalog = sinon.stub().resolves();
+          sinon.stub(services, '_fetchNewServiceHostmap').rejects(error);
+          services.logger.error = sinon.stub();
 
-        services.collectPreauthCatalog = sinon.stub().resolves();
-        services.updateServices = sinon.stub().rejects(error);
+          await services.initServiceCatalogs();
 
-        await services.initServiceCatalogs();
+          assert.isTrue(services.initFailed);
+          sinon.assert.calledWith(services.logger.warn, 'services: cannot retrieve postauth catalog');
+          assert.deepEqual(services._getCatalogAuthFailure(), {status, reason});
+        }
+      );
 
-        assert.isTrue(services.initFailed);
-        assert.deepEqual(services._getCatalogAuthFailure(), {
-          status: 401,
-          reason: 'invalid_access_token',
-        });
-      });
+      it.each([
+        {statusField: 'statusCode', status: 401, reason: 'invalid_access_token'},
+        {statusField: 'status', status: 403, reason: 'access_denied'},
+      ])(
+        'keeps a stored $reason when a second init times out during the postauth fetch',
+        async ({statusField, status, reason}) => {
+          let rejectFetch;
+          const fetchPromise = new Promise((resolve, reject) => {
+            rejectFetch = reject;
+          });
+          const clock = sinon.useFakeTimers({toFake: ['setTimeout', 'clearTimeout']});
 
-      it('stores access_denied when the postauth catalog fails with 403', async () => {
-        const error = new Error('forbidden');
+          services.webex.credentials = {
+            getOrgId: sinon.stub().returns('orgId'),
+            canAuthorize: true,
+            supertoken: {access_token: 'token'},
+          };
+          services.collectPreauthCatalog = sinon.stub().resolves();
+          sinon.stub(services, '_fetchNewServiceHostmap').returns(fetchPromise);
 
-        error.status = 403;
+          try {
+            const firstInit = services.initServiceCatalogs();
 
-        services.webex.credentials = {
-          getOrgId: sinon.stub().returns('orgId'),
-          canAuthorize: true,
-        };
+            await waitForAsync();
+            assert.isTrue(catalog.status.postauth.collecting);
 
-        services.collectPreauthCatalog = sinon.stub().resolves();
-        services.updateServices = sinon.stub().rejects(error);
+            const secondInit = services.initServiceCatalogs();
 
-        await services.initServiceCatalogs();
+            await waitForAsync();
+            assert.calledOnce(services._fetchNewServiceHostmap);
 
-        assert.deepEqual(services._getCatalogAuthFailure(), {status: 403, reason: 'access_denied'});
-      });
+            const error = new Error('catalog failed');
+
+            error[statusField] = status;
+            rejectFetch(error);
+            await firstInit;
+
+            assert.deepEqual(services._getCatalogAuthFailure(), {status, reason});
+
+            clock.tick(60 * 1000);
+            await secondInit;
+
+            assert.deepEqual(services._getCatalogAuthFailure(), {status, reason});
+          } finally {
+            clock.restore();
+          }
+        }
+      );
     });
 
     describe('#updateServices catalog auth failure', () => {
