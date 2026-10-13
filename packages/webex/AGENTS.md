@@ -3,7 +3,7 @@ doc_kind: agent-entry
 generated_from: agents@0.3.0
 generated_by: claude-cowork
 approved_by: akulakum@cisco.com
-updated_at: 2026-10-13T09:02:11Z
+updated_at: 2026-10-13T09:23:39Z
 validation_status: not-run
 -->
 
@@ -47,7 +47,7 @@ commands from the monorepo root.
 | Install dependencies   | `yarn install` (workspace root) |
 | Start dev environment  | N/A — library package with no start script in `package.json` |
 | Run tests              | `yarn workspace webex test:unit` (Jest); `yarn workspace webex test:integration` (Mocha, needs test users) |
-| Run linters            | `yarn workspace webex test:style` |
+| Run linters            | `yarn workspace webex test:style` (`src/`); `yarn workspace webex eslint ./env.js ./browser.js` (package-root helpers) |
 | Build/release artifact | `yarn workspace webex build` (runs `build:src`) |
 | Format code            | N/A — no format script; `prettier` is a devDependency used through eslint |
 

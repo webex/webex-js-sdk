@@ -9,7 +9,7 @@ doc_kind: module-spec
 generated_from: module-spec@0.3.0
 generated_by: claude-cowork
 approved_by: akulakum@cisco.com
-updated_at: 2026-10-13T09:02:11Z
+updated_at: 2026-10-13T09:23:39Z
 validation_status: not-run
 -->
 
@@ -364,8 +364,10 @@ classDiagram
 
 ## Concurrency and reactive flow
 
-- Execution model: single JavaScript event loop. Entry loading and `init` are synchronous; the
-  `Calling` methods return promises.
+- Execution model: single JavaScript event loop. Entry loading and every `Webex.init` are
+  synchronous. `Calling.init`, `register`, `deregister`, and `initializeClients` return promises.
+  The static helpers are synchronous: `Calling.createMicrophoneStream` returns the factory and
+  `Calling.createNoiseReductionEffect` returns a new instance.
 - Ordering guarantees: `INV-005` inside one `register()` call. Nothing prevents concurrent
   `register()` or `deregister()` calls on one instance.
 - Idempotency and retry: `deregister()` is a no-op when not registered. `register()` has no guard
@@ -422,7 +424,11 @@ classDiagram
 - `src/_setup.js` is a Mocha test helper inside `src/`, so `build:src` emits it with the runtime files, and it requires `@webex/test-helper-test-users`, which is only a devDependency.
 - `deregister()` does not await `line.deregister(true)`, so a rejection there is unhandled rather than logged.
 - The UMD bundles report `version` as `"undefined"` (see `MOD-004`).
-- Run untargeted, the manifest integration command also runs `test/integration/spec/env.js`, which requires the unexported `webex/env` subpath, so the whole tier fails whenever that spec runs. Target the other three specs instead (see Verification).
+- The committed `umd/webex.min.js` and its source map predate the current `src/webex.js`: they do not
+  include `@webex/internal-plugin-task`, which `src/webex.js` now requires, while
+  `umd/webex-first-party.min.js` does. The committed bundles are not proof of source parity; rebuild
+  them with the manifest `umd-refresh` command in a separate release-artifact change, never by hand.
+- Run untargeted, the manifest integration command also runs `test/integration/spec/env.js`, which requires the unexported `webex/env` subpath, so the whole tier fails whenever that spec runs. Target `commonjs.js` and `init.js` instead (see Verification); `request.js` has its own caveat below.
 - `test/integration/spec/request.js` builds its expected user agent from `package.json` `version`. With
   no `version` field it expects `webex/undefined`, while the legacy babel plugin injects `0.0.0`, so its
   user-agent case fails on such a checkout (static reading; not run here without credentials).

@@ -9,7 +9,7 @@ doc_kind: standing-doc
 generated_from: getting-started@0.3.0
 generated_by: claude-cowork
 approved_by: akulakum@cisco.com
-updated_at: 2026-10-13T09:02:11Z
+updated_at: 2026-10-13T09:23:39Z
 validation_status: not-run
 -->
 
@@ -67,6 +67,7 @@ yarn workspace webex test:unit
 | Integration | `yarn workspace webex test:integration` | `test/integration/spec` | Mocha, chai, sinon, `@webex/test-helper-test-users` | Test-user credentials and Webex services |
 | Browser | `yarn workspace webex test:browser:broken` | `test/integration/spec` under karma | karma | A browser; the script name marks it broken |
 | Lint | `yarn workspace webex test:style` | `src/` | eslint | None |
+| Helper lint | `yarn workspace webex eslint ./env.js ./browser.js` | `env.js`, `browser.js` | eslint | None |
 
 - The karma run is manifest `commands.browser-test` with role `other`, because the SDD manifest
   `tests` schema has no browser tier, and the integration tier is already the Mocha run of the same

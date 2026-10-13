@@ -9,7 +9,7 @@ doc_kind: standing-doc
 generated_from: architecture@0.3.0
 generated_by: claude-cowork
 approved_by: akulakum@cisco.com
-updated_at: 2026-10-13T09:02:11Z
+updated_at: 2026-10-13T09:23:39Z
 validation_status: not-run
 -->
 
@@ -202,7 +202,7 @@ is omitted.
 | Artifact | Publish target | Versioning rule | Deprecation window | Changelog or migration obligation |
 | -------- | -------------- | --------------- | ------------------ | --------------------------------- |
 | `webex` | npm, through the `deploy:npm` script (manifest `commands.deploy`) | Workspace release tooling; the committed `package.json` has no `version` field | None declared in code | No package-local changelog; workspace tooling owns it |
-| `umd/` bundles | Published inside the npm package | Rebuilt by the workspace root webpack config; the committed bundles report `version` as `"undefined"` (module spec `MOD-004`) | None declared | Must match the entry files at release |
+| `umd/` bundles | Published inside the npm package | Rebuilt by the workspace root webpack config; the committed bundles report `version` as `"undefined"` (module spec `MOD-004`), and the committed `umd/webex.min.js` predates the current `src/webex.js` (module spec Pitfalls) | None declared | Must match the entry files at release; rebuild in a separate artifact change |
 
 ## Commands and generated artifacts
 
@@ -215,6 +215,7 @@ is omitted.
 | `yarn workspace webex test:integration` | package | `test/integration/spec/` | Mocha result | Needs test users and network |
 | `yarn workspace webex test:browser:broken` | package | `test/integration/spec/` | karma result | Name marks it broken |
 | `yarn workspace webex test:style` | package | files under `src/` | eslint result | Markdown is reported as ignored |
+| `yarn workspace webex eslint ./env.js ./browser.js` | package | `env.js`, `browser.js` | eslint result | Covers the package-root helpers that `test:style` skips |
 | `yarn workspace webex deploy:npm` | package | `dist/`, `umd/`, `package.json` | Publishes the package to the npm registry | Release pipeline only |
 | `yarn prebuild:modules` | workspace root | root `package.json` script | Installs, then builds the legacy tools, webex-core, and every package's `build:src` output | Run from the workspace root before `test:unit` on a fresh clone |
 | `yarn build:script` | workspace root | root `package.json` script, workspace root webpack config | Runs the `--umd` webpack build that writes `umd/` | Run from the workspace root; refreshes the committed bundles |

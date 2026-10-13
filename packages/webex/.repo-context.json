@@ -15,7 +15,8 @@
     "lint": "yarn workspace webex test:style",
     "deploy": "yarn workspace webex deploy:npm",
     "workspace-prebuild": "yarn prebuild:modules",
-    "umd-refresh": "yarn build:script"
+    "umd-refresh": "yarn build:script",
+    "lint-helpers": "yarn workspace webex eslint ./env.js ./browser.js"
   },
   "public_interfaces": [
     {
@@ -198,10 +199,10 @@
         "browser.js"
       ],
       "minimum": [
-        "lint the changed file with the workspace eslint configuration; yarn workspace webex test:style covers src/ only and does not inspect env.js or browser.js"
+        "yarn workspace webex eslint ./env.js ./browser.js"
       ],
       "recommended": [
-        "add a test with the change; test/integration/spec/env.js requires the unexported webex/env subpath and cannot reach env.js"
+        "add a test with the change; yarn workspace webex test:style covers src/ only, and test/integration/spec/env.js requires the unexported webex/env subpath and cannot reach env.js"
       ]
     }
   ],
@@ -286,7 +287,7 @@
         "yarn install"
       ],
       "validate_with": [
-        "focused loads of the webex, webex/calling, and webex/meetings subpaths through the exports map (the unit spec imports only .)",
+        "focused loads of the webex, webex/calling, webex/meetings, and webex/package subpaths through the exports map (the unit spec imports only .)",
         "yarn workspace webex build",
         "yarn build:script when the browser field or a UMD-facing entry changes",
         "yarn workspace webex test:unit"
@@ -307,7 +308,8 @@
         "Node and browser storage adapter choice"
       ],
       "refresh_with": [
-        "yarn workspace webex build:src"
+        "yarn workspace webex build:src",
+        "yarn build:script"
       ],
       "validate_with": [
         "a new focused characterization test that asserts the merged config and storage adapters (no existing test does), then yarn workspace webex test:unit"
@@ -518,6 +520,12 @@
         "command": "yarn build:script",
         "scope": "workspace root",
         "notes": "Runs the --umd webpack build that writes packages/webex/umd."
+      },
+      {
+        "name": "helper lint",
+        "command": "yarn workspace webex eslint ./env.js ./browser.js",
+        "scope": "env.js and browser.js",
+        "notes": "test:style lints src/ only; this covers the package-root helpers."
       }
     ],
     "sync_paths": [

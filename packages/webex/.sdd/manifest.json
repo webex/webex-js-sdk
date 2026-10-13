@@ -51,7 +51,8 @@
       "role": "deploy"
     },
     "workspace-prebuild": "yarn prebuild:modules",
-    "umd-refresh": "yarn build:script"
+    "umd-refresh": "yarn build:script",
+    "lint-helpers": "yarn workspace webex eslint ./env.js ./browser.js"
   },
   "toolchain": [
     {
