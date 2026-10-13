@@ -11,6 +11,8 @@ export interface LogAttributes {
   [key: string]: LogValue | undefined;
 }
 export interface LogMetadata {
+  readonly source?: string;
+  readonly timestamp?: number;
   readonly eventName?: string;
   readonly attributes?: Readonly<LogAttributes>;
 }
@@ -74,6 +76,10 @@ export function captureMetadata(
       : undefined;
 
   return Object.freeze({
+    source:
+      typeof metadata?.source === 'string' && metadata.source
+        ? (redact(metadata.source) as string)
+        : undefined,
     eventName,
     attributes: Object.freeze({
       ...copyAttributes(metadata?.attributes, redact),
@@ -93,4 +99,10 @@ export function snapshotRecord(
     body: String(entry),
     attributes: Object.freeze(copyAttributes(metadata.attributes)),
   });
+}
+
+export interface StructuredLogging {
+  logWithMetadata(level: string, metadata: LogMetadata, ...args: unknown[]): void;
+  client_logWithMetadata(level: string, metadata: LogMetadata, ...args: unknown[]): void;
+  client_logToBufferWithMetadata(level: string, metadata: LogMetadata, ...args: unknown[]): void;
 }

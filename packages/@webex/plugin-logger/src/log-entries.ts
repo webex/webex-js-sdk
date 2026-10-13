@@ -17,20 +17,35 @@ export function snapshotEntries(
   buffers: readonly {buffer: object[]}[],
   entries: WeakMap<object, EntryMetadata>
 ): readonly LogRecord[] {
-  const retained = buffers
-    .flatMap(({buffer}) => [...buffer])
-    .map((entry) => {
-      const metadata = entries.get(entry);
+  const retained = buffers.map(({buffer}) => [...buffer]);
+  const positions = retained.map(() => 0);
+  const ordered: {entry: object; metadata: EntryMetadata}[] = [];
 
-      if (!metadata) throw new Error('Retained log is missing append metadata');
+  while (true) {
+    let next: (typeof ordered)[number] | undefined;
+    let selected = -1;
 
-      return {entry, metadata};
-    })
-    .sort((first, second) => first.metadata.seq - second.metadata.seq);
+    for (let index = 0; index < retained.length; index += 1) {
+      const entry = retained[index][positions[index]];
+
+      if (entry) {
+        const metadata = entries.get(entry);
+
+        if (!metadata) throw new Error('Retained log is missing append metadata');
+        if (!next || metadata.seq < next.metadata.seq) {
+          next = {entry, metadata};
+          selected = index;
+        }
+      }
+    }
+    if (!next) break;
+    ordered.push(next);
+    positions[selected] += 1;
+  }
   const observedTimestamp = Date.now();
 
   return Object.freeze(
-    retained.map(({entry, metadata}) => snapshotRecord(entry, metadata, observedTimestamp))
+    ordered.map(({entry, metadata}) => snapshotRecord(entry, metadata, observedTimestamp))
   );
 }
 

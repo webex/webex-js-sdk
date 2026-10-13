@@ -37,6 +37,8 @@ const LOG_TYPES = {
 
 const SDK_LOG_TYPE_NAME = 'wx-js-sdk';
 const metadataMethods = Object.create(null);
+const sdkMetadataMethods = Object.create(null);
+const bufferMetadataMethods = Object.create(null);
 
 const authTokenKeyPattern = /[Aa]uthorization/;
 
@@ -162,6 +164,14 @@ const Logger = WebexPlugin.extend({
 
   client_logWithMetadata(level, metadata, ...args) {
     metadataMethods[level]?.call(this, metadata, ...args);
+  },
+
+  logWithMetadata(level, metadata, ...args) {
+    sdkMetadataMethods[level]?.call(this, metadata, ...args);
+  },
+
+  client_logToBufferWithMetadata(level, metadata, ...args) {
+    bufferMetadataMethods[level]?.call(this, metadata, ...args);
   },
 
   getEntries() {
@@ -491,7 +501,8 @@ function makeLoggerMethod(
           toPrint.unshift(this.webex.internal.device.url.slice(-3));
         }
         // eslint-disable-next-line no-console
-        console[impl](...toPrint);
+        const print = console[`std${impl}`] || console[impl];
+        print.apply(console, toPrint);
       }
 
       if (shouldBuffer) {
@@ -508,9 +519,9 @@ function makeLoggerMethod(
         const entryMetadata = {
           ...recordMetadata,
           seq: this.recordState.sequence,
-          timestamp: logDate.getTime(),
+          timestamp: Number.isFinite(metadata?.timestamp) ? metadata.timestamp : logDate.getTime(),
           level,
-          source: logType,
+          source: recordMetadata.source || logType,
         };
 
         this.recordState.entries.set(stringified, entryMetadata);
@@ -562,6 +573,8 @@ levels.forEach((level) => {
   Logger.prototype[`client_${level}`] = makeLoggerMethod(level, impl, LOG_TYPES.CLIENT);
   Logger.prototype[level] = makeLoggerMethod(level, impl, LOG_TYPES.SDK);
   metadataMethods[level] = makeLoggerMethod(level, impl, LOG_TYPES.CLIENT, false, false, true);
+  sdkMetadataMethods[level] = makeLoggerMethod(level, impl, LOG_TYPES.SDK, false, false, true);
+  bufferMetadataMethods[level] = makeLoggerMethod(level, impl, LOG_TYPES.CLIENT, true, true, true);
 });
 
 Logger.prototype.client_logToBuffer = makeLoggerMethod(

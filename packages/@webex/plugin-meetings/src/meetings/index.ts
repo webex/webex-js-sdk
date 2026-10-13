@@ -79,28 +79,36 @@ import {LocusDTO} from '../locus-info/types';
 let mediaLogger;
 
 class MediaLogger {
+  private write(level: string, args: unknown[]): void {
+    const {logger} = LoggerProxy;
+
+    if (typeof logger.logWithMetadata === 'function')
+      logger.logWithMetadata(level, {source: 'wcme'}, ...args);
+    else logger[level](...args);
+  }
+
   info(...args) {
-    LoggerProxy.logger.info(...args);
+    this.write('info', args);
   }
 
   log(...args) {
-    LoggerProxy.logger.log(...args);
+    this.write('log', args);
   }
 
   error(...args) {
-    LoggerProxy.logger.error(...args);
+    this.write('error', args);
   }
 
   warn(...args) {
-    LoggerProxy.logger.warn(...args);
+    this.write('warn', args);
   }
 
   trace(...args) {
-    LoggerProxy.logger.trace(...args);
+    this.write('trace', args);
   }
 
   debug(...args) {
-    LoggerProxy.logger.debug(...args);
+    this.write('debug', args);
   }
 }
 
