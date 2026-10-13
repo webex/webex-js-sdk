@@ -9,7 +9,7 @@ doc_kind: standing-doc
 generated_from: getting-started@0.3.0
 generated_by: claude-cowork
 approved_by: akulakum@cisco.com
-updated_at: 2026-10-13T08:34:04Z
+updated_at: 2026-10-13T09:02:11Z
 validation_status: not-run
 -->
 
@@ -73,7 +73,8 @@ yarn workspace webex test:unit
   specs.
 - Run untargeted, the integration tier fails whenever `test/integration/spec/env.js` runs, because it
   requires the unexported `webex/env` subpath. Pass the `--targets` option described in the workspace
-  root `AGENTS.md` once each for `commonjs.js`, `init.js`, and `request.js`.
+  root `AGENTS.md` once each for `commonjs.js` and `init.js`. `request.js` is not required while
+  `package.json` has no `version`, because its user-agent case then expects `webex/undefined`.
 - The `package.json` script `test` chains `test:style`, `test:unit`, and `test:integration`; run
   the tiers individually.
 - The unit spec constructs real `Webex` instances, which try to reach the service catalog. Without

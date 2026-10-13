@@ -9,7 +9,7 @@ doc_kind: module-spec
 generated_from: module-spec@0.3.0
 generated_by: claude-cowork
 approved_by: akulakum@cisco.com
-updated_at: 2026-10-13T08:34:04Z
+updated_at: 2026-10-13T09:02:11Z
 validation_status: not-run
 -->
 
@@ -130,7 +130,9 @@ Declarations live in the files above. This section summarises them and does not 
 | `webex` (`.` export, `main`) | Applications | Exports the full `Webex` constructor (`MOD-001`, `MOD-002`) | `src/index.js`, `src/webex.js` |
 | `Webex.init(attrs)` and `new Webex(attrs)` | Applications | `init` applies `INV-001`; `new` does not (`MOD-003`, `MOD-006`) | `src/webex.js` |
 | `Webex.version` and instance `version` | Applications, user-agent header | Build-time versions (`MOD-004`, `MOD-005`) | `src/webex.js` |
-| `webex/meetings` | Meetings applications | Meetings constructor (`MOD-008`) | `src/meetings.js` |
+| `webex/meetings`: `new Webex(attrs)`, `Webex.init(attrs)`, static `Webex.version`, instance `version` | Meetings applications | Meetings constructor and init defaults (`MOD-008`, `INV-001`); versions as `MOD-004` | `src/meetings.js` |
+| UMD `webex-first-party`: same members as `webex` | Script-tag first-party pages | First-party authorization selection (`MOD-007`); otherwise as `MOD-003`, `MOD-004`, `MOD-006` | `src/webex-first-party.js` |
+| UMD `encryption`: `new Webex(attrs)`, `Webex.init(attrs)`, static and instance `version` | Script-tag pages | Built from the sibling package plugin-encryption (file src/webex.js), which owns its behavior; not `src/encryption.js` or `MOD-009` (`MOD-019`) | `umd/encryption.min.js` |
 | `webex/calling`: default export `Calling` | Calling applications | ES default export of the class below | `src/calling.js` |
 | `new Calling({webex, webexConfig, callingConfig})` | Calling applications | Shared-instance or own-instance construction (`MOD-010`) | `src/calling.js` |
 | `Calling#register()` | Calling applications | Device, Mercury, then clients (`MOD-011`, `INV-005`) | `src/calling.js` |
@@ -169,7 +171,7 @@ Contracts provided: `webex-sdk` (native artifact `package.json`) and `webex-umd-
 | `MOD-002` | `src/webex.js` requires the 21 plugin packages listed under Structure and key files for their side effects before defining `Webex`, so instances expose those namespaces. | The full SDK is a sum of registered plugins (`INV-002`). | `src/webex.js` | `test/integration/spec/commonjs.js` asserts `canAuthorize`, `credentials`, `meetings`, `memberships`, `messages`, `people`, `rooms`, `teamMemberships`, `teams`, `webhooks` | Not every namespace is asserted | Present |
 | `MOD-003` | `Webex.init(attrs)` replaces `attrs.config` by `INV-001` and returns `new Webex(attrs)`; `attrs` defaults to `{}`. | One call configures and constructs. | `src/webex.js` | `test/integration/spec/init.js` `merges config correctly`; `test/unit/spec/webex.js` `fedramp` | `attrs` is mutated | Present |
 | `MOD-004` | Instances carry `version` equal to this package's `PACKAGE_VERSION` (the `WebexCore.extend` prototype value). Static `Webex.version` is copied from webex-core's `WebexCore.version` by ampersand-state `extend`, so it is webex-core's version. In `dist/` and Jest the legacy babel plugin injects the working-directory `package.json` version, or `0.0.0` when it has none. | Version reporting and the user-agent header. | `src/webex.js` | `test/unit/spec/webex.js` `.version` and `#version` assert `0.0.0` | Both values are `0.0.0` in the test, so the spec cannot tell them apart; the committed `package.json` has no `version` field; the UMD bundles carry `"undefined"` | Present |
-| `MOD-005` | `Webex` is extended with `webex: true`, which webex-core's user-agent interceptor reads so that `spark-user-agent` starts with `webex/<instance version> (node or web)`, subject to that interceptor's URL exclusions, a caller-supplied header, and its `appName` and `appPlatform` suffixes. | Service-side attribution of SDK traffic. | `src/webex.js` | `test/integration/spec/request.js` `includes webex in the spark-user-agent header` | Header logic is owned by webex-core | Present |
+| `MOD-005` | `Webex` is extended with `webex: true`, which webex-core's user-agent interceptor reads so that `spark-user-agent` starts with `webex/<instance version> (node or web)`, subject to that interceptor's URL exclusions, a caller-supplied header, and its `appName` and `appPlatform` suffixes. | Service-side attribution of SDK traffic. | `src/webex.js` | `test/integration/spec/request.js` `includes webex in the spark-user-agent header` | Header logic is owned by webex-core. That case expects `webex/${pkg.version}`; with no `version` in `package.json` it expects `webex/undefined` while the build injects `0.0.0`, so it fails on such a checkout (see Pitfalls) | Present |
 | `MOD-006` | `new Webex(attrs)` passes `attrs` straight to webex-core; no `sdkType` and no package config is added. | `init` is the configured path; `new` is the bare constructor. | `src/webex.js` | `test/unit/spec/webex.js` uses `new Webex()` for `fedramp` false | No test asserts the absent `sdkType` | Present |
 | `MOD-007` | `src/webex-first-party.js` registers `@webex/plugin-authorization-browser-first-party` before `src/webex.js` requires `@webex/plugin-authorization`, then exports the same `Webex`. | First-party browser apps need the first-party authorization flow under the same `authorization` name (`INV-002`). | `src/webex-first-party.js` | none found | Effective only when it is the first entry that registers `authorization` | Present |
 | `MOD-008` | `src/meetings.js` loads the 11 meetings-related packages and its `init` applies `INV-001` with defaults `sdkType: 'meetings'` and `meetings.disableHydraId: true`. | A smaller constructor for meetings-only apps. | `src/meetings.js` | none found | — | Present |
@@ -421,6 +423,9 @@ classDiagram
 - `deregister()` does not await `line.deregister(true)`, so a rejection there is unhandled rather than logged.
 - The UMD bundles report `version` as `"undefined"` (see `MOD-004`).
 - Run untargeted, the manifest integration command also runs `test/integration/spec/env.js`, which requires the unexported `webex/env` subpath, so the whole tier fails whenever that spec runs. Target the other three specs instead (see Verification).
+- `test/integration/spec/request.js` builds its expected user agent from `package.json` `version`. With
+  no `version` field it expects `webex/undefined`, while the legacy babel plugin injects `0.0.0`, so its
+  user-agent case fails on such a checkout (static reading; not run here without credentials).
 - The unit spec constructs real instances, which attempt network requests to the service catalog;
   they fail without failing the tests.
 
@@ -466,13 +471,14 @@ No TypeScript declaration or API report exists for this package.
 | `MOD-001`, `MOD-002` | Integration | `test/integration/spec/commonjs.js` | none found | — |
 | `INV-002` | none | Source only | none found | Load order, extend-time copy, and `replace` untested |
 | `MOD-003`, `INV-001` | Integration | `test/integration/spec/init.js` | none found | Precedence against package defaults untested |
-| `MOD-005` | Integration | `test/integration/spec/request.js` | none found | Suffixes and exclusions are webex-core's |
+| `MOD-005` | Integration | `test/integration/spec/request.js` | none found | Fails while `package.json` has no `version`; suffixes and exclusions are webex-core's |
 | `MOD-016` | none | Source only | none found | `test/integration/spec/env.js` requires the unexported `webex/env` subpath |
 | `MOD-007` to `MOD-015`, `MOD-017` to `MOD-019`, `INV-003` to `INV-005` | none | Source only | none found | No test for meetings, encryption, first-party, Calling, storage choice, or UMD |
 
 Unit checks run with `yarn workspace webex test:unit` (4 tests). Integration checks need test users
 and network access; run the manifest integration command with the `--targets` option described in
-the workspace root `AGENTS.md`, once each for `commonjs.js`, `init.js`, and `request.js`. No existing
+the workspace root `AGENTS.md`, once each for `commonjs.js` and `init.js`; `request.js` is not a
+required target while `package.json` has no `version` (see Pitfalls). No existing
 test loads `src/meetings.js`, `src/encryption.js`, `src/webex-first-party.js`, or `src/calling.js`, so a
 change to one of them needs a new focused test that loads that entry. The tiers are described in
 [Getting started](../../docs/getting-started.md).

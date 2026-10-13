@@ -3,7 +3,7 @@ doc_kind: agent-entry
 generated_from: agents@0.3.0
 generated_by: claude-cowork
 approved_by: akulakum@cisco.com
-updated_at: 2026-10-13T08:34:04Z
+updated_at: 2026-10-13T09:02:11Z
 validation_status: not-run
 -->
 
@@ -118,7 +118,8 @@ Run checks in this order:
 2. `yarn workspace webex test:style`
 3. `yarn workspace webex test:integration` when a change touches loading or `init` of the main
    entry, passed the `--targets` option described in the workspace root `AGENTS.md` once each for
-   `commonjs.js`, `init.js`, and `request.js`. Run untargeted, it also runs
+   `commonjs.js` and `init.js`. `request.js` is not required while `package.json` has no `version`:
+   its user-agent case then expects `webex/undefined` (module spec Pitfalls). Run untargeted, it also runs
    `test/integration/spec/env.js`, which requires the unexported `webex/env` subpath and fails, so
    the whole tier fails (module spec Pitfalls). No existing test loads `src/meetings.js`,
    `src/encryption.js`, `src/webex-first-party.js`, or `src/calling.js`; a change to one of them

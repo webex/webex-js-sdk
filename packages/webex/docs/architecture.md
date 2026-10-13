@@ -9,7 +9,7 @@ doc_kind: standing-doc
 generated_from: architecture@0.3.0
 generated_by: claude-cowork
 approved_by: akulakum@cisco.com
-updated_at: 2026-10-13T08:34:04Z
+updated_at: 2026-10-13T09:02:11Z
 validation_status: not-run
 -->
 
@@ -136,7 +136,18 @@ package. `package.json` lists `webex` itself as a devDependency so tests can imp
 | `babel-polyfill`, `lodash` (required) | SDK | npm | Entry files | See Dependency topology | npm |
 
 `webex-sdk` entry points: `main` and `.` point at `dist/index.js`, `./meetings` and `./calling` at
-their `dist/` files, `./package` at `package.json`, and `devMain` at `src/index.js`. Under `./calling`, `webex-sdk` also
+their `dist/` files, `./package` at `package.json`, and `devMain` at `src/index.js`.
+
+Public members per published flavour (behavior stays in the module spec or the owning package):
+
+| Flavour | Members | Behavioral route |
+| ------- | ------- | ---------------- |
+| npm `webex` (`.`); UMD `webex` and `webex-first-party` | `new Webex(attrs)`, `Webex.init(attrs)`, static `Webex.version`, instance `version` | Module spec `MOD-003`, `MOD-004`, `MOD-006`; first-party selection `MOD-007` |
+| npm `webex/meetings`; UMD `meetings` | `new Webex(attrs)`, `Webex.init(attrs)`, static `Webex.version`, instance `version` | Module spec `MOD-004`, `MOD-008`, `INV-001` |
+| UMD `encryption` | `new Webex(attrs)`, `Webex.init(attrs)`, static `Webex.version`, instance `version` | Owned by the sibling package plugin-encryption, file src/webex.js; its `init` merges its own config and sets no `sdkType`, so module spec `MOD-009` does not apply |
+| npm `webex/calling`; UMD `calling` | See the next paragraph | Module spec `MOD-010` to `MOD-014` |
+
+Under `./calling`, `webex-sdk` also
 exposes the `Calling` class operations `new Calling`, `register`, `deregister`, `initializeClients`,
 `Calling.init`, `Calling.createMicrophoneStream`, and `Calling.createNoiseReductionEffect`, and the
 `ready` event that `Calling` emits when it builds its own SDK instance; behavior is in the module spec

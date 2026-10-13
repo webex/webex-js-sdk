@@ -189,7 +189,7 @@
         "yarn workspace webex test:unit"
       ],
       "recommended": [
-        "yarn workspace webex test:integration with the --targets option for commonjs.js, init.js, and request.js; untargeted, test/integration/spec/env.js fails on the unexported webex/env subpath"
+        "yarn workspace webex test:integration with the --targets option for commonjs.js and init.js (request.js fails its user-agent case while package.json has no version); untargeted, test/integration/spec/env.js fails on the unexported webex/env subpath"
       ]
     },
     {
@@ -223,7 +223,7 @@
       ],
       "validate_with": [
         "yarn workspace webex test:unit",
-        "yarn workspace webex test:integration with the --targets option for commonjs.js, init.js, and request.js (these load only the main entry)",
+        "yarn workspace webex test:integration with the --targets option for commonjs.js and init.js (these load only the main entry; request.js fails its user-agent case while package.json has no version)",
         "a new focused test that loads src/meetings.js or src/webex-first-party.js when either changes"
       ],
       "avoid_direct_edits": [
@@ -265,7 +265,7 @@
         "yarn build:script"
       ],
       "validate_with": [
-        "yarn workspace webex test:unit"
+        "a new focused test that loads src/calling.js and exercises the changed Calling behavior (no existing test loads it), then yarn workspace webex test:unit"
       ],
       "avoid_direct_edits": [
         "dist",
@@ -286,12 +286,37 @@
         "yarn install"
       ],
       "validate_with": [
+        "focused loads of the webex, webex/calling, and webex/meetings subpaths through the exports map (the unit spec imports only .)",
+        "yarn workspace webex build",
+        "yarn build:script when the browser field or a UMD-facing entry changes",
         "yarn workspace webex test:unit"
       ],
       "avoid_direct_edits": [
         "dist"
       ],
       "notes": "Removing an exports entry is breaking for importers."
+    },
+    {
+      "paths": [
+        "src/config.js",
+        "src/config-storage.js",
+        "src/config-storage.shim.js"
+      ],
+      "affects": [
+        "the config merged by every init (today it lands under config.default; see the module spec Pitfalls)",
+        "Node and browser storage adapter choice"
+      ],
+      "refresh_with": [
+        "yarn workspace webex build:src"
+      ],
+      "validate_with": [
+        "a new focused characterization test that asserts the merged config and storage adapters (no existing test does), then yarn workspace webex test:unit"
+      ],
+      "avoid_direct_edits": [
+        "dist",
+        "umd"
+      ],
+      "notes": "The existing unit spec asserts only version and fedramp; a config or storage change needs its own assertion."
     }
   ],
   "glossary": [
@@ -468,7 +493,7 @@
         "name": "integration tests",
         "command": "yarn workspace webex test:integration",
         "scope": "test/integration/spec",
-        "notes": "Mocha; needs test-user credentials and network access. Target commonjs.js, init.js, and request.js with --targets; env.js fails on the unexported webex/env subpath."
+        "notes": "Mocha; needs test-user credentials and network access. Target commonjs.js and init.js with --targets (request.js fails its user-agent case while package.json has no version); env.js fails on the unexported webex/env subpath."
       },
       {
         "name": "browser tests",
