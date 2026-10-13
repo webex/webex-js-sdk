@@ -655,6 +655,116 @@ describe('webex-core', () => {
       });
     });
 
+    describe('#updateServices catalog auth failure', () => {
+      const emptyHostmap = {
+        serviceLinks: {},
+        hostCatalog: {},
+      };
+
+      const recordAuthFailure = (status) => {
+        services._recordCatalogAuthFailure(
+          Object.assign(new Error('catalog failed'), {statusCode: status})
+        );
+      };
+
+      it.each([
+        {status: 401, reason: 'invalid_access_token'},
+        {status: 403, reason: 'access_denied'},
+      ])(
+        'clears a stored $reason after a successful postauth update and reports a missing service as unknown',
+        async ({status}) => {
+          services.webex.config.services = {
+            servicesNotNeedValidation: [],
+          };
+          services.webex.internal.metrics = {
+            submitClientMetrics: sinon.stub(),
+          };
+          recordAuthFailure(status);
+          sinon.stub(services, '_fetchNewServiceHostmap').resolves(emptyHostmap);
+
+          await services.updateServices();
+
+          assert.isNull(services._getCatalogAuthFailure());
+          catalog.isReady = true;
+
+          try {
+            await services.waitForService({name: 'wcc-api-gateway'});
+            assert.fail('expected waitForService to reject');
+          } catch (error) {
+            assert.equal(
+              error.message,
+              "services: service 'wcc-api-gateway' was not found in any of the catalogs"
+            );
+            assert.isUndefined(error.reason);
+          }
+        }
+      );
+
+      it.each([
+        {status: 401, reason: 'invalid_access_token'},
+        {status: 403, reason: 'access_denied'},
+      ])(
+        'clears a stored $reason when waitForCatalog(postauth) reloads through updateServices',
+        async ({status}) => {
+          services.webex.credentials = {
+            supertoken: {
+              access_token: 'token',
+            },
+          };
+          catalog.status.preauth.ready = true;
+          catalog.status.postauth.ready = false;
+          catalog.status.postauth.collecting = false;
+          recordAuthFailure(status);
+          sinon.stub(services, 'initServiceCatalogs');
+          sinon.stub(services, '_fetchNewServiceHostmap').resolves(emptyHostmap);
+
+          await services.waitForCatalog('postauth');
+
+          assert.notCalled(services.initServiceCatalogs);
+          assert.isNull(services._getCatalogAuthFailure());
+        }
+      );
+
+      it.each([
+        {statusField: 'statusCode', status: 401, reason: 'invalid_access_token'},
+        {statusField: 'status', status: 403, reason: 'access_denied'},
+      ])(
+        'stores $reason when a direct postauth update fails with $status',
+        async ({statusField, status, reason}) => {
+          const error = new Error('catalog failed');
+
+          error[statusField] = status;
+          sinon.stub(services, '_fetchNewServiceHostmap').rejects(error);
+          sinon.spy(services, 'initServiceCatalogs');
+
+          try {
+            await services.updateServices();
+            assert.fail('expected updateServices to reject');
+          } catch (rejected) {
+            assert.equal(rejected, error);
+          }
+
+          assert.notCalled(services.initServiceCatalogs);
+          assert.deepEqual(services._getCatalogAuthFailure(), {status, reason});
+        }
+      );
+
+      it.each([
+        {label: 'preauth', args: {from: 'limited', query: {orgId: 'urn:EXAMPLE:org'}}},
+        {label: 'signin', args: {from: 'signin', query: {email: 'user@example.com'}}},
+      ])('leaves a postauth auth failure in place after a successful $label update', async ({args}) => {
+        recordAuthFailure(401);
+        sinon.stub(services, '_fetchNewServiceHostmap').resolves(emptyHostmap);
+
+        await services.updateServices(args);
+
+        assert.deepEqual(services._getCatalogAuthFailure(), {
+          status: 401,
+          reason: 'invalid_access_token',
+        });
+      });
+    });
+
     describe('#waitForService', () => {
       it('rejects with invalid_access_token when the postauth catalog failed with 401 and the service is missing', async () => {
         services.webex.config.services = {

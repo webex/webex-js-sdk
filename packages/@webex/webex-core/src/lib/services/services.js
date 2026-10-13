@@ -456,9 +456,19 @@ const Services = WebexPlugin.extend({
         catalog.updateServiceUrls(serviceGroup, formattedServiceHostMap);
         this.updateCredentialsConfig();
         catalog.status[serviceGroup].collecting = false;
+
+        // A successful postauth catalog replaces any remembered 401/403.
+        // Preauth and signin updates leave that marker alone.
+        if (serviceGroup === 'postauth') {
+          catalogAuthFailures.delete(this);
+        }
       })
       .catch((error) => {
         catalog.status[serviceGroup].collecting = false;
+
+        if (serviceGroup === 'postauth') {
+          this._recordCatalogAuthFailure(error);
+        }
 
         return Promise.reject(error);
       });
