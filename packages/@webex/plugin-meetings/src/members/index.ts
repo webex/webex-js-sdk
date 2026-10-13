@@ -109,6 +109,13 @@ export default class Members extends StatelessWebexPlugin {
    */
   private memberIdByHistoryCsi: Map<number, string> = new Map();
 
+  /**
+   * Optional hook invoked with the member changes right before `members:update` is emitted, so a
+   * consumer (e.g. E2EE) can stamp derived data onto the members and have it appear in that event.
+   * @private
+   */
+  private membersUpdateProcessor?: (payload: {delta: UpdatedMembers; isReplace: boolean}) => void;
+
   namespace = MEETINGS;
 
   /**
@@ -429,6 +436,10 @@ export default class Members extends StatelessWebexPlugin {
 
       this.receiveSlotManager?.updateMemberIds();
 
+      // Let a registered processor (e.g. E2EE) stamp derived data onto the changed members before
+      // the event is emitted, so it is present in this members:update.
+      this.membersUpdateProcessor?.({delta, isReplace: !!payload.isReplace});
+
       Trigger.trigger(
         this,
         {
@@ -443,6 +454,49 @@ export default class Members extends StatelessWebexPlugin {
         }
       );
     }
+  }
+
+  /**
+   * Registers (or clears, when passed undefined) a hook invoked with the member changes just before
+   * `members:update` is emitted. Lets a consumer stamp derived data onto the changed members so it
+   * is present in the emitted event.
+   * @param {Function} [processor]
+   * @returns {void}
+   * @public
+   * @memberof Members
+   */
+  public setMembersUpdateProcessor(
+    processor?: (payload: {delta: UpdatedMembers; isReplace: boolean}) => void
+  ) {
+    this.membersUpdateProcessor = processor;
+  }
+
+  /**
+   * Emits a `members:update` for members whose data changed outside of a Locus participant update
+   * (e.g. E2EE verification completing). The given members are reported in `delta.updated`.
+   * @param {Member[]} updatedMembers
+   * @returns {void}
+   * @public
+   * @memberof Members
+   */
+  public reportMembersUpdated(updatedMembers: Array<Member>) {
+    if (!updatedMembers.length) {
+      return;
+    }
+
+    Trigger.trigger(
+      this,
+      {
+        file: 'members',
+        function: 'reportMembersUpdated',
+      },
+      EVENT_TRIGGERS.MEMBERS_UPDATE,
+      {
+        delta: {added: [], updated: updatedMembers, removedIds: []},
+        full: this.membersCollection.getAll(),
+        isReplace: false,
+      }
+    );
   }
 
   /**

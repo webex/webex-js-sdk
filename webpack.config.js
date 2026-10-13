@@ -89,7 +89,15 @@ module.exports = (env = {NODE_ENV: process.env.NODE_ENV || 'production'}) => ({
   devServer: {
     https: true,
     port: process.env.PORT || 8000,
-    static: './docs',
+    static: [
+      './docs',
+      {
+        // Serve plugin-meetings static assets for local SDK development. Consuming apps must host
+        // the contents of plugin-meetings/dist/assets at their configured assetsBaseUrl.
+        directory: path.resolve(__dirname, 'packages/@webex/plugin-meetings/assets'),
+        publicPath: '/assets',
+      },
+    ],
   },
   resolve: {
     fallback: {

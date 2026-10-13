@@ -1547,5 +1547,75 @@ describe('plugin-meetings', () => {
         await checkValid(resultPromise, spies, memberId, url1);
       });
     });
+
+    describe('#setMembersUpdateProcessor and #reportMembersUpdated', () => {
+      beforeEach(() => {
+        sinon.stub(Trigger, 'trigger');
+      });
+
+      afterEach(() => {
+        sinon.restore();
+      });
+
+      it('invokes the registered processor with the delta before emitting members:update', () => {
+        const members = createMembers({url: url1});
+        const processor = sinon.stub();
+
+        members.setMembersUpdateProcessor(processor);
+        members.locusParticipantsUpdate({participants: [], isReplace: false});
+
+        assert.calledOnceWithExactly(processor, {
+          delta: {added: [], updated: [], removedIds: []},
+          isReplace: false,
+        });
+        assert.isTrue(processor.calledBefore(Trigger.trigger));
+      });
+
+      it('is a no-op when no processor is registered', () => {
+        const members = createMembers({url: url1});
+
+        assert.doesNotThrow(() =>
+          members.locusParticipantsUpdate({participants: [], isReplace: false})
+        );
+      });
+
+      it('can clear a previously registered processor', () => {
+        const members = createMembers({url: url1});
+        const processor = sinon.stub();
+
+        members.setMembersUpdateProcessor(processor);
+        members.setMembersUpdateProcessor(undefined);
+        members.locusParticipantsUpdate({participants: [], isReplace: false});
+
+        assert.notCalled(processor);
+      });
+
+      it('reportMembersUpdated emits members:update with the given members as updated', () => {
+        const members = createMembers({url: url1});
+        const updatedMembers = [{id: 'm1'}, {id: 'm2'}];
+
+        members.reportMembersUpdated(updatedMembers);
+
+        assert.calledOnceWithExactly(
+          Trigger.trigger,
+          members,
+          {file: 'members', function: 'reportMembersUpdated'},
+          EVENT_TRIGGERS.MEMBERS_UPDATE,
+          {
+            delta: {added: [], updated: updatedMembers, removedIds: []},
+            full: members.membersCollection.getAll(),
+            isReplace: false,
+          }
+        );
+      });
+
+      it('reportMembersUpdated is a no-op for an empty list', () => {
+        const members = createMembers({url: url1});
+
+        members.reportMembersUpdated([]);
+
+        assert.notCalled(Trigger.trigger);
+      });
+    });
   });
 });
