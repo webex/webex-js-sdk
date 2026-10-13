@@ -94,6 +94,7 @@ type GetIdentifiersOptions = {
   preLoginId?: string;
   globalMeetingId?: string;
   webexConferenceIdStr?: string;
+  locusCluster?: string;
 };
 
 /**
@@ -420,6 +421,7 @@ export default class CallDiagnosticMetrics extends StatelessWebexPlugin {
       globalMeetingId,
       preLoginId,
       sessionCorrelationId,
+      locusCluster,
     } = options;
     const identifiers: Event['event']['identifiers'] = {
       correlationId: 'unknown', // concerned with setting this to unknown. This will fail diagnostic events parsing because it's not a uuid pattern
@@ -486,6 +488,10 @@ export default class CallDiagnosticMetrics extends StatelessWebexPlugin {
       identifiers.webexSiteName = meeting.meetingInfo?.siteName;
     }
 
+    if (meeting?.meetingInfo?.locusClusterUrl) {
+      identifiers.locusCluster = meeting.meetingInfo.locusClusterUrl;
+    }
+
     if (mediaConnections) {
       identifiers.mediaAgentAlias = mediaConnections?.[0]?.mediaAgentAlias;
       identifiers.mediaAgentGroupId = mediaConnections?.[0]?.mediaAgentGroupId;
@@ -497,6 +503,10 @@ export default class CallDiagnosticMetrics extends StatelessWebexPlugin {
 
     if (!identifiers?.globalMeetingId && globalMeetingId) {
       identifiers.globalMeetingId = globalMeetingId;
+    }
+
+    if (!identifiers?.locusCluster && locusCluster) {
+      identifiers.locusCluster = locusCluster;
     }
 
     if (identifiers.correlationId === undefined) {
@@ -1063,6 +1073,7 @@ export default class CallDiagnosticMetrics extends StatelessWebexPlugin {
       globalMeetingId,
       webexConferenceIdStr,
       sessionCorrelationId,
+      locusCluster,
     } = options;
 
     // @ts-ignore
@@ -1096,6 +1107,7 @@ export default class CallDiagnosticMetrics extends StatelessWebexPlugin {
       webexConferenceIdStr,
       globalMeetingId,
       sessionCorrelationId,
+      locusCluster,
     });
 
     // create common event object structure
@@ -1219,8 +1231,14 @@ export default class CallDiagnosticMetrics extends StatelessWebexPlugin {
     options?: SubmitClientEventOptions;
     errors?: ClientEventPayloadError;
   }) {
-    const {correlationId, globalMeetingId, webexConferenceIdStr, preLoginId, sessionCorrelationId} =
-      options;
+    const {
+      correlationId,
+      globalMeetingId,
+      webexConferenceIdStr,
+      preLoginId,
+      sessionCorrelationId,
+      locusCluster,
+    } = options;
 
     // grab identifiers
     const identifiers = this.getIdentifiers({
@@ -1229,6 +1247,7 @@ export default class CallDiagnosticMetrics extends StatelessWebexPlugin {
       preLoginId,
       globalMeetingId,
       webexConferenceIdStr,
+      locusCluster,
     });
 
     // create client event object

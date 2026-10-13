@@ -715,6 +715,63 @@ describe('internal-plugin-metrics', () => {
         });
       });
 
+      it('should build identifiers correctly with a meeting that has meetingInfo with locusClusterUrl', () => {
+        const res = cd.getIdentifiers({
+          mediaConnections: [
+            {mediaAgentAlias: 'mediaAgentAlias', mediaAgentGroupId: 'mediaAgentGroupId'},
+          ],
+          meeting: {
+            ...fakeMeeting,
+            meetingInfo: {
+              ...fakeMeeting.meetingInfo,
+              locusClusterUrl: 'locus-k.wbx2.com',
+            },
+          },
+        });
+
+        assert.deepEqual(res, {
+          correlationId: 'correlationId',
+          deviceId: 'deviceUrl',
+          locusCluster: 'locus-k.wbx2.com',
+          locusId: 'url',
+          locusSessionId: 'locusSessionId',
+          locusStartTime: 'lastActive',
+          locusUrl: 'locus/url',
+          mediaAgentAlias: 'mediaAgentAlias',
+          mediaAgentGroupId: 'mediaAgentGroupId',
+          orgId: 'orgId',
+          userId: 'userId',
+        });
+      });
+
+      it('should build identifiers correctly given locusCluster', () => {
+        const res = cd.getIdentifiers({
+          correlationId: 'correlationId',
+          locusCluster: 'locus-k.wbx2.com',
+        });
+
+        assert.deepEqual(res, {
+          correlationId: 'correlationId',
+          deviceId: 'deviceUrl',
+          locusCluster: 'locus-k.wbx2.com',
+          locusUrl: 'locus-url',
+          orgId: 'orgId',
+          userId: 'userId',
+        });
+      });
+
+      it('should prefer meetingInfo locusClusterUrl over the locusCluster option', () => {
+        const res = cd.getIdentifiers({
+          meeting: {
+            ...fakeMeeting,
+            meetingInfo: {...fakeMeeting.meetingInfo, locusClusterUrl: 'locus-k.wbx2.com'},
+          },
+          locusCluster: 'locus-a.wbx2.com',
+        });
+
+        assert.equal(res.locusCluster, 'locus-k.wbx2.com');
+      });
+
       it('should build identifiers correctly with a meeting that has sessionCorrelationId', () => {
         const res = cd.getIdentifiers({
           mediaConnections: [
@@ -1113,6 +1170,7 @@ describe('internal-plugin-metrics', () => {
           webexConferenceIdStr: undefined,
           sessionCorrelationId: undefined,
           globalMeetingId: undefined,
+          locusCluster: undefined,
         });
         assert.notCalled(generateClientEventErrorPayloadSpy);
         assert.calledWith(
@@ -1267,6 +1325,7 @@ describe('internal-plugin-metrics', () => {
           webexConferenceIdStr: undefined,
           sessionCorrelationId: undefined,
           globalMeetingId: undefined,
+          locusCluster: undefined,
         });
         assert.notCalled(generateClientEventErrorPayloadSpy);
         assert.calledWith(
@@ -1421,6 +1480,7 @@ describe('internal-plugin-metrics', () => {
           webexConferenceIdStr: undefined,
           globalMeetingId: undefined,
           sessionCorrelationId: undefined,
+          locusCluster: undefined,
         });
         assert.notCalled(generateClientEventErrorPayloadSpy);
         assert.calledWith(
@@ -1577,6 +1637,7 @@ describe('internal-plugin-metrics', () => {
           webexConferenceIdStr: undefined,
           globalMeetingId: undefined,
           sessionCorrelationId: undefined,
+          locusCluster: undefined,
         });
         assert.notCalled(generateClientEventErrorPayloadSpy);
         assert.calledWith(
@@ -1733,6 +1794,7 @@ describe('internal-plugin-metrics', () => {
           webexConferenceIdStr: undefined,
           globalMeetingId: undefined,
           sessionCorrelationId: undefined,
+          locusCluster: undefined,
         });
         assert.notCalled(generateClientEventErrorPayloadSpy);
         assert.calledWith(
@@ -1951,6 +2013,7 @@ describe('internal-plugin-metrics', () => {
           globalMeetingId: 'globalMeetingId1',
           sessionCorrelationId: 'sessionCorrelationId1',
           preLoginId: undefined,
+          locusCluster: undefined,
         });
 
         assert.notCalled(generateClientEventErrorPayloadSpy);
@@ -2055,6 +2118,7 @@ describe('internal-plugin-metrics', () => {
           globalMeetingId: 'globalMeetingId1',
           preLoginId: 'myPreLoginId',
           sessionCorrelationId: 'sessionCorrelationId1',
+          locusCluster: undefined,
         });
 
         assert.notCalled(generateClientEventErrorPayloadSpy);
@@ -2119,6 +2183,36 @@ describe('internal-plugin-metrics', () => {
         );
       });
 
+      it('should add locusCluster from options to a pre-meeting client event', () => {
+        const prepareDiagnosticEventSpy = sinon.spy(cd, 'prepareDiagnosticEvent');
+        sinon.stub(cd, 'getOrigin').returns({origin: 'fake-origin'});
+
+        cd.submitClientEvent({
+          name: 'client.meetinginfo.response',
+          options: {correlationId: 'correlationId', locusCluster: 'locus-k.wbx2.com'},
+        });
+
+        assert.equal(
+          prepareDiagnosticEventSpy.firstCall.args[0].identifiers.locusCluster,
+          'locus-k.wbx2.com'
+        );
+      });
+
+      it('should add locusCluster from options to an in-meeting client event when the meeting has none', () => {
+        const prepareDiagnosticEventSpy = sinon.spy(cd, 'prepareDiagnosticEvent');
+        sinon.stub(cd, 'getOrigin').returns({origin: 'fake-origin'});
+
+        cd.submitClientEvent({
+          name: 'client.interstitial-window.launched',
+          options: {meetingId: fakeMeeting.id, locusCluster: 'locus-k.wbx2.com'},
+        });
+
+        assert.equal(
+          prepareDiagnosticEventSpy.firstCall.args[0].identifiers.locusCluster,
+          'locus-k.wbx2.com'
+        );
+      });
+
       it('should submit client event successfully with emailInput and userNameInput as options', () => {
         cd.device.userId = undefined;
 
@@ -2150,6 +2244,7 @@ describe('internal-plugin-metrics', () => {
           globalMeetingId: 'globalMeetingId1',
           preLoginId: 'myPreLoginId',
           sessionCorrelationId: 'sessionCorrelationId1',
+          locusCluster: undefined,
         });
 
         assert.notCalled(generateClientEventErrorPayloadSpy);
@@ -4535,6 +4630,18 @@ describe('internal-plugin-metrics', () => {
     });
 
     describe('#buildClientEventFetchRequestOptions', () => {
+      it('should add the locusCluster option to a pre-meeting event', async () => {
+        const fetchOptions = await cd.buildClientEventFetchRequestOptions({
+          name: 'client.interstitial-window.launched',
+          options: {correlationId: 'correlationId', locusCluster: 'locus-k.wbx2.com'},
+        });
+
+        assert.equal(
+          fetchOptions.body.metrics[0].eventPayload.event.identifiers.locusCluster,
+          'locus-k.wbx2.com'
+        );
+      });
+
       [undefined, 'myPreLoginId'].forEach((preLoginId) => {
         it('returns expected options without preLoginId', async () => {
           const options = {
