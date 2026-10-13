@@ -16,7 +16,7 @@
     "deploy": "yarn workspace webex deploy:npm",
     "workspace-prebuild": "yarn prebuild:modules",
     "umd-refresh": "yarn build:script",
-    "lint-helpers": "yarn workspace webex eslint ./env.js ./browser.js"
+    "lint-helpers": "yarn workspace webex eslint ./env.js ./browser.js ./process"
   },
   "public_interfaces": [
     {
@@ -123,7 +123,8 @@
         "edit by hand; these files are not built"
       ],
       "validate_with": [
-        "add a test with the change: no runnable test covers env.js (its integration spec requires the unexported webex/env subpath) or browser.js"
+        "yarn workspace webex eslint ./env.js ./browser.js ./process",
+        "add a test with the change: no runnable test covers env.js, browser.js, or process"
       ]
     },
     {
@@ -163,6 +164,7 @@
         "src/**"
       ],
       "minimum": [
+        "yarn workspace webex build:src (tests import webex, which resolves to dist/index.js; the runner does not rebuild it)",
         "yarn workspace webex test:unit"
       ],
       "recommended": [
@@ -175,6 +177,7 @@
         "src/calling.js"
       ],
       "minimum": [
+        "yarn workspace webex build:src (tests import webex, which resolves to dist/index.js; the runner does not rebuild it)",
         "yarn workspace webex test:unit"
       ],
       "recommended": [
@@ -187,6 +190,7 @@
         "src/index.js"
       ],
       "minimum": [
+        "yarn workspace webex build:src (tests import webex, which resolves to dist/index.js; the runner does not rebuild it)",
         "yarn workspace webex test:unit"
       ],
       "recommended": [
@@ -196,10 +200,11 @@
     {
       "paths": [
         "env.js",
-        "browser.js"
+        "browser.js",
+        "process"
       ],
       "minimum": [
-        "yarn workspace webex eslint ./env.js ./browser.js"
+        "yarn workspace webex eslint ./env.js ./browser.js ./process"
       ],
       "recommended": [
         "add a test with the change; yarn workspace webex test:style covers src/ only, and test/integration/spec/env.js requires the unexported webex/env subpath and cannot reach env.js"
@@ -223,6 +228,7 @@
         "yarn build:script"
       ],
       "validate_with": [
+        "yarn workspace webex build:src (tests import webex, which resolves to dist/index.js; the runner does not rebuild it)",
         "an assertion for each namespace added or removed by the change (test/integration/spec/commonjs.js asserts ten public namespaces only, not cc or the internal plugins)",
         "yarn workspace webex test:unit",
         "yarn workspace webex test:integration with the --targets option for commonjs.js and init.js (these load only the main entry; request.js fails its user-agent case while package.json has no version)",
@@ -247,6 +253,7 @@
         "yarn workspace webex build:src"
       ],
       "validate_with": [
+        "yarn workspace webex build:src (tests import webex, which resolves to dist/index.js; the runner does not rebuild it)",
         "a new focused test that loads src/encryption.js (no existing test does), then yarn workspace webex test:unit"
       ],
       "avoid_direct_edits": [
@@ -268,6 +275,7 @@
         "yarn build:script"
       ],
       "validate_with": [
+        "yarn workspace webex build:src (tests import webex, which resolves to dist/index.js; the runner does not rebuild it)",
         "a new focused test that loads src/calling.js and exercises the changed Calling behavior (no existing test loads it), then yarn workspace webex test:unit",
         "after yarn build:script, read the webpack output for errors and confirm the umd/ bundles were rewritten: the root wrapper deletes umd/webex* first, does not wait for webpack, and only debug-logs a non-zero webpack exit, so the command can exit 0 after a failed build"
       ],
@@ -315,6 +323,7 @@
         "yarn build:script"
       ],
       "validate_with": [
+        "yarn workspace webex build:src (tests import webex, which resolves to dist/index.js; the runner does not rebuild it)",
         "a new focused characterization test that asserts the merged config and storage adapters (no existing test does), then yarn workspace webex test:unit",
         "after yarn build:script, read the webpack output for errors and confirm the umd/ bundles were rewritten: the root wrapper deletes umd/webex* first, does not wait for webpack, and only debug-logs a non-zero webpack exit, so the command can exit 0 after a failed build"
       ],
@@ -527,8 +536,8 @@
       },
       {
         "name": "helper lint",
-        "command": "yarn workspace webex eslint ./env.js ./browser.js",
-        "scope": "env.js and browser.js",
+        "command": "yarn workspace webex eslint ./env.js ./browser.js ./process",
+        "scope": "env.js, browser.js, and process",
         "notes": "test:style lints src/ only; this covers the package-root helpers."
       }
     ],

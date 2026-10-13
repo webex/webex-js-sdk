@@ -3,8 +3,8 @@ doc_kind: agent-entry
 generated_from: agents@0.3.0
 generated_by: claude-cowork
 approved_by: akulakum@cisco.com
-updated_at: 2026-10-13T10:01:25Z
-validation_status: pass-with-warnings
+updated_at: 2026-10-13T10:12:36Z
+validation_status: not-run
 -->
 
 # AI Agent Instructions
@@ -47,7 +47,7 @@ commands from the monorepo root.
 | Install dependencies   | `yarn install` (workspace root) |
 | Start dev environment  | N/A — library package with no start script in `package.json` |
 | Run tests              | `yarn workspace webex test:unit` (Jest); `yarn workspace webex test:integration` (Mocha, needs test users) |
-| Run linters            | `yarn workspace webex test:style` (`src/`); `yarn workspace webex eslint ./env.js ./browser.js` (package-root helpers) |
+| Run linters            | `yarn workspace webex test:style` (`src/`); `yarn workspace webex eslint ./env.js ./browser.js ./process` (package-root helpers `env.js`, `browser.js`, `process`) |
 | Build/release artifact | `yarn workspace webex build` (runs `build:src`) |
 | Format code            | N/A — no format script; `prettier` is a devDependency used through eslint |
 
@@ -114,6 +114,8 @@ Definition of done:
 
 Run checks in this order:
 
+0. After any `src/` change, `yarn workspace webex build:src`. The specs import `webex`, which
+   resolves to `dist/index.js`, and the test runner does not rebuild it, so a stale `dist/` can pass.
 1. `yarn workspace webex test:unit`
 2. `yarn workspace webex test:style`
 3. `yarn workspace webex test:integration` when a change touches loading or `init` of the main

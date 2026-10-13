@@ -9,8 +9,8 @@ doc_kind: standing-doc
 generated_from: architecture@0.3.0
 generated_by: claude-cowork
 approved_by: akulakum@cisco.com
-updated_at: 2026-10-13T10:01:25Z
-validation_status: pass-with-warnings
+updated_at: 2026-10-13T10:12:36Z
+validation_status: not-run
 -->
 
 # webex architecture
@@ -47,8 +47,9 @@ Related context: [specification registry](specs/README.md) ·
 
 `webex` is a published library with one module. Each entry file in `src/` requires a list of
 plugin packages, which register themselves with webex-core, and then extends webex-core's
-`WebexCore` into a `Webex` constructor with an `init` helper. The entries differ only in the
-packages they load and the `sdkType` they set. `src/calling.js` instead wraps an SDK instance in a
+`WebexCore` into a `Webex` constructor with an `init` helper. The entries differ in the packages
+they load and in their `init` defaults (`sdkType`, plus `meetings.disableHydraId` for meetings; module
+spec `INV-001`). `src/calling.js` instead wraps an SDK instance in a
 `Calling` class that also drives device registration, Mercury, and calling-client creation.
 
 The package itself sends no request, stores nothing, and defines no plugin. What an instance can do
@@ -215,7 +216,7 @@ is omitted.
 | `yarn workspace webex test:integration` | package | `test/integration/spec/` | Mocha result | Needs test users and network |
 | `yarn workspace webex test:browser:broken` | package | `test/integration/spec/` | karma result | Name marks it broken |
 | `yarn workspace webex test:style` | package | files under `src/` | eslint result | Markdown is reported as ignored |
-| `yarn workspace webex eslint ./env.js ./browser.js` | package | `env.js`, `browser.js` | eslint result | Covers the package-root helpers that `test:style` skips |
+| `yarn workspace webex eslint ./env.js ./browser.js ./process` | package | `env.js`, `browser.js`, `process` | eslint result | Covers the package-root helpers that `test:style` skips |
 | `yarn workspace webex deploy:npm` | package | `dist/`, `umd/`, `package.json` | Publishes the package to the npm registry | Release pipeline only |
 | `yarn prebuild:modules` | workspace root | root `package.json` script | Installs, then builds the legacy tools, webex-core, and every package's `build:src` output | Run from the workspace root before `test:unit` on a fresh clone |
 | `yarn build:script` | workspace root | root `package.json` script, workspace root webpack config | Runs the `--umd` webpack build that writes `umd/` | Run from the workspace root; refreshes the committed bundles. It can exit 0 after a failed webpack build, so check its output and the rewritten files (module spec Pitfalls) |

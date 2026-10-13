@@ -9,8 +9,8 @@ doc_kind: module-spec
 generated_from: module-spec@0.3.0
 generated_by: claude-cowork
 approved_by: akulakum@cisco.com
-updated_at: 2026-10-13T10:01:25Z
-validation_status: pass-with-warnings
+updated_at: 2026-10-13T10:12:36Z
+validation_status: not-run
 -->
 
 # webex bundle entry points
@@ -37,7 +37,7 @@ Related context: [documentation index](../../docs/index.md) ·
 | Parent spec | — |
 | Doc kind | Module spec |
 | Coverage score | 93.3% assessed 2026-10-13 — 14 of 15 mandatory fields PRESENT, critical 8 of 8; test strategy is WEAK (gaps listed under Verification) and no characterization baseline exists |
-| Validation status | PASS-WITH-WARNINGS; validator Codex; assessed 2026-10-13; source 6fb4253; findings: 0 Blocking, 0 Important, 0 Medium, 1 Minor |
+| Validation status | not-run on the current content; the previous result was PASS-WITH-WARNINGS (validator Codex, assessed 2026-10-13, source 6fb4253: 0 Blocking, 0 Important, 0 Medium, 1 Minor), and content changed after it |
 
 ## Applicability
 
@@ -91,7 +91,8 @@ Related context: [documentation index](../../docs/index.md) ·
 ## Purpose and boundary
 
 - Responsibility: give applications one npm package that returns a ready-to-configure Webex SDK
-  constructor, in several flavours that differ only in which plugin packages they load.
+  constructor, in several flavours that differ in which plugin packages they load and in their `init`
+  defaults (`INV-001`).
 - In scope: the entry files in `src/`, the config they merge, the storage adapter choice, the
   `Calling` wrapper, and the package-root helpers `env.js` and `browser.js`.
 - Out of scope: everything the constructed instance does at runtime. Credentials, service catalog,
@@ -486,7 +487,9 @@ No TypeScript declaration or API report exists for this package.
 | `MOD-016` | none | Source only | none found | `test/integration/spec/env.js` requires the unexported `webex/env` subpath |
 | `MOD-007` to `MOD-015`, `MOD-017` to `MOD-019`, `INV-003` to `INV-005` | none | Source only | none found | No test for meetings, encryption, first-party, Calling, storage choice, or UMD |
 
-Unit checks run with `yarn workspace webex test:unit` (4 tests). Integration checks need test users
+After a `src/` change, run `yarn workspace webex build:src` first: the specs import `webex`, which
+resolves to `dist/index.js`, and the test runner does not rebuild it, so a stale `dist/` can pass
+without exercising the change. Unit checks run with `yarn workspace webex test:unit` (4 tests). Integration checks need test users
 and network access; run the manifest integration command with the `--targets` option described in
 the workspace root `AGENTS.md`, once each for `commonjs.js` and `init.js`; `request.js` is not a
 required target while `package.json` has no `version` (see Pitfalls). A change to
