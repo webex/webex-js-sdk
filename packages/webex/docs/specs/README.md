@@ -9,8 +9,8 @@ doc_kind: standing-doc
 generated_from: spec-index@0.3.0
 generated_by: claude-cowork
 approved_by: akulakum@cisco.com
-updated_at: 2026-10-13T09:45:14Z
-validation_status: not-run
+updated_at: 2026-10-13T10:01:25Z
+validation_status: pass-with-warnings
 -->
 
 # Specification registry
@@ -45,7 +45,7 @@ package is a library published to npm, so that artifact is omitted in `.sdd/mani
 | --- | --- | --- | --- |
 | `src/` | Entry files, package config, storage choice, and the `Calling` wrapper | Partial | `src/docs/README.md` |
 
-Generator-side field measurement is complete. Field coverage measured 2026-10-13 is 93.3% (14 of 15 mandatory fields PRESENT for `src`). Critical fields are 8 of 8 PRESENT. The WEAK field is test strategy: 4 unit cases and three loadable integration specs (`commonjs.js`, `init.js`, `request.js`, whose user-agent case fails while `package.json` has no `version`) cover the main entry only; the fourth integration spec, `env.js`, requires the unexported `webex/env` subpath and cannot reach `env.js`, and the untested entries are listed in the module spec's Verification section. Independent validation: see the Validation status row of the module spec. Coverage state stays `Partial` until the other entries and `Calling` are tested, a characterization baseline exists, and a spec-drift record exists.
+Generator-side field measurement is complete. Field coverage measured 2026-10-13 is 93.3% (14 of 15 mandatory fields PRESENT for `src`). Critical fields are 8 of 8 PRESENT. The WEAK field is test strategy: 4 unit cases and three loadable integration specs (`commonjs.js`, `init.js`, `request.js`, whose user-agent case fails while `package.json` has no `version`) cover the main entry only; the fourth integration spec, `env.js`, requires the unexported `webex/env` subpath and cannot reach `env.js`, and the untested entries are listed in the module spec's Verification section. Independent validation: see the Validation status row of the module spec. PASS-WITH-WARNINGS; validator Codex; assessed 2026-10-13; source 6fb4253; findings: 0 Blocking, 0 Important, 0 Medium, 1 Minor. Coverage state stays `Partial` until the other entries and `Calling` are tested, a characterization baseline exists, and a spec-drift record exists.
 
 ## Change and verification routing
 
