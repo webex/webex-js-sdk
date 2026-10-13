@@ -680,6 +680,10 @@ describe('MediaConnectionAwaiter', () => {
     });
   });
   describe('connection phases', () => {
+    const DTLS_TIME_BEFORE_STATE_CHANGE = Math.floor(DTLS_CONNECTION_TIMEOUT / 2);
+    const DTLS_TIME_AFTER_STATE_CHANGE = DTLS_CONNECTION_TIMEOUT - DTLS_TIME_BEFORE_STATE_CHANGE;
+    const ICE_RECOVERY_DELAY = Math.floor(ICE_CONNECTION_TIMEOUT / 2);
+
     const startWait = (iceState = 'checking', gatheringState = 'complete') => {
       mockMC.getConnectionState.returns(ConnectionState.Connecting);
       mockMC.getIceConnectionState.returns(iceState);
@@ -716,9 +720,10 @@ describe('MediaConnectionAwaiter', () => {
       ['disconnected', 'checking', 'new'].forEach((lostState) => {
         it(`gives DTLS a fresh deadline after ${iceState} -> ${lostState} -> connected`, async () => {
           const {result, promise} = startWait(iceState);
-          await clock.tickAsync(3000);
+          await clock.tickAsync(DTLS_TIME_BEFORE_STATE_CHANGE);
           changeIceState(lostState);
-          await clock.tickAsync(1000);
+          await clock.tickAsync(ICE_RECOVERY_DELAY);
+          assert.equal(result.status, 'pending');
           changeIceState('connected');
           await clock.tickAsync(DTLS_CONNECTION_TIMEOUT - 1);
           assert.equal(result.status, 'pending');
@@ -736,7 +741,7 @@ describe('MediaConnectionAwaiter', () => {
       it(`uses the ICE deadline and preserves history after connectivity becomes ${lostState}`, async () => {
         const metric = sinon.stub(Metrics, 'sendBehavioralMetric');
         const {result, promise} = startWait('connected');
-        await clock.tickAsync(1000);
+        await clock.tickAsync(DTLS_TIME_BEFORE_STATE_CHANGE);
         changeIceState(lostState);
         await clock.tickAsync(ICE_CONNECTION_TIMEOUT - 1);
         assert.equal(result.status, 'pending');
@@ -755,11 +760,12 @@ describe('MediaConnectionAwaiter', () => {
 
     it('does not extend DTLS for repeated connected or completed events', async () => {
       const {result, promise} = startWait('connected');
-      await clock.tickAsync(3000);
+      await clock.tickAsync(DTLS_TIME_BEFORE_STATE_CHANGE);
       changeIceState('completed');
       changeIceState('completed');
       changeIceState('connected');
-      await clock.tickAsync(2000);
+      await clock.tickAsync(DTLS_TIME_AFTER_STATE_CHANGE);
+      assert.equal(result.status, 'rejected');
       await promise;
       assert.deepEqual(result.error, {iceConnected: true, iceConnectedAtLeastOnce: true});
       assertCleanedUp();
@@ -779,12 +785,12 @@ describe('MediaConnectionAwaiter', () => {
 
     it('does not extend DTLS when gathering completes', async () => {
       const {result, promise} = startWait('connected', 'gathering');
-      await clock.tickAsync(4000);
+      await clock.tickAsync(DTLS_TIME_BEFORE_STATE_CHANGE);
       mockMC.getIceGatheringState.returns('complete');
       mediaConnectionAwaiter.iceGatheringStateHandler();
-      await clock.tickAsync(1000);
-      await promise;
+      await clock.tickAsync(DTLS_TIME_AFTER_STATE_CHANGE);
       assert.equal(result.status, 'rejected');
+      await promise;
       assertCleanedUp();
     });
 
