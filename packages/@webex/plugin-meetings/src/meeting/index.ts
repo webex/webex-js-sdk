@@ -8681,6 +8681,8 @@ export default class Meeting extends StatelessWebexPlugin {
         selectedCandidatePairChanges,
         numTransports,
         iceConnected,
+        iceConnectedAtLeastOnce:
+          error instanceof MediaConnectionTimedOutError ? error.iceConnectedAtLeastOnce : undefined,
       });
     }
   }

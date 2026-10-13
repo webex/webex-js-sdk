@@ -1707,6 +1707,9 @@ describe('plugin-meetings', () => {
           const fakeMediaConnection = {
             close: sinon.stub(),
             getConnectionState: sinon.stub().returns(ConnectionState.Connected),
+            getPeerConnectionState: sinon.stub().returns('connected'),
+            getIceConnectionState: sinon.stub().returns('completed'),
+            getIceGatheringState: sinon.stub().returns('complete'),
             initiateOffer: sinon.stub().resolves({}),
             on: sinon.stub(),
             createSendSlot: sinon.stub(),
@@ -4751,9 +4754,10 @@ describe('plugin-meetings', () => {
         });
 
         [
-          {iceConnected: true, title: 'iceConnected=true'},
-          {iceConnected: false, title: 'iceConnected=false'},
-        ].forEach(({iceConnected, title}) => {
+          {iceConnected: true, iceConnectedAtLeastOnce: true, title: 'ICE connected'},
+          {iceConnected: false, iceConnectedAtLeastOnce: true, title: 'ICE lost connectivity'},
+          {iceConnected: false, iceConnectedAtLeastOnce: false, title: 'ICE never connected'},
+        ].forEach(({iceConnected, iceConnectedAtLeastOnce, title}) => {
           it(`should propagate ${title} from waitForMediaConnectionConnected rejection to AddMediaFailed`, async () => {
             webex.meetings.reachability = {
               isWebexMediaBackendUnreachable: sinon.stub().resolves(false),
@@ -4766,7 +4770,7 @@ describe('plugin-meetings', () => {
             sinon.stub(CallDiagnosticUtils, 'generateClientErrorCodeForIceFailure').returns(2004);
 
             meeting.meetingState = 'ACTIVE';
-            const rejectedResult = {iceConnected};
+            const rejectedResult = {iceConnected, iceConnectedAtLeastOnce};
             meeting.mediaProperties.waitForMediaConnectionConnected = sinon
               .stub()
               .rejects(rejectedResult);
@@ -4792,6 +4796,12 @@ describe('plugin-meetings', () => {
 
             assert.instanceOf(thrownError, AddMediaFailed);
             assert.equal(thrownError.iceConnected, iceConnected);
+            assert.equal(thrownError.iceConnectedAtLeastOnce, iceConnectedAtLeastOnce);
+            assert.equal(thrownError.isDtlsHandshakeFailure, iceConnected);
+            assert.calledWithExactly(
+              webex.internal.newMetrics.submitClientEvent,
+              sinon.match({name: 'client.ice.end', options: sinon.match({rawError: rejectedResult})})
+            );
             // the AddMediaFailed cause should be the MediaConnectionTimedOutError, which in turn should
             // preserve the original rejected result as its cause, so that the web client
             // can find the CA-reported error in the eventErrorCache via the cause chain
