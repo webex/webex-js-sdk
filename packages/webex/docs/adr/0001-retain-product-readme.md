@@ -11,8 +11,8 @@ doc_kind: standing-doc
 generated_from: adr@0.3.0
 generated_by: claude-cowork
 approved_by: akulakum@cisco.com
-updated_at: 2026-10-13T10:12:36Z
-validation_status: not-run
+updated_at: 2026-10-13T10:23:45Z
+validation_status: pass-with-warnings
 -->
 
 # ADR-0001 - Retain the product README
