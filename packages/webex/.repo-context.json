@@ -223,9 +223,11 @@
         "yarn build:script"
       ],
       "validate_with": [
+        "an assertion for each namespace added or removed by the change (test/integration/spec/commonjs.js asserts ten public namespaces only, not cc or the internal plugins)",
         "yarn workspace webex test:unit",
         "yarn workspace webex test:integration with the --targets option for commonjs.js and init.js (these load only the main entry; request.js fails its user-agent case while package.json has no version)",
-        "a new focused test that loads src/meetings.js or src/webex-first-party.js when either changes"
+        "a new focused test that loads src/meetings.js or src/webex-first-party.js when either changes",
+        "after yarn build:script, read the webpack output for errors and confirm the umd/ bundles were rewritten: the root wrapper deletes umd/webex* first, does not wait for webpack, and only debug-logs a non-zero webpack exit, so the command can exit 0 after a failed build"
       ],
       "avoid_direct_edits": [
         "dist",
@@ -266,7 +268,8 @@
         "yarn build:script"
       ],
       "validate_with": [
-        "a new focused test that loads src/calling.js and exercises the changed Calling behavior (no existing test loads it), then yarn workspace webex test:unit"
+        "a new focused test that loads src/calling.js and exercises the changed Calling behavior (no existing test loads it), then yarn workspace webex test:unit",
+        "after yarn build:script, read the webpack output for errors and confirm the umd/ bundles were rewritten: the root wrapper deletes umd/webex* first, does not wait for webpack, and only debug-logs a non-zero webpack exit, so the command can exit 0 after a failed build"
       ],
       "avoid_direct_edits": [
         "dist",
@@ -287,9 +290,9 @@
         "yarn install"
       ],
       "validate_with": [
+        "yarn workspace webex build (creates the dist/ targets that the exports map points at)",
         "focused loads of the webex, webex/calling, webex/meetings, and webex/package subpaths through the exports map (the unit spec imports only .)",
-        "yarn workspace webex build",
-        "yarn build:script when the browser field or a UMD-facing entry changes",
+        "yarn build:script when the browser field or a UMD-facing entry changes; after yarn build:script, read the webpack output for errors and confirm the umd/ bundles were rewritten: the root wrapper deletes umd/webex* first, does not wait for webpack, and only debug-logs a non-zero webpack exit, so the command can exit 0 after a failed build",
         "yarn workspace webex test:unit"
       ],
       "avoid_direct_edits": [
@@ -312,7 +315,8 @@
         "yarn build:script"
       ],
       "validate_with": [
-        "a new focused characterization test that asserts the merged config and storage adapters (no existing test does), then yarn workspace webex test:unit"
+        "a new focused characterization test that asserts the merged config and storage adapters (no existing test does), then yarn workspace webex test:unit",
+        "after yarn build:script, read the webpack output for errors and confirm the umd/ bundles were rewritten: the root wrapper deletes umd/webex* first, does not wait for webpack, and only debug-logs a non-zero webpack exit, so the command can exit 0 after a failed build"
       ],
       "avoid_direct_edits": [
         "dist",
@@ -519,7 +523,7 @@
         "name": "UMD refresh",
         "command": "yarn build:script",
         "scope": "workspace root",
-        "notes": "Runs the --umd webpack build that writes packages/webex/umd."
+        "notes": "Runs the --umd webpack build that writes packages/webex/umd. Not a pass/fail check: the root wrapper deletes umd/webex* first, does not await webpack, and only debug-logs a non-zero exit; read the webpack output and confirm umd/ was rewritten."
       },
       {
         "name": "helper lint",

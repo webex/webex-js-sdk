@@ -9,7 +9,7 @@ doc_kind: module-spec
 generated_from: module-spec@0.3.0
 generated_by: claude-cowork
 approved_by: akulakum@cisco.com
-updated_at: 2026-10-13T09:38:17Z
+updated_at: 2026-10-13T09:45:14Z
 validation_status: not-run
 -->
 
@@ -424,6 +424,11 @@ classDiagram
 - `src/_setup.js` is a Mocha test helper inside `src/`, so `build:src` emits it with the runtime files, and it requires `@webex/test-helper-test-users`, which is only a devDependency.
 - `deregister()` does not await `line.deregister(true)`, so a rejection there is unhandled rather than logged.
 - The UMD bundles report `version` as `"undefined"` (see `MOD-004`).
+- The manifest `umd-refresh` command (root `build:script`) is not a pass/fail check. The workspace
+  root file tooling/lib/build.js deletes `umd/webex*`, starts webpack without awaiting it, and only
+  debug-logs a non-zero exit, so the command can exit 0 with missing or stale bundles. Read the
+  webpack output and confirm the `umd/` files were rewritten. Fixing the wrapper is a root tooling
+  change outside this package.
 - The committed `umd/webex.min.js` and its source map predate the current `src/webex.js`: they do not
   include `@webex/internal-plugin-task`, which `src/webex.js` now requires, while
   `umd/webex-first-party.min.js` does. The committed bundles are not proof of source parity; rebuild
@@ -484,7 +489,9 @@ No TypeScript declaration or API report exists for this package.
 Unit checks run with `yarn workspace webex test:unit` (4 tests). Integration checks need test users
 and network access; run the manifest integration command with the `--targets` option described in
 the workspace root `AGENTS.md`, once each for `commonjs.js` and `init.js`; `request.js` is not a
-required target while `package.json` has no `version` (see Pitfalls). No existing
+required target while `package.json` has no `version` (see Pitfalls). A change to
+the main entry's plugin set also needs an assertion for the namespace it adds or removes:
+`test/integration/spec/commonjs.js` asserts ten public namespaces only. No existing
 test loads `src/meetings.js`, `src/encryption.js`, `src/webex-first-party.js`, or `src/calling.js`, so a
 change to one of them needs a new focused test that loads that entry. The tiers are described in
 [Getting started](../../docs/getting-started.md).

@@ -9,7 +9,7 @@ doc_kind: standing-doc
 generated_from: spec-index@0.3.0
 generated_by: claude-cowork
 approved_by: akulakum@cisco.com
-updated_at: 2026-10-13T09:38:17Z
+updated_at: 2026-10-13T09:45:14Z
 validation_status: not-run
 -->
 
@@ -53,11 +53,11 @@ Generator-side field measurement is complete. Field coverage measured 2026-10-13
 | -------------- | --------------- | ------------------ |
 | Package boundaries or cross-cutting architecture | `docs/architecture.md` and applicable ADRs | `yarn workspace webex test:unit` and `yarn workspace webex test:style` |
 | A deployable service surface or operating posture | Not applicable — no deployable service exists in this package | Not applicable |
-| The plugin set or `init` of `src/webex.js` or `src/index.js` | `src/docs/README.md` | `yarn workspace webex test:unit`, then `yarn workspace webex test:integration` with the `--targets` option (workspace root `AGENTS.md`) for `commonjs.js` and `init.js` (`request.js` fails its user-agent case while `package.json` has no `version`) |
+| The plugin set or `init` of `src/webex.js` or `src/index.js` | `src/docs/README.md` | Add an assertion for the namespace added or removed (existing specs assert only ten public namespaces, not `cc` or the internal plugins), `yarn workspace webex test:unit`, then `yarn workspace webex test:integration` with the `--targets` option (workspace root `AGENTS.md`) for `commonjs.js` and `init.js` (`request.js` fails its user-agent case while `package.json` has no `version`) |
 | The plugin set or `init` of `src/meetings.js`, `src/encryption.js`, or `src/webex-first-party.js` | `src/docs/README.md` | No existing test loads these entries; add a focused test that loads the changed entry, then run `yarn workspace webex test:unit` |
 | `Calling` | `src/docs/README.md` | `yarn workspace webex test:unit`, after adding the missing unit case |
-| The `exports` map, `browser` field, or UMD globals | `src/docs/README.md` and `docs/architecture.md` | `yarn workspace webex build` and `yarn workspace webex test:unit` for `dist/`; `yarn build:script` from the workspace root for the `umd/` bundles and globals |
-| `env.js` or `browser.js` | `src/docs/README.md` | None runnable today: no test covers `browser.js`, and the `env.js` integration spec requires the unexported `webex/env` subpath; add a test with the change |
+| The `exports` map, `browser` field, or UMD globals | `src/docs/README.md` and `docs/architecture.md` | `yarn workspace webex build` and `yarn workspace webex test:unit` for `dist/`; `yarn build:script` from the workspace root for the `umd/` bundles and globals, then check its webpack output and the rewritten `umd/` files (it can exit 0 after a failed build; module spec Pitfalls) |
+| `env.js` or `browser.js` | `src/docs/README.md` | `yarn workspace webex eslint ./env.js ./browser.js`, then add a test with the change: no test covers `browser.js`, and the `env.js` integration spec requires the unexported `webex/env` subpath |
 
 ## Module and contract registration
 

@@ -3,7 +3,7 @@ doc_kind: agent-entry
 generated_from: agents@0.3.0
 generated_by: claude-cowork
 approved_by: akulakum@cisco.com
-updated_at: 2026-10-13T09:38:17Z
+updated_at: 2026-10-13T09:45:14Z
 validation_status: not-run
 -->
 
@@ -121,7 +121,8 @@ Run checks in this order:
    `commonjs.js` and `init.js`. `request.js` is not required while `package.json` has no `version`:
    its user-agent case then expects `webex/undefined` (module spec Pitfalls). Run untargeted, it also runs
    `test/integration/spec/env.js`, which requires the unexported `webex/env` subpath and fails, so
-   the whole tier fails (module spec Pitfalls). No existing test loads `src/meetings.js`,
+   the whole tier fails (module spec Pitfalls). A change to the main entry's plugin set also needs an
+   assertion for the namespace it adds or removes. No existing test loads `src/meetings.js`,
    `src/encryption.js`, `src/webex-first-party.js`, or `src/calling.js`; a change to one of them
    needs a new focused test that loads that entry.
 
