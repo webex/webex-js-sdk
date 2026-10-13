@@ -9,7 +9,7 @@ doc_kind: standing-doc
 generated_from: spec-index@0.3.0
 generated_by: claude-cowork
 approved_by: akulakum@cisco.com
-updated_at: 2026-10-13T07:26:27Z
+updated_at: 2026-10-13T08:08:34Z
 validation_status: not-run
 -->
 
@@ -53,7 +53,8 @@ Generator-side field measurement is complete. Field coverage measured 2026-10-13
 | -------------- | --------------- | ------------------ |
 | Package boundaries or cross-cutting architecture | `docs/architecture.md` and applicable ADRs | `yarn workspace webex test:unit` and `yarn workspace webex test:style` |
 | A deployable service surface or operating posture | Not applicable — no deployable service exists in this package | Not applicable |
-| The plugin set or `init` of an entry file | `src/docs/README.md` | `yarn workspace webex test:unit`, then `yarn workspace webex test:integration` |
+| The plugin set or `init` of `src/webex.js` or `src/index.js` | `src/docs/README.md` | `yarn workspace webex test:unit`, then `yarn workspace webex test:integration` with the `--targets` option (workspace root `AGENTS.md`) for `commonjs.js`, `init.js`, and `request.js` |
+| The plugin set or `init` of `src/meetings.js`, `src/encryption.js`, or `src/webex-first-party.js` | `src/docs/README.md` | No existing test loads these entries; add a focused test that loads the changed entry, then run `yarn workspace webex test:unit` |
 | `Calling` | `src/docs/README.md` | `yarn workspace webex test:unit`, after adding the missing unit case |
 | The `exports` map, `browser` field, or UMD globals | `src/docs/README.md` and `docs/architecture.md` | `yarn workspace webex build` and `yarn workspace webex test:unit` |
 | `env.js` or `browser.js` | `src/docs/README.md` | None runnable today: no test covers `browser.js`, and the `env.js` integration spec requires the unexported `webex/env` subpath; add a test with the change |

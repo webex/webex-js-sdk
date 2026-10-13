@@ -9,7 +9,7 @@ doc_kind: standing-doc
 generated_from: getting-started@0.3.0
 generated_by: claude-cowork
 approved_by: akulakum@cisco.com
-updated_at: 2026-10-13T07:26:27Z
+updated_at: 2026-10-13T08:08:34Z
 validation_status: not-run
 -->
 
@@ -69,8 +69,11 @@ yarn workspace webex test:unit
 | Lint | `yarn workspace webex test:style` | `src/` | eslint | None |
 
 - The karma run is manifest `commands.browser-test` with role `other`, because the SDD manifest
-  `tests` schema allows only `unit`, `integration`, `e2e`, and `qa`, and the integration tier is
-  already the Mocha run of the same specs.
+  `tests` schema has no browser tier, and the integration tier is already the Mocha run of the same
+  specs.
+- Run untargeted, the integration tier fails whenever `test/integration/spec/env.js` runs, because it
+  requires the unexported `webex/env` subpath. Pass the `--targets` option described in the workspace
+  root `AGENTS.md` once each for `commonjs.js`, `init.js`, and `request.js`.
 - The `package.json` script `test` chains `test:style`, `test:unit`, and `test:integration`; run
   the tiers individually.
 - The unit spec constructs real `Webex` instances, which try to reach the service catalog. Without

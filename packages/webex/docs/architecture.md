@@ -9,7 +9,7 @@ doc_kind: standing-doc
 generated_from: architecture@0.3.0
 generated_by: claude-cowork
 approved_by: akulakum@cisco.com
-updated_at: 2026-10-13T07:26:27Z
+updated_at: 2026-10-13T08:08:34Z
 validation_status: not-run
 -->
 
@@ -110,7 +110,8 @@ flowchart LR
 | ---------- | ---- | ------- | ------- | ------------------------------------ |
 | `@webex/webex-core` | Internal | `src` | Constructor base and plugin registry | Workspace version |
 | Public plugin packages (`@webex/plugin-*`) | Internal | `src` | Side-effect registration | Workspace versions |
-| Internal plugin packages (`@webex/internal-plugin-*`) and `@webex/common` | Internal | `src` | Side-effect registration | Workspace versions; three are required but undeclared (module spec Pitfalls) |
+| Internal plugin packages (`@webex/internal-plugin-*`) | Internal | `src` | Side-effect registration | Workspace versions; three are required but undeclared (module spec Pitfalls) |
+| `@webex/common` | Internal | `src/meetings.js`, `env.js` | Utility module (`inBrowser` in `env.js`); `src/meetings.js` requires it without using a binding. It registers no plugin | Workspace version |
 | `@webex/calling`, `@webex/contact-center` | Internal | `src/calling.js`, `src/webex.js` | Calling clients; contact-center registration | Workspace versions |
 | `@webex/storage-adapter-local-storage` | Internal | `src/config-storage.shim.js` | Browser bounded storage | Workspace version |
 | `@babel/polyfill`, `@babel/runtime-corejs2`, `lodash`, `safe-buffer` | External | `src` and build output | Polyfill, runtime helpers, config merge | Ranges in `package.json`; `safe-buffer` is not required by `src/` |
@@ -135,7 +136,7 @@ package. `package.json` lists `webex` itself as a devDependency so tests can imp
 | `babel-polyfill`, `lodash` (required) | SDK | npm | Entry files | See Dependency topology | npm |
 
 `webex-sdk` entry points: `main` and `.` point at `dist/index.js`, `./meetings` and `./calling` at
-their `dist/` files, and `devMain` at `src/index.js`. No HTTP surface is served, so
+their `dist/` files, `./package` at `package.json`, and `devMain` at `src/index.js`. No HTTP surface is served, so
 `api-specs/openapi.yaml` is omitted.
 
 ## Cross-cutting architecture

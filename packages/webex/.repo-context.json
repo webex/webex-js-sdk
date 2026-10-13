@@ -145,8 +145,8 @@
     },
     {
       "path": "umd",
-      "generated_from": "src",
-      "refresh_with": "the workspace root webpack build with the umd flag; not a script of this package"
+      "generated_from": "workspace root webpack.config.js entries: ./packages/webex (the package main; src/index.js in development mode) for webex, and packages/webex/src/webex-first-party.js, src/meetings.js, src/calling.js, plus packages/@webex/plugin-encryption/src/webex.js for encryption",
+      "refresh_with": "the workspace root build:script script (it runs the --umd webpack build that writes packages/webex/umd)"
     },
     {
       "path": ".sdd/templates/repo-standards/template-map.json",
@@ -187,7 +187,7 @@
         "yarn workspace webex test:unit"
       ],
       "recommended": [
-        "yarn workspace webex test:integration"
+        "yarn workspace webex test:integration with the --targets option for commonjs.js, init.js, and request.js; untargeted, test/integration/spec/env.js fails on the unexported webex/env subpath"
       ]
     },
     {
@@ -215,10 +215,13 @@
         "umd/webex.min.js, umd/meetings.min.js, and umd/webex-first-party.min.js (the last only in the umd build)"
       ],
       "refresh_with": [
-        "yarn workspace webex build:src"
+        "yarn workspace webex build:src",
+        "the workspace root build:script script (it runs the --umd webpack build that writes packages/webex/umd)"
       ],
       "validate_with": [
-        "yarn workspace webex test:unit"
+        "yarn workspace webex test:unit",
+        "yarn workspace webex test:integration with the --targets option for commonjs.js, init.js, and request.js (these load only the main entry)",
+        "a new focused test that loads src/meetings.js or src/webex-first-party.js when either changes"
       ],
       "avoid_direct_edits": [
         "dist",
@@ -255,7 +258,8 @@
         "umd/calling.min.js"
       ],
       "refresh_with": [
-        "yarn workspace webex build:src"
+        "yarn workspace webex build:src",
+        "the workspace root build:script script (it runs the --umd webpack build that writes packages/webex/umd)"
       ],
       "validate_with": [
         "yarn workspace webex test:unit"
@@ -436,8 +440,8 @@
         "paths": [
           "umd"
         ],
-        "generated_from": "src",
-        "refresh_with": "the workspace root webpack build with the umd flag",
+        "generated_from": "workspace root webpack.config.js entries: ./packages/webex (the package main; src/index.js in development mode) for webex, and packages/webex/src/webex-first-party.js, src/meetings.js, src/calling.js, plus packages/@webex/plugin-encryption/src/webex.js for encryption",
+        "refresh_with": "the workspace root build:script script (it runs the --umd webpack build that writes packages/webex/umd)",
         "notes": "Committed build output."
       },
       {
@@ -461,7 +465,7 @@
         "name": "integration tests",
         "command": "yarn workspace webex test:integration",
         "scope": "test/integration/spec",
-        "notes": "Mocha; needs test-user credentials and network access."
+        "notes": "Mocha; needs test-user credentials and network access. Target commonjs.js, init.js, and request.js with --targets; env.js fails on the unexported webex/env subpath."
       },
       {
         "name": "browser tests",

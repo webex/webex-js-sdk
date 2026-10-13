@@ -9,7 +9,7 @@ doc_kind: module-spec
 generated_from: module-spec@0.3.0
 generated_by: claude-cowork
 approved_by: akulakum@cisco.com
-updated_at: 2026-10-13T07:26:27Z
+updated_at: 2026-10-13T08:08:34Z
 validation_status: not-run
 -->
 
@@ -76,17 +76,17 @@ Related context: [documentation index](../../docs/index.md) ·
 | `env.js`, `browser.js`, `process` | Package-root helper files outside `src/` |
 | `package.json` | Name, `exports`, `browser` field, dependencies, and scripts |
 | `test/unit/spec/webex.js` | Four Jest cases: static and instance `version`, and the `fedramp` config |
-| `test/integration/spec/commonjs.js`, `test/integration/spec/init.js`, `test/integration/spec/request.js`, `test/integration/spec/env.js` | Mocha integration cases against real Webex services with test users |
-| Sibling package webex-core, files src/webex-core.js and src/lib/webex-core-plugin-mixin.js | `WebexCore.extend`, `initialize` config merge, the shared plugin registry, and first-registration-wins |
-| Sibling package webex-core, file src/interceptors/webex-user-agent.js | The `webex` flag selects the `webex` library name in the `spark-user-agent` header |
-| Sibling package webex-core, files src/lib/webex-core-plugin-mixin.js and src/lib/webex-internal-core-plugin-mixin.js | Public and internal registration both skip a name that is already registered unless `replace` is passed |
-| ampersand-state extend (a webex-core dependency) | A subclass copies the parent's children map when it is extended |
-| Workspace package @webex/babel-config-legacy, file static/plugins/inject-package-version.js | For `build:src` and Jest, `PACKAGE_VERSION` becomes the version in the `package.json` of the working directory, or `0.0.0` when that file has no version |
-| Sibling package webex-core, file src/webex-core.js | `WebexCore.version = PACKAGE_VERSION` as a static, compiled with webex-core's own version |
+| `test/integration/spec/commonjs.js`, `test/integration/spec/init.js`, `test/integration/spec/request.js`, `test/integration/spec/env.js` | Mocha integration cases against real Webex services with test users; `env.js` requires the unexported `webex/env` subpath |
+| Workspace files packages/@webex/webex-core/src/webex-core.js and packages/@webex/webex-core/src/lib/webex-core-plugin-mixin.js | `WebexCore.extend`, `initialize` config merge, the shared plugin registry, and first-registration-wins |
+| Workspace file packages/@webex/webex-core/src/interceptors/webex-user-agent.js | The `webex` flag selects the `webex` library name in the `spark-user-agent` header |
+| Workspace files packages/@webex/webex-core/src/lib/webex-core-plugin-mixin.js and packages/@webex/webex-core/src/lib/webex-internal-core-plugin-mixin.js | Public and internal registration both skip a name that is already registered unless `replace` is passed |
+| Installed dependency file node_modules/ampersand-state/ampersand-state.js (its extend function; installed by the workspace, not a tracked repository source) | A subclass copies the parent's children map when it is extended |
+| Workspace file packages/legacy/babel/static/plugins/inject-package-version.js | For `build:src` and Jest, `PACKAGE_VERSION` becomes the version in the `package.json` of the working directory, or `0.0.0` when that file has no version |
+| Workspace file packages/@webex/webex-core/src/webex-core.js | `WebexCore.version = PACKAGE_VERSION` as a static, compiled with webex-core's own version |
 | Workspace root files babel.config.json and tooling/babel-plugin-inject-package-version.js | The UMD build injects versions with a different plugin; the committed `umd/webex.min.js` contains `version:"undefined"` for `WebexCore` and `Webex` |
-| Sibling package calling, file src/index.ts | `createClient` and the other client factories that `Calling#initializeClients` calls |
+| Workspace file packages/calling/src/index.ts | `createClient` and the other client factories that `Calling#initializeClients` calls |
 | Workspace root file webpack.config.js | UMD entries, library names, and output paths for `umd/` |
-| Product README | Retained product documentation, not the behavioral authority. See ADR 0001. |
+| `README.md` | Retained product documentation, not the behavioral authority. See ADR 0001. |
 
 ## Purpose and boundary
 
@@ -348,8 +348,8 @@ classDiagram
 | ID | Invariant | WHY | Enforcement source | Test evidence |
 | -- | --------- | --- | ------------------ | ------------- |
 | `INV-001` | Config merge order, later wins: the entry's defaults (`sdkType`, plus `meetings.disableHydraId` in meetings), then the `src/config.js` module object, then the caller's `attrs.config`. `src/calling.js` merges `{}`, the module object, and `webexConfig.config` into `webexConfig.config`. | Caller config overrides package defaults. | `src/webex.js`, `src/meetings.js`, `src/encryption.js`, `src/calling.js` | `test/integration/spec/init.js` `merges config correctly` |
-| `INV-002` | Registration is global to the loaded copy of webex-core (one per workspace install; Jest gives each test file its own), and the first registration of a name wins unless the plugin passes `replace`. A public namespace exists on a constructor's instances only if its plugin was registered before that entry file called `WebexCore.extend`, because ampersand-state copies the parent's children map at extend time. An internal namespace exists if its plugin was registered before the instance was constructed, because each instance builds a new webex-core `WebexInternalCore`. | Entry files differ only in which packages they load, and their load order decides what a later or earlier entry sees. | Each entry file; sibling package webex-core files src/lib/webex-core-plugin-mixin.js and src/lib/webex-internal-core-plugin-mixin.js; the ampersand-state `extend` function | none found; `test/integration/spec/commonjs.js` checks presence only |
-| `INV-003` | `src/index.js`, `src/webex-first-party.js`, `src/meetings.js`, and `src/encryption.js` require `@babel/polyfill` only when `global._babelPolyfill` is falsy. `src/webex.js` and `src/calling.js` do not load it. | Avoid loading the polyfill twice. | Those files | none found |
+| `INV-002` | Registration is global to the loaded copy of webex-core (one per workspace install; Jest gives each test file its own), and the first registration of a name wins unless the plugin passes `replace`. A public namespace exists on a constructor's instances only if its plugin was registered before that entry file called `WebexCore.extend`, because ampersand-state copies the parent's children map at extend time. An internal namespace exists if its plugin was registered before the instance was constructed, because each instance builds a new webex-core `WebexInternalCore`. | Entry files differ only in which packages they load, and their load order decides what a later or earlier entry sees. | `src/webex.js`, `src/meetings.js`, `src/encryption.js`, `src/calling.js`; workspace files packages/@webex/webex-core/src/lib/webex-core-plugin-mixin.js and packages/@webex/webex-core/src/lib/webex-internal-core-plugin-mixin.js; installed dependency file node_modules/ampersand-state/ampersand-state.js | none found; `test/integration/spec/commonjs.js` checks presence only |
+| `INV-003` | `src/index.js`, `src/webex-first-party.js`, `src/meetings.js`, and `src/encryption.js` require `@babel/polyfill` only when `global._babelPolyfill` is falsy. `src/webex.js` and `src/calling.js` do not load it. | Avoid loading the polyfill twice. | `src/index.js`, `src/webex-first-party.js`, `src/meetings.js`, `src/encryption.js` | none found |
 | `INV-004` | Each Calling client is created only when its `clientConfig` flag is truthy: `calling` (awaited `createClient(webex, callingClientConfig)`), `contact`, `callHistory`, `voicemail`, `callSettings`, `callRecording`. An undefined `callRecording` is first set to `false` on the caller's object. | Apps opt in per client. | `src/calling.js` | none found |
 | `INV-005` | `register()` runs device `register`, then Mercury `connect`, sets `registered` to true, then runs `initializeClients`; each failure is logged at warn and the returned promise resolves. | Calling requires both before clients start. | `src/calling.js` | none found |
 
@@ -373,7 +373,7 @@ classDiagram
 | `new Calling` or `Calling.init` without `callingConfig.logger` | TypeError reading `level` (a rejected promise from `init`) | Always pass `callingConfig.logger` | None | `src/calling.js` |
 | `Calling` without `webex` and without `webexConfig` | TypeError reading `config` | Pass one of the two | None | `src/calling.js` |
 | `deregister()` while registered and no calling client | TypeError from `Object.values(undefined)`, a rejected promise | Enable `clientConfig.calling` or guard the call | None | `src/calling.js` |
-| Device registration or Mercury connection fails in `register()` | Warn log only; promise resolves; `registered` stays false | Check `registered` after `register()` | Call `register()` again | `src/calling.js` |
+| Device registration or Mercury connection fails in `register()` | Warn log only; promise resolves; `register()` never sets `registered` back to false, so it keeps its previous value: false on a first call, true on a repeated call after an earlier success | `registered` alone does not reveal the failure on a repeated call; track the call outcome through logs or call `deregister()` first | Call `register()` again; see the Pitfall on the missing guard | `src/calling.js` |
 | Client creation fails in `register()` after Mercury connected | Warn log only; promise resolves; `registered` is already true | `registered` does not reveal it; check the client fields | Call `initializeClients()` again rather than `register()` | `src/calling.js` |
 | A required plugin package is missing | `require` throws at load | Install the workspace dependency | None | `src/webex.js` |
 
@@ -413,6 +413,7 @@ classDiagram
 - `src/_setup.js` is a Mocha test helper inside `src/`, so `build:src` emits it with the runtime files, and it requires `@webex/test-helper-test-users`, which is only a devDependency.
 - `deregister()` does not await `line.deregister(true)`, so a rejection there is unhandled rather than logged.
 - The UMD bundles report `version` as `"undefined"` (see `MOD-004`).
+- Run untargeted, the manifest integration command also runs `test/integration/spec/env.js`, which requires the unexported `webex/env` subpath, so the whole tier fails whenever that spec runs. Target the other three specs instead (see Verification).
 - The unit spec constructs real instances, which attempt network requests to the service catalog;
   they fail without failing the tests.
 
@@ -463,4 +464,8 @@ No TypeScript declaration or API report exists for this package.
 | `MOD-007` to `MOD-015`, `MOD-017` to `MOD-019`, `INV-003` to `INV-005` | none | Source only | none found | No test for meetings, encryption, first-party, Calling, storage choice, or UMD |
 
 Unit checks run with `yarn workspace webex test:unit` (4 tests). Integration checks need test users
-and network access; the tiers are described in [Getting started](../../docs/getting-started.md).
+and network access; run the manifest integration command with the `--targets` option described in
+the workspace root `AGENTS.md`, once each for `commonjs.js`, `init.js`, and `request.js`. No existing
+test loads `src/meetings.js`, `src/encryption.js`, `src/webex-first-party.js`, or `src/calling.js`, so a
+change to one of them needs a new focused test that loads that entry. The tiers are described in
+[Getting started](../../docs/getting-started.md).
