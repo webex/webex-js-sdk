@@ -1,57 +1,42 @@
 import {LOST_CONNECTION_RECOVERY_TIMEOUT} from '../core/constants';
 import {WELLNESS_BREAK_REMINDERS_ENABLED} from './constants';
 import {
+  AgentProfile,
   AgentResponse,
   AuxCode,
   AuxCodeType,
-  DesktopProfileResponse,
   DialPlanEntity,
   Entity,
   IDLE_CODE,
-  OrgInfo,
-  OrgSettings,
+  OrgDesktopLoginResponse,
   Profile,
-  Team,
-  TenantData,
-  URLMapping,
+  TeamList,
+  MicrosoftConfig,
+  WebexConfig,
   WRAP_UP_CODE,
-  AIFeatureFlagsResponse,
-  AIFeatureFlags,
 } from './types';
 
 /**
- * Get the URL mapping for the given name
- * @param {Array<URLMapping>} urlMappings
- * @param {string} name
- * @returns {string}
- */
-const getUrlMapping = (urlMappings: Array<URLMapping>, name: string) => {
-  const mappedUrl = urlMappings.find((mapping) => mapping.name === name)?.url;
-
-  return mappedUrl || '';
-};
-
-/**
- * Get the MSFT and Webex configuration
- * @param {DesktopProfileResponse} agentProfileData
+ * Get the MSFT configuration
+ * @param {MicrosoftConfig} microsoftConfig
  * @returns {Object}
  */
-const getMsftConfig = (agentProfileData: DesktopProfileResponse) => {
+const getMsftConfig = (microsoftConfig?: MicrosoftConfig) => {
   return {
-    showUserDetailsMS: agentProfileData.showUserDetailsMS ?? false,
-    stateSynchronizationMS: agentProfileData.stateSynchronizationMS ?? false,
+    showUserDetailsMS: microsoftConfig?.showUserDetails ?? false,
+    stateSynchronizationMS: microsoftConfig?.stateSynchronization ?? false,
   };
 };
 
 /**
  * Get the Webex configuration
- * @param {DesktopProfileResponse} agentProfileData
+ * @param {WebexConfig} webexConfig
  * @returns {Object}
  */
-const getWebexConfig = (agentProfileData: DesktopProfileResponse) => {
+const getWebexConfig = (webexConfig?: WebexConfig) => {
   return {
-    showUserDetailsWebex: agentProfileData.showUserDetailsWebex ?? false,
-    stateSynchronizationWebex: agentProfileData.stateSynchronizationWebex ?? false,
+    showUserDetailsWebex: webexConfig?.showUserDetails ?? false,
+    stateSynchronizationWebex: webexConfig?.stateSynchronization ?? false,
   };
 };
 
@@ -65,15 +50,16 @@ const getDefaultAgentDN = (agentDNValidation: string) => {
 };
 
 /**
- * Get the filtered dialplan entries
+ * Get the dialplan entries for every active plan in the organization.
+ * The desktop-login aggregate does not carry the per-profile `dialPlans` selection, so all active
+ * plans apply.
  * @param {Array<DialPlanEntity>} dialPlanData
- * @param {Array<string>} profileDialPlans
  * @returns {Array<Entity>}
  */
-const getFilteredDialplanEntries = (dialPlanData: DialPlanEntity[], profileDialPlans: string[]) => {
+const getFilteredDialplanEntries = (dialPlanData: DialPlanEntity[]) => {
   const dialPlanEntries = [];
   dialPlanData.forEach((dailPlan: DialPlanEntity) => {
-    if (profileDialPlans.includes(dailPlan.id)) {
+    if (dailPlan.active) {
       const filteredPlan = {
         regex: dailPlan.regularExpression,
         prefix: dailPlan.prefix,
@@ -88,24 +74,17 @@ const getFilteredDialplanEntries = (dialPlanData: DialPlanEntity[], profileDialP
 };
 
 /**
- * Get the filtered aux codes
+ * Get the active aux codes of the given type.
+ * The desktop-login aggregate does not carry the per-agent restriction lists, so the whole pool
+ * returned by the aux-code API applies.
  * @param {Array<AuxCode>} auxCodes
  * @param {AuxCodeType} type
- * @param {Array<string>} specificCodes
  * @returns {Array<Entity>}
  */
-const getFilterAuxCodes = (
-  auxCodes: Array<AuxCode>,
-  type: AuxCodeType,
-  specificCodes: string[]
-) => {
+const getFilterAuxCodes = (auxCodes: Array<AuxCode>, type: AuxCodeType) => {
   const filteredAuxCodes: Array<Entity> = [];
   auxCodes.forEach((auxCode: AuxCode) => {
-    if (
-      auxCode.workTypeCode === type &&
-      auxCode.active &&
-      (specificCodes.length === 0 || specificCodes.includes(auxCode.id))
-    ) {
+    if (auxCode.workTypeCode === type && auxCode.active) {
       filteredAuxCodes.push({
         id: auxCode.id,
         name: auxCode.name,
@@ -133,30 +112,24 @@ function getDefaultWrapUpCode(wrapUpReasonList: Entity[]) {
  * @returns {Profile}
  */
 function parseAgentConfigs(profileData: {
+  orgConfig: OrgDesktopLoginResponse;
   userData: AgentResponse;
-  teamData: Team[];
-  tenantData: TenantData;
-  orgInfoData: OrgInfo;
+  agentProfileData: AgentProfile;
+  teamData: TeamList[];
   auxCodes: AuxCode[];
-  orgSettingsData: OrgSettings;
-  agentProfileData: DesktopProfileResponse;
   dialPlanData: DialPlanEntity[];
-  urlMapping: URLMapping[];
   multimediaProfileId: string;
-  aiFeatureFlags: AIFeatureFlagsResponse;
 }): Profile {
+  const {orgConfig, userData, agentProfileData, teamData, auxCodes, dialPlanData} = profileData;
   const {
-    userData,
-    teamData,
-    tenantData,
-    orgInfoData,
-    auxCodes,
-    orgSettingsData,
-    agentProfileData,
-    dialPlanData,
-    urlMapping,
-    aiFeatureFlags,
-  } = profileData;
+    organization: orgInfoData,
+    organizationSetting: orgSettingsData,
+    tenantConfiguration: tenantData,
+    urlMappings,
+    aiFeature,
+    microsoftConfig,
+    webexConfig,
+  } = orgConfig;
 
   const tenantDataTimeout = tenantData.timeoutDesktopInactivityEnabled
     ? tenantData.timeoutDesktopInactivityMins
@@ -165,17 +138,9 @@ function parseAgentConfigs(profileData: {
     ? agentProfileData.timeoutDesktopInactivityMins
     : tenantDataTimeout;
 
-  const wrapupCodes = getFilterAuxCodes(
-    auxCodes,
-    WRAP_UP_CODE,
-    agentProfileData.accessWrapUpCode === 'ALL' ? [] : agentProfileData.wrapUpCodes
-  );
+  const wrapupCodes = getFilterAuxCodes(auxCodes, WRAP_UP_CODE);
 
-  const idleCodes = getFilterAuxCodes(
-    auxCodes,
-    IDLE_CODE,
-    agentProfileData.accessIdleCode === 'ALL' ? [] : agentProfileData.idleCodes
-  );
+  const idleCodes = getFilterAuxCodes(auxCodes, IDLE_CODE);
 
   idleCodes.push({
     id: '0',
@@ -185,8 +150,6 @@ function parseAgentConfigs(profileData: {
   }); // pushing available state to idle codes
 
   const defaultWrapUpData = getDefaultWrapUpCode(wrapupCodes);
-  const aiFeature: AIFeatureFlags | undefined =
-    aiFeatureFlags?.data?.length > 0 ? aiFeatureFlags.data[0] : undefined;
   const isWellnessConfigured =
     aiFeature?.agentWellbeing?.enable === true &&
     aiFeature.agentWellbeing.wellnessBreakReminders === WELLNESS_BREAK_REMINDERS_ENABLED;
@@ -203,11 +166,10 @@ function parseAgentConfigs(profileData: {
     agentName: `${userData.firstName} ${userData.lastName}`,
     agentMailId: userData.email,
     agentProfileID: userData.agentProfileId,
-    autoAnswer: agentProfileData.autoAnswer,
     dialPlan: agentProfileData.dialPlanEnabled
       ? {
           type: 'adhocDial',
-          dialPlanEntity: getFilteredDialplanEntries(dialPlanData, agentProfileData.dialPlans),
+          dialPlanEntity: getFilteredDialplanEntries(dialPlanData),
         }
       : undefined,
     multimediaProfileId: profileData.multimediaProfileId,
@@ -215,7 +177,6 @@ function parseAgentConfigs(profileData: {
     siteId: userData.siteId,
     enterpriseId: orgInfoData.tenantId,
     tenantTimezone: orgInfoData.timezone,
-    environment: orgInfoData.environment,
     privacyShieldVisible: tenantData.privacyShieldVisible,
     organizationIdleCodes: [], // TODO: for supervisor, getOrgFilteredIdleCodes(auxCodes, false),
     idleCodesAccess: agentProfileData.accessIdleCode as 'ALL' | 'SPECIFIC',
@@ -254,8 +215,8 @@ function parseAgentConfigs(profileData: {
     analyserUserId: userData.id,
 
     urlMappings: {
-      acqueonApiUrl: getUrlMapping(urlMapping, 'ACQUEON_API_URL'),
-      acqueonConsoleUrl: getUrlMapping(urlMapping, 'ACQUEON_CONSOLE_URL'),
+      acqueonApiUrl: urlMappings?.ACQUEON_API_URL ?? '',
+      acqueonConsoleUrl: urlMappings?.ACQUEON_CONSOLE_URL ?? '',
     },
     isTimeoutDesktopInactivityEnabled: tenantData.timeoutDesktopInactivityEnabled,
     timeoutDesktopInactivityMins: inactivityTimeoutTimer,
@@ -264,8 +225,8 @@ function parseAgentConfigs(profileData: {
     maskSensitiveData: orgSettingsData.maskSensitiveData
       ? orgSettingsData.maskSensitiveData
       : false,
-    microsoftConfig: getMsftConfig(agentProfileData),
-    webexConfig: getWebexConfig(agentProfileData),
+    microsoftConfig: getMsftConfig(microsoftConfig),
+    webexConfig: getWebexConfig(webexConfig),
     lostConnectionRecoveryTimeout:
       tenantData.lostConnectionRecoveryTimeout || LOST_CONNECTION_RECOVERY_TIMEOUT,
     aiFeature,
