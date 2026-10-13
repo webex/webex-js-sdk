@@ -226,7 +226,8 @@ export default class MediaConnectionAwaiter {
     const connectivity = this.getConnectivity();
     const stats = await this.webrtcMediaConnection.getStats();
 
-    // There may be multiple transport reports; the first is sufficient for this metric.
+    // in theory we can end up with more than one transport report in the stats,
+    // but for the purpose of this metric it's fine to just use the first one
     const transportReports = Array.from(
       stats.values().filter((report) => report.type === 'transport')
     ) as Record<string, number | string>[];

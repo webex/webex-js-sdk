@@ -102,8 +102,8 @@ describe('MediaConnectionAwaiter', () => {
       await clock.tickAsync(ICE_CONNECTION_TIMEOUT);
       await testUtils.flushPromises();
 
-      assert.equal(promiseResolved, false);
       await connectionPromise;
+      assert.equal(promiseResolved, false);
       assert.equal(promiseRejected, true);
 
       assert.calledThrice(mockMC.off);
@@ -158,8 +158,8 @@ describe('MediaConnectionAwaiter', () => {
 
       await testUtils.flushPromises();
 
-      assert.equal(promiseResolved, false);
       await connectionPromise;
+      assert.equal(promiseResolved, false);
       assert.equal(promiseRejected, true);
 
       assert.calledThrice(mockMC.off);
@@ -193,11 +193,11 @@ describe('MediaConnectionAwaiter', () => {
       assert.equal(mockMC.on.getCall(0).args[0], MediaConnectionEventNames.PEER_CONNECTION_STATE_CHANGED);
       assert.equal(mockMC.on.getCall(1).args[0], MediaConnectionEventNames.ICE_CONNECTION_STATE_CHANGED);
       assert.equal(mockMC.on.getCall(2).args[0], MediaConnectionEventNames.ICE_GATHERING_STATE_CHANGED);
-      const listener = mockMC.on.getCall(2).args[1];
+      const gatheringStateListener = mockMC.on.getCall(2).args[1];
       const iceConnectionListener = mockMC.on.getCall(1).args[1];
 
       mockMC.getIceGatheringState.returns('complete');
-      listener();
+      gatheringStateListener();
 
       mockMC.getIceConnectionState.returns('connected');
       iceConnectionListener();
@@ -205,8 +205,8 @@ describe('MediaConnectionAwaiter', () => {
       await clock.tickAsync(DTLS_CONNECTION_TIMEOUT);
       await testUtils.flushPromises();
 
-      assert.equal(promiseResolved, false);
       await connectionPromise;
+      assert.equal(promiseResolved, false);
       assert.equal(promiseRejected, true);
 
       assert.calledThrice(mockMC.off);
