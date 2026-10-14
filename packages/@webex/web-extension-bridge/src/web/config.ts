@@ -1,7 +1,7 @@
 import {CHANNEL_PATTERN, DEFAULT_CHANNEL} from '../core/constants';
 import {BridgeError} from '../core/errors';
 import {clampMaxPayloadBytes} from '../core/limits';
-import type {LogSink} from '../core/logger';
+import type {LogLevelSetting, LogSink} from '../core/logger';
 import type {PageWindowLike} from './pageWindow';
 import type {WebBridgeOptions} from '../types';
 
@@ -15,6 +15,7 @@ export interface ResolvedWebConfig {
   targetOrigin: string;
   maxPayloadBytes: number;
   debug: boolean;
+  logLevel?: LogLevelSetting;
   logSink?: LogSink;
 }
 
@@ -85,6 +86,10 @@ export function resolveWebConfig(
     maxPayloadBytes: clampMaxPayloadBytes(options.maxPayloadBytes),
     debug: options.debug === true,
   };
+
+  if (options.logLevel !== undefined) {
+    config.logLevel = options.logLevel;
+  }
 
   if (options.logSink) {
     config.logSink = options.logSink;

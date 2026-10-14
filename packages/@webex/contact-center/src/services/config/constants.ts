@@ -34,6 +34,12 @@ export const AGENT_STATE_AVAILABLE_ID = '0';
  */
 export const AGENT_STATE_AVAILABLE = 'Available';
 
+/** System idle-code name reserved for Agent Wellness Break. */
+export const WELLBEING_BREAK_IDLE_CODE = 'WellbeingBreak';
+
+/** Backend sentinel indicating wellness-break reminders are enabled. @internal */
+export const WELLNESS_BREAK_REMINDERS_ENABLED = 'ENABLED';
+
 /**
  * Description for the 'Available' agent state.
  * @type {string}
@@ -61,25 +67,20 @@ export const DEFAULT_AUXCODE_ATTRIBUTES = [
 export const METHODS = {
   // AgentConfigService methods
   GET_AGENT_CONFIG: 'getAgentConfig',
-  GET_USER_USING_CI: 'getUserUsingCI',
-  GET_DESKTOP_PROFILE_BY_ID: 'getDesktopProfileById',
+  GET_ORG_DESKTOP_LOGIN_CONFIG: 'getOrgDesktopLoginConfig',
+  GET_USER_DESKTOP_LOGIN_CONFIG: 'getUserDesktopLoginConfig',
   GET_MULTIMEDIA_PROFILE_BY_ID: 'getMultimediaProfileById',
   GET_LIST_OF_TEAMS: 'getListOfTeams',
   GET_ALL_TEAMS: 'getAllTeams',
   GET_LIST_OF_AUX_CODES: 'getListOfAuxCodes',
   GET_ALL_AUX_CODES: 'getAllAuxCodes',
   GET_SITE_INFO: 'getSiteInfo',
-  GET_ORG_INFO: 'getOrgInfo',
-  GET_ORGANIZATION_SETTING: 'getOrganizationSetting',
-  GET_TENANT_DATA: 'getTenantData',
-  GET_URL_MAPPING: 'getURLMapping',
   GET_DIAL_PLAN_DATA: 'getDialPlanData',
-  GET_AI_FEATURE_FLAGS: 'getAIFeatureFlags',
+  GET_WELLBEING_BREAK_IDLE_CODE: 'getWellbeingBreakIdleCode',
   GET_QUEUES: 'getQueues',
 
   // Util methods
   PARSE_AGENT_CONFIGS: 'parseAgentConfigs',
-  GET_URL_MAPPING_UTIL: 'getUrlMapping',
   GET_MSFT_CONFIG: 'getMsftConfig',
   GET_WEBEX_CONFIG: 'getWebexConfig',
   GET_DEFAULT_AGENT_DN: 'getDefaultAgentDN',
@@ -92,34 +93,32 @@ export const METHODS = {
  * Maps API endpoint names to functions that generate endpoint URLs for various organization resources.
  * @public
  * @example
- * const url = endPointMap.userByCI('org123', 'agent456');
+ * const url = endPointMap.userDesktopLogin('org123', 'agent456');
  */
 export const endPointMap = {
   /**
-   * Gets the endpoint for a user by CI user ID.
+   * Gets the endpoint for the aggregated organization desktop-login configuration.
    * @param orgId - Organization ID.
-   * @param agentId - Agent ID.
    * @returns The endpoint URL string.
    * @public
    * @example
-   * const url = endPointMap.userByCI('org123', 'agent456');
+   * const url = endPointMap.orgDesktopLogin('org123');
    * @ignore
    */
-  userByCI: (orgId: string, agentId: string) =>
-    `organization/${orgId}/user/by-ci-user-id/${agentId}`,
+  orgDesktopLogin: (orgId: string) => `organization/${orgId}/desktop-login`,
 
   /**
-   * Gets the endpoint for a desktop profile.
+   * Gets the endpoint for the aggregated user desktop-login configuration.
    * @param orgId - Organization ID.
-   * @param desktopProfileId - Desktop profile ID.
+   * @param ciUserId - CI user ID of the agent.
    * @returns The endpoint URL string.
    * @public
    * @example
-   * const url = endPointMap.desktopProfile('org123', 'profile789');
+   * const url = endPointMap.userDesktopLogin('org123', 'agent456');
    * @ignore
    */
-  desktopProfile: (orgId: string, desktopProfileId: string) =>
-    `organization/${orgId}/agent-profile/${desktopProfileId}`,
+  userDesktopLogin: (orgId: string, ciUserId: string) =>
+    `organization/${orgId}/v2/user/by-ci-user-id/${ciUserId}/desktop-login`,
 
   /**
    * Gets the endpoint for a multimedia profile.
@@ -135,21 +134,21 @@ export const endPointMap = {
     `organization/${orgId}/multimedia-profile/${multimediaProfileId}`,
 
   /**
-   * Gets the endpoint for listing teams with optional filters.
+   * Gets the endpoint for listing the teams a user belongs to.
+   * The filter value must stay unquoted — the quoted form returns HTTP 400.
    * @param orgId - Organization ID.
    * @param page - Page number.
    * @param pageSize - Page size.
-   * @param filter - Array of team IDs to filter.
+   * @param userDbId - Database ID of the user whose teams are requested.
    * @returns The endpoint URL string.
    * @public
    * @example
-   * const url = endPointMap.listTeams('org123', 0, 100, ['team1', 'team2']);
+   * const url = endPointMap.listTeams('org123', 0, 100, 'userDb456');
    * @ignore
    */
-  listTeams: (orgId: string, page: number, pageSize: number, filter: string[]) =>
-    `organization/${orgId}/v2/team?page=${page}&pageSize=${pageSize}${
-      filter && filter.length > 0 ? `&filter=id=in=(${filter})` : ''
-    }`,
+  listTeams: (orgId: string, page: number, pageSize: number, userDbId: string) =>
+    `organization/${orgId}/v2/team?page=${page}&pageSize=${pageSize}` +
+    `&agentView=true&filter=userId==${userDbId}`,
 
   /**
    * Gets the endpoint for listing auxiliary codes with optional filters and attributes.
@@ -175,27 +174,10 @@ export const endPointMap = {
       filter && filter.length > 0 ? `&filter=id=in=(${filter})` : ''
     }&attributes=${attributes}&desktopProfileFilter=true`,
 
-  /**
-   * Gets the endpoint for organization info.
-   * @param orgId - Organization ID.
-   * @returns The endpoint URL string.
-   * @public
-   * @example
-   * const url = endPointMap.orgInfo('org123');
-   * @ignore
-   */
-  orgInfo: (orgId: string) => `organization/${orgId}`,
-
-  /**
-   * Gets the endpoint for organization settings.
-   * @param orgId - Organization ID.
-   * @returns The endpoint URL string.
-   * @public
-   * @example
-   * const url = endPointMap.orgSettings('org123');
-   * @ignore
-   */
-  orgSettings: (orgId: string) => `organization/${orgId}/v2/organization-setting?agentView=true`,
+  /** Lists system idle codes without applying the agent Desktop Profile filter. */
+  systemIdleCodes: (orgId: string, page: number, pageSize: number) =>
+    `organization/${orgId}/v2/auxiliary-code?page=${page}&pageSize=${pageSize}` +
+    '&workType=IDLE_CODE&customFilter=isSystemCode==true&desktopProfileFilter=false',
 
   /**
    * Gets the endpoint for site info.
@@ -210,28 +192,6 @@ export const endPointMap = {
   siteInfo: (orgId: string, siteId: string) => `organization/${orgId}/site/${siteId}`,
 
   /**
-   * Gets the endpoint for tenant configuration data.
-   * @param orgId - Organization ID.
-   * @returns The endpoint URL string.
-   * @public
-   * @example
-   * const url = endPointMap.tenantData('org123');
-   * @ignore
-   */
-  tenantData: (orgId: string) => `organization/${orgId}/v2/tenant-configuration?agentView=true`,
-
-  /**
-   * Gets the endpoint for organization URL mapping.
-   * @param orgId - Organization ID.
-   * @returns The endpoint URL string.
-   * @public
-   * @example
-   * const url = endPointMap.urlMapping('org123');
-   * @ignore
-   */
-  urlMapping: (orgId: string) => `organization/${orgId}/v2/org-url-mapping?sort=name,ASC`,
-
-  /**
    * Gets the endpoint for dial plan.
    * @param orgId - Organization ID.
    * @returns The endpoint URL string.
@@ -241,16 +201,6 @@ export const endPointMap = {
    * @ignore
    */
   dialPlan: (orgId: string) => `organization/${orgId}/dial-plan?agentView=true`,
-  /**
-   * Gets the endpoint for listing AI feature flags.
-   * @param orgId - Organization ID.
-   * @returns The endpoint URL string.
-   * @public
-   * @example
-   * const url = endPointMap.aiFeatureFlags('org123');
-   * @ignore
-   */
-  aiFeature: (orgId: string) => `organization/${orgId}/v2/ai-feature?page=0&pageSize=100`,
 
   /**
    * Gets the endpoint for the queue list with custom query parameters.

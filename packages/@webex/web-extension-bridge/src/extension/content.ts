@@ -9,7 +9,7 @@ import {BridgeError, toWireError} from '../core/errors';
 import {createIdFactory} from '../core/ids';
 import {clampMaxPayloadBytes} from '../core/limits';
 import {createLogger} from '../core/logger';
-import type {LogSink} from '../core/logger';
+import type {LogLevelSetting, LogSink} from '../core/logger';
 import {EnvelopeKind, EnvelopeSource, createEnvelope} from '../core/protocol';
 import type {Envelope} from '../core/protocol';
 import {RateLimiter, rateLimitKey} from '../core/rateLimit';
@@ -42,6 +42,9 @@ const ACCEPTED_FROM_PAGE = [
 
 export interface ContentRelayOptions {
   channel?: string;
+  /** As {@link WebBridgeOptions.logLevel}. */
+  logLevel?: LogLevelSetting;
+  /** Alias for `logLevel: 'debug'`. Ignored when `logLevel` is given. */
   debug?: boolean;
   maxPayloadBytes?: number;
   /** Inbound push budget per topic, enforced before anything reaches the worker. */
@@ -103,6 +106,7 @@ export function createContentRelay(
   const maxPayloadBytes = clampMaxPayloadBytes(options.maxPayloadBytes);
   const logger = createLogger({
     debug: options.debug === true,
+    ...(options.logLevel === undefined ? {} : {logLevel: options.logLevel}),
     prefix: '[web-extension-bridge:content]',
     ...(options.logSink ? {sink: options.logSink} : {}),
   });
@@ -197,6 +201,8 @@ export function createContentRelay(
     if (!entry) {
       // Unknown or already-settled correlation: a stale or forged response cannot
       // resolve a live request.
+      logger.debug('ignored response for unknown correlation', {channel, correlationId: id});
+
       return false;
     }
 
@@ -213,7 +219,7 @@ export function createContentRelay(
     }
 
     pageConnected = true;
-    logger.debug('page attached', {channel});
+    logger.info('page attached', {channel});
     notifyWorker(relayMessage(RelayKind.CONNECT));
   };
 
@@ -229,7 +235,7 @@ export function createContentRelay(
     }
 
     pageConnected = false;
-    logger.debug('page detached', {channel, reason});
+    logger.info('page detached', {channel, reason});
     notifyWorker(relayMessage(RelayKind.DISCONNECT, {reason}));
 
     if (tellPage) {
@@ -317,6 +323,8 @@ export function createContentRelay(
     });
 
     if (!validated.ok) {
+      logger.warn('rejected relay request from worker', {channel, reason: validated.reason});
+
       const rejected: RelayResult = {
         ok: false,
         error: toWireError(new BridgeError('INVALID_PAYLOAD')),
@@ -327,7 +335,15 @@ export function createContentRelay(
       return false;
     }
 
+    const {envelope} = validated;
+
     if (!pageConnected) {
+      logger.debug('relay request while page is detached', {
+        channel,
+        topic: envelope.topic,
+        id: envelope.id,
+      });
+
       const rejected: RelayResult = {
         ok: false,
         error: toWireError(new BridgeError('NOT_CONNECTED')),
@@ -338,7 +354,6 @@ export function createContentRelay(
       return false;
     }
 
-    const {envelope} = validated;
     let settled = false;
     const settle = (result: RelayResult): void => {
       if (settled) {
@@ -353,6 +368,7 @@ export function createContentRelay(
     // the other disappears mid-flight.
     const timer = setTimeout(() => {
       pending.delete(envelope.id);
+      logger.debug('relay request timed out', {channel, topic: envelope.topic, id: envelope.id});
       settle({ok: false, error: toWireError(new BridgeError('TIMEOUT'))});
     }, request.timeoutMs);
 
@@ -390,6 +406,8 @@ export function createContentRelay(
   win.addEventListener('message', onPageMessage);
   chromeApi.runtime.onMessage.addListener(onRuntimeMessage);
 
+  logger.info('content relay started', {channel, origin: documentOrigin});
+
   // Announce immediately, then once more shortly after, so a page bridge constructed
   // after document_start still receives a token without polling.
   control(EnvelopeKind.HELLO, session);
@@ -397,6 +415,7 @@ export function createContentRelay(
     reannounceTimer = undefined;
 
     if (!destroyed && !pageConnected) {
+      logger.debug('reannouncing hello', {channel});
       control(EnvelopeKind.HELLO, session);
     }
   }, HELLO_REANNOUNCE_DELAY_MS);
@@ -426,6 +445,7 @@ export function createContentRelay(
       pageSeenIds.clear();
       runtimeSeenIds.clear();
       forgetStartedRelay(relay);
+      logger.info('content relay destroyed', {channel});
     },
   };
 

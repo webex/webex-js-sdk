@@ -1,9 +1,9 @@
 import type {JsonValue} from './core/json';
-import type {LogSink} from './core/logger';
+import type {LogLevelSetting, LogSink} from './core/logger';
 
 export type {BridgeErrorCode, WireError} from './core/errors';
 export type {JsonValue} from './core/json';
-export type {LogContext, LogSink} from './core/logger';
+export type {LogContext, LogLevel, LogLevelSetting, LogSink} from './core/logger';
 
 export interface WebBridgeOptions {
   /**
@@ -14,7 +14,12 @@ export interface WebBridgeOptions {
   allowedOrigins?: string[];
   /** Namespace, so independent bridges can share a page. Must match the extension. */
   channel?: string;
-  /** Metadata-only logging. Never logs payloads or session tokens. */
+  /**
+   * Lowest severity to log: `'silent' | 'error' | 'warn' | 'info' | 'debug'`, default
+   * `'warn'`. Lifecycle events are `info`, per-message detail is `debug`.
+   */
+  logLevel?: LogLevelSetting;
+  /** Alias for `logLevel: 'debug'`. Ignored when `logLevel` is given. */
   debug?: boolean;
   /** Clamped to `[1, 1 MiB]`. */
   maxPayloadBytes?: number;
@@ -126,6 +131,9 @@ export interface ExtensionBridgeOptions {
    */
   allowedOrigins: string[];
   channel?: string;
+  /** As {@link WebBridgeOptions.logLevel}. */
+  logLevel?: LogLevelSetting;
+  /** Alias for `logLevel: 'debug'`. Ignored when `logLevel` is given. */
   debug?: boolean;
   defaultTimeoutMs?: number;
   maxPayloadBytes?: number;

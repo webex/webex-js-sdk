@@ -57,6 +57,7 @@ import {
   isBrowserMediaError,
   isBrowserMediaErrorName,
 } from '@webex/internal-plugin-metrics/src/call-diagnostic/call-diagnostic-metrics.util';
+import type {MetricEventMeetingJoinPhase} from '@webex/internal-plugin-metrics/src/metrics.types';
 import {CapabilityState, WebCapabilities} from '@webex/web-capabilities';
 import {processNewCaptions} from './voicea-meeting';
 
@@ -159,6 +160,7 @@ import {
   Configuration as RemoteMediaManagerConfiguration,
   RemoteMediaManager,
   Event as RemoteMediaManagerEvent,
+  getRemoteMediaManagerConfigForLogging,
 } from '../multistream/remoteMediaManager';
 import {
   Reaction,
@@ -279,6 +281,7 @@ export type CallStateForMetrics = {
   userNameInput?: string;
   emailInput?: string;
   pstnCorrelationId?: string;
+  meetingJoinPhase?: MetricEventMeetingJoinPhase;
 };
 
 export const MEDIA_UPDATE_TYPE = {
@@ -9142,9 +9145,16 @@ export default class Meeting extends StatelessWebexPlugin {
 
     this.hasMediaConnectionConnectedAtLeastOnce = false;
     const LOG_HEADER = 'Meeting:index#addMedia -->';
+    const optionsForLogging = {
+      ...options,
+      remoteMediaManagerConfig: getRemoteMediaManagerConfigForLogging(
+        options.remoteMediaManagerConfig
+      ),
+    };
+
     LoggerProxy.logger.info(
       `${LOG_HEADER} called with: options=${JSON.stringify(
-        options
+        optionsForLogging
       )}, turnServerInfo=${JSON.stringify(
         turnServerInfo
       )}, forceTurnDiscovery=${forceTurnDiscovery}, iceTransportPolicy=${iceTransportPolicy}`

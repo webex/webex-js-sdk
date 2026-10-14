@@ -431,7 +431,12 @@ describe('runWxAppAccept', () => {
     ]);
     expect(deps.metricsManager.trackEvent).toHaveBeenCalledWith(
       METRIC_EVENT_NAMES.WXAPP_TASK_ACCEPT_SUCCESS,
-      {taskId: 'interaction-1'},
+      expect.objectContaining({
+        taskId: 'interaction-1',
+        acceptReason: 'wxApp_offer_ready',
+        hasDeviceCallId: true,
+        hasDeviceId: true,
+      }),
       ['operational', 'behavioral']
     );
     expect(lifecycle.setWxAppAcceptInFlight).toHaveBeenNthCalledWith(1, true);
@@ -455,12 +460,49 @@ describe('runWxAppAccept', () => {
       expect.objectContaining({
         taskId: 'interaction-1',
         trackingId: 'track-1',
+        acceptReason: 'wxApp_offer_ready',
       }),
       ['operational', 'behavioral']
     );
     expect(lifecycle.setWxAppAnswerPending).toHaveBeenCalledWith(false);
     expect(lifecycle.mapWxAppVoiceError).toHaveBeenCalledWith(error, METHODS.ACCEPT);
     expect(lifecycle.setWxAppAcceptInFlight).toHaveBeenLastCalledWith(false);
+  });
+
+  it('includes captured acceptReason on accept success when pending', async () => {
+    const deps = makeDeps();
+    const lifecycle = makeLifecycle();
+
+    await runWxAppAccept(deps, lifecycle, {acceptReason: 'wxApp_answer_pending'});
+
+    expect(deps.metricsManager.trackEvent).toHaveBeenCalledWith(
+      METRIC_EVENT_NAMES.WXAPP_TASK_ACCEPT_SUCCESS,
+      expect.objectContaining({
+        taskId: 'interaction-1',
+        acceptReason: 'wxApp_answer_pending',
+      }),
+      ['operational', 'behavioral']
+    );
+  });
+
+  it('includes captured acceptReason on accept failure when pending', async () => {
+    const deps = makeDeps();
+    const error = new Error('answer failed');
+    deps.answerCallOnWebexService!.answerCall = jest.fn().mockRejectedValue(error);
+    const lifecycle = makeLifecycle();
+
+    await expect(
+      runWxAppAccept(deps, lifecycle, {acceptReason: 'wxApp_answer_pending'})
+    ).rejects.toThrow('answer failed');
+
+    expect(deps.metricsManager.trackEvent).toHaveBeenCalledWith(
+      METRIC_EVENT_NAMES.WXAPP_TASK_ACCEPT_FAILED,
+      expect.objectContaining({
+        taskId: 'interaction-1',
+        acceptReason: 'wxApp_answer_pending',
+      }),
+      ['operational', 'behavioral']
+    );
   });
 });
 
@@ -473,7 +515,12 @@ describe('runWxAppReject', () => {
 
     expect(deps.metricsManager.trackEvent).toHaveBeenCalledWith(
       METRIC_EVENT_NAMES.WXAPP_TASK_DECLINE_SUCCESS,
-      {taskId: 'interaction-1'},
+      expect.objectContaining({
+        taskId: 'interaction-1',
+        acceptReason: 'wxApp_offer_ready',
+        hasDeviceCallId: true,
+        hasDeviceId: true,
+      }),
       ['operational', 'behavioral']
     );
   });
@@ -488,10 +535,49 @@ describe('runWxAppReject', () => {
 
     expect(deps.metricsManager.trackEvent).toHaveBeenCalledWith(
       METRIC_EVENT_NAMES.WXAPP_TASK_DECLINE_FAILED,
-      expect.objectContaining({taskId: 'interaction-1'}),
+      expect.objectContaining({
+        taskId: 'interaction-1',
+        acceptReason: 'wxApp_offer_ready',
+      }),
       ['operational', 'behavioral']
     );
     expect(lifecycle.mapWxAppVoiceError).toHaveBeenCalledWith(error, METHODS.REJECT);
+  });
+
+  it('includes captured acceptReason on decline success when pending', async () => {
+    const deps = makeDeps();
+    const lifecycle = makeLifecycle();
+
+    await runWxAppReject(deps, lifecycle, {acceptReason: 'wxApp_answer_pending'});
+
+    expect(deps.metricsManager.trackEvent).toHaveBeenCalledWith(
+      METRIC_EVENT_NAMES.WXAPP_TASK_DECLINE_SUCCESS,
+      expect.objectContaining({
+        taskId: 'interaction-1',
+        acceptReason: 'wxApp_answer_pending',
+      }),
+      ['operational', 'behavioral']
+    );
+  });
+
+  it('includes captured acceptReason on decline failure when pending', async () => {
+    const deps = makeDeps();
+    const error = new Error('reject failed');
+    deps.answerCallOnWebexService!.rejectCall = jest.fn().mockRejectedValue(error);
+    const lifecycle = makeLifecycle();
+
+    await expect(
+      runWxAppReject(deps, lifecycle, {acceptReason: 'wxApp_answer_pending'})
+    ).rejects.toThrow('reject failed');
+
+    expect(deps.metricsManager.trackEvent).toHaveBeenCalledWith(
+      METRIC_EVENT_NAMES.WXAPP_TASK_DECLINE_FAILED,
+      expect.objectContaining({
+        taskId: 'interaction-1',
+        acceptReason: 'wxApp_answer_pending',
+      }),
+      ['operational', 'behavioral']
+    );
   });
 });
 
@@ -509,7 +595,30 @@ describe('runWxAppOutdialDecline', () => {
     ]);
     expect(deps.metricsManager.trackEvent).toHaveBeenCalledWith(
       METRIC_EVENT_NAMES.WXAPP_TASK_DECLINE_SUCCESS,
-      {taskId: 'interaction-1'},
+      expect.objectContaining({
+        taskId: 'interaction-1',
+        acceptReason: 'wxApp_offer_ready',
+        hasDeviceCallId: true,
+        hasDeviceId: true,
+      }),
+      ['operational', 'behavioral']
+    );
+  });
+
+  it('tracks post-accept acceptReason on outdial cancel when provided', async () => {
+    const deps = makeDeps();
+    const cancelResult = {type: 'RoutingMessage', trackingId: 'track-1', data: {}};
+
+    await runWxAppOutdialDecline(deps, async () => cancelResult, {
+      acceptReason: 'wxApp_answer_pending',
+    });
+
+    expect(deps.metricsManager.trackEvent).toHaveBeenCalledWith(
+      METRIC_EVENT_NAMES.WXAPP_TASK_DECLINE_SUCCESS,
+      expect.objectContaining({
+        taskId: 'interaction-1',
+        acceptReason: 'wxApp_answer_pending',
+      }),
       ['operational', 'behavioral']
     );
   });
@@ -555,6 +664,8 @@ describe('runWxAppOutdialDecline', () => {
         trackingId: 'aqm-track-1',
         failureReason: 'TASK_NOT_FOUND',
         reasonCode: 404,
+        hasDeviceCallId: true,
+        hasDeviceId: true,
       }),
       ['operational', 'behavioral']
     );
@@ -596,7 +707,12 @@ describe('runWxAppTransmitDtmf metrics', () => {
 
     expect(deps.metricsManager.trackEvent).toHaveBeenCalledWith(
       METRIC_EVENT_NAMES.WXAPP_TASK_DTMF_SUCCESS,
-      {taskId: 'interaction-1', dtmfLength: 3},
+      expect.objectContaining({
+        taskId: 'interaction-1',
+        dtmfLength: 3,
+        hasDeviceCallId: true,
+        hasDeviceId: true,
+      }),
       ['operational', 'behavioral']
     );
   });

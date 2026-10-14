@@ -6,6 +6,79 @@ import {union} from 'lodash';
 import ServiceUrl from './service-url';
 import {matchAllowedDomain, normalizeAllowedDomains} from '../domains';
 
+// Catalog base URLs are a small, stable set, so their parsed origin/path is
+// memoized to avoid repeated `new URL()` work when scanning the catalog on the
+// request hot path.
+const catalogUrlCache = new Map();
+
+/**
+ * Parse a catalog URL into the origin and normalized path used for matching,
+ * memoizing the result. Returns null when the URL is unparsable.
+ *
+ * @param {string} catalogUrlString - The catalog URL to parse
+ * @returns {{origin: string, path: string} | null} - Parsed catalog URL, or null
+ */
+export function parseCatalogUrl(catalogUrlString) {
+  if (catalogUrlCache.has(catalogUrlString)) {
+    return catalogUrlCache.get(catalogUrlString);
+  }
+
+  let parsed = null;
+
+  try {
+    const catalogUrl = new URL(catalogUrlString);
+
+    // Normalize paths by removing trailing slashes (except root "/")
+    parsed = {origin: catalogUrl.origin, path: catalogUrl.pathname.replace(/\/$/, '') || '/'};
+  } catch {
+    parsed = null;
+  }
+
+  catalogUrlCache.set(catalogUrlString, parsed);
+
+  return parsed;
+}
+
+/**
+ * Check if an already-parsed candidate URL matches a parsed catalog URL with
+ * proper origin validation. Allocates nothing, so it is safe to call in a tight
+ * loop over the whole catalog.
+ *
+ * @param {URL} candidateUrl - The parsed candidate URL to validate
+ * @param {{origin: string, path: string} | null} parsedCatalogUrl - The parsed catalog URL
+ * @returns {boolean} - True if the candidate URL is under the catalog URL's origin and path
+ */
+export function matchesParsedCatalogUrl(candidateUrl, parsedCatalogUrl) {
+  if (!candidateUrl || !parsedCatalogUrl) {
+    return false;
+  }
+
+  // Origins must match exactly (scheme + host + port)
+  if (candidateUrl.origin !== parsedCatalogUrl.origin) {
+    return false;
+  }
+
+  const catalogPath = parsedCatalogUrl.path;
+
+  if (catalogPath === '/') {
+    // Root path matches everything under this origin
+    return true;
+  }
+
+  const candidatePath = candidateUrl.pathname;
+
+  if (candidatePath.startsWith(catalogPath)) {
+    // Ensure we're at a path boundary, not mid-segment
+    // e.g., /api/v1 should match /api/v1/foo but not /api/v1extra
+    // nextChar is undefined for exact match, '/' for valid extension
+    const nextChar = candidatePath[catalogPath.length];
+
+    return nextChar === '/' || nextChar === undefined;
+  }
+
+  return false;
+}
+
 /**
  * Check if a candidate URL matches a catalog URL with proper origin validation.
  * This prevents bypasses like https://trusted.example.attacker.com matching https://trusted.example
@@ -15,37 +88,15 @@ import {matchAllowedDomain, normalizeAllowedDomains} from '../domains';
  * @returns {boolean} - True if the candidate URL is under the catalog URL's origin and path
  */
 export function matchesCatalogUrl(candidateUrlString, catalogUrlString) {
+  let candidateUrl;
+
   try {
-    const candidateUrl = new URL(candidateUrlString);
-    const catalogUrl = new URL(catalogUrlString);
-
-    // Origins must match exactly (scheme + host + port)
-    if (candidateUrl.origin !== catalogUrl.origin) {
-      return false;
-    }
-
-    // Normalize paths by removing trailing slashes (except root "/")
-    const catalogPath = catalogUrl.pathname.replace(/\/$/, '') || '/';
-    const candidatePath = candidateUrl.pathname;
-
-    if (catalogPath === '/') {
-      // Root path matches everything under this origin
-      return true;
-    }
-
-    if (candidatePath.startsWith(catalogPath)) {
-      // Ensure we're at a path boundary, not mid-segment
-      // e.g., /api/v1 should match /api/v1/foo but not /api/v1extra
-      // nextChar is undefined for exact match, '/' for valid extension
-      const nextChar = candidatePath[catalogPath.length];
-
-      return nextChar === '/' || nextChar === undefined;
-    }
-
-    return false;
+    candidateUrl = new URL(candidateUrlString);
   } catch {
     return false;
   }
+
+  return matchesParsedCatalogUrl(candidateUrl, parseCatalogUrl(catalogUrlString));
 }
 
 /* eslint-disable no-underscore-dangle */
@@ -289,16 +340,17 @@ const ServiceCatalog = AmpState.extend({
     ];
 
     // Invalid URLs cannot match any service
+    let candidateUrl;
+
     try {
-      // eslint-disable-next-line no-new
-      new URL(url);
+      candidateUrl = new URL(url);
     } catch {
       return undefined;
     }
 
     return serviceUrls.find((serviceUrl) => {
       // Check if the URL matches the default URL with proper origin validation
-      if (matchesCatalogUrl(url, serviceUrl.defaultUrl)) {
+      if (matchesParsedCatalogUrl(candidateUrl, parseCatalogUrl(serviceUrl.defaultUrl))) {
         return true;
       }
 
@@ -307,7 +359,7 @@ const ServiceCatalog = AmpState.extend({
         const alternateUrl = new URL(serviceUrl.defaultUrl);
         alternateUrl.host = host.host;
 
-        if (matchesCatalogUrl(url, alternateUrl.toString())) {
+        if (matchesParsedCatalogUrl(candidateUrl, parseCatalogUrl(alternateUrl.toString()))) {
           return true;
         }
       }

@@ -1,0 +1,6 @@
+openapi: 3.1.0
+info:
+  title: '[Service name] API'
+  version: 0.1.0
+  description: '[One sentence describing the service API.]'
+paths: {}

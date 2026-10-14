@@ -25,7 +25,7 @@ export {EnvelopeKind, EnvelopeSource} from './core/protocol';
 
 export type {BridgeErrorCode, WireError} from './core/errors';
 export type {JsonValue} from './core/json';
-export type {LogContext, LogSink} from './core/logger';
+export type {LogContext, LogLevel, LogLevelSetting, LogSink} from './core/logger';
 export type {
   BufferedMessage,
   Connection,
