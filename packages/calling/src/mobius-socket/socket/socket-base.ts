@@ -20,7 +20,7 @@ import {
   UnknownResponse,
 } from '../errors';
 import {MESSAGE_TYPES, SOCKET_READY_STATE} from './constants';
-import {isMobiusWssHostAllowed} from '../../common/constants';
+import {isMobiusWssHostAllowed} from '../../common/Utils';
 import type {
   SocketCloseEvent,
   SocketLogger,

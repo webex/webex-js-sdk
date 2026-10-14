@@ -133,9 +133,7 @@ describe('CallerId tests', () => {
     expect(callerId['callerInfo'].num).toStrictEqual('5008');
 
     /* resolveCallerId must receive the escaped externalId, not the raw SCIM-injection payload (AC-1 / U-01) */
-    const lastCall = (webex.request as jest.Mock).mock.calls[
-      (webex.request as jest.Mock).mock.calls.length - 1
-    ];
+    const lastCall = webex.request.mock.calls[webex.request.mock.calls.length - 1];
     const requestedUri: string = lastCall[0].uri;
     const rawFilter = encodeURIComponent(`id eq "${injectionPayload}"`);
     const escaped = injectionPayload.replace(/\\/g, '\\\\').replace(/"/g, '\\"');

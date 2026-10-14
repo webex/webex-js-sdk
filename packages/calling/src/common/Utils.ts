@@ -128,7 +128,7 @@ import {
   WEBEX_API_PROD,
   WEBEX_API_BTS,
   BW_XSI_ENDPOINT_VERSION_WITH_SLASH,
-  isMobiusWssHostAllowed,
+  MOBIUS_WSS_ALLOWED_DOMAINS,
 } from './constants';
 import {Model, WDMDevice, WebexSDK} from '../SDKConnector/types';
 import SDKConnector from '../SDKConnector';
@@ -136,6 +136,17 @@ import {CallSettingResponse} from '../CallSettings/types';
 import {ContactResponse} from '../Contacts/types';
 import {LineErrorEmitterCallback} from '../CallingClient/line/types';
 import {LineError, createLineError} from '../Errors/catalog/LineError';
+
+/**
+ * Shared predicate for the Mobius WSS host allowlist (AC-2). Used by both
+ * `Socket#open` and `filterMobiusUris` so the two enforcement points cannot
+ * drift apart.
+ */
+export function isMobiusWssHostAllowed(host: string): boolean {
+  return MOBIUS_WSS_ALLOWED_DOMAINS.some(
+    (domain) => host === domain || host.endsWith(`.${domain}`)
+  );
+}
 
 /**
  * Returns true when the hostname of the given WSS URI ends with one of the
