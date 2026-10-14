@@ -173,16 +173,9 @@
     "source_commit": "94dd92abed",
     "base_ref": "next",
     "head_ref": "next",
-    "validator_runtime": "codex",
-    "validator_model": "gpt-6-luna",
-    "validator_run_id": "01a111fe-ab8c-7e43-b354-ab86e2a218e4",
-    "validator_runtime_source": "host-metadata",
-    "runtime_fallback_tier": "different-runtime",
-    "status": "pass-with-warnings",
-    "assessed_at": "2026-10-06",
-    "blocking_count": 0,
-    "warning_count": 2,
-    "evidence_summary": "Independent code/spec validation found no Blocking drift; two Important findings remain: no executable behavioral test evidence, and the install command source_file does not substantiate the workspace-level yarn install command."
+    "validator_runtime": "use-codex",
+    "validator_runtime_source": "human-provided",
+    "runtime_fallback_tier": "different-runtime"
   },
   "layout": {
     "sdd_root": ".sdd",
