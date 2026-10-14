@@ -121,7 +121,6 @@ interface IInMeetingActions {
   canAttendeeRequestAiAssistantEnabled?: boolean;
   isAttendeeRequestAiAssistantDeclinedAll?: boolean;
   isAnonymizeDisplayNamesEnabled?: boolean;
-  isSupportParticipantList?: boolean;
   canViewTheParticipantList?: boolean;
 }
 
@@ -297,8 +296,6 @@ export default class InMeetingActions implements IInMeetingActions {
 
   canAnnotate = null;
 
-  isSupportParticipantList = null;
-
   canUseVoip = null;
 
   showAutoEndMeetingWarning = null;
@@ -444,7 +441,6 @@ export default class InMeetingActions implements IInMeetingActions {
     canChat: this.canChat,
     canDoVideo: this.canDoVideo,
     canAnnotate: this.canAnnotate,
-    isSupportParticipantList: this.isSupportParticipantList,
     canUseVoip: this.canUseVoip,
     enforceVirtualBackground: this.enforceVirtualBackground,
     supportHQV: this.supportHQV,

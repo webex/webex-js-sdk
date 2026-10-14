@@ -2038,8 +2038,14 @@ var timeStampInterval = 30000; //in milliseconds
           _imiconnect._checkTTLAndSendHeartBeat();
           //isFirebaseConfigAvailable is additionally required as verifypolicy + registerResponse both are returning policy.basicPush as true (='1')
           if (_imiconnect.isPushEnabled && _imiconnect.webpush && _imiconnect.isFirebaseConfigAvailable) {
-            _imiconnect.webpush.setPushNotificationDisplay(true);
-            _imiconnect.webpush.init(appid, _imiconnect.iCDeviceProfile.userId);
+            // Push init must never break registration: a throw here would skip
+            // startServiceWorkerMessageListener() below and leave chat dead.
+            try {
+              _imiconnect.webpush.setPushNotificationDisplay(true);
+              _imiconnect.webpush.init(appid, _imiconnect.iCDeviceProfile.userId);
+            } catch (ex) {
+              IMI.log("Push init failed; continuing without push", ex);
+            }
           }
 
           _imiconnect.startServiceWorkerMessageListener();
@@ -2134,7 +2140,13 @@ var timeStampInterval = 30000; //in milliseconds
         }
       },
       uninit: function () {
-        var _appNameToRemove = _imiconnect && _imiconnect.appName;
+        // _imiconnect is only assigned by startup(), so there is nothing to tear
+        // down before it runs. Still resolve, callers may chain on the result.
+        if (!_imiconnect) {
+          return Promise.resolve();
+        }
+
+        var _appNameToRemove = _imiconnect.appName;
 
         try {
           if (IMI._authTokenManager
@@ -2144,7 +2156,7 @@ var timeStampInterval = 30000; //in milliseconds
         } catch (ex) {
           IMI.log(ex);
         }
-       
+
         _imiconnect._pendingPushReplay = null;
 
         try {
@@ -2223,31 +2235,29 @@ var timeStampInterval = 30000; //in milliseconds
 
         IMI._swScope = null;
 
-        if (_imiconnect) {
-          _imiconnect.webpush = null;
-          _imiconnect.backgroundService = null;
-          _imiconnect.icConfig = null;
-          _imiconnect.iCDeviceProfile = null;
-          _imiconnect.isRTEnabled = false;
-          _imiconnect.isLocationEnabled = false;
-          _imiconnect.isEncryptionEnabled = false;
-          _imiconnect.isPushEnabled = false;
-          _imiconnect.isMultiProfileEnabled = false;
-          _imiconnect.isFirebaseConfigAvailable = false;
-          _imiconnect.enableAuthTokenExchange = false;
-          _imiconnect.appName = null;
-          _imiconnect.appSecret = null;
-          _imiconnect.clientId = null;
-          _imiconnect.accessToken = "";
-          _imiconnect.refreshToken = "";
-          _imiconnect.securityToken = null;
-          _imiconnect.serverInboxVersion = null;
-          _imiconnect.encryptionType = null;
-          _imiconnect.encryptionKey = null;
-          _imiconnect.encriptionKey = null;
-          _imiconnect.appDomain = null;
-          _imiconnect.profileTTL = null;
-        }
+        _imiconnect.webpush = null;
+        _imiconnect.backgroundService = null;
+        _imiconnect.icConfig = null;
+        _imiconnect.iCDeviceProfile = null;
+        _imiconnect.isRTEnabled = false;
+        _imiconnect.isLocationEnabled = false;
+        _imiconnect.isEncryptionEnabled = false;
+        _imiconnect.isPushEnabled = false;
+        _imiconnect.isMultiProfileEnabled = false;
+        _imiconnect.isFirebaseConfigAvailable = false;
+        _imiconnect.enableAuthTokenExchange = false;
+        _imiconnect.appName = null;
+        _imiconnect.appSecret = null;
+        _imiconnect.clientId = null;
+        _imiconnect.accessToken = "";
+        _imiconnect.refreshToken = "";
+        _imiconnect.securityToken = null;
+        _imiconnect.serverInboxVersion = null;
+        _imiconnect.encryptionType = null;
+        _imiconnect.encryptionKey = null;
+        _imiconnect.encriptionKey = null;
+        _imiconnect.appDomain = null;
+        _imiconnect.profileTTL = null;
 
    
         return _firebaseDeletePromise.catch(function (e) { IMI.log(e); });
@@ -7456,73 +7466,83 @@ var timeStampInterval = 30000; //in milliseconds
       },
       checkRemotePermission: function (permissionData) {
         var self = this;
-        if (permissionData.permission === "default") {
-          // This is a new web service URL and its validity is unknown.
-          window.safari.pushNotification.requestPermission(
-            safariRegisterURL, // The web service URL.//
-            imipush.safariWebPushId, // The Website Push ID.
-            {}, // Data used to help you identify the user.
-            self.checkRemotePermission // The callback function.
-          );
-        } else if (permissionData.permission === "denied") {
-          // The user said no. Talk to your UX expert to see what you can do to entice your
-          // users to subscribe to push notifications.
-        } else if (permissionData.permission === "granted") {
-          var profileUpdateAPIURL =
-            elbZeroRatingURL + "/" + _imiconnect.appName + "/profileupdate";
-          _db.set("pushRegistered", "true");
+        try {
+          // requestPermission() re-enters this function as its own callback, so
+          // permissionData can arrive empty on an aborted prompt.
+          if (!permissionData) {
+            IMI.log("Safari push permission data unavailable; skipping");
+            return;
+          }
+          if (permissionData.permission === "default") {
+            // This is a new web service URL and its validity is unknown.
+            window.safari.pushNotification.requestPermission(
+              safariRegisterURL, // The web service URL.//
+              imipush.safariWebPushId, // The Website Push ID.
+              {}, // Data used to help you identify the user.
+              self.checkRemotePermission // The callback function.
+            );
+          } else if (permissionData.permission === "denied") {
+            // The user said no. Talk to your UX expert to see what you can do to entice your
+            // users to subscribe to push notifications.
+          } else if (permissionData.permission === "granted") {
+            var profileUpdateAPIURL =
+              elbZeroRatingURL + "/" + _imiconnect.appName + "/profileupdate";
+            _db.set("pushRegistered", "true");
 
-          _imiconnect._pendingPushReplay = null;
+            _imiconnect._pendingPushReplay = null;
 
-          var data = {
-            tenant: "1",
-            event: "ProfileUpdate",
-            clientId: _imiconnect.clientId,
-            channel: "rt",
-            channelType: "web",
-            data: {
-              update: {
-                pushId: permissionData.deviceToken,
-                useragent: navigator.userAgent,
-                os: IMI.getBrowserName(),
-                osversion: IMI.getbrowserVersion(),
-                language: navigator.language,
+            var data = {
+              tenant: "1",
+              event: "ProfileUpdate",
+              clientId: _imiconnect.clientId,
+              channel: "rt",
+              channelType: "web",
+              data: {
+                update: {
+                  pushId: permissionData.deviceToken,
+                  useragent: navigator.userAgent,
+                  os: IMI.getBrowserName(),
+                  osversion: IMI.getbrowserVersion(),
+                  language: navigator.language,
+                },
               },
-            },
-            state: "PROFILEUPDATE",
-          };
-          var headers = _imiconnect._getAjaxHeader();
+              state: "PROFILEUPDATE",
+            };
+            var headers = _imiconnect._getAjaxHeader();
 
-          var reqdata = _messagingInstance._getPayLoadMsg(JSON.stringify(data));
+            var reqdata = _messagingInstance._getPayLoadMsg(JSON.stringify(data));
 
-          var callback = {
-            onSuccess: function (res) {
-              _imiconnect._processUnsupportedSDKVersion(res);
-              if (res && (res.code == "0" || res.code == 0)) {
-                _imiconnect._pendingPushReplay = null;
-              } else if (_imiconnect.icConfig && _imiconnect.icConfig.enableAuthTokenExchange) {
-                _imiconnect._pendingPushReplay = function () {
-                  if (_imiconnect.webpush
-                      && typeof _imiconnect.webpush.checkRemotePermission === "function") {
-                    _imiconnect.webpush.checkRemotePermission(permissionData);
-                  }
-                };
-              }
-            },
-            onFailure: function (error) {
-              if (_imiconnect.icConfig && _imiconnect.icConfig.enableAuthTokenExchange) {
-                _imiconnect._pendingPushReplay = function () {
-                  if (_imiconnect.webpush
-                      && typeof _imiconnect.webpush.checkRemotePermission === "function") {
-                    _imiconnect.webpush.checkRemotePermission(permissionData);
-                  }
-                };
-              }
-              _imiconnect._invokeSecurityTokenListeners(error);
-            },
-          };
-          IMI.Post(profileUpdateAPIURL, reqdata, headers, callback);
-          safariself.returnCallBack({ pushId: permissionData.deviceToken });
+            var callback = {
+              onSuccess: function (res) {
+                _imiconnect._processUnsupportedSDKVersion(res);
+                if (res && (res.code == "0" || res.code == 0)) {
+                  _imiconnect._pendingPushReplay = null;
+                } else if (_imiconnect.icConfig && _imiconnect.icConfig.enableAuthTokenExchange) {
+                  _imiconnect._pendingPushReplay = function () {
+                    if (_imiconnect.webpush
+                        && typeof _imiconnect.webpush.checkRemotePermission === "function") {
+                      _imiconnect.webpush.checkRemotePermission(permissionData);
+                    }
+                  };
+                }
+              },
+              onFailure: function (error) {
+                if (_imiconnect.icConfig && _imiconnect.icConfig.enableAuthTokenExchange) {
+                  _imiconnect._pendingPushReplay = function () {
+                    if (_imiconnect.webpush
+                        && typeof _imiconnect.webpush.checkRemotePermission === "function") {
+                      _imiconnect.webpush.checkRemotePermission(permissionData);
+                    }
+                  };
+                }
+                _imiconnect._invokeSecurityTokenListeners(error);
+              },
+            };
+            IMI.Post(profileUpdateAPIURL, reqdata, headers, callback);
+            safariself.returnCallBack({ pushId: permissionData.deviceToken });
+          }
+        } catch (ex) {
+          IMI.log("exception in safari checkRemotePermission :: ", ex);
         }
       },
       unsubscribe: function (callback) {

@@ -142,6 +142,7 @@ export type SubmitClientEventOptions = {
   browserLaunchMethod?: BrowserLaunchMethodType;
   webexConferenceIdStr?: string;
   globalMeetingId?: string;
+  locusCluster?: string;
   joinFlowVersion?: MetricEventJoinFlowVersion;
   meetingJoinPhase?: MetricEventMeetingJoinPhase;
   triggeredTime?: string;
