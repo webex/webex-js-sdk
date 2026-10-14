@@ -1712,6 +1712,7 @@ describe('plugin-meetings', () => {
             getIceGatheringState: sinon.stub().returns('complete'),
             initiateOffer: sinon.stub().resolves({}),
             on: sinon.stub(),
+            off: sinon.stub(),
             createSendSlot: sinon.stub(),
           };
 

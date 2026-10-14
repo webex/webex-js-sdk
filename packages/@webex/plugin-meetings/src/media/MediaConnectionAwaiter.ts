@@ -15,176 +15,138 @@ export interface FailureResult {
   iceConnectedAtLeastOnce: boolean;
 }
 
-type ConnectionPhase = 'ice' | 'dtls';
+type State =
+  | {name: 'idle'}
+  | {name: 'ice'; gatheringRetried: boolean}
+  | {name: 'dtls'}
+  | {name: 'connected'}
+  | {name: 'failed'; result: FailureResult};
+
+type ActiveState = Extract<State, {name: 'ice' | 'dtls'}>;
+type EnteredState = Exclude<State, {name: 'idle'}>;
+
+const PHASE_TIMEOUT: Record<ActiveState['name'], number> = {
+  ice: ICE_CONNECTION_TIMEOUT,
+  dtls: DTLS_CONNECTION_TIMEOUT,
+};
 
 /**
- * @class MediaConnectionAwaiter
+ * Waits for ICE and DTLS connectivity using explicit lifecycle states.
  */
 export default class MediaConnectionAwaiter {
-  private webrtcMediaConnection: any;
+  private props: MediaConnectionAwaiterProps;
+  private state: State = {name: 'idle'};
   private timer?: ReturnType<typeof setTimeout>;
-  private defer: Defer;
-  private gatheringTimeoutRetried = false;
   private iceConnectedAtLeastOnce = false;
-  private phase?: ConnectionPhase;
-  private started = false;
-  private settled = false;
-  private callbacksRegistered = false;
-  private correlationId: string;
-  private onTimeoutCallback: () => void;
-  private peerConnectionStateCallback: () => void;
-  private iceConnectionStateCallback: () => void;
-  private iceGatheringStateCallback: () => void;
+  private defer = new Defer();
 
   /**
-   * @param {MediaConnectionAwaiterProps} mediaConnectionAwaiterProps
+   * @param {MediaConnectionAwaiterProps} props
    */
-  constructor({webrtcMediaConnection, correlationId}: MediaConnectionAwaiterProps) {
-    this.webrtcMediaConnection = webrtcMediaConnection;
-    this.defer = new Defer();
-    this.correlationId = correlationId;
-    this.onTimeoutCallback = this.onTimeout.bind(this);
-    this.peerConnectionStateCallback = this.peerConnectionStateHandler.bind(this);
-    this.iceConnectionStateCallback = this.iceConnectionStateHandler.bind(this);
-    this.iceGatheringStateCallback = this.iceGatheringStateHandler.bind(this);
+  constructor(props: MediaConnectionAwaiterProps) {
+    this.props = props;
   }
 
   /**
-   * Returns whether ICE currently indicates connectivity.
-   * @returns {boolean}
+   * Registers listeners and starts the wait once, settling terminal connections immediately.
+   * @returns {Promise<void>} Rejects with FailureResult on failure
    */
-  private isIceConnected(): boolean {
-    const state = this.webrtcMediaConnection.getIceConnectionState();
+  waitForMediaConnectionConnected(): Promise<void> {
+    if (this.state.name === 'idle') {
+      this.registerCallbacks();
+      this.evaluate('waitForMediaConnectionConnected');
+    }
 
-    return state === 'connected' || state === 'completed';
+    return this.defer.promise;
   }
 
   /**
-   * Returns whether ICE gathering has completed.
-   * @returns {boolean}
-   */
-  private isIceGatheringCompleted(): boolean {
-    return this.webrtcMediaConnection.getIceGatheringState() === 'complete';
-  }
-
-  /**
-   * Removes the registered state listeners.
+   * Applies a transition to a new state and owns its deadline or terminal settlement.
+   * @param {EnteredState} next - State to enter; an active wait cannot return to idle
+   * @param {string} reason - Trigger or reason for the transition
    * @returns {void}
    */
-  private clearCallbacks(): void {
-    if (!this.callbacksRegistered) {
+  private enter(next: EnteredState, reason: string): void {
+    if (this.isTerminal()) {
       return;
     }
-    this.callbacksRegistered = false;
-    this.webrtcMediaConnection.off(
-      MediaConnectionEventNames.ICE_GATHERING_STATE_CHANGED,
-      this.iceGatheringStateCallback
-    );
-    this.webrtcMediaConnection.off(
-      MediaConnectionEventNames.PEER_CONNECTION_STATE_CHANGED,
-      this.peerConnectionStateCallback
-    );
-    this.webrtcMediaConnection.off(
-      MediaConnectionEventNames.ICE_CONNECTION_STATE_CHANGED,
-      this.iceConnectionStateCallback
-    );
-  }
-
-  /**
-   * Settles the wait and releases its timer and listeners exactly once.
-   * @param {FailureResult} [failure] - Failure details, or undefined to resolve
-   * @returns {void}
-   */
-  private settle(failure?: FailureResult): void {
-    if (this.settled) {
-      return;
-    }
-    this.settled = true;
-    clearTimeout(this.timer);
-    this.timer = undefined;
-    this.clearCallbacks();
-
-    if (failure) {
-      this.defer.reject(failure);
-    } else {
-      this.defer.resolve();
-    }
-  }
-
-  /**
-   * Captures current and historical ICE connectivity for failures and metrics.
-   * @returns {FailureResult}
-   */
-  private getConnectivity(): FailureResult {
-    const iceConnected = this.isIceConnected();
-    this.iceConnectedAtLeastOnce ||= iceConnected;
-
-    return {iceConnected, iceConnectedAtLeastOnce: this.iceConnectedAtLeastOnce};
-  }
-
-  /**
-   * Starts a fresh deadline for the current phase.
-   * @param {string} reason - Why the timer is being started or restarted
-   * @returns {void}
-   */
-  private startTimer(reason: string): void {
-    const timeout = this.phase === 'dtls' ? DTLS_CONNECTION_TIMEOUT : ICE_CONNECTION_TIMEOUT;
 
     LoggerProxy.logger.log(
-      `Media:MediaConnectionAwaiter#startTimer --> starting ${this.phase} timeout (${timeout}ms): ${reason}`
+      `Media:MediaConnectionAwaiter#enter --> ${this.state.name} -> ${next.name}: ${reason}`
     );
+    this.state = next;
 
-    if (this.timer !== undefined) {
-      clearTimeout(this.timer);
+    switch (next.name) {
+      case 'ice':
+      case 'dtls':
+        this.armTimer(next, reason);
+        break;
+      case 'connected':
+        this.teardown();
+        this.defer.resolve();
+        break;
+      case 'failed':
+        this.teardown();
+        this.defer.reject(next.result);
+        break;
     }
-    this.timer = setTimeout(this.onTimeoutCallback, timeout);
   }
 
   /**
-   * Evaluates terminal states and synchronizes the timeout with current ICE connectivity.
-   * @param {string} trigger - Callback or operation that triggered the evaluation
-   * @returns {boolean} Whether a new phase deadline was started
+   * Returns whether the promise has settled.
+   * @returns {boolean}
    */
-  connectionStateChange(trigger: string): boolean {
-    const state = this.webrtcMediaConnection.getConnectionState();
+  private isTerminal(): boolean {
+    return this.state.name === 'connected' || this.state.name === 'failed';
+  }
+
+  /**
+   * Returns the current state only if it owns a connection deadline.
+   * @returns {ActiveState | undefined}
+   */
+  private getActiveState(): ActiveState | undefined {
+    const {state} = this;
+
+    return state.name === 'ice' || state.name === 'dtls' ? state : undefined;
+  }
+
+  /**
+   * Logs current browser state and transitions when connectivity or phase changes.
+   * @param {string} trigger - Callback or operation that triggered evaluation
+   * @returns {boolean} Whether a state transition occurred
+   */
+  private evaluate(trigger: string): boolean {
+    const connection = this.props.webrtcMediaConnection;
+    const connectionState = connection.getConnectionState();
 
     LoggerProxy.logger.log(
-      `Media:MediaConnectionAwaiter#connectionStateChange --> triggered by ${trigger}, connection state: ${state}, peer connection state: ${this.webrtcMediaConnection.getPeerConnectionState()}, ICE connection state: ${this.webrtcMediaConnection.getIceConnectionState()}, ICE gathering state: ${this.webrtcMediaConnection.getIceGatheringState()}, settled: ${
-        this.settled
+      `Media:MediaConnectionAwaiter#evaluate --> triggered by ${trigger}, connection state: ${connectionState}, peer connection state: ${connection.getPeerConnectionState()}, ICE connection state: ${connection.getIceConnectionState()}, ICE gathering state: ${connection.getIceGatheringState()}, awaiter state: ${
+        this.state.name
       }`
     );
 
-    if (this.settled) {
+    if (this.isTerminal()) {
       return false;
     }
 
     const connectivity = this.getConnectivity();
+    if (connectionState === ConnectionState.Connected) {
+      this.enter({name: 'connected'}, trigger);
 
-    if (state === ConnectionState.Connected) {
-      this.settle();
-
-      return false;
+      return true;
     }
-    if (state === ConnectionState.Failed || state === ConnectionState.Closed) {
-      this.settle(connectivity);
+    if (connectionState === ConnectionState.Failed || connectionState === ConnectionState.Closed) {
+      this.enter({name: 'failed', result: connectivity}, trigger);
 
-      return false;
-    }
-
-    const phase: ConnectionPhase = connectivity.iceConnected ? 'dtls' : 'ice';
-    if (phase === this.phase) {
-      return false;
+      return true;
     }
 
-    const previousPhase = this.phase;
-    this.phase = phase;
-    this.startTimer(
-      `${trigger}: ${
-        previousPhase
-          ? `phase changed from ${previousPhase} to ${phase}`
-          : 'initial connection phase'
-      }`
-    );
+    const phase = connectivity.iceConnected ? 'dtls' : 'ice';
+    if (this.state.name === phase) {
+      return false;
+    }
+
+    this.enter(phase === 'ice' ? {name: 'ice', gatheringRetried: false} : {name: 'dtls'}, trigger);
 
     return true;
   }
@@ -193,64 +155,40 @@ export default class MediaConnectionAwaiter {
    * Listener for peer connection state changes.
    * @returns {void}
    */
-  peerConnectionStateHandler(): void {
-    this.connectionStateChange('peerConnectionStateHandler');
-  }
+  peerConnectionStateHandler = (): void => {
+    this.evaluate('peerConnectionStateHandler');
+  };
 
   /**
    * Listener for ICE connection state changes.
    * @returns {void}
    */
-  iceConnectionStateHandler(): void {
-    this.connectionStateChange('iceConnectionStateHandler');
-  }
+  iceConnectionStateHandler = (): void => {
+    this.evaluate('iceConnectionStateHandler');
+  };
 
   /**
-   * Restarts the ICE deadline when gathering completes, without extending DTLS.
+   * Restarts only an unchanged ICE phase when gathering completes.
    * @returns {void}
    */
-  iceGatheringStateHandler(): void {
-    const phaseChanged = this.connectionStateChange('iceGatheringStateHandler');
-
-    if (!this.settled && !phaseChanged && this.phase === 'ice' && this.isIceGatheringCompleted()) {
-      this.startTimer('iceGatheringStateHandler: ICE gathering completed');
+  iceGatheringStateHandler = (): void => {
+    const changed = this.evaluate('iceGatheringStateHandler');
+    if (!changed && this.state.name === 'ice' && this.isIceGatheringCompleted()) {
+      this.armTimer(this.state, 'iceGatheringStateHandler: ICE gathering completed');
     }
-  }
+  };
 
   /**
-   * Sends connectivity diagnostics when a connection deadline expires.
-   * @returns {Promise<void>}
-   */
-  async sendMetric(): Promise<void> {
-    // Capture connectivity before awaiting stats, which may finish after another state change.
-    const connectivity = this.getConnectivity();
-    const stats = await this.webrtcMediaConnection.getStats();
-
-    // in theory we can end up with more than one transport report in the stats,
-    // but for the purpose of this metric it's fine to just use the first one
-    const transportReports = Array.from(
-      stats.values().filter((report) => report.type === 'transport')
-    ) as Record<string, number | string>[];
-
-    Metrics.sendBehavioralMetric(BEHAVIORAL_METRICS.MEDIA_STILL_NOT_CONNECTED, {
-      correlation_id: this.correlationId,
-      ...connectivity,
-      numTransports: transportReports.length,
-      dtlsState: transportReports[0]?.dtlsState,
-      iceState: transportReports[0]?.iceState,
-      packetsSent: transportReports[0]?.packetsSent,
-      packetsReceived: transportReports[0]?.packetsReceived,
-      dataChannelState: this.webrtcMediaConnection.multistreamConnection?.dataChannel?.readyState,
-    });
-  }
-
-  /**
-   * Rechecks state before applying the deadline or the single gathering retry.
+   * Rechecks connectivity before applying the deadline or the ICE gathering retry.
    * @returns {void}
    */
-  onTimeout(): void {
-    const phaseChanged = this.connectionStateChange('onTimeout');
-    if (this.settled || phaseChanged) {
+  onTimeout = (): void => {
+    if (this.evaluate('onTimeout')) {
+      return;
+    }
+
+    const state = this.getActiveState();
+    if (!state) {
       return;
     }
 
@@ -258,55 +196,129 @@ export default class MediaConnectionAwaiter {
       LoggerProxy.logger.warn('Media:MediaConnectionAwaiter#onTimeout --> metric failed', error);
     });
 
-    if (!this.isIceGatheringCompleted() && !this.gatheringTimeoutRetried) {
-      this.gatheringTimeoutRetried = true;
-      LoggerProxy.logger.warn(
-        'Media:MediaConnectionAwaiter#onTimeout --> ICE gathering incomplete, retrying once'
+    if (state.name === 'ice' && !state.gatheringRetried && !this.isIceGatheringCompleted()) {
+      this.enter(
+        {...state, gatheringRetried: true},
+        'onTimeout: ICE gathering incomplete, retrying once'
       );
-      this.startTimer('onTimeout: retrying once because ICE gathering is incomplete');
 
       return;
     }
 
-    LoggerProxy.logger.warn(
-      `Media:MediaConnectionAwaiter#onTimeout --> ${this.phase} timeout, rejecting`
+    this.enter({name: 'failed', result: this.getConnectivity()}, `${state.name} timeout`);
+  };
+
+  /**
+   * Arms an active phase's deadline and logs every start or restart.
+   * @param {ActiveState} state - Active state whose deadline is being started
+   * @param {string} reason - Why the deadline is being started or restarted
+   * @returns {void}
+   */
+  private armTimer(state: ActiveState, reason: string): void {
+    if (this.timer !== undefined) {
+      clearTimeout(this.timer);
+    }
+    const timeout = PHASE_TIMEOUT[state.name];
+    this.timer = setTimeout(this.onTimeout, timeout);
+    LoggerProxy.logger.log(
+      `Media:MediaConnectionAwaiter#armTimer --> ${state.name} (${timeout}ms): ${reason}`
     );
-    this.settle(this.getConnectivity());
   }
 
   /**
-   * Waits for ICE and DTLS connectivity, rejecting terminal states immediately.
-   * @returns {Promise<void>} Rejects with FailureResult on failure
+   * Releases the deadline and registered listeners on either terminal transition.
+   * @returns {void}
    */
-  waitForMediaConnectionConnected(): Promise<void> {
-    if (this.started) {
-      return this.defer.promise;
-    }
-    this.started = true;
+  private teardown(): void {
+    clearTimeout(this.timer);
+    this.timer = undefined;
+    this.unregisterCallbacks();
+  }
 
-    const state = this.webrtcMediaConnection.getConnectionState();
-    if (
-      state !== ConnectionState.Connected &&
-      state !== ConnectionState.Failed &&
-      state !== ConnectionState.Closed
-    ) {
-      this.callbacksRegistered = true;
-      this.webrtcMediaConnection.on(
-        MediaConnectionEventNames.PEER_CONNECTION_STATE_CHANGED,
-        this.peerConnectionStateCallback
-      );
-      this.webrtcMediaConnection.on(
-        MediaConnectionEventNames.ICE_CONNECTION_STATE_CHANGED,
-        this.iceConnectionStateCallback
-      );
-      this.webrtcMediaConnection.on(
-        MediaConnectionEventNames.ICE_GATHERING_STATE_CHANGED,
-        this.iceGatheringStateCallback
-      );
-    }
+  /**
+   * Registers each callback once with a stable function reference.
+   * @returns {void}
+   */
+  private registerCallbacks(): void {
+    const connection = this.props.webrtcMediaConnection;
+    connection.on(
+      MediaConnectionEventNames.PEER_CONNECTION_STATE_CHANGED,
+      this.peerConnectionStateHandler
+    );
+    connection.on(
+      MediaConnectionEventNames.ICE_CONNECTION_STATE_CHANGED,
+      this.iceConnectionStateHandler
+    );
+    connection.on(
+      MediaConnectionEventNames.ICE_GATHERING_STATE_CHANGED,
+      this.iceGatheringStateHandler
+    );
+  }
 
-    this.connectionStateChange('waitForMediaConnectionConnected');
+  /**
+   * Removes callbacks when the wait reaches a terminal state.
+   * @returns {void}
+   */
+  private unregisterCallbacks(): void {
+    const connection = this.props.webrtcMediaConnection;
+    connection.off(
+      MediaConnectionEventNames.ICE_GATHERING_STATE_CHANGED,
+      this.iceGatheringStateHandler
+    );
+    connection.off(
+      MediaConnectionEventNames.PEER_CONNECTION_STATE_CHANGED,
+      this.peerConnectionStateHandler
+    );
+    connection.off(
+      MediaConnectionEventNames.ICE_CONNECTION_STATE_CHANGED,
+      this.iceConnectionStateHandler
+    );
+  }
 
-    return this.defer.promise;
+  /**
+   * Returns whether ICE gathering has completed.
+   * @returns {boolean}
+   */
+  private isIceGatheringCompleted(): boolean {
+    return this.props.webrtcMediaConnection.getIceGatheringState() === 'complete';
+  }
+
+  /**
+   * Captures current and historical ICE connectivity for failures and metrics.
+   * @returns {FailureResult}
+   */
+  private getConnectivity(): FailureResult {
+    const iceState = this.props.webrtcMediaConnection.getIceConnectionState();
+    const iceConnected = iceState === 'connected' || iceState === 'completed';
+    this.iceConnectedAtLeastOnce ||= iceConnected;
+
+    return {iceConnected, iceConnectedAtLeastOnce: this.iceConnectedAtLeastOnce};
+  }
+
+  /**
+   * Sends connectivity diagnostics when a deadline expires.
+   * @returns {Promise<void>}
+   */
+  private async sendMetric(): Promise<void> {
+    // Capture connectivity before awaiting stats, which may finish after another state change.
+    const connectivity = this.getConnectivity();
+    const connection = this.props.webrtcMediaConnection;
+    const stats = await connection.getStats();
+
+    // There may be multiple transport reports; the first is sufficient for this metric.
+    const transportReports = Array.from(
+      stats.values().filter((report) => report.type === 'transport')
+    ) as Record<string, number | string>[];
+
+    Metrics.sendBehavioralMetric(BEHAVIORAL_METRICS.MEDIA_STILL_NOT_CONNECTED, {
+      correlation_id: this.props.correlationId,
+      ...connectivity,
+      numTransports: transportReports.length,
+      dtlsState: transportReports[0]?.dtlsState,
+      iceState: transportReports[0]?.iceState,
+      packetsSent: transportReports[0]?.packetsSent,
+      packetsReceived: transportReports[0]?.packetsReceived,
+      dataChannelState: connection.multistreamConnection?.dataChannel?.readyState,
+    });
   }
 }

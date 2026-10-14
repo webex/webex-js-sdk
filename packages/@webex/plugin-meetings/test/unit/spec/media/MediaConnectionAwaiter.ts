@@ -60,8 +60,11 @@ describe('MediaConnectionAwaiter', () => {
       mockMC.getConnectionState.returns(ConnectionState.Connected);
 
       await mediaConnectionAwaiter.waitForMediaConnectionConnected();
+      await mediaConnectionAwaiter.waitForMediaConnectionConnected();
 
-      assert.neverCalledWith(mockMC.on);
+      assert.calledThrice(mockMC.on);
+      assert.calledThrice(mockMC.off);
+      assert.equal(clock.countTimers(), 0);
     });
 
     it('rejects after timeout if ice state is not connected', async () => {
@@ -290,49 +293,25 @@ describe('MediaConnectionAwaiter', () => {
       assert.equal(promiseRejected, true);
     });
 
-    it('retries once with the DTLS timeout if ICE gathering has not completed when ICE is connected', async () => {
+    it('rejects at the DTLS deadline even if ICE gathering has not completed', async () => {
       mockMC.getConnectionState.returns(ConnectionState.Connecting);
       mockMC.getIceGatheringState.returns('gathering');
 
       const setTimeoutSpy = sinon.spy(clock, 'setTimeout');
-
-      let promiseResolved = false;
-      let promiseRejected = false;
-
-      mediaConnectionAwaiter
-        .waitForMediaConnectionConnected()
-        .then(() => {
-          promiseResolved = true;
-        })
-        .catch(() => {
-          promiseRejected = true;
-        });
-
-      await testUtils.flushPromises();
-
+      const failure = mediaConnectionAwaiter.waitForMediaConnectionConnected().then(
+        () => assert.fail('Expected DTLS timeout rejection'),
+        (error) => error
+      );
       const iceConnectionListener = mockMC.on.getCall(1).args[1];
 
-      // ICE connects (but gathering still not complete) - switches to DTLS timeout
       mockMC.getIceConnectionState.returns('connected');
       iceConnectionListener();
-
-      // first DTLS timeout elapses while gathering is still incomplete - it retries
-      // once with the DTLS timeout instead of rejecting
       await clock.tickAsync(DTLS_CONNECTION_TIMEOUT);
-      await testUtils.flushPromises();
 
-      assert.equal(promiseResolved, false);
-      assert.equal(promiseRejected, false);
-
-      // the retry uses the DTLS timeout again
+      assert.deepEqual(await failure, {iceConnected: true, iceConnectedAtLeastOnce: true});
+      assert.calledTwice(setTimeoutSpy);
       assert.calledWithExactly(setTimeoutSpy.lastCall, sinon.match.func, DTLS_CONNECTION_TIMEOUT);
-
-      // second DTLS timeout elapses - now it rejects
-      await clock.tickAsync(DTLS_CONNECTION_TIMEOUT);
-      await testUtils.flushPromises();
-
-      assert.equal(promiseResolved, false);
-      assert.equal(promiseRejected, true);
+      assert.equal(clock.countTimers(), 0);
     });
 
     it('resolves when DTLS completes within the shorter DTLS timeout after ICE connects', async () => {
@@ -830,7 +809,7 @@ describe('MediaConnectionAwaiter', () => {
 
     ['checking', 'connected'].forEach((iceState) => {
       [false, true].forEach((retryConsumed) => {
-        it(`preserves the gathering retry allowance for ${iceState}, consumed=${retryConsumed}`, async () => {
+        it(`retries incomplete gathering only during ICE with ${iceState}, consumed=${retryConsumed}`, async () => {
           const {result, promise} = startWait('checking', 'gathering');
           if (retryConsumed) {
             await clock.tickAsync(ICE_CONNECTION_TIMEOUT);
@@ -839,8 +818,9 @@ describe('MediaConnectionAwaiter', () => {
           const timeout =
             iceState === 'connected' ? DTLS_CONNECTION_TIMEOUT : ICE_CONNECTION_TIMEOUT;
           await clock.tickAsync(timeout);
-          assert.equal(result.status, retryConsumed ? 'rejected' : 'pending');
-          if (!retryConsumed) {
+          const shouldRetry = iceState === 'checking' && !retryConsumed;
+          assert.equal(result.status, shouldRetry ? 'pending' : 'rejected');
+          if (shouldRetry) {
             await clock.tickAsync(timeout);
           }
           await promise;
@@ -863,8 +843,8 @@ describe('MediaConnectionAwaiter', () => {
             iceConnected: iceState === 'connected',
             iceConnectedAtLeastOnce: iceState === 'connected',
           });
-          assert.notCalled(mockMC.on);
-          assert.equal(clock.countTimers(), 0);
+          assert.calledThrice(mockMC.on);
+          assertCleanedUp();
         });
 
         it(`cleans up on ${state} with ICE ${iceState} and ignores late callbacks`, async () => {
@@ -902,15 +882,21 @@ describe('MediaConnectionAwaiter', () => {
       assertCleanedUp();
     });
 
-    it('does not replenish the gathering retry after losing ICE connectivity', async () => {
-      const {result, promise} = startWait('connected', 'gathering');
-      await clock.tickAsync(DTLS_CONNECTION_TIMEOUT);
-      assert.equal(result.status, 'pending');
-      changeIceState('disconnected');
-      await clock.tickAsync(ICE_CONNECTION_TIMEOUT);
-      await promise;
-      assert.deepEqual(result.error, {iceConnected: false, iceConnectedAtLeastOnce: true});
-      assertCleanedUp();
+    ['connected', 'completed'].forEach((iceState) => {
+      it(`resets the ICE gathering retry after recovery through ${iceState}`, async () => {
+        const {result, promise} = startWait('checking', 'gathering');
+        await clock.tickAsync(ICE_CONNECTION_TIMEOUT);
+        assert.equal(result.status, 'pending');
+        changeIceState(iceState);
+        changeIceState('disconnected');
+        await clock.tickAsync(ICE_CONNECTION_TIMEOUT);
+        assert.equal(result.status, 'pending');
+        await clock.tickAsync(ICE_CONNECTION_TIMEOUT);
+        assert.equal(result.status, 'rejected');
+        await promise;
+        assert.deepEqual(result.error, {iceConnected: false, iceConnectedAtLeastOnce: true});
+        assertCleanedUp();
+      });
     });
 
     it('captures connectivity before asynchronous stats complete', async () => {
