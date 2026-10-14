@@ -48,14 +48,14 @@ Related context: [documentation index](../../docs/index.md) ·
 | `module.crosses_service_boundaries`  | Applicable | Every REST method in `src/locus.js` calls the Locus or Janus service through webex.request | Cross-boundary use-case flow |
 | `module.holds_client_state`          | N/A        | `src/locus.js` defines no props, session, or derived state. Callers hold the Locus working copy. | Client state model |
 | `module.enforces_domain_rules`       | Applicable | The Locus sequence comparison and delta merge rules in `src/locus.js` | Business rules and invariants |
-| `module.is_concurrent_async`         | Applicable | Promise-returning REST methods, a second request on 409 Conflict, and caller-driven ordering of out-of-order Locus DTOs | Concurrency and reactive flow |
+| `module.is_concurrent_async`         | Applicable | Promise-returning REST methods, a second request after a WebexHttpError.Conflict rejection, and caller-driven ordering of out-of-order Locus DTOs | Concurrency and reactive flow |
 | `module.owns_persistence`            | N/A        | Nothing is stored. Results are returned to the caller. | Data, schema, and migration discipline |
 | `module.stateful_transitions`        | N/A        | The module keeps no state between calls; participant and call states belong to the Locus service | State machine |
 | `module.exposes_wire_protocol`       | Applicable | Request bodies, the JSON-string localSdp, the Locus sequence object, and the delta DTO fields read in `src/locus.js` | Protocol and wire format |
 | `module.ui_multi_screen`             | N/A        | No UI | UI flow |
 | `module.large_data_model`            | N/A        | The Locus DTO is passed through, not modelled. Only the sequence object and a few fields are read. | Data model |
 | `module.returns_caller_errors`       | Applicable | Synchronous throws for missing arguments and promise rejections from webex.request | Caller-visible failure modes |
-| `module.module_specific_conventions` | Applicable | Device URL and sequence in request bodies per INV-007, resolving the response body, and Conflict-to-GET recovery | Module-specific rules |
+| `module.module_specific_conventions` | Applicable | Device URL and sequence in request bodies per INV-007, resolving the response body or a documented field (sendDtmf excepted), and Conflict-to-GET recovery | Module-specific rules |
 | `module.published_package`           | Applicable | `package.json` names the package @webex/internal-plugin-locus and deploy:npm publishes it | Export stability |
 | `module.embedded_in_host`            | N/A        | No host theme or embed API | Host integration and theming |
 | `module.has_design_tradeoff`         | Applicable | Stateless compare and merge, Conflict recovery by GET, and per-call memoization | Key design trade-off |
@@ -135,7 +135,7 @@ Contract `locus-sdk` is published with native artifact `package.json`. Required 
 | Dependency | Why it is required | Failure behavior |
 | ---------- | ------------------ | ---------------- |
 | `@webex/webex-core` (`webex-core-plugin-host`) | `WebexPlugin`, `registerInternalPlugin`, `request`, and `WebexHttpError.Conflict` | webex-core's default interceptor set includes `HttpStatusInterceptor`, which converts error statuses to the `WebexHttpError` subtypes built by the sibling package http-core, except the Locus and App API 404 redirect responses, which it passes on to redirect handling; other interceptors in the set can still reject with their own plain errors (rows below), and the catalog check and redirects behave as the architecture Security architecture describes. A host-supplied `config.interceptors` set replaces the defaults: without `HttpStatusInterceptor` that conversion is absent, and whether an error status resolves or rejects, and with which error, depends on the interceptors the host lists. `INV-006` applies only when the rejection is a `WebexHttpError.Conflict` |
-| Locus service (`locus-service-http`) | Every call and participant operation | Rejections propagate, except 409 Conflict on `decline` and `leave` (`INV-006`) |
+| Locus service (`locus-service-http`) | Every call and participant operation | Rejections propagate, except a `WebexHttpError.Conflict` rejection on `decline` and `leave` (`INV-006`; see the webex-core row) |
 | Janus service (`janus-history-http`) | `getCallHistory` | Rejections propagate |
 | `webex.internal.device` (`webex-device-registration`) | `url` sent as the device URL (`INV-007`) | Not a declared dependency; it is registered transitively because the Mercury index imports the device plugin (sibling package internal-plugin-mercury, file src/index.js). If it is absent, reading `url` throws a TypeError |
 | `@webex/internal-plugin-mercury` (`mercury-sdk`) | Side-effect import only; it brings in the device plugin above | Load-time only; Locus calls no Mercury API |
@@ -157,8 +157,8 @@ Contract `locus-sdk` is published with native artifact `package.json`. Required 
 | `MOD-008` | `join` takes `correlationId` from the Locus, else from `options`, and throws synchronously without one. It sends the `join` request and resolves like `MOD-007`. | Joins an existing Locus with local media. | `src/locus.js` | none found | — | Present |
 | `MOD-009` | `createOrJoin` calls `join` when `target.url` is set, else `create`. | Lets one call path dial a user or join a Locus. The JSDoc says it serves the phone plugin. | `src/locus.js` | none found | — | Present |
 | `MOD-010` | `alert` sends the `alert` request and resolves the response body. | Tells Locus the local user has been notified of the Locus's active state, per the JSDoc. | `src/locus.js` | none found | — | Present |
-| `MOD-011` | `decline` sends the `decline` request and resolves the body. A Conflict is recovered by `INV-006`; other errors reject. | Declining a call that has already changed state still returns current state. | `src/locus.js` | none found | — | Present |
-| `MOD-012` | `leave` sends the `leave` request and resolves `body.locus`. A Conflict is recovered by `INV-006`; other errors reject. | Same as `MOD-011` for leaving. | `src/locus.js` | none found | — | Present |
+| `MOD-011` | `decline` sends the `decline` request and resolves the body. A Conflict is recovered by `INV-006`; other request rejections propagate. | Declining a call that has already changed state still returns current state. | `src/locus.js` | none found | — | Present |
+| `MOD-012` | `leave` sends the `leave` request and resolves `body.locus`. A Conflict is recovered by `INV-006`; other request rejections propagate. | Same as `MOD-011` for leaving. | `src/locus.js` | none found | — | Present |
 | `MOD-013` | `get` resolves the body of a GET on `locus.url`; `list` resolves `body.loci` from the `list` request; `sync` resolves the body of a GET on `locus.syncUrl`, or `{}` when the body is empty. | `sync` returns a delta that the caller passes to `compare` and `merge`; it does not merge. | `src/locus.js` | none found | The `{}` case follows the source comment about 204 No Content | Present |
 | `MOD-014` | `getCallHistory` sends the `call history` request with `from` as the ISO string of `options.from`, or of now when `options.from` is falsy, and resolves the body. | Lists the user's recent sessions. | `src/locus.js` | none found | — | Present |
 | `MOD-015` | `updateMedia` sends the `media update` request and resolves `body.locus`. | Starts or stops sending audio or video, or offers a new SDP. | `src/locus.js` | none found | The JSDoc names `options.localSdp`, but the code reads `sdp` (see Pitfalls) | Present |
@@ -174,8 +174,9 @@ public method is either a REST wrapper or a pure function over caller-supplied d
 The REST wrappers share one shape: build a request with either a catalog service plus resource or an
 absolute URL taken from the Locus DTO, add `deviceUrl` and the caller's sequence where the operation
 needs them (`INV-007`), call `this.request` (which delegates to `webex.request`; the floor methods
-call `this.webex.request` directly), and resolve the response body or one field of it. The only
-error handling in the module is the Conflict recovery of `INV-006`.
+call `this.webex.request` directly), and resolve the response body or one field of it, or the
+whole response for `sendDtmf` (`MOD-017`). The only error handling in the module is the Conflict
+recovery of `INV-006`.
 
 The comparison functions implement Locus sequencing. `compareSequence` orders two sequence objects;
 `compare` and `compareDelta` turn that order into one of three actions, and `merge` builds the
@@ -195,7 +196,7 @@ for comparison and merge.
 | --------------- | ----------------- | ------------------- | ----------------------------- |
 | Call setup | `create`, `join`, `createOrJoin` → Locus with per-device `mediaConnections` | Call setup diagram below | Synchronous throw without `correlationId`; HTTP rejection |
 | Participant and media updates | `alert`, `decline`, `leave`, `updateMedia`, `sendDtmf`, floor requests → body, `body.locus`, or the whole response for `sendDtmf` | Participant and media updates diagram below | Conflict recovery for `decline` and `leave`; other rejections |
-| Reads | `get`, `list`, `sync`, `getCallHistory` → body | Reads diagram below | Empty `sync` body; invalid `from`; HTTP rejection |
+| Reads | `get`, `list`, `sync`, `getCallHistory` → body, `body.loci` for `list`, or `{}` for an empty `sync` body | Reads diagram below | Empty `sync` body; invalid `from`; HTTP rejection |
 | Sequence reconciliation | `compare` → action → `merge` or fetch | Sequence reconciliation diagram below | `FETCH` path; can throw for malformed data |
 
 Call setup:
@@ -221,7 +222,7 @@ sequenceDiagram
       Service-->>Locus: body with locus and mediaConnections
       Locus->>Locus: copy mediaConnections onto self.devices
       Locus-->>Caller: resolve body.locus
-    else HTTP error
+    else request rejected (see Dependencies)
       Request-->>Caller: reject with a WebexHttpError subtype or an interceptor error
     end
   end
@@ -273,7 +274,7 @@ sequenceDiagram
   else body present
     LocusSvc-->>Locus: body
     Locus-->>Caller: resolve body or body.loci
-  else HTTP error
+  else request rejected (see Dependencies)
     Request-->>Caller: reject with a WebexHttpError subtype or an interceptor error
   end
   Caller->>Locus: getCallHistory(options)
@@ -285,7 +286,7 @@ sequenceDiagram
     alt success
       Janus-->>Locus: body
       Locus-->>Caller: resolve body
-    else HTTP error
+    else request rejected (see Dependencies)
       Request-->>Caller: reject with a WebexHttpError subtype or an interceptor error
     end
   end
@@ -345,7 +346,7 @@ classDiagram
 | `UC-001` | Call setup code | Calls `createOrJoin` with a user identifier and `{correlationId, localSdp}`; `create` posts the call and resolves the new Locus | See Caller-visible failure modes | `src/locus.js` |
 | `UC-002` | Meeting join code | Calls `createOrJoin` with a Locus that has `url`; `join` posts to its participant URL | `correlationId` may come from the Locus | `src/locus.js` |
 | `UC-003` | Code applying a Locus event | Runs the loop in the Sequence reconciliation diagram for each incoming DTO and stores the result | `compare` and `merge` can throw on malformed data (see Pitfalls) | `src/locus.js`, `test/unit/spec/locus.js`, `test/unit/lib/SeqCmp.json` |
-| `UC-004` | Call control code | Calls `leave(locus)` after the call already changed; Locus answers 409 and `INV-006` applies | Any other status rejects | `src/locus.js` |
+| `UC-004` | Call control code | Calls `leave(locus)` after the call already changed; the request rejects with a `WebexHttpError.Conflict` and `INV-006` applies | Other request rejections propagate; see Dependencies | `src/locus.js` |
 | `UC-005` | Content-share code | Calls `requestFloorGrant(locus, share)` and later `releaseFloorGrant(locus, share)` | Rejections propagate | `src/locus.js` |
 | `UC-006` | Caller of `getCallHistory` | Calls `getCallHistory({from})` and receives the Janus response body | See Caller-visible failure modes | `src/locus.js` |
 

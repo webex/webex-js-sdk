@@ -143,7 +143,8 @@ Pattern example:
 ```text
 Preferred:
 - Resolve res.body or the documented field from a REST wrapper.
-- Recover a 409 Conflict by returning the current Locus only where decline and leave already do.
+- Recover a `WebexHttpError.Conflict` by returning the current Locus only where decline and leave
+  already do.
 
 Avoid:
 - Returning the raw response, as sendDtmf does.
