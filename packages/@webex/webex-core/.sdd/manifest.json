@@ -478,9 +478,8 @@
     "blocking_severities": [
       "Blocking"
     ],
-    "validator_runtime": "01a1166d-02d9-7772-bc25-1a801fb5f1d1",
-    "validator_run_id": "01a1166d-02d9-7772-bc25-1a801fb5f1d1",
-    "validator_runtime_source": "invocation-input",
+    "validator_runtime": "use-codex",
+    "validator_runtime_source": "human-provided",
     "runtime_fallback_tier": "different-runtime"
   },
   "layout": {
