@@ -9,7 +9,7 @@ doc_kind: standing-doc
 generated_from: architecture@0.3.0
 generated_by: claude-code
 approved_by: rsarika@cisco.com
-updated_at: 2026-10-06T06:09:53Z
+updated_at: 2026-10-14T11:32:45Z
 validation_status: pass-with-warnings
 -->
 
@@ -231,6 +231,16 @@ different backends: `@webex/storage-adapter-session-storage`, `@webex/storage-ad
 and the in-core `MemoryStoreAdapter`. They are interchangeable by configuration and are **not**
 behaviorally identical — notably in `clear()` scope — so swapping one for another is a behavioral
 change, not a drop-in substitution.
+
+The repository is classified `Orchestrator-plus-components`: one Git repository holding many
+independently built and independently published workspace packages, coordinated by the root
+`workspaces` declaration, root `AGENTS.md`, `CONTRIBUTING.md`, `.github/CODEOWNERS`, and a
+repository-wide release pipeline. That classification follows the repository structure, not the SDD
+root, even though this SDD root covers a single package with a single build. The doc tree mirrors it
+and already did before the value was corrected on 2026-10-14: the monorepo-level document is the
+repository root `AGENTS.md`, this package carries its own component-level standing docs and agent
+entry, and coverage status is tracked per component in `.sdd/manifest.json`. No document moved when
+the value changed from `Single-repo`, which had scoped the judgment to this onboarding root.
 
 Dependency direction is one-way: this package imports from `@webex/webex-core` and nothing in the
 workspace imports it except as configuration. `@webex/webex-node` declares it as a dependency but

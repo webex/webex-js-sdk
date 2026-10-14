@@ -9,7 +9,7 @@ doc_kind: module-spec
 generated_from: module-spec@0.3.0
 generated_by: claude-code
 approved_by: rsarika@cisco.com
-updated_at: 2026-10-06T06:09:53Z
+updated_at: 2026-10-14T11:32:45Z
 validation_status: pass-with-warnings
 -->
 
@@ -35,7 +35,7 @@ Related context: [documentation index](../../docs/index.md) ·
 | Parent spec   | —                                                            |
 | Doc kind      | Module spec                                                  |
 | Coverage score | 95% (21/22 mandatory fields) assessed 2026-10-03            |
-| Validation status | pass-with-warnings; assessed 2026-10-06 by runtime `01a10f92-381f-7211-8991-8b2425672ee1`; 0 Blocking, 3 Important, 1 Medium; all three prior Blocking findings resolved |
+| Validation status | pass-with-warnings; assessed 2026-10-14 by runtime `use-codex`; 0 Blocking, 1 Important (A12: 58 line-suffixed evidence anchors). A0/A0b and A9 passed using retained run evidence in this checkout; clean clones need equivalent evidence available for validation. |
 
 ## Applicability
 
@@ -82,6 +82,12 @@ Mark unresolved statements as `[NEEDS HUMAN INPUT]`; do not infer missing behavi
 | .github/CODEOWNERS | Ownership by `@webex/web-client`, on the line matching this package path. |
 | Measured command run, 2026-10-01, Node v22.14.0 | `test:style` exit 0 (clean); `build:src` exit 0 (1 file emitted); `test:unit` exit 0 with 21 skipped / 0 executed; `test:browser` exit 0 with 0 tests completed and a `beforeAll is not defined` error in both browsers; `test` exit 1 on the undefined `test:integration` script. |
 | Ad-hoc behavior probe, 2026-10-01, Node v22.14.0 | Characterization against a `localStorage` stand-in and against a bare Node process. Not a committed artifact and not a regression guard; used here only to confirm observable behavior that source reading already implied. |
+
+Two subsections extend the template within its own canonical sections, both grounded in the evidence
+above: `Operation sequences` under `Data flow and sequence coverage`, which traces call ordering and
+storage-access count per operation from `src/index.js`, and `Defects recorded, not repaired` under
+`Verification`, which records the measured command runs and the `README.md`/JSDoc conflicts found
+while specifying. Neither introduces a concern the template already homes elsewhere.
 
 ## Purpose and boundary
 
@@ -224,10 +230,10 @@ read-modify-write, and the purge bypasses the document entirely.
 
 | Operation group | Entry and outcome | Diagram or evidence | Failure and recovery coverage |
 | --------------- | ----------------- | ------------------- | ----------------------------- |
-| Bind | `bind(namespace, options)` → resolved `Bound`, or rejection on a missing argument | Diagram below; src/index.js | Both argument rejections covered; no storage access, so it cannot fail on a missing backing store. Not covered: a *present* logger lacking `debug`, which throws synchronously past `.catch()` (`MOD-015`) |
-| Read | `get(key)` → stored value, or `NotFoundError` | Diagram below; src/index.js | Absent key covered; missing-global rejection covered. Not covered: `Object.prototype` key names, which resolve inherited members instead of rejecting (`MOD-016`) |
-| Write / delete | `put(key, value)` or `del(key)` → resolved, document rewritten | Diagram below; src/index.js | Missing-global rejection covered; no quota-exceeded handling exists |
-| Purge | `clear()` → whole `basekey` entry removed | Diagram below; src/index.js | Synchronous throw on a missing global — the only method that fails this way on an absent backing store, though `bind` throws the same way on an incomplete logger, so `.catch()` has holes on both paths |
+| Bind | `bind(namespace, options)` → resolved `Bound`, or rejection on a missing argument | Flowchart and operation sequence below; src/index.js | Both argument rejections covered; no storage access, so it cannot fail on a missing backing store. Not covered: a *present* logger lacking `debug`, which throws synchronously past `.catch()` (`MOD-015`) |
+| Read | `get(key)` → stored value, or `NotFoundError` | Flowchart and operation sequence below; src/index.js | Absent key covered; missing-global rejection covered. Not covered: `Object.prototype` key names, which resolve inherited members instead of rejecting (`MOD-016`) |
+| Write / delete | `put(key, value)` or `del(key)` → resolved, document rewritten | Flowchart and operation sequence below; src/index.js | Missing-global rejection covered; no quota-exceeded handling exists |
+| Purge | `clear()` → whole `basekey` entry removed | Flowchart and operation sequence below; src/index.js | Synchronous throw on a missing global — the only method that fails this way on an absent backing store, though `bind` throws the same way on an incomplete logger, so `.catch()` has holes on both paths |
 
 ```mermaid
 flowchart LR
@@ -256,6 +262,135 @@ flowchart LR
   NoLS --> C[clear]
   G -->|throw inside Promise executor| GR[promise REJECTS with ReferenceError]
   C -->|argument evaluated before Promise.resolve| CT[throws SYNCHRONOUSLY - .catch never runs]
+```
+
+### Operation sequences
+
+The flowcharts above show which branch each operation takes. The sequences below show the ordering
+that the branches hide: how many times a single call reads the backing store, where in the call the
+logger is touched, and at which point a failure escapes. Participants are the host, the `Bound`
+instance, its two private helpers, and the `localStorage` global. All evidence is `src/index.js`
+unless noted.
+
+**Bind — no storage access.** The only operation that cannot fail on an absent backing store,
+because it never reaches one:
+
+```mermaid
+sequenceDiagram
+  autonumber
+  participant Host as webex-core WebexStore
+  participant Adapter as StorageAdapterLocalStorage
+  participant Logger as options.logger
+  participant Bound
+
+  Host->>Adapter: bind(namespace, options)
+  Adapter->>Adapter: options = options || {}
+  alt namespace is falsy
+    Adapter-->>Host: reject Error "`namespace` is required"
+  else options.logger is falsy
+    Adapter-->>Host: reject Error "`options.logger` is required"
+  else both present
+    Adapter->>Logger: debug "returning binding"
+    Note over Adapter,Logger: MOD-015 — a logger without `debug`<br/>throws here, outside the promise —<br/>the caller's .catch never runs
+    Adapter->>Bound: new this.Bound(namespace, options)
+    Bound->>Bound: namespaces.set(this, namespace)
+    Bound->>Bound: loggers.set(this, options.logger)
+    Adapter-->>Host: resolve Bound
+  end
+```
+
+**Read — one parse, two outcomes.** `get` resolves or rejects entirely inside the promise executor,
+which runs synchronously; the asynchrony is in the settlement, not the storage access:
+
+```mermaid
+sequenceDiagram
+  autonumber
+  participant Host
+  participant Bound
+  participant Load as _load / _getRawData
+  participant LS as localStorage
+
+  Host->>Bound: get(key)
+  Bound->>Bound: logger.debug "reading key"
+  Bound->>Load: _load()
+  Load->>LS: getItem(basekey)
+  alt entry absent
+    LS-->>Load: null
+    Load->>Load: substitute {} without parsing
+  else entry present
+    LS-->>Load: raw JSON string
+    Load->>Load: JSON.parse(raw)
+    Note over Load: foreign or truncated content throws<br/>SyntaxError here — thrown inside the<br/>executor, so the promise REJECTS
+  end
+  Load-->>Bound: allData[namespace] || {}
+  alt typeof value !== "undefined"
+    Bound-->>Host: resolve value
+    Note over Bound,Host: presence, not truthiness —<br/>false, 0 and "" survive (MOD-005)
+  else key absent
+    Bound-->>Host: reject NotFoundError
+  end
+```
+
+**Write and delete — read twice, write once.** `put` and `del` differ only in how they mutate the
+namespace slice; both then re-enter storage through `_save`, which performs its own independent
+read rather than reusing the document `_load` just produced. What that second read does and does
+not protect is set out after the diagram:
+
+```mermaid
+sequenceDiagram
+  autonumber
+  participant Host
+  participant Bound
+  participant Load as _load / _getRawData
+  participant Save as _save
+  participant LS as localStorage
+
+  Host->>Bound: put(key, value) or del(key)
+  Bound->>Bound: logger.debug "writing" / logger.info "deleting"
+  Bound->>Load: _load()
+  Load->>LS: getItem(basekey)
+  LS-->>Load: raw JSON string or null
+  Load-->>Bound: namespace slice
+  alt put
+    Bound->>Bound: data[key] = value
+  else del
+    Bound->>Bound: Reflect.deleteProperty(data, key)
+    Note over Bound: absent key is not an error —<br/>deleteProperty returns true
+  end
+  Bound->>Save: _save(data)
+  Save->>LS: getItem(basekey)
+  Note over Save,LS: SECOND read of the full document.<br/>It re-reads OTHER namespaces, but the next<br/>line replaces this namespace wholesale<br/>from the stale _load snapshot
+  LS-->>Save: raw JSON string or null
+  Save->>Save: allData[namespace] = data
+  Note over Save: the slice written back is the read-1<br/>snapshot plus one mutation — a same-namespace<br/>write that landed in between is discarded here
+  Save->>LS: setItem(basekey, JSON.stringify(allData))
+  Note over Save,LS: no quota handling — a QuotaExceededError<br/>propagates out of the executor and<br/>rejects the promise unlabelled
+  Bound-->>Host: resolve undefined
+```
+
+The second read is the subtlest part of the sequence: it refreshes sibling namespaces but not this
+binding's own slice, which is written back from the read-1 snapshot. What that does and does not
+protect against a concurrent writer is analysed once, in
+[Concurrency and reactive flow](#concurrency-and-reactive-flow).
+
+**Purge — the one path that bypasses the document.** `clear` neither reads nor parses, which makes
+it the only in-adapter recovery from a corrupted entry, and the only method whose failure escapes
+the promise contract:
+
+```mermaid
+sequenceDiagram
+  autonumber
+  participant Host as WebexStore.clear fan-out
+  participant Bound
+  participant LS as localStorage
+
+  Host->>Bound: clear()
+  Bound->>Bound: logger.info "clearing localStorage"
+  Bound->>LS: removeItem(basekey)
+  Note over Bound,LS: the argument is evaluated BEFORE<br/>Promise.resolve wraps it — an absent<br/>global throws SYNCHRONOUSLY and<br/>.catch never runs (MOD-015)
+  LS-->>Bound: undefined
+  Bound-->>Host: resolve (Promise.resolve of removeItem)
+  Note over Host,LS: removes the whole basekey entry —<br/>every namespace, not just this binding.<br/>Later fan-out calls are no-ops (MOD-010)
 ```
 
 ## Class and component relationships
@@ -326,8 +461,9 @@ classDiagram
   on the bind path only.
 - Shared-state protection: **none that detects a conflict**. There is no lock, version check, or
   compare-and-set. There is a second read, but it is a fresh snapshot, not a check: `put` and `del`
-  read and parse the document in `_load` (`src/index.js` line 51), read and parse it again in `_save`
-  (line 62), then write it once (line 66). Measured 2026-10-06: a normal `put` and a normal `del`
+  read and parse the document in `_load` (read 1, `src/index.js` line 51), read and parse it again in
+  `_save` (read 2, line 62), then write it once at `setItem` (line 66) — the three boundaries marked
+  in the write sequence diagram. Measured 2026-10-06: a normal `put` and a normal `del`
   each issued two `getItem` calls and one `setItem`. Nothing compares the two reads. `_save` takes
   sibling namespaces from the second read but writes back the bound namespace's slice built from
   the first. At most, the second read carries forward a sibling change it observes. It cannot
@@ -587,6 +723,26 @@ browser-capable unit route in this package; neither is a documentation change, a
 this module's boundary. Until then this specification — not the test suite — is the only record of
 the module's contract, and `coverage_status` is held at `Partial` for that reason.
 
-Follow-up owed to `@webex/web-client`: the five defects recorded in
-`.generated/sdd/decision-log.md` are reported here, not repaired, because fixing them changes
-package behavior or shared test wiring.
+### Defects recorded, not repaired
+
+Follow-up owed to `@webex/web-client`. Each defect below was surfaced while specifying the module
+and is reported, not fixed, because repairing it changes package behavior or shared test wiring and
+so falls outside a spec-only change. They are listed here, in the versioned spec, rather than cited
+from a run record under `.generated/`, which this package deliberately keeps out of version control
+(`.gitignore`).
+
+1. **The module has no executing automated test coverage anywhere in this package.** Both routes are
+   green while verifying nothing — see the three measurements above. Closing it requires a runner
+   change in `@webex/storage-adapter-spec` or a browser-capable unit route here.
+2. **The aggregate `test` script is broken.** `package.json` chains `test:integration`, which this
+   package does not define, so the script exits 1 before reaching `test:browser`.
+3. **`README.md` misdescribes `clear()`.** It says the call clears data for the bound namespace;
+   `src/index.js` removes the whole `basekey`, affecting every namespace (`MOD-010`). The file is
+   left unchanged under the `keep-separate` source policy, and `src/docs/README.md` is authoritative
+   for behavior.
+4. **`clear()` carries a JSDoc `@param {string} key` but accepts no parameter** (`src/index.js`).
+   `@webex/storage-adapter-spec` calls it both ways — with and without an argument — so the intended
+   signature is unresolved.
+5. **`WebexStore.clear()` amplifies the blast radius.** It iterates every cached binding and calls
+   `clear()` on each (`webex-core/src/lib/storage/make-webex-store.js`); because each call removes
+   the entire `basekey`, the first already destroys the others' data (`UC-004`).

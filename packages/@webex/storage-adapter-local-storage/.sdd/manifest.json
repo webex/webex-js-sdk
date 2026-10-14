@@ -8,47 +8,47 @@
       "JavaScript"
     ]
   },
-  "topology": "Single-repo",
+  "topology": "Orchestrator-plus-components",
   "commands": {
     "compile": "[NEEDS HUMAN INPUT] -- The package has no standalone compile step; `build:src` transpiles and emits in one operation via webex-legacy-tools, and package.json declares no separate compile script.",
     "build": {
       "command": "yarn workspace @webex/storage-adapter-local-storage build:src",
-      "source_file": "packages/@webex/storage-adapter-local-storage/package.json",
+      "source_file": "package.json",
       "role": "package",
       "verified_at": "2026-10-01T06:20:02Z"
     },
     "unit-test": {
       "command": "yarn workspace @webex/storage-adapter-local-storage test:unit",
-      "source_file": "packages/@webex/storage-adapter-local-storage/package.json",
+      "source_file": "package.json",
       "role": "unit-test",
       "verified_at": "2026-10-01T06:20:02Z"
     },
     "browser-test": {
       "command": "yarn workspace @webex/storage-adapter-local-storage test:browser",
-      "source_file": "packages/@webex/storage-adapter-local-storage/package.json",
+      "source_file": "package.json",
       "role": "other",
       "verified_at": "2026-10-01T06:20:02Z"
     },
     "lint": {
       "command": "yarn workspace @webex/storage-adapter-local-storage test:style",
-      "source_file": "packages/@webex/storage-adapter-local-storage/package.json",
+      "source_file": "package.json",
       "role": "lint",
       "verified_at": "2026-10-01T06:20:02Z"
     },
     "test": {
       "command": "yarn workspace @webex/storage-adapter-local-storage test",
-      "source_file": "packages/@webex/storage-adapter-local-storage/package.json",
+      "source_file": "package.json",
       "role": "other",
       "verified_at": "2026-10-01T06:20:02Z"
     },
     "publish": {
       "command": "yarn workspace @webex/storage-adapter-local-storage deploy:npm",
-      "source_file": "packages/@webex/storage-adapter-local-storage/package.json",
+      "source_file": "package.json",
       "role": "other"
     },
     "install": {
       "command": "yarn install",
-      "source_file": "package.json",
+      "source_file": "../../../package.json",
       "role": "install",
       "verified_at": "2026-10-04T00:00:00Z"
     }
@@ -81,9 +81,9 @@
     }
   },
   "coverage_status_definitions": {
-    "specced": ">=80% public surface specced, drift <5% — spec is authoritative",
-    "partial": "40-80% specced — spec is a hint, cross-check code",
-    "untracked": "<40% specced — code is the source of truth"
+    "specced": ">=80% public surface specced, drift <5% \u2014 spec is authoritative",
+    "partial": "40-80% specced \u2014 spec is a hint, cross-check code",
+    "untracked": "<40% specced \u2014 code is the source of truth"
   },
   "modules": [
     {
@@ -156,7 +156,7 @@
     "mode": "keep-separate",
     "decided_by": "rsarika@cisco.com",
     "decided_at": "2026-10-01T06:20:02Z",
-    "decision_record": ".generated/sdd/decision-log.md"
+    "decision_record": "No prior intent or design spec exists in this package. README.md is an install/usage reference only; it is preserved byte-for-byte and used as corroborating context, never routed as spec source, so the sources stay separate from the canonical spec at src/docs/README.md. The one known README-vs-code conflict (clear() described as namespace-scoped, while the implementation removes the whole basekey) is recorded in spec_sources.notes and in the Defects recorded, not repaired section of the canonical spec. Decision records are not cited from .generated/, which this package deliberately keeps out of version control."
   },
   "spec_sources": [
     {
