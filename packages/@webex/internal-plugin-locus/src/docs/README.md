@@ -134,7 +134,7 @@ Contract `locus-sdk` is published with native artifact `package.json`. Required 
 
 | Dependency | Why it is required | Failure behavior |
 | ---------- | ------------------ | ---------------- |
-| `@webex/webex-core` (`webex-core-plugin-host`) | `WebexPlugin`, `registerInternalPlugin`, `request`, and `WebexHttpError.Conflict` | With webex-core's default interceptor set, HTTP failures reject with the `WebexHttpError` subtype built by the sibling package http-core, and the catalog check and redirects behave as the architecture Security architecture describes. A host-supplied `config.interceptors` set replaces the defaults; without `HttpStatusInterceptor`, any status of 400 or above resolves instead of rejecting, so the HTTP failure rows below and `INV-006` do not apply |
+| `@webex/webex-core` (`webex-core-plugin-host`) | `WebexPlugin`, `registerInternalPlugin`, `request`, and `WebexHttpError.Conflict` | webex-core's default interceptor set includes `HttpStatusInterceptor`, which converts error statuses to the `WebexHttpError` subtypes built by the sibling package http-core, except the Locus and App API 404 redirect responses, which it passes on to redirect handling; other interceptors in the set can still reject with their own plain errors (rows below), and the catalog check and redirects behave as the architecture Security architecture describes. A host-supplied `config.interceptors` set replaces the defaults: without `HttpStatusInterceptor` that conversion is absent, and whether an error status resolves or rejects, and with which error, depends on the interceptors the host lists. `INV-006` applies only when the rejection is a `WebexHttpError.Conflict` |
 | Locus service (`locus-service-http`) | Every call and participant operation | Rejections propagate, except 409 Conflict on `decline` and `leave` (`INV-006`) |
 | Janus service (`janus-history-http`) | `getCallHistory` | Rejections propagate |
 | `webex.internal.device` (`webex-device-registration`) | `url` sent as the device URL (`INV-007`) | Not a declared dependency; it is registered transitively because the Mercury index imports the device plugin (sibling package internal-plugin-mercury, file src/index.js). If it is absent, reading `url` throws a TypeError |
@@ -194,9 +194,9 @@ for comparison and merge.
 | Operation group | Entry and outcome | Diagram or evidence | Failure and recovery coverage |
 | --------------- | ----------------- | ------------------- | ----------------------------- |
 | Call setup | `create`, `join`, `createOrJoin` → Locus with per-device `mediaConnections` | Call setup diagram below | Synchronous throw without `correlationId`; HTTP rejection |
-| Participant and media updates | `alert`, `decline`, `leave`, `updateMedia`, `sendDtmf`, floor requests → body | Participant and media updates diagram below | Conflict recovery for `decline` and `leave`; other rejections |
+| Participant and media updates | `alert`, `decline`, `leave`, `updateMedia`, `sendDtmf`, floor requests → body, `body.locus`, or the whole response for `sendDtmf` | Participant and media updates diagram below | Conflict recovery for `decline` and `leave`; other rejections |
 | Reads | `get`, `list`, `sync`, `getCallHistory` → body | Reads diagram below | Empty `sync` body; invalid `from`; HTTP rejection |
-| Sequence reconciliation | `compare` → action → `merge` or fetch | Sequence reconciliation diagram below | `FETCH` path; throws for missing data |
+| Sequence reconciliation | `compare` → action → `merge` or fetch | Sequence reconciliation diagram below | `FETCH` path; can throw for malformed data |
 
 Call setup:
 
@@ -222,7 +222,7 @@ sequenceDiagram
       Locus->>Locus: copy mediaConnections onto self.devices
       Locus-->>Caller: resolve body.locus
     else HTTP error
-      Request-->>Caller: reject with WebexHttpError subtype
+      Request-->>Caller: reject with a WebexHttpError subtype or an interceptor error
     end
   end
 ```
@@ -241,7 +241,7 @@ sequenceDiagram
   alt success
     Service-->>Locus: response
     Locus-->>Caller: resolve body, body.locus, or the whole response for sendDtmf
-  else 409 Conflict on decline or leave
+  else WebexHttpError.Conflict on decline or leave
     Locus->>Request: GET locus.url
     Request->>Service: GET
     alt GET succeeds
@@ -274,7 +274,7 @@ sequenceDiagram
     LocusSvc-->>Locus: body
     Locus-->>Caller: resolve body or body.loci
   else HTTP error
-    Request-->>Caller: reject with WebexHttpError subtype
+    Request-->>Caller: reject with a WebexHttpError subtype or an interceptor error
   end
   Caller->>Locus: getCallHistory(options)
   alt invalid from
@@ -286,7 +286,7 @@ sequenceDiagram
       Janus-->>Locus: body
       Locus-->>Caller: resolve body
     else HTTP error
-      Request-->>Caller: reject with WebexHttpError subtype
+      Request-->>Caller: reject with a WebexHttpError subtype or an interceptor error
     end
   end
 ```
@@ -301,7 +301,7 @@ flowchart TD
   cmp -->|USE_CURRENT| ignore[Caller ignores the DTO]
   cmp -->|FETCH| fetch[Caller calls sync or get]
   fetch --> cmp
-  cmp -->|missing sequence or entries| err[TypeError thrown]
+  cmp -->|malformed sequence| err[may throw TypeError]
 ```
 
 ## Class and component relationships
@@ -344,7 +344,7 @@ classDiagram
 | -------- | --------------- | ------------------------- | ---------------------------- | -------- |
 | `UC-001` | Call setup code | Calls `createOrJoin` with a user identifier and `{correlationId, localSdp}`; `create` posts the call and resolves the new Locus | See Caller-visible failure modes | `src/locus.js` |
 | `UC-002` | Meeting join code | Calls `createOrJoin` with a Locus that has `url`; `join` posts to its participant URL | `correlationId` may come from the Locus | `src/locus.js` |
-| `UC-003` | Code applying a Locus event | Runs the loop in the Sequence reconciliation diagram for each incoming DTO and stores the result | `compare` and `merge` throw on malformed data (see Pitfalls) | `src/locus.js`, `test/unit/spec/locus.js`, `test/unit/lib/SeqCmp.json` |
+| `UC-003` | Code applying a Locus event | Runs the loop in the Sequence reconciliation diagram for each incoming DTO and stores the result | `compare` and `merge` can throw on malformed data (see Pitfalls) | `src/locus.js`, `test/unit/spec/locus.js`, `test/unit/lib/SeqCmp.json` |
 | `UC-004` | Call control code | Calls `leave(locus)` after the call already changed; Locus answers 409 and `INV-006` applies | Any other status rejects | `src/locus.js` |
 | `UC-005` | Content-share code | Calls `requestFloorGrant(locus, share)` and later `releaseFloorGrant(locus, share)` | Rejections propagate | `src/locus.js` |
 | `UC-006` | Caller of `getCallHistory` | Calls `getCallHistory({from})` and receives the Janus response body | See Caller-visible failure modes | `src/locus.js` |
@@ -367,7 +367,7 @@ classDiagram
 | `INV-003` | Bounds: the first value is `rangeStart`, or the first entry when `rangeStart` is 0, or 0; the last value is the last entry, or `rangeEnd` when there are no entries. Current first above incoming last is `GREATER_THAN`; current last below incoming first is `LESS_THAN`. | Disjoint sequences are ordered by their bounds alone. | `src/locus.js` compareSequence | `test/unit/spec/locus.js` "basic sequence comparisons", "sequence comparisons" |
 | `INV-004` | Overlap: entries in one sequence and not the other, and outside the other's range, are that side's only-entries. None on both sides compares `rangeEnd` minus first value (longer is greater, equal is `EQUAL`). Only one side having them makes that side greater. Both having them is `DESYNC` when all four range bounds are 0, or when an only-entry lies strictly inside the other side's bounds; otherwise the side with the larger first only-entry is greater. | Matches the Locus sequencing algorithm captured in the fixtures. | `src/locus.js` compareSequence | `test/unit/spec/locus.js` "basic sequence comparisons", "sequence comparisons" |
 | `INV-005` | Delta merge: every key of the delta except `baseSequence` and `participants` replaces the clone's value when the delta value is truthy. Participants are keyed by `url`: entries with `removed` set are dropped, others replace or append. | Implements the delta rules written in the `merge` source comments. | `src/locus.js` merge | Gap: no test |
-| `INV-006` | A `WebexHttpError.Conflict` from `decline` or `leave` resolves with `get(locus)` instead of rejecting. | A 409 means the Locus changed; the caller needs the current state, not an error. | `src/locus.js` decline, leave | Gap: no test |
+| `INV-006` | When `decline` or `leave` rejects with an instance of `WebexHttpError.Conflict`, the call resolves with `get(locus)` instead of rejecting. Other rejections, including a 409 that the host's interceptors do not convert to that class, propagate. | A 409 means the Locus changed; the caller needs the current state, not an error. | `src/locus.js` decline, leave | Gap: no test |
 | `INV-007` | `create`, `join`, `alert`, `decline`, `leave`, `updateMedia`, and `sendDtmf` send a top-level `deviceUrl` equal to `webex.internal.device.url`; `requestFloorGrant` nests it in the beneficiary devices; `releaseFloorGrant` sends none. `alert`, `decline`, `leave`, and `updateMedia` send `locus.sequence`; `join` sends it or an empty sequence; `create` always sends an empty sequence; `sendDtmf` and the floor requests send no sequence. | Locus identifies the device and rejects stale requests by sequence. | `src/locus.js` | Gap: no test |
 
 ## Concurrency and reactive flow
@@ -409,10 +409,11 @@ classDiagram
 | `create` without `options.correlationId` | Synchronous `Error('options.correlationId is required')`, not a rejected promise | Pass a correlation id; wrap in try or call inside a promise chain | None | `src/locus.js` |
 | `join` with no correlation id on the Locus or options | Synchronous `Error('locus.correlationId or options.correlationId is required')` | Same as above | None | `src/locus.js` |
 | `compareSequence` missing an argument | Throws `` `current` is required `` or `` `incoming` is required `` | Pass both sequences | None | `src/locus.js` |
-| Any HTTP failure (default interceptor set; see Dependencies) | Promise rejects with the `WebexHttpError` subtype for the status | Inspect the class or status | None here | `src/locus.js` |
+| An error status converted by the default interceptor set (see Dependencies) | Promise rejects with the `WebexHttpError` subtype for the status | Inspect the class or status | None here | `src/locus.js` |
+| A 401 that the webex-core auth interceptor treats as re-authenticable, with refreshable credentials, still failing after it refreshes and replays the request `maxAuthenticationReplays` times (default 1) | Promise rejects with a plain `Error` whose message starts `Failed after` and names the replay limit | Treat as an authentication problem | None here; the `decline` and `leave` Conflict recovery does not apply | `src/locus.js` |
 | `CatalogUrlInterceptor` is active (see Dependencies) and a DTO or redirect URL is outside the catalog and allowed domains | Promise rejects with a plain `Error` whose message starts `Request blocked: URL not in service catalog or allowed domains`, before the request to that URL is sent (for a redirect, after the original response) | Treat as a configuration or DTO problem, not an HTTP status | None here; the `decline` and `leave` Conflict recovery does not apply | `src/locus.js` |
 | A call's redirects, which share one counter, exceed the limit of the redirect form being handled: `maxAppLevelRedirects` (10) for `cisco-location` header redirects, `maxLocusRedirects` (5) for Locus `errorCode` 2000002 and App API `code` 404100 redirects | Promise rejects with a plain `Error('Maximum redirects exceeded')` | Treat as a service or routing problem | None here | `src/locus.js` |
-| 409 on `decline` or `leave` | Resolves with the current Locus (`INV-006`) | Treat as success with fresh state | A failed follow-up GET rejects with its own error | `src/locus.js` |
+| `decline` or `leave` rejects with a `WebexHttpError.Conflict` | Resolves with the current Locus (`INV-006`) | Treat as success with fresh state | A failed follow-up GET rejects with its own error | `src/locus.js` |
 | `sync` returns no body | Resolves `{}` | Do not pass `{}` to `compare`; it has no sequence | Call `get` instead | `src/locus.js` |
 | `getCallHistory` with an invalid `from` | Synchronous RangeError from `toISOString` | Pass a date or millisecond number | None | `src/locus.js` |
 
@@ -426,12 +427,19 @@ classDiagram
 - Because of the truthiness test in `INV-005`, a delta cannot set a field to `false`, `0`, or an
   empty string; the old value is kept. The source comment speaks only of non-null values.
 - `merge` keys participants by `url`; participants without `url` collapse into one entry.
-- `compare` reads `locus.sequence` without a guard; any DTO without a sequence throws a TypeError.
-- A non-empty sequence (`INV-002`) without an `entries` array makes `compareSequence` read
-  `entries.length` and throw a TypeError.
+- `compare` reads `locus.sequence` without a guard. A DTO without a sequence throws a TypeError
+  when that sequence is read; it does not throw when the current sequence is empty, because
+  `INV-002` returns `USE_INCOMING` before the incoming sequence is checked.
+- A non-empty sequence (`INV-002`) without an `entries` array can throw a TypeError when
+  `compareSequence` computes its bounds (`INV-003`) and reads `entries.length`. An incoming
+  sequence without `entries` always throws there; a `baseSequence` without `entries` throws only
+  when it is compared, after the incoming sequence compares `LESS_THAN`. A current sequence without
+  `entries` throws unless its non-zero `rangeStart` exceeds the incoming last value, which returns
+  `GREATER_THAN` before the current entries are read.
 - `create` and `join` mutate the response's `locus.self.devices` and assume `self.devices` and
-  `mediaConnections` exist. A missing `mediaConnections` throws a TypeError; a shorter array gives a
-  device `[undefined]`.
+  `mediaConnections` exist. A missing `mediaConnections` makes the returned promise reject with a
+  TypeError once a device is mapped (an empty `self.devices` resolves without reading it); a
+  shorter array gives a device `[undefined]`.
 - `updateMedia` destructures `sdp`, `audioMuted`, `videoMuted`, and `mediaId`, but its JSDoc
   documents `options.localSdp`. A caller following the JSDoc sends no SDP.
 - `decline` resolves `res.body` and `leave` resolves `res.body.locus`, while their Conflict paths

@@ -187,5 +187,5 @@ PR checklist:
 - Commit secrets, tokens, or credentials, including in test fixtures.
 - Copy template bodies or `template-map.json` into this package, or commit anything under
   `.sdd/templates/`. The repository-root `.sdd/templates/repo-standards` snapshot is the only
-  template source. To run the Repo Annotation checkers or validator, create a temporary local
-  symlink to it at `.sdd/templates/repo-standards` and remove it before raising a PR.
+  template source. The Repo Annotation checkers and validator expect a temporary, uncommitted
+  local symlink to it at `.sdd/templates/repo-standards`, which is removed before a PR.
