@@ -170,7 +170,7 @@ import type {
  *
  *     // Login with browser-based calling
  *     await cc.stationLogin({
- *       teamId: profile.teams[0].teamId,
+ *       teamId: profile.teams[0].id,
  *       loginOption: 'BROWSER'
  *     });
  *
@@ -701,12 +701,12 @@ export default class ContactCenter extends WebexPlugin implements IContactCenter
    *
    * console.log('Agent ID:', profile.agentId);
    * console.log('Default DN:', profile.defaultDn);
-   * console.log('Teams:', profile.teams.map(t => t.teamId));
+   * console.log('Teams:', profile.teams.map(t => t.id));
    * console.log('WebRTC Enabled:', profile.webRtcEnabled);
    * console.log('Supported Login Options:', profile.loginVoiceOptions);
    *
    * // Now you can proceed with station login, state changes, etc.
-   * await cc.stationLogin({ teamId: profile.teams[0].teamId, loginOption: 'BROWSER' });
+   * await cc.stationLogin({ teamId: profile.teams[0].id, loginOption: 'BROWSER' });
    * ```
    */
   public async register(): Promise<Profile> {
@@ -808,6 +808,7 @@ export default class ContactCenter extends WebexPlugin implements IContactCenter
         METRIC_EVENT_NAMES.WEBSOCKET_DEREGISTER_FAIL,
       ]);
 
+      this.taskManager.clearAISummaryState();
       this.taskManager.off(TASK_EVENTS.TASK_INCOMING, this.handleIncomingTask);
       this.taskManager.off(TASK_EVENTS.TASK_HYDRATE, this.handleTaskHydrate);
       this.taskManager.off(TASK_EVENTS.TASK_MULTI_LOGIN_HYDRATE, this.handleTaskMultiLoginHydrate);
@@ -1025,6 +1026,7 @@ export default class ContactCenter extends WebexPlugin implements IContactCenter
       // TODO: Make profile a singleton to make it available throughout app/sdk so we dont need to inject info everywhere
       this.taskManager.setWrapupData(this.agentConfig.wrapUpData);
       this.taskManager.setAgentId(this.agentConfig.agentId);
+      this.taskManager.setAgentName(this.agentConfig.agentName);
       this.taskManager.setWebRtcEnabled(this.agentConfig.webRtcEnabled);
       this.apiAIAssistant.setAIFeatureFlags(this.agentConfig.aiFeature);
       this.wellbeingBreakIdleCode = undefined;
@@ -1038,6 +1040,8 @@ export default class ContactCenter extends WebexPlugin implements IContactCenter
       if (
         this.agentConfig.aiFeature?.realtimeTranscripts?.enable ||
         this.agentConfig.aiFeature?.suggestedResponses?.enable ||
+        this.agentConfig.aiFeature?.generatedSummaries?.wrapUpSummariesEnabled === true ||
+        this.agentConfig.aiFeature?.generatedSummaries?.consultTransferSummariesEnabled === true ||
         this.agentConfig.isWellnessBreakEnabled
       ) {
         LoggerProxy.info('Connecting to RTD websocket', {
@@ -1432,7 +1436,7 @@ export default class ContactCenter extends WebexPlugin implements IContactCenter
         {
           ...MetricsManager.getCommonTrackingFieldForAQMResponse(agentStatusResponse),
           requestedState: data.state,
-          teamId: this.agentConfig?.teams[0]?.teamId ?? EMPTY_STRING,
+          teamId: this.agentConfig?.teams[0]?.id ?? EMPTY_STRING,
           status: agentStatusResponse.data?.status,
           subStatus: agentStatusResponse.data?.subStatus,
           auxCodeId: data.auxCodeId,
