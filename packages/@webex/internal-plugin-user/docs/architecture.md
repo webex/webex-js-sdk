@@ -104,8 +104,8 @@ flowchart LR
 | `@webex/webex-core` | Internal | `src` | Plugin host, `Batcher`, request, credentials, storage decorators | `workspace:*` in `package.json`; no module spec, so source was used |
 | `@webex/internal-plugin-device` | Internal | `src` | `device.userId` and registration ordering | `workspace:*`; module spec consulted |
 | `@webex/common` | Internal | `src` | `patterns`, `oneFlight`, `tap`, `deprecated` | `workspace:*`; module spec consulted |
-| `lodash` | External | `src/user.js` | `isArray` | `^4.17.21` |
-| `uuid` | External | tests | `uuid.v4()` in test files | `^3.3.2`; no use in `src/` |
+| `lodash` | External | `src/user.js` | `isArray` | Range declared in `package.json` |
+| `uuid` | External | tests | `uuid.v4()` in test files | Range declared in `package.json`; no use in `src/` |
 
 Ordering constraint: `src/index.js` imports the device plugin before it registers `user`, so the
 device plugin is registered first. No dependency cycle exists inside the package.
@@ -154,7 +154,7 @@ Slice detail is in the module spec.
 
 - Availability: nothing is retried here; request behavior is `webex-core`'s.
 - Compatibility: method names and argument shapes are relied on by sibling packages.
-- Latency: every cold uuid lookup waits at least the 100 ms batch debounce.
+- Latency: a lone uuid lookup waits about the 100 ms batch quiet period; a burst of 100 queued lookups flushes immediately, and a stream of calls less than 100 ms apart flushes at the 1500 ms maximum wait.
 - Memory: the uuid cache grows for the session and has no eviction.
 
 ## Dependency and interaction topology
