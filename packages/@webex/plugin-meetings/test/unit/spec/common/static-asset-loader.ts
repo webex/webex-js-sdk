@@ -1,0 +1,67 @@
+/*!
+ * Copyright (c) 2015-2026 Cisco Systems, Inc. See LICENSE file.
+ */
+import 'jsdom-global/register';
+import {assert} from '@webex/test-helper-chai';
+import sinon from 'sinon';
+import StaticAssetLoader from '@webex/plugin-meetings/src/common/static-asset-loader';
+
+describe('plugin-meetings', () => {
+  describe('StaticAssetLoader', () => {
+    let fetchStub;
+
+    beforeEach(() => {
+      fetchStub = sinon.stub(globalThis, 'fetch');
+    });
+
+    afterEach(() => {
+      sinon.restore();
+    });
+
+    it('rejects a successful response with an HTML content type', async () => {
+      fetchStub.resolves({
+        ok: true,
+        status: 200,
+        headers: {get: sinon.stub().returns('text/html; charset=utf-8')},
+        arrayBuffer: sinon.stub().resolves(new ArrayBuffer(0)),
+      });
+      const loader = new StaticAssetLoader('/assets/');
+
+      await assert.isRejected(
+        loader.getBytes('domain_name_roots.p7b'),
+        'Failed to fetch static asset /assets/domain_name_roots.p7b: unexpected HTML content type "text/html"'
+      );
+    });
+
+    it('detects an HTML response even when it has a binary content type', async () => {
+      const html = new TextEncoder().encode('\uFEFF \t<!doctype html><html>not found</html>');
+
+      fetchStub.resolves({
+        ok: true,
+        status: 200,
+        headers: {get: sinon.stub().returns('application/octet-stream')},
+        arrayBuffer: sinon.stub().resolves(html.buffer),
+      });
+      const loader = new StaticAssetLoader('/assets/');
+
+      await assert.isRejected(
+        loader.getBytes('domain_name_roots.p7b'),
+        'Failed to fetch static asset /assets/domain_name_roots.p7b: response body looks like an HTML document'
+      );
+    });
+
+    it('returns bytes from a successful binary response', async () => {
+      const bytes = new Uint8Array([0x30, 0x01, 0x00]);
+
+      fetchStub.resolves({
+        ok: true,
+        status: 200,
+        headers: {get: sinon.stub().returns('application/octet-stream')},
+        arrayBuffer: sinon.stub().resolves(bytes.buffer),
+      });
+      const loader = new StaticAssetLoader('/assets/');
+
+      assert.deepEqual(await loader.getBytes('domain_name_roots.p7b'), bytes);
+    });
+  });
+});

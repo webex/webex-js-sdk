@@ -3,6 +3,7 @@ const path = require('path');
 const webpack = require('webpack');
 const dotenv = require('dotenv');
 const glob = require('glob');
+const CopyWebpackPlugin = require('copy-webpack-plugin');
 const {BannerPlugin, DefinePlugin, EnvironmentPlugin} = require('webpack');
 const TerserPlugin = require('terser-webpack-plugin');
 
@@ -89,7 +90,15 @@ module.exports = (env = {NODE_ENV: process.env.NODE_ENV || 'production'}) => ({
   devServer: {
     https: true,
     port: process.env.PORT || 8000,
-    static: './docs',
+    static: [
+      './docs',
+      {
+        // Serve plugin-meetings static assets for local SDK development. Consuming apps must host
+        // the contents of plugin-meetings/dist/assets at their configured assetsBaseUrl.
+        directory: path.resolve(__dirname, 'packages/@webex/plugin-meetings/assets'),
+        publicPath: '/assets',
+      },
+    ],
   },
   resolve: {
     fallback: {
@@ -134,6 +143,7 @@ module.exports = (env = {NODE_ENV: process.env.NODE_ENV || 'production'}) => ({
         new TerserPlugin({
           cache: true,
           extractComments: false,
+          exclude: /(^|\/)assets\//,
           parallel: true,
           sourceMap: true,
           terserOptions: {
@@ -147,6 +157,21 @@ module.exports = (env = {NODE_ENV: process.env.NODE_ENV || 'production'}) => ({
     },
   }),
   plugins: [
+    ...(env && env.umd
+      ? [
+          new CopyWebpackPlugin({
+            patterns: [
+              {
+                from: path.resolve(__dirname, 'packages/@webex/plugin-meetings/assets'),
+                to: 'packages/webex/umd/assets',
+                globOptions: {
+                  ignore: ['**/README.md', '**/*.map'],
+                },
+              },
+            ],
+          }),
+        ]
+      : []),
     // If in integration and building for production (not testing) use production URLS
     ...(env && env.NODE_ENV === 'test'
       ? [
