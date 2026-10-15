@@ -138,7 +138,7 @@
       "path": "src",
       "canonical_spec": "src/docs/README.md",
       "coverage_status": "Partial",
-      "coverage_evidence": "Field coverage 93.3% (14/15) assessed 2026-10-12 by the generator; critical field coverage 8/8. The one WEAK field is test strategy: 9 unit tests cover the four url-required rejections and five mapToActivities host-validation cases; no unit test covers the request shapes or resolved values of create, list, archive, unflag, or delete, the catalog wait, the '200' filter, several conversation groups, or a failed bulk fetch; the six integration cases need live test users and were not run; no characterization baseline exists. Independent validation is recorded in the module spec Validation status row. Held at Partial: weak test strategy, no characterization baseline, and no spec-drift record.",
+      "coverage_evidence": "Field coverage 93.3% (14/15) assessed 2026-10-12 by the generator; critical field coverage 8/8. The one WEAK field is test strategy: 9 unit tests cover the four url-required rejections and five mapToActivities host-validation cases; no unit test covers the request shapes or resolved values of create, list, archive, unflag, or delete, the catalog wait, the '200' filter, several conversation groups, or a failed bulk fetch; the six integration cases need live test users and were not run; no characterization baseline exists. Independent validation is pass-with-warnings, assessed 2026-10-15 by validator current-session, as recorded in the module spec Validation status row. Held at Partial: weak test strategy, no characterization baseline, and no spec-drift record.",
       "last_assessed": "2026-10-12",
       "contracts": {
         "provides": [
@@ -244,9 +244,9 @@
     "head_ref": "FLAG_INTERNAL_PLUGIN_SDD",
     "validator_runtime": "current-session",
     "validator_runtime_source": "invocation-input",
-    "validator_run_id": "spark-853128-flag-spec-validator-2026-10-12-round-5",
+    "validator_run_id": "spark-853128-flag-spec-validator-2026-10-15-round-6",
     "runtime_fallback_tier": "different-runtime",
-    "source_commit": "078b54e6d963fdacc45a6f06402ae28f630b7907"
+    "source_commit": "5e5fd3b4f16b8268f7b7c285ecd5218a7c6d9626"
   },
   "layout": {
     "sdd_root": ".sdd",

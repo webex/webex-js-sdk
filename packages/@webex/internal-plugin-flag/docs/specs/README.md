@@ -9,7 +9,7 @@ doc_kind: standing-doc
 generated_from: spec-index@0.3.0
 generated_by: claude-cowork
 approved_by: akulakum@cisco.com
-updated_at: 2026-10-12T14:57:45Z
+updated_at: 2026-10-15T12:23:50Z
 validation_status: pass-with-warnings
 -->
 
@@ -47,7 +47,8 @@ package is a library published to npm, so that artifact is omitted in `.sdd/mani
 Generator-side field measurement is complete. Field coverage measured 2026-10-12 is 93.3% (14 of 15
 mandatory fields PRESENT for `src`). Critical fields are 8 of 8 PRESENT. The WEAK field is test
 strategy; the untested paths are listed in the module spec's Verification section. Independent
-validation is recorded in the module spec Validation status row. Coverage state stays `Partial`
+validation is pass-with-warnings, assessed 2026-10-15 by validator current-session, as recorded in
+the module spec Validation status row. Coverage state stays `Partial`
 until the missing tests and a characterization baseline exist and a spec-drift record exists.
 
 ## Change and verification routing
