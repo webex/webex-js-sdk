@@ -74,7 +74,8 @@ export class AddressBook {
 
   /**
    * Fetches address book entries for a specific address book using the entry API
-   * @param {AddressBookEntrySearchParams} [params] - Search and pagination parameters including addressBookId
+   * @param {AddressBookEntrySearchParams} [params] - Search, pagination, and optional sort parameters
+   * including addressBookId. Sorting defaults to name ascending.
    * @returns {Promise<AddressBookEntriesResponse>} Promise resolving to address book entries
    * @throws {Error} If the API call fails
    * @public
@@ -102,12 +103,21 @@ export class AddressBook {
       search,
       filter,
       attributes,
+      sortBy = 'name',
+      sortOrder = 'asc',
     } = params;
 
     // Use provided addressBookId or fall back to agent's address book
     const bookId = addressBookId || this.getAddressBookId();
     const orgId = this.webex.credentials.getOrgId();
-    const isSearchRequest = !!(search || filter || attributes);
+    const hasCustomSort = sortBy !== 'name' || sortOrder !== 'asc';
+    const isSearchRequest = !!(search || filter || attributes || hasCustomSort);
+    const canUseCache = this.pageCache.canUseCache({
+      search,
+      filter,
+      attributes,
+      sortBy: hasCustomSort ? sortBy : undefined,
+    });
 
     LoggerProxy.info('Fetching address book entries', {
       module: 'AddressBook',
@@ -121,8 +131,8 @@ export class AddressBook {
       },
     });
 
-    // Check if we can use cache for simple pagination (no search/filter/attributes)
-    if (this.pageCache.canUseCache({search, filter, attributes})) {
+    // Default name-ascending pagination is cache-compatible; result-changing overrides are not.
+    if (canUseCache) {
       const cacheKey = this.pageCache.buildCacheKey(bookId, page, pageSize);
       const cachedPage = this.pageCache.getCachedPage(cacheKey);
 
@@ -190,6 +200,7 @@ export class AddressBook {
       if (filter) queryParams.append('filter', filter);
       if (attributes) queryParams.append('attributes', attributes);
       if (search) queryParams.append('search', search);
+      if (sortBy) queryParams.append('sort', `${sortBy},${sortOrder.toUpperCase()}`);
 
       const resource = endPointMap.addressBookEntries(orgId, bookId, queryParams.toString());
 
@@ -244,8 +255,8 @@ export class AddressBook {
         );
       }
 
-      // Cache the page data for simple pagination (no search/filter/attributes)
-      if (this.pageCache.canUseCache({search, filter, attributes}) && response.body?.data) {
+      // Cache only the invariant default-order pagination shape.
+      if (canUseCache && response.body?.data) {
         const cacheKey = this.pageCache.buildCacheKey(bookId, page, pageSize);
         this.pageCache.cachePage(cacheKey, response.body.data, response.body.meta);
 

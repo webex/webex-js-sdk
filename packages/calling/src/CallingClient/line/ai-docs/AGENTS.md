@@ -50,6 +50,7 @@ constructor(
   logLevel: LOGGER,                            // Log verbosity
   serviceDataConfig?: CallingClientConfig['serviceData'],  // Backend config
   jwe?: string,                                // Optional JWE token
+  localAudioStream?: LocalMicrophoneStream,    // Optional mic stream, used by register() for host ip discovery
   phoneNumber?: string,                        // Optional initial phone number (from provisioning)
   extension?: string,                          // Optional initial extension
   voicemail?: string,                          // Optional voicemail number
@@ -97,7 +98,7 @@ constructor(
 |-------|------|---------|---------|
 | `connecting` | `LINE_EVENTS.CONNECTING` | _(none)_ | `register()` called |
 | `registered` | `LINE_EVENTS.REGISTERED` | `ILine` | Device registration succeeded |
-| `unregistered` | `LINE_EVENTS.UNREGISTERED` | _(none)_ | Device deregistered |
+| `unregistered` | `LINE_EVENTS.UNREGISTERED` | `LineError` (optional) | Device deregistered, registration down, or session superseded. The `LineError` is present only when the SDK will not re-register — currently a `409 Conflict` on keepalive, reported as `ERROR_TYPE.SESSION_SUPERSEDED` |
 | `reconnecting` | `LINE_EVENTS.RECONNECTING` | _(none)_ | Keepalive failure, attempting recovery |
 | `reconnected` | `LINE_EVENTS.RECONNECTED` | _(none)_ | Recovery succeeded |
 | `error` | `LINE_EVENTS.ERROR` | `LineError` | Registration or line error |

@@ -1,0 +1,17 @@
+<html>
+<script src="imi-toast.js"></script>
+<!-- <script src="../../assets/app/app.utility.js"></script> -->
+
+<body>
+    <input type="text" id="txtMessage">
+    <input type="button" onclick="showToast();" value="Show" />
+    <imi-toast></imi-toast>
+    <script>
+        function showToast() {
+            var txtMessage = document.querySelector("#txtMessage");
+            Toast.show(txtMessage.value);
+        }
+    </script>
+</body>
+
+</html>

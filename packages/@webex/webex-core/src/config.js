@@ -35,6 +35,16 @@ export default {
     useCatalogOverride: false,
 
     /**
+     * When true, skips fetching the preauth catalog during initialization
+     * while the user is unauthenticated (no existing token). The catalog is
+     * expected to be collected manually later instead. When false (default),
+     * the preauth catalog is collected automatically during init.
+     *
+     * @type {boolean}
+     */
+    skipPreauthCatalogOnUnauthenticated: false,
+
+    /**
      * Maximum time (in milliseconds) to wait for the initial service catalog
      * collection when `waitForCatalogInit` is enabled, before letting
      * `services.ready` (and therefore `webex.ready`) fire anyway. Prevents a
@@ -78,6 +88,16 @@ export default {
     validateDomains: true,
 
     /**
+     * When true, enables the CatalogUrlInterceptor which validates that all
+     * outbound request URLs are in the service catalog or allowed domains.
+     * This prevents SSRF attacks where attacker-controlled URLs could be
+     * sent to the SDK.
+     *
+     * @type {boolean}
+     */
+    validateCatalogUrls: false,
+
+    /**
      * services that don't need auth validation
      */
 
@@ -108,6 +128,11 @@ export default {
     cacheU2C: false,
   },
   payloadTransformer: {
+    /**
+     * When true, inbound payload transforms run at most once for the same successful response object.
+     * This supports request flows that pass a response through more than one interceptor pipeline.
+     */
+    skipRepeatedInboundTransforms: false,
     predicates: [],
     transforms: [],
   },

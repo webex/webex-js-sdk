@@ -12,6 +12,7 @@
   - [When To Use This Package](#when-to-use-this-package)
   - [Key Features](#key-features)
   - [Basic Usage](#basic-usage)
+    - [Public Client with PKCE](#public-client-with-pkce)
     - [Standard Login (Authorization Code + PKCE)](#standard-login-authorization-code--pkce)
     - [Popup / Separate Window Login](#popup--separate-window-login)
     - [Device Authorization (QR Code Login)](#device-authorization-qr-code-login)
@@ -95,6 +96,37 @@ webex.authorization.initiateLogin({
   separateWindow: { width: 600, height: 800 } // popup mode (optional)
 });
 ```
+
+### Public Client with PKCE
+
+To use a public OAuth client, set `clientType` to `public` and omit
+`client_secret`:
+
+```javascript
+const publicClientWebex = Webex.init({
+  credentials: {
+    clientType: 'public',
+    client_id: 'first-party-public-client-id',
+    redirect_uri: 'https://web.webex.com/auth/callback',
+    scope: 'spark:all'
+  }
+});
+
+publicClientWebex.authorization.initiateLogin({
+  email: 'user@example.com',
+  state: { returnTo: '/home' }
+});
+```
+
+The authorization-code exchange and token refresh requests send `client_id`
+in the form without HTTP Basic client authentication.
+
+For an existing confidential client, set `clientType` to `confidential` and
+provide both `client_id` and `client_secret`. The plugin continues to use HTTP
+Basic client authentication for authorization-code exchange and token refresh.
+
+Public-client device authorization and token revocation are not changed by
+this support.
 
 ### Standard Login (Authorization Code + PKCE)
 

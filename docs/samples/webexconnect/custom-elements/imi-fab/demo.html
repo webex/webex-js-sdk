@@ -1,0 +1,17 @@
+
+<html>
+  <head>
+    <script src="../imi-fab/imi-fab.js"></script>
+  </head>
+
+  <body>
+    <style></style>
+    <imi-fab> <slot name="a-bc">I am within IMI-fab </slot> </imi-fab>
+    <imi-fab>
+      <slot name="a-bc">this is how it looks within slot</slot>
+    </imi-fab>
+    <script>
+      var a = document.querySelectorAll("imi-fab");
+    </script>
+  </body>
+</html>

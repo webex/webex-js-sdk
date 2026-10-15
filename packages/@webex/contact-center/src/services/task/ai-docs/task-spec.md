@@ -11,8 +11,8 @@
 | Doc kind | Module spec |
 | Coverage score | Partial (manifest-authoritative); 15/15 required document fields present |
 | Generated from | `module-spec` @ SDLC template library `0.2.1` |
-| generated_by / approved_by / updated_at | Codex generator / developer-approved follow-up review remediation / 2026-07-21 |
-| Validation status | Follow-up validation passed (independent Claude fallback, 2026-07-21); 1 existing test-coverage gap; coverage remains Partial |
+| generated_by / approved_by / updated_at | Codex generator / developer-approved follow-up review remediation / 2026-10-06 |
+| Validation status | AI summary methods, delivery, and cleanup updates pending independent review (2026-10-06); prior follow-up validation passed (independent Claude fallback, 2026-07-21); 1 existing test-coverage gap; coverage remains Partial |
 
 ## Evidence Rules
 Every requirement cites stable source and test file paths. Code/tests are the behavioral referee; routed source text supplies explicit intent and rationale. Missing or contradictory evidence blocks promotion.
@@ -33,7 +33,7 @@ Manage task lifecycle including inbound/outbound calls, hold/resume, consult, tr
 
 - **Event Emission and Public APIs**: Task objects register listeners, update context, emit SDK events (e.g., `task:*`), and expose public methods that delegate to `contact.ts` for call control and to the state machine for transition validation.
 
-- **AQM Contact Operations**: `contact.ts` builds the AQM request surface for call control (accept, hold, consult, transfer, wrapup, end) and is the primary bridge from `Task`/`Voice`/`WebRTC`/`Digital` methods to WCC task APIs.
+- **AQM Contact Operations**: `contact.ts` builds the AQM request surface for call control (accept, hold, consult, transfer, participant Drop, wrapup, end) and is the primary bridge from `Task`/`Voice`/`WebRTC`/`Digital` methods to WCC task APIs.
 
 - **Outbound and Preview-Campaign Dialing**: `dialer.ts` exposes `startOutdial` plus `acceptPreviewContact`, `skipPreviewContact`, and `removePreviewContact`; ContactCenter publishes these operations through typed `cc` methods.
 
@@ -141,6 +141,9 @@ services/task/
 |---|---|---|---|---|---|---|
 | `task.surface` | SDK / event / internal API | Exported Task/types/events plus application-facing task instances and call-control methods. | Stable module consumption boundary. | Additive changes by default; breaking package exports require a major-version transition. | `src/services/task/Task.ts` | `../../../../ai-docs/CONTRACTS.md` |
 | `task.preview-campaign` | SDK/AQM API | `acceptPreviewContact`, `skipPreviewContact`, `removePreviewContact`, and `PreviewContactPayload`. | Accept, skip, or remove a reserved campaign preview contact; each method returns `Promise<TaskResponse>`. | Additive semver-public methods; removals or signature changes are breaking. | `src/cc.ts`, `src/services/task/dialer.ts`, `src/services/task/types.ts` | `../../../../ai-docs/CONTRACTS.md` |
+| `task.consult-transfer-controls` | SDK task controls | `TaskUIControls.consultTransferDestinations` with ordered `consult` and `transfer` arrays. | Surface default destination availability on every Task without an extra policy method. | Additive semver-public field/types; array order is meaningful and the first item is the default. | `src/services/task/types.ts`, `src/services/task/state-machine/uiControlsComputer.ts` | `../../../../ai-docs/CONTRACTS.md` |
+| `task.conference-participant-drop` | SDK/AQM API | `task.dropConferenceParticipant(payload: DropConferenceParticipantPayload): Promise<TaskResponse>`. | Remove a supported target from a voice conference after correlated routing completion. | Additive semver-public method and payload; removals or signature changes are breaking. | `src/services/task/voice/Voice.ts`, `src/services/task/contact.ts`, `src/services/task/types.ts` | `../../../../ai-docs/CONTRACTS.md` |
+| `task.ai-summary` | SDK/RTD API | Post-call and mid-call summary request/response methods, feature enablement, and receiving-agent summary events. | Provide task-scoped generated summaries without exposing RTD correlation to SDK consumers. | Additive semver-public methods, types, and events; removals or signature changes are breaking. | `src/services/task/Task.ts`, `src/services/task/TaskManager.ts`, `src/services/task/types.ts`, `src/services/ApiAiAssistant.ts` | `../../../../ai-docs/CONTRACTS.md` |
 
 Compatibility notes:
 - Do not remove or reinterpret exported symbols/events without a documented consumer migration.
@@ -149,7 +152,11 @@ Compatibility notes:
 
 - `TaskData`, `TaskId`, `TaskResponse`, `TaskUIControls` (`types.ts`)
 
+- `AISummary`, `AISummaryResponse`, `AISummaryAction`, `AISummaryFeatureEnablement`, and `AISummaryCapabilities` (`types.ts`)
+
 - `PreviewContactPayload` (`types.ts`) with `interactionId` and campaign-name `campaignId`
+
+- `DropConferenceParticipantPayload` (`types.ts`) with a runtime-validated non-empty `participantId`
 
 - `ITask`, `IVoice`, `IWebRTC`, `IDigital` (`types.ts`)
 
@@ -187,6 +194,8 @@ Compatibility notes:
 | `task:switchCall`                                                           | Switched between consult and main call           |
 | `task:outdialFailed`                                                        | Outdial operation failed                         |
 | `task:ui-controls-updated`                                                  | UI controls changed due to state transition      |
+| `task:midCallSummaryReceived`                                               | Mid-call summary delivered to a receiving agent  |
+| `task:featureEnablement`                                                    | Per-task AI summary enablement flags received     |
 | `task:cleanup`                                                              | Internal cleanup signal emitted by state machine |
 
 > Full list is defined in `TASK_EVENTS` (`types.ts`).
@@ -195,6 +204,23 @@ Compatibility notes:
 |---|---|
 | `REAL_TIME_TRANSCRIPTION` | A realtime transcript payload is received for the task interaction |
 | `SUGGESTED_RESPONSE` | A final AI Assistant suggestion payload is received for the task interaction |
+
+### AI summary APIs
+
+- `requestPostCallSummary(): Promise<AISummary>` requests a post-call summary.
+- `sendPostCallSummaryResponse(response: AISummaryResponse): Promise<void>` reports the agent's post-call summary outcome.
+- `requestMidCallSummary(action: AISummaryAction): Promise<AISummary>` requests a consult or transfer summary.
+- `sendMidCallSummaryResponse(response: AISummaryResponse, action: AISummaryAction): Promise<void>` reports the corresponding mid-call outcome.
+
+Summary requests require both the organization-level generated-summary flag and the task-level feature enablement flag. The dedicated request methods read the current organization flags directly from the existing `ApiAIAssistant.aiFeature` field, populated by ContactCenter from the agent configuration. They check `generatedSummaries.wrapUpSummariesEnabled` or `generatedSummaries.consultTransferSummariesEnabled`; missing flags disable the corresponding request. No separate feature-flags argument or task-local organization configuration is needed. A request resolves only after the event POST succeeds and the matching RTD payload arrives; otherwise it rejects with the applicable disabled, transport, or timeout error. Receiving-agent summaries are delivered separately through `task:midCallSummaryReceived`. Summary content is application data and must not be written to logs or metrics.
+
+Task-level feature flags survive `updateTaskData()`, including interaction ID changes during consults or task re-keying. Flags remain available throughout wrapup for post-call summary requests, and TaskManager clears them when the task is removed after wrapup completion or another terminal lifecycle event. Session cleanup also clears them.
+
+Each dedicated Task summary method owns its event selection, payload construction, metrics, and error handling. The request methods call `ApiAIAssistant.requestAndWaitForRtd()`. Both response methods read `interactionId` from the current task data and use `interaction.mainInteractionId` as `conversationId`, falling back to `interactionId`. They call `ApiAIAssistant.sendEvent()` directly without caching request IDs on the task.
+
+TaskManager reads the receiving task directly from `taskCollection[summary.conversationId]`; the RTD conversation ID is the task's collection key (`task.data.interactionId`). It emits `task:midCallSummaryReceived` immediately when that task exists. Otherwise it stores the latest summary for that ID in an in-memory map without an expiry timer, so an RTD frame can wait for task creation. The common AQM event-processing path replays the stored payload after task creation, updates that register the task under that ID, or merge publication. Replay after creation or merge follows the public task event so consumers can attach listeners. Delivery removes the stored summary, and session cleanup clears all pending summaries.
+
+`clearAISummaryState()` cancels pending summary requests, clears task feature enablement, and empties both pending maps. ContactCenter's `deregister()` removes the RTD message listener synchronously before asynchronous teardown. RTD listener registration and removal control inbound delivery; `setConfigFlags()` only supplies task configuration.
 
 Initiate outbound call.
 
@@ -346,9 +372,23 @@ End consultation without transfer.
 
 **Returns**: `Promise<TaskResponse>`
 
+Remove another participant from a voice conference.
+
+**Parameters**:
+
+- `participantId` (string, required): backend participant target identifier; blank and non-string values reject before AQM registration or telemetry.
+
+**Returns**: `Promise<TaskResponse>` after `ParticipantLeftConference` is received for the latest `interaction.mainInteractionId || task.data.interactionId`.
+
+**Failure**: `ParticipantDropConferenceFailed`, HTTP rejection, or the default 20-second AQM timeout rejects the promise. The operation does not add a task state-machine event or optimistically change the roster.
+
+```typescript
+await task.dropConferenceParticipant({participantId});
+```
+
 ### Complete TASK_EVENTS inventory
 
-The public `TASK_EVENTS` enum contains 49 members; every member is listed below from `src/services/task/types.ts`.
+The public `TASK_EVENTS` enum contains 52 members; every member is listed below from `src/services/task/types.ts`.
 
 | Constant | Event string |
 |---|---|
@@ -362,6 +402,7 @@ The public `TASK_EVENTS` enum contains 49 members; every member is listed below 
 | `TASK_CONSULT_QUEUE_CANCELLED` | `task:consultQueueCancelled` |
 | `TASK_CONSULT_QUEUE_FAILED` | `task:consultQueueFailed` |
 | `TASK_UI_CONTROLS_UPDATED` | `task:ui-controls-updated` |
+| `TASK_WXAPP_MUTE_STATE_UPDATED` | `task:wxapp-mute-state-updated` |
 | `TASK_CONSULT_ACCEPTED` | `task:consultAccepted` |
 | `TASK_CONSULTING` | `task:consulting` |
 | `TASK_CONSULT_CREATED` | `task:consultCreated` |
@@ -401,6 +442,8 @@ The public `TASK_EVENTS` enum contains 49 members; every member is listed below 
 | `TASK_CAMPAIGN_PREVIEW_SKIP_FAILED` | `task:campaignPreviewSkipFailed` |
 | `TASK_CAMPAIGN_PREVIEW_REMOVE_FAILED` | `task:campaignPreviewRemoveFailed` |
 | `TASK_CAMPAIGN_CONTACT_UPDATED` | `task:campaignContactUpdated` |
+| `TASK_MID_CALL_SUMMARY_RECEIVED` | `task:midCallSummaryReceived` |
+| `TASK_FEATURE_ENABLEMENT` | `task:featureEnablement` |
 
 ## Requires (dependencies)
 - Services contact/dialer AQM factories
@@ -417,6 +460,10 @@ The public `TASK_EVENTS` enum contains 49 members; every member is listed below 
 | TASK-R-005 | The contact dependency belongs to Task/TaskFactory-created tasks; dialer is an AqmReqs request factory without that constructor. | Misattributing constructor dependencies causes invalid instantiation examples. | `src/services/task/TaskFactory.ts` | `test/unit/spec/services/task/dialer.ts` | None; source and test evidence rechecked during the 2026-07-09 remediation; independent document revalidation pending. | PRESENT |
 | TASK-R-006 | Keep credentials and authentication outside Task; remote operations delegate through contact/dialer routing, AqmReqs, and Core/WebexRequest. | Task lifecycle objects should never duplicate host token handling or leak authentication state into interaction data. | `src/services/task/Task.ts`, `src/services/task/contact.ts`, `src/services/core/WebexRequest.ts` | `test/unit/spec/services/task/Task.ts`, `test/unit/spec/services/task/contact.ts` | None; authentication ownership is explicit. | PRESENT |
 | TASK-R-007 | Route enabled preview-campaign accept, skip, and remove operations through the dialer AQM factory using `PreviewContactPayload`, returning `Promise<TaskResponse>` from the public ContactCenter methods. Before routing skip/remove, reject the operation when the matching task's disable flag is `'true'`. | Preview reservations require typed payloads and correlated backend completion, while campaign controls must block prohibited skip/remove requests before transport begins. | `src/cc.ts`, `src/services/task/dialer.ts`, `src/services/task/types.ts` | `test/unit/spec/cc.ts`, `test/unit/spec/services/task/dialer.ts` | Public delegation and dialer requests are covered; the `campaignPreviewSkipDisabled` and `campaignPreviewRemoveDisabled` early-exit guards lack direct unit coverage. Independent review identified this gap on 2026-07-15. | PRESENT |
+| TASK-R-008 | Voice `dropConferenceParticipant` must validate the public target, resolve the latest main interaction, POST an empty body to the encoded participant-drop route, and settle only from `ParticipantLeftConference`, `ParticipantDropConferenceFailed`, HTTP failure, or the existing AQM timeout. | Participant removal is backend-authoritative and must preserve event-driven roster/state synchronization without exposing participant identifiers through telemetry or logs. | `src/services/task/voice/Voice.ts`, `src/services/task/contact.ts`, `src/services/task/types.ts` | `test/unit/spec/services/task/voice/Voice.ts`, `test/unit/spec/services/task/contact.ts`, `test/unit/spec/services/core/aqm-reqs.ts` | Backend authorization and media removal are remote-service responsibilities. | PRESENT |
+| TASK-R-009 | ContactCenter must inject Desktop Profile collaboration policy into TaskFactory, and every created voice/digital Task must expose ordered Consult and Transfer destination categories through `TaskUIControls.consultTransferDestinations`. | Task consumers need one already-computed policy surface and must not fetch profile flags or duplicate destination decisions. | `src/cc.ts`, `src/services/task/TaskFactory.ts`, `src/services/task/types.ts` | `test/unit/spec/cc.ts`, `test/unit/spec/services/task/TaskFactory.ts` | Host-specific UI options may only further hide an SDK-allowed category. | PRESENT |
+| TASK-R-010 | TaskManager must propagate backend owner promotion without electing an owner locally. `ContactOwnerChanged` resolves an exact task first, then one unique related task whose existing snapshot proves that the current Agent is active on `mainCall`, or whose incoming snapshot both names that Agent as `interaction.owner` and proves the same active-main-leg membership. Active membership requires a participant entry with `hasLeft !== true`. If no task exists, recovery is limited to that incoming owner=current-Agent proof: create the normal Task under the stable main interaction ID, silently HYDRATE its actor before listener installation, then process the original owner-change event so consumers receive one `task:hydrate` and no `task:incoming`. An owner-changing `ContactUpdated` uses the existing owner-change hydrate path only for an existing task, and a late `ParticipantLeftConference` cannot replace a confirmed active owner with the departed participant. | Every surviving agent must observe the backend-selected primary Agent immediately, including stale child-keyed and narrowly recoverable desynchronization cases, without duplicating tasks or exposing an uninitialized actor. | `src/services/task/TaskManager.ts` | `test/unit/spec/services/task/TaskManager.ts`, `test/unit/spec/services/task/Task.ts` | Backend owner selection and delivery of a complete owner-bearing `ContactOwnerChanged` payload remain remote responsibilities; missing-task `ContactUpdated` remains update-only. | PRESENT |
+| TASK-R-011 | TaskManager must stamp `wrapUpRequired` once in `prepareEventContext` on `AGENT_WRAPUP`, `AGENT_CONSULT_CONFERENCE_ENDED`, `PARTICIPANT_LEFT_CONFERENCE`, and `AGENT_CONFERENCE_TRANSFERRED` before `updateTaskData` / mapper (mapper passes the already-stamped payload through). Voice `exitConference` stamps the same flag on `EXIT_CONFERENCE_SUCCESS` (that HTTP path skips TaskManager) using `shouldWrapUpForThisAgent`, then the same empty-pending self-exit fallback as leave (true unless this agent is a consulted non-owner). Voice pending-list precedence uses the correlated HTTP response only (a cached `agentsPendingWrapUp` is ignored when the response omits the list). `AGENT_WRAPUP` is always `true`. Conference-end uses explicit signals only (`agentsPendingWrapUp`, then `wrapUpRequired` / `isWrapUp`). A nonempty `agentsPendingWrapUp` is authoritative and wins over initiator fallback: `consultingAgentId === self` and actor `transferConferenceRequested` are honored only when the list is empty or absent. On participant leave: do not stamp when the actor ignores `PARTICIPANT_LEAVE` (`CONNECTED`, `HOLD_INITIATING`, `CONF_INITIATING`); stamp only in `HELD`, `RESUME_INITIATING`, `CONSULTING`, `CONSULT_INITIATING`, or `CONFERENCING` (or when no actor snapshot exists). A named other `participantId` is never self-leave (do not infer leave from a partial `participants` map); missing-map fallback applies only when `participantId` is absent (EP-DN), and when a previous task map exists it must have contained self. Remaining agents use explicit signals only; this agent left + nonempty pending uses `includes(self)`; this agent left + empty/absent pending stamps `true` unless this agent is a consulted non-owner. Remaining conference agents stay `false`. `setupAutoWrapupTimer()` still requires profile `autoWrapup !== false`, a valid interval, and a default reason. `PARTICIPANT_LEAVE` and Voice `EXIT_CONFERENCE_SUCCESS` into `WRAPPING_UP` do not transition-emit; the `WRAPPING_UP` entry still emits `task:wrapup`. `EXIT_CONFERENCE_SUCCESS` is handled in `CONNECTED`, `HELD`, and `CONFERENCING`. `TASK_WRAPUP` is handled in `HOLD_INITIATING`, `RESUME_INITIATING`, `CONSULT_INITIATING`, and `CONF_INITIATING` (transition `updateTaskData` + `markEnded` only). Late `TASK_WRAPUP` in `WRAPPING_UP` always runs `updateTaskData` and runs `emitTaskWrapup` only when `context.taskData.wrapUpRequired` was not already `true`. | Consumers rely on `task:wrapup` and `task.autoWrapup` when wrap-up starts; those surfaces only activate when ingress task data already has `wrapUpRequired === true`. | `src/services/task/TaskManager.ts`, `src/services/task/voice/Voice.ts`, `src/services/task/Task.ts`, `src/services/task/state-machine/TaskStateMachine.ts` | `test/unit/spec/services/task/TaskManager.ts`, `test/unit/spec/services/task/voice/Voice.ts`, `test/unit/spec/services/task/Task.ts`, `test/unit/spec/services/task/state-machine/TaskStateMachine.ts` | Profile auto wrap-up, interval, and default reason remain agent-config responsibilities. | PRESENT |
 
 ## Design Overview
 Task separates its stable consumption boundary from collaborators so ownership and failure behavior stay explicit. A shared Task base preserves a stable API while media-specific subclasses and a separate state engine enforce capability differences.
@@ -431,7 +478,7 @@ Task separates its stable consumption boundary from collaborators so ownership a
 | `facebook` | Unsupported by TaskFactory; throws `Unknown media type` |
 | `whatsapp` | Unsupported by TaskFactory; throws `Unknown media type` |
 
-If enabled in agent profile, wrapup completes automatically after timeout:
+If enabled in agent profile, wrapup completes automatically after timeout. The timer starts only when ingress task data has `wrapUpRequired === true` (TASK-R-011).
 
 > **Host-application example:** `updateWrapupStatus` is a consumer-owned UI callback, not SDK package logging.
 
@@ -494,6 +541,8 @@ Returns an object of AQM request methods wired to `TASK_API` and `TASK_MESSAGE_T
 
 - `consultConference`
 
+- `dropConferenceParticipant`
+
 - `exitConference`
 
 - `conferenceTransfer`
@@ -531,6 +580,8 @@ Uses `contact` for:
 - `consult`, `consultEnd`, `consultTransfer`
 
 - `consultConference`, `exitConference`, `conferenceTransfer`
+
+- `dropConferenceParticipant` (Voice only; base Task rejects as unsupported)
 
 Uses `contact.accept` in `accept()`.
 
@@ -587,6 +638,18 @@ this.webSocketManager.on('message', (event) => {
 5. Logs and returns when JSON parsing fails or the interaction has no task; other payload types, including `SUGGESTED_RESPONSE_ACKNOWLEDGE`, fall through without task emission
 
 This keeps transcript and suggestion delivery aligned on the same per-task event surface.
+
+**wxApp outdial `ContactEnded` / `AgentOutboundFailed` mapping:** Applies only when the current agent is a **wxApp-managed** outdial (`enableWxBetterTogether` + agent participant `deviceType: wxApp`). Pre-accept decline maps to `CONTACT_ENDED` when `wxAppAnswerPending` is false and `agentsPendingWrapUp` is empty — even if the backend sends misleading `interaction.state: wrapUp`. Post-accept wxApp agent end remaps to `OUTBOUND_FAILED` / `AGENT_ENDS` when `wxAppAnswerPending`, `agentsPendingWrapUp`, or `interaction.state === 'wrapUp'` indicates wrapup. **Non-wxApp** agent-terminated `AgentOutboundFailed` (`AGENT_ENDS` / `terminatingParty: Agent`) stays on `OUTBOUND_FAILED` so the OFFERED-state `shouldWrapUp` path runs; `suppressOutdialFailedPopup` on `taskData` skips the outdial-failed modal only. Non-wxApp `ContactEnded` keeps the legacy path. Other failure reasons (`CUSTOMER_BUSY`, etc.) still use `OUTBOUND_FAILED` with the popup. See `TaskManager.isWxAppManagedOutdialTask`, `isAgentTerminatedOutdialWrapup`, and `task-state-machine-spec.md`.
+
+**wxApp consumer contract (WXCC-6026):** Hosts enable `enableWxBetterTogether` at init (Phase 1 init-only; re-init to change), bind UI to `task.uiControls` (including optional `main.keypad`), and call **`task.accept()`**, **`task.decline()`**, **`task.toggleMute({ muted? })`**, **`task.transmitDtmf({ dtmf })`**. SDK routes wxApp telephony internally on `Voice`. Shared-line `lineOwnerId` defaults from the wxApp agent participant when omitted.
+
+**wxApp OFFERED diagnostics:** `Voice.updateUiControls` delegates offer-decision logging and deferred participant-mismatch WARN/metric to `voice/wxAppOfferObservability.ts` (500 ms grace; observability only). After usersub publish, `TaskManager.refreshWxAppOfferObservabilityForAllTasks()` re-invokes the observer without emitting UI controls. `removeTaskFromCollection` calls `disposeWxAppOfferObservability()` so a pending grace timer cannot emit after the task is dropped (including `CONTACT_MERGED` child removal). Dispose is terminal: the observer sets a disposed guard (timer cancel plus no-op `handleUiControlsUpdate`) so a later `updateUiControls` / refresh cannot schedule a new grace timer.
+
+**wxApp offer UI (`uiControlsComputer`):** `wxAppAcceptInFlight` disables accept/decline during the accept REST call. `wxAppAnswerPending` additionally disables accept and decline for **inbound** offers until ASSIGN; wxApp **outdial** keeps decline enabled during the post-accept "Calling…" phase so `cancelTask` remains available.
+
+**wxApp decline observability:** Inbound wxApp offers decline via telephony `rejectCall` (`runWxAppReject` → `WXAPP_TASK_DECLINE_*`). wxApp outdial cancellations use CC routing `cancelTask` (`runWxAppOutdialDecline` → additive `WXAPP_TASK_DECLINE_*` plus existing `TASK_DECLINE_*`).
+
+**wxApp mute backfill guard (`Voice.syncWxAppMuteFromCallDetails`):** Skips telephony `GET /calls/{callId}` when the interaction is terminated or the task is a pre-accept wxApp OFFERED offer (`wxAppAnswerPending` false). Post-accept OFFERED and engaged CONNECTED sync still run. `isWxAppEngagedForControls` and `getWebexCallingCallId` exclude `TERMINATED` and `COMPLETED`. Expected 400 / "Call not found" / `101002` responses are not logged as errors.
 
 For BROWSER login, TaskManager integrates with WebCalling:
 
@@ -689,6 +752,7 @@ isSecondaryEpDnAgent(interaction);
 | `TASK_WRAPUP_SUCCESS`   | operational          | Wrapup completed   |
 | `TASK_TRANSFER_SUCCESS` | behavioral, business | Transfer completed |
 | `TASK_OUTDIAL_SUCCESS`  | behavioral, business | Outdial completed  |
+| `TASK_CONFERENCE_PARTICIPANT_DROP_SUCCESS` | operational, behavioral, business | Participant Drop completed |
 
 ## Data Flow
 1. **WebSocket event arrives** → `TaskManager` maps CC event to `TaskEvent`.
@@ -727,6 +791,7 @@ Sequence coverage:
 | Incoming task creation | Incoming task | Unsupported media or incomplete event context prevents publication of a partial task. |
 | Voice hold/resume | Hold or resume | Invalid state rejects before transport; failure notification/HTTP error/timeout sends the matching failure event and throws. |
 | Consult/transfer/conference | Consult and transfer | Backend failure notifications drive explicit failure actions and preserve stable call context. |
+| Participant Drop | Participant Drop | Validation rejects locally; AQM success/failure/HTTP/timeout paths settle and clean up without optimistic state changes. |
 | Wrapup/end | Wrapup or end | Validation and backend failures throw; backend events retain distinct WRAPPING_UP/COMPLETED/TERMINATED outcomes. |
 | WebRTC and digital accept | Channel-specific accept | WebRTC media/calling failure and Digital AQM failure follow different rejection paths. |
 
@@ -819,6 +884,119 @@ sequenceDiagram
     Voice-->>App: throw while preserving stable main/consult context
   end
 ```
+
+### Participant Drop
+
+```mermaid
+sequenceDiagram
+  participant App
+  participant Voice
+  participant Contact as routingContact
+  participant AQM as AqmReqs
+  participant Backend
+  participant WS as Primary WebSocket
+  participant TM as TaskManager/state machine
+  App->>Voice: dropConferenceParticipant({participantId})
+  alt participantId is invalid
+    Voice-->>App: reject before metrics, HTTP, or bind registration
+  else valid target
+    Voice->>Voice: select latest main interaction ID
+    Voice->>Contact: participant Drop request
+    Contact->>AQM: POST encoded path with empty body and sensitive-log redaction
+    AQM->>Backend: authenticated HTTP initiation
+    alt ParticipantLeftConference
+      Backend-->>WS: ParticipantLeftConference
+      WS-->>AQM: correlated success
+      AQM-->>Voice: TaskResponse
+      WS-->>TM: existing PARTICIPANT_LEAVE mapping updates roster/conference state
+      Voice-->>App: resolve
+    else ParticipantDropConferenceFailed, HTTP failure, or timeout
+      AQM-->>Voice: structured rejection
+      Voice-->>App: reject without participant data in logs/metrics
+    end
+  end
+```
+
+`ParticipantLeftConference` is authoritative for both a customer hangup and an
+agent-initiated customer Drop. The task removes only participants absent from
+the latest interaction snapshot. TaskManager first uses the exact interaction
+key, then the existing reservation fallback, and finally one unique task whose
+`interaction.mainInteractionId`, interaction-level `parentInteractionId`, or
+`callProcessingDetails.parentInteractionId` matches an identifier carried by the
+lifecycle event. Object aliases are deduplicated and all aliases are removed
+during terminal cleanup; ambiguous related-interaction matches are ignored
+without logging participant data. Events carrying none of those correlation
+identifiers are not routed. `ContactMerged` removes the EP-DN child task,
+hydrates the main-interaction task, and publishes the existing `task:merged`
+event so consumers can rebind to the surviving task object.
+
+Dropping an Agent while that Agent is consulting continues through the existing
+`PARTICIPANT_LEAVE` transition, which clears consult state and emits the normal
+participant-left and task-end lifecycle. `PARTICIPANT_LEAVE` is handled in
+`HELD`, `RESUME_INITIATING`, `CONSULTING`, `CONSULT_INITIATING`, and
+`CONFERENCING`; `CONNECTED`, `HOLD_INITIATING`, and `CONF_INITIATING` ignore the
+event. The current Agent is treated as departed only when the event names that
+Agent or the updated participants map omits that Agent (EP-DN removal). Remaining
+in the map with `hasLeft`, or disappearing only from `mainCall` media, is
+non-terminal. A consulted Agent receiving `AgentConsultEnded` continues through
+`CONSULT_END`; current-agent departure is evaluated before consult-initiator
+recovery and does not use mainCall membership as self-departure evidence.
+Accepted consultees emit `task:consultEnd` and `task:end`, while an unaccepted
+OFFERED consultee retains the existing consult-end-only signal. A surviving
+consult initiator still returns to the main-call state selected by the existing
+guards. The state-machine transition table lives in
+`src/services/task/state-machine/ai-docs/task-state-machine-spec.md`
+`TASK_STATE_MACHINE-R-008`.
+
+Primary-Agent promotion remains backend-authoritative and follows the two-event
+desktop contract. `ContactOwnerChanged` updates the promoted Agent; TaskManager
+prefers an exact task, then one unique related task resolved through nested
+main/parent identifiers, the task collection key, or the `mainCall` media-map
+identity. A related candidate is eligible when its current
+snapshot contains the current Agent's participant entry with `hasLeft !== true`
+and membership on the `mType: mainCall` leg. The incoming snapshot can provide
+that evidence only when it also names the current Agent as `interaction.owner`;
+this permits an authoritative promotion payload to repair a stale child-keyed
+snapshot while still excluding consult-only tasks. The update keeps the
+surviving main interaction identity even when the notification names a
+promoted-Agent child interaction. Conflicting main identifiers, ambiguous
+matches, and a canonical key occupied by a distinct task are ignored rather
+than replacing an existing task.
+
+If no related task exists, TaskManager recovers only the promoted current Agent
+from a non-terminal telephony `ContactOwnerChanged` payload that provides the same
+active-main-leg evidence. It creates the normal Task through TaskFactory under the
+stable main interaction ID, sends an internal HYDRATE before installing external
+listeners, and then processes the original owner-change event. Consumers
+therefore receive one `task:hydrate`, never a synthetic `task:incoming`, and a
+later canonical contact or merge event reuses the same task rather than creating
+an alias. Missing, partial, departed, consult-only, non-promoted, and ambiguous
+payloads are ignored for recovery.
+
+For other surviving Agents, a `ContactUpdated` whose non-empty
+`interaction.owner` differs from the current owner is delivered through the
+existing `CONTACT_OWNER_CHANGED`/`task:hydrate` path; same-owner or owner-less
+updates remain data-only, and a missing task is not created from `ContactUpdated`.
+If a later `ParticipantLeftConference` still names the departed participant as
+owner, an already confirmed owner is retained only when the new roster proves
+that confirmed owner remains active on `mainCall` and explicitly names the
+incoming owner as `participantId` or marks it `hasLeft`. Main-call omission alone
+is not departure evidence. The SDK never chooses the successor locally.
+
+In the Contact Center sample roster, non-owner and Supervisor targets remain
+visible but non-actionable; the UI does not display a separate read-only label.
+The roster is visible whenever the viewing agent remains active on the main leg
+and at least one supported non-customer participant (Agent, EP-DN, or Supervisor)
+is visible. Consequently, Customer-only calls use the original 1-to-1 UI, while
+a single Agent remains visible after the Customer leaves. Dropping the last
+non-customer participant while the Customer remains restores the 1-to-1 UI.
+Terminated tasks and viewing-agent departure hide the roster immediately.
+
+The current consult leg may additionally contribute a pending EP-DN row before
+conference merge. The sample displays its `dn`, then its participant/media key
+as a fallback, and deduplicates the row once it joins the main leg. The owner can
+see a disabled Drop action until merge; other active main-call agents see the
+same row without an action. Consult-only Agent targets remain excluded.
 
 ### Wrapup or end
 
@@ -1000,7 +1178,7 @@ sequenceDiagram
 
 **API**
 
-- `createTask(contact, webCallingService, data, configFlags, wrapupData?, agentId?): Task`
+- `createTask(contact, webCallingService, data, configFlags, wrapupData?, agentId?, agentName?): Task`
 
 **Behavior**
 
@@ -1076,7 +1254,7 @@ classDiagram
     }
 
     class TaskFactory {
-      + createTask(contact, webCallingService, data, configFlags, wrapupData, agentId) Task
+      + createTask(contact, webCallingService, data, configFlags, wrapupData, agentId, agentName) Task
     }
 
     Task <|-- Voice
@@ -1270,7 +1448,7 @@ await cc.stationLogin({ loginOption: 'BROWSER', ... });
 - A shared Task base preserves a stable API while media-specific subclasses and a separate state engine enforce capability differences.
 
 ## Test-Case Strategy (module)
-Use `test/unit/spec/services/task/Task.ts`, `TaskFactory.ts`, `TaskManager.ts`, media-specific suites, contact/dialer suites, and state-machine suites. Cover concrete-versus-interface method signatures, every TASK_EVENTS group, unsupported media rejection, primary/RTD event ownership, injected state actions, preview-campaign accept/skip/remove payloads and failure paths, the disabled skip/remove pre-guards, and success/failure/timeout paths.
+Use `test/unit/spec/services/task/Task.ts`, `TaskFactory.ts`, `TaskManager.ts`, media-specific suites, contact/dialer suites, and state-machine suites. Cover concrete-versus-interface method signatures, every TASK_EVENTS group, unsupported media rejection, primary/RTD event ownership, injected state actions, preview-campaign accept/skip/remove payloads and failure paths, the disabled skip/remove pre-guards, Participant Drop validation/correlation/privacy, primary-owner promotion propagation, and success/failure/timeout paths.
 
 | Behavior / Requirement | Existing test evidence | Gap |
 |---|---|---|
@@ -1281,6 +1459,10 @@ Use `test/unit/spec/services/task/Task.ts`, `TaskFactory.ts`, `TaskManager.ts`, 
 | `TASK-R-005` | `test/unit/spec/services/task/TaskFactory.ts`, `test/unit/spec/services/task/dialer.ts` | None. |
 | `TASK-R-006` | `test/unit/spec/services/task/contact.ts`, `test/unit/spec/services/core/WebexRequest.ts` | Authentication ownership is verified across routing/Core boundaries. |
 | `TASK-R-007` | `test/unit/spec/cc.ts`, `test/unit/spec/services/task/dialer.ts` | Add direct tests proving disabled skip/remove flags throw before dialer invocation; keep public signatures, metrics/error handling, and AQM request contracts synchronized. |
+| `TASK-R-008` | `test/unit/spec/services/task/Task.ts`, `test/unit/spec/services/task/voice/Voice.ts`, `test/unit/spec/services/task/contact.ts`, `test/unit/spec/services/core/aqm-reqs.ts`, `test/unit/spec/services/task/TaskManager.ts` | None. |
+| `TASK-R-009` | `test/unit/spec/cc.ts`, `test/unit/spec/services/task/TaskFactory.ts`, `test/unit/spec/services/task/state-machine/uiControlsComputer.ts` | None. |
+| `TASK-R-010` | `test/unit/spec/services/task/TaskManager.ts`, `test/unit/spec/services/task/Task.ts` | None. |
+| `TASK-R-011` | `test/unit/spec/services/task/TaskManager.ts`, `test/unit/spec/services/task/voice/Voice.ts`, `test/unit/spec/services/task/Task.ts`, `test/unit/spec/services/task/state-machine/TaskStateMachine.ts` | None. |
 
 ## Traceability
 - Repo architecture: `../../../../ai-docs/ARCHITECTURE.md` · Registry: `../../../../ai-docs/SPEC_INDEX.md`

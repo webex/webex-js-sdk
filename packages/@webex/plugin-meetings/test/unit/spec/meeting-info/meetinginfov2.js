@@ -815,8 +815,14 @@ describe('plugin-meetings', () => {
           {meetingId: '123', sendCAevents: false, shouldSendCAevents: false},
           {shouldSendCAevents: false},
           {meetingId: '123', sendCAevents: true, shouldSendCAevents: true, confIdStr: '999'},
+          {
+            meetingId: '123',
+            sendCAevents: true,
+            shouldSendCAevents: true,
+            locusClusterUrl: 'locus-k.wbx2.com',
+          },
         ],
-        ({meetingId, sendCAevents, shouldSendCAevents, confIdStr}) => {
+        ({meetingId, sendCAevents, shouldSendCAevents, confIdStr, locusClusterUrl}) => {
           it('should send CA metric if meetingId is provided and send CA events is authorized', async () => {
             const requestResponse = {
               statusCode: 200,
@@ -824,6 +830,9 @@ describe('plugin-meetings', () => {
             };
             if (confIdStr) {
               requestResponse.body.confIdStr = confIdStr;
+            }
+            if (locusClusterUrl) {
+              requestResponse.body.locusClusterUrl = locusClusterUrl;
             }
             const extraParams = {mtid: 'm9fe0afd8c435e892afcce9ea25b97046', joinTXId: 'TSmrX61wNF'};
 
@@ -890,11 +899,69 @@ describe('plugin-meetings', () => {
                   webexConferenceIdStr: confIdStr
                     ? requestResponse.body?.confIdStr
                     : requestResponse.body?.confID,
+                  locusCluster: locusClusterUrl,
                 },
               });
             } else {
               assert.notCalled(webex.internal.newMetrics.submitClientEvent);
               assert.notCalled(webex.internal.newMetrics.submitInternalEvent);
+            }
+          });
+        }
+      );
+
+      forEach(
+        [
+          {
+            meetingId: 'meeting-id',
+            sendCAevents: true,
+            correlationId: 'correlation-id',
+            shouldSendCorrelationId: true,
+            condition: 'when CA events are enabled for the meeting',
+          },
+          {
+            sendCAevents: true,
+            correlationId: 'correlation-id',
+            shouldSendCorrelationId: false,
+            condition: 'without a meetingId',
+          },
+          {
+            meetingId: 'meeting-id',
+            sendCAevents: false,
+            correlationId: 'correlation-id',
+            shouldSendCorrelationId: false,
+            condition: 'when CA events are disabled',
+          },
+          {
+            meetingId: 'meeting-id',
+            sendCAevents: true,
+            shouldSendCorrelationId: false,
+            condition: 'without a correlationId',
+          },
+        ],
+        ({meetingId, sendCAevents, correlationId, shouldSendCorrelationId, condition}) => {
+          it(`should ${
+            shouldSendCorrelationId ? '' : 'not '
+          }send the correlationId header ${condition}`, async () => {
+            webex.request.resolves({statusCode: 200, body: {meetingKey: '1234323'}});
+
+            await meetingInfo.fetchMeetingInfo(
+              '1234323',
+              DESTINATION_TYPE.MEETING_ID,
+              null,
+              null,
+              null,
+              null,
+              undefined,
+              {meetingId, sendCAevents, correlationId}
+            );
+
+            const requestOptions = webex.request.firstCall.args[0];
+
+            if (shouldSendCorrelationId) {
+              assert.deepEqual(requestOptions.headers, {correlationId});
+            } else {
+              assert.notProperty(requestOptions, 'headers');
             }
           });
         }
@@ -966,6 +1033,7 @@ describe('plugin-meetings', () => {
             meetingId: 'meetingId',
             globalMeetingId: requestResponse.body?.meetingId,
             webexConferenceIdStr: requestResponse.body?.confID,
+            locusCluster: undefined,
           },
         });
       });

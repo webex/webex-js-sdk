@@ -8,6 +8,7 @@ import * as Agent from './services/agent/types';
 import * as Contact from './services/task/types';
 import {
   AIFeatureFlags,
+  Entity,
   Profile,
   CreateUserPreferenceRequest,
   UpdateUserPreferenceRequest,
@@ -74,6 +75,8 @@ export type WebexRequestPayload = {
   uri?: string;
   /** Whether to add authorization header */
   addAuthHeader?: boolean;
+  /** Request timeout in milliseconds */
+  timeout?: number;
   /** Custom headers to include in request */
   headers?: {
     [key: string]: string | null;
@@ -94,11 +97,18 @@ export type WebexRequestPayload = {
 type Listener = (e: string, data?: unknown) => void;
 
 /**
+ * Mercury event handler callback.
+ * @internal
+ * @ignore
+ */
+type MercuryEventHandler = (data?: unknown) => void;
+
+/**
  * Event listener removal function type.
  * @internal
  * @ignore
  */
-type ListenerOff = (e: string) => void;
+type ListenerOff = (e: string, handler?: MercuryEventHandler) => void;
 
 /**
  * Service host configuration.
@@ -163,6 +173,8 @@ export interface CCPluginConfig {
   callingClientConfig: CallingClientConfig;
   /** Whether to skip Mobius/WebRTC registration for browser login flows */
   disableWebRTCRegistration?: boolean;
+  /** Whether wxApp Better Together (telephony REST + usersub) is enabled at init (WXCC-6026) */
+  enableWxBetterTogether?: boolean;
 }
 
 /**
@@ -293,6 +305,12 @@ interface IWebexInternal {
     version: string;
     /** Calling behavior configuration */
     callingBehavior: string;
+    /** Whether the device is registered with WDM */
+    registered?: boolean;
+    /** Register the device with WDM */
+    register?: () => Promise<void>;
+    /** Unregister the device from WDM */
+    unregister?: () => Promise<void>;
   };
   /** Presence service */
   presence: unknown;
@@ -404,6 +422,9 @@ export interface IContactCenter {
    * cc.register().then(profile => { ... });
    */
   register(): Promise<Profile>;
+
+  /** Returns the system-managed WellbeingBreak idle code for the registered session. */
+  getWellbeingBreakIdleCode(): Promise<Entity>;
 }
 
 /**
@@ -555,18 +576,16 @@ export type RequestBody =
 
 /**
  * Represents the options to fetch buddy agents for the logged in agent.
- * Buddy agents are other agents who can be consulted or transfered to.
+ * Buddy agents are other agents who can be consulted or transferred to.
  * @public
  * @example
  * const opts: BuddyAgents = { mediaType: 'telephony', state: 'Available' };
- * @ignore
  */
 export type BuddyAgents = {
   /**
-   * The media type channel to filter buddy agents.
-   * Determines which channel capability the returned agents must have.
+   * The media type channel to filter buddy agents. Defaults to telephony when omitted.
    */
-  mediaType: 'telephony' | 'chat' | 'social' | 'email';
+  mediaType?: 'telephony' | 'chat' | 'social' | 'email';
 
   /**
    * Optional filter for agent state.
@@ -574,6 +593,11 @@ export type BuddyAgents = {
    * If omitted, returns both available and idle agents.
    */
   state?: 'Available' | 'Idle';
+
+  /**
+   * Applies the default state policy for the operation. An explicit state takes precedence.
+   */
+  action?: 'Consult' | 'Transfer';
 };
 
 /**
@@ -587,11 +611,17 @@ export type ConfigFlags = {
   webRtcEnabled: boolean;
   autoWrapup: boolean;
   aiFeature?: AIFeatureFlags;
+  /** Agent-profile policy used to derive task consult/transfer destination controls. */
+  consultTransfer?: Contact.ConsultTransferDestinationConfig;
   /**
    * Optional toggle to globally enable/disable recording controls.
    * Falls back to backend hints when omitted.
    */
   isRecordingEnabled?: boolean;
+  /** Whether wxApp thick-client answer controls/APIs are enabled (WXCC-6026) */
+  enableWxBetterTogether?: boolean;
+  /** Read-only observability: live usersub answer-calls-on-wxcc state for wxApp offer diagnostics. */
+  getWxAppUsersubPublished?: () => boolean;
 };
 
 /**
@@ -681,10 +711,12 @@ export interface AddressBookEntrySearchParams extends BaseSearchParams {
 export interface EntryPointRecord {
   id: string;
   name: string;
+  /** Dialled number mapped to this entry point when included in the list response. */
+  number?: string;
   description?: string;
-  type: string;
-  isActive: boolean;
-  orgId: string;
+  type?: string;
+  isActive?: boolean;
+  orgId?: string;
   createdAt?: string;
   updatedAt?: string;
   settings?: Record<string, any>;
@@ -922,6 +954,63 @@ export type RealTimeAssistanceUserActionParams = {
 };
 
 /**
+ * Wellness notification actions delivered by the Contact Center notification service.
+ * @public
+ */
+export const WELLNESS_BREAK_NOTIFICATION_ACTIONS = {
+  PROVIDE_WELLNESS_BREAK: 'PROVIDE_WELLNESS_BREAK',
+  SUGGEST_WELLNESS_BREAK: 'SUGGEST_WELLNESS_BREAK',
+  WELLNESS_BREAK_NOT_ALLOWED: 'WELLNESS_BREAK_NOT_ALLOWED',
+} as const;
+
+/** Union of supported wellness notification actions. @public */
+export type WellnessBreakNotificationAction = Enum<typeof WELLNESS_BREAK_NOTIFICATION_ACTIONS>;
+
+/**
+ * Agent actions accepted by the wellness action API.
+ * @public
+ */
+export const WELLNESS_BREAK_USER_ACTIONS = {
+  REQUESTED: 'REQUESTED',
+  ACCEPTED: 'ACCEPTED',
+  REJECTED: 'REJECTED',
+  NO_RESPONSE: 'NO_RESPONSE',
+} as const;
+
+/** Union of supported wellness action API values. @public */
+export type WellnessBreakUserAction = Enum<typeof WELLNESS_BREAK_USER_ACTIONS>;
+
+/**
+ * Validated, agent-scoped wellness notification emitted by Contact Center.
+ * @public
+ */
+export interface WellnessBreakEvent {
+  /** Agent identifier */
+  agentId: string;
+  /** Organization identifier */
+  orgId: string;
+  /** Session identifier supplied by the notification; it may differ from the consumer's active session */
+  agentSessionId: string;
+  /** Backend wellness action */
+  actionEvent: WellnessBreakNotificationAction;
+  /** Optional untrusted plain-text message supplied by the backend */
+  actionText?: string;
+  /** Optional normalized interaction diagnostic */
+  interactionId?: string;
+  /** Notification diagnostic only; never an action-request correlation identifier */
+  trackingId?: string;
+}
+
+/**
+ * Parameters for responding to a backend-provided wellness offer.
+ * @public
+ */
+export interface RespondToWellnessBreakParams {
+  /** Agent response; REQUESTED is available only through requestWellnessBreak */
+  action: Exclude<WellnessBreakUserAction, typeof WELLNESS_BREAK_USER_ACTIONS.REQUESTED>;
+}
+
+/**
  * Supported AI Assistant event categories.
  * @public
  * @example
@@ -958,18 +1047,24 @@ export const AIAssistantEventName = {
   GET_SUGGESTIONS: 'GET_SUGGESTIONS',
   /** Add extra context to refine a suggested response */
   ADD_SUGGESTIONS_EXTRA_CONTEXT: 'ADD_SUGGESTIONS_EXTRA_CONTEXT',
-  /** Request mid-call summary generation */
-  GET_MID_CALL_SUMMARY: 'GET_MID_CALL_SUMMARY',
   /** Request post-call summary generation */
   GET_POST_CALL_SUMMARY: 'GET_POST_CALL_SUMMARY',
-  /** Mid-call summary response event */
-  MID_CALL_SUMMARY_RESPONSE: 'MID_CALL_SUMMARY_RESPONSE',
+  /** Request consult mid-call summary generation */
+  GET_MID_CALL_CONSULT_SUMMARY: 'GET_MID_CALL_CONSULT_SUMMARY',
+  /** Request transfer mid-call summary generation */
+  GET_MID_CALL_TRANSFER_SUMMARY: 'GET_MID_CALL_TRANSFER_SUMMARY',
   /** Post-call summary response event */
   POST_CALL_SUMMARY_RESPONSE: 'POST_CALL_SUMMARY_RESPONSE',
+  /** Consult mid-call summary response event */
+  MID_CALL_CONSULT_SUMMARY_RESPONSE: 'MID_CALL_CONSULT_SUMMARY_RESPONSE',
+  /** Transfer mid-call summary response event */
+  MID_CALL_TRANSFER_SUMMARY_RESPONSE: 'MID_CALL_TRANSFER_SUMMARY_RESPONSE',
   /** Suggested digital response event */
   SUGGESTED_RESPONSES_DIGITAL: 'SUGGESTED_RESPONSES_DIGITAL',
   /** User action on a suggested response adaptive card */
   SUGGESTED_RESPONSES_USER_ACTION: 'SUGGESTED_RESPONSES_USER_ACTION',
+  /** Agent Wellness Break request/response action */
+  WELLNESS_BREAK_ACTION: 'WellnessBreakAction',
 } as const;
 
 /**

@@ -9,10 +9,12 @@ import {
   IWebRTC,
   VoiceUIControlOptions,
   VOICE_VARIANT,
+  TaskToggleMuteOptions,
 } from '../types';
 import Voice from './Voice';
 import WebCallingService from '../../WebCallingService';
-import {WrapupData} from '../../config/types';
+import type {WrapupData} from '../../config/types';
+import type ApiAIAssistant from '../../ApiAiAssistant';
 import MetricsManager from '../../../metrics/MetricsManager';
 import {METRIC_EVENT_NAMES} from '../../../metrics/constants';
 import LoggerProxy from '../../../logger-proxy';
@@ -27,14 +29,16 @@ export default class WebRTC extends Voice implements IWebRTC {
     data: TaskData,
     callOptions?: VoiceUIControlOptions,
     wrapupData?: WrapupData,
-    agentId?: string
+    agentId?: string,
+    agentName?: string,
+    apiAIAssistant?: ApiAIAssistant
   ) {
     const mergedCallOptions: VoiceUIControlOptions = {
       ...callOptions,
       voiceVariant: VOICE_VARIANT.WEBRTC,
     };
 
-    super(contact, data, mergedCallOptions, wrapupData, agentId);
+    super(contact, data, mergedCallOptions, wrapupData, agentId, agentName, apiAIAssistant);
     this.webCallingService = webCallingService;
     this.registerWebCallListeners();
   }
@@ -170,7 +174,10 @@ export default class WebRTC extends Voice implements IWebRTC {
    * task.toggleMute().then(()=>{}).catch(()=>{})
    * ```
    */
-  public async toggleMute() {
+  public async toggleMute(options?: TaskToggleMuteOptions) {
+    if (options) {
+      // parameter intentionally unused — WebRTC toggles from local stream state
+    }
     LoggerProxy.log(`Toggling mute WebRTC task for taskId:${this.data.interactionId}`, {
       module: 'WebRTC',
       method: 'toggleMute',

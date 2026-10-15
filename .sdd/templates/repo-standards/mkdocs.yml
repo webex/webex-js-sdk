@@ -1,0 +1,27 @@
+site_name: '[Repository name] Documentation'
+site_description: 'Developer and operator documentation for [repository name].'
+site_author: '[Owning team]'
+
+docs_dir: docs
+site_dir: site
+
+theme:
+  name: readthedocs
+
+plugins:
+  - search
+
+markdown_extensions:
+  - admonition
+  - tables
+  - toc:
+      permalink: true
+      toc_depth: 3
+
+nav:
+  - Home: index.md
+  - Getting Started: getting-started.md
+  - Architecture: architecture.md
+  - Service Specification (if applicable): service.md
+  - Specifications and Contracts: specs/README.md
+  - Decisions: adr/index.md

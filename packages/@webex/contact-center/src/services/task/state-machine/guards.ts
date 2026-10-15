@@ -362,13 +362,14 @@ export const guards = {
   },
 
   /**
-   * True if PARTICIPANT_LEAVE indicates that *this* agent left the conference.
+   * True when an updated lifecycle event shows that this agent left the main interaction.
    *
-   * Important: PARTICIPANT_LEAVE is broadcast to all agents in the conference.
-   * Only the agent whose id matches the leaving participant should transition to
-   * TERMINATED / WRAPPING_UP based on wrapup rules.
+   * Returns true when the event names this agent, or when this agent is absent from the
+   * updated participants map. EP-DN payloads remove the leaving participant instead of
+   * setting hasLeft. Remaining in the map with hasLeft, or disappearing only from
+   * mainCall media, is not treated as departure.
    */
-  didCurrentAgentLeaveConference: ({context, event}: GuardParams): boolean => {
+  didCurrentAgentLeaveMainInteraction: ({context, event}: GuardParams): boolean => {
     const taskData = getTaskDataFromEvent(event);
     const selfAgentId = getSelfAgentId(context, taskData);
     if (!selfAgentId) return false;
@@ -382,11 +383,7 @@ export const guards = {
     if (Boolean(participantId) && participantId === selfAgentId) {
       return true;
     }
-
-    //    For EP-DN agents the backend removes the leaving participant entirely
-    //    from the participants map (rather than setting hasLeft). If this task
-    //    is in CONFERENCING (implied by the guard being evaluated here) but the
-    //    agent is absent from the updated participants, they have left.
+    // EP-DN payloads remove the leaving participant from the map instead of setting hasLeft.
     const participants = taskData?.interaction?.participants;
     if (participants && !(selfAgentId in participants)) {
       return true;

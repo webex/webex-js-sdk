@@ -15,6 +15,7 @@ import {merge, times} from 'lodash';
 import CryptoJS from 'crypto-js';
 import Authorization from '@webex/plugin-authorization-browser-first-party';
 import {Events, InitialAuthorizationCodeGrantOutcomes} from '../../../src';
+import authorizationConfig from '../../../src/config';
 
 // Necessary to require lodash this way in order to stub the method
 const lodash = require('lodash');
@@ -25,9 +26,13 @@ describe('plugin-authorization-browser-first-party', () => {
       href = 'https://example.com',
       csrfToken = undefined,
       pkceVerifier = undefined,
-      config = {}
+      config = {},
+      getRandomValues = sinon.stub().callsFake((randomValues) => randomValues.fill(0))
     ) {
       const mockWindow = {
+        crypto: {
+          getRandomValues,
+        },
         history: {
           replaceState(a, b, location) {
             mockWindow.location.href = location;
@@ -387,6 +392,139 @@ describe('plugin-authorization-browser-first-party', () => {
             assert.equal(webex.request.getCall(1).args[0].form.code_verifier, expectedVerifier);
           });
         });
+      });
+    });
+
+    describe('#requestAuthorizationCodeGrant()', () => {
+      it('uses the client ID in the form for a public client', async () => {
+        const webex = makeWebex('http://example.com', undefined, undefined, {
+          credentials: {
+            clientType: 'public',
+            client_id: 'public-client-id',
+          },
+        });
+
+        await webex.authorization.requestAuthorizationCodeGrant({
+          code: 'authorization-code',
+          codeVerifier: 'code-verifier',
+        });
+
+        assert.calledOnceWithExactly(webex.request, {
+          method: 'POST',
+          uri: webex.config.credentials.tokenUrl,
+          form: {
+            grant_type: 'authorization_code',
+            redirect_uri: 'http://example.com',
+            code: 'authorization-code',
+            self_contained_token: true,
+            code_verifier: 'code-verifier',
+            client_id: 'public-client-id',
+          },
+          addAuthHeader: false,
+          shouldRefreshAccessToken: false,
+        });
+      });
+
+      it('uses HTTP Basic authentication for a confidential client', async () => {
+        const webex = makeWebex('http://example.com', undefined, undefined, {
+          credentials: {
+            clientType: 'confidential',
+            client_id: 'confidential-client-id',
+            client_secret: 'confidential-client-secret',
+          },
+        });
+
+        await webex.authorization.requestAuthorizationCodeGrant({
+          code: 'authorization-code',
+          codeVerifier: 'code-verifier',
+        });
+
+        assert.calledOnceWithExactly(webex.request, {
+          method: 'POST',
+          uri: webex.config.credentials.tokenUrl,
+          form: {
+            grant_type: 'authorization_code',
+            redirect_uri: 'http://example.com',
+            code: 'authorization-code',
+            self_contained_token: true,
+            code_verifier: 'code-verifier',
+          },
+          auth: {
+            user: 'confidential-client-id',
+            pass: 'confidential-client-secret',
+            sendImmediately: true,
+          },
+          shouldRefreshAccessToken: false,
+        });
+      });
+    });
+
+    describe('refreshCallback()', () => {
+      const tokenResponse = {
+        access_token: 'access-token',
+        refresh_token: 'refresh-token',
+      };
+
+      it('uses the client ID in the form for a public client', async () => {
+        const webex = {request: sinon.stub().resolves({body: tokenResponse})};
+        const token = {
+          refresh_token: 'current-refresh-token',
+          config: {
+            clientType: 'public',
+            client_id: 'public-client-id',
+            redirect_uri: 'http://example.com',
+            tokenUrl: 'https://idbroker.example.com/access_token',
+          },
+        };
+
+        const response = await authorizationConfig.credentials.refreshCallback(webex, token);
+
+        assert.calledOnceWithExactly(webex.request, {
+          method: 'POST',
+          uri: 'https://idbroker.example.com/access_token',
+          form: {
+            grant_type: 'refresh_token',
+            redirect_uri: 'http://example.com',
+            refresh_token: 'current-refresh-token',
+            client_id: 'public-client-id',
+          },
+          addAuthHeader: false,
+          shouldRefreshAccessToken: false,
+        });
+        assert.deepEqual(response, tokenResponse);
+      });
+
+      it('uses HTTP Basic authentication for a confidential client', async () => {
+        const webex = {request: sinon.stub().resolves({body: tokenResponse})};
+        const token = {
+          refresh_token: 'current-refresh-token',
+          config: {
+            clientType: 'confidential',
+            client_id: 'confidential-client-id',
+            client_secret: 'confidential-client-secret',
+            redirect_uri: 'http://example.com',
+            tokenUrl: 'https://idbroker.example.com/access_token',
+          },
+        };
+
+        const response = await authorizationConfig.credentials.refreshCallback(webex, token);
+
+        assert.calledOnceWithExactly(webex.request, {
+          method: 'POST',
+          uri: 'https://idbroker.example.com/access_token',
+          form: {
+            grant_type: 'refresh_token',
+            redirect_uri: 'http://example.com',
+            refresh_token: 'current-refresh-token',
+          },
+          auth: {
+            user: 'confidential-client-id',
+            pass: 'confidential-client-secret',
+            sendImmediately: true,
+          },
+          shouldRefreshAccessToken: false,
+        });
+        assert.deepEqual(response, tokenResponse);
       });
     });
 
@@ -1305,34 +1443,84 @@ describe('plugin-authorization-browser-first-party', () => {
     });
 
     describe('#_generateCodeChallenge', () => {
-      const expectedCodeChallenge = 'code challenge';
       // eslint-disable-next-line no-underscore-dangle
       const safeCharacterMap = CryptoJS.enc.Base64url._safe_map;
 
-      const expectedVerifier = times(128, () => safeCharacterMap[0]).join('');
+      function makeWebexWithRandomValues(fillRandomValues) {
+        const getRandomValuesStub = sinon.stub().callsFake((randomValues) => {
+          fillRandomValues(randomValues);
 
-      it('generates a challenge code and stores it in session storage', () => {
-        const webex = makeWebex('http://example.com');
-
-        const toStringStub = sinon.stub().returns(expectedCodeChallenge);
-        const randomStub = sinon.stub(lodash, 'random').returns(0);
-        const sha256Stub = sinon.stub(CryptoJS, 'SHA256').returns({
-          toString: toStringStub,
+          return randomValues;
         });
+        const webex = makeWebex(
+          'http://example.com',
+          undefined,
+          undefined,
+          {},
+          getRandomValuesStub
+        );
+
+        getRandomValuesStub.resetHistory();
+        webex.getWindow().sessionStorage.setItem.resetHistory();
+
+        return {getRandomValuesStub, webex};
+      }
+
+      it('uses a 128-byte CSPRNG and does not use insecure random generators', () => {
+        const {getRandomValuesStub, webex} = makeWebexWithRandomValues((randomValues) => {
+          randomValues.fill(0);
+        });
+        const mathRandomStub = sinon.stub(Math, 'random');
+        const lodashRandomStub = sinon.stub(lodash, 'random');
+
+        // eslint-disable-next-line no-underscore-dangle
+        webex.authorization._generateCodeChallenge();
+
+        const generatedRandomValues = getRandomValuesStub.firstCall.args[0];
+
+        assert.calledOnceWithExactly(getRandomValuesStub, generatedRandomValues);
+        assert.instanceOf(generatedRandomValues, Uint8Array);
+        assert.lengthOf(generatedRandomValues, 128);
+        assert.notCalled(mathRandomStub);
+        assert.notCalled(lodashRandomStub);
+      });
+
+      it('generates a 128-character verifier from the base64url-safe alphabet', () => {
+        const {webex} = makeWebexWithRandomValues((randomValues) => {
+          randomValues.set(times(128, (index) => index));
+        });
+        const expectedVerifier = times(
+          128,
+          (index) => safeCharacterMap[index & (safeCharacterMap.length - 1)]
+        ).join('');
+
+        // eslint-disable-next-line no-underscore-dangle
+        webex.authorization._generateCodeChallenge();
+
+        const storedVerifier = webex.getWindow().sessionStorage.setItem.firstCall.args[1];
+
+        assert.match(storedVerifier, /^[A-Za-z0-9_-]{128}$/);
+        assert.equal(storedVerifier, expectedVerifier);
+      });
+
+      it('stores the verifier and returns its SHA-256 base64url challenge', () => {
+        const {webex} = makeWebexWithRandomValues((randomValues) => {
+          randomValues.fill(42);
+        });
+        const expectedVerifier = safeCharacterMap[42 & (safeCharacterMap.length - 1)].repeat(128);
+        const expectedChallenge = CryptoJS.SHA256(expectedVerifier).toString(
+          CryptoJS.enc.Base64url
+        );
 
         // eslint-disable-next-line no-underscore-dangle
         const codeChallenge = webex.authorization._generateCodeChallenge();
 
-        assert.equal(codeChallenge, expectedCodeChallenge);
-        assert.calledWith(sha256Stub, expectedVerifier);
-        assert.calledWith(toStringStub, CryptoJS.enc.Base64url);
-        assert.callCount(randomStub, 128);
-        assert.calledWith(randomStub, 0, safeCharacterMap.length - 1);
-        assert.calledWith(
+        assert.calledOnceWithExactly(
           webex.getWindow().sessionStorage.setItem,
           'oauth2-code-verifier',
           expectedVerifier
         );
+        assert.equal(codeChallenge, expectedChallenge);
       });
     });
 
