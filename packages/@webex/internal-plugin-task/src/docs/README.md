@@ -47,7 +47,7 @@ Related context: [documentation index](../../docs/index.md) ·
 | `module.crosses_service_boundaries`  | Applicable | Every task method calls the Raindrop service through webex.request; register calls the device and Mercury plugins; the helpers call the encryption plugin | Cross-boundary use-case flow |
 | `module.holds_client_state`          | Applicable | The plugin keeps the in-memory registered flag across calls in `src/task.js`; Task DTOs are returned to the caller, not kept | Client state model |
 | `module.enforces_domain_rules`       | Applicable | Which task fields are encrypted, how the key is chosen, and which responses are decrypted, in `src/helpers/encrypt.helper.js` and `src/helpers/decrypt.helper.js` | Business rules and invariants |
-| `module.is_concurrent_async`         | Applicable | Every public method returns a promise; field encryption and decryption run in parallel | Concurrency and reactive flow |
+| `module.is_concurrent_async`         | Applicable | Public methods return promises, except that createTask and updateTask throw synchronously without data (see Caller-visible failure modes); field encryption and decryption run in parallel | Concurrency and reactive flow |
 | `module.owns_persistence`            | N/A        | Nothing is stored by this package | Data, schema, and migration |
 | `module.stateful_transitions`        | Applicable | register and unregister move the plugin between unregistered and registered and emit events | State machine |
 | `module.exposes_wire_protocol`       | Applicable | Raindrop request shapes, the encrypted title and notes fields, encryptionKeyUrl, and the plugin event names | Protocol and wire format |

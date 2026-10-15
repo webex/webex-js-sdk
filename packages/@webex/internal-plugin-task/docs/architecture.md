@@ -189,7 +189,7 @@ Owner details, guards, and event timing are in the module spec
 
 | Platform | Shared versus platform-specific boundary | Entry or build | Support and compatibility constraints |
 | -------- | ---------------------------------------- | -------------- | ------------------------------------- |
-| Node.js | All of `src/` is shared; no platform-specific code | `main` build output from `yarn workspace @webex/internal-plugin-task build:src`; tested by `test:unit` (Jest) and `test:integration` (mocha) | `engines` `>=18` for consumers; Node 22.14 for development |
+| Node.js | All of `src/` is shared; no platform-specific code | `main` build output from `yarn workspace @webex/internal-plugin-task build:src`; tested by `test:unit` (Jest); `test:integration` (mocha) runs a mock-only spec that does not import this package | `engines` `>=18` for consumers; Node 22.14 for development |
 | Browser | Same `src/`, bundled by the consumer through the `browserify` transforms (`babelify`, `envify`) in `package.json` | `yarn workspace @webex/internal-plugin-task test:browser` (karma), with the package-root `process` browser-testing file | Unit-spec behavior under karma: see [Getting started](getting-started.md) Tests |
 
 ## Release and versioning

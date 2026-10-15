@@ -158,6 +158,30 @@
       "recommended": [
         "yarn workspace @webex/internal-plugin-task test:integration"
       ]
+    },
+    {
+      "paths": [
+        "AGENTS.md",
+        "docs/**",
+        "src/docs/**",
+        ".sdd/manifest.json",
+        ".repo-context.json"
+      ],
+      "minimum": [
+        "spec-validator on an independent runtime"
+      ],
+      "recommended": [
+        "the Repo Annotation checkers with the temporary local template symlink"
+      ]
+    },
+    {
+      "paths": [
+        "process"
+      ],
+      "minimum": [
+        "yarn workspace @webex/internal-plugin-task test:browser"
+      ],
+      "recommended": []
     }
   ],
   "change_impact": [
@@ -248,6 +272,24 @@
         "dist"
       ],
       "notes": "package.json is the native artifact of the published task-sdk contract; update .sdd/manifest.json commands and docs/getting-started.md when a script changes."
+    },
+    {
+      "paths": [
+        "process"
+      ],
+      "affects": [
+        "the legacy-tools browser test run (test:browser)"
+      ],
+      "refresh_with": [
+        "edit by hand, then run the test:browser comparison described in notes"
+      ],
+      "validate_with": [
+        "yarn workspace @webex/internal-plugin-task test:browser"
+      ],
+      "avoid_direct_edits": [
+        "dist"
+      ],
+      "notes": "A passing browser run has not been verified (the unit specs use Jest globals that karma does not provide), so compare the test:browser result before and after the change."
     }
   ],
   "evidence_rules": [
