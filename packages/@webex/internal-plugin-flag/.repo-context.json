@@ -53,7 +53,7 @@
         "deploy:npm"
       ],
       "audience": "contributors and CI",
-      "notes": "Do not use the aggregate test script; it calls test:integration, which is not defined. test:unit needs this package's build output and the sibling packages' build output."
+      "notes": "Do not use the aggregate test script; it calls test:integration, which is not defined. test:unit needs this package's build output and the sibling packages' build output. deploy:npm is run by the repository release workflow (.github/workflows/deploy.yml) with public access, the branch dist-tag, and an npm token; a direct run uses Yarn's default access and dist-tag, the registry from the root .yarnrc.yml npmRegistryServer, and the caller's own npm auth."
     }
   ],
   "source_of_truth": [
@@ -337,7 +337,7 @@
         "name": "integration tests",
         "command": "yarn workspace @webex/internal-plugin-flag test:browser",
         "scope": "test/integration/spec",
-        "notes": "Mocha specs with Chai assertions, run in browsers by the karma runner through the test:browser script, integration files only (no test:integration script exists); the unit spec is not collected. Needs Chrome and Firefox (the karma-browsers default), network access, and the WEBEX_CLIENT_ID and WEBEX_CLIENT_SECRET environment variables required by the workspace test-users helper."
+        "notes": "Mocha specs with Chai assertions, run in browsers by the karma runner through the test:browser script, integration files only (no test:integration script exists). Build first: the spec imports the package by name, which resolves to dist/; the unit spec is not collected. Needs Chrome and Firefox (the karma-browsers default), network access, and the WEBEX_CLIENT_ID and WEBEX_CLIENT_SECRET environment variables required by the workspace test-users helper."
       },
       {
         "name": "lint",

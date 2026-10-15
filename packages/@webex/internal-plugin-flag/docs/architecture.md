@@ -9,7 +9,7 @@ doc_kind: standing-doc
 generated_from: architecture@0.3.0
 generated_by: claude-cowork
 approved_by: akulakum@cisco.com
-updated_at: 2026-10-15T12:23:50Z
+updated_at: 2026-10-15T12:34:03Z
 validation_status: pass-with-warnings
 -->
 
@@ -161,7 +161,7 @@ surface is served, so `api-specs/openapi.yaml` is omitted.
 
 | Artifact | Publish target | Versioning rule | Deprecation window | Changelog or migration obligation |
 | -------- | -------------- | --------------- | ------------------ | --------------------------------- |
-| `@webex/internal-plugin-flag` | npm, through the `deploy:npm` script (manifest `commands.deploy`) | Workspace release tooling; README says the internal plugin does not strictly follow semver | None declared in code | No package-local changelog; workspace tooling owns it |
+| `@webex/internal-plugin-flag` | npm, through the `deploy:npm` script (manifest `commands.deploy`) | Workspace release workflow (file .github/workflows/deploy.yml at the repository root), which runs this script for each released package with public access, the branch as the dist-tag, and an npm token; README says the internal plugin does not strictly follow semver | None declared in code | No package-local changelog; workspace tooling owns it |
 
 ## Commands and generated artifacts
 
@@ -173,7 +173,7 @@ surface is served, so `api-specs/openapi.yaml` is omitted.
 | `yarn workspace @webex/internal-plugin-flag test:unit` | package | `test/unit/spec/` | Jest result | See Getting started Tests |
 | `yarn workspace @webex/internal-plugin-flag test:browser` | package | `test/integration/spec/` | karma result | The integration tier; see Getting started Tests |
 | `yarn workspace @webex/internal-plugin-flag test:style` | package | files under `src/` | eslint result | See Getting started Tests |
-| `yarn workspace @webex/internal-plugin-flag deploy:npm` | package | build output, `package.json` | Publishes the package to the npm registry | Release pipeline only |
+| `yarn workspace @webex/internal-plugin-flag deploy:npm` | package | build output, `package.json` | Publishes the package to the npm registry | Release pipeline only: the release workflow adds public access, the dist-tag, and the npm token; a direct run publishes with Yarn's default access and dist-tag, to the registry set by the root `.yarnrc.yml` `npmRegistryServer`, using the caller's own npm auth |
 
 ## Cross-repository topology
 
@@ -184,7 +184,7 @@ surface is served, so `api-specs/openapi.yaml` is omitted.
 | Sibling package internal-plugin-device | Consumes | `webex-device-registration` | @webex/web-client and @webex/web-sdk (explicit CODEOWNERS entry) | Imported before registration |
 | Sibling package webex-server | Consumed by | `flag-sdk` (import for side effect) | @webex/web-sdk (CODEOWNERS default rule) | Resolves this package's build output |
 | Sibling package recipe-private-web-client | Consumed by | `flag-sdk` (import for side effect) | @webex/web-client (explicit CODEOWNERS entry) | Resolves this package's build output |
-| User-apps flags service and conversation service | Calls | `user-apps-flags-http`, `conversation-bulk-activities-http` | Service owners outside this repository | `mapToActivities` waits on the services plugin's postauth catalog wait before a bulk fetch; that wait can resolve without a ready postauth catalog (owned by webex-core services), and then activity hosts are not recognized |
+| User-apps flags service and conversation service | Calls | `user-apps-flags-http`, `conversation-bulk-activities-http` | Service owners outside this repository | `mapToActivities` waits on the services plugin's postauth catalog wait before a bulk fetch; that wait can resolve without a ready postauth catalog (owned by webex-core services); then only the conversation prefixes that another catalog group can still resolve are fetched, so results can be partial or empty |
 
 These are sibling workspace packages and services outside this package-scoped SDD root.
 

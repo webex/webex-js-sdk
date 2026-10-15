@@ -51,7 +51,13 @@
       "name": "node",
       "version": "22.14",
       "origin": "human-declared",
-      "declared_by": "akulakum@cisco.com (bootstrap instruction to use Node 22.14.0; the workspace root AGENTS.md requires Node 22.14 for development; consumer floor: see docs/getting-started.md Prerequisites)"
+      "declared_by": "akulakum@cisco.com (bootstrap instruction to use Node 22.14.0; the workspace root AGENTS.md requires Node 22.14 for development; the root package.json engines value 18.x conflicts with it, and the owner chose to follow the root AGENTS.md; consumer floor: the node-consumer-floor entry and docs/getting-started.md Prerequisites)"
+    },
+    {
+      "name": "node-consumer-floor",
+      "version": ">=18",
+      "origin": "repo-config",
+      "source_file": "package.json"
     },
     {
       "name": "yarn",

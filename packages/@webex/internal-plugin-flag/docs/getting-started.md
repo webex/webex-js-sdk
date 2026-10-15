@@ -9,7 +9,7 @@ doc_kind: standing-doc
 generated_from: getting-started@0.3.0
 generated_by: claude-cowork
 approved_by: akulakum@cisco.com
-updated_at: 2026-10-15T12:23:50Z
+updated_at: 2026-10-15T12:30:03Z
 validation_status: pass-with-warnings
 -->
 
@@ -67,7 +67,7 @@ yarn workspace @webex/internal-plugin-flag test:unit
 | Tier | Command | Test location | Framework | External dependencies |
 | ---- | ------- | ------------- | --------- | --------------------- |
 | Unit | `yarn workspace @webex/internal-plugin-flag test:unit` | `test/unit/spec` | Jest | This package's build output and the built workspace packages it imports |
-| Integration | `yarn workspace @webex/internal-plugin-flag test:browser` | `test/integration/spec` | Mocha with Chai assertions (karma runner) | Chrome and Firefox (see Prerequisites), network access, and the `WEBEX_CLIENT_ID` and `WEBEX_CLIENT_SECRET` environment variables that the workspace test-users helper requires; its other settings have defaults in the workspace root `.env.default` |
+| Integration | `yarn workspace @webex/internal-plugin-flag test:browser` | `test/integration/spec` | Mocha with Chai assertions (karma runner) | Chrome and Firefox (see Prerequisites), network access, and the `WEBEX_CLIENT_ID` and `WEBEX_CLIENT_SECRET` environment variables that the workspace test-users helper requires; its other settings have defaults in the workspace root `.env.default`; this package's build output, which the spec imports by name |
 | Lint | `yarn workspace @webex/internal-plugin-flag test:style` | `src/` | eslint | None |
 
 - The integration tier is manifest `commands.integration-test` and `tests.integration`. The package
@@ -90,9 +90,10 @@ yarn workspace @webex/internal-plugin-flag test:unit
   `collectCoverage: false` and no threshold.
 - Test environment or QA dependencies: none beyond the workspace for the unit tier; the integration
   tier needs the variables in its table row. `test/unit/spec/flag.js` imports this package by name,
-  which resolves to the build output, so a stale build tests old code. Run
+  which resolves to the build output, so a stale build tests old code. `test/integration/spec/flag.js`
+  imports it the same way, so `test:browser` also runs against the build output. Run
   `yarn workspace @webex/internal-plugin-flag build` again after any `src/` change before
-  `test:unit`.
+  `test:unit` or `test:browser`.
 
 ## Configuration and secrets
 
