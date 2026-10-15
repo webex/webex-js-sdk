@@ -9,7 +9,7 @@ doc_kind: module-spec
 generated_from: module-spec@0.3.0
 generated_by: claude-cowork
 approved_by: akulakum@cisco.com
-updated_at: 2026-10-15T15:33:39Z
+updated_at: 2026-10-15T15:50:41Z
 validation_status: pass-with-warnings
 -->
 
@@ -37,7 +37,7 @@ Related context: [documentation index](../../docs/index.md) ·
 | Parent spec | — |
 | Doc kind | Module spec |
 | Coverage score | 93.3% assessed 2026-10-13 — 14 of 15 mandatory fields PRESENT, critical 8 of 8; test strategy is WEAK (gaps listed under Verification) and no characterization baseline exists |
-| Validation status | PASS-WITH-WARNINGS; validator Codex; assessed 2026-10-13; source 4b982eb; findings: 0 Blocking, 0 Important, 0 Medium, 1 Minor. |
+| Validation status | PASS-WITH-WARNINGS; validator current-session; assessed 2026-10-15; source 8d56e3b; findings: 0 Blocking, 1 Important, 0 Medium, 1 Minor. |
 
 ## Applicability
 

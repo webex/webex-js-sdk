@@ -132,7 +132,7 @@
       "path": "src",
       "canonical_spec": "src/docs/README.md",
       "coverage_status": "Partial",
-      "coverage_evidence": "Field coverage 93.3% (14/15) assessed 2026-10-13 by the generator; critical field coverage 8/8. The one WEAK field is test strategy: test/unit/spec/webex.js runs 4 Jest cases (version and fedramp) and three loadable Mocha integration specs cover commonjs loading, init merge, and the user-agent header (the request.js user-agent case fails while package.json has no version) (the fourth, test/integration/spec/env.js, requires the unexported webex/env subpath and cannot reach env.js), but no test exercises meetings, encryption, first-party, Calling, the storage choice, or the UMD bundles, and no characterization baseline exists. Independent validation: see the Validation status row of the module spec. Held at Partial: untested entries, no characterization baseline, and no spec-drift record. PASS-WITH-WARNINGS; validator Codex; assessed 2026-10-13; source 4b982eb; findings: 0 Blocking, 0 Important, 0 Medium, 1 Minor.",
+      "coverage_evidence": "Field coverage 93.3% (14/15) assessed 2026-10-13 by the generator; critical field coverage 8/8. The one WEAK field is test strategy: test/unit/spec/webex.js runs 4 Jest cases (version and fedramp) and three loadable Mocha integration specs cover commonjs loading, init merge, and the user-agent header (the request.js user-agent case fails while package.json has no version) (the fourth, test/integration/spec/env.js, requires the unexported webex/env subpath and cannot reach env.js), but no test exercises meetings, encryption, first-party, Calling, the storage choice, or the UMD bundles, and no characterization baseline exists. Independent validation: see the Validation status row of the module spec. Held at Partial: untested entries, no characterization baseline, and no spec-drift record. PASS-WITH-WARNINGS; validator current-session; assessed 2026-10-15; source 8d56e3b; findings: 0 Blocking, 1 Important, 0 Medium, 1 Minor.",
       "last_assessed": "2026-10-13",
       "contracts": {
         "provides": [
@@ -269,10 +269,10 @@
     ],
     "base_ref": "next",
     "head_ref": "APPLY_SDD_FOR_WEBEX_PACKAGE",
-    "validator_runtime": "Codex",
-    "validator_runtime_source": "host-metadata",
-    "validator_run_id": "spark-853131-spec-validator-r8-2026-10-13",
-    "source_commit": "4b982ebb718cf1a60201e20fe1e95440e0278bdf"
+    "validator_runtime": "current-session",
+    "validator_runtime_source": "invocation-input",
+    "validator_run_id": "spark-853131-spec-validator-r9-2026-10-15",
+    "source_commit": "8d56e3b16e005bb958c27e13ff93fc03544052f1"
   },
   "layout": {
     "sdd_root": ".sdd",
