@@ -47,13 +47,13 @@ Related context: [documentation index](../../docs/index.md) ·
 | `module.crosses_service_boundaries`  | Applicable | Every task method calls the Raindrop service through webex.request; register calls the device and Mercury plugins; the helpers call the encryption plugin | Cross-boundary use-case flow |
 | `module.holds_client_state`          | Applicable | The plugin keeps the in-memory registered flag across calls in `src/task.js`; Task DTOs are returned to the caller, not kept | Client state model |
 | `module.enforces_domain_rules`       | Applicable | Which task fields are encrypted, how the key is chosen, and which responses are decrypted, in `src/helpers/encrypt.helper.js` and `src/helpers/decrypt.helper.js` | Business rules and invariants |
-| `module.is_concurrent_async`         | Applicable | Public methods return promises, except that createTask and updateTask throw synchronously without data (see Caller-visible failure modes); field encryption and decryption run in parallel | Concurrency and reactive flow |
+| `module.is_concurrent_async`         | Applicable | Public methods return promises, except that createTask and updateTask throw synchronously without data and unregister throws synchronously when a task:unregistered listener throws (see Caller-visible failure modes); field encryption and decryption run in parallel | Concurrency and reactive flow |
 | `module.owns_persistence`            | N/A        | Nothing is stored by this package | Data, schema, and migration |
 | `module.stateful_transitions`        | Applicable | register and unregister move the plugin between unregistered and registered and emit events | State machine |
 | `module.exposes_wire_protocol`       | Applicable | Raindrop request shapes, the encrypted title and notes fields, encryptionKeyUrl, and the plugin event names | Protocol and wire format |
 | `module.ui_multi_screen`             | N/A        | No UI | UI flow |
 | `module.large_data_model`            | N/A        | The task DTO is passed through. Only items, title, notes, and encryptionKeyUrl are read or written. | Data model |
-| `module.returns_caller_errors`       | Applicable | register rejects with its own error; other failures propagate from the encryption plugin and webex.request; createTask and updateTask can throw synchronously | Caller-visible failure modes |
+| `module.returns_caller_errors`       | Applicable | register rejects with its own error; other failures propagate from the encryption plugin and webex.request; createTask and updateTask can throw synchronously, and unregister throws synchronously when a task:unregistered listener throws | Caller-visible failure modes |
 | `module.module_specific_conventions` | Applicable | Resolving the whole response, decrypting every task-bearing response, and the Task->method#LEVEL log prefix | Module-specific rules |
 | `module.published_package`           | Applicable | `package.json` names the package @webex/internal-plugin-task and deploy:npm publishes it | Export stability |
 | `module.embedded_in_host`            | N/A        | No host theme or embed API | Host integration and theming |
@@ -362,7 +362,7 @@ classDiagram
 ## Concurrency and reactive flow
 
 - Execution model: single JavaScript event loop. Every public method returns a promise, except the
-  synchronous throw listed under Caller-visible failure modes.
+  synchronous throws listed under Caller-visible failure modes.
 - Ordering guarantees: `title` and `notes` are encrypted, and decrypted, in parallel with
   `Promise.all`; a list body is decrypted for all items in parallel. No ordering across calls.
 - Idempotency and retry: no retry or deduplication in this module; see Pitfalls for concurrent
@@ -392,7 +392,8 @@ stateDiagram-v2
 - Terminal state: none; the plugin can be registered again.
 - Event timing: `task:registered` is triggered before `registered` becomes true, and
   `task:unregistered` before it becomes false, so a listener that reads `registered` sees the old
-  value.
+  value. Events are emitted synchronously; a throwing listener's effect is under Caller-visible
+  failure modes.
 
 ## Protocol and wire format
 
@@ -413,10 +414,11 @@ stateDiagram-v2
 | --------- | ---------------- | --------------- | ----------------- | -------- |
 | `register` while the SDK cannot authorize | Rejects per `INV-005`; logged at error level | Authenticate first | Call again after authorization | `src/task.js` |
 | `register` when the device or Mercury rejects | Rejects with the same error; logged with its message | Inspect the dependency error | Call again; `registered` is still false | `src/task.js` |
+| A `task:registered` or `task:unregistered` listener throws | `register` logs the error and rejects with it, and `registered` stays false; `unregister` throws the error synchronously, not as a rejected promise, and `registered` stays true | Keep listeners from throwing, or wrap `unregister` in try | Fix the listener and call again | `src/task.js` |
 | `createTask` or `updateTask` without `data` | Synchronous TypeError reading `encryptionKeyUrl`, not a rejected promise | Pass an object | None | `src/helpers/encrypt.helper.js` |
 | Key creation or encryption fails | Rejects with the encryption plugin's error; no request is sent | Inspect the error | Retry with a fresh object (see Pitfalls) | `src/helpers/encrypt.helper.js` |
 | HTTP failure status (default interceptor set; see Dependencies) | Rejects with the `WebexHttpError` subtype for the final status (`NetworkOrCORSError` for a network failure), after any 401 refresh-and-replay or redirect that webex-core performs, except the two 404 bodies in the next row | Inspect the class or status | None here | `src/task.js`; sibling package http-core, file src/interceptors/http-status.js |
-| HTTP 404 whose body has errorCode 2000002 without location, or code 404100 without data.siteFullUrl (default interceptor set) | The promise resolves with the 404 response instead of rejecting: http-core passes these redirect bodies through, and webex-core redirects only when a target is present | Check `response.statusCode` before reading the body | None here | `src/task.js`; sibling package http-core, file src/interceptors/http-status.js; sibling package webex-core, file src/interceptors/redirect.js |
+| HTTP 404 whose body has errorCode 2000002 without location, or code 404100 without data.siteFullUrl, and with no cisco-location response header (default interceptor set) | The promise resolves with the 404 response instead of rejecting: http-core passes these redirect bodies through, and webex-core redirects only when a target is present. A cisco-location header is still followed, subject to the redirect-limit row below | Check `response.statusCode` before reading the body | None here | `src/task.js`; sibling package http-core, file src/interceptors/http-status.js; sibling package webex-core, file src/interceptors/redirect.js |
 | webex-core retry or redirect limit reached (default interceptor set) | Rejects with a plain `Error`, not a `WebexHttpError`: `Failed after N replay attempts` when 401 replays exceed `maxAuthenticationReplays`, or `Maximum redirects exceeded` when redirects exceed their limit | Treat as an authentication or routing problem | None here | Sibling package webex-core, files src/interceptors/auth.js and src/interceptors/redirect.js |
 | The catalog has no `raindrop` service (default set) | Rejects with a plain `Error` whose message is `service-interceptor: 'raindrop' is not a known service` | Treat as an environment problem | None here | Sibling package webex-core, file src/lib/interceptors/service.js |
 | Decryption of a response fails | Rejects with the encryption plugin's error, even though the server already applied the request | Do not assume the write failed | Read the task again | `src/helpers/decrypt.helper.js` |

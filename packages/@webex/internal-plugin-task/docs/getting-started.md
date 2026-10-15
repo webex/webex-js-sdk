@@ -23,7 +23,7 @@ Onboarding for **@webex/internal-plugin-task**. Commands run from the webex-js-s
 | -------------- | ---------------------- |
 | Node.js | 22.14, required for working in this repository by the workspace root `AGENTS.md`; the root `.nvmrc` selects the Node 22 LTS line |
 | Yarn | The version pinned by the workspace root `packageManager` field, provided through Corepack: enable Corepack for the selected Node.js version, as the workspace root `CONTRIBUTING.md` setup steps require. Workspaces are used, so install from the workspace root rather than this directory |
-| Browser for `test:browser` | A local browser for the karma runner that `test:browser` starts through `@webex/legacy-tools` |
+| Browsers for `test:browser` | Chrome and Firefox: the karma runner that `test:browser` starts through `@webex/legacy-tools` defaults to both, and the workspace root `CONTRIBUTING.md` lists both for browser testing |
 
 The `package.json` `engines` value `>=18` is the floor for applications that install the package,
 not the development runtime.

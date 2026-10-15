@@ -165,7 +165,8 @@
         "docs/**",
         "src/docs/**",
         ".sdd/manifest.json",
-        ".repo-context.json"
+        ".repo-context.json",
+        "schemas/repo-context.schema.json"
       ],
       "minimum": [
         "spec-validator on an independent runtime"
