@@ -111,6 +111,7 @@ interface IVoiceaChannel {
     csis: number[],
     isFinal: boolean
   ) => void;
+  getKeepTranscriptionSubscribed: () => boolean;
 }
 
 type MeetingTranscripts = {
