@@ -200,6 +200,7 @@ PR checklist:
 - Bypass required checks by disabling tests or linters.
 - Rewrite history on shared branches.
 - Change unrelated files "while here" without clear need.
-- Copy template bodies or `template-map.json` into this package, or replace the
-  `.sdd/templates/repo-standards` symlink with a real directory. It points at the repository-root
-  `.sdd/templates/repo-standards` snapshot, which is the only template source.
+- Copy template bodies or `template-map.json` into this package, or commit anything under
+  `.sdd/templates/`. The repository-root `.sdd/templates/repo-standards` snapshot is the only
+  template source. The Repo Annotation checkers and validator expect a temporary, uncommitted
+  local symlink to it at `.sdd/templates/repo-standards`, which is removed before a PR.
