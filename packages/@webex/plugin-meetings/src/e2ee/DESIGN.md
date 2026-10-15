@@ -400,23 +400,25 @@ the failure through `js_sdk_e2ee_domain_name_roots_load_failure` and continues w
 The meeting can still join MLS, though identity verification for some remote participants may be
 unavailable.
 
-The consuming application hosts `plugin-meetings/dist/assets` and configures
-`meetings.assetsBaseUrl`. Use a version-pinned URL for CDN hosting so the assets remain compatible
-with the JavaScript SDK version. CDN hosts must allow cross-origin requests from the application
-and serve `e2ee.js` with a JavaScript MIME type:
+The consuming application hosts the plugin's static assets and configures `meetings.assetsBaseUrl`.
+For npm builds, assets are in `plugin-meetings/dist/assets`; for UMD builds,
+`yarn build:script` copies them to `packages/webex/umd/assets`. Use a version-pinned URL for CDN
+hosting so the assets remain compatible with the JavaScript SDK version. CDN hosts must allow
+cross-origin requests from the application and serve `e2ee.js` with a JavaScript MIME type:
 
 ```ts
 meetings: {
-  assetsBaseUrl: 'https://cdn.example.com/webex-js-sdk/1.2.3/plugin-meetings/assets/',
+  assetsBaseUrl: 'https://cdn.example.com/webex-js-sdk/1.2.3/umd/assets/',
 }
 ```
 
 These files are runtime assets, not part of the SDK JavaScript bundle. The plugin build copies the
-contents of `plugin-meetings/assets` into `plugin-meetings/dist/assets`; the consuming application
-then publishes that directory and serves it at the configured base URL. For local SDK samples,
-`samples:serve` maps the source `plugin-meetings/assets` directory to `/assets`, so the default URL
-works without first building the plugin package. Other development or deployment servers need to
-provide the same URL mapping (or configure `assetsBaseUrl` to their hosted location).
+contents of `plugin-meetings/assets` into `plugin-meetings/dist/assets`, and the UMD Webpack build
+emits the same files under `packages/webex/umd/assets`. CDN deployments should publish the assets
+alongside the version-matched UMD bundles and set `assetsBaseUrl` to that CDN directory. For local
+SDK samples, `samples:serve` maps the source `plugin-meetings/assets` directory to `/assets`, so the
+default URL works without first building the plugin package. Other development or deployment
+servers need to provide the same URL mapping (or configure `assetsBaseUrl` to their hosted location).
 
 ### `MemberMLSReconciler`
 
