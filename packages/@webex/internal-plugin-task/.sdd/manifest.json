@@ -83,6 +83,16 @@
       "source_file": "package.json"
     }
   ],
+  "registries": [
+    {
+      "name": "npmjs-public",
+      "type": "npm",
+      "host": "registry.npmjs.org",
+      "egress_required": true,
+      "origin": "human-declared",
+      "declared_by": "akulakum@cisco.com (registry set by the workspace root .yarnrc.yml npmRegistryServer; the package-scoped manifest records no root source_file)"
+    }
+  ],
   "tests": {
     "unit": {
       "command_ref": "unit-test",

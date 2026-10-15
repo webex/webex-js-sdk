@@ -182,6 +182,27 @@
         "yarn workspace @webex/internal-plugin-task test:browser"
       ],
       "recommended": []
+    },
+    {
+      "paths": [
+        "test/unit/spec/**"
+      ],
+      "minimum": [
+        "yarn workspace @webex/internal-plugin-task build:src",
+        "yarn workspace @webex/internal-plugin-task test:unit"
+      ],
+      "recommended": [
+        "yarn workspace @webex/internal-plugin-task test:style"
+      ]
+    },
+    {
+      "paths": [
+        "test/integration/spec/**"
+      ],
+      "minimum": [
+        "yarn workspace @webex/internal-plugin-task test:integration"
+      ],
+      "recommended": []
     }
   ],
   "change_impact": [

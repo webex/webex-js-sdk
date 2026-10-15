@@ -150,8 +150,9 @@ Pattern example:
 
 ```text
 Preferred:
-- Build a new REST method as encryptTaskRequest, then this.request, then the decrypt helper,
-  then resolve the response.
+- Build a new write that sends title or notes as encryptTaskRequest, then this.request, then the
+  decrypt helper, then resolve the response. Reads and bodyless actions skip encryptTaskRequest
+  and still run the decrypt helper on a task-bearing body.
 
 Avoid:
 - Resolving response.body instead of the response.
