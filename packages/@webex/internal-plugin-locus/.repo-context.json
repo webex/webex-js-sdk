@@ -3,7 +3,7 @@
   "version": 1,
   "repository": {
     "name": "@webex/internal-plugin-locus",
-    "purpose": "Internal Webex JS SDK plugin for the Locus call and meeting state service. It registers webex.internal.locus, wraps the Locus REST operations (create, join, alert, decline, leave, get, list, sync, media update, DTMF, and floor grant) and the Janus call-history query, compares Locus sequence objects to decide whether an incoming Locus DTO replaces, is ignored, or requires a fetch, merges Locus delta DTOs into a caller-held working copy, and exports the list of Locus event names."
+    "purpose": "Internal Webex JS SDK plugin for the Locus call and meeting state service. It registers webex.internal.locus, wraps the Locus REST operations (create, join, alert, decline, leave, get, list, sync, media update, DTMF, and floor grant) and the Janus call-history query, compares Locus sequence objects to decide whether an incoming Locus DTO replaces, is ignored, or requires a fetch, merges Locus delta DTOs into a caller-held working copy, and exports a fixed list of 17 Locus event names (not exhaustive)."
   },
   "commands": {
     "install": "yarn install",
@@ -64,7 +64,7 @@
         "deploy:npm"
       ],
       "audience": "contributors and CI",
-      "notes": "Do not run the aggregate test script: it chains test:integration, which is not defined. test:browser runs the karma integration runner, but this package has no test/integration directory."
+      "notes": "Do not run the aggregate test script: it chains test:integration, which is not defined. test:browser invokes webex-legacy-tools with --integration --runner karma; with no test/integration directory it collects no files and does not start karma."
     }
   ],
   "source_of_truth": [
@@ -324,7 +324,7 @@
         "name": "browser tests",
         "command": "yarn workspace @webex/internal-plugin-locus test:browser",
         "scope": "integration specs, of which this package has none",
-        "notes": "karma via webex-legacy-tools --integration."
+        "notes": "karma via webex-legacy-tools --integration; with no integration specs it collects no files and starts no browser."
       },
       {
         "name": "lint",

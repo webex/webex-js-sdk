@@ -46,15 +46,15 @@ commands from the monorepo root.
 | ---------------------- | ------- |
 | Install dependencies   | `yarn install` (workspace root) |
 | Start dev environment  | N/A — library package with no start script in `package.json` |
-| Run tests              | `yarn workspace @webex/internal-plugin-locus test:unit` (Jest); `yarn workspace @webex/internal-plugin-locus test:browser` (karma) |
+| Run tests              | `yarn workspace @webex/internal-plugin-locus test:unit` (Jest); `test:browser` exists but runs nothing in this package (see below) |
 | Run linters            | `yarn workspace @webex/internal-plugin-locus test:style` |
 | Build/release artifact | `yarn workspace @webex/internal-plugin-locus build` (runs `build:src`) |
 | Format code            | N/A — no format script; `prettier` is a devDependency used through eslint |
 
 The `package.json` script `test` chains `test:style`, `test:unit`, `test:integration`, and
 `test:browser`. `test:integration` is not defined, so that aggregate script is not a verification
-command. `test:browser` starts the karma integration runner, but this package has no integration
-specs.
+command. `test:browser` invokes the karma integration runner, but this package has no integration
+specs, so it collects no files and starts no browser.
 
 If a required command is unknown, stop and ask for the exact command.
 
@@ -81,7 +81,7 @@ Definition of done:
 
 | Area             | Tooling | Version |
 | ---------------- | ------- | ------- |
-| Language runtime | node | 22.14 for development (workspace root `AGENTS.md`); `>=18` for consumers (`package.json` engines) |
+| Language runtime | node | 22.14 for development (workspace root `AGENTS.md` and `.nvmrc`; the root `package.json` `engines.node` still declares `18.x`); `>=18` for consumers (`package.json` engines) |
 | Build tool       | `@webex/legacy-tools` over babel | `@babel/core` `^7.17.10` |
 | Test framework   | Jest via `webex-legacy-tools` (`test:unit`); karma via `test:browser`; chai and `@webex/test-helper-mock-webex` | workspace versions |
 | Lint/format      | eslint via `@webex/eslint-config-legacy`, prettier | eslint `^8.24.0`, prettier `^2.7.1` |
@@ -91,7 +91,7 @@ Definition of done:
 - `src/index.js`: imports the Mercury plugin, registers internal plugin `locus`, and re-exports
   `Locus`, `eventKeys`, and seven sequence constants.
 - `src/locus.js`: the `Locus` plugin. Spec: `src/docs/README.md`.
-- `src/event-keys.js`: the list of Locus event names.
+- `src/event-keys.js`: a fixed list of 17 Locus event names (not exhaustive).
 - `test/unit/spec/locus.js`: the only unit spec; it expands the JSON fixtures into test cases.
 - `test/unit/lib/BasicSeqCmp.json` and `test/unit/lib/SeqCmp.json`: sequence fixtures.
 - Build output from `build:src`: generated. Never edit by hand.
@@ -103,7 +103,8 @@ Definition of done:
   to apply, ignore, or fetch a Locus from it.
 - `compare` and `merge` are pure. Do not add plugin state.
 - Request bodies carry the device URL and the caller's sequence as the module spec invariant
-  `INV-007` lists; the device plugin is reached only through the Mercury import.
+  `INV-007` lists; this package does not import the device plugin, and the Mercury import registers
+  it transitively.
 - `localSdp` is sent as a JSON string, not an object.
 - Known defects, such as `merge` throwing on a delta without `participants`, are recorded in the
   module spec Pitfalls. Fix them only in a dedicated change with a test.
@@ -143,7 +144,7 @@ Pattern example:
 ```text
 Preferred:
 - Resolve res.body or the documented field from a REST wrapper.
-- Recover a `WebexHttpError.Conflict` by returning the current Locus only where decline and leave
+- Recover a `WebexHttpError.Conflict` by returning the result of `get(locus)` only where decline and leave
   already do.
 
 Avoid:
@@ -153,11 +154,10 @@ Avoid:
 
 ## 6. Git Workflow
 
-- Branch naming: no package convention is defined; follow the workspace `CONTRIBUTING.md`.
+- Branch naming: no convention is defined in this package or in the workspace `CONTRIBUTING.md`.
 - Commit format: conventional commits (`feat:`, `fix:`, `docs:`, `refactor:`, `test:`, `chore:`), which
   the workspace `CONTRIBUTING.md` requires for pull requests.
 - Keep commits focused and reversible.
-- Rebase on the target branch before opening a pull request.
 
 PR checklist:
 

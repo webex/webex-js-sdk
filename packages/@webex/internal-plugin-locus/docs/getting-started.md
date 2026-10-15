@@ -21,9 +21,9 @@ Onboarding for **@webex/internal-plugin-locus**. Commands run from the webex-js-
 
 | Tool or access | Version or requirement |
 | -------------- | ---------------------- |
-| Node.js | 22.14, required for working in this repository by the workspace root `AGENTS.md`; the root `.nvmrc` selects the Node 22 LTS line |
+| Node.js | 22.14, required for working in this repository by the workspace root `AGENTS.md`; the root `.nvmrc` selects the Node 22 LTS line (the root `package.json` `engines.node` still declares `18.x`; the root `AGENTS.md` and `.nvmrc` take precedence for development) |
 | Yarn | The version pinned by the workspace root `packageManager` field, provided through Corepack, which must be enabled for the selected Node.js version, as the workspace root `CONTRIBUTING.md` setup requires. Workspaces are used, so install from the workspace root rather than this directory |
-| Browser for `test:browser` | A local browser for the karma runner that `test:browser` starts through `@webex/legacy-tools` |
+| Browser for `test:browser` | Not needed for this package: with no integration specs, the legacy-tools karma runner collects no files and starts no browser |
 
 The `package.json` `engines` value `>=18` is the floor for applications that install the package,
 not the development runtime.
@@ -61,7 +61,7 @@ yarn workspace @webex/internal-plugin-locus test:unit
 | Tier | Command | Test location | Framework | External dependencies |
 | ---- | ------- | ------------- | --------- | --------------------- |
 | Unit | `yarn workspace @webex/internal-plugin-locus test:unit` | `test/unit/spec`, fixtures in `test/unit/lib` | Jest, chai, `@webex/test-helper-mock-webex` | Built workspace packages that the spec imports |
-| Browser | `yarn workspace @webex/internal-plugin-locus test:browser` | Integration specs; none exist in this package | karma | A browser |
+| Browser | `yarn workspace @webex/internal-plugin-locus test:browser` | Integration specs; none exist in this package | karma | None here; the command runs nothing |
 | Lint | `yarn workspace @webex/internal-plugin-locus test:style` | `src/` | eslint | None |
 
 - The browser run is manifest `commands.browser-test` with role `other`, because the SDD manifest
@@ -84,7 +84,7 @@ yarn workspace @webex/internal-plugin-locus test:unit
   environment variable or feature toggle.
 - Secret source: none in this package. The access token is attached by the webex-core request
   pipeline at runtime.
-- Package or artifact access: N/A — workspace dependencies only.
+- Package or artifact access: `yarn install` needs network access to the configured npm registry (or a proxy), because registry packages such as `lodash`, `uuid`, and `eslint` are declared and no Yarn cache is committed.
 - Required neighboring repositories or workspace layout: the webex-js-sdk workspace, because sibling
   packages such as webex-core and internal-plugin-mercury are `workspace:*` dependencies.
 - Platform, simulator, device, or SDK setup: N/A.

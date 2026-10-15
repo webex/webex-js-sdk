@@ -45,8 +45,8 @@ Related context: [specification registry](specs/README.md) ·
 ## Design overview
 
 `@webex/internal-plugin-locus` is a published library with one module. Importing it imports the
-Mercury plugin and registers `Locus` as the internal plugin `locus`, so every webex instance has
-`webex.internal.locus`.
+Mercury plugin and registers `Locus` as the internal plugin `locus` (unless a plugin with that name is already
+registered), so webex instances constructed after the import have `webex.internal.locus`.
 
 The plugin has two halves. REST wrappers call the Locus service for call setup, participant actions,
 media updates, DTMF, floor control, and reads, plus one Janus query for call history. Pure functions
@@ -95,7 +95,7 @@ flowchart LR
 | `src/index.js` | internal-plugin-mercury | side-effect import | Register Mercury on the same webex instance; see Dependency topology | Load-time only |
 | Caller | `webex.internal.locus` | method calls | REST operations and DTO reconciliation | See the Locus plugin spec failure modes |
 | `src/locus.js` | `webex.request` | in-process promise | Send HTTP requests | Rejections propagate, except the Conflict recovery |
-| `webex.request` | Locus and Janus services | HTTP | Call state and history | webex-core's default interceptor set converts error statuses to `WebexHttpError` subtypes, except the Locus and App API 404 redirect responses; other interceptors can reject with their own errors. See the Locus plugin spec Dependencies and Caller-visible failure modes |
+| `webex.request` | Locus and Janus services | HTTP | Call state and history | webex-core's default interceptor set converts error statuses to `WebexHttpError` subtypes, except the Locus and App API 404 redirect responses (which resolve when they carry no redirect target); other interceptors can reject with their own errors. See the Locus plugin spec Dependencies and Caller-visible failure modes |
 
 ## Dependency topology
 
@@ -107,8 +107,9 @@ flowchart LR
 | `lodash` | External | `src` | Clone, set difference, memoize | Range in `package.json` |
 | `uuid` | External | `src` | DTMF correlation id | Range in `package.json` |
 
-Ordering constraint: the device plugin must be registered before a request that sends the device
-URL runs. No dependency cycle exists inside the package. The test helpers listed
+Ordering constraint: before a request that sends the device URL runs, the device plugin must be
+on the instance (otherwise reading `url` throws) and the device must have a `url` (otherwise
+`deviceUrl` is left out). No dependency cycle exists inside the package. The test helpers listed
 under `dependencies` are not imported by `src/`.
 
 ## Public and consumer surfaces
@@ -175,7 +176,7 @@ surface is served, so `api-specs/openapi.yaml` is omitted.
 | `yarn workspace @webex/internal-plugin-locus build` | package | `src/` | build output through `build:src` | Build output is never edited by hand |
 | `yarn workspace @webex/internal-plugin-locus build:src` | package | `src/` (`.js` and `.ts`) | build output with source maps | Markdown under `src/` is not processed |
 | `yarn workspace @webex/internal-plugin-locus test:unit` | package | `test/unit/spec/` | Jest result | — |
-| `yarn workspace @webex/internal-plugin-locus test:browser` | package | integration specs (none exist) | karma result | Needs a browser |
+| `yarn workspace @webex/internal-plugin-locus test:browser` | package | integration specs (none exist) | Nothing runs: no files are collected, so karma and the browser are not started | — |
 | `yarn workspace @webex/internal-plugin-locus test:style` | package | files under `src/` | eslint result | Markdown is reported as ignored |
 | `yarn workspace @webex/internal-plugin-locus deploy:npm` | package | build output, `package.json` | Publishes the package to the npm registry | Release pipeline only |
 
@@ -214,10 +215,11 @@ Controls and boundaries:
   request pipeline (files src/webex-core.js and src/config.js, and the interceptors under
   src/interceptors/). With webex-core's default interceptor set:
   - The auth interceptor adds the authorization header when its credentials check resolves the URL
-    to a catalog service or an allowed domain (file src/interceptors/auth.js).
-  - `CatalogUrlInterceptor` rejects a URL outside the catalog and allowed domains when
-    `config.services.validateCatalogUrls` is `true`; the option defaults to `false` (file
-    src/interceptors/catalog-url.js).
+    to a catalog service, or to an allowed domain while `config.services.validateDomains` is on
+    (its default) (file src/interceptors/auth.js).
+  - `CatalogUrlInterceptor` rejects a URL that is not a catalog service, and is not an allowed
+    domain while `validateDomains` is on, when `config.services.validateCatalogUrls` is `true`;
+    that option defaults to `false` (files src/interceptors/catalog-url.js and src/config.js).
   - Known gap, redirects: the redirect interceptor re-issues a request on a `cisco-location`
     header, a Locus body with `errorCode` 2000002 and `location`, or an App API body with `code`
     404100 and `data.siteFullUrl`, reusing options that already carry the authorization header,

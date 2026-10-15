@@ -2,7 +2,7 @@
   "manifest_version": 1,
   "repository": {
     "name": "@webex/internal-plugin-locus",
-    "purpose": "Internal Webex JS SDK plugin for the Locus call and meeting state service. It registers webex.internal.locus, wraps the Locus REST operations (create, join, alert, decline, leave, get, list, sync, media update, DTMF, and floor grant) and the Janus call-history query, compares Locus sequence objects to decide whether an incoming Locus DTO replaces, is ignored, or requires a fetch, merges Locus delta DTOs into a caller-held working copy, and exports the list of Locus event names.",
+    "purpose": "Internal Webex JS SDK plugin for the Locus call and meeting state service. It registers webex.internal.locus, wraps the Locus REST operations (create, join, alert, decline, leave, get, list, sync, media update, DTMF, and floor grant) and the Janus call-history query, compares Locus sequence objects to decide whether an incoming Locus DTO replaces, is ignored, or requires a fetch, merges Locus delta DTOs into a caller-held working copy, and exports a fixed list of 17 Locus event names (not exhaustive).",
     "category": "cat2-legacy",
     "primary_languages": [
       "javascript"
@@ -51,7 +51,7 @@
       "name": "node",
       "version": "22.14",
       "origin": "human-declared",
-      "declared_by": "akulakum@cisco.com (bootstrap instruction 'nvm use 22.14.0'; the workspace root AGENTS.md requires Node 22.14 for development; package.json engines >=18 is the consumer floor)"
+      "declared_by": "akulakum@cisco.com (bootstrap instruction 'nvm use 22.14.0'; the workspace root AGENTS.md requires Node 22.14 for development; package.json engines >=18 is the consumer floor; the root package.json engines.node still declares 18.x)"
     },
     {
       "name": "babel",
