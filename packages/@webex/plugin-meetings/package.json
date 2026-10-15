@@ -28,8 +28,9 @@
     ]
   },
   "scripts": {
-    "build": "yarn run -T tsc --declaration true --declarationDir ./dist/types",
+    "build": "yarn run -T tsc --declaration true --declarationDir ./dist/types && yarn build:assets",
     "build:src": "webex-legacy-tools build -dest \"./dist\" -src \"./src\" -js -ts -maps && yarn build",
+    "build:assets": "node ./scripts/copy-assets.js",
     "deploy:npm": "yarn npm publish",
     "test:broken": "yarn test:style && yarn test:unit && yarn test:integration && yarn test:browser",
     "test:browser": "webex-legacy-tools test --integration --runner karma",
