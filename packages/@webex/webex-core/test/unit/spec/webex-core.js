@@ -91,6 +91,30 @@ describe('Webex', () => {
       assert.isFalse(webex.canAuthorize);
     });
 
+    it('initializes network telemetry after applying the configured metrics options', async () => {
+      const configuredWebex = new WebexCore({
+        config: {
+          metrics: {
+            networkTelemetry: {
+              enabled: true,
+              intervalMs: 60 * 1_000,
+            },
+          },
+        },
+      });
+      const submitClientMetrics = sinon
+        .stub(configuredWebex.internal.metrics, 'submitClientMetrics')
+        .resolves();
+
+      assert.exists(configuredWebex.internal.metrics.networkTelemetry);
+      configuredWebex.trigger('request:start', {service: 'hydra', resource: 'rooms'});
+      await configuredWebex.internal.metrics.flushNetworkTelemetry();
+
+      assert.calledOnce(submitClientMetrics);
+
+      await configuredWebex.internal.metrics.stopNetworkTelemetry();
+    });
+
     [
       'data',
       'data.access_token',

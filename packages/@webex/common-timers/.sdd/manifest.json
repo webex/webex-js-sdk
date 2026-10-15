@@ -1,0 +1,268 @@
+{
+  "manifest_version": 1,
+  "repository": {
+    "name": "@webex/common-timers",
+    "purpose": "Timer primitives for the Cisco Webex JS SDK that never hold a Node process open: unref-ing wrappers over setTimeout and setInterval, plus a restartable one-shot Timer with a guarded init-running-done lifecycle.",
+    "category": "cat2-legacy",
+    "primary_languages": [
+      "typescript"
+    ]
+  },
+  "topology": "Single-repo",
+  "commands": {
+    "install": {
+      "command": "yarn install",
+      "source_file": "package.json",
+      "role": "install"
+    },
+    "compile": {
+      "command": "yarn workspace @webex/common-timers build:src",
+      "source_file": "package.json",
+      "role": "compile"
+    },
+    "build": {
+      "command": "yarn workspace @webex/common-timers build",
+      "source_file": "package.json",
+      "role": "build"
+    },
+    "unit-test": {
+      "command": "yarn workspace @webex/common-timers test:unit",
+      "source_file": "package.json",
+      "role": "unit-test"
+    },
+    "lint": {
+      "command": "yarn workspace @webex/common-timers test:style",
+      "source_file": "package.json",
+      "role": "lint"
+    },
+    "deploy": {
+      "command": "yarn workspace @webex/common-timers deploy:npm",
+      "source_file": "package.json",
+      "role": "deploy"
+    }
+  },
+  "toolchain": [
+    {
+      "name": "node",
+      "version": ">=18",
+      "origin": "repo-config",
+      "source_file": "package.json"
+    }
+  ],
+  "tests": {
+    "unit": {
+      "command_ref": "unit-test",
+      "dir": "test/unit",
+      "framework": "jest"
+    }
+  },
+  "quality_gates": {
+    "code_coverage": {
+      "origin": "none",
+      "declared_by": "riag@cisco.com via bootstrap questionnaire"
+    }
+  },
+  "coverage_status_definitions": {
+    "specced": ">=80% public surface specced, drift <5% - spec is authoritative",
+    "partial": "40-80% specced - spec is a hint, cross-check code",
+    "untracked": "<40% specced - code is the source of truth"
+  },
+  "modules": [
+    {
+      "path": "src",
+      "coverage_status": "Partial",
+      "coverage_evidence": "Field coverage 100% (14/14) assessed 2026-09-24; critical field coverage 9/9. Test coverage is incomplete: the unit suite is 13 tests in 1 file (test/unit/spec/index.ts), all passing as of 2026-10-05. That suite is pre-existing and was not authored by this specification change. MOD-002, MOD-004, MOD-009 and MOD-012 have no automated evidence and are scored Weak; MOD-001 and MOD-003 are partly covered. Nothing asserts that unref() is called, so the package's core guarantee rests on code reading rather than on a test. This module has no characterization baseline, so the Timer constructor's missing duration validation is specified but unpinned; it was triaged on 2026-09-24 as fix-separately and the caller-facing hazard is recorded in the module spec under Pitfalls and constraints. Independent validation by codex ran four times across 2026-09-24 and 2026-09-28, but that assessment covered a test suite that has since been withdrawn from this change, so it is stale and revalidation is required. Promotion to Specced is held pending unref and re-entrancy assertions, a characterization baseline, and a clean validator run.",
+      "canonical_spec": "src/docs/README.md",
+      "contracts": {
+        "provides": [
+          "common-timers-sdk"
+        ],
+        "requires": [
+          "host-timer-api"
+        ]
+      },
+      "last_assessed": "2026-09-24",
+      "section_profile": {
+        "has_ui": false,
+        "crosses_service_boundaries": false,
+        "enforces_domain_rules": false,
+        "is_concurrent_async": true,
+        "owns_persistence": false,
+        "returns_caller_errors": true,
+        "has_design_tradeoff": true,
+        "stateful_transitions": true,
+        "exposes_wire_protocol": false,
+        "ui_multi_screen": false,
+        "large_data_model": false,
+        "has_tiers": false,
+        "module_specific_conventions": false,
+        "published_package": true,
+        "embedded_in_host": false,
+        "holds_client_state": false,
+        "has_submodules": false,
+        "has_submodules_computed_by": "scripts/module_tree.py",
+        "has_submodules_computed_at": "2026-09-24T04:51:24Z",
+        "resolved_by": "claude-code/claude-opus-5 (host metadata; bootstrap questionnaire)",
+        "resolved_at": "2026-09-24T04:51:24Z"
+      }
+    }
+  ],
+  "contract_catalog": {
+    "index_path": "docs/architecture.md",
+    "definitions": {
+      "common-timers-sdk": {
+        "kind": "sdk",
+        "publication": "published",
+        "source_kind": "repository-path",
+        "source": "package.json",
+        "summary": "Published npm package export surface declared by main and devMain: safeSetTimeout and safeSetInterval, which return the platform timer handle after unref-ing it where that is supported, and the Timer class, a restartable one-shot timer whose start, reset, and cancel methods throw on an invalid lifecycle transition. Per-export detail lives in the owning module spec Public surface."
+      },
+      "host-timer-api": {
+        "kind": "sdk",
+        "publication": "published",
+        "source_kind": "external",
+        "source": "Host JavaScript runtime timer API: setTimeout, setInterval, and clearTimeout, plus the Node.js Timeout.unref() extension",
+        "summary": "The platform scheduling primitives the module wraps. Node returns a Timeout object carrying unref(); browsers return a numeric handle without it, which is why every wrapper feature-detects unref rather than assuming a platform."
+      }
+    }
+  },
+  "spec_policy": {
+    "require_what_and_why": true,
+    "require_provenance": true,
+    "protected_specs": [
+      "src/docs/README.md"
+    ]
+  },
+  "validation": {
+    "generator_runtime": "claude-code",
+    "generator_model": "claude-opus-5",
+    "generator_run_id": "f7f90f8c-d68f-41c4-9844-0c8aabc6198d",
+    "generator_runtime_source": "host-metadata",
+    "validator_runtime": "codex",
+    "validator_runtime_source": "host-metadata",
+    "minimum_independence": "different-runtime",
+    "runtime_fallback_tier": "different-runtime",
+    "blocking_severities": [
+      "Blocking"
+    ]
+  },
+  "layout": {
+    "sdd_root": ".sdd",
+    "docs_root": "docs",
+    "agent_entry_path": "AGENTS.md",
+    "standing_docs_root": "docs",
+    "spec_index_path": "docs/specs/README.md",
+    "module_docs_strategy": "source-local",
+    "module_docs_relative_path": "docs/README.md",
+    "module_docs_decision": {
+      "basis": "repo-standards-default",
+      "reason": "The package has no module-local documentation folder, documentation build, or protected authored file that collides with the source-local default, so the repo-standards convention applies unchanged.",
+      "decided_by": "claude-code (bootstrap questionnaire)",
+      "decided_at": "2026-09-24T04:51:24Z"
+    },
+    "repo_context_decision": {
+      "path": ".repo-context.json",
+      "schema_path": "schemas/repo-context.schema.json",
+      "action": "create",
+      "schema_action": "create",
+      "reason": "Neither the operational context nor its schema exists in this package; both are created from the bundled Repo Standards templates and verified repository evidence.",
+      "decided_by": "claude-code (bootstrap questionnaire)",
+      "decided_at": "2026-09-24T04:51:24Z"
+    },
+    "artifact_decisions": [
+      {
+        "path": "docs/service.md",
+        "action": "omit",
+        "reason": "The package is a published library, not a deployable service; it declares no deployment descriptor, container, or runtime entry point.",
+        "decided_by": "claude-code (bootstrap questionnaire)",
+        "decided_at": "2026-09-24T04:51:24Z"
+      },
+      {
+        "path": "mkdocs.yml",
+        "action": "omit",
+        "reason": "No package-level documentation build exists; documentation publishing is owned by the surrounding workspace pipeline.",
+        "decided_by": "claude-code (bootstrap questionnaire)",
+        "decided_at": "2026-09-24T04:51:24Z"
+      },
+      {
+        "path": "api-specs/openapi.yaml",
+        "action": "omit",
+        "reason": "The package serves no HTTP routes and makes no network calls; its published surface is the npm package export described by common-timers-sdk.",
+        "decided_by": "claude-code (bootstrap questionnaire)",
+        "decided_at": "2026-09-24T04:51:24Z"
+      },
+      {
+        "path": "SECURITY.md",
+        "action": "omit",
+        "reason": "Absent at both package and workspace root; a per-package security policy would be the wrong home and no reporting contact is established.",
+        "decided_by": "claude-code (bootstrap questionnaire)",
+        "decided_at": "2026-09-24T04:51:24Z"
+      },
+      {
+        "path": "CONTRIBUTING.md",
+        "action": "omit",
+        "reason": "Contribution instructions are owned at the workspace root and already linked from this package README.md.",
+        "decided_by": "claude-code (bootstrap questionnaire)",
+        "decided_at": "2026-09-24T04:51:24Z"
+      },
+      {
+        "path": "CHANGELOG.md",
+        "action": "omit",
+        "reason": "Changelog generation is owned at the workspace root; no package-level changelog exists.",
+        "decided_by": "claude-code (bootstrap questionnaire)",
+        "decided_at": "2026-09-24T04:51:24Z"
+      },
+      {
+        "path": "CTO_CHECKLIST.yml",
+        "action": "omit",
+        "reason": "The CTO readiness workflow applies to deployable services; this package is a published library.",
+        "decided_by": "claude-code (bootstrap questionnaire)",
+        "decided_at": "2026-09-24T04:51:24Z"
+      },
+      {
+        "path": "schemas/cto-checklist.schema.json",
+        "action": "omit",
+        "reason": "Selected together with CTO_CHECKLIST.yml, which is omitted.",
+        "decided_by": "claude-code (bootstrap questionnaire)",
+        "decided_at": "2026-09-24T04:51:24Z"
+      }
+    ],
+    "template_roots": {
+      "canonical": ".sdd/templates/repo-standards"
+    },
+    "repo_skills_root": ".sdd/skills",
+    "contract_index_path": "docs/architecture.md"
+  },
+  "substrate": {
+    "source": "WebexTools/repo-standards@d89a7fe59126ae3ad9bac9ca352aa7f12b4c85dc",
+    "consumed": [
+      "@webex/eslint-config-legacy via .eslintrc.js",
+      "@webex/babel-config-legacy via babel.config.js",
+      "@webex/jest-config-legacy via jest.config.js",
+      "@webex/legacy-tools build and test runner via package.json",
+      "package README.md"
+    ],
+    "compliance_tier": "baseline"
+  },
+  "section_profiles": {
+    "repo": {
+      "owns_datastore": false,
+      "holds_client_state": false,
+      "components_interact": false,
+      "domain_data_across_components": false,
+      "caches_data": false,
+      "observability_convention": false,
+      "deploys_to_infra": false,
+      "shared_base_libs": true,
+      "is_monorepo": false,
+      "multi_platform": true,
+      "published_package": true,
+      "embedded_in_host": false,
+      "cross_repo_deps_material": false,
+      "security_arch_warranted": false,
+      "exposes_commands_or_artifacts": false
+    },
+    "resolved_by": "claude-code/claude-opus-5 (host metadata; bootstrap questionnaire)",
+    "resolved_at": "2026-09-24T04:51:24Z"
+  }
+}

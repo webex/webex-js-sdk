@@ -78,7 +78,7 @@ See root `CONTRACTS.md` for the package-level state-control export.
 | TASK_STATE_MACHINE-R-005 | Keep authentication and credentials outside the state-machine layer; it receives typed Task data/events and never invokes authenticated transport. | Pure transition logic remains reusable and cannot leak or mutate host authentication state. | `src/services/task/state-machine/TaskStateMachine.ts`, `src/services/task/state-machine/types.ts` | `test/unit/spec/services/task/state-machine/TaskStateMachine.ts` | None; security/auth applicability is explicitly N/A. | PRESENT |
 | TASK_STATE_MACHINE-R-006 | Treat `UIControlConfig` values as Task-supplied capability configuration, not rollout flags evaluated or owned by the state machine. | Rollout and profile policy must be resolved before actor construction so transitions remain deterministic. | `src/services/task/state-machine/types.ts`, `src/services/task/Task.ts` | `test/unit/spec/services/task/Task.ts` | None; rollout ownership is explicit. | PRESENT |
 | TASK_STATE_MACHINE-R-007 | Keep logging and metrics in Task/TaskManager integration; the state-machine implementation has no LoggerProxy or MetricsManager dependency. | Separating observability side effects from guards/actions preserves deterministic transition tests. | `src/services/task/state-machine/TaskStateMachine.ts`, `src/services/task/Task.ts` | `test/unit/spec/services/task/state-machine/TaskStateMachine.ts`, `test/unit/spec/services/task/Task.ts` | None; observability ownership is explicit. | PRESENT |
-| TASK_STATE_MACHINE-R-008 | `CONTACT_OWNER_CHANGED` must synchronize task/context data and emit `task:hydrate` without transitioning state. A TaskManager-recovered promoted-Agent task first receives an internal IDLE `HYDRATE` before listener installation, then the original owner-change event produces exactly one external hydrate and no incoming event. TaskManager maps an owner-changing `ContactUpdated` for an existing task to that owner-change event, while same-owner or owner-less updates remain `CONTACT_UPDATED`; missing-task `ContactUpdated` does not create a task. It also preserves an already confirmed active owner from a late participant-left snapshot that still names the departed owner. Participant Drop must rely on the existing `ParticipantLeftConference` mapping rather than adding an initiating state event. From every active call-control state, `PARTICIPANT_LEAVE` terminates or wraps the current Agent only when the event names that Agent, marks that Agent `hasLeft`, or removes a previously active Agent from the participant map; an event naming another participant cannot infer self-departure from a partial media roster. `CONSULT_END` evaluates the same explicit evidence before initiator recovery and additionally supports the narrow from-conference nested-consult race where a previously main-leg Agent is absent from the updated `mainCall` but remains active in the participant map and present on the consult leg. Removed accepted Agents emit `task:consultEnd` plus `task:end`, surviving initiators recover to their main call, and an unaccepted OFFERED consultee emits only `task:consultEnd`. Missing, partial, contradictory, or ordinary CONNECTED/HELD media membership is non-terminal, and starting Consult must preserve the prior task snapshot used by the guard. | Owner-sensitive consumers must rerender promptly while owner selection, participant removal, consult removal, and narrowly scoped desynchronization recovery remain backend-authoritative and compatible with existing incoming-task callback behavior. | `src/services/task/state-machine/TaskStateMachine.ts`, `src/services/task/state-machine/actions.ts`, `src/services/task/state-machine/guards.ts`, `src/services/task/TaskManager.ts` | `test/unit/spec/services/task/Task.ts`, `test/unit/spec/services/task/TaskManager.ts`, `test/unit/spec/services/task/state-machine/TaskStateMachine.ts`, `test/unit/spec/services/task/state-machine/guards.ts` | Backend ownership-successor selection and delivery of complete recovery payloads are outside this module. | PRESENT |
+| TASK_STATE_MACHINE-R-008 | `CONTACT_OWNER_CHANGED` must synchronize task/context data and emit `task:hydrate` without transitioning state. A TaskManager-recovered promoted-Agent task first receives an internal IDLE `HYDRATE` before listener installation, then the original owner-change event produces exactly one external hydrate and no incoming event. TaskManager maps an owner-changing `ContactUpdated` for an existing task to that owner-change event, while same-owner or owner-less updates remain `CONTACT_UPDATED`; missing-task `ContactUpdated` does not create a task. It also preserves an already confirmed active owner from a late participant-left snapshot that still names the departed owner. Participant Drop must rely on the existing `ParticipantLeftConference` mapping rather than adding an initiating state event. `PARTICIPANT_LEAVE` is handled in `HELD`, `RESUME_INITIATING`, `CONSULTING`, `CONSULT_INITIATING`, and `CONFERENCING`; `CONNECTED`, `HOLD_INITIATING`, and `CONF_INITIATING` ignore the event. The current Agent is treated as departed only when the event names that Agent or the updated participants map omits that Agent (EP-DN removal). Remaining in the map with `hasLeft`, or disappearing only from `mainCall` media, is non-terminal. `CONSULT_END` does not use mainCall membership as self-departure evidence. Removed accepted Agents emit `task:consultEnd` plus `task:end`, surviving initiators recover to their main call, and an unaccepted OFFERED consultee emits only `task:consultEnd`. Starting Consult must preserve the prior task snapshot used by the guard. | Owner-sensitive consumers must rerender promptly while owner selection, participant removal, consult removal, and narrowly scoped desynchronization recovery remain backend-authoritative and compatible with existing incoming-task callback behavior. | `src/services/task/state-machine/TaskStateMachine.ts`, `src/services/task/state-machine/actions.ts`, `src/services/task/state-machine/guards.ts`, `src/services/task/TaskManager.ts` | `test/unit/spec/services/task/Task.ts`, `test/unit/spec/services/task/TaskManager.ts`, `test/unit/spec/services/task/state-machine/TaskStateMachine.ts`, `test/unit/spec/services/task/state-machine/guards.ts` | Backend ownership-successor selection and delivery of complete recovery payloads are outside this module. | PRESENT |
 
 ## Design Overview
 TaskManager maps Contact Center notifications to `TaskEvent` values. Each Task sends those events to its XState actor built by `createTaskStateMachine()`. The configuration applies guards and named actions, updates `TaskContext`, and computes UI controls. Task supplies the integration-specific `syncTaskDataFromEvent` implementation through machine options; it is not a default action in `actions.ts`.
@@ -524,10 +524,8 @@ didCurrentAgentLeaveMainInteraction(context, event) {
   const participantIdFromEvent = 'participantId' in event ? event.participantId : undefined;
   const participantId = participantIdFromEvent ?? event.taskData?.participantId;
   if (Boolean(participantId) && participantId === selfAgentId) return true;
-  // Explicit hasLeft or removal of a previously active self from the participant map is terminal.
-  // PARTICIPANT_LEAVE naming another participant does not infer self departure from media.
-  // Only a from-conference CONSULT_END may compare mainCall membership, and only when self
-  // remains active in the participant map and on the consult leg. Partial ordinary calls are false.
+  // Self missing from the updated participants map is terminal (EP-DN removal).
+  // Remaining in the map with hasLeft, or disappearing only from mainCall media, is not.
 }
 
 // True when this agent initiated the conference transfer (widgets or desktop).
@@ -876,7 +874,7 @@ It is instantiated by `Task` and receives mapped backend/user events through `se
 
 - Guard: `guards.shouldWrapUp`
 
-- Actions: `updateTaskData`, `markEnded`, `emitTaskWrapup`
+- Actions: `updateTaskData`, `markEnded`; `WRAPPING_UP` entry emits `task:wrapup`
 
 - `TASK_WRAPUP` -> `TERMINATED`
 
@@ -990,13 +988,19 @@ It is instantiated by `Task` and receives mapped backend/user events through `se
 
 - Guard: none
 
-- Actions: `updateTaskData`, `markEnded`, `emitTaskWrapup`
+- Actions: `updateTaskData`, `markEnded`; `WRAPPING_UP` entry emits `task:wrapup`
 
 - `PAUSE_RECORDING` / `RESUME_RECORDING` -> Stay `CONNECTED`
 
 - Guard: none
 
 - Actions: `updateTaskData`, `setRecordingState`, `emitTaskRecordingPaused` / `emitTaskRecordingResumed`
+
+- `EXIT_CONFERENCE_SUCCESS` -> `WRAPPING_UP` or `TERMINATED`
+
+- Guard: `guards.shouldWrapUp` (wrap-up branch) or default (terminate)
+
+- Actions: `updateTaskData`, `markEnded`, `clearConsultState`, or `emitTaskEnd`; `WRAPPING_UP` entry emits `task:wrapup` (same as `CONFERENCING`; Voice `exitConference()` while actor stays `CONNECTED` with conference in task data)
 
 **Description**: Main call is on hold.
 
@@ -1092,7 +1096,13 @@ It is instantiated by `Task` and receives mapped backend/user events through `se
 
 - Guard: none
 
-- Actions: `updateTaskData`, `markEnded`, `emitTaskWrapup`
+- Actions: `updateTaskData`, `markEnded`; `WRAPPING_UP` entry emits `task:wrapup`
+
+- `EXIT_CONFERENCE_SUCCESS` -> `WRAPPING_UP` or `TERMINATED`
+
+- Guard: `guards.shouldWrapUp` or default
+
+- Actions: `updateTaskData`, `markEnded`, `clearConsultState`, or `emitTaskEnd`; `WRAPPING_UP` entry emits `task:wrapup` (shared with `CONNECTED` / `CONFERENCING`)
 
 **Description**: Hold request has been sent and is awaiting backend confirmation.
 
@@ -1118,6 +1128,12 @@ It is instantiated by `Task` and receives mapped backend/user events through `se
 
 - Actions: `updateTaskData`
 
+- `TASK_WRAPUP` -> `WRAPPING_UP`
+
+- Guard: none
+
+- Actions: `updateTaskData`, `markEnded` (`WRAPPING_UP` entry emits `task:wrapup`)
+
 **Description**: Resume/unhold request has been sent and is awaiting backend confirmation.
 
 **How this state is reached (incoming transitions)**:
@@ -1141,6 +1157,12 @@ It is instantiated by `Task` and receives mapped backend/user events through `se
 - Guard: none
 
 - Actions: none
+
+- `TASK_WRAPUP` -> `WRAPPING_UP`
+
+- Guard: none
+
+- Actions: `updateTaskData`, `markEnded` (`WRAPPING_UP` entry emits `task:wrapup`)
 
 **Description**: Consult request is in-flight.
 
@@ -1308,7 +1330,7 @@ It is instantiated by `Task` and receives mapped backend/user events through `se
 
 - Guard: `guards.shouldWrapUp`
 
-- Actions: `updateTaskData`, `markEnded`, `clearConsultState`, `handleTransferConferenceSuccess`, `clearTransferConferenceRequested`, `emitTaskWrapup`
+- Actions: `updateTaskData`, `markEnded`, `clearConsultState`, `handleTransferConferenceSuccess`, `clearTransferConferenceRequested`; `WRAPPING_UP` entry emits `task:wrapup`
 
 - `TRANSFER_CONFERENCE_SUCCESS` -> `CONFERENCING`
 
@@ -1332,7 +1354,7 @@ It is instantiated by `Task` and receives mapped backend/user events through `se
 
 - Guard: `guards.didCurrentAgentLeaveMainInteraction && guards.shouldWrapUp`
 
-- Actions: `updateTaskData`, `handleParticipantLeft`, `markEnded`, `clearConsultState`, `emitTaskParticipantLeft`, `emitTaskWrapup`
+- Actions: `updateTaskData`, `handleParticipantLeft`, `markEnded`, `clearConsultState`, `emitTaskParticipantLeft` (entry emits `task:wrapup`)
 
 - `PARTICIPANT_LEAVE` -> `TERMINATED`
 
@@ -1368,7 +1390,7 @@ It is instantiated by `Task` and receives mapped backend/user events through `se
 
 - Guard: none
 
-- Actions: `updateTaskData`, `markEnded`, `clearConsultState`, `emitTaskWrapup`
+- Actions: `updateTaskData`, `markEnded`, `clearConsultState`; `WRAPPING_UP` entry emits `task:wrapup`
 
 - `MERGE_TO_CONFERENCE` -> `CONF_INITIATING`
 
@@ -1460,6 +1482,12 @@ It is instantiated by `Task` and receives mapped backend/user events through `se
 
 - Actions: `updateTaskData`, `clearConsultState`, `emitTaskConferenceStarted`
 
+- `EXIT_CONFERENCE_SUCCESS` -> `WRAPPING_UP` or `TERMINATED`
+
+- Guard: `guards.shouldWrapUp` or default
+
+- Actions: `updateTaskData`, `markEnded`, `clearConsultState`, or `emitTaskEnd`; `WRAPPING_UP` entry emits `task:wrapup` (shared with `CONNECTED` / `HELD`)
+
 - `CONSULT_END` -> stay `CONFERENCING`
 
 - Guard: none
@@ -1488,7 +1516,7 @@ It is instantiated by `Task` and receives mapped backend/user events through `se
 
 - Guard: `guards.shouldWrapUp`
 
-- Actions: `updateTaskData`, `markEnded`, `clearConsultState`, `handleTransferConferenceSuccess`, `clearTransferConferenceRequested`, `emitTaskWrapup`
+- Actions: `updateTaskData`, `markEnded`, `clearConsultState`, `handleTransferConferenceSuccess`, `clearTransferConferenceRequested`; `WRAPPING_UP` entry emits `task:wrapup`
 
 - `TRANSFER_CONFERENCE_SUCCESS` -> `CONFERENCING`
 
@@ -1512,7 +1540,7 @@ It is instantiated by `Task` and receives mapped backend/user events through `se
 
 - Guard: `guards.didCurrentAgentLeaveMainInteraction && guards.shouldWrapUp`
 
-- Actions: `updateTaskData`, `handleParticipantLeft`, `markEnded`, `clearConsultState`, `emitTaskParticipantLeft`, `emitTaskWrapup`
+- Actions: `updateTaskData`, `handleParticipantLeft`, `markEnded`, `clearConsultState`, `emitTaskParticipantLeft` (entry emits `task:wrapup`)
 
 - `PARTICIPANT_LEAVE` -> `TERMINATED`
 
@@ -1544,7 +1572,7 @@ It is instantiated by `Task` and receives mapped backend/user events through `se
 
 - Guard: `guards.shouldWrapUp`
 
-- Actions: `updateTaskData`, `markEnded`, `clearConsultState`, `emitTaskWrapup`
+- Actions: `updateTaskData`, `markEnded`, `clearConsultState`; `WRAPPING_UP` entry emits `task:wrapup`
 
 - `CONFERENCE_END` -> `CONNECTED`
 
@@ -1564,6 +1592,12 @@ It is instantiated by `Task` and receives mapped backend/user events through `se
 
 - Actions: `updateTaskData`, `requestCleanup`
 
+- `TASK_WRAPUP` -> `WRAPPING_UP`
+
+- Guard: `guards.shouldWrapUp`
+
+- Actions: `updateTaskData`, `markEnded`, `clearConsultState`; `WRAPPING_UP` entry emits `task:wrapup`
+
 **Description**: Post-interaction work (ACW) is in progress.
 
 **How this state is reached (incoming transitions)**:
@@ -1577,6 +1611,10 @@ It is instantiated by `Task` and receives mapped backend/user events through `se
 - `emitTaskWrapup`
 
 **Valid transitions from `WRAPPING_UP`**:
+
+- `TASK_WRAPUP` -> stay `WRAPPING_UP`
+
+- Guard: if `context.taskData.wrapUpRequired === true` before the event, actions are `updateTaskData` only; otherwise `updateTaskData`, `emitTaskWrapup` (late AgentWrapup after wrap-up was already published)
 
 - `WRAPUP_COMPLETE` -> `COMPLETED`
 
@@ -1791,7 +1829,7 @@ Complete mapping from backend CC_EVENTS to internal TaskEvent types.
 | `PARTICIPANT_JOINED_CONFERENCE`    | `CONFERENCE_START`            | `CONSULTING` / `CONF_INITIATING` / `CONFERENCING`    | `CONFERENCING` / same                                                         | Conference participant joined     |
 | `AGENT_CONSULT_CONFERENCE_FAILED`  | `CONFERENCE_FAILED`           | `CONF_INITIATING`                                    | `CONSULTING`                                                                  | Merge fail fallback               |
 | `AGENT_CONSULT_CONFERENCE_ENDED`   | `CONFERENCE_END`              | `CONFERENCING`                                       | `WRAPPING_UP` / `CONNECTED` / `TERMINATED`                                    | Guard-driven                      |
-| `PARTICIPANT_LEFT_CONFERENCE`      | `PARTICIPANT_LEAVE`           | `CONSULTING` / `CONFERENCING`                        | `WRAPPING_UP` / `TERMINATED` / `CONNECTED` / same                             | Ownership + downgrade guards      |
+| `PARTICIPANT_LEFT_CONFERENCE`      | `PARTICIPANT_LEAVE`           | `HELD` / `RESUME_INITIATING` / `CONSULTING` / `CONSULT_INITIATING` / `CONFERENCING` | `WRAPPING_UP` / `TERMINATED` / `CONNECTED` / same | Named self or omitted from participant map; `CONNECTED` / `HOLD_INITIATING` / `CONF_INITIATING` ignore |
 | `AGENT_CONFERENCE_TRANSFERRED`     | `TRANSFER_CONFERENCE_SUCCESS` | `CONSULTING` / `CONFERENCING`                        | `WRAPPING_UP` / `CONFERENCING` / `TERMINATED` / same                          | Initiator/receiver dependent      |
 
 - `AGENT_CONTACT_UNASSIGNED` -> returns `null` in mapper (`TaskManager.mapEventToTaskStateMachineEvent`)
@@ -1840,7 +1878,7 @@ Complete mapping from backend CC_EVENTS to internal TaskEvent types.
 | API `task.dropConferenceParticipant()` | None                    | No direct state transition                                 | AQM waits for backend `ParticipantLeftConference`; that event follows the existing `PARTICIPANT_LEAVE` path |
 | `AgentConsultConferenced`        | `CONFERENCE_START`            | CONSULTING/CONF_INITIATING → CONFERENCING                  | `handleConferenceStarted` path                                                                |
 | `ParticipantJoinedConference`    | `CONFERENCE_START`            | CONFERENCING → CONFERENCING                                | Refresh + emit conference started                                                             |
-| `ParticipantLeftConference`      | `PARTICIPANT_LEAVE`           | Any active call-control state → WRAPPING_UP / TERMINATED / CONNECTED / stay | Uses `didCurrentAgentLeaveMainInteraction`, `shouldWrapUp`, `shouldDowngradeConferenceToConnected` |
+| `ParticipantLeftConference`      | `PARTICIPANT_LEAVE`           | HELD / RESUME_INITIATING / CONSULTING / CONSULT_INITIATING / CONFERENCING → WRAPPING_UP / TERMINATED / CONNECTED / stay; CONNECTED / HOLD_INITIATING / CONF_INITIATING ignore | Uses `didCurrentAgentLeaveMainInteraction` (named self or omitted from participant map), `shouldWrapUp`, `shouldDowngradeConferenceToConnected` |
 | `AgentConsultConferenceEnded`    | `CONFERENCE_END`              | CONFERENCING → WRAPPING_UP / CONNECTED / TERMINATED        | Guard-based branch                                                                            |
 | `AgentConsultConferenceFailed`   | `CONFERENCE_FAILED`           | CONF_INITIATING → CONSULTING                               | Merge failed fallback                                                                         |
 | `AgentConferenceTransferred`     | `TRANSFER_CONFERENCE_SUCCESS` | CONSULTING/CONFERENCING branch logic                       | Initiator/receiver dependent                                                                  |

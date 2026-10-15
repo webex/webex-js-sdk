@@ -1,0 +1,52 @@
+@media only screen and (min-width: 700px)
+{
+.fab {
+  display:block !important;
+  font-family: var(--default-font-family);
+  position: fixed;
+  bottom: 25px;
+  right: 35px;
+  border-radius: 50%;
+  background-color: var(--theme-default);
+  height: 60px;
+  width: 60px;
+  margin: auto;
+  text-align: center;
+  color: var(--theme-default-contrast);
+  box-shadow: 0px 1px 5px 1px rgb(0 0 0 / 70%);
+}
+}
+.fab
+{
+  display:none;
+}
+.fab .icon  {
+  z-index: inherit;
+}
+div.fab:hover {
+  box-shadow: 0px 1px 5px 1px rgb(0 0 0 / 5%);
+}
+.fab .icon {
+  padding-top: 15%;
+  margin: auto;
+  text-align: center;
+  height: 25px;
+  width: 25px;
+  z-index: inherit;
+}
+.fab .icon-alt {
+  z-index: inherit;
+  padding-top: 28%;
+  margin: auto;
+  text-align: center;
+  height: 25px;
+  width: 25px;
+}
+.fab .text {
+  z-index: inherit;
+  margin: auto;
+  text-align: center;
+  padding-top: 2px;
+  text-transform: uppercase;
+  font-size: 0.5em;
+}

@@ -1,0 +1,29 @@
+<imi-toast></imi-toast>
+<div class="header">
+    <div class="nav">
+        <div class="content">
+            <div class="title">Acme Utility - Login</div>
+            <div class="subtitle">UK's Leading Utility Provider</div>
+            <a class="note" href="api-demo.html">api-demo</a> &nbsp; |
+            <a class="note" href="15304.html">15304-demo</a>
+        </div>
+        
+    </div>
+</div>
+<div class="content-area">
+    <progress-bar value="0" type="indeterminate"></progress-bar>
+    <div class="container">
+        <div class="box">
+            <div class="row"><label>Please enter userID</label></div>
+            <div class="row"><input type="text" placeholder="UserID " id="txtUserID" value=1 /></div>
+            <div class="row"><input type="checkbox" placeholder="UserID " id="chkUseSecurityToken"  /> Use
+                Security
+                Token
+            </div>
+            <div class="row" id="divLogin">
+                <input type="button" class="button" id="btnLogin2" value="Login"
+                    onclick="this.closest('imi-login-page').login()">
+            </div>
+        </div>
+    </div>
+</div>

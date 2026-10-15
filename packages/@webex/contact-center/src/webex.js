@@ -9,6 +9,8 @@ import '@webex/internal-plugin-support';
 import './index';
 
 import config from './webex-config';
+import {CC_AGENT_EVENTS} from './services/config/types';
+import {WELLNESS_BREAK_NOTIFICATION_ACTIONS, WELLNESS_BREAK_USER_ACTIONS} from './types';
 
 export * from './index';
 
@@ -29,6 +31,12 @@ const Webex = WebexCore.extend({
   webex: true,
   version: PACKAGE_VERSION,
 });
+
+// The standalone UMD bundle exports the Webex constructor as its default value. Attach the
+// public agent-event contract so browser samples can use the same constants as module consumers.
+Webex.CC_AGENT_EVENTS = CC_AGENT_EVENTS;
+Webex.WELLNESS_BREAK_NOTIFICATION_ACTIONS = WELLNESS_BREAK_NOTIFICATION_ACTIONS;
+Webex.WELLNESS_BREAK_USER_ACTIONS = WELLNESS_BREAK_USER_ACTIONS;
 
 /**
  * Initializes a new Webex instance with merged configuration.

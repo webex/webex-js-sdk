@@ -1,0 +1,59 @@
+name: Webex Connect Deploy
+
+run-name: ${{ github.actor }} is building @webex/webexconnect artifacts
+
+# SCAFFOLD ONLY — this workflow intentionally never triggers on push to `next`.
+# It builds and tests the private @webex/webexconnect package and assembles its
+# distributable artifacts. The actual publish step is deliberately left as a TODO
+# pending security/legal review; do not add a real publish step without sign-off.
+on:
+  workflow_dispatch: {}
+  push:
+    tags:
+      - 'webexconnect-v*'
+
+jobs:
+  build-and-test:
+    name: Build & Test @webex/webexconnect
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout Project
+        uses: actions/checkout@v6
+
+      - name: Setup Node
+        uses: actions/setup-node@v6
+        with:
+          node-version-file: '.nvmrc'
+          cache: 'yarn'
+
+      - name: Install Dependencies
+        run: yarn
+
+      - name: Build package
+        run: yarn workspace @webex/webexconnect run build:src
+
+      - name: Test package
+        run: yarn workspace @webex/webexconnect run test
+
+      - name: Assemble artifacts
+        run: |
+          mkdir -p webexconnect-artifacts
+          cp packages/webexconnect/dist/webex-connect-sdk.min.js webexconnect-artifacts/
+          cp packages/webexconnect/dist/webex-connect-sdk.min.js.map webexconnect-artifacts/
+          cp packages/webexconnect/dist/sw.min.js webexconnect-artifacts/
+          cp packages/webexconnect/dist/sw.min.js.map webexconnect-artifacts/
+          ls -la webexconnect-artifacts
+
+      - name: Upload artifacts
+        uses: actions/upload-artifact@v4
+        with:
+          name: webexconnect-sdk
+          path: webexconnect-artifacts
+          if-no-files-found: error
+
+      # TODO: Publish step intentionally omitted.
+      # Distribution of @webex/webexconnect (e.g. pushing the minified bundles +
+      # source maps to the public distribution repo via an explicit file allowlist)
+      # must not be wired up until security/legal review is complete and explicit
+      # sign-off is given. Do NOT add `yarn npm publish` or any deploy action here.

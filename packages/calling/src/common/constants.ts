@@ -52,3 +52,20 @@ export const WEBEX_API_CONFIG_INT_URL = `${WEBEX_API_BTS}/v1/uc/config`;
 export const WEBEX_API_CONFIG_PROD_URL = `${WEBEX_API_PROD}/v1/uc/config`;
 export const WEBEX_API_CONFIG_FEDRAMP_URL = `${WEBEX_API_FEDRAMP}/v1/uc/config`;
 export const METHOD_START_MESSAGE = 'invoking';
+/* Maximum number of host ip addresses accepted by the Mobius API. */
+export const MAX_HOST_IPS = 10;
+/* Address used in place of an IPv4 candidate when an SDP carries none. */
+export const IPV4_FALLBACK_ADDRESS = '192.1.1.1';
+/*
+ * Matches the host candidate lines of an SDP, which carry the address in their fifth field:
+ * a=candidate:<foundation> <component> <transport> <priority> <address> <port> typ host ...
+ */
+export const SDP_HOST_CANDIDATE_REGEX = /^a=candidate:\S+ \d+ \S+ \d+ \S+ \d+ typ host[^\r\n]*/gim;
+export const CANDIDATE_ADDRESS_INDEX = 4;
+/*
+ * Addresses that identify no local interface the server could correlate against.
+ * IPV4_FALLBACK_ADDRESS is one of them because modifySdpForIPv4 synthesises a candidate with it
+ * when an SDP carries no IPv4 candidate, so it can appear as a host candidate of an offer
+ * without belonging to any interface of this client.
+ */
+export const EXCLUDED_HOST_IPS = ['0.0.0.0', '::', '127.0.0.1', '::1', IPV4_FALLBACK_ADDRESS];

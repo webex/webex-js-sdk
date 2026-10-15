@@ -1,0 +1,626 @@
+{
+  "manifest_version": 1,
+  "repository": {
+    "name": "@webex/internal-plugin-metrics",
+    "purpose": "Internal Webex SDK plugin that collects, enriches, batches and submits every SDK-owned telemetry family — legacy client metrics, tagged behavioral/operational/business events, Call Analyzer diagnostic events, WebRTC stats, browser unhandled exceptions and SDK network-request summaries — to the Webex metrics and unified-telemetry services.",
+    "category": "cat2-legacy",
+    "primary_languages": [
+      "typescript",
+      "javascript"
+    ]
+  },
+  "topology": "Single-repo",
+  "commands": {
+    "clone": {
+      "command": "git clone https://github.com/webex/webex-js-sdk.git",
+      "source_file": "package.json",
+      "role": "other"
+    },
+    "install": {
+      "command": "yarn install",
+      "source_file": "package.json",
+      "role": "install"
+    },
+    "consumer-install": {
+      "command": "npm install --save @webex/internal-plugin-metrics",
+      "source_file": "package.json",
+      "role": "other"
+    },
+    "compile": {
+      "command": "yarn workspace @webex/internal-plugin-metrics build",
+      "source_file": "package.json",
+      "role": "compile"
+    },
+    "package": {
+      "command": "yarn workspace @webex/internal-plugin-metrics build:src",
+      "source_file": "package.json",
+      "role": "package"
+    },
+    "unit-test": {
+      "command": "yarn workspace @webex/internal-plugin-metrics test:unit",
+      "source_file": "package.json",
+      "role": "unit-test"
+    },
+    "unit-test-focused": {
+      "command": "yarn workspace @webex/internal-plugin-metrics test:unit --targets network-telemetry.ts",
+      "source_file": "package.json",
+      "role": "other"
+    },
+    "lint": {
+      "command": "yarn workspace @webex/internal-plugin-metrics test:style",
+      "source_file": "package.json",
+      "role": "lint"
+    },
+    "build": "[NEEDS HUMAN INPUT] -- the package defines no working full-build-with-tests command. Its `test` script chains test:style && test:unit && test:integration && test:browser, but test:integration and test:browser are not defined in this package's package.json and no test/integration directory exists, so the chain cannot complete. Recorded as unresolved by explicit owner decision rather than substituting test:unit, which would hide the broken aggregate.",
+    "deploy": {
+      "command": "yarn workspace @webex/internal-plugin-metrics deploy:npm",
+      "source_file": "package.json",
+      "role": "deploy"
+    }
+  },
+  "toolchain": [
+    {
+      "name": "node",
+      "version": ">=18",
+      "origin": "repo-config",
+      "source_file": "package.json"
+    },
+    {
+      "name": "node",
+      "version": "22.14",
+      "origin": "human-declared",
+      "declared_by": "rarajes2@cisco.com (repository owner; declared 2026-10-07 as the Node.js version for running this package's tests and build commands from the monorepo, matching the monorepo agent instructions; package.json engines >=18 remains the consumer runtime floor)"
+    }
+  ],
+  "tests": {
+    "unit": {
+      "command_ref": "unit-test",
+      "dir": "test/unit/spec",
+      "framework": "mocha"
+    }
+  },
+  "quality_gates": {
+    "code_coverage": {
+      "origin": "none",
+      "declared_by": "rarajes2@cisco.com (repository owner; verified in the 2026-10-05 bootstrap questionnaire that no repo-specific coverage gate applies to this package — its test:unit runs mocha with no threshold, and the package defines no test:coverage script for the CI coverage job to invoke)"
+    }
+  },
+  "coverage_status_definitions": {
+    "specced": ">=80% public surface specced, drift <5% — spec is authoritative",
+    "partial": "40-80% specced — spec is a hint, cross-check code",
+    "untracked": "<40% specced — code is the source of truth"
+  },
+  "spec_source_policy": {
+    "mode": "reconcile",
+    "migrated_source_disposition": "retain",
+    "disposition_decided_by": "rarajes2@cisco.com",
+    "disposition_decided_at": "2026-10-05T06:22:10Z",
+    "decided_by": "rarajes2@cisco.com",
+    "decided_at": "2026-10-05T06:22:10Z",
+    "decision_record": ".generated/sdd/spec-source-policy/decision.md"
+  },
+  "spec_sources": [
+    {
+      "path": "README.md",
+      "scope": "module",
+      "module": "src/",
+      "role": "source-material",
+      "canonical": false,
+      "use_by_agents": "source-for-reconciliation",
+      "canonical_target": "src/docs/README.md",
+      "post_migration_action": "retain",
+      "deletion_status": "not-applicable",
+      "notes": "The published npm landing page, and the only source carrying authored design/intent for network telemetry and unhandled-exception telemetry: the request-event flow, the ordered failure-classification table, the endpoint-normalization cardinality rationale, the telemetry self-exclusion rule, and the redaction/metadata rules. Content the code supports is reconciled by meaning into src/docs/README.md and src/unhandled-exception-telemetry/docs/README.md; the Install and focused-test instructions reconcile into docs/getting-started.md. Its two executable blocks were checked under the Migrated Executable Contract Gate: the NetworkTelemetry type block is current and the initialize(...) block is stale. Neither is copied forward; both are replaced by native-declaration links plus current behavior summaries. Retained in place as the npm readme and never a deletion candidate."
+    },
+    {
+      "path": "README.md",
+      "scope": "module",
+      "module": "src/unhandled-exception-telemetry/",
+      "role": "source-material",
+      "canonical": false,
+      "use_by_agents": "source-for-reconciliation",
+      "canonical_target": "src/unhandled-exception-telemetry/docs/README.md",
+      "post_migration_action": "retain",
+      "deletion_status": "not-applicable",
+      "notes": "Module-scope half of the same npm landing page. Its 'Unhandled exception telemetry' section is the only authored source for the browser-only scope limits, the one-second deduplication window, the URL and credential redaction rules, the name/message/stack truncation caps, the getMetadata callback contract and the prohibition on personally identifiable information in metadata. Those units reconcile by meaning into this module's canonical spec; the configuration example is replaced by a native-declaration link plus a current behavior summary. Per-unit routing across both halves is authoritative in the decision record, not in a single primary route."
+    },
+    {
+      "path": "package.json",
+      "scope": "reference",
+      "role": "reference-only",
+      "canonical": false,
+      "use_by_agents": "context-only",
+      "post_migration_action": "retain",
+      "deletion_status": "not-applicable",
+      "notes": "Ecosystem-native build and dependency declaration. Linked as the authoritative source for commands, the published entry points and the pinned Call Analyzer event schema; never transcribed into Markdown."
+    },
+    {
+      "path": "src/index.ts",
+      "scope": "reference",
+      "role": "reference-only",
+      "canonical": false,
+      "use_by_agents": "context-only",
+      "post_migration_action": "retain",
+      "deletion_status": "not-applicable",
+      "notes": "Ecosystem-native package entry point and export surface. Linked from the contract index and the module specs' Public surface sections as the authoritative export declaration; never transcribed into Markdown."
+    }
+  ],
+  "modules": [
+    {
+      "path": "src/",
+      "coverage_status": "Partial",
+      "coverage_evidence": "Canonical spec generated at src/docs/README.md from src/index.ts, src/metrics.js, src/new-metrics.ts, src/generic-metrics.ts, src/batcher.js, src/network-telemetry.ts and src/config.js, with per-requirement unit evidence in test/unit/spec/metrics.js, test/unit/spec/new-metrics.ts, test/unit/spec/network-telemetry.ts, test/unit/spec/batcher.js and test/unit/spec/prelogin-metrics.ts. Held at Partial pending the first generator-side coverage measurement; promotion is a coverage-review decision, not a generation decision.",
+      "canonical_spec": "src/docs/README.md",
+      "contracts": {
+        "provides": [
+          "metrics-package-entry",
+          "metrics-internal-plugin-sdk",
+          "new-metrics-internal-plugin-sdk",
+          "metrics-event-types",
+          "network-request-summary-metric"
+        ],
+        "requires": [
+          "webex-core-plugin-sdk",
+          "webex-core-request-events",
+          "webex-metrics-http",
+          "call-analyzer-event-schema",
+          "call-diagnostic-event",
+          "privacy-permission-enricher-sdk",
+          "unhandled-exception-metric"
+        ]
+      },
+      "last_assessed": "2026-10-05",
+      "section_profile": {
+        "has_ui": false,
+        "crosses_service_boundaries": true,
+        "enforces_domain_rules": true,
+        "is_concurrent_async": true,
+        "owns_persistence": false,
+        "returns_caller_errors": true,
+        "has_design_tradeoff": true,
+        "stateful_transitions": true,
+        "exposes_wire_protocol": true,
+        "ui_multi_screen": false,
+        "large_data_model": false,
+        "has_tiers": false,
+        "module_specific_conventions": true,
+        "published_package": true,
+        "embedded_in_host": true,
+        "holds_client_state": true,
+        "has_submodules": true,
+        "has_submodules_computed_by": "scripts/module_tree.py",
+        "has_submodules_computed_at": "2026-10-05T09:08:58Z",
+        "resolved_by": "claude-code/claude-opus-5 (host metadata; code-grounded from src/index.ts, src/metrics.js, src/new-metrics.ts, src/network-telemetry.ts and src/config.js)",
+        "resolved_at": "2026-10-05T09:06:56Z"
+      },
+      "source_policy": {
+        "mode": "reconcile",
+        "existing_sources": [
+          "README.md"
+        ],
+        "conflict_status": "resolved",
+        "decision_record": ".generated/sdd/spec-source-policy/decision.md"
+      }
+    },
+    {
+      "path": "src/call-diagnostic/",
+      "coverage_status": "Partial",
+      "coverage_evidence": "Canonical spec generated at src/call-diagnostic/docs/README.md from src/call-diagnostic/call-diagnostic-metrics.ts, src/call-diagnostic/call-diagnostic-metrics-latencies.ts, src/call-diagnostic/call-diagnostic-metrics.util.ts, src/call-diagnostic/call-diagnostic-metrics-batcher.ts and src/call-diagnostic/config.ts, with per-requirement unit evidence in test/unit/spec/call-diagnostic/. Held at Partial pending the first generator-side coverage measurement.",
+      "canonical_spec": "src/call-diagnostic/docs/README.md",
+      "contracts": {
+        "provides": [
+          "call-diagnostic-event"
+        ],
+        "requires": [
+          "webex-core-plugin-sdk",
+          "webex-metrics-http",
+          "call-analyzer-event-schema"
+        ]
+      },
+      "last_assessed": "2026-10-05",
+      "section_profile": {
+        "has_ui": false,
+        "crosses_service_boundaries": true,
+        "enforces_domain_rules": true,
+        "is_concurrent_async": true,
+        "owns_persistence": false,
+        "returns_caller_errors": true,
+        "has_design_tradeoff": true,
+        "stateful_transitions": true,
+        "exposes_wire_protocol": true,
+        "ui_multi_screen": false,
+        "large_data_model": false,
+        "has_tiers": false,
+        "module_specific_conventions": true,
+        "published_package": true,
+        "embedded_in_host": false,
+        "holds_client_state": true,
+        "has_submodules": false,
+        "has_submodules_computed_by": "scripts/module_tree.py",
+        "has_submodules_computed_at": "2026-10-05T09:08:58Z",
+        "resolved_by": "claude-code/claude-opus-5 (host metadata; code-grounded from src/call-diagnostic/)",
+        "resolved_at": "2026-10-05T09:06:56Z"
+      }
+    },
+    {
+      "path": "src/privacy-and-security-permission-enricher/",
+      "coverage_status": "Partial",
+      "coverage_evidence": "Canonical spec generated at src/privacy-and-security-permission-enricher/docs/README.md from the module's index.ts, constants.ts, types.ts and utils.ts, with per-requirement unit evidence in test/unit/spec/privacy-and-security-permission-enricher.ts. Held at Partial pending the first generator-side coverage measurement.",
+      "canonical_spec": "src/privacy-and-security-permission-enricher/docs/README.md",
+      "contracts": {
+        "provides": [
+          "privacy-permission-enricher-sdk"
+        ],
+        "requires": [
+          "call-analyzer-event-schema"
+        ]
+      },
+      "last_assessed": "2026-10-05",
+      "section_profile": {
+        "has_ui": false,
+        "crosses_service_boundaries": false,
+        "enforces_domain_rules": true,
+        "is_concurrent_async": false,
+        "owns_persistence": false,
+        "returns_caller_errors": false,
+        "has_design_tradeoff": true,
+        "stateful_transitions": true,
+        "exposes_wire_protocol": false,
+        "ui_multi_screen": false,
+        "large_data_model": false,
+        "has_tiers": false,
+        "module_specific_conventions": true,
+        "published_package": false,
+        "embedded_in_host": false,
+        "holds_client_state": true,
+        "has_submodules": false,
+        "has_submodules_computed_by": "scripts/module_tree.py",
+        "has_submodules_computed_at": "2026-10-05T09:08:58Z",
+        "resolved_by": "claude-code/claude-opus-5 (host metadata; code-grounded from src/privacy-and-security-permission-enricher/)",
+        "resolved_at": "2026-10-05T09:06:56Z"
+      }
+    },
+    {
+      "path": "src/rtcMetrics/",
+      "coverage_status": "Partial",
+      "coverage_evidence": "Canonical spec generated at src/rtcMetrics/docs/README.md from src/rtcMetrics/index.ts and src/rtcMetrics/constants.ts, with per-requirement unit evidence in test/unit/spec/rtcMetrics/index.ts. Held at Partial pending the first generator-side coverage measurement.",
+      "canonical_spec": "src/rtcMetrics/docs/README.md",
+      "contracts": {
+        "provides": [
+          "rtc-metrics-payload"
+        ],
+        "requires": [
+          "webex-unified-telemetry-http"
+        ]
+      },
+      "last_assessed": "2026-10-05",
+      "section_profile": {
+        "has_ui": false,
+        "crosses_service_boundaries": true,
+        "enforces_domain_rules": true,
+        "is_concurrent_async": true,
+        "owns_persistence": false,
+        "returns_caller_errors": false,
+        "has_design_tradeoff": true,
+        "stateful_transitions": true,
+        "exposes_wire_protocol": true,
+        "ui_multi_screen": false,
+        "large_data_model": false,
+        "has_tiers": false,
+        "module_specific_conventions": true,
+        "published_package": true,
+        "embedded_in_host": false,
+        "holds_client_state": true,
+        "has_submodules": false,
+        "has_submodules_computed_by": "scripts/module_tree.py",
+        "has_submodules_computed_at": "2026-10-05T09:08:58Z",
+        "resolved_by": "claude-code/claude-opus-5 (host metadata; code-grounded from src/rtcMetrics/)",
+        "resolved_at": "2026-10-05T09:06:56Z"
+      }
+    },
+    {
+      "path": "src/unhandled-exception-telemetry/",
+      "coverage_status": "Partial",
+      "coverage_evidence": "Canonical spec generated at src/unhandled-exception-telemetry/docs/README.md from src/unhandled-exception-telemetry/index.ts and src/unhandled-exception-telemetry/utils.ts, reconciled with the authored README.md section, with per-requirement unit evidence in test/unit/spec/unhandled-exception-telemetry.ts and test/unit/spec/unhandled-exception-telemetry/utils.ts. Held at Partial pending the first generator-side coverage measurement.",
+      "canonical_spec": "src/unhandled-exception-telemetry/docs/README.md",
+      "contracts": {
+        "provides": [
+          "unhandled-exception-metric"
+        ],
+        "requires": [
+          "metrics-internal-plugin-sdk"
+        ]
+      },
+      "last_assessed": "2026-10-05",
+      "section_profile": {
+        "has_ui": false,
+        "crosses_service_boundaries": true,
+        "enforces_domain_rules": true,
+        "is_concurrent_async": true,
+        "owns_persistence": false,
+        "returns_caller_errors": false,
+        "has_design_tradeoff": true,
+        "stateful_transitions": true,
+        "exposes_wire_protocol": true,
+        "ui_multi_screen": false,
+        "large_data_model": false,
+        "has_tiers": false,
+        "module_specific_conventions": true,
+        "published_package": false,
+        "embedded_in_host": false,
+        "holds_client_state": true,
+        "has_submodules": false,
+        "has_submodules_computed_by": "scripts/module_tree.py",
+        "has_submodules_computed_at": "2026-10-05T09:08:58Z",
+        "resolved_by": "claude-code/claude-opus-5 (host metadata; code-grounded from src/unhandled-exception-telemetry/ and the routed README.md section)",
+        "resolved_at": "2026-10-05T09:06:56Z"
+      },
+      "source_policy": {
+        "mode": "reconcile",
+        "existing_sources": [
+          "README.md"
+        ],
+        "conflict_status": "resolved",
+        "decision_record": ".generated/sdd/spec-source-policy/decision.md"
+      }
+    }
+  ],
+  "contract_catalog": {
+    "index_path": "docs/architecture.md",
+    "definitions": {
+      "metrics-package-entry": {
+        "kind": "sdk",
+        "publication": "internal",
+        "source_kind": "repository-path",
+        "source": "src/index.ts",
+        "summary": "Package entry point. Calls registerInternalPlugin('metrics', Metrics, {config, onBeforeLogout}) and registerInternalPlugin('newMetrics', NewMetrics, {config}), and re-exports the plugin default plus the named helper, class and type surface. Importing the package is what makes webex.internal.metrics and webex.internal.newMetrics available."
+      },
+      "metrics-internal-plugin-sdk": {
+        "kind": "sdk",
+        "publication": "internal",
+        "source_kind": "repository-path",
+        "source": "src/metrics.js",
+        "summary": "Legacy internal plugin surface reached as webex.internal.metrics: submit, submitClientMetrics, getClientMetricsPayload, aliasUser, the four network-telemetry operations (flushNetworkTelemetry, stopNetworkTelemetry and the record* request-event handlers) and the three Batcher children."
+      },
+      "new-metrics-internal-plugin-sdk": {
+        "kind": "sdk",
+        "publication": "internal",
+        "source_kind": "repository-path",
+        "source": "src/new-metrics.ts",
+        "summary": "Current internal plugin surface reached as webex.internal.newMetrics. Single façade over Call Analyzer client/feature/MQE submission, behavioral/operational/business/pre-login tagged events, readiness probes, delayed-submission control, permission enrichment and the beforeunload fetch path."
+      },
+      "metrics-event-types": {
+        "kind": "sdk",
+        "publication": "internal",
+        "source_kind": "repository-path",
+        "source": "src/metrics.types.ts",
+        "summary": "Exported TypeScript surface for every event family: the Event/ClientEvent/FeatureEvent/MediaQualityEvent envelopes, the Submit* call signatures, PreComputedLatencies, PrivacyAndSecurityPermission and the Table enum. Derived from @webex/event-dictionary-ts rather than hand-declared."
+      },
+      "network-request-summary-metric": {
+        "kind": "event",
+        "publication": "internal",
+        "source_kind": "repository-path",
+        "source": "src/network-telemetry.ts",
+        "summary": "The JS_SDK_NETWORK_REQUEST_SUMMARY operational client metric: a per-window aggregate of SDK request outcomes carrying metricsSummary, per host+endPoint metrics with average/p90/p99 network duration, grouped errorMetrics with bounded trackingIds, and errorMetricsSummary by status code."
+      },
+      "call-diagnostic-event": {
+        "kind": "event",
+        "publication": "internal",
+        "source_kind": "repository-path",
+        "source": "src/call-diagnostic/call-diagnostic-metrics.ts",
+        "summary": "The Call Analyzer event envelope this module builds and submits: eventId, version, origin, originTime, senderCountryCode and the client, feature or media-quality event body, typed ['diagnostic-event'] for client events and ['business'] for feature events."
+      },
+      "privacy-permission-enricher-sdk": {
+        "kind": "sdk",
+        "publication": "internal",
+        "source_kind": "repository-path",
+        "source": "src/privacy-and-security-permission-enricher/index.ts",
+        "summary": "Internal enrichment surface consumed only by src/new-metrics.ts: setPermission stores the latest normalized browser permission snapshot and enrich returns either the original client-event payload or a copy carrying the per-scope permission delta."
+      },
+      "rtc-metrics-payload": {
+        "kind": "event",
+        "publication": "internal",
+        "source_kind": "repository-path",
+        "source": "src/rtcMetrics/index.ts",
+        "summary": "The webrtcMedia metric batch posted to the unified telemetry service: type, version, userId, correlationId, connectionId, either meetingId or callId, and the queued WCME metric items with candidate IP addresses anonymized."
+      },
+      "unhandled-exception-metric": {
+        "kind": "event",
+        "publication": "internal",
+        "source_kind": "repository-path",
+        "source": "src/unhandled-exception-telemetry/index.ts",
+        "summary": "The JS_SDK_OBSERVED_CLIENT_UNHANDLED_EXCEPTION client metric: schemaVersion 1 with capturedAt, eventId, occurrenceCount, common app/runtime fields, the sanitized error details plus deduplication fingerprint, and optional application metadata or a metadataCaptureStatus reason."
+      },
+      "webex-core-plugin-sdk": {
+        "kind": "sdk",
+        "publication": "internal",
+        "source_kind": "external",
+        "source": "@webex/webex-core (workspace package; WebexPlugin, StatelessWebexPlugin, Batcher, WebexHttpError and registerInternalPlugin)",
+        "summary": "Sibling workspace package supplying the plugin base classes, the Batcher queue/retry machinery and the internal-plugin registration entry point. Declared as a workspace dependency in package.json."
+      },
+      "webex-core-request-events": {
+        "kind": "event",
+        "publication": "internal",
+        "source_kind": "external",
+        "source": "@webex/webex-core request pipeline events request:start, request:success and request:failure emitted on the WebexCore instance",
+        "summary": "SDK-wide request lifecycle events this plugin subscribes to for network telemetry. Owned by the core request pipeline, not by this package, and carrying no shared TypeScript contract — src/network-telemetry.ts declares a local structural type for only the fields telemetry reads."
+      },
+      "webex-metrics-http": {
+        "kind": "http",
+        "publication": "published",
+        "source_kind": "external",
+        "source": "Webex metrics service (service 'metrics'; resources 'metrics', 'clientmetrics' and 'clientmetrics-prelogin', pre-discovery URL in src/config.js)",
+        "summary": "Upstream Webex metrics ingestion API every batcher posts to. Owned by the metrics service, not by this repository. The clientmetrics-prelogin resource is called unauthenticated with an x-prelogin-userid header."
+      },
+      "webex-unified-telemetry-http": {
+        "kind": "http",
+        "publication": "published",
+        "source_kind": "external",
+        "source": "Webex unified telemetry service (service 'unifiedTelemetry', resource 'metric/v2')",
+        "summary": "Upstream unified telemetry ingestion API consumed only by the WebRTC stats reporter, with the webrtcMedia type and a fixed application identifier header. Owned by the telemetry service, not by this repository."
+      },
+      "call-analyzer-event-schema": {
+        "kind": "file",
+        "publication": "published",
+        "source_kind": "external",
+        "source": "@webex/event-dictionary-ts (pinned in package.json; RawEvent, RawClientEvent and the event-name unions imported by src/metrics.types.ts)",
+        "summary": "Externally owned Call Analyzer event schema. It is the authoritative definition of every diagnostic event name and payload field; this package derives its exported types from it and must not restate field-level detail."
+      }
+    }
+  },
+  "spec_policy": {
+    "require_what_and_why": true,
+    "require_provenance": true,
+    "protected_specs": [
+      "src/docs/README.md",
+      "src/call-diagnostic/docs/README.md",
+      "src/privacy-and-security-permission-enricher/docs/README.md",
+      "src/rtcMetrics/docs/README.md",
+      "src/unhandled-exception-telemetry/docs/README.md"
+    ]
+  },
+  "validation": {
+    "generator_runtime": "claude-code",
+    "generator_model": "claude-opus-5",
+    "generator_run_id": "fe09609b-469d-498e-965b-69cb2832f51a",
+    "generator_runtime_source": "host-metadata",
+    "minimum_independence": "different-runtime",
+    "blocking_severities": [
+      "Blocking"
+    ],
+    "source_commit": "d6202dd73d",
+    "base_ref": "master",
+    "head_ref": "sdd-internal-plugin-metrics",
+    "validator_runtime": "01a1147a-c744-7083-9b15-95e91170c79a",
+    "validator_run_id": "01a1147a-c744-7083-9b15-95e91170c79a",
+    "validator_runtime_source": "invocation-input",
+    "runtime_fallback_tier": "different-runtime"
+  },
+  "layout": {
+    "sdd_root": ".sdd",
+    "docs_root": "docs",
+    "agent_entry_path": "AGENTS.md",
+    "standing_docs_root": "docs",
+    "spec_index_path": "docs/specs/README.md",
+    "module_docs_strategy": "source-local",
+    "module_docs_relative_path": "docs/README.md",
+    "module_docs_decision": {
+      "basis": "repo-standards-default",
+      "reason": "The package owns no pre-existing module-local documentation convention and no protected file occupies any source-local route. Markdown is excluded from the inherited eslint configuration in .eslintrc.js, so test:style is unaffected, and no ignore rule covers packages/**/docs. The repo-standards default <module-path>/docs/README.md therefore applies unchanged to all five modules.",
+      "decided_by": "rarajes2@cisco.com",
+      "decided_at": "2026-10-05T06:22:10Z"
+    },
+    "repo_context_decision": {
+      "path": ".repo-context.json",
+      "schema_path": "schemas/repo-context.schema.json",
+      "action": "create",
+      "schema_action": "create",
+      "reason": "Neither the repository operational-context manifest nor its schema exists at its fixed path in this package; both are created, the context from verified repository evidence and the schema as an exact copy of the bundled Repo Standards schema.",
+      "decided_by": "rarajes2@cisco.com",
+      "decided_at": "2026-10-05T06:22:10Z"
+    },
+    "artifact_decisions": [
+      {
+        "path": "docs/service.md",
+        "action": "omit",
+        "reason": "This package is a library plugin, not a deployable service. It has no Dockerfile, process entry point, deployment manifest or runtime configuration of its own; it runs inside a host WebexCore instance.",
+        "decided_by": "rarajes2@cisco.com",
+        "decided_at": "2026-10-05T06:22:10Z"
+      },
+      {
+        "path": "api-specs/openapi.yaml",
+        "action": "omit",
+        "reason": "The package owns no HTTP surface. Every HTTP contract it touches is owned upstream by the Webex metrics or unified telemetry service, and its own published surface is an ecosystem-native SDK export recorded in package.json and src/index.ts. An empty paths scaffold is an explicit blocker.",
+        "decided_by": "rarajes2@cisco.com",
+        "decided_at": "2026-10-05T06:22:10Z"
+      },
+      {
+        "path": "mkdocs.yml",
+        "action": "omit",
+        "reason": "No MkDocs publishing workflow exists for this package or the surrounding monorepo.",
+        "decided_by": "rarajes2@cisco.com",
+        "decided_at": "2026-10-05T06:22:10Z"
+      },
+      {
+        "path": "SECURITY.md",
+        "action": "omit",
+        "reason": "Security policy is owned at the webex-js-sdk repository root, not per package.",
+        "decided_by": "rarajes2@cisco.com",
+        "decided_at": "2026-10-05T06:22:10Z"
+      },
+      {
+        "path": "CONTRIBUTING.md",
+        "action": "omit",
+        "reason": "Contribution guidance is owned at the webex-js-sdk repository root, not per package; README.md links it there.",
+        "decided_by": "rarajes2@cisco.com",
+        "decided_at": "2026-10-05T06:22:10Z"
+      },
+      {
+        "path": "CHANGELOG.md",
+        "action": "omit",
+        "reason": "The monorepo generates changelogs centrally through its release tooling; a package-level changelog would diverge from it.",
+        "decided_by": "rarajes2@cisco.com",
+        "decided_at": "2026-10-05T06:22:10Z"
+      },
+      {
+        "path": "CTO_CHECKLIST.yml",
+        "action": "omit",
+        "reason": "No deployable service, so the package does not participate in the CTO readiness workflow.",
+        "decided_by": "rarajes2@cisco.com",
+        "decided_at": "2026-10-05T06:22:10Z"
+      },
+      {
+        "path": "schemas/cto-checklist.schema.json",
+        "action": "omit",
+        "reason": "No CTO checklist is selected, so its matching schema is not required.",
+        "decided_by": "rarajes2@cisco.com",
+        "decided_at": "2026-10-05T06:22:10Z"
+      }
+    ],
+    "template_roots": {
+      "canonical": ".sdd/templates/repo-standards"
+    },
+    "repo_skills_root": ".sdd/skills",
+    "contract_index_path": "docs/architecture.md"
+  },
+  "tooling": {
+    "sdlc_skills": {
+      "install_mode": "symlink",
+      "installed_at": "2026-10-05T06:22:10Z",
+      "plugins": [
+        "repo-annotation@2.0.5"
+      ]
+    }
+  },
+  "substrate": {
+    "source": "WebexTools/repo-standards",
+    "consumed": [
+      "lint/format configs (@webex/eslint-config-legacy via .eslintrc.js)",
+      "babel and jest presets (@webex/babel-config-legacy, @webex/jest-config-legacy)",
+      "build and test tooling (@webex/legacy-tools)",
+      "monorepo governance files (root CONTRIBUTING.md, LICENSE, CODEOWNERS)"
+    ],
+    "compliance_tier": "baseline"
+  },
+  "section_profiles": {
+    "repo": {
+      "owns_datastore": false,
+      "holds_client_state": true,
+      "components_interact": true,
+      "domain_data_across_components": true,
+      "caches_data": true,
+      "observability_convention": true,
+      "deploys_to_infra": false,
+      "shared_base_libs": true,
+      "is_monorepo": false,
+      "multi_platform": true,
+      "published_package": true,
+      "embedded_in_host": true,
+      "cross_repo_deps_material": true,
+      "security_arch_warranted": true,
+      "exposes_commands_or_artifacts": true
+    },
+    "resolved_by": "claude-code/claude-opus-5 (host metadata; code-grounded from package.json, src/ and the routed README.md)",
+    "resolved_at": "2026-10-05T09:06:56Z"
+  }
+}

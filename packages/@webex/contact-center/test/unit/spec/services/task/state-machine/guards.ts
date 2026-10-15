@@ -636,7 +636,7 @@ describe('State Machine Guards', () => {
       expect(guards.didCurrentAgentLeaveMainInteraction(createParams(context, event))).toBe(true);
     });
 
-    it('returns true when the current participant is marked as departed', () => {
+    it('returns false when the current participant is marked hasLeft but remains in the map', () => {
       const context = createContext({taskData: activeTaskData});
       const updatedTaskData = createTaskData({
         interaction: {
@@ -652,10 +652,10 @@ describe('State Machine Guards', () => {
         guards.didCurrentAgentLeaveMainInteraction(
           createParams(context, createEventWithTaskData(updatedTaskData))
         )
-      ).toBe(true);
+      ).toBe(false);
     });
 
-    it('uses mainCall membership for nested CONSULT_END cleanup', () => {
+    it('does not infer departure from CONSULT_END mainCall membership', () => {
       const context = createContext({taskData: activeTaskData, consultFromConference: true});
       const updatedTaskData = createTaskData({
         interaction: {
@@ -690,10 +690,10 @@ describe('State Machine Guards', () => {
 
       expect(
         guards.didCurrentAgentLeaveMainInteraction(createParams(context, event))
-      ).toBe(true);
+      ).toBe(false);
     });
 
-    it('does not infer self departure when another participant leaves and the map omits self', () => {
+    it('returns true when another participant leaves and the map omits self', () => {
       const context = createContext({taskData: activeTaskData});
       const partialTaskData = createTaskData({
         interaction: {
@@ -718,7 +718,7 @@ describe('State Machine Guards', () => {
         taskData: partialTaskData,
       } as TaskEventPayload;
 
-      expect(guards.didCurrentAgentLeaveMainInteraction(createParams(context, event))).toBe(false);
+      expect(guards.didCurrentAgentLeaveMainInteraction(createParams(context, event))).toBe(true);
     });
 
     it.each(['connected', 'held'])(
