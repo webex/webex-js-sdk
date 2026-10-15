@@ -67,7 +67,7 @@ yarn workspace @webex/internal-plugin-scheduler test:unit
 | Tier | Command | Test location | Framework | External dependencies |
 | ---- | ------- | ------------- | --------- | --------------------- |
 | Unit | `yarn workspace @webex/internal-plugin-scheduler test:unit` | `test/unit/spec` | Jest | This package's build output and the built workspace packages it imports |
-| Integration | `yarn workspace @webex/internal-plugin-scheduler test:browser` | `test/integration/spec` | karma | Chrome and Firefox (see Prerequisites), network access, and the `WEBEX_CLIENT_ID` and `WEBEX_CLIENT_SECRET` environment variables that the workspace test-users helper requires |
+| Integration | `yarn workspace @webex/internal-plugin-scheduler test:browser` | `test/integration/spec` | karma | Chrome and Firefox (see Prerequisites), network access, the `WEBEX_CLIENT_ID` and `WEBEX_CLIENT_SECRET` environment variables that the workspace test-users helper requires, and this package's build output |
 | Lint | `yarn workspace @webex/internal-plugin-scheduler test:style` | `src/` | eslint | None |
 
 - The integration tier is manifest `commands.integration-test` and `tests.integration`. The package has
@@ -83,10 +83,11 @@ yarn workspace @webex/internal-plugin-scheduler test:unit
 - Enforcement source: none. `jest.config.js` re-exports `@webex/jest-config-legacy`, which sets
   `collectCoverage: false` and no threshold.
 - Test environment or QA dependencies: none beyond the workspace for the unit tier; the integration tier
-  needs the variables in its table row. `test/unit/spec/scheduler/scheduler.js`
-  imports this package by name, which resolves to the build output, so a stale build tests old code.
-  Run `yarn workspace @webex/internal-plugin-scheduler build` again after any `src/` change before
-  `test:unit`.
+  needs the variables in its table row. `test/unit/spec/scheduler/scheduler.js` and the three specs
+  under `test/integration/spec` import this package by name, which resolves to the build output
+  (`package.json` `main`), so a stale build tests old code in both tiers. Run
+  `yarn workspace @webex/internal-plugin-scheduler build` again after any `src/` change before
+  `test:unit` or `test:browser`.
 
 ## Configuration and secrets
 

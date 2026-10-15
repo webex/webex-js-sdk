@@ -53,7 +53,8 @@ commands from the monorepo root.
 | Format code            | N/A — no format script; `prettier` is a devDependency used through eslint |
 
 Use the individual scripts rather than the aggregate `test` script, and complete the First-run
-verification precondition and build before `test:unit`; both are explained in [`docs/getting-started.md`](docs/getting-started.md).
+verification precondition and build before `test:unit` or `test:browser`; both are explained in
+[`docs/getting-started.md`](docs/getting-started.md).
 
 If a required command is unknown, stop and ask for the exact command.
 

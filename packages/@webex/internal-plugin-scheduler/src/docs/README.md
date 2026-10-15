@@ -176,7 +176,9 @@ plugins; ampersand events on the plugin and on Mercury.
 | Operation group | Entry and outcome | Diagram or evidence | Failure and recovery coverage |
 | --------------- | ----------------- | ------------------- | ----------------------------- |
 | Registration and construction | Import, then webex instance construction → plugin mounted, `initialize` listeners attached, log line | Construction diagram below | None in this module |
-| Example requests and events | `exampleRequestUsage`, `exampleEventUsage`, `exampleMercuryConnection` | MOD-005 to MOD-007 and Caller-visible failure modes | Unhandled GET and connect rejections; the `listenTo` throw |
+| Example requests | `exampleRequestUsage` → dropped GET, returned POST promise | Example requests diagram below | Unhandled GET rejection; POST rejection classes in Caller-visible failure modes |
+| Example local events | `exampleEventUsage` → two handlers attached, then a throw | Example local events diagram below | The `listenTo` throw; handlers left attached |
+| Example Mercury connection | `exampleMercuryConnection` → `undefined` at once, connect settles later | Example Mercury connection diagram below | Unhandled connect rejection |
 | Payload transforms | `webex.transform` with a triggering field → named transform chain | Payload transform diagram below | See Caller-visible failure modes |
 
 Construction:
@@ -216,6 +218,65 @@ sequenceDiagram
     Inbound->>Core: ctx.transform exampleGeneralTransformer
     Core->>General: fn, and the two transforms call each other again
     Note over Core,Inbound: the chain has no exit, starves the event loop, and grows memory
+  end
+```
+
+Example requests (`MOD-005`):
+
+```mermaid
+sequenceDiagram
+  participant Caller
+  participant Scheduler
+  participant Request as webex.request
+  Caller->>Scheduler: exampleRequestUsage
+  Scheduler->>Request: GET, service example-service, not awaited
+  Scheduler->>Request: POST to www.example.com with the placeholder authorization header
+  Scheduler-->>Caller: return the POST promise
+  opt GET rejects
+    Request-->>Scheduler: rejection that no code handles
+  end
+  alt POST resolves
+    Request-->>Caller: response
+  else POST rejects
+    Request-->>Caller: rejection, see Caller-visible failure modes
+  end
+```
+
+Example local events (`MOD-006`):
+
+```mermaid
+sequenceDiagram
+  participant Caller
+  participant Scheduler
+  participant Events as ampersand-events listenTo
+  Caller->>Scheduler: exampleEventUsage
+  Scheduler->>Scheduler: on event:scope with handler one
+  Scheduler->>Scheduler: off event:scope with a new function, nothing removed
+  Scheduler->>Scheduler: on event:scope through webex.internal.scheduler with handler two
+  Scheduler->>Scheduler: off event:scope through webex.internal.scheduler with a new function, nothing removed
+  Scheduler->>Events: listenTo on this.webex.pluginName, which is undefined
+  Events-->>Caller: throws Error, target object is undefined
+  Note over Scheduler: stopListening is never reached and both handlers stay attached
+```
+
+Example Mercury connection (`MOD-007`):
+
+```mermaid
+sequenceDiagram
+  participant Caller
+  participant Scheduler
+  participant Mercury as webex.internal.mercury
+  Caller->>Scheduler: exampleMercuryConnection
+  Scheduler->>Mercury: connect with no arguments, promise not returned
+  Scheduler-->>Caller: undefined
+  alt connect resolves
+    Mercury-->>Scheduler: fulfilment callback
+    Scheduler->>Scheduler: store this.handler
+    Scheduler->>Mercury: listenTo event:scope with this.handler
+    Scheduler->>Mercury: stopListening event:scope with this.handler
+    Note over Scheduler,Mercury: both calls run in the same callback, so no event reaches the handler
+  else connect rejects
+    Mercury-->>Scheduler: rejection that no code handles
   end
 ```
 
