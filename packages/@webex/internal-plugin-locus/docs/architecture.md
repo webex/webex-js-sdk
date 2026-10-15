@@ -95,7 +95,7 @@ flowchart LR
 | `src/index.js` | internal-plugin-mercury | side-effect import | Register Mercury on the same webex instance; see Dependency topology | Load-time only |
 | Caller | `webex.internal.locus` | method calls | REST operations and DTO reconciliation | See the Locus plugin spec failure modes |
 | `src/locus.js` | `webex.request` | in-process promise | Send HTTP requests | Rejections propagate, except the Conflict recovery |
-| `webex.request` | Locus and Janus services | HTTP | Call state and history | webex-core's default interceptor set converts error statuses to `WebexHttpError` subtypes, except the Locus and App API 404 redirect responses (which resolve when they carry no redirect target); other interceptors can reject with their own errors. See the Locus plugin spec Dependencies and Caller-visible failure modes |
+| `webex.request` | Locus and Janus services | HTTP | Call state and history | webex-core's default interceptor set converts error statuses to `WebexHttpError` subtypes, except the Locus and App API 404 redirect responses, which resolve when webex-core's redirect handling returns them unchanged instead of re-issuing; other interceptors can reject with their own errors. See the Locus plugin spec Dependencies and Caller-visible failure modes |
 
 ## Dependency topology
 
