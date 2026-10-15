@@ -4,15 +4,8 @@
 
 import LoggerProxy from '../common/logs/logger-proxy';
 import type MembersCollection from '../members/collection';
+import type {MembersUpdatePayload} from '../members';
 import type {E2eeDeviceVerification, E2eeRosterMember} from './types';
-
-/** The member changes the reconciler consumes from the Members pre-emit processor. */
-interface MembersUpdatePayload {
-  delta?: {
-    added?: any[];
-    updated?: any[];
-  };
-}
 
 /**
  * Reconciles the MLS roster (keyed by device URL) against the meeting's `Members`, stamping a

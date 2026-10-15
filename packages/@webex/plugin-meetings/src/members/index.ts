@@ -75,10 +75,16 @@ import {Invitee} from '../meeting/type';
  * @memberof Members
  */
 
-type UpdatedMembers = {
+export type UpdatedMembers = {
   added: Array<Member>;
   updated: Array<Member>;
   removedIds?: Array<string>; // removed member ids
+};
+
+/** Payload passed to a processor before the corresponding `members:update` event is emitted. */
+export type MembersUpdatePayload = {
+  delta: UpdatedMembers;
+  isReplace: boolean;
 };
 /**
  * @class Members
@@ -114,7 +120,7 @@ export default class Members extends StatelessWebexPlugin {
    * consumer (e.g. E2EE) can stamp derived data onto the members and have it appear in that event.
    * @private
    */
-  private membersUpdateProcessor?: (payload: {delta: UpdatedMembers; isReplace: boolean}) => void;
+  private membersUpdateProcessor?: (payload: MembersUpdatePayload) => void;
 
   namespace = MEETINGS;
 
@@ -465,9 +471,7 @@ export default class Members extends StatelessWebexPlugin {
    * @public
    * @memberof Members
    */
-  public setMembersUpdateProcessor(
-    processor?: (payload: {delta: UpdatedMembers; isReplace: boolean}) => void
-  ) {
+  public setMembersUpdateProcessor(processor?: (payload: MembersUpdatePayload) => void) {
     this.membersUpdateProcessor = processor;
   }
 

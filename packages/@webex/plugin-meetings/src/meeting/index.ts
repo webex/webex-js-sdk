@@ -87,8 +87,8 @@ import ReconnectionManager from '../reconnection-manager';
 import ReconnectionNotStartedError from '../common/errors/reconnection-not-started';
 import MeetingRequest from './request';
 import Members from '../members/index';
-import E2eeMeeting from '../e2ee/E2eeMeeting';
-import type {E2eeTrustState} from '../e2ee/types';
+import type E2eeController from '../e2ee/E2eeController';
+import type {E2eeLocusInfo, E2eeMeetingContext, E2eeTrustState} from '../e2ee/types';
 import MeetingUtil from './util';
 import MeetingsUtil from '../meetings/util';
 import RecordingUtil from '../recording-controller/util';
@@ -635,7 +635,7 @@ export default class Meeting extends StatelessWebexPlugin {
   meetingInfo: any;
   meetingRequest: MeetingRequest;
   members: Members;
-  e2ee?: E2eeMeeting;
+  e2ee?: E2eeController;
   private lastE2eeTrustState?: E2eeTrustState;
   options: object;
   orgId: string;
@@ -1115,11 +1115,17 @@ export default class Meeting extends StatelessWebexPlugin {
     /**
      * The per-meeting E2EE facade (undefined when no E2EE manager is provided).
      * @instance
-     * @type {E2eeMeeting}
+     * @type {E2eeController}
      * @private
      * @memberof Meeting
      */
-    this.e2ee = attrs.e2eeManager?.createE2eeMeeting(this);
+    const e2eeContext: E2eeMeetingContext = {
+      correlationId: this.correlationId,
+      getLocusInfo: (): E2eeLocusInfo | undefined => this.locusInfo,
+      members: this.members,
+    };
+
+    this.e2ee = attrs.e2eeManager?.createE2eeController(e2eeContext);
     const {e2ee} = this;
 
     if (e2ee) {

@@ -77,22 +77,25 @@ describe('plugin-meetings', () => {
       });
     });
 
-    describe('createE2eeMeeting', () => {
+    describe('createE2eeController', () => {
       it('returns a per-meeting E2EE facade', () => {
         const manager = new E2eeManager({webex: makeWebex(true), wasmLoader: makeWasmLoader()});
-        const meeting = {
+        const context = {
+          correlationId: 'correlation-id',
+          getLocusInfo: () => undefined,
           members: {
+            selfId: 'self-id',
             membersCollection: {get: () => undefined},
             setMembersUpdateProcessor: () => {},
             reportMembersUpdated: () => {},
           },
-        };
+        } as any;
 
-        const e2eeMeeting = manager.createE2eeMeeting(meeting);
+        const e2eeController = manager.createE2eeController(context);
 
-        assert.isDefined(e2eeMeeting);
-        assert.equal(e2eeMeeting.state, 'disabled');
-        assert.isTrue(e2eeMeeting.isEnabled);
+        assert.isDefined(e2eeController);
+        assert.equal(e2eeController.state, 'disabled');
+        assert.isTrue(e2eeController.isEnabled);
       });
     });
   });

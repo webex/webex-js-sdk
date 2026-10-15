@@ -22,10 +22,10 @@ import {
   MEDIA_SERVICE_DEVICE_TYPE,
 } from './constants';
 import type WasmLoader from '../common/wasm-loader';
-import type {E2eeConfig, E2eeState} from './types';
+import type {E2eeConfig, E2eeMeetingContext, E2eeState} from './types';
 
 const DEVICE_TYPE = 'WEB';
-const TRIGGER_SCOPE = {file: 'e2ee/E2eeMeeting', function: 'e2ee'};
+const TRIGGER_SCOPE = {file: 'e2ee/E2eeController', function: 'e2ee'};
 
 /**
  * Per-meeting E2EE facade (owned by Meeting as `this.e2ee`). It orchestrates the MLS engine, the
@@ -33,8 +33,8 @@ const TRIGGER_SCOPE = {file: 'e2ee/E2eeMeeting', function: 'e2ee'};
  * presence and lifecycle state, and re-emits E2EE events on the meeting. Its start() is a no-op
  * unless the meeting requires E2EE (a V2/zero-trust meeting) and E2EE is enabled in config.
  */
-export default class E2eeMeeting extends EventsScope {
-  private readonly meeting: any;
+export default class E2eeController extends EventsScope {
+  private readonly context: E2eeMeetingContext;
 
   private readonly webex: any;
 
@@ -62,7 +62,7 @@ export default class E2eeMeeting extends EventsScope {
 
   /**
    * @param {Object} deps
-   * @param {Object} deps.meeting - The owning meeting.
+   * @param {E2eeMeetingContext} deps.context - The meeting data and operations used by E2EE.
    * @param {Object} deps.webex - The parent webex instance.
    * @param {WasmLoader} deps.wasmLoader - Shared (pre-warmed) WASM loader.
    * @param {StaticAssetLoader} deps.assetLoader - Shared loader for plugin-meetings static assets.
@@ -70,14 +70,14 @@ export default class E2eeMeeting extends EventsScope {
    * @param {E2eeConfig} deps.config - The meetings plugin config.
    */
   constructor({
-    meeting,
+    context,
     webex,
     wasmLoader,
     assetLoader,
     identityProvider,
     config,
   }: {
-    meeting: any;
+    context: E2eeMeetingContext;
     webex: any;
     wasmLoader: WasmLoader;
     assetLoader: StaticAssetLoader;
@@ -85,7 +85,7 @@ export default class E2eeMeeting extends EventsScope {
     config: E2eeConfig;
   }) {
     super();
-    this.meeting = meeting;
+    this.context = context;
     this.webex = webex;
     this.wasmLoader = wasmLoader;
     this.assetLoader = assetLoader;
@@ -97,10 +97,10 @@ export default class E2eeMeeting extends EventsScope {
       // verification is stamped into every members:update - even for member changes outside a
       // joined meeting. Roster-driven verification changes are reported back through Members too.
       this.reconciler = new MemberMLSReconciler({
-        membersCollection: meeting.members.membersCollection,
-        reportMembersUpdated: (members) => meeting.members.reportMembersUpdated(members),
+        membersCollection: context.members.membersCollection,
+        reportMembersUpdated: (members) => context.members.reportMembersUpdated(members),
       });
-      meeting.members.setMembersUpdateProcessor((payload) =>
+      context.members.setMembersUpdateProcessor((payload) =>
         this.reconciler?.processMembersUpdate(payload)
       );
     }
@@ -150,12 +150,12 @@ export default class E2eeMeeting extends EventsScope {
    * @returns {boolean} whether this meeting requires an MLS join (V2/zero-trust) and E2EE is enabled.
    */
   private required(): boolean {
-    const info = this.meeting?.locusInfo?.info;
+    const locusInfo = this.context.getLocusInfo();
 
     return (
       isE2eeEnabledAndSupported(!!this.config.enableE2ee) &&
-      !!info?.isV2E2EEncrypted &&
-      !!info?.mediaEncryptionGroupUrl
+      !!locusInfo?.info?.isV2E2EEncrypted &&
+      !!locusInfo?.info?.mediaEncryptionGroupUrl
     );
   }
 
@@ -171,12 +171,12 @@ export default class E2eeMeeting extends EventsScope {
       const reason = error instanceof Error ? error.message : String(error);
 
       LoggerProxy.logger.warn(
-        `e2ee: E2eeMeeting#loadDomainNameRootsP7b --> failed to load ${DOMAIN_NAME_ROOTS_P7B_ASSET}; continuing without it`,
+        `e2ee: E2eeController#loadDomainNameRootsP7b --> failed to load ${DOMAIN_NAME_ROOTS_P7B_ASSET}; continuing without it`,
         error
       );
 
       Metrics.sendBehavioralMetric(BEHAVIORAL_METRICS.E2EE_DOMAIN_NAME_ROOTS_LOAD_FAILURE, {
-        correlationId: this.meeting.correlationId,
+        correlationId: this.context.correlationId,
         reason,
       });
 
@@ -193,20 +193,20 @@ export default class E2eeMeeting extends EventsScope {
   async start(): Promise<void> {
     if (this.currentState !== 'disabled' && this.currentState !== 'left') {
       LoggerProxy.logger.info(
-        `e2ee: E2eeMeeting#start --> ignoring, already in state: ${this.currentState}`
+        `e2ee: E2eeController#start --> ignoring, already in state: ${this.currentState}`
       );
 
       return;
     }
     if (!this.required()) {
       LoggerProxy.logger.info(
-        'e2ee: E2eeMeeting#start --> not required for this meeting, skipping'
+        'e2ee: E2eeController#start --> not required for this meeting, skipping'
       );
 
       return;
     }
 
-    LoggerProxy.logger.info('e2ee: E2eeMeeting#start --> starting E2EE session');
+    LoggerProxy.logger.info('e2ee: E2eeController#start --> starting E2EE session');
     this.setState('initializing');
 
     try {
@@ -225,6 +225,11 @@ export default class E2eeMeeting extends EventsScope {
         wasmLoader: this.wasmLoader,
         wasmUrl,
       });
+      const mediaEncryptionGroupUrl = this.context.getLocusInfo()?.info?.mediaEncryptionGroupUrl;
+
+      if (!mediaEncryptionGroupUrl) {
+        throw new Error('Meeting locus has no media encryption group URL');
+      }
 
       this.session = session;
       this.wireSessionEvents(session);
@@ -233,9 +238,9 @@ export default class E2eeMeeting extends EventsScope {
         participantId: device.userId,
         deviceUrl: device.url,
         deviceType: DEVICE_TYPE,
-        correlationId: this.meeting.correlationId,
+        correlationId: this.context.correlationId,
         displayName: this.getSelfDisplayName(),
-        serviceUrl: this.meeting.locusInfo.info.mediaEncryptionGroupUrl,
+        serviceUrl: mediaEncryptionGroupUrl,
         credentials,
         trustAnchors: {
           ...this.identityProvider.getTrustAnchors(),
@@ -246,7 +251,7 @@ export default class E2eeMeeting extends EventsScope {
       this.signaling = new E2eeSignaling({
         llm: this.webex.internal.llm,
         mercury: this.webex.internal.mercury,
-        getLocusUrl: () => this.meeting.locusInfo?.url,
+        getLocusUrl: () => this.context.getLocusInfo()?.url,
         session,
       });
       this.signaling.start();
@@ -254,7 +259,7 @@ export default class E2eeMeeting extends EventsScope {
       this.setState('joining');
       session.join();
     } catch (error) {
-      LoggerProxy.logger.error(`e2ee: E2eeMeeting#start --> failed to start E2EE: ${error}`);
+      LoggerProxy.logger.error(`e2ee: E2eeController#start --> failed to start E2EE: ${error}`);
       this.handleFatal('failed', 'startFailed');
     }
   }
@@ -264,7 +269,7 @@ export default class E2eeMeeting extends EventsScope {
    * @returns {Promise<void>}
    */
   async stop(): Promise<void> {
-    LoggerProxy.logger.info('e2ee: E2eeMeeting#stop --> stopping E2EE session');
+    LoggerProxy.logger.info('e2ee: E2eeController#stop --> stopping E2EE session');
     this.cleanupSession();
 
     if (this.currentState !== 'disabled') {
@@ -346,7 +351,7 @@ export default class E2eeMeeting extends EventsScope {
    */
   private handleFatal(state: 'failed' | 'evicted', reason: string): void {
     LoggerProxy.logger.error(
-      `e2ee: E2eeMeeting --> fatal E2EE error: state=${state} reason=${reason}`
+      `e2ee: E2eeController --> fatal E2EE error: state=${state} reason=${reason}`
     );
     this.cleanupSession();
     this.setState(state);
@@ -361,7 +366,7 @@ export default class E2eeMeeting extends EventsScope {
     try {
       this.signaling?.stop();
     } catch (error) {
-      LoggerProxy.logger.warn(`e2ee: E2eeMeeting --> error stopping signaling: ${error}`);
+      LoggerProxy.logger.warn(`e2ee: E2eeController --> error stopping signaling: ${error}`);
     }
     this.signaling = undefined;
 
@@ -369,7 +374,7 @@ export default class E2eeMeeting extends EventsScope {
       try {
         unsubscribe();
       } catch (error) {
-        LoggerProxy.logger.warn(`e2ee: E2eeMeeting --> error removing MLS listener: ${error}`);
+        LoggerProxy.logger.warn(`e2ee: E2eeController --> error removing MLS listener: ${error}`);
       }
     });
     this.sessionUnsubscribers = [];
@@ -381,14 +386,14 @@ export default class E2eeMeeting extends EventsScope {
     try {
       session?.leave();
     } catch (error) {
-      LoggerProxy.logger.warn(`e2ee: E2eeMeeting --> error leaving MLS session: ${error}`);
+      LoggerProxy.logger.warn(`e2ee: E2eeController --> error leaving MLS session: ${error}`);
     }
 
     try {
       this.reconciler?.reset();
     } catch (error) {
       LoggerProxy.logger.warn(
-        `e2ee: E2eeMeeting --> error resetting member verification: ${error}`
+        `e2ee: E2eeController --> error resetting member verification: ${error}`
       );
     }
 
@@ -419,9 +424,7 @@ export default class E2eeMeeting extends EventsScope {
    * @returns {string} the self participant's display name, or '' if unavailable.
    */
   private getSelfDisplayName(): string {
-    const {members} = this.meeting ?? {};
-
-    return members?.membersCollection?.get?.(members?.selfId)?.name ?? '';
+    return this.context.members.membersCollection.get(this.context.members.selfId)?.name ?? '';
   }
 
   /**
@@ -438,7 +441,7 @@ export default class E2eeMeeting extends EventsScope {
     }
 
     LoggerProxy.logger.info(
-      `e2ee: E2eeMeeting --> state changed: ${this.currentState} -> ${state}`
+      `e2ee: E2eeController --> state changed: ${this.currentState} -> ${state}`
     );
     this.currentState = state;
     this.emitE2eeEvent(EVENT_TRIGGERS.MEETING_E2EE_STATE_CHANGED, {state});
@@ -450,7 +453,7 @@ export default class E2eeMeeting extends EventsScope {
    * @returns {void}
    */
   private emitE2eeEvent(event: string, payload: object): void {
-    LoggerProxy.logger.info(`e2ee: E2eeMeeting --> emitting event: ${event}`);
+    LoggerProxy.logger.info(`e2ee: E2eeController --> emitting event: ${event}`);
     Trigger.trigger(this, TRIGGER_SCOPE, event, payload);
   }
 }

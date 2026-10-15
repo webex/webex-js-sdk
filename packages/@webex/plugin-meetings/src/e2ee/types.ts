@@ -5,6 +5,18 @@
 import type {IdentityCredentials, IdentityTrustAnchors} from '@webex/internal-plugin-identity';
 
 import type {Enum} from '../constants';
+import type {LocusDTO} from '../locus-info/types';
+import type Members from '../members';
+
+/** The Locus DTO fields consumed by E2EE, matching the shape exposed by `Meeting.locusInfo`. */
+export type E2eeLocusInfo = Pick<LocusDTO, 'url' | 'info'>;
+
+/** Per-meeting context supplied by Meetings without exposing its Meeting class to E2EE. */
+export interface E2eeMeetingContext {
+  correlationId: string;
+  getLocusInfo(): E2eeLocusInfo | undefined;
+  members: Members;
+}
 
 /**
  * SDK-facing E2EE types (camelCase), mapped from the raw WASM boundary shapes in wasm.d.ts.

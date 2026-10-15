@@ -4,7 +4,7 @@
 import 'jsdom-global/register';
 import {assert} from '@webex/test-helper-chai';
 import sinon from 'sinon';
-import E2eeMeeting from '@webex/plugin-meetings/src/e2ee/E2eeMeeting';
+import E2eeController from '@webex/plugin-meetings/src/e2ee/E2eeController';
 import MLS from '@webex/plugin-meetings/src/e2ee/mls';
 import E2eeSignaling from '@webex/plugin-meetings/src/e2ee/E2eeSignaling';
 import WasmLoader from '@webex/plugin-meetings/src/common/wasm-loader';
@@ -13,7 +13,7 @@ import Trigger from '@webex/plugin-meetings/src/common/events/trigger-proxy';
 import {EVENT_TRIGGERS} from '@webex/plugin-meetings/src/constants';
 
 describe('plugin-meetings', () => {
-  describe('E2eeMeeting', () => {
+  describe('E2eeController', () => {
     let webex;
     let meeting;
     let membersById;
@@ -107,7 +107,18 @@ describe('plugin-meetings', () => {
       };
       config = {enableE2ee: true};
 
-      e2ee = new E2eeMeeting({meeting, webex, wasmLoader, assetLoader, identityProvider, config});
+      e2ee = new E2eeController({
+        context: {
+          correlationId: meeting.correlationId,
+          getLocusInfo: () => meeting.locusInfo,
+          members: meeting.members,
+        } as any,
+        webex,
+        wasmLoader,
+        assetLoader,
+        identityProvider,
+        config,
+      });
     });
 
     afterEach(() => {

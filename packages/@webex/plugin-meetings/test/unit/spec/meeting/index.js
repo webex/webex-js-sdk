@@ -344,7 +344,7 @@ describe('plugin-meetings', () => {
         it('forwards E2EE facade events and keeps facade APIs off Meeting', () => {
           TriggerProxy.trigger.restore();
           const e2ee = new EventEmitter();
-          const e2eeManager = {createE2eeMeeting: sinon.stub().returns(e2ee)};
+          const e2eeManager = {createE2eeController: sinon.stub().returns(e2ee)};
           const meetingWithE2ee = new Meeting(
             {
               userId: uuid1,
@@ -359,6 +359,11 @@ describe('plugin-meetings', () => {
             },
             {parent: webex}
           );
+          const e2eeContext = e2eeManager.createE2eeController.firstCall.args[0];
+
+          assert.equal(e2eeContext.correlationId, correlationId);
+          assert.strictEqual(e2eeContext.members, meetingWithE2ee.members);
+          assert.strictEqual(e2eeContext.getLocusInfo(), meetingWithE2ee.locusInfo);
           const events = [
             [EVENT_TRIGGERS.MEETING_E2EE_SECURITY_CODE_UPDATED, {securityCode: 'SEC'}],
             [EVENT_TRIGGERS.MEETING_E2EE_STATE_CHANGED, {state: 'joined'}],
@@ -395,7 +400,7 @@ describe('plugin-meetings', () => {
               destinationType: DESTINATION_TYPE.MEETING_ID,
               correlationId,
               selfId: uuid1,
-              e2eeManager: {createE2eeMeeting: sinon.stub().returns(e2ee)},
+              e2eeManager: {createE2eeController: sinon.stub().returns(e2ee)},
             },
             {parent: webex}
           );
@@ -443,7 +448,7 @@ describe('plugin-meetings', () => {
               destinationType: DESTINATION_TYPE.MEETING_ID,
               correlationId,
               selfId: uuid1,
-              e2eeManager: {createE2eeMeeting: sinon.stub().returns(e2ee)},
+              e2eeManager: {createE2eeController: sinon.stub().returns(e2ee)},
             },
             {parent: webex}
           );
