@@ -9,7 +9,7 @@ doc_kind: module-spec
 generated_from: module-spec@0.3.0
 generated_by: claude-cowork
 approved_by: akulakum@cisco.com
-updated_at: 2026-10-12T08:07:54Z
+updated_at: 2026-10-15T02:33:58Z
 validation_status: pass-with-warnings
 -->
 
@@ -36,7 +36,7 @@ Related context: [documentation index](../../docs/index.md) ·
 | Parent spec       | — |
 | Doc kind          | Module spec |
 | Coverage score    | 93.3% assessed 2026-10-09 — 14 of 15 mandatory fields PRESENT, critical 8 of 8; test strategy is WEAK (gaps listed under Verification) and no characterization baseline exists. Independent validation: see the Validation status row |
-| Validation status | pass-with-warnings; assessed 2026-10-12 by validator `current-session`. Important: 1 (stale conformance evidence); Minor: 3 (validator wrapper, Mermaid parser, stale Browserslist data) |
+| Validation status | pass-with-warnings; assessed 2026-10-15 by validator `current-session`. Blocking: 0; Important: 2 (Node integration coverage wording, PR template); Minor: 4 (documentation validation route, validator wrapper, Mermaid parser, stale Browserslist data) |
 
 ## Applicability
 
