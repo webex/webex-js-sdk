@@ -3,7 +3,7 @@ doc_kind: agent-entry
 generated_from: agents@0.3.0
 generated_by: claude-cowork
 approved_by: akulakum@cisco.com
-updated_at: 2026-10-15T16:41:58Z
+updated_at: 2026-10-15T22:48:36Z
 validation_status: pending
 -->
 
@@ -96,7 +96,8 @@ Definition of done:
 
 - `require('webex-node')` must keep returning the `WebexNode` class itself.
 - Plugins are loaded only by side-effect `require` calls placed before `WebexCore.extend`.
-- Caller configuration passed to `init` wins over package values (module spec `INV-001`).
+- Defined caller configuration passed to `init` wins over package values, with lodash `merge`
+  semantics (module spec `INV-001`).
 - The values in `src/config.js` are not applied today (module spec `MOD-007`). Fixing this changes
   runtime defaults for every consumer; do it only in a dedicated change with a test.
 - Other known defects are recorded in the module spec Pitfalls.
@@ -135,7 +136,7 @@ Pattern example:
 ```text
 Preferred:
 - Add a plugin with a side-effect require before WebexCore.extend and a package.json dependency.
-- Pass overrides through init({config}) so they win over package values.
+- Pass overrides through init({config}) so they win over package values (see INV-001).
 
 Avoid:
 - Adding methods or state to WebexNode.

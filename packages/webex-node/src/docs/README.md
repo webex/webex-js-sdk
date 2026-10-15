@@ -9,7 +9,7 @@ doc_kind: module-spec
 generated_from: module-spec@0.3.0
 generated_by: claude-cowork
 approved_by: akulakum@cisco.com
-updated_at: 2026-10-15T16:41:58Z
+updated_at: 2026-10-15T22:48:36Z
 validation_status: pending
 -->
 
@@ -119,7 +119,7 @@ not restate signatures.
 | Package export (`require('webex-node')`) | Node.js applications | The export is the `WebexNode` class itself, with no named exports (`MOD-001`) | `src/index.js` |
 | Load side effects | Every importer | Loading installs the Babel polyfill when absent (`MOD-001`) and registers the plugin set (`MOD-002`) | `src/index.js`, `src/webex-node.js` |
 | `WebexNode.init(attrs)` | Applications | Returns a new instance with the merged configuration (`MOD-004`, `INV-001`) | `src/webex-node.js` |
-| `new WebexNode(attrs)` | Applications and tests | A plain `WebexCore` subclass constructor; skips the package configuration (`MOD-005`) | `src/webex-node.js` |
+| `new WebexNode(attrs)` | Applications and tests | A plain `WebexCore` subclass constructor; does not add `sdkType` or the package configuration (`MOD-005`) | `src/webex-node.js` |
 | Instance properties `webex` and `version` | Code that identifies the SDK build | `webex` is `true`; `version` is injected at build time (`MOD-003`) | `src/webex-node.js` |
 | Plugin namespaces on an instance | Applications | Provided by the loaded plugins, whose names and APIs those packages own (`MOD-002`) | `src/webex-node.js` |
 | `./package` export | Tooling | Exposes `package.json` | `package.json` |
@@ -146,7 +146,7 @@ Contract `webex-node-sdk` is published with native artifact `package.json`. Requ
 | `MOD-002` | Loading `src/webex-node.js` requires the 17 plugin packages listed under Module-specific rules, in that order, before `WebexCore.extend` runs. | Each plugin registers itself with webex-core when loaded, so the plugins exist on WebexNode instances without the application loading them. | `src/webex-node.js` | none found | Plugin names come from each plugin's own registration call (see architecture Dependency topology). Other plugins are registered transitively by those packages. | Present |
 | `MOD-003` | `WebexNode` is `WebexCore.extend({webex: true, version: PACKAGE_VERSION})`; instances read `webex === true`. | Marks the instance as the full SDK and carries the build's version. | `src/webex-node.js` | `test/unit/spec/webex-node.test.js` "should create an instance of WebexNode with default configuration" asserts the webex property | `PACKAGE_VERSION` is replaced at build time by the inject-package-version Babel plugin with `package.json` `version`, or `0.0.0` when, as in the repository, that field is absent | Present |
 | `MOD-004` | `init(attrs = {})` sets `attrs.config` to the `INV-001` merge result and returns `new WebexNode(attrs)`. Other `attrs` keys, such as `credentials`, are passed to the constructor unchanged. | One call creates a configured instance; webex-core's constructor normalizes credential forms such as a token string or `credentials.access_token`. | `src/webex-node.js` | `test/unit/spec/webex-node.test.js` "should merge user provided config with the default configuration" and "should override default config with user provided configuration" | Credential normalization is webex-core behavior (sibling package webex-core, file src/webex-core.js) | Present |
-| `MOD-005` | `new WebexNode(attrs)` does not run the `init` merge: the instance has no `sdkType` and none of the `src/config.js` keys from this package. | Direct construction is a plain webex-core subclass constructor. | `src/webex-node.js` | `test/unit/spec/webex-node.test.js` "is set false by default" constructs directly | — | Present |
+| `MOD-005` | `new WebexNode(attrs)` does not run the `init` merge, so this package adds neither `sdkType` nor the `src/config.js` object. webex-core's `initialize` still merges its configuration (with registered plugin configuration) under `attrs.config`, so values the caller passes in `attrs.config`, including `sdkType`, are kept at merge time (`INV-001` semantics; later webex-core and plugin initialization can still change them). With no arguments, `sdkType` is unset. | Direct construction is a plain webex-core subclass constructor. | `src/webex-node.js` | `test/unit/spec/webex-node.test.js` "is set false by default" constructs directly | — | Present |
 | `MOD-006` | `src/config.js` declares `hydra` and `hydraServiceUrl` (both `process.env.HYDRA_SERVICE_URL` or `https://webexapis.com/v1`, read once when the module loads), `credentials.clientType: 'confidential'`, `device.validateDomains: true`, `device.ephemeral: true`, and `storage.boundedAdapter` and `storage.unboundedAdapter` set to the `src/config-storage.js` object. | States the intended Node.js defaults: a confidential OAuth client, ephemeral device registration, and memory storage. | `src/config.js` | none found | The declared values do not reach the top-level configuration; see `MOD-007` | Present |
 | `MOD-007` | Because `src/webex-node.js` loads `src/config.js` with `require` and that module has only a default export, `init` merges the module object: the declared values land under `config.default`, not at the top level. The effective top-level values are webex-core's defaults with registered plugin configuration, `sdkType`, and the caller's `config`. | Records current behavior, which differs from the intent in `MOD-006`. | `src/webex-node.js`, `src/config.js` | none found; confirmed by a scratch run of the build output on 2026-10-15 (top-level device.ephemeral was false, credentials.clientType and hydra were unset, and config.default held the five keys) | Fixing it changes runtime defaults for every consumer; see Pitfalls | Present |
 | `MOD-008` | `src/config-storage.js` reads `MemoryStoreAdapter` from the default import of `@webex/webex-core`, which is the `WebexCore` class and does not carry it, so both adapter values are `undefined`. | Records current behavior; the effective storage adapters are those in webex-core's configuration unless a registered plugin's configuration or the caller's `config` sets them. | `src/config-storage.js` | none found; confirmed by the same scratch run | — | Present |
@@ -156,7 +156,7 @@ Contract `webex-node-sdk` is published with native artifact `package.json`. Requ
 `WebexNode` is a thin subclass. `src/webex-node.js` first loads 17 plugin packages for their side
 effects; each one registers itself with webex-core when loaded (`MOD-002`). It then calls
 `WebexCore.extend` with two prototype values (`MOD-003`) and attaches the static `init` factory
-(`MOD-004`). The class adds no methods, props, or plugins of its own.
+(`MOD-004`). Apart from `init` and those two prototype values, the class adds no methods, props, or plugins of its own.
 
 `init` builds the configuration in one `lodash/merge` call (`INV-001`) and hands it to the webex-core
 constructor, whose `initialize` merges the webex-core configuration under it. The configuration file
@@ -222,7 +222,7 @@ sequenceDiagram
     Core-->>App: error from webex-core
   end
   App->>Node: new WebexNode(attrs) without init
-  Node-->>App: instance without sdkType or package config
+  Node-->>App: instance with webex-core, plugin, and caller config (no sdkType unless the caller passes one)
 ```
 
 ## Class and component relationships
@@ -260,21 +260,21 @@ classDiagram
 | -------- | --------------- | ------------------------- | ---------------------------- | -------- |
 | `UC-001` | Node.js application with an access token | Calls `WebexNode.init({credentials: {access_token}})`, then uses plugin namespaces such as `rooms`, `memberships`, and `messages` | Plugin calls and their errors belong to those packages | `README.md`, `src/webex-node.js` |
 | `UC-002` | Bot | Calls `WebexNode.init({credentials: token})` with the token as a string, as the JSDoc example shows | webex-core turns a string `credentials` into `credentials.supertoken` | `src/webex-node.js` |
-| `UC-003` | Application overriding configuration | Passes `config` to `init`; caller values win over the package values (`INV-001`) | A caller `sdkType` replaces `webex-node` | `test/unit/spec/webex-node.test.js` |
+| `UC-003` | Application overriding configuration | Passes `config` to `init`; caller values win over the package values, with the merge semantics in `INV-001` | A caller `sdkType` replaces `webex-node` | `test/unit/spec/webex-node.test.js` |
 | `UC-004` | FedRAMP application | Passes `config.fedramp: true` to `init` | Discovery URLs are set by webex-core services, not by this package | `test/unit/spec/webex-node.test.js` |
 
 ## Business rules and invariants
 
 | ID | Invariant | WHY | Enforcement source | Test evidence |
 | -- | --------- | --- | ------------------ | ------------- |
-| `INV-001` | `init` merges in this order, later sources winning, with deep merging of plain objects: `{sdkType: 'webex-node'}`, then the `src/config.js` module object (`MOD-007`), then `attrs.config`. webex-core's `initialize` then merges its configuration under the result, so caller values win over both. | Callers can override any default, including `sdkType`. | `src/webex-node.js` | `test/unit/spec/webex-node.test.js` "should merge user provided config with the default configuration", "should override default config with user provided configuration" |
+| `INV-001` | `init` merges in this order, later sources winning, with deep merging of plain objects: `{sdkType: 'webex-node'}`, then the `src/config.js` module object (`MOD-007`), then `attrs.config`. webex-core's `initialize` then merges its configuration under the result, so in both merges a defined caller value wins. These are lodash `merge` semantics: a caller value that is `undefined` is ignored, and arrays merge by index. | In those two merges a caller value replaces the package and webex-core defaults, including `sdkType`. Later initialization owned by webex-core and the plugins can still change configuration; for example, webex-core services replaces `services.discovery` with its FedRAMP set when `fedramp` is truthy (sibling package webex-core, file src/lib/services/services.js). | `src/webex-node.js` | `test/unit/spec/webex-node.test.js` "should merge user provided config with the default configuration", "should override default config with user provided configuration" |
 | `INV-002` | `init` assigns the merged object to `attrs.config` on the object the caller passed, replacing any previous `config` property. | Avoids a copy; the caller's object is reused as the constructor argument. | `src/webex-node.js` | Gap: no test |
 | `INV-003` | Every plugin package in the list is required before `WebexCore.extend` runs. | `extend` copies the public plugin map when the class is created, so public plugins registered later are absent from WebexNode instances. Internal plugins, plugin configuration, and interceptors are registered on shared webex-core objects and apply either way. | `src/webex-node.js` | Gap: no test |
 
 ## Pitfalls and constraints
 
-- Configuration nesting (`MOD-007`): the values in `src/config.js` sit under `config.default`. In
-  effect, devices are not ephemeral (the device plugin default is `ephemeral: false`), the top-level
+- Configuration nesting (`MOD-007`): the values in `src/config.js` sit under `config.default`. Unless
+  the caller sets them in `config`, devices are not ephemeral (the device plugin default is `ephemeral: false`), the top-level
   `credentials.clientType` is not set to `confidential`, and there are no top-level `hydra` or
   `hydraServiceUrl` keys. A search of `src/` in the workspace `@webex` packages found no reader of
   a top-level `config.hydra` or `config.hydraServiceUrl`; webex-core reads discovery URLs from
@@ -288,7 +288,7 @@ classDiagram
   module's values.
 - `init` mutates its argument (`INV-002`). Reusing one `attrs` object for two `init` calls merges
   the earlier result into the next one.
-- `new WebexNode()` skips the package configuration (`MOD-005`).
+- `new WebexNode(attrs)` does not add `sdkType` or the package configuration; only webex-core, plugin, and caller configuration apply (`MOD-005`).
 - Loading the package installs `@babel/polyfill` into the process globals when no polyfill is
   present (`MOD-001`).
 - `@webex/internal-plugin-voicea` is a declared dependency, but `src/` does not require it, and a
@@ -344,7 +344,7 @@ No TypeScript declaration or API report exists for this package.
 | ------------------------ | ---------- | ----------------- | ----------------------------- | --- |
 | `MOD-003` | Unit | `test/unit/spec/webex-node.test.js` "should create an instance of WebexNode with default configuration" | none found | version not asserted |
 | `MOD-004`, `INV-001` | Unit | "should merge user provided config with the default configuration", "should override default config with user provided configuration" | sdkType override | No assertion of any `src/config.js` value |
-| `MOD-005` | Unit | "is set false by default" constructs directly | none found | sdkType absence not asserted |
+| `MOD-005` | Unit | "is set false by default" constructs directly with no arguments | none found | sdkType absence and caller-config retention not asserted |
 | webex-core FedRAMP discovery | Unit | "sets correct services when fedramp is true" | none found | Asserts webex-core behavior, not this package |
 | `MOD-001` | none | `src/index.js` | none found | No polyfill guard or export test |
 | `MOD-002`, `INV-003` | none | `src/webex-node.js` | none found | No plugin registration test |

@@ -9,7 +9,7 @@ doc_kind: standing-doc
 generated_from: architecture@0.3.0
 generated_by: claude-cowork
 approved_by: akulakum@cisco.com
-updated_at: 2026-10-15T16:41:58Z
+updated_at: 2026-10-15T22:48:36Z
 validation_status: pending
 -->
 
@@ -103,13 +103,18 @@ flowchart LR
 | `lodash` | External | `src` | `merge` in `init` | Range in `package.json` |
 | `@webex/common`, `@webex/internal-plugin-voicea`, `@webex/storage-adapter-local-storage` | Internal | none | Declared, not required by `src/` | Workspace versions |
 
-Registered names, from each plugin's own registration call (`registerPlugin` or
-`registerInternalPlugin` in that package's src/index.js): public `authorization` (plugin-authorization
-re-exports plugin-authorization-node in Node.js), `attachmentActions`, `devicemanager`, `logger` (replacing webex-core's built-in logger),
-`messages`, `memberships`, `people`, `rooms`, `teams`, `teamMemberships`, `webhooks`, and `cypher`
-(plugin-encryption); internal `calendar`, `device`, `presence`, `support`, and `llm`. Those packages
-import further plugins, such as internal-plugin-conversation and internal-plugin-mercury, which
-register as well. No dependency cycle exists inside the package.
+Registered names come from each plugin's own `registerPlugin` or `registerInternalPlugin` call in
+that package's entry file: src/index.js, except src/index.ts in internal-plugin-llm and
+plugin-encryption. plugin-authorization re-exports plugin-authorization-node in Node.js, and the
+`authorization` call is in plugin-authorization-node, file src/index.js.
+
+- Public: `authorization`, `attachmentActions`, `devicemanager`, `logger` (replacing webex-core's
+  built-in logger), `messages`, `memberships`, `people`, `rooms`, `teams`, `teamMemberships`,
+  `webhooks`, and `cypher` (plugin-encryption).
+- Internal: `calendar`, `device`, `presence`, `support`, and `llm`.
+
+Those packages import further plugins, such as internal-plugin-conversation and
+internal-plugin-mercury, which register as well. No dependency cycle exists inside the package.
 
 ## Public and consumer surfaces
 
@@ -198,7 +203,8 @@ flowchart LR
 
 Controls and boundaries:
 
-- This package never reads, stores, or sends a token. `init` passes `credentials` and other
+- The package source in `src/` never reads, stores, or sends a token (one unit test reads an
+  optional `token` environment variable). `init` passes `credentials` and other
   non-`config` attributes to the webex-core constructor unchanged; webex-core normalizes them
   (sibling package webex-core, file src/webex-core.js).
 - This package sends no request. Authorization, host validation, and redirect handling for the
