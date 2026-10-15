@@ -100,7 +100,7 @@
       "path": "src",
       "canonical_spec": "src/docs/README.md",
       "coverage_status": "Partial",
-      "coverage_evidence": "Field coverage 93.3% (14/15) assessed 2026-10-15 by the generator; critical field coverage 8/8. The one WEAK field is test strategy: test/unit/spec/webex-node.test.js runs 5 tests that cover init merging, the sdkType override, the webex property, and the webex-core fedramp setting, but no test asserts any src/config.js value at the top level, plugin registration, the polyfill guard, the CommonJS export, or init mutating its argument, and no characterization baseline exists. Independent validation: pending (spec-validator on a different runtime). Held at Partial: untested configuration and registration behavior, no characterization baseline, and no spec-drift record.",
+      "coverage_evidence": "Field coverage 93.3% (14/15) assessed 2026-10-15 by the generator; critical field coverage 8/8. The one WEAK field is test strategy: test/unit/spec/webex-node.test.js runs 5 tests that cover init merging, the sdkType override, the webex property, and the webex-core fedramp setting, but no test asserts any src/config.js value at the top level, plugin registration, the polyfill guard, the CommonJS export, or init mutating its argument, and no characterization baseline exists. Independent validation: pass-with-warnings assessed 2026-10-16 by current-session (different-runtime); 0 Blocking, 2 Minor tooling warnings. Held at Partial: untested configuration and registration behavior, no characterization baseline, and no spec-drift record.",
       "last_assessed": "2026-10-15",
       "contracts": {
         "provides": [
@@ -196,7 +196,11 @@
       "Blocking"
     ],
     "base_ref": "next",
-    "head_ref": "WEBEX_NODE_PACKAGE_SDD"
+    "head_ref": "WEBEX_NODE_PACKAGE_SDD",
+    "validator_runtime": "current-session",
+    "validator_runtime_source": "invocation-input",
+    "validator_run_id": "spark-853131-spec-validator-2026-10-16-session-b-round-2",
+    "source_commit": "5e5097093ca0039a6eb66b215eb2ed0546f33754"
   },
   "layout": {
     "sdd_root": ".sdd",

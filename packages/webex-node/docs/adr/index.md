@@ -3,8 +3,8 @@ doc_kind: standing-doc
 generated_from: adr-index@0.3.0
 generated_by: claude-cowork
 approved_by: akulakum@cisco.com
-updated_at: 2026-10-15T16:41:58Z
-validation_status: pending
+updated_at: 2026-10-15T23:00:24Z
+validation_status: pass-with-warnings
 -->
 
 # Architectural decision records

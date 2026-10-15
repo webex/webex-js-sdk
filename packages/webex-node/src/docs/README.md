@@ -9,8 +9,8 @@ doc_kind: module-spec
 generated_from: module-spec@0.3.0
 generated_by: claude-cowork
 approved_by: akulakum@cisco.com
-updated_at: 2026-10-15T22:48:36Z
-validation_status: pending
+updated_at: 2026-10-15T23:00:24Z
+validation_status: pass-with-warnings
 -->
 
 # webex-node SDK entry
@@ -38,7 +38,7 @@ Related context: [documentation index](../../docs/index.md) ·
 | Parent spec       | — |
 | Doc kind          | Module spec |
 | Coverage score    | 93.3% assessed 2026-10-15 — 14 of 15 mandatory fields PRESENT, critical 8 of 8; test strategy is WEAK (the 5 unit tests do not assert the package configuration, plugin registration, or the polyfill guard; gaps listed under Verification) and no characterization baseline exists. Independent validation: see the Validation status row |
-| Validation status | pending; independent spec-validator run on a different runtime not yet performed |
+| Validation status | pass-with-warnings; assessed 2026-10-16 by current-session (different-runtime); 0 Blocking, 2 Minor tooling warnings |
 
 ## Applicability
 
