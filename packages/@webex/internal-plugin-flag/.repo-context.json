@@ -3,7 +3,7 @@
   "version": 1,
   "repository": {
     "name": "@webex/internal-plugin-flag",
-    "purpose": "Internal Webex JS SDK plugin registered as webex.internal.flag. Importing it imports @webex/internal-plugin-conversation and @webex/internal-plugin-device for their side effects and registers the Flag plugin with an empty config under the flag key. Flag creates and lists activity flags through catalog service userApps (resource /flags), archives, unflags, or deletes a flag through its url, and maps flags to activities with one bulk_activities_fetch request per conversation host that the service catalog names as conversation."
+    "purpose": "Internal Webex JS SDK plugin registered as webex.internal.flag. Importing it imports @webex/internal-plugin-conversation and @webex/internal-plugin-device for their side effects and registers the Flag plugin with an empty config under the flag key. Flag creates and lists activity flags through catalog service userApps (resource /flags), archives, unflags, or deletes a flag through its url, and maps flags to activities with one bulk_activities_fetch request per conversation URL whose prefix the service catalog names as service conversation."
   },
   "commands": {
     "install": "yarn install",
@@ -99,7 +99,7 @@
     {
       "path": ".sdd/templates/repo-standards/template-map.json",
       "generated_from": "WebexTools/repo-standards@d89a7fe59126ae3ad9bac9ca352aa7f12b4c85dc",
-      "refresh_with": "Symlink to the JS SDK root .sdd/templates/repo-standards (Repo Standards 0.3.0 snapshot from PR 5246). Do not replace it with a package copy."
+      "refresh_with": "Read from the JS SDK root .sdd/templates/repo-standards (Repo Standards 0.3.0 snapshot from PR 5246). Only to run the Repo Annotation checkers and validator, a temporary local symlink at .sdd/templates/repo-standards points there; it is never committed, and templates are never copied into the package."
     }
   ],
   "validation_matrix": [
@@ -322,8 +322,8 @@
           ".sdd/templates/repo-standards"
         ],
         "generated_from": "WebexTools/repo-standards@d89a7fe59126ae3ad9bac9ca352aa7f12b4c85dc",
-        "refresh_with": "Symlink to the JS SDK root .sdd/templates/repo-standards (Repo Standards 0.3.0 snapshot from PR 5246). Do not replace it with a package copy.",
-        "notes": "Symlink to the JS SDK root .sdd/templates/repo-standards (Repo Standards 0.3.0 snapshot from PR 5246). Do not replace it with a package copy."
+        "refresh_with": "Read from the JS SDK root .sdd/templates/repo-standards (Repo Standards 0.3.0 snapshot from PR 5246). Only to run the Repo Annotation checkers and validator, a temporary local symlink at .sdd/templates/repo-standards points there; it is never committed, and templates are never copied into the package.",
+        "notes": "Read from the JS SDK root .sdd/templates/repo-standards (Repo Standards 0.3.0 snapshot from PR 5246). Only to run the Repo Annotation checkers and validator, a temporary local symlink at .sdd/templates/repo-standards points there; it is never committed, and templates are never copied into the package."
       }
     ],
     "validation_entrypoints": [
@@ -331,13 +331,13 @@
         "name": "unit tests",
         "command": "yarn workspace @webex/internal-plugin-flag test:unit",
         "scope": "test/unit/spec",
-        "notes": "Jest via webex-legacy-tools --runner jest. Build first: the spec imports the package by name, which resolves to dist/."
+        "notes": "Jest, through the test:unit script. Build first: the spec imports the package by name, which resolves to dist/."
       },
       {
         "name": "integration tests",
         "command": "yarn workspace @webex/internal-plugin-flag test:browser",
         "scope": "test/integration/spec",
-        "notes": "karma via webex-legacy-tools --integration (no test:integration script exists); the unit spec is not collected. Needs Chrome and Firefox (the karma-browsers default), network access, and the WEBEX_CLIENT_ID and WEBEX_CLIENT_SECRET environment variables required by the workspace test-users helper."
+        "notes": "Mocha specs with Chai assertions, run in browsers by the karma runner through the test:browser script, integration files only (no test:integration script exists); the unit spec is not collected. Needs Chrome and Firefox (the karma-browsers default), network access, and the WEBEX_CLIENT_ID and WEBEX_CLIENT_SECRET environment variables required by the workspace test-users helper."
       },
       {
         "name": "lint",
@@ -352,8 +352,8 @@
         "targets": [
           ".sdd/templates/repo-standards"
         ],
-        "mechanism": "Symlink to the JS SDK root .sdd/templates/repo-standards (Repo Standards 0.3.0 snapshot from PR 5246). Do not replace it with a package copy.",
-        "notes": "Symlink to the JS SDK root .sdd/templates/repo-standards (Repo Standards 0.3.0 snapshot from PR 5246). Do not replace it with a package copy."
+        "mechanism": "Read from the JS SDK root .sdd/templates/repo-standards (Repo Standards 0.3.0 snapshot from PR 5246). Only to run the Repo Annotation checkers and validator, a temporary local symlink at .sdd/templates/repo-standards points there; it is never committed, and templates are never copied into the package.",
+        "notes": "Read from the JS SDK root .sdd/templates/repo-standards (Repo Standards 0.3.0 snapshot from PR 5246). Only to run the Repo Annotation checkers and validator, a temporary local symlink at .sdd/templates/repo-standards points there; it is never committed, and templates are never copied into the package."
       }
     ]
   },

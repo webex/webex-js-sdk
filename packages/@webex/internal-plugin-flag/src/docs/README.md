@@ -9,7 +9,7 @@ doc_kind: module-spec
 generated_from: module-spec@0.3.0
 generated_by: claude-cowork
 approved_by: akulakum@cisco.com
-updated_at: 2026-10-12T14:57:45Z
+updated_at: 2026-10-15T11:34:53Z
 validation_status: pass-with-warnings
 -->
 
@@ -50,7 +50,7 @@ Related context: [documentation index](../../docs/index.md) ·
 | `module.holds_client_state`          | N/A        | No state is kept between calls; each method builds its request from its arguments | Client state model |
 | `module.enforces_domain_rules`       | Applicable | Required url fields, the conversation-host rule, the fixed state values, and the multistatus '200' filter (`src/flag.js`) | Business rules and invariants |
 | `module.is_concurrent_async`         | Applicable | Each method returns a promise unless reading a property of its argument throws (the synchronous TypeError cases under Caller-visible failure modes); mapToActivities sends one bulk fetch per conversation URL in parallel | Concurrency and reactive flow |
-| `module.owns_persistence`            | N/A        | Nothing is stored by this package; flags live in the user-apps service | Data, schema, and migration |
+| `module.owns_persistence`            | N/A        | Nothing is stored by this package; flag storage is assumed to be in the user-apps flags service (contract not in this repository) | Data, schema, and migration |
 | `module.stateful_transitions`        | N/A        | The package sends a target state value; it enforces no transition rules, and the flag lifecycle is owned by the service | State machine |
 | `module.exposes_wire_protocol`       | Applicable | Request bodies, query, and response fields read by the methods | Protocol and wire format |
 | `module.ui_multi_screen`             | N/A        | No UI | UI flow |
@@ -80,7 +80,7 @@ Related context: [documentation index](../../docs/index.md) ·
 | Sibling package webex-core, files src/webex-core.js and src/interceptors/ | The default interceptor set and its replacement by `config.interceptors` |
 | Sibling package http-core, file src/request/index.js; its SDD module spec src/docs/README.md (MOD-007 to MOD-009, MOD-013, MOD-014) | `url` is copied to `uri` before interceptors run. Which responses reject, the 404 redirect bodies that resolve, status 0, and how the error class is chosen are owned by http-core and specified there |
 | Sibling package internal-plugin-conversation, file src/index.js | The inbound payload predicate on `body.multistatus` that this package's bulk-fetch response passes through |
-| Sibling package internal-plugin-device, SDD module spec src/docs/README.md | The device plugin that `src/index.js` imports for its side effect |
+| Sibling package internal-plugin-device, SDD module spec src/docs/README.md | The device plugin that `src/index.js` imports for its side effect, and its device-URL interceptor (sibling file src/interceptors/device-url.js) |
 
 ## Purpose and boundary
 
@@ -130,9 +130,9 @@ and `conversation-bulk-activities-http`.
 
 | Dependency | Why it is required | Failure behavior |
 | ---------- | ------------------ | ---------------- |
-| `@webex/webex-core` (`webex-core-plugin-host`) | `WebexPlugin`, `registerInternalPlugin`, `webex.request`, `logger`, and `webex.internal.services` (`waitForCatalog`, `getServiceFromUrl`) | Error classes (`WebexHttpError` subtypes through `HttpStatusInterceptor`), service URL resolution, host checks, auth, and redirects assume webex-core's default interceptor set. A host-supplied `config.interceptors` set replaces it, and then the HTTP rows under Caller-visible failure modes depend on the interceptors that host lists. Pipeline security is described in the architecture Security architecture |
-| `@webex/internal-plugin-conversation` (`conversation-sdk`) | Imported for its side effect; its registered payload transforms act on the bulk-fetch response; `create` reads the conversation activity fields `url` and `target.url` | What the conversation transforms do to the returned activities is owned by that package |
-| `@webex/internal-plugin-device` (`webex-device-registration`) | Imported for its side effect only; `src/` calls no device API | Load-time only |
+| `@webex/webex-core` (`webex-core-plugin-host`) | `WebexPlugin`, `registerInternalPlugin`, `webex.request`, `logger`, and `webex.internal.services` (`waitForCatalog`, `getServiceFromUrl`) | Error classes (`WebexHttpError` subtypes through `HttpStatusInterceptor`), service URL resolution, host checks, auth, redirects, payload transforms, and plugin-registered interceptors such as the device-URL interceptor assume webex-core's default interceptor set, built when a webex instance is constructed. A host-supplied `config.interceptors` set replaces it, and then the HTTP rows under Caller-visible failure modes depend on the interceptors that host lists. Pipeline security is described in the architecture Security architecture |
+| `@webex/internal-plugin-conversation` (`conversation-sdk`) | Imported for its side effect; with the default interceptor set (row above), its registered payload transforms can act on the bulk-fetch response; `create` reads the conversation activity fields `url` and `target.url` | What the conversation transforms do to the returned activities is owned by that package |
+| `@webex/internal-plugin-device` (`webex-device-registration`) | Imported for its side effect; `src/` calls no device API. The import also registers the device-URL interceptor | With the default interceptor set (webex-core row) and on instances constructed after the import, once a device is registered that interceptor can add the `cisco-device-url` header to this package's requests or reject them; owned by internal-plugin-device (see its SDD module spec) |
 | User-apps flags service (`user-apps-flags-http`) | `create`, `list`, and, through the flag URLs it returns, `archive`, `unflag`, `delete` | Rejections from `webex.request` propagate; this package does not catch them |
 | Conversation service (`conversation-bulk-activities-http`) | `mapToActivities` bulk fetch | Propagates; one failed fetch rejects the whole call (`MOD-007`) |
 | `lodash` | `flatten` in `mapToActivities` | Range in `package.json` |
@@ -244,7 +244,7 @@ sequenceDiagram
   Flag->>Services: waitForCatalog postauth
   alt catalog wait rejects
     Services-->>Caller: rejection propagates, no bulk fetch sent
-  else catalog ready
+  else catalog wait resolves (the postauth catalog may still be unready)
     loop each flag
       Flag->>Services: getServiceFromUrl(conversation URL from flag-item)
       alt service name is conversation
@@ -304,7 +304,7 @@ classDiagram
 
 | Use case | Actor or caller | Primary steps and outcome | Failure or boundary behavior | Evidence |
 | -------- | --------------- | ------------------------- | ---------------------------- | -------- |
-| `UC-001` | Application flagging a message | Passes a conversation activity to `create`; receives the flag with `state` `flagged`, `flag-item`, and `conversation-url` | Missing `url` rejects; missing `target` throws | `test/integration/spec/flag.js` #create() |
+| `UC-001` | Application flagging a message | Passes a conversation activity to `create`; receives the response body; the live integration spec expects `state` `flagged`, `flag-item`, and `conversation-url` in it (service contract not in this repository) | Missing `url` rejects; missing `target` throws | `test/integration/spec/flag.js` #create() |
 | `UC-002` | Application showing flagged messages | Calls `list`, then `mapToActivities` with the result; receives the activities | Activities on unrecognized hosts are skipped with a warning | Partial: `test/integration/spec/flag.js` #mapToActivities() passes a flag returned by create, not by list; the list-then-map flow has no test (Verification) |
 | `UC-003` | Application clearing a flag | Passes a flag from `create` or `list` to `unflag`, `archive`, or `delete` | Missing `url` rejects | Partial: `test/integration/spec/flag.js` #unflag(), #archive(), #remove() pass a flag returned by create; no test passes a flag from list |
 
@@ -324,8 +324,8 @@ classDiagram
 | `INV-001` | The plugin is registered as `flag`, its `namespace` is `Flag`, and its config key is `flag`. webex-core reads `this.config` by the lower-cased namespace, so the three must stay aligned. | Importers read `webex.internal.flag`, and a mismatched key leaves the config under another name. | `src/index.js`, `src/flag.js`, `src/config.js`; sibling package webex-core, file src/lib/webex-plugin.js | Gap: the unit spec mounts the class under the literal child name flag |
 | `INV-002` | `create` requires `activity.url`; `archive`, `unflag`, and `delete` require `flag.url`. When the field is falsy, the method returns a rejected promise with an `Error` whose message names the field, and sends no request. | Prevents a request with no target. | `src/flag.js` | `test/unit/spec/flag.js` (#flag(), #unflag(), #archive(), #remove()) |
 | `INV-003` | A flag's `flag-item` is used only when the greedy pattern `(.*)/activities/` matches it and `getServiceFromUrl` on the captured prefix returns a service named `conversation`. The bulk fetch goes to that captured prefix, not to a catalog URL. The matching rules of `getServiceFromUrl` (origin, path boundary, alternate hosts) are owned by webex-core. | Stops the plugin from posting activity URLs to a host that the flag data names but the catalog does not. | `src/flag.js`; sibling package webex-core, file src/lib/services/service-catalog.js | `test/unit/spec/flag.js` (unrecognized host, non-conversation service, known service, mixed list, malformed URL) |
-| `INV-004` | The state values are fixed: `create` sends `flagged`, `list` queries `flagged`, `unflag` sends `unflagged`, and `archive` sends `archived`. | The service filters and changes flags by these values. | `src/flag.js` | Live only: `test/integration/spec/flag.js` |
-| `INV-005` | From each bulk-fetch response, only `multistatus` entries whose `status` is the string `'200'` contribute `data.activity`; other entries are dropped without a log. | Returns only activities that the service could fetch. | `src/flag.js` | Gap: the unit cases use only '200' entries |
+| `INV-004` | The state values are fixed: `create` sends `flagged`, `list` queries `flagged`, `unflag` sends `unflagged`, and `archive` sends `archived`. | Assumed from the code: the user-apps service filters and changes flags by these values; its contract is not in this repository. | `src/flag.js` | Live only: `test/integration/spec/flag.js` |
+| `INV-005` | From each bulk-fetch response, only `multistatus` entries whose `status` is the string `'200'` contribute `data.activity`; other entries are dropped without a log. | Returns only the entries the code treats as fetched; the meaning of each status is assumed, because the conversation service contract is not in this repository. | `src/flag.js` | Gap: the unit cases use only '200' entries |
 
 ## Concurrency and reactive flow
 
@@ -342,7 +342,7 @@ classDiagram
 
 | Message or frame | Version | Producer or serializer | Consumer or parser | Compatibility and ordering rule |
 | ---------------- | ------- | ---------------------- | ------------------ | ------------------------------- |
-| Create flag request | Unversioned | `create` | User-apps flags service | POST `/flags`; body keys `conversation-url` (from `activity.target.url`), `flag-item` (from `activity.url`), `state` |
+| Create flag request | Unversioned | `create` | User-apps flags service | POST `/flags`; body keys `conversation-url` (from `activity.target.url`), `flag-item` (from `activity.url`), `state`. The body is serialized as JSON, so a key whose value is `undefined` (for example `conversation-url` when `activity.target.url` is missing) is left out |
 | List flags request and response | Unversioned | `list` | User-apps flags service | GET `/flags`, query `state`; the method reads `body.items` |
 | Change flag request | Unversioned | `archive`, `unflag` | Host of `flag.url` | PUT, body `{state}` |
 | Delete flag request | Unversioned | `delete` | Host of `flag.url` | DELETE, no body |
@@ -357,9 +357,10 @@ classDiagram
 | `create` with an activity that has `url` but no `target` | Synchronous `TypeError` from reading `target.url`, thrown before a promise exists | Wrap the call or pass a full activity | None | `src/flag.js` |
 | `flag` or `activity` argument is `undefined` | Synchronous `TypeError` | Same as above | None | `src/flag.js` |
 | `create` or `list` when `userApps` cannot be resolved (default interceptor set; see Dependencies) | Rejects with a plain `Error` from the service interceptor that the webex-core services plugin registers | Inspect the message | None here | Sibling package webex-core, files src/lib/services/index.js and src/lib/interceptors/service.js |
-| HTTP failure on any request (default interceptor set; see Dependencies) | Rejects with an `HttpError` subtype; with webex-core's default set the base class is `WebexHttpError`. Which statuses reject, which 404 redirect bodies resolve, the class for each status (including status 0 and 429), and the fallback for unmapped statuses are specified by http-core, whose subtype tree webex-core builds onto `WebexHttpError`; when a resolved redirect response is re-sent is owned by the webex-core redirect interceptor | Branch on the error class or status | None here | Sibling package http-core, SDD module spec src/docs/README.md (MOD-007 to MOD-009, MOD-013, MOD-014); sibling package webex-core, files src/lib/webex-http-error.js and src/interceptors/redirect.js |
-| Pipeline failure on a URL request (default interceptor set) | Rejects with a plain `Error`: the catalog check when `validateCatalogUrls` is on, the auth replay limit, or the redirect limit | Inspect the message | None here | Sibling package webex-core, files src/interceptors/catalog-url.js, src/interceptors/auth.js, and src/interceptors/redirect.js |
+| HTTP failure on any request (see Dependencies) | Rejects with an `HttpError` subtype whose base class is `WebexHttpError`. Which statuses reject, which 404 redirect bodies resolve, the class for each status (including status 0 and 429), and the fallback for unmapped statuses are specified by http-core, whose subtype tree webex-core builds onto `WebexHttpError`; when a resolved redirect response is re-sent is owned by the webex-core redirect interceptor | Branch on the error class or status | None here | Sibling package http-core, SDD module spec src/docs/README.md (MOD-007 to MOD-009, MOD-013, MOD-014); sibling package webex-core, files src/lib/webex-http-error.js and src/interceptors/redirect.js |
+| Pipeline failure on any request (default interceptor set; see Dependencies) | Rejections include a plain `Error` from the catalog check when `validateCatalogUrls` is on (URL requests), or from exceeding the configured `maxAuthenticationReplays`, `maxAppLevelRedirects`, or `maxLocusRedirects` limit (webex-core defaults 1, 10, and 5 in its file src/config.js). Other rejections are possible, such as a failed credentials refresh, the device-URL interceptor once a device is registered, or another plugin's payload transform, such as the conversation plugin's | Inspect the class or message | None here | Sibling package webex-core, files src/config.js, src/interceptors/catalog-url.js, src/interceptors/auth.js, src/interceptors/redirect.js, and src/interceptors/payload-transformer.js; sibling package internal-plugin-device, file src/interceptors/device-url.js |
 | `postauth` catalog wait rejects | `mapToActivities` rejects with that error before sending any bulk activity request. The wait itself can send service-catalog requests, owned by the webex-core services plugin | Retry after the catalog is ready | None here | `src/flag.js`; sibling package webex-core, file src/lib/services/services.js |
+| `postauth` catalog wait resolves while the postauth catalog is unready (for example when the services plugin catches a failed catalog update, owned by webex-core services) | No rejection: no activity host is recognized, every flag is skipped with a `logger.warn`, and `mapToActivities` resolves with fewer activities, possibly none | Treat an empty result as possibly incomplete | Retry after the catalog is ready | `src/flag.js`; sibling package webex-core, file src/lib/services/services.js |
 | Any bulk fetch rejects | `mapToActivities` rejects; activities from the other conversations are lost | Retry the call | None here | `src/flag.js` |
 | Activity URL on an unrecognized host, or a malformed `flag-item` | Skipped with a `logger.warn`; the activity is missing from the result | Treat a shorter result as possible | None | `src/flag.js`; `test/unit/spec/flag.js` |
 | `multistatus` entry with a status other than `'200'` | Dropped silently (`INV-005`) | Same as above | None | `src/flag.js` |
@@ -377,7 +378,8 @@ classDiagram
 - `delete` calls `this.request` while the other methods call `this.webex.request`. Both reach the
   same pipeline today; keep them equal if one changes.
 - `INV-005` compares `status` with the string `'200'`. A numeric status from the service would drop
-  every activity. The unit cases and the live spec use the service's current string form only.
+  every activity. The unit cases use string statuses; that the live service sends strings is an
+  assumption (the integration spec reads activities from it but does not check the type).
 - The skip warning in `mapToActivities` logs the full activity URL.
 - `list` returns `body.items` as received and does not follow any paging link.
 - The unit `describe` titles `#flag()` and `#remove()` test `create` and `delete`.
@@ -389,7 +391,8 @@ classDiagram
   Tests).
 - The integration spec calls the test-users helper in `beforeEach`; missing client credentials make
   that hook fail, and mocha reports the hook failure and skips the remaining cases. Its `afterEach`
-  deletes the first user's flags that `list` returns, which are only those in state `flagged`.
+  deletes the flags that `list` returns for query `state=flagged` (the service is assumed to filter
+  by it), so archived or unflagged flags may remain.
 - The package-root `process` file is the browser-testing file that the README of the sibling package
   legacy-tools recommends; nothing in `src/` reads it. Do not remove it without running
   `yarn workspace @webex/internal-plugin-flag test:browser`.
@@ -435,5 +438,5 @@ No TypeScript declaration or API report exists for this package.
 | `MOD-008`, `MOD-009` | none | none found | none found | No config or `options` test |
 | `UC-002`, `UC-003` composed flows | Integration (live) | `test/integration/spec/flag.js` (flags returned by create) | none found | No test of `list` followed by `mapToActivities`, `unflag`, `archive`, or `delete` |
 
-Test tiers, the first-run build, and the expected unit count are described in
+Test tiers, the First-run verification precondition, and the expected unit count are described in
 [Getting started](../../docs/getting-started.md).

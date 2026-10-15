@@ -2,7 +2,7 @@
   "manifest_version": 1,
   "repository": {
     "name": "@webex/internal-plugin-flag",
-    "purpose": "Internal Webex JS SDK plugin registered as webex.internal.flag. Importing it imports @webex/internal-plugin-conversation and @webex/internal-plugin-device for their side effects and registers the Flag plugin with an empty config under the flag key. Flag creates and lists activity flags through catalog service userApps (resource /flags), archives, unflags, or deletes a flag through its url, and maps flags to activities with one bulk_activities_fetch request per conversation host that the service catalog names as conversation.",
+    "purpose": "Internal Webex JS SDK plugin registered as webex.internal.flag. Importing it imports @webex/internal-plugin-conversation and @webex/internal-plugin-device for their side effects and registers the Flag plugin with an empty config under the flag key. Flag creates and lists activity flags through catalog service userApps (resource /flags), archives, unflags, or deletes a flag through its url, and maps flags to activities with one bulk_activities_fetch request per conversation URL whose prefix the service catalog names as service conversation.",
     "category": "cat2-legacy",
     "primary_languages": [
       "javascript"
@@ -51,7 +51,7 @@
       "name": "node",
       "version": "22.14",
       "origin": "human-declared",
-      "declared_by": "akulakum@cisco.com (bootstrap instruction 'nvm use 22.14.0'; the workspace root AGENTS.md requires Node 22.14 for development; consumer floor: see docs/getting-started.md Prerequisites)"
+      "declared_by": "akulakum@cisco.com (bootstrap instruction to use Node 22.14.0; the workspace root AGENTS.md requires Node 22.14 for development; consumer floor: see docs/getting-started.md Prerequisites)"
     },
     {
       "name": "yarn",
@@ -103,8 +103,9 @@
     "integration": {
       "command_ref": "integration-test",
       "dir": "test/integration/spec",
-      "framework": "karma",
+      "framework": "mocha",
       "external_deps": [
+        "runner: karma, selected by the integration-test command (test:browser script); karma frameworks browserify, mocha, chai",
         "browsers: Chrome and Firefox (legacy-tools karma-browsers default)",
         "network access",
         "env: WEBEX_CLIENT_ID, WEBEX_CLIENT_SECRET (test-users helper)"
@@ -114,7 +115,7 @@
   "quality_gates": {
     "code_coverage": {
       "origin": "none",
-      "declared_by": "akulakum@cisco.com via bootstrap questionnaire (delegated check: jest.config.js re-exports @webex/jest-config-legacy, which sets collectCoverage false and no coverageThreshold; test:unit runs webex-legacy-tools with --runner jest; package.json defines no coverage script)"
+      "declared_by": "akulakum@cisco.com via bootstrap questionnaire (delegated check: jest.config.js re-exports @webex/jest-config-legacy, which sets collectCoverage false and no coverageThreshold; the unit-test command runs the jest runner; package.json defines no coverage script)"
     }
   },
   "coverage_status_definitions": {
@@ -198,7 +199,7 @@
         "publication": "internal",
         "source_kind": "external",
         "source": "@webex/internal-plugin-conversation (webex.internal.conversation and its registered payload transforms)",
-        "summary": "Imported for its registration side effect in src/index.js. Its inbound payload predicates, including the one on body.multistatus, run on this package's responses through webex-core; create reads the conversation activity fields url and target.url. Owned by @webex/internal-plugin-conversation."
+        "summary": "Imported for its registration side effect in src/index.js. Its inbound payload predicates, including the one on body.multistatus, can run on this package's responses through webex-core's PayloadTransformerInterceptor when it is in the interceptor set (default set; see src/docs/README.md Dependencies); create reads the conversation activity fields url and target.url. Owned by @webex/internal-plugin-conversation."
       },
       "webex-device-registration": {
         "kind": "sdk",
@@ -212,7 +213,7 @@
         "publication": "internal",
         "source_kind": "external",
         "source": "User-apps flags service REST API (catalog service 'userApps', resource /flags)",
-        "summary": "Consumed, not served. create sends POST /flags with conversation-url, flag-item, and state flagged; list sends GET /flags with qs state flagged and reads body.items; archive and unflag send PUT to a flag's url with state archived or unflagged; delete sends DELETE to a flag's url. Fields read by this package are listed under Protocol and wire format in src/docs/README.md."
+        "summary": "Consumed, not served. create sends POST /flags with body keys conversation-url (omitted when activity.target.url is undefined), flag-item, and state flagged; list sends GET /flags with qs state flagged and reads body.items; archive and unflag send PUT to a flag's url with state archived or unflagged; delete sends DELETE to a flag's url. Fields read by this package are listed under Protocol and wire format in src/docs/README.md."
       },
       "conversation-bulk-activities-http": {
         "kind": "http",
@@ -257,7 +258,7 @@
     "module_docs_relative_path": "docs/README.md",
     "module_docs_decision": {
       "basis": "repo-standards-default",
-      "reason": "No module-local documentation existed. The source-local default gives src/docs/README.md. test:style runs eslint ./src/**/*.* and the shared eslint config ignores *.md, and build:src processes -js -ts only, so Markdown under src/ does not enter the build output.",
+      "reason": "No module-local documentation existed. The source-local default gives src/docs/README.md. the lint command lints src/ and the shared eslint config ignores *.md, and build:src processes -js -ts only, so Markdown under src/ does not enter the build output.",
       "decided_by": "akulakum@cisco.com (bootstrap questionnaire)",
       "decided_at": "2026-10-12T10:57:23Z"
     },
@@ -346,7 +347,7 @@
       "@webex/jest-config-legacy via jest.config.js",
       "@webex/legacy-tools build and test runner via package.json",
       "package README.md",
-      "Repo Standards 0.3.0 templates at the JS SDK root .sdd/templates/repo-standards, reached through the package symlink .sdd/templates/repo-standards"
+      "Repo Standards 0.3.0 templates at the JS SDK root .sdd/templates/repo-standards; the Repo Annotation checkers and validator reach them through a temporary, uncommitted local symlink at .sdd/templates/repo-standards"
     ],
     "compliance_tier": "baseline"
   },

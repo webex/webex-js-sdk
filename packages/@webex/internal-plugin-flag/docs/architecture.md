@@ -9,7 +9,7 @@ doc_kind: standing-doc
 generated_from: architecture@0.3.0
 generated_by: claude-cowork
 approved_by: akulakum@cisco.com
-updated_at: 2026-10-12T14:57:45Z
+updated_at: 2026-10-15T11:34:53Z
 validation_status: pass-with-warnings
 -->
 
@@ -26,19 +26,19 @@ Related context: [specification registry](specs/README.md) ·
 
 | Condition ID                         | Status     | Evidence or reason | Owned section |
 | ------------------------------------ | ---------- | ------------------ | ------------- |
-| `repo.owns_datastore`                | N/A        | No database, file store, or migration in `src/`; flags are stored by the user-apps service | Repository data and schema |
+| `repo.owns_datastore`                | N/A        | No database, file store, or migration in `src/`; flag storage is assumed to be in the user-apps flags service (contract not in this repository) | Repository data and schema |
 | `repo.holds_client_state`            | N/A        | No state is kept between calls (`src/flag.js`) | Client state model |
 | `repo.components_interact`           | N/A        | One module. The import graph is shown under Interaction and execution flows. | Dependency and interaction topology |
 | `repo.domain_data_across_components` | N/A        | One module; flag and activity objects are passed through, not shared between components | Object and data ownership |
 | `repo.caches_data`                   | N/A        | No cache in `src/` | Caching catalog |
 | `repo.observability_convention`      | N/A        | One warning line, no logging, metric, or trace convention; see Observability and operations | Observability patterns |
 | `repo.deploys_to_infra`              | N/A        | Library published to npm. No service runtime. | Runtime and infrastructure |
-| `repo.shared_base_libs`              | Applicable | Inherits `WebexPlugin` and the legacy build, lint, and test stack | Shared and base libraries |
+| `repo.shared_base_libs`              | Applicable | Inherits WebexPlugin and the legacy build, lint, and test stack | Shared and base libraries |
 | `repo.is_monorepo`                   | N/A        | This SDD root is one package. The workspace around it is out of scope. | Package map and dependencies |
-| `repo.multi_platform`                | Applicable | The same `src/` targets Node (`package.json` engines, the Jest run) and browsers (the `browserify` transforms, `test:browser`, and the `process` browser-testing file) | Platform matrix |
-| `repo.published_package`             | Applicable | `package.json` `name` is `@webex/internal-plugin-flag` and `deploy:npm` publishes it | Release and versioning |
+| `repo.multi_platform`                | Applicable | The same `src/` targets Node (`package.json` engines, the Jest run) and browsers (the browserify transforms, the test:browser script, and the `process` browser-testing file) | Platform matrix |
+| `repo.published_package`             | Applicable | `package.json` name is @webex/internal-plugin-flag and the deploy:npm script publishes it | Release and versioning |
 | `repo.embedded_in_host`              | N/A        | No host theme or embed API | Host integration and theming |
-| `repo.exposes_commands_or_artifacts` | Applicable | `build:src` writes the build output directory | Commands and generated artifacts |
+| `repo.exposes_commands_or_artifacts` | Applicable | The build:src script writes the build output directory (`package.json`) | Commands and generated artifacts |
 | `repo.cross_repo_deps_material`      | Applicable | Behavior depends on sibling workspace packages webex-core, internal-plugin-conversation, and internal-plugin-device | Cross-repository topology |
 | `repo.security_arch_warranted`       | Applicable | Requests go to URLs taken from flag objects, and the package checks activity hosts against the catalog before a bulk fetch | Security architecture |
 
@@ -85,18 +85,18 @@ flowchart LR
 | From | To | Interaction or transport | Purpose | Failure or compatibility behavior |
 | ---- | -- | ------------------------ | ------- | --------------------------------- |
 | Importer | `src/index.js` | package import | Register the plugin | Without the import, `webex.internal.flag` is absent |
-| `src/index.js` | conversation and device plugins | side-effect import | Registers both plugins | Load-time only |
+| `src/index.js` | conversation and device plugins | side-effect import | Registers both plugins and their request-pipeline additions, such as the device plugin's device-URL interceptor | Registration happens at load time. On webex instances constructed after the import, when the device-URL interceptor is in the interceptor set (see the Flag plugin spec Dependencies row for webex-core) and a device is registered, it can add a header to, or reject, this package's requests (owned by internal-plugin-device; see its SDD module spec) |
 | `src/index.js` | webex-core | `registerInternalPlugin` | Stores the plugin and config | See the Flag plugin spec `MOD-001` |
 | `src/flag.js` | `webex.internal.services` | in-process promise and calls | Catalog wait and host check before a bulk fetch | See the Flag plugin spec `INV-003` |
 | `src/flag.js` | `webex.request` | HTTP | Flag and bulk-fetch requests | See the Flag plugin spec Caller-visible failure modes |
-| webex-core payload pipeline | conversation plugin | in-process promise | The conversation plugin's registered inbound predicates run on the responses, including the bulk-fetch `multistatus` body | Owned by internal-plugin-conversation |
+| webex-core payload pipeline | conversation plugin | in-process promise | When the payload-transformer interceptor is in the interceptor set (see the Flag plugin spec Dependencies row for webex-core), the conversation plugin's registered inbound predicates can run on the responses, including the bulk-fetch `multistatus` body | Owned by internal-plugin-conversation |
 
 ## Dependency topology
 
 | Dependency | Type | Used by | Purpose | Version, failure, or fallback policy |
 | ---------- | ---- | ------- | ------- | ------------------------------------ |
 | `@webex/webex-core` | Internal | `src` | Plugin base, registration, request, logger, services plugin | Workspace version |
-| `@webex/internal-plugin-conversation` | Internal | `src` | Side-effect import; payload transforms on responses | Workspace version |
+| `@webex/internal-plugin-conversation` | Internal | `src` | Side-effect import; its payload transforms can act on responses (interceptor-set dependent) | Workspace version |
 | `@webex/internal-plugin-device` | Internal | `src` | Side-effect import only | Workspace version |
 | `lodash` | External | `src` | `flatten` | Range in `package.json` |
 | `@webex/test-helper-chai`, `@webex/test-helper-mock-webex`, `@webex/test-helper-test-users` | Internal | tests only | Declared under `dependencies` and `devDependencies`; not imported by `src/` | Workspace version |
@@ -108,11 +108,11 @@ No dependency cycle exists inside the package.
 | Surface | Type | Owner | Consumers | Compatibility policy | Source |
 | ------- | ---- | ----- | --------- | -------------------- | ------ |
 | `flag-sdk` (published) | SDK | Flag plugin | Sibling packages webex-server and recipe-private-web-client (import only); any application that imports the package | Internal plugin; see Release and versioning | `package.json` |
-| `webex-core-plugin-host` (required) | SDK | sibling package webex-core | Flag plugin | External | `@webex/webex-core` |
-| `conversation-sdk` (required) | SDK | sibling package internal-plugin-conversation | Package barrel; bulk-fetch responses | External | `@webex/internal-plugin-conversation` |
-| `webex-device-registration` (required) | SDK | sibling package internal-plugin-device | Package barrel | Specified in its SDD module spec, file src/docs/README.md of that package | `@webex/internal-plugin-device` |
-| `user-apps-flags-http` (required) | HTTP | User-apps flags service | Flag plugin | External; consumed, not served | Catalog service `userApps` |
-| `conversation-bulk-activities-http` (required) | HTTP | Conversation service | `mapToActivities` | External; consumed, not served | `bulk_activities_fetch` on a conversation URL |
+| `webex-core-plugin-host` (required) | SDK | sibling package webex-core | Flag plugin | External | Sibling package webex-core |
+| `conversation-sdk` (required) | SDK | sibling package internal-plugin-conversation | Package barrel; bulk-fetch responses | External | Sibling package internal-plugin-conversation |
+| `webex-device-registration` (required) | SDK | sibling package internal-plugin-device | Package barrel | Specified in its SDD module spec, file src/docs/README.md of that package | Sibling package internal-plugin-device |
+| `user-apps-flags-http` (required) | HTTP | User-apps flags service | Flag plugin | External; consumed, not served | Catalog service userApps (contract not in this repository) |
+| `conversation-bulk-activities-http` (required) | HTTP | Conversation service | `mapToActivities` | External; consumed, not served | bulk_activities_fetch on a conversation URL (contract not in this repository) |
 
 `flag-sdk` entry points: `main` points at the build output and `devMain` at `src/index.js`. No HTTP
 surface is served, so `api-specs/openapi.yaml` is omitted.
@@ -184,7 +184,7 @@ surface is served, so `api-specs/openapi.yaml` is omitted.
 | Sibling package internal-plugin-device | Consumes | `webex-device-registration` | @webex/web-client and @webex/web-sdk (explicit CODEOWNERS entry) | Imported before registration |
 | Sibling package webex-server | Consumed by | `flag-sdk` (import for side effect) | @webex/web-sdk (CODEOWNERS default rule) | Resolves this package's build output |
 | Sibling package recipe-private-web-client | Consumed by | `flag-sdk` (import for side effect) | @webex/web-client (explicit CODEOWNERS entry) | Resolves this package's build output |
-| User-apps flags service and conversation service | Calls | `user-apps-flags-http`, `conversation-bulk-activities-http` | Service owners outside this repository | Postauth catalog must be ready before a bulk fetch |
+| User-apps flags service and conversation service | Calls | `user-apps-flags-http`, `conversation-bulk-activities-http` | Service owners outside this repository | `mapToActivities` waits on the services plugin's postauth catalog wait before a bulk fetch; that wait can resolve without a ready postauth catalog (owned by webex-core services), and then activity hosts are not recognized |
 
 These are sibling workspace packages and services outside this package-scoped SDD root.
 
@@ -210,14 +210,18 @@ Controls and boundaries:
   `archive`, `unflag`, and `delete` send to `flag.url` without a host check of their own.
 - Authorization, host validation, and redirect handling belong to the sibling package webex-core
   request pipeline (files src/webex-core.js and src/config.js, and the interceptors under
-  src/interceptors/). With webex-core's default interceptor set:
-  - The auth interceptor adds the authorization header when its credentials check resolves the
-    request URL to a catalog service or an allowed domain (file src/interceptors/auth.js). A
-    `flag.url` that matches neither a catalog service nor an allowed domain is therefore sent without
-    the user's token, unless the caller already set an authorization header.
+  src/interceptors/). With the interceptor set described in the Flag plugin spec Dependencies row for
+  webex-core:
+  - Whether the auth interceptor adds the authorization header is decided by its
+    `requiresCredentials` check (file src/interceptors/auth.js). That check depends on the request,
+    the services plugin, and configuration, for example whether the URL belongs to a catalog
+    service, whether domain validation and allowed domains are configured, and per-request opt-outs.
+    A request that already carries an authorization header keeps it. So a `flag.url` that the check
+    does not accept is sent without the user's token.
   - When `config.services.validateCatalogUrls` is `true` (default `false`, files src/config.js and
-    src/webex-core.js), `CatalogUrlInterceptor` rejects a request whose `uri` is outside the
-    catalog and allowed domains (file src/interceptors/catalog-url.js). That covers the flag-URL
+    src/webex-core.js), `CatalogUrlInterceptor` rejects a request whose `uri` (or `url`) is not in the
+    catalog and, when domain validation is on and allowed domains are configured, not in the allowed
+    domains (file src/interceptors/catalog-url.js). That covers the flag-URL
     requests and the bulk fetch. A request that carries `service` and no `uri`, as `create` and
     `list` do when first sent, is not checked; a re-issued redirect is.
   - Known gap, redirects: the redirect interceptor re-issues a request on a `cisco-location`
@@ -227,8 +231,8 @@ Controls and boundaries:
     redirect interceptor clears the header only for `webex-appapi-service` `preJoin` requests, which
     this package never makes. An active `CatalogUrlInterceptor` also checks the re-issued request (file
     src/interceptors/redirect.js).
-- These controls assume webex-core's default interceptor set; the Flag plugin spec Dependencies row
-  for webex-core records what changes when a host supplies its own set.
+- These controls depend on the interceptor set; see the Flag plugin spec Dependencies row for
+  webex-core.
 
 Known gaps owned by this package, such as the logged activity URL and the ignored `options`
 argument, are recorded in the Flag plugin spec Pitfalls. Neither this package nor the workspace root
@@ -238,11 +242,11 @@ has a `SECURITY.md`, and this package adds none.
 
 | Term | Repository-specific meaning | Authoritative source |
 | ---- | --------------------------- | -------------------- |
-| Flag | A user-apps service record that marks one activity for the current user; this package reads its `url` and `flag-item` | `src/flag.js` |
+| Flag | The object the user-apps flags service returns for one flagged activity (assumed from the fields the code reads; the service contract is not in this repository); this package reads its `url` and `flag-item` | `src/flag.js` |
 | Flag item | The `flag-item` field: the URL of the flagged activity | `src/flag.js` |
 | Flag state | `flagged`, `unflagged`, or `archived`, as sent or queried by the methods | `src/flag.js` |
 | Conversation URL | The part of an activity URL before `/activities/`, used as the bulk-fetch base | `src/flag.js` |
-| Multistatus | The bulk-fetch response list whose entries carry `status` and `data.activity` | `src/flag.js` |
+| Multistatus | The bulk-fetch response list; this package reads each entry's `status` and `data.activity` (shape assumed; the conversation service contract is not in this repository) | `src/flag.js` |
 
 ## References and maintenance
 

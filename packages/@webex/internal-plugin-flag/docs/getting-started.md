@@ -9,7 +9,7 @@ doc_kind: standing-doc
 generated_from: getting-started@0.3.0
 generated_by: claude-cowork
 approved_by: akulakum@cisco.com
-updated_at: 2026-10-12T14:57:45Z
+updated_at: 2026-10-15T11:34:53Z
 validation_status: pass-with-warnings
 -->
 
@@ -45,6 +45,9 @@ yarn install
 yarn workspace @webex/internal-plugin-flag build
 ```
 
+On a fresh checkout, complete the precondition in First-run verification step 1 first: installing
+alone does not provide the `webex-legacy-tools` CLI that this script calls.
+
 `scripts.build` runs `build:src`, which uses the `@webex/legacy-tools` builder to compile `.js` and
 `.ts` files from `src/` into the build output directory with source maps. The manifest records
 `build:src` as the compile role and `build` as the package role.
@@ -64,20 +67,23 @@ yarn workspace @webex/internal-plugin-flag test:unit
 | Tier | Command | Test location | Framework | External dependencies |
 | ---- | ------- | ------------- | --------- | --------------------- |
 | Unit | `yarn workspace @webex/internal-plugin-flag test:unit` | `test/unit/spec` | Jest | This package's build output and the built workspace packages it imports |
-| Integration | `yarn workspace @webex/internal-plugin-flag test:browser` | `test/integration/spec` | karma | Chrome and Firefox (see Prerequisites), network access, and the `WEBEX_CLIENT_ID` and `WEBEX_CLIENT_SECRET` environment variables that the workspace test-users helper requires; its other settings have defaults in the workspace root `.env.default` |
+| Integration | `yarn workspace @webex/internal-plugin-flag test:browser` | `test/integration/spec` | Mocha with Chai assertions (karma runner) | Chrome and Firefox (see Prerequisites), network access, and the `WEBEX_CLIENT_ID` and `WEBEX_CLIENT_SECRET` environment variables that the workspace test-users helper requires; its other settings have defaults in the workspace root `.env.default` |
 | Lint | `yarn workspace @webex/internal-plugin-flag test:style` | `src/` | eslint | None |
 
 - The integration tier is manifest `commands.integration-test` and `tests.integration`. The package
   has no `test:integration` script; `test:browser` passes `--integration` only, so it collects the
   integration spec and not the unit spec (sibling package legacy-tools, file
-  src/models/package/package.ts). The manifest test tiers allow only unit, integration, e2e, and qa,
-  and `test:browser` is the only package script that runs the integration spec. Its result was not verified in
-  this Stage 0.
+  src/models/package/package.ts). `--runner karma` selects the runner; the karma configuration
+  declares the `mocha` and `chai` frameworks (sibling package legacy-tools, file
+  src/utils/karma/karma.constants.ts), and the spec uses Mocha globals with Chai assertions. This
+  package uses the unit and integration manifest test tiers, and `test:browser` is the only package
+  script that runs the integration spec, `test/integration/spec/flag.js`, so the script is not a
+  no-op here. Its result was not verified in this Stage 0.
 - The integration spec creates two live test users and a conversation, then flags its activities.
 - Do not use the `package.json` script `test` as a verification command; it chains `test:style`,
   `test:unit`, and the undefined `test:integration` script, and never runs `test:browser`.
 - `test:style` reports any Markdown under `src/` as ignored, because `@webex/eslint-config-legacy`
-  ignores `*.md` files. Before the First-run verification build, it also warns that the
+  ignores `*.md` files. Before the First-run verification precondition is met, it also warns that the
   `@webex/*` imports in `src/` cannot be resolved; these are warnings, and the script still exits 0.
 - Coverage or quality gate: N/A — no coverage threshold.
 - Enforcement source: none. `jest.config.js` re-exports `@webex/jest-config-legacy`, which sets
@@ -105,21 +111,20 @@ yarn workspace @webex/internal-plugin-flag test:unit
 
 ## First-run verification
 
-1. Select Node.js 22.14, enable Corepack (see Prerequisites), and run `yarn install` from the
-   workspace root.
-2. Run the workspace root `prebuild:modules` script. `yarn install` does not build the
-   `webex-legacy-tools` CLI that this package's scripts call, because its binary lives in the
-   untracked build output of the workspace legacy tools package. That root script installs again,
-   then builds the workspace tools, the legacy tools, webex-core, and the `build:src` output of every
-   workspace package that defines that script, including this package and the sibling packages that
-   its unit spec loads.
-3. Check that the package build output contains `index.js`; step 2 already built it. See Tests for
-   rebuilding after `src/` changes.
-4. Run `yarn workspace @webex/internal-plugin-flag test:unit`.
+1. Precondition: a workspace that uses Node.js 22.14 with Corepack enabled (see Prerequisites) and
+   has completed the Dependencies and Prebuilding setup in the root `CONTRIBUTING.md`; where that
+   setup selects the `.nvmrc` release, select Node.js 22.14 instead, as the root `AGENTS.md`
+   requires. Installing alone is not enough: the `webex-legacy-tools` CLI that this package's
+   scripts call is untracked build output of the workspace legacy tools package, and the unit spec
+   imports the built output of this package and of the workspace packages it loads. The root
+   `prebuild:modules` script named there builds all of them.
+2. Run `yarn workspace @webex/internal-plugin-flag build` and check that the build output contains
+   `index.js`. See Tests for rebuilding after `src/` changes.
+3. Run `yarn workspace @webex/internal-plugin-flag test:unit`.
 
 Expected result: Jest reports 1 suite and 9 tests passing. If the suite fails with
 `Cannot find module '@webex/internal-plugin-flag'` or a sibling package name such as
-`@webex/test-helper-chai`, step 2 was skipped or did not finish.
+`@webex/test-helper-chai`, the precondition in step 1 was not met.
 
 ## Next steps
 

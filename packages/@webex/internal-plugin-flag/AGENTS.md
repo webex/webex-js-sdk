@@ -3,7 +3,7 @@ doc_kind: agent-entry
 generated_from: agents@0.3.0
 generated_by: claude-cowork
 approved_by: akulakum@cisco.com
-updated_at: 2026-10-12T14:57:45Z
+updated_at: 2026-10-15T11:34:53Z
 validation_status: pass-with-warnings
 -->
 
@@ -47,15 +47,15 @@ commands from the monorepo root.
 | ---------------------- | ------- |
 | Install dependencies   | `yarn install` (workspace root) |
 | Start dev environment  | N/A — library package with no start script in `package.json` |
-| Run tests              | `yarn workspace @webex/internal-plugin-flag test:unit` (Jest); `yarn workspace @webex/internal-plugin-flag test:browser` (karma, the integration tier). No `test:integration` script exists |
+| Run tests              | `yarn workspace @webex/internal-plugin-flag test:unit` (Jest); `yarn workspace @webex/internal-plugin-flag test:browser` (Mocha specs run by the karma runner, the integration tier). No `test:integration` script exists |
 | Run linters            | `yarn workspace @webex/internal-plugin-flag test:style` |
 | Build/release artifact | `yarn workspace @webex/internal-plugin-flag build` (runs `build:src`) |
 | Format code            | N/A — no format script; `prettier` is a devDependency used through eslint |
 
-Use the individual scripts rather than the aggregate `test` script, and run the first-run build
-before `test:unit`; both are explained in [`docs/getting-started.md`](docs/getting-started.md). The
-manifest test tiers allow only unit, integration, e2e, and qa; the karma browser run is recorded as
-the integration tier.
+Use the individual scripts rather than the aggregate `test` script, and complete the First-run
+verification precondition and build before `test:unit`; both are explained in
+[`docs/getting-started.md`](docs/getting-started.md). This package uses two of the manifest test
+tiers: unit (Jest) and integration (Mocha specs run by the karma browser runner).
 
 If a required command is unknown, stop and ask for the exact command.
 
@@ -85,7 +85,7 @@ Definition of done:
 | Language runtime | node | 22.14 for development (workspace root `AGENTS.md`); consumer floor: see [`docs/getting-started.md`](docs/getting-started.md) Prerequisites |
 | Package manager  | Yarn through Corepack | 3.4.1, pinned by the workspace root `packageManager` field and run from the `.yarnrc.yml` `yarnPath` release |
 | Build tool       | `@webex/legacy-tools` over babel | `@babel/core` `^7.17.10` |
-| Test framework   | Jest via `webex-legacy-tools` (`test:unit`); karma (`test:browser`) | workspace versions; `mocha` `^10.2.0` |
+| Test framework   | Jest via `webex-legacy-tools` (`test:unit`); Mocha with Chai assertions, run by the karma runner (`test:browser`) | workspace versions; `mocha` `^10.2.0` |
 | Lint/format      | eslint via `@webex/eslint-config-legacy`, prettier | eslint `^8.24.0`, prettier `^2.7.1` |
 
 ### Project Map
@@ -195,6 +195,7 @@ PR checklist:
 - Bypass required checks by disabling tests or linters.
 - Rewrite history on shared branches.
 - Change unrelated files "while here" without clear need.
-- Copy template bodies or `template-map.json` into this package, or replace the
-  `.sdd/templates/repo-standards` symlink with a real directory. It points at the repository-root
-  `.sdd/templates/repo-standards` snapshot, which is the template source for this package.
+- Copy template bodies or `template-map.json` into this package, or commit anything under
+  `.sdd/templates/`. The repository-root `.sdd/templates/repo-standards` snapshot is the template
+  source for this package. The Repo Annotation checkers and validator expect a temporary, uncommitted
+  local symlink to it at `.sdd/templates/repo-standards`, which is removed before a PR.
