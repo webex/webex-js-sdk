@@ -253,9 +253,9 @@
     "head_ref": "TASK_INTERNAL_PLUGIN_SDD",
     "validator_runtime": "current-session",
     "validator_runtime_source": "invocation-input",
-    "validator_run_id": "spark-853128-task-spec-validator-2026-10-15-round-6",
+    "validator_run_id": "spark-853128-task-spec-validator-2026-10-15-round-10",
     "runtime_fallback_tier": "different-runtime",
-    "source_commit": "5dc8256cc175aa874b98e01b43ed82a9a21972f6"
+    "source_commit": "5bfb1654f0e3fd87965ae4cf3e7c390be65a7aa7"
   },
   "layout": {
     "sdd_root": ".sdd",
