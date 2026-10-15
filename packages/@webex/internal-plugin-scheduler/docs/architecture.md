@@ -117,7 +117,7 @@ No dependency cycle exists inside the package.
 | `scheduler-sdk` (published) | SDK | Scheduler plugin | None in this workspace; any code that imports the package | Internal plugin; see Release and versioning | `package.json` |
 | `webex-core-plugin-host` (required) | SDK | sibling package webex-core | Scheduler plugin | External | `@webex/webex-core` |
 | `encryption-sdk` (required) | SDK | sibling package internal-plugin-encryption | Package barrel and transforms | External | `@webex/internal-plugin-encryption` |
-| `mercury-sdk` (required) | SDK | sibling package internal-plugin-mercury | Scheduler plugin | Specified in its SDD module spec, file src/docs/README.md of that package | `@webex/internal-plugin-mercury` |
+| `mercury-sdk` (required) | SDK | sibling package internal-plugin-mercury | Scheduler plugin | Its files src/index.js and src/mercury-plugin.ts (the `MercuryPlugin` wrapper) | `@webex/internal-plugin-mercury` |
 
 `scheduler-sdk` entry points: `main` points at the build output and `devMain` at `src/index.js`. No
 HTTP surface is served, so `api-specs/openapi.yaml` is omitted.
@@ -216,17 +216,21 @@ Controls and boundaries:
     otherwise adds the user's token when its credentials check passes (file src/interceptors/auth.js).
     The example POST's first attempt therefore carries the placeholder value. On a 401, unless the
     request sets `shouldRefreshAccessToken: false`, the auth interceptor removes the header and, when
-    the credentials can refresh, refreshes and replays; otherwise the 401 rejects. A replay carries
-    the user's token only when the credentials check accepts `www.example.com` as a catalog or
-    allowed-domain URL.
+    the credentials can refresh, refreshes and replays; otherwise the 401 rejects. The replay goes
+    back through the auth interceptor, which adds the user's token when its `requiresCredentials`
+    check passes for the request URL (file src/interceptors/auth.js).
   - When `config.services.validateCatalogUrls` is `true` (default `false`, files src/config.js and
     src/webex-core.js), `CatalogUrlInterceptor` rejects a request whose `uri` is outside the
-    catalog and allowed domains, which would include the example POST (file
+    catalog and allowed domains, which would include the example POST unless the host's catalog or
+    `allowedDomains` covers `www.example.com` (file
     src/interceptors/catalog-url.js). A request that carries `service` and no `uri` is not checked.
   - `PayloadTransformerInterceptor` passes requests, responses, and response errors through
     `webex.transform`, where this package's predicates are evaluated (file
     src/interceptors/payload-transformer.js). Requests that set `noTransform` skip the outbound pass,
-    and requests that set `disableTransform` skip the inbound pass for their response.
+    and requests that set `disableTransform` skip the inbound pass in its `onResponse` step.
+    Response errors are passed to `webex.transform` regardless of `disableTransform`, so an error
+    object that carries a trigger field can still match an inbound predicate (Scheduler plugin spec
+    Caller-visible failure modes).
 - These controls assume webex-core's default interceptor set; the Scheduler plugin spec Dependencies
   row for webex-core records what changes when a host supplies its own set.
 

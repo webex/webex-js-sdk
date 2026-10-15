@@ -52,8 +52,8 @@ commands from the monorepo root.
 | Build/release artifact | `yarn workspace @webex/internal-plugin-scheduler build` (runs `build:src`) |
 | Format code            | N/A — no format script; `prettier` is a devDependency used through eslint |
 
-Use the individual scripts rather than the aggregate `test` script, and run the first-run build
-before `test:unit`; both are explained in [`docs/getting-started.md`](docs/getting-started.md).
+Use the individual scripts rather than the aggregate `test` script, and complete the First-run
+verification precondition and build before `test:unit`; both are explained in [`docs/getting-started.md`](docs/getting-started.md).
 
 If a required command is unknown, stop and ask for the exact command.
 
@@ -191,6 +191,7 @@ PR checklist:
 - Bypass required checks by disabling tests or linters.
 - Rewrite history on shared branches.
 - Change unrelated files "while here" without clear need.
-- Copy template bodies or `template-map.json` into this package, or replace the
-  `.sdd/templates/repo-standards` symlink with a real directory. It points at the repository-root
-  `.sdd/templates/repo-standards` snapshot, which is the template source for this package.
+- Copy template bodies or `template-map.json` into this package, or commit anything under
+  `.sdd/templates/`. The repository-root `.sdd/templates/repo-standards` snapshot is the template
+  source for this package. The Repo Annotation checkers and validator expect a temporary, uncommitted
+  local symlink to it at `.sdd/templates/repo-standards`, which is removed before a PR.

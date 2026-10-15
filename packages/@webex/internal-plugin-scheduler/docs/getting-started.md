@@ -45,6 +45,9 @@ yarn install
 yarn workspace @webex/internal-plugin-scheduler build
 ```
 
+On a fresh checkout, complete the precondition in First-run verification step 1 first: installing
+alone does not provide the `webex-legacy-tools` CLI that this script calls.
+
 `scripts.build` runs `build:src`, which uses the `@webex/legacy-tools` builder to compile `.js` and
 `.ts` files from `src/` into the build output directory with source maps. The manifest records
 `build:src` as the compile role and `build` as the package role.
@@ -101,22 +104,21 @@ yarn workspace @webex/internal-plugin-scheduler test:unit
 
 ## First-run verification
 
-1. Select Node.js 22.14, enable Corepack (see Prerequisites), and run `yarn install` from the
-   workspace root.
-2. Run the workspace root `prebuild:modules` script. `yarn install` does not build the
-   `webex-legacy-tools` CLI that this package's scripts call, because its binary lives in the
-   untracked build output of the workspace legacy tools package. That root script installs again,
-   then builds the workspace tools, the legacy tools, webex-core, and the `build:src` output of every
-   workspace package that defines that script, including this package and the sibling packages that
-   its unit spec loads.
-3. Check that the package build output contains `index.js`; step 2 already built it. See Tests for
-   rebuilding after `src/` changes.
-4. Run `yarn workspace @webex/internal-plugin-scheduler test:unit`.
+1. Precondition: a workspace that uses Node.js 22.14 with Corepack enabled (see Prerequisites) and
+   has completed the Dependencies and Prebuilding setup in the root `CONTRIBUTING.md`; where that
+   setup selects the `.nvmrc` release, select Node.js 22.14 instead, as the root `AGENTS.md`
+   requires. Installing alone is not enough: the `webex-legacy-tools` CLI that this package's
+   scripts call is untracked build output of the workspace legacy tools package, and the unit spec
+   imports the built output of this package and of the workspace packages it loads. The root
+   `prebuild:modules` script named there builds all of them.
+2. Run `yarn workspace @webex/internal-plugin-scheduler build` and check that the build output
+   contains `index.js`.
+3. Run `yarn workspace @webex/internal-plugin-scheduler test:unit`.
 
 Expected result: Jest reports 1 suite and 2 tests passing. In the Stage 0 sandbox run, Jest also showed
 the constructor log line `plugin example constructed` on the console. If the suite fails with
-`Cannot find module '@webex/internal-plugin-scheduler'` or a sibling package name, step 2 was
-skipped or did not finish.
+`Cannot find module '@webex/internal-plugin-scheduler'` or a sibling package name, the precondition
+in step 1 was not met.
 
 ## Next steps
 

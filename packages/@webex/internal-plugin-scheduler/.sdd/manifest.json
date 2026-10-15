@@ -51,7 +51,7 @@
       "name": "node",
       "version": "22.14",
       "origin": "human-declared",
-      "declared_by": "akulakum@cisco.com (bootstrap instruction 'nvm use 22.14.0'; the workspace root AGENTS.md requires Node 22.14 for development; consumer floor: see docs/getting-started.md Prerequisites)"
+      "declared_by": "akulakum@cisco.com (bootstrap instruction to use Node 22.14.0; the workspace root AGENTS.md requires Node 22.14 for development; consumer floor: see docs/getting-started.md Prerequisites)"
     },
     {
       "name": "yarn",
@@ -202,13 +202,13 @@
         "publication": "internal",
         "source_kind": "external",
         "source": "@webex/internal-plugin-encryption (webex.internal.encryption)",
-        "summary": "Imported for its registration side effect in src/index.js, which also registers the device and Mercury plugins. The example transforms call webex.internal.encryption.example, which the encryption plugin does not define."
+        "summary": "Imported for its registration side effect in src/index.js; the encryption plugin's own imports register the device and Mercury plugins. The example transforms call webex.internal.encryption.example, which the encryption plugin does not define."
       },
       "mercury-sdk": {
         "kind": "sdk",
         "publication": "internal",
         "source_kind": "external",
-        "source": "@webex/internal-plugin-mercury (packages/@webex/internal-plugin-mercury/src/docs/README.md)",
+        "source": "@webex/internal-plugin-mercury (packages/@webex/internal-plugin-mercury/src/index.js and src/mercury-plugin.ts)",
         "summary": "exampleMercuryConnection calls webex.internal.mercury.connect() with no arguments and briefly listens for event:scope. Declared in package.json but not imported by src/; registered through the internal-plugin-encryption import. Owned and specified by @webex/internal-plugin-mercury."
       }
     }
@@ -336,7 +336,7 @@
       "@webex/jest-config-legacy via jest.config.js",
       "@webex/legacy-tools build and test runner via package.json",
       "package README.md",
-      "Repo Standards 0.3.0 templates at the JS SDK root .sdd/templates/repo-standards, reached through the package symlink .sdd/templates/repo-standards"
+      "Repo Standards 0.3.0 templates at the JS SDK root .sdd/templates/repo-standards; the Repo Annotation checkers and validator reach them through a temporary, uncommitted local symlink at .sdd/templates/repo-standards"
     ],
     "compliance_tier": "baseline"
   },
