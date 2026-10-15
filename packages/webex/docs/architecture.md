@@ -9,7 +9,7 @@ doc_kind: standing-doc
 generated_from: architecture@0.3.0
 generated_by: claude-cowork
 approved_by: akulakum@cisco.com
-updated_at: 2026-10-13T10:23:45Z
+updated_at: 2026-10-15T15:33:39Z
 validation_status: pass-with-warnings
 -->
 
@@ -101,8 +101,8 @@ flowchart LR
 | From | To | Interaction or transport | Purpose | Failure or compatibility behavior |
 | ---- | -- | ------------------------ | ------- | --------------------------------- |
 | Application | An entry file | module load | Obtain a constructor | Missing dependency fails the load |
-| Entry file | Plugin packages | side-effect `require` | Register namespaces with webex-core | Shared registry, first registration wins (module spec `INV-002`) |
-| Entry file | webex-core | `WebexCore.extend`, `new` | Build the instance | All runtime behavior is webex-core's and the plugins' |
+| Entry file | Plugin packages | side-effect `require` | Register namespaces with webex-core | Shared registry per loaded webex-core copy; first registration wins unless the plugin passes `replace` (module spec `INV-002`) |
+| Entry file | webex-core | `WebexCore.extend`, `new` | Build the instance | Instance runtime behavior is owned by webex-core and by each loaded plugin package |
 | `Calling` | device and Mercury plugins, `@webex/calling` | promise calls | Register, connect, create clients | Failures logged and swallowed (module spec `INV-005`) |
 
 ## Dependency topology
@@ -218,7 +218,7 @@ is omitted.
 | `yarn workspace webex test:style` | package | files under `src/` | eslint result | Markdown is reported as ignored |
 | `yarn workspace webex eslint ./env.js ./browser.js ./process` | package | `env.js`, `browser.js`, `process` | eslint result | Covers the package-root helpers that `test:style` skips |
 | `yarn workspace webex deploy:npm` | package | `dist/`, `umd/`, `package.json` | Publishes the package to the npm registry | Release pipeline only |
-| `yarn prebuild:modules` | workspace root | root `package.json` script | Installs, then builds the legacy tools, webex-core, and every package's `build:src` output | Run from the workspace root before `test:unit` on a fresh clone |
+| `yarn prebuild:modules` | workspace root | root `package.json` script | Installs, then builds the legacy tools, webex-core, and the `build:src` output of the workspace packages that define it | Run from the workspace root before `test:unit` on a fresh clone |
 | `yarn build:script` | workspace root | root `package.json` script, workspace root webpack config | Runs the `--umd` webpack build that writes `umd/` | Run from the workspace root; refreshes the committed bundles. It can exit 0 after a failed webpack build, so check its output and the rewritten files (module spec Pitfalls) |
 | `umd/*.min.js` | workspace root webpack config | entry files | Committed bundles and source maps | Do not edit by hand |
 

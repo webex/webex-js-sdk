@@ -9,7 +9,7 @@ doc_kind: standing-doc
 generated_from: getting-started@0.3.0
 generated_by: claude-cowork
 approved_by: akulakum@cisco.com
-updated_at: 2026-10-13T10:23:45Z
+updated_at: 2026-10-15T15:33:39Z
 validation_status: pass-with-warnings
 -->
 
@@ -28,7 +28,8 @@ webex-js-sdk workspace root.
 | Browser for the karma run | A local browser for the karma runner that `test:browser:broken` starts through `@webex/legacy-tools` |
 
 The `package.json` `engines` value `>=18` is the floor for applications that install the package,
-not the development runtime.
+not the development runtime. The workspace root `package.json` declares `engines.node` `18.x`; that
+field does not set the development runtime either, which is Node.js 22.14 as above.
 
 ## Install
 
@@ -65,7 +66,7 @@ yarn workspace webex test:unit
 | ---- | ------- | ------------- | --------- | --------------------- |
 | Unit | `yarn workspace webex test:unit` | `test/unit/spec` | Jest, chai | Built workspace packages that the spec imports |
 | Integration | `yarn workspace webex test:integration` | `test/integration/spec` | Mocha, chai, sinon, `@webex/test-helper-test-users` | Test-user credentials and Webex services |
-| Browser | `yarn workspace webex test:browser:broken` | `test/integration/spec` under karma | karma | A browser; the script name marks it broken |
+| Browser | `yarn workspace webex test:browser:broken` | `test/integration/spec` under karma | karma | A browser; not a no-op here, because four integration specs exist; the script name marks it broken |
 | Lint | `yarn workspace webex test:style` | `src/` | eslint | None |
 | Helper lint | `yarn workspace webex eslint ./env.js ./browser.js ./process` | `env.js`, `browser.js`, `process` | eslint | None |
 
@@ -74,7 +75,8 @@ yarn workspace webex test:unit
   specs.
 - Run untargeted, the integration tier fails whenever `test/integration/spec/env.js` runs, because it
   requires the unexported `webex/env` subpath. Pass the `--targets` option described in the workspace
-  root `AGENTS.md` once each for `commonjs.js` and `init.js`. `request.js` is not required while
+  root `AGENTS.md`: `yarn workspace webex test:integration --targets commonjs.js` and
+  `yarn workspace webex test:integration --targets init.js`. `request.js` is not required while
   `package.json` has no `version`, because its user-agent case then expects `webex/undefined`.
 - The `package.json` script `test` chains `test:style`, `test:unit`, and `test:integration`; run
   the tiers individually.
@@ -96,7 +98,9 @@ yarn workspace webex test:unit
 - Secret source: none in this package. Integration tests create test users through
   `@webex/test-helper-test-users`, which requires `WEBEX_CLIENT_ID` and `WEBEX_CLIENT_SECRET`; the
   service URLs it also needs default from the workspace root `.env.default`.
-- Package or artifact access: N/A — workspace dependencies only.
+- Package or artifact access: `yarn install` resolves external dependencies from the npm registry
+  set in the workspace root `.yarnrc.yml` (`registry.npmjs.org`), so it needs network access to that
+  registry; workspace packages resolve locally.
 - Required neighboring repositories or workspace layout: the webex-js-sdk workspace, because
   webex-core, calling, contact-center, and the plugin packages are `workspace:*` dependencies.
 - Platform, simulator, device, or SDK setup: N/A.
@@ -104,13 +108,14 @@ yarn workspace webex test:unit
 
 ## First-run verification
 
-1. Select Node.js 22.14, enable Corepack (see Prerequisites), and run `yarn install` from the
-   workspace root.
-2. Run the workspace root `prebuild:modules` script. `yarn install` does not build the
+1. Precondition: complete the workspace root `CONTRIBUTING.md` Dependencies and Prebuilding steps.
+   Select Node.js 22.14, enable Corepack (see Prerequisites), run `yarn install` from the workspace
+   root, and then run the workspace root `prebuild:modules` script (manifest `workspace-prebuild`).
+2. Why the prebuild is required: `yarn install` does not build the
    `webex-legacy-tools` CLI that this package's scripts call, because its binary lives in the
    untracked build output of the workspace legacy tools package. That root script installs again,
-   then builds the workspace tools, the legacy tools, webex-core, and the `build:src` output of every
-   workspace package, including the plugin packages, `@webex/calling`, and the test helpers that the
+   then builds the workspace tools, the legacy tools, webex-core, and the `build:src` output of the
+   workspace packages that define it, including the plugin packages, `@webex/calling`, and the test helpers that the
    unit spec loads. Without it, `test:unit` cannot start the `webex-legacy-tools` binary; with the
    tools built but the sibling packages unbuilt, Jest fails with "Cannot find module", first for the
    sibling package plugin-meetings.

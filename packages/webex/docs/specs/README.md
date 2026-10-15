@@ -9,7 +9,7 @@ doc_kind: standing-doc
 generated_from: spec-index@0.3.0
 generated_by: claude-cowork
 approved_by: akulakum@cisco.com
-updated_at: 2026-10-13T10:23:45Z
+updated_at: 2026-10-15T15:33:39Z
 validation_status: pass-with-warnings
 -->
 
@@ -53,9 +53,10 @@ Generator-side field measurement is complete. Field coverage measured 2026-10-13
 | -------------- | --------------- | ------------------ |
 | Package boundaries or cross-cutting architecture | `docs/architecture.md` and applicable ADRs | `yarn workspace webex test:unit` and `yarn workspace webex test:style` |
 | A deployable service surface or operating posture | Not applicable — no deployable service exists in this package | Not applicable |
-| The plugin set or `init` of `src/webex.js` or `src/index.js` | `src/docs/README.md` | `yarn workspace webex build:src`, add an assertion for the namespace added or removed (existing specs assert only ten public namespaces, not `cc` or the internal plugins), `yarn workspace webex test:unit`, then `yarn workspace webex test:integration` with the `--targets` option (workspace root `AGENTS.md`) for `commonjs.js` and `init.js` (`request.js` fails its user-agent case while `package.json` has no `version`) |
-| The plugin set or `init` of `src/meetings.js`, `src/encryption.js`, or `src/webex-first-party.js` | `src/docs/README.md` | No existing test loads these entries; add a focused test that loads the changed entry, run `yarn workspace webex build:src`, then `yarn workspace webex test:unit` |
-| `Calling` | `src/docs/README.md` | `yarn workspace webex build:src`, then `yarn workspace webex test:unit`, after adding the missing unit case |
+| The plugin set or `init` of `src/webex.js` or `src/index.js` | `src/docs/README.md` | Add an assertion for the namespace added or removed (existing specs assert only ten public namespaces, not `cc` or the internal plugins); `yarn workspace webex build:src`, `yarn workspace webex test:unit`, `yarn workspace webex test:style`, then `yarn workspace webex test:integration --targets commonjs.js` and `yarn workspace webex test:integration --targets init.js` (`request.js` fails its user-agent case while `package.json` has no `version`); for UMD, `yarn build:script` and check its output |
+| The plugin set or `init` of `src/meetings.js`, `src/encryption.js`, or `src/webex-first-party.js` | `src/docs/README.md` | No existing test loads these entries; add a focused test that loads the changed entry, run `yarn workspace webex build:src`, `yarn workspace webex test:unit`, and `yarn workspace webex test:style`; for UMD-fed entries, `yarn build:script` and check its output |
+| `Calling` | `src/docs/README.md` | Add the missing unit case, then `yarn workspace webex build:src`, `yarn workspace webex test:unit`, and `yarn workspace webex test:style`; `yarn build:script` and check its output |
+| `src/config.js`, `src/config-storage.js`, or `src/config-storage.shim.js` | `src/docs/README.md` | Add a focused characterization test for the merged config and storage adapters (the unit spec asserts neither), then `yarn workspace webex build:src`, `yarn workspace webex test:unit`, and `yarn workspace webex test:style`; `yarn build:script` and check its output |
 | The `exports` map, `browser` field, or UMD globals | `src/docs/README.md` and `docs/architecture.md` | `yarn workspace webex build` and `yarn workspace webex test:unit` for `dist/`; `yarn build:script` from the workspace root for the `umd/` bundles and globals, then check its webpack output and the rewritten `umd/` files (it can exit 0 after a failed build; module spec Pitfalls) |
 | `env.js`, `browser.js`, or `process` | `src/docs/README.md` | `yarn workspace webex eslint ./env.js ./browser.js ./process`, then add a test with the change: no test covers `browser.js`, and the `env.js` integration spec requires the unexported `webex/env` subpath |
 

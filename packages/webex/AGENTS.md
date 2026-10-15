@@ -3,7 +3,7 @@ doc_kind: agent-entry
 generated_from: agents@0.3.0
 generated_by: claude-cowork
 approved_by: akulakum@cisco.com
-updated_at: 2026-10-13T10:23:45Z
+updated_at: 2026-10-15T15:33:39Z
 validation_status: pass-with-warnings
 -->
 
@@ -102,8 +102,8 @@ Definition of done:
 
 ### Critical Constraints
 
-- Plugins are added by side-effect `require`, and registration is shared across every entry loaded
-  in one process (module spec invariant `INV-002`). Changing an entry's requires changes what
+- Plugins are added by side-effect `require`, and registration is shared by every entry that loads
+  the same webex-core copy (module spec invariant `INV-002`). Changing an entry's requires changes what
   instances expose.
 - Keep the config merge order of `INV-001` and the polyfill guard of `INV-003`.
 - Runtime behavior of an instance belongs to webex-core and the plugin packages; do not add it here.
@@ -117,10 +117,12 @@ Run checks in this order:
 0. After any `src/` change, `yarn workspace webex build:src`. The specs import `webex`, which
    resolves to `dist/index.js`, and the test runner does not rebuild it, so a stale `dist/` can pass.
 1. `yarn workspace webex test:unit`
-2. `yarn workspace webex test:style`
+2. `yarn workspace webex test:style` (and `yarn workspace webex eslint ./env.js ./browser.js ./process`
+   for package-root helpers)
 3. `yarn workspace webex test:integration` when a change touches loading or `init` of the main
-   entry, passed the `--targets` option described in the workspace root `AGENTS.md` once each for
-   `commonjs.js` and `init.js`. `request.js` is not required while `package.json` has no `version`:
+   entry, passed the `--targets` option described in the workspace root `AGENTS.md`:
+   `yarn workspace webex test:integration --targets commonjs.js` and
+   `yarn workspace webex test:integration --targets init.js`. `request.js` is not required while `package.json` has no `version`:
    its user-agent case then expects `webex/undefined` (module spec Pitfalls). Run untargeted, it also runs
    `test/integration/spec/env.js`, which requires the unexported `webex/env` subpath and fails, so
    the whole tier fails (module spec Pitfalls). A change to the main entry's plugin set also needs an
@@ -198,6 +200,7 @@ PR checklist:
 
 - Edit build output or `umd/` by hand.
 - Commit secrets, tokens, or credentials, including in tests or `.env` files.
-- Copy template bodies or `template-map.json` into this package, or replace the
-  `.sdd/templates/repo-standards` symlink with a real directory. It points at the repository-root
-  `.sdd/templates/repo-standards` snapshot, which is the only template source.
+- Copy template bodies or `template-map.json` into this package, or commit anything under
+  `.sdd/templates/`. This package tracks only `.sdd/manifest.json`. To run the Repo Annotation
+  checkers, create a temporary local symlink `.sdd/templates/repo-standards` to the repository-root
+  `.sdd/templates/repo-standards` snapshot (the only template source) and never stage it.

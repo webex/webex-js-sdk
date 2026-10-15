@@ -52,7 +52,9 @@
     },
     "workspace-prebuild": "yarn prebuild:modules",
     "umd-refresh": "yarn build:script",
-    "lint-helpers": "yarn workspace webex eslint ./env.js ./browser.js ./process"
+    "lint-helpers": "yarn workspace webex eslint ./env.js ./browser.js ./process",
+    "integration-commonjs": "yarn workspace webex test:integration --targets commonjs.js",
+    "integration-init": "yarn workspace webex test:integration --targets init.js"
   },
   "toolchain": [
     {
@@ -195,7 +197,7 @@
         "publication": "internal",
         "source_kind": "external",
         "source": "@webex/webex-core (WebexCore, MemoryStoreAdapter, registerPlugin, registerInternalPlugin)",
-        "summary": "WebexCore.extend gives each entry its constructor; initialize merges config; plugin packages register on one registry kept on the WebexCore and WebexInternalCore prototypes, where the first registration of a name wins unless replace is passed. Request, credentials, services, and storage behavior are owned by webex-core."
+        "summary": "WebexCore.extend gives each entry its constructor; initialize merges config; plugin packages register on one registry per loaded webex-core copy, kept on the WebexCore and WebexInternalCore prototypes, where the first registration of a name wins unless replace is passed. Request, credentials, services, and storage behavior are owned by webex-core."
       },
       "webex-public-plugins": {
         "kind": "sdk",
@@ -244,7 +246,7 @@
         "publication": "published",
         "source_kind": "external",
         "source": "lodash@^4.17.21 (npm)",
-        "summary": "lodash/merge builds the init config in every entry file."
+        "summary": "lodash/merge builds the init config in src/webex.js, src/meetings.js, src/encryption.js, and src/calling.js."
       }
     }
   },
@@ -371,7 +373,7 @@
       "workspace root .eslintrc.js and .eslintignore for test:style (the package has no eslint config of its own; @webex/eslint-config-legacy is a devDependency that no package file references)",
       "@webex/legacy-tools build and test runner via package.json",
       "package README.md",
-      "Repo Standards 0.3.0 templates at the JS SDK root .sdd/templates/repo-standards, reached through the package symlink .sdd/templates/repo-standards"
+      "Repo Standards 0.3.0 templates at the JS SDK root .sdd/templates/repo-standards (PR 5246); the package tracks none, and a temporary untracked local symlink .sdd/templates/repo-standards is created only to run the Repo Annotation checkers"
     ],
     "compliance_tier": "baseline"
   },
