@@ -21,7 +21,7 @@ describe('plugin-identity', () => {
   describe('Identity', () => {
     let webex;
     let webexRequest;
-    let generateCsr;
+    let generateCsrStub;
     let identity;
     let privKeyDer;
 
@@ -30,14 +30,16 @@ describe('plugin-identity', () => {
       for (let i = 0; i < privKeyDer.length; i += 1) {
         privKeyDer[i] = i;
       }
-      generateCsr = sinon.stub().resolves({privKeyDer, csr: 'BASE64CSR'});
+      generateCsrStub = sinon
+        .stub(identityUtils, 'generateCsr')
+        .resolves({privKeyDer, csr: 'BASE64CSR'});
       webex = MockWebex();
       webexRequest = sinon.stub().resolves({body: `${LEAF_PEM}\n${ROOT_PEM}`});
       webex.request = webexRequest;
       webex.internal = {
         services: {isIntegrationEnvironment: sinon.stub().returns(false)},
       };
-      identity = new Identity({webex}, {parent: webex}, {generateCsr});
+      identity = new Identity({webex}, {parent: webex});
       sinon.stub(identityUtils, 'isCertificateExpiringSoon').returns(false);
     });
 
@@ -66,11 +68,7 @@ describe('plugin-identity', () => {
     describe('getCredentials', () => {
       it('creates a credential cache for each plugin instance', () => {
         const secondWebex = MockWebex();
-        const secondIdentity = new Identity(
-          {webex: secondWebex},
-          {parent: secondWebex},
-          {generateCsr}
-        );
+        const secondIdentity = new Identity({webex: secondWebex}, {parent: secondWebex});
 
         assert.notStrictEqual(identity.credentialsCache, secondIdentity.credentialsCache);
       });
@@ -78,7 +76,7 @@ describe('plugin-identity', () => {
       it('generates a CSR, submits it to the CA and returns the raw key + cert chain', async () => {
         const credentials = await identity.getCredentials('user-1');
 
-        assert.calledOnceWithExactly(generateCsr, 'user-1');
+        assert.calledOnceWithExactly(generateCsrStub, 'user-1');
 
         const args = webexRequest.firstCall.args[0];
 
@@ -100,7 +98,7 @@ describe('plugin-identity', () => {
         const second = await identity.getCredentials('user-1');
 
         assert.equal(first, second);
-        assert.calledOnce(generateCsr);
+        assert.calledOnce(generateCsrStub);
         assert.calledOnce(webexRequest);
       });
 
@@ -113,7 +111,7 @@ describe('plugin-identity', () => {
 
         assert.notEqual(first, renewed);
         assert.equal(renewed, cachedRenewal);
-        assert.calledTwice(generateCsr);
+        assert.calledTwice(generateCsrStub);
         assert.calledTwice(webexRequest);
       });
 
@@ -127,7 +125,7 @@ describe('plugin-identity', () => {
         ]);
 
         assert.equal(first, second);
-        assert.calledTwice(generateCsr);
+        assert.calledTwice(generateCsrStub);
         assert.calledTwice(webexRequest);
       });
 

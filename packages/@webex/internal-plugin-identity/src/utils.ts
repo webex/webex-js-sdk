@@ -37,7 +37,7 @@ export function isCertificateExpiringSoon(certificateDer: Uint8Array, now = Date
  * @param {string} contactId
  * @returns {Promise<CertSigningRequest>}
  */
-export async function generateCsrWithPkijs(contactId: string): Promise<CertSigningRequest> {
+export async function generateCsr(contactId: string): Promise<CertSigningRequest> {
   const keyPair = await crypto.subtle.generateKey({name: 'ECDSA', namedCurve: 'P-256'}, true, [
     'sign',
     'verify',

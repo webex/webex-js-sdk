@@ -13,7 +13,7 @@ import {
 import type {IdentityCredentials, IdentityTrustAnchors} from './types';
 import {
   CERTIFICATE_RENEWAL_WINDOW_MS,
-  generateCsrWithPkijs,
+  generateCsr,
   isCertificateExpiringSoon,
   pemToUint8Arrays,
 } from './utils';
@@ -25,16 +25,10 @@ const RAW_EC_P256_KEY_LENGTH = 32;
 class Identity extends WebexPlugin {
   namespace = 'Identity';
   credentialsCache: Map<string, Promise<IdentityCredentials>>;
-  private readonly generateCsr: typeof generateCsrWithPkijs;
 
-  constructor(
-    attrs = {},
-    options = {},
-    dependencies: {generateCsr?: typeof generateCsrWithPkijs} = {}
-  ) {
+  constructor(attrs = {}, options = {}) {
     super(attrs, options);
     this.credentialsCache = new Map();
-    this.generateCsr = dependencies.generateCsr ?? generateCsrWithPkijs;
   }
 
   /**
@@ -130,7 +124,7 @@ class Identity extends WebexPlugin {
    */
   private async requestCredentials(contactId: string): Promise<IdentityCredentials> {
     this.logger.info('identity: requestCredentials: generating CSR');
-    const {privKeyDer, csr} = await this.generateCsr(contactId);
+    const {privKeyDer, csr} = await generateCsr(contactId);
 
     this.logger.info('identity: requestCredentials: requesting certificate from CA');
     const response = await this.webex.request({

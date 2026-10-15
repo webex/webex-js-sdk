@@ -8,7 +8,7 @@ import * as pkijs from 'pkijs';
 import {assert} from '@webex/test-helper-chai';
 
 import {
-  generateCsrWithPkijs,
+  generateCsr,
   isCertificateExpiringSoon,
   pemToUint8Array,
   pemToUint8Arrays,
@@ -67,10 +67,10 @@ describe('identity utils', () => {
     });
   });
 
-  describe('generateCsrWithPkijs', () => {
+  describe('generateCsr', () => {
     it('generates a P-256 CSR with the contact ID as subject and a valid signature', async () => {
       const contactId = 'user@example.com';
-      const {privKeyDer, csr} = await generateCsrWithPkijs(contactId);
+      const {privKeyDer, csr} = await generateCsr(contactId);
       const csrBytes = Uint8Array.from(atob(csr), (character) => character.charCodeAt(0));
       const parsedCsr = asn1js.fromBER(csrBytes.buffer);
       const request = new pkijs.CertificationRequest({schema: parsedCsr.result});
