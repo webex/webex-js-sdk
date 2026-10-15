@@ -1,4 +1,4 @@
-const JS_SDK_VERSION = "1.9.0.001";
+const JS_SDK_VERSION = "1.9.1.001";
 if (typeof Function.prototype.bind === "undefined") {
   Function.prototype.bind = function (thisArg) {
     var fn = this,
