@@ -392,8 +392,10 @@ getTrustAnchors(): { webexCaRoots; userIdentityRoots };
 
 The plugin owns the production, FedRAMP and integration Webex CA roots. It selects the integration
 roots when `webex.internal.services.isIntegrationEnvironment()` is true; other environments use
-production plus FedRAMP roots, matching UCF's environment-specific root selection. It also owns
-`generateCsrWithPkijs` and the PEM helpers. `userIdentityRoots` is currently empty. The signed
+production plus FedRAMP roots, matching UCF's environment-specific root selection. The top-level
+`environment` config can explicitly be set to `'integration'` or `'production'`; when omitted, the
+SDK infers the environment from the U2C discovery URL. It also owns `generateCsr` and the PEM
+helpers. `userIdentityRoots` is currently empty. The signed
 domain-name P7B bundle is loaded separately as a binary static asset and passed to the WASM trust
 anchor API for signature verification and extraction. If it cannot be loaded, E2EE startup reports
 the failure through `js_sdk_e2ee_domain_name_roots_load_failure` and continues with an empty bundle.
