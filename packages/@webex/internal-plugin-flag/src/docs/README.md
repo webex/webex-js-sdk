@@ -9,7 +9,7 @@ doc_kind: module-spec
 generated_from: module-spec@0.3.0
 generated_by: claude-cowork
 approved_by: akulakum@cisco.com
-updated_at: 2026-10-15T12:30:03Z
+updated_at: 2026-10-15T14:22:13Z
 validation_status: pass-with-warnings
 -->
 
@@ -37,8 +37,8 @@ Related context: [documentation index](../../docs/index.md) ·
 | Module id         | `internal-plugin-flag` |
 | Parent spec       | — |
 | Doc kind          | Module spec |
-| Coverage score    | 93.3% assessed 2026-10-12 — 14 of 15 mandatory fields PRESENT, critical 8 of 8; test strategy is WEAK (gaps listed under Verification) and no characterization baseline exists. Independent validation: pass-with-warnings assessed 2026-10-15 by validator current-session; see the Validation status row |
-| Validation status | pass-with-warnings; assessed 2026-10-15 by validator current-session; 0 Blocking, 7 Minor |
+| Coverage score    | 93.3% assessed 2026-10-12 — 14 of 15 mandatory fields PRESENT, critical 8 of 8; test strategy is WEAK (gaps listed under Verification) and no characterization baseline exists. Independent validation: pass-with-warnings assessed 2026-10-15 by validator current-session (round 7 at fbb8720); see the Validation status row |
+| Validation status | pass-with-warnings; assessed 2026-10-15 by validator current-session; 0 Blocking, 1 Medium, 8 Minor |
 
 ## Applicability
 

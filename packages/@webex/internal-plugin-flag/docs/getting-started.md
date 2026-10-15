@@ -9,7 +9,7 @@ doc_kind: standing-doc
 generated_from: getting-started@0.3.0
 generated_by: claude-cowork
 approved_by: akulakum@cisco.com
-updated_at: 2026-10-15T12:30:03Z
+updated_at: 2026-10-15T14:22:13Z
 validation_status: pass-with-warnings
 -->
 
