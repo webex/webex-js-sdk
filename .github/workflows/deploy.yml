@@ -43,7 +43,6 @@ jobs:
             ':(exclude,glob)**/.sdd/**' \
             ':(exclude,glob)**/.repo-context.json' \
             ':(exclude,glob)**/schemas/repo-context.schema.json' \
-            ':(exclude,glob)**/.gitignore' \
             ':(exclude,glob)documentation/**')
 
           if [ -n "$changed_files" ]; then
