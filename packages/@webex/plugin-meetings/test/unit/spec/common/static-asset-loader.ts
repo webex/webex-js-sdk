@@ -28,8 +28,8 @@ describe('plugin-meetings', () => {
       const loader = new StaticAssetLoader('/assets/');
 
       await assert.isRejected(
-        loader.getBytes('domain_name_roots.p7b'),
-        'Failed to fetch static asset /assets/domain_name_roots.p7b: unexpected HTML content type "text/html"'
+        loader.getBytes('some-big-binary-file.dat'),
+        'Failed to fetch static asset /assets/some-big-binary-file.dat: unexpected HTML content type "text/html"'
       );
     });
 
@@ -45,8 +45,8 @@ describe('plugin-meetings', () => {
       const loader = new StaticAssetLoader('/assets/');
 
       await assert.isRejected(
-        loader.getBytes('domain_name_roots.p7b'),
-        'Failed to fetch static asset /assets/domain_name_roots.p7b: response body looks like an HTML document'
+        loader.getBytes('some-big-binary-file.dat'),
+        'Failed to fetch static asset /assets/some-big-binary-file.dat: response body looks like an HTML document'
       );
     });
 
@@ -61,7 +61,7 @@ describe('plugin-meetings', () => {
       });
       const loader = new StaticAssetLoader('/assets/');
 
-      assert.deepEqual(await loader.getBytes('domain_name_roots.p7b'), bytes);
+      assert.deepEqual(await loader.getBytes('some-big-binary-file.dat'), bytes);
     });
   });
 });

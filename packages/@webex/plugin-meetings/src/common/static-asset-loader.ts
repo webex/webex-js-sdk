@@ -1,7 +1,3 @@
-/*!
- * Copyright (c) 2015-2026 Cisco Systems, Inc. See LICENSE file.
- */
-
 const DEFAULT_ASSETS_BASE_URL = '/assets/';
 
 /**
@@ -71,7 +67,8 @@ export default class StaticAssetLoader {
           const buffer = await response.arrayBuffer();
 
           // Some static servers return an HTML fallback page with a successful status and a
-          // generic binary content type. Reject it before callers pass those bytes to WASM.
+          // generic binary content type. Reject it before callers pass those bytes to the calling
+          // modules that expect binary data, such as WASM.
           if (looksLikeHtmlDocument(buffer)) {
             throw new Error(
               `Failed to fetch static asset ${url}: response body looks like an HTML document`

@@ -6,8 +6,7 @@
 
 This folder contains files that plugin-meetings loads at runtime:
 
-- `e2ee.js` and `e2ee.wasm` — the Emscripten loader and binary for MLS meetings.
-- `domain_name_roots.p7b` — the signed domain-name certificate-root bundle.
+- `e2ee.js` and `e2ee.wasm` — the Emscripten loader and binary for MLS join to E2EE meetings.
 
 `yarn build` copies these files to `dist/assets`; `yarn build:script` copies them to
 `packages/webex/umd/assets` for UMD/CDN distribution. The SDK does not serve them. A consuming
@@ -21,5 +20,4 @@ Use a versioned URL so the JavaScript SDK and its static assets remain compatibl
 For a CDN URL, allow the consuming application origin with CORS and serve `e2ee.js` with a
 JavaScript MIME type.
 
-`e2ee.wasm.map` is git-ignored. Ensure the release `e2ee.wasm` is present before building or
-publishing the package.
+`*.map` files are ignored and not copied.
