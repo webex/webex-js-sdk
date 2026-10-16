@@ -1,0 +1,139 @@
+{
+  "$schema": "./schemas/repo-context.schema.json",
+  "version": 1,
+  "repository": {
+    "name": "webex-js-sdk",
+    "purpose": "Yarn-workspace monorepo for the Webex JavaScript SDK, its plugins, and supporting tooling packages."
+  },
+  "commands": {
+    "install": "yarn install",
+    "build": "yarn build",
+    "lint": "yarn lint",
+    "unit-test": "yarn test:unit"
+  },
+  "source_of_truth": [
+    {
+      "surface": "sdd-package-routing",
+      "paths": [".sdd/manifest.json", "AGENTS.md", "docs/index.md"],
+      "generated_artifacts": [".sdd/manifest.json"],
+      "refresh_with": ["Re-run the Repo Annotation package onboarding for the affected package; it refreshes only the managed routing content."],
+      "validate_with": ["Run check_orchestrator_root.py from the active Repo Annotation installation with --repo-root set to the monorepo root."]
+    },
+    {
+      "surface": "plugin-authorization-browser-first-party",
+      "paths": [
+        "packages/@webex/plugin-authorization-browser-first-party/.sdd/manifest.json",
+        "packages/@webex/plugin-authorization-browser-first-party/AGENTS.md"
+      ],
+      "generated_artifacts": [],
+      "refresh_with": ["Re-run Repo Annotation onboarding scoped to packages/@webex/plugin-authorization-browser-first-party."],
+      "validate_with": ["yarn workspace @webex/plugin-authorization-browser-first-party test:unit"]
+    }
+  ],
+  "generated_artifacts": [
+    {
+      "path": ".sdd/templates/repo-standards/template-map.json",
+      "generated_from": "WebexTools/repo-standards@d89a7fe59126ae3ad9bac9ca352aa7f12b4c85dc",
+      "refresh_with": "Run the active Repo Annotation installation's setup-skills.sh with --monorepo-root after approving the exact template paths."
+    },
+    {
+      "path": ".sdd/templates/repo-annotation/override-map.json",
+      "generated_from": "repo-annotation-overrides@1.0.0",
+      "refresh_with": "Run the active Repo Annotation installation's setup-skills.sh with --monorepo-root after approving the exact template paths."
+    }
+  ],
+  "validation_matrix": [
+    {
+      "paths": [".sdd/manifest.json", "AGENTS.md", "docs/index.md", ".repo-context.json"],
+      "minimum": ["Run check_orchestrator_root.py from the active Repo Annotation installation with --repo-root set to the monorepo root."],
+      "recommended": []
+    },
+    {
+      "paths": ["packages/@webex/plugin-authorization-browser-first-party/**"],
+      "minimum": ["yarn workspace @webex/plugin-authorization-browser-first-party test:unit"],
+      "recommended": ["yarn workspace @webex/plugin-authorization-browser-first-party test:style"]
+    }
+  ],
+  "repository_topology": {
+    "main_entrypoints": [
+      {
+        "name": "root workspace manifest",
+        "path": "package.json",
+        "purpose": "Declares the yarn workspaces and the root build, lint, and test orchestration scripts."
+      }
+    ],
+    "workspace_packages": [
+      {
+        "name": "plugin-authorization-browser-first-party",
+        "paths": ["packages/@webex/plugin-authorization-browser-first-party"],
+        "notes": "Onboarded SDD package with root-level templates; routed from .sdd/manifest.json."
+      }
+    ],
+    "source_surfaces": [
+      {
+        "name": "workspace packages",
+        "paths": ["packages"],
+        "notes": "Every workspace package owns its own source; only packages listed in .sdd/manifest.json carry SDD routing from this root."
+      }
+    ],
+    "generated_surfaces": [
+      {
+        "name": "sdd-template-snapshot",
+        "paths": [".sdd/templates/repo-standards"],
+        "generated_from": "WebexTools/repo-standards@d89a7fe59126ae3ad9bac9ca352aa7f12b4c85dc",
+        "refresh_with": "Run the active Repo Annotation installation's setup-skills.sh with --monorepo-root after approving the exact template paths."
+      },
+      {
+        "name": "sdd-root-overrides",
+        "paths": [".sdd/templates/repo-annotation"],
+        "generated_from": "repo-annotation-overrides@1.0.0",
+        "refresh_with": "Run the active Repo Annotation installation's setup-skills.sh with --monorepo-root after approving the exact template paths."
+      }
+    ],
+    "sync_paths": [
+      {
+        "source": "WebexTools/repo-standards@d89a7fe59126ae3ad9bac9ca352aa7f12b4c85dc",
+        "targets": [".sdd/templates/repo-standards"],
+        "mechanism": "Materialized by the Repo Annotation bundled resolver; packages reach it through their .sdd/templates symlink."
+      },
+      {
+        "source": "repo-annotation-overrides@1.0.0",
+        "targets": [".sdd/templates/repo-annotation"],
+        "mechanism": "Materialized by the Repo Annotation bundled override resolver for root-level generation only."
+      }
+    ],
+    "validation_entrypoints": [
+      {
+        "name": "sdd-orchestrator-root",
+        "command": "Run check_orchestrator_root.py from the active Repo Annotation installation with --repo-root set to the monorepo root.",
+        "scope": "Root routing manifest, root overrides, package routes, and routing blocks"
+      }
+    ]
+  },
+  "surface_owners": [
+    {
+      "surface": "sdd-package-routing",
+      "owner": "@webex/web-sdk",
+      "edit_boundary": "Repo Annotation refreshes only the marker-delimited package routing blocks and the onboarded workspace_packages entries; all other root content is human-owned."
+    },
+    {
+      "surface": "plugin-authorization-browser-first-party",
+      "owner": "@webex/web-client",
+      "edit_boundary": "Owners per the .github/CODEOWNERS entry for packages/@webex/plugin-authorization-browser-first-party."
+    }
+  ],
+  "do_not_edit": [".sdd/templates/repo-standards", ".sdd/templates/repo-annotation"],
+  "marker_scopes": {
+    "sdd-package-routing": ["AGENTS.md", "docs/index.md"]
+  },
+  "fallback_rules": [
+    "Read the routed package's AGENTS.md and .sdd/manifest.json before changing package code.",
+    "When a package is not listed in .sdd/manifest.json packages, treat its code as the only source of truth."
+  ],
+  "downstream_context_pack": {
+    "required_human_surfaces": ["docs/index.md"],
+    "required_agent_operational_surfaces": ["AGENTS.md"],
+    "required_machine_readable_surface": ".repo-context.json",
+    "recommended_machine_readable_sections": ["repository_topology"]
+  }
+}
