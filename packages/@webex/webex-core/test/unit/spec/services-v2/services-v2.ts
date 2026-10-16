@@ -896,6 +896,89 @@ describe('webex-core', () => {
       });
     });
 
+    describe('#waitForService()', () => {
+      beforeEach(() => {
+        services.webex.config.services = {servicesNotNeedValidation: []};
+      });
+
+      it('does not scan by URL when the service name resolves', async () => {
+        sinon.stub(services, 'get').returns('https://example.com/api/v1');
+        const getServiceFromUrl = sinon.stub(services, 'getServiceFromUrl');
+
+        const result = await services.waitForService({
+          name: 'example',
+          url: 'https://example.com/api/v1/resource',
+        });
+
+        assert.equal(result, 'https://example.com/api/v1');
+        assert.notCalled(getServiceFromUrl);
+      });
+
+      it('scans by URL when the service name does not resolve', async () => {
+        sinon.stub(services, 'get').returns(undefined);
+        const getServiceFromUrl = sinon.stub(services, 'getServiceFromUrl').returns({
+          priorityUrl: 'https://example.com/api/v1',
+        });
+
+        const result = await services.waitForService({
+          name: 'missing',
+          url: 'https://example.com/api/v1/resource',
+        });
+
+        assert.equal(result, 'https://example.com/api/v1');
+        assert.calledOnceWithExactly(getServiceFromUrl, 'https://example.com/api/v1/resource');
+      });
+
+      it('does not rescan by URL when the name resolves after waiting for a catalog', async () => {
+        const priorityUrl = 'https://example.com/api/v1';
+        const candidateUrl = `${priorityUrl}/resource`;
+        const get = sinon.stub(services, 'get').onFirstCall().returns(undefined);
+
+        get.returns(priorityUrl);
+
+        const getServiceFromUrl = sinon.stub(services, 'getServiceFromUrl').returns(undefined);
+        const pendingCatalog = new Promise(() => undefined);
+
+        sinon
+          .stub(catalog, 'waitForCatalog')
+          .callsFake((serviceGroup) =>
+            serviceGroup === 'preauth' ? Promise.resolve() : pendingCatalog
+          );
+
+        const result = await services.waitForService({name: 'example', url: candidateUrl});
+
+        assert.equal(result, priorityUrl);
+        assert.calledOnceWithExactly(getServiceFromUrl, candidateUrl);
+      });
+
+      it('scans by URL when the name remains unresolved after waiting for a catalog', async () => {
+        const priorityUrl = 'https://example.com/api/v1';
+        const candidateUrl = `${priorityUrl}/resource`;
+
+        sinon.stub(services, 'get').returns(undefined);
+
+        const getServiceFromUrl = sinon
+          .stub(services, 'getServiceFromUrl')
+          .onFirstCall()
+          .returns(undefined);
+
+        getServiceFromUrl.returns({priorityUrl});
+
+        const pendingCatalog = new Promise(() => undefined);
+
+        sinon
+          .stub(catalog, 'waitForCatalog')
+          .callsFake((serviceGroup) =>
+            serviceGroup === 'preauth' ? Promise.resolve() : pendingCatalog
+          );
+
+        const result = await services.waitForService({name: 'missing', url: candidateUrl});
+
+        assert.equal(result, priorityUrl);
+        assert.calledTwice(getServiceFromUrl);
+      });
+    });
+
     describe('#getServiceFromUrl()', () => {
       it('matches an exact service URL when the catalog URL has a trailing slash', () => {
         const baseUrl = 'https://example.com/api/v1/';
@@ -909,6 +992,105 @@ describe('webex-core', () => {
         ]);
 
         assert.deepEqual(services.getServiceFromUrl('https://example.com/api/v1'), {
+          name: 'example',
+          priorityUrl: baseUrl,
+          defaultUrl: baseUrl,
+        });
+      });
+
+      it('returns the exact matching catalog URL when a service has multiple URLs', () => {
+        const priorityBaseUrl = 'https://priority.example.com/api/v1';
+        const matchedBaseUrl = 'https://matched.example.com/api/v2';
+
+        catalog.updateServiceGroups('postauth', [
+          {
+            id: 'example',
+            serviceName: 'example',
+            serviceUrls: [
+              {host: 'priority.example.com', baseUrl: priorityBaseUrl, priority: 1},
+              {host: 'matched.example.com', baseUrl: matchedBaseUrl, priority: 2},
+            ],
+          },
+        ]);
+
+        assert.deepEqual(services.getServiceFromUrl(`${matchedBaseUrl}/resource`), {
+          name: 'example',
+          priorityUrl: priorityBaseUrl,
+          defaultUrl: matchedBaseUrl,
+        });
+      });
+
+      it('keeps the matched URL separate from the current non-failed priority URL', () => {
+        const priorityBaseUrl = 'https://priority.example.com/api/v1';
+        const matchedBaseUrl = 'https://matched.example.com/api/v2';
+
+        catalog.updateServiceGroups('postauth', [
+          {
+            id: 'example',
+            serviceName: 'example',
+            serviceUrls: [
+              {
+                host: 'priority.example.com',
+                baseUrl: priorityBaseUrl,
+                priority: 1,
+                failed: true,
+              },
+              {host: 'matched.example.com', baseUrl: matchedBaseUrl, priority: 2},
+            ],
+          },
+        ]);
+
+        assert.deepEqual(services.getServiceFromUrl(`${priorityBaseUrl}/resource`), {
+          name: 'example',
+          priorityUrl: matchedBaseUrl,
+          defaultUrl: priorityBaseUrl,
+        });
+      });
+
+      it('preserves all-failed recovery while returning the URL that matched', () => {
+        const firstBaseUrl = 'https://first.example.com/api/v1';
+        const matchedBaseUrl = 'https://matched.example.com/api/v2';
+
+        catalog.updateServiceGroups('postauth', [
+          {
+            id: 'example',
+            serviceName: 'example',
+            serviceUrls: [
+              {
+                host: 'first.example.com',
+                baseUrl: firstBaseUrl,
+                priority: 1,
+                failed: true,
+              },
+              {
+                host: 'matched.example.com',
+                baseUrl: matchedBaseUrl,
+                priority: 2,
+                failed: true,
+              },
+            ],
+          },
+        ]);
+
+        assert.deepEqual(services.getServiceFromUrl(`${matchedBaseUrl}/resource`), {
+          name: 'example',
+          priorityUrl: firstBaseUrl,
+          defaultUrl: matchedBaseUrl,
+        });
+      });
+
+      it('normalizes the exact matching catalog URL without dropping its query or fragment', () => {
+        const baseUrl = 'https://example.com:8443/api/v1?region=west#catalog';
+
+        catalog.updateServiceGroups('postauth', [
+          {
+            id: 'example',
+            serviceName: 'example',
+            serviceUrls: [{host: 'example.com', baseUrl, priority: 1}],
+          },
+        ]);
+
+        assert.deepEqual(services.getServiceFromUrl('https://example.com:8443/api/v1/resource'), {
           name: 'example',
           priorityUrl: baseUrl,
           defaultUrl: baseUrl,

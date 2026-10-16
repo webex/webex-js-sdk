@@ -18,6 +18,7 @@ export type ServiceHost = {
 export type ServiceUrl = {
   baseUrl: string;
   host: string;
+  matchHost?: string;
   priority: number;
   failed?: boolean;
 };
@@ -51,6 +52,12 @@ export interface IServiceDetail {
   get(): string;
 }
 
+// Carries the exact matching URL out of the catalog scan so consumers do not scan it again.
+export type ServiceMatch = {
+  serviceDetail: IServiceDetail;
+  serviceUrl: ServiceUrl;
+};
+
 export interface IServiceCatalog {
   serviceGroups: {
     discovery: Array<IServiceDetail>;
@@ -75,6 +82,7 @@ export interface IServiceCatalog {
     serviceGroup?: ServiceGroup;
   }): {name: string; url: string} | undefined;
   findServiceDetailFromUrl(url: string): IServiceDetail | undefined;
+  findServiceMatchFromUrl(url: string): ServiceMatch | undefined;
   findAllowedDomain(url: string): string | undefined;
   get(clusterId: ClusterId, serviceGroup?: ServiceGroup): string | undefined;
   getAllowedDomains(): string[];
