@@ -1544,7 +1544,9 @@ export async function resolveCallerIdByName(name: string) {
   };
 
   await searchDirectory(name).then((results) => {
-    log.info(`DS Result: ${results}`, {
+    const matchFound = Boolean(results && results.items && results.items.length > 0);
+
+    log.info(`DS Result: match found: ${matchFound}`, {
       file: UTILS_FILE,
       method: 'resolveCallerIdByName',
     });
@@ -1567,13 +1569,10 @@ export async function resolveCallerIdByName(name: string) {
         displayResult.num = resolution.phoneNumbers[0].value;
       }
       displayResult.avatarSrc = resolution.avatar;
-      log.info(
-        `Extracted details:- name: ${displayResult.name} , number: ${displayResult.num}, photo: ${displayResult.avatarSrc}, id: ${displayResult.id}`,
-        {
-          file: UTILS_FILE,
-          method: 'resolveCallerIdByName',
-        }
-      );
+      log.info('Extracted caller display details from directory match', {
+        file: UTILS_FILE,
+        method: 'resolveCallerIdByName',
+      });
     }
   });
 
