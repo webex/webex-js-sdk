@@ -1,0 +1,673 @@
+{
+  "$schema": "./schemas/repo-context.schema.json",
+  "version": 1,
+  "repository": {
+    "name": "webex",
+    "purpose": "The webex npm package of the Webex JS SDK. Its entry files require plugin packages for their side effects and extend the webex-core WebexCore constructor, giving a full Webex constructor (main export), a meetings constructor (webex/meetings), a Calling wrapper around an SDK instance (webex/calling), and encryption and first-party variants. It also selects storage adapters per platform, ships Node and browser helper files, and carries committed UMD bundles."
+  },
+  "commands": {
+    "install": "yarn install",
+    "compile": "yarn workspace webex build:src",
+    "build": "yarn workspace webex build",
+    "unit-test": "yarn workspace webex test:unit",
+    "integration-test": "yarn workspace webex test:integration",
+    "browser-test": "yarn workspace webex test:browser:broken",
+    "lint": "yarn workspace webex test:style",
+    "deploy": "yarn workspace webex deploy:npm",
+    "workspace-prebuild": "yarn prebuild:modules",
+    "umd-refresh": "yarn build:script",
+    "lint-helpers": "yarn workspace webex eslint ./env.js ./browser.js ./process",
+    "integration-commonjs": "yarn workspace webex test:integration --targets commonjs.js",
+    "integration-init": "yarn workspace webex test:integration --targets init.js"
+  },
+  "public_interfaces": [
+    {
+      "name": "webex main export",
+      "kind": "package_export",
+      "source": "src/index.js",
+      "entrypoints": [
+        "require('webex')",
+        "Webex.init(attrs)",
+        "new Webex(attrs)"
+      ],
+      "audience": "applications that install webex from npm",
+      "notes": "Exports the constructor from src/webex.js after the polyfill guard. Webex.init merges sdkType webex, the src/config.js module object, and attrs.config; new Webex adds neither."
+    },
+    {
+      "name": "webex/meetings subpath",
+      "kind": "package_export",
+      "source": "src/meetings.js",
+      "entrypoints": [
+        "require('webex/meetings')"
+      ],
+      "audience": "meetings-only applications",
+      "notes": "Loads 11 packages; init defaults sdkType meetings and meetings.disableHydraId true."
+    },
+    {
+      "name": "webex/calling subpath",
+      "kind": "package_export",
+      "source": "src/calling.js",
+      "entrypoints": [
+        "import Calling from 'webex/calling'",
+        "Calling.init(attrs)",
+        "Calling.createMicrophoneStream",
+        "Calling.createNoiseReductionEffect(options)"
+      ],
+      "audience": "calling applications",
+      "notes": "ES default export; register and deregister drive the device and Mercury plugins."
+    },
+    {
+      "name": "UMD bundles",
+      "kind": "package_export",
+      "source": "umd",
+      "entrypoints": [
+        "umd/webex.min.js",
+        "umd/webex-first-party.min.js",
+        "umd/meetings.min.js",
+        "umd/encryption.min.js",
+        "umd/calling.min.js"
+      ],
+      "audience": "script-tag pages",
+      "notes": "Committed; built by the workspace root webpack config. Globals Webex and Calling."
+    },
+    {
+      "name": "package scripts",
+      "kind": "npm_scripts",
+      "source": "package.json",
+      "entrypoints": [
+        "build",
+        "build:src",
+        "test:style",
+        "test:unit",
+        "test:integration",
+        "test:browser:broken",
+        "deploy:npm"
+      ],
+      "audience": "contributors and CI",
+      "notes": "The aggregate test script chains test:style, test:unit, and test:integration. test:browser:broken is recorded with role other; its name marks it broken."
+    }
+  ],
+  "source_of_truth": [
+    {
+      "surface": "UMD-fed entry points and config",
+      "paths": [
+        "src/index.js",
+        "src/webex.js",
+        "src/webex-first-party.js",
+        "src/meetings.js",
+        "src/calling.js",
+        "src/config.js",
+        "src/config-storage.js",
+        "src/config-storage.shim.js"
+      ],
+      "generated_artifacts": [
+        "dist",
+        "umd"
+      ],
+      "refresh_with": [
+        "yarn workspace webex build:src",
+        "yarn build:script"
+      ],
+      "validate_with": [
+        "yarn workspace webex build:src",
+        "yarn workspace webex test:unit",
+        "yarn workspace webex test:style"
+      ]
+    },
+    {
+      "surface": "dist-only entry files",
+      "paths": [
+        "src/encryption.js",
+        "src/_setup.js"
+      ],
+      "generated_artifacts": [
+        "dist"
+      ],
+      "refresh_with": [
+        "yarn workspace webex build:src"
+      ],
+      "validate_with": [
+        "yarn workspace webex build:src",
+        "yarn workspace webex test:unit",
+        "yarn workspace webex test:style"
+      ]
+    },
+    {
+      "surface": "package-root helpers",
+      "paths": [
+        "env.js",
+        "browser.js",
+        "process"
+      ],
+      "generated_artifacts": [],
+      "refresh_with": [
+        "edit by hand; these files are not built"
+      ],
+      "validate_with": [
+        "yarn workspace webex eslint ./env.js ./browser.js ./process",
+        "add a test with the change: no runnable test covers env.js, browser.js, or process"
+      ]
+    },
+    {
+      "surface": "module specification",
+      "paths": [
+        "src/docs/README.md"
+      ],
+      "generated_artifacts": [],
+      "refresh_with": [
+        "update alongside the behavior change in the same commit"
+      ],
+      "validate_with": [
+        "run the spec-validator skill on an independent runtime"
+      ]
+    }
+  ],
+  "generated_artifacts": [
+    {
+      "path": "dist",
+      "generated_from": "src",
+      "refresh_with": "yarn workspace webex build:src"
+    },
+    {
+      "path": "umd",
+      "generated_from": "workspace root webpack.config.js entries: ./packages/webex for webex, which the config's resolve.alias maps to packages/webex/src/index in production and development; packages/webex/src/webex-first-party.js, src/meetings.js, src/calling.js; and packages/@webex/plugin-encryption/src/webex.js for encryption",
+      "refresh_with": "yarn build:script"
+    },
+    {
+      "path": ".sdd/templates/repo-standards/template-map.json",
+      "generated_from": "WebexTools/repo-standards@d89a7fe59126ae3ad9bac9ca352aa7f12b4c85dc",
+      "refresh_with": "The package tracks no templates. Create a temporary, untracked local symlink .sdd/templates/repo-standards to the JS SDK root .sdd/templates/repo-standards (Repo Standards 0.3.0 snapshot from PR 5246) only to run the Repo Annotation checkers, and never stage it."
+    }
+  ],
+  "validation_matrix": [
+    {
+      "paths": [
+        "src/**"
+      ],
+      "minimum": [
+        "yarn workspace webex build:src",
+        "yarn workspace webex test:unit",
+        "yarn workspace webex test:style"
+      ],
+      "recommended": [
+        "yarn workspace webex test:integration --targets commonjs.js",
+        "yarn workspace webex test:integration --targets init.js"
+      ]
+    },
+    {
+      "paths": [
+        "src/calling.js"
+      ],
+      "minimum": [
+        "yarn workspace webex build:src",
+        "yarn workspace webex test:unit",
+        "yarn workspace webex test:style"
+      ],
+      "recommended": [
+        "add a unit case for Calling, because none exists today"
+      ]
+    },
+    {
+      "paths": [
+        "src/webex.js",
+        "src/index.js"
+      ],
+      "minimum": [
+        "yarn workspace webex build:src",
+        "yarn workspace webex test:unit",
+        "yarn workspace webex test:style"
+      ],
+      "recommended": [
+        "yarn workspace webex test:integration --targets commonjs.js",
+        "yarn workspace webex test:integration --targets init.js"
+      ]
+    },
+    {
+      "paths": [
+        "env.js",
+        "browser.js",
+        "process"
+      ],
+      "minimum": [
+        "yarn workspace webex eslint ./env.js ./browser.js ./process"
+      ],
+      "recommended": [
+        "add a test with the change; yarn workspace webex test:style covers src/ only, and test/integration/spec/env.js requires the unexported webex/env subpath and cannot reach env.js"
+      ]
+    }
+  ],
+  "change_impact": [
+    {
+      "paths": [
+        "src/webex.js",
+        "src/index.js",
+        "src/meetings.js",
+        "src/webex-first-party.js"
+      ],
+      "affects": [
+        "which public namespaces constructors extended after this entry expose, and which internal namespaces later instances expose",
+        "umd/webex.min.js (built from src/index.js through the webpack alias), umd/meetings.min.js, and umd/webex-first-party.min.js (the last only in the umd build)"
+      ],
+      "refresh_with": [
+        "yarn workspace webex build:src",
+        "yarn build:script"
+      ],
+      "validate_with": [
+        "an assertion for each namespace added or removed by the change",
+        "yarn workspace webex build:src",
+        "yarn workspace webex test:unit",
+        "yarn workspace webex test:style",
+        "yarn workspace webex test:integration --targets commonjs.js",
+        "yarn workspace webex test:integration --targets init.js",
+        "a new focused test that loads src/meetings.js or src/webex-first-party.js when either changes",
+        "yarn build:script",
+        "after yarn build:script, read the webpack output for errors and confirm the umd/ bundles were rewritten"
+      ],
+      "avoid_direct_edits": [
+        "dist",
+        "umd"
+      ],
+      "notes": "build:src runs first because the specs import webex, which resolves to dist/index.js, and the legacy runner does not rebuild it. test/integration/spec/commonjs.js asserts ten public namespaces only, not cc or the internal plugins. request.js is not a required target: it expects webex/undefined while package.json has no version. yarn build:script can exit 0 after a failed webpack build (module spec Pitfalls). Registration is shared through the loaded webex-core copy (module spec INV-002)."
+    },
+    {
+      "paths": [
+        "src/encryption.js"
+      ],
+      "affects": [
+        "dist/encryption.js only; it has no exports entry",
+        "not umd/encryption.min.js, which the workspace root webpack config builds from packages/@webex/plugin-encryption/src/webex.js"
+      ],
+      "refresh_with": [
+        "yarn workspace webex build:src"
+      ],
+      "validate_with": [
+        "a new focused test that loads src/encryption.js (no existing test does)",
+        "yarn workspace webex build:src",
+        "yarn workspace webex test:unit",
+        "yarn workspace webex test:style"
+      ],
+      "avoid_direct_edits": [
+        "dist",
+        "umd"
+      ],
+      "notes": "A change to the UMD encryption bundle belongs in the sibling package plugin-encryption, file src/webex.js. Plugin registration follows module spec INV-002. build:src runs before test:unit because the specs resolve webex through dist/."
+    },
+    {
+      "paths": [
+        "src/calling.js"
+      ],
+      "affects": [
+        "webex/calling consumers",
+        "umd/calling.min.js"
+      ],
+      "refresh_with": [
+        "yarn workspace webex build:src",
+        "yarn build:script"
+      ],
+      "validate_with": [
+        "a new focused test that loads src/calling.js and exercises the changed Calling behavior (no existing test loads it)",
+        "yarn workspace webex build:src",
+        "yarn workspace webex test:unit",
+        "yarn workspace webex test:style",
+        "yarn build:script",
+        "after yarn build:script, read the webpack output for errors and confirm the umd/ bundles were rewritten"
+      ],
+      "avoid_direct_edits": [
+        "dist",
+        "umd"
+      ],
+      "notes": "register and deregister order device and Mercury calls; see the module spec invariants. build:src runs before test:unit because the specs resolve webex through dist/; yarn build:script can exit 0 after a failed webpack build."
+    },
+    {
+      "paths": [
+        "package.json"
+      ],
+      "affects": [
+        "main entry (dist/index.js) for tools and bundlers that read main",
+        "exports map",
+        "browser field storage mapping",
+        "dependency set"
+      ],
+      "refresh_with": [
+        "yarn install"
+      ],
+      "validate_with": [
+        "yarn workspace webex build",
+        "a focused load of the main target file dist/index.js by path (not through exports)",
+        "focused loads of the webex, webex/calling, webex/meetings, and webex/package subpaths through the exports map",
+        "yarn workspace webex test:unit",
+        "yarn build:script",
+        "after yarn build:script, read the webpack output for errors and confirm the umd/ bundles were rewritten"
+      ],
+      "avoid_direct_edits": [
+        "dist"
+      ],
+      "notes": "Build first so the dist/ targets of main and exports exist. The unit spec and the webpack alias both bypass main, so main needs its own check. Run yarn build:script only when the browser field or a UMD-facing entry changes. Removing an exports entry is breaking for importers."
+    },
+    {
+      "paths": [
+        "src/config.js",
+        "src/config-storage.js",
+        "src/config-storage.shim.js"
+      ],
+      "affects": [
+        "the config merged by every init (today it lands under config.default; see the module spec Pitfalls)",
+        "Node and browser storage adapter choice"
+      ],
+      "refresh_with": [
+        "yarn workspace webex build:src",
+        "yarn build:script"
+      ],
+      "validate_with": [
+        "a new focused characterization test that asserts the merged config and storage adapters (no existing test does)",
+        "yarn workspace webex build:src",
+        "yarn workspace webex test:unit",
+        "yarn workspace webex test:style",
+        "yarn build:script",
+        "after yarn build:script, read the webpack output for errors and confirm the umd/ bundles were rewritten"
+      ],
+      "avoid_direct_edits": [
+        "dist",
+        "umd"
+      ],
+      "notes": "The existing unit spec asserts only version and fedramp. Config and the storage files are bundled into umd/ by the webpack entries; yarn build:script can exit 0 after a failed build."
+    }
+  ],
+  "glossary": [
+    {
+      "term": "entry file",
+      "definition": "A file in src/ that loads a plugin set and defines a Webex constructor (webex.js, meetings.js, encryption.js, calling.js) or re-exports one (index.js, webex-first-party.js).",
+      "notes": "Not a plugin."
+    },
+    {
+      "term": "side-effect registration",
+      "definition": "Requiring a plugin package registers its plugin on the webex-core registry; the entry file uses no binding from it.",
+      "notes": "First registration of a name wins unless the plugin passes replace, per loaded webex-core copy (module spec INV-002)."
+    },
+    {
+      "term": "sdkType",
+      "definition": "Config value set by each init: webex, meetings, or encryption.",
+      "notes": "Not set by new Webex or by Calling."
+    }
+  ],
+  "evidence_rules": [
+    {
+      "claim_category": "command_name",
+      "sources": [
+        "package.json"
+      ],
+      "requirement": "The script must exist in package.json scripts.",
+      "notes": "Use the manifest command strings."
+    },
+    {
+      "claim_category": "import_path",
+      "sources": [
+        "package.json"
+      ],
+      "requirement": "A subpath is importable only if it is in the exports map.",
+      "notes": "env.js, browser.js, src/encryption.js, and src/webex-first-party.js are shipped but not exported."
+    },
+    {
+      "claim_category": "behavior_claim",
+      "sources": [
+        "src",
+        "env.js",
+        "browser.js",
+        "test/unit/spec",
+        "test/integration/spec"
+      ],
+      "requirement": "Ground every behavioral claim in source or test evidence; route runtime behavior to the owning plugin or webex-core.",
+      "notes": "Commit history is not an evidence source. README.md is retained product documentation, not the behavioral authority."
+    }
+  ],
+  "negative_guidance": [
+    {
+      "rule": "Do not assume src/config.js values reach the instance.",
+      "why": "The entry files read its ES default export with require, so the values land under config.default."
+    },
+    {
+      "rule": "Do not call Calling#deregister without a calling client.",
+      "why": "Object.values of an undefined getLines result throws a TypeError."
+    },
+    {
+      "rule": "Do not import webex/env or src/encryption.js by subpath.",
+      "why": "Neither is in the exports map."
+    },
+    {
+      "rule": "Do not edit umd/ by hand.",
+      "why": "It is output of the workspace root webpack build."
+    },
+    {
+      "rule": "Do not infer a coverage threshold for this package.",
+      "why": "The developer confirmed no coverage gate applies; jest-config-legacy sets collectCoverage false."
+    }
+  ],
+  "confidence_policy": {
+    "high": {
+      "action": "update",
+      "expectation": "Source and a unit or integration test both support the change: instance version, init merge, commonjs loading, and the user-agent prefix."
+    },
+    "medium": {
+      "action": "narrow-scope",
+      "expectation": "Only source evidence exists, for example meetings, encryption, first-party, Calling, storage, and env.js (its integration spec requires the unexported webex/env subpath). Pin current behavior with a test before modifying."
+    },
+    "low": {
+      "action": "noop",
+      "expectation": "The behavior belongs to webex-core or a plugin package. Stop and route to that package."
+    }
+  },
+  "repository_topology": {
+    "main_entrypoints": [
+      {
+        "name": "main export",
+        "path": "src/index.js",
+        "purpose": "Full SDK constructor",
+        "notes": "exports ."
+      },
+      {
+        "name": "meetings export",
+        "path": "src/meetings.js",
+        "purpose": "Meetings constructor",
+        "notes": "exports ./meetings"
+      },
+      {
+        "name": "calling export",
+        "path": "src/calling.js",
+        "purpose": "Calling wrapper",
+        "notes": "exports ./calling"
+      }
+    ],
+    "workspace_packages": [
+      {
+        "name": "webex",
+        "paths": [
+          "src",
+          "test",
+          "env.js",
+          "browser.js",
+          "umd"
+        ],
+        "notes": "One module; this SDD root is the package directory packages/webex inside the webex-js-sdk monorepo."
+      }
+    ],
+    "source_surfaces": [
+      {
+        "name": "entry files",
+        "paths": [
+          "src"
+        ],
+        "notes": "Specified at src/docs/README.md."
+      },
+      {
+        "name": "tests",
+        "paths": [
+          "test/unit/spec",
+          "test/integration/spec"
+        ],
+        "notes": "One Jest spec with 4 cases; four Mocha integration specs that need test users."
+      }
+    ],
+    "generated_surfaces": [
+      {
+        "name": "build output",
+        "paths": [
+          "dist"
+        ],
+        "generated_from": "src",
+        "refresh_with": "yarn workspace webex build:src",
+        "notes": "Produced by webex-legacy-tools. Do not edit by hand."
+      },
+      {
+        "name": "UMD bundles",
+        "paths": [
+          "umd"
+        ],
+        "generated_from": "workspace root webpack.config.js entries: ./packages/webex for webex, which the config's resolve.alias maps to packages/webex/src/index in production and development; packages/webex/src/webex-first-party.js, src/meetings.js, src/calling.js; and packages/@webex/plugin-encryption/src/webex.js for encryption",
+        "refresh_with": "yarn build:script",
+        "notes": "Committed build output."
+      },
+      {
+        "name": "repo-standards template map",
+        "paths": [
+          ".sdd/templates/repo-standards"
+        ],
+        "generated_from": "WebexTools/repo-standards@d89a7fe59126ae3ad9bac9ca352aa7f12b4c85dc",
+        "refresh_with": "The package tracks no templates. Create a temporary, untracked local symlink .sdd/templates/repo-standards to the JS SDK root .sdd/templates/repo-standards (Repo Standards 0.3.0 snapshot from PR 5246) only to run the Repo Annotation checkers, and never stage it.",
+        "notes": "The package tracks no templates. Create a temporary, untracked local symlink .sdd/templates/repo-standards to the JS SDK root .sdd/templates/repo-standards (Repo Standards 0.3.0 snapshot from PR 5246) only to run the Repo Annotation checkers, and never stage it."
+      }
+    ],
+    "validation_entrypoints": [
+      {
+        "name": "unit tests",
+        "command": "yarn workspace webex test:unit",
+        "scope": "test/unit/spec",
+        "notes": "Jest via webex-legacy-tools --runner jest."
+      },
+      {
+        "name": "integration test commonjs",
+        "command": "yarn workspace webex test:integration --targets commonjs.js",
+        "scope": "test/integration/spec",
+        "notes": "Mocha; needs test-user credentials and network access. Also run yarn workspace webex test:integration --targets init.js. Untargeted, env.js fails on the unexported webex/env subpath; request.js expects webex/undefined while package.json has no version."
+      },
+      {
+        "name": "browser tests",
+        "command": "yarn workspace webex test:browser:broken",
+        "scope": "integration specs under karma",
+        "notes": "Role other; the script name marks it broken."
+      },
+      {
+        "name": "lint",
+        "command": "yarn workspace webex test:style",
+        "scope": "src",
+        "notes": "eslint via the workspace root configuration."
+      },
+      {
+        "name": "workspace prebuild",
+        "command": "yarn prebuild:modules",
+        "scope": "workspace root",
+        "notes": "Builds the legacy tools and the build:src output of each workspace that defines it; required before test:unit on a fresh clone."
+      },
+      {
+        "name": "UMD refresh",
+        "command": "yarn build:script",
+        "scope": "workspace root",
+        "notes": "Runs the --umd webpack build that writes packages/webex/umd. Not a pass/fail check: the root wrapper deletes umd/webex* first, does not await webpack, and only debug-logs a non-zero exit; read the webpack output and confirm umd/ was rewritten."
+      },
+      {
+        "name": "helper lint",
+        "command": "yarn workspace webex eslint ./env.js ./browser.js ./process",
+        "scope": "env.js, browser.js, and process",
+        "notes": "test:style lints src/ only; this covers the package-root helpers."
+      }
+    ],
+    "sync_paths": [
+      {
+        "source": "WebexTools/repo-standards@d89a7fe59126ae3ad9bac9ca352aa7f12b4c85dc",
+        "targets": [
+          ".sdd/templates/repo-standards"
+        ],
+        "mechanism": "The package tracks no templates. Create a temporary, untracked local symlink .sdd/templates/repo-standards to the JS SDK root .sdd/templates/repo-standards (Repo Standards 0.3.0 snapshot from PR 5246) only to run the Repo Annotation checkers, and never stage it.",
+        "notes": "The package tracks no templates. Create a temporary, untracked local symlink .sdd/templates/repo-standards to the JS SDK root .sdd/templates/repo-standards (Repo Standards 0.3.0 snapshot from PR 5246) only to run the Repo Annotation checkers, and never stage it."
+      }
+    ]
+  },
+  "folder_readme_contract": {
+    "required_sections": [
+      "purpose",
+      "boundaries",
+      "key-files",
+      "common-tasks"
+    ],
+    "rules": [
+      "Orient the reader before describing detail.",
+      "Link to the module specification rather than duplicating it."
+    ],
+    "example_policy": "Examples are allowed only when verified against src/ or test/.",
+    "fallback": "Omit a section rather than inventing content; report unresolved facts as gaps."
+  },
+  "regression_feedback_rules": [
+    {
+      "trigger": "An instance is missing a namespace or has an unexpected one.",
+      "required_followups": [
+        "Check which entry files were loaded in the realm",
+        "Add an assertion to test/integration/spec/commonjs.js or a unit case"
+      ],
+      "notes": "Registration is shared across entries that load the same webex-core copy (module spec INV-002)."
+    },
+    {
+      "trigger": "A Calling register or deregister failure is reported only in logs.",
+      "required_followups": [
+        "Add the first unit case for Calling",
+        "Record the rule in src/docs/README.md"
+      ],
+      "notes": "Calling has no test today."
+    }
+  ],
+  "surface_owners": [
+    {
+      "surface": "module implementation and specification",
+      "owner": "@webex/web-sdk",
+      "edit_boundary": "The monorepo .github/CODEOWNERS has no entry for packages/webex, so the default * rule applies."
+    }
+  ],
+  "do_not_edit": [
+    "dist",
+    "umd",
+    ".sdd/templates/repo-standards"
+  ],
+  "marker_scopes": {
+    "sdd": [
+      ".sdd/manifest.json",
+      "src/docs/README.md",
+      "docs"
+    ]
+  },
+  "fallback_rules": [
+    "When source and tests disagree, code is the referee and the disagreement is recorded rather than silently resolved.",
+    "When neither source nor tests settle a question, report it as a gap instead of inferring.",
+    "Commit history is not a valid rationale source for this package."
+  ],
+  "downstream_context_pack": {
+    "required_human_surfaces": [
+      "README.md",
+      "docs/index.md",
+      "docs/architecture.md",
+      "src/docs/README.md"
+    ],
+    "required_agent_operational_surfaces": [
+      "AGENTS.md",
+      "docs/specs/README.md"
+    ],
+    "required_machine_readable_surface": ".sdd/manifest.json",
+    "recommended_machine_readable_sections": [
+      "public_interfaces",
+      "change_impact",
+      "evidence_rules",
+      "negative_guidance",
+      "confidence_policy",
+      "repository_topology",
+      "folder_readme_contract",
+      "regression_feedback_rules"
+    ]
+  }
+}
