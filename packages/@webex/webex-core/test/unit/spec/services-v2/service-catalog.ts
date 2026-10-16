@@ -366,6 +366,117 @@ describe('webex-core', () => {
         }
       );
 
+      it('matches the base url when host metadata disagrees', () => {
+        const exampleService = {
+          serviceUrls: [
+            {
+              host: 'stale.example.com',
+              baseUrl: 'https://actual.example.com/resource',
+            },
+          ],
+        };
+
+        catalog.serviceGroups.postauth.push(exampleService);
+
+        assert.equal(
+          catalog.findServiceDetailFromUrl('https://actual.example.com/resource/id'),
+          exampleService
+        );
+      });
+
+      it('matches a non-default port when host metadata omits the port', () => {
+        const exampleService = {
+          serviceUrls: [
+            {
+              host: 'example.com',
+              baseUrl: 'https://example.com:8443/resource',
+            },
+          ],
+        };
+
+        catalog.serviceGroups.postauth.push(exampleService);
+
+        assert.equal(
+          catalog.findServiceDetailFromUrl('https://example.com:8443/resource/id'),
+          exampleService
+        );
+      });
+
+      it('matches a canonicalized base url when host metadata is not canonical', () => {
+        const exampleService = {
+          serviceUrls: [
+            {
+              host: 'B\u00dcCHER.EXAMPLE',
+              baseUrl: 'https://b\u00fccher.example/resource',
+            },
+          ],
+        };
+
+        catalog.serviceGroups.postauth.push(exampleService);
+
+        assert.equal(
+          catalog.findServiceDetailFromUrl('https://xn--bcher-kva.example/resource/id'),
+          exampleService
+        );
+      });
+
+      it('replaces refreshed URLs and removes stale V2 matches', () => {
+        const serviceId = 'refreshable-service';
+        const oldDefaultUrl = 'https://old.example.com:8443/resource';
+        const oldAlternateUrl = 'https://old-alternate.example.com:8443/resource';
+        const newDefaultUrl = 'https://new.example.com:9443/resource';
+        const newAlternateUrl = 'https://new-alternate.example.com:9443/resource';
+
+        catalog.updateServiceGroups('postauth', [
+          {
+            id: serviceId,
+            serviceName: serviceId,
+            serviceUrls: [
+              {host: 'stale.example.com', baseUrl: oldDefaultUrl, priority: 1},
+              {host: 'old-alternate.example.com:8443', baseUrl: oldAlternateUrl, priority: 2},
+            ],
+          },
+        ]);
+
+        const service = catalog._getServiceDetail(serviceId, 'postauth');
+
+        assert.equal(catalog.findServiceDetailFromUrl(`${oldDefaultUrl}/id`), service);
+        assert.equal(catalog.findServiceDetailFromUrl(`${oldAlternateUrl}/id`), service);
+
+        catalog.updateServiceGroups('postauth', [
+          {
+            id: serviceId,
+            serviceName: serviceId,
+            serviceUrls: [
+              {host: 'still-stale.example.com', baseUrl: newDefaultUrl, priority: 1},
+              {host: 'new-alternate.example.com:9443', baseUrl: newAlternateUrl, priority: 2},
+            ],
+          },
+        ]);
+
+        assert.equal(catalog._getServiceDetail(serviceId, 'postauth'), service);
+        assert.equal(catalog.findServiceDetailFromUrl(`${newDefaultUrl}/id`), service);
+        assert.equal(catalog.findServiceDetailFromUrl(`${newAlternateUrl}/id`), service);
+        assert.isUndefined(catalog.findServiceDetailFromUrl(`${oldDefaultUrl}/id`));
+        assert.isUndefined(catalog.findServiceDetailFromUrl(`${oldAlternateUrl}/id`));
+
+        catalog.updateServiceGroups('postauth', [
+          {
+            id: serviceId,
+            serviceName: serviceId,
+            serviceUrls: [{host: 'still-stale.example.com', baseUrl: newDefaultUrl, priority: 1}],
+          },
+        ]);
+
+        assert.equal(catalog.findServiceDetailFromUrl(`${newDefaultUrl}/id`), service);
+        assert.isUndefined(catalog.findServiceDetailFromUrl(`${newAlternateUrl}/id`));
+
+        catalog.updateServiceGroups('postauth', []);
+
+        assert.isUndefined(catalog._getServiceDetail(serviceId, 'postauth'));
+        assert.isUndefined(catalog.findServiceDetailFromUrl(`${newDefaultUrl}/id`));
+      });
+
       it('rejects URLs with similar-looking hostnames (SECURITY)', () => {
         // Attacker URL that looks like a catalog URL but has a different origin
         const maliciousUrl = 'https://example.com.attacker.com/resource/id';
