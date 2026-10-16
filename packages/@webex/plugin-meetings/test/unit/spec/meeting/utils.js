@@ -547,6 +547,7 @@ describe('plugin-meetings', () => {
           },
           getWebexObject: sinon.stub().returns(webex),
           setLocus: sinon.stub(),
+          selfHealDuplicateMeeting: sinon.stub(),
         };
       });
 
@@ -812,6 +813,14 @@ describe('plugin-meetings', () => {
             options: {meetingId: meeting.id, rawError: joinError},
           });
         }
+      });
+
+      describe('duplicate meeting self-heal', () => {
+        it("invokes the meeting's selfHealDuplicateMeeting once join() resolves", async () => {
+          await MeetingUtil.joinMeeting(meeting, {});
+
+          assert.calledOnceWithExactly(meeting.selfHealDuplicateMeeting);
+        });
       });
     });
 

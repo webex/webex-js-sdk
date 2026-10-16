@@ -201,6 +201,11 @@ export const ICE_FAIL_TIMEOUT = 3000;
 
 export const RETRY_TIMEOUT = 3000;
 
+// max time an unmatched locus event waits on in-flight join()/creation work (or a just-destroyed
+// meeting's locusUrl being reclaimed by a rejoin) before being reprocessed anyway.
+export const UNMATCHED_LOCUS_EVENT_RESOLUTION_TIMEOUT = 5000;
+export const RECENTLY_DESTROYED_LOCUS_REJOIN_POLL_INTERVAL = 300;
+
 export const ICE_AND_DTLS_CONNECTION_TIMEOUT = 20000;
 export const ROAP_OFFER_ANSWER_EXCHANGE_TIMEOUT = 35000;
 export const WEBINAR_ERROR_WEBCAST = [403026];
@@ -427,6 +432,7 @@ export const MEETING_REMOVED_REASON = {
   MEETING_CONNECTION_FAILED: 'MEETING_CONNECTION_FAILED', // meeting failed to connect due to ice failures or firewall issue
   LOCUS_DTO_SYNC_FAILED: 'LOCUS_DTO_SYNC_FAILED', // failed to get any Locus DTO for that meeting
   MISSING_MEETING_INFO: 'MISSING_MEETING_INFO', // meeting info failed to be fetched
+  DUPLICATE_LOCUS_URL: 'DUPLICATE_LOCUS_URL', // a placeholder meeting was created for this locusUrl (e.g. by the unmatched-locus-event deferral timeout) while the real join() for it was still in flight
 };
 
 // One one one calls ends for the following reasons
