@@ -13,6 +13,7 @@ import {
   WorkerMessageType,
 } from '../../common/types';
 import * as utils from '../../common/Utils';
+import * as callUtils from '../../common/callUtils';
 import log from '../../Logger';
 import {LOGGER} from '../../Logger/types';
 import {URL, mockDeleteResponse, mockPostResponse} from './registerFixtures';
@@ -81,6 +82,7 @@ describe('Registration Tests', () => {
         domain: '',
         indicator: 'calling',
       },
+      hostIps: [],
     },
   };
 
@@ -181,6 +183,9 @@ describe('Registration Tests', () => {
   });
 
   it('verify successful registration', async () => {
+    const hostIps = ['10.0.0.5', '192.168.1.7'];
+
+    jest.spyOn(callUtils, 'getHostIps').mockReturnValueOnce(hostIps);
     webex.request.mockReturnValueOnce({
       body: mockPostResponse,
       headers: {
@@ -193,6 +198,7 @@ describe('Registration Tests', () => {
     expect(webex.request).toBeCalledOnceWith({
       ...mockResponse,
       method: 'POST',
+      body: {...mockResponse.body, hostIps},
     });
 
     expect(reg.getStatus()).toEqual(RegistrationStatus.ACTIVE);

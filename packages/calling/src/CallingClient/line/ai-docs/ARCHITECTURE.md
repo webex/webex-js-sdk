@@ -172,6 +172,11 @@ The actual implementation uses `this.#mutex.runExclusive()` to prevent concurren
 
 ```typescript
 async register(): Promise<void> {
+  // Refresh the host ip addresses the registration will report, outside the mutex
+  if (this.#localAudioStream) {
+    await discoverHostIps(this.#localAudioStream);
+  }
+
   await this.#mutex.runExclusive(async () => {
     // Emit CONNECTING to notify application
     this.emit(LINE_EVENTS.CONNECTING);
