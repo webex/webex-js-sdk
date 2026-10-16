@@ -35,6 +35,7 @@
     "@webex/internal-plugin-support": "workspace:*",
     "@webex/internal-plugin-team": "workspace:*",
     "@webex/internal-plugin-user": "workspace:*",
+    "@webex/internal-plugin-user-apps": "workspace:*",
     "@webex/plugin-authorization-browser-first-party": "workspace:*",
     "@webex/plugin-logger": "workspace:*",
     "@webex/plugin-people": "workspace:*",
