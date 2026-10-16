@@ -130,6 +130,64 @@ describe('webWorker', () => {
     expect(clearIntervalSpy).toHaveBeenCalled();
   });
 
+  it('keepaliveInFlight resets when no KEEPALIVE_RESULT arrives', async () => {
+    messageHandler({
+      data: {
+        type: WorkerMessageType.START_KEEPALIVE,
+        interval: 1,
+        retryCountThreshold: 3,
+      },
+    } as MessageEvent);
+
+    // First interval tick: keepaliveInFlight becomes true, timeout starts
+    await capturedIntervalCallback();
+    expect(postMessageSpy).toHaveBeenCalledWith({type: WorkerMessageType.SEND_KEEPALIVE});
+    postMessageSpy.mockClear();
+
+    // Second tick while in-flight: blocked, no SEND_KEEPALIVE
+    await capturedIntervalCallback();
+    expect(postMessageSpy).not.toHaveBeenCalled();
+
+    // Advance past the 2x-interval timeout (interval=1s, timeout=2000ms)
+    jest.advanceTimersByTime(3000);
+
+    // keepaliveInFlight is now reset; next tick posts SEND_KEEPALIVE again
+    await capturedIntervalCallback();
+    expect(postMessageSpy).toHaveBeenCalledWith({type: WorkerMessageType.SEND_KEEPALIVE});
+
+    // Clean up: reset module state so subsequent tests are not affected
+    messageHandler({data: {type: WorkerMessageType.CLEAR_KEEPALIVE}} as MessageEvent);
+  });
+
+  it('normal KEEPALIVE_RESULT still clears in-flight and cancels timeout', async () => {
+    messageHandler({
+      data: {
+        type: WorkerMessageType.START_KEEPALIVE,
+        interval: 1,
+        retryCountThreshold: 3,
+      },
+    } as MessageEvent);
+
+    await capturedIntervalCallback();
+    expect(postMessageSpy).toHaveBeenCalledWith({type: WorkerMessageType.SEND_KEEPALIVE});
+    postMessageSpy.mockClear();
+
+    // Deliver KEEPALIVE_RESULT before the timeout fires
+    messageHandler({
+      data: {type: WorkerMessageType.KEEPALIVE_RESULT},
+    } as MessageEvent);
+
+    // Advance past where the timeout would have fired; no spurious state corruption
+    jest.advanceTimersByTime(5000);
+
+    // Loop is still healthy: interval fires and posts SEND_KEEPALIVE again
+    await capturedIntervalCallback();
+    expect(postMessageSpy).toHaveBeenCalledWith({type: WorkerMessageType.SEND_KEEPALIVE});
+
+    // Clean up: reset module state so subsequent tests are not affected
+    messageHandler({data: {type: WorkerMessageType.CLEAR_KEEPALIVE}} as MessageEvent);
+  });
+
   it('improve coverage: should not clear keepalive timer on receiving CLEAR_KEEPALIVE message without keepTimer', async () => {
     jest.spyOn(global, 'setInterval').mockReturnValue(undefined);
 
