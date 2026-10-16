@@ -582,6 +582,7 @@ if (response.statusCode === 200) {
 - Missed-call and delete mutations require valid `endTime`/`sessionId` pairs.
 - WXC queries include shared sessions; UCM results are enriched by matching `self.cucmDN` to line `dnorpattern`.
 - Mercury events retain their typed payload and event-key mapping. Evidence: `src/CallHistory/CallHistory.ts`, `src/CallHistory/CallHistory.test.ts`.
+- Diagnostic logging does not emit session identifiers; `updateMissedCalls` logs only the count of sessions being processed rather than the serialized `endTime`/`sessionId` array. Evidence: `src/CallHistory/CallHistory.ts`, `src/CallHistory/CallHistory.test.ts`.
 
 ## Concurrency & Reactive Flow
 
