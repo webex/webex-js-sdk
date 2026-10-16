@@ -624,6 +624,10 @@ In WXC/BWRKS, the `messageId` returned from `getVoicemailList` is a **full XSI p
 // Transcript: {xsiEndpoint}{messageId}/transcript
 ```
 
+### BroadWorks messageId Path Validation
+
+Before the BroadWorks connector concatenates a `messageId` onto `xsiEndpoint` and calls `fetch`, it validates the raw `messageId` against the fixed relative XSI voice-message path shape `/v2.0/user/{userId}/VoiceMessagingMessages/{messageId}`. The value is matched exactly as received — no decoding or normalization is performed — so a valid full path continues to produce the same URL and behavior as before. Any `messageId` that does not match the expected shape (including non-strings, percent-encoding, backslashes, whitespace, control characters, `?`/`#`, scheme/authority prefixes, or `.`/`..` traversal segments) is rejected before `fetch` is invoked and returned as a normalized error `VoicemailResponseEvent` (`UNPROCESSABLE_CONTENT_CODE`, 422) through the existing `serviceErrorCodeHandler` path. This validation applies to `getVoicemailContent`, `voicemailMarkAsRead`, `voicemailMarkAsUnread`, and `deleteVoicemail`.
+
 ### API Endpoints (from Voicemail/constants.ts)
 
 | Constant | Value | Description |
@@ -648,6 +652,7 @@ In WXC/BWRKS, the `messageId` returned from `getVoicemailList` is a **full XSI p
 | Condition | Signal | Caller recovery |
 |---|---|---|
 | Invalid input or lifecycle state | Typed error or rejected promise from `src/Voicemail/BroadworksBackendConnector.ts` | Correct input/state; do not retry blindly |
+| BroadWorks `messageId` not matching the relative XSI voice-message path shape | Normalized error `VoicemailResponseEvent` (`UNPROCESSABLE_CONTENT_CODE`, 422) returned without invoking `fetch` | Supply a valid full XSI message path as returned by `getVoicemailList` |
 | Remote or transport failure | Module error/event | Apply the module's documented retry/fallback; otherwise surface to the consumer |
 | Cleanup after failure | Final event or rejected operation | Release listeners/timers and recreate only through the public factory |
 

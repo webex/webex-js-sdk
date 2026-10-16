@@ -37,7 +37,7 @@ import {
   GroupType,
 } from './types';
 
-import {scimQuery, serviceErrorCodeHandler, uploadLogs} from '../common/Utils';
+import {escapeScimValue, scimQuery, serviceErrorCodeHandler, uploadLogs} from '../common/Utils';
 
 /**
  * `ContactsClient` module is designed to offer a set of APIs for retrieving and updating contacts and groups from the contacts-service.
@@ -389,7 +389,9 @@ export class ContactsClient implements IContacts {
         for (let i = 0; i < totalContacts; i += MAX_CONTACTS_PER_QUERY) {
           try {
             const contactIdListChunk = contactIdList.slice(i, i + MAX_CONTACTS_PER_QUERY);
-            const query = contactIdListChunk.map((item) => `${SCIM_ID_FILTER} "${item}"`).join(OR);
+            const query = contactIdListChunk
+              .map((item) => `${SCIM_ID_FILTER} "${escapeScimValue(item)}"`)
+              .join(OR);
             const result = await scimQuery(query);
 
             const slicedCloudContactsMap = Object.fromEntries(
@@ -797,7 +799,7 @@ export class ContactsClient implements IContacts {
       };
 
       if (contact.contactType === ContactType.CLOUD && newContact.contactId) {
-        const query = `${SCIM_ID_FILTER} "${newContact.contactId}"`;
+        const query = `${SCIM_ID_FILTER} "${escapeScimValue(newContact.contactId)}"`;
         const res = await scimQuery(query);
         const resolvedContact = this.resolveCloudContacts(
           Object.fromEntries([[newContact.contactId, newContact]]) as ContactIdContactInfo,

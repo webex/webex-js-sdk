@@ -4,7 +4,7 @@ import {getTestUtilsWebex} from '../../../common/testUtil';
 import {createCallerId} from '.';
 import log from '../../../Logger';
 import {ICallerId} from './types';
-import {UTILS_FILE} from '../../constants';
+import {CALLER_ID_FILE, UTILS_FILE} from '../../constants';
 
 const waitForMsecs = (msec: number) =>
   new Promise((resolve) => {
@@ -255,5 +255,125 @@ describe('CallerId tests', () => {
     expect(callerId['callerInfo'].id).toBe(undefined);
     expect(callerId['callerInfo'].name).toStrictEqual('Bob Marley');
     expect(callerId['callerInfo'].num).toStrictEqual('5888');
+  });
+
+  describe('parseSipUri hardening', () => {
+    const warnSpy = jest.spyOn(log, 'warn');
+    let sipUriCallerId: ICallerId;
+
+    beforeAll(() => {
+      sipUriCallerId = createCallerId(webex, () => log.log('dummy print', {}));
+    });
+
+    beforeEach(() => {
+      warnSpy.mockClear();
+    });
+
+    it('handles crafted SIP URI safely', () => {
+      const cases: {
+        input: string;
+        expectedName?: string;
+        expectedNum?: string;
+        nameWarn: boolean;
+        numWarn: boolean;
+      }[] = [
+        {
+          input: '"Eve" <sip:12ab34@domain>',
+          expectedName: 'Eve',
+          expectedNum: undefined,
+          nameWarn: false,
+          numWarn: true,
+        },
+        {
+          input: '<sip:@domain>',
+          expectedName: undefined,
+          expectedNum: undefined,
+          nameWarn: true,
+          numWarn: true,
+        },
+        {
+          input: 'sip:1234567890@domain',
+          expectedName: undefined,
+          expectedNum: '1234567890',
+          nameWarn: true,
+          numWarn: false,
+        },
+        {
+          input: '"Mallory" <tel:1234567890@domain>',
+          expectedName: 'Mallory',
+          expectedNum: undefined,
+          nameWarn: false,
+          numWarn: true,
+        },
+        {
+          input: 'garbage-with-no-delimiters',
+          expectedName: 'garbage-with-no-delimiters',
+          expectedNum: undefined,
+          nameWarn: false,
+          numWarn: true,
+        },
+        {
+          input: '',
+          expectedName: undefined,
+          expectedNum: undefined,
+          nameWarn: true,
+          numWarn: true,
+        },
+      ];
+
+      cases.forEach(({input, expectedName, expectedNum, nameWarn, numWarn}) => {
+        warnSpy.mockClear();
+
+        let result: DisplayInformation | undefined;
+
+        expect(() => {
+          result = sipUriCallerId['parseSipUri'](input);
+        }).not.toThrow();
+
+        expect(result?.name).toStrictEqual(expectedName);
+        expect(result?.num).toStrictEqual(expectedNum);
+
+        if (nameWarn) {
+          expect(warnSpy).toHaveBeenCalledWith('Name field not found!', {
+            file: CALLER_ID_FILE,
+            method: 'parseSipUri',
+          });
+        }
+
+        if (numWarn) {
+          expect(warnSpy).toHaveBeenCalledWith('Number field not found!', {
+            file: CALLER_ID_FILE,
+            method: 'parseSipUri',
+          });
+        }
+      });
+    });
+
+    it('valid SIP URI parsed unchanged', () => {
+      const cases: {input: string; expectedName?: string; expectedNum?: string}[] = [
+        {
+          input: `"John O' Connor - (Guest)" <sip:1234567890@domain>`,
+          expectedName: "John O' Connor - (Guest)",
+          expectedNum: '1234567890',
+        },
+        {
+          input: '"John O\'Connor - ( Guest )" <sip:5888@10.155.4.7;user=phone>',
+          expectedName: "John O'Connor - ( Guest )",
+          expectedNum: '5888',
+        },
+        {
+          input: '"Alice" <sip:5889@64941297.int10.bcld.webex.com>;tag=1932136170-1654008881246',
+          expectedName: 'Alice',
+          expectedNum: '5889',
+        },
+      ];
+
+      cases.forEach(({input, expectedName, expectedNum}) => {
+        const result = sipUriCallerId['parseSipUri'](input);
+
+        expect(result.name).toStrictEqual(expectedName);
+        expect(result.num).toStrictEqual(expectedNum);
+      });
+    });
   });
 });
