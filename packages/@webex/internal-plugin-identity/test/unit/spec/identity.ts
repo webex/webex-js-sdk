@@ -63,6 +63,15 @@ describe('plugin-identity', () => {
           userIdentityRoots: '',
         });
       });
+
+      it('defaults to production trust anchors when the environment cannot be determined', () => {
+        webex.internal = undefined;
+
+        assert.deepEqual(identity.getTrustAnchors(), {
+          webexCaRoots: `${WEBEX_CA_PRODUCTION_ROOTS}\n${WEBEX_CA_FEDRAMP_ROOTS}`,
+          userIdentityRoots: '',
+        });
+      });
     });
 
     describe('getCredentials', () => {
@@ -99,6 +108,50 @@ describe('plugin-identity', () => {
 
         assert.equal(first, second);
         assert.calledOnce(generateCsrStub);
+        assert.calledOnce(webexRequest);
+      });
+
+      it('shares a single request for concurrent cache-miss callers', async () => {
+        const [first, second] = await Promise.all([
+          identity.getCredentials('user-1'),
+          identity.getCredentials('user-1'),
+        ]);
+
+        assert.equal(first, second);
+        assert.calledOnce(generateCsrStub);
+        assert.calledOnce(webexRequest);
+      });
+
+      it('rejects and does not cache a response without a certificate chain', async () => {
+        webexRequest.onFirstCall().resolves({body: '<html>certificate not found</html>'});
+        webexRequest.onSecondCall().resolves({body: `${LEAF_PEM}\n${ROOT_PEM}`});
+
+        await assert.isRejected(
+          identity.getCredentials('user-1'),
+          /Certificate authority response did not contain a certificate chain/
+        );
+        assert.isFalse(identity.credentialsCache.has('user-1'));
+
+        const credentials = await identity.getCredentials('user-1');
+
+        assert.equal(credentials.certChain.length, 2);
+        assert.calledTwice(generateCsrStub);
+        assert.calledTwice(webexRequest);
+        // The empty-chain short-circuit must skip the expiry check entirely.
+        assert.notCalled(identityUtils.isCertificateExpiringSoon);
+      });
+
+      it('does not cache a failed CSR generation and never calls the CA', async () => {
+        generateCsrStub.onFirstCall().rejects(new Error('CSR failed'));
+
+        await assert.isRejected(identity.getCredentials('user-1'), /CSR failed/);
+
+        assert.notCalled(webexRequest);
+
+        const credentials = await identity.getCredentials('user-1');
+
+        assert.equal(credentials.certChain.length, 2);
+        assert.calledTwice(generateCsrStub);
         assert.calledOnce(webexRequest);
       });
 

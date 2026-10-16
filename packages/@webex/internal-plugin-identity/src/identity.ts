@@ -35,12 +35,17 @@ class Identity extends WebexPlugin {
    * @returns {IdentityTrustAnchors} trust anchors for validating member certificates.
    */
   getTrustAnchors(): IdentityTrustAnchors {
-    this.logger.info('identity: getTrustAnchors');
     const isIntegrationEnvironment =
       this.webex.internal?.services?.isIntegrationEnvironment?.() ?? false;
     const webexCaRoots = isIntegrationEnvironment
       ? WEBEX_CA_INTEGRATION_ROOTS
       : `${WEBEX_CA_PRODUCTION_ROOTS}\n${WEBEX_CA_FEDRAMP_ROOTS}`;
+
+    this.logger.info(
+      `identity: getTrustAnchors returning ${
+        isIntegrationEnvironment ? 'integration' : 'production'
+      } trust anchors`
+    );
 
     return {
       webexCaRoots,
@@ -136,12 +141,18 @@ class Identity extends WebexPlugin {
     });
 
     this.logger.info('identity: requestCredentials: received signed certificate from CA');
+    const certChain = pemToUint8Arrays(response.body);
+
+    if (certChain.length === 0 || certChain.some((certificate) => certificate.length === 0)) {
+      throw new Error('Certificate authority response did not contain a certificate chain');
+    }
+
     const privateKey = privKeyDer.slice(
       PKCS8_P256_RAW_KEY_OFFSET,
       PKCS8_P256_RAW_KEY_OFFSET + RAW_EC_P256_KEY_LENGTH
     );
 
-    return {privateKey, certChain: pemToUint8Arrays(response.body)};
+    return {privateKey, certChain};
   }
 }
 

@@ -65,6 +65,25 @@ describe('identity utils', () => {
     it('treats an unreadable certificate as needing renewal', () => {
       assert.isTrue(isCertificateExpiringSoon(new Uint8Array([1, 2, 3])));
     });
+
+    it('treats a parseable non-certificate structure as needing renewal', () => {
+      // A DER-encoded INTEGER parses as valid BER (offset !== -1) but fails pkijs certificate
+      // construction, exercising the catch branch rather than the offset === -1 guard above.
+      assert.isTrue(isCertificateExpiringSoon(new Uint8Array([0x02, 0x01, 0x05])));
+    });
+
+    it('returns false when the certificate expires exactly at the renewal window boundary', async () => {
+      const now = new Date('2026-10-08T12:00:00Z');
+      const certificate = await makeCertificate(new Date(now.getTime() + 24 * 60 * 60 * 1000));
+
+      assert.isFalse(isCertificateExpiringSoon(certificate, now.getTime()));
+    });
+
+    it('uses the current time when no reference time is provided', async () => {
+      const certificate = await makeCertificate(new Date(Date.now() + 10 * 24 * 60 * 60 * 1000));
+
+      assert.isFalse(isCertificateExpiringSoon(certificate));
+    });
   });
 
   describe('generateCsr', () => {
@@ -88,9 +107,24 @@ describe('identity utils', () => {
 
       assert.deepEqual(Array.from(pemToUint8Array(pem)), [65, 66, 67]);
     });
+
+    it('decodes a PEM block that uses CRLF line endings', () => {
+      const pem = '-----BEGIN CERTIFICATE-----\r\nQUJD\r\n-----END CERTIFICATE-----';
+
+      assert.deepEqual(Array.from(pemToUint8Array(pem)), [65, 66, 67]);
+    });
   });
 
   describe('pemToUint8Arrays', () => {
+    it('decodes a single-certificate chain', () => {
+      const pem = '-----BEGIN CERTIFICATE-----\nQUJD\n-----END CERTIFICATE-----';
+
+      assert.deepEqual(
+        pemToUint8Arrays(pem).map((certificate) => Array.from(certificate)),
+        [[65, 66, 67]]
+      );
+    });
+
     it('decodes each certificate in a concatenated PEM chain', () => {
       const pem = [
         '-----BEGIN CERTIFICATE-----\nQUJD\n-----END CERTIFICATE-----',
@@ -108,6 +142,19 @@ describe('identity utils', () => {
 
     it('returns an empty chain when the response has no certificate blocks', () => {
       assert.deepEqual(pemToUint8Arrays('no certificates'), []);
+    });
+
+    it('splits adjacent certificate blocks that are not newline-separated', () => {
+      const pem =
+        '-----BEGIN CERTIFICATE-----\nQUJD\n-----END CERTIFICATE----------BEGIN CERTIFICATE-----\nREVG\n-----END CERTIFICATE-----';
+
+      assert.deepEqual(
+        pemToUint8Arrays(pem).map((certificate) => Array.from(certificate)),
+        [
+          [65, 66, 67],
+          [68, 69, 70],
+        ]
+      );
     });
   });
 });

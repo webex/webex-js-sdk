@@ -1,8 +1,9 @@
 {
   "name": "@webex/internal-plugin-identity",
   "description": "Webex identity and certificate credentials plugin",
-  "license": "MIT",
+  "license": "Cisco's General Terms (https://www.cisco.com/site/us/en/about/legal/contract-experience/index.html)",
   "main": "dist/index.js",
+  "types": "dist/types/index.d.ts",
   "devMain": "src/index.ts",
   "repository": {
     "type": "git",
