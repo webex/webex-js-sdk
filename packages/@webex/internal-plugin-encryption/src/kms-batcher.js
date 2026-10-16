@@ -8,6 +8,7 @@ import {Batcher} from '@webex/webex-core';
 import {KmsError, KmsTimeoutError, handleKmsKeyRevokedEncryptionFailure} from './kms-errors';
 
 export const TIMEOUT_SYMBOL = Symbol('TIMEOUT_SYMBOL');
+const TRACKING_ID_HEADERS_SYMBOL = Symbol('TRACKING_ID_HEADERS_SYMBOL');
 
 /**
  * @class
@@ -54,13 +55,14 @@ const KmsBatcher = Batcher.extend({
 
       const timer = safeSetTimeout(() => {
         this.logger.warn(
-          `kms: request timed out; request id: ${item.requestId}; timeout: ${timeout}`
+          `kms: request timed out; method: ${item.method}; uri: ${item.uri}; request id: ${item.requestId}; timeout: ${timeout}`
         );
         this.handleItemFailure(
           item,
           new KmsTimeoutError({
             timeout,
             request: item,
+            trackingId: item[TRACKING_ID_HEADERS_SYMBOL]?.trackingid,
           })
         );
       }, timeout);
@@ -81,8 +83,11 @@ const KmsBatcher = Batcher.extend({
    */
   prepareRequest(queue) {
     return this.webex.internal.encryption.kms._getKMSCluster().then((cluster) => ({
-      destination: cluster,
-      kmsMessages: queue.map((req) => req.wrapped),
+      body: {
+        destination: cluster,
+        kmsMessages: queue.map((req) => req.wrapped),
+      },
+      queue,
     }));
   },
 
@@ -91,13 +96,20 @@ const KmsBatcher = Batcher.extend({
    * @returns {Promise<HttpResponseObject>}
    */
   submitHttpRequest(payload) {
-    this.logger.info('kms: batched-request-length', payload.kmsMessages.length);
+    const headers = {};
+
+    payload.queue.forEach((item) => {
+      item[TRACKING_ID_HEADERS_SYMBOL] = headers;
+    });
+
+    this.logger.info('kms: batched-request-length', payload.body.kmsMessages.length);
 
     return this.webex.request({
       method: 'POST',
       service: 'encryption',
       resource: '/kms/messages',
-      body: payload,
+      body: payload.body,
+      headers,
     });
   },
 

@@ -2,6 +2,8 @@
  * Copyright (c) 2015-2020 Cisco Systems, Inc. See LICENSE file.
  */
 
+import caroots from '@webex/kms-caroots';
+
 export default {
   encryption: {
     joseOptions: {
@@ -48,11 +50,22 @@ export default {
     batcherMaxWait: 150,
 
     /**
-     * PEM encoded CA root bundle used to validate the KMS certificate chain.
-     * When omitted, the KMS certificate chain signature is not verified.
-     * @type {?string[]}
+     * Whether to validate the KMS certificate chain against `caroots`. Defaults
+     * to true as a secure default: when enabled the KMS certificate must
+     * validate against a configured `caroots` bundle, and a missing bundle
+     * fails closed. Set to false to temporarily opt out of validation, e.g.
+     * while upgrading and wiring up the CA root bundle.
+     * @type {boolean}
      */
-    caroots: undefined,
+    shouldValidateKMSCertificate: true,
+
+    /**
+     * Bundled CA roots used to validate the KMS certificate chain, as an array
+     * of raw base64-encoded certificates (the DER body, without the
+     * -----BEGIN/END CERTIFICATE----- lines).
+     * @type {string[]}
+     */
+    caroots,
 
     /**
      * An additional CA root bundle validated alongside `caroots`. Unlike

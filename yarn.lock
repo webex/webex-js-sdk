@@ -8068,6 +8068,7 @@ __metadata:
     "@webex/internal-plugin-device": "workspace:*"
     "@webex/internal-plugin-mercury": "workspace:*"
     "@webex/jest-config-legacy": "workspace:*"
+    "@webex/kms-caroots": "workspace:*"
     "@webex/legacy-tools": "workspace:*"
     "@webex/test-helper-chai": "workspace:*"
     "@webex/test-helper-file": "workspace:*"
@@ -8553,6 +8554,16 @@ __metadata:
   checksum: 7f21b7d88ecff51230f53263027eff6b366c146f389f724ff2c89c066aef0ed61538b32a1fa4fa1acfac139f8190421509aecb1111987afcf391feafb3d9b5fa
   languageName: node
   linkType: hard
+
+"@webex/kms-caroots@workspace:*, @webex/kms-caroots@workspace:packages/@webex/kms-caroots":
+  version: 0.0.0-use.local
+  resolution: "@webex/kms-caroots@workspace:packages/@webex/kms-caroots"
+  dependencies:
+    eslint: ^8.24.0
+  bin:
+    webex-kms-caroots: ./cli.js
+  languageName: unknown
+  linkType: soft
 
 "@webex/ladon-ts@npm:^5.10.0":
   version: 5.10.0

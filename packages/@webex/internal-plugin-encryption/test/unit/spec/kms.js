@@ -5,7 +5,7 @@ import {assert} from '@webex/test-helper-chai';
 import MockWebex from '@webex/test-helper-mock-webex';
 import sinon from 'sinon';
 import Encryption from '@webex/internal-plugin-encryption';
-import {KmsError} from '../../../dist/kms-errors';
+import {KmsError, KmsTimeoutError} from '../../../dist/kms-errors';
 
 describe('internal-plugin-encryption', () => {
   describe('kms', () => {
@@ -263,6 +263,7 @@ describe('internal-plugin-encryption', () => {
 
       beforeEach(() => {
         webex.internal.metrics = {submitClientMetrics: sinon.stub()};
+        webex.internal.encryption.config.shouldValidateKMSCertificate = true;
         webex.internal.encryption.config.caroots = caroots;
         webex.internal.encryption.config.carootsReportOnly = undefined;
       });
@@ -318,6 +319,38 @@ describe('internal-plugin-encryption', () => {
         );
       });
 
+      it('rejects when validation is enabled but no caroots are configured', async () => {
+        webex.internal.encryption.config.caroots = undefined;
+
+        await assert.isRejected(
+          webex.internal.encryption.kms._validateKMSStaticPubKey(validKey),
+          /INVALID KMS/
+        );
+
+        assert.calledOnceWithExactly(
+          webex.internal.metrics.submitClientMetrics,
+          'JS_SDK_KMS_CERTIFICATE_VALIDATION_FAILED',
+          {
+            fields: {success: false},
+            tags: {
+              reason: 'INVALID KMS: no CA roots configured to validate the KMS certificate against',
+              kid: 'kms://kms.example.com',
+              validationMode: 'enforced',
+            },
+          }
+        );
+      });
+
+      it('resolves without validating when shouldValidateKMSCertificate is false', async () => {
+        webex.internal.encryption.config.shouldValidateKMSCertificate = false;
+        webex.internal.encryption.config.caroots = undefined;
+
+        const result = await webex.internal.encryption.kms._validateKMSStaticPubKey(validKey);
+
+        assert.equal(result, validKey);
+        assert.notCalled(webex.internal.metrics.submitClientMetrics);
+      });
+
       it('resolves without a metric when no report-only bundle is configured', async () => {
         const result = await webex.internal.encryption.kms._validateKMSStaticPubKey(validKey);
 
@@ -367,6 +400,22 @@ describe('internal-plugin-encryption', () => {
             'KMS_REQUEST_ID: 3434343\n' +
             'KMS_ErrorCode: 30005'
         );
+      });
+
+      it('includes the Webex tracking ID in KMS timeout errors', () => {
+        const error = new KmsTimeoutError({
+          timeout: 6000,
+          trackingId: 'webex-js-sdk_test_1',
+          request: {
+            method: 'create',
+            uri: '/keys',
+            requestId: 'kms-request-id',
+          },
+        });
+
+        assert.include(error.message, 'KMS_REQUEST: create /keys');
+        assert.include(error.message, 'KMS_REQUEST_ID: kms-request-id');
+        assert.include(error.message, 'WEBEX_TRACKING_ID: webex-js-sdk_test_1');
       });
     });
   });

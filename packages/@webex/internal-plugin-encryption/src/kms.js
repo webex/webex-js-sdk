@@ -614,9 +614,10 @@ const KMS = WebexPlugin.extend({
    * @param {Object} options
    * @param {Number} options.timeout (internal)
    * @param {string} options.onBehalfOf Run the request on behalf of another user (UUID), used in compliance scenarios
+   * @param {boolean} options.previouslyTimedOut Whether an earlier attempt timed out
    * @returns {Promise<Object>}
    */
-  request(payload, {timeout, onBehalfOf} = {}) {
+  request(payload, {timeout, onBehalfOf, previouslyTimedOut = false} = {}) {
     timeout = timeout || this.config.kmsInitialTimeout;
 
     // Note: this should only happen when we're using the async kms batcher;
@@ -630,6 +631,15 @@ const KMS = WebexPlugin.extend({
 
           return this.batcher.request(req);
         })
+        .then((response) => {
+          if (previouslyTimedOut) {
+            this.logger.warn(
+              `kms: request succeeded after previous timeout; method: ${payload.method}; uri: ${payload.uri}; request id: ${response.requestId}`
+            );
+          }
+
+          return response;
+        })
         // High complexity is due to attempt at test mode resiliency
         // eslint-disable-next-line complexity
         .catch((reason) => {
@@ -642,7 +652,7 @@ const KMS = WebexPlugin.extend({
           ) {
             this.logger.warn('kms: rerequested key due to test-mode kms auth failure');
 
-            return this.request(payload, {onBehalfOf});
+            return this.request(payload, {onBehalfOf, previouslyTimedOut});
           }
 
           // KMS Error. Notify the user
@@ -689,7 +699,7 @@ const KMS = WebexPlugin.extend({
               timeout = 0;
             }
 
-            return this.request(payload, {timeout, onBehalfOf});
+            return this.request(payload, {timeout, onBehalfOf, previouslyTimedOut: true});
           }
 
           return Promise.reject(reason);
@@ -786,16 +796,17 @@ const KMS = WebexPlugin.extend({
   },
 
   /**
-   * Validates the KMS static public key against the configured CA roots. The
-   * enforced `caroots` bundle reports and rejects on failure. When a
-   * `carootsReportOnly` bundle is also configured, it is validated after
-   * `caroots`; its failure is reported without rejecting.
+   * Validates the KMS static public key against the configured CA roots.
+   * Validation is enabled by default (`shouldValidateKMSCertificate`) and fails
+   * closed when no enforced `caroots` bundle is configured or validation fails.
+   * Enforced failures are reported and rejected. When a `carootsReportOnly`
+   * bundle is configured, its failures are reported without rejecting.
    * @private
    * @param {Object} kmsStaticPubKey
    * @returns {Promise<Object>} the KMS static public key
    */
   _validateKMSStaticPubKey(kmsStaticPubKey) {
-    const {caroots, carootsReportOnly} = this.config;
+    const {caroots, carootsReportOnly, shouldValidateKMSCertificate} = this.config;
     const reportValidationFailure = (reason, validationMode) => {
       this.logger.warn(`kms: ${validationMode} certificate validation failed`, reason);
 
@@ -817,7 +828,7 @@ const KMS = WebexPlugin.extend({
       }
     };
 
-    return validateKMS(caroots)(kmsStaticPubKey)
+    return validateKMS({caroots, validateSignature: shouldValidateKMSCertificate})(kmsStaticPubKey)
       .catch((reason) => {
         reportValidationFailure(reason, 'enforced');
         throw reason;
@@ -827,7 +838,7 @@ const KMS = WebexPlugin.extend({
           return jwt;
         }
 
-        return validateKMS(carootsReportOnly)(kmsStaticPubKey)
+        return validateKMS({caroots: carootsReportOnly})(kmsStaticPubKey)
           .catch((reason) => reportValidationFailure(reason, 'report-only'))
           .then(() => jwt);
       });

@@ -43,6 +43,7 @@
     "@webex/http-core": "workspace:*",
     "@webex/internal-plugin-device": "workspace:*",
     "@webex/internal-plugin-mercury": "workspace:*",
+    "@webex/kms-caroots": "workspace:*",
     "@webex/test-helper-file": "workspace:*",
     "@webex/webex-core": "workspace:*",
     "asn1js": "^2.0.26",
