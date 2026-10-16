@@ -11,8 +11,8 @@
 | Doc kind | Module spec |
 | Coverage score | Partial (manifest-authoritative); 15/15 required document fields present |
 | Generated from | `module-spec` @ SDLC template library `0.2.1` |
-| generated_by / approved_by / updated_at | Codex generator / developer-approved follow-up review remediation / 2026-07-21 |
-| Validation status | Follow-up validation passed (independent Claude fallback, 2026-07-21); 1 existing test-coverage gap; coverage remains Partial |
+| generated_by / approved_by / updated_at | Codex generator / developer-approved follow-up review remediation / 2026-10-06 |
+| Validation status | AI summary methods, delivery, and cleanup updates pending independent review (2026-10-06); prior follow-up validation passed (independent Claude fallback, 2026-07-21); 1 existing test-coverage gap; coverage remains Partial |
 
 ## Evidence Rules
 Every requirement cites stable source and test file paths. Code/tests are the behavioral referee; routed source text supplies explicit intent and rationale. Missing or contradictory evidence blocks promotion.
@@ -143,6 +143,7 @@ services/task/
 | `task.preview-campaign` | SDK/AQM API | `acceptPreviewContact`, `skipPreviewContact`, `removePreviewContact`, and `PreviewContactPayload`. | Accept, skip, or remove a reserved campaign preview contact; each method returns `Promise<TaskResponse>`. | Additive semver-public methods; removals or signature changes are breaking. | `src/cc.ts`, `src/services/task/dialer.ts`, `src/services/task/types.ts` | `../../../../ai-docs/CONTRACTS.md` |
 | `task.consult-transfer-controls` | SDK task controls | `TaskUIControls.consultTransferDestinations` with ordered `consult` and `transfer` arrays. | Surface default destination availability on every Task without an extra policy method. | Additive semver-public field/types; array order is meaningful and the first item is the default. | `src/services/task/types.ts`, `src/services/task/state-machine/uiControlsComputer.ts` | `../../../../ai-docs/CONTRACTS.md` |
 | `task.conference-participant-drop` | SDK/AQM API | `task.dropConferenceParticipant(payload: DropConferenceParticipantPayload): Promise<TaskResponse>`. | Remove a supported target from a voice conference after correlated routing completion. | Additive semver-public method and payload; removals or signature changes are breaking. | `src/services/task/voice/Voice.ts`, `src/services/task/contact.ts`, `src/services/task/types.ts` | `../../../../ai-docs/CONTRACTS.md` |
+| `task.ai-summary` | SDK/RTD API | Post-call and mid-call summary request/response methods, feature enablement, and receiving-agent summary events. | Provide task-scoped generated summaries without exposing RTD correlation to SDK consumers. | Additive semver-public methods, types, and events; removals or signature changes are breaking. | `src/services/task/Task.ts`, `src/services/task/TaskManager.ts`, `src/services/task/types.ts`, `src/services/ApiAiAssistant.ts` | `../../../../ai-docs/CONTRACTS.md` |
 
 Compatibility notes:
 - Do not remove or reinterpret exported symbols/events without a documented consumer migration.
@@ -150,6 +151,8 @@ Compatibility notes:
 - `TASK_EVENTS` enum (`types.ts`)
 
 - `TaskData`, `TaskId`, `TaskResponse`, `TaskUIControls` (`types.ts`)
+
+- `AISummary`, `AISummaryResponse`, `AISummaryAction`, `AISummaryFeatureEnablement`, and `AISummaryCapabilities` (`types.ts`)
 
 - `PreviewContactPayload` (`types.ts`) with `interactionId` and campaign-name `campaignId`
 
@@ -191,6 +194,8 @@ Compatibility notes:
 | `task:switchCall`                                                           | Switched between consult and main call           |
 | `task:outdialFailed`                                                        | Outdial operation failed                         |
 | `task:ui-controls-updated`                                                  | UI controls changed due to state transition      |
+| `task:midCallSummaryReceived`                                               | Mid-call summary delivered to a receiving agent  |
+| `task:featureEnablement`                                                    | Per-task AI summary enablement flags received     |
 | `task:cleanup`                                                              | Internal cleanup signal emitted by state machine |
 
 > Full list is defined in `TASK_EVENTS` (`types.ts`).
@@ -199,6 +204,23 @@ Compatibility notes:
 |---|---|
 | `REAL_TIME_TRANSCRIPTION` | A realtime transcript payload is received for the task interaction |
 | `SUGGESTED_RESPONSE` | A final AI Assistant suggestion payload is received for the task interaction |
+
+### AI summary APIs
+
+- `requestPostCallSummary(): Promise<AISummary>` requests a post-call summary.
+- `sendPostCallSummaryResponse(response: AISummaryResponse): Promise<void>` reports the agent's post-call summary outcome.
+- `requestMidCallSummary(action: AISummaryAction): Promise<AISummary>` requests a consult or transfer summary.
+- `sendMidCallSummaryResponse(response: AISummaryResponse, action: AISummaryAction): Promise<void>` reports the corresponding mid-call outcome.
+
+Summary requests require both the organization-level generated-summary flag and the task-level feature enablement flag. The dedicated request methods read the current organization flags directly from the existing `ApiAIAssistant.aiFeature` field, populated by ContactCenter from the agent configuration. They check `generatedSummaries.wrapUpSummariesEnabled` or `generatedSummaries.consultTransferSummariesEnabled`; missing flags disable the corresponding request. No separate feature-flags argument or task-local organization configuration is needed. A request resolves only after the event POST succeeds and the matching RTD payload arrives; otherwise it rejects with the applicable disabled, transport, or timeout error. Receiving-agent summaries are delivered separately through `task:midCallSummaryReceived`. Summary content is application data and must not be written to logs or metrics.
+
+Task-level feature flags survive `updateTaskData()`, including interaction ID changes during consults or task re-keying. Flags remain available throughout wrapup for post-call summary requests, and TaskManager clears them when the task is removed after wrapup completion or another terminal lifecycle event. Session cleanup also clears them.
+
+Each dedicated Task summary method owns its event selection, payload construction, metrics, and error handling. The request methods call `ApiAIAssistant.requestAndWaitForRtd()`. Both response methods read `interactionId` from the current task data and use `interaction.mainInteractionId` as `conversationId`, falling back to `interactionId`. They call `ApiAIAssistant.sendEvent()` directly without caching request IDs on the task.
+
+TaskManager reads the receiving task directly from `taskCollection[summary.conversationId]`; the RTD conversation ID is the task's collection key (`task.data.interactionId`). It emits `task:midCallSummaryReceived` immediately when that task exists. Otherwise it stores the latest summary for that ID in an in-memory map without an expiry timer, so an RTD frame can wait for task creation. The common AQM event-processing path replays the stored payload after task creation, updates that register the task under that ID, or merge publication. Replay after creation or merge follows the public task event so consumers can attach listeners. Delivery removes the stored summary, and session cleanup clears all pending summaries.
+
+`clearAISummaryState()` cancels pending summary requests, clears task feature enablement, and empties both pending maps. ContactCenter's `deregister()` removes the RTD message listener synchronously before asynchronous teardown. RTD listener registration and removal control inbound delivery; `setConfigFlags()` only supplies task configuration.
 
 Initiate outbound call.
 
@@ -366,7 +388,7 @@ await task.dropConferenceParticipant({participantId});
 
 ### Complete TASK_EVENTS inventory
 
-The public `TASK_EVENTS` enum contains 49 members; every member is listed below from `src/services/task/types.ts`.
+The public `TASK_EVENTS` enum contains 52 members; every member is listed below from `src/services/task/types.ts`.
 
 | Constant | Event string |
 |---|---|
@@ -380,6 +402,7 @@ The public `TASK_EVENTS` enum contains 49 members; every member is listed below 
 | `TASK_CONSULT_QUEUE_CANCELLED` | `task:consultQueueCancelled` |
 | `TASK_CONSULT_QUEUE_FAILED` | `task:consultQueueFailed` |
 | `TASK_UI_CONTROLS_UPDATED` | `task:ui-controls-updated` |
+| `TASK_WXAPP_MUTE_STATE_UPDATED` | `task:wxapp-mute-state-updated` |
 | `TASK_CONSULT_ACCEPTED` | `task:consultAccepted` |
 | `TASK_CONSULTING` | `task:consulting` |
 | `TASK_CONSULT_CREATED` | `task:consultCreated` |
@@ -419,6 +442,8 @@ The public `TASK_EVENTS` enum contains 49 members; every member is listed below 
 | `TASK_CAMPAIGN_PREVIEW_SKIP_FAILED` | `task:campaignPreviewSkipFailed` |
 | `TASK_CAMPAIGN_PREVIEW_REMOVE_FAILED` | `task:campaignPreviewRemoveFailed` |
 | `TASK_CAMPAIGN_CONTACT_UPDATED` | `task:campaignContactUpdated` |
+| `TASK_MID_CALL_SUMMARY_RECEIVED` | `task:midCallSummaryReceived` |
+| `TASK_FEATURE_ENABLEMENT` | `task:featureEnablement` |
 
 ## Requires (dependencies)
 - Services contact/dialer AQM factories
@@ -1153,7 +1178,7 @@ sequenceDiagram
 
 **API**
 
-- `createTask(contact, webCallingService, data, configFlags, wrapupData?, agentId?): Task`
+- `createTask(contact, webCallingService, data, configFlags, wrapupData?, agentId?, agentName?): Task`
 
 **Behavior**
 
@@ -1229,7 +1254,7 @@ classDiagram
     }
 
     class TaskFactory {
-      + createTask(contact, webCallingService, data, configFlags, wrapupData, agentId) Task
+      + createTask(contact, webCallingService, data, configFlags, wrapupData, agentId, agentName) Task
     }
 
     Task <|-- Voice
