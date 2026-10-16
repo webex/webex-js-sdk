@@ -294,3 +294,7 @@ Use the current mirrored suites: `test/unit/spec/meetings/collection.js`, `test/
 
 - Repo architecture: [`ARCHITECTURE.md`](../../../ai-docs/ARCHITECTURE.md) · Registry: [`SPEC_INDEX.md`](../../../ai-docs/SPEC_INDEX.md)
 - Coverage state and contracts baseline: `../../../.sdd/manifest.json`
+
+### Explicit WCME log producer classification
+
+The internal MediaLogger adapter preserves its six leveled methods and forwards through LoggerProxy. When the logger supports `logWithMetadata`, it supplies producer source `wcme`; otherwise it invokes the original leveled method for legacy/mock compatibility. Filtering, redaction, text, level policy and source sequence remain owned by plugin-logger, and scope/transport remains owned by the consumer. No meeting/locus/media lifecycle or public meeting export changes. Validation covers actual Logger metadata/retention and extracted adapter's six methods/fallback, with existing targeted meetings regressions and build/lint; no new unit-test files in this iteration per owner instruction.
