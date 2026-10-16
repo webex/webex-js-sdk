@@ -1,0 +1,612 @@
+{
+  "$schema": "./schemas/repo-context.schema.json",
+  "version": 1,
+  "repository": {
+    "name": "@webex/internal-plugin-conversation",
+    "purpose": "Internal Webex JS SDK plugin for the Webex conversation service. Registers webex.internal.conversation to create, read, and update conversations and activities, encrypts outbound and decrypts inbound conversation objects through KMS payload transforms, shares files through ShareActivity, and reads activities in thread order."
+  },
+  "commands": {
+    "install": "yarn install",
+    "compile": "yarn workspace @webex/internal-plugin-conversation build:src",
+    "build": "yarn workspace @webex/internal-plugin-conversation build",
+    "unit-test": "yarn workspace @webex/internal-plugin-conversation test:unit",
+    "lint": "yarn workspace @webex/internal-plugin-conversation test:style",
+    "browser-test": "yarn workspace @webex/internal-plugin-conversation test:browser",
+    "deploy": "yarn workspace @webex/internal-plugin-conversation deploy:npm",
+    "consumer-install": "npm install --save @webex/internal-plugin-conversation"
+  },
+  "public_interfaces": [
+    {
+      "name": "package exports",
+      "kind": "package_export",
+      "source": "package.json",
+      "entrypoints": [
+        "default (Conversation)",
+        "ShareActivity",
+        "ConversationError",
+        "InvalidUserCreation"
+      ],
+      "audience": "Workspace SDK plugins (messages, rooms, memberships, attachment-actions, meetings, board, calendar, ediscovery, flag, lyra, search, task, team), webex-server, recipe-private-web-client, and first-party Webex clients.",
+      "notes": "Verify names against src/index.js and compatibility commitments against the Public surface and Export stability sections of src/docs/README.md."
+    },
+    {
+      "name": "webex.internal.conversation",
+      "kind": "package_export",
+      "source": "src/conversation.js",
+      "entrypoints": [
+        "create",
+        "get",
+        "list",
+        "paginate",
+        "post",
+        "share",
+        "submit",
+        "listActivitiesThreadOrdered",
+        "addReaction",
+        "download"
+      ],
+      "audience": "Code holding a WebexCore instance that imported this package.",
+      "notes": "Representative entrypoints only; the full method inventory is the Public surface table of src/docs/README.md."
+    },
+    {
+      "name": "package scripts",
+      "kind": "npm_scripts",
+      "source": "package.json",
+      "entrypoints": [
+        "build",
+        "build:src",
+        "test:unit",
+        "test:style",
+        "test:browser",
+        "deploy:npm"
+      ],
+      "audience": "Contributors and CI jobs operating on this package from the workspace root.",
+      "notes": "The aggregate test script chains test:integration, which this package does not define and which resolves to the workspace-root script; integration specs need live test users."
+    }
+  ],
+  "source_of_truth": [
+    {
+      "surface": "conversation plugin",
+      "paths": [
+        "src/index.js",
+        "src/conversation.js",
+        "src/activities.js",
+        "src/activity-thread-ordering.js",
+        "src/encryption-transforms.js",
+        "src/decryption-transforms.js",
+        "src/share-activity.js",
+        "src/config.js",
+        "src/constants.js",
+        "src/convo-error.js",
+        "src/to-array.js"
+      ],
+      "generated_artifacts": [
+        "dist"
+      ],
+      "refresh_with": [
+        "yarn workspace @webex/internal-plugin-conversation build:src"
+      ],
+      "validate_with": [
+        "yarn workspace @webex/internal-plugin-conversation test:unit",
+        "yarn workspace @webex/internal-plugin-conversation test:style"
+      ]
+    },
+    {
+      "surface": "module specification",
+      "paths": [
+        "src/docs/README.md"
+      ],
+      "generated_artifacts": [],
+      "refresh_with": [],
+      "validate_with": [
+        "Run the active Repo Annotation installation's spec-drift-changed skill on the current diff"
+      ]
+    },
+    {
+      "surface": "package standing documentation",
+      "paths": [
+        "docs/index.md",
+        "docs/architecture.md",
+        "docs/getting-started.md",
+        "docs/specs/README.md",
+        "docs/adr/index.md",
+        "AGENTS.md"
+      ],
+      "generated_artifacts": [],
+      "refresh_with": [],
+      "validate_with": [
+        "Run the active Repo Annotation installation's check_spec_index.py and check_repo_context.py against this package"
+      ]
+    },
+    {
+      "surface": "unit test suite",
+      "paths": [
+        "test/unit/spec"
+      ],
+      "generated_artifacts": [],
+      "refresh_with": [],
+      "validate_with": [
+        "yarn workspace @webex/internal-plugin-conversation test:unit"
+      ]
+    },
+    {
+      "surface": "build, lint, and test configuration",
+      "paths": [
+        "jest.config.js",
+        "babel.config.js",
+        ".eslintrc.js",
+        "process"
+      ],
+      "generated_artifacts": [],
+      "refresh_with": [],
+      "validate_with": [
+        "yarn workspace @webex/internal-plugin-conversation test:unit",
+        "yarn workspace @webex/internal-plugin-conversation test:style"
+      ]
+    },
+    {
+      "surface": "SDD routing and coverage state",
+      "paths": [
+        ".sdd/manifest.json"
+      ],
+      "generated_artifacts": [],
+      "refresh_with": [],
+      "validate_with": [
+        "Run the active Repo Annotation installation's check_manifest.py against this package"
+      ]
+    }
+  ],
+  "generated_artifacts": [
+    {
+      "path": ".sdd/templates/repo-standards/template-map.json",
+      "generated_from": "WebexTools/repo-standards@d89a7fe59126ae3ad9bac9ca352aa7f12b4c85dc",
+      "refresh_with": "Run the active Repo Annotation installation's setup-skills.sh against the webex-js-sdk repository root; recreate the package-local untracked relative symlink to that shared snapshot for validation; keep the alias out of commits"
+    },
+    {
+      "path": "dist",
+      "generated_from": "src",
+      "refresh_with": "yarn workspace @webex/internal-plugin-conversation build:src"
+    }
+  ],
+  "validation_matrix": [
+    {
+      "paths": [
+        "src/index.js",
+        "src/conversation.js",
+        "src/activities.js",
+        "src/activity-thread-ordering.js",
+        "src/encryption-transforms.js",
+        "src/decryption-transforms.js",
+        "src/share-activity.js",
+        "src/config.js",
+        "src/constants.js",
+        "src/convo-error.js",
+        "src/to-array.js"
+      ],
+      "minimum": [
+        "yarn workspace @webex/internal-plugin-conversation test:unit"
+      ],
+      "recommended": [
+        "yarn workspace @webex/internal-plugin-conversation test:style",
+        "yarn workspace @webex/internal-plugin-conversation build:src"
+      ]
+    },
+    {
+      "paths": [
+        "test/unit/spec"
+      ],
+      "minimum": [
+        "yarn workspace @webex/internal-plugin-conversation test:unit"
+      ],
+      "recommended": []
+    },
+    {
+      "paths": [
+        "package.json",
+        "jest.config.js",
+        "babel.config.js",
+        ".eslintrc.js"
+      ],
+      "minimum": [
+        "yarn workspace @webex/internal-plugin-conversation test:unit"
+      ],
+      "recommended": [
+        "yarn workspace @webex/internal-plugin-conversation test:style",
+        "yarn workspace @webex/internal-plugin-conversation build:src"
+      ]
+    },
+    {
+      "paths": [
+        "src/docs/README.md",
+        "docs",
+        "AGENTS.md",
+        ".sdd/manifest.json"
+      ],
+      "minimum": [
+        "Run the active Repo Annotation installation's check_manifest.py, check_spec_index.py, and check_repo_context.py against this package"
+      ],
+      "recommended": [
+        "Run the active Repo Annotation installation's spec-drift-changed skill on the current diff"
+      ]
+    }
+  ],
+  "change_impact": [
+    {
+      "paths": [
+        "src/index.js",
+        "src/conversation.js",
+        "src/share-activity.js",
+        "src/convo-error.js"
+      ],
+      "affects": [
+        "@webex/plugin-messages",
+        "@webex/plugin-rooms",
+        "@webex/plugin-memberships",
+        "@webex/plugin-attachment-actions",
+        "@webex/plugin-meetings",
+        "@webex/internal-plugin-board",
+        "@webex/internal-plugin-calendar",
+        "@webex/internal-plugin-ediscovery",
+        "@webex/internal-plugin-flag",
+        "@webex/internal-plugin-lyra",
+        "@webex/internal-plugin-search",
+        "@webex/internal-plugin-task",
+        "@webex/internal-plugin-team",
+        "@webex/webex-server",
+        "@webex/recipe-private-web-client"
+      ],
+      "refresh_with": [
+        "yarn workspace @webex/internal-plugin-conversation build:src"
+      ],
+      "validate_with": [
+        "yarn workspace @webex/internal-plugin-conversation test:unit"
+      ],
+      "avoid_direct_edits": [
+        "dist"
+      ],
+      "notes": "The affects list comes from package.json dependency declarations across the workspace. Behavior changes must update the Requirements, Public surface, and Caller-visible failure modes sections of src/docs/README.md in the same commit."
+    },
+    {
+      "paths": [
+        "src/encryption-transforms.js",
+        "src/decryption-transforms.js",
+        "src/config.js"
+      ],
+      "affects": [
+        "every encrypted conversation request and response"
+      ],
+      "refresh_with": [
+        "yarn workspace @webex/internal-plugin-conversation build:src"
+      ],
+      "validate_with": [
+        "yarn workspace @webex/internal-plugin-conversation test:unit"
+      ],
+      "avoid_direct_edits": [
+        "dist"
+      ],
+      "notes": "Transforms are dispatched by name; a missing name is a silent no-op, so a renamed transform silently disables encryption or decryption for that objectType."
+    },
+    {
+      "paths": [
+        ".sdd/manifest.json"
+      ],
+      "affects": [
+        "docs/specs/README.md",
+        "src/docs/README.md",
+        "docs/architecture.md"
+      ],
+      "refresh_with": [],
+      "validate_with": [
+        "Run the active Repo Annotation installation's check_manifest.py and check_spec_index.py against this package"
+      ],
+      "avoid_direct_edits": [
+        ".sdd/templates/repo-standards"
+      ],
+      "notes": "The manifest is authoritative for module routing, coverage state, contracts, and artifact decisions; the specification registry is its human-readable mirror."
+    },
+    {
+      "paths": [
+        "package.json"
+      ],
+      "affects": [
+        ".repo-context.json",
+        ".sdd/manifest.json",
+        "docs/getting-started.md",
+        "AGENTS.md"
+      ],
+      "refresh_with": [],
+      "validate_with": [
+        "Run the active Repo Annotation installation's check_repo_context.py against this package"
+      ],
+      "avoid_direct_edits": [
+        "dist"
+      ],
+      "notes": "Command strings are duplicated between the manifest and this context by contract and must stay identical."
+    }
+  ],
+  "glossary": [
+    {
+      "term": "conversation",
+      "definition": "A Webex space, addressed by its conversation-service URL.",
+      "notes": "getConvoUrl resolves the URL from url, cluster plus id, or the in-process id cache."
+    },
+    {
+      "term": "activity",
+      "definition": "One verb applied to an object in a conversation target.",
+      "notes": "Built by prepare and sent by submit."
+    },
+    {
+      "term": "root activity",
+      "definition": "An activity that is or could be a thread parent.",
+      "notes": "Classified by getActivityType in src/activities.js."
+    },
+    {
+      "term": "orphan",
+      "definition": "A child activity whose parent has not been fetched.",
+      "notes": "Thread ordering keeps children for the generator lifetime so orphans are not lost."
+    },
+    {
+      "term": "KRO",
+      "definition": "KMS resource object URL bound to a conversation.",
+      "notes": "Substituted for the KRO placeholder token in KMS message URIs."
+    },
+    {
+      "term": "SCR",
+      "definition": "Encrypted reference to uploaded content carrying its key and location.",
+      "notes": "Created by the encryption plugin or node-scr for GIFs."
+    }
+  ],
+  "evidence_rules": [
+    {
+      "claim_category": "command_name",
+      "sources": [
+        "package.json"
+      ],
+      "requirement": "Emit a command only when its script exists in package.json and the workspace-scoped invocation was verified."
+    },
+    {
+      "claim_category": "import_path",
+      "sources": [
+        "src/index.js",
+        "package.json"
+      ],
+      "requirement": "Emit an export name only when it is exported from src/index.js and reachable through main or devMain."
+    },
+    {
+      "claim_category": "behavior_claim",
+      "sources": [
+        "src/index.js",
+        "src/conversation.js",
+        "src/activities.js",
+        "src/activity-thread-ordering.js",
+        "src/encryption-transforms.js",
+        "src/decryption-transforms.js",
+        "src/share-activity.js",
+        "src/config.js",
+        "src/constants.js",
+        "src/convo-error.js",
+        "src/to-array.js",
+        "test/unit/spec/conversation.js"
+      ],
+      "requirement": "Ground every behavior claim in the implementation and state separately whether a test observes it.",
+      "notes": "Commit history is not acceptable rationale evidence for this package."
+    },
+    {
+      "claim_category": "placeholder_token",
+      "sources": [
+        ".sdd/templates/repo-standards/template-map.json"
+      ],
+      "requirement": "Never ship a template placeholder in a generated document; replace it with verified repository evidence or surface the gap as a blocking question."
+    }
+  ],
+  "negative_guidance": [
+    {
+      "rule": "Do not call encryption directly from a conversation method.",
+      "why": "Encryption belongs to the outbound payload transform; calling it twice double-encrypts or bypasses key selection."
+    },
+    {
+      "rule": "Do not add an objectType or verb without its named transform.",
+      "why": "Unknown transform names are silent no-ops in the WebexCore payload transformer, so content would leave unencrypted."
+    },
+    {
+      "rule": "Do not log decrypted content.",
+      "why": "Messages are end-to-end encrypted; existing warnings log only reasons and URLs."
+    },
+    {
+      "rule": "Do not change the reaction HMAC input order.",
+      "why": "Other Webex clients compute the same HMAC to deduplicate reactions."
+    },
+    {
+      "rule": "Do not cite commit or pull-request history as rationale for current behavior.",
+      "why": "The package owner chose code-only evidence during onboarding."
+    },
+    {
+      "rule": "Do not treat src/activity-threading.md as authoritative.",
+      "why": "It is a retained, superseded note; several statements no longer match the code. src/docs/README.md is canonical."
+    }
+  ],
+  "confidence_policy": {
+    "high": {
+      "action": "update",
+      "expectation": "The claim is backed by a src file and a test that observes it, and the affected specification sections are updated in the same change."
+    },
+    "medium": {
+      "action": "narrow-scope",
+      "expectation": "Implementation evidence exists but no test observes the behavior, as with key-rotation retries. Record the gap in the Verification section."
+    },
+    "low": {
+      "action": "noop",
+      "expectation": "Neither code nor tests establish the fact. Stop and ask the package owner."
+    }
+  },
+  "repository_topology": {
+    "main_entrypoints": [
+      {
+        "name": "package entry point",
+        "path": "src/index.js",
+        "purpose": "Registers the conversation internal plugin and its payload transforms and declares the package exports.",
+        "notes": "Workspace consumers resolve devMain; published consumers resolve dist through main."
+      }
+    ],
+    "workspace_packages": [
+      {
+        "name": "@webex/internal-plugin-conversation",
+        "paths": [
+          "package.json"
+        ],
+        "notes": "One published internal plugin package inside the Webex JS SDK yarn workspace."
+      }
+    ],
+    "source_surfaces": [
+      {
+        "name": "module source",
+        "paths": [
+          "src"
+        ],
+        "notes": "Flat directory of eleven files; src/docs holds the canonical specification and src/activity-threading.md is a retained superseded note."
+      },
+      {
+        "name": "unit tests",
+        "paths": [
+          "test/unit"
+        ],
+        "notes": "Four jest spec files, 97 cases, MockWebex based."
+      },
+      {
+        "name": "integration tests",
+        "paths": [
+          "test/integration"
+        ],
+        "notes": "Six specs against live services and test users."
+      },
+      {
+        "name": "inherited configuration",
+        "paths": [
+          "jest.config.js",
+          "babel.config.js",
+          ".eslintrc.js",
+          "process"
+        ],
+        "notes": "Re-export shared workspace configuration; process is the browser shim."
+      }
+    ],
+    "generated_surfaces": [
+      {
+        "name": "Repo Standards template snapshot",
+        "paths": [
+          ".sdd/templates/repo-standards"
+        ],
+        "generated_from": "WebexTools/repo-standards@d89a7fe59126ae3ad9bac9ca352aa7f12b4c85dc",
+        "refresh_with": "Run the active Repo Annotation installation's setup-skills.sh against the webex-js-sdk repository root",
+        "notes": "A local, untracked relative symlink to the repository-root snapshot (../../../../../.sdd/templates/repo-standards); recreate the alias when setting up a new checkout for validation and keep it out of commits. No package-level copy exists. The shared templates are never edited by hand or published into the visible documentation tree."
+      },
+      {
+        "name": "build output",
+        "paths": [
+          "dist"
+        ],
+        "generated_from": "src",
+        "refresh_with": "yarn workspace @webex/internal-plugin-conversation build:src",
+        "notes": "Transpiled output with source maps; never edited directly."
+      }
+    ],
+    "sync_paths": [
+      {
+        "source": "WebexTools/repo-standards@d89a7fe59126ae3ad9bac9ca352aa7f12b4c85dc",
+        "targets": [
+          ".sdd/templates/repo-standards"
+        ],
+        "mechanism": "Run the active Repo Annotation installation's setup-skills.sh against the webex-js-sdk repository root",
+        "notes": "The snapshot lives at the repository root and is shared by every onboarded package."
+      }
+    ],
+    "validation_entrypoints": [
+      {
+        "name": "unit tests",
+        "command": "yarn workspace @webex/internal-plugin-conversation test:unit",
+        "scope": "Conversation methods, transforms, ShareActivity, and thread ordering.",
+        "notes": "Coverage collection is disabled and no gate applies."
+      },
+      {
+        "name": "lint",
+        "command": "yarn workspace @webex/internal-plugin-conversation test:style",
+        "scope": "ESLint over src."
+      },
+      {
+        "name": "build",
+        "command": "yarn workspace @webex/internal-plugin-conversation build:src",
+        "scope": "Transpilation of the published artifact."
+      }
+    ]
+  },
+  "surface_owners": [
+    {
+      "surface": "conversation plugin and export surface",
+      "owner": "Cisco Webex for Developers (CODEOWNERS @webex/web-client, @webex/web-sdk)",
+      "edit_boundary": "src is the implementation; changes must update src/docs/README.md in the same commit."
+    },
+    {
+      "surface": "module specification and package standing documentation",
+      "owner": "Cisco Webex for Developers",
+      "edit_boundary": "Generated from the repository-root Repo Standards templates and routed by .sdd/manifest.json; edit the generated documents in place."
+    },
+    {
+      "surface": "build, lint, and test configuration",
+      "owner": "Webex JS SDK workspace",
+      "edit_boundary": "Owned by the shared @webex legacy config packages."
+    },
+    {
+      "surface": "release, changelog, contribution policy, and security policy",
+      "owner": "Webex JS SDK workspace root",
+      "edit_boundary": "Not owned by this package."
+    }
+  ],
+  "do_not_edit": [
+    "dist",
+    ".sdd/templates/repo-standards"
+  ],
+  "marker_scopes": {
+    "sdd-generated-metadata": [
+      "docs/index.md",
+      "docs/architecture.md",
+      "docs/getting-started.md",
+      "docs/specs/README.md",
+      "docs/adr/index.md",
+      "AGENTS.md",
+      "src/docs/README.md"
+    ]
+  },
+  "fallback_rules": [
+    "When code and this context disagree, the code wins; correct the context and the affected specification sections in the same change.",
+    "When a fact cannot be established from src, tests, or package.json, stop and ask the package owner rather than inferring it from commit history.",
+    "When a required command is missing, say so and stop; do not substitute a plausible alternative.",
+    "When a change would alter an export or a transform name, treat it as breaking until a dependent-package review proves otherwise."
+  ],
+  "downstream_context_pack": {
+    "required_human_surfaces": [
+      "README.md",
+      "docs/index.md",
+      "docs/getting-started.md",
+      "docs/architecture.md"
+    ],
+    "required_agent_operational_surfaces": [
+      "AGENTS.md",
+      "docs/specs/README.md",
+      "src/docs/README.md"
+    ],
+    "required_machine_readable_surface": ".repo-context.json",
+    "recommended_machine_readable_sections": [
+      "public_interfaces",
+      "source_of_truth",
+      "generated_artifacts",
+      "validation_matrix",
+      "change_impact",
+      "glossary",
+      "evidence_rules",
+      "negative_guidance",
+      "confidence_policy",
+      "repository_topology",
+      "surface_owners"
+    ]
+  }
+}
