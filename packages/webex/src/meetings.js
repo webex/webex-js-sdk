@@ -25,6 +25,7 @@ require('@webex/internal-plugin-user');
 require('@webex/internal-plugin-voicea');
 require('@webex/plugin-people');
 require('@webex/internal-plugin-llm');
+require('@webex/internal-plugin-identity');
 
 const merge = require('lodash/merge');
 const WebexCore = require('@webex/webex-core').default;

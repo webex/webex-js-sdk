@@ -1,4 +1,5 @@
 /* eslint-env browser */
+import '@webex/internal-plugin-identity';
 import {registerPlugin} from '@webex/webex-core';
 
 import Meetings from './meetings';

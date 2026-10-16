@@ -65,6 +65,7 @@
     "@webex/internal-media-core": "2.31.0",
     "@webex/internal-plugin-conversation": "workspace:*",
     "@webex/internal-plugin-device": "workspace:*",
+    "@webex/internal-plugin-identity": "workspace:*",
     "@webex/internal-plugin-llm": "workspace:*",
     "@webex/internal-plugin-mercury": "workspace:*",
     "@webex/internal-plugin-metrics": "workspace:*",
