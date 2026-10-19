@@ -801,7 +801,7 @@ describe('webex-core', () => {
           method: 'GET',
           service: 'u2c',
           resource: '/limited/catalog',
-          qs: {format: 'U2CV2'},
+          qs: {format: 'U2CV2', format_failsafe: 'hostmap'},
           headers: {},
         });
         assert.calledOnceWithExactly(
@@ -822,7 +822,7 @@ describe('webex-core', () => {
           method: 'GET',
           service: 'u2c',
           resource: '/limited/catalog',
-          qs: {format: 'U2CV2', useCatalogOverride: true},
+          qs: {format: 'U2CV2', format_failsafe: 'hostmap', useCatalogOverride: true},
           headers: {},
         });
       });
@@ -844,7 +844,7 @@ describe('webex-core', () => {
           method: 'GET',
           service: 'u2c',
           resource: '/limited/catalog',
-          qs: {format: 'U2CV2'},
+          qs: {format: 'U2CV2', format_failsafe: 'hostmap'},
           headers: {},
         });
         assert.calledOnceWithExactly(
@@ -968,6 +968,79 @@ describe('webex-core', () => {
         formattedHM = services._formatReceivedHostmap(serviceHostmap);
 
         assert.deepEqual(formattedHM.services, formattedServiceHostmapV2);
+      });
+
+      it('converts a hostmap failsafe response into cluster services', () => {
+        const homeId = 'urn:TEAM:us-east-2_a:conversation';
+        const remoteId = 'urn:TEAM:me-central-1_d:conversation';
+        const fallbackHostmap = {
+          format: 'hostmap',
+          timestamp: '1745533341',
+          orgId: 'org-id',
+          serviceLinks: {
+            conversation: 'https://conversation.example.com/api/v1',
+            hydra: 'https://hydra.example.com/api/v1',
+          },
+          hostCatalog: {
+            'conversation.example.com': [
+              {id: homeId, host: 'conversation-a.example.com', priority: 1},
+            ],
+            'conversation-remote.example.com': [
+              {id: remoteId, host: 'conversation-d.example.com', priority: 2},
+            ],
+          },
+        };
+
+        formattedHM = services._formatReceivedHostmap(fallbackHostmap);
+
+        assert.deepEqual(formattedHM, {
+          format: 'hostmap',
+          timestamp: '1745533341',
+          orgId: 'org-id',
+          activeServices: {conversation: homeId, hydra: 'hydra'},
+          services: [
+            {
+              id: homeId,
+              serviceName: 'conversation',
+              serviceUrls: [
+                {
+                  baseUrl: 'https://conversation-a.example.com/api/v1',
+                  host: 'conversation-a.example.com',
+                  priority: 1,
+                },
+              ],
+            },
+            {
+              id: remoteId,
+              serviceName: 'conversation',
+              serviceUrls: [
+                {
+                  baseUrl: 'https://conversation-d.example.com/api/v1',
+                  host: 'conversation-d.example.com',
+                  priority: 2,
+                },
+              ],
+            },
+            {
+              id: 'hydra',
+              serviceName: 'hydra',
+              serviceUrls: [
+                {
+                  baseUrl: 'https://hydra.example.com/api/v1',
+                  host: 'hydra.example.com',
+                  priority: 1,
+                },
+              ],
+            },
+          ],
+        });
+
+        catalog.updateServiceGroups('postauth', formattedHM.services, formattedHM.timestamp);
+        assert.equal(services.get('conversation'), 'https://conversation-a.example.com/api/v1');
+        assert.deepEqual(services.getServiceFromClusterId({clusterId: remoteId}), {
+          name: 'conversation',
+          url: 'https://conversation-d.example.com/api/v1',
+        });
       });
 
       it('has hostCatalog updated', () => {

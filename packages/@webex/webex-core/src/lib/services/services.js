@@ -857,6 +857,10 @@ const Services = WebexPlugin.extend({
     if (host && host[0]) {
       const newHost = host[0].host;
 
+      if (newHost === url.hostname) {
+        return uri;
+      }
+
       url.host = newHost;
 
       return url.toString();
@@ -873,6 +877,10 @@ const Services = WebexPlugin.extend({
    * @returns {object}
    */
   _formatReceivedHostmap(serviceHostmap) {
+    if (Array.isArray(serviceHostmap.services) && serviceHostmap.activeServices) {
+      return this._formatU2CV2Hostmap(serviceHostmap);
+    }
+
     this._updateHostCatalog(serviceHostmap.hostCatalog);
 
     const extractId = (entry) => entry.id.split(':')[3];
@@ -948,6 +956,70 @@ const Services = WebexPlugin.extend({
 
     this._updateServiceUrls(serviceHostmap.serviceLinks);
     this._updateHostCatalog(serviceHostmap.hostCatalog);
+
+    return formattedHostmap;
+  },
+
+  /**
+   * Adapt U2CV2's cluster-scoped URLs to the legacy catalog model.
+   * Keep the complete URL on each host because clusters can use different paths.
+   * @param {object} hostMap - U2CV2 catalog response
+   * @returns {Array<object>} - Legacy service entries
+   */
+  _formatU2CV2Hostmap(hostMap) {
+    const {activeServices, services} = hostMap;
+    const formattedHostmap = [];
+    const serviceLinks = {};
+    const hostCatalog = {};
+
+    Object.entries(activeServices).forEach(([serviceName, activeId]) => {
+      const activeService = services.find(
+        (service) => service.serviceName === serviceName && service.id === activeId
+      );
+      const defaultUrl =
+        activeService?.serviceUrls?.find(({priority}) => priority > 0)?.baseUrl ||
+        activeService?.serviceUrls?.[0]?.baseUrl;
+
+      if (!defaultUrl) {
+        return;
+      }
+
+      let defaultHost;
+
+      try {
+        defaultHost = new URL(defaultUrl).host;
+      } catch {
+        return;
+      }
+
+      const hosts = [];
+
+      services
+        .filter((service) => service.serviceName === serviceName)
+        .forEach(({id, serviceUrls}) => {
+          (serviceUrls || []).forEach(({baseUrl, priority}) => {
+            let url;
+
+            try {
+              url = new URL(baseUrl);
+            } catch {
+              return;
+            }
+
+            const host = {id, host: url.hostname, priority, ttl: -1};
+
+            hosts.push({...host, baseUrl, homeCluster: id === activeId});
+            hostCatalog[url.host] = [...(hostCatalog[url.host] || []), host];
+          });
+        });
+
+      serviceLinks[serviceName] = defaultUrl;
+      formattedHostmap.push({name: serviceName, defaultUrl, defaultHost, hosts});
+    });
+
+    this._updateActiveServices(activeServices);
+    this._updateServiceUrls(serviceLinks);
+    this._updateHostCatalog(hostCatalog);
 
     return formattedHostmap;
   },
@@ -1086,7 +1158,7 @@ const Services = WebexPlugin.extend({
   _fetchNewServiceHostmap({from, query, token, forceRefresh} = {}) {
     const service = 'u2c';
     const resource = from ? `/${from}/catalog` : '/catalog';
-    const qs = {...query, format: 'hostmap'};
+    const qs = {...query, format: 'U2CV2', format_failsafe: 'hostmap'};
 
     if (forceRefresh) {
       qs.timestamp = new Date().getTime();

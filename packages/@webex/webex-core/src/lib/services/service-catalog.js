@@ -356,8 +356,11 @@ const ServiceCatalog = AmpState.extend({
 
       // Check alternate URLs (built by swapping host with alternate hosts)
       for (const host of serviceUrl.hosts) {
-        const alternateUrl = new URL(serviceUrl.defaultUrl);
-        alternateUrl.host = host.host;
+        const alternateUrl = new URL(host.baseUrl || serviceUrl.defaultUrl);
+
+        if (!host.baseUrl) {
+          alternateUrl.host = host.host;
+        }
 
         if (matchesParsedCatalogUrl(candidateUrl, parseCatalogUrl(alternateUrl.toString()))) {
           return true;

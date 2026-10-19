@@ -34,6 +34,80 @@ const DEFAULT_CLUSTER_IDENTIFIER =
 const CATALOG_CACHE_KEY_V2 = 'services.v2.u2cHostMap';
 const CATALOG_TTL_MS = 24 * 60 * 60 * 1000; // 24 hours
 
+type LegacyHostmap = {
+  serviceLinks?: Record<string, string>;
+  hostCatalog?: Record<string, Array<{id: string; host: string; priority: number}>>;
+  timestamp?: string;
+  orgId?: string;
+  format: 'hostmap';
+};
+
+// U2C can return the requested hostmap failsafe while its U2CV2 rollback switch is enabled.
+const convertLegacyHostmap = (hostMap: LegacyHostmap) => {
+  const {timestamp, orgId} = hostMap;
+  const serviceLinks = hostMap.serviceLinks || {};
+  const hostCatalog = hostMap.hostCatalog || {};
+  const activeServices: ActiveServices = {};
+  const services: Array<Service> = [];
+
+  Object.entries(serviceLinks).forEach(([serviceName, defaultUrl]) => {
+    let defaultHost: string;
+
+    try {
+      defaultHost = new URL(defaultUrl).host;
+    } catch {
+      return;
+    }
+
+    const homeId = hostCatalog[defaultHost]?.[0]?.id || serviceName;
+    const serviceId = homeId.split(':').pop();
+    const servicesById = new Map<string, Service>();
+
+    Object.values(hostCatalog).forEach((hosts) => {
+      hosts?.forEach(({id, host, priority}) => {
+        if (!id || !host || id.split(':').pop() !== serviceId) {
+          return;
+        }
+
+        const url = new URL(defaultUrl);
+
+        url.hostname = host;
+
+        let service = servicesById.get(id);
+
+        if (!service) {
+          service = {id, serviceName, serviceUrls: []};
+          servicesById.set(id, service);
+        }
+
+        const {serviceUrls} = service;
+
+        if (!serviceUrls.some(({baseUrl}) => baseUrl === url.href)) {
+          serviceUrls.push({baseUrl: url.href, host: url.host, priority});
+        }
+      });
+    });
+
+    let homeService = servicesById.get(homeId);
+
+    if (!homeService) {
+      homeService = {id: homeId, serviceName, serviceUrls: []};
+      servicesById.set(homeId, homeService);
+    }
+
+    const homeServiceUrls = homeService.serviceUrls;
+
+    if (!homeServiceUrls.some(({priority}) => priority > 0)) {
+      homeServiceUrls.push({baseUrl: defaultUrl, host: defaultHost, priority: 1});
+    }
+
+    activeServices[serviceName] = homeId;
+    services.push(...servicesById.values());
+  });
+
+  return {activeServices, services, timestamp, orgId, format: 'hostmap'};
+};
+
 /* eslint-disable no-underscore-dangle */
 /**
  * @class
@@ -899,11 +973,13 @@ const Services = WebexPlugin.extend({
   /**
    * @private
    * Organize a received hostmap from a service
-   * @param {ServiceHostmap} serviceHostmap
+   * @param {ServiceHostmap} hostMap
    * catalog endpoint.
    * @returns {Array<Service>}
    */
-  _formatReceivedHostmap({services, activeServices, timestamp, orgId, format}) {
+  _formatReceivedHostmap(hostMap) {
+    const {services, activeServices, timestamp, orgId, format} =
+      hostMap?.format === 'hostmap' ? convertLegacyHostmap(hostMap) : hostMap;
     const formattedHostmap: ServiceHostmap = {
       activeServices,
       services: services?.map((service) => this._formatHostMapEntry(service)),
@@ -1242,6 +1318,7 @@ const Services = WebexPlugin.extend({
     const qs = {
       ...(query || {}),
       format: 'U2CV2',
+      format_failsafe: 'hostmap',
       ...(this.webex.config?.services?.useCatalogOverride && {useCatalogOverride: true}),
     };
 

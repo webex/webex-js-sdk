@@ -7,6 +7,7 @@ import MockWebex from '@webex/test-helper-mock-webex';
 import sinon from 'sinon';
 import {Services, ServiceRegistry, ServiceState} from '@webex/webex-core';
 import {NewMetrics} from '@webex/internal-plugin-metrics';
+import {serviceHostmapV2} from '../../../fixtures/host-catalog-v2';
 
 const waitForAsync = () =>
   new Promise((resolve) =>
@@ -791,7 +792,7 @@ describe('webex-core', () => {
           method: 'GET',
           service: 'u2c',
           resource: '/limited/catalog',
-          qs: {format: 'hostmap'}
+          qs: {format: 'U2CV2', format_failsafe: 'hostmap'}
         }
         );
         assert.calledOnceWithExactly(webex.internal.newMetrics.callDiagnosticLatencies.measureLatency, sinon.match.func, 'internal.get.u2c.time');
@@ -814,7 +815,7 @@ describe('webex-core', () => {
           method: 'GET',
           service: 'u2c',
           resource: '/limited/catalog',
-          qs: {format: 'hostmap'}
+          qs: {format: 'U2CV2', format_failsafe: 'hostmap'}
         }
         );
         assert.calledOnceWithExactly(webex.internal.newMetrics.callDiagnosticLatencies.measureLatency, sinon.match.func, 'internal.get.u2c.time');
@@ -1017,6 +1018,30 @@ describe('webex-core', () => {
           },
           format: 'hostmap',
         };
+      });
+
+      it('adapts U2CV2 cluster URLs for the default services plugin', () => {
+        const formatted = services._formatReceivedHostmap(serviceHostmapV2);
+
+        catalog.updateServiceUrls('postauth', formatted);
+
+        assert.equal(
+          services.get('conversation', true),
+          'https://prod-achm-message.svc.webex.com/conversation/api/v1'
+        );
+        assert.deepEqual(
+          services.getServiceFromClusterId({clusterId: 'urn:TEAM:me-central-1_d:conversation'}),
+          {
+            name: 'conversation',
+            url: 'https://prod-adxb-message.svc.webex.com/conversation/api/v1',
+          }
+        );
+        assert.isTrue(services.isServiceUrl('https://idbroker.webex.com/idb/api/v1/users'));
+        assert.isFalse(services.isServiceUrl('https://idbroker.webex.com/other'));
+        assert.equal(
+          services.markFailedUrl('https://prod-adxb-message.svc.webex.com/idbroker/api/v1'),
+          'https://idbroker.webex.com/idb/api/v1'
+        );
       });
 
       it('creates a formmatted host map that contains the same amount of entries as the original received hostmap', () => {
