@@ -10,6 +10,7 @@ import '@webex/internal-plugin-conversation';
 import '@webex/internal-plugin-encryption';
 import '@webex/internal-plugin-feature';
 import '@webex/internal-plugin-flag';
+import '@webex/internal-plugin-user-apps';
 import '@webex/plugin-logger';
 import '@webex/internal-plugin-mercury';
 import '@webex/internal-plugin-metrics';
