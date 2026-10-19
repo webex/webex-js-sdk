@@ -706,4 +706,22 @@ describe('AqmReqs', () => {
       }
     });
   });
+
+  describe('typeMapCheck', () => {
+    const typeMapCheck = (AqmReqs as any).typeMapCheck.bind(AqmReqs);
+
+    it('rejects inherited prototype key', () => {
+      const typeMap = {typeField: 'type', conditions: {}};
+      const msg = {type: 'constructor'};
+
+      expect(typeMapCheck(typeMap, msg)).toBe(false);
+    });
+
+    it('still matches valid own-key condition', () => {
+      const typeMap = {typeField: 'type', conditions: {EventA: {field: 'value'}}};
+      const msg = {type: 'EventA', field: 'value'};
+
+      expect(typeMapCheck(typeMap, msg)).toBe(true);
+    });
+  });
 });
