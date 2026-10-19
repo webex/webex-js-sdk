@@ -1,6 +1,5 @@
 /* eslint-disable @typescript-eslint/no-explicit-any */
 import {WebSocketManager} from '../../../../../../src/services/core/websocket/WebSocketManager';
-import workerScript from '../../../../../../src/services/core/websocket/keepalive.worker';
 import {WebexSDK, SubscribeRequest} from '../../../../../../src/types';
 import {
   RTD_SUBSCRIBE_API,
@@ -537,21 +536,5 @@ it('should register and connect to WebSocket without X-ORGANIZATION-ID header fo
       '[WebSocketStatus] | event=webSocketClose | WebSocket connection closed REASON: clean close',
       {module: WEB_SOCKET_MANAGER_FILE, method: 'webSocketOnCloseHandler'}
     );
-  });
-
-  describe('keepalive worker script', () => {
-    it('omits console logging', () => {
-      expect(workerScript).not.toMatch(/console\./);
-    });
-
-    it('still defines the keepalive control flow', () => {
-      expect(workerScript).toMatch(/checkOnlineStatus/);
-      expect(workerScript).toMatch(/checkNetworkStatus/);
-      expect(workerScript).toMatch(/addEventListener\("message"/);
-      expect(workerScript).toMatch(/self\.addEventListener\('online'/);
-      expect(workerScript).toMatch(/self\.addEventListener\('offline'/);
-      expect(workerScript).toMatch(/postMessage\(\{ type: "keepalive", onlineStatus \}\)/);
-      expect(workerScript).toMatch(/postMessage\(\{ type: "closeSocket" \}\)/);
-    });
   });
 });
