@@ -1,6 +1,9 @@
-import type {WebexRequestMethod} from './types';
+/*!
+ * Copyright (c) 2015-2026 Cisco Systems, Inc. See LICENSE file.
+ */
 
-const DEFAULT_ASSETS_BASE_URL = '/assets/';
+// @ts-ignore
+import StatelessWebexPlugin from './stateless-webex-plugin';
 
 /**
  * Detects an HTML document prefix in an otherwise successful binary asset response.
@@ -14,30 +17,23 @@ function looksLikeHtmlDocument(buffer: ArrayBuffer): boolean {
 }
 
 /**
- * Resolves and fetches binary static assets published with plugin-meetings. Requests are shared
- * between callers and cached after a successful response.
+ * Resolves and downloads static assets for SDK plugins. Requests are shared between callers and
+ * cached after a successful response.
  */
-export default class StaticAssetLoader {
-  private readonly webexRequest: WebexRequestMethod;
-
+export default class StaticAssetLoader extends StatelessWebexPlugin {
   private readonly baseUrl: string;
 
   private readonly assets = new Map<string, Promise<ArrayBuffer>>();
 
   /**
-   * @param {Object} deps
-   * @param {WebexRequestMethod} deps.webexRequest - The (bound) webex.request method.
-   * @param {string} [deps.baseUrl='/assets/'] - Base URL for plugin-meetings static assets.
+   * @param {Object} attrs
+   * @param {string} attrs.baseUrl - Base URL for the plugin's static assets.
+   * @param {Object} options
+   * @param {Object} [options.parent] - The parent Webex SDK instance.
    */
-  constructor({
-    webexRequest,
-    baseUrl = DEFAULT_ASSETS_BASE_URL,
-  }: {
-    webexRequest: WebexRequestMethod;
-    baseUrl?: string;
-  }) {
-    this.webexRequest = webexRequest;
-    this.baseUrl = baseUrl.replace(/\/+$/, '');
+  constructor(attrs: {baseUrl: string}, options: {parent?: any} = {}) {
+    super(attrs, options);
+    this.baseUrl = attrs.baseUrl.replace(/\/+$/, '');
   }
 
   /**
@@ -50,7 +46,7 @@ export default class StaticAssetLoader {
   }
 
   /**
-   * Fetches an asset as bytes. Failed requests are evicted so a later call can retry.
+   * Downloads an asset as bytes. Failed requests are evicted so a later call can retry.
    * @param {string} assetName
    * @returns {Promise<Uint8Array>}
    */
@@ -59,8 +55,9 @@ export default class StaticAssetLoader {
     let asset = this.assets.get(url);
 
     if (!asset) {
-      asset = this.webexRequest({method: 'GET', uri: url, responseType: 'buffer'})
-        .then((response) => {
+      // @ts-ignore - StatelessWebexPlugin exposes request from the parent Webex instance.
+      asset = this.request({method: 'GET', uri: url, responseType: 'buffer'})
+        .then((response: any) => {
           if (response.statusCode < 200 || response.statusCode >= 300) {
             throw new Error(`Failed to fetch static asset ${url}: HTTP ${response.statusCode}`);
           }
@@ -95,8 +92,8 @@ export default class StaticAssetLoader {
           }
 
           // Some static servers return an HTML fallback page with a successful status and a
-          // generic binary content type. Reject it before callers pass those bytes to the calling
-          // modules that expect binary data, such as WASM.
+          // generic binary content type. Reject it before callers pass those bytes to modules
+          // that expect binary data, such as WASM.
           if (looksLikeHtmlDocument(buffer)) {
             throw new Error(
               `Failed to fetch static asset ${url}: response body looks like an HTML document`
@@ -105,7 +102,7 @@ export default class StaticAssetLoader {
 
           return buffer;
         })
-        .catch((error) => {
+        .catch((error: Error) => {
           this.assets.delete(url);
           throw error;
         });

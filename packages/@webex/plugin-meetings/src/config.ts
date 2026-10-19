@@ -82,7 +82,7 @@ export default {
     enableExtmap: false,
     enableAutomaticLLM: false,
     enableE2ee: false,
-    assetsBaseUrl: '/assets/',
+    assetsBaseUrl: '/assets/plugin-meetings/',
     installedOrgID: undefined,
     multipartSitePrefixList: ['.my.', '.mydmz.', '.mybts.', '.mydev.', '.myats2.', '.myats.'],
     experimental: {

@@ -1,4 +1,5 @@
 const path = require('path');
+const fs = require('fs');
 
 const webpack = require('webpack');
 const dotenv = require('dotenv');
@@ -10,6 +11,16 @@ const TerserPlugin = require('terser-webpack-plugin');
 const CircularDependencyPlugin = require('circular-dependency-plugin');
 const {version} = require('./packages/webex/package.json');
 const callingPackage = require('./packages/calling/package.json');
+
+const webexPackagesDirectory = path.resolve(__dirname, 'packages/@webex');
+const pluginAssetDirectories = fs
+  .readdirSync(webexPackagesDirectory, {withFileTypes: true})
+  .filter((entry) => entry.isDirectory())
+  .map((entry) => ({
+    name: entry.name,
+    directory: path.join(webexPackagesDirectory, entry.name, 'assets'),
+  }))
+  .filter(({directory}) => fs.existsSync(directory));
 
 dotenv.config();
 dotenv.config({path: '.env.default'});
@@ -92,12 +103,11 @@ module.exports = (env = {NODE_ENV: process.env.NODE_ENV || 'production'}) => ({
     port: process.env.PORT || 8000,
     static: [
       './docs',
-      {
-        // Serve plugin-meetings static assets for local SDK development. Consuming apps must host
-        // the contents of plugin-meetings/dist/assets at their configured assetsBaseUrl.
-        directory: path.resolve(__dirname, 'packages/@webex/plugin-meetings/assets'),
-        publicPath: '/assets',
-      },
+      ...pluginAssetDirectories.map(({name, directory}) => ({
+        // Keep each plugin's assets in its own URL namespace to avoid filename collisions.
+        directory,
+        publicPath: `/assets/${name}`,
+      })),
     ],
   },
   resolve: {
@@ -161,13 +171,13 @@ module.exports = (env = {NODE_ENV: process.env.NODE_ENV || 'production'}) => ({
       ? [
           new CopyWebpackPlugin({
             patterns: [
-              {
-                from: path.resolve(__dirname, 'packages/@webex/plugin-meetings/assets'),
-                to: 'packages/webex/umd/assets',
+              ...pluginAssetDirectories.map(({name, directory}) => ({
+                from: directory,
+                to: `packages/webex/umd/assets/${name}`,
                 globOptions: {
-                  ignore: ['**/README.md', '**/*.map'],
+                  ignore: ['**/README.md', '**/*.map', '**/.*'],
                 },
-              },
+              })),
             ],
           }),
         ]
