@@ -138,6 +138,34 @@ describe('ConnectionService', () => {
       expect(clearTimeoutSpy).toHaveBeenCalledWith(reconnectingTimer);
       expect(clearTimeoutSpy).toHaveBeenCalledWith(restoreTimer);
     });
+
+    it('onPing ignores malformed ping payload', () => {
+      const emitSpy = jest.spyOn(connectionService, 'emit');
+      connectionService['reconnectingTimer'] = undefined;
+      connectionService['restoreTimer'] = undefined;
+
+      expect(() => connectionService['onPing']('not-json')).not.toThrow();
+
+      expect(emitSpy).not.toHaveBeenCalledWith('connectionLost', expect.anything());
+      expect(connectionService['reconnectingTimer']).toBeUndefined();
+      expect(connectionService['restoreTimer']).toBeUndefined();
+      expect(LoggerProxy.error).toHaveBeenCalledWith(
+        expect.stringContaining('onPing'),
+        {module: CONNECTION_SERVICE_FILE, method: 'onPing'}
+      );
+    });
+
+    it('onPing still processes valid keepalive ping', () => {
+      const emitSpy = jest.spyOn(connectionService, 'emit');
+      const pingMessage = JSON.stringify({keepalive: 'true'});
+
+      connectionService['onPing'](pingMessage);
+
+      expect(connectionService['isKeepAlive']).toBe(true);
+      expect(emitSpy).toHaveBeenCalledWith('connectionLost', expect.anything());
+      expect(connectionService['reconnectingTimer']).toBeDefined();
+      expect(connectionService['restoreTimer']).toBeDefined();
+    });
   });
 
   describe('ConnectionService Reconnect', () => {

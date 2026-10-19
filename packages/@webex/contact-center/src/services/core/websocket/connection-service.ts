@@ -91,7 +91,17 @@ export class ConnectionService extends EventEmitter {
   }
 
   private onPing = (event: any): void => {
-    const parsedEvent = JSON.parse(event);
+    let parsedEvent: any;
+    try {
+      parsedEvent = JSON.parse(event);
+    } catch (error) {
+      LoggerProxy.error(`Failed to parse onPing payload: ${(error as Error)?.message}`, {
+        module: CONNECTION_SERVICE_FILE,
+        method: METHODS.ON_PING,
+      });
+
+      return;
+    }
     if (this.reconnectingTimer) {
       clearTimeout(this.reconnectingTimer);
     }
