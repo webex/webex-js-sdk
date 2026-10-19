@@ -1,3 +1,5 @@
+import type {WebexRequestMethod} from './types';
+
 const DEFAULT_ASSETS_BASE_URL = '/assets/';
 
 /**
@@ -16,14 +18,25 @@ function looksLikeHtmlDocument(buffer: ArrayBuffer): boolean {
  * between callers and cached after a successful response.
  */
 export default class StaticAssetLoader {
+  private readonly webexRequest: WebexRequestMethod;
+
   private readonly baseUrl: string;
 
   private readonly assets = new Map<string, Promise<ArrayBuffer>>();
 
   /**
-   * @param {string} [baseUrl='/assets/'] - Base URL for plugin-meetings static assets.
+   * @param {Object} deps
+   * @param {WebexRequestMethod} deps.webexRequest - The (bound) webex.request method.
+   * @param {string} [deps.baseUrl='/assets/'] - Base URL for plugin-meetings static assets.
    */
-  constructor(baseUrl = DEFAULT_ASSETS_BASE_URL) {
+  constructor({
+    webexRequest,
+    baseUrl = DEFAULT_ASSETS_BASE_URL,
+  }: {
+    webexRequest: WebexRequestMethod;
+    baseUrl?: string;
+  }) {
+    this.webexRequest = webexRequest;
     this.baseUrl = baseUrl.replace(/\/+$/, '');
   }
 
@@ -46,14 +59,15 @@ export default class StaticAssetLoader {
     let asset = this.assets.get(url);
 
     if (!asset) {
-      asset = fetch(url)
-        .then(async (response) => {
-          if (!response.ok) {
-            throw new Error(`Failed to fetch static asset ${url}: HTTP ${response.status}`);
+      asset = this.webexRequest({method: 'GET', uri: url, responseType: 'buffer'})
+        .then((response) => {
+          if (response.statusCode < 200 || response.statusCode >= 300) {
+            throw new Error(`Failed to fetch static asset ${url}: HTTP ${response.statusCode}`);
           }
 
-          const contentType = response.headers
-            .get('content-type')
+          const contentType = (
+            response.headers?.['content-type'] ?? response.headers?.['Content-Type']
+          )
             ?.split(';')[0]
             .trim()
             .toLowerCase();
@@ -64,7 +78,21 @@ export default class StaticAssetLoader {
             );
           }
 
-          const buffer = await response.arrayBuffer();
+          const responseBody = response.body;
+          let buffer: ArrayBuffer;
+
+          if (responseBody instanceof ArrayBuffer) {
+            buffer = responseBody;
+          } else if (ArrayBuffer.isView(responseBody)) {
+            buffer = responseBody.buffer.slice(
+              responseBody.byteOffset,
+              responseBody.byteOffset + responseBody.byteLength
+            ) as ArrayBuffer;
+          } else {
+            throw new Error(
+              `Failed to fetch static asset ${url}: response body is not binary data`
+            );
+          }
 
           // Some static servers return an HTML fallback page with a successful status and a
           // generic binary content type. Reject it before callers pass those bytes to the calling
