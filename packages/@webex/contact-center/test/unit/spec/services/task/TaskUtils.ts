@@ -18,6 +18,7 @@ import {
   getServerHoldStateForControls,
   isCampaignPreviewTask,
   isCampaignPreviewReservation,
+  isEpDnConsultPendingConferenceMerge,
 } from '../../../../../src/services/task/TaskUtils';
 import {ITask, Interaction, TaskData} from '../../../../../src/services/task/types';
 import {LoginOption} from '../../../../../src/types';
@@ -735,6 +736,56 @@ describe('TaskUtils', () => {
       expect(
         getIsConsultInProgressForConferenceControls(interaction, 'interaction-1', 'agent-1')
       ).toBe(true);
+    });
+  });
+
+  describe('isEpDnConsultPendingConferenceMerge', () => {
+    const buildTaskData = (overrides: {
+      state?: unknown;
+      hasCustomerLeft?: unknown;
+      selfConsultState?: unknown;
+    }) =>
+      ({
+        type: 'ParticipantPostCallActivity',
+        consultingAgentId: 'agent-1',
+        isConsulted: false,
+        interactionId: 'interaction-1',
+        interaction: {
+          state: overrides.state ?? 'post_call',
+          mainInteractionId: 'interaction-1',
+          owner: 'agent-1',
+          callProcessingDetails: {hasCustomerLeft: overrides.hasCustomerLeft ?? 'true'},
+          participants: {
+            'agent-1': {
+              id: 'agent-1',
+              pType: 'Agent',
+              hasLeft: false,
+              consultState: overrides.selfConsultState ?? 'conferencing',
+            },
+            '+13159998059': {id: '+13159998059', pType: 'EP-DN', hasLeft: false, hasJoined: false},
+            'customer-1': {id: 'customer-1', pType: 'Customer', hasJoined: true, hasLeft: true},
+          },
+          media: {
+            'interaction-1': {mType: 'mainCall', participants: ['agent-1']},
+            'consult-media-1': {mType: 'consult', participants: ['+13159998059', 'agent-1']},
+          },
+        },
+      }) as any;
+
+    it('merge decision preserved for valid values', () => {
+      const taskData = buildTaskData({});
+
+      expect(isEpDnConsultPendingConferenceMerge(taskData, 'agent-1')).toBe(true);
+    });
+
+    it('merge decision ignores unexpected server field values', () => {
+      const taskData = buildTaskData({
+        state: 'bogus-state',
+        hasCustomerLeft: 'maybe',
+        selfConsultState: 'bogus-consult-state',
+      });
+
+      expect(isEpDnConsultPendingConferenceMerge(taskData, 'agent-1')).toBe(false);
     });
   });
 });
