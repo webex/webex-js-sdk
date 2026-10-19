@@ -1,5 +1,3 @@
-export {LLM_PRACTICE_SESSION} from '@webex/internal-plugin-llm';
-
 export const EVENT_TRIGGERS = {
   VOICEA_ANNOUNCEMENT: 'voicea:announcement',
   CAPTION_LANGUAGE_UPDATE: 'voicea:captionLanguageUpdate',
