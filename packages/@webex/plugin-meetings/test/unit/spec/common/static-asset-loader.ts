@@ -8,10 +8,10 @@ import StaticAssetLoader from '@webex/plugin-meetings/src/common/static-asset-lo
 
 describe('plugin-meetings', () => {
   describe('StaticAssetLoader', () => {
-    let fetchStub;
+    let webexRequestStub;
 
     beforeEach(() => {
-      fetchStub = sinon.stub(globalThis, 'fetch');
+      webexRequestStub = sinon.stub();
     });
 
     afterEach(() => {
@@ -19,49 +19,46 @@ describe('plugin-meetings', () => {
     });
 
     it('rejects a successful response with an HTML content type', async () => {
-      fetchStub.resolves({
-        ok: true,
-        status: 200,
-        headers: {get: sinon.stub().returns('text/html; charset=utf-8')},
-        arrayBuffer: sinon.stub().resolves(new ArrayBuffer(0)),
+      webexRequestStub.resolves({
+        statusCode: 200,
+        headers: {'content-type': 'text/html; charset=utf-8'},
+        body: new ArrayBuffer(0),
       });
-      const loader = new StaticAssetLoader('/assets/');
+      const loader = new StaticAssetLoader({webexRequest: webexRequestStub, baseUrl: '/assets/'});
 
       await assert.isRejected(
-        loader.getBytes('domain_name_roots.p7b'),
-        'Failed to fetch static asset /assets/domain_name_roots.p7b: unexpected HTML content type "text/html"'
+        loader.getBytes('some-big-binary-file.dat'),
+        'Failed to fetch static asset /assets/some-big-binary-file.dat: unexpected HTML content type "text/html"'
       );
     });
 
     it('detects an HTML response even when it has a binary content type', async () => {
       const html = new TextEncoder().encode('\uFEFF \t<!doctype html><html>not found</html>');
 
-      fetchStub.resolves({
-        ok: true,
-        status: 200,
-        headers: {get: sinon.stub().returns('application/octet-stream')},
-        arrayBuffer: sinon.stub().resolves(html.buffer),
+      webexRequestStub.resolves({
+        statusCode: 200,
+        headers: {'content-type': 'application/octet-stream'},
+        body: html.buffer,
       });
-      const loader = new StaticAssetLoader('/assets/');
+      const loader = new StaticAssetLoader({webexRequest: webexRequestStub, baseUrl: '/assets/'});
 
       await assert.isRejected(
-        loader.getBytes('domain_name_roots.p7b'),
-        'Failed to fetch static asset /assets/domain_name_roots.p7b: response body looks like an HTML document'
+        loader.getBytes('some-big-binary-file.dat'),
+        'Failed to fetch static asset /assets/some-big-binary-file.dat: response body looks like an HTML document'
       );
     });
 
     it('returns bytes from a successful binary response', async () => {
       const bytes = new Uint8Array([0x30, 0x01, 0x00]);
 
-      fetchStub.resolves({
-        ok: true,
-        status: 200,
-        headers: {get: sinon.stub().returns('application/octet-stream')},
-        arrayBuffer: sinon.stub().resolves(bytes.buffer),
+      webexRequestStub.resolves({
+        statusCode: 200,
+        headers: {'content-type': 'application/octet-stream'},
+        body: bytes.buffer,
       });
-      const loader = new StaticAssetLoader('/assets/');
+      const loader = new StaticAssetLoader({webexRequest: webexRequestStub, baseUrl: '/assets/'});
 
-      assert.deepEqual(await loader.getBytes('domain_name_roots.p7b'), bytes);
+      assert.deepEqual(await loader.getBytes('some-big-binary-file.dat'), bytes);
     });
   });
 });
