@@ -20,6 +20,25 @@ import {DialPlan} from '../config/types';
 export const isRecord = (value: unknown): value is Record<string, unknown> =>
   typeof value === 'object' && value !== null;
 
+const MAX_SANITIZED_OBSERVABILITY_VALUE_LENGTH = 200;
+
+/**
+ * Sanitizes an untrusted remote string before it reaches logs or metrics by stripping
+ * CR/LF and other control characters and capping its length, blocking log/metrics
+ * injection while leaving legitimate values effectively unchanged.
+ *
+ * @param value - The untrusted remote value to sanitize.
+ * @returns The sanitized string, or an empty string when the value is not a string.
+ */
+export const sanitizeForObservability = (value: unknown): string => {
+  if (typeof value !== 'string') {
+    return '';
+  }
+
+  // eslint-disable-next-line no-control-regex
+  return value.replace(/[\x00-\x1f\x7f]/g, '').slice(0, MAX_SANITIZED_OBSERVABILITY_VALUE_LENGTH);
+};
+
 /**
  * Extracts common error details from a Webex request payload.
  *

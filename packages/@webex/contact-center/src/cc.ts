@@ -49,7 +49,12 @@ import Services from './services';
 import WebexRequest from './services/core/WebexRequest';
 import LoggerProxy from './logger-proxy';
 import {StateChange, Logout, StateChangeSuccess, AGENT_EVENTS} from './services/agent/types';
-import {getErrorDetails, isRecord, isValidDialNumber} from './services/core/Utils';
+import {
+  getErrorDetails,
+  isRecord,
+  isValidDialNumber,
+  sanitizeForObservability,
+} from './services/core/Utils';
 import {
   Profile,
   WelcomeEvent,
@@ -1331,7 +1336,7 @@ export default class ContactCenter extends WebexPlugin implements IContactCenter
         METRIC_EVENT_NAMES.STATION_LOGOUT_SUCCESS,
         {
           ...MetricsManager.getCommonTrackingFieldForAQMResponse(resp),
-          logoutReason: data.logoutReason,
+          logoutReason: sanitizeForObservability(data.logoutReason),
         },
         ['behavioral', 'business', 'operational']
       );
@@ -1447,7 +1452,7 @@ export default class ContactCenter extends WebexPlugin implements IContactCenter
           status: agentStatusResponse.data?.status,
           subStatus: agentStatusResponse.data?.subStatus,
           auxCodeId: data.auxCodeId,
-          lastStateChangeReason: data.lastStateChangeReason || EMPTY_STRING,
+          lastStateChangeReason: sanitizeForObservability(data.lastStateChangeReason),
         },
         ['behavioral', 'business', 'operational']
       );
@@ -1470,7 +1475,7 @@ export default class ContactCenter extends WebexPlugin implements IContactCenter
           ...MetricsManager.getCommonTrackingFieldForAQMResponseFailed(failure),
           state: data.state,
           auxCodeId: data.auxCodeId,
-          lastStateChangeReason: data.lastStateChangeReason || EMPTY_STRING,
+          lastStateChangeReason: sanitizeForObservability(data.lastStateChangeReason),
         },
         ['behavioral', 'business', 'operational']
       );
@@ -1575,18 +1580,21 @@ export default class ContactCenter extends WebexPlugin implements IContactCenter
       return;
     }
 
-    LoggerProxy.log(`Received event: ${eventData?.data?.type ?? eventData.type}`, {
-      module: CC_FILE,
-      method: METHODS.HANDLE_WEBSOCKET_MESSAGE,
-    });
+    LoggerProxy.log(
+      `Received event: ${sanitizeForObservability(eventData?.data?.type ?? eventData.type)}`,
+      {
+        module: CC_FILE,
+        method: METHODS.HANDLE_WEBSOCKET_MESSAGE,
+      }
+    );
 
     // Emit metrics for all websocket events except keepalive and welcome
     const topLevelType = eventData.type;
     const nestedType = eventData?.data?.type;
     if (topLevelType !== CC_EVENTS.WELCOME && eventData.keepalive !== 'true') {
       const metricsPayload: Record<string, any> = {
-        ws_event_type: nestedType || topLevelType,
-        top_level_type: topLevelType,
+        ws_event_type: sanitizeForObservability(nestedType || topLevelType),
+        top_level_type: sanitizeForObservability(topLevelType),
         has_data: Boolean(eventData.data),
       };
       this.metricsManager.trackEvent(METRIC_EVENT_NAMES.WEBSOCKET_EVENT_RECEIVED, metricsPayload, [
