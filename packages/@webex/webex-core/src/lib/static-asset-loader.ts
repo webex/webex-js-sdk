@@ -56,7 +56,19 @@ export default class StaticAssetLoader extends StatelessWebexPlugin {
 
     if (!asset) {
       // @ts-ignore - StatelessWebexPlugin exposes request from the parent Webex instance.
-      asset = this.request({method: 'GET', uri: url, responseType: 'buffer'})
+      asset = this.request({
+        method: 'GET',
+        uri: url,
+        responseType: 'buffer',
+        // Assets may be hosted on a third-party CDN: never send the user's token, and suppress
+        // the SDK's custom headers so the request doesn't trigger a CORS preflight.
+        addAuthHeader: false,
+        headers: {
+          trackingid: null,
+          'spark-user-agent': null,
+          'cisco-no-http-redirect': null,
+        },
+      })
         .then((response: any) => {
           if (response.statusCode < 200 || response.statusCode >= 300) {
             throw new Error(`Failed to fetch static asset ${url}: HTTP ${response.statusCode}`);
