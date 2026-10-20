@@ -20,7 +20,8 @@ export interface ListConfig {
   recursive?: boolean;
 
   /**
-   * Git Reference to collect a list of packages from based on local changes.
+   * Git reference to collect packages from based on local changes.
+   * Documentation-only change sets return an empty list.
    */
   since?: string;
 
