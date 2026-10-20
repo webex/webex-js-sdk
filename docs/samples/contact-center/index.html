@@ -486,6 +486,15 @@
                 <option value="">Select Outdial Ani...</option>
               </select>
             </div>
+            <div style="margin-bottom: 10px;">
+              <label for="outdialContactType">Party type (outdial attribute):</label>
+              <select id="outdialContactType" style="width: 100%; margin-bottom: 10px;">
+                <option value="">No custom attribute</option>
+                <option value="Customer">Customer</option>
+                <option value="Vendor">Vendor</option>
+                <option value="Partner">Partner</option>
+              </select>
+            </div>
             <input id="outBoundDialNumber" placeholder="Enter number to dial">
             <div class="keys">
               <div class="key" onclick="pressKey('1')">1</div>
@@ -502,6 +511,12 @@
               <div class="key" onclick="pressKey('#')">#</div>
             </div>
             <button class="call-btn" onclick="startOutdial()"><i class="fa fa-phone"></i></button>
+            <button id="updateOutdialCadAttributes" class="btn btn-secondary" type="button" onclick="updateLiveCadAttributes()">
+              Update active task attribute
+            </button>
+            <p id="outdialCadStatus" class="status-par" role="status" aria-live="polite">
+              Select a party type to attach it when starting an outdial.
+            </p>
           </div>
         </fieldset>
       </div>
