@@ -38,7 +38,7 @@ const ServiceUrl = AmpState.extend({
    */
   _getHostUrls() {
     return this.hosts.map((host) => ({
-      url: host.baseUrl || this._generateHostUrl(host.host),
+      url: host.baseUrl ? new URL(host.baseUrl).href : this._generateHostUrl(host.host),
       priority: host.priority,
     }));
   },
@@ -81,7 +81,7 @@ const ServiceUrl = AmpState.extend({
         : aliveHosts;
 
     if (filteredHosts[0].baseUrl) {
-      return filteredHosts[0].baseUrl;
+      return new URL(filteredHosts[0].baseUrl).href;
     }
 
     const selectedHost = filteredHosts.reduce(
@@ -90,7 +90,9 @@ const ServiceUrl = AmpState.extend({
       filteredHosts[0]
     );
 
-    return selectedHost.baseUrl || this._generateHostUrl(selectedHost.host);
+    return selectedHost.baseUrl
+      ? new URL(selectedHost.baseUrl).href
+      : this._generateHostUrl(selectedHost.host);
   },
 
   /**

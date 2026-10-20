@@ -139,6 +139,24 @@ describe('webex-core', () => {
         assert.equal(serviceUrl._getPriorityHostUrl(), highPriorityHost);
       });
 
+      it('normalizes a U2CV2 root URL before callers append a resource', () => {
+        const idbrokerUrl = new ServiceUrl({
+          defaultUrl: 'https://idbroker.webex.com',
+          hosts: [
+            {
+              baseUrl: 'https://idbroker.webex.com',
+              host: 'idbroker.webex.com',
+              priority: 5,
+              homeCluster: true,
+            },
+          ],
+          name: 'idbroker',
+        });
+
+        assert.equal(idbrokerUrl._getPriorityHostUrl(), 'https://idbroker.webex.com/');
+        assert.equal(idbrokerUrl._getHostUrls()[0].url, 'https://idbroker.webex.com/');
+      });
+
       it('should reset the hosts when all have failed', () => {
         serviceUrl.hosts.forEach((host) => {
           /* eslint-disable-next-line no-param-reassign */
