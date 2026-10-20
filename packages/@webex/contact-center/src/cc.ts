@@ -60,6 +60,7 @@ import {
 } from './services/config/types';
 import {ConnectionLostDetails} from './services/core/websocket/types';
 import TaskManager from './services/task/TaskManager';
+import {validateCadAttributes} from './services/task/TaskUtils';
 import WebCallingService from './services/WebCallingService';
 import AnswerCallOnWebexService from './services/AnswerCallOnWebexService';
 import WebexCrossClientService from './services/WebexCrossClientService';
@@ -2491,6 +2492,7 @@ export default class ContactCenter extends WebexPlugin implements IContactCenter
    * @param {string} destination - The phone number to dial (e.g., '+1234567890').
    * @param {string} origin - The contact center number that will be used while making a call to the customer.
    * Should include country code and be in E.164 format.
+   * @param {Record<string, string>} [attributes={}] - Optional CAD/global-variable attributes (up to 30 keys; values up to 256 characters).
    * @returns {Promise<TaskResponse>} Resolves with the task response containing:
    *   - interactionId: Unique identifier for the outbound call
    *   - taskId: Identifier for the task instance
@@ -2502,98 +2504,17 @@ export default class ContactCenter extends WebexPlugin implements IContactCenter
    * @public
    * @example
    * ```typescript
-   * // Initialize and prepare agent
-   * const cc = webex.cc;
-   * await cc.register();
-   * await cc.stationLogin({
-   *   teamId: 'team123',
-   *   loginOption: 'BROWSER'
+   * const response = await cc.startOutdial('+1234567890', origin, {
+   *   contactType: 'Customer',
    * });
-   *
-   * // Set Available state before outbound call
-   * await cc.setAgentState({
-   *   state: 'Available',
-   *   auxCodeId: '0'
-   * });
-   *
-   * // Make outbound call with full error handling
-   * try {
-   *   // Verify agent is properly configured for outdial
-   *   if (!cc.agentConfig.isOutboundEnabledForAgent) {
-   *     throw new Error('Agent not configured for outbound calls');
-   *   }
-   *
-   *   // Start the outbound call
-   *   const destination = '+1234567890';
-   *   const task = await cc.startOutdial(destination, origin);
-   *
-   *   // Listen for all relevant task events
-   *   task.on('task:ringing', () => {
-   *     console.log('Call is ringing');
-   *     updateCallStatus('Ringing...');
-   *   });
-   *
-   *   task.on('task:established', () => {
-   *     console.log('Call connected');
-   *     updateCallStatus('Connected');
-   *     enableCallControls(); // Show mute, hold, transfer buttons
-   *   });
-   *
-   *   task.on('task:hold', () => {
-   *     console.log('Call placed on hold');
-   *     updateCallStatus('On Hold');
-   *   });
-   *
-   *   task.on('task:error', (error) => {
-   *     console.error('Call error:', error);
-   *     updateCallStatus('Error');
-   *     showErrorDialog(error.message);
-   *   });
-   *
-   *   task.on('task:ended', () => {
-   *     console.log('Call ended');
-   *     updateCallStatus('Call Ended');
-   *     resetCallControls();
-   *
-   *     // Handle wrap-up if required
-   *     if (task.data.wrapUpRequired) {
-   *       showWrapupForm();
-   *     }
-   *   });
-   *
-   *   // Example call control usage
-   *   function handleMuteToggle() {
-   *     await task.toggleMute();
-   *   }
-   *
-   *   function handleHoldToggle() {
-   *     if (task.data.isOnHold) {
-   *       await task.resume();
-   *     } else {
-   *       await task.hold();
-   *     }
-   *   }
-   *
-   *   async function handleTransfer() {
-   *     // Get available queues for transfer
-   *     const queues = await cc.getQueues();
-   *
-   *     // Transfer to first available queue
-   *     if (queues.length > 0) {
-   *       await task.transfer({
-   *         to: queues[0].queueId,
-   *         destinationType: 'QUEUE'
-   *       });
-   *     }
-   *   }
-   *
-   * } catch (error) {
-   *   console.error('Outdial failed:', error);
-   *   showErrorNotification('Failed to place call: ' + error.message);
-   * }
+   * // response contains the outbound interactionId and task details.
    * ```
    */
-  public async startOutdial(destination: string, origin: string): Promise<TaskResponse> {
+  public async startOutdial(
+    destination: string,
+    origin: string,
+    attributes: DialerPayload['attributes'] = ATTRIBUTES
+  ): Promise<TaskResponse> {
     LoggerProxy.info('Starting outbound dial', {
       module: CC_FILE,
       method: METHODS.START_OUTDIAL,
@@ -2605,12 +2526,13 @@ export default class ContactCenter extends WebexPlugin implements IContactCenter
       ]);
 
       // Construct the outdial payload.
+      validateCadAttributes(attributes);
       const outDialPayload: DialerPayload = {
         destination,
         origin,
         entryPointId: this.agentConfig.outDialEp,
         direction: OUTDIAL_DIRECTION,
-        attributes: ATTRIBUTES,
+        attributes,
         mediaType: OUTDIAL_MEDIA_TYPE,
         outboundType: OUTBOUND_TYPE,
       };

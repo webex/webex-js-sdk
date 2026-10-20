@@ -7,6 +7,7 @@
 import {CC_EVENTS} from '../config/types';
 
 export const TASK_MESSAGE_TYPE = 'RoutingMessage';
+export const CONTACT_UPDATE_FAILED = 'ContactUpdateFailed' as const;
 export const TASK_API = '/v1/tasks/';
 export const HOLD = '/hold';
 export const UNHOLD = '/unhold';
@@ -83,6 +84,7 @@ export const METHODS = {
   EXIT_CONFERENCE: 'exitConference',
   TRANSFER_CONFERENCE: 'transferConference',
   UPDATE_TASK_DATA: 'updateTaskData',
+  UPDATE_CAD_VARIABLES: 'updateCadVariables',
   RECONCILE_DATA: 'reconcileData',
 
   // TaskManager class methods

@@ -4216,6 +4216,41 @@ describe('webex.cc', () => {
       expect(result).toEqual(mockResponse);
     });
 
+    it('should include caller-provided attributes in the outdial task payload', async () => {
+      webex.cc.agentConfig = {outDialEp: 'test-entry-point'};
+      const attributes = {contactType: 'Customer', caseId: 'case-123'};
+      const startOutdialMock = jest
+        .spyOn(webex.cc.services.dialer, 'startOutdial')
+        .mockResolvedValue({} as AgentContact);
+
+      await webex.cc.startOutdial('1234567890', '+19403016307', attributes);
+
+      expect(startOutdialMock).toHaveBeenCalledWith({
+        data: {
+          destination: '1234567890',
+          origin: '+19403016307',
+          entryPointId: 'test-entry-point',
+          direction: OUTDIAL_DIRECTION,
+          attributes,
+          mediaType: OUTDIAL_MEDIA_TYPE,
+          outboundType: OUTBOUND_TYPE,
+        },
+      });
+    });
+
+    it('should reject invalid outdial attributes before calling the dialer', async () => {
+      webex.cc.agentConfig = {outDialEp: 'test-entry-point'};
+      const startOutdialMock = jest.spyOn(webex.cc.services.dialer, 'startOutdial');
+
+      await expect(
+        webex.cc.startOutdial('1234567890', '+19403016307', {
+          value: 'v'.repeat(257),
+        })
+      ).rejects.toThrow('Error while performing startOutdial');
+
+      expect(startOutdialMock).not.toHaveBeenCalled();
+    });
+
     it('should handle error during startOutdial', async () => {
       // Setup outDialEp.
       webex.cc.agentConfig = {

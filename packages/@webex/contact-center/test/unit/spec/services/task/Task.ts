@@ -236,6 +236,7 @@ jest.mock('../../../../../src/services/task/TaskUtils', () => ({
 
     return error;
   }),
+  validateCadAttributes: jest.fn(),
 }));
 
 jest.mock('../../../../../src/services/core/Utils', () => ({
@@ -301,6 +302,37 @@ describe('Task (base class)', () => {
     expect(task.data.foo).toBe('baz');
     // nested.a remains, nested.b updated
     expect((task.data as any).nested).toEqual({a: 1, b: 3});
+  });
+
+  it('updates live task CAD variables through the contact service', async () => {
+    const contact = {
+      updateCadVariables: jest.fn().mockResolvedValue({trackingId: 'tracking-1'}),
+    };
+    const taskData = createTaskData({interactionId: 'interaction-123'}) as unknown as TaskData;
+    const taskWithContact = new DummyTask(contact, taskData);
+    const attributes = {contactType: 'Customer'};
+
+    await expect(taskWithContact.updateCadVariables(attributes)).resolves.toEqual({
+      trackingId: 'tracking-1',
+    });
+    expect(contact.updateCadVariables).toHaveBeenCalledWith({
+      interactionId: 'interaction-123',
+      data: {attributes},
+    });
+  });
+
+  it('normalizes live task CAD update failures', async () => {
+    const contact = {
+      updateCadVariables: jest.fn().mockRejectedValue(new Error('request failed')),
+    };
+    const taskWithContact = new DummyTask(
+      contact,
+      createTaskData({interactionId: 'interaction-123'}) as unknown as TaskData
+    );
+
+    await expect(taskWithContact.updateCadVariables({contactType: 'Customer'})).rejects.toThrow(
+      'Error while performing updateCadVariables'
+    );
   });
 
   it('overwrites data when shouldOverwrite is true', () => {

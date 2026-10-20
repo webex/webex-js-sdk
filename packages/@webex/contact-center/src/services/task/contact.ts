@@ -1,6 +1,7 @@
 import {CC_EVENTS} from '../config/types';
 import {createErrDetailsObject as err} from '../core/Utils';
 import {WCC_API_GATEWAY} from '../constants';
+import {HTTP_METHODS} from '../../types';
 import AqmReqs from '../core/aqm-reqs';
 import {TIMEOUT_REQ} from '../core/constants';
 import {
@@ -20,12 +21,41 @@ import {
   CONSULT_CONFERENCE,
   CONFERENCE_EXIT,
   CONFERENCE_TRANSFER,
+  CONTACT_UPDATE_FAILED,
 } from './constants';
 import * as Contact from './types';
 import {DESTINATION_TYPE} from './types';
 
 export default function routingContact(aqm: AqmReqs) {
   return {
+    /**
+     * Updates CAD/global-variable attributes on a live task.
+     */
+    updateCadVariables: aqm.req(
+      (p: {interactionId: string; data: {attributes: Record<string, string>}}) => ({
+        url: `${TASK_API}${p.interactionId}`,
+        data: p.data,
+        method: HTTP_METHODS.PATCH,
+        host: WCC_API_GATEWAY,
+        err,
+        redactSensitiveLogs: true,
+        notifSuccess: {
+          bind: {
+            type: TASK_MESSAGE_TYPE,
+            data: {type: CC_EVENTS.CONTACT_UPDATED, interactionId: p.interactionId},
+          },
+          msg: {} as Contact.AgentContact,
+        },
+        notifFail: {
+          bind: {
+            type: TASK_MESSAGE_TYPE,
+            data: {type: CONTACT_UPDATE_FAILED},
+          },
+          errId: 'Service.aqm.task.ContactUpdateFailed',
+        },
+      })
+    ),
+
     /*
      * Accept incoming task
      */
