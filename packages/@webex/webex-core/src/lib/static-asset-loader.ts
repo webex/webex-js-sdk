@@ -33,7 +33,7 @@ export default class StaticAssetLoader extends StatelessWebexPlugin {
    */
   constructor(attrs: {baseUrl: string}, options: {parent?: any} = {}) {
     super(attrs, options);
-    this.baseUrl = attrs.baseUrl.replace(/\/+$/, '');
+    this.baseUrl = attrs.baseUrl.replace(/\/+$/, ''); // remove trailing slashes
   }
 
   /**
@@ -42,7 +42,7 @@ export default class StaticAssetLoader extends StatelessWebexPlugin {
    * @returns {string}
    */
   getUrl(assetName: string): string {
-    return `${this.baseUrl}/${assetName.replace(/^\/+/, '')}`;
+    return `${this.baseUrl}/${assetName.replace(/^\/+/, '')}`; // regex removes leading slashes from the asset name
   }
 
   /**
@@ -62,9 +62,7 @@ export default class StaticAssetLoader extends StatelessWebexPlugin {
             throw new Error(`Failed to fetch static asset ${url}: HTTP ${response.statusCode}`);
           }
 
-          const contentType = (
-            response.headers?.['content-type'] ?? response.headers?.['Content-Type']
-          )
+          const contentType = response.headers?.['content-type']
             ?.split(';')[0]
             .trim()
             .toLowerCase();
