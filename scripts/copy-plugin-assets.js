@@ -1,5 +1,14 @@
-/*!
- * Copyright (c) 2015-2026 Cisco Systems, Inc. See LICENSE file.
+/*
+ * Stages a plugin's runtime assets into its own dist/ so they ship inside the
+ * published npm package (whose entry point is dist/). Runs as each plugin's
+ * `build:assets` step (tsc-based build, no webpack), copying assets/ -> dist/assets/
+ * and excluding dotfiles, README.md, and source maps.
+ *
+ * This is required because the plugin packages are built with tsc, not webpack:
+ * the SDK's root webpack.config.js only copies assets for the separate UMD bundle
+ * (into packages/webex/umd/assets), never into a plugin's dist/. Consumers such as
+ * the web app import @webex/<plugin>/dist and copy from dist/assets, so without this
+ * step the published package would ship without its runtime assets.
  */
 
 const fs = require('fs');
