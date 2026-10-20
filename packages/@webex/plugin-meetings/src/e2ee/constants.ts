@@ -43,7 +43,7 @@ export const E2EE_WASM_ASSET = 'e2ee.wasm';
 export const DOMAIN_NAME_ROOTS_P7B_ASSET = 'domain_name_roots.p7b';
 
 /** Default URL of the e2ee WASM binary (the `.js` loader URL is derived from it). */
-export const E2EE_WASM_URL = `/assets/${E2EE_WASM_ASSET}`;
+export const E2EE_WASM_URL = `/assets/plugin-meetings/${E2EE_WASM_ASSET}`;
 
 /** Locus join-request device capability advertising support for large (1K) E2EE meetings. */
 export const E2EE_1K_SUPPORTED = 'E2EE_1K_SUPPORTED';

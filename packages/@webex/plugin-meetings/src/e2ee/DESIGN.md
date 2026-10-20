@@ -185,13 +185,15 @@ packages/@webex/plugin-meetings/src/e2ee/
 
 The generic `WasmLoader` is **not** E2EE-specific and lives outside this folder in
 `common/wasm-loader.ts`; `Meetings` owns it and injects it into `E2eeManager`. The generic
-`StaticAssetLoader` in `common/static-asset-loader.ts` resolves and caches binary assets from
-`meetings.assetsBaseUrl`. It joins the configured base URL with an asset filename and fetches the
-response as bytes. Concurrent and later requests for the same URL share a cached successful
+`StaticAssetLoader` in `@webex/webex-core` resolves and caches binary assets from a configured
+asset base URL. It joins the configured base URL with an asset filename and uses the parent Webex
+instance's `request` method to retrieve the response as bytes. Concurrent and later requests for
+the same URL share a cached successful
 response; failed requests are evicted so they can be retried. It rejects HTML responses by MIME
 type and also checks the response body for an HTML document prefix, since some servers return an
-HTML not-found page with a successful status and a generic binary MIME type. This makes E2EE startup
-reject that response before its bytes reach libe2ee. The default base URL is `/assets/`.
+HTML not-found page with a successful status and a generic binary MIME type. This prevents HTML
+from reaching binary asset consumers; E2EE handles failure to load the optional public roots asset
+as a non-fatal condition. The default base URL is `/assets/plugin-meetings/`.
 
 - The `e2ee/mls.ts` from POC code becomes `mls.ts` (stripped of webex/HTTP/LLM).
 - `loadWasmModule` become `WasmLoader.preload(wasmUrl)` / `get(wasmUrl)`, warmed once per session
@@ -279,8 +281,9 @@ isLoaded(wasmUrl: string): boolean;
 Refactor of `loadWasmModule` + the `moduleInstance` / `moduleLoadPromise` globals into instance
 state. Each module is uniquely identified by its `.wasm` URL (the `.js` loader URL is derived by
 replacing the `.wasm` suffix), so a single loader can load and cache multiple distinct modules. The
-E2EE module is loaded from `e2ee.wasm` under `meetings.assetsBaseUrl` (default `/assets/`). The
-same asset directory contains `e2ee.js` and the signed `domain_name_roots.p7b` bundle.
+E2EE module is loaded from `e2ee.wasm` under `meetings.assetsBaseUrl` (default
+`/assets/plugin-meetings/`). The same asset directory contains `e2ee.js` and the signed
+`domain_name_roots.p7b` bundle.
 
 ### `E2eeManager` (one instance per Meetings plugin)
 
@@ -404,23 +407,25 @@ unavailable.
 
 The consuming application hosts the plugin's static assets and configures `meetings.assetsBaseUrl`.
 For npm builds, assets are in `plugin-meetings/dist/assets`; for UMD builds,
-`yarn build:script` copies them to `packages/webex/umd/assets`. Use a version-pinned URL for CDN
-hosting so the assets remain compatible with the JavaScript SDK version. CDN hosts must allow
-cross-origin requests from the application and serve `e2ee.js` with a JavaScript MIME type:
+`yarn build:script` copies them to `packages/webex/umd/assets/plugin-meetings`. Use a version-pinned
+URL for CDN hosting so the assets remain compatible with the JavaScript SDK version. CDN hosts must
+allow cross-origin requests from the application and serve `e2ee.js` with a JavaScript MIME type:
 
 ```ts
 meetings: {
-  assetsBaseUrl: 'https://cdn.example.com/webex-js-sdk/1.2.3/umd/assets/',
+  assetsBaseUrl: 'https://cdn.example.com/webex-js-sdk/1.2.3/umd/assets/plugin-meetings/',
 }
 ```
 
-These files are runtime assets, not part of the SDK JavaScript bundle. The plugin build copies the
-contents of `plugin-meetings/assets` into `plugin-meetings/dist/assets`, and the UMD Webpack build
-emits the same files under `packages/webex/umd/assets`. CDN deployments should publish the assets
-alongside the version-matched UMD bundles and set `assetsBaseUrl` to that CDN directory. For local
-SDK samples, `samples:serve` maps the source `plugin-meetings/assets` directory to `/assets`, so the
-default URL works without first building the plugin package. Other development or deployment
-servers need to provide the same URL mapping (or configure `assetsBaseUrl` to their hosted location).
+These files are runtime assets, not part of the SDK JavaScript bundle. Each plugin keeps its files
+in its own `assets` folder; the shared package build helper copies them into that plugin's
+`dist/assets`. The UMD Webpack build gathers every plugin `assets` folder under
+`packages/webex/umd/assets/<plugin-name>/`, so assets with the same filename cannot overwrite each
+other. CDN deployments should publish this tree alongside the version-matched UMD bundles and set
+each plugin's `assetsBaseUrl` to its own directory. For local SDK samples, `samples:serve` maps each
+plugin's source `assets` folder to `/assets/<plugin-name>`, so the default URL works without first
+building the plugin package. Other development or deployment servers need to provide the same URL
+mapping (or configure `assetsBaseUrl` to their hosted location).
 
 ### `MemberMLSReconciler`
 

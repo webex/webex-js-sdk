@@ -3,13 +3,14 @@
  */
 
 import type {IdentityProvider} from '@webex/internal-plugin-identity';
+// @ts-ignore - StaticAssetLoader is exported from webex-core's JavaScript entry point.
+import type {StaticAssetLoader} from '@webex/webex-core';
 
 import EventsScope from '../common/events/events-scope';
 import Trigger from '../common/events/trigger-proxy';
 import LoggerProxy from '../common/logs/logger-proxy';
 import Metrics from '../metrics';
 import BEHAVIORAL_METRICS from '../metrics/constants';
-import StaticAssetLoader from '../common/static-asset-loader';
 import {EVENT_TRIGGERS} from '../constants';
 import MLS, {type MLSEvent, type MLSEventMap} from './mls';
 import MediaEncryptionService from './MediaEncryptionService';
@@ -65,7 +66,7 @@ export default class E2eeController extends EventsScope {
    * @param {E2eeMeetingContext} deps.context - The meeting data and operations used by E2EE.
    * @param {Object} deps.webex - The parent webex instance.
    * @param {WasmLoader} deps.wasmLoader - Shared (pre-warmed) WASM loader.
-   * @param {StaticAssetLoader} deps.assetLoader - Shared loader for plugin-meetings static assets.
+   * @param {StaticAssetLoader} deps.assetLoader - Shared loader for static assets.
    * @param {IdentityProvider} deps.identityProvider - Shared identity/credential provider.
    * @param {E2eeConfig} deps.config - The meetings plugin config.
    */

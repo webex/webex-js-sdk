@@ -23,14 +23,14 @@ type ModuleImporter = (jsUrl: string) => Promise<{default: EmscriptenModuleFacto
  * (permitted by the app's `script-src blob:` CSP) whose body statically imports the target and
  * hands its namespace back via a one-shot global callback. The `import` lives inside a string, so
  * neither Babel nor webpack ever transforms or statically analyses it.
- * @param {string} jsUrl - URL of the emscripten loader module (e.g. '/assets/e2ee.js').
+ * @param {string} jsUrl - URL of the emscripten loader module (e.g. '/assets/plugin-meetings/e2ee.js').
  * @returns {Promise<{default: EmscriptenModuleFactory}>}
  */
 function importModuleViaScriptTag(jsUrl: string): Promise<{default: EmscriptenModuleFactory}> {
   return new Promise((resolve, reject) => {
     const callbackKey = `__webexWasmModule_${Math.random().toString(36).slice(2)}`;
     // The blob module's base URL is the (non-hierarchical) blob: scheme, so the import specifier
-    // must be an absolute URL — a root-relative path like '/assets/e2ee.js' cannot be resolved.
+    // must be an absolute URL — a root-relative path like '/assets/plugin-meetings/e2ee.js' cannot be resolved.
     const absoluteJsUrl = new URL(jsUrl, window.location.href).href;
     const blobUrl = URL.createObjectURL(
       new Blob(

@@ -21,7 +21,7 @@ describe('plugin-meetings', () => {
           getTrustAnchors: sinon.stub(),
         },
       },
-      config: {meetings: {enableE2ee}},
+      config: {meetings: {enableE2ee, assetsBaseUrl: '/assets/plugin-meetings/'}},
       request: sinon.stub().resolves({body: ''}),
     });
     const makeWasmLoader = () => {

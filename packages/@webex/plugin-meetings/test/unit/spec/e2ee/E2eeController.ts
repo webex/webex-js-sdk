@@ -8,7 +8,7 @@ import E2eeController from '@webex/plugin-meetings/src/e2ee/E2eeController';
 import MLS from '@webex/plugin-meetings/src/e2ee/mls';
 import E2eeSignaling from '@webex/plugin-meetings/src/e2ee/E2eeSignaling';
 import WasmLoader from '@webex/plugin-meetings/src/common/wasm-loader';
-import StaticAssetLoader from '@webex/plugin-meetings/src/common/static-asset-loader';
+import {StaticAssetLoader} from '@webex/webex-core';
 import Trigger from '@webex/plugin-meetings/src/common/events/trigger-proxy';
 import {EVENT_TRIGGERS} from '@webex/plugin-meetings/src/constants';
 
@@ -68,7 +68,7 @@ describe('plugin-meetings', () => {
       wasmLoader.preload.resolves();
       wasmLoader.isLoaded.returns(true);
       assetLoader = sinon.createStubInstance(StaticAssetLoader);
-      assetLoader.getUrl.returns('/assets/e2ee.wasm');
+      assetLoader.getUrl.returns('/assets/plugin-meetings/e2ee.wasm');
       assetLoader.getBytes.resolves(new Uint8Array([1, 2, 3]));
       identityProvider = {
         getCredentials: sinon

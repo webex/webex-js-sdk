@@ -3,9 +3,10 @@
  */
 
 import type {IdentityProvider} from '@webex/internal-plugin-identity';
+// @ts-ignore - StaticAssetLoader is exported from webex-core's JavaScript entry point.
+import {StaticAssetLoader} from '@webex/webex-core';
 
 import LoggerProxy from '../common/logs/logger-proxy';
-import StaticAssetLoader from '../common/static-asset-loader';
 import WasmLoader from '../common/wasm-loader';
 import E2eeController from './E2eeController';
 import {E2EE_WASM_ASSET, isE2eeEnabledAndSupported} from './constants';
@@ -35,10 +36,10 @@ export default class E2eeManager {
     this.webex = webex;
     this.wasmLoader = wasmLoader;
     this.identityProvider = webex.internal.identity;
-    this.assetLoader = new StaticAssetLoader({
-      webexRequest: webex.request.bind(webex),
-      baseUrl: webex.config?.meetings?.assetsBaseUrl,
-    });
+    this.assetLoader = new StaticAssetLoader(
+      {baseUrl: webex.config?.meetings?.assetsBaseUrl ?? '/assets/plugin-meetings/'},
+      {parent: webex}
+    );
   }
 
   /**
