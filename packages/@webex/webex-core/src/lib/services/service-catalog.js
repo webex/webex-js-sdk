@@ -255,6 +255,39 @@ const ServiceCatalog = AmpState.extend({
    * @returns {string} - ClusterId of a given url
    */
   findClusterId(url) {
+    let incomingUrl;
+
+    try {
+      incomingUrl = new URL(url);
+    } catch {
+      return undefined;
+    }
+
+    let bestMatch;
+    let bestPathLength = -1;
+
+    for (const key of Object.keys(this.serviceGroups)) {
+      for (const service of this.serviceGroups[key]) {
+        for (const host of service.hosts) {
+          if (host.baseUrl && host.id) {
+            const catalogUrl = parseCatalogUrl(host.baseUrl);
+
+            if (
+              matchesParsedCatalogUrl(incomingUrl, catalogUrl) &&
+              catalogUrl.path.length > bestPathLength
+            ) {
+              bestMatch = host.id;
+              bestPathLength = catalogUrl.path.length;
+            }
+          }
+        }
+      }
+    }
+
+    if (bestMatch) {
+      return bestMatch;
+    }
+
     const incomingUrlObj = Url.parse(url);
     let serviceUrlObj;
 

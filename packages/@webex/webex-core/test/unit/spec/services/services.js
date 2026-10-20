@@ -1039,9 +1039,44 @@ describe('webex-core', () => {
         assert.isTrue(services.isServiceUrl('https://idbroker.webex.com/idb/api/v1/users'));
         assert.isFalse(services.isServiceUrl('https://idbroker.webex.com/other'));
         assert.equal(
+          services.convertUrlToPriorityHostUrl(
+            'https://conv-a.wbx2.com/conversation/api/v1/conversations/123'
+          ),
+          'https://prod-achm-message.svc.webex.com/conversation/api/v1/conversations/123'
+        );
+        assert.equal(
+          services.replaceHostFromHostmap('https://idbroker.webex.com/idb/api/v1/users'),
+          'https://prod-adxb-message.svc.webex.com/idbroker/api/v1/users'
+        );
+        assert.equal(
+          services.getClusterId('https://prod-adxb-message.svc.webex.com/idbroker/api/v1/users'),
+          'urn:TEAM:us-east-2_a:idbroker'
+        );
+        assert.equal(
           services.markFailedUrl('https://prod-adxb-message.svc.webex.com/idbroker/api/v1'),
           'https://idbroker.webex.com/idb/api/v1'
         );
+      });
+
+      it('selects the lowest positive priority from an unsorted U2CV2 catalog', () => {
+        const formatted = services._formatReceivedHostmap({
+          activeServices: {example: 'urn:TEAM:us-east-2_a:example'},
+          services: [
+            {
+              id: 'urn:TEAM:us-east-2_a:example',
+              serviceName: 'example',
+              serviceUrls: [
+                {baseUrl: 'https://alternate.example.com/alternate/api/v1', priority: 2},
+                {baseUrl: 'https://preferred.example.com/preferred/api/v1', priority: 1},
+              ],
+            },
+          ],
+        });
+
+        catalog.updateServiceUrls('postauth', formatted);
+
+        assert.equal(services.get('example'), 'https://preferred.example.com/preferred/api/v1');
+        assert.equal(services.get('example', true), 'https://preferred.example.com/preferred/api/v1');
       });
 
       it('creates a formmatted host map that contains the same amount of entries as the original received hostmap', () => {
@@ -1302,6 +1337,23 @@ describe('webex-core', () => {
     });
     
     describe('#getMobiusClusters', () => {
+      it('preserves a Mobius URL prefix from U2CV2', () => {
+        services._formatReceivedHostmap({
+          activeServices: {mobius: 'urn:TEAM:us-east-2_a:mobius'},
+          services: [
+            {
+              id: 'urn:TEAM:us-east-2_a:mobius',
+              serviceName: 'mobius',
+              serviceUrls: [
+                {baseUrl: 'https://mobius.example.com/mobius/api/v1', priority: 1},
+              ],
+            },
+          ],
+        });
+
+        assert.equal(services.getMobiusClusters()[0].host, 'mobius.example.com/mobius');
+      });
+
       it('returns unique mobius host entries from hostCatalog', () => {
         // Arrange: two hostCatalog keys, with duplicate mobius host across keys
         services._hostCatalog = {

@@ -1008,6 +1008,11 @@ describe('webex-core', () => {
                   host: 'conversation-a.example.com',
                   priority: 1,
                 },
+                {
+                  baseUrl: 'https://conversation.example.com/api/v1',
+                  host: 'conversation.example.com',
+                  priority: 0,
+                },
               ],
             },
             {
@@ -1041,6 +1046,56 @@ describe('webex-core', () => {
           name: 'conversation',
           url: 'https://conversation-d.example.com/api/v1',
         });
+      });
+
+      it('keeps the correct service ID when hostmap services share a host', () => {
+        const ecommId = 'urn:IDENTITY:PF84:ecomm';
+        const webAuthId = 'urn:IDENTITY:PF84:web-authentication';
+        const fallbackHostmap = {
+          format: 'hostmap',
+          serviceLinks: {
+            ecomm: 'https://shared.example.com/api/v1',
+            'web-authentication': 'https://shared.example.com/api/v1',
+          },
+          hostCatalog: {
+            'shared.example.com': [
+              {id: ecommId, host: 'shared.example.com', priority: 5},
+              {id: webAuthId, host: 'shared.example.com', priority: 5},
+            ],
+          },
+        };
+
+        const formatted = services._formatReceivedHostmap(fallbackHostmap);
+
+        assert.deepEqual(formatted.activeServices, {
+          ecomm: ecommId,
+          'web-authentication': webAuthId,
+        });
+        assert.isTrue(
+          formatted.services.some(
+            ({id, serviceName}) => id === webAuthId && serviceName === 'web-authentication'
+          )
+        );
+      });
+
+      it('preserves a legacy link alias when its host has one service ID', () => {
+        const clusterId = 'urn:TEAM:us-east-2_a:different-e';
+        const formatted = services._formatReceivedHostmap({
+          format: 'hostmap',
+          serviceLinks: {'example-e': 'https://alias.example.com/api/v1'},
+          hostCatalog: {
+            'alias.example.com': [
+              {id: clusterId, host: 'priority.example.com', priority: 1},
+            ],
+          },
+        });
+
+        assert.equal(formatted.activeServices['example-e'], clusterId);
+        assert.isTrue(
+          formatted.services.some(
+            ({id, serviceName}) => id === clusterId && serviceName === 'example-e'
+          )
+        );
       });
 
       it('has hostCatalog updated', () => {

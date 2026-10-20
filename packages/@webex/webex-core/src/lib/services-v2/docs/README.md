@@ -550,7 +550,7 @@ classDiagram
 Boundary-only facts (ordering, timeouts and recovery are in Data flow and Concurrency): the external boundary is `u2c-service`,
 whose `U2CV2` response is trusted structurally (a missing `services` yields an empty list, a missing `baseUrl` throws while
 formatting). When U2C activates its rollback switch, `format_failsafe=hostmap` returns a legacy hostmap; the plugin
-converts its service links and host catalog into cluster services before updating the catalog. User validation additionally
+converts its service links and host catalog into cluster services before updating the catalog. It matches a service name to its cluster ID when several services share a host, retains the original service link as a non-priority alias when an alternate priority URL exists, and retains the sole cluster ID when a service link uses an alias name. User validation additionally
 crosses to idbroker (client token), hydra (meeting preferences), the sqdiscovery region endpoint (5 s, unauthenticated)
 and license or user-onboarding (activation).
 

@@ -59,7 +59,11 @@ const convertLegacyHostmap = (hostMap: LegacyHostmap) => {
       return;
     }
 
-    const homeId = hostCatalog[defaultHost]?.[0]?.id || serviceName;
+    const homeEntries = hostCatalog[defaultHost] || [];
+    const matchingId = homeEntries.find(({id}) => id?.split(':').pop() === serviceName)?.id;
+    const uniqueServiceIds = [...new Set(homeEntries.map(({id}) => id?.split(':').pop()))];
+    const homeId =
+      matchingId || (uniqueServiceIds.length === 1 && homeEntries[0]?.id) || serviceName;
     const serviceId = homeId.split(':').pop();
     const servicesById = new Map<string, Service>();
 
@@ -97,8 +101,14 @@ const convertLegacyHostmap = (hostMap: LegacyHostmap) => {
 
     const homeServiceUrls = homeService.serviceUrls;
 
-    if (!homeServiceUrls.some(({priority}) => priority > 0)) {
-      homeServiceUrls.push({baseUrl: defaultUrl, host: defaultHost, priority: 1});
+    if (!homeServiceUrls.some(({baseUrl}) => baseUrl === new URL(defaultUrl).href)) {
+      const hasPriorityUrl = homeServiceUrls.some(({priority}) => priority > 0);
+
+      homeServiceUrls.push({
+        baseUrl: defaultUrl,
+        host: defaultHost,
+        priority: hasPriorityUrl ? 0 : 1,
+      });
     }
 
     activeServices[serviceName] = homeId;

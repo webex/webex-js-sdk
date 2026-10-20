@@ -4,7 +4,7 @@ import {union, forEach} from 'lodash';
 import WebexPlugin from '../webex-plugin';
 
 import METRICS from '../metrics';
-import ServiceCatalog from './service-catalog';
+import ServiceCatalog, {matchesCatalogUrl} from './service-catalog';
 import ServiceRegistry from './service-registry';
 import ServiceState from './service-state';
 import fedRampServices from './service-fed-ramp';
@@ -236,8 +236,11 @@ const Services = WebexPlugin.extend({
     Object.entries(hostCatalog).forEach(([host, entries]) => {
       (entries || []).forEach((entry) => {
         if (typeof entry?.id === 'string' && entry.id.endsWith(':mobius')) {
-          // Ensure host is included; prefer entry.host if present, else use the map key
-          const withHost = entry.host ? entry.host : host;
+          // Keep the U2CV2 path prefix that CallingClient appends /api/v1 to.
+          const baseUrl = entry.baseUrl && new URL(entry.baseUrl);
+          const withHost = baseUrl
+            ? `${baseUrl.host}${baseUrl.pathname.replace(/\/api\/v1\/?$/, '')}`
+            : entry.host || host;
           // Skip duplicates for the same host
           if (!clusters.find((c) => c && c.host === withHost)) {
             clusters.push({...entry, host: withHost});
@@ -854,6 +857,14 @@ const Services = WebexPlugin.extend({
 
     const host = hostCatalog[url.host];
 
+    if (host?.some(({baseUrl}) => baseUrl)) {
+      try {
+        return this.convertUrlToPriorityHostUrl(uri);
+      } catch {
+        return uri;
+      }
+    }
+
     if (host && host[0]) {
       const newHost = host[0].host;
 
@@ -976,9 +987,13 @@ const Services = WebexPlugin.extend({
       const activeService = services.find(
         (service) => service.serviceName === serviceName && service.id === activeId
       );
-      const defaultUrl =
-        activeService?.serviceUrls?.find(({priority}) => priority > 0)?.baseUrl ||
-        activeService?.serviceUrls?.[0]?.baseUrl;
+      const priorityUrl = activeService?.serviceUrls
+        ?.filter(({priority}) => priority > 0)
+        .reduce(
+          (best, current) => (!best || current.priority < best.priority ? current : best),
+          null
+        );
+      const defaultUrl = priorityUrl?.baseUrl || activeService?.serviceUrls?.[0]?.baseUrl;
 
       if (!defaultUrl) {
         return;
@@ -1006,7 +1021,7 @@ const Services = WebexPlugin.extend({
               return;
             }
 
-            const host = {id, host: url.hostname, priority, ttl: -1};
+            const host = {id, host: url.hostname, priority, ttl: -1, baseUrl};
 
             hosts.push({...host, baseUrl, homeCluster: id === activeId});
             hostCatalog[url.host] = [...(hostCatalog[url.host] || []), host];
@@ -1133,13 +1148,34 @@ const Services = WebexPlugin.extend({
    * @throws if url isn't a service url
    */
   convertUrlToPriorityHostUrl(url = '') {
-    const data = this.getServiceFromUrl(url);
+    const serviceUrl = this._getCatalog().findServiceUrlFromUrl(url);
 
-    if (!data) {
+    if (!serviceUrl) {
       throw Error(`No service associated with url: [${url}]`);
     }
 
-    return url.replace(data.defaultUrl, data.priorityUrl);
+    const baseUrls = [
+      serviceUrl.defaultUrl,
+      ...serviceUrl._getHostUrls().map(({url: baseUrl}) => baseUrl),
+    ];
+    const matchedBaseUrl = baseUrls
+      .filter((baseUrl) => matchesCatalogUrl(url, baseUrl))
+      .sort((a, b) => new URL(b).pathname.length - new URL(a).pathname.length)[0];
+
+    if (!matchedBaseUrl) {
+      throw Error(`No service associated with url: [${url}]`);
+    }
+
+    const incomingUrl = new URL(url);
+    const basePath = new URL(matchedBaseUrl).pathname.replace(/\/$/, '');
+    const preferredUrl = new URL(serviceUrl.get(true));
+    const suffix = incomingUrl.pathname.slice(basePath.length);
+
+    preferredUrl.pathname = `${preferredUrl.pathname.replace(/\/$/, '')}${suffix}` || '/';
+    preferredUrl.search = incomingUrl.search;
+    preferredUrl.hash = incomingUrl.hash;
+
+    return preferredUrl.href;
   },
 
   /**

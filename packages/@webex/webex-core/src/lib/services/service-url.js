@@ -80,13 +80,8 @@ const ServiceUrl = AmpState.extend({
           })
         : aliveHosts;
 
-    if (filteredHosts[0].baseUrl) {
-      return new URL(filteredHosts[0].baseUrl).href;
-    }
-
     const selectedHost = filteredHosts.reduce(
-      (previous, current) =>
-        previous.priority > current.priority || !previous.homeCluster ? current : previous,
+      (previous, current) => (current.priority < previous.priority ? current : previous),
       filteredHosts[0]
     );
 
