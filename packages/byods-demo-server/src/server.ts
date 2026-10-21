@@ -13,7 +13,7 @@ import fs from 'fs';
 const app = express();
 
 let sdk: BYODS.BYODS;
-let baseClient: BYODS.BaseClient;
+const refreshSchedules = new Set<{cancel: () => void}>();
 
 // **** Helper Functions **** //
 // Function to render Handlebars templates
@@ -67,44 +67,51 @@ app.get('/config', (req: Request, res: Response) => {
 
 // **** Configuration **** //
 // Handle config form submission
-app.post('/config', (req: Request, res: Response) => {
-  const {clientId, clientSecret} = req.body;
-  const config = {
-    clientId,
-    clientSecret,
-    tokenStorageAdapter: new BYODS.InMemoryTokenStorageAdapter(),
-    logger: {level: BYODS.LOGGER.LOG},
-  };
-  sdk = new BYODS.BYODS(config);
-  res.redirect('/orgs');
-});
-
-// **** Token Management **** //
-// Render the orgs page
-app.get('/orgs', (req: Request, res: Response) => {
-  renderTemplate(res, 'orgs', {title: 'Organizations'});
-});
-
-// Handle saving access token
-app.post('/api/token/save', async (req: Request, res: Response) => {
-  const {orgId, refreshToken} = req.body;
+app.post('/config', async (req: Request, res: Response) => {
+  const {clientId, clientSecret, orgId, refreshToken} = req.body;
   try {
-    await sdk.tokenManager.saveServiceAppRegistrationData(orgId, refreshToken);
-    res.status(201).send('Acess token saved successfully');
+    const configuredSdk = new BYODS.BYODS({
+      clientId,
+      clientSecret,
+      orgId,
+      tokenStorageAdapter: new BYODS.InMemoryTokenStorageAdapter(),
+      logger: {level: BYODS.LOGGER.LOG},
+    });
+    await configuredSdk.tokenManager.saveServiceAppRegistrationData(refreshToken);
+
+    // Cancel active JWS schedules before applying the configuration.
+    refreshSchedules.forEach((schedule) => schedule.cancel());
+    refreshSchedules.clear();
+    sdk = configuredSdk;
+    res.redirect('/data-source');
   } catch (error) {
-    res.status(500).send(`Error saving refresh token: ${error.message}`);
+    renderTemplate(res.status(400), 'config', {errorMessage: error.message});
   }
 });
 
-// **** Data Source Client Setup **** //
-// Render the data source page
+app.use((req: Request, res: Response, next: NextFunction) => {
+  if (!sdk) {
+    if (req.path.startsWith('/api/')) {
+      res.status(409).json({error: 'Configure the SDK first.'});
+    } else {
+      res.redirect('/config');
+    }
+
+    return;
+  }
+  next();
+});
+
+// Render the data sources for the configured organization.
 app.get('/data-source', async (req: Request, res: Response) => {
-  const {orgId} = req.query;
-  baseClient = sdk.getClientForOrg(orgId as string);
   try {
-    const dataSourcesResponse = await baseClient.dataSource.list();
-    const dataSources = dataSourcesResponse.data;
-    renderTemplate(res, 'data-source', {title: 'Data Sources', orgId, dataSources});
+    const configuredSdk = sdk;
+    const {data: dataSources} = await configuredSdk.dataSource.list();
+    renderTemplate(res, 'data-source', {
+      title: 'Data Sources',
+      orgId: configuredSdk.orgId,
+      dataSources,
+    });
   } catch (error) {
     res.status(400).send(`Error fetching data sources: ${error.message}`);
   }
@@ -116,7 +123,7 @@ app.post('/api/data-source/add', async (req: Request, res: Response) => {
   try {
     const {schemaId, url, audience, subject, nonce, tokenLifetimeMinutes} = req.body;
     const dataSourcePayload = {schemaId, url, audience, subject, nonce, tokenLifetimeMinutes};
-    const response = await baseClient.dataSource.create(dataSourcePayload);
+    const response = await sdk.dataSource.create(dataSourcePayload);
     res.status(201).json({message: 'Data source added successfully', data: response.data});
   } catch (error) {
     res.status(400).json({error: error.message});
@@ -146,28 +153,18 @@ app.post('/api/data-source/update', async (req: Request, res: Response) => {
       status,
       errorMessage,
     };
-    const response = await baseClient.dataSource.update(id, dataSourcePayload);
+    const response = await sdk.dataSource.update(id, dataSourcePayload);
     res.status(201).json({message: 'Data updated successfully', data: response.data});
   } catch (error) {
     res.status(400).json({error: error.message});
   }
 });
 
-app.delete('/api/data-source/delete/:id', async (req: Request, res: Response) => {
+app.delete('/api/data-source/delete/:id', async (req: Request<{id: string}>, res: Response) => {
   try {
     const {id} = req.params;
-    const response = await baseClient.dataSource.delete(id);
+    const response = await sdk.dataSource.delete(id);
     res.status(204).json({message: 'Data deleted successfully', data: response.data});
-  } catch (error) {
-    res.status(400).json({error: error.message});
-  }
-});
-
-// Endpoint to list tokens
-app.get('/api/token/list', async (req: Request, res: Response) => {
-  try {
-    const tokens = await sdk.tokenManager.listTokens();
-    res.status(200).json(tokens);
   } catch (error) {
     res.status(400).json({error: error.message});
   }
@@ -175,18 +172,22 @@ app.get('/api/token/list', async (req: Request, res: Response) => {
 
 // JWS Token refresh
 // Handle JWS token refresh
-app.post('/api/data-source/refresh-token/:id', async (req: Request, res: Response) => {
-  try {
-    const {id} = req.params;
-    const {tokenLifetimeMinutes} = req.body;
-    await baseClient.dataSource.scheduleJWSTokenRefresh(id, tokenLifetimeMinutes, () =>
-      crypto.randomUUID()
-    ); // Use UUID for nonce
-    res.status(200).json({message: 'JWS token refresh scheduled successfully'});
-  } catch (error) {
-    res.status(400).json({error: error.message});
+app.post(
+  '/api/data-source/refresh-token/:id',
+  async (req: Request<{id: string}>, res: Response) => {
+    try {
+      const {id} = req.params;
+      const {tokenLifetimeMinutes} = req.body;
+      const schedule = await sdk.dataSource.scheduleJWSTokenRefresh(id, tokenLifetimeMinutes, () =>
+        crypto.randomUUID()
+      ); // Use UUID for nonce
+      refreshSchedules.add(schedule);
+      res.status(200).json({message: 'JWS token refresh scheduled successfully'});
+    } catch (error) {
+      res.status(400).json({error: error.message});
+    }
   }
-});
+);
 
 // JWS Token verification
 app.post('/api/data-source/verify-jws-token', async (req: Request, res: Response) => {

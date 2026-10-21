@@ -12,7 +12,6 @@ export default class BaseClient {
   private baseUrl: string;
   private headers: Record<string, string>;
   private tokenManager: TokenManager;
-  private orgId: string;
   private loggerConfig: LoggerConfig;
   public dataSource: DataSourceClient;
 
@@ -21,23 +20,20 @@ export default class BaseClient {
    * @param {string} baseUrl - The base URL for the API.
    * @param {Record<string, string>} headers - The additional headers to be used in requests.
    * @param {TokenManager} tokenManager - The token manager instance.
-   * @param {string} orgId - The organization ID.
    * @example
-   * const client = new BaseClient('https://webexapis.com/v1', { 'Your-Custom-Header': 'some value' }, tokenManager, 'org123');
+   * const client = new BaseClient('https://webexapis.com/v1', { 'Your-Custom-Header': 'some value' }, tokenManager);
    */
   constructor(
     baseUrl: string,
     headers: Record<string, string>,
     tokenManager: TokenManager,
-    orgId: string,
     loggerConfig: LoggerConfig = DEFAULT_LOGGER_CONFIG
   ) {
     this.baseUrl = baseUrl;
     this.headers = headers;
     this.tokenManager = tokenManager;
-    this.orgId = orgId;
-    this.dataSource = new DataSourceClient(this.getHttpClientForOrg());
     this.loggerConfig = loggerConfig;
+    this.dataSource = new DataSourceClient(this.getHttpClient(), this.loggerConfig);
     log.setLogger(this.loggerConfig.level, BYODS_BASE_CLIENT_MODULE);
   }
 
@@ -168,13 +164,13 @@ export default class BaseClient {
   }
 
   /**
-   * Get an HTTP client for a specific organization.
+   * Get an HTTP client that uses the configured Service App token.
    * @returns {HttpClient} - An object containing methods for making HTTP requests.
    * @example
-   * const httpClient = client.getHttpClientForOrg();
+   * const httpClient = client.getHttpClient();
    * const response = await httpClient.get('/endpoint');
    */
-  public getHttpClientForOrg(): HttpClient {
+  public getHttpClient(): HttpClient {
     return {
       get: <T>(endpoint: string) => this.get<T>(endpoint),
       delete: <T>(endpoint: string) => this.delete<T>(endpoint),
@@ -186,20 +182,9 @@ export default class BaseClient {
 
   private async getToken(): Promise<string> {
     try {
-      const serviceAppAuthorization = await this.tokenManager.getOrgServiceAppAuthorization(
-        this.orgId
-      );
-      let token = serviceAppAuthorization.serviceAppToken.accessToken;
+      const token = await this.tokenManager.getServiceAppToken();
 
-      if (new Date() >= new Date(serviceAppAuthorization.serviceAppToken.expiresAt)) {
-        await this.tokenManager.refreshServiceAppAccessToken(this.orgId, this.headers);
-        const refreshedAuthorization = await this.tokenManager.getOrgServiceAppAuthorization(
-          this.orgId
-        );
-        token = refreshedAuthorization.serviceAppToken.accessToken;
-      }
-
-      return token;
+      return token.accessToken;
     } catch (error) {
       log.error(new ExtendedError('Error obtaining token', ERROR_TYPE.TOKEN_ERROR), {
         file: BYODS_BASE_CLIENT_MODULE,

@@ -7,3 +7,4 @@ import {LOGGER} from './Logger/types';
 
 export {BYODS, TokenManager, BaseClient, DataSourceClient, LOGGER, InMemoryTokenStorageAdapter};
 export type {TokenStorageAdapter} from './token-storage-adapter/types';
+export type {SDKConfig, ServiceAppToken} from './types';
