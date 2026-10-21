@@ -136,7 +136,7 @@ class Identity extends WebexPlugin {
       method: 'POST',
       service: CERTIFICATE_AUTHORITY_SERVICE,
       resource: 'certificates',
-      headers: {'include-root-cert': 'true'},
+      headers: {'include-root-cert': 'false'},
       body: {csr},
     });
 
