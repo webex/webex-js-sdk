@@ -414,6 +414,7 @@ describe('plugin-meetings', () => {
           assert.equal(e2eeContext.correlationId, correlationId);
           assert.strictEqual(e2eeContext.members, meetingWithE2ee.members);
           assert.strictEqual(e2eeContext.getLocusInfo(), meetingWithE2ee.locusInfo);
+          assert.strictEqual(e2eeContext.getLlmChannel(), meetingWithE2ee.llmChannel);
           const events = [
             [EVENT_TRIGGERS.MEETING_E2EE_SECURITY_CODE_UPDATED, {securityCode: 'SEC'}],
             [EVENT_TRIGGERS.MEETING_E2EE_STATE_CHANGED, {state: 'joined'}],

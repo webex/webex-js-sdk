@@ -3,6 +3,7 @@
  */
 
 import type {IdentityCredentials, IdentityTrustAnchors} from '@webex/internal-plugin-identity';
+import type LLMChannel from '@webex/internal-plugin-llm';
 
 import type {Enum} from '../constants';
 import type {LocusDTO} from '../locus-info/types';
@@ -15,6 +16,7 @@ export type E2eeLocusInfo = Pick<LocusDTO, 'url' | 'info'>;
 export interface E2eeMeetingContext {
   correlationId: string;
   getLocusInfo(): E2eeLocusInfo | undefined;
+  getLlmChannel(): LLMChannel | undefined;
   members: Members;
 }
 

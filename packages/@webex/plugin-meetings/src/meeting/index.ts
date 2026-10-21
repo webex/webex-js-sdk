@@ -1169,6 +1169,7 @@ export default class Meeting extends StatelessWebexPlugin {
     const e2eeContext: E2eeMeetingContext = {
       correlationId: this.correlationId,
       getLocusInfo: (): E2eeLocusInfo | undefined => this.locusInfo,
+      getLlmChannel: () => this.llmChannel,
       members: this.members,
     };
 
@@ -6899,6 +6900,7 @@ export default class Meeting extends StatelessWebexPlugin {
     } finally {
       this.stopListeningForLLMEvents();
       this.llmChannel = undefined;
+      this.e2ee?.llmChannelChanged();
     }
   };
 
@@ -7026,7 +7028,9 @@ export default class Meeting extends StatelessWebexPlugin {
 
     // Create a new LLM channel for this meeting
     // @ts-ignore - Fix type
-    this.llmChannel = this.webex.internal.llm.createChannel();
+    const llmChannel = this.webex.internal.llm.createChannel();
+    this.llmChannel = llmChannel;
+    this.e2ee?.llmChannelChanged();
 
     // Get token from pending (saved from join response) or channel
     const datachannelToken = this._pendingDatachannelToken ?? this.llmChannel.getDatachannelToken();
@@ -7127,8 +7131,11 @@ export default class Meeting extends StatelessWebexPlugin {
           error,
         });
 
-        // Clean up the channel on failure
-        this.llmChannel = undefined;
+        // Clean up the channel on failure if it is still the active meeting channel.
+        if (this.llmChannel === llmChannel) {
+          this.llmChannel = undefined;
+          this.e2ee?.llmChannelChanged();
+        }
 
         return Promise.reject(error);
       });

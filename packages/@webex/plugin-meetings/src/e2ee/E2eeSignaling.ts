@@ -2,6 +2,7 @@
  * Copyright (c) 2015-2026 Cisco Systems, Inc. See LICENSE file.
  */
 
+import type LLMChannel from '@webex/internal-plugin-llm';
 import {LLM_ONLINE_EVENT, MEDIA_ENCRYPTION_MERCURY_EVENTS} from './constants';
 import type {E2eeSignalingSource} from './types';
 
@@ -12,17 +13,10 @@ export interface IMlsSignalingTarget {
   llmConnected(): void;
 }
 
-/** The subset of a mercury-style channel (`webex.internal.mercury` / `webex.internal.llm`) the
- * adapter subscribes to for MLS protocol events. */
+/** The subset of a mercury channel the adapter subscribes to for MLS protocol events. */
 export interface IMercuryChannel {
   on(event: string, handler: (envelope: any) => void): void;
   off(event: string, handler: (envelope: any) => void): void;
-}
-
-/** The subset of `webex.internal.llm` the signaling adapter uses. */
-export interface ILlmChannel extends IMercuryChannel {
-  isConnected(): boolean;
-  getLocusUrl(): string;
 }
 
 /**
@@ -32,7 +26,7 @@ export interface ILlmChannel extends IMercuryChannel {
  * with its join.
  */
 export default class E2eeSignaling {
-  private readonly llm: ILlmChannel;
+  private llm?: LLMChannel;
 
   private readonly mercury: IMercuryChannel;
 
@@ -44,7 +38,7 @@ export default class E2eeSignaling {
 
   /**
    * @param {Object} deps
-   * @param {ILlmChannel} deps.llm - The mercury (LLM) channel (webex.internal.llm).
+   * @param {LLMChannel} [deps.llm] - This meeting's LLM channel, when one is available.
    * @param {IMercuryChannel} deps.mercury - The mercury channel (webex.internal.mercury).
    * @param {Function} deps.getLocusUrl - Returns the meeting's current locus url (read live, as it
    *   can change, e.g. when moving between breakout sessions).
@@ -56,7 +50,7 @@ export default class E2eeSignaling {
     getLocusUrl,
     session,
   }: {
-    llm: ILlmChannel;
+    llm?: LLMChannel;
     mercury: IMercuryChannel;
     getLocusUrl: () => string | undefined;
     session: IMlsSignalingTarget;
@@ -78,15 +72,13 @@ export default class E2eeSignaling {
     this.started = true;
 
     MEDIA_ENCRYPTION_MERCURY_EVENTS.forEach((event) => {
-      this.llm.on(event, this.onLlmEvent);
       this.mercury.on(event, this.onMercuryEvent);
     });
 
-    if (this.isLlmOnlineForThisMeeting()) {
+    if (this.llm && this.isLlmOnlineForThisMeeting()) {
       this.session.setLlmConnectedBeforeJoin(true);
-    } else {
-      this.llm.on(LLM_ONLINE_EVENT, this.onLlmOnline);
     }
+    this.subscribeToLlmEvents();
   }
 
   /**
@@ -100,10 +92,33 @@ export default class E2eeSignaling {
     this.started = false;
 
     MEDIA_ENCRYPTION_MERCURY_EVENTS.forEach((event) => {
-      this.llm.off(event, this.onLlmEvent);
       this.mercury.off(event, this.onMercuryEvent);
     });
-    this.llm.off(LLM_ONLINE_EVENT, this.onLlmOnline);
+    this.unsubscribeFromLlmEvents();
+  }
+
+  /**
+   * Replaces the meeting-owned LLM channel after the meeting reconnects its data channel.
+   * @param {LLMChannel} [llm]
+   * @returns {void}
+   */
+  setLlmChannel(llm?: LLMChannel): void {
+    if (this.llm === llm) {
+      return;
+    }
+
+    this.unsubscribeFromLlmEvents();
+    this.llm = llm;
+
+    if (!this.started || !this.llm) {
+      return;
+    }
+
+    this.subscribeToLlmEvents();
+
+    if (this.isLlmOnlineForThisMeeting()) {
+      this.session.llmConnected();
+    }
   }
 
   /**
@@ -144,6 +159,28 @@ export default class E2eeSignaling {
     }
   };
 
+  /** @returns {void} */
+  private subscribeToLlmEvents(): void {
+    if (!this.started || !this.llm) {
+      return;
+    }
+
+    MEDIA_ENCRYPTION_MERCURY_EVENTS.forEach((event) => {
+      this.llm?.on(event, this.onLlmEvent);
+    });
+    if (!this.isLlmOnlineForThisMeeting()) {
+      this.llm.on(LLM_ONLINE_EVENT, this.onLlmOnline);
+    }
+  }
+
+  /** @returns {void} */
+  private unsubscribeFromLlmEvents(): void {
+    this.llm?.off(LLM_ONLINE_EVENT, this.onLlmOnline);
+    MEDIA_ENCRYPTION_MERCURY_EVENTS.forEach((event) => {
+      this.llm?.off(event, this.onLlmEvent);
+    });
+  }
+
   /**
    * @returns {boolean} whether the LLM is connected for this specific meeting (locus-url matched).
    */
@@ -151,7 +188,7 @@ export default class E2eeSignaling {
     const meetingLocusUrl = this.getLocusUrl();
 
     return (
-      !!meetingLocusUrl && this.llm.isConnected() && meetingLocusUrl === this.llm.getLocusUrl()
+      !!meetingLocusUrl && !!this.llm?.isConnected() && meetingLocusUrl === this.llm.getLocusUrl()
     );
   }
 }

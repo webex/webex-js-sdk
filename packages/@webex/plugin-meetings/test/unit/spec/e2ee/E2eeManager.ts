@@ -83,6 +83,7 @@ describe('plugin-meetings', () => {
         const context = {
           correlationId: 'correlation-id',
           getLocusInfo: () => undefined,
+          getLlmChannel: () => undefined,
           members: {
             selfId: 'self-id',
             membersCollection: {get: () => undefined},

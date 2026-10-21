@@ -102,7 +102,6 @@ const BEHAVIORAL_METRICS = {
   HASH_TREE_EMPTY_LOCUS_STATE_ELEMENTS: 'js_sdk_hash_tree_empty_locus_state_elements',
   DESTROY_MEETING_WHILE_SUSPENDED: 'js_sdk_destroy_meeting_while_suspended',
   WASM_RUNTIME_PERFORMANCE: 'js_sdk_wasm_runtime_performance',
-  E2EE_DOMAIN_NAME_ROOTS_LOAD_FAILURE: 'js_sdk_e2ee_domain_name_roots_load_failure',
 };
 
 export {BEHAVIORAL_METRICS as default};

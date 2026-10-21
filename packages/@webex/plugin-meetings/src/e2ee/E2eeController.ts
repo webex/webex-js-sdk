@@ -16,12 +16,7 @@ import MLS, {type MLSEvent, type MLSEventMap} from './mls';
 import MediaEncryptionService from './MediaEncryptionService';
 import E2eeSignaling from './E2eeSignaling';
 import MemberMLSReconciler from './MemberMLSReconciler';
-import {
-  DOMAIN_NAME_ROOTS_P7B_ASSET,
-  E2EE_WASM_ASSET,
-  isE2eeEnabledAndSupported,
-  MEDIA_SERVICE_DEVICE_TYPE,
-} from './constants';
+import {E2EE_WASM_ASSET, isE2eeEnabledAndSupported, MEDIA_SERVICE_DEVICE_TYPE} from './constants';
 import type WasmLoader from '../common/wasm-loader';
 import type {E2eeConfig, E2eeMeetingContext, E2eeState} from './types';
 
@@ -138,6 +133,14 @@ export default class E2eeController extends EventsScope {
   }
 
   /**
+   * Refreshes the LLM channel used for MLS signaling after Meeting changes its channel.
+   * @returns {void}
+   */
+  llmChannelChanged(): void {
+    this.signaling?.setLlmChannel(this.context.getLlmChannel());
+  }
+
+  /**
    * Emits an E2EE event on the facade so it can be observed directly or forwarded by Meeting.
    * @param {string} event
    * @param {object} payload
@@ -158,31 +161,6 @@ export default class E2eeController extends EventsScope {
       !!locusInfo?.info?.isV2E2EEncrypted &&
       !!locusInfo?.info?.mediaEncryptionGroupUrl
     );
-  }
-
-  /**
-   * Loads the signed domain-name roots bundle. This bundle is used to verify some remote
-   * participant identities, but is optional for joining the MLS group.
-   * @returns {Promise<Uint8Array>}
-   */
-  private async loadDomainNameRootsP7b(): Promise<Uint8Array> {
-    try {
-      return await this.assetLoader.getBytes(DOMAIN_NAME_ROOTS_P7B_ASSET);
-    } catch (error) {
-      const reason = error instanceof Error ? error.message : String(error);
-
-      LoggerProxy.logger.warn(
-        `e2ee: E2eeController#loadDomainNameRootsP7b --> failed to load ${DOMAIN_NAME_ROOTS_P7B_ASSET}; continuing without it`,
-        error
-      );
-
-      Metrics.sendBehavioralMetric(BEHAVIORAL_METRICS.E2EE_DOMAIN_NAME_ROOTS_LOAD_FAILURE, {
-        correlationId: this.context.correlationId,
-        reason,
-      });
-
-      return new Uint8Array();
-    }
   }
 
   /**
@@ -213,10 +191,9 @@ export default class E2eeController extends EventsScope {
     try {
       const wasmUrl = this.assetLoader.getUrl(E2EE_WASM_ASSET);
       const {device} = this.webex.internal;
-      const [, credentials, domainNameRootsP7b] = await Promise.all([
+      const [, credentials] = await Promise.all([
         this.wasmLoader.get(wasmUrl),
         this.identityProvider.getCredentials(device.userId),
-        this.loadDomainNameRootsP7b(),
       ]);
       const httpClient = new MediaEncryptionService({
         webexRequest: this.webex.request.bind(this.webex),
@@ -243,14 +220,11 @@ export default class E2eeController extends EventsScope {
         displayName: this.getSelfDisplayName(),
         serviceUrl: mediaEncryptionGroupUrl,
         credentials,
-        trustAnchors: {
-          ...this.identityProvider.getTrustAnchors(),
-          domainNameRootsP7b,
-        },
+        trustAnchors: this.identityProvider.getTrustAnchors(),
       });
 
       this.signaling = new E2eeSignaling({
-        llm: this.webex.internal.llm,
+        llm: this.context.getLlmChannel(),
         mercury: this.webex.internal.mercury,
         getLocusUrl: () => this.context.getLocusInfo()?.url,
         session,

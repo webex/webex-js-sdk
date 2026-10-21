@@ -40,7 +40,6 @@ export const MEDIA_SERVICE_DEVICE_TYPE = 'MEDIA_SERVICE';
 
 /** Static asset filenames published with plugin-meetings. */
 export const E2EE_WASM_ASSET = 'e2ee.wasm';
-export const DOMAIN_NAME_ROOTS_P7B_ASSET = 'domain_name_roots.p7b';
 
 /** Default URL of the e2ee WASM binary (the `.js` loader URL is derived from it). */
 export const E2EE_WASM_URL = `/assets/plugin-meetings/${E2EE_WASM_ASSET}`;

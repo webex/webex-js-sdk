@@ -109,6 +109,42 @@ describe('plugin-meetings', () => {
       assert.calledOnce(session.llmConnected);
     });
 
+    it('moves subscriptions when the meeting replaces or clears its LLM channel', () => {
+      signaling.start();
+
+      const replacementLlm = {
+        on: sinon.stub(),
+        off: sinon.stub(),
+        isConnected: sinon.stub().returns(false),
+        getLocusUrl: sinon.stub().returns('locus-1'),
+      };
+
+      signaling.setLlmChannel(replacementLlm);
+
+      MEDIA_ENCRYPTION_MERCURY_EVENTS.forEach((event) => {
+        assert.calledWith(llm.off, event, sinon.match.func);
+        assert.calledWith(replacementLlm.on, event, sinon.match.func);
+      });
+      assert.calledWith(llm.off, LLM_ONLINE_EVENT, sinon.match.func);
+      assert.calledWith(replacementLlm.on, LLM_ONLINE_EVENT, sinon.match.func);
+
+      const replacementHandler = replacementLlm.on.getCall(0).args[1];
+
+      replacementHandler({data: {foo: 'replacement'}});
+
+      const [bytes, source] = session.handleEvent.firstCall.args;
+
+      assert.deepEqual(JSON.parse(new TextDecoder().decode(bytes)), {foo: 'replacement'});
+      assert.equal(source, 'llm');
+
+      signaling.setLlmChannel(undefined);
+
+      MEDIA_ENCRYPTION_MERCURY_EVENTS.forEach((event) => {
+        assert.calledWith(replacementLlm.off, event, sinon.match.func);
+      });
+      assert.calledWith(replacementLlm.off, LLM_ONLINE_EVENT, sinon.match.func);
+    });
+
     it('removes all subscriptions on stop', () => {
       signaling.start();
       signaling.stop();

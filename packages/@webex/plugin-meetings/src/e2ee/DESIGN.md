@@ -149,7 +149,7 @@ graph LR
     MLS -->|roster updates| Recon[MemberMLSReconciler]
     Recon <-->|verify by device.url| Members
 
-    Sig[E2eeSignaling] -->|media_encryption.* events| LLM[webex.internal.llm]
+    Sig[E2eeSignaling] -->|media_encryption.* events| LLM[Meeting-owned LLM channel]
     Sig -->|media_encryption.* events| Mercury[webex.internal.mercury]
     Svc[MediaEncryptionService] -->|POST| MES[webex.request media-encryption]
     Ident[internal-plugin-identity] -->|CSR / cert| CA[webex.request certificate-authority]
@@ -160,9 +160,9 @@ HTTP dependencies — all I/O flows through injected adapters, so the engine is 
 unit-testable. The media-core coupling is isolated behind `IE2eeMediaConnection`.
 
 `MediaEncryptionService` receives a bound `webex.request`; the identity plugin uses the request
-method on its parent Webex client. `E2eeSignaling` receives `webex.internal.llm` and
-`webex.internal.mercury` plus a `getLocusUrl()` callback (so it tracks the live locus URL across
-breakout moves).
+method on its parent Webex client. `E2eeSignaling` receives the current meeting-owned LLM channel
+and `webex.internal.mercury` plus a `getLocusUrl()` callback (so it tracks the live locus URL across
+breakout moves). Meeting updates the adapter when its LLM channel is replaced during reconnection.
 
 ## File layout
 
@@ -173,7 +173,7 @@ packages/@webex/plugin-meetings/src/e2ee/
 │                             #   preloads WASM in register(), factory for E2eeController
 ├── E2eeController.ts            # per-meeting facade / orchestrator (this.e2ee on Meeting)
 ├── mls.ts                    # MLS WASM protocol engine (refactor of the POC mls.ts)
-├── E2eeSignaling.ts          # LLM adapter (webex.internal.llm media_encryption.* events)
+├── E2eeSignaling.ts          # LLM adapter (meeting-owned LLM + mercury media_encryption.* events)
 ├── MediaEncryptionService.ts # HTTP adapter (webex.request service:'media-encryption')
 ├── MemberMLSReconciler.ts   # MLS roster <-> Members reconciliation
 ├── MediaKeyController.ts      # key injection into IE2eeMediaConnection (buffers keys)
@@ -282,8 +282,7 @@ Refactor of `loadWasmModule` + the `moduleInstance` / `moduleLoadPromise` global
 state. Each module is uniquely identified by its `.wasm` URL (the `.js` loader URL is derived by
 replacing the `.wasm` suffix), so a single loader can load and cache multiple distinct modules. The
 E2EE module is loaded from `e2ee.wasm` under `meetings.assetsBaseUrl` (default
-`/assets/plugin-meetings/`). The same asset directory contains `e2ee.js` and the signed
-`domain_name_roots.p7b` bundle.
+`/assets/plugin-meetings/`). The same asset directory contains `e2ee.js`.
 
 ### `E2eeManager` (one instance per Meetings plugin)
 
@@ -358,7 +357,7 @@ Requests use the standard webex auth (`Authorization` bearer token added by webe
 
 ```ts
 constructor(deps: {
-  llm;                              // webex.internal.llm (ILlmChannel: on/off/isConnected/getLocusUrl)
+  llm?: LLMChannel;                  // this meeting's LLM channel, when available
   mercury;                          // webex.internal.mercury (IMercuryChannel: on/off)
   getLocusUrl: () => string | undefined; // reads the meeting's live locus url (callback, not a ref)
   session: MLS;
@@ -398,12 +397,7 @@ roots when `webex.internal.services.isIntegrationEnvironment()` is true; other e
 production plus FedRAMP roots, matching UCF's environment-specific root selection. The top-level
 `environment` config can explicitly be set to `'integration'` or `'production'`; when omitted, the
 SDK infers the environment from the U2C discovery URL. It also owns `generateCsr` and the PEM
-helpers. `userIdentityRoots` is currently empty. The signed
-domain-name P7B bundle is loaded separately as a binary static asset and passed to the WASM trust
-anchor API for signature verification and extraction. If it cannot be loaded, E2EE startup reports
-the failure through `js_sdk_e2ee_domain_name_roots_load_failure` and continues with an empty bundle.
-The meeting can still join MLS, though identity verification for some remote participants may be
-unavailable.
+helpers. `userIdentityRoots` is currently empty.
 
 The consuming application hosts the plugin's static assets and configures `meetings.assetsBaseUrl`.
 For npm builds, assets are in `plugin-meetings/dist/assets`; for UMD builds,
@@ -572,7 +566,10 @@ private required(): boolean {
 
 `E2eeMeetingContext` exposes only the meeting data and Members operations used by E2EE: an immutable
 `correlationId`, a live `getLocusInfo()` getter returning the `url` and `info` fields from the Locus
-DTO (the locus URL can change when moving breakout rooms), and the existing `Members` instance.
+DTO (the locus URL can change when moving breakout rooms), a `getLlmChannel()` getter for the
+meeting-owned LLM channel, and the existing `Members` instance. When Meeting changes its LLM
+channel, it calls `llmChannelChanged()` on the controller; the controller reads the current channel
+from its context and updates signaling.
 `E2eeController` uses `MembersCollection` for device lookup and the existing `Members` methods for
 local display-name lookup, update processing, and reporting changed members. `Meeting` returns its
 `locusInfo` instance directly through the getter and stores the controller through the
@@ -607,7 +604,7 @@ local display-name lookup, update processing, and reporting changed members. `Me
      and Meeting emits `STATE_CHANGED` (this is what flips the trust state to `ZeroTrust`).
    - `securityCodeChanged` → Meeting emits `SECURITY_CODE_UPDATED`
    - `joinFailure` / `evicted` / `timeout` → `handleFatal(reason)`
-10. `signaling = new E2eeSignaling({ llm: webex.internal.llm,`
+10. `signaling = new E2eeSignaling({ llm: meeting.getLlmChannel(),`
     `  getLocusUrl: () => meeting.locusInfo?.url, session }); signaling.start();`
     then `session.join()`
 
@@ -668,9 +665,10 @@ to surface the meeting's zero-trust state.
 
 ## `Meeting` integration (`meeting/index.ts`)
 
-- Constructor: build an `E2eeMeetingContext` from the correlation ID, current locus getter, and
-  Members instance, then assign `this.e2ee = attrs.e2eeManager?.createE2eeController(context)` (or an
-  undefined-safe no-op facade). Because `createE2eeController` returns a facade whose `start()`
+- Constructor: build an `E2eeMeetingContext` from the correlation ID, current locus and LLM channel
+  getters, and Members instance, then assign
+  `this.e2ee = attrs.e2eeManager?.createE2eeController(context)` (or an undefined-safe no-op facade).
+  Because `createE2eeController` returns a facade whose `start()`
   no-ops when E2EE is disabled, call sites stay unconditional.
 - **MLS join is gated on Locus confirming self `JOINED`.** In `setUpLocusSelfListener` (the
   `LOCUS_INFO_UPDATE_SELF` handler), when self transitions to `JOINED`

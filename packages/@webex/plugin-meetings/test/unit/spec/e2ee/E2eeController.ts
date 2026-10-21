@@ -20,6 +20,7 @@ describe('plugin-meetings', () => {
     let wasmLoader;
     let assetLoader;
     let identityProvider;
+    let getLlmChannel;
     let config;
     let e2ee;
     let sessionHandlers;
@@ -69,7 +70,6 @@ describe('plugin-meetings', () => {
       wasmLoader.isLoaded.returns(true);
       assetLoader = sinon.createStubInstance(StaticAssetLoader);
       assetLoader.getUrl.returns('/assets/plugin-meetings/e2ee.wasm');
-      assetLoader.getBytes.resolves(new Uint8Array([1, 2, 3]));
       identityProvider = {
         getCredentials: sinon
           .stub()
@@ -78,6 +78,7 @@ describe('plugin-meetings', () => {
           .stub()
           .returns({webexCaRoots: 'ca', domainNameRoots: '', userIdentityRoots: ''}),
       };
+      getLlmChannel = sinon.stub().returns(undefined);
       webex = {
         internal: {
           device: {userId: 'user-1', url: OWN_DEVICE_URL},
@@ -111,6 +112,7 @@ describe('plugin-meetings', () => {
         context: {
           correlationId: meeting.correlationId,
           getLocusInfo: () => meeting.locusInfo,
+          getLlmChannel,
           members: meeting.members,
         } as any,
         webex,
@@ -175,12 +177,38 @@ describe('plugin-meetings', () => {
           webexCaRoots: 'ca',
           domainNameRoots: '',
           userIdentityRoots: '',
-          domainNameRootsP7b: new Uint8Array([1, 2, 3]),
         });
 
         assert.calledOnce(signalingStartStub);
         assert.calledOnce(joinStub);
         assert.equal(e2ee.state, 'joining');
+      });
+
+      it('uses the current context LLM channel and refreshes it when Meeting reports a change', async () => {
+        const createLlmChannel = (id) => ({
+          id,
+          on: sinon.stub(),
+          off: sinon.stub(),
+          isConnected: sinon.stub().returns(false),
+          getLocusUrl: sinon.stub().returns('locus-1'),
+        });
+        const initialLlm = createLlmChannel('initial');
+        const replacementLlm = createLlmChannel('replacement');
+
+        getLlmChannel.returns(initialLlm);
+        await e2ee.start();
+
+        assert.equal((e2ee as any).signaling.llm, initialLlm);
+
+        getLlmChannel.returns(replacementLlm);
+        e2ee.llmChannelChanged();
+
+        assert.equal((e2ee as any).signaling.llm, replacementLlm);
+
+        getLlmChannel.returns(undefined);
+        e2ee.llmChannelChanged();
+
+        assert.isUndefined((e2ee as any).signaling.llm);
       });
 
       it('transitions to failed and emits a failure when start throws', async () => {
