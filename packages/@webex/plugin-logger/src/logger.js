@@ -5,8 +5,8 @@
 import {inBrowser, patterns} from '@webex/common';
 import {WebexPlugin} from '@webex/webex-core';
 import {cloneDeep, has, isArray, isObject, isString} from 'lodash';
-import {captureMetadata, copyAttributes} from './log-record';
-import {createLogNotifications, snapshotEntries} from './log-entries';
+import {captureMetadata, snapshotRecords} from './log-record';
+import {LogRecordSubscriptions} from './log-record-source';
 
 const precedence = {
   silent: 0,
@@ -36,9 +36,8 @@ const LOG_TYPES = {
 };
 
 const SDK_LOG_TYPE_NAME = 'wx-js-sdk';
-const metadataMethods = Object.create(null);
+const clientMetadataMethods = Object.create(null);
 const sdkMetadataMethods = Object.create(null);
-const bufferMetadataMethods = Object.create(null);
 
 const authTokenKeyPattern = /[Aa]uthorization/;
 
@@ -110,9 +109,8 @@ const Logger = WebexPlugin.extend({
       default() {
         return {
           sequence: 0,
-          context: {},
-          entries: new WeakMap(),
-          notifications: createLogNotifications(),
+          metadataByBufferEntry: new WeakMap(),
+          subscriptions: new LogRecordSubscriptions(),
         };
       },
     },
@@ -156,34 +154,47 @@ const Logger = WebexPlugin.extend({
     },
   },
 
-  setLogContext(attributes) {
-    this.recordState.context = Object.freeze(
-      copyAttributes(attributes, (value) => this.filter(value)[0])
-    );
-  },
-
+  /**
+   * Write through the normal client formatting/filter policy.
+   * @param {string} level - Client severity.
+   * @param {Object} metadata - Per-record producer metadata.
+   * @param {...*} args - Log arguments.
+   * @returns {undefined}
+   */
   client_logWithMetadata(level, metadata, ...args) {
-    metadataMethods[level]?.call(this, metadata, ...args);
+    clientMetadataMethods[level]?.call(this, metadata, ...args);
   },
 
+  /**
+   * Write native producer metadata without changing SDK buffer or level policy.
+   * @param {string} level - SDK severity.
+   * @param {Object} metadata - Per-record producer metadata.
+   * @param {...*} args - Log arguments.
+   * @returns {undefined}
+   */
   logWithMetadata(level, metadata, ...args) {
     sdkMetadataMethods[level]?.call(this, metadata, ...args);
   },
 
-  client_logToBufferWithMetadata(level, metadata, ...args) {
-    bufferMetadataMethods[level]?.call(this, metadata, ...args);
-  },
-
-  getEntries() {
+  /**
+   * Read the records still retained for support logging without changing upload cursors.
+   * @returns {Array} Owned records in accepted sequence order.
+   */
+  getRecords() {
     const buffers = this.config.separateLogBuffers
       ? [this.sdkBuffer, this.clientBuffer]
       : [this.buffer];
 
-    return snapshotEntries(buffers, this.recordState.entries);
+    return snapshotRecords(buffers, this.recordState.metadataByBufferEntry);
   },
 
-  onEntry(listener) {
-    return this.recordState.notifications.onEntry(listener);
+  /**
+   * Register for future accepted records without replaying history.
+   * @param {Function} listener - Synchronous record observer.
+   * @returns {function} Idempotent unsubscribe callback.
+   */
+  subscribe(listener) {
+    return this.recordState.subscriptions.subscribe(listener);
   },
 
   /**
@@ -408,9 +419,10 @@ const Logger = WebexPlugin.extend({
  * @param {string} level level to create (info, error, warn, etc.)
  * @param {string} impl the level to use when writing to console
  * @param {string} type type of log, SDK or client
- * @param {bool} neverPrint function never prints to console
- * @param {bool} alwaysBuffer function always logs to log buffer
- * @param {bool} withMetadata consumes explicit metadata before body arguments
+ * @param {Object} options - Internal formatting/buffering options.
+ * @param {boolean} [options.neverPrint=false] - Never print to the console.
+ * @param {boolean} [options.alwaysBuffer=false] - Retain regardless of the configured level.
+ * @param {boolean} [options.withMetadata=false] - Read metadata before body arguments.
  * @instance
  * @memberof Logger
  * @private
@@ -421,9 +433,7 @@ function makeLoggerMethod(
   level,
   impl,
   type,
-  neverPrint = false,
-  alwaysBuffer = false,
-  withMetadata = false
+  {neverPrint = false, alwaysBuffer = false, withMetadata = false} = {}
 ) {
   // Much of the complexity in the following function is due to a test-mode-only
   // helper
@@ -506,25 +516,21 @@ function makeLoggerMethod(
       }
 
       if (shouldBuffer) {
-        const recordMetadata = captureMetadata(
-          metadata,
-          this.recordState.context,
-          (value) => this.filter(value)[0]
-        );
+        const recordMetadata = captureMetadata(metadata, (value) => this.filter(value)[0]);
         const logDate = new Date();
 
         stringified.unshift(logDate.toISOString());
         stringified.unshift('|  '.repeat(this.groupLevel));
         this.recordState.sequence += 1;
-        const entryMetadata = {
+        const bufferEntryMetadata = {
           ...recordMetadata,
-          seq: this.recordState.sequence,
-          timestamp: Number.isFinite(metadata?.timestamp) ? metadata.timestamp : logDate.getTime(),
+          sequence: this.recordState.sequence,
+          timestamp: logDate.getTime(),
           level,
           source: recordMetadata.source || logType,
         };
 
-        this.recordState.entries.set(stringified, entryMetadata);
+        this.recordState.metadataByBufferEntry.set(stringified, bufferEntryMetadata);
         bufferRef.buffer.push(stringified);
         if (bufferRef.buffer.length > historyLength) {
           // we've gone over the buffer limit, trim it down
@@ -545,7 +551,7 @@ function makeLoggerMethod(
         }
         if (level === 'group') this.groupLevel += 1;
         if (level === 'groupEnd' && this.groupLevel > 0) this.groupLevel -= 1;
-        this.recordState.notifications.notify(stringified, entryMetadata);
+        this.recordState.subscriptions.notify(stringified, bufferEntryMetadata);
       }
     } catch (reason) {
       if (!neverPrint) {
@@ -572,18 +578,21 @@ levels.forEach((level) => {
   // eslint-disable-next-line complexity
   Logger.prototype[`client_${level}`] = makeLoggerMethod(level, impl, LOG_TYPES.CLIENT);
   Logger.prototype[level] = makeLoggerMethod(level, impl, LOG_TYPES.SDK);
-  metadataMethods[level] = makeLoggerMethod(level, impl, LOG_TYPES.CLIENT, false, false, true);
-  sdkMetadataMethods[level] = makeLoggerMethod(level, impl, LOG_TYPES.SDK, false, false, true);
-  bufferMetadataMethods[level] = makeLoggerMethod(level, impl, LOG_TYPES.CLIENT, true, true, true);
+  clientMetadataMethods[level] = makeLoggerMethod(level, impl, LOG_TYPES.CLIENT, {
+    withMetadata: true,
+  });
+  sdkMetadataMethods[level] = makeLoggerMethod(level, impl, LOG_TYPES.SDK, {
+    withMetadata: true,
+  });
 });
 
-Logger.prototype.client_logToBuffer = makeLoggerMethod(
-  'info',
-  'info',
-  LOG_TYPES.CLIENT,
-  true,
-  true
-);
-Logger.prototype.logToBuffer = makeLoggerMethod('info', 'info', LOG_TYPES.SDK, true, true);
+Logger.prototype.client_logToBuffer = makeLoggerMethod('info', 'info', LOG_TYPES.CLIENT, {
+  neverPrint: true,
+  alwaysBuffer: true,
+});
+Logger.prototype.logToBuffer = makeLoggerMethod('info', 'info', LOG_TYPES.SDK, {
+  neverPrint: true,
+  alwaysBuffer: true,
+});
 
 export default Logger;

@@ -45,7 +45,7 @@ Related context: [specification registry](specs/README.md) · [package agent ins
 
 Each call decides printing and buffering separately, redacts a deep clone of the arguments, prints through `console`, and appends to a bounded buffer. `@webex/internal-plugin-support` later reads the buffer through `formatLogs` and uploads it.
 
-The package does not start a server, open a network connection, or persist data.
+The package also exposes an owned, ordered structured-record snapshot and synchronous future-record subscriptions. These reuse SDK retention; they do not add an exporter or delivery queue. The package does not start a server, open a network connection, or persist data.
 
 ## Resource inventory and responsibilities
 
@@ -110,6 +110,7 @@ Runtime dependencies declared in `package.json` and imported from `src/`:
 - `main`: `dist/index.js`
 - `devMain`: `src/index.js`
 - exports: default `Logger` and named `levels`
+- types: `index.d.ts` exports record/metadata types, `LogRecordSource`, `LogRecordListener` and `StructuredLogging`
 
 No HTTP surface exists, so `api-specs/openapi.yaml` is omitted.
 
@@ -122,6 +123,8 @@ Known in-repo consumers: `packages/@webex/internal-plugin-support/src/support.js
 | Log buffers (`buffer`, `sdkBuffer`, `clientBuffer`) | `Logger` | Buffered log calls; trimming at history length | In memory per webex instance. Lost on reload. |
 | Upload cursors (`nextIndex`, `lastSubmitted`) | `Logger`, driven by `@webex/internal-plugin-support` | `formatLogs({diff: true})`, `updateLastSubmittedIndex`, `resetBufferToLastSuccessfulUpload` | In memory. Clamped at `0` when entries are trimmed. |
 | `groupLevel` | `Logger` | Buffered `group` and `groupEnd` | In memory |
+| Structured-record sequence/metadata | `Logger` | Accepted buffered appends | Logger-local sequence and entry-keyed WeakMap; independent of support-upload cursors |
+| Record subscriptions | `LogRecordSubscriptions` | Subscribe, unsubscribe and accepted-entry notification | Synchronous temporary FIFO preserves reentrant order; no retained/export queue |
 
 Details are in the module spec.
 
@@ -151,12 +154,19 @@ One module. Files inside it:
 flowchart TD
   indexJs[src_index_js]
   loggerJs[src_logger_js]
+  records[src_log_record_ts]
+  subscriptions[src_log_record_source_ts]
   configJs[src_config_js]
   indexJs --> loggerJs
   indexJs --> configJs
+  loggerJs --> records
+  loggerJs --> subscriptions
+  subscriptions --> records
 ```
 
 `src/config.js` is not imported by `src/logger.js`. It reaches the logger as `this.config` after `registerPlugin` merges it.
+
+`log-record.ts` holds metadata and owned-snapshot helpers; snapshot retrieval samples observation time. `LogRecordSubscriptions` owns listener membership and synchronous notification ordering. The SDK logger exposes their source contract without taking ownership of consumer forwarding, batching or delivery.
 
 ## Observability patterns
 
@@ -239,6 +249,10 @@ Controls that are absent:
 | SDK log | Entry written by `<level>()`; named `wx-js-sdk` |
 | Client log | Entry written by `client_<level>()`; named by `config.logger.clientName` or `client` |
 | Buffer | In-memory array of entries kept for upload |
+| Buffer entry | Legacy raw array `[indent, isoTimestamp, name, ...values]` |
+| Log record | Owned structured view with SDK sequence, append/observation times, source, level, body and metadata |
+| Record source | `getRecords()` reads retained records; `subscribe()` registers for future accepted records |
+| Pending notification | Temporary entry/metadata/listener snapshot used only during synchronous notification |
 | Diff | Entries added since the last `formatLogs({diff: true})` |
 | `nextIndex` | Position where the next diff starts |
 | `lastSubmitted` | `nextIndex` at the last successful upload |
