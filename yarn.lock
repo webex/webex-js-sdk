@@ -7450,7 +7450,7 @@ __metadata:
     "@web/dev-server": 0.4.5
     "@webex/common": "workspace:*"
     "@webex/common-timers": "workspace:*"
-    "@webex/internal-media-core": 2.31.0
+    "@webex/internal-media-core": 2.32.1
     "@webex/internal-plugin-device": "workspace:*"
     "@webex/internal-plugin-feature": "workspace:*"
     "@webex/internal-plugin-metrics": "workspace:*"
@@ -7803,23 +7803,23 @@ __metadata:
   languageName: unknown
   linkType: soft
 
-"@webex/internal-media-core@npm:2.31.0":
-  version: 2.31.0
-  resolution: "@webex/internal-media-core@npm:2.31.0"
+"@webex/internal-media-core@npm:2.32.1":
+  version: 2.32.1
+  resolution: "@webex/internal-media-core@npm:2.32.1"
   dependencies:
     "@babel/runtime": ^7.18.9
     "@babel/runtime-corejs2": ^7.25.0
     "@webex/rtcstats": ^1.5.5
     "@webex/ts-sdp": 1.8.2
     "@webex/web-capabilities": ^1.13.1
-    "@webex/web-client-media-engine": 3.47.1
+    "@webex/web-client-media-engine": 3.47.3
     events: ^3.3.0
     ip-anonymize: ^0.1.0
     typed-emitter: ^2.1.0
     uuid: ^8.3.2
     webrtc-adapter: ^8.1.2
     xstate: ^4.30.6
-  checksum: 1b9c44bd8d6aa4ac080b85dd28f01405b86a80f2adb16ea4f39c75dd594c9ad071f18e8ec0b8774af8373dddc884939c5febbb9909717e41c8c1ea8c0f5a8876
+  checksum: 7ce80ff670dc07bbd8a86b63042d00449eba2d8a91181d036c4278fb80eb2964ff329175e8c085b375d41eb5af671a84706eae6320659aec50fc327806cd5db6
   languageName: node
   linkType: hard
 
@@ -8674,13 +8674,13 @@ __metadata:
     "@babel/preset-typescript": 7.22.11
     "@webex/babel-config-legacy": "workspace:*"
     "@webex/eslint-config-legacy": "workspace:*"
-    "@webex/internal-media-core": 2.31.0
+    "@webex/internal-media-core": 2.32.1
     "@webex/jest-config-legacy": "workspace:*"
     "@webex/legacy-tools": "workspace:*"
     "@webex/test-helper-chai": "workspace:*"
     "@webex/test-helper-mock-webex": "workspace:*"
     "@webex/ts-events": ^1.1.0
-    "@webex/web-media-effects": 2.37.0
+    "@webex/web-media-effects": 2.39.0
     eslint: ^8.24.0
     jsdom-global: 3.0.2
     prettier: ^2.7.1
@@ -8942,7 +8942,7 @@ __metadata:
     "@webex/common": "workspace:*"
     "@webex/eslint-config-legacy": "workspace:*"
     "@webex/event-dictionary-ts": ^1.0.2215
-    "@webex/internal-media-core": 2.31.0
+    "@webex/internal-media-core": 2.32.1
     "@webex/internal-plugin-conversation": "workspace:*"
     "@webex/internal-plugin-device": "workspace:*"
     "@webex/internal-plugin-identity": "workspace:*"
@@ -9659,22 +9659,22 @@ __metadata:
   languageName: node
   linkType: hard
 
-"@webex/web-client-media-engine@npm:3.47.1":
-  version: 3.47.1
-  resolution: "@webex/web-client-media-engine@npm:3.47.1"
+"@webex/web-client-media-engine@npm:3.47.3":
+  version: 3.47.3
+  resolution: "@webex/web-client-media-engine@npm:3.47.3"
   dependencies:
     "@webex/json-multistream": ^2.4.3
     "@webex/rtcstats": ^1.5.5
     "@webex/ts-events": ^1.2.1
     "@webex/ts-sdp": 1.8.2
     "@webex/web-capabilities": ^1.13.1
-    "@webex/web-media-effects": 2.37.0
-    "@webex/webrtc-core": 2.15.0
+    "@webex/web-media-effects": 2.39.0
+    "@webex/webrtc-core": 2.15.1
     async: ^3.2.4
     js-logger: ^1.6.1
     typed-emitter: ^2.1.0
     uuid: ^8.3.2
-  checksum: 048b0e36c24630041f323e99835f46e03418610bb05253f2066b447f60c0c80ccccfa3a7428e6995a6f7ccf6277aac11d110a97d05cf3530def8013969ee5433
+  checksum: 1babda72a779ebab47253eebbbb988d140991d81356fb4977017d6b69fc8343f88f484e741324dfb174d1bc2780bf7df5de96248a6f4c6e7b59e50975b86f5b1
   languageName: node
   linkType: hard
 
@@ -9697,9 +9697,9 @@ __metadata:
   languageName: unknown
   linkType: soft
 
-"@webex/web-media-effects@npm:2.37.0":
-  version: 2.37.0
-  resolution: "@webex/web-media-effects@npm:2.37.0"
+"@webex/web-media-effects@npm:2.39.0":
+  version: 2.39.0
+  resolution: "@webex/web-media-effects@npm:2.39.0"
   dependencies:
     "@webex/ladon-ts": ^5.10.0
     "@webex/web-capabilities": ^1.13.1
@@ -9709,7 +9709,7 @@ __metadata:
     uuid: ^9.0.1
     worker-timers: ^8.0.21
     yarn: ^1.22.22
-  checksum: 16415e8be187bd78d318851eb66cefa83ee7ac131963b7af9ab58c776d234423036ed8b9b080daca4f0fcaac822a2e039c9595cff59f6ca0cac80641c4170f7e
+  checksum: 6dd6efa0b69bc1874a1d8abcc99e79ffd16d5c855f50ceb895214b4a89bb5029e0b2466d7300ef01dcdc96db2a6476108b7bfa50b0ffd1eceb3f2f0e75de3fee
   languageName: node
   linkType: hard
 
@@ -9817,18 +9817,18 @@ __metadata:
   languageName: unknown
   linkType: soft
 
-"@webex/webrtc-core@npm:2.15.0":
-  version: 2.15.0
-  resolution: "@webex/webrtc-core@npm:2.15.0"
+"@webex/webrtc-core@npm:2.15.1":
+  version: 2.15.1
+  resolution: "@webex/webrtc-core@npm:2.15.1"
   dependencies:
     "@webex/ts-events": ^1.2.1
     "@webex/web-capabilities": ^1.13.1
-    "@webex/web-media-effects": 2.37.0
+    "@webex/web-media-effects": 2.39.0
     events: ^3.3.0
     js-logger: ^1.6.1
     typed-emitter: ^2.1.0
     webrtc-adapter: ^8.1.2
-  checksum: 13cd92d23329ff45c23875a7745d10058bd1bd1d936744afedc6ab437e23111422639aa0f19afacb51e0116f627664726b9c016c7a25c50f9d8f71392d1ca48d
+  checksum: 253d9842b36e562e5bfe5c1c7758a989122163d95840a1b7116a9bb94a32558902f036d8e2225c46e0b98ead506008e0e612bef819840c59cdc7f1c8b383bfbc
   languageName: node
   linkType: hard
 
@@ -14169,6 +14169,22 @@ __metadata:
   languageName: node
   linkType: hard
 
+"copy-webpack-plugin@npm:11.0.0":
+  version: 11.0.0
+  resolution: "copy-webpack-plugin@npm:11.0.0"
+  dependencies:
+    fast-glob: ^3.2.11
+    glob-parent: ^6.0.1
+    globby: ^13.1.1
+    normalize-path: ^3.0.0
+    schema-utils: ^4.0.0
+    serialize-javascript: ^6.0.0
+  peerDependencies:
+    webpack: ^5.1.0
+  checksum: df4f8743f003a29ee7dd3d9b1789998a3a99051c92afb2ba2203d3dacfa696f4e757b275560fafb8f206e520a0aa78af34b990324a0e36c2326cefdeef3ca82e
+  languageName: node
+  linkType: hard
+
 "core-decorators@npm:^0.20.0":
   version: 0.20.0
   resolution: "core-decorators@npm:0.20.0"
@@ -17656,7 +17672,7 @@ __metadata:
   languageName: node
   linkType: hard
 
-"fast-glob@npm:^3.2.5, fast-glob@npm:^3.2.9, fast-glob@npm:^3.3.2":
+"fast-glob@npm:^3.2.11, fast-glob@npm:^3.2.5, fast-glob@npm:^3.2.9, fast-glob@npm:^3.3.0, fast-glob@npm:^3.3.2":
   version: 3.3.3
   resolution: "fast-glob@npm:3.3.3"
   dependencies:
@@ -19187,6 +19203,19 @@ __metadata:
   languageName: node
   linkType: hard
 
+"globby@npm:^13.1.1":
+  version: 13.2.2
+  resolution: "globby@npm:13.2.2"
+  dependencies:
+    dir-glob: ^3.0.1
+    fast-glob: ^3.3.0
+    ignore: ^5.2.4
+    merge2: ^1.4.1
+    slash: ^4.0.0
+  checksum: f3d84ced58a901b4fcc29c846983108c426631fe47e94872868b65565495f7bee7b3defd68923bd480582771fd4bbe819217803a164a618ad76f1d22f666f41e
+  languageName: node
+  linkType: hard
+
 "globrex@npm:^0.1.2":
   version: 0.1.2
   resolution: "globrex@npm:0.1.2"
@@ -20092,7 +20121,7 @@ __metadata:
   languageName: node
   linkType: hard
 
-"ignore@npm:^5.2.0, ignore@npm:^5.3.2":
+"ignore@npm:^5.2.0, ignore@npm:^5.2.4, ignore@npm:^5.3.2":
   version: 5.3.2
   resolution: "ignore@npm:5.3.2"
   checksum: 2acfd32a573260ea522ea0bfeff880af426d68f6831f973129e2ba7363f422923cf53aab62f8369cbf4667c7b25b6f8a3761b34ecdb284ea18e87a5262a865be
@@ -30010,7 +30039,7 @@ __metadata:
   languageName: node
   linkType: hard
 
-"serialize-javascript@npm:^6.0.2":
+"serialize-javascript@npm:^6.0.0, serialize-javascript@npm:^6.0.2":
   version: 6.0.2
   resolution: "serialize-javascript@npm:6.0.2"
   dependencies:
@@ -30486,6 +30515,13 @@ __metadata:
   version: 3.0.0
   resolution: "slash@npm:3.0.0"
   checksum: 94a93fff615f25a999ad4b83c9d5e257a7280c90a32a7cb8b4a87996e4babf322e469c42b7f649fd5796edd8687652f3fb452a86dc97a816f01113183393f11c
+  languageName: node
+  linkType: hard
+
+"slash@npm:^4.0.0":
+  version: 4.0.0
+  resolution: "slash@npm:4.0.0"
+  checksum: da8e4af73712253acd21b7853b7e0dbba776b786e82b010a5bfc8b5051a1db38ed8aba8e1e8f400dd2c9f373be91eb1c42b66e91abb407ff42b10feece5e1d2d
   languageName: node
   linkType: hard
 
@@ -34185,6 +34221,7 @@ __metadata:
     chai-as-promised: ^7.1.1
     chromedriver: ^119.0.1
     circular-dependency-plugin: ^5.2.2
+    copy-webpack-plugin: 11.0.0
     core-js: ^3.26.0
     debug: ^4.3.4
     detective: ^5.2.1
