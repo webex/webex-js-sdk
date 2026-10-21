@@ -49,7 +49,7 @@ describe('StaticAssetLoader', () => {
     });
   });
 
-  it('requests the resolved asset url as a binary GET', async () => {
+  it('requests the resolved asset url as a binary GET without auth or custom headers', async () => {
     resolveWith();
 
     await createLoader('/assets/').getBytes('/some-big-binary-file.dat');
@@ -58,6 +58,12 @@ describe('StaticAssetLoader', () => {
       method: 'GET',
       uri: '/assets/some-big-binary-file.dat',
       responseType: 'buffer',
+      addAuthHeader: false,
+      headers: {
+        trackingid: null,
+        'spark-user-agent': null,
+        'cisco-no-http-redirect': null,
+      },
     });
   });
 
