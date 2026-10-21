@@ -92,7 +92,7 @@ describe('plugin-identity', () => {
         assert.equal(args.method, 'POST');
         assert.equal(args.service, 'webex-certificate-authority');
         assert.equal(args.resource, 'certificates');
-        assert.deepEqual(args.headers, {'include-root-cert': 'true'});
+        assert.deepEqual(args.headers, {'include-root-cert': 'false'});
         assert.deepEqual(args.body, {csr: 'BASE64CSR'});
 
         // The raw EC P-256 key is bytes 36..67 of the PKCS#8 DER.
