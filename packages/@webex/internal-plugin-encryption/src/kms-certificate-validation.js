@@ -1,28 +1,9 @@
 import {parse as parseUrl} from 'url';
 
-import {isUri} from 'valid-url';
-import {fromBER} from 'asn1js';
-import {
-  Certificate,
-  RSAPublicKey,
-  CertificateChainValidationEngine,
-  CryptoEngine,
-  setEngine,
-} from 'pkijs';
+import {Certificate, RSAPublicKey, CertificateChainValidationEngine} from 'pkijs';
 import {isArray} from 'lodash';
 import jose from 'node-jose';
-import crypto from 'isomorphic-webcrypto';
-import {Buffer} from 'safe-buffer';
-
-setEngine(
-  'newEngine',
-  crypto,
-  new CryptoEngine({
-    name: '',
-    crypto,
-    subtle: crypto.subtle,
-  })
-);
+import {Buffer} from 'buffer';
 
 const VALID_KTY = 'RSA';
 const VALID_KID_PROTOCOL = 'kms:';
@@ -60,12 +41,7 @@ const decodeCert = (pem) => {
     throwError('certificate needs to be a string');
   }
 
-  const der = Buffer.from(pem, 'base64');
-  const ber = new Uint8Array(der).buffer;
-
-  const asn1 = fromBER(ber);
-
-  return new Certificate({schema: asn1.result});
+  return Certificate.fromBER(Buffer.from(pem, 'base64'));
 };
 
 /**
@@ -82,11 +58,15 @@ const validateKtyHeader = ({kty}) => {
 };
 
 const validateKidHeader = ({kid}) => {
-  if (!isUri(kid)) {
+  let parsedKid;
+
+  try {
+    parsedKid = new URL(kid);
+  } catch (_e) {
     throwError("'kid' is not a valid URI");
   }
 
-  if (parseUrl(kid).protocol !== VALID_KID_PROTOCOL) {
+  if (parsedKid.protocol !== VALID_KID_PROTOCOL) {
     throwError(`'kid' protocol must be '${VALID_KID_PROTOCOL}'`);
   }
 };
@@ -95,7 +75,7 @@ const validateKidHeader = ({kid}) => {
  * Checks the first certificate matches the 'kid' in the JWT.
  * It first checks the Subject Alternative Name then it checks
  * the Common Name
- * @param {Certificate} certificate represents the KMS
+ * @param {Certificate[]} certificates list of certificates provided by the KMS
  * @param {Object} JWT KMS credentials
  * @param {string} JWT.kid the uri of the KMS
  * @throws {KMSError} if unable to validate certificate against KMS credentials
@@ -151,10 +131,10 @@ export const validateCommonName = ([certificate], {kid}) => {
 /**
  * Validate the first KMS certificate against the information
  * provided in the JWT
- * @param {Certificate} certificate first certificate the identifies the KMS
+ * @param {Certificate[]} certificates list of certificates provided by the KMS
  * @param {Object} JWT credentials of the KMS
  * @param {string} JWT.e Public exponent of the first certificate
- * @param {string} KWT.n Modulus of the first certificate
+ * @param {string} JWT.n Modulus of the first certificate
  * @throws {KMSError} if e or n doesn't match the first certificate
  * @returns {void}
  */
@@ -162,10 +142,9 @@ const validatePublicCertificate = ([certificate], {e: publicExponent, n: modulus
   const {encode} = jose.util.base64url;
 
   const publicKey = certificate.subjectPublicKeyInfo.subjectPublicKey;
-  const asn1PublicCert = fromBER(publicKey.valueBlock.valueHex);
-  const publicCert = new RSAPublicKey({schema: asn1PublicCert.result});
-  const publicExponentHex = publicCert.publicExponent.valueBlock.valueHex;
-  const modulusHex = publicCert.modulus.valueBlock.valueHex;
+  const publicCert = RSAPublicKey.fromBER(publicKey.valueBlock.valueHexView);
+  const publicExponentHex = publicCert.publicExponent.valueBlock.valueHexView;
+  const modulusHex = publicCert.modulus.valueBlock.valueHexView;
 
   if (publicExponent !== encode(publicExponentHex)) {
     throwError('Public exponent is invalid');
