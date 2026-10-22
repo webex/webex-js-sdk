@@ -10,6 +10,7 @@ import E2eeSignaling from '@webex/plugin-meetings/src/e2ee/E2eeSignaling';
 import WasmLoader from '@webex/plugin-meetings/src/common/wasm-loader';
 import {StaticAssetLoader} from '@webex/webex-core';
 import Trigger from '@webex/plugin-meetings/src/common/events/trigger-proxy';
+import LoggerProxy from '@webex/plugin-meetings/src/common/logs/logger-proxy';
 import {EVENT_TRIGGERS} from '@webex/plugin-meetings/src/constants';
 
 describe('plugin-meetings', () => {
@@ -387,6 +388,21 @@ describe('plugin-meetings', () => {
     });
 
     describe('stop', () => {
+      it('is a silent no-op when E2EE was never started', async () => {
+        const loggerInfoStub = sinon.stub(LoggerProxy.logger, 'info');
+
+        assert.equal(e2ee.state, 'disabled');
+
+        await e2ee.stop();
+
+        assert.equal(e2ee.state, 'disabled');
+        assert.notCalled(signalingStopStub);
+        assert.notCalled(leaveStub);
+        assert.notCalled(loggerInfoStub);
+
+        loggerInfoStub.restore();
+      });
+
       it('tears down signaling and session and resets to left', async () => {
         await e2ee.start();
         emitSession('joinSuccess', {securityCode: 'SEC-1'});

@@ -244,12 +244,15 @@ export default class E2eeController extends EventsScope {
    * @returns {Promise<void>}
    */
   async stop(): Promise<void> {
+    if (this.currentState === 'disabled') {
+      // E2EE was never started (not required for this meeting, or still pre-join). Nothing to tear
+      // down, and we stay silent so callers can invoke stop() unconditionally without log noise.
+      return;
+    }
+
     LoggerProxy.logger.info('e2ee: E2eeController#stop --> stopping E2EE session');
     this.cleanupSession();
-
-    if (this.currentState !== 'disabled') {
-      this.setState('left');
-    }
+    this.setState('left');
   }
 
   /**

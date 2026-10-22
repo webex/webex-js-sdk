@@ -2921,25 +2921,50 @@ export default class Meeting extends StatelessWebexPlugin {
       // If user moved to a JOINED state and there is a pending floor grant trigger it
       this.requestScreenShareFloorIfPending();
 
-      // Start the E2EE MLS join only once Locus confirms this WDM device has transitioned to
-      // JOINED. The aggregate self state can be JOINED because another device for this user joined.
-      // Joining earlier (e.g. right after the join request, or while in the lobby) is too early.
-      const wasDeviceJoined =
-        payload.oldSelf?.joinedWith?.url === this.deviceUrl &&
-        payload.oldSelf?.joinedWith?.state === MEETING_STATE.STATES.JOINED;
-      const isDeviceJoined =
-        payload.newSelf?.joinedWith?.url === this.deviceUrl &&
-        payload.newSelf?.joinedWith?.state === MEETING_STATE.STATES.JOINED;
-
-      if (!wasDeviceJoined && isDeviceJoined) {
-        this.e2ee?.start().catch((error) => {
-          LoggerProxy.logger.error(
-            'Meeting:index#setUpLocusSelfListener --> E2EE start failed',
-            error
-          );
-        });
-      }
+      this.updateE2eeOnSelfChange(payload);
     });
+  }
+
+  /**
+   * Drives the E2EE MLS lifecycle from self-state changes for this WDM device:
+   * join once the device is JOINED, leave when it is moved back into the lobby.
+   * @param {Object} payload the LOCUS_INFO_UPDATE_SELF payload (oldSelf, newSelf)
+   * @returns {undefined}
+   * @private
+   * @memberof Meeting
+   */
+  private updateE2eeOnSelfChange(payload: any) {
+    // Gate on this WDM device's joinedWith state, not the aggregate self state (which can be JOINED
+    // because another device for the same user joined). Lobby/pre-join selves are never JOINED.
+    const wasDeviceJoined =
+      payload.oldSelf?.joinedWith?.url === this.deviceUrl &&
+      payload.oldSelf?.joinedWith?.state === MEETING_STATE.STATES.JOINED;
+    const isDeviceJoined =
+      payload.newSelf?.joinedWith?.url === this.deviceUrl &&
+      payload.newSelf?.joinedWith?.state === MEETING_STATE.STATES.JOINED;
+
+    if (!wasDeviceJoined && isDeviceJoined) {
+      this.e2ee?.start().catch((error) => {
+        LoggerProxy.logger.error(
+          'Meeting:index#updateE2eeOnSelfChange --> E2EE start failed',
+          error
+        );
+      });
+    }
+
+    // Leave when the host moves this device back into the lobby. stop() self-guards when no MLS
+    // session is active, and resets to 'left' so a later re-admit re-runs start().
+    const wasDeviceUnadmitted = payload.oldSelf?.isUserUnadmitted === true;
+    const isDeviceUnadmitted = payload.newSelf?.isUserUnadmitted === true;
+
+    if (!wasDeviceUnadmitted && isDeviceUnadmitted) {
+      this.e2ee?.stop().catch((error) => {
+        LoggerProxy.logger.error(
+          'Meeting:index#updateE2eeOnSelfChange --> E2EE stop failed',
+          error
+        );
+      });
+    }
   }
 
   /**

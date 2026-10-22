@@ -477,6 +477,64 @@ describe('plugin-meetings', () => {
           assert.calledOnce(e2ee.start);
         });
 
+        it('stops E2EE when the current WDM device is moved back to lobby', () => {
+          TriggerProxy.trigger.restore();
+          const e2ee = new EventEmitter();
+
+          e2ee.stop = sinon.stub().resolves();
+          const meetingWithE2ee = new Meeting(
+            {
+              userId: uuid1,
+              resource: uuid2,
+              deviceUrl: uuid3,
+              locus: {url: url1},
+              destination: testDestination,
+              destinationType: DESTINATION_TYPE.MEETING_ID,
+              correlationId,
+              selfId: uuid1,
+              e2eeManager: {createE2eeController: sinon.stub().returns(e2ee)},
+            },
+            {parent: webex}
+          );
+
+          sinon.stub(meetingWithE2ee.members, 'locusSelfUpdate');
+          sinon.stub(meetingWithE2ee, 'pstnUpdate');
+          sinon.stub(meetingWithE2ee, 'requestScreenShareFloorIfPending');
+
+          // Already unadmitted -> still unadmitted: not an entering-lobby edge, so do not stop.
+          meetingWithE2ee.locusInfo.emitScoped({}, EVENTS.LOCUS_INFO_UPDATE_SELF, {
+            oldSelf: {isUserUnadmitted: true},
+            newSelf: {isUserUnadmitted: true},
+          });
+
+          assert.notCalled(e2ee.stop);
+
+          // Admitted -> still admitted: not a lobby transition, so do not stop.
+          meetingWithE2ee.locusInfo.emitScoped({}, EVENTS.LOCUS_INFO_UPDATE_SELF, {
+            oldSelf: {isUserUnadmitted: false},
+            newSelf: {isUserUnadmitted: false},
+          });
+
+          assert.notCalled(e2ee.stop);
+
+          // Unadmitted -> admitted (host admits from lobby): the inverse edge must not stop E2EE.
+          meetingWithE2ee.locusInfo.emitScoped({}, EVENTS.LOCUS_INFO_UPDATE_SELF, {
+            oldSelf: {isUserUnadmitted: true},
+            newSelf: {isUserUnadmitted: false},
+          });
+
+          assert.notCalled(e2ee.stop);
+
+          // Admitted -> moved back to lobby: leave the MLS group. The controller self-guards when
+          // E2EE was never started, so the listener calls stop() unconditionally on this edge.
+          meetingWithE2ee.locusInfo.emitScoped({}, EVENTS.LOCUS_INFO_UPDATE_SELF, {
+            oldSelf: {isUserUnadmitted: false},
+            newSelf: {isUserUnadmitted: true},
+          });
+
+          assert.calledOnce(e2ee.stop);
+        });
+
         it('emits trust state changes caused by Locus and E2EE updates', () => {
           TriggerProxy.trigger.restore();
           const e2ee = new EventEmitter();

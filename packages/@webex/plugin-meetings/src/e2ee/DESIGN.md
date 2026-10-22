@@ -670,15 +670,16 @@ to surface the meeting's zero-trust state.
   `this.e2ee = attrs.e2eeManager?.createE2eeController(context)` (or an undefined-safe no-op facade).
   Because `createE2eeController` returns a facade whose `start()`
   no-ops when E2EE is disabled, call sites stay unconditional.
-- **MLS join is gated on Locus confirming the current WDM device is `JOINED`.** In
-  `setUpLocusSelfListener` (the `LOCUS_INFO_UPDATE_SELF` handler), when `joinedWith` for
-  `this.deviceUrl` transitions to `JOINED` (`oldSelf.joinedWith.state !== JOINED` and
-  `newSelf.joinedWith.state === JOINED`), call `this.e2ee.start().catch(log)`. The aggregate
-  `self.state` can be `JOINED` because another device for the same user joined; that must not
-  trigger MLS join in this SDK instance.
-  Starting earlier — right after the join request response — is too early and also never fires
-  while the user sits in the meeting lobby (self is not `JOINED` until admitted). `start()` is
-  idempotent and self-guarded, so the edge check only keeps logs clean.
+- **E2EE MLS lifecycle is driven from self-state changes in `updateE2eeOnSelfChange`**, called by the
+  `setUpLocusSelfListener` (`LOCUS_INFO_UPDATE_SELF`) handler:
+  - **Join** when this WDM device's `joinedWith` edges to `JOINED` (`oldSelf.joinedWith.state !== JOINED`,
+    `newSelf.joinedWith.state === JOINED`) → `this.e2ee.start()`. Gating on `joinedWith` for `this.deviceUrl`,
+    not the aggregate `self.state`, avoids joining when another device for the same user joins; lobby/pre-join
+    selves are never `JOINED`.
+  - **Leave** when the host moves this device back into the lobby (`oldSelf.isUserUnadmitted !== true`,
+    `newSelf.isUserUnadmitted === true`) → `this.e2ee.stop()`. `stop()` is a silent no-op while `disabled`
+    (never started), and resets to `left` so a later re-admit re-runs `start()`.
+  - `start()`/`stop()` are idempotent and self-guarded, so the edge checks only keep logs clean.
 - `createMediaConnection()`: after `setMediaPeerConnection(mc)`, call
   `this.e2ee.attachMediaConnection(this.mediaProperties.webrtcMediaConnection)`.
 - `closePeerConnections()`: `this.e2ee.detachMediaConnection()` before `mc.close()`.
