@@ -17,8 +17,7 @@ import {createSigningChain, createBundle, DAY} from '../lib/bundle-factory';
 const FIXTURE_VERSION = 20261022;
 const FIXTURE_SIGNING_TIME = '2026-10-22T04:41:57.000Z';
 const FIXTURE_ROOT_COUNT = 231;
-const TRS_ROOT_FINGERPRINT =
-  'dec669e322e07cd7c60a56904bf50c29fa1e75071723fc103577e27b226968d5';
+const TRS_ROOT_FINGERPRINT = 'dec669e322e07cd7c60a56904bf50c29fa1e75071723fc103577e27b226968d5';
 
 const FIXTURE_NAME = 'ios_union.p7b';
 
@@ -192,7 +191,11 @@ describe('kms-caroots', () => {
       });
 
       [
-        {title: 'a different bundle name', options: {bundleName: 'Trusted Core Bundle'}, reason: 'name'},
+        {
+          title: 'a different bundle name',
+          options: {bundleName: 'Trusted Core Bundle'},
+          reason: 'name',
+        },
         {title: 'a malformed version', options: {bundleVersion: 'latest'}, reason: 'version'},
         {title: 'a short version', options: {bundleVersion: '2026'}, reason: 'version'},
         {

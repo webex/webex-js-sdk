@@ -12,6 +12,7 @@ const merge = require('lodash/merge');
 const WebexCore = require('@webex/webex-core').default;
 
 const config = require('./config');
+const assetsConfig = require('./assets-config');
 
 const Webex = WebexCore.extend({
   webex: true,
@@ -39,7 +40,7 @@ class Calling extends EventEmitter {
       }
       this.log.setWebexLogger(this.webex.logger);
     } else {
-      webexConfig.config = merge({}, config, webexConfig.config);
+      webexConfig.config = merge({}, assetsConfig, config, webexConfig.config);
 
       this.webex = new Webex(webexConfig);
 

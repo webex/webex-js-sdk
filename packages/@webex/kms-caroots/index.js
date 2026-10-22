@@ -9,8 +9,7 @@ const {URL} = require('url');
 
 const {verifyUnionBundle, UnionBundleVerificationError, TRS_BUNDLE_ROOT_CA} = require('./verify');
 
-const DEFAULT_BUNDLE_URL =
-  'https://www.cisco.com/security/pki/trs/current/ios_union/ios_union.p7b';
+const DEFAULT_BUNDLE_URL = 'https://www.cisco.com/security/pki/trs/current/ios_union/ios_union.p7b';
 const DOWNLOAD_TIMEOUT_MS = 30000;
 const MAX_REDIRECTS = 5;
 
@@ -57,7 +56,9 @@ function download(url, redirects = 0) {
         }
 
         try {
-          resolveDownload(download(new URL(res.headers.location, target).toString(), redirects + 1));
+          resolveDownload(
+            download(new URL(res.headers.location, target).toString(), redirects + 1)
+          );
         } catch (error) {
           rejectDownload(error);
         }

@@ -296,7 +296,10 @@ async function verifyUnionBundle(bytes, options = {}) {
   }
 
   // Also keeps pkijs off its TSTInfo path, which would replace checkDate.
-  if (signedData.encapContentInfo.eContentType !== OID_PKCS7_DATA || !signedData.encapContentInfo.eContent) {
+  if (
+    signedData.encapContentInfo.eContentType !== OID_PKCS7_DATA ||
+    !signedData.encapContentInfo.eContent
+  ) {
     fail('parse', 'bundle does not contain embedded pkcs7-data content');
   }
 

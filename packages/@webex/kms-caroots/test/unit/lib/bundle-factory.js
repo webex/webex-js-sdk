@@ -21,7 +21,11 @@ const RSA_ALGORITHM = {
 const DAY = 24 * 60 * 60 * 1000;
 
 const getEngine = () =>
-  new pkijs.CryptoEngine({name: 'test', crypto: globalThis.crypto, subtle: globalThis.crypto.subtle});
+  new pkijs.CryptoEngine({
+    name: 'test',
+    crypto: globalThis.crypto,
+    subtle: globalThis.crypto.subtle,
+  });
 
 const bytesToBase64 = (bytes) => {
   let binary = '';

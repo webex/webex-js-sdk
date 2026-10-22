@@ -2,7 +2,7 @@
  * Copyright (c) 2015-2020 Cisco Systems, Inc. See LICENSE file.
  */
 
-import caroots from '@webex/kms-caroots';
+import {UNION_BUNDLE_ASSET} from './union-bundle';
 
 export default {
   encryption: {
@@ -50,22 +50,41 @@ export default {
     batcherMaxWait: 150,
 
     /**
-     * Whether to validate the KMS certificate chain against `caroots`. Defaults
-     * to true as a secure default: when enabled the KMS certificate must
-     * validate against a configured `caroots` bundle, and a missing bundle
-     * fails closed. Set to false to temporarily opt out of validation, e.g.
-     * while upgrading and wiring up the CA root bundle.
+     * Whether to validate the KMS certificate chain. Defaults to true as a
+     * secure default: the KMS certificate must chain to a trusted CA root
+     * (see `caroots` and `carootsAsset`), and when no CA roots are available
+     * validation fails closed. Set to false to opt out of validation.
      * @type {boolean}
      */
     shouldValidateKMSCertificate: true,
 
     /**
-     * Bundled CA roots used to validate the KMS certificate chain, as an array
-     * of raw base64-encoded certificates (the DER body, without the
-     * -----BEGIN/END CERTIFICATE----- lines).
-     * @type {string[]}
+     * CA roots used to validate the KMS certificate chain, as an array of raw
+     * base64-encoded certificates (the DER body, without the
+     * -----BEGIN/END CERTIFICATE----- lines). When set, these take precedence
+     * and the `carootsAsset` bundle is never downloaded. Generate them with
+     * `@webex/kms-caroots` for offline or locked-down deployments.
+     * @type {?string[]}
      */
-    caroots,
+    caroots: undefined,
+
+    /**
+     * File name of Cisco's signed Trusted Root Store "Union" bundle, loaded
+     * from `assetsBaseUrl` (from the package's own assets in Node) on first
+     * KMS use when `caroots` isn't set. The bundle's signature is verified
+     * before its certificates are trusted.
+     * @type {string}
+     */
+    carootsAsset: UNION_BUNDLE_ASSET,
+
+    /**
+     * Base URL of the directory hosting this plugin's static assets (e.g.
+     * `ios_union.p7b`). The `webex` package defaults it to the versioned
+     * jsDelivr copy of its UMD assets. Self-hosters should point it at their
+     * copy of `internal-plugin-encryption/dist/assets/`.
+     * @type {?string}
+     */
+    assetsBaseUrl: undefined,
 
     /**
      * An additional CA root bundle validated alongside `caroots`. Unlike

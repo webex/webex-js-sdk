@@ -1,0 +1,25 @@
+<!--
+  Copyright (c) 2015-2026 Cisco Systems, Inc. See LICENSE file.
+-->
+
+# internal-plugin-encryption static assets
+
+This folder contains files that internal-plugin-encryption loads at runtime:
+
+- `ios_union.p7b` — Cisco's signed Trusted Root Store "Union" bundle. On first KMS use the SDK
+  downloads it, verifies its CMS signature against the pinned Cisco TRS Bundle Root CA and uses
+  the contained certificates as the CA roots for KMS certificate validation (unless
+  `encryption.caroots` is configured).
+
+`yarn build:src` copies these files to `packages/@webex/internal-plugin-encryption/dist/assets`.
+For UMD/CDN distribution, `yarn build:script` copies them to
+`packages/webex/umd/assets/internal-plugin-encryption/`.
+
+The file is signed, so it is safe to commit. To refresh it from Cisco, run:
+
+```bash
+yarn workspace @webex/internal-plugin-encryption assets:refresh
+```
+
+This verifies the downloaded bundle with the same code the SDK uses at runtime, refuses to
+downgrade the bundle version, and regenerates `src/union-bundle.js`.
