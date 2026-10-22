@@ -3,7 +3,7 @@ doc_kind: agent-entry
 generated_from: agents@0.3.0
 generated_by: claude-code
 approved_by: riag@cisco.com
-updated_at: 2026-10-12T12:02:03Z
+updated_at: 2026-10-22T06:52:30Z
 validation_status: pass
 -->
 
@@ -32,6 +32,9 @@ Before changing code or documentation, start with:
 - [`docs/specs/README.md`](docs/specs/README.md) for the manifest-backed module and contract registry;
 - the module specification at [`src/docs/README.md`](src/docs/README.md) (user plugin); and
 - [`docs/adr/index.md`](docs/adr/index.md) plus applicable concrete ADRs.
+
+Workspace-wide setup and conventions are in the monorepo root agent entry:
+[`../../../AGENTS.md`](../../../AGENTS.md).
 
 Follow `.sdd/manifest.json` for each contract's publication state and canonical source. This package
 publishes an SDK surface, so its contract artifact is `package.json` plus the `src/index.js` entry
@@ -196,5 +199,6 @@ PR checklist:
 - Edit `dist/` by hand.
 - Commit secrets, tokens, or credentials, including in test fixtures.
 - Log client secrets, tokens, passwords, or one-time passwords.
-- Copy template files into the package or replace the `.sdd/templates/repo-standards` symlink with a
-  directory. It points to the repository-root `.sdd/templates/repo-standards` snapshot.
+- Add a `.sdd/templates` directory, a copy of the templates, or a link to them in this package. The
+  templates live once at the monorepo root, `../../../.sdd/templates/repo-standards`, and
+  `.sdd/manifest.json` refers to them through `layout.monorepo_package`.

@@ -9,7 +9,7 @@ doc_kind: module-spec
 generated_from: module-spec@0.3.0
 generated_by: claude-code
 approved_by: riag@cisco.com
-updated_at: 2026-10-12T12:02:03Z
+updated_at: 2026-10-22T06:52:30Z
 validation_status: pass
 -->
 
@@ -31,12 +31,12 @@ Related context: [documentation index](../../docs/index.md) ·
 | Source path       | `src` |
 | Resource kind     | package |
 | Status            | Draft |
-| Last verified     | 2026-10-12 at `8a63b4aac9` |
+| Last verified     | 2026-10-22 at `fd53120686` |
 | Module id         | `internal-plugin-user` |
 | Parent spec       | — |
 | Doc kind          | Module spec |
-| Coverage score    | 93.3% assessed 2026-10-12 — 14 of 15 mandatory fields PRESENT, critical 8 of 8; test strategy is WEAK because account-flow request shapes, the create guard, `fetchUUID`, the `faker` batcher, the store, `getUserCI`, the config defaults, and persistence have no unit case and no characterization baseline exists |
-| Validation status | pass — validator `01a12fef-8f14-7421-b415-5255c288c1a2`, assessed 2026-10-12; 0 findings; conformance, deterministic checks, implementation review, build, unit tests, and style checks pass |
+| Coverage score    | 86.7% assessed 2026-10-22 — 13 of 15 mandatory fields PRESENT, critical 7 of 8; two fields are WEAK: requirement rationale, because 11 observed behaviors have no stated reason and are recorded as OBS observations pending owner input, and test strategy, because account-flow request shapes, the create guard, `fetchUUID`, the `faker` batcher, the store, `getUserCI`, the config defaults, and persistence have no unit case and no characterization baseline exists |
+| Validation status | Pass — revalidated 2026-10-22 by runtime `01a1620b-9191-7020-aebe-d2722140e493`; 0 findings against source commit `fd53120686`; package and orchestrator routing checks, conformance, implementation review, build, unit tests, and style checks pass |
 
 ## Applicability
 
@@ -118,15 +118,15 @@ and does not restate signatures.
 
 | Surface | Consumer | Compatibility commitment | Source |
 | ------- | -------- | ------------------------ | ------ |
-| Registration side effect | Every importer | Importing the package installs `webex.internal.user` (`MOD-001`) | `src/index.js` |
-| `asUUID`, `getUUID`, `fetchUUID`, `recordUUID` | conversation, team, avatar, plugin-meetings | Resolve and cache user uuids (`MOD-002` to `MOD-006`) | `src/user.js` |
-| `get()` | Internal callers | Fetch the current user and record the id and email (`MOD-008`) | `src/user.js` |
-| `update`, `updateName`, `setPassword` | Internal callers | Profile and password changes (`MOD-009`, `MOD-014`) | `src/user.js` |
-| `verify`, `register` (deprecated alias), `getUserCI` | Sign-in and sign-up flows | Account status lookup (`MOD-010`, `MOD-011`) | `src/user.js` |
-| `activate`, `generateOTP`, `validateOTP` | Sign-in and sign-up flows | Activation and one-time password exchange (`MOD-012`, `MOD-013`) | `src/user.js` |
+| Registration side effect | Every importer | Importing the package installs `webex.internal.user` (`OBS-001`) | `src/index.js` |
+| `asUUID`, `getUUID`, `fetchUUID`, `recordUUID` | conversation, team, avatar, plugin-meetings | Resolve and cache user uuids (`MOD-002` to `OBS-006`) | `src/user.js` |
+| `get()` | Internal callers | Fetch the current user and record the id and email (`OBS-008`) | `src/user.js` |
+| `update`, `updateName`, `setPassword` | Internal callers | Profile and password changes (`OBS-009`, `OBS-014`) | `src/user.js` |
+| `verify`, `register` (deprecated alias), `getUserCI` | Sign-in and sign-up flows | Account status lookup (`OBS-010`, `MOD-011`) | `src/user.js` |
+| `activate`, `generateOTP`, `validateOTP` | Sign-in and sign-up flows | Activation and one-time password exchange (`MOD-012`, `OBS-013`) | `src/user.js` |
 | `updatePreferredWebexSite`, `getMeetingSiteList` | plugin-meetings | Meeting-site preference and list (`MOD-015`, `MOD-016`) | `src/user.js` |
-| `hasPassword` property | Internal callers | Boolean, default `false`, persisted (`MOD-018`) | `src/user.js` |
-| `config.user` keys | SDK integrators | Defaults in `MOD-017` | `src/config.js` |
+| `hasPassword` property | Internal callers | Boolean, default `false`, persisted (`OBS-018`) | `src/user.js` |
+| `config.user` keys | SDK integrators | Defaults in `OBS-017` | `src/config.js` |
 | `batcher` child and `store` session value | Tests and internal callers | Not documented API; read directly by tests | `src/user.js` |
 
 Contract `user-sdk` is published with native artifact `package.json`. Contract `user-identity-http`
@@ -146,6 +146,17 @@ is internal with source `src/user.js`. Required contracts: `webex-core-plugin-ho
 | Atlas service | `verify` (`users/activations`) | Errors reject `verify` |
 | Credentials URLs in `config.credentials` | `activationUrl`, `generateOtpUrl`, `validateOtpUrl`, `setPasswordUrl`, and `identity.url` | An unset value produces an invalid request URI; no check here |
 | `lodash` | `isArray` | Load time |
+| `src/index.js` | OBS-001 — Importing the package imports the device plugin and registers `User` as internal plugin `user` with `config`. [NEEDS HUMAN INPUT] why must this stay? |
+| `src/user.js` | OBS-004 — `fetchUUID` sends `{email, create}` to the batcher, records the response with `recordUUID`, and resolves the response `id`. [NEEDS HUMAN INPUT] why must this stay? |
+| `src/user.js` | OBS-006 — `recordUUID` rejects a missing user, a missing id, an id that is not a uuid, a missing email, and an email that does not match the email pattern; otherwise it adds the user to the store. [NEEDS HUMAN INPUT] why must this stay? |
+| `src/user-uuid-store.js` | OBS-007 — `UserUUIDStore.add` applies the same four guards, then merges the new record over any existing one under both the id key and the email key. `get` routes to `getById` or `getByEmail` by pattern. Missing entries reject. No method removes an entry. [NEEDS HUMAN INPUT] why must this stay? |
+| `src/user.js`, ../common/src/tap.js | OBS-008 — `get()` requests the current user from the conversation service, records its id and email (`email` or `emailAddress`), and resolves the response body. A failure while recording does not reject the call. [NEEDS HUMAN INPUT] why must this stay? |
+| `src/user.js` | OBS-009 — `update` requires `options.displayName`, PATCHes `users/user` on the conversation service with `options`, and resolves the response body. [NEEDS HUMAN INPUT] why must this stay? |
+| `src/user.js` | OBS-010 — `verify` merges `config.verifyDefaults` under `options`, requires `email`, collects the preauth catalog, obtains a user token and falls back to a client token on any failure of those two steps, POSTs `users/activations` on the atlas service with the token header, `x-prelogin-userid`, and `shouldRefreshAccessToken: false`, sets `hasPassword` when the response says `hasPassword` or `sso`, and resolves the response body. `register` calls `verify`. [NEEDS HUMAN INPUT] why must this stay? |
+| `src/user.js` | OBS-013 — `generateOTP` requires `email` or `id`; `validateOTP` requires `email` or `id` and `oneTimePassword`, sets `scope`, and stores `tokenData` as the supertoken. Both POST with client credentials as basic auth. [NEEDS HUMAN INPUT] why must this stay? |
+| `src/user.js` | OBS-014 — `setPassword` requires `options.password`; `updateName` requires one of `givenName`, `familyName`, or `displayName`. Both PATCH `${setPasswordUrl}/${device.userId}` with the user token as the authorization header and the SCIM schemas in the body. `setPassword` sets `hasPassword` to `true`; both resolve the response body. [NEEDS HUMAN INPUT] why must this stay? |
+| `src/config.js` | OBS-017 — `config.user` defaults: `batcherWait` 100, `batcherMaxCalls` 100, `batcherMaxWait` 1500, and `verifyDefaults.reqId` `WEBCLIENT`. `config.device.preDiscoveryServices` sets `atlasServiceUrl` and `atlas` from `ATLAS_SERVICE_URL`, else the atlas default URL. [NEEDS HUMAN INPUT] why must this stay? |
+| `src/user.js`, ../webex-core/src/lib/storage/decorators.js | OBS-018 — `hasPassword` is a boolean property defaulting to `false`, set by `verify` and `setPassword`, and persisted because `initialize` carries `@persist('@')`. [NEEDS HUMAN INPUT] why must this stay? |
 
 `@webex/internal-plugin-services` behavior (`collectPreauthCatalog`) is reached through
 `webex.internal.services` and has no specification in this package's scope; its source was not read
@@ -156,24 +167,13 @@ used.
 
 | ID | WHAT | WHY | Source evidence | Test or example evidence | Assumptions or gaps | Confidence |
 | -- | ---- | --- | --------------- | ------------------------ | ------------------- | ---------- |
-| `MOD-001` | Importing the package imports the device plugin and registers `User` as internal plugin `user` with `config`. | Every webex instance gets one user plugin at `webex.internal.user`, with the device plugin registered first. | `src/index.js` | `test/unit/spec/user.js` builds `MockWebex` with `user: UserService` | No test asserts the registration itself | Present |
 | `MOD-002` | `asUUID` rejects a missing `user`; maps an array element by element; returns a value that looks like a uuid unchanged unless `options.force` is truthy; otherwise extracts an email, rejects when it does not match the email pattern, and calls `getUUID`. | Callers pass ids, user objects, emails, or lists and get uuids back. | `src/user.js` | `test/unit/spec/user.js` `#asUUID` cases; `test/integration/spec/user.js` `#asUUID` | Email lookup and `force` are tested only against live services | Present |
 | `MOD-003` | `getUUID` is de-duplicated per email and `create` flag. It reads the store by email, rejects a `create: true` caller when the cached entry has no truthy `userExists`, rejects an entry with no id, and on any rejection falls through to `fetchUUID`. | Concurrent identical lookups share one flight, and a cached fake id is never returned to a caller that needs a real user (`INV-002`). | `src/user.js` | `test/integration/spec/user.js` `with {create: true}` cases | No unit case | Present |
-| `MOD-004` | `fetchUUID` sends `{email, create}` to the batcher, records the response with `recordUUID`, and resolves the response `id`. | One path both fetches and caches. | `src/user.js` | `test/integration/spec/user.js` `#asUUID` | No unit case | Present |
 | `MOD-005` | The batcher routes `create: true` lookups to the `creator` batcher, which adds `shouldCreateUsers=true`, and all others to the `faker` batcher. Each is a separate `Batcher` with its own queue and timers. Items are keyed by email, so a second request for a pending email shares the first request's promise. A response key with an `id` resolves its request; any other value rejects it. | Separates create and non-create semantics and sends one request for many lookups. | `src/user-uuid-batcher.js`, ../webex-core/src/lib/batcher.js | `test/unit/spec/user-uuid-batcher.js` (`creator` only) | `faker` has no unit case; settlement of real deferreds is not tested | Present |
-| `MOD-006` | `recordUUID` rejects a missing user, a missing id, an id that is not a uuid, a missing email, and an email that does not match the email pattern; otherwise it adds the user to the store. | Only well-formed records enter the cache (`INV-001`). | `src/user.js` | `test/unit/spec/user.js` `#recordUUID` cases | — | Present |
-| `MOD-007` | `UserUUIDStore.add` applies the same four guards, then merges the new record over any existing one under both the id key and the email key. `get` routes to `getById` or `getByEmail` by pattern. Missing entries reject. No method removes an entry. | A lookup by either key finds the latest merged record (`INV-003`). | `src/user-uuid-store.js` | `test/unit/spec/user.js` `places the user in the userstore` (stubbed `add`) | The store has no direct unit case | Present |
-| `MOD-008` | `get()` requests the current user from the conversation service, records its id and email (`email` or `emailAddress`), and resolves the response body. A failure while recording does not reject the call. | Seeds the cache with the signed-in user without making `get` depend on the cache. | `src/user.js`, ../common/src/tap.js | `test/integration/spec/user.js` `#get()` | The swallowed-failure path has no test | Present |
-| `MOD-009` | `update` requires `options.displayName`, PATCHes `users/user` on the conversation service with `options`, and resolves the response body. | Display-name change for the current user. | `src/user.js` | `test/unit/spec/user.js` `#update()` (guard only); `test/integration/spec/user.js` `#update()` | Request shape is not unit-tested | Present |
-| `MOD-010` | `verify` merges `config.verifyDefaults` under `options`, requires `email`, collects the preauth catalog, obtains a user token and falls back to a client token on any failure of those two steps, POSTs `users/activations` on the atlas service with the token header, `x-prelogin-userid`, and `shouldRefreshAccessToken: false`, sets `hasPassword` when the response says `hasPassword` or `sso`, and resolves the response body. `register` calls `verify`. | Reports whether an email can sign in or must sign up, without refreshing tokens as a side effect. | `src/user.js` | `test/unit/spec/user.js` `#verify()` (guard only); `test/integration/spec/user.js` `#verify()` | The token fallback and the request shape are untested at unit level | Present |
 | `MOD-011` | `getUserCI(email, lookupCI)` calls `verify` with `suppressEmail: true` and resolves its `userEntities` when `lookupCI` is truthy; otherwise it resolves the configured idbroker and identity URLs. | Federation callers learn the user's identity URLs without sending another email. | `src/user.js` | none found | No test | Weak |
 | `MOD-012` | `activate` requires `verificationToken` or both `confirmationCode` and `id`, sets `options.scope` from credentials config, strips `email`, POSTs to `activationUrl` with client credentials as basic auth, stores `tokenData` as the supertoken, and resolves the body. It waits for stored state to load first. | Exchanges an activation proof for a user token. | `src/user.js` | `test/unit/spec/user.js` `#activate()` (guard only); `test/integration/spec/user.js` `#activate()` | Request shape and supertoken write are unit-untested | Present |
-| `MOD-013` | `generateOTP` requires `email` or `id`; `validateOTP` requires `email` or `id` and `oneTimePassword`, sets `scope`, and stores `tokenData` as the supertoken. Both POST with client credentials as basic auth. | One-time-password sign-in. | `src/user.js` | `test/unit/spec/user.js` `#generateOTP()`, `#validateOTP()` (guards); `test/integration/spec/user.js` OTP case | Request shape is unit-untested | Present |
-| `MOD-014` | `setPassword` requires `options.password`; `updateName` requires one of `givenName`, `familyName`, or `displayName`. Both PATCH `${setPasswordUrl}/${device.userId}` with the user token as the authorization header and the SCIM schemas in the body. `setPassword` sets `hasPassword` to `true`; both resolve the response body. | Password and name updates use the identity SCIM endpoint under the user's own token. | `src/user.js` | `test/unit/spec/user.js` `#setPassword()`, `#updateName()` (guards); `test/integration/spec/user.js` | Request shape is unit-untested | Present |
 | `MOD-015` | `updatePreferredWebexSite` requires `newSiteUrl`, resolves the org id from `options.orgId` or `credentials.getOrgId()`, rejects when `device.userId` is unset, PATCHes `<identity url>/identity/scim/<org>/v1/Users/<user>` with the SCIM body from `buildPreferredSiteBody`, sets no authorization header itself, and resolves the response body. Any synchronous throw becomes a rejection. | Changes the preferred meeting site under the org-scoped SCIM API. | `src/user.js` | `test/unit/spec/user.js` `#updatePreferredWebexSite()` | — | Present |
 | `MOD-016` | `buildPreferredSiteBody` adds a delete operation for the old site when given, then an add for the new site. `buildMeetingSiteList` merges `linkedTrainSiteNames` and `trainSiteNames`, removes duplicates and any name containing `#`, and sorts. `getMeetingSiteList` delegates to it. | Matches the native client's SCIM format and site-list rules. | `src/user.js` | `test/unit/spec/user.js` helper and `#getMeetingSiteList()` cases | — | Present |
-| `MOD-017` | `config.user` defaults: `batcherWait` 100, `batcherMaxCalls` 100, `batcherMaxWait` 1500, and `verifyDefaults.reqId` `WEBCLIENT`. `config.device.preDiscoveryServices` sets `atlasServiceUrl` and `atlas` from `ATLAS_SERVICE_URL`, else the atlas default URL. | Batching limits and the atlas address before service discovery. | `src/config.js` | none found | No test asserts the defaults | Weak |
-| `MOD-018` | `hasPassword` is a boolean property defaulting to `false`, set by `verify` and `setPassword`, and persisted because `initialize` carries `@persist('@')`. | Callers can tell whether the current user has a password across sessions. | `src/user.js`, ../webex-core/src/lib/storage/decorators.js | none found | Persistence is exercised only by `webex-core` | Weak |
 
 ## Design overview
 
@@ -203,7 +203,7 @@ for the store and helpers.
 | --------------- | ----------------- | ------------------- | ----------------------------- |
 | Resolve a uuid | `asUUID` → `getUUID` → store or batcher → `recordUUID` → id | Resolve diagram below | Missing user, bad email, create guard, item failure, partial batch |
 | Batched lookup | `fetchUUID` → `faker` or `creator` → POST `/users` → deferreds | Batch diagram below | HTTP error, item failure, partial response |
-| Record and read the cache | `recordUUID`, `store.add`, `store.get*` | Promise-based, in-process operations; MOD-006, MOD-007 | Each guard rejects with its message |
+| Record and read the cache | `recordUUID`, `store.add`, `store.get*` | Promise-based, in-process operations; OBS-006, OBS-007 | Each guard rejects with its message |
 | Sign-in and activation | `verify`, `activate`, `generateOTP`, `validateOTP` | Sign-in diagram below | Missing arguments, token fallback, service errors |
 | Profile and password | `update`, `updateName`, `setPassword`, `updatePreferredWebexSite` | Profile diagram below | Missing arguments, missing `device.userId`, service errors |
 | Helpers | `buildPreferredSiteBody`, `buildMeetingSiteList`, `getMeetingSiteList` | Pure functions; MOD-016 | None needed |
@@ -475,7 +475,7 @@ classDiagram
 | --------------------- | -------- | --------- | ------------------------------- | ------------------------- |
 | default export `User` and registration as `user` | Every webex instance and the sibling packages | Internal plugin | README says semver is not strictly followed | `src/index.js` |
 | `webex.internal.user` methods and `hasPassword` | Sibling packages | Internal plugin | `register` is deprecated in favor of `verify` | `src/user.js` |
-| `config.user` keys | SDK integrators | Internal plugin | Defaults in `MOD-017` | `src/config.js` |
+| `config.user` keys | SDK integrators | Internal plugin | Defaults in `OBS-017` | `src/config.js` |
 | `buildPreferredSiteBody`, `buildMeetingSiteList`, `SCIM_SCHEMAS` | Tests | Not exported from the package entry point | Deep-path imports only | `src/user.js` |
 
 ## Key design trade-off
@@ -491,22 +491,22 @@ classDiagram
 
 | Requirement or invariant | Test level | Positive evidence | Negative or boundary evidence | Gap |
 | ------------------------ | ---------- | ----------------- | ----------------------------- | --- |
-| `MOD-001` | Unit (indirect) | `test/unit/spec/user.js` MockWebex setup | none found | No registration assertion |
+| `OBS-001` | Unit (indirect) | `test/unit/spec/user.js` MockWebex setup | none found | No registration assertion |
 | `MOD-002` | Unit and integration | `test/unit/spec/user.js` #asUUID(); `test/integration/spec/user.js` #asUUID() | `test/unit/spec/user.js` missing user, bad email | Array result, `force`, and email lookup at unit level |
 | `MOD-003`, `INV-002` | Integration | `test/integration/spec/user.js` with {create: true} | same file, cached non-existent and unknown-existence cases | No unit case |
-| `MOD-004` | Integration | `test/integration/spec/user.js` | none found | No unit case |
+| `OBS-004` | Integration | `test/integration/spec/user.js` | none found | No unit case |
 | `MOD-005`, `INV-004` | Unit (partial) | `test/unit/spec/user-uuid-batcher.js` (creator) | handled item failure | `faker`, real deferred settlement, partial response |
-| `MOD-006`, `INV-001` | Unit | `test/unit/spec/user.js` #recordUUID() | the four guard cases | Store-level guards |
-| `MOD-007`, `INV-003` | Unit (stubbed) | `test/unit/spec/user.js` places the user in the userstore | none found | The store itself |
-| `MOD-008` | Integration | `test/integration/spec/user.js` #get() | none found | Swallowed record failure |
-| `MOD-009` | Unit (guard) and integration | `test/unit/spec/user.js` #update() | missing displayName | Request shape |
-| `MOD-010` | Unit (guard) and integration | `test/unit/spec/user.js` #verify(); `test/integration/spec/user.js` #verify() | missing email | Token fallback, request shape |
+| `OBS-006`, `INV-001` | Unit | `test/unit/spec/user.js` #recordUUID() | the four guard cases | Store-level guards |
+| `OBS-007`, `INV-003` | Unit (stubbed) | `test/unit/spec/user.js` places the user in the userstore | none found | The store itself |
+| `OBS-008` | Integration | `test/integration/spec/user.js` #get() | none found | Swallowed record failure |
+| `OBS-009` | Unit (guard) and integration | `test/unit/spec/user.js` #update() | missing displayName | Request shape |
+| `OBS-010` | Unit (guard) and integration | `test/unit/spec/user.js` #verify(); `test/integration/spec/user.js` #verify() | missing email | Token fallback, request shape |
 | `MOD-011` | none | none found | none found | Whole method |
-| `MOD-012`, `MOD-013`, `INV-005` | Unit (guards) and integration | `test/unit/spec/user.js` #activate(), #generateOTP(), #validateOTP(); `test/integration/spec/user.js` | missing arguments | Request shape, supertoken write |
-| `MOD-014` | Unit (guards) and integration | `test/unit/spec/user.js` #setPassword(), #updateName() | missing arguments | Request shape, `hasPassword` write |
+| `MOD-012`, `OBS-013`, `INV-005` | Unit (guards) and integration | `test/unit/spec/user.js` #activate(), #generateOTP(), #validateOTP(); `test/integration/spec/user.js` | missing arguments | Request shape, supertoken write |
+| `OBS-014` | Unit (guards) and integration | `test/unit/spec/user.js` #setPassword(), #updateName() | missing arguments | Request shape, `hasPassword` write |
 | `MOD-015` | Unit | `test/unit/spec/user.js` #updatePreferredWebexSite() | missing site, org error, missing user id, request errors | — |
 | `MOD-016` | Unit | `test/unit/spec/user.js` helper and #getMeetingSiteList() cases | empty and missing inputs | — |
-| `MOD-017`, `MOD-018` | none | none found | none found | Defaults and persistence |
+| `OBS-017`, `OBS-018` | none | none found | none found | Defaults and persistence |
 
 Unit checks run with `yarn workspace @webex/internal-plugin-user test:unit`. The integration spec
 needs live services and test users and is not part of the documented unit command. The browser

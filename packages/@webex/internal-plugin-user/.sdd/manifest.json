@@ -8,7 +8,7 @@
       "javascript"
     ]
   },
-  "topology": "Single-repo",
+  "topology": "Orchestrator-plus-components",
   "commands": {
     "install": {
       "command": "yarn",
@@ -111,8 +111,8 @@
       "path": "src",
       "canonical_spec": "src/docs/README.md",
       "coverage_status": "Partial",
-      "coverage_evidence": "Field coverage 93.3% (14/15) assessed 2026-10-12 by the generator; critical field coverage 8/8. The one WEAK field is test strategy: test/unit/spec/user.js covers the SCIM helpers, argument guards, recordUUID, updatePreferredWebexSite, and getMeetingSiteList, and test/unit/spec/user-uuid-batcher.js covers only the creator batcher, but request shapes for the account flows, the create guard, fetchUUID, the faker batcher, the store, getUserCI, the config defaults, and persistence have no unit case, test:integration is undefined, and no characterization baseline exists. Independent validation passed on 2026-10-12 with zero findings, as recorded in the module Validation status row; that result is separate from this measurement. Held at Partial: no spec-drift record exists, the test-strategy field is WEAK, and a characterization baseline is required before risky modification.",
-      "last_assessed": "2026-10-12",
+      "coverage_evidence": "Field coverage 86.7% (13/15) assessed 2026-10-22 by the generator; critical field coverage 7/8. Two WEAK fields. Requirement rationale: 11 behaviors the code evidences have no reason stated by code, tests, a dependency spec, or the owner, so they are Evidence register observations (OBS-001, 004, 006, 007, 008, 009, 010, 013, 014, 017, 018), not requirements. Test strategy: test/unit/spec/user.js covers the SCIM helpers, argument guards, recordUUID, updatePreferredWebexSite, and getMeetingSiteList, and test/unit/spec/user-uuid-batcher.js covers only the creator batcher, but account-flow request shapes, the create guard, fetchUUID, the faker batcher, the store, getUserCI, the config defaults, and persistence have no unit case, test:integration is undefined, and no characterization baseline exists. Held at Partial: no spec-drift record exists and a characterization baseline is required before risky modification.",
+      "last_assessed": "2026-10-22",
       "contracts": {
         "provides": [
           "user-sdk",
@@ -200,11 +200,11 @@
     "generator_runtime": "claude-code",
     "generator_model": "claude-sonnet-5-5",
     "generator_runtime_source": "host-metadata",
-    "validator_runtime": "01a12fef-8f14-7421-b415-5255c288c1a2",
-    "validator_run_id": "01a12fef-8f14-7421-b415-5255c288c1a2",
+    "validator_runtime": "01a1620b-9191-7020-aebe-d2722140e493",
+    "validator_run_id": "01a1620b-9191-7020-aebe-d2722140e493",
     "validator_runtime_source": "host-metadata",
     "runtime_fallback_tier": "different-runtime",
-    "source_commit": "8a63b4aac9c905834693a344bfc3947dd0d7fe91",
+    "source_commit": "fd531206868602f229dd1387e448c8bc572ee867",
     "minimum_independence": "different-runtime",
     "blocking_severities": [
       "Blocking"
@@ -295,7 +295,12 @@
       "canonical": ".sdd/templates/repo-standards"
     },
     "repo_skills_root": ".sdd/skills",
-    "contract_index_path": "docs/architecture.md"
+    "contract_index_path": "docs/architecture.md",
+    "monorepo_package": {
+      "package_path": "packages/@webex/internal-plugin-user",
+      "root_manifest_path": "../../../.sdd/manifest.json",
+      "templates_root_path": "../../../.sdd/templates/repo-standards"
+    }
   },
   "coverage_ratchet": {
     "enabled": true,
@@ -309,7 +314,7 @@
       "@webex/jest-config-legacy via jest.config.js",
       "@webex/legacy-tools build and test runner via package.json",
       "package README.md",
-      "Repo Standards 0.3.0 templates at the JS SDK root .sdd/templates/repo-standards, reached through the package symlink .sdd/templates/repo-standards"
+      "Repo Standards 0.3.0 templates at the monorepo root .sdd/templates/repo-standards, referred to through layout.monorepo_package.templates_root_path (this package holds no templates)"
     ],
     "compliance_tier": "baseline"
   },
@@ -333,5 +338,10 @@
     },
     "resolved_by": "claude-code (code evidence; bootstrap questionnaire)",
     "resolved_at": "2026-10-12T11:10:17Z"
+  },
+  "tooling": {
+    "sdlc_skills": {
+      "source_ref": "repo-annotation@2.3.0"
+    }
   }
 }
