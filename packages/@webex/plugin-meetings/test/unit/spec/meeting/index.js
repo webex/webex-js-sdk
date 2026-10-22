@@ -74,6 +74,7 @@ import TriggerProxy from '@webex/plugin-meetings/src/common/events/trigger-proxy
 import Metrics from '@webex/plugin-meetings/src/metrics';
 import BEHAVIORAL_METRICS from '@webex/plugin-meetings/src/metrics/constants';
 import {MediaRequestManager} from '@webex/plugin-meetings/src/multistream/mediaRequestManager';
+import MediaRequestQueue from '@webex/plugin-meetings/src/multistream/mediaRequestQueue';
 import * as ReceiveSlotManagerModule from '@webex/plugin-meetings/src/multistream/receiveSlotManager';
 import * as SendSlotManagerModule from '@webex/plugin-meetings/src/multistream/sendSlotManager';
 import {CallDiagnosticUtils} from '@webex/internal-plugin-metrics';
@@ -492,20 +493,33 @@ describe('plugin-meetings', () => {
           {manager: 'screenShareAudio', mediaType: MediaType.AudioSlides},
           {manager: 'screenShareVideo', mediaType: MediaType.VideoSlides},
         ].forEach(({manager, mediaType}) => {
-          it(`defers ${manager} media requests while reconnection is in progress`, () => {
-            const requestMedia = sinon.stub();
+          it(`defers ${manager} media requests until the media connection is connected`, () => {
+            const fakeMediaConnection = new EventEmitter();
 
-            meeting.mediaProperties.webrtcMediaConnection = {requestMedia};
-            meeting.reconnectionManager.mediaRequestQueue.start();
+            fakeMediaConnection.requestMedia = sinon.stub();
+            fakeMediaConnection.getConnectionState = sinon.stub().returns(ConnectionState.Connecting);
+            meeting.mediaRequestQueue = new MediaRequestQueue(fakeMediaConnection);
 
             meeting.mediaRequestManagers[manager].commit();
 
-            assert.notCalled(requestMedia);
+            assert.notCalled(fakeMediaConnection.requestMedia);
 
-            meeting.reconnectionManager.mediaRequestQueue.flush();
+            fakeMediaConnection.getConnectionState.returns(ConnectionState.Connected);
+            fakeMediaConnection.emit(MediaConnectionEventNames.PEER_CONNECTION_STATE_CHANGED);
 
-            assert.calledOnceWithExactly(requestMedia, mediaType, []);
+            assert.calledOnceWithExactly(fakeMediaConnection.requestMedia, mediaType, []);
           });
+        });
+
+        it('does not send media requests when there is no media connection', () => {
+          const requestMedia = sinon.stub();
+
+          meeting.mediaProperties.webrtcMediaConnection = {requestMedia};
+          meeting.mediaRequestQueue = undefined;
+
+          meeting.mediaRequestManagers.audio.commit();
+
+          assert.notCalled(requestMedia);
         });
 
         it('getIngressPayloadType on webrtcMediaConnection is invoked for H264 when sending multistream video requests', () => {
@@ -7111,6 +7125,7 @@ describe('plugin-meetings', () => {
               getConnectionState: sinon.stub().returns(ConnectionState.Connected),
               initiateOffer: sinon.stub().resolves({}),
               on: sinon.stub(),
+              off: sinon.stub(),
               requestMedia: sinon.stub(),
               createReceiveSlot: sinon.stub().resolves({on: sinon.stub()}),
               createSendSlot: sinon.stub().returns({
@@ -13969,6 +13984,18 @@ describe('plugin-meetings', () => {
           assert.equal(meeting.audio, fakeAudio);
           assert.equal(meeting.video, fakeVideo);
           assert.equal(meeting.mediaProperties.webrtcMediaConnection, null);
+        });
+
+        it('should stop the media request queue', async () => {
+          const stop = sinon.stub();
+
+          meeting.mediaProperties.webrtcMediaConnection = {close: sinon.stub()};
+          meeting.mediaRequestQueue = {stop};
+
+          await meeting.closePeerConnections();
+
+          assert.calledOnceWithExactly(stop);
+          assert.isUndefined(meeting.mediaRequestQueue);
         });
       });
 
