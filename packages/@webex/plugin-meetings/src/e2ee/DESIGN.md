@@ -670,9 +670,12 @@ to surface the meeting's zero-trust state.
   `this.e2ee = attrs.e2eeManager?.createE2eeController(context)` (or an undefined-safe no-op facade).
   Because `createE2eeController` returns a facade whose `start()`
   no-ops when E2EE is disabled, call sites stay unconditional.
-- **MLS join is gated on Locus confirming self `JOINED`.** In `setUpLocusSelfListener` (the
-  `LOCUS_INFO_UPDATE_SELF` handler), when self transitions to `JOINED`
-  (`oldSelf.state !== JOINED && newSelf.state === JOINED`), call `this.e2ee.start().catch(log)`.
+- **MLS join is gated on Locus confirming the current WDM device is `JOINED`.** In
+  `setUpLocusSelfListener` (the `LOCUS_INFO_UPDATE_SELF` handler), when `joinedWith` for
+  `this.deviceUrl` transitions to `JOINED` (`oldSelf.joinedWith.state !== JOINED` and
+  `newSelf.joinedWith.state === JOINED`), call `this.e2ee.start().catch(log)`. The aggregate
+  `self.state` can be `JOINED` because another device for the same user joined; that must not
+  trigger MLS join in this SDK instance.
   Starting earlier — right after the join request response — is too early and also never fires
   while the user sits in the meeting lobby (self is not `JOINED` until admitted). `start()` is
   idempotent and self-guarded, so the edge check only keeps logs clean.

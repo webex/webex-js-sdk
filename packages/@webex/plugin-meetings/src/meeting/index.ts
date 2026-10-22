@@ -2921,12 +2921,17 @@ export default class Meeting extends StatelessWebexPlugin {
       // If user moved to a JOINED state and there is a pending floor grant trigger it
       this.requestScreenShareFloorIfPending();
 
-      // Start the E2EE MLS join only once Locus confirms self has transitioned to JOINED. Joining
-      // earlier (e.g. right after the join request, or while in the lobby) is too early and fails.
-      const wasSelfJoined = payload.oldSelf?.state === MEETING_STATE.STATES.JOINED;
-      const isSelfJoined = payload.newSelf?.state === MEETING_STATE.STATES.JOINED;
+      // Start the E2EE MLS join only once Locus confirms this WDM device has transitioned to
+      // JOINED. The aggregate self state can be JOINED because another device for this user joined.
+      // Joining earlier (e.g. right after the join request, or while in the lobby) is too early.
+      const wasDeviceJoined =
+        payload.oldSelf?.joinedWith?.url === this.deviceUrl &&
+        payload.oldSelf?.joinedWith?.state === MEETING_STATE.STATES.JOINED;
+      const isDeviceJoined =
+        payload.newSelf?.joinedWith?.url === this.deviceUrl &&
+        payload.newSelf?.joinedWith?.state === MEETING_STATE.STATES.JOINED;
 
-      if (!wasSelfJoined && isSelfJoined) {
+      if (!wasDeviceJoined && isDeviceJoined) {
         this.e2ee?.start().catch((error) => {
           LoggerProxy.logger.error(
             'Meeting:index#setUpLocusSelfListener --> E2EE start failed',

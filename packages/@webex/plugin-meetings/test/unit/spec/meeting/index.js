@@ -435,6 +435,48 @@ describe('plugin-meetings', () => {
           assert.isUndefined(meetingWithE2ee.e2eeHasMediaServices);
         });
 
+        it('starts E2EE only when the current WDM device joins', () => {
+          TriggerProxy.trigger.restore();
+          const e2ee = new EventEmitter();
+
+          e2ee.start = sinon.stub().resolves();
+          const meetingWithE2ee = new Meeting(
+            {
+              userId: uuid1,
+              resource: uuid2,
+              deviceUrl: uuid3,
+              locus: {url: url1},
+              destination: testDestination,
+              destinationType: DESTINATION_TYPE.MEETING_ID,
+              correlationId,
+              selfId: uuid1,
+              e2eeManager: {createE2eeController: sinon.stub().returns(e2ee)},
+            },
+            {parent: webex}
+          );
+
+          sinon.stub(meetingWithE2ee.members, 'locusSelfUpdate');
+          sinon.stub(meetingWithE2ee, 'pstnUpdate');
+          sinon.stub(meetingWithE2ee, 'requestScreenShareFloorIfPending');
+
+          meetingWithE2ee.locusInfo.emitScoped({}, EVENTS.LOCUS_INFO_UPDATE_SELF, {
+            oldSelf: {state: 'JOINED'},
+            newSelf: {
+              state: 'JOINED',
+              joinedWith: {url: uuid4, state: 'JOINED'},
+            },
+          });
+
+          assert.notCalled(e2ee.start);
+
+          meetingWithE2ee.locusInfo.emitScoped({}, EVENTS.LOCUS_INFO_UPDATE_SELF, {
+            oldSelf: {state: 'JOINED', joinedWith: {url: uuid3, state: 'LEFT'}},
+            newSelf: {state: 'JOINED', joinedWith: {url: uuid3, state: 'JOINED'}},
+          });
+
+          assert.calledOnce(e2ee.start);
+        });
+
         it('emits trust state changes caused by Locus and E2EE updates', () => {
           TriggerProxy.trigger.restore();
           const e2ee = new EventEmitter();
