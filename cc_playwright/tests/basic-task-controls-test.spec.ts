@@ -249,12 +249,7 @@ export default function createCallTaskControlsTests() {
     const incomingTask = testManager.agent1Page.locator('#incoming-task');
     await expect(incomingTask).toContainText('connected', {timeout: 10000});
 
-    // Verify remote audio tracks are present
-    try {
-      await verifyRemoteAudioTracks(testManager.agent1Page);
-    } catch {
-      test.skip();
-    }
+    await verifyRemoteAudioTracks(testManager.agent1Page);
   });
 
   test('Call task - verify hold and resume functionality', async () => {
@@ -285,22 +280,10 @@ export default function createCallTaskControlsTests() {
     const incomingTask = testManager.agent1Page.locator('#incoming-task');
     await expect(incomingTask).toContainText('connected', {timeout: 10000});
 
-    // Check if recording button is enabled (requires backend configuration)
+    // Requires the team to have call recording auto-start configured
     const recordButton = testManager.agent1Page.locator('#pause-resume-recording');
-    const isRecordButtonVisible = await recordButton.isVisible().catch(() => false);
-
-    if (!isRecordButtonVisible) {
-      test.skip();
-    }
-
-    // Check if button is enabled (requires team recording auto-start configuration)
-    const isRecordButtonEnabled = await recordButton
-      .evaluate((btn) => !(btn as HTMLButtonElement).disabled)
-      .catch(() => false);
-
-    if (!isRecordButtonEnabled) {
-      test.skip();
-    }
+    await expect(recordButton).toBeVisible({timeout: 10000});
+    await expect(recordButton).toBeEnabled({timeout: 10000});
 
     // Clear logs before testing
     clearCapturedLogs();
@@ -308,21 +291,13 @@ export default function createCallTaskControlsTests() {
     // Test pause recording
     await recordCallToggle(testManager.agent1Page);
     await testManager.agent1Page.waitForTimeout(2000);
-    try {
-      await verifyRecordingLogs({expectedIsRecording: false});
-    } catch {
-      test.skip();
-    }
+    await verifyRecordingLogs({expectedIsRecording: false});
 
     // Test resume recording
     clearCapturedLogs();
     await recordCallToggle(testManager.agent1Page);
     await testManager.agent1Page.waitForTimeout(2000);
-    try {
-      await verifyRecordingLogs({expectedIsRecording: true});
-    } catch {
-      test.skip();
-    }
+    await verifyRecordingLogs({expectedIsRecording: true});
   });
 
   test('Call task - end call and complete wrapup', async () => {

@@ -629,7 +629,9 @@ export default function createAdvanceCombinationsTests() {
     });
 
     test('Entry Point: consult then end consult returns UI to normal', async () => {
-      test.skip(!process.env.PW_ENTRYPOINT_NAME, 'PW_ENTRYPOINT_NAME not set');
+      if (!process.env.PW_ENTRYPOINT_NAME) {
+        throw new Error('PW_ENTRYPOINT_NAME must be set to run Entry Point consult tests');
+      }
 
       await changeUserState(testManager.agent1Page, USER_STATES.AVAILABLE);
       await createInboundCallAndConnect('agent1', {requireConsult: true});

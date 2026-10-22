@@ -49,11 +49,6 @@ export default function createUserStateTests() {
     if (state !== USER_STATES.MEETING) throw new Error('Initial state is not Meeting');
   });
 
-  test.skip('should verify Meeting state theme color', async () => {
-    // Sample app doesn't implement widget theme system - theme colors not available
-    // See MIGRATION.md for details
-  });
-
   test('should change state to Available and verify timer reset', async () => {
     const parseTimer = (timer: string) => {
       const parts = timer.split(':');
@@ -81,9 +76,6 @@ export default function createUserStateTests() {
     // Timer resets on state change, so after should be less than or equal to before
     expect(secondsAfter).toBeLessThanOrEqual(secondsBefore);
   });
-
-  test.skip('should verify SDK event callback fires before promise resolves', async () =>
-    undefined);
 
   test.skip('should verify state persistence after page reload', async () => {
     // Set state to Available
@@ -151,6 +143,4 @@ export default function createUserStateTests() {
       await multiSessionManager.cleanup();
     }
   });
-
-  test.skip('should test idle state transition and dual timer', async () => {});
 }

@@ -96,7 +96,7 @@ Keep this section aligned to real repository contents.
 
 Use this mapping to decide where new tests should be added and wired.
 
-Conference scenario consolidation is implemented inside the SET_7/SET_8/SET_9 test files to reduce repeated call setup while preserving scenario ID traceability in test titles.
+Conference scenario consolidation is implemented inside the SET_7/SET_8/SET_9 test files to reduce repeated call setup while preserving scenario ID traceability in test titles. They drive the sample app through `Utils/conferenceUtils.ts` (`createConferenceHelpers`), which uses the sample app's `#merge-conference`, `#exit-conference`, `#transfer-conference`, `#switch-to-main` / `#switch-to-consult` controls.
 
 ---
 
