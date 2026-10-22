@@ -52,7 +52,6 @@ TypeScript/JavaScript in the Node 22.14 Yarn workspace; Webex core/plugin abstra
 ```text
 src/reconnection-manager/
 ├── index.ts — module facade/controller or primary exports
-├── mediaRequestQueue.ts — ordered queue deferring media requests while reconnection is in progress
 └── ai-docs/reconnection-manager-spec.md — canonical module specification
 ```
 
@@ -61,19 +60,16 @@ src/reconnection-manager/
 | File | Holds |
 |---|---|
 | `src/reconnection-manager/index.ts` | module facade/controller or primary exports |
-| `src/reconnection-manager/mediaRequestQueue.ts` | `MediaRequestQueue` (`start`, `runOrEnqueue`, `flush`, `clear`) |
 | `test/unit/spec/reconnection-manager/index.js` | mirrored characterization/unit coverage |
-| `test/unit/spec/reconnection-manager/mediaRequestQueue.js` | queue unit coverage |
 
 ## Public Surface
 
 | Contract ID | Type | Surface | Purpose | Compatibility / deprecation | Schema / detail link | Root index |
 |---|---|---|---|---|---|---|
-| `reconnection-manager.1` | SDK / state | `ReconnectionManager.isReconnectInProgress()`, `reset()`, and `cleanUp()` | Expose the duplicate-run guard and reset reconnection status, rejoin attempts, and the media request queue (discarding queued requests). | `cleanUp()` calls `reset()`; neither clears `iceState.timer` nor settles/clears the ICE defer. Use `resetReconnectionTimer()` for that separate state. | `src/reconnection-manager/index.ts` | [CONTRACTS](../../../ai-docs/CONTRACTS.md) |
+| `reconnection-manager.1` | SDK / state | `ReconnectionManager.isReconnectInProgress()`, `reset()`, and `cleanUp()` | Expose the duplicate-run guard and reset only reconnection status plus rejoin attempts. | `cleanUp()` calls `reset()`; neither clears `iceState.timer` nor settles/clears the ICE defer. Use `resetReconnectionTimer()` for that separate state. | `src/reconnection-manager/index.ts` | [CONTRACTS](../../../ai-docs/CONTRACTS.md) |
 | `reconnection-manager.2` | SDK / ICE wait | `waitForIceReconnect()`, `iceReconnected()`, and `resetReconnectionTimer()` | Wait for a bounded ICE recovery signal and settle/clear the owned timer/defer. | Preserve timeout duration, settlement, and reset ordering. | `src/reconnection-manager/index.ts` | [CONTRACTS](../../../ai-docs/CONTRACTS.md) |
 | `reconnection-manager.3` | SDK / recovery | `reconnect()` | Run one guarded recovery sequence, emitting success after the ordinary recovery/completion-callback path and failure on terminal errors. | A successful auto-rejoin returns before `MEETING_RECONNECTION_SUCCESS`; disabled/duplicate starts throw, and terminal failure resets status/attempts in `finally`. | `src/reconnection-manager/index.ts` | [CONTRACTS](../../../ai-docs/CONTRACTS.md) |
 | `reconnection-manager.4` | SDK / recovery | `reconnectMedia()` | Retry the current media reconnection path within configured attempt limits. | Preserve attempt bounds and escalation to meeting rejoin. | `src/reconnection-manager/index.ts` | [CONTRACTS](../../../ai-docs/CONTRACTS.md) |
-| `reconnection-manager.6` | SDK / media requests | `sendMediaRequest(name, sendRequest)` | Gate for every multistream media request sent by `Meeting`: runs it immediately, or queues it while `reconnect()` is in progress and runs queued requests in order after recovery succeeds. | Queue is started (cleared) on the initial `reconnect()` attempt and kept across network retries; it is flushed before `MEETING_RECONNECTION_SUCCESS` and after a successful auto-rejoin; `reset()`/`cleanUp()` discard it. | `src/reconnection-manager/index.ts`, `src/reconnection-manager/mediaRequestQueue.ts` | [CONTRACTS](../../../ai-docs/CONTRACTS.md) |
 | `reconnection-manager.5` | SDK / recovery | `rejoinMeeting()` | Rejoin the meeting and stop a share that was active at recovery start with the recovery reason. | Current code does not restore or republish sharing after recovery. | `src/reconnection-manager/index.ts` | [CONTRACTS](../../../ai-docs/CONTRACTS.md) |
 
 ### Emitted events
@@ -104,7 +100,6 @@ Meeting lifecycle/media methods, network state callbacks, timers, retry configur
 | `RECONNECTION-MANAGER-R-002` | retry media reconnection with timers. | Attempt limits and timers determine when recovery stays in media reconnect versus escalating to a full rejoin. | `src/reconnection-manager/index.ts` | `test/unit/spec/reconnection-manager/index.js` | ICE event/timeout races at the final attempt boundary need explicit coverage | PRESENT |
 | `RECONNECTION-MANAGER-R-003` | Duplicate starts throw `ReconnectionNotStartedError`. Ordinary successful recovery emits `MEETING_RECONNECTION_SUCCESS` after its completion callback, but successful automatic rejoin returns before that emission. Terminal recovery failures emit `MEETING_RECONNECTION_FAILURE` and reject with `ReconnectionError`; some inner paths assign `FAILURE`, but the outer `finally` calls `reset()` and returns status to the default value. | Callers must not treat success-event presence as proof of every successful recovery mode, and must rely on the returned rejection/failure event rather than assume that `FAILURE` persists after settlement. | `src/reconnection-manager/index.ts` | `test/unit/spec/reconnection-manager/index.js` | characterize the absent success event after successful auto-rejoin | PRESENT |
 | `RECONNECTION-MANAGER-R-004` | `status === IN_PROGRESS` prevents a second recovery run; `rejoinAttempts` is bounded by `maxRejoinAttempts` and both fields are reset by `reconnect()` cleanup. The separate ICE-wait path owns `iceState.timer` and clears it through `resetReconnectionTimer()`; `cleanUp()` does not invoke that method. | Concurrent network/media callbacks must not launch duplicate media negotiations or meeting joins, and lifecycle cleanup must not be documented as settling an independent ICE wait that current code leaves intact. | `src/reconnection-manager/index.ts` | `test/unit/spec/reconnection-manager/index.js` | characterize `cleanUp()` while an ICE wait is pending | PRESENT |
-| `RECONNECTION-MANAGER-R-006` | While `reconnect()` is in progress, media requests passed to `sendMediaRequest()` are not sent; they are queued in order (logging `connection not-ready, enqueuing <name> task`). After the completion callback succeeds (or auto-rejoin succeeds) the queue is flushed (logging `flushing queue` and `running <name> task` per task) before `MEETING_RECONNECTION_SUCCESS`. On failure or `cleanUp()` queued requests are discarded. A throwing task is logged and does not stop the rest of the flush. | During media reconnect the old peer connection is closed and WCME receive slot IDs are `null` until the new SDP negotiation finishes; sending requests in that window crashes WCME (`Object.keys(null)`) or sends invalid JMP requests. | `src/reconnection-manager/index.ts`, `src/reconnection-manager/mediaRequestQueue.ts` | `test/unit/spec/reconnection-manager/index.js`, `test/unit/spec/reconnection-manager/mediaRequestQueue.js` | ICE-only recovery (`waitForIceReconnect()`) does not queue requests | PRESENT |
 | `RECONNECTION-MANAGER-R-005` | Recovery first reconnects media where allowed, then escalates to meeting rejoin. If recovery started while sharing, current code calls `stopLocalShareStream` with `MEDIA_RECONNECTION` or `MEETING_REJOIN`; it does not republish or restore sharing. | This records the observable behavior and prevents a future test or caller from assuming restoration that does not exist. | `src/reconnection-manager/index.ts` | `test/unit/spec/reconnection-manager/index.js` | Possible product defect: user intent may be to restore prior sharing after recovery, but no restoration path exists. | PRESENT |
 
 ## Design Overview
@@ -144,23 +139,21 @@ sequenceDiagram
   alt reconnection is disabled or another reconnect is already IN_PROGRESS
     R--xN: ReconnectionNotStartedError without resetting status
   else new recovery run
-    R->>R: set IN_PROGRESS and start queueing media requests
+    R->>R: set IN_PROGRESS
   end
   alt ordinary media reconnection succeeds after a new start
     R->>R: stopLocalShareStream(MEDIA_RECONNECTION) when wasSharing
     R->>R: reconnectMedia() using Meeting ROAP/media dependencies
     R->>R: run completion callback when supplied
-    R->>M: flush queued media requests in order
     R-->>N: MEETING_RECONNECTION_SUCCESS and resolved promise
   else NeedsRejoinError and auto-rejoin is enabled
     R->>M: join({rejoin:true})
     R->>R: stopLocalShareStream(MEETING_REJOIN) when wasSharing
-    R->>M: flush queued media requests in order
     R-->>N: resolved promise without MEETING_RECONNECTION_SUCCESS
   else terminal recovery error
     R--xN: MEETING_RECONNECTION_FAILURE and ReconnectionError
   end
-  R->>R: finally resets status and rejoin attempts and discards queued media requests
+  R->>R: finally resets status and rejoin attempts
 ```
 
 ### Reconnection and rejoin alternate/failure sequence
@@ -217,7 +210,7 @@ The arrows identify ownership and delegation inside `src/reconnection-manager/`;
 
 ## State Model
 
-The manager stores reconnection `status`, `rejoinAttempts`, the `mediaRequestQueue` (queueing flag and ordered tasks), configured attempt limits, and `iceState` (`disconnected`, resolver, timer, timeout). Sharing is read from the owning Meeting when recovery starts; there is no stored reconnect promise or last-recovery-mode field.
+The manager stores reconnection `status`, `rejoinAttempts`, configured attempt limits, and `iceState` (`disconnected`, resolver, timer, timeout). Sharing is read from the owning Meeting when recovery starts; there is no stored reconnect promise or last-recovery-mode field.
 
 ## Business Rules & Invariants
 
@@ -271,7 +264,6 @@ Use the current mirrored suites: `test/unit/spec/reconnection-manager/index.js`.
 | `RECONNECTION-MANAGER-R-002` | `test/unit/spec/reconnection-manager/index.js` | ICE event/timeout races at the final attempt boundary need explicit coverage |
 | `RECONNECTION-MANAGER-R-003` | `test/unit/spec/reconnection-manager/index.js` | assert successful auto-rejoin resolves without `MEETING_RECONNECTION_SUCCESS`, both recovery reasons stop an active share, and no completion path republishes it |
 | `RECONNECTION-MANAGER-R-004` | `test/unit/spec/reconnection-manager/index.js` | verify concurrent triggers and exhausted retries |
-| `RECONNECTION-MANAGER-R-006` | `test/unit/spec/reconnection-manager/index.js`, `test/unit/spec/reconnection-manager/mediaRequestQueue.js` | none |
 | `RECONNECTION-MANAGER-R-005` | `test/unit/spec/reconnection-manager/index.js` | characterize both `stopLocalShareStream` recovery reasons; restoration remains a product-decision gap |
 
 ## Traceability

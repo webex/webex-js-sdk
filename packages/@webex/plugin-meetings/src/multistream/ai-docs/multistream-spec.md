@@ -52,6 +52,7 @@ TypeScript/JavaScript in the Node 22.14 Yarn workspace; Webex core/plugin abstra
 ```text
 src/multistream/
 ├── mediaRequestManager.ts — request coordination or payload types
+├── mediaRequestQueue.ts — defers WCME requestMedia() until the media connection is Connected
 ├── receiveSlot.ts — receiveSlot implementation responsibility
 ├── receiveSlotManager.ts — receiveSlotManager implementation responsibility
 ├── remoteMedia.ts — remoteMedia implementation responsibility
@@ -66,13 +67,14 @@ src/multistream/
 | File | Holds |
 |---|---|
 | `src/multistream/mediaRequestManager.ts` | request coordination or payload types |
+| `src/multistream/mediaRequestQueue.ts` | connection-state gate between `MediaRequestManager` callbacks and WCME `requestMedia()` |
 | `src/multistream/receiveSlot.ts` | receiveSlot implementation responsibility |
 | `src/multistream/receiveSlotManager.ts` | receiveSlotManager implementation responsibility |
 | `src/multistream/remoteMedia.ts` | remoteMedia implementation responsibility |
 | `src/multistream/remoteMediaGroup.ts` | remoteMediaGroup implementation responsibility |
 | `src/multistream/remoteMediaManager.ts` | remoteMediaManager implementation responsibility |
 | `src/multistream/sendSlotManager.ts` | sendSlotManager implementation responsibility |
-| `test/unit/spec/multistream/mediaRequestManager.ts` and 6 sibling test file(s) | mirrored characterization/unit coverage |
+| `test/unit/spec/multistream/mediaRequestManager.ts` and 7 sibling test file(s) | mirrored characterization/unit coverage |
 
 ## Public Surface
 
@@ -120,6 +122,7 @@ internal-media-core multistream connection, member CSI data, codecs, event callb
 | `MULTISTREAM-R-004` | RemoteMedia identity remains stable while tracks/receive slots and member CSI mappings change. Exported `ReceiveSlot`, `RemoteMedia`, and `RemoteMediaManager` objects emit the object-local event literals and payloads listed above at their concrete update/creation/stop boundaries. | Consumers keep references to remote media across layout and transport updates and rely on scoped events to know when those stable objects change. | `src/multistream/receiveSlot.ts`, `src/multistream/remoteMedia.ts`, `src/multistream/remoteMediaManager.ts` | `test/unit/spec/multistream/receiveSlot.ts`, `test/unit/spec/multistream/remoteMedia.ts`, `test/unit/spec/multistream/remoteMediaManager.ts` | none | PRESENT |
 | `MULTISTREAM-R-005` | `RemoteMedia.stop()` cancels its request, removes listeners from its receive slot, and invalidates the association. `MediaRequestManager.cancelRequest()` removes its `SourceUpdate` and `MaxFsUpdate` handlers from every request slot before deletion. | Slot reuse must not deliver another participant's media or request callbacks through stale listeners. | `src/multistream/remoteMedia.ts`, `src/multistream/mediaRequestManager.ts` | `test/unit/spec/multistream/remoteMedia.ts`, `test/unit/spec/multistream/mediaRequestManager.ts` | none | PRESENT |
 | `MULTISTREAM-R-006` | Media request arbitration and send-slot management preserve the latest supported layout/send intent. | Concurrent layout/member changes should not apply obsolete stream requests. | `src/multistream/mediaRequestManager.ts`, `src/multistream/sendSlotManager.ts` | `test/unit/spec/multistream/mediaRequestManager.ts`, `test/unit/spec/multistream/sendSlotManager.ts` | none | PRESENT |
+| `MULTISTREAM-R-007` | `MediaRequestQueue` sits behind every `MediaRequestManager` callback (via `Meeting.sendMediaRequests()`). It calls WCME `requestMedia()` only when `getConnectionState()` (evaluated live) is `ConnectionState.Connected`; otherwise it enqueues the task and logs `connection not-ready, enqueuing requestMedia(<mediaType>) task`. On `PEER_CONNECTION_STATE_CHANGED` / `ICE_CONNECTION_STATE_CHANGED` with state `Connected` it logs `flushing queue` and runs the tasks in FIFO order, logging each one. A new request while already connected flushes older tasks first. A failing task is logged and does not stop the flush. `stop()` removes the listeners and discards queued tasks; `Meeting` creates the queue in `createMediaConnection()` (multistream only) and stops it in `closePeerConnections()` / `cleanUpBeforeRetryWithTurnServer()`. | During media reconnect WCME closes the old peer connection (no state event is emitted) and receive slot IDs stay `null` until the new SDP is applied; sending `requestMedia()` in that window crashes WCME. | `src/multistream/mediaRequestQueue.ts`, `src/meeting/index.ts` | `test/unit/spec/multistream/mediaRequestQueue.ts`, `test/unit/spec/meeting/index.js` | none | PRESENT |
 
 ## Design Overview
 
@@ -268,7 +271,7 @@ The diagram records the initialized `no source` value and the `live` source path
 - Remote-media identity is not the same as a transient track or slot. Recreating objects on every update breaks consumer references.
 - `Event.InterpretationAudioCreated` is emitted at runtime, but the current exported `Events` interface does not declare its callback alongside the other manager events. Treat the runtime event as observable and the type-interface omission as a separate possible product/type defect.
 - Public behavior may be reachable through a parent `Meeting`/`Meetings` object even when the source helper is not exported directly.
-- `MediaRequestManager` delivers `StreamRequest[]` synchronously to its callback, but the `Meeting` callbacks route them through `ReconnectionManager.sendMediaRequest()`: while `reconnect()` is in progress the WCME `requestMedia()` call is queued and runs only after recovery succeeds (receive slot IDs are `null` while the peer connection is being renewed). See `src/reconnection-manager/ai-docs/reconnection-manager-spec.md` (`RECONNECTION-MANAGER-R-006`).
+- `MediaRequestManager` delivers `StreamRequest[]` synchronously to its callback, but the actual WCME `requestMedia()` call may be deferred by `MediaRequestQueue` until the media connection is `Connected` (`MULTISTREAM-R-007`). The gate must check `getConnectionState()` live on every request: WCME `renewPeerConnection()` closes the old peer connection without emitting a state-change event, so an event-only "connected" flag would still be `true` while receive slot IDs are `null`.
 
 ## Key Design Trade-off
 
@@ -276,7 +279,7 @@ The diagram records the initialized `no source` value and the `live` source path
 
 ## Test-Case Strategy (module)
 
-Use the current mirrored suites: `test/unit/spec/multistream/mediaRequestManager.ts`, `test/unit/spec/multistream/receiveSlot.ts`, `test/unit/spec/multistream/receiveSlotManager.ts`, `test/unit/spec/multistream/remoteMedia.ts`, `test/unit/spec/multistream/remoteMediaGroup.ts`, `test/unit/spec/multistream/remoteMediaManager.ts`, `test/unit/spec/multistream/sendSlotManager.ts`. Characterize the multistream-specific use cases above and each listed failure condition; add cleanup or transition cases only for resources and state this module actually owns.
+Use the current mirrored suites: `test/unit/spec/multistream/mediaRequestManager.ts`, `test/unit/spec/multistream/mediaRequestQueue.ts`, `test/unit/spec/multistream/receiveSlot.ts`, `test/unit/spec/multistream/receiveSlotManager.ts`, `test/unit/spec/multistream/remoteMedia.ts`, `test/unit/spec/multistream/remoteMediaGroup.ts`, `test/unit/spec/multistream/remoteMediaManager.ts`, `test/unit/spec/multistream/sendSlotManager.ts`. Characterize the multistream-specific use cases above and each listed failure condition; add cleanup or transition cases only for resources and state this module actually owns.
 
 | Behavior / Requirement | Existing test evidence | Gap |
 |---|---|---|
@@ -286,6 +289,7 @@ Use the current mirrored suites: `test/unit/spec/multistream/mediaRequestManager
 | `MULTISTREAM-R-004` | `test/unit/spec/multistream/remoteMedia.ts`, `test/unit/spec/multistream/remoteMediaManager.ts` | none |
 | `MULTISTREAM-R-005` | `test/unit/spec/multistream/receiveSlot.ts`, `test/unit/spec/multistream/receiveSlotManager.ts`, `test/unit/spec/multistream/remoteMedia.ts` | verify rapid slot reuse while distinguishing pool-only release from RemoteMedia/request listener cleanup |
 | `MULTISTREAM-R-006` | `test/unit/spec/multistream/mediaRequestManager.ts`, `test/unit/spec/multistream/sendSlotManager.ts` | verify stale request suppression |
+| `MULTISTREAM-R-007` | `test/unit/spec/multistream/mediaRequestQueue.ts`, `test/unit/spec/meeting/index.js` | none |
 
 ## Traceability
 
