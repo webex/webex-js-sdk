@@ -6897,14 +6897,6 @@ export default class Meeting extends StatelessWebexPlugin {
     const isJoined = this.isJoined();
     const dataChannelUrl = datachannelUrl;
 
-    if (!url || !dataChannelUrl) {
-      // locusInfo hasn't synced these yet (SELF_UNADMITTED_GUEST/SELF_ADMITTED_GUEST can
-      // fire before datachannelUrl is populated on rejoin). Bail out rather than creating
-      // and registering a channel with an empty URL; handleDataChannelUrlChange() will
-      // re-invoke this once MEETING_INFO_UPDATED delivers the real datachannelUrl.
-      return undefined;
-    }
-
     // If we have an existing channel, check if we should reuse it or clean it up
     if (this.llmChannel) {
       const isSameUrls =
@@ -6925,7 +6917,12 @@ export default class Meeting extends StatelessWebexPlugin {
       await this.cleanupLLMConneciton({preserveVoiceaChannel: true});
     }
 
-    if (!isJoined) {
+    if (!isJoined || !url || !dataChannelUrl) {
+      // Either not joined, or locusInfo hasn't synced url/datachannelUrl yet
+      // (SELF_UNADMITTED_GUEST/SELF_ADMITTED_GUEST can fire before datachannelUrl is
+      // populated on rejoin). Any stale channel was already disconnected above; don't
+      // create/register a new one with an empty URL. handleDataChannelUrlChange() will
+      // re-invoke this once MEETING_INFO_UPDATED delivers the real datachannelUrl.
       return undefined;
     }
 

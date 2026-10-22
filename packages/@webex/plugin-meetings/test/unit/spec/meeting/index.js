@@ -3760,24 +3760,35 @@ describe('plugin-meetings', () => {
                 assert.isUndefined(meeting.llmChannel);
               });
 
-              it('does not disconnect or reconfigure an existing connected channel when called prematurely', async () => {
+              it('disconnects a stale existing channel even when locusInfo has not resynced new urls', async () => {
                 // Simulate a healthy, already-connected channel from a prior,
-                // fully-synced call to updateLLMConnection.
-                const mockChannel = createMockLLMChannel({isConnected: sinon.stub().returns(true)});
+                // fully-synced call to updateLLMConnection, holding real URLs.
+                const mockChannel = createMockLLMChannel({
+                  isConnected: sinon.stub().returns(true),
+                  getLocusUrl: sinon
+                    .stub()
+                    .returns('https://locus-a.example.com/locus/api/v1/loci/old-locus-id'),
+                  getDatachannelUrl: sinon
+                    .stub()
+                    .returns('https://example.com/old-datachannel-url'),
+                });
 
                 meeting.llmChannel = mockChannel;
 
                 // A later lobby-transition event (e.g. SELF_UNADMITTED_GUEST on rejoin)
-                // fires updateLLMConnection again before locusInfo has resynced.
+                // fires updateLLMConnection again before locusInfo has resynced the new
+                // session's urls. The stale channel must still be disconnected so it stops
+                // processing events for the prior (now-left) session while the user waits
+                // in the lobby; a new channel must not be created with the empty urls.
                 meeting.locusInfo.url = undefined;
                 meeting.locusInfo.info = {datachannelUrl: undefined};
 
                 const result = await meeting.updateLLMConnection();
 
                 assert.isUndefined(result);
-                assert.notCalled(mockChannel.disconnect);
+                assert.calledOnce(mockChannel.disconnect);
+                assert.isUndefined(meeting.llmChannel);
                 assert.notCalled(webex.internal.llm.createChannel);
-                assert.equal(meeting.llmChannel, mockChannel);
               });
 
               it('proceeds to create and register a channel once both url and datachannelUrl are present', async () => {
