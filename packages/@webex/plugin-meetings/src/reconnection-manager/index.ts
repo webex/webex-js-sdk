@@ -22,6 +22,7 @@ import ReconnectionNotStartedError from '../common/errors/reconnection-not-start
 import Metrics from '../metrics';
 import Meeting from '../meeting';
 import {MediaRequestManager} from '../multistream/mediaRequestManager';
+import MediaRequestQueue from './mediaRequestQueue';
 
 /**
  * Used to indicate that the reconnect logic needs to be retried.
@@ -69,6 +70,7 @@ export default class ReconnectionManager {
   autoRejoinEnabled: any;
   iceState: any;
   maxRejoinAttempts: any;
+  mediaRequestQueue: MediaRequestQueue;
   meeting: any;
   rejoinAttempts: any;
   shareStatus: any;
@@ -126,6 +128,16 @@ export default class ReconnectionManager {
     this.rejoinAttempts = 0;
     // @ts-ignore
     this.autoRejoinEnabled = meeting.config.reconnection.autoRejoin;
+
+    /**
+     * Defers media requests while reconnection is in progress
+     *
+     * @instance
+     * @type {MediaRequestQueue}
+     * @private
+     * @memberof ReconnectionManager
+     */
+    this.mediaRequestQueue = new MediaRequestQueue();
 
     // Make sure reconnection state is in default
     this.reset();
@@ -210,6 +222,22 @@ export default class ReconnectionManager {
   public reset() {
     this.status = RECONNECTION.STATE.DEFAULT_STATUS;
     this.rejoinAttempts = 0;
+    this.mediaRequestQueue.clear();
+  }
+
+  /**
+   * Sends the media request immediately or defers it until the reconnection succeeds.
+   * During reconnection the receive slots of the old peer connection have no IDs,
+   * so requests must not reach the media connection before it's renewed.
+   *
+   * @param {string} name task name used for logging
+   * @param {Function} sendRequest sends the media request
+   * @returns {void}
+   * @public
+   * @memberof ReconnectionManager
+   */
+  public sendMediaRequest(name: string, sendRequest: () => void) {
+    this.mediaRequestQueue.runOrEnqueue(name, sendRequest);
   }
 
   /**
@@ -324,6 +352,11 @@ export default class ReconnectionManager {
     try {
       this.status = RECONNECTION.STATE.IN_PROGRESS;
 
+      // a network retry continues the same reconnection, so keep the requests queued so far
+      if (!networkRetry) {
+        this.mediaRequestQueue.start();
+      }
+
       triggerEvent(EVENT_TRIGGERS.MEETING_RECONNECTION_STARTING);
 
       if (!networkRetry) {
@@ -394,6 +427,7 @@ export default class ReconnectionManager {
 
         if (reconnectError instanceof NeedsRejoinError && this.autoRejoinEnabled) {
           await this.rejoinMeeting(reconnectError.wasSharing);
+          this.mediaRequestQueue.flush();
 
           return;
         }
@@ -405,6 +439,8 @@ export default class ReconnectionManager {
       if (completionCallback) {
         await completionCallback();
       }
+
+      this.mediaRequestQueue.flush();
 
       triggerEvent(EVENT_TRIGGERS.MEETING_RECONNECTION_SUCCESS);
 
@@ -605,7 +641,7 @@ export default class ReconnectionManager {
 
     await this.meeting.mediaProperties.webrtcMediaConnection.reconnect(iceServers);
 
-    // resend media requests
+    // resend media requests, they are queued until the reconnection succeeds
     if (this.meeting.isMultistream) {
       Object.values(this.meeting.mediaRequestManagers).forEach(
         (mediaRequestManager: MediaRequestManager) => {

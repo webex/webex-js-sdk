@@ -270,6 +270,7 @@ The diagram records the initialized `no source` value and the `live` source path
 - Remote-media identity is not the same as a transient track or slot. Recreating objects on every update breaks consumer references.
 - `Event.InterpretationAudioCreated` is emitted at runtime, but the current exported `Events` interface does not declare its callback alongside the other manager events. Treat the runtime event as observable and the type-interface omission as a separate possible product/type defect.
 - Public behavior may be reachable through a parent `Meeting`/`Meetings` object even when the source helper is not exported directly.
+- `MediaRequestManager` delivers `StreamRequest[]` synchronously to its callback, but the `Meeting` callbacks route them through `ReconnectionManager.sendMediaRequest()`: while `reconnect()` is in progress the WCME `requestMedia()` call is queued and runs only after recovery succeeds (receive slot IDs are `null` while the peer connection is being renewed). See `src/reconnection-manager/ai-docs/reconnection-manager-spec.md` (`RECONNECTION-MANAGER-R-006`).
 
 ## Key Design Trade-off
 
