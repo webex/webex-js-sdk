@@ -1,0 +1,591 @@
+{
+  "$schema": "./schemas/repo-context.schema.json",
+  "version": 1,
+  "repository": {
+    "name": "@webex/helper-image",
+    "purpose": "A Webex JavaScript SDK helper package that reads EXIF orientation onto image files, resolves their MIME type, and measures and thumbnails them through separate Node and browser implementations."
+  },
+  "commands": {
+    "install": "yarn install",
+    "compile": "[NEEDS HUMAN INPUT] -- no standalone compile step exists: the sources are JavaScript transpiled by Babel as part of build:src, and package.json declares no typecheck or compile-only target.",
+    "build": "yarn workspace @webex/helper-image build",
+    "unit-test": "yarn workspace @webex/helper-image test:unit",
+    "browser-test": "yarn workspace @webex/helper-image test:browser",
+    "test": "yarn workspace @webex/helper-image test",
+    "lint": "yarn workspace @webex/helper-image test:style",
+    "deploy": "yarn workspace @webex/helper-image deploy:npm"
+  },
+  "public_interfaces": [
+    {
+      "name": "Package export surface",
+      "kind": "package_export",
+      "source": "src/index.js",
+      "entrypoints": [
+        "updateImageOrientation",
+        "readExifData",
+        "processImage",
+        "detectFileType"
+      ],
+      "audience": "Webex SDK plugins that prepare files for upload, plus external npm consumers",
+      "notes": "Verify against the declarations in src/index.js and the entry points in package.json. The package ships no .d.ts and no API report, so those two files together are the ecosystem-native declaration. The module-internal orient helper is not part of this surface, even though README.md documents it as if it were."
+    },
+    {
+      "name": "Runtime substitution map",
+      "kind": "package_export",
+      "source": "package.json",
+      "entrypoints": [
+        "main",
+        "devMain",
+        "browser"
+      ],
+      "audience": "Bundlers resolving the package for Node or for a browser",
+      "notes": "The browser field decides which processImage implementation a browser consumer receives, for both the source and built paths. Treat it as contract rather than build configuration."
+    },
+    {
+      "name": "Package scripts",
+      "kind": "npm_scripts",
+      "source": "package.json",
+      "entrypoints": [
+        "build",
+        "build:src",
+        "test:unit",
+        "test:browser",
+        "test:style",
+        "deploy:npm"
+      ],
+      "audience": "Contributors and CI",
+      "notes": "Run each script through yarn workspace from the workspace root. Do not run the aggregate test script: it chains yarn test:integration, which package.json does not define, so it fails before reaching the browser tier."
+    }
+  ],
+  "source_of_truth": [
+    {
+      "surface": "Image helpers module",
+      "paths": [
+        "src/index.js",
+        "src/detect-filetype.js",
+        "src/orient.js",
+        "src/process-image.js",
+        "src/process-image.browser.js"
+      ],
+      "generated_artifacts": [],
+      "refresh_with": [],
+      "validate_with": [
+        "yarn workspace @webex/helper-image test:unit",
+        "yarn workspace @webex/helper-image test:browser",
+        "yarn workspace @webex/helper-image test:style"
+      ]
+    },
+    {
+      "surface": "Module specification",
+      "paths": [
+        "src/docs/README.md"
+      ],
+      "generated_artifacts": [],
+      "refresh_with": [],
+      "validate_with": [
+        "yarn workspace @webex/helper-image test:unit"
+      ]
+    },
+    {
+      "surface": "Unit suite",
+      "paths": [
+        "test/unit/spec/index.js"
+      ],
+      "generated_artifacts": [],
+      "refresh_with": [],
+      "validate_with": [
+        "yarn workspace @webex/helper-image test:unit",
+        "yarn workspace @webex/helper-image test:browser"
+      ]
+    }
+  ],
+  "generated_artifacts": [
+    {
+      "path": ".sdd/templates/repo-standards/template-map.json",
+      "generated_from": "WebexTools/repo-standards",
+      "refresh_with": "Re-run the Repo Annotation template setup from the active plugin installation; the template snapshot is shared from the enclosing workspace and reached through the .sdd/templates symlink."
+    },
+    {
+      "path": "dist",
+      "generated_from": "src",
+      "refresh_with": "yarn workspace @webex/helper-image build"
+    }
+  ],
+  "validation_matrix": [
+    {
+      "paths": [
+        "src/*.js"
+      ],
+      "minimum": [
+        "yarn workspace @webex/helper-image test:unit",
+        "yarn workspace @webex/helper-image test:style"
+      ],
+      "recommended": [
+        "yarn workspace @webex/helper-image test:browser",
+        "yarn workspace @webex/helper-image build"
+      ]
+    },
+    {
+      "paths": [
+        "src/process-image.js",
+        "src/process-image.browser.js"
+      ],
+      "minimum": [
+        "yarn workspace @webex/helper-image test:unit",
+        "yarn workspace @webex/helper-image test:browser"
+      ],
+      "recommended": [
+        "yarn workspace @webex/helper-image build"
+      ]
+    },
+    {
+      "paths": [
+        "package.json"
+      ],
+      "minimum": [
+        "yarn workspace @webex/helper-image build"
+      ],
+      "recommended": [
+        "yarn workspace @webex/helper-image test:unit",
+        "yarn workspace @webex/helper-image test:browser"
+      ]
+    },
+    {
+      "paths": [
+        "test/unit/spec/index.js"
+      ],
+      "minimum": [
+        "yarn workspace @webex/helper-image test:unit"
+      ],
+      "recommended": [
+        "yarn workspace @webex/helper-image test:browser"
+      ]
+    }
+  ],
+  "change_impact": [
+    {
+      "paths": [
+        "src/index.js"
+      ],
+      "affects": [
+        "The published package export surface, so every SDK plugin and external npm consumer"
+      ],
+      "refresh_with": [
+        "yarn workspace @webex/helper-image build"
+      ],
+      "validate_with": [
+        "yarn workspace @webex/helper-image test:unit",
+        "yarn workspace @webex/helper-image test:browser"
+      ],
+      "avoid_direct_edits": [
+        "dist"
+      ],
+      "notes": "Renaming, removing, or reshaping an export here is a breaking change for external consumers and must land with a coordinated workspace release."
+    },
+    {
+      "paths": [
+        "src/process-image.js"
+      ],
+      "affects": [
+        "Node consumers only; the browser bundle receives the other implementation"
+      ],
+      "refresh_with": [
+        "yarn workspace @webex/helper-image build"
+      ],
+      "validate_with": [
+        "yarn workspace @webex/helper-image test:unit"
+      ],
+      "avoid_direct_edits": [
+        "dist"
+      ],
+      "notes": "Change the browser implementation in the same edit or record deliberately why behavior now differs by runtime. Nothing in the build or test suite catches drift between the two files."
+    },
+    {
+      "paths": [
+        "src/process-image.browser.js",
+        "src/orient.js"
+      ],
+      "affects": [
+        "Browser consumers only, including thumbnail dimensions and the EXIF orientation transform"
+      ],
+      "refresh_with": [
+        "yarn workspace @webex/helper-image build"
+      ],
+      "validate_with": [
+        "yarn workspace @webex/helper-image test:browser",
+        "yarn workspace @webex/helper-image test:unit"
+      ],
+      "avoid_direct_edits": [
+        "dist"
+      ],
+      "notes": "The orientation transform table is the one behavior this package verifies exhaustively; the unit suite asserts exact transform arguments for all eight EXIF values."
+    },
+    {
+      "paths": [
+        "package.json"
+      ],
+      "affects": [
+        "Which processImage implementation each consumer resolves, plus the published entry points"
+      ],
+      "refresh_with": [
+        "yarn install",
+        "yarn workspace @webex/helper-image build"
+      ],
+      "validate_with": [
+        "yarn workspace @webex/helper-image build"
+      ],
+      "avoid_direct_edits": [
+        "dist"
+      ],
+      "notes": "The browser field is part of the public contract. No test asserts the substitution, so review it by hand."
+    },
+    {
+      "paths": [
+        "src/docs/README.md",
+        "docs"
+      ],
+      "affects": [
+        "The canonical specification and the standing documentation agents read first"
+      ],
+      "refresh_with": [],
+      "validate_with": [
+        "yarn workspace @webex/helper-image test:unit"
+      ],
+      "avoid_direct_edits": [
+        "README.md"
+      ],
+      "notes": "README.md is the consumer-facing npm readme, kept separate as reference-only context. Specification changes belong in src/docs/README.md, which is the authority on the public surface. No command validates documentation directly; re-run the unit suite to confirm the behavior a specification change describes still holds, and re-read the cited source files for the parts the suite does not cover."
+    }
+  ],
+  "glossary": [
+    {
+      "term": "EXIF orientation",
+      "definition": "An integer from 1 to 8 describing how a JPEG must be rotated or flipped for correct display, where 1 means no transform is needed.",
+      "notes": "Mapped to canvas transforms in src/orient.js. Values outside 1 to 8 fall through the switch and apply no transform while still drawing."
+    },
+    {
+      "term": "file",
+      "definition": "A caller-supplied object carrying image bytes plus loosely typed metadata; it may be a DOM File or Blob or a plain object, and this package writes orientation results back onto it.",
+      "notes": "The MIME type may appear as type or as mimeType. Avatars set type while activity files set mimeType, which is why both are checked."
+    },
+    {
+      "term": "result triple",
+      "definition": "The positional array of thumbnail, file dimensions, and thumbnail dimensions that processImage resolves to.",
+      "notes": "Empty slots are undefined on Node and null in the browser, so consumers must not distinguish the two."
+    },
+    {
+      "term": "avatar",
+      "definition": "An image treated as a profile picture, whose reported dimensions are squared to its larger side.",
+      "notes": "Honored only by the browser implementation; the Node implementation does not accept the option."
+    }
+  ],
+  "evidence_rules": [
+    {
+      "claim_category": "command_name",
+      "sources": [
+        "package.json"
+      ],
+      "requirement": "A command must appear in the scripts block of package.json before it is documented. Verify it is actually defined rather than only referenced: the aggregate test script references test:integration, which does not exist.",
+      "notes": "Document commands in their yarn workspace form, because this package builds and tests from the workspace root."
+    },
+    {
+      "claim_category": "import_path",
+      "sources": [
+        "src/index.js",
+        "package.json"
+      ],
+      "requirement": "A public import must be re-exported from src/index.js. A symbol reachable only by a relative path into src is internal, regardless of how README.md describes it.",
+      "notes": "The orient helper is the standing example: it is imported by the browser implementation and by the unit suite, and is not part of the package surface."
+    },
+    {
+      "claim_category": "behavior_claim",
+      "sources": [
+        "src/index.js",
+        "src/detect-filetype.js",
+        "src/orient.js",
+        "src/process-image.js",
+        "src/process-image.browser.js",
+        "test/unit/spec/index.js"
+      ],
+      "requirement": "Attribute behavior to the specific implementation file, and state which runtime it applies to whenever the claim touches processImage. Check both implementations before describing processImage behavior as a property of the package.",
+      "notes": "A test assertion is evidence only when it executes. The readExifData cases are disabled with xdescribe and the updateImageOrientation cases run only under the browser runner."
+    },
+    {
+      "claim_category": "placeholder_token",
+      "sources": [
+        "src/docs/README.md",
+        ".sdd/manifest.json"
+      ],
+      "requirement": "Mark an unresolved fact explicitly rather than inferring it, and record the same status in the manifest so downstream work can see it.",
+      "notes": "Absence of a coverage gate for this package is a verified fact declared by the owner, not an unresolved value."
+    }
+  ],
+  "negative_guidance": [
+    {
+      "rule": "Do not describe processImage behavior without naming the runtime.",
+      "why": "Two implementations are selected at bundle time by the browser field in package.json, and they genuinely differ in type fallback, avatar handling, and the value used for empty result slots."
+    },
+    {
+      "rule": "Do not treat README.md as a specification.",
+      "why": "It is the consumer-facing npm readme, retained as reference-only context. It omits processImage and detectFileType and presents the internal orient helper as a package export."
+    },
+    {
+      "rule": "Do not add a runtime environment check to choose between the two implementations.",
+      "why": "The browser field in package.json is the selection mechanism. A runtime check would bypass it and ship both code paths into every bundle."
+    },
+    {
+      "rule": "Do not infer that the unit suite pins current behavior.",
+      "why": "Only the orientation transform table is exhaustively covered. detectFileType and both processImage implementations have no tests, and the EXIF cases are disabled."
+    },
+    {
+      "rule": "Do not infer a coverage or quality gate for this package.",
+      "why": "No coverage script exists here and the inherited Jest configuration disables coverage collection. The absence was confirmed by the package owner."
+    },
+    {
+      "rule": "Do not assume the aggregate test script runs the suite.",
+      "why": "It chains yarn test:integration, which package.json does not define, so it fails before reaching the browser tier. Run the tiers individually."
+    }
+  ],
+  "confidence_policy": {
+    "high": {
+      "action": "update",
+      "expectation": "The claim is backed by a named file in this package and, where behavior differs by runtime, by both implementation files. Proceed and cite the paths."
+    },
+    "medium": {
+      "action": "narrow-scope",
+      "expectation": "Evidence covers one runtime, or an assertion exists but does not execute. State the runtime and the coverage limitation, and omit the part that is unproven."
+    },
+    "low": {
+      "action": "noop",
+      "expectation": "No file in this package supports the claim. Stop and report the gap rather than deriving it from the consumer readme, from a sibling package, or from commit history."
+    }
+  },
+  "repository_topology": {
+    "main_entrypoints": [
+      {
+        "name": "Package entry",
+        "path": "src/index.js",
+        "purpose": "Declares the EXIF orientation functions and re-exports the MIME detection and image processing helpers as the package surface.",
+        "notes": "Referenced by devMain in package.json; main points at the built output."
+      },
+      {
+        "name": "Agent entry",
+        "path": "AGENTS.md",
+        "purpose": "First document an agent reads before changing this package.",
+        "notes": "Routes to the standing docs and to the module specification."
+      }
+    ],
+    "workspace_packages": [
+      {
+        "name": "@webex/helper-image",
+        "paths": [
+          "."
+        ],
+        "notes": "This specification root is a single workspace member of the Webex JavaScript SDK. It contains no sub-packages, and its sibling dependencies resolve through the workspace protocol declared in package.json."
+      }
+    ],
+    "source_surfaces": [
+      {
+        "name": "Image helpers module",
+        "paths": [
+          "src"
+        ],
+        "notes": "The only module. Five flat source files behind one entry point, specified at src/docs/README.md."
+      },
+      {
+        "name": "Unit suite",
+        "paths": [
+          "test/unit/spec"
+        ],
+        "notes": "One spec file executed by both the Mocha and Karma runners, with cases gated by runner."
+      },
+      {
+        "name": "Standing documentation",
+        "paths": [
+          "docs"
+        ],
+        "notes": "Generated documentation navigation, architecture, onboarding, decisions, and the specification registry."
+      },
+      {
+        "name": "Inherited tooling configuration",
+        "paths": [
+          "babel.config.js",
+          "jest.config.js",
+          ".eslintrc.js",
+          "process"
+        ],
+        "notes": "Each re-exports a shared workspace configuration. jest.config.js is present but no script invokes Jest; the real runners are Mocha and Karma."
+      }
+    ],
+    "generated_surfaces": [
+      {
+        "name": "Repo Standards template snapshot",
+        "paths": [
+          ".sdd/templates/repo-standards"
+        ],
+        "generated_from": "WebexTools/repo-standards",
+        "refresh_with": "Re-run the Repo Annotation template setup from the active plugin installation.",
+        "notes": "Reached through the .sdd/templates symlink to the shared snapshot in the enclosing workspace, so this package holds no template copy of its own."
+      },
+      {
+        "name": "Built package artifact",
+        "paths": [
+          "dist"
+        ],
+        "generated_from": "src",
+        "refresh_with": "yarn workspace @webex/helper-image build",
+        "notes": "The published artifact referenced by main in package.json. Never edit it directly."
+      }
+    ],
+    "sync_paths": [
+      {
+        "source": "WebexTools/repo-standards",
+        "targets": [
+          ".sdd/templates/repo-standards"
+        ],
+        "mechanism": "Repo Annotation template setup, resolved from the bundled snapshot in the active plugin installation.",
+        "notes": "The snapshot is shared at the workspace level and reached by symlink, because the canonical template root must be a path inside this specification root."
+      },
+      {
+        "source": "src",
+        "targets": [
+          "dist"
+        ],
+        "mechanism": "yarn workspace @webex/helper-image build",
+        "notes": "Transpiles the sources through the shared legacy build tooling."
+      }
+    ],
+    "validation_entrypoints": [
+      {
+        "name": "Unit tests",
+        "command": "yarn workspace @webex/helper-image test:unit",
+        "scope": "The unit suite under the Mocha runner. Cases gated to the browser do not execute here.",
+        "notes": "The fastest signal, but it leaves part of the suite unexecuted."
+      },
+      {
+        "name": "Unit tests in a browser",
+        "command": "yarn workspace @webex/helper-image test:browser",
+        "scope": "The same spec file under Karma, which is the only way the browser-gated cases run.",
+        "notes": "Requires a local Chrome and Firefox, the runner defaults."
+      },
+      {
+        "name": "Lint",
+        "command": "yarn workspace @webex/helper-image test:style",
+        "scope": "ESLint across the sources, using the inherited shared configuration.",
+        "notes": "Also the formatting check; there is no separate format command."
+      },
+      {
+        "name": "Build",
+        "command": "yarn workspace @webex/helper-image build",
+        "scope": "Transpiles the sources into the published artifact without running tests.",
+        "notes": "There is no standalone compile or typecheck step in this package."
+      }
+    ]
+  },
+  "folder_readme_contract": {
+    "required_sections": [
+      "purpose",
+      "boundaries",
+      "key-files",
+      "common-tasks"
+    ],
+    "rules": [
+      "Orient the reader before describing detail: state what the folder owns and what it does not before naming files.",
+      "Name the runtime whenever behavior differs between the Node and browser implementations.",
+      "Cite a file in this package for every behavioral claim."
+    ],
+    "example_policy": "Include an example only when it is copied from a source or test file in this package and still matches it. Do not invent usage that no call site or test demonstrates.",
+    "fallback": "When a folder has no owned behavior beyond its parent module, omit a folder readme rather than restating the module specification."
+  },
+  "regression_feedback_rules": [
+    {
+      "trigger": "A change lands in one processImage implementation and not the other, so behavior diverges by runtime.",
+      "required_followups": [
+        "Require the paired file in the same review, per the change-impact rows above",
+        "Add a regression test for the changed behavior under both the Mocha and Karma runners",
+        "Record the divergence in the module specification when it is deliberate"
+      ],
+      "notes": "Nothing in the build or test suite detects this today, which is how the existing differences in type fallback, avatar handling, and empty-slot values accumulated."
+    },
+    {
+      "trigger": "Documentation describes the module-internal orient helper, or omits processImage and detectFileType, as the consumer readme does.",
+      "required_followups": [
+        "Correct the surface against the declarations in src/index.js",
+        "Leave README.md unchanged, since it is reference-only, and fix the specification instead"
+      ],
+      "notes": "The module specification is the authority on the public surface."
+    },
+    {
+      "trigger": "A test is added to the disabled EXIF block without re-enabling it.",
+      "required_followups": [
+        "Re-enable the block or state explicitly that the path stays unpinned",
+        "Record the remaining gap in the module specification verification table"
+      ],
+      "notes": "Assertions that do not execute are not coverage, and the EXIF path is the largest untested surface in this package."
+    }
+  ],
+  "surface_owners": [
+    {
+      "surface": "Image helpers module",
+      "owner": "@webex/web-client",
+      "edit_boundary": "Owns every file under src. Changes to an export in src/index.js, or to one processImage implementation alone, are consumer-visible and need review."
+    },
+    {
+      "surface": "Consumer readme",
+      "owner": "@webex/web-client",
+      "edit_boundary": "README.md is retained unchanged as reference-only npm documentation. Specification corrections belong in src/docs/README.md."
+    },
+    {
+      "surface": "Inherited tooling configuration",
+      "owner": "Webex JavaScript SDK workspace",
+      "edit_boundary": "Consumed as-is. This package authors no lint, Babel, Jest, or runner configuration of its own and should not fork one."
+    },
+    {
+      "surface": "Repo Standards template snapshot",
+      "owner": "WebexTools/repo-standards",
+      "edit_boundary": "Never edit template bodies. They are shared at the workspace level and reached through the .sdd/templates symlink."
+    }
+  ],
+  "do_not_edit": [
+    "dist",
+    ".sdd/templates"
+  ],
+  "marker_scopes": {
+    "generated-doc-metadata": [
+      "AGENTS.md",
+      "docs",
+      "src/docs/README.md"
+    ]
+  },
+  "fallback_rules": [
+    "When behavior cannot be attributed to a file in this package, stop and report the gap rather than deriving it from the consumer readme, a sibling package, or commit history.",
+    "When a claim holds on one runtime only, say which runtime rather than generalizing it to the package.",
+    "When a needed command is absent from package.json, ask for the exact command instead of composing one."
+  ],
+  "downstream_context_pack": {
+    "required_human_surfaces": [
+      "AGENTS.md",
+      "docs/index.md",
+      "docs/architecture.md",
+      "docs/getting-started.md",
+      "docs/specs/README.md",
+      "src/docs/README.md"
+    ],
+    "required_agent_operational_surfaces": [
+      ".sdd/manifest.json",
+      "docs/specs/README.md"
+    ],
+    "required_machine_readable_surface": ".repo-context.json",
+    "recommended_machine_readable_sections": [
+      "public_interfaces",
+      "change_impact",
+      "glossary",
+      "evidence_rules",
+      "negative_guidance",
+      "confidence_policy",
+      "repository_topology",
+      "folder_readme_contract",
+      "regression_feedback_rules"
+    ]
+  }
+}

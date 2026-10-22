@@ -1,0 +1,452 @@
+{
+  "$schema": "./schemas/repo-context.schema.json",
+  "version": 1,
+  "repository": {
+    "name": "@webex/internal-plugin-mercury",
+    "purpose": "Internal Webex JS SDK plugin that keeps the client's Mercury WebSocket connections open. It registers webex.internal.mercury, connects one socket per session id after device registration, authorizes and keeps each socket alive with ping/pong, reconnects with exponential backoff according to close codes, routes incoming envelopes to autowired plugin handlers and to session-suffixed events, and switches sockets make-before-break when the server announces shutdown."
+  },
+  "commands": {
+    "install": "yarn install",
+    "compile": "yarn workspace @webex/internal-plugin-mercury build:src",
+    "build": "yarn workspace @webex/internal-plugin-mercury build",
+    "unit-test": "yarn workspace @webex/internal-plugin-mercury test:unit",
+    "browser-test": "yarn workspace @webex/internal-plugin-mercury test:browser",
+    "lint": "yarn workspace @webex/internal-plugin-mercury test:style",
+    "deploy": "yarn workspace @webex/internal-plugin-mercury deploy:npm"
+  },
+  "public_interfaces": [
+    {
+      "name": "@webex/internal-plugin-mercury package barrel",
+      "kind": "package_export",
+      "source": "src/index.js",
+      "entrypoints": [
+        "import Mercury, {Mercury, Socket, config, BadRequest, ConnectionError, Forbidden, NotAuthorized, UnknownResponse} from '@webex/internal-plugin-mercury'"
+      ],
+      "audience": "22 workspace packages that list @webex/internal-plugin-mercury in package.json, including the LLMChannel and RealtimeChannel subclasses",
+      "notes": "Importing the package also registers Mercury as internal plugin 'mercury' with an onBeforeLogout hook that calls logout()."
+    },
+    {
+      "name": "webex.internal.mercury runtime methods and events",
+      "kind": "plugin_api",
+      "source": "src/mercury.js",
+      "entrypoints": [
+        "webex.internal.mercury.connect()",
+        "webex.internal.mercury.disconnect()",
+        "webex.internal.mercury.disconnectAll()",
+        "webex.internal.mercury.logout()",
+        "webex.internal.mercury.getSocket()",
+        "webex.internal.mercury.getSockets()",
+        "webex.internal.mercury.on('event:mercury.buffer_state')"
+      ],
+      "audience": "SDK plugins and the subclasses in internal-plugin-llm and internal-plugin-board",
+      "notes": "Events for a non-default session end with a colon and that session id, for example online:secondary-session. Config keys read under config.mercury: pingInterval, pongTimeout, backoffTimeMax, backoffTimeReset, forceCloseDelay, beforeLogoutOptionsCloseReason, maxRetries, initialConnectionMaxRetries; webex.config.defaultMercuryOptions is spread over socket options."
+    },
+    {
+      "name": "package scripts",
+      "kind": "npm_scripts",
+      "source": "package.json",
+      "entrypoints": [
+        "build",
+        "build:src",
+        "test:style",
+        "test:unit",
+        "test:browser",
+        "deploy:npm"
+      ],
+      "audience": "contributors and CI",
+      "notes": "Do not run the aggregate test script: it chains test:integration, which is not defined."
+    }
+  ],
+  "source_of_truth": [
+    {
+      "surface": "Mercury plugin implementation",
+      "paths": [
+        "src/index.js",
+        "src/mercury.js",
+        "src/config.js",
+        "src/errors.js"
+      ],
+      "generated_artifacts": [
+        "dist"
+      ],
+      "refresh_with": [
+        "yarn workspace @webex/internal-plugin-mercury build:src"
+      ],
+      "validate_with": [
+        "yarn workspace @webex/internal-plugin-mercury test:unit",
+        "yarn workspace @webex/internal-plugin-mercury test:style"
+      ]
+    },
+    {
+      "surface": "Socket implementation",
+      "paths": [
+        "src/socket"
+      ],
+      "generated_artifacts": [
+        "dist/socket"
+      ],
+      "refresh_with": [
+        "yarn workspace @webex/internal-plugin-mercury build:src"
+      ],
+      "validate_with": [
+        "yarn workspace @webex/internal-plugin-mercury test:unit",
+        "yarn workspace @webex/internal-plugin-mercury test:browser"
+      ]
+    },
+    {
+      "surface": "module specifications",
+      "paths": [
+        "src/docs/README.md",
+        "src/socket/docs/README.md"
+      ],
+      "generated_artifacts": [],
+      "refresh_with": [
+        "update alongside the behavior change in the same commit"
+      ],
+      "validate_with": [
+        "spec-validator on an independent runtime"
+      ]
+    }
+  ],
+  "generated_artifacts": [
+    {
+      "path": "dist",
+      "generated_from": "src",
+      "refresh_with": "yarn workspace @webex/internal-plugin-mercury build:src"
+    },
+    {
+      "path": ".sdd/templates/repo-standards/template-map.json",
+      "generated_from": "WebexTools/repo-standards@d89a7fe59126ae3ad9bac9ca352aa7f12b4c85dc",
+      "refresh_with": "Package symlink .sdd/templates/repo-standards points to the JS SDK root .sdd/templates/repo-standards snapshot from PR 5246; no template copies are kept in this package."
+    }
+  ],
+  "validation_matrix": [
+    {
+      "paths": [
+        "src/**"
+      ],
+      "minimum": [
+        "yarn workspace @webex/internal-plugin-mercury test:unit"
+      ],
+      "recommended": [
+        "yarn workspace @webex/internal-plugin-mercury test:style",
+        "yarn workspace @webex/internal-plugin-mercury build:src"
+      ]
+    },
+    {
+      "paths": [
+        "src/mercury.js"
+      ],
+      "minimum": [
+        "yarn workspace @webex/internal-plugin-mercury test:unit"
+      ],
+      "recommended": [
+        "yarn workspace @webex/internal-plugin-mercury test:browser",
+        "review the sibling package internal-plugin-llm file src/llm.ts and the sibling package internal-plugin-board file src/realtime-channel.js when subclass-visible methods change"
+      ]
+    },
+    {
+      "paths": [
+        "src/socket/socket.js",
+        "src/socket/socket.shim.js"
+      ],
+      "minimum": [
+        "yarn workspace @webex/internal-plugin-mercury test:unit"
+      ],
+      "recommended": [
+        "yarn workspace @webex/internal-plugin-mercury test:browser"
+      ]
+    }
+  ],
+  "change_impact": [
+    {
+      "paths": [
+        "src/mercury.js"
+      ],
+      "affects": [
+        "every SDK plugin listening on webex.internal.mercury events",
+        "LLMChannel and RealtimeChannel subclasses"
+      ],
+      "refresh_with": [
+        "yarn workspace @webex/internal-plugin-mercury build:src"
+      ],
+      "validate_with": [
+        "yarn workspace @webex/internal-plugin-mercury test:unit"
+      ],
+      "avoid_direct_edits": [
+        "dist"
+      ],
+      "notes": "Close-code policy, event names, and the session suffix rule are relied on by consumers."
+    },
+    {
+      "paths": [
+        "src/socket/socket-base.js"
+      ],
+      "affects": [
+        "the wire protocol with the Mercury service",
+        "error classes seen by Mercury on open failure"
+      ],
+      "refresh_with": [
+        "yarn workspace @webex/internal-plugin-mercury build:src"
+      ],
+      "validate_with": [
+        "yarn workspace @webex/internal-plugin-mercury test:unit"
+      ],
+      "avoid_direct_edits": [
+        "dist"
+      ],
+      "notes": "Frame shapes must match the service; the token is sent over the network only in the authorization frame."
+    }
+  ],
+  "evidence_rules": [
+    {
+      "claim_category": "command_name",
+      "sources": [
+        "package.json"
+      ],
+      "requirement": "The script must exist in package.json scripts. test:integration is referenced by test but undefined.",
+      "notes": "Never cite the aggregate test script as runnable."
+    },
+    {
+      "claim_category": "import_path",
+      "sources": [
+        "src/index.js"
+      ],
+      "requirement": "A binding is public only if exported from src/index.js.",
+      "notes": "Consumers import from the package root; there are no subpath entry points."
+    },
+    {
+      "claim_category": "behavior_claim",
+      "sources": [
+        "src",
+        "test/unit/spec",
+        "test/integration/spec"
+      ],
+      "requirement": "Ground every behavioral claim in source or test evidence.",
+      "notes": "Commit history is not an evidence source for this package. README.md is retained product documentation, not the behavioral authority."
+    }
+  ],
+  "negative_guidance": [
+    {
+      "rule": "Do not reconnect from socket.url.",
+      "why": "A lower layer can rewrite the native URL to a non-catalog host; reconnects use sessionWebSocketUrls."
+    },
+    {
+      "rule": "Do not change a close-code branch without updating the close-code table in test/unit/spec/mercury-events.js.",
+      "why": "The table is the only test of the full reconnect policy."
+    },
+    {
+      "rule": "Do not put the access token in the URL or a log line.",
+      "why": "The token is meant to be sent over the network only in the authorization frame."
+    },
+    {
+      "rule": "Do not change only one of src/socket/socket.js and src/socket/socket.shim.js.",
+      "why": "package.json browser swaps them at build time, so divergence is invisible on the platform you test."
+    },
+    {
+      "rule": "Do not treat README.md as the list of config keys or events.",
+      "why": "It omits pingInterval, pongTimeout, forceCloseDelay, beforeLogoutOptionsCloseReason, and the shutdown events. See docs/adr/0001-retain-product-readme.md."
+    },
+    {
+      "rule": "Do not infer a coverage threshold for this package.",
+      "why": "The developer confirmed no coverage gate applies; the legacy-tools Mocha runner has no coverage."
+    }
+  ],
+  "confidence_policy": {
+    "high": {
+      "action": "update",
+      "expectation": "Source and unit test evidence both support the change, and the behavior has a case in test/unit/spec."
+    },
+    "medium": {
+      "action": "narrow-scope",
+      "expectation": "Only source evidence exists, for example the forced-close reconnect, switchover socket bookkeeping, or the platform hooks. Pin current behavior with a characterization test before modifying."
+    },
+    "low": {
+      "action": "noop",
+      "expectation": "Neither source nor tests settle the question. Stop and report the gap."
+    }
+  },
+  "repository_topology": {
+    "main_entrypoints": [
+      {
+        "name": "package barrel",
+        "path": "src/index.js",
+        "purpose": "Registers the plugin and re-exports Mercury, Socket, config, and the error classes",
+        "notes": "No subpath exports."
+      }
+    ],
+    "workspace_packages": [
+      {
+        "name": "@webex/internal-plugin-mercury",
+        "paths": [
+          "src",
+          "test"
+        ],
+        "notes": "Two modules; this SDD root is the package directory inside the webex-js-sdk monorepo."
+      }
+    ],
+    "source_surfaces": [
+      {
+        "name": "Mercury plugin",
+        "paths": [
+          "src"
+        ],
+        "notes": "index.js, mercury.js, config.js, errors.js. Specified at src/docs/README.md."
+      },
+      {
+        "name": "Socket",
+        "paths": [
+          "src/socket"
+        ],
+        "notes": "socket-base.js with Node and browser hooks. Specified at src/socket/docs/README.md."
+      },
+      {
+        "name": "tests",
+        "paths": [
+          "test/unit/spec",
+          "test/integration/spec"
+        ],
+        "notes": "Unit specs run on mocha; integration specs run only inside the karma browser run."
+      }
+    ],
+    "generated_surfaces": [
+      {
+        "name": "build output",
+        "paths": [
+          "dist"
+        ],
+        "generated_from": "src",
+        "refresh_with": "yarn workspace @webex/internal-plugin-mercury build:src",
+        "notes": "Produced by webex-legacy-tools. Do not edit by hand."
+      },
+      {
+        "name": "repo-standards template map",
+        "paths": [
+          ".sdd/templates/repo-standards"
+        ],
+        "generated_from": "WebexTools/repo-standards@d89a7fe59126ae3ad9bac9ca352aa7f12b4c85dc",
+        "refresh_with": "Package symlink .sdd/templates/repo-standards points to the JS SDK root .sdd/templates/repo-standards snapshot from PR 5246; no template copies are kept in this package.",
+        "notes": "Package symlink .sdd/templates/repo-standards points to the JS SDK root .sdd/templates/repo-standards snapshot from PR 5246; no template copies are kept in this package."
+      }
+    ],
+    "validation_entrypoints": [
+      {
+        "name": "unit tests",
+        "command": "yarn workspace @webex/internal-plugin-mercury test:unit",
+        "scope": "test/unit/spec",
+        "notes": "mocha via webex-legacy-tools --runner mocha."
+      },
+      {
+        "name": "browser tests",
+        "command": "yarn workspace @webex/internal-plugin-mercury test:browser",
+        "scope": "test/unit/spec and test/integration/spec",
+        "notes": "karma via webex-legacy-tools; integration specs need provisioned test users."
+      },
+      {
+        "name": "lint",
+        "command": "yarn workspace @webex/internal-plugin-mercury test:style",
+        "scope": "src",
+        "notes": "eslint via the local root .eslintrc.js."
+      }
+    ],
+    "sync_paths": [
+      {
+        "source": "src/socket/socket.js",
+        "targets": [
+          "src/socket/socket.shim.js"
+        ],
+        "mechanism": "Manual; the browser field in package.json selects between them at build time.",
+        "notes": "Both must replace Socket.getWebSocketConstructor and re-export Socket."
+      },
+      {
+        "source": "WebexTools/repo-standards@d89a7fe59126ae3ad9bac9ca352aa7f12b4c85dc",
+        "targets": [
+          ".sdd/templates/repo-standards"
+        ],
+        "mechanism": "Package symlink .sdd/templates/repo-standards points to the JS SDK root .sdd/templates/repo-standards snapshot from PR 5246; no template copies are kept in this package.",
+        "notes": "Package symlink .sdd/templates/repo-standards points to the JS SDK root .sdd/templates/repo-standards snapshot from PR 5246; no template copies are kept in this package."
+      }
+    ]
+  },
+  "folder_readme_contract": {
+    "required_sections": [
+      "purpose",
+      "boundaries",
+      "key-files",
+      "common-tasks"
+    ],
+    "rules": [
+      "Orient the reader before describing detail.",
+      "Link to the module specification rather than duplicating it."
+    ],
+    "example_policy": "Examples are allowed only when verified against src/ or test/.",
+    "fallback": "Omit a section rather than inventing content; report unresolved facts as gaps."
+  },
+  "regression_feedback_rules": [
+    {
+      "trigger": "A session reconnects, or fails to reconnect, after a close that the policy classifies the other way.",
+      "required_followups": [
+        "Add the close code and reason to the table in test/unit/spec/mercury-events.js",
+        "Update the close-policy invariant in src/docs/README.md"
+      ],
+      "notes": "Includes the forced-close Done (forced) path after disconnect."
+    },
+    {
+      "trigger": "A defect appears in only one platform's WebSocket hook.",
+      "required_followups": [
+        "Mirror the fix in the other hook file",
+        "Run the browser test run",
+        "Record the parity requirement in src/socket/docs/README.md"
+      ],
+      "notes": "Neither hook file is unit-tested."
+    }
+  ],
+  "surface_owners": [
+    {
+      "surface": "module implementation and specifications",
+      "owner": "@webex/web-client, @webex/web-sdk",
+      "edit_boundary": "Owners per the monorepo .github/CODEOWNERS entry for packages/@webex/internal-plugin-mercury."
+    }
+  ],
+  "do_not_edit": [
+    "dist",
+    ".sdd/templates/repo-standards"
+  ],
+  "marker_scopes": {
+    "sdd": [
+      ".sdd/manifest.json",
+      "src/docs/README.md",
+      "src/socket/docs/README.md",
+      "docs"
+    ]
+  },
+  "fallback_rules": [
+    "When source and tests disagree, code is the referee and the disagreement is recorded rather than silently resolved.",
+    "When neither source nor tests settle a question, report it as a gap instead of inferring.",
+    "Commit history is not a valid rationale source for this package."
+  ],
+  "downstream_context_pack": {
+    "required_human_surfaces": [
+      "README.md",
+      "docs/index.md",
+      "docs/architecture.md",
+      "src/docs/README.md",
+      "src/socket/docs/README.md"
+    ],
+    "required_agent_operational_surfaces": [
+      "AGENTS.md",
+      "docs/specs/README.md"
+    ],
+    "required_machine_readable_surface": ".sdd/manifest.json",
+    "recommended_machine_readable_sections": [
+      "public_interfaces",
+      "change_impact",
+      "evidence_rules",
+      "negative_guidance",
+      "confidence_policy",
+      "repository_topology",
+      "folder_readme_contract",
+      "regression_feedback_rules"
+    ]
+  }
+}

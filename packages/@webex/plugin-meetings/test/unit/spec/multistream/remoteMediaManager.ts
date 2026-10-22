@@ -6,6 +6,7 @@ import {MediaType} from '@webex/internal-media-core';
 import {
   Configuration,
   Event,
+  getRemoteMediaManagerConfigForLogging,
   RemoteMediaManager,
   VideoLayoutChangedEventData,
 } from '@webex/plugin-meetings/src/multistream/remoteMediaManager';
@@ -119,6 +120,34 @@ const DefaultTestConfiguration: Configuration = {
     },
   },
 };
+
+describe('getRemoteMediaManagerConfigForLogging', () => {
+  it('returns undefined when no configuration is provided', () => {
+    assert.isUndefined(getRemoteMediaManagerConfigForLogging());
+  });
+
+  it('replaces layouts with their count and initial layout without mutating the configuration', () => {
+    const config = cloneDeep(DefaultTestConfiguration);
+    const originalConfig = cloneDeep(config);
+
+    const result = getRemoteMediaManagerConfigForLogging(config);
+
+    assert.deepEqual(result, {
+      ...config,
+      video: {
+        ...config.video,
+        layouts: {
+          count: Object.keys(config.video.layouts).length,
+          initial: {
+            id: config.video.initialLayoutId,
+            definition: config.video.layouts[config.video.initialLayoutId],
+          },
+        },
+      },
+    });
+    assert.deepEqual(config, originalConfig);
+  });
+});
 
 describe('RemoteMediaManager', () => {
   let remoteMediaManager;
@@ -663,6 +692,23 @@ describe('RemoteMediaManager', () => {
   });
 
   describe('constructor', () => {
+    it('logs the compact remote media manager configuration', () => {
+      logger.log.resetHistory();
+
+      new RemoteMediaManager(
+        fakeReceiveSlotManager,
+        fakeMediaRequestManagers,
+        DefaultTestConfiguration
+      );
+
+      assert.calledOnceWithExactly(
+        logger.log,
+        `RemoteMediaManager#constructor --> RemoteMediaManager created with config: ${JSON.stringify(
+          getRemoteMediaManagerConfigForLogging(DefaultTestConfiguration)
+        )}`
+      );
+    });
+
     it('throws if the initial layout in the config is invalid', () => {
       const config = cloneDeep(DefaultTestConfiguration);
 
