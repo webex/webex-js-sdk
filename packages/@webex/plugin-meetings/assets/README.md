@@ -12,7 +12,8 @@ This folder contains files that plugin-meetings loads at runtime:
 distribution, `yarn build:script` copies them to
 `packages/webex/umd/assets/plugin-meetings/`. Each plugin keeps its own source `assets/` folder;
 the UMD build preserves that separation under `umd/assets/<plugin-name>/` to avoid filename
-collisions. The SDK does not serve them. A consuming application must host the assets at a URL
+collisions (for example, internal-plugin-encryption ships `ios_union.p7b` under
+`umd/assets/internal-plugin-encryption/`). The SDK does not serve them. A consuming application must host the assets at a URL
 reachable by the browser and set `meetings.assetsBaseUrl` to that directory. For npm package assets,
 use a URL such as `https://cdn.example.com/webex-js-sdk/1.2.3/plugin-meetings/assets/`; for UMD
 assets, use `https://cdn.example.com/webex-js-sdk/1.2.3/umd/assets/plugin-meetings/`.
