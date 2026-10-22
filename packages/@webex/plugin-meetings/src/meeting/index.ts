@@ -31,6 +31,7 @@ import {
   StatsMonitor,
   StatsMonitorEventNames,
   MediaCodecMimeType,
+  MultistreamRoapMediaConnection,
   StreamRequest,
 } from '@webex/internal-media-core';
 
@@ -155,6 +156,7 @@ import {
 import {CSI, ReceiveSlotManager} from '../multistream/receiveSlotManager';
 import SendSlotManager from '../multistream/sendSlotManager';
 import {MediaRequestManager} from '../multistream/mediaRequestManager';
+import MediaRequestQueue from '../multistream/mediaRequestQueue';
 import {
   Configuration as RemoteMediaManagerConfiguration,
   RemoteMediaManager,
@@ -833,6 +835,7 @@ export default class Meeting extends StatelessWebexPlugin {
   };
 
   private connectionStateHandler?: ConnectionStateHandler;
+  private mediaRequestQueue?: MediaRequestQueue;
   private iceCandidateErrors: Map<string, number>;
   private iceCandidatesCount: number;
   private rtcMetrics?: RtcMetrics;
@@ -1773,8 +1776,8 @@ export default class Meeting extends StatelessWebexPlugin {
   }
 
   /**
-   * Sends multistream media requests through the reconnection manager,
-   * so that they are deferred while the media connection is being reconnected
+   * Sends multistream media requests through the media request queue,
+   * so that they are sent only while the media connection is connected
    * @param {MediaType} mediaType - The media type
    * @param {StreamRequest[]} mediaRequests - The media requests to send
    * @returns {void}
@@ -1782,16 +1785,25 @@ export default class Meeting extends StatelessWebexPlugin {
    * @memberof Meeting
    */
   private sendMediaRequests(mediaType: MediaType, mediaRequests: StreamRequest[]) {
-    this.reconnectionManager.sendMediaRequest(`requestMedia(${mediaType})`, () => {
-      if (!this.mediaProperties.webrtcMediaConnection) {
-        LoggerProxy.logger.warn(
-          `Meeting:index#sendMediaRequests --> trying to send ${mediaType} media request before media connection was created`
-        );
+    if (!this.mediaRequestQueue) {
+      LoggerProxy.logger.warn(
+        `Meeting:index#sendMediaRequests --> trying to send ${mediaType} media request before media connection was created`
+      );
 
-        return;
-      }
-      this.mediaProperties.webrtcMediaConnection.requestMedia(mediaType, mediaRequests);
-    });
+      return;
+    }
+    this.mediaRequestQueue.requestMedia(mediaType, mediaRequests);
+  }
+
+  /**
+   * Stops the media request queue of the current media connection, discarding any queued requests
+   * @returns {void}
+   * @private
+   * @memberof Meeting
+   */
+  private stopMediaRequestQueue() {
+    this.mediaRequestQueue?.stop();
+    this.mediaRequestQueue = undefined;
   }
 
   /**
@@ -5464,6 +5476,7 @@ export default class Meeting extends StatelessWebexPlugin {
       Object.values(this.mediaRequestManagers).forEach((mediaRequestManager) =>
         mediaRequestManager.reset()
       );
+      this.stopMediaRequestQueue();
 
       this.receiveSlotManager.reset();
 
@@ -8267,6 +8280,10 @@ export default class Meeting extends StatelessWebexPlugin {
     );
 
     this.mediaProperties.setMediaPeerConnection(mc);
+    this.stopMediaRequestQueue();
+    if (this.isMultistream) {
+      this.mediaRequestQueue = new MediaRequestQueue(mc as MultistreamRoapMediaConnection);
+    }
     this.setupMediaConnectionListeners();
 
     if (this.isMultistream) {
@@ -8880,6 +8897,7 @@ export default class Meeting extends StatelessWebexPlugin {
       Object.values(this.mediaRequestManagers).forEach((mediaRequestManager) =>
         mediaRequestManager.reset()
       );
+      this.stopMediaRequestQueue();
 
       this.receiveSlotManager.reset();
       this.mediaProperties.webrtcMediaConnection.close();
