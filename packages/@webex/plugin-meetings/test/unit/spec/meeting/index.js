@@ -486,6 +486,28 @@ describe('plugin-meetings', () => {
           assert.instanceOf(meeting.mediaRequestManagers.screenShareVideo, MediaRequestManager);
         });
 
+        [
+          {manager: 'audio', mediaType: MediaType.AudioMain},
+          {manager: 'video', mediaType: MediaType.VideoMain},
+          {manager: 'screenShareAudio', mediaType: MediaType.AudioSlides},
+          {manager: 'screenShareVideo', mediaType: MediaType.VideoSlides},
+        ].forEach(({manager, mediaType}) => {
+          it(`defers ${manager} media requests while reconnection is in progress`, () => {
+            const requestMedia = sinon.stub();
+
+            meeting.mediaProperties.webrtcMediaConnection = {requestMedia};
+            meeting.reconnectionManager.mediaRequestQueue.start();
+
+            meeting.mediaRequestManagers[manager].commit();
+
+            assert.notCalled(requestMedia);
+
+            meeting.reconnectionManager.mediaRequestQueue.flush();
+
+            assert.calledOnceWithExactly(requestMedia, mediaType, []);
+          });
+        });
+
         it('getIngressPayloadType on webrtcMediaConnection is invoked for H264 when sending multistream video requests', () => {
           const getIngressPayloadType = sinon.stub().returns(97);
 
