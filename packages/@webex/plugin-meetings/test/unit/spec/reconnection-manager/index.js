@@ -199,6 +199,131 @@ describe('plugin-meetings', () => {
       assert.calledOnce(fakeMeeting.mediaRequestManagers.video.commit);
     });
 
+    describe('media requests', () => {
+      let task1;
+      let task2;
+
+      const sendMediaRequests = (rm) => {
+        rm.sendMediaRequest('task1', task1);
+        rm.sendMediaRequest('task2', task2);
+      };
+
+      beforeEach(() => {
+        task1 = sinon.stub();
+        task2 = sinon.stub();
+      });
+
+      it('sends media requests immediately when reconnection is not in progress', () => {
+        const rm = new ReconnectionManager(fakeMeeting);
+
+        sendMediaRequests(rm);
+
+        assert.calledOnceWithExactly(task1);
+        assert.calledOnceWithExactly(task2);
+      });
+
+      it('defers media requests until reconnection succeeds and sends them in order before success event', async () => {
+        const rm = new ReconnectionManager(fakeMeeting);
+        const completionCallback = sinon.stub().callsFake(async () => {
+          assert.notCalled(task1);
+          assert.notCalled(task2);
+        });
+
+        fakeMediaConnection.reconnect.callsFake(async () => sendMediaRequests(rm));
+
+        await rm.reconnect({}, completionCallback);
+
+        assert.calledOnceWithExactly(completionCallback);
+        assert.calledOnceWithExactly(task1);
+        assert.calledOnceWithExactly(task2);
+        sinon.assert.callOrder(completionCallback, task1, task2);
+        assert.isTrue(
+          task2.calledBefore(
+            TriggerProxy.trigger.withArgs(
+              fakeMeeting,
+              sinon.match.any,
+              'meeting:reconnectionSuccess'
+            )
+          )
+        );
+      });
+
+      it('discards deferred media requests when reconnection fails', async () => {
+        const rm = new ReconnectionManager(fakeMeeting);
+
+        fakeMediaConnection.reconnect.callsFake(async () => sendMediaRequests(rm));
+
+        await assert.isRejected(rm.reconnect({}, sinon.stub().rejects(new Error('fake error'))));
+
+        assert.notCalled(task1);
+        assert.notCalled(task2);
+
+        sendMediaRequests(rm);
+
+        assert.calledOnceWithExactly(task1);
+        assert.calledOnceWithExactly(task2);
+      });
+
+      it('keeps media requests deferred across network retries', async () => {
+        const rm = new ReconnectionManager(fakeMeeting);
+
+        fakeMeeting.webex.internal.device = {url: 'fake-device-url'};
+        fakeMeeting.webex.internal.mercury = {
+          connected: false,
+          connect: sinon.stub().resolves(),
+        };
+        fakeMeeting.webex.meetings.syncMeetings.onFirstCall().callsFake(async () => {
+          rm.sendMediaRequest('task1', task1);
+          throw new Error('fake sync error');
+        });
+        fakeMediaConnection.reconnect.callsFake(async () => rm.sendMediaRequest('task2', task2));
+
+        await rm.reconnect();
+
+        assert.calledTwice(fakeMeeting.webex.meetings.syncMeetings);
+        assert.calledOnceWithExactly(task1);
+        assert.calledOnceWithExactly(task2);
+        sinon.assert.callOrder(task1, task2);
+      });
+
+      it('sends deferred media requests after successful auto rejoin', async () => {
+        fakeMeeting.state = 'LEFT';
+        fakeMeeting.config.reconnection.autoRejoin = true;
+        const rm = new ReconnectionManager(fakeMeeting);
+
+        sinon.stub(rm, 'rejoinMeeting').callsFake(async () => {
+          sendMediaRequests(rm);
+          assert.notCalled(task1);
+        });
+
+        await rm.reconnect();
+
+        assert.calledOnceWithExactly(task1);
+        assert.calledOnceWithExactly(task2);
+        sinon.assert.callOrder(task1, task2);
+      });
+
+      it('discards deferred media requests on cleanUp', async () => {
+        const rm = new ReconnectionManager(fakeMeeting);
+        const defer = new Defer();
+
+        fakeMediaConnection.reconnect.callsFake(async () => {
+          rm.sendMediaRequest('task1', task1);
+          await defer.promise;
+        });
+
+        const reconnectPromise = rm.reconnect();
+
+        await new Promise((resolve) => setTimeout(resolve, 0));
+        assert.calledOnce(fakeMediaConnection.reconnect);
+        rm.cleanUp();
+        defer.resolve();
+        await reconnectPromise;
+
+        assert.notCalled(task1);
+      });
+    });
+
     it('sends the correct client event when reconnection fails', async () => {
       sinon.stub(ReconnectionManager.prototype, 'executeReconnection').rejects();
       fakeMeeting.isMultistream = true;
