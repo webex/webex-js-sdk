@@ -1,6 +1,6 @@
 {
   "name": "@webex/kms-caroots",
-  "description": "Provide and generate the CA roots used to validate the Webex KMS certificate.",
+  "description": "Verify the Cisco Trusted Root Store bundle and generate the CA roots used to validate the Webex KMS certificate.",
   "license": "MIT",
   "repository": {
     "type": "git",
@@ -12,27 +12,35 @@
   },
   "type": "commonjs",
   "main": "./index.js",
-  "browser": "./src/index.js",
   "types": "./index.d.ts",
   "bin": {
     "webex-kms-caroots": "./cli.js"
   },
+  "dependencies": {
+    "asn1js": "3.0.10",
+    "pkijs": "3.3.3"
+  },
   "devDependencies": {
-    "eslint": "^8.24.0"
+    "@babel/core": "^7.17.10",
+    "@webex/babel-config-legacy": "workspace:*",
+    "@webex/jest-config-legacy": "workspace:*",
+    "@webex/legacy-tools": "workspace:*",
+    "@webex/test-helper-chai": "workspace:*",
+    "eslint": "^8.24.0",
+    "sinon": "^9.2.4"
   },
   "files": [
     "index.js",
     "index.d.ts",
-    "caroots.js",
-    "caroots.d.ts",
-    "generate-bundle.js",
-    "src/index.js",
+    "verify.js",
+    "verify.d.ts",
     "cli.js",
     "README.md"
   ],
   "scripts": {
-    "build:src": "node ./generate-bundle.js",
     "deploy:npm": "yarn npm publish",
-    "test:style": "eslint ./*.js ./src/**/*.js"
+    "test:browser": "webex-legacy-tools test --unit --runner karma",
+    "test:style": "eslint ./*.js",
+    "test:unit": "webex-legacy-tools test --unit --runner jest"
   }
 }

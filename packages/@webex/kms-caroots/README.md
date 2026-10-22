@@ -1,34 +1,24 @@
 # @webex/kms-caroots
 
-> Provide and generate the CA roots used to validate the Webex KMS certificate.
+> Verify the Cisco Trusted Root Store bundle and generate the CA roots used to
+> validate the Webex KMS certificate.
 
-The Webex SDK validates the KMS certificate chain against a set of trusted CA
-roots supplied via `config.encryption.caroots`. The SDK ships a generated bundle
-containing the roots shared by the Cisco Trusted Root Store **Union** bundle and
-Mozilla's TLS server trust store. The generator verifies the Cisco bundle against
-pinned Cisco trust anchors before filtering it against Mozilla NSS `certdata.txt`.
-Verification excludes OpenSSL's default CA locations, so the downloaded Cisco
-bundle must chain to the pinned anchors.
+The Webex SDK validates the KMS certificate chain against the CA roots in Cisco's
+signed Trusted Root Store **Union** bundle (`ios_union.p7b`). By default the SDK
+downloads the bundle as a static asset and verifies it at runtime, so most
+applications don't need this package. Use it when you want to supply
+`config.encryption.caroots` yourself, e.g. for offline, FedRAMP or locked-down
+(CSP) deployments that can't fetch the SDK's static assets.
+
+The bundle's CMS signature is verified in JavaScript (Node or browser, no
+`openssl` required) against the pinned Cisco **TRS Bundle Root CA**
+(SHA-256 `DE:C6:69:E3:22:E0:7C:D7:C6:0A:56:90:4B:F5:0C:29:FA:1E:75:07:17:23:FC:10:35:77:E2:7B:22:69:68:D5`).
+Certificates embedded in the bundle are never trusted as anchors. The chain is
+checked at the bundle's signed `signingTime`, because Cisco's signing certificate
+is only valid for a year. Every certificate in the verified bundle is returned.
 
 See <https://www.cisco.com/security/pki/trs/readme.html> for the Cisco Trusted
 Root Store.
-
-Requires the `openssl` binary on `PATH`.
-
-## Bundled roots
-
-The package's default export is the generated root array. The SDK uses this
-export automatically, while applications can also import it directly:
-
-```js
-const caroots = require('@webex/kms-caroots').default;
-```
-
-Maintainers can refresh `caroots.js` from this repository with:
-
-```bash
-yarn workspace @webex/kms-caroots build:src
-```
 
 ## CLI
 
@@ -36,11 +26,14 @@ For a one-time run in a consuming application, invoke the published scoped
 package directly:
 
 ```bash
-# Print the JSON array to stdout
+# Download, verify and print the JSON array to stdout
 npx @webex/kms-caroots
 
 # Write it to a file
 npx @webex/kms-caroots --out ./caroots.json
+
+# Verify a bundle you already have instead of downloading it
+npx @webex/kms-caroots --in ./ios_union.p7b --out ./caroots.json
 ```
 
 Applications that need to refresh roots independently of an SDK release can
@@ -60,7 +53,7 @@ From this repository's root, use `yarn caroots:generate --out ./caroots.json`.
 ```js
 const {generateKmsCaroots} = require('@webex/kms-caroots');
 
-const caroots = await generateKmsCaroots();
+const caroots = await generateKmsCaroots(); // or generateKmsCaroots({input: './ios_union.p7b'})
 
 const webex = new WebexCore({
   config: {
@@ -68,6 +61,20 @@ const webex = new WebexCore({
   },
 });
 ```
+
+The verifier itself is browser-safe and network-free:
+
+```js
+const {verifyUnionBundle} = require('@webex/kms-caroots/verify');
+
+const {caroots, bundleVersion, signingTime} = await verifyUnionBundle(bytes, {
+  minBundleVersion: 20261022, // optional rollback protection (YYYYMMDD)
+});
+```
+
+It rejects with a `UnionBundleVerificationError` whose `reason` is one of
+`parse`, `attributes`, `signature`, `name`, `version`, `signing-time` or
+`no-certificates`.
 
 ## License
 

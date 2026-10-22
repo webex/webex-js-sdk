@@ -8589,7 +8589,15 @@ __metadata:
   version: 0.0.0-use.local
   resolution: "@webex/kms-caroots@workspace:packages/@webex/kms-caroots"
   dependencies:
+    "@babel/core": ^7.17.10
+    "@webex/babel-config-legacy": "workspace:*"
+    "@webex/jest-config-legacy": "workspace:*"
+    "@webex/legacy-tools": "workspace:*"
+    "@webex/test-helper-chai": "workspace:*"
+    asn1js: 3.0.10
     eslint: ^8.24.0
+    pkijs: 3.3.3
+    sinon: ^9.2.4
   bin:
     webex-kms-caroots: ./cli.js
   languageName: unknown

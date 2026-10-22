@@ -3,6 +3,7 @@ module.exports = {
   ignorePatterns: ['*.d.ts'],
   env: {
     node: true,
+    browser: true,
     es2021: true,
   },
   parserOptions: {
@@ -14,4 +15,11 @@ module.exports = {
     'no-console': 'off',
     'no-plusplus': 'off',
   },
+  overrides: [
+    {
+      files: ['test/**/*.js'],
+      env: {mocha: true},
+      parserOptions: {sourceType: 'module'},
+    },
+  ],
 };

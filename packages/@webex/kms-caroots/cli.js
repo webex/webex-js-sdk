@@ -12,15 +12,39 @@ const {generateKmsCaroots} = require('./index');
 const HELP = `Generate the Webex KMS CA roots (Cisco Trusted Root Store Union bundle).
 
 Usage:
-  webex-kms-caroots [--out <path>]
+  webex-kms-caroots [--in <path>] [--out <path>]
 
 Options:
+  --in <path>    Verify a local ios_union.p7b instead of downloading it from Cisco
   --out <path>   Write the JSON array to a file instead of stdout
   -h, --help     Show this help
 
-Requires the 'openssl' binary on PATH. The output is an array of raw
-base64-encoded certificates suitable for the SDK's encryption.caroots config.
+The bundle signature is verified against the pinned Cisco TRS Bundle Root CA.
+The output is an array of raw base64-encoded certificates suitable for the
+SDK's encryption.caroots config.
 `;
+
+/**
+ * Read the value of a `--name <value>` option.
+ * @param {string[]} args
+ * @param {string} name
+ * @returns {string|undefined}
+ */
+function getOption(args, name) {
+  const index = args.indexOf(name);
+
+  if (index === -1) {
+    return undefined;
+  }
+
+  const value = args[index + 1];
+
+  if (!value || value.startsWith('-')) {
+    throw new Error(`${name} requires a file path`);
+  }
+
+  return value;
+}
 
 async function main() {
   const args = process.argv.slice(2);
@@ -31,14 +55,10 @@ async function main() {
     return;
   }
 
-  const outIndex = args.indexOf('--out');
-  const out = outIndex === -1 ? undefined : args[outIndex + 1];
+  const out = getOption(args, '--out');
+  const input = getOption(args, '--in');
 
-  if (outIndex !== -1 && (!out || out.startsWith('-'))) {
-    throw new Error('--out requires a file path');
-  }
-
-  const caroots = await generateKmsCaroots();
+  const caroots = await generateKmsCaroots({input});
   const json = JSON.stringify(caroots);
 
   if (out) {
