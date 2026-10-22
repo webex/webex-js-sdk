@@ -36,6 +36,8 @@ class Karma {
     config.browserify.watch = debug;
     config.proxies['/fixtures/'] = `http://localhost:${config.port - 1}`;
     config.proxies['/upload'] = `http://localhost:${config.port - 1}/upload`;
+    // Plugin runtime assets (e.g. /assets/internal-plugin-encryption/), served by the test server.
+    config.proxies['/assets/'] = `http://localhost:${config.port - 1}/assets/`;
 
     return KarmaRunner.config.parseConfig(null, config, { promiseConfig: true, throwErrors: true })
       .then((parsedConfig: any) => new Promise((resolve, reject) => {

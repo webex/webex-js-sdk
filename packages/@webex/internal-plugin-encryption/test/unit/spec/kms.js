@@ -471,30 +471,42 @@ describe('internal-plugin-encryption', () => {
           assert.calledOnce(kms._getCarootsAssetBytes);
         });
 
-        it('fails closed with an actionable error and retries when the asset fails to load', async () => {
-          kms._getCarootsAssetBytes.onFirstCall().rejects(new Error('HTTP 404'));
+        [
+          {title: 'a network error', error: new Error('socket hang up'), reason: 'socket hang up'},
+          {
+            title: 'an HTTP error',
+            error: Object.assign(new Error('{}\nGET /assets/ios_union.p7b'), {
+              statusCode: 404,
+              options: {uri: '/assets/ios_union.p7b'},
+            }),
+            reason: 'HTTP 404 /assets/ios_union.p7b',
+          },
+        ].forEach(({title, error: loadError, reason}) => {
+          it(`fails closed with an actionable error and retries after ${title}`, async () => {
+            kms._getCarootsAssetBytes.onFirstCall().rejects(loadError);
 
-          const error = await kms._getCaroots().then(
-            () => assert.fail('expected rejection'),
-            (e) => e
-          );
+            const error = await kms._getCaroots().then(
+              () => assert.fail('expected rejection'),
+              (e) => e
+            );
 
-          assertFailClosedError(error, '"ios_union.p7b" could not be loaded');
-          assert.include(error.message, 'HTTP 404');
-          assert.calledOnceWithExactly(
-            webex.internal.metrics.submitClientMetrics,
-            'JS_SDK_KMS_CAROOTS_ASSET_DOWNLOAD_FAILED',
-            {
-              fields: {success: false},
-              tags: {
-                reason: 'HTTP 404',
-                assetsBaseUrl: 'https://cdn.example.com/assets/internal-plugin-encryption/',
-              },
-            }
-          );
+            assertFailClosedError(error, '"ios_union.p7b" could not be loaded');
+            assert.include(error.message, `Cause: ${reason}`);
+            assert.calledOnceWithExactly(
+              webex.internal.metrics.submitClientMetrics,
+              'JS_SDK_KMS_CAROOTS_ASSET_DOWNLOAD_FAILED',
+              {
+                fields: {success: false},
+                tags: {
+                  reason,
+                  assetsBaseUrl: 'https://cdn.example.com/assets/internal-plugin-encryption/',
+                },
+              }
+            );
 
-          assert.lengthOf(await kms._getCaroots(), 231);
-          assert.calledTwice(kms._getCarootsAssetBytes);
+            assert.lengthOf(await kms._getCaroots(), 231);
+            assert.calledTwice(kms._getCarootsAssetBytes);
+          });
         });
 
         it('fails closed with an actionable error and retries when the asset fails verification', async () => {

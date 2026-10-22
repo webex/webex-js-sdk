@@ -261,6 +261,20 @@ app.post(`/refresh`, bodyParser.json(), (req, res, next) => {
 
 app.use(express.static(path.resolve(__dirname, '..', `static`)));
 
+// Serve each plugin's runtime assets under /assets/<plugin-name>/, matching the
+// webpack dev server, so browser tests can load them like an application would.
+const webexPackagesDirectory = path.resolve(__dirname, '..', '..');
+
+fs.readdirSync(webexPackagesDirectory, {withFileTypes: true})
+  .filter((entry) => entry.isDirectory())
+  .forEach(({name}) => {
+    const assetsDirectory = path.join(webexPackagesDirectory, name, 'assets');
+
+    if (fs.existsSync(assetsDirectory)) {
+      app.use(`/assets/${name}`, cors(), express.static(assetsDirectory));
+    }
+  });
+
 // Start the server
 // ----------------
 

@@ -888,13 +888,18 @@ const KMS = WebexPlugin.extend({
    */
   _loadAssetCaroots() {
     const {assetsBaseUrl, carootsAsset} = this.config;
+    // HTTP errors carry the response body in `message`; summarize them instead.
+    const describe = (reason) =>
+      reason && reason.statusCode
+        ? `HTTP ${reason.statusCode} ${(reason.options && reason.options.uri) || ''}`.trim()
+        : (reason && reason.message) || String(reason);
     const fail = (reason, detail) =>
       new KMSError(
         `unable to load the CA roots used to validate the KMS certificate (${detail}). ` +
           'Set `encryption.caroots` to CA roots generated with @webex/kms-caroots, set ' +
           `\`encryption.assetsBaseUrl\` to a URL hosting "${carootsAsset}", or set ` +
           '`encryption.shouldValidateKMSCertificate` to false to opt out of validation. ' +
-          `Cause: ${reason.message}`
+          `Cause: ${describe(reason)}`
       );
 
     this.logger.info('kms: loading CA roots asset', carootsAsset);
@@ -933,7 +938,7 @@ const KMS = WebexPlugin.extend({
         this.logger.error('kms: failed to load CA roots asset', reason);
         this._submitMetric(JS_SDK_KMS_CAROOTS_ASSET_DOWNLOAD_FAILED, {
           fields: {success: false},
-          tags: {reason: reason.message, assetsBaseUrl},
+          tags: {reason: describe(reason), assetsBaseUrl},
         });
 
         return Promise.reject(fail(reason, `"${carootsAsset}" could not be loaded`));
