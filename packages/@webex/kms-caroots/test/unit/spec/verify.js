@@ -199,6 +199,21 @@ describe('kms-caroots', () => {
         {title: 'a malformed version', options: {bundleVersion: 'latest'}, reason: 'version'},
         {title: 'a short version', options: {bundleVersion: '2026'}, reason: 'version'},
         {
+          title: 'an impossible version date',
+          options: {bundleVersion: '20261340'},
+          reason: 'version',
+        },
+        {
+          title: 'a version dated after its signing time',
+          options: {
+            bundleVersion: new Date(Date.now() + 3 * DAY)
+              .toISOString()
+              .slice(0, 10)
+              .replace(/-/g, ''),
+          },
+          reason: 'version',
+        },
+        {
           title: 'a version older than minBundleVersion',
           options: {bundleVersion: '20250101'},
           verifyOptions: {minBundleVersion: 20261022},
@@ -214,6 +229,26 @@ describe('kms-caroots', () => {
             reason
           );
         });
+      });
+
+      it('rejects a retired signing key backdating a bundle to claim a newer version', async () => {
+        const signerNotAfter = new Date(Date.now() - 870 * DAY);
+        const chain = await createSigningChain({
+          signerNotBefore: new Date(Date.now() - 900 * DAY),
+          signerNotAfter,
+        });
+        const bundle = await createBundle(chain, {
+          bundleVersion: '99991231',
+          signingTime: new Date(signerNotAfter.getTime() - DAY),
+        });
+
+        await assertRejectsWithReason(
+          verifyUnionBundle(bundle, {
+            minBundleVersion: FIXTURE_VERSION,
+            trustAnchors: [chain.rootBase64],
+          }),
+          'version'
+        );
       });
 
       it('rejects a bundle signed when the signing certificate was not valid', async () => {

@@ -239,6 +239,33 @@ function extractCertificates(signedDataSchema) {
 }
 
 /**
+ * Parse a YYYYMMDD bundle version into a UTC date.
+ * @param {string} version
+ * @returns {?Date} undefined when malformed or not a real calendar date
+ */
+function parseVersionDate(version) {
+  const match = /^(\d{4})(\d{2})(\d{2})$/.exec(version);
+
+  if (!match) {
+    return undefined;
+  }
+
+  const [year, month, day] = match.slice(1).map((part) => parseInt(part, 10));
+  const date = new Date(Date.UTC(year, month - 1, day));
+
+  // Reject values like 20261340 that Date.UTC would silently roll over.
+  if (
+    date.getUTCFullYear() !== year ||
+    date.getUTCMonth() !== month - 1 ||
+    date.getUTCDate() !== day
+  ) {
+    return undefined;
+  }
+
+  return date;
+}
+
+/**
  * Resolve the WebCrypto implementation to use.
  * @param {Crypto} [crypto]
  * @returns {CryptoEngine}
@@ -346,8 +373,9 @@ async function verifyUnionBundle(bytes, options = {}) {
   }
 
   const versionString = getStringAttribute(signerInfo, OID_BUNDLE_VERSION, 'bundle version');
+  const versionDate = parseVersionDate(versionString);
 
-  if (!/^\d{8}$/.test(versionString)) {
+  if (!versionDate) {
     fail('version', `malformed bundle version "${versionString}"`);
   }
 
@@ -355,6 +383,18 @@ async function verifyUnionBundle(bytes, options = {}) {
 
   if (bundleVersion < minBundleVersion) {
     fail('version', `bundle version ${bundleVersion} is older than ${minBundleVersion}`);
+  }
+
+  // The chain is checked at the signer-chosen signingTime, so tie the version
+  // (YYYYMMDD) to it: a bundle can't claim a version dated after it was signed.
+  // With the minBundleVersion check this keeps signingTime on or after the
+  // minimum version's date, so retired signing keys can't backdate a bundle
+  // into their validity window and claim a newer version.
+  if (versionDate.getTime() > signingTime.getTime() + MAX_CLOCK_SKEW_MS) {
+    fail(
+      'version',
+      `bundle version ${bundleVersion} is dated after its signingTime ${signingTime.toISOString()}`
+    );
   }
 
   if (signingTime.getTime() > now.getTime() + MAX_CLOCK_SKEW_MS) {
