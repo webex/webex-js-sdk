@@ -44,8 +44,8 @@ options on the `encryption` config:
 - `carootsAsset` — the file name of Cisco's signed Trusted Root Store **Union**
   bundle, `ios_union.p7b`.
 - `assetsBaseUrl` — the URL of the directory hosting `carootsAsset`. Defaults to
-  `/assets/internal-plugin-encryption/` on the page's origin. The `webex`
-  package sets it to the matching versioned copy on jsDelivr,
+  `/assets/internal-plugin-encryption/` on the page's origin. `Webex.init()`
+  from the `webex` package sets it to the matching versioned copy on jsDelivr,
   `https://cdn.jsdelivr.net/npm/webex@<version>/umd/assets/internal-plugin-encryption/`.
 - `carootsReportOnly` — an additional array of CA roots validated alongside the
   enforced roots. A failure here is only reported as a metric instead of failing
@@ -73,9 +73,12 @@ The SDK reports these client metrics:
 
 ### Hosting the asset
 
-Applications using the `webex` package (npm or UMD) need no configuration:
-the bundle is fetched from jsDelivr. Make sure your Content Security Policy
-`connect-src` allows `https://cdn.jsdelivr.net`.
+Applications that create the SDK with `Webex.init()` from the `webex` package
+(npm or UMD) need no configuration: the bundle is fetched from the matching
+release on jsDelivr, so your Content Security Policy `connect-src` must allow
+`https://cdn.jsdelivr.net`. Applications that construct `WebexCore` (or
+`new Webex()`) directly load it from `/assets/internal-plugin-encryption/` on
+the page's origin unless `assetsBaseUrl` is set.
 
 To self-host, serve the files from
 `node_modules/@webex/internal-plugin-encryption/dist/assets/` (or

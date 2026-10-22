@@ -25,6 +25,9 @@ let webex;
 function authorize() {
   // eslint-disable-next-line no-multi-assign
   webex = window.webex = Webex.init({
+    config: {
+
+    },
     credentials: {
       access_token: document.getElementById('access-token').value
     }
