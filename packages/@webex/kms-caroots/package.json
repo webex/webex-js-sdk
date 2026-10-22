@@ -10,8 +10,8 @@
   "engines": {
     "node": ">=18"
   },
-  "type": "commonjs",
   "main": "./index.js",
+  "browser": "./verify.js",
   "types": "./index.d.ts",
   "bin": {
     "webex-kms-caroots": "./cli.js"
@@ -34,6 +34,7 @@
     "index.d.ts",
     "verify.js",
     "verify.d.ts",
+    "src/index.js",
     "cli.js",
     "README.md"
   ],

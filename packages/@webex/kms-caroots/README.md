@@ -62,7 +62,8 @@ const webex = new WebexCore({
 });
 ```
 
-The verifier itself is browser-safe and network-free:
+The verifier itself is browser-safe and network-free. It is also the package's
+`browser` entry, so bundlers resolve `@webex/kms-caroots` to it:
 
 ```js
 const {verifyUnionBundle} = require('@webex/kms-caroots/verify');

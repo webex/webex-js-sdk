@@ -8,7 +8,7 @@ import util from 'util';
 import {safeSetTimeout} from '@webex/common-timers';
 import {oneFlight} from '@webex/common';
 import {WebexPlugin} from '@webex/webex-core';
-import {verifyUnionBundle} from '@webex/kms-caroots/verify';
+import {verifyUnionBundle} from '@webex/kms-caroots';
 import {Context, Request, Response} from 'node-kms';
 import jose from 'node-jose';
 import crypto from 'isomorphic-webcrypto';
