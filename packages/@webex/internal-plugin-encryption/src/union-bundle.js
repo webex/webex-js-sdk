@@ -8,7 +8,7 @@
  * File name of the Cisco Trusted Root Store "Union" bundle shipped in assets/.
  * @type {string}
  */
-export const UNION_BUNDLE_ASSET = 'ios_union.p7b';
+export const UNION_BUNDLE_ASSET = 'ios_union-20261022.p7b';
 
 /**
  * Signed version (YYYYMMDD) of the shipped bundle. Bundles with a lower

@@ -5,7 +5,7 @@
 
 /* eslint-disable no-console */
 
-// Maintainer script: refreshes assets/ios_union.p7b from Cisco (or a local file
+// Maintainer script: refreshes assets/ios_union-<version>.p7b from Cisco (or a local file
 // passed with --in) after verifying it with the same verifier the SDK uses at
 // runtime, then regenerates src/union-bundle.js so the shipped bundle version
 // becomes the rollback floor.
@@ -17,31 +17,38 @@ const {webcrypto} = require('crypto');
 const {loadUnionBundle, verifyUnionBundle} = require('@webex/kms-caroots');
 
 const packageRoot = path.resolve(__dirname, '..');
-const assetPath = path.join(packageRoot, 'assets/ios_union.p7b');
 const constantsPath = path.join(packageRoot, 'src/union-bundle.js');
 
 /**
- * Read the shipped bundle version so a refresh can never downgrade it.
- * @returns {number}
+ * Read the shipped bundle's name and version for cleanup and rollback protection.
+ * @returns {Object} shipped bundle filename and version
  */
-function currentBundleVersion() {
+function currentBundle() {
   if (!fs.existsSync(constantsPath)) {
-    return 0;
+    return {bundleVersion: 0};
   }
 
-  const match = fs.readFileSync(constantsPath, 'utf8').match(/UNION_BUNDLE_VERSION = (\d+)/);
+  const source = fs.readFileSync(constantsPath, 'utf8');
+  const versionMatch = source.match(/UNION_BUNDLE_VERSION = (\d+)/);
+  const assetMatch = source.match(/UNION_BUNDLE_ASSET = '([^']+)'/);
 
-  return match ? parseInt(match[1], 10) : 0;
+  return {
+    assetName: assetMatch ? assetMatch[1] : undefined,
+    bundleVersion: versionMatch ? parseInt(versionMatch[1], 10) : 0,
+  };
 }
 
 async function main() {
   const inIndex = process.argv.indexOf('--in');
   const input = inIndex === -1 ? undefined : process.argv[inIndex + 1];
+  const previous = currentBundle();
   const bytes = await loadUnionBundle({input});
   const {caroots, bundleVersion, signingTime} = await verifyUnionBundle(bytes, {
     crypto: webcrypto,
-    minBundleVersion: currentBundleVersion(),
+    minBundleVersion: previous.bundleVersion,
   });
+  const assetName = `ios_union-${bundleVersion}.p7b`;
+  const assetPath = path.join(packageRoot, 'assets', assetName);
 
   fs.writeFileSync(assetPath, bytes);
   fs.writeFileSync(
@@ -56,7 +63,7 @@ async function main() {
  * File name of the Cisco Trusted Root Store "Union" bundle shipped in assets/.
  * @type {string}
  */
-export const UNION_BUNDLE_ASSET = 'ios_union.p7b';
+export const UNION_BUNDLE_ASSET = '${assetName}';
 
 /**
  * Signed version (YYYYMMDD) of the shipped bundle. Bundles with a lower
@@ -66,6 +73,10 @@ export const UNION_BUNDLE_ASSET = 'ios_union.p7b';
 export const UNION_BUNDLE_VERSION = ${bundleVersion};
 `
   );
+
+  if (previous.assetName !== assetName && /^ios_union(?:-\d{8})?\.p7b$/.test(previous.assetName)) {
+    fs.rmSync(path.join(packageRoot, 'assets', previous.assetName), {force: true});
+  }
 
   console.log(
     `Wrote ${path.relative(

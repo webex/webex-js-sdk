@@ -9,6 +9,7 @@ import MockWebex from '@webex/test-helper-mock-webex';
 import sinon from 'sinon';
 import Encryption from '@webex/internal-plugin-encryption';
 import {KmsError, KmsTimeoutError} from '../../../dist/kms-errors';
+import {UNION_BUNDLE_ASSET} from '../../../dist/union-bundle';
 
 describe('internal-plugin-encryption', () => {
   describe('kms', () => {
@@ -422,7 +423,7 @@ describe('internal-plugin-encryption', () => {
         Object.assign(webex.internal.encryption.config, {
           shouldValidateKMSCertificate: true,
           caroots: undefined,
-          carootsAsset: 'ios_union.p7b',
+          carootsAsset: UNION_BUNDLE_ASSET,
           assetsBaseUrl: 'https://cdn.example.com/assets/internal-plugin-encryption/',
         });
         sinon.stub(kms, '_getCarootsAssetBytes').resolves(bundle.slice());
@@ -475,11 +476,11 @@ describe('internal-plugin-encryption', () => {
           {title: 'a network error', error: new Error('socket hang up'), reason: 'socket hang up'},
           {
             title: 'an HTTP error',
-            error: Object.assign(new Error('{}\nGET /assets/ios_union.p7b'), {
+            error: Object.assign(new Error(`{}\nGET /assets/${UNION_BUNDLE_ASSET}`), {
               statusCode: 404,
-              options: {uri: '/assets/ios_union.p7b'},
+              options: {uri: `/assets/${UNION_BUNDLE_ASSET}`},
             }),
-            reason: 'HTTP 404 /assets/ios_union.p7b',
+            reason: `HTTP 404 /assets/${UNION_BUNDLE_ASSET}`,
           },
         ].forEach(({title, error: loadError, reason}) => {
           it(`fails closed with an actionable error and retries after ${title}`, async () => {
@@ -490,7 +491,7 @@ describe('internal-plugin-encryption', () => {
               (e) => e
             );
 
-            assertFailClosedError(error, '"ios_union.p7b" could not be loaded');
+            assertFailClosedError(error, `"${UNION_BUNDLE_ASSET}" could not be loaded`);
             assert.include(error.message, `Cause: ${reason}`);
             assert.calledOnceWithExactly(
               webex.internal.metrics.submitClientMetrics,
@@ -520,7 +521,7 @@ describe('internal-plugin-encryption', () => {
             (e) => e
           );
 
-          assertFailClosedError(error, '"ios_union.p7b" failed verification');
+          assertFailClosedError(error, `"${UNION_BUNDLE_ASSET}" failed verification`);
           assert.calledOnce(webex.internal.metrics.submitClientMetrics);
 
           const [name, payload] = webex.internal.metrics.submitClientMetrics.args[0];
@@ -554,7 +555,7 @@ describe('internal-plugin-encryption', () => {
 
           assert.deepEqual(
             Buffer.from(bytes),
-            fs.readFileSync(path.join(__dirname, '../../../assets/ios_union.p7b'))
+            fs.readFileSync(path.join(__dirname, '../../../assets', UNION_BUNDLE_ASSET))
           );
         });
       });

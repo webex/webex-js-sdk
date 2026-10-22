@@ -42,7 +42,7 @@ options on the `encryption` config:
 - `caroots` — an array of raw base64-encoded CA root certificates. When set (and
   non-empty) these are used and nothing is downloaded.
 - `carootsAsset` — the file name of Cisco's signed Trusted Root Store **Union**
-  bundle, `ios_union.p7b`.
+  bundle, `ios_union-<version>.p7b`, using the signed bundle version (YYYYMMDD).
 - `assetsBaseUrl` — the URL of the directory hosting `carootsAsset`. Defaults to
   `/assets/internal-plugin-encryption/` on the page's origin. `Webex.init()`
   from the `webex` package sets it to the matching versioned copy on jsDelivr,
@@ -128,10 +128,13 @@ without the `-----BEGIN/END CERTIFICATE-----` lines or newlines).
 
 ### Refreshing the shipped bundle
 
-Maintainers refresh `assets/ios_union.p7b` with
+Maintainers refresh `assets/ios_union-<version>.p7b` with
 `yarn workspace @webex/internal-plugin-encryption assets:refresh`, which
-downloads the latest bundle from Cisco, verifies it, refuses to downgrade it and
-regenerates `src/union-bundle.js`.
+downloads the latest bundle from Cisco, verifies it, refuses to downgrade it,
+names the file using its verified signed version, and regenerates
+`src/union-bundle.js` with the matching filename and rollback floor. The previous
+shipped bundle is removed after the replacement is written. Both the asset name
+and version are generated; do not edit them by hand.
 
 ## Maintainers
 
