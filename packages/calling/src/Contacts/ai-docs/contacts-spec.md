@@ -221,7 +221,7 @@ The `encryptContact()` method is called for **both** `CUSTOM` and `CLOUD` contac
 | CONTACTS-R-005 | Deletes a contact group by groupId and removes it from the local cache. | Evicting a deleted group locally keeps cached group membership aligned with the contacts service. | `src/Contacts/ContactsClient.ts` | `src/Contacts/ContactsClient.test.ts` | none identified | PRESENT |
 | CONTACTS-R-006 | Transparently encrypts and decrypts contact fields: `displayName`, `firstName`, `lastName`, `emails`, `phoneNumbers`, `sipAddresses`, `addressInfo`, `avatarURL`, `companyName`, `title`. | Field-level encryption prevents names, addresses, organization data, and contact routes from being stored as plaintext by the contacts service. | `src/Contacts/ContactsClient.ts` | `src/Contacts/ContactsClient.test.ts` | none identified | PRESENT |
 | CONTACTS-R-007 | Resolves CLOUD contacts via SCIM to fetch display names, phone numbers, SIP addresses, department, manager, and avatar information. Processes in batches of 50. | Batching SCIM resolution limits request size while enriching cloud contacts with directory-authoritative profile data. | `src/Contacts/ContactsClient.ts` | `src/Contacts/ContactsClient.test.ts` | none identified | PRESENT |
-| CONTACTS-R-008 | Automatically creates a default "Other contacts" group when no groups exist. | An automatic default group gives ungrouped contacts a valid service container and avoids special-case handling by consumers. | `src/Contacts/ContactsClient.ts` | `src/Contacts/ContactsClient.test.ts` | none identified | PRESENT |
+| CONTACTS-R-008 | Automatically creates a default "Other contacts" group when no groups exist. Concurrent invocations of `fetchEncryptionKeyUrl` resolve to a single encryption key URL and create at most one KMS key and one default group; the in-flight resolution is serialized via a single-flight promise guard so that subsequent callers await the same promise rather than racing to create duplicate resources. After a transient failure the guard is cleared so callers can retry. | An automatic default group gives ungrouped contacts a valid service container and avoids special-case handling by consumers. Without serialization, concurrent callers racing on an empty group list each create a KMS key and a default group, producing duplicate KMS resources and duplicate "Other contacts" groups. | `src/Contacts/ContactsClient.ts` (field `encryptionKeyUrlPromise`; `fetchEncryptionKeyUrl` single-flight block) | `src/Contacts/ContactsClient.test.ts` (`concurrent fetchEncryptionKeyUrl creates one key and one default group`; `failed key resolution does not cache a rejected promise`) | none identified | PRESENT |
 
 ### Key Capabilities
 
@@ -283,16 +283,20 @@ The client maintains in-memory caches:
 - `this.groups: ContactGroup[]` — Updated on get/create/delete
 - `this.encryptionKeyUrl: string` — Cached after first resolution
 - `this.defaultGroupId: string` — Cached default group ID
+- `this.encryptionKeyUrlPromise: Promise<string> | undefined` — In-flight single-flight guard; holds the active key/group-creation promise while resolution is in progress; cleared on rejection so callers can retry
 
 ### Encryption Key Resolution Logic
 
 1. If `this.encryptionKeyUrl` is already cached, return it
 2. If `this.groups` is undefined, await `getContacts()` to populate
 3. If groups exist, use `groups[0].encryptionKeyUrl`
-4. If no groups exist:
-   - Create unbound KMS key via `this.webex.internal.encryption.kms.createUnboundKeys({count: 1})`
-   - Create KMS resource via `this.webex.internal.encryption.kms.createResource({keyUris: [uri]})`
-   - Create default group named "Other contacts"
+4. If no groups exist (single-flight guard active):
+   - If `this.encryptionKeyUrlPromise` is already set, await it (concurrent callers join the in-flight promise)
+   - Otherwise create and store `this.encryptionKeyUrlPromise` as an IIFE that:
+     - Creates unbound KMS key via `this.webex.internal.encryption.kms.createUnboundKeys({count: 1})`
+     - Creates KMS resource via `this.webex.internal.encryption.kms.createResource({keyUris: [uri]})`
+     - Creates default group named "Other contacts" via `createContactGroup`
+     - On rejection: clears `this.encryptionKeyUrlPromise` so subsequent callers retry from scratch
 
 ### SCIM Query Format
 
@@ -368,6 +372,7 @@ The `ContactsClient` maintains in-memory state that is updated during CRUD opera
 - `this.groups: ContactGroup[]` — All contact groups
 - `this.encryptionKeyUrl: string` — Cached encryption key URL
 - `this.defaultGroupId: string` — Cached default group ID
+- `this.encryptionKeyUrlPromise: Promise<string> | undefined` — Active single-flight promise for key/group creation; cleared on rejection
 
 On delete operations, the item is removed from the local cache by `findIndex` + `splice`.
 
@@ -377,7 +382,7 @@ On delete operations, the item is removed from the local cache by `findIndex` + 
 1. Return cached `this.encryptionKeyUrl` if available
 2. If `this.groups` is undefined, trigger `getContacts()` to populate
 3. If groups exist, return `groups[0].encryptionKeyUrl`
-4. If no groups exist: create KMS keys → create default "Other contacts" group → return new key URL
+4. If no groups exist: single-flight guard — concurrent callers share one in-flight promise; first caller creates KMS keys and the default "Other contacts" group; all callers receive the same key URL; on rejection the guard is cleared and subsequent callers retry from scratch
 
 ### SCIM Resolution Details
 
@@ -692,7 +697,11 @@ ContactsClient owns in-memory contact/group maps, the selected contacts-service 
 
 ## Concurrency & Reactive Flow
 
-Contact-service, KMS, and SCIM calls are asynchronous. Batch resolution is awaited before returning the enriched result; local map mutations occur after successful service operations so rejected requests do not leave optimistic stale state. Evidence: `src/Contacts/ContactsClient.ts`.
+Contact-service, KMS, and SCIM calls are asynchronous. Batch resolution is awaited before returning the enriched result; local map mutations occur after successful service operations so rejected requests do not leave optimistic stale state.
+
+`fetchEncryptionKeyUrl` enforces a single-flight invariant on the key-and-group creation path: the first caller to reach the no-groups branch stores an in-flight promise (`this.encryptionKeyUrlPromise`); any concurrent caller that reaches the same branch awaits the same promise instead of starting a second KMS/group-creation sequence. On transient failure the in-flight promise is cleared, allowing a subsequent caller to retry. This prevents duplicate KMS resources and duplicate default groups under concurrent invocation.
+
+Evidence: `src/Contacts/ContactsClient.ts`; `src/Contacts/ContactsClient.test.ts` (`concurrent fetchEncryptionKeyUrl creates one key and one default group`, `failed key resolution does not cache a rejected promise`).
 
 ## Error Handling & Failure Modes
 
@@ -783,3 +792,43 @@ Unit tests are co-located under `src/Contacts/` and exercise positive, negative,
 ### Contacts Module — Architecture / Related Documentation
 
 - [AGENTS.md](./AGENTS.md) — Overview, examples, public API
+
+---
+
+## Change Delta — AC-2 Single-Flight Guard (CAI-8465)
+
+**WHAT:** Added a private `encryptionKeyUrlPromise: Promise<string> | undefined` field to `ContactsClient` and wrapped the KMS-key-creation + default-group-creation block inside `fetchEncryptionKeyUrl` in an IIFE whose promise is stored in that field. Concurrent callers that reach the no-groups branch await the shared promise; the promise is cleared in the `catch` block so that after a transient failure subsequent callers retry rather than receive the cached rejection.
+
+**WHY (provenance):** CAI-8465 — concurrent invocations of `fetchEncryptionKeyUrl` (reached via `createContact`, `createContactGroup`, and `fetchDefaultGroup`) each raced to call `createUnboundKeys`/`createResource` and `createContactGroup(DEFAULT_GROUP_NAME)`, producing duplicate KMS resources and duplicate "Other contacts" groups. No trusted-host allowlist source exists in `packages/calling` for the SSRF finding (AC-1 / U-08), so that remediation is deferred; this change addresses only the TOCTOU concurrency finding (AC-2).
+
+### Data
+
+- No new persistent fields; `encryptionKeyUrlPromise` is in-memory only and is scoped to the `ContactsClient` instance lifetime.
+- No new data written to the contacts service, KMS, or any external store beyond what already existed (one KMS key, one default group).
+- The fix reduces, not increases, the number of KMS and contacts-service writes under concurrency.
+
+### Error Matrix
+
+| Scenario | Before fix | After fix |
+|---|---|---|
+| `createUnboundKeys` rejects on first caller | Rejection propagated to caller; no in-flight state remains | Same; `encryptionKeyUrlPromise` is cleared in catch |
+| `createContactGroup` rejects after key is created | `this.encryptionKeyUrl` is set but no group exists; subsequent callers get cached key URL without a default group (pre-existing edge case, outside AC-2 scope) | Same behavior — the fix does not change the post-failure key-caching behavior in this path |
+| Concurrent second caller arrives while first is in-flight and first succeeds | Second caller retries independently (old bug: two KMS keys created) | Second caller awaits the first's promise and receives the same key URL |
+| Concurrent second caller arrives while first is in-flight and first fails | Second caller retries independently (pre-existing behavior) | `encryptionKeyUrlPromise` cleared in catch; second caller creates a new in-flight promise and retries |
+
+### Resilience
+
+- Transient KMS or contacts-service failures during key resolution clear `encryptionKeyUrlPromise`, allowing the next caller to retry from scratch.
+- The fix does not introduce retries itself; it ensures a retry can happen by not caching a rejected promise.
+- Single-flight guard covers only the `fetchEncryptionKeyUrl` no-groups code path; the `getContacts` call on the `groups === undefined` path is not guarded (outside AC-2 scope).
+
+### Observability
+
+- No new log statements are added beyond what already existed in the key/group creation path.
+- Existing `log.log("Creating a default group: ...")` and `log.log("Successfully created default group with ID: ...")` calls remain in scope and are emitted exactly once under the single-flight path (AGENTS.md Rule 6 — no tokens/credentials/PII logged).
+
+### Operations
+
+- No deployment or configuration changes required.
+- The `encryptionKeyUrlPromise` field is internal to `ContactsClient`; no public API surface or event contract changes.
+- No migration, feature flag, or rollback procedure needed.
