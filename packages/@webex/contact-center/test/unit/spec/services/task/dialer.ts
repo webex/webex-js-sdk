@@ -20,6 +20,24 @@ describe('AQM routing dialer', () => {
   });
 
   describe('Routing outbound dial', () => {
+    it('redacts timeout diagnostics for outdial requests containing custom attributes', () => {
+      aqmDialer(fakeAqm);
+
+      const request = fakeAqm.req.mock.calls[0][0]({
+        data: {
+          entryPointId: 'entry-point',
+          destination: '+142356',
+          origin: '+18005550000',
+          direction: 'OUTBOUND',
+          attributes: {contactType: 'Customer'},
+          mediaType: 'telephony',
+          outboundType: 'OUTDIAL',
+        },
+      } as any);
+
+      expect(request.redactSensitiveLogs).toBe(true);
+    });
+
     it('should call the startdial api', () => {
       const fakeAqm = {
         req: () =>

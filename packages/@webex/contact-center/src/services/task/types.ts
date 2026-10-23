@@ -2021,6 +2021,18 @@ export interface ITask extends IEventEmitter {
   end(): Promise<TaskResponse>;
 
   /**
+   * Updates CAD/global-variable attributes on the live task.
+   * Contact Center supports up to 30 attributes with values up to 256 characters.
+   * @param attributes - Attribute names and string values to update
+   * @returns Promise<TaskResponse>
+   * @example
+   * ```typescript
+   * await task.updateCadVariables({contactType: 'Customer'});
+   * ```
+   */
+  updateCadVariables(attributes: Record<string, string>): Promise<TaskResponse>;
+
+  /**
    * Initiates wrap-up process for the task with specified details.
    * @param wrapupPayload - Wrap-up details including reason and auxiliary code
    * @returns Promise<TaskResponse>
