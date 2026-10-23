@@ -148,7 +148,7 @@ Related context: [repository architecture](../../../../docs/architecture.md) ·
 | Type declarations `ServiceHostmap`, `Service`, `ServiceUrl`, `ServiceHost`, `IServiceCatalog`, `IServiceDetail`, `ServiceGroup` | `webex-core-services-v2` | TypeScript callers inside the package | Exported from the types file; not re-exported from the package entry; `ServiceHost` and `ServiceUrl` here are plain types and unrelated to the v1 classes of the same name exported by the package entry | `src/lib/services-v2/types.ts` |
 | Configuration `services.*` (`discovery`, `override`, `allowedDomains`, `validateDomains`, `servicesNotNeedValidation`, `useCatalogOverride`, `waitForCatalogInit`, `catalogInitTimeout`, `skipPreauthCatalogOnUnauthenticated`, `useUserOnboardingServiceForActivations`), `calling.cacheU2C`, `fedramp`, `email` | `webex-core-services-v2` | SDK integrators | Keys are read at the moment of `change:config` (init) or per call, not live; `useCatalogOverride` is read only here, not by v1 | `src/config.js` |
 | Session property `ready` and props `validateDomains`, `initFailed` | `webex-core-services-v2` | `webex.ready` derivation, auth interceptor | `ready` participates in `webex.ready` when it is `false` | `src/lib/services-v2/services-v2.ts`, `src/webex-core.js` |
-| Wire request `GET {u2c}/catalog`, `/limited/catalog`, `/signin/catalog` with `format=U2CV2` | `u2c-service` | The plugin | Server-defined; the plugin accepts `activeServices`, `services[].serviceUrls[].{baseUrl, priority}`, `timestamp`, `orgId`, `format` | `src/lib/services-v2/types.ts` |
+| Wire request `GET {u2c}/catalog`, `/limited/catalog`, `/signin/catalog` with `format=U2CV2&format_failsafe=hostmap` | `u2c-service` | The plugin | Server-defined; the plugin accepts U2CV2 service entries or converts a hostmap failsafe response | `src/lib/services-v2/types.ts` |
 
 ## Dependencies
 
@@ -170,7 +170,7 @@ Related context: [repository architecture](../../../../docs/architecture.md) ·
 | ID | WHAT | WHY | Source evidence | Test or example evidence | Assumptions or gaps | Confidence |
 | --- | --- | --- | --- | --- | --- | --- |
 | `SV2-001` | v2 is exported but not registered: the default `services` plugin is v1, and v2 becomes active only through an explicit `registerInternalPlugin('services', ServicesV2, {replace: true, interceptors})` call | A work-in-progress implementation must not change default behavior for existing integrators | `src/index.js`, `src/lib/services-v2/index.ts`, `src/lib/services/index.js`, `src/lib/webex-internal-core-plugin-mixin.js`, `src/config.js` | `test/integration/spec/services-v2/services-v2.js` | No unit test asserts the absence of default registration | Present |
-| `SV2-002` | Collection issues `GET` to service `u2c`, resource `/catalog` (postauth), `/limited/catalog` (preauth) or `/signin/catalog`, with query `format=U2CV2`, plus `useCatalogOverride=true` when configured and `timestamp=<now ms>` when `forceRefresh` is set; the `signin` group sends the supplied token as the `authorization` header | The server returns the cluster-scoped format only for U2CV2, supports a catalog override, and a changing `timestamp` defeats HTTP cache control | `src/lib/services-v2/services-v2.ts` | `test/unit/spec/services-v2/services-v2.ts`, `test/integration/spec/services-v2/services-v2.js` | Unit tests cover request resolve/reject and the override query; the signin header and timestamp are only exercised against live U2C | Present |
+| `SV2-002` | Collection issues `GET` to service `u2c`, resource `/catalog` (postauth), `/limited/catalog` (preauth) or `/signin/catalog`, with query `format=U2CV2&format_failsafe=hostmap`, plus `useCatalogOverride=true` when configured and `timestamp=<now ms>` when `forceRefresh` is set; the `signin` group sends the supplied token as the `authorization` header | The server can return a hostmap when its U2CV2 rollback switch is enabled, and a changing `timestamp` defeats HTTP cache control | `src/lib/services-v2/services-v2.ts` | `test/unit/spec/services-v2/services-v2.ts`, `test/integration/spec/services-v2/services-v2.js` | Unit tests cover request resolve/reject, failsafe conversion, and the override query; the signin header and timestamp are only exercised against live U2C | Present |
 | `SV2-003` | When `webex.internal.newMetrics` exists the request is wrapped in `callDiagnosticLatencies.measureLatency` under the name `internal.get.u2c.time`; otherwise it is sent directly | Records U2C latency without making metrics a hard dependency | `src/lib/services-v2/services-v2.ts` | `test/unit/spec/services-v2/services-v2.ts` | The unit fixture installs `newMetrics`; the no-metrics branch is not asserted | Weak |
 | `SV2-004` | `updateServices` maps `from` to a group (`limited` to `preauth`, `signin` to `signin`, anything else to `postauth`); a preauth query must have a first key in `email`, `emailhash`, `userId`, `orgId`, `mode` or the call rejects; for preauth and signin only the **first** query key is sent, and an `email` key is replaced by `emailhash` of the lower-cased email's SHA-256 | Keeps raw emails off the wire and limits the selector to what U2C accepts | `src/lib/services-v2/services-v2.ts` | `test/integration/spec/services-v2/services-v2.js` | Additional keys are silently dropped; unit tests do not cover this method | Present |
 | `SV2-005` | At most one collection per group runs at a time: when the group's `collecting` flag is set, `updateServices` returns `waitForCatalog` for that group instead of issuing a request | Avoids duplicate U2C calls from concurrent initialization and refresh callers | `src/lib/services-v2/services-v2.ts`, `src/lib/services-v2/service-catalog.ts` | none found | Untested; joiners resolve on the first `ready` event, or immediately if the group is already ready | Weak |
@@ -228,7 +228,7 @@ opt-in flow is `UC-001`.
 
 | Aspect | v1 | v2 |
 | --- | --- | --- |
-| Hostmap request | `format=hostmap` | `format=U2CV2`, optional `useCatalogOverride` |
+| Hostmap request | `format=hostmap` | `format=U2CV2&format_failsafe=hostmap`, optional `useCatalogOverride` |
 | Entities | `ServiceUrl` (default URL plus hosts), `ServiceHost`, `ServiceRegistry`, `ServiceState`, host catalog map | `ServiceDetail` only; the registry, state and host catalog do not exist |
 | Host selection | Default URL with the highest-priority host substituted in | First `serviceUrl` with `priority > 0` and not failed; the full base URL is returned |
 | Lookup order without a group | Name lookups: override, postauth, signin, preauth, discovery; URL lookups scan discovery, preauth, signin, postauth, override | One order for both: override, postauth, signin, preauth, discovery |
@@ -290,7 +290,7 @@ sequenceDiagram
       Plugin-->>Caller: reject "a query param of email, emailhash, userId, orgId, or mode is required" (collecting stays true)
     else valid
       Plugin->>Plugin: email becomes emailhash (SHA-256 of lower-cased email)
-      Plugin->>Http: GET u2c /catalog | /limited/catalog | /signin/catalog (format=U2CV2)
+      Plugin->>Http: GET u2c /catalog | /limited/catalog | /signin/catalog (format=U2CV2, format_failsafe=hostmap)
       Http->>U2C: request (latency measured when newMetrics exists)
       alt success
         U2C-->>Plugin: hostmap
@@ -549,9 +549,10 @@ classDiagram
 
 Boundary-only facts (ordering, timeouts and recovery are in Data flow and Concurrency): the external boundary is `u2c-service`,
 whose `U2CV2` response is trusted structurally (a missing `services` yields an empty list, a missing `baseUrl` throws while
-formatting). User validation additionally crosses to idbroker (client token), hydra (meeting preferences), the sqdiscovery
-region endpoint (5 s, unauthenticated) and license or user-onboarding (activation). A U2C that does not know `U2CV2` is a
-server-side concern.
+formatting). When U2C activates its rollback switch, `format_failsafe=hostmap` returns a legacy hostmap; the plugin
+converts its service links and host catalog into cluster services before updating the catalog. It matches a service name to its cluster ID when several services share a host, retains the original service link as a non-priority alias when an alternate priority URL exists, and retains the sole cluster ID when a service link uses an alias name. User validation additionally
+crosses to idbroker (client token), hydra (meeting preferences), the sqdiscovery region endpoint (5 s, unauthenticated)
+and license or user-onboarding (activation).
 
 ## Client state model
 
@@ -673,7 +674,7 @@ stateDiagram-v2
 
 ## Pitfalls and constraints
 
-- **v2 is not the default and nothing in config turns it on.** Do not assume `webex.internal.services` is v2 (registration mechanics: Design overview). The README's "continue to use /services" matches the code. Its DNSSec framing is not visible in code: no DNS or DNSSec logic exists in the module; the only v2-specific protocol is the `format=U2CV2` request. The intended DNSSec behavior is not stated in code or tests; recorded as a gap (see SV2-032).
+- **v2 is not the default and nothing in config turns it on.** Do not assume `webex.internal.services` is v2 (registration mechanics: Design overview). The README's "continue to use /services" matches the code. Its DNSSec framing is not visible in code: no DNS or DNSSec logic exists in the module; the v2-specific protocol is the `format=U2CV2&format_failsafe=hostmap` request. The intended DNSSec behavior is not stated in code or tests; recorded as a gap (see SV2-032).
 - **A rejected preauth query leaves the group stuck.** `updateServices` sets `collecting` before validating the query and never clears it on rejection (or on the signin `TypeError`), so later calls for that group join `waitForCatalog` and time out after 60 seconds. v1 has the same defect.
 - **Cache warm does not rehydrate `_activeServices` or `_services`** (code reading; no test asserts either way). After a warm start `get(name)` falls back to treating the name as a cluster id and finds only discovery and override entries (whose ids are their names); `updateCredentialsConfig`, `getMobiusClusters`, `isValidHost` and `switchActiveClusterIds` see empty maps, and the last one will refetch because every target id looks missing. Meanwhile `catalog.isReady` is already true, so `waitForService` rejects not-found for names that only exist in the cached catalog. v1 formats the cached hostmap and does not have this gap.
 - **Hosts are not unique across services.** A fixture shows two clusters (conversation and idbroker) with the same host. `findClusterId` returns the first detail in lookup order and `failHost` marks only the first detail that owns the host, so a failure on one service does not demote the other's URL.

@@ -38,7 +38,7 @@ const ServiceUrl = AmpState.extend({
    */
   _getHostUrls() {
     return this.hosts.map((host) => ({
-      url: this._generateHostUrl(host.host),
+      url: host.baseUrl ? new URL(host.baseUrl).href : this._generateHostUrl(host.host),
       priority: host.priority,
     }));
   },
@@ -80,13 +80,14 @@ const ServiceUrl = AmpState.extend({
           })
         : aliveHosts;
 
-    return this._generateHostUrl(
-      filteredHosts.reduce(
-        (previous, current) =>
-          previous.priority > current.priority || !previous.homeCluster ? current : previous,
-        filteredHosts[0]
-      ).host
+    const selectedHost = filteredHosts.reduce(
+      (previous, current) => (current.priority < previous.priority ? current : previous),
+      filteredHosts[0]
     );
+
+    return selectedHost.baseUrl
+      ? new URL(selectedHost.baseUrl).href
+      : this._generateHostUrl(selectedHost.host);
   },
 
   /**
@@ -97,12 +98,33 @@ const ServiceUrl = AmpState.extend({
    * @returns {boolean}
    */
   failHost(url) {
-    if (url === this.defaultUrl) {
+    if (url === this.defaultUrl && !this.hosts.some((host) => host.baseUrl === url)) {
       return true;
     }
 
     const {hostname} = Url.parse(url);
-    const foundHost = this.hosts.find((hostObj) => hostObj.host === hostname);
+    let requestedUrl;
+
+    try {
+      requestedUrl = new URL(url);
+    } catch {
+      // Legacy hosts still use hostname matching below.
+    }
+
+    const foundHost = this.hosts.find((hostObj) => {
+      if (!hostObj.baseUrl) {
+        return hostObj.host === hostname;
+      }
+
+      const baseUrl = new URL(hostObj.baseUrl);
+      const basePath = baseUrl.pathname.replace(/\/$/, '');
+
+      return (
+        requestedUrl?.origin === baseUrl.origin &&
+        (requestedUrl.pathname === baseUrl.pathname ||
+          requestedUrl.pathname.startsWith(`${basePath}/`))
+      );
+    });
 
     if (foundHost) {
       foundHost.failed = true;
