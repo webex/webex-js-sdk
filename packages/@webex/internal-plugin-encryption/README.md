@@ -43,10 +43,12 @@ options on the `encryption` config:
   non-empty) these are used and nothing is downloaded.
 - `carootsAsset` — the file name of Cisco's signed Trusted Root Store **Union**
   bundle, `ios_union-<version>.p7b`, using the signed bundle version (YYYYMMDD).
-- `assetsBaseUrl` — the URL of the directory hosting `carootsAsset`. Defaults to
-  `/assets/internal-plugin-encryption/` on the page's origin. `Webex.init()`
-  from the `webex` package sets it to the matching versioned copy on jsDelivr,
-  `https://cdn.jsdelivr.net/npm/webex@<version>/umd/assets/internal-plugin-encryption/`.
+- `assetsBaseUrl` — the URL of the directory hosting `carootsAsset`. Versioned
+  release builds default to
+  `https://unpkg.com/webex@<sdk-version>/umd/assets/internal-plugin-encryption/`,
+  using the build-injected version of the containing `webex` package.
+  Development and unversioned builds use `/assets/internal-plugin-encryption/`
+  on the page's origin. Explicit application settings override this default.
 - `carootsReportOnly` — an additional array of CA roots validated alongside the
   enforced roots. A failure here is only reported as a metric instead of failing
   the negotiation, which lets a new bundle be trialled in parallel.
@@ -73,12 +75,16 @@ The SDK reports these client metrics:
 
 ### Hosting the asset
 
-Applications that create the SDK with `Webex.init()` from the `webex` package
-(npm or UMD) need no configuration: the bundle is fetched from the matching
-release on jsDelivr, so your Content Security Policy `connect-src` must allow
-`https://cdn.jsdelivr.net`. Applications that construct `WebexCore` (or
-`new Webex()`) directly load it from `/assets/internal-plugin-encryption/` on
-the page's origin unless `assetsBaseUrl` is set.
+The encryption plugin owns the default for direct `WebexCore` consumers,
+`Webex.init()`, and the encryption UMD bundle. In a versioned release, browsers
+fetch the bundle from the matching `webex` UMD assets on unpkg, so your Content
+Security Policy `connect-src` must allow `https://unpkg.com`. Development builds
+and builds without an SDK version use `/assets/internal-plugin-encryption/`
+on the page's origin. Node reads the packaged file first, regardless of this URL.
+
+The matching SDK release must contain the versioned `.p7b` asset before this
+public URL can be used. Verify published delivery after a release containing
+the KMS asset is available.
 
 To self-host, serve the files from
 `node_modules/@webex/internal-plugin-encryption/dist/assets/` (or
@@ -88,7 +94,7 @@ application's origin with CORS when serving from another origin.
 
 If you enable `services.validateCatalogUrls`, requests to URLs outside the
 service catalog are blocked, including the asset download. Either add the asset
-host (e.g. `cdn.jsdelivr.net`) to `services.allowedDomains`, or supply
+host (e.g. `unpkg.com`) to `services.allowedDomains`, or supply
 `caroots`. The asset request never carries the user's access token.
 
 ```js
