@@ -1,22 +1,22 @@
-/* eslint-disable no-await-in-loop, no-plusplus, no-continue, no-console */
+/* eslint-disable no-await-in-loop, no-plusplus, no-continue */
 import {expect, Page} from '@playwright/test';
 import {
-  ACTIVE_CONSULT_CONTROL_TEST_IDS,
   cancelConsult,
   consultOrTransfer,
   hasAnyVisibleControlFromList,
+  waitForConsultingAgentIdReady,
 } from './advancedTaskControlUtils';
-import {hasAnyVisibleControl, hasAnyVisibleEnabledControl} from './controlUtils';
+import {executeConsultTransfer} from './consultTransferWorkaround';
+import {hasAnyVisibleEnabledControl} from './controlUtils';
 import {acceptIncomingTask, createCallTask, getIncomingTaskLocator} from './incomingTaskUtils';
 import {handleStrayTasks, waitForState} from './helperUtils';
-import {endTask} from './taskControlUtils';
 import {changeUserState, verifyCurrentState} from './userStateUtils';
 import {submitWrapup} from './wrapupUtils';
+import type {TestManager} from '../test-manager';
 import {
   ACCEPT_TASK_TIMEOUT,
   AWAIT_TIMEOUT,
   CONFERENCE_ACTION_SETTLE_TIMEOUT,
-  CONFERENCE_END_TASK_SETTLE_TIMEOUT,
   CONFERENCE_SWITCH_TOGGLE_TIMEOUT,
   TASK_TYPES,
   USER_STATES,
@@ -27,6 +27,38 @@ import {
 export type AgentId = 1 | 2 | 3 | 4;
 
 export const CONFERENCE_AGENT_IDS: AgentId[] = [1, 2, 3, 4];
+
+// Sample app (docs/samples/contact-center) controls. Visibility/enabled state of each is driven by
+// the SDK's task.uiControls (see applyAllControlsFromUIControls in app.js).
+export const CONFERENCE_SELECTORS = {
+  consult: '#consult',
+  end: '#end',
+  endConsult: '#end-consult',
+  transfer: '#transfer',
+  merge: '#merge-conference',
+  exit: '#exit-conference',
+  transferConference: '#transfer-conference',
+  switchToMain: '#switch-to-main',
+  switchToConsult: '#switch-to-consult',
+  wrapup: '#wrapup',
+  wrapupDropdown: '#wrapupCodesDropdown',
+} as const;
+
+// Controls that are only visible while a consult leg is open. #transfer and #exit-conference are
+// intentionally excluded: they are also visible on a plain call / settled conference.
+const CONSULT_IN_PROGRESS_SELECTORS = [
+  CONFERENCE_SELECTORS.endConsult,
+  CONFERENCE_SELECTORS.merge,
+  CONFERENCE_SELECTORS.switchToMain,
+  CONFERENCE_SELECTORS.switchToConsult,
+];
+
+// Controls that mean the agent is on a live call (consulted agents and conference members may not see #end).
+const ACTIVE_CALL_SELECTORS = [
+  CONFERENCE_SELECTORS.end,
+  CONFERENCE_SELECTORS.exit,
+  CONFERENCE_SELECTORS.endConsult,
+];
 
 type GetAgentPage = (agentId: AgentId) => Page;
 type GetRequiredEnv = (suffix: string) => string;
@@ -137,21 +169,62 @@ export const setConferenceAgentsAvailable = async (
 export const waitForConferenceControlReady = async (
   getAgentPage: GetAgentPage,
   agentId: AgentId,
-  controlTestId: string,
+  selector: string,
   timeout: number = ACCEPT_TASK_TIMEOUT
 ) => {
   const page = getAgentPage(agentId);
   await expect
-    .poll(() => hasAnyVisibleEnabledControl(page, controlTestId), {
+    .poll(() => hasAnyVisibleEnabledControl(page, selector), {
       timeout,
       intervals: [250, 500, 1000, 2000],
     })
     .toBeTruthy();
 };
 
+// The sample app does not reliably move Desktop-mode agents to the Engaged state, so call
+// membership is asserted from the controls the SDK exposes instead of the agent state.
+export const expectAgentInActiveCall = async (
+  page: Page,
+  timeout: number = ACCEPT_TASK_TIMEOUT
+) => {
+  await expect
+    .poll(() => hasAnyVisibleControlFromList(page, ACTIVE_CALL_SELECTORS), {
+      timeout,
+      intervals: [250, 500, 1000, 2000],
+    })
+    .toBeTruthy();
+};
+
+// #exit-conference is only shown when the agent is in a multi-agent conference.
+export const expectAgentInConference = async (
+  page: Page,
+  timeout: number = ACCEPT_TASK_TIMEOUT
+) => {
+  await expect(page.locator(CONFERENCE_SELECTORS.exit).first()).toBeVisible({timeout});
+};
+
+export const expectPostCustomerLeaveControls = async (
+  page: Page,
+  timeout: number = ACCEPT_TASK_TIMEOUT
+) => {
+  // Depending on backend event ordering the agent either keeps active call controls or moves
+  // straight to wrapup after the customer disconnects.
+  await expect
+    .poll(
+      () =>
+        hasAnyVisibleControlFromList(page, [
+          CONFERENCE_SELECTORS.end,
+          CONFERENCE_SELECTORS.exit,
+          CONFERENCE_SELECTORS.wrapup,
+        ]),
+      {timeout, intervals: [500, 1000, 2000, 3000]}
+    )
+    .toBeTruthy();
+};
+
 export const resetCallerPageForNextConferenceCall = async (callerPage?: Page) => {
   if (!callerPage || callerPage.isClosed()) return;
-  const endBtn = callerPage.getByTestId('end');
+  const endBtn = callerPage.locator('#end-call').first();
   const isEnabled = await endBtn.isEnabled({timeout: 1000}).catch(() => false);
   if (isEnabled) {
     await endBtn.click({timeout: AWAIT_TIMEOUT});
@@ -168,6 +241,7 @@ export const cleanupConferenceState = async ({
   cleanupTaskTimeout = 60000,
 }: CleanupConferenceStateOptions) => {
   await resetCallerPageForNextConferenceCall(callerPage);
+  // Sequential on purpose: parallel cleanup races on conference leg ownership.
   for (const agentId of agentIds) {
     await cleanupConferencePageWithTimeout(getAgentPage(agentId), callerPage, cleanupTaskTimeout);
   }
@@ -194,8 +268,7 @@ export const startBaselineCallOnAgent1 = async ({
 
   await createCallTask(callerPage, getRequiredEnv('ENTRY_POINT'));
   await acceptIncomingTask(getAgentPage(1), TASK_TYPES.CALL, acceptTimeout);
-  await waitForState(getAgentPage(1), USER_STATES.ENGAGED);
-  await waitForConferenceControlReady(getAgentPage, 1, 'call-control:end-call', acceptTimeout);
+  await waitForConferenceControlReady(getAgentPage, 1, CONFERENCE_SELECTORS.end, acceptTimeout);
 };
 
 export const consultAgentAndAcceptCall = async ({
@@ -210,20 +283,20 @@ export const consultAgentAndAcceptCall = async ({
   const firstAttemptTimeout = Math.min(15000, acceptTimeout);
   let lastError: unknown;
 
-  const waitForConferenceConsultToSettle = async () => {
+  const waitForConsultToSettle = async () => {
     await expect
       .poll(
         async () => {
           const consultReady = await hasAnyVisibleEnabledControl(
             fromAgentPage,
-            'call-control:consult'
+            CONFERENCE_SELECTORS.consult
           );
-          const hasActiveConsultControls = await hasAnyVisibleControlFromList(
+          const consultOpen = await hasAnyVisibleControlFromList(
             fromAgentPage,
-            ACTIVE_CONSULT_CONTROL_TEST_IDS
+            CONSULT_IN_PROGRESS_SELECTORS
           );
 
-          return consultReady && !hasActiveConsultControls;
+          return consultReady && !consultOpen;
         },
         {timeout: acceptTimeout, intervals: [250, 500, 1000, 2000]}
       )
@@ -236,7 +309,7 @@ export const consultAgentAndAcceptCall = async ({
         async () => {
           const sourceConsultVisible = await hasAnyVisibleControlFromList(
             fromAgentPage,
-            ACTIVE_CONSULT_CONTROL_TEST_IDS
+            CONSULT_IN_PROGRESS_SELECTORS
           );
           const incomingTaskVisible = await getIncomingTaskLocator(toAgentPage, TASK_TYPES.CALL)
             .isVisible()
@@ -253,9 +326,9 @@ export const consultAgentAndAcceptCall = async ({
   };
 
   for (const currentAcceptTimeout of [firstAttemptTimeout, acceptTimeout]) {
-    await waitForState(fromAgentPage, USER_STATES.ENGAGED);
+    await expectAgentInActiveCall(fromAgentPage, acceptTimeout);
     await setConferenceAgentsAvailable(getAgentPage, [toAgent]);
-    await waitForConferenceConsultToSettle();
+    await waitForConsultToSettle();
     try {
       await consultOrTransfer(fromAgentPage, 'agent', 'consult', getAgentName(toAgent));
       await waitForConsultToStart();
@@ -266,15 +339,14 @@ export const consultAgentAndAcceptCall = async ({
 
     try {
       await acceptIncomingTask(toAgentPage, TASK_TYPES.CALL, currentAcceptTimeout);
-      await verifyCurrentState(toAgentPage, USER_STATES.ENGAGED);
+      await expectAgentInActiveCall(toAgentPage, acceptTimeout);
 
       return;
     } catch (error) {
       lastError = error;
 
-      const cancelConsultVisible = await hasAnyVisibleControl(fromAgentPage, 'cancel-consult-btn');
-
-      if (cancelConsultVisible) {
+      // Consult was never answered; close the open consult leg before retrying.
+      if (await hasAnyVisibleControlFromList(fromAgentPage, [CONFERENCE_SELECTORS.endConsult])) {
         await cancelConsult(fromAgentPage);
         await fromAgentPage.waitForTimeout(CONFERENCE_ACTION_SETTLE_TIMEOUT);
       }
@@ -295,7 +367,7 @@ export const consultQueueAndAcceptCall = async ({
   await waitForConferenceControlReady(
     getAgentPage,
     fromAgent,
-    'call-control:consult',
+    CONFERENCE_SELECTORS.consult,
     acceptTimeout
   );
   await consultOrTransfer(
@@ -305,7 +377,7 @@ export const consultQueueAndAcceptCall = async ({
     getRequiredEnv('QUEUE_NAME')
   );
   await acceptIncomingTask(getAgentPage(toAgent), TASK_TYPES.CALL, acceptTimeout);
-  await verifyCurrentState(getAgentPage(toAgent), USER_STATES.ENGAGED);
+  await expectAgentInActiveCall(getAgentPage(toAgent), acceptTimeout);
 };
 
 export const mergeConsultIntoConference = async ({
@@ -314,10 +386,21 @@ export const mergeConsultIntoConference = async ({
   acceptTimeout = ACCEPT_TASK_TIMEOUT,
 }: SingleAgentActionOptions) => {
   const page = getAgentPage(fromAgent);
-  const mergeButton = page.getByTestId('conference-consult-btn');
+  // Same button on both legs: labelled "Conference" on the main leg and "Merge" on the consult leg.
+  const mergeButton = page.locator(CONFERENCE_SELECTORS.merge);
   await expect(mergeButton).toBeVisible({timeout: acceptTimeout});
+  await expect(mergeButton).toBeEnabled({timeout: acceptTimeout});
   await mergeButton.click();
   await page.waitForTimeout(CONFERENCE_ACTION_SETTLE_TIMEOUT);
+};
+
+// submitWrapup alone only waits WRAPUP_TIMEOUT; transfers can take longer to release the source agent.
+export const submitTransferSourceWrapupWhenReady = async (
+  page: Page,
+  timeout: number = ACCEPT_TASK_TIMEOUT
+) => {
+  await expect(page.locator(CONFERENCE_SELECTORS.wrapupDropdown)).toBeEnabled({timeout});
+  await submitWrapup(page, WRAPUP_REASONS.SALE);
 };
 
 export const transferConsultAndSubmitWrapup = async ({
@@ -326,10 +409,35 @@ export const transferConsultAndSubmitWrapup = async ({
   acceptTimeout = ACCEPT_TASK_TIMEOUT,
 }: SingleAgentActionOptions) => {
   const page = getAgentPage(fromAgent);
-  await expect(page.getByTestId('transfer-consult-btn')).toBeVisible({timeout: acceptTimeout});
-  await page.getByTestId('transfer-consult-btn').click();
+  await page.bringToFront();
+
+  const conferenceTransfer = page.locator(CONFERENCE_SELECTORS.transferConference);
+  const inConferenceTransfer = await expect
+    .poll(
+      async () => {
+        if (await hasAnyVisibleEnabledControl(page, CONFERENCE_SELECTORS.transferConference)) {
+          return 'conference';
+        }
+        if (await hasAnyVisibleEnabledControl(page, CONFERENCE_SELECTORS.transfer)) {
+          return 'consult';
+        }
+
+        return 'waiting';
+      },
+      {timeout: acceptTimeout, intervals: [250, 500, 1000, 2000]}
+    )
+    .not.toBe('waiting')
+    .then(() => hasAnyVisibleEnabledControl(page, CONFERENCE_SELECTORS.transferConference));
+
+  if (inConferenceTransfer) {
+    await conferenceTransfer.first().click();
+  } else {
+    await waitForConsultingAgentIdReady(page);
+    await executeConsultTransfer(page);
+  }
+
   await page.waitForTimeout(CONFERENCE_ACTION_SETTLE_TIMEOUT);
-  await submitWrapup(page, WRAPUP_REASONS.SALE);
+  await submitTransferSourceWrapupWhenReady(page, acceptTimeout);
 };
 
 export const toggleConferenceLegIfSwitchAvailable = async (
@@ -337,7 +445,8 @@ export const toggleConferenceLegIfSwitchAvailable = async (
   agentId: AgentId
 ) => {
   const page = getAgentPage(agentId);
-  const switchButton = page.getByTestId('switchToMainCall-consult-btn');
+  // Both switch buttons are bound to the same SDK control and call task.switchCall().
+  const switchButton = page.locator(CONFERENCE_SELECTORS.switchToMain);
   const canToggle = await switchButton.isVisible().catch(() => false);
   if (!canToggle) {
     return false;
@@ -353,12 +462,14 @@ export const exitConferenceParticipantAndWrapup = async (
   agentId: AgentId
 ) => {
   const page = getAgentPage(agentId);
-  const exitButton = page.getByTestId('call-control:exit-conference').first();
+  const exitButton = page.locator(CONFERENCE_SELECTORS.exit).first();
   await expect(exitButton).toBeVisible({timeout: AWAIT_TIMEOUT});
+  await expect(exitButton).toBeEnabled({timeout: AWAIT_TIMEOUT});
   await exitButton.click();
   await page.waitForTimeout(CONFERENCE_ACTION_SETTLE_TIMEOUT);
-  const wrapupBox = page.getByTestId('call-control:wrapup-button').first();
-  const needsWrapup = await wrapupBox
+  const needsWrapup = await page
+    .locator(CONFERENCE_SELECTORS.wrapup)
+    .first()
     .waitFor({state: 'visible', timeout: WRAPUP_TIMEOUT})
     .then(() => true)
     .catch(() => false);
@@ -367,9 +478,58 @@ export const exitConferenceParticipantAndWrapup = async (
   }
 };
 
-export const endConferenceTaskAndWrapup = async (getAgentPage: GetAgentPage, agentId: AgentId) => {
-  const page = getAgentPage(agentId);
-  await endTask(page);
-  await page.waitForTimeout(CONFERENCE_END_TASK_SETTLE_TIMEOUT);
-  await submitWrapup(page, WRAPUP_REASONS.SALE);
+// Binds the helpers above to a suite's TestManager so each set file only holds its scenarios.
+export const createConferenceHelpers = (getTestManager: () => TestManager) => {
+  const getAgentPage = (agentId: AgentId): Page => {
+    const testManager = getTestManager();
+    switch (agentId) {
+      case 1:
+        return testManager.agent1Page;
+      case 2:
+        return testManager.agent2Page;
+      case 3:
+        return testManager.agent3Page;
+      case 4:
+        return testManager.agent4Page;
+      default:
+        throw new Error(`Unsupported agentId: ${agentId}`);
+    }
+  };
+
+  const getRequiredEnv = (suffix: string): string =>
+    getConferenceRequiredEnv(getTestManager().projectName, suffix);
+
+  const getAgentName = (agentId: AgentId): string =>
+    getConferenceAgentName(getTestManager().projectName, agentId);
+
+  return {
+    getAgentPage,
+    getRequiredEnv,
+    getAgentName,
+    getCallerPage: (): Page => getTestManager().callerPage,
+    cleanup: () =>
+      cleanupConferenceState({
+        getAgentPage,
+        callerPage: getTestManager().callerPage,
+        agentIds: CONFERENCE_AGENT_IDS,
+      }),
+    startBaselineCall: () =>
+      startBaselineCallOnAgent1({
+        getAgentPage,
+        callerPage: getTestManager().callerPage,
+        getRequiredEnv,
+        agentIds: CONFERENCE_AGENT_IDS,
+      }),
+    setAvailable: (agentIds: AgentId[]) => setConferenceAgentsAvailable(getAgentPage, agentIds),
+    consultAgent: (fromAgent: AgentId, toAgent: AgentId) =>
+      consultAgentAndAcceptCall({fromAgent, toAgent, getAgentPage, getAgentName}),
+    consultQueue: (fromAgent: AgentId, toAgent: AgentId) =>
+      consultQueueAndAcceptCall({fromAgent, toAgent, getAgentPage, getRequiredEnv}),
+    merge: (fromAgent: AgentId) => mergeConsultIntoConference({fromAgent, getAgentPage}),
+    transferConsult: (fromAgent: AgentId) =>
+      transferConsultAndSubmitWrapup({fromAgent, getAgentPage}),
+    toggleLeg: (agentId: AgentId) => toggleConferenceLegIfSwitchAvailable(getAgentPage, agentId),
+    exitParticipant: (agentId: AgentId) =>
+      exitConferenceParticipantAndWrapup(getAgentPage, agentId),
+  };
 };

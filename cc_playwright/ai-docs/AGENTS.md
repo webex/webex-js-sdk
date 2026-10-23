@@ -82,17 +82,17 @@ This keeps docs generic while still enabling scenario generation from questionna
 ## Common Commands
 
 ```bash
-# Run all E2E tests
-yarn test:e2e
+# Run all Contact Center E2E tests
+yarn workspace @webex/contact-center run test:e2e
 
 # List projects/tests
-yarn playwright test --config=playwright.config.ts --list
+yarn workspace @webex/contact-center run test:e2e --list
 
 # Run a suite
-yarn test:e2e playwright/suites/<suite-file>.spec.ts
+yarn workspace @webex/contact-center run test:e2e cc_playwright/suites/<suite-file>.spec.ts
 
 # Run a set/project
-yarn test:e2e --project=SET_1
+yarn workspace @webex/contact-center run test:e2e --project=SET_1
 ```
 
 ---
@@ -136,30 +136,21 @@ When Playwright behavior changes:
 
 ## Conference Coverage (SET_7, SET_8, SET_9)
 
-- Multiparty conference scenarios are split across:
-  - `playwright/tests/multiparty-conference-set-7-test.spec.ts`
-  - `playwright/tests/multiparty-conference-set-8-test.spec.ts`
-  - `playwright/tests/multiparty-conference-set-9-test.spec.ts`
-- Scenario IDs use prefixes:
-  - `CTS-MPC-*` (Multi-Party Conference matrix)
-  - `CTS-TC-*` (Transfer Conference scenarios)
-  - `CTS-SW-*` (Switch Conference scenarios)
-- Skip policy used in implementation:
-  - `EP_DN`/`EPDN` scenarios are retained as `test.skip(...)`
-  - scenarios requiring more than 4 agents are retained as `test.skip(...)`
-- Consolidation policy used in implementation:
-  - repeated call-init flows are merged into single tests when scenario steps are sequentially compatible
-  - consolidated IDs remain explicit in test names for traceability (for example `CTS-TC-09 and CTS-TC-10 ...`)
-  - current combined groups include:
-    - `SET_7`: `CTS-MPC-01+02`, `CTS-MPC-03+04`, `CTS-MPC-07+09+10`, `CTS-SW-02+03`
-    - `SET_8`: `CTS-TC-09+10`, `CTS-TC-11+13`, `CTS-TC-14+15`
-    - `SET_9`: `CTS-TC-01+02+03`, `CTS-TC-04+05`, `CTS-SW-05+06`
-  - standalone conference-only scenarios are intentionally distributed for runtime parity:
-    - `SET_7`: `CTS-SW-04`
-    - `SET_8`: `CTS-SW-07`
-    - `SET_9`: `CTS-TC-06`, `CTS-TC-07`, `CTS-TC-08`
-  - scenario split note:
-    - `CTS-TC-06` and `CTS-TC-07` run as separate tests (queue routing will not reliably re-route to an agent that RONA'd in the same session)
+- Multiparty conference scenarios live in `tests/multiparty-conference-set-{7,8,9}-test.spec.ts` and use
+  `createConferenceHelpers` from `Utils/conferenceUtils.ts`. Each set uses 4 agents plus a caller.
+- Scenario IDs use prefixes: `CTS-MPC-*` (multi-party conference), `CTS-TC-*` (transfer), `CTS-SW-*` (switch).
+- Selectors target the sample app, not the widgets: `#merge-conference` (labelled "Conference" on the main leg and
+  "Merge" on the consult leg), `#exit-conference`, `#transfer-conference`, `#switch-to-main` / `#switch-to-consult`
+  (both bound to one SDK control, both call `task.switchCall()`), `#end-consult`, `#transfer`.
+- Conference membership is asserted from SDK-driven controls (`#exit-conference` visible), not the agent `Engaged`
+  state, because Desktop-mode agents are not reliably moved to `Engaged` by the sample app.
+- `consultTransfer` is always hidden by the SDK; transfer from a consult lobby goes through `#transfer-conference`
+  (conference) or the consult-transfer workaround in `Utils/consultTransferWorkaround.ts`.
+- Consolidated tests keep the merged IDs in their titles (for example `CTS-TC-09 and CTS-TC-10 ...`).
+- Not implemented (no test exists): `CTS-MPC-08`, `CTS-TC-17`, `CTS-SW-08` (need more than 4 agents), `CTS-TC-18`,
+  `CTS-SW-01` (EP-DN), `CTS-TC-12` (needs the `isEndConsultEnabled` flag).
+- CTS-TC-06 and CTS-TC-07 stay separate tests: queue routing will not reliably re-route to an agent that RONA'd in the
+  same session (TC-07 consults agent 3 for that reason).
 
 ---
 
