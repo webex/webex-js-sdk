@@ -1296,7 +1296,10 @@ const Services = WebexPlugin.extend({
     // Validate that the services configuration exists.
     if (services) {
       if (fedramp) {
-        services.discovery = fedRampServices;
+        services.discovery = {
+          ...fedRampServices,
+          u2c: services.discovery?.u2c || fedRampServices.u2c,
+        };
       }
       // Check for discovery services.
       if (services.discovery) {
