@@ -74,7 +74,6 @@ import TriggerProxy from '@webex/plugin-meetings/src/common/events/trigger-proxy
 import Metrics from '@webex/plugin-meetings/src/metrics';
 import BEHAVIORAL_METRICS from '@webex/plugin-meetings/src/metrics/constants';
 import {MediaRequestManager} from '@webex/plugin-meetings/src/multistream/mediaRequestManager';
-import MediaRequestQueue from '@webex/plugin-meetings/src/multistream/mediaRequestQueue';
 import * as ReceiveSlotManagerModule from '@webex/plugin-meetings/src/multistream/receiveSlotManager';
 import * as SendSlotManagerModule from '@webex/plugin-meetings/src/multistream/sendSlotManager';
 import {CallDiagnosticUtils} from '@webex/internal-plugin-metrics';
@@ -494,32 +493,33 @@ describe('plugin-meetings', () => {
           {manager: 'screenShareVideo', mediaType: MediaType.VideoSlides},
         ].forEach(({manager, mediaType}) => {
           it(`defers ${manager} media requests until the media connection is connected`, () => {
-            const fakeMediaConnection = new EventEmitter();
+            const requestMedia = sinon.stub();
+            const getConnectionState = sinon.stub().returns(ConnectionState.Connecting);
 
-            fakeMediaConnection.requestMedia = sinon.stub();
-            fakeMediaConnection.getConnectionState = sinon.stub().returns(ConnectionState.Connecting);
-            meeting.mediaRequestQueue = new MediaRequestQueue(fakeMediaConnection);
+            meeting.mediaProperties.webrtcMediaConnection = {requestMedia, getConnectionState};
 
             meeting.mediaRequestManagers[manager].commit();
 
-            assert.notCalled(fakeMediaConnection.requestMedia);
+            assert.notCalled(requestMedia);
 
-            fakeMediaConnection.getConnectionState.returns(ConnectionState.Connected);
-            fakeMediaConnection.emit(MediaConnectionEventNames.PEER_CONNECTION_STATE_CHANGED);
+            getConnectionState.returns(ConnectionState.Connected);
+            meeting.mediaRequestManagers[manager].sendDeferredRequests();
 
-            assert.calledOnceWithExactly(fakeMediaConnection.requestMedia, mediaType, []);
+            assert.calledOnceWithExactly(requestMedia, mediaType, []);
           });
-        });
 
-        it('does not send media requests when there is no media connection', () => {
-          const requestMedia = sinon.stub();
+          it(`sends ${manager} media requests immediately when connected`, () => {
+            const requestMedia = sinon.stub();
 
-          meeting.mediaProperties.webrtcMediaConnection = {requestMedia};
-          meeting.mediaRequestQueue = undefined;
+            meeting.mediaProperties.webrtcMediaConnection = {
+              requestMedia,
+              getConnectionState: sinon.stub().returns(ConnectionState.Connected),
+            };
 
-          meeting.mediaRequestManagers.audio.commit();
+            meeting.mediaRequestManagers[manager].commit();
 
-          assert.notCalled(requestMedia);
+            assert.calledOnceWithExactly(requestMedia, mediaType, []);
+          });
         });
 
         it('getIngressPayloadType on webrtcMediaConnection is invoked for H264 when sending multistream video requests', () => {
@@ -528,6 +528,7 @@ describe('plugin-meetings', () => {
           meeting.isMultistream = true;
           meeting.mediaProperties.webrtcMediaConnection = {
             getIngressPayloadType,
+            getConnectionState: sinon.stub().returns(ConnectionState.Connected),
             requestMedia: sinon.stub(),
           };
 
@@ -652,6 +653,7 @@ describe('plugin-meetings', () => {
           localMeeting.isMultistream = true;
           localMeeting.mediaProperties.webrtcMediaConnection = {
             getIngressPayloadType,
+            getConnectionState: sinon.stub().returns(ConnectionState.Connected),
             requestMedia: sinon.stub(),
           };
 
@@ -7029,7 +7031,6 @@ describe('plugin-meetings', () => {
               getConnectionState: sinon.stub().returns(ConnectionState.Connected),
               initiateOffer: sinon.stub().resolves({}),
               on: sinon.stub(),
-              off: sinon.stub(),
               requestMedia: sinon.stub(),
               createReceiveSlot: sinon.stub().resolves({on: sinon.stub()}),
               createSendSlot: sinon.stub().returns({
@@ -11772,6 +11773,9 @@ describe('plugin-meetings', () => {
             meeting.reconnectionManager = new ReconnectionManager(meeting);
             meeting.reconnectionManager.iceReconnected = sinon.stub().returns(undefined);
             meeting.statsAnalyzer = {startAnalyzer: sinon.stub()};
+            Object.values(meeting.mediaRequestManagers).forEach((mediaRequestManager) =>
+              sinon.spy(mediaRequestManager, 'sendDeferredRequests')
+            );
             meeting.mediaProperties.webrtcMediaConnection = {
               // mock the on() method and store all the listeners
               on: sinon.stub().callsFake((event, listener) => {
@@ -11813,6 +11817,9 @@ describe('plugin-meetings', () => {
               meeting.statsAnalyzer.startAnalyzer,
               meeting.mediaProperties.webrtcMediaConnection
             );
+            Object.values(meeting.mediaRequestManagers).forEach((mediaRequestManager) =>
+              assert.calledOnceWithExactly(mediaRequestManager.sendDeferredRequests)
+            );
           };
 
           const resetSpies = () => {
@@ -11821,6 +11828,9 @@ describe('plugin-meetings', () => {
             Metrics.sendBehavioralMetric.resetHistory();
             meeting.reconnectionManager.iceReconnected.resetHistory();
             meeting.statsAnalyzer.startAnalyzer.resetHistory();
+            Object.values(meeting.mediaRequestManagers).forEach((mediaRequestManager) =>
+              mediaRequestManager.sendDeferredRequests.resetHistory()
+            );
           };
 
           it('sends client.ice.end with the correct icePhase when we get ConnectionState.Connected on CONNECTION_STATE_CHANGED event', () => {
@@ -11854,6 +11864,33 @@ describe('plugin-meetings', () => {
             simulateConnectionStateChange(ConnectionState.Disconnected);
 
             simulateConnectionStateChange(ConnectionState.Connected);
+          });
+
+          it('sends deferred media requests on Connected after a silent peer connection close', () => {
+            setupSpies();
+            const connection = meeting.mediaProperties.webrtcMediaConnection;
+
+            connection.requestMedia = sinon.stub();
+            meeting.setupMediaConnectionListeners();
+            simulateConnectionStateChange(ConnectionState.Connected);
+
+            // WCME closes the old peer connection without emitting a state-change event.
+            connection.getConnectionState.returns(ConnectionState.Closed);
+            Object.values(meeting.mediaRequestManagers).forEach((manager) => manager.commit());
+            assert.notCalled(connection.requestMedia);
+
+            simulateConnectionStateChange(ConnectionState.Connecting);
+            Object.values(meeting.mediaRequestManagers).forEach((manager) => manager.commit());
+            assert.notCalled(connection.requestMedia);
+
+            simulateConnectionStateChange(ConnectionState.Connected);
+
+            assert.deepEqual(connection.requestMedia.args, [
+              [MediaType.AudioMain, []],
+              [MediaType.VideoMain, []],
+              [MediaType.AudioSlides, []],
+              [MediaType.VideoSlides, []],
+            ]);
           });
         });
 
@@ -13888,18 +13925,6 @@ describe('plugin-meetings', () => {
           assert.equal(meeting.audio, fakeAudio);
           assert.equal(meeting.video, fakeVideo);
           assert.equal(meeting.mediaProperties.webrtcMediaConnection, null);
-        });
-
-        it('should stop the media request queue', async () => {
-          const stop = sinon.stub();
-
-          meeting.mediaProperties.webrtcMediaConnection = {close: sinon.stub()};
-          meeting.mediaRequestQueue = {stop};
-
-          await meeting.closePeerConnections();
-
-          assert.calledOnceWithExactly(stop);
-          assert.isUndefined(meeting.mediaRequestQueue);
         });
       });
 

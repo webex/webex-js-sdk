@@ -31,7 +31,6 @@ import {
   StatsMonitor,
   StatsMonitorEventNames,
   MediaCodecMimeType,
-  MultistreamRoapMediaConnection,
   StreamRequest,
 } from '@webex/internal-media-core';
 
@@ -156,7 +155,6 @@ import {
 import {CSI, ReceiveSlotManager} from '../multistream/receiveSlotManager';
 import SendSlotManager from '../multistream/sendSlotManager';
 import {MediaRequestManager} from '../multistream/mediaRequestManager';
-import MediaRequestQueue from '../multistream/mediaRequestQueue';
 import {
   Configuration as RemoteMediaManagerConfiguration,
   RemoteMediaManager,
@@ -835,7 +833,6 @@ export default class Meeting extends StatelessWebexPlugin {
   };
 
   private connectionStateHandler?: ConnectionStateHandler;
-  private mediaRequestQueue?: MediaRequestQueue;
   private iceCandidateErrors: Map<string, number>;
   private iceCandidatesCount: number;
   private rtcMetrics?: RtcMetrics;
@@ -1037,6 +1034,10 @@ export default class Meeting extends StatelessWebexPlugin {
       (csi: CSI) => (this.members.findMemberByCsi(csi) as any)?.id
     );
 
+    const isReadyToSendRequests = () =>
+      this.mediaProperties.webrtcMediaConnection?.getConnectionState() ===
+      ConnectionState.Connected;
+
     /**
      * Object containing helper classes for managing media requests for audio/video/screenshare (for multistream media connections)
      * All multistream media requests sent out for this meeting have to go through them.
@@ -1050,6 +1051,7 @@ export default class Meeting extends StatelessWebexPlugin {
           degradationPreferences: this.config.degradationPreferences,
           kind: 'audio',
           trimRequestsToNumOfSources: false,
+          isReadyToSendRequests,
         }
       ),
       video: new MediaRequestManager(
@@ -1060,6 +1062,7 @@ export default class Meeting extends StatelessWebexPlugin {
           degradationPreferences: this.config.degradationPreferences,
           kind: 'video',
           trimRequestsToNumOfSources: true,
+          isReadyToSendRequests,
         }
       ),
       screenShareAudio: new MediaRequestManager(
@@ -1070,6 +1073,7 @@ export default class Meeting extends StatelessWebexPlugin {
           degradationPreferences: this.config.degradationPreferences,
           kind: 'audio',
           trimRequestsToNumOfSources: false,
+          isReadyToSendRequests,
         }
       ),
       screenShareVideo: new MediaRequestManager(
@@ -1080,6 +1084,7 @@ export default class Meeting extends StatelessWebexPlugin {
           degradationPreferences: this.config.degradationPreferences,
           kind: 'video',
           trimRequestsToNumOfSources: false,
+          isReadyToSendRequests,
           // @ts-ignore - config coming from registerPlugin
           enableAv1: this.config.enableAv1SlidesSupport,
         }
@@ -1776,8 +1781,7 @@ export default class Meeting extends StatelessWebexPlugin {
   }
 
   /**
-   * Sends multistream media requests through the media request queue,
-   * so that they are sent only while the media connection is connected
+   * Sends multistream media requests after MediaRequestManager has checked connection readiness.
    * @param {MediaType} mediaType - The media type
    * @param {StreamRequest[]} mediaRequests - The media requests to send
    * @returns {void}
@@ -1785,25 +1789,16 @@ export default class Meeting extends StatelessWebexPlugin {
    * @memberof Meeting
    */
   private sendMediaRequests(mediaType: MediaType, mediaRequests: StreamRequest[]) {
-    if (!this.mediaRequestQueue) {
+    const mediaConnection = this.mediaProperties.webrtcMediaConnection;
+
+    if (!mediaConnection) {
       LoggerProxy.logger.warn(
         `Meeting:index#sendMediaRequests --> trying to send ${mediaType} media request before media connection was created`
       );
 
       return;
     }
-    this.mediaRequestQueue.requestMedia(mediaType, mediaRequests);
-  }
-
-  /**
-   * Stops the media request queue of the current media connection, discarding any queued requests
-   * @returns {void}
-   * @private
-   * @memberof Meeting
-   */
-  private stopMediaRequestQueue() {
-    this.mediaRequestQueue?.stop();
-    this.mediaRequestQueue = undefined;
+    mediaConnection.requestMedia(mediaType, mediaRequests);
   }
 
   /**
@@ -5476,7 +5471,6 @@ export default class Meeting extends StatelessWebexPlugin {
       Object.values(this.mediaRequestManagers).forEach((mediaRequestManager) =>
         mediaRequestManager.reset()
       );
-      this.stopMediaRequestQueue();
 
       this.receiveSlotManager.reset();
 
@@ -7854,6 +7848,9 @@ export default class Meeting extends StatelessWebexPlugin {
           this.reconnectionManager.iceReconnected();
           this.statsAnalyzer.startAnalyzer(this.mediaProperties.webrtcMediaConnection);
           this.hasMediaConnectionConnectedAtLeastOnce = true;
+          Object.values(this.mediaRequestManagers).forEach((mediaRequestManager) =>
+            mediaRequestManager.sendDeferredRequests()
+          );
           break;
         case ConnectionState.Disconnected:
           this.setNetworkStatus(NETWORK_STATUS.DISCONNECTED);
@@ -8271,10 +8268,6 @@ export default class Meeting extends StatelessWebexPlugin {
     );
 
     this.mediaProperties.setMediaPeerConnection(mc);
-    this.stopMediaRequestQueue();
-    if (this.isMultistream) {
-      this.mediaRequestQueue = new MediaRequestQueue(mc as MultistreamRoapMediaConnection);
-    }
     this.setupMediaConnectionListeners();
 
     if (this.isMultistream) {
@@ -8888,7 +8881,6 @@ export default class Meeting extends StatelessWebexPlugin {
       Object.values(this.mediaRequestManagers).forEach((mediaRequestManager) =>
         mediaRequestManager.reset()
       );
-      this.stopMediaRequestQueue();
 
       this.receiveSlotManager.reset();
       this.mediaProperties.webrtcMediaConnection.close();
