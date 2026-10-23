@@ -948,8 +948,8 @@ const KMS = WebexPlugin.extend({
 
   /**
    * Validates the KMS static public key against the CA roots.
-   * Validation is enabled by default (`shouldValidateKMSCertificate`) and fails
-   * closed when no CA roots are available or validation fails. Enforced
+   * Validation is opt-in (`shouldValidateKMSCertificate`) and, when enabled,
+   * fails closed when no CA roots are available or validation fails. Enforced
    * failures are reported and rejected. When a `carootsReportOnly` bundle is
    * configured, its failures are reported without rejecting.
    * @private
