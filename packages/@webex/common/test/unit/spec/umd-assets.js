@@ -41,5 +41,6 @@ describe('getUmdAssetsBaseUrl()', () => {
 
   it('uses the local asset path when no SDK version is injected', () => {
     assert.equal(getUmdAssetsBaseUrl('plugin-meetings', 'undefined'), '/assets/plugin-meetings/');
+    assert.equal(getUmdAssetsBaseUrl('plugin-meetings', '0.0.0'), '/assets/plugin-meetings/');
   });
 });

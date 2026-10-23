@@ -6,7 +6,12 @@
  * @returns {string} Local development path or versioned UMD asset URL.
  */
 export const getUmdAssetsBaseUrl = (pluginName, sdkVersion) => {
-  if (process.env.NODE_ENV === 'development' || !sdkVersion || sdkVersion === 'undefined') {
+  if (
+    process.env.NODE_ENV === 'development' ||
+    !sdkVersion ||
+    sdkVersion === 'undefined' ||
+    sdkVersion === '0.0.0'
+  ) {
     return `/assets/${pluginName}/`;
   }
 
