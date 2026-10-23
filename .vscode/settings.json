@@ -24,5 +24,6 @@
   "eslint.format.enable": false,
   "breadcrumbs.enabled": true,
   "prettier.bracketSameLine": true,
-  "prettier.configPath": ".prettierrc"
+  "prettier.configPath": ".prettierrc",
+  "cmake.ignoreCMakeListsMissing": true
 }

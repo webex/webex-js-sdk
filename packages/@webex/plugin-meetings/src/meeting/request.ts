@@ -7,6 +7,7 @@ import {deviceType} from '@webex/common';
 import {CallDiagnosticUtils} from '@webex/internal-plugin-metrics';
 
 import LoggerProxy from '../common/logs/logger-proxy';
+import {isE2eeEnabledAndSupported, E2EE_1K_SUPPORTED} from '../e2ee/constants';
 import {
   ALERT,
   ALTERNATE_REDIRECT_TRUE,
@@ -183,6 +184,8 @@ export default class MeetingRequest extends StatelessWebexPlugin {
       allowMultiDevice: true,
       ensureConversation: ensureConversation || false,
       supportsNativeLobby: 1,
+      // @ts-ignore - config comes from registerPlugin
+      supportsV2E2EEncryption: isE2eeEnabledAndSupported(!!this.config.meetings.enableE2ee),
       clientMediaPreferences,
     };
 
@@ -203,6 +206,10 @@ export default class MeetingRequest extends StatelessWebexPlugin {
         INTERPRETATION.CAPABILITIES.SI_HANDOVER_SUPPORTED,
         INTERPRETATION.CAPABILITIES.SIGN_INTERPRETER_SUPPORTED
       );
+    }
+    // @ts-ignore - config comes from registerPlugin
+    if (isE2eeEnabledAndSupported(!!this.config.meetings.enableE2ee)) {
+      deviceCapabilities.push(E2EE_1K_SUPPORTED);
     }
 
     // append installationId to device config if it exists
