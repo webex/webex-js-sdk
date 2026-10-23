@@ -11,6 +11,7 @@ packages/@webex/helper-image                              @webex/web-client
 packages/@webex/http-core                                 @webex/web-client @webex/web-sdk
 packages/@webex/internal-plugin-conversation              @webex/web-client @webex/web-sdk
 packages/@webex/internal-plugin-device                    @webex/web-client @webex/web-sdk
+packages/@webex/internal-plugin-encryption/assets/        @webex/web-client @webex/web-sdk
 packages/@webex/internal-plugin-llm                       @webex/web-client @webex/web-sdk
 packages/@webex/internal-plugin-mercury                   @webex/web-client @webex/web-sdk
 packages/@webex/internal-plugin-metrics                   @webex/web-client @webex/web-sdk

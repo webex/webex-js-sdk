@@ -79,7 +79,7 @@ export default {
 
     /**
      * Base URL of the directory hosting this plugin's static assets (e.g.
-     * `ios_union.p7b`). Defaults to `/assets/internal-plugin-encryption/` on
+     * `ios_union-<version>.p7b`). Defaults to `/assets/internal-plugin-encryption/` on
      * the page's origin; the `webex` package overrides it with the versioned
      * jsDelivr copy of its UMD assets. Self-hosters should point it at their
      * copy of `internal-plugin-encryption/dist/assets/`. Not used in Node,
