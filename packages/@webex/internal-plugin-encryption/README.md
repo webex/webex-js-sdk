@@ -29,6 +29,123 @@ const webex = new WebexCore();
 webex.internal.encryption.WHATEVER;
 ```
 
+## KMS certificate validation
+
+KMS certificate-chain validation is disabled by default. Applications can opt in
+to validating the KMS certificate chain against trusted CA roots when negotiating
+an ECDH key with the KMS. This is controlled by these
+options on the `encryption` config:
+
+- `shouldValidateKMSCertificate` — whether to validate the KMS certificate
+  chain. Defaults to `false`; set it to `true` to opt in. When enabled the SDK **fails closed**: if no CA
+  roots are available, or the chain doesn't validate, the ECDH negotiation
+  fails. When disabled, the SDK does not load the CA roots asset.
+- `caroots` — an array of raw base64-encoded CA root certificates. When set (and
+  non-empty) these are used and nothing is downloaded. Supplying roots alone
+  does not enable enforcement; also set `shouldValidateKMSCertificate: true`.
+- `carootsAsset` — the file name of Cisco's signed Trusted Root Store **Union**
+  bundle, `ios_union-<version>.p7b`, using the signed bundle version (YYYYMMDD).
+- `assetsBaseUrl` — the URL of the directory hosting `carootsAsset`. Defaults to
+  `/assets/internal-plugin-encryption/` on the page's origin. `Webex.init()`
+  from the `webex` package sets it to the matching versioned copy on jsDelivr,
+  `https://cdn.jsdelivr.net/npm/webex@<version>/umd/assets/internal-plugin-encryption/`.
+- `carootsReportOnly` — an additional array of CA roots validated alongside the
+  enforced roots. A failure here is only reported as a metric instead of failing
+  the negotiation, which lets a new bundle be trialled in parallel. This also
+  runs when `shouldValidateKMSCertificate` is `false`.
+
+### Where the CA roots come from
+
+When `shouldValidateKMSCertificate` is `true`:
+
+1. **`caroots`**, when configured.
+2. Otherwise, the **Cisco Union bundle** shipped as a static asset with this
+   package. It's loaded once, on first KMS use: browsers download it from
+   `assetsBaseUrl`, and Node reads the package's own copy (`dist/assets/`). The
+   bundle's CMS signature is verified in JavaScript against the pinned Cisco
+   TRS Bundle Root CA, and a bundle older than the one shipped with the SDK is
+   rejected. Every certificate in the verified bundle is trusted.
+3. If neither is available the negotiation **fails closed** with an error that
+   names `caroots`, `assetsBaseUrl` and `shouldValidateKMSCertificate`. A failed
+   download or verification is retried on the next KMS request.
+
+The SDK reports these client metrics:
+
+- `JS_SDK_KMS_CAROOTS_ASSET_DOWNLOAD_FAILED`
+- `JS_SDK_KMS_CAROOTS_ASSET_VERIFICATION_FAILED` (tagged with the reason)
+- `JS_SDK_KMS_CAROOTS_ASSET_STALE` (the bundle is more than a year old)
+- `JS_SDK_KMS_CERTIFICATE_VALIDATION_FAILED`
+
+### Hosting the asset
+
+After opting in with `shouldValidateKMSCertificate: true`, applications that create
+the SDK with `Webex.init()` from the `webex` package (npm or UMD) need no asset URL
+configuration: the bundle is fetched from the matching
+release on jsDelivr, so your Content Security Policy `connect-src` must allow
+`https://cdn.jsdelivr.net`. Applications that construct `WebexCore` (or
+`new Webex()`) directly load it from `/assets/internal-plugin-encryption/` on
+the page's origin unless `assetsBaseUrl` is set.
+
+To self-host, serve the files from
+`node_modules/@webex/internal-plugin-encryption/dist/assets/` (or
+`webex/umd/assets/internal-plugin-encryption/`) and point `assetsBaseUrl` at
+that directory. Use a versioned URL so the asset matches the SDK. Allow your
+application's origin with CORS when serving from another origin.
+
+If you enable `services.validateCatalogUrls`, requests to URLs outside the
+service catalog are blocked, including the asset download. Either add the asset
+host (e.g. `cdn.jsdelivr.net`) to `services.allowedDomains`, or supply
+`caroots`. The asset request never carries the user's access token.
+
+```js
+const webex = new WebexCore({
+  config: {
+    encryption: {
+      shouldValidateKMSCertificate: true,
+      assetsBaseUrl: 'https://cdn.example.com/webex-js-sdk/1.2.3/internal-plugin-encryption/',
+    },
+  },
+});
+```
+
+### Offline, FedRAMP and locked-down deployments
+
+If the application can't fetch the asset, supply `caroots` and explicitly set
+`shouldValidateKMSCertificate: true` to enforce validation. Generate the roots
+with the [`@webex/kms-caroots`](https://github.com/webex/webex-js-sdk/tree/master/packages/%40webex/kms-caroots)
+package, which verifies the Cisco Union bundle with the same code the SDK uses
+at runtime (no `openssl` required) and decodes it into the `caroots` format:
+
+```bash
+# Download and verify the latest bundle from Cisco
+npx @webex/kms-caroots --out ./caroots.json
+
+# Or verify a bundle you already have
+npx @webex/kms-caroots --in ./ios_union.p7b --out ./caroots.json
+```
+
+```js
+const {generateKmsCaroots} = require('@webex/kms-caroots');
+
+const caroots = await generateKmsCaroots();
+const webex = new WebexCore({
+  config: {encryption: {shouldValidateKMSCertificate: true, caroots}},
+});
+```
+
+Each `caroots` entry is the raw base64-encoded certificate (the DER body,
+without the `-----BEGIN/END CERTIFICATE-----` lines or newlines).
+
+### Refreshing the shipped bundle
+
+Maintainers refresh `assets/ios_union-<version>.p7b` with
+`yarn workspace @webex/internal-plugin-encryption assets:refresh`, which
+downloads the latest bundle from Cisco, verifies it, refuses to downgrade it,
+names the file using its verified signed version, and regenerates
+`src/union-bundle.js` with the matching filename and rollback floor. The previous
+shipped bundle is removed after the replacement is written. Both the asset name
+and version are generated; do not edit them by hand.
+
 ## Maintainers
 
 This package is maintained by [Cisco Webex for Developers](https://developer.webex.com/).

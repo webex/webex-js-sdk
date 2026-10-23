@@ -35,9 +35,12 @@ describe('Encryption', function () {
   );
 
   before('create unbound key', () =>
-    webex.internal.encryption.kms.createUnboundKeys({count: 1}).then(([k]) => {
-      key = k;
-    })
+    webex.internal.encryption.kms
+      .createUnboundKeys({count: 1})
+      .then(([k]) => webex.internal.encryption.kms.fetchKey({uri: k.uri}))
+      .then((k) => {
+        key = k;
+      })
   );
 
   before('fetch file fixture', () =>
@@ -47,7 +50,7 @@ describe('Encryption', function () {
         responseType: 'buffer',
       })
       .then((res) => {
-        FILE = res.body;
+        FILE = Buffer.from(res.body);
       })
   );
 

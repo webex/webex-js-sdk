@@ -20,6 +20,7 @@ const merge = require('lodash/merge');
 const WebexCore = require('@webex/webex-core').default;
 
 const config = require('./config');
+const assetsConfig = require('./assets-config');
 
 const Webex = WebexCore.extend({
   webex: true,
@@ -31,6 +32,7 @@ Webex.init = function init(attrs = {}) {
     {
       sdkType: 'encryption',
     },
+    assetsConfig,
     config,
     attrs.config
   ); // eslint-disable-line no-param-reassign
