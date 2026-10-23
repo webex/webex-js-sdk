@@ -271,24 +271,30 @@ describe('internal-plugin-encryption', () => {
         webex.internal.encryption.config.carootsReportOnly = undefined;
       });
 
-      it('rejects and reports when validation against caroots fails', async () => {
-        await assert.isRejected(
-          webex.internal.encryption.kms._validateKMSStaticPubKey(invalidKey, caroots),
-          /INVALID KMS/
-        );
+      [true, false].forEach((shouldValidateKMSCertificate) => {
+        it(`rejects and reports invalid KMS metadata with certificate validation ${
+          shouldValidateKMSCertificate ? 'enabled' : 'disabled'
+        }`, async () => {
+          webex.internal.encryption.config.shouldValidateKMSCertificate =
+            shouldValidateKMSCertificate;
+          await assert.isRejected(
+            webex.internal.encryption.kms._validateKMSStaticPubKey(invalidKey, caroots),
+            /INVALID KMS/
+          );
 
-        assert.calledOnceWithExactly(
-          webex.internal.metrics.submitClientMetrics,
-          'JS_SDK_KMS_CERTIFICATE_VALIDATION_FAILED',
-          {
-            fields: {success: false},
-            tags: {
-              reason: "INVALID KMS: 'kty' header must be 'RSA'",
-              kid: 'kms://kms.example.com',
-              validationMode: 'enforced',
-            },
-          }
-        );
+          assert.calledOnceWithExactly(
+            webex.internal.metrics.submitClientMetrics,
+            'JS_SDK_KMS_CERTIFICATE_VALIDATION_FAILED',
+            {
+              fields: {success: false},
+              tags: {
+                reason: "INVALID KMS: 'kty' header must be 'RSA'",
+                kid: 'kms://kms.example.com',
+                validationMode: 'enforced',
+              },
+            }
+          );
+        });
       });
 
       it('preserves the validation error when metric submission rejects', async () => {
@@ -376,24 +382,30 @@ describe('internal-plugin-encryption', () => {
         assert.notCalled(webex.internal.metrics.submitClientMetrics);
       });
 
-      it('resolves and submits a metric when only the report-only bundle fails', async () => {
-        webex.internal.encryption.config.carootsReportOnly = unrelatedCaroots;
+      [true, false].forEach((shouldValidateKMSCertificate) => {
+        it(`resolves and reports an untrusted report-only chain with certificate validation ${
+          shouldValidateKMSCertificate ? 'enabled' : 'disabled'
+        }`, async () => {
+          webex.internal.encryption.config.shouldValidateKMSCertificate =
+            shouldValidateKMSCertificate;
+          webex.internal.encryption.config.carootsReportOnly = unrelatedCaroots;
 
-        const result = await webex.internal.encryption.kms._validateKMSStaticPubKey(
-          validKey,
-          caroots
-        );
+          const result = await webex.internal.encryption.kms._validateKMSStaticPubKey(
+            validKey,
+            caroots
+          );
 
-        assert.equal(result, validKey);
-        assert.calledOnce(webex.internal.metrics.submitClientMetrics);
+          assert.equal(result, validKey);
+          assert.calledOnce(webex.internal.metrics.submitClientMetrics);
 
-        const [name, payload] = webex.internal.metrics.submitClientMetrics.args[0];
+          const [name, payload] = webex.internal.metrics.submitClientMetrics.args[0];
 
-        assert.equal(name, 'JS_SDK_KMS_CERTIFICATE_VALIDATION_FAILED');
-        assert.deepEqual(payload.fields, {success: false});
-        assert.equal(payload.tags.kid, 'kms://kms.example.com');
-        assert.equal(payload.tags.validationMode, 'report-only');
-        assert.match(payload.tags.reason, /INVALID KMS/);
+          assert.equal(name, 'JS_SDK_KMS_CERTIFICATE_VALIDATION_FAILED');
+          assert.deepEqual(payload.fields, {success: false});
+          assert.equal(payload.tags.kid, 'kms://kms.example.com');
+          assert.equal(payload.tags.validationMode, 'report-only');
+          assert.match(payload.tags.reason, /INVALID KMS/);
+        });
       });
     });
 

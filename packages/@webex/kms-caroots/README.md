@@ -3,10 +3,12 @@
 > Verify the Cisco Trusted Root Store bundle and generate the CA roots used to
 > validate the Webex KMS certificate.
 
-The Webex SDK validates the KMS certificate chain against the CA roots in Cisco's
-signed Trusted Root Store **Union** bundle (`ios_union.p7b`). By default the SDK
-downloads the bundle as a static asset and verifies it at runtime, so most
-applications don't need this package. Use it when you want to supply
+The Webex SDK can validate the KMS certificate chain against the CA roots in Cisco's
+signed Trusted Root Store **Union** bundle (`ios_union.p7b`). Certificate-chain
+validation defaults to `false`; enable it with
+`config.encryption.shouldValidateKMSCertificate: true`. Once enabled, the SDK
+loads the bundle as a static asset and verifies it at runtime unless roots are
+supplied, so most applications don't need this package. Use it when you want to supply
 `config.encryption.caroots` yourself, e.g. for offline, FedRAMP or locked-down
 (CSP) deployments that can't fetch the SDK's static assets.
 
@@ -57,7 +59,7 @@ const caroots = await generateKmsCaroots(); // or generateKmsCaroots({input: './
 
 const webex = new WebexCore({
   config: {
-    encryption: {caroots},
+    encryption: {shouldValidateKMSCertificate: true, caroots},
   },
 });
 ```
