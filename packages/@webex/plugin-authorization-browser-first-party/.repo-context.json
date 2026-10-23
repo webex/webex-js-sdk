@@ -1,0 +1,430 @@
+{
+  "$schema": "./schemas/repo-context.schema.json",
+  "version": 1,
+  "repository": {
+    "name": "@webex/plugin-authorization-browser-first-party",
+    "purpose": "Browser OAuth 2.0 authorization plugin for the first-party Webex Web Client. It registers webex.authorization, completes the Authorization Code + PKCE redirect during SDK initialization (CSRF state check, URL scrubbing, preauth catalog hint, token exchange), starts first-party and third-party (social provider) login redirects, runs the Device Authorization (QR code) polling flow, and supplies public/confidential client authentication for the token exchange and refresh callback."
+  },
+  "commands": {
+    "install": "yarn install",
+    "compile": "yarn workspace @webex/plugin-authorization-browser-first-party build:src",
+    "build": "yarn workspace @webex/plugin-authorization-browser-first-party build",
+    "unit-test": "yarn workspace @webex/plugin-authorization-browser-first-party test:unit",
+    "browser-test": "yarn workspace @webex/plugin-authorization-browser-first-party test:browser",
+    "lint": "yarn workspace @webex/plugin-authorization-browser-first-party test:style",
+    "deploy": "yarn workspace @webex/plugin-authorization-browser-first-party deploy:npm"
+  },
+  "public_interfaces": [
+    {
+      "name": "@webex/plugin-authorization-browser-first-party package barrel",
+      "kind": "package_export",
+      "source": "src/index.js",
+      "entrypoints": [
+        "import Authorization, {Events, InitialAuthorizationCodeGrantOutcomes, config} from '@webex/plugin-authorization-browser-first-party'"
+      ],
+      "audience": "the webex first-party bundle (packages/webex/src/webex-first-party.js) and @webex/recipe-private-web-client",
+      "notes": "Importing the package registers Authorization as public plugin 'authorization' with config and the isAuthorizing/isAuthenticating proxies. WebexCore keeps the first registration of a name, so import this package before the webex bundle."
+    },
+    {
+      "name": "webex.authorization runtime methods, properties, and events",
+      "kind": "plugin_api",
+      "source": "src/authorization.js",
+      "entrypoints": [
+        "webex.authorization.initiateLogin()",
+        "webex.authorization.initiateAuthorizationCodeGrant()",
+        "webex.authorization.initiateThirdPartyLogin()",
+        "webex.authorization.initiateThirdPartyLoginRedirect()",
+        "webex.authorization.handleThirdPartyCallback()",
+        "webex.authorization.requestAuthorizationCodeGrant()",
+        "webex.authorization.initQRCodeLogin()",
+        "webex.authorization.cancelQRCodePolling()",
+        "webex.authorization.logout()",
+        "webex.authorization.eventEmitter.on('login')",
+        "webex.authorization.eventEmitter.on('qRCodeLogin')"
+      ],
+      "audience": "Webex Web Client sign-in, QR login UI, and WebexCore logout",
+      "notes": "Properties: isAuthorizing, isAuthenticating, ready, initialAuthorizationCodeGrantOutcome. Config keys under config.credentials: clientType (default public) and refreshCallback. Events is a module export, not an instance property."
+    },
+    {
+      "name": "package scripts",
+      "kind": "npm_scripts",
+      "source": "package.json",
+      "entrypoints": [
+        "build",
+        "build:src",
+        "test:style",
+        "test:unit",
+        "test:browser",
+        "deploy:npm"
+      ],
+      "audience": "contributors and CI",
+      "notes": "Do not run the aggregate test script: it chains test:integration, which is not defined. test:browser passes only --integration and collects no files because test/integration does not exist. Run build:src before test:unit because the unit spec imports the default export from dist."
+    }
+  ],
+  "source_of_truth": [
+    {
+      "surface": "first-party browser authorization plugin implementation",
+      "paths": [
+        "src/index.js",
+        "src/authorization.js",
+        "src/config.js"
+      ],
+      "generated_artifacts": [
+        "dist"
+      ],
+      "refresh_with": [
+        "yarn workspace @webex/plugin-authorization-browser-first-party build:src"
+      ],
+      "validate_with": [
+        "yarn workspace @webex/plugin-authorization-browser-first-party test:unit",
+        "yarn workspace @webex/plugin-authorization-browser-first-party test:style"
+      ]
+    },
+    {
+      "surface": "module specification",
+      "paths": [
+        "src/docs/README.md"
+      ],
+      "generated_artifacts": [],
+      "refresh_with": [
+        "update alongside the behavior change in the same commit"
+      ],
+      "validate_with": [
+        "spec-validator on an independent runtime"
+      ]
+    }
+  ],
+  "generated_artifacts": [
+    {
+      "path": "dist",
+      "generated_from": "src",
+      "refresh_with": "yarn workspace @webex/plugin-authorization-browser-first-party build:src"
+    },
+    {
+      "path": ".sdd/templates/repo-standards/template-map.json",
+      "generated_from": "WebexTools/repo-standards@d89a7fe59126ae3ad9bac9ca352aa7f12b4c85dc",
+      "refresh_with": "The package symlink .sdd/templates points to the monorepo root .sdd/templates; refresh the root snapshot through the active Repo Annotation installation, not the link."
+    }
+  ],
+  "validation_matrix": [
+    {
+      "paths": [
+        "src/**"
+      ],
+      "minimum": [
+        "yarn workspace @webex/plugin-authorization-browser-first-party build:src",
+        "yarn workspace @webex/plugin-authorization-browser-first-party test:unit"
+      ],
+      "recommended": [
+        "yarn workspace @webex/plugin-authorization-browser-first-party test:style"
+      ]
+    },
+    {
+      "paths": [
+        "src/index.js",
+        "src/authorization.js"
+      ],
+      "minimum": [
+        "yarn workspace @webex/plugin-authorization-browser-first-party build:src",
+        "yarn workspace @webex/plugin-authorization-browser-first-party test:unit"
+      ],
+      "recommended": [
+        "review the sibling package webex file src/webex-first-party.js and @webex/recipe-private-web-client when exports, the plugin name, or event strings change"
+      ]
+    }
+  ],
+  "change_impact": [
+    {
+      "paths": [
+        "src/authorization.js"
+      ],
+      "affects": [
+        "Webex Web Client sign-in and QR login listeners",
+        "WebexCore readiness through authorization.ready"
+      ],
+      "refresh_with": [
+        "yarn workspace @webex/plugin-authorization-browser-first-party build:src"
+      ],
+      "validate_with": [
+        "yarn workspace @webex/plugin-authorization-browser-first-party test:unit"
+      ],
+      "avoid_direct_edits": [
+        "dist"
+      ],
+      "notes": "CSRF, PKCE, URL scrubbing, event names, and sessionStorage keys are security and compatibility boundaries."
+    },
+    {
+      "paths": [
+        "src/config.js"
+      ],
+      "affects": [
+        "token exchange and refresh client authentication",
+        "webex-core credentials refresh through refreshCallback"
+      ],
+      "refresh_with": [
+        "yarn workspace @webex/plugin-authorization-browser-first-party build:src"
+      ],
+      "validate_with": [
+        "yarn workspace @webex/plugin-authorization-browser-first-party test:unit"
+      ],
+      "avoid_direct_edits": [
+        "dist"
+      ],
+      "notes": "The clientType default is public; confidential clients must set it explicitly."
+    }
+  ],
+  "glossary": [
+    {
+      "term": "supertoken",
+      "definition": "The access + refresh token bundle stored on webex.credentials after a code or device grant.",
+      "notes": "Owned by the webex-core credentials plugin."
+    },
+    {
+      "term": "initial authorization-code grant outcome",
+      "definition": "The retained result (not_attempted, success, failure) of the exchange run during plugin initialization only.",
+      "notes": "Not reset by logout; not current authorization state."
+    },
+    {
+      "term": "public client",
+      "definition": "clientType 'public': no client secret; client_id is sent in the token form with addAuthHeader false.",
+      "notes": "Any other clientType uses HTTP Basic client authentication."
+    }
+  ],
+  "evidence_rules": [
+    {
+      "claim_category": "command_name",
+      "sources": [
+        "package.json"
+      ],
+      "requirement": "The script must exist in package.json scripts. test:integration is referenced by test but undefined.",
+      "notes": "Never cite the aggregate test script as runnable."
+    },
+    {
+      "claim_category": "import_path",
+      "sources": [
+        "src/index.js"
+      ],
+      "requirement": "A binding is public only if exported from src/index.js.",
+      "notes": "getClientAuthenticationOptions is exported from src/config.js but not from the barrel."
+    },
+    {
+      "claim_category": "behavior_claim",
+      "sources": [
+        "src",
+        "test/unit/spec"
+      ],
+      "requirement": "Ground every behavioral claim in source or test evidence.",
+      "notes": "Commit history is not an evidence source for this package. README.md is retained product documentation, not the behavioral authority. URL builders and token storage are owned by the sibling package webex-core."
+    }
+  ],
+  "negative_guidance": [
+    {
+      "rule": "Do not leave code, id_token, email, or csrf_token in the URL after a callback.",
+      "why": "They leak through history, copy-paste, and referrers."
+    },
+    {
+      "rule": "Do not log authorization codes, tokens, client secrets, or raw emails.",
+      "why": "They are credentials or PII; only the email hash may leave the page."
+    },
+    {
+      "rule": "Do not read a CSRF token or PKCE verifier from sessionStorage without removing it.",
+      "why": "Both are single-use by design."
+    },
+    {
+      "rule": "Do not treat README.md as the list of methods, events, or event order.",
+      "why": "It reads Events from the instance and misstates QR timeout and slow_down behavior. See docs/adr/0001-retain-product-readme.md."
+    },
+    {
+      "rule": "Do not infer a coverage threshold for this package.",
+      "why": "The owner confirmed no coverage gate applies; the legacy Jest config disables coverage collection."
+    }
+  ],
+  "confidence_policy": {
+    "high": {
+      "action": "update",
+      "expectation": "Source and unit test evidence both support the change, and the behavior has a case in test/unit/spec/authorization.js."
+    },
+    "medium": {
+      "action": "narrow-scope",
+      "expectation": "Only source evidence exists, for example plugin registration, 400 grant-error mapping, the logout redirect, or the shared event emitter. Pin current behavior with a characterization test before modifying."
+    },
+    "low": {
+      "action": "noop",
+      "expectation": "Neither source nor tests settle the question. Stop and report the gap."
+    }
+  },
+  "repository_topology": {
+    "main_entrypoints": [
+      {
+        "name": "package barrel",
+        "path": "src/index.js",
+        "purpose": "Registers the plugin and re-exports the class, Events, InitialAuthorizationCodeGrantOutcomes, and config",
+        "notes": "No subpath exports."
+      }
+    ],
+    "workspace_packages": [
+      {
+        "name": "@webex/plugin-authorization-browser-first-party",
+        "paths": [
+          "src",
+          "test"
+        ],
+        "notes": "One module; this SDD root is the package directory inside the webex-js-sdk monorepo, routed from the root .sdd/manifest.json."
+      }
+    ],
+    "source_surfaces": [
+      {
+        "name": "first-party browser authorization plugin",
+        "paths": [
+          "src"
+        ],
+        "notes": "index.js, authorization.js, config.js. Specified at src/docs/README.md."
+      },
+      {
+        "name": "tests",
+        "paths": [
+          "test/unit/spec",
+          "test/automation"
+        ],
+        "notes": "One unit spec run by Jest through webex-legacy-tools; one skipped browser automation suite."
+      }
+    ],
+    "generated_surfaces": [
+      {
+        "name": "build output",
+        "paths": [
+          "dist"
+        ],
+        "generated_from": "src",
+        "refresh_with": "yarn workspace @webex/plugin-authorization-browser-first-party build:src",
+        "notes": "Produced by webex-legacy-tools. Do not edit by hand."
+      },
+      {
+        "name": "repo-standards template map",
+        "paths": [
+          ".sdd/templates/repo-standards"
+        ],
+        "generated_from": "WebexTools/repo-standards@d89a7fe59126ae3ad9bac9ca352aa7f12b4c85dc",
+        "refresh_with": "The package symlink .sdd/templates points to the monorepo root .sdd/templates; refresh the root snapshot through the active Repo Annotation installation, not the link.",
+        "notes": "Shared with every package onboarded under the root orchestrator manifest."
+      }
+    ],
+    "sync_paths": [
+      {
+        "source": "src/config.js",
+        "targets": [
+          "src/authorization.js"
+        ],
+        "mechanism": "Manual; requestAuthorizationCodeGrant imports getClientAuthenticationOptions from src/config.js.",
+        "notes": "Keep the token exchange and refreshCallback on the same client-authentication helper."
+      },
+      {
+        "source": "WebexTools/repo-standards@d89a7fe59126ae3ad9bac9ca352aa7f12b4c85dc",
+        "targets": [
+          ".sdd/templates/repo-standards"
+        ],
+        "mechanism": "The package symlink .sdd/templates points to the monorepo root .sdd/templates; refresh the root snapshot through the active Repo Annotation installation, not the link.",
+        "notes": "No package copy of the templates exists."
+      }
+    ],
+    "validation_entrypoints": [
+      {
+        "name": "unit tests",
+        "command": "yarn workspace @webex/plugin-authorization-browser-first-party test:unit",
+        "scope": "test/unit/spec",
+        "notes": "jest via webex-legacy-tools --runner jest; run build:src first."
+      },
+      {
+        "name": "browser tests",
+        "command": "yarn workspace @webex/plugin-authorization-browser-first-party test:browser",
+        "scope": "test/integration (absent); test/automation is describe.skip",
+        "notes": "karma via webex-legacy-tools --integration; collects no files today."
+      },
+      {
+        "name": "lint",
+        "command": "yarn workspace @webex/plugin-authorization-browser-first-party test:style",
+        "scope": "src",
+        "notes": "eslint via the local root .eslintrc.js; Markdown under src/ is skipped with a warning."
+      }
+    ]
+  },
+  "folder_readme_contract": {
+    "required_sections": [
+      "purpose",
+      "boundaries",
+      "key-files",
+      "common-tasks"
+    ],
+    "rules": [
+      "Orient the reader before describing detail.",
+      "Link to the module specification rather than duplicating it."
+    ],
+    "example_policy": "Examples are allowed only when verified against src/ or test/.",
+    "fallback": "Omit a section rather than inventing content; report unresolved facts as gaps."
+  },
+  "regression_feedback_rules": [
+    {
+      "trigger": "A callback leaves a code, id_token, email, or csrf_token in the browser URL.",
+      "required_followups": [
+        "Add a #_cleanUrl or #handleThirdPartyCallback case to test/unit/spec/authorization.js that parses the cleaned URL",
+        "Update INV-004 in src/docs/README.md"
+      ],
+      "notes": "Covers both the code-grant and third-party callbacks."
+    },
+    {
+      "trigger": "QR login emits events in a different order or after cancellation.",
+      "required_followups": [
+        "Add a fake-timer case to the #_startQRCodePolling suite",
+        "Update the QR state machine in src/docs/README.md"
+      ],
+      "notes": "The web client UI branches on eventType order."
+    }
+  ],
+  "surface_owners": [
+    {
+      "surface": "module implementation and specifications",
+      "owner": "@webex/web-client",
+      "edit_boundary": "Owners per the monorepo .github/CODEOWNERS entry for packages/@webex/plugin-authorization-browser-first-party."
+    }
+  ],
+  "do_not_edit": [
+    "dist",
+    ".sdd/templates"
+  ],
+  "marker_scopes": {
+    "sdd": [
+      ".sdd/manifest.json",
+      "src/docs/README.md",
+      "docs"
+    ]
+  },
+  "fallback_rules": [
+    "When source and tests disagree, code is the referee and the disagreement is recorded rather than silently resolved.",
+    "When neither source nor tests settle a question, report it as a gap instead of inferring.",
+    "Commit history is not a valid rationale source for this package."
+  ],
+  "downstream_context_pack": {
+    "required_human_surfaces": [
+      "README.md",
+      "docs/index.md",
+      "docs/architecture.md",
+      "src/docs/README.md"
+    ],
+    "required_agent_operational_surfaces": [
+      "AGENTS.md",
+      "docs/specs/README.md"
+    ],
+    "required_machine_readable_surface": ".sdd/manifest.json",
+    "recommended_machine_readable_sections": [
+      "public_interfaces",
+      "change_impact",
+      "glossary",
+      "evidence_rules",
+      "negative_guidance",
+      "confidence_policy",
+      "repository_topology",
+      "folder_readme_contract",
+      "regression_feedback_rules"
+    ]
+  }
+}
