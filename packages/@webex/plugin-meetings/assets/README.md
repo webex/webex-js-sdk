@@ -6,7 +6,7 @@
 
 This folder contains files that plugin-meetings loads at runtime:
 
-- `e2ee.js` and `e2ee.wasm` — the Emscripten loader and binary for MLS join to E2EE meetings.
+- `e2ee-x.x.x.js` and `e2ee-x.x.x.wasm` — the Emscripten loader and binary for MLS join to E2EE meetings. Filenames need to be unique for each version of the WASM module.
 
 `yarn build` copies these files to `packages/@webex/plugin-meetings/dist/assets`. For UMD/CDN
 distribution, `yarn build:script` copies them to
