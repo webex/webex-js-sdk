@@ -5492,9 +5492,13 @@ export default class Meeting extends StatelessWebexPlugin {
 
       this.receiveSlotManager.reset();
 
+      // Unpublish/reset send slots while the connection is still open, so each slot's
+      // internal "stop sending" negotiation (and its stream-listener detachment) completes
+      // cleanly instead of racing the connection close below.
+      this.sendSlotManager.reset();
+
       this.mediaProperties.webrtcMediaConnection.close();
       this.mediaProperties.unsetPeerConnection();
-      this.sendSlotManager.reset();
       this.setNetworkStatus(undefined);
     }
 
