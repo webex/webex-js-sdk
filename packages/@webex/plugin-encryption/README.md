@@ -6,6 +6,7 @@
 
 - [Install](#install)
 - [Usage](#usage)
+- [KMS certificate validation](#kms-certificate-validation)
 - [API Docs and Sample App](#api-docs-and-sample-app)
 - [Sample Code](#sample-code)
 - [Contribute](#contribute)
@@ -36,6 +37,30 @@ In addition to the module consumption via NPMJS, this module can also be consume
 ## Usage
 
 This is a plugin for the Cisco Webex JS SDK. Please see our [developer portal](https://developer.webex.com/) and the [API reference](https://webex.github.io/webex-js-sdk/plugin-encryption/) for full details.
+
+## KMS certificate validation
+
+KMS certificate-chain validation is disabled by default. To enable it, set
+`config.encryption.shouldValidateKMSCertificate` to `true`. For example, with
+trusted CA roots supplied by your application:
+
+```js
+const webex = Webex.init({
+  config: {
+    encryption: {
+      shouldValidateKMSCertificate: true,
+      caroots, // Array of raw base64-encoded CA root certificates.
+    },
+  },
+  credentials: {access_token},
+});
+```
+
+Supplying `caroots` alone does not enable validation. Once enabled, validation
+fails closed if trusted roots cannot be loaded or the KMS certificate chain is
+untrusted. If roots are not supplied, the SDK loads and verifies its signed CA
+roots asset. See the [KMS configuration and asset-hosting guide](../internal-plugin-encryption/README.md#kms-certificate-validation)
+for download configuration and offline deployments.
 
 ## API Docs and Sample App
 

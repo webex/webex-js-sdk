@@ -7,10 +7,14 @@
 This folder contains files that internal-plugin-encryption loads at runtime:
 
 - `ios_union-<version>.p7b` — Cisco's signed Trusted Root Store "Union" bundle, named using
-  its verified signed version (YYYYMMDD). On first KMS use the SDK
+  its verified signed version (YYYYMMDD). When
+  `encryption.shouldValidateKMSCertificate: true`, on first KMS use the SDK
   downloads it, verifies its CMS signature against the pinned Cisco TRS Bundle Root CA and uses
   the contained certificates as the CA roots for KMS certificate validation (unless
   `encryption.caroots` is configured).
+
+Certificate-chain validation defaults to `false`, so the asset is not loaded
+unless the application opts in.
 
 `yarn build:src` copies these files to `packages/@webex/internal-plugin-encryption/dist/assets`.
 For UMD/CDN distribution, `yarn build:script` copies them to

@@ -50,20 +50,21 @@ export default {
     batcherMaxWait: 150,
 
     /**
-     * Whether to validate the KMS certificate chain. Defaults to true as a
-     * secure default: the KMS certificate must chain to a trusted CA root
+     * Whether to validate the KMS certificate chain. Defaults to false.
+     * Set to true to require the KMS certificate to chain to a trusted CA root
      * (see `caroots` and `carootsAsset`), and when no CA roots are available
-     * validation fails closed. Set to false to opt out of validation.
+     * validation fails closed.
      * @type {boolean}
      */
-    shouldValidateKMSCertificate: true,
+    shouldValidateKMSCertificate: false,
 
     /**
      * CA roots used to validate the KMS certificate chain, as an array of raw
      * base64-encoded certificates (the DER body, without the
      * -----BEGIN/END CERTIFICATE----- lines). When set, these take precedence
-     * and the `carootsAsset` bundle is never downloaded. Generate them with
-     * `@webex/kms-caroots` for offline or locked-down deployments.
+     * and the `carootsAsset` bundle is never downloaded. Requires
+     * `shouldValidateKMSCertificate: true` to enforce validation. Generate them
+     * with `@webex/kms-caroots` for offline or locked-down deployments.
      * @type {?string[]}
      */
     caroots: undefined,
@@ -71,8 +72,8 @@ export default {
     /**
      * File name of Cisco's signed Trusted Root Store "Union" bundle, loaded
      * from `assetsBaseUrl` (from the package's own assets in Node) on first
-     * KMS use when `caroots` isn't set. The bundle's signature is verified
-     * before its certificates are trusted.
+     * KMS use when validation is enabled and `caroots` isn't set. The bundle's
+     * signature is verified before its certificates are trusted.
      * @type {string}
      */
     carootsAsset: UNION_BUNDLE_ASSET,

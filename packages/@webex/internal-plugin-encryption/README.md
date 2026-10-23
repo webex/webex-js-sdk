@@ -31,16 +31,18 @@ webex.internal.encryption.WHATEVER;
 
 ## KMS certificate validation
 
-When the SDK negotiates an ECDH key with the KMS, it validates the KMS
-certificate chain against a set of trusted CA roots. This is controlled by these
+KMS certificate-chain validation is disabled by default. Applications can opt in
+to validating the KMS certificate chain against trusted CA roots when negotiating
+an ECDH key with the KMS. This is controlled by these
 options on the `encryption` config:
 
 - `shouldValidateKMSCertificate` — whether to validate the KMS certificate
-  chain. Defaults to `true`. When enabled the SDK **fails closed**: if no CA
+  chain. Defaults to `false`; set it to `true` to opt in. When enabled the SDK **fails closed**: if no CA
   roots are available, or the chain doesn't validate, the ECDH negotiation
-  fails. Set to `false` to opt out of validation.
+  fails. When disabled, the SDK does not load the CA roots asset.
 - `caroots` — an array of raw base64-encoded CA root certificates. When set (and
-  non-empty) these are used and nothing is downloaded.
+  non-empty) these are used and nothing is downloaded. Supplying roots alone
+  does not enable enforcement; also set `shouldValidateKMSCertificate: true`.
 - `carootsAsset` — the file name of Cisco's signed Trusted Root Store **Union**
   bundle, `ios_union-<version>.p7b`, using the signed bundle version (YYYYMMDD).
 - `assetsBaseUrl` — the URL of the directory hosting `carootsAsset`. Defaults to
@@ -49,9 +51,12 @@ options on the `encryption` config:
   `https://cdn.jsdelivr.net/npm/webex@<version>/umd/assets/internal-plugin-encryption/`.
 - `carootsReportOnly` — an additional array of CA roots validated alongside the
   enforced roots. A failure here is only reported as a metric instead of failing
-  the negotiation, which lets a new bundle be trialled in parallel.
+  the negotiation, which lets a new bundle be trialled in parallel. This also
+  runs when `shouldValidateKMSCertificate` is `false`.
 
 ### Where the CA roots come from
+
+When `shouldValidateKMSCertificate` is `true`:
 
 1. **`caroots`**, when configured.
 2. Otherwise, the **Cisco Union bundle** shipped as a static asset with this
@@ -73,8 +78,9 @@ The SDK reports these client metrics:
 
 ### Hosting the asset
 
-Applications that create the SDK with `Webex.init()` from the `webex` package
-(npm or UMD) need no configuration: the bundle is fetched from the matching
+After opting in with `shouldValidateKMSCertificate: true`, applications that create
+the SDK with `Webex.init()` from the `webex` package (npm or UMD) need no asset URL
+configuration: the bundle is fetched from the matching
 release on jsDelivr, so your Content Security Policy `connect-src` must allow
 `https://cdn.jsdelivr.net`. Applications that construct `WebexCore` (or
 `new Webex()`) directly load it from `/assets/internal-plugin-encryption/` on
@@ -95,6 +101,7 @@ host (e.g. `cdn.jsdelivr.net`) to `services.allowedDomains`, or supply
 const webex = new WebexCore({
   config: {
     encryption: {
+      shouldValidateKMSCertificate: true,
       assetsBaseUrl: 'https://cdn.example.com/webex-js-sdk/1.2.3/internal-plugin-encryption/',
     },
   },
@@ -103,8 +110,9 @@ const webex = new WebexCore({
 
 ### Offline, FedRAMP and locked-down deployments
 
-If the application can't fetch the asset, supply `caroots` instead. Generate
-them with the [`@webex/kms-caroots`](https://github.com/webex/webex-js-sdk/tree/master/packages/%40webex/kms-caroots)
+If the application can't fetch the asset, supply `caroots` and explicitly set
+`shouldValidateKMSCertificate: true` to enforce validation. Generate the roots
+with the [`@webex/kms-caroots`](https://github.com/webex/webex-js-sdk/tree/master/packages/%40webex/kms-caroots)
 package, which verifies the Cisco Union bundle with the same code the SDK uses
 at runtime (no `openssl` required) and decodes it into the `caroots` format:
 
@@ -120,7 +128,9 @@ npx @webex/kms-caroots --in ./ios_union.p7b --out ./caroots.json
 const {generateKmsCaroots} = require('@webex/kms-caroots');
 
 const caroots = await generateKmsCaroots();
-const webex = new WebexCore({config: {encryption: {caroots}}});
+const webex = new WebexCore({
+  config: {encryption: {shouldValidateKMSCertificate: true, caroots}},
+});
 ```
 
 Each `caroots` entry is the raw base64-encoded certificate (the DER body,
