@@ -132,7 +132,7 @@ restate signatures.
 | `listen()`, `stopListening()` | Legacy callers | Deprecated aliases of `connect()` and `disconnect()` (`MOD-016`) | `src/mercury.js` |
 | `getSockets()`, `getSocket(sessionId)`, `hasConnectedSockets(sessionId)`, `hasConnectingSockets(sessionId)`, `getLastError()` | `LLMChannel`, callers inspecting state | Read-only accessors (`MOD-017`) | `src/mercury.js` |
 | `processRegistrationStatusEvent(message)` | Autowired from `mercury.registration_status` | Stores `localClusterServiceUrls` (`MOD-010`) | `src/mercury.js` |
-| Properties `connected`, `connecting`, `listening`, `hasEverConnected`, `socket`, `mercuryTimeOffset`, `localClusterServiceUrls` | SDK plugins | See Client state model | `src/mercury.js` |
+| Properties `connected`, `connecting`, `listening`, `hasEverConnected`, `socket`, `backoffCall`, `mercuryTimeOffset`, `localClusterServiceUrls` | SDK plugins | `backoffCall` exposes the active retry controller for the primary connection; see Client state model | `src/mercury.js`, `src/mercury-plugin.ts` |
 | Events on `webex.internal.mercury` | SDK plugins | Contract `mercury-plugin-events`; naming rule `INV-001` | `src/mercury.js` |
 | `config.mercury` keys | SDK integrators | Defaults in `INV-005`; `maxRetries` and `initialConnectionMaxRetries` have no default | `src/config.js` |
 | `webex.config.defaultMercuryOptions` | Node integrators behind a proxy | Spread over the socket options (`MOD-004`) | `src/mercury.js` |
