@@ -1830,3 +1830,157 @@ describe('MediaRequestManager', () => {
     });
   });
 });
+
+describe('MediaRequestManager deferring of requests', () => {
+  let sendMediaRequestsCallback;
+  let isReadyToSendRequests;
+  let getIngressPayloadTypeCallback;
+  let mediaRequestManager: MediaRequestManager;
+  let fakeReceiveSlot;
+
+  beforeEach(() => {
+    sendMediaRequestsCallback = sinon.stub();
+    isReadyToSendRequests = sinon.stub().returns(false);
+    getIngressPayloadTypeCallback = sinon.stub().returns(0x80);
+    mediaRequestManager = new MediaRequestManager(sendMediaRequestsCallback, getIngressPayloadTypeCallback, {
+      degradationPreferences,
+      kind: 'audio',
+      trimRequestsToNumOfSources: false,
+      isReadyToSendRequests,
+    });
+    fakeReceiveSlot = {
+      id: 'fake receive slot',
+      on: sinon.stub(),
+      off: sinon.stub(),
+      sourceState: 'live',
+      mediaType: MediaType.AudioMain,
+      wcmeReceiveSlot: {id: 'fake WCME slot'},
+    } as unknown as ReceiveSlot;
+  });
+
+  const addReceiverSelectedRequest = (csi: number) =>
+    mediaRequestManager.addRequest(
+      {
+        policyInfo: {policy: 'receiver-selected', csi},
+        receiveSlots: [fakeReceiveSlot],
+      },
+      true
+    );
+
+  it('does not send anything while the connection is not ready', () => {
+    addReceiverSelectedRequest(1);
+    mediaRequestManager.commit();
+
+    assert.notCalled(sendMediaRequestsCallback);
+  });
+
+  it('sends only the latest requests once when sendDeferredRequests() is called', () => {
+    const requestId = addReceiverSelectedRequest(1);
+    mediaRequestManager.cancelRequest(requestId, true);
+    addReceiverSelectedRequest(2);
+
+    isReadyToSendRequests.returns(true);
+    mediaRequestManager.sendDeferredRequests();
+
+    assert.calledOnceWithExactly(sendMediaRequestsCallback, [
+      sinon.match({
+        policy: 'receiver-selected',
+        policySpecificInfo: sinon.match({csi: 2}),
+        receiveSlots: [fakeReceiveSlot.wcmeReceiveSlot],
+      }),
+    ]);
+
+    mediaRequestManager.sendDeferredRequests();
+
+    assert.calledOnce(sendMediaRequestsCallback);
+  });
+
+  it('keeps the requests deferred if the connection is still not ready on sendDeferredRequests()', () => {
+    addReceiverSelectedRequest(1);
+    mediaRequestManager.sendDeferredRequests();
+
+    assert.notCalled(sendMediaRequestsCallback);
+
+    isReadyToSendRequests.returns(true);
+    mediaRequestManager.sendDeferredRequests();
+
+    assert.calledOnce(sendMediaRequestsCallback);
+  });
+
+  it('does not send anything on sendDeferredRequests() if nothing was deferred', () => {
+    isReadyToSendRequests.returns(true);
+    mediaRequestManager.sendDeferredRequests();
+
+    assert.notCalled(sendMediaRequestsCallback);
+  });
+
+  it('sends requests immediately when the connection is ready', () => {
+    isReadyToSendRequests.returns(true);
+    addReceiverSelectedRequest(1);
+
+    assert.calledOnce(sendMediaRequestsCallback);
+  });
+
+  it('clears deferred requests on reset()', () => {
+    addReceiverSelectedRequest(1);
+    mediaRequestManager.reset();
+
+    isReadyToSendRequests.returns(true);
+    mediaRequestManager.sendDeferredRequests();
+
+    assert.notCalled(sendMediaRequestsCallback);
+  });
+
+  it('builds codec information only when ready using the current payload type', () => {
+    mediaRequestManager.addRequest({
+      policyInfo: {policy: 'receiver-selected', csi: 1},
+      receiveSlots: [fakeReceiveSlot],
+      codecInfo: {codec: 'h264', maxFs: getMaxFs('large')},
+    });
+
+    assert.notCalled(getIngressPayloadTypeCallback);
+
+    getIngressPayloadTypeCallback.returns(98);
+    isReadyToSendRequests.returns(true);
+    mediaRequestManager.sendDeferredRequests();
+
+    assert.calledOnceWithExactly(sendMediaRequestsCallback, [
+      sinon.match({
+        codecInfos: [sinon.match({payloadType: 98})],
+      }),
+    ]);
+  });
+
+  it('sends an empty state when all deferred requests were cancelled', () => {
+    const requestId = addReceiverSelectedRequest(1);
+
+    mediaRequestManager.cancelRequest(requestId, true);
+    isReadyToSendRequests.returns(true);
+    mediaRequestManager.sendDeferredRequests();
+
+    assert.calledOnceWithExactly(sendMediaRequestsCallback, []);
+  });
+
+  it('does not resend deferred state after a regular commit has already sent it', () => {
+    addReceiverSelectedRequest(1);
+    isReadyToSendRequests.returns(true);
+    mediaRequestManager.commit();
+    mediaRequestManager.sendDeferredRequests();
+
+    assert.calledOnce(sendMediaRequestsCallback);
+  });
+
+  it('preserves deferred state if sending throws and propagates the error', () => {
+    const error = new Error('Failed to send media requests');
+
+    addReceiverSelectedRequest(1);
+    isReadyToSendRequests.returns(true);
+    sendMediaRequestsCallback.onFirstCall().throws(error);
+
+    assert.throws(() => mediaRequestManager.sendDeferredRequests(), error.message);
+
+    mediaRequestManager.sendDeferredRequests();
+
+    assert.calledTwice(sendMediaRequestsCallback);
+  });
+});

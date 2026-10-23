@@ -79,12 +79,14 @@ type GetIngressPayloadTypeCallback = (
   mediaType: MediaType,
   codecMimeType: MediaCodecMimeType
 ) => number | undefined;
+type IsReadyToSendRequestsCallback = () => boolean;
 type Kind = 'audio' | 'video';
 
 type AudioMediaRequestManagerOptions = {
   degradationPreferences: DegradationPreferences;
   kind: 'audio';
   trimRequestsToNumOfSources: boolean; // if enabled, AS speaker requests will be trimmed based on the calls to setNumCurrentSources()
+  isReadyToSendRequests?: IsReadyToSendRequestsCallback; // if it returns false, sending is deferred until sendDeferredRequests() is called
 };
 
 type VideoMediaRequestManagerOptions = {
@@ -92,6 +94,7 @@ type VideoMediaRequestManagerOptions = {
   kind: 'video';
   trimRequestsToNumOfSources: boolean;
   enableAv1?: boolean;
+  isReadyToSendRequests?: IsReadyToSendRequestsCallback;
 };
 
 type Options = AudioMediaRequestManagerOptions | VideoMediaRequestManagerOptions;
@@ -102,6 +105,10 @@ export class MediaRequestManager {
   private sendMediaRequestsCallback: SendMediaRequestsCallback;
 
   private getIngressPayloadTypeCallback: GetIngressPayloadTypeCallback;
+
+  private isReadyToSendRequests: IsReadyToSendRequestsCallback;
+
+  private hasDeferredRequests = false;
 
   private kind: Kind;
 
@@ -127,6 +134,7 @@ export class MediaRequestManager {
   ) {
     this.sendMediaRequestsCallback = sendMediaRequestsCallback;
     this.getIngressPayloadTypeCallback = getIngressPayloadTypeCallback;
+    this.isReadyToSendRequests = options.isReadyToSendRequests ?? (() => true);
     this.counter = 0;
     this.numLiveSources = 0;
     this.numTotalSources = 0;
@@ -383,6 +391,16 @@ export class MediaRequestManager {
   }
 
   private sendRequests() {
+    if (!this.isReadyToSendRequests()) {
+      if (!this.hasDeferredRequests) {
+        LoggerProxy.logger.info(
+          `multistream:sendRequests --> connection not-ready, deferring ${this.kind} media requests`
+        );
+      }
+      this.hasDeferredRequests = true;
+
+      return;
+    }
     const streamRequests: StreamRequest[] = [];
 
     // clone the requests so that any modifications we do to them don't affect the original ones
@@ -422,7 +440,13 @@ export class MediaRequestManager {
       }
     });
 
+    if (this.hasDeferredRequests) {
+      LoggerProxy.logger.info(
+        `multistream:sendRequests --> connection ready, sending deferred ${this.kind} media requests`
+      );
+    }
     this.sendMediaRequestsCallback(streamRequests);
+    this.hasDeferredRequests = false;
     LoggerProxy.logger.info(`multistream:sendRequests --> media requests sent.`);
   }
 
@@ -469,7 +493,20 @@ export class MediaRequestManager {
     return this.sendRequests();
   }
 
+  /**
+   * Sends the current requests if sending them was deferred because the connection was not ready.
+   * The requests are built from the latest state, so nothing outdated is sent.
+   * @returns {void}
+   */
+  public sendDeferredRequests() {
+    if (!this.hasDeferredRequests) {
+      return;
+    }
+    this.sendRequests();
+  }
+
   public reset() {
+    this.hasDeferredRequests = false;
     this.clientRequests = {};
     this.numTotalSources = 0;
     this.numLiveSources = 0;
