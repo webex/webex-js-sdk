@@ -63,21 +63,21 @@ Related context: [documentation index](../../docs/index.md) ·
 
 | Evidence         | What it establishes |
 | ---------------- | ------------------- |
-| `src/index.js` | The public surface: 39 named exports forming the package barrel |
+| `src/index.js` | The public surface: 40 named exports forming the package barrel |
 | `package.json` | Published npm package; `main: dist/index.js`; browser field remaps `in-browser/node.js` to `in-browser/browser.js`; Node `>=16` |
 | monorepo .github/CODEOWNERS line 8 (outside this SDD root) | Ownership by @webex/web-client and @webex/web-sdk |
-| `test/unit/spec/common.js` | Entry point of the 8 unit specs, covering base64, retry, browser detection, capped debounce, exception, oauth state, one flight, template container, while in flight |
+| `test/unit/spec/common.js`, `test/unit/spec/umd-assets.js` | Unit specs covering base64, retry, browser detection, capped debounce, exception, oauth state, one flight, template container, while in flight, and UMD asset URL construction |
 | `src/index.js` | Barrel contains no @webex/* import; a repo-wide grep over src/ confirms the module takes no runtime dependency on another Webex package — the basis of its inclusion rule |
 | `package.json` | Declares the published surface; 33 workspace manifests depend on it across 104 import sites — the blast radius for any surface change |
 | `README.md` | Owner-designated reference for the externally supported subset of the surface |
-| `src/index.js` | Justifies the `Public surface` template extension `Complete export inventory`: the template's Public surface table carries one row per compatibility commitment, but the barrel exports 39 symbols across 22 files, so the export-to-file mapping has no canonical home in the template. The extension is a subsection of Public surface, not a parallel section, and states only the defining file and role of each export |
+| `src/index.js` | Justifies the `Public surface` template extension `Complete export inventory`: the template's Public surface table carries one row per compatibility commitment, but the barrel exports 40 symbols across 23 files, so the export-to-file mapping has no canonical home in the template. The extension is a subsection of Public surface, not a parallel section, and states only the defining file and role of each export |
 
 ## Purpose and boundary
 
 - **Responsibility:** zero-Webex-dependency helpers that more than one Webex JS SDK plugin needs.
 - **In scope:** promise and decorator plumbing, base64url encoding, Hydra identifier construction,
-  environment detection, shared regular expressions, the `Exception` base class, and the
-  ampersand-state adapter.
+  environment detection, shared regular expressions, the `Exception` base class, the
+  ampersand-state adapter, and generic URL construction for SDK UMD assets.
 - **Out of scope:** anything that would require importing another `@webex/*` package at runtime.
   This is the inclusion rule the owner confirmed, and src/ currently satisfies it with no
   exceptions. A helper that needs a Webex package belongs in that package or above it.
@@ -88,7 +88,7 @@ Related context: [documentation index](../../docs/index.md) ·
 
 | Path     | Responsibility                     |
 | -------- | ---------------------------------- |
-| `src/index.js` | The barrel. Authoritative list of the 39-symbol public surface |
+| `src/index.js` | The barrel. Authoritative list of the 40-symbol public surface |
 | `src/one-flight.js` | `oneFlight` decorator: de-duplicates concurrent calls to a method |
 | `src/while-in-flight.js` | `whileInFlight` decorator: toggles a boolean on the target for the duration of a promise |
 | `src/retry.js` | `retry` decorator over `backoff`, with progress-event re-emission |
@@ -99,6 +99,7 @@ Related context: [documentation index](../../docs/index.md) ·
 | `src/exception.js` | `Exception` base error class with `parse`/`defaultMessage` overrides |
 | `src/base64.js` | base64url encode/decode/validate over `urlsafe-base64` |
 | `src/uuid-utils.js` | Hydra identifier construction and deconstruction |
+| `src/umd-assets.js` | Selects the local development path or builds a versioned UMD CDN asset URL from a plugin directory name and SDK version |
 | `src/oauth-state.js` | OAuth redirect state encode/decode |
 | `src/events.js` | `proxyEvents`, `transferEvents` |
 | `src/event-envelope.js` | Webhook-shaped envelope around SDK socket events |
@@ -116,12 +117,12 @@ Related context: [documentation index](../../docs/index.md) ·
 | Surface  | Consumer   | Compatibility commitment | Source   |
 | -------- | ---------- | ------------------------ | -------- |
 | `cappedDebounce`, `Defer`, `deprecated`, `Exception`, `oneFlight`, `tap` | External npm consumers and SDK plugins | Externally supported subset, per the owner-designated reference README.md | `src/index.js` |
-| The other 33 barrel exports, itemised in the inventory below | 33 workspace packages | Internal-consumer surface. Not documented for external use, but a change is still breaking across 104 import sites | `src/index.js` |
+| The other 34 barrel exports, itemised in the inventory below | 33 workspace packages | Internal-consumer surface. Not documented for external use, but a change is still breaking across 104 import sites | `src/index.js` |
 | ciscospark:// Hydra identifier encoding | Any consumer that stores or compares Hydra ids | Format is effectively frozen; a change invalidates persisted ids | `src/uuid-utils.js` |
 
 ### Complete export inventory
 
-All 39 symbols re-exported by `src/index.js`, with their defining file.
+All 40 symbols re-exported by `src/index.js`, with their defining file.
 
 | Export | Defining file | Summary |
 | --- | --- | --- |
@@ -153,6 +154,7 @@ All 39 symbols re-exported by `src/index.js`, with their defining file.
 | `INTERNAL_US_CLUSTER_NAME` | `src/constants.js` | `urn:TEAM:us-east-2_a`; normalises to cluster `us` |
 | `INTERNAL_US_INTEGRATION_CLUSTER_NAME` | `src/constants.js` | `urn:TEAM:us-east-1_int13`; normalises to cluster `us` |
 | `BrowserDetection` | `src/browser-detection.js` | Memoised bowser parser with an os-based Node fallback |
+| `getUmdAssetsBaseUrl` | `src/umd-assets.js` | Uses a local asset path in development/versionless builds, otherwise returns the versioned `webex` UMD CDN asset directory URL |
 | `getBrowserSerial` | `src/browser-detection.js` | Raw bowser parser, or an object carrying `error` when the user agent is unreachable |
 | `constructHydraId` | `src/uuid-utils.js` | Encodes type, id, and cluster into a Hydra id |
 | `deconstructHydraId` | `src/uuid-utils.js` | Decodes a Hydra id into `{id, type, cluster}` |
@@ -355,7 +357,7 @@ it tolerates extra leading segments but silently returns `undefined` fields for 
 | Export or entry point | Consumer   | Stability | Versioning and deprecation rule | Declaration or API report |
 | --------------------- | ---------- | --------- | ------------------------------- | ------------------------- |
 | `cappedDebounce`, `Defer`, `deprecated`, `Exception`, `oneFlight`, `tap` | External npm and SDK plugins | Supported | Documented in README.md; treat as semver-public | `package.json` |
-| The remaining 33 barrel exports | 33 workspace packages | Internal-consumer | Undocumented externally, but breaking across 104 internal import sites | `src/index.js` |
+| The remaining 34 barrel exports | 33 workspace packages | Internal-consumer | Undocumented externally, but breaking across 104 internal import sites | `src/index.js` |
 | `dist/in-browser/node.js` to `dist/in-browser/browser.js` remap | Bundlers | Supported | Must stay in step with src/in-browser/ | `package.json` |
 | No .d.ts is emitted | TypeScript consumers | Not provided | build:src passes -ts but there are no TypeScript sources, so dist/ contains .js and .js.map only | `package.json` |
 
@@ -383,7 +385,7 @@ it tolerates extra leading segments but silently returns `undefined` fields for 
 | `MOD-008` | — | none found | none found | `inBrowser` resolution is build-time and unverified by tests |
 | `INV-003`, `INV-004` | — | none found | none found | No test for `makeStateDataType` or `checkRequired` guards |
 
-**Coverage gaps.** 8 of 25 source files have a dedicated unit spec. `src/uuid-utils.js` is the
+**Coverage gaps.** 9 of 26 source files have a dedicated unit spec. `src/uuid-utils.js` is the
 largest untested file and carries the frozen, externally persisted Hydra format — the highest-risk
 gap here. Before modifying any untested file, pin current behaviour with a characterization test.
 

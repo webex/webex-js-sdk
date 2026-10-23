@@ -1,5 +1,7 @@
 // @ts-ignore
-import {deviceType} from '@webex/common';
+import {deviceType, getUmdAssetsBaseUrl} from '@webex/common';
+
+declare const PACKAGE_VERSION: string;
 
 export default {
   // TODO: this needs to be defaulted
@@ -81,7 +83,7 @@ export default {
     receiveTranscription: false,
     enableExtmap: false,
     enableAutomaticLLM: false,
-    assetsBaseUrl: '/assets/plugin-meetings/',
+    assetsBaseUrl: getUmdAssetsBaseUrl('plugin-meetings', PACKAGE_VERSION),
     installedOrgID: undefined,
     multipartSitePrefixList: ['.my.', '.mydmz.', '.mybts.', '.mydev.', '.myats2.', '.myats.'],
     experimental: {
