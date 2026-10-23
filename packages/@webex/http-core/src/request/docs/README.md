@@ -479,3 +479,7 @@ What remains is not measurement: independent semantic validation by `codex` ran 
 returned `pass-with-warnings`; the prior B1 and B2 findings were resolved and no Blocking finding
 remains. Promotion from `Partial` to `Specced` remains held because a characterization baseline
 should be recorded before any risky modification.
+
+## Per-request logging opt-out
+
+Both Node and browser transports suppress their diagnostic messages when `options.skipLogging` is true. Request bodies, response processing, progress events and the status-zero network-failure response remain unchanged. The default request path retains its existing logging.

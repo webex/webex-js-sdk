@@ -27,7 +27,7 @@ export default class RequestEventInterceptor extends Interceptor {
     try {
       this.webex.trigger('request:start', options);
     } catch (error) {
-      logger.warn('event handler for request:start failed ', error);
+      if (!options.skipLogging) logger.warn('event handler for request:start failed ', error);
     }
 
     return Promise.resolve(options);
@@ -48,7 +48,7 @@ export default class RequestEventInterceptor extends Interceptor {
       this.webex.trigger('request:end', options, reason);
       this.webex.trigger('request:failure', options, reason);
     } catch (error) {
-      logger.warn('event handler for request:end failed ', error);
+      if (!options.skipLogging) logger.warn('event handler for request:end failed ', error);
     }
 
     return Promise.reject(reason);
@@ -66,7 +66,7 @@ export default class RequestEventInterceptor extends Interceptor {
     try {
       this.webex.trigger('request:success', response.options, response);
     } catch (error) {
-      logger.warn('event handler for request:success failed ', error);
+      if (!options.skipLogging) logger.warn('event handler for request:success failed ', error);
     }
 
     return Promise.resolve(response);
@@ -85,7 +85,7 @@ export default class RequestEventInterceptor extends Interceptor {
       this.webex.trigger('request:end', options, reason);
       this.webex.trigger('request:failure', options, reason);
     } catch (error) {
-      logger.warn('event handler for request:failure failed ', error);
+      if (!options.skipLogging) logger.warn('event handler for request:failure failed ', error);
     }
 
     return Promise.reject(reason);

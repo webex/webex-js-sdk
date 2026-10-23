@@ -105,10 +105,11 @@ export default class AuthInterceptor extends Interceptor {
         return false;
       })
       .catch((error) => {
-        this.webex.logger.warn(
-          'auth-interceptor: failed to validate service exists in catalog',
-          error
-        );
+        if (!options.skipLogging)
+          this.webex.logger.warn(
+            'auth-interceptor: failed to validate service exists in catalog',
+            error
+          );
 
         return false;
       });
@@ -123,7 +124,8 @@ export default class AuthInterceptor extends Interceptor {
   onResponseError(options, reason) {
     return this.shouldAttemptReauth(reason, options).then((shouldAttemptReauth) => {
       if (shouldAttemptReauth) {
-        this.webex.logger.info('auth: received 401, attempting to reauthenticate');
+        if (!options.skipLogging)
+          this.webex.logger.info('auth: received 401, attempting to reauthenticate');
 
         if (reason.options.headers) {
           Reflect.deleteProperty(reason.options.headers, 'authorization');
@@ -151,16 +153,18 @@ export default class AuthInterceptor extends Interceptor {
     }
 
     if (options.replayCount > this.webex.config.maxAuthenticationReplays) {
-      this.webex.logger.error(
-        `auth: failed after ${this.webex.config.maxAuthenticationReplays} replay attempts`
-      );
+      if (!options.skipLogging)
+        this.webex.logger.error(
+          `auth: failed after ${this.webex.config.maxAuthenticationReplays} replay attempts`
+        );
 
       return Promise.reject(
         new Error(`Failed after ${this.webex.config.maxAuthenticationReplays} replay attempts`)
       );
     }
 
-    this.webex.logger.info(`auth: replaying request ${options.replayCount} time`);
+    if (!options.skipLogging)
+      this.webex.logger.info(`auth: replaying request ${options.replayCount} time`);
 
     return this.webex.request(options);
   }

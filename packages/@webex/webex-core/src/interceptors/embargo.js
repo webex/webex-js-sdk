@@ -35,7 +35,7 @@ export default class EmbargoInterceptor extends Interceptor {
       }
 
       this.webex.credentials.clear();
-      this.webex.logger.info(loggerMessage);
+      if (!options.skipLogging) this.webex.logger.info(loggerMessage);
     }
 
     return Promise.reject(reason);

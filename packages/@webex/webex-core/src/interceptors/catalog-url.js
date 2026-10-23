@@ -37,7 +37,8 @@ export default class CatalogUrlInterceptor extends Interceptor {
     // Check if services plugin is available
     if (!this.webex.internal?.services) {
       // Services not loaded yet - allow but log
-      this.webex.logger?.warn?.(`catalog-url: Cannot validate URL (services not loaded): ${url}`);
+      if (!options.skipLogging)
+        this.webex.logger?.warn?.(`catalog-url: Cannot validate URL (services not loaded): ${url}`);
 
       return Promise.resolve(options);
     }

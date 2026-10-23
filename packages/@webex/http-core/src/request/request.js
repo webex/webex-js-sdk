@@ -44,7 +44,7 @@ function doRequest(options) {
     const {logger} = options;
 
     const r = request(options, (error, response) => {
-      if (error) {
+      if (error && !options.skipLogging) {
         logger.warn(error);
       }
 

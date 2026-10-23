@@ -5,7 +5,8 @@
     "purpose": "Logger plugin for the Cisco Webex JS SDK. It replaces the minimal webex-core logger with leveled console output, redaction of authorization keys, email addresses, and MTID values, and in-memory log buffers that internal-plugin-support formats and uploads.",
     "category": "cat2-legacy",
     "primary_languages": [
-      "javascript"
+      "javascript",
+      "typescript"
     ]
   },
   "topology": "Single-repo",
@@ -124,13 +125,13 @@
         "crosses_service_boundaries": false,
         "holds_client_state": true,
         "enforces_domain_rules": true,
-        "is_concurrent_async": false,
+        "is_concurrent_async": true,
         "owns_persistence": false,
         "stateful_transitions": false,
         "exposes_wire_protocol": true,
         "ui_multi_screen": false,
         "large_data_model": false,
-        "returns_caller_errors": false,
+        "returns_caller_errors": true,
         "module_specific_conventions": true,
         "published_package": true,
         "embedded_in_host": false,
@@ -151,7 +152,7 @@
         "publication": "published",
         "source_kind": "repository-path",
         "source": "package.json",
-        "summary": "Published npm package. main is dist/index.js and devMain is src/index.js. Importing the package registers Logger as the webex 'logger' plugin with replace: true and merges src/config.js into webex config. The barrel exports the Logger constructor as default and the named levels array."
+        "summary": "Published npm package. main is dist/index.js, devMain is src/index.js, and types is index.d.ts. Importing the package registers Logger with replace: true and merges its config. Runtime exports remain Logger and levels; public types describe per-record metadata and the owned getRecords/subscribe source contract."
       },
       "log-buffer-format": {
         "kind": "file",

@@ -36,7 +36,7 @@ export default class Interceptor {
   logOptions(options = {}) {
     const logger = get(this, 'webex.logger', console);
 
-    if (!process.env.ENABLE_VERBOSE_NETWORK_LOGGING || !logger) {
+    if (options.skipLogging || !process.env.ENABLE_VERBOSE_NETWORK_LOGGING || !logger) {
       return;
     }
 

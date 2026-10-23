@@ -45,13 +45,14 @@ export default function _request(options) {
     setPayload(params, options);
     setQs(params, options);
 
-    options.logger.debug(
-      `start http ${options.method ? options.method : 'request'} to ${options.uri}`
-    );
+    if (!options.skipLogging)
+      options.logger.debug(
+        `start http ${options.method ? options.method : 'request'} to ${options.uri}`
+      );
 
     const x = xhr(params, (error, response) => {
       /* istanbul ignore next */
-      if (error) {
+      if (error && !options.skipLogging) {
         options.logger.warn(
           `XHR error for ${options.method || 'request'} to ${options.uri} :`,
           error
@@ -63,14 +64,14 @@ export default function _request(options) {
         response.options = options;
         processResponseJson(response, params);
 
-        if (response.statusCode >= 400) {
+        if (!options.skipLogging && response.statusCode >= 400) {
           options.logger.warn(
             `http ${options.method ? options.method : 'request'} to ${options.uri} result: ${
               response.statusCode
             } body:`,
             response.body
           );
-        } else {
+        } else if (!options.skipLogging) {
           options.logger.debug(
             `http ${options.method ? options.method : 'request'} to ${options.uri} result: ${
               response.statusCode
@@ -93,7 +94,7 @@ export default function _request(options) {
 
     x.onprogress = options.download.emit.bind(options.download, 'progress');
   }).catch((error) => {
-    options.logger.warn(error);
+    if (!options.skipLogging) options.logger.warn(error);
 
     /* eslint arrow-body-style: [0] */
     /* istanbul ignore next */

@@ -43,13 +43,13 @@ Related context: [documentation index](../../docs/index.md) · [package agent in
 | `module.crosses_service_boundaries`  | N/A        | `src/` makes no network call. Upload is done by the sibling package internal-plugin-support. | Cross-boundary use-case flow |
 | `module.holds_client_state`          | Applicable | `buffer`, `sdkBuffer`, `clientBuffer`, and `groupLevel` are session properties in `src/logger.js` | Client state model |
 | `module.enforces_domain_rules`       | Applicable | Level precedence, buffer threshold, and redaction rules in `src/logger.js` | Business rules and invariants |
-| `module.is_concurrent_async`         | N/A        | Every method is synchronous. No promise, timer, or event subscription in `src/`. | Concurrency and reactive flow |
+| `module.is_concurrent_async`         | Applicable | Record subscriptions are synchronous and may reenter logging; pending notifications preserve order. No asynchronous delivery or timer is owned here. | Structured record source |
 | `module.owns_persistence`            | N/A        | Buffers live in memory only. Nothing is written to storage. | Data, schema, and migration discipline |
 | `module.stateful_transitions`        | N/A        | Buffer cursors are covered under Client state model. There is no named state machine. | State machine |
 | `module.exposes_wire_protocol`       | Applicable | `formatLogs()` output is the log text that the sibling package internal-plugin-support uploads | Protocol and wire format |
 | `module.ui_multi_screen`             | N/A        | No UI | UI flow |
 | `module.large_data_model`            | N/A        | One buffer record shape and seven config keys | Data model |
-| `module.returns_caller_errors`       | N/A        | Log methods catch every internal error and return `undefined`. No method throws to the caller. | Caller-visible failure modes |
+| `module.returns_caller_errors`       | Applicable | Log writers remain non-throwing; source APIs reject invalid listeners or inconsistent retained metadata with synchronous errors. | Structured record source |
 | `module.module_specific_conventions` | Applicable | `client_` method prefix, `wx-js-sdk` name, and redaction-before-output rules | Module-specific rules |
 | `module.published_package`           | Applicable | `package.json` names the package and `deploy:npm` publishes it | Export stability |
 | `module.embedded_in_host`            | N/A        | No host theme or embed API | Host integration and theming |
@@ -63,6 +63,7 @@ Related context: [documentation index](../../docs/index.md) · [package agent in
 | `src/index.js` | Plugin registration with `replace: true` and the public re-exports |
 | `src/logger.js` | Level precedence, console fallbacks, redaction, buffering, formatting, and buffer cursors |
 | `src/config.js` | Default `logger.level` and `logger.historyLength` |
+| `src/log-record.ts`, `src/log-record-source.ts`, `index.d.ts` | Owned structured records, ordered subscriptions, and public type contracts |
 | `package.json` | Name, entry points, dependencies, and scripts |
 | `test/unit/spec/logger.js` | Unit cases for printing, buffering, redaction, level resolution, formatting, and cursors |
 | Sibling package webex-core, file src/plugins/logger.js | Fallback logger that this plugin replaces |
@@ -75,7 +76,7 @@ Related context: [documentation index](../../docs/index.md) · [package agent in
 
 - Responsibility: give every Webex SDK plugin a `webex.logger` with leveled console output, redaction of sensitive values, and bounded in-memory buffers that can be formatted for upload.
 - Ownership: this package owns level resolution, redaction, buffering, buffer trimming, and the formatted log text. It does not own upload, transport, or log retention on a server.
-- In scope: the `Logger` plugin, the `levels` export, the default config in `src/config.js`, and the registration side effect in `src/index.js`.
+- In scope: the `Logger` plugin, the `levels` export, metadata writers, the retained-record source, the default config, and plugin registration.
 - Out of scope: sending logs (owned by `@webex/internal-plugin-support`), the `WebexHttpError` redaction that this module relies on for errors (owned by `@webex/webex-core`), and the regular expressions themselves (owned by `@webex/common`).
 - Consumers: every package that reads `webex.logger`. Fourteen workspace packages list `@webex/plugin-logger` in `package.json`, including `webex`, `webex-node`, `@webex/webex-core` (tests), and `@webex/contact-center`.
 
@@ -86,6 +87,9 @@ Related context: [documentation index](../../docs/index.md) · [package agent in
 | `src/index.js` | Calls `registerPlugin('logger', Logger, {config, replace: true})` and re-exports `default` and `levels` from `./logger` |
 | `src/logger.js` | `Logger` plugin definition, `levels`, private `walkAndFilter`, private `makeLoggerMethod`, and generated level methods |
 | `src/config.js` | Default `logger` config merged into webex config at registration |
+| `src/log-record.ts` | Record/value types, metadata copying, and owned-snapshot helpers |
+| `src/log-record-source.ts` | Public source/listener contracts and the private `LogRecordSubscriptions` owner |
+| `index.d.ts` | Typed record/source/metadata exports and the legacy default constructor |
 | `test/unit/spec/logger.js` | Single unit spec, run by jest (`test:unit`) and karma (`test:browser`) |
 
 ## Public surface
@@ -99,6 +103,9 @@ Declarations live in `src/index.js` and `src/logger.js`. This section summarises
 | `webex.logger.<level>(...args)` for each entry in `levels` | all SDK plugins | Prints and buffers as SDK type with name `wx-js-sdk` | `src/logger.js` |
 | `webex.logger.client_<level>(...args)` for each entry in `levels` | client applications | Prints and buffers as client type with name `config.clientName`, or `client` when unset | `src/logger.js` |
 | `logToBuffer(...args)`, `client_logToBuffer(...args)` | callers that must buffer without printing | Never print. Always buffer. | `src/logger.js` |
+| `logWithMetadata(level, metadata, ...args)`, `client_logWithMetadata(level, metadata, ...args)` | SDK producers and client applications | Existing SDK/client level, formatting and filtering policies; metadata is explicit per record | `src/logger.js` |
+| `getRecords()` | Structured-log consumers | Owned, ordered snapshot of currently retained records; no delivery cursor | `src/log-record.ts` |
+| `subscribe(listener)` | Structured-log consumers | Future accepted records only; returns an idempotent unsubscribe callback | `src/log-record-source.ts` |
 | `formatLogs({diff})` | `@webex/internal-plugin-support` | Returns buffered entries joined by newlines. See Protocol and wire format. | `src/logger.js` |
 | `updateLastSubmittedIndex()` | `@webex/internal-plugin-support` after a successful upload | Copies `nextIndex` to `lastSubmitted` on every active buffer | `src/logger.js` |
 | `resetBufferToLastSuccessfulUpload()` | `@webex/internal-plugin-support` after a failed diff upload | Copies `lastSubmitted` back to `nextIndex` | `src/logger.js` |
@@ -141,11 +148,11 @@ Contract `plugin-logger-sdk` is published and its native artifact is `package.js
 
 ## Design overview
 
-`Logger` is an Ampersand-style `WebexPlugin` with three buffer objects and a `groupLevel` counter as session state. At module load, `src/logger.js` loops over `levels` and installs two methods per level on the prototype, `<level>` and `client_<level>`, each built by `makeLoggerMethod`. Two more, `logToBuffer` and `client_logToBuffer`, are built with `neverPrint` and `alwaysBuffer` set.
+`Logger` remains an Ampersand-style `WebexPlugin`. At module load, `makeLoggerMethod` supplies the existing level methods, client twins and buffer-only methods. Named internal options distinguish metadata consumption, printing and buffering without positional boolean combinations.
 
-Every generated method follows the same pipeline: pick the buffer and history length from config, decide print and buffer independently, redact, stringify, print, then append and trim. Config is read on each call rather than captured at construction. The source comment explains that Ampersand config is not fully initialized when the methods are bound.
+Every generated method follows the same pipeline: pick the buffer and history length from config, decide print and buffer independently, redact, stringify, print, then append and trim. Accepted entries receive one logger-wide sequence and filtered metadata before append; subscribers are notified after trimming and group updates. Config is read on each call because Ampersand configuration is not fully initialized when methods are bound.
 
-The plugin keeps no timers and does no I/O. Upload, scheduling, and retries belong to `@webex/internal-plugin-support`.
+Record/snapshot construction is separate from `LogRecordSubscriptions`, which owns listener membership and temporary synchronous notifications. Snapshot retrieval samples observation time; copying/materialization helpers do not own subscription state. The plugin starts no timers or network requests. Support upload and external exporters own their own delivery, scheduling and retry behavior.
 
 ## Data flow and sequence coverage
 
@@ -225,7 +232,9 @@ classDiagram
 | Component | Relationship |
 | --------- | ------------ |
 | `Logger` | Subclass created with `WebexPlugin.extend`; owns the session state and the public methods |
-| `makeLoggerMethod` | Module-private factory. Creates every level method and closes over `level`, `impl`, `type`, `neverPrint`, and `alwaysBuffer`. |
+| `makeLoggerMethod` | Module-private factory. Creates level methods using named print/buffer/metadata options. |
+| `LogRecordSubscriptions` | Per-logger listener owner; orders synchronous notifications and isolates subscribers. |
+| `snapshotRecords`, `snapshotRecord`, `captureMetadata` | Owned-data construction helpers; snapshot retrieval samples observation time, with no subscription or delivery state. |
 | `walkAndFilter` | Module-private recursive redactor used by `Logger#filter` |
 | `src/config.js` | Supplied to `registerPlugin` as `options.config` |
 
@@ -248,6 +257,9 @@ classDiagram
 | `nextIndex` per buffer | `Logger` | `0` | Advanced by `formatLogs({diff: true})`; set back by `resetBufferToLastSuccessfulUpload()`; reduced by trimming | Clamped at `0` after trimming |
 | `lastSubmitted` per buffer | `Logger` | `0` | Set by `updateLastSubmittedIndex()`; reduced by trimming | Clamped at `0` after trimming |
 | `groupLevel` | `Logger` session | `0` | `+1` after a buffered `group`; `-1` after a buffered `groupEnd` when above `0` | Only changes when the call was buffered |
+| `recordState.sequence` | `Logger` session | `0` | Incremented once per accepted buffered append, across all producer labels | Monotonic for this logger instance; independent of support-upload indexes |
+| `recordState.metadataByBufferEntry` | `Logger` session | Empty WeakMap | Associates accepted raw entries with filtered metadata | Trimmed entries can be collected when no longer referenced |
+| `recordState.subscriptions` | `LogRecordSubscriptions` | No listeners/notifications | Subscribe, unsubscribe and accepted-entry notification | Temporary notifications clear before the outer notification call returns |
 
 ## Business rules and invariants
 
@@ -276,10 +288,10 @@ Changing the entry order or the timestamp index breaks `formatLogs` merging and 
 - A string that contains an email has only its emails redacted. Its MTID is left in place, because the MTID branch is an `else`.
 - `/[Aa]uthorization/` does not match `AUTHORIZATION`.
 - Because `Error` arguments skip redaction (`MOD-007`), an error that is not a `WebexHttpError` and carries a token or email in its message reaches the console and buffer unchanged.
-- `logToBuffer` and `client_logToBuffer` pass `levels.info`, which is `undefined` because `levels` is an array. They work because the never-print and always-buffer flags skip the level checks.
+- `logToBuffer` and `client_logToBuffer` retain the `info` level while bypassing normal print/buffer thresholds.
 - With `separateLogBuffers`, `clientHistoryLength` caps the SDK buffer as well as the client buffer.
 - `config.level` is not validated against `levels`. An unknown value makes `precedence[...]` `undefined`, so nothing prints.
-- `src/config.js` reads `process.env.WEBEX_LOG_LEVEL` once at module load. Its JSDoc says `historyLength` defaults to `1000`, but the value is `10000`.
+- `src/config.js` reads `process.env.WEBEX_LOG_LEVEL` once at module load; the documented and configured history length is `10000`.
 - A shorter `historyLength` takes effect on the next buffered write, not immediately.
 - `test:style` runs eslint over every file under `src/`. Keep this spec under `src/docs/` as Markdown only; eslint reports it as ignored.
 
@@ -293,7 +305,7 @@ Changing the entry order or the timestamp index breaks `formatLogs` merging and 
 
 ## Export stability
 
-The published bindings are the default `Logger` and the named `levels` from `src/index.js`. Importing the package also has the registration side effect described in `MOD-001`. The webex-core fallback logger it replaces has no buffers, no `client_` methods, and no `formatLogs`, so consumers that need those depend on this side effect.
+Runtime bindings remain default `Logger` and named `levels` from `src/index.js`; public record, metadata and source types are declared by `index.d.ts`. The legacy constructor remains usable in value and instance-type positions. Importing the package still performs registration (`MOD-001`). The webex-core fallback has no retained source, client methods or support formatter.
 
 Level method names, `formatLogs`, the two cursor methods, and the seven `config.logger` keys are the behavior consumers rely on. Adding a level or config key is backward compatible. Renaming or removing one breaks callers such as `@webex/internal-plugin-support`.
 
@@ -318,3 +330,34 @@ In browsers the logger prints the stringified values instead of live objects. Th
 | Lint | `yarn workspace @webex/plugin-logger test:style` | `src/` | — |
 
 Do not run the aggregate `test` script from `package.json` as a verification command. It chains `test:integration`, which `package.json` does not define, so it is intentionally not a manifest command.
+
+
+## Structured record source
+
+This source supplies records; it does not own an exporter, delivery checkpoint, scheduling, credentials or OTel dependency. Consumers combine retained history and live notifications themselves.
+
+| API/type | Contract |
+| --- | --- |
+| `LogRecordSource.getRecords()` | Owned, ordered snapshot of currently retained SDK/client records; no sorting of the existing FIFO buffers |
+| `LogRecordSource.subscribe(listener)` | Future accepted records only; returns an idempotent unsubscribe callback |
+| `LogRecordListener` | Synchronous `(record: LogRecord) => void`; registration does not invoke it |
+| `StructuredLogging` | `logWithMetadata` and `client_logWithMetadata`, preserving their respective SDK/client policies |
+| `LogMetadata` | Optional per-record `source`, `eventName` and `attributes`; no global context or caller-supplied timestamp |
+
+Each `LogRecord` contains `sequence`, `timestamp`, `observedTimestamp`, `level`, `source`, `body`, and optional event name/attributes. `sequence` is assigned at buffered acceptance and shared across producer labels. `timestamp` is SDK append time in Unix milliseconds, matching the buffer's ISO prefix. `observedTimestamp` is sampled when the record is observed; one history snapshot shares an observation time.
+
+`getRecords()` copies the active buffer lists and gathers metadata before materializing records. It merges FIFO heads by sequence, without sorting. Appends during materialization cannot join that snapshot. Returned records own nested maps, arrays and bytes; `body` is the exact `String(bufferEntry)`. Evicted entries are not returned, and reading does not change support-upload cursors.
+
+`LogRecordSubscriptions` captures listener membership when an entry is accepted, after append/trim/group updates. Its temporary notification FIFO prevents reentrant appends from overtaking the current notification. New listeners do not receive previously accepted pending notifications; unsubscribe suppresses pending delivery to that subscription. Duplicate registrations remain independent.
+
+Every listener receives an owned record. Callback/snapshot failures are isolated without recursive logging, and the temporary FIFO is cleared before the outer notification returns. This is not another retained buffer or a delivery queue. Invalid listeners and inconsistent retained metadata produce synchronous source errors; ordinary log writers remain non-throwing.
+
+Metadata retains the existing filtering/ownership rules; invalid values/cycles are omitted. The native SDK writer and client writer keep their original buffer partition and level policies. WCME supplies the `wcme` producer label, with existing fallback for older/mock loggers. SDK printing uses preserved native `console.std*` methods when available to avoid re-capturing a record through the client's existing console interception.
+
+The current Web Client consumer is [WebexServices/webex-web-client#12340](https://github.com/WebexServices/webex-web-client/pull/12340). Its source/type imports and sequence access must move to this contract with the compatible SDK; collector wire keys and values do not change.
+
+### Future and validation scope
+
+Global logging context, early-console metadata buffering and timestamp overrides are deferred rather than retained as unused APIs. No aliases for the unreleased old source names are added.
+
+The earlier verification table covers legacy behavior, not these new source paths. This cleanup is limited to static checks and the basic Web Client E2E after consumer cutover; no SDK unit suites or new tests are claimed. Public package checks must include the TypeScript files referenced by `index.d.ts`. Broader subscriber/metadata behavior coverage remains a separate validation gate.
