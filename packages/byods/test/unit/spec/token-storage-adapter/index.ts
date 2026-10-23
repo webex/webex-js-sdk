@@ -1,4 +1,4 @@
-import assert from 'node:assert/strict';
+import {assert} from '@webex/test-helper-chai';
 import {InMemoryTokenStorageAdapter} from '../../../../src/token-storage-adapter';
 import {ServiceAppToken} from '../../../../src/types';
 
@@ -35,12 +35,12 @@ describe('InMemoryTokenStorageAdapter', () => {
   it('deletes the stored pair', async () => {
     await storage.setToken(token);
     await storage.deleteToken();
-    await assert.rejects(storage.getToken(), new Error('Service App token not found'));
+    await assert.isRejected(storage.getToken(), Error, 'Service App token not found');
   });
 
   ['getToken', 'deleteToken'].forEach((method: 'getToken' | 'deleteToken') => {
     it(`rejects ${method} when no token is stored`, async () => {
-      await assert.rejects(storage[method](), new Error('Service App token not found'));
+      await assert.isRejected(storage[method](), Error, 'Service App token not found');
     });
   });
 });

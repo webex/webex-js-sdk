@@ -1,4 +1,4 @@
-import assert from 'node:assert/strict';
+import {assert} from '@webex/test-helper-chai';
 import sinon from 'sinon';
 import BaseClient from '../../../../src/base-client';
 import TokenManager from '../../../../src/token-manager';
@@ -33,7 +33,7 @@ describe('BaseClient', () => {
   afterEach(() => sandbox.restore());
 
   it('exposes the data source client', () => {
-    assert.ok(client.dataSource instanceof DataSourceClient);
+    assert.instanceOf(client.dataSource, DataSourceClient);
   });
 
   const payload = {schemaId: 'schema-id'};
@@ -71,8 +71,8 @@ describe('BaseClient', () => {
   ].forEach(({method, hasBody, send, sendBound}) => {
     it(`sends ${method} with the stored access token`, async () => {
       assert.deepEqual(await send(), response);
-      sinon.assert.calledOnceWithExactly(getToken);
-      sinon.assert.calledOnceWithExactly(request, `${baseUrl}/dataSources`, {
+      assert.calledOnceWithExactly(getToken);
+      assert.calledOnceWithExactly(request, `${baseUrl}/dataSources`, {
         method,
         ...(hasBody ? {body: JSON.stringify(payload)} : {}),
         headers: {
@@ -85,8 +85,8 @@ describe('BaseClient', () => {
 
     it(`provides a bound ${method} method through getHttpClient`, async () => {
       assert.deepEqual(await sendBound(), response);
-      sinon.assert.calledOnceWithExactly(getToken);
-      assert.equal(request.firstCall.args[1].method, method);
+      assert.calledOnceWithExactly(getToken);
+      assert.strictEqual(request.firstCall.args[1].method, method);
     });
   });
 
@@ -94,7 +94,7 @@ describe('BaseClient', () => {
     await client.request('/dataSources', {
       headers: {Authorization: 'Bearer other-token', 'X-Custom': 'value'},
     });
-    sinon.assert.calledOnceWithExactly(request, `${baseUrl}/dataSources`, {
+    assert.calledOnceWithExactly(request, `${baseUrl}/dataSources`, {
       headers: {
         'X-Client': 'value',
         Authorization: 'Bearer test-access-token',
@@ -105,14 +105,14 @@ describe('BaseClient', () => {
 
   it('uses default request options', async () => {
     await client.request('/dataSources');
-    sinon.assert.calledOnceWithExactly(request, `${baseUrl}/dataSources`, {
+    assert.calledOnceWithExactly(request, `${baseUrl}/dataSources`, {
       headers: {'X-Client': 'value', Authorization: 'Bearer test-access-token'},
     });
   });
 
   it('does not send a request when no valid access token is available', async () => {
     getToken.rejects(new Error('Refresh failed'));
-    await assert.rejects(client.get('/dataSources'), new Error('Failed to obtain token'));
-    sinon.assert.notCalled(request);
+    await assert.isRejected(client.get('/dataSources'), Error, 'Failed to obtain token');
+    assert.notCalled(request);
   });
 });

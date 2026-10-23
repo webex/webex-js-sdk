@@ -1,4 +1,4 @@
-import assert from 'node:assert/strict';
+import {assert} from '@webex/test-helper-chai';
 import sinon from 'sinon';
 import {jwtVerify, createRemoteJWKSet} from 'jose';
 import BYODS from '../../../../src/byods';
@@ -49,16 +49,17 @@ describe('BYODS', () => {
 
   it('exposes one data source client and one token manager', () => {
     const sdk = new BYODS(config);
-    assert.ok(sdk.dataSource instanceof DataSourceClient);
-    assert.ok(sdk.tokenManager instanceof TokenManager);
-    assert.equal(sdk.orgId, config.orgId);
+    assert.instanceOf(sdk.dataSource, DataSourceClient);
+    assert.instanceOf(sdk.tokenManager, TokenManager);
+    assert.strictEqual(sdk.orgId, config.orgId);
   });
 
   [undefined, null, '', '   '].forEach((orgId) => {
     it(`rejects a missing organization: ${JSON.stringify(orgId)}`, () => {
       assert.throws(
         () => new BYODS({...config, orgId: orgId as string}),
-        new Error('orgId is required')
+        Error,
+        'orgId is required'
       );
     });
   });
@@ -87,7 +88,7 @@ describe('BYODS', () => {
       const request = sandbox.stub(httpUtils, 'request').resolves({data: {items: []}, status: 200});
 
       await sdk.tokenManager.getServiceAppTokenUsingPAT('test-pat');
-      sinon.assert.calledOnceWithExactly(post, `${apiUrl}/access_token`, {
+      assert.calledOnceWithExactly(post, `${apiUrl}/access_token`, {
         headers: {Authorization: 'Bearer test-pat', 'Content-Type': 'application/json'},
         body: JSON.stringify({
           targetOrgId: 'test-org-id',
@@ -96,13 +97,13 @@ describe('BYODS', () => {
         }),
       });
       assert.deepEqual(await sdk.dataSource.list(), {data: [], status: 200});
-      sinon.assert.calledOnceWithExactly(request, `${apiUrl}/dataSources`, {
+      assert.calledOnceWithExactly(request, `${apiUrl}/dataSources`, {
         method: 'GET',
         headers: {'User-Agent': sinon.match.string, Authorization: 'Bearer test-access-token'},
       });
-      assert.equal(sdk.orgId, 'test-org-id');
-      assert.equal(createKeySet.firstCall.args[0].href, jwksUrl);
-      sinon.assert.match(createKeySet.firstCall.args[1], {
+      assert.strictEqual(sdk.orgId, 'test-org-id');
+      assert.strictEqual(createKeySet.firstCall.args[0].href, jwksUrl);
+      assert.include(createKeySet.firstCall.args[1], {
         cacheMaxAge: 600000,
         cooldownDuration: 30000,
       });
@@ -113,7 +114,7 @@ describe('BYODS', () => {
     const sdk = new BYODS(config);
     verify.resolves({payload: {}});
     assert.deepEqual(await sdk.verifyJWSToken('test-jws'), {isValid: true});
-    sinon.assert.calledOnceWithExactly(verify, 'test-jws', keySet);
+    assert.calledOnceWithExactly(verify, 'test-jws', keySet);
   });
 
   [new Error('Token expired'), new Error('Invalid signature'), {}].forEach((error) => {
