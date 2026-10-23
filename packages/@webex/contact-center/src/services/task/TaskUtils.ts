@@ -265,6 +265,22 @@ const isEpDnParticipantType = (pType: string | undefined): boolean => {
   return normalized === 'EP-DN' || normalized === 'EP_DN' || normalized === 'DN';
 };
 
+// Server-pushed field allow-sets for the EP-DN pending-merge decision: unexpected/malformed
+// remote values are normalized away rather than trusted (CAI-8329 security hardening).
+const KNOWN_INTERACTION_STATES = new Set<string>(Object.values(INTERACTION_STATE));
+const KNOWN_CONSULT_STATES = new Set<string>([
+  CONSULT_STATE.CONSULTING,
+  CONSULT_STATE.CONFERENCING,
+  'consultCompleted',
+  'consultInitiated',
+]);
+const KNOWN_HAS_CUSTOMER_LEFT_VALUES = new Set<string>(['true', 'false']);
+
+const toAllowedValue = <T extends string>(
+  value: unknown,
+  allowSet: Set<T>
+): T | undefined => (typeof value === 'string' && allowSet.has(value as T) ? (value as T) : undefined);
+
 /** EP-DN consult merged to conference before a second agent joins the main leg (CAI-8329). */
 export const isEpDnConsultPendingConferenceMerge = (
   taskData: TaskData | undefined,
@@ -285,7 +301,8 @@ export const isEpDnConsultPendingConferenceMerge = (
   const selfParticipant = interaction.participants?.[selfAgentId] as
     | {consultState?: string}
     | undefined;
-  if (taskData.isConsulted === true || selfParticipant?.consultState === 'consultCompleted') {
+  const selfConsultState = toAllowedValue(selfParticipant?.consultState, KNOWN_CONSULT_STATES);
+  if (taskData.isConsulted === true || selfConsultState === 'consultCompleted') {
     return false;
   }
 
@@ -308,22 +325,25 @@ export const isEpDnConsultPendingConferenceMerge = (
   const callProcessingDetails = interaction.callProcessingDetails as
     | {hasCustomerLeft?: string}
     | undefined;
-  const customerLeft =
-    callProcessingDetails?.hasCustomerLeft === 'true' ||
-    !getIsCustomerInCall(interaction, mainCallId);
+  const hasCustomerLeft = toAllowedValue(
+    callProcessingDetails?.hasCustomerLeft,
+    KNOWN_HAS_CUSTOMER_LEFT_VALUES
+  );
+  const customerLeft = hasCustomerLeft === 'true' || !getIsCustomerInCall(interaction, mainCallId);
 
+  const interactionState = toAllowedValue(interaction.state, KNOWN_INTERACTION_STATES);
   const conferenceFromPayload =
-    interaction.state === INTERACTION_STATE.CONFERENCE ||
+    interactionState === INTERACTION_STATE.CONFERENCE ||
     getIsConferenceInProgress(taskData) ||
-    (interaction.state === INTERACTION_STATE.POST_CALL && customerLeft);
+    (interactionState === INTERACTION_STATE.POST_CALL && customerLeft);
   if (!conferenceFromPayload) return false;
 
   return (
     taskData.consultingAgentId === selfAgentId ||
     interaction.owner === selfAgentId ||
-    selfParticipant?.consultState === CONSULT_STATE.CONSULTING ||
-    selfParticipant?.consultState === CONSULT_STATE.CONFERENCING ||
-    selfParticipant?.consultState === 'consultInitiated'
+    selfConsultState === CONSULT_STATE.CONSULTING ||
+    selfConsultState === CONSULT_STATE.CONFERENCING ||
+    selfConsultState === 'consultInitiated'
   );
 };
 

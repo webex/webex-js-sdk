@@ -41,7 +41,7 @@ The Core service provides the foundational infrastructure layer that all other s
 | `ConnectionService` | [`connection-service.ts`](../websocket/connection-service.ts) | Orchestrates reconnection logic and keepalive heartbeats on top of `WebSocketManager`. Detects connection loss/recovery and emits `connectionLost` details; ContactCenter owns any `silentRelogin()` policy. |
 | `WebexRequest` | [`WebexRequest.ts`](../WebexRequest.ts) | Singleton HTTP client that forwards service/resource/method/body options to the authenticated host request API and provides `uploadLogs` diagnostics. |
 | `AqmReqs` | [`aqm-reqs.ts`](../aqm-reqs.ts) | Factory for creating request methods that send HTTP requests and wait for correlated WebSocket notifications (success or failure). Used by routing and task services to implement their API methods. |
-| `Utils` | [`Utils.ts`](../Utils.ts) | Shared utility functions including `getErrorDetails()` for standardized error handling, `generateTaskErrorObject()` for task-specific errors, and `createErrDetailsObject()` for constructing error detail objects. |
+| `Utils` | [`Utils.ts`](../Utils.ts) | Shared utility functions including `getErrorDetails()` for standardized error handling, `generateTaskErrorObject()` for task-specific errors, `createErrDetailsObject()` for constructing error detail objects, and `sanitizeForObservability()` for constraining untrusted remote strings before they reach logs or metrics. |
 | `Err` | [`Err.ts`](../Err.ts) | Error class definitions. `Err.Details` carries structured error metadata (status, type, trackingId) for consistent error propagation. |
 | `constants` | [`constants.ts`](../constants.ts) | Timeout values, interval durations, participant types, interaction states, method name constants, and the `ALLOWED_ROUTING_NOTIFS_DOMAINS` WebSocket host allow-list used throughout the core layer. Any new constants for core should be defined here. |
 
@@ -148,7 +148,7 @@ The only public method in the following list is `setConnectionProp`. The remaini
 
 3. `onPing(event: any): void` (private)
 
-- **Purpose**: Handles every incoming socket message, resets timers, updates keepalive/recovery flags, and emits recovery events when state changes.
+- **Purpose**: Handles every incoming socket message, resets timers, updates keepalive/recovery flags, and emits recovery events when state changes. Parses the payload defensively: a malformed (non-JSON) remote message is logged and ignored without throwing, and timers/reconnect state are left unchanged for that message.
 
 - **Params**: `event` - raw message payload (JSON string) received from the socket event stream.
 
@@ -261,6 +261,10 @@ connectionService.on('connectionLost', (details: ConnectionLostDetails) => {
 | CORE-R-006 | Treat Core timeout, keepalive, and recovery constants as fixed behavior controls, not rollout flags; Core owns no feature-gate evaluation. | Conflating operational constants with rollout policy could disable transport or correlation paths unexpectedly. | `src/services/core/constants.ts`, `src/services/index.ts` | `test/unit/spec/services/core/websocket/WebSocketManager.ts` | None; rollout applicability is explicitly N/A for Core. | PRESENT |
 | CORE-R-007 | AQM routing-failure logging never emits the raw routing message payload or error verbatim; the failure-bind path logs only a fixed redacted diagnostic regardless of `redactSensitiveLogs`. When an AQM request additionally sets `redactSensitiveLogs`, timeout logs must also omit the request URL, bind key, and response while preserving settlement and cleanup behavior. | Dynamic request paths and routing messages can contain participant identifiers or phone numbers that must not enter diagnostic logs. | `src/services/core/aqm-reqs.ts`, `src/services/core/types.ts` | `test/unit/spec/services/core/aqm-reqs.ts` | The timeout flag is internal and opt-in; ordinary AQM logging remains backward compatible while routing-failure logging is unconditionally redacted. | PRESENT |
 | CORE-R-008 | `WebSocketManager` opens a socket only for a subscribe/register `webSocketUrl` that parses as a `wss` URL whose host equals, or is a subdomain of, an entry in `ALLOWED_ROUTING_NOTIFS_DOMAINS`; a malformed, non-`wss`, or non-allow-listed URL is rejected with an error and no socket is opened. | A server-controlled subscribe response could otherwise direct the realtime connection to an untrusted or non-secure endpoint. | `src/services/core/websocket/WebSocketManager.ts`, `src/services/core/constants.ts` | `test/unit/spec/services/core/websocket/WebSocketManager.ts` | The allow-list is a fixed domain set; subdomain matching is exact suffix matching on the parsed hostname. | PRESENT |
+| CORE-R-009 | `ConnectionService.onPing` parses the remote socket payload inside a guarded block; a malformed (non-JSON) message is logged via `LoggerProxy` and ignored without throwing, while a valid payload still drives keepalive, reconnect, and restore behavior. | A malformed server-pushed ping must not throw an unhandled error that disrupts the connection liveness loop. | `src/services/core/websocket/connection-service.ts` | `test/unit/spec/services/core/websocket/connection-service.ts` | None. | PRESENT |
+| CORE-R-010 | `AqmReqs` type-map discrimination matches a message type only when the conditions map carries that type as an own enumerable property (`Object.prototype.hasOwnProperty`); inherited prototype keys (e.g. `toString`, `constructor`) in a server-controlled message type can no longer satisfy the discriminator. | A server-controlled message type should not resolve a notification bind through an inherited prototype key it never declared. | `src/services/core/aqm-reqs.ts` | `test/unit/spec/services/core/aqm-reqs.ts` | The guard applies to the condition lookup; condition fields themselves are compared by strict equality as before. | PRESENT |
+| CORE-R-011 | The keepalive worker script contains no console logging; status and lifecycle are communicated only via `postMessage` and worker events. | The package forbids console logging in implementation; the worker is still implementation despite being an embedded script string. | `src/services/core/websocket/keepalive.worker.js` | `test/unit/spec/services/core/websocket/keepalive.worker.ts` | None. | PRESENT |
+| CORE-R-012 | `sanitizeForObservability(value: unknown): string` returns a sanitized string with CR/LF and other control characters removed and the length capped (200 characters), and returns an empty string for non-string input, so untrusted remote values written to logs or metrics cannot inject new log lines or control sequences while legitimate values pass through effectively unchanged. | Remote event types and free-text reasons reach diagnostic logs and metrics; unconstrained values enable log/metrics injection. | `src/services/core/Utils.ts` | `test/unit/spec/services/core/Utils.ts` | Callers in other modules (e.g. ContactCenter logging/metrics) apply this helper at their trust boundary. | PRESENT |
 
 ## Design Overview
 Core separates four responsibilities:
@@ -456,6 +460,10 @@ WebSocketManager owns socket/welcome/worker state. AqmReqs owns pending success/
 - Core must preserve its typed public/event contracts and must not invent backend states or responses. Enforced in `src/services/core/WebexRequest.ts`.
 - A subscribe/register `webSocketUrl` is trusted only when it is a `wss` URL on the `ALLOWED_ROUTING_NOTIFS_DOMAINS` allow-list; otherwise `WebSocketManager` throws and never opens a socket. Enforced in `src/services/core/websocket/WebSocketManager.ts`.
 - AQM routing-failure logs never contain the raw routing payload or error verbatim. Enforced in `src/services/core/aqm-reqs.ts`.
+- Remote socket payloads are parsed defensively: `ConnectionService.onPing` never throws on malformed input and logs-and-ignores it. Enforced in `src/services/core/websocket/connection-service.ts`.
+- AQM type-map discrimination only honors own enumerable keys of the conditions map, so inherited prototype keys in a server-controlled message type cannot satisfy a bind. Enforced in `src/services/core/aqm-reqs.ts`.
+- The keepalive worker performs no console logging and communicates only through `postMessage`/worker events. Enforced in `src/services/core/websocket/keepalive.worker.js`.
+- Untrusted remote strings are passed through `sanitizeForObservability` before being written to logs or metrics. Enforced in `src/services/core/Utils.ts`.
 - Rollout applicability is N/A for Core: keepalive, timeout, and reconnect constants control behavior, while Services constructs Core without a feature gate.
 
 ## Concurrency & Reactive Flow
@@ -761,6 +769,10 @@ Unit tests mirror module paths under `test/unit/spec/services/core`. Preserve po
 | `CORE-R-006` | `test/unit/spec/services/core/websocket/WebSocketManager.ts` | Feature-gate absence is verified from construction/source rather than a dedicated negative test. |
 | `CORE-R-007` | `test/unit/spec/services/core/aqm-reqs.ts` | None. |
 | `CORE-R-008` | `test/unit/spec/services/core/websocket/WebSocketManager.ts` | None. |
+| `CORE-R-009` | `test/unit/spec/services/core/websocket/connection-service.ts` | None. |
+| `CORE-R-010` | `test/unit/spec/services/core/aqm-reqs.ts` | None. |
+| `CORE-R-011` | `test/unit/spec/services/core/websocket/keepalive.worker.ts` | None. |
+| `CORE-R-012` | `test/unit/spec/services/core/Utils.ts` | None. |
 
 ## Traceability
 - Repo architecture: `../../../../ai-docs/ARCHITECTURE.md` · Registry: `../../../../ai-docs/SPEC_INDEX.md`
