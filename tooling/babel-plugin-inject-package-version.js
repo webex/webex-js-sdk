@@ -5,6 +5,7 @@
 const t = require('@babel/types');
 
 const {version} = require('../packages/webex/package.json');
+const sdkVersion = version || '0.0.0';
 
 /**
  * Simple babel transform for ensuring that every WebexPlugin (and WebexCore)
@@ -50,6 +51,9 @@ module.exports = function injectPackageVersion() {
       Identifier(path) {
         if (path.node.name === 'PACKAGE_VERSION') {
           path.replaceWithSourceString(`\`${version}\``);
+        }
+        if (path.node.name === 'SDK_VERSION') {
+          path.replaceWithSourceString(`\`${sdkVersion}\``);
         }
       },
     },

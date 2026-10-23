@@ -84,7 +84,7 @@
       "path": "src",
       "canonical_spec": "src/docs/README.md",
       "coverage_status": "Partial",
-      "coverage_evidence": "Measured at bootstrap: 39 of 39 public exports from src/index.js are enumerated and summarised in src/docs/README.md (100% surface named), with 11 MOD requirements and 5 invariants carrying source evidence. Held at Partial rather than Specced because the partial_to_specced promotion also requires a clean spec-drift record across the last 5 touching PRs, which cannot exist for a spec created in this change. Test evidence is the weaker axis: 8 of 25 source files have a dedicated unit spec, and src/uuid-utils.js \u2014 which owns the frozen Hydra encoding \u2014 has none.",
+      "coverage_evidence": "Measured at bootstrap: 39 of 39 public exports from src/index.js were enumerated and summarised in src/docs/README.md (100% surface named), with 11 MOD requirements and 5 invariants carrying source evidence. The current barrel now has 40 documented exports, including getUmdAssetsBaseUrl. Held at Partial rather than Specced because the partial_to_specced promotion also requires a clean spec-drift record across the last 5 touching PRs, which cannot exist for a spec created in this change. Test evidence is the weaker axis: 9 of 26 source files have a dedicated unit spec, and src/uuid-utils.js \u2014 which owns the frozen Hydra encoding \u2014 has none.",
       "last_assessed": "2026-09-21",
       "contracts": {
         "provides": [
@@ -126,7 +126,7 @@
         "publication": "published",
         "source_kind": "repository-path",
         "source": "package.json",
-        "summary": "Published npm package surface declared by package.json (main: dist/index.js, browser field remapping in-browser/node.js). The barrel src/index.js re-exports 39 named symbols; no .d.ts is emitted, so package.json plus the ES module declarations are the ecosystem-native artifact. README.md documents 6 of the 39 as the externally supported subset; the rest is internal-consumer surface that is still breaking for 33 workspace packages."
+        "summary": "Published npm package surface declared by package.json (main: dist/index.js, browser field remapping in-browser/node.js). The barrel src/index.js re-exports 40 named symbols; no .d.ts is emitted, so package.json plus the ES module declarations are the ecosystem-native artifact. README.md documents 6 of the 40 as the externally supported subset; the rest is internal-consumer surface that is still breaking for 33 workspace packages."
       },
       "hydra-id-format": {
         "kind": "file",
