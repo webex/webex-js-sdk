@@ -271,8 +271,9 @@ describe('internal-plugin-encryption', () => {
         webex.internal.encryption.config.carootsReportOnly = undefined;
       });
 
+      // Mandatory metadata checks still reject malformed keys when chain enforcement is disabled.
       [true, false].forEach((shouldValidateKMSCertificate) => {
-        it(`rejects and reports invalid KMS metadata with certificate validation ${
+        it(`rejects and reports invalid KMS metadata with enforced chain validation ${
           shouldValidateKMSCertificate ? 'enabled' : 'disabled'
         }`, async () => {
           webex.internal.encryption.config.shouldValidateKMSCertificate =
@@ -328,7 +329,7 @@ describe('internal-plugin-encryption', () => {
         );
       });
 
-      it('rejects when validation is enabled but no caroots are provided', async () => {
+      it('rejects when enforced chain validation is enabled but no caroots are provided', async () => {
         await assert.isRejected(
           webex.internal.encryption.kms._validateKMSStaticPubKey(validKey, undefined),
           /INVALID KMS/
@@ -348,7 +349,7 @@ describe('internal-plugin-encryption', () => {
         );
       });
 
-      it('resolves without validating when shouldValidateKMSCertificate is false', async () => {
+      it('resolves with no caroots when enforced chain validation is disabled', async () => {
         webex.internal.encryption.config.shouldValidateKMSCertificate = false;
 
         const result = await webex.internal.encryption.kms._validateKMSStaticPubKey(
@@ -382,8 +383,9 @@ describe('internal-plugin-encryption', () => {
         assert.notCalled(webex.internal.metrics.submitClientMetrics);
       });
 
+      // Explicit report-only roots are checked independently of enforcement; failures never block.
       [true, false].forEach((shouldValidateKMSCertificate) => {
-        it(`resolves and reports an untrusted report-only chain with certificate validation ${
+        it(`resolves and reports an untrusted report-only chain with enforced chain validation ${
           shouldValidateKMSCertificate ? 'enabled' : 'disabled'
         }`, async () => {
           webex.internal.encryption.config.shouldValidateKMSCertificate =
