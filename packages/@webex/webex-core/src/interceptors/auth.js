@@ -130,7 +130,20 @@ export default class AuthInterceptor extends Interceptor {
         }
 
         if (this.webex.credentials.canRefresh) {
-          return this.webex.credentials.refresh().then(() => this.replay(options));
+          return this.webex.credentials
+            .refresh()
+            .catch((error) => {
+              const refreshStatus = error && (error.statusCode || error.status);
+
+              // A refresh 403 is not a catalog 403. Keep the original 401 for
+              // catalog auth reporting and leave statusCode unchanged.
+              if (reason.statusCode === 401 && refreshStatus === 403 && error) {
+                error.catalogAuthStatus = 401;
+              }
+
+              return Promise.reject(error);
+            })
+            .then(() => this.replay(options));
         }
       }
 

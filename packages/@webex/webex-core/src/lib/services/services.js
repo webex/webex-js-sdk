@@ -2,6 +2,7 @@ import sha256 from 'crypto-js/sha256';
 
 import {union, forEach} from 'lodash';
 import WebexPlugin from '../webex-plugin';
+import {OAuthError} from '../credentials/grant-errors';
 
 import METRICS from '../metrics';
 import ServiceCatalog from './service-catalog';
@@ -22,6 +23,21 @@ const DEFAULT_CLUSTER_IDENTIFIER =
   process.env.WEBEX_CONVERSATION_DEFAULT_CLUSTER || `${DEFAULT_CLUSTER}:${CLUSTER_SERVICE}`;
 const CATALOG_CACHE_KEY_V1 = 'services.v1.u2cHostMap';
 const CATALOG_TTL_MS = 24 * 60 * 60 * 1000; // 24 hours
+const catalogAuthFailures = new WeakMap();
+const catalogAuthReplayLimit = /^Failed after \d+ replay attempts$/;
+
+/**
+ * A catalog 401 can be replaced by token refresh before this layer sees it.
+ * An OAuth refresh failure and the auth replay limit are that replacement.
+ * @param {Error} error
+ * @returns {boolean}
+ */
+function isWrappedCatalogAuthFailure(error) {
+  return (
+    error instanceof OAuthError ||
+    (typeof error?.message === 'string' && catalogAuthReplayLimit.test(error.message))
+  );
+}
 
 /* eslint-disable no-underscore-dangle */
 /**
@@ -112,6 +128,81 @@ const Services = WebexPlugin.extend({
    */
   _getCatalog() {
     return this._catalogs.get(this.webex);
+  },
+
+  /**
+   * Remember a postauth catalog failure caused by HTTP 401 or 403.
+   * 401 means the access token was rejected. 403 means the token can be
+   * valid and the caller still has no access. A refresh or replay failure
+   * that replaced a catalog 401 is recorded as invalid_access_token.
+   * A refresh 403 keeps that original 401 on error.catalogAuthStatus.
+   * Other failures clear any previously stored auth failure.
+   *
+   * @private
+   * @param {Error} error
+   * @returns {void}
+   */
+  _recordCatalogAuthFailure(error) {
+    const status = error && (error.catalogAuthStatus || error.statusCode || error.status);
+    const reasonByStatus = {
+      401: 'invalid_access_token',
+      403: 'access_denied',
+    };
+    const reason = reasonByStatus[status];
+
+    if (reason) {
+      catalogAuthFailures.set(this, {
+        status,
+        reason,
+      });
+
+      return;
+    }
+
+    if (isWrappedCatalogAuthFailure(error)) {
+      catalogAuthFailures.set(this, {
+        status: 401,
+        reason: 'invalid_access_token',
+      });
+
+      return;
+    }
+
+    catalogAuthFailures.delete(this);
+  },
+
+  /**
+   * @private
+   * @returns {{status: number, reason: string}|null}
+   */
+  _getCatalogAuthFailure() {
+    return catalogAuthFailures.get(this) || null;
+  },
+
+  /**
+   * Build the rejection for a service that could not be resolved.
+   * A stored catalog auth failure replaces the generic not-found text.
+   *
+   * @private
+   * @param {string} fallbackMessage
+   * @returns {Error}
+   */
+  _serviceLookupError(fallbackMessage) {
+    const authFailure = this._getCatalogAuthFailure();
+
+    if (
+      authFailure &&
+      (authFailure.reason === 'invalid_access_token' || authFailure.reason === 'access_denied')
+    ) {
+      const authError = new Error(authFailure.reason);
+
+      authError.reason = authFailure.reason;
+      authError.statusCode = authFailure.status;
+
+      return authError;
+    }
+
+    return new Error(fallbackMessage);
   },
 
   /**
@@ -401,9 +492,19 @@ const Services = WebexPlugin.extend({
         catalog.updateServiceUrls(serviceGroup, formattedServiceHostMap);
         this.updateCredentialsConfig();
         catalog.status[serviceGroup].collecting = false;
+
+        // A successful postauth catalog replaces any remembered 401/403.
+        // Preauth and signin updates leave that marker alone.
+        if (serviceGroup === 'postauth') {
+          catalogAuthFailures.delete(this);
+        }
       })
       .catch((error) => {
         catalog.status[serviceGroup].collecting = false;
+
+        if (serviceGroup === 'postauth') {
+          this._recordCatalogAuthFailure(error);
+        }
 
         return Promise.reject(error);
       });
@@ -820,7 +921,7 @@ const Services = WebexPlugin.extend({
       });
 
       return Promise.reject(
-        new Error(`services: service '${name}' was not found in any of the catalogs`)
+        this._serviceLookupError(`services: service '${name}' was not found in any of the catalogs`)
       );
     }
 
@@ -843,7 +944,7 @@ const Services = WebexPlugin.extend({
         this.webex.internal.metrics.submitClientMetrics(METRICS.JS_SDK_SERVICE_NOT_FOUND, {
           fields: {service_name: name},
         });
-        reject(new Error(`services: service '${name}' was not found after waiting`));
+        reject(this._serviceLookupError(`services: service '${name}' was not found after waiting`));
       });
     });
   },
