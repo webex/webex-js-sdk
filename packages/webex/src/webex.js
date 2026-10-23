@@ -37,7 +37,6 @@ const merge = require('lodash/merge');
 const WebexCore = require('@webex/webex-core').default;
 
 const config = require('./config');
-const assetsConfig = require('./assets-config');
 
 // documentation.js puts hashes in relative urls, so need to specify full urls
 // here
@@ -83,7 +82,6 @@ Webex.init = function init(attrs = {}) {
     {
       sdkType: 'webex',
     },
-    assetsConfig,
     config,
     attrs.config
   ); // eslint-disable-line no-param-reassign
