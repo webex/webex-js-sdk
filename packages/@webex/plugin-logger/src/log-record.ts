@@ -1,4 +1,10 @@
-/** Captures filtered metadata and materializes independently owned records from retained buffer entries. */
+/**
+ * Record factory: captureMetadata filters caller metadata; snapshotRecord copies one retained log.
+ * These functions keep caller and consumer changes out of the SDK buffers.
+ */
+import {cloneDeep} from 'lodash';
+
+/** Portable metadata values. The SDK does not need a telemetry-library dependency. */
 export type LogValue =
   | string
   | number
@@ -9,33 +15,60 @@ export type LogValue =
   | LogValue[]
   | LogAttributes;
 export interface LogAttributes {
-  [key: string]: LogValue | undefined;
+  [key: string]: LogValue;
 }
+/** Producer fields captured with one log call. */
 export interface LogMetadata {
   readonly source?: string;
   readonly eventName?: string;
   readonly attributes?: Readonly<LogAttributes>;
 }
 export interface LogRecord extends LogMetadata {
+  /** Logger-wide order. Increases once for each accepted buffered entry. */
   readonly sequence: number;
+  /** Time the SDK accepted the entry, in Unix milliseconds. */
   readonly timestamp: number;
+  /** Time the snapshot or live notification was created, in Unix milliseconds. */
   readonly observedTimestamp: number;
+  /** Original SDK log level. The consumer maps it to its own severity. */
   readonly level: string;
+  /** Producer name; defaults to sdk or client. */
   readonly source: string;
+  /** Existing formatted text after SDK redaction. */
   readonly body: string;
 }
+/** Entry metadata kept outside the legacy buffer array. */
 export type BufferEntryMetadata = Omit<LogRecord, 'body' | 'observedTimestamp'>;
 type Redact = (value: unknown) => unknown;
 
-function copyValue(value: unknown, redact: Redact, ancestors: Set<object>): LogValue | undefined {
-  if (typeof value === 'string') return redact(value) as string;
-  if (typeof value === 'boolean' || value === null) return value;
-  if (typeof value === 'number') return Number.isFinite(value) ? value : undefined;
-  if (value instanceof Uint8Array) return Uint8Array.from(value);
-  if (!value || typeof value !== 'object' || ancestors.has(value)) return undefined;
-  const prototype = Object.getPrototypeOf(value);
-  if (!Array.isArray(value) && prototype !== Object.prototype && prototype !== null)
+/**
+ * Copy supported values; omit cycles and values the record contract cannot represent.
+ * @param {*} value - Candidate attribute value.
+ * @param {Function} redact - Existing SDK filtering function.
+ * @param {Set} ancestors - Objects on the current path; used to detect cycles.
+ * @returns {LogValue} Owned value, or undefined when unsupported.
+ */
+function copyValue(value: unknown, redact: Redact, ancestors: Set<object>): LogValue {
+  if (typeof value === 'string') {
+    // The legacy filter skips repeated values. Filter each string to keep redaction complete.
+    return redact(value) as string;
+  }
+  if (typeof value === 'boolean' || value === null) {
+    return value;
+  }
+  if (typeof value === 'number') {
+    return Number.isFinite(value) ? value : undefined;
+  }
+  if (value instanceof Uint8Array) {
+    return Uint8Array.from(value);
+  }
+  if (!value || typeof value !== 'object' || ancestors.has(value)) {
     return undefined;
+  }
+  const prototype = Object.getPrototypeOf(value);
+  if (!Array.isArray(value) && prototype !== Object.prototype && prototype !== null) {
+    return undefined;
+  }
   ancestors.add(value);
   const result = Array.isArray(value)
     ? Array.from(value, (item) => copyValue(item, redact, ancestors))
@@ -57,10 +90,7 @@ function copyValue(value: unknown, redact: Redact, ancestors: Set<object>): LogV
  * @param {Function} redact - Existing SDK filtering function.
  * @returns {LogAttributes} Owned attributes; invalid values are omitted.
  */
-export function copyAttributes(
-  attributes: unknown,
-  redact: Redact = (value) => value
-): LogAttributes {
+function copyAttributes(attributes: unknown, redact: Redact): LogAttributes {
   const value = copyValue(redact(attributes), redact, new Set());
 
   return value &&
@@ -72,7 +102,7 @@ export function copyAttributes(
 }
 
 /**
- * Capture only the explicit metadata for one log call.
+ * Filter and copy metadata once when the SDK accepts a log call.
  * @param {LogMetadata} metadata - Optional producer metadata.
  * @param {Function} redact - Existing SDK filtering function.
  * @returns {LogMetadata} Filtered metadata snapshot.
@@ -94,7 +124,7 @@ export function captureMetadata(metadata: LogMetadata | undefined, redact: Redac
 }
 
 /**
- * Materialize one record without exposing retained entry or metadata references.
+ * Copy one accepted entry for a consumer. Its metadata is already filtered.
  * @param {Object|string} bufferEntry - Retained entry or its formatted body.
  * @param {BufferEntryMetadata} metadata - Captured append metadata.
  * @param {number} observedTimestamp - Observation time in Unix milliseconds.
@@ -109,20 +139,22 @@ export function snapshotRecord(
     ...metadata,
     observedTimestamp,
     body: String(bufferEntry),
-    attributes: Object.freeze(copyAttributes(metadata.attributes)),
+    attributes: Object.freeze(cloneDeep(metadata.attributes ?? {})),
   });
 }
 
 /**
- * Snapshot active buffers before materialization, merging FIFO heads by sequence.
+ * Merge retained FIFO buffers by sequence and return owned records.
  * @param {Array} buffers - Current SDK-owned log buffers.
  * @param {WeakMap} metadataByBufferEntry - Metadata associated with retained entries.
  * @returns {Array} Owned records sharing one observation timestamp.
+ * @throws {Error} If a retained entry has no captured metadata.
  */
 export function snapshotRecords(
   buffers: readonly {buffer: object[]}[],
   metadataByBufferEntry: WeakMap<object, BufferEntryMetadata>
 ): readonly LogRecord[] {
+  // Copy the buffers before converting entries so consumer work cannot change this snapshot.
   const retainedBuffers = buffers.map(({buffer}) => [...buffer]);
   const positions = retainedBuffers.map(() => 0);
   const orderedEntries: {bufferEntry: object; metadata: BufferEntryMetadata}[] = [];
@@ -137,14 +169,18 @@ export function snapshotRecords(
       if (bufferEntry) {
         const metadata = metadataByBufferEntry.get(bufferEntry);
 
-        if (!metadata) throw new Error('Retained log is missing append metadata');
+        if (!metadata) {
+          throw new Error('Retained log is missing append metadata');
+        }
         if (!next || metadata.sequence < next.metadata.sequence) {
           next = {bufferEntry, metadata};
           selected = index;
         }
       }
     }
-    if (!next) break;
+    if (!next) {
+      break;
+    }
     orderedEntries.push(next);
     positions[selected] += 1;
   }
@@ -157,6 +193,7 @@ export function snapshotRecords(
   );
 }
 
+/** Metadata writers use the same levels, redaction and retention as normal log methods. */
 export interface StructuredLogging {
   logWithMetadata(level: string, metadata: LogMetadata, ...args: unknown[]): void;
   client_logWithMetadata(level: string, metadata: LogMetadata, ...args: unknown[]): void;

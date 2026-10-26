@@ -24,7 +24,6 @@ export default class RequestLoggerInterceptor extends Interceptor {
    * @returns {Object}
    */
   onRequest(options) {
-    if (options.skipLogging) return Promise.resolve(options);
     const logger = get(this, 'webex.logger', console);
 
     logger.info('/**********************************************************************\\ ');
@@ -66,7 +65,6 @@ export default class RequestLoggerInterceptor extends Interceptor {
    * @returns {Object}
    */
   onRequestError(options, reason) {
-    if (options.skipLogging) return Promise.reject(reason);
     // We need to do the normal onRequest logging, but then log how the request
     // failed since the response logger won't be called.
     this.onRequest(options);

@@ -1,14 +1,17 @@
 /**
- * Defines the record-source contract and owns synchronous subscriber notification.
- * Pending notifications exist only to preserve order under reentrant logging.
+ * Observer pattern: LogRecordSubscriptions sends accepted records to registered listeners.
+ * A temporary FIFO keeps nested log calls in order; it is not an export buffer.
  */
 import {snapshotRecord} from './log-record';
 import type {BufferEntryMetadata, LogRecord} from './log-record';
 
 export type LogRecordListener = (record: LogRecord) => void;
 
+/** Read retained history and receive future records without changing support-upload cursors. */
 export interface LogRecordSource {
+  /** Return owned records in logger-wide sequence order. */
   getRecords(): readonly LogRecord[];
+  /** Receive future accepted records. The returned function removes this subscription. */
   subscribe(listener: LogRecordListener): () => void;
 }
 
@@ -16,24 +19,31 @@ interface PendingNotification {
   bufferEntry: object;
   metadata: BufferEntryMetadata;
   observedTimestamp: number;
+  /** Registrations present when this entry was accepted. */
   listeners: LogRecordListener[];
 }
 
-/** Owns listener membership and temporary notifications, not retained records. */
+/** Notify listeners in acceptance order without letting one listener break SDK logging. */
 export class LogRecordSubscriptions {
+  /** Each registration has its own callback, even when the caller uses the same listener. */
   private readonly listeners = new Set<LogRecordListener>();
 
+  /** Accepted entries waiting for delivery during this synchronous notification pass. */
   private readonly pendingNotifications: PendingNotification[] = [];
 
+  /** True during delivery. Nested log calls append to the FIFO instead of starting another pass. */
   private isNotifying = false;
 
   /**
    * Register for future records; duplicate callbacks remain independent.
    * @param {LogRecordListener} listener - Future-record observer.
    * @returns {function} Idempotent unsubscribe callback.
+   * @throws {TypeError} If listener is not a function.
    */
   subscribe(listener: LogRecordListener): () => void {
-    if (typeof listener !== 'function') throw new TypeError('A log listener is required');
+    if (typeof listener !== 'function') {
+      throw new TypeError('A log listener is required');
+    }
     const subscription: LogRecordListener = (record) => listener(record);
 
     this.listeners.add(subscription);
@@ -44,27 +54,31 @@ export class LogRecordSubscriptions {
   }
 
   /**
-   * Notify listeners present at acceptance without interleaving reentrant records.
+   * Queue one accepted entry for its registered listeners, then deliver in order.
    * @param {Object} bufferEntry - Accepted retained entry.
    * @param {BufferEntryMetadata} metadata - Its filtered append metadata.
    * @returns {undefined}
    */
   notify(bufferEntry: object, metadata: BufferEntryMetadata): void {
-    if (!this.listeners.size) return;
+    if (!this.listeners.size) {
+      return;
+    }
     this.pendingNotifications.push({
       bufferEntry,
       metadata,
       observedTimestamp: Date.now(),
       listeners: [...this.listeners],
     });
-    if (this.isNotifying) return;
+    if (this.isNotifying) {
+      return;
+    }
     this.isNotifying = true;
     try {
       for (const notification of this.pendingNotifications) {
         try {
           this.notifyListeners(notification);
         } catch {
-          // A malformed retained body cannot interrupt later notifications.
+          // Skip an unreadable entry and continue with later entries.
         }
       }
     } finally {
@@ -87,7 +101,7 @@ export class LogRecordSubscriptions {
         try {
           listener(snapshotRecord(body, metadata, observedTimestamp));
         } catch {
-          // One consumer cannot change source logging or another consumer's record.
+          // Keep a failed consumer separate from SDK logging and the other consumers.
         }
       }
     }

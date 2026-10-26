@@ -36,6 +36,7 @@ const LOG_TYPES = {
 };
 
 const SDK_LOG_TYPE_NAME = 'wx-js-sdk';
+// Reuse the normal formatter for metadata calls without exposing extra level methods.
 const clientMetadataMethods = Object.create(null);
 const sdkMetadataMethods = Object.create(null);
 
@@ -104,17 +105,25 @@ const Logger = WebexPlugin.extend({
     },
   },
   session: {
+    // Per-logger record state. It does not change the support buffers or upload cursors.
     recordState: {
       type: 'object',
+      /**
+       * Create empty state for this logger instance.
+       * @returns {Object} Sequence, entry metadata and subscriptions.
+       */
       default() {
         return {
+          // Order all accepted SDK and client entries with one counter.
           sequence: 0,
+          // Keep structured fields beside legacy entries without keeping trimmed entries alive.
           metadataByBufferEntry: new WeakMap(),
+          // Own future-record listeners and keep nested notifications in order.
           subscriptions: new LogRecordSubscriptions(),
         };
       },
     },
-    // for when configured to use single buffer
+    // Retained history and support-upload cursors when SDK and client logs share one buffer.
     buffer: {
       type: 'object',
       default() {
@@ -125,13 +134,14 @@ const Logger = WebexPlugin.extend({
         };
       },
     },
+    // Current indentation depth for buffered groups.
     groupLevel: {
       type: 'number',
       default() {
         return 0;
       },
     },
-    // for when configured to use separate buffers
+    // Separate SDK history and support-upload cursors when configured.
     sdkBuffer: {
       type: 'object',
       default() {
@@ -142,6 +152,7 @@ const Logger = WebexPlugin.extend({
         };
       },
     },
+    // Separate client history and support-upload cursors when configured.
     clientBuffer: {
       type: 'object',
       default() {
@@ -155,7 +166,7 @@ const Logger = WebexPlugin.extend({
   },
 
   /**
-   * Write through the normal client formatting/filter policy.
+   * Write a client log with metadata through the normal level, filter and buffer policy.
    * @param {string} level - Client severity.
    * @param {Object} metadata - Per-record producer metadata.
    * @param {...*} args - Log arguments.
@@ -166,7 +177,7 @@ const Logger = WebexPlugin.extend({
   },
 
   /**
-   * Write native producer metadata without changing SDK buffer or level policy.
+   * Write an SDK log with metadata through the normal level, filter and buffer policy.
    * @param {string} level - SDK severity.
    * @param {Object} metadata - Per-record producer metadata.
    * @param {...*} args - Log arguments.
@@ -177,8 +188,9 @@ const Logger = WebexPlugin.extend({
   },
 
   /**
-   * Read the records still retained for support logging without changing upload cursors.
+   * Copy retained history in sequence order without changing support-upload cursors.
    * @returns {Array} Owned records in accepted sequence order.
+   * @throws {Error} If a retained entry has no captured metadata.
    */
   getRecords() {
     const buffers = this.config.separateLogBuffers
@@ -189,9 +201,10 @@ const Logger = WebexPlugin.extend({
   },
 
   /**
-   * Register for future accepted records without replaying history.
+   * Receive future accepted records. Use getRecords() to read retained history.
    * @param {Function} listener - Synchronous record observer.
    * @returns {function} Idempotent unsubscribe callback.
+   * @throws {TypeError} If listener is not a function.
    */
   subscribe(listener) {
     return this.recordState.subscriptions.subscribe(listener);
@@ -549,8 +562,12 @@ function makeLoggerMethod(
             bufferRef.lastSubmitted = 0;
           }
         }
-        if (level === 'group') this.groupLevel += 1;
-        if (level === 'groupEnd' && this.groupLevel > 0) this.groupLevel -= 1;
+        if (level === 'group') {
+          this.groupLevel += 1;
+        }
+        if (level === 'groupEnd' && this.groupLevel > 0) {
+          this.groupLevel -= 1;
+        }
         this.recordState.subscriptions.notify(stringified, bufferEntryMetadata);
       }
     } catch (reason) {
