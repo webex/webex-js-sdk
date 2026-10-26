@@ -79,6 +79,82 @@ function walkAndFilter(object, visited = []) {
 }
 
 /**
+ * Filter message data and extract configured metadata in one argument pass.
+ * @param {Array<mixed>} args Message arguments.
+ * @param {string} [metadataField] Own field that supplies caller-owned metadata.
+ * @returns {Object} Filtered arguments and metadata for this call.
+ */
+function prepareLogArguments(args, metadataField) {
+  const filteredArguments = [];
+  let metadata;
+
+  args.forEach((argument) => {
+    let arg = argument;
+
+    // WebexHttpError already excludes auth tokens. Keep the existing Error handling.
+    if (arg instanceof Error) {
+      if (process.env.NODE_ENV === 'test' && inBrowser) {
+        let ret = arg.toString();
+
+        ret += 'BEGIN STACK';
+        ret += arg.stack;
+        ret += 'END STACK';
+        filteredArguments.push(ret);
+      } else {
+        filteredArguments.push(arg);
+      }
+
+      return;
+    }
+
+    if (
+      metadataField &&
+      arg !== null &&
+      typeof arg === 'object' &&
+      !Array.isArray(arg) &&
+      Object.prototype.hasOwnProperty.call(arg, metadataField)
+    ) {
+      // Keep metadata unchanged. Copy and redact only the remaining message fields.
+      const {[metadataField]: recordMetadata, ...messageFields} = arg;
+
+      metadata = recordMetadata;
+      if (Object.keys(messageFields).length === 0) {
+        return;
+      }
+      arg = messageFields;
+    }
+
+    filteredArguments.push(walkAndFilter(cloneDeep(arg)));
+  });
+
+  return {filteredArguments, metadata};
+}
+
+/**
+ * Build a record from one retained entry. Live events and history use this function.
+ * @param {Array<mixed>} entry Formatted text with capture fields stored as named properties.
+ * @returns {Object} A record that shares the caller-owned metadata values.
+ */
+function createLogRecord(entry) {
+  const timestamp = Date.parse(entry[1]);
+  const record = {
+    sequence: entry.sequence,
+    timestamp,
+    observedTimestamp: timestamp,
+    level: entry.level,
+    source: entry.source,
+    body: entry.join(','),
+  };
+
+  if (entry.metadata) {
+    record.eventName = entry.metadata.eventName;
+    record.attributes = entry.metadata.attributes;
+  }
+
+  return record;
+}
+
+/**
  * @class
  */
 const Logger = WebexPlugin.extend({
@@ -99,19 +175,17 @@ const Logger = WebexPlugin.extend({
     },
   },
   session: {
-    // Per-logger record state. It does not change the support buffers or upload cursors.
+    // Keep the counter inside an object so increments do not emit Ampersand change events.
     recordState: {
       type: 'object',
       /**
        * Create empty state for this logger instance.
-       * @returns {Object} Sequence and retained records.
+       * @returns {Object} The shared SDK and client sequence counter.
        */
       default() {
         return {
-          // Order all accepted SDK and client entries with one counter.
-          sequence: 0,
-          // Keep complete records beside support entries; trimmed entries can be released.
-          recordsByBufferEntry: new WeakMap(),
+          // Last sequence assigned. Buffer trimming does not reset it.
+          lastSequence: 0,
         };
       },
     },
@@ -158,31 +232,26 @@ const Logger = WebexPlugin.extend({
   },
 
   /**
-   * Read retained records in sequence order without changing support-upload cursors.
-   * Use on('log:record', listener) for future records. Consumers must leave records unchanged.
-   * @returns {Array} A new list of the existing records.
-   * @throws {Error} If a retained entry has no record.
+   * Read retained entries in sequence order without changing support-upload cursors.
+   * Use on('log:record', listener) for future records. Consumers must leave metadata unchanged.
+   * @returns {Array} Records built from the retained entries.
    */
   getRecords() {
     const sdkBuffer = this.config.separateLogBuffers ? this.sdkBuffer.buffer : this.buffer.buffer;
     const clientBuffer = this.config.separateLogBuffers ? this.clientBuffer.buffer : [];
-    const {recordsByBufferEntry} = this.recordState;
     const records = [];
     let sdkIndex = 0;
     let clientIndex = 0;
 
     while (sdkIndex < sdkBuffer.length || clientIndex < clientBuffer.length) {
-      const sdkRecord = recordsByBufferEntry.get(sdkBuffer[sdkIndex]);
-      const clientRecord = recordsByBufferEntry.get(clientBuffer[clientIndex]);
+      const sdkEntry = sdkBuffer[sdkIndex];
+      const clientEntry = clientBuffer[clientIndex];
 
-      if (!sdkRecord && !clientRecord) {
-        throw new Error('Retained log is missing its record');
-      }
-      if (sdkRecord && (!clientRecord || sdkRecord.sequence < clientRecord.sequence)) {
-        records.push(sdkRecord);
+      if (sdkEntry && (!clientEntry || sdkEntry.sequence < clientEntry.sequence)) {
+        records.push(createLogRecord(sdkEntry));
         sdkIndex += 1;
       } else {
-        records.push(clientRecord);
+        records.push(createLogRecord(clientEntry));
         clientIndex += 1;
       }
     }
@@ -198,29 +267,7 @@ const Logger = WebexPlugin.extend({
    * @returns {Array<mixed>}
    */
   filter(...args) {
-    return args.map((arg) => {
-      // WebexHttpError already ensures auth tokens don't get printed, so, no
-      // need to alter it here.
-      if (arg instanceof Error) {
-        // karma logs won't print subclassed errors correctly, so we need
-        // explicitly call their tostring methods.
-        if (process.env.NODE_ENV === 'test' && inBrowser) {
-          let ret = arg.toString();
-
-          ret += 'BEGIN STACK';
-          ret += arg.stack;
-          ret += 'END STACK';
-
-          return ret;
-        }
-
-        return arg;
-      }
-
-      arg = cloneDeep(arg);
-
-      return walkAndFilter(arg);
-    });
+    return prepareLogArguments(args).filteredArguments;
   },
 
   /**
@@ -453,24 +500,9 @@ function makeLoggerMethod(level, impl, type, {neverPrint = false, alwaysBuffer =
         return;
       }
 
-      let metadata;
-      const {metadataField} = this.config;
-      const lastArgument = args[args.length - 1];
-
-      // Only the configured field in the final options object has metadata meaning.
-      if (
-        metadataField &&
-        lastArgument !== null &&
-        typeof lastArgument === 'object' &&
-        !Array.isArray(lastArgument) &&
-        Object.prototype.hasOwnProperty.call(lastArgument, metadataField)
-      ) {
-        metadata = lastArgument[metadataField];
-        args.pop();
-      }
-
-      const filtered = [clientName, ...this.filter(...args)];
-      const stringified = filtered.map((item) => {
+      const {filteredArguments, metadata} = prepareLogArguments(args, this.config.metadataField);
+      const filtered = [clientName, ...filteredArguments];
+      const formattedParts = filtered.map((item) => {
         if (item instanceof Error) {
           return item.toString();
         }
@@ -502,43 +534,31 @@ function makeLoggerMethod(level, impl, type, {neverPrint = false, alwaysBuffer =
       });
 
       if (shouldPrint) {
-        // when logging an object in browsers, we tend to get a dynamic
-        // reference, thus going back to look at the logged value doesn't
-        // necessarily show the state at log time, thus we print the stringified
-        // value.
-        const toPrint = inBrowser ? stringified : filtered;
+        // Print formatted browser values so later object changes do not change the displayed log.
+        const toPrint = inBrowser ? formattedParts : filtered;
 
         /* istanbul ignore if */
         if (process.env.NODE_ENV === 'test' && has(this, 'webex.internal.device.url')) {
           toPrint.unshift(this.webex.internal.device.url.slice(-3));
         }
+        // Use the saved method to avoid capturing SDK console output as another log.
         // eslint-disable-next-line no-console
-        const print = console[`std${impl}`] || console[impl];
-        print.apply(console, toPrint);
+        const consoleMethod = console[`std${impl}`] || console[impl];
+        consoleMethod.apply(console, toPrint);
       }
 
       if (shouldBuffer) {
         const logDate = new Date();
 
-        stringified.unshift(logDate.toISOString());
-        stringified.unshift('|  '.repeat(this.groupLevel));
-        this.recordState.sequence += 1;
-        const record = {
-          sequence: this.recordState.sequence,
-          timestamp: logDate.getTime(),
-          observedTimestamp: logDate.getTime(),
-          level,
-          source: metadata?.source || logType,
-          body: String(stringified),
-        };
-
-        // Callers supply safe metadata and leave its values unchanged after logging.
-        if (metadata) {
-          record.eventName = metadata.eventName;
-          record.attributes = metadata.attributes;
-        }
-        this.recordState.recordsByBufferEntry.set(stringified, record);
-        bufferRef.buffer.push(stringified);
+        formattedParts.unshift(logDate.toISOString());
+        formattedParts.unshift('|  '.repeat(this.groupLevel));
+        this.recordState.lastSequence += 1;
+        // Named fields retain record data without changing the support-log array positions.
+        formattedParts.sequence = this.recordState.lastSequence;
+        formattedParts.level = level;
+        formattedParts.source = metadata?.source || logType;
+        formattedParts.metadata = metadata;
+        bufferRef.buffer.push(formattedParts);
         if (bufferRef.buffer.length > historyLength) {
           // we've gone over the buffer limit, trim it down
           const deleteCount = bufferRef.buffer.length - historyLength;
@@ -562,8 +582,7 @@ function makeLoggerMethod(level, impl, type, {neverPrint = false, alwaysBuffer =
         if (level === 'groupEnd' && this.groupLevel > 0) {
           this.groupLevel -= 1;
         }
-        // Events and history share the accepted record; consumers must leave it unchanged.
-        this.trigger('log:record', record);
+        this.trigger('log:record', createLogRecord(formattedParts));
       }
     } catch (reason) {
       if (!neverPrint) {
