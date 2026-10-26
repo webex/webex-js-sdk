@@ -15,10 +15,7 @@ import uuid from 'uuid';
 
 import KMSBatcher, {TIMEOUT_SYMBOL} from './kms-batcher';
 import validateKMS, {KMSError} from './kms-certificate-validation';
-import {
-  JS_SDK_KMS_CERTIFICATE_VALIDATION_FAILED,
-  KMS_KEY_REDIRECT_ERROR_CODE,
-} from './constants';
+import {JS_SDK_KMS_CERTIFICATE_VALIDATION_FAILED, KMS_KEY_REDIRECT_ERROR_CODE} from './constants';
 
 const contexts = new WeakMap();
 const kmsDetails = new WeakMap();
@@ -717,11 +714,18 @@ const KMS = WebexPlugin.extend({
     if (!promise) {
       promise = this._prepareContext();
       contexts.set(this, promise);
-      promise.then((context) => {
-        const expiresIn = context.ephemeralKey.expirationDate - Date.now() - 30000;
+      promise.then(
+        (context) => {
+          const expiresIn = context.ephemeralKey.expirationDate - Date.now() - 30000;
 
-        safeSetTimeout(() => contexts.delete(this), expiresIn);
-      });
+          safeSetTimeout(() => contexts.delete(this), expiresIn);
+        },
+        () => {
+          if (contexts.get(this) === promise) {
+            contexts.delete(this);
+          }
+        }
+      );
     }
 
     return Promise.all([promise, this._getAuthorization()]).then(([context, authorization]) => {
@@ -801,14 +805,17 @@ const KMS = WebexPlugin.extend({
 
       try {
         Promise.resolve(
-          this.webex.internal.metrics.submitClientMetrics(JS_SDK_KMS_CERTIFICATE_VALIDATION_FAILED, {
-            fields: {success: false},
-            tags: {
-              reason: reason.message,
-              kid: kmsStaticPubKey && kmsStaticPubKey.kid,
-              validationMode,
-            },
-          })
+          this.webex.internal.metrics.submitClientMetrics(
+            JS_SDK_KMS_CERTIFICATE_VALIDATION_FAILED,
+            {
+              fields: {success: false},
+              tags: {
+                reason: reason.message,
+                kid: kmsStaticPubKey && kmsStaticPubKey.kid,
+                validationMode,
+              },
+            }
+          )
         ).catch((error) => {
           this.logger.warn('kms: failed to submit certificate validation metric', error);
         });

@@ -3,9 +3,10 @@
  */
 import {assert} from '@webex/test-helper-chai';
 import MockWebex from '@webex/test-helper-mock-webex';
+import * as timers from '@webex/common-timers';
 import sinon from 'sinon';
 import Encryption from '@webex/internal-plugin-encryption';
-import {KmsError} from '../../../dist/kms-errors';
+import {KmsError, KmsTimeoutError} from '../../../dist/kms-errors';
 
 describe('internal-plugin-encryption', () => {
   describe('kms', () => {
@@ -20,7 +21,6 @@ describe('internal-plugin-encryption', () => {
     });
 
     describe('key management', () => {
-      const options = undefined;
       let spyStub;
 
       beforeEach(() => {
@@ -60,7 +60,7 @@ describe('internal-plugin-encryption', () => {
           awsKms: true,
         });
 
-         // Upload aws cmk and role
+        // Upload aws cmk and role
         await webex.internal.encryption.kms.uploadCustomerMasterKey({
           assignedOrgId: 'xx-sds-assdf',
           customerMasterKey: 'masterKey',
@@ -238,6 +238,166 @@ describe('internal-plugin-encryption', () => {
             assert.equal(error.message, '`options.uri` is required');
           }
         });
+      });
+    });
+
+    describe('_getContext', () => {
+      let sandbox;
+      let kms;
+      let context;
+      let prepareContext;
+      let getAuthorization;
+      let expirationDate;
+      let scheduleExpiry;
+
+      beforeEach(() => {
+        sandbox = sinon.createSandbox({useFakeTimers: true});
+        kms = webex.internal.encryption.kms;
+        expirationDate = Date.now() + 60000;
+        context = {
+          ephemeralKey: {expirationDate},
+          clientInfo: {credential: {bearer: 'previous-token'}},
+        };
+        prepareContext = sandbox.stub(kms, '_prepareContext').resolves(context);
+        getAuthorization = sandbox.stub(kms, '_getAuthorization').resolves('current-token');
+        scheduleExpiry = sandbox.spy(timers, 'safeSetTimeout');
+      });
+
+      afterEach(() => sandbox.restore());
+
+      [
+        {
+          name: 'a handshake timeout',
+          createError: () =>
+            new KmsTimeoutError({
+              timeout: 64000,
+              request: {method: 'create', uri: 'kms://example.com/ecdhe', requestId: 'timeout'},
+            }),
+        },
+        {name: 'a negotiation error', createError: () => new Error('Negotiation failed')},
+      ].forEach(({name, createError}) => {
+        it(`negotiates again after ${name} and caches the recovered context`, async () => {
+          const error = createError();
+
+          prepareContext.onFirstCall().rejects(error);
+
+          await assert.isRejected(kms._getContext(), error);
+          assert.equal(await kms._getContext(), context);
+          assert.equal(await kms._getContext(), context);
+          assert.calledTwice(prepareContext);
+          assert.calledThrice(getAuthorization);
+          assert.deepEqual(context, {
+            ephemeralKey: {expirationDate},
+            clientInfo: {credential: {bearer: 'current-token'}},
+          });
+        });
+      });
+
+      it('keeps repeated negotiation failures retryable', async () => {
+        const firstError = new Error('First negotiation failed');
+        const secondError = new Error('Second negotiation failed');
+
+        prepareContext.onFirstCall().rejects(firstError);
+        prepareContext.onSecondCall().rejects(secondError);
+
+        await assert.isRejected(kms._getContext(), firstError);
+        await assert.isRejected(kms._getContext(), secondError);
+        assert.equal(await kms._getContext(), context);
+        assert.calledThrice(prepareContext);
+      });
+
+      it('shares an in-flight negotiation and refreshes authorization for a cached context', async () => {
+        let resolveNegotiation;
+
+        prepareContext.returns(
+          new Promise((resolve) => {
+            resolveNegotiation = resolve;
+          })
+        );
+
+        const first = kms._getContext();
+        const concurrent = kms._getContext();
+
+        assert.calledOnce(prepareContext);
+        assert.calledOnce(getAuthorization);
+        resolveNegotiation(context);
+        assert.deepEqual(await Promise.all([first, concurrent]), [context, context]);
+
+        getAuthorization.resolves('refreshed-token');
+        assert.equal(await kms._getContext(), context);
+        assert.calledOnce(prepareContext);
+        assert.calledTwice(getAuthorization);
+        assert.deepEqual(context.clientInfo, {credential: {bearer: 'refreshed-token'}});
+      });
+
+      it('retains a successful negotiation when authorization fails', async () => {
+        const error = new Error('Authorization unavailable');
+
+        getAuthorization.onFirstCall().rejects(error);
+
+        await assert.isRejected(kms._getContext(), error);
+        assert.equal(await kms._getContext(), context);
+        assert.calledOnce(prepareContext);
+        assert.calledTwice(getAuthorization);
+        assert.deepEqual(context.clientInfo, {credential: {bearer: 'current-token'}});
+      });
+
+      it('preserves a replacement context when an older negotiation rejects later', async () => {
+        let rejectOldNegotiation;
+        const oldNegotiation = new Promise((resolve, reject) => {
+          rejectOldNegotiation = reject;
+        });
+        const authorizationError = new Error('Authorization unavailable');
+        const timeoutError = new Error('Request timed out');
+        const lateError = new Error('Old negotiation failed');
+
+        prepareContext.onFirstCall().returns(oldNegotiation);
+        getAuthorization.onFirstCall().rejects(authorizationError);
+        await assert.isRejected(kms._getContext(), authorizationError);
+
+        webex.internal.mercury = {connect: sandbox.stub().resolves()};
+        kms.config.kmsMaxTimeout = 32000;
+        kms.config.ecdhMaxTimeout = 96000;
+        sandbox.stub(kms, 'prepareRequest').resolves({});
+        const request = sandbox.stub(kms.batcher, 'request').resolves();
+
+        request.onFirstCall().rejects(timeoutError);
+        await kms.request({method: 'update', uri: '/ping'}, {timeout: 16000});
+        assert.calledTwice(request);
+        assert.equal(await kms._getContext(), context);
+
+        rejectOldNegotiation(lateError);
+        await assert.isRejected(oldNegotiation, lateError);
+
+        assert.equal(await kms._getContext(), context);
+        assert.calledTwice(prepareContext);
+        assert.deepEqual(context.clientInfo, {credential: {bearer: 'current-token'}});
+      });
+
+      it('expires a successful context thirty seconds before its key expires', async () => {
+        const nextContext = {
+          ephemeralKey: {expirationDate: Date.now() + 120000},
+          clientInfo: {credential: {}},
+        };
+
+        prepareContext.onSecondCall().resolves(nextContext);
+        const startedAt = Date.now();
+
+        assert.equal(await kms._getContext(), context);
+        assert.calledOnce(scheduleExpiry);
+
+        const delay = scheduleExpiry.firstCall.args[1];
+
+        assert.isAtLeast(delay, expirationDate - Date.now() - 30000);
+        assert.isAtMost(delay, expirationDate - startedAt - 30000);
+        sandbox.clock.tick(delay - 1);
+        assert.equal(await kms._getContext(), context);
+        assert.calledOnce(prepareContext);
+
+        sandbox.clock.tick(1);
+        assert.equal(await kms._getContext(), nextContext);
+        assert.calledTwice(prepareContext);
+        assert.deepEqual(nextContext.clientInfo, {credential: {bearer: 'current-token'}});
       });
     });
 
