@@ -31,24 +31,6 @@ const callHistorySortBy = 'startTime';
 const voicemailOffset = 0;
 const voicemailOffsetLimit = 20;
 const voicemailSort = 'DESC';
-function unwrapAccessToken(raw) {
-  const trimmed = String(raw || '').trim();
-  if (!trimmed) {
-    return '';
-  }
-  if (trimmed.startsWith('{')) {
-    try {
-      const parsed = JSON.parse(trimmed);
-      if (parsed && typeof parsed.value === 'string') {
-        return parsed.value.trim();
-      }
-    } catch {
-      // keep the original string
-    }
-  }
-
-  return trimmed.replace(/^["']|["']$/g, '');
-}
 
 const credentialsFormElm = document.querySelector('#credentials');
 const fedrampBox = document.getElementById('fedramp');
@@ -306,7 +288,7 @@ async function initCalling(e) {
       dss: {},
     },
     credentials: {
-      access_token: unwrapAccessToken(tokenElm.value)
+      access_token: tokenElm.value
     }
   };
 
@@ -441,11 +423,6 @@ async function initCalling(e) {
 
       if (window.callRecording === undefined && calling.callRecordingClient !== undefined) {
         callRecording = window.callRecording = calling.callRecordingClient;
-      } else if (!calling.callRecordingClient) {
-        console.warn(
-          'Call Recording client was not created because device register did not finish. Use an unwrapped Webex user token, match In Integration / In Production to that token, then Register again. calling keys:',
-          Object.keys(calling || {})
-        );
       }
 
       if(callingClient) fetchLines();
