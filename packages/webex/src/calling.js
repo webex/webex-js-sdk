@@ -146,9 +146,22 @@ class Calling extends EventEmitter {
       clientConfig.callRecording = false;
     }
 
-    this.callRecordingClient = clientConfig.callRecording
-      ? WebexCalling.createCallRecordingClient(this.webex, logger)
-      : undefined;
+    try {
+      if (!clientConfig.callRecording) {
+        this.callRecordingClient = undefined;
+      } else if (typeof WebexCalling.createCallRecordingClient !== 'function') {
+        this.log.warn(
+          'createCallRecordingClient is not exported from @webex/calling; rebuild docs/samples/calling.min.js',
+          logContext
+        );
+        this.callRecordingClient = undefined;
+      } else {
+        this.callRecordingClient = WebexCalling.createCallRecordingClient(this.webex, logger);
+      }
+    } catch (error) {
+      this.log.warn(`Error occurred while initializing callRecording client ${error}`, logContext);
+      this.callRecordingClient = undefined;
+    }
   }
 
   static get createMicrophoneStream() {

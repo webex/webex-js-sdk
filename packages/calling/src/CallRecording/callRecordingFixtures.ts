@@ -20,8 +20,6 @@ export const RECORDING_ONE: Recording = {
   status: RecordingStatus.AVAILABLE,
   ownerId: '8a67806f-fc4d-446b-a131-31e71ea5b0e9',
   ownerEmail: 'owner@cisco.com',
-  ownerType: 'user',
-  storageRegion: 'US',
   serviceData: {
     locationId: 'loc-1',
     callSessionId: CALL_SESSION_ID,
@@ -40,31 +38,65 @@ export const RECORDING_TWO: Recording = {
   status: RecordingStatus.AVAILABLE,
   ownerId: '8a67806f-fc4d-446b-a131-31e71ea5b0e9',
   ownerEmail: 'owner@cisco.com',
-  ownerType: 'user',
-  storageRegion: 'US',
   serviceData: {
     locationId: 'loc-1',
     callSessionId: 'ffffffff-9999-8888-7777-666666666666',
   },
 };
 
+export const MOCK_USERHUB_RECORDING_ONE = {
+  recordUUID: RECORDING_ONE.id,
+  title: RECORDING_ONE.topic,
+  ownerID: RECORDING_ONE.ownerId,
+  ownerEmail: RECORDING_ONE.ownerEmail,
+  durationMS: 65000,
+  status: 'available',
+  format: 'MP3',
+  sizeByte: 1048576,
+  appCreateTime: '2024-05-01 10:01:05',
+  startRecordingTime: '2024-05-01 10:00:00',
+  callingData: {
+    locationID: 'loc-1',
+    callSessionID: CALL_SESSION_ID,
+    personality: 'originator',
+    callingName: 'Mark',
+    calledName: 'Alice',
+  },
+  recordingPlaybackLinks: {
+    transcriptPlaybackLink: 'https://nbr.example/transcript.txt',
+    audioPlaybackLink: 'https://nbr.example/audio',
+  },
+  aiAssistantData: {
+    suggestedNoteUrl: 'https://aibridge.example/notes',
+  },
+};
+
+export const MOCK_USERHUB_RECORDING_TWO = {
+  recordUUID: RECORDING_TWO.id,
+  title: RECORDING_TWO.topic,
+  callingData: {
+    locationID: 'loc-1',
+    callSessionID: RECORDING_TWO.serviceData?.callSessionId,
+  },
+};
+
 export const MOCK_RECORDING_LIST_BODY = {
   statusCode: 200,
   body: {
-    items: [RECORDING_ONE, RECORDING_TWO],
+    recordings: [MOCK_USERHUB_RECORDING_ONE, MOCK_USERHUB_RECORDING_TWO],
   },
 };
 
 export const MOCK_EMPTY_RECORDING_LIST_BODY = {
   statusCode: 200,
   body: {
-    items: [],
+    recordings: [],
   },
 };
 
 export const MOCK_RECORDING_BODY = {
   statusCode: 200,
-  body: RECORDING_ONE,
+  body: MOCK_USERHUB_RECORDING_ONE,
 };
 
 export const RECORDING_OWNER_ID = '8a67806f-fc4d-446b-a131-31e71ea5b0e9';
@@ -110,7 +142,7 @@ export const MOCK_RECORDING_METADATA: RecordingMetadata = {
 
 export const MOCK_RECORDING_METADATA_BODY = {
   statusCode: 200,
-  body: MOCK_RECORDING_METADATA,
+  body: MOCK_USERHUB_RECORDING_ONE,
 };
 
 export const ERROR_DETAILS_400 = {

@@ -109,11 +109,9 @@ export class CallRecording extends Eventing<CallRecordingEventTypes> implements 
   }
 
   /**
-   * Moves a single recording to the recycle bin (soft delete) via
-   * `POST /convergedRecordings/softDelete`. Requires `spark:recordings_write` on the access token;
-   * the recording can be restored from the recycle bin via the platform restore API.
-   * @param recordingId - The recording id (`id`) to move to the recycle bin.
-   * @param options - Deprecated. Ignored (compliance permanent delete is not exposed).
+   * Permanently deletes a single recording. Per the API the recording cannot be recovered.
+   * @param recordingId - The recording id (`id`) to delete.
+   * @param options - Optional `reason`/`comment`, only required for Compliance Officer deletions.
    */
   public async deleteRecording(
     recordingId: string,
