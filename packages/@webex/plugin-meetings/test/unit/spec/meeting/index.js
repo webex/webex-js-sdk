@@ -503,7 +503,7 @@ describe('plugin-meetings', () => {
             assert.notCalled(requestMedia);
 
             getConnectionState.returns(ConnectionState.Connected);
-            meeting.mediaRequestManagers[manager].sendDeferredRequests();
+            meeting.mediaRequestManagers[manager].sendPendingRequestState();
 
             assert.calledOnceWithExactly(requestMedia, mediaType, []);
           });
@@ -11870,7 +11870,7 @@ describe('plugin-meetings', () => {
             meeting.reconnectionManager.iceReconnected = sinon.stub().returns(undefined);
             meeting.statsAnalyzer = {startAnalyzer: sinon.stub()};
             Object.values(meeting.mediaRequestManagers).forEach((mediaRequestManager) =>
-              sinon.spy(mediaRequestManager, 'sendDeferredRequests')
+              sinon.spy(mediaRequestManager, 'sendPendingRequestState')
             );
             meeting.mediaProperties.webrtcMediaConnection = {
               // mock the on() method and store all the listeners
@@ -11914,7 +11914,7 @@ describe('plugin-meetings', () => {
               meeting.mediaProperties.webrtcMediaConnection
             );
             Object.values(meeting.mediaRequestManagers).forEach((mediaRequestManager) =>
-              assert.calledOnceWithExactly(mediaRequestManager.sendDeferredRequests)
+              assert.calledOnceWithExactly(mediaRequestManager.sendPendingRequestState)
             );
           };
 
@@ -11925,7 +11925,7 @@ describe('plugin-meetings', () => {
             meeting.reconnectionManager.iceReconnected.resetHistory();
             meeting.statsAnalyzer.startAnalyzer.resetHistory();
             Object.values(meeting.mediaRequestManagers).forEach((mediaRequestManager) =>
-              mediaRequestManager.sendDeferredRequests.resetHistory()
+              mediaRequestManager.sendPendingRequestState.resetHistory()
             );
           };
 
@@ -11962,7 +11962,7 @@ describe('plugin-meetings', () => {
             simulateConnectionStateChange(ConnectionState.Connected);
           });
 
-          it('sends deferred media requests on Connected after a silent peer connection close', () => {
+          it('synchronizes the latest media request state on Connected after a silent peer connection close', () => {
             setupSpies();
             const connection = meeting.mediaProperties.webrtcMediaConnection;
 

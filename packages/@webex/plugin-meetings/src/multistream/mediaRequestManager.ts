@@ -13,6 +13,7 @@ import {
   SupportedResolution,
   AV1EncodingParams,
   MediaType,
+  MediaContent,
   MediaCodecMimeType,
 } from '@webex/internal-media-core';
 import {cloneDeepWith, debounce} from 'lodash';
@@ -85,16 +86,18 @@ type Kind = 'audio' | 'video';
 type AudioMediaRequestManagerOptions = {
   degradationPreferences: DegradationPreferences;
   kind: 'audio';
+  mediaContent: MediaContent;
   trimRequestsToNumOfSources: boolean; // if enabled, AS speaker requests will be trimmed based on the calls to setNumCurrentSources()
-  isReadyToSendRequests?: IsReadyToSendRequestsCallback; // if it returns false, sending is deferred until sendDeferredRequests() is called
+  isReadyToSendRequests: IsReadyToSendRequestsCallback; // if it returns false, the latest request state is sent by sendPendingRequestState()
 };
 
 type VideoMediaRequestManagerOptions = {
   degradationPreferences: DegradationPreferences;
   kind: 'video';
+  mediaContent: MediaContent;
   trimRequestsToNumOfSources: boolean;
   enableAv1?: boolean;
-  isReadyToSendRequests?: IsReadyToSendRequestsCallback;
+  isReadyToSendRequests: IsReadyToSendRequestsCallback;
 };
 
 type Options = AudioMediaRequestManagerOptions | VideoMediaRequestManagerOptions;
@@ -108,9 +111,11 @@ export class MediaRequestManager {
 
   private isReadyToSendRequests: IsReadyToSendRequestsCallback;
 
-  private hasDeferredRequests = false;
+  private hasPendingRequestState = false;
 
   private kind: Kind;
+
+  private mediaContent: MediaContent;
 
   private counter: number;
 
@@ -134,13 +139,14 @@ export class MediaRequestManager {
   ) {
     this.sendMediaRequestsCallback = sendMediaRequestsCallback;
     this.getIngressPayloadTypeCallback = getIngressPayloadTypeCallback;
-    this.isReadyToSendRequests = options.isReadyToSendRequests ?? (() => true);
+    this.isReadyToSendRequests = options.isReadyToSendRequests;
     this.counter = 0;
     this.numLiveSources = 0;
     this.numTotalSources = 0;
     this.clientRequests = {};
     this.degradationPreferences = options.degradationPreferences;
     this.kind = options.kind;
+    this.mediaContent = options.mediaContent;
     this.trimRequestsToNumOfSources = options.trimRequestsToNumOfSources;
     this.enableAv1 = options.kind === 'video' && !!options.enableAv1;
     this.sourceUpdateListener = this.commit.bind(this);
@@ -392,12 +398,12 @@ export class MediaRequestManager {
 
   private sendRequests() {
     if (!this.isReadyToSendRequests()) {
-      if (!this.hasDeferredRequests) {
+      if (!this.hasPendingRequestState) {
         LoggerProxy.logger.info(
-          `multistream:sendRequests --> connection not-ready, deferring ${this.kind} media requests`
+          `multistream:sendRequests --> connection not ready, latest ${this.kind}-${this.mediaContent} media request state will be synchronized when ready`
         );
       }
-      this.hasDeferredRequests = true;
+      this.hasPendingRequestState = true;
 
       return;
     }
@@ -440,13 +446,13 @@ export class MediaRequestManager {
       }
     });
 
-    if (this.hasDeferredRequests) {
+    if (this.hasPendingRequestState) {
       LoggerProxy.logger.info(
-        `multistream:sendRequests --> connection ready, sending deferred ${this.kind} media requests`
+        `multistream:sendRequests --> connection ready, synchronizing latest ${this.kind}-${this.mediaContent} media request state`
       );
     }
     this.sendMediaRequestsCallback(streamRequests);
-    this.hasDeferredRequests = false;
+    this.hasPendingRequestState = false;
     LoggerProxy.logger.info(`multistream:sendRequests --> media requests sent.`);
   }
 
@@ -494,19 +500,18 @@ export class MediaRequestManager {
   }
 
   /**
-   * Sends the current requests if sending them was deferred because the connection was not ready.
-   * The requests are built from the latest state, so nothing outdated is sent.
+   * Synchronizes the latest request state if it could not be sent earlier because the connection was not ready.
    * @returns {void}
    */
-  public sendDeferredRequests() {
-    if (!this.hasDeferredRequests) {
+  public sendPendingRequestState() {
+    if (!this.hasPendingRequestState) {
       return;
     }
     this.sendRequests();
   }
 
   public reset() {
-    this.hasDeferredRequests = false;
+    this.hasPendingRequestState = false;
     this.clientRequests = {};
     this.numTotalSources = 0;
     this.numLiveSources = 0;

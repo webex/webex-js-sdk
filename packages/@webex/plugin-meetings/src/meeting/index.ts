@@ -1050,6 +1050,7 @@ export default class Meeting extends StatelessWebexPlugin {
           // @ts-ignore - config coming from registerPlugin
           degradationPreferences: this.config.degradationPreferences,
           kind: 'audio',
+          mediaContent: MediaContent.Main,
           trimRequestsToNumOfSources: false,
           isReadyToSendRequests,
         }
@@ -1061,6 +1062,7 @@ export default class Meeting extends StatelessWebexPlugin {
           // @ts-ignore - config coming from registerPlugin
           degradationPreferences: this.config.degradationPreferences,
           kind: 'video',
+          mediaContent: MediaContent.Main,
           trimRequestsToNumOfSources: true,
           isReadyToSendRequests,
         }
@@ -1072,6 +1074,7 @@ export default class Meeting extends StatelessWebexPlugin {
           // @ts-ignore - config coming from registerPlugin
           degradationPreferences: this.config.degradationPreferences,
           kind: 'audio',
+          mediaContent: MediaContent.Slides,
           trimRequestsToNumOfSources: false,
           isReadyToSendRequests,
         }
@@ -1083,6 +1086,7 @@ export default class Meeting extends StatelessWebexPlugin {
           // @ts-ignore - config coming from registerPlugin
           degradationPreferences: this.config.degradationPreferences,
           kind: 'video',
+          mediaContent: MediaContent.Slides,
           trimRequestsToNumOfSources: false,
           isReadyToSendRequests,
           // @ts-ignore - config coming from registerPlugin
@@ -7858,7 +7862,7 @@ export default class Meeting extends StatelessWebexPlugin {
           this.statsAnalyzer.startAnalyzer(this.mediaProperties.webrtcMediaConnection);
           this.hasMediaConnectionConnectedAtLeastOnce = true;
           Object.values(this.mediaRequestManagers).forEach((mediaRequestManager) =>
-            mediaRequestManager.sendDeferredRequests()
+            mediaRequestManager.sendPendingRequestState()
           );
           break;
         case ConnectionState.Disconnected:
