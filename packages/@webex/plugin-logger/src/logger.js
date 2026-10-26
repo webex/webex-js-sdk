@@ -36,7 +36,8 @@ const LOG_TYPES = {
 };
 
 const SDK_LOG_TYPE_NAME = 'wx-js-sdk';
-// Reuse the normal formatter for metadata calls without exposing extra level methods.
+// Metadata writers share the normal formatter.
+// Separate SDK and client handlers preserve their existing logging policies.
 const clientMetadataMethods = Object.create(null);
 const sdkMetadataMethods = Object.create(null);
 

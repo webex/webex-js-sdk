@@ -1,6 +1,7 @@
 /**
- * Observer pattern: LogRecordSubscriptions sends accepted records to registered listeners.
- * A temporary FIFO keeps nested log calls in order; it is not an export buffer.
+ * Observer pattern: LogRecordSubscriptions sends accepted SDK records to listeners.
+ * Nested logs wait until the current record reaches all eligible listeners.
+ * Each synchronous notification pass clears its temporary FIFO.
  */
 import {snapshotRecord} from './log-record';
 import type {BufferEntryMetadata, LogRecord} from './log-record';
@@ -28,7 +29,7 @@ export class LogRecordSubscriptions {
   /** Each registration has its own callback, even when the caller uses the same listener. */
   private readonly listeners = new Set<LogRecordListener>();
 
-  /** Accepted entries waiting for delivery during this synchronous notification pass. */
+  /** Entries in this notification pass, including logs written by listeners. */
   private readonly pendingNotifications: PendingNotification[] = [];
 
   /** True during delivery. Nested log calls append to the FIFO instead of starting another pass. */

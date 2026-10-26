@@ -1,6 +1,6 @@
 /**
- * Record factory: captureMetadata filters caller metadata; snapshotRecord copies one retained log.
- * These functions keep caller and consumer changes out of the SDK buffers.
+ * Record factory: captureMetadata filters producer fields when a log is accepted.
+ * snapshotRecord and snapshotRecords give consumers owned copies of live records and history.
  */
 import {cloneDeep} from 'lodash';
 
@@ -17,7 +17,7 @@ export type LogValue =
 export interface LogAttributes {
   [key: string]: LogValue;
 }
-/** Producer fields captured with one log call. */
+/** Optional producer fields. Normal SDK log calls do not need these fields. */
 export interface LogMetadata {
   readonly source?: string;
   readonly eventName?: string;
@@ -32,7 +32,7 @@ export interface LogRecord extends LogMetadata {
   readonly observedTimestamp: number;
   /** Original SDK log level. The consumer maps it to its own severity. */
   readonly level: string;
-  /** Producer name; defaults to sdk or client. */
+  /** Producer label; defaults to sdk or client. It does not select the logging policy. */
   readonly source: string;
   /** Existing formatted text after SDK redaction. */
   readonly body: string;
