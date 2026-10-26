@@ -9,10 +9,7 @@ describe('getUmdAssetsBaseUrl()', () => {
   it('builds a versioned UMD asset directory URL', () => {
     const url = getUmdAssetsBaseUrl('plugin-meetings', '3.12.0-next.252', '2.0.0');
 
-    assert.equal(
-      url,
-      'https://unpkg.com/webex@3.12.0-next.252/umd/assets/plugin-meetings/'
-    );
+    assert.equal(url, 'https://unpkg.com/webex@3.12.0-next.252/umd/assets/plugin-meetings/');
   });
 
   it('supports other plugin asset directory names', () => {
@@ -40,7 +37,7 @@ describe('getUmdAssetsBaseUrl()', () => {
   });
 
   it('uses the plugin npm package when no SDK version is injected', () => {
-    const npmPackageUrl = 'https://app.unpkg.com/@webex/plugin-meetings@3.12.0/files/dist/assets/';
+    const npmPackageUrl = 'https://unpkg.com/@webex/plugin-meetings@3.12.0/dist/assets/';
 
     ['', undefined, 'undefined', '0.0.0'].forEach((sdkVersion) => {
       assert.equal(getUmdAssetsBaseUrl('plugin-meetings', sdkVersion, '3.12.0'), npmPackageUrl);
