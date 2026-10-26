@@ -15,10 +15,11 @@ the UMD build preserves that separation under `umd/assets/<plugin-name>/` to avo
 collisions (for example, internal-plugin-encryption ships `ios_union-<version>.p7b` under
 `umd/assets/internal-plugin-encryption/`). The SDK does not serve them. Development builds and local builds without an injected SDK
 version default to `/assets/plugin-meetings/`, which webpack-dev-server serves from this folder.
-Versioned release builds default to the matching UMD CDN directory
-(`https://unpkg.com/webex@<sdk-version>/umd/assets/plugin-meetings/`). Applications can override it
-to serve assets from their own origin or CDN. For npm package assets, use a URL such as
-`https://cdn.example.com/webex-js-sdk/1.2.3/plugin-meetings/assets/`.
+SDK release builds default to the matching UMD CDN directory
+(`https://unpkg.com/webex@<sdk-version>/umd/assets/plugin-meetings/`). Standalone plugin npm releases
+default to the plugin package's assets
+(`https://app.unpkg.com/@webex/plugin-meetings@<plugin-version>/files/dist/assets/`). Applications
+can override the URL to serve assets from their own origin or CDN.
 
 Use a versioned URL so the JavaScript SDK and its static assets remain compatible. For a CDN URL,
 allow the consuming application origin with CORS and serve `e2ee.js` with a
