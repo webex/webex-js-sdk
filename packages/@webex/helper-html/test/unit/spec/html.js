@@ -175,6 +175,56 @@ skipInNode(describe)('html', () => {
         '<p>Click here<img src="http://example.com/img">bar for something with <a href="http://www.cisco.com/">MOREof myMOJO</a></p>',
     },
     {
+      it: 'filters javascript: from a href obfuscated with a tab character',
+      input: '<p><a href="java\tscript:alert(1)">click here</a></p>',
+      output: '<p>click here</p>',
+    },
+    {
+      it: 'filters javascript: from a href obfuscated with a newline character',
+      input: '<p><a href="java\nscript:alert(1)">click here</a></p>',
+      output: '<p>click here</p>',
+    },
+    {
+      it: 'filters javascript: from a href with leading C0 control character',
+      input: '<p><a href="\u001fjavascript:alert(1)">click here</a></p>',
+      output: '<p>click here</p>',
+    },
+    {
+      it: 'filters data: from a href',
+      input: '<p><a href="data:text/html,<script>alert(1)</script>">click here</a></p>',
+      output: '<p>click here</p>',
+    },
+    {
+      it: 'filters data: from img src',
+      input: '<p><img src="data:text/html,<script>alert(1)</script>">foo</img></p>',
+      output: '<p>foo</p>',
+    },
+    {
+      it: 'preserves empty href',
+      input: '<p><a href="">click here</a></p>',
+      output: '<p><a href="">click here</a></p>',
+    },
+    {
+      it: 'preserves relative href with colon in path',
+      input: '<p><a href="./asset:name">click here</a></p>',
+      output: '<p><a href="./asset:name">click here</a></p>',
+    },
+    {
+      it: 'preserves href with colon in query string',
+      input: '<p><a href="page?next=http://example.com">click here</a></p>',
+      output: '<p><a href="page?next=http://example.com">click here</a></p>',
+    },
+    {
+      it: 'preserves relative href with embedded ASCII space',
+      input: '<p><a href="release notes:latest">click here</a></p>',
+      output: '<p><a href="release notes:latest">click here</a></p>',
+    },
+    {
+      it: 'preserves relative href with embedded non-discarded control character',
+      input: '<p><a href="release\u001fnotes:latest">click here</a></p>',
+      output: '<p><a href="release\u001fnotes:latest">click here</a></p>',
+    },
+    {
       it: 'handles weirder nesting',
       input:
         '<p>text</p><div><p>text0</p><div style="font-size: large;"><span>text1</span><span>text2</span><script></script></div></div>',
@@ -268,6 +318,21 @@ skipInNode(describe)('html', () => {
       input: '<b>&<</b>',
       output: '<b>&amp;&lt;</b>',
     },
+    {
+      it: 'filters javascript: from a href obfuscated with a tab character',
+      input: '<p><a href="java\tscript:alert(1)">click here</a></p>',
+      output: '<p>click here</p>',
+    },
+    {
+      it: 'filters javascript: from a href with leading whitespace',
+      input: '<p><a href=" javascript:alert(1)">click here</a></p>',
+      output: '<p>click here</p>',
+    },
+    {
+      it: 'filters data: from a href',
+      input: '<p><a href="data:text/html,<script>alert(1)</script>">click here</a></p>',
+      output: '<p>click here</p>',
+    },
   ].forEach((def) => {
     describe('#filterEscape()', () => {
       it(def.it, () =>
@@ -281,6 +346,42 @@ skipInNode(describe)('html', () => {
       it(def.it, () => {
         assert.match(cfilterEscapeSync(def.input), def.output);
       });
+    });
+  });
+
+  describe('additionalAllowedUrlSchemes', () => {
+    it('filter with four arguments returns a Promise', () => {
+      const result = filter(noop, allowedTags, allowedStyles, '<p><em>foo</em></p>');
+
+      assert.isFunction(result.then);
+    });
+
+    it('filterSync with five arguments applies additionalAllowedUrlSchemes', () => {
+      assert.strictEqual(
+        filterSync(noop, allowedTags, allowedStyles, '<p><a href="teams:foo">x</a></p>', ['teams']),
+        '<p><a href="teams:foo">x</a></p>'
+      );
+    });
+
+    it('allows a custom URL scheme from config', () => {
+      assert.strictEqual(
+        cfilterSync('<p><a href="teams:channel?id=123">click</a></p>', ['teams']),
+        '<p><a href="teams:channel?id=123">click</a></p>'
+      );
+    });
+
+    it('blocks javascript: even when listed in additionalAllowedUrlSchemes', () => {
+      assert.strictEqual(
+        cfilterSync('<p><a href="javascript:alert(1)">click</a></p>', ['javascript']),
+        '<p>click</p>'
+      );
+    });
+
+    it('blocks unknown schemes when not in additionalAllowedUrlSchemes', () => {
+      assert.strictEqual(
+        cfilterSync('<p><a href="teams:foo">click</a></p>'),
+        '<p>click</p>'
+      );
     });
   });
 });

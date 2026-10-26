@@ -1,5 +1,8 @@
 import {assert} from '@webex/test-helper-chai';
-import {AddMediaFailed, MediaConnectionTimedOutError} from '@webex/plugin-meetings/src/common/errors/webex-errors';
+import {
+  AddMediaFailed,
+  MediaConnectionTimedOutError,
+} from '@webex/plugin-meetings/src/common/errors/webex-errors';
 
 describe('MediaConnectionTimedOutError', () => {
   [
@@ -14,6 +17,19 @@ describe('MediaConnectionTimedOutError', () => {
       assert.equal(error.name, 'MediaConnectionTimedOutError');
       assert.instanceOf(error, Error);
     });
+  });
+
+  it('stores the cause when provided', () => {
+    const cause = {iceConnected: true};
+    const error = new MediaConnectionTimedOutError('timeout', true, cause);
+
+    assert.equal(error.cause, cause);
+  });
+
+  it('leaves cause undefined when not provided', () => {
+    const error = new MediaConnectionTimedOutError('timeout', true);
+
+    assert.isUndefined(error.cause);
   });
 });
 

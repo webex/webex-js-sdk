@@ -113,7 +113,8 @@ export type LineEventTypes = {
   [LINE_EVENTS.RECONNECTED]: () => void;
   [LINE_EVENTS.RECONNECTING]: () => void;
   [LINE_EVENTS.REGISTERED]: (lineInfo: ILine) => void;
-  [LINE_EVENTS.UNREGISTERED]: () => void;
+  /* error is present only when the SDK will not re-register, e.g. a superseded session */
+  [LINE_EVENTS.UNREGISTERED]: (error?: LineError) => void;
   [LINE_EVENTS.INCOMING_CALL]: (callObj: ICall) => void;
 };
 ```
@@ -300,6 +301,8 @@ public lineEmitter = (event: LINE_EVENTS, deviceInfo?: IDeviceInfo, lineError?: 
       }
       break;
     case LINE_EVENTS.UNREGISTERED:
+      this.emit(event, lineError);        // Reason, present only for a hard stop
+      break;
     case LINE_EVENTS.RECONNECTED:
     case LINE_EVENTS.RECONNECTING:
       this.emit(event);                   // No payload
@@ -332,13 +335,18 @@ this.lineEmitter(LINE_EVENTS.RECONNECTING);
 
 // On fatal registration failure — passes the error object
 this.lineEmitter(LINE_EVENTS.ERROR, undefined, clientError);
+
+// On a hard stop the SDK will not recover from, e.g. a keepalive 409 Conflict —
+// UNREGISTERED carries the reason
+this.lineEmitter(LINE_EVENTS.UNREGISTERED, undefined, lineError);
 ```
 
 Key behaviors:
 
 - **REGISTERED**: calls `normalizeLine(deviceInfo)` then emits `this` (the `ILine` instance), not `deviceInfo`
 - **ERROR**: only emits if `lineError` is truthy
-- **UNREGISTERED / RECONNECTED / RECONNECTING**: emits with no args
+- **UNREGISTERED**: always emits, forwarding `lineError` when the caller knows why the line will stay unregistered
+- **RECONNECTED / RECONNECTING**: emits with no args
 
 ---
 
@@ -447,7 +455,7 @@ public unregisterListener(event: string): void {
 The actual code in `callManager.ts` uses the raw string `'event:mobius'` rather than the enum constant:
 
 ```typescript
-// src/CallingClient/calling/callManager.ts:130
+// src/CallingClient/calling/callManager.ts
 private listenForWsEvents() {
   this.sdkConnector.registerListener('event:mobius', async (event) => {
     this.dequeueWsEvents(event);
@@ -457,7 +465,7 @@ private listenForWsEvents() {
 
 ### Session Listener Pattern in CallingClient
 
-The actual `registerSessionsListener` (`src/CallingClient/CallingClient.ts:665-691`) contains important filtering logic — it filters out non-`WEBEX_CALLING` sessions before emitting:
+The actual `registerSessionsListener` (`src/CallingClient/CallingClient.ts`) contains important filtering logic — it filters out non-`WEBEX_CALLING` sessions before emitting:
 
 ```typescript
 private registerSessionsListener() {
@@ -541,3 +549,34 @@ Write tests that register a spy via `.on()`, trigger the action, and assert the 
 - [Error Handling Patterns](./error-handling-patterns.md)
 - [TypeScript Patterns](./typescript-patterns.md)
 - [Testing Patterns](./testing-patterns.md)
+## Pattern-Extract Verification
+
+### When to use
+
+Extend `Eventing<T>` and emit through a typed enum key whenever a module exposes lifecycle notifications. This preserves payload/key coupling that ordinary lint rules cannot prove.
+
+### Correct
+
+```typescript
+this.emit(COMMON_EVENT_KEYS.CALL_RECORDING_CREATED, event);
+```
+
+### Incorrect
+
+```typescript
+this.emit('recording-created', event);
+```
+
+A raw string can drift from the exported event contract and loses the type-map relationship.
+
+### Where it appears
+
+- `src/CallHistory/CallHistory.ts`
+- `src/CallRecording/CallRecording.ts`
+- `src/CallRecording/WxcCallRecordingConnector.ts`
+- `src/CallingClient/CallingClient.ts`
+- `src/CallingClient/calling/callManager.ts`
+
+### Edge cases
+
+Mobius transport envelopes are first normalized by transport and calling adapters; application-facing emitters still use the typed event maps. `LINE_EVENT_KEYS` and `LINE_EVENTS` intentionally have different scopes and must not be interchanged.

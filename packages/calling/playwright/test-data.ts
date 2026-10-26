@@ -147,6 +147,13 @@ export const USER_SETS: Record<string, UserSet> = {
     testSuite: 'call-history.spec.ts',
   },
 
+  // Voicemail message E2E uses USER_1 as caller and USER_2 as voicemail owner.
+  SET_VOICEMAIL: {
+    name: 'SET_VOICEMAIL',
+    accounts: ['USER_1', 'USER_2'],
+    testSuite: 'voicemail.spec.ts',
+  },
+
   // 3-user transfer tests (PROD — dedicated accounts, parallel with registration)
   SET_CALL_TRANSFER_CONSULT: {
     name: 'SET_CALL_TRANSFER_CONSULT',

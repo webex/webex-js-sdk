@@ -17,6 +17,7 @@ let callingClient;
 let correlationId;
 let callHistory;
 let voicemail;
+let voicemailInitPromise;
 let callRecording;
 let contacts;
 let callSettings;
@@ -123,6 +124,7 @@ let call;
 let callTransferObj;
 let broadworksCorrelationInfo;
 let localAudioStream;
+let lineRegistered = false;
 let effect;
 
 const devicesById = {};
@@ -144,6 +146,17 @@ const getOptionValue = (select) => {
 
   return selected ? selected.value : undefined;
 };
+
+async function ensureVoicemailInitialized() {
+  if (!voicemailInitPromise) {
+    voicemailInitPromise = Promise.resolve(voicemail.init()).catch((err) => {
+      voicemailInitPromise = undefined;
+      throw err;
+    });
+  }
+
+  return voicemailInitPromise;
+}
 
 async function uploadLogs() {
     try {
@@ -343,6 +356,17 @@ async function initCalling(e) {
     serviceData.guestName = guestName.value
   }
 
+  /*
+   * Created ahead of the client so that it can discover this client's host ip addresses from a
+   * local offer and report them to Mobius on registration. The same stream is then reused for
+   * dialling and answering.
+   */
+  try {
+    localAudioStream = await Calling.createMicrophoneStream({audio: true});
+  } catch (error) {
+    console.error('Authentication#initCalling() :: unable to get the microphone stream', error);
+  }
+
   const callingClientConfig = {
     logger: loggerConfig,
     discovery: {
@@ -351,6 +375,10 @@ async function initCalling(e) {
     },
     serviceData,
     jwe: jwtTokenForDestElm.value,
+    iceGathering: {
+      reduceTimeoutForIceLite: true,
+    },
+    localAudioStream,
   };
 
   if (callingClientConfig.discovery.country === 'Country') {
@@ -364,7 +392,7 @@ async function initCalling(e) {
   const callingConfig = {
     clientConfig : clientConfig,
     callingClientConfig: callingClientConfig,
-    logger:loggerConfig
+    logger:loggerConfig,
   }
 
   calling = await Calling.init({webexConfig, callingConfig});
@@ -446,6 +474,15 @@ function toggleDisplay(elementId, status) {
   }
 }
 
+/*
+ * Dialling needs a registered line and a microphone stream. The stream is captured during
+ * initialization, so registering is what normally unblocks the button, but that capture can be
+ * denied and retried later with getMediaStreams().
+ */
+function refreshMakeCallState() {
+  makeCallBtn.disabled = !(lineRegistered && localAudioStream);
+}
+
 const callNotifyEvent = new CustomEvent('line:incoming_call', {
   detail: {
     callObject: call,
@@ -500,10 +537,29 @@ function createDevice() {
         ? `Registered, deviceId: ${deviceInfo.mobiusDeviceId}`
         : 'Not Registered';
     unregisterElm.disabled = false;
+    lineRegistered = true;
+    refreshMakeCallState();
   });
 
   line.on('error', (error) => {
     console.log('Error: ', error);
+  });
+
+  line.on('unregistered', (error) => {
+    // An error is present only when the SDK will not re-register, currently when Mobius
+    // rejected the keepalive with 409 because this session was superseded by another
+    // registration for the same user (for example calling opened in another tab).
+    const reason = error?.getError();
+
+    console.log('Unregistered, reason: ', reason);
+    registerElm.disabled = false;
+    unregisterElm.disabled = true;
+    registrationStatusElm.innerText =
+      reason?.type === 'session_superseded'
+        ? 'Session superseded by another tab or device'
+        : 'Not Registered';
+    lineRegistered = false;
+    refreshMakeCallState();
   });
 
   // Start listening for incoming calls
@@ -523,7 +579,7 @@ function createDevice() {
 
     call.on('disconnect', () => {
       callDetailsElm.innerText = `${correlationId}: Call Disconnected`;
-      makeCallBtn.disabled = false;
+      refreshMakeCallState();
       endElm.disabled = true;
       muteElm.value = 'Mute';
       holdResumeElm.value = 'Hold';
@@ -548,7 +604,7 @@ function endCall() {
   call.end();
   callDetailsElm.innerText = `${call.getCorrelationId()}: Call Disconnected`;
   outboundEndElm.disabled = true;
-  makeCallBtn.disabled = false;
+  refreshMakeCallState();
   endElm.disabled = true;
   answerElm.disabled = true;
   muteElm.value = 'Mute';
@@ -721,7 +777,7 @@ function createCall(e) {
   });
   call.on('disconnect', (correlationId) => {
     callDetailsElm.innerText = `${correlationId}: Call Disconnected`;
-    makeCallBtn.disabled = false;
+    refreshMakeCallState();
     endElm.disabled = true;
     muteElm.value = 'Mute';
     outboundEndElm.disabled = true;
@@ -883,10 +939,12 @@ function initiateTransfer() {
 }
 
 async function getMediaStreams() {
-  localAudioStream  = await Calling.createMicrophoneStream({audio: true});
+  if (!localAudioStream) {
+    localAudioStream = await Calling.createMicrophoneStream({audio: true});
+  }
 
   localAudioElem.srcObject = localAudioStream.outputStream;
-  makeCallBtn.disabled = false;
+  refreshMakeCallState();
 }
 
 async function toggleNoiseReductionEffect() {
@@ -1244,8 +1302,12 @@ async function removeRecording() {
 /**
  * Function to use Voice Mail API's.
  */
-async function createVoiceMail() {
-  await voicemail.init();
+async function createVoiceMail(
+  offset = voicemailOffset,
+  offsetLimit = voicemailOffsetLimit,
+  runDemoActions = true
+) {
+  await ensureVoicemailInitialized();
   const backendConnector = calling.webex.internal.device.callingBehavior;
 
   if (backendConnector === 'NATIVE_SIP_CALL_TO_UCM') {
@@ -1253,8 +1315,8 @@ async function createVoiceMail() {
 
     try {
       const getVoicemailListResponse = await voicemail.getVoicemailList(
-        voicemailOffset,
-        voicemailOffsetLimit,
+        offset,
+        offsetLimit,
         voicemailSort,
         true
       );
@@ -1355,12 +1417,11 @@ async function createVoiceMail() {
     }
   } else {
     voicemailElm.disabled = true;
-    const logger = {level: 'info'};
 
     try {
       const getVoicemailListResponse = await voicemail.getVoicemailList(
-        voicemailOffset,
-        voicemailOffsetLimit,
+        offset,
+        offsetLimit,
         voicemailSort,
         true
       );
@@ -1368,7 +1429,7 @@ async function createVoiceMail() {
       const voicemailList = getVoicemailListResponse.data.voicemailList;
 
       console.log('Voice mail list response', getVoicemailListResponse.data.voicemailList);
-      const vmLength = voicemailList.voicemailList.length;
+      const vmLength = voicemailList.length;
 
       const voicemailTable = document.getElementById('voicemailTable');
 
@@ -1405,7 +1466,7 @@ async function createVoiceMail() {
         const tbody = document.createElement('tbody');
 
         for (let index = 0; index < vmLength; index += 1) {
-          const vm = voiceMailList[index];
+          const vm = voicemailList[index];
           const tr = document.createElement('tr');
           let td = document.createElement('td');
 
@@ -1441,7 +1502,7 @@ async function createVoiceMail() {
           table.appendChild(tbody);
         }
         for (let index = 0; index < vmLength; index += 1) {
-          const vm = voiceMailList[index];
+          const vm = voicemailList[index];
 
           if (vm.read === 'true') {
             this.markAsRead(index);
@@ -1455,7 +1516,7 @@ async function createVoiceMail() {
 
       voicemailElm.disabled = false;
 
-      if (getVoicemailListResponse?.data.voicemailList.length) {
+      if (runDemoActions && getVoicemailListResponse?.data.voicemailList.length) {
         const messageId = getVoicemailListResponse.data.voicemailList[0].messageId.$;
 
         const getVoicemailContentResponse = await voicemail.getVoicemailContent(messageId);
@@ -1634,20 +1695,18 @@ async function resolveContactInfo() {
   return null;
 }
 
-function fetchVoicemailList() {
+async function fetchVoicemailList() {
   const offset = document.getElementById('offset').value;
   const offsetLength = document.getElementById('offsetLength').value;
 
   // eslint-disable-next-line prefer-template
   console.log('Fetching voicemails with offset and offsetLength ', offset, offsetLength);
 
-  const response = voicemail.getVoicemailList(
+  await createVoiceMail(
     parseInt(offset, 10),
     parseInt(offsetLength, 10),
-    voicemailSort
+    false
   );
-
-  console.log(response);
 }
 
 /**
@@ -1670,8 +1729,9 @@ async function fetchVoicemailSummary() {
   // eslint-disable-next-line prefer-template
   if (window.voicemail === undefined) {
     voicemail = window.voicemail = CreateVoicemailClient(webex, logger);
-    voicemail.init();
   }
+
+  await ensureVoicemailInitialized();
 
   const summary = await voicemail.getVoicemailSummary();
   const summaryStr =JSON.stringify(summary.data.voicemailSummary, undefined, 2);

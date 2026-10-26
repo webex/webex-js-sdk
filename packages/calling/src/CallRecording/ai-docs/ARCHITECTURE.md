@@ -1,5 +1,7 @@
 # CallRecording Module — Architecture
 
+> Canonical SDD target: [`src/CallRecording/ai-docs/call-recording-spec.md`](call-recording-spec.md). This legacy document is retained as migration source; use the canonical target for current lifecycle work.
+
 ## Component Overview
 
 The CallRecording module follows a layered architecture:

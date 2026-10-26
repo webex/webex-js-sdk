@@ -205,14 +205,19 @@ registerInternalPlugin('conversation', Conversation, {
           if (!object.content) {
             return Promise.resolve();
           }
-          const {inboundProcessFunc, allowedInboundTags, allowedInboundStyles} =
-            ctx.webex.config.conversation;
+          const {
+            inboundProcessFunc,
+            allowedInboundTags,
+            allowedInboundStyles,
+            additionalAllowedUrlSchemes,
+          } = ctx.webex.config.conversation;
 
           return htmlFilter(
             inboundProcessFunc,
             allowedInboundTags || {},
             allowedInboundStyles,
-            object.content
+            object.content,
+            additionalAllowedUrlSchemes
           ).then((c) => {
             object.content = c;
           });
@@ -226,14 +231,19 @@ registerInternalPlugin('conversation', Conversation, {
             return Promise.resolve();
           }
 
-          const {outboundProcessFunc, allowedOutboundTags, allowedOutboundStyles} =
-            ctx.webex.config.conversation;
+          const {
+            outboundProcessFunc,
+            allowedOutboundTags,
+            allowedOutboundStyles,
+            additionalAllowedUrlSchemes,
+          } = ctx.webex.config.conversation;
 
           return htmlFilterEscape(
             outboundProcessFunc,
             allowedOutboundTags || {},
             allowedOutboundStyles,
-            object.content
+            object.content,
+            additionalAllowedUrlSchemes
           ).then((c) => {
             object.content = c;
           });

@@ -52,12 +52,81 @@ export function getTaskStateMachineConfig(uiControlConfig: UIControlConfig) {
    * AgentContactHeld          -> TaskEvent.HOLD_SUCCESS
    * AgentContactUnheld        -> TaskEvent.UNHOLD_SUCCESS
    * AgentConsultEnded         -> TaskEvent.CONSULT_END
+   * ParticipantLeftConference -> TaskEvent.PARTICIPANT_LEAVE
    * AgentContactEnded         -> TaskEvent.CONTACT_ENDED
    * AgentWrapup               -> TaskEvent.TASK_WRAPUP (wrapUpRequired)
    * AgentWrappedup            -> TaskEvent.WRAPUP_COMPLETE
    *
    * (See TaskManager.mapEventToTaskStateMachineEvent for the full mapping table.)
    */
+  // XState evaluates these guarded transition arrays in order. Each returned entry is a
+  // complete transition with its own target and actions; sharing them keeps lifecycle-event
+  // handling consistent across active states where ParticipantLeftConference can arrive.
+  const currentAgentParticipantLeaveTransitions = () => [
+    {
+      guard: (params) =>
+        guards.didCurrentAgentLeaveMainInteraction(params) && guards.shouldWrapUp(params),
+      target: TaskState.WRAPPING_UP,
+      actions: [
+        'updateTaskData',
+        'handleParticipantLeft',
+        'markEnded',
+        'clearConsultState',
+        'emitTaskParticipantLeft',
+      ],
+    },
+    {
+      guard: guards.didCurrentAgentLeaveMainInteraction,
+      target: TaskState.TERMINATED,
+      actions: [
+        'updateTaskData',
+        'handleParticipantLeft',
+        'markEnded',
+        'clearConsultState',
+        'emitTaskParticipantLeft',
+        'emitTaskEnd',
+      ],
+    },
+  ];
+
+  const exitConferenceSuccessTransitions = () => [
+    {
+      guard: guards.shouldWrapUp,
+      target: TaskState.WRAPPING_UP,
+      actions: ['updateTaskData', 'markEnded', 'clearConsultState'],
+    },
+    {
+      target: TaskState.TERMINATED,
+      actions: ['updateTaskData', 'markEnded', 'clearConsultState', 'emitTaskEnd'],
+    },
+  ];
+
+  const currentAgentConsultEndTransitions = () => [
+    {
+      guard: (params) =>
+        guards.didCurrentAgentLeaveMainInteraction(params) && guards.shouldWrapUp(params),
+      target: TaskState.WRAPPING_UP,
+      actions: [
+        'updateTaskData',
+        'markEnded',
+        'clearConsultState',
+        'emitTaskConsultEnd',
+        'emitTaskWrapup',
+      ],
+    },
+    {
+      guard: guards.didCurrentAgentLeaveMainInteraction,
+      target: TaskState.TERMINATED,
+      actions: [
+        'updateTaskData',
+        'markEnded',
+        'clearConsultState',
+        'emitTaskConsultEnd',
+        'emitTaskEnd',
+      ],
+    },
+  ];
+
   return {
     id: 'taskStateMachine',
     initial: TaskState.IDLE,
@@ -70,7 +139,7 @@ export function getTaskStateMachineConfig(uiControlConfig: UIControlConfig) {
         actions: ['updateTaskData', 'syncTaskDataFromEvent'],
       },
       [TaskEvent.CONTACT_OWNER_CHANGED]: {
-        actions: ['updateTaskData', 'syncTaskDataFromEvent'],
+        actions: ['updateTaskData', 'syncTaskDataFromEvent', 'emitTaskHydrate'],
       },
       // HYDRATE: Update task data from AgentContact event
       // Note: State restoration with transitions is handled in IDLE state.
@@ -100,6 +169,11 @@ export function getTaskStateMachineConfig(uiControlConfig: UIControlConfig) {
               guard: guards.isInteractionTerminated,
               target: TaskState.WRAPPING_UP,
               actions: ['updateTaskData', 'markEnded', 'emitTaskHydrate'],
+            },
+            {
+              guard: guards.isEpDnPendingConferenceMergeHydrate,
+              target: TaskState.CONFERENCING,
+              actions: ['updateTaskData', 'emitTaskHydrate'],
             },
             {
               guard: guards.isInteractionConsulting,
@@ -185,10 +259,17 @@ export function getTaskStateMachineConfig(uiControlConfig: UIControlConfig) {
             target: TaskState.TERMINATED,
             actions: ['updateTaskData', 'markEnded', 'emitTaskReject'],
           },
-          [TaskEvent.TASK_WRAPUP]: {
-            target: TaskState.TERMINATED,
-            actions: ['updateTaskData', 'markEnded', 'emitTaskEnd'],
-          },
+          [TaskEvent.TASK_WRAPUP]: [
+            {
+              guard: guards.shouldWrapUp,
+              target: TaskState.WRAPPING_UP,
+              actions: ['updateTaskData', 'markEnded'],
+            },
+            {
+              target: TaskState.TERMINATED,
+              actions: ['updateTaskData', 'markEnded', 'emitTaskEnd'],
+            },
+          ],
           [TaskEvent.CONTACT_ENDED]: {
             target: TaskState.TERMINATED,
             actions: ['updateTaskData', 'markEnded', 'emitTaskEnd'],
@@ -299,6 +380,14 @@ export function getTaskStateMachineConfig(uiControlConfig: UIControlConfig) {
             target: TaskState.HELD,
             actions: ['updateTaskData', 'setHoldState', 'emitTaskHold'],
           },
+          [TaskEvent.UNHOLD_INITIATED]: {
+            target: TaskState.RESUME_INITIATING,
+          },
+          // Resume while machine is CONNECTED but main media is still on hold (stale state after consult RONA/decline).
+          [TaskEvent.UNHOLD_SUCCESS]: {
+            target: TaskState.CONNECTED,
+            actions: ['updateTaskData', 'setHoldState', 'emitTaskResume'],
+          },
           // Click of the consult button
           [TaskEvent.CONSULT]: {
             target: TaskState.CONSULT_INITIATING,
@@ -321,6 +410,7 @@ export function getTaskStateMachineConfig(uiControlConfig: UIControlConfig) {
           },
           // AgentConsultEnded from Stable Prod while on connected leg (external end consult).
           [TaskEvent.CONSULT_END]: [
+            ...currentAgentConsultEndTransitions(),
             {
               guard: ({context, event}) => {
                 if (context.consultInitiator !== true) return false;
@@ -365,14 +455,26 @@ export function getTaskStateMachineConfig(uiControlConfig: UIControlConfig) {
           ],
           [TaskEvent.TASK_WRAPUP]: {
             target: TaskState.WRAPPING_UP,
-            actions: ['updateTaskData', 'markEnded', 'emitTaskWrapup'],
+            actions: ['updateTaskData', 'markEnded'],
           },
+          [TaskEvent.OUTBOUND_FAILED]: [
+            {
+              guard: guards.shouldWrapUp,
+              target: TaskState.WRAPPING_UP,
+              actions: ['updateTaskData', 'markEnded', 'emitTaskOutdialFailed', 'emitTaskWrapup'],
+            },
+            {
+              target: TaskState.TERMINATED,
+              actions: ['updateTaskData', 'markEnded', 'emitTaskOutdialFailed', 'emitTaskEnd'],
+            },
+          ],
           [TaskEvent.PAUSE_RECORDING]: {
             actions: ['updateTaskData', 'setRecordingState', 'emitTaskRecordingPaused'],
           },
           [TaskEvent.RESUME_RECORDING]: {
             actions: ['updateTaskData', 'setRecordingState', 'emitTaskRecordingResumed'],
           },
+          [TaskEvent.EXIT_CONFERENCE_SUCCESS]: exitConferenceSuccessTransitions(),
         },
       },
 
@@ -387,6 +489,21 @@ export function getTaskStateMachineConfig(uiControlConfig: UIControlConfig) {
           [TaskEvent.HOLD_FAILED]: {
             target: TaskState.CONNECTED,
             actions: ['updateTaskData'],
+          },
+          [TaskEvent.OUTBOUND_FAILED]: [
+            {
+              guard: guards.shouldWrapUp,
+              target: TaskState.WRAPPING_UP,
+              actions: ['updateTaskData', 'markEnded', 'emitTaskOutdialFailed', 'emitTaskWrapup'],
+            },
+            {
+              target: TaskState.TERMINATED,
+              actions: ['updateTaskData', 'markEnded', 'emitTaskOutdialFailed', 'emitTaskEnd'],
+            },
+          ],
+          [TaskEvent.TASK_WRAPUP]: {
+            target: TaskState.WRAPPING_UP,
+            actions: ['updateTaskData', 'markEnded'],
           },
         },
       },
@@ -474,14 +591,31 @@ export function getTaskStateMachineConfig(uiControlConfig: UIControlConfig) {
             },
           ],
           // AgentConsultEnded from Stable Prod while main leg is held (external end consult).
-          [TaskEvent.CONSULT_END]: {
-            actions: ['updateTaskData', 'clearConsultState', 'emitTaskConsultEnd'],
-          },
+          [TaskEvent.CONSULT_END]: [
+            ...currentAgentConsultEndTransitions(),
+            {actions: ['updateTaskData', 'clearConsultState', 'emitTaskConsultEnd']},
+          ],
+          [TaskEvent.PARTICIPANT_LEAVE]: [
+            ...currentAgentParticipantLeaveTransitions(),
+            {actions: ['updateTaskData', 'handleParticipantLeft', 'emitTaskParticipantLeft']},
+          ],
           // TODO: This may not be a valid transition, this needs to be checked as well
           [TaskEvent.TASK_WRAPUP]: {
             target: TaskState.WRAPPING_UP,
-            actions: ['updateTaskData', 'markEnded', 'emitTaskWrapup'],
+            actions: ['updateTaskData', 'markEnded'],
           },
+          [TaskEvent.OUTBOUND_FAILED]: [
+            {
+              guard: guards.shouldWrapUp,
+              target: TaskState.WRAPPING_UP,
+              actions: ['updateTaskData', 'markEnded', 'emitTaskOutdialFailed', 'emitTaskWrapup'],
+            },
+            {
+              target: TaskState.TERMINATED,
+              actions: ['updateTaskData', 'markEnded', 'emitTaskOutdialFailed', 'emitTaskEnd'],
+            },
+          ],
+          [TaskEvent.EXIT_CONFERENCE_SUCCESS]: exitConferenceSuccessTransitions(),
         },
       },
 
@@ -493,6 +627,25 @@ export function getTaskStateMachineConfig(uiControlConfig: UIControlConfig) {
           },
           [TaskEvent.UNHOLD_FAILED]: {
             target: TaskState.HELD,
+          },
+          [TaskEvent.PARTICIPANT_LEAVE]: [
+            ...currentAgentParticipantLeaveTransitions(),
+            {actions: ['updateTaskData', 'handleParticipantLeft', 'emitTaskParticipantLeft']},
+          ],
+          [TaskEvent.OUTBOUND_FAILED]: [
+            {
+              guard: guards.shouldWrapUp,
+              target: TaskState.WRAPPING_UP,
+              actions: ['updateTaskData', 'markEnded', 'emitTaskOutdialFailed', 'emitTaskWrapup'],
+            },
+            {
+              target: TaskState.TERMINATED,
+              actions: ['updateTaskData', 'markEnded', 'emitTaskOutdialFailed', 'emitTaskEnd'],
+            },
+          ],
+          [TaskEvent.TASK_WRAPUP]: {
+            target: TaskState.WRAPPING_UP,
+            actions: ['updateTaskData', 'markEnded'],
           },
         },
       },
@@ -556,6 +709,7 @@ export function getTaskStateMachineConfig(uiControlConfig: UIControlConfig) {
           ],
           // AgentConsultEnded from Stable Prod during consult initiation (external end consult).
           [TaskEvent.CONSULT_END]: [
+            ...currentAgentConsultEndTransitions(),
             {
               guard: guards.isPrimaryMediaOnHold,
               target: TaskState.HELD,
@@ -566,6 +720,25 @@ export function getTaskStateMachineConfig(uiControlConfig: UIControlConfig) {
               actions: ['updateTaskData', 'clearConsultState', 'emitTaskConsultEnd'],
             },
           ],
+          [TaskEvent.PARTICIPANT_LEAVE]: [
+            ...currentAgentParticipantLeaveTransitions(),
+            {actions: ['updateTaskData', 'handleParticipantLeft', 'emitTaskParticipantLeft']},
+          ],
+          [TaskEvent.OUTBOUND_FAILED]: [
+            {
+              guard: guards.shouldWrapUp,
+              target: TaskState.WRAPPING_UP,
+              actions: ['updateTaskData', 'markEnded', 'emitTaskOutdialFailed', 'emitTaskWrapup'],
+            },
+            {
+              target: TaskState.TERMINATED,
+              actions: ['updateTaskData', 'markEnded', 'emitTaskOutdialFailed', 'emitTaskEnd'],
+            },
+          ],
+          [TaskEvent.TASK_WRAPUP]: {
+            target: TaskState.WRAPPING_UP,
+            actions: ['updateTaskData', 'markEnded'],
+          },
         },
       },
 
@@ -606,6 +779,7 @@ export function getTaskStateMachineConfig(uiControlConfig: UIControlConfig) {
 
           // AgentConsultEnded
           [TaskEvent.CONSULT_END]: [
+            ...currentAgentConsultEndTransitions(),
             {
               // Initiator returning to conference only while conference is still active.
               guard: ({context, event}) =>
@@ -673,7 +847,13 @@ export function getTaskStateMachineConfig(uiControlConfig: UIControlConfig) {
             {
               // Consulted agent → TERMINATED
               target: TaskState.TERMINATED,
-              actions: ['updateTaskData'],
+              actions: [
+                'updateTaskData',
+                'markEnded',
+                'clearConsultState',
+                'emitTaskConsultEnd',
+                'emitTaskEnd',
+              ],
             },
           ],
 
@@ -690,6 +870,24 @@ export function getTaskStateMachineConfig(uiControlConfig: UIControlConfig) {
           [TaskEvent.UNHOLD_SUCCESS]: {
             actions: ['updateTaskData', 'setHoldState', 'emitTaskResume'],
           },
+
+          [TaskEvent.PARTICIPANT_LEAVE]: [
+            ...currentAgentParticipantLeaveTransitions(),
+            {
+              guard: (params) =>
+                !guards.didCurrentAgentLeaveMainInteraction(params) &&
+                guards.shouldDowngradeConferenceToConnected(params),
+              target: TaskState.CONNECTED,
+              actions: [
+                'updateTaskData',
+                'handleParticipantLeft',
+                'clearConsultState',
+                'emitTaskParticipantLeft',
+                'emitTaskConferenceEnded',
+              ],
+            },
+            {actions: ['updateTaskData', 'handleParticipantLeft', 'emitTaskParticipantLeft']},
+          ],
 
           [TaskEvent.TRANSFER_SUCCESS]: [
             {
@@ -712,14 +910,6 @@ export function getTaskStateMachineConfig(uiControlConfig: UIControlConfig) {
           },
           [TaskEvent.TRANSFER_CONFERENCE_SUCCESS]: [
             {
-              guard: ({context}) => context.transferConferenceRequested !== true,
-              actions: [
-                'updateTaskData',
-                'handleTransferConferenceSuccess',
-                'clearTransferConferenceRequested',
-              ],
-            },
-            {
               guard: guards.shouldWrapUp,
               target: TaskState.WRAPPING_UP,
               actions: [
@@ -728,12 +918,11 @@ export function getTaskStateMachineConfig(uiControlConfig: UIControlConfig) {
                 'clearConsultState',
                 'handleTransferConferenceSuccess',
                 'clearTransferConferenceRequested',
-                'emitTaskWrapup',
               ],
             },
             {
-              // Non-initiator (consulted agent) stays in CONFERENCING
-              guard: ({context}) => !context.consultInitiator,
+              // Non-initiator (e.g. consultee receiving transfer) moves to CONFERENCING
+              guard: (params) => !guards.isSelfConferenceTransferInitiator(params),
               target: TaskState.CONFERENCING,
               actions: [
                 'updateTaskData',
@@ -776,8 +965,19 @@ export function getTaskStateMachineConfig(uiControlConfig: UIControlConfig) {
           },
           [TaskEvent.TASK_WRAPUP]: {
             target: TaskState.WRAPPING_UP,
-            actions: ['updateTaskData', 'markEnded', 'clearConsultState', 'emitTaskWrapup'],
+            actions: ['updateTaskData', 'markEnded', 'clearConsultState'],
           },
+          [TaskEvent.OUTBOUND_FAILED]: [
+            {
+              guard: guards.shouldWrapUp,
+              target: TaskState.WRAPPING_UP,
+              actions: ['updateTaskData', 'markEnded', 'emitTaskOutdialFailed', 'emitTaskWrapup'],
+            },
+            {
+              target: TaskState.TERMINATED,
+              actions: ['updateTaskData', 'markEnded', 'emitTaskOutdialFailed', 'emitTaskEnd'],
+            },
+          ],
           [TaskEvent.MERGE_TO_CONFERENCE]: {
             target: TaskState.CONF_INITIATING,
           },
@@ -813,6 +1013,7 @@ export function getTaskStateMachineConfig(uiControlConfig: UIControlConfig) {
           },
           // AgentConsultEnded while conference is initiating (end call before conference completes)
           [TaskEvent.CONSULT_END]: [
+            ...currentAgentConsultEndTransitions(),
             {
               guard: ({event}) => {
                 const taskData = getTaskDataFromEvent(event);
@@ -827,6 +1028,21 @@ export function getTaskStateMachineConfig(uiControlConfig: UIControlConfig) {
               actions: ['updateTaskData', 'clearConsultState'],
             },
           ],
+          [TaskEvent.OUTBOUND_FAILED]: [
+            {
+              guard: guards.shouldWrapUp,
+              target: TaskState.WRAPPING_UP,
+              actions: ['updateTaskData', 'markEnded', 'emitTaskOutdialFailed', 'emitTaskWrapup'],
+            },
+            {
+              target: TaskState.TERMINATED,
+              actions: ['updateTaskData', 'markEnded', 'emitTaskOutdialFailed', 'emitTaskEnd'],
+            },
+          ],
+          [TaskEvent.TASK_WRAPUP]: {
+            target: TaskState.WRAPPING_UP,
+            actions: ['updateTaskData', 'markEnded'],
+          },
         },
       },
 
@@ -840,20 +1056,11 @@ export function getTaskStateMachineConfig(uiControlConfig: UIControlConfig) {
               'emitTaskConferenceStarted',
             ],
           },
-          [TaskEvent.EXIT_CONFERENCE_SUCCESS]: [
-            {
-              guard: guards.shouldWrapUp,
-              target: TaskState.WRAPPING_UP,
-              actions: ['updateTaskData', 'markEnded', 'clearConsultState', 'emitTaskWrapup'],
-            },
-            {
-              target: TaskState.TERMINATED,
-              actions: ['updateTaskData', 'markEnded', 'clearConsultState', 'emitTaskEnd'],
-            },
-          ],
+          [TaskEvent.EXIT_CONFERENCE_SUCCESS]: exitConferenceSuccessTransitions(),
 
           // Needed as all agents in conference get this event, hence we need to clear the consult state
           [TaskEvent.CONSULT_END]: [
+            ...currentAgentConsultEndTransitions(),
             {
               guard: ({context, event}) => {
                 const taskData = getTaskDataFromEvent(event);
@@ -928,37 +1135,11 @@ export function getTaskStateMachineConfig(uiControlConfig: UIControlConfig) {
 
           // Participant leaves - handle conference downgrade scenarios
           [TaskEvent.PARTICIPANT_LEAVE]: [
-            {
-              // Only the leaving agent should wrap up → WRAPPING_UP
-              guard: (params) =>
-                guards.didCurrentAgentLeaveConference(params) && guards.shouldWrapUp(params),
-              target: TaskState.WRAPPING_UP,
-              actions: [
-                'updateTaskData',
-                'handleParticipantLeft',
-                'markEnded',
-                'clearConsultState',
-                'emitTaskParticipantLeft',
-                'emitTaskWrapup',
-              ],
-            },
-            {
-              // Only the leaving agent (no wrapup) → TERMINATED
-              guard: guards.didCurrentAgentLeaveConference,
-              target: TaskState.TERMINATED,
-              actions: [
-                'updateTaskData',
-                'handleParticipantLeft',
-                'markEnded',
-                'clearConsultState',
-                'emitTaskParticipantLeft',
-                'emitTaskEnd',
-              ],
-            },
+            ...currentAgentParticipantLeaveTransitions(),
             {
               // Conference downgraded, customer present → CONNECTED
               guard: (params) =>
-                !guards.didCurrentAgentLeaveConference(params) &&
+                !guards.didCurrentAgentLeaveMainInteraction(params) &&
                 guards.shouldDowngradeConferenceToConnected(params),
               target: TaskState.CONNECTED,
               actions: [
@@ -977,12 +1158,43 @@ export function getTaskStateMachineConfig(uiControlConfig: UIControlConfig) {
           },
           [TaskEvent.TRANSFER_CONFERENCE_SUCCESS]: [
             {
-              // Not initiated by this agent → just refresh backend state.
-              guard: ({context}) => context.transferConferenceRequested !== true,
+              guard: guards.isPassiveConferenceTransferObserver,
               actions: [
                 'updateTaskData',
                 'handleTransferConferenceSuccess',
                 'clearTransferConferenceRequested',
+              ],
+            },
+            {
+              guard: guards.shouldWrapUp,
+              target: TaskState.WRAPPING_UP,
+              actions: [
+                'updateTaskData',
+                'markEnded',
+                'clearConsultState',
+                'handleTransferConferenceSuccess',
+                'clearTransferConferenceRequested',
+              ],
+            },
+            {
+              guard: (params) => !guards.isSelfConferenceTransferInitiator(params),
+              target: TaskState.CONFERENCING,
+              actions: [
+                'updateTaskData',
+                'clearConsultState',
+                'handleTransferConferenceSuccess',
+                'clearTransferConferenceRequested',
+              ],
+            },
+            {
+              target: TaskState.TERMINATED,
+              actions: [
+                'updateTaskData',
+                'markEnded',
+                'clearConsultState',
+                'handleTransferConferenceSuccess',
+                'clearTransferConferenceRequested',
+                'emitTaskEnd',
               ],
             },
           ],
@@ -996,7 +1208,7 @@ export function getTaskStateMachineConfig(uiControlConfig: UIControlConfig) {
               // Agent who should wrap up → WRAPPING_UP
               guard: guards.shouldWrapUp,
               target: TaskState.WRAPPING_UP,
-              actions: ['updateTaskData', 'markEnded', 'clearConsultState', 'emitTaskWrapup'],
+              actions: ['updateTaskData', 'markEnded', 'clearConsultState'],
             },
             {
               // Customer still in call → CONNECTED
@@ -1026,6 +1238,27 @@ export function getTaskStateMachineConfig(uiControlConfig: UIControlConfig) {
               actions: ['updateTaskData', 'requestCleanup'],
             },
           ],
+
+          [TaskEvent.CONSULT_FAILED]: {
+            actions: ['updateTaskData', 'handleConsultFailed'],
+          },
+
+          [TaskEvent.TASK_WRAPUP]: {
+            guard: guards.shouldWrapUp,
+            target: TaskState.WRAPPING_UP,
+            actions: ['updateTaskData', 'markEnded', 'clearConsultState'],
+          },
+          [TaskEvent.OUTBOUND_FAILED]: [
+            {
+              guard: guards.shouldWrapUp,
+              target: TaskState.WRAPPING_UP,
+              actions: ['updateTaskData', 'markEnded', 'emitTaskOutdialFailed', 'emitTaskWrapup'],
+            },
+            {
+              target: TaskState.TERMINATED,
+              actions: ['updateTaskData', 'markEnded', 'emitTaskOutdialFailed', 'emitTaskEnd'],
+            },
+          ],
         },
       },
 
@@ -1033,6 +1266,16 @@ export function getTaskStateMachineConfig(uiControlConfig: UIControlConfig) {
         // Only emit wrapup event on entry - task:end should only be emitted when COMPLETED
         entry: ['emitTaskWrapup'],
         on: {
+          // Late AgentWrapup after conference exit already entered WRAPPING_UP
+          [TaskEvent.TASK_WRAPUP]: [
+            {
+              guard: ({context}) => context.taskData?.wrapUpRequired === true,
+              actions: ['updateTaskData'],
+            },
+            {
+              actions: ['updateTaskData', 'emitTaskWrapup'],
+            },
+          ],
           // AgentWrappedup Event
           [TaskEvent.WRAPUP_COMPLETE]: {
             target: TaskState.COMPLETED,

@@ -68,10 +68,17 @@ export const filter = curry(_filter, 4);
  * @param {Object} allowedTags
  * @param {Array<string>} allowedStyles
  * @param {string} html
+ * @param {Array<string>} [additionalAllowedUrlSchemes]
  * @private
  * @returns {string}
  */
-function _filterSync(processCallback, allowedTags, allowedStyles, html) {
+function _filterSync(
+  processCallback,
+  allowedTags,
+  allowedStyles,
+  html,
+  additionalAllowedUrlSchemes
+) {
   if (!html || !allowedStyles || !allowedTags) {
     if (html.length === 0) {
       return html;
@@ -80,6 +87,7 @@ function _filterSync(processCallback, allowedTags, allowedStyles, html) {
     throw new Error('`allowedTags`, `allowedStyles`, and `html` must be provided');
   }
 
+  const allowedUrlSchemes = buildAllowedUrlSchemes(additionalAllowedUrlSchemes);
   const doc = new DOMParser().parseFromString(html, 'text/html');
 
   depthFirstForEach(doc.body.childNodes, filterNode);
@@ -113,12 +121,9 @@ function _filterSync(processCallback, allowedTags, allowedStyles, html) {
         if (!includes(allowedAttributes, attrName)) {
           node.removeAttribute(attrName);
         } else if (attrName === 'href' || attrName === 'src') {
-          const attrValue = node.attributes.getNamedItem(attrName).value.trim().toLowerCase();
+          const attrValue = node.attributes.getNamedItem(attrName).value;
 
-          // We're doing at runtime what the no-script-url rule does at compile
-          // time
-          // eslint-disable-next-line no-script-url
-          if (attrValue.indexOf('javascript:') === 0 || attrValue.indexOf('vbscript:') === 0) {
+          if (!isAllowedUrlAttribute(attrValue, allowedUrlSchemes)) {
             reparent(node);
           }
         } else if (attrName === 'style') {
@@ -166,9 +171,16 @@ function _filterEscape(...args) {
  * @param {Object} allowedTags
  * @param {Array<string>} allowedStyles
  * @param {string} html
+ * @param {Array<string>} [additionalAllowedUrlSchemes]
  * @returns {string}
  */
-function _filterEscapeSync(processCallback, allowedTags, allowedStyles, html) {
+function _filterEscapeSync(
+  processCallback,
+  allowedTags,
+  allowedStyles,
+  html,
+  additionalAllowedUrlSchemes
+) {
   if (!html || !allowedStyles || !allowedTags) {
     if (html.length === 0) {
       return html;
@@ -177,6 +189,7 @@ function _filterEscapeSync(processCallback, allowedTags, allowedStyles, html) {
     throw new Error('`allowedTags`, `allowedStyles`, and `html` must be provided');
   }
 
+  const allowedUrlSchemes = buildAllowedUrlSchemes(additionalAllowedUrlSchemes);
   const doc = new DOMParser().parseFromString(html, 'text/html');
 
   depthFirstForEach(doc.body.childNodes, filterNode);
@@ -210,12 +223,9 @@ function _filterEscapeSync(processCallback, allowedTags, allowedStyles, html) {
         if (!includes(allowedAttributes, attrName)) {
           node.removeAttribute(attrName);
         } else if (attrName === 'href' || attrName === 'src') {
-          const attrValue = node.attributes.getNamedItem(attrName).value.toLowerCase();
+          const attrValue = node.attributes.getNamedItem(attrName).value;
 
-          // We're doing at runtime what the no-script-url rule does at compile
-          // time
-          // eslint-disable-next-line no-script-url
-          if (attrValue.indexOf('javascript:') === 0 || attrValue.indexOf('vbscript:') === 0) {
+          if (!isAllowedUrlAttribute(attrValue, allowedUrlSchemes)) {
             reparent(node);
           }
         } else if (attrName === 'style') {
@@ -262,6 +272,121 @@ function escapeNode(node) {
 }
 
 const trimPattern = /^\s|\s$/g;
+
+export const DEFAULT_ALLOWED_URL_SCHEMES = ['http', 'https', 'mailto', 'tel', 'sip', 'webexteams'];
+
+const BLOCKED_URL_SCHEMES = new Set(['javascript', 'vbscript', 'data']);
+
+const SCHEME_PATTERN = /^[a-z][a-z0-9+.-]*$/;
+
+/**
+ * Builds the effective URL scheme allow-list by merging defaults with optional
+ * additional schemes from SDK config. Dangerous schemes are always excluded.
+ * @param {Array<string>} [additionalAllowedUrlSchemes]
+ * @returns {Set<string>}
+ */
+function buildAllowedUrlSchemes(additionalAllowedUrlSchemes) {
+  const schemes = new Set(DEFAULT_ALLOWED_URL_SCHEMES);
+
+  if (!additionalAllowedUrlSchemes) {
+    return schemes;
+  }
+
+  forEach(additionalAllowedUrlSchemes, (scheme) => {
+    if (typeof scheme !== 'string') {
+      return;
+    }
+
+    const normalized = scheme.toLowerCase();
+
+    if (BLOCKED_URL_SCHEMES.has(normalized)) {
+      return;
+    }
+
+    if (SCHEME_PATTERN.test(normalized)) {
+      schemes.add(normalized);
+    }
+  });
+
+  return schemes;
+}
+
+/**
+ * Strips ASCII control characters and whitespace (U+0000 through U+0020) from the
+ * start and end of a URL attribute value. Browsers discard this range at the ends
+ * before resolving a scheme, but trim() alone does not remove characters like U+001F.
+ * @param {string} value
+ * @returns {string}
+ */
+function stripLeadingTrailingUrlPadding(value) {
+  let start = 0;
+  let end = value.length;
+
+  while (start < end && value.charCodeAt(start) <= 0x20) {
+    start += 1;
+  }
+
+  while (end > start && value.charCodeAt(end - 1) <= 0x20) {
+    end -= 1;
+  }
+
+  return value.slice(start, end);
+}
+
+/**
+ * Normalizes a URL attribute for scheme validation. Leading/trailing C0 controls and
+ * whitespace are removed; TAB/LF/CR are removed only within the scheme portion.
+ * Embedded controls elsewhere in relative URLs are preserved.
+ * @param {string} value
+ * @returns {string}
+ */
+function normalizeForSchemeCheck(value) {
+  const trimmed = stripLeadingTrailingUrlPadding(value).toLowerCase();
+  const colonIndex = trimmed.indexOf(':');
+
+  if (colonIndex === -1) {
+    return trimmed;
+  }
+
+  const schemePart = trimmed.slice(0, colonIndex).replace(/\t|\n|\r/g, '');
+
+  return schemePart + trimmed.slice(colonIndex);
+}
+
+/**
+ * Returns true when href/src is safe to keep after stripping control characters
+ * and validating the URL scheme against an allow-list.
+ * @param {string} value
+ * @param {Set<string>} allowedSchemes
+ * @returns {boolean}
+ */
+function isAllowedUrlAttribute(value, allowedSchemes) {
+  if (value === '') {
+    return true;
+  }
+
+  if (!value) {
+    return false;
+  }
+
+  const normalized = normalizeForSchemeCheck(value);
+
+  if (normalized === '') {
+    return true;
+  }
+
+  if (/^[/?#]/.test(normalized)) {
+    return true;
+  }
+
+  const schemeMatch = normalized.match(/^([a-z][a-z0-9+.-]*):/);
+
+  if (!schemeMatch) {
+    return true;
+  }
+
+  return allowedSchemes.has(schemeMatch[1]);
+}
 
 /**
  * @param {string} str
@@ -351,6 +476,7 @@ export const filterSync = curry(_filterSync, 4);
  * @param {Object} allowedTags Map of tagName -> array of allowed attributes
  * @param {Array<string>} allowedStyles Array of allowed styles
  * @param {string} html html to filter
+ * @param {Array<string>} [additionalAllowedUrlSchemes] extra URL schemes to allow
  * @returns {Promise<string>}
  */
 export const filterEscape = curry(_filterEscape, 4);
@@ -360,6 +486,7 @@ export const filterEscape = curry(_filterEscape, 4);
  * @param {Object} allowedTags Map of tagName -> array of allowed attributes
  * @param {Array<string>} allowedStyles Array of allowed styles
  * @param {string} html html to filter
+ * @param {Array<string>} [additionalAllowedUrlSchemes] extra URL schemes to allow
  * @returns {string}
  */
 export const filterEscapeSync = curry(_filterEscapeSync, 4);

@@ -1,9 +1,12 @@
+import 'jsdom-global/register';
 import {assert} from '@webex/test-helper-chai';
 import sinon from 'sinon';
+import {CapabilityState, WebCapabilities} from '@webex/web-capabilities';
 
 import MeetingsUtil from '@webex/plugin-meetings/src/meetings/util';
 import Metrics from '@webex/plugin-meetings/src/metrics';
 import BEHAVIORAL_METRICS from '@webex/plugin-meetings/src/metrics/constants';
+import LoggerProxy from '@webex/plugin-meetings/src/common/logs/logger-proxy';
 
 const multipartSitePrefixList = ['.my.', '.mydmz.', '.mybts.', '.mydev.', '.myats2.', '.myats.'];
 
@@ -77,6 +80,107 @@ describe('plugin-meetings', () => {
       });
     });
 
+    describe('#hasH264Codec', () => {
+      let isCapableOfReceivingVideoCodecStub;
+
+      beforeEach(() => {
+        isCapableOfReceivingVideoCodecStub = sinon.stub(
+          WebCapabilities,
+          'isCapableOfReceivingVideoCodec'
+        );
+      });
+
+      it('returns true when video/H264 reports CAPABLE', async () => {
+        isCapableOfReceivingVideoCodecStub.withArgs('video/H264').returns(CapabilityState.CAPABLE);
+
+        const result = await MeetingsUtil.hasH264Codec();
+        assert.equal(result, true);
+        assert.calledOnceWithExactly(isCapableOfReceivingVideoCodecStub, 'video/H264');
+      });
+
+      it('returns false when video/H264 reports NOT_CAPABLE', async () => {
+        isCapableOfReceivingVideoCodecStub
+          .withArgs('video/H264')
+          .returns(CapabilityState.NOT_CAPABLE);
+
+        const result = await MeetingsUtil.hasH264Codec();
+        assert.equal(result, false);
+        assert.calledOnceWithExactly(isCapableOfReceivingVideoCodecStub, 'video/H264');
+      });
+
+      it('falls back to RTCPeerConnection when isCapableOfReceivingVideoCodec throws', async () => {
+        isCapableOfReceivingVideoCodecStub.throws(new Error('WebCapabilities unavailable'));
+        const mockPc = {createOffer: sinon.stub(), close: sinon.stub()};
+        global.window.RTCPeerConnection = sinon.stub().returns(mockPc);
+        mockPc.createOffer.resolves({sdp: 'v=0\r\na=rtpmap:96 H264/90000\r\n'});
+
+        assert.equal(await MeetingsUtil.hasH264Codec(), true);
+        assert.calledOnce(mockPc.close);
+
+        delete global.window.RTCPeerConnection;
+      });
+
+      describe('when video/H264 reports UNKNOWN (falls back to RTCPeerConnection)', () => {
+        let mockPc;
+
+        beforeEach(() => {
+          isCapableOfReceivingVideoCodecStub
+            .withArgs('video/H264')
+            .returns(CapabilityState.UNKNOWN);
+          mockPc = {createOffer: sinon.stub(), close: sinon.stub()};
+          global.window.RTCPeerConnection = sinon.stub().returns(mockPc);
+        });
+
+        afterEach(() => {
+          delete global.window.RTCPeerConnection;
+        });
+
+        it('returns true when SDP contains H264', async () => {
+          mockPc.createOffer.resolves({sdp: 'v=0\r\na=rtpmap:96 H264/90000\r\n'});
+
+          assert.equal(await MeetingsUtil.hasH264Codec(), true);
+          assert.calledOnce(mockPc.close);
+        });
+
+        it('returns false when SDP does not contain H264', async () => {
+          mockPc.createOffer.resolves({sdp: 'v=0\r\na=rtpmap:96 VP8/90000\r\n'});
+
+          assert.equal(await MeetingsUtil.hasH264Codec(), false);
+          assert.calledOnce(mockPc.close);
+        });
+
+        it('returns false when SDP is undefined', async () => {
+          mockPc.createOffer.resolves({sdp: undefined});
+
+          assert.equal(await MeetingsUtil.hasH264Codec(), false);
+          assert.calledOnce(mockPc.close);
+        });
+
+        it('logs a warning and returns false when createOffer throws', async () => {
+          sinon.stub(LoggerProxy.logger, 'warn');
+          mockPc.createOffer.rejects(new Error('createOffer failed'));
+
+          assert.equal(await MeetingsUtil.hasH264Codec(), false);
+          assert.calledOnce(mockPc.close);
+          assert.calledWith(
+            LoggerProxy.logger.warn,
+            'Meetings:util#hasH264Codec --> Error creating peerConnection for H.264 test.'
+          );
+        });
+
+        it('logs a warning and returns false when RTCPeerConnection constructor throws', async () => {
+          sinon.stub(LoggerProxy.logger, 'warn');
+          global.window.RTCPeerConnection = sinon.stub().throws(new Error('no RTCPeerConnection'));
+
+          assert.equal(await MeetingsUtil.hasH264Codec(), false);
+          assert.calledWith(
+            LoggerProxy.logger.warn,
+            'Meetings:util#hasH264Codec --> Error creating peerConnection for H.264 test.'
+          );
+        });
+      });
+    });
+
     describe('#getSiteName', () => {
       it('gets the site name from a standard Webex site', () => {
         assert.equal(MeetingsUtil.getSiteName('go.webex.com', multipartSitePrefixList), 'go');
@@ -107,25 +211,28 @@ describe('plugin-meetings', () => {
       it('return null if no matched device in self', () => {
         const newLocus = {
           self: {
-            devices: [{state: 'JOINED', url: '456'}]
-          }
+            devices: [{state: 'JOINED', url: '456'}],
+          },
         };
         assert.equal(MeetingsUtil.getThisDevice(newLocus, '123'), null);
       });
       it('return the device match with current device', () => {
         const newLocus = {
           self: {
-            devices: [{state: 'JOINED', url: '123'}]
-          }
+            devices: [{state: 'JOINED', url: '123'}],
+          },
         };
-        assert.deepEqual(MeetingsUtil.getThisDevice(newLocus, '123'), {state: 'JOINED', url: '123'});
-      })
+        assert.deepEqual(MeetingsUtil.getThisDevice(newLocus, '123'), {
+          state: 'JOINED',
+          url: '123',
+        });
+      });
     });
 
     describe('#isBreakoutLocusDTO', () => {
       it('returns false is no breakout in locus.controls', () => {
         const newLocus = {
-          controls: {}
+          controls: {},
         };
 
         assert.equal(MeetingsUtil.isBreakoutLocusDTO(newLocus), false);
@@ -264,10 +371,26 @@ describe('plugin-meetings', () => {
 
     describe('#isWholeMeetingEnded', () => {
       [
-        {description: 'state is INACTIVE with no endMeetingReason', fullState: {state: 'INACTIVE'}, expected: true},
-        {description: 'state is INACTIVE with endMeetingReason OTHER', fullState: {state: 'INACTIVE', endMeetingReason: 'SOME_OTHER_REASON'}, expected: true},
-        {description: 'state is INACTIVE with endMeetingReason BREAKOUT_ENDED', fullState: {state: 'INACTIVE', endMeetingReason: 'BREAKOUT_ENDED'}, expected: false},
-        {description: 'state is not INACTIVE', fullState: {state: 'ACTIVE', endMeetingReason: 'SOME_OTHER_REASON'}, expected: false},
+        {
+          description: 'state is INACTIVE with no endMeetingReason',
+          fullState: {state: 'INACTIVE'},
+          expected: true,
+        },
+        {
+          description: 'state is INACTIVE with endMeetingReason OTHER',
+          fullState: {state: 'INACTIVE', endMeetingReason: 'SOME_OTHER_REASON'},
+          expected: true,
+        },
+        {
+          description: 'state is INACTIVE with endMeetingReason BREAKOUT_ENDED',
+          fullState: {state: 'INACTIVE', endMeetingReason: 'BREAKOUT_ENDED'},
+          expected: false,
+        },
+        {
+          description: 'state is not INACTIVE',
+          fullState: {state: 'ACTIVE', endMeetingReason: 'SOME_OTHER_REASON'},
+          expected: false,
+        },
       ].forEach(({description, fullState, expected}) => {
         it(`returns ${expected} when ${description}`, () => {
           assert.equal(MeetingsUtil.isWholeMeetingEnded(fullState), expected);
@@ -278,12 +401,42 @@ describe('plugin-meetings', () => {
     describe('#isSelfMovedOrBreakoutEnded', () => {
       [
         {description: 'locus is undefined', locus: undefined, expected: false},
-        {description: 'self state is JOINED', locus: {self: {state: 'JOINED', reason: 'OTHER'}}, expected: false},
-        {description: 'self state is LEFT with reason MOVED', locus: {self: {state: 'LEFT', reason: 'MOVED'}}, expected: true},
-        {description: 'fullState is INACTIVE with BREAKOUT_ENDED', locus: {self: {state: 'LEFT', reason: 'OTHER'}, fullState: {state: 'INACTIVE', endMeetingReason: 'BREAKOUT_ENDED'}}, expected: true},
-        {description: 'fullState is INACTIVE with different endMeetingReason', locus: {self: {state: 'LEFT', reason: 'OTHER'}, fullState: {state: 'INACTIVE', endMeetingReason: 'SOME_OTHER_REASON'}}, expected: false},
-        {description: 'fullState is missing', locus: {self: {state: 'LEFT', reason: 'OTHER'}}, expected: false},
-        {description: 'endMeetingReason is missing', locus: {self: {state: 'LEFT', reason: 'OTHER'}, fullState: {state: 'INACTIVE'}}, expected: false},
+        {
+          description: 'self state is JOINED',
+          locus: {self: {state: 'JOINED', reason: 'OTHER'}},
+          expected: false,
+        },
+        {
+          description: 'self state is LEFT with reason MOVED',
+          locus: {self: {state: 'LEFT', reason: 'MOVED'}},
+          expected: true,
+        },
+        {
+          description: 'fullState is INACTIVE with BREAKOUT_ENDED',
+          locus: {
+            self: {state: 'LEFT', reason: 'OTHER'},
+            fullState: {state: 'INACTIVE', endMeetingReason: 'BREAKOUT_ENDED'},
+          },
+          expected: true,
+        },
+        {
+          description: 'fullState is INACTIVE with different endMeetingReason',
+          locus: {
+            self: {state: 'LEFT', reason: 'OTHER'},
+            fullState: {state: 'INACTIVE', endMeetingReason: 'SOME_OTHER_REASON'},
+          },
+          expected: false,
+        },
+        {
+          description: 'fullState is missing',
+          locus: {self: {state: 'LEFT', reason: 'OTHER'}},
+          expected: false,
+        },
+        {
+          description: 'endMeetingReason is missing',
+          locus: {self: {state: 'LEFT', reason: 'OTHER'}, fullState: {state: 'INACTIVE'}},
+          expected: false,
+        },
       ].forEach(({description, locus, expected}) => {
         it(`returns ${expected} when ${description}`, () => {
           assert.equal(MeetingsUtil.isSelfMovedOrBreakoutEnded(locus), expected);
@@ -327,11 +480,11 @@ describe('plugin-meetings', () => {
       it('return true if joined on this device', () => {
         const newLocus = {
           self: {
-            devices: [{state: 'JOINED', correlationId: '111', url: '123'}]
-          }
+            devices: [{state: 'JOINED', correlationId: '111', url: '123'}],
+          },
         };
         const meeting = {
-          correlationId: '111'
+          correlationId: '111',
         };
 
         assert.equal(MeetingsUtil.joinedOnThisDevice(meeting, newLocus, '123'), true);
@@ -339,18 +492,18 @@ describe('plugin-meetings', () => {
       it('return true if selfMoved on this device', () => {
         const newLocus = {
           self: {
-            devices: [{state: 'LEFT', reason: 'MOVED', correlationId: '111', url: '123'}]
-          }
+            devices: [{state: 'LEFT', reason: 'MOVED', correlationId: '111', url: '123'}],
+          },
         };
         const meeting = {
-          correlationId: '111'
+          correlationId: '111',
         };
 
         assert.equal(MeetingsUtil.joinedOnThisDevice(meeting, newLocus, '123'), true);
       });
     });
 
-    describe("#handleRoapMercury", () => {
+    describe('#handleRoapMercury', () => {
       let envelope;
       let meetingCollection;
       let roapMessageReceived;
@@ -365,67 +518,74 @@ describe('plugin-meetings', () => {
           id: 'meeting-id',
           roapMessageReceived,
           roap: {
-            turnDiscovery: {handleTurnDiscoveryResponse}
-          }
+            turnDiscovery: {handleTurnDiscoveryResponse},
+          },
         };
         envelope = {
           data: {
-            message:{
-              seq: "seq",
+            message: {
+              seq: 'seq',
               messageType: 'messageType',
               tieBreaker: 'tieBreaker',
               errorType: 'errorType',
               errorCause: 'errorCause',
-              sdps: [{id:'sdp-1'}]
+              sdps: [{id: 'sdp-1'}],
             },
             correlationId: 'correlationId',
             eventType: 'locus.message.roap',
-          }
+          },
         };
         meetingCollection = {
-          getByKey: () => meeting
+          getByKey: () => meeting,
         };
       });
 
       it('it sends the correct behaviour metric', () => {
         MeetingsUtil.handleRoapMercury(envelope, meetingCollection);
-        assert.calledWith(Metrics.sendBehavioralMetric, BEHAVIORAL_METRICS.ROAP_MERCURY_EVENT_RECEIVED,  {
-          correlation_id: 'correlationId',
-          seq: "seq",
-          message_type: 'messageType',
-          error_type: 'errorType',
-          error_cause: 'errorCause',
-        })
+        assert.calledWith(
+          Metrics.sendBehavioralMetric,
+          BEHAVIORAL_METRICS.ROAP_MERCURY_EVENT_RECEIVED,
+          {
+            correlation_id: 'correlationId',
+            seq: 'seq',
+            message_type: 'messageType',
+            error_type: 'errorType',
+            error_cause: 'errorCause',
+          }
+        );
         assert.calledWith(roapMessageReceived, {
-          seq: "seq",
+          seq: 'seq',
           messageType: 'messageType',
           errorType: 'errorType',
           tieBreaker: 'tieBreaker',
           errorCause: 'errorCause',
-          sdp: {id:'sdp-1'}
-        })
-
+          sdp: {id: 'sdp-1'},
+        });
       });
 
       it('calls handleTurnDiscoveryResponse for TURN_DISCOVERY_RESPONSE', () => {
         envelope.data.message.messageType = 'TURN_DISCOVERY_RESPONSE';
         delete envelope.data.message.sdps;
         MeetingsUtil.handleRoapMercury(envelope, meetingCollection);
-        assert.calledWith(meeting.roap.turnDiscovery.handleTurnDiscoveryResponse, {
-          seq: "seq",
-          messageType: 'TURN_DISCOVERY_RESPONSE',
-          errorType: 'errorType',
-          tieBreaker: 'tieBreaker',
-          errorCause: 'errorCause',
-        }, 'from mercury')
+        assert.calledWith(
+          meeting.roap.turnDiscovery.handleTurnDiscoveryResponse,
+          {
+            seq: 'seq',
+            messageType: 'TURN_DISCOVERY_RESPONSE',
+            errorType: 'errorType',
+            tieBreaker: 'tieBreaker',
+            errorCause: 'errorCause',
+          },
+          'from mercury'
+        );
       });
-    })
+    });
   });
 
   describe('#isValidBreakoutLocus', () => {
     it('returns false if is not breakout locus', () => {
       const newLocus = {
-        controls: {}
+        controls: {},
       };
 
       assert.equal(MeetingsUtil.isValidBreakoutLocus(newLocus), false);
@@ -439,8 +599,8 @@ describe('plugin-meetings', () => {
           },
         },
         fullState: {
-          state: 'INACTIVE'
-        }
+          state: 'INACTIVE',
+        },
       };
       assert.equal(MeetingsUtil.isValidBreakoutLocus(newLocus), false);
     });
@@ -453,11 +613,11 @@ describe('plugin-meetings', () => {
           },
         },
         fullState: {
-          state: 'ACTIVE'
+          state: 'ACTIVE',
         },
         self: {
-          state: 'LEFT'
-        }
+          state: 'LEFT',
+        },
       };
       assert.equal(MeetingsUtil.isValidBreakoutLocus(newLocus), false);
     });
@@ -470,11 +630,11 @@ describe('plugin-meetings', () => {
           },
         },
         fullState: {
-          state: 'ACTIVE'
+          state: 'ACTIVE',
         },
         self: {
-          state: 'JOINED'
-        }
+          state: 'JOINED',
+        },
       };
       assert.equal(MeetingsUtil.isValidBreakoutLocus(newLocus), true);
     });
@@ -482,10 +642,12 @@ describe('plugin-meetings', () => {
 
   describe('#getMediaServer', () => {
     it('returns the contents of o-line lower cased', () => {
-      const sdp1 = 'v=0\r\no=homer 0 1 IN IP4 23.89.67.81\r\ns=-\r\nc=IN IP4 23.89.67.81\r\nb=TIAS:128000\r\nt=0 0\r\na=ice-lite\r\n'
+      const sdp1 =
+        'v=0\r\no=homer 0 1 IN IP4 23.89.67.81\r\ns=-\r\nc=IN IP4 23.89.67.81\r\nb=TIAS:128000\r\nt=0 0\r\na=ice-lite\r\n';
       assert.equal(MeetingsUtil.getMediaServer(sdp1), 'homer');
 
-      const sdp2 = 'v=0\r\no=HOMER 0 1 IN IP4 23.89.67.81\r\ns=-\r\nc=IN IP4 23.89.67.81\r\nb=TIAS:128000\r\nt=0 0\r\na=ice-lite\r\n'
+      const sdp2 =
+        'v=0\r\no=HOMER 0 1 IN IP4 23.89.67.81\r\ns=-\r\nc=IN IP4 23.89.67.81\r\nb=TIAS:128000\r\nt=0 0\r\na=ice-lite\r\n';
       assert.equal(MeetingsUtil.getMediaServer(sdp2), 'homer');
     });
   });

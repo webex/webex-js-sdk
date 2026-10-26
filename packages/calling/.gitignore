@@ -126,3 +126,6 @@ docs/temp
 samples/index.min.js
 
 # End of https://www.toptal.com/developers/gitignore/api/node
+
+# Local SDLC run records
+.generated/

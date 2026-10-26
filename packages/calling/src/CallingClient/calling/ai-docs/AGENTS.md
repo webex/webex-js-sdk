@@ -1,5 +1,7 @@
 # Calling Sub-Module - Agent Specification
 
+> Canonical SDD target: [`src/CallingClient/calling/ai-docs/calling-spec.md`](calling-spec.md). This legacy document is retained as migration source; use the canonical target for current lifecycle work.
+
 ## Overview
 
 The `calling/` sub-module within `CallingClient` contains the core call management logic for the Webex Calling SDK. It consists of two primary classes -- `Call` and `CallManager` -- along with the `CallerId` sub-module for caller identity resolution. Together, these classes handle the full lifecycle of voice calls: creation, signaling via Mobius, WebRTC media negotiation via ROAP, mid-call operations, and termination.
@@ -58,7 +60,8 @@ All paths are relative to `CallingClient/calling/` (the directory containing `ca
 | `Eventing` | `../../Events/impl` |
 | `CallError`, `createCallError` | `../../Errors/catalog/CallError` |
 | `ERROR_LAYER`, `ERROR_TYPE`, `ErrorContext` | `../../Errors/types` |
-| `handleCallErrors`, `modifySdpForIPv4`, `parseMediaQualityStatistics`, `serviceErrorCodeHandler`, `uploadLogs` | `../../common/Utils` |
+| `handleCallErrors`, `parseMediaQualityStatistics`, `serviceErrorCodeHandler`, `uploadLogs` | `../../common/Utils` |
+| `getHostIpsFromSdp`, `modifySdpForIPv4` | `../../common/callUtils` |
 | `CallDetails`, `CallDirection`, `CallId`, `CorrelationId`, `DisplayInformation`, `HTTP_METHODS`, `ServiceIndicator`, `WebexRequestPayload`, `ALLOWED_SERVICES` | `../../common/types` |
 | `SDKConnector` | `../../SDKConnector` |
 | `ISDKConnector`, `WebexSDK` | `../../SDKConnector/types` |

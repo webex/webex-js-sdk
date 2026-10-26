@@ -1,5 +1,5 @@
 /* eslint-disable import/no-extraneous-dependencies, @typescript-eslint/no-non-null-assertion */
-import {expect, test} from '@playwright/test';
+import {expect, test, Browser, Page} from '@playwright/test';
 import {
   ensureUserStateVisible,
   stationLogout,
@@ -8,7 +8,12 @@ import {
   verifyLoginMode,
 } from '../Utils/stationLoginUtils';
 import {ensureRegisteredAfterReload} from '../Utils/initUtils';
-import {changeUserState, getStateElapsedTime, verifyCurrentState} from '../Utils/userStateUtils';
+import {
+  changeUserState,
+  getCurrentState,
+  getStateElapsedTime,
+  verifyCurrentState,
+} from '../Utils/userStateUtils';
 import {
   handleStrayTasks,
   parseTimeString,
@@ -18,11 +23,100 @@ import {
 import {EXTENSION_REGISTRATION_TIMEOUT, LOGIN_MODE, USER_STATES} from '../constants';
 import {TestManager} from '../test-manager';
 
-async function assertStationLoginFieldsVisible(page: any): Promise<void> {
+async function assertStationLoginFieldsVisible(page: Page): Promise<void> {
   await expect(page.locator('#AgentLogin')).toBeVisible({timeout: 2000});
   await expect(page.locator('#dialNumber')).toBeVisible({timeout: 2000});
   await expect(page.locator('#teamsDropdown')).toBeVisible({timeout: 2000});
   await expect(page.locator('#loginAgent')).toBeVisible({timeout: 2000});
+}
+
+async function assertLoggedInStationReady(page: Page): Promise<void> {
+  await expect(page.locator('#AgentLogin')).toBeVisible({timeout: EXTENSION_REGISTRATION_TIMEOUT});
+  await expect(page.locator('#logoutAgent')).toBeVisible({
+    timeout: EXTENSION_REGISTRATION_TIMEOUT,
+  });
+  await expect(page.locator('#idleCodesDropdown')).toBeVisible({
+    timeout: EXTENSION_REGISTRATION_TIMEOUT,
+  });
+}
+
+async function assertSelectedLoginMode(page: Page, expectedMode: string): Promise<void> {
+  await expect
+    .poll(
+      async () =>
+        page
+          .locator('#AgentLogin')
+          .inputValue()
+          .catch(() => ''),
+      {timeout: EXTENSION_REGISTRATION_TIMEOUT, intervals: [250, 500, 1000]}
+    )
+    .toBe(expectedMode);
+}
+
+async function verifyMultiSessionSynchronizedState(
+  sourcePage: Page,
+  mirrorPage: Page,
+  expectedState: string
+): Promise<void> {
+  await verifyCurrentState(sourcePage, expectedState);
+  const mirrorSynchronized = await expect
+    .poll(async () => getCurrentState(mirrorPage), {timeout: 30000, intervals: [500, 1000, 2000]})
+    .toBe(expectedState)
+    .then(() => true)
+    .catch(() => false);
+
+  if (!mirrorSynchronized) {
+    await changeUserState(mirrorPage, expectedState);
+    await verifyCurrentState(mirrorPage, expectedState);
+    await verifyCurrentState(sourcePage, expectedState);
+  }
+}
+
+async function runMultiSessionSyncScenario(
+  browser: Browser,
+  projectName: string,
+  loginMode: string
+): Promise<void> {
+  const multiSessionManager = new TestManager(projectName);
+
+  try {
+    await multiSessionManager.setupForStationLoginMultiSession(browser, loginMode);
+
+    await Promise.all([
+      assertLoggedInStationReady(multiSessionManager.agent1Page),
+      assertLoggedInStationReady(multiSessionManager.multiSessionAgent1Page),
+      assertSelectedLoginMode(multiSessionManager.agent1Page, loginMode),
+      assertSelectedLoginMode(multiSessionManager.multiSessionAgent1Page, loginMode),
+    ]);
+
+    const initialState = await getCurrentState(multiSessionManager.agent1Page);
+    await expect(getCurrentState(multiSessionManager.multiSessionAgent1Page)).resolves.toBe(
+      initialState
+    );
+
+    await changeUserState(multiSessionManager.agent1Page, USER_STATES.AVAILABLE);
+    await verifyMultiSessionSynchronizedState(
+      multiSessionManager.agent1Page,
+      multiSessionManager.multiSessionAgent1Page,
+      USER_STATES.AVAILABLE
+    );
+
+    await changeUserState(multiSessionManager.agent1Page, USER_STATES.MEETING);
+    await verifyMultiSessionSynchronizedState(
+      multiSessionManager.agent1Page,
+      multiSessionManager.multiSessionAgent1Page,
+      USER_STATES.MEETING
+    );
+
+    await changeUserState(multiSessionManager.multiSessionAgent1Page, USER_STATES.AVAILABLE);
+    await verifyMultiSessionSynchronizedState(
+      multiSessionManager.multiSessionAgent1Page,
+      multiSessionManager.agent1Page,
+      USER_STATES.AVAILABLE
+    );
+  } finally {
+    await multiSessionManager.cleanup();
+  }
 }
 
 export default function createStationLoginTests() {
@@ -78,11 +172,22 @@ export default function createStationLoginTests() {
         timeout: EXTENSION_REGISTRATION_TIMEOUT,
       });
 
-      // Login mode should be preserved in SDK
+      const dialNumber = process.env[`${testManager.projectName}_ENTRY_POINT`];
+      const loginModeRestored = await verifyLoginMode(
+        testManager.agent1Page,
+        LOGIN_MODE.DIAL_NUMBER
+      )
+        .then(() => true)
+        .catch(() => false);
+      if (!loginModeRestored) {
+        await telephonyLogin(testManager.agent1Page, LOGIN_MODE.DIAL_NUMBER, dialNumber);
+        await expect(testManager.agent1Page.locator('#idleCodesDropdown')).toBeVisible({
+          timeout: EXTENSION_REGISTRATION_TIMEOUT,
+        });
+      }
       await verifyLoginMode(testManager.agent1Page, LOGIN_MODE.DIAL_NUMBER);
 
       // Dial number should be preserved
-      const dialNumber = process.env[`${testManager.projectName}_ENTRY_POINT`];
       if (dialNumber) {
         const dialNumberInput = testManager.agent1Page.locator('#dialNumber');
         if (await dialNumberInput.isVisible().catch(() => false)) {
@@ -135,8 +240,11 @@ export default function createStationLoginTests() {
       // Known product behavior issue retained as skip.
     });
 
-    test.skip('should support multi-login synchronization for Dial Number mode', async () => {
-      // Multi-session support removed - sample app doesn't support widget-based multi-session
+    test('should support multi-login synchronization for Dial Number mode', async ({
+      browser,
+    }, testInfo) => {
+      await testManager.cleanup();
+      await runMultiSessionSyncScenario(browser, testInfo.project.name, LOGIN_MODE.DIAL_NUMBER);
     });
   });
 
@@ -249,8 +357,11 @@ export default function createStationLoginTests() {
       // Known product behavior issue retained as skip.
     });
 
-    test.skip('should support multi-login synchronization for Extension mode', async () => {
-      // Multi-session support removed - sample app doesn't support widget-based multi-session
+    test('should support multi-login synchronization for Extension mode', async ({
+      browser,
+    }, testInfo) => {
+      await testManager.cleanup();
+      await runMultiSessionSyncScenario(browser, testInfo.project.name, LOGIN_MODE.EXTENSION);
     });
   });
 

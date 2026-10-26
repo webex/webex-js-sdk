@@ -8,6 +8,7 @@ import sinon from 'sinon';
 import {ServicesV2} from '@webex/webex-core';
 import {NewMetrics} from '@webex/internal-plugin-metrics';
 import {formattedServiceHostmapV2, serviceHostmapV2} from '../../../fixtures/host-catalog-v2';
+import fedRampServices from '../../../../src/lib/services-v2/service-fed-ramp';
 
 const waitForAsync = () =>
   new Promise<void>((resolve) =>
@@ -33,6 +34,100 @@ describe('webex-core', () => {
       catalog = services._getCatalog();
     });
 
+    describe('#initConfig', () => {
+      it.each([
+        'https://u2c.gov.ciscospark.com/u2c/api/v1',
+        'https://u2c.svc.webexgov.us/u2c/api/v1',
+        'https://u2c.example.com/u2c/api/v1',
+        'https://u2c.wbx2.com/u2c/api/v1',
+      ])('preserves the existing FedRAMP U2C discovery URL %s', (u2c) => {
+        const discovery = {
+          hydra: 'https://hydra.example.com/v1',
+          u2c,
+          sqdiscovery: 'https://region.example.com/v1/region',
+        };
+        const defaults = {...fedRampServices};
+        webex.config = {
+          fedramp: true,
+          services: {discovery, allowedDomains: ['webexgov.us'], validateDomains: true},
+        };
+
+        services.initConfig();
+
+        assert.deepEqual(webex.config.services.discovery, {...defaults, u2c});
+        assert.strictEqual(services.get('u2c', 'discovery'), u2c);
+        assert.strictEqual(services.get('hydra', 'discovery'), defaults.hydra);
+        assert.strictEqual(services.get('sqdiscovery', 'discovery'), defaults.sqdiscovery);
+        assert.notStrictEqual(webex.config.services.discovery, fedRampServices);
+        assert.deepEqual(fedRampServices, defaults);
+        assert.deepEqual(catalog.getAllowedDomains(), ['webexgov.us']);
+        assert.isTrue(services.validateDomains);
+      });
+
+      it.each([undefined, null, {}, {u2c: undefined}, {u2c: null}, {u2c: ''}])(
+        'uses the FedRAMP defaults when discovery has no U2C URL: %p',
+        (discovery) => {
+          webex.config = {
+            fedramp: true,
+            services: {discovery, allowedDomains: [], validateDomains: true},
+          };
+
+          services.initConfig();
+
+          assert.deepEqual(webex.config.services.discovery, fedRampServices);
+          assert.strictEqual(services.get('u2c', 'discovery'), fedRampServices.u2c);
+          assert.notStrictEqual(webex.config.services.discovery, fedRampServices);
+        }
+      );
+
+      it('leaves commercial discovery configuration unchanged', () => {
+        const discovery = {
+          hydra: 'https://api.ciscospark.com/v1',
+          u2c: 'https://u2c.wbx2.com/u2c/api/v1',
+          sqdiscovery: 'https://ds.ciscospark.com/v1/region',
+        };
+        webex.config = {
+          fedramp: false,
+          services: {discovery, allowedDomains: [], validateDomains: true},
+        };
+
+        services.initConfig();
+
+        assert.strictEqual(webex.config.services.discovery, discovery);
+        assert.strictEqual(services.get('u2c', 'discovery'), discovery.u2c);
+        assert.strictEqual(services.get('hydra', 'discovery'), discovery.hydra);
+        assert.strictEqual(services.get('sqdiscovery', 'discovery'), discovery.sqdiscovery);
+      });
+
+      it('keeps FedRAMP discovery URLs isolated between instances', () => {
+        const oldU2c = 'https://u2c.gov.ciscospark.com/u2c/api/v1';
+        const newU2c = 'https://u2c.svc.webexgov.us/u2c/api/v1';
+        const defaults = {...fedRampServices};
+        const otherWebex = MockWebex({children: {services: ServicesV2}});
+        webex.config = {
+          fedramp: true,
+          services: {discovery: {u2c: oldU2c}, allowedDomains: []},
+        };
+        otherWebex.config = {
+          fedramp: true,
+          services: {discovery: {u2c: newU2c}, allowedDomains: []},
+        };
+
+        services.initConfig();
+        otherWebex.internal.services.initConfig();
+
+        assert.deepEqual(webex.config.services.discovery, {...defaults, u2c: oldU2c});
+        assert.deepEqual(otherWebex.config.services.discovery, {...defaults, u2c: newU2c});
+        assert.strictEqual(services.get('u2c', 'discovery'), oldU2c);
+        assert.strictEqual(otherWebex.internal.services.get('u2c', 'discovery'), newU2c);
+        assert.notStrictEqual(
+          webex.config.services.discovery,
+          otherWebex.config.services.discovery
+        );
+        assert.deepEqual(fedRampServices, defaults);
+      });
+    });
+
     describe('#initialize', () => {
       it('initFailed is false when initialization succeeds and credentials are available', async () => {
         services.listenToOnce = sinon.stub();
@@ -46,6 +141,7 @@ describe('webex-core', () => {
         services.initialize();
 
         // call the onReady callback
+        services.listenToOnce.getCall(0).args[2]();
         services.listenToOnce.getCall(1).args[2]();
         await waitForAsync();
 
@@ -59,6 +155,7 @@ describe('webex-core', () => {
         services.initialize();
 
         // call the onReady callback
+        services.listenToOnce.getCall(0).args[2]();
         services.listenToOnce.getCall(1).args[2]();
         await waitForAsync();
 
@@ -81,6 +178,7 @@ describe('webex-core', () => {
           services.initialize();
 
           // call the onReady callback
+          services.listenToOnce.getCall(0).args[2]();
           services.listenToOnce.getCall(1).args[2]();
 
           await waitForAsync();
@@ -114,6 +212,7 @@ describe('webex-core', () => {
           services.initialize();
 
           // call the onReady callback
+          services.listenToOnce.getCall(0).args[2]();
           services.listenToOnce.getCall(1).args[2]();
 
           await waitForAsync();
@@ -125,6 +224,433 @@ describe('webex-core', () => {
           );
         }
       );
+
+      it('sets services.ready to true when waitForCatalogInit is disabled (default)', () => {
+        services.listenToOnce = sinon.stub();
+        services.initialize();
+
+        // Fire the change:config handler which decides gated-vs-ungated and, in
+        // ungated mode, flips services.ready to true.
+        services.listenToOnce.getCall(0).args[2]();
+
+        assert.isTrue(services.ready, 'services.ready should be true so it does not block webex.ready');
+      });
+
+      it('listens on the "ready" event when waitForCatalogInit is disabled (default)', () => {
+        services.listenToOnce = sinon.stub();
+        services.initialize();
+
+        // Fire change:config to trigger the mode-specific listener registration.
+        services.listenToOnce.getCall(0).args[2]();
+
+        const [, event] = services.listenToOnce.getCall(1).args;
+        assert.equal(event, 'ready', 'default path listens on webex ready');
+      });
+
+      it('skips preauth catalog collection when skipPreauthCatalogOnUnauthenticated is true and no credentials', async () => {
+        services.webex.config = {
+          ...(services.webex.config || {}),
+          services: {skipPreauthCatalogOnUnauthenticated: true},
+        };
+        services.listenToOnce = sinon.stub();
+        services.collectPreauthCatalog = sinon.stub().returns(Promise.resolve());
+        services.logger.info = sinon.stub();
+
+        services.initialize();
+        services.listenToOnce.getCall(0).args[2]();
+        services.listenToOnce.getCall(1).args[2]();
+        await waitForAsync();
+
+        assert.isFalse(
+          services.collectPreauthCatalog.called,
+          'must not collect preauth catalog while unauthenticated when option is enabled'
+        );
+        assert.isFalse(services.initFailed);
+        sinon.assert.calledWith(
+          services.logger.info,
+          'services: skipping preauth catalog collection while unauthenticated as per the config'
+        );
+      });
+
+      it('still collects preauth catalog when skipPreauthCatalogOnUnauthenticated is false (default)', async () => {
+        services.webex.config = {
+          ...(services.webex.config || {}),
+          services: {skipPreauthCatalogOnUnauthenticated: false},
+        };
+        services.listenToOnce = sinon.stub();
+        services.collectPreauthCatalog = sinon.stub().returns(Promise.resolve());
+
+        services.initialize();
+        services.listenToOnce.getCall(0).args[2]();
+        services.listenToOnce.getCall(1).args[2]();
+        await waitForAsync();
+
+        assert.isTrue(
+          services.collectPreauthCatalog.called,
+          'must collect preauth catalog when option is disabled'
+        );
+      });
+    });
+
+    describe('#initialize (waitForCatalogInit=true)', () => {
+      let clock;
+
+      beforeEach(() => {
+        services.webex.config = {
+          ...(services.webex.config || {}),
+          services: {waitForCatalogInit: true, catalogInitTimeout: 15000},
+        };
+        // Reset ready flag: the outer beforeEach constructs services which
+        // runs initialize() once with no config (ungated path, flips ready to
+        // true). We reset here so tests that call initialize() a second time
+        // with the flag enabled observe the gated behavior from a clean state.
+        services.ready = false;
+        // The gated path schedules a real 15s setTimeout via _makeInitTimeout()
+        // that is not cleared when the init race resolves. Fake only setTimeout/
+        // clearTimeout (leaving setImmediate real so waitForAsync still works)
+        // so restoring in afterEach clears the pending timer and Jest can exit.
+        clock = sinon.useFakeTimers({toFake: ['setTimeout', 'clearTimeout']});
+      });
+
+      afterEach(() => {
+        clock.restore();
+      });
+
+      it('leaves services.ready=false after initialize (does not flip until finalize)', () => {
+        services.listenToOnce = sinon.stub();
+        services.initialize();
+
+        assert.isFalse(services.ready, 'services.ready should block webex.ready until finalize');
+      });
+
+      it('listens on the "loaded" event (not "ready") to avoid deadlock', () => {
+        services.listenToOnce = sinon.stub();
+        services.initialize();
+
+        // Fire change:config to trigger the mode-specific listener registration.
+        services.listenToOnce.getCall(0).args[2]();
+
+        const [, event] = services.listenToOnce.getCall(1).args;
+        assert.equal(event, 'loaded', 'gated path must listen on loaded to avoid deadlock');
+      });
+
+      it('flips services.ready=true after init succeeds with credentials', async () => {
+        services.listenToOnce = sinon.stub();
+        services.initServiceCatalogs = sinon.stub().returns(Promise.resolve());
+        services.webex.credentials = {
+          supertoken: {access_token: 'token'},
+        };
+
+        services.initialize();
+        services.listenToOnce.getCall(0).args[2]();
+        services.listenToOnce.getCall(1).args[2]();
+        await waitForAsync();
+
+        assert.isTrue(services.ready);
+      });
+
+      it('flips services.ready=true after init succeeds without credentials (preauth path)', async () => {
+        services.listenToOnce = sinon.stub();
+        services.collectPreauthCatalog = sinon.stub().returns(Promise.resolve());
+
+        services.initialize();
+        services.listenToOnce.getCall(0).args[2]();
+        services.listenToOnce.getCall(1).args[2]();
+        await waitForAsync();
+
+        assert.isTrue(services.ready);
+      });
+
+      it('flips services.ready=true even when initServiceCatalogs errors, so webex.ready can fire', async () => {
+        services.listenToOnce = sinon.stub();
+        services.initServiceCatalogs = sinon.stub().returns(Promise.reject(new Error('boom')));
+        services.webex.credentials = {
+          supertoken: {access_token: 'token'},
+        };
+        services.logger.error = sinon.stub();
+
+        services.initialize();
+        services.listenToOnce.getCall(0).args[2]();
+        services.listenToOnce.getCall(1).args[2]();
+        await waitForAsync();
+
+        assert.isTrue(services.initFailed);
+        assert.isTrue(services.ready);
+      });
+
+      it('flips services.ready=true even when collectPreauthCatalog errors', async () => {
+        services.listenToOnce = sinon.stub();
+        services.collectPreauthCatalog = sinon.stub().returns(Promise.reject(new Error('boom')));
+        services.logger.error = sinon.stub();
+
+        services.initialize();
+        services.listenToOnce.getCall(0).args[2]();
+        services.listenToOnce.getCall(1).args[2]();
+        await waitForAsync();
+
+        assert.isTrue(services.initFailed);
+        assert.isTrue(services.ready);
+      });
+
+      it('flips services.ready=true when init times out', async () => {
+        services.listenToOnce = sinon.stub();
+        services.initServiceCatalogs = sinon.stub().returns(new Promise(() => {}));
+        services.webex.credentials = {
+          supertoken: {access_token: 'token'},
+        };
+        services.logger.error = sinon.stub();
+
+        services.initialize();
+        services.listenToOnce.getCall(0).args[2]();
+        services.listenToOnce.getCall(1).args[2]();
+
+        await clock.tickAsync(15_001);
+
+        assert.isTrue(services.initFailed);
+        assert.isTrue(services.ready);
+        sinon.assert.calledWithMatch(
+          services.logger.error,
+          /services: init timed out after 15000ms/
+        );
+      });
+
+      it('awaits an in-flight credentials refresh before flipping services.ready=true', async () => {
+        services.listenToOnce = sinon.stub();
+        services.initServiceCatalogs = sinon.stub().returns(Promise.resolve());
+
+        let onChangeIsRefreshing: (() => void) | undefined;
+        services.webex.credentials = {
+          supertoken: {access_token: 'token'},
+          isRefreshing: true,
+          once: sinon.stub().callsFake((event: string, cb: () => void) => {
+            if (event === 'change:isRefreshing') onChangeIsRefreshing = cb;
+          }),
+        };
+
+        services.initialize();
+        services.listenToOnce.getCall(0).args[2]();
+        services.listenToOnce.getCall(1).args[2]();
+        await waitForAsync();
+
+        assert.isFalse(services.ready, 'must not flip ready while refresh is in flight');
+        assert.isFunction(onChangeIsRefreshing, 'must subscribe to change:isRefreshing');
+        sinon.assert.calledWith(services.webex.credentials.once, 'change:isRefreshing');
+
+        onChangeIsRefreshing!();
+        await waitForAsync();
+
+        assert.isTrue(services.ready);
+      });
+
+      it('registers a change:canAuthorize listener when there is no supertoken (fresh-login path)', async () => {
+        services.listenToOnce = sinon.stub();
+        services.collectPreauthCatalog = sinon.stub().returns(Promise.resolve());
+        services.initServiceCatalogs = sinon.stub().returns(Promise.resolve());
+
+        services.initialize();
+        // initialize() creates a new catalog and replaces the WeakMap entry.
+        const currentCatalog = services._getCatalog();
+        services.listenToOnce.getCall(0).args[2]();
+        services.listenToOnce.getCall(1).args[2]();
+        await waitForAsync();
+
+        const freshLoginCall = services.listenToOnce
+          .getCalls()
+          .find((call: any) => call.args[1] === 'change:canAuthorize');
+        assert.isDefined(freshLoginCall, 'expected change:canAuthorize listener to be registered');
+
+        services.webex.canAuthorize = true;
+        currentCatalog.status.postauth.ready = false;
+        freshLoginCall!.args[2]();
+
+        assert.isTrue(
+          services.initServiceCatalogs.called,
+          'expected postauth catalog init after canAuthorize flips'
+        );
+
+        // `catalog.isReady` is now set inside initServiceCatalogs (after the
+        // postauth updateServices) rather than by this listener, so it is not
+        // asserted here where initServiceCatalogs is stubbed.
+        await waitForAsync();
+      });
+
+      it('does not re-init postauth catalog when canAuthorize fires but catalog is already ready', async () => {
+        services.listenToOnce = sinon.stub();
+        services.collectPreauthCatalog = sinon.stub().returns(Promise.resolve());
+        services.initServiceCatalogs = sinon.stub().returns(Promise.resolve());
+
+        services.initialize();
+        // initialize() creates a new catalog; grab the current one.
+        const currentCatalog = services._getCatalog();
+        services.listenToOnce.getCall(0).args[2]();
+        services.listenToOnce.getCall(1).args[2]();
+        await waitForAsync();
+
+        const freshLoginCall = services.listenToOnce
+          .getCalls()
+          .find((call: any) => call.args[1] === 'change:canAuthorize');
+
+        services.webex.canAuthorize = true;
+        currentCatalog.status.postauth.ready = true;
+        freshLoginCall!.args[2]();
+
+        assert.isFalse(
+          services.initServiceCatalogs.called,
+          'must not re-fetch postauth catalog if it is already ready'
+        );
+      });
+
+      it('finalizes ready when cache is warm (skips network fetch)', async () => {
+        services.listenToOnce = sinon.stub();
+        services._loadCatalogFromCache = sinon.stub().returns(Promise.resolve(true));
+        services.initServiceCatalogs = sinon.stub().returns(Promise.resolve());
+        services.collectPreauthCatalog = sinon.stub().returns(Promise.resolve());
+
+        services.initialize();
+        services.listenToOnce.getCall(0).args[2]();
+        services.listenToOnce.getCall(1).args[2]();
+        await waitForAsync();
+        await waitForAsync();
+
+        assert.isTrue(services.ready);
+        assert.isFalse(
+          services.initServiceCatalogs.called,
+          'must skip network fetch when cache is warm'
+        );
+        assert.isFalse(
+          services.collectPreauthCatalog.called,
+          'must skip preauth fetch when cache is warm'
+        );
+      });
+    });
+
+    describe('#initialize (waitForCatalogInit=true, skipPreauthCatalogOnUnauthenticated=true)', () => {
+      beforeEach(() => {
+        services.webex.config = {
+          ...(services.webex.config || {}),
+          services: {
+            waitForCatalogInit: true,
+            catalogInitTimeout: 15000,
+            skipPreauthCatalogOnUnauthenticated: true,
+          },
+        };
+        services.ready = false;
+      });
+
+      it('skips preauth catalog collection but still finalizes services.ready when unauthenticated', async () => {
+        services.listenToOnce = sinon.stub();
+        services.collectPreauthCatalog = sinon.stub().returns(Promise.resolve());
+        services.logger.info = sinon.stub();
+
+        services.initialize();
+        services.listenToOnce.getCall(0).args[2]();
+        services.listenToOnce.getCall(1).args[2]();
+        await waitForAsync();
+
+        assert.isFalse(
+          services.collectPreauthCatalog.called,
+          'must not collect preauth catalog while unauthenticated when option is enabled'
+        );
+        assert.isTrue(services.ready, 'must still finalize ready so webex.ready is not stalled');
+        sinon.assert.calledWith(
+          services.logger.info,
+          'services: skipping preauth catalog collection while unauthenticated as per the config'
+        );
+      });
+
+      it('still registers a change:canAuthorize listener when skipping preauth (fresh-login path)', async () => {
+        services.listenToOnce = sinon.stub();
+        services.collectPreauthCatalog = sinon.stub().returns(Promise.resolve());
+        services.initServiceCatalogs = sinon.stub().returns(Promise.resolve());
+
+        services.initialize();
+        const currentCatalog = services._getCatalog();
+        services.listenToOnce.getCall(0).args[2]();
+        services.listenToOnce.getCall(1).args[2]();
+        await waitForAsync();
+
+        const freshLoginCall = services.listenToOnce
+          .getCalls()
+          .find((call: any) => call.args[1] === 'change:canAuthorize');
+        assert.isDefined(freshLoginCall, 'expected change:canAuthorize listener to be registered');
+
+        services.webex.canAuthorize = true;
+        currentCatalog.status.postauth.ready = false;
+        freshLoginCall!.args[2]();
+
+        assert.isTrue(
+          services.initServiceCatalogs.called,
+          'expected postauth catalog init after canAuthorize flips'
+        );
+        await waitForAsync();
+      });
+
+      it('does not schedule an init timeout when skipping preauth (no stray timer/rejection)', async () => {
+        const clock = sinon.useFakeTimers();
+        services.listenToOnce = sinon.stub();
+        services.collectPreauthCatalog = sinon.stub().returns(Promise.resolve());
+        services.logger.error = sinon.stub();
+
+        services.initialize();
+        services.listenToOnce.getCall(0).args[2]();
+        services.listenToOnce.getCall(1).args[2]();
+
+        // Advance well past the configured init timeout; since no timeout was
+        // scheduled in skip mode, no timeout error should ever be logged.
+        await clock.tickAsync(30_000);
+        clock.restore();
+
+        sinon.assert.neverCalledWithMatch(
+          services.logger.error,
+          /services: init timed out/
+        );
+      });
+    });
+
+    describe('#_finalizeReady', () => {
+      beforeEach(() => {
+        // Outer beforeEach construction already ran initialize() (ungated,
+        // sets ready=true). Reset so _finalizeReady's flip is observable.
+        services.ready = false;
+      });
+
+      it('sets ready=true immediately when credentials are not refreshing', async () => {
+        services.webex.credentials = {isRefreshing: false};
+        assert.isFalse(services.ready);
+
+        await services._finalizeReady();
+
+        assert.isTrue(services.ready);
+      });
+
+      it('sets ready=true when credentials are missing', async () => {
+        services.webex.credentials = undefined;
+
+        await services._finalizeReady();
+
+        assert.isTrue(services.ready);
+      });
+
+      it('awaits change:isRefreshing before setting ready=true', async () => {
+        let onChangeIsRefreshing: (() => void) | undefined;
+        services.webex.credentials = {
+          isRefreshing: true,
+          once: sinon.stub().callsFake((event: string, cb: () => void) => {
+            if (event === 'change:isRefreshing') onChangeIsRefreshing = cb;
+          }),
+        };
+
+        const settled = services._finalizeReady();
+        await waitForAsync();
+
+        assert.isFalse(services.ready, 'ready must not flip while refresh is in flight');
+        assert.isFunction(onChangeIsRefreshing);
+
+        onChangeIsRefreshing!();
+        await settled;
+
+        assert.isTrue(services.ready);
+      });
     });
 
     describe('#initServiceCatalogs', () => {
@@ -380,6 +906,22 @@ describe('webex-core', () => {
         );
       });
 
+      it('includes the catalog override query when configured', async () => {
+        services.webex.config.services = {useCatalogOverride: true};
+        sinon.stub(services, '_formatReceivedHostmap').resolves('map response');
+        sinon.stub(services, 'request').resolves({});
+
+        await services._fetchNewServiceHostmap({from: 'limited'});
+
+        assert.calledOnceWithExactly(services.request, {
+          method: 'GET',
+          service: 'u2c',
+          resource: '/limited/catalog',
+          qs: {format: 'U2CV2', useCatalogOverride: true},
+          headers: {},
+        });
+      });
+
       it('checks service request rejects', async () => {
         const error = new Error('some error');
 
@@ -446,6 +988,26 @@ describe('webex-core', () => {
         const uri = 'http://example.com/somepath';
 
         assert.equal(services.replaceHostFromHostmap(uri), 'http://example-1.com/somepath');
+      });
+    });
+
+    describe('#getServiceFromUrl()', () => {
+      it('matches an exact service URL when the catalog URL has a trailing slash', () => {
+        const baseUrl = 'https://example.com/api/v1/';
+
+        catalog.updateServiceGroups('preauth', [
+          {
+            id: 'example',
+            serviceName: 'example',
+            serviceUrls: [{host: 'example.com', baseUrl, priority: 1}],
+          },
+        ]);
+
+        assert.deepEqual(services.getServiceFromUrl('https://example.com/api/v1'), {
+          name: 'example',
+          priorityUrl: baseUrl,
+          defaultUrl: baseUrl,
+        });
       });
     });
 
@@ -816,6 +1378,32 @@ describe('webex-core', () => {
     });
 
     describe('#isIntegrationEnvironment', () => {
+      it('uses the integration environment config when set, regardless of the u2c URL', () => {
+        services.webex.config = {
+          environment: 'integration',
+          services: {
+            discovery: {
+              u2c: 'https://u2c.wbx2.com/u2c/api/v1',
+            },
+          },
+        };
+
+        assert.isTrue(services.isIntegrationEnvironment());
+      });
+
+      it('uses the production environment config when set, regardless of the u2c URL', () => {
+        services.webex.config = {
+          environment: 'production',
+          services: {
+            discovery: {
+              u2c: 'https://u2c-intb.ciscospark.com/u2c/api/v1',
+            },
+          },
+        };
+
+        assert.isFalse(services.isIntegrationEnvironment());
+      });
+
       it('returns true when u2c URL contains "intb"', () => {
         services.webex.config = {
           services: {

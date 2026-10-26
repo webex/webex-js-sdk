@@ -1,11 +1,9 @@
 /* eslint-disable no-await-in-loop, no-plusplus */
-// Disabled no-await-in-loop: file contains polling utilities requiring sequential awaits
-// Disabled no-plusplus: standard loop incrementing is clearer than alternatives
 import {expect, Page} from '@playwright/test';
 import {WrapupReason, AWAIT_TIMEOUT, UI_SETTLE_TIMEOUT, WRAPUP_TIMEOUT} from '../constants';
+import {clickDomButton, dismissAgentStatePopupIfPresent, isTaskCleared} from './controlUtils';
 
 async function isWrapupVisible(page: Page): Promise<boolean> {
-  // Sample app has single #wrapup button
   const wrapupButton = page.locator('#wrapup');
 
   return wrapupButton.isVisible().catch(() => false);
@@ -50,17 +48,61 @@ export async function submitWrapup(page: Page, reason: WrapupReason): Promise<vo
   }
   await page.bringToFront();
 
-  // Sample app: wait for wrapup dropdown to be enabled after call ends
   const wrapupDropdown = page.locator('#wrapupCodesDropdown');
-  await expect(wrapupDropdown).toBeEnabled({timeout: WRAPUP_TIMEOUT});
+  const wrapupButton = page.locator('#wrapup');
+
+  await expect
+    .poll(
+      async () => {
+        const dropdownEnabled = await wrapupDropdown.isEnabled().catch(() => false);
+        const buttonEnabled = await wrapupButton.isEnabled().catch(() => false);
+        const taskCompleted = await isTaskCleared(page);
+
+        return taskCompleted || (dropdownEnabled && buttonEnabled);
+      },
+      {timeout: WRAPUP_TIMEOUT, intervals: [500, 1000, 2000]}
+    )
+    .toBeTruthy();
+
+  if (await isTaskCleared(page)) {
+    return;
+  }
+
+  await dismissAgentStatePopupIfPresent(page);
 
   // Select the wrapup reason from dropdown
   await wrapupDropdown.selectOption({label: reason}, {timeout: AWAIT_TIMEOUT});
   await page.waitForTimeout(UI_SETTLE_TIMEOUT);
 
   // Click wrapup button to submit
-  const wrapupButton = page.locator('#wrapup');
-  await expect(wrapupButton).toBeEnabled({timeout: AWAIT_TIMEOUT});
-  await wrapupButton.click({timeout: AWAIT_TIMEOUT});
+  await expect
+    .poll(
+      async () => {
+        const buttonEnabled = await wrapupButton.isEnabled().catch(() => false);
+        const taskCompleted = await isTaskCleared(page);
+
+        return buttonEnabled || taskCompleted;
+      },
+      {timeout: AWAIT_TIMEOUT, intervals: [500, 1000, 2000]}
+    )
+    .toBeTruthy();
+
+  const buttonEnabled = await wrapupButton.isEnabled().catch(() => false);
+  if (!buttonEnabled) {
+    if (await isTaskCleared(page)) {
+      return;
+    }
+
+    throw new Error('Wrapup button is not enabled and task is still active');
+  }
+
+  await dismissAgentStatePopupIfPresent(page);
+
+  try {
+    await wrapupButton.click({timeout: AWAIT_TIMEOUT});
+  } catch {
+    await dismissAgentStatePopupIfPresent(page);
+    await clickDomButton(page, '#wrapup');
+  }
   await page.waitForTimeout(UI_SETTLE_TIMEOUT);
 }

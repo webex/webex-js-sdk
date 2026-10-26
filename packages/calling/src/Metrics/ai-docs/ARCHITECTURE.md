@@ -1,5 +1,7 @@
 # Metrics Module — Architecture
 
+> Canonical SDD target: [`src/Metrics/ai-docs/metrics-spec.md`](metrics-spec.md). This legacy document is retained as migration source; use the canonical target for current lifecycle work.
+
 ## Component Overview
 
 The Metrics module is a centralized telemetry singleton used by all other Calling SDK modules. Architecture: **Calling Modules -> MetricManager -> webex.internal.metrics -> Webex Cloud**.

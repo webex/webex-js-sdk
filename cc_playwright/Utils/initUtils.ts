@@ -5,6 +5,11 @@ import {BASE_URL, AWAIT_TIMEOUT, UI_SETTLE_TIMEOUT, OPERATION_TIMEOUT} from '../
 
 dotenv.config({path: path.resolve(__dirname, '../.env')});
 
+const sleep = (ms: number) =>
+  new Promise<void>((resolve) => {
+    setTimeout(resolve, ms);
+  });
+
 /**
  * Performs login using an access token from environment variables
  * @param page - The Playwright page object
@@ -23,6 +28,30 @@ dotenv.config({path: path.resolve(__dirname, '../.env')});
  */
 export const loginViaAccessToken = async (page: Page, accessToken: string): Promise<void> => {
   await page.goto(BASE_URL, {waitUntil: 'domcontentloaded'});
+  await page.evaluate(() => {
+    const win = window as unknown as {
+      generateWebexConfig?: (args: {credentials?: unknown}) => Record<string, unknown>;
+    };
+
+    const originalGenerateWebexConfig = win.generateWebexConfig;
+    if (typeof originalGenerateWebexConfig !== 'function') {
+      return;
+    }
+
+    win.generateWebexConfig = (args) => {
+      const config = originalGenerateWebexConfig(args);
+      const currentCcConfig =
+        config.cc && typeof config.cc === 'object' ? (config.cc as Record<string, unknown>) : {};
+
+      return {
+        ...config,
+        cc: {
+          ...currentCcConfig,
+          allowAutomatedRelogin: false,
+        },
+      };
+    };
+  });
   if (!accessToken) {
     throw new Error(`ACCESS_TOKEN is not defined, OAuth failed`);
   }
@@ -50,7 +79,8 @@ export const loginViaAccessToken = async (page: Page, accessToken: string): Prom
 export const oauthLogin = async (
   page: Page,
   username: string,
-  customPassword?: string
+  customPassword?: string,
+  retryAttempt = 0
 ): Promise<void> => {
   // Check 1: Validate username parameter is provided
   if (!username) {
@@ -98,31 +128,123 @@ export const oauthLogin = async (
   );
 
   // OAuth login redirects to Webex login page - wait for navigation with extended timeout
-  await Promise.all([
-    page.waitForURL((url) => url.toString().includes('idbroker.webex.com'), {
+  await oauthLoginButton.click({timeout: AWAIT_TIMEOUT, noWaitAfter: true});
+  await page.waitForURL(
+    (url) =>
+      /idbroker(?:-[a-z0-9]+)?\.webex\.com/i.test(url.hostname) ||
+      url.toString().includes('id.webex.com'),
+    {
       timeout: OPERATION_TIMEOUT,
-    }),
-    oauthLoginButton.click(),
-  ]);
+      waitUntil: 'commit',
+    }
+  );
 
-  // Fill in OAuth credentials on Webex login page
-  await page
-    .getByRole('textbox', {name: 'name@example.com'})
-    .fill(username, {timeout: AWAIT_TIMEOUT});
+  const usernameFieldByRole = page.getByRole('textbox', {name: 'name@example.com'});
+  const usernameFieldBySelector = page.locator(
+    '#IDToken1, input[type="email"], input[name="IDToken1"], input[autocomplete="username"]'
+  );
+  const roleFieldVisible = await usernameFieldByRole.isVisible().catch(() => false);
+  if (roleFieldVisible) {
+    await usernameFieldByRole.fill(username, {timeout: AWAIT_TIMEOUT});
+  } else {
+    await usernameFieldBySelector.first().waitFor({state: 'visible', timeout: OPERATION_TIMEOUT});
+    await usernameFieldBySelector.first().fill(username, {timeout: AWAIT_TIMEOUT});
+  }
 
   // Click "Sign in" link triggers navigation to password page
-  await Promise.all([
-    page.waitForLoadState('domcontentloaded', {timeout: OPERATION_TIMEOUT}),
-    page.getByRole('link', {name: 'Sign in'}).click({timeout: AWAIT_TIMEOUT}),
-  ]);
+  const signInLink = page.getByRole('link', {name: 'Sign in'});
+  const signInButton = page.getByRole('button', {name: 'Sign in'});
+  const passwordTextbox = page.getByRole('textbox', {name: 'Password'});
+  const passwordInputFallback = page.locator(
+    '#IDToken2, input[type="password"], input[name="IDToken2"], input[name="password"]'
+  );
+  const usernameInput = usernameFieldBySelector.first();
+  const clickSignIn = async () =>
+    ((await signInLink.isVisible().catch(() => false)) ? signInLink : signInButton).click({
+      timeout: AWAIT_TIMEOUT,
+      noWaitAfter: true,
+    });
 
-  await page.getByRole('textbox', {name: 'Password'}).fill(password, {timeout: AWAIT_TIMEOUT});
-  await page.getByRole('button', {name: 'Sign in'}).click({timeout: AWAIT_TIMEOUT});
+  /* eslint-disable no-await-in-loop */
+  for (let attempt = 0; attempt < 3; attempt += 1) {
+    await clickSignIn();
+    await Promise.race([
+      passwordInputFallback.first().waitFor({state: 'visible', timeout: AWAIT_TIMEOUT}),
+      page.waitForURL((url) => url.toString().includes(BASE_URL), {
+        timeout: AWAIT_TIMEOUT,
+        waitUntil: 'commit',
+      }),
+    ]).catch(() => {});
 
-  // Wait for redirect back to sample app with extended timeout for OAuth flow
-  await page.waitForURL((url) => url.toString().includes(BASE_URL), {
-    timeout: OPERATION_TIMEOUT,
-  });
+    if (page.url().includes(BASE_URL)) {
+      return;
+    }
+    if (
+      await passwordInputFallback
+        .first()
+        .isVisible()
+        .catch(() => false)
+    ) {
+      break;
+    }
+    if (await usernameInput.isVisible().catch(() => false)) {
+      await usernameInput.fill(username, {timeout: AWAIT_TIMEOUT});
+    }
+    await sleep(500);
+  }
+  /* eslint-enable no-await-in-loop */
+
+  const passwordByRoleVisible = await passwordTextbox.isVisible().catch(() => false);
+  const passwordInput = passwordByRoleVisible ? passwordTextbox : passwordInputFallback.first();
+  await passwordInput.waitFor({state: 'visible', timeout: OPERATION_TIMEOUT});
+  await passwordInput.fill(password, {timeout: AWAIT_TIMEOUT});
+
+  const passwordSignInButton = page.getByRole('button', {name: 'Sign in'});
+  const passwordSubmitControl = page.locator(
+    'button[type="submit"], input[type="submit"], button:has-text("Sign in"), input[value="Sign in"]'
+  );
+  if (await passwordSignInButton.isVisible().catch(() => false)) {
+    await passwordSignInButton.click({timeout: AWAIT_TIMEOUT, noWaitAfter: true});
+  } else if (
+    await passwordSubmitControl
+      .first()
+      .isVisible()
+      .catch(() => false)
+  ) {
+    await passwordSubmitControl.first().click({timeout: AWAIT_TIMEOUT, noWaitAfter: true});
+  } else {
+    await passwordInput.press('Enter', {timeout: AWAIT_TIMEOUT});
+  }
+
+  try {
+    // Wait for redirect back to sample app with extended timeout for OAuth flow
+    await page.waitForURL((url) => url.toString().includes(BASE_URL), {
+      timeout: OPERATION_TIMEOUT,
+      waitUntil: 'commit',
+    });
+  } catch (error) {
+    const alreadyOnSample = page.url().includes(BASE_URL);
+    if (alreadyOnSample) {
+      return;
+    }
+
+    await sleep(500);
+    const bodyText = await page
+      .locator('body')
+      .innerText({timeout: 5000})
+      .catch(() => '');
+    const wasSignedOut = /automatically signed out|sign in again/i.test(bodyText);
+    if (!wasSignedOut || retryAttempt >= 3) {
+      throw error;
+    }
+
+    await page
+      .context()
+      .clearCookies()
+      .catch(() => {});
+    await page.goto(BASE_URL, {waitUntil: 'domcontentloaded'}).catch(() => {});
+    await oauthLogin(page, username, customPassword, retryAttempt + 1);
+  }
 };
 
 /**
@@ -146,6 +268,33 @@ export const initializeSdk = async (page: Page): Promise<void> => {
   await expect(registerButton).toBeEnabled({timeout: AWAIT_TIMEOUT});
 };
 
+export const setMultiLoginToggle = async (page: Page, enabled: boolean): Promise<void> => {
+  const multiLoginToggle = page.locator('#multiLoginFlag');
+  await expect(multiLoginToggle).toBeVisible({timeout: AWAIT_TIMEOUT});
+  await page.evaluate((shouldEnable) => {
+    const checkbox = document.querySelector<HTMLInputElement>('#multiLoginFlag');
+    if (!checkbox) {
+      return;
+    }
+
+    checkbox.checked = shouldEnable;
+    localStorage.setItem('isMultiLoginEnabled', String(shouldEnable));
+    checkbox.dispatchEvent(new Event('change', {bubbles: true}));
+  }, enabled);
+
+  await expect
+    .poll(
+      () =>
+        page.evaluate(() => ({
+          checked: document.querySelector<HTMLInputElement>('#multiLoginFlag')?.checked ?? false,
+          stored: localStorage.getItem('isMultiLoginEnabled'),
+        })),
+      {timeout: AWAIT_TIMEOUT, intervals: [100, 250, 500]}
+    )
+    .toEqual({checked: enabled, stored: String(enabled)});
+  await sleep(UI_SETTLE_TIMEOUT);
+};
+
 /**
  * Registers with contact center by clicking the webex.cc.register() button
  * @param page - The Playwright page object
@@ -157,84 +306,224 @@ export const initializeSdk = async (page: Page): Promise<void> => {
  * await registerContactCenter(page);
  * ```
  */
-export const registerContactCenter = async (page: Page): Promise<void> => {
-  // Check if already registered
+export const registerContactCenter = async (
+  page: Page,
+  retryStaleRegistration = true
+): Promise<void> => {
+  const registerButton = page.locator('#webexcc-register');
   const unregisterButton = page.locator('#webexcc-deregister');
+  const getRegistrationSnapshot = async () => {
+    const statusText = (
+      await page
+        .locator('#ws-connection-status')
+        .textContent()
+        .catch(() => '')
+    ).trim();
+    const teamsCount = await page
+      .locator('#teamsDropdown option:not([value=""])')
+      .count()
+      .catch(() => 0);
+    const loginCount = await page
+      .locator('#AgentLogin option:not([value=""])')
+      .count()
+      .catch(() => 0);
+    const registerEnabled = await registerButton.isEnabled().catch(() => false);
+    const unregisterEnabled = await unregisterButton.isEnabled().catch(() => false);
+
+    return {
+      statusText,
+      teamsCount,
+      loginCount,
+      registerEnabled,
+      unregisterEnabled,
+    };
+  };
   const isAlreadyRegistered = await unregisterButton.isEnabled().catch(() => false);
 
   if (isAlreadyRegistered) {
-    // Already registered, verify teams loaded
-    const teamsLoaded = await page
-      .locator('#teamsDropdown option:not([value=""])')
-      .first()
-      .waitFor({state: 'attached', timeout: 5000})
-      .then(() => true)
-      .catch(() => false);
+    const snapshot = await getRegistrationSnapshot();
 
-    if (teamsLoaded) {
+    if (
+      snapshot.statusText === 'Subscribed' &&
+      snapshot.teamsCount > 0 &&
+      snapshot.loginCount > 0
+    ) {
       return;
     }
-    // Teams not loaded despite being registered - fall through to re-register
+
+    await page
+      .evaluate(() => {
+        document.querySelector<HTMLButtonElement>('#webexcc-deregister')?.click();
+      })
+      .catch(() => {});
+    await expect(registerButton).toBeEnabled({timeout: AWAIT_TIMEOUT});
+    await sleep(1000);
   }
 
-  // Try registration with retry on failure
-  const maxRetries = 3;
-  /* eslint-disable no-await-in-loop */
-  // eslint-disable-next-line no-plusplus
-  for (let attempt = 0; attempt < maxRetries; attempt++) {
-    try {
-      const registerButton = page.locator('#webexcc-register');
-      await expect(registerButton).toBeEnabled({timeout: AWAIT_TIMEOUT});
-      await registerButton.click({timeout: AWAIT_TIMEOUT});
+  try {
+    await expect(registerButton).toBeEnabled({timeout: AWAIT_TIMEOUT});
+    await page.evaluate(async (timeoutMs) => {
+      const win = window as unknown as {
+        register?: () => void;
+        webex?: {
+          cc?: {
+            register?: (...args: unknown[]) => Promise<unknown>;
+          };
+          internal?: {
+            services?: {
+              waitForCatalog?: (catalog: string) => Promise<unknown>;
+            };
+          };
+        };
+      };
 
-      // Wait for WebSocket to connect
-      await expect(page.locator('#ws-connection-status')).toHaveText('Subscribed', {
-        timeout: 45000,
-      });
-
-      // Wait for teams to populate - this confirms agent profile loaded
-      await page.locator('#teamsDropdown option:not([value=""])').first().waitFor({
-        state: 'attached',
-        timeout: 45000,
-      });
-
-      // Verify login dropdown also populated
-      await page.locator('#AgentLogin option:not([value=""])').first().waitFor({
-        state: 'attached',
-        timeout: 10000,
-      });
-
-      return; // Success
-    } catch (error) {
-      if (attempt === maxRetries - 1) {
-        // Get current state for debugging
-        const wsStatus = await page
-          .locator('#ws-connection-status')
-          .textContent()
-          .catch(() => 'unknown');
-        const teamsCount = await page
-          .locator('#teamsDropdown option')
-          .count()
-          .catch(() => 0);
-        const loginCount = await page
-          .locator('#AgentLogin option')
-          .count()
-          .catch(() => 0);
-
-        throw new Error(
-          `Failed to register with Contact Center after ${maxRetries} attempts. ` +
-            `Last error: ${error}. ` +
-            `Current state: WS=${wsStatus}, Teams options=${teamsCount}, Login options=${loginCount}`
-        );
+      const registerFn = win.register;
+      const ccRegister = win.webex?.cc?.register;
+      if (typeof registerFn !== 'function' || typeof ccRegister !== 'function') {
+        throw new Error('Contact Center register() is unavailable on the page');
       }
 
-      // Retry: reload page and re-initialize
-      await page.reload();
-      await page.waitForTimeout(3000);
-      await initializeSdk(page);
+      await win.webex?.internal?.services?.waitForCatalog?.('postauth');
+
+      await new Promise<void>((resolve, reject) => {
+        const originalRegister = ccRegister.bind(win.webex!.cc);
+        let settled = false;
+
+        const restore = () => {
+          if (win.webex?.cc) {
+            win.webex.cc.register = originalRegister;
+          }
+        };
+
+        const timer = window.setTimeout(() => {
+          if (settled) {
+            return;
+          }
+
+          settled = true;
+          restore();
+          reject(new Error(`webex.cc.register() timed out after ${timeoutMs}ms`));
+        }, timeoutMs);
+
+        win.webex!.cc!.register = (...args: unknown[]) => {
+          const registerPromise = originalRegister(...args);
+
+          Promise.resolve(registerPromise).then(
+            () => {
+              if (settled) {
+                return;
+              }
+
+              settled = true;
+              window.clearTimeout(timer);
+              restore();
+              resolve();
+            },
+            (error) => {
+              if (settled) {
+                return;
+              }
+
+              settled = true;
+              window.clearTimeout(timer);
+              restore();
+              reject(error instanceof Error ? error : new Error(String(error)));
+            }
+          );
+
+          return registerPromise;
+        };
+
+        try {
+          registerFn();
+        } catch (error) {
+          if (settled) {
+            return;
+          }
+
+          settled = true;
+          window.clearTimeout(timer);
+          restore();
+          reject(error instanceof Error ? error : new Error(String(error)));
+        }
+      });
+    }, OPERATION_TIMEOUT);
+
+    await expect
+      .poll(
+        async () => {
+          const snapshot = await getRegistrationSnapshot();
+
+          return snapshot.statusText === 'Subscribed' || snapshot.unregisterEnabled;
+        },
+        {timeout: 10000, intervals: [500, 1000, 2000]}
+      )
+      .toBeTruthy();
+
+    await expect
+      .poll(
+        async () => {
+          const snapshot = await getRegistrationSnapshot();
+
+          return (
+            snapshot.statusText === 'Subscribed' &&
+            snapshot.teamsCount > 0 &&
+            snapshot.loginCount > 0
+          );
+        },
+        {timeout: 45000, intervals: [500, 1000, 2000]}
+      )
+      .toBeTruthy();
+
+    await page.locator('#teamsDropdown option:not([value=""])').first().waitFor({
+      state: 'attached',
+      timeout: 45000,
+    });
+
+    await page.locator('#AgentLogin option:not([value=""])').first().waitFor({
+      state: 'attached',
+      timeout: 10000,
+    });
+  } catch (error) {
+    const snapshot = await getRegistrationSnapshot().catch(() => ({
+      statusText: 'unknown',
+      teamsCount: 0,
+      loginCount: 0,
+    }));
+
+    if (retryStaleRegistration && !page.isClosed()) {
+      await page
+        .evaluate(() => {
+          document.querySelector<HTMLButtonElement>('#webexcc-deregister')?.click();
+        })
+        .catch(() => {});
+      await sleep(2000);
+
+      let registerEnabledAfterReset = await registerButton.isEnabled().catch(() => false);
+      if (!registerEnabledAfterReset) {
+        await page.reload({waitUntil: 'domcontentloaded'}).catch(() => {});
+        await sleep(3000);
+
+        const initButton = page.locator('#access-token-save');
+        registerEnabledAfterReset = await registerButton.isEnabled().catch(() => false);
+        const initEnabled = await initButton.isEnabled().catch(() => false);
+        if (!registerEnabledAfterReset && initEnabled) {
+          await initializeSdk(page).catch(() => {});
+        }
+      }
+
+      await registerContactCenter(page, false);
+
+      return;
     }
+
+    throw new Error(
+      `Failed to register with Contact Center. ` +
+        `Last error: ${error}. ` +
+        `Current state: WS=${snapshot.statusText}, Teams options=${snapshot.teamsCount}, ` +
+        `Login options=${snapshot.loginCount}`
+    );
   }
-  /* eslint-enable no-await-in-loop */
 };
 
 /**
@@ -250,7 +539,7 @@ export const registerContactCenter = async (page: Page): Promise<void> => {
  */
 export const agentRelogin = async (page: Page): Promise<void> => {
   await page.reload();
-  await page.waitForTimeout(UI_SETTLE_TIMEOUT);
+  await sleep(UI_SETTLE_TIMEOUT);
 };
 
 /**
@@ -265,11 +554,9 @@ export const agentRelogin = async (page: Page): Promise<void> => {
  * ```
  */
 export const ensureRegisteredAfterReload = async (page: Page): Promise<void> => {
-  // Wait for page to fully load and SDK auto-initialization
   await page.waitForLoadState('domcontentloaded');
-  await page.waitForTimeout(3000); // Critical: Wait for SDK auto-init from localStorage
+  await sleep(3000);
 
-  // Check WebSocket connection status
   const currentStatus = await page.locator('#ws-connection-status').textContent();
   const isSubscribed = currentStatus?.trim() === 'Subscribed';
 
@@ -281,27 +568,20 @@ export const ensureRegisteredAfterReload = async (page: Page): Promise<void> => 
     const isRegisterEnabled = await registerButton.isEnabled().catch(() => false);
 
     if (!isRegisterEnabled) {
-      // SDK not initialized yet
       const isInitEnabled = await initButton.isEnabled().catch(() => false);
 
       if (isInitEnabled) {
         await initializeSdk(page);
       } else {
-        // Init button disabled but register not enabled - wait for auto-init
         await expect(registerButton).toBeEnabled({timeout: AWAIT_TIMEOUT});
       }
     }
 
-    // CRITICAL: After register button is enabled, wait for CC plugin to be fully initialized
-    // The button enables when webex.init() completes, but webex.cc needs extra time
-    // to complete internal initialization before register() can be called successfully
-    await page.waitForTimeout(5000);
+    await sleep(5000);
 
-    // Register with CC using existing retry logic
     await registerContactCenter(page);
   }
 
-  // Verify dropdowns are populated (confirms successful registration)
   await page
     .locator('#teamsDropdown option:not([value=""])')
     .first()

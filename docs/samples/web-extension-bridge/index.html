@@ -1,0 +1,98 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>web-extension-bridge — web app sample</title>
+  <link rel="stylesheet" href="./style.css">
+</head>
+
+<body>
+  <main class="page">
+    <header class="page__header">
+      <div>
+        <h1>web-extension-bridge</h1>
+        <p class="muted">
+          Web application half of the bridge sample. Publish to the extension (FR1) and
+          answer requests from it (FR2).
+        </p>
+      </div>
+      <p id="connection-pill" class="pill pill--waiting" role="status" aria-live="polite">
+        Waiting for extension…
+      </p>
+    </header>
+
+    <section class="card" aria-labelledby="publish-heading">
+      <h2 id="publish-heading">Push to the extension</h2>
+      <p class="muted">
+        Sends <code>publish('message', { payload })</code>. Fire and forget: the extension
+        buffers it until the popup is opened.
+      </p>
+      <form id="publish-form" class="row">
+        <label class="grow" for="message-text">Message</label>
+        <input id="message-text" name="payload" type="text" value="Hello from the web app"
+          autocomplete="off" required>
+        <button type="submit" class="button button--primary">Publish to extension</button>
+      </form>
+    </section>
+
+    <section class="card" aria-labelledby="pull-heading">
+      <h2 id="pull-heading">Answer requests from the extension</h2>
+      <p class="muted">
+        The <code>snapshot</code> handler reads this field when the request arrives, so the
+        popup always sees the current value rather than a stale copy.
+      </p>
+      <div class="row">
+        <label class="grow" for="shared-value">Shared value</label>
+        <input id="shared-value" type="text" value="the current page state" autocomplete="off">
+      </div>
+      <dl class="stats">
+        <div>
+          <dt>Requests served</dt>
+          <dd id="served-count">0</dd>
+        </div>
+        <div>
+          <dt>Last request topic</dt>
+          <dd id="last-topic">—</dd>
+        </div>
+      </dl>
+      <details>
+        <summary>Handlers registered by this page</summary>
+        <ul class="handlers">
+          <li><code>snapshot</code> — returns the shared value, a timestamp and the counter.</li>
+          <li><code>echo</code> — returns the request payload, validated as an object.</li>
+          <li><code>boom</code> — always throws, so the popup shows <code>HANDLER_ERROR</code>.</li>
+          <li><code>slow</code> — never answers, so the popup shows <code>TIMEOUT</code>.</li>
+        </ul>
+      </details>
+    </section>
+
+    <section class="card" aria-labelledby="log-heading">
+      <div class="row row--between">
+        <h2 id="log-heading">Event log</h2>
+        <div class="row">
+          <button id="refresh-counters" type="button" class="button">Refresh counters</button>
+          <button id="clear-log" type="button" class="button">Clear log</button>
+        </div>
+      </div>
+      <p id="error-surface" class="error" role="alert" hidden></p>
+      <ul id="event-log" class="log" aria-live="polite"></ul>
+      <dl id="counters" class="counters"></dl>
+    </section>
+
+    <footer class="page__footer muted">
+      <p>
+        Local testing only: this page allow-lists its own origin
+        (<code id="origin-label"></code>) and the sample extension's manifest allow-lists it in
+        turn. Replace both before shipping anything — see the "Before you ship" checklist in
+        the package README.
+      </p>
+    </footer>
+  </main>
+
+  <script src="./vendor/web-extension-bridge-web.js"></script>
+  <script src="./app.js"></script>
+</body>
+
+</html>

@@ -36,20 +36,42 @@ const breakoutEvent: {
     if (!eventInfo?.breakoutMoveId || !eventInfo?.meeting) {
       return;
     }
-    if (!eventInfo.meeting.meetingInfo?.enableConvergedArchitecture) {
+
+    const {breakoutMoveId, currentSession, error, llmLatency, llmWebsocketUrl, meeting} = eventInfo;
+
+    if (!meeting.meetingInfo?.enableConvergedArchitecture) {
       return;
     }
-    submitClientEvent({
-      name: event,
-      payload: {
-        identifiers: {
-          breakoutMoveId: eventInfo.breakoutMoveId,
-          breakoutSessionId: eventInfo?.currentSession?.sessionId,
-          breakoutGroupId: eventInfo?.currentSession?.groupId,
-        },
+
+    if (
+      event === 'client.breakout-session.join.response' &&
+      typeof meeting.shouldEmitBreakoutJoinResponseMetric === 'function' &&
+      !meeting.shouldEmitBreakoutJoinResponseMetric(breakoutMoveId, Boolean(llmLatency))
+    ) {
+      return;
+    }
+
+    const payload: any = {
+      llmLatency,
+      identifiers: {
+        breakoutMoveId,
+        breakoutSessionId: currentSession?.sessionId,
+        breakoutGroupId: currentSession?.groupId,
+        llmWebsocketUrl,
       },
-      options: {meetingId: eventInfo.meeting.id},
-    });
+    };
+
+    const options: any = {
+      meetingId: meeting.id,
+      rawError: error,
+    };
+
+    const metricEvent = {
+      name: event,
+      payload,
+      options,
+    };
+    submitClientEvent(metricEvent);
   },
 };
 

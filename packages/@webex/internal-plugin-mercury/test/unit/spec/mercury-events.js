@@ -38,7 +38,6 @@ describe('plugin-mercury', () => {
         },
         timestamp: Date.now(),
         trackingId: `suffix_${uuid.v4()}_${Date.now()}`,
-        sessionId: 'mercury-default-session',
       };
 
       beforeEach(() => {
@@ -93,7 +92,6 @@ describe('plugin-mercury', () => {
         });
 
         mercury = webex.internal.mercury;
-        mercury.defaultSessionId = 'mercury-default-session';
       });
 
       afterEach(() => {
@@ -267,7 +265,13 @@ describe('plugin-mercury', () => {
           },
           {
             code: 4000,
+            reason: 'Replaced',
             action: 'replace',
+          },
+          {
+            code: 4000,
+            reason: 'Unexpected close',
+            action: 'reconnect',
           },
           {
             action: 'close',
@@ -292,6 +296,8 @@ describe('plugin-mercury', () => {
                 mercury._reconnect.restore();
               }
 
+              let expectedReconnectUrl;
+
               sinon.spy(mercury, 'connect');
 
               const offlineSpy = sinon.spy();
@@ -313,13 +319,18 @@ describe('plugin-mercury', () => {
                   // Make sure mercury.connect has a call count of zero
                   mercury.connect.resetHistory();
 
+                  // Reconnection re-derives from the resolved URL
+                  // captured in _prepareAndOpenSocket, not the socket's actual
+                  // (possibly changed by interceptors) url.
+                  expectedReconnectUrl = mercury.resolvedWebSocketUrl;
+
                   mockWebSocket.emit('close', {code, reason});
 
                   return promiseTick(1);
                 })
                 .then(() => {
                   assert.called(offlineSpy);
-                  assert.calledWith(offlineSpy, {code, reason, sessionId: 'mercury-default-session'});
+                  assert.calledWith(offlineSpy, {code, reason});
                   switch (action) {
                     case 'close':
                       assert.called(permanentSpy);
@@ -342,7 +353,7 @@ describe('plugin-mercury', () => {
                   assert.isFalse(mercury.connected, 'Mercury is not connected');
                   if (action === 'reconnect') {
                     assert.called(mercury.connect);
-                    assert.calledWith(mercury.connect, mockWebSocket.url);
+                    assert.calledWith(mercury.connect, expectedReconnectUrl);
                     assert.isTrue(mercury.connecting, 'Mercury is connecting');
 
                     // Block until reconnect completes so logs don't overlap

@@ -453,3 +453,36 @@ yarn fix:prettier
 - [Event Patterns](./event-patterns.md)
 - [Error Handling Patterns](./error-handling-patterns.md)
 - [Architecture Patterns](./architecture-patterns.md)
+## Pattern-Extract Verification
+
+### When to use
+
+Reset Jest mocks around tests that replace Webex SDK methods, subscribe to events, or touch singleton collaborators. Test placement and cleanup are behavioral test conventions beyond formatter enforcement.
+
+### Correct
+
+```typescript
+beforeEach(() => {
+  jest.clearAllMocks();
+});
+```
+
+### Incorrect
+
+```typescript
+// Reuse call counts and mock implementations from the previous test.
+```
+
+Leaked call counts, listeners, or mock implementations make test order affect results.
+
+### Where it appears
+
+- `src/CallHistory/CallHistory.test.ts`
+- `src/CallRecording/CallRecording.test.ts`
+- `src/CallingClient/CallingClient.test.ts`
+- `src/Contacts/ContactsClient.test.ts`
+- `src/Voicemail/Voicemail.test.ts`
+
+### Edge cases
+
+Some suites also restore a replaced `webex.request` or reset module/singleton state in `afterEach`; use the cleanup required by the collaborator under test rather than relying on `clearAllMocks` alone.

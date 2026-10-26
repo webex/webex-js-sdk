@@ -74,7 +74,7 @@ Use: [`documentation/create-agents-md.md`](documentation/create-agents-md.md)
 ## Template Usage Flow
 
 ```
-1. Classify task using root AGENTS.md decision tree (../../AGENTS.md)
+1. Read package rules in [`AGENTS.md`](../../AGENTS.md), then route to the canonical module spec through [`SPEC_INDEX.md`](../SPEC_INDEX.md)
        |
        v
 2. Route to appropriate template

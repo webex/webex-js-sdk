@@ -302,3 +302,34 @@ async someOperation() {
 - [Error Handling Patterns](./error-handling-patterns.md)
 - [TypeScript Patterns](./typescript-patterns.md)
 - [Testing Patterns](./testing-patterns.md)
+## Pattern-Extract Verification
+
+### When to use
+
+Use a package factory for a consumer-facing client so initialization, backend selection, and logging setup stay behind the public contract. This is an architectural convention; formatting and import ordering remain governed by `.eslintrc.js` and Prettier.
+
+### Correct
+
+```typescript
+const history = createCallHistoryClient(webex, logger);
+```
+
+### Incorrect
+
+```typescript
+const history = new CallHistory(webex, logger);
+```
+
+Direct construction couples consumers to an implementation class and can bypass factory-owned initialization behavior.
+
+### Where it appears
+
+- `src/CallHistory/CallHistory.ts`
+- `src/CallRecording/CallRecording.ts`
+- `src/CallSettings/CallSettings.ts`
+- `src/Contacts/ContactsClient.ts`
+- `src/Voicemail/Voicemail.ts`
+
+### Edge cases
+
+Internal objects such as `Call` may use an internal factory with a larger orchestration-specific signature. Singleton infrastructure follows its documented accessor or frozen-instance pattern instead of the top-level client factory shape.

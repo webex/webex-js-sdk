@@ -1,8 +1,13 @@
-import {TASK_CHANNEL_TYPE, VOICE_VARIANT} from '../../../../../../src/services/task/types';
+import {
+  CONSULT_TRANSFER_DESTINATION_TYPE,
+  TASK_CHANNEL_TYPE,
+  VOICE_VARIANT,
+} from '../../../../../../src/services/task/types';
 import {TaskState} from '../../../../../../src/services/task/state-machine/constants';
 import {
   computeUIControls,
   getDefaultUIControls,
+  haveUIControlsChanged,
 } from '../../../../../../src/services/task/state-machine/uiControlsComputer';
 import {getTaskStateForUiControls} from '../../../../../../src/services/task/state-machine/actions';
 import {TaskContext} from '../../../../../../src/services/task/state-machine/types';
@@ -539,6 +544,7 @@ function createVoiceContext(overrides: Partial<TaskContext> = {}): TaskContext {
     consultDestinationAgentId: null,
     consultDestinationAgentJoined: true,
     consultCallHeld: false,
+    hideBlindTransferForEpDnPendingMerge: false,
     recordingControlsAvailable: true,
     recordingInProgress: true,
     uiControlConfig: {
@@ -550,6 +556,27 @@ function createVoiceContext(overrides: Partial<TaskContext> = {}): TaskContext {
     },
     uiControls: getDefaultUIControls(),
     ...overrides,
+  };
+}
+
+function createConsultTransferContext(
+  taskData = createTaskData(),
+  overrides: Partial<NonNullable<TaskContext['uiControlConfig']['consultTransferConfig']>> = {}
+): TaskContext {
+  const context = createVoiceContext({taskData});
+
+  return {
+    ...context,
+    uiControlConfig: {
+      ...context.uiControlConfig,
+      consultTransferConfig: {
+        allowConsultToQueue: true,
+        accessQueue: 'ALL',
+        accessEntryPoint: 'ALL',
+        accessBuddyTeam: 'ALL',
+        ...overrides,
+      },
+    },
   };
 }
 
@@ -612,7 +639,10 @@ function createTaskData1LikeConferenceConsultTaskData() {
           mediaResourceId: '66cc5edd-8ac9-4f27-8f48-286edea460b2',
           mType: 'consult',
           isHold: false,
-          participants: ['747a2138-0a24-48fc-8d69-3a336d9b7158', '058b3e7c-8fcf-45ee-b0c4-4ef546d360b9'],
+          participants: [
+            '747a2138-0a24-48fc-8d69-3a336d9b7158',
+            '058b3e7c-8fcf-45ee-b0c4-4ef546d360b9',
+          ],
         },
       } as any,
       owner: 'e271075a-077d-42d0-9ae4-2a43cb847664',
@@ -741,7 +771,13 @@ describe('uiControlsComputer consult initiator controls', () => {
       taskData: {
         ...consultedTaskData,
         isConsulted: true,
+        agentId: 'agent-2',
       } as any,
+      uiControlConfig: {
+        ...createVoiceContext().uiControlConfig,
+        agentId: 'agent-2',
+        isEndConsultEnabled: true,
+      },
     });
 
     const uiControls = computeUIControls(
@@ -751,6 +787,10 @@ describe('uiControlsComputer consult initiator controls', () => {
     );
 
     expect(uiControls.consult.transfer).toEqual({isVisible: false, isEnabled: false});
+    expect(uiControls.consult.conference).toEqual({isVisible: false, isEnabled: false});
+    expect(uiControls.consult.mergeToConference).toEqual({isVisible: false, isEnabled: false});
+    expect(uiControls.consult.switch).toEqual({isVisible: false, isEnabled: false});
+    expect(uiControls.consult.endConsult).toEqual({isVisible: true, isEnabled: true});
   });
 
   it('hides main-leg controls for consulted agent when payload isConsulted is stale false', () => {
@@ -853,8 +893,122 @@ describe('uiControlsComputer consult initiator controls', () => {
 
     const uiControls = computeUIControls(TaskState.CONFERENCING, context, taskData);
 
+    expect(uiControls.activeLeg).toBe('main');
     expect(uiControls.main.end).toEqual({isVisible: true, isEnabled: true});
     expect(uiControls.main.exitConference).toEqual({isVisible: true, isEnabled: true});
+  });
+
+  it('keeps main leg active for conference owner when another agent consults (CAI-8329)', () => {
+    const taskData = createTaskData({
+      agentId: 'agent-3',
+      type: 'AgentConsultCreated' as any,
+      consultMediaResourceId: 'consult-media-1',
+      consultingAgentId: 'agent-3',
+      isConsulted: false,
+      interaction: {
+        state: 'conference',
+        interactionId: 'interaction-1',
+        mainInteractionId: 'interaction-1',
+        owner: 'agent-1',
+        callProcessingDetails: {
+          conferenceHoldParticipant: 'true',
+          recordInProgress: 'true',
+          recordingStarted: 'true',
+        },
+        participants: {
+          'agent-1': {
+            id: 'agent-1',
+            pType: 'Agent',
+            hasJoined: true,
+            hasLeft: false,
+            consultState: 'conferencing',
+          },
+          'agent-2': {
+            id: 'agent-2',
+            pType: 'Agent',
+            hasJoined: false,
+            hasLeft: false,
+            isConsulted: true,
+          },
+          'agent-3': {
+            id: 'agent-3',
+            pType: 'Agent',
+            hasJoined: true,
+            hasLeft: false,
+            consultState: 'consultInitiated',
+          },
+          'customer-1': {id: 'customer-1', pType: 'Customer', hasJoined: true, hasLeft: false},
+        } as any,
+        media: {
+          'interaction-1': {
+            mediaResourceId: 'interaction-1',
+            mType: 'mainCall',
+            isHold: true,
+            participants: ['customer-1', 'agent-1', 'agent-3'],
+          },
+          'consult-media-1': {
+            mediaResourceId: 'consult-media-1',
+            mType: 'consult',
+            isHold: false,
+            participants: ['agent-2', 'agent-3'],
+          },
+        } as any,
+      } as any,
+    });
+    const baseContext = createVoiceContext();
+    const context = createVoiceContext({
+      consultInitiator: true,
+      consultFromConference: true,
+      consultDestinationAgentJoined: true,
+      recordingControlsAvailable: true,
+      recordingInProgress: true,
+      taskData,
+      uiControlConfig: {
+        ...baseContext.uiControlConfig,
+        agentId: 'agent-1',
+      },
+    });
+
+    const uiControls = computeUIControls(TaskState.CONFERENCING, context, taskData);
+
+    expect(uiControls.activeLeg).toBe('main');
+    expect(uiControls.main.hold).toEqual({isVisible: true, isEnabled: false});
+    expect(uiControls.main.consult).toEqual({isVisible: true, isEnabled: false});
+    expect(uiControls.main.recording).toEqual({isVisible: true, isEnabled: true});
+    expect(uiControls.main.exitConference).toEqual({isVisible: true, isEnabled: true});
+    expect(uiControls.main.end).toEqual({isVisible: true, isEnabled: true});
+    expect(uiControls.main.transfer).toEqual({isVisible: false, isEnabled: false});
+    expect(uiControls.main.transferConference).toEqual({isVisible: false, isEnabled: false});
+  });
+
+  it('detects other-agent consult in progress with mixed-case Agent pType (CAI-8329)', () => {
+    const taskData = createConferenceWithOtherAgentConsultPendingTaskData();
+    const mixedCaseTaskData = createTaskData({
+      ...taskData,
+      interaction: {
+        ...taskData.interaction,
+        participants: {
+          ...taskData.interaction?.participants,
+          'agent-1': {
+            ...(taskData.interaction?.participants as any)['agent-1'],
+            pType: 'Agent',
+          },
+        },
+      } as any,
+    });
+    const baseContext = createVoiceContext();
+    const context = createVoiceContext({
+      consultInitiator: false,
+      taskData: mixedCaseTaskData,
+      uiControlConfig: {
+        ...baseContext.uiControlConfig,
+        agentId: 'agent-2',
+      },
+    });
+
+    const uiControls = computeUIControls(TaskState.CONFERENCING, context, mixedCaseTaskData);
+
+    expect(uiControls.main.consult).toEqual({isVisible: true, isEnabled: false});
   });
 
   it('enables end and exitConference on unheld main leg for non-initiator during active conference consult', () => {
@@ -1133,7 +1287,11 @@ describe('uiControlsComputer consult initiator controls', () => {
         agentId: 'agent-1',
       },
     });
-    const createdControls = computeUIControls(TaskState.CONSULTING, createdContext, createdTaskData);
+    const createdControls = computeUIControls(
+      TaskState.CONSULTING,
+      createdContext,
+      createdTaskData
+    );
 
     expect(createdControls.consult.transferConference).toEqual({isVisible: true, isEnabled: false});
 
@@ -1149,7 +1307,10 @@ describe('uiControlsComputer consult initiator controls', () => {
       consultingTaskData
     );
 
-    expect(consultingControls.consult.transferConference).toEqual({isVisible: true, isEnabled: true});
+    expect(consultingControls.consult.transferConference).toEqual({
+      isVisible: true,
+      isEnabled: true,
+    });
   });
 
   it('hides exitConference on main leg for consult initiator before destination joins', () => {
@@ -1734,6 +1895,66 @@ describe('uiControlsComputer consult initiator controls', () => {
     expect(uiControls.consult.endConsult).toEqual({isVisible: false, isEnabled: false});
   });
 
+  it('enables main.end after resume when stale consult media persists after RONA (AgentContactUnheld)', () => {
+    const unheldTaskData = createTaskData({
+      agentId: 'agent-1',
+      mediaResourceId: 'interaction-1',
+      consultMediaResourceId: 'consult-media',
+      isConsulted: false,
+      type: 'AgentContactUnheld' as any,
+      interaction: {
+        state: 'connected',
+        interactionId: 'interaction-1',
+        mainInteractionId: 'interaction-1',
+        owner: 'agent-1',
+        participants: {
+          'agent-1': {
+            id: 'agent-1',
+            pType: 'Agent',
+            hasLeft: false,
+            consultState: 'consultCompleted',
+            isConsulted: false,
+          },
+          'agent-2': {
+            id: 'agent-2',
+            pType: 'Agent',
+            hasLeft: false,
+            hasJoined: false,
+            consultState: 'consultReserved',
+            isConsulted: true,
+          },
+          'customer-1': {id: 'customer-1', pType: 'Customer', hasLeft: false, hasJoined: true},
+        } as any,
+        media: {
+          'interaction-1': {
+            mediaResourceId: 'interaction-1',
+            mType: 'mainCall',
+            isHold: false,
+            participants: ['customer-1', 'agent-1'],
+          },
+          'consult-media': {
+            mediaResourceId: 'consult-media',
+            mType: 'consult',
+            isHold: false,
+            participants: ['agent-1', 'agent-2'],
+          },
+        } as any,
+      } as any,
+    });
+    const context = createVoiceContext({
+      taskData: unheldTaskData as any,
+      consultInitiator: false,
+      consultDestinationAgentJoined: false,
+      consultCallHeld: false,
+    });
+
+    const uiControls = computeUIControls(TaskState.CONNECTED, context, unheldTaskData as any);
+
+    expect(uiControls.activeLeg).toBe('main');
+    expect(uiControls.main.hold).toEqual({isVisible: true, isEnabled: true});
+    expect(uiControls.main.end).toEqual({isVisible: true, isEnabled: true});
+    expect(uiControls.consult.endConsult).toEqual({isVisible: false, isEnabled: false});
+  });
 });
 
 describe('uiControlsComputer outdial accept/decline controls', () => {
@@ -1802,6 +2023,7 @@ describe('uiControlsComputer WebRTC call-control end button', () => {
       consultDestinationAgentId: null,
       consultDestinationAgentJoined: false,
       consultCallHeld: false,
+      hideBlindTransferForEpDnPendingMerge: false,
       recordingControlsAvailable: true,
       recordingInProgress: true,
       uiControlConfig: {
@@ -1877,7 +2099,10 @@ describe('uiControlsComputer conference controls', () => {
     });
   }
 
-  function createConferenceContext(participantCount: number, overrides: Partial<TaskContext> = {}): TaskContext {
+  function createConferenceContext(
+    participantCount: number,
+    overrides: Partial<TaskContext> = {}
+  ): TaskContext {
     return {
       taskData: createConferenceTaskData(participantCount),
       consultInitiator: true,
@@ -1888,6 +2113,7 @@ describe('uiControlsComputer conference controls', () => {
       consultDestinationAgentId: null,
       consultDestinationAgentJoined: false,
       consultCallHeld: false,
+      hideBlindTransferForEpDnPendingMerge: false,
       recordingControlsAvailable: true,
       recordingInProgress: true,
       uiControlConfig: {
@@ -1914,14 +2140,467 @@ describe('uiControlsComputer conference controls', () => {
     expect(uiControls.main.end).toEqual({isVisible: true, isEnabled: true});
   });
 
-  it('real conference (participantCount > 1): transfer/recording hidden, consult enabled, exitConference visible', () => {
+  it('hides blind transfer on main after EP-DN consult merge before destination joins (CAI-8329)', () => {
+    const taskData = createTaskData({
+      agentId: 'agent-1',
+      consultingAgentId: 'agent-1',
+      consultMediaResourceId: 'consult-media-1',
+      isConsulted: false,
+      destinationType: 'EP-DN',
+      type: 'AgentConsultCreated' as any,
+      interaction: {
+        state: 'conference',
+        interactionId: 'interaction-1',
+        mainInteractionId: 'interaction-1',
+        owner: 'agent-1',
+        participants: {
+          'agent-1': {
+            id: 'agent-1',
+            pType: 'Agent',
+            hasJoined: true,
+            hasLeft: false,
+            consultState: 'consulting',
+          },
+          'dn-dest': {
+            id: 'dn-dest',
+            pType: 'DN',
+            hasLeft: false,
+            hasJoined: false,
+          },
+          'customer-1': {id: 'customer-1', pType: 'Customer', hasJoined: true, hasLeft: false},
+        } as any,
+        media: {
+          'interaction-1': {
+            mediaResourceId: 'interaction-1',
+            mType: 'mainCall',
+            participants: ['agent-1', 'customer-1'],
+            isHold: false,
+          },
+          'consult-media-1': {
+            mediaResourceId: 'consult-media-1',
+            mType: 'consult',
+            participants: ['agent-1', 'dn-dest'],
+            isHold: false,
+          },
+        } as any,
+      } as any,
+    });
+    const context = createConferenceContext(1, {
+      consultInitiator: false,
+      consultFromConference: false,
+      consultDestinationType: null,
+      hideBlindTransferForEpDnPendingMerge: true,
+      consultCallHeld: false,
+      taskData,
+      uiControlConfig: {
+        isEndTaskEnabled: true,
+        isEndConsultEnabled: true,
+        channelType: TASK_CHANNEL_TYPE.VOICE,
+        isRecordingEnabled: true,
+        voiceVariant: VOICE_VARIANT.WEBRTC,
+        agentId: 'agent-1',
+      },
+    });
+
+    const uiControls = computeUIControls(TaskState.CONFERENCING, context, taskData);
+
+    expect(uiControls.main.transfer).toEqual({isVisible: false, isEnabled: false});
+    expect(uiControls.main.end).toEqual({isVisible: true, isEnabled: true});
+    expect(uiControls.main.exitConference).toEqual({isVisible: true, isEnabled: true});
+  });
+
+  it('hides blind transfer on main after EP-DN consult merge when destination is hydrated as joined (CAI-8329)', () => {
+    const taskData = createTaskData({
+      agentId: 'agent-1',
+      consultingAgentId: 'agent-1',
+      consultMediaResourceId: 'consult-media-1',
+      isConsulted: false,
+      destinationType: 'EP-DN',
+      type: 'AgentConsultCreated' as any,
+      interaction: {
+        state: 'conference',
+        interactionId: 'interaction-1',
+        mainInteractionId: 'interaction-1',
+        owner: 'agent-1',
+        callProcessingDetails: {
+          consultDestinationAgentJoined: 'true',
+        },
+        participants: {
+          'agent-1': {
+            id: 'agent-1',
+            pType: 'Agent',
+            hasJoined: true,
+            hasLeft: false,
+            consultState: 'consulting',
+          },
+          'dn-dest': {
+            id: 'dn-dest',
+            pType: 'DN',
+            hasLeft: false,
+            hasJoined: false,
+          },
+          'customer-1': {id: 'customer-1', pType: 'Customer', hasJoined: true, hasLeft: false},
+        } as any,
+        media: {
+          'interaction-1': {
+            mediaResourceId: 'interaction-1',
+            mType: 'mainCall',
+            participants: ['agent-1', 'customer-1'],
+            isHold: false,
+          },
+          'consult-media-1': {
+            mediaResourceId: 'consult-media-1',
+            mType: 'consult',
+            participants: ['agent-1', 'dn-dest'],
+            isHold: false,
+          },
+        } as any,
+      } as any,
+    });
+    const context = createConferenceContext(1, {
+      consultInitiator: false,
+      consultFromConference: false,
+      consultDestinationType: null,
+      hideBlindTransferForEpDnPendingMerge: true,
+      consultCallHeld: false,
+      taskData,
+      uiControlConfig: {
+        isEndTaskEnabled: true,
+        isEndConsultEnabled: true,
+        channelType: TASK_CHANNEL_TYPE.VOICE,
+        isRecordingEnabled: true,
+        voiceVariant: VOICE_VARIANT.WEBRTC,
+        agentId: 'agent-1',
+      },
+    });
+
+    const uiControls = computeUIControls(TaskState.CONFERENCING, context, taskData);
+
+    expect(uiControls.main.transfer).toEqual({isVisible: false, isEnabled: false});
+    expect(uiControls.main.end).toEqual({isVisible: true, isEnabled: true});
+    expect(uiControls.main.exitConference).toEqual({isVisible: true, isEnabled: true});
+  });
+
+  it('hides blind transfer on AgentConsultConferencing after clearConsultState sets flag (CAI-8329)', () => {
+    const agentId = '4b496e73-55e4-4d74-a53c-469babdd8326';
+    const mainInteractionId = '08f427ed-71d8-41df-8a44-43e1bb2b2074';
+    const consultMediaId = 'e6592ab7-8f56-4132-87a9-48c4c262df3c';
+    const taskData = createTaskData({
+      agentId,
+      consultMediaResourceId: consultMediaId,
+      isConsulted: false,
+      type: 'AgentConsultConferencing' as any,
+      interaction: {
+        state: 'conference',
+        interactionId: mainInteractionId,
+        mainInteractionId,
+        owner: agentId,
+        callProcessingDetails: {
+          relationshipType: 'consult',
+          childInteractionId: consultMediaId,
+        },
+        participants: {
+          [agentId]: {
+            id: agentId,
+            pType: 'Agent',
+            hasJoined: true,
+            hasLeft: false,
+            consultState: 'conferencing',
+            isConsulted: false,
+          },
+          '+13159998087': {
+            id: '+13159998087',
+            pType: 'EP-DN',
+            type: 'EpDn',
+            hasLeft: false,
+          },
+          '+14696762938': {
+            id: '+14696762938',
+            pType: 'Customer',
+            hasJoined: true,
+            hasLeft: false,
+          },
+        } as any,
+        media: {
+          [mainInteractionId]: {
+            mediaResourceId: mainInteractionId,
+            mType: 'mainCall',
+            participants: ['+14696762938', agentId],
+            isHold: false,
+          },
+          [consultMediaId]: {
+            mediaResourceId: consultMediaId,
+            mType: 'consult',
+            participants: ['+13159998087', agentId],
+            isHold: false,
+          },
+        } as any,
+      } as any,
+    });
+    const context = createConferenceContext(1, {
+      consultInitiator: false,
+      consultFromConference: false,
+      consultDestinationType: null,
+      hideBlindTransferForEpDnPendingMerge: true,
+      consultCallHeld: false,
+      taskData,
+      uiControlConfig: {
+        isEndTaskEnabled: true,
+        isEndConsultEnabled: true,
+        channelType: TASK_CHANNEL_TYPE.VOICE,
+        isRecordingEnabled: true,
+        voiceVariant: VOICE_VARIANT.WEBRTC,
+        agentId,
+      },
+    });
+
+    const uiControls = computeUIControls(TaskState.CONFERENCING, context, taskData);
+
+    expect(uiControls.activeLeg).toBe('main');
+    expect(uiControls.main.transfer).toEqual({isVisible: false, isEnabled: false});
+    expect(uiControls.main.mute).toEqual({isVisible: true, isEnabled: true});
+    expect(uiControls.main.recording).toEqual({isVisible: true, isEnabled: true});
+    expect(uiControls.main.end).toEqual({isVisible: true, isEnabled: true});
+    expect(uiControls.main.exitConference).toEqual({isVisible: true, isEnabled: true});
+  });
+
+  it('shows blind transfer on pending conference when consult context is absent (CAI-8329)', () => {
+    const context = createConferenceContext(1, {
+      consultInitiator: false,
+      consultFromConference: false,
+      consultDestinationType: null,
+    });
+
+    const uiControls = computeUIControls(TaskState.CONFERENCING, context, context.taskData);
+
+    expect(uiControls.main.transfer).toEqual({isVisible: true, isEnabled: true});
+  });
+
+  it('real conference (participantCount > 1): transfer hidden, recording visible when controls available, consult enabled, exitConference visible', () => {
     const context = createConferenceContext(2);
 
     const uiControls = computeUIControls(TaskState.CONFERENCING, context, context.taskData);
 
     expect(uiControls.main.transfer).toEqual({isVisible: false, isEnabled: false});
-    expect(uiControls.main.recording).toEqual({isVisible: false, isEnabled: false});
+    expect(uiControls.main.recording).toEqual({isVisible: true, isEnabled: true});
     expect(uiControls.main.consult).toEqual({isVisible: true, isEnabled: true});
+    expect(uiControls.main.exitConference).toEqual({isVisible: true, isEnabled: true});
+    expect(uiControls.main.end).toEqual({isVisible: true, isEnabled: true});
+  });
+
+  it('real conference (participantCount > 1): recording hidden when recording controls unavailable', () => {
+    const context = createConferenceContext(2, {
+      recordingControlsAvailable: false,
+      recordingInProgress: false,
+    });
+
+    const uiControls = computeUIControls(TaskState.CONFERENCING, context, context.taskData);
+
+    expect(uiControls.main.recording).toEqual({isVisible: false, isEnabled: false});
+  });
+
+  it('shows recording when second agent joins EP-DN merged conference (CAI-8329)', () => {
+    const taskData = createTaskData({
+      agentId: 'agent-1',
+      type: 'ContactUpdated' as any,
+      interaction: {
+        state: 'conference',
+        interactionId: 'interaction-1',
+        mainInteractionId: 'interaction-1',
+        owner: 'agent-1',
+        callProcessingDetails: {
+          recordInProgress: 'true',
+          recordingStarted: 'true',
+          epDnParticipantRemoved: '+13159998059',
+        },
+        participants: {
+          'agent-1': {
+            id: 'agent-1',
+            pType: 'Agent',
+            hasJoined: true,
+            hasLeft: false,
+            consultState: 'conferencing',
+          },
+          'agent-2': {
+            id: 'agent-2',
+            pType: 'Agent',
+            hasJoined: true,
+            hasLeft: false,
+            consultState: 'conferencing',
+          },
+          'customer-1': {id: 'customer-1', pType: 'Customer', hasJoined: true, hasLeft: false},
+        } as any,
+        media: {
+          'interaction-1': {
+            mediaResourceId: 'interaction-1',
+            mType: 'mainCall',
+            participants: ['customer-1', 'agent-1', 'agent-2'],
+            isHold: false,
+          },
+        } as any,
+      } as any,
+    });
+    const context = createConferenceContext(2, {
+      hideBlindTransferForEpDnPendingMerge: false,
+      taskData,
+    });
+
+    const uiControls = computeUIControls(TaskState.CONFERENCING, context, taskData);
+
+    expect(uiControls.main.recording).toEqual({isVisible: true, isEnabled: true});
+    expect(uiControls.main.transfer).toEqual({isVisible: false, isEnabled: false});
+    expect(uiControls.main.exitConference).toEqual({isVisible: true, isEnabled: true});
+  });
+
+  it('post_call after customer exit: only exitConference and end enabled during EP-DN pending merge (CAI-8329)', () => {
+    const taskData = createTaskData({
+      agentId: 'agent-1',
+      consultingAgentId: 'agent-1',
+      consultMediaResourceId: 'consult-media-1',
+      isConsulted: false,
+      destinationType: 'EP-DN',
+      type: 'ParticipantPostCallActivity' as any,
+      interaction: {
+        state: 'post_call',
+        interactionId: 'interaction-1',
+        mainInteractionId: 'interaction-1',
+        owner: 'agent-1',
+        callProcessingDetails: {
+          hasCustomerLeft: 'true',
+        },
+        participants: {
+          'agent-1': {
+            id: 'agent-1',
+            pType: 'Agent',
+            hasJoined: true,
+            hasLeft: false,
+            consultState: 'conferencing',
+          },
+          '+13159998059': {
+            id: '+13159998059',
+            pType: 'EP-DN',
+            hasLeft: false,
+            hasJoined: false,
+          },
+          '+14696762938': {
+            id: '+14696762938',
+            pType: 'Customer',
+            hasJoined: true,
+            hasLeft: true,
+          },
+        } as any,
+        media: {
+          'interaction-1': {
+            mediaResourceId: 'interaction-1',
+            mType: 'mainCall',
+            participants: ['agent-1'],
+            isHold: false,
+          },
+          'consult-media-1': {
+            mediaResourceId: 'consult-media-1',
+            mType: 'consult',
+            participants: ['+13159998059', 'agent-1'],
+            isHold: false,
+          },
+        } as any,
+      } as any,
+    });
+    const context = createConferenceContext(1, {
+      consultInitiator: true,
+      consultFromConference: true,
+      hideBlindTransferForEpDnPendingMerge: true,
+      taskData,
+      uiControlConfig: {
+        isEndTaskEnabled: true,
+        isEndConsultEnabled: true,
+        channelType: TASK_CHANNEL_TYPE.VOICE,
+        isRecordingEnabled: true,
+        voiceVariant: VOICE_VARIANT.WEBRTC,
+        agentId: 'agent-1',
+      },
+    });
+
+    const uiControls = computeUIControls(TaskState.CONFERENCING, context, taskData);
+
+    expect(uiControls.main.transfer).toEqual({isVisible: false, isEnabled: false});
+    expect(uiControls.main.recording).toEqual({isVisible: true, isEnabled: false});
+    expect(uiControls.main.hold).toEqual({isVisible: true, isEnabled: false});
+    expect(uiControls.main.mute).toEqual({isVisible: true, isEnabled: false});
+    expect(uiControls.main.consult).toEqual({isVisible: true, isEnabled: false});
+    expect(uiControls.main.exitConference).toEqual({isVisible: true, isEnabled: true});
+    expect(uiControls.main.end).toEqual({isVisible: true, isEnabled: true});
+  });
+
+  it('hides blind transfer after AgentConsultFailed ANOTHER_CONSULT_IN_PROGRESS during EP-DN pending merge (CAI-8329)', () => {
+    const taskData = createTaskData({
+      agentId: 'agent-1',
+      consultingAgentId: 'agent-1',
+      consultMediaResourceId: 'consult-media-1',
+      isConsulted: false,
+      destinationType: 'Agent',
+      reason: 'ANOTHER_CONSULT_IN_PROGRESS',
+      type: 'AgentConsultFailed' as any,
+      interaction: {
+        state: 'conference',
+        interactionId: 'interaction-1',
+        mainInteractionId: 'interaction-1',
+        owner: 'agent-1',
+        participants: {
+          'agent-1': {
+            id: 'agent-1',
+            pType: 'Agent',
+            hasJoined: true,
+            hasLeft: false,
+            consultState: 'conferencing',
+          },
+          '+13159998059': {
+            id: '+13159998059',
+            pType: 'EP-DN',
+            hasLeft: false,
+            hasJoined: false,
+          },
+          '+14696762938': {
+            id: '+14696762938',
+            pType: 'Customer',
+            hasJoined: true,
+            hasLeft: false,
+          },
+        } as any,
+        media: {
+          'interaction-1': {
+            mediaResourceId: 'interaction-1',
+            mType: 'mainCall',
+            participants: ['agent-1', '+14696762938'],
+            isHold: false,
+          },
+          'consult-media-1': {
+            mediaResourceId: 'consult-media-1',
+            mType: 'consult',
+            participants: ['+13159998059', 'agent-1'],
+            isHold: false,
+          },
+        } as any,
+      } as any,
+    });
+    const context = createConferenceContext(1, {
+      consultInitiator: true,
+      consultFromConference: true,
+      hideBlindTransferForEpDnPendingMerge: true,
+      taskData,
+      uiControlConfig: {
+        isEndTaskEnabled: true,
+        isEndConsultEnabled: true,
+        channelType: TASK_CHANNEL_TYPE.VOICE,
+        isRecordingEnabled: true,
+        voiceVariant: VOICE_VARIANT.WEBRTC,
+        agentId: 'agent-1',
+      },
+    });
+
+    const uiControls = computeUIControls(TaskState.CONFERENCING, context, taskData);
+
+    expect(uiControls.main.transfer).toEqual({isVisible: false, isEnabled: false});
+    expect(uiControls.main.consult).toEqual({isVisible: true, isEnabled: false});
     expect(uiControls.main.exitConference).toEqual({isVisible: true, isEnabled: true});
     expect(uiControls.main.end).toEqual({isVisible: true, isEnabled: true});
   });
@@ -1932,6 +2611,115 @@ describe('uiControlsComputer conference controls', () => {
     const uiControls = computeUIControls(TaskState.CONFERENCING, context, context.taskData);
 
     expect(uiControls.main.hold).toEqual({isVisible: true, isEnabled: false});
+  });
+});
+
+describe('uiControlsComputer consult/transfer destinations', () => {
+  const AGENT = CONSULT_TRANSFER_DESTINATION_TYPE.AGENT;
+  const QUEUE = CONSULT_TRANSFER_DESTINATION_TYPE.QUEUE;
+  const DIAL_NUMBER = CONSULT_TRANSFER_DESTINATION_TYPE.DIALNUMBER;
+  const ENTRY_POINT = CONSULT_TRANSFER_DESTINATION_TYPE.ENTRYPOINT;
+
+  it('returns the default destination order and applies the action-specific inbound voice queue rule', () => {
+    const taskData = createTaskData({
+      interaction: {contactDirection: {type: 'INBOUND'}} as any,
+    });
+    const context = createConsultTransferContext(taskData, {allowConsultToQueue: false});
+
+    const controls = computeUIControls(TaskState.CONNECTED, context, taskData);
+
+    expect(controls.consultTransferDestinations.consult).toEqual([AGENT, DIAL_NUMBER, ENTRY_POINT]);
+    expect(controls.consultTransferDestinations.transfer).toEqual([
+      AGENT,
+      QUEUE,
+      DIAL_NUMBER,
+      ENTRY_POINT,
+    ]);
+  });
+
+  it('reads the outbound queue-transfer flag from callProcessingDetails', () => {
+    const disabledTaskData = createTaskData({
+      interaction: {
+        contactDirection: {type: 'OUTBOUND'},
+        callProcessingDetails: {outdialTransferToQueueEnabled: false},
+      } as any,
+    });
+    const disabledContext = createConsultTransferContext(disabledTaskData);
+    const disabledControls = computeUIControls(
+      TaskState.CONNECTED,
+      disabledContext,
+      disabledTaskData
+    );
+
+    expect(disabledControls.consultTransferDestinations.transfer).toEqual([
+      AGENT,
+      DIAL_NUMBER,
+      ENTRY_POINT,
+    ]);
+
+    const enabledTaskData = createTaskData({
+      interaction: {
+        contactDirection: {type: 'OUTBOUND'},
+        callProcessingDetails: {outdialTransferToQueueEnabled: true},
+      } as any,
+    });
+    const enabledContext = createConsultTransferContext(enabledTaskData);
+    const enabledControls = computeUIControls(TaskState.CONNECTED, enabledContext, enabledTaskData);
+
+    expect(enabledControls.consultTransferDestinations.transfer).toEqual([
+      AGENT,
+      QUEUE,
+      DIAL_NUMBER,
+      ENTRY_POINT,
+    ]);
+    expect(haveUIControlsChanged(disabledControls, enabledControls)).toBe(true);
+  });
+
+  it('hides profile-disabled destinations and does not allow queue transfer for unknown voice direction', () => {
+    const taskData = createTaskData({
+      interaction: {contactDirection: {type: 'UNKNOWN'}} as any,
+    });
+    const context = createConsultTransferContext(taskData, {
+      accessQueue: 'NONE',
+      accessEntryPoint: 'NONE',
+      accessBuddyTeam: 'NONE',
+    });
+
+    const controls = computeUIControls(TaskState.CONNECTED, context, taskData);
+
+    expect(controls.consultTransferDestinations).toEqual({
+      consult: [DIAL_NUMBER],
+      transfer: [DIAL_NUMBER],
+    });
+  });
+
+  it('returns only agents and queues for digital tasks', () => {
+    const taskData = createTaskData({
+      interaction: {mediaType: 'chat'} as any,
+    });
+    const voiceContext = createConsultTransferContext(taskData, {allowConsultToQueue: false});
+    const context: TaskContext = {
+      ...voiceContext,
+      uiControlConfig: {
+        ...voiceContext.uiControlConfig,
+        channelType: TASK_CHANNEL_TYPE.DIGITAL,
+      },
+    };
+
+    const controls = computeUIControls(TaskState.CONNECTED, context, taskData);
+
+    expect(controls.consultTransferDestinations).toEqual({
+      consult: [AGENT, QUEUE],
+      transfer: [AGENT, QUEUE],
+    });
+  });
+
+  it('returns no destinations when no agent-profile policy was configured', () => {
+    const context = createVoiceContext();
+
+    const controls = computeUIControls(TaskState.CONNECTED, context, context.taskData);
+
+    expect(controls.consultTransferDestinations).toEqual({consult: [], transfer: []});
   });
 });
 
@@ -1995,6 +2783,7 @@ describe('uiControlsComputer post-call consult controls (customer left)', () => 
       consultDestinationAgentId: null,
       consultDestinationAgentJoined: true,
       consultCallHeld: false,
+      hideBlindTransferForEpDnPendingMerge: false,
       recordingControlsAvailable: true,
       recordingInProgress: true,
       uiControlConfig: {
@@ -2016,5 +2805,297 @@ describe('uiControlsComputer post-call consult controls (customer left)', () => 
 
     // Main leg end should be visible but disabled
     expect(uiControls.main.end).toEqual({isVisible: true, isEnabled: false});
+  });
+});
+
+// ---------------------------------------------------------------------------
+// WXCC-6026: wxApp thick-client answer UI controls
+// ---------------------------------------------------------------------------
+
+const WX_APP_DEVICE = {
+  deviceType: 'wxApp',
+  deviceId: 'device-id-1',
+  deviceCallId: 'call-id-1',
+};
+
+function createWxAppContext(
+  overrides: Partial<{
+    enableWxBetterTogether: boolean;
+    wxAppAnswerPending: boolean;
+    wxAppAcceptInFlight: boolean;
+  }> = {}
+): TaskContext {
+  return {
+    taskData: createTaskData({
+      agentId: 'agent-1',
+      mediaResourceId: 'interaction-1',
+      interaction: {
+        interactionId: 'interaction-1',
+        participants: {
+          'agent-1': {id: 'agent-1', pType: 'Agent', ...WX_APP_DEVICE},
+          'customer-1': {id: 'customer-1', pType: 'Customer'},
+        } as any,
+        media: {
+          'interaction-1': {mediaResourceId: 'interaction-1', isHold: false},
+        } as any,
+      } as any,
+    }),
+    consultInitiator: false,
+    exitingConference: false,
+    consultFromConference: false,
+    transferConferenceRequested: false,
+    consultDestinationType: null,
+    consultDestinationAgentId: null,
+    consultDestinationAgentJoined: false,
+    consultCallHeld: false,
+    hideBlindTransferForEpDnPendingMerge: false,
+    recordingControlsAvailable: false,
+    recordingInProgress: false,
+    uiControlConfig: {
+      isEndTaskEnabled: true,
+      isEndConsultEnabled: false,
+      channelType: TASK_CHANNEL_TYPE.VOICE,
+      isRecordingEnabled: false,
+      agentId: 'agent-1',
+      enableWxBetterTogether: overrides.enableWxBetterTogether ?? true,
+      wxAppAnswerPending: overrides.wxAppAnswerPending,
+      wxAppAcceptInFlight: overrides.wxAppAcceptInFlight,
+    },
+    uiControls: getDefaultUIControls(),
+  };
+}
+
+describe('uiControlsComputer wxApp thick-client answer (WXCC-6026)', () => {
+  describe('accept and decline when wxApp offer and enableWxBetterTogether=true', () => {
+    it('accept is visible and enabled in OFFERED state with wxApp participant', () => {
+      const ctx = createWxAppContext();
+      const controls = computeUIControls(TaskState.OFFERED, ctx, ctx.taskData);
+
+      expect(controls.main.accept).toEqual({isVisible: true, isEnabled: true});
+    });
+
+    it('decline is visible and enabled in OFFERED state with wxApp participant', () => {
+      const ctx = createWxAppContext();
+      const controls = computeUIControls(TaskState.OFFERED, ctx, ctx.taskData);
+
+      expect(controls.main.decline).toEqual({isVisible: true, isEnabled: true});
+    });
+
+    it('accept is visible but disabled while wxAppAcceptInFlight on inbound offer', () => {
+      const ctx = createWxAppContext({wxAppAcceptInFlight: true});
+      const controls = computeUIControls(TaskState.OFFERED, ctx, ctx.taskData);
+
+      expect(controls.main.accept).toEqual({isVisible: true, isEnabled: false});
+    });
+
+    it('accept is visible but disabled while wxAppAnswerPending on inbound offer', () => {
+      const ctx = createWxAppContext({wxAppAnswerPending: true});
+      const controls = computeUIControls(TaskState.OFFERED, ctx, ctx.taskData);
+
+      expect(controls.main.accept).toEqual({isVisible: true, isEnabled: false});
+    });
+
+    it('decline is visible but disabled while wxAppAnswerPending on inbound offer', () => {
+      const ctx = createWxAppContext({wxAppAnswerPending: true});
+      const controls = computeUIControls(TaskState.OFFERED, ctx, ctx.taskData);
+
+      expect(controls.main.decline).toEqual({isVisible: true, isEnabled: false});
+    });
+
+    it('decline is visible but disabled while wxAppAcceptInFlight on outdial offer', () => {
+      const ctx = createWxAppContext({wxAppAcceptInFlight: true, wxAppAnswerPending: true});
+      ctx.taskData.interaction.outboundType = 'OUTDIAL';
+      const controls = computeUIControls(TaskState.OFFERED, ctx, ctx.taskData);
+
+      expect(controls.main.decline).toEqual({isVisible: true, isEnabled: false});
+    });
+
+    it('decline is visible and enabled while wxAppAnswerPending on outdial offer (Calling phase)', () => {
+      const ctx = createWxAppContext({wxAppAnswerPending: true});
+      ctx.taskData.interaction.outboundType = 'OUTDIAL';
+      const controls = computeUIControls(TaskState.OFFERED, ctx, ctx.taskData);
+
+      expect(controls.main.decline).toEqual({isVisible: true, isEnabled: true});
+    });
+
+    it('keypad is disabled in OFFERED state (not yet engaged)', () => {
+      const ctx = createWxAppContext();
+      const controls = computeUIControls(TaskState.OFFERED, ctx, ctx.taskData);
+
+      expect(controls.main.keypad).toEqual({isVisible: false, isEnabled: false});
+    });
+  });
+
+  describe('mute and keypad when wxApp engaged (CONNECTED state)', () => {
+    it('mute is visible and enabled in CONNECTED state', () => {
+      const ctx = createWxAppContext();
+      const controls = computeUIControls(TaskState.CONNECTED, ctx, ctx.taskData);
+
+      expect(controls.main.mute).toEqual({isVisible: true, isEnabled: true});
+    });
+
+    it('keypad is visible and enabled in CONNECTED state', () => {
+      const ctx = createWxAppContext();
+      const controls = computeUIControls(TaskState.CONNECTED, ctx, ctx.taskData);
+
+      expect(controls.main.keypad).toEqual({isVisible: true, isEnabled: true});
+    });
+
+    it('keypad is disabled in WRAPPING_UP state', () => {
+      const ctx = createWxAppContext();
+      const controls = computeUIControls(TaskState.WRAPPING_UP, ctx, ctx.taskData);
+
+      expect(controls.main.keypad).toEqual({isVisible: false, isEnabled: false});
+    });
+
+    it('mute is disabled in WRAPPING_UP state', () => {
+      const ctx = createWxAppContext();
+      const controls = computeUIControls(TaskState.WRAPPING_UP, ctx, ctx.taskData);
+
+      expect(controls.main.mute).toEqual({isVisible: false, isEnabled: false});
+    });
+  });
+
+  describe('when enableWxBetterTogether=false', () => {
+    it('accept falls back to standard WebRTC logic (disabled for non-WebRTC)', () => {
+      const ctx = createWxAppContext({enableWxBetterTogether: false});
+      const controls = computeUIControls(TaskState.OFFERED, ctx, ctx.taskData);
+
+      // Without WebRTC variant, accept should be visible but disabled per existing logic
+      expect(controls.main.accept.isVisible).toBe(true);
+      // isEnabled is false without webRTC variant
+      expect(controls.main.accept.isEnabled).toBe(false);
+    });
+
+    it('keypad is always disabled when enableWxBetterTogether=false', () => {
+      const ctx = createWxAppContext({enableWxBetterTogether: false});
+      const controls = computeUIControls(TaskState.CONNECTED, ctx, ctx.taskData);
+
+      expect(controls.main.keypad).toEqual({isVisible: false, isEnabled: false});
+    });
+
+    it('mute is disabled for non-WebRTC when enableWxBetterTogether=false', () => {
+      const ctx = createWxAppContext({enableWxBetterTogether: false});
+      const controls = computeUIControls(TaskState.CONNECTED, ctx, ctx.taskData);
+
+      expect(controls.main.mute).toEqual({isVisible: false, isEnabled: false});
+    });
+  });
+
+  describe('default keypad state without wxApp', () => {
+    it('keypad is disabled for standard non-wxApp tasks', () => {
+      const ctx: TaskContext = {
+        taskData: createTaskData(),
+        consultInitiator: false,
+        exitingConference: false,
+        consultFromConference: false,
+        transferConferenceRequested: false,
+        consultDestinationType: null,
+        consultDestinationAgentId: null,
+        consultDestinationAgentJoined: false,
+        consultCallHeld: false,
+        hideBlindTransferForEpDnPendingMerge: false,
+        recordingControlsAvailable: false,
+        recordingInProgress: false,
+        uiControlConfig: {
+          isEndTaskEnabled: true,
+          isEndConsultEnabled: false,
+          channelType: TASK_CHANNEL_TYPE.VOICE,
+          isRecordingEnabled: false,
+        },
+        uiControls: getDefaultUIControls(),
+      };
+      const controls = computeUIControls(TaskState.CONNECTED, ctx, ctx.taskData);
+
+      expect(controls.main.keypad).toEqual({isVisible: false, isEnabled: false});
+    });
+  });
+
+  describe('wxApp engaged through consult and hold phases', () => {
+    it('enables main mute and keypad during consult-requested phase on main leg', () => {
+      const ctx = createWxAppContext();
+      ctx.taskData = createTaskData({
+        agentId: 'agent-1',
+        consultMediaResourceId: 'consult-media',
+        interaction: {
+          interactionId: 'interaction-1',
+          mainInteractionId: 'interaction-1',
+          participants: {
+            'agent-1': {
+              id: 'agent-1',
+              pType: 'Agent',
+              consultState: 'consultInitiated',
+              ...WX_APP_DEVICE,
+            },
+            'customer-1': {id: 'customer-1', pType: 'Customer'},
+          } as any,
+          media: {
+            'interaction-1': {
+              mediaResourceId: 'interaction-1',
+              isHold: false,
+              participants: ['agent-1', 'customer-1'],
+            },
+            'consult-media': {
+              mediaResourceId: 'consult-media',
+              mType: 'consult',
+              participants: ['agent-1'],
+            },
+          } as any,
+        } as any,
+      });
+      ctx.consultInitiator = true;
+      ctx.consultDestinationAgentJoined = false;
+
+      const controls = computeUIControls(TaskState.CONNECTED, ctx, ctx.taskData);
+
+      expect(controls.main.mute).toEqual({isVisible: true, isEnabled: true});
+      expect(controls.main.keypad).toEqual({isVisible: true, isEnabled: true});
+    });
+
+    it('enables main mute and keypad while consulting with main leg held', () => {
+      const taskData = createConsultTaskData();
+      taskData.interaction!.participants!['agent-1'] = {
+        id: 'agent-1',
+        pType: 'AGENT',
+        hasLeft: false,
+        consultState: 'consulting',
+        ...WX_APP_DEVICE,
+      };
+      const ctx = createVoiceContext({
+        taskData,
+        uiControlConfig: {
+          ...createVoiceContext().uiControlConfig,
+          enableWxBetterTogether: true,
+        },
+      });
+
+      const controls = computeUIControls(TaskState.CONSULTING, ctx, taskData);
+
+      expect(controls.main.mute).toEqual({isVisible: true, isEnabled: true});
+      expect(controls.main.keypad).toEqual({isVisible: true, isEnabled: true});
+      expect(controls.consult.mute).toEqual({isVisible: false, isEnabled: false});
+    });
+
+    it('keeps BROWSER consult mute enabled when enableWxBetterTogether is true and wxApp is not engaged', () => {
+      const consultedTaskData = createConsultedAgentInconsistentTaskData();
+      const consultedContext = createVoiceContext({
+        consultInitiator: false,
+        taskData: consultedTaskData,
+        uiControlConfig: {
+          ...createVoiceContext().uiControlConfig,
+          agentId: 'agent-2',
+          voiceVariant: VOICE_VARIANT.WEBRTC,
+          enableWxBetterTogether: true,
+        },
+      });
+
+      const controls = computeUIControls(
+        TaskState.CONNECTED,
+        consultedContext,
+        consultedTaskData
+      );
+
+      expect(controls.main.mute).toEqual({isVisible: true, isEnabled: true});
+    });
   });
 });

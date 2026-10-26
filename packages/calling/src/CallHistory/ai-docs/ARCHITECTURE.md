@@ -1,5 +1,7 @@
 # CallHistory Module — Architecture
 
+> Canonical SDD target: [`src/CallHistory/ai-docs/call-history-spec.md`](call-history-spec.md). This legacy document is retained as migration source; use the canonical target for current lifecycle work.
+
 ## Component Overview
 
 The CallHistory module follows a layered architecture: **Application -> CallHistory -> Janus API / Mercury WebSocket / UCM Lines API**. The `CallHistory` class orchestrates call history retrieval, missed call updates, record deletion, and real-time event forwarding.

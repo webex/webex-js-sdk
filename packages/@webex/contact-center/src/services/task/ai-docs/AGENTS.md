@@ -1,5 +1,7 @@
 # Task Service - AI Agent Guide
 
+> **Legacy/reference-only.** Canonical SDD: [`task-spec.md`](task-spec.md). Use the package [manifest](../../../../.sdd/manifest.json) and [`SPEC_INDEX.md`](../../../../ai-docs/SPEC_INDEX.md) for routing; code and tests remain the behavioral referee.
+
 ## Purpose
 
 Manage task lifecycle including inbound/outbound calls, hold/resume, consult, transfer, conference, and wrapup.

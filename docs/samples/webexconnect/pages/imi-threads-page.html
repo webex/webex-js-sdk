@@ -1,0 +1,46 @@
+<div class="header">
+    <div class="nav">
+        <div class="left-button">
+        </div>
+        <div class="content">
+            <div class="title">Acme Utility</div>
+            <div class="subtitle">UK's Leading Utility Provider</div>
+            <div class="note">Typically replies in few minutes</div>
+            <a class="note" href="api-demo.html">api-demo</a> &nbsp; |
+            <a class="note" href="15304.html">15304-demo</a>
+        </div>
+        <div class="right-button">
+            <imi-connection-status-view></imi-connection-status-view>
+        </div>
+    </div>
+</div>
+<div class="content-area">
+    <progress-bar value="0" type="indeterminate"></progress-bar>
+    <div id="divThreadsContainer" class="container"></div>
+</div>
+<div class="threads-page-footer">
+    <a href="#/threads/new" class="button-primary">New Conversation</a>
+</div>
+<template id="tmpThread">
+    <div class="thread" id="t_${thread.getId()}">
+        <a href="#/threads/messages/${thread.getId()}">
+            <div class="content">
+                <imi-timestamp date=${thread.getUpdatedAt()||thread.getCreatedAt()} class="time-ago"></imi-timestamp>
+                &nbsp;
+                <div class="title">${thread.getTitle()}</div>
+                &nbsp;
+                <div class="status">${thread.getStatus()}</div>
+                <div class="message-text">
+                    <div class="loader-bar"></div>
+                </div>
+                <div class="typing-activity">Typing<div class="typing-indicator"></div>
+                </div>
+            </div>
+        </a>
+    </div>
+</template>
+<template id="tmpThreadNoResult"  >
+    <div class="thread">
+        <div class="no-result">No more threads</div>
+    </div>
+</template>

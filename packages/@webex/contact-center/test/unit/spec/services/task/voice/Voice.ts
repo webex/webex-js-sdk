@@ -1,13 +1,24 @@
 import Voice from '../../../../../../src/services/task/voice/Voice';
+import LoggerProxy from '../../../../../../src/logger-proxy';
 import {
   TaskData,
   CONSULT_TRANSFER_DESTINATION_TYPE,
+  DESTINATION_TYPE,
+  TASK_EVENTS,
+  VOICE_VARIANT,
 } from '../../../../../../src/services/task/types';
 import {CC_EVENTS} from '../../../../../../src/services/config/types';
 import {TaskEvent, TaskState} from '../../../../../../src/services/task/state-machine';
 import {computeUIControls} from '../../../../../../src/services/task/state-machine/uiControlsComputer';
 import * as Utils from '../../../../../../src/services/core/Utils';
 import {createTaskData} from '../taskTestUtils';
+import {AIAssistantEventName} from '../../../../../../src/types';
+import {AI_SUMMARY_ERROR_CODES} from '../../../../../../src/constants';
+import {AI_SUMMARY_REQUEST_CANCELLED} from '../../../../../../src/services/task/constants';
+import {createAISummaryError, flushMicrotasks} from '../../../../fixtures/aiSummaryTestUtils';
+import MetricsManager from '../../../../../../src/metrics/MetricsManager';
+import {METRIC_EVENT_NAMES} from '../../../../../../src/metrics/constants';
+import * as wxAppDiagnosticLogging from '../../../../../../src/services/wxAppDiagnosticLogging';
 
 jest.mock('../../../../../../src/services/core/WebexRequest', () => ({
   __esModule: true,
@@ -33,7 +44,17 @@ const dummyContact = {
   resumeRecording: jest.fn().mockResolvedValue('resumedRecording'),
   consult: jest.fn().mockResolvedValue('consulted'),
   consultConference: jest.fn().mockResolvedValue('conferenceStarted'),
+  dropConferenceParticipant: jest.fn().mockResolvedValue({
+    type: 'RoutingMessage',
+    trackingId: 'drop-tracking-id',
+    data: {},
+  }),
   consultTransfer: jest.fn().mockResolvedValue('consultTransferred'),
+  cancelTask: jest.fn().mockResolvedValue(undefined),
+  exitConference: jest.fn().mockResolvedValue({
+    trackingId: 'exit-tracking-id',
+    data: {},
+  }),
 } as any;
 
 const createBaseData = (overrides: Partial<TaskData> = {}): TaskData =>
@@ -88,11 +109,29 @@ describe('Voice Task', () => {
         reason: 'CUSTOMER_BUSY',
       });
 
-      const outdialFailedCall = emitSpy.mock.calls.find(
-        (call) => call[0] === 'task:outdialFailed'
-      );
+      const outdialFailedCall = emitSpy.mock.calls.find((call) => call[0] === 'task:outdialFailed');
       expect(outdialFailedCall).toBeDefined();
       expect(outdialFailedCall![1]).toBe('CUSTOMER_BUSY');
+    });
+
+    it('does not emit task:outdialFailed when suppressOutdialFailedPopup is set', () => {
+      const taskData = createBaseData({
+        interaction: {
+          outboundType: 'OUTDIAL',
+        } as any,
+        suppressOutdialFailedPopup: true,
+      });
+      const voice = new Voice(dummyContact, taskData, {});
+      const emitSpy = jest.spyOn(voice, 'emit');
+
+      voice.sendStateMachineEvent({
+        type: TaskEvent.OUTBOUND_FAILED,
+        taskData,
+        reason: 'AGENT_ENDS',
+      });
+
+      const outdialFailedCall = emitSpy.mock.calls.find((call) => call[0] === 'task:outdialFailed');
+      expect(outdialFailedCall).toBeUndefined();
     });
   });
 
@@ -146,6 +185,24 @@ describe('Voice Task', () => {
     });
   });
 
+  it('calls contact.unHold when state is connected and main media is held', async () => {
+    const heldConnectedData = createBaseData({
+      interaction: {
+        media: {media1: {mediaResourceId: 'media1', isHold: true}},
+      } as any,
+    }) as any;
+    const voice = new Voice(dummyContact, heldConnectedData, {});
+    primeConnectedState(voice, heldConnectedData);
+
+    await voice.holdResume();
+
+    expect(dummyContact.unHold).toHaveBeenCalledWith({
+      interactionId: 'int1',
+      data: {mediaResourceId: 'media1'},
+    });
+    expect(dummyContact.hold).not.toHaveBeenCalled();
+  });
+
   it('calls contact.unHold when state is conferencing and main media is held', async () => {
     const heldConferenceData = createBaseData({
       interaction: {
@@ -155,7 +212,10 @@ describe('Voice Task', () => {
     }) as any;
     const voice = new Voice(dummyContact, heldConferenceData, {});
     primeConnectedState(voice, heldConferenceData);
-    voice.stateMachineService?.send({type: TaskEvent.CONFERENCE_START, taskData: heldConferenceData});
+    voice.stateMachineService?.send({
+      type: TaskEvent.CONFERENCE_START,
+      taskData: heldConferenceData,
+    });
     expect(voice.stateMachineService?.getSnapshot().value).toBe(TaskState.CONFERENCING);
 
     await voice.holdResume();
@@ -542,6 +602,495 @@ describe('Voice Task', () => {
     });
   });
 
+  describe('AI summary noninterference for call controls', () => {
+    const summaryAgentId = 'summary-agent-1';
+    const wrapupPayload = {wrapUpReason: 'Customer resolved', auxCodeId: 'wrapup-code-1'} as const;
+    const consultPayload = {
+      to: 'consult-agent-1',
+      destinationType: DESTINATION_TYPE.AGENT,
+      holdParticipants: true,
+    } as const;
+    const transferPayload = {
+      to: 'transfer-agent-1',
+      destinationType: DESTINATION_TYPE.AGENT,
+    } as const;
+    const callControlMethods = [
+      'wrapup',
+      'consult',
+      'blindTransfer',
+      'vteamTransfer',
+      'consultTransfer',
+    ] as const;
+    type CallControlMethod = (typeof callControlMethods)[number];
+    type CallControlCase = {
+      label: string;
+      createOperationResult: () => unknown;
+      expectedContactCalls: Record<CallControlMethod, unknown[][]>;
+      prime: (voice: Voice, taskData: TaskData) => void;
+      invoke: (voice: Voice) => Promise<unknown>;
+      requestSummary: (voice: Voice) => Promise<unknown>;
+      summaryEventName: AIAssistantEventName;
+    };
+
+    const createContactMock = (operationResult: any) =>
+      ({
+        hold: jest.fn().mockResolvedValue('held'),
+        unHold: jest.fn().mockResolvedValue('resumed'),
+        pauseRecording: jest.fn().mockResolvedValue('paused'),
+        resumeRecording: jest.fn().mockResolvedValue('resumedRecording'),
+        wrapup: jest.fn().mockResolvedValue(operationResult),
+        consult: jest.fn().mockResolvedValue(operationResult),
+        blindTransfer: jest.fn().mockResolvedValue(operationResult),
+        vteamTransfer: jest.fn().mockResolvedValue(operationResult),
+        consultTransfer: jest.fn().mockResolvedValue(operationResult),
+      } as any);
+
+    const createSummaryAdapter = () => {
+      let rejectPending: ((error: Error) => void) | undefined;
+      const adapter: any = {
+        sendEvent: jest.fn().mockResolvedValue(undefined),
+        requestAndWaitForRtd: jest.fn(async (options: any) => {
+          const result = new Promise((_resolve, reject) => {
+            rejectPending = reject;
+          });
+          await adapter.sendEvent(
+            options.agentId,
+            options.interactionId,
+            options.eventType,
+            options.eventName,
+            options.eventMetaData,
+            undefined,
+            undefined,
+            Date.now(),
+            options.timeout
+          );
+          return result;
+        }),
+        clear: jest.fn(() =>
+          rejectPending?.(createAISummaryError(AI_SUMMARY_REQUEST_CANCELLED))
+        ),
+      };
+
+      return adapter;
+    };
+
+    const injectAISummaryDependencies = (
+      voice: Voice,
+      adapter = createSummaryAdapter(),
+      featureEnablement = {
+        interactionId: 'int1',
+        postCallEnabled: true,
+        midCallEnabled: true,
+      }
+    ) => {
+      adapter.aiFeature = {
+        id: 'summary-flags',
+        generatedSummaries: {
+          wrapUpSummariesEnabled: true,
+          consultTransferSummariesEnabled: true,
+        },
+      };
+      (voice as any).apiAIAssistant = adapter;
+      voice.setFeatureEnablement(featureEnablement);
+
+      return {adapter, coordinator: adapter};
+    };
+
+    const normalizeEmitCalls = (emitSpy: jest.SpyInstance, voice: Voice) =>
+      emitSpy.mock.calls.map(([eventName, ...args]) => [
+        eventName,
+        ...args.map((arg) => (arg === voice ? 'VOICE_SELF' : arg)),
+      ]);
+
+    const getContactCalls = (contact: any) =>
+      callControlMethods.reduce((calls, method) => {
+        calls[method] = contact[method].mock.calls;
+
+        return calls;
+      }, {} as Record<CallControlMethod, unknown[][]>);
+
+    const createVoiceHarness = (testCase: CallControlCase) => {
+      const taskData = createBaseData();
+      const operationResult = testCase.createOperationResult();
+      const contact = createContactMock(operationResult);
+      const voice = new Voice(
+        contact,
+        taskData,
+        {isEndTaskEnabled: true, isEndConsultEnabled: true},
+        undefined,
+        summaryAgentId
+      );
+
+      testCase.prime(voice, taskData);
+      const emitSpy = jest.spyOn(voice, 'emit');
+
+      return {contact, emitSpy, operationResult, taskData, voice};
+    };
+
+    const captureCallControlOutcome = (
+      harness: ReturnType<typeof createVoiceHarness>,
+      result: unknown
+    ) => {
+      const snapshot = harness.voice.stateMachineService?.getSnapshot();
+
+      return {
+        contactCalls: getContactCalls(harness.contact),
+        emitCalls: normalizeEmitCalls(harness.emitSpy, harness.voice),
+        result,
+        state: snapshot?.value,
+        context: snapshot?.context,
+        uiControls: harness.voice.uiControls,
+      };
+    };
+
+    const runCallControl = async (testCase: CallControlCase) => {
+      const harness = createVoiceHarness(testCase);
+      const result = await testCase.invoke(harness.voice);
+
+      expect(result).toBe(harness.operationResult);
+
+      return captureCallControlOutcome(harness, result);
+    };
+
+    const callControlCases: CallControlCase[] = [
+      {
+        label: 'wrapup',
+        createOperationResult: () => ({
+          trackingId: 'wrapup-tracking-1',
+          data: {wrappedUp: true},
+        }),
+        expectedContactCalls: {
+          wrapup: [[{interactionId: 'int1', data: wrapupPayload}]],
+          consult: [],
+          blindTransfer: [],
+          vteamTransfer: [],
+          consultTransfer: [],
+        },
+        prime: primeConnectedState,
+        invoke: (voice: Voice) => voice.wrapup({...wrapupPayload}),
+        requestSummary: (voice: Voice) => voice.requestPostCallSummary(),
+        summaryEventName: AIAssistantEventName.GET_POST_CALL_SUMMARY,
+      },
+      {
+        label: 'consult',
+        createOperationResult: () => ({
+          trackingId: 'consult-tracking-1',
+          data: createBaseData({
+            destinationType: DESTINATION_TYPE.AGENT,
+            destAgentId: 'consult-agent-1',
+            interaction: {state: 'consulting'} as any,
+          }),
+        }),
+        expectedContactCalls: {
+          wrapup: [],
+          consult: [[{interactionId: 'int1', data: consultPayload}]],
+          blindTransfer: [],
+          vteamTransfer: [],
+          consultTransfer: [],
+        },
+        prime: primeConnectedState,
+        invoke: (voice: Voice) => voice.consult({...consultPayload}),
+        requestSummary: (voice: Voice) => voice.requestMidCallSummary('CONSULT'),
+        summaryEventName: AIAssistantEventName.GET_MID_CALL_CONSULT_SUMMARY,
+      },
+      {
+        label: 'transfer',
+        createOperationResult: () => ({
+          trackingId: 'transfer-tracking-1',
+          data: {transferred: true},
+        }),
+        expectedContactCalls: {
+          wrapup: [],
+          consult: [],
+          blindTransfer: [[{interactionId: 'int1', data: transferPayload}]],
+          vteamTransfer: [],
+          consultTransfer: [],
+        },
+        prime: primeConnectedState,
+        invoke: (voice: Voice) => voice.transfer({...transferPayload}),
+        requestSummary: (voice: Voice) => voice.requestMidCallSummary('TRANSFER'),
+        summaryEventName: AIAssistantEventName.GET_MID_CALL_TRANSFER_SUMMARY,
+      },
+    ];
+
+    const expectSummaryGetRequest = (
+      adapter: ReturnType<typeof createSummaryAdapter>,
+      summaryEventName: AIAssistantEventName
+    ) => {
+      expect(adapter.sendEvent).toHaveBeenCalledTimes(1);
+      expect(adapter.sendEvent).toHaveBeenCalledWith(
+        summaryAgentId,
+        'int1',
+        'CTI_EVENT',
+        summaryEventName,
+        expect.objectContaining({
+          conversationId: 'int1',
+          clientType: 'WxCC',
+        }),
+        undefined,
+        undefined,
+        expect.any(Number),
+        15000
+      );
+    };
+
+    const expectCancelledSummary = async (summaryRequest: Promise<unknown>) => {
+      await expect(summaryRequest).rejects.toMatchObject({
+        message: AI_SUMMARY_REQUEST_CANCELLED,
+        data: {errorCode: AI_SUMMARY_REQUEST_CANCELLED},
+      });
+    };
+
+    const summaryActivityCases = [
+      {
+        label: 'while the matching AI summary request is pending',
+        prepare: async (harness: VoiceHarnessWithCase) => {
+          const {adapter, coordinator} = injectAISummaryDependencies(harness.voice);
+          const summaryRequest = harness.testCase.requestSummary(harness.voice);
+          const summaryObserver = jest.fn();
+
+          summaryRequest.then(summaryObserver, summaryObserver);
+          await flushMicrotasks();
+
+          expectSummaryGetRequest(adapter, harness.testCase.summaryEventName);
+          expect(summaryObserver).not.toHaveBeenCalled();
+
+          return async () => {
+            expect(summaryObserver).not.toHaveBeenCalled();
+            coordinator.clear('int1', 'int1');
+            await expectCancelledSummary(summaryRequest);
+          };
+        },
+      },
+      {
+        label: 'after coordinator owner cancellation',
+        prepare: async (harness: VoiceHarnessWithCase) => {
+          const {adapter, coordinator} = injectAISummaryDependencies(harness.voice);
+          const summaryRequest = harness.testCase.requestSummary(harness.voice);
+
+          await flushMicrotasks();
+          expectSummaryGetRequest(adapter, harness.testCase.summaryEventName);
+
+          coordinator.clear('int1', 'int1');
+          await expectCancelledSummary(summaryRequest);
+
+          return async () => undefined;
+        },
+      },
+      {
+        label: 'after adapter rejection',
+        prepare: async (harness: VoiceHarnessWithCase) => {
+          const adapter = createSummaryAdapter();
+          const adapterError = createAISummaryError(
+            AI_SUMMARY_ERROR_CODES.AI_ASSISTANT_BASE_URL_NOT_AVAILABLE
+          );
+
+          adapter.sendEvent.mockRejectedValueOnce(adapterError);
+          injectAISummaryDependencies(harness.voice, adapter);
+
+          await expect(harness.testCase.requestSummary(harness.voice)).rejects.toBe(adapterError);
+          expectSummaryGetRequest(adapter, harness.testCase.summaryEventName);
+
+          return async () => undefined;
+        },
+      },
+    ];
+
+    type VoiceHarnessWithCase = ReturnType<typeof createVoiceHarness> & {
+      testCase: CallControlCase;
+    };
+
+    const createVoiceHarnessWithCase = (testCase: CallControlCase): VoiceHarnessWithCase => ({
+      ...createVoiceHarness(testCase),
+      testCase,
+    });
+
+    beforeEach(() => {
+      jest.useFakeTimers();
+    });
+
+    afterEach(() => {
+      jest.clearAllTimers();
+      jest.useRealTimers();
+    });
+
+    describe.each(summaryActivityCases)('$label', (summaryActivity) => {
+      it.each(callControlCases)(
+        '$label preserves contact arguments, resolved value, and task events',
+        async (testCase) => {
+          const baseline = await runCallControl(testCase);
+          const harness = createVoiceHarnessWithCase(testCase);
+          const finalizeSummaryActivity = await summaryActivity.prepare(harness);
+
+          try {
+            const result = await testCase.invoke(harness.voice);
+            const observed = captureCallControlOutcome(harness, result);
+
+            expect(result).toBe(harness.operationResult);
+            expect(observed.contactCalls).toEqual(testCase.expectedContactCalls);
+            expect(observed).toEqual(baseline);
+          } finally {
+            await finalizeSummaryActivity();
+          }
+        }
+      );
+    });
+  });
+
+  describe('exitConference()', () => {
+    const conferenceTaskData = () =>
+      createBaseData({
+        agentId: 'agent-1',
+        interaction: {
+          state: 'conference',
+          owner: 'agent-1',
+          mainInteractionId: 'int1',
+          interactionId: 'int1',
+          participants: {
+            'agent-1': {id: 'agent-1', pType: 'Agent', type: 'Agent', hasJoined: true, hasLeft: false},
+            'agent-2': {id: 'agent-2', pType: 'Agent', type: 'Agent', hasJoined: true, hasLeft: false},
+            c1: {id: 'c1', pType: 'Customer', type: 'Customer', hasJoined: true, hasLeft: false},
+          },
+          media: {
+            media1: {mediaResourceId: 'media1', isHold: false},
+            int1: {
+              mediaResourceId: 'int1',
+              mType: 'mainCall',
+              participants: ['agent-1', 'agent-2', 'c1'],
+              isHold: false,
+            },
+          },
+        } as any,
+      });
+
+    const primeConferencing = (voice: Voice, taskData: TaskData) => {
+      primeConnectedState(voice, taskData);
+      voice.stateMachineService?.send({type: TaskEvent.CONFERENCE_START, taskData});
+      expect(voice.stateMachineService?.getSnapshot().value).toBe(TaskState.CONFERENCING);
+    };
+
+    it('transitions to WRAPPING_UP after exitConference when the actor stays CONNECTED', async () => {
+      const taskData = conferenceTaskData();
+      const voice = new Voice(dummyContact, taskData, {}, undefined, 'agent-1');
+      primeConnectedState(voice, taskData);
+      expect(voice.stateMachineService?.getSnapshot().value).toBe(TaskState.CONNECTED);
+
+      await voice.exitConference();
+
+      expect(dummyContact.exitConference).toHaveBeenCalled();
+      expect(voice.stateMachineService?.getSnapshot().value).toBe(TaskState.WRAPPING_UP);
+    });
+
+    it('stamps wrapUpRequired on EXIT_CONFERENCE_SUCCESS when this agent should wrap', async () => {
+      const taskData = conferenceTaskData();
+      const voice = new Voice(dummyContact, taskData, {}, undefined, 'agent-1');
+      primeConferencing(voice, taskData);
+      const sendSpy = jest.spyOn(voice.stateMachineService as any, 'send');
+
+      await voice.exitConference();
+
+      const successEvent = sendSpy.mock.calls
+        .map((call) => call[0])
+        .find((event) => event?.type === TaskEvent.EXIT_CONFERENCE_SUCCESS);
+
+      expect(dummyContact.exitConference).toHaveBeenCalled();
+      expect(successEvent?.taskData.wrapUpRequired).toBe(true);
+    });
+
+    it('stamps wrapUpRequired false on EXIT_CONFERENCE_SUCCESS when this agent should not wrap', async () => {
+      const taskData = createBaseData({
+        agentId: 'agent-2',
+        isConsulted: true,
+        wrapUpRequired: false,
+        interaction: {
+          state: 'conference',
+          owner: 'agent-1',
+          mainInteractionId: 'int1',
+          interactionId: 'int1',
+          participants: {
+            'agent-1': {id: 'agent-1', pType: 'Agent', type: 'Agent', hasJoined: true, hasLeft: false},
+            'agent-2': {
+              id: 'agent-2',
+              pType: 'Agent',
+              type: 'Agent',
+              hasJoined: true,
+              hasLeft: false,
+              isWrapUp: false,
+            },
+          },
+        } as any,
+      });
+      const voice = new Voice(dummyContact, taskData, {}, undefined, 'agent-2');
+      primeConferencing(voice, taskData);
+      const sendSpy = jest.spyOn(voice.stateMachineService as any, 'send');
+
+      await voice.exitConference();
+
+      const successEvent = sendSpy.mock.calls
+        .map((call) => call[0])
+        .find((event) => event?.type === TaskEvent.EXIT_CONFERENCE_SUCCESS);
+
+      expect(successEvent?.taskData.wrapUpRequired).toBe(false);
+    });
+
+    it('stamps wrapUpRequired true on owner-changed exit when isConsulted is omitted', async () => {
+      const taskData = createBaseData({
+        agentId: 'agent-1',
+        wrapUpRequired: false,
+        interaction: {
+          state: 'conference',
+          owner: 'agent-2',
+          mainInteractionId: 'int1',
+          interactionId: 'int1',
+          participants: {
+            'agent-1': {id: 'agent-1', pType: 'Agent', type: 'Agent', hasJoined: true, hasLeft: false},
+            'agent-2': {id: 'agent-2', pType: 'Agent', type: 'Agent', hasJoined: true, hasLeft: false},
+          },
+        } as any,
+      });
+      const voice = new Voice(dummyContact, taskData, {}, undefined, 'agent-1');
+      primeConferencing(voice, taskData);
+      const sendSpy = jest.spyOn(voice.stateMachineService as any, 'send');
+
+      await voice.exitConference();
+
+      const successEvent = sendSpy.mock.calls
+        .map((call) => call[0])
+        .find((event) => event?.type === TaskEvent.EXIT_CONFERENCE_SUCCESS);
+
+      expect(successEvent?.taskData.wrapUpRequired).toBe(true);
+    });
+
+    it('ignores a stale cached pending list when the exit response omits it', async () => {
+      const taskData = createBaseData({
+        agentId: 'agent-1',
+        wrapUpRequired: false,
+        agentsPendingWrapUp: ['agent-2'],
+        interaction: {
+          state: 'conference',
+          owner: 'agent-2',
+          mainInteractionId: 'int1',
+          interactionId: 'int1',
+          participants: {
+            'agent-1': {id: 'agent-1', pType: 'Agent', type: 'Agent', hasJoined: true, hasLeft: false},
+            'agent-2': {id: 'agent-2', pType: 'Agent', type: 'Agent', hasJoined: true, hasLeft: false},
+          },
+        } as any,
+      });
+      const voice = new Voice(dummyContact, taskData, {}, undefined, 'agent-1');
+      primeConferencing(voice, taskData);
+      const sendSpy = jest.spyOn(voice.stateMachineService as any, 'send');
+
+      await voice.exitConference();
+
+      const successEvent = sendSpy.mock.calls
+        .map((call) => call[0])
+        .find((event) => event?.type === TaskEvent.EXIT_CONFERENCE_SUCCESS);
+
+      expect(successEvent?.taskData.wrapUpRequired).toBe(true);
+    });
+  });
+
   describe('consultConference()', () => {
     afterEach(() => {
       jest.restoreAllMocks();
@@ -626,6 +1175,1181 @@ describe('Voice Task', () => {
           to: 'derivedAgent',
         }),
       });
+    });
+  });
+
+  describe('dropConferenceParticipant()', () => {
+    afterEach(() => {
+      jest.restoreAllMocks();
+    });
+
+    it.each([
+      ['missing payload', undefined],
+      ['missing participantId', {}],
+      ['non-string participantId', {participantId: 42}],
+      ['blank participantId', {participantId: '   '}],
+    ])('rejects %s before registering a request', async (_label, payload) => {
+      const taskData = createBaseData();
+      const voice = new Voice(dummyContact, taskData, {});
+      const timeEventSpy = jest.spyOn(MetricsManager.getInstance(), 'timeEvent');
+
+      await expect(voice.dropConferenceParticipant(payload as any)).rejects.toThrow(
+        'participantId must be a non-empty string'
+      );
+
+      expect(dummyContact.dropConferenceParticipant).not.toHaveBeenCalled();
+      expect(timeEventSpy).not.toHaveBeenCalled();
+    });
+
+    it('uses the latest main interaction ID and records PII-safe success telemetry', async () => {
+      const participantId = '+1/participant-secret';
+      const taskData = createBaseData({
+        interaction: {mainInteractionId: 'main-interaction-id'} as any,
+      });
+      const voice = new Voice(dummyContact, taskData, {}, undefined, 'current-agent-id');
+      const metricsManager = MetricsManager.getInstance();
+      const timeEventSpy = jest.spyOn(metricsManager, 'timeEvent').mockImplementation();
+      const trackEventSpy = jest.spyOn(metricsManager, 'trackEvent').mockImplementation();
+      const infoSpy = jest.spyOn(LoggerProxy, 'info').mockImplementation();
+      const logSpy = jest.spyOn(LoggerProxy, 'log').mockImplementation();
+
+      await voice.dropConferenceParticipant({participantId});
+
+      expect(dummyContact.dropConferenceParticipant).toHaveBeenCalledWith({
+        interactionId: 'main-interaction-id',
+        participantId,
+      });
+      expect(timeEventSpy).toHaveBeenCalledWith([
+        METRIC_EVENT_NAMES.TASK_CONFERENCE_PARTICIPANT_DROP_SUCCESS,
+        METRIC_EVENT_NAMES.TASK_CONFERENCE_PARTICIPANT_DROP_FAILED,
+      ]);
+      expect(trackEventSpy).toHaveBeenCalledWith(
+        METRIC_EVENT_NAMES.TASK_CONFERENCE_PARTICIPANT_DROP_SUCCESS,
+        expect.objectContaining({
+          taskId: 'int1',
+          requestInteractionId: 'main-interaction-id',
+          agentId: 'current-agent-id',
+        }),
+        ['operational', 'behavioral', 'business']
+      );
+
+      const telemetryAndLogs = JSON.stringify([
+        timeEventSpy.mock.calls,
+        trackEventSpy.mock.calls,
+        infoSpy.mock.calls,
+        logSpy.mock.calls,
+      ]);
+      expect(telemetryAndLogs).not.toContain(participantId);
+    });
+
+    it('records PII-safe failure telemetry and rethrows the AQM error', async () => {
+      const participantId = '+1/failure-secret';
+      const failure = {
+        details: {
+          type: 'ParticipantDropConferenceFailed',
+          trackingId: 'failure-tracking-id',
+          data: {reason: participantId},
+        },
+      };
+      dummyContact.dropConferenceParticipant.mockRejectedValueOnce(failure);
+      const taskData = createBaseData({
+        interaction: {mainInteractionId: 'main-interaction-id'} as any,
+      });
+      const voice = new Voice(dummyContact, taskData, {}, undefined, 'current-agent-id');
+      const metricsManager = MetricsManager.getInstance();
+      jest.spyOn(metricsManager, 'timeEvent').mockImplementation();
+      const trackEventSpy = jest.spyOn(metricsManager, 'trackEvent').mockImplementation();
+      const errorSpy = jest.spyOn(LoggerProxy, 'error').mockImplementation();
+
+      await expect(voice.dropConferenceParticipant({participantId})).rejects.toBe(failure);
+
+      expect(trackEventSpy).toHaveBeenCalledWith(
+        METRIC_EVENT_NAMES.TASK_CONFERENCE_PARTICIPANT_DROP_FAILED,
+        expect.objectContaining({
+          taskId: 'int1',
+          requestInteractionId: 'main-interaction-id',
+          agentId: 'current-agent-id',
+        }),
+        ['operational', 'behavioral', 'business']
+      );
+      expect(errorSpy).toHaveBeenCalledWith('Failed to drop conference participant', {
+        module: 'cc',
+        method: 'dropConferenceParticipant',
+        trackingId: 'failure-tracking-id',
+        interactionId: 'main-interaction-id',
+      });
+      expect(JSON.stringify([trackEventSpy.mock.calls, errorSpy.mock.calls])).not.toContain(
+        participantId
+      );
+    });
+
+    it.each([
+      ['null', null],
+      ['undefined', undefined],
+      ['string', 'primitive failure'],
+      ['number', 503],
+    ])('records failure telemetry and preserves a %s rejection', async (_label, failure) => {
+      dummyContact.dropConferenceParticipant.mockRejectedValueOnce(failure);
+      const voice = new Voice(dummyContact, createBaseData(), {}, undefined, 'current-agent-id');
+      const metricsManager = MetricsManager.getInstance();
+      const failureFieldsSpy = jest.spyOn(
+        MetricsManager,
+        'getCommonTrackingFieldForAQMResponseFailed'
+      );
+      jest.spyOn(metricsManager, 'timeEvent').mockImplementation();
+      const trackEventSpy = jest.spyOn(metricsManager, 'trackEvent').mockImplementation();
+      const errorSpy = jest.spyOn(LoggerProxy, 'error').mockImplementation();
+
+      await expect(voice.dropConferenceParticipant({participantId: 'participant-id'})).rejects.toBe(
+        failure
+      );
+
+      expect(failureFieldsSpy).toHaveBeenCalledWith({});
+      expect(trackEventSpy).toHaveBeenCalledWith(
+        METRIC_EVENT_NAMES.TASK_CONFERENCE_PARTICIPANT_DROP_FAILED,
+        expect.objectContaining({
+          taskId: 'int1',
+          requestInteractionId: 'int1',
+          agentId: 'current-agent-id',
+        }),
+        ['operational', 'behavioral', 'business']
+      );
+      expect(errorSpy).toHaveBeenCalledWith('Failed to drop conference participant', {
+        module: 'cc',
+        method: 'dropConferenceParticipant',
+        trackingId: undefined,
+        interactionId: 'int1',
+      });
+    });
+  });
+
+  describe('setEnableWxBetterTogether', () => {
+    it('updates runtime flag, uiControlConfig, and emits ui control updates', () => {
+      const voice = new Voice(dummyContact, createBaseData(), {enableWxBetterTogether: true});
+      const emitSpy = jest.spyOn(voice, 'emit');
+
+      voice.setEnableWxBetterTogether(false);
+
+      expect(voice['enableWxBetterTogether']).toBe(false);
+      expect(voice['uiControlConfig'].enableWxBetterTogether).toBe(false);
+      expect(emitSpy).toHaveBeenCalledWith(
+        TASK_EVENTS.TASK_UI_CONTROLS_UPDATED,
+        expect.any(Object)
+      );
+    });
+  });
+
+  describe('wxApp offer observability integration', () => {
+    it('delegates OFFERED ui control updates to wxApp offer observability', () => {
+      const logSpy = jest.spyOn(wxAppDiagnosticLogging, 'logWxAppOfferDecision');
+      const taskData = createBaseData({
+        agentId: 'agent-1',
+        interaction: {
+          participants: {
+            'agent-1': {
+              id: 'agent-1',
+              deviceType: 'wxApp',
+              deviceId: 'device-id-1',
+              deviceCallId: 'call-id-1',
+            },
+          },
+        } as any,
+      });
+      const voice = new Voice(dummyContact, taskData, {enableWxBetterTogether: true});
+
+      voice.stateMachineService?.send({type: TaskEvent.TASK_INCOMING, taskData});
+
+      expect(logSpy).toHaveBeenCalledWith(
+        expect.objectContaining({acceptReason: 'wxApp_offer_ready'})
+      );
+    });
+  });
+
+  describe('applyWxAppMuteStateFromSync', () => {
+    const wxAppParticipant = {
+      deviceType: 'wxApp',
+      deviceId: 'device-id-1',
+      deviceCallId: 'call-id-1',
+    };
+
+    const makeWxAppTaskData = () =>
+      createBaseData({
+        agentId: 'agent-1',
+        interaction: {
+          participants: {
+            'agent-1': {id: 'agent-1', ...wxAppParticipant},
+          },
+        } as any,
+      });
+
+    it('emits TASK_WXAPP_MUTE_STATE_UPDATED when callId matches via endsWith', () => {
+      const taskData = makeWxAppTaskData();
+      const voice = new Voice(dummyContact, taskData, {enableWxBetterTogether: true});
+      primeConnectedState(voice, taskData);
+      const emitSpy = jest.spyOn(voice, 'emit');
+
+      voice.applyWxAppMuteStateFromSync('prefix:call-id-1', true);
+
+      expect(emitSpy).toHaveBeenCalledWith(TASK_EVENTS.TASK_WXAPP_MUTE_STATE_UPDATED, {
+        muted: true,
+      });
+    });
+
+    it('no-ops when callId does not match active call', () => {
+      const taskData = makeWxAppTaskData();
+      const voice = new Voice(dummyContact, taskData, {enableWxBetterTogether: true});
+      primeConnectedState(voice, taskData);
+      const emitSpy = jest.spyOn(voice, 'emit');
+
+      voice.applyWxAppMuteStateFromSync('other-call-id', true);
+
+      expect(emitSpy).not.toHaveBeenCalledWith(
+        TASK_EVENTS.TASK_WXAPP_MUTE_STATE_UPDATED,
+        expect.anything()
+      );
+    });
+
+    it('no-ops when enableWxBetterTogether is false', () => {
+      const taskData = makeWxAppTaskData();
+      const voice = new Voice(dummyContact, taskData, {enableWxBetterTogether: false});
+      primeConnectedState(voice, taskData);
+      const emitSpy = jest.spyOn(voice, 'emit');
+
+      voice.applyWxAppMuteStateFromSync('prefix:call-id-1', true);
+
+      expect(emitSpy).not.toHaveBeenCalledWith(
+        TASK_EVENTS.TASK_WXAPP_MUTE_STATE_UPDATED,
+        expect.anything()
+      );
+    });
+
+    it('no-ops when muted state is unchanged', () => {
+      const taskData = makeWxAppTaskData();
+      const voice = new Voice(dummyContact, taskData, {enableWxBetterTogether: true});
+      primeConnectedState(voice, taskData);
+      const emitSpy = jest.spyOn(voice, 'emit');
+
+      voice.applyWxAppMuteStateFromSync('prefix:call-id-1', true);
+      emitSpy.mockClear();
+
+      voice.applyWxAppMuteStateFromSync('prefix:call-id-1', true);
+
+      expect(emitSpy).not.toHaveBeenCalledWith(
+        TASK_EVENTS.TASK_WXAPP_MUTE_STATE_UPDATED,
+        expect.anything()
+      );
+    });
+  });
+
+  describe('syncWxAppMuteFromCallDetails', () => {
+    const wxAppParticipant = {
+      deviceType: 'wxApp',
+      deviceId: 'device-id-1',
+      deviceCallId: 'call-id-1',
+    };
+
+    const makeWxAppTaskData = () =>
+      createBaseData({
+        agentId: 'agent-1',
+        interaction: {
+          participants: {
+            'agent-1': {id: 'agent-1', ...wxAppParticipant},
+          },
+        } as any,
+      });
+
+    it('seeds mute state from telephony GET call details on engaged wxApp call', async () => {
+      const mockSvc = {
+        getCallDetails: jest.fn().mockResolvedValue({muted: true}),
+      };
+      const taskData = makeWxAppTaskData();
+      const voice = new Voice(dummyContact, taskData, {
+        enableWxBetterTogether: true,
+        answerCallOnWebexService: mockSvc as any,
+      });
+      primeConnectedState(voice, taskData);
+      const emitSpy = jest.spyOn(voice, 'emit');
+
+      await voice.syncWxAppMuteFromCallDetails();
+
+      expect(mockSvc.getCallDetails).toHaveBeenCalledWith({callId: 'call-id-1'});
+      expect(emitSpy).toHaveBeenCalledWith(TASK_EVENTS.TASK_WXAPP_MUTE_STATE_UPDATED, {
+        muted: true,
+      });
+      expect(voice.getWxAppMuted()).toBe(true);
+    });
+
+    it('returns resolved mute state from syncWxAppMuteFromCallDetails', async () => {
+      const mockSvc = {
+        getCallDetails: jest.fn().mockResolvedValue({muted: true}),
+      };
+      const taskData = makeWxAppTaskData();
+      const voice = new Voice(dummyContact, taskData, {
+        enableWxBetterTogether: true,
+        answerCallOnWebexService: mockSvc as any,
+      });
+      primeConnectedState(voice, taskData);
+
+      const result = await voice.syncWxAppMuteFromCallDetails();
+
+      expect(result).toBe(true);
+      expect(voice.getWxAppMuted()).toBe(true);
+    });
+
+    it('seeds mute via participant deviceCallId when state machine is still IDLE', async () => {
+      const mockSvc = {
+        getCallDetails: jest.fn().mockResolvedValue({muted: true}),
+      };
+      const taskData = makeWxAppTaskData();
+      const voice = new Voice(dummyContact, taskData, {
+        enableWxBetterTogether: true,
+        answerCallOnWebexService: mockSvc as any,
+      });
+      const emitSpy = jest.spyOn(voice, 'emit');
+
+      const result = await voice.syncWxAppMuteFromCallDetails();
+
+      expect(mockSvc.getCallDetails).toHaveBeenCalledWith({callId: 'call-id-1'});
+      expect(result).toBe(true);
+      expect(voice.getWxAppMuted()).toBe(true);
+      expect(emitSpy).toHaveBeenCalledWith(TASK_EVENTS.TASK_WXAPP_MUTE_STATE_UPDATED, {
+        muted: true,
+      });
+    });
+
+    it('no-ops when enableWxBetterTogether is false', async () => {
+      const mockSvc = {getCallDetails: jest.fn()};
+      const taskData = makeWxAppTaskData();
+      const voice = new Voice(dummyContact, taskData, {
+        enableWxBetterTogether: false,
+        answerCallOnWebexService: mockSvc as any,
+      });
+      primeConnectedState(voice, taskData);
+
+      await voice.syncWxAppMuteFromCallDetails();
+
+      expect(mockSvc.getCallDetails).not.toHaveBeenCalled();
+    });
+
+    it('syncs mute state after task assignment once CONNECTED (onTaskAssigned)', async () => {
+      const mockSvc = {
+        getCallDetails: jest.fn().mockResolvedValue({muted: true}),
+      };
+      const taskData = makeWxAppTaskData();
+      const voice = new Voice(dummyContact, taskData, {
+        enableWxBetterTogether: true,
+        answerCallOnWebexService: mockSvc as any,
+      });
+
+      voice.stateMachineService?.send({type: TaskEvent.TASK_INCOMING, taskData});
+      expect(voice.getWxAppMuted()).toBe(false);
+      voice.stateMachineService?.send({type: TaskEvent.ASSIGN, taskData});
+
+      await new Promise<void>((resolve) => {
+        setImmediate(resolve);
+      });
+
+      expect(mockSvc.getCallDetails).toHaveBeenCalledWith({callId: 'call-id-1'});
+      expect(voice.getWxAppMuted()).toBe(true);
+    });
+
+    it('seeds mute on ASSIGN when wxApp offer was accepted on another session', async () => {
+      const mockSvc = {
+        getCallDetails: jest.fn().mockResolvedValue({muted: false}),
+      };
+      const taskData = makeWxAppTaskData();
+      const voice = new Voice(dummyContact, taskData, {
+        enableWxBetterTogether: true,
+        answerCallOnWebexService: mockSvc as any,
+      });
+
+      voice.stateMachineService?.send({type: TaskEvent.TASK_INCOMING, taskData});
+      expect(voice['uiControlConfig']?.wxAppAnswerPending).toBeFalsy();
+      voice.stateMachineService?.send({type: TaskEvent.ASSIGN, taskData});
+
+      await new Promise<void>((resolve) => {
+        setImmediate(resolve);
+      });
+
+      expect(mockSvc.getCallDetails).toHaveBeenCalledWith({callId: 'call-id-1'});
+    });
+
+    it('syncs mute state after task hydrate (onTaskHydrated)', async () => {
+      const mockSvc = {
+        getCallDetails: jest.fn().mockResolvedValue({muted: true}),
+      };
+      const taskData = makeWxAppTaskData();
+      const voice = new Voice(dummyContact, taskData, {
+        enableWxBetterTogether: true,
+        answerCallOnWebexService: mockSvc as any,
+      });
+      primeConnectedState(voice, taskData);
+      const emitSpy = jest.spyOn(voice, 'emit');
+
+      voice.onTaskHydrated();
+      await voice.syncWxAppMuteFromCallDetails();
+
+      expect(mockSvc.getCallDetails).toHaveBeenCalledWith({callId: 'call-id-1'});
+      expect(emitSpy).toHaveBeenCalledWith(TASK_EVENTS.TASK_WXAPP_MUTE_STATE_UPDATED, {
+        muted: true,
+      });
+    });
+
+    it('preserves wxAppAnswerPending on hydrate while OFFERED and answer is pending', async () => {
+      const mockSvc = {
+        answerCall: jest.fn().mockResolvedValue(undefined),
+        getCallDetails: jest.fn().mockResolvedValue({muted: false}),
+      };
+      const taskData = makeWxAppTaskData();
+      const voice = new Voice(dummyContact, taskData, {
+        enableWxBetterTogether: true,
+        answerCallOnWebexService: mockSvc as any,
+      });
+      voice.stateMachineService?.send({type: TaskEvent.TASK_INCOMING, taskData});
+
+      await voice.accept();
+      expect(voice.uiControlConfig.wxAppAnswerPending).toBe(true);
+
+      voice.onTaskHydrated();
+
+      expect(voice.uiControlConfig.wxAppAnswerPending).toBe(true);
+    });
+
+    it('clears wxAppAnswerPending on hydrate when task is no longer OFFERED', async () => {
+      const mockSvc = {
+        getCallDetails: jest.fn().mockResolvedValue({muted: false}),
+      };
+      const taskData = makeWxAppTaskData();
+      const voice = new Voice(dummyContact, taskData, {
+        enableWxBetterTogether: true,
+        answerCallOnWebexService: mockSvc as any,
+      });
+      voice.stateMachineService?.send({type: TaskEvent.TASK_INCOMING, taskData});
+      voice.uiControlConfig = {...voice.uiControlConfig, wxAppAnswerPending: true};
+      primeConnectedState(voice, taskData);
+
+      voice.onTaskHydrated();
+
+      expect(voice.uiControlConfig.wxAppAnswerPending).toBe(false);
+    });
+
+    it('coalesces parallel syncWxAppMuteFromCallDetails into one getCallDetails', async () => {
+      let resolveGetCallDetails: (value: {muted: boolean}) => void;
+      const getCallDetailsPromise = new Promise<{muted: boolean}>((resolve) => {
+        resolveGetCallDetails = resolve;
+      });
+      const mockSvc = {
+        getCallDetails: jest.fn().mockReturnValue(getCallDetailsPromise),
+      };
+      const taskData = makeWxAppTaskData();
+      const voice = new Voice(dummyContact, taskData, {
+        enableWxBetterTogether: true,
+        answerCallOnWebexService: mockSvc as any,
+      });
+      primeConnectedState(voice, taskData);
+
+      const sync1 = voice.syncWxAppMuteFromCallDetails();
+      const sync2 = voice.syncWxAppMuteFromCallDetails();
+
+      resolveGetCallDetails!({muted: true});
+      const [result1, result2] = await Promise.all([sync1, sync2]);
+
+      expect(result1).toBe(true);
+      expect(result2).toBe(true);
+      expect(mockSvc.getCallDetails).toHaveBeenCalledTimes(1);
+    });
+
+    it('issues a new getCallDetails on sequential syncWxAppMuteFromCallDetails after the first completes', async () => {
+      const mockSvc = {
+        getCallDetails: jest
+          .fn()
+          .mockResolvedValueOnce({muted: false})
+          .mockResolvedValueOnce({muted: true}),
+      };
+      const taskData = makeWxAppTaskData();
+      const voice = new Voice(dummyContact, taskData, {
+        enableWxBetterTogether: true,
+        answerCallOnWebexService: mockSvc as any,
+      });
+      primeConnectedState(voice, taskData);
+
+      await voice.syncWxAppMuteFromCallDetails();
+      await voice.syncWxAppMuteFromCallDetails();
+
+      expect(mockSvc.getCallDetails).toHaveBeenCalledTimes(2);
+    });
+
+    it('skips mute GET for terminated wxApp outdial with deviceCallId', async () => {
+      const mockSvc = {getCallDetails: jest.fn()};
+      const taskData = createBaseData({
+        agentId: 'agent-1',
+        interaction: {
+          outboundType: 'OUTDIAL',
+          isTerminated: true,
+          participants: {
+            'agent-1': {
+              id: 'agent-1',
+              deviceType: 'wxApp',
+              deviceId: 'device-id-1',
+              deviceCallId: 'callhalf-dead',
+            },
+          },
+        } as any,
+      });
+      const voice = new Voice(dummyContact, taskData, {
+        enableWxBetterTogether: true,
+        answerCallOnWebexService: mockSvc as any,
+      });
+      voice.stateMachineService?.send({type: TaskEvent.TASK_INCOMING, taskData});
+
+      await voice.syncWxAppMuteFromCallDetails();
+
+      expect(mockSvc.getCallDetails).not.toHaveBeenCalled();
+    });
+
+    it('skips mute GET for pre-accept wxApp OFFERED offer', async () => {
+      const mockSvc = {getCallDetails: jest.fn()};
+      const wxAppParticipant = {
+        deviceType: 'wxApp',
+        deviceId: 'device-id-1',
+        deviceCallId: 'call-id-1',
+      };
+      const taskData = createBaseData({
+        agentId: 'agent-1',
+        interaction: {
+          outboundType: 'OUTDIAL',
+          participants: {
+            'agent-1': {id: 'agent-1', ...wxAppParticipant},
+          },
+        } as any,
+      });
+      const voice = new Voice(dummyContact, taskData, {
+        enableWxBetterTogether: true,
+        answerCallOnWebexService: mockSvc as any,
+      });
+      voice.stateMachineService?.send({type: TaskEvent.TASK_INCOMING, taskData});
+
+      await voice.syncWxAppMuteFromCallDetails();
+
+      expect(mockSvc.getCallDetails).not.toHaveBeenCalled();
+    });
+
+    it('still calls mute GET for post-accept OFFERED wxApp offer', async () => {
+      const mockSvc = {
+        answerCall: jest.fn().mockResolvedValue(undefined),
+        getCallDetails: jest.fn().mockResolvedValue({muted: false}),
+      };
+      const wxAppParticipant = {
+        deviceType: 'wxApp',
+        deviceId: 'device-id-1',
+        deviceCallId: 'call-id-1',
+      };
+      const taskData = createBaseData({
+        agentId: 'agent-1',
+        interaction: {
+          outboundType: 'OUTDIAL',
+          participants: {
+            'agent-1': {id: 'agent-1', ...wxAppParticipant},
+          },
+        } as any,
+      });
+      const voice = new Voice(dummyContact, taskData, {
+        enableWxBetterTogether: true,
+        answerCallOnWebexService: mockSvc as any,
+      });
+      voice.stateMachineService?.send({type: TaskEvent.TASK_INCOMING, taskData});
+      await voice.accept();
+
+      expect(voice.uiControlConfig.wxAppAcceptInFlight).toBe(false);
+      await voice.syncWxAppMuteFromCallDetails();
+
+      expect(mockSvc.getCallDetails).toHaveBeenCalledWith({callId: 'call-id-1'});
+    });
+
+    it('does not log error for expected wxApp call-not-found on mute sync', async () => {
+      const errorSpy = jest.spyOn(LoggerProxy, 'error');
+      const mockSvc = {
+        getCallDetails: jest.fn().mockRejectedValue({status: 400, message: 'Call not found'}),
+      };
+      const wxAppParticipant = {
+        deviceType: 'wxApp',
+        deviceId: 'device-id-1',
+        deviceCallId: 'call-id-1',
+      };
+      const taskData = createBaseData({
+        agentId: 'agent-1',
+        interaction: {
+          participants: {
+            'agent-1': {id: 'agent-1', ...wxAppParticipant},
+          },
+        } as any,
+      });
+      const voice = new Voice(dummyContact, taskData, {
+        enableWxBetterTogether: true,
+        answerCallOnWebexService: mockSvc as any,
+      });
+      primeConnectedState(voice, taskData);
+
+      await voice.syncWxAppMuteFromCallDetails();
+
+      expect(mockSvc.getCallDetails).toHaveBeenCalled();
+      expect(errorSpy).not.toHaveBeenCalled();
+      errorSpy.mockRestore();
+    });
+  });
+
+  describe('decline', () => {
+    const wxAppParticipant = {
+      deviceType: 'wxApp',
+      deviceId: 'device-id-1',
+      deviceCallId: 'call-id-1',
+    };
+
+    const makeWxAppOutdialTaskData = () =>
+      createBaseData({
+        agentId: 'agent-1',
+        interaction: {
+          outboundType: 'OUTDIAL',
+          participants: {
+            'agent-1': {id: 'agent-1', ...wxAppParticipant},
+          },
+        } as any,
+      });
+
+    it('cancels wxApp outdial via contact.cancelTask', async () => {
+      const taskData = makeWxAppOutdialTaskData();
+      const voice = new Voice(dummyContact, taskData, {enableWxBetterTogether: true});
+      voice.stateMachineService?.send({type: TaskEvent.TASK_INCOMING, taskData});
+
+      await voice.decline();
+
+      expect(dummyContact.cancelTask).toHaveBeenCalledWith({interactionId: 'int1'});
+    });
+
+    it('emits TASK_DECLINE and WXAPP_TASK_DECLINE success metrics for wxApp outdial decline', async () => {
+      const taskData = makeWxAppOutdialTaskData();
+      const voice = new Voice(dummyContact, taskData, {enableWxBetterTogether: true});
+      voice.stateMachineService?.send({type: TaskEvent.TASK_INCOMING, taskData});
+      const metricsManager = MetricsManager.getInstance();
+      const trackEventSpy = jest.spyOn(metricsManager, 'trackEvent');
+
+      await voice.decline();
+
+      expect(trackEventSpy).toHaveBeenCalledWith(
+        METRIC_EVENT_NAMES.WXAPP_TASK_DECLINE_SUCCESS,
+        expect.objectContaining({taskId: 'int1'}),
+        ['operational', 'behavioral']
+      );
+      expect(trackEventSpy).toHaveBeenCalledWith(
+        METRIC_EVENT_NAMES.TASK_DECLINE_SUCCESS,
+        expect.objectContaining({taskId: 'int1'}),
+        ['operational', 'behavioral']
+      );
+    });
+
+    it('emits TASK_DECLINE and WXAPP_TASK_DECLINE failed metrics when outdial cancel fails', async () => {
+      const cancelError = Object.assign(new Error('AQM failed'), {
+        details: {
+          trackingId: 'aqm-track-1',
+          orgId: 'org-1',
+          type: 'Service.aqm.task.cancel',
+          data: {reason: 'TASK_NOT_FOUND', reasonCode: 404, agentId: 'agent-1'},
+        },
+      });
+      dummyContact.cancelTask = jest.fn().mockRejectedValue(cancelError);
+      const taskData = makeWxAppOutdialTaskData();
+      const voice = new Voice(dummyContact, taskData, {enableWxBetterTogether: true});
+      voice.stateMachineService?.send({type: TaskEvent.TASK_INCOMING, taskData});
+      const metricsManager = MetricsManager.getInstance();
+      const trackEventSpy = jest.spyOn(metricsManager, 'trackEvent');
+
+      await expect(voice.decline()).rejects.toThrow('AQM failed');
+
+      expect(trackEventSpy).toHaveBeenCalledWith(
+        METRIC_EVENT_NAMES.WXAPP_TASK_DECLINE_FAILED,
+        expect.objectContaining({
+          taskId: 'int1',
+          trackingId: 'aqm-track-1',
+          failureReason: 'TASK_NOT_FOUND',
+        }),
+        ['operational', 'behavioral']
+      );
+      expect(trackEventSpy).toHaveBeenCalledWith(
+        METRIC_EVENT_NAMES.TASK_DECLINE_FAILED,
+        expect.objectContaining({
+          taskId: 'int1',
+          trackingId: 'aqm-track-1',
+          failureReason: 'TASK_NOT_FOUND',
+        }),
+        ['operational', 'behavioral']
+      );
+      dummyContact.cancelTask = jest.fn().mockResolvedValue(undefined);
+    });
+
+    it('clears wxAppAnswerPending when declining outdial', async () => {
+      const mockSvc = {
+        answerCall: jest.fn().mockResolvedValue(undefined),
+        getCallDetails: jest.fn().mockResolvedValue({muted: false}),
+      };
+      const taskData = makeWxAppOutdialTaskData();
+      const voice = new Voice(dummyContact, taskData, {
+        enableWxBetterTogether: true,
+        answerCallOnWebexService: mockSvc as any,
+      });
+      voice.stateMachineService?.send({type: TaskEvent.TASK_INCOMING, taskData});
+
+      await voice.accept();
+      expect(voice.uiControlConfig.wxAppAnswerPending).toBe(true);
+      expect(voice.uiControlConfig.wxAppAcceptInFlight).toBe(false);
+
+      await voice.decline();
+
+      expect(voice.uiControlConfig.wxAppAnswerPending).toBe(false);
+      expect(dummyContact.cancelTask).toHaveBeenCalledWith({interactionId: 'int1'});
+    });
+
+    it('throws unsupported for non-outdial voice tasks', async () => {
+      const taskData = createBaseData();
+      const voice = new Voice(dummyContact, taskData, {enableWxBetterTogether: true});
+
+      await expect(voice.decline()).rejects.toThrow('Unsupported operation: decline');
+      expect(dummyContact.cancelTask).not.toHaveBeenCalled();
+    });
+
+    it('throws unsupported when enableWxBetterTogether is false', async () => {
+      const taskData = makeWxAppOutdialTaskData();
+      const voice = new Voice(dummyContact, taskData, {enableWxBetterTogether: false});
+
+      await expect(voice.decline()).rejects.toThrow('Unsupported operation: decline');
+      expect(dummyContact.cancelTask).not.toHaveBeenCalled();
+    });
+  });
+
+  describe('unified task API routing (WXCC-6026)', () => {
+    const wxAppParticipant = {
+      deviceType: 'wxApp',
+      deviceId: 'device-id-1',
+      deviceCallId: 'call-id-1',
+    };
+
+    it('accept() routes wxApp inbound offer to telephony answerCall', async () => {
+      const mockSvc = {
+        answerCall: jest.fn().mockResolvedValue(undefined),
+        getCallDetails: jest.fn().mockResolvedValue({muted: false}),
+      };
+      const taskData = createBaseData({
+        agentId: 'agent-1',
+        interaction: {
+          participants: {
+            'agent-1': {id: 'agent-1', ...wxAppParticipant},
+          },
+        } as any,
+      });
+      const voice = new Voice(dummyContact, taskData, {
+        enableWxBetterTogether: true,
+        answerCallOnWebexService: mockSvc as any,
+      });
+      voice.stateMachineService?.send({type: TaskEvent.TASK_INCOMING, taskData});
+
+      await voice.accept();
+
+      expect(mockSvc.answerCall).toHaveBeenCalledWith({
+        callId: 'call-id-1',
+        endpointId: 'device-id-1',
+        lineOwnerId: undefined,
+      });
+    });
+
+    it('decline() routes wxApp inbound offer to telephony rejectCall', async () => {
+      const mockSvc = {
+        rejectCall: jest.fn().mockResolvedValue(undefined),
+      };
+      const taskData = createBaseData({
+        agentId: 'agent-1',
+        interaction: {
+          participants: {
+            'agent-1': {id: 'agent-1', ...wxAppParticipant},
+          },
+        } as any,
+      });
+      const voice = new Voice(dummyContact, taskData, {
+        enableWxBetterTogether: true,
+        answerCallOnWebexService: mockSvc as any,
+      });
+      voice.stateMachineService?.send({type: TaskEvent.TASK_INCOMING, taskData});
+
+      await voice.decline();
+
+      expect(mockSvc.rejectCall).toHaveBeenCalledWith({
+        callId: 'call-id-1',
+        lineOwnerId: undefined,
+      });
+      expect(dummyContact.cancelTask).not.toHaveBeenCalled();
+    });
+
+    it('toggleMute() routes wxApp engaged call to telephony muteCall', async () => {
+      const mockSvc = {
+        muteCall: jest.fn().mockResolvedValue(undefined),
+      };
+      const taskData = createBaseData({
+        agentId: 'agent-1',
+        interaction: {
+          participants: {
+            'agent-1': {id: 'agent-1', ...wxAppParticipant},
+          },
+        } as any,
+      });
+      const voice = new Voice(dummyContact, taskData, {
+        enableWxBetterTogether: true,
+        answerCallOnWebexService: mockSvc as any,
+      });
+      primeConnectedState(voice, taskData);
+
+      await voice.toggleMute({muted: true});
+
+      expect(mockSvc.muteCall).toHaveBeenCalledWith({callId: 'call-id-1', lineOwnerId: undefined});
+    });
+
+    it('serializes concurrent no-arg toggleMute() so mute then unmute', async () => {
+      let resolveMute: () => void;
+      const muteGate = new Promise<void>((resolve) => {
+        resolveMute = resolve;
+      });
+      const mockSvc = {
+        muteCall: jest.fn().mockImplementation(() => muteGate),
+        unmuteCall: jest.fn().mockResolvedValue(undefined),
+      };
+      const taskData = createBaseData({
+        agentId: 'agent-1',
+        interaction: {
+          participants: {
+            'agent-1': {id: 'agent-1', ...wxAppParticipant},
+          },
+        } as any,
+      });
+      const voice = new Voice(dummyContact, taskData, {
+        enableWxBetterTogether: true,
+        answerCallOnWebexService: mockSvc as any,
+      });
+      primeConnectedState(voice, taskData);
+      expect(voice.getWxAppMuted()).toBe(false);
+
+      const firstToggle = voice.toggleMute();
+      const secondToggle = voice.toggleMute();
+
+      await new Promise<void>((resolve) => {
+        setImmediate(resolve);
+      });
+
+      expect(mockSvc.muteCall).toHaveBeenCalledTimes(1);
+      expect(mockSvc.unmuteCall).not.toHaveBeenCalled();
+
+      resolveMute!();
+      await Promise.all([firstToggle, secondToggle]);
+
+      expect(mockSvc.muteCall).toHaveBeenCalledTimes(1);
+      expect(mockSvc.unmuteCall).toHaveBeenCalledTimes(1);
+      expect(voice.getWxAppMuted()).toBe(false);
+    });
+
+    it('queues three concurrent no-arg toggleMute() calls in order', async () => {
+      let resolveFirstMute: () => void;
+      const firstMuteGate = new Promise<void>((resolve) => {
+        resolveFirstMute = resolve;
+      });
+      const mockSvc = {
+        muteCall: jest
+          .fn()
+          .mockImplementationOnce(() => firstMuteGate)
+          .mockResolvedValue(undefined),
+        unmuteCall: jest.fn().mockResolvedValue(undefined),
+      };
+      const taskData = createBaseData({
+        agentId: 'agent-1',
+        interaction: {
+          participants: {
+            'agent-1': {id: 'agent-1', ...wxAppParticipant},
+          },
+        } as any,
+      });
+      const voice = new Voice(dummyContact, taskData, {
+        enableWxBetterTogether: true,
+        answerCallOnWebexService: mockSvc as any,
+      });
+      primeConnectedState(voice, taskData);
+      expect(voice.getWxAppMuted()).toBe(false);
+
+      const firstToggle = voice.toggleMute();
+      const secondToggle = voice.toggleMute();
+      const thirdToggle = voice.toggleMute();
+
+      await new Promise<void>((resolve) => {
+        setImmediate(resolve);
+      });
+
+      expect(mockSvc.muteCall).toHaveBeenCalledTimes(1);
+      expect(mockSvc.unmuteCall).not.toHaveBeenCalled();
+
+      resolveFirstMute!();
+      await Promise.all([firstToggle, secondToggle, thirdToggle]);
+
+      expect(mockSvc.muteCall).toHaveBeenCalledTimes(2);
+      expect(mockSvc.unmuteCall).toHaveBeenCalledTimes(1);
+      expect(voice.getWxAppMuted()).toBe(true);
+    });
+
+    it('records duration_ms on each serialized toggleMute success metric', async () => {
+      let resolveFirstMute: () => void;
+      const firstMuteGate = new Promise<void>((resolve) => {
+        resolveFirstMute = resolve;
+      });
+      const mockSvc = {
+        muteCall: jest.fn().mockImplementationOnce(() => firstMuteGate),
+        unmuteCall: jest.fn().mockResolvedValue(undefined),
+      };
+      const taskData = createBaseData({
+        agentId: 'agent-1',
+        interaction: {
+          participants: {
+            'agent-1': {id: 'agent-1', ...wxAppParticipant},
+          },
+        } as any,
+      });
+      const voice = new Voice(dummyContact, taskData, {
+        enableWxBetterTogether: true,
+        answerCallOnWebexService: mockSvc as any,
+      });
+      primeConnectedState(voice, taskData);
+      const metricsManager = MetricsManager.getInstance();
+      const trackEventSpy = jest.spyOn(metricsManager, 'trackEvent');
+
+      const firstToggle = voice.toggleMute();
+      const secondToggle = voice.toggleMute();
+
+      resolveFirstMute!();
+      await Promise.all([firstToggle, secondToggle]);
+
+      const successCalls = trackEventSpy.mock.calls.filter(
+        ([eventName]) => eventName === METRIC_EVENT_NAMES.WXAPP_TASK_MUTE_SUCCESS
+      );
+      expect(successCalls).toHaveLength(2);
+      successCalls.forEach(([, payload]) => {
+        expect(payload).toEqual(
+          expect.objectContaining({
+            duration_ms: expect.any(Number),
+          })
+        );
+      });
+    });
+
+    it('continues queued toggleMute after predecessor failure', async () => {
+      const mockSvc = {
+        muteCall: jest.fn().mockRejectedValue(new Error('mute failed')),
+        unmuteCall: jest.fn().mockResolvedValue(undefined),
+      };
+      const taskData = createBaseData({
+        agentId: 'agent-1',
+        interaction: {
+          participants: {
+            'agent-1': {id: 'agent-1', ...wxAppParticipant},
+          },
+        } as any,
+      });
+      const voice = new Voice(dummyContact, taskData, {
+        enableWxBetterTogether: true,
+        answerCallOnWebexService: mockSvc as any,
+      });
+      primeConnectedState(voice, taskData);
+
+      const firstToggle = voice.toggleMute({muted: true});
+      const secondToggle = voice.toggleMute({muted: false});
+
+      await expect(firstToggle).rejects.toThrow('mute failed');
+      await secondToggle;
+
+      expect(mockSvc.muteCall).toHaveBeenCalledTimes(1);
+      expect(mockSvc.unmuteCall).toHaveBeenCalledTimes(1);
+    });
+
+    it('transmitDtmf() routes wxApp engaged call to telephony transmitDtmf', async () => {
+      const mockSvc = {
+        transmitDtmf: jest.fn().mockResolvedValue(undefined),
+      };
+      const taskData = createBaseData({
+        agentId: 'agent-1',
+        interaction: {
+          participants: {
+            'agent-1': {id: 'agent-1', ...wxAppParticipant},
+          },
+        } as any,
+      });
+      const voice = new Voice(dummyContact, taskData, {
+        enableWxBetterTogether: true,
+        answerCallOnWebexService: mockSvc as any,
+      });
+      primeConnectedState(voice, taskData);
+
+      await voice.transmitDtmf({dtmf: '5'});
+
+      expect(mockSvc.transmitDtmf).toHaveBeenCalledWith({
+        callId: 'call-id-1',
+        dtmf: '5',
+        lineOwnerId: undefined,
+      });
+    });
+
+    it('serializes concurrent transmitDtmf() so each digit completes before the next', async () => {
+      let resolveFirst: () => void;
+      const firstGate = new Promise<void>((resolve) => {
+        resolveFirst = resolve;
+      });
+      const mockSvc = {
+        transmitDtmf: jest
+          .fn()
+          .mockImplementationOnce(() => firstGate)
+          .mockResolvedValueOnce(undefined),
+      };
+      const taskData = createBaseData({
+        agentId: 'agent-1',
+        interaction: {
+          participants: {
+            'agent-1': {id: 'agent-1', ...wxAppParticipant},
+          },
+        } as any,
+      });
+      const voice = new Voice(dummyContact, taskData, {
+        enableWxBetterTogether: true,
+        answerCallOnWebexService: mockSvc as any,
+      });
+      primeConnectedState(voice, taskData);
+
+      const firstDtmf = voice.transmitDtmf({dtmf: '1'});
+      const secondDtmf = voice.transmitDtmf({dtmf: '2'});
+
+      await new Promise<void>((resolve) => {
+        setImmediate(resolve);
+      });
+
+      expect(mockSvc.transmitDtmf).toHaveBeenCalledTimes(1);
+      expect(mockSvc.transmitDtmf).toHaveBeenCalledWith({
+        callId: 'call-id-1',
+        dtmf: '1',
+        lineOwnerId: undefined,
+      });
+
+      resolveFirst!();
+      await Promise.all([firstDtmf, secondDtmf]);
+
+      expect(mockSvc.transmitDtmf).toHaveBeenCalledTimes(2);
+      expect(mockSvc.transmitDtmf).toHaveBeenNthCalledWith(2, {
+        callId: 'call-id-1',
+        dtmf: '2',
+        lineOwnerId: undefined,
+      });
+    });
+
+    it('queues three concurrent transmitDtmf() calls in order', async () => {
+      let resolveFirst: () => void;
+      const firstGate = new Promise<void>((resolve) => {
+        resolveFirst = resolve;
+      });
+      const mockSvc = {
+        transmitDtmf: jest
+          .fn()
+          .mockImplementationOnce(() => firstGate)
+          .mockResolvedValue(undefined),
+      };
+      const taskData = createBaseData({
+        agentId: 'agent-1',
+        interaction: {
+          participants: {
+            'agent-1': {id: 'agent-1', ...wxAppParticipant},
+          },
+        } as any,
+      });
+      const voice = new Voice(dummyContact, taskData, {
+        enableWxBetterTogether: true,
+        answerCallOnWebexService: mockSvc as any,
+      });
+      primeConnectedState(voice, taskData);
+
+      const firstDtmf = voice.transmitDtmf({dtmf: '1'});
+      const secondDtmf = voice.transmitDtmf({dtmf: '2'});
+      const thirdDtmf = voice.transmitDtmf({dtmf: '3'});
+
+      await new Promise<void>((resolve) => {
+        setImmediate(resolve);
+      });
+
+      expect(mockSvc.transmitDtmf).toHaveBeenCalledTimes(1);
+      expect(mockSvc.transmitDtmf).toHaveBeenCalledWith({
+        callId: 'call-id-1',
+        dtmf: '1',
+        lineOwnerId: undefined,
+      });
+
+      resolveFirst!();
+      await Promise.all([firstDtmf, secondDtmf, thirdDtmf]);
+
+      expect(mockSvc.transmitDtmf).toHaveBeenCalledTimes(3);
+      expect(mockSvc.transmitDtmf).toHaveBeenNthCalledWith(2, {
+        callId: 'call-id-1',
+        dtmf: '2',
+        lineOwnerId: undefined,
+      });
+      expect(mockSvc.transmitDtmf).toHaveBeenNthCalledWith(3, {
+        callId: 'call-id-1',
+        dtmf: '3',
+        lineOwnerId: undefined,
+      });
+    });
+
+    it('records duration_ms on each serialized transmitDtmf success metric', async () => {
+      let resolveFirst: () => void;
+      const firstGate = new Promise<void>((resolve) => {
+        resolveFirst = resolve;
+      });
+      const mockSvc = {
+        transmitDtmf: jest
+          .fn()
+          .mockImplementationOnce(() => firstGate)
+          .mockResolvedValueOnce(undefined),
+      };
+      const taskData = createBaseData({
+        agentId: 'agent-1',
+        interaction: {
+          participants: {
+            'agent-1': {id: 'agent-1', ...wxAppParticipant},
+          },
+        } as any,
+      });
+      const voice = new Voice(dummyContact, taskData, {
+        enableWxBetterTogether: true,
+        answerCallOnWebexService: mockSvc as any,
+      });
+      primeConnectedState(voice, taskData);
+      const metricsManager = MetricsManager.getInstance();
+      const trackEventSpy = jest.spyOn(metricsManager, 'trackEvent');
+
+      const firstDtmf = voice.transmitDtmf({dtmf: '1'});
+      const secondDtmf = voice.transmitDtmf({dtmf: '2'});
+
+      resolveFirst!();
+      await Promise.all([firstDtmf, secondDtmf]);
+
+      const successCalls = trackEventSpy.mock.calls.filter(
+        ([eventName]) => eventName === METRIC_EVENT_NAMES.WXAPP_TASK_DTMF_SUCCESS
+      );
+      expect(successCalls).toHaveLength(2);
+      successCalls.forEach(([, payload]) => {
+        expect(payload).toEqual(
+          expect.objectContaining({
+            duration_ms: expect.any(Number),
+          })
+        );
+      });
+
+      trackEventSpy.mockRestore();
     });
   });
 });

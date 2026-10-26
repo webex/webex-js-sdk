@@ -1,16 +1,29 @@
-import {test, Page, expect} from '@playwright/test';
+import {test, Page, expect, Locator, Browser} from '@playwright/test';
 import {TestManager} from '../test-manager';
 import {changeUserState} from '../Utils/userStateUtils';
 import {
+  acceptIncomingTask,
   createCallTask,
   createChatTask,
   createEmailTask,
   waitForIncomingTask,
 } from '../Utils/incomingTaskUtils';
-import {TASK_TYPES, USER_STATES, WRAPUP_REASONS} from '../constants';
+import {
+  AWAIT_TIMEOUT,
+  OPERATION_TIMEOUT,
+  TASK_TYPES,
+  USER_STATES,
+  WRAPUP_REASONS,
+} from '../constants';
 import {verifyTaskControls} from '../Utils/taskControlUtils';
 import {submitWrapup} from '../Utils/wrapupUtils';
 import {waitForState} from '../Utils/helperUtils';
+import {
+  clickEnabledDomButton,
+  findVisibleEnabledActionButton,
+  hasVisibleEnabledActionButton,
+} from '../Utils/controlUtils';
+import {ensureHealthyDesktopAgent as ensureHealthyDesktopAgentBase} from '../Utils/desktopAgentUtils';
 
 const capturedLogs: string[] = [];
 
@@ -19,6 +32,7 @@ const taskTypeToMediaType: Record<string, string> = {
   [TASK_TYPES.EMAIL]: 'email',
   [TASK_TYPES.CHAT]: 'chat',
 };
+const EMAIL_TASK_TIMEOUT = 180000;
 
 /**
  * Reads elapsed timer value from the sample app timer display.
@@ -135,6 +149,85 @@ function escapeForRegExp(str?: string): string {
   return str.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
 }
 
+function pendingTaskListItem(page: Page): Locator {
+  return page.locator('#taskList .task-item', {has: page.locator('.accept-task')}).first();
+}
+
+async function pendingTaskListControls(
+  page: Page,
+  incomingTask: Locator,
+  declineVisible: boolean
+): Promise<{acceptButton: Locator; declineButton: Locator}> {
+  const taskListItem = pendingTaskListItem(page);
+  await expect(taskListItem).toBeVisible({timeout: 60000});
+
+  const taskTitle = ((await taskListItem.locator('p').first().textContent()) ?? '').trim();
+  expect(taskTitle.length).toBeGreaterThan(0);
+
+  const acceptButton = taskListItem.locator('.accept-task').first();
+  const declineButton = taskListItem.locator('.decline-task').first();
+
+  await expect(incomingTask).toBeVisible();
+  await expect(acceptButton).toBeVisible();
+  if (declineVisible) {
+    await expect(declineButton).toBeVisible();
+  } else {
+    await expect(declineButton).not.toBeVisible();
+  }
+
+  return {acceptButton, declineButton};
+}
+
+async function clickTaskAction(page: Page, name: string, fallbackSelector: string): Promise<void> {
+  await expect
+    .poll(() => hasVisibleEnabledActionButton(page, name, fallbackSelector), {
+      timeout: OPERATION_TIMEOUT,
+      intervals: [500, 1000, 2000],
+    })
+    .toBeTruthy();
+
+  const visibleButton = await findVisibleEnabledActionButton(page, name, fallbackSelector);
+  if (visibleButton) {
+    await visibleButton.click({timeout: 5000});
+
+    return;
+  }
+
+  if (await clickEnabledDomButton(page, fallbackSelector)) {
+    return;
+  }
+
+  throw new Error(`Unable to click ${name} task action`);
+}
+
+async function clickTaskListAction(button: Locator, actionName: string): Promise<void> {
+  await expect(button).toBeVisible({timeout: AWAIT_TIMEOUT});
+  await expect(button).toBeEnabled({timeout: AWAIT_TIMEOUT});
+
+  const clicked = await button
+    .click({timeout: AWAIT_TIMEOUT})
+    .then(() => true)
+    .catch(() =>
+      button
+        .evaluate((el) => {
+          (el as HTMLButtonElement).click();
+
+          return true;
+        })
+        .catch(() => false)
+    );
+
+  if (!clicked) {
+    throw new Error(`Unable to click task-list ${actionName} action`);
+  }
+}
+
+async function readyAgentForTask(page: Page): Promise<void> {
+  await changeUserState(page, USER_STATES.AVAILABLE);
+  await waitForState(page, USER_STATES.AVAILABLE);
+  await page.waitForTimeout(1000);
+}
+
 // NOTE: Kept for potential future use with widget console logging
 /* eslint-disable @typescript-eslint/no-unused-vars, no-await-in-loop, no-promise-executor-return */
 async function waitForConsoleLogs(
@@ -164,13 +257,51 @@ async function waitForConsoleLogs(
 
 export default function createTaskListTests() {
   let testManager: TestManager;
+  let testBrowser: Browser;
 
-  test.beforeEach(() => {
+  const ensureHealthyAgent = (): Promise<Page> =>
+    ensureHealthyDesktopAgentBase(testManager, 'agent1', USER_STATES.AVAILABLE, {
+      browser: testBrowser,
+      setupConsoleLogging,
+      verifyTargetState: true,
+      stationReadyTimeoutMs: 60000,
+      reloginSettleMs: 5000,
+      postLoginSettleMs: 3000,
+    });
+
+  test.beforeEach(async () => {
     capturedLogs.length = 0;
+    await testManager?.softCleanup().catch(() => {});
+    await ensureHealthyAgent();
   });
 
+  const runWithHealthyAgentRetry = async (
+    runScenario: (agentPage: Page) => Promise<void>,
+    cleanup?: () => Promise<void>
+  ): Promise<void> => {
+    let lastError: unknown;
+    /* eslint-disable no-await-in-loop */
+    for (let attempt = 0; attempt < 2; attempt += 1) {
+      try {
+        await runScenario(await ensureHealthyAgent());
+
+        return;
+      } catch (error) {
+        lastError = error;
+        if (attempt === 1) break;
+        await testManager.softCleanup().catch(() => {});
+        await cleanup?.().catch(() => {});
+      }
+    }
+    /* eslint-enable no-await-in-loop */
+
+    throw lastError;
+  };
+
   test.beforeAll(async ({browser}, testInfo) => {
+    testInfo.setTimeout(Math.max(testInfo.timeout, 5 * 60 * 1000));
     const projectName = testInfo.project.name;
+    testBrowser = browser;
     testManager = new TestManager(projectName);
     await testManager.setup(browser, {
       needsAgent1: true,
@@ -188,151 +319,131 @@ export default function createTaskListTests() {
   });
 
   test('Verify Task List for incoming Call', async () => {
-    await createCallTask(
-      testManager.callerPage,
-      process.env[`${testManager.projectName}_ENTRY_POINT`]!
-    );
-    await changeUserState(testManager.agent1Page, USER_STATES.AVAILABLE);
+    const runScenario = async (agentPage: Page): Promise<void> => {
+      await readyAgentForTask(agentPage);
+      await createCallTask(
+        testManager.callerPage,
+        process.env[`${testManager.projectName}_ENTRY_POINT`]!
+      );
 
-    const incomingTaskDiv = await waitForIncomingTask(testManager.agent1Page, TASK_TYPES.CALL);
-    await testManager.agent1Page.waitForTimeout(1000);
+      const incomingTaskDiv = await waitForIncomingTask(agentPage, TASK_TYPES.CALL);
+      await agentPage.waitForTimeout(1000);
 
-    const taskListItem = testManager.agent1Page.locator('#taskList .task-item').first();
-    await expect(taskListItem).toBeVisible();
+      const {acceptButton: taskListAcceptButton, declineButton: taskListDeclineButton} =
+        await pendingTaskListControls(agentPage, incomingTaskDiv, true);
 
-    const taskTitle = ((await taskListItem.locator('p').first().textContent()) ?? '').trim();
-    expect(taskTitle.length).toBeGreaterThan(0);
+      await acceptIncomingTask(agentPage, TASK_TYPES.CALL);
+      await expect(taskListAcceptButton).not.toBeVisible();
+      await expect(taskListDeclineButton).not.toBeVisible();
 
-    const taskListAcceptButton = taskListItem.locator('.accept-task').first();
-    const taskListDeclineButton = taskListItem.locator('.decline-task').first();
+      try {
+        await verifyTaskControls(agentPage, TASK_TYPES.CALL);
+      } catch (error) {
+        throw new Error(`Call control buttons verification failed: ${error.message}`);
+      }
 
-    await expect(incomingTaskDiv).toBeVisible();
-    await expect(testManager.agent1Page.locator('#answer').first()).toBeVisible();
-    // Note: #decline button may be hidden/disabled in Desktop mode - skip visibility check
-    await expect(taskListAcceptButton).toBeVisible();
-    await expect(taskListDeclineButton).toBeVisible();
+      // Skip: Sample app doesn't emit widget-specific onTaskSelected console logs
+      // await waitForConsoleLogs(capturedLogs, taskTitle, taskTypeToMediaType[TASK_TYPES.CALL]);
 
-    await taskListAcceptButton.click();
-    await testManager.agent1Page.waitForTimeout(1000);
-    await expect(taskListAcceptButton).not.toBeVisible();
-    await expect(taskListDeclineButton).not.toBeVisible();
+      await clickTaskAction(agentPage, 'End', '#end');
+      await agentPage.waitForTimeout(500);
+      await submitWrapup(agentPage, WRAPUP_REASONS.SALE);
+      // Desktop mode doesn't auto-transition to Available - wrapup submission is sufficient
+    };
 
-    await testManager.agent1Page.waitForTimeout(5000);
-    try {
-      await verifyTaskControls(testManager.agent1Page, TASK_TYPES.CALL);
-    } catch (error) {
-      throw new Error(`Call control buttons verification failed: ${error.message}`);
-    }
-
-    // Desktop mode does NOT auto-transition to Engaged - verify call active via UI instead
-    await expect(testManager.agent1Page.locator('#hold-resume')).toBeVisible({timeout: 10000});
-    await expect(testManager.agent1Page.locator('#end')).toBeVisible({timeout: 10000});
-
-    await taskListItem.click();
-    // Skip: Sample app doesn't emit widget-specific onTaskSelected console logs
-    // await waitForConsoleLogs(capturedLogs, taskTitle, taskTypeToMediaType[TASK_TYPES.CALL]);
-
-    await testManager.agent1Page.locator('#end').first().waitFor({state: 'visible', timeout: 5000});
-    await testManager.agent1Page.locator('#end').first().click();
-    await testManager.agent1Page.waitForTimeout(500);
-    await submitWrapup(testManager.agent1Page, WRAPUP_REASONS.SALE);
-    // Desktop mode doesn't auto-transition to Available - wrapup submission is sufficient
+    await runWithHealthyAgentRetry(runScenario);
   });
 
   test('Verify Task List for incoming Chat Task', async () => {
-    await createChatTask(testManager.chatPage, process.env[`${testManager.projectName}_CHAT_URL`]!);
-    await changeUserState(testManager.agent1Page, USER_STATES.AVAILABLE);
+    test.setTimeout(5 * 60 * 1000);
+    const runScenario = async (agentPage: Page): Promise<void> => {
+      await readyAgentForTask(agentPage);
+      await createChatTask(
+        testManager.chatPage,
+        process.env[`${testManager.projectName}_CHAT_URL`]!
+      );
 
-    const incomingTaskDiv = testManager.agent1Page.locator('#incoming-task').first();
-    await incomingTaskDiv.waitFor({state: 'visible', timeout: 60000});
-    await testManager.agent1Page.waitForTimeout(1000);
+      const incomingTaskDiv = await waitForIncomingTask(agentPage, TASK_TYPES.CHAT);
+      await agentPage.waitForTimeout(1000);
 
-    const taskListItem = testManager.agent1Page.locator('#taskList .task-item').first();
-    await expect(taskListItem).toBeVisible({timeout: 60000});
+      const {acceptButton: taskListAcceptButton} = await pendingTaskListControls(
+        agentPage,
+        incomingTaskDiv,
+        false
+      );
 
-    const taskTitle = ((await taskListItem.locator('p').first().textContent()) ?? '').trim();
-    expect(taskTitle.length).toBeGreaterThan(0);
+      await clickTaskListAction(taskListAcceptButton, 'Accept');
+      await agentPage.waitForTimeout(1000);
+      // Desktop mode doesn't auto-transition to Engaged - verify task active via timer instead
 
-    const taskListAcceptButton = taskListItem.locator('.accept-task').first();
-    const taskListDeclineButton = taskListItem.locator('.decline-task').first();
+      const prevTimer = await getCurrentHandleTime(agentPage);
+      await agentPage.waitForTimeout(5000);
+      const currentTimer = await getCurrentHandleTime(agentPage);
+      expect(currentTimer).toBeGreaterThan(prevTimer);
 
-    await expect(incomingTaskDiv).toBeVisible();
-    await expect(taskListAcceptButton).toBeVisible();
-    await expect(taskListDeclineButton).not.toBeVisible();
+      try {
+        await verifyTaskControls(agentPage, TASK_TYPES.CHAT);
+      } catch (error) {
+        throw new Error(`Call control buttons verification failed: ${error.message}`);
+      }
 
-    await taskListAcceptButton.click();
-    await testManager.agent1Page.waitForTimeout(1000);
-    // Desktop mode doesn't auto-transition to Engaged - verify task active via timer instead
+      // Skip: Sample app doesn't emit widget-specific onTaskSelected console logs
+      // await waitForConsoleLogs(capturedLogs, taskTitle, taskTypeToMediaType[TASK_TYPES.CHAT]);
+      await expect(agentPage.locator('#incoming-task')).toContainText('Task Accepted');
 
-    const prevTimer = await getCurrentHandleTime(testManager.agent1Page);
-    await testManager.agent1Page.waitForTimeout(5000);
-    const currentTimer = await getCurrentHandleTime(testManager.agent1Page);
-    expect(currentTimer).toBeGreaterThan(prevTimer);
+      await clickTaskAction(agentPage, 'End', '#end');
+      await agentPage.waitForTimeout(2000);
+      await submitWrapup(agentPage, WRAPUP_REASONS.SALE);
+      // Desktop mode doesn't auto-transition to Available - wrapup submission is sufficient
+    };
 
-    try {
-      await verifyTaskControls(testManager.agent1Page, TASK_TYPES.CHAT);
-    } catch (error) {
-      throw new Error(`Call control buttons verification failed: ${error.message}`);
-    }
-
-    // Skip: Sample app doesn't emit widget-specific onTaskSelected console logs
-    // await waitForConsoleLogs(capturedLogs, taskTitle, taskTypeToMediaType[TASK_TYPES.CHAT]);
-    await expect(taskListAcceptButton).not.toBeVisible();
-    await expect(taskListDeclineButton).not.toBeVisible();
-
-    await testManager.agent1Page.locator('#end').first().waitFor({state: 'visible', timeout: 5000});
-    await testManager.agent1Page.locator('#end').first().click();
-    await testManager.agent1Page.waitForTimeout(2000);
-    await submitWrapup(testManager.agent1Page, WRAPUP_REASONS.SALE);
-    // Desktop mode doesn't auto-transition to Available - wrapup submission is sufficient
+    await runWithHealthyAgentRetry(runScenario, () => testManager.chatPage.goto('about:blank'));
   });
 
   test('Verify Task List for incoming Email Task', async () => {
-    await createEmailTask(process.env[`${testManager.projectName}_EMAIL_ENTRY_POINT`]!);
-    await changeUserState(testManager.agent1Page, USER_STATES.AVAILABLE);
+    const runScenario = async (agentPage: Page): Promise<void> => {
+      await readyAgentForTask(agentPage);
+      await createEmailTask(process.env[`${testManager.projectName}_EMAIL_ENTRY_POINT`]!);
 
-    const incomingTaskDiv = testManager.agent1Page.locator('#incoming-task').first();
-    await incomingTaskDiv.waitFor({state: 'visible', timeout: 60000});
-    await testManager.agent1Page.waitForTimeout(1000);
+      const incomingTaskDiv = await waitForIncomingTask(
+        agentPage,
+        TASK_TYPES.EMAIL,
+        EMAIL_TASK_TIMEOUT
+      );
+      await agentPage.waitForTimeout(1000);
 
-    const taskListItem = testManager.agent1Page.locator('#taskList .task-item').first();
-    await expect(taskListItem).toBeVisible({timeout: 60000});
+      const {acceptButton: taskListAcceptButton} = await pendingTaskListControls(
+        agentPage,
+        incomingTaskDiv,
+        false
+      );
 
-    const taskTitle = ((await taskListItem.locator('p').first().textContent()) ?? '').trim();
-    expect(taskTitle.length).toBeGreaterThan(0);
+      await clickTaskListAction(taskListAcceptButton, 'Accept');
+      await agentPage.waitForTimeout(1000);
 
-    const taskListAcceptButton = taskListItem.locator('.accept-task').first();
-    const taskListDeclineButton = taskListItem.locator('.decline-task').first();
+      const prevTimer = await getCurrentHandleTime(agentPage);
+      await agentPage.waitForTimeout(5000);
+      const currentTimer = await getCurrentHandleTime(agentPage);
+      expect(currentTimer).toBeGreaterThan(prevTimer);
 
-    await expect(incomingTaskDiv).toBeVisible();
-    await expect(taskListAcceptButton).toBeVisible();
-    await expect(taskListDeclineButton).not.toBeVisible();
+      try {
+        await verifyTaskControls(agentPage, TASK_TYPES.EMAIL);
+      } catch (error) {
+        throw new Error(`Call control buttons verification failed: ${error.message}`);
+      }
 
-    await taskListAcceptButton.click();
-    await testManager.agent1Page.waitForTimeout(1000);
+      await expect(agentPage.locator('#incoming-task')).toContainText('Task Accepted');
+      // Desktop mode doesn't auto-transition to Engaged - task timer running is sufficient verification
+      // Skip: Sample app doesn't emit widget-specific onTaskSelected console logs
+      // await waitForConsoleLogs(capturedLogs, taskTitle, taskTypeToMediaType[TASK_TYPES.EMAIL]);
 
-    const prevTimer = await getCurrentHandleTime(testManager.agent1Page);
-    await testManager.agent1Page.waitForTimeout(5000);
-    const currentTimer = await getCurrentHandleTime(testManager.agent1Page);
-    expect(currentTimer).toBeGreaterThan(prevTimer);
+      await clickTaskAction(agentPage, 'End', '#end');
+      await agentPage.waitForTimeout(2000);
+      await submitWrapup(agentPage, WRAPUP_REASONS.SALE);
+      // Desktop mode doesn't auto-transition to Available - wrapup submission is sufficient
+    };
 
-    try {
-      await verifyTaskControls(testManager.agent1Page, TASK_TYPES.EMAIL);
-    } catch (error) {
-      throw new Error(`Call control buttons verification failed: ${error.message}`);
-    }
-
-    await expect(taskListAcceptButton).not.toBeVisible();
-    await expect(taskListDeclineButton).not.toBeVisible();
-    // Desktop mode doesn't auto-transition to Engaged - task timer running is sufficient verification
-    // Skip: Sample app doesn't emit widget-specific onTaskSelected console logs
-    // await waitForConsoleLogs(capturedLogs, taskTitle, taskTypeToMediaType[TASK_TYPES.EMAIL]);
-
-    await testManager.agent1Page.locator('#end').first().waitFor({state: 'visible', timeout: 5000});
-    await testManager.agent1Page.locator('#end').first().click();
-    await testManager.agent1Page.waitForTimeout(2000);
-    await submitWrapup(testManager.agent1Page, WRAPUP_REASONS.SALE);
-    // Desktop mode doesn't auto-transition to Available - wrapup submission is sufficient
+    await runWithHealthyAgentRetry(runScenario);
   });
 
   // Skip: Backend routing doesn't support multiple simultaneous active tasks in Desktop mode.

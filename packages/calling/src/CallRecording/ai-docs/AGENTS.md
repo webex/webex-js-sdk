@@ -1,5 +1,7 @@
 # CallRecording Module
 
+> Canonical SDD target: [`src/CallRecording/ai-docs/call-recording-spec.md`](call-recording-spec.md). This legacy document is retained as migration source; use the canonical target for current lifecycle work.
+
 ## Overview
 
 The `CallRecording` module provides read access to **Post Call Recordings** (recordings, transcripts,

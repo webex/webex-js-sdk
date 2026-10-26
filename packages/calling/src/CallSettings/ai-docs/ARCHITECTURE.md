@@ -1,5 +1,7 @@
 # CallSettings Module — Architecture
 
+> Canonical SDD target: [`src/CallSettings/ai-docs/call-settings-spec.md`](call-settings-spec.md). This legacy document is retained as migration source; use the canonical target for current lifecycle work.
+
 ## Component Overview
 
 The CallSettings module uses a **strategy pattern**: the `CallSettings` facade delegates all operations to a backend-specific connector chosen at construction time. The architecture is: **Application -> CallSettings -> BackendConnector (WXC or UCM) -> Backend API**.

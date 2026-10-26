@@ -3,6 +3,7 @@
  */
 import {WebexPlugin} from '@webex/webex-core';
 import {debounce, forEach} from 'lodash';
+import type LLMChannel from '@webex/internal-plugin-llm';
 import LoggerProxy from '../common/logs/logger-proxy';
 
 import {BREAKOUTS, MEETINGS, HTTP_VERBS, _ID_} from '../constants';
@@ -32,6 +33,7 @@ const Breakouts = WebexPlugin.extend({
     name: 'string', // only present when in a breakout session
     sessionId: 'string', // appears from the moment you enable breakouts
     sessionType: 'string', // appears from the moment you enable breakouts
+    breakoutMoveId: 'string', // used to correlate breakout move/join diagnostics
     startTime: 'string', // appears once breakouts start
     status: 'string', // only present when in a breakout session
     url: 'string', // appears from the moment you enable breakouts
@@ -47,6 +49,8 @@ const Breakouts = WebexPlugin.extend({
     canManageBreakouts: 'boolean', // appear the ability to manage breakouts
     mainGroupId: 'string', // appears from the moment you enable breakouts
     mainSessionId: 'string', // appears from the moment you enable breakouts
+    hasSubscribedToMessage: 'boolean', // tracks if listening to LLM broadcast messages
+    _llmChannel: 'object', // registered LLM channel for broadcast messages
   },
   children: {
     currentBreakoutSession: Breakout,
@@ -149,9 +153,16 @@ const Breakouts = WebexPlugin.extend({
     this.listenTo(this.breakouts, 'change:requestedLastModifiedTime', (breakout) => {
       this.triggerReturnToMainEvent(breakout);
     });
+    this.listenTo(
+      this,
+      BREAKOUTS.EVENTS.LLM_CONNECT_RESPONSE,
+      this.handleLLMBreakoutJoinResponseMetric
+    );
     this.listenToCurrentSessionTypeChange();
     this.listenToBreakoutRosters();
     this.listenToBreakoutHelp();
+    // LLM may connect after locusUrlUpdate has already run, so re-check the broadcast subscription on connect
+    this.listenTo(this.webex.internal.llm, 'online', () => this.listenToBroadcastMessages());
     // @ts-ignore
     this.breakoutRequest = new BreakoutRequest({webex: this.webex});
   },
@@ -254,15 +265,43 @@ const Breakouts = WebexPlugin.extend({
   },
 
   /**
+   * Registers the LLM channel for broadcast messages
+   * @param {LLMChannel} channel - The LLM channel to use for breakout messages
+   * @returns {void}
+   */
+  registerLLMChannel(channel: LLMChannel) {
+    // If already subscribed to a previous channel, clean it up
+    if (this.hasSubscribedToMessage && this._llmChannel) {
+      this.stopListening(this._llmChannel);
+      this.hasSubscribedToMessage = false;
+    }
+
+    this._llmChannel = channel;
+    this.listenToBroadcastMessages();
+  },
+
+  /**
+   * Unregisters the LLM channel
+   * @returns {void}
+   */
+  unregisterLLMChannel() {
+    if (this._llmChannel) {
+      this.stopListening(this._llmChannel);
+      this._llmChannel = undefined;
+      this.hasSubscribedToMessage = false;
+    }
+  },
+
+  /**
    * Sets up listener for broadcast messages sent to the breakout session
    * @returns {void}
    */
   listenToBroadcastMessages() {
-    if (!this.webex.internal.llm.isConnected() || this.hasSubscribedToMessage) {
+    if (!this._llmChannel?.isConnected() || this.hasSubscribedToMessage) {
       return;
     }
 
-    this.listenTo(this.webex.internal.llm, 'event:breakout.message', (event) => {
+    this.listenTo(this._llmChannel, 'event:breakout.message', (event) => {
       const {
         data: {senderUserId, sentTime, message},
       } = event;
@@ -327,7 +366,10 @@ const Breakouts = WebexPlugin.extend({
    * @returns {void}
    */
   updateBreakout(params) {
+    const breakoutMoveId = params.breakoutMoveId || this.breakoutMoveId;
+
     this.set(params);
+    this.set('breakoutMoveId', breakoutMoveId);
     // These values are set manually so they are unset when they are not included in params
     this.set('groups', params.groups);
     this.set('startTime', params.startTime);
@@ -362,12 +404,81 @@ const Breakouts = WebexPlugin.extend({
         {
           currentSession: this.currentBreakoutSession,
           meeting,
-          breakoutMoveId: params.breakoutMoveId,
+          breakoutMoveId,
         },
         // @ts-ignore
         this.webex.internal.newMetrics.submitClientEvent.bind(this.webex.internal.newMetrics)
       );
     }
+
+    this.submitLLMBreakoutJoinResponseMetric();
+  },
+
+  /**
+   * Stores the latest LLM connect response and tries to send the LLM-enhanced breakout join response.
+   * The breakout update and the LLM response are delivered independently, so either side can arrive first.
+   * @param {Object} eventInfo LLM connect response info
+   * @param {Object} eventInfo.meeting meeting instance
+   * @param {Object} eventInfo.llmLatency LLM latency values
+   * @param {Object} [eventInfo.error] LLM connection error
+   * @returns {void}
+   */
+  handleLLMBreakoutJoinResponseMetric(eventInfo: any) {
+    this.llmBreakoutJoinResponseInfo = {
+      ...eventInfo,
+      breakoutMoveId: this.breakoutMoveId,
+    };
+
+    this.submitLLMBreakoutJoinResponseMetric();
+  },
+
+  /**
+   * Sends the LLM-enhanced breakout join response metric when both breakout state and LLM latency
+   * are available. LLM reconnects can also happen while leaving a breakout, before stale breakout
+   * fields are fully cleared, so the joined-session check lives with the breakout state.
+   *
+   * The joined session changes both when joining a breakout and when returning to the main
+   * session, and the client reconnects LLM in both directions. Mirroring the desktop client, we
+   * emit the join response for either transition, so the active-breakout check also accepts the
+   * main session. Non-breakout meetings never carry a breakoutMoveId, and a given move id is
+   * reported at most once, so accepting the main session here cannot leak spurious events.
+   * @returns {void}
+   */
+  submitLLMBreakoutJoinResponseMetric() {
+    const eventInfo = this.llmBreakoutJoinResponseInfo;
+
+    // The breakout update and the LLM response arrive independently, so only emit once both the
+    // breakout move and its matching LLM latency are available for a session we have actually joined.
+    const hasMatchingMoveId =
+      !!this.breakoutMoveId && eventInfo?.breakoutMoveId === this.breakoutMoveId;
+    const hasSessionIdentifiers =
+      !!this.currentBreakoutSession?.sessionId && !!this.currentBreakoutSession?.groupId;
+    // isActiveBreakout already covers an open/closing breakout; isInMainSession covers return-to-main.
+    const isJoinedSession = this.isActiveBreakout || this.isInMainSession;
+
+    if (!eventInfo || !hasMatchingMoveId || !hasSessionIdentifiers || !isJoinedSession) {
+      return;
+    }
+
+    const {llmLatency, error} = eventInfo;
+    const meeting = eventInfo.meeting || this.webex.meetings.getMeetingByType(_ID_, this.meetingId);
+    // @ts-ignore
+    const llmWebsocketUrl = this.webex.internal.llm.getWebSocketUrl?.() || undefined;
+
+    breakoutEvent.onBreakoutJoinResponse(
+      {
+        currentSession: this.currentBreakoutSession,
+        meeting,
+        breakoutMoveId: this.breakoutMoveId,
+        llmLatency,
+        llmWebsocketUrl,
+        error,
+      },
+      // @ts-ignore
+      this.webex.internal.newMetrics.submitClientEvent.bind(this.webex.internal.newMetrics)
+    );
+
+    this.llmBreakoutJoinResponseInfo = undefined;
   },
 
   /**

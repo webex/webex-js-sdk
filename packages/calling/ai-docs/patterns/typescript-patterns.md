@@ -433,4 +433,38 @@ const newCall = createCall(
 - [Event Patterns](./event-patterns.md)
 - [Error Handling Patterns](./error-handling-patterns.md)
 - [Testing Patterns](./testing-patterns.md)
+## Pattern-Extract Verification
+
+### When to use
+
+Place a module's exported contracts and domain shapes in its `types.ts`, then import those definitions from implementations and tests. This ownership convention is not a substitute for ESLint or Prettier rules.
+
+### Correct
+
+```typescript
+import {ICallHistory} from './types';
+```
+
+### Incorrect
+
+```typescript
+interface ICallHistory {
+  // A second local copy of the module contract.
+}
+```
+
+Duplicating a contract lets implementation, tests, and public exports diverge.
+
+### Where it appears
+
+- `src/CallHistory/types.ts`
+- `src/CallRecording/types.ts`
+- `src/CallSettings/types.ts`
+- `src/CallingClient/types.ts`
+- `src/Contacts/types.ts`
+- `src/mobius-socket/types.ts`
+
+### Edge cases
+
+Cross-cutting types live in their owning shared boundary (`src/common/types.ts`, `src/Events/types.ts`, or `src/Errors/types.ts`). Small implementation-private helper types may remain local when they are not part of a module contract.
 

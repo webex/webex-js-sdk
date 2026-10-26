@@ -9,6 +9,7 @@ import {
   CallDiagnosticMetrics,
   getOSNameInternal,
   CallDiagnosticUtils,
+  AutomatedUserUtils,
   config,
 } from '@webex/internal-plugin-metrics';
 import uuid from 'uuid';
@@ -34,6 +35,7 @@ describe('internal-plugin-metrics', () => {
     var now = new Date();
 
     let cd: CallDiagnosticMetrics;
+    let isAutomatedUserStub: sinon.SinonStub;
 
     const fakeMeeting = {
       id: '1',
@@ -79,12 +81,20 @@ describe('internal-plugin-metrics', () => {
       emailInput: 'test@test.com',
     };
 
+    const fakeMeeting6 = {
+      ...fakeMeeting,
+      id: '6',
+      correlationId: 'correlationId6',
+      callStateForMetrics: {meetingJoinPhase: 'in-meeting'},
+    };
+
     const fakeMeetings = {
       1: fakeMeeting,
       2: fakeMeeting2,
       3: fakeMeeting3,
       4: fakeMeeting4,
       5: fakeMeeting5,
+      6: fakeMeeting6,
     };
 
     let webex;
@@ -155,6 +165,7 @@ describe('internal-plugin-metrics', () => {
       sinon.useFakeTimers(now.getTime());
       cd = new CallDiagnosticMetrics({}, {parent: webex});
       sinon.stub(uuid, 'v4').returns('my-fake-id');
+      isAutomatedUserStub = sinon.stub(AutomatedUserUtils, 'isAutomatedUser').returns(false);
       cd.setDeviceInfo(webex.internal.device);
     });
 
@@ -361,6 +372,23 @@ describe('internal-plugin-metrics', () => {
         });
       });
 
+      it('should build origin correctly when the meetings plugin is not available (before webex is ready)', () => {
+        // meetings plugin, geoHintInfo and meetingCollection are all absent before webex.ready
+        webex.meetings = undefined;
+
+        //@ts-ignore
+        const res = cd.getOrigin(
+          {subClientType: 'WEB_APP', clientType: 'TEAMS_CLIENT'},
+          fakeMeeting.id
+        );
+
+        assert.equal(res.clientInfo.clientType, 'TEAMS_CLIENT');
+        assert.equal(res.clientInfo.subClientType, 'WEB_APP');
+        assert.isUndefined(res.clientInfo.publicNetworkPrefix);
+        assert.isUndefined(res.clientInfo.localNetworkPrefix);
+        assert.equal(res.name, 'endpoint');
+      });
+
       it('builds origin correctly, when overriding clientVersion', () => {
         webex.meetings.config.metrics.clientVersion = '43.9.0.1234';
 
@@ -383,6 +411,64 @@ describe('internal-plugin-metrics', () => {
             os: getOSNameInternal(),
             osVersion: getOSVersion() || 'unknown',
             subClientType: 'WEB_APP',
+          },
+          environment: 'meeting_evn',
+          name: 'endpoint',
+          networkType: 'unknown',
+          userAgent,
+        });
+      });
+
+      it('builds origin correctly with browser details provided by the host client', () => {
+        // host resolves wrapper browsers (WebOS, Electron) to the engine that determines capability
+        webex.meetings.config.metrics.browser = 'WebOS Browser';
+        webex.meetings.config.metrics.browserVersion = '108.0.0.0';
+
+        //@ts-ignore
+        const res = cd.getOrigin(
+          {subClientType: 'WEB_APP', clientType: 'TEAMS_CLIENT'},
+          fakeMeeting.id
+        );
+
+        assert.equal(res.clientInfo.browser, 'WebOS Browser');
+        assert.equal(res.clientInfo.browserVersion, '108.0.0.0');
+      });
+
+      it('falls back to SDK browser detection when the host provides nothing', () => {
+        //@ts-ignore
+        const res = cd.getOrigin(
+          {subClientType: 'WEB_APP', clientType: 'TEAMS_CLIENT'},
+          fakeMeeting.id
+        );
+
+        assert.equal(res.clientInfo.browser, getBrowserName());
+        assert.equal(res.clientInfo.browserVersion, getBrowserVersion());
+      });
+
+      it('builds origin correctly with the browser support flags from config', () => {
+        // `false` is the meaningful "unsupported family" signal, so it must survive a truthy check
+        webex.meetings.config.metrics.isSupportedBrowserFamily = false;
+        webex.meetings.config.metrics.isOutdatedBrowserVersion = true;
+
+        //@ts-ignore
+        const res = cd.getOrigin(
+          {subClientType: 'WEB_APP', clientType: 'TEAMS_CLIENT'},
+          fakeMeeting.id
+        );
+
+        assert.deepEqual(res, {
+          clientInfo: {
+            browser: getBrowserName(),
+            browserVersion: getBrowserVersion(),
+            clientType: 'TEAMS_CLIENT',
+            clientVersion: 'webex-js-sdk/webex-version',
+            publicNetworkPrefix: '1.3.4.0',
+            localNetworkPrefix: '192.168.1.80',
+            os: getOSNameInternal(),
+            osVersion: getOSVersion() || 'unknown',
+            subClientType: 'WEB_APP',
+            isSupportedBrowserFamily: false,
+            isOutdatedBrowserVersion: true,
           },
           environment: 'meeting_evn',
           name: 'endpoint',
@@ -637,6 +723,63 @@ describe('internal-plugin-metrics', () => {
         });
       });
 
+      it('should build identifiers correctly with a meeting that has meetingInfo with locusClusterUrl', () => {
+        const res = cd.getIdentifiers({
+          mediaConnections: [
+            {mediaAgentAlias: 'mediaAgentAlias', mediaAgentGroupId: 'mediaAgentGroupId'},
+          ],
+          meeting: {
+            ...fakeMeeting,
+            meetingInfo: {
+              ...fakeMeeting.meetingInfo,
+              locusClusterUrl: 'locus-k.wbx2.com',
+            },
+          },
+        });
+
+        assert.deepEqual(res, {
+          correlationId: 'correlationId',
+          deviceId: 'deviceUrl',
+          locusCluster: 'locus-k.wbx2.com',
+          locusId: 'url',
+          locusSessionId: 'locusSessionId',
+          locusStartTime: 'lastActive',
+          locusUrl: 'locus/url',
+          mediaAgentAlias: 'mediaAgentAlias',
+          mediaAgentGroupId: 'mediaAgentGroupId',
+          orgId: 'orgId',
+          userId: 'userId',
+        });
+      });
+
+      it('should build identifiers correctly given locusCluster', () => {
+        const res = cd.getIdentifiers({
+          correlationId: 'correlationId',
+          locusCluster: 'locus-k.wbx2.com',
+        });
+
+        assert.deepEqual(res, {
+          correlationId: 'correlationId',
+          deviceId: 'deviceUrl',
+          locusCluster: 'locus-k.wbx2.com',
+          locusUrl: 'locus-url',
+          orgId: 'orgId',
+          userId: 'userId',
+        });
+      });
+
+      it('should prefer meetingInfo locusClusterUrl over the locusCluster option', () => {
+        const res = cd.getIdentifiers({
+          meeting: {
+            ...fakeMeeting,
+            meetingInfo: {...fakeMeeting.meetingInfo, locusClusterUrl: 'locus-k.wbx2.com'},
+          },
+          locusCluster: 'locus-a.wbx2.com',
+        });
+
+        assert.equal(res.locusCluster, 'locus-k.wbx2.com');
+      });
+
       it('should build identifiers correctly with a meeting that has sessionCorrelationId', () => {
         const res = cd.getIdentifiers({
           mediaConnections: [
@@ -763,6 +906,60 @@ describe('internal-plugin-metrics', () => {
           userId: 'preLoginId',
         });
       });
+
+      it('should use the userId from credentials when no device userId is available', () => {
+        cd.device.userId = undefined;
+        webex.credentials.getUserId = sinon.stub().returns('credentials-user-id');
+
+        const res = cd.getIdentifiers({
+          correlationId: 'correlationId',
+        });
+
+        assert.deepEqual(res, {
+          correlationId: 'correlationId',
+          locusUrl: 'locus-url',
+          deviceId: 'deviceUrl',
+          orgId: 'orgId',
+          userId: 'credentials-user-id',
+        });
+      });
+
+      it('should prefer the device userId over the credentials userId', () => {
+        webex.credentials.getUserId = sinon.stub().returns('credentials-user-id');
+
+        const res = cd.getIdentifiers({
+          correlationId: 'correlationId',
+        });
+
+        assert.equal(res.userId, 'userId');
+        assert.notCalled(webex.credentials.getUserId);
+      });
+
+      it('should fall back to preLoginId when neither the device nor credentials provide a userId', () => {
+        cd.device.userId = undefined;
+        webex.credentials.getUserId = sinon.stub().throws(new Error('no user token available'));
+
+        const res = cd.getIdentifiers({
+          correlationId: 'correlationId',
+          preLoginId: 'preLoginId',
+        });
+
+        assert.equal(res.userId, 'preLoginId');
+      });
+    });
+
+    describe('#getUserIdFromCredentials', () => {
+      it('should return the userId from credentials', () => {
+        webex.credentials.getUserId = sinon.stub().returns('credentials-user-id');
+
+        assert.equal(cd.getUserIdFromCredentials(), 'credentials-user-id');
+      });
+
+      it('should return undefined when credentials cannot provide a userId', () => {
+        webex.credentials.getUserId = sinon.stub().throws(new Error('no user token available'));
+
+        assert.isUndefined(cd.getUserIdFromCredentials());
+      });
     });
 
     it('should prepare diagnostic event successfully', () => {
@@ -868,6 +1065,7 @@ describe('internal-plugin-metrics', () => {
             identifiers: {correlationId: 'test-id'},
             name: 'client.alert.displayed',
             isAutomatedUser: false,
+            userActivation: undefined,
           },
           options
         );
@@ -889,6 +1087,7 @@ describe('internal-plugin-metrics', () => {
             identifiers: {correlationId: 'test-id'},
             name: 'client.alert.displayed',
             isAutomatedUser: false,
+            userActivation: undefined,
           },
           options
         );
@@ -898,14 +1097,8 @@ describe('internal-plugin-metrics', () => {
         assert.isBoolean(res.event.isAutomatedUser, 'isAutomatedUser should be a boolean');
       });
 
-      it('should set isAutomatedUser to true when navigator.webdriver is true', () => {
-        const originalDescriptor = Object.getOwnPropertyDescriptor(global, 'navigator');
-        Object.defineProperty(global, 'navigator', {
-          value: {webdriver: true},
-          configurable: true,
-          writable: true,
-        });
-
+      it('should set isAutomatedUser to true when the user is automated', () => {
+        isAutomatedUserStub.returns(true);
         const prepareDiagnosticEventSpy = sinon.spy(cd, 'prepareDiagnosticEvent');
         sinon.stub(cd, 'getOrigin').returns({origin: 'fake-origin'});
         cd.setMercuryConnectedStatus(true);
@@ -917,14 +1110,44 @@ describe('internal-plugin-metrics', () => {
 
         assert.isTrue(
           prepareDiagnosticEventSpy.firstCall.args[0].isAutomatedUser,
-          'isAutomatedUser should be true when navigator.webdriver is set'
+          'isAutomatedUser should be true for an automated user'
         );
+      });
+    });
 
+    describe('#getUserActivation', () => {
+      let originalDescriptor;
+
+      beforeEach(() => {
+        originalDescriptor = Object.getOwnPropertyDescriptor(global, 'navigator');
+      });
+
+      afterEach(() => {
         if (originalDescriptor) {
           Object.defineProperty(global, 'navigator', originalDescriptor);
         } else {
           delete (global as any).navigator;
         }
+      });
+
+      it('should return the userActivation state when navigator.userActivation is available', () => {
+        Object.defineProperty(global, 'navigator', {
+          value: {userActivation: {hasBeenActive: true, isActive: false}},
+          configurable: true,
+          writable: true,
+        });
+
+        assert.deepEqual(cd.getUserActivation(), {hasBeenActive: true, isActive: false});
+      });
+
+      it('should return undefined when navigator.userActivation is not available', () => {
+        Object.defineProperty(global, 'navigator', {
+          value: {},
+          configurable: true,
+          writable: true,
+        });
+
+        assert.isUndefined(cd.getUserActivation());
       });
     });
 
@@ -955,6 +1178,7 @@ describe('internal-plugin-metrics', () => {
           webexConferenceIdStr: undefined,
           sessionCorrelationId: undefined,
           globalMeetingId: undefined,
+          locusCluster: undefined,
         });
         assert.notCalled(generateClientEventErrorPayloadSpy);
         assert.calledWith(
@@ -986,6 +1210,7 @@ describe('internal-plugin-metrics', () => {
             webClientPreload: undefined,
             isVipMeeting: false,
             isAutomatedUser: false,
+            userActivation: undefined,
           },
           options
         );
@@ -1017,6 +1242,7 @@ describe('internal-plugin-metrics', () => {
             webClientPreload: undefined,
             isVipMeeting: false,
             isAutomatedUser: false,
+            userActivation: undefined,
           },
           eventId: 'my-fake-id',
           origin: {
@@ -1059,6 +1285,7 @@ describe('internal-plugin-metrics', () => {
               webClientPreload: undefined,
               isVipMeeting: false,
               isAutomatedUser: false,
+              userActivation: undefined,
             },
             eventId: 'my-fake-id',
             origin: {
@@ -1106,6 +1333,7 @@ describe('internal-plugin-metrics', () => {
           webexConferenceIdStr: undefined,
           sessionCorrelationId: undefined,
           globalMeetingId: undefined,
+          locusCluster: undefined,
         });
         assert.notCalled(generateClientEventErrorPayloadSpy);
         assert.calledWith(
@@ -1137,6 +1365,7 @@ describe('internal-plugin-metrics', () => {
             webClientPreload: undefined,
             isVipMeeting: false,
             isAutomatedUser: false,
+            userActivation: undefined,
           },
           options
         );
@@ -1168,6 +1397,7 @@ describe('internal-plugin-metrics', () => {
             webClientPreload: undefined,
             isVipMeeting: false,
             isAutomatedUser: false,
+            userActivation: undefined,
           },
           eventId: 'my-fake-id',
           origin: {
@@ -1210,6 +1440,7 @@ describe('internal-plugin-metrics', () => {
               webClientPreload: undefined,
               isVipMeeting: false,
               isAutomatedUser: false,
+              userActivation: undefined,
             },
             eventId: 'my-fake-id',
             origin: {
@@ -1257,6 +1488,7 @@ describe('internal-plugin-metrics', () => {
           webexConferenceIdStr: undefined,
           globalMeetingId: undefined,
           sessionCorrelationId: undefined,
+          locusCluster: undefined,
         });
         assert.notCalled(generateClientEventErrorPayloadSpy);
         assert.calledWith(
@@ -1289,6 +1521,7 @@ describe('internal-plugin-metrics', () => {
             webClientPreload: undefined,
             isVipMeeting: false,
             isAutomatedUser: false,
+            userActivation: undefined,
           },
           options
         );
@@ -1321,6 +1554,7 @@ describe('internal-plugin-metrics', () => {
             webClientPreload: undefined,
             isVipMeeting: false,
             isAutomatedUser: false,
+            userActivation: undefined,
           },
           eventId: 'my-fake-id',
           origin: {
@@ -1364,6 +1598,7 @@ describe('internal-plugin-metrics', () => {
               webClientPreload: undefined,
               isVipMeeting: false,
               isAutomatedUser: false,
+              userActivation: undefined,
             },
             eventId: 'my-fake-id',
             origin: {
@@ -1410,6 +1645,7 @@ describe('internal-plugin-metrics', () => {
           webexConferenceIdStr: undefined,
           globalMeetingId: undefined,
           sessionCorrelationId: undefined,
+          locusCluster: undefined,
         });
         assert.notCalled(generateClientEventErrorPayloadSpy);
         assert.calledWith(
@@ -1442,6 +1678,7 @@ describe('internal-plugin-metrics', () => {
             webexSubServiceType: undefined,
             isVipMeeting: false,
             isAutomatedUser: false,
+            userActivation: undefined,
           },
           options
         );
@@ -1474,6 +1711,7 @@ describe('internal-plugin-metrics', () => {
             webexSubServiceType: undefined,
             isVipMeeting: false,
             isAutomatedUser: false,
+            userActivation: undefined,
           },
           eventId: 'my-fake-id',
           origin: {
@@ -1517,6 +1755,7 @@ describe('internal-plugin-metrics', () => {
               webexSubServiceType: undefined,
               isVipMeeting: false,
               isAutomatedUser: false,
+              userActivation: undefined,
             },
             eventId: 'my-fake-id',
             origin: {
@@ -1563,6 +1802,7 @@ describe('internal-plugin-metrics', () => {
           webexConferenceIdStr: undefined,
           globalMeetingId: undefined,
           sessionCorrelationId: undefined,
+          locusCluster: undefined,
         });
         assert.notCalled(generateClientEventErrorPayloadSpy);
         assert.calledWith(
@@ -1597,6 +1837,7 @@ describe('internal-plugin-metrics', () => {
             webClientPreload: undefined,
             isVipMeeting: false,
             isAutomatedUser: false,
+            userActivation: undefined,
           },
           options
         );
@@ -1631,6 +1872,7 @@ describe('internal-plugin-metrics', () => {
             webClientPreload: undefined,
             isVipMeeting: false,
             isAutomatedUser: false,
+            userActivation: undefined,
           },
           eventId: 'my-fake-id',
           origin: {
@@ -1676,6 +1918,7 @@ describe('internal-plugin-metrics', () => {
               webClientPreload: undefined,
               isVipMeeting: false,
               isAutomatedUser: false,
+              userActivation: undefined,
             },
             eventId: 'my-fake-id',
             origin: {
@@ -1778,6 +2021,7 @@ describe('internal-plugin-metrics', () => {
           globalMeetingId: 'globalMeetingId1',
           sessionCorrelationId: 'sessionCorrelationId1',
           preLoginId: undefined,
+          locusCluster: undefined,
         });
 
         assert.notCalled(generateClientEventErrorPayloadSpy);
@@ -1804,6 +2048,8 @@ describe('internal-plugin-metrics', () => {
             name: 'client.alert.displayed',
             webClientPreload: undefined,
             isAutomatedUser: false,
+            userActivation: undefined,
+            meetingJoinPhase: 'pre-join',
           },
           options
         );
@@ -1829,6 +2075,8 @@ describe('internal-plugin-metrics', () => {
             name: 'client.alert.displayed',
             webClientPreload: undefined,
             isAutomatedUser: false,
+            userActivation: undefined,
+            meetingJoinPhase: 'pre-join',
           },
           eventId: 'my-fake-id',
           origin: {
@@ -1880,6 +2128,7 @@ describe('internal-plugin-metrics', () => {
           globalMeetingId: 'globalMeetingId1',
           preLoginId: 'myPreLoginId',
           sessionCorrelationId: 'sessionCorrelationId1',
+          locusCluster: undefined,
         });
 
         assert.notCalled(generateClientEventErrorPayloadSpy);
@@ -1906,6 +2155,8 @@ describe('internal-plugin-metrics', () => {
             name: 'client.alert.displayed',
             webClientPreload: undefined,
             isAutomatedUser: false,
+            userActivation: undefined,
+            meetingJoinPhase: 'pre-join',
           },
           options
         );
@@ -1936,9 +2187,41 @@ describe('internal-plugin-metrics', () => {
               telemetryOptOut: undefined,
               webClientPreload: undefined,
               isAutomatedUser: false,
+              userActivation: undefined,
+              meetingJoinPhase: 'pre-join',
             },
           },
           options.preLoginId
+        );
+      });
+
+      it('should add locusCluster from options to a pre-meeting client event', () => {
+        const prepareDiagnosticEventSpy = sinon.spy(cd, 'prepareDiagnosticEvent');
+        sinon.stub(cd, 'getOrigin').returns({origin: 'fake-origin'});
+
+        cd.submitClientEvent({
+          name: 'client.meetinginfo.response',
+          options: {correlationId: 'correlationId', locusCluster: 'locus-k.wbx2.com'},
+        });
+
+        assert.equal(
+          prepareDiagnosticEventSpy.firstCall.args[0].identifiers.locusCluster,
+          'locus-k.wbx2.com'
+        );
+      });
+
+      it('should add locusCluster from options to an in-meeting client event when the meeting has none', () => {
+        const prepareDiagnosticEventSpy = sinon.spy(cd, 'prepareDiagnosticEvent');
+        sinon.stub(cd, 'getOrigin').returns({origin: 'fake-origin'});
+
+        cd.submitClientEvent({
+          name: 'client.interstitial-window.launched',
+          options: {meetingId: fakeMeeting.id, locusCluster: 'locus-k.wbx2.com'},
+        });
+
+        assert.equal(
+          prepareDiagnosticEventSpy.firstCall.args[0].identifiers.locusCluster,
+          'locus-k.wbx2.com'
         );
       });
 
@@ -1973,6 +2256,7 @@ describe('internal-plugin-metrics', () => {
           globalMeetingId: 'globalMeetingId1',
           preLoginId: 'myPreLoginId',
           sessionCorrelationId: 'sessionCorrelationId1',
+          locusCluster: undefined,
         });
 
         assert.notCalled(generateClientEventErrorPayloadSpy);
@@ -2001,6 +2285,8 @@ describe('internal-plugin-metrics', () => {
             name: 'client.alert.displayed',
             webClientPreload: undefined,
             isAutomatedUser: false,
+            userActivation: undefined,
+            meetingJoinPhase: 'pre-join',
           },
           options
         );
@@ -2033,6 +2319,8 @@ describe('internal-plugin-metrics', () => {
               emailInput: 'current',
               webClientPreload: undefined,
               isAutomatedUser: false,
+              userActivation: undefined,
+              meetingJoinPhase: 'pre-join',
             },
           },
           options.preLoginId
@@ -2081,6 +2369,7 @@ describe('internal-plugin-metrics', () => {
             webClientPreload: undefined,
             isVipMeeting: false,
             isAutomatedUser: false,
+            userActivation: undefined,
           },
           eventId: 'my-fake-id',
           origin: {
@@ -2139,6 +2428,7 @@ describe('internal-plugin-metrics', () => {
             webClientPreload: undefined,
             isVipMeeting: false,
             isAutomatedUser: false,
+            userActivation: undefined,
           },
           eventId: 'my-fake-id',
           origin: {
@@ -2197,6 +2487,8 @@ describe('internal-plugin-metrics', () => {
             name: 'client.alert.displayed',
             webClientPreload: true,
             isAutomatedUser: false,
+            userActivation: undefined,
+            meetingJoinPhase: 'pre-join',
           },
           options
         );
@@ -2222,6 +2514,8 @@ describe('internal-plugin-metrics', () => {
             name: 'client.alert.displayed',
             webClientPreload: true,
             isAutomatedUser: false,
+            userActivation: undefined,
+            meetingJoinPhase: 'pre-join',
           },
           eventId: 'my-fake-id',
           origin: {
@@ -2293,6 +2587,7 @@ describe('internal-plugin-metrics', () => {
             webClientPreload: undefined,
             isVipMeeting: false,
             isAutomatedUser: false,
+            userActivation: undefined,
           },
           options
         );
@@ -2325,6 +2620,7 @@ describe('internal-plugin-metrics', () => {
             webClientPreload: undefined,
             isVipMeeting: false,
             isAutomatedUser: false,
+            userActivation: undefined,
           },
           eventId: 'my-fake-id',
           origin: {
@@ -2396,6 +2692,7 @@ describe('internal-plugin-metrics', () => {
             webClientPreload: undefined,
             isVipMeeting: true,
             isAutomatedUser: false,
+            userActivation: undefined,
           },
           options
         );
@@ -2428,6 +2725,7 @@ describe('internal-plugin-metrics', () => {
             webClientPreload: undefined,
             isVipMeeting: true,
             isAutomatedUser: false,
+            userActivation: undefined,
           },
           eventId: 'my-fake-id',
           origin: {
@@ -2505,6 +2803,7 @@ describe('internal-plugin-metrics', () => {
             webClientPreload: undefined,
             isVipMeeting: false,
             isAutomatedUser: false,
+            userActivation: undefined,
           },
           eventId: 'my-fake-id',
           origin: {
@@ -2590,6 +2889,7 @@ describe('internal-plugin-metrics', () => {
             webClientPreload: undefined,
             isVipMeeting: false,
             isAutomatedUser: false,
+            userActivation: undefined,
           },
           eventId: 'my-fake-id',
           origin: {
@@ -2665,6 +2965,8 @@ describe('internal-plugin-metrics', () => {
             name: 'client.alert.displayed',
             webClientPreload: undefined,
             isAutomatedUser: false,
+            userActivation: undefined,
+            meetingJoinPhase: 'pre-join',
           },
           eventId: 'my-fake-id',
           origin: {
@@ -2742,6 +3044,8 @@ describe('internal-plugin-metrics', () => {
             name: 'client.alert.displayed',
             webClientPreload: undefined,
             isAutomatedUser: false,
+            userActivation: undefined,
+            meetingJoinPhase: 'pre-join',
           },
           eventId: 'my-fake-id',
           origin: {
@@ -2830,6 +3134,7 @@ describe('internal-plugin-metrics', () => {
             webClientPreload: undefined,
             isVipMeeting: false,
             isAutomatedUser: false,
+            userActivation: undefined,
           },
           eventId: 'my-fake-id',
           origin: {
@@ -3122,7 +3427,6 @@ describe('internal-plugin-metrics', () => {
         assert.calledWith(requestStub, {
           eventPayload: {event: 'test'},
           type: ['diagnostic-event'],
-          markTelemetryOptOutOnResponse: true,
         });
       });
     });
@@ -3593,7 +3897,7 @@ describe('internal-plugin-metrics', () => {
           serviceErrorCode: undefined,
           errorCode: 1026,
           rawErrorMessage: '{}\nundefined https://example.com\nWEBEX_TRACKING_ID: undefined\n',
-          httpStatusCode: 0,
+          httpCode: 0,
         });
       });
 
@@ -3710,7 +4014,7 @@ describe('internal-plugin-metrics', () => {
           serviceErrorCode: undefined,
           errorCode: 1026,
           rawErrorMessage: '{}\nundefined https://example.com\nWEBEX_TRACKING_ID: undefined\n',
-          httpStatusCode: 0,
+          httpCode: 0,
         });
       });
 
@@ -3732,7 +4036,7 @@ describe('internal-plugin-metrics', () => {
           serviceErrorCode: undefined,
           errorCode: 1010,
           rawErrorMessage: '{}\nundefined https://example.com\nWEBEX_TRACKING_ID: undefined\n',
-          httpStatusCode: 0,
+          httpCode: 0,
         });
       });
 
@@ -3758,7 +4062,7 @@ describe('internal-plugin-metrics', () => {
           serviceErrorCode: undefined,
           errorCode: 1010,
           rawErrorMessage: '{}\nundefined https://example.com\nWEBEX_TRACKING_ID: undefined\n',
-          httpStatusCode: 0,
+          httpCode: 0,
         });
       });
 
@@ -3863,8 +4167,144 @@ describe('internal-plugin-metrics', () => {
         });
       });
 
-      describe('httpStatusCode', () => {
-        it('should include httpStatusCode for browser media errors', () => {
+      describe('httpCode', () => {
+        it('should identify an outgoing Locus 429', () => {
+          const rawErrorMessage =
+            'partition 371 on PARALLEL_EXECUTOR_PARTITION_KEY_QUEUE_FULL state';
+          const [res] = cd.generateClientEventErrorPayload({
+            message: rawErrorMessage,
+            statusCode: 429,
+            options: {uri: 'https://locus.example.com/locus/api/v1/loci/call'},
+          });
+
+          assert.deepEqual(res, {
+            category: 'signaling',
+            errorCode: 1002,
+            errorDescription: 'LocusRateLimitedOutgoing',
+            fatal: true,
+            name: 'locus.response',
+            rawErrorMessage,
+            serviceErrorCode: undefined,
+            shownToUser: false,
+            httpCode: 429,
+          });
+        });
+
+        [
+          ['media', 'https://example.com/locus/api/v1/loci/123/media'],
+          ['hashtree', 'https://example.com/locus/api/v1/loci/123/hashtree'],
+          ['host-only Locus URL', 'https://locus.example.com/api/v1/resource'],
+          ['query-only Locus URL', 'https://example.com/api/v1/resource?service=locus'],
+        ].forEach(([operation, uri]) => {
+          it(`should identify a Locus 429 for ${operation}`, () => {
+            const [res] = cd.generateClientEventErrorPayload({
+              message: 'Locus rate limited',
+              statusCode: 429,
+              options: {uri},
+            });
+
+            assert.equal(res.errorCode, 1002);
+            assert.equal(res.errorDescription, 'LocusRateLimitedOutgoing');
+            assert.equal(res.httpCode, 429);
+          });
+        });
+
+        it('should identify an unavailable Locus 503', () => {
+          const rawErrorMessage = 'Service unavailable';
+          const [res] = cd.generateClientEventErrorPayload({
+            message: rawErrorMessage,
+            statusCode: 503,
+            options: {uri: 'https://locus.example.com/locus/api/v1/loci/call'},
+          });
+
+          assert.deepEqual(res, {
+            category: 'signaling',
+            errorCode: 1003,
+            errorDescription: 'LocusUnavailable',
+            fatal: true,
+            name: 'locus.response',
+            rawErrorMessage,
+            serviceErrorCode: undefined,
+            shownToUser: false,
+            httpCode: 503,
+          });
+        });
+
+        it('should prefer a specific service error mapping over the Locus HTTP status', () => {
+          const rawErrorMessage = 'Fraud detected';
+          const [res] = cd.generateClientEventErrorPayload({
+            body: {errorCode: 2423012},
+            message: rawErrorMessage,
+            statusCode: 429,
+            options: {uri: 'https://locus.example.com/locus/api/v1/loci/call'},
+          });
+
+          assert.deepEqual(res, {
+            category: 'expected',
+            errorCode: 12000,
+            errorDescription: 'FraudDetection',
+            fatal: true,
+            name: 'locus.response',
+            rawErrorMessage,
+            serviceErrorCode: 2423012,
+            shownToUser: true,
+            httpCode: 429,
+          });
+        });
+
+        it('should retain an unmapped service error code on the Locus HTTP status payload', () => {
+          const rawErrorMessage = 'Locus rate limited';
+          const [res] = cd.generateClientEventErrorPayload({
+            body: {errorCode: 2429999},
+            message: rawErrorMessage,
+            statusCode: 429,
+            options: {uri: 'https://locus.example.com/locus/api/v1/loci/call'},
+          });
+
+          assert.deepEqual(res, {
+            category: 'signaling',
+            errorCode: 1002,
+            errorDescription: 'LocusRateLimitedOutgoing',
+            fatal: true,
+            name: 'locus.response',
+            rawErrorMessage,
+            serviceErrorCode: 2429999,
+            shownToUser: false,
+            httpCode: 429,
+          });
+        });
+
+        it('should not identify a non-Locus 429 as a Locus rate limit', () => {
+          const [res] = cd.generateClientEventErrorPayload({
+            message: 'Too many requests',
+            statusCode: 429,
+            options: {uri: 'https://example.com/api/v1/resource'},
+          });
+
+          assert.deepEqual(res, {
+            category: 'other',
+            errorCode: 9999,
+            errorDescription: 'UnknownError',
+            fatal: true,
+            name: 'other',
+            rawErrorMessage: 'Too many requests',
+            serviceErrorCode: 9999,
+            shownToUser: false,
+            httpCode: 429,
+          });
+        });
+
+        it('should keep the fallback classification when a 429 has no request URL', () => {
+          const [res] = cd.generateClientEventErrorPayload({
+            message: 'Too many requests',
+            statusCode: 429,
+          });
+
+          assert.equal(res.errorCode, 9999);
+          assert.equal(res.httpCode, 429);
+        });
+
+        it('should include httpCode for browser media errors', () => {
           const [res, cached] = cd.generateClientEventErrorPayload({
             name: 'PermissionDeniedError',
             message: 'bad times',
@@ -3882,11 +4322,11 @@ describe('internal-plugin-metrics', () => {
             rawErrorMessage: 'bad times',
             serviceErrorCode: undefined,
             shownToUser: false,
-            httpStatusCode: 401,
+            httpCode: 401,
           });
         });
 
-        it('should include httpStatusCode for SdpOfferCreationErrors', () => {
+        it('should include httpCode for SdpOfferCreationErrors', () => {
           const [res, cached] = cd.generateClientEventErrorPayload({
             name: 'SdpOfferCreationError',
             message: 'bad times',
@@ -3904,11 +4344,11 @@ describe('internal-plugin-metrics', () => {
             rawErrorMessage: 'bad times',
             serviceErrorCode: undefined,
             shownToUser: true,
-            httpStatusCode: 404,
+            httpCode: 404,
           });
         });
 
-        it('should include httpStatusCode for service error codes', () => {
+        it('should include httpCode for service error codes', () => {
           const [res, cached] = cd.generateClientEventErrorPayload({
             body: {errorCode: 58400},
             message: 'bad times',
@@ -3923,11 +4363,11 @@ describe('internal-plugin-metrics', () => {
             rawErrorMessage: 'bad times',
             serviceErrorCode: 58400,
             shownToUser: false,
-            httpStatusCode: 400,
+            httpCode: 400,
           });
         });
 
-        it('should include httpStatusCode for locus service error codes', () => {
+        it('should include httpCode for locus service error codes', () => {
           const [res, cached] = cd.generateClientEventErrorPayload({
             body: {errorCode: 2403001},
             message: 'bad times',
@@ -3942,11 +4382,11 @@ describe('internal-plugin-metrics', () => {
             rawErrorMessage: 'bad times',
             serviceErrorCode: 2403001,
             shownToUser: false,
-            httpStatusCode: 400,
+            httpCode: 400,
           });
         });
 
-        it('should include httpStatusCode for meetingInfo service error codes', () => {
+        it('should include httpCode for meetingInfo service error codes', () => {
           const [res, cached] = cd.generateClientEventErrorPayload({
             body: {data: {meetingInfo: {}}},
             message: 'bad times',
@@ -3961,11 +4401,11 @@ describe('internal-plugin-metrics', () => {
             rawErrorMessage: 'bad times',
             serviceErrorCode: undefined,
             shownToUser: false,
-            httpStatusCode: 400,
+            httpCode: 400,
           });
         });
 
-        it('should include httpStatusCode for network errors', () => {
+        it('should include httpCode for network errors', () => {
           const error = new WebexHttpError.NetworkOrCORSError({
             statusCode: 400,
             options: {service: '', headers: {}},
@@ -3980,11 +4420,11 @@ describe('internal-plugin-metrics', () => {
             rawErrorMessage: 'undefined\nundefined /undefined\nWEBEX_TRACKING_ID: undefined\n',
             serviceErrorCode: undefined,
             shownToUser: false,
-            httpStatusCode: 400,
+            httpCode: 400,
           });
         });
 
-        it('should include httpStatusCode for unauthorized errors', () => {
+        it('should include httpCode for unauthorized errors', () => {
           const error = new WebexHttpError.Unauthorized({
             statusCode: 401,
             options: {service: '', headers: {}},
@@ -3999,11 +4439,11 @@ describe('internal-plugin-metrics', () => {
             rawErrorMessage: 'undefined\nundefined /undefined\nWEBEX_TRACKING_ID: undefined\n',
             serviceErrorCode: undefined,
             shownToUser: false,
-            httpStatusCode: 401,
+            httpCode: 401,
           });
         });
 
-        it('should include httpStatusCode for unknown errors', () => {
+        it('should include httpCode for unknown errors', () => {
           const [res, cached] = cd.generateClientEventErrorPayload({
             message: 'bad times',
             statusCode: 404,
@@ -4017,7 +4457,7 @@ describe('internal-plugin-metrics', () => {
             serviceErrorCode: 9999,
             errorDescription: 'UnknownError',
             rawErrorMessage: 'bad times',
-            httpStatusCode: 404,
+            httpCode: 404,
           });
         });
       });
@@ -4208,6 +4648,18 @@ describe('internal-plugin-metrics', () => {
     });
 
     describe('#buildClientEventFetchRequestOptions', () => {
+      it('should add the locusCluster option to a pre-meeting event', async () => {
+        const fetchOptions = await cd.buildClientEventFetchRequestOptions({
+          name: 'client.interstitial-window.launched',
+          options: {correlationId: 'correlationId', locusCluster: 'locus-k.wbx2.com'},
+        });
+
+        assert.equal(
+          fetchOptions.body.metrics[0].eventPayload.event.identifiers.locusCluster,
+          'locus-k.wbx2.com'
+        );
+      });
+
       [undefined, 'myPreLoginId'].forEach((preLoginId) => {
         it('returns expected options without preLoginId', async () => {
           const options = {
@@ -4252,6 +4704,7 @@ describe('internal-plugin-metrics', () => {
                     webClientPreload: undefined,
                     isVipMeeting: false,
                     isAutomatedUser: false,
+                    userActivation: undefined,
                   },
                   eventId: 'my-fake-id',
                   origin: {
@@ -4406,6 +4859,80 @@ describe('internal-plugin-metrics', () => {
           options.meetingJoinPhase
         );
       });
+
+      it('includes expected meetingJoinPhase from meeting callStateForMetrics when in-meeting', async () => {
+        // meetingId means in-meeting
+        const options = {
+          meetingId: fakeMeeting6.id,
+        };
+
+        const fetchOptions = await cd.buildClientEventFetchRequestOptions({
+          name: 'client.exit.app',
+          payload: {trigger: 'user-interaction', canProceed: false},
+          options,
+        });
+
+        assert.equal(fetchOptions.body.metrics[0].eventPayload.event.meetingJoinPhase, 'in-meeting');
+      });
+
+      it('prioritizes meetingJoinPhase from options over meeting callStateForMetrics', async () => {
+        // meetingId means in-meeting
+        const options = {
+          meetingId: fakeMeeting6.id,
+          meetingJoinPhase: 'join',
+        };
+
+        const fetchOptions = await cd.buildClientEventFetchRequestOptions({
+          name: 'client.exit.app',
+          payload: {trigger: 'user-interaction', canProceed: false},
+          options,
+        });
+
+        assert.equal(
+          fetchOptions.body.metrics[0].eventPayload.event.meetingJoinPhase,
+          options.meetingJoinPhase
+        );
+      });
+
+      it('defaults meetingJoinPhase to pre-join during prejoin when not provided in options', async () => {
+        // correlationId and no meeting id means prejoin
+        const options = {
+          correlationId: 'myCorrelationId',
+          preLoginId: 'myPreLoginId',
+        };
+
+        const fetchOptions = await cd.buildClientEventFetchRequestOptions({
+          name: 'client.exit.app',
+          payload: {trigger: 'user-interaction', canProceed: false},
+          options,
+        });
+
+        assert.equal(fetchOptions.body.metrics[0].eventPayload.event.meetingJoinPhase, 'pre-join');
+      });
+
+      it('builds request options before webex is ready (no meetings plugin or internal metrics config)', async () => {
+        // before webex.ready the meetings plugin and internal metrics config are not available
+        webex.meetings = undefined;
+        webex.internal.metrics = undefined;
+
+        const options = {
+          correlationId: 'myCorrelationId',
+          clientType: 'TEAMS_CLIENT',
+          subClientType: 'WEB_APP',
+        };
+
+        const fetchOptions = await cd.buildClientEventFetchRequestOptions({
+          name: 'client.exit.app',
+          payload: {trigger: 'user-interaction', canProceed: false},
+          options,
+        });
+
+        const eventPayload = fetchOptions.body.metrics[0].eventPayload;
+        assert.equal(eventPayload.event.name, 'client.exit.app');
+        assert.isUndefined(eventPayload.senderCountryCode);
+        assert.isUndefined(fetchOptions.waitForServiceTimeout);
+        assert.equal(fetchOptions.resource, 'clientmetrics');
+      });
     });
 
     describe('#submitToCallDiagnosticsPreLogin', () => {
@@ -4422,7 +4949,6 @@ describe('internal-plugin-metrics', () => {
         assert.calledWith(requestStub, {
           eventPayload: {event: 'test'},
           type: ['diagnostic-event'],
-          markTelemetryOptOutOnResponse: true,
         });
       });
     });
@@ -4661,6 +5187,7 @@ describe('internal-plugin-metrics', () => {
             webClientPreload: undefined,
             isVipMeeting: false,
             isAutomatedUser: false,
+            userActivation: undefined,
             meetingSummaryInfo: {
               featureName: 'syncSystemMuteStatus',
               featureActions: [
@@ -4705,6 +5232,7 @@ describe('internal-plugin-metrics', () => {
             webClientPreload: undefined,
             isVipMeeting: false,
             isAutomatedUser: false,
+            userActivation: undefined,
             meetingSummaryInfo: {
               featureName: 'syncSystemMuteStatus',
               featureActions: [

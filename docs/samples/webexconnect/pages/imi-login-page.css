@@ -1,0 +1,32 @@
+imi-login-page .box {
+    margin-top: 25%;
+    font-size: 0.9em;
+    color: #545454;
+    background-color: white;
+    padding: 10px;
+    border: 1px solid var(--separator-line-color);
+}
+
+imi-login-page .box .row {
+    text-align: center;
+    padding: 10px;
+}
+
+imi-login-page .box .row input[type=text] {
+    padding: 10px;
+    width: 80%;
+}
+
+imi-login-page .box .row .button {
+    background-color: var(--theme-default);
+    color: var(--theme-default-contrast);
+    width: 80%;
+    padding-left: 40px;
+    padding-right: 40px;
+    padding-top: 10px;
+    padding-bottom: 10px;
+    font-weight: 200;
+    border: none;
+    text-decoration: none;
+    font-family: var(--default-font-family);
+}

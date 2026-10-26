@@ -1,5 +1,7 @@
 # @webex/calling — Source Package Guide
 
+> Canonical SDD target: [`ai-docs/ARCHITECTURE.md`](../../ai-docs/ARCHITECTURE.md). This legacy document is retained as migration source; use the canonical target for current lifecycle work.
+
 ## Overview
 
 `@webex/calling` is a browser-based TypeScript SDK for Webex Calling services. It provides a unified API surface for line registration, real-time call control, call history, call settings, contacts management, and voicemail — working transparently across three calling backends: **Webex Calling (WxC)**, **Broadworks (BWRKS)**, and **Unified Communications Manager (UCM)**.

@@ -292,13 +292,117 @@ describe('LocusMediaRequest.send()', () => {
     assert.calledTwice(webexRequestStub);
     assert.equal(webexRequestStub.getCall(0).args[0].uri, 'oldSelfUrl/media');
     assert.equal(webexRequestStub.getCall(1).args[0].uri, 'newSelfUrl/media');
-    assert.calledWith(sendBehavioralMetricStub, BEHAVIORAL_METRICS.LOCUS_MEDIA_REQUEST_RETRY, {
-      correlation_id: 'correlationId',
-      reason: 'selfUrlUpdatedBeforeMediaRequest',
-    });
-    // The updated selfUrl is detected twice: once while deciding to retry and
-    // again when the request is re-resolved for the actual re-send.
     assert.calledTwice(sendBehavioralMetricStub);
+    assert.calledWithExactly(
+      sendBehavioralMetricStub.getCall(0),
+      BEHAVIORAL_METRICS.LOCUS_MEDIA_REQUEST_RETRY,
+      {
+        correlation_id: 'correlationId',
+        reason: 'selfUrlUpdatedBeforeMediaRequest',
+      }
+    );
+    assert.calledWithExactly(
+      sendBehavioralMetricStub.getCall(1),
+      BEHAVIORAL_METRICS.LOCUS_MEDIA_REQUEST_RETRY,
+      {
+        correlation_id: 'correlationId',
+        reason: 'selfUrlUpdatedBeforeMediaRequest',
+      }
+    );
+  });
+
+  it('retries a roap message with the latest resolved selfUrl after a forbidden error', async () => {
+    let currentSelfUrl = 'oldSelfUrl';
+    const forbiddenError = {statusCode: 403, message: 'forbidden'};
+
+    locusMediaRequest = new LocusMediaRequest(
+      {
+        device: {
+          url: 'deviceUrl',
+          deviceType: 'deviceType',
+          regionCode: 'regionCode',
+        },
+        correlationId: 'correlationId',
+        meetingId: 'meetingId',
+        preferTranscoding: true,
+        getCurrentSelfUrl: () => currentSelfUrl,
+        waitForSelfUrlChange,
+      },
+      {
+        parent: mockWebex,
+      }
+    );
+    webexRequestStub = sinon.stub(locusMediaRequest, 'request');
+    webexRequestStub.onFirstCall().callsFake(() => {
+      currentSelfUrl = 'newSelfUrl';
+
+      return Promise.reject(forbiddenError);
+    });
+    webexRequestStub.onSecondCall().resolves(fakeLocusResponse);
+
+    const request = cloneDeep(exampleRoapRequestBody);
+
+    request.selfUrl = 'oldSelfUrl';
+    request.roapMessage.messageType = 'ANSWER';
+
+    const result = await locusMediaRequest.send(request);
+
+    assert.equal(result, fakeLocusResponse);
+    assert.calledTwice(webexRequestStub);
+    assert.equal(webexRequestStub.getCall(0).args[0].uri, 'oldSelfUrl/media');
+    assert.equal(webexRequestStub.getCall(1).args[0].uri, 'newSelfUrl/media');
+    assert.calledTwice(sendBehavioralMetricStub);
+    assert.calledWithExactly(
+      sendBehavioralMetricStub.getCall(0),
+      BEHAVIORAL_METRICS.LOCUS_MEDIA_REQUEST_RETRY,
+      {
+        correlation_id: 'correlationId',
+        reason: 'selfUrlUpdatedBeforeMediaRequest',
+      }
+    );
+    assert.calledWithExactly(
+      sendBehavioralMetricStub.getCall(1),
+      BEHAVIORAL_METRICS.LOCUS_MEDIA_REQUEST_RETRY,
+      {
+        correlation_id: 'correlationId',
+        reason: 'selfUrlUpdatedBeforeMediaRequest',
+      }
+    );
+  });
+
+  it('does not retry when error is neither 409 nor 403', async () => {
+    locusMediaRequest = new LocusMediaRequest(
+      {
+        device: {
+          url: 'deviceUrl',
+          deviceType: 'deviceType',
+          regionCode: 'regionCode',
+        },
+        correlationId: 'correlationId',
+        meetingId: 'meetingId',
+        preferTranscoding: true,
+        getCurrentSelfUrl: () => 'sameSelfUrl',
+        waitForSelfUrlChange,
+      },
+      {
+        parent: mockWebex,
+      }
+    );
+    webexRequestStub = sinon.stub(locusMediaRequest, 'request').rejects({
+      statusCode: 500,
+      message: 'server error',
+    });
+
+    const request = cloneDeep(exampleRoapRequestBody);
+
+    request.selfUrl = 'sameSelfUrl';
+    request.roapMessage.messageType = 'ANSWER';
+
+    await assert.isRejected(locusMediaRequest.send(request));
+
+    assert.calledOnce(webexRequestStub);
+    assert.equal(webexRequestStub.getCall(0).args[0].uri, 'sameSelfUrl/media');
+    assert.notCalled(sendBehavioralMetricStub);
   });
 
   it('does not retry a roap conflict when the resolved selfUrl has not changed', async () => {

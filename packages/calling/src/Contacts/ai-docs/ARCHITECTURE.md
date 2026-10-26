@@ -1,5 +1,7 @@
 # Contacts Module — Architecture
 
+> Canonical SDD target: [`src/Contacts/ai-docs/contacts-spec.md`](contacts-spec.md). This legacy document is retained as migration source; use the canonical target for current lifecycle work.
+
 ## Component Overview
 
 The Contacts module manages encrypted personal contacts and groups via the contacts-service API, with CLOUD contact resolution through SCIM. Architecture: **Application -> ContactsClient -> Contacts Service / KMS / SCIM**.

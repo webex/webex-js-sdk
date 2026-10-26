@@ -6,6 +6,7 @@ import uuid from 'uuid';
 import {merge} from 'lodash';
 import {StatelessWebexPlugin} from '@webex/webex-core';
 import {getOSNameInternal} from '../metrics';
+import * as AutomatedUserUtils from '../automated-user';
 
 import {
   anonymizeIPAddress,
@@ -63,9 +64,16 @@ import {
   SDP_OFFER_CREATION_ERROR_MAP,
   CALL_FEATURE_LOG_IDENTIFIER,
   CALL_FEATURE_EVENT_FAILED_TO_SEND,
+  LOCUS_RATE_LIMITED_OUTGOING_CLIENT_CODE,
+  LOCUS_UNAVAILABLE_CLIENT_CODE,
 } from './config';
 
 const {getOSVersion, getBrowserName, getBrowserVersion} = BrowserDetection();
+
+const LOCUS_HTTP_STATUS_TO_CLIENT_ERROR_CODE: Partial<Record<number, number>> = {
+  429: LOCUS_RATE_LIMITED_OUTGOING_CLIENT_CODE,
+  503: LOCUS_UNAVAILABLE_CLIENT_CODE,
+};
 
 type GetOriginOptions = {
   clientType: ClientType;
@@ -86,6 +94,7 @@ type GetIdentifiersOptions = {
   preLoginId?: string;
   globalMeetingId?: string;
   webexConferenceIdStr?: string;
+  locusCluster?: string;
 };
 
 /**
@@ -99,7 +108,12 @@ export default class CallDiagnosticMetrics extends StatelessWebexPlugin {
   // @ts-ignore
   private preLoginMetricsBatcher: PreLoginMetricsBatcher;
 
-  private logger: any; // to avoid adding @ts-ignore everywhere
+  // lazy getter to avoid @ts-ignore on every call site
+  private get logger(): any {
+    // @ts-ignore
+    return this.webex.logger;
+  }
+
   private hasLoggedBrowserSerial: boolean;
   private device: any;
   private delayedClientEvents: DelayedClientEvent[] = [];
@@ -126,8 +140,6 @@ export default class CallDiagnosticMetrics extends StatelessWebexPlugin {
   constructor(...args) {
     super(...args);
     // @ts-ignore
-    this.logger = this.webex.logger;
-    // @ts-ignore
     this.callDiagnosticEventsBatcher = new CallDiagnosticEventsBatcher({}, {parent: this.webex});
     // @ts-ignore
     this.preLoginMetricsBatcher = new PreLoginMetricsBatcher({}, {parent: this.webex});
@@ -145,6 +157,27 @@ export default class CallDiagnosticMetrics extends StatelessWebexPlugin {
     }
 
     return null;
+  }
+
+  /**
+   * Returns the user activation state reported from the browser's navigator.userActivation API
+   * @returns object with hasBeenActive and isActive booleans, or undefined if unavailable
+   */
+  getUserActivation(): {hasBeenActive: boolean; isActive: boolean} | undefined {
+    const userActivation =
+      typeof navigator !== 'undefined'
+        ? (navigator as {userActivation?: {hasBeenActive: boolean; isActive: boolean}})
+            .userActivation
+        : undefined;
+
+    if (userActivation) {
+      return {
+        hasBeenActive: userActivation.hasBeenActive,
+        isActive: userActivation.isActive,
+      };
+    }
+
+    return undefined;
   }
 
   /**
@@ -251,12 +284,12 @@ export default class CallDiagnosticMetrics extends StatelessWebexPlugin {
   getOrigin(options: GetOriginOptions, meetingId?: string) {
     const defaultClientType: ClientType =
       // @ts-ignore
-      this.webex.meetings.config?.metrics?.clientType;
+      this.webex.meetings?.config?.metrics?.clientType;
     const defaultSubClientType: SubClientType =
       // @ts-ignore
-      this.webex.meetings.config?.metrics?.subClientType;
+      this.webex.meetings?.config?.metrics?.subClientType;
     // @ts-ignore
-    const providedClientVersion: string = this.webex.meetings.config?.metrics?.clientVersion;
+    const providedClientVersion: string = this.webex.meetings?.config?.metrics?.clientVersion;
     // @ts-ignore
     const defaultSDKClientVersion = `${CLIENT_NAME}/${this.webex.version}`;
 
@@ -266,6 +299,18 @@ export default class CallDiagnosticMetrics extends StatelessWebexPlugin {
     if (providedClientVersion) {
       versionMetadata = extractVersionMetadata(providedClientVersion);
     }
+
+    // Browser details and the support verdict can all be supplied by the host client, which is able
+    // to resolve wrapper browsers (Electron, WebOS) to the engine that actually determines
+    // capability. The browser fields fall back to the SDK's own detection when not supplied, the
+    // same way clientVersion falls back to the SDK version.
+    const {
+      browser: providedBrowser,
+      browserVersion: providedBrowserVersion,
+      isSupportedBrowserFamily,
+      isOutdatedBrowserVersion,
+      // @ts-ignore
+    } = this.webex.meetings?.config?.metrics ?? {};
 
     if (!this.hasLoggedBrowserSerial) {
       this.logger.log(
@@ -296,25 +341,27 @@ export default class CallDiagnosticMetrics extends StatelessWebexPlugin {
           ...versionMetadata,
           publicNetworkPrefix:
             // @ts-ignore
-            anonymizeIPAddress(this.webex.meetings.geoHintInfo?.clientAddress) || undefined,
+            anonymizeIPAddress(this.webex.meetings?.geoHintInfo?.clientAddress) || undefined,
           localNetworkPrefix:
             anonymizeIPAddress(
               // @ts-ignore
-              this.webex.meetings.meetingCollection
-                .get(meetingId)
+              this.webex.meetings?.meetingCollection
+                ?.get(meetingId)
                 ?.statsAnalyzer?.getLocalIpAddress()
             ) || undefined,
           osVersion: getOSVersion() || 'unknown',
           subClientType: options?.subClientType || defaultSubClientType,
           os: getOSNameInternal(),
-          browser: getBrowserName(),
-          browserVersion: getBrowserVersion(),
+          browser: providedBrowser || getBrowserName(),
+          browserVersion: providedBrowserVersion || getBrowserVersion(),
+          ...(isSupportedBrowserFamily === undefined ? {} : {isSupportedBrowserFamily}),
+          ...(isOutdatedBrowserVersion === undefined ? {} : {isOutdatedBrowserVersion}),
         },
       };
 
       if (meetingId) {
         // @ts-ignore
-        const meeting = this.webex.meetings.getBasicMeetingInformation(meetingId);
+        const meeting = this.webex.meetings?.getBasicMeetingInformation(meetingId);
         if (meeting?.environment) {
           origin.environment = meeting.environment;
         }
@@ -347,6 +394,20 @@ export default class CallDiagnosticMetrics extends StatelessWebexPlugin {
   }
 
   /**
+   * Returns the signed-in user's CI ID derived from credentials tokens.
+   * Used as a fallback when no device is registered.
+   * @returns the userId, or undefined if it can't be determined
+   */
+  private getUserIdFromCredentials(): string | undefined {
+    try {
+      // @ts-ignore
+      return this.webex.credentials.getUserId();
+    } catch {
+      return undefined;
+    }
+  }
+
+  /**
    * Gather identifier details for call diagnostic payload.
    * @throws Error if initialization fails.
    * @param options
@@ -360,6 +421,7 @@ export default class CallDiagnosticMetrics extends StatelessWebexPlugin {
       globalMeetingId,
       preLoginId,
       sessionCorrelationId,
+      locusCluster,
     } = options;
     const identifiers: Event['event']['identifiers'] = {
       correlationId: 'unknown', // concerned with setting this to unknown. This will fail diagnostic events parsing because it's not a uuid pattern
@@ -390,7 +452,6 @@ export default class CallDiagnosticMetrics extends StatelessWebexPlugin {
       const {device} = this;
       const {installationId} = device?.config || {};
 
-      identifiers.userId = device?.userId || preLoginId;
       identifiers.deviceId = device?.url;
       identifiers.orgId = device?.orgId;
       // @ts-ignore
@@ -400,6 +461,10 @@ export default class CallDiagnosticMetrics extends StatelessWebexPlugin {
         identifiers.machineId = installationId;
       }
     }
+
+    // Prefer the device's userId, but fall back to the signed-in user's ID from
+    // credentials when no device is registered, then to the pre-login ID.
+    identifiers.userId = this.device?.userId || this.getUserIdFromCredentials() || preLoginId;
 
     if (meeting?.locusInfo?.fullState) {
       identifiers.locusUrl = meeting.locusUrl;
@@ -423,6 +488,10 @@ export default class CallDiagnosticMetrics extends StatelessWebexPlugin {
       identifiers.webexSiteName = meeting.meetingInfo?.siteName;
     }
 
+    if (meeting?.meetingInfo?.locusClusterUrl) {
+      identifiers.locusCluster = meeting.meetingInfo.locusClusterUrl;
+    }
+
     if (mediaConnections) {
       identifiers.mediaAgentAlias = mediaConnections?.[0]?.mediaAgentAlias;
       identifiers.mediaAgentGroupId = mediaConnections?.[0]?.mediaAgentGroupId;
@@ -434,6 +503,10 @@ export default class CallDiagnosticMetrics extends StatelessWebexPlugin {
 
     if (!identifiers?.globalMeetingId && globalMeetingId) {
       identifiers.globalMeetingId = globalMeetingId;
+    }
+
+    if (!identifiers?.locusCluster && locusCluster) {
+      identifiers.locusCluster = locusCluster;
     }
 
     if (identifiers.correlationId === undefined) {
@@ -464,7 +537,7 @@ export default class CallDiagnosticMetrics extends StatelessWebexPlugin {
         sent: 'not_defined_yet',
       },
       // @ts-ignore
-      senderCountryCode: this.webex.meetings.geoHintInfo?.countryCode,
+      senderCountryCode: this.webex.meetings?.geoHintInfo?.countryCode,
       event: eventData,
     };
 
@@ -663,7 +736,7 @@ export default class CallDiagnosticMetrics extends StatelessWebexPlugin {
    * @param arg.clientErrorCode
    * @param arg.serviceErrorCode
    * @param arg.payloadOverrides
-   * @param arg.httpStatusCode
+   * @param arg.httpCode
    * @returns
    */
   public getErrorPayloadForClientErrorCode({
@@ -672,14 +745,14 @@ export default class CallDiagnosticMetrics extends StatelessWebexPlugin {
     serviceErrorName,
     rawErrorMessage,
     payloadOverrides,
-    httpStatusCode,
+    httpCode,
   }: {
     clientErrorCode: number;
     serviceErrorCode: any;
     serviceErrorName?: any;
     rawErrorMessage?: string;
     payloadOverrides?: any;
-    httpStatusCode?: number;
+    httpCode?: number;
   }): ClientEventError {
     let error: ClientEventError;
 
@@ -693,7 +766,7 @@ export default class CallDiagnosticMetrics extends StatelessWebexPlugin {
           serviceErrorName ? {errorData: {errorName: serviceErrorName}} : {},
           {serviceErrorCode},
           {rawErrorMessage},
-          httpStatusCode === undefined ? {} : {httpStatusCode},
+          httpCode === undefined ? {} : {httpCode},
           partialParsedError,
           payloadOverrides || {}
         );
@@ -862,7 +935,12 @@ export default class CallDiagnosticMetrics extends StatelessWebexPlugin {
     }
 
     const rawErrorMessage = rawError.message;
-    const httpStatusCode = rawError.statusCode;
+    const httpCode = rawError.statusCode;
+    const serviceErrorCode =
+      rawError?.error?.body?.errorCode ||
+      rawError?.body?.errorCode ||
+      rawError?.body?.code ||
+      rawError?.body?.reason?.reasonCode;
     let payload;
 
     if (rawError.name) {
@@ -872,7 +950,7 @@ export default class CallDiagnosticMetrics extends StatelessWebexPlugin {
           clientErrorCode: BROWSER_MEDIA_ERROR_NAME_TO_CLIENT_ERROR_CODES_MAP[rawError.name],
           serviceErrorName: rawError.name,
           rawErrorMessage,
-          httpStatusCode,
+          httpCode,
         });
       }
     }
@@ -887,15 +965,9 @@ export default class CallDiagnosticMetrics extends StatelessWebexPlugin {
           SDP_OFFER_CREATION_ERROR_MAP[causeType] || SDP_OFFER_CREATION_ERROR_MAP.GENERAL,
         serviceErrorName: rawError.name,
         rawErrorMessage,
-        httpStatusCode,
+        httpCode,
       });
     }
-
-    const serviceErrorCode =
-      rawError?.error?.body?.errorCode ||
-      rawError?.body?.errorCode ||
-      rawError?.body?.code ||
-      rawError?.body?.reason?.reasonCode;
 
     if (serviceErrorCode) {
       const clientErrorCode = SERVICE_ERROR_CODES_TO_CLIENT_ERROR_CODES_MAP[serviceErrorCode];
@@ -904,17 +976,30 @@ export default class CallDiagnosticMetrics extends StatelessWebexPlugin {
           clientErrorCode,
           serviceErrorCode,
           rawErrorMessage,
-          httpStatusCode,
+          httpCode,
         });
       }
+    }
 
+    const locusHttpClientErrorCode = LOCUS_HTTP_STATUS_TO_CLIENT_ERROR_CODE[httpCode];
+    const requestUrl = rawError.options?.uri || rawError.options?.url;
+    if (locusHttpClientErrorCode && !payload && requestUrl?.includes('locus')) {
+      payload = this.getErrorPayloadForClientErrorCode({
+        clientErrorCode: locusHttpClientErrorCode,
+        serviceErrorCode,
+        rawErrorMessage,
+        httpCode,
+      });
+    }
+
+    if (serviceErrorCode) {
       // by default, if it is locus error, return new locus err
       if (isLocusServiceErrorCode(serviceErrorCode) && !payload) {
         payload = this.getErrorPayloadForClientErrorCode({
           clientErrorCode: NEW_LOCUS_ERROR_CLIENT_CODE,
           serviceErrorCode,
           rawErrorMessage,
-          httpStatusCode,
+          httpCode,
         });
       }
     }
@@ -924,7 +1009,7 @@ export default class CallDiagnosticMetrics extends StatelessWebexPlugin {
         clientErrorCode: MEETING_INFO_LOOKUP_ERROR_CLIENT_CODE,
         serviceErrorCode,
         rawErrorMessage,
-        httpStatusCode,
+        httpCode,
       });
     }
 
@@ -934,7 +1019,7 @@ export default class CallDiagnosticMetrics extends StatelessWebexPlugin {
         serviceErrorCode,
         payloadOverrides: rawError.payloadOverrides,
         rawErrorMessage,
-        httpStatusCode,
+        httpCode,
       });
     }
 
@@ -944,7 +1029,7 @@ export default class CallDiagnosticMetrics extends StatelessWebexPlugin {
         serviceErrorCode,
         payloadOverrides: rawError.payloadOverrides,
         rawErrorMessage,
-        httpStatusCode,
+        httpCode,
       });
     }
 
@@ -956,7 +1041,7 @@ export default class CallDiagnosticMetrics extends StatelessWebexPlugin {
         serviceErrorName: rawError?.name,
         payloadOverrides: rawError.payloadOverrides,
         rawErrorMessage,
-        httpStatusCode,
+        httpCode,
       });
     }
 
@@ -988,6 +1073,7 @@ export default class CallDiagnosticMetrics extends StatelessWebexPlugin {
       globalMeetingId,
       webexConferenceIdStr,
       sessionCorrelationId,
+      locusCluster,
     } = options;
 
     // @ts-ignore
@@ -1021,6 +1107,7 @@ export default class CallDiagnosticMetrics extends StatelessWebexPlugin {
       webexConferenceIdStr,
       globalMeetingId,
       sessionCorrelationId,
+      locusCluster,
     });
 
     // create common event object structure
@@ -1046,8 +1133,8 @@ export default class CallDiagnosticMetrics extends StatelessWebexPlugin {
       // @ts-ignore
       webClientPreload: this.webex.meetings?.config?.metrics?.webClientPreload,
       isVipMeeting: meeting?.meetingInfo?.vipmeeting || false,
-      isAutomatedUser:
-        typeof window !== 'undefined' && typeof navigator !== 'undefined' && !!navigator?.webdriver, // if webdriver is true, it's most likely in a test environment
+      isAutomatedUser: AutomatedUserUtils.isAutomatedUser(),
+      userActivation: this.getUserActivation(),
     };
 
     const joinFlowVersion = options.joinFlowVersion ?? meeting.callStateForMetrics?.joinFlowVersion;
@@ -1061,9 +1148,11 @@ export default class CallDiagnosticMetrics extends StatelessWebexPlugin {
       commonEventObject.meetingJoinedTime = meetingJoinedTime;
     }
 
-    if (options.meetingJoinPhase) {
+    const meetingJoinPhase =
+      options.meetingJoinPhase ?? meeting.callStateForMetrics?.meetingJoinPhase;
+    if (meetingJoinPhase) {
       // @ts-ignore
-      commonEventObject.meetingJoinPhase = options.meetingJoinPhase;
+      commonEventObject.meetingJoinPhase = meetingJoinPhase;
     }
 
     return commonEventObject;
@@ -1144,8 +1233,14 @@ export default class CallDiagnosticMetrics extends StatelessWebexPlugin {
     options?: SubmitClientEventOptions;
     errors?: ClientEventPayloadError;
   }) {
-    const {correlationId, globalMeetingId, webexConferenceIdStr, preLoginId, sessionCorrelationId} =
-      options;
+    const {
+      correlationId,
+      globalMeetingId,
+      webexConferenceIdStr,
+      preLoginId,
+      sessionCorrelationId,
+      locusCluster,
+    } = options;
 
     // grab identifiers
     const identifiers = this.getIdentifiers({
@@ -1154,6 +1249,7 @@ export default class CallDiagnosticMetrics extends StatelessWebexPlugin {
       preLoginId,
       globalMeetingId,
       webexConferenceIdStr,
+      locusCluster,
     });
 
     // create client event object
@@ -1170,17 +1266,16 @@ export default class CallDiagnosticMetrics extends StatelessWebexPlugin {
       telemetryOptOut: this.getTelemetryOptOut(),
       // @ts-ignore
       webClientPreload: this.webex.meetings?.config?.metrics?.webClientPreload,
-      isAutomatedUser:
-        typeof window !== 'undefined' && typeof navigator !== 'undefined' && !!navigator?.webdriver, // if webdriver is true, it's most likely in a test environment
+      isAutomatedUser: AutomatedUserUtils.isAutomatedUser(),
+      userActivation: this.getUserActivation(),
     };
 
     if (options.joinFlowVersion) {
       clientEventObject.joinFlowVersion = options.joinFlowVersion;
     }
 
-    if (options.meetingJoinPhase) {
-      clientEventObject.meetingJoinPhase = options.meetingJoinPhase;
-    }
+    // No meeting exists yet for pre-meeting events, so the join phase is pre-join by construction
+    clientEventObject.meetingJoinPhase = options.meetingJoinPhase ?? 'pre-join';
 
     if (options.userNameInput) {
       clientEventObject.userNameInput = options.userNameInput;
@@ -1364,7 +1459,6 @@ export default class CallDiagnosticMetrics extends StatelessWebexPlugin {
     const finalEvent = {
       eventPayload: event,
       type: ['diagnostic-event'],
-      markTelemetryOptOutOnResponse: true,
     };
 
     return this.callDiagnosticEventsBatcher.request(finalEvent);
@@ -1374,7 +1468,6 @@ export default class CallDiagnosticMetrics extends StatelessWebexPlugin {
    * Prepare the event and send the request to metrics-a service, pre login.
    * @param event
    * @param preLoginId
-   * @param markTelemetryOptOutOnResponse
    * @returns
    */
   submitToCallDiagnosticsPreLogin = (event: Event, preLoginId?: string): Promise<any> => {
@@ -1382,7 +1475,6 @@ export default class CallDiagnosticMetrics extends StatelessWebexPlugin {
     const finalEvent = {
       eventPayload: event,
       type: ['diagnostic-event'],
-      markTelemetryOptOutOnResponse: true,
     };
 
     this.preLoginMetricsBatcher.savePreLoginId(preLoginId);
@@ -1432,7 +1524,7 @@ export default class CallDiagnosticMetrics extends StatelessWebexPlugin {
       },
       headers: {},
       // @ts-ignore
-      waitForServiceTimeout: this.webex.internal.metrics.config.waitForServiceTimeout,
+      waitForServiceTimeout: this.webex.internal.metrics?.config?.waitForServiceTimeout,
     };
 
     if (options.preLoginId) {

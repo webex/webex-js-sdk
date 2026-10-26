@@ -11,6 +11,7 @@ import {CallDetails, CallDirection, CorrelationId, ServiceIndicator} from '../..
 import {
   ICall,
   ICallManager,
+  IceGatheringConfig,
   MediaState,
   MidCallEvent,
   MobiusAsyncEvent,
@@ -43,14 +44,22 @@ export class CallManager extends Eventing<CallEventTypes> implements ICallManage
 
   private isMobiusSocketListenerRegistered = false;
 
+  private iceGatheringConfig?: IceGatheringConfig;
+
   /**
    * @param webex -.
    * @param indicator - Service Indicator.
+   * @param iceGatheringConfig - Optional ICE candidate gathering configuration.
    */
-  constructor(webex: WebexSDK, indicator: ServiceIndicator) {
+  constructor(
+    webex: WebexSDK,
+    indicator: ServiceIndicator,
+    iceGatheringConfig?: IceGatheringConfig
+  ) {
     super();
     this.sdkConnector = SDKConnector;
     this.serviceIndicator = indicator;
+    this.iceGatheringConfig = iceGatheringConfig;
     if (!this.sdkConnector.getWebex()) {
       SDKConnector.setWebex(webex);
     }
@@ -102,7 +111,8 @@ export class CallManager extends Eventing<CallEventTypes> implements ICallManage
         }
       },
       this.serviceIndicator,
-      destination
+      destination,
+      this.iceGatheringConfig
     );
 
     this.callCollection[newCall.getCorrelationId()] = newCall;
@@ -518,15 +528,35 @@ export class CallManager extends Eventing<CallEventTypes> implements ICallManage
   private getLineId(deviceId: string) {
     return this.lineDict[deviceId].lineId;
   }
+
+  /**
+   * Updates the ICE candidate gathering configuration applied to newly created calls.
+   *
+   * The {@link CallManager} is a module-level singleton that may be first constructed by a
+   * collaborator (e.g. line or registration) that does not have the SDK config. This lets the
+   * `CallingClient` seed the config on the shared instance regardless of construction order.
+   *
+   * @param iceGatheringConfig - The ICE candidate gathering configuration.
+   */
+  public setIceGatheringConfig(iceGatheringConfig?: IceGatheringConfig) {
+    this.iceGatheringConfig = iceGatheringConfig;
+  }
 }
 
 /**
  * @param webex -.
  * @param indicator - Service Indicator.
+ * @param iceGatheringConfig - Optional ICE candidate gathering configuration.
  */
-export const getCallManager = (webex: WebexSDK, indicator: ServiceIndicator): ICallManager => {
+export const getCallManager = (
+  webex: WebexSDK,
+  indicator: ServiceIndicator,
+  iceGatheringConfig?: IceGatheringConfig
+): ICallManager => {
   if (!callManager) {
-    callManager = new CallManager(webex, indicator);
+    callManager = new CallManager(webex, indicator, iceGatheringConfig);
+  } else if (iceGatheringConfig) {
+    (callManager as CallManager).setIceGatheringConfig(iceGatheringConfig);
   }
 
   return callManager;

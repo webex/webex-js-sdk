@@ -499,6 +499,7 @@ export class WxcCallRecordingConnector
   /**
    * Moves a recording to the recycle bin (soft delete).
    * `POST {userhub}/.../convergedRecordings/softDelete` with `recordUUIDs: [recordingId]`.
+   * Requires `spark:recordings_write` on the access token.
    *
    * Mercury emits `convergedRecordings.updated` + `eventSubType: TRASH`, which this connector
    * surfaces as `callRecording:deleted`.
