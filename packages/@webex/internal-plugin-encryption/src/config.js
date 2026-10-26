@@ -2,6 +2,10 @@
  * Copyright (c) 2015-2020 Cisco Systems, Inc. See LICENSE file.
  */
 
+/* global SDK_VERSION */
+
+import {getUmdAssetsBaseUrl} from '@webex/common';
+
 import {UNION_BUNDLE_ASSET} from './union-bundle';
 
 export default {
@@ -80,14 +84,14 @@ export default {
 
     /**
      * Base URL of the directory hosting this plugin's static assets (e.g.
-     * `ios_union-<version>.p7b`). Defaults to `/assets/internal-plugin-encryption/` on
-     * the page's origin; the `webex` package overrides it with the versioned
-     * jsDelivr copy of its UMD assets. Self-hosters should point it at their
-     * copy of `internal-plugin-encryption/dist/assets/`. Not used in Node,
-     * which reads the package's own copy.
+     * `ios_union-<version>.p7b`). Versioned release builds use the matching
+     * `webex` UMD assets on unpkg; development and unversioned builds use
+     * `/assets/internal-plugin-encryption/` on the page's origin. Self-hosters
+     * can override this with their own asset directory. Not used in Node when
+     * the package's own copy is present.
      * @type {string}
      */
-    assetsBaseUrl: '/assets/internal-plugin-encryption/',
+    assetsBaseUrl: getUmdAssetsBaseUrl('internal-plugin-encryption', SDK_VERSION),
 
     /**
      * An additional CA root bundle validated alongside `caroots`. Unlike
