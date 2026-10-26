@@ -1,6 +1,6 @@
 /**
  * Record factory: captureMetadata filters producer fields when a log is accepted.
- * snapshotRecord and snapshotRecords give consumers owned copies of live records and history.
+ * snapshotRecord builds the read-only event snapshot; snapshotRecords returns owned history.
  */
 import {cloneDeep} from 'lodash';
 

@@ -5,8 +5,7 @@
 import {inBrowser, patterns} from '@webex/common';
 import {WebexPlugin} from '@webex/webex-core';
 import {cloneDeep, has, isArray, isObject, isString} from 'lodash';
-import {captureMetadata, snapshotRecords} from './log-record';
-import {LogRecordSubscriptions} from './log-record-source';
+import {captureMetadata, snapshotRecord, snapshotRecords} from './log-record';
 
 const precedence = {
   silent: 0,
@@ -106,7 +105,7 @@ const Logger = WebexPlugin.extend({
       type: 'object',
       /**
        * Create empty state for this logger instance.
-       * @returns {Object} Sequence, entry metadata and subscriptions.
+       * @returns {Object} Sequence and entry metadata.
        */
       default() {
         return {
@@ -114,8 +113,6 @@ const Logger = WebexPlugin.extend({
           sequence: 0,
           // Keep structured fields beside legacy entries without keeping trimmed entries alive.
           metadataByBufferEntry: new WeakMap(),
-          // Own future-record listeners and keep nested notifications in order.
-          subscriptions: new LogRecordSubscriptions(),
         };
       },
     },
@@ -163,6 +160,7 @@ const Logger = WebexPlugin.extend({
 
   /**
    * Copy retained history in sequence order without changing support-upload cursors.
+   * Use on('log:record', listener) for future accepted records.
    * @returns {Array} Owned records in accepted sequence order.
    * @throws {Error} If a retained entry has no captured metadata.
    */
@@ -172,16 +170,6 @@ const Logger = WebexPlugin.extend({
       : [this.buffer];
 
     return snapshotRecords(buffers, this.recordState.metadataByBufferEntry);
-  },
-
-  /**
-   * Receive future accepted records. Use getRecords() to read retained history.
-   * @param {Function} listener - Synchronous record observer.
-   * @returns {function} Idempotent unsubscribe callback.
-   * @throws {TypeError} If listener is not a function.
-   */
-  subscribe(listener) {
-    return this.recordState.subscriptions.subscribe(listener);
   },
 
   /**
@@ -551,7 +539,8 @@ function makeLoggerMethod(level, impl, type, {neverPrint = false, alwaysBuffer =
         if (level === 'groupEnd' && this.groupLevel > 0) {
           this.groupLevel -= 1;
         }
-        this.recordState.subscriptions.notify(stringified, bufferEntryMetadata);
+        // Native listeners share this read-only snapshot after buffering is complete.
+        this.trigger('log:record', snapshotRecord(stringified, bufferEntryMetadata, Date.now()));
       }
     } catch (reason) {
       if (!neverPrint) {
