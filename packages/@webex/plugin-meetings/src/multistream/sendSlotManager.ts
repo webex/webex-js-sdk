@@ -346,10 +346,24 @@ export default class SendSlotManager {
   }
 
   /**
-   * This method is used to reset the SendSlotsManager by deleting all the sendSlots
+   * This method is used to reset the SendSlotsManager by unpublishing and deleting all the sendSlots.
+   * Each slot is explicitly unpublished first so it detaches its stream event listeners
+   * (OutputTrackChange, ConstraintsChange, mute-state, Ended); otherwise an abandoned slot stays
+   * subscribed to a stream that may be reused by a later meeting and throws when that stream's
+   * track changes, because the slot's sender belongs to this (now-closing) peer connection.
    * @returns {undefined}
    */
   public reset(): void {
+    this.slots.forEach((slot, mediaType) => {
+      slot.unpublishStream().catch((error) => {
+        this.LoggerProxy.logger.warn(
+          `SendSlotsManager->reset#Failed to unpublish stream for ${mediaType} while resetting: ${
+            error?.message || error
+          }`
+        );
+      });
+    });
+
     this.slots.clear();
   }
 }
