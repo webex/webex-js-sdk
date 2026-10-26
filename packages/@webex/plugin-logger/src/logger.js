@@ -5,7 +5,6 @@
 import {inBrowser, patterns} from '@webex/common';
 import {WebexPlugin} from '@webex/webex-core';
 import {cloneDeep, has, isArray, isObject, isString} from 'lodash';
-import {captureMetadata, snapshotRecord, snapshotRecords} from './log-record';
 
 const precedence = {
   silent: 0,
@@ -105,14 +104,14 @@ const Logger = WebexPlugin.extend({
       type: 'object',
       /**
        * Create empty state for this logger instance.
-       * @returns {Object} Sequence and entry metadata.
+       * @returns {Object} Sequence and retained records.
        */
       default() {
         return {
           // Order all accepted SDK and client entries with one counter.
           sequence: 0,
-          // Keep structured fields beside legacy entries without keeping trimmed entries alive.
-          metadataByBufferEntry: new WeakMap(),
+          // Keep complete records beside support entries; trimmed entries can be released.
+          recordsByBufferEntry: new WeakMap(),
         };
       },
     },
@@ -159,17 +158,36 @@ const Logger = WebexPlugin.extend({
   },
 
   /**
-   * Copy retained history in sequence order without changing support-upload cursors.
-   * Use on('log:record', listener) for future accepted records.
-   * @returns {Array} Owned records in accepted sequence order.
-   * @throws {Error} If a retained entry has no captured metadata.
+   * Read retained records in sequence order without changing support-upload cursors.
+   * Use on('log:record', listener) for future records. Consumers must leave records unchanged.
+   * @returns {Array} A new list of the existing records.
+   * @throws {Error} If a retained entry has no record.
    */
   getRecords() {
-    const buffers = this.config.separateLogBuffers
-      ? [this.sdkBuffer, this.clientBuffer]
-      : [this.buffer];
+    const sdkBuffer = this.config.separateLogBuffers ? this.sdkBuffer.buffer : this.buffer.buffer;
+    const clientBuffer = this.config.separateLogBuffers ? this.clientBuffer.buffer : [];
+    const {recordsByBufferEntry} = this.recordState;
+    const records = [];
+    let sdkIndex = 0;
+    let clientIndex = 0;
 
-    return snapshotRecords(buffers, this.recordState.metadataByBufferEntry);
+    while (sdkIndex < sdkBuffer.length || clientIndex < clientBuffer.length) {
+      const sdkRecord = recordsByBufferEntry.get(sdkBuffer[sdkIndex]);
+      const clientRecord = recordsByBufferEntry.get(clientBuffer[clientIndex]);
+
+      if (!sdkRecord && !clientRecord) {
+        throw new Error('Retained log is missing its record');
+      }
+      if (sdkRecord && (!clientRecord || sdkRecord.sequence < clientRecord.sequence)) {
+        records.push(sdkRecord);
+        sdkIndex += 1;
+      } else {
+        records.push(clientRecord);
+        clientIndex += 1;
+      }
+    }
+
+    return records;
   },
 
   /**
@@ -500,21 +518,26 @@ function makeLoggerMethod(level, impl, type, {neverPrint = false, alwaysBuffer =
       }
 
       if (shouldBuffer) {
-        const recordMetadata = captureMetadata(metadata, (value) => this.filter(value)[0]);
         const logDate = new Date();
 
         stringified.unshift(logDate.toISOString());
         stringified.unshift('|  '.repeat(this.groupLevel));
         this.recordState.sequence += 1;
-        const bufferEntryMetadata = {
-          ...recordMetadata,
+        const record = {
           sequence: this.recordState.sequence,
           timestamp: logDate.getTime(),
+          observedTimestamp: logDate.getTime(),
           level,
-          source: recordMetadata.source || logType,
+          source: metadata?.source || logType,
+          body: String(stringified),
         };
 
-        this.recordState.metadataByBufferEntry.set(stringified, bufferEntryMetadata);
+        // Callers supply safe metadata and leave its values unchanged after logging.
+        if (metadata) {
+          record.eventName = metadata.eventName;
+          record.attributes = metadata.attributes;
+        }
+        this.recordState.recordsByBufferEntry.set(stringified, record);
         bufferRef.buffer.push(stringified);
         if (bufferRef.buffer.length > historyLength) {
           // we've gone over the buffer limit, trim it down
@@ -539,8 +562,8 @@ function makeLoggerMethod(level, impl, type, {neverPrint = false, alwaysBuffer =
         if (level === 'groupEnd' && this.groupLevel > 0) {
           this.groupLevel -= 1;
         }
-        // Native listeners share this read-only snapshot after buffering is complete.
-        this.trigger('log:record', snapshotRecord(stringified, bufferEntryMetadata, Date.now()));
+        // Events and history share the accepted record; consumers must leave it unchanged.
+        this.trigger('log:record', record);
       }
     } catch (reason) {
       if (!neverPrint) {
