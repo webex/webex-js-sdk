@@ -2,7 +2,7 @@ import {v4 as uuidv4} from 'uuid';
 import LoggerProxy from '../logger-proxy';
 import MetricsManager from '../metrics/MetricsManager';
 import {METRIC_EVENT_NAMES} from '../metrics/constants';
-import {CC_FILE, METHODS} from '../constants';
+import {AI_SUMMARY_ERROR_CODES, CC_FILE, METHODS} from '../constants';
 import {
   HTTP_METHODS,
   WebexSDK,
@@ -12,8 +12,13 @@ import {
   HistoricTranscriptsResponse,
   RealTimeAssistanceParams,
   RealTimeAssistanceUserActionParams,
+  RespondToWellnessBreakParams,
+  WellnessBreakUserAction,
+  WELLNESS_BREAK_USER_ACTIONS,
+  GenericError,
 } from '../types';
 import {getErrorDetails} from './core/Utils';
+import type {PendingRtdRequest, RtdRequestOptions} from './core/types';
 import {
   AI_ASSISTANT_BASE_URL_TEMPLATE,
   AI_ASSISTANT_ENV_MAP,
@@ -22,6 +27,12 @@ import {
 } from './constants';
 import {AIFeatureFlags} from './config/types';
 
+type WellnessBreakContextProvider = () => {
+  isWellnessBreakEnabled: boolean;
+  agentId?: string;
+  agentSessionId?: string;
+};
+
 /**
  * ApiAIAssistant provides AI Assistant APIs for transcript controls.
  * @public
@@ -29,10 +40,26 @@ import {AIFeatureFlags} from './config/types';
 export class ApiAIAssistant {
   private webex: WebexSDK;
   private metricsManager: MetricsManager;
-  private aiFeature: AIFeatureFlags;
+  /** @internal Current AI flags from the agent configuration. */
+  public aiFeature: AIFeatureFlags;
+  private pendingRtdRequests = new Map<string, PendingRtdRequest<unknown>>();
+  private readonly wellnessContextProvider?: WellnessBreakContextProvider;
 
-  constructor(webex: WebexSDK) {
+  private createWellnessError(reason: string): GenericError {
+    const error = new Error(reason) as GenericError;
+    error.details = {
+      type: 'SDK_VALIDATION_ERROR',
+      orgId: this.webex.credentials.getOrgId(),
+      trackingId: '',
+      data: {reason},
+    };
+
+    return error;
+  }
+
+  constructor(webex: WebexSDK, wellnessContextProvider?: WellnessBreakContextProvider) {
     this.webex = webex;
+    this.wellnessContextProvider = wellnessContextProvider;
     this.metricsManager = MetricsManager.getInstance({webex});
   }
 
@@ -40,12 +67,152 @@ export class ApiAIAssistant {
     this.aiFeature = aiFeature;
   }
 
+  /**
+   * Validates a caller-supplied identifier (agentId/interactionId) before it is used to
+   * construct a request. Accepts a non-empty alphanumeric identifier that may contain
+   * hyphens or underscores.
+   * @param value - the identifier to validate
+   * @returns {boolean} true when the identifier is a non-empty, well-formed string
+   * @private
+   */
+  private isValidTranscriptIdentifier(value: unknown): boolean {
+    return typeof value === 'string' && /^[A-Za-z0-9_-]{1,128}$/.test(value);
+  }
+
+  private async sendWellnessBreakAction(
+    action: WellnessBreakUserAction,
+    method: string
+  ): Promise<void> {
+    this.metricsManager.timeEvent([
+      METRIC_EVENT_NAMES.AI_ASSISTANT_WELLNESS_ACTION_ACCEPTED,
+      METRIC_EVENT_NAMES.AI_ASSISTANT_WELLNESS_ACTION_FAILED,
+    ]);
+
+    try {
+      const context = this.wellnessContextProvider?.();
+      const agentId = context?.agentId?.trim();
+      const agentSessionId = context?.agentSessionId?.trim();
+      const orgId = this.webex.credentials.getOrgId()?.trim();
+
+      if (context?.isWellnessBreakEnabled !== true) {
+        throw this.createWellnessError('WELLNESS_BREAK_NOT_ENABLED');
+      }
+      if (!orgId) {
+        throw this.createWellnessError('WELLNESS_BREAK_ORG_ID_REQUIRED');
+      }
+      if (!agentId) {
+        throw this.createWellnessError('WELLNESS_BREAK_AGENT_ID_REQUIRED');
+      }
+      if (!agentSessionId) {
+        throw this.createWellnessError('WELLNESS_BREAK_AGENT_SESSION_REQUIRED');
+      }
+
+      const baseUrl = this.getBaseUrl();
+      const response = (await this.webex.request({
+        uri: `${baseUrl}${AI_ASSISTANT_API_URLS.EVENT}`,
+        method: HTTP_METHODS.POST,
+        addAuthHeader: true,
+        body: {
+          agentId,
+          orgId,
+          eventType: AIAssistantEventType.CUSTOM_EVENT,
+          eventName: AIAssistantEventName.WELLNESS_BREAK_ACTION,
+          eventDetails: {
+            data: {
+              action,
+              agentSessionId,
+              actionTimeStamp: Date.now(),
+            },
+          },
+        },
+      })) as IHttpResponse;
+
+      if (response.statusCode !== 202) {
+        throw this.createWellnessError(
+          `WELLNESS_BREAK_ACTION_UNEXPECTED_STATUS_${response.statusCode}`
+        );
+      }
+
+      this.metricsManager.trackEvent(
+        METRIC_EVENT_NAMES.AI_ASSISTANT_WELLNESS_ACTION_ACCEPTED,
+        {action},
+        ['operational']
+      );
+      LoggerProxy.log('Wellness action accepted by AI Assistant', {
+        module: CC_FILE,
+        method,
+        data: {action},
+      });
+    } catch (error) {
+      this.metricsManager.trackEvent(
+        METRIC_EVENT_NAMES.AI_ASSISTANT_WELLNESS_ACTION_FAILED,
+        {
+          action,
+          error: error instanceof Error ? error.message : String(error),
+        },
+        ['operational']
+      );
+      const {error: detailedError} = getErrorDetails(error, method, CC_FILE);
+      throw detailedError;
+    }
+  }
+
+  /**
+   * Requests an Agent Wellness Break.
+   * The promise resolves when the HTTP request is accepted with status 202; the later
+   * approval or denial is delivered independently through a wellness notification.
+   * @returns A promise that resolves with no value after HTTP acceptance
+   * @throws Structured Contact Center error when disabled, stale, invalid, or delivery fails
+   * @example
+   * await webex.cc.apiAIAssistant.requestWellnessBreak();
+   * @public
+   */
+  public async requestWellnessBreak(): Promise<void> {
+    return this.sendWellnessBreakAction(
+      WELLNESS_BREAK_USER_ACTIONS.REQUESTED,
+      METHODS.REQUEST_WELLNESS_BREAK
+    );
+  }
+
+  /**
+   * Responds to a backend-provided Agent Wellness Break offer.
+   * The promise resolves when the HTTP request is accepted with status 202 and does not
+   * wait for a WebSocket completion event.
+   * @param params - ACCEPTED, REJECTED, or NO_RESPONSE
+   * @returns A promise that resolves with no value after HTTP acceptance
+   * @throws Structured Contact Center error when disabled, stale, invalid, or delivery fails
+   * @example
+   * await webex.cc.apiAIAssistant.respondToWellnessBreak({
+   *   action: WELLNESS_BREAK_USER_ACTIONS.ACCEPTED,
+   * });
+   * @public
+   */
+  public async respondToWellnessBreak(params: RespondToWellnessBreakParams): Promise<void> {
+    const {action} = params;
+    if (
+      ![
+        WELLNESS_BREAK_USER_ACTIONS.ACCEPTED,
+        WELLNESS_BREAK_USER_ACTIONS.REJECTED,
+        WELLNESS_BREAK_USER_ACTIONS.NO_RESPONSE,
+      ].includes(action)
+    ) {
+      const {error} = getErrorDetails(
+        this.createWellnessError('WELLNESS_BREAK_ACTION_INVALID'),
+        METHODS.RESPOND_TO_WELLNESS_BREAK,
+        CC_FILE
+      );
+      throw error;
+    }
+
+    return this.sendWellnessBreakAction(action, METHODS.RESPOND_TO_WELLNESS_BREAK);
+  }
+
   private getBaseUrl(): string {
     const wccApiGatewayUrl = this.webex.internal.services.get(WCC_API_GATEWAY) || '';
 
     if (!wccApiGatewayUrl) {
       const {error: detailedError} = getErrorDetails(
-        new Error('AI_ASSISTANT_BASE_URL_NOT_AVAILABLE'),
+        new Error(AI_SUMMARY_ERROR_CODES.AI_ASSISTANT_BASE_URL_NOT_AVAILABLE),
         METHODS.GET_BASE_URL,
         CC_FILE
       );
@@ -60,9 +227,10 @@ export class ApiAIAssistant {
     }
 
     const resolvedEnv = AI_ASSISTANT_ENV_MAP[hostname];
+
     if (!resolvedEnv) {
       const {error: detailedError} = getErrorDetails(
-        new Error('AI_ASSISTANT_BASE_URL_NOT_AVAILABLE'),
+        new Error(AI_SUMMARY_ERROR_CODES.AI_ASSISTANT_BASE_URL_NOT_AVAILABLE),
         METHODS.GET_BASE_URL,
         CC_FILE
       );
@@ -70,6 +238,105 @@ export class ApiAIAssistant {
     }
 
     return AI_ASSISTANT_BASE_URL_TEMPLATE.replace('%s', resolvedEnv);
+  }
+
+  private static getRtdRequestKey(rtdEventType: string, correlationId: string): string {
+    return JSON.stringify([rtdEventType, correlationId]);
+  }
+
+  private removeRtdRequest<T>(
+    rtdEventType: string,
+    correlationId: string,
+    settle?: (request: PendingRtdRequest<T>) => void
+  ): PendingRtdRequest<T> | undefined {
+    const key = ApiAIAssistant.getRtdRequestKey(rtdEventType, correlationId);
+    const request = this.pendingRtdRequests.get(key) as PendingRtdRequest<T> | undefined;
+
+    if (!request) {
+      return undefined;
+    }
+
+    if (request.timeoutId) {
+      clearTimeout(request.timeoutId);
+    }
+
+    settle?.(request);
+    this.pendingRtdRequests.delete(key);
+
+    return request;
+  }
+
+  /** Sends an AI event and waits for its matching RTD response. @internal */
+  public async requestAndWaitForRtd<T>(options: RtdRequestOptions): Promise<T> {
+    const key = ApiAIAssistant.getRtdRequestKey(options.rtdEventType, options.correlationId);
+    let resolveResult: (payload: T) => void = () => undefined;
+    let rejectResult: (error: Error) => void = () => undefined;
+    const result = new Promise<T>((resolve, reject) => {
+      resolveResult = resolve;
+      rejectResult = reject;
+    });
+    const previousRequest = this.pendingRtdRequests.get(key);
+    if (previousRequest?.timeoutId) {
+      clearTimeout(previousRequest.timeoutId);
+    }
+    const request: PendingRtdRequest<T> = {
+      correlationId: options.correlationId,
+      rtdEventType: options.rtdEventType,
+      resolve: resolveResult,
+      reject: rejectResult,
+    };
+
+    request.timeoutId = setTimeout(() => {
+      this.removeRtdRequest<T>(options.rtdEventType, options.correlationId, (currentRequest) => {
+        currentRequest.reject(options.createTimeoutError());
+      });
+    }, options.timeoutMs);
+    this.pendingRtdRequests.set(key, request as PendingRtdRequest<unknown>);
+    const publishTimestamp = options.publishTimestamp ?? Date.now();
+    const acknowledgement = Promise.resolve()
+      .then(() =>
+        this.sendEvent(
+          options.agentId,
+          options.interactionId,
+          options.eventType,
+          options.eventName,
+          options.eventMetaData,
+          undefined,
+          undefined,
+          publishTimestamp,
+          options.timeout
+        )
+      )
+      .catch((error) => {
+        this.removeRtdRequest(options.rtdEventType, options.correlationId);
+        throw error;
+      });
+
+    const [payload] = await Promise.all([result, acknowledgement]);
+
+    return payload;
+  }
+
+  /** Resolves a pending request from a parsed RTD event. @internal */
+  public resolveFromRtdEvent<T>(
+    rtdEventType: string,
+    correlationId: string,
+    payload: T
+  ): 'resolved' | 'not-found' {
+    const request = this.removeRtdRequest<T>(rtdEventType, correlationId, (currentRequest) => {
+      currentRequest.resolve(payload);
+    });
+
+    return request ? 'resolved' : 'not-found';
+  }
+
+  /** Clears pending RTD requests when the RTD lifecycle ends. @internal */
+  public clearAllRtdRequests(): void {
+    Array.from(this.pendingRtdRequests.values()).forEach((request) => {
+      this.removeRtdRequest(request.rtdEventType, request.correlationId, (currentRequest) => {
+        currentRequest.reject(new Error('RTD request cleared'));
+      });
+    });
   }
 
   /**
@@ -89,7 +356,9 @@ export class ApiAIAssistant {
     eventName: AIAssistantEventName,
     eventMetaData?: Record<string, unknown>,
     languageCode?: string,
-    trackingId?: string
+    trackingId?: string,
+    publishTimestamp?: number,
+    timeout?: number
   ): Promise<Record<string, unknown>> {
     LoggerProxy.info('Sending event', {
       module: CC_FILE,
@@ -105,23 +374,26 @@ export class ApiAIAssistant {
     try {
       const baseUrl = this.getBaseUrl();
       const orgId = this.webex.credentials.getOrgId();
+      const data = {
+        ...eventMetaData,
+        interactionId,
+        actionTimeStamp: String(Date.now()),
+        languageCode,
+        trackingId,
+      };
       const response = (await this.webex.request({
         uri: `${baseUrl}${AI_ASSISTANT_API_URLS.EVENT}`,
         method: HTTP_METHODS.POST,
         addAuthHeader: true,
+        ...(timeout !== undefined ? {timeout} : {}),
         body: {
           agentId,
           orgId,
           eventType,
           eventName,
+          ...(publishTimestamp !== undefined ? {publishTimestamp} : {}),
           eventDetails: {
-            data: {
-              ...eventMetaData,
-              interactionId,
-              actionTimeStamp: String(Date.now()),
-              languageCode,
-              trackingId,
-            },
+            data,
           },
         },
       })) as IHttpResponse;
@@ -359,6 +631,18 @@ export class ApiAIAssistant {
     if (!this.aiFeature?.realtimeTranscripts?.enable) {
       const {error: detailedError} = getErrorDetails(
         new Error('REAL_TIME_TRANSCRIPTION_NOT_ENABLED'),
+        METHODS.FETCH_HISTORIC_TRANSCRIPTS,
+        CC_FILE
+      );
+      throw detailedError;
+    }
+
+    if (
+      !this.isValidTranscriptIdentifier(agentId) ||
+      !this.isValidTranscriptIdentifier(interactionId)
+    ) {
+      const {error: detailedError} = getErrorDetails(
+        new Error('INVALID_AGENT_ID_OR_INTERACTION_ID'),
         METHODS.FETCH_HISTORIC_TRANSCRIPTS,
         CC_FILE
       );

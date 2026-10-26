@@ -108,6 +108,7 @@ describe('plugin-mobiusSocket', () => {
         webex = new MockWebex();
 
         webex.internal.device.registered = true;
+        webex.internal.device.webSocketUrl = 'wss://mobius.webex.com';
         webex.internal.metrics.submitClientMetrics = sinon.stub();
         webex.trackingId = 'fakeTrackingId';
 

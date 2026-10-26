@@ -1,0 +1,590 @@
+{
+  "$schema": "./schemas/repo-context.schema.json",
+  "version": 1,
+  "repository": {
+    "name": "@webex/http-core",
+    "purpose": "Promise-based core HTTP client for the Cisco Webex JS SDK: request execution through an interceptor pipeline, interchangeable Node and browser transports, an HTTP status to error-class taxonomy, upload/download progress events, and buffer file-type detection."
+  },
+  "commands": {
+    "compile": "yarn workspace @webex/http-core build:src",
+    "unit-test": "yarn workspace @webex/http-core test:unit",
+    "integration-test": "yarn workspace @webex/http-core test:integration",
+    "browser-test": "yarn workspace @webex/http-core test:browser",
+    "lint": "yarn workspace @webex/http-core test:style",
+    "test-all": "yarn workspace @webex/http-core test",
+    "deploy": "yarn workspace @webex/http-core deploy:npm",
+    "build": "[NEEDS HUMAN INPUT] -- no committed command runs the build and its tests together; `build` delegates to `build:src` (compile only) and `test` chains the style/unit/integration/browser tiers without building. Absence confirmed by the repository owner during bootstrap."
+  },
+  "public_interfaces": [
+    {
+      "name": "@webex/http-core package exports",
+      "kind": "package_export",
+      "source": "src/index.js",
+      "entrypoints": [
+        "request",
+        "defaults",
+        "protoprepareFetchOptions",
+        "setTimingsAndFetch",
+        "Interceptor",
+        "HttpStatusInterceptor",
+        "HttpError",
+        "ProgressEvent",
+        "detect"
+      ],
+      "audience": "Other Webex JS SDK packages that make network calls",
+      "notes": "Verify names against src/index.js; the package ships no TypeScript declarations, so there is no generated API report to diff."
+    },
+    {
+      "name": "npm package entry points",
+      "kind": "package_export",
+      "source": "package.json",
+      "entrypoints": [
+        "dist/index.js (main)",
+        "src/index.js (devMain)",
+        "dist/request/request.shim.js (browser override)"
+      ],
+      "audience": "npm consumers and bundlers",
+      "notes": "The browser field substitutes the browser transport for the Node one at build time."
+    },
+    {
+      "name": "package scripts",
+      "kind": "npm_scripts",
+      "source": "package.json",
+      "entrypoints": [
+        "build",
+        "build:src",
+        "test",
+        "test:unit",
+        "test:integration",
+        "test:browser",
+        "test:style",
+        "deploy:npm"
+      ],
+      "audience": "Contributors and CI",
+      "notes": "Address each through the yarn workspace form, naming @webex/http-core and then the script key."
+    }
+  ],
+  "source_of_truth": [
+    {
+      "surface": "package export surface",
+      "paths": [
+        "src/index.js"
+      ],
+      "generated_artifacts": [],
+      "refresh_with": [
+        "yarn workspace @webex/http-core build:src"
+      ],
+      "validate_with": [
+        "yarn workspace @webex/http-core test:unit"
+      ]
+    },
+    {
+      "surface": "HTTP error taxonomy",
+      "paths": [
+        "src/http-error.js",
+        "src/http-error-subtypes.js"
+      ],
+      "generated_artifacts": [],
+      "refresh_with": [],
+      "validate_with": [
+        "yarn workspace @webex/http-core test:integration"
+      ]
+    },
+    {
+      "surface": "request pipeline and transports",
+      "paths": [
+        "src/request/index.js",
+        "src/request/utils.ts",
+        "src/request/request.js",
+        "src/request/request.shim.js"
+      ],
+      "generated_artifacts": [],
+      "refresh_with": [],
+      "validate_with": [
+        "yarn workspace @webex/http-core test:unit",
+        "yarn workspace @webex/http-core test:integration",
+        "yarn workspace @webex/http-core test:browser"
+      ]
+    },
+    {
+      "surface": "vendored XHR fork",
+      "paths": [
+        "src/lib/xhr.js"
+      ],
+      "generated_artifacts": [],
+      "refresh_with": [],
+      "validate_with": [
+        "yarn workspace @webex/http-core test:browser"
+      ]
+    },
+    {
+      "surface": "module and repository specifications",
+      "paths": [
+        "docs",
+        "src/docs/README.md",
+        "src/request/docs/README.md",
+        ".sdd/manifest.json"
+      ],
+      "generated_artifacts": [],
+      "refresh_with": [
+        "Run the Repo Annotation coverage-review skill from the active installation"
+      ],
+      "validate_with": [
+        "Run the Repo Annotation spec-validator skill from the active installation"
+      ]
+    }
+  ],
+  "generated_artifacts": [
+    {
+      "path": "dist",
+      "generated_from": "src",
+      "refresh_with": "yarn workspace @webex/http-core build:src"
+    },
+    {
+      "path": ".sdd/templates/repo-standards/template-map.json",
+      "generated_from": "WebexTools/repo-standards@d89a7fe59126ae3ad9bac9ca352aa7f12b4c85dc",
+      "refresh_with": "Run the Repo Annotation template setup from the active plugin installation to re-resolve the bundled Repo Standards snapshot"
+    }
+  ],
+  "validation_matrix": [
+    {
+      "paths": [
+        "src/**"
+      ],
+      "minimum": [
+        "yarn workspace @webex/http-core test:unit"
+      ],
+      "recommended": [
+        "yarn workspace @webex/http-core test:style",
+        "yarn workspace @webex/http-core test:integration"
+      ]
+    },
+    {
+      "paths": [
+        "src/request/request.js",
+        "src/request/request.shim.js"
+      ],
+      "minimum": [
+        "yarn workspace @webex/http-core test:unit"
+      ],
+      "recommended": [
+        "yarn workspace @webex/http-core test:integration",
+        "yarn workspace @webex/http-core test:browser"
+      ]
+    },
+    {
+      "paths": [
+        "src/lib/xhr.js"
+      ],
+      "minimum": [
+        "yarn workspace @webex/http-core test:browser"
+      ],
+      "recommended": [
+        "yarn workspace @webex/http-core test:integration"
+      ]
+    },
+    {
+      "paths": [
+        "package.json"
+      ],
+      "minimum": [
+        "yarn workspace @webex/http-core build:src"
+      ],
+      "recommended": [
+        "yarn workspace @webex/http-core test"
+      ]
+    }
+  ],
+  "change_impact": [
+    {
+      "paths": [
+        "src/request/request.js"
+      ],
+      "affects": [
+        "Node transport behavior only; the browser transport is a separate file"
+      ],
+      "refresh_with": [],
+      "validate_with": [
+        "yarn workspace @webex/http-core test:integration"
+      ],
+      "avoid_direct_edits": [
+        "dist/request/request.js"
+      ],
+      "notes": "Mirror the change in src/request/request.shim.js or the platforms diverge silently."
+    },
+    {
+      "paths": [
+        "src/request/request.shim.js"
+      ],
+      "affects": [
+        "Browser transport behavior only"
+      ],
+      "refresh_with": [],
+      "validate_with": [
+        "yarn workspace @webex/http-core test:browser"
+      ],
+      "avoid_direct_edits": [
+        "dist/request/request.shim.js"
+      ],
+      "notes": "Mirror the change in src/request/request.js or the platforms diverge silently."
+    },
+    {
+      "paths": [
+        "src/http-error-subtypes.js"
+      ],
+      "affects": [
+        "Every consuming package that branches on an HttpError subtype"
+      ],
+      "refresh_with": [],
+      "validate_with": [
+        "yarn workspace @webex/http-core test:integration"
+      ],
+      "avoid_direct_edits": [
+        "dist/http-error-subtypes.js"
+      ],
+      "notes": "Renaming or reparenting a subtype is a breaking change for consumers."
+    },
+    {
+      "paths": [
+        "src/index.js"
+      ],
+      "affects": [
+        "The published export surface consumed by six sibling workspace packages"
+      ],
+      "refresh_with": [
+        "yarn workspace @webex/http-core build:src"
+      ],
+      "validate_with": [
+        "yarn workspace @webex/http-core test:unit"
+      ],
+      "avoid_direct_edits": [
+        "dist/index.js"
+      ],
+      "notes": "No declaration file exists, so export changes are visible only by reading the source."
+    }
+  ],
+  "glossary": [
+    {
+      "term": "interceptor",
+      "definition": "An object with any of onRequest, onRequestError, onResponse, onResponseError, folded over each request in both directions.",
+      "notes": "Base class at src/lib/interceptor.js; the fold lives in src/request/utils.ts."
+    },
+    {
+      "term": "transport",
+      "definition": "The platform-specific function that performs network I/O.",
+      "notes": "One of src/request/request.js or src/request/request.shim.js, selected by the browser field in package.json."
+    },
+    {
+      "term": "statusCode 0",
+      "definition": "The package's normalized representation of a transport, network, or CORS failure.",
+      "notes": "Not an HTTP status; maps to NetworkOrCORSError."
+    },
+    {
+      "term": "subtype",
+      "definition": "An HttpError descendant selected from a status code by select().",
+      "notes": "An unmapped status falls back to the category default, such as 400 for an unmapped 4xx."
+    },
+    {
+      "term": "defaults()",
+      "definition": "A curried client factory that returns a new request function with the given options merged underneath per-call options.",
+      "notes": "Not an options object."
+    }
+  ],
+  "evidence_rules": [
+    {
+      "claim_category": "command_name",
+      "sources": [
+        "package.json"
+      ],
+      "requirement": "The script key must exist in package.json and must be addressed through the yarn workspace form naming @webex/http-core.",
+      "notes": "No command runs the build and its tests together."
+    },
+    {
+      "claim_category": "import_path",
+      "sources": [
+        "src"
+      ],
+      "requirement": "The file must exist under src/ as written, including its extension.",
+      "notes": "src/request/utils.ts is the only TypeScript source."
+    },
+    {
+      "claim_category": "behavior_claim",
+      "sources": [
+        "src",
+        "test"
+      ],
+      "requirement": "Cite a source file and, where one exists, a test that invokes or observes the behavior.",
+      "notes": "Commit history is not acceptable evidence for this repository."
+    },
+    {
+      "claim_category": "placeholder_token",
+      "sources": [
+        "src",
+        "package.json"
+      ],
+      "requirement": "Resolve every placeholder against a real repository value before emitting it.",
+      "notes": "Resolve against package.json or the source file; never emit a bracketed token."
+    }
+  ],
+  "negative_guidance": [
+    {
+      "rule": "Do not cite commit messages or pull requests as rationale.",
+      "why": "History for this path begins at the 2022 workspace migration while the code predates it, so it cannot explain why current behavior exists."
+    },
+    {
+      "rule": "Do not assume a 404 always fails.",
+      "why": "src/interceptors/http-status.js resolves two redirect body shapes as successes."
+    },
+    {
+      "rule": "Do not treat a resolved promise as a successful request.",
+      "why": "Transports resolve a statusCode 0 response for network failures instead of rejecting."
+    },
+    {
+      "rule": "Do not change one transport without the other.",
+      "why": "package.json swaps them at build time, so divergence is invisible on the platform you are testing."
+    },
+    {
+      "rule": "Do not infer a coverage threshold for this package.",
+      "why": "The repository owner confirmed no coverage gate applies; the shared Jest config sets collectCoverage false."
+    },
+    {
+      "rule": "Do not reformat src/lib/xhr.js to repository style.",
+      "why": "It is a vendored fork deliberately held close to upstream, with a whole-file eslint-disable."
+    }
+  ],
+  "confidence_policy": {
+    "high": {
+      "action": "update",
+      "expectation": "A source file and a test both support the claim."
+    },
+    "medium": {
+      "action": "narrow-scope",
+      "expectation": "Source supports the claim but no test does; state the gap rather than implying coverage."
+    },
+    "low": {
+      "action": "noop",
+      "expectation": "Neither source nor tests settle it; record a gap and ask rather than inferring."
+    }
+  },
+  "repository_topology": {
+    "main_entrypoints": [
+      {
+        "name": "package entry",
+        "path": "src/index.js",
+        "purpose": "Builds the exported clients and re-exports the public surface.",
+        "notes": "Published as dist/index.js."
+      },
+      {
+        "name": "request pipeline",
+        "path": "src/request/index.js",
+        "purpose": "Applies interceptors around a transport.",
+        "notes": "Internal to the package."
+      }
+    ],
+    "workspace_packages": [
+      {
+        "name": "@webex/http-core",
+        "paths": [
+          "."
+        ],
+        "notes": "One workspace member of the webex-js-sdk monorepo; onboarded standalone."
+      }
+    ],
+    "source_surfaces": [
+      {
+        "name": "package surface",
+        "paths": [
+          "src/index.js",
+          "src/http-error.js",
+          "src/http-error-subtypes.js",
+          "src/progress-event.js",
+          "src/lib"
+        ],
+        "notes": "Specified at src/docs/README.md."
+      },
+      {
+        "name": "request pipeline",
+        "paths": [
+          "src/request"
+        ],
+        "notes": "Specified at src/request/docs/README.md."
+      },
+      {
+        "name": "tests",
+        "paths": [
+          "test/unit",
+          "test/integration"
+        ],
+        "notes": "Unit runs on Jest; integration runs on Mocha and, via Karma, in a browser."
+      }
+    ],
+    "generated_surfaces": [
+      {
+        "name": "build output",
+        "paths": [
+          "dist"
+        ],
+        "generated_from": "src",
+        "refresh_with": "yarn workspace @webex/http-core build:src",
+        "notes": "Not committed; do not edit."
+      },
+      {
+        "name": "Repo Standards template snapshot",
+        "paths": [
+          ".sdd/templates/repo-standards"
+        ],
+        "generated_from": "WebexTools/repo-standards@d89a7fe59126ae3ad9bac9ca352aa7f12b4c85dc",
+        "refresh_with": "Run the Repo Annotation template setup from the active plugin installation to re-resolve the bundled Repo Standards snapshot",
+        "notes": "Bundled, checksum-verified snapshot resolved by Repo Annotation setup. Authoring templates stay hidden here and are never published into docs/."
+      }
+    ],
+    "sync_paths": [
+      {
+        "source": "src/request/request.js",
+        "targets": [
+          "src/request/request.shim.js"
+        ],
+        "mechanism": "Manual; the browser field in package.json selects between them at build time.",
+        "notes": "Behavioral parity between the two transports is this package's primary constraint."
+      },
+      {
+        "source": "WebexTools/repo-standards@d89a7fe59126ae3ad9bac9ca352aa7f12b4c85dc",
+        "targets": [
+          ".sdd/templates/repo-standards"
+        ],
+        "mechanism": "Run the Repo Annotation template setup from the active plugin installation to re-resolve the bundled Repo Standards snapshot",
+        "notes": "One-way: the upstream snapshot is resolved into the target. Local edits to the snapshot are overwritten on the next resolve."
+      }
+    ],
+    "validation_entrypoints": [
+      {
+        "name": "unit",
+        "command": "yarn workspace @webex/http-core test:unit",
+        "scope": "test/unit on Jest",
+        "notes": "Self-contained; no external dependencies."
+      },
+      {
+        "name": "integration",
+        "command": "yarn workspace @webex/http-core test:integration",
+        "scope": "test/integration on Mocha",
+        "notes": "Needs a local fixture server and provisioned Webex test users."
+      },
+      {
+        "name": "browser",
+        "command": "yarn workspace @webex/http-core test:browser",
+        "scope": "test/integration on Karma",
+        "notes": "Exercises the browser transport."
+      },
+      {
+        "name": "lint",
+        "command": "yarn workspace @webex/http-core test:style",
+        "scope": "eslint over src",
+        "notes": "src/lib/xhr.js is intentionally exempt."
+      }
+    ]
+  },
+  "folder_readme_contract": {
+    "required_sections": [
+      "purpose and boundary",
+      "structure and key files",
+      "public surface",
+      "verification"
+    ],
+    "rules": [
+      "Orient before detailing: say what the module owns and what it does not before describing internals.",
+      "Cite a repository-relative file path for every claim.",
+      "Keep behavior owned by a sub-module in that sub-module's document and reference it by contract."
+    ],
+    "example_policy": "Include an example only when it is copied from a test or source file that exists.",
+    "fallback": "When neither source nor tests settle a question, record it as a gap instead of writing prose that implies coverage."
+  },
+  "regression_feedback_rules": [
+    {
+      "trigger": "A defect appears on one platform because only one transport was changed.",
+      "required_followups": [
+        "Mirror the fix in the sibling transport",
+        "Add a test on the previously uncovered side",
+        "Record the parity requirement in src/request/docs/README.md"
+      ],
+      "notes": "This is the package's most likely defect class."
+    },
+    {
+      "trigger": "A consumer breaks on an HttpError subtype change.",
+      "required_followups": [
+        "Restore the subtype name and parent",
+        "Add a regression test in test/integration/spec/http-error.js",
+        "Treat the change as breaking in release notes"
+      ],
+      "notes": "Subtype identity is a published contract."
+    }
+  ],
+  "surface_owners": [
+    {
+      "surface": "package export surface",
+      "owner": "Cisco Webex for Developers",
+      "edit_boundary": "src/index.js and the files it re-exports; changes are breaking for six sibling packages."
+    },
+    {
+      "surface": "request pipeline and transports",
+      "owner": "Cisco Webex for Developers",
+      "edit_boundary": "src/request; both transports must change together."
+    },
+    {
+      "surface": "vendored XHR fork",
+      "owner": "Upstream naugtur/xhr, vendored",
+      "edit_boundary": "src/lib/xhr.js; port upstream changes as discrete diffs and do not reformat."
+    },
+    {
+      "surface": "shared build, lint, and test configuration",
+      "owner": "webex-js-sdk workspace",
+      "edit_boundary": "Change upstream in the workspace config packages, not in the local passthrough files."
+    }
+  ],
+  "do_not_edit": [
+    "dist",
+    "node_modules",
+    ".generated"
+  ],
+  "marker_scopes": {
+    "sdd-generated": [
+      "AGENTS.md",
+      "docs",
+      "src/docs/README.md",
+      "src/request/docs/README.md"
+    ]
+  },
+  "fallback_rules": [
+    "When a command is not in package.json, stop and ask rather than inventing one.",
+    "When only one transport's behavior is known, state the platform explicitly instead of generalizing.",
+    "When rationale is not in the code or tests, record a gap; commit history is not a substitute.",
+    "When a change touches both transports, run the unit, integration, and browser tiers before reporting done."
+  ],
+  "downstream_context_pack": {
+    "required_human_surfaces": [
+      "AGENTS.md",
+      "docs/index.md",
+      "docs/architecture.md",
+      "docs/specs/README.md",
+      "src/docs/README.md",
+      "src/request/docs/README.md"
+    ],
+    "required_agent_operational_surfaces": [
+      "commands",
+      "validation_matrix",
+      "change_impact",
+      "negative_guidance"
+    ],
+    "required_machine_readable_surface": ".sdd/manifest.json",
+    "recommended_machine_readable_sections": [
+      "public_interfaces",
+      "change_impact",
+      "glossary",
+      "evidence_rules",
+      "negative_guidance",
+      "confidence_policy",
+      "repository_topology",
+      "folder_readme_contract",
+      "regression_feedback_rules"
+    ]
+  }
+}

@@ -1,0 +1,350 @@
+{
+  "manifest_version": 1,
+  "repository": {
+    "name": "@webex/media-helpers",
+    "purpose": "Wraps internal-media-core local media streams with Webex server-mute authority and unmute gating, and re-exports the media and effects surface as one published SDK entry point.",
+    "category": "cat2-legacy",
+    "primary_languages": [
+      "typescript"
+    ]
+  },
+  "topology": "Single-repo",
+  "commands": {
+    "install": {
+      "command": "yarn install",
+      "source_file": "package.json",
+      "role": "install"
+    },
+    "clone": {
+      "command": "git clone https://github.com/webex/webex-js-sdk.git",
+      "source_file": "package.json",
+      "role": "other"
+    },
+    "compile": {
+      "command": "yarn workspace @webex/media-helpers build",
+      "source_file": "package.json",
+      "role": "compile"
+    },
+    "unit-test": {
+      "command": "yarn workspace @webex/media-helpers test:unit",
+      "source_file": "package.json",
+      "role": "unit-test"
+    },
+    "build": "[NEEDS HUMAN INPUT] -- no runnable full build-with-tests command exists. The only aggregate, `test:broken` in package.json, chains `yarn test:integration`, which this package does not define, and no test/integration directory exists; the package owners confirmed leaving this unresolved rather than recording a failing command.",
+    "package": {
+      "command": "yarn workspace @webex/media-helpers build:src",
+      "source_file": "package.json",
+      "role": "package"
+    },
+    "lint": {
+      "command": "yarn workspace @webex/media-helpers test:style",
+      "source_file": "package.json",
+      "role": "lint"
+    }
+  },
+  "toolchain": [
+    {
+      "name": "node",
+      "version": ">=18",
+      "origin": "repo-config",
+      "source_file": "package.json"
+    },
+    {
+      "name": "yarn",
+      "version": "3.4.1",
+      "origin": "human-declared",
+      "declared_by": "rarajes2@cisco.com via bootstrap questionnaire; the monorepo root package.json pins packageManager yarn@3.4.1, which is outside this SDD root so it cannot be cited as a repo-config source_file here"
+    }
+  ],
+  "tests": {
+    "unit": {
+      "command_ref": "unit-test",
+      "dir": "test/unit/spec",
+      "framework": "jest"
+    }
+  },
+  "quality_gates": {
+    "code_coverage": {
+      "origin": "none",
+      "declared_by": "rarajes2@cisco.com via bootstrap questionnaire; verified absent because the inherited @webex/jest-config-legacy preset sets collectCoverage false and declares no coverageThreshold, and the package is not registered in the root jest projects list"
+    }
+  },
+  "coverage_status_definitions": {
+    "specced": ">=80% public surface specced, drift <5% — spec is authoritative",
+    "partial": "40-80% specced — spec is a hint, cross-check code",
+    "untracked": "<40% specced — code is the source of truth"
+  },
+  "spec_source_policy": {
+    "mode": "reconcile",
+    "migrated_source_disposition": "retain",
+    "disposition_decided_by": "rarajes2@cisco.com",
+    "disposition_decided_at": "2026-09-29T13:33:21Z",
+    "decided_by": "rarajes2@cisco.com",
+    "decided_at": "2026-09-29T13:33:21Z",
+    "decision_record": ".generated/sdd/spec-source-policy/decision.md"
+  },
+  "spec_sources": [
+    {
+      "path": "README.md",
+      "scope": "module",
+      "module": "src/",
+      "role": "source-material",
+      "canonical": false,
+      "use_by_agents": "source-for-reconciliation",
+      "canonical_target": "docs/README.md",
+      "post_migration_action": "retain",
+      "deletion_status": "not-applicable",
+      "notes": "Published npm landing page. Reconciled into the canonical module spec by meaning and retained in place unchanged by explicit owner decision; its effects-ownership claim is recorded as stale against src/index.ts."
+    },
+    {
+      "path": "src/index.ts",
+      "scope": "reference",
+      "role": "reference-only",
+      "canonical": false,
+      "use_by_agents": "context-only",
+      "post_migration_action": "retain",
+      "deletion_status": "not-applicable",
+      "notes": "Ecosystem-native API artifact for the published SDK surface. Remains the exact declaration source linked from the architecture contract index and the module spec Public surface; never copied into Markdown."
+    },
+    {
+      "path": "package.json",
+      "scope": "reference",
+      "role": "reference-only",
+      "canonical": false,
+      "use_by_agents": "context-only",
+      "post_migration_action": "retain",
+      "deletion_status": "not-applicable",
+      "notes": "Package manifest evidencing publication intent, command roles, and pinned dependency versions."
+    }
+  ],
+  "modules": [
+    {
+      "path": "src/",
+      "coverage_status": "Partial",
+      "coverage_evidence": "Assessed 2026-09-29: 15 of 15 mandatory fields present (100%), critical field coverage 100%, zero measured drift against 2d71fd7479, with generated-doc conformance and source-fidelity both passing. Held at Partial rather than promoted because the PR-churn half of the Partial-to-Specced rule needs commit history, which is excluded from evidence for this repository, and independent semantic validation has not yet run.",
+      "canonical_spec": "docs/README.md",
+      "contracts": {
+        "provides": [
+          "media-helpers-sdk",
+          "media-helpers-server-mute-internal"
+        ],
+        "requires": [
+          "internal-media-core-sdk",
+          "web-media-effects-sdk",
+          "ts-events-sdk"
+        ]
+      },
+      "characterization_baseline": "test/unit/spec/webrtc-core.js",
+      "last_assessed": "2026-09-29",
+      "section_profile": {
+        "has_ui": false,
+        "crosses_service_boundaries": false,
+        "enforces_domain_rules": true,
+        "is_concurrent_async": true,
+        "owns_persistence": false,
+        "returns_caller_errors": true,
+        "has_design_tradeoff": true,
+        "stateful_transitions": true,
+        "exposes_wire_protocol": false,
+        "ui_multi_screen": false,
+        "large_data_model": false,
+        "has_tiers": false,
+        "module_specific_conventions": true,
+        "published_package": true,
+        "embedded_in_host": false,
+        "holds_client_state": true,
+        "has_submodules": false,
+        "has_submodules_computed_by": "scripts/module_tree.py",
+        "has_submodules_computed_at": "2026-09-29T13:41:00Z",
+        "resolved_by": "claude-code/claude-opus-5 (host metadata; bootstrap questionnaire)",
+        "resolved_at": "2026-09-29T13:33:21Z"
+      },
+      "source_policy": {
+        "mode": "reconcile",
+        "existing_sources": [
+          "README.md"
+        ],
+        "conflict_status": "resolved",
+        "decision_record": ".generated/sdd/spec-source-policy/decision.md"
+      }
+    }
+  ],
+  "contract_catalog": {
+    "index_path": "docs/architecture.md",
+    "definitions": {
+      "media-helpers-sdk": {
+        "kind": "sdk",
+        "publication": "published",
+        "source_kind": "repository-path",
+        "source": "package.json",
+        "summary": "Published npm package surface declared by package.json (main dist/index.js, types emitted by build:src). Exports local and remote stream classes, stream factory functions, camera constraint presets, and the re-exported media-effects surface; the exact export list is src/index.ts."
+      },
+      "media-helpers-server-mute-internal": {
+        "kind": "sdk",
+        "publication": "internal",
+        "source_kind": "repository-path",
+        "source": "src/webrtc-core.ts",
+        "summary": "Internal server-mute control pair setUnmuteAllowed and setServerMuted, marked @internal and stripped from published declarations by the stripInternal compiler option, consumed in-repo by @webex/plugin-meetings."
+      },
+      "internal-media-core-sdk": {
+        "kind": "sdk",
+        "publication": "published",
+        "source_kind": "external",
+        "source": "https://www.npmjs.com/package/@webex/internal-media-core/v/2.30.1",
+        "summary": "Upstream local and remote stream base classes and capture factories that this package subclasses and delegates to."
+      },
+      "web-media-effects-sdk": {
+        "kind": "sdk",
+        "publication": "published",
+        "source_kind": "external",
+        "source": "https://www.npmjs.com/package/@webex/web-media-effects/v/2.37.0",
+        "summary": "Upstream virtual-background and noise-reduction effects re-exported unchanged through this package's entry point."
+      },
+      "ts-events-sdk": {
+        "kind": "sdk",
+        "publication": "published",
+        "source_kind": "external",
+        "source": "https://www.npmjs.com/package/@webex/ts-events",
+        "summary": "Typed event primitives AddEvents, TypedEvent, and WithEventsDummyType used to add the server-mute event to the stream classes."
+      }
+    }
+  },
+  "spec_policy": {
+    "require_what_and_why": true,
+    "require_provenance": true,
+    "protected_specs": [
+      "docs/README.md"
+    ]
+  },
+  "validation": {
+    "generator_runtime": "claude-code",
+    "generator_model": "claude-opus-5",
+    "generator_runtime_source": "host-metadata",
+    "minimum_independence": "different-runtime",
+    "blocking_severities": [
+      "Blocking"
+    ],
+    "generator_run_id": "bootstrap-2026-09-29T133321Z",
+    "validator_runtime": "01a0f0b1-d33c-7342-b65e-bbf7ec027c99",
+    "validator_runtime_source": "invocation-input",
+    "runtime_fallback_tier": "different-runtime"
+  },
+  "layout": {
+    "sdd_root": ".sdd",
+    "docs_root": "docs",
+    "agent_entry_path": "AGENTS.md",
+    "standing_docs_root": "docs",
+    "spec_index_path": "docs/specs/README.md",
+    "module_docs_strategy": "existing-convention",
+    "module_docs_relative_path": "docs/README.md",
+    "module_docs_decision": {
+      "basis": "questionnaire",
+      "reason": "The confirmed boundary is the whole package, whose code lives under src/. The package spec is published at the package documentation entry point docs/README.md rather than src/docs/README.md, because the monorepo .gitignore rule packages/**/docs/ was negated only for the package-level docs directory and a spec nested under src/ would remain untracked. Owner confirmed the single-module boundary and that README.md stays at the package root.",
+      "decided_by": "rarajes2@cisco.com (bootstrap questionnaire)",
+      "decided_at": "2026-09-29T13:33:21Z"
+    },
+    "repo_context_decision": {
+      "path": ".repo-context.json",
+      "schema_path": "schemas/repo-context.schema.json",
+      "action": "create",
+      "schema_action": "create",
+      "reason": "No repository operational-context manifest or schema exists in this package; both are created from verified repository evidence without changing any existing file.",
+      "decided_by": "claude-code (bootstrap questionnaire)",
+      "decided_at": "2026-09-29T13:33:21Z"
+    },
+    "artifact_decisions": [
+      {
+        "path": "docs/service.md",
+        "action": "omit",
+        "reason": "The package is a published library with no deployable service: no Dockerfile, k8s manifest, process entry point, or runtime configuration exists.",
+        "decided_by": "claude-code (bootstrap questionnaire)",
+        "decided_at": "2026-09-29T13:33:21Z"
+      },
+      {
+        "path": "mkdocs.yml",
+        "action": "omit",
+        "reason": "The repository publishes API documentation with documentation.js through the root documentation/config.yml; no MkDocs workflow exists.",
+        "decided_by": "claude-code (bootstrap questionnaire)",
+        "decided_at": "2026-09-29T13:33:21Z"
+      },
+      {
+        "path": "api-specs/openapi.yaml",
+        "action": "omit",
+        "reason": "The package exposes a published SDK surface and owns no HTTP surface, so it retains its ecosystem-native API artifact instead of an OpenAPI document.",
+        "decided_by": "claude-code (bootstrap questionnaire)",
+        "decided_at": "2026-09-29T13:33:21Z"
+      },
+      {
+        "path": "SECURITY.md",
+        "action": "omit",
+        "reason": "Security policy is owned at the monorepo level rather than per workspace package; no package-level policy exists and none was selected.",
+        "decided_by": "rarajes2@cisco.com (bootstrap questionnaire)",
+        "decided_at": "2026-09-29T13:33:21Z"
+      },
+      {
+        "path": "CONTRIBUTING.md",
+        "action": "omit",
+        "reason": "Contribution instructions are owned at the monorepo root, which the package README already links to.",
+        "decided_by": "claude-code (bootstrap questionnaire)",
+        "decided_at": "2026-09-29T13:33:21Z"
+      },
+      {
+        "path": "CHANGELOG.md",
+        "action": "omit",
+        "reason": "Releases and changelog generation are driven at the monorepo root by standard-version; the package keeps no separate changelog.",
+        "decided_by": "claude-code (bootstrap questionnaire)",
+        "decided_at": "2026-09-29T13:33:21Z"
+      },
+      {
+        "path": "CTO_CHECKLIST.yml",
+        "action": "omit",
+        "reason": "The CTO readiness workflow targets deployable services; this package is a published library.",
+        "decided_by": "claude-code (bootstrap questionnaire)",
+        "decided_at": "2026-09-29T13:33:21Z"
+      },
+      {
+        "path": "schemas/cto-checklist.schema.json",
+        "action": "omit",
+        "reason": "Omitted together with CTO_CHECKLIST.yml, which the two artifacts require.",
+        "decided_by": "claude-code (bootstrap questionnaire)",
+        "decided_at": "2026-09-29T13:33:21Z"
+      }
+    ],
+    "template_roots": {
+      "canonical": ".sdd/templates/repo-standards"
+    },
+    "contract_index_path": "docs/architecture.md",
+    "repo_skills_root": ".sdd/skills",
+    "module_docs_root": "docs"
+  },
+  "substrate": {
+    "source": "WebexTools/repo-standards",
+    "consumed": [
+      "lint/format configs (@webex/eslint-config-legacy)",
+      "babel and jest presets (@webex/babel-config-legacy, @webex/jest-config-legacy)",
+      "monorepo governance files (root CONTRIBUTING.md, LICENSE, CODEOWNERS)"
+    ],
+    "compliance_tier": "baseline"
+  },
+  "section_profiles": {
+    "repo": {
+      "owns_datastore": false,
+      "holds_client_state": true,
+      "components_interact": false,
+      "domain_data_across_components": false,
+      "caches_data": false,
+      "observability_convention": false,
+      "deploys_to_infra": false,
+      "shared_base_libs": true,
+      "is_monorepo": false,
+      "multi_platform": false,
+      "published_package": true,
+      "embedded_in_host": false,
+      "cross_repo_deps_material": true,
+      "security_arch_warranted": false,
+      "exposes_commands_or_artifacts": true
+    },
+    "resolved_by": "claude-code/claude-opus-5 (host metadata; bootstrap questionnaire)",
+    "resolved_at": "2026-09-29T13:33:21Z"
+  }
+}

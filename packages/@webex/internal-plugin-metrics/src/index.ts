@@ -2,6 +2,8 @@
  * Copyright (c) 2015-2020 Cisco Systems, Inc. See LICENSE file.
  */
 
+/* eslint-disable valid-jsdoc */
+
 import {registerInternalPlugin} from '@webex/webex-core';
 
 import Metrics from './metrics';
@@ -21,6 +23,7 @@ import {
   PreComputedLatencies,
   SubmitFeatureEvent,
   LocusSyncLatencyEventName,
+  PrivacyAndSecurityPermission,
 } from './metrics.types';
 import * as CALL_DIAGNOSTIC_CONFIG from './call-diagnostic/config';
 import * as CallDiagnosticUtils from './call-diagnostic/call-diagnostic-metrics.util';
@@ -34,6 +37,13 @@ import PreLoginMetrics from './prelogin-metrics';
 
 registerInternalPlugin('metrics', Metrics, {
   config,
+  /**
+   * Stops network telemetry before SDK logout.
+   * @returns
+   */
+  onBeforeLogout() {
+    return this.stopNetworkTelemetry();
+  },
 });
 
 registerInternalPlugin('newMetrics', NewMetrics, {
@@ -70,4 +80,5 @@ export type {
   PreComputedLatencies,
   SubmitFeatureEvent,
   LocusSyncLatencyEventName,
+  PrivacyAndSecurityPermission,
 };

@@ -48,7 +48,39 @@ export const SCIM_ENTERPRISE_USER = 'urn:ietf:params:scim:schemas:extension:ente
 export const WEBEX_API_PROD = 'https://webexapis.com';
 export const WEBEX_API_BTS = 'https://integration.webexapis.com';
 export const WEBEX_API_FEDRAMP = 'https://api-usgov.webex.com';
+
+/**
+ * Trusted domain suffixes for Mobius WSS connections (AC-2).
+ *
+ * A bearer token may only be transmitted over a WSS socket whose hostname
+ * ends with one of these domains.  The list covers primary/backup Mobius
+ * infrastructure, the Webex API gateway, and FedRAMP variants.
+ */
+export const MOBIUS_WSS_ALLOWED_DOMAINS: readonly string[] = [
+  'webex.com',
+  'wbx2.com',
+  'webexapis.com',
+  'cisco.com',
+];
+
 export const WEBEX_API_CONFIG_INT_URL = `${WEBEX_API_BTS}/v1/uc/config`;
 export const WEBEX_API_CONFIG_PROD_URL = `${WEBEX_API_PROD}/v1/uc/config`;
 export const WEBEX_API_CONFIG_FEDRAMP_URL = `${WEBEX_API_FEDRAMP}/v1/uc/config`;
 export const METHOD_START_MESSAGE = 'invoking';
+/* Maximum number of host ip addresses accepted by the Mobius API. */
+export const MAX_HOST_IPS = 10;
+/* Address used in place of an IPv4 candidate when an SDP carries none. */
+export const IPV4_FALLBACK_ADDRESS = '192.1.1.1';
+/*
+ * Matches the host candidate lines of an SDP, which carry the address in their fifth field:
+ * a=candidate:<foundation> <component> <transport> <priority> <address> <port> typ host ...
+ */
+export const SDP_HOST_CANDIDATE_REGEX = /^a=candidate:\S+ \d+ \S+ \d+ \S+ \d+ typ host[^\r\n]*/gim;
+export const CANDIDATE_ADDRESS_INDEX = 4;
+/*
+ * Addresses that identify no local interface the server could correlate against.
+ * IPV4_FALLBACK_ADDRESS is one of them because modifySdpForIPv4 synthesises a candidate with it
+ * when an SDP carries no IPv4 candidate, so it can appear as a host candidate of an offer
+ * without belonging to any interface of this client.
+ */
+export const EXCLUDED_HOST_IPS = ['0.0.0.0', '::', '127.0.0.1', '::1', IPV4_FALLBACK_ADDRESS];

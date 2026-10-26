@@ -288,10 +288,24 @@ describe('CallingClient Tests', () => {
 
   describe('Mobius Server discovery tests', () => {
     let callingClient;
+    const defaultMobiusServiceUrl = webex.internal.services._serviceUrls.mobius;
+    const usMobiusServiceLink = 'https://mobius-us-east-1.prod.infra.webex.com/api/v1';
+    const usRegionPayload = {
+      statusCode: 200,
+      body: {
+        ...regionBody,
+        clientRegion: 'US-EAST',
+        countryCode: 'US',
+        regionCode: 'US-EAST',
+      },
+    };
+    const networkBlockedPayload = {statusCode: 500};
 
     afterEach(() => {
       jest.clearAllTimers();
       jest.clearAllMocks();
+      webex.internal.services._serviceUrls.mobius = defaultMobiusServiceUrl;
+      webex.internal.services.getMobiusClusters = jest.fn().mockReturnValue(mockUSServiceHosts);
       callingClient.removeAllListeners();
       callManager.removeAllListeners();
       callingClient = undefined;
@@ -388,6 +402,144 @@ describe('CallingClient Tests', () => {
       });
 
       expect(handleErrorSpy).not.toHaveBeenCalled();
+    });
+
+    it('US account connects using the U2C serviceLinks mobius URL and does not query catalog clusters', async () => {
+      webex.internal.services._serviceUrls.mobius = usMobiusServiceLink;
+      webex.internal.services.getMobiusClusters = jest.fn().mockReturnValue(mockUSServiceHosts);
+
+      webex.request.mockResolvedValueOnce(usRegionPayload).mockResolvedValueOnce(discoveryPayload);
+
+      callingClient = await createClient(webex, {logger: {level: LOGGER.INFO}});
+
+      expect(webex.request).toBeCalledTimes(2);
+      expect(callingClient['mobiusHost']).toBe(usMobiusServiceLink);
+      expect(webex.request).nthCalledWith(2, {
+        method: 'GET',
+        ...getMockRequestTemplate(),
+        uri: `${usMobiusServiceLink}${URL_ENDPOINT}?regionCode=US-EAST&countryCode=US`,
+      });
+
+      const requestedUris = webex.request.mock.calls.map(([{uri}]) => uri);
+      expect(requestedUris.some((uri) => uri?.includes('mobius-eu-central-1'))).toBe(false);
+      expect(requestedUris.some((uri) => uri?.includes('mobius-ca-central-1'))).toBe(false);
+      expect(callingClient.primaryMobiusUris).toEqual([primaryUrl]);
+    });
+
+    it('SDK config for a different region still uses the U2C mobius link as host and connects to the config cluster', async () => {
+      webex.internal.services._serviceUrls.mobius = usMobiusServiceLink;
+      webex.internal.services.getMobiusClusters = jest.fn().mockReturnValue(mockUSServiceHosts);
+
+      const euDiscoveryPayload = {
+        statusCode: 200,
+        body: {
+          primary: {
+            region: 'EU-CENTRAL',
+            uris: ['https://mobius-fra.webex.com/api/v1'],
+          },
+          backup: {
+            region: 'EU-WEST',
+            uris: ['https://mobius-lon.webex.com/api/v1'],
+          },
+        },
+      };
+
+      webex.request.mockResolvedValueOnce(euDiscoveryPayload);
+
+      callingClient = await createClient(webex, {
+        discovery: {
+          region: 'EU-CENTRAL',
+          country: 'DE',
+        },
+        logger: {level: LOGGER.INFO},
+      });
+
+      expect(webex.request).toBeCalledOnceWith({
+        method: 'GET',
+        ...getMockRequestTemplate(),
+        uri: `${usMobiusServiceLink}${URL_ENDPOINT}?regionCode=EU-CENTRAL&countryCode=DE`,
+      });
+      expect(callingClient['mobiusHost']).toBe(usMobiusServiceLink);
+      expect(callingClient.primaryMobiusUris).toEqual([
+        'https://mobius-fra.webex.com/api/v1/calling/web/',
+      ]);
+      expect(handleErrorSpy).not.toHaveBeenCalled();
+    });
+
+    it('when the U2C service link has no region, discovery uses SDK config region and country', async () => {
+      const regionlessServiceLink = 'https://mobius.webex.com/api/v1';
+      webex.internal.services._serviceUrls.mobius = regionlessServiceLink;
+      webex.internal.services.getMobiusClusters = jest.fn().mockReturnValue(mockUSServiceHosts);
+
+      const apDiscoveryPayload = {
+        statusCode: 200,
+        body: {
+          primary: {
+            region: 'AP-SOUTHEAST',
+            uris: ['https://mobius-sin.webex.com/api/v1'],
+          },
+          backup: {
+            region: 'AP-NORTHEAST',
+            uris: ['https://mobius-nrt.webex.com/api/v1'],
+          },
+        },
+      };
+
+      webex.request.mockResolvedValueOnce(apDiscoveryPayload);
+
+      callingClient = await createClient(webex, {
+        discovery: {
+          region: 'AP-SOUTHEAST',
+          country: 'SG',
+        },
+        logger: {level: LOGGER.INFO},
+      });
+
+      const requestedUris = webex.request.mock.calls.map(([{uri}]) => uri);
+      expect(requestedUris.some((uri) => uri?.includes(DISCOVERY_URL))).toBe(false);
+      expect(webex.request).toBeCalledOnceWith({
+        method: 'GET',
+        ...getMockRequestTemplate(),
+        uri: `${regionlessServiceLink}${URL_ENDPOINT}?regionCode=AP-SOUTHEAST&countryCode=SG`,
+      });
+      expect(callingClient['mobiusHost']).toBe(regionlessServiceLink);
+      expect(callingClient.primaryMobiusUris).toEqual([
+        'https://mobius-sin.webex.com/api/v1/calling/web/',
+      ]);
+    });
+
+    it('when the primary U2C mobius link is blocked, discovery walks remaining catalog clusters', async () => {
+      webex.internal.services._serviceUrls.mobius = usMobiusServiceLink;
+      webex.internal.services.getMobiusClusters = jest.fn().mockReturnValue(mockUSServiceHosts);
+
+      webex.request
+        .mockResolvedValueOnce(usRegionPayload)
+        .mockRejectedValueOnce(networkBlockedPayload)
+        .mockRejectedValueOnce(networkBlockedPayload)
+        .mockResolvedValueOnce(discoveryPayload);
+
+      callingClient = await createClient(webex, {logger: {level: LOGGER.INFO}});
+
+      expect(webex.request).toBeCalledTimes(4);
+      expect(webex.request).nthCalledWith(2, {
+        method: 'GET',
+        ...getMockRequestTemplate(),
+        uri: `${usMobiusServiceLink}${URL_ENDPOINT}?regionCode=US-EAST&countryCode=US`,
+      });
+      expect(webex.request).nthCalledWith(3, {
+        method: 'GET',
+        ...getMockRequestTemplate(),
+        uri: `https://mobius-ca-central-1.prod.infra.webex.com/api/v1${URL_ENDPOINT}?regionCode=US-EAST&countryCode=US`,
+      });
+      expect(webex.request).nthCalledWith(4, {
+        method: 'GET',
+        ...getMockRequestTemplate(),
+        uri: `https://mobius-eu-central-1.prod.infra.webex.com/api/v1${URL_ENDPOINT}?regionCode=US-EAST&countryCode=US`,
+      });
+      expect(callingClient['mobiusHost']).toBe(
+        'https://mobius-eu-central-1.prod.infra.webex.com/api/v1'
+      );
+      expect(callingClient.primaryMobiusUris).toEqual([primaryUrl]);
     });
   });
 

@@ -28,8 +28,9 @@
     ]
   },
   "scripts": {
-    "build": "yarn run -T tsc --declaration true --declarationDir ./dist/types",
+    "build": "yarn run -T tsc --declaration true --declarationDir ./dist/types && yarn build:assets",
     "build:src": "webex-legacy-tools build -dest \"./dist\" -src \"./src\" -js -ts -maps && yarn build",
+    "build:assets": "node ../../../scripts/copy-plugin-assets.js",
     "deploy:npm": "yarn npm publish",
     "test:broken": "yarn test:style && yarn test:unit && yarn test:integration && yarn test:browser",
     "test:browser": "webex-legacy-tools test --integration --runner karma",
@@ -62,9 +63,10 @@
   "dependencies": {
     "@webex/common": "workspace:*",
     "@webex/event-dictionary-ts": "^1.0.2215",
-    "@webex/internal-media-core": "2.28.2",
+    "@webex/internal-media-core": "2.32.1",
     "@webex/internal-plugin-conversation": "workspace:*",
     "@webex/internal-plugin-device": "workspace:*",
+    "@webex/internal-plugin-identity": "workspace:*",
     "@webex/internal-plugin-llm": "workspace:*",
     "@webex/internal-plugin-mercury": "workspace:*",
     "@webex/internal-plugin-metrics": "workspace:*",
@@ -75,7 +77,7 @@
     "@webex/plugin-people": "workspace:*",
     "@webex/plugin-rooms": "workspace:*",
     "@webex/ts-sdp": "^1.8.1",
-    "@webex/web-capabilities": "^1.12.0",
+    "@webex/web-capabilities": "^1.13.1",
     "@webex/webex-core": "workspace:*",
     "ampersand-collection": "^2.0.2",
     "bowser": "^2.11.0",
