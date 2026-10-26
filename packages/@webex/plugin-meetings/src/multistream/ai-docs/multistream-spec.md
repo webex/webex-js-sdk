@@ -238,6 +238,8 @@ Receive/send slots, remote-media objects/groups, requested layouts, CSI mappings
 ## Concurrency & Reactive Flow
 
 - Receive-slot and RemoteMedia identity is checked at each association change. `RemoteMedia.stop()` and `MediaRequestManager.cancelRequest()` detach the listeners they own; `ReceiveSlotManager.releaseSlot()` only changes pool membership. `MediaRequestManager` arbitrates changed constraints so a superseded slot/group does not consume a later request result.
+- Media request synchronization uses a live `getConnectionState()` readiness check. WCME `renewPeerConnection()` closes the old peer connection without emitting a state-change event, so relying only on the last connection event would allow requests while receive slot IDs are temporarily `null`. After `await reconnect()`, `ReconnectionManager` calls `commit()` on each media request manager: if the connection is already `Connected`, the state is sent immediately; otherwise, the latest state is marked as pending. Pending state is synchronized on the next `Connected` transition via `sendPendingRequestState()`, or by a subsequent `commit()` when the connection is ready (`MULTISTREAM-R-006`).
+- `Connected` describes the peer/ICE connection, not the data channel's `readyState`. The public media-core API does not expose a data-channel-open event; WCME handles pending JMP tasks until its channel opens. The SDK gate protects request construction during reconnect without accessing WCME's private channel or adding a separate reconnect flag. The pending request state is cleared only after the send callback returns successfully.
 
 ## State Machine
 
@@ -269,8 +271,6 @@ The diagram records the initialized `no source` value and the `live` source path
 
 - Remote-media identity is not the same as a transient track or slot. Recreating objects on every update breaks consumer references.
 - `Event.InterpretationAudioCreated` is emitted at runtime, but the current exported `Events` interface does not declare its callback alongside the other manager events. Treat the runtime event as observable and the type-interface omission as a separate possible product/type defect.
-- The readiness check passed to `MediaRequestManager` must read `getConnectionState()` live: WCME `renewPeerConnection()` closes the old peer connection without emitting a state-change event, so an event-only "connected" flag would still be `true` while receive slot IDs are `null`. The post-reconnect `commit()` in `ReconnectionManager` runs before `Connected`, so it only marks the latest state as pending and the state is actually synchronized on the `Connected` transition (`MULTISTREAM-R-007`).
-- `Connected` describes the peer/ICE connection, not the data channel's `readyState`. The public media-core API does not expose a data-channel-open event; WCME handles pending JMP tasks until its channel opens. The SDK gate protects request construction during reconnect without accessing WCME's private channel or adding a separate reconnect flag. The pending request state is cleared only after the send callback returns successfully.
 - Public behavior may be reachable through a parent `Meeting`/`Meetings` object even when the source helper is not exported directly.
 
 ## Key Design Trade-off
