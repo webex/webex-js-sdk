@@ -82,9 +82,12 @@ class MediaLogger {
   private write(level: string, args: unknown[]): void {
     const {logger} = LoggerProxy;
 
-    if (typeof logger.logWithMetadata === 'function')
-      logger.logWithMetadata(level, {source: 'wcme'}, ...args);
-    else logger[level](...args);
+    const metadataField = logger.config?.metadataField;
+
+    if (metadataField) {
+      args.push({[metadataField]: {source: 'wcme'}});
+    }
+    logger[level](...args);
   }
 
   info(...args) {

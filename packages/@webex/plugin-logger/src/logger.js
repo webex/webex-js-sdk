@@ -36,11 +36,6 @@ const LOG_TYPES = {
 };
 
 const SDK_LOG_TYPE_NAME = 'wx-js-sdk';
-// Metadata writers share the normal formatter.
-// Separate SDK and client handlers preserve their existing logging policies.
-const clientMetadataMethods = Object.create(null);
-const sdkMetadataMethods = Object.create(null);
-
 const authTokenKeyPattern = /[Aa]uthorization/;
 
 /**
@@ -164,28 +159,6 @@ const Logger = WebexPlugin.extend({
         };
       },
     },
-  },
-
-  /**
-   * Write a client log with metadata through the normal level, filter and buffer policy.
-   * @param {string} level - Client severity.
-   * @param {Object} metadata - Per-record producer metadata.
-   * @param {...*} args - Log arguments.
-   * @returns {undefined}
-   */
-  client_logWithMetadata(level, metadata, ...args) {
-    clientMetadataMethods[level]?.call(this, metadata, ...args);
-  },
-
-  /**
-   * Write an SDK log with metadata through the normal level, filter and buffer policy.
-   * @param {string} level - SDK severity.
-   * @param {Object} metadata - Per-record producer metadata.
-   * @param {...*} args - Log arguments.
-   * @returns {undefined}
-   */
-  logWithMetadata(level, metadata, ...args) {
-    sdkMetadataMethods[level]?.call(this, metadata, ...args);
   },
 
   /**
@@ -436,23 +409,16 @@ const Logger = WebexPlugin.extend({
  * @param {Object} options - Internal formatting/buffering options.
  * @param {boolean} [options.neverPrint=false] - Never print to the console.
  * @param {boolean} [options.alwaysBuffer=false] - Retain regardless of the configured level.
- * @param {boolean} [options.withMetadata=false] - Read metadata before body arguments.
  * @instance
  * @memberof Logger
  * @private
  * @memberof Logger
  * @returns {function} logger method with specified params
  */
-function makeLoggerMethod(
-  level,
-  impl,
-  type,
-  {neverPrint = false, alwaysBuffer = false, withMetadata = false} = {}
-) {
+function makeLoggerMethod(level, impl, type, {neverPrint = false, alwaysBuffer = false} = {}) {
   // Much of the complexity in the following function is due to a test-mode-only
   // helper
   return function wrappedConsoleMethod(...args) {
-    const metadata = withMetadata ? args.shift() : undefined;
     // it would be easier to just pass in the name and buffer here, but the config isn't completely initialized
     // in Ampersand, even if the initialize method is used to set this up.  so we keep the type to achieve
     // a sort of late binding to allow retrieving a name from config.
@@ -479,6 +445,22 @@ function makeLoggerMethod(
 
       if (!shouldBuffer && !shouldPrint) {
         return;
+      }
+
+      let metadata;
+      const {metadataField} = this.config;
+      const lastArgument = args[args.length - 1];
+
+      // Only the configured field in the final options object has metadata meaning.
+      if (
+        metadataField &&
+        lastArgument !== null &&
+        typeof lastArgument === 'object' &&
+        !Array.isArray(lastArgument) &&
+        Object.prototype.hasOwnProperty.call(lastArgument, metadataField)
+      ) {
+        metadata = lastArgument[metadataField];
+        args.pop();
       }
 
       const filtered = [clientName, ...this.filter(...args)];
@@ -596,12 +578,6 @@ levels.forEach((level) => {
   // eslint-disable-next-line complexity
   Logger.prototype[`client_${level}`] = makeLoggerMethod(level, impl, LOG_TYPES.CLIENT);
   Logger.prototype[level] = makeLoggerMethod(level, impl, LOG_TYPES.SDK);
-  clientMetadataMethods[level] = makeLoggerMethod(level, impl, LOG_TYPES.CLIENT, {
-    withMetadata: true,
-  });
-  sdkMetadataMethods[level] = makeLoggerMethod(level, impl, LOG_TYPES.SDK, {
-    withMetadata: true,
-  });
 });
 
 Logger.prototype.client_logToBuffer = makeLoggerMethod('info', 'info', LOG_TYPES.CLIENT, {

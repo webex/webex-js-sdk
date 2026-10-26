@@ -192,9 +192,3 @@ export function snapshotRecords(
     )
   );
 }
-
-/** Metadata writers use the same levels, redaction and retention as normal log methods. */
-export interface StructuredLogging {
-  logWithMetadata(level: string, metadata: LogMetadata, ...args: unknown[]): void;
-  client_logWithMetadata(level: string, metadata: LogMetadata, ...args: unknown[]): void;
-}

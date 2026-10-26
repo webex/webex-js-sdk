@@ -8,6 +8,8 @@
  * should be printed to the console. One of
  * silent|error|warn|log|info|debug|trace
  * @property {number} [historyLength=10000] - Maximum number of entries to store in the log buffer.
+ * @property {string} [metadataField] - Field in the final options object that supplies log metadata.
+ * When unset, all arguments remain log content.
  * @example
  * {
  *   level: process.env.WEBEX_LOG_LEVEL,
