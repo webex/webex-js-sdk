@@ -1,0 +1,103 @@
+{
+  "sourceCommit": "f5b653ca84aeaecc087db5515d2b66c33f6818fc",
+  "unitValidation": {
+    "runtime": "Node.js 22.14.0",
+    "suitesPassed": 4,
+    "testsPassed": 53,
+    "focusedTestsPassed": 21,
+    "addedContextRecoveryScenarios": 7,
+    "baselineResult": "Synthetic KmsTimeoutError produced an unhandled rejection before the fix."
+  },
+  "mutationValidation": [
+    {
+      "mutation": "omit-rejection-eviction",
+      "detected": true
+    },
+    {
+      "mutation": "remove-replacement-guard",
+      "detected": true
+    },
+    {
+      "mutation": "invert-replacement-guard",
+      "detected": true
+    },
+    {
+      "mutation": "omit-success-cache",
+      "detected": true
+    },
+    {
+      "mutation": "omit-context-expiry",
+      "detected": true
+    },
+    {
+      "mutation": "omit-authorization-refresh",
+      "detected": true
+    },
+    {
+      "mutation": "return-wrong-context",
+      "detected": true
+    }
+  ],
+  "originalRealClientControl": {
+    "retryTimeoutsSeconds": [
+      8,
+      16,
+      32,
+      64
+    ],
+    "cachedOperationFailureMs": 1.9,
+    "freshHandshakeSuccessMs": 308,
+    "cachedOperationFailureAfterFreshHandshakeMs": 1.9
+  },
+  "publicationPolicy": "Only synthetic values, counters and results are included. No raw logs, traces, screenshots, credentials, account names or runtime identifiers.",
+  "defaultBudgetRealClientControl": {
+    "preparationAttempts": 3,
+    "syntheticRejections": 1,
+    "realNegotiationFailures": 1,
+    "realNegotiationSuccesses": 1,
+    "lastPreparationStartedAtMs": 124187,
+    "rejectionCleanupHandlerObserved": true,
+    "welcomeSpaceAssertionValid": false,
+    "limitation": "The account landed on Meetings; this run did not navigate to Messaging. Its Welcome Space assertion is invalid. Negotiation counters establish recovery only."
+  },
+  "startupValidation": {
+    "browser": "Chrome",
+    "os": "macOS",
+    "diagnosticTimeoutConfigurationMs": {
+      "kmsInitialTimeout": 1000,
+      "kmsMaxTimeout": 4000,
+      "ecdhMaxTimeout": 12000
+    },
+    "testsPassed": 0,
+    "testsFailed": 2,
+    "scenarios": {
+      "noSyntheticRejection": {
+        "attempts": 2,
+        "syntheticRejections": 0,
+        "successfulNegotiations": 1,
+        "failedNegotiations": 0,
+        "rejectionCleanupHandlerObserved": 1,
+        "firstAttemptElapsedMs": 2205,
+        "lastAttemptElapsedMs": 7873,
+        "spaceListVisible": 0,
+        "spaceHeaderVisible": 0,
+        "passed": 0,
+        "elapsedMs": 68224
+      },
+      "controlledRejection": {
+        "attempts": 3,
+        "syntheticRejections": 1,
+        "successfulNegotiations": 1,
+        "failedNegotiations": 1,
+        "rejectionCleanupHandlerObserved": 1,
+        "firstAttemptElapsedMs": 2234,
+        "lastAttemptElapsedMs": 8001,
+        "spaceListVisible": 0,
+        "spaceHeaderVisible": 0,
+        "passed": 0,
+        "elapsedMs": 67488
+      }
+    },
+    "limitation": "The Messaging list remained empty at the wait deadline in both final runs, although each recorded one successful negotiation. These checks do not establish a complete startup fix. Shortened thresholds can exercise a different retry-reset path than production."
+  }
+}
