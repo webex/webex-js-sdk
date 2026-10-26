@@ -136,8 +136,11 @@ When Playwright behavior changes:
 
 ## Conference Coverage (SET_7, SET_8, SET_9)
 
-- Multiparty conference scenarios live in `tests/multiparty-conference-set-{7,8,9}-test.spec.ts` and use
-  `createConferenceHelpers` from `Utils/conferenceUtils.ts`. Each set uses 4 agents plus a caller.
+- Multiparty conference scenarios live in one file, `tests/multiparty-conference-test.spec.ts`, as four sections
+  (`lifecycle`, `switch`, `transferAgent`, `transferQueue`) and use `createConferenceHelpers` from
+  `Utils/conferenceUtils.ts`. Each set uses 4 agents plus a caller. The suite wrappers choose the sections per set
+  (SET_7 = lifecycle + switch, SET_8 = transferAgent, SET_9 = transferQueue); to rebalance runtime, move a section
+  between wrappers rather than splitting the file.
 - Scenario IDs use prefixes: `CTS-MPC-*` (multi-party conference), `CTS-TC-*` (transfer), `CTS-SW-*` (switch).
 - Selectors target the sample app, not the widgets: `#merge-conference` (labelled "Conference" on the main leg and
   "Merge" on the consult leg), `#exit-conference`, `#transfer-conference`, `#switch-to-main` / `#switch-to-consult`

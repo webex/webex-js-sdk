@@ -54,9 +54,7 @@ playwright/
 │   ├── advance-task-control-combinations-test.spec.ts
 │   ├── dial-number-task-control-test.spec.ts
 │   ├── tasklist-test.spec.ts
-│   ├── multiparty-conference-set-7-test.spec.ts
-│   ├── multiparty-conference-set-8-test.spec.ts
-│   └── multiparty-conference-set-9-test.spec.ts
+│   └── multiparty-conference-test.spec.ts
 ├── Utils/
 │   ├── controlUtils.ts
 │   ├── initUtils.ts
@@ -90,13 +88,13 @@ Keep this section aligned to real repository contents.
 | `SET_4` | `basic-advanced-task-controls-tests.spec.ts` | `basic-task-controls-test.spec.ts`, `advance-task-control-combinations-test.spec.ts`            |
 | `SET_5` | `advanced-task-controls-tests.spec.ts`       | `advanced-task-controls-test.spec.ts`                                                           |
 | `SET_6` | `dial-number-tests.spec.ts`                  | `dial-number-task-control-test.spec.ts`                                                         |
-| `SET_7` | `multiparty-conference-set-7-tests.spec.ts`  | `multiparty-conference-set-7-test.spec.ts`                                                      |
-| `SET_8` | `multiparty-conference-set-8-tests.spec.ts`  | `multiparty-conference-set-8-test.spec.ts`                                                      |
-| `SET_9` | `multiparty-conference-set-9-tests.spec.ts`  | `multiparty-conference-set-9-test.spec.ts`                                                      |
+| `SET_7` | `multiparty-conference-set-7-tests.spec.ts`  | `multiparty-conference-test.spec.ts` (sections below)                                          |
+| `SET_8` | `multiparty-conference-set-8-tests.spec.ts`  | `multiparty-conference-test.spec.ts` (sections below)                                          |
+| `SET_9` | `multiparty-conference-set-9-tests.spec.ts`  | `multiparty-conference-test.spec.ts` (sections below)                                          |
 
 Use this mapping to decide where new tests should be added and wired.
 
-Conference scenario consolidation is implemented inside the SET_7/SET_8/SET_9 test files to reduce repeated call setup while preserving scenario ID traceability in test titles. They drive the sample app through `Utils/conferenceUtils.ts` (`createConferenceHelpers`), which uses the sample app's `#merge-conference`, `#exit-conference`, `#transfer-conference`, `#switch-to-main` / `#switch-to-consult` controls.
+All conference scenarios live in one file, `tests/multiparty-conference-test.spec.ts`, as four topic sections: `lifecycle`, `switch`, `transferAgent`, `transferQueue`. It default-exports `createMultipartyConferenceTests(sections)`. Each set's suite wrapper chooses which sections run, which is how the sets stay parallel while the code stays grouped by topic: SET_7 = `lifecycle` + `switch`, SET_8 = `transferAgent`, SET_9 = `transferQueue`. Scenario consolidation keeps the merged IDs in test titles for traceability. They drive the sample app through `Utils/conferenceUtils.ts` (`createConferenceHelpers`), which uses the sample app's `#merge-conference`, `#exit-conference`, `#transfer-conference`, `#switch-to-main` / `#switch-to-consult` controls.
 
 ---
 

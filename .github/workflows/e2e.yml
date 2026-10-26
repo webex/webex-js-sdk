@@ -99,8 +99,9 @@ jobs:
       - name: Build Samples
         run: yarn samples:build
 
-      - name: Install Chrome
-        run: npx playwright install --with-deps chrome
+      - name: Install Browsers
+        # chromium: used by the OAuth setup project (no channel set). chrome: used by the test projects.
+        run: npx playwright install --with-deps chromium chrome
 
       - name: Run Contact Center E2E
         env:
@@ -169,8 +170,9 @@ jobs:
       - name: Build Other Packages
         run: yarn workspaces foreach --parallel --topological --verbose run build:src
 
-      - name: Install Chrome
-        run: npx playwright install --with-deps chrome
+      - name: Install Browsers
+        # chromium: used by the OAuth setup project (no channel set). chrome: used by the test projects.
+        run: npx playwright install --with-deps chromium chrome
 
       - name: Run Calling E2E
         run: xvfb-run -a yarn workspace @webex/calling run test:e2e

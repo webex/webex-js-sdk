@@ -53,6 +53,12 @@ const CONSULT_IN_PROGRESS_SELECTORS = [
   CONFERENCE_SELECTORS.switchToConsult,
 ];
 
+// Conference membership and ownership are also reflected outside the control buttons: the task
+// state line carries a crown for the owning agent, and the roster lists every other participant.
+const TASK_STATE_SELECTOR = '#incoming-task';
+const ROSTER_PARTICIPANT_NAME_SELECTOR = '.conference-roster__name';
+const CONFERENCE_OWNER_MARKER = '👑 Primary';
+
 // Controls that mean the agent is on a live call (consulted agents and conference members may not see #end).
 const ACTIVE_CALL_SELECTORS = [
   CONFERENCE_SELECTORS.end,
@@ -201,6 +207,36 @@ export const expectAgentInConference = async (
   timeout: number = ACCEPT_TASK_TIMEOUT
 ) => {
   await expect(page.locator(CONFERENCE_SELECTORS.exit).first()).toBeVisible({timeout});
+};
+
+export const expectAgentNotInConference = async (
+  page: Page,
+  timeout: number = ACCEPT_TASK_TIMEOUT
+) => {
+  await expect(page.locator(CONFERENCE_SELECTORS.exit).first()).toBeHidden({timeout});
+};
+
+// Checked from a page that is still on the call: the roster only renders agents that are currently
+// in the conference, so a transferred/exited agent must disappear from it.
+export const expectAgentNotInConferenceRoster = async (
+  page: Page,
+  agentName: string,
+  timeout: number = ACCEPT_TASK_TIMEOUT
+) => {
+  await expect(page.locator(ROSTER_PARTICIPANT_NAME_SELECTOR, {hasText: agentName})).toHaveCount(
+    0,
+    {timeout}
+  );
+};
+
+// The sample app marks the conference owner (interaction.owner) with a crown on the task state line.
+export const expectAgentIsConferenceOwner = async (
+  page: Page,
+  timeout: number = ACCEPT_TASK_TIMEOUT
+) => {
+  await expect(page.locator(TASK_STATE_SELECTOR).first()).toContainText(CONFERENCE_OWNER_MARKER, {
+    timeout,
+  });
 };
 
 export const expectPostCustomerLeaveControls = async (

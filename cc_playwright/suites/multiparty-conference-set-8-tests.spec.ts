@@ -1,4 +1,5 @@
 import {test} from '@playwright/test';
-import createMultipartyConferenceSet8Tests from '../tests/multiparty-conference-set-8-test.spec';
+import createMultipartyConferenceTests from '../tests/multiparty-conference-test.spec';
 
-test.describe('Multiparty Conference Tests - Set 8', createMultipartyConferenceSet8Tests);
+test.describe('Multiparty Conference Tests - Set 8', () =>
+  createMultipartyConferenceTests(['transferAgent']));

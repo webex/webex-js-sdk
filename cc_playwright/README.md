@@ -16,17 +16,17 @@ cc_playwright/
 
 ## 🎯 Test Sets
 
-| Set       | Focus                    | Port | Suite File                                   |
-| --------- | ------------------------ | ---- | -------------------------------------------- |
-| **SET_1** | Digital tasks            | 9221 | `digital-incoming-task-tests.spec.ts`        |
-| **SET_2** | Task lists & multi-login | 9222 | `task-list-multi-session-tests.spec.ts`      |
-| **SET_3** | Auth & user states       | 9223 | `station-login-user-state-tests.spec.ts`     |
-| **SET_4** | Basic/advanced controls  | 9224 | `basic-advanced-task-controls-tests.spec.ts` |
-| **SET_5** | Advanced operations      | 9225 | `advanced-task-controls-tests.spec.ts`       |
-| **SET_6** | Dial number flows        | 9226 | `dial-number-tests.spec.ts`                  |
-| **SET_7** | Multiparty (team 25-28)  | 9227 | `multiparty-conference-set-7-tests.spec.ts`  |
-| **SET_8** | Multiparty (team 29-32)  | 9228 | `multiparty-conference-set-8-tests.spec.ts`  |
-| **SET_9** | Multiparty (team 33-36)  | 9229 | `multiparty-conference-set-9-tests.spec.ts`  |
+| Set       | Focus                                         | Port | Suite File                                   |
+| --------- | --------------------------------------------- | ---- | -------------------------------------------- |
+| **SET_1** | Digital tasks                                 | 9221 | `digital-incoming-task-tests.spec.ts`        |
+| **SET_2** | Task lists & multi-login                      | 9222 | `task-list-multi-session-tests.spec.ts`      |
+| **SET_3** | Auth & user states                            | 9223 | `station-login-user-state-tests.spec.ts`     |
+| **SET_4** | Basic/advanced controls                       | 9224 | `basic-advanced-task-controls-tests.spec.ts` |
+| **SET_5** | Advanced operations                           | 9225 | `advanced-task-controls-tests.spec.ts`       |
+| **SET_6** | Dial number flows                             | 9226 | `dial-number-tests.spec.ts`                  |
+| **SET_7** | Conference lifecycle + switch (team 25-28)    | 9227 | `multiparty-conference-set-7-tests.spec.ts`  |
+| **SET_8** | Conference transfer, agent paths (team 29-32) | 9228 | `multiparty-conference-set-8-tests.spec.ts`  |
+| **SET_9** | Conference transfer, queue paths (team 33-36) | 9229 | `multiparty-conference-set-9-tests.spec.ts`  |
 
 ## 🧪 Adding Tests
 
