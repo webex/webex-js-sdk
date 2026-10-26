@@ -21,7 +21,8 @@ on:
         required: true
         type: string
 
-# Two releases of the same version would race on tag creation.
+# A single stable key, so two concurrent runs can't both pass the
+# already-released check below and then race on tag creation.
 concurrency:
   group: webexconnect-deploy
   cancel-in-progress: false
@@ -35,13 +36,10 @@ jobs:
     runs-on: ubuntu-latest
 
     steps:
-      # workflow_dispatch already restricts triggers to actors with write access,
-      # but publishing a release to the public distribution repo is gated behind
-      # membership of the cypher-sdk-release-team (same gate as manual-deploy.yml).
-      # The default GITHUB_TOKEN cannot read org team membership, so this uses
-      # ORG_READ_TOKEN (a token with the org "Members: read" permission). The
-      # team's membership is the single source of truth — no usernames are
-      # hardcoded here.
+      # Releasing to the public distribution repo is gated behind membership of
+      # the cypher-sdk-release-team, so the team is the single source of truth
+      # and no usernames are hardcoded. ORG_READ_TOKEN carries the org
+      # "Members: read" permission needed to query it.
       - name: Check actor is on the release team
         env:
           GH_TOKEN: ${{ secrets.ORG_READ_TOKEN }}
@@ -75,6 +73,20 @@ jobs:
             exit 1
           fi
 
+      # Releases are immutable, so a published version can't be re-released with
+      # different content. Check upfront rather than let the build run and have
+      # `gh release create` reject the duplicate tag at the last step.
+      - name: Check release does not already exist
+        env:
+          GH_TOKEN: ${{ secrets.WXCONN_GITHUB_TOKEN }}
+          VERSION: ${{ inputs.version }}
+        run: |
+          if gh release view "v$VERSION" --repo "$DIST_REPO" >/dev/null 2>&1; then
+            echo "::error::v$VERSION is already released in $DIST_REPO. Releases are immutable — bump JS_SDK_VERSION and release the next version instead."
+            exit 1
+          fi
+          echo "v$VERSION is not yet released in $DIST_REPO."
+
       - name: Checkout Project
         uses: actions/checkout@v6
 
@@ -90,9 +102,9 @@ jobs:
       - name: Build package
         run: yarn workspace @webex/webexconnect run build:src
 
-      # The release tag is 3-part (v1.9.0) while JS_SDK_VERSION is 4-part
-      # (1.9.0.001); the first three parts must match so a release can't ship a
-      # bundle that reports a different version.
+      # A release must not ship a bundle reporting a version other than its tag.
+      # The tag is always 3-part (v1.9.0) while JS_SDK_VERSION may carry a 4th
+      # build segment (1.9.1.001), so compare only the first three parts.
       - name: Verify version matches JS_SDK_VERSION
         env:
           VERSION: ${{ inputs.version }}
@@ -120,8 +132,7 @@ jobs:
           (cd release && zip -j ../dist.zip webex-connect-sdk.min.js sw.min.js manifest.json)
           unzip -l dist.zip
 
-      # The default GITHUB_TOKEN cannot write to another repo, so this uses
-      # WXCONN_GITHUB_TOKEN (contents:write on the distribution repo).
+      # WXCONN_GITHUB_TOKEN carries contents:write on the distribution repo.
       - name: Create GitHub Release
         env:
           GH_TOKEN: ${{ secrets.WXCONN_GITHUB_TOKEN }}
