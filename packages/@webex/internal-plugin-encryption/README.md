@@ -49,8 +49,11 @@ options on the `encryption` config:
   release builds default to
   `https://unpkg.com/webex@<sdk-version>/umd/assets/internal-plugin-encryption/`,
   using the build-injected version of the containing `webex` package.
-  Development and unversioned builds use `/assets/internal-plugin-encryption/`
-  on the page's origin. Explicit application settings override this default.
+  Standalone plugin builds without an SDK version pass their `PACKAGE_VERSION`
+  to the shared helper to select the plugin npm package's asset directory.
+  Development builds and builds without either version use
+  `/assets/internal-plugin-encryption/` on the page's origin. Explicit
+  application settings override this default.
 - `carootsReportOnly` — an additional array of CA roots validated alongside the
   enforced roots. A failure here is only reported as a metric instead of failing
   the negotiation, which lets a new bundle be trialled in parallel. This also
@@ -84,9 +87,11 @@ The encryption plugin owns the default for direct `WebexCore` consumers,
 `Webex.init()`, and the encryption UMD bundle. After opting in with
 `shouldValidateKMSCertificate: true`, versioned release builds fetch the bundle
 from the matching `webex` UMD assets on unpkg, so your Content
-Security Policy `connect-src` must allow `https://unpkg.com`. Development builds
-and builds without an SDK version use `/assets/internal-plugin-encryption/`
-on the page's origin. Node reads the packaged file first, regardless of this URL.
+Security Policy `connect-src` must allow `https://unpkg.com`. Standalone plugin
+builds fall back to their own `PACKAGE_VERSION` through the shared helper.
+Development builds and builds without either version use
+`/assets/internal-plugin-encryption/` on the page's origin. Node reads the
+packaged file first, regardless of this URL.
 
 The matching SDK release must contain the versioned `.p7b` asset before this
 public URL can be used. Verify published delivery after a release containing

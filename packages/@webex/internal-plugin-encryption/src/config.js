@@ -84,14 +84,15 @@ export default {
 
     /**
      * Base URL of the directory hosting this plugin's static assets (e.g.
-     * `ios_union-<version>.p7b`). Versioned release builds use the matching
-     * `webex` UMD assets on unpkg; development and unversioned builds use
+     * `ios_union-<version>.p7b`). SDK releases use the matching `webex` UMD
+     * assets; standalone plugin releases fall back to the plugin package's
+     * version. Development builds and builds without either version use
      * `/assets/internal-plugin-encryption/` on the page's origin. Self-hosters
      * can override this with their own asset directory. Not used in Node when
      * the package's own copy is present.
      * @type {string}
      */
-    assetsBaseUrl: getUmdAssetsBaseUrl('internal-plugin-encryption', SDK_VERSION),
+    assetsBaseUrl: getUmdAssetsBaseUrl('internal-plugin-encryption', SDK_VERSION, PACKAGE_VERSION),
 
     /**
      * An additional CA root bundle validated alongside `caroots`. Unlike
