@@ -1492,7 +1492,8 @@ export default class Meetings extends WebexPlugin {
    * @memberof Meetings
    */
   private destroy(meeting: Meeting, reason: object) {
-    MeetingUtil.cleanUp(meeting);
+    MeetingUtil.cleanUp(meeting, {preserveVoiceaChannel: false});
+
     // Tear down hash tree parsers here (and not in MeetingUtil.cleanUp) so they survive
     // leave/endMeetingForAll to consume the final sentinel END message from Locus.
     meeting.locusInfo?.cleanUp();

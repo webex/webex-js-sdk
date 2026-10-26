@@ -176,6 +176,7 @@ flowchart TD
 ## Release & Versioning
 
 - `@webex/plugin-meetings` builds to `dist/index.js` with declarations under `dist/types` and publishes through the repository npm release workflow.
+- The default `meetings.assetsBaseUrl` uses `/assets/plugin-meetings/` in development and versionless local builds. Versioned release builds use the SDK `SDK_VERSION` and shared `getUmdAssetsBaseUrl` helper to resolve assets from the matching `webex` UMD package on unpkg. Other plugins can use the same helper with their UMD asset directory name.
 - Treat exports in `src/index.ts`, consumer-visible class methods, events, types, and error shapes as semver-sensitive. Deprecate before removal and update consumer docs/specs and changelog material in the same release change.
 
 ## Host Integration & Theming
