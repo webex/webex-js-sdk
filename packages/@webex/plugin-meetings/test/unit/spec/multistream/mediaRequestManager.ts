@@ -4,9 +4,10 @@ import {ReceiveSlot} from '@webex/plugin-meetings/src/multistream/receiveSlot';
 import sinon from 'sinon';
 import {assert} from '@webex/test-helper-chai';
 import {getMaxFs, MAX_FS_VALUES} from '@webex/plugin-meetings/src/multistream/remoteMedia';
+import LoggerProxy from '@webex/plugin-meetings/src/common/logs/logger-proxy';
 import FakeTimers from '@sinonjs/fake-timers';
 import * as InternalMediaCoreModule from '@webex/internal-media-core';
-import {MediaType, MediaCodecMimeType} from '@webex/internal-media-core';
+import {MediaType, MediaContent, MediaCodecMimeType} from '@webex/internal-media-core';
 
 
 type ExpectedAv1 = {
@@ -72,7 +73,9 @@ describe('MediaRequestManager', () => {
     mediaRequestManager = new MediaRequestManager(sendMediaRequestsCallback, getIngressPayloadTypeCallback, {
       degradationPreferences,
       kind: 'video',
+      mediaContent: MediaContent.Main,
       trimRequestsToNumOfSources: false,
+      isReadyToSendRequests: () => true,
     });
 
     // create some fake receive slots used by the tests
@@ -949,7 +952,9 @@ describe('MediaRequestManager', () => {
       const mediaRequestManagerAudio = new MediaRequestManager(sendMediaRequestsCallback, getIngressPayloadTypeCallback, {
         degradationPreferences,
         kind: 'audio',
+        mediaContent: MediaContent.Main,
         trimRequestsToNumOfSources: false,
+        isReadyToSendRequests: () => true,
       });
       mediaRequestManagerAudio.setNumCurrentSources(100, 100);
       sendMediaRequestsCallback.resetHistory();
@@ -1067,7 +1072,9 @@ describe('MediaRequestManager', () => {
       mediaRequestManager = new MediaRequestManager(sendMediaRequestsCallback, getIngressPayloadTypeCallback, {
         degradationPreferences,
         kind: 'video',
+        mediaContent: MediaContent.Main,
         trimRequestsToNumOfSources: true,
+        isReadyToSendRequests: () => true,
       });
     });
 
@@ -1444,8 +1451,10 @@ describe('MediaRequestManager', () => {
       mediaRequestManager = new MediaRequestManager(sendMediaRequestsCallback, getIngressPayloadTypeCallback, {
         degradationPreferences,
         kind: 'video',
+        mediaContent: MediaContent.Slides,
         trimRequestsToNumOfSources: false,
         enableAv1: true,
+        isReadyToSendRequests: () => true,
       });
       sendMediaRequestsCallback.resetHistory();
 
@@ -1472,8 +1481,10 @@ describe('MediaRequestManager', () => {
       mediaRequestManager = new MediaRequestManager(sendMediaRequestsCallback, getIngressPayloadTypeCallback, {
         degradationPreferences,
         kind: 'video',
+        mediaContent: MediaContent.Slides,
         trimRequestsToNumOfSources: false,
         enableAv1: true,
+        isReadyToSendRequests: () => true,
       });
       sendMediaRequestsCallback.resetHistory();
 
@@ -1504,8 +1515,10 @@ describe('MediaRequestManager', () => {
       mediaRequestManager = new MediaRequestManager(sendMediaRequestsCallback, getIngressPayloadTypeCallback, {
         degradationPreferences,
         kind: 'video',
+        mediaContent: MediaContent.Slides,
         trimRequestsToNumOfSources: false,
         enableAv1: true,
+        isReadyToSendRequests: () => true,
       });
     });
 
@@ -1652,8 +1665,10 @@ describe('MediaRequestManager', () => {
       mediaRequestManager = new MediaRequestManager(sendMediaRequestsCallback, getIngressPayloadTypeCallback, {
         degradationPreferences,
         kind: 'video',
+        mediaContent: MediaContent.Slides,
         trimRequestsToNumOfSources: false,
         enableAv1: true,
+        isReadyToSendRequests: () => true,
       });
 
       sendMediaRequestsCallback.resetHistory();
@@ -1831,7 +1846,7 @@ describe('MediaRequestManager', () => {
   });
 });
 
-describe('MediaRequestManager deferring of requests', () => {
+describe('MediaRequestManager pending request state', () => {
   let sendMediaRequestsCallback;
   let isReadyToSendRequests;
   let getIngressPayloadTypeCallback;
@@ -1839,12 +1854,14 @@ describe('MediaRequestManager deferring of requests', () => {
   let fakeReceiveSlot;
 
   beforeEach(() => {
+    sinon.stub(LoggerProxy.logger, 'info');
     sendMediaRequestsCallback = sinon.stub();
     isReadyToSendRequests = sinon.stub().returns(false);
     getIngressPayloadTypeCallback = sinon.stub().returns(0x80);
     mediaRequestManager = new MediaRequestManager(sendMediaRequestsCallback, getIngressPayloadTypeCallback, {
       degradationPreferences,
-      kind: 'audio',
+      kind: 'video',
+      mediaContent: MediaContent.Slides,
       trimRequestsToNumOfSources: false,
       isReadyToSendRequests,
     });
@@ -1853,9 +1870,13 @@ describe('MediaRequestManager deferring of requests', () => {
       on: sinon.stub(),
       off: sinon.stub(),
       sourceState: 'live',
-      mediaType: MediaType.AudioMain,
+      mediaType: MediaType.VideoSlides,
       wcmeReceiveSlot: {id: 'fake WCME slot'},
     } as unknown as ReceiveSlot;
+  });
+
+  afterEach(() => {
+    sinon.restore();
   });
 
   const addReceiverSelectedRequest = (csi: number) =>
@@ -1863,24 +1884,56 @@ describe('MediaRequestManager deferring of requests', () => {
       {
         policyInfo: {policy: 'receiver-selected', csi},
         receiveSlots: [fakeReceiveSlot],
+        codecInfo: {codec: 'h264', maxFs: 3600},
       },
       true
     );
 
-  it('does not send anything while the connection is not ready', () => {
-    addReceiverSelectedRequest(1);
-    mediaRequestManager.commit();
+  [
+    {kind: 'audio', mediaContent: MediaContent.Main},
+    {kind: 'video', mediaContent: MediaContent.Main},
+    {kind: 'audio', mediaContent: MediaContent.Slides},
+    {kind: 'video', mediaContent: MediaContent.Slides},
+  ].forEach(({kind, mediaContent}: {kind: 'audio' | 'video'; mediaContent: MediaContent}) => {
+    it(`logs pending and synchronized ${kind}-${mediaContent} state`, () => {
+      mediaRequestManager = new MediaRequestManager(
+        sendMediaRequestsCallback,
+        getIngressPayloadTypeCallback,
+        {
+          degradationPreferences,
+          kind,
+          mediaContent,
+          trimRequestsToNumOfSources: false,
+          isReadyToSendRequests,
+        }
+      );
+      mediaRequestManager.commit();
+      mediaRequestManager.commit();
 
-    assert.notCalled(sendMediaRequestsCallback);
+      assert.notCalled(sendMediaRequestsCallback);
+      assert.calledOnceWithExactly(
+        LoggerProxy.logger.info,
+        `multistream:sendRequests --> connection not ready, latest ${kind}-${mediaContent} media request state will be synchronized when ready`
+      );
+
+      isReadyToSendRequests.returns(true);
+      mediaRequestManager.sendPendingRequestState();
+
+      assert.calledOnceWithExactly(sendMediaRequestsCallback, []);
+      assert.calledWith(
+        LoggerProxy.logger.info,
+        `multistream:sendRequests --> connection ready, synchronizing latest ${kind}-${mediaContent} media request state`
+      );
+    });
   });
 
-  it('sends only the latest requests once when sendDeferredRequests() is called', () => {
+  it('synchronizes only the latest state once when sendPendingRequestState() is called', () => {
     const requestId = addReceiverSelectedRequest(1);
     mediaRequestManager.cancelRequest(requestId, true);
     addReceiverSelectedRequest(2);
 
     isReadyToSendRequests.returns(true);
-    mediaRequestManager.sendDeferredRequests();
+    mediaRequestManager.sendPendingRequestState();
 
     assert.calledOnceWithExactly(sendMediaRequestsCallback, [
       sinon.match({
@@ -1889,27 +1942,31 @@ describe('MediaRequestManager deferring of requests', () => {
         receiveSlots: [fakeReceiveSlot.wcmeReceiveSlot],
       }),
     ]);
+    assert.calledWith(
+      LoggerProxy.logger.info,
+      'multistream:sendRequests --> connection ready, synchronizing latest video-SLIDES media request state'
+    );
 
-    mediaRequestManager.sendDeferredRequests();
+    mediaRequestManager.sendPendingRequestState();
 
     assert.calledOnce(sendMediaRequestsCallback);
   });
 
-  it('keeps the requests deferred if the connection is still not ready on sendDeferredRequests()', () => {
+  it('keeps the state pending if the connection is still not ready on sendPendingRequestState()', () => {
     addReceiverSelectedRequest(1);
-    mediaRequestManager.sendDeferredRequests();
+    mediaRequestManager.sendPendingRequestState();
 
     assert.notCalled(sendMediaRequestsCallback);
 
     isReadyToSendRequests.returns(true);
-    mediaRequestManager.sendDeferredRequests();
+    mediaRequestManager.sendPendingRequestState();
 
     assert.calledOnce(sendMediaRequestsCallback);
   });
 
-  it('does not send anything on sendDeferredRequests() if nothing was deferred', () => {
+  it('does not send anything on sendPendingRequestState() if nothing is pending', () => {
     isReadyToSendRequests.returns(true);
-    mediaRequestManager.sendDeferredRequests();
+    mediaRequestManager.sendPendingRequestState();
 
     assert.notCalled(sendMediaRequestsCallback);
   });
@@ -1921,12 +1978,12 @@ describe('MediaRequestManager deferring of requests', () => {
     assert.calledOnce(sendMediaRequestsCallback);
   });
 
-  it('clears deferred requests on reset()', () => {
+  it('clears the pending state on reset()', () => {
     addReceiverSelectedRequest(1);
     mediaRequestManager.reset();
 
     isReadyToSendRequests.returns(true);
-    mediaRequestManager.sendDeferredRequests();
+    mediaRequestManager.sendPendingRequestState();
 
     assert.notCalled(sendMediaRequestsCallback);
   });
@@ -1942,7 +1999,7 @@ describe('MediaRequestManager deferring of requests', () => {
 
     getIngressPayloadTypeCallback.returns(98);
     isReadyToSendRequests.returns(true);
-    mediaRequestManager.sendDeferredRequests();
+    mediaRequestManager.sendPendingRequestState();
 
     assert.calledOnceWithExactly(sendMediaRequestsCallback, [
       sinon.match({
@@ -1951,36 +2008,41 @@ describe('MediaRequestManager deferring of requests', () => {
     ]);
   });
 
-  it('sends an empty state when all deferred requests were cancelled', () => {
+  it('sends an empty state when all pending requests were cancelled', () => {
     const requestId = addReceiverSelectedRequest(1);
 
     mediaRequestManager.cancelRequest(requestId, true);
     isReadyToSendRequests.returns(true);
-    mediaRequestManager.sendDeferredRequests();
+    mediaRequestManager.sendPendingRequestState();
 
     assert.calledOnceWithExactly(sendMediaRequestsCallback, []);
   });
 
-  it('does not resend deferred state after a regular commit has already sent it', () => {
+  it('does not resend the state after a regular commit has already sent it', () => {
     addReceiverSelectedRequest(1);
     isReadyToSendRequests.returns(true);
     mediaRequestManager.commit();
-    mediaRequestManager.sendDeferredRequests();
+    mediaRequestManager.sendPendingRequestState();
 
     assert.calledOnce(sendMediaRequestsCallback);
   });
 
-  it('preserves deferred state if sending throws and propagates the error', () => {
-    const error = new Error('Failed to send media requests');
-
+  it('propagates send errors and keeps the state pending', () => {
     addReceiverSelectedRequest(1);
     isReadyToSendRequests.returns(true);
-    sendMediaRequestsCallback.onFirstCall().throws(error);
+    sendMediaRequestsCallback.onFirstCall().throws(new Error('Failed to send media requests'));
 
-    assert.throws(() => mediaRequestManager.sendDeferredRequests(), error.message);
+    assert.throws(() => mediaRequestManager.sendPendingRequestState(), 'Failed to send media requests');
 
-    mediaRequestManager.sendDeferredRequests();
+    mediaRequestManager.sendPendingRequestState();
 
     assert.calledTwice(sendMediaRequestsCallback);
+  });
+
+  it('throws from commit() if sending fails', () => {
+    isReadyToSendRequests.returns(true);
+    sendMediaRequestsCallback.throws(new Error('Failed to send media requests'));
+
+    assert.throws(() => mediaRequestManager.commit(), 'Failed to send media requests');
   });
 });
