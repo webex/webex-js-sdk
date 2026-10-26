@@ -17,7 +17,7 @@ version default to `/assets/plugin-meetings/`, which webpack-dev-server serves f
 SDK release builds default to the matching UMD CDN directory
 (`https://unpkg.com/webex@<sdk-version>/umd/assets/plugin-meetings/`). Standalone plugin npm releases
 default to the plugin package's assets
-(`https://app.unpkg.com/@webex/plugin-meetings@<plugin-version>/files/dist/assets/`). Applications
+(`https://unpkg.com/@webex/plugin-meetings@<plugin-version>/dist/assets/`). Applications
 can override the URL to serve assets from their own origin or CDN.
 
 Use a versioned URL so the JavaScript SDK and its static assets remain compatible. For a CDN URL,
