@@ -406,6 +406,18 @@ requests live for the connection lifetime.
 
 - Execution model: one JavaScript event loop; slot allocation and send-slot calls are async, request
   commits are synchronous.
+- Media request synchronization uses a live `getConnectionState()` readiness check. WCME
+  `renewPeerConnection()` closes the old peer connection without emitting a state-change event, so
+  relying only on the last connection event would allow requests while receive slot IDs are
+  temporarily `null`. After `await reconnect()`, `ReconnectionManager` calls `commit()` on each media
+  request manager: if the connection is already `Connected`, the latest state is sent immediately;
+  otherwise, it is marked as pending. Pending state is synchronized on the next `Connected`
+  transition or by a subsequent commit when the connection is ready.
+- `Connected` describes the peer/ICE connection, not the data channel's `readyState`. The public
+  media-core API does not expose a data-channel-open event; WCME handles pending JMP tasks until its
+  channel opens. The SDK gate protects request construction during reconnect without accessing
+  WCME's private channel or adding a separate reconnect flag. The pending flag is cleared only after
+  the send callback returns successfully.
 - Receive-slot and RemoteMedia identity is checked at each association change. `RemoteMedia.stop()` and `MediaRequestManager.cancelRequest()` detach the listeners they own; `ReceiveSlotManager.releaseSlot()` only changes pool membership. `MediaRequestManager` has no request result to wait for: each commit sends the whole current request set, so a superseded slot/group is simply absent from the next set.
 - Reactive input: a `sourceUpdate` on any request slot commits immediately; a `maxFsUpdate` from
   `setSizeHint()` commits after a 1000 ms debounce.
