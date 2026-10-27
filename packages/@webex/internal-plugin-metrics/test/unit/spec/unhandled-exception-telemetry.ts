@@ -131,6 +131,7 @@ describe('SDK unhandled exception telemetry', () => {
       webex.internal.metrics.submitClientMetrics,
       Telemetry.UNHANDLED_EXCEPTION_METRIC_NAME,
       {
+        type: ['operational'],
         tags: {
           app_name: 'test-app',
           exception_kind: 'error',

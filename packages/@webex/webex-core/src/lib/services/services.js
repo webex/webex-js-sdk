@@ -261,13 +261,23 @@ const Services = WebexPlugin.extend({
   },
 
   /**
-   * Checks if the current environment is an integration (INT) environment
-   * by examining the u2c discovery URL from webex config.
+   * Checks if the current environment is an integration (INT) environment.
+   * Uses the explicit environment config when set, otherwise examines the u2c discovery URL.
    * INT environments use discovery URLs containing 'intb' (e.g., u2c-intb.ciscospark.com).
    * @returns {boolean} True if INT environment, false otherwise
    */
   isIntegrationEnvironment() {
     try {
+      const configuredEnvironment = this.webex?.config?.environment;
+
+      if (configuredEnvironment !== undefined) {
+        const isIntFromConfig = configuredEnvironment === 'integration';
+
+        this.logger.info(`services: isIntegrationEnvironment: ${isIntFromConfig} (config)`);
+
+        return isIntFromConfig;
+      }
+
       const u2cUrl = this.webex?.config?.services?.discovery?.u2c || '';
       const isInt = u2cUrl.includes('intb');
 

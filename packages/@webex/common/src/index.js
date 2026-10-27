@@ -22,6 +22,7 @@ export {default as whileInFlight} from './while-in-flight';
 export {default as Exception} from './exception';
 export {default as deprecated} from './deprecated';
 export {default as inBrowser} from './in-browser';
+export {getUmdAssetsBaseUrl} from './umd-assets';
 export {
   deviceType,
   hydraTypes,
