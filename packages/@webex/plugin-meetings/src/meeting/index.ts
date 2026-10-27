@@ -1049,8 +1049,7 @@ export default class Meeting extends StatelessWebexPlugin {
         {
           // @ts-ignore - config coming from registerPlugin
           degradationPreferences: this.config.degradationPreferences,
-          kind: 'audio',
-          mediaContent: MediaContent.Main,
+          mediaType: MediaType.AudioMain,
           trimRequestsToNumOfSources: false,
           isReadyToSendRequests,
         }
@@ -1061,8 +1060,7 @@ export default class Meeting extends StatelessWebexPlugin {
         {
           // @ts-ignore - config coming from registerPlugin
           degradationPreferences: this.config.degradationPreferences,
-          kind: 'video',
-          mediaContent: MediaContent.Main,
+          mediaType: MediaType.VideoMain,
           trimRequestsToNumOfSources: true,
           isReadyToSendRequests,
         }
@@ -1073,8 +1071,7 @@ export default class Meeting extends StatelessWebexPlugin {
         {
           // @ts-ignore - config coming from registerPlugin
           degradationPreferences: this.config.degradationPreferences,
-          kind: 'audio',
-          mediaContent: MediaContent.Slides,
+          mediaType: MediaType.AudioSlides,
           trimRequestsToNumOfSources: false,
           isReadyToSendRequests,
         }
@@ -1085,8 +1082,7 @@ export default class Meeting extends StatelessWebexPlugin {
         {
           // @ts-ignore - config coming from registerPlugin
           degradationPreferences: this.config.degradationPreferences,
-          kind: 'video',
-          mediaContent: MediaContent.Slides,
+          mediaType: MediaType.VideoSlides,
           trimRequestsToNumOfSources: false,
           isReadyToSendRequests,
           // @ts-ignore - config coming from registerPlugin
