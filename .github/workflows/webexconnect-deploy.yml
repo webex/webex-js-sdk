@@ -1,13 +1,11 @@
 name: Webex Connect Deploy
 
-run-name: ${{ github.actor }} is releasing @webex/webexconnect v${{ inputs.version }}
+run-name: ${{ github.triggering_actor }} is releasing @webex/webexconnect v${{ inputs.version }}
 
 # Publishes @webex/webexconnect as a GitHub Release in
 # webex/webexconnect-javascript-sdk. The release carries a single dist.zip asset
 # (the built SDK files + manifest.json). This is NOT an npm publish and it is
 # independent of the shared deploy.yml, which keeps excluding @webex/webexconnect.
-#
-# Job flow: authorize → release
 
 on:
   workflow_dispatch:
@@ -31,8 +29,8 @@ env:
   DIST_REPO: webex/webexconnect-javascript-sdk
 
 jobs:
-  authorize:
-    name: Authorize Actor
+  release:
+    name: Build & Release @webex/webexconnect
     runs-on: ubuntu-latest
 
     steps:
@@ -40,10 +38,16 @@ jobs:
       # the cypher-sdk-release-team, so the team is the single source of truth
       # and no usernames are hardcoded. ORG_READ_TOKEN carries the org
       # "Members: read" permission needed to query it.
+      #
+      # This lives in the publishing job and reads github.triggering_actor (the
+      # person who started *this* attempt) rather than github.actor (frozen as
+      # the original requester). A separate authorize job could be skipped by
+      # re-running only the failed release job, so the gate must be re-evaluated
+      # here on every attempt.
       - name: Check actor is on the release team
         env:
           GH_TOKEN: ${{ secrets.ORG_READ_TOKEN }}
-          ACTOR: ${{ github.actor }}
+          ACTOR: ${{ github.triggering_actor }}
           ORG: webex
           TEAM_SLUG: cypher-sdk-release-team
         run: |
@@ -58,12 +62,6 @@ jobs:
           fi
           echo "Actor '$ACTOR' is an active member of @$ORG/$TEAM_SLUG; authorized."
 
-  release:
-    name: Build & Release @webex/webexconnect
-    needs: authorize
-    runs-on: ubuntu-latest
-
-    steps:
       - name: Validate Version Format
         env:
           VERSION: ${{ inputs.version }}
@@ -99,6 +97,11 @@ jobs:
       - name: Install Dependencies
         run: yarn
 
+      # workflow_dispatch lets the caller pick any ref, and nothing guarantees PR
+      # checks ran on it, so the released commit is gated on its own tests here.
+      - name: Test package
+        run: yarn workspace @webex/webexconnect run test
+
       - name: Build package
         run: yarn workspace @webex/webexconnect run build:src
 
@@ -133,15 +136,26 @@ jobs:
           unzip -l dist.zip
 
       # WXCONN_GITHUB_TOKEN carries contents:write on the distribution repo.
+      #
+      # --target main tags the distribution repo, so the tag says nothing about
+      # which SDK commit produced dist.zip. The notes carry the source commit and
+      # the run that built it so every asset is traceable back to both.
       - name: Create GitHub Release
         env:
           GH_TOKEN: ${{ secrets.WXCONN_GITHUB_TOKEN }}
           VERSION: ${{ inputs.version }}
           RELEASE_NOTES: ${{ inputs.release_notes }}
+          SOURCE_REPO_URL: ${{ github.server_url }}/${{ github.repository }}
+          RUN_URL: ${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }}
         run: |
+          SOURCE_SHA=$(git rev-parse HEAD)
+          printf '%s\n\n---\n\nSource commit: %s/commit/%s\nWorkflow run: %s\n' \
+            "$RELEASE_NOTES" \
+            "$SOURCE_REPO_URL" "$SOURCE_SHA" \
+            "$RUN_URL" > release-notes.md
           gh release create "v$VERSION" dist.zip \
             --repo "$DIST_REPO" \
             --target main \
             --title "$VERSION" \
-            --notes "$RELEASE_NOTES"
+            --notes-file release-notes.md
 
