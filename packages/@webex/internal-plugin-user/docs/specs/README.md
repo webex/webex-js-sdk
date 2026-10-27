@@ -9,7 +9,7 @@ doc_kind: standing-doc
 generated_from: spec-index@0.3.0
 generated_by: claude-code
 approved_by: riag@cisco.com
-updated_at: 2026-10-22T06:52:30Z
+updated_at: 2026-10-27T00:00:00Z
 validation_status: pass
 -->
 
@@ -45,7 +45,7 @@ package is a library published to npm, so that artifact is omitted in `.sdd/mani
 | --- | --- | --- | --- |
 | `src/` | uuid resolution and cache, account flows, profile and SCIM updates | Partial | `src/docs/README.md` |
 
-Generator-side field measurement is complete. Field coverage measured 2026-10-22 is 86.7% (13 of 15 mandatory fields PRESENT for `src`). Critical fields are 7 of 8 PRESENT. The WEAK fields are requirement rationale (11 observed behaviors have no stated reason and are listed as observations in the module spec's Evidence register) and test strategy (untested paths are listed in the module spec's Verification section, and no characterization baseline exists). Coverage state stays `Partial` until the observations are resolved, a spec-drift record exists, and a characterization baseline exists.
+Generator-side field measurement is complete. Field coverage measured 2026-10-27 is 93.3% (14 of 15 mandatory fields PRESENT for `src`). Critical fields are 8 of 8 PRESENT. The WEAK field is test strategy: untested paths are listed in the module spec's Verification section, and no characterization baseline exists. Coverage state stays `Partial` until a spec-drift record and a characterization baseline exist.
 
 ## Change and verification routing
 

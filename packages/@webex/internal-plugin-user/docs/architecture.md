@@ -9,7 +9,7 @@ doc_kind: standing-doc
 generated_from: architecture@0.3.0
 generated_by: claude-code
 approved_by: riag@cisco.com
-updated_at: 2026-10-22T06:52:30Z
+updated_at: 2026-10-27T00:00:00Z
 validation_status: pass
 -->
 
@@ -119,6 +119,19 @@ device plugin is registered first. No dependency cycle exists inside the package
 | `webex-core-plugin-host` (required) | SDK | sibling package webex-core | User plugin | External | `@webex/webex-core` |
 | `webex-device-registration` (required) | SDK | sibling package internal-plugin-device | User plugin | External | `@webex/internal-plugin-device` |
 | `webex-common-sdk` (required) | SDK | sibling package common | User plugin | External | `@webex/common` |
+
+Exported surface of `user-sdk`, named here and described in the module specification; native sources are linked, signatures are not copied:
+
+| Exported surface | Group | Reachable from | Source |
+| ---------------- | ----- | -------------- | ------ |
+| `User` (default export) | Plugin class; registers `webex.internal.user` | Package entry point | `src/index.js` |
+| `asUUID`, `getUUID`, `fetchUUID`, `recordUUID` | uuid resolution and cache | `webex.internal.user` | `src/user.js` |
+| `get`, `update`, `updateName`, `setPassword` | Current user profile and password | `webex.internal.user` | `src/user.js` |
+| `verify`, `register` (deprecated alias of `verify`), `getUserCI` | Account status and identity URLs | `webex.internal.user` | `src/user.js` |
+| `activate`, `generateOTP`, `validateOTP` | Activation and one-time password | `webex.internal.user` | `src/user.js` |
+| `updatePreferredWebexSite`, `getMeetingSiteList` | Preferred meeting site | `webex.internal.user` | `src/user.js` |
+| `hasPassword` (property) | Persisted password flag | `webex.internal.user` | `src/user.js` |
+| `buildPreferredSiteBody`, `buildMeetingSiteList`, `SCIM_SCHEMAS` | Deep-path helpers, not package-entry exports | `@webex/internal-plugin-user/src/user` | `src/user.js` |
 
 `user-sdk` entry points: `main` `dist/index.js` and `devMain` `src/index.js`. No HTTP surface is
 served, so `api-specs/openapi.yaml` is omitted.

@@ -111,8 +111,8 @@
       "path": "src",
       "canonical_spec": "src/docs/README.md",
       "coverage_status": "Partial",
-      "coverage_evidence": "Field coverage 86.7% (13/15) assessed 2026-10-22 by the generator; critical field coverage 7/8. Two WEAK fields. Requirement rationale: 11 behaviors the code evidences have no reason stated by code, tests, a dependency spec, or the owner, so they are Evidence register observations (OBS-001, 004, 006, 007, 008, 009, 010, 013, 014, 017, 018), not requirements. Test strategy: test/unit/spec/user.js covers the SCIM helpers, argument guards, recordUUID, updatePreferredWebexSite, and getMeetingSiteList, and test/unit/spec/user-uuid-batcher.js covers only the creator batcher, but account-flow request shapes, the create guard, fetchUUID, the faker batcher, the store, getUserCI, the config defaults, and persistence have no unit case, test:integration is undefined, and no characterization baseline exists. Held at Partial: no spec-drift record exists and a characterization baseline is required before risky modification.",
-      "last_assessed": "2026-10-22",
+      "coverage_evidence": "Field coverage 93.3% (14/15) assessed 2026-10-27 by the generator; critical field coverage 8/8. The one WEAK field is test strategy: test/unit/spec/user.js covers the SCIM helpers, argument guards, recordUUID, updatePreferredWebexSite, and getMeetingSiteList, and test/unit/spec/user-uuid-batcher.js covers only the creator batcher, but account-flow request shapes, the create guard, fetchUUID, the faker batcher, the store, getUserCI, the config defaults, and persistence have no unit case, test:integration is undefined, and no characterization baseline exists. Held at Partial: no spec-drift record exists and a characterization baseline is required before risky modification.",
+      "last_assessed": "2026-10-27",
       "contracts": {
         "provides": [
           "user-sdk",
@@ -200,11 +200,10 @@
     "generator_runtime": "claude-code",
     "generator_model": "claude-sonnet-5-5",
     "generator_runtime_source": "host-metadata",
-    "validator_runtime": "01a1620b-9191-7020-aebe-d2722140e493",
-    "validator_run_id": "01a1620b-9191-7020-aebe-d2722140e493",
-    "validator_runtime_source": "host-metadata",
+    "validator_runtime": "codex",
+    "validator_runtime_source": "invocation-input",
     "runtime_fallback_tier": "different-runtime",
-    "source_commit": "fd531206868602f229dd1387e448c8bc572ee867",
+    "source_commit": "382c4fd8afbc8c62661188065ce23e0821885dd1",
     "minimum_independence": "different-runtime",
     "blocking_severities": [
       "Blocking"
