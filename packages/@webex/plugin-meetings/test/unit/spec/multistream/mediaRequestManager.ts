@@ -7,7 +7,7 @@ import {getMaxFs, MAX_FS_VALUES} from '@webex/plugin-meetings/src/multistream/re
 import LoggerProxy from '@webex/plugin-meetings/src/common/logs/logger-proxy';
 import FakeTimers from '@sinonjs/fake-timers';
 import * as InternalMediaCoreModule from '@webex/internal-media-core';
-import {MediaType, MediaContent, MediaCodecMimeType} from '@webex/internal-media-core';
+import {MediaType, MediaCodecMimeType} from '@webex/internal-media-core';
 
 
 type ExpectedAv1 = {
@@ -72,8 +72,7 @@ describe('MediaRequestManager', () => {
     getIngressPayloadTypeCallback = sinon.stub().returns(FAKE_H264_PAYLOAD_TYPE);
     mediaRequestManager = new MediaRequestManager(sendMediaRequestsCallback, getIngressPayloadTypeCallback, {
       degradationPreferences,
-      kind: 'video',
-      mediaContent: MediaContent.Main,
+      mediaType: MediaType.VideoMain,
       trimRequestsToNumOfSources: false,
       isReadyToSendRequests: () => true,
     });
@@ -948,46 +947,51 @@ describe('MediaRequestManager', () => {
       getRecommendedMaxBitrateForFrameSizeSpy.restore();
     });
 
-    it('returns the default maxPayloadBitsPerSecond if kind is "audio"', () => {
-      const mediaRequestManagerAudio = new MediaRequestManager(sendMediaRequestsCallback, getIngressPayloadTypeCallback, {
-        degradationPreferences,
-        kind: 'audio',
-        mediaContent: MediaContent.Main,
-        trimRequestsToNumOfSources: false,
-        isReadyToSendRequests: () => true,
-      });
-      mediaRequestManagerAudio.setNumCurrentSources(100, 100);
-      sendMediaRequestsCallback.resetHistory();
-
-      mediaRequestManagerAudio.addRequest(
-        {
-          policyInfo: {
-            policy: 'receiver-selected',
-            csi: 123,
-          },
-          receiveSlots: [fakeReceiveSlots[0]],
-          codecInfo: undefined,
-        },
-        false
-      );
-
-      mediaRequestManagerAudio.commit();
-
-      checkMediaRequestsSent(
-        [
+    [MediaType.AudioMain, MediaType.AudioSlides].forEach((mediaType) => {
+      it(`returns the default maxPayloadBitsPerSecond for ${mediaType}`, () => {
+        const mediaRequestManagerAudio = new MediaRequestManager(
+          sendMediaRequestsCallback,
+          getIngressPayloadTypeCallback,
           {
-            policy: 'receiver-selected',
-            csi: 123,
-            receiveSlot: fakeWcmeSlots[0],
-            // returns RecommendedOpusBitrates.FB_MONO_MUSIC as expected:
-            maxPayloadBitsPerSecond: 64000,
-          },
-          // set isCodecInfoDefined to false, since we don't pass in a codec info when audio:
-        ],
-        {isCodecInfoDefined: false}
-      );
+            degradationPreferences,
+            mediaType,
+            trimRequestsToNumOfSources: false,
+            isReadyToSendRequests: () => true,
+          }
+        );
+        mediaRequestManagerAudio.setNumCurrentSources(100, 100);
+        sendMediaRequestsCallback.resetHistory();
 
-      assert.notCalled(getRecommendedMaxBitrateForFrameSizeSpy);
+        mediaRequestManagerAudio.addRequest(
+          {
+            policyInfo: {
+              policy: 'receiver-selected',
+              csi: 123,
+            },
+            receiveSlots: [fakeReceiveSlots[0]],
+            codecInfo: undefined,
+          },
+          false
+        );
+
+        mediaRequestManagerAudio.commit();
+
+        checkMediaRequestsSent(
+          [
+            {
+              policy: 'receiver-selected',
+              csi: 123,
+              receiveSlot: fakeWcmeSlots[0],
+              // returns RecommendedOpusBitrates.FB_MONO_MUSIC as expected:
+              maxPayloadBitsPerSecond: 64000,
+            },
+            // set isCodecInfoDefined to false, since we don't pass in a codec info when audio:
+          ],
+          {isCodecInfoDefined: false}
+        );
+
+        assert.notCalled(getRecommendedMaxBitrateForFrameSizeSpy);
+      });
     });
 
     it('returns the recommended maxPayloadBitsPerSecond if kind is "video"', () => {
@@ -1071,8 +1075,7 @@ describe('MediaRequestManager', () => {
     beforeEach(() => {
       mediaRequestManager = new MediaRequestManager(sendMediaRequestsCallback, getIngressPayloadTypeCallback, {
         degradationPreferences,
-        kind: 'video',
-        mediaContent: MediaContent.Main,
+        mediaType: MediaType.VideoMain,
         trimRequestsToNumOfSources: true,
         isReadyToSendRequests: () => true,
       });
@@ -1450,8 +1453,7 @@ describe('MediaRequestManager', () => {
 
       mediaRequestManager = new MediaRequestManager(sendMediaRequestsCallback, getIngressPayloadTypeCallback, {
         degradationPreferences,
-        kind: 'video',
-        mediaContent: MediaContent.Slides,
+        mediaType: MediaType.VideoSlides,
         trimRequestsToNumOfSources: false,
         enableAv1: true,
         isReadyToSendRequests: () => true,
@@ -1480,8 +1482,7 @@ describe('MediaRequestManager', () => {
 
       mediaRequestManager = new MediaRequestManager(sendMediaRequestsCallback, getIngressPayloadTypeCallback, {
         degradationPreferences,
-        kind: 'video',
-        mediaContent: MediaContent.Slides,
+        mediaType: MediaType.VideoSlides,
         trimRequestsToNumOfSources: false,
         enableAv1: true,
         isReadyToSendRequests: () => true,
@@ -1514,8 +1515,7 @@ describe('MediaRequestManager', () => {
 
       mediaRequestManager = new MediaRequestManager(sendMediaRequestsCallback, getIngressPayloadTypeCallback, {
         degradationPreferences,
-        kind: 'video',
-        mediaContent: MediaContent.Slides,
+        mediaType: MediaType.VideoSlides,
         trimRequestsToNumOfSources: false,
         enableAv1: true,
         isReadyToSendRequests: () => true,
@@ -1664,8 +1664,7 @@ describe('MediaRequestManager', () => {
 
       mediaRequestManager = new MediaRequestManager(sendMediaRequestsCallback, getIngressPayloadTypeCallback, {
         degradationPreferences,
-        kind: 'video',
-        mediaContent: MediaContent.Slides,
+        mediaType: MediaType.VideoSlides,
         trimRequestsToNumOfSources: false,
         enableAv1: true,
         isReadyToSendRequests: () => true,
@@ -1860,8 +1859,7 @@ describe('MediaRequestManager pending request state', () => {
     getIngressPayloadTypeCallback = sinon.stub().returns(0x80);
     mediaRequestManager = new MediaRequestManager(sendMediaRequestsCallback, getIngressPayloadTypeCallback, {
       degradationPreferences,
-      kind: 'video',
-      mediaContent: MediaContent.Slides,
+      mediaType: MediaType.VideoSlides,
       trimRequestsToNumOfSources: false,
       isReadyToSendRequests,
     });
@@ -1890,19 +1888,18 @@ describe('MediaRequestManager pending request state', () => {
     );
 
   [
-    {kind: 'audio', mediaContent: MediaContent.Main},
-    {kind: 'video', mediaContent: MediaContent.Main},
-    {kind: 'audio', mediaContent: MediaContent.Slides},
-    {kind: 'video', mediaContent: MediaContent.Slides},
-  ].forEach(({kind, mediaContent}: {kind: 'audio' | 'video'; mediaContent: MediaContent}) => {
-    it(`logs pending and synchronized ${kind}-${mediaContent} state`, () => {
+    MediaType.AudioMain,
+    MediaType.VideoMain,
+    MediaType.AudioSlides,
+    MediaType.VideoSlides,
+  ].forEach((mediaType) => {
+    it(`logs pending and synchronized ${mediaType} state`, () => {
       mediaRequestManager = new MediaRequestManager(
         sendMediaRequestsCallback,
         getIngressPayloadTypeCallback,
         {
           degradationPreferences,
-          kind,
-          mediaContent,
+          mediaType,
           trimRequestsToNumOfSources: false,
           isReadyToSendRequests,
         }
@@ -1913,7 +1910,7 @@ describe('MediaRequestManager pending request state', () => {
       assert.notCalled(sendMediaRequestsCallback);
       assert.calledOnceWithExactly(
         LoggerProxy.logger.info,
-        `multistream:sendRequests --> connection not ready, latest ${kind}-${mediaContent} media request state will be synchronized when ready`
+        `multistream:sendRequests --> connection not ready, latest ${mediaType} media request state will be synchronized when ready`
       );
 
       isReadyToSendRequests.returns(true);
@@ -1922,7 +1919,7 @@ describe('MediaRequestManager pending request state', () => {
       assert.calledOnceWithExactly(sendMediaRequestsCallback, []);
       assert.calledWith(
         LoggerProxy.logger.info,
-        `multistream:sendRequests --> connection ready, synchronizing latest ${kind}-${mediaContent} media request state`
+        `multistream:sendRequests --> connection ready, synchronizing latest ${mediaType} media request state`
       );
     });
   });
@@ -1944,7 +1941,7 @@ describe('MediaRequestManager pending request state', () => {
     ]);
     assert.calledWith(
       LoggerProxy.logger.info,
-      'multistream:sendRequests --> connection ready, synchronizing latest video-SLIDES media request state'
+      'multistream:sendRequests --> connection ready, synchronizing latest VIDEO-SLIDES media request state'
     );
 
     mediaRequestManager.sendPendingRequestState();
