@@ -8,14 +8,22 @@ import util from 'util';
 import {safeSetTimeout} from '@webex/common-timers';
 import {oneFlight} from '@webex/common';
 import {WebexPlugin} from '@webex/webex-core';
+import {verifyUnionBundle} from '@webex/kms-caroots';
 import {Context, Request, Response} from 'node-kms';
 import jose from 'node-jose';
-import {omit} from 'lodash';
+import crypto from 'isomorphic-webcrypto';
+import {isArray, omit} from 'lodash';
 import uuid from 'uuid';
 
 import KMSBatcher, {TIMEOUT_SYMBOL} from './kms-batcher';
 import validateKMS, {KMSError} from './kms-certificate-validation';
+import loadCarootsAsset from './caroots-asset';
+import {UNION_BUNDLE_VERSION} from './union-bundle';
 import {
+  CAROOTS_ASSET_STALE_AFTER_DAYS,
+  JS_SDK_KMS_CAROOTS_ASSET_DOWNLOAD_FAILED,
+  JS_SDK_KMS_CAROOTS_ASSET_STALE,
+  JS_SDK_KMS_CAROOTS_ASSET_VERIFICATION_FAILED,
   JS_SDK_KMS_CERTIFICATE_VALIDATION_FAILED,
   KMS_KEY_REDIRECT_ERROR_CODE,
 } from './constants';
@@ -23,6 +31,7 @@ import {
 const contexts = new WeakMap();
 const kmsDetails = new WeakMap();
 const partialContexts = new WeakMap();
+const assetCaroots = new WeakMap();
 
 const consoleDebug = require('debug')('kms');
 
@@ -614,9 +623,10 @@ const KMS = WebexPlugin.extend({
    * @param {Object} options
    * @param {Number} options.timeout (internal)
    * @param {string} options.onBehalfOf Run the request on behalf of another user (UUID), used in compliance scenarios
+   * @param {boolean} options.previouslyTimedOut Whether an earlier attempt timed out
    * @returns {Promise<Object>}
    */
-  request(payload, {timeout, onBehalfOf} = {}) {
+  request(payload, {timeout, onBehalfOf, previouslyTimedOut = false} = {}) {
     timeout = timeout || this.config.kmsInitialTimeout;
 
     // Note: this should only happen when we're using the async kms batcher;
@@ -630,6 +640,15 @@ const KMS = WebexPlugin.extend({
 
           return this.batcher.request(req);
         })
+        .then((response) => {
+          if (previouslyTimedOut) {
+            this.logger.warn(
+              `kms: request succeeded after previous timeout; method: ${payload.method}; uri: ${payload.uri}; request id: ${response.requestId}`
+            );
+          }
+
+          return response;
+        })
         // High complexity is due to attempt at test mode resiliency
         // eslint-disable-next-line complexity
         .catch((reason) => {
@@ -642,7 +661,7 @@ const KMS = WebexPlugin.extend({
           ) {
             this.logger.warn('kms: rerequested key due to test-mode kms auth failure');
 
-            return this.request(payload, {onBehalfOf});
+            return this.request(payload, {onBehalfOf, previouslyTimedOut});
           }
 
           // KMS Error. Notify the user
@@ -689,7 +708,7 @@ const KMS = WebexPlugin.extend({
               timeout = 0;
             }
 
-            return this.request(payload, {timeout, onBehalfOf});
+            return this.request(payload, {timeout, onBehalfOf, previouslyTimedOut: true});
           }
 
           return Promise.reject(reason);
@@ -717,11 +736,20 @@ const KMS = WebexPlugin.extend({
     if (!promise) {
       promise = this._prepareContext();
       contexts.set(this, promise);
-      promise.then((context) => {
-        const expiresIn = context.ephemeralKey.expirationDate - Date.now() - 30000;
+      promise.then(
+        (context) => {
+          const expiresIn = context.ephemeralKey.expirationDate - Date.now() - 30000;
 
-        safeSetTimeout(() => contexts.delete(this), expiresIn);
-      });
+          safeSetTimeout(() => contexts.delete(this), expiresIn);
+        },
+        () => {
+          // Don't keep a failed negotiation (e.g. CA roots temporarily
+          // unavailable) cached forever; the next request retries.
+          if (contexts.get(this) === promise) {
+            contexts.delete(this);
+          }
+        }
+      );
     }
 
     return Promise.all([promise, this._getAuthorization()]).then(([context, authorization]) => {
@@ -786,38 +814,164 @@ const KMS = WebexPlugin.extend({
   },
 
   /**
-   * Validates the KMS static public key against the configured CA roots. The
-   * enforced `caroots` bundle reports and rejects on failure. When a
-   * `carootsReportOnly` bundle is also configured, it is validated after
-   * `caroots`; its failure is reported without rejecting.
+   * Submits a client metric without letting metric failures affect KMS.
+   * @private
+   * @param {string} name
+   * @param {Object} payload
+   * @returns {void}
+   */
+  _submitMetric(name, payload) {
+    try {
+      Promise.resolve(this.webex.internal.metrics.submitClientMetrics(name, payload)).catch(
+        (error) => {
+          this.logger.warn(`kms: failed to submit ${name} metric`, error);
+        }
+      );
+    } catch (error) {
+      this.logger.warn(`kms: failed to submit ${name} metric`, error);
+    }
+  },
+
+  /**
+   * Resolves the CA roots used to validate the KMS certificate:
+   * 1. `caroots` from config, when non-empty;
+   * 2. otherwise the signed `carootsAsset` bundle, loaded from
+   *    `assetsBaseUrl` (or the package's own assets in Node) and verified
+   *    against the pinned Cisco root.
+   * Resolves `undefined` when certificate validation is disabled. Only a
+   * verified result is cached; failures are cleared so the next KMS context
+   * negotiation retries.
+   * @private
+   * @returns {Promise<?string[]>}
+   */
+  _getCaroots() {
+    const {caroots, shouldValidateKMSCertificate} = this.config;
+
+    if (!shouldValidateKMSCertificate) {
+      return Promise.resolve(undefined);
+    }
+
+    if (isArray(caroots) && caroots.length > 0) {
+      return Promise.resolve(caroots);
+    }
+
+    let promise = assetCaroots.get(this);
+
+    if (!promise) {
+      promise = this._loadAssetCaroots().catch((reason) => {
+        assetCaroots.delete(this);
+
+        return Promise.reject(reason);
+      });
+      assetCaroots.set(this, promise);
+    }
+
+    return promise;
+  },
+
+  /**
+   * Downloads the `carootsAsset` bundle bytes.
+   * @private
+   * @returns {Promise<Uint8Array>}
+   */
+  _getCarootsAssetBytes() {
+    const {assetsBaseUrl, carootsAsset} = this.config;
+
+    return loadCarootsAsset({webex: this.webex, assetsBaseUrl, assetName: carootsAsset});
+  },
+
+  /**
+   * Loads and verifies the `carootsAsset` bundle, reporting failures and
+   * stale bundles as metrics.
+   * @private
+   * @returns {Promise<string[]>}
+   */
+  _loadAssetCaroots() {
+    const {assetsBaseUrl, carootsAsset} = this.config;
+    // HTTP errors carry the response body in `message`; summarize them instead.
+    const describe = (reason) =>
+      reason && reason.statusCode
+        ? `HTTP ${reason.statusCode} ${(reason.options && reason.options.uri) || ''}`.trim()
+        : (reason && reason.message) || String(reason);
+    const fail = (reason, detail) =>
+      new KMSError(
+        `unable to load the CA roots used to validate the KMS certificate (${detail}). ` +
+          'Set `encryption.caroots` to CA roots generated with @webex/kms-caroots, set ' +
+          `\`encryption.assetsBaseUrl\` to a URL hosting "${carootsAsset}", or set ` +
+          '`encryption.shouldValidateKMSCertificate` to false to opt out of validation. ' +
+          `Cause: ${describe(reason)}`
+      );
+
+    this.logger.info('kms: loading CA roots asset', carootsAsset);
+
+    return this._getCarootsAssetBytes().then(
+      (bytes) =>
+        verifyUnionBundle(bytes, {crypto, minBundleVersion: UNION_BUNDLE_VERSION}).then(
+          ({caroots, bundleVersion, signingTime}) => {
+            const ageInDays = Math.floor((new Date() - signingTime) / 86400000);
+
+            this.logger.info(
+              `kms: verified CA roots asset version ${bundleVersion} with ${caroots.length} roots`
+            );
+
+            if (ageInDays > CAROOTS_ASSET_STALE_AFTER_DAYS) {
+              this.logger.warn(`kms: CA roots asset is ${ageInDays} days old`);
+              this._submitMetric(JS_SDK_KMS_CAROOTS_ASSET_STALE, {
+                fields: {ageInDays},
+                tags: {bundleVersion},
+              });
+            }
+
+            return caroots;
+          },
+          (reason) => {
+            this.logger.error('kms: CA roots asset failed verification', reason);
+            this._submitMetric(JS_SDK_KMS_CAROOTS_ASSET_VERIFICATION_FAILED, {
+              fields: {success: false},
+              tags: {reason: reason.reason || 'unknown', message: reason.message},
+            });
+
+            return Promise.reject(fail(reason, `"${carootsAsset}" failed verification`));
+          }
+        ),
+      (reason) => {
+        this.logger.error('kms: failed to load CA roots asset', reason);
+        this._submitMetric(JS_SDK_KMS_CAROOTS_ASSET_DOWNLOAD_FAILED, {
+          fields: {success: false},
+          tags: {reason: describe(reason), assetsBaseUrl},
+        });
+
+        return Promise.reject(fail(reason, `"${carootsAsset}" could not be loaded`));
+      }
+    );
+  },
+
+  /**
+   * Validates the KMS static public key against the CA roots.
+   * Validation is opt-in (`shouldValidateKMSCertificate`) and, when enabled,
+   * fails closed when no CA roots are available or validation fails. Enforced
+   * failures are reported and rejected. When a `carootsReportOnly` bundle is
+   * configured, its failures are reported without rejecting.
    * @private
    * @param {Object} kmsStaticPubKey
+   * @param {?string[]} caroots CA roots resolved by `_getCaroots()`
    * @returns {Promise<Object>} the KMS static public key
    */
-  _validateKMSStaticPubKey(kmsStaticPubKey) {
-    const {caroots, carootsReportOnly} = this.config;
+  _validateKMSStaticPubKey(kmsStaticPubKey, caroots) {
+    const {carootsReportOnly, shouldValidateKMSCertificate} = this.config;
     const reportValidationFailure = (reason, validationMode) => {
       this.logger.warn(`kms: ${validationMode} certificate validation failed`, reason);
-
-      try {
-        Promise.resolve(
-          this.webex.internal.metrics.submitClientMetrics(JS_SDK_KMS_CERTIFICATE_VALIDATION_FAILED, {
-            fields: {success: false},
-            tags: {
-              reason: reason.message,
-              kid: kmsStaticPubKey && kmsStaticPubKey.kid,
-              validationMode,
-            },
-          })
-        ).catch((error) => {
-          this.logger.warn('kms: failed to submit certificate validation metric', error);
-        });
-      } catch (error) {
-        this.logger.warn('kms: failed to submit certificate validation metric', error);
-      }
+      this._submitMetric(JS_SDK_KMS_CERTIFICATE_VALIDATION_FAILED, {
+        fields: {success: false},
+        tags: {
+          reason: reason.message,
+          kid: kmsStaticPubKey && kmsStaticPubKey.kid,
+          validationMode,
+        },
+      });
     };
 
-    return validateKMS(caroots)(kmsStaticPubKey)
+    return validateKMS({caroots, validateSignature: shouldValidateKMSCertificate})(kmsStaticPubKey)
       .catch((reason) => {
         reportValidationFailure(reason, 'enforced');
         throw reason;
@@ -827,7 +981,7 @@ const KMS = WebexPlugin.extend({
           return jwt;
         }
 
-        return validateKMS(carootsReportOnly)(kmsStaticPubKey)
+        return validateKMS({caroots: carootsReportOnly})(kmsStaticPubKey)
           .catch((reason) => reportValidationFailure(reason, 'report-only'))
           .then(() => jwt);
       });
@@ -842,8 +996,8 @@ const KMS = WebexPlugin.extend({
     const context = new Context();
 
     return Promise.all([
-      this._getKMSStaticPubKey().then((kmsStaticPubKey) =>
-        this._validateKMSStaticPubKey(kmsStaticPubKey)
+      Promise.all([this._getKMSStaticPubKey(), this._getCaroots()]).then(
+        ([kmsStaticPubKey, caroots]) => this._validateKMSStaticPubKey(kmsStaticPubKey, caroots)
       ),
       this._getAuthorization(),
     ])

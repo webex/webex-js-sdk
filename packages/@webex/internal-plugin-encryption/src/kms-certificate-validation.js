@@ -198,16 +198,21 @@ const validateCertificatesSignature = (certificates, caroots = []) => {
 
 /**
  * Validates the information provided by the KMS. This is a curried function.
- * The first function takes the caroots param and returns a second function.
- * The second function takes the credentials of the KMS and validates it
- * @param {string[]} caroots PEM encoded certificates that will be used
- *   as Certificate Authorities
- * @param {Object} jwt Object containing the fields necessary to
- *   validate the KMS
- * @returns {Promise} when resolved will return the jwt
+ * The first function takes the validation options and returns a second
+ * function. The second function takes the credentials of the KMS and validates
+ * it
+ * @param {Object} [options]
+ * @param {string[]} [options.caroots] base64-encoded certificates that will be
+ *   used as Certificate Authorities
+ * @param {boolean} [options.validateSignature=true] when true, the KMS
+ *   certificate chain must validate against `caroots`; if no `caroots` are
+ *   provided the validation fails closed. Set to false to skip signature
+ *   validation entirely.
+ * @returns {Function} function that takes the jwt and returns a Promise which,
+ *   when resolved, returns the jwt
  */
 const validateKMS =
-  (caroots) =>
+  ({caroots, validateSignature = true} = {}) =>
   (jwt = {}) =>
     Promise.resolve().then(() => {
       validateKtyHeader(jwt);
@@ -221,12 +226,16 @@ const validateKMS =
       validateCommonName(certificates, jwt);
       validatePublicCertificate(certificates, jwt);
 
-      // Skip validating signatures if no CA roots were provided
-      const promise = caroots
-        ? validateCertificatesSignature(certificates, caroots)
-        : Promise.resolve();
+      if (!validateSignature) {
+        return jwt;
+      }
 
-      return promise.then(() => jwt);
+      // Fail closed: signature validation is required but no CA roots exist
+      if (!(isArray(caroots) && caroots.length > 0)) {
+        throwError('no CA roots configured to validate the KMS certificate against');
+      }
+
+      return validateCertificatesSignature(certificates, caroots).then(() => jwt);
     });
 
 export default validateKMS;
