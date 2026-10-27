@@ -9,10 +9,85 @@ import {browserOnly} from '@webex/test-helper-mocha';
 import WebexCore from '@webex/webex-core';
 import sinon from 'sinon';
 
+import {validKey} from '../../fixtures/kms-certificate';
+
 describe('Encryption', function () {
   this.timeout(30000);
 
   describe('KMS CA roots', () => {
+    describe('background report-only roots', () => {
+      let kms;
+      let report;
+      let metric;
+
+      beforeEach(() => {
+        const webex = new WebexCore({
+          config: {encryption: {shouldValidateKMSCertificateReportOnly: true}},
+        });
+
+        kms = webex.internal.encryption.kms;
+        report = sinon.spy(kms, '_reportKMSStaticPubKey');
+        metric = sinon.stub(kms, '_submitMetric');
+      });
+
+      afterEach(() => {
+        sinon.restore();
+      });
+
+      it('loads verified asset roots and reports the fixture chain without rejecting the key', async () => {
+        const roots = sinon.spy(kms, '_loadCaroots');
+
+        assert.equal(await kms._validateKMSStaticPubKey(validKey), validKey);
+        await report.returnValues[0];
+        assert.isAbove((await roots.returnValues[0]).length, 100);
+        assert.calledOnceWithExactly(metric, 'JS_SDK_KMS_CERTIFICATE_VALIDATION_FAILED', {
+          fields: {success: false},
+          tags: {
+            reason: sinon.match(/^INVALID KMS: Certificate Validation failed/),
+            kid: validKey.kid,
+            validationMode: 'report-only',
+          },
+        });
+      });
+
+      it('returns the checked key before a pending asset request settles', async () => {
+        let complete;
+        const getBytes = sinon.stub(kms, '_getCarootsAssetBytes').returns(
+          new Promise((resolve) => {
+            complete = resolve;
+          })
+        );
+
+        try {
+          assert.equal(await kms._validateKMSStaticPubKey(validKey), validKey);
+          assert.calledOnceWithExactly(getBytes);
+          assert.notCalled(metric);
+        } finally {
+          complete(new Uint8Array([1, 2, 3]));
+          if (report.called) await report.returnValues[0];
+        }
+        assert.equal(metric.firstCall.args[0], 'JS_SDK_KMS_CAROOTS_ASSET_VERIFICATION_FAILED');
+        assert.calledOnce(metric);
+      });
+
+      browserOnly(it)(
+        'reports a failed application-hosted request without rejecting the key',
+        async () => {
+          kms.config.assetsBaseUrl = '/assets/does-not-exist/';
+
+          assert.equal(await kms._validateKMSStaticPubKey(validKey), validKey);
+          await report.returnValues[0];
+          assert.calledOnceWithExactly(metric, 'JS_SDK_KMS_CAROOTS_ASSET_DOWNLOAD_FAILED', {
+            fields: {success: false},
+            tags: {
+              reason: sinon.match(/HTTP 404/),
+              assetsBaseUrl: '/assets/does-not-exist/',
+            },
+          });
+        }
+      );
+    });
+
     [undefined, {caroots: ['MIIconfigured']}].forEach((encryption) => {
       it(`does not load CA roots by default${
         encryption ? ' even with configured roots' : ''

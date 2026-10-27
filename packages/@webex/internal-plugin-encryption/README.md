@@ -39,10 +39,18 @@ options on the `encryption` config:
 - `shouldValidateKMSCertificate` — whether to validate the KMS certificate
   chain. Defaults to `false`; set it to `true` to opt in. When enabled the SDK **fails closed**: if no CA
   roots are available, or the chain doesn't validate, the ECDH negotiation
-  fails. When disabled, the SDK does not load the CA roots asset.
+  fails. When both validation options are disabled, the SDK does not load the
+  CA roots asset.
+- `shouldValidateKMSCertificateReportOnly` — defaults to `false`. When `true`
+  and enforcement is disabled, check the certificate chain in the background
+  using configured `caroots` or the same verified asset. Download, bundle
+  verification and certificate-chain failures are reported without delaying or
+  rejecting KMS setup. Mandatory key/certificate checks still apply. Enforcement
+  and an explicit `carootsReportOnly` array take precedence over this option.
 - `caroots` — an array of raw base64-encoded CA root certificates. When set (and
-  non-empty) these are used and nothing is downloaded. Supplying roots alone
-  does not enable enforcement; also set `shouldValidateKMSCertificate: true`.
+  non-empty) these are used and nothing is downloaded in either validation
+  mode. Supplying roots alone does not enable validation; select enforcement or
+  background report-only checking explicitly.
 - `carootsAsset` — the file name of Cisco's signed Trusted Root Store **Union**
   bundle, `ios_union-<version>.p7b`, using the signed bundle version (YYYYMMDD).
 - `assetsBaseUrl` — the URL of the directory hosting `carootsAsset`. Versioned
@@ -58,11 +66,13 @@ options on the `encryption` config:
 - `carootsReportOnly` — an additional array of CA roots validated alongside the
   enforced roots. A failure here is only reported as a metric instead of failing
   the negotiation, which lets a new bundle be trialled in parallel. This also
-  runs when `shouldValidateKMSCertificate` is `false`.
+  runs when `shouldValidateKMSCertificate` is `false`. This existing check is
+  awaited and takes precedence over the new background report-only option;
+  supplying this array does not request the asset.
 
 ### Where the CA roots come from
 
-When `shouldValidateKMSCertificate` is `true`:
+When enforcement or background report-only checking is enabled:
 
 1. **`caroots`**, when configured.
 2. Otherwise, the **Cisco Union bundle** shipped as a static asset with this
@@ -71,9 +81,31 @@ When `shouldValidateKMSCertificate` is `true`:
    bundle's CMS signature is verified in JavaScript against the pinned Cisco
    TRS Bundle Root CA, and a bundle older than the one shipped with the SDK is
    rejected. Every certificate in the verified bundle is trusted.
-3. If neither is available the negotiation **fails closed** with an error that
-   names `caroots`, `assetsBaseUrl` and `shouldValidateKMSCertificate`. A failed
-   download or verification is retried on the next KMS request.
+3. Enforcement **fails closed** if roots cannot be loaded or verified.
+   Background report-only checking reports the asset failure and leaves KMS
+   setup unaffected. Failed loads are retried on a later context negotiation.
+
+The new report-only check starts after the mandatory key checks succeed. It
+does not delay context setup, even while its download is pending. Certificate
+failures use `validationMode: 'report-only'`; download and bundle-verification
+failures keep their existing metric categories. An unverified bundle is never
+used. A tab or SDK instance closing can prevent background reporting from
+completing.
+
+```js
+const webex = new WebexCore({
+  config: {
+    encryption: {
+      shouldValidateKMSCertificateReportOnly: true,
+      // Optional: override assetsBaseUrl to use application-hosted assets.
+    },
+  },
+});
+```
+
+When both flags are `true`, enforcement wins and the new report-only option
+does not add a duplicate check. Explicit `carootsReportOnly` arrays retain their
+existing additional-check behavior, including when enforcement is enabled.
 
 The SDK reports these client metrics:
 
@@ -86,7 +118,7 @@ The SDK reports these client metrics:
 
 The encryption plugin owns the default for direct `WebexCore` consumers,
 `Webex.init()`, and the encryption UMD bundle. After opting in with
-`shouldValidateKMSCertificate: true`, versioned release builds fetch the bundle
+either validation option, versioned release builds fetch the bundle
 from the matching `webex` UMD assets on unpkg, so your Content
 Security Policy `connect-src` must allow `https://unpkg.com`. Standalone plugin
 builds use their own `PACKAGE_VERSION` to fetch the raw asset from the matching
