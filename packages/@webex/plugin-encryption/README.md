@@ -62,6 +62,14 @@ untrusted. If roots are not supplied, the SDK loads and verifies its signed CA
 roots asset. See the [KMS configuration and asset-hosting guide](../internal-plugin-encryption/README.md#kms-certificate-validation)
 for download configuration and offline deployments.
 
+To observe failures without enforcing certificate-chain trust, use
+`config.encryption.shouldValidateKMSCertificateReportOnly: true` instead.
+This option defaults to `false`. It loads the same verified roots in the
+background, using the configured asset host, and reports failures without
+delaying or rejecting KMS setup. Mandatory key checks still apply. Enforcement
+and explicit `carootsReportOnly` arrays take precedence. See the configuration
+guide above for compatibility and background-reporting details.
+
 ## API Docs and Sample App
 
 - API Reference: [https://webex.github.io/webex-js-sdk/plugin-encryption/](https://webex.github.io/webex-js-sdk/plugin-encryption/)
