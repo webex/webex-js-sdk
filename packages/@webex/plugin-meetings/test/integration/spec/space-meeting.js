@@ -528,3 +528,5 @@ skipInNode(describe)('plugin-meetings', () => {
     });
   });
 });
+
+// Temporary CI baseline for the space-meeting browser test.
