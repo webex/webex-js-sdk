@@ -1,0 +1,193 @@
+{
+  "$schema": "./schemas/repo-context.schema.json",
+  "version": 1,
+  "repository": {
+    "name": "webex-js-sdk",
+    "purpose": "JavaScript SDK for interacting with the Webex API."
+  },
+  "commands": {
+    "install": "yarn",
+    "build": "yarn build",
+    "unit-test": "yarn test:unit",
+    "lint": "yarn lint"
+  },
+  "source_of_truth": [
+    {
+      "surface": "sdd-package-routing",
+      "paths": [
+        ".sdd/manifest.json",
+        "AGENTS.md",
+        "docs/index.md"
+      ],
+      "generated_artifacts": [
+        ".sdd/manifest.json"
+      ],
+      "refresh_with": [
+        "Run Repo Annotation for the package from the active Repo Annotation installation, then the root routing update."
+      ],
+      "validate_with": [
+        "Run scripts/check_orchestrator_root.py from the active Repo Annotation installation with --repo-root set to this repository root."
+      ]
+    },
+    {
+      "surface": "@webex/internal-plugin-user",
+      "paths": [
+        "packages/@webex/internal-plugin-user/.sdd/manifest.json",
+        "packages/@webex/internal-plugin-user/AGENTS.md"
+      ],
+      "generated_artifacts": [],
+      "refresh_with": [
+        "Run Repo Annotation for this package from the active Repo Annotation installation."
+      ],
+      "validate_with": [
+        "yarn workspace @webex/internal-plugin-user test:unit"
+      ]
+    }
+  ],
+  "generated_artifacts": [
+    {
+      "path": ".sdd/templates/repo-standards/template-map.json",
+      "generated_from": "WebexTools/repo-standards@d89a7fe59126ae3ad9bac9ca352aa7f12b4c85dc",
+      "refresh_with": "Seed the templates with setup-skills.sh --monorepo-root from the active Repo Annotation installation."
+    },
+    {
+      "path": ".sdd/config/root-overrides.json",
+      "generated_from": "repo-annotation-overrides@1.0.0",
+      "refresh_with": "Seed the templates with setup-skills.sh --monorepo-root from the active Repo Annotation installation."
+    }
+  ],
+  "validation_matrix": [
+    {
+      "paths": [
+        ".sdd/manifest.json",
+        "AGENTS.md",
+        "docs/index.md",
+        ".repo-context.json"
+      ],
+      "minimum": [
+        "Run scripts/check_orchestrator_root.py from the active Repo Annotation installation with --repo-root set to this repository root."
+      ],
+      "recommended": []
+    },
+    {
+      "paths": [
+        "packages/@webex/internal-plugin-user/**"
+      ],
+      "minimum": [
+        "yarn workspace @webex/internal-plugin-user test:unit"
+      ],
+      "recommended": [
+        "yarn workspace @webex/internal-plugin-user test:style"
+      ]
+    }
+  ],
+  "repository_topology": {
+    "main_entrypoints": [
+      {
+        "name": "workspace declaration",
+        "path": "package.json",
+        "purpose": "Declares the workspace package roots listed in the manifest workspace_declarations"
+      }
+    ],
+    "workspace_packages": [
+      {
+        "name": "@webex/internal-plugin-user",
+        "paths": [
+          "packages/@webex/internal-plugin-user"
+        ],
+        "notes": "Onboarded package: its own AGENTS.md, docs/, and .sdd/manifest.json are routed from .sdd/manifest.json packages."
+      }
+    ],
+    "source_surfaces": [
+      {
+        "name": "workspace package roots",
+        "paths": [
+          "packages"
+        ],
+        "notes": "Each package builds, tests, and publishes independently; only onboarded packages carry SDD documentation."
+      }
+    ],
+    "generated_surfaces": [
+      {
+        "name": "sdd-template-snapshot",
+        "paths": [
+          ".sdd/templates/repo-standards"
+        ],
+        "generated_from": "WebexTools/repo-standards@d89a7fe59126ae3ad9bac9ca352aa7f12b4c85dc",
+        "refresh_with": "Seed the templates with setup-skills.sh --monorepo-root from the active Repo Annotation installation."
+      },
+      {
+        "name": "sdd-root-overrides",
+        "paths": [
+          ".sdd/templates/repo-annotation",
+          ".sdd/config/root-overrides.json"
+        ],
+        "generated_from": "repo-annotation-overrides@1.0.0",
+        "refresh_with": "Seed the templates with setup-skills.sh --monorepo-root from the active Repo Annotation installation."
+      }
+    ],
+    "sync_paths": [
+      {
+        "source": "WebexTools/repo-standards@d89a7fe59126ae3ad9bac9ca352aa7f12b4c85dc",
+        "targets": [
+          ".sdd/templates/repo-standards"
+        ],
+        "mechanism": "setup-skills.sh --monorepo-root from the active Repo Annotation installation; the root snapshot is the only copy, and packages refer to it."
+      },
+      {
+        "source": "repo-annotation-overrides@1.0.0",
+        "targets": [
+          ".sdd/templates/repo-annotation",
+          ".sdd/config/root-overrides.json"
+        ],
+        "mechanism": "setup-skills.sh --monorepo-root from the active Repo Annotation installation."
+      }
+    ],
+    "validation_entrypoints": [
+      {
+        "name": "sdd-orchestrator-root",
+        "command": "Run scripts/check_orchestrator_root.py from the active Repo Annotation installation with --repo-root set to this repository root.",
+        "scope": "Root routing manifest, root overrides, package routes, and routing blocks"
+      }
+    ]
+  },
+  "surface_owners": [
+    {
+      "surface": "sdd-package-routing",
+      "owner": "@webex/web-sdk",
+      "edit_boundary": "Repo Annotation refreshes only the marker-delimited package routing blocks and the onboarded workspace_packages entries; all other root content is human-owned."
+    },
+    {
+      "surface": "@webex/internal-plugin-user",
+      "owner": "@webex/web-client, @webex/web-sdk",
+      "edit_boundary": "Owners per the .github/CODEOWNERS entry for packages/@webex/internal-plugin-user."
+    }
+  ],
+  "do_not_edit": [
+    ".sdd/templates/repo-standards",
+    ".sdd/templates/repo-annotation",
+    ".sdd/config/root-overrides.json"
+  ],
+  "marker_scopes": {
+    "sdd-package-routing": [
+      "AGENTS.md",
+      "docs/index.md"
+    ]
+  },
+  "fallback_rules": [
+    "Read the routed package's AGENTS.md and .sdd/manifest.json before changing package code.",
+    "When a package is not listed in .sdd/manifest.json packages, treat its code as the only source of truth."
+  ],
+  "downstream_context_pack": {
+    "required_human_surfaces": [
+      "docs/index.md"
+    ],
+    "required_agent_operational_surfaces": [
+      "AGENTS.md"
+    ],
+    "required_machine_readable_surface": ".repo-context.json",
+    "recommended_machine_readable_sections": [
+      "repository_topology"
+    ]
+  }
+}
