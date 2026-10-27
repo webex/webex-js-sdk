@@ -1,0 +1,30 @@
+{
+  "schema_version": 1,
+  "template_source": "repo-annotation",
+  "overrides_version": "1.0.0",
+  "source": "repo-annotation-overrides@1.0.0",
+  "applies_to": "monorepo-root",
+  "precedence": [
+    ".sdd/templates/repo-annotation",
+    ".sdd/templates/repo-standards"
+  ],
+  "overrides": [
+    {
+      "file": ".repo-context.json",
+      "overrides": ".repo-context.json",
+      "generates": ".repo-context.json",
+      "handling": "create-if-missing-or-update-routing",
+      "purpose": "Orchestrator-root repository context whose repository_topology.workspace_packages routes to onboarded packages.",
+      "sha256": "02bdc7199510d794dcbf11d100e8dfedcb6850db08fcf88af5006850d18bc8fd"
+    },
+    {
+      "file": ".manifest.schema.json",
+      "overrides": null,
+      "generates": null,
+      "validates": ".sdd/manifest.json",
+      "handling": "schema",
+      "purpose": "Schema for the routing-only root .sdd/manifest.json. Package manifests keep sdd-manifest.schema.json.",
+      "sha256": "84f624c1b241305ca708dcceb0c10758ac4795b6c666962e5ada6fc3ef5ab625"
+    }
+  ]
+}

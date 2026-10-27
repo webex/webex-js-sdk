@@ -1,0 +1,87 @@
+{
+  "manifest_version": 1,
+  "manifest_kind": "orchestrator-root",
+  "topology": "Orchestrator-plus-components",
+  "repository": {
+    "name": "webex-js-sdk",
+    "purpose": "Yarn-workspace monorepo for the Webex JavaScript SDK, its plugins, and supporting tooling packages.",
+    "workspace_declarations": [
+      {
+        "source_file": "package.json",
+        "patterns": [
+          "./packages/@webex/*",
+          "./packages/webex",
+          "./packages/webex-node",
+          "./packages/calling",
+          "./packages/byods",
+          "./packages/byods-demo-server",
+          "./packages/webexconnect",
+          "./packages/config/*",
+          "./packages/legacy/*",
+          "./packages/tools/*"
+        ]
+      }
+    ]
+  },
+  "layout": {
+    "agent_entry_path": "AGENTS.md",
+    "index_path": "docs/index.md",
+    "repo_context_path": ".repo-context.json",
+    "repo_context_schema_path": "schemas/repo-context.schema.json",
+    "template_roots": {
+      "canonical": ".sdd/templates/repo-standards",
+      "overrides": ".sdd/templates/repo-annotation"
+    }
+  },
+  "root_artifact_decisions": [
+    {
+      "path": "AGENTS.md",
+      "action": "update-routing",
+      "reason": "The root AGENTS.md is human-owned workspace guidance. Only the managed package-routing block was appended at the end; every byte outside the markers is unchanged.",
+      "decided_by": "rarajes2@cisco.com (bootstrap questionnaire)",
+      "decided_at": "2026-10-14T13:20:00Z"
+    },
+    {
+      "path": "docs/index.md",
+      "action": "create",
+      "reason": "No root docs/index.md existed. It is created from the repo-standards docs-index template as a routing-only documentation home.",
+      "decided_by": "rarajes2@cisco.com (bootstrap questionnaire)",
+      "decided_at": "2026-10-14T13:20:00Z"
+    },
+    {
+      "path": ".repo-context.json",
+      "action": "create",
+      "reason": "No root repository context existed. It is created from the repo-annotation override template with workspace_packages routing to the onboarded package.",
+      "decided_by": "rarajes2@cisco.com (bootstrap questionnaire)",
+      "decided_at": "2026-10-14T13:20:00Z"
+    },
+    {
+      "path": "schemas/repo-context.schema.json",
+      "action": "create",
+      "reason": "No root schema existed. It is copied unchanged from .sdd/templates/repo-standards/schemas/repo-context.schema.json.",
+      "decided_by": "rarajes2@cisco.com (bootstrap questionnaire)",
+      "decided_at": "2026-10-14T13:20:00Z"
+    }
+  ],
+  "packages": [
+    {
+      "id": "plugin-authorization-browser-first-party",
+      "path": "packages/@webex/plugin-authorization-browser-first-party",
+      "manifest": "packages/@webex/plugin-authorization-browser-first-party/.sdd/manifest.json",
+      "agent_entry": "packages/@webex/plugin-authorization-browser-first-party/AGENTS.md",
+      "index": "packages/@webex/plugin-authorization-browser-first-party/docs/index.md",
+      "templates_link": "packages/@webex/plugin-authorization-browser-first-party/.sdd/templates",
+      "onboarded_at": "2026-10-14T13:20:00Z",
+      "onboarded_by": "claude-code"
+    }
+  ],
+  "substrate": {
+    "source": "WebexTools/repo-standards@d89a7fe59126ae3ad9bac9ca352aa7f12b4c85dc",
+    "overrides_source": "repo-annotation-overrides@1.0.0"
+  },
+  "provenance": {
+    "generated_by": "claude-code",
+    "approved_by": "rarajes2@cisco.com",
+    "updated_at": "2026-10-14T13:20:00Z"
+  }
+}
