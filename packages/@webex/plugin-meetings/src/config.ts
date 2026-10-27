@@ -2,6 +2,7 @@
 import {deviceType, getUmdAssetsBaseUrl} from '@webex/common';
 
 declare const SDK_VERSION: string;
+declare const PACKAGE_VERSION: string;
 
 export default {
   // TODO: this needs to be defaulted
@@ -83,7 +84,7 @@ export default {
     receiveTranscription: false,
     enableExtmap: false,
     enableAutomaticLLM: false,
-    assetsBaseUrl: getUmdAssetsBaseUrl('plugin-meetings', SDK_VERSION),
+    assetsBaseUrl: getUmdAssetsBaseUrl('plugin-meetings', SDK_VERSION, PACKAGE_VERSION),
     installedOrgID: undefined,
     multipartSitePrefixList: ['.my.', '.mydmz.', '.mybts.', '.mydev.', '.myats2.', '.myats.'],
     experimental: {

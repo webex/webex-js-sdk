@@ -348,14 +348,18 @@ describe('SendSlotsManager', () => {
 
     describe('reset', () => {
         let mediaConnection;
+        let mockSlot: {unpublishStream: sinon.SinonStub};
 
         beforeEach(() => {
+            mockSlot = {
+                unpublishStream: sinon.stub().resolves(),
+            };
             mediaConnection = {
-                createSendSlot: sinon.stub().returns({}),
+                createSendSlot: sinon.stub().returns(mockSlot),
             } as MultistreamRoapMediaConnection;
         });
 
-        it('should reset the send slot manager', () => {
+        it('should unpublish and reset the send slot manager', () => {
             const AudioSlot = sendSlotsManager.createSlot(mediaConnection, MediaType.AudioMain);
             const VideoSlot = sendSlotsManager.createSlot(mediaConnection, MediaType.VideoMain);
             const AudioSlidesSlot = sendSlotsManager.createSlot(mediaConnection, MediaType.AudioSlides);
@@ -364,11 +368,35 @@ describe('SendSlotsManager', () => {
             expect(sendSlotsManager.getSlot(MediaType.VideoMain)).to.equal(VideoSlot);
             expect(sendSlotsManager.getSlot(MediaType.AudioSlides)).to.equal(AudioSlidesSlot);
             expect(sendSlotsManager.getSlot(MediaType.VideoSlides)).to.equal(VideoSlidesSlot);
+
             sendSlotsManager.reset();
+
             expect(() => sendSlotsManager.getSlot(MediaType.AudioMain)).to.throw();
             expect(() => sendSlotsManager.getSlot(MediaType.VideoMain)).to.throw();
             expect(() => sendSlotsManager.getSlot(MediaType.AudioSlides)).to.throw();
             expect(() => sendSlotsManager.getSlot(MediaType.VideoSlides)).to.throw();
+
+            // every slot must be unpublished (detaching its stream listeners) before being
+            // discarded, otherwise it stays subscribed to a stream that may be reused later
+            assert.callCount(mockSlot.unpublishStream, 4);
+        });
+
+        it('logs a warning and still clears the slots when unpublishStream rejects', async () => {
+            const error = new Error('cannot unpublish: peer connection is closed');
+            mockSlot.unpublishStream.rejects(error);
+
+            sendSlotsManager.createSlot(mediaConnection, MediaType.AudioMain);
+
+            sendSlotsManager.reset();
+
+            // allow the rejected unpublishStream promise's .catch() handler to run
+            await new Promise((resolve) => setImmediate(resolve));
+
+            expect(() => sendSlotsManager.getSlot(MediaType.AudioMain)).to.throw();
+            assert.calledWith(
+                LoggerProxy.logger.warn,
+                `SendSlotsManager->reset#Failed to unpublish stream for ${MediaType.AudioMain} while resetting: ${error.message}`
+            );
         });
     });
 
