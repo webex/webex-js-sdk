@@ -7384,6 +7384,7 @@ __metadata:
     "@web/dev-server": 0.4.5
     "@webex/jest-config-legacy": "workspace:*"
     "@webex/legacy-tools": "workspace:*"
+    "@webex/test-helper-chai": "workspace:*"
     chai: 4.3.4
     cspell: 5.19.2
     esbuild: ^0.17.19
