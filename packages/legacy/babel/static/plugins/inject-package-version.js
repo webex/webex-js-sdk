@@ -13,11 +13,18 @@ const pathPack = require('path');
  */
 module.exports = function injectPackageVersion() {
   const packagePath = pathPack.resolve(process.cwd(), 'package.json');
+  const sdkPackagePath = pathPack.resolve(__dirname, '../../../../../packages/webex/package.json');
   let version;
+  let sdkVersion;
   if (fs.existsSync(packagePath)) {
     // eslint-disable-next-line import/no-dynamic-require, global-require
     const packageJSON = require(packagePath);
     version = packageJSON.version || '0.0.0';
+  }
+  if (fs.existsSync(sdkPackagePath)) {
+    // eslint-disable-next-line import/no-dynamic-require, global-require
+    const sdkPackageJSON = require(sdkPackagePath);
+    sdkVersion = sdkPackageJSON.version || '0.0.0';
   }
 
   return {
@@ -56,6 +63,9 @@ module.exports = function injectPackageVersion() {
       Identifier(path) {
         if (path.node.name === 'PACKAGE_VERSION') {
           path.replaceWithSourceString(`\`${version}\``);
+        }
+        if (path.node.name === 'SDK_VERSION') {
+          path.replaceWithSourceString(`\`${sdkVersion}\``);
         }
       },
     },

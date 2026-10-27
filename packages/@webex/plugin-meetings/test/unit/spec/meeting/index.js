@@ -3338,6 +3338,13 @@ describe('plugin-meetings', () => {
           });
 
           describe('llm', () => {
+            beforeEach(() => {
+              // Realistic post-sync locusInfo state: updateLLMConnection requires both
+              // of these to be populated before it will create/register a channel.
+              meeting.locusInfo.url = 'https://locus-a.example.com/locus/api/v1/loci/locus-id';
+              meeting.locusInfo.info = {datachannelUrl: 'https://example.com/datachannel-url'};
+            });
+
             it('makes sure that join does not wait for update llm connection promise', async () => {
               const defer = new Defer();
 
@@ -3712,6 +3719,95 @@ describe('plugin-meetings', () => {
                 Metrics.sendBehavioralMetric,
                 BEHAVIORAL_METRICS.LLM_HEALTHCHECK_FAILURE
               );
+            });
+
+            describe('guards against an unsynced locusInfo url/datachannelUrl', () => {
+              beforeEach(() => {
+                sinon.stub(meeting, 'isJoined').returns(true);
+                meeting.updateLLMConnection.restore();
+              });
+
+              it('does nothing and does not create a channel when locusInfo.url is missing', async () => {
+                meeting.locusInfo.url = undefined;
+                meeting.locusInfo.info = {datachannelUrl: 'https://example.com/datachannel-url'};
+
+                const result = await meeting.updateLLMConnection();
+
+                assert.isUndefined(result);
+                assert.notCalled(webex.internal.llm.createChannel);
+                assert.isUndefined(meeting.llmChannel);
+              });
+
+              it('does nothing and does not create a channel when locusInfo.info.datachannelUrl is missing', async () => {
+                meeting.locusInfo.url = 'https://locus-a.example.com/locus/api/v1/loci/locus-id';
+                meeting.locusInfo.info = {datachannelUrl: undefined};
+
+                const result = await meeting.updateLLMConnection();
+
+                assert.isUndefined(result);
+                assert.notCalled(webex.internal.llm.createChannel);
+                assert.isUndefined(meeting.llmChannel);
+              });
+
+              it('does nothing and does not create a channel when locusInfo.info itself is missing', async () => {
+                meeting.locusInfo.url = 'https://locus-a.example.com/locus/api/v1/loci/locus-id';
+                meeting.locusInfo.info = undefined;
+
+                const result = await meeting.updateLLMConnection();
+
+                assert.isUndefined(result);
+                assert.notCalled(webex.internal.llm.createChannel);
+                assert.isUndefined(meeting.llmChannel);
+              });
+
+              it('disconnects a stale existing channel even when locusInfo has not resynced new urls', async () => {
+                // Simulate a healthy, already-connected channel from a prior,
+                // fully-synced call to updateLLMConnection, holding real URLs.
+                const mockChannel = createMockLLMChannel({
+                  isConnected: sinon.stub().returns(true),
+                  getLocusUrl: sinon
+                    .stub()
+                    .returns('https://locus-a.example.com/locus/api/v1/loci/old-locus-id'),
+                  getDatachannelUrl: sinon
+                    .stub()
+                    .returns('https://example.com/old-datachannel-url'),
+                });
+
+                meeting.llmChannel = mockChannel;
+
+                // A later lobby-transition event (e.g. SELF_UNADMITTED_GUEST on rejoin)
+                // fires updateLLMConnection again before locusInfo has resynced the new
+                // session's urls. The stale channel must still be disconnected so it stops
+                // processing events for the prior (now-left) session while the user waits
+                // in the lobby; a new channel must not be created with the empty urls.
+                meeting.locusInfo.url = undefined;
+                meeting.locusInfo.info = {datachannelUrl: undefined};
+
+                const result = await meeting.updateLLMConnection();
+
+                assert.isUndefined(result);
+                assert.calledOnce(mockChannel.disconnect);
+                assert.isUndefined(meeting.llmChannel);
+                assert.notCalled(webex.internal.llm.createChannel);
+              });
+
+              it('proceeds to create and register a channel once both url and datachannelUrl are present', async () => {
+                const mockChannel = createMockLLMChannel();
+                webex.internal.llm.createChannel = sinon.stub().returns(mockChannel);
+
+                meeting.locusInfo.url = 'https://locus-a.example.com/locus/api/v1/loci/locus-id';
+                meeting.locusInfo.info = {datachannelUrl: 'https://example.com/datachannel-url'};
+
+                await meeting.updateLLMConnection();
+
+                assert.calledOnce(webex.internal.llm.createChannel);
+                assert.calledOnceWithExactly(
+                  mockChannel.registerAndConnect,
+                  meeting.locusInfo.url,
+                  meeting.locusInfo.info.datachannelUrl,
+                  sinon.match.any
+                );
+              });
             });
           });
 
