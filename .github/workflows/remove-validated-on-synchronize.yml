@@ -1,4 +1,4 @@
-name: Remove Validated Label On New Push
+name: Testing Validated Label On New Push
 run-name: Remove validated label for PR #${{ github.event.pull_request.number }}
 
 on:
