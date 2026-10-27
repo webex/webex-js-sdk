@@ -44,6 +44,21 @@ describe('webex', () => {
       });
     });
 
+    describe('encryption.assetsBaseUrl', () => {
+      it('serves assets from the page origin for unversioned builds', () => {
+        const webex = Webex.init();
+
+        assert.equal(webex.config.encryption.assetsBaseUrl, '/assets/internal-plugin-encryption/');
+      });
+
+      it('can be overridden', () => {
+        const assetsBaseUrl = 'https://cdn.example.com/internal-plugin-encryption/';
+        const webex = Webex.init({config: {encryption: {assetsBaseUrl}}});
+
+        assert.equal(webex.config.encryption.assetsBaseUrl, assetsBaseUrl);
+      });
+    });
+
     describe('fedramp', () => {
       let webex;
 

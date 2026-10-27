@@ -1,130 +1,132 @@
+import {assert} from '@webex/test-helper-chai';
+import sinon from 'sinon';
+import {jwtVerify, createRemoteJWKSet} from 'jose';
 import BYODS from '../../../../src/byods';
 import TokenManager from '../../../../src/token-manager';
-import BaseClient from '../../../../src/base-client';
-import {SDKConfig} from '../../../../src/types';
-import {InMemoryTokenStorageAdapter} from '../../../../src/token-storage-adapter';
 import DataSourceClient from '../../../../src/data-source-client';
-import { jwtVerify, createRemoteJWKSet } from 'jose';
+import {SDKConfig} from '../../../../src/types';
+import {httpUtils} from '../../../../src/http-utils';
 import log from '../../../../src/Logger';
-import {LOGGER} from '../../../../src/Logger/types';
-import {BYODS_MODULE, INTEGRATION_BASE_URL, INTEGRATION_JWKS_URL, PRODUCTION_BASE_URL, PRODUCTION_JWKS_URL} from '../../../../src/constants';
+import {
+  INTEGRATION_BASE_URL,
+  INTEGRATION_JWKS_URL,
+  PRODUCTION_BASE_URL,
+  PRODUCTION_JWKS_URL,
+} from '../../../../src/constants';
 
-jest.mock('node-fetch', () => jest.fn());
+// Replace the ESM library at its module boundary. Use Sinon for its stubs.
+jest.mock('jose', () => {
+  const mockSinon = jest.requireActual('sinon');
 
-jest.mock('jose', () => ({
-  jwtVerify: jest.fn(),
-  createRemoteJWKSet: jest.fn()
-}));
+  return {
+    jwtVerify: mockSinon.stub(),
+    createRemoteJWKSet: mockSinon.stub(),
+    jwksCache: Symbol('jwksCache'),
+  };
+});
 
-describe('BYODS Tests', () => {
-  beforeAll(() => {
-    log.setLogger = jest.fn();
-  });
+describe('BYODS', () => {
+  let sandbox: sinon.SinonSandbox;
+  let config: SDKConfig;
+  const verify = jwtVerify as unknown as sinon.SinonStub;
+  const createKeySet = createRemoteJWKSet as unknown as sinon.SinonStub;
+  const keySet = sinon.stub();
 
   beforeEach(() => {
-    jest.resetModules(); // Clears the cache to ensure process.env changes are picked up
+    sandbox = sinon.createSandbox();
+    sandbox.stub(log, 'setLogger');
+    verify.reset();
+    createKeySet.reset();
+    createKeySet.returns(keySet);
+    config = {clientId: 'test-client-id', clientSecret: 'test-client-secret', orgId: 'test-org-id'};
+    delete process.env.BYODS_ENVIRONMENT;
   });
 
   afterEach(() => {
-    delete process.env.BYODS_ENVIRONMENT; // Clean up the environment variable
+    sandbox.restore();
+    delete process.env.BYODS_ENVIRONMENT;
   });
 
-  const clientId = 'test-client-id';
-  const clientSecret = 'test-client-secret';
-
-  const mockSDKConfig: SDKConfig = {
-    clientId,
-    clientSecret,
-    tokenStorageAdapter: new InMemoryTokenStorageAdapter(),
-    logger: { level: LOGGER.ERROR },
-  };
-
-  const sdk = new BYODS(mockSDKConfig);
-
-  it('should create an instance of BYODS', () => {
-    expect(sdk).toBeInstanceOf(BYODS);
+  it('exposes one data source client and one token manager', () => {
+    const sdk = new BYODS(config);
+    assert.instanceOf(sdk.dataSource, DataSourceClient);
+    assert.instanceOf(sdk.tokenManager, TokenManager);
+    assert.strictEqual(sdk.orgId, config.orgId);
   });
 
-  it('should initialize with default logger configuration', () => {
-    log.setLogger = jest.fn();
-    const sdk = new BYODS(mockSDKConfig);
-    expect(log.setLogger).toHaveBeenCalledWith(LOGGER.ERROR, BYODS_MODULE);
-  });
-
-  it('should initialize TokenManager with correct parameters', () => {
-    expect(sdk.tokenManager).toBeInstanceOf(TokenManager);
-  });
-
-  it('should get a client for an organization', () => {
-    expect(sdk.getClientForOrg('myOrgId')).toBeInstanceOf(BaseClient);
-  });
-
-  it('should configure DataSourceClient with correct parameters', () => {
-    expect(sdk.getClientForOrg('myOrgId').dataSource).toBeInstanceOf(DataSourceClient);
-  });
-
-  it('should return true when JWS token is valid', async () => {
-    const jws = 'valid-jws';
-
-    (jwtVerify as jest.Mock).mockResolvedValue({
-      payload: {},
-      protectedHeader: { alg: 'HS256' },
+  [undefined, null, '', '   '].forEach((orgId) => {
+    it(`rejects a missing organization: ${JSON.stringify(orgId)}`, () => {
+      assert.throws(
+        () => new BYODS({...config, orgId: orgId as string}),
+        Error,
+        'orgId is required'
+      );
     });
-
-    const result = await sdk.verifyJWSToken(jws);
-
-    expect(jwtVerify).toHaveBeenCalledWith(jws, sdk.jwks);
-    expect(result).toEqual({ isValid: true });
   });
 
-  it('should return false with error if the JWS token has expired', async () => {
-    const jws = 'expired-jws';
-    const errorMessage = 'Token has expired';
+  [
+    {environment: undefined, apiUrl: PRODUCTION_BASE_URL, jwksUrl: PRODUCTION_JWKS_URL},
+    {environment: 'production', apiUrl: PRODUCTION_BASE_URL, jwksUrl: PRODUCTION_JWKS_URL},
+    {environment: 'integration', apiUrl: INTEGRATION_BASE_URL, jwksUrl: INTEGRATION_JWKS_URL},
+    {environment: 'invalid', apiUrl: PRODUCTION_BASE_URL, jwksUrl: PRODUCTION_JWKS_URL},
+  ].forEach(({environment, apiUrl, jwksUrl}) => {
+    it(`keeps PAT acquisition and DataSource CRUD in the configured organization (${environment})`, async () => {
+      if (environment) process.env.BYODS_ENVIRONMENT = environment;
+      const sdk = new BYODS(config);
+      // Later changes to the caller's object cannot select a different organization.
+      config.orgId = 'other-org-id';
+      const post = sandbox.stub(httpUtils, 'post').resolves({
+        data: {
+          access_token: 'test-access-token',
+          refresh_token: 'test-refresh-token',
+          expires_in: 3600,
+          refresh_token_expires_in: 7200,
+          token_type: 'Bearer',
+        },
+        status: 200,
+      });
+      const request = sandbox.stub(httpUtils, 'request').resolves({data: {items: []}, status: 200});
 
-    (jwtVerify as jest.Mock).mockRejectedValueOnce(new Error(errorMessage));
-
-    const result = await sdk.verifyJWSToken(jws);
-
-    expect(jwtVerify).toHaveBeenCalledWith(jws, sdk.jwks);
-    expect(result).toEqual({ isValid: false, error: errorMessage });
+      await sdk.tokenManager.getServiceAppTokenUsingPAT('test-pat');
+      assert.calledOnceWithExactly(post, `${apiUrl}/access_token`, {
+        headers: {Authorization: 'Bearer test-pat', 'Content-Type': 'application/json'},
+        body: JSON.stringify({
+          targetOrgId: 'test-org-id',
+          clientId: config.clientId,
+          clientSecret: config.clientSecret,
+        }),
+      });
+      assert.deepEqual(await sdk.dataSource.list(), {data: [], status: 200});
+      assert.calledOnceWithExactly(request, `${apiUrl}/dataSources`, {
+        method: 'GET',
+        headers: {'User-Agent': sinon.match.string, Authorization: 'Bearer test-access-token'},
+      });
+      assert.strictEqual(sdk.orgId, 'test-org-id');
+      assert.strictEqual(createKeySet.firstCall.args[0].href, jwksUrl);
+      assert.include(createKeySet.firstCall.args[1], {
+        cacheMaxAge: 600000,
+        cooldownDuration: 30000,
+      });
+    });
   });
 
-  it('should return false with error if JWS Verify throws an error', async () => {
-    const jws = 'invalid-jws';
-    const errorMessage = 'Invalid token';
-
-    (jwtVerify as jest.Mock).mockRejectedValueOnce(new Error(errorMessage));
-
-    const result = await sdk.verifyJWSToken(jws);
-
-    expect(jwtVerify).toHaveBeenCalledWith(jws, sdk.jwks);
-    expect(result).toEqual({ isValid: false, error: `Invalid token` });
-  });
-
-  it('should default to production environment if BYODS_ENVIRONMENT is not set', () => {
-    const config: SDKConfig = {clientId, clientSecret};
+  it('verifies a JWS using the remote Webex key set', async () => {
     const sdk = new BYODS(config);
-
-    expect(sdk['env']).toBe('production');
-    expect(sdk['baseUrl']).toBe(PRODUCTION_BASE_URL);
+    verify.resolves({payload: {}});
+    assert.deepEqual(await sdk.verifyJWSToken('test-jws'), {isValid: true});
+    assert.calledOnceWithExactly(verify, 'test-jws', keySet);
   });
 
-  it('should use integration environment if BYODS_ENVIRONMENT is set to integration', () => {
-    process.env.BYODS_ENVIRONMENT = 'integration';
-    const config: SDKConfig = {clientId, clientSecret};
-    const sdk = new BYODS(config);
-
-    expect(sdk['env']).toBe('integration');
-    expect(sdk['baseUrl']).toBe(INTEGRATION_BASE_URL);
+  [new Error('Token expired'), new Error('Invalid signature'), {}].forEach((error) => {
+    it(`returns an invalid result when verification fails: ${
+      error instanceof Error ? error.message : 'unknown'
+    }`, async () => {
+      const sdk = new BYODS(config);
+      verify.rejects(error);
+      assert.deepEqual(await sdk.verifyJWSToken('invalid-jws'), {
+        isValid: false,
+        error: error instanceof Error ? error.message : 'Unknown error',
+      });
+    });
   });
-
-  it('should default to production environment if BYODS_ENVIRONMENT is set to an invalid value', () => {
-    process.env.BYODS_ENVIRONMENT = 'invalid-env';
-    const config: SDKConfig = {clientId, clientSecret};
-    const sdk = new BYODS(config);
-
-    expect(sdk['env']).toBe('production');
-    expect(sdk['baseUrl']).toBe(PRODUCTION_BASE_URL);
-  });
-
 });

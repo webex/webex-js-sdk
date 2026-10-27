@@ -19,6 +19,10 @@ function looksLikeHtmlDocument(buffer: ArrayBuffer): boolean {
 /**
  * Resolves and downloads static assets for SDK plugins. Requests are shared between callers and
  * cached after a successful response.
+ *
+ * IMPORTANT: When adding assets, ensure that their names are unique and versioned to avoid caching issues.
+ *   Example: 'e2ee-0.0.1.wasm' instead of 'e2ee.wasm'
+ *   or use content-based hashing in the filename to ensure uniqueness.
  */
 export default class StaticAssetLoader extends StatelessWebexPlugin {
   private readonly baseUrl: string;
