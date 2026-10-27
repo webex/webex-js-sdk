@@ -79,68 +79,16 @@ function walkAndFilter(object, visited = []) {
 }
 
 /**
- * Filter message data and extract configured metadata in one argument pass.
- * @param {Array<mixed>} args Message arguments.
- * @param {string} [metadataField] Own field that supplies caller-owned metadata.
- * @returns {Object} Filtered arguments and metadata for this call.
- */
-function prepareLogArguments(args, metadataField) {
-  const filteredArguments = [];
-  let metadata;
-
-  args.forEach((argument) => {
-    let arg = argument;
-
-    // WebexHttpError already excludes auth tokens. Keep the existing Error handling.
-    if (arg instanceof Error) {
-      if (process.env.NODE_ENV === 'test' && inBrowser) {
-        let ret = arg.toString();
-
-        ret += 'BEGIN STACK';
-        ret += arg.stack;
-        ret += 'END STACK';
-        filteredArguments.push(ret);
-      } else {
-        filteredArguments.push(arg);
-      }
-
-      return;
-    }
-
-    if (
-      metadataField &&
-      arg !== null &&
-      typeof arg === 'object' &&
-      !Array.isArray(arg) &&
-      Object.prototype.hasOwnProperty.call(arg, metadataField)
-    ) {
-      // Keep metadata unchanged. Copy and redact only the remaining message fields.
-      const {[metadataField]: recordMetadata, ...messageFields} = arg;
-
-      metadata = recordMetadata;
-      if (Object.keys(messageFields).length === 0) {
-        return;
-      }
-      arg = messageFields;
-    }
-
-    filteredArguments.push(walkAndFilter(cloneDeep(arg)));
-  });
-
-  return {filteredArguments, metadata};
-}
-
-/**
  * Build a record from one retained entry. Live events and history use this function.
  * @param {Array<mixed>} entry Formatted text with capture fields stored as named properties.
  * @returns {Object} A record that shares the caller-owned metadata values.
  */
-function createLogRecord(entry) {
-  const timestamp = Date.parse(entry[1]);
+function _createLogRecord(entry) {
   const record = {
     sequence: entry.sequence,
-    timestamp,
-    observedTimestamp: timestamp,
+    timestamp: entry.timestamp,
+    // Both times use the captured acceptance time. Replay does not read the clock.
+    observedTimestamp: entry.timestamp,
     level: entry.level,
     source: entry.source,
     body: entry.join(','),
@@ -248,15 +196,68 @@ const Logger = WebexPlugin.extend({
       const clientEntry = clientBuffer[clientIndex];
 
       if (sdkEntry && (!clientEntry || sdkEntry.sequence < clientEntry.sequence)) {
-        records.push(createLogRecord(sdkEntry));
+        records.push(_createLogRecord(sdkEntry));
         sdkIndex += 1;
       } else {
-        records.push(createLogRecord(clientEntry));
+        records.push(_createLogRecord(clientEntry));
         clientIndex += 1;
       }
     }
 
     return records;
+  },
+
+  /**
+   * Filter message data and extract configured metadata in one argument pass.
+   * @param {Array<mixed>} args Message arguments.
+   * @private
+   * @returns {Object} Filtered arguments and metadata for this call.
+   */
+  _filterLogArguments(...args) {
+    const {metadataField} = this.config;
+    const filteredArguments = [];
+    let metadata;
+
+    args.forEach((argument) => {
+      let arg = argument;
+
+      // WebexHttpError already excludes auth tokens. Keep the existing Error handling.
+      if (arg instanceof Error) {
+        if (process.env.NODE_ENV === 'test' && inBrowser) {
+          let ret = arg.toString();
+
+          ret += 'BEGIN STACK';
+          ret += arg.stack;
+          ret += 'END STACK';
+          filteredArguments.push(ret);
+        } else {
+          filteredArguments.push(arg);
+        }
+
+        return;
+      }
+
+      if (
+        metadataField &&
+        arg !== null &&
+        typeof arg === 'object' &&
+        !Array.isArray(arg) &&
+        Object.prototype.hasOwnProperty.call(arg, metadataField)
+      ) {
+        // Keep metadata unchanged. Copy and redact only the remaining message fields.
+        const {[metadataField]: recordMetadata, ...messageFields} = arg;
+
+        metadata = recordMetadata;
+        if (Object.keys(messageFields).length === 0) {
+          return;
+        }
+        arg = messageFields;
+      }
+
+      filteredArguments.push(walkAndFilter(cloneDeep(arg)));
+    });
+
+    return {filteredArguments, metadata};
   },
 
   /**
@@ -267,7 +268,7 @@ const Logger = WebexPlugin.extend({
    * @returns {Array<mixed>}
    */
   filter(...args) {
-    return prepareLogArguments(args).filteredArguments;
+    return this._filterLogArguments(...args).filteredArguments;
   },
 
   /**
@@ -500,9 +501,9 @@ function makeLoggerMethod(level, impl, type, {neverPrint = false, alwaysBuffer =
         return;
       }
 
-      const {filteredArguments, metadata} = prepareLogArguments(args, this.config.metadataField);
+      const {filteredArguments, metadata} = this._filterLogArguments(...args);
       const filtered = [clientName, ...filteredArguments];
-      const formattedParts = filtered.map((item) => {
+      const formatted = filtered.map((item) => {
         if (item instanceof Error) {
           return item.toString();
         }
@@ -535,7 +536,7 @@ function makeLoggerMethod(level, impl, type, {neverPrint = false, alwaysBuffer =
 
       if (shouldPrint) {
         // Print formatted browser values so later object changes do not change the displayed log.
-        const toPrint = inBrowser ? formattedParts : filtered;
+        const toPrint = inBrowser ? formatted : filtered;
 
         /* istanbul ignore if */
         if (process.env.NODE_ENV === 'test' && has(this, 'webex.internal.device.url')) {
@@ -550,15 +551,16 @@ function makeLoggerMethod(level, impl, type, {neverPrint = false, alwaysBuffer =
       if (shouldBuffer) {
         const logDate = new Date();
 
-        formattedParts.unshift(logDate.toISOString());
-        formattedParts.unshift('|  '.repeat(this.groupLevel));
+        formatted.unshift(logDate.toISOString());
+        formatted.unshift('|  '.repeat(this.groupLevel));
         this.recordState.lastSequence += 1;
         // Named fields retain record data without changing the support-log array positions.
-        formattedParts.sequence = this.recordState.lastSequence;
-        formattedParts.level = level;
-        formattedParts.source = metadata?.source || logType;
-        formattedParts.metadata = metadata;
-        bufferRef.buffer.push(formattedParts);
+        formatted.sequence = this.recordState.lastSequence;
+        formatted.timestamp = logDate.getTime();
+        formatted.level = level;
+        formatted.source = metadata?.source || logType;
+        formatted.metadata = metadata;
+        bufferRef.buffer.push(formatted);
         if (bufferRef.buffer.length > historyLength) {
           // we've gone over the buffer limit, trim it down
           const deleteCount = bufferRef.buffer.length - historyLength;
@@ -582,7 +584,7 @@ function makeLoggerMethod(level, impl, type, {neverPrint = false, alwaysBuffer =
         if (level === 'groupEnd' && this.groupLevel > 0) {
           this.groupLevel -= 1;
         }
-        this.trigger('log:record', createLogRecord(formattedParts));
+        this.trigger('log:record', _createLogRecord(formatted));
       }
     } catch (reason) {
       if (!neverPrint) {
