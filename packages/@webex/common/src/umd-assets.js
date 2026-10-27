@@ -16,7 +16,7 @@ export const getUmdAssetsBaseUrl = (pluginName, sdkVersion, pluginVersion) => {
   }
 
   if (isVersionAvailable(pluginVersion)) {
-    return `https://app.unpkg.com/@webex/${pluginName}@${pluginVersion}/files/dist/assets/`;
+    return `https://unpkg.com/@webex/${pluginName}@${pluginVersion}/dist/assets/`;
   }
 
   return `/assets/${pluginName}/`;
