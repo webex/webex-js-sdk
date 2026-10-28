@@ -30,8 +30,6 @@ import {
   WellnessBreakNotificationAction,
   WELLNESS_BREAK_NOTIFICATION_ACTIONS,
   VoiceConnectionState,
-  VOICE_CONNECTION_EVENTS,
-  VOICE_CONNECTION_STATUS,
   VOICE_CONNECTION_ERROR,
 } from './types';
 import {
@@ -46,6 +44,7 @@ import {
   MERCURY_DISCONNECTED_SUCCESS,
   METHODS,
   WELLNESS_BREAK_HANDLER,
+  DEFAULT_VOICE_CONNECTION_STATE,
 } from './constants';
 import {AGENT_STATE_AVAILABLE, AGENT_STATE_AVAILABLE_ID} from './services/config/constants';
 import {AGENT, RTD_SUBSCRIBE_API, SUBSCRIBE_API, WEB_RTC_PREFIX} from './services/constants';
@@ -58,6 +57,7 @@ import {
   Profile,
   WelcomeEvent,
   CC_EVENTS,
+  VOICE_CONNECTION_EVENTS,
   OutdialAniEntriesResponse,
   OutdialAniParams,
   Entity,
@@ -1091,9 +1091,9 @@ export default class ContactCenter extends WebexPlugin implements IContactCenter
       }
 
       if (
-        this.agentConfig.webRtcEnabled &&
-        this.agentConfig.loginVoiceOptions.includes(LoginOption.BROWSER) &&
-        !this.isWebRTCRegistrationDisabled()
+        this.agentConfig.loginVoiceOptions.some((loginOption) =>
+          this.isBrowserVoiceRequired(loginOption)
+        )
       ) {
         try {
           await this.$webex.internal.mercury.connect();
@@ -1217,18 +1217,10 @@ export default class ContactCenter extends WebexPlugin implements IContactCenter
         },
       });
 
-      if (data.loginOption === LoginOption.BROWSER) {
-        this.webCallingService.setLoginOption(
-          data.loginOption,
-          this.agentConfig.webRtcEnabled === true && !this.isWebRTCRegistrationDisabled()
-        );
-      }
+      this.webCallingService.setLoginOption(data.loginOption);
+      this.webCallingService.setBrowserVoiceRequired(this.isBrowserVoiceRequired(data.loginOption));
 
-      if (
-        this.agentConfig.webRtcEnabled &&
-        data.loginOption === LoginOption.BROWSER &&
-        !this.isWebRTCRegistrationDisabled()
-      ) {
+      if (this.isBrowserVoiceRequired(data.loginOption)) {
         await this.webCallingService.registerWebCallingLine();
       } else if (
         this.agentConfig.webRtcEnabled &&
@@ -1259,12 +1251,6 @@ export default class ContactCenter extends WebexPlugin implements IContactCenter
         notifsTrackingId: resp.trackingId,
       };
 
-      this.webCallingService.setLoginOption(
-        data.loginOption,
-        data.loginOption === LoginOption.BROWSER &&
-          this.agentConfig.webRtcEnabled === true &&
-          !this.isWebRTCRegistrationDisabled()
-      );
       if (this.agentConfig) {
         this.agentConfig.deviceType = data.loginOption;
         if (
@@ -1451,17 +1437,6 @@ export default class ContactCenter extends WebexPlugin implements IContactCenter
    * ```
    */
   public async setAgentState(data: StateChange): Promise<SetStateResponse> {
-    if (
-      this.webCallingService?.isBrowserVoiceRequired() &&
-      !this.webCallingService.isVoiceReady()
-    ) {
-      const error = new Error(
-        'Browser voice is not ready. Wait for the voice connection state to become ready, then try again.'
-      ) as Error & {code: string};
-      error.code = VOICE_CONNECTION_ERROR.NOT_READY;
-      throw error;
-    }
-
     LoggerProxy.info('Setting agent state', {
       module: CC_FILE,
       method: METHODS.SET_AGENT_STATE,
@@ -1471,6 +1446,20 @@ export default class ContactCenter extends WebexPlugin implements IContactCenter
         METRIC_EVENT_NAMES.AGENT_STATE_CHANGE_SUCCESS,
         METRIC_EVENT_NAMES.AGENT_STATE_CHANGE_FAILED,
       ]);
+      if (
+        data.state === AGENT_STATE_AVAILABLE &&
+        this.webCallingService?.isBrowserVoiceRequired() &&
+        !this.webCallingService.isVoiceReady()
+      ) {
+        const error = new Error(VOICE_CONNECTION_ERROR.NOT_READY) as GenericError;
+        error.details = {
+          type: 'SDK_VALIDATION_ERROR',
+          orgId: this.$webex.credentials.getOrgId(),
+          trackingId: EMPTY_STRING,
+          data: {reason: VOICE_CONNECTION_ERROR.NOT_READY},
+        };
+        throw error;
+      }
       const agentStatusResponse = await this.services.agent.stateChange({
         data: {...data, agentId: data.agentId || this.agentConfig.agentId},
       });
@@ -1605,13 +1594,7 @@ export default class ContactCenter extends WebexPlugin implements IContactCenter
   public getVoiceConnectionState(): VoiceConnectionState {
     const state = this.webCallingService?.getVoiceConnectionState();
 
-    return (
-      state ?? {
-        status: VOICE_CONNECTION_STATUS.NOT_REQUIRED,
-        lineStatus: 'unknown',
-        mobiusSocketStatus: 'unknown',
-      }
-    );
+    return state ?? {...DEFAULT_VOICE_CONNECTION_STATE};
   }
 
   /**
@@ -1700,12 +1683,7 @@ export default class ContactCenter extends WebexPlugin implements IContactCenter
           },
           notifsTrackingId: eventData.trackingId,
         };
-        this.webCallingService.setLoginOption(
-          loginData.deviceType as LoginOption,
-          loginData.deviceType === LoginOption.BROWSER &&
-            this.agentConfig?.webRtcEnabled === true &&
-            !this.isWebRTCRegistrationDisabled()
-        );
+        this.webCallingService.setLoginOption(loginData.deviceType as LoginOption);
         // @ts-ignore
         this.emit(AGENT_EVENTS.AGENT_STATION_LOGIN_SUCCESS, stationLoginData);
         break;
@@ -1769,6 +1747,20 @@ export default class ContactCenter extends WebexPlugin implements IContactCenter
    */
   private isWebRTCRegistrationDisabled(): boolean {
     return this.$config?.disableWebRTCRegistration === true;
+  }
+
+  /**
+   * Determines whether this local login should register a browser voice line.
+   * @param {LoginOption} loginOption Login device selected for this station login
+   * @returns {boolean} True when browser WebRTC registration is enabled
+   * @private
+   */
+  private isBrowserVoiceRequired(loginOption: LoginOption): boolean {
+    return (
+      loginOption === LoginOption.BROWSER &&
+      this.agentConfig?.webRtcEnabled === true &&
+      !this.isWebRTCRegistrationDisabled()
+    );
   }
 
   /**
@@ -2516,16 +2508,15 @@ export default class ContactCenter extends WebexPlugin implements IContactCenter
    * @private
    */
   private async handleDeviceType(deviceType: LoginOption, dn: string): Promise<void> {
-    this.webCallingService.setLoginOption(
-      deviceType,
-      deviceType === LoginOption.BROWSER &&
-        this.agentConfig.webRtcEnabled === true &&
-        !this.isWebRTCRegistrationDisabled()
-    );
+    this.webCallingService.setLoginOption(deviceType);
+    this.webCallingService.setBrowserVoiceRequired(this.isBrowserVoiceRequired(deviceType));
     this.agentConfig.deviceType = deviceType;
     switch (deviceType) {
       case LoginOption.BROWSER:
-        if (this.isWebRTCRegistrationDisabled()) {
+        if (!this.isBrowserVoiceRequired(deviceType)) {
+          if (!this.isWebRTCRegistrationDisabled()) {
+            break;
+          }
           LoggerProxy.info(
             'Skipping web calling line registration because disableWebRTCRegistration is enabled',
             {

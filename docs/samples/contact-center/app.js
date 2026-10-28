@@ -2,6 +2,7 @@
 let webex = undefined;
 let sdk;
 let voiceConnectionLogClient;
+const voiceConnectionStateElm = document.getElementById('voice-connection-state');
 let agentDeviceType;
 let deviceId;
 let agentStatusId;
@@ -3837,10 +3838,19 @@ function attachVoiceConnectionStateLogging() {
     return;
   }
 
+  const renderVoiceConnectionState = (state) => {
+    if (voiceConnectionStateElm) {
+      voiceConnectionStateElm.textContent =
+        `Browser voice: ${state.status} (line ${state.lineStatus}, Mobius ${state.mobiusSocketStatus})`;
+    }
+  };
   cc.on('voice:connectionStateChange', (state) => {
     console.log('[Contact Center] Browser voice state changed:', state);
+    renderVoiceConnectionState(state);
   });
-  console.log('[Contact Center] Current browser voice state:', cc.getVoiceConnectionState());
+  const state = cc.getVoiceConnectionState();
+  console.log('[Contact Center] Current browser voice state:', state);
+  renderVoiceConnectionState(state);
   voiceConnectionLogClient = cc;
 }
 
@@ -5062,7 +5072,7 @@ function setAgentStatus() {
     updateTaskList();
   }).catch(error => {
     console.error('Agent status set failed', error);
-    if (error?.code === 'BROWSER_VOICE_NOT_READY') {
+    if (error?.message === 'BROWSER_VOICE_NOT_READY') {
       console.log(
         '[Contact Center] Agent state change was blocked because browser voice is unavailable:',
         webex.cc.getVoiceConnectionState()

@@ -12,15 +12,23 @@ import {
   MOBIUS_SOCKET_DISCONNECT_REASON,
   LOGGER,
   MobiusSocketDisconnectedEvent,
+  LineError,
 } from '@webex/calling';
+import isEqual from 'lodash/isEqual';
 import {
   LoginOption,
   VoiceConnectionState,
-  VOICE_CONNECTION_EVENTS,
   VOICE_CONNECTION_STATUS,
+  VoiceLineStatus,
+  VoiceMobiusSocketStatus,
   WebexSDK,
 } from '../types';
-import {TIMEOUT_DURATION, WEB_CALLING_SERVICE_FILE} from '../constants';
+import {VOICE_CONNECTION_EVENTS} from './config/types';
+import {
+  DEFAULT_VOICE_CONNECTION_STATE,
+  TIMEOUT_DURATION,
+  WEB_CALLING_SERVICE_FILE,
+} from '../constants';
 import LoggerProxy from '../logger-proxy';
 import {
   DEFAULT_RTMS_DOMAIN,
@@ -70,13 +78,21 @@ export default class WebCallingService extends EventEmitter {
 
   private browserVoiceRequired = false;
 
-  private voiceConnectionState: VoiceConnectionState = {
-    status: VOICE_CONNECTION_STATUS.NOT_REQUIRED,
-    lineStatus: 'unknown',
-    mobiusSocketStatus: 'unknown',
-  };
+  private voiceConnectionState: VoiceConnectionState = {...DEFAULT_VOICE_CONNECTION_STATE};
+
+  private lineReason?: string;
+
+  private lineRetryable?: boolean;
+
+  private socketReason?: string;
+
+  private socketRetryable?: boolean;
 
   private rejectRegistration?: (error: Error) => void;
+
+  private registeredHandler?: (line: ILine) => void;
+
+  private incomingCallHandler?: (call: ICall) => void;
 
   /**
    * Map that associates call IDs with task IDs for correlation
@@ -99,12 +115,13 @@ export default class WebCallingService extends EventEmitter {
    * @param {LoginOption} loginOption - The login option to use
    * @private
    */
-  public setLoginOption(
-    loginOption: LoginOption,
-    browserVoiceRequired: boolean = loginOption === LoginOption.BROWSER
-  ): void {
+  public setLoginOption(loginOption: LoginOption): void {
     this.loginOption = loginOption;
-    this.browserVoiceRequired = loginOption === LoginOption.BROWSER && browserVoiceRequired;
+  }
+
+  /** Sets whether the current local login registers a browser voice line. */
+  public setBrowserVoiceRequired(required: boolean): void {
+    this.browserVoiceRequired = required;
     this.updateVoiceConnectionState({});
   }
 
@@ -135,24 +152,34 @@ export default class WebCallingService extends EventEmitter {
     return this.browserVoiceRequired;
   }
 
-  private updateVoiceConnectionState(update: Partial<Omit<VoiceConnectionState, 'status'>>): void {
+  private isLineReady(lineStatus = this.voiceConnectionState.lineStatus): boolean {
+    return lineStatus === VoiceLineStatus.REGISTERED || lineStatus === VoiceLineStatus.RECONNECTED;
+  }
+
+  private updateVoiceConnectionState(
+    update: Partial<Pick<VoiceConnectionState, 'lineStatus' | 'mobiusSocketStatus'>>
+  ): void {
     const lineStatus = update.lineStatus ?? this.voiceConnectionState.lineStatus;
     const mobiusSocketStatus =
       update.mobiusSocketStatus ?? this.voiceConnectionState.mobiusSocketStatus;
-    const reason = Object.prototype.hasOwnProperty.call(update, 'reason')
-      ? update.reason
-      : this.voiceConnectionState.reason;
-    const retryable = Object.prototype.hasOwnProperty.call(update, 'retryable')
-      ? update.retryable
-      : this.voiceConnectionState.retryable;
-    const lineReady = lineStatus === 'registered' || lineStatus === 'reconnected';
     let status = VOICE_CONNECTION_STATUS.UNAVAILABLE;
 
     if (!this.browserVoiceRequired) {
       status = VOICE_CONNECTION_STATUS.NOT_REQUIRED;
-    } else if (lineReady && mobiusSocketStatus !== 'disconnected') {
+    } else if (
+      this.isLineReady(lineStatus) &&
+      mobiusSocketStatus !== VoiceMobiusSocketStatus.DISCONNECTED
+    ) {
       status = VOICE_CONNECTION_STATUS.READY;
     }
+    const reason =
+      mobiusSocketStatus === VoiceMobiusSocketStatus.DISCONNECTED
+        ? this.socketReason
+        : this.lineReason;
+    const retryable =
+      mobiusSocketStatus === VoiceMobiusSocketStatus.DISCONNECTED
+        ? this.socketRetryable
+        : this.lineRetryable;
     const nextState: VoiceConnectionState = {
       status,
       lineStatus,
@@ -161,13 +188,7 @@ export default class WebCallingService extends EventEmitter {
       ...(retryable !== undefined ? {retryable} : {}),
     };
 
-    if (
-      nextState.status === this.voiceConnectionState.status &&
-      nextState.lineStatus === this.voiceConnectionState.lineStatus &&
-      nextState.mobiusSocketStatus === this.voiceConnectionState.mobiusSocketStatus &&
-      nextState.reason === this.voiceConnectionState.reason &&
-      nextState.retryable === this.voiceConnectionState.retryable
-    ) {
+    if (isEqual(nextState, this.voiceConnectionState)) {
       return;
     }
 
@@ -176,19 +197,15 @@ export default class WebCallingService extends EventEmitter {
   }
 
   private handleLineConnecting = (): void => {
-    this.updateVoiceConnectionState({
-      lineStatus: 'connecting',
-      reason: undefined,
-      retryable: undefined,
-    });
+    this.lineReason = undefined;
+    this.lineRetryable = undefined;
+    this.updateVoiceConnectionState({lineStatus: VoiceLineStatus.CONNECTING});
   };
 
   private handleLineRegistered = (line: ILine): void => {
-    this.updateVoiceConnectionState({
-      lineStatus: 'registered',
-      reason: undefined,
-      retryable: undefined,
-    });
+    this.lineReason = undefined;
+    this.lineRetryable = undefined;
+    this.updateVoiceConnectionState({lineStatus: VoiceLineStatus.REGISTERED});
     LoggerProxy.log(
       `WxCC-SDK: Desktop registered successfully, mobiusDeviceId: ${line.mobiusDeviceId}`,
       {module: WEB_CALLING_SERVICE_FILE, method: METHODS.REGISTER_WEB_CALLING_LINE}
@@ -196,58 +213,46 @@ export default class WebCallingService extends EventEmitter {
   };
 
   private handleLineReconnecting = (): void => {
-    this.updateVoiceConnectionState({
-      lineStatus: 'reconnecting',
-      reason: 'LINE_RECONNECTING',
-      retryable: true,
-    });
+    this.lineReason = 'LINE_RECONNECTING';
+    this.lineRetryable = true;
+    this.updateVoiceConnectionState({lineStatus: VoiceLineStatus.RECONNECTING});
   };
 
   private handleLineReconnected = (): void => {
-    this.updateVoiceConnectionState({
-      lineStatus: 'reconnected',
-      reason: undefined,
-      retryable: undefined,
-    });
+    this.lineReason = undefined;
+    this.lineRetryable = undefined;
+    this.updateVoiceConnectionState({lineStatus: VoiceLineStatus.RECONNECTED});
   };
 
   private handleLineUnregistered = (): void => {
-    this.updateVoiceConnectionState({
-      lineStatus: 'unregistered',
-      reason: 'LINE_UNREGISTERED',
-      retryable: false,
-    });
+    this.lineReason = 'LINE_UNREGISTERED';
+    this.lineRetryable = true;
+    this.updateVoiceConnectionState({lineStatus: VoiceLineStatus.UNREGISTERED});
     LoggerProxy.log(`WxCC-SDK: Desktop unregistered successfully`, {
       module: WEB_CALLING_SERVICE_FILE,
       method: METHODS.REGISTER_WEB_CALLING_LINE,
     });
   };
 
-  private handleLineError = (error: Error): void => {
-    this.updateVoiceConnectionState({
-      lineStatus: 'error',
-      reason: error?.message || 'LINE_ERROR',
-      retryable: undefined,
-    });
-    this.rejectRegistration?.(error instanceof Error ? error : new Error('LINE_ERROR'));
+  private handleLineError = (error: LineError): void => {
+    if (error.status !== 'active') {
+      this.lineReason = error.message || 'LINE_ERROR';
+      this.lineRetryable = false;
+      this.updateVoiceConnectionState({lineStatus: VoiceLineStatus.ERROR});
+      this.rejectRegistration?.(error);
+    }
   };
 
   private handleMobiusSocketConnected = (): void => {
-    this.updateVoiceConnectionState({
-      mobiusSocketStatus: 'connected',
-      ...(this.voiceConnectionState.lineStatus === 'registered' ||
-      this.voiceConnectionState.lineStatus === 'reconnected'
-        ? {reason: undefined, retryable: undefined}
-        : {}),
-    });
+    this.socketReason = undefined;
+    this.socketRetryable = undefined;
+    this.updateVoiceConnectionState({mobiusSocketStatus: VoiceMobiusSocketStatus.CONNECTED});
   };
 
   private handleMobiusSocketDisconnected = (event: MobiusSocketDisconnectedEvent): void => {
-    this.updateVoiceConnectionState({
-      mobiusSocketStatus: 'disconnected',
-      reason: `MOBIUS_SOCKET_${event.reason.toUpperCase()}`,
-      retryable: event.reason === MOBIUS_SOCKET_DISCONNECT_REASON.TRANSIENT,
-    });
+    this.socketReason = `MOBIUS_SOCKET_${event.reason.toUpperCase()}`;
+    this.socketRetryable = event.reason === MOBIUS_SOCKET_DISCONNECT_REASON.TRANSIENT;
+    this.updateVoiceConnectionState({mobiusSocketStatus: VoiceMobiusSocketStatus.DISCONNECTED});
   };
 
   /**
@@ -346,11 +351,9 @@ export default class WebCallingService extends EventEmitter {
    * @throws {Error} When registration times out
    */
   public async registerWebCallingLine(): Promise<void> {
-    this.updateVoiceConnectionState({
-      lineStatus: 'connecting',
-      reason: undefined,
-      retryable: undefined,
-    });
+    this.lineReason = undefined;
+    this.lineRetryable = undefined;
+    this.updateVoiceConnectionState({lineStatus: VoiceLineStatus.CONNECTING});
 
     try {
       const rtmsDomain = await this.getRTMSDomain(); // get the RTMS domain from the u2c catalogue
@@ -369,8 +372,8 @@ export default class WebCallingService extends EventEmitter {
       this.line = Object.values(this.callingClient.getLines())[0];
       this.updateVoiceConnectionState({
         mobiusSocketStatus: this.callingClient.isMobiusSocketConnected()
-          ? 'connected'
-          : 'not-in-use',
+          ? VoiceMobiusSocketStatus.CONNECTED
+          : VoiceMobiusSocketStatus.NOT_IN_USE,
       });
 
       this.callingClient.on(
@@ -389,10 +392,11 @@ export default class WebCallingService extends EventEmitter {
       this.line.on(LINE_EVENTS.ERROR, this.handleLineError);
 
       // Start listening for incoming calls
-      this.line.on(LINE_EVENTS.INCOMING_CALL, (call: ICall) => {
+      this.incomingCallHandler = (call: ICall) => {
         this.call = call;
         this.emit(LINE_EVENTS.INCOMING_CALL, call);
-      });
+      };
+      this.line.on(LINE_EVENTS.INCOMING_CALL, this.incomingCallHandler);
 
       await new Promise<void>((resolve, reject) => {
         let timeout: ReturnType<typeof setTimeout> | undefined;
@@ -401,37 +405,42 @@ export default class WebCallingService extends EventEmitter {
             clearTimeout(timeout);
           }
           this.rejectRegistration = undefined;
+          if (this.registeredHandler) {
+            this.line.off(LINE_EVENTS.REGISTERED, this.registeredHandler);
+            this.registeredHandler = undefined;
+          }
         };
         this.rejectRegistration = (error: Error): void => {
           finish();
           reject(error);
         };
         timeout = setTimeout(() => {
-          this.updateVoiceConnectionState({
-            lineStatus: 'error',
-            reason: 'REGISTRATION_TIMEOUT',
-            retryable: true,
-          });
+          this.lineReason = 'REGISTRATION_TIMEOUT';
+          this.lineRetryable = true;
+          this.updateVoiceConnectionState({lineStatus: VoiceLineStatus.ERROR});
           this.rejectRegistration?.(new Error('WebCallingService Registration timed out'));
         }, TIMEOUT_DURATION);
 
-        this.line.on(LINE_EVENTS.REGISTERED, (line: ILine) => {
+        this.registeredHandler = (line: ILine) => {
           finish();
           this.handleLineRegistered(line);
           resolve();
-        });
+        };
+        this.line.on(LINE_EVENTS.REGISTERED, this.registeredHandler);
 
-        Promise.resolve(this.line.register()).catch((error: Error) => {
+        // ILine declares register() as void, although its implementation is async.
+        Promise.resolve(this.line.register()).catch((error: LineError) => {
           this.handleLineError(error);
         });
       });
     } catch (error) {
-      this.updateVoiceConnectionState({
-        lineStatus: 'error',
-        reason:
+      if (this.voiceConnectionState.lineStatus !== VoiceLineStatus.ERROR) {
+        this.lineReason =
           this.voiceConnectionState.reason ??
-          (error instanceof Error ? error.message : 'REGISTRATION_FAILED'),
-      });
+          (error instanceof Error ? error.message : 'REGISTRATION_FAILED');
+        this.lineRetryable = false;
+        this.updateVoiceConnectionState({lineStatus: VoiceLineStatus.ERROR});
+      }
       throw error;
     }
   }
@@ -449,11 +458,6 @@ export default class WebCallingService extends EventEmitter {
       method: METHODS.DEREGISTER_WEB_CALLING_LINE,
     });
     this.cleanUpCall();
-    this.updateVoiceConnectionState({
-      lineStatus: 'unregistered',
-      reason: 'LINE_UNREGISTERED',
-      retryable: false,
-    });
     this.callingClient?.off(
       CALLING_CLIENT_EVENT_KEYS.MOBIUS_SOCKET_CONNECTED,
       this.handleMobiusSocketConnected
@@ -462,7 +466,32 @@ export default class WebCallingService extends EventEmitter {
       CALLING_CLIENT_EVENT_KEYS.MOBIUS_SOCKET_DISCONNECTED,
       this.handleMobiusSocketDisconnected
     );
+    this.line?.off?.(LINE_EVENTS.CONNECTING, this.handleLineConnecting);
+    this.line?.off?.(LINE_EVENTS.RECONNECTING, this.handleLineReconnecting);
+    this.line?.off?.(LINE_EVENTS.RECONNECTED, this.handleLineReconnected);
+    this.line?.off?.(LINE_EVENTS.UNREGISTERED, this.handleLineUnregistered);
+    this.line?.off?.(LINE_EVENTS.ERROR, this.handleLineError);
+    if (this.incomingCallHandler) {
+      this.line?.off?.(LINE_EVENTS.INCOMING_CALL, this.incomingCallHandler);
+    }
+    if (this.registeredHandler) {
+      this.line?.off?.(LINE_EVENTS.REGISTERED, this.registeredHandler);
+    }
+    this.incomingCallHandler = undefined;
+    this.registeredHandler = undefined;
+    this.rejectRegistration = undefined;
     this.line?.deregister();
+    this.lineReason = undefined;
+    this.lineRetryable = undefined;
+    this.socketReason = undefined;
+    this.socketRetryable = undefined;
+    this.browserVoiceRequired = false;
+    const defaultState: VoiceConnectionState = {...DEFAULT_VOICE_CONNECTION_STATE};
+
+    if (!isEqual(defaultState, this.voiceConnectionState)) {
+      this.voiceConnectionState = defaultState;
+      this.emit(VOICE_CONNECTION_EVENTS.STATE_CHANGE, this.getVoiceConnectionState());
+    }
   }
 
   /**

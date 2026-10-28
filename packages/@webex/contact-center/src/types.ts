@@ -402,11 +402,6 @@ export interface WebexSDK {
   logger: Logger;
 }
 
-/** Contact Center browser voice state event names. @public */
-export enum VOICE_CONNECTION_EVENTS {
-  STATE_CHANGE = 'voice:connectionStateChange',
-}
-
 /** Current browser voice availability. @public */
 export enum VOICE_CONNECTION_STATUS {
   READY = 'ready',
@@ -420,17 +415,23 @@ export const VOICE_CONNECTION_ERROR = {
 } as const;
 
 /** Browser voice line registration states. @public */
-export type VoiceLineStatus =
-  | 'unknown'
-  | 'connecting'
-  | 'registered'
-  | 'reconnecting'
-  | 'reconnected'
-  | 'unregistered'
-  | 'error';
+export enum VoiceLineStatus {
+  UNKNOWN = 'unknown',
+  CONNECTING = 'connecting',
+  REGISTERED = 'registered',
+  RECONNECTING = 'reconnecting',
+  RECONNECTED = 'reconnected',
+  UNREGISTERED = 'unregistered',
+  ERROR = 'error',
+}
 
 /** Mobius socket states reported by the Calling SDK. @public */
-export type VoiceMobiusSocketStatus = 'unknown' | 'not-in-use' | 'connected' | 'disconnected';
+export enum VoiceMobiusSocketStatus {
+  UNKNOWN = 'unknown',
+  NOT_IN_USE = 'not-in-use',
+  CONNECTED = 'connected',
+  DISCONNECTED = 'disconnected',
+}
 
 /**
  * Current browser voice availability and the underlying line and Mobius states.
