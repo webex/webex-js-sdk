@@ -115,7 +115,6 @@ describe('plugin-meetings', () => {
         canAttendeeRequestAiAssistantEnabled: null,
         isAttendeeRequestAiAssistantDeclinedAll: null,
         isAnonymizeDisplayNamesEnabled: null,
-        isSupportParticipantList: null,
         canViewTheParticipantList: null,
 
         ...expected,
@@ -212,7 +211,6 @@ describe('plugin-meetings', () => {
       'showAutoEndMeetingWarning',
       'canDoVideo',
       'canAnnotate',
-      'isSupportParticipantList',
       'canUseVoip',
       'supportHQV',
       'supportHDV',

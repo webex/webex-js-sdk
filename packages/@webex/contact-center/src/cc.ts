@@ -88,6 +88,13 @@ import type {
 } from './types';
 
 /**
+ * Typed allow-list of server-controlled websocket event names this SDK re-emits verbatim.
+ * Guards against emitting an arbitrary/unknown `data.type` supplied by the websocket payload.
+ * @ignore
+ */
+const CC_EVENT_ALLOW_LIST = new Set<string>(Object.values(CC_EVENTS));
+
+/**
  * The main Contact Center plugin class that enables integration with Webex Contact Center.
  *
  * @class ContactCenter
@@ -170,7 +177,7 @@ import type {
  *
  *     // Login with browser-based calling
  *     await cc.stationLogin({
- *       teamId: profile.teams[0].teamId,
+ *       teamId: profile.teams[0].id,
  *       loginOption: 'BROWSER'
  *     });
  *
@@ -701,12 +708,12 @@ export default class ContactCenter extends WebexPlugin implements IContactCenter
    *
    * console.log('Agent ID:', profile.agentId);
    * console.log('Default DN:', profile.defaultDn);
-   * console.log('Teams:', profile.teams.map(t => t.teamId));
+   * console.log('Teams:', profile.teams.map(t => t.id));
    * console.log('WebRTC Enabled:', profile.webRtcEnabled);
    * console.log('Supported Login Options:', profile.loginVoiceOptions);
    *
    * // Now you can proceed with station login, state changes, etc.
-   * await cc.stationLogin({ teamId: profile.teams[0].teamId, loginOption: 'BROWSER' });
+   * await cc.stationLogin({ teamId: profile.teams[0].id, loginOption: 'BROWSER' });
    * ```
    */
   public async register(): Promise<Profile> {
@@ -1436,7 +1443,7 @@ export default class ContactCenter extends WebexPlugin implements IContactCenter
         {
           ...MetricsManager.getCommonTrackingFieldForAQMResponse(agentStatusResponse),
           requestedState: data.state,
-          teamId: this.agentConfig?.teams[0]?.teamId ?? EMPTY_STRING,
+          teamId: this.agentConfig?.teams[0]?.id ?? EMPTY_STRING,
           status: agentStatusResponse.data?.status,
           subStatus: agentStatusResponse.data?.subStatus,
           auxCodeId: data.auxCodeId,
@@ -1552,8 +1559,14 @@ export default class ContactCenter extends WebexPlugin implements IContactCenter
    */
   private handleWebsocketMessage = (event: string) => {
     const eventData = JSON.parse(event);
-    // Re-emit all the events related to agent except keep-alives
-    if (!eventData.keepalive && eventData.data && eventData.data.type) {
+    // Re-emit all the events related to agent except keep-alives. Only event names present in
+    // the typed CC_EVENTS allow-list are emitted; unknown/server-injected types are ignored.
+    if (
+      !eventData.keepalive &&
+      eventData.data &&
+      eventData.data.type &&
+      CC_EVENT_ALLOW_LIST.has(eventData.data.type)
+    ) {
       // @ts-ignore
       this.emit(eventData.data.type, eventData.data);
     }

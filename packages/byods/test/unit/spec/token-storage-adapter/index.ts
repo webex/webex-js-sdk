@@ -1,105 +1,46 @@
-import {InMemoryTokenStorageAdapter} from '../../../../src/token-storage-adapter';;
-import {OrgServiceAppAuthorization} from '../../../../src/types';;
+import {assert} from '@webex/test-helper-chai';
+import {InMemoryTokenStorageAdapter} from '../../../../src/token-storage-adapter';
+import {ServiceAppToken} from '../../../../src/types';
 
 describe('InMemoryTokenStorageAdapter', () => {
-  let tokenStorage: InMemoryTokenStorageAdapter;
-  const orgId = 'org-123';
-  const token: OrgServiceAppAuthorization = {
-    orgId,
-    serviceAppToken: {
-      accessToken: 'access-token',
-      refreshToken: 'refresh-token',
-      expiresAt: new Date(Date.now() + 3600 * 1000),
-      refreshAccessTokenExpiresAt: new Date(Date.now() + 7200 * 1000),
-    },
+  const token: ServiceAppToken = {
+    accessToken: 'test-access-token',
+    refreshToken: 'test-refresh-token',
+    expiresAt: new Date('2026-10-20T10:00:00Z'),
+    refreshAccessTokenExpiresAt: new Date('2026-10-21T10:00:00Z'),
   };
+  let storage: InMemoryTokenStorageAdapter;
 
   beforeEach(() => {
-    tokenStorage = new InMemoryTokenStorageAdapter();
+    storage = new InMemoryTokenStorageAdapter();
   });
 
-  test('should store and retrieve a token', async () => {
-    await tokenStorage.setToken(orgId, token);
-    const retrievedToken = await tokenStorage.getToken(orgId);
-    expect(retrievedToken).toEqual(token);
+  it('stores and retrieves the token pair', async () => {
+    await storage.setToken(token);
+    assert.deepEqual(await storage.getToken(), token);
   });
 
-  test('should throw error for a non-existent token', async () => {
-    const nonExistentOrgId = 'non-existent-org';
-    await expect(tokenStorage.getToken(nonExistentOrgId)).rejects.toThrow(
-      `Service App token not found for org ID: ${nonExistentOrgId}`
-    );
+  it('accepts an initial token pair', async () => {
+    storage = new InMemoryTokenStorageAdapter(token);
+    assert.deepEqual(await storage.getToken(), token);
   });
 
-  test('should list all stored tokens', async () => {
-    const dummyOrgId = 'org-456';
-    const dummyToken: OrgServiceAppAuthorization = {
-      orgId: dummyOrgId,
-      serviceAppToken: {
-        accessToken: 'another-access-token',
-        refreshToken: 'another-refresh-token',
-        expiresAt: new Date(Date.now() + 3600 * 1000),
-        refreshAccessTokenExpiresAt: new Date(Date.now() + 7200 * 1000),
-      },
-    };
-
-    await tokenStorage.setToken(orgId, token);
-    await tokenStorage.setToken(dummyOrgId, dummyToken);
-
-    const tokens = await tokenStorage.listTokens();
-    expect(tokens).toContain(token);
-    expect(tokens).toContain(dummyToken);
+  it('replaces the stored token pair', async () => {
+    await storage.setToken(token);
+    const replacement = {...token, accessToken: 'replacement-access-token'};
+    await storage.setToken(replacement);
+    assert.deepEqual(await storage.getToken(), replacement);
   });
 
-  test('should delete a token for a given orgId', async () => {
-    await tokenStorage.setToken(orgId, token);
-    await tokenStorage.deleteToken(orgId);
-
-    await expect(tokenStorage.getToken(orgId)).rejects.toThrow(
-      `Service App token not found for org ID: ${orgId}`
-    );
+  it('deletes the stored pair', async () => {
+    await storage.setToken(token);
+    await storage.deleteToken();
+    await assert.isRejected(storage.getToken(), Error, 'Service App token not found');
   });
 
-  test('should reset all tokens', async () => {
-    const dummyOrgId = 'org-456';
-    const dummyToken: OrgServiceAppAuthorization = {
-      orgId: dummyOrgId,
-      serviceAppToken: {
-        accessToken: 'another-access-token',
-        refreshToken: 'another-refresh-token',
-        expiresAt: new Date(Date.now() + 3600 * 1000),
-        refreshAccessTokenExpiresAt: new Date(Date.now() + 7200 * 1000),
-      },
-    };
-
-    await tokenStorage.setToken(orgId, token);
-    await tokenStorage.setToken(dummyOrgId, dummyToken);
-
-    await tokenStorage.resetTokens();
-
-    const tokens = await tokenStorage.listTokens();
-    expect(tokens.length).toEqual(0);
-  });
-
-  test('should handle concurrent token operations', async () => {
-    const operations = Array(10).fill(null).map((_, index) => ({
-      orgId: `org-${index}`,
-      token: {
-        orgId: `org-${index}`,
-        serviceAppToken: {
-          accessToken: `access-token-${index}`,
-          refreshToken: `refresh-token-${index}`,
-          expiresAt: new Date('2025-02-15T11:00:00Z'),
-          refreshAccessTokenExpiresAt: new Date('2025-02-15T12:00:00Z'),
-        },
-      },
-    }));
-    await Promise.all([
-      ...operations.map(({orgId, token}) => tokenStorage.setToken(orgId, token)),
-      ...operations.map(({orgId}) => tokenStorage.getToken(orgId).catch(() => null)),
-      tokenStorage.listTokens(),
-    ]);
-    const finalTokens = await tokenStorage.listTokens();
-    expect(finalTokens.length).toBe(operations.length);
+  ['getToken', 'deleteToken'].forEach((method: 'getToken' | 'deleteToken') => {
+    it(`rejects ${method} when no token is stored`, async () => {
+      await assert.isRejected(storage[method](), Error, 'Service App token not found');
+    });
   });
 });

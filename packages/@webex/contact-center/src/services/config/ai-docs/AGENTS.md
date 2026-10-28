@@ -11,11 +11,11 @@
 ## Overview
 
 The Config Service is an **internal service** that builds the comprehensive AgentProfile (`Profile` type) by:
-1. Fetching user data
-2. Fetching desktop profile
+1. Fetching the user desktop-login aggregate (agent identity plus `agentProfile`)
+2. Fetching the organization desktop-login aggregate (org info, org settings, tenant configuration, URL mappings, AI feature, Microsoft/Webex config)
 3. Fetching teams
 4. Fetching aux codes (idle/wrapup codes)
-5. Fetching organization settings
+5. Fetching site and, when the agent profile enables it, dial-plan data
 6. Aggregating all data into a single AgentProfile
 
 The AgentProfile is the central configuration object required for an agent to operate within the contact center. It is built during the registration flow (`cc.register()`) and contains all the data an agent needs: identity, team assignments, dial plans, aux codes, login options, and feature flags. Once constructed, the AgentProfile is stored on the `ContactCenter` plugin instance as `this.agentConfig` and is used by other services (Agent, Task) throughout the session.
@@ -62,13 +62,13 @@ LoggerProxy.info(`Teams: ${this.agentConfig.teams}`, {
 
 ## Key Capabilities
 
-- **AgentProfile Aggregation**: Combines data from 8+ API endpoints
+- **AgentProfile Aggregation**: Combines data from 6 API endpoints (5 when the agent profile disables dial plans)
 - **Aux Codes Fetching**: Gets all idle and wrapup codes with pagination
 - **Team Data**: Retrieves agent's team assignments
 - **Dial Plan**: Fetches number transformation rules
 - **Outdial ANI**: Retrieves outbound caller ID options (standalone, publicly exposed via `cc.ts`)
 - **Multimedia Profile**: Fetches channel capacity and blending config (standalone, not yet publicly exposed)
-- **Paginated Data Access**: `getListOfTeams` and `getListOfAuxCodes` support custom pagination independent of profile building
+- **Paginated Data Access**: `getListOfTeams` and `getListOfAuxCodes` support custom pagination independent of profile building. `getListOfTeams` takes a `userDbId` — the `user.dbId` carried by the user desktop-login aggregate, not the CI user id — rather than a list of team ids
 
 ---
 
@@ -95,28 +95,20 @@ The AgentProfile is defined as the [`Profile`](../types.ts) type. This is not an
 
 ## Data Aggregation Flow
 
-The following diagram shows how `getAgentConfig` orchestrates multiple API calls and combines their results into the AgentProfile via `parseAgentConfigs()`:
+The following diagram shows how `getAgentConfig` orchestrates six API calls and combines their results into the AgentProfile via `parseAgentConfigs()`:
 
 ```
-getUserUsingCI ────────────┐
-                           │
-getOrgInfo ────────────────┤
-                           │
-getOrganizationSetting ────┤
-                           │
-getTenantData ─────────────┤
-                           │
-getURLMapping ─────────────┼──► parseAgentConfigs() ──► AgentProfile
-                           │
-getAllAuxCodes ─────────────┤
-                           │
-getDesktopProfileById ─────┤
-                           │
-getSiteInfo ───────────────┤  (computes multimediaProfileId)
-                           │
-getAllTeams ────────────────┤
-                           │
-getDialPlanData ───────────┘
+getUserDesktopLoginConfig ──┐  (awaited first; supplies dbId, siteId, dialPlanEnabled)
+                            │
+getOrgDesktopLoginConfig ───┤  (org info, org settings, tenant config, urlMappings,
+                            │   aiFeature, microsoftConfig, webexConfig)
+getAllAuxCodes ─────────────┼──► parseAgentConfigs() ──► AgentProfile
+                            │
+getAllTeams ────────────────┤  (filtered by userId == user.dbId)
+                            │
+getSiteInfo ────────────────┤  (team → site fallback for multimediaProfileId)
+                            │
+getDialPlanData ────────────┘  (only when agentProfile.dialPlanEnabled)
 ```
 
 ---
@@ -130,12 +122,12 @@ Main method that aggregates all configuration data into the AgentProfile.
 **Returns**: `Promise<Profile>`
 
 **Flow**:
-1. Fetch user data (`getUserUsingCI`)
-2. Fetch org info (`getOrgInfo`), settings (`getOrganizationSetting`), tenant data (`getTenantData`) in parallel
-3. Fetch aux codes with pagination (`getAllAuxCodes`)
-4. Fetch desktop profile (`getDesktopProfileById`), site info (`getSiteInfo`)
-5. Fetch dial plan if enabled (`getDialPlanData`)
-6. Fetch teams (`getAllTeams`)
+1. Fire the user aggregate (`getUserDesktopLoginConfig`), the org aggregate (`getOrgDesktopLoginConfig`) and aux codes (`getAllAuxCodes`) in parallel
+2. Await the user aggregate — it supplies `user.dbId`, `user.siteId` and `agentProfile.dialPlanEnabled`
+3. Fetch site info (`getSiteInfo`) and teams filtered by `userId` (`getAllTeams`)
+4. Fetch dial plan if `agentProfile.dialPlanEnabled` (`getDialPlanData`)
+5. `Promise.all` the five remaining promises
+6. Resolve `multimediaProfileId` from the team value, falling back to the site value
 7. Parse and combine all data (`parseAgentConfigs`)
 
 ---
@@ -148,7 +140,7 @@ These methods exist in `AgentConfigService` but are **not** part of the `getAgen
 |--------|--------|---------|-------------|
 | `getOutdialAniEntries(orgId, params)` | **Publicly exposed** via `cc.getOutdialAniEntries()` | `OutdialAniEntriesResponse` | Fetch outbound ANI entries for caller ID selection. Supports pagination and search via [`OutdialAniParams`](../types.ts). |
 | `getMultimediaProfileById(orgId, multimediaProfileId)` | **Not exposed, never called** | `MultimediaProfileResponse` | Fetch channel capacities (chat, email, telephony, social) and blending config. Available but unused anywhere. |
-| `getListOfTeams(orgId, page, pageSize, filter)` | Used internally by `getAllTeams()` | `ListTeamsResponse` | Single-page team fetch with pagination metadata. Useful for custom pagination. |
+| `getListOfTeams(orgId, page, pageSize, userDbId)` | Used internally by `getAllTeams()` | `ListTeamsResponse` | Single-page team fetch with pagination metadata, filtered by `user.dbId` (the wire field is `filter=userId==` but the value is the database id, not the CI user id). The filter value must stay unquoted — the quoted form returns HTTP 400. |
 | `getListOfAuxCodes(orgId, page, pageSize, filter, attributes)` | Used internally by `getAllAuxCodes()` | `ListAuxCodesResponse` | Single-page aux code fetch with pagination metadata. Useful for custom pagination. |
 
 Additionally, the following endpoints are defined in `constants.ts` `endPointMap` but are consumed by separate service classes, not by `AgentConfigService`:
@@ -168,23 +160,26 @@ Types used by the config service, all defined in [`types.ts`](../types.ts):
 | Type | Description |
 |------|-------------|
 | `Profile` | Final aggregated agent config returned by `getAgentConfig()` |
-| `AgentResponse` | Raw response from `getUserUsingCI()` — agent metadata, teamIds, siteId, agentProfileId |
-| `DesktopProfileResponse` | Desktop profile settings — layout, dial plan, login options |
+| `OrgDesktopLoginResponse` | Response from `getOrgDesktopLoginConfig()` — `organization`, `organizationSetting`, `tenantConfiguration`, `urlMappings`, `aiFeature`, `microsoftConfig`, `webexConfig` |
+| `UserDesktopLoginResponse` | Response from `getUserDesktopLoginConfig()` — `user` and `agentProfile` sections |
+| `AgentResponse` | `user` section of the user aggregate — agent metadata, `dbId`, `siteId`, `agentProfileId` |
+| `AgentProfile` | `agentProfile` section of the user aggregate — layout, dial-plan enablement, login options |
 | `TeamList` | Team record from API — `id`, `name`, `teamType`, `siteId`, `multiMediaProfileId` |
 | `ListTeamsResponse` | Paginated wrapper around `TeamList[]` with `meta` for pagination |
 | `OrgInfo` | Organization info — `tenantId`, timezone |
 | `OrgSettings` | Org feature flags — `webRtcEnabled`, `sensitiveDataMaskingEnabled` |
 | `TenantData` | Tenant-level config — inactivity timeout, `forceDefaultDn`, `outdialEnabled` |
 | `SiteInfo` | Site config — `id`, `name`, `multimediaProfileId` |
-| `URLMapping` | External URL mapping — `id`, `name`, `url` |
+| `OrgUrlMappings` | Keyed external URL mappings — `ACQUEON_API_URL`, `ACQUEON_CONSOLE_URL` |
+| `MicrosoftConfig` | Org-level Microsoft presence config — `showUserDetails`, `stateSynchronization` |
+| `WebexConfig` | Org-level Webex presence config — `showUserDetails`, `stateSynchronization` |
 | `MultimediaProfileResponse` | Multimedia profile — channel capacities and settings |
 | `AuxCode` | Auxiliary code record — `id`, `name`, `description`, `workTypeCode` |
 | `ListAuxCodesResponse` | Paginated wrapper around `AuxCode[]` with `meta` |
-| `DialPlanEntity` | Dial plan rule — regex pattern, prefix, strip digits |
+| `DialPlanEntity` | Dial plan rule — regex pattern, prefix, strip digits, `active` |
 | `Entity` | Basic entity info — `isSystem`, `name`, `id`, `description` |
 | `WrapupData` | Wrap-up config — auto-wrapup settings, available wrapup codes |
 | `OutdialAniParams` | Parameters for `getOutdialAniEntries()` — ANI ID, pagination, filtering |
-| `Team` | Simplified team shape in `Profile` — `teamId`, `teamName`, `desktopLayoutId` |
 
 ## Events (CC_EVENTS)
 
@@ -212,14 +207,14 @@ Key types in `services/config/types.ts`:
 | `CC_TASK_EVENTS` | Task-specific events |
 | `AuxCode` | Idle/wrapup code definition |
 | `Team` | Team configuration |
-| `DesktopProfileResponse` | Desktop profile settings |
+| `AgentProfile` | Agent profile settings from the user aggregate |
 | `LoginOption` | Login types (BROWSER, EXTENSION, AGENT_DN) |
 
 ---
 
 ## Error Handling
 
-All API methods within the config service throw errors on failure. Since `getAgentConfig` calls multiple sub-APIs (`getUserUsingCI`, `getOrgInfo`, `getOrganizationSetting`, `getTenantData`, `getAllAuxCodes`, `getDesktopProfileById`, `getAllTeams`, `getDialPlanData`, etc.) and awaits them via `Promise.all`, **a failure in any single sub-API will cause the entire AgentProfile fetch to fail**. There is no partial profile — either all data is successfully fetched and aggregated, or the operation throws.
+All API methods within the config service throw errors on failure. Since `getAgentConfig` calls multiple sub-APIs (`getUserDesktopLoginConfig`, `getOrgDesktopLoginConfig`, `getAllAuxCodes`, `getAllTeams`, `getSiteInfo`, `getDialPlanData`) and awaits them via `Promise.all`, **a failure in any single sub-API will cause the entire AgentProfile fetch to fail**. There is no partial profile — either all data is successfully fetched and aggregated, or the operation throws.
 
 ```typescript
 try {
