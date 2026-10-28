@@ -753,6 +753,7 @@ export default class MeetingInfoV2 {
               meetingId,
               webexConferenceIdStr: response?.body?.confIdStr || response?.body?.confID,
               globalMeetingId: response?.body?.meetingId,
+              locusCluster: response?.body?.locusClusterUrl,
             },
           });
         }

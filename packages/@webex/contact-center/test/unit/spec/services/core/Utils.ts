@@ -1036,4 +1036,26 @@ describe('Utils', () => {
     });
   });
 
+  describe('isAllowedUrlHost', () => {
+    it('returns true when the hostname exactly matches an allowed domain', () => {
+      expect(Utils.isAllowedUrlHost('wss://cisco.com', ['cisco.com'])).toBe(true);
+    });
+
+    it('returns true when the hostname is a subdomain of an allowed domain', () => {
+      expect(Utils.isAllowedUrlHost('wss://notifs.wxcc-us1.cisco.com', ['cisco.com'])).toBe(true);
+    });
+
+    it('returns false when the hostname is not in the allowed domains list', () => {
+      expect(Utils.isAllowedUrlHost('wss://evil.attacker.com', ['cisco.com'])).toBe(false);
+    });
+
+    it('returns false for an unparsable url', () => {
+      expect(Utils.isAllowedUrlHost('not-a-url', ['cisco.com'])).toBe(false);
+    });
+
+    it('returns false for a null/undefined url', () => {
+      expect(Utils.isAllowedUrlHost(null as any, ['cisco.com'])).toBe(false);
+      expect(Utils.isAllowedUrlHost(undefined as any, ['cisco.com'])).toBe(false);
+    });
+  });
 });
