@@ -386,6 +386,37 @@ describe('integration/bridge', () => {
       assert.lengthOf(await pair.bridge.listConnections(), 0);
     });
 
+    it('survives a single-page app route change on the same origin', async () => {
+      const received: string[] = [];
+
+      pair.bridge.subscribe((topic) => received.push(topic));
+
+      // A history API route change does not reload the document, so Chrome reports it
+      // as a bare url change and every hop — page bridge, relay and worker record —
+      // has to come through it intact.
+      pair.world.fireTabUpdated(pair.world.tabId, {url: `${ORIGIN}/meetings/42`});
+      await pair.settle();
+
+      assert.isTrue(pair.page.isConnected);
+
+      const connections = await pair.bridge.listConnections();
+
+      assert.lengthOf(connections, 1);
+      assert.equal(connections[0].url, `${ORIGIN}/meetings/42`);
+
+      pair.page.publish('after.route.change', {ok: true});
+      await pair.settle();
+
+      assert.deepEqual(received, ['after.route.change']);
+    });
+
+    it('drops the worker connection when the tab leaves the allowed origin', async () => {
+      pair.world.fireTabUpdated(pair.world.tabId, {url: 'https://elsewhere.example.com/'});
+      await pair.settle();
+
+      assert.lengthOf(await pair.bridge.listConnections(), 0);
+    });
+
     it('reconnects after a page reload', async () => {
       pair.page.destroy();
       await pair.settle();

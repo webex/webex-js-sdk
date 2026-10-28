@@ -40,6 +40,7 @@ import type {
   RelayResult,
   RelayToWorker,
 } from './messages';
+import {hasUrlChange, isLoadingNewDocument, originOf} from './navigation';
 import {requireSessionStorage, requireTabs, resolveChrome} from './platform';
 import type {ChromeLike, ChromeSender, SendResponse} from './platform';
 import {isFromContentScript, isFromExtensionPage, isOriginAllowed, isOwnExtension} from './senders';
@@ -292,6 +293,53 @@ export function createExtensionBridgeWith(
     }
 
     settleTab(tabId, reason);
+  };
+
+  /**
+   * Keep a surviving connection in step with a navigation that did not replace the
+   * document.
+   *
+   * `history.pushState`, `replaceState` and fragment changes — everything a single-page
+   * app does to change route — leave the document, the content script and the session
+   * token it minted untouched. The connection survives such a navigation; only the url
+   * recorded against it goes stale, so that is all this rewrites.
+   *
+   * The rewrite is scoped to the session that was connected when the navigation was
+   * observed, mirroring `removeConnection`'s guard: a document replaced between this
+   * read and its write owns the tab now, and must not inherit the previous route's url.
+   *
+   * @param tabId - Tab that navigated.
+   * @param url - Url the tab navigated to.
+   */
+  const followSameDocumentNavigation = async (tabId: number, url: string): Promise<void> => {
+    const connection = await findConnection(tabId);
+
+    if (!connection) {
+      return;
+    }
+
+    // A same-document navigation cannot leave its origin, so a url that disagrees with
+    // the connected one is not one: treated as the navigation away that Chrome reported
+    // without a loading status, rather than kept as a connection to a document the
+    // allow-list was never checked against.
+    if (originOf(url) !== connection.origin) {
+      // Its own reason: an operator reading the log needs to tell a tab that went
+      // somewhere no content script will be injected from an ordinary document load.
+      dropConnection(tabId, 'tab-left-origin');
+
+      return;
+    }
+
+    if (connection.url === url) {
+      return;
+    }
+
+    logger.debug('following same-document navigation', {channel, tabId});
+    await connections.update((current) =>
+      current.map((entry) =>
+        entry.tabId === tabId && entry.session === connection.session ? {...entry, url} : entry
+      )
+    );
   };
 
   /**
@@ -806,9 +854,20 @@ export function createExtensionBridgeWith(
   logger.info('extension bridge started', {channel, count: allowedOrigins.size});
   tabsApi.onRemoved.addListener((tabId) => dropConnection(tabId, 'tab-removed'));
   tabsApi.onUpdated.addListener((tabId, changeInfo) => {
-    // A killed or navigating page cannot send BYE, so navigation is its own signal.
-    if (changeInfo.status === 'loading' || typeof changeInfo.url === 'string') {
+    // A killed or navigating page cannot send BYE, so a tab update is the teardown
+    // signal of last resort — but only for a navigation that replaces the document.
+    // Chrome reports a single-page app's route change as a bare url change, and tearing
+    // down on that left the page reporting `isConnected` while everything it published
+    // was dropped as a stale session, with no way back short of a full reload: the relay
+    // sends CONNECT once per document, and the page is never told it was dropped.
+    if (isLoadingNewDocument(changeInfo)) {
       dropConnection(tabId, 'tab-navigated');
+
+      return;
+    }
+
+    if (hasUrlChange(changeInfo)) {
+      void followSameDocumentNavigation(tabId, changeInfo.url);
     }
   });
 
