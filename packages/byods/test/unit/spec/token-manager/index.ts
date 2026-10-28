@@ -1,284 +1,236 @@
+import {assert} from '@webex/test-helper-chai';
+import sinon from 'sinon';
 import TokenManager from '../../../../src/token-manager';
-import {TokenResponse} from '../../../../src/types';
+import {ServiceAppToken, TokenResponse} from '../../../../src/types';
+import {TokenStorageAdapter} from '../../../../src/token-storage-adapter/types';
 import {httpUtils} from '../../../../src/http-utils';
 import log from '../../../../src/Logger';
 import {LOGGER} from '../../../../src/Logger/types';
-import {BYODS_TOKEN_MANAGER_MODULE} from '../../../../src/constants';
+import {APPLICATION_ID_PREFIX, BYODS_TOKEN_MANAGER_MODULE} from '../../../../src/constants';
 
 describe('TokenManager', () => {
   const clientId = 'test-client-id';
   const clientSecret = 'test-client-secret';
-  const baseUrl = 'https://webexapis.com/v1';
   const orgId = 'test-org-id';
-  const personalAccessToken = 'test-personal-access-token';
-  const refreshToken = 'test-refresh-token';
-
+  const baseUrl = 'https://webexapis.com/v1';
+  const tokenResponse: TokenResponse = {
+    access_token: 'test-access-token',
+    refresh_token: 'test-refresh-token',
+    expires_in: 3600,
+    refresh_token_expires_in: 7200,
+    token_type: 'Bearer',
+  };
   let tokenManager: TokenManager;
+  let sandbox: sinon.SinonSandbox;
+  let clock: sinon.SinonFakeTimers;
+  let post: sinon.SinonStub;
 
   beforeEach(() => {
-    tokenManager = new TokenManager(clientId, clientSecret, baseUrl);
-    log.setLogger = jest.fn();
+    sandbox = sinon.createSandbox();
+    clock = sandbox.useFakeTimers({now: Date.parse('2026-10-20T09:00:00Z')});
+    sandbox.stub(log, 'setLogger');
+    post = sandbox.stub(httpUtils, 'post').resolves({data: tokenResponse, status: 200});
+    tokenManager = new TokenManager({clientId, clientSecret, orgId}, baseUrl);
   });
 
-  afterEach(() => {
-    jest.resetAllMocks();
+  afterEach(() => sandbox.restore());
+
+  it('initializes the default logger', () => {
+    assert.calledOnceWithExactly(log.setLogger, LOGGER.ERROR, BYODS_TOKEN_MANAGER_MODULE);
   });
 
-  it('should initialize with default logger configuration', () => {
-    tokenManager = new TokenManager(clientId, clientSecret, baseUrl);
-    expect(log.setLogger).toHaveBeenCalledWith(LOGGER.ERROR, BYODS_TOKEN_MANAGER_MODULE);
-  });
-
-  it('should update service app token', async () => {
-    const tokenResponse: TokenResponse = {
-      access_token: 'new-access-token',
-      refresh_token: 'new-refresh-token',
-      expires_in: 3600,
-      token_type: 'Bearer',
-      refresh_token_expires_in: 7200,
-    };
-
-    await tokenManager.updateServiceAppToken(tokenResponse, orgId);
-
-    const serviceAppAuthorization = await tokenManager.getOrgServiceAppAuthorization(orgId);
-    expect(serviceAppAuthorization).toBeDefined();
-    expect(serviceAppAuthorization.serviceAppToken.accessToken).toBe('new-access-token');
-    expect(serviceAppAuthorization.serviceAppToken.refreshToken).toBe('new-refresh-token');
-  });
-
-  it('should get service app authorization', async () => {
-    const tokenResponse: TokenResponse = {
-      access_token: 'new-access-token',
-      refresh_token: 'new-refresh-token',
-      expires_in: 3600,
-      token_type: 'Bearer',
-      refresh_token_expires_in: 7200,
-    };
-
-    await tokenManager.updateServiceAppToken(tokenResponse, orgId);
-
-    const serviceAppAuthorization = await tokenManager.getOrgServiceAppAuthorization(orgId);
-    expect(serviceAppAuthorization).toBeDefined();
-    expect(serviceAppAuthorization.serviceAppToken.accessToken).toBe('new-access-token');
-  });
-
-  it('should list all stored tokens', async () => {
-    const tokenResponse: TokenResponse = {
-      access_token: 'new-access-token',
-      refresh_token: 'new-refresh-token',
-      expires_in: 3600,
-      token_type: 'Bearer',
-      refresh_token_expires_in: 7200,
-    };
-
-    await tokenManager.updateServiceAppToken(tokenResponse, orgId);
-
-    // List tokens using tokenManager
-    const tokens = await tokenManager.listTokens();
-    expect(tokens).toBeDefined();
-    expect(tokens.length).toBe(1);
-  });
-
-  it('should delete a token for a given orgId', async () => {
-    const tokenResponse: TokenResponse = {
-      access_token: 'new-access-token',
-      refresh_token: 'new-refresh-token',
-      expires_in: 3600,
-      token_type: 'Bearer',
-      refresh_token_expires_in: 7200,
-    };
-    await tokenManager.updateServiceAppToken(tokenResponse, orgId);
-    await tokenManager.deleteToken(orgId);
-
-    const tokens = await tokenManager.listTokens();
-    expect(tokens).toBeDefined();
-    expect(tokens.length).toBe(0);
-  });
-
-  it('should reset all tokens', async () => {
-    const tokenResponse: TokenResponse = {
-      access_token: 'new-access-token',
-      refresh_token: 'new-refresh-token',
-      expires_in: 3600,
-      token_type: 'Bearer',
-      refresh_token_expires_in: 7200,
-    };
-    const dummyOrgId = 'org-456';
-    const dummyTokenResponse: TokenResponse = {
-      access_token: 'another-access-token',
-      refresh_token: 'another-refresh-token',
-      expires_in: 3600,
-      token_type: 'Bearer',
-      refresh_token_expires_in: 7200,
-    };
-
-    await tokenManager.updateServiceAppToken(tokenResponse, orgId);
-    await tokenManager.updateServiceAppToken(dummyTokenResponse, dummyOrgId);
-
-    await tokenManager.resetTokens();
-
-    const tokens = await tokenManager.listTokens();
-    expect(tokens).toBeDefined();
-    expect(tokens.length).toBe(0);
-  });
-
-  it('should throw error if service app authorization not found', async () => {
-    await expect(tokenManager.getOrgServiceAppAuthorization(orgId)).rejects.toThrow(
-      `Service App token not found for org ID: ${orgId}`
-    );
-  });
-
-  it('should refresh service app access token', async () => {
-    const tokenResponse: TokenResponse = {
-      access_token: 'new-access-token',
-      refresh_token: refreshToken,
-      expires_in: 3600,
-      token_type: 'Bearer',
-      refresh_token_expires_in: 7200,
-    };
-
-    httpUtils.request = jest.fn().mockResolvedValueOnce({data: tokenResponse, status: 200});
-    jest.spyOn(httpUtils, 'post');
-
-    await tokenManager.updateServiceAppToken(tokenResponse, orgId);
-
-    await tokenManager.refreshServiceAppAccessToken(orgId);
-
-    expect(httpUtils.post).toHaveBeenCalledWith(`${baseUrl}/access_token`, {
-      headers: {
-        'Content-Type': 'application/x-www-form-urlencoded',
-      },
-      body: new URLSearchParams({
-        grant_type: 'refresh_token',
-        client_id: clientId,
-        client_secret: clientSecret,
-        refresh_token: refreshToken,
-      }).toString(),
+  [undefined, null, '', '   '].forEach((invalidOrgId) => {
+    it(`requires an organization at construction: ${JSON.stringify(invalidOrgId)}`, () => {
+      assert.throws(
+        () => new TokenManager({clientId, clientSecret, orgId: invalidOrgId as string}),
+        Error,
+        'orgId is required'
+      );
     });
-    const serviceAppAuthorization = await tokenManager.getOrgServiceAppAuthorization(orgId);
-    expect(serviceAppAuthorization.serviceAppToken.accessToken).toBe('new-access-token');
   });
 
-  it('should throw error if refresh token is undefined', async () => {
-    await expect(tokenManager.refreshServiceAppAccessToken(orgId)).rejects.toThrow(
-      `Service App token not found for org ID: ${orgId}`
+  it('requires Service App credentials', () => {
+    assert.throws(
+      () => new TokenManager({clientId: '', clientSecret, orgId}),
+      Error,
+      'clientId and clientSecret are required'
+    );
+    assert.throws(
+      () => new TokenManager({clientId, clientSecret: '', orgId}),
+      Error,
+      'clientId and clientSecret are required'
     );
   });
 
-  // Fix this later. It passes when ran individually but fails when ran with other tests
-  it.skip('should retrieve token after authorization', async () => {
-    const tokenResponse: TokenResponse = {
-      access_token: 'new-access-token',
-      refresh_token: 'new-refresh-token',
-      token_type: 'Bearer',
-      expires_in: 3600,
-      refresh_token_expires_in: 7200,
-    };
-
-    httpUtils.request = jest.fn().mockResolvedValue({data: tokenResponse, status: 200});
-    jest.spyOn(httpUtils, 'post');
-
-    await tokenManager.getServiceAppTokenUsingPAT(orgId, personalAccessToken);
-
-    expect(httpUtils.post).toHaveBeenCalledWith(
-      `${baseUrl}/applications/${tokenManager.getServiceAppId()}/token`,
-      {
-        headers: {
-          'Content-Type': 'application/json',
-          Authorization: `Bearer ${personalAccessToken}`,
-        },
-        body: JSON.stringify({
-          targetOrgId: orgId,
-          clientId,
-          clientSecret,
-        }),
-      }
+  it('returns the encoded Service App ID', () => {
+    assert.strictEqual(
+      tokenManager.getServiceAppId(),
+      Buffer.from(`${APPLICATION_ID_PREFIX}${clientId}`).toString('base64')
     );
-    const serviceAppAuthorization = await tokenManager.getOrgServiceAppAuthorization(orgId);
-    expect(serviceAppAuthorization.serviceAppToken.accessToken).toBe('new-access-token');
   });
 
-  it('should refresh the token if it is expired', async () => {
-    const expiredTokenResponse: TokenResponse = {
-      access_token: 'expired-access-token',
-      refresh_token: 'valid-refresh-token',
-      expires_in: -3600, // Token expired 1 hour ago
-      token_type: 'Bearer',
-      refresh_token_expires_in: 7200,
-    };
-
-    const refreshedTokenResponse: TokenResponse = {
-      access_token: 'new-access-token',
-      refresh_token: 'new-refresh-token',
-      expires_in: 3600,
-      token_type: 'Bearer',
-      refresh_token_expires_in: 7200,
-    };
-    await tokenManager.updateServiceAppToken(expiredTokenResponse, orgId);
-
-    httpUtils.post = jest.fn().mockResolvedValueOnce({data: refreshedTokenResponse, status: 200});
-    jest.spyOn(httpUtils, 'post');
-
-    const serviceAppAuthorization = await tokenManager.getOrgServiceAppAuthorization(orgId);
-    expect(httpUtils.post).toHaveBeenCalledWith(`${baseUrl}/access_token`, {
-      headers: {
-        'Content-Type': 'application/x-www-form-urlencoded',
-      },
-      body: new URLSearchParams({
-        grant_type: 'refresh_token',
-        client_id: clientId,
-        client_secret: clientSecret,
-        refresh_token: 'valid-refresh-token',
-      }).toString(),
+  it('stores the token pair and both expiry times', async () => {
+    await tokenManager.updateServiceAppToken(tokenResponse);
+    assert.deepEqual(await tokenManager.getServiceAppToken(), {
+      accessToken: tokenResponse.access_token,
+      refreshToken: tokenResponse.refresh_token,
+      expiresAt: new Date(Date.now() + 3600000),
+      refreshAccessTokenExpiresAt: new Date(Date.now() + 7200000),
     });
-
-    expect(serviceAppAuthorization.serviceAppToken.accessToken).toBe('new-access-token');
-    expect(serviceAppAuthorization.serviceAppToken.refreshToken).toBe('new-refresh-token');
+    assert.notCalled(post);
   });
 
-  it('should obtain a token from using getServiceAppTokenUsingPAT', async () => {
-    const mockPAT = 'some-personal-access-token';
-
-    const tokenResponse: TokenResponse = {
-      access_token: 'new-access-token',
-      refresh_token: 'new-refresh-token',
-      expires_in: 3600,
-      token_type: 'Bearer',
-      refresh_token_expires_in: 7200,
-    };
-    const mockPost = jest.spyOn(httpUtils, 'post');
-    mockPost.mockResolvedValueOnce({data: tokenResponse, status: 200});
-
-    await tokenManager.getServiceAppTokenUsingPAT(orgId, mockPAT);
-
-    expect(mockPost).toHaveBeenCalledWith(`${baseUrl}/access_token`, {
+  it('uses the configured organization for PAT acquisition', async () => {
+    await tokenManager.getServiceAppTokenUsingPAT('test-pat', {'X-Custom': 'value'});
+    assert.calledOnceWithExactly(post, `${baseUrl}/access_token`, {
       headers: {
+        Authorization: 'Bearer test-pat',
         'Content-Type': 'application/json',
-        Authorization: `Bearer ${mockPAT}`,
+        'X-Custom': 'value',
       },
-      body: JSON.stringify({
-        targetOrgId: orgId,
-        clientId,
-        clientSecret,
-      }),
+      body: JSON.stringify({targetOrgId: orgId, clientId, clientSecret}),
     });
-
-    const tokens = await tokenManager.listTokens();
-    expect(tokens.length).toBe(1);
-    expect(tokens[0].serviceAppToken.accessToken).toBe('new-access-token');
-    expect(tokens[0].serviceAppToken.refreshToken).toBe('new-refresh-token');
+    assert.strictEqual(
+      (await tokenManager.getServiceAppToken()).accessToken,
+      tokenResponse.access_token
+    );
   });
 
-  it('should handle error when getServiceAppTokenUsingPAT request fails', async () => {
-    const mockPAT = 'some-personal-access-token';
-    const mockPost = jest.spyOn(httpUtils, 'post');
-    mockPost.mockRejectedValueOnce(new Error('Network error'));
+  it('uses the default API endpoint and trims the configured organization', async () => {
+    tokenManager = new TokenManager({clientId, clientSecret, orgId: ` ${orgId} `});
+    await tokenManager.getServiceAppTokenUsingPAT('test-pat');
+    assert.strictEqual(post.firstCall.args[0], `${baseUrl}/access_token`);
+    assert.strictEqual(JSON.parse(post.firstCall.args[1].body).targetOrgId, orgId);
+  });
 
-    await expect(tokenManager.getServiceAppTokenUsingPAT(orgId, mockPAT)).rejects.toThrow(
-      'Network error'
+  it('refreshes at expiry and stores the rotated pair in the same slot', async () => {
+    await tokenManager.updateServiceAppToken(tokenResponse);
+    clock.tick(tokenResponse.expires_in * 1000);
+    const rotatedResponse = {
+      ...tokenResponse,
+      access_token: 'rotated-access-token',
+      refresh_token: 'rotated-refresh-token',
+    };
+    post.resolves({data: rotatedResponse, status: 200});
+
+    const refreshed = await tokenManager.getServiceAppToken();
+    assert.calledOnceWithExactly(post, `${baseUrl}/access_token`, {
+      headers: {'Content-Type': 'application/x-www-form-urlencoded'},
+      body: new URLSearchParams({
+        grant_type: 'refresh_token',
+        client_id: clientId,
+        client_secret: clientSecret,
+        refresh_token: tokenResponse.refresh_token,
+      }).toString(),
+    });
+    assert.strictEqual(refreshed.accessToken, rotatedResponse.access_token);
+    assert.strictEqual(refreshed.refreshToken, rotatedResponse.refresh_token);
+    assert.deepEqual(await tokenManager.getServiceAppToken(), refreshed);
+    assert.calledOnce(post);
+  });
+
+  it('refreshes the stored pair explicitly with custom headers', async () => {
+    await tokenManager.updateServiceAppToken(tokenResponse);
+    await tokenManager.refreshServiceAppAccessToken({'X-Custom': 'value'});
+    assert.calledOnceWithExactly(post, `${baseUrl}/access_token`, {
+      headers: {'Content-Type': 'application/x-www-form-urlencoded', 'X-Custom': 'value'},
+      body: new URLSearchParams({
+        grant_type: 'refresh_token',
+        client_id: clientId,
+        client_secret: clientSecret,
+        refresh_token: tokenResponse.refresh_token,
+      }).toString(),
+    });
+  });
+
+  it('accepts a supplied refresh token without PAT acquisition', async () => {
+    await tokenManager.saveServiceAppRegistrationData('provided-refresh-token');
+    assert.calledOnceWithExactly(post, `${baseUrl}/access_token`, {
+      headers: {'Content-Type': 'application/x-www-form-urlencoded'},
+      body: new URLSearchParams({
+        grant_type: 'refresh_token',
+        client_id: clientId,
+        client_secret: clientSecret,
+        refresh_token: 'provided-refresh-token',
+      }).toString(),
+    });
+    assert.strictEqual(
+      (await tokenManager.getServiceAppToken()).refreshToken,
+      tokenResponse.refresh_token
     );
+  });
 
-    const tokens = await tokenManager.listTokens();
-    expect(tokens).toEqual([]);
+  it('uses the custom token storage adapter', async () => {
+    const token: ServiceAppToken = {
+      accessToken: tokenResponse.access_token,
+      refreshToken: tokenResponse.refresh_token,
+      expiresAt: new Date(Date.now() + 3600000),
+      refreshAccessTokenExpiresAt: new Date(Date.now() + 7200000),
+    };
+    const adapter: TokenStorageAdapter = {
+      getToken: sandbox.stub().resolves(token),
+      setToken: sandbox.stub().resolves(),
+      deleteToken: sandbox.stub().resolves(),
+    };
+    tokenManager = new TokenManager(
+      {clientId, clientSecret, orgId, tokenStorageAdapter: adapter},
+      baseUrl
+    );
+    await tokenManager.updateServiceAppToken(tokenResponse);
+    assert.calledOnceWithExactly(adapter.setToken, token);
+    assert.deepEqual(await tokenManager.getServiceAppToken(), token);
+    assert.calledOnceWithExactly(adapter.getToken);
+    await tokenManager.deleteToken();
+    assert.calledOnceWithExactly(adapter.deleteToken);
+  });
+
+  it('deletes the stored pair', async () => {
+    await tokenManager.updateServiceAppToken(tokenResponse);
+    await tokenManager.deleteToken();
+    await assert.isRejected(
+      tokenManager.getServiceAppToken(),
+      Error,
+      'Service App token not found'
+    );
+  });
+
+  ['getServiceAppToken', 'refreshServiceAppAccessToken'].forEach(
+    (method: 'getServiceAppToken' | 'refreshServiceAppAccessToken') => {
+      it(`rejects ${method} without stored credentials`, async () => {
+        await assert.isRejected(tokenManager[method](), Error, 'Service App token not found');
+        assert.notCalled(post);
+      });
+    }
+  );
+
+  it('rejects an explicit refresh without a refresh token', async () => {
+    await tokenManager.updateServiceAppToken({...tokenResponse, refresh_token: ''});
+    await assert.isRejected(
+      tokenManager.refreshServiceAppAccessToken(),
+      Error,
+      'Refresh token was not found'
+    );
+    assert.notCalled(post);
+  });
+
+  it('preserves stored credentials when PAT acquisition fails', async () => {
+    await tokenManager.updateServiceAppToken(tokenResponse);
+    post.rejects(new Error('Token request failed'));
+    await assert.isRejected(
+      tokenManager.getServiceAppTokenUsingPAT('test-pat'),
+      Error,
+      'Token request failed'
+    );
+    assert.strictEqual(
+      (await tokenManager.getServiceAppToken()).accessToken,
+      tokenResponse.access_token
+    );
+  });
+
+  it('propagates refresh failures instead of returning an expired access token', async () => {
+    await tokenManager.updateServiceAppToken(tokenResponse);
+    clock.tick(3600000);
+    post.rejects(new Error('Refresh rejected'));
+    await assert.isRejected(tokenManager.getServiceAppToken(), Error, 'Refresh rejected');
   });
 });

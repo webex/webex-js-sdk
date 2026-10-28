@@ -5492,9 +5492,13 @@ export default class Meeting extends StatelessWebexPlugin {
 
       this.receiveSlotManager.reset();
 
+      // Unpublish/reset send slots while the connection is still open, so each slot's
+      // internal "stop sending" negotiation (and its stream-listener detachment) completes
+      // cleanly instead of racing the connection close below.
+      this.sendSlotManager.reset();
+
       this.mediaProperties.webrtcMediaConnection.close();
       this.mediaProperties.unsetPeerConnection();
-      this.sendSlotManager.reset();
       this.setNetworkStatus(undefined);
     }
 
@@ -6917,7 +6921,12 @@ export default class Meeting extends StatelessWebexPlugin {
       await this.cleanupLLMConneciton({preserveVoiceaChannel: true});
     }
 
-    if (!isJoined) {
+    if (!isJoined || !url || !dataChannelUrl) {
+      // Either not joined, or locusInfo hasn't synced url/datachannelUrl yet
+      // (SELF_UNADMITTED_GUEST/SELF_ADMITTED_GUEST can fire before datachannelUrl is
+      // populated on rejoin). Any stale channel was already disconnected above; don't
+      // create/register a new one with an empty URL. handleDataChannelUrlChange() will
+      // re-invoke this once MEETING_INFO_UPDATED delivers the real datachannelUrl.
       return undefined;
     }
 

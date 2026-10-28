@@ -1,6 +1,7 @@
 import { Executor } from '@webex/cli-tools';
 
 import CONSTANTS from './yarn.constants';
+import getReleaseRef from './yarn.changes';
 import type { ListConfig, ViewConfig } from './yarn.types';
 
 /**
@@ -27,14 +28,23 @@ class Yarn {
    * @param config - `Yarn.list()` configuration Object.
    * @returns - Promise resolving in the results of the `yarn list` execution.
    */
-  public static list(config: ListConfig = {}): Promise<any> {
+  public static async list(config: ListConfig = {}): Promise<any> {
     const mergedConfig = { ...CONSTANTS.LIST_CONFIG, ...config };
+    let { since } = mergedConfig;
+
+    if (since) {
+      since = await getReleaseRef(since);
+
+      if (!since) {
+        return [];
+      }
+    }
 
     const params = [
       mergedConfig.json ? '--json' : '',
       mergedConfig.noPrivate ? '--no-private' : '',
       mergedConfig.recursive ? '--recursive' : '',
-      mergedConfig.since ? `--since="${mergedConfig.since}"` : '',
+      since ? `--since="${since}"` : '',
       mergedConfig.verbose ? '--verbose' : '',
     ]
       .filter((item) => item.length !== 0)

@@ -8,6 +8,7 @@ import sinon from 'sinon';
 import {ServicesV2} from '@webex/webex-core';
 import {NewMetrics} from '@webex/internal-plugin-metrics';
 import {formattedServiceHostmapV2, serviceHostmapV2} from '../../../fixtures/host-catalog-v2';
+import fedRampServices from '../../../../src/lib/services-v2/service-fed-ramp';
 
 const waitForAsync = () =>
   new Promise<void>((resolve) =>
@@ -31,6 +32,100 @@ describe('webex-core', () => {
       });
       services = webex.internal.services;
       catalog = services._getCatalog();
+    });
+
+    describe('#initConfig', () => {
+      it.each([
+        'https://u2c.gov.ciscospark.com/u2c/api/v1',
+        'https://u2c.svc.webexgov.us/u2c/api/v1',
+        'https://u2c.example.com/u2c/api/v1',
+        'https://u2c.wbx2.com/u2c/api/v1',
+      ])('preserves the existing FedRAMP U2C discovery URL %s', (u2c) => {
+        const discovery = {
+          hydra: 'https://hydra.example.com/v1',
+          u2c,
+          sqdiscovery: 'https://region.example.com/v1/region',
+        };
+        const defaults = {...fedRampServices};
+        webex.config = {
+          fedramp: true,
+          services: {discovery, allowedDomains: ['webexgov.us'], validateDomains: true},
+        };
+
+        services.initConfig();
+
+        assert.deepEqual(webex.config.services.discovery, {...defaults, u2c});
+        assert.strictEqual(services.get('u2c', 'discovery'), u2c);
+        assert.strictEqual(services.get('hydra', 'discovery'), defaults.hydra);
+        assert.strictEqual(services.get('sqdiscovery', 'discovery'), defaults.sqdiscovery);
+        assert.notStrictEqual(webex.config.services.discovery, fedRampServices);
+        assert.deepEqual(fedRampServices, defaults);
+        assert.deepEqual(catalog.getAllowedDomains(), ['webexgov.us']);
+        assert.isTrue(services.validateDomains);
+      });
+
+      it.each([undefined, null, {}, {u2c: undefined}, {u2c: null}, {u2c: ''}])(
+        'uses the FedRAMP defaults when discovery has no U2C URL: %p',
+        (discovery) => {
+          webex.config = {
+            fedramp: true,
+            services: {discovery, allowedDomains: [], validateDomains: true},
+          };
+
+          services.initConfig();
+
+          assert.deepEqual(webex.config.services.discovery, fedRampServices);
+          assert.strictEqual(services.get('u2c', 'discovery'), fedRampServices.u2c);
+          assert.notStrictEqual(webex.config.services.discovery, fedRampServices);
+        }
+      );
+
+      it('leaves commercial discovery configuration unchanged', () => {
+        const discovery = {
+          hydra: 'https://api.ciscospark.com/v1',
+          u2c: 'https://u2c.wbx2.com/u2c/api/v1',
+          sqdiscovery: 'https://ds.ciscospark.com/v1/region',
+        };
+        webex.config = {
+          fedramp: false,
+          services: {discovery, allowedDomains: [], validateDomains: true},
+        };
+
+        services.initConfig();
+
+        assert.strictEqual(webex.config.services.discovery, discovery);
+        assert.strictEqual(services.get('u2c', 'discovery'), discovery.u2c);
+        assert.strictEqual(services.get('hydra', 'discovery'), discovery.hydra);
+        assert.strictEqual(services.get('sqdiscovery', 'discovery'), discovery.sqdiscovery);
+      });
+
+      it('keeps FedRAMP discovery URLs isolated between instances', () => {
+        const oldU2c = 'https://u2c.gov.ciscospark.com/u2c/api/v1';
+        const newU2c = 'https://u2c.svc.webexgov.us/u2c/api/v1';
+        const defaults = {...fedRampServices};
+        const otherWebex = MockWebex({children: {services: ServicesV2}});
+        webex.config = {
+          fedramp: true,
+          services: {discovery: {u2c: oldU2c}, allowedDomains: []},
+        };
+        otherWebex.config = {
+          fedramp: true,
+          services: {discovery: {u2c: newU2c}, allowedDomains: []},
+        };
+
+        services.initConfig();
+        otherWebex.internal.services.initConfig();
+
+        assert.deepEqual(webex.config.services.discovery, {...defaults, u2c: oldU2c});
+        assert.deepEqual(otherWebex.config.services.discovery, {...defaults, u2c: newU2c});
+        assert.strictEqual(services.get('u2c', 'discovery'), oldU2c);
+        assert.strictEqual(otherWebex.internal.services.get('u2c', 'discovery'), newU2c);
+        assert.notStrictEqual(
+          webex.config.services.discovery,
+          otherWebex.config.services.discovery
+        );
+        assert.deepEqual(fedRampServices, defaults);
+      });
     });
 
     describe('#initialize', () => {
@@ -1283,6 +1378,32 @@ describe('webex-core', () => {
     });
 
     describe('#isIntegrationEnvironment', () => {
+      it('uses the integration environment config when set, regardless of the u2c URL', () => {
+        services.webex.config = {
+          environment: 'integration',
+          services: {
+            discovery: {
+              u2c: 'https://u2c.wbx2.com/u2c/api/v1',
+            },
+          },
+        };
+
+        assert.isTrue(services.isIntegrationEnvironment());
+      });
+
+      it('uses the production environment config when set, regardless of the u2c URL', () => {
+        services.webex.config = {
+          environment: 'production',
+          services: {
+            discovery: {
+              u2c: 'https://u2c-intb.ciscospark.com/u2c/api/v1',
+            },
+          },
+        };
+
+        assert.isFalse(services.isIntegrationEnvironment());
+      });
+
       it('returns true when u2c URL contains "intb"', () => {
         services.webex.config = {
           services: {
