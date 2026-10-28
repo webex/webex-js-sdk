@@ -55,10 +55,6 @@ options on the `encryption` config:
   Development builds and builds without either version use
   `/assets/internal-plugin-encryption/` on the page's origin. Explicit
   application settings override this default.
-- `carootsReportOnly` — an additional array of CA roots validated alongside the
-  enforced roots. A failure here is only reported as a metric instead of failing
-  the negotiation, which lets a new bundle be trialled in parallel. This also
-  runs when `shouldValidateKMSCertificate` is `false`.
 
 ### Where the CA roots come from
 

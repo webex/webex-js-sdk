@@ -950,15 +950,14 @@ const KMS = WebexPlugin.extend({
    * Validates the KMS static public key against the CA roots.
    * Validation is opt-in (`shouldValidateKMSCertificate`) and, when enabled,
    * fails closed when no CA roots are available or validation fails. Enforced
-   * failures are reported and rejected. When a `carootsReportOnly` bundle is
-   * configured, its failures are reported without rejecting.
+   * failures are reported and rejected.
    * @private
    * @param {Object} kmsStaticPubKey
    * @param {?string[]} caroots CA roots resolved by `_getCaroots()`
    * @returns {Promise<Object>} the KMS static public key
    */
   _validateKMSStaticPubKey(kmsStaticPubKey, caroots) {
-    const {carootsReportOnly, shouldValidateKMSCertificate} = this.config;
+    const {shouldValidateKMSCertificate} = this.config;
     const reportValidationFailure = (reason, validationMode) => {
       this.logger.warn(`kms: ${validationMode} certificate validation failed`, reason);
       this._submitMetric(JS_SDK_KMS_CERTIFICATE_VALIDATION_FAILED, {
@@ -971,20 +970,12 @@ const KMS = WebexPlugin.extend({
       });
     };
 
-    return validateKMS({caroots, validateSignature: shouldValidateKMSCertificate})(kmsStaticPubKey)
-      .catch((reason) => {
-        reportValidationFailure(reason, 'enforced');
-        throw reason;
-      })
-      .then((jwt) => {
-        if (!carootsReportOnly) {
-          return jwt;
-        }
-
-        return validateKMS({caroots: carootsReportOnly})(kmsStaticPubKey)
-          .catch((reason) => reportValidationFailure(reason, 'report-only'))
-          .then(() => jwt);
-      });
+    return validateKMS({caroots, validateSignature: shouldValidateKMSCertificate})(
+      kmsStaticPubKey
+    ).catch((reason) => {
+      reportValidationFailure(reason, 'enforced');
+      throw reason;
+    });
   },
 
   /**

@@ -93,15 +93,5 @@ export default {
      * @type {string}
      */
     assetsBaseUrl: getUmdAssetsBaseUrl('internal-plugin-encryption', SDK_VERSION, PACKAGE_VERSION),
-
-    /**
-     * An additional CA root bundle validated alongside `caroots`. Unlike
-     * `caroots`, a validation failure against these roots is reported as a
-     * metric instead of failing the ECDH negotiation. This allows a new CA
-     * root bundle to be trialled in parallel with the enforced `caroots`
-     * without risking total failure.
-     * @type {?string[]}
-     */
-    carootsReportOnly: undefined,
   },
 };
