@@ -62,6 +62,18 @@ untrusted. If roots are not supplied, the SDK loads and verifies its signed CA
 roots asset. See the [KMS configuration and asset-hosting guide](../internal-plugin-encryption/README.md#kms-certificate-validation)
 for download configuration and offline deployments.
 
+To observe a separate signed root bundle, set
+`config.encryption.reportOnlyAssetsBaseUrl` to its asset directory. This option
+has no default URL. It starts a background check after mandatory and enforced
+validation succeed. Download, verification and chain failures report metrics
+without delaying or rejecting setup. It works while enforcement is enabled,
+including when `caroots` supplies a different enforced root set. The explicit URL
+is honored in both browsers and Node.
+
+Existing `carootsReportOnly` arrays retain their awaited behavior and take
+precedence over the new report-only URL. See the configuration guide above for
+asset filenames, verification, source caching and background-reporting limits.
+
 ## API Docs and Sample App
 
 - API Reference: [https://webex.github.io/webex-js-sdk/plugin-encryption/](https://webex.github.io/webex-js-sdk/plugin-encryption/)

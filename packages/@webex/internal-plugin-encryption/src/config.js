@@ -63,6 +63,15 @@ export default {
     shouldValidateKMSCertificate: false,
 
     /**
+     * Optional asset directory for an independent background KMS chain check.
+     * Uses `carootsAsset` from this URL even in Node, without using `caroots`
+     * or the packaged enforced bundle. Failures do not delay or reject setup.
+     * Explicit `carootsReportOnly` roots take precedence. Disabled when unset.
+     * @type {?string}
+     */
+    reportOnlyAssetsBaseUrl: undefined,
+
+    /**
      * CA roots used to validate the KMS certificate chain, as an array of raw
      * base64-encoded certificates (the DER body, without the
      * -----BEGIN/END CERTIFICATE----- lines). When set, these take precedence

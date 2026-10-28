@@ -55,6 +55,8 @@ describe('encryption asset configuration', () => {
         const webex = await create();
 
         assert.equal(webex.config.encryption.assetsBaseUrl, '/assets/internal-plugin-encryption/');
+        assert.isUndefined(webex.config.encryption.reportOnlyAssetsBaseUrl);
+        assert.isUndefined(webex.internal.encryption.config.reportOnlyAssetsBaseUrl);
         assert.equal(
           webex.internal.encryption.config.assetsBaseUrl,
           webex.config.encryption.assetsBaseUrl
@@ -72,6 +74,27 @@ describe('encryption asset configuration', () => {
           webex.internal.encryption.config.assetsBaseUrl,
           coreConfig.encryption.assetsBaseUrl
         );
+      });
+
+      it('preserves independent enforced and report-only asset URLs', async () => {
+        const webex = await create({
+          encryption: {
+            assetsBaseUrl,
+            shouldValidateKMSCertificate: true,
+            reportOnlyAssetsBaseUrl: 'https://candidate.example.com/roots/',
+          },
+        });
+
+        assert.isTrue(webex.internal.encryption.config.shouldValidateKMSCertificate);
+        assert.equal(
+          webex.config.encryption.reportOnlyAssetsBaseUrl,
+          'https://candidate.example.com/roots/'
+        );
+        assert.equal(
+          webex.internal.encryption.config.reportOnlyAssetsBaseUrl,
+          'https://candidate.example.com/roots/'
+        );
+        assert.equal(webex.internal.encryption.config.assetsBaseUrl, assetsBaseUrl);
       });
 
       it('preserves an explicit application-hosted URL', async () => {
