@@ -3,7 +3,7 @@ doc_kind: agent-entry
 generated_from: agents@0.3.0
 generated_by: claude-code
 approved_by: riag@cisco.com
-updated_at: 2026-10-12T15:10:04Z
+updated_at: 2026-10-28T14:58:37Z
 validation_status: pass
 -->
 
@@ -88,7 +88,6 @@ Definition of done:
 - `test/unit/spec/` and `test/integration/spec/`: a placeholder unit test and an integration test
 - `docs/`: package architecture, getting started, registry, and ADRs
 - `.sdd/manifest.json`: machine-readable SDD manifest; `.repo-context.json`: operational context for agents
-- `.sdd/templates/repo-standards`: symlink to the monorepo root templates; do not replace it with a copy
 - `README.md`: the package's own deprecation notice and usage text (kept separate from the generated docs)
 
 ### Critical Constraints
@@ -188,3 +187,4 @@ PR checklist:
 - Bypass required checks by disabling tests or linters.
 - Rewrite history on shared branches.
 - Change unrelated files "while here" without clear need.
+- Add a `.sdd/templates` directory, a copy of the templates, or a link to them in this package. The templates live once at the monorepo root, `../../../.sdd/templates/repo-standards`, and `.sdd/manifest.json` refers to them.

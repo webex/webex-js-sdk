@@ -9,7 +9,7 @@ doc_kind: standing-doc
 generated_from: architecture@0.3.0
 generated_by: claude-code
 approved_by: riag@cisco.com
-updated_at: 2026-10-12T15:10:04Z
+updated_at: 2026-10-28T14:58:37Z
 validation_status: pass
 -->
 

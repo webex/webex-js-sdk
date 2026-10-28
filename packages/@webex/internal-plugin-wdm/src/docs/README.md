@@ -9,7 +9,7 @@ doc_kind: module-spec
 generated_from: module-spec@0.3.0
 generated_by: claude-code
 approved_by: riag@cisco.com
-updated_at: 2026-10-12T15:10:04Z
+updated_at: 2026-10-28T14:58:37Z
 validation_status: pass
 -->
 
@@ -32,12 +32,12 @@ Related context: [documentation index](../../docs/index.md) ·
 | Source path       | `src/`                                                                                                 |
 | Resource kind     | module (the package's only module; a re-export alias)                                                  |
 | Status            | Draft                                                                                                  |
-| Last verified     | 2026-10-12 against the working tree (`src/index.js`, `package.json`, `README.md`, `test/`)             |
+| Last verified     | 2026-10-28 against the working tree (`src/index.js`, `package.json`, `README.md`, `test/`)             |
 | Module id         | `src`                                                                                                  |
 | Parent spec       | —                                                                                                      |
 | Doc kind          | Module spec                                                                                            |
 | Coverage score    | 86.7% (13 of 15 mandatory fields; critical 7 of 7) assessed 2026-10-12; weak: tests, WHAT/WHY       |
-| Validation status | pass — validator `01a13098-9d6f-7c10-891b-b7207f337f2d`, assessed 2026-10-12; 0 findings |
+| Validation status | pass — validator `01a18302-bd56-78f3-906e-7393e5034b42`, assessed 2026-10-28; 0 findings |
 
 ## Applicability
 

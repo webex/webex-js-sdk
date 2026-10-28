@@ -9,7 +9,7 @@ doc_kind: standing-doc
 generated_from: spec-index@0.3.0
 generated_by: claude-code
 approved_by: riag@cisco.com
-updated_at: 2026-10-12T15:10:04Z
+updated_at: 2026-10-28T14:58:37Z
 validation_status: pass
 -->
 
@@ -35,9 +35,9 @@ published library, not a deployable service.
 
 | Resource          | Role         | Canonical path         | Owner                                              | Status | Last verified |
 | ----------------- | ------------ | ---------------------- | -------------------------------------------------- | ------ | ------------- |
-| Repository        | Architecture | `docs/architecture.md` | Cisco Webex for Developers (named in `README.md`)  | Draft  | 2026-10-12    |
-| `src`             | Module       | `src/docs/README.md`   | Cisco Webex for Developers (named in `README.md`)  | Draft  | 2026-10-12    |
-| `wdm-alias-sdk`   | Contract     | `src/index.js`         | Cisco Webex for Developers (named in `README.md`)  | Draft  | 2026-10-12    |
+| Repository        | Architecture | `docs/architecture.md` | Cisco Webex for Developers (named in `README.md`)  | Draft  | 2026-10-28    |
+| `src`             | Module       | `src/docs/README.md`   | Cisco Webex for Developers (named in `README.md`)  | Draft  | 2026-10-28    |
+| `wdm-alias-sdk`   | Contract     | `src/index.js`         | Cisco Webex for Developers (named in `README.md`)  | Draft  | 2026-10-28    |
 
 ### Module registry
 
@@ -51,7 +51,7 @@ human-readable mirror and the reconciliation surface for `check_spec_index.py`.
 Generator-side field measurement for `src` is complete: 86.7% (13 of 15 mandatory fields) assessed 2026-10-12,
 with critical field coverage at 7 of 7. The score, date, and evidence summary are recorded in the module
 specification's `Coverage score` metadata row and in `.sdd/manifest.json`. Independent validation passed on
-2026-10-12 with zero findings. That result is separate from the completed coverage measurement.
+2026-10-28 with zero findings. That result is separate from the completed coverage measurement.
 
 Two fields remain weak. Test and characterization coverage lacks a baseline: the only unit test asserts `true`,
 and only `MOD-004` has any automated evidence (an integration test that needs provisioned test users). The

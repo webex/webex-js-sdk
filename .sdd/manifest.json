@@ -73,6 +73,15 @@
       "index": "packages/@webex/internal-plugin-user/docs/index.md",
       "onboarded_at": "2026-10-22T00:00:00Z",
       "onboarded_by": "claude-code"
+    },
+    {
+      "id": "@webex/internal-plugin-wdm",
+      "path": "packages/@webex/internal-plugin-wdm",
+      "manifest": "packages/@webex/internal-plugin-wdm/.sdd/manifest.json",
+      "agent_entry": "packages/@webex/internal-plugin-wdm/AGENTS.md",
+      "index": "packages/@webex/internal-plugin-wdm/docs/index.md",
+      "onboarded_at": "2026-10-28T14:44:56Z",
+      "onboarded_by": "claude-code"
     }
   ],
   "substrate": {
@@ -82,6 +91,6 @@
   "provenance": {
     "generated_by": "claude-code",
     "approved_by": "riag@cisco.com",
-    "updated_at": "2026-10-22T00:00:00Z"
+    "updated_at": "2026-10-28T14:44:56Z"
   }
 }

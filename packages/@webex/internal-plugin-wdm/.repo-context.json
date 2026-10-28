@@ -125,7 +125,7 @@
       "refresh_with": "yarn workspace @webex/internal-plugin-wdm build:src"
     },
     {
-      "path": ".sdd/templates/repo-standards/template-map.json",
+      "path": "../../../.sdd/templates/repo-standards/template-map.json",
       "generated_from": "WebexTools/repo-standards@d89a7fe59126ae3ad9bac9ca352aa7f12b4c85dc",
       "refresh_with": "Run the setup script of the active Repo Annotation installation against the monorepo root"
     }
@@ -285,21 +285,21 @@
       {
         "name": "repo-standards templates",
         "paths": [
-          ".sdd/templates/repo-standards"
+          "../../../.sdd/templates/repo-standards"
         ],
         "generated_from": "WebexTools/repo-standards@d89a7fe59126ae3ad9bac9ca352aa7f12b4c85dc",
         "refresh_with": "Run the setup script of the active Repo Annotation installation against the monorepo root",
-        "notes": "A symlink at .sdd/templates/repo-standards points to the monorepo root .sdd/templates/repo-standards; no package-level copy exists."
+        "notes": "The package holds no templates. It refers to the monorepo root snapshot at ../../../.sdd/templates/repo-standards through layout.monorepo_package.templates_root_path in .sdd/manifest.json."
       }
     ],
     "sync_paths": [
       {
         "source": "WebexTools/repo-standards@d89a7fe59126ae3ad9bac9ca352aa7f12b4c85dc",
         "targets": [
-          ".sdd/templates/repo-standards"
+          "../../../.sdd/templates/repo-standards"
         ],
         "mechanism": "Setup script of the active Repo Annotation installation",
-        "notes": "Run at the monorepo root; the package-level symlink follows the refreshed root templates."
+        "notes": "The package holds no templates. It refers to the monorepo root snapshot at ../../../.sdd/templates/repo-standards through layout.monorepo_package.templates_root_path in .sdd/manifest.json."
       }
     ],
     "validation_entrypoints": [

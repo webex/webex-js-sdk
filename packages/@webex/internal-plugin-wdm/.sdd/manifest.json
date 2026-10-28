@@ -8,7 +8,7 @@
       "javascript"
     ]
   },
-  "topology": "Single-repo",
+  "topology": "Orchestrator-plus-components",
   "commands": {
     "compile": {
       "command": "yarn workspace @webex/internal-plugin-wdm build:src",
@@ -86,7 +86,7 @@
     {
       "path": "src/",
       "coverage_status": "Partial",
-      "coverage_evidence": "Generator-side field measurement 86.7% (13 of 15 mandatory fields PRESENT, critical 7 of 7) assessed 2026-10-12. WEAK: test and characterization coverage (the only unit test asserts true; MOD-001 to MOD-003 and MOD-005 to MOD-007 have no automated evidence and MOD-004 needs provisioned test users), and WHAT/WHY (MOD-003 rationale for omitting two device exports is an approved unknown). Provenance is PRESENT now that approval by riag@cisco.com is recorded. Independent validation passed on 2026-10-12 with 0 findings. Promotion to Specced remains held because no drift measurement exists.",
+      "coverage_evidence": "Generator-side field measurement 86.7% (13 of 15 mandatory fields PRESENT, critical 7 of 7) assessed 2026-10-12. WEAK: test and characterization coverage (the only unit test asserts true; MOD-001 to MOD-003 and MOD-005 to MOD-007 have no automated evidence and MOD-004 needs provisioned test users), and WHAT/WHY (MOD-003 rationale for omitting two device exports is an approved unknown). Provenance is PRESENT now that approval by riag@cisco.com is recorded. Independent validation passed on 2026-10-28 with validator 01a18302-bd56-78f3-906e-7393e5034b42 and 0 Blocking or warning findings. Promotion to Specced remains held because no drift measurement exists.",
       "canonical_spec": "src/docs/README.md",
       "contracts": {
         "provides": [
@@ -178,8 +178,8 @@
     "generator_runtime": "claude-code",
     "generator_model": "claude-sonnet-5-5",
     "generator_runtime_source": "host-metadata",
-    "validator_runtime": "01a13098-9d6f-7c10-891b-b7207f337f2d",
-    "validator_run_id": "01a13098-9d6f-7c10-891b-b7207f337f2d",
+    "validator_runtime": "codex",
+    "validator_run_id": "01a18302-bd56-78f3-906e-7393e5034b42",
     "validator_runtime_source": "host-metadata",
     "minimum_independence": "different-runtime",
     "runtime_fallback_tier": "different-runtime",
@@ -206,7 +206,7 @@
       "schema_path": "schemas/repo-context.schema.json",
       "action": "create",
       "schema_action": "create",
-      "reason": "Neither the operational context nor its schema exists in this package; both are created from the Repo Standards templates resolved at the monorepo root (reached through the package symlink .sdd/templates/repo-standards) and verified repository evidence.",
+      "reason": "Neither the operational context nor its schema existed in this package. The context is created from package evidence and the schema is copied from the Repo Standards 0.3.0 snapshot resolved at the monorepo root.",
       "decided_by": "claude-code (bootstrap questionnaire)",
       "decided_at": "2026-10-12T14:36:00Z"
     },
@@ -272,7 +272,12 @@
       "canonical": ".sdd/templates/repo-standards"
     },
     "repo_skills_root": ".sdd/skills",
-    "contract_index_path": "docs/architecture.md"
+    "contract_index_path": "docs/architecture.md",
+    "monorepo_package": {
+      "package_path": "packages/@webex/internal-plugin-wdm",
+      "root_manifest_path": "../../../.sdd/manifest.json",
+      "templates_root_path": "../../../.sdd/templates/repo-standards"
+    }
   },
   "substrate": {
     "source": "WebexTools/repo-standards@d89a7fe59126ae3ad9bac9ca352aa7f12b4c85dc",
@@ -305,5 +310,10 @@
     },
     "resolved_by": "claude-code/claude-sonnet-5-5 (host metadata; bootstrap questionnaire)",
     "resolved_at": "2026-10-12T14:40:00Z"
+  },
+  "tooling": {
+    "sdlc_skills": {
+      "source_ref": "repo-annotation@2.3.0"
+    }
   }
 }
