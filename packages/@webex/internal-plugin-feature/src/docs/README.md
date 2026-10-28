@@ -9,7 +9,7 @@ doc_kind: module-spec
 generated_from: module-spec@0.3.0
 generated_by: claude-code
 approved_by: riag@cisco.com
-updated_at: 2026-10-12T14:00:30Z
+updated_at: 2026-10-28T08:54:44Z
 validation_status: pass
 -->
 
@@ -32,12 +32,12 @@ Related context: [documentation index](../../docs/index.md) ·
 | Source path       | `src` |
 | Resource kind     | package |
 | Status            | Draft |
-| Last verified     | 2026-10-12 at `93ff5c8645` |
+| Last verified     | 2026-10-28 at `ff0d786826` |
 | Module id         | `internal-plugin-feature` |
 | Parent spec       | — |
 | Doc kind          | Module spec |
-| Coverage score    | 93.3% assessed 2026-10-12 — 14 of 15 mandatory fields PRESENT, critical 8 of 8; test strategy is WEAK because registration, missing-key reads, `setBundledFeatures`, developer-type and dropped-type `updateFeature`, and the `setFeature` request body are untested and the integration spec is unwired and stale |
-| Validation status | pass — validator session `01a13053-d559-7a00-bb70-8c7115905133`, 2026-10-12; 0 findings |
+| Coverage score    | 93.3% assessed 2026-10-28 — 14 of 15 mandatory fields PRESENT, critical 8 of 8; test strategy is WEAK because registration, missing-key reads, `setBundledFeatures`, developer-type and dropped-type `updateFeature`, and the `setFeature` request body are untested and the integration spec is unwired and stale |
+| Validation status | pass — validator runtime `codex`, session `01a181ab-6ee4-7841-822a-c45cb65b8d99`, 2026-10-28; 0 findings |
 
 ## Applicability
 
@@ -75,9 +75,9 @@ Related context: [documentation index](../../docs/index.md) ·
 | Sibling package internal-plugin-device, file src/docs/README.md | Module spec consulted. `webex.internal.device` exposes `userId` and three feature collections (`developer`, `entitlement`, `user`) keyed by `key`, typed on parse, and re-emitting `change:<collection>` |
 | Sibling package internal-plugin-device, file src/features/feature-model.js | Record fields `key`, `lastModified`, `mutable`, `type`, `val`, `value`, as used by `serialize()` in the full read |
 | Sibling package internal-plugin-mercury, file src/mercury.js | The `event:featureToggle_update` handler that calls `updateFeature` with `envelope.data.featureToggle`, and the `getFeature` callers |
-| Sibling package webex-core, file src/lib/webex-plugin.js | No module spec exists, so source was used: `WebexPlugin` supplies `this.webex`, `this.request`, `this.config`, and the namespace-keyed config lookup |
-| Sibling package webex-core, file src/lib/interceptors/service.js | Source consulted: a request `api` option is converted to `service` and resolved to a URL from the services catalog |
-| Sibling package webex-core, file src/webex-core.js | `registerInternalPlugin` and `listenToAndRun` |
+| Sibling package webex-core, file src/docs/README.md | Module spec consulted. `WebexPlugin` supplies `webex`, `request`, namespaced `config`, and the event emitter, and `registerInternalPlugin` surfaces the plugin on `webex.internal` |
+| Sibling package webex-core, file src/lib/services/docs/README.md | Module spec consulted. `ServiceInterceptor` maps a request `api` option to `service`, requires `resource`, and resolves the URL from the services catalog |
+| Sibling package webex-core, file src/lib/webex-plugin.js | Source consulted for the exact `listenToAndRun` and `request` forwarding used by `initialize` and the write methods |
 
 ## Purpose and boundary
 
@@ -129,7 +129,7 @@ Contract IDs `webex-feature-toggles` and `feature-plugin-events` are indexed in 
 | Dependency | Why it is required | Failure behavior |
 | ---------- | ------------------ | ---------------- |
 | `@webex/internal-plugin-device` (module spec consulted) | Supplies `webex.internal.device.features.{developer,entitlement,user}` and `webex.internal.device.userId`; imported for its registration side effect in `src/feature.js` | Before registration the collections are empty, so reads resolve `null`; `userId` is `undefined`, so write URLs contain the text `undefined` |
-| `@webex/webex-core` (no module spec; source used) | `WebexPlugin` base class, `registerInternalPlugin`, `this.request`, `listenToAndRun`, and URL resolution for `api: 'feature'` | A rejected request propagates unchanged to the caller |
+| `@webex/webex-core` (module specs consulted) | `WebexPlugin` base class, `registerInternalPlugin`, `this.request`, `listenToAndRun`, and URL resolution for `api: 'feature'` | A rejected request propagates unchanged to the caller |
 | Feature service (external, reached as service name `feature`) | Stores toggle writes and returns the saved records | Non-2xx and network failures reject the write promise; local collections stay unchanged |
 | `lodash` (`partition`) | Splits the bundled-write response into user and developer records | Not applicable; `partition(undefined, ...)` returns two empty lists |
 | `@webex/internal-plugin-mercury` (caller, no import) | Pushes `featureToggle_update` records into `updateFeature` | Without Mercury no pushed updates arrive; reads and writes are unaffected |
@@ -468,6 +468,6 @@ source is JavaScript.
 Coverage gaps are recorded above. `test/integration/spec/feature.js` needs repair (`listen`,
 `handleFeatureUpdate`) and a runnable script before it can count as coverage. A module specification is
 complete only when its public surface, invariants, failure modes, and test evidence agree with the
-implementation. Generator-side field measurement is complete. Independent semantic validation passed
-on 2026-10-12 with no findings; drift recording, a characterization baseline, and promotion past
-Partial remain pending.
+implementation. Generator-side field measurement is complete. Independent semantic validation by
+runtime `codex`, session `01a181ab-6ee4-7841-822a-c45cb65b8d99`, passed on 2026-10-28 with no
+findings; drift recording, a characterization baseline, and promotion past Partial remain pending.

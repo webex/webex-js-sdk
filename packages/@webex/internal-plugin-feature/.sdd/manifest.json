@@ -8,7 +8,7 @@
       "javascript"
     ]
   },
-  "topology": "Single-repo",
+  "topology": "Orchestrator-plus-components",
   "commands": {
     "install": {
       "command": "yarn",
@@ -117,8 +117,8 @@
       "path": "src",
       "canonical_spec": "src/docs/README.md",
       "coverage_status": "Partial",
-      "coverage_evidence": "Field coverage 93.3% (14/15) assessed 2026-10-12 by the generator; critical field coverage 8/8. The one WEAK field is test strategy: test/unit/spec/feature.js covers key-type validation, full and value reads, setFeature for two key types, one updateFeature case, and change events, but plugin registration, getFeature for a missing key, setBundledFeatures, updateFeature for the developer type and dropped types, and the request body of setFeature have no unit test, and test/integration/spec/feature.js is unwired and calls listen and handleFeatureUpdate, which Feature does not define. Independent validation by session 01a13053-d559-7a00-bb70-8c7115905133 passed on 2026-10-12 with 0 findings. Held at Partial: no characterization baseline or spec-drift record exists yet.",
-      "last_assessed": "2026-10-12",
+      "coverage_evidence": "Field coverage 93.3% (14/15) assessed 2026-10-28 by the generator; critical field coverage 8/8. The one WEAK field is test strategy: test/unit/spec/feature.js covers key-type validation, full and value reads, setFeature for two key types, one updateFeature case, and change events, but plugin registration, getFeature for a missing key, setBundledFeatures, updateFeature for the developer type and dropped types, and the request body of setFeature have no unit test, and test/integration/spec/feature.js is unwired and calls listen and handleFeatureUpdate, which Feature does not define. Independent validation by runtime codex, session 01a181ab-6ee4-7841-822a-c45cb65b8d99, passed on 2026-10-28 with 0 findings. Held at Partial: no characterization baseline or spec-drift record exists yet.",
+      "last_assessed": "2026-10-28",
       "contracts": {
         "provides": [
           "webex-feature-toggles",
@@ -191,7 +191,7 @@
         "kind": "sdk",
         "publication": "published",
         "source_kind": "external",
-        "source": "@webex/webex-core (workspace package; no module spec, so source was used: packages/@webex/webex-core/src/lib/webex-plugin.js, packages/@webex/webex-core/src/webex-core.js, packages/@webex/webex-core/src/lib/interceptors/service.js)",
+        "source": "@webex/webex-core (workspace package; module specs consulted: packages/@webex/webex-core/src/docs/README.md and packages/@webex/webex-core/src/lib/services/docs/README.md)",
         "summary": "Feature extends WebexPlugin, is registered with registerInternalPlugin, sends writes with this.request and the api option, and subscribes with listenToAndRun."
       },
       "lodash": {
@@ -214,10 +214,10 @@
     "generator_runtime": "claude-code",
     "generator_model": "claude-sonnet-5-5",
     "generator_runtime_source": "host-metadata",
-    "validator_runtime": "01a13053-d559-7a00-bb70-8c7115905133",
-    "validator_run_id": "01a13053-d559-7a00-bb70-8c7115905133",
-    "validator_runtime_source": "host-metadata",
-    "source_commit": "93ff5c864571ee87af82ecc51cd02b920eb0884d",
+    "validator_runtime": "codex",
+    "validator_run_id": "01a181ab-6ee4-7841-822a-c45cb65b8d99",
+    "validator_runtime_source": "invocation-input",
+    "source_commit": "ff0d78682668aeb4593ea0b14fba20a59fc4a365",
     "minimum_independence": "different-runtime",
     "runtime_fallback_tier": "different-runtime",
     "blocking_severities": [
@@ -234,7 +234,7 @@
     "module_docs_relative_path": "docs/README.md",
     "module_docs_decision": {
       "basis": "repo-standards-default",
-      "reason": "No module-local documentation existed. The source-local default gives src/docs/README.md. test:style runs eslint ./src/**/*.* and build:src processes -js -ts only; Markdown under src/ is checked against both before validation.",
+      "reason": "No module-local documentation existed. The source-local default gives src/docs/README.md. test:style runs eslint ./src/**/*.* and build:src processes -js -ts only, so Markdown under src/ does not enter the build output.",
       "decided_by": "riag@cisco.com (bootstrap questionnaire)",
       "decided_at": "2026-10-12T13:30:00Z"
     },
@@ -309,7 +309,12 @@
       "canonical": ".sdd/templates/repo-standards"
     },
     "contract_index_path": "docs/architecture.md",
-    "repo_skills_root": ".sdd/skills"
+    "repo_skills_root": ".sdd/skills",
+    "monorepo_package": {
+      "package_path": "packages/@webex/internal-plugin-feature",
+      "root_manifest_path": "../../../.sdd/manifest.json",
+      "templates_root_path": "../../../.sdd/templates/repo-standards"
+    }
   },
   "coverage_ratchet": {
     "enabled": true,
@@ -323,7 +328,7 @@
       "@webex/jest-config-legacy via jest.config.js",
       "@webex/legacy-tools build and test runner via package.json",
       "package README.md",
-      "Repo Standards 0.3.0 templates at the JS SDK root .sdd/templates, reached through the package symlink .sdd/templates/repo-standards"
+      "Repo Standards 0.3.0 templates at the monorepo root .sdd/templates/repo-standards, referred to through layout.monorepo_package.templates_root_path (this package holds no templates)"
     ],
     "compliance_tier": "baseline"
   },
@@ -347,5 +352,10 @@
     },
     "resolved_by": "claude-code (code evidence; bootstrap questionnaire)",
     "resolved_at": "2026-10-12T13:30:00Z"
+  },
+  "tooling": {
+    "sdlc_skills": {
+      "source_ref": "repo-annotation@2.3.0"
+    }
   }
 }

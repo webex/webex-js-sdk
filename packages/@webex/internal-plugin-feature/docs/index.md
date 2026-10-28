@@ -6,7 +6,7 @@ doc_kind: standing-doc
 generated_from: docs-index@0.3.0
 generated_by: claude-code
 approved_by: riag@cisco.com
-updated_at: 2026-10-12T14:00:30Z
+updated_at: 2026-10-28T08:54:44Z
 validation_status: pass
 -->
 

@@ -3,7 +3,7 @@ doc_kind: agent-entry
 generated_from: agents@0.3.0
 generated_by: claude-code
 approved_by: riag@cisco.com
-updated_at: 2026-10-12T14:00:30Z
+updated_at: 2026-10-28T08:54:44Z
 validation_status: pass
 -->
 
@@ -184,5 +184,6 @@ PR checklist:
 
 - Edit `dist/` by hand.
 - Commit secrets, tokens, or credentials, including in test fixtures.
-- Copy template files into the package or replace the `.sdd/templates/repo-standards` symlink with a directory. It
-  points to the repository-root `.sdd/templates/repo-standards` snapshot.
+- Add a `.sdd/templates` directory, a copy of the templates, or a link to them in this package. The
+  templates live once at the monorepo root, `../../../.sdd/templates/repo-standards`, and
+  `.sdd/manifest.json` refers to them through `layout.monorepo_package`.

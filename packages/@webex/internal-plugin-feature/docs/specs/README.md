@@ -9,7 +9,7 @@ doc_kind: standing-doc
 generated_from: spec-index@0.3.0
 generated_by: claude-code
 approved_by: riag@cisco.com
-updated_at: 2026-10-12T14:00:30Z
+updated_at: 2026-10-28T08:54:44Z
 validation_status: pass
 -->
 
@@ -34,8 +34,8 @@ package is a library.
 
 | Resource | Role | Canonical path | Owner | Status | Last verified |
 | -------- | ---- | -------------- | ----- | ------ | ------------- |
-| Package | Architecture | `docs/architecture.md` | @webex/web-sdk | Draft | 2026-10-12 |
-| Feature toggle plugin | Module | `src/docs/README.md` | @webex/web-sdk | Draft | 2026-10-12 |
+| Package | Architecture | `docs/architecture.md` | @webex/web-sdk | Draft | 2026-10-28 |
+| Feature toggle plugin | Module | `src/docs/README.md` | @webex/web-sdk | Draft | 2026-10-28 |
 | Retain the product README | ADR | `docs/adr/0001-retain-product-readme.md` | @webex/web-sdk | Accepted | 2026-10-12 |
 
 ### Module registry
@@ -44,9 +44,10 @@ package is a library.
 | --- | --- | --- | --- |
 | `src/` | `webex.internal.feature`: promise-based toggle reads, writes to the Feature service, pushed-update handling, and `change:*` events over the device feature collections | Partial | `src/docs/README.md` |
 
-Generator-side field measurement for the module is complete (93.3%, assessed 2026-10-12). Independent
-semantic validation by session `01a13053-d559-7a00-bb70-8c7115905133` passed on 2026-10-12 with no
-findings. Drift recording, a characterization baseline, and promotion past Partial remain pending.
+Generator-side field measurement for the module is complete (93.3%, assessed 2026-10-28). Independent
+semantic validation by runtime `codex`, session `01a181ab-6ee4-7841-822a-c45cb65b8d99`, passed on
+2026-10-28 with no findings. Drift recording, a characterization baseline, and promotion past Partial
+remain pending.
 
 ## Change and verification routing
 

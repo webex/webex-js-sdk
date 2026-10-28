@@ -9,7 +9,7 @@ doc_kind: standing-doc
 generated_from: architecture@0.3.0
 generated_by: claude-code
 approved_by: riag@cisco.com
-updated_at: 2026-10-12T14:00:30Z
+updated_at: 2026-10-28T08:54:44Z
 validation_status: pass
 -->
 
@@ -191,7 +191,7 @@ flowchart LR
 | Repository or external system | Relationship | Exchanged contract or artifact | Owner | Sequencing constraint |
 | ----------------------------- | ------------ | ------------------------------ | ----- | --------------------- |
 | `@webex/internal-plugin-device` (workspace sibling; module spec consulted) | Consumes | `webex.internal.device.features` collections and `userId` | @webex/web-sdk | Device registration precedes useful reads and writes |
-| `@webex/webex-core` (workspace sibling; no module spec, source used) | Consumes | `WebexPlugin`, `registerInternalPlugin`, `request` | @webex/web-sdk | None |
+| `@webex/webex-core` (workspace sibling; module spec consulted) | Consumes | `WebexPlugin`, `registerInternalPlugin`, `request` | @webex/web-sdk | None |
 | `@webex/internal-plugin-mercury` (workspace sibling; module spec consulted) | Provides to | `updateFeature` call target | @webex/web-sdk | Mercury must be connected for pushes to arrive |
 | Feature service | Consumes | HTTPS resources `features/users/<userId>/<keyType>` and `.../toggles` | Not recorded in this repository | Authenticated user and registered device required |
 
