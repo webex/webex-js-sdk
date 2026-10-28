@@ -845,11 +845,21 @@ const KMS = WebexPlugin.extend({
    * @returns {Promise<?string[]>}
    */
   _getCaroots() {
-    const {caroots, shouldValidateKMSCertificate} = this.config;
-
-    if (!shouldValidateKMSCertificate) {
+    if (!this.config.shouldValidateKMSCertificate) {
       return Promise.resolve(undefined);
     }
+
+    return this._loadCaroots();
+  },
+
+  /**
+   * Loads configured or verified asset roots for either validation mode.
+   * Verified roots are cached; failed loads are evicted so callers can retry.
+   * @private
+   * @returns {Promise<string[]>}
+   */
+  _loadCaroots() {
+    const {caroots} = this.config;
 
     if (isArray(caroots) && caroots.length > 0) {
       return Promise.resolve(caroots);
@@ -947,6 +957,45 @@ const KMS = WebexPlugin.extend({
   },
 
   /**
+   * Reports a certificate check failure without changing its policy.
+   * @private
+   * @param {Object} kmsStaticPubKey
+   * @param {Error} reason
+   * @param {string} validationMode
+   * @returns {void}
+   */
+  _reportKMSValidationFailure(kmsStaticPubKey, reason, validationMode) {
+    this.logger.warn(`kms: ${validationMode} certificate validation failed`, reason);
+    this._submitMetric(JS_SDK_KMS_CERTIFICATE_VALIDATION_FAILED, {
+      fields: {success: false},
+      tags: {
+        reason: reason.message,
+        kid: kmsStaticPubKey && kmsStaticPubKey.kid,
+        validationMode,
+      },
+    });
+  },
+
+  /**
+   * Owns the background root load and report-only certificate check.
+   * @private
+   * @param {Object} kmsStaticPubKey
+   * @returns {Promise<void>}
+   */
+  _reportKMSStaticPubKey(kmsStaticPubKey) {
+    return Promise.resolve()
+      .then(() => this._loadCaroots())
+      .then(
+        (caroots) =>
+          validateKMS({caroots})(kmsStaticPubKey).catch((reason) =>
+            this._reportKMSValidationFailure(kmsStaticPubKey, reason, 'report-only')
+          ),
+        (reason) => this.logger.warn('kms: report-only CA roots unavailable', reason)
+      )
+      .then(() => undefined);
+  },
+
+  /**
    * Validates the KMS static public key against the CA roots.
    * Validation is opt-in (`shouldValidateKMSCertificate`) and, when enabled,
    * fails closed when no CA roots are available or validation fails. Enforced
@@ -957,25 +1006,22 @@ const KMS = WebexPlugin.extend({
    * @returns {Promise<Object>} the KMS static public key
    */
   _validateKMSStaticPubKey(kmsStaticPubKey, caroots) {
-    const {shouldValidateKMSCertificate} = this.config;
-    const reportValidationFailure = (reason, validationMode) => {
-      this.logger.warn(`kms: ${validationMode} certificate validation failed`, reason);
-      this._submitMetric(JS_SDK_KMS_CERTIFICATE_VALIDATION_FAILED, {
-        fields: {success: false},
-        tags: {
-          reason: reason.message,
-          kid: kmsStaticPubKey && kmsStaticPubKey.kid,
-          validationMode,
-        },
-      });
-    };
+    const {shouldValidateKMSCertificate, shouldValidateKMSCertificateReportOnly} = this.config;
 
-    return validateKMS({caroots, validateSignature: shouldValidateKMSCertificate})(
-      kmsStaticPubKey
-    ).catch((reason) => {
-      reportValidationFailure(reason, 'enforced');
-      throw reason;
-    });
+    return validateKMS({caroots, validateSignature: shouldValidateKMSCertificate})(kmsStaticPubKey)
+      .catch((reason) => {
+        this._reportKMSValidationFailure(kmsStaticPubKey, reason, 'enforced');
+        throw reason;
+      })
+      .then((jwt) => {
+        if (shouldValidateKMSCertificateReportOnly && !shouldValidateKMSCertificate) {
+          this._reportKMSStaticPubKey(jwt).catch((reason) => {
+            this.logger.warn('kms: report-only validation task failed', reason);
+          });
+        }
+
+        return jwt;
+      });
   },
 
   /**

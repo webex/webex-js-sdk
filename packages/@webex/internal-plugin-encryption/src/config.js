@@ -63,6 +63,14 @@ export default {
     shouldValidateKMSCertificate: false,
 
     /**
+     * Check the KMS certificate chain in the background using configured roots
+     * or the verified CA roots asset. Failures are reported without delaying or
+     * rejecting KMS setup. Enforcement takes precedence. Disabled by default.
+     * @type {boolean}
+     */
+    shouldValidateKMSCertificateReportOnly: false,
+
+    /**
      * CA roots used to validate the KMS certificate chain, as an array of raw
      * base64-encoded certificates (the DER body, without the
      * -----BEGIN/END CERTIFICATE----- lines). When set, these take precedence
