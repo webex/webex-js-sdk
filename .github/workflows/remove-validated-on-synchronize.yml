@@ -13,7 +13,51 @@ jobs:
     name: Remove reusable validated label
     runs-on: ubuntu-latest
     steps:
+      # DRY RUN: the skip is not wired up yet. This step only reports whether
+      # the PR author and the pusher are on @webex/web-sdk, so the lookup can be
+      # verified against real PRs before it gates the removal below. The default
+      # GITHUB_TOKEN cannot read org team membership, so this uses ORG_READ_TOKEN
+      # (a token with the org "Members: read" permission). It is allowed to fail
+      # so that label removal keeps working exactly as before during the dry run.
+      - name: Check web-sdk team membership (log only)
+        id: team
+        continue-on-error: true
+        env:
+          GH_TOKEN: ${{ secrets.ORG_READ_TOKEN }}
+          AUTHOR: ${{ github.event.pull_request.user.login }}
+          PUSHER: ${{ github.event.sender.login }}
+          ORG: webex
+          TEAM_SLUG: web-sdk
+        run: |
+          # The memberships endpoint returns 200 with state "active" for current
+          # members, 200 with state "pending" for invited-but-not-joined users,
+          # and 404 for everyone else. Only an active membership would skip.
+          membership_state() {
+            gh api "orgs/$ORG/teams/$TEAM_SLUG/memberships/$1" --jq '.state' 2>/dev/null || echo "none"
+          }
+
+          AUTHOR_STATE=$(membership_state "$AUTHOR")
+          PUSHER_STATE=$(membership_state "$PUSHER")
+
+          echo "PR author '$AUTHOR' membership in @$ORG/$TEAM_SLUG: $AUTHOR_STATE"
+          echo "Pusher '$PUSHER' membership in @$ORG/$TEAM_SLUG: $PUSHER_STATE"
+
+          if [ "$AUTHOR_STATE" = "active" ]; then
+            echo "author_is_member=true" >> "$GITHUB_OUTPUT"
+          else
+            echo "author_is_member=false" >> "$GITHUB_OUTPUT"
+          fi
+
+          if [ "$PUSHER_STATE" = "active" ]; then
+            echo "pusher_is_member=true" >> "$GITHUB_OUTPUT"
+          else
+            echo "pusher_is_member=false" >> "$GITHUB_OUTPUT"
+          fi
+
       - name: Remove validated label from PR
+        env:
+          AUTHOR_IS_MEMBER: ${{ steps.team.outputs.author_is_member }}
+          PUSHER_IS_MEMBER: ${{ steps.team.outputs.pusher_is_member }}
         uses: actions/github-script@v8
         with:
           script: |
@@ -26,6 +70,23 @@ jobs:
               core.info('No validated label found; skipping.');
               return;
             }
+
+            // DRY RUN: report what each candidate rule would do, so the one
+            // that gets wired up as an early `return` can be chosen from real
+            // data. Author and pusher differ whenever someone else pushes to
+            // the branch, which is exactly the case worth watching for.
+            const authorIsMember = process.env.AUTHOR_IS_MEMBER || 'unknown';
+            const pusherIsMember = process.env.PUSHER_IS_MEMBER || 'unknown';
+            const verdict = (isMember) => (isMember === 'true' ? 'KEEP label' : 'REMOVE label');
+
+            core.info(
+              [
+                'DRY RUN: no rule is enforced yet; the label is removed regardless.',
+                `  author (${context.payload.pull_request.user.login}) on @webex/web-sdk: ${authorIsMember} -> would ${verdict(authorIsMember)}`,
+                `  pusher (${context.payload.sender.login}) on @webex/web-sdk: ${pusherIsMember} -> would ${verdict(pusherIsMember)}`,
+                `  author AND pusher: would ${verdict(authorIsMember === 'true' && pusherIsMember === 'true' ? 'true' : 'false')}`,
+              ].join('\n')
+            );
 
             try {
               await github.rest.issues.removeLabel({
