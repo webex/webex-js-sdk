@@ -82,11 +82,12 @@ const webex = Webex.init({
 webex.once('ready', () => {
   webex.cypher.register().then(async () => {
     try {
-      const attachmentURL = 'https:/myfileurl.xyz/zzz/fileid?keyUri=somekeyuri&JWE=somejwe';
+      const attachmentURL = 'https://myfileurl.xyz/zzz/fileid';
       const options = {
         useFileService: false,
         jwe: somejwe, // Provide the JWE here if not already present in the attachmentURL
         keyUri: someKeyUri, // Provide the keyURI here if not already present in the attachmentURL
+        headers: {Authorization: `Bearer ${downloadToken}`}, // Optional download headers
       };
       const decryptedFileBuf = await webex.cypher.downloadAndDecryptFile(attachmentURL, options);
       // Do something with the decrypted file buffer
@@ -101,6 +102,29 @@ webex.once('ready', () => {
 webex.cypher.deregister().then(() => {
 // Do deregistration at your App's teardown
 });
+```
+
+Use `useFileService: false` to download directly from a custom HTTPS URL. The SDK
+forwards only the `Authorization` header from `headers`. Header names are
+case-insensitive. Other supplied headers are ignored. Set `useFileService: true` to resolve
+the download URL through the Webex file service. The allowed header is sent to the
+resolved download URL. It is not sent to KMS or to the file service URL resolver.
+Omit `headers` for a presigned URL that does not need them.
+
+### Decrypt file bytes
+
+Use `decryptFile` when your application already has the encrypted file bytes.
+Supply both `jwe` and `keyUri` in the options. This method accepts an
+`ArrayBuffer`, a `Uint8Array`, a `Blob` (including a `File`), or a Node.js `Buffer`.
+It returns the decrypted bytes as an `ArrayBuffer`. It can fetch the key from
+KMS, but it does not download the file.
+
+```typescript
+import type {FileDecryptionOptions} from '@webex/plugin-encryption';
+
+const options: FileDecryptionOptions = {jwe, keyUri};
+const decryptedFileBuf = await webex.cypher.decryptFile(encryptedFileBytes, options);
+const file = new File([decryptedFileBuf], 'decrypted-file.jpeg', {type: 'image/jpeg'});
 ```
 
 ## Development

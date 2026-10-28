@@ -7,11 +7,14 @@ import url from 'url';
 
 import {WebexPlugin} from '@webex/webex-core';
 import {proxyEvents, tap, transferEvents} from '@webex/common';
+import {mapKeys, pick} from 'lodash';
 import jose from 'node-jose';
 import SCR from 'node-scr';
 
 import ensureBuffer from './ensure-buffer';
 import KMS from './kms';
+
+const DOWNLOAD_HEADER_ALLOWLIST = ['authorization'];
 
 const Encryption = WebexPlugin.extend({
   children: {
@@ -87,6 +90,7 @@ const Encryption = WebexPlugin.extend({
    * @param {Object} fileUrl - Plaintext
    * @param {Object} scr - Plaintext
    * @param {Object} options - optional parameters to download a file
+   * @param {Object<string, string>} options.headers - Download headers. Only Authorization is allowed.
    * @returns {promise}
    */
   download(fileUrl, scr, options) {
@@ -98,16 +102,19 @@ const Encryption = WebexPlugin.extend({
     const shunt = new EventEmitter();
     const promise = this._fetchDownloadUrl(fileUrl, {useFileService: true, ...options})
       .then((uri) => {
-        // eslint-disable-next-line no-shadow
-        const options = {
+        const requestOptions = {
           method: 'GET',
           uri,
           responseType: 'buffer',
+          headers: pick(
+            mapKeys(options?.headers, (value, name) => name.toLowerCase()),
+            DOWNLOAD_HEADER_ALLOWLIST
+          ),
         };
 
-        const ret = this.request(options);
+        const ret = this.request(requestOptions);
 
-        transferEvents('progress', options.download, shunt);
+        transferEvents('progress', requestOptions.download, shunt);
 
         return ret;
       })

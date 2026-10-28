@@ -1,6 +1,7 @@
 import {WebexPlugin} from '@webex/webex-core';
+import {Buffer} from 'buffer';
 
-import {FileDownloadOptions, IEncryption} from './types';
+import {FileDecryptionOptions, FileDownloadOptions, IEncryption} from './types';
 import {CYPHER} from './constants';
 import {WebexSDK} from '../types';
 
@@ -85,11 +86,12 @@ class Cypher extends WebexPlugin implements IEncryption {
    *
    * @example
    * ```typescript
-   * const attachmentURL = 'https:/myfileurl.xyz/zzz/fileid?keyUri=somekeyuri&JWE=somejwe';
+   * const attachmentURL = 'https://myfileurl.xyz/zzz/fileid';
    * const options: FileDownloadOptions = {
    *   useFileService: false,
    *   jwe: somejwe, // Provide the JWE here if not already present in the attachmentURL
    *   keyUri: someKeyUri, // Provide the keyURI here if not already present in the attachmentURL
+   *   headers: {Authorization: `Bearer ${downloadToken}`},
    * };
    * const decryptedBuf = await webex.cypher.downloadAndDecryptFile(attachmentURL, options);
    * const file = new File([decryptedBuf], "myFileName.jpeg", {type: 'image/jpeg'});
@@ -143,7 +145,10 @@ class Cypher extends WebexPlugin implements IEncryption {
       const scr = await this.$webex.internal.encryption.decryptScr(keyUri, JWE);
 
       // Start the download and decryption process, returning a promise
-      return this.$webex.internal.encryption.download(fileUri, scr, {useFileService});
+      return this.$webex.internal.encryption.download(fileUri, scr, {
+        useFileService,
+        headers: options.headers,
+      });
     } catch (error) {
       const enhancedError = new Error(
         `Failed to decrypt or download the file: ${(error as Error).message}\nStack: ${
@@ -153,6 +158,39 @@ class Cypher extends WebexPlugin implements IEncryption {
       enhancedError.cause = error;
       throw enhancedError;
     }
+  }
+
+  /**
+   * Decrypts file bytes that the application has already downloaded.
+   * The SDK can fetch the KMS key. This method does not download the file.
+   *
+   * @param {ArrayBuffer | Uint8Array | Blob} encryptedFile - The encrypted file bytes. Node.js Buffers are supported.
+   * @param {FileDecryptionOptions} options - The JWE and KMS key URI for this file.
+   * @returns {Promise<ArrayBuffer>} The decrypted file bytes.
+   * @throws {Error} If the metadata is missing or decryption fails.
+   *
+   * @example
+   * ```typescript
+   * const decryptedBytes = await webex.cypher.decryptFile(encryptedBytes, {jwe, keyUri});
+   * ```
+   */
+  public async decryptFile(
+    encryptedFile: ArrayBuffer | Uint8Array | Blob,
+    {jwe, keyUri}: FileDecryptionOptions
+  ): Promise<ArrayBuffer> {
+    if (!keyUri || !jwe) {
+      throw new Error('KeyUri and JWE are required to decrypt the file.');
+    }
+
+    const scr = await this.$webex.internal.encryption.decryptScr(keyUri, jwe);
+    const fileBytes =
+      'arrayBuffer' in encryptedFile ? await encryptedFile.arrayBuffer() : encryptedFile;
+    const encryptedBytes = Buffer.from(
+      fileBytes instanceof ArrayBuffer ? new Uint8Array(fileBytes) : fileBytes
+    );
+    const decryptedBytes = await this.$webex.internal.encryption.decryptBinary(scr, encryptedBytes);
+
+    return Uint8Array.from(decryptedBytes).buffer;
   }
 }
 

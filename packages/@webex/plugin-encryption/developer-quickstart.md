@@ -77,18 +77,39 @@ async function decryptFile(webex, encryptedFileUrl, options, decryptedFileName, 
 
 ```typescript
 const accessToken = 'YOUR_ACCESS_TOKEN';
-const attachmentURL = 'https://myfileurl.xyz/zzz/fileid?keyUri=somekeyuri&JWE=somejwe';
+const attachmentURL = 'https://myfileurl.xyz/zzz/fileid';
 const decryptedFileName = 'my-decrypted-file.jpeg';
 const mimeType = 'image/jpeg';
 const options = {
   useFileService: false,
   jwe: somejwe, // Provide the JWE here if not already present in the attachmentURL
-  keyUri: someKeyUri // Provide the keyURI here if not already present in the attachmentURL
+  keyUri: someKeyUri, // Provide the keyURI here if not already present in the attachmentURL
+  headers: {Authorization: `Bearer ${downloadToken}`} // Optional download headers
 };
 
 initializeWebex(accessToken).then(async (webex) => {
   await decryptFile(webex, attachmentURL, options, decryptedFileName, mimeType);
 });
+```
+
+Use `useFileService: false` for a direct HTTPS download. Only `Authorization` is
+forwarded from the supplied headers. Header names are case-insensitive. Other
+supplied headers are ignored. Omit headers if the URL does not require them.
+
+### Decrypt file bytes
+
+If your application has already downloaded the encrypted file, pass its bytes
+to `decryptFile` with the JWE and KMS key URI. The method accepts an `ArrayBuffer`,
+a `Uint8Array`, a `Blob` (including a `File`), or a Node.js `Buffer` and returns an
+`ArrayBuffer`. It does not download the file. KMS key access still requires the
+registered SDK instance.
+
+```typescript
+const decryptedFileBuf = await webex.cypher.decryptFile(encryptedFileBytes, {
+  jwe: somejwe,
+  keyUri: someKeyUri,
+});
+const file = new File([decryptedFileBuf], decryptedFileName, {type: mimeType});
 ```
 
 ### Additional Information
