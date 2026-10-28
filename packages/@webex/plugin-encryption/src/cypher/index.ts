@@ -86,7 +86,7 @@ class Cypher extends WebexPlugin implements IEncryption {
    *
    * @example
    * ```typescript
-   * const attachmentURL = 'https://myfileurl.xyz/zzz/fileid';
+   * const attachmentURL = 'https://myfileurl.xyz/zzz/fileid?keyUri=somekeyuri&JWE=somejwe';
    * const options: FileDownloadOptions = {
    *   useFileService: false,
    *   jwe: somejwe, // Provide the JWE here if not already present in the attachmentURL

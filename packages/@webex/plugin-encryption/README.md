@@ -82,7 +82,7 @@ const webex = Webex.init({
 webex.once('ready', () => {
   webex.cypher.register().then(async () => {
     try {
-      const attachmentURL = 'https://myfileurl.xyz/zzz/fileid';
+      const attachmentURL = 'https://myfileurl.xyz/zzz/fileid?keyUri=somekeyuri&JWE=somejwe';
       const options = {
         useFileService: false,
         jwe: somejwe, // Provide the JWE here if not already present in the attachmentURL

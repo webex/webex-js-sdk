@@ -77,7 +77,7 @@ async function decryptFile(webex, encryptedFileUrl, options, decryptedFileName, 
 
 ```typescript
 const accessToken = 'YOUR_ACCESS_TOKEN';
-const attachmentURL = 'https://myfileurl.xyz/zzz/fileid';
+const attachmentURL = 'https://myfileurl.xyz/zzz/fileid?keyUri=somekeyuri&JWE=somejwe';
 const decryptedFileName = 'my-decrypted-file.jpeg';
 const mimeType = 'image/jpeg';
 const options = {
