@@ -134,25 +134,25 @@ describe('Yarn', () => {
           expect(calledWith.includes('--recursive')).toBeTruthy();
         }));
 
-      it('should use the release comparison commit when "since" is provided', () => {
+      it.each([undefined, false, true])('should use the release comparison commit with committed=%s', (committed) => {
         const since = 'example-since';
 
-        return Yarn.list({ since })
+        return Yarn.list({ since, committed })
           .then(() => {
             const calledWith = spies.Executor.execute.mock.calls[0][0];
 
-            assert.calledOnceWithExactly(spies.releaseRef, since);
+            assert.calledOnceWithExactly(spies.releaseRef, since, !!committed);
             assert.include(calledWith, `--since="${reference}"`);
           });
       });
 
-      it('should return an empty list for documentation-only changes', async () => {
+      it.each([false, true])('should return an empty docs-only list with committed=%s', async (committed) => {
         spies.releaseRef.resolves(undefined);
 
-        const packages = await Yarn.list({ since: 'comparison-ref' });
+        const packages = await Yarn.list({ since: 'comparison-ref', committed });
 
         assert.deepEqual(packages, []);
-        assert.calledOnceWithExactly(spies.releaseRef, 'comparison-ref');
+        assert.calledOnceWithExactly(spies.releaseRef, 'comparison-ref', committed);
         assert.strictEqual(spies.Executor.execute.mock.calls.length, 0);
       });
 
@@ -164,11 +164,14 @@ describe('Yarn', () => {
         assert.strictEqual(spies.Executor.execute.mock.calls.length, 0);
       });
 
-      it('should not inject "--since" into the command when "since" is not provided', () => Yarn.list({})
+      it.each([false, true])('should list all packages without since with committed=%s', (committed) => Yarn.list({
+        committed,
+      })
         .then(() => {
           const calledWith = spies.Executor.execute.mock.calls[0][0];
 
-          expect(calledWith.includes('--since')).toBeFalsy();
+          assert.notCalled(spies.releaseRef);
+          assert.notInclude(calledWith, '--since');
         }));
 
       it('should inject "--verbose" into the command when "verbose" boolean is "true"', () => {
