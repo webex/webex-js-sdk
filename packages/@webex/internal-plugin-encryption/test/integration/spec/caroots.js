@@ -10,24 +10,72 @@ import WebexCore, {StaticAssetLoader} from '@webex/webex-core';
 import makeLocalUrl from '@webex/test-helper-make-local-url';
 import sinon from 'sinon';
 
-import {JS_SDK_KMS_CAROOTS_ASSET_LOAD_RESULT} from '../../../dist/constants';
 import {caroots as providedRoots, validKey} from '../../fixtures/kms-certificate';
 
-const assertLoadResult = (metric, kms, outcome = 'success', validationMode = 'report-only') => {
-  assert.calledOnceWithExactly(
-    metric.withArgs(JS_SDK_KMS_CAROOTS_ASSET_LOAD_RESULT),
-    JS_SDK_KMS_CAROOTS_ASSET_LOAD_RESULT,
-    {
-      fields: {success: outcome === 'success'},
-      tags: {outcome, validationMode, carootsAsset: kms.config.carootsAsset},
-    }
-  );
+const assertAssetStages = (metric, kms, outcome = 'success', validationMode = 'report-only') => {
+  ['DOWNLOAD', 'VERIFICATION'].forEach((stage) => {
+    const name = `JS_SDK_KMS_CAROOTS_ASSET_${stage}_SUCCESS`;
+    const expected = stage === 'DOWNLOAD' ? outcome !== 'download-failed' : outcome === 'success';
+
+    if (expected) {
+      assert.calledOnceWithExactly(metric.withArgs(name), name, {
+        fields: {success: true},
+        tags: {validationMode, carootsAsset: kms.config.carootsAsset},
+      });
+    } else assert.notCalled(metric.withArgs(name));
+  });
 };
 
 describe('Encryption', function () {
   this.timeout(30000);
 
   describe('KMS CA roots', () => {
+    [false, true].forEach((enforced) => {
+      it(`reports successful full certificate checks with enforcement ${enforced}`, async () => {
+        const webex = new WebexCore({
+          config: {
+            services: {skipPreauthCatalogOnUnauthenticated: true},
+            encryption: {
+              shouldValidateKMSCertificate: enforced,
+              carootsReportOnly: providedRoots,
+            },
+          },
+        });
+        const {kms} = webex.internal.encryption;
+        const metric = sinon.stub(kms, '_submitMetric');
+
+        try {
+          assert.equal(await kms._validateKMSStaticPubKey(validKey, providedRoots), validKey);
+          const expected = (validationMode) => [
+            'JS_SDK_KMS_CERTIFICATE_VALIDATION_SUCCESS',
+            {fields: {success: true}, tags: {validationMode, signatureValidation: 'enabled'}},
+          ];
+
+          assert.deepEqual(
+            metric.args,
+            enforced ? [expected('enforced'), expected('report-only')] : [expected('report-only')]
+          );
+        } finally {
+          metric.restore();
+        }
+      });
+    });
+
+    it('does not report full certificate success for an identity-only check', async () => {
+      const webex = new WebexCore({
+        config: {services: {skipPreauthCatalogOnUnauthenticated: true}},
+      });
+      const {kms} = webex.internal.encryption;
+      const metric = sinon.stub(kms, '_submitMetric');
+
+      try {
+        assert.equal(await kms._validateKMSStaticPubKey(validKey), validKey);
+        assert.notCalled(metric);
+      } finally {
+        metric.restore();
+      }
+    });
+
     describe('independent report-only asset URL', () => {
       const assetUrl = (directory) =>
         typeof window === 'undefined'
@@ -71,8 +119,8 @@ describe('Encryption', function () {
         );
         assert.isFalse(assetRequests[0].args[0].addAuthHeader);
         assert.isAbove((await roots.returnValues[0]).length, 100);
-        assertLoadResult(metric, kms);
-        assert.calledTwice(metric);
+        assertAssetStages(metric, kms);
+        assert.equal(metric.callCount, kms.config.shouldValidateKMSCertificate ? 4 : 3);
         assert.calledOnceWithExactly(
           metric.withArgs('JS_SDK_KMS_CERTIFICATE_VALIDATION_FAILED'),
           'JS_SDK_KMS_CERTIFICATE_VALIDATION_FAILED',
@@ -82,12 +130,13 @@ describe('Encryption', function () {
               reason: sinon.match(/^INVALID KMS: Certificate Validation failed/),
               kid: validKey.kid,
               validationMode: 'report-only',
+              signatureValidation: 'enabled',
             },
           }
         );
         assert.isAbove((await kms._loadCaroots({reportOnly: true})).length, 100);
-        assertLoadResult(metric, kms);
-        assert.calledTwice(metric);
+        assertAssetStages(metric, kms);
+        assert.calledThrice(metric);
       });
 
       it('returns the checked key before a pending asset request settles', async () => {
@@ -118,8 +167,8 @@ describe('Encryption', function () {
           complete(new Uint8Array([1, 2, 3]));
           if (report.called) await report.returnValues[0];
         }
-        assert.equal(metric.firstCall.args[0], 'JS_SDK_KMS_CAROOTS_ASSET_VERIFICATION_FAILED');
-        assertLoadResult(metric, kms, 'verification-failed');
+        assert.equal(metric.lastCall.args[0], 'JS_SDK_KMS_CAROOTS_ASSET_VERIFICATION_FAILED');
+        assertAssetStages(metric, kms, 'verification-failed');
         assert.calledTwice(metric);
       });
 
@@ -128,8 +177,8 @@ describe('Encryption', function () {
 
         assert.equal(await kms._validateKMSStaticPubKey(validKey), validKey);
         await report.returnValues[0];
-        assertLoadResult(metric, kms, 'download-failed');
-        assert.calledTwice(metric);
+        assertAssetStages(metric, kms, 'download-failed');
+        assert.calledOnce(metric);
         assert.calledOnceWithExactly(
           metric.withArgs('JS_SDK_KMS_CAROOTS_ASSET_DOWNLOAD_FAILED'),
           'JS_SDK_KMS_CAROOTS_ASSET_DOWNLOAD_FAILED',
@@ -139,6 +188,7 @@ describe('Encryption', function () {
               reason: sinon.match(/HTTP 404/),
               assetsBaseUrl: kms.config.reportOnlyAssetsBaseUrl,
               validationMode: 'report-only',
+              carootsAsset: kms.config.carootsAsset,
             },
           }
         );
@@ -154,8 +204,8 @@ describe('Encryption', function () {
         );
         await report.returnValues[0];
         assert.notCalled(getEnforcedAsset);
-        assertLoadResult(metric, kms);
-        assert.calledTwice(metric);
+        assertAssetStages(metric, kms);
+        assert.equal(metric.callCount, kms.config.shouldValidateKMSCertificate ? 4 : 3);
         assert.calledOnceWithExactly(
           metric.withArgs('JS_SDK_KMS_CERTIFICATE_VALIDATION_FAILED'),
           'JS_SDK_KMS_CERTIFICATE_VALIDATION_FAILED',
@@ -165,6 +215,7 @@ describe('Encryption', function () {
               reason: sinon.match(/^INVALID KMS: Certificate Validation failed/),
               kid: validKey.kid,
               validationMode: 'report-only',
+              signatureValidation: 'enabled',
             },
           }
         );
@@ -212,8 +263,8 @@ describe('Encryption', function () {
         assert.isAbove(caroots.length, 100);
         caroots.forEach((root) => assert.match(root, /^MII[A-Za-z0-9+/]+=*$/));
         assert.equal(await kms._getCaroots(), caroots);
-        assertLoadResult(metric, kms, 'success', 'enforced');
-        assert.calledOnce(metric);
+        assertAssetStages(metric, kms, 'success', 'enforced');
+        assert.calledTwice(metric);
       } finally {
         metric.restore();
       }
@@ -241,8 +292,8 @@ describe('Encryption', function () {
 
         assert.isTrue(error.kmsError);
         assert.include(error.message, 'HTTP 404');
-        assertLoadResult(metric, kms, 'download-failed', 'enforced');
-        assert.calledTwice(metric);
+        assertAssetStages(metric, kms, 'download-failed', 'enforced');
+        assert.calledOnce(metric);
       } finally {
         metric.restore();
       }

@@ -109,44 +109,61 @@ an enforced load succeed.
 The SDK reports these metrics:
 
 - `JS_SDK_KMS_CAROOTS_ASSET_DOWNLOAD_FAILED`
-- `JS_SDK_KMS_CAROOTS_ASSET_LOAD_RESULT`
+- `JS_SDK_KMS_CAROOTS_ASSET_DOWNLOAD_SUCCESS`
 - `JS_SDK_KMS_CAROOTS_ASSET_VERIFICATION_FAILED`
+- `JS_SDK_KMS_CAROOTS_ASSET_VERIFICATION_SUCCESS`
 - `JS_SDK_KMS_CAROOTS_ASSET_STALE`
 - `JS_SDK_KMS_CERTIFICATE_VALIDATION_FAILED`
+- `JS_SDK_KMS_CERTIFICATE_VALIDATION_SUCCESS`
 
-### Count completed root-file loads
+### Count completed stages
 
-`JS_SDK_KMS_CAROOTS_ASSET_LOAD_RESULT` is emitted once when a logical root-file
-load finishes. It provides a denominator for load failure rates. Count these
-events on the dashboard; the SDK does not store a running counter.
+Each stage emits its own success or failure event. Count these events on the
+dashboard; the SDK does not store a running counter. For each stage, calculate:
 
-| Property              | Values                                              | Meaning                                  |
-| --------------------- | --------------------------------------------------- | ---------------------------------------- |
-| `fields.success`      | `true`, `false`                                     | Whether the load returned verified roots |
-| `tags.outcome`        | `success`, `download-failed`, `verification-failed` | The completed load result                |
-| `tags.validationMode` | `enforced`, `report-only`                           | The source's validation mode             |
-| `tags.carootsAsset`   | Configured asset filename                           | The file selected for this load          |
+`failure rate = FAILED / (FAILED + SUCCESS)`
 
-For the same SDK version, time window, validation mode and asset filename:
+| Stage                      | Success means                                                 | When it can run                                                        |
+| -------------------------- | ------------------------------------------------------------- | ---------------------------------------------------------------------- |
+| Root-file download         | The root-file bytes were loaded                               | A fresh logical asset load, including internal retries                 |
+| Root-file verification     | The signed root file passed verification                      | After the bytes were loaded                                            |
+| KMS certificate validation | The full certificate/key check, including chain trust, passed | KMS context setup or renewal, including independent report-only checks |
 
-- Total completed loads: count all result events.
-- Download failure rate: count `download-failed` results divided by all results.
-- Overall load failure rate: count both failure outcomes divided by all results.
+A later failure does not remove an earlier success. A downloaded file that fails
+signature verification emits DOWNLOAD_SUCCESS and VERIFICATION_FAILED. A verified
+root file followed by an untrusted KMS certificate emits both asset successes and
+CERTIFICATE_VALIDATION_FAILED. A stale but verified root file emits both asset
+successes and the separate stale warning.
 
-Keep the existing detailed error events for diagnosis. Do not add them to the
-result-event count; they describe the same failures. A stale file that passes
-verification has outcome `success` and can also emit the existing stale event.
+All success events have `fields.success: true` and a `validationMode` tag of
+`enforced` or `report-only`. Root-file success and failure events also have the
+captured `carootsAsset` filename. Certificate success and failure events have
+`signatureValidation: enabled | disabled`. Full-validation successes always have
+`enabled`; valid identity-only checks with chain validation disabled emit no
+certificate success. Existing identity-only failures remain diagnostic events
+with `disabled`. Filter certificate failure rates to `signatureValidation=enabled`.
+Malformed keys or missing roots during an enabled full check count as failures.
 
-Cache hits and callers that share a pending load do not add result events.
-Internal HTTP retries belong to the same logical load. A later load after a
-failure can produce another result. No result is emitted until the load finishes;
-unfinished loads are excluded from this denominator. Metric delivery is best
-effort, so dashboard rates describe the received events.
+Use the same SDK version, time window and validation mode for both sides of each
+rate. Use the same asset filename when filtering root-file stages. Filter to SDK
+versions that emit these success events and matching failure tags. Success events
+do not carry the error reason or KMS key ID, so do not filter only failures by
+those values when calculating a rate. Do not combine the three stages into one
+denominator: a root file can serve many subsequent certificate checks.
 
-Activity decryption, certificate checks that reuse roots, supplied roots and
-disabled asset loading add no result events. Node loads from the packaged file
-also count when they use this loader. Report-only and enforced sources count
-separately. This event does not depend on the optional asset error diagnostics.
+Cache hits and callers sharing a pending asset load do not add root-file events.
+Internal HTTP retries belong to one logical download. A failed load is evicted,
+so a later load can report another result. Node packaged-file loads also count;
+DOWNLOAD_SUCCESS means bytes were loaded, not necessarily that HTTP was used.
+Supplied roots skip both file stages but can still produce certificate results.
+Disabled or skipped full checks produce no certificate success. Activity decrypts
+and cached KMS contexts produce no new validation events. Each mode counts its
+own actual checks; certificate checks that reuse cached roots still count.
+
+A stage emits no result until it completes. For example, a pending signature
+check can already have DOWNLOAD_SUCCESS but no verification result. Unfinished
+stages are excluded. Metric delivery is best effort, so rates describe received
+events. These metrics do not depend on optional asset error diagnostics.
 
 ### Hosting the assets
 
