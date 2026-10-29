@@ -109,9 +109,44 @@ an enforced load succeed.
 The SDK reports these metrics:
 
 - `JS_SDK_KMS_CAROOTS_ASSET_DOWNLOAD_FAILED`
+- `JS_SDK_KMS_CAROOTS_ASSET_LOAD_RESULT`
 - `JS_SDK_KMS_CAROOTS_ASSET_VERIFICATION_FAILED`
 - `JS_SDK_KMS_CAROOTS_ASSET_STALE`
 - `JS_SDK_KMS_CERTIFICATE_VALIDATION_FAILED`
+
+### Count completed root-file loads
+
+`JS_SDK_KMS_CAROOTS_ASSET_LOAD_RESULT` is emitted once when a logical root-file
+load finishes. It provides a denominator for load failure rates. Count these
+events on the dashboard; the SDK does not store a running counter.
+
+| Property              | Values                                              | Meaning                                  |
+| --------------------- | --------------------------------------------------- | ---------------------------------------- |
+| `fields.success`      | `true`, `false`                                     | Whether the load returned verified roots |
+| `tags.outcome`        | `success`, `download-failed`, `verification-failed` | The completed load result                |
+| `tags.validationMode` | `enforced`, `report-only`                           | The source's validation mode             |
+| `tags.carootsAsset`   | Configured asset filename                           | The file selected for this load          |
+
+For the same SDK version, time window, validation mode and asset filename:
+
+- Total completed loads: count all result events.
+- Download failure rate: count `download-failed` results divided by all results.
+- Overall load failure rate: count both failure outcomes divided by all results.
+
+Keep the existing detailed error events for diagnosis. Do not add them to the
+result-event count; they describe the same failures. A stale file that passes
+verification has outcome `success` and can also emit the existing stale event.
+
+Cache hits and callers that share a pending load do not add result events.
+Internal HTTP retries belong to the same logical load. A later load after a
+failure can produce another result. No result is emitted until the load finishes;
+unfinished loads are excluded from this denominator. Metric delivery is best
+effort, so dashboard rates describe the received events.
+
+Activity decryption, certificate checks that reuse roots, supplied roots and
+disabled asset loading add no result events. Node loads from the packaged file
+also count when they use this loader. Report-only and enforced sources count
+separately. This event does not depend on the optional asset error diagnostics.
 
 ### Hosting the assets
 

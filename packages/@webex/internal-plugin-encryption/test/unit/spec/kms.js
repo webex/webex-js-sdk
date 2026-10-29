@@ -12,9 +12,20 @@ import kmsCaroots from '@webex/kms-caroots';
 import Encryption from '@webex/internal-plugin-encryption';
 import {KmsError, KmsTimeoutError} from '../../../dist/kms-errors';
 import {UNION_BUNDLE_ASSET} from '../../../dist/union-bundle';
+import {JS_SDK_KMS_CAROOTS_ASSET_LOAD_RESULT} from '../../../dist/constants';
 import {caroots, unrelatedCaroots, validKey, invalidKey} from '../../fixtures/kms-certificate';
 
 describe('internal-plugin-encryption', () => {
+  const assertLoadResult = (metric, outcome = 'success', validationMode = 'enforced') => {
+    assert.calledOnceWithExactly(
+      metric.withArgs(JS_SDK_KMS_CAROOTS_ASSET_LOAD_RESULT),
+      JS_SDK_KMS_CAROOTS_ASSET_LOAD_RESULT,
+      {
+        fields: {success: outcome === 'success'},
+        tags: {outcome, validationMode, carootsAsset: UNION_BUNDLE_ASSET},
+      }
+    );
+  };
   describe('kms', () => {
     let webex;
 
@@ -443,8 +454,12 @@ describe('internal-plugin-encryption', () => {
         };
 
         const assertReportChainFailure = () => {
+          assert.calledTwice(webex.internal.metrics.submitClientMetrics);
+          assertLoadResult(webex.internal.metrics.submitClientMetrics, 'success', 'report-only');
           assert.calledOnceWithExactly(
-            webex.internal.metrics.submitClientMetrics,
+            webex.internal.metrics.submitClientMetrics.withArgs(
+              'JS_SDK_KMS_CERTIFICATE_VALIDATION_FAILED'
+            ),
             'JS_SDK_KMS_CERTIFICATE_VALIDATION_FAILED',
             {
               fields: {success: false},
@@ -528,7 +543,12 @@ describe('internal-plugin-encryption', () => {
             }
             assertContext(await kms._prepareContext());
             await report.returnValues[0];
-            assert.calledOnce(webex.internal.metrics.submitClientMetrics);
+            assert.calledTwice(webex.internal.metrics.submitClientMetrics);
+            assertLoadResult(
+              webex.internal.metrics.submitClientMetrics,
+              failure.includes('download') ? 'download-failed' : 'verification-failed',
+              'report-only'
+            );
             const [name, payload] = webex.internal.metrics.submitClientMetrics.firstCall.args;
             assert.equal(
               name,
@@ -616,6 +636,8 @@ describe('internal-plugin-encryption', () => {
             await Promise.all(report.returnValues);
             assert.lengthOf(await kms._loadCaroots({reportOnly: true}), 231);
             assert.calledOnce(kms._getReportOnlyCarootsAssetBytes);
+            assertLoadResult(webex.internal.metrics.submitClientMetrics, 'success', 'report-only');
+            assert.calledThrice(webex.internal.metrics.submitClientMetrics);
           } finally {
             complete(bundle.slice());
             await Promise.all(report.returnValues);
@@ -790,7 +812,7 @@ describe('internal-plugin-encryption', () => {
               kms.config.assetsBaseUrl,
               kms.config.carootsAsset
             );
-            assert.notCalled(webex.internal.metrics.submitClientMetrics);
+            assertLoadResult(webex.internal.metrics.submitClientMetrics);
           });
         });
 
@@ -801,6 +823,7 @@ describe('internal-plugin-encryption', () => {
           assert.equal(first, second);
           assert.equal(first, third);
           assert.calledOnce(kms._getCarootsAssetBytes);
+          assertLoadResult(webex.internal.metrics.submitClientMetrics);
         });
 
         [
@@ -825,7 +848,9 @@ describe('internal-plugin-encryption', () => {
             assertFailClosedError(error, `"${UNION_BUNDLE_ASSET}" could not be loaded`);
             assert.include(error.message, `Cause: ${reason}`);
             assert.calledOnceWithExactly(
-              webex.internal.metrics.submitClientMetrics,
+              webex.internal.metrics.submitClientMetrics.withArgs(
+                'JS_SDK_KMS_CAROOTS_ASSET_DOWNLOAD_FAILED'
+              ),
               'JS_SDK_KMS_CAROOTS_ASSET_DOWNLOAD_FAILED',
               {
                 fields: {success: false},
@@ -836,6 +861,8 @@ describe('internal-plugin-encryption', () => {
                 },
               }
             );
+            assert.calledTwice(webex.internal.metrics.submitClientMetrics);
+            assertLoadResult(webex.internal.metrics.submitClientMetrics, 'download-failed');
 
             assert.lengthOf(await kms._getCaroots(), 231);
             assert.calledTwice(kms._getCarootsAssetBytes);
@@ -854,7 +881,8 @@ describe('internal-plugin-encryption', () => {
           );
 
           assertFailClosedError(error, `"${UNION_BUNDLE_ASSET}" failed verification`);
-          assert.calledOnce(webex.internal.metrics.submitClientMetrics);
+          assert.calledTwice(webex.internal.metrics.submitClientMetrics);
+          assertLoadResult(webex.internal.metrics.submitClientMetrics, 'verification-failed');
 
           const [name, payload] = webex.internal.metrics.submitClientMetrics.args[0];
 
@@ -878,7 +906,7 @@ describe('internal-plugin-encryption', () => {
             }
             assert.lengthOf(await kms._loadCaroots({reportOnly}), 231);
             assert.calledOnceWithExactly(
-              webex.internal.metrics.submitClientMetrics,
+              webex.internal.metrics.submitClientMetrics.withArgs('JS_SDK_KMS_CAROOTS_ASSET_STALE'),
               'JS_SDK_KMS_CAROOTS_ASSET_STALE',
               {
                 fields: {ageInDays: 400},
@@ -887,6 +915,12 @@ describe('internal-plugin-encryption', () => {
                   validationMode: reportOnly ? 'report-only' : 'enforced',
                 },
               }
+            );
+            assert.calledTwice(webex.internal.metrics.submitClientMetrics);
+            assertLoadResult(
+              webex.internal.metrics.submitClientMetrics,
+              'success',
+              reportOnly ? 'report-only' : 'enforced'
             );
           });
         });

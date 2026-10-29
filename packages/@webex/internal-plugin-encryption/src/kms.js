@@ -23,6 +23,7 @@ import {UNION_BUNDLE_VERSION} from './union-bundle';
 import {
   CAROOTS_ASSET_STALE_AFTER_DAYS,
   JS_SDK_KMS_CAROOTS_ASSET_DOWNLOAD_FAILED,
+  JS_SDK_KMS_CAROOTS_ASSET_LOAD_RESULT,
   JS_SDK_KMS_CAROOTS_ASSET_STALE,
   JS_SDK_KMS_CAROOTS_ASSET_VERIFICATION_FAILED,
   JS_SDK_KMS_CERTIFICATE_VALIDATION_FAILED,
@@ -942,6 +943,11 @@ const KMS = WebexPlugin.extend({
     reportOnly = false,
   } = {}) {
     const validationMode = reportOnly ? 'report-only' : 'enforced';
+    const reportResult = (outcome) =>
+      this._submitMetric(JS_SDK_KMS_CAROOTS_ASSET_LOAD_RESULT, {
+        fields: {success: outcome === 'success'},
+        tags: {outcome, validationMode, carootsAsset},
+      });
     // HTTP errors carry the response body in `message`; summarize them instead.
     const describe = (reason) =>
       reason && reason.statusCode
@@ -986,6 +992,8 @@ const KMS = WebexPlugin.extend({
                 });
               }
 
+              reportResult('success');
+
               return caroots;
             },
             (reason) => {
@@ -994,6 +1002,7 @@ const KMS = WebexPlugin.extend({
                 fields: {success: false},
                 tags: {reason: reason.reason || 'unknown', message: reason.message, validationMode},
               });
+              reportResult('verification-failed');
 
               return Promise.reject(fail(reason, `"${carootsAsset}" failed verification`));
             }
@@ -1004,6 +1013,7 @@ const KMS = WebexPlugin.extend({
             fields: {success: false},
             tags: {reason: describe(reason), assetsBaseUrl, validationMode},
           });
+          reportResult('download-failed');
 
           return Promise.reject(fail(reason, `"${carootsAsset}" could not be loaded`));
         }
