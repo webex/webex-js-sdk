@@ -136,6 +136,9 @@ different pages can have the same structure. Missing headers mean unavailable,
 not that no proxy exists. Cross-origin hosting must expose custom response
 headers through CORS before browsers can report them. A readable HTTP 403 can
 retain context; a browser-blocked response may expose only a network failure.
+Consumer interceptors that replay requests must preserve the asset header
+suppression; otherwise custom headers can be reintroduced and trigger a CORS
+preflight on the retry.
 
 To compare extension-specific delivery behavior, explicitly set `carootsAsset`
 to a versioned `.bin` alias containing the identical signed bundle and serve it
