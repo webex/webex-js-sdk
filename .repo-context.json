@@ -91,6 +91,13 @@
     ],
     "workspace_packages": [
       {
+        "name": "@webex/internal-plugin-feature",
+        "paths": [
+          "packages/@webex/internal-plugin-feature"
+        ],
+        "notes": "Onboarded package: its own AGENTS.md, docs/, and .sdd/manifest.json are routed from .sdd/manifest.json packages."
+      },
+      {
         "name": "@webex/internal-plugin-user",
         "paths": [
           "packages/@webex/internal-plugin-user"

@@ -27,6 +27,7 @@ package owns its architecture, specifications, and decisions beside its code. Th
 
 | Package | Path | Agent entry | Docs | Manifest |
 | --- | --- | --- | --- | --- |
+| `@webex/internal-plugin-feature` | `packages/@webex/internal-plugin-feature/` | [AGENTS.md](../packages/@webex/internal-plugin-feature/AGENTS.md) | [docs/index.md](../packages/@webex/internal-plugin-feature/docs/index.md) | [.sdd/manifest.json](../packages/@webex/internal-plugin-feature/.sdd/manifest.json) |
 | `@webex/internal-plugin-user` | `packages/@webex/internal-plugin-user/` | [AGENTS.md](../packages/@webex/internal-plugin-user/AGENTS.md) | [docs/index.md](../packages/@webex/internal-plugin-user/docs/index.md) | [.sdd/manifest.json](../packages/@webex/internal-plugin-user/.sdd/manifest.json) |
 | `@webex/internal-plugin-wdm` | `packages/@webex/internal-plugin-wdm/` | [AGENTS.md](../packages/@webex/internal-plugin-wdm/AGENTS.md) | [docs/index.md](../packages/@webex/internal-plugin-wdm/docs/index.md) | [.sdd/manifest.json](../packages/@webex/internal-plugin-wdm/.sdd/manifest.json) |
 <!-- sdd-package-routing:end -->
