@@ -2459,13 +2459,27 @@ describe('plugin-meetings', () => {
             let resolveFetch;
             let rejectFetch;
 
-            beforeEach(() => {
+            // Mirrors createMeeting(): the tracked entry settles whether the fetch succeeds or fails,
+            // and removes itself from the set before it settles
+            const trackFetch = () => {
+              const fetch = {};
               const fetchPromise = new Promise((resolve, reject) => {
-                resolveFetch = resolve;
-                rejectFetch = reject;
+                fetch.resolve = resolve;
+                fetch.reject = reject;
               });
+              const trackedFetch = fetchPromise
+                .catch(() => undefined)
+                .then(() => {
+                  webex.meetings.meetingInfoFetchesInProgress.delete(trackedFetch);
+                });
 
-              webex.meetings.meetingInfoFetchesInProgress.add(fetchPromise);
+              webex.meetings.meetingInfoFetchesInProgress.add(trackedFetch);
+
+              return fetch;
+            };
+
+            beforeEach(() => {
+              ({resolve: resolveFetch, reject: rejectFetch} = trackFetch());
             });
 
             afterEach(() => {
@@ -2503,6 +2517,57 @@ describe('plugin-meetings', () => {
 
               assert.calledOnceWithExactly(webex.meetings.create, locusEvent.locus, 'LOCUS_ID', false);
               assert.calledOnce(initialSetup);
+            });
+
+            it('also waits for meeting info fetches that start while the event is waiting', async () => {
+              const existingMeeting = {locusInfo};
+
+              webex.meetings.handleLocusEvent(locusEvent);
+              await testUtils.flushPromises();
+
+              // the meeting this event is for starts fetching its info after the event was deferred
+              const laterFetch = trackFetch();
+
+              resolveFetch();
+              await testUtils.flushPromises();
+
+              assert.notCalled(webex.meetings.create);
+              assert.notCalled(locusInfo.parse);
+
+              webex.meetings.meetingCollection.getByKey = sinon
+                .stub()
+                .callsFake((key) => (key === 'locusUrl' ? existingMeeting : undefined));
+              laterFetch.resolve();
+              await testUtils.flushPromises();
+
+              assert.notCalled(webex.meetings.create);
+              assert.calledOnceWithExactly(locusInfo.parse, existingMeeting, locusEvent);
+              assert.equal(webex.meetings.meetingInfoFetchesInProgress.size, 0);
+            });
+
+            it('keeps deferred events in arrival order when a meeting info fetch starts while they wait', async () => {
+              const existingMeeting = {locusInfo};
+              const laterLocusEvent = {...locusEvent, eventType: 'locus.state_message'};
+
+              webex.meetings.handleLocusEvent(locusEvent);
+              webex.meetings.handleLocusEvent(laterLocusEvent);
+              await testUtils.flushPromises();
+
+              const laterFetch = trackFetch();
+
+              resolveFetch();
+              await testUtils.flushPromises();
+
+              webex.meetings.meetingCollection.getByKey = sinon
+                .stub()
+                .callsFake((key) => (key === 'locusUrl' ? existingMeeting : undefined));
+              laterFetch.resolve();
+              await testUtils.flushPromises();
+
+              assert.notCalled(webex.meetings.create);
+              assert.calledTwice(locusInfo.parse);
+              assert.deepEqual(locusInfo.parse.firstCall.args, [existingMeeting, locusEvent]);
+              assert.deepEqual(locusInfo.parse.secondCall.args, [existingMeeting, laterLocusEvent]);
             });
 
             it('creates only one meeting for several deferred events for the same new locus', async () => {
@@ -2800,7 +2865,32 @@ describe('plugin-meetings', () => {
 
           resolveFetch({body: {}});
           await createPromise;
+          await testUtils.flushPromises();
 
+          assert.equal(webex.meetings.meetingInfoFetchesInProgress.size, 0);
+        });
+
+        it('tracks a failed meeting info fetch until it settles, without rejecting the tracked entry', async () => {
+          let rejectFetch;
+
+          webex.meetings.meetingInfoFetchesInProgress.clear();
+          webex.meetings.meetingInfo.fetchMeetingInfo = sinon.stub().returns(
+            new Promise((resolve, reject) => {
+              rejectFetch = reject;
+            })
+          );
+
+          const createPromise = webex.meetings.createMeeting('test destination', 'test type');
+
+          await testUtils.flushPromises();
+          assert.equal(webex.meetings.meetingInfoFetchesInProgress.size, 1);
+          const [trackedFetch] = [...webex.meetings.meetingInfoFetchesInProgress];
+
+          rejectFetch(new Error('meeting info failed'));
+          await createPromise;
+          await testUtils.flushPromises();
+
+          await trackedFetch;
           assert.equal(webex.meetings.meetingInfoFetchesInProgress.size, 0);
         });
         beforeEach(() => {
