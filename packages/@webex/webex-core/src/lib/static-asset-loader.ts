@@ -4,6 +4,7 @@
 
 // @ts-ignore
 import StatelessWebexPlugin from './stateless-webex-plugin';
+import addAssetDiagnostics from './static-asset-diagnostics';
 
 /**
  * Detects an HTML document prefix in an otherwise successful binary asset response.
@@ -59,6 +60,10 @@ export default class StaticAssetLoader extends StatelessWebexPlugin {
     let asset = this.assets.get(url);
 
     if (!asset) {
+      const startedAt = new Date().getTime();
+      let assetResponse: Parameters<typeof addAssetDiagnostics>[1];
+      let failureKind: Parameters<typeof addAssetDiagnostics>[3] = 'network';
+
       // @ts-ignore - StatelessWebexPlugin exposes request from the parent Webex instance.
       asset = this.request({
         method: 'GET',
@@ -74,6 +79,8 @@ export default class StaticAssetLoader extends StatelessWebexPlugin {
         },
       })
         .then((response: any) => {
+          assetResponse = response;
+          failureKind = 'http';
           if (response.statusCode < 200 || response.statusCode >= 300) {
             throw new Error(`Failed to fetch static asset ${url}: HTTP ${response.statusCode}`);
           }
@@ -84,6 +91,7 @@ export default class StaticAssetLoader extends StatelessWebexPlugin {
             .toLowerCase();
 
           if (contentType === 'text/html' || contentType === 'application/xhtml+xml') {
+            failureKind = 'html';
             throw new Error(
               `Failed to fetch static asset ${url}: unexpected HTML content type "${contentType}"`
             );
@@ -100,6 +108,7 @@ export default class StaticAssetLoader extends StatelessWebexPlugin {
               responseBody.byteOffset + responseBody.byteLength
             ) as ArrayBuffer;
           } else {
+            failureKind = 'invalid-body';
             throw new Error(
               `Failed to fetch static asset ${url}: response body is not binary data`
             );
@@ -109,6 +118,7 @@ export default class StaticAssetLoader extends StatelessWebexPlugin {
           // generic binary content type. Reject it before callers pass those bytes to modules
           // that expect binary data, such as WASM.
           if (looksLikeHtmlDocument(buffer)) {
+            failureKind = 'html';
             throw new Error(
               `Failed to fetch static asset ${url}: response body looks like an HTML document`
             );
@@ -118,7 +128,7 @@ export default class StaticAssetLoader extends StatelessWebexPlugin {
         })
         .catch((error: Error) => {
           this.assets.delete(url);
-          throw error;
+          throw addAssetDiagnostics(error, assetResponse, startedAt, failureKind);
         });
       this.assets.set(url, asset);
     }

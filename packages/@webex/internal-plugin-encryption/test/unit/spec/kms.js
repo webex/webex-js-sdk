@@ -333,6 +333,28 @@ describe('internal-plugin-encryption', () => {
         );
       });
 
+      [
+        {reason: 'string rejection', expected: 'string rejection'},
+        {reason: {resultMessage: 'chain rejected'}, expected: 'chain rejected'},
+        {reason: undefined, expected: 'Unknown KMS certificate validation failure'},
+      ].forEach(({reason, expected}) => {
+        it(`reports ${expected} without assuming an Error instance`, () => {
+          webex.internal.encryption.kms._reportKMSValidationFailure(
+            validKey,
+            reason,
+            'report-only'
+          );
+          assert.calledOnceWithExactly(
+            webex.internal.metrics.submitClientMetrics,
+            'JS_SDK_KMS_CERTIFICATE_VALIDATION_FAILED',
+            {
+              fields: {success: false},
+              tags: {reason: expected, kid: validKey.kid, validationMode: 'report-only'},
+            }
+          );
+        });
+      });
+
       it('resolves with no caroots when enforced chain validation is disabled', async () => {
         webex.internal.encryption.config.shouldValidateKMSCertificate = false;
 
@@ -839,6 +861,57 @@ describe('internal-plugin-encryption', () => {
 
             assert.lengthOf(await kms._getCaroots(), 231);
             assert.calledTwice(kms._getCarootsAssetBytes);
+          });
+        });
+
+        [false, true].forEach((reportOnly) => {
+          it(`projects bounded download diagnostics in ${
+            reportOnly ? 'report-only' : 'enforced'
+          } mode`, async () => {
+            const loadError = Object.assign(new Error('unexpected HTML'), {
+              assetDiagnostics: {
+                failureKind: 'html',
+                httpStatus: 200,
+                durationMs: 42,
+                responseBytes: 120,
+                inspectedBytes: 120,
+                responseContentType: 'text/html',
+                cdnRequestId: 'edge-id',
+                htmlKind: 'access-denied',
+                htmlVendorHint: 'unknown',
+                body: '<html>private@example.com</html>',
+                headers: {authorization: 'secret'},
+              },
+            });
+
+            kms.config.reportOnlyAssetsBaseUrl = kms.config.assetsBaseUrl;
+            if (reportOnly) sinon.stub(kms, '_getReportOnlyCarootsAssetBytes').rejects(loadError);
+            else kms._getCarootsAssetBytes.rejects(loadError);
+
+            await assert.isRejected(kms._loadCaroots({reportOnly}), 'could not be loaded');
+            assert.calledOnceWithExactly(
+              webex.internal.metrics.submitClientMetrics,
+              'JS_SDK_KMS_CAROOTS_ASSET_DOWNLOAD_FAILED',
+              {
+                fields: {
+                  success: false,
+                  httpStatus: 200,
+                  durationMs: 42,
+                  responseBytes: 120,
+                  inspectedBytes: 120,
+                  responseContentType: 'text/html',
+                  cdnRequestId: 'edge-id',
+                },
+                tags: {
+                  reason: 'unexpected HTML',
+                  assetsBaseUrl: kms.config.assetsBaseUrl,
+                  validationMode: reportOnly ? 'report-only' : 'enforced',
+                  failureKind: 'html',
+                  htmlKind: 'access-denied',
+                  htmlVendorHint: 'unknown',
+                },
+              }
+            );
           });
         });
 

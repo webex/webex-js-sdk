@@ -113,6 +113,38 @@ The SDK reports these metrics:
 - `JS_SDK_KMS_CAROOTS_ASSET_STALE`
 - `JS_SDK_KMS_CERTIFICATE_VALIDATION_FAILED`
 
+### Asset delivery diagnostics
+
+`JS_SDK_KMS_CAROOTS_ASSET_DOWNLOAD_FAILED` keeps its existing `reason`,
+`assetsBaseUrl` and `validationMode` tags. Failures from the shared URL loader
+also include the following optional diagnostics. Packaged-file failures or older
+loaders can omit them.
+
+| Location       | Properties                                               | Meaning                                                                                                                       |
+| -------------- | -------------------------------------------------------- | ----------------------------------------------------------------------------------------------------------------------------- |
+| Tags           | `failureKind`                                            | `http`, `html`, `invalid-body`, or `network`                                                                                  |
+| Tags           | `htmlKind`, `htmlVendorHint`                             | Bounded heuristic categories, not proof of an intermediary's identity                                                         |
+| Numeric fields | `httpStatus`, `durationMs`                               | HTTP status and elapsed request/validation time; zero status means no readable HTTP response                                  |
+| Numeric fields | `responseBytes`, `inspectedBytes`                        | Binary body length when known and the bounded prefix inspected locally                                                        |
+| String fields  | `responseContentType`, `responseServer`, `responseCache` | Available allowlisted response headers, bounded to 256 printable characters each                                              |
+| String fields  | `cdnRequestId`, `cdnPop`                                 | Available CloudFront request ID and point of presence; fields avoid high-cardinality tags                                     |
+| String fields  | `htmlStructureHash`                                      | SHA-256 of tag structure in at most the first 8192 body bytes, excluding text, attributes, comments and script/style contents |
+
+Raw response bodies, HTML titles, arbitrary headers, cookies and redirect URLs
+and `Via` proxy hostnames are not added to these diagnostics. Structural hashes are coarse grouping hints;
+different pages can have the same structure. Missing headers mean unavailable,
+not that no proxy exists. Cross-origin hosting must expose custom response
+headers through CORS before browsers can report them. A readable HTTP 403 can
+retain context; a browser-blocked response may expose only a network failure.
+
+To compare extension-specific delivery behavior, explicitly set `carootsAsset`
+to a versioned `.bin` alias containing the identical signed bundle and serve it
+as `application/pkcs7-mime`. Both enforced and report-only sources use the selected
+filename. Signature verification and the rollback floor still apply; there is
+no automatic extension fallback. The SDK browser tests emulate substituted HTML,
+CDN-style and generic 403s, connection failure, and an extension-specific block.
+They validate capture and policy behavior, not the source of a production block.
+
 ### Hosting the assets
 
 Versioned SDK releases default the enforced `assetsBaseUrl` to

@@ -17,6 +17,7 @@ import uuid from 'uuid';
 
 import KMSBatcher, {TIMEOUT_SYMBOL} from './kms-batcher';
 import validateKMS, {KMSError} from './kms-certificate-validation';
+import {getAssetFailureDiagnostics, getKmsFailureReason} from './kms-asset-diagnostics';
 import loadCarootsAsset from './caroots-asset';
 import loadCarootsAssetFromUrl from './caroots-asset-url';
 import {UNION_BUNDLE_VERSION} from './union-bundle';
@@ -1000,9 +1001,11 @@ const KMS = WebexPlugin.extend({
           ),
         (reason) => {
           this.logger.error('kms: failed to load CA roots asset', reason);
+          const diagnostics = getAssetFailureDiagnostics(reason);
+
           this._submitMetric(JS_SDK_KMS_CAROOTS_ASSET_DOWNLOAD_FAILED, {
-            fields: {success: false},
-            tags: {reason: describe(reason), assetsBaseUrl, validationMode},
+            fields: {success: false, ...diagnostics.fields},
+            tags: {reason: describe(reason), assetsBaseUrl, validationMode, ...diagnostics.tags},
           });
 
           return Promise.reject(fail(reason, `"${carootsAsset}" could not be loaded`));
@@ -1023,7 +1026,7 @@ const KMS = WebexPlugin.extend({
     this._submitMetric(JS_SDK_KMS_CERTIFICATE_VALIDATION_FAILED, {
       fields: {success: false},
       tags: {
-        reason: reason.message,
+        reason: getKmsFailureReason(reason),
         kid: kmsStaticPubKey && kmsStaticPubKey.kid,
         validationMode,
       },
