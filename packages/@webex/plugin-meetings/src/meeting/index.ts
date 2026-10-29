@@ -7858,7 +7858,7 @@ export default class Meeting extends StatelessWebexPlugin {
           this.statsAnalyzer.startAnalyzer(this.mediaProperties.webrtcMediaConnection);
           this.hasMediaConnectionConnectedAtLeastOnce = true;
           Object.values(this.mediaRequestManagers).forEach((mediaRequestManager) =>
-            mediaRequestManager.sendPendingRequestState()
+            mediaRequestManager.sendPendingRequests()
           );
           break;
         case ConnectionState.Disconnected:

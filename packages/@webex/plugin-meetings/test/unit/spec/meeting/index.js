@@ -503,7 +503,7 @@ describe('plugin-meetings', () => {
             assert.notCalled(requestMedia);
 
             getConnectionState.returns(ConnectionState.Connected);
-            meeting.mediaRequestManagers[manager].sendPendingRequestState();
+            meeting.mediaRequestManagers[manager].sendPendingRequests();
 
             assert.calledOnceWithExactly(requestMedia, mediaType, []);
           });
@@ -11870,7 +11870,7 @@ describe('plugin-meetings', () => {
             meeting.reconnectionManager.iceReconnected = sinon.stub().returns(undefined);
             meeting.statsAnalyzer = {startAnalyzer: sinon.stub()};
             Object.values(meeting.mediaRequestManagers).forEach((mediaRequestManager) =>
-              sinon.spy(mediaRequestManager, 'sendPendingRequestState')
+              sinon.spy(mediaRequestManager, 'sendPendingRequests')
             );
             meeting.mediaProperties.webrtcMediaConnection = {
               // mock the on() method and store all the listeners
@@ -11914,7 +11914,7 @@ describe('plugin-meetings', () => {
               meeting.mediaProperties.webrtcMediaConnection
             );
             Object.values(meeting.mediaRequestManagers).forEach((mediaRequestManager) =>
-              assert.calledOnceWithExactly(mediaRequestManager.sendPendingRequestState)
+              assert.calledOnceWithExactly(mediaRequestManager.sendPendingRequests)
             );
           };
 
@@ -11925,7 +11925,7 @@ describe('plugin-meetings', () => {
             meeting.reconnectionManager.iceReconnected.resetHistory();
             meeting.statsAnalyzer.startAnalyzer.resetHistory();
             Object.values(meeting.mediaRequestManagers).forEach((mediaRequestManager) =>
-              mediaRequestManager.sendPendingRequestState.resetHistory()
+              mediaRequestManager.sendPendingRequests.resetHistory()
             );
           };
 
