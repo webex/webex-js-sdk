@@ -1,5 +1,6 @@
 import {jwksCache, createRemoteJWKSet, JWKSCacheInput, jwtVerify} from 'jose';
 import BaseClient from '../base-client';
+import DataSourceClient from '../data-source-client';
 import {
   USER_AGENT,
   PRODUCTION_JWKS_URL,
@@ -34,22 +35,29 @@ export default class BYODS {
   /**
    * The token manager for the SDK.
    */
-  public tokenManager: TokenManager;
+  public readonly tokenManager: TokenManager;
+
+  /** The organization used by this SDK instance. */
+  public readonly orgId: string;
+
+  /** The data source client for the configured organization. */
+  public readonly dataSource: DataSourceClient;
 
   /**
    * Constructs a new instance of the BYODS SDK.
    *
-   * @param {SDKConfig} config - The configuration object containing clientId and clientSecret.
+   * @param {SDKConfig} config - The Service App credentials and organization.
    * @example
-   * const sdk = new BYODS({ clientId: 'your-client-id', clientSecret: 'your-client-secret' });
+   * const sdk = new BYODS({ clientId: 'your-client-id', clientSecret: 'your-client-secret', orgId: 'org-id' });
    */
   constructor({
     clientId,
     clientSecret,
+    orgId,
     tokenStorageAdapter = new InMemoryTokenStorageAdapter(),
     logger = DEFAULT_LOGGER_CONFIG,
   }: SDKConfig) {
-    this.config = {clientId, clientSecret, tokenStorageAdapter, logger};
+    this.config = {clientId, clientSecret, orgId, tokenStorageAdapter, logger};
     log.setLogger(this.config.logger?.level || LOGGER.INFO, BYODS_MODULE);
 
     /**
@@ -77,13 +85,14 @@ export default class BYODS {
     }
 
     // Create token manager
-    this.tokenManager = new TokenManager(
-      clientId,
-      clientSecret,
+    this.tokenManager = new TokenManager(this.config, this.baseUrl);
+    this.orgId = orgId.trim();
+    this.dataSource = new BaseClient(
       this.baseUrl,
-      tokenStorageAdapter,
+      this.headers,
+      this.tokenManager,
       this.config.logger
-    );
+    ).dataSource;
 
     // Create a remote JWK Set
     this.jwks = createRemoteJWKSet(new URL(jwksUrl), {
@@ -115,21 +124,5 @@ export default class BYODS {
     }
 
     return result;
-  }
-
-  /**
-   * Retrieves a client instance for a specific organization.
-   *
-   * @param {string} orgId - The unique identifier of the organization.
-   * @returns {BaseClient} A new instance of BaseClient configured for the specified organization.
-   * @example
-   * const client = sdk.getClientForOrg('org-id');
-   */
-  public getClientForOrg(orgId: string): BaseClient {
-    if (!orgId) {
-      throw new Error(`orgId is required`);
-    }
-
-    return new BaseClient(this.baseUrl, this.headers, this.tokenManager, orgId);
   }
 }

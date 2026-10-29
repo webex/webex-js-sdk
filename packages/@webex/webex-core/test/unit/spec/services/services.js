@@ -1670,6 +1670,32 @@ describe('webex-core', () => {
     });
 
     describe('#isIntegrationEnvironment', () => {
+      it('uses the integration environment config when set, regardless of the u2c URL', () => {
+        services.webex.config = {
+          environment: 'integration',
+          services: {
+            discovery: {
+              u2c: 'https://u2c.wbx2.com/u2c/api/v1',
+            },
+          },
+        };
+
+        assert.isTrue(services.isIntegrationEnvironment());
+      });
+
+      it('uses the production environment config when set, regardless of the u2c URL', () => {
+        services.webex.config = {
+          environment: 'production',
+          services: {
+            discovery: {
+              u2c: 'https://u2c-intb.ciscospark.com/u2c/api/v1',
+            },
+          },
+        };
+
+        assert.isFalse(services.isIntegrationEnvironment());
+      });
+
       it('returns true when u2c URL contains "intb"', () => {
         services.webex.config = {
           services: {

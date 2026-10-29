@@ -1,14 +1,26 @@
 const path = require('path');
+const fs = require('fs');
 
 const webpack = require('webpack');
 const dotenv = require('dotenv');
 const glob = require('glob');
+const CopyWebpackPlugin = require('copy-webpack-plugin');
 const {BannerPlugin, DefinePlugin, EnvironmentPlugin} = require('webpack');
 const TerserPlugin = require('terser-webpack-plugin');
 
 const CircularDependencyPlugin = require('circular-dependency-plugin');
 const {version} = require('./packages/webex/package.json');
 const callingPackage = require('./packages/calling/package.json');
+
+const webexPackagesDirectory = path.resolve(__dirname, 'packages/@webex');
+const pluginAssetDirectories = fs
+  .readdirSync(webexPackagesDirectory, {withFileTypes: true})
+  .filter((entry) => entry.isDirectory())
+  .map((entry) => ({
+    name: entry.name,
+    directory: path.join(webexPackagesDirectory, entry.name, 'assets'),
+  }))
+  .filter(({directory}) => fs.existsSync(directory));
 
 dotenv.config();
 dotenv.config({path: '.env.default'});
@@ -89,7 +101,14 @@ module.exports = (env = {NODE_ENV: process.env.NODE_ENV || 'production'}) => ({
   devServer: {
     https: true,
     port: process.env.PORT || 8000,
-    static: './docs',
+    static: [
+      './docs',
+      ...pluginAssetDirectories.map(({name, directory}) => ({
+        // Keep each plugin's assets in its own URL namespace to avoid filename collisions.
+        directory,
+        publicPath: `/assets/${name}`,
+      })),
+    ],
   },
   resolve: {
     fallback: {
@@ -134,6 +153,7 @@ module.exports = (env = {NODE_ENV: process.env.NODE_ENV || 'production'}) => ({
         new TerserPlugin({
           cache: true,
           extractComments: false,
+          exclude: /(^|\/)assets\//,
           parallel: true,
           sourceMap: true,
           terserOptions: {
@@ -147,6 +167,21 @@ module.exports = (env = {NODE_ENV: process.env.NODE_ENV || 'production'}) => ({
     },
   }),
   plugins: [
+    ...(env && env.umd
+      ? [
+          new CopyWebpackPlugin({
+            patterns: [
+              ...pluginAssetDirectories.map(({name, directory}) => ({
+                from: directory,
+                to: `packages/webex/umd/assets/${name}`,
+                globOptions: {
+                  ignore: ['**/README.md', '**/*.map', '**/.*'],
+                },
+              })),
+            ],
+          }),
+        ]
+      : []),
     // If in integration and building for production (not testing) use production URLS
     ...(env && env.NODE_ENV === 'test'
       ? [

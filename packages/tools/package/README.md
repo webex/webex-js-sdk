@@ -41,6 +41,14 @@ To see a list of available commands and their associated options, run the follow
 webex-package-tools --help
 ```
 
+When `list --since <ref>` finds only documentation or SDD changes, it returns an
+empty package list. This includes Markdown, MDX, documentation folders, `.sdd`,
+and repository-context metadata. Node output is an empty string. Yarn output is
+`{}`. Source, package manifests, lockfiles, assets, and package ignore files
+remain eligible for release. Other change sets use Yarn's existing package and
+dependent selection. Listing packages without `--since` keeps its existing
+behavior.
+
 This package can also be consumed as a module. Note that this is not an explicitly intended use-case, but may provide more flexibility when performing complicated workflows.
 
 ```js
