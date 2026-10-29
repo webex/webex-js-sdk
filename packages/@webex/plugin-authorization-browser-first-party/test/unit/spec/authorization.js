@@ -140,8 +140,14 @@ describe('plugin-authorization-browser-first-party', () => {
 
     describe('#initialize()', () => {
       describe('when there is a code in the url', () => {
+        const csrfToken = 'initialization-csrf-token';
+        const makeAuthorizationCallbackUrl = (code, state = {}) =>
+          `http://example.com/?code=${code}&state=${base64.encode(
+            JSON.stringify({...state, csrf_token: csrfToken})
+          )}`;
+
         it('exchanges it for an access token and sets ready', () => {
-          const webex = makeWebex('http://example.com/?code=5');
+          const webex = makeWebex(makeAuthorizationCallbackUrl('5'), csrfToken);
 
           assert.isFalse(webex.authorization.ready);
           assert.isFalse(webex.credentials.canAuthorize);
@@ -161,7 +167,7 @@ describe('plugin-authorization-browser-first-party', () => {
         });
 
         it('retains the initialization exchange outcome after logout', async () => {
-          const webex = makeWebex('http://example.com/?code=5');
+          const webex = makeWebex(makeAuthorizationCallbackUrl('5'), csrfToken);
 
           await webex.authorization.when('change:ready');
           webex.authorization.logout({noRedirect: true});
@@ -235,9 +241,8 @@ describe('plugin-authorization-browser-first-party', () => {
         it('collects the preauth catalog when emailhash is present in the state', async () => {
           const code = 'authcode_clusterid_theOrgId';
           const webex = makeWebex(
-            `http://example.com/?code=${code}&state=${base64.encode(
-              JSON.stringify({emailhash: 'someemailhash'})
-            )}`
+            makeAuthorizationCallbackUrl(code, {emailhash: 'someemailhash'}),
+            csrfToken
           );
 
           const requestAuthorizationCodeGrantStub = sinon.stub(
@@ -258,7 +263,7 @@ describe('plugin-authorization-browser-first-party', () => {
 
         it('collects the preauth catalog no emailhash is present in the state', async () => {
           const code = 'authcode_clusterid_theOrgId';
-          const webex = makeWebex(`http://example.com/?code=${code}`);
+          const webex = makeWebex(makeAuthorizationCallbackUrl(code), csrfToken);
 
           const requestAuthorizationCodeGrantStub = sinon.stub(
             Authorization.prototype,
@@ -278,7 +283,7 @@ describe('plugin-authorization-browser-first-party', () => {
 
         it('collects the preauth catalog with no emailhash and no orgId', async () => {
           const code = 'authcode_clusterid';
-          const webex = makeWebex(`http://example.com/?code=${code}`);
+          const webex = makeWebex(makeAuthorizationCallbackUrl(code), csrfToken);
 
           const requestAuthorizationCodeGrantStub = sinon.stub(
             Authorization.prototype,
@@ -303,7 +308,7 @@ describe('plugin-authorization-browser-first-party', () => {
             .stub(Authorization.prototype, 'requestAuthorizationCodeGrant')
             .throws(error);
 
-          const webex = makeWebex(`http://example.com?code=${code}`);
+          const webex = makeWebex(makeAuthorizationCallbackUrl(code), csrfToken);
 
           return webex.authorization.when('change:ready').then(() => {
             assert.calledOnce(requestAuthorizationCodeGrantStub);
@@ -326,7 +331,7 @@ describe('plugin-authorization-browser-first-party', () => {
 
           sinon.stub(Authorization.prototype, 'requestAuthorizationCodeGrant').rejects(error);
 
-          const webex = makeWebex('http://example.com?code=5');
+          const webex = makeWebex(makeAuthorizationCallbackUrl('5'), csrfToken);
 
           await webex.authorization.when('change:ready');
 
@@ -382,8 +387,14 @@ describe('plugin-authorization-browser-first-party', () => {
       describe('when code verifier is present in session storage', () => {
         it('passes codeVerifier to requestAuthorizationCodeGrant', () => {
           const expectedVerifier = 'test verifier';
+          const csrfToken = 'initialization-csrf-token';
+          const state = base64.encode(JSON.stringify({csrf_token: csrfToken}));
 
-          const webex = makeWebex('http://example.com?code=5', undefined, expectedVerifier);
+          const webex = makeWebex(
+            `http://example.com?code=5&state=${state}`,
+            csrfToken,
+            expectedVerifier
+          );
 
           return webex.authorization.when('change:ready').then(() => {
             assert.calledTwice(webex.request);
@@ -904,22 +915,13 @@ describe('plugin-authorization-browser-first-party', () => {
       });
     });
 
-    describe('#_verifySecurityToken() requireMatch', () => {
-      it('silently returns undefined when no stored token and requireMatch is false', () => {
-        const webex = makeWebex();
-        webex.getWindow().sessionStorage.getItem = sinon.stub().returns(null);
-
-        const result = webex.authorization._verifySecurityToken({});
-
-        assert.isUndefined(result);
-      });
-
-      it('throws when no stored token and requireMatch is true', () => {
+    describe('#_verifySecurityToken()', () => {
+      it('throws when no stored token exists', () => {
         const webex = makeWebex();
         webex.getWindow().sessionStorage.getItem = sinon.stub().returns(null);
 
         assert.throws(() => {
-          webex.authorization._verifySecurityToken({}, {requireMatch: true});
+          webex.authorization._verifySecurityToken({});
         }, /CSRF token missing from session storage/);
       });
     });
@@ -1018,7 +1020,7 @@ describe('plugin-authorization-browser-first-party', () => {
         );
       });
 
-      it('throws when state is absent even if no stored CSRF token exists (requireMatch)', () => {
+      it('throws when state is absent and no stored CSRF token exists', () => {
         const webex = makeWebex('http://example.com/?id_token=id-1');
         webex.getWindow().sessionStorage.getItem = sinon.stub().returns(null);
 
