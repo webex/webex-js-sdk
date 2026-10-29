@@ -283,7 +283,6 @@ async function initCalling(e) {
         kmsInitialTimeout: 8000,
         kmsMaxTimeout: 40000,
         batcherMaxCalls: 30,
-        caroots: null,
       },
       dss: {},
     },
