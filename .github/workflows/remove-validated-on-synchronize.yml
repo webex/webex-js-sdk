@@ -26,14 +26,31 @@ jobs:
         with:
           github-token: ${{ secrets.ORG_READ_TOKEN }}
           script: |
+            const org = 'webex';
+            const team_slug = 'web-sdk';
+
+            // GitHub answers 404 for resources a token cannot see, so a
+            // membership 404 only means "not a member" once the token is known
+            // to be able to read the team at all.
+            try {
+              await github.rest.teams.getByName({org, team_slug});
+            } catch (error) {
+              core.setFailed(
+                `Cannot read @${org}/${team_slug} (${error.status} ${error.message}); ` +
+                  'a membership 404 would be indistinguishable from missing access.'
+              );
+
+              return;
+            }
+
             // 'active' for members, 'pending' for invited-but-not-joined, 404
-            // for everyone else. Any other failure stays 'unknown' so a missing
-            // token or an outage is never logged as a confirmed non-member.
+            // for everyone else. Any other failure stays 'unknown' so an outage
+            // is never logged as a confirmed non-member.
             const membershipState = async (username) => {
               try {
                 const {data} = await github.rest.teams.getMembershipForUserInOrg({
-                  org: 'webex',
-                  team_slug: 'web-sdk',
+                  org,
+                  team_slug,
                   username,
                 });
 
@@ -56,8 +73,8 @@ jobs:
               membershipState(pusher),
             ]);
 
-            core.info(`PR author ${author} on @webex/web-sdk: ${authorState}`);
-            core.info(`Pusher ${pusher} on @webex/web-sdk: ${pusherState}`);
+            core.info(`PR author ${author} on @${org}/${team_slug}: ${authorState}`);
+            core.info(`Pusher ${pusher} on @${org}/${team_slug}: ${pusherState}`);
 
             if (authorState === 'unknown' || pusherState === 'unknown') {
               core.setFailed('Membership lookup was inconclusive; this run produced no usable data.');
