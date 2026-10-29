@@ -1914,7 +1914,7 @@ describe('MediaRequestManager pending request state', () => {
       );
 
       isReadyToSendRequests.returns(true);
-      mediaRequestManager.sendPendingRequestState();
+      mediaRequestManager.sendPendingRequests();
 
       assert.calledOnceWithExactly(sendMediaRequestsCallback, []);
       assert.calledWith(
@@ -1924,13 +1924,13 @@ describe('MediaRequestManager pending request state', () => {
     });
   });
 
-  it('synchronizes only the latest state once when sendPendingRequestState() is called', () => {
+  it('synchronizes only the latest state once when sendPendingRequests() is called', () => {
     const requestId = addReceiverSelectedRequest(1);
     mediaRequestManager.cancelRequest(requestId, true);
     addReceiverSelectedRequest(2);
 
     isReadyToSendRequests.returns(true);
-    mediaRequestManager.sendPendingRequestState();
+    mediaRequestManager.sendPendingRequests();
 
     assert.calledOnceWithExactly(sendMediaRequestsCallback, [
       sinon.match({
@@ -1944,26 +1944,26 @@ describe('MediaRequestManager pending request state', () => {
       'multistream:sendRequests --> connection ready, synchronizing latest VIDEO-SLIDES media request state'
     );
 
-    mediaRequestManager.sendPendingRequestState();
+    mediaRequestManager.sendPendingRequests();
 
     assert.calledOnce(sendMediaRequestsCallback);
   });
 
-  it('keeps the state pending if the connection is still not ready on sendPendingRequestState()', () => {
+  it('keeps the state pending if the connection is still not ready on sendPendingRequests()', () => {
     addReceiverSelectedRequest(1);
-    mediaRequestManager.sendPendingRequestState();
+    mediaRequestManager.sendPendingRequests();
 
     assert.notCalled(sendMediaRequestsCallback);
 
     isReadyToSendRequests.returns(true);
-    mediaRequestManager.sendPendingRequestState();
+    mediaRequestManager.sendPendingRequests();
 
     assert.calledOnce(sendMediaRequestsCallback);
   });
 
-  it('does not send anything on sendPendingRequestState() if nothing is pending', () => {
+  it('does not send anything on sendPendingRequests() if nothing is pending', () => {
     isReadyToSendRequests.returns(true);
-    mediaRequestManager.sendPendingRequestState();
+    mediaRequestManager.sendPendingRequests();
 
     assert.notCalled(sendMediaRequestsCallback);
   });
@@ -1980,7 +1980,7 @@ describe('MediaRequestManager pending request state', () => {
     mediaRequestManager.reset();
 
     isReadyToSendRequests.returns(true);
-    mediaRequestManager.sendPendingRequestState();
+    mediaRequestManager.sendPendingRequests();
 
     assert.notCalled(sendMediaRequestsCallback);
   });
@@ -1996,7 +1996,7 @@ describe('MediaRequestManager pending request state', () => {
 
     getIngressPayloadTypeCallback.returns(98);
     isReadyToSendRequests.returns(true);
-    mediaRequestManager.sendPendingRequestState();
+    mediaRequestManager.sendPendingRequests();
 
     assert.calledOnceWithExactly(sendMediaRequestsCallback, [
       sinon.match({
@@ -2010,7 +2010,7 @@ describe('MediaRequestManager pending request state', () => {
 
     mediaRequestManager.cancelRequest(requestId, true);
     isReadyToSendRequests.returns(true);
-    mediaRequestManager.sendPendingRequestState();
+    mediaRequestManager.sendPendingRequests();
 
     assert.calledOnceWithExactly(sendMediaRequestsCallback, []);
   });
@@ -2019,7 +2019,7 @@ describe('MediaRequestManager pending request state', () => {
     addReceiverSelectedRequest(1);
     isReadyToSendRequests.returns(true);
     mediaRequestManager.commit();
-    mediaRequestManager.sendPendingRequestState();
+    mediaRequestManager.sendPendingRequests();
 
     assert.calledOnce(sendMediaRequestsCallback);
   });
@@ -2029,9 +2029,9 @@ describe('MediaRequestManager pending request state', () => {
     isReadyToSendRequests.returns(true);
     sendMediaRequestsCallback.onFirstCall().throws(new Error('Failed to send media requests'));
 
-    assert.throws(() => mediaRequestManager.sendPendingRequestState(), 'Failed to send media requests');
+    assert.throws(() => mediaRequestManager.sendPendingRequests(), 'Failed to send media requests');
 
-    mediaRequestManager.sendPendingRequestState();
+    mediaRequestManager.sendPendingRequests();
 
     assert.calledTwice(sendMediaRequestsCallback);
   });

@@ -87,7 +87,7 @@ type AudioMediaRequestManagerOptions = {
   degradationPreferences: DegradationPreferences;
   mediaType: MediaType.AudioMain | MediaType.AudioSlides;
   trimRequestsToNumOfSources: boolean; // if enabled, AS speaker requests will be trimmed based on the calls to setNumCurrentSources()
-  isReadyToSendRequests: IsReadyToSendRequestsCallback; // if it returns false, the latest request state is sent by sendPendingRequestState()
+  isReadyToSendRequests: IsReadyToSendRequestsCallback; // if it returns false, the latest request state is sent by sendPendingRequests()
 };
 
 type VideoMediaRequestManagerOptions = {
@@ -109,7 +109,7 @@ export class MediaRequestManager {
 
   private isReadyToSendRequests: IsReadyToSendRequestsCallback;
 
-  private hasPendingRequestState = false;
+  private hasPendingRequests = false;
 
   private mediaType: MediaType;
 
@@ -144,7 +144,8 @@ export class MediaRequestManager {
     this.mediaType = options.mediaType;
     this.trimRequestsToNumOfSources = options.trimRequestsToNumOfSources;
     this.enableAv1 =
-      (options.mediaType === MediaType.VideoMain || options.mediaType === MediaType.VideoSlides) &&
+      getMediaFamily(options.mediaType) === MediaFamily.Video &&
+      'enableAv1' in options &&
       !!options.enableAv1;
     this.sourceUpdateListener = this.commit.bind(this);
     this.debouncedSourceUpdateListener = debounce(
@@ -395,12 +396,12 @@ export class MediaRequestManager {
 
   private sendRequests() {
     if (!this.isReadyToSendRequests()) {
-      if (!this.hasPendingRequestState) {
+      if (!this.hasPendingRequests) {
         LoggerProxy.logger.info(
           `multistream:sendRequests --> connection not ready, latest ${this.mediaType} media request state will be synchronized when ready`
         );
       }
-      this.hasPendingRequestState = true;
+      this.hasPendingRequests = true;
 
       return;
     }
@@ -443,13 +444,13 @@ export class MediaRequestManager {
       }
     });
 
-    if (this.hasPendingRequestState) {
+    if (this.hasPendingRequests) {
       LoggerProxy.logger.info(
         `multistream:sendRequests --> connection ready, synchronizing latest ${this.mediaType} media request state`
       );
     }
     this.sendMediaRequestsCallback(streamRequests);
-    this.hasPendingRequestState = false;
+    this.hasPendingRequests = false;
     LoggerProxy.logger.info(`multistream:sendRequests --> media requests sent.`);
   }
 
@@ -500,10 +501,10 @@ export class MediaRequestManager {
    * Synchronizes the latest request state if it could not be sent earlier because the connection was not ready.
    * @returns {void}
    */
-  public sendPendingRequestState() {
-    if (!this.hasPendingRequestState) {
+  public sendPendingRequests() {
+    if (!this.hasPendingRequests) {
       LoggerProxy.logger.info(
-        `multistream:sendPendingRequestState --> no pending ${this.mediaType} media request state, skipping synchronization`
+        `multistream:sendPendingRequests --> no pending ${this.mediaType} media request state, skipping synchronization`
       );
 
       return;
@@ -512,7 +513,7 @@ export class MediaRequestManager {
   }
 
   public reset() {
-    this.hasPendingRequestState = false;
+    this.hasPendingRequests = false;
     this.clientRequests = {};
     this.numTotalSources = 0;
     this.numLiveSources = 0;
