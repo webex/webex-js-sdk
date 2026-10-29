@@ -2418,7 +2418,8 @@ describe('plugin-meetings', () => {
               eventType: 'locus.difference',
               locusUrl: url1,
             });
-            assert.callCount(webex.meetings.meetingCollection.getByKey, 6);
+            assert.callCount(webex.meetings.meetingCollection.getByKey, 7);
+            assert.calledWith(webex.meetings.meetingCollection.getByKey, 'id', 'meeting-id');
             assert.calledWith(webex.meetings.meetingCollection.getByKey, 'locusUrl', url1);
             assert.calledWith(
               webex.meetings.meetingCollection.getByKey,
@@ -2448,6 +2449,87 @@ describe('plugin-meetings', () => {
               hashTreeMessage: undefined,
             }, sinon.match.func);
           });
+          describe('while meeting info fetches are in progress', () => {
+            const locusEvent = {
+              locus: {id: uuid1, self: {devices: []}, info: {webExMeetingId}},
+              eventType: 'locus.difference',
+              locusUrl: url1,
+            };
+
+            let resolveFetch;
+            let rejectFetch;
+
+            beforeEach(() => {
+              const fetchPromise = new Promise((resolve, reject) => {
+                resolveFetch = resolve;
+                rejectFetch = reject;
+              });
+
+              webex.meetings.meetingInfoFetchesInProgress.add(fetchPromise);
+            });
+
+            afterEach(() => {
+              webex.meetings.meetingInfoFetchesInProgress.clear();
+            });
+
+            it('waits for the fetches and handles the event for the meeting they were for', async () => {
+              const existingMeeting = {locusInfo};
+
+              webex.meetings.handleLocusEvent(locusEvent);
+              await testUtils.flushPromises();
+
+              assert.notCalled(webex.meetings.create);
+              assert.notCalled(locusInfo.parse);
+
+              // the meeting being created can now be matched by locusUrl
+              webex.meetings.meetingCollection.getByKey = sinon
+                .stub()
+                .callsFake((key) => (key === 'locusUrl' ? existingMeeting : undefined));
+              resolveFetch();
+              await testUtils.flushPromises();
+
+              assert.notCalled(webex.meetings.create);
+              assert.calledOnceWithExactly(locusInfo.parse, existingMeeting, locusEvent);
+            });
+
+            it('creates a meeting once the fetches settle if the event still has no meeting', async () => {
+              webex.meetings.handleLocusEvent(locusEvent);
+              await testUtils.flushPromises();
+
+              assert.notCalled(webex.meetings.create);
+
+              rejectFetch(new Error('meeting info failed'));
+              await testUtils.flushPromises();
+
+              assert.calledOnceWithExactly(webex.meetings.create, locusEvent.locus, 'LOCUS_ID', false);
+              assert.calledOnce(initialSetup);
+            });
+
+            it('creates only one meeting for several deferred events for the same new locus', async () => {
+              const createdMeeting = {id: 'meeting-id', locusInfo: {...locusInfo, initialSetup}};
+
+              // like the real create(), the meeting is only added to the collection after some async steps
+              webex.meetings.create = sinon.stub().callsFake(async () => {
+                await Promise.resolve();
+                await Promise.resolve();
+                webex.meetings.meetingCollection.getByKey = sinon
+                  .stub()
+                  .callsFake((key) => (key === 'locusUrl' ? createdMeeting : undefined));
+
+                return createdMeeting;
+              });
+
+              webex.meetings.handleLocusEvent(locusEvent);
+              webex.meetings.handleLocusEvent(locusEvent);
+              resolveFetch();
+              await testUtils.flushPromises();
+
+              assert.calledOnceWithExactly(webex.meetings.create, locusEvent.locus, 'LOCUS_ID', false);
+              assert.calledOnce(initialSetup);
+              assert.calledOnceWithExactly(locusInfo.parse, createdMeeting, locusEvent);
+            });
+          });
+
           it('should setup the meeting from a hash tree event', async () => {
             const selfData = {};
             const infoData = {webExMeetingId};
@@ -2537,7 +2619,8 @@ describe('plugin-meetings', () => {
               eventType: 'locus.difference',
               locusUrl: url1,
             });
-            assert.callCount(webex.meetings.meetingCollection.getByKey, 5);
+            assert.callCount(webex.meetings.meetingCollection.getByKey, 6);
+            assert.calledWith(webex.meetings.meetingCollection.getByKey, 'id', 'meeting-id');
             assert.calledWith(webex.meetings.meetingCollection.getByKey, 'locusUrl', url1);
             assert.calledWith(
               webex.meetings.meetingCollection.getByKey,
@@ -2613,7 +2696,8 @@ describe('plugin-meetings', () => {
               eventType: test1,
               locusUrl: url1,
             });
-            assert.callCount(webex.meetings.meetingCollection.getByKey, 5);
+            assert.callCount(webex.meetings.meetingCollection.getByKey, 6);
+            assert.calledWith(webex.meetings.meetingCollection.getByKey, 'id', 'meeting-id');
             assert.calledWith(webex.meetings.meetingCollection.getByKey, 'locusUrl', url1);
             assert.calledWith(
               webex.meetings.meetingCollection.getByKey,
@@ -2659,7 +2743,8 @@ describe('plugin-meetings', () => {
 
           it('should not try to match USM meetings by conversation url', async () => {
             await webex.meetings.handleLocusEvent(generateFakeLocusData(true));
-            assert.callCount(webex.meetings.meetingCollection.getByKey, 4);
+            assert.callCount(webex.meetings.meetingCollection.getByKey, 5);
+            assert.calledWith(webex.meetings.meetingCollection.getByKey, 'id', 'meeting-id');
             assert.deepEqual(webex.meetings.meetingCollection.getByKey.getCall(0).args, [
               'locusUrl',
               url1,
@@ -2676,7 +2761,8 @@ describe('plugin-meetings', () => {
           });
           it('should try to match non-USM meetings by conversation url', async () => {
             await webex.meetings.handleLocusEvent(generateFakeLocusData(false));
-            assert.callCount(webex.meetings.meetingCollection.getByKey, 5);
+            assert.callCount(webex.meetings.meetingCollection.getByKey, 6);
+            assert.calledWith(webex.meetings.meetingCollection.getByKey, 'id', 'meeting-id');
             assert.deepEqual(webex.meetings.meetingCollection.getByKey.getCall(0).args, [
               'locusUrl',
               url1,
@@ -2698,6 +2784,25 @@ describe('plugin-meetings', () => {
         });
       });
       describe('#createMeeting', () => {
+        it('tracks the meeting info fetch only while it is in progress', async () => {
+          let resolveFetch;
+
+          webex.meetings.meetingInfo.fetchMeetingInfo = sinon.stub().returns(
+            new Promise((resolve) => {
+              resolveFetch = resolve;
+            })
+          );
+
+          const createPromise = webex.meetings.createMeeting('test destination', 'test type');
+
+          await testUtils.flushPromises();
+          assert.equal(webex.meetings.meetingInfoFetchesInProgress.size, 1);
+
+          resolveFetch({body: {}});
+          await createPromise;
+
+          assert.equal(webex.meetings.meetingInfoFetchesInProgress.size, 0);
+        });
         beforeEach(() => {
           webex.internal.device.userId = uuid1;
           webex.internal.device.url = url1;
