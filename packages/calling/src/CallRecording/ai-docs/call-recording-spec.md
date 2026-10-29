@@ -192,12 +192,12 @@ All reads go through a **single** `getCallRecording` method, which dispatches on
 | `RecordingRequestType` | Discriminant enum for `getCallRecording`: `LIST`, `DETAIL`, `METADATA`, `BY_CALL_SESSION` |
 | `GetCallRecordingRequest` | Discriminated union of the read requests passed to `getCallRecording` (`ListRecordingsRequest` \| `DetailRecordingRequest` \| `MetadataRecordingRequest` \| `CallSessionRecordingsRequest`) |
 | `RecordingResponseFor<T>` | Maps a request member to its response type so `getCallRecording` infers the return per request |
-| `Recording` | A converged recording. Key fields: `id`, `topic`, `createTime`, `timeRecorded`, `status`, `serviceType`, `durationSeconds`, `sizeBytes`, `ownerId`, `serviceData` (`callSessionId`, parties), `recordingPlaybackLinks`, `aiAssistantData` |
-| `RecordingServiceData` | Service-specific data: `callRecordingId`, `locationId`, `callSessionId`, and (metadata only) the call parties `personality`, `callingParty`, `calledParty` |
+| `Recording` | A User Hub recording. Key fields: `id`, `topic`, `createTime`, `timeRecorded`, `status`, `serviceType`, `durationSeconds`, `sizeBytes`, `ownerId`, `serviceData` (`callSessionId`, parties), `recordingPlaybackLinks`, `aiAssistantData`. Deprecated Hydra fields `ownerType`, `storageRegion`, `temporaryDirectDownloadLinks` stay on the type and are not populated |
+| `RecordingServiceData` | Service-specific data: `callRecordingId`, `locationId`, `callSessionId`, and the call parties `personality`, `callingParty`, `calledParty` |
 | `RecordingPersonality` | Which side the owner was on: `'originator'` (remote = `calledParty`) \| `'terminator'` (remote = `callingParty`) |
 | `RecordingParty` | A call party: `actor` (`{type, id, email}`), `number`, `name`. `actor.id` is the person UUID for avatar/presence |
 | `RecordingActor` | The acting entity behind a party: `type`, `id` (person UUID for Webex users), `email` |
-| `RecordingMetadata` | Metadata document: `owner`, `session`, `participants`, `mediaStreams`, `extensionData`, `serviceData` (with the call parties) |
+| `RecordingMetadata` | User Hub maps `id`, `owner`, `callSessionId`, and `serviceData`. `session`, `participants`, `mediaStreams`, and `extensionData` remain on the type for compatibility and are not populated |
 | `GetRecordingsOptions` | Optional `from`, `to`, `days`, `status`, `max`, `serviceType`, `format`, `ownerType`, `storageRegion`, `locationId`, `topic`, `webexUserRequest` |
 | `RecordingStatus` | Enum: `available`, `deleted` |
 | `RecordingListResponse` | `{statusCode, data: {recordings?, error?}, message}` |
@@ -214,8 +214,8 @@ All reads go through a **single** `getCallRecording` method, which dispatches on
 | Recording id (for `DETAIL` / `METADATA` requests) | `id` |
 | Call session id (for the `BY_CALL_SESSION` request) | `serviceData.callSessionId` |
 | Location | `serviceData.locationId` |
-| Owner | `ownerId` / `ownerEmail` / `ownerType` |
-| Remote party (avatar / presence) | `getRemoteParty(metadata.serviceData)?.actor?.id` — only on the `METADATA` response |
+| Owner | `ownerId` / `ownerEmail`. `ownerType` is deprecated and not populated |
+| Remote party (avatar / presence) | `getRemoteParty(serviceData)?.actor?.id` on list or detail when parties are present |
 | Transcript and summary links (detail body) | `recordingPlaybackLinks.transcriptPlaybackLink`, `aiAssistantData.suggestedNoteUrl` |
 
 ### Configuration
@@ -287,10 +287,10 @@ These apply to the `LIST` and `BY_CALL_SESSION` requests (passed as `request.opt
 
 | ID | WHAT | WHY | Source Evidence | Test / Example Evidence | Assumptions / Gaps | Confidence |
 |---|---|---|---|---|---|---|
-| CALLRECORDIN-R-001 | Retrieves the current user's converged recordings with optional time-range filters, status filter, and pagination. | Server-side time, status, and pagination filters bound response size and let consumers reproduce the Webex recording-list experience. | `src/CallRecording/CallRecording.ts` | `src/CallRecording/CallRecording.test.ts` | none identified | PRESENT |
-| CALLRECORDIN-R-002 | Fetches a single recording by its `id`, including temporary direct download links. | Fetching by recording id is required to retrieve one artifact and its temporary download links without scanning a list response. | `src/CallRecording/CallRecording.ts` | `src/CallRecording/CallRecording.test.ts` | none identified | PRESENT |
-| CALLRECORDIN-R-003 | Returns all recordings tied to a call session id (`serviceData.callSessionId`), filtered client-side. | Client-side session filtering groups every recording artifact for a call even though the service does not expose a dedicated call-session endpoint. | `src/CallRecording/CallRecording.ts` | `src/CallRecording/CallRecording.test.ts` | none identified | PRESENT |
-| CALLRECORDIN-R-004 | Fetches the metadata document for a recording (owner, session, participants, media streams, extension data). | Metadata is fetched separately so participant and media-stream detail is available on demand without inflating every list response. | `src/CallRecording/CallRecording.ts` | `src/CallRecording/CallRecording.test.ts` | none identified | PRESENT |
+| CALLRECORDIN-R-001 | Retrieves the current user's calling recordings. Sends `status` (default `available`) and `limit` (from `max`, default 30), ordered by `appCreateTime` DESC, `offset=0`, `category=calling`. Deprecated list options are accepted and not sent. | Status and page size bound the User Hub list to the newest calling recordings without Hydra time-window filters. | `src/CallRecording/CallRecording.ts` | `src/CallRecording/CallRecording.test.ts` | none identified | PRESENT |
+| CALLRECORDIN-R-002 | Fetches a single recording by its `id`, including `recordingPlaybackLinks` and `aiAssistantData`. Deprecated Hydra fields `ownerType`, `storageRegion`, and `temporaryDirectDownloadLinks` remain on the type and are not populated. | Fetching by recording id is required to retrieve one artifact and its User Hub playback and summary URLs without scanning a list response. | `src/CallRecording/CallRecording.ts` | `src/CallRecording/CallRecording.test.ts` | none identified | PRESENT |
+| CALLRECORDIN-R-003 | Returns all recordings tied to a call session id (`serviceData.callSessionId`), filtered client-side from the same first-page list. | Client-side session filtering groups every recording artifact for a call even though the service does not expose a dedicated call-session endpoint. | `src/CallRecording/CallRecording.ts` | `src/CallRecording/CallRecording.test.ts` | none identified | PRESENT |
+| CALLRECORDIN-R-004 | Fetches metadata from the same User Hub detail URL and maps `id`, owner, `callSessionId`, and `serviceData`. Optional Hydra fields (`session`, `participants`, `mediaStreams`, `extensionData`) stay on the type and are not populated. | Metadata reuses the detail body so party data is available without a Hydra `/metadata` document. | `src/CallRecording/CallRecording.ts` | `src/CallRecording/CallRecording.test.ts` | none identified | PRESENT |
 | CALLRECORDIN-R-005 | Re-emits Mercury `convergedRecordings.*` events as typed `callRecording:*` events. | Re-emitting converged-recording events lets consumers synchronize created, updated, and deleted state without polling the recording service. | `src/CallRecording/CallRecording.ts` | `src/CallRecording/CallRecording.test.ts` | none identified | PRESENT |
 | CALLRECORDIN-R-006 | Standardized error handling via `serviceErrorCodeHandler` with automatic log upload on failure. | Normalized service errors and log upload give callers one failure contract and retain diagnostics for remote recording failures. | `src/CallRecording/CallRecording.ts` | `src/CallRecording/CallRecording.test.ts` | none identified | PRESENT |
 
@@ -298,10 +298,10 @@ These apply to the `LIST` and `BY_CALL_SESSION` requests (passed as `request.opt
 
 | Capability | Description |
 | ----------- | ----------- |
-| **List Recordings** | Retrieves the current user's converged recordings with optional time-range filters, status filter, and pagination. |
-| **Get Recording** | Fetches a single recording by its `id`, including temporary direct download links. |
-| **Get By Call Session** | Returns all recordings tied to a call session id (`serviceData.callSessionId`), filtered client-side. |
-| **Get Metadata** | Fetches the metadata document for a recording (owner, session, participants, media streams, extension data). |
+| **List Recordings** | Retrieves the current user's calling recordings (`status`, `limit` from `max`; ordered by `appCreateTime` DESC). |
+| **Get Recording** | Fetches a single recording by its `id`, including `recordingPlaybackLinks` and `aiAssistantData`. |
+| **Get By Call Session** | Returns all recordings tied to a call session id (`serviceData.callSessionId`), filtered client-side from the same list. |
+| **Get Metadata** | Reads the same User Hub detail URL and returns `id`, owner, `callSessionId`, and `serviceData`. |
 | **Real-Time Recording Events** | Re-emits Mercury `convergedRecordings.*` events as typed `callRecording:*` events. |
 | **Error Handling & Logging** | Standardized error handling via `serviceErrorCodeHandler` with automatic log upload on failure. |
 
@@ -345,10 +345,9 @@ builds the list URL as:
 There is no confirmed server-side query parameter to filter by call session id. The client fetches
 a list (the same operation as a `LIST` request, using `request.options`) and filters client-side on
 `serviceData.callSessionId === callSessionId`. Because the scan is bounded by that list query, it
-only searches the default time window/status and first `max` records unless `options` are passed.
-Forward `GetRecordingsOptions` (e.g. a wider `days`/`from`–`to` window, a different `status`, or a
-larger `max`) when the target session may fall outside the defaults. If the underlying list
-call fails, the original error response is returned unchanged.
+only searches the first page (`offset=0`, `limit` from `max`, default 30) unless a larger `max` or a
+different `status` is passed. Deprecated `from`/`to`/`days` options are accepted and not sent. If
+the underlying list call fails, the original error response is returned unchanged.
 
 ### CallRecording Module — Architecture
 
@@ -366,23 +365,21 @@ call fails, the original error response is returned unchanged.
 
 | Constant | Value | Default |
 |----------|-------|---------|
-| `FROM` | `'from'` | `now - DEFAULT_NUMBER_OF_DAYS` |
-| `TO` | `'to'` | `now` |
-| `DEFAULT_NUMBER_OF_DAYS` | `30` | Lookback to derive `from` (API max window is 30 days) |
+| `ORDER_TYPE` | `'orderType'` | `DESC` |
+| `ORDER_BY` | `'orderBy'` | `appCreateTime` |
 | `STATUS` | `'status'` | `available` |
-| `MAX` | `'max'` | `30` |
-| `SERVICE_TYPE` | `'serviceType'` | _(sent only when provided)_ |
-| `FORMAT` | `'format'` | _(sent only when provided)_ |
-| `OWNER_TYPE` | `'ownerType'` | _(sent only when provided)_ |
-| `STORAGE_REGION` | `'storageRegion'` | _(sent only when provided)_ |
-| `LOCATION_ID` | `'locationId'` | _(sent only when provided)_ |
-| `TOPIC` | `'topic'` | _(sent only when provided)_ |
+| `CATEGORY` | `'category'` | `calling` |
+| `OFFSET` | `'offset'` | `0` |
+| `LIMIT` | `'limit'` | `options.max`, default `30` (`DEFAULT_MAX`) |
+
+Deprecated `GetRecordingsOptions` fields (`from`, `to`, `days`, `serviceType`, `format`,
+`ownerType`, `storageRegion`, `locationId`, `topic`, `webexUserRequest`) are accepted and not sent.
 
 ### Headers
 
 | Constant | Value | Description |
 |----------|-------|-------------|
-| `WEBEX_USER_REQUEST_HEADER` | `'WebexUserRequest'` | Set to `'true'` only when `options.webexUserRequest` is true (rate-limit bypass) |
+| `WEBEX_USER_REQUEST_HEADER` | `'WebexUserRequest'` | Always sent as `'true'` on User Hub recording requests |
 
 ## Data Flow
 
@@ -474,12 +471,12 @@ sequenceDiagram
     participant CR as CallRecording
     participant WxApp as User Hub
 
-    App->>CR: getCallRecording({type: LIST, options: {from, to, days, status, max}})
+    App->>CR: getCallRecording({type: LIST, options: {status, max}})
     activate CR
-    CR->>CR: dispatchGetCallRecording -> buildRecordingsUrl(options)
-    Note over CR: from=now-days (default 30d), to=now, status=available, max=30
-    CR->>WxApp: GET /convergedRecordings?from={now-days}&to={now}&status=available&max=30
-    WxApp-->>CR: 200 {items: [...]}
+    CR->>CR: dispatchGetCallRecording -> buildUserhubRecordingsUrl(options)
+    Note over CR: orderType=DESC, orderBy=appCreateTime, status=available, category=calling, offset=0, limit=max
+    CR->>WxApp: GET /webappng/api/v1/hub/convergedRecordings?orderType=DESC&orderBy=appCreateTime&status=available&category=calling&offset=0&limit=30
+    WxApp-->>CR: 200 {recordings|items: [...]}
     CR-->>App: {statusCode, data: {recordings}, message: 'SUCCESS'}
     deactivate CR
 ```
@@ -519,8 +516,8 @@ sequenceDiagram
 
     App->>CR: getCallRecording({type: BY_CALL_SESSION, callSessionId})
     activate CR
-    CR->>WxApp: GET /convergedRecordings?from={now-days}&to={now}&status=available&max=30
-    WxApp-->>CR: 200 {items: [...]}
+    CR->>WxApp: GET /webappng/api/v1/hub/convergedRecordings?orderType=DESC&orderBy=appCreateTime&status=available&category=calling&offset=0&limit=30
+    WxApp-->>CR: 200 {recordings|items: [...]}
     alt list call failed
         CR-->>App: original error response (unchanged)
     else success
@@ -742,7 +739,7 @@ console.log(webex.internal.services.get('webex-user-hub-service'));
 
 **Possible Causes:**
 - No recordings match the requested `status` filter (e.g. only `deleted` recordings exist while querying `available`).
-- The `from`/`to` window contains no recordings, or the auth token lacks the `spark:recordings_read` scope.
+- The first page (`offset=0`, `limit` from `max`) does not include older recordings, or the auth token lacks the `spark:recordings_read` scope.
 
 ### 3. BYCALLSESSION Request Returns Empty
 
@@ -764,10 +761,9 @@ array. If the underlying list call fails, the original error response is returne
 
 **Symptoms:** `getCallRecording` requests (`LIST`/`DETAIL`) return `statusCode: 401` or `429`.
 
-**Notes:** Errors are returned (not thrown) via `serviceErrorCodeHandler`. For ad-hoc rate-limit
-bypass on explicit end-user actions, pass
-`getCallRecording({type: LIST, options: {webexUserRequest: true}})` to send the
-`WebexUserRequest: true` header.
+**Notes:** Errors are returned (not thrown) via `serviceErrorCodeHandler`. User Hub recording
+requests always send the `WebexUserRequest: true` header. `options.webexUserRequest` is deprecated
+and is not used as a switch.
 
 ## Module Do's / Don'ts
 

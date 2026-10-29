@@ -63,8 +63,7 @@ export type RecordingParty = {
  * `locationId` and the `callSessionId` shared with the originating call session.
  *
  * The party details (`personality`, `callingParty`, `calledParty`) identify who the call was with
- * and are returned by the metadata endpoint (`GET /convergedRecordings/{recordingId}/metadata`);
- * the list endpoint only populates `locationId`/`callSessionId`. Resolve the remote participant's
+ * and are mapped from User Hub `callingData` on list and detail. Resolve the remote participant's
  * person UUID (for avatar/presence) via `getRemoteParty(serviceData)?.actor?.id`.
  */
 export type RecordingServiceData = {
@@ -97,6 +96,17 @@ export type RecordingAiAssistantData = {
 };
 
 /**
+ * Hydra download links previously returned by `GET /convergedRecordings/{recordingId}`.
+ * User Hub does not populate this. Use {@link RecordingPlaybackLinks} and
+ * {@link RecordingAiAssistantData} instead.
+ */
+export type TemporaryDirectDownloadLinks = {
+  audioDownloadLink?: string;
+  transcriptDownloadLink?: string;
+  expiration?: string;
+};
+
+/**
  * A converged recording as returned by `GET /convergedRecordings` (list `items[]`) and
  * `GET /convergedRecordings/{recordingId}`.
  *
@@ -117,15 +127,31 @@ export type Recording = {
   status?: RecordingStatus;
   ownerId?: string;
   ownerEmail?: string;
+  /**
+   * @deprecated Hydra field. Kept so existing TypeScript callers still compile.
+   * User Hub does not populate this.
+   */
+  ownerType?: string;
+  /**
+   * @deprecated Hydra field. Kept so existing TypeScript callers still compile.
+   * User Hub does not populate this.
+   */
+  storageRegion?: string;
   serviceData?: RecordingServiceData;
   recordingPlaybackLinks?: RecordingPlaybackLinks;
   aiAssistantData?: RecordingAiAssistantData;
+  /**
+   * @deprecated Hydra download links. Kept so existing TypeScript callers still compile.
+   * User Hub does not populate this. Use `recordingPlaybackLinks` and `aiAssistantData`.
+   */
+  temporaryDirectDownloadLinks?: TemporaryDirectDownloadLinks;
 };
 
 /**
  * Metadata mapped from the User Hub detail body.
- * The structure is preserved as returned by the backend; optional typed fields are provided
- * for the well-known properties.
+ * User Hub fills `id`, `callSessionId`, `owner`, and `serviceData`.
+ * `session`, `participants`, `mediaStreams`, and `extensionData` stay on the type so existing
+ * callers still compile; User Hub does not populate them.
  */
 export type RecordingMetadataOwner = {
   ownerID?: string;
@@ -297,8 +323,8 @@ export type DetailRecordingRequest = {
 };
 
 /**
- * Fetches the metadata document for a single recording.
- * Maps to `GET /convergedRecordings/{recordingId}/metadata`.
+ * Fetches metadata for a single recording from the User Hub detail URL.
+ * Maps to `GET /webappng/api/v1/hub/convergedRecordings/{recordingId}`.
  */
 export type MetadataRecordingRequest = {
   type: RecordingRequestType.METADATA;

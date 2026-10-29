@@ -69,6 +69,9 @@ describe('WxcCallRecordingConnector tests', () => {
       expect(response.data.recordings?.[0].aiAssistantData?.suggestedNoteUrl).toContain('aibridge');
       expect(response.data.recordings?.[0].serviceData?.personality).toBe('originator');
       expect(response.data.recordings?.[1].serviceData?.personality).toBeUndefined();
+      expect(response.data.recordings?.[0].ownerType).toBeUndefined();
+      expect(response.data.recordings?.[0].storageRegion).toBeUndefined();
+      expect(response.data.recordings?.[0].temporaryDirectDownloadLinks).toBeUndefined();
       expect(errorSpy).not.toHaveBeenCalled();
       expect(uploadLogsSpy).not.toHaveBeenCalled();
     });
@@ -365,6 +368,10 @@ describe('WxcCallRecordingConnector tests', () => {
       expect(response.statusCode).toBe(200);
       expect(response.message).toBe('SUCCESS');
       expect(response.data.metadata?.callSessionId).toBe(CALL_SESSION_ID);
+      expect(response.data.metadata?.serviceData?.callingParty).toBeDefined();
+      expect(response.data.metadata?.session).toBeUndefined();
+      expect(response.data.metadata?.participants).toBeUndefined();
+      expect(response.data.metadata?.mediaStreams).toBeUndefined();
 
       const callArgs = webex.request.mock.calls[webex.request.mock.calls.length - 1][0];
       expect(callArgs.uri).toContain(

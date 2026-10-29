@@ -427,8 +427,8 @@ export class WxcCallRecordingConnector
    * Note (documented API gap): the recording API does not expose a confirmed server-side query parameter
    * to filter by call session id, so a list is fetched and filtered client-side on
    * `serviceData.callSessionId`. The scan is bounded by the list query, so `options` is forwarded
-   * to {@link getRecordings} to let callers widen the time window/status/page when the target
-   * session may fall outside the defaults.
+   * to {@link getRecordings} to let callers change `status` or `max` when the target session may
+   * fall outside the first page.
    *
    * @param callSessionId - The call session id to filter by.
    * @param options - Optional list query forwarded to {@link getRecordings} to control the

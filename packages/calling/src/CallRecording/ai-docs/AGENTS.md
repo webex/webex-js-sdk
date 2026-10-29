@@ -43,7 +43,7 @@ created.
 
 | Capability | Description |
 | ----------- | ----------- |
-| **List Recordings** | Retrieves the current user's converged recordings with optional time-range filters, status filter, and pagination. |
+| **List Recordings** | Retrieves the current user's calling recordings (`status`, `limit` from `max`; ordered by `appCreateTime` DESC). |
 | **Get Recording** | Fetches a single recording by its `id`, including `recordingPlaybackLinks` (transcript and audio) and `aiAssistantData.suggestedNoteUrl`. The SDK returns those URLs; it does not download the transcript or summary. |
 | **Get By Call Session** | Returns all recordings tied to a call session id (`serviceData.callSessionId`), filtered client-side from the same list. |
 | **Get Metadata** | Reads the same User Hub detail as Get Recording and returns only `id`, owner, `callSessionId`, and `serviceData`. |
