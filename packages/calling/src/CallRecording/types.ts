@@ -175,18 +175,45 @@ export type RecordingMetadata = {
 
 /**
  * Options for a recording list. Only `status` and `max` are sent.
- * `days` is accepted so existing callers keep compiling; the User Hub list does not send it.
+ * The other fields are accepted so existing callers keep compiling. The User Hub list does not send them.
  * The connector always sends `WebexUserRequest: true`.
  */
 export type GetRecordingsOptions = {
   /**
-   * Accepted for existing callers. Not sent. The list is ordered by `appCreateTime`.
+   * @deprecated Accepted for existing callers. Not sent. The list is ordered by `appCreateTime`.
+   */
+  from?: string;
+  /**
+   * @deprecated Accepted for existing callers. Not sent. The list is ordered by `appCreateTime`.
+   */
+  to?: string;
+  /**
+   * @deprecated Accepted for existing callers. Not sent. The list is ordered by `appCreateTime`.
    */
   days?: number;
   /** Filter by recording status. Defaults to `available`. Sent as `status`. */
   status?: RecordingStatus;
   /** Page size. Defaults to `30`. Sent as `limit`. */
   max?: number;
+  /**
+   * @deprecated Accepted for existing callers. Not sent. The list always uses `category=calling`.
+   */
+  serviceType?: string;
+  /** @deprecated Accepted for existing callers. Not sent. */
+  format?: string;
+  /** @deprecated Accepted for existing callers. Not sent. */
+  ownerType?: string;
+  /** @deprecated Accepted for existing callers. Not sent. */
+  storageRegion?: string;
+  /** @deprecated Accepted for existing callers. Not sent. */
+  locationId?: string;
+  /** @deprecated Accepted for existing callers. Not sent. */
+  topic?: string;
+  /**
+   * @deprecated Accepted for existing callers. Not sent as a switch.
+   * The connector always sends `WebexUserRequest: true`.
+   */
+  webexUserRequest?: boolean;
 };
 
 export type RecordingListResponse = {

@@ -67,6 +67,8 @@ describe('WxcCallRecordingConnector tests', () => {
         response.data.recordings?.[0].recordingPlaybackLinks?.transcriptPlaybackLink
       ).toContain('transcript.txt');
       expect(response.data.recordings?.[0].aiAssistantData?.suggestedNoteUrl).toContain('aibridge');
+      expect(response.data.recordings?.[0].serviceData?.personality).toBe('originator');
+      expect(response.data.recordings?.[1].serviceData?.personality).toBeUndefined();
       expect(errorSpy).not.toHaveBeenCalled();
       expect(uploadLogsSpy).not.toHaveBeenCalled();
     });
@@ -80,6 +82,16 @@ describe('WxcCallRecordingConnector tests', () => {
         options: {
           status: RecordingStatus.DELETED,
           max: 25,
+          from: '2024-01-01T00:00:00.000Z',
+          to: '2024-02-01T00:00:00.000Z',
+          days: 7,
+          serviceType: 'meeting',
+          format: 'MP4',
+          ownerType: 'user',
+          storageRegion: 'US',
+          locationId: 'loc-9',
+          topic: 'standup',
+          webexUserRequest: false,
         },
       });
 
@@ -94,6 +106,12 @@ describe('WxcCallRecordingConnector tests', () => {
       expect(callArgs.uri).toContain('offset=0');
       expect(callArgs.uri).not.toContain('from=');
       expect(callArgs.uri).not.toContain('to=');
+      expect(callArgs.uri).not.toContain('serviceType=');
+      expect(callArgs.uri).not.toContain('format=');
+      expect(callArgs.uri).not.toContain('ownerType=');
+      expect(callArgs.uri).not.toContain('storageRegion=');
+      expect(callArgs.uri).not.toContain('locationId=');
+      expect(callArgs.uri).not.toContain('topic=');
       expect(callArgs.uri).not.toContain('siteurl=');
       expect(callArgs.headers).toEqual({
         Accept: 'application/json',
@@ -168,8 +186,28 @@ describe('WxcCallRecordingConnector tests', () => {
         expect(fetchArgs[1].headers.WebexUserRequest).toBe('true');
         expect(fetchArgs[1].headers['cisco-device-url']).toBeUndefined();
         expect(fetchArgs[1].headers['spark-user-agent']).toBeUndefined();
+        expect(infoSpy).toHaveBeenCalledWith(
+          expect.stringContaining('retrying with the user token'),
+          expect.objectContaining({method: METHODS.GET_RECORDINGS})
+        );
       } finally {
         global.fetch = originalFetch;
+      }
+    });
+
+    it('returns 503 and does not call User Hub when the catalog host is missing', async () => {
+      const serviceUrls = webex.internal.services._serviceUrls as Record<string, string>;
+      const saved = serviceUrls['webex-user-hub-service'];
+      delete serviceUrls['webex-user-hub-service'];
+      webex.request.mockClear();
+
+      try {
+        const response = await connector.getCallRecording({type: RecordingRequestType.LIST});
+
+        expect(response.statusCode).toBe(503);
+        expect(webex.request).not.toHaveBeenCalled();
+      } finally {
+        serviceUrls['webex-user-hub-service'] = saved;
       }
     });
 
@@ -385,6 +423,32 @@ describe('WxcCallRecordingConnector tests', () => {
       const callArgs = webex.request.mock.calls[webex.request.mock.calls.length - 1][0];
       expect(callArgs.method).toBe(HTTP_METHODS.POST);
       expect(callArgs.body).toStrictEqual({recordUUIDs: [RECORDING_ONE.id]});
+    });
+
+    it('logs a 500 retry under deleteRecording', async () => {
+      webex.request.mockRejectedValue(<WebexRequestPayload>(<unknown>{statusCode: 500}));
+      webex.credentials.getUserToken.mockResolvedValue({
+        toString: () => 'Bearer user-token',
+      });
+      const fetchMock = jest.fn().mockResolvedValue({
+        ok: true,
+        status: 204,
+        text: async () => '',
+      });
+      const originalFetch = global.fetch;
+      global.fetch = fetchMock as unknown as typeof fetch;
+
+      try {
+        const response = await connector.deleteRecording(RECORDING_ONE.id);
+
+        expect(response.statusCode).toBe(204);
+        expect(infoSpy).toHaveBeenCalledWith(
+          expect.stringContaining('retrying with the user token'),
+          expect.objectContaining({method: METHODS.DELETE_RECORDING})
+        );
+      } finally {
+        global.fetch = originalFetch;
+      }
     });
 
     it('handles a 400 error', async () => {

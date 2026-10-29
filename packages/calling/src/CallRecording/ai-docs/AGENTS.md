@@ -132,7 +132,7 @@ All reads go through a **single** `getCallRecording` method, which dispatches on
 | `RecordingParty` | A call party: `actor` (`{type, id, email}`), `number`, `name`. `actor.id` is the person UUID for avatar/presence |
 | `RecordingActor` | The acting entity behind a party: `type`, `id` (person UUID for Webex users), `email` |
 | `RecordingMetadata` | Metadata document: `owner`, `session`, `participants`, `mediaStreams`, `extensionData`, `serviceData` (with the call parties) |
-| `GetRecordingsOptions` | `status` and `max` are sent (`status`, `limit`). `days` is accepted and not sent. There is no `siteUrl`. |
+| `GetRecordingsOptions` | `status` and `max` are sent (`status`, `limit`). `days`, `from`, `to`, and the older filters are accepted and not sent. There is no `siteUrl`. |
 | `RecordingStatus` | Enum: `available`, `deleted` |
 | `RecordingListResponse` | `{statusCode, data: {recordings?, error?}, message}` |
 | `RecordingResponse` | `{statusCode, data: {recording?, error?}, message}` |
@@ -173,6 +173,7 @@ These apply to the `LIST` and `BY_CALL_SESSION` requests (passed as `request.opt
 | `status` | `RecordingStatus` | yes, default `available` | Query `status` |
 | `max` | `number` | yes, default `30` | Query `limit` |
 | `days` | `number` | no | Accepted so existing callers keep compiling. The list orders by `appCreateTime` |
+| `from`, `to`, `serviceType`, `format`, `ownerType`, `storageRegion`, `locationId`, `topic`, `webexUserRequest` | see type | no | Deprecated. Accepted so existing callers keep compiling. Not sent |
 
 The list query is fixed apart from `status` and `limit`:
 

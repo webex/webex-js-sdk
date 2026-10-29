@@ -86,12 +86,15 @@ function toIsoTime(value?: string): string | undefined {
 }
 
 function mapPersonality(value?: string): RecordingPersonality | undefined {
-  const personality = (value ?? '').toLowerCase();
+  const personality = (value ?? '').trim().toLowerCase();
   if (personality === 'terminator' || personality === 'terminating' || personality === 'callee') {
     return 'terminator';
   }
+  if (personality === 'originator' || personality === 'originating' || personality === 'caller') {
+    return 'originator';
+  }
 
-  return 'originator';
+  return undefined;
 }
 
 export function mapUserhubRecording(item: UserhubRecording): Recording {

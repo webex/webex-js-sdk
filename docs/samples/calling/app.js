@@ -1245,7 +1245,7 @@ async function fetchRecording() {
 }
 
 /**
- * Permanently delete a single recording by its id. Per the API this cannot be undone.
+ * Moves a recording to the recycle bin (soft delete). It can be restored from the recycle bin.
  */
 async function removeRecording() {
   const recordingId = document.getElementById('recordingId').value;
@@ -1257,7 +1257,7 @@ async function removeRecording() {
   }
 
   // eslint-disable-next-line no-alert
-  if (!window.confirm(`Permanently delete recording ${recordingId}? This cannot be undone.`)) {
+  if (!window.confirm(`Move recording ${recordingId} to the recycle bin?`)) {
     return;
   }
 

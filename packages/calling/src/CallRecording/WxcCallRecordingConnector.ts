@@ -137,6 +137,10 @@ export class WxcCallRecordingConnector
    * User Hub does not need `siteurl` for calling recordings. A wrong site name returns 500.
    */
   private buildUserhubRecordingsUrl(options?: GetRecordingsOptions): string {
+    const baseUrl = this.resolveUserhubBaseUrl();
+    if (!baseUrl) {
+      return '';
+    }
     const params = new URLSearchParams();
     params.append(ORDER_TYPE, DEFAULT_ORDER_TYPE);
     params.append(ORDER_BY, DEFAULT_ORDER_BY);
@@ -145,17 +149,29 @@ export class WxcCallRecordingConnector
     params.append(OFFSET, DEFAULT_OFFSET);
     params.append(LIMIT, `${options?.max ?? DEFAULT_MAX}`);
 
-    return `${this.resolveUserhubBaseUrl()}?${params.toString()}`;
+    return `${baseUrl}?${params.toString()}`;
   }
 
   private buildUserhubRecordingUrl(recordingId: string): string {
-    return `${this.resolveUserhubBaseUrl()}/${encodeURIComponent(recordingId)}`;
+    const baseUrl = this.resolveUserhubBaseUrl();
+    if (!baseUrl) {
+      return '';
+    }
+
+    return `${baseUrl}/${encodeURIComponent(recordingId)}`;
+  }
+
+  private buildUserhubSoftDeleteUrl(): string {
+    const baseUrl = this.resolveUserhubBaseUrl();
+
+    return baseUrl ? `${baseUrl}/${SOFT_DELETE}` : '';
   }
 
   private async userhubRequest(
     url: string,
     method: HTTP_METHODS,
-    body?: Record<string, unknown>
+    body?: Record<string, unknown>,
+    logMethod: string = METHODS.GET_RECORDINGS
   ): Promise<WebexRequestPayload> {
     if (!url) {
       const error = new Error('User Hub recordings URL is empty') as Error & {statusCode: number};
@@ -189,7 +205,7 @@ export class WxcCallRecordingConnector
       }
       log.info('User Hub returned 500 from webex.request; retrying with the user token only', {
         file: CALL_RECORDING_FILE,
-        method: METHODS.GET_RECORDINGS,
+        method: logMethod,
       });
 
       return this.userhubFetch(url, method, body);
@@ -367,7 +383,12 @@ export class WxcCallRecordingConnector
 
     try {
       const response = <WebexRequestPayload>(
-        await this.userhubRequest(this.buildUserhubRecordingUrl(recordingId), HTTP_METHODS.GET)
+        await this.userhubRequest(
+          this.buildUserhubRecordingUrl(recordingId),
+          HTTP_METHODS.GET,
+          undefined,
+          METHODS.GET_RECORDING
+        )
       );
 
       log.log(`Response trackingId: ${response?.headers?.trackingid}`, loggerContext);
@@ -388,7 +409,10 @@ export class WxcCallRecordingConnector
 
       return responseDetails;
     } catch (err: unknown) {
-      log.error(`Failed to get recording: ${JSON.stringify(err)}`, loggerContext);
+      log.error(
+        `Failed to get recording: ${readUserhubErrorDetail(err) || JSON.stringify(err)}`,
+        loggerContext
+      );
       await uploadLogs();
 
       const errorInfo = err as WebexRequestPayload;
@@ -463,7 +487,12 @@ export class WxcCallRecordingConnector
 
     try {
       const response = <WebexRequestPayload>(
-        await this.userhubRequest(this.buildUserhubRecordingUrl(recordingId), HTTP_METHODS.GET)
+        await this.userhubRequest(
+          this.buildUserhubRecordingUrl(recordingId),
+          HTTP_METHODS.GET,
+          undefined,
+          METHODS.GET_RECORDING_METADATA
+        )
       );
 
       log.log(`Response trackingId: ${response?.headers?.trackingid}`, loggerContext);
@@ -484,7 +513,10 @@ export class WxcCallRecordingConnector
 
       return responseDetails;
     } catch (err: unknown) {
-      log.error(`Failed to get recording metadata: ${JSON.stringify(err)}`, loggerContext);
+      log.error(
+        `Failed to get recording metadata: ${readUserhubErrorDetail(err) || JSON.stringify(err)}`,
+        loggerContext
+      );
       await uploadLogs();
 
       const errorInfo = err as WebexRequestPayload;
@@ -522,9 +554,10 @@ export class WxcCallRecordingConnector
     try {
       const response = <WebexRequestPayload>(
         await this.userhubRequest(
-          `${this.resolveUserhubBaseUrl()}/${SOFT_DELETE}`,
+          this.buildUserhubSoftDeleteUrl(),
           HTTP_METHODS.POST,
-          {recordUUIDs: [recordingId]}
+          {recordUUIDs: [recordingId]},
+          METHODS.DELETE_RECORDING
         )
       );
 
@@ -540,7 +573,10 @@ export class WxcCallRecordingConnector
 
       return responseDetails;
     } catch (err: unknown) {
-      log.error(`Failed to delete recording: ${JSON.stringify(err)}`, loggerContext);
+      log.error(
+        `Failed to delete recording: ${readUserhubErrorDetail(err) || JSON.stringify(err)}`,
+        loggerContext
+      );
       await uploadLogs();
 
       const errorInfo = err as WebexRequestPayload;

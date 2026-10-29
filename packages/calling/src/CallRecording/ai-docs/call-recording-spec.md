@@ -233,18 +233,18 @@ These apply to the `LIST` and `BY_CALL_SESSION` requests (passed as `request.opt
 
 | Field | Type | Default | Description |
 | ----- | ---- | ------- | ----------- |
-| `from` | `string` (ISO-8601) | `now - days` | Inclusive start of the time window (always sent) |
-| `to` | `string` (ISO-8601) | `now` | Inclusive end of the time window (always sent) |
-| `days` | `number` | `30` | Lookback used to derive `from` when `from` is omitted (API max window is 30 days) |
-| `status` | `RecordingStatus` | `available` | Filter by recording status (`available`/`deleted`) |
-| `max` | `number` | `30` | Maximum number of records to return per page |
-| `serviceType` | `string` | _(unset)_ | Filter by producing service (e.g. `calling`); sent only when provided |
-| `format` | `string` | _(unset)_ | Filter by media format (e.g. `MP3`, `MP4`); sent only when provided |
-| `ownerType` | `string` | _(unset)_ | Filter by owner type (e.g. `user`); sent only when provided |
-| `storageRegion` | `string` | _(unset)_ | Filter by storage region (e.g. `US`); sent only when provided |
-| `locationId` | `string` | _(unset)_ | Filter by location id; sent only when provided |
-| `topic` | `string` | _(unset)_ | Filter by recording topic; sent only when provided |
-| `webexUserRequest` | `boolean` | `false` | When true, sends the `WebexUserRequest: true` header (ad-hoc rate-limit bypass) |
+| `from` | `string` (ISO-8601) | _(ignored)_ | Deprecated. Accepted so existing callers keep compiling. Not sent |
+| `to` | `string` (ISO-8601) | _(ignored)_ | Deprecated. Accepted so existing callers keep compiling. Not sent |
+| `days` | `number` | _(ignored)_ | Deprecated. Accepted so existing callers keep compiling. Not sent |
+| `status` | `RecordingStatus` | `available` | Filter by recording status (`available`/`deleted`). Sent as `status` |
+| `max` | `number` | `30` | Page size. Sent as `limit` |
+| `serviceType` | `string` | _(ignored)_ | Deprecated. The list always uses `category=calling`. Not sent |
+| `format` | `string` | _(ignored)_ | Deprecated. Accepted so existing callers keep compiling. Not sent |
+| `ownerType` | `string` | _(ignored)_ | Deprecated. Accepted so existing callers keep compiling. Not sent |
+| `storageRegion` | `string` | _(ignored)_ | Deprecated. Accepted so existing callers keep compiling. Not sent |
+| `locationId` | `string` | _(ignored)_ | Deprecated. Accepted so existing callers keep compiling. Not sent |
+| `topic` | `string` | _(ignored)_ | Deprecated. Accepted so existing callers keep compiling. Not sent |
+| `webexUserRequest` | `boolean` | _(ignored)_ | Deprecated. The connector always sends `WebexUserRequest: true` |
 
 ### Mercury Event Keys (Events/types.ts)
 
