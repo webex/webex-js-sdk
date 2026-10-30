@@ -20,7 +20,7 @@ export enum encryptedFields {
   SIP_ADDRESSES = 'sipAddresses',
   TITLE = 'title',
 }
-
+// Method names
 export const METHODS = {
   GET_CONTACTS: 'getContacts',
   CREATE_NEW_ENCRYPTION_KEY_URL: 'createNewEncryptionKeyUrl',
