@@ -17,11 +17,19 @@ const WorkerMessageType = {
 let keepaliveTimer;
 let keepAliveRetryCount = 0;
 let keepaliveInFlight = false;
+let keepaliveInFlightTimeout;
 
 const clearKeepaliveTimer = () => {
   if (keepaliveTimer) {
     clearInterval(keepaliveTimer);
     keepaliveTimer = undefined;
+  }
+};
+
+const clearKeepaliveInFlightTimeout = () => {
+  if (keepaliveInFlightTimeout) {
+    clearTimeout(keepaliveInFlightTimeout);
+    keepaliveInFlightTimeout = undefined;
   }
 };
 
@@ -32,12 +40,17 @@ const messageHandler = (event) => {
     const {interval, retryCountThreshold} = event.data;
 
     clearKeepaliveTimer();
+    clearKeepaliveInFlightTimeout();
     keepAliveRetryCount = 0;
     keepaliveInFlight = false;
 
     keepaliveTimer = setInterval(() => {
       if (keepAliveRetryCount < retryCountThreshold && !keepaliveInFlight) {
         keepaliveInFlight = true;
+        keepaliveInFlightTimeout = setTimeout(() => {
+          keepaliveInFlight = false;
+          keepaliveInFlightTimeout = undefined;
+        }, interval * 2 * 1000);
         self.postMessage({
           type: WorkerMessageType.SEND_KEEPALIVE,
         });
@@ -47,6 +60,7 @@ const messageHandler = (event) => {
 
   if (type === WorkerMessageType.KEEPALIVE_RESULT) {
     keepaliveInFlight = false;
+    clearKeepaliveInFlightTimeout();
 
     if (event.data.err === undefined) {
       if (keepAliveRetryCount > 0) {
@@ -69,6 +83,7 @@ const messageHandler = (event) => {
 
   if (type === WorkerMessageType.CLEAR_KEEPALIVE) {
     clearKeepaliveTimer();
+    clearKeepaliveInFlightTimeout();
     keepAliveRetryCount = 0;
     keepaliveInFlight = false;
   }

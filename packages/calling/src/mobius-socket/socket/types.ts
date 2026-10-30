@@ -64,6 +64,14 @@ export type SocketResponse = {
 };
 
 /**
+ * Runtime type guard for SocketResponse. Accepts any non-null plain object;
+ * rejects primitives and arrays which can never be valid frames.
+ */
+export function isSocketResponse(value: unknown): value is SocketResponse {
+  return typeof value === 'object' && value !== null && !Array.isArray(value);
+}
+
+/**
  * Entry for tracking pending request/response pairs.
  */
 export type PendingResponseEntry = {
