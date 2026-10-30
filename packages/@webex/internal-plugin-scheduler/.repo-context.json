@@ -1,0 +1,477 @@
+{
+  "$schema": "./schemas/repo-context.schema.json",
+  "version": 1,
+  "repository": {
+    "name": "@webex/internal-plugin-scheduler",
+    "purpose": "Internal Webex JS SDK plugin scaffold registered as webex.internal.scheduler. Importing it imports @webex/internal-plugin-encryption and registers the Scheduler plugin with a placeholder config under the scheduler key and three example payload predicates and transforms; webex-core tests the predicates in each webex.transform call of webex instances built after the import. Scheduler has no scheduling behavior; its methods (exampleRequestUsage, exampleEventUsage, exampleMercuryConnection) are examples."
+  },
+  "commands": {
+    "install": "yarn install",
+    "compile": "yarn workspace @webex/internal-plugin-scheduler build:src",
+    "build": "yarn workspace @webex/internal-plugin-scheduler build",
+    "unit-test": "yarn workspace @webex/internal-plugin-scheduler test:unit",
+    "integration-test": "yarn workspace @webex/internal-plugin-scheduler test:browser",
+    "lint": "yarn workspace @webex/internal-plugin-scheduler test:style",
+    "deploy": "yarn workspace @webex/internal-plugin-scheduler deploy:npm"
+  },
+  "public_interfaces": [
+    {
+      "name": "@webex/internal-plugin-scheduler package barrel",
+      "kind": "package_export",
+      "source": "src/index.js",
+      "entrypoints": [
+        "import Scheduler from '@webex/internal-plugin-scheduler'"
+      ],
+      "audience": "no workspace package; any application that imports the package",
+      "notes": "Importing the package imports @webex/internal-plugin-encryption for its side effect and registers Scheduler as internal plugin 'scheduler' with a placeholder config and three example payload predicates and transforms. config and CONSTANTS are not re-exported by the barrel."
+    },
+    {
+      "name": "webex.internal.scheduler example methods",
+      "kind": "plugin_api",
+      "source": "src/scheduler/scheduler.js",
+      "entrypoints": [
+        "webex.internal.scheduler.exampleEventUsage()",
+        "webex.internal.scheduler.exampleMercuryConnection()",
+        "webex.internal.scheduler.exampleRequestUsage()"
+      ],
+      "audience": "none found; scaffold examples",
+      "notes": "Examples only. exampleEventUsage throws; exampleRequestUsage and exampleMercuryConnection drop a promise without handling its rejection. See src/docs/README.md."
+    },
+    {
+      "name": "payload predicates and transforms",
+      "kind": "other",
+      "source": "src/payloadTransformer/index.js",
+      "entrypoints": [
+        "exampleGeneralPredicate",
+        "exampleInboundPredicate",
+        "exampleOutboundPredicate",
+        "exampleGeneralTransformer",
+        "exampleInboundTransformer",
+        "exampleOutboundTransformer"
+      ],
+      "audience": "webex-core webex.transform",
+      "notes": "Predicates are tested on webex.transform calls of webex instances built after the import, for the call's direction. A match rejects with a TypeError (outbound) or starts an unbounded chain that starves the event loop (inbound); see INV-002, INV-003, and Caller-visible failure modes in src/docs/README.md."
+    },
+    {
+      "name": "package scripts",
+      "kind": "npm_scripts",
+      "source": "package.json",
+      "entrypoints": [
+        "build",
+        "build:src",
+        "test:style",
+        "test:unit",
+        "test:browser",
+        "deploy:npm"
+      ],
+      "audience": "contributors and CI",
+      "notes": "Do not use the aggregate test script; it calls test:integration, which is not defined. test:unit needs this package's build output and the sibling packages' build output."
+    }
+  ],
+  "source_of_truth": [
+    {
+      "surface": "Scheduler plugin implementation",
+      "paths": [
+        "src/index.js",
+        "src/scheduler/scheduler.js",
+        "src/scheduler/scheduler.config.js",
+        "src/scheduler/scheduler.constants.js",
+        "src/scheduler/index.js",
+        "src/payloadTransformer/index.js",
+        "src/payloadTransformer/predicates.js",
+        "src/payloadTransformer/transformers.js"
+      ],
+      "generated_artifacts": [
+        "dist"
+      ],
+      "refresh_with": [
+        "yarn workspace @webex/internal-plugin-scheduler build"
+      ],
+      "validate_with": [
+        "yarn workspace @webex/internal-plugin-scheduler build",
+        "yarn workspace @webex/internal-plugin-scheduler test:unit",
+        "yarn workspace @webex/internal-plugin-scheduler test:style"
+      ]
+    },
+    {
+      "surface": "module specification",
+      "paths": [
+        "src/docs/README.md"
+      ],
+      "generated_artifacts": [],
+      "refresh_with": [
+        "update alongside the behavior change in the same commit"
+      ],
+      "validate_with": [
+        "spec-validator on an independent runtime"
+      ]
+    }
+  ],
+  "generated_artifacts": [
+    {
+      "path": "dist",
+      "generated_from": "src",
+      "refresh_with": "yarn workspace @webex/internal-plugin-scheduler build"
+    },
+    {
+      "path": ".sdd/templates/repo-standards/template-map.json",
+      "generated_from": "WebexTools/repo-standards@d89a7fe59126ae3ad9bac9ca352aa7f12b4c85dc",
+      "refresh_with": "Read from the JS SDK root .sdd/templates/repo-standards (Repo Standards 0.3.0 snapshot from PR 5246). Only to run the Repo Annotation checkers and validator, a temporary local symlink at .sdd/templates/repo-standards points there; it is never committed, and templates are never copied into the package."
+    }
+  ],
+  "validation_matrix": [
+    {
+      "paths": [
+        "src/**"
+      ],
+      "minimum": [
+        "yarn workspace @webex/internal-plugin-scheduler build",
+        "yarn workspace @webex/internal-plugin-scheduler test:unit",
+        "yarn workspace @webex/internal-plugin-scheduler test:style"
+      ],
+      "recommended": []
+    },
+    {
+      "paths": [
+        "src/payloadTransformer/**"
+      ],
+      "minimum": [
+        "yarn workspace @webex/internal-plugin-scheduler build",
+        "yarn workspace @webex/internal-plugin-scheduler test:unit",
+        "yarn workspace @webex/internal-plugin-scheduler test:style"
+      ],
+      "recommended": [
+        "add a unit case that runs each changed predicate and transform through webex.transform, because none exists today"
+      ]
+    },
+    {
+      "paths": [
+        "package.json"
+      ],
+      "minimum": [
+        "yarn workspace @webex/internal-plugin-scheduler build",
+        "yarn workspace @webex/internal-plugin-scheduler test:unit",
+        "yarn workspace @webex/internal-plugin-scheduler test:style"
+      ],
+      "recommended": [
+        "yarn workspace @webex/internal-plugin-scheduler test:browser"
+      ]
+    }
+  ],
+  "change_impact": [
+    {
+      "paths": [
+        "src/payloadTransformer/predicates.js",
+        "src/payloadTransformer/transformers.js",
+        "src/payloadTransformer/index.js"
+      ],
+      "affects": [
+        "every webex.transform call on webex instances built after the import",
+        "requests and responses passing through the webex-core payload-transformer interceptor"
+      ],
+      "refresh_with": [
+        "yarn workspace @webex/internal-plugin-scheduler build"
+      ],
+      "validate_with": [
+        "yarn workspace @webex/internal-plugin-scheduler build",
+        "yarn workspace @webex/internal-plugin-scheduler test:unit",
+        "yarn workspace @webex/internal-plugin-scheduler test:style"
+      ],
+      "avoid_direct_edits": [
+        "dist"
+      ],
+      "notes": "The transforms are registered for the whole webex-core pipeline, not only for scheduler calls."
+    },
+    {
+      "paths": [
+        "src/scheduler/scheduler.js"
+      ],
+      "affects": [
+        "the plugin's construction log and initialize listeners",
+        "the example methods"
+      ],
+      "refresh_with": [
+        "yarn workspace @webex/internal-plugin-scheduler build"
+      ],
+      "validate_with": [
+        "yarn workspace @webex/internal-plugin-scheduler build",
+        "yarn workspace @webex/internal-plugin-scheduler test:unit",
+        "yarn workspace @webex/internal-plugin-scheduler test:style"
+      ],
+      "avoid_direct_edits": [
+        "dist"
+      ],
+      "notes": "When overriding initialize, call WebexPlugin's initialize; the current override does not."
+    },
+    {
+      "paths": [
+        "src/index.js",
+        "src/scheduler/scheduler.constants.js",
+        "src/scheduler/scheduler.config.js"
+      ],
+      "affects": [
+        "the package export",
+        "the internal plugin name 'scheduler'",
+        "webex.config.scheduler"
+      ],
+      "refresh_with": [
+        "yarn workspace @webex/internal-plugin-scheduler build"
+      ],
+      "validate_with": [
+        "yarn workspace @webex/internal-plugin-scheduler build",
+        "yarn workspace @webex/internal-plugin-scheduler test:unit",
+        "yarn workspace @webex/internal-plugin-scheduler test:style"
+      ],
+      "avoid_direct_edits": [
+        "dist"
+      ],
+      "notes": "Renaming the plugin is a breaking change for importers. CONSTANTS.NAMESPACE sets the plugin name and namespace, but the config key in scheduler.config.js is a separate literal; change both together (INV-001)."
+    },
+    {
+      "paths": [
+        "package.json"
+      ],
+      "affects": [
+        "the published entry points (main, devMain)",
+        "package scripts and the manifest commands that call them",
+        "runtime dependencies resolved by importers"
+      ],
+      "refresh_with": [
+        "yarn workspace @webex/internal-plugin-scheduler build"
+      ],
+      "validate_with": [
+        "yarn workspace @webex/internal-plugin-scheduler build",
+        "yarn workspace @webex/internal-plugin-scheduler test:unit",
+        "yarn workspace @webex/internal-plugin-scheduler test:style"
+      ],
+      "avoid_direct_edits": [
+        "dist"
+      ],
+      "notes": "package.json is the native artifact of the published scheduler-sdk contract; update .sdd/manifest.json commands and docs/getting-started.md when a script changes."
+    }
+  ],
+  "evidence_rules": [
+    {
+      "claim_category": "command_name",
+      "sources": [
+        "package.json"
+      ],
+      "requirement": "The script must exist in package.json scripts.",
+      "notes": "Never cite the aggregate test script or test:integration as a verification command."
+    },
+    {
+      "claim_category": "import_path",
+      "sources": [
+        "src/index.js"
+      ],
+      "requirement": "A binding is public only if exported from src/index.js.",
+      "notes": "Only the default Scheduler export exists; there are no subpath entry points."
+    },
+    {
+      "claim_category": "behavior_claim",
+      "sources": [
+        "src",
+        "test/unit/spec"
+      ],
+      "requirement": "Ground every behavioral claim in source or unit test evidence.",
+      "notes": "Commit history is not an evidence source for this package. README.md is retained product documentation, not the behavioral authority. The integration specs are placeholders and are not evidence of plugin behavior."
+    }
+  ],
+  "negative_guidance": [
+    {
+      "rule": "Do not call the example methods from product code.",
+      "why": "exampleEventUsage throws, and the other two drop promises whose rejections are unhandled."
+    },
+    {
+      "rule": "Do not send payloads with value, inboundValue, or outboundValue fields through webex.transform while this package is imported.",
+      "why": "The example predicates match them; the outbound transform rejects with a TypeError and the inbound chain never settles and blocks timers and I/O."
+    },
+    {
+      "rule": "Do not describe the package as implementing scheduling.",
+      "why": "No scheduling method exists; the README line describes intent only. See docs/adr/0001-retain-product-readme.md."
+    },
+    {
+      "rule": "Do not infer a coverage threshold for this package.",
+      "why": "No coverage gate applies: jest-config-legacy sets collectCoverage false and package.json has no coverage script."
+    }
+  ],
+  "confidence_policy": {
+    "high": {
+      "action": "update",
+      "expectation": "Source and unit test evidence both support the change, for example that request and logger are mounted."
+    },
+    "medium": {
+      "action": "narrow-scope",
+      "expectation": "Only source evidence exists, for example the example methods, initialize, the config, and the transforms. Pin current behavior with a characterization test before modifying."
+    },
+    "low": {
+      "action": "noop",
+      "expectation": "Neither source nor tests settle the question, for example what scheduler behavior the package should eventually provide. Stop and report the gap."
+    }
+  },
+  "repository_topology": {
+    "main_entrypoints": [
+      {
+        "name": "package barrel",
+        "path": "src/index.js",
+        "purpose": "Imports the encryption plugin for its side effect, registers the plugin with its config and payload transformer, and re-exports Scheduler",
+        "notes": "No subpath exports."
+      }
+    ],
+    "workspace_packages": [
+      {
+        "name": "@webex/internal-plugin-scheduler",
+        "paths": [
+          "src",
+          "test"
+        ],
+        "notes": "One module; this SDD root is the package directory inside the webex-js-sdk monorepo."
+      }
+    ],
+    "source_surfaces": [
+      {
+        "name": "Scheduler plugin",
+        "paths": [
+          "src"
+        ],
+        "notes": "index.js, scheduler/, payloadTransformer/. Specified at src/docs/README.md."
+      },
+      {
+        "name": "tests",
+        "paths": [
+          "test/unit/spec",
+          "test/integration/spec"
+        ],
+        "notes": "One Jest spec with two cases; three placeholder integration specs collected by test:browser."
+      }
+    ],
+    "generated_surfaces": [
+      {
+        "name": "build output",
+        "paths": [
+          "dist"
+        ],
+        "generated_from": "src",
+        "refresh_with": "yarn workspace @webex/internal-plugin-scheduler build",
+        "notes": "Produced by webex-legacy-tools. Do not edit by hand."
+      },
+      {
+        "name": "repo-standards template map",
+        "paths": [
+          ".sdd/templates/repo-standards"
+        ],
+        "generated_from": "WebexTools/repo-standards@d89a7fe59126ae3ad9bac9ca352aa7f12b4c85dc",
+        "refresh_with": "Read from the JS SDK root .sdd/templates/repo-standards (Repo Standards 0.3.0 snapshot from PR 5246). Only to run the Repo Annotation checkers and validator, a temporary local symlink at .sdd/templates/repo-standards points there; it is never committed, and templates are never copied into the package.",
+        "notes": "Read from the JS SDK root .sdd/templates/repo-standards (Repo Standards 0.3.0 snapshot from PR 5246). Only to run the Repo Annotation checkers and validator, a temporary local symlink at .sdd/templates/repo-standards points there; it is never committed, and templates are never copied into the package."
+      }
+    ],
+    "validation_entrypoints": [
+      {
+        "name": "unit tests",
+        "command": "yarn workspace @webex/internal-plugin-scheduler test:unit",
+        "scope": "test/unit/spec",
+        "notes": "Jest via webex-legacy-tools --runner jest. Build first: the spec imports the package by name, which resolves to dist/."
+      },
+      {
+        "name": "integration tests",
+        "command": "yarn workspace @webex/internal-plugin-scheduler test:browser",
+        "scope": "test/integration/spec",
+        "notes": "karma via webex-legacy-tools --integration (no test:integration script exists); the unit spec is not collected. Needs Chrome and Firefox (the karma-browsers default), network access, and the WEBEX_CLIENT_ID and WEBEX_CLIENT_SECRET environment variables required by the workspace test-users helper."
+      },
+      {
+        "name": "lint",
+        "command": "yarn workspace @webex/internal-plugin-scheduler test:style",
+        "scope": "src",
+        "notes": "eslint via the local root .eslintrc.js; *.config.* and *.md files are ignored by the shared config."
+      }
+    ],
+    "sync_paths": [
+      {
+        "source": "WebexTools/repo-standards@d89a7fe59126ae3ad9bac9ca352aa7f12b4c85dc",
+        "targets": [
+          ".sdd/templates/repo-standards"
+        ],
+        "mechanism": "Read from the JS SDK root .sdd/templates/repo-standards (Repo Standards 0.3.0 snapshot from PR 5246). Only to run the Repo Annotation checkers and validator, a temporary local symlink at .sdd/templates/repo-standards points there; it is never committed, and templates are never copied into the package.",
+        "notes": "Read from the JS SDK root .sdd/templates/repo-standards (Repo Standards 0.3.0 snapshot from PR 5246). Only to run the Repo Annotation checkers and validator, a temporary local symlink at .sdd/templates/repo-standards points there; it is never committed, and templates are never copied into the package."
+      }
+    ]
+  },
+  "folder_readme_contract": {
+    "required_sections": [
+      "purpose",
+      "boundaries",
+      "key-files",
+      "common-tasks"
+    ],
+    "rules": [
+      "Orient the reader before describing detail.",
+      "Link to the module specification rather than duplicating it."
+    ],
+    "example_policy": "Examples are allowed only when verified against src/ or test/.",
+    "fallback": "Omit a section rather than inventing content; report unresolved facts as gaps."
+  },
+  "regression_feedback_rules": [
+    {
+      "trigger": "A request or response fails or hangs while this package is imported.",
+      "required_followups": [
+        "Add a unit case that runs the matching predicate and transform",
+        "Update INV-002 and INV-003 in src/docs/README.md"
+      ],
+      "notes": "No transform has a test today."
+    },
+    {
+      "trigger": "webex.internal.scheduler is missing or has a different name.",
+      "required_followups": [
+        "Add a registration case in test/unit/spec/scheduler/scheduler.js",
+        "Update INV-001 in src/docs/README.md"
+      ],
+      "notes": "The registration has no test today."
+    }
+  ],
+  "surface_owners": [
+    {
+      "surface": "module implementation and specification",
+      "owner": "@webex/web-sdk",
+      "edit_boundary": "The monorepo .github/CODEOWNERS has no entry for packages/@webex/internal-plugin-scheduler, so the default * rule applies."
+    }
+  ],
+  "do_not_edit": [
+    "dist",
+    ".sdd/templates/repo-standards"
+  ],
+  "marker_scopes": {
+    "sdd": [
+      ".sdd/manifest.json",
+      "src/docs/README.md",
+      "docs"
+    ]
+  },
+  "fallback_rules": [
+    "When source and tests disagree, code is the referee and the disagreement is recorded rather than silently resolved.",
+    "When neither source nor tests settle a question, report it as a gap instead of inferring.",
+    "Commit history is not a valid rationale source for this package."
+  ],
+  "downstream_context_pack": {
+    "required_human_surfaces": [
+      "README.md",
+      "docs/index.md",
+      "docs/architecture.md",
+      "src/docs/README.md"
+    ],
+    "required_agent_operational_surfaces": [
+      "AGENTS.md",
+      "docs/specs/README.md"
+    ],
+    "required_machine_readable_surface": ".sdd/manifest.json",
+    "recommended_machine_readable_sections": [
+      "public_interfaces",
+      "change_impact",
+      "evidence_rules",
+      "negative_guidance",
+      "confidence_policy",
+      "repository_topology",
+      "folder_readme_contract",
+      "regression_feedback_rules"
+    ]
+  }
+}
