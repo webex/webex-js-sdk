@@ -34,7 +34,6 @@ const LOG_TYPES = {
 };
 
 const SDK_LOG_TYPE_NAME = 'wx-js-sdk';
-
 const authTokenKeyPattern = /[Aa]uthorization/;
 
 /**
@@ -80,6 +79,30 @@ function walkAndFilter(object, visited = []) {
 }
 
 /**
+ * Build a record from one retained entry. Live events and history use this function.
+ * @param {Array<mixed>} entry Formatted text with capture fields stored as named properties.
+ * @returns {Object} A record that shares the caller-owned metadata values.
+ */
+function _createLogRecord(entry) {
+  const record = {
+    sequence: entry.sequence,
+    timestamp: entry.timestamp,
+    // Both times use the captured acceptance time. Replay does not read the clock.
+    observedTimestamp: entry.timestamp,
+    level: entry.level,
+    source: entry.source,
+    body: entry.join(','),
+  };
+
+  if (entry.metadata) {
+    record.eventName = entry.metadata.eventName;
+    record.attributes = entry.metadata.attributes;
+  }
+
+  return record;
+}
+
+/**
  * @class
  */
 const Logger = WebexPlugin.extend({
@@ -100,7 +123,21 @@ const Logger = WebexPlugin.extend({
     },
   },
   session: {
-    // for when configured to use single buffer
+    // Keep the counter inside an object so increments do not emit Ampersand change events.
+    recordState: {
+      type: 'object',
+      /**
+       * Create empty state for this logger instance.
+       * @returns {Object} The shared SDK and client sequence counter.
+       */
+      default() {
+        return {
+          // Last sequence assigned. Buffer trimming does not reset it.
+          lastSequence: 0,
+        };
+      },
+    },
+    // Retained history and support-upload cursors when SDK and client logs share one buffer.
     buffer: {
       type: 'object',
       default() {
@@ -111,13 +148,14 @@ const Logger = WebexPlugin.extend({
         };
       },
     },
+    // Current indentation depth for buffered groups.
     groupLevel: {
       type: 'number',
       default() {
         return 0;
       },
     },
-    // for when configured to use separate buffers
+    // Separate SDK history and support-upload cursors when configured.
     sdkBuffer: {
       type: 'object',
       default() {
@@ -128,6 +166,7 @@ const Logger = WebexPlugin.extend({
         };
       },
     },
+    // Separate client history and support-upload cursors when configured.
     clientBuffer: {
       type: 'object',
       default() {
@@ -141,6 +180,87 @@ const Logger = WebexPlugin.extend({
   },
 
   /**
+   * Read retained entries in sequence order without changing support-upload cursors.
+   * Use on('log:record', listener) for future records. Consumers must leave metadata unchanged.
+   * @returns {Array} Records built from the retained entries.
+   */
+  getRecords() {
+    const sdkBuffer = this.config.separateLogBuffers ? this.sdkBuffer.buffer : this.buffer.buffer;
+    const clientBuffer = this.config.separateLogBuffers ? this.clientBuffer.buffer : [];
+    const records = [];
+    let sdkIndex = 0;
+    let clientIndex = 0;
+
+    while (sdkIndex < sdkBuffer.length || clientIndex < clientBuffer.length) {
+      const sdkEntry = sdkBuffer[sdkIndex];
+      const clientEntry = clientBuffer[clientIndex];
+
+      if (sdkEntry && (!clientEntry || sdkEntry.sequence < clientEntry.sequence)) {
+        records.push(_createLogRecord(sdkEntry));
+        sdkIndex += 1;
+      } else {
+        records.push(_createLogRecord(clientEntry));
+        clientIndex += 1;
+      }
+    }
+
+    return records;
+  },
+
+  /**
+   * Filter message data and extract configured metadata in one argument pass.
+   * @param {Array<mixed>} args Message arguments.
+   * @private
+   * @returns {Object} Filtered arguments and metadata for this call.
+   */
+  _filterLogArguments(...args) {
+    const {metadataField} = this.config;
+    const filteredArguments = [];
+    let metadata;
+
+    args.forEach((argument) => {
+      let arg = argument;
+
+      // WebexHttpError already excludes auth tokens. Keep the existing Error handling.
+      if (arg instanceof Error) {
+        if (process.env.NODE_ENV === 'test' && inBrowser) {
+          let ret = arg.toString();
+
+          ret += 'BEGIN STACK';
+          ret += arg.stack;
+          ret += 'END STACK';
+          filteredArguments.push(ret);
+        } else {
+          filteredArguments.push(arg);
+        }
+
+        return;
+      }
+
+      if (
+        metadataField &&
+        arg !== null &&
+        typeof arg === 'object' &&
+        !Array.isArray(arg) &&
+        Object.prototype.hasOwnProperty.call(arg, metadataField)
+      ) {
+        // Keep metadata unchanged. Copy and redact only the remaining message fields.
+        const {[metadataField]: recordMetadata, ...messageFields} = arg;
+
+        metadata = recordMetadata;
+        if (Object.keys(messageFields).length === 0) {
+          return;
+        }
+        arg = messageFields;
+      }
+
+      filteredArguments.push(walkAndFilter(cloneDeep(arg)));
+    });
+
+    return {filteredArguments, metadata};
+  },
+
+  /**
    * Ensures auth headers don't get printed in logs
    * @param {Array<mixed>} args
    * @private
@@ -148,29 +268,7 @@ const Logger = WebexPlugin.extend({
    * @returns {Array<mixed>}
    */
   filter(...args) {
-    return args.map((arg) => {
-      // WebexHttpError already ensures auth tokens don't get printed, so, no
-      // need to alter it here.
-      if (arg instanceof Error) {
-        // karma logs won't print subclassed errors correctly, so we need
-        // explicitly call their tostring methods.
-        if (process.env.NODE_ENV === 'test' && inBrowser) {
-          let ret = arg.toString();
-
-          ret += 'BEGIN STACK';
-          ret += arg.stack;
-          ret += 'END STACK';
-
-          return ret;
-        }
-
-        return arg;
-      }
-
-      arg = cloneDeep(arg);
-
-      return walkAndFilter(arg);
-    });
+    return this._filterLogArguments(...args).filteredArguments;
   },
 
   /**
@@ -362,15 +460,16 @@ const Logger = WebexPlugin.extend({
  * @param {string} level level to create (info, error, warn, etc.)
  * @param {string} impl the level to use when writing to console
  * @param {string} type type of log, SDK or client
- * @param {bool} neverPrint function never prints to console
- * @param {bool} alwaysBuffer function always logs to log buffer
+ * @param {Object} options - Internal formatting/buffering options.
+ * @param {boolean} [options.neverPrint=false] - Never print to the console.
+ * @param {boolean} [options.alwaysBuffer=false] - Retain regardless of the configured level.
  * @instance
  * @memberof Logger
  * @private
  * @memberof Logger
  * @returns {function} logger method with specified params
  */
-function makeLoggerMethod(level, impl, type, neverPrint = false, alwaysBuffer = false) {
+function makeLoggerMethod(level, impl, type, {neverPrint = false, alwaysBuffer = false} = {}) {
   // Much of the complexity in the following function is due to a test-mode-only
   // helper
   return function wrappedConsoleMethod(...args) {
@@ -402,8 +501,9 @@ function makeLoggerMethod(level, impl, type, neverPrint = false, alwaysBuffer = 
         return;
       }
 
-      const filtered = [clientName, ...this.filter(...args)];
-      const stringified = filtered.map((item) => {
+      const {filteredArguments, metadata} = this._filterLogArguments(...args);
+      const filtered = [clientName, ...filteredArguments];
+      const formatted = filtered.map((item) => {
         if (item instanceof Error) {
           return item.toString();
         }
@@ -435,26 +535,32 @@ function makeLoggerMethod(level, impl, type, neverPrint = false, alwaysBuffer = 
       });
 
       if (shouldPrint) {
-        // when logging an object in browsers, we tend to get a dynamic
-        // reference, thus going back to look at the logged value doesn't
-        // necessarily show the state at log time, thus we print the stringified
-        // value.
-        const toPrint = inBrowser ? stringified : filtered;
+        // Print formatted browser values so later object changes do not change the displayed log.
+        const toPrint = inBrowser ? formatted : filtered;
 
         /* istanbul ignore if */
         if (process.env.NODE_ENV === 'test' && has(this, 'webex.internal.device.url')) {
           toPrint.unshift(this.webex.internal.device.url.slice(-3));
         }
+        // Use the saved method to avoid capturing SDK console output as another log.
         // eslint-disable-next-line no-console
-        console[impl](...toPrint);
+        const consoleMethod = console[`std${impl}`] || console[impl];
+        consoleMethod.apply(console, toPrint);
       }
 
       if (shouldBuffer) {
         const logDate = new Date();
 
-        stringified.unshift(logDate.toISOString());
-        stringified.unshift('|  '.repeat(this.groupLevel));
-        bufferRef.buffer.push(stringified);
+        formatted.unshift(logDate.toISOString());
+        formatted.unshift('|  '.repeat(this.groupLevel));
+        this.recordState.lastSequence += 1;
+        // Named fields retain record data without changing the support-log array positions.
+        formatted.sequence = this.recordState.lastSequence;
+        formatted.timestamp = logDate.getTime();
+        formatted.level = level;
+        formatted.source = metadata?.source || logType;
+        formatted.metadata = metadata;
+        bufferRef.buffer.push(formatted);
         if (bufferRef.buffer.length > historyLength) {
           // we've gone over the buffer limit, trim it down
           const deleteCount = bufferRef.buffer.length - historyLength;
@@ -472,8 +578,13 @@ function makeLoggerMethod(level, impl, type, neverPrint = false, alwaysBuffer = 
             bufferRef.lastSubmitted = 0;
           }
         }
-        if (level === 'group') this.groupLevel += 1;
-        if (level === 'groupEnd' && this.groupLevel > 0) this.groupLevel -= 1;
+        if (level === 'group') {
+          this.groupLevel += 1;
+        }
+        if (level === 'groupEnd' && this.groupLevel > 0) {
+          this.groupLevel -= 1;
+        }
+        this.trigger('log:record', _createLogRecord(formatted));
       }
     } catch (reason) {
       if (!neverPrint) {
@@ -502,19 +613,13 @@ levels.forEach((level) => {
   Logger.prototype[level] = makeLoggerMethod(level, impl, LOG_TYPES.SDK);
 });
 
-Logger.prototype.client_logToBuffer = makeLoggerMethod(
-  levels.info,
-  levels.info,
-  LOG_TYPES.CLIENT,
-  true,
-  true
-);
-Logger.prototype.logToBuffer = makeLoggerMethod(
-  levels.info,
-  levels.info,
-  LOG_TYPES.SDK,
-  true,
-  true
-);
+Logger.prototype.client_logToBuffer = makeLoggerMethod('info', 'info', LOG_TYPES.CLIENT, {
+  neverPrint: true,
+  alwaysBuffer: true,
+});
+Logger.prototype.logToBuffer = makeLoggerMethod('info', 'info', LOG_TYPES.SDK, {
+  neverPrint: true,
+  alwaysBuffer: true,
+});
 
 export default Logger;

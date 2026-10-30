@@ -10,6 +10,8 @@ import {browserOnly, nodeOnly, inBrowser} from '@webex/test-helper-mocha';
 import Logger, {levels} from '@webex/plugin-logger';
 import {WebexHttpError} from '@webex/webex-core';
 
+import loggerConfig from '../../../src/config';
+
 describe('plugin-logger', () => {
   const logSpies = [];
 
@@ -309,7 +311,12 @@ describe('plugin-logger', () => {
       assert.lengthOf(webex.logger.buffer.buffer, 1);
       assert.deepEqual(webex.logger.buffer.buffer[0][2], 'wx-js-sdk');
       assert.deepEqual(webex.logger.buffer.buffer[0][3], 'I got this error:');
-      assert.deepEqual(webex.logger.buffer.buffer[0][4], 'Error: fake error for testing');
+      const expected =
+        process.env.NODE_ENV === 'test' && inBrowser()
+          ? `${err}BEGIN STACK${err.stack}END STACK`
+          : 'Error: fake error for testing';
+
+      assert.deepEqual(webex.logger.buffer.buffer[0][4], expected);
     });
   });
 
@@ -1529,4 +1536,676 @@ describe('plugin-logger', () => {
       assert.equal(webex.logger.buffer.nextIndex, 0);
     });
   });
+  // Each case reads the logger created by beforeEach. Console calls are the contract under test.
+  /* eslint-disable no-loop-func, no-console */
+  describe('record bridge', () => {
+    const timestamp = 1700000000123;
+    const isoTimestamp = '2023-11-14T22:13:20.123Z';
+    let sandbox;
+    let clock;
+    let savedConsole;
+
+    const expectedRecord = (
+      sequence,
+      {type = 'sdk', level = 'info', values = ['message'], metadata} = {}
+    ) => ({
+      sequence,
+      timestamp,
+      observedTimestamp: timestamp,
+      level,
+      source: metadata?.source || type,
+      body: ['', isoTimestamp, type === 'sdk' ? 'wx-js-sdk' : 'WebClient', ...values].join(','),
+      ...(metadata ? {eventName: metadata.eventName, attributes: metadata.attributes} : {}),
+    });
+
+    const expectedEntry = (sequence, options = {}) => {
+      const {type = 'sdk', level = 'info', values = ['message'], metadata} = options;
+
+      return Object.assign(
+        ['', isoTimestamp, type === 'sdk' ? 'wx-js-sdk' : 'WebClient', ...values],
+        {
+          sequence,
+          timestamp,
+          level,
+          source: metadata?.source || type,
+          metadata,
+        }
+      );
+    };
+
+    const saveConsoleMethod = (level) => {
+      const method = sinon.spy();
+
+      Object.defineProperty(console, `std${impl(level)}`, {
+        configurable: true,
+        writable: true,
+        value: method,
+      });
+
+      return method;
+    };
+
+    const bufferState = () =>
+      Object.fromEntries(
+        ['buffer', 'sdkBuffer', 'clientBuffer'].map((name) => [
+          name,
+          {
+            ...webex.logger[name],
+            buffer: webex.logger[name].buffer.map((entry) => Object.assign([...entry], entry)),
+          },
+        ])
+      );
+
+    beforeEach(() => {
+      sandbox = sinon.createSandbox();
+      clock = sandbox.useFakeTimers({now: timestamp, toFake: ['Date']});
+      savedConsole = Object.fromEntries(
+        levels.map((level) => [level, Object.getOwnPropertyDescriptor(console, `std${level}`)])
+      );
+      Object.assign(webex.logger.config, {
+        level: 'silent',
+        clientLevel: 'silent',
+        bufferLogLevel: 'trace',
+        metadataField: 'metadata',
+        clientName: 'WebClient',
+      });
+    });
+
+    afterEach(() => {
+      sandbox.restore();
+      for (const level of levels) {
+        if (savedConsole[level]) {
+          Object.defineProperty(console, `std${level}`, savedConsole[level]);
+        } else {
+          Reflect.deleteProperty(console, `std${level}`);
+        }
+      }
+    });
+
+    it('reads current level configuration through the existing derived properties', () => {
+      assert.strictEqual(webex.logger.level, 'silent');
+      assert.strictEqual(webex.logger.client_level, 'silent');
+      webex.logger.config.level = 'warn';
+      webex.logger.config.clientLevel = 'debug';
+      assert.strictEqual(webex.logger.level, 'warn');
+      assert.strictEqual(webex.logger.client_level, 'debug');
+      delete webex.logger.config.clientLevel;
+      assert.strictEqual(webex.logger.client_level, 'warn');
+    });
+
+    nodeOnly(it)('keeps test-mode Error arguments intact in Node', () => {
+      process.env.NODE_ENV = 'test';
+      const error = new Error('test error');
+
+      assert.strictEqual(webex.logger.filter(error)[0], error);
+    });
+
+    nodeOnly(it)('uses the existing device prefix only for test console output', () => {
+      process.env.NODE_ENV = 'test';
+      webex.logger.config.level = 'info';
+      webex.internal.device.url = 'https://example.test/device/abc';
+      // Supply the own root binding checked by the legacy test-prefix helper.
+      Object.defineProperty(webex.logger, 'webex', {configurable: true, value: webex});
+      const output = saveConsoleMethod('info');
+
+      webex.logger.info('message');
+      assert.calledOnceWithExactly(output, 'abc', 'wx-js-sdk', 'message');
+      assert.deepEqual(webex.logger.getRecords(), [expectedRecord(1)]);
+    });
+
+    nodeOnly(it)('selects the existing console fallback when a level method is missing', () => {
+      const {trace} = console;
+
+      console.trace = undefined;
+      try {
+        let FallbackLogger;
+
+        jest.isolateModules(() => {
+          // Reload this module to select its console method while trace is absent.
+          // eslint-disable-next-line global-require
+          FallbackLogger = require('../../../src/logger').default;
+        });
+        const other = new MockWebex({children: {logger: FallbackLogger}});
+
+        Object.assign(other.logger.config, {level: 'trace', bufferLogLevel: 'silent'});
+        other.logger.trace('fallback');
+        assert.calledOnceWithExactly(console.log, 'wx-js-sdk', 'fallback');
+        assert.deepEqual(other.logger.getRecords(), []);
+      } finally {
+        console.trace = trace;
+      }
+    });
+
+    it('keeps the configured history default at 10,000 entries', () => {
+      assert.strictEqual(loggerConfig.logger.historyLength, 10000);
+    });
+
+    for (const metadataField of [undefined, '']) {
+      it(`keeps ordinary object fields when metadata extraction is disabled: ${metadataField}`, () => {
+        webex.logger.config.metadataField = metadataField;
+        const value = {[String(metadataField)]: {eventName: 'ordinary'}, message: 'kept'};
+
+        webex.logger.info(value);
+        assert.deepEqual(webex.logger.getRecords(), [
+          expectedRecord(1, {values: [JSON.stringify(value)]}),
+        ]);
+        assert.deepEqual(value, {
+          [String(metadataField)]: {eventName: 'ordinary'},
+          message: 'kept',
+        });
+      });
+    }
+
+    it('keeps sequence and retained state separate for each logger instance', () => {
+      const other = new MockWebex({children: {logger: Logger}});
+
+      Object.assign(other.logger.config, {level: 'silent', bufferLogLevel: 'info'});
+      webex.logger.info('message');
+      other.logger.info('independent');
+      webex.logger.info('next');
+      assert.deepEqual(webex.logger.getRecords(), [
+        expectedRecord(1),
+        expectedRecord(2, {values: ['next']}),
+      ]);
+      assert.deepEqual(other.logger.getRecords(), [expectedRecord(1, {values: ['independent']})]);
+      assert.notStrictEqual(webex.logger.recordState, other.logger.recordState);
+      assert.notStrictEqual(webex.logger.buffer, other.logger.buffer);
+    });
+
+    for (const source of [undefined, '', 'explicit']) {
+      it(`uses the SDK source when the metadata source is empty: ${source}`, () => {
+        const metadata = {source};
+
+        webex.logger.info('message', {metadata});
+        assert.deepEqual(webex.logger.getRecords(), [expectedRecord(1, {metadata})]);
+      });
+    }
+
+    for (const type of ['sdk', 'client']) {
+      for (const level of levels) {
+        for (const {print, buffer} of [
+          {print: false, buffer: false},
+          {print: false, buffer: true},
+          {print: true, buffer: false},
+          {print: true, buffer: true},
+        ]) {
+          it(`keeps ${type}/${level} print=${print} and buffer=${buffer} independent of metadata`, () => {
+            const metadata = {source: 'producer', eventName: 'event', attributes: {number: 2}};
+            const output = saveConsoleMethod(level);
+            const listener = sinon.spy();
+
+            webex.logger.config[type === 'sdk' ? 'level' : 'clientLevel'] = print
+              ? 'trace'
+              : 'silent';
+            webex.logger.config.bufferLogLevel = buffer ? 'trace' : 'silent';
+            webex.logger.on('log:record', listener);
+            webex.logger[type === 'sdk' ? level : `client_${level}`]('message', {metadata});
+            assert.deepEqual(
+              output.args,
+              print ? [[type === 'sdk' ? 'wx-js-sdk' : 'WebClient', 'message']] : []
+            );
+            if (print) assert.strictEqual(output.firstCall.thisValue, console);
+            assert.deepEqual(
+              webex.logger.getRecords(),
+              buffer ? [expectedRecord(1, {type, level, metadata})] : []
+            );
+            assert.deepEqual(webex.logger.buffer, {
+              buffer: buffer ? [expectedEntry(1, {type, level, metadata})] : [],
+              nextIndex: 0,
+              lastSubmitted: 0,
+            });
+            assert.deepEqual(
+              listener.args,
+              buffer ? [[expectedRecord(1, {type, level, metadata})]] : []
+            );
+            assert.equal(webex.logger.recordState.lastSequence, buffer ? 1 : 0);
+            assert.equal(webex.logger.groupLevel, buffer && level === 'group' ? 1 : 0);
+          });
+        }
+      }
+    }
+
+    for (const position of [0, 1, 2]) {
+      it(`extracts metadata at argument position ${position} and redacts the other fields`, () => {
+        const attributes = Object.freeze({detail: 'caller-value'});
+        const metadata = Object.freeze({source: 'producer', eventName: 'event', attributes});
+        const value = {
+          metadata,
+          headers: {authorization: 'Bearer', kept: 'value'},
+          email: 'test@example.com',
+        };
+        const input = ['first', 'second'];
+
+        input.splice(position, 0, value);
+        webex.logger.info(...input);
+        const expected = ['first', 'second'];
+
+        expected.splice(position, 0, '{"headers":{"kept":"value"},"email":"[REDACTED]"}');
+        assert.deepEqual(webex.logger.getRecords(), [
+          expectedRecord(1, {values: expected, metadata}),
+        ]);
+        assert.strictEqual(webex.logger.getRecords()[0].attributes, attributes);
+        assert.deepEqual(value, {
+          metadata,
+          headers: {authorization: 'Bearer', kept: 'value'},
+          email: 'test@example.com',
+        });
+        assert.strictEqual(input[position], value);
+        assert.deepEqual(
+          input.filter((item) => item !== value),
+          ['first', 'second']
+        );
+      });
+    }
+
+    for (const field of ['metadata', 'anotherField']) {
+      it(`uses the configured own field ${field} and keeps the filter array contract`, () => {
+        webex.logger.config.metadataField = field;
+        const metadata = {eventName: 'event'};
+        const input = {[field]: metadata, message: 'value'};
+
+        assert.deepEqual(webex.logger.filter('first', input, 'last'), [
+          'first',
+          {message: 'value'},
+          'last',
+        ]);
+        assert.deepEqual(input, {[field]: metadata, message: 'value'});
+        webex.logger.info(input);
+        assert.deepEqual(webex.logger.getRecords(), [
+          expectedRecord(1, {values: ['{"message":"value"}'], metadata}),
+        ]);
+      });
+    }
+
+    for (const metadata of [undefined, null, {}, {eventName: 'last'}]) {
+      it(`uses the last supplied metadata value ${JSON.stringify(metadata)}`, () => {
+        webex.logger.info({metadata: {eventName: 'first'}}, 'message', {metadata});
+        assert.deepEqual(webex.logger.getRecords(), [expectedRecord(1, {metadata})]);
+      });
+    }
+
+    it('omits metadata-only arguments from the message', () => {
+      const metadata = {eventName: 'metadata-only', attributes: {flag: false}};
+
+      webex.logger.info({metadata});
+      assert.deepEqual(webex.logger.getRecords(), [expectedRecord(1, {values: [], metadata})]);
+      assert.deepEqual(webex.logger.buffer.buffer[0], expectedEntry(1, {values: [], metadata}));
+    });
+
+    it('keeps all arguments as message data when metadata config is absent', () => {
+      delete webex.logger.config.metadataField;
+      const value = {metadata: {eventName: 'ordinary-data'}, message: 'value'};
+
+      webex.logger.info(value);
+      assert.deepEqual(webex.logger.getRecords(), [
+        expectedRecord(1, {values: [JSON.stringify(value)]}),
+      ]);
+      assert.deepEqual(webex.logger.filter(value), [value]);
+    });
+
+    it('does not read an inherited metadata property', () => {
+      const prototype = {metadata: {eventName: 'inherited'}};
+      const value = Object.assign(Object.create(prototype), {message: 'own'});
+
+      webex.logger.info(value);
+      assert.deepEqual(webex.logger.getRecords(), [
+        expectedRecord(1, {values: ['{"message":"own"}']}),
+      ]);
+      assert.strictEqual(Object.getPrototypeOf(value), prototype);
+      assert.deepEqual(value.metadata, prototype.metadata);
+    });
+
+    it('keeps primitives, arrays and Error objects on their normal formatting paths', () => {
+      const array = ['array'];
+      const error = new Error('original error');
+
+      array.metadata = {source: 'not-array-metadata'};
+      error.metadata = {source: 'not-error-metadata'};
+      const errorText =
+        process.env.NODE_ENV === 'test' && inBrowser()
+          ? `${error}BEGIN STACK${error.stack}END STACK`
+          : error.toString();
+
+      webex.logger.info(null, undefined, false, 0, 'text', array, error);
+      assert.deepEqual(webex.logger.getRecords(), [
+        expectedRecord(1, {
+          values: ['null', undefined, false, 0, 'text', '["array"]', errorText],
+        }),
+      ]);
+      assert.deepEqual(array, Object.assign(['array'], {metadata: {source: 'not-array-metadata'}}));
+      assert.deepEqual(error.metadata, {source: 'not-error-metadata'});
+      const filteredError = webex.logger.filter(error)[0];
+
+      if (process.env.NODE_ENV === 'test' && inBrowser()) {
+        assert.strictEqual(filteredError, errorText);
+      } else {
+        assert.strictEqual(filteredError, error);
+      }
+    });
+
+    it('keeps trusted metadata out of message redaction', () => {
+      const attributes = {authorization: 'caller-owned', email: 'metadata@example.com'};
+      const metadata = {attributes};
+
+      webex.logger.info({metadata, authorization: 'Bearer', email: 'body@example.com'});
+      assert.deepEqual(webex.logger.getRecords(), [
+        expectedRecord(1, {metadata, values: ['{"email":"[REDACTED]"}']}),
+      ]);
+      assert.strictEqual(webex.logger.getRecords()[0].attributes, attributes);
+      assert.deepEqual(attributes, {authorization: 'caller-owned', email: 'metadata@example.com'});
+    });
+
+    it('uses one Date for the support timestamp and the fixed record times', () => {
+      const toISOString = sandbox.spy(Date.prototype, 'toISOString');
+      const getTime = sandbox.spy(Date.prototype, 'getTime');
+      const parse = sandbox.spy(Date, 'parse');
+
+      webex.logger.info('message');
+      clock.tick(5000);
+      assert.deepEqual(webex.logger.getRecords(), [expectedRecord(1)]);
+      assert.deepEqual(webex.logger.getRecords(), [expectedRecord(1)]);
+      assert.calledOnce(toISOString);
+      assert.calledOnce(getTime);
+      assert.strictEqual(toISOString.firstCall.thisValue, getTime.firstCall.thisValue);
+      assert.notCalled(parse);
+      assert.strictEqual(webex.logger.buffer.buffer[0][1], isoTimestamp);
+    });
+
+    for (const separate of [false, true]) {
+      for (const order of [
+        [],
+        ['sdk'],
+        ['client'],
+        ['sdk', 'client', 'sdk'],
+        ['client', 'sdk', 'client'],
+      ]) {
+        it(`reads retained ${order.join(
+          '/'
+        )} records without changing state; separate=${separate}`, () => {
+          webex.logger.config.separateLogBuffers = separate;
+          order.forEach((type) => webex.logger[type === 'sdk' ? 'info' : 'client_info']('message'));
+          webex.logger.formatLogs({diff: true});
+          webex.logger.updateLastSubmittedIndex();
+          const before = bufferState();
+          const {groupLevel} = webex.logger;
+          const expected = order.map((type, index) => expectedRecord(index + 1, {type}));
+
+          assert.deepEqual(webex.logger.getRecords(), expected);
+          assert.deepEqual(webex.logger.getRecords(), expected);
+          assert.deepEqual(bufferState(), before);
+          assert.equal(webex.logger.groupLevel, groupLevel);
+          webex.logger.info('next');
+          assert.deepEqual(webex.logger.getRecords(), [
+            ...expected,
+            expectedRecord(order.length + 1, {values: ['next']}),
+          ]);
+        });
+      }
+    }
+
+    it('creates fresh history wrappers and shares only caller metadata values', () => {
+      const attributes = {nested: {value: 'kept'}};
+      const metadata = {eventName: 'event', attributes};
+      const listener = sinon.spy();
+
+      webex.logger.on('log:record', listener);
+      webex.logger.info('message', {metadata});
+      const first = webex.logger.getRecords()[0];
+      const second = webex.logger.getRecords()[0];
+
+      assert.deepEqual(first, expectedRecord(1, {metadata}));
+      assert.deepEqual(second, first);
+      assert.notStrictEqual(first, second);
+      assert.notStrictEqual(first, listener.firstCall.args[0]);
+      assert.strictEqual(first.attributes, attributes);
+      assert.strictEqual(second.attributes, attributes);
+      first.body = 'changed wrapper';
+      assert.deepEqual(webex.logger.getRecords(), [expectedRecord(1, {metadata})]);
+      assert.strictEqual(webex.logger.buffer.buffer[0].metadata, metadata);
+    });
+
+    for (const separate of [false, true]) {
+      it(`keeps sequence after trimming and runtime limit changes; separate=${separate}`, () => {
+        webex.logger.config.separateLogBuffers = separate;
+        webex.logger.config.historyLength = 2;
+        ['info', 'client_info', 'info', 'client_info', 'info', 'client_info'].forEach((method) =>
+          webex.logger[method]('message')
+        );
+        const expected = separate
+          ? [
+              expectedRecord(3),
+              expectedRecord(4, {type: 'client'}),
+              expectedRecord(5),
+              expectedRecord(6, {type: 'client'}),
+            ]
+          : [expectedRecord(5), expectedRecord(6, {type: 'client'})];
+
+        assert.deepEqual(webex.logger.getRecords(), expected);
+        webex.logger.config.historyLength = 1;
+        webex.logger.info('message');
+        assert.deepEqual(
+          webex.logger.getRecords(),
+          separate
+            ? [
+                expectedRecord(4, {type: 'client'}),
+                expectedRecord(6, {type: 'client'}),
+                expectedRecord(7),
+              ]
+            : [expectedRecord(7)]
+        );
+        webex.logger.config.historyLength = 3;
+        webex.logger.client_info('message');
+        assert.deepEqual(
+          webex.logger.getRecords(),
+          separate
+            ? [
+                expectedRecord(4, {type: 'client'}),
+                expectedRecord(6, {type: 'client'}),
+                expectedRecord(7),
+                expectedRecord(8, {type: 'client'}),
+              ]
+            : [expectedRecord(7), expectedRecord(8, {type: 'client'})]
+        );
+      });
+    }
+
+    it('uses clientHistoryLength for each separate buffer and keeps SDK/client state isolated', () => {
+      webex.logger.config.separateLogBuffers = true;
+      webex.logger.config.historyLength = 5;
+      webex.logger.config.clientHistoryLength = 1;
+      webex.logger.info('old sdk');
+      webex.logger.client_info('old client');
+      webex.logger.formatLogs({diff: true});
+      webex.logger.updateLastSubmittedIndex();
+      webex.logger.info('new sdk');
+      assert.deepEqual(webex.logger.sdkBuffer, {
+        buffer: [expectedEntry(3, {values: ['new sdk']})],
+        nextIndex: 0,
+        lastSubmitted: 0,
+      });
+      assert.deepEqual(webex.logger.clientBuffer, {
+        buffer: [expectedEntry(2, {type: 'client', values: ['old client']})],
+        nextIndex: 1,
+        lastSubmitted: 1,
+      });
+      webex.logger.client_info('new client');
+      assert.deepEqual(webex.logger.clientBuffer, {
+        buffer: [expectedEntry(4, {type: 'client', values: ['new client']})],
+        nextIndex: 0,
+        lastSubmitted: 0,
+      });
+      assert.deepEqual(webex.logger.getRecords(), [
+        expectedRecord(3, {values: ['new sdk']}),
+        expectedRecord(4, {type: 'client', values: ['new client']}),
+      ]);
+    });
+
+    for (const separate of [false, true]) {
+      it(`keeps group indentation and support-upload cursors unchanged by reads; separate=${separate}`, () => {
+        webex.logger.config.separateLogBuffers = separate;
+        webex.logger.group('open');
+        webex.logger.info('inside');
+        const state = bufferState();
+        const records = webex.logger.getRecords();
+
+        assert.equal(webex.logger.groupLevel, 1);
+        assert.deepEqual(bufferState(), state);
+        assert.deepEqual(records, [
+          expectedRecord(1, {level: 'group', values: ['open']}),
+          {
+            ...expectedRecord(2, {values: ['inside']}),
+            body: `|  ,${isoTimestamp},wx-js-sdk,inside`,
+          },
+        ]);
+        assert.strictEqual(
+          webex.logger.formatLogs(),
+          records.map((record) => record.body).join('\n')
+        );
+        const first = webex.logger.formatLogs({diff: true});
+
+        webex.logger.updateLastSubmittedIndex();
+        webex.logger.groupEnd();
+        assert.equal(webex.logger.groupLevel, 0);
+        const next = webex.logger.formatLogs({diff: true});
+
+        webex.logger.resetBufferToLastSuccessfulUpload();
+        assert.strictEqual(webex.logger.formatLogs({diff: true}), next);
+        assert.strictEqual(webex.logger.formatLogs(), `${first}\n${next}`);
+        assert.deepEqual(
+          webex.logger.getRecords().map((record) => record.sequence),
+          [1, 2, 3]
+        );
+      });
+    }
+
+    it('does not emit records during subscription or history reads and removes the same callback', () => {
+      const listener = sinon.spy();
+      const changes = sinon.spy();
+
+      webex.logger.on('log:record', listener);
+      webex.logger.on('change:recordState', changes);
+      assert.deepEqual(webex.logger.getRecords(), []);
+      assert.notCalled(listener);
+      webex.logger.info('message');
+      assert.calledOnceWithExactly(listener, expectedRecord(1));
+      webex.logger.getRecords();
+      assert.calledOnce(listener);
+      webex.logger.off('log:record', listener);
+      webex.logger.info('second');
+      assert.calledOnce(listener);
+      assert.notCalled(changes);
+      assert.deepEqual(webex.logger.getRecords(), [
+        expectedRecord(1),
+        expectedRecord(2, {values: ['second']}),
+      ]);
+    });
+
+    it('keeps native nested event order while retained history keeps acceptance order', () => {
+      const laterListener = sinon.spy();
+
+      webex.logger.on('log:record', (record) => {
+        if (record.sequence === 1) webex.logger.info('nested');
+      });
+      webex.logger.on('log:record', laterListener);
+      webex.logger.info('message');
+      assert.deepEqual(laterListener.args, [
+        [expectedRecord(2, {values: ['nested']})],
+        [expectedRecord(1)],
+      ]);
+      assert.deepEqual(webex.logger.getRecords(), [
+        expectedRecord(1),
+        expectedRecord(2, {values: ['nested']}),
+      ]);
+    });
+
+    for (const method of ['info', 'logToBuffer', 'client_logToBuffer']) {
+      it(`contains a listener failure from ${method} and keeps the accepted record`, () => {
+        const failure = new Error('listener failed');
+        const bad = () => {
+          throw failure;
+        };
+        const later = sinon.spy();
+
+        webex.logger.on('log:record', bad);
+        webex.logger.on('log:record', later);
+        assert.doesNotThrow(() => webex.logger[method]('message'));
+        assert.notCalled(later);
+        assert.deepEqual(webex.logger.getRecords(), [
+          expectedRecord(1, {type: method.startsWith('client_') ? 'client' : 'sdk'}),
+        ]);
+        webex.logger.off('log:record', bad);
+        webex.logger.info('next');
+        assert.calledOnceWithExactly(later, expectedRecord(2, {values: ['next']}));
+      });
+    }
+
+    for (const method of ['logToBuffer', 'client_logToBuffer']) {
+      it(`buffers ${method} at info even when configured levels are silent`, () => {
+        webex.logger.config.bufferLogLevel = 'silent';
+        const output = saveConsoleMethod('info');
+        const listener = sinon.spy();
+
+        webex.logger.on('log:record', listener);
+        webex.logger[method]('message');
+        const record = expectedRecord(1, {type: method.startsWith('client_') ? 'client' : 'sdk'});
+
+        assert.calledOnceWithExactly(listener, record);
+        assert.deepEqual(webex.logger.getRecords(), [record]);
+        assert.notCalled(output);
+      });
+    }
+
+    it('prints through the saved console method with the console receiver', () => {
+      webex.logger.config.level = 'info';
+      webex.logger.config.bufferLogLevel = 'silent';
+      const output = saveConsoleMethod('info');
+
+      webex.logger.info('message');
+      assert.calledOnceWithExactly(output, 'wx-js-sdk', 'message');
+      assert.strictEqual(output.firstCall.thisValue, console);
+      assert.notCalled(console.info);
+      assert.deepEqual(webex.logger.getRecords(), []);
+    });
+
+    it('uses the normal console method when the saved method is absent', () => {
+      webex.logger.config.level = 'info';
+      Reflect.deleteProperty(console, 'stdinfo');
+      webex.logger.info('message');
+      assert.calledOnceWithExactly(console.info, 'wx-js-sdk', 'message');
+      assert.strictEqual(console.info.firstCall.thisValue, console);
+      assert.deepEqual(webex.logger.getRecords(), [expectedRecord(1)]);
+    });
+
+    it('keeps the existing stringify fallback without exposing metadata in text', () => {
+      const metadata = {eventName: 'event'};
+      const value = {
+        metadata,
+        toJSON() {
+          throw new Error('stringify failed');
+        },
+      };
+
+      webex.logger.info(value);
+      assert.deepEqual(webex.logger.getRecords(), [
+        expectedRecord(1, {metadata, values: ['Failed to stringify: [object Object]']}),
+      ]);
+      assert.strictEqual(value.metadata, metadata);
+    });
+
+    it('contains an argument getter failure before accepting a record', () => {
+      const failure = new Error('metadata getter failed');
+      const value = Object.defineProperty({}, 'metadata', {
+        enumerable: true,
+        get() {
+          throw failure;
+        },
+      });
+
+      assert.doesNotThrow(() => webex.logger.info(value));
+      assert.deepEqual(webex.logger.getRecords(), []);
+      assert.equal(webex.logger.recordState.lastSequence, 0);
+      assert.calledWithExactly(console.warn, 'failed to execute Logger#info', failure);
+    });
+  });
+  /* eslint-enable no-loop-func, no-console */
 });
