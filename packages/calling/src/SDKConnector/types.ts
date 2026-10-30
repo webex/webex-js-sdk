@@ -155,6 +155,7 @@ export interface WebexSDK {
         'ucmgmt-gateway': string;
         contactsService: string;
         hydraDeveloperApi?: string;
+        'webex-user-hub-service'?: string;
       };
       _activeServices: {
         broadworksIdpProxy: string;
