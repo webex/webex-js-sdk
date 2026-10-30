@@ -84,6 +84,7 @@ export function getTestUtilsWebex() {
           'ucmgmt-gateway': 'https://gw.telemetry.int-ucmgmt.cisco.com',
           contactsService: 'https://contacts-service-a.wbx2.com/contact/api/v1',
           hydraDeveloperApi: 'https://integration.webexapis.com/v1',
+          'webex-user-hub-service': 'https://userhub-sq1.dmz.webex.com',
         },
         fetchClientRegionInfo: jest.fn(),
         getMobiusClusters: jest.fn(),
