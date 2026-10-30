@@ -341,4 +341,63 @@ export default class RecordingController {
   public resumeRecording(): Promise<any> {
     return this.recordingFacade(RecordingAction.Resume);
   }
+
+  /**
+   * Fetches the current recording resource from the recording stream service.
+   * The response carries the accumulated recording duration metadata that the
+   * native clients (iOS / Android / Desktop) use to hydrate the timer when
+   * (re)joining a meeting that is already RECORDING or PAUSED. Locus deltas
+   * do not include this data, so this REST call is the only source.
+   *
+   * Endpoint mirrors native:
+   *   GET {serviceUrl}/loci/{locusId}/resource
+   *
+   * @returns {Promise<object | undefined>} duration metadata or undefined
+   * @public
+   * @memberof RecordingController
+   */
+  public async getRecordingStatus(): Promise<
+    | {
+        lastDuration?: number;
+        lastTime?: string;
+        needCalculate?: boolean;
+        status?: string;
+      }
+    | undefined
+  > {
+    if (!this.serviceUrl || !this.locusId) {
+      LoggerProxy.logger.info(
+        'RecordingController:index#getRecordingStatus --> skipped, missing serviceUrl or locusId'
+      );
+
+      return undefined;
+    }
+
+    try {
+      // @ts-ignore
+      const response = await this.request.request({
+        uri: `${this.serviceUrl}/loci/${this.locusId}/resource`,
+        method: HTTP_VERBS.GET,
+      });
+
+      // Response shape (matches native parseResource):
+      //   { recording: [ { status, duration: { lastDuration, lastTime, needCalculate }, ... } ] }
+      const body = response?.body ?? response;
+      const entry = Array.isArray(body?.recording) ? body.recording[0] : undefined;
+      const duration = entry?.duration;
+
+      return {
+        status: entry?.status,
+        lastDuration: duration?.lastDuration,
+        lastTime: duration?.lastTime,
+        needCalculate: duration?.needCalculate,
+      };
+    } catch (error) {
+      LoggerProxy.logger.warn(
+        `RecordingController:index#getRecordingStatus --> request failed: ${error}`
+      );
+
+      return undefined;
+    }
+  }
 }

@@ -22,6 +22,12 @@ ControlsUtils.parse = (controls: any) => {
   const parsedControls = {...controls};
 
   if (controls && controls.record) {
+    // Passthrough any duration fields Locus may send so consumers can compute
+    // accumulated recording time on rejoin (parity with native's
+    // RecordingStreamSession::RecordingTime). Falls back to undefined when the
+    // server does not include them on this payload.
+    const rawDuration = controls.record.meta?.duration ?? controls.record.duration;
+
     parsedControls.record = {
       modifiedBy: ControlsUtils.getId(controls),
       paused: controls.record.paused ? controls.record.paused : false,
@@ -29,6 +35,14 @@ ControlsUtils.parse = (controls: any) => {
       lastModified: controls.record.meta?.lastModified,
       modifiedByServiceAppName: controls.record.meta?.modifiedByServiceAppName,
       modifiedByServiceAppId: controls.record.meta?.modifiedByServiceAppId,
+      // Duration metadata (parity with native iOS/Android). All optional.
+      // - lastDuration: accumulated recorded ms before the current segment
+      // - lastTime: server timestamp when the current segment/state started
+      // - needCalculate: true while RECORDING (UI must add now - lastTime),
+      //                  false while PAUSED (UI shows lastDuration as-is)
+      lastDuration: rawDuration?.lastDuration,
+      lastTime: rawDuration?.lastTime,
+      needCalculate: rawDuration?.needCalculate,
     };
   }
 
