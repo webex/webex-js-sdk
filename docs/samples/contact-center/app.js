@@ -249,6 +249,8 @@ const changeEnvBtn = document.querySelector('#changeEnv');
 const autoWrapupTimerElm = document.getElementById('autoWrapupTimer');
 const timerValueElm = autoWrapupTimerElm.querySelector('.timer-value');
 const outdialAniSelectElm = document.querySelector('#outdialAniSelect');
+const outdialContactTypeElm = document.querySelector('#outdialContactType');
+const outdialCadStatusElm = document.querySelector('#outdialCadStatus');
 const realtimeTranscriptsElm = document.querySelector('#realtime-transcripts-content');
 const clearTranscriptsButton = document.querySelector('#clear-transcripts');
 const liveTranscriptTabElm = document.querySelector('#transcript-tab-live');
@@ -2598,6 +2600,8 @@ async function startOutdial() {
 
   const destination = document.getElementById('outBoundDialNumber').value;
   const selectedAni = outdialAniSelectElm.value;
+  const selectedContactType = outdialContactTypeElm.value;
+  const attributes = selectedContactType ? {contactType: selectedContactType} : undefined;
 
   if (!destination || !destination.trim()) {
       alert('Destination number is required');
@@ -2614,18 +2618,48 @@ async function startOutdial() {
     console.log('Destination:', destination);
     console.log('Selected ANI:', selectedAni || 'None selected, using default ANI');
 
-    // Use selected ANI as the origin parameter
+    // Include the selected party type at task creation so Flow can read it from the start.
     if (selectedAni) {
-      await webex.cc.startOutdial(destination, selectedAni);
+      await webex.cc.startOutdial(destination, selectedAni, attributes);
       console.log('Outdial call initiated successfully with ANI:', selectedAni);
+    } else if (attributes) {
+      await webex.cc.startOutdial(destination, undefined, attributes);
+      console.log('Outdial call initiated successfully with default ANI and custom attributes');
     } else {
       await webex.cc.startOutdial(destination);
       console.log('Outdial call initiated successfully with default ANI');
     }
+    outdialCadStatusElm.textContent = attributes
+      ? 'Outdial started with the selected party type attribute.'
+      : 'Outdial started without a custom party type attribute.';
 
   } catch (error) {
-    console.error('Failed to initiate outdial call', error);
-    alert('Failed to initiate outdial call: ' + (error.message || error));
+    console.error('Failed to initiate outdial call', error?.message || 'Unknown error');
+    outdialCadStatusElm.textContent = 'Failed to start outdial. See the console for the error.';
+    alert('Failed to initiate outdial call: ' + (error?.message || error));
+  }
+}
+
+// Update the selected task after it exists. This does not rerun Flow steps that already executed.
+async function updateLiveCadAttributes() {
+  const selectedContactType = outdialContactTypeElm.value;
+
+  if (!currentTask) {
+    outdialCadStatusElm.textContent = 'Select an active task before updating its attribute.';
+    return;
+  }
+
+  if (!selectedContactType) {
+    outdialCadStatusElm.textContent = 'Select a party type before updating the active task.';
+    return;
+  }
+
+  try {
+    await currentTask.updateCadVariables({contactType: selectedContactType});
+    outdialCadStatusElm.textContent = 'Active task attribute updated successfully.';
+  } catch (error) {
+    console.error('Failed to update active task attributes', error?.message || 'Unknown error');
+    outdialCadStatusElm.textContent = 'Failed to update active task attribute. See the console for the error.';
   }
 }
 

@@ -138,6 +138,8 @@ export const METRIC_EVENT_NAMES = {
 
   TASK_OUTDIAL_SUCCESS: 'Task Outdial Success',
   TASK_OUTDIAL_FAILED: 'Task Outdial Failed',
+  TASK_CAD_UPDATE_SUCCESS: 'Task CAD Update Success',
+  TASK_CAD_UPDATE_FAILED: 'Task CAD Update Failed',
 
   WXAPP_TASK_MUTE_SUCCESS: 'WxApp Task Mute Success',
   WXAPP_TASK_MUTE_FAILED: 'WxApp Task Mute Failed',

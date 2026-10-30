@@ -26,6 +26,36 @@ describe('AQM routing contact', () => {
 
 
 describe("Routing contacts", () => {
+  it('updateCadVariables uses the PATCH task endpoint and redacts dynamic request details', () => {
+    const req = contact.updateCadVariables({
+      interactionId: 'interaction-123',
+      data: {attributes: {contactType: 'Customer'}}
+    });
+
+    expect(req).toEqual({
+      url: '/v1/tasks/interaction-123',
+      data: {attributes: {contactType: 'Customer'}},
+      method: 'PATCH',
+      host: 'wcc-api-gateway',
+      err: expect.any(Function),
+      redactSensitiveLogs: true,
+      notifSuccess: {
+        bind: {
+          type: 'RoutingMessage',
+          data: {type: 'ContactUpdated', interactionId: 'interaction-123'}
+        },
+        msg: {}
+      },
+      notifFail: {
+        bind: {
+          type: 'RoutingMessage',
+          data: {type: 'ContactUpdateFailed'}
+        },
+        errId: 'Service.aqm.task.ContactUpdateFailed'
+      }
+    });
+  });
+
   it("accept", () => {
     fakeAqm.pendingRequests = {};
     const req = contact.accept({
