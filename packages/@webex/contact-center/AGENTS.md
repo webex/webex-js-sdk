@@ -60,6 +60,7 @@ src/utils/                            pagination/page cache contracts
 | Build | `yarn workspace @webex/contact-center build:src` |
 | Test | `yarn workspace @webex/contact-center test:unit` |
 | Lint/format | `yarn workspace @webex/contact-center test:style` |
+| E2E | `yarn workspace @webex/contact-center test:e2e` (runs `cc_playwright/`; see its README) |
 
 ## Developer Workflow
 

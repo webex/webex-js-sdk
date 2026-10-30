@@ -1,0 +1,189 @@
+name: E2E Tests
+run-name: ${{ github.actor }} is running E2E tests (${{ github.event_name }})
+
+# Playwright E2E for the Contact Center SDK (cc_playwright/) and Calling SDK (packages/calling/playwright/).
+# Both suites run against live Webex backends with real agent accounts, so:
+#   - each suite is serialized (one run at a time) because a Webex account must never be live in two sessions;
+#   - credentials come from one multi-line secret per suite holding the full .env contents.
+#
+# Required repository secrets:
+#   CC_E2E_ENV      contents of cc_playwright/.env   (see cc_playwright/.env.example)
+#   CALLING_E2E_ENV contents of the repo-root .env   (USER_N_EMAIL / _PASSWORD / _PHONE_NUMBER and the
+#                                                      _INT_ variants; see packages/calling/playwright/test-data.ts)
+#
+# Triggers: manual and workflow_call. pull-request.yml calls this workflow for PRs that carry
+# the `test_e2e` label (the label is removed again on every new push, like `validated`).
+
+on:
+  workflow_call:
+    inputs:
+      suite:
+        description: 'Which suite to run: all, contact-center or calling'
+        required: false
+        type: string
+        default: all
+      cc-project:
+        description: 'Contact Center only: Playwright project to run (e.g. SET_3). Blank runs every set.'
+        required: false
+        type: string
+      ref:
+        description: 'Git ref/SHA to check out. Blank uses the triggering ref.'
+        required: false
+        type: string
+  workflow_dispatch:
+    inputs:
+      suite:
+        description: 'Which suite to run'
+        required: false
+        type: choice
+        default: all
+        options:
+          - all
+          - contact-center
+          - calling
+      cc-project:
+        description: 'Contact Center only: Playwright project to run (e.g. SET_3). Blank runs every set.'
+        required: false
+        type: string
+
+permissions:
+  contents: read
+
+jobs:
+  contact-center:
+    name: E2E - Contact Center
+    if: inputs.suite == 'all' || inputs.suite == 'contact-center'
+    runs-on: ubuntu-latest
+    timeout-minutes: 120
+    concurrency:
+      group: e2e-contact-center
+      cancel-in-progress: false
+
+    steps:
+      - name: Checkout Project
+        uses: actions/checkout@v6
+        with:
+          ref: ${{ inputs.ref }}
+          allow-unsafe-pr-checkout: true
+          persist-credentials: false
+
+      - name: Setup Node
+        uses: actions/setup-node@v6
+        with:
+          node-version-file: '.nvmrc'
+          registry-url: 'https://registry.npmjs.org'
+          cache: 'yarn'
+
+      - name: Write Environment Variables
+        env:
+          CC_E2E_ENV: ${{ secrets.CC_E2E_ENV }}
+        run: |
+          if [ -z "$CC_E2E_ENV" ]; then
+            echo "::error::CC_E2E_ENV secret is not set"
+            exit 1
+          fi
+          printf '%s\n' "$CC_E2E_ENV" > cc_playwright/.env
+
+      - name: Install Dependencies
+        run: yarn
+
+      - name: Build Tools
+        run: yarn workspaces foreach --from '@webex/*-tools' --topological-dev --parallel --verbose run build:src
+
+      - name: Build Webex Core
+        run: yarn workspace @webex/webex-core run build:src
+
+      - name: Build Other Packages
+        run: yarn workspaces foreach --parallel --topological --verbose run build:src
+
+      - name: Build Samples
+        run: yarn samples:build
+
+      - name: Install Browsers
+        # chromium: used by the OAuth setup project (no channel set). chrome: used by the test projects.
+        run: npx playwright install --with-deps chromium chrome
+
+      - name: Run Contact Center E2E
+        env:
+          CC_PROJECT: ${{ inputs.cc-project }}
+        run: |
+          if [ -n "$CC_PROJECT" ]; then
+            xvfb-run -a yarn workspace @webex/contact-center run test:e2e --project="$CC_PROJECT"
+          else
+            xvfb-run -a yarn workspace @webex/contact-center run test:e2e
+          fi
+
+      - name: Upload Playwright Report
+        if: ${{ !cancelled() }}
+        uses: actions/upload-artifact@v4
+        with:
+          name: cc-playwright-report
+          path: |
+            playwright-report/
+            test-results/
+          if-no-files-found: ignore
+          retention-days: 14
+
+  calling:
+    name: E2E - Calling
+    if: inputs.suite == 'all' || inputs.suite == 'calling'
+    runs-on: ubuntu-latest
+    timeout-minutes: 120
+    concurrency:
+      group: e2e-calling
+      cancel-in-progress: false
+
+    steps:
+      - name: Checkout Project
+        uses: actions/checkout@v6
+        with:
+          ref: ${{ inputs.ref }}
+          allow-unsafe-pr-checkout: true
+          persist-credentials: false
+
+      - name: Setup Node
+        uses: actions/setup-node@v6
+        with:
+          node-version-file: '.nvmrc'
+          registry-url: 'https://registry.npmjs.org'
+          cache: 'yarn'
+
+      - name: Write Environment Variables
+        env:
+          CALLING_E2E_ENV: ${{ secrets.CALLING_E2E_ENV }}
+        run: |
+          if [ -z "$CALLING_E2E_ENV" ]; then
+            echo "::error::CALLING_E2E_ENV secret is not set"
+            exit 1
+          fi
+          printf '%s\n' "$CALLING_E2E_ENV" > .env
+
+      - name: Install Dependencies
+        run: yarn
+
+      - name: Build Tools
+        run: yarn workspaces foreach --from '@webex/*-tools' --topological-dev --parallel --verbose run build:src
+
+      - name: Build Webex Core
+        run: yarn workspace @webex/webex-core run build:src
+
+      - name: Build Other Packages
+        run: yarn workspaces foreach --parallel --topological --verbose run build:src
+
+      - name: Install Browsers
+        # chromium: used by the OAuth setup project (no channel set). chrome: used by the test projects.
+        run: npx playwright install --with-deps chromium chrome
+
+      - name: Run Calling E2E
+        run: xvfb-run -a yarn workspace @webex/calling run test:e2e
+
+      - name: Upload Playwright Report
+        if: ${{ !cancelled() }}
+        uses: actions/upload-artifact@v4
+        with:
+          name: calling-playwright-report
+          path: |
+            packages/calling/playwright-report/
+            packages/calling/test-results/
+          if-no-files-found: ignore
+          retention-days: 14

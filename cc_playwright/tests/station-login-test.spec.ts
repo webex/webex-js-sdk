@@ -365,10 +365,6 @@ export default function createStationLoginTests() {
     });
   });
 
-  test.describe.skip('Station Login Tests - hideDesktopLogin Feature', () => {
-    test('Native sample app does not expose a hideDesktopLogin toggle control', async () => {});
-  });
-
   test.describe('Station Login Tests - Desktop Mode', () => {
     let testManager: TestManager;
 

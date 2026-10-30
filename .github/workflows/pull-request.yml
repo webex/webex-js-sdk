@@ -371,3 +371,13 @@ jobs:
 
       - name: Test - Unit
         run: yarn workspaces foreach --verbose --exclude webex-js-sdk --include '${{ needs.generate-package-matrix.outputs.recursive }}' run test:unit
+
+
+  test-e2e:
+    name: Test - E2E
+    needs: validate
+    if: contains(github.event.pull_request.labels.*.name, 'test_e2e')
+    uses: ./.github/workflows/e2e.yml
+    with:
+      ref: ${{ github.event.pull_request.head.sha }}
+    secrets: inherit

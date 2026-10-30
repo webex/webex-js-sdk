@@ -333,7 +333,9 @@ export default function createDialNumberTaskControlTests() {
     });
     test.describe('Dial Number Tests', () => {
       test.beforeAll(async () => {
-        test.skip(!process.env.PW_DIAL_NUMBER_NAME, 'PW_DIAL_NUMBER_NAME not set');
+        if (!process.env.PW_DIAL_NUMBER_NAME) {
+          throw new Error('PW_DIAL_NUMBER_NAME must be set to run Dial Number tests');
+        }
       });
 
       test('Two-hop: consult to Agent then consult-transfer to Dial Number', async () => {

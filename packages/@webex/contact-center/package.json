@@ -42,6 +42,7 @@
     "test": "yarn test:style && yarn test:unit",
     "test:style": "eslint 'src/**/*.ts'",
     "test:unit": "webex-legacy-tools test --unit --runner jest",
+    "test:e2e": "npx playwright test --config=../../../playwright.config.ts",
     "deploy:npm": "yarn npm publish"
   },
   "dependencies": {
