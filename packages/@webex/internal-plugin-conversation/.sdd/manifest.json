@@ -1,0 +1,449 @@
+{
+  "manifest_version": 1,
+  "repository": {
+    "name": "@webex/internal-plugin-conversation",
+    "purpose": "Internal Webex JS SDK plugin for the Webex conversation service. Registers webex.internal.conversation to create, read, and update conversations and activities, encrypts outbound and decrypts inbound conversation objects through KMS payload transforms, shares files through ShareActivity, and reads activities in thread order.",
+    "category": "cat2-legacy",
+    "primary_languages": [
+      "javascript"
+    ]
+  },
+  "topology": "Single-repo",
+  "commands": {
+    "install": {
+      "command": "yarn install",
+      "source_file": "package.json",
+      "role": "install"
+    },
+    "compile": {
+      "command": "yarn workspace @webex/internal-plugin-conversation build:src",
+      "source_file": "package.json",
+      "role": "compile"
+    },
+    "build": {
+      "command": "yarn workspace @webex/internal-plugin-conversation build",
+      "source_file": "package.json",
+      "role": "package"
+    },
+    "unit-test": {
+      "command": "yarn workspace @webex/internal-plugin-conversation test:unit",
+      "source_file": "package.json",
+      "role": "unit-test"
+    },
+    "lint": {
+      "command": "yarn workspace @webex/internal-plugin-conversation test:style",
+      "source_file": "package.json",
+      "role": "lint"
+    },
+    "browser-test": {
+      "command": "yarn workspace @webex/internal-plugin-conversation test:browser",
+      "source_file": "package.json",
+      "role": "integration-test"
+    },
+    "deploy": {
+      "command": "yarn workspace @webex/internal-plugin-conversation deploy:npm",
+      "source_file": "package.json",
+      "role": "deploy"
+    },
+    "consumer-install": {
+      "command": "npm install --save @webex/internal-plugin-conversation",
+      "source_file": "README.md",
+      "role": "other"
+    }
+  },
+  "toolchain": [
+    {
+      "name": "node",
+      "version": ">=18 (consumer floor)",
+      "origin": "repo-config",
+      "source_file": "package.json"
+    },
+    {
+      "name": "node (development)",
+      "version": "22.14",
+      "origin": "human-declared",
+      "declared_by": "webex-js-sdk maintainers via the repository-root AGENTS.md (nvm install/use 22.14)"
+    },
+    {
+      "name": "yarn",
+      "version": "3.4.1",
+      "origin": "human-declared",
+      "declared_by": "webex-js-sdk maintainers via the repository-root package.json packageManager field"
+    },
+    {
+      "name": "eslint",
+      "version": "^8.24.0",
+      "origin": "repo-config",
+      "source_file": "package.json"
+    },
+    {
+      "name": "prettier",
+      "version": "^2.7.1",
+      "origin": "repo-config",
+      "source_file": "package.json"
+    }
+  ],
+  "tests": {
+    "unit": {
+      "command_ref": "unit-test",
+      "dir": "test/unit/spec",
+      "framework": "jest"
+    },
+    "integration": {
+      "command_ref": "browser-test",
+      "dir": "test/integration/spec",
+      "framework": "karma via webex-legacy-tools"
+    }
+  },
+  "quality_gates": {
+    "code_coverage": {
+      "origin": "none",
+      "declared_by": "rsarika@cisco.com (package owner; confirmed in the 2026-10-15 bootstrap questionnaire that no package-specific coverage gate applies)"
+    }
+  },
+  "coverage_status_definitions": {
+    "specced": ">=80% public surface specced, drift <5% \u2014 spec is authoritative",
+    "partial": "40-80% specced \u2014 spec is a hint, cross-check code",
+    "untracked": "<40% specced \u2014 code is the source of truth"
+  },
+  "spec_source_policy": {
+    "mode": "reconcile",
+    "migrated_source_disposition": "retain",
+    "disposition_decided_by": "rsarika@cisco.com",
+    "disposition_decided_at": "2026-10-15T10:29:38Z",
+    "decided_by": "rsarika@cisco.com",
+    "decided_at": "2026-10-15T10:29:38Z",
+    "decision_record": ".generated/sdd/spec-source-policy/decision.md"
+  },
+  "spec_sources": [
+    {
+      "path": "src/activity-threading.md",
+      "scope": "module",
+      "module": "src/",
+      "role": "superseded",
+      "canonical": false,
+      "use_by_agents": "source-for-reconciliation",
+      "canonical_target": "src/docs/README.md",
+      "post_migration_action": "retain",
+      "deletion_status": "not-applicable",
+      "notes": "Hand-authored thread-ordering design note. Reconciled into the module spec Design overview, Use cases, State machine, Pitfalls, and Key design trade-off sections; its terminology list reconciles into docs/architecture.md Domain language. Statements the code disproves (next accepting search, closing on any queryType-less resume, getOlder returning oldest first) are recorded as corrections or stale units. Retained by owner decision; superseded and non-authoritative."
+    },
+    {
+      "path": "README.md",
+      "scope": "repo",
+      "role": "source-material",
+      "canonical": false,
+      "use_by_agents": "source-for-reconciliation",
+      "canonical_target": "docs/getting-started.md",
+      "post_migration_action": "retain",
+      "deletion_status": "not-applicable",
+      "notes": "Native npm-facing readme. Install, usage, environment variables, and contribution pointer reconcile into docs/getting-started.md; the internal-plugin statement and purpose into docs/index.md; maintainer into docs/architecture.md. Remains the authoritative npm readme in place and is never a deletion candidate."
+    }
+  ],
+  "modules": [
+    {
+      "path": "src/",
+      "coverage_status": "Partial",
+      "coverage_evidence": "Generator-side field coverage 93% (13 of 14 mandatory fields present, 6 of 6 critical) assessed 2026-10-15 against src/docs/README.md, with 20 requirements; field measurement is complete. Independent revalidation passed 2026-10-16 by runtime 01a13fa3-fe4d-7852-9680-59b67b1829e4 with 0 Blocking and 0 warnings; all prior findings are closed in the assessed scope. Direct package manifest/index/context/cleanup checks, five source-fidelity inventories (111 units), and seven generated-document structural checks pass. All 97 unit cases pass under Node 22.14.0. Nine Weak requirements and the missing characterization baseline remain disclosed. Partial retained; this validation does not measure a code-coverage or drift percentage or apply coverage promotion.",
+      "canonical_spec": "src/docs/README.md",
+      "contracts": {
+        "provides": [
+          "conversation-package-entry",
+          "conversation-plugin-sdk",
+          "conversation-payload-transforms",
+          "conversation-share-activity",
+          "conversation-config"
+        ],
+        "requires": [
+          "conversation-service-http",
+          "files-upload-http",
+          "webex-core-sdk",
+          "webex-encryption-sdk",
+          "webex-user-sdk",
+          "webex-common-sdk",
+          "helper-html-sdk",
+          "helper-image-sdk"
+        ]
+      },
+      "last_assessed": "2026-10-15",
+      "section_profile": {
+        "has_ui": false,
+        "crosses_service_boundaries": true,
+        "enforces_domain_rules": true,
+        "is_concurrent_async": true,
+        "owns_persistence": false,
+        "returns_caller_errors": true,
+        "has_design_tradeoff": true,
+        "stateful_transitions": true,
+        "exposes_wire_protocol": true,
+        "ui_multi_screen": false,
+        "large_data_model": false,
+        "has_tiers": false,
+        "module_specific_conventions": true,
+        "published_package": true,
+        "embedded_in_host": true,
+        "holds_client_state": true,
+        "has_submodules": false,
+        "has_submodules_computed_by": "scripts/module_tree.py",
+        "has_submodules_computed_at": "2026-10-15T10:29:38Z",
+        "resolved_by": "claude-code/claude-opus-5-5 (host metadata; code-grounded from src/, package.json, tests, and the routed thread-ordering note)",
+        "resolved_at": "2026-10-15T10:29:38Z"
+      },
+      "source_policy": {
+        "mode": "reconcile",
+        "existing_sources": [
+          "src/activity-threading.md"
+        ],
+        "conflict_status": "resolved",
+        "decision_record": ".generated/sdd/spec-source-policy/decision.md"
+      }
+    }
+  ],
+  "contract_catalog": {
+    "index_path": "docs/architecture.md",
+    "definitions": {
+      "conversation-package-entry": {
+        "kind": "sdk",
+        "publication": "published",
+        "source_kind": "repository-path",
+        "source": "package.json",
+        "summary": "Published npm package @webex/internal-plugin-conversation. main resolves dist/index.js and devMain src/index.js; the entry registers the conversation internal plugin and exports the Conversation plugin as default plus ShareActivity, ConversationError, and InvalidUserCreation. Internal plugin without strict semver."
+      },
+      "conversation-plugin-sdk": {
+        "kind": "sdk",
+        "publication": "internal",
+        "source_kind": "repository-path",
+        "source": "src/conversation.js",
+        "summary": "The webex.internal.conversation method surface: conversation lifecycle, activity verbs, generated simple and tag verbs, reactions, activity reads, thread-ordered reads, realtime helpers, downloads, and URL helpers."
+      },
+      "conversation-payload-transforms": {
+        "kind": "sdk",
+        "publication": "internal",
+        "source_kind": "repository-path",
+        "source": "src/index.js",
+        "summary": "Payload-transformer predicates and normalize transforms registered with the plugin, plus the encryption and decryption transform sets from src/encryption-transforms.js and src/decryption-transforms.js appended on the host ready event according to config toggles."
+      },
+      "conversation-share-activity": {
+        "kind": "sdk",
+        "publication": "internal",
+        "source_kind": "repository-path",
+        "source": "src/share-activity.js",
+        "summary": "ShareActivity builder: add, addGif, remove, getFiles, prepare, and the static create, uploading encrypted files and thumbnails to space upload sessions."
+      },
+      "conversation-config": {
+        "kind": "sdk",
+        "publication": "internal",
+        "source_kind": "repository-path",
+        "source": "src/config.js",
+        "summary": "Configuration defaults under webex.config.conversation: HTML tag/style allow-lists and process hooks, additional URL schemes, thumbnail limits, keepEncryptedProperties, decryptionFailureMessage, and the include decryption/encryption transform toggles."
+      },
+      "conversation-service-http": {
+        "kind": "http",
+        "publication": "published",
+        "source_kind": "external",
+        "source": "Webex service-catalog service 'conversation' and per-conversation URLs resolved by getConvoUrl in src/conversation.js",
+        "summary": "Upstream Webex conversation service consumed for conversations, activities, parents/children, mentions, threads, bulk fetch, typing status, and space URLs. Owned by the conversation service, not this repository."
+      },
+      "files-upload-http": {
+        "kind": "http",
+        "publication": "published",
+        "source_kind": "external",
+        "source": "Space upload_sessions URLs returned by PUT <conversation url>/space and /space/hidden (src/share-activity.js)",
+        "summary": "Upstream files-service upload session API used for initialize, upload, and finalize phases of shared files and thumbnails."
+      },
+      "webex-core-sdk": {
+        "kind": "sdk",
+        "publication": "internal",
+        "source_kind": "external",
+        "source": "@webex/webex-core (workspace package; no SDD spec, code is the reference)",
+        "summary": "WebexPlugin base, registerInternalPlugin, Page, request/upload, service catalog, and the payload-transformer engine."
+      },
+      "webex-encryption-sdk": {
+        "kind": "sdk",
+        "publication": "internal",
+        "source_kind": "external",
+        "source": "@webex/internal-plugin-encryption (workspace package; no SDD spec, code is the reference)",
+        "summary": "KMS key creation, text/binary/SCR encryption and decryption, encrypted download, and KMS message encryption."
+      },
+      "webex-user-sdk": {
+        "kind": "sdk",
+        "publication": "internal",
+        "source_kind": "external",
+        "source": "@webex/internal-plugin-user (workspace package; no SDD spec, code is the reference)",
+        "summary": "asUUID and recordUUID for participant identity."
+      },
+      "webex-common-sdk": {
+        "kind": "sdk",
+        "publication": "published",
+        "source_kind": "external",
+        "source": "@webex/common (workspace package; its src/docs/README.md module spec is the reference)",
+        "summary": "proxyEvents, transferEvents, tap, patterns, and Exception."
+      },
+      "helper-html-sdk": {
+        "kind": "sdk",
+        "publication": "published",
+        "source_kind": "external",
+        "source": "@webex/helper-html (workspace package; no SDD spec, code is the reference)",
+        "summary": "filter and filterEscape used for inbound and outbound content sanitization."
+      },
+      "helper-image-sdk": {
+        "kind": "sdk",
+        "publication": "published",
+        "source_kind": "external",
+        "source": "@webex/helper-image (workspace package; its src/docs/README.md module spec is the reference)",
+        "summary": "readExifData, detectFileType, and processImage used by download and ShareActivity."
+      }
+    }
+  },
+  "spec_policy": {
+    "require_what_and_why": true,
+    "require_provenance": true,
+    "protected_specs": [
+      "src/docs/README.md"
+    ]
+  },
+  "validation": {
+    "generator_runtime": "claude-code",
+    "generator_model": "claude-opus-5-5",
+    "generator_run_id": "bcc4adc6-fc47-4b61-b5c1-a43d07d38c03",
+    "generator_runtime_source": "host-metadata",
+    "minimum_independence": "different-runtime",
+    "blocking_severities": [
+      "Blocking"
+    ],
+    "source_commit": "d2e34dabee",
+    "base_ref": "next",
+    "validator_runtime": "01a13fa3-fe4d-7852-9680-59b67b1829e4",
+    "validator_run_id": "01a13fa3-fe4d-7852-9680-59b67b1829e4",
+    "validator_runtime_source": "invocation-input",
+    "runtime_fallback_tier": "different-runtime"
+  },
+  "layout": {
+    "sdd_root": ".sdd",
+    "docs_root": "docs",
+    "agent_entry_path": "AGENTS.md",
+    "standing_docs_root": "docs",
+    "spec_index_path": "docs/specs/README.md",
+    "module_docs_strategy": "source-local",
+    "module_docs_relative_path": "docs/README.md",
+    "module_docs_decision": {
+      "basis": "repo-standards-default",
+      "reason": "The package has no module-local documentation folder or docs build. src/activity-threading.md is a single retained design note, not a docs convention, and does not collide with src/docs/README.md, so the source-local default applies unchanged.",
+      "decided_by": "rsarika@cisco.com via bootstrap questionnaire",
+      "decided_at": "2026-10-15T10:29:38Z"
+    },
+    "repo_context_decision": {
+      "path": ".repo-context.json",
+      "schema_path": "schemas/repo-context.schema.json",
+      "action": "create",
+      "schema_action": "create",
+      "reason": "Neither the operational context nor its schema exists in this package; both are created from the repository-root Repo Standards templates and verified repository evidence.",
+      "decided_by": "rsarika@cisco.com via bootstrap questionnaire",
+      "decided_at": "2026-10-15T10:29:38Z"
+    },
+    "artifact_decisions": [
+      {
+        "path": "docs/service.md",
+        "action": "omit",
+        "reason": "The package is a library plugin, not a deployable service; it declares no deployment descriptor, container, or runtime entry point.",
+        "decided_by": "rsarika@cisco.com via bootstrap questionnaire",
+        "decided_at": "2026-10-15T10:29:38Z"
+      },
+      {
+        "path": "mkdocs.yml",
+        "action": "omit",
+        "reason": "No package-level documentation build exists.",
+        "decided_by": "rsarika@cisco.com via bootstrap questionnaire",
+        "decided_at": "2026-10-15T10:29:38Z"
+      },
+      {
+        "path": "api-specs/openapi.yaml",
+        "action": "omit",
+        "reason": "The package serves no HTTP routes; it consumes the externally owned conversation and files services and publishes an SDK surface described by conversation-package-entry.",
+        "decided_by": "rsarika@cisco.com via bootstrap questionnaire",
+        "decided_at": "2026-10-15T10:29:38Z"
+      },
+      {
+        "path": "SECURITY.md",
+        "action": "omit",
+        "reason": "Security policy is owned at the webex-js-sdk repository root, not per package.",
+        "decided_by": "rsarika@cisco.com via bootstrap questionnaire",
+        "decided_at": "2026-10-15T10:29:38Z"
+      },
+      {
+        "path": "CONTRIBUTING.md",
+        "action": "omit",
+        "reason": "Contribution guidance is owned at the webex-js-sdk repository root and linked from README.md.",
+        "decided_by": "rsarika@cisco.com via bootstrap questionnaire",
+        "decided_at": "2026-10-15T10:29:38Z"
+      },
+      {
+        "path": "CHANGELOG.md",
+        "action": "omit",
+        "reason": "Changelog generation is owned at the monorepo root.",
+        "decided_by": "rsarika@cisco.com via bootstrap questionnaire",
+        "decided_at": "2026-10-15T10:29:38Z"
+      },
+      {
+        "path": "CTO_CHECKLIST.yml",
+        "action": "omit",
+        "reason": "The CTO readiness workflow applies to deployable services; this package is a library.",
+        "decided_by": "rsarika@cisco.com via bootstrap questionnaire",
+        "decided_at": "2026-10-15T10:29:38Z"
+      },
+      {
+        "path": "schemas/cto-checklist.schema.json",
+        "action": "omit",
+        "reason": "Selected together with CTO_CHECKLIST.yml, which is omitted.",
+        "decided_by": "rsarika@cisco.com via bootstrap questionnaire",
+        "decided_at": "2026-10-15T10:29:38Z"
+      }
+    ],
+    "template_roots": {
+      "canonical": ".sdd/templates/repo-standards"
+    },
+    "repo_skills_root": ".sdd/skills",
+    "contract_index_path": "docs/architecture.md"
+  },
+  "tooling": {
+    "sdlc_skills": {
+      "install_mode": "copy",
+      "installed_at": "2026-10-15T10:29:38Z",
+      "plugins": [
+        "repo-annotation@2.0.5"
+      ]
+    }
+  },
+  "substrate": {
+    "source": "WebexTools/repo-standards@d89a7fe59126ae3ad9bac9ca352aa7f12b4c85dc",
+    "consumed": [
+      "@webex/eslint-config-legacy via .eslintrc.js",
+      "@webex/babel-config-legacy via babel.config.js",
+      "@webex/jest-config-legacy via jest.config.js",
+      "@webex/legacy-tools build and test runner via package.json",
+      "package README.md"
+    ],
+    "compliance_tier": "baseline"
+  },
+  "section_profiles": {
+    "repo": {
+      "owns_datastore": false,
+      "holds_client_state": true,
+      "components_interact": false,
+      "domain_data_across_components": false,
+      "caches_data": true,
+      "observability_convention": true,
+      "deploys_to_infra": false,
+      "shared_base_libs": true,
+      "is_monorepo": false,
+      "multi_platform": true,
+      "published_package": true,
+      "embedded_in_host": true,
+      "cross_repo_deps_material": true,
+      "security_arch_warranted": true,
+      "exposes_commands_or_artifacts": true
+    },
+    "resolved_by": "claude-code/claude-opus-5-5 (host metadata; code-grounded from package.json, src/, tests, and the routed source documents)",
+    "resolved_at": "2026-10-15T10:29:38Z"
+  }
+}
