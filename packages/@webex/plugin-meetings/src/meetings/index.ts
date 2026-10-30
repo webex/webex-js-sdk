@@ -208,6 +208,8 @@ export default class Meetings extends WebexPlugin {
   meetingInfo: any;
   mediaHelpers: any;
   breakoutLocusForHandleLater: any;
+  meetingInfoFetchesInProgress: Set<Promise<unknown>>;
+  deferredLocusEvents: Promise<unknown>;
   namespace = MEETINGS;
   registrationStatus: MeetingRegistrationStatus;
 
@@ -297,6 +299,23 @@ export default class Meetings extends WebexPlugin {
     this.loggerRequest = new LoggerRequest({webex: this.webex});
     this.meetingCollection = new MeetingCollection();
     this.deletedMeetings = new Map();
+    /**
+     * Meeting info fetches for meetings created by this client that have not settled yet.
+     * Until they settle those meetings cannot be matched to incoming locus events.
+     * @instance
+     * @type {Set<Promise>}
+     * @private
+     * @memberof Meetings
+     */
+    this.meetingInfoFetchesInProgress = new Set();
+    /**
+     * Locus events waiting for meeting info fetches to settle, replayed one at a time in arrival order.
+     * @instance
+     * @type {Promise}
+     * @private
+     * @memberof Meetings
+     */
+    this.deferredLocusEvents = Promise.resolve();
 
     /**
      * The PersonalMeetingRoom object to interact with server
@@ -534,14 +553,21 @@ export default class Meetings extends WebexPlugin {
    * @param {Object} data.locus
    * @param {Boolean} useRandomDelayForInfo whether a random delay should be added to fetching meeting info
    * @param {String} data.eventType
-   * @returns {undefined}
+   * @param {Boolean} isDeferredReplay whether this is a deferred event being handled again, so it is not stored for debugging twice
+   * @returns {Promise|undefined} the meeting creation chain when the event creates a meeting
    * @private
    * @memberof Meetings
    */
-  private handleLocusEvent(data: LocusEvent, useRandomDelayForInfo = false) {
+  private handleLocusEvent(
+    data: LocusEvent,
+    useRandomDelayForInfo = false,
+    isDeferredReplay = false
+  ) {
     let meeting = this.getCorrespondingMeetingByLocus(data);
     // @ts-ignore
-    if (this.config.experimental.storeLocusHashTreeEventsForDebugging) {
+    const {storeLocusHashTreeEventsForDebugging} = this.config.experimental;
+
+    if (storeLocusHashTreeEventsForDebugging && !isDeferredReplay) {
       storeEventForDebugging('mercury', data);
     }
 
@@ -566,8 +592,37 @@ export default class Meetings extends WebexPlugin {
           `Meetings:index#handleLocusEvent --> doesn't need to process locus event`
         );
 
-        return;
+        return undefined;
       }
+    }
+
+    if (!meeting && this.meetingInfoFetchesInProgress.size > 0) {
+      // A meeting this client is creating has no locusUrl, sipUri or meeting number until its meeting info arrives,
+      // so this event can't be matched to it yet. Creating a meeting now would leave two meetings for the same locus,
+      // so wait until no fetches are in progress and try to match the event again before treating it as a new meeting.
+      LoggerProxy.logger.info(
+        `Meetings:index#handleLocusEvent --> no meeting found for locus event, waiting for ${this.meetingInfoFetchesInProgress.size} meeting info fetch(es) in progress before creating one`
+      );
+
+      // Replay deferred events one at a time, so a meeting created for one is in the collection before the next is matched
+      this.deferredLocusEvents = this.deferredLocusEvents
+        .then(async () => {
+          // Fetches can start while this event waits, so wait until none are left rather than for a snapshot
+          while (this.meetingInfoFetchesInProgress.size > 0) {
+            // eslint-disable-next-line no-await-in-loop
+            await Promise.all([...this.meetingInfoFetchesInProgress]);
+          }
+
+          // Handled synchronously after the set was seen empty, so no new fetch can start in between
+          return this.handleLocusEvent(data, useRandomDelayForInfo, true);
+        })
+        .catch((error) => {
+          LoggerProxy.logger.error(
+            `Meetings:index#handleLocusEvent --> Error handling deferred locus event: ${error.message}`
+          );
+        });
+
+      return undefined;
     }
 
     if (!meeting) {
@@ -611,7 +666,7 @@ export default class Meetings extends WebexPlugin {
           'Meetings:index#handleLocusEvent --> Locus event received for meeting, after it was ended.'
         );
 
-        return;
+        return undefined;
       }
 
       // When its wireless share or guest and user leaves the meeting we dont have to keep the meeting object
@@ -628,10 +683,10 @@ export default class Meetings extends WebexPlugin {
           'Meetings:index#handleLocusEvent --> Locus event received for meeting, after it was ended.'
         );
 
-        return;
+        return undefined;
       }
 
-      this.create(data.locus, DESTINATION_TYPE.LOCUS_ID, useRandomDelayForInfo)
+      return this.create(data.locus, DESTINATION_TYPE.LOCUS_ID, useRandomDelayForInfo)
         .then(async (newMeeting) => {
           meeting = newMeeting;
           try {
@@ -696,9 +751,11 @@ export default class Meetings extends WebexPlugin {
             );
           }
         });
-    } else {
-      meeting.locusInfo.parse(meeting, data);
     }
+
+    meeting.locusInfo.parse(meeting, data);
+
+    return undefined;
   }
 
   /**
@@ -1856,7 +1913,21 @@ export default class Meetings extends WebexPlugin {
           );
           meeting.parseMeetingInfo(undefined, destination);
         } else if (!shouldDeferMeetingInfoFetch) {
-          await meeting.fetchMeetingInfo(meetingInfoOptions);
+          const fetchMeetingInfoPromise = meeting.fetchMeetingInfo(meetingInfoOptions);
+
+          // Locus-created meetings already carry their locus, so only track meetings created by this client.
+          // The tracked entry never rejects and removes itself before settling, so waiters see an up to date set.
+          if (type !== DESTINATION_TYPE.LOCUS_ID) {
+            const trackedFetch = fetchMeetingInfoPromise
+              .catch(() => undefined)
+              .then(() => {
+                this.meetingInfoFetchesInProgress.delete(trackedFetch);
+              });
+
+            this.meetingInfoFetchesInProgress.add(trackedFetch);
+          }
+
+          await fetchMeetingInfoPromise;
         } else {
           LoggerProxy.logger.info(
             'Meetings:index#createMeeting --> defer fetchMeetingInfo for incomplete locus, will do it after locus initialSetup'
