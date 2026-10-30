@@ -25,6 +25,7 @@ const {
   setMetricTimings,
   isNetworkError,
   isUnauthorizedError,
+  isLocus403WithHtmlResponseError,
   generateClientErrorCodeForIceFailure,
   isSdpOfferCreationError,
   isWebrtcApiNotAvailableError,
@@ -172,6 +173,131 @@ describe('internal-plugin-metrics', () => {
       it(`for ${errorType} rawError returns the correct result`, () => {
         assert.strictEqual(isUnauthorizedError(rawError), expected);
       });
+    });
+  });
+
+  describe('isLocus403WithHtmlResponseError', () => {
+    const createPlugin = (serviceName: string | undefined) => ({
+      webex: {
+        internal: {
+          services: {
+            getServiceFromUrl: sinon.stub().returns(serviceName ? {name: serviceName} : undefined),
+          },
+        },
+      },
+    });
+
+    [
+      [
+        'Forbidden with HTML content type from locus',
+        new WebexHttpError.Forbidden({
+          url: 'https://locus.example.com/call',
+          statusCode: 403,
+          body: {},
+          headers: {'content-type': 'text/html; charset=utf-8'},
+          options: {headers: {}, url: 'https://locus.example.com/call'},
+        }),
+        'locus',
+        true,
+      ],
+      [
+        'Forbidden with JSON content type from locus',
+        new WebexHttpError.Forbidden({
+          url: 'https://locus.example.com/call',
+          statusCode: 403,
+          body: {},
+          headers: {'content-type': 'application/json'},
+          options: {headers: {}, url: 'https://locus.example.com/call'},
+        }),
+        'locus',
+        false,
+      ],
+      [
+        'Forbidden with HTML content type from non-locus service',
+        new WebexHttpError.Forbidden({
+          url: 'https://wdm.example.com/call',
+          statusCode: 403,
+          body: {},
+          headers: {'content-type': 'text/html; charset=utf-8'},
+          options: {headers: {}, url: 'https://wdm.example.com/call'},
+        }),
+        'wdm',
+        false,
+      ],
+      [
+        'Forbidden with HTML content type with unknown service',
+        new WebexHttpError.Forbidden({
+          url: 'https://unknown.example.com/call',
+          statusCode: 403,
+          body: {},
+          headers: {'content-type': 'text/html; charset=utf-8'},
+          options: {headers: {}, url: 'https://unknown.example.com/call'},
+        }),
+        undefined,
+        false,
+      ],
+      [
+        'Unauthorized with HTML content type',
+        new WebexHttpError.Unauthorized({
+          url: 'https://locus.example.com/call',
+          statusCode: 401,
+          body: {},
+          headers: {'content-type': 'text/html; charset=utf-8'},
+          options: {headers: {}, url: 'https://locus.example.com/call'},
+        }),
+        'locus',
+        false,
+      ],
+      ['plain object', {statusCode: 403, headers: {'content-type': 'text/html'}}, 'locus', false],
+      [
+        'Forbidden with HTML content type but no content-type header key',
+        new WebexHttpError.Forbidden({
+          url: 'https://locus.example.com/call',
+          statusCode: 403,
+          body: {},
+          headers: {},
+          options: {headers: {}, url: 'https://locus.example.com/call'},
+        }),
+        'locus',
+        false,
+      ],
+      [
+        'Forbidden with no headers at all',
+        new WebexHttpError.Forbidden({
+          url: 'https://locus.example.com/call',
+          statusCode: 403,
+          body: {},
+          headers: undefined as any,
+          options: {headers: {}, url: 'https://locus.example.com/call'},
+        }),
+        'locus',
+        false,
+      ],
+    ].forEach(([errorType, rawError, serviceName, expected]) => {
+      it(`for ${errorType} returns the correct result`, () => {
+        const plugin = createPlugin(serviceName as string | undefined);
+        assert.strictEqual(isLocus403WithHtmlResponseError(plugin as any, rawError), expected);
+      });
+    });
+
+    it('returns false when getServiceFromUrl throws an exception', () => {
+      const plugin = {
+        webex: {
+          internal: {
+            services: {
+              getServiceFromUrl: sinon.stub().throws(new Error('services not available')),
+            },
+          },
+        },
+      };
+      const rawError = new WebexHttpError.Forbidden({
+        url: 'https://locus.example.com/call',
+        statusCode: 403,
+        body: {},
+        headers: {'content-type': 'text/html; charset=utf-8'},
+        options: {headers: {}, url: 'https://locus.example.com/call'},
+      });
+      assert.strictEqual(isLocus403WithHtmlResponseError(plugin as any, rawError), false);
     });
   });
 
