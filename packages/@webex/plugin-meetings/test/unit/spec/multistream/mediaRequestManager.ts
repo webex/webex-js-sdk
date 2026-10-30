@@ -4,6 +4,7 @@ import {ReceiveSlot} from '@webex/plugin-meetings/src/multistream/receiveSlot';
 import sinon from 'sinon';
 import {assert} from '@webex/test-helper-chai';
 import {getMaxFs, MAX_FS_VALUES} from '@webex/plugin-meetings/src/multistream/remoteMedia';
+import LoggerProxy from '@webex/plugin-meetings/src/common/logs/logger-proxy';
 import FakeTimers from '@sinonjs/fake-timers';
 import * as InternalMediaCoreModule from '@webex/internal-media-core';
 import {MediaType, MediaCodecMimeType} from '@webex/internal-media-core';
@@ -71,8 +72,9 @@ describe('MediaRequestManager', () => {
     getIngressPayloadTypeCallback = sinon.stub().returns(FAKE_H264_PAYLOAD_TYPE);
     mediaRequestManager = new MediaRequestManager(sendMediaRequestsCallback, getIngressPayloadTypeCallback, {
       degradationPreferences,
-      kind: 'video',
+      mediaType: MediaType.VideoMain,
       trimRequestsToNumOfSources: false,
+      isReadyToSendRequests: () => true,
     });
 
     // create some fake receive slots used by the tests
@@ -945,44 +947,51 @@ describe('MediaRequestManager', () => {
       getRecommendedMaxBitrateForFrameSizeSpy.restore();
     });
 
-    it('returns the default maxPayloadBitsPerSecond if kind is "audio"', () => {
-      const mediaRequestManagerAudio = new MediaRequestManager(sendMediaRequestsCallback, getIngressPayloadTypeCallback, {
-        degradationPreferences,
-        kind: 'audio',
-        trimRequestsToNumOfSources: false,
-      });
-      mediaRequestManagerAudio.setNumCurrentSources(100, 100);
-      sendMediaRequestsCallback.resetHistory();
-
-      mediaRequestManagerAudio.addRequest(
-        {
-          policyInfo: {
-            policy: 'receiver-selected',
-            csi: 123,
-          },
-          receiveSlots: [fakeReceiveSlots[0]],
-          codecInfo: undefined,
-        },
-        false
-      );
-
-      mediaRequestManagerAudio.commit();
-
-      checkMediaRequestsSent(
-        [
+    [MediaType.AudioMain, MediaType.AudioSlides].forEach((mediaType) => {
+      it(`returns the default maxPayloadBitsPerSecond for ${mediaType}`, () => {
+        const mediaRequestManagerAudio = new MediaRequestManager(
+          sendMediaRequestsCallback,
+          getIngressPayloadTypeCallback,
           {
-            policy: 'receiver-selected',
-            csi: 123,
-            receiveSlot: fakeWcmeSlots[0],
-            // returns RecommendedOpusBitrates.FB_MONO_MUSIC as expected:
-            maxPayloadBitsPerSecond: 64000,
-          },
-          // set isCodecInfoDefined to false, since we don't pass in a codec info when audio:
-        ],
-        {isCodecInfoDefined: false}
-      );
+            degradationPreferences,
+            mediaType,
+            trimRequestsToNumOfSources: false,
+            isReadyToSendRequests: () => true,
+          }
+        );
+        mediaRequestManagerAudio.setNumCurrentSources(100, 100);
+        sendMediaRequestsCallback.resetHistory();
 
-      assert.notCalled(getRecommendedMaxBitrateForFrameSizeSpy);
+        mediaRequestManagerAudio.addRequest(
+          {
+            policyInfo: {
+              policy: 'receiver-selected',
+              csi: 123,
+            },
+            receiveSlots: [fakeReceiveSlots[0]],
+            codecInfo: undefined,
+          },
+          false
+        );
+
+        mediaRequestManagerAudio.commit();
+
+        checkMediaRequestsSent(
+          [
+            {
+              policy: 'receiver-selected',
+              csi: 123,
+              receiveSlot: fakeWcmeSlots[0],
+              // returns RecommendedOpusBitrates.FB_MONO_MUSIC as expected:
+              maxPayloadBitsPerSecond: 64000,
+            },
+            // set isCodecInfoDefined to false, since we don't pass in a codec info when audio:
+          ],
+          {isCodecInfoDefined: false}
+        );
+
+        assert.notCalled(getRecommendedMaxBitrateForFrameSizeSpy);
+      });
     });
 
     it('returns the recommended maxPayloadBitsPerSecond if kind is "video"', () => {
@@ -1066,8 +1075,9 @@ describe('MediaRequestManager', () => {
     beforeEach(() => {
       mediaRequestManager = new MediaRequestManager(sendMediaRequestsCallback, getIngressPayloadTypeCallback, {
         degradationPreferences,
-        kind: 'video',
+        mediaType: MediaType.VideoMain,
         trimRequestsToNumOfSources: true,
+        isReadyToSendRequests: () => true,
       });
     });
 
@@ -1443,9 +1453,10 @@ describe('MediaRequestManager', () => {
 
       mediaRequestManager = new MediaRequestManager(sendMediaRequestsCallback, getIngressPayloadTypeCallback, {
         degradationPreferences,
-        kind: 'video',
+        mediaType: MediaType.VideoSlides,
         trimRequestsToNumOfSources: false,
         enableAv1: true,
+        isReadyToSendRequests: () => true,
       });
       sendMediaRequestsCallback.resetHistory();
 
@@ -1471,9 +1482,10 @@ describe('MediaRequestManager', () => {
 
       mediaRequestManager = new MediaRequestManager(sendMediaRequestsCallback, getIngressPayloadTypeCallback, {
         degradationPreferences,
-        kind: 'video',
+        mediaType: MediaType.VideoSlides,
         trimRequestsToNumOfSources: false,
         enableAv1: true,
+        isReadyToSendRequests: () => true,
       });
       sendMediaRequestsCallback.resetHistory();
 
@@ -1503,9 +1515,10 @@ describe('MediaRequestManager', () => {
 
       mediaRequestManager = new MediaRequestManager(sendMediaRequestsCallback, getIngressPayloadTypeCallback, {
         degradationPreferences,
-        kind: 'video',
+        mediaType: MediaType.VideoSlides,
         trimRequestsToNumOfSources: false,
         enableAv1: true,
+        isReadyToSendRequests: () => true,
       });
     });
 
@@ -1651,9 +1664,10 @@ describe('MediaRequestManager', () => {
 
       mediaRequestManager = new MediaRequestManager(sendMediaRequestsCallback, getIngressPayloadTypeCallback, {
         degradationPreferences,
-        kind: 'video',
+        mediaType: MediaType.VideoSlides,
         trimRequestsToNumOfSources: false,
         enableAv1: true,
+        isReadyToSendRequests: () => true,
       });
 
       sendMediaRequestsCallback.resetHistory();
@@ -1828,5 +1842,204 @@ describe('MediaRequestManager', () => {
         }),
       ]);
     });
+  });
+});
+
+describe('MediaRequestManager pending request state', () => {
+  let sendMediaRequestsCallback;
+  let isReadyToSendRequests;
+  let getIngressPayloadTypeCallback;
+  let mediaRequestManager: MediaRequestManager;
+  let fakeReceiveSlot;
+
+  beforeEach(() => {
+    sinon.stub(LoggerProxy.logger, 'info');
+    sendMediaRequestsCallback = sinon.stub();
+    isReadyToSendRequests = sinon.stub().returns(false);
+    getIngressPayloadTypeCallback = sinon.stub().returns(0x80);
+    mediaRequestManager = new MediaRequestManager(sendMediaRequestsCallback, getIngressPayloadTypeCallback, {
+      degradationPreferences,
+      mediaType: MediaType.VideoSlides,
+      trimRequestsToNumOfSources: false,
+      isReadyToSendRequests,
+    });
+    fakeReceiveSlot = {
+      id: 'fake receive slot',
+      on: sinon.stub(),
+      off: sinon.stub(),
+      sourceState: 'live',
+      mediaType: MediaType.VideoSlides,
+      wcmeReceiveSlot: {id: 'fake WCME slot'},
+    } as unknown as ReceiveSlot;
+  });
+
+  afterEach(() => {
+    sinon.restore();
+  });
+
+  const addReceiverSelectedRequest = (csi: number) =>
+    mediaRequestManager.addRequest(
+      {
+        policyInfo: {policy: 'receiver-selected', csi},
+        receiveSlots: [fakeReceiveSlot],
+        codecInfo: {codec: 'h264', maxFs: 3600},
+      },
+      true
+    );
+
+  [
+    MediaType.AudioMain,
+    MediaType.VideoMain,
+    MediaType.AudioSlides,
+    MediaType.VideoSlides,
+  ].forEach((mediaType) => {
+    it(`logs pending and synchronized ${mediaType} state`, () => {
+      mediaRequestManager = new MediaRequestManager(
+        sendMediaRequestsCallback,
+        getIngressPayloadTypeCallback,
+        {
+          degradationPreferences,
+          mediaType,
+          trimRequestsToNumOfSources: false,
+          isReadyToSendRequests,
+        }
+      );
+      mediaRequestManager.commit();
+      mediaRequestManager.commit();
+
+      assert.notCalled(sendMediaRequestsCallback);
+      assert.calledOnceWithExactly(
+        LoggerProxy.logger.info,
+        `multistream:sendRequests --> connection not ready, latest ${mediaType} media request state will be synchronized when ready`
+      );
+
+      isReadyToSendRequests.returns(true);
+      mediaRequestManager.sendPendingRequests();
+
+      assert.calledOnceWithExactly(sendMediaRequestsCallback, []);
+      assert.calledWith(
+        LoggerProxy.logger.info,
+        `multistream:sendRequests --> connection ready, synchronizing latest ${mediaType} media request state`
+      );
+    });
+  });
+
+  it('synchronizes only the latest state once when sendPendingRequests() is called', () => {
+    const requestId = addReceiverSelectedRequest(1);
+    mediaRequestManager.cancelRequest(requestId, true);
+    addReceiverSelectedRequest(2);
+
+    isReadyToSendRequests.returns(true);
+    mediaRequestManager.sendPendingRequests();
+
+    assert.calledOnceWithExactly(sendMediaRequestsCallback, [
+      sinon.match({
+        policy: 'receiver-selected',
+        policySpecificInfo: sinon.match({csi: 2}),
+        receiveSlots: [fakeReceiveSlot.wcmeReceiveSlot],
+      }),
+    ]);
+    assert.calledWith(
+      LoggerProxy.logger.info,
+      'multistream:sendRequests --> connection ready, synchronizing latest VIDEO-SLIDES media request state'
+    );
+
+    mediaRequestManager.sendPendingRequests();
+
+    assert.calledOnce(sendMediaRequestsCallback);
+  });
+
+  it('keeps the state pending if the connection is still not ready on sendPendingRequests()', () => {
+    addReceiverSelectedRequest(1);
+    mediaRequestManager.sendPendingRequests();
+
+    assert.notCalled(sendMediaRequestsCallback);
+
+    isReadyToSendRequests.returns(true);
+    mediaRequestManager.sendPendingRequests();
+
+    assert.calledOnce(sendMediaRequestsCallback);
+  });
+
+  it('does not send anything on sendPendingRequests() if nothing is pending', () => {
+    isReadyToSendRequests.returns(true);
+    mediaRequestManager.sendPendingRequests();
+
+    assert.notCalled(sendMediaRequestsCallback);
+  });
+
+  it('sends requests immediately when the connection is ready', () => {
+    isReadyToSendRequests.returns(true);
+    addReceiverSelectedRequest(1);
+
+    assert.calledOnce(sendMediaRequestsCallback);
+  });
+
+  it('clears the pending state on reset()', () => {
+    addReceiverSelectedRequest(1);
+    mediaRequestManager.reset();
+
+    isReadyToSendRequests.returns(true);
+    mediaRequestManager.sendPendingRequests();
+
+    assert.notCalled(sendMediaRequestsCallback);
+  });
+
+  it('builds codec information only when ready using the current payload type', () => {
+    mediaRequestManager.addRequest({
+      policyInfo: {policy: 'receiver-selected', csi: 1},
+      receiveSlots: [fakeReceiveSlot],
+      codecInfo: {codec: 'h264', maxFs: getMaxFs('large')},
+    });
+
+    assert.notCalled(getIngressPayloadTypeCallback);
+
+    getIngressPayloadTypeCallback.returns(98);
+    isReadyToSendRequests.returns(true);
+    mediaRequestManager.sendPendingRequests();
+
+    assert.calledOnceWithExactly(sendMediaRequestsCallback, [
+      sinon.match({
+        codecInfos: [sinon.match({payloadType: 98})],
+      }),
+    ]);
+  });
+
+  it('sends an empty state when all pending requests were cancelled', () => {
+    const requestId = addReceiverSelectedRequest(1);
+
+    mediaRequestManager.cancelRequest(requestId, true);
+    isReadyToSendRequests.returns(true);
+    mediaRequestManager.sendPendingRequests();
+
+    assert.calledOnceWithExactly(sendMediaRequestsCallback, []);
+  });
+
+  it('does not resend the state after a regular commit has already sent it', () => {
+    addReceiverSelectedRequest(1);
+    isReadyToSendRequests.returns(true);
+    mediaRequestManager.commit();
+    mediaRequestManager.sendPendingRequests();
+
+    assert.calledOnce(sendMediaRequestsCallback);
+  });
+
+  it('propagates send errors and keeps the state pending', () => {
+    addReceiverSelectedRequest(1);
+    isReadyToSendRequests.returns(true);
+    sendMediaRequestsCallback.onFirstCall().throws(new Error('Failed to send media requests'));
+
+    assert.throws(() => mediaRequestManager.sendPendingRequests(), 'Failed to send media requests');
+
+    mediaRequestManager.sendPendingRequests();
+
+    assert.calledTwice(sendMediaRequestsCallback);
+  });
+
+  it('throws from commit() if sending fails', () => {
+    isReadyToSendRequests.returns(true);
+    sendMediaRequestsCallback.throws(new Error('Failed to send media requests'));
+
+    assert.throws(() => mediaRequestManager.commit(), 'Failed to send media requests');
   });
 });

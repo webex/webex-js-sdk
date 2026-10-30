@@ -486,12 +486,49 @@ describe('plugin-meetings', () => {
           assert.instanceOf(meeting.mediaRequestManagers.screenShareVideo, MediaRequestManager);
         });
 
+        [
+          {manager: 'audio', mediaType: MediaType.AudioMain},
+          {manager: 'video', mediaType: MediaType.VideoMain},
+          {manager: 'screenShareAudio', mediaType: MediaType.AudioSlides},
+          {manager: 'screenShareVideo', mediaType: MediaType.VideoSlides},
+        ].forEach(({manager, mediaType}) => {
+          it(`defers ${manager} media requests until the media connection is connected`, () => {
+            const requestMedia = sinon.stub();
+            const getConnectionState = sinon.stub().returns(ConnectionState.Connecting);
+
+            meeting.mediaProperties.webrtcMediaConnection = {requestMedia, getConnectionState};
+
+            meeting.mediaRequestManagers[manager].commit();
+
+            assert.notCalled(requestMedia);
+
+            getConnectionState.returns(ConnectionState.Connected);
+            meeting.mediaRequestManagers[manager].sendPendingRequests();
+
+            assert.calledOnceWithExactly(requestMedia, mediaType, []);
+          });
+
+          it(`sends ${manager} media requests immediately when connected`, () => {
+            const requestMedia = sinon.stub();
+
+            meeting.mediaProperties.webrtcMediaConnection = {
+              requestMedia,
+              getConnectionState: sinon.stub().returns(ConnectionState.Connected),
+            };
+
+            meeting.mediaRequestManagers[manager].commit();
+
+            assert.calledOnceWithExactly(requestMedia, mediaType, []);
+          });
+        });
+
         it('getIngressPayloadType on webrtcMediaConnection is invoked for H264 when sending multistream video requests', () => {
           const getIngressPayloadType = sinon.stub().returns(97);
 
           meeting.isMultistream = true;
           meeting.mediaProperties.webrtcMediaConnection = {
             getIngressPayloadType,
+            getConnectionState: sinon.stub().returns(ConnectionState.Connected),
             requestMedia: sinon.stub(),
           };
 
@@ -616,6 +653,7 @@ describe('plugin-meetings', () => {
           localMeeting.isMultistream = true;
           localMeeting.mediaProperties.webrtcMediaConnection = {
             getIngressPayloadType,
+            getConnectionState: sinon.stub().returns(ConnectionState.Connected),
             requestMedia: sinon.stub(),
           };
 
@@ -11831,6 +11869,9 @@ describe('plugin-meetings', () => {
             meeting.reconnectionManager = new ReconnectionManager(meeting);
             meeting.reconnectionManager.iceReconnected = sinon.stub().returns(undefined);
             meeting.statsAnalyzer = {startAnalyzer: sinon.stub()};
+            Object.values(meeting.mediaRequestManagers).forEach((mediaRequestManager) =>
+              sinon.spy(mediaRequestManager, 'sendPendingRequests')
+            );
             meeting.mediaProperties.webrtcMediaConnection = {
               // mock the on() method and store all the listeners
               on: sinon.stub().callsFake((event, listener) => {
@@ -11872,6 +11913,9 @@ describe('plugin-meetings', () => {
               meeting.statsAnalyzer.startAnalyzer,
               meeting.mediaProperties.webrtcMediaConnection
             );
+            Object.values(meeting.mediaRequestManagers).forEach((mediaRequestManager) =>
+              assert.calledOnceWithExactly(mediaRequestManager.sendPendingRequests)
+            );
           };
 
           const resetSpies = () => {
@@ -11880,6 +11924,9 @@ describe('plugin-meetings', () => {
             Metrics.sendBehavioralMetric.resetHistory();
             meeting.reconnectionManager.iceReconnected.resetHistory();
             meeting.statsAnalyzer.startAnalyzer.resetHistory();
+            Object.values(meeting.mediaRequestManagers).forEach((mediaRequestManager) =>
+              mediaRequestManager.sendPendingRequests.resetHistory()
+            );
           };
 
           it('sends client.ice.end with the correct icePhase when we get ConnectionState.Connected on CONNECTION_STATE_CHANGED event', () => {
@@ -11913,6 +11960,33 @@ describe('plugin-meetings', () => {
             simulateConnectionStateChange(ConnectionState.Disconnected);
 
             simulateConnectionStateChange(ConnectionState.Connected);
+          });
+
+          it('synchronizes the latest media request state on Connected after a silent peer connection close', () => {
+            setupSpies();
+            const connection = meeting.mediaProperties.webrtcMediaConnection;
+
+            connection.requestMedia = sinon.stub();
+            meeting.setupMediaConnectionListeners();
+            simulateConnectionStateChange(ConnectionState.Connected);
+
+            // WCME closes the old peer connection without emitting a state-change event.
+            connection.getConnectionState.returns(ConnectionState.Closed);
+            Object.values(meeting.mediaRequestManagers).forEach((manager) => manager.commit());
+            assert.notCalled(connection.requestMedia);
+
+            simulateConnectionStateChange(ConnectionState.Connecting);
+            Object.values(meeting.mediaRequestManagers).forEach((manager) => manager.commit());
+            assert.notCalled(connection.requestMedia);
+
+            simulateConnectionStateChange(ConnectionState.Connected);
+
+            assert.deepEqual(connection.requestMedia.args, [
+              [MediaType.AudioMain, []],
+              [MediaType.VideoMain, []],
+              [MediaType.AudioSlides, []],
+              [MediaType.VideoSlides, []],
+            ]);
           });
         });
 
