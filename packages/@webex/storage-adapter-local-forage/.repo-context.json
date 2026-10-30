@@ -1,0 +1,513 @@
+{
+  "$schema": "./schemas/repo-context.schema.json",
+  "version": 1,
+  "repository": {
+    "name": "@webex/storage-adapter-local-forage",
+    "purpose": "A localforage-backed (IndexedDB first) implementation of the Webex storage-adapter interface, published to npm so a browser host can persist Webex JS SDK storage namespaces across page reloads and browser restarts."
+  },
+  "commands": {
+    "install": "yarn install",
+    "build": "yarn workspace @webex/storage-adapter-local-forage build",
+    "lint": "yarn workspace @webex/storage-adapter-local-forage test:style",
+    "browser-test": "yarn workspace @webex/storage-adapter-local-forage test:browser",
+    "deploy": "yarn workspace @webex/storage-adapter-local-forage deploy:npm"
+  },
+  "public_interfaces": [
+    {
+      "name": "package exports",
+      "kind": "package_export",
+      "source": "package.json",
+      "entrypoints": [
+        "StorageAdapterLocalForage (default export)",
+        "bind(namespace, options)",
+        "binding.get",
+        "binding.put",
+        "binding.del",
+        "binding.clear"
+      ],
+      "audience": "Webex JS SDK hosts that assign the adapter to a storage slot (in this workspace, @webex/recipe-private-web-client as storage.unboundedAdapter) and external npm consumers; driven at runtime by the @webex/webex-core storage layer.",
+      "notes": "Verify names against src/index.js and the compatibility commitments against the Public surface and Export stability sections of src/docs/README.md. Constructor arguments are ignored."
+    },
+    {
+      "name": "package scripts",
+      "kind": "npm_scripts",
+      "source": "package.json",
+      "entrypoints": [
+        "build",
+        "build:src",
+        "test:style",
+        "test:browser",
+        "deploy:npm"
+      ],
+      "audience": "Contributors and CI jobs operating on this package from the workspace root.",
+      "notes": "There is no test:unit or test:integration script, so the aggregate test script cannot succeed. test:browser runs Karma with Mocha and cannot load the shared Jest-style suite; it is not the canonical unit-test command."
+    }
+  ],
+  "source_of_truth": [
+    {
+      "surface": "storage adapter",
+      "paths": [
+        "src/index.js"
+      ],
+      "generated_artifacts": [
+        "dist"
+      ],
+      "refresh_with": [
+        "yarn workspace @webex/storage-adapter-local-forage build"
+      ],
+      "validate_with": [
+        "yarn workspace @webex/storage-adapter-local-forage test:style",
+        "yarn workspace @webex/storage-adapter-local-forage build"
+      ]
+    },
+    {
+      "surface": "module specification",
+      "paths": [
+        "src/docs/README.md"
+      ],
+      "generated_artifacts": [],
+      "refresh_with": [],
+      "validate_with": [
+        "Run the active Repo Annotation installation's spec-drift-changed skill on the current diff"
+      ]
+    },
+    {
+      "surface": "package standing documentation",
+      "paths": [
+        "AGENTS.md",
+        "docs/index.md",
+        "docs/architecture.md",
+        "docs/getting-started.md",
+        "docs/specs/README.md",
+        "docs/adr/index.md"
+      ],
+      "generated_artifacts": [],
+      "refresh_with": [],
+      "validate_with": [
+        "Run the active Repo Annotation installation's check_spec_index.py and check_repo_context.py against this package"
+      ]
+    },
+    {
+      "surface": "test entry point",
+      "paths": [
+        "test/unit/spec/storage-adapter-local-forage.js"
+      ],
+      "generated_artifacts": [],
+      "refresh_with": [],
+      "validate_with": [
+        "yarn workspace @webex/storage-adapter-local-forage test:browser"
+      ]
+    },
+    {
+      "surface": "build, lint, and test configuration",
+      "paths": [
+        "babel.config.js",
+        "jest.config.js",
+        ".eslintrc.js",
+        "process"
+      ],
+      "generated_artifacts": [],
+      "refresh_with": [],
+      "validate_with": [
+        "yarn workspace @webex/storage-adapter-local-forage test:style",
+        "yarn workspace @webex/storage-adapter-local-forage build"
+      ]
+    },
+    {
+      "surface": "SDD routing and coverage state",
+      "paths": [
+        ".sdd/manifest.json"
+      ],
+      "generated_artifacts": [],
+      "refresh_with": [],
+      "validate_with": [
+        "Run the active Repo Annotation installation's check_manifest.py against this package"
+      ]
+    }
+  ],
+  "generated_artifacts": [
+    {
+      "path": ".sdd/templates/repo-standards/template-map.json",
+      "generated_from": "WebexTools/repo-standards@d89a7fe59126ae3ad9bac9ca352aa7f12b4c85dc",
+      "refresh_with": "Owned at the Webex JS SDK workspace root: the Repo Standards snapshot lives in the root .sdd/templates/repo-standards and is shared with this package rather than copied into it; re-materialize it there with the active Repo Annotation installation's setup-skills.sh"
+    },
+    {
+      "path": "dist",
+      "generated_from": "src",
+      "refresh_with": "yarn workspace @webex/storage-adapter-local-forage build"
+    }
+  ],
+  "validation_matrix": [
+    {
+      "paths": [
+        "src/index.js"
+      ],
+      "minimum": [
+        "yarn workspace @webex/storage-adapter-local-forage test:style"
+      ],
+      "recommended": [
+        "yarn workspace @webex/storage-adapter-local-forage build"
+      ]
+    },
+    {
+      "paths": [
+        "test/unit/spec/storage-adapter-local-forage.js"
+      ],
+      "minimum": [
+        "yarn workspace @webex/storage-adapter-local-forage test:browser"
+      ],
+      "recommended": [
+        "Confirm the changed test actually executes; the shared suite is skipped in Node and cannot load under Karma with Mocha"
+      ]
+    },
+    {
+      "paths": [
+        "package.json",
+        "babel.config.js",
+        "jest.config.js",
+        ".eslintrc.js",
+        "process"
+      ],
+      "minimum": [
+        "yarn workspace @webex/storage-adapter-local-forage build"
+      ],
+      "recommended": [
+        "yarn workspace @webex/storage-adapter-local-forage test:style"
+      ]
+    },
+    {
+      "paths": [
+        "src/docs/README.md",
+        "docs",
+        "AGENTS.md",
+        ".sdd/manifest.json",
+        ".repo-context.json"
+      ],
+      "minimum": [
+        "Run the active Repo Annotation installation's check_manifest.py, check_spec_index.py, and check_repo_context.py against this package"
+      ],
+      "recommended": [
+        "Run the active Repo Annotation installation's spec-drift-changed skill on the current diff"
+      ]
+    }
+  ],
+  "change_impact": [
+    {
+      "paths": [
+        "src/index.js"
+      ],
+      "affects": [
+        "@webex/recipe-private-web-client (storage.unboundedAdapter)",
+        "@webex/webex-core storage layer",
+        "records already stored in users' browsers",
+        "external npm consumers of @webex/storage-adapter-local-forage"
+      ],
+      "refresh_with": [
+        "yarn workspace @webex/storage-adapter-local-forage build"
+      ],
+      "validate_with": [
+        "yarn workspace @webex/storage-adapter-local-forage test:style"
+      ],
+      "avoid_direct_edits": [
+        "dist"
+      ],
+      "notes": "Any change to bind, get, put, del, clear, key composition, or clear scope is a published surface change. Behavior changes must update Requirements, Caller-visible failure modes, Data, schema, and migration discipline, and Verification in src/docs/README.md in the same commit. Changing the stored key format or localforage database orphans existing records."
+    },
+    {
+      "paths": [
+        ".sdd/manifest.json"
+      ],
+      "affects": [
+        "docs/specs/README.md",
+        "src/docs/README.md",
+        "docs/architecture.md"
+      ],
+      "refresh_with": [],
+      "validate_with": [
+        "Run the active Repo Annotation installation's check_manifest.py and check_spec_index.py against this package"
+      ],
+      "avoid_direct_edits": [
+        ".sdd/templates/repo-standards"
+      ],
+      "notes": "The manifest is authoritative for module routing, coverage state, contracts, and artifact decisions; the specification registry is its human-readable mirror."
+    },
+    {
+      "paths": [
+        "package.json"
+      ],
+      "affects": [
+        ".repo-context.json",
+        ".sdd/manifest.json",
+        "docs/getting-started.md",
+        "AGENTS.md"
+      ],
+      "refresh_with": [],
+      "validate_with": [
+        "Run the active Repo Annotation installation's check_repo_context.py against this package"
+      ],
+      "avoid_direct_edits": [
+        "dist"
+      ],
+      "notes": "Command strings are duplicated between the manifest and this context by contract and must stay identical."
+    }
+  ],
+  "glossary": [
+    {
+      "term": "binding",
+      "definition": "The object bind(namespace, options) resolves; it exposes get, put, del, and clear for one namespace.",
+      "notes": "A new binding is created on every bind call; the webex-core storage layer caches one per namespace."
+    },
+    {
+      "term": "composed key",
+      "definition": "The record key actually stored in localforage: the namespace, a slash, then the caller's key.",
+      "notes": "It is the only isolation between namespaces, because all bindings share the default database."
+    },
+    {
+      "term": "stored null",
+      "definition": "A record whose value is null; get resolves it with null.",
+      "notes": "Contrast with a missing key, which rejects with NotFoundError."
+    },
+    {
+      "term": "unbounded storage",
+      "definition": "The Webex SDK storage slot for data without a size bound; the in-repo host assigns this adapter to it.",
+      "notes": "The encryption plugin caches serialized KMS keys in unbounded storage."
+    }
+  ],
+  "evidence_rules": [
+    {
+      "claim_category": "command_name",
+      "sources": [
+        "package.json"
+      ],
+      "requirement": "Emit a command only when its script exists in package.json.",
+      "notes": "test:unit and test:integration do not exist, so the aggregate test script is never emitted as runnable."
+    },
+    {
+      "claim_category": "import_path",
+      "sources": [
+        "src/index.js",
+        "package.json"
+      ],
+      "requirement": "Emit an export name only when src/index.js declares it and the main or devMain entry point reaches it."
+    },
+    {
+      "claim_category": "behavior_claim",
+      "sources": [
+        "src/index.js",
+        "test/unit/spec/storage-adapter-local-forage.js"
+      ],
+      "requirement": "Ground every behavior claim in src/index.js, and state separately that no test currently executes it.",
+      "notes": "Git history is not acceptable evidence for this package. Dependency facts come from the dependency's canonical spec when present, otherwise its code."
+    },
+    {
+      "claim_category": "placeholder_token",
+      "sources": [
+        ".sdd/templates/repo-standards/template-map.json"
+      ],
+      "requirement": "Never ship a template placeholder in a generated document; replace it with verified package evidence or surface the gap as a blocking question.",
+      "notes": "The template map lives in the workspace-root snapshot."
+    }
+  ],
+  "negative_guidance": [
+    {
+      "rule": "Do not assume clear() is scoped to one namespace.",
+      "why": "It calls localforage.clear() on the default instance and erases every record on the origin; the owner classified this as a known hazard on 2026-10-06."
+    },
+    {
+      "rule": "Do not assume the constructor argument isolates storage.",
+      "why": "The constructor takes no parameters; every instance shares the default localforage database."
+    },
+    {
+      "rule": "Do not treat a green test or CI run as evidence of adapter behavior.",
+      "why": "No automated test executes this module: the suite is skipped in Node and cannot load under Karma with Mocha."
+    },
+    {
+      "rule": "Do not change the stored key format, database, or store name without a migration.",
+      "why": "Records persist in users' browsers across releases and would be orphaned."
+    },
+    {
+      "rule": "Do not cite commit or pull-request history as rationale.",
+      "why": "The owner excluded git history as evidence for this onboarding."
+    },
+    {
+      "rule": "Do not copy Repo Standards templates into this package.",
+      "why": "The owner chose to share the workspace-root template snapshot instead of a package-level copy."
+    }
+  ],
+  "confidence_policy": {
+    "high": {
+      "action": "update",
+      "expectation": "The claim is backed by src/index.js and the affected specification sections are updated in the same change."
+    },
+    "medium": {
+      "action": "narrow-scope",
+      "expectation": "Implementation evidence exists but no test observes the behavior; record the gap in Verification rather than claiming coverage."
+    },
+    "low": {
+      "action": "noop",
+      "expectation": "Neither code nor a dependency spec establishes the fact; stop and ask the package owner."
+    }
+  },
+  "repository_topology": {
+    "main_entrypoints": [
+      {
+        "name": "package entry point",
+        "path": "src/index.js",
+        "purpose": "Declares the entire public surface: the StorageAdapterLocalForage default export and its binding class.",
+        "notes": "Workspace consumers resolve it through devMain; published consumers resolve dist/index.js through main."
+      }
+    ],
+    "workspace_packages": [
+      {
+        "name": "@webex/storage-adapter-local-forage",
+        "paths": [
+          "package.json"
+        ],
+        "notes": "One published library package inside the Webex JS SDK yarn workspace, documented as its own SDD root."
+      }
+    ],
+    "source_surfaces": [
+      {
+        "name": "module source",
+        "paths": [
+          "src"
+        ],
+        "notes": "One file, src/index.js; src/docs holds its canonical specification."
+      },
+      {
+        "name": "tests",
+        "paths": [
+          "test/unit"
+        ],
+        "notes": "One file that delegates to the shared conformance suite."
+      },
+      {
+        "name": "inherited configuration",
+        "paths": [
+          "babel.config.js",
+          "jest.config.js",
+          ".eslintrc.js",
+          "process"
+        ],
+        "notes": "Thin files over shared workspace configuration. process is a one-line module exporting {browser: true} that nothing in this package or its build tooling references."
+      }
+    ],
+    "generated_surfaces": [
+      {
+        "name": "Repo Standards template snapshot",
+        "paths": [
+          ".sdd/templates/repo-standards"
+        ],
+        "generated_from": "WebexTools/repo-standards@d89a7fe59126ae3ad9bac9ca352aa7f12b4c85dc",
+        "refresh_with": "Run the active Repo Annotation installation's setup-skills.sh at the Webex JS SDK workspace root",
+        "notes": "Resolved from the workspace-root .sdd/templates/repo-standards snapshot, which this package shares by owner instruction; no package-level copy exists."
+      },
+      {
+        "name": "build output",
+        "paths": [
+          "dist"
+        ],
+        "generated_from": "src",
+        "refresh_with": "yarn workspace @webex/storage-adapter-local-forage build",
+        "notes": "Transpiled module and source maps; ignored by version control."
+      }
+    ],
+    "sync_paths": [
+      {
+        "source": "WebexTools/repo-standards@d89a7fe59126ae3ad9bac9ca352aa7f12b4c85dc",
+        "targets": [
+          ".sdd/templates/repo-standards"
+        ],
+        "mechanism": "Run the active Repo Annotation installation's setup-skills.sh at the Webex JS SDK workspace root",
+        "notes": "The shared snapshot was verified against the bundled upstream snapshot on 2026-10-06."
+      }
+    ],
+    "validation_entrypoints": [
+      {
+        "name": "lint",
+        "command": "yarn workspace @webex/storage-adapter-local-forage test:style",
+        "scope": "ESLint over src with the shared legacy rule set."
+      },
+      {
+        "name": "build",
+        "command": "yarn workspace @webex/storage-adapter-local-forage build",
+        "scope": "Transpilation of src into the published dist output."
+      },
+      {
+        "name": "browser tests",
+        "command": "yarn workspace @webex/storage-adapter-local-forage test:browser",
+        "scope": "Karma run of test/unit with the unit flag.",
+        "notes": "Does not execute the shared suite (Mocha lacks beforeAll); not the canonical unit-test command."
+      }
+    ]
+  },
+  "surface_owners": [
+    {
+      "surface": "storage adapter and published export surface",
+      "owner": "@webex/web-client",
+      "edit_boundary": "src/index.js is the only implementation file; a change there updates src/docs/README.md in the same commit."
+    },
+    {
+      "surface": "module specification and package standing documentation",
+      "owner": "@webex/web-client",
+      "edit_boundary": "Generated from the shared Repo Standards templates and routed by .sdd/manifest.json; edit the generated documents in place."
+    },
+    {
+      "surface": "build, lint, and test configuration",
+      "owner": "Webex JS SDK workspace",
+      "edit_boundary": "Owned by the shared legacy config packages; there is no package-local knob."
+    },
+    {
+      "surface": "release, changelog, contribution policy, and Repo Standards template snapshot",
+      "owner": "Webex JS SDK workspace root",
+      "edit_boundary": "Not owned by this package; it ships no CHANGELOG.md, CONTRIBUTING.md, SECURITY.md, or template copy."
+    }
+  ],
+  "do_not_edit": [
+    "dist"
+  ],
+  "marker_scopes": {
+    "sdd-generated-metadata": [
+      "AGENTS.md",
+      "docs/index.md",
+      "docs/architecture.md",
+      "docs/getting-started.md",
+      "docs/specs/README.md",
+      "docs/adr/index.md",
+      "src/docs/README.md"
+    ]
+  },
+  "fallback_rules": [
+    "When code and this context disagree, the code wins; correct the context and the affected specification sections in the same change.",
+    "When a fact cannot be established from src/index.js, package.json, or a dependency's canonical spec or code, stop and ask the package owner.",
+    "When a required command is missing, say so and stop; do not substitute a plausible alternative.",
+    "When a change would alter the stored record layout or clear scope, treat it as breaking for data already in users' browsers."
+  ],
+  "downstream_context_pack": {
+    "required_human_surfaces": [
+      "README.md",
+      "docs/index.md",
+      "docs/getting-started.md",
+      "docs/architecture.md"
+    ],
+    "required_agent_operational_surfaces": [
+      "AGENTS.md",
+      "docs/specs/README.md",
+      "src/docs/README.md"
+    ],
+    "required_machine_readable_surface": ".repo-context.json",
+    "recommended_machine_readable_sections": [
+      "public_interfaces",
+      "source_of_truth",
+      "generated_artifacts",
+      "validation_matrix",
+      "change_impact",
+      "glossary",
+      "evidence_rules",
+      "negative_guidance",
+      "confidence_policy",
+      "repository_topology",
+      "surface_owners"
+    ]
+  }
+}
