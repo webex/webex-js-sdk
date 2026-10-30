@@ -1034,7 +1034,7 @@ export default class Meeting extends StatelessWebexPlugin {
       (csi: CSI) => (this.members.findMemberByCsi(csi) as any)?.id
     );
 
-    const isReadyToSendRequests = () =>
+    const isReadyToSendMediaRequests = () =>
       this.mediaProperties.webrtcMediaConnection?.getConnectionState() ===
       ConnectionState.Connected;
 
@@ -1051,7 +1051,7 @@ export default class Meeting extends StatelessWebexPlugin {
           degradationPreferences: this.config.degradationPreferences,
           mediaType: MediaType.AudioMain,
           trimRequestsToNumOfSources: false,
-          isReadyToSendRequests,
+          isReadyToSendMediaRequests,
         }
       ),
       video: new MediaRequestManager(
@@ -1062,7 +1062,7 @@ export default class Meeting extends StatelessWebexPlugin {
           degradationPreferences: this.config.degradationPreferences,
           mediaType: MediaType.VideoMain,
           trimRequestsToNumOfSources: true,
-          isReadyToSendRequests,
+          isReadyToSendMediaRequests,
         }
       ),
       screenShareAudio: new MediaRequestManager(
@@ -1073,7 +1073,7 @@ export default class Meeting extends StatelessWebexPlugin {
           degradationPreferences: this.config.degradationPreferences,
           mediaType: MediaType.AudioSlides,
           trimRequestsToNumOfSources: false,
-          isReadyToSendRequests,
+          isReadyToSendMediaRequests,
         }
       ),
       screenShareVideo: new MediaRequestManager(
@@ -1084,7 +1084,7 @@ export default class Meeting extends StatelessWebexPlugin {
           degradationPreferences: this.config.degradationPreferences,
           mediaType: MediaType.VideoSlides,
           trimRequestsToNumOfSources: false,
-          isReadyToSendRequests,
+          isReadyToSendMediaRequests,
           // @ts-ignore - config coming from registerPlugin
           enableAv1: this.config.enableAv1SlidesSupport,
         }
@@ -1782,6 +1782,8 @@ export default class Meeting extends StatelessWebexPlugin {
 
   /**
    * Sends multistream media requests after MediaRequestManager has checked connection readiness.
+   * Only call this method from a MediaRequestManager callback to ensure all media requests
+   * go through the manager's connection readiness checks.
    * @param {MediaType} mediaType - The media type
    * @param {StreamRequest[]} mediaRequests - The media requests to send
    * @returns {void}
