@@ -14,6 +14,7 @@ import {
   XML_TYPE,
   BW_XSI_ENDPOINT_VERSION,
   METHOD_START_MESSAGE,
+  UNPROCESSABLE_CONTENT_CODE,
 } from '../common/constants';
 import {
   serviceErrorCodeHandler,
@@ -55,6 +56,37 @@ import {
   PREFIX,
   METHODS,
 } from './constants';
+
+/**
+ * Fixed relative XSI voicemail-message path shape:
+ * `/v2.0/user/{userId}/VoiceMessagingMessages/{messageId}`. The raw value is
+ * matched exactly as received (no decoding/normalization); percent-encoding,
+ * backslashes, whitespace, control characters, `?`/`#`, and any scheme or
+ * authority prefix are excluded implicitly because none of those characters
+ * are members of the allowed segment character classes below.
+ */
+const XSI_VOICE_MESSAGE_PATH_REGEX =
+  /^\/v2\.0\/user\/([A-Za-z0-9._@-]+)\/VoiceMessagingMessages\/([A-Za-z0-9._-]+)$/;
+
+/**
+ * Thrown when a `messageId` supplied to a BroadWorks XSI voicemail operation
+ * does not match the expected relative XSI voice-message path shape. The
+ * message mirrors the existing `${response.status}`-style convention used by
+ * every other caught failure in this file, so the existing catch block routes
+ * it through `serviceErrorCodeHandler` into the same normalized
+ * error-status `VoicemailResponseEvent` shape as any other failure, without
+ * ever invoking `fetch`.
+ */
+class InvalidVoicemailPathError extends Error {
+  /**
+   * @ignore
+   */
+  constructor() {
+    super(String(UNPROCESSABLE_CONTENT_CODE));
+    this.name = 'InvalidVoicemailPathError';
+  }
+}
+
 /**
  *
  */
@@ -321,6 +353,26 @@ export class BroadworksBackendConnector implements IBroadworksCallBackendConnect
   }
 
   /**
+   * Validates that a `messageId` is a well-formed relative XSI voice-message
+   * path, matching the raw value exactly as received (no decoding or
+   * normalization is ever performed), before it is concatenated onto
+   * `xsiEndpoint` and fetched.
+   *
+   * @param messageId - The raw messageId to validate.
+   * @throws {InvalidVoicemailPathError} When messageId is not a valid relative XSI voice-message path.
+   */
+  private validateXsiMessagePath(messageId: string): void {
+    const match =
+      typeof messageId === 'string' ? messageId.match(XSI_VOICE_MESSAGE_PATH_REGEX) : null;
+    const [, userSegment, messageSegment] = match ?? [];
+    const isTraversalSegment = (segment?: string) => segment === '.' || segment === '..';
+
+    if (!match || isTraversalSegment(userSegment) || isTraversalSegment(messageSegment)) {
+      throw new InvalidVoicemailPathError();
+    }
+  }
+
+  /**
    * Fetch the voicemail contents for the messageId.
    *
    * @param messageId - String result from the voicemail list.
@@ -335,6 +387,7 @@ export class BroadworksBackendConnector implements IBroadworksCallBackendConnect
     log.info(`${METHOD_START_MESSAGE} with messageId: ${messageId}`, loggerContext);
 
     try {
+      this.validateXsiMessagePath(messageId);
       const voicemailContentUrl = `${this.xsiEndpoint}${messageId}`;
       const response = await fetch(`${voicemailContentUrl}`, {
         method: 'GET',
@@ -412,6 +465,7 @@ export class BroadworksBackendConnector implements IBroadworksCallBackendConnect
     log.info(`${METHOD_START_MESSAGE} with messageId: ${messageId}`, loggerContext);
 
     try {
+      this.validateXsiMessagePath(messageId);
       const voicemailContentUrl = `${this.xsiEndpoint}${messageId}/${MARK_AS_READ}`;
       const response = await fetch(voicemailContentUrl, {
         method: HTTP_METHODS.PUT,
@@ -466,6 +520,7 @@ export class BroadworksBackendConnector implements IBroadworksCallBackendConnect
     log.info(`${METHOD_START_MESSAGE} with messageId: ${messageId}`, loggerContext);
 
     try {
+      this.validateXsiMessagePath(messageId);
       const voicemailContentUrl = `${this.xsiEndpoint}${messageId}/${MARK_AS_UNREAD}`;
       const response = await fetch(voicemailContentUrl, {
         method: HTTP_METHODS.PUT,
@@ -519,6 +574,7 @@ export class BroadworksBackendConnector implements IBroadworksCallBackendConnect
     log.info(`${METHOD_START_MESSAGE} with messageId: ${messageId}`, loggerContext);
 
     try {
+      this.validateXsiMessagePath(messageId);
       const voicemailContentUrl = `${this.xsiEndpoint}${messageId}`;
       const response = await fetch(voicemailContentUrl, {
         method: HTTP_METHODS.DELETE,
