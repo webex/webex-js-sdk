@@ -5,7 +5,7 @@
 ## Component Overview
 
 The CallRecording module follows a layered architecture:
-**Application → CallRecording (facade) → WxcCallRecordingConnector → Recording API (hydra) REST / Mercury WebSocket**.
+**Application → CallRecording (facade) → WxcCallRecordingConnector → User Hub REST / Mercury WebSocket**.
 
 The module uses the same **backend-connector (strategy) pattern** as Voicemail. `CallRecording` is a
 thin, backend-agnostic facade that resolves the calling backend (`getCallingBackEnd`) and selects a
@@ -16,9 +16,10 @@ delegates all read/delete operations to the active connector and re-emits the co
 lifecycle events. Adding another backend later is a drop-in new connector + a `case` in the facade,
 with no consumer-facing changes.
 
-The `WxcCallRecordingConnector` owns everything backend-specific: it resolves its base URL directly
-from the u2c service catalog and subscribes to `convergedRecordings.*` Mercury events through the
-`SDKConnector` (no dedicated recording plugin dependency).
+The `WxcCallRecordingConnector` owns everything backend-specific: it resolves
+`webex-user-hub-service` from the u2c catalog (`webappng/api/v1/hub/convergedRecordings`) and
+subscribes to `convergedRecordings.*` Mercury events through the `SDKConnector`. Calling recordings
+do not send `siteurl`.
 
 ### Component Table
 
@@ -47,6 +48,7 @@ CallRecording/
 ├── WxcCallRecordingConnector.test.ts   # Connector tests (REST, URL resolution, Mercury events)
 ├── types.ts                            # ICallRecording, Recording, RecordingMetadata, response types
 ├── constants.ts                        # Endpoints, query keys, method names
+├── userhub.ts                          # User Hub URL join and recordUUID/callingData mapping
 ├── callRecordingFixtures.ts            # Test fixtures
 └── ai-docs/
     ├── AGENTS.md                       # Module agent doc
@@ -75,7 +77,7 @@ flowchart TB
     end
 
     subgraph External
-        WxApp[Recording API hydra REST]
+        WxApp[User Hub convergedRecordings]
         Catalog[u2c catalog]
         Mercury[Mercury WebSocket]
     end
@@ -83,8 +85,8 @@ flowchart TB
     App -->|createCallRecordingClient| CR
     CR -->|getCallingBackEnd == WXC: new| WC
     CR -->|delegates getCallRecording/deleteRecording| WC
-    WC -->|services.get hydraDeveloperApi| Catalog
-    WC -->|GET reads / POST /convergedRecordings/softDelete| WxApp
+    WC -->|services.get webex-user-hub-service| Catalog
+    WC -->|GET reads / POST softDelete recordUUIDs| WxApp
 
     WC -->|registerListener convergedRecordings.*| SDK
     SDK -->|mercury.on| Mercury
@@ -113,10 +115,10 @@ sequenceDiagram
         CR->>WC: new WxcCallRecordingConnector(webex, logger)
         activate WC
         alt cached service URL present
-            WC->>Cat: services._serviceUrls.hydraDeveloperApi
+            WC->>Cat: services._serviceUrls webex-user-hub-service
             Cat-->>WC: resolved URL
         else live lookup
-            WC->>Cat: services.get('hydraDeveloperApi')
+            WC->>Cat: services.get('webex-user-hub-service')
             Cat-->>WC: resolved URL
         end
         WC->>WC: registerRecordingListeners()
@@ -136,14 +138,15 @@ sequenceDiagram
 sequenceDiagram
     participant App as Application
     participant CR as CallRecording
-    participant WxApp as Recording API (hydra)
+    participant WxApp as User Hub
 
-    App->>CR: getCallRecording({type: LIST, options: {from, to, days, status, max}})
+    App->>CR: getCallRecording({type: LIST, options: {status, max}})
     activate CR
-    CR->>CR: dispatchGetCallRecording -> buildRecordingsUrl(options)
-    Note over CR: from=now-days (default 30d), to=now, status=available, max=30
-    CR->>WxApp: GET /convergedRecordings?from={now-days}&to={now}&status=available&max=30
-    WxApp-->>CR: 200 {items: [...]}
+    CR->>CR: dispatchGetCallRecording -> buildUserhubRecordingsUrl(options)
+    Note over CR: orderType=DESC, orderBy=appCreateTime, category=calling, offset=0
+    CR->>WxApp: GET /webappng/api/v1/hub/convergedRecordings?orderType=DESC&orderBy=appCreateTime&status=available&category=calling&offset=0&limit=30
+    WxApp-->>CR: 200 {recordings or items}
+    CR->>CR: mapUserhubRecording (recordUUID, callingData, playback links)
     CR-->>App: {statusCode, data: {recordings}, message: 'SUCCESS'}
     deactivate CR
 ```
@@ -154,20 +157,21 @@ sequenceDiagram
 sequenceDiagram
     participant App as Application
     participant CR as CallRecording
-    participant WxApp as Recording API (hydra)
+    participant WxApp as User Hub
 
     App->>CR: getCallRecording({type: DETAIL, recordingId})
-    CR->>WxApp: GET /convergedRecordings/{recordingId}
-    WxApp-->>CR: 200 {id, topic, status, serviceData, temporaryDirectDownloadLinks, ...}
+    CR->>WxApp: GET /webappng/api/v1/hub/convergedRecordings/{recordingId}
+    WxApp-->>CR: 200 recordUUID, callingData, recordingPlaybackLinks, aiAssistantData
     CR-->>App: {statusCode, data: {recording}, message: 'SUCCESS'}
 
     App->>CR: getCallRecording({type: METADATA, recordingId})
-    CR->>WxApp: GET /convergedRecordings/{recordingId}/metadata
-    WxApp-->>CR: 200 {owner, session, participants, mediaStreams, extensionData}
+    CR->>WxApp: GET /webappng/api/v1/hub/convergedRecordings/{recordingId}
+    Note over CR: same detail URL; mapUserhubMetadata keeps id, owner, serviceData
+    WxApp-->>CR: 200 same detail body
     CR-->>App: {statusCode, data: {metadata}, message: 'SUCCESS'}
 
     App->>CR: deleteRecording(recordingId)
-    CR->>WxApp: POST /convergedRecordings/softDelete { recordingIds: [recordingId] }
+    CR->>WxApp: POST /webappng/api/v1/hub/convergedRecordings/softDelete { recordUUIDs: [recordingId] }
     WxApp-->>CR: 204 (recording moved to recycle bin)
     CR-->>App: {statusCode, data: {}, message: 'SUCCESS'}
 ```
@@ -178,12 +182,12 @@ sequenceDiagram
 sequenceDiagram
     participant App as Application
     participant CR as CallRecording
-    participant WxApp as Recording API (hydra)
+    participant WxApp as User Hub
 
     App->>CR: getCallRecording({type: BY_CALL_SESSION, callSessionId})
     activate CR
-    CR->>WxApp: GET /convergedRecordings?from={now-days}&to={now}&status=available&max=30
-    WxApp-->>CR: 200 {items: [...]}
+    CR->>WxApp: GET /webappng/api/v1/hub/convergedRecordings?orderType=DESC&orderBy=appCreateTime&status=available&category=calling&offset=0&limit=30
+    WxApp-->>CR: 200 {recordings or items}
     alt list call failed
         CR-->>App: original error response (unchanged)
     else success
@@ -235,30 +239,28 @@ sequenceDiagram
 
 | Constant | Value | Description |
 |----------|-------|-------------|
-| `CONVERGED_RECORDINGS` | `'convergedRecordings'` | Recording API recordings collection segment |
-| `METADATA` | `'metadata'` | Metadata sub-resource segment |
+| `USERHUB_SERVICE_NAME` | `'webex-user-hub-service'` | u2c catalog service for User Hub |
+| `USERHUB_RECORDINGS_PATH` | `'webappng/api/v1/hub/convergedRecordings'` | Recordings collection path |
+| `SOFT_DELETE` | `'softDelete'` | Recycle-bin collection segment |
 
 ### Query Parameter Keys
 
+Sent on every list. `siteurl` is not a query parameter.
+
 | Constant | Value | Default |
 |----------|-------|---------|
-| `FROM` | `'from'` | `now - DEFAULT_NUMBER_OF_DAYS` |
-| `TO` | `'to'` | `now` |
-| `DEFAULT_NUMBER_OF_DAYS` | `30` | Lookback to derive `from` (API max window is 30 days) |
-| `STATUS` | `'status'` | `available` |
-| `MAX` | `'max'` | `30` |
-| `SERVICE_TYPE` | `'serviceType'` | _(sent only when provided)_ |
-| `FORMAT` | `'format'` | _(sent only when provided)_ |
-| `OWNER_TYPE` | `'ownerType'` | _(sent only when provided)_ |
-| `STORAGE_REGION` | `'storageRegion'` | _(sent only when provided)_ |
-| `LOCATION_ID` | `'locationId'` | _(sent only when provided)_ |
-| `TOPIC` | `'topic'` | _(sent only when provided)_ |
+| `ORDER_TYPE` | `'orderType'` | `DESC` |
+| `ORDER_BY` | `'orderBy'` | `appCreateTime` |
+| `CATEGORY` | `'category'` | `calling` |
+| `STATUS` | `'status'` | `available` (`options.status`) |
+| `OFFSET` | `'offset'` | `0` |
+| `LIMIT` | `'limit'` | `30` (`options.max`) |
 
 ### Headers
 
 | Constant | Value | Description |
 |----------|-------|-------------|
-| `WEBEX_USER_REQUEST_HEADER` | `'WebexUserRequest'` | Set to `'true'` only when `options.webexUserRequest` is true (rate-limit bypass) |
+| `WEBEX_USER_REQUEST_HEADER` | `'WebexUserRequest'` | Always sent as `'true'`, with `Accept: application/json` |
 
 ### Mercury Event Keys (`Events/types.ts`)
 
@@ -281,35 +283,35 @@ sequenceDiagram
 
 ## Troubleshooting Guide
 
-### 1. `recordingServiceUrl` is undefined / requests go to a bad URL
+### 1. User Hub URL is empty / requests fail before User Hub
 
-**Symptoms:** Requests fail with a malformed URL (e.g. resolving against `localhost`), or the
-resolved `recordingServiceUrl` is `undefined`.
+**Symptoms:** Requests fail with status 503, or the recordings URL is empty.
 
 **Possible Causes:**
-- `hydraDeveloperApi` not present in the u2c catalog for the org.
+- `webex-user-hub-service` is not in the u2c catalog for this token's environment.
 
 **Debug Steps:**
 ```typescript
-console.log(webex.internal.services._serviceUrls?.hydraDeveloperApi);
-console.log(webex.internal.services.get(webex.internal.services._activeServices?.hydraDeveloperApi));
+console.log(webex.internal.services._serviceUrls?.['webex-user-hub-service']);
+console.log(webex.internal.services.get('webex-user-hub-service'));
 ```
-A config override can be supplied via `config.recording.recordingServiceUrl`.
 
 ### 2. Empty Recording List
 
 **Symptoms:** a `LIST` request (`getCallRecording({type: LIST})`) returns an empty `recordings` array.
 
 **Possible Causes:**
-- No recordings match the requested `status` filter (e.g. only `deleted` recordings exist while querying `available`).
-- The `from`/`to` window contains no recordings, or the auth token lacks the `spark:recordings_read` scope.
+- No recordings match `status=available` (deleted rows are excluded unless `status: deleted` is passed).
+- The auth token lacks `spark:recordings_read`.
+- The token was downscoped. User Hub can return 500 for that token. The connector prefers `credentials.supertoken`.
 
 ### 3. `BY_CALL_SESSION` Request Returns Empty
 
-**What happens internally:** The full list is fetched then filtered client-side on
+**What happens internally:** The User Hub list page is fetched, then filtered client-side on
 `serviceData.callSessionId`. An empty result logs
 `"No recordings found for the given call session id."` and returns `statusCode: 200` with an empty
-array. If the underlying list call fails, the original error response is returned unchanged.
+array. If the underlying list call fails, the original error response is returned unchanged. A
+recording outside the first page (`limit`, default 30) is not in the scan.
 
 ### 4. Recording Events Not Firing
 
@@ -322,12 +324,12 @@ array. If the underlying list call fails, the original error response is returne
 
 ### 5. 401 / 429 Responses
 
-**Symptoms:** `getCallRecording` requests (`LIST`/`DETAIL`) return `statusCode: 401` or `429`.
+**Symptoms:** `getCallRecording` requests (`LIST`/`DETAIL`) return `statusCode: 401`, `429`, or `500`.
 
-**Notes:** Errors are returned (not thrown) via `serviceErrorCodeHandler`. For ad-hoc rate-limit
-bypass on explicit end-user actions, pass
-`getCallRecording({type: LIST, options: {webexUserRequest: true}})` to send the
-`WebexUserRequest: true` header.
+**Notes:** Errors are returned (not thrown) via `serviceErrorCodeHandler`. Every User Hub call sends
+`WebexUserRequest: true`. A 500 with "The system has internal error" was seen when a `siteurl` query
+was added; the connector does not send `siteurl`. A 500 from `webex.request` is retried once with
+the user token and without `cisco-device-url`.
 
 ---
 

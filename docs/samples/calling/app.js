@@ -31,6 +31,7 @@ const callHistorySortBy = 'startTime';
 const voicemailOffset = 0;
 const voicemailOffsetLimit = 20;
 const voicemailSort = 'DESC';
+
 const credentialsFormElm = document.querySelector('#credentials');
 const fedrampBox = document.getElementById('fedramp');
 const tokenElm = document.querySelector('#access-token');
@@ -68,8 +69,6 @@ const callHistoryElm = document.querySelector('#Call-history');
 const voicemailElm = document.querySelector('#Voice-mail');
 const callRecordingElm = document.querySelector('#Call-recording');
 const recordingDataElm = document.querySelector('#recording-data');
-const recordingSessionDataElm = document.querySelector('#recording-session-data');
-const recordingEventsElm = document.querySelector('#recording-events');
 const registrationForm = document.querySelector('#auth-registration');
 const serviceIndicator = document.querySelector('#ServiceIndicator');
 const serviceDomain = document.querySelector('#ServiceDomain');
@@ -423,7 +422,6 @@ async function initCalling(e) {
 
       if (window.callRecording === undefined && calling.callRecordingClient !== undefined) {
         callRecording = window.callRecording = calling.callRecordingClient;
-        registerCallRecordingListeners();
       }
 
       if(callingClient) fetchLines();
@@ -1187,35 +1185,40 @@ function renderRecordingsTable(recordings) {
 }
 
 /**
- * Subscribe to typed Call Recording events and log them in the events panel.
- */
-function registerCallRecordingListeners() {
-  if (!callRecording) {
-    return;
-  }
-
-  const logEvent = (label) => (event) => {
-    console.log(`Call Recording event :: ${label}`, event);
-    recordingEventsElm.innerText = `${label}: ${JSON.stringify(event, null, 2)}\n${recordingEventsElm.innerText}`;
-  };
-
-  callRecording.on('callRecording:created', logEvent('callRecording:created'));
-  callRecording.on('callRecording:updated', logEvent('callRecording:updated'));
-  callRecording.on('callRecording:deleted', logEvent('callRecording:deleted'));
-}
-
-/**
  * Fetch the list of recordings for the logged-in user.
  */
 async function fetchRecordings() {
+  if (!callRecording) {
+    const message =
+      'Call Recording client is not initialized. Save a token and register first, then check the console for initialize errors.';
+    console.log(message);
+    recordingDataElm.innerText = message;
+
+    return;
+  }
+
   try {
     callRecordingElm.disabled = true;
-    const response = await callRecording.getCallRecording({type: 'list'});
+    const response = await callRecording.getCallRecording({
+      type: 'list',
+    });
 
     console.log('Call Recording list response ', response);
     renderRecordingsTable(response.data?.recordings);
+    if (response.statusCode !== 200) {
+      const detail = response.data?.error || JSON.stringify(response.data);
+      recordingDataElm.innerText = JSON.stringify(response, null, 2);
+      const tbody = document.getElementById('callRecordingTableId');
+      if (tbody) {
+        tbody.innerHTML = '';
+        const cell = tbody.insertRow().insertCell();
+        cell.colSpan = 7;
+        cell.textContent = detail;
+      }
+    }
   } catch (err) {
     console.log(`Call Recording list error response ${err}`);
+    recordingDataElm.innerText = `${err}`;
   } finally {
     callRecordingElm.disabled = false;
   }
@@ -1228,7 +1231,10 @@ async function fetchRecording() {
   const recordingId = document.getElementById('recordingId').value;
 
   try {
-    const response = await callRecording.getCallRecording({type: 'detail', recordingId});
+    const response = await callRecording.getCallRecording({
+      type: 'detail',
+      recordingId,
+    });
 
     console.log('Call Recording get response ', response);
     recordingDataElm.innerText = JSON.stringify(response.data?.recording ?? response.data, null, 2);
@@ -1239,24 +1245,7 @@ async function fetchRecording() {
 }
 
 /**
- * Fetch metadata for a single recording by its UUID.
- */
-async function fetchRecordingMetadata() {
-  const recordingId = document.getElementById('recordingId').value;
-
-  try {
-    const response = await callRecording.getCallRecording({type: 'metadata', recordingId});
-
-    console.log('Call Recording metadata response ', response);
-    recordingDataElm.innerText = JSON.stringify(response.data?.metadata ?? response.data, null, 2);
-  } catch (err) {
-    console.log(`Call Recording metadata error response ${err}`);
-    recordingDataElm.innerText = `${err}`;
-  }
-}
-
-/**
- * Permanently delete a single recording by its id. Per the API this cannot be undone.
+ * Moves a recording to the recycle bin (soft delete). It can be restored from the recycle bin.
  */
 async function removeRecording() {
   const recordingId = document.getElementById('recordingId').value;
@@ -1268,7 +1257,7 @@ async function removeRecording() {
   }
 
   // eslint-disable-next-line no-alert
-  if (!window.confirm(`Permanently delete recording ${recordingId}? This cannot be undone.`)) {
+  if (!window.confirm(`Move recording ${recordingId} to the recycle bin?`)) {
     return;
   }
 
@@ -1283,23 +1272,6 @@ async function removeRecording() {
   } catch (err) {
     console.log(`Call Recording delete error response ${err}`);
     recordingDataElm.innerText = `${err}`;
-  }
-}
-
-/**
- * Fetch all recordings that belong to a given call session id.
- */
-async function fetchRecordingsBySession() {
-  const callSessionId = document.getElementById('callSessionId').value;
-
-  try {
-    const response = await callRecording.getCallRecording({type: 'byCallSession', callSessionId});
-
-    console.log('Call Recording by session response ', response);
-    recordingSessionDataElm.innerText = JSON.stringify(response.data, null, 2);
-  } catch (err) {
-    console.log(`Call Recording by session error response ${err}`);
-    recordingSessionDataElm.innerText = `${err}`;
   }
 }
 
