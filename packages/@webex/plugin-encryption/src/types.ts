@@ -10,6 +10,10 @@ export type Logger = {
   debug: (payload: string) => void;
 };
 
+interface SecureContentResource {
+  decrypt(buffer: Uint8Array): Promise<Uint8Array>;
+}
+
 interface IWebexInternal {
   mercury: {
     connect: () => Promise<void>;
@@ -20,11 +24,12 @@ interface IWebexInternal {
     unregister: () => Promise<void>;
   };
   encryption: {
-    decryptScr: (keyUri: string, jwe: string) => Promise<string>;
+    decryptScr: (keyUri: string, jwe: string) => Promise<SecureContentResource>;
+    decryptBinary: (scr: SecureContentResource, buffer: Uint8Array) => Promise<Uint8Array>;
     download: (
       fileUri: string,
-      scr: string,
-      options: {useFileService: boolean}
+      scr: SecureContentResource,
+      options: {useFileService: boolean; headers?: Record<string, string>}
     ) => Promise<ArrayBuffer>;
   };
 }
