@@ -326,6 +326,184 @@ describe('webex-core', () => {
         ],
       };
 
+      it('parses the candidate URL once for the full catalog scan', () => {
+        const candidate = 'https://example.com/resource/id';
+        const OriginalURL = globalThis.URL;
+        let candidateParseCount = 0;
+
+        class CountingURL extends OriginalURL {
+          constructor(input: string | URL, base?: string | URL) {
+            if (input === candidate) {
+              candidateParseCount += 1;
+            }
+
+            super(input, base);
+          }
+        }
+
+        globalThis.URL = CountingURL as typeof URL;
+
+        try {
+          catalog.serviceGroups.postauth.push(otherService, {
+            serviceUrls: [{baseUrl: 'https://example.com/resource'}],
+          });
+
+          catalog.findServiceDetailFromUrl(candidate);
+        } finally {
+          globalThis.URL = OriginalURL;
+        }
+
+        assert.equal(candidateParseCount, 1);
+      });
+
+      it('does not parse catalog URLs whose host metadata cannot match', () => {
+        const skippedService = {
+          serviceUrls: [
+            {
+              host: 'other.example.com',
+              matchHost: 'other.example.com',
+              get baseUrl() {
+                throw new Error('mismatched catalog URL should not be parsed');
+              },
+            },
+          ],
+        };
+        const expectedService = {
+          serviceUrls: [
+            {
+              host: 'example.com',
+              matchHost: 'example.com',
+              baseUrl: 'https://example.com/resource',
+            },
+          ],
+        };
+
+        catalog.serviceGroups.postauth.push(skippedService, expectedService);
+
+        assert.equal(
+          catalog.findServiceDetailFromUrl('https://example.com/resource/id'),
+          expectedService
+        );
+      });
+
+      it('derives canonical match hosts from base urls during ingestion', () => {
+        catalog.updateServiceGroups('postauth', [
+          {
+            id: 'example',
+            serviceName: 'example',
+            serviceUrls: [
+              {
+                host: 'stale.example.com',
+                baseUrl: 'https://B\u00dcCHER.EXAMPLE:8443/resource',
+                priority: 1,
+              },
+            ],
+          },
+        ]);
+
+        const service = catalog._getServiceDetail('example', 'postauth');
+
+        assert.equal(service.serviceUrls[0].host, 'stale.example.com');
+        assert.equal(service.serviceUrls[0].matchHost, 'xn--bcher-kva.example:8443');
+        assert.equal(
+          catalog.findServiceDetailFromUrl('https://xn--bcher-kva.example:8443/resource/id'),
+          service
+        );
+      });
+
+      it('rejects an invalid candidate before reading catalog URLs', () => {
+        const unreadService = {
+          serviceUrls: [
+            {
+              host: 'example.com',
+              get baseUrl() {
+                throw new Error('catalog URL should not be read');
+              },
+            },
+          ],
+        };
+
+        catalog.serviceGroups.postauth.push(unreadService);
+
+        assert.isUndefined(catalog.findServiceMatchFromUrl('not-a-valid-url'));
+      });
+
+      it('returns the service detail and exact catalog URL from one scan', () => {
+        const expectedServiceUrl = {
+          host: 'example2.com',
+          baseUrl: 'https://example2.com/resource',
+        };
+        const expectedService = {
+          serviceUrls: [
+            {host: 'example.com', baseUrl: 'https://example.com/resource'},
+            expectedServiceUrl,
+          ],
+        };
+
+        catalog.serviceGroups.postauth.push(expectedService);
+
+        const match = catalog.findServiceMatchFromUrl('https://example2.com/resource/id');
+
+        assert.equal(match.serviceDetail, expectedService);
+        assert.equal(match.serviceUrl, expectedServiceUrl);
+      });
+
+      it('preserves service group precedence when multiple services match', () => {
+        const postauthService = {
+          serviceUrls: [{baseUrl: 'https://example.com/resource'}],
+        };
+        const overrideService = {
+          serviceUrls: [{baseUrl: 'https://example.com/resource'}],
+        };
+
+        catalog.serviceGroups.postauth.push(postauthService);
+        catalog.serviceGroups.override.push(overrideService);
+
+        const match = catalog.findServiceMatchFromUrl('https://example.com/resource/id');
+
+        assert.equal(match.serviceDetail, overrideService);
+        assert.equal(match.serviceUrl, overrideService.serviceUrls[0]);
+      });
+
+      it('returns the first matching URL within the selected service', () => {
+        const broadMatch = {baseUrl: 'https://example.com/resource'};
+        const narrowMatch = {baseUrl: 'https://example.com/resource/nested'};
+        const expectedService = {serviceUrls: [broadMatch, narrowMatch]};
+
+        catalog.serviceGroups.postauth.push(expectedService);
+
+        const match = catalog.findServiceMatchFromUrl('https://example.com/resource/nested/id');
+
+        assert.equal(match.serviceDetail, expectedService);
+        assert.equal(match.serviceUrl, broadMatch);
+      });
+
+      it('continues past a malformed catalog URL to the first valid match', () => {
+        const malformedServiceUrl = {baseUrl: 'not-a-valid-url'};
+        const expectedServiceUrl = {baseUrl: 'https://example.com/resource'};
+        const expectedService = {serviceUrls: [malformedServiceUrl, expectedServiceUrl]};
+
+        catalog.serviceGroups.postauth.push(expectedService);
+
+        const match = catalog.findServiceMatchFromUrl('https://example.com/resource/id');
+
+        assert.equal(match.serviceDetail, expectedService);
+        assert.equal(match.serviceUrl, expectedServiceUrl);
+      });
+
+      it('keeps findServiceDetailFromUrl as a compatible service-only wrapper', () => {
+        const expectedService = {
+          serviceUrls: [{baseUrl: 'https://example.com/resource'}],
+        };
+
+        catalog.serviceGroups.postauth.push(expectedService);
+
+        assert.equal(
+          catalog.findServiceDetailFromUrl('https://example.com/resource/id'),
+          expectedService
+        );
+      });
+
       it.each(['discovery', 'preauth', 'signin', 'postauth', 'override'])(
         'matches a default url correctly',
         (serviceGroup) => {
@@ -365,6 +543,60 @@ describe('webex-core', () => {
           assert.equal(service, exampleService);
         }
       );
+
+      it('matches the base url when host metadata disagrees', () => {
+        const exampleService = {
+          serviceUrls: [
+            {
+              host: 'stale.example.com',
+              baseUrl: 'https://actual.example.com/resource',
+            },
+          ],
+        };
+
+        catalog.serviceGroups.postauth.push(exampleService);
+
+        assert.equal(
+          catalog.findServiceDetailFromUrl('https://actual.example.com/resource/id'),
+          exampleService
+        );
+      });
+
+      it('matches a non-default port when host metadata omits the port', () => {
+        const exampleService = {
+          serviceUrls: [
+            {
+              host: 'example.com',
+              baseUrl: 'https://example.com:8443/resource',
+            },
+          ],
+        };
+
+        catalog.serviceGroups.postauth.push(exampleService);
+
+        assert.equal(
+          catalog.findServiceDetailFromUrl('https://example.com:8443/resource/id'),
+          exampleService
+        );
+      });
+
+      it('matches a canonicalized base url when host metadata is not canonical', () => {
+        const exampleService = {
+          serviceUrls: [
+            {
+              host: 'B\u00dcCHER.EXAMPLE',
+              baseUrl: 'https://b\u00fccher.example/resource',
+            },
+          ],
+        };
+
+        catalog.serviceGroups.postauth.push(exampleService);
+
+        assert.equal(
+          catalog.findServiceDetailFromUrl('https://xn--bcher-kva.example/resource/id'),
+          exampleService
+        );
+      });
 
       it('rejects URLs with similar-looking hostnames (SECURITY)', () => {
         // Attacker URL that looks like a catalog URL but has a different origin
