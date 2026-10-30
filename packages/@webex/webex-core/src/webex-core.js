@@ -401,6 +401,13 @@ const WebexCore = AmpState.extend({
         return ints;
       }
 
+      if (
+        key === 'ConversationRetryAfterInterceptor' &&
+        this.config.conversation?.enableRetryAfterInterceptor !== true
+      ) {
+        return ints;
+      }
+
       ints.push(Reflect.apply(interceptor, this, []));
 
       return ints;

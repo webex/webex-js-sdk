@@ -50,5 +50,11 @@ export default {
      * config value to perform decryption on outbound conversations and activities
      */
     includeEncryptionTransforms: true,
+
+    /**
+     * Enables automatic Retry-After handling for rate-limited Conversation GET requests.
+     * @type {boolean}
+     */
+    enableRetryAfterInterceptor: false,
   },
 };

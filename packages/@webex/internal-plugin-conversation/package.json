@@ -22,6 +22,7 @@
     "@webex/common": "workspace:*",
     "@webex/helper-html": "workspace:*",
     "@webex/helper-image": "workspace:*",
+    "@webex/http-core": "workspace:*",
     "@webex/internal-plugin-encryption": "workspace:*",
     "@webex/internal-plugin-user": "workspace:*",
     "@webex/webex-core": "workspace:*",
