@@ -1,0 +1,403 @@
+{
+  "$schema": "./schemas/repo-context.schema.json",
+  "version": 1,
+  "repository": {
+    "name": "webex-node",
+    "purpose": "Node.js build of the Webex JS SDK. Loading the package installs @babel/polyfill when no polyfill is present, loads 17 Webex plugin packages for their registration side effects, and exports WebexNode, a WebexCore subclass with a static init factory that merges sdkType 'webex-node', the package configuration object, and the caller's config before constructing an instance. The package configuration in src/config.js is currently nested under config.default and not applied."
+  },
+  "commands": {
+    "install": "yarn install",
+    "compile": "yarn workspace webex-node build:src",
+    "build": "yarn workspace webex-node build",
+    "unit-test": "yarn workspace webex-node test:unit",
+    "lint": "yarn workspace webex-node test:style",
+    "deploy": "yarn workspace webex-node deploy:npm"
+  },
+  "public_interfaces": [
+    {
+      "name": "webex-node package export",
+      "kind": "package_export",
+      "source": "src/index.js",
+      "entrypoints": [
+        "const WebexNode = require('webex-node')"
+      ],
+      "audience": "Node.js applications; in this workspace the sibling package test-webex-node (manual smoke script)",
+      "notes": "module.exports is the WebexNode class; there are no named exports. Loading installs @babel/polyfill when global._babelPolyfill is not set and loads the 17 plugin packages listed in src/webex-node.js."
+    },
+    {
+      "name": "WebexNode class and init factory",
+      "kind": "plugin_api",
+      "source": "src/webex-node.js",
+      "entrypoints": [
+        "WebexNode.init()",
+        "new WebexNode()"
+      ],
+      "audience": "Node.js applications",
+      "notes": "init merges {sdkType: 'webex-node'}, the src/config.js module object, and attrs.config into attrs.config (mutating attrs) and returns new WebexNode(attrs). Direct construction skips that merge. Plugin namespaces on instances are owned by the plugin packages."
+    },
+    {
+      "name": "package scripts",
+      "kind": "npm_scripts",
+      "source": "package.json",
+      "entrypoints": [
+        "build",
+        "build:src",
+        "test:style",
+        "test:unit",
+        "deploy:npm"
+      ],
+      "audience": "contributors and CI",
+      "notes": "The aggregate test script chains test:style and test:unit; run them separately. No integration or browser script exists."
+    }
+  ],
+  "source_of_truth": [
+    {
+      "surface": "webex-node SDK entry implementation",
+      "paths": [
+        "src/index.js",
+        "src/webex-node.js",
+        "src/config.js",
+        "src/config-storage.js"
+      ],
+      "generated_artifacts": [
+        "dist"
+      ],
+      "refresh_with": [
+        "yarn workspace webex-node build:src"
+      ],
+      "validate_with": [
+        "yarn workspace webex-node test:unit",
+        "yarn workspace webex-node test:style"
+      ]
+    },
+    {
+      "surface": "module specification",
+      "paths": [
+        "src/docs/README.md"
+      ],
+      "generated_artifacts": [],
+      "refresh_with": [
+        "update alongside the behavior change in the same commit"
+      ],
+      "validate_with": [
+        "spec-validator on an independent runtime"
+      ]
+    }
+  ],
+  "generated_artifacts": [
+    {
+      "path": "dist",
+      "generated_from": "src",
+      "refresh_with": "yarn workspace webex-node build:src"
+    },
+    {
+      "path": ".sdd/templates/repo-standards/template-map.json",
+      "generated_from": "WebexTools/repo-standards@d89a7fe59126ae3ad9bac9ca352aa7f12b4c85dc",
+      "refresh_with": "Read from the JS SDK root .sdd/templates/repo-standards (Repo Standards 0.3.0 snapshot from PR 5246). Only to run the Repo Annotation checkers and validator, a temporary local symlink at .sdd/templates/repo-standards points there; it is never committed, and templates are never copied into the package."
+    }
+  ],
+  "validation_matrix": [
+    {
+      "paths": [
+        "src/**"
+      ],
+      "minimum": [
+        "yarn workspace webex-node test:unit"
+      ],
+      "recommended": [
+        "yarn workspace webex-node test:style",
+        "yarn workspace webex-node build:src"
+      ]
+    },
+    {
+      "paths": [
+        "src/webex-node.js",
+        "src/config.js",
+        "src/config-storage.js"
+      ],
+      "minimum": [
+        "yarn workspace webex-node test:unit"
+      ],
+      "recommended": [
+        "add a unit case that asserts top-level configuration values, because none exists today"
+      ]
+    }
+  ],
+  "change_impact": [
+    {
+      "paths": [
+        "src/webex-node.js"
+      ],
+      "affects": [
+        "the plugin set on every WebexNode instance",
+        "the init merge order"
+      ],
+      "refresh_with": [
+        "yarn workspace webex-node build:src"
+      ],
+      "validate_with": [
+        "yarn workspace webex-node test:unit"
+      ],
+      "avoid_direct_edits": [
+        "dist"
+      ],
+      "notes": "Removing a plugin or changing init is a breaking change for applications."
+    },
+    {
+      "paths": [
+        "src/config.js",
+        "src/config-storage.js"
+      ],
+      "affects": [
+        "runtime defaults of every WebexNode instance once the nesting in src/docs/README.md MOD-007 is fixed"
+      ],
+      "refresh_with": [
+        "yarn workspace webex-node build:src"
+      ],
+      "validate_with": [
+        "yarn workspace webex-node test:unit"
+      ],
+      "avoid_direct_edits": [
+        "dist"
+      ],
+      "notes": "Today these values sit under config.default and are not applied."
+    },
+    {
+      "paths": [
+        "src/index.js",
+        "package.json"
+      ],
+      "affects": [
+        "the package entry and exports"
+      ],
+      "refresh_with": [
+        "yarn workspace webex-node build:src"
+      ],
+      "validate_with": [
+        "yarn workspace webex-node build"
+      ],
+      "avoid_direct_edits": [
+        "dist"
+      ],
+      "notes": "require('webex-node') must keep returning the class."
+    }
+  ],
+  "evidence_rules": [
+    {
+      "claim_category": "command_name",
+      "sources": [
+        "package.json"
+      ],
+      "requirement": "The script must exist in package.json scripts.",
+      "notes": "The workspace name is webex-node, without an @webex/ scope."
+    },
+    {
+      "claim_category": "import_path",
+      "sources": [
+        "src/index.js",
+        "package.json"
+      ],
+      "requirement": "The only entry points are exports '.' and './package'.",
+      "notes": "There are no named exports."
+    },
+    {
+      "claim_category": "behavior_claim",
+      "sources": [
+        "src",
+        "test/unit/spec"
+      ],
+      "requirement": "Ground every behavioral claim in source or test evidence; route instance behavior to webex-core or the owning plugin.",
+      "notes": "Commit history is not an evidence source for this package. README.md is retained product documentation, not the behavioral authority."
+    }
+  ],
+  "negative_guidance": [
+    {
+      "rule": "Do not assume src/config.js values are in effect.",
+      "why": "init merges the ES module object, so the values land under config.default (src/docs/README.md MOD-007)."
+    },
+    {
+      "rule": "Do not add methods or state to WebexNode.",
+      "why": "Instance behavior belongs to webex-core and the plugins."
+    },
+    {
+      "rule": "Do not treat README.md as the package API.",
+      "why": "Its example calls plugin APIs owned by other packages. See docs/adr/0001-retain-product-readme.md."
+    },
+    {
+      "rule": "Do not infer a coverage threshold for this package.",
+      "why": "The developer confirmed no coverage gate applies; jest-config-legacy sets collectCoverage false."
+    }
+  ],
+  "confidence_policy": {
+    "high": {
+      "action": "update",
+      "expectation": "Source and unit test evidence both support the change, which today means the init merge and sdkType override."
+    },
+    "medium": {
+      "action": "narrow-scope",
+      "expectation": "Only source evidence exists, for example the plugin set, the polyfill guard, and the configuration object. Pin current behavior with a characterization test before modifying."
+    },
+    "low": {
+      "action": "noop",
+      "expectation": "Neither source nor tests settle the question, for example plugin behavior owned by another package. Stop and report the gap."
+    }
+  },
+  "repository_topology": {
+    "main_entrypoints": [
+      {
+        "name": "package entry",
+        "path": "src/index.js",
+        "purpose": "Conditional polyfill load and CommonJS re-export of WebexNode",
+        "notes": "exports '.' and './package' only."
+      }
+    ],
+    "workspace_packages": [
+      {
+        "name": "webex-node",
+        "paths": [
+          "src",
+          "test"
+        ],
+        "notes": "One module; this SDD root is the package directory packages/webex-node inside the webex-js-sdk monorepo."
+      }
+    ],
+    "source_surfaces": [
+      {
+        "name": "webex-node SDK entry",
+        "paths": [
+          "src"
+        ],
+        "notes": "index.js, webex-node.js, config.js, config-storage.js. Specified at src/docs/README.md."
+      },
+      {
+        "name": "tests",
+        "paths": [
+          "test/unit/spec"
+        ],
+        "notes": "One Jest spec with 5 tests. No integration specs exist."
+      }
+    ],
+    "generated_surfaces": [
+      {
+        "name": "build output",
+        "paths": [
+          "dist"
+        ],
+        "generated_from": "src",
+        "refresh_with": "yarn workspace webex-node build:src",
+        "notes": "Produced by webex-legacy-tools. Do not edit by hand."
+      },
+      {
+        "name": "repo-standards template map",
+        "paths": [
+          ".sdd/templates/repo-standards"
+        ],
+        "generated_from": "WebexTools/repo-standards@d89a7fe59126ae3ad9bac9ca352aa7f12b4c85dc",
+        "refresh_with": "Read from the JS SDK root .sdd/templates/repo-standards (Repo Standards 0.3.0 snapshot from PR 5246). Only to run the Repo Annotation checkers and validator, a temporary local symlink at .sdd/templates/repo-standards points there; it is never committed, and templates are never copied into the package.",
+        "notes": "Read from the JS SDK root .sdd/templates/repo-standards (Repo Standards 0.3.0 snapshot from PR 5246). Only to run the Repo Annotation checkers and validator, a temporary local symlink at .sdd/templates/repo-standards points there; it is never committed, and templates are never copied into the package."
+      }
+    ],
+    "validation_entrypoints": [
+      {
+        "name": "unit tests",
+        "command": "yarn workspace webex-node test:unit",
+        "scope": "test/unit/spec",
+        "notes": "Jest via webex-legacy-tools --runner jest."
+      },
+      {
+        "name": "lint",
+        "command": "yarn workspace webex-node test:style",
+        "scope": "src",
+        "notes": "eslint via the workspace root .eslintrc.js; Markdown is ignored."
+      }
+    ],
+    "sync_paths": [
+      {
+        "source": "WebexTools/repo-standards@d89a7fe59126ae3ad9bac9ca352aa7f12b4c85dc",
+        "targets": [
+          ".sdd/templates/repo-standards"
+        ],
+        "mechanism": "Read from the JS SDK root .sdd/templates/repo-standards (Repo Standards 0.3.0 snapshot from PR 5246). Only to run the Repo Annotation checkers and validator, a temporary local symlink at .sdd/templates/repo-standards points there; it is never committed, and templates are never copied into the package.",
+        "notes": "Read from the JS SDK root .sdd/templates/repo-standards (Repo Standards 0.3.0 snapshot from PR 5246). Only to run the Repo Annotation checkers and validator, a temporary local symlink at .sdd/templates/repo-standards points there; it is never committed, and templates are never copied into the package."
+      }
+    ]
+  },
+  "folder_readme_contract": {
+    "required_sections": [
+      "purpose",
+      "boundaries",
+      "key-files",
+      "common-tasks"
+    ],
+    "rules": [
+      "Orient the reader before describing detail.",
+      "Link to the module specification rather than duplicating it."
+    ],
+    "example_policy": "Examples are allowed only when verified against src/ or test/.",
+    "fallback": "Omit a section rather than inventing content; report unresolved facts as gaps."
+  },
+  "regression_feedback_rules": [
+    {
+      "trigger": "An init instance has a configuration value that differs from the documented merge result.",
+      "required_followups": [
+        "Add a unit case in test/unit/spec/webex-node.test.js asserting the top-level value",
+        "Update INV-001 or MOD-007 in src/docs/README.md"
+      ],
+      "notes": "No test asserts a src/config.js value today."
+    },
+    {
+      "trigger": "A plugin namespace is missing from or unexpectedly present on a WebexNode instance.",
+      "required_followups": [
+        "Add a registration assertion in test/unit/spec/webex-node.test.js",
+        "Update the plugin load list in src/docs/README.md"
+      ],
+      "notes": "Plugin registration has no test today."
+    }
+  ],
+  "surface_owners": [
+    {
+      "surface": "module implementation and specification",
+      "owner": "@webex/web-sdk",
+      "edit_boundary": "The monorepo .github/CODEOWNERS has no entry for packages/webex-node, so the default * rule applies."
+    }
+  ],
+  "do_not_edit": [
+    "dist",
+    ".sdd/templates/repo-standards"
+  ],
+  "marker_scopes": {
+    "sdd": [
+      ".sdd/manifest.json",
+      "src/docs/README.md",
+      "docs"
+    ]
+  },
+  "fallback_rules": [
+    "When source and tests disagree, code is the referee and the disagreement is recorded rather than silently resolved.",
+    "When neither source nor tests settle a question, report it as a gap instead of inferring.",
+    "Commit history is not a valid rationale source for this package."
+  ],
+  "downstream_context_pack": {
+    "required_human_surfaces": [
+      "README.md",
+      "docs/index.md",
+      "docs/architecture.md",
+      "src/docs/README.md"
+    ],
+    "required_agent_operational_surfaces": [
+      "AGENTS.md",
+      "docs/specs/README.md"
+    ],
+    "required_machine_readable_surface": ".sdd/manifest.json",
+    "recommended_machine_readable_sections": [
+      "public_interfaces",
+      "change_impact",
+      "evidence_rules",
+      "negative_guidance",
+      "confidence_policy",
+      "repository_topology",
+      "folder_readme_contract",
+      "regression_feedback_rules"
+    ]
+  }
+}
