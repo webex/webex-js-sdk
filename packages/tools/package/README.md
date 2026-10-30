@@ -49,6 +49,13 @@ remain eligible for release. Other change sets use Yarn's existing package and
 dependent selection. Listing packages without `--since` keeps its existing
 behavior.
 
+For CI releases, use `list --since <ref> --committed`. The documentation-only
+check compares the merge base with `HEAD`, so manifest rewrites or generated
+files from an install or build cannot enable a documentation-only release.
+Without this flag, the check includes local changes. When the committed change
+set can affect a release, Yarn's existing package and dependent selection still
+applies, including local changes.
+
 This package can also be consumed as a module. Note that this is not an explicitly intended use-case, but may provide more flexibility when performing complicated workflows.
 
 ```js
