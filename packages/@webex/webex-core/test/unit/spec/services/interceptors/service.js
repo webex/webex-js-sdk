@@ -152,7 +152,41 @@ describe('webex-core', () => {
           it('should return a rejected promise', () => {
             const promise = interceptor.onRequest(options);
 
-            assert.isRejected(promise);
+            return assert.isRejected(
+              promise,
+              Error,
+              "service-interceptor: 'example' is not a known service"
+            );
+          });
+        });
+
+        describe('when the service lookup failed because the token was rejected', () => {
+          beforeEach(() => {
+            const authError = new Error('invalid_access_token');
+
+            authError.reason = 'invalid_access_token';
+            waitForService.rejects(authError);
+          });
+
+          it('should reject with invalid_access_token', () => {
+            const promise = interceptor.onRequest(options);
+
+            return assert.isRejected(promise, Error, 'invalid_access_token');
+          });
+        });
+
+        describe('when the service lookup failed because access was denied', () => {
+          beforeEach(() => {
+            const authError = new Error('access_denied');
+
+            authError.reason = 'access_denied';
+            waitForService.rejects(authError);
+          });
+
+          it('should reject with access_denied', () => {
+            const promise = interceptor.onRequest(options);
+
+            return assert.isRejected(promise, Error, 'access_denied');
           });
         });
       });
