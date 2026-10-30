@@ -1,0 +1,319 @@
+{
+  "manifest_version": 1,
+  "repository": {
+    "name": "@webex/internal-plugin-wdm",
+    "purpose": "Deprecated alias package of the Webex JS SDK: keeps the historical @webex/internal-plugin-wdm import path working by re-exporting the Device plugin and its config, constants, interceptor, and feature classes from @webex/internal-plugin-device.",
+    "category": "cat2-legacy",
+    "primary_languages": [
+      "javascript"
+    ]
+  },
+  "topology": "Orchestrator-plus-components",
+  "commands": {
+    "compile": {
+      "command": "yarn workspace @webex/internal-plugin-wdm build:src",
+      "source_file": "package.json",
+      "role": "compile"
+    },
+    "build": {
+      "command": "yarn workspace @webex/internal-plugin-wdm build",
+      "source_file": "package.json",
+      "role": "package"
+    },
+    "unit-test": {
+      "command": "yarn workspace @webex/internal-plugin-wdm test:unit",
+      "source_file": "package.json",
+      "role": "unit-test"
+    },
+    "browser-test": {
+      "command": "yarn workspace @webex/internal-plugin-wdm test:browser",
+      "source_file": "package.json",
+      "role": "integration-test"
+    },
+    "lint": {
+      "command": "yarn workspace @webex/internal-plugin-wdm test:style",
+      "source_file": "package.json",
+      "role": "lint"
+    },
+    "deploy": {
+      "command": "yarn workspace @webex/internal-plugin-wdm deploy:npm",
+      "source_file": "package.json",
+      "role": "deploy"
+    }
+  },
+  "toolchain": [
+    {
+      "name": "node",
+      "version": ">=16",
+      "origin": "repo-config",
+      "source_file": "package.json"
+    },
+    {
+      "name": "node",
+      "version": "22.14",
+      "origin": "human-declared",
+      "declared_by": "riag@cisco.com (declared 2026-10-12 as the Node.js version for running this package's tests and build commands from the monorepo, matching the monorepo agent instructions; package.json engines >=16 remains the consumer runtime floor)"
+    }
+  ],
+  "tests": {
+    "unit": {
+      "command_ref": "unit-test",
+      "dir": "test/unit",
+      "framework": "jest"
+    },
+    "integration": {
+      "command_ref": "browser-test",
+      "dir": "test/integration",
+      "framework": "mocha (karma runner)",
+      "external_deps": [
+        "Provisioned Webex test users via @webex/test-helper-test-users",
+        "Network access to Webex services"
+      ]
+    }
+  },
+  "quality_gates": {
+    "code_coverage": {
+      "origin": "none",
+      "declared_by": "riag@cisco.com via bootstrap questionnaire on 2026-10-12: no coverage gate specific to this package (its test:unit defines no threshold; the monorepo root jest.config.js carries its own global coverage thresholds, which the owner did not designate as this package's gate)"
+    }
+  },
+  "coverage_status_definitions": {
+    "specced": ">=80% public surface specced, drift <5% — spec is authoritative",
+    "partial": "40-80% specced — spec is a hint, cross-check code",
+    "untracked": "<40% specced — code is the source of truth"
+  },
+  "modules": [
+    {
+      "path": "src/",
+      "coverage_status": "Partial",
+      "coverage_evidence": "Generator-side field measurement 86.7% (13 of 15 mandatory fields PRESENT, critical 7 of 7) assessed 2026-10-12. WEAK: test and characterization coverage (the only unit test asserts true; MOD-001 to MOD-003 and MOD-005 to MOD-007 have no automated evidence and MOD-004 needs provisioned test users), and WHAT/WHY (MOD-003 rationale for omitting two device exports is an approved unknown). Provenance is PRESENT now that approval by riag@cisco.com is recorded. Independent validation passed on 2026-10-28 with validator 01a18302-bd56-78f3-906e-7393e5034b42 and 0 Blocking or warning findings. Promotion to Specced remains held because no drift measurement exists.",
+      "canonical_spec": "src/docs/README.md",
+      "contracts": {
+        "provides": [
+          "wdm-alias-sdk"
+        ],
+        "requires": [
+          "device-plugin-sdk",
+          "webex-core-plugin-host"
+        ]
+      },
+      "last_assessed": "2026-10-12",
+      "section_profile": {
+        "has_ui": false,
+        "crosses_service_boundaries": false,
+        "enforces_domain_rules": false,
+        "is_concurrent_async": false,
+        "owns_persistence": false,
+        "returns_caller_errors": false,
+        "has_design_tradeoff": false,
+        "stateful_transitions": false,
+        "exposes_wire_protocol": false,
+        "ui_multi_screen": false,
+        "large_data_model": false,
+        "has_tiers": false,
+        "module_specific_conventions": true,
+        "published_package": true,
+        "embedded_in_host": false,
+        "holds_client_state": false,
+        "has_submodules": false,
+        "has_submodules_computed_by": "scripts/module_tree.py",
+        "has_submodules_computed_at": "2026-10-12T14:40:00Z",
+        "resolved_by": "claude-code/claude-sonnet-5-5 (host metadata; bootstrap questionnaire)",
+        "resolved_at": "2026-10-12T14:40:00Z"
+      }
+    }
+  ],
+  "contract_catalog": {
+    "index_path": "docs/architecture.md",
+    "definitions": {
+      "wdm-alias-sdk": {
+        "kind": "sdk",
+        "publication": "published",
+        "source_kind": "repository-path",
+        "source": "package.json",
+        "summary": "Published npm package surface of the deprecated alias (main: dist/index.js, devMain: src/index.js): the default export Device and the named exports config, constants, DeviceUrlInterceptor, FeatureCollection, FeatureModel, and FeaturesModel, all re-exported from @webex/internal-plugin-device. Importing it loads the device plugin; it registers no plugin of its own. Internal plugin: semantic versioning is not strictly followed. Per-export detail lives in the owning module spec Public surface."
+      },
+      "device-plugin-sdk": {
+        "kind": "sdk",
+        "publication": "published",
+        "source_kind": "external",
+        "source": "@webex/internal-plugin-device (workspace package; module spec consulted: packages/@webex/internal-plugin-device/src/docs/README.md, contract device-plugin-sdk in its manifest)",
+        "summary": "Device plugin package re-exported by this alias: default Device export, config, constants, CatalogDetails, DeviceRegistrationOptions, DeviceUrlInterceptor, and the feature classes. Its entry module registers the internal plugin device on import."
+      },
+      "webex-core-plugin-host": {
+        "kind": "sdk",
+        "publication": "published",
+        "source_kind": "external",
+        "source": "@webex/webex-core (workspace package; no module spec, so source was used: packages/@webex/webex-core/src/index.js exports the default WebexCore and registerInternalPlugin, defined in packages/@webex/webex-core/src/webex-core.js)",
+        "summary": "Plugin host consumed by the integration test, which constructs a WebexCore instance to observe webex.internal.device after importing the alias. src/index.js does not import it; the device package calls its registerInternalPlugin."
+      }
+    }
+  },
+  "spec_source_policy": {
+    "mode": "keep-separate",
+    "decided_by": "riag@cisco.com",
+    "decided_at": "2026-10-12T14:36:00Z",
+    "decision_record": ".generated/sdd/spec-source-policy/decision.md"
+  },
+  "spec_sources": [
+    {
+      "path": "README.md",
+      "scope": "repo",
+      "role": "reference-only",
+      "canonical": false,
+      "use_by_agents": "context-only",
+      "post_migration_action": "retain",
+      "deletion_status": "not-applicable",
+      "notes": "The package's npm landing page: deprecation notice, install, usage, maintainers, license. Kept separate and untouched by owner decision; facts were reconciled from code, and its stale usage line (webex.internal.wdm.WHATEVER) is recorded as a pitfall in the module spec. Never a deletion candidate."
+    }
+  ],
+  "spec_policy": {
+    "require_what_and_why": true,
+    "require_provenance": true,
+    "protected_specs": [
+      "src/docs/README.md"
+    ]
+  },
+  "validation": {
+    "generator_runtime": "claude-code",
+    "generator_model": "claude-sonnet-5-5",
+    "generator_runtime_source": "host-metadata",
+    "validator_runtime": "codex",
+    "validator_run_id": "01a18302-bd56-78f3-906e-7393e5034b42",
+    "validator_runtime_source": "host-metadata",
+    "minimum_independence": "different-runtime",
+    "runtime_fallback_tier": "different-runtime",
+    "blocking_severities": [
+      "Blocking"
+    ]
+  },
+  "layout": {
+    "sdd_root": ".sdd",
+    "docs_root": "docs",
+    "agent_entry_path": "AGENTS.md",
+    "standing_docs_root": "docs",
+    "spec_index_path": "docs/specs/README.md",
+    "module_docs_strategy": "source-local",
+    "module_docs_relative_path": "docs/README.md",
+    "module_docs_decision": {
+      "basis": "repo-standards-default",
+      "reason": "The package has no module-local documentation folder, documentation build, or protected authored file that collides with the source-local default.",
+      "decided_by": "claude-code (bootstrap questionnaire)",
+      "decided_at": "2026-10-12T14:36:00Z"
+    },
+    "repo_context_decision": {
+      "path": ".repo-context.json",
+      "schema_path": "schemas/repo-context.schema.json",
+      "action": "create",
+      "schema_action": "create",
+      "reason": "Neither the operational context nor its schema existed in this package. The context is created from package evidence and the schema is copied from the Repo Standards 0.3.0 snapshot resolved at the monorepo root.",
+      "decided_by": "claude-code (bootstrap questionnaire)",
+      "decided_at": "2026-10-12T14:36:00Z"
+    },
+    "artifact_decisions": [
+      {
+        "path": "docs/service.md",
+        "action": "omit",
+        "reason": "The package is a published library, not a deployable service; it declares no deployment descriptor, container, or runtime entry point.",
+        "decided_by": "claude-code (bootstrap questionnaire)",
+        "decided_at": "2026-10-12T14:36:00Z"
+      },
+      {
+        "path": "mkdocs.yml",
+        "action": "omit",
+        "reason": "No documentation build exists for this package.",
+        "decided_by": "claude-code (bootstrap questionnaire)",
+        "decided_at": "2026-10-12T14:36:00Z"
+      },
+      {
+        "path": "api-specs/openapi.yaml",
+        "action": "omit",
+        "reason": "The package serves no HTTP routes; its published surface is the npm package declared in package.json, so no OpenAPI source applies.",
+        "decided_by": "claude-code (bootstrap questionnaire)",
+        "decided_at": "2026-10-12T14:36:00Z"
+      },
+      {
+        "path": "SECURITY.md",
+        "action": "omit",
+        "reason": "Absent at the package; the questionnaire did not select a security-policy artifact and no reporting contact is established.",
+        "decided_by": "claude-code (bootstrap questionnaire)",
+        "decided_at": "2026-10-12T14:36:00Z"
+      },
+      {
+        "path": "CONTRIBUTING.md",
+        "action": "omit",
+        "reason": "No package-level contribution guide exists; the package README points to the surrounding monorepo root for contribution rules.",
+        "decided_by": "claude-code (bootstrap questionnaire)",
+        "decided_at": "2026-10-12T14:36:00Z"
+      },
+      {
+        "path": "CHANGELOG.md",
+        "action": "omit",
+        "reason": "No package-level changelog exists; release notes are owned at the surrounding monorepo root.",
+        "decided_by": "claude-code (bootstrap questionnaire)",
+        "decided_at": "2026-10-12T14:36:00Z"
+      },
+      {
+        "path": "CTO_CHECKLIST.yml",
+        "action": "omit",
+        "reason": "The CTO readiness workflow applies to deployable services; this package is a published library.",
+        "decided_by": "claude-code (bootstrap questionnaire)",
+        "decided_at": "2026-10-12T14:36:00Z"
+      },
+      {
+        "path": "schemas/cto-checklist.schema.json",
+        "action": "omit",
+        "reason": "Selected together with CTO_CHECKLIST.yml, which is omitted.",
+        "decided_by": "claude-code (bootstrap questionnaire)",
+        "decided_at": "2026-10-12T14:36:00Z"
+      }
+    ],
+    "template_roots": {
+      "canonical": ".sdd/templates/repo-standards"
+    },
+    "repo_skills_root": ".sdd/skills",
+    "contract_index_path": "docs/architecture.md",
+    "monorepo_package": {
+      "package_path": "packages/@webex/internal-plugin-wdm",
+      "root_manifest_path": "../../../.sdd/manifest.json",
+      "templates_root_path": "../../../.sdd/templates/repo-standards"
+    }
+  },
+  "substrate": {
+    "source": "WebexTools/repo-standards@d89a7fe59126ae3ad9bac9ca352aa7f12b4c85dc",
+    "consumed": [
+      "@webex/eslint-config-legacy and ESLint through package.json scripts",
+      "@webex/babel-config-legacy via babel.config.js",
+      "@webex/jest-config-legacy via jest.config.js",
+      "@webex/legacy-tools build and test runner via package.json",
+      "package README.md"
+    ],
+    "compliance_tier": "baseline"
+  },
+  "section_profiles": {
+    "repo": {
+      "owns_datastore": false,
+      "holds_client_state": false,
+      "components_interact": true,
+      "domain_data_across_components": false,
+      "caches_data": false,
+      "observability_convention": false,
+      "deploys_to_infra": false,
+      "shared_base_libs": false,
+      "is_monorepo": false,
+      "multi_platform": true,
+      "published_package": true,
+      "embedded_in_host": false,
+      "cross_repo_deps_material": false,
+      "security_arch_warranted": false,
+      "exposes_commands_or_artifacts": false
+    },
+    "resolved_by": "claude-code/claude-sonnet-5-5 (host metadata; bootstrap questionnaire)",
+    "resolved_at": "2026-10-12T14:40:00Z"
+  },
+  "tooling": {
+    "sdlc_skills": {
+      "source_ref": "repo-annotation@2.3.0"
+    }
+  }
+}

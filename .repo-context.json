@@ -103,6 +103,13 @@
           "packages/@webex/internal-plugin-user"
         ],
         "notes": "Onboarded package: its own AGENTS.md, docs/, and .sdd/manifest.json are routed from .sdd/manifest.json packages."
+      },
+      {
+        "name": "@webex/internal-plugin-wdm",
+        "paths": [
+          "packages/@webex/internal-plugin-wdm"
+        ],
+        "notes": "Onboarded package: its own AGENTS.md, docs/, and .sdd/manifest.json are routed from .sdd/manifest.json packages."
       }
     ],
     "source_surfaces": [
