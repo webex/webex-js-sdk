@@ -139,6 +139,50 @@ describe('webex-core', () => {
         assert.equal(serviceUrl._getPriorityHostUrl(), highPriorityHost);
       });
 
+      it('normalizes a U2CV2 root URL before callers append a resource', () => {
+        const idbrokerUrl = new ServiceUrl({
+          defaultUrl: 'https://idbroker.webex.com',
+          hosts: [
+            {
+              baseUrl: 'https://idbroker.webex.com',
+              host: 'idbroker.webex.com',
+              priority: 5,
+              homeCluster: true,
+            },
+          ],
+          name: 'idbroker',
+        });
+
+        assert.equal(idbrokerUrl._getPriorityHostUrl(), 'https://idbroker.webex.com/');
+        assert.equal(idbrokerUrl._getHostUrls()[0].url, 'https://idbroker.webex.com/');
+      });
+
+      it('selects the lowest positive priority even when U2CV2 URLs are unsorted', () => {
+        const prioritizedUrl = new ServiceUrl({
+          defaultUrl: 'https://fallback.example.com/api/v1',
+          hosts: [
+            {
+              baseUrl: 'https://alternate.example.com/alternate/api/v1',
+              host: 'alternate.example.com',
+              priority: 2,
+              homeCluster: true,
+            },
+            {
+              baseUrl: 'https://preferred.example.com/preferred/api/v1',
+              host: 'preferred.example.com',
+              priority: 1,
+              homeCluster: true,
+            },
+          ],
+          name: 'example',
+        });
+
+        assert.equal(
+          prioritizedUrl._getPriorityHostUrl(),
+          'https://preferred.example.com/preferred/api/v1'
+        );
+      });
+
       it('should reset the hosts when all have failed', () => {
         serviceUrl.hosts.forEach((host) => {
           /* eslint-disable-next-line no-param-reassign */
