@@ -1051,7 +1051,7 @@ export default class Meeting extends StatelessWebexPlugin {
           degradationPreferences: this.config.degradationPreferences,
           mediaType: MediaType.AudioMain,
           trimRequestsToNumOfSources: false,
-          isReadyToSendMediaRequests,
+          isReadyToSendRequests: isReadyToSendMediaRequests,
         }
       ),
       video: new MediaRequestManager(
@@ -1062,7 +1062,7 @@ export default class Meeting extends StatelessWebexPlugin {
           degradationPreferences: this.config.degradationPreferences,
           mediaType: MediaType.VideoMain,
           trimRequestsToNumOfSources: true,
-          isReadyToSendMediaRequests,
+          isReadyToSendRequests: isReadyToSendMediaRequests,
         }
       ),
       screenShareAudio: new MediaRequestManager(
@@ -1073,7 +1073,7 @@ export default class Meeting extends StatelessWebexPlugin {
           degradationPreferences: this.config.degradationPreferences,
           mediaType: MediaType.AudioSlides,
           trimRequestsToNumOfSources: false,
-          isReadyToSendMediaRequests,
+          isReadyToSendRequests: isReadyToSendMediaRequests,
         }
       ),
       screenShareVideo: new MediaRequestManager(
@@ -1084,7 +1084,7 @@ export default class Meeting extends StatelessWebexPlugin {
           degradationPreferences: this.config.degradationPreferences,
           mediaType: MediaType.VideoSlides,
           trimRequestsToNumOfSources: false,
-          isReadyToSendMediaRequests,
+          isReadyToSendRequests: isReadyToSendMediaRequests,
           // @ts-ignore - config coming from registerPlugin
           enableAv1: this.config.enableAv1SlidesSupport,
         }
