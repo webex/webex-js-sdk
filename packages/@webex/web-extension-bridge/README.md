@@ -191,6 +191,32 @@ There are three hops, and each one has its own check:
 3. **Extension page ↔ service worker** is the client command protocol, accepted only when
    `sender.id === chrome.runtime.id` and `sender.tab === undefined`.
 
+### Connection lifecycle and navigation
+
+A connection belongs to a **document**, not to a tab or a URL. The content script mints one
+session token per document load, and that token is what the page and the worker agree on.
+
+**Single-page app routing does not affect the connection.** `history.pushState`,
+`replaceState` and fragment changes do not reload the document, so the page bridge, the
+relay and the worker's connection record all survive a route change — including any request
+in flight across it. You do not need to re-create the bridge, re-register handlers, or
+reconnect on navigation. The worker refreshes the `url` it reports from
+`listConnections()` so it keeps describing the route the tab is actually on.
+
+A navigation that **replaces** the document does end the connection, and there is nothing to
+preserve when it does: a reload or a followed link builds a new page context, so the
+`WebBridge` object, its handlers and its session all cease to exist. The incoming document's
+content script connects again with a fresh session, and `listConnections()` reports it as a
+new entry. Leaving the allow-listed origin ends the connection for good, since no content
+script is injected there to re-announce one.
+
+| Tab event | Effect on the connection |
+| --- | --- |
+| Route change on the connected origin (`pushState` / `replaceState` / fragment) | Kept; stored `url` refreshed |
+| Reload, or a link to another document on the connected origin | Dropped, then re-established under a new session |
+| Navigation to any other origin | Dropped |
+| Tab closed, or page `destroy()` / `pagehide` | Dropped |
+
 ### Push flow (FR1)
 
 `publish()` validates the topic and payload synchronously and throws on failure, so a
@@ -521,6 +547,7 @@ needs a new failing test before the fix is accepted.
 | Area | Requirement before production |
 | --- | --- |
 | Origins | Replace every `localhost`/`127.0.0.1` entry in `manifest.json` (`content_scripts.matches`, `host_permissions`) and in `allowedOrigins` with your exact production origins. Never ship `localhost`. |
+| Match paths | Keep `content_scripts.matches` origin-wide (`https://your.origin/*`). Narrowing it to a path prefix breaks single-page apps: content scripts are injected on document load only, so entering the app at a URL outside the prefix and then routing into it leaves the page with no relay to connect to — and once injected, a script is *not* removed when routing back out. Scope access with `allowedOrigins`, which is re-checked on every message, rather than with `matches`. |
 | Transport | Serve the web application over HTTPS only, with HSTS. |
 | Wildcards | No `'*'` in `allowedOrigins` (the SDK rejects it) and no `'*'` `targetOrigin`. Confirm by lint. |
 | Extension resources | No `web_accessible_resources`. If unavoidable, a single named file with `use_dynamic_url: true`. |

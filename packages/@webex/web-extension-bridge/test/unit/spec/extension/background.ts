@@ -249,8 +249,17 @@ describe('extension/background', () => {
       ['the tab closing', (fake) => fake.fireTabRemoved(fake.tabId)],
       ['the tab navigating', (fake) => fake.fireTabUpdated(fake.tabId, {status: 'loading'})],
       [
-        'the tab changing url',
+        'the tab loading another document on the same origin',
+        (fake) =>
+          fake.fireTabUpdated(fake.tabId, {status: 'loading', url: `${ORIGIN}/other.html`}),
+      ],
+      [
+        'the tab changing to another origin',
         (fake) => fake.fireTabUpdated(fake.tabId, {url: 'https://elsewhere.example.com/'}),
+      ],
+      [
+        'the tab changing to a scheme with no usable origin',
+        (fake) => fake.fireTabUpdated(fake.tabId, {url: 'about:blank'}),
       ],
     ];
 
@@ -278,6 +287,78 @@ describe('extension/background', () => {
       await drain();
 
       assert.lengthOf(await bridge.listConnections(), 1);
+    });
+
+    /**
+     * Navigations that do not replace the document. A single-page app changes route
+     * with the history API, which Chrome reports as a bare url change: the document,
+     * the content script and the session token it minted all survive, so the
+     * connection has to survive with them and only its recorded url is stale.
+     */
+    const sameDocumentCases: [string, string][] = [
+      ['a pushState route change', `${ORIGIN}/meetings`],
+      ['a replaceState route change', `${ORIGIN}/meetings/42`],
+      ['a query string change', `${ORIGIN}/index.html?view=grid`],
+      ['a fragment change', `${ORIGIN}/index.html#/settings`],
+      ['a completed navigation that also reports a url', `${ORIGIN}/index.html`],
+    ];
+
+    sameDocumentCases.forEach(([why, url]) => {
+      it(`keeps the connection on ${why}`, async () => {
+        await attach();
+        world.fireTabUpdated(world.tabId, {url});
+        await drain();
+
+        const connections = await bridge.listConnections();
+
+        assert.lengthOf(connections, 1);
+        assert.equal(connections[0].tabId, world.tabId);
+        assert.equal(connections[0].url, url);
+      });
+    });
+
+    it('keeps accepting pushes after a same-document navigation', async () => {
+      const received = sinon.stub();
+
+      bridge.subscribe(received);
+      await attach();
+      world.fireTabUpdated(world.tabId, {url: `${ORIGIN}/meetings`});
+      await drain();
+      await push('route.changed', {ok: true});
+
+      assert.calledOnce(received);
+    });
+
+    it('leaves an in-flight request alone across a same-document navigation', async () => {
+      relayAnswers((envelope) => ({
+        ok: true,
+        envelope: createEnvelope({
+          channel: DEFAULT_CHANNEL,
+          kind: EnvelopeKind.RESPONSE,
+          source: EnvelopeSource.PAGE,
+          topic: envelope.topic,
+          id: 'response-across-nav',
+          correlationId: envelope.id,
+          session: SESSION,
+          ok: true,
+          payload: {served: true},
+        }),
+      }));
+      await attach();
+
+      const settled = bridge.request('across.nav');
+
+      world.fireTabUpdated(world.tabId, {url: `${ORIGIN}/meetings`});
+      await drain();
+
+      assert.deepEqual(await settled, {served: true});
+    });
+
+    it('does nothing for a same-document navigation on an unconnected tab', async () => {
+      world.fireTabUpdated(world.tabId, {url: `${ORIGIN}/meetings`});
+      await drain();
+
+      assert.lengthOf(await bridge.listConnections(), 0);
     });
   });
 

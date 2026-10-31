@@ -36,6 +36,18 @@ export interface ChromeTabInfo {
   url?: string;
 }
 
+/**
+ * What Chrome reports changed about a tab.
+ *
+ * Both fields are optional and their combination is the only evidence available for
+ * telling a navigation that replaces the document from one that does not, so they are
+ * read through the guards in `navigation.ts` rather than inspected inline.
+ */
+export interface ChromeTabChangeInfo {
+  status?: string;
+  url?: string;
+}
+
 export interface ChromeRuntimeLike {
   id: string;
   onMessage: ChromeEvent<RuntimeMessageListener>;
@@ -46,7 +58,7 @@ export interface ChromeTabsLike {
   sendMessage(tabId: number, message: unknown): Promise<unknown>;
   query(queryInfo: {active?: boolean; currentWindow?: boolean}): Promise<ChromeTabInfo[]>;
   onRemoved: ChromeEvent<(tabId: number) => void>;
-  onUpdated: ChromeEvent<(tabId: number, changeInfo: {status?: string; url?: string}) => void>;
+  onUpdated: ChromeEvent<(tabId: number, changeInfo: ChromeTabChangeInfo) => void>;
 }
 
 /**
