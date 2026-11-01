@@ -97,6 +97,10 @@ export default class WebCallingService extends EventEmitter {
 
   private incomingCallHandler?: (call: ICall) => void;
 
+  private registrationGeneration = 0;
+
+  private registrationListenerCleanup: Array<() => void> = [];
+
   /**
    * Map that associates call IDs with task IDs for correlation
    * @private
@@ -197,6 +201,41 @@ export default class WebCallingService extends EventEmitter {
 
     this.voiceConnectionState = nextState;
     this.emit(VOICE_CONNECTION_EVENTS.STATE_CHANGE, this.getVoiceConnectionState());
+  }
+
+  private addRegistrationListener(
+    emitter: ICallingClient | ILine,
+    event: string,
+    callback: (...args: any[]) => void
+  ): (...args: any[]) => void {
+    const generation = this.registrationGeneration;
+    const listener = (...args: any[]) => {
+      if (generation === this.registrationGeneration) {
+        callback(...args);
+      }
+    };
+
+    (emitter as any).on(event, listener);
+    this.registrationListenerCleanup.push(() => (emitter as any).off?.(event, listener));
+
+    return listener;
+  }
+
+  private async cleanupWebCallingRegistration(): Promise<void> {
+    this.registrationGeneration += 1;
+    this.rejectRegistration?.(new Error('WebCallingService registration superseded'));
+    this.rejectRegistration = undefined;
+    this.registrationListenerCleanup.forEach((cleanup) => cleanup());
+    this.registrationListenerCleanup = [];
+    this.incomingCallHandler = undefined;
+    this.registrationCompleteHandler = undefined;
+
+    const line = this.line;
+    this.line = undefined;
+    this.callingClient = undefined;
+    if (line) {
+      await line.deregister();
+    }
   }
 
   private handleLineConnecting = (): void => {
@@ -354,12 +393,21 @@ export default class WebCallingService extends EventEmitter {
    * @throws {Error} When registration times out
    */
   public async registerWebCallingLine(): Promise<void> {
+    const registrationGeneration = this.registrationGeneration + 1;
+    await this.cleanupWebCallingRegistration();
+    if (registrationGeneration !== this.registrationGeneration) {
+      return;
+    }
+
     this.lineReason = undefined;
     this.lineRetryable = undefined;
     this.updateVoiceConnectionState({lineStatus: VoiceLineStatus.CONNECTING});
 
     try {
       const rtmsDomain = await this.getRTMSDomain(); // get the RTMS domain from the u2c catalogue
+      if (registrationGeneration !== this.registrationGeneration) {
+        return;
+      }
 
       const callingClientConfig = {
         logger: {
@@ -371,7 +419,13 @@ export default class WebCallingService extends EventEmitter {
         },
       };
 
-      this.callingClient = await createClient(this.webex as any, callingClientConfig);
+      const callingClient = await createClient(this.webex as any, callingClientConfig);
+      if (registrationGeneration !== this.registrationGeneration) {
+        await Object.values(callingClient.getLines())[0]?.deregister();
+
+        return;
+      }
+      this.callingClient = callingClient;
       this.line = Object.values(this.callingClient.getLines())[0];
       this.updateVoiceConnectionState({
         mobiusSocketStatus: this.callingClient.isMobiusSocketConnected()
@@ -379,27 +433,40 @@ export default class WebCallingService extends EventEmitter {
           : VoiceMobiusSocketStatus.NOT_IN_USE,
       });
 
-      this.callingClient.on(
+      this.addRegistrationListener(
+        this.callingClient,
         CALLING_CLIENT_EVENT_KEYS.MOBIUS_SOCKET_CONNECTED,
         this.handleMobiusSocketConnected
       );
-      this.callingClient.on(
+      this.addRegistrationListener(
+        this.callingClient,
         CALLING_CLIENT_EVENT_KEYS.MOBIUS_SOCKET_DISCONNECTED,
         this.handleMobiusSocketDisconnected
       );
 
-      this.line.on(LINE_EVENTS.CONNECTING, this.handleLineConnecting);
-      this.line.on(LINE_EVENTS.RECONNECTING, this.handleLineReconnecting);
-      this.line.on(LINE_EVENTS.RECONNECTED, this.handleLineReconnected);
-      this.line.on(LINE_EVENTS.UNREGISTERED, this.handleLineUnregistered);
-      this.line.on(LINE_EVENTS.ERROR, this.handleLineError);
+      this.addRegistrationListener(this.line, LINE_EVENTS.CONNECTING, this.handleLineConnecting);
+      this.addRegistrationListener(
+        this.line,
+        LINE_EVENTS.RECONNECTING,
+        this.handleLineReconnecting
+      );
+      this.addRegistrationListener(this.line, LINE_EVENTS.RECONNECTED, this.handleLineReconnected);
+      this.addRegistrationListener(
+        this.line,
+        LINE_EVENTS.UNREGISTERED,
+        this.handleLineUnregistered
+      );
+      this.addRegistrationListener(this.line, LINE_EVENTS.ERROR, this.handleLineError);
 
       // Start listening for incoming calls
-      this.incomingCallHandler = (call: ICall) => {
-        this.call = call;
-        this.emit(LINE_EVENTS.INCOMING_CALL, call);
-      };
-      this.line.on(LINE_EVENTS.INCOMING_CALL, this.incomingCallHandler);
+      this.incomingCallHandler = this.addRegistrationListener(
+        this.line,
+        LINE_EVENTS.INCOMING_CALL,
+        (call: ICall) => {
+          this.call = call;
+          this.emit(LINE_EVENTS.INCOMING_CALL, call);
+        }
+      );
 
       await new Promise<void>((resolve, reject) => {
         let timeout: ReturnType<typeof setTimeout> | undefined;
@@ -424,12 +491,15 @@ export default class WebCallingService extends EventEmitter {
           this.rejectRegistration?.(new Error('WebCallingService Registration timed out'));
         }, TIMEOUT_DURATION);
 
-        this.registrationCompleteHandler = () => {
-          finish();
-          resolve();
-        };
-        this.line.on(LINE_EVENTS.REGISTERED, this.handleLineRegistered);
-        this.line.on(LINE_EVENTS.REGISTERED, this.registrationCompleteHandler);
+        this.addRegistrationListener(this.line, LINE_EVENTS.REGISTERED, this.handleLineRegistered);
+        this.registrationCompleteHandler = this.addRegistrationListener(
+          this.line,
+          LINE_EVENTS.REGISTERED,
+          () => {
+            finish();
+            resolve();
+          }
+        );
 
         // ILine declares register() as void, although its implementation is async.
         Promise.resolve(this.line.register()).catch((error: LineError) => {
@@ -437,6 +507,9 @@ export default class WebCallingService extends EventEmitter {
         });
       });
     } catch (error) {
+      if (registrationGeneration !== this.registrationGeneration) {
+        return;
+      }
       if (this.voiceConnectionState.lineStatus !== VoiceLineStatus.ERROR) {
         this.lineReason =
           this.lineReason ?? (error instanceof Error ? error.message : 'REGISTRATION_FAILED');
@@ -460,30 +533,7 @@ export default class WebCallingService extends EventEmitter {
       method: METHODS.DEREGISTER_WEB_CALLING_LINE,
     });
     this.cleanUpCall();
-    this.callingClient?.off(
-      CALLING_CLIENT_EVENT_KEYS.MOBIUS_SOCKET_CONNECTED,
-      this.handleMobiusSocketConnected
-    );
-    this.callingClient?.off(
-      CALLING_CLIENT_EVENT_KEYS.MOBIUS_SOCKET_DISCONNECTED,
-      this.handleMobiusSocketDisconnected
-    );
-    this.line?.off?.(LINE_EVENTS.CONNECTING, this.handleLineConnecting);
-    this.line?.off?.(LINE_EVENTS.RECONNECTING, this.handleLineReconnecting);
-    this.line?.off?.(LINE_EVENTS.RECONNECTED, this.handleLineReconnected);
-    this.line?.off?.(LINE_EVENTS.UNREGISTERED, this.handleLineUnregistered);
-    this.line?.off?.(LINE_EVENTS.ERROR, this.handleLineError);
-    this.line?.off?.(LINE_EVENTS.REGISTERED, this.handleLineRegistered);
-    if (this.incomingCallHandler) {
-      this.line?.off?.(LINE_EVENTS.INCOMING_CALL, this.incomingCallHandler);
-    }
-    if (this.registrationCompleteHandler) {
-      this.line?.off?.(LINE_EVENTS.REGISTERED, this.registrationCompleteHandler);
-    }
-    this.incomingCallHandler = undefined;
-    this.registrationCompleteHandler = undefined;
-    this.rejectRegistration = undefined;
-    this.line?.deregister();
+    await this.cleanupWebCallingRegistration();
     this.lineReason = undefined;
     this.lineRetryable = undefined;
     this.socketReason = undefined;
