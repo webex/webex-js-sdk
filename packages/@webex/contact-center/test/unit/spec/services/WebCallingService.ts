@@ -482,6 +482,7 @@ describe('WebCallingService', () => {
       LINE_EVENTS.UNREGISTERED,
       LINE_EVENTS.ERROR,
       LINE_EVENTS.REGISTERED,
+      LINE_EVENTS.INCOMING_CALL,
     ])('detaches the %s listener after deregistration', async (event) => {
       setBrowserVoiceRequired();
       registerLineImmediately();
@@ -496,6 +497,20 @@ describe('WebCallingService', () => {
         lineStatus: 'unknown',
         mobiusSocketStatus: 'unknown',
       });
+    });
+
+    it.each([
+      CALLING_CLIENT_EVENT_KEYS.MOBIUS_SOCKET_CONNECTED,
+      CALLING_CLIENT_EVENT_KEYS.MOBIUS_SOCKET_DISCONNECTED,
+    ])('detaches the %s listener after deregistration', async (event) => {
+      setBrowserVoiceRequired();
+      registerLineImmediately();
+      await webRTCCalling.registerWebCallingLine();
+      const handler = getHandler(callingClient, event);
+
+      await webRTCCalling.deregisterWebCallingLine();
+
+      expect(callingClient.off).toHaveBeenCalledWith(event, handler);
     });
 
     it('should handle incoming calls', async () => {

@@ -40,6 +40,7 @@ import {
 } from './constants';
 import {isAllowedUrlHost} from './core/Utils';
 
+// Match RegistrationStatus.ACTIVE; @webex/calling does not export the enum from its public barrel.
 const ACTIVE_REGISTRATION_STATUS = 'active' as LineError['status'];
 
 /**
@@ -437,7 +438,8 @@ export default class WebCallingService extends EventEmitter {
       });
     } catch (error) {
       if (this.voiceConnectionState.lineStatus !== VoiceLineStatus.ERROR) {
-        this.lineReason = error instanceof Error ? error.message : 'REGISTRATION_FAILED';
+        this.lineReason =
+          this.lineReason ?? (error instanceof Error ? error.message : 'REGISTRATION_FAILED');
         this.lineRetryable = false;
         this.updateVoiceConnectionState({lineStatus: VoiceLineStatus.ERROR});
       }
