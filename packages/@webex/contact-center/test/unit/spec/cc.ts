@@ -5043,12 +5043,38 @@ describe('webex.cc', () => {
       [LoginOption.BROWSER, false, false, false],
       [LoginOption.EXTENSION, true, false, false],
     ])(
-      'should require browser voice for loginOption=%s, webRtcEnabled=%s, disabled=%s',
-      (loginOption, webRtcEnabled, disableWebRTCRegistration, expected) => {
+      'should configure browser voice for loginOption=%s, webRtcEnabled=%s, disabled=%s',
+      async (loginOption, webRtcEnabled, disableWebRTCRegistration, expected) => {
         webex.cc.agentConfig = {...webex.cc.agentConfig, webRtcEnabled} as Profile;
-        webex.cc['$config'] = {disableWebRTCRegistration};
+        webex.cc['$config'] = {...webex.cc['$config'], disableWebRTCRegistration};
+        jest.spyOn(webex.cc.services.agent, 'stationLogin').mockResolvedValue({
+          data: {
+            loginOption,
+            agentId: 'agent-id',
+            teamId: 'team-id',
+            siteId: 'site-id',
+            roles: [AGENT],
+            channelsMap: {chat: [], email: [], social: [], telephony: []},
+          },
+          trackingId: 'track-id',
+        } as unknown as StationLoginSuccess);
+        const setBrowserVoiceRequiredSpy = jest.spyOn(
+          webex.cc.webCallingService,
+          'setBrowserVoiceRequired'
+        );
+        const registerWebCallingLineSpy = jest.spyOn(
+          webex.cc.webCallingService,
+          'registerWebCallingLine'
+        );
 
-        expect(webex.cc['isBrowserVoiceRequired'](loginOption)).toBe(expected);
+        await webex.cc.stationLogin({teamId: 'team-id', loginOption});
+
+        expect(setBrowserVoiceRequiredSpy).toHaveBeenCalledWith(expected);
+        if (expected) {
+          expect(registerWebCallingLineSpy).toHaveBeenCalled();
+        } else {
+          expect(registerWebCallingLineSpy).not.toHaveBeenCalled();
+        }
       }
     );
   });
