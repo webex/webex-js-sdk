@@ -262,10 +262,13 @@ describe('WebCallingService', () => {
       setBrowserVoiceRequired();
       line = callingClient.getLines().line1 as ILine;
       jest.useFakeTimers();
+      let notifyRegistrationStarted: () => void;
+      const registrationStarted = new Promise<void>((resolve) => {
+        notifyRegistrationStarted = resolve;
+      });
+      line.register.mockImplementation(notifyRegistrationStarted);
       const promise = webRTCCalling.registerWebCallingLine();
-      await Promise.resolve();
-      await Promise.resolve();
-      await Promise.resolve();
+      await registrationStarted;
       jest.advanceTimersByTime(TIMEOUT_DURATION);
 
       await expect(promise).rejects.toThrow('WebCallingService Registration timed out');
@@ -291,6 +294,31 @@ describe('WebCallingService', () => {
         lineStatus: 'error',
         mobiusSocketStatus: 'not-in-use',
         reason: 'Registration failed',
+        retryable: false,
+      });
+    });
+
+    it('keeps a Mobius disconnect reason separate from a line registration failure', async () => {
+      setBrowserVoiceRequired();
+      webRTCCalling['handleMobiusSocketDisconnected']({reason: 'transient'} as any);
+      webex.internal.services.waitForCatalog.mockRejectedValue(new Error('Catalog unavailable'));
+
+      await expect(webRTCCalling.registerWebCallingLine()).rejects.toThrow('Catalog unavailable');
+
+      expect(webRTCCalling.getVoiceConnectionState()).toMatchObject({
+        lineStatus: 'error',
+        mobiusSocketStatus: 'disconnected',
+        reason: 'MOBIUS_SOCKET_TRANSIENT',
+        retryable: true,
+      });
+
+      webRTCCalling['handleMobiusSocketConnected']();
+
+      expect(webRTCCalling.getVoiceConnectionState()).toMatchObject({
+        lineStatus: 'error',
+        mobiusSocketStatus: 'connected',
+        reason: 'Catalog unavailable',
+        retryable: false,
       });
     });
 
@@ -417,7 +445,6 @@ describe('WebCallingService', () => {
         setBrowserVoiceRequired();
         registerLineImmediately();
         await webRTCCalling.registerWebCallingLine();
-
         getHandler(line, LINE_EVENTS.ERROR)({
           message: 'Invalid number',
           status: registrationStatus,
@@ -432,31 +459,38 @@ describe('WebCallingService', () => {
       }
     );
 
-    it('should detach line listeners and reset the snapshot after deregistration', async () => {
+    it('keeps the REGISTERED listener active for subsequent registrations', async () => {
       setBrowserVoiceRequired();
       registerLineImmediately();
       await webRTCCalling.registerWebCallingLine();
-      const lineHandlers = new Map(line.on.mock.calls.map(([event, handler]) => [event, handler]));
+      const registeredHandler = getHandler(line, LINE_EVENTS.REGISTERED);
+
+      getHandler(line, LINE_EVENTS.UNREGISTERED)();
+      expect(webRTCCalling.getVoiceConnectionState().status).toBe(
+        VOICE_CONNECTION_STATUS.UNAVAILABLE
+      );
+
+      registeredHandler({mobiusDeviceId: 'device123'});
+
+      expect(webRTCCalling.getVoiceConnectionState().status).toBe(VOICE_CONNECTION_STATUS.READY);
+    });
+
+    it.each([
+      LINE_EVENTS.CONNECTING,
+      LINE_EVENTS.RECONNECTING,
+      LINE_EVENTS.RECONNECTED,
+      LINE_EVENTS.UNREGISTERED,
+      LINE_EVENTS.ERROR,
+      LINE_EVENTS.REGISTERED,
+    ])('detaches the %s listener after deregistration', async (event) => {
+      setBrowserVoiceRequired();
+      registerLineImmediately();
+      await webRTCCalling.registerWebCallingLine();
+      const handler = getHandler(line, event);
 
       await webRTCCalling.deregisterWebCallingLine();
 
-      expect(line.off).toHaveBeenCalledWith(
-        LINE_EVENTS.CONNECTING,
-        lineHandlers.get(LINE_EVENTS.CONNECTING)
-      );
-      expect(line.off).toHaveBeenCalledWith(
-        LINE_EVENTS.RECONNECTING,
-        lineHandlers.get(LINE_EVENTS.RECONNECTING)
-      );
-      expect(line.off).toHaveBeenCalledWith(
-        LINE_EVENTS.RECONNECTED,
-        lineHandlers.get(LINE_EVENTS.RECONNECTED)
-      );
-      expect(line.off).toHaveBeenCalledWith(
-        LINE_EVENTS.UNREGISTERED,
-        lineHandlers.get(LINE_EVENTS.UNREGISTERED)
-      );
-      expect(line.off).toHaveBeenCalledWith(LINE_EVENTS.ERROR, lineHandlers.get(LINE_EVENTS.ERROR));
+      expect(line.off).toHaveBeenCalledWith(event, handler);
       expect(webRTCCalling.getVoiceConnectionState()).toEqual({
         status: VOICE_CONNECTION_STATUS.NOT_REQUIRED,
         lineStatus: 'unknown',

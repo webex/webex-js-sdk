@@ -2141,7 +2141,7 @@ describe('webex.cc', () => {
       );
     });
 
-    it('should not attempt mobius registration for LoginOption.BROWSER if webrtc is disabled', async () => {
+    it('does not register a browser line during station login when WebRTC is disabled', async () => {
       const options = {
         teamId: 'teamId',
         loginOption: LoginOption.BROWSER,
@@ -2186,6 +2186,7 @@ describe('webex.cc', () => {
       await webex.cc.stationLogin(options);
 
       expect(registerWebCallingLineSpy).not.toHaveBeenCalled();
+      expect(webex.cc.webCallingService.setBrowserVoiceRequired).toHaveBeenCalledWith(false);
       expect(stationLoginSpy).toHaveBeenCalledWith({
         data: {
           dialNumber: `${WEB_RTC_PREFIX}agentId`,
@@ -3920,6 +3921,34 @@ describe('webex.cc', () => {
   });
 
   describe('silentRelogin', () => {
+    it('preserves browser line registration when WebRTC is not required', async () => {
+      webex.cc.agentConfig = {
+        agentId: 'agentId',
+        webRtcEnabled: false,
+      } as Profile;
+      jest.spyOn(webex.cc.services.agent, 'reload').mockResolvedValue({
+        data: {
+          auxCodeId: 'auxCodeId',
+          agentId: 'agentId',
+          deviceType: LoginOption.BROWSER,
+          dn: '12345',
+        },
+      } as any);
+      const registerWebCallingLineSpy = jest.spyOn(
+        webex.cc.webCallingService,
+        'registerWebCallingLine'
+      );
+      const setBrowserVoiceRequiredSpy = jest.spyOn(
+        webex.cc.webCallingService,
+        'setBrowserVoiceRequired'
+      );
+
+      await webex.cc['silentRelogin']();
+
+      expect(registerWebCallingLineSpy).toHaveBeenCalled();
+      expect(setBrowserVoiceRequiredSpy).toHaveBeenCalledWith(false);
+    });
+
     it('should perform silent relogin and set agent state to available', async () => {
       const mockReLoginResponse = {
         data: {
@@ -4982,6 +5011,30 @@ describe('webex.cc', () => {
 
       expect(setLoginOptionSpy).toHaveBeenCalledWith(deviceType);
       expect(webex.cc.webCallingService.setBrowserVoiceRequired).not.toHaveBeenCalled();
+    });
+
+    it('clears the local browser voice requirement after a multi-login on another device type', () => {
+      const setBrowserVoiceRequiredSpy = jest.spyOn(
+        webex.cc.webCallingService,
+        'setBrowserVoiceRequired'
+      );
+      const payload = {
+        trackingId: 'track-123',
+        data: {
+          agentId: 'agent-id',
+          teamId: 'team-id',
+          siteId: 'site-id',
+          roles: ['role1'],
+          channelsMap: {chat: [], email: [], social: [], telephony: []},
+          deviceType: LoginOption.EXTENSION,
+          type: CC_EVENTS.AGENT_STATION_LOGIN_SUCCESS,
+        },
+        type: CC_EVENTS.AGENT_STATION_LOGIN_SUCCESS,
+      };
+
+      messageCallback(JSON.stringify(payload));
+
+      expect(setBrowserVoiceRequiredSpy).toHaveBeenCalledWith(false);
     });
 
     it.each([

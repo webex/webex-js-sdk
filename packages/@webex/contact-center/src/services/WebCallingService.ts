@@ -40,6 +40,8 @@ import {
 } from './constants';
 import {isAllowedUrlHost} from './core/Utils';
 
+const ACTIVE_REGISTRATION_STATUS = 'active' as LineError['status'];
+
 /**
  * WebCallingService provides WebRTC calling functionality for Contact Center agents.
  * It handles registration, call management, and media operations for voice interactions.
@@ -90,7 +92,7 @@ export default class WebCallingService extends EventEmitter {
 
   private rejectRegistration?: (error: Error) => void;
 
-  private registeredHandler?: (line: ILine) => void;
+  private registrationCompleteHandler?: (line: ILine) => void;
 
   private incomingCallHandler?: (call: ICall) => void;
 
@@ -235,7 +237,7 @@ export default class WebCallingService extends EventEmitter {
   };
 
   private handleLineError = (error: LineError): void => {
-    if (error.status !== 'active') {
+    if (error.status !== ACTIVE_REGISTRATION_STATUS) {
       this.lineReason = error.message || 'LINE_ERROR';
       this.lineRetryable = false;
       this.updateVoiceConnectionState({lineStatus: VoiceLineStatus.ERROR});
@@ -405,9 +407,9 @@ export default class WebCallingService extends EventEmitter {
             clearTimeout(timeout);
           }
           this.rejectRegistration = undefined;
-          if (this.registeredHandler) {
-            this.line.off(LINE_EVENTS.REGISTERED, this.registeredHandler);
-            this.registeredHandler = undefined;
+          if (this.registrationCompleteHandler) {
+            this.line.off(LINE_EVENTS.REGISTERED, this.registrationCompleteHandler);
+            this.registrationCompleteHandler = undefined;
           }
         };
         this.rejectRegistration = (error: Error): void => {
@@ -421,12 +423,12 @@ export default class WebCallingService extends EventEmitter {
           this.rejectRegistration?.(new Error('WebCallingService Registration timed out'));
         }, TIMEOUT_DURATION);
 
-        this.registeredHandler = (line: ILine) => {
+        this.registrationCompleteHandler = () => {
           finish();
-          this.handleLineRegistered(line);
           resolve();
         };
-        this.line.on(LINE_EVENTS.REGISTERED, this.registeredHandler);
+        this.line.on(LINE_EVENTS.REGISTERED, this.handleLineRegistered);
+        this.line.on(LINE_EVENTS.REGISTERED, this.registrationCompleteHandler);
 
         // ILine declares register() as void, although its implementation is async.
         Promise.resolve(this.line.register()).catch((error: LineError) => {
@@ -435,9 +437,7 @@ export default class WebCallingService extends EventEmitter {
       });
     } catch (error) {
       if (this.voiceConnectionState.lineStatus !== VoiceLineStatus.ERROR) {
-        this.lineReason =
-          this.voiceConnectionState.reason ??
-          (error instanceof Error ? error.message : 'REGISTRATION_FAILED');
+        this.lineReason = error instanceof Error ? error.message : 'REGISTRATION_FAILED';
         this.lineRetryable = false;
         this.updateVoiceConnectionState({lineStatus: VoiceLineStatus.ERROR});
       }
@@ -471,14 +471,15 @@ export default class WebCallingService extends EventEmitter {
     this.line?.off?.(LINE_EVENTS.RECONNECTED, this.handleLineReconnected);
     this.line?.off?.(LINE_EVENTS.UNREGISTERED, this.handleLineUnregistered);
     this.line?.off?.(LINE_EVENTS.ERROR, this.handleLineError);
+    this.line?.off?.(LINE_EVENTS.REGISTERED, this.handleLineRegistered);
     if (this.incomingCallHandler) {
       this.line?.off?.(LINE_EVENTS.INCOMING_CALL, this.incomingCallHandler);
     }
-    if (this.registeredHandler) {
-      this.line?.off?.(LINE_EVENTS.REGISTERED, this.registeredHandler);
+    if (this.registrationCompleteHandler) {
+      this.line?.off?.(LINE_EVENTS.REGISTERED, this.registrationCompleteHandler);
     }
     this.incomingCallHandler = undefined;
-    this.registeredHandler = undefined;
+    this.registrationCompleteHandler = undefined;
     this.rejectRegistration = undefined;
     this.line?.deregister();
     this.lineReason = undefined;

@@ -410,9 +410,9 @@ export enum VOICE_CONNECTION_STATUS {
 }
 
 /** Stable error codes for browser voice availability failures. @public */
-export const VOICE_CONNECTION_ERROR = {
-  NOT_READY: 'BROWSER_VOICE_NOT_READY',
-} as const;
+export enum VOICE_CONNECTION_ERROR {
+  NOT_READY = 'BROWSER_VOICE_NOT_READY',
+}
 
 /** Browser voice line registration states. @public */
 export enum VoiceLineStatus {

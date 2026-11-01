@@ -1673,6 +1673,12 @@ export default class ContactCenter extends WebexPlugin implements IContactCenter
       case CC_EVENTS.AGENT_STATION_LOGIN_SUCCESS: {
         const {channelsMap, ...loginData} = eventData.data;
         this.updateWellnessSession(loginData.agentSessionId);
+        if (
+          loginData.deviceType === LoginOption.EXTENSION ||
+          loginData.deviceType === LoginOption.AGENT_DN
+        ) {
+          this.webCallingService.setBrowserVoiceRequired(false);
+        }
         const stationLoginData = {
           ...loginData,
           mmProfile: {
@@ -2513,10 +2519,7 @@ export default class ContactCenter extends WebexPlugin implements IContactCenter
     this.agentConfig.deviceType = deviceType;
     switch (deviceType) {
       case LoginOption.BROWSER:
-        if (!this.isBrowserVoiceRequired(deviceType)) {
-          if (!this.isWebRTCRegistrationDisabled()) {
-            break;
-          }
+        if (this.isWebRTCRegistrationDisabled()) {
           LoggerProxy.info(
             'Skipping web calling line registration because disableWebRTCRegistration is enabled',
             {
