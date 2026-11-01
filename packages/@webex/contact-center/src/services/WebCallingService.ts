@@ -503,7 +503,9 @@ export default class WebCallingService extends EventEmitter {
 
         // ILine declares register() as void, although its implementation is async.
         Promise.resolve(this.line.register()).catch((error: LineError) => {
-          this.handleLineError(error);
+          if (registrationGeneration === this.registrationGeneration) {
+            this.handleLineError(error);
+          }
         });
       });
     } catch (error) {

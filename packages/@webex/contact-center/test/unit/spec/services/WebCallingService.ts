@@ -53,6 +53,27 @@ describe('WebCallingService', () => {
   const getHandler = (emitter, event) =>
     emitter.on.mock.calls.find(([registeredEvent]) => registeredEvent === event)?.[1];
 
+  const createEmitter = () => {
+    const handlers = new Map<string, Array<(...args: any[]) => void>>();
+    const emitter = {
+      on: jest.fn((event: string, handler: (...args: any[]) => void) => {
+        handlers.set(event, [...(handlers.get(event) ?? []), handler]);
+      }),
+      off: jest.fn((event: string, handler: (...args: any[]) => void) => {
+        handlers.set(
+          event,
+          (handlers.get(event) ?? []).filter((registeredHandler) => registeredHandler !== handler)
+        );
+      }),
+      emit: (event: string, ...args: any[]) => {
+        (handlers.get(event) ?? []).forEach((handler) => handler(...args));
+      },
+      handlers,
+    };
+
+    return emitter;
+  };
+
   beforeEach(() => {
     webex = {
       logger: {
@@ -163,28 +184,6 @@ describe('WebCallingService', () => {
     }, 20000); // Increased timeout to 20 seconds
 
     it('retires the previous registration before registering a new calling client', async () => {
-      const createEmitter = () => {
-        const handlers = new Map<string, Array<(...args: any[]) => void>>();
-        const emitter = {
-          on: jest.fn((event: string, handler: (...args: any[]) => void) => {
-            handlers.set(event, [...(handlers.get(event) ?? []), handler]);
-          }),
-          off: jest.fn((event: string, handler: (...args: any[]) => void) => {
-            handlers.set(
-              event,
-              (handlers.get(event) ?? []).filter(
-                (registeredHandler) => registeredHandler !== handler
-              )
-            );
-          }),
-          emit: (event: string, ...args: any[]) => {
-            (handlers.get(event) ?? []).forEach((handler) => handler(...args));
-          },
-          handlers,
-        };
-
-        return emitter;
-      };
       const firstLine = Object.assign(createEmitter(), {
         register: jest.fn(),
         deregister: jest.fn().mockResolvedValue(undefined),
@@ -235,6 +234,60 @@ describe('WebCallingService', () => {
 
       expect(webRTCCalling.getVoiceConnectionState()).toEqual(currentState);
       expect(secondLine.register).toHaveBeenCalledTimes(1);
+    });
+
+    it('ignores a register rejection after its line has been superseded', async () => {
+      const firstLine = Object.assign(createEmitter(), {
+        register: jest.fn(),
+        deregister: jest.fn().mockResolvedValue(undefined),
+      });
+      const secondLine = Object.assign(createEmitter(), {
+        register: jest.fn(),
+        deregister: jest.fn().mockResolvedValue(undefined),
+      });
+      const firstClient = {
+        ...createEmitter(),
+        isMobiusSocketConnected: jest.fn().mockReturnValue(false),
+        getLines: jest.fn().mockReturnValue({line1: firstLine}),
+      };
+      const secondClient = {
+        ...createEmitter(),
+        isMobiusSocketConnected: jest.fn().mockReturnValue(false),
+        getLines: jest.fn().mockReturnValue({line1: secondLine}),
+      };
+      let registerStartedResolve = jest.fn();
+      const registerStarted = new Promise<void>((resolve) => {
+        registerStartedResolve = resolve;
+      });
+      let rejectFirstRegister = jest.fn();
+      const firstRegisterPromise = new Promise<void>((_resolve, reject) => {
+        rejectFirstRegister = reject;
+      });
+
+      (createClient as jest.Mock)
+        .mockResolvedValueOnce(firstClient)
+        .mockResolvedValueOnce(secondClient);
+      firstLine.register.mockImplementation(() => {
+        registerStartedResolve();
+
+        return firstRegisterPromise;
+      });
+      secondLine.register.mockImplementation(() =>
+        secondLine.emit(LINE_EVENTS.REGISTERED, secondLine)
+      );
+      setBrowserVoiceRequired();
+
+      const firstRegistration = webRTCCalling.registerWebCallingLine();
+      await registerStarted;
+      await webRTCCalling.registerWebCallingLine();
+      await firstRegistration;
+      const currentState = webRTCCalling.getVoiceConnectionState();
+
+      rejectFirstRegister(new Error('superseded registration failed'));
+      await firstRegisterPromise.catch(() => undefined);
+
+      expect(webRTCCalling.getVoiceConnectionState()).toEqual(currentState);
+      expect(currentState.status).toBe(VOICE_CONNECTION_STATUS.READY);
     });
 
     it('should register WebCallingLine with custom rtms url', async () => {
