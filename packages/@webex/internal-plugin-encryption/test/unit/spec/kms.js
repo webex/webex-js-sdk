@@ -7,9 +7,12 @@ import path from 'path';
 import {assert} from '@webex/test-helper-chai';
 import MockWebex from '@webex/test-helper-mock-webex';
 import sinon from 'sinon';
+import {Context} from 'node-kms';
+import kmsCaroots from '@webex/kms-caroots';
 import Encryption from '@webex/internal-plugin-encryption';
 import {KmsError, KmsTimeoutError} from '../../../dist/kms-errors';
 import {UNION_BUNDLE_ASSET} from '../../../dist/union-bundle';
+import {caroots, unrelatedCaroots, validKey, invalidKey} from '../../fixtures/kms-certificate';
 
 describe('internal-plugin-encryption', () => {
   describe('kms', () => {
@@ -246,25 +249,6 @@ describe('internal-plugin-encryption', () => {
     });
 
     describe('_validateKMSStaticPubKey', () => {
-      // Real CA root that signed the `x5c` certificate below.
-      const caroots = [
-        'MIID6TCCAtGgAwIBAgIURmBu688C9oUIJXlykr1J3fi5H4kwDQYJKoZIhvcNAQELBQAwgYMxCzAJBgNVBAYTAlVTMREwDwYDVQQIDAhDb2xvcmFkbzEPMA0GA1UEBwwGRGVudmVyMRAwDgYDVQQKDAdFeGFtcGxlMR8wHQYDVQQDDBZodHRwczovL2NhLmV4YW1wbGUuY29tMR0wGwYJKoZIhvcNAQkBFg5jYUBleGFtcGxlLmNvbTAeFw0yMDAyMDYyMDIyMDhaFw00MDAyMDEyMDIyMDhaMIGDMQswCQYDVQQGEwJVUzERMA8GA1UECAwIQ29sb3JhZG8xDzANBgNVBAcMBkRlbnZlcjEQMA4GA1UECgwHRXhhbXBsZTEfMB0GA1UEAwwWaHR0cHM6Ly9jYS5leGFtcGxlLmNvbTEdMBsGCSqGSIb3DQEJARYOY2FAZXhhbXBsZS5jb20wggEiMA0GCSqGSIb3DQEBAQUAA4IBDwAwggEKAoIBAQC7TaDWldwjU65y4fnNDIuNu4dZi3bZvaN9nJ3A8D9pwFcNx3DL5cPpafAkJuE/2ZBrsZxJWKwXLQFuNE9V3XVslv0OPgEZVfY5AKuPhVezRqEqsCdUgODMkJat6PE02r0NZRFpBiRCThh0wY5u/tiTiPgjHwEPhBEyLgcJ6FOWLn9wBsS4SvBzfppYGL5GW1G0eN9yORnKKgqkgyf0x8FvTMyVSjtkhcI/kA/8061sl4DFG6sefQmAOVvH7tp7YmN+jpQ7cOKQtjOpZS6Gp22u7LEI0/qb5n2QvjjcUQM81mN6CZ8nciWXRgjBhdAJJhmyMvcx8rnVb6vtU26fCaetAgMBAAGjUzBRMB0GA1UdDgQWBBRZiCyKaTYL94gwhxzktYg32qMOYjAfBgNVHSMEGDAWgBRZiCyKaTYL94gwhxzktYg32qMOYjAPBgNVHRMBAf8EBTADAQH/MA0GCSqGSIb3DQEBCwUAA4IBAQATa2QkTGcj8IPjItnvg23ihlRjHdFHn6lB7uYPhcDurwRlBrlC2/OB44P3dHB9tEPbV4unoF9ftEKO3nNY3HUDcPrQwRqkPftlYYr4/6z/jnmNBRgiDICVaiTZNlX54fLiPsSAbIymPWLLLNtq17vjVEcfGUXhi/F+EkN/uXZ4yH6RK0YjBRwPV9cfziz1YsF2WVYVYtQErf+NTjnYR5S4Ba2kEqhI5j7mNhiafPNODaOchHcaRMvfWcBhlHt+atwNyPxNr4NP+cDjAWg0I8xAUdbZGQiRJecjkctolLHsfZXj+ulEv3eaKw7gSo3Aekexw8aZS7soy+VM1fzmLopw',
-      ];
-      // Unrelated self-signed CA that does NOT sign the `x5c` certificate.
-      const unrelatedCaroots = [
-        'MIIFmTCCA4GgAwIBAgIUOxbqWoC/R0Lt2eWgqE3960xTLE4wDQYJKoZIhvcNAQELBQAwXDELMAkGA1UEBhMCVVMxCzAJBgNVBAgMAkNPMQ8wDQYDVQQHDAZEZW52ZXIxFTATBgNVBAoMDEV4YW1wbGUgSW5jLjEYMBYGA1UEAwwPa21zLmV4YW1wbGUuY29tMB4XDTIwMDIxMTIwMjk0NVoXDTQwMDIwNjIwMjk0NVowXDELMAkGA1UEBhMCVVMxCzAJBgNVBAgMAkNPMQ8wDQYDVQQHDAZEZW52ZXIxFTATBgNVBAoMDEV4YW1wbGUgSW5jLjEYMBYGA1UEAwwPa21zLmV4YW1wbGUuY29tMIICIjANBgkqhkiG9w0BAQEFAAOCAg8AMIICCgKCAgEAyRUvQFD9UboxW4xjOyo2Cu7RsAT0GDx66Brl3tEnxvCwnfSystwerbAZtGtrklDJWcqAWVbSNwxnPuGsxSUg4D8ziI4Biqc6rvoNO4YYzpHWYmS9aLMG8TOUzAZZORrnvuiu7VGleZKi+Yd08fXSjrUV4sldRiD+Y0IN80xa52B0053yFX4geCuFn0Ewo8NXhkCU6Pfwb9wVVuCmcu9mt3ubpWRa2H+h2ie3suAc4ADrb9Ng63stU3UrjUcYv5guo0gBOBrk7i0WL/2KJf2NmDJiTaaCxR0gEe0sHjio7PCXDNHS0eJj/2++Wq90fDbBFDP/LP0aBKJAvaTZNEKcX5Hr/Y32Bz1Szpi18/HSlEF6rIketLiAzgLfzRMktctWLGGubp6RarNWALBX5kJA43/Cernaf0sVRtCUqjKPRd8k8Bo3BXl5VwVn2b+nZO6EJQ6RslOfbumFPVhlyFv6I1tAOPmZOHjOpc4ogPyI7jMefXMMsSJOGgLb7JVPpbi0bjXmsW7I0sWcAdDzcASNUxxp1c0qXZu4nHI2VlPucA4LA5W4Z1qcNQsfQEN4gdPWBeSbDBv0FPxFcHZNqk87ywvLkurgASL+KxqB9FzIqhv7w0OYm1r7iClBJxsbItYeehEypv/PJpxBq1uxcd6pExY6kTP3x8YAqUgb3GoWlUsCAwEAAaNTMFEwHQYDVR0OBBYEFOJqvx/CUIV6mkiTURkyVYiugkqVMB8GA1UdIwQYMBaAFOJqvx/CUIV6mkiTURkyVYiugkqVMA8GA1UdEwEB/wQFMAMBAf8wDQYJKoZIhvcNAQELBQADggIBAHTov7zZOMt7zAfy9N8X6yOsakUqAXVtrTDu9DMn9kw2vhudSfNfno7dSc3JeE+KtySkyfrMbNub19IzfVHMI2dRiO7PGzgv8XD69PC/PKaqNmViW27P0l4ORGKE4RHcjd0Y0Rj8nciwHDu4u7p9gI1yS7TiLtpQqyb0ba/ZVP88EVe7wI+BtoHiSMQeEjs13gTSARTYXay0WsL7xxwzKH68Y4RRjfqt+NpyMP7wrf5Kcha2cID8jG9i4LqSoj+o5jvwH969jEP+9DX7XFx0894O42xGreyl1E1HkKOgrGE+owkEpVNYLfcQP3tbx3maoG2g5TXMtMqei1ffNdUiONPbi9II1UP53JrTcnFUb3aVo2yLJ5ftkOSWpkyhk9G9TWoUiTB/k3Jb6gxzk6HvjhLgYTeT+UPW/ATiffL7SNmGTQBuVuNUHNxm4sAz9oQTmCo+8vCqMtqK4IHeKqNP+yqVGCAI71yEcxuYy17S57iarK7ON/RTMiblerUOowOSBzTmm+7kuR8Ke0BVCw6l0A7yUueAUnRaVXEAszvhHsLxZMlnMeYlL5qj6CAamdgpwdsMFa0QcAAcGl6j3vW9ks9nLlEAzJmUIQUx33W4SryYwflliWkH4f4OlRj7Lrq81/QvZ+tTUTiTBrvZjB1j9ezCv0Fjp9cEDi1hyV1ArKV3',
-      ];
-      const validKey = {
-        kty: 'RSA',
-        kid: 'kms://kms.example.com',
-        x5c: [
-          'MIIDaDCCAlACFG2NkKF2WKCN/OnGN2E7mBamxhB2MA0GCSqGSIb3DQEBCwUAMIGDMQswCQYDVQQGEwJVUzERMA8GA1UECAwIQ29sb3JhZG8xDzANBgNVBAcMBkRlbnZlcjEQMA4GA1UECgwHRXhhbXBsZTEfMB0GA1UEAwwWaHR0cHM6Ly9jYS5leGFtcGxlLmNvbTEdMBsGCSqGSIb3DQEJARYOY2FAZXhhbXBsZS5jb20wHhcNMjAwMjA2MjAzMjU0WhcNNDAwMjAxMjAzMjU0WjBdMQswCQYDVQQGEwJVUzERMA8GA1UECAwIQ29sb3JhZG8xDzANBgNVBAcMBkRlbnZlcjEQMA4GA1UECgwHRXhhbXBsZTEYMBYGA1UEAwwPa21zLmV4YW1wbGUuY29tMIIBIjANBgkqhkiG9w0BAQEFAAOCAQ8AMIIBCgKCAQEA2OObWUoNG0Wv4zYuhGUT7JNiUkefUsFZ384NS2l5VOB/lSNcElBtmX55yPcjvPnukfpETDUG82K8ncOwCuV8ZTpvzM3QHSIHGyO5JBFJ38U6Pq6kHje6An+eSHLCVkQfOlf4TCRb8SlcEoi8wkl3IIGewzC0/87b1OvyYTb8BHZJVeUV7AxcZChkAA/IJV5ADnmc/6ZCihXVuCWJgTFpLLv7HVqE924lNDTgRn64ioCpHK4pC1FFqQKLlsq0tV75gc5d7A6m5/9znEvg02JuqUFd9LdOcnf8QeTkyg6OTTvJUUa39KZDKONi8MXiECacGU6VbUvuKOXZU49UeqVKQQIDAQABMA0GCSqGSIb3DQEBCwUAA4IBAQCmlEodmn5LfgIWViRn8t4qjTZoM7VUGWXfCnaMqSnW6P0eYbZdCoCecja6WicBWPAlFFR/UscYv4rEGXtmzD+GQUQKfYFfsNdkfCpPvCFlpudHNuW0kCZ8lUfDWQRirrC+MyiAVpEG7mNHNZfK9hof05MHS6ItcpET5+F0DiC6l+vsBBRqP2SU8bo9gTrr8WO7bW8JQb59XNEoTQC1AzCn172+idJcgaasOfp/V+QqODIa96YNM7vT9pj09nGL0Wxulaq546pW32HYkOhZw1nr8prZn17UFLfoQnaNuTuT2ZCsFc7V2H0UqcMwjg1QZoObLI5tXPv0syP6WXo19OjW',
-        ],
-        e: 'AQAB',
-        n: '2OObWUoNG0Wv4zYuhGUT7JNiUkefUsFZ384NS2l5VOB_lSNcElBtmX55yPcjvPnukfpETDUG82K8ncOwCuV8ZTpvzM3QHSIHGyO5JBFJ38U6Pq6kHje6An-eSHLCVkQfOlf4TCRb8SlcEoi8wkl3IIGewzC0_87b1OvyYTb8BHZJVeUV7AxcZChkAA_IJV5ADnmc_6ZCihXVuCWJgTFpLLv7HVqE924lNDTgRn64ioCpHK4pC1FFqQKLlsq0tV75gc5d7A6m5_9znEvg02JuqUFd9LdOcnf8QeTkyg6OTTvJUUa39KZDKONi8MXiECacGU6VbUvuKOXZU49UeqVKQQ',
-      };
-      const invalidKey = {kty: 'NOT_RSA', kid: 'kms://kms.example.com'};
-
       beforeEach(() => {
         webex.internal.metrics = {submitClientMetrics: sinon.stub()};
         webex.internal.encryption.config.shouldValidateKMSCertificate = true;
@@ -409,6 +393,335 @@ describe('internal-plugin-encryption', () => {
           assert.match(payload.tags.reason, /INVALID KMS/);
         });
       });
+
+      describe('independent report-only asset source', () => {
+        const reportUrl = 'https://candidate.example.com/roots/';
+        const bundle = new Uint8Array(
+          fs.readFileSync(
+            path.join(__dirname, '../../../../test-helper-server/static/ios_union.p7b')
+          )
+        );
+        const localKey = {toJSON: () => ({kty: 'EC'})};
+        const finalKey = {expirationDate: 12345};
+        let kms;
+        let report;
+
+        beforeEach(() => {
+          kms = webex.internal.encryption.kms;
+          Object.assign(webex.internal.encryption.config, {
+            shouldValidateKMSCertificate: false,
+            carootsAsset: UNION_BUNDLE_ASSET,
+            reportOnlyAssetsBaseUrl: reportUrl,
+            caroots: undefined,
+            carootsReportOnly: undefined,
+            assetsBaseUrl: 'https://enforced.example.com/roots/',
+          });
+          webex.internal.device = {url: 'https://device.example.com/device', userId: 'user'};
+          sinon.stub(kms, '_getKMSStaticPubKey').resolves(validKey);
+          sinon.stub(kms, '_getAuthorization').resolves('token');
+          sinon.stub(kms, '_getKMSCluster').resolves('https://kms.example.com');
+          sinon.stub(kms, '_getCarootsAssetBytes').resolves(bundle.slice());
+          sinon.stub(kms, '_getReportOnlyCarootsAssetBytes').resolves(bundle.slice());
+          sinon.stub(kms, 'request').resolves({key: {}});
+          sinon
+            .stub(Context.prototype, 'createECDHKey')
+            .resolves({asKey: () => Promise.resolve(localKey)});
+          sinon.stub(Context.prototype, 'deriveEphemeralKey').resolves(finalKey);
+          report = sinon.spy(kms, '_reportKMSStaticPubKey');
+        });
+
+        afterEach(() => sinon.restore());
+
+        const assertContext = (context) => {
+          assert.equal(context.serverInfo.key, validKey);
+          assert.equal(context.ephemeralKey.expirationDate, finalKey.expirationDate);
+          assert.calledWithExactly(kms.request, {
+            uri: 'https://kms.example.com/ecdhe',
+            method: 'create',
+            jwk: {kty: 'EC'},
+          });
+        };
+
+        const assertReportChainFailure = () => {
+          assert.calledOnceWithExactly(
+            webex.internal.metrics.submitClientMetrics,
+            'JS_SDK_KMS_CERTIFICATE_VALIDATION_FAILED',
+            {
+              fields: {success: false},
+              tags: {
+                reason: sinon.match(/^INVALID KMS: Certificate Validation failed/),
+                kid: validKey.kid,
+                validationMode: 'report-only',
+              },
+            }
+          );
+        };
+
+        [undefined, null, ''].forEach((reportOnlyAssetsBaseUrl) => {
+          it(`does not fetch report-only roots when the URL is ${JSON.stringify(
+            reportOnlyAssetsBaseUrl
+          )}`, async () => {
+            kms.config.reportOnlyAssetsBaseUrl = reportOnlyAssetsBaseUrl;
+            assertContext(await kms._prepareContext());
+            assert.notCalled(report);
+            assert.notCalled(kms._getReportOnlyCarootsAssetBytes);
+            assert.notCalled(kms._getCarootsAssetBytes);
+            assert.notCalled(webex.internal.metrics.submitClientMetrics);
+          });
+        });
+
+        it('completes context setup while the report-only download remains pending', async () => {
+          let complete;
+          kms._getReportOnlyCarootsAssetBytes.returns(
+            new Promise((resolve) => {
+              complete = resolve;
+            })
+          );
+          try {
+            assertContext(await kms._prepareContext());
+            assert.calledOnceWithExactly(
+              kms._getReportOnlyCarootsAssetBytes,
+              reportUrl,
+              UNION_BUNDLE_ASSET
+            );
+            assert.calledOnceWithExactly(report, validKey);
+            assert.notCalled(webex.internal.metrics.submitClientMetrics);
+          } finally {
+            complete(bundle.slice());
+            await Promise.all(report.returnValues);
+          }
+          assertReportChainFailure();
+        });
+
+        [false, true].forEach((enforced) => {
+          it(`uses the report-only asset independently of supplied roots with enforcement ${enforced}`, async () => {
+            kms.config.caroots = caroots;
+            kms.config.shouldValidateKMSCertificate = enforced;
+            assertContext(await kms._prepareContext());
+            await report.returnValues[0];
+            assert.calledOnceWithExactly(
+              kms._getReportOnlyCarootsAssetBytes,
+              reportUrl,
+              UNION_BUNDLE_ASSET
+            );
+            assert.notCalled(kms._getCarootsAssetBytes);
+            assertReportChainFailure();
+          });
+        });
+
+        ['download', 'signature', 'version', 'synchronous download'].forEach((failure) => {
+          it(`reports ${failure} failure without rejecting context setup`, async () => {
+            if (failure === 'download') {
+              kms._getReportOnlyCarootsAssetBytes.rejects(new Error('asset offline'));
+            } else if (failure === 'synchronous download') {
+              kms._getReportOnlyCarootsAssetBytes.throws(new Error('invalid asset URL'));
+            } else if (failure === 'version') {
+              sinon
+                .stub(kmsCaroots, 'verifyUnionBundle')
+                .rejects(
+                  new kmsCaroots.UnionBundleVerificationError('version', 'bundle is too old')
+                );
+            } else {
+              const tampered = bundle.slice();
+              tampered[2000] = (tampered[2000] + 1) % 256;
+              kms._getReportOnlyCarootsAssetBytes.resolves(tampered);
+            }
+            assertContext(await kms._prepareContext());
+            await report.returnValues[0];
+            assert.calledOnce(webex.internal.metrics.submitClientMetrics);
+            const [name, payload] = webex.internal.metrics.submitClientMetrics.firstCall.args;
+            assert.equal(
+              name,
+              failure.includes('download')
+                ? 'JS_SDK_KMS_CAROOTS_ASSET_DOWNLOAD_FAILED'
+                : 'JS_SDK_KMS_CAROOTS_ASSET_VERIFICATION_FAILED'
+            );
+            assert.deepEqual(payload.fields, {success: false});
+            assert.equal(payload.tags.validationMode, 'report-only');
+            assert.calledWithMatch(
+              kms.logger.warn,
+              'kms: report-only CA roots unavailable',
+              sinon.match.has('message', sinon.match('encryption.reportOnlyAssetsBaseUrl'))
+            );
+            assert.notCalled(kms._getCarootsAssetBytes);
+          });
+        });
+
+        [
+          {title: 'valid', roots: caroots, failures: 0},
+          {title: 'empty', roots: [], failures: 1},
+          {title: 'untrusted', roots: unrelatedCaroots, failures: 1},
+        ].forEach(({title, roots, failures}) => {
+          it(`retains the explicit ${title} legacy array instead of the report-only URL`, async () => {
+            kms.config.carootsReportOnly = roots;
+            assertContext(await kms._prepareContext());
+            assert.notCalled(report);
+            assert.notCalled(kms._getReportOnlyCarootsAssetBytes);
+            assert.notCalled(kms._getCarootsAssetBytes);
+            assert.equal(webex.internal.metrics.submitClientMetrics.callCount, failures);
+          });
+        });
+
+        ['download', 'signature', 'version', 'chain'].forEach((failure) => {
+          it(`still rejects enforced ${failure} failure when a report-only URL is configured`, async () => {
+            kms.config.shouldValidateKMSCertificate = true;
+            if (failure === 'download') {
+              kms._getCarootsAssetBytes.rejects(new Error('asset offline'));
+            } else if (failure === 'signature') {
+              const tampered = bundle.slice();
+              tampered[2000] = (tampered[2000] + 1) % 256;
+              kms._getCarootsAssetBytes.resolves(tampered);
+            } else if (failure === 'version') {
+              sinon
+                .stub(kmsCaroots, 'verifyUnionBundle')
+                .rejects(
+                  new kmsCaroots.UnionBundleVerificationError('version', 'bundle is too old')
+                );
+            } else {
+              kms.config.caroots = unrelatedCaroots;
+            }
+            await assert.isRejected(kms._prepareContext());
+            assert.notCalled(report);
+            assert.notCalled(kms._getReportOnlyCarootsAssetBytes);
+            assert.notCalled(Context.prototype.createECDHKey);
+            assert.notCalled(kms.request);
+          });
+        });
+
+        it('rejects invalid mandatory key metadata before starting the new check', async () => {
+          kms._getKMSStaticPubKey.resolves(invalidKey);
+          await assert.isRejected(kms._prepareContext(), /INVALID KMS/);
+          assert.notCalled(report);
+          assert.notCalled(kms._getReportOnlyCarootsAssetBytes);
+          assert.notCalled(kms.request);
+        });
+
+        it('shares a verified load between concurrent report-only contexts', async () => {
+          let complete;
+          kms._getReportOnlyCarootsAssetBytes.returns(
+            new Promise((resolve) => {
+              complete = resolve;
+            })
+          );
+          try {
+            (await Promise.all([kms._prepareContext(), kms._prepareContext()])).forEach(
+              assertContext
+            );
+            assert.calledOnceWithExactly(
+              kms._getReportOnlyCarootsAssetBytes,
+              reportUrl,
+              UNION_BUNDLE_ASSET
+            );
+            complete(bundle.slice());
+            await Promise.all(report.returnValues);
+            assert.lengthOf(await kms._loadCaroots({reportOnly: true}), 231);
+            assert.calledOnce(kms._getReportOnlyCarootsAssetBytes);
+          } finally {
+            complete(bundle.slice());
+            await Promise.all(report.returnValues);
+          }
+        });
+
+        it('keeps distinct URLs separate and reuses an earlier verified URL', async () => {
+          const checkUrl = async (url) => {
+            kms.config.reportOnlyAssetsBaseUrl = url;
+            assertContext(await kms._prepareContext());
+            await report.lastCall.returnValue;
+          };
+          await checkUrl(reportUrl);
+          await checkUrl('https://another.example.com/roots/');
+          await checkUrl(reportUrl);
+          assert.deepEqual(kms._getReportOnlyCarootsAssetBytes.args, [
+            [reportUrl, UNION_BUNDLE_ASSET],
+            ['https://another.example.com/roots/', UNION_BUNDLE_ASSET],
+          ]);
+          assert.notCalled(kms._getCarootsAssetBytes);
+        });
+
+        it('keeps the enforced packaged source separate from the explicit URL at the same base', async () => {
+          kms.config.reportOnlyAssetsBaseUrl = kms.config.assetsBaseUrl;
+          const trialRoots = await kms._loadCaroots({reportOnly: true});
+          kms.config.shouldValidateKMSCertificate = true;
+          const enforcedRoots = await kms._getCaroots();
+          assert.lengthOf(trialRoots, 231);
+          assert.lengthOf(enforcedRoots, 231);
+          assert.notEqual(trialRoots, enforcedRoots);
+          assert.calledOnceWithExactly(
+            kms._getReportOnlyCarootsAssetBytes,
+            kms.config.assetsBaseUrl,
+            UNION_BUNDLE_ASSET
+          );
+          assert.calledOnceWithExactly(
+            kms._getCarootsAssetBytes,
+            kms.config.assetsBaseUrl,
+            kms.config.carootsAsset
+          );
+        });
+
+        it('evicts a failed report-only load without discarding enforced roots', async () => {
+          kms._getReportOnlyCarootsAssetBytes.onFirstCall().rejects(new Error('offline'));
+          assertContext(await kms._prepareContext());
+          await report.lastCall.returnValue;
+          kms.config.shouldValidateKMSCertificate = true;
+          const enforcedRoots = await kms._getCaroots();
+          kms.config.shouldValidateKMSCertificate = false;
+          assertContext(await kms._prepareContext());
+          await report.lastCall.returnValue;
+          kms.config.shouldValidateKMSCertificate = true;
+          assert.equal(await kms._getCaroots(), enforcedRoots);
+          assert.calledTwice(kms._getReportOnlyCarootsAssetBytes);
+          assert.calledOnce(kms._getCarootsAssetBytes);
+        });
+
+        it('does not reuse roots when the requested asset filename changes', async () => {
+          await kms._loadCaroots({reportOnly: true});
+          kms.config.carootsAsset = 'candidate.p7b';
+          await kms._loadCaroots({reportOnly: true});
+          assert.calledTwice(kms._getReportOnlyCarootsAssetBytes);
+        });
+
+        [false, true].forEach((reportOnly) => {
+          it(`captures the complete ${
+            reportOnly ? 'report-only' : 'enforced'
+          } source before a deferred fetch`, async () => {
+            const firstUrl = reportOnly
+              ? kms.config.reportOnlyAssetsBaseUrl
+              : kms.config.assetsBaseUrl;
+            const firstAsset = kms.config.carootsAsset;
+            const first = kms._loadCaroots({reportOnly});
+            kms.config.assetsBaseUrl = 'https://changed.example.com/roots/';
+            kms.config.reportOnlyAssetsBaseUrl = 'https://changed.example.com/roots/';
+            kms.config.carootsAsset = 'candidate.p7b';
+            const second = kms._loadCaroots({reportOnly});
+            const [firstRoots, secondRoots] = await Promise.all([first, second]);
+            const getter = reportOnly
+              ? kms._getReportOnlyCarootsAssetBytes
+              : kms._getCarootsAssetBytes;
+            assert.deepEqual(getter.args, [
+              [firstUrl, firstAsset],
+              ['https://changed.example.com/roots/', 'candidate.p7b'],
+            ]);
+            assert.notEqual(firstRoots, secondRoots);
+            kms.config.assetsBaseUrl = firstUrl;
+            kms.config.reportOnlyAssetsBaseUrl = firstUrl;
+            kms.config.carootsAsset = firstAsset;
+            assert.equal(await kms._loadCaroots({reportOnly}), firstRoots);
+            assert.calledTwice(getter);
+          });
+        });
+
+        it('owns an unexpected background task rejection', async () => {
+          const reason = new Error('background failure');
+          report.restore();
+          report = sinon.stub(kms, '_reportKMSStaticPubKey').rejects(reason);
+          assertContext(await kms._prepareContext());
+          assert.calledWithExactly(
+            kms.logger.warn,
+            'kms: report-only validation task failed',
+            reason
+          );
+        });
+      });
     });
 
     describe('CA roots', () => {
@@ -463,16 +776,20 @@ describe('internal-plugin-encryption', () => {
           assert.notCalled(kms._getCarootsAssetBytes);
         });
 
-        [undefined, []].forEach((caroots) => {
+        [undefined, []].forEach((configuredRoots) => {
           it(`loads and verifies the asset when caroots is ${JSON.stringify(
-            caroots
+            configuredRoots
           )}`, async () => {
-            webex.internal.encryption.config.caroots = caroots;
+            webex.internal.encryption.config.caroots = configuredRoots;
 
             const result = await kms._getCaroots();
 
             assert.lengthOf(result, 231);
-            assert.calledOnceWithExactly(kms._getCarootsAssetBytes);
+            assert.calledOnceWithExactly(
+              kms._getCarootsAssetBytes,
+              kms.config.assetsBaseUrl,
+              kms.config.carootsAsset
+            );
             assert.notCalled(webex.internal.metrics.submitClientMetrics);
           });
         });
@@ -515,6 +832,7 @@ describe('internal-plugin-encryption', () => {
                 tags: {
                   reason,
                   assetsBaseUrl: 'https://cdn.example.com/assets/internal-plugin-encryption/',
+                  validationMode: 'enforced',
                 },
               }
             );
@@ -543,20 +861,34 @@ describe('internal-plugin-encryption', () => {
           assert.equal(name, 'JS_SDK_KMS_CAROOTS_ASSET_VERIFICATION_FAILED');
           assert.deepEqual(payload.fields, {success: false});
           assert.equal(payload.tags.reason, 'signature');
+          assert.equal(payload.tags.validationMode, 'enforced');
 
           assert.lengthOf(await kms._getCaroots(), 231);
           assert.calledTwice(kms._getCarootsAssetBytes);
         });
 
-        it('reports a stale asset but still uses it', async () => {
-          clock.setSystemTime(FIXTURE_SIGNING_TIME + 400 * DAY);
-
-          assert.lengthOf(await kms._getCaroots(), 231);
-          assert.calledOnceWithExactly(
-            webex.internal.metrics.submitClientMetrics,
-            'JS_SDK_KMS_CAROOTS_ASSET_STALE',
-            {fields: {ageInDays: 400}, tags: {bundleVersion: 20261022}}
-          );
+        [false, true].forEach((reportOnly) => {
+          it(`reports a stale asset in ${
+            reportOnly ? 'report-only' : 'enforced'
+          } mode but still uses it`, async () => {
+            clock.setSystemTime(FIXTURE_SIGNING_TIME + 400 * DAY);
+            if (reportOnly) {
+              kms.config.reportOnlyAssetsBaseUrl = 'https://candidate.example.com/roots/';
+              sinon.stub(kms, '_getReportOnlyCarootsAssetBytes').resolves(bundle.slice());
+            }
+            assert.lengthOf(await kms._loadCaroots({reportOnly}), 231);
+            assert.calledOnceWithExactly(
+              webex.internal.metrics.submitClientMetrics,
+              'JS_SDK_KMS_CAROOTS_ASSET_STALE',
+              {
+                fields: {ageInDays: 400},
+                tags: {
+                  bundleVersion: 20261022,
+                  validationMode: reportOnly ? 'report-only' : 'enforced',
+                },
+              }
+            );
+          });
         });
       });
 

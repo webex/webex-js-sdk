@@ -63,6 +63,15 @@ describe('WxcCallRecordingConnector tests', () => {
       expect(response.message).toBe('SUCCESS');
       expect(response.data.recordings).toHaveLength(2);
       expect(response.data.recordings?.[0].id).toBe(RECORDING_ONE.id);
+      expect(
+        response.data.recordings?.[0].recordingPlaybackLinks?.transcriptPlaybackLink
+      ).toContain('transcript.txt');
+      expect(response.data.recordings?.[0].aiAssistantData?.suggestedNoteUrl).toContain('aibridge');
+      expect(response.data.recordings?.[0].serviceData?.personality).toBe('originator');
+      expect(response.data.recordings?.[1].serviceData?.personality).toBeUndefined();
+      expect(response.data.recordings?.[0].ownerType).toBeUndefined();
+      expect(response.data.recordings?.[0].storageRegion).toBeUndefined();
+      expect(response.data.recordings?.[0].temporaryDirectDownloadLinks).toBeUndefined();
       expect(errorSpy).not.toHaveBeenCalled();
       expect(uploadLogsSpy).not.toHaveBeenCalled();
     });
@@ -74,88 +83,135 @@ describe('WxcCallRecordingConnector tests', () => {
       await connector.getCallRecording({
         type: RecordingRequestType.LIST,
         options: {
-          from: '2024-05-01T00:00:00.000Z',
-          to: '2024-05-31T00:00:00.000Z',
           status: RecordingStatus.DELETED,
           max: 25,
-          serviceType: 'calling',
-          format: 'MP3',
+          from: '2024-01-01T00:00:00.000Z',
+          to: '2024-02-01T00:00:00.000Z',
+          days: 7,
+          serviceType: 'meeting',
+          format: 'MP4',
           ownerType: 'user',
           storageRegion: 'US',
-          locationId: 'location-123',
-          topic: 'Call with User7',
-          webexUserRequest: true,
+          locationId: 'loc-9',
+          topic: 'standup',
+          webexUserRequest: false,
         },
       });
 
       const callArgs = webex.request.mock.calls[webex.request.mock.calls.length - 1][0];
       expect(callArgs.method).toBe(HTTP_METHODS.GET);
-      expect(callArgs.service).toBe('hydraDeveloperApi');
-      expect(callArgs.uri).toContain('/convergedRecordings?');
-      expect(callArgs.uri).toContain('from=2024-05-01T00%3A00%3A00.000Z');
-      expect(callArgs.uri).toContain('to=2024-05-31T00%3A00%3A00.000Z');
+      expect(callArgs.uri).toContain('/webappng/api/v1/hub/convergedRecordings?');
+      expect(callArgs.uri).toContain('orderType=DESC');
+      expect(callArgs.uri).toContain('orderBy=appCreateTime');
       expect(callArgs.uri).toContain('status=deleted');
-      expect(callArgs.uri).toContain('max=25');
-      expect(callArgs.uri).toContain('serviceType=calling');
-      expect(callArgs.uri).toContain('format=MP3');
-      expect(callArgs.uri).toContain('ownerType=user');
-      expect(callArgs.uri).toContain('storageRegion=US');
-      expect(callArgs.uri).toContain('locationId=location-123');
-      expect(callArgs.uri).toContain('topic=Call+with+User7');
-      expect(callArgs.uri).not.toContain('orderType');
-      expect(callArgs.uri).not.toContain('orderBy');
-      expect(callArgs.uri).not.toContain('offset');
-      expect(callArgs.uri).not.toContain('actorID');
-      expect(callArgs.uri).not.toContain('showAccessCount');
-      expect(callArgs.headers).toEqual({WebexUserRequest: 'true'});
+      expect(callArgs.uri).toContain('category=calling');
+      expect(callArgs.uri).toContain('limit=25');
+      expect(callArgs.uri).toContain('offset=0');
+      expect(callArgs.uri).not.toContain('from=');
+      expect(callArgs.uri).not.toContain('to=');
+      expect(callArgs.uri).not.toContain('serviceType=');
+      expect(callArgs.uri).not.toContain('format=');
+      expect(callArgs.uri).not.toContain('ownerType=');
+      expect(callArgs.uri).not.toContain('storageRegion=');
+      expect(callArgs.uri).not.toContain('locationId=');
+      expect(callArgs.uri).not.toContain('topic=');
+      expect(callArgs.uri).not.toContain('siteurl=');
+      expect(callArgs.headers).toEqual({
+        Accept: 'application/json',
+        WebexUserRequest: 'true',
+      });
     });
 
-    it('applies the default filter/pagination query params when no options are provided', async () => {
+    it('applies the default userhub list query when no options are provided', async () => {
       const payload = <WebexRequestPayload>(<unknown>MOCK_RECORDING_LIST_BODY);
       webex.request.mockResolvedValue(payload);
 
       await connector.getCallRecording({type: RecordingRequestType.LIST});
 
       const callArgs = webex.request.mock.calls[webex.request.mock.calls.length - 1][0];
-      expect(callArgs.uri).toContain('from=');
-      expect(callArgs.uri).toContain('to=');
+      expect(callArgs.uri).toContain('orderType=DESC');
+      expect(callArgs.uri).toContain('orderBy=appCreateTime');
       expect(callArgs.uri).toContain('status=available');
-      expect(callArgs.uri).toContain('max=30');
-      expect(callArgs.uri).not.toContain('orderType');
-      expect(callArgs.uri).not.toContain('orderBy');
-      expect(callArgs.uri).not.toContain('offset');
-      // Optional pass-through filters are omitted when not provided.
-      expect(callArgs.uri).not.toContain('serviceType');
-      expect(callArgs.uri).not.toContain('format');
-      expect(callArgs.uri).not.toContain('ownerType');
-      expect(callArgs.uri).not.toContain('storageRegion');
-      expect(callArgs.uri).not.toContain('locationId');
-      expect(callArgs.uri).not.toContain('topic');
+      expect(callArgs.uri).toContain('category=calling');
+      expect(callArgs.uri).toContain('limit=30');
+      expect(callArgs.uri).toContain('offset=0');
+      expect(callArgs.uri).not.toContain('from=');
+      expect(callArgs.uri).not.toContain('max=');
+      expect(callArgs.uri).not.toContain('siteurl=');
     });
 
-    it('derives the from date from the days lookback and defaults to to now when not provided', async () => {
-      const payload = <WebexRequestPayload>(<unknown>MOCK_RECORDING_LIST_BODY);
-      webex.request.mockResolvedValue(payload);
+    it('lists recordings with the original user token and does not call webex.request', async () => {
+      (webex.credentials as {supertoken?: {toString: () => string}}).supertoken = {
+        toString: () => 'Bearer original-user-token',
+      };
+      const fetchMock = jest.fn().mockResolvedValue({
+        ok: true,
+        status: 200,
+        text: async () => JSON.stringify(MOCK_RECORDING_LIST_BODY.body),
+      });
+      const originalFetch = global.fetch;
+      global.fetch = fetchMock as unknown as typeof fetch;
 
-      jest.useFakeTimers().setSystemTime(new Date('2024-06-15T12:00:00.000Z'));
+      try {
+        const response = await connector.getCallRecording({type: RecordingRequestType.LIST});
 
-      await connector.getCallRecording({type: RecordingRequestType.LIST, options: {days: 7}});
-
-      const callArgs = webex.request.mock.calls[webex.request.mock.calls.length - 1][0];
-      expect(callArgs.uri).toContain(`from=${encodeURIComponent('2024-06-08T12:00:00.000Z')}`);
-      expect(callArgs.uri).toContain(`to=${encodeURIComponent('2024-06-15T12:00:00.000Z')}`);
-
-      jest.useRealTimers();
+        expect(response.statusCode).toBe(200);
+        expect(webex.request).not.toHaveBeenCalled();
+        expect(fetchMock.mock.calls[0][1].headers.Authorization).toBe('Bearer original-user-token');
+        expect(fetchMock.mock.calls[0][0]).toContain('category=calling');
+      } finally {
+        global.fetch = originalFetch;
+        delete (webex.credentials as {supertoken?: {toString: () => string}}).supertoken;
+      }
     });
 
-    it('does not send the WebexUserRequest header by default', async () => {
-      const payload = <WebexRequestPayload>(<unknown>MOCK_RECORDING_LIST_BODY);
-      webex.request.mockResolvedValue(payload);
+    it('retries a 500 with the user token and without sdk request headers', async () => {
+      webex.request.mockRejectedValue(<WebexRequestPayload>(<unknown>{statusCode: 500}));
+      webex.credentials.getUserToken.mockResolvedValue({
+        toString: () => 'Bearer user-token',
+      });
+      const fetchMock = jest.fn().mockResolvedValue({
+        ok: true,
+        status: 200,
+        text: async () => JSON.stringify(MOCK_RECORDING_LIST_BODY.body),
+      });
+      const originalFetch = global.fetch;
+      global.fetch = fetchMock as unknown as typeof fetch;
 
-      await connector.getCallRecording({type: RecordingRequestType.LIST});
+      try {
+        const response = await connector.getCallRecording({type: RecordingRequestType.LIST});
 
-      const callArgs = webex.request.mock.calls[webex.request.mock.calls.length - 1][0];
-      expect(callArgs.headers).toBeUndefined();
+        expect(response.statusCode).toBe(200);
+        expect(response.data.recordings?.length).toBeGreaterThan(0);
+        const fetchArgs = fetchMock.mock.calls[0];
+        expect(fetchArgs[0]).toContain('category=calling');
+        expect(fetchArgs[1].headers.Authorization).toBe('Bearer user-token');
+        expect(fetchArgs[1].headers.WebexUserRequest).toBe('true');
+        expect(fetchArgs[1].headers['cisco-device-url']).toBeUndefined();
+        expect(fetchArgs[1].headers['spark-user-agent']).toBeUndefined();
+        expect(infoSpy).toHaveBeenCalledWith(
+          expect.stringContaining('retrying with the user token'),
+          expect.objectContaining({method: METHODS.GET_RECORDINGS})
+        );
+      } finally {
+        global.fetch = originalFetch;
+      }
+    });
+
+    it('returns 503 and does not call User Hub when the catalog host is missing', async () => {
+      const serviceUrls = webex.internal.services._serviceUrls as Record<string, string>;
+      const saved = serviceUrls['webex-user-hub-service'];
+      delete serviceUrls['webex-user-hub-service'];
+      webex.request.mockClear();
+
+      try {
+        const response = await connector.getCallRecording({type: RecordingRequestType.LIST});
+
+        expect(response.statusCode).toBe(503);
+        expect(webex.request).not.toHaveBeenCalled();
+      } finally {
+        serviceUrls['webex-user-hub-service'] = saved;
+      }
     });
 
     it('returns an empty list when there are no recordings', async () => {
@@ -205,9 +261,16 @@ describe('WxcCallRecordingConnector tests', () => {
       expect(response.data.recording?.id).toBe(RECORDING_ONE.id);
 
       const callArgs = webex.request.mock.calls[webex.request.mock.calls.length - 1][0];
-      expect(callArgs.uri).toContain(`/convergedRecordings/${RECORDING_ONE.id}`);
+      expect(callArgs.uri).toContain(
+        `/webappng/api/v1/hub/convergedRecordings/${RECORDING_ONE.id}`
+      );
+      expect(callArgs.uri).not.toContain('siteurl=');
       expect(callArgs.method).toBe(HTTP_METHODS.GET);
-      expect(callArgs.service).toBe('hydraDeveloperApi');
+      expect(callArgs.service).toBeUndefined();
+      expect(callArgs.headers).toEqual({
+        Accept: 'application/json',
+        WebexUserRequest: 'true',
+      });
       expect(infoSpy).toHaveBeenCalledWith(
         `${METHOD_START_MESSAGE} with recordingId=${RECORDING_ONE.id}`,
         loggerContext
@@ -274,18 +337,19 @@ describe('WxcCallRecordingConnector tests', () => {
         type: RecordingRequestType.BY_CALL_SESSION,
         callSessionId: CALL_SESSION_ID,
         options: {
-          from: '2024-05-01T00:00:00.000Z',
-          to: '2024-05-31T00:00:00.000Z',
           status: RecordingStatus.DELETED,
           max: 100,
         },
       });
 
       const callArgs = webex.request.mock.calls[webex.request.mock.calls.length - 1][0];
-      expect(callArgs.uri).toContain('from=2024-05-01T00%3A00%3A00.000Z');
-      expect(callArgs.uri).toContain('to=2024-05-31T00%3A00%3A00.000Z');
+      expect(callArgs.uri).toContain('orderType=DESC');
+      expect(callArgs.uri).toContain('orderBy=appCreateTime');
       expect(callArgs.uri).toContain('status=deleted');
-      expect(callArgs.uri).toContain('max=100');
+      expect(callArgs.uri).toContain('limit=100');
+      expect(callArgs.uri).toContain('offset=0');
+      expect(callArgs.uri).toContain('category=calling');
+      expect(callArgs.uri).not.toContain('siteurl=');
     });
   });
 
@@ -304,11 +368,19 @@ describe('WxcCallRecordingConnector tests', () => {
       expect(response.statusCode).toBe(200);
       expect(response.message).toBe('SUCCESS');
       expect(response.data.metadata?.callSessionId).toBe(CALL_SESSION_ID);
+      expect(response.data.metadata?.serviceData?.callingParty).toBeDefined();
+      expect(response.data.metadata?.session).toBeUndefined();
+      expect(response.data.metadata?.participants).toBeUndefined();
+      expect(response.data.metadata?.mediaStreams).toBeUndefined();
 
       const callArgs = webex.request.mock.calls[webex.request.mock.calls.length - 1][0];
-      expect(callArgs.uri).toContain(`/convergedRecordings/${RECORDING_ONE.id}/metadata`);
+      expect(callArgs.uri).toContain(
+        `/webappng/api/v1/hub/convergedRecordings/${RECORDING_ONE.id}`
+      );
+      expect(callArgs.uri).not.toContain('/metadata');
+      expect(callArgs.uri).not.toContain('siteurl=');
       expect(callArgs.method).toBe(HTTP_METHODS.GET);
-      expect(callArgs.service).toBe('hydraDeveloperApi');
+      expect(callArgs.service).toBeUndefined();
     });
 
     it('handles a 400 error', async () => {
@@ -340,11 +412,11 @@ describe('WxcCallRecordingConnector tests', () => {
       expect(response.message).toBe('SUCCESS');
 
       const callArgs = webex.request.mock.calls[webex.request.mock.calls.length - 1][0];
-      expect(callArgs.uri).toContain('/convergedRecordings/softDelete');
+      expect(callArgs.uri).toContain('/webappng/api/v1/hub/convergedRecordings/softDelete');
       expect(callArgs.uri).not.toContain(`/convergedRecordings/${RECORDING_ONE.id}`);
       expect(callArgs.method).toBe(HTTP_METHODS.POST);
-      expect(callArgs.service).toBe('hydraDeveloperApi');
-      expect(callArgs.body).toStrictEqual({recordingIds: [RECORDING_ONE.id]});
+      expect(callArgs.service).toBeUndefined();
+      expect(callArgs.body).toStrictEqual({recordUUIDs: [RECORDING_ONE.id]});
     });
 
     it('ignores deprecated reason/comment options (compliance DELETE is not exposed)', async () => {
@@ -357,7 +429,33 @@ describe('WxcCallRecordingConnector tests', () => {
 
       const callArgs = webex.request.mock.calls[webex.request.mock.calls.length - 1][0];
       expect(callArgs.method).toBe(HTTP_METHODS.POST);
-      expect(callArgs.body).toStrictEqual({recordingIds: [RECORDING_ONE.id]});
+      expect(callArgs.body).toStrictEqual({recordUUIDs: [RECORDING_ONE.id]});
+    });
+
+    it('logs a 500 retry under deleteRecording', async () => {
+      webex.request.mockRejectedValue(<WebexRequestPayload>(<unknown>{statusCode: 500}));
+      webex.credentials.getUserToken.mockResolvedValue({
+        toString: () => 'Bearer user-token',
+      });
+      const fetchMock = jest.fn().mockResolvedValue({
+        ok: true,
+        status: 204,
+        text: async () => '',
+      });
+      const originalFetch = global.fetch;
+      global.fetch = fetchMock as unknown as typeof fetch;
+
+      try {
+        const response = await connector.deleteRecording(RECORDING_ONE.id);
+
+        expect(response.statusCode).toBe(204);
+        expect(infoSpy).toHaveBeenCalledWith(
+          expect.stringContaining('retrying with the user token'),
+          expect.objectContaining({method: METHODS.DELETE_RECORDING})
+        );
+      } finally {
+        global.fetch = originalFetch;
+      }
     });
 
     it('handles a 400 error', async () => {
@@ -375,12 +473,14 @@ describe('WxcCallRecordingConnector tests', () => {
   });
 
   describe('URL resolution', () => {
-    it('resolves the recording base URL from the services catalog (hydraDeveloperApi)', () => {
+    it('resolves the recording base URL from the services catalog (webex-user-hub-service)', () => {
       const localConnector = new WxcCallRecordingConnector(getTestUtilsWebex(), {
         level: LOGGER.INFO,
       });
 
-      expect(localConnector['recordingServiceUrl']).toBe('https://integration.webexapis.com/v1');
+      expect(localConnector['resolveUserhubBaseUrl']()).toBe(
+        'https://userhub-sq1.dmz.webex.com/webappng/api/v1/hub/convergedRecordings'
+      );
     });
   });
 
