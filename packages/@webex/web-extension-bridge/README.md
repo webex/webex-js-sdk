@@ -206,16 +206,31 @@ reconnect on navigation. The worker refreshes the `url` it reports from
 A navigation that **replaces** the document does end the connection, and there is nothing to
 preserve when it does: a reload or a followed link builds a new page context, so the
 `WebBridge` object, its handlers and its session all cease to exist. The incoming document's
-content script connects again with a fresh session, and `listConnections()` reports it as a
-new entry. Leaving the allow-listed origin ends the connection for good, since no content
-script is injected there to re-announce one.
+content script connects again with a fresh session, which replaces the old record in
+`listConnections()`; a request still in flight when that happens is rejected with
+`DISCONNECTED`. Leaving the allow-listed origin ends the connection for good, since no
+content script is injected there to re-announce one.
+
+Chrome does not tell an extension whether a navigation replaced the document — a route change
+and a followed link are reported identically — so the worker does not guess. It keeps the
+record for any navigation that stays on the connected origin and lets the next document
+correct it. Briefly, between a document being replaced and its successor connecting,
+`listConnections()` can name a tab whose relay has already gone; the first `request()` to it
+fails with `NOT_CONNECTED` and clears the record.
 
 | Tab event | Effect on the connection |
 | --- | --- |
 | Route change on the connected origin (`pushState` / `replaceState` / fragment) | Kept; stored `url` refreshed |
-| Reload, or a link to another document on the connected origin | Dropped, then re-established under a new session |
-| Navigation to any other origin | Dropped |
+| Reload, or a link to another document on the connected origin | Replaced when the new document connects |
+| Navigation to any other origin | Dropped, if the extension can see it (below) |
 | Tab closed, or page `destroy()` / `pagehide` | Dropped |
+
+Chrome only discloses a tab's new URL to an extension that holds host permission for it. So a
+tab navigating to an origin outside your `host_permissions` is invisible, and its record
+lingers until the first `request()` fails and clears it. Nothing is exposed by that: without
+host permission the extension cannot reach the new document either. Where host permissions
+*are* broader than `allowedOrigins` — the case worth caring about — the URL is disclosed and
+the connection is dropped immediately.
 
 ### Push flow (FR1)
 

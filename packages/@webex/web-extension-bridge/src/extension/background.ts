@@ -40,7 +40,7 @@ import type {
   RelayResult,
   RelayToWorker,
 } from './messages';
-import {hasUrlChange, isLoadingNewDocument, originOf} from './navigation';
+import {hasUrlChange, isStorableUrl, originOf} from './navigation';
 import {requireSessionStorage, requireTabs, resolveChrome} from './platform';
 import type {ChromeLike, ChromeSender, SendResponse} from './platform';
 import {isFromContentScript, isFromExtensionPage, isOriginAllowed, isOwnExtension} from './senders';
@@ -296,13 +296,20 @@ export function createExtensionBridgeWith(
   };
 
   /**
-   * Keep a surviving connection in step with a navigation that did not replace the
-   * document.
+   * React to a tab reporting a new url.
    *
-   * `history.pushState`, `replaceState` and fragment changes — everything a single-page
-   * app does to change route — leave the document, the content script and the session
-   * token it minted untouched. The connection survives such a navigation; only the url
-   * recorded against it goes stale, so that is all this rewrites.
+   * Only one thing here is decidable from a tab update: whether the tab is still on the
+   * origin it connected from. Leaving it is a teardown, because nothing on the far side
+   * was ever checked against the allow-list and no content script will be injected
+   * there. Staying on it is not, whether or not the document was replaced — that
+   * question has no answer in a tab update, and guessing it wrong is what broke
+   * single-page apps.
+   *
+   * So a same-origin url is simply recorded. If the document did survive, the record
+   * is now in step with the route. If it did not, the replacement relay's `CONNECT`
+   * overwrites the record moments later, and until then the only cost is that
+   * `listConnections()` names a tab whose relay is gone — which the first send to it
+   * corrects.
    *
    * The rewrite is scoped to the session that was connected when the navigation was
    * observed, mirroring `removeConnection`'s guard: a document replaced between this
@@ -311,17 +318,13 @@ export function createExtensionBridgeWith(
    * @param tabId - Tab that navigated.
    * @param url - Url the tab navigated to.
    */
-  const followSameDocumentNavigation = async (tabId: number, url: string): Promise<void> => {
+  const followTabNavigation = async (tabId: number, url: string): Promise<void> => {
     const connection = await findConnection(tabId);
 
     if (!connection) {
       return;
     }
 
-    // A same-document navigation cannot leave its origin, so a url that disagrees with
-    // the connected one is not one: treated as the navigation away that Chrome reported
-    // without a loading status, rather than kept as a connection to a document the
-    // allow-list was never checked against.
     if (originOf(url) !== connection.origin) {
       // Its own reason: an operator reading the log needs to tell a tab that went
       // somewhere no content script will be injected from an ordinary document load.
@@ -330,11 +333,14 @@ export function createExtensionBridgeWith(
       return;
     }
 
-    if (connection.url === url) {
+    // Kept rather than stored: the connection is to a document, not to a url, so an
+    // unreasonably long one costs the record its accuracy and nothing else. Dropping
+    // here would hand the page a way to disconnect itself by navigating.
+    if (connection.url === url || !isStorableUrl(url)) {
       return;
     }
 
-    logger.debug('following same-document navigation', {channel, tabId});
+    logger.debug('following tab navigation', {channel, tabId});
     await connections.update((current) =>
       current.map((entry) =>
         entry.tabId === tabId && entry.session === connection.session ? {...entry, url} : entry
@@ -509,6 +515,16 @@ export function createExtensionBridgeWith(
 
         if (sender.tab?.url) {
           record.url = sender.tab.url;
+        }
+
+        // A second relay announcing itself on a tab that already holds a session is
+        // proof the first document is gone — the only proof a tab update never gave
+        // us. Anything still waiting on it is waiting on a page that cannot answer, so
+        // it is settled now rather than left to time out.
+        const superseded = await findConnection(tabId);
+
+        if (superseded && superseded.session !== relay.session) {
+          settleTab(tabId, 'tab-superseded');
         }
 
         logger.info('tab attached', {channel, tabId, origin});
@@ -854,20 +870,18 @@ export function createExtensionBridgeWith(
   logger.info('extension bridge started', {channel, count: allowedOrigins.size});
   tabsApi.onRemoved.addListener((tabId) => dropConnection(tabId, 'tab-removed'));
   tabsApi.onUpdated.addListener((tabId, changeInfo) => {
-    // A killed or navigating page cannot send BYE, so a tab update is the teardown
-    // signal of last resort — but only for a navigation that replaces the document.
-    // Chrome reports a single-page app's route change as a bare url change, and tearing
-    // down on that left the page reporting `isConnected` while everything it published
-    // was dropped as a stale session, with no way back short of a full reload: the relay
-    // sends CONNECT once per document, and the page is never told it was dropped.
-    if (isLoadingNewDocument(changeInfo)) {
-      dropConnection(tabId, 'tab-navigated');
-
-      return;
-    }
-
+    // Only where the tab went, never whether its document survived the trip: Chrome
+    // reports a route change and a followed link identically (see `navigation.ts`), so
+    // a status-based teardown here cannot tell a single-page app changing route from a
+    // page genuinely leaving, and tearing down on the former leaves the page reporting
+    // `isConnected` while every push is dropped as a stale session — unrecoverable,
+    // because the relay sends CONNECT once per document and the page is never told.
+    //
+    // A document that really did go is learned from the document itself: its
+    // replacement announces a new session, and a send to a tab with no relay left
+    // fails and removes the record.
     if (hasUrlChange(changeInfo)) {
-      void followSameDocumentNavigation(tabId, changeInfo.url);
+      void followTabNavigation(tabId, changeInfo.url);
     }
   });
 

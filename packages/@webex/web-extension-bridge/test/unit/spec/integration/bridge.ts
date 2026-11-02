@@ -391,10 +391,13 @@ describe('integration/bridge', () => {
 
       pair.bridge.subscribe((topic) => received.push(topic));
 
-      // A history API route change does not reload the document, so Chrome reports it
-      // as a bare url change and every hop — page bridge, relay and worker record —
-      // has to come through it intact.
-      pair.world.fireTabUpdated(pair.world.tabId, {url: `${ORIGIN}/meetings/42`});
+      // A history API route change does not reload the document, yet Chrome reports it
+      // exactly as it reports a followed link — `{status: 'loading', url}`. Every hop —
+      // page bridge, relay and worker record — has to come through it intact.
+      pair.world.fireTabUpdated(pair.world.tabId, {
+        status: 'loading',
+        url: `${ORIGIN}/meetings/42`,
+      });
       await pair.settle();
 
       assert.isTrue(pair.page.isConnected);

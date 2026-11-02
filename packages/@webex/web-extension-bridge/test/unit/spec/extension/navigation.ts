@@ -1,48 +1,67 @@
 import {assert} from '@webex/test-helper-chai';
 
-import {hasUrlChange, isLoadingNewDocument, originOf} from '../../../../src/extension/navigation';
+import {MAX_STORED_URL_LENGTH} from '../../../../src/core/constants';
+import {hasUrlChange, isStorableUrl, originOf} from '../../../../src/extension/navigation';
 import type {ChromeTabChangeInfo} from '../../../../src/extension/platform';
 
 describe('extension/navigation', () => {
-  describe('the tab-update matrix', () => {
-    const cases: {
-      name: string;
-      changeInfo: ChromeTabChangeInfo;
-      loading: boolean;
-      url: boolean;
-    }[] = [
-      {name: 'a load beginning', changeInfo: {status: 'loading'}, loading: true, url: false},
+  describe('hasUrlChange', () => {
+    /**
+     * The shapes Chrome actually emits, measured against a loaded extension. A route
+     * change and a followed link are indistinguishable, which is why only the url is
+     * read: `status` is recorded here to document that it carries no signal.
+     */
+    const cases: {name: string; changeInfo: ChromeTabChangeInfo; url: boolean}[] = [
       {
-        name: 'a load beginning with its destination',
+        name: 'a route change (pushState, replaceState, fragment or back)',
+        changeInfo: {status: 'loading', url: 'https://app.example.com/meetings'},
+        url: true,
+      },
+      {
+        name: 'a followed link to another document, reported identically',
         changeInfo: {status: 'loading', url: 'https://app.example.com/other.html'},
-        loading: true,
         url: true,
       },
+      {name: 'a reload, which reports no url', changeInfo: {status: 'loading'}, url: false},
+      {name: 'a load completing', changeInfo: {status: 'complete'}, url: false},
+      {name: 'an unrelated change such as a title', changeInfo: {}, url: false},
       {
-        name: 'a same-document route change',
+        name: 'a url arriving without any status',
         changeInfo: {url: 'https://app.example.com/meetings'},
-        loading: false,
         url: true,
       },
-      {name: 'a load completing', changeInfo: {status: 'complete'}, loading: false, url: false},
-      {
-        name: 'a load completing with a url',
-        changeInfo: {status: 'complete', url: 'https://app.example.com/other.html'},
-        loading: false,
-        url: true,
-      },
-      {name: 'an unrelated change such as a title', changeInfo: {}, loading: false, url: false},
     ];
 
-    cases.forEach(({name, changeInfo, loading, url}) => {
+    cases.forEach(({name, changeInfo, url}) => {
       it(`classifies ${name}`, () => {
-        assert.equal(isLoadingNewDocument(changeInfo), loading);
         assert.equal(hasUrlChange(changeInfo), url);
       });
     });
 
     it('does not treat a non-string url as a url change', () => {
       assert.isFalse(hasUrlChange({url: 7 as never}));
+    });
+
+    it('still reports an over-long url, so the origin check cannot be skipped', () => {
+      const url = `https://app.example.com/${'a'.repeat(MAX_STORED_URL_LENGTH)}`;
+
+      assert.isTrue(hasUrlChange({url}));
+      assert.isFalse(isStorableUrl(url));
+    });
+  });
+
+  describe('isStorableUrl', () => {
+    const cases: [string, string, boolean][] = [
+      ['an ordinary route', 'https://app.example.com/meetings/42', true],
+      ['a url exactly at the ceiling', 'a'.repeat(MAX_STORED_URL_LENGTH), true],
+      ['a url one character past it', 'a'.repeat(MAX_STORED_URL_LENGTH + 1), false],
+      ['an empty url', '', true],
+    ];
+
+    cases.forEach(([name, url, expected]) => {
+      it(`accepts or refuses ${name}`, () => {
+        assert.equal(isStorableUrl(url), expected);
+      });
     });
   });
 
