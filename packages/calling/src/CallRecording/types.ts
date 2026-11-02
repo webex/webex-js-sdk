@@ -63,8 +63,7 @@ export type RecordingParty = {
  * `locationId` and the `callSessionId` shared with the originating call session.
  *
  * The party details (`personality`, `callingParty`, `calledParty`) identify who the call was with
- * and are returned by the metadata endpoint (`GET /convergedRecordings/{recordingId}/metadata`);
- * the list endpoint only populates `locationId`/`callSessionId`. Resolve the remote participant's
+ * and are mapped from User Hub `callingData` on list and detail. Resolve the remote participant's
  * person UUID (for avatar/presence) via `getRemoteParty(serviceData)?.actor?.id`.
  */
 export type RecordingServiceData = {
@@ -78,9 +77,28 @@ export type RecordingServiceData = {
 };
 
 /**
- * Temporary, direct download links for a recording's media, returned by
- * `GET /convergedRecordings/{recordingId}`. Only available for authorized users / Compliance
- * Officers and absent when downloading is prevented.
+ * Browser-safe playback URLs from userhub DETAIL (`recordingPlaybackLinks`).
+ * `transcriptPlaybackLink` is the transcript URL. `audioPlaybackLink` is the audio URL.
+ */
+export type RecordingPlaybackLinks = {
+  audioPlaybackLink?: string;
+  transcriptPlaybackLink?: string;
+  videoPlaybackLink?: string;
+};
+
+/**
+ * AI notes/summary pointers from userhub DETAIL (`aiAssistantData`).
+ * `suggestedNoteUrl` is the aibridge notes URL.
+ */
+export type RecordingAiAssistantData = {
+  suggestedNoteUrl?: string;
+  suggestedNoteStatus?: string;
+};
+
+/**
+ * Hydra download links previously returned by `GET /convergedRecordings/{recordingId}`.
+ * User Hub does not populate this. Use {@link RecordingPlaybackLinks} and
+ * {@link RecordingAiAssistantData} instead.
  */
 export type TemporaryDirectDownloadLinks = {
   audioDownloadLink?: string;
@@ -109,23 +127,31 @@ export type Recording = {
   status?: RecordingStatus;
   ownerId?: string;
   ownerEmail?: string;
+  /**
+   * @deprecated Hydra field. Kept so existing TypeScript callers still compile.
+   * User Hub does not populate this.
+   */
   ownerType?: string;
+  /**
+   * @deprecated Hydra field. Kept so existing TypeScript callers still compile.
+   * User Hub does not populate this.
+   */
   storageRegion?: string;
   serviceData?: RecordingServiceData;
+  recordingPlaybackLinks?: RecordingPlaybackLinks;
+  aiAssistantData?: RecordingAiAssistantData;
+  /**
+   * @deprecated Hydra download links. Kept so existing TypeScript callers still compile.
+   * User Hub does not populate this. Use `recordingPlaybackLinks` and `aiAssistantData`.
+   */
   temporaryDirectDownloadLinks?: TemporaryDirectDownloadLinks;
 };
 
 /**
- * Raw list response body returned by `GET /convergedRecordings`.
- */
-export type RecordingListBody = {
-  items?: Recording[];
-};
-
-/**
- * Metadata returned by `GET /convergedRecordings/{recordingUUID}/metadata`.
- * The structure is preserved as returned by the backend; optional typed fields are provided
- * for the well-known properties.
+ * Metadata mapped from the User Hub detail body.
+ * User Hub fills `id`, `callSessionId`, `owner`, and `serviceData`.
+ * `session`, `participants`, `mediaStreams`, and `extensionData` stay on the type so existing
+ * callers still compile; User Hub does not populate them.
  */
 export type RecordingMetadataOwner = {
   ownerID?: string;
@@ -174,48 +200,45 @@ export type RecordingMetadata = {
 };
 
 /**
- * Options for {@link ICallRecording.getRecordings}. All fields are optional and are passed through
- * to the recording API as query parameters where supported. `webexUserRequest` toggles the
- * `WebexUserRequest` header (ad-hoc rate-limit bypass), defaulting to `false`.
+ * Options for a recording list. Only `status` and `max` are sent.
+ * The other fields are accepted so existing callers keep compiling. The User Hub list does not send them.
+ * The connector always sends `WebexUserRequest: true`.
  */
 export type GetRecordingsOptions = {
   /**
-   * ISO-8601 start of the time window (inclusive). When omitted, it is derived from `days`
-   * (`now - days`), mirroring CallHistory's mandatory `from` date.
+   * @deprecated Accepted for existing callers. Not sent. The list is ordered by `appCreateTime`.
    */
   from?: string;
   /**
-   * ISO-8601 end of the time window (inclusive). When omitted, it defaults to the current time
-   * (`now`). The API requires both `from` and `to` to return results.
+   * @deprecated Accepted for existing callers. Not sent. The list is ordered by `appCreateTime`.
    */
   to?: string;
   /**
-   * Lookback window in days used to derive `from` when `from` is not provided. Defaults to `30`.
-   * The list API only accepts a `from`/`to` interval of at most 30 days; larger windows are
-   * rejected, so callers must keep custom values within that limit.
-   * Ignored when an explicit `from` is supplied.
+   * @deprecated Accepted for existing callers. Not sent. The list is ordered by `appCreateTime`.
    */
   days?: number;
-  /** Filter by recording status. Defaults to `available`. */
+  /** Filter by recording status. Defaults to `available`. Sent as `status`. */
   status?: RecordingStatus;
-  /** Maximum number of records to return per page. Defaults to `30`. */
+  /** Page size. Defaults to `30`. Sent as `limit`. */
   max?: number;
   /**
-   * Filter by the service that produced the recording (e.g. `'calling'`). Sent only when provided;
-   * when omitted the API applies its own default.
+   * @deprecated Accepted for existing callers. Not sent. The list always uses `category=calling`.
    */
   serviceType?: string;
-  /** Filter by recording media format (e.g. `'MP3'`, `'MP4'`). Sent only when provided. */
+  /** @deprecated Accepted for existing callers. Not sent. */
   format?: string;
-  /** Filter by recording owner type (e.g. `'user'`). Sent only when provided. */
+  /** @deprecated Accepted for existing callers. Not sent. */
   ownerType?: string;
-  /** Filter by storage region (e.g. `'US'`). Sent only when provided. */
+  /** @deprecated Accepted for existing callers. Not sent. */
   storageRegion?: string;
-  /** Filter by the location id the recording belongs to. Sent only when provided. */
+  /** @deprecated Accepted for existing callers. Not sent. */
   locationId?: string;
-  /** Filter by recording topic. Sent only when provided. */
+  /** @deprecated Accepted for existing callers. Not sent. */
   topic?: string;
-  /** When true, sends the `WebexUserRequest: true` header. Defaults to false. */
+  /**
+   * @deprecated Accepted for existing callers. Not sent as a switch.
+   * The connector always sends `WebexUserRequest: true`.
+   */
   webexUserRequest?: boolean;
 };
 
@@ -300,8 +323,8 @@ export type DetailRecordingRequest = {
 };
 
 /**
- * Fetches the metadata document for a single recording.
- * Maps to `GET /convergedRecordings/{recordingId}/metadata`.
+ * Fetches metadata for a single recording from the User Hub detail URL.
+ * Maps to `GET /webappng/api/v1/hub/convergedRecordings/{recordingId}`.
  */
 export type MetadataRecordingRequest = {
   type: RecordingRequestType.METADATA;
@@ -356,17 +379,14 @@ export interface ICallRecording extends Eventing<CallRecordingEventTypes> {
    * and constrains the rest of the request body; the resolved response type is inferred per
    * request via {@link RecordingResponseFor}:
    *
-   * - `LIST` (`GET /convergedRecordings`) -> {@link RecordingListResponse}. The query params come
-   *   from {@link GetRecordingsOptions}; both a `from` lower bound (derived from `days` when not
-   *   provided) and a `to` upper bound (defaults to `now`) are always sent, because the API only
-   *   returns results when the time window is bounded on both ends.
-   * - `DETAIL` (`GET /convergedRecordings/{recordingId}`) -> {@link RecordingResponse}.
-   * - `METADATA` (`GET /convergedRecordings/{recordingId}/metadata`) ->
+   * - `LIST` -> {@link RecordingListResponse}. Query is
+   *   `orderType=DESC&orderBy=appCreateTime&status&category=calling&offset=0&limit`.
+   *   `status` and `max` come from {@link GetRecordingsOptions}.
+   * - `DETAIL` (`GET .../convergedRecordings/{recordingId}`) -> {@link RecordingResponse}.
+   * - `METADATA` uses the same detail URL and maps owner plus `serviceData` ->
    *   {@link RecordingMetadataResponse}.
-   * - `BY_CALL_SESSION` -> {@link RecordingListResponse}. The recording API has no confirmed
-   *   server-side filter for call session id, so this fetches a list and filters client-side on
-   *   `serviceData.callSessionId`. The scan is bounded by the list query, so pass `options` to
-   *   widen the time window/status/page when the target session may fall outside the defaults.
+   * - `BY_CALL_SESSION` -> {@link RecordingListResponse}. User Hub has no session filter, so this
+   *   fetches the list and keeps rows whose `serviceData.callSessionId` matches.
    *
    * @param request - The discriminated read request.
    *
@@ -378,7 +398,7 @@ export interface ICallRecording extends Eventing<CallRecordingEventTypes> {
    * const bySession = await callRecording.getCallRecording({
    *   type: RecordingRequestType.BY_CALL_SESSION,
    *   callSessionId,
-   *   options: {days: 30, max: 100},
+   *   options: {max: 100},
    * });
    * ```
    */
@@ -387,7 +407,7 @@ export interface ICallRecording extends Eventing<CallRecordingEventTypes> {
   /**
    * Moves a recording to the recycle bin (soft delete).
    *
-   * Calls `POST /convergedRecordings/softDelete` with `{ recordingIds: [recordingId] }`.
+   * Calls `POST .../convergedRecordings/softDelete` with `{ recordUUIDs: [recordingId] }`.
    * The recording can be restored from the recycle bin via the platform restore API. Requires
    * `spark:recordings_write` on the access token (recording owner). Control Hub
    * "Delete recordings and transcripts" enables this for the user; it does **not** grant
