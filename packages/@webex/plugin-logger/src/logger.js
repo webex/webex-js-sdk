@@ -583,6 +583,8 @@ function makeLoggerMethod(level, impl, type, {neverPrint = false, alwaysBuffer =
         if (level === 'groupEnd' && this.groupLevel > 0) {
           this.groupLevel -= 1;
         }
+        // Listeners must not throw or log back into this logger synchronously.
+        // Nested logging can deliver a newer record to later listeners before this record.
         this.trigger('log:record', _createLogRecord(formatted));
       }
     } catch (reason) {
