@@ -59,13 +59,6 @@ const TASK_STATE_SELECTOR = '#incoming-task';
 const ROSTER_PARTICIPANT_NAME_SELECTOR = '.conference-roster__name';
 const CONFERENCE_OWNER_MARKER = '👑 Primary';
 
-// Controls that mean the agent is on a live call (consulted agents and conference members may not see #end).
-const ACTIVE_CALL_SELECTORS = [
-  CONFERENCE_SELECTORS.end,
-  CONFERENCE_SELECTORS.exit,
-  CONFERENCE_SELECTORS.endConsult,
-];
-
 type GetAgentPage = (agentId: AgentId) => Page;
 type GetRequiredEnv = (suffix: string) => string;
 type GetAgentName = (agentId: AgentId) => string;
@@ -194,10 +187,16 @@ export const expectAgentInActiveCall = async (
   timeout: number = ACCEPT_TASK_TIMEOUT
 ) => {
   await expect
-    .poll(() => hasAnyVisibleControlFromList(page, ACTIVE_CALL_SELECTORS), {
-      timeout,
-      intervals: [250, 500, 1000, 2000],
-    })
+    .poll(
+      // Consulted agents and conference members may not see #end.
+      () =>
+        hasAnyVisibleControlFromList(page, [
+          CONFERENCE_SELECTORS.end,
+          CONFERENCE_SELECTORS.exit,
+          CONFERENCE_SELECTORS.endConsult,
+        ]),
+      {timeout, intervals: [250, 500, 1000, 2000]}
+    )
     .toBeTruthy();
 };
 

@@ -38,7 +38,7 @@
     "fix:prettier": "prettier \"src/**/*.ts\" --write",
     "build:docs": "typedoc --out ../../docs/calling",
     "docs": "typedoc --emit none",
-    "test:e2e": "npx playwright test --config=playwright.config.ts",
+    "test:e2e": "yarn run -T playwright test --config=playwright.config.ts",
     "deploy:npm": "yarn npm publish"
   },
   "dependencies": {
