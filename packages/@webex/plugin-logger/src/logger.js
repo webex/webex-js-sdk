@@ -2,6 +2,14 @@
  * Copyright (c) 2015-2020 Cisco Systems, Inc. See LICENSE file.
  */
 
+/**
+ * plugin-logger emits 'log:record' synchronously after it retains an entry.
+ * Use webex.logger.on('log:record', listener) to receive future records.
+ * Use webex.logger.off('log:record', listener) to remove the same listener.
+ * Listeners must not throw or log back into this logger synchronously.
+ * Nested logging can deliver newer records first to later listeners.
+ * A thrown error can stop delivery to later listeners.
+ */
 import {inBrowser, patterns} from '@webex/common';
 import {WebexPlugin} from '@webex/webex-core';
 import {cloneDeep, has, isArray, isObject, isString} from 'lodash';
@@ -583,8 +591,6 @@ function makeLoggerMethod(level, impl, type, {neverPrint = false, alwaysBuffer =
         if (level === 'groupEnd' && this.groupLevel > 0) {
           this.groupLevel -= 1;
         }
-        // Listeners must not throw or log back into this logger synchronously.
-        // Nested logging can deliver a newer record to later listeners before this record.
         this.trigger('log:record', _createLogRecord(formatted));
       }
     } catch (reason) {
