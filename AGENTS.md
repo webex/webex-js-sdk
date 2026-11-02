@@ -64,3 +64,12 @@ When asked to find all occurrences of a logical pattern (e.g. "where state is LE
 2. Also search for related enum values (e.g. `LOCUS.STATE.*`, `MEETING_STATE.STATES.*`) that may represent the same logical concept.
 3. After finding all matches, **list every occurrence** and confirm the full set with the user before making changes, to avoid missing any.
 
+
+<!-- sdd-package-routing:start -->
+## SDD package routing
+
+| Package | Path | Agent entry | Docs | Manifest |
+| --- | --- | --- | --- | --- |
+| `@webex/internal-plugin-feature` | `packages/@webex/internal-plugin-feature/` | [AGENTS.md](packages/@webex/internal-plugin-feature/AGENTS.md) | [docs/index.md](packages/@webex/internal-plugin-feature/docs/index.md) | [.sdd/manifest.json](packages/@webex/internal-plugin-feature/.sdd/manifest.json) |
+| `@webex/internal-plugin-user` | `packages/@webex/internal-plugin-user/` | [AGENTS.md](packages/@webex/internal-plugin-user/AGENTS.md) | [docs/index.md](packages/@webex/internal-plugin-user/docs/index.md) | [.sdd/manifest.json](packages/@webex/internal-plugin-user/.sdd/manifest.json) |
+<!-- sdd-package-routing:end -->

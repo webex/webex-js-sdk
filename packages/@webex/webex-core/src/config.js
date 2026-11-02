@@ -17,6 +17,13 @@ export default {
   trackingIdSuffix: '',
   AlternateLogger: undefined,
   credentials: new CredentialsConfig(),
+  /**
+   * Explicitly selects the Webex environment. When omitted, the environment is inferred from the
+   * U2C discovery URL.
+   *
+   * @type {'integration'|'production'|undefined}
+   */
+  environment: undefined,
   fedramp: process.env.ENABLE_FEDRAMP || false,
   services: {
     /**
@@ -128,6 +135,11 @@ export default {
     cacheU2C: false,
   },
   payloadTransformer: {
+    /**
+     * When true, inbound payload transforms run at most once for the same successful response object.
+     * This supports request flows that pass a response through more than one interceptor pipeline.
+     */
+    skipRepeatedInboundTransforms: false,
     predicates: [],
     transforms: [],
   },

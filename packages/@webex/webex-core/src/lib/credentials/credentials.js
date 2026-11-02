@@ -213,6 +213,49 @@ const Credentials = WebexPlugin.extend({
   },
 
   /**
+   * Extract the CI user ID [cis_uuid] from a provided token.
+   *
+   * @private
+   * @param {string} token - The access token to extract the user ID from.
+   * @throws {Error} - If the token cannot be parsed or does not contain a user ID.
+   * @returns {string} - The CI user ID.
+   */
+  extractUserIdFromToken(token = '') {
+    // User tokens are JWT-like; the middle section holds a base64-encoded JSON payload.
+    const payload = JSON.parse(base64.decode(token.split('.')[1]));
+
+    if (!payload.cis_uuid) {
+      throw new Error('the provided token does not contain a user ID');
+    }
+
+    return payload.cis_uuid;
+  },
+
+  /**
+   * Get the CI user ID [cis_uuid] of the currently authenticated user.
+   *
+   * Checks the supertoken first, then falls back to any stored user tokens.
+   *
+   * @throws {Error} - If the user ID could not be determined from any token.
+   * @returns {string} - The CI user ID.
+   */
+  getUserId() {
+    const tokens = [this.supertoken, ...this.userTokens.models];
+
+    for (const token of tokens) {
+      if (token && token.access_token) {
+        try {
+          return this.extractUserIdFromToken(token.access_token);
+        } catch {
+          // token wasn't parseable or lacked a user ID; try the next one
+        }
+      }
+    }
+
+    throw new Error('could not extract the user ID from any available token');
+  },
+
+  /**
    * Generates a Third-Party Login URL pointing at IdBroker's
    * `/idb/ThirdPartyLogin` endpoint. Used by the social-provider sign-in
    * flow (Google / Microsoft / Apple / ...).

@@ -39,6 +39,14 @@ describe('Karma', () => {
           expect(browsers).toEqual({});
         });
 
+        it('should normalize a single browser string', () => {
+          const browsers = Browsers.get({ browsers: 'chrome' });
+
+          expect(browsers).toEqual({
+            ...Browsers.CONSTANTS.CHROME.HEADLESS,
+          });
+        });
+
         it('should provide a headed chrome browser when debug is enabled', () => {
           const browsers = Browsers.get({ debug: true, browsers: ['chrome'] });
 

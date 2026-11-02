@@ -343,6 +343,7 @@ class UnhandledExceptionTelemetry {
           this.webex.internal?.metrics,
           UNHANDLED_EXCEPTION_METRIC_NAME,
           {
+            type: ['operational'],
             tags: {
               app_name: event.common.appName,
               exception_kind: event.error.kind,

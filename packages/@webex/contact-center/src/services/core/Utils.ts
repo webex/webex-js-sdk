@@ -16,6 +16,10 @@ import {
 import {PARTICIPANT_TYPES, STATE_CONSULT} from './constants';
 import {DialPlan} from '../config/types';
 
+/** Returns whether a value is a non-null object with string keys. */
+export const isRecord = (value: unknown): value is Record<string, unknown> =>
+  typeof value === 'object' && value !== null;
+
 /**
  * Extracts common error details from a Webex request payload.
  *
@@ -97,6 +101,30 @@ export const isValidDialNumber = (
       return false;
     }
   });
+};
+
+/**
+ * Checks whether a URL's hostname is, or is a subdomain of, one of the allowed domains.
+ *
+ * @param url - The candidate URL to validate
+ * @param allowedDomains - Domains (or domain suffixes) the URL's hostname must match
+ * @returns true when the URL parses and its hostname matches an allowed domain, false otherwise
+ */
+export const isAllowedUrlHost = (
+  url: string | undefined | null,
+  allowedDomains: string[]
+): boolean => {
+  if (!url) {
+    return false;
+  }
+
+  try {
+    const hostname = new URL(url).hostname.toLowerCase();
+
+    return allowedDomains.some((domain) => hostname === domain || hostname.endsWith(`.${domain}`));
+  } catch (error) {
+    return false;
+  }
 };
 
 export const getStationLoginErrorData = (failure: Failure, loginOption: LoginOption) => {

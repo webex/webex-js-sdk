@@ -192,6 +192,35 @@ describe('plugin-meetings', () => {
               });
             });
 
+            [
+              [429, WebexHttpError.TooManyRequests],
+              [503, WebexHttpError.ServiceUnavailable],
+            ].forEach(([statusCode, ErrorType]) => {
+              it(`rejects the HTTP ${statusCode} error after a locus retry is exhausted`, async () => {
+                const reason = new ErrorType({
+                  statusCode,
+                  options: {
+                    headers: {trackingid: 'test', 'retry-after': 1000},
+                    uri: options.uri,
+                  },
+                  body: {message: 'Locus request failed'},
+                });
+                const handleRetryStub = sinon
+                  .stub(interceptor, 'handleRetryRequestLocusServiceError')
+                  .resolves();
+
+                await interceptor.onResponseError(options, reason);
+
+                return interceptor.onResponseError(options, reason).then(
+                  () => assert.fail('Expected promise to be rejected'),
+                  (error) => {
+                    expect(error).to.equal(reason);
+                    handleRetryStub.restore();
+                  }
+                );
+              });
+            });
+
             describe('URI parsing edge cases', () => {
               const make503Reason = (uri) =>
                 new WebexHttpError.MethodNotAllowed({
@@ -330,4 +359,3 @@ describe('plugin-meetings', () => {
     });
     });
 });
-

@@ -1,0 +1,416 @@
+{
+  "$schema": "./schemas/repo-context.schema.json",
+  "version": 1,
+  "repository": {
+    "name": "@webex/internal-plugin-llm",
+    "purpose": "Internal Webex JS SDK plugin that manages LLM data-channel connections for meetings. It registers webex.internal.llm, a Mercury subclass that registers each session with the data-channel service over HTTP, connects the returned WebSocket through Mercury, and keeps per-session URLs, binding, owner meeting, and token-refresh handler, plus a session-keyed data-channel token cache guarded by owner-meeting checks."
+  },
+  "commands": {
+    "install": "yarn install",
+    "compile": "yarn workspace @webex/internal-plugin-llm build:src",
+    "build": "yarn workspace @webex/internal-plugin-llm build",
+    "unit-test": "yarn workspace @webex/internal-plugin-llm test:unit",
+    "browser-test": "yarn workspace @webex/internal-plugin-llm test:browser",
+    "lint": "yarn workspace @webex/internal-plugin-llm test:style",
+    "deploy": "yarn workspace @webex/internal-plugin-llm deploy:npm"
+  },
+  "public_interfaces": [
+    {
+      "name": "@webex/internal-plugin-llm package barrel",
+      "kind": "package_export",
+      "source": "src/index.ts",
+      "entrypoints": [
+        "import LLMChannel, {DataChannelTokenType, LLM_DEFAULT_SESSION, LLM_PRACTICE_SESSION} from '@webex/internal-plugin-llm'",
+        "import type {RegisterAndConnectTiming} from '@webex/internal-plugin-llm'"
+      ],
+      "audience": "plugin-meetings and internal-plugin-voicea in the webex-js-sdk workspace",
+      "notes": "Importing the package also registers LLMChannel as internal plugin 'llm' with config.llm. No onBeforeLogout hook is registered."
+    },
+    {
+      "name": "webex.internal.llm runtime methods and events",
+      "kind": "plugin_api",
+      "source": "src/llm.ts",
+      "entrypoints": [
+        "webex.internal.llm.registerAndConnect()",
+        "webex.internal.llm.disconnectLLM()",
+        "webex.internal.llm.disconnectAllLLM()",
+        "webex.internal.llm.setDatachannelToken()",
+        "webex.internal.llm.getDatachannelToken()",
+        "webex.internal.llm.setRefreshHandler()",
+        "webex.internal.llm.refreshDataChannelToken()",
+        "webex.internal.llm.getSessionIdByDatachannelUrl()",
+        "webex.internal.llm.on('online')"
+      ],
+      "audience": "plugin-meetings meeting, webinar, and data-channel auth-token interceptor",
+      "notes": "LLMChannel extends Mercury. Events for a non-default session end with a colon and that session id, for example online:llm-practice-session. Config keys under config.llm: pingInterval, pongTimeout, backoffTimeMax, backoffTimeReset, forceCloseDelay."
+    },
+    {
+      "name": "package scripts",
+      "kind": "npm_scripts",
+      "source": "package.json",
+      "entrypoints": [
+        "build",
+        "build:src",
+        "test:style",
+        "test:unit",
+        "test:browser",
+        "deploy:npm"
+      ],
+      "audience": "contributors and CI",
+      "notes": "Do not run the aggregate test script: it chains test:integration, which is not defined. test:browser passes only --integration and collects no files because test/integration/spec does not exist."
+    }
+  ],
+  "source_of_truth": [
+    {
+      "surface": "LLM channel plugin implementation",
+      "paths": [
+        "src/index.ts",
+        "src/llm.ts",
+        "src/llm.types.ts",
+        "src/constants.ts"
+      ],
+      "generated_artifacts": [
+        "dist"
+      ],
+      "refresh_with": [
+        "yarn workspace @webex/internal-plugin-llm build:src"
+      ],
+      "validate_with": [
+        "yarn workspace @webex/internal-plugin-llm test:unit",
+        "yarn workspace @webex/internal-plugin-llm test:style"
+      ]
+    },
+    {
+      "surface": "module specification",
+      "paths": [
+        "src/docs/README.md"
+      ],
+      "generated_artifacts": [],
+      "refresh_with": [
+        "update alongside the behavior change in the same commit"
+      ],
+      "validate_with": [
+        "spec-validator on an independent runtime"
+      ]
+    }
+  ],
+  "generated_artifacts": [
+    {
+      "path": "dist",
+      "generated_from": "src",
+      "refresh_with": "yarn workspace @webex/internal-plugin-llm build:src"
+    },
+    {
+      "path": ".sdd/templates/repo-standards/template-map.json",
+      "generated_from": "WebexTools/repo-standards@d89a7fe59126ae3ad9bac9ca352aa7f12b4c85dc",
+      "refresh_with": "Package symlink .sdd/templates/repo-standards points to the JS SDK root .sdd/templates/repo-standards snapshot (PR 5246); no package copy. Refresh the root snapshot, not the link."
+    }
+  ],
+  "validation_matrix": [
+    {
+      "paths": [
+        "src/**"
+      ],
+      "minimum": [
+        "yarn workspace @webex/internal-plugin-llm test:unit"
+      ],
+      "recommended": [
+        "yarn workspace @webex/internal-plugin-llm test:style",
+        "yarn workspace @webex/internal-plugin-llm build:src"
+      ]
+    },
+    {
+      "paths": [
+        "src/llm.ts",
+        "src/constants.ts",
+        "src/llm.types.ts"
+      ],
+      "minimum": [
+        "yarn workspace @webex/internal-plugin-llm test:unit"
+      ],
+      "recommended": [
+        "review the sibling package plugin-meetings files src/meeting/index.ts, src/webinar/index.ts, and src/interceptors/dataChannelAuthToken.ts when method signatures, session ids, or token keys change"
+      ]
+    }
+  ],
+  "change_impact": [
+    {
+      "paths": [
+        "src/llm.ts"
+      ],
+      "affects": [
+        "plugin-meetings registration, ownership, token, and refresh-handler calls",
+        "listeners on webex.internal.llm events"
+      ],
+      "refresh_with": [
+        "yarn workspace @webex/internal-plugin-llm build:src"
+      ],
+      "validate_with": [
+        "yarn workspace @webex/internal-plugin-llm test:unit"
+      ],
+      "avoid_direct_edits": [
+        "dist"
+      ],
+      "notes": "Ownership rules, the auth header, the feature toggle, and the subchannel query are relied on by plugin-meetings and the data-channel service."
+    },
+    {
+      "paths": [
+        "src/constants.ts",
+        "src/llm.types.ts"
+      ],
+      "affects": [
+        "session ids and token keys used by plugin-meetings",
+        "LLM_PRACTICE_SESSION re-exported by internal-plugin-voicea"
+      ],
+      "refresh_with": [
+        "yarn workspace @webex/internal-plugin-llm build:src"
+      ],
+      "validate_with": [
+        "yarn workspace @webex/internal-plugin-llm test:unit"
+      ],
+      "avoid_direct_edits": [
+        "dist"
+      ],
+      "notes": "The built-in token keys equal the built-in session ids; change them together."
+    }
+  ],
+  "evidence_rules": [
+    {
+      "claim_category": "command_name",
+      "sources": [
+        "package.json"
+      ],
+      "requirement": "The script must exist in package.json scripts. test:integration is referenced by test but undefined.",
+      "notes": "Never cite the aggregate test script as runnable."
+    },
+    {
+      "claim_category": "import_path",
+      "sources": [
+        "src/index.ts"
+      ],
+      "requirement": "A binding is public only if exported from src/index.ts.",
+      "notes": "config and a named LLMChannel export are not exported from the barrel; tests use the deep path src/llm."
+    },
+    {
+      "claim_category": "behavior_claim",
+      "sources": [
+        "src",
+        "test/unit/spec"
+      ],
+      "requirement": "Ground every behavioral claim in source or test evidence.",
+      "notes": "Commit history is not an evidence source for this package. README.md is retained product documentation, not the behavioral authority. Socket behavior is owned by the sibling package internal-plugin-mercury."
+    }
+  ],
+  "negative_guidance": [
+    {
+      "rule": "Do not store data-channel tokens in the connections map.",
+      "why": "Tokens must survive disconnects; the separate datachannelTokens record exists for that."
+    },
+    {
+      "rule": "Do not log or put a data-channel token in a URL.",
+      "why": "The token is meant to travel only in the registration request header."
+    },
+    {
+      "rule": "Do not skip resolveSessionOwnership on a write a non-owner must not make.",
+      "why": "Several meeting objects share one plugin instance."
+    },
+    {
+      "rule": "Do not reimplement socket lifecycle, retries, or event emission here.",
+      "why": "They are inherited from Mercury and shared with every Mercury-based plugin."
+    },
+    {
+      "rule": "Do not treat README.md as the list of methods or config keys.",
+      "why": "It omits ownership checks, clearDatachannelToken, timing results, and config defaults. See docs/adr/0001-retain-product-readme.md."
+    },
+    {
+      "rule": "Do not infer a coverage threshold for this package.",
+      "why": "The developer confirmed no coverage gate applies; the legacy Jest config disables coverage collection."
+    }
+  ],
+  "confidence_policy": {
+    "high": {
+      "action": "update",
+      "expectation": "Source and unit test evidence both support the change, and the behavior has a case in test/unit/spec/llm.js."
+    },
+    "medium": {
+      "action": "narrow-scope",
+      "expectation": "Only source evidence exists, for example clearDatachannelToken, refused-owner paths, token persistence across disconnect, or config defaults. Pin current behavior with a characterization test before modifying."
+    },
+    "low": {
+      "action": "noop",
+      "expectation": "Neither source nor tests settle the question. Stop and report the gap."
+    }
+  },
+  "repository_topology": {
+    "main_entrypoints": [
+      {
+        "name": "package barrel",
+        "path": "src/index.ts",
+        "purpose": "Registers the plugin and re-exports the class, token enum, session constants, and timing type",
+        "notes": "No subpath exports."
+      }
+    ],
+    "workspace_packages": [
+      {
+        "name": "@webex/internal-plugin-llm",
+        "paths": [
+          "src",
+          "test"
+        ],
+        "notes": "One module; this SDD root is the package directory inside the webex-js-sdk monorepo."
+      }
+    ],
+    "source_surfaces": [
+      {
+        "name": "LLM channel plugin",
+        "paths": [
+          "src"
+        ],
+        "notes": "index.ts, llm.ts, llm.types.ts, constants.ts. Specified at src/docs/README.md."
+      },
+      {
+        "name": "tests",
+        "paths": [
+          "test/unit/spec"
+        ],
+        "notes": "One unit spec run by Jest through webex-legacy-tools."
+      }
+    ],
+    "generated_surfaces": [
+      {
+        "name": "build output",
+        "paths": [
+          "dist"
+        ],
+        "generated_from": "src",
+        "refresh_with": "yarn workspace @webex/internal-plugin-llm build:src",
+        "notes": "Produced by webex-legacy-tools. Do not edit by hand."
+      },
+      {
+        "name": "repo-standards template map",
+        "paths": [
+          ".sdd/templates/repo-standards"
+        ],
+        "generated_from": "WebexTools/repo-standards@d89a7fe59126ae3ad9bac9ca352aa7f12b4c85dc",
+        "refresh_with": "Package symlink .sdd/templates/repo-standards points to the JS SDK root .sdd/templates/repo-standards snapshot (PR 5246); no package copy. Refresh the root snapshot, not the link.",
+        "notes": "Package symlink .sdd/templates/repo-standards points to the JS SDK root .sdd/templates/repo-standards snapshot (PR 5246); no package copy. Refresh the root snapshot, not the link."
+      }
+    ],
+    "validation_entrypoints": [
+      {
+        "name": "unit tests",
+        "command": "yarn workspace @webex/internal-plugin-llm test:unit",
+        "scope": "test/unit/spec",
+        "notes": "jest via webex-legacy-tools --runner jest."
+      },
+      {
+        "name": "browser tests",
+        "command": "yarn workspace @webex/internal-plugin-llm test:browser",
+        "scope": "test/integration/spec (absent)",
+        "notes": "karma via webex-legacy-tools --integration; collects no files today."
+      },
+      {
+        "name": "lint",
+        "command": "yarn workspace @webex/internal-plugin-llm test:style",
+        "scope": "src",
+        "notes": "eslint via the local root .eslintrc.js."
+      }
+    ],
+    "sync_paths": [
+      {
+        "source": "src/llm.types.ts",
+        "targets": [
+          "src/llm.ts"
+        ],
+        "mechanism": "Manual; LLMChannel implements ILLMChannel and repeats the connections entry shape.",
+        "notes": "Update ILLMChannel, the private connections type, and the getAllConnections return type together."
+      },
+      {
+        "source": "WebexTools/repo-standards@d89a7fe59126ae3ad9bac9ca352aa7f12b4c85dc",
+        "targets": [
+          ".sdd/templates/repo-standards"
+        ],
+        "mechanism": "Package symlink .sdd/templates/repo-standards points to the JS SDK root .sdd/templates/repo-standards snapshot (PR 5246); no package copy. Refresh the root snapshot, not the link.",
+        "notes": "Package symlink .sdd/templates/repo-standards points to the JS SDK root .sdd/templates/repo-standards snapshot (PR 5246); no package copy. Refresh the root snapshot, not the link."
+      }
+    ]
+  },
+  "folder_readme_contract": {
+    "required_sections": [
+      "purpose",
+      "boundaries",
+      "key-files",
+      "common-tasks"
+    ],
+    "rules": [
+      "Orient the reader before describing detail.",
+      "Link to the module specification rather than duplicating it."
+    ],
+    "example_policy": "Examples are allowed only when verified against src/ or test/.",
+    "fallback": "Omit a section rather than inventing content; report unresolved facts as gaps."
+  },
+  "regression_feedback_rules": [
+    {
+      "trigger": "A meeting reads, overwrites, or tears down another meeting's LLM session or token.",
+      "required_followups": [
+        "Add a refused-owner case to test/unit/spec/llm.js",
+        "Update the ownership invariant in src/docs/README.md"
+      ],
+      "notes": "Includes calls that omit ownerMeetingId and disconnectAllLLM."
+    },
+    {
+      "trigger": "A registration or connect failure is reported with missing or wrong latency.",
+      "required_followups": [
+        "Add a timing case to the #registerAndConnect suite",
+        "Update the caller-visible failure modes in src/docs/README.md"
+      ],
+      "notes": "Errors thrown before the connect timer carry no timing."
+    }
+  ],
+  "surface_owners": [
+    {
+      "surface": "module implementation and specifications",
+      "owner": "@webex/web-client, @webex/web-sdk",
+      "edit_boundary": "Owners per the monorepo .github/CODEOWNERS entry for packages/@webex/internal-plugin-llm."
+    }
+  ],
+  "do_not_edit": [
+    "dist",
+    ".sdd/templates/repo-standards"
+  ],
+  "marker_scopes": {
+    "sdd": [
+      ".sdd/manifest.json",
+      "src/docs/README.md",
+      "docs"
+    ]
+  },
+  "fallback_rules": [
+    "When source and tests disagree, code is the referee and the disagreement is recorded rather than silently resolved.",
+    "When neither source nor tests settle a question, report it as a gap instead of inferring.",
+    "Commit history is not a valid rationale source for this package."
+  ],
+  "downstream_context_pack": {
+    "required_human_surfaces": [
+      "README.md",
+      "docs/index.md",
+      "docs/architecture.md",
+      "src/docs/README.md"
+    ],
+    "required_agent_operational_surfaces": [
+      "AGENTS.md",
+      "docs/specs/README.md"
+    ],
+    "required_machine_readable_surface": ".sdd/manifest.json",
+    "recommended_machine_readable_sections": [
+      "public_interfaces",
+      "change_impact",
+      "evidence_rules",
+      "negative_guidance",
+      "confidence_policy",
+      "repository_topology",
+      "folder_readme_contract",
+      "regression_feedback_rules"
+    ]
+  }
+}

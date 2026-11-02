@@ -1,3 +1,10 @@
+import {
+  VOICE_CONNECTION_STATUS,
+  VoiceConnectionState,
+  VoiceLineStatus,
+  VoiceMobiusSocketStatus,
+} from './types';
+
 export const EVENT = 'event';
 export const READY = 'ready';
 export const TIMEOUT_DURATION = 20000; // 20 seconds timeout duration for webrtc registration
@@ -8,6 +15,7 @@ export const LOG_PREFIX = 'PLUGIN_CC';
 export const WEB_CALLING_SERVICE_FILE = 'WebCallingService';
 export const CONFIG_FILE_NAME = 'config-index';
 export const CC_FILE = 'cc';
+export const WELLNESS_BREAK_HANDLER = 'Wellness_Break_Handler';
 export const CONNECTION_SERVICE_FILE = 'connection-service';
 export const WEB_SOCKET_MANAGER_FILE = 'WebSocketManager';
 export const AQM_REQS_FILE = 'aqm-reqs';
@@ -24,6 +32,11 @@ export const OUTBOUND_TYPE = 'OUTDIAL';
 // Log related constants
 export const UNKNOWN_ERROR = 'Unknown error';
 export const MERCURY_DISCONNECTED_SUCCESS = 'Mercury disconnected successfully';
+export const DEFAULT_VOICE_CONNECTION_STATE: Readonly<VoiceConnectionState> = Object.freeze({
+  status: VOICE_CONNECTION_STATUS.NOT_REQUIRED,
+  lineStatus: VoiceLineStatus.UNKNOWN,
+  mobiusSocketStatus: VoiceMobiusSocketStatus.UNKNOWN,
+});
 
 // METHOD NAMES
 export const METHODS = {
@@ -72,9 +85,24 @@ export const METHODS = {
   GET_REAL_TIME_ASSISTANCE: 'getRealTimeAssistance',
   SEND_REAL_TIME_ASSISTANCE_USER_ACTION: 'sendRealTimeAssistanceUserAction',
   FETCH_HISTORIC_TRANSCRIPTS: 'fetchHistoricTranscripts',
+  REQUEST_WELLNESS_BREAK: 'requestWellnessBreak',
+  RESPOND_TO_WELLNESS_BREAK: 'respondToWellnessBreak',
+  GET_WELLBEING_BREAK_IDLE_CODE: 'getWellbeingBreakIdleCode',
   SET_MANAGE_WEBEX_CALLING_IN_WXCC: 'setManageWebexCallingInWxcc',
   IS_WX_BETTER_TOGETHER_ENABLED: 'isWxBetterTogetherEnabled',
   SYNC_WXAPP_MUTE_FROM_MERCURY: 'syncWxAppMuteFromMercury',
   GET_CALL_DETAILS_ON_WEBEX: 'getCallDetailsOnWebex',
   ENSURE_WXAPP_MERCURY_CONNECTED: 'ensureWxAppMercuryConnected',
 };
+
+export const AI_SUMMARY_ERROR_CODES = {
+  POST_CALL_SUMMARY_DISABLED: 'POST_CALL_SUMMARY_DISABLED',
+  MID_CALL_SUMMARY_DISABLED: 'MID_CALL_SUMMARY_DISABLED',
+  AI_ASSISTANT_BASE_URL_NOT_AVAILABLE: 'AI_ASSISTANT_BASE_URL_NOT_AVAILABLE',
+  POST_CALL_SUMMARY_TIMEOUT: 'POST_CALL_SUMMARY_TIMEOUT',
+  MID_CALL_SUMMARY_TIMEOUT: 'MID_CALL_SUMMARY_TIMEOUT',
+} as const;
+
+export const AI_SUMMARY_INVALID_RESPONSE_PAYLOAD = 'AI_SUMMARY_INVALID_RESPONSE_PAYLOAD';
+
+export const AI_ASSISTANT_CLIENT_TYPE = 'WxCC' as const;

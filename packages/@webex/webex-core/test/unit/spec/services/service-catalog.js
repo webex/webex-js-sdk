@@ -5,7 +5,11 @@
 import {assert} from '@webex/test-helper-chai';
 import MockWebex from '@webex/test-helper-mock-webex';
 import {Services} from '@webex/webex-core';
-import {matchesCatalogUrl} from '../../../../src/lib/services/service-catalog';
+import {
+  matchesCatalogUrl,
+  matchesParsedCatalogUrl,
+  parseCatalogUrl,
+} from '../../../../src/lib/services/service-catalog';
 
 describe('matchesCatalogUrl()', () => {
   describe('origin validation', () => {
@@ -91,6 +95,86 @@ describe('matchesCatalogUrl()', () => {
     it('returns false when both URLs are invalid', () => {
       assert.isFalse(matchesCatalogUrl('not-a-url', 'also-not-a-url'));
     });
+  });
+});
+
+describe('parseCatalogUrl()', () => {
+  it('returns the origin and pathname for a valid url', () => {
+    assert.deepEqual(parseCatalogUrl('https://example.com/api/v1'), {
+      origin: 'https://example.com',
+      path: '/api/v1',
+    });
+  });
+
+  it('strips a trailing slash from the path', () => {
+    assert.deepEqual(parseCatalogUrl('https://example.com/api/v1/'), {
+      origin: 'https://example.com',
+      path: '/api/v1',
+    });
+  });
+
+  it('normalizes a root url to the "/" path', () => {
+    assert.deepEqual(parseCatalogUrl('https://example.com'), {
+      origin: 'https://example.com',
+      path: '/',
+    });
+  });
+
+  it('returns null for an unparsable url', () => {
+    assert.isNull(parseCatalogUrl('not-a-url'));
+  });
+
+  it('memoizes results, returning the same reference for repeated calls', () => {
+    const first = parseCatalogUrl('https://memoized.example.com/api/v1');
+    const second = parseCatalogUrl('https://memoized.example.com/api/v1');
+
+    assert.strictEqual(first, second);
+  });
+});
+
+describe('matchesParsedCatalogUrl()', () => {
+  it('returns true when the candidate is under the catalog origin and path', () => {
+    assert.isTrue(
+      matchesParsedCatalogUrl(
+        new URL('https://example.com/api/v1/users'),
+        parseCatalogUrl('https://example.com/api/v1')
+      )
+    );
+  });
+
+  it('returns false when origins differ (SECURITY)', () => {
+    assert.isFalse(
+      matchesParsedCatalogUrl(
+        new URL('https://trusted.example.attacker.com/activities/id'),
+        parseCatalogUrl('https://trusted.example')
+      )
+    );
+  });
+
+  it('returns false when the catalog path is not matched at a boundary (SECURITY)', () => {
+    assert.isFalse(
+      matchesParsedCatalogUrl(
+        new URL('https://example.com/api/v1extra/something'),
+        parseCatalogUrl('https://example.com/api/v1')
+      )
+    );
+  });
+
+  it('returns true for a root catalog path', () => {
+    assert.isTrue(
+      matchesParsedCatalogUrl(
+        new URL('https://example.com/any/path'),
+        parseCatalogUrl('https://example.com/')
+      )
+    );
+  });
+
+  it('returns false when the candidate url is missing', () => {
+    assert.isFalse(matchesParsedCatalogUrl(undefined, parseCatalogUrl('https://example.com/api')));
+  });
+
+  it('returns false when the parsed catalog url is null', () => {
+    assert.isFalse(matchesParsedCatalogUrl(new URL('https://example.com/api'), null));
   });
 });
 

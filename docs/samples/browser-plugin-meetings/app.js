@@ -3635,6 +3635,109 @@ function doesBreakoutSessionAllowAnyone(currentMeeting, session) {
   );
 }
 
+function getBreakoutAssignmentSessions(currentMeeting) {
+  const groups = currentMeeting.breakouts.manageGroups || [];
+  const {breakoutGroupId} = currentMeeting.breakouts;
+  const [firstManagedGroup] = groups;
+  const managedGroup = groups.find((group) => group.id === breakoutGroupId) ||
+    groups.find((group) => group.status !== 'CLOSED') ||
+    firstManagedGroup;
+
+  return managedGroup?.sessions?.length ?
+    managedGroup.sessions : breakoutSessionConfiguration?.sessions || [];
+}
+
+function getBreakoutAssignedMemberIds(session) {
+  if (!Array.isArray(session?.assigned)) {
+    return [];
+  }
+
+  return [...new Set(session.assigned
+    .map((participant) => typeof participant === 'string' ?
+      participant : participant?.id || participant?.memberId)
+    .filter(Boolean))];
+}
+
+function getBreakoutAssignedEmails(session) {
+  return Array.isArray(session?.assignedEmails) ?
+    [...new Set(session.assignedEmails.filter(Boolean))] : [];
+}
+
+function getBreakoutParticipantEmails(participant) {
+  return [...new Set([
+    participant?.email,
+    participant?.emailAddress,
+    participant?.person?.email,
+  ].filter(Boolean))];
+}
+
+function createBreakoutAssignmentState(currentMeeting) {
+  return getBreakoutAssignmentSessions(currentMeeting).map((session) => ({
+    id: getBreakoutSessionId(session),
+    memberIds: getBreakoutAssignedMemberIds(session),
+    emails: getBreakoutAssignedEmails(session),
+    anyone: doesBreakoutSessionAllowAnyone(currentMeeting, session),
+  }));
+}
+
+function removeParticipantFromBreakoutAssignments(assignments, participant) {
+  const participantEmails = new Set(
+    getBreakoutParticipantEmails(participant).map((email) => email.toLowerCase())
+  );
+
+  assignments.forEach((assignment) => {
+    assignment.memberIds = assignment.memberIds.filter((memberId) =>
+      memberId !== participant.id
+    );
+    assignment.emails = assignment.emails.filter((email) =>
+      !participantEmails.has(email.toLowerCase())
+    );
+  });
+}
+
+function addParticipantToBreakoutAssignment(assignment, participant) {
+  if (participant.id) {
+    assignment.memberIds = [...new Set([...assignment.memberIds, participant.id])];
+
+    return;
+  }
+
+  const participantEmail = getBreakoutParticipantEmails(participant)[0];
+
+  if (participantEmail) {
+    assignment.emails = [...new Set([...assignment.emails, participantEmail])];
+
+    return;
+  }
+
+  throw new Error('The selected participant does not have an SDK ID or email address.');
+}
+
+function isParticipantAssignedToBreakout(assignments, participant) {
+  const participantEmails = new Set(
+    getBreakoutParticipantEmails(participant).map((email) => email.toLowerCase())
+  );
+
+  return assignments.some((assignment) =>
+    assignment.memberIds.includes(participant.id) ||
+    assignment.emails.some((email) => participantEmails.has(email.toLowerCase()))
+  );
+}
+
+async function updateBreakoutAssignments(currentMeeting, updateAssignments) {
+  await currentMeeting.breakouts.getBreakout(false);
+
+  const assignments = createBreakoutAssignmentState(currentMeeting);
+
+  if (!assignments.length || assignments.some((assignment) => !assignment.id)) {
+    throw new Error('The current breakout session assignments are unavailable.');
+  }
+
+  updateAssignments(assignments);
+  await currentMeeting.breakouts.assign(assignments);
+  await currentMeeting.breakouts.getBreakout(false);
+}
+
 function applyBreakoutSessionChanges(currentMeeting, session, changes) {
   const configuredSession = getBreakoutConfiguredSession(session);
   const managedSession = getBreakoutManagedSession(currentMeeting, session);
@@ -3858,7 +3961,7 @@ async function runBreakoutParticipantAction(actionName, operation) {
   }
 }
 
-function createBreakoutDynamicAssignment(sessionId, participantIds) {
+function createBreakoutLobbyAssignment(sessionId, participantIds) {
   const participants = Array.isArray(participantIds) ? participantIds : [participantIds];
 
   if (!sessionId || !participants.length || participants.some((participantId) => !participantId)) {
@@ -3890,19 +3993,19 @@ function exchangeBreakoutParticipants(
     throw new Error('Select two different participants to exchange.');
   }
 
-  const moveTargetMemberToSource = createBreakoutDynamicAssignment(
-    sourceSessionId,
-    targetMember.id
-  );
-  const moveSourceMemberToTarget = createBreakoutDynamicAssignment(
-    targetSessionId,
-    sourceMember.id
-  );
+  return updateBreakoutAssignments(currentMeeting, (assignments) => {
+    const sourceAssignment = assignments.find(({id}) => id === sourceSessionId);
+    const targetAssignment = assignments.find(({id}) => id === targetSessionId);
 
-  return currentMeeting.breakouts.dynamicAssign([
-    moveTargetMemberToSource,
-    moveSourceMemberToTarget,
-  ]);
+    if (!sourceAssignment || !targetAssignment) {
+      throw new Error('The source or target breakout assignment is unavailable.');
+    }
+
+    removeParticipantFromBreakoutAssignments(assignments, sourceMember);
+    removeParticipantFromBreakoutAssignments(assignments, targetMember);
+    addParticipantToBreakoutAssignment(sourceAssignment, targetMember);
+    addParticipantToBreakoutAssignment(targetAssignment, sourceMember);
+  });
 }
 
 function getBreakoutExchangeOptions(currentMeeting, sourceSession, sourceMember) {
@@ -3925,6 +4028,7 @@ function getBreakoutUnassignedParticipants(currentMeeting) {
   const mainSessionMembers = mainSession?.members?.membersCollection?.getAll?.() || {};
   const candidateMembers = new Map();
   const assignedParticipantIds = new Set();
+  const assignedParticipantEmails = new Set();
 
   [...Object.values(meetingMembers), ...Object.values(mainSessionMembers)].forEach((member) => {
     if (member.id) {
@@ -3940,8 +4044,16 @@ function getBreakoutUnassignedParticipants(currentMeeting) {
     });
   });
 
+  createBreakoutAssignmentState(currentMeeting).forEach((assignment) => {
+    assignment.memberIds.forEach((participantId) => assignedParticipantIds.add(participantId));
+    assignment.emails.forEach((email) => assignedParticipantEmails.add(email.toLowerCase()));
+  });
+
   const unassignedParticipants = [...candidateMembers.values()].filter((member) =>
     !assignedParticipantIds.has(member.id) &&
+    !getBreakoutParticipantEmails(member).some((email) =>
+      assignedParticipantEmails.has(email.toLowerCase())
+    ) &&
     !member.isDevice &&
     member.supportsBreakouts !== false &&
     member.status !== 'NOT_IN_MEETING'
@@ -3955,20 +4067,42 @@ function getBreakoutUnassignedParticipants(currentMeeting) {
 
 async function moveBreakoutParticipantsToSession(currentMeeting, targetSession, participants) {
   const targetSessionId = getBreakoutSessionId(targetSession);
-  const currentUser = participants.find((participant) =>
-    isBreakoutCurrentUser(currentMeeting, participant)
-  );
-  const otherParticipantIds = participants
-    .filter((participant) => participant !== currentUser)
-    .map((participant) => participant.id);
+  const currentUsers = participants.filter((participant) =>
+    isBreakoutCurrentUser(currentMeeting, participant));
+  const lobbyParticipants = participants.filter((participant) =>
+    !isBreakoutCurrentUser(currentMeeting, participant) && participant.isInLobby);
+  const meetingParticipants = participants.filter((participant) =>
+    !isBreakoutCurrentUser(currentMeeting, participant) && !participant.isInLobby);
 
-  if (otherParticipantIds.length) {
+  if (!targetSessionId) {
+    throw new Error('A target breakout session is required for this action.');
+  }
+
+  if (meetingParticipants.length) {
+    await updateBreakoutAssignments(currentMeeting, (assignments) => {
+      const targetAssignment = assignments.find(({id}) => id === targetSessionId);
+
+      if (!targetAssignment) {
+        throw new Error('The target breakout assignment is unavailable.');
+      }
+
+      meetingParticipants.forEach((participant) => {
+        removeParticipantFromBreakoutAssignments(assignments, participant);
+        addParticipantToBreakoutAssignment(targetAssignment, participant);
+      });
+    });
+  }
+
+  if (lobbyParticipants.length) {
     await currentMeeting.breakouts.dynamicAssign([
-      createBreakoutDynamicAssignment(targetSessionId, otherParticipantIds),
+      createBreakoutLobbyAssignment(
+        targetSessionId,
+        lobbyParticipants.map((participant) => participant.id)
+      ),
     ]);
   }
 
-  if (currentUser) {
+  if (currentUsers.length) {
     const targetSessionModel = getBreakoutSessionModels(currentMeeting)
       .find((session) => getBreakoutSessionId(session) === targetSessionId) || targetSession;
 
@@ -3978,6 +4112,26 @@ async function moveBreakoutParticipantsToSession(currentMeeting, targetSession, 
 
     await targetSessionModel.join();
   }
+}
+
+async function removeBreakoutParticipant(currentMeeting, participant) {
+  await currentMeeting.breakouts.getBreakout(false);
+
+  const assignments = createBreakoutAssignmentState(currentMeeting);
+
+  if (isParticipantAssignedToBreakout(assignments, participant)) {
+    await updateBreakoutAssignments(currentMeeting, (currentAssignments) => {
+      removeParticipantFromBreakoutAssignments(currentAssignments, participant);
+    });
+
+    return;
+  }
+
+  if (!participant.id) {
+    throw new Error('The selected participant does not have an SDK ID.');
+  }
+
+  await currentMeeting.breakouts.removeFromBreakout([participant.id]);
 }
 
 function showBreakoutActionPicker(container, options, actionLabel, onConfirm) {
@@ -4222,7 +4376,7 @@ function createBreakoutParticipantControls(currentMeeting, session, member) {
   });
   const removeButton = createButton('Remove', () =>
     runBreakoutParticipantAction(`Removing ${member.name}`, (meeting) =>
-      meeting.breakouts.removeFromBreakout([member.id])
+      removeBreakoutParticipant(meeting, member)
     )
   );
 

@@ -20,6 +20,7 @@ import {cloneDeep, isEmpty, omit, isObject} from 'lodash';
 import uuid from 'uuid';
 import base64url from 'crypto-js/enc-base64url';
 import CryptoJS from 'crypto-js';
+import {getClientAuthenticationOptions} from './config';
 
 const OAUTH2_CSRF_TOKEN = 'oauth2-csrf-token';
 const OAUTH2_CODE_VERIFIER = 'oauth2-code-verifier';
@@ -544,16 +545,15 @@ const Authorization = WebexPlugin.extend({
       form.code_verifier = options.codeVerifier;
     }
 
+    const {form: clientForm = {}, ...clientAuthentication} =
+      getClientAuthenticationOptions(this.config);
+
     return this.webex
       .request({
         method: 'POST',
         uri: this.config.tokenUrl,
-        form,
-        auth: {
-          user: this.config.client_id,
-          pass: this.config.client_secret,
-          sendImmediately: true,
-        },
+        form: {...form, ...clientForm},
+        ...clientAuthentication,
         shouldRefreshAccessToken: false, // This is the token acquisition call itself
       })
       .then((res) => {

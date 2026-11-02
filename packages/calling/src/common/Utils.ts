@@ -132,6 +132,7 @@ import {
   WEBEX_API_PROD,
   WEBEX_API_BTS,
   BW_XSI_ENDPOINT_VERSION_WITH_SLASH,
+  MOBIUS_WSS_ALLOWED_DOMAINS,
 } from './constants';
 import {Model, WDMDevice, WebexSDK} from '../SDKConnector/types';
 import SDKConnector from '../SDKConnector';
@@ -139,6 +140,30 @@ import {CallSettingResponse} from '../CallSettings/types';
 import {ContactResponse} from '../Contacts/types';
 import {LineErrorEmitterCallback} from '../CallingClient/line/types';
 import {LineError, createLineError} from '../Errors/catalog/LineError';
+
+/**
+ * Shared predicate for the Mobius WSS host allowlist (AC-2). Used by both
+ * `Socket#open` and `filterMobiusUris` so the two enforcement points cannot
+ * drift apart.
+ */
+export function isMobiusWssHostAllowed(host: string): boolean {
+  return MOBIUS_WSS_ALLOWED_DOMAINS.some(
+    (domain) => host === domain || host.endsWith(`.${domain}`)
+  );
+}
+
+/**
+ * Returns true when the hostname of the given WSS URI ends with one of the
+ * trusted Mobius/Webex domain suffixes.  URIs with unparseable hostnames are
+ * dropped for safety.
+ */
+function isTrustedMobiusWssHost(wssUri: string): boolean {
+  try {
+    return isMobiusWssHostAllowed(new URL(wssUri).hostname);
+  } catch {
+    return false;
+  }
+}
 
 export function filterMobiusUris(mobiusServers: MobiusServers, defaultMobiusUrl: string) {
   const logContext = {
@@ -161,7 +186,12 @@ export function filterMobiusUris(mobiusServers: MobiusServers, defaultMobiusUrl:
   if (mobiusServers?.primary?.wss) {
     log.info('Adding Primary wss uris', logContext);
     for (const wssUri of mobiusServers.primary.wss) {
-      wssArrayPrimary.push(wssUri);
+      /* Drop WSS URIs whose host is not in the trusted allowlist (AC-2) */
+      if (isTrustedMobiusWssHost(wssUri)) {
+        wssArrayPrimary.push(wssUri);
+      } else {
+        log.warn(`Dropping untrusted primary WSS URI: host not in allowed domains`, logContext);
+      }
     }
   }
 
@@ -175,7 +205,12 @@ export function filterMobiusUris(mobiusServers: MobiusServers, defaultMobiusUrl:
   if (mobiusServers?.backup?.wss) {
     log.info('Adding Backup wss uris', logContext);
     for (const wssUri of mobiusServers.backup.wss) {
-      wssArrayBackup.push(wssUri);
+      /* Drop WSS URIs whose host is not in the trusted allowlist (AC-2) */
+      if (isTrustedMobiusWssHost(wssUri)) {
+        wssArrayBackup.push(wssUri);
+      } else {
+        log.warn(`Dropping untrusted backup WSS URI: host not in allowed domains`, logContext);
+      }
     }
   }
 
@@ -1581,6 +1616,22 @@ export async function resolveCallerIdByName(name: string) {
 }
 
 /**
+ * Escapes SCIM filter-grammar metacharacters in an opaque identifier value.
+ *
+ * Prevents filter injection when a value is interpolated into `id eq "..."`.
+ * Only the backslash and double-quote characters are significant in SCIM
+ * quoted-string literals; all other characters are kept as-is so that
+ * legitimate identifiers (UUIDs, SIP addresses, etc.) resolve unchanged.
+ *
+ * @param value - The raw identifier value to escape.
+ * @returns The escaped value safe for use inside a SCIM quoted-string literal.
+ */
+export function escapeScimFilterValue(value: string): string {
+  // Escape backslash first (order matters: must precede quote escaping)
+  return value.replace(/\\/g, '\\\\').replace(/"/g, '\\"');
+}
+
+/**
  * Resolve the contact information.
  *
  * @param callingPartyInfo - Calling Party Info.
@@ -1589,8 +1640,10 @@ export async function resolveContact(
   callingPartyInfo: CallingPartyInfo
 ): Promise<DisplayInformation | null> {
   if (callingPartyInfo.userExternalId && callingPartyInfo.userExternalId.$) {
-    /* SCIM Search */
-    return resolveCallerIdDisplay(`id eq "${callingPartyInfo.userExternalId.$}"`);
+    /* SCIM Search — escape the value to prevent filter-grammar injection (AC-1 / U-02) */
+    return resolveCallerIdDisplay(
+      `id eq "${escapeScimFilterValue(callingPartyInfo.userExternalId.$)}"`
+    );
   }
   if (callingPartyInfo.name && callingPartyInfo.name.$) {
     /* People Search */
@@ -1712,82 +1765,6 @@ export function validateServiceData(serviceData: ServiceData) {
 
   if (!isValidServiceIndicator(serviceData.indicator)) {
     throw new Error(`Invalid service indicator, Allowed values are: ${formattedValues}`);
-  }
-}
-
-/**
- * Modifies SDP to replace IPv6 "c=" lines with IPv4.And adds an IPv4 candidate if none exists.
- *
- * @param sdp - Session Description Protocol string.
- * @returns Modified SDP string.
- */
-export function modifySdpForIPv4(sdp: string): string {
-  try {
-    // Normalize line endings to avoid issues
-    sdp = sdp.replace(/\r\n|\r/g, '\n');
-
-    // Ensure consistent spacing without removing intentional indentation
-    sdp = sdp.replace(/^[ \t]+/gm, '');
-
-    // Check if at least one IPv6 "c=" line is present
-    const ipv6CLineMatches = sdp.match(/c=IN IP6 [\da-f:.]+/gi) || [];
-    const hasIPv6CLine = ipv6CLineMatches.length > 0;
-
-    if (hasIPv6CLine) {
-      log.info('Modifying SDP for IPv4 compatibility', {
-        file: UTILS_FILE,
-        method: 'modifySdpForIPv4',
-      });
-
-      // Extract an existing IPv4 candidate's IP, if available
-      const ipv4CandidateMatch = sdp.match(/a=candidate:\d+ \d+ \w+ \d+ ([\d.]+) \d+ typ \w+/);
-      const ipv4Address = ipv4CandidateMatch?.[1] || '192.1.1.1'; // Default fallback
-
-      // Replace all IPv6 "c=" lines with IPv4 using the extracted IP (or default)
-      sdp = sdp.replace(/c=IN IP6 [\da-f:.]+/gi, `c=IN IP4 ${ipv4Address}`);
-
-      // Ensure newline separation between candidate lines
-      if (!ipv4CandidateMatch) {
-        let ipv4CandidateAdded = false;
-
-        sdp = sdp.replace(
-          /(a=candidate:(\d+) (\d+) (\w+) (\d+) ([\da-f:.]+) (\d+) typ (\w+)[^\n]*)/g,
-          (
-            match: string,
-            full: string,
-            foundation: string,
-            componentId: string,
-            transport: string, // Supports both UDP and TCP
-            priority: string,
-            connectionAddress: string,
-            port: string,
-            candidateType: string
-          ) => {
-            if (!ipv4CandidateAdded && connectionAddress.includes(':')) {
-              // Ensure it's IPv6 and only add once
-              ipv4CandidateAdded = true;
-              const newFoundation = (parseInt(foundation, 10) + 1).toString();
-
-              return (
-                `${full}\n` +
-                `a=candidate:${newFoundation} ${componentId} ${transport} ${priority} ${ipv4Address} ${port} typ ${candidateType} generation 0 network-id 1 network-cost 10`
-              );
-            }
-
-            return match;
-          }
-        );
-      }
-    }
-
-    return sdp;
-  } catch (error) {
-    log.warn(`Error modifying SDP for IPv4 compatibility: ${error}`, {
-      file: UTILS_FILE,
-      method: 'modifySdpForIPv4',
-    });
-
-    return sdp; // Return original SDP in case of an error
   }
 }
 

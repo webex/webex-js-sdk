@@ -1,4 +1,5 @@
 import {Mutex} from 'async-mutex';
+import {LocalMicrophoneStream} from '@webex/internal-media-core';
 import {v4 as uuid} from 'uuid';
 import {METHOD_START_MESSAGE} from '../../common/constants';
 import {
@@ -22,6 +23,7 @@ import {Eventing} from '../../Events/impl';
 import {LineError} from '../../Errors/catalog/LineError';
 import {LOGGER} from '../../Logger/types';
 import {validateServiceData} from '../../common';
+import {discoverHostIps} from '../../common/callUtils';
 import SDKConnector from '../../SDKConnector';
 import {LINE_EVENT_KEYS, LineEventTypes} from '../../Events/types';
 import {ICall, ICallManager} from '../calling/types';
@@ -77,6 +79,8 @@ export default class Line extends Eventing<LineEventTypes> implements ILine {
 
   #backupMobiusUris: string[];
 
+  #localAudioStream?: LocalMicrophoneStream;
+
   constructor(
     userId: string,
     clientDeviceUri: string,
@@ -86,6 +90,7 @@ export default class Line extends Eventing<LineEventTypes> implements ILine {
     logLevel: LOGGER,
     serviceDataConfig?: CallingClientConfig['serviceData'],
     jwe?: string,
+    localAudioStream?: LocalMicrophoneStream,
     phoneNumber?: string,
     extension?: string,
     voicemail?: string
@@ -104,6 +109,7 @@ export default class Line extends Eventing<LineEventTypes> implements ILine {
 
     this.#primaryMobiusUris = primaryMobiusUris;
     this.#backupMobiusUris = backupMobiusUris;
+    this.#localAudioStream = localAudioStream;
 
     this.serviceData = serviceDataConfig?.indicator
       ? serviceDataConfig
@@ -135,6 +141,16 @@ export default class Line extends Eventing<LineEventTypes> implements ILine {
       file: LINE_FILE,
       method: METHODS.REGISTER,
     });
+
+    /*
+     * Discovered before the registration is triggered, so that it reports the addresses the
+     * interfaces carry now rather than the ones they carried when the client was created, and
+     * outside the mutex, which registration shares with failback and keepalive recovery.
+     */
+    if (this.#localAudioStream) {
+      await discoverHostIps(this.#localAudioStream);
+    }
+
     await this.#mutex.runExclusive(async () => {
       this.emit(LINE_EVENTS.CONNECTING);
 
