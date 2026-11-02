@@ -1349,7 +1349,7 @@ export default class ContactCenter extends WebexPlugin implements IContactCenter
       );
 
       if (this.webCallingService) {
-        this.webCallingService.deregisterWebCallingLine();
+        await this.webCallingService.deregisterWebCallingLine();
       }
 
       await this.teardownWxAppLocalState();

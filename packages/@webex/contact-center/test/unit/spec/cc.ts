@@ -3074,6 +3074,37 @@ describe('webex.cc', () => {
   });
 
   describe('stationLogout', () => {
+    it('should wait for browser voice deregistration to finish', async () => {
+      let resolveDeregister: (() => void) | undefined;
+      let signalDeregisterStarted: (() => void) | undefined;
+      const deregisterStarted = new Promise<void>((resolve) => {
+        signalDeregisterStarted = resolve;
+      });
+      jest
+        .spyOn(webex.cc.webCallingService, 'deregisterWebCallingLine')
+        .mockImplementation(
+          () =>
+            new Promise<void>((resolve) => {
+              resolveDeregister = resolve;
+              signalDeregisterStarted?.();
+            })
+        );
+      jest.spyOn(webex.cc.services.agent, 'logout').mockResolvedValue({} as StationLogoutResponse);
+
+      let logoutResolved = false;
+      const logout = webex.cc.stationLogout({logoutReason: 'Logout reason'}).then((result) => {
+        logoutResolved = true;
+        return result;
+      });
+
+      await deregisterStarted;
+      expect(logoutResolved).toBe(false);
+
+      resolveDeregister?.();
+      await logout;
+      expect(logoutResolved).toBe(true);
+    });
+
     it('should logout successfully', async () => {
       const data = {logoutReason: 'Logout reason'};
       const response = {};

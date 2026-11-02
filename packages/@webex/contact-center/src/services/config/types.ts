@@ -204,11 +204,6 @@ export const CC_AGENT_EVENTS = {
  * @enum {string}
  * @public
  */
-/**
- * Combined Contact Center events including both agent and task events
- * @enum {string}
- * @public
- */
 export const CC_EVENTS = {
   ...CC_AGENT_EVENTS,
   ...CC_TASK_EVENTS,
