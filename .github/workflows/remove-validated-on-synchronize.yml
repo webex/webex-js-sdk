@@ -13,14 +13,23 @@ jobs:
     name: Remove reusable validated label
     runs-on: ubuntu-latest
     steps:
-      # DRY RUN: nothing is gated yet. This only logs whether the PR author and
-      # the pusher are on @webex/web-sdk, so the lookup can be checked against
-      # real PRs before it gates the removal below. Author and pusher differ
-      # whenever someone pushes to another person's branch, which is the case
-      # that decides which of them the rule should key off. The default
-      # GITHUB_TOKEN cannot read org team membership, hence ORG_READ_TOKEN.
-      - name: Check web-sdk team membership (log only)
+      # The validated label survives a push only when both the PR author and the
+      # pusher are active members of @webex/web-sdk. Both identities matter, for
+      # different reasons: anyone can be given push access to someone else's
+      # branch, so a non-member pushing to a member's PR must still invalidate
+      # the label; and a PR opened by a non-member should revalidate even when a
+      # member later pushes to it. Commit author metadata is deliberately not
+      # consulted, as it is self-reported and spoofable, while both of these
+      # identities are authenticated by GitHub. The default GITHUB_TOKEN cannot
+      # read org team membership, hence ORG_READ_TOKEN. The team's actual
+      # membership is the single source of truth, no usernames are hardcoded.
+      # Only runs when there is a label to act on.
+      - name: Check web-sdk team membership
+        id: team
         if: contains(github.event.pull_request.labels.*.name, 'validated')
+        # An inconclusive lookup must not strand the label. This step is allowed
+        # to fail so the removal below still runs, which is the safe direction,
+        # while the failure annotation keeps the problem visible.
         continue-on-error: true
         uses: actions/github-script@v8
         with:
@@ -31,7 +40,9 @@ jobs:
 
             // GitHub answers 404 for resources a token cannot see, so a
             // membership 404 only means "not a member" once the token is known
-            // to be able to read the team at all.
+            // to be able to read the team at all. Without this check, a token
+            // that loses visibility would report every user as a non-member and
+            // quietly turn the skip off for good.
             try {
               await github.rest.teams.getByName({org, team_slug});
             } catch (error) {
@@ -44,8 +55,9 @@ jobs:
             }
 
             // 'active' for members, 'pending' for invited-but-not-joined, 404
-            // for everyone else. Any other failure stays 'unknown' so an outage
-            // is never logged as a confirmed non-member.
+            // for everyone else (including bots and apps, which have no
+            // membership). Any other failure stays 'unknown' so an outage is
+            // never mistaken for a confirmed non-member.
             const membershipState = async (username) => {
               try {
                 const {data} = await github.rest.teams.getMembershipForUserInOrg({
@@ -76,11 +88,15 @@ jobs:
             core.info(`PR author ${author} on @${org}/${team_slug}: ${authorState}`);
             core.info(`Pusher ${pusher} on @${org}/${team_slug}: ${pusherState}`);
 
+            core.setOutput('keep_label', authorState === 'active' && pusherState === 'active');
+
             if (authorState === 'unknown' || pusherState === 'unknown') {
-              core.setFailed('Membership lookup was inconclusive; this run produced no usable data.');
+              core.setFailed('Membership lookup was inconclusive; removing the validated label as the safe default.');
             }
 
       - name: Remove validated label from PR
+        env:
+          KEEP_LABEL: ${{ steps.team.outputs.keep_label }}
         uses: actions/github-script@v8
         with:
           script: |
@@ -91,6 +107,11 @@ jobs:
             const labels = context.payload.pull_request.labels.map((label) => label.name);
             if (!labels.includes('validated')) {
               core.info('No validated label found; skipping.');
+              return;
+            }
+
+            if (process.env.KEEP_LABEL === 'true') {
+              core.info('PR author and pusher are both active members of @webex/web-sdk; keeping the validated label.');
               return;
             }
 
