@@ -7,11 +7,12 @@
  * @property {string} [level=process.env.WEBEX_LOG_LEVEL] - Maximum log level that
  * should be printed to the console. One of
  * silent|error|warn|log|info|debug|trace
- * @property {number} [historyLength=1000] - Maximum number of entries to store in the log buffer.
+ * @property {Object<string, Function>} [consoleMethods] - Original host console methods for buffered calls.
+ * @property {number} [historyLength=10000] - Maximum number of entries to store in the log buffer.
  * @example
  * {
  *   level: process.env.WEBEX_LOG_LEVEL,
- *   historyLength: 1000
+ *   historyLength: 10000
  * }
  */
 

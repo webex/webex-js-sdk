@@ -13,6 +13,7 @@ export interface LogAttributes {
 }
 /**
  * Optional producer fields. Callers supply safe, serializable data.
+ * SDK text redaction does not sanitize these fields.
  * Callers and consumers must leave these values unchanged after logging.
  */
 export interface LogMetadata {
@@ -25,8 +26,6 @@ export interface LogRecord extends LogMetadata {
   readonly sequence: number;
   /** Time the SDK accepted the entry, in Unix milliseconds. */
   readonly timestamp: number;
-  /** SDK acceptance time, in Unix milliseconds. Same as timestamp and fixed during replay. */
-  readonly observedTimestamp: number;
   /** Original SDK log level. The consumer maps it to its own severity. */
   readonly level: string;
   /** Producer label; defaults to sdk or client. It does not select the logging policy. */

@@ -87,8 +87,6 @@ function _createLogRecord(entry) {
   const record = {
     sequence: entry.sequence,
     timestamp: entry.timestamp,
-    // Both times use the captured acceptance time. Replay does not read the clock.
-    observedTimestamp: entry.timestamp,
     level: entry.level,
     source: entry.source,
     body: entry.join(','),
@@ -155,7 +153,7 @@ const Logger = WebexPlugin.extend({
         return 0;
       },
     },
-    // Separate SDK history and support-upload cursors when configured.
+    // SDK history and support-upload cursors. Used only when separateLogBuffers is true.
     sdkBuffer: {
       type: 'object',
       default() {
@@ -166,7 +164,7 @@ const Logger = WebexPlugin.extend({
         };
       },
     },
-    // Separate client history and support-upload cursors when configured.
+    // Client history and support-upload cursors. Used only when separateLogBuffers is true.
     clientBuffer: {
       type: 'object',
       default() {
@@ -244,7 +242,8 @@ const Logger = WebexPlugin.extend({
         !Array.isArray(arg) &&
         Object.prototype.hasOwnProperty.call(arg, metadataField)
       ) {
-        // Keep metadata unchanged. Copy and redact only the remaining message fields.
+        // Callers supply safe metadata; text redaction does not sanitize it.
+        // Copy and redact only the remaining message fields.
         const {[metadataField]: recordMetadata, ...messageFields} = arg;
 
         metadata = recordMetadata;
@@ -542,9 +541,9 @@ function makeLoggerMethod(level, impl, type, {neverPrint = false, alwaysBuffer =
         if (process.env.NODE_ENV === 'test' && has(this, 'webex.internal.device.url')) {
           toPrint.unshift(this.webex.internal.device.url.slice(-3));
         }
-        // Use the saved method to avoid capturing SDK console output as another log.
+        // Bypass host capture only when this call will also enter the SDK buffer.
         // eslint-disable-next-line no-console
-        const consoleMethod = console[`std${impl}`] || console[impl];
+        const consoleMethod = (shouldBuffer && this.config.consoleMethods?.[impl]) || console[impl];
         consoleMethod.apply(console, toPrint);
       }
 

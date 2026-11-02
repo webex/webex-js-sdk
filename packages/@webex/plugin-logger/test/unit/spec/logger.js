@@ -1543,7 +1543,6 @@ describe('plugin-logger', () => {
     const isoTimestamp = '2023-11-14T22:13:20.123Z';
     let sandbox;
     let clock;
-    let savedConsole;
 
     const expectedRecord = (
       sequence,
@@ -1551,7 +1550,6 @@ describe('plugin-logger', () => {
     ) => ({
       sequence,
       timestamp,
-      observedTimestamp: timestamp,
       level,
       source: metadata?.source || type,
       body: ['', isoTimestamp, type === 'sdk' ? 'wx-js-sdk' : 'WebClient', ...values].join(','),
@@ -1573,14 +1571,13 @@ describe('plugin-logger', () => {
       );
     };
 
-    const saveConsoleMethod = (level) => {
+    const configureConsoleMethod = (level) => {
       const method = sinon.spy();
 
-      Object.defineProperty(console, `std${impl(level)}`, {
-        configurable: true,
-        writable: true,
-        value: method,
-      });
+      webex.logger.config.consoleMethods = {
+        ...webex.logger.config.consoleMethods,
+        [impl(level)]: method,
+      };
 
       return method;
     };
@@ -1599,9 +1596,6 @@ describe('plugin-logger', () => {
     beforeEach(() => {
       sandbox = sinon.createSandbox();
       clock = sandbox.useFakeTimers({now: timestamp, toFake: ['Date']});
-      savedConsole = Object.fromEntries(
-        levels.map((level) => [level, Object.getOwnPropertyDescriptor(console, `std${level}`)])
-      );
       Object.assign(webex.logger.config, {
         level: 'silent',
         clientLevel: 'silent',
@@ -1611,16 +1605,7 @@ describe('plugin-logger', () => {
       });
     });
 
-    afterEach(() => {
-      sandbox.restore();
-      for (const level of levels) {
-        if (savedConsole[level]) {
-          Object.defineProperty(console, `std${level}`, savedConsole[level]);
-        } else {
-          Reflect.deleteProperty(console, `std${level}`);
-        }
-      }
-    });
+    afterEach(() => sandbox.restore());
 
     it('reads current level configuration through the existing derived properties', () => {
       assert.strictEqual(webex.logger.level, 'silent');
@@ -1646,7 +1631,7 @@ describe('plugin-logger', () => {
       webex.internal.device.url = 'https://example.test/device/abc';
       // Supply the own root binding checked by the legacy test-prefix helper.
       Object.defineProperty(webex.logger, 'webex', {configurable: true, value: webex});
-      const output = saveConsoleMethod('info');
+      const output = configureConsoleMethod('info');
 
       webex.logger.info('message');
       assert.calledOnceWithExactly(output, 'abc', 'wx-js-sdk', 'message');
@@ -1721,47 +1706,52 @@ describe('plugin-logger', () => {
       });
     }
 
+    const assertLogPolicy = ({type = 'sdk', level = 'info', print, buffer}) => {
+      const metadata = {source: 'producer', eventName: 'event', attributes: {number: 2}};
+      const configured = configureConsoleMethod(level);
+      const normal = console[impl(level)];
+      const listener = sinon.spy();
+
+      webex.logger.config[type === 'sdk' ? 'level' : 'clientLevel'] = print ? 'trace' : 'silent';
+      webex.logger.config.bufferLogLevel = buffer ? 'trace' : 'silent';
+      webex.logger.on('log:record', listener);
+      webex.logger[type === 'sdk' ? level : `client_${level}`]('message', {metadata});
+      const expectedOutput = print ? [[type === 'sdk' ? 'wx-js-sdk' : 'WebClient', 'message']] : [];
+      const output = buffer ? configured : normal;
+
+      assert.deepEqual(output.args, expectedOutput);
+      assert.notCalled(buffer ? normal : configured);
+      if (print) assert.strictEqual(output.firstCall.thisValue, console);
+      assert.deepEqual(
+        webex.logger.getRecords(),
+        buffer ? [expectedRecord(1, {type, level, metadata})] : []
+      );
+      assert.deepEqual(webex.logger.buffer, {
+        buffer: buffer ? [expectedEntry(1, {type, level, metadata})] : [],
+        nextIndex: 0,
+        lastSubmitted: 0,
+      });
+      assert.deepEqual(listener.args, buffer ? [[expectedRecord(1, {type, level, metadata})]] : []);
+      assert.equal(webex.logger.recordState.lastSequence, buffer ? 1 : 0);
+      assert.equal(webex.logger.groupLevel, buffer && level === 'group' ? 1 : 0);
+    };
+
+    for (const {print, buffer} of [
+      {print: false, buffer: false},
+      {print: false, buffer: true},
+      {print: true, buffer: false},
+      {print: true, buffer: true},
+    ]) {
+      it(`keeps print=${print} and buffer=${buffer} independent of metadata`, () => {
+        assertLogPolicy({print, buffer});
+      });
+    }
+
     for (const type of ['sdk', 'client']) {
       for (const level of levels) {
-        for (const {print, buffer} of [
-          {print: false, buffer: false},
-          {print: false, buffer: true},
-          {print: true, buffer: false},
-          {print: true, buffer: true},
-        ]) {
-          it(`keeps ${type}/${level} print=${print} and buffer=${buffer} independent of metadata`, () => {
-            const metadata = {source: 'producer', eventName: 'event', attributes: {number: 2}};
-            const output = saveConsoleMethod(level);
-            const listener = sinon.spy();
-
-            webex.logger.config[type === 'sdk' ? 'level' : 'clientLevel'] = print
-              ? 'trace'
-              : 'silent';
-            webex.logger.config.bufferLogLevel = buffer ? 'trace' : 'silent';
-            webex.logger.on('log:record', listener);
-            webex.logger[type === 'sdk' ? level : `client_${level}`]('message', {metadata});
-            assert.deepEqual(
-              output.args,
-              print ? [[type === 'sdk' ? 'wx-js-sdk' : 'WebClient', 'message']] : []
-            );
-            if (print) assert.strictEqual(output.firstCall.thisValue, console);
-            assert.deepEqual(
-              webex.logger.getRecords(),
-              buffer ? [expectedRecord(1, {type, level, metadata})] : []
-            );
-            assert.deepEqual(webex.logger.buffer, {
-              buffer: buffer ? [expectedEntry(1, {type, level, metadata})] : [],
-              nextIndex: 0,
-              lastSubmitted: 0,
-            });
-            assert.deepEqual(
-              listener.args,
-              buffer ? [[expectedRecord(1, {type, level, metadata})]] : []
-            );
-            assert.equal(webex.logger.recordState.lastSequence, buffer ? 1 : 0);
-            assert.equal(webex.logger.groupLevel, buffer && level === 'group' ? 1 : 0);
-          });
-        }
+        it(`keeps ${type}/${level} method mapping and metadata`, () => {
+          assertLogPolicy({type, level, print: true, buffer: true});
+        });
       }
     }
 
@@ -2142,7 +2132,7 @@ describe('plugin-logger', () => {
     for (const method of ['logToBuffer', 'client_logToBuffer']) {
       it(`buffers ${method} at info even when configured levels are silent`, () => {
         webex.logger.config.bufferLogLevel = 'silent';
-        const output = saveConsoleMethod('info');
+        const output = configureConsoleMethod('info');
         const listener = sinon.spy();
 
         webex.logger.on('log:record', listener);
@@ -2155,25 +2145,102 @@ describe('plugin-logger', () => {
       });
     }
 
-    it('prints through the saved console method with the console receiver', () => {
+    it('prints buffered calls through the configured method with the console receiver', () => {
       webex.logger.config.level = 'info';
-      webex.logger.config.bufferLogLevel = 'silent';
-      const output = saveConsoleMethod('info');
+      webex.logger.config.bufferLogLevel = 'info';
+      const output = configureConsoleMethod('info');
 
       webex.logger.info('message');
       assert.calledOnceWithExactly(output, 'wx-js-sdk', 'message');
       assert.strictEqual(output.firstCall.thisValue, console);
       assert.notCalled(console.info);
-      assert.deepEqual(webex.logger.getRecords(), []);
+      assert.deepEqual(webex.logger.getRecords(), [expectedRecord(1)]);
     });
 
-    it('uses the normal console method when the saved method is absent', () => {
+    it('uses the normal console method when no methods are configured', () => {
       webex.logger.config.level = 'info';
-      Reflect.deleteProperty(console, 'stdinfo');
       webex.logger.info('message');
       assert.calledOnceWithExactly(console.info, 'wx-js-sdk', 'message');
       assert.strictEqual(console.info.firstCall.thisValue, console);
       assert.deepEqual(webex.logger.getRecords(), [expectedRecord(1)]);
+    });
+
+    it('uses the normal console method when the configured map lacks that method', () => {
+      webex.logger.config.level = 'info';
+      const error = configureConsoleMethod('error');
+
+      webex.logger.info('message');
+      assert.calledOnceWithExactly(console.info, 'wx-js-sdk', 'message');
+      assert.notCalled(error);
+      assert.deepEqual(webex.logger.getRecords(), [expectedRecord(1)]);
+    });
+
+    for (const type of ['sdk', 'client']) {
+      for (const level of ['debug', 'trace', 'info']) {
+        it(`keeps one retained copy with host capture for ${type}/${level}`, () => {
+          webex.logger.config[type === 'sdk' ? 'level' : 'clientLevel'] = 'trace';
+          webex.logger.config.bufferLogLevel = 'info';
+          const method = impl(level);
+          const original = configureConsoleMethod(level);
+          const normal = console[method];
+          const capture = sinon.spy((...args) => {
+            webex.logger.client_logToBuffer(`console ${method}: ${args.toString()}`);
+            original.apply(console, args);
+          });
+
+          console[method] = capture;
+          try {
+            webex.logger[type === 'sdk' ? level : `client_${level}`]('message');
+            assert.calledOnceWithExactly(
+              original,
+              type === 'sdk' ? 'wx-js-sdk' : 'WebClient',
+              'message'
+            );
+            assert.strictEqual(original.firstCall.thisValue, console);
+            const expected =
+              level === 'info'
+                ? expectedRecord(1, {type, level})
+                : expectedRecord(1, {
+                    type: 'client',
+                    values: [
+                      `console ${method}: ${type === 'sdk' ? 'wx-js-sdk' : 'WebClient'},message`,
+                    ],
+                  });
+
+            assert.deepEqual(webex.logger.getRecords(), [expected]);
+            assert.strictEqual(webex.logger.formatLogs(), expected.body);
+            assert.equal(capture.callCount, level === 'info' ? 0 : 1);
+            assert.equal(webex.logger.recordState.lastSequence, 1);
+          } finally {
+            console[method] = normal;
+          }
+        });
+      }
+    }
+
+    it('keeps host capture for printed-only logs enabled by the developer feature', () => {
+      delete webex.logger.config.level;
+      webex.logger.config.bufferLogLevel = 'info';
+      webex.internal.device = {features: {developer: {get: () => 'debug'}}};
+      const output = configureConsoleMethod('debug');
+      const normal = console.debug;
+
+      console.debug = (...args) => {
+        webex.logger.client_logToBuffer(`console debug: ${args.toString()}`);
+        output.apply(console, args);
+      };
+      try {
+        webex.logger.debug('message');
+        assert.calledOnceWithExactly(output, 'wx-js-sdk', 'message');
+        assert.deepEqual(webex.logger.getRecords(), [
+          expectedRecord(1, {
+            type: 'client',
+            values: ['console debug: wx-js-sdk,message'],
+          }),
+        ]);
+      } finally {
+        console.debug = normal;
+      }
     });
 
     it('keeps the existing stringify fallback without exposing metadata in text', () => {
