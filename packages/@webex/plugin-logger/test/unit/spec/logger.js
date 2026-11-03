@@ -2145,6 +2145,27 @@ describe('plugin-logger', () => {
       });
     }
 
+    it('uses console methods supplied in startup configuration', () => {
+      const output = sinon.spy();
+      const configured = new MockWebex({
+        children: {logger: Logger},
+        config: {
+          logger: {
+            level: 'info',
+            bufferLogLevel: 'info',
+            historyLength: 10000,
+            consoleMethods: {info: output},
+          },
+        },
+      });
+
+      configured.logger.info('message');
+      assert.calledOnceWithExactly(output, 'wx-js-sdk', 'message');
+      assert.strictEqual(output.firstCall.thisValue, console);
+      assert.notCalled(console.info);
+      assert.deepEqual(configured.logger.getRecords(), [expectedRecord(1)]);
+    });
+
     it('prints buffered calls through the configured method with the console receiver', () => {
       webex.logger.config.level = 'info';
       webex.logger.config.bufferLogLevel = 'info';
