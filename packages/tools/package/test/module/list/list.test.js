@@ -1,7 +1,17 @@
+/* eslint jest/expect-expect: ["warn", {"assertFunctionNames": ["expect", "assert.*"]}] */
 const { list, Yarn } = require('@webex/package-tools');
+const { assert } = require('@webex/test-helper-chai');
 
 describe('list', () => {
   describe('config', () => {
+    it('should include the boolean "committed" option', () => {
+      const found = list.config.options.find((option) => option.name === 'committed');
+
+      assert.isDefined(found);
+      assert.isUndefined(found.type);
+      assert.isString(found.description);
+    });
+
     it('should include all expected top-level keys', () => {
       expect(Object.keys(list.config)).toEqual([
         'name',
@@ -43,6 +53,7 @@ describe('list', () => {
       { location: 'packages/scope/example-c', name: '@scope/example-c' },
     ];
     const options = {
+      committed: true,
       private: true,
       recursive: true,
       since: 'example-reference',
@@ -62,6 +73,7 @@ describe('list', () => {
       .then(() => {
         expect(spies.Yarn.list).toHaveBeenCalledTimes(1);
         expect(spies.Yarn.list).toHaveBeenCalledWith(expect.objectContaining({
+          committed: options.committed,
           noPrivate: !options.private,
           recursive: options.recursive,
           since: options.since,

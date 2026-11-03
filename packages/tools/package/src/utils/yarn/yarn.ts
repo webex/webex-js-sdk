@@ -33,7 +33,7 @@ class Yarn {
     let { since } = mergedConfig;
 
     if (since) {
-      since = await getReleaseRef(since);
+      since = await getReleaseRef(since, !!mergedConfig.committed);
 
       if (!since) {
         return [];
