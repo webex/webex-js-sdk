@@ -422,6 +422,67 @@ describe('extension/background', () => {
       await rejected;
     });
 
+    it('accepts a push sent straight behind its CONNECT', async () => {
+      // A relay whose page bridge missed the first HELLO sends CONNECT and its first
+      // PUSH back to back. Before the fix, CONNECT read the old record before queueing
+      // its write, so the push's read landed in between and it was dropped as stale.
+      const received = sinon.stub();
+
+      bridge.subscribe(received);
+      await Promise.all([
+        fromContent(relayMessage(RelayKind.CONNECT)),
+        fromContent(relayMessage(RelayKind.PUSH, {envelope: pushEnvelope('first.push')})),
+      ]);
+      await drain();
+
+      assert.calledOnce(received);
+    });
+
+    it('keeps a session that connects on the new origin while the old one is torn down', async () => {
+      // Before the fix, leaving the origin removed by tab ID alone, so a relay on the
+      // new origin connecting while that teardown read the record was removed with it.
+      const other = 'https://other.example.com';
+
+      setup({allowedOrigins: [ORIGIN, other]});
+      await attach();
+      world.fireTabUpdated(world.tabId, {status: 'loading', url: `${other}/`});
+      await attach('a-second-session', {origin: other});
+
+      const connections = await bridge.listConnections();
+
+      assert.lengthOf(connections, 1);
+      assert.equal(connections[0].origin, other);
+    });
+
+    it('drops a record whose relay no longer holds its session', async () => {
+      // A same-origin page without a page bridge replaced the document: its relay is
+      // listening but never connects, so no CONNECT will overwrite the stale record.
+      // Before the fix the relay's rejection left it in place for every later request.
+      relayAnswers((): RelayResult => ({
+        ok: false,
+        error: {code: 'NOT_CONNECTED', message: 'The tab is not connected'},
+      }));
+      await attach();
+
+      assert.equal((await rejection(bridge.request('demo.topic'))).code, 'NOT_CONNECTED');
+      await drain();
+
+      assert.lengthOf(await bridge.listConnections(), 0);
+    });
+
+    it('keeps the record when the relay rejects a request for another reason', async () => {
+      relayAnswers((): RelayResult => ({
+        ok: false,
+        error: {code: 'INVALID_PAYLOAD', message: 'The payload was rejected'},
+      }));
+      await attach();
+
+      assert.equal((await rejection(bridge.request('demo.topic'))).code, 'INVALID_PAYLOAD');
+      await drain();
+
+      assert.lengthOf(await bridge.listConnections(), 1);
+    });
+
     it('keeps accepting pushes after a route change', async () => {
       const received = sinon.stub();
 

@@ -197,11 +197,29 @@ export function createExtensionBridgeWith(
     return current.find((entry) => entry.tabId === tabId);
   };
 
-  const upsertConnection = (record: StoredConnection): Promise<StoredConnection[]> =>
-    connections.update((current) => [
-      ...current.filter((entry) => entry.tabId !== record.tabId),
-      record,
-    ]);
+  /**
+   * Install a tab's connection record, replacing whatever the tab held.
+   *
+   * The replaced record is read inside the same update that writes the new one, so a
+   * `PUSH` queued right behind a `CONNECT` always reads the new session — a separate
+   * read before the write would let that push in between and drop it as stale.
+   *
+   * @param record - Connection record to install.
+   * @returns The record it replaced, if any.
+   */
+  const upsertConnection = async (
+    record: StoredConnection
+  ): Promise<StoredConnection | undefined> => {
+    let replaced: StoredConnection | undefined;
+
+    await connections.update((current) => {
+      replaced = current.find((entry) => entry.tabId === record.tabId);
+
+      return [...current.filter((entry) => entry.tabId !== record.tabId), record];
+    });
+
+    return replaced;
+  };
 
   /**
    * Remove a tab's connection record.
@@ -254,8 +272,8 @@ export function createExtensionBridgeWith(
   };
 
   /**
-   * Tear down everything held for a tab, regardless of session. For events about the
-   * tab itself (removed, navigated, unreachable), where the document is gone either way.
+   * Tear down everything held for a tab, regardless of session. For the tab itself
+   * being removed, where no session on it can survive.
    *
    * @param tabId - Tab to tear down.
    * @param reason - Logged reason.
@@ -328,7 +346,10 @@ export function createExtensionBridgeWith(
     if (originOf(url) !== connection.origin) {
       // Its own reason: an operator reading the log needs to tell a tab that went
       // somewhere no content script will be injected from an ordinary document load.
-      dropConnection(tabId, 'tab-left-origin');
+      // Scoped to the session read above, because a relay on the new origin may have
+      // connected while that read was pending, and its record must survive this.
+      logger.info('dropping connection', {channel, tabId, reason: 'tab-left-origin'});
+      await removeConnectionForSession(tabId, connection.session, 'tab-left-origin');
 
       return;
     }
@@ -521,14 +542,14 @@ export function createExtensionBridgeWith(
         // proof the first document is gone — the only proof a tab update never gave
         // us. Anything still waiting on it is waiting on a page that cannot answer, so
         // it is settled now rather than left to time out.
-        const superseded = await findConnection(tabId);
+        logger.info('tab attached', {channel, tabId, origin});
+
+        const superseded = await upsertConnection(record);
 
         if (superseded && superseded.session !== relay.session) {
           settleTab(tabId, 'tab-superseded');
         }
 
-        logger.info('tab attached', {channel, tabId, origin});
-        await upsertConnection(record);
         break;
       }
 
@@ -565,11 +586,27 @@ export function createExtensionBridgeWith(
     return tabId;
   };
 
-  const settleFromRelay = (id: string, topic: string, session: string, response: unknown): void => {
+  const settleFromRelay = async (
+    id: string,
+    topic: string,
+    tabId: number,
+    session: string,
+    response: unknown
+  ): Promise<void> => {
     const ok = readOwn(response, 'ok');
 
     if (ok !== true) {
-      pending.reject(id, fromWireError(readOwn(response, 'error'), topic));
+      const error = fromWireError(readOwn(response, 'error'), topic);
+
+      pending.reject(id, error);
+
+      // A relay answering `NOT_CONNECTED` does not hold this session: the document it
+      // was minted in has gone, and its replacement never connected (a same-origin page
+      // without a page bridge). No `CONNECT` will overwrite the record, so the relay's
+      // answer is the only signal that it is stale.
+      if (error.code === 'NOT_CONNECTED') {
+        await removeConnectionForSession(tabId, session, 'relay-not-connected');
+      }
 
       return;
     }
@@ -680,7 +717,7 @@ export function createExtensionBridgeWith(
       // if the relay never answers. Whichever happens first wins, and the loser is a
       // no-op because correlation is single-use.
       void Promise.resolve(tabsApi.sendMessage(tabId, relayRequest)).then(
-        (response) => settleFromRelay(id, topic, connection.session, response),
+        (response) => settleFromRelay(id, topic, tabId, connection.session, response),
         async () => {
           // Reject this request first, so it reports why *it* failed (dropping the
           // connection settles everything else on the tab as `DISCONNECTED`, and
