@@ -68,9 +68,5 @@ When asked to find all occurrences of a logical pattern (e.g. "where state is LE
 <!-- sdd-package-routing:start -->
 ## SDD package routing
 
-| Package | Path | Agent entry | Docs | Manifest |
-| --- | --- | --- | --- | --- |
-| `@webex/internal-plugin-feature` | `packages/@webex/internal-plugin-feature/` | [AGENTS.md](packages/@webex/internal-plugin-feature/AGENTS.md) | [docs/index.md](packages/@webex/internal-plugin-feature/docs/index.md) | [.sdd/manifest.json](packages/@webex/internal-plugin-feature/.sdd/manifest.json) |
-| `@webex/internal-plugin-user` | `packages/@webex/internal-plugin-user/` | [AGENTS.md](packages/@webex/internal-plugin-user/AGENTS.md) | [docs/index.md](packages/@webex/internal-plugin-user/docs/index.md) | [.sdd/manifest.json](packages/@webex/internal-plugin-user/.sdd/manifest.json) |
-| `@webex/internal-plugin-wdm` | `packages/@webex/internal-plugin-wdm/` | [AGENTS.md](packages/@webex/internal-plugin-wdm/AGENTS.md) | [docs/index.md](packages/@webex/internal-plugin-wdm/docs/index.md) | [.sdd/manifest.json](packages/@webex/internal-plugin-wdm/.sdd/manifest.json) |
+The onboarded SDD packages are listed in [docs/index.md](docs/index.md#sdd-package-routing).
 <!-- sdd-package-routing:end -->

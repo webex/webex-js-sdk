@@ -313,7 +313,7 @@
   },
   "tooling": {
     "sdlc_skills": {
-      "source_ref": "repo-annotation@2.3.0"
+      "source_ref": "repo-annotation@2.3.1"
     }
   }
 }
