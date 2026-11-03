@@ -468,7 +468,7 @@ defined in the `extend` definition, so it lives on the prototype and is shared b
 | -- | --------- | --- | ------------------ | ------------- |
 | `INV-001` | The CSRF token and the PKCE verifier are removed from `sessionStorage` on first read, before any comparison or exchange. | The inline comment: minimize exposure; the README security table calls them single-use. | `src/authorization.js` | `test/unit/spec/authorization.js` |
 | `INV-002` | The raw email never leaves `initiateLogin`; only its SHA-256 is sent. | The inline comment: ensure the raw email is not propagated. | `src/authorization.js` | `test/unit/spec/authorization.js` |
-| `INV-003` | After a code redirect or a third-party callback, `code`, `id_token`, `email`, and `csrf_token` are removed from the visible URL when `history.replaceState` exists. | The `_cleanUrl` JSDoc lists history, copy and paste, and referrer leakage. | `src/authorization.js` | `test/unit/spec/authorization.js` |
+| `INV-003` | After a code redirect or a third-party callback passes its CSRF check, `code`, `id_token`, `email`, and `csrf_token` are removed from the visible URL when `history.replaceState` exists. A failed check or malformed `state` throws first and leaves them in place. | The `_cleanUrl` JSDoc lists history, copy and paste, and referrer leakage. | `src/authorization.js` | `test/unit/spec/authorization.js` |
 | `INV-004` | Once the startup exchange starts, `ready` becomes `true` whether it succeeds or fails. | The inline comment: mark ready regardless of the exchange result. | `src/authorization.js` | `test/unit/spec/authorization.js` |
 | `INV-005` | At most one QR polling cycle runs, and responses from a cancelled or superseded poll change nothing. | The JSDoc of `pollingId` and the duplicate guards. | `src/authorization.js` | `test/unit/spec/authorization.js` |
 | `INV-006` | The third-party callback rejects a missing stored CSRF token; the code redirect tolerates it. | The `_verifySecurityToken` JSDoc: direct navigation has no stored token, and `requireMatch` treats absence as failure. | `src/authorization.js` | `test/unit/spec/authorization.js` |
@@ -556,6 +556,10 @@ exchange, so the outcome stays `not_attempted` and `ready` stays `false`.
 - The `slow_down` branch reads `res.body.message`, doubles only the next poll interval, and emits no
   event. The README describes it as exponential. A 400 rejection without a body throws inside the
   catch handler, and polling stalls until the expiration timer fires.
+- The `authorizationSuccess` event carries the device token response body as `data` and is emitted
+  before `credentials.set`, so every listener on the shared `eventEmitter` receives the token.
+- A redirect or third-party callback that fails its CSRF check, or has a malformed `state`, throws
+  before `_cleanUrl`, so the code, `id_token`, or email stays in the URL.
 - `pollingCanceled` also fires after `authorizationSuccess` and before a terminal
   `authorizationFailure`, because `pollingTimer` still holds the fired timer id. It does not fire on
   timeout.
@@ -634,5 +638,6 @@ Coverage gaps are recorded above. The automation suite in `test/automation/spec/
 is skipped and no package script runs it, so it is not coverage evidence. A module specification is
 complete only when its public surface, invariants, failure modes, and test evidence agree with the
 implementation. Generator-side field measurement is complete (93.3%, assessed 2026-11-03). Independent
-semantic validation, drift recording, a characterization baseline, and promotion past Partial remain
-pending.
+semantic validation by runtime Codex Desktop, session `01a1a00a-3708-7d11-9bad-6309010d8dfb`, passed on
+2026-11-03 with no findings; drift recording, a characterization baseline, and promotion past Partial
+remain pending.

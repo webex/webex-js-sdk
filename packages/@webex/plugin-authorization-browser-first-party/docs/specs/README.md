@@ -45,8 +45,9 @@ package is a library.
 | `src/` | `webex.authorization` for the Webex web client: code login with PKCE and CSRF, startup completion, token exchange and refresh callback, third-party callback, QR device login, and logout redirect | Partial | `src/docs/README.md` |
 
 Generator-side field measurement for the module is complete (93.3%, assessed 2026-11-03). Independent
-semantic validation on a different runtime, drift recording, a characterization baseline, and promotion
-past Partial remain pending.
+semantic validation by runtime Codex Desktop, session `01a1a00a-3708-7d11-9bad-6309010d8dfb`, passed on
+2026-11-03 with no findings. Drift recording, a characterization baseline, and promotion past Partial
+remain pending.
 
 ## Change and verification routing
 

@@ -138,8 +138,10 @@ published contracts of this package.
   builds requests and navigations; credentials stores tokens, and webex-core adds transport.
 - Sensitive surfaces and data classes: authorization codes, PKCE verifiers, CSRF tokens, client
   secrets, supertokens, and email addresses (hashed before use).
-- Encryption and secret boundaries: secrets in flight are limited to the token-endpoint and
-  `oauth-helper` forms; the raw email is replaced by its SHA-256 in `initiateLogin`.
+- Encryption and secret boundaries: the CSRF token travels in the `state` of the authorize and
+  third-party login URLs; the PKCE verifier and client credentials travel only in the token-endpoint
+  and `oauth-helper` forms; the QR token response is also emitted on `eventEmitter`. The raw email is
+  replaced by its SHA-256 in `initiateLogin`.
 
 ### Observability and operations
 
@@ -239,21 +241,27 @@ flowchart LR
   IdB -->|code and state on redirect| Auth
   Store[sessionStorage single-use csrf and verifier] --> Auth
   Auth -->|code, code_verifier, client auth| Token[Token endpoint]
-  Token -->|supertoken| Cred[webex-core credentials]
+  Token -->|token body| Auth
   Auth -->|device_code, Basic client auth| Helper[oauth-helper]
-  Helper -->|supertoken| Cred
+  Helper -->|token body| Auth
+  Auth -->|set supertoken| Cred[webex-core credentials]
+  Auth -->|qRCodeLogin authorizationSuccess with token body| Listeners[eventEmitter listeners]
 ```
 
-- The browser tab is the trust boundary for the CSRF token and the PKCE verifier. Both stay in
-  `sessionStorage`, are removed when first read, and never appear in a request except the verifier in
-  the token form.
+- The browser tab holds the stored copies of the CSRF token and the PKCE verifier in `sessionStorage`,
+  and each is removed when first read. The CSRF token also travels in the base64url `state` of the
+  authorize and third-party login URLs and returns in the redirect. The verifier is sent only in the
+  token-exchange form; the authorize URL carries only its S256 `code_challenge`.
 - The redirect is checked against the stored CSRF token when one exists; the third-party callback
-  requires one. The authorization code, `id_token`, email, and CSRF token are scrubbed from the visible
-  URL afterwards.
+  requires one. Only after that check passes are the authorization code, `id_token`, email, and CSRF
+  token scrubbed from the visible URL, and only when `history.replaceState` exists. A missing or
+  mismatched token, or a malformed `state`, throws first and leaves those values in the URL.
 - Client authentication is public (`client_id` in the form) by default and HTTP Basic for confidential
   clients; the device flow always uses HTTP Basic with `client_secret`.
-- Tokens leave this module only through `webex.credentials.set`. The authoritative credential policy is
-  the webex-core credentials specification.
+- Tokens leave this module through `webex.credentials.set`, and for QR login also through the
+  `qRCodeLogin` `authorizationSuccess` event, whose `data` is the token response body. That event is
+  emitted before the supertoken is set and reaches every listener on the shared `eventEmitter`. The
+  authoritative credential policy is the webex-core credentials specification.
 
 ## Domain language
 

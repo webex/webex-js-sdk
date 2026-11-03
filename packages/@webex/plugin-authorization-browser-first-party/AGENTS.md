@@ -110,12 +110,15 @@ Definition of done:
   `sessionStorage` entries removed on first read. Keep the key names; a login started by one page load
   finishes on the next.
 - Never send the raw email. `initiateLogin` replaces it with its SHA-256 (`emailHash`, `state.emailhash`).
-- `initialize` must keep scrubbing `code`, `id_token`, `email`, and `csrf_token` from the URL, and must
-  set `ready` to `true` whether the startup exchange succeeds or fails.
+- After a successful CSRF check, `initialize` must keep scrubbing `code`, `id_token`, `email`, and
+  `csrf_token` from the URL (a failed check throws first and leaves them), and must set `ready` to
+  `true` whether the startup exchange succeeds or fails.
 - The third-party callback requires a stored CSRF token (`requireMatch`); do not relax it.
 - Token-endpoint requests use `shouldRefreshAccessToken: false` and client authentication from
   `getClientAuthenticationOptions`.
-- `eventEmitter` is shared by every instance in the page, and hosts switch on `eventType`.
+- `eventEmitter` is shared by every instance in the page, and hosts switch on `eventType`. The QR
+  `authorizationSuccess` event carries the token response body, so treat its listeners as token
+  consumers.
 
 ## 4. Testing Workflow
 
