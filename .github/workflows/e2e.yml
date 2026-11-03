@@ -30,6 +30,11 @@ on:
         description: 'Git ref/SHA to check out. Blank uses the triggering ref.'
         required: false
         type: string
+    secrets:
+      CC_E2E_ENV:
+        required: true
+      CALLING_E2E_ENV:
+        required: true
   workflow_dispatch:
     inputs:
       suite:

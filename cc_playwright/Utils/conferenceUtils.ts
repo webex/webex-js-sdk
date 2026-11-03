@@ -501,7 +501,9 @@ export const exitConferenceParticipantAndWrapup = async (
   await expect(exitButton).toBeVisible({timeout: AWAIT_TIMEOUT});
   await expect(exitButton).toBeEnabled({timeout: AWAIT_TIMEOUT});
   await exitButton.click();
-  await page.waitForTimeout(CONFERENCE_ACTION_SETTLE_TIMEOUT);
+  // The sample app swallows a rejected task.exitConference() in a catch, so the click alone proves
+  // nothing: wait for this agent's conference controls to go away before treating the exit as done.
+  await expectAgentNotInConference(page);
   const needsWrapup = await page
     .locator(CONFERENCE_SELECTORS.wrapup)
     .first()

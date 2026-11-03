@@ -52,6 +52,12 @@ const registerLifecycleTests = (conference: Conference) => {
       await conference.exitParticipant(3);
       await expectAgentInConference(conference.getAgentPage(1));
       await expectAgentInConference(conference.getAgentPage(2));
+      // Agents 1 and 2 were already in the conference before the exit, so only a survivor's roster
+      // proves agent 3 actually left.
+      await expectAgentNotInConferenceRoster(
+        conference.getAgentPage(1),
+        conference.getAgentName(3)
+      );
     });
 
     test('CTS-MPC-03 and CTS-MPC-04 should support owner handoff and participant replacement without restarting call', async () => {

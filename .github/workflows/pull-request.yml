@@ -380,4 +380,6 @@ jobs:
     uses: ./.github/workflows/e2e.yml
     with:
       ref: ${{ github.event.pull_request.head.sha }}
-    secrets: inherit
+    secrets:
+      CC_E2E_ENV: ${{ secrets.CC_E2E_ENV }}
+      CALLING_E2E_ENV: ${{ secrets.CALLING_E2E_ENV }}
