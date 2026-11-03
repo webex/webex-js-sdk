@@ -62,6 +62,7 @@ type WebexForUnhandledExceptionTelemetry = {
       unhandledExceptionTelemetry?: {
         enabled?: boolean;
         getMetadata?: () => Record<string, unknown> | undefined;
+        onStarted?: () => void;
       };
     };
   };
@@ -400,5 +401,13 @@ export function startUnhandledExceptionTelemetry(webex: WebexForUnhandledExcepti
     activeTelemetry = new UnhandledExceptionTelemetry(webex, window);
   } catch {
     logTelemetryFailure(webex, 'Failed to start exception telemetry.');
+
+    return;
+  }
+
+  try {
+    webex.config?.metrics?.unhandledExceptionTelemetry?.onStarted?.();
+  } catch {
+    logTelemetryFailure(webex, 'Failed to run exception telemetry start callback.');
   }
 }

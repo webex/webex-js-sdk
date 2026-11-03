@@ -48,6 +48,13 @@ Telemetry is disabled by default. Enable it with
 include application context such as `orgId` and `dataCenter`. Metadata must not contain personally
 identifiable information or credentials.
 
+Applications may also configure an optional `onStarted` callback before initializing the SDK.
+The reporter calls it synchronously, with no arguments, after both browser listeners are installed.
+The callback runs once for each successful reporter installation. It does not run when telemetry is
+disabled, the environment is unsupported, or installation fails. Callback exceptions are logged and
+contained; the installed reporter remains active. This notification confirms listener installation,
+not delivery of telemetry.
+
 ````js
 import Webex from 'webex';
 

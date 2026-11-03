@@ -99,6 +99,119 @@ describe('SDK unhandled exception telemetry', () => {
     }
   });
 
+  it('calls onStarted after both listeners are installed and can capture events immediately', async () => {
+    const listenersWhenStarted: number[][] = [];
+    const onStarted = sinon.spy(() => {
+      listenersWhenStarted.push([
+        browser.listenerCount('error'),
+        browser.listenerCount('unhandledrejection'),
+      ]);
+      browser.dispatch('error', {message: 'uncaught failure'});
+      browser.dispatch('unhandledrejection', {reason: 'rejected operation'});
+    });
+    const webex = makeWebex({
+      config: {metrics: {unhandledExceptionTelemetry: {enabled: true, onStarted}}},
+    });
+
+    assert.isUndefined(Telemetry.startUnhandledExceptionTelemetry(webex));
+    assert.calledOnceWithExactly(onStarted);
+    assert.deepEqual(listenersWhenStarted, [[1, 1]]);
+
+    await clock.tickAsync(1_000);
+
+    assert.deepEqual(
+      webex.internal.metrics.submitClientMetrics.args.map(
+        ([, properties]: [string, any]) => properties.eventPayload.error.kind
+      ),
+      ['error', 'unhandledrejection']
+    );
+    assert.notCalled(webex.logger.error);
+  });
+
+  it('calls onStarted once for each successful reporter installation', () => {
+    const onStarted = sinon.spy();
+    const webex = makeWebex({
+      config: {metrics: {unhandledExceptionTelemetry: {enabled: true, onStarted}}},
+    });
+
+    Telemetry.startUnhandledExceptionTelemetry(webex);
+    Telemetry.startUnhandledExceptionTelemetry(webex);
+
+    assert.deepEqual(onStarted.args, [[], []]);
+    assert.strictEqual(browser.listenerCount('error'), 1);
+    assert.strictEqual(browser.listenerCount('unhandledrejection'), 1);
+    assert.notCalled(webex.logger.error);
+  });
+
+  ['error', 'unhandledrejection'].forEach((eventName) => {
+    it(`does not call onStarted when installing the ${eventName} listener fails`, () => {
+      const onStarted = sinon.spy();
+      const webex = makeWebex({
+        config: {metrics: {unhandledExceptionTelemetry: {enabled: true, onStarted}}},
+      });
+
+      sinon.stub(browser, 'addEventListener').callThrough().withArgs(eventName).throws();
+
+      assert.isUndefined(Telemetry.startUnhandledExceptionTelemetry(webex));
+      assert.notCalled(onStarted);
+      assert.calledOnceWithExactly(
+        webex.logger.error,
+        'Unhandled Exception Telemetry -->',
+        'Failed to start exception telemetry.'
+      );
+    });
+  });
+
+  [false, true].forEach((loggerThrows) => {
+    it(`keeps reporting after onStarted throws when loggerThrows=${loggerThrows}`, async () => {
+      const onStarted = sinon.stub().throws(new Error('callback failed'));
+      const webex = makeWebex({
+        config: {metrics: {unhandledExceptionTelemetry: {enabled: true, onStarted}}},
+      });
+
+      if (loggerThrows) {
+        webex.logger.error.throws(new Error('logger failed'));
+      }
+
+      assert.isUndefined(Telemetry.startUnhandledExceptionTelemetry(webex));
+      assert.calledOnceWithExactly(onStarted);
+      assert.calledOnceWithExactly(
+        webex.logger.error,
+        'Unhandled Exception Telemetry -->',
+        'Failed to run exception telemetry start callback.'
+      );
+
+      browser.dispatch('error', {message: 'uncaught failure'});
+      browser.dispatch('unhandledrejection', {reason: 'rejected operation'});
+      await clock.tickAsync(1_000);
+
+      assert.deepEqual(
+        webex.internal.metrics.submitClientMetrics.args.map(
+          ([, properties]: [string, any]) => properties.eventPayload.error.kind
+        ),
+        ['error', 'unhandledrejection']
+      );
+    });
+  });
+
+  [undefined, {}].forEach((unsupportedWindow) => {
+    it(`does not call onStarted when window is ${
+      unsupportedWindow === undefined ? 'absent' : 'unsupported'
+    }`, () => {
+      const onStarted = sinon.spy();
+      const webex = makeWebex({
+        config: {metrics: {unhandledExceptionTelemetry: {enabled: true, onStarted}}},
+      });
+
+      Object.defineProperty(globalThis, 'window', {configurable: true, value: unsupportedWindow});
+
+      assert.isUndefined(Telemetry.startUnhandledExceptionTelemetry(webex));
+      assert.notCalled(onStarted);
+      assert.isEmpty(browser.registrations);
+      assert.notCalled(webex.logger.error);
+    });
+  });
+
   it('deduplicates seven matching errors and submits one sanitized event', async () => {
     const webex = makeWebex();
     const error = new TypeError(
@@ -165,6 +278,7 @@ describe('SDK unhandled exception telemetry', () => {
       runtime: 'browser',
       sdkVersion: '4.0.0',
     });
+    assert.notCalled(webex.logger.error);
   });
 
   it('keeps stackless errors from different source coordinates separate', async () => {
@@ -550,16 +664,18 @@ describe('SDK unhandled exception telemetry', () => {
   });
 
   it('does not install browser listeners when disabled', () => {
+    const onStarted = sinon.spy();
     const webex = makeWebex({
       config: {
         metrics: {
-          unhandledExceptionTelemetry: {enabled: false},
+          unhandledExceptionTelemetry: {enabled: false, onStarted},
         },
       },
     });
 
     Telemetry.startUnhandledExceptionTelemetry(webex);
     assert.isEmpty(browser.registrations);
+    assert.notCalled(onStarted);
   });
 
   it('stops an active reporter when a new SDK instance disables telemetry', async () => {
