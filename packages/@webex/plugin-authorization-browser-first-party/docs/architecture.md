@@ -140,9 +140,12 @@ published contracts of this package.
   secrets, supertokens, third-party `id_token` values, and email addresses (hashed in `initiateLogin`;
   returned raw by `handleThirdPartyCallback`).
 - Encryption and secret boundaries: the CSRF token travels in the `state` of the authorize and
-  third-party login URLs; the PKCE verifier and client credentials travel only in the token-endpoint
-  and `oauth-helper` forms; the QR token response is also emitted on `eventEmitter`. The raw email is
-  replaced by its SHA-256 in `initiateLogin`.
+  third-party login URLs; the PKCE verifier travels only in the token-exchange form; `client_secret`
+  travels only in the HTTP Basic `Authorization` header (confidential token requests and every
+  `oauth-helper` request), while a public client sends only `client_id` in the form; the QR token
+  response is also emitted on `eventEmitter`; the logout URL carries the refresh or access token that
+  `WebexCore#logout` places in `options.token`. The raw email is replaced by its SHA-256 in
+  `initiateLogin`.
 
 ### Observability and operations
 
@@ -248,6 +251,7 @@ flowchart LR
   Auth -->|set supertoken| Cred[webex-core credentials]
   Auth -->|qRCodeLogin authorizationSuccess with token body| Listeners[eventEmitter listeners]
   Auth -->|handleThirdPartyCallback returns idToken and email| Caller[Callback caller]
+  Auth -->|logout URL query with token| IdB
 ```
 
 - The browser tab holds the stored copies of the CSRF token and the PKCE verifier in `sessionStorage`,
@@ -259,13 +263,17 @@ flowchart LR
   token scrubbed from the visible URL, and only when `history.replaceState` exists. A missing or
   mismatched token, or a malformed `state`, throws first and leaves those values in the URL.
 - Client authentication is public (`client_id` in the form) by default and HTTP Basic for confidential
-  clients; the device flow always uses HTTP Basic with `client_secret`.
+  clients; the device flow always uses HTTP Basic with `client_secret`. Under HTTP Basic the secret is
+  in the `Authorization` header, never in the form body.
 - Tokens leave this module through `webex.credentials.set`, and for QR login also through the
   `qRCodeLogin` `authorizationSuccess` event, whose `data` is the token response body. That event is
   emitted before the supertoken is set and reaches every listener on the shared `eventEmitter`. After a
   successful CSRF check, `handleThirdPartyCallback` also returns the raw `id_token` and email from the
-  redirect URL directly to its caller, outside credentials. The authoritative credential policy is the
-  webex-core credentials specification.
+  redirect URL directly to its caller, outside credentials. On logout without `noRedirect`, the token
+  that `WebexCore#logout` defaults into `options.token` (refresh token, else access token) is spread
+  into the logout URL query by `buildLogoutUrl` and sent to the identity broker as a browser
+  navigation, so it also appears in the URL. The authoritative credential policy is the webex-core
+  credentials specification.
 
 ## Domain language
 
