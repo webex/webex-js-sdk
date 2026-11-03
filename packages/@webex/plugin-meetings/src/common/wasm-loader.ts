@@ -15,58 +15,17 @@ export type EmscriptenModuleFactory<TModule = unknown> = (moduleOverrides?: {
 type ModuleImporter = (jsUrl: string) => Promise<{default: EmscriptenModuleFactory}>;
 
 /**
- * Performs a genuine, un-bundled ES dynamic import of an emscripten loader at runtime.
+ * Natively imports an emscripten loader served at runtime.
  *
- * A plain `import(jsUrl)` cannot be used here: plugin-meetings ships pre-compiled to CommonJS, and
- * Babel rewrites `import()` into a webpack `require()`, which then tries (and fails) to bundle the
- * runtime-served loader. Instead we inject a `type="module"` <script> loaded from a Blob URL
- * (permitted by the app's `script-src blob:` CSP) whose body statically imports the target and
- * hands its namespace back via a one-shot global callback. The `import` lives inside a string, so
- * neither Babel nor webpack ever transforms or statically analyses it.
+ * This must stay a real `import()`: babel.config.js excludes `transform-dynamic-import` for this
+ * file so Babel doesn't rewrite it to `require()`, and `webpackIgnore` stops consumers' webpack
+ * from trying to bundle it. The URL is resolved against the document because a native `import()`
+ * would otherwise resolve relative paths against the SDK bundle's URL.
  * @param {string} jsUrl - URL of the emscripten loader module (e.g. '/assets/plugin-meetings/e2ee.js').
  * @returns {Promise<{default: EmscriptenModuleFactory}>}
  */
-function importModuleViaScriptTag(jsUrl: string): Promise<{default: EmscriptenModuleFactory}> {
-  return new Promise((resolve, reject) => {
-    const callbackKey = `__webexWasmModule_${Math.random().toString(36).slice(2)}`;
-    // The blob module's base URL is the (non-hierarchical) blob: scheme, so the import specifier
-    // must be an absolute URL — a root-relative path like '/assets/plugin-meetings/e2ee.js' cannot be resolved.
-    const absoluteJsUrl = new URL(jsUrl, window.location.href).href;
-    const blobUrl = URL.createObjectURL(
-      new Blob(
-        [
-          `import * as module from ${JSON.stringify(absoluteJsUrl)};\nwindow[${JSON.stringify(
-            callbackKey
-          )}](module);`,
-        ],
-        {type: 'text/javascript'}
-      )
-    );
-    const script = document.createElement('script');
-
-    const cleanup = () => {
-      delete (window as any)[callbackKey];
-      URL.revokeObjectURL(blobUrl);
-      script.remove();
-    };
-
-    (window as any)[callbackKey] = (module: {default: EmscriptenModuleFactory}) => {
-      cleanup();
-      resolve(module);
-    };
-
-    script.type = 'module';
-    script.src = blobUrl;
-    script.onerror = () => {
-      cleanup();
-      reject(new Error(`Failed to import module: ${jsUrl}`));
-    };
-
-    document.head.appendChild(script);
-  });
-}
-
-const defaultImporter: ModuleImporter = importModuleViaScriptTag;
+const nativeImport: ModuleImporter = (jsUrl) =>
+  import(/* webpackIgnore: true */ new URL(jsUrl, document.baseURI).href);
 
 interface CachedModule {
   instance: unknown | null;
@@ -89,7 +48,7 @@ export default class WasmLoader {
    * @param {Function} [options.importModule] - Override the dynamic import (used by tests).
    */
   constructor({importModule}: {importModule?: ModuleImporter} = {}) {
-    this.importModule = importModule || defaultImporter;
+    this.importModule = importModule || nativeImport;
   }
 
   /**
@@ -125,7 +84,7 @@ export default class WasmLoader {
       this.modules.set(wasmUrl, cached);
     }
 
-    if (cached.instance) {
+    if (cached.instance !== null) {
       return Promise.resolve(cached.instance as TModule);
     }
     if (!cached.loadPromise) {
@@ -141,17 +100,17 @@ export default class WasmLoader {
    * @returns {Promise<unknown>}
    */
   private async load(wasmUrl: string, cached: CachedModule): Promise<unknown> {
-    const jsUrl = wasmUrl.replace('.wasm', '.js');
+    const jsUrl = wasmUrl.replace(/\.wasm(?=[?#]|$)/, '.js');
 
     try {
       const {default: factory} = await this.importModule(jsUrl);
-      const module = await factory({
+      const instance = await factory({
         locateFile: (path: string) => (path.endsWith('.wasm') ? wasmUrl : path),
       });
 
-      cached.instance = module;
+      cached.instance = instance;
 
-      return module;
+      return instance;
     } catch (error) {
       // Reset so a failed load can be retried on the next get().
       cached.loadPromise = null;
@@ -159,7 +118,7 @@ export default class WasmLoader {
         `WasmLoader#load --> failed to load WASM module ${wasmUrl}: ${error}`
       );
 
-      throw new Error(`Failed to load WASM module ${wasmUrl}: ${error}`);
+      throw new Error(`Failed to load WASM module ${wasmUrl}: ${error}`, {cause: error});
     }
   }
 }

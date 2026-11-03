@@ -39,6 +39,24 @@ describe('plugin-meetings', () => {
         assert.strictEqual(result, moduleInstance);
       });
 
+      [
+        {
+          wasmUrl: 'https://cdn.example.com/x.wasm-assets/e2ee-0.0.1.wasm',
+          jsUrl: 'https://cdn.example.com/x.wasm-assets/e2ee-0.0.1.js',
+        },
+        {wasmUrl: '/assets/e2ee.wasm?v=1', jsUrl: '/assets/e2ee.js?v=1'},
+        {wasmUrl: '/assets/e2ee.wasm#hash', jsUrl: '/assets/e2ee.js#hash'},
+      ].forEach(({wasmUrl, jsUrl}) => {
+        it(`imports ${jsUrl} for ${wasmUrl}, replacing only the .wasm suffix`, async () => {
+          const loader = new WasmLoader({importModule});
+
+          await loader.get(wasmUrl);
+
+          assert.calledOnceWithExactly(importModule, jsUrl);
+          assert.equal(factory.firstCall.args[0].locateFile('e2ee.wasm'), wasmUrl);
+        });
+      });
+
       it('loads each url only once and returns the cached instance on subsequent calls', async () => {
         const loader = new WasmLoader({importModule});
 
@@ -83,13 +101,30 @@ describe('plugin-meetings', () => {
         importModule.onFirstCall().rejects(error).onSecondCall().resolves({default: factory});
         const loader = new WasmLoader({importModule});
 
-        await assert.isRejected(loader.get(WASM_URL), /Failed to load WASM module \/assets\/e2ee\.wasm/);
+        await assert.isRejected(
+          loader.get(WASM_URL),
+          /Failed to load WASM module \/assets\/e2ee\.wasm/
+        );
         assert.isFalse(loader.isLoaded(WASM_URL));
 
         const result = await loader.get(WASM_URL);
 
         assert.calledTwice(importModule);
         assert.strictEqual(result, moduleInstance);
+      });
+
+      it('preserves the underlying error as the cause when the factory fails', async () => {
+        const error = new Error('instantiate failed');
+        factory.rejects(error);
+        const loader = new WasmLoader({importModule});
+
+        const rejection = await loader.get(WASM_URL).catch((e) => e);
+
+        assert.equal(
+          rejection.message,
+          'Failed to load WASM module /assets/e2ee.wasm: Error: instantiate failed'
+        );
+        assert.strictEqual(rejection.cause, error);
       });
     });
 
