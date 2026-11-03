@@ -118,7 +118,10 @@ Definition of done:
   `getClientAuthenticationOptions`.
 - `eventEmitter` is shared by every instance in the page, and hosts switch on `eventType`. The QR
   `authorizationSuccess` event carries the token response body, so treat its listeners as token
-  consumers.
+  consumers. `handleThirdPartyCallback` returns the raw `idToken` and email to its caller.
+- The QR guards are partial: `pollingTimer` is `null` during the authorize request, and the poll-id
+  check stops filtering an old response once a newer poll starts. Add a fake-timer case before relying
+  on either.
 
 ## 4. Testing Workflow
 

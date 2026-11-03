@@ -137,7 +137,8 @@ published contracts of this package.
 - Trust boundaries and identity flow: see [Security architecture](#security-architecture). The plugin
   builds requests and navigations; credentials stores tokens, and webex-core adds transport.
 - Sensitive surfaces and data classes: authorization codes, PKCE verifiers, CSRF tokens, client
-  secrets, supertokens, and email addresses (hashed before use).
+  secrets, supertokens, third-party `id_token` values, and email addresses (hashed in `initiateLogin`;
+  returned raw by `handleThirdPartyCallback`).
 - Encryption and secret boundaries: the CSRF token travels in the `state` of the authorize and
   third-party login URLs; the PKCE verifier and client credentials travel only in the token-endpoint
   and `oauth-helper` forms; the QR token response is also emitted on `eventEmitter`. The raw email is
@@ -246,6 +247,7 @@ flowchart LR
   Helper -->|token body| Auth
   Auth -->|set supertoken| Cred[webex-core credentials]
   Auth -->|qRCodeLogin authorizationSuccess with token body| Listeners[eventEmitter listeners]
+  Auth -->|handleThirdPartyCallback returns idToken and email| Caller[Callback caller]
 ```
 
 - The browser tab holds the stored copies of the CSRF token and the PKCE verifier in `sessionStorage`,
@@ -260,8 +262,10 @@ flowchart LR
   clients; the device flow always uses HTTP Basic with `client_secret`.
 - Tokens leave this module through `webex.credentials.set`, and for QR login also through the
   `qRCodeLogin` `authorizationSuccess` event, whose `data` is the token response body. That event is
-  emitted before the supertoken is set and reaches every listener on the shared `eventEmitter`. The
-  authoritative credential policy is the webex-core credentials specification.
+  emitted before the supertoken is set and reaches every listener on the shared `eventEmitter`. After a
+  successful CSRF check, `handleThirdPartyCallback` also returns the raw `id_token` and email from the
+  redirect URL directly to its caller, outside credentials. The authoritative credential policy is the
+  webex-core credentials specification.
 
 ## Domain language
 
