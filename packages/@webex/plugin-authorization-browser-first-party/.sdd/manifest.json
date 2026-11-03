@@ -1,0 +1,395 @@
+{
+  "manifest_version": 1,
+  "repository": {
+    "name": "@webex/plugin-authorization-browser-first-party",
+    "purpose": "First-party (Webex web client) browser authorization plugin registered as webex.authorization. It starts OAuth authorization-code logins with CSRF state and PKCE (S256), completes them automatically on the redirect page load (CSRF check, URL scrubbing, best-effort preauth catalog, code exchange), supplies the browser token-refresh callback with public or confidential client authentication, handles the third-party login callback, runs device (QR code) login through the oauth-helper service with qRCodeLogin events, and redirects on logout.",
+    "category": "cat2-legacy",
+    "primary_languages": [
+      "javascript"
+    ]
+  },
+  "topology": "Orchestrator-plus-components",
+  "commands": {
+    "install": {
+      "command": "yarn",
+      "source_file": "../../../.github/workflows/deploy.yml",
+      "role": "install"
+    },
+    "compile": {
+      "command": "yarn workspace @webex/plugin-authorization-browser-first-party build:src",
+      "source_file": "package.json",
+      "role": "compile"
+    },
+    "build": {
+      "command": "yarn workspace @webex/plugin-authorization-browser-first-party build",
+      "source_file": "package.json",
+      "role": "package"
+    },
+    "unit-test": {
+      "command": "yarn workspace @webex/plugin-authorization-browser-first-party test:unit",
+      "source_file": "package.json",
+      "role": "unit-test"
+    },
+    "browser-test": {
+      "command": "yarn workspace @webex/plugin-authorization-browser-first-party test:browser",
+      "source_file": "package.json",
+      "role": "other"
+    },
+    "lint": {
+      "command": "yarn workspace @webex/plugin-authorization-browser-first-party test:style",
+      "source_file": "package.json",
+      "role": "lint"
+    },
+    "deploy": {
+      "command": "yarn workspace @webex/plugin-authorization-browser-first-party deploy:npm",
+      "source_file": "package.json",
+      "role": "deploy"
+    }
+  },
+  "toolchain": [
+    {
+      "name": "node",
+      "version": ">=8",
+      "origin": "repo-config",
+      "source_file": "package.json"
+    },
+    {
+      "name": "babel",
+      "version": "^7.17.10",
+      "origin": "repo-config",
+      "source_file": "package.json"
+    },
+    {
+      "name": "eslint",
+      "version": "^8.24.0",
+      "origin": "repo-config",
+      "source_file": "package.json"
+    },
+    {
+      "name": "prettier",
+      "version": "^2.7.1",
+      "origin": "repo-config",
+      "source_file": "package.json"
+    },
+    {
+      "name": "sinon",
+      "version": "^9.2.4",
+      "origin": "repo-config",
+      "source_file": "package.json"
+    }
+  ],
+  "tests": {
+    "unit": {
+      "command_ref": "unit-test",
+      "dir": "test/unit/spec",
+      "framework": "jest"
+    }
+  },
+  "quality_gates": {
+    "code_coverage": {
+      "origin": "none",
+      "declared_by": "rarajes2@cisco.com via bootstrap questionnaire (generator check: test:unit runs webex-legacy-tools with --runner jest; jest.config.js re-exports @webex/jest-config-legacy, which sets collectCoverage false and no coverageThreshold; package.json defines no coverage script)"
+    }
+  },
+  "coverage_status_definitions": {
+    "specced": ">=80% public surface specced, drift <5% - spec is authoritative",
+    "partial": "40-80% specced - spec is a hint, cross-check code",
+    "untracked": "<40% specced - code is the source of truth"
+  },
+  "spec_source_policy": {
+    "mode": "keep-separate",
+    "migrated_source_disposition": "retain",
+    "disposition_decided_by": "rarajes2@cisco.com",
+    "disposition_decided_at": "2026-11-03T05:46:20Z",
+    "decided_by": "rarajes2@cisco.com",
+    "decided_at": "2026-11-03T05:46:20Z",
+    "decision_record": "docs/adr/0001-retain-product-readme.md"
+  },
+  "spec_sources": [],
+  "modules": [
+    {
+      "path": "src",
+      "canonical_spec": "src/docs/README.md",
+      "coverage_status": "Partial",
+      "coverage_evidence": "Field coverage 93.3% (14/15) assessed 2026-11-03 by the generator; critical field coverage 8/8. The one WEAK field is test strategy: test/unit/spec/authorization.js covers startup completion, the initial-grant outcome, client authentication, login initiation, popup login, third-party login and callback, CSRF, PKCE, URL cleanup, and the QR device flow, but registration and proxies, the 400 grant-error mapping, the missing-code rejection, and the logout redirect have no unit case, the redirect-error case pins a TypeError rather than a grant error, and the automation suite is describe.skip. Held at Partial: independent validation passed on 2026-11-03 (Codex Desktop); no characterization baseline or spec-drift record exists.",
+      "last_assessed": "2026-11-03",
+      "contracts": {
+        "provides": [
+          "authorization-browser-first-party-sdk",
+          "authorization-plugin-events"
+        ],
+        "requires": [
+          "idbroker-oauth-endpoints",
+          "oauth-helper-device-authorization",
+          "webex-core-plugin-host",
+          "webex-core-credentials",
+          "webex-core-services",
+          "webex-common-utilities",
+          "crypto-js",
+          "uuid",
+          "lodash"
+        ]
+      },
+      "section_profile": {
+        "has_tiers": false,
+        "has_ui": false,
+        "crosses_service_boundaries": true,
+        "holds_client_state": true,
+        "enforces_domain_rules": true,
+        "is_concurrent_async": true,
+        "owns_persistence": false,
+        "stateful_transitions": true,
+        "exposes_wire_protocol": true,
+        "ui_multi_screen": false,
+        "large_data_model": false,
+        "returns_caller_errors": true,
+        "module_specific_conventions": true,
+        "published_package": true,
+        "embedded_in_host": false,
+        "has_design_tradeoff": true,
+        "resolved_by": "claude-code (code evidence; bootstrap questionnaire)",
+        "resolved_at": "2026-11-03T05:46:20Z",
+        "has_submodules": false,
+        "has_submodules_computed_by": "scripts/module_tree.py",
+        "has_submodules_computed_at": "2026-11-03T05:57:44Z"
+      }
+    }
+  ],
+  "contract_catalog": {
+    "index_path": "docs/architecture.md",
+    "definitions": {
+      "authorization-browser-first-party-sdk": {
+        "kind": "sdk",
+        "publication": "published",
+        "source_kind": "repository-path",
+        "source": "package.json",
+        "summary": "Published npm package. main is dist/index.js and devMain is src/index.js. Importing it registers Authorization as public plugin 'authorization' with proxies isAuthorizing and isAuthenticating and the credentials config defaults (clientType 'public', refreshCallback) from src/config.js; the first registration of the name wins. Named exports are Events, InitialAuthorizationCodeGrantOutcomes, and config. The plugin API on webex.authorization is initiateLogin, initiateAuthorizationCodeGrant, requestAuthorizationCodeGrant, initiateThirdPartyLogin, initiateThirdPartyLoginRedirect, handleThirdPartyCallback, initQRCodeLogin, cancelQRCodePolling, and logout. Per-method behavior is in src/docs/README.md; the class JSDoc marks it private to the Webex web client."
+      },
+      "authorization-plugin-events": {
+        "kind": "event",
+        "publication": "published",
+        "source_kind": "repository-path",
+        "source": "src/authorization.js",
+        "summary": "Events on webex.authorization.eventEmitter, which is shared by all instances: 'login' with eventType initiateLogin {hasEmail, hasState} or redirectToLoginUrl {loginUrl}, and 'qRCodeLogin' with eventType getUserCodeSuccess (userData), getUserCodeFailure, authorizationPending, authorizationSuccess, authorizationFailure (data), or pollingCanceled."
+      },
+      "idbroker-oauth-endpoints": {
+        "kind": "http",
+        "publication": "internal",
+        "source_kind": "external",
+        "source": "Identity broker authorize, logout, and token endpoints (URLs from webex-core credentials config; route definitions are not in this repository)",
+        "summary": "Login and logout pages are reached by navigation to URLs built by credentials. The token endpoint at config.tokenUrl receives authorization_code forms (redirect_uri, code, self_contained_token, optional code_verifier) and refresh_token forms, with client_id in the form for public clients or HTTP Basic client credentials otherwise; a 400 body carries an OAuth error string."
+      },
+      "oauth-helper-device-authorization": {
+        "kind": "http",
+        "publication": "internal",
+        "source_kind": "external",
+        "source": "oauth-helper service (reached as service name 'oauth-helper' through the services catalog; route definitions are not in this repository)",
+        "summary": "POST /actions/device/authorize with {client_id, scope} returns user_code, verification_uri, verification_uri_complete, device_code, interval, and expires_in; POST /actions/device/token with the device_code URN grant returns the token body, 428 while pending, or 400 with message slow_down. Both use HTTP Basic client credentials."
+      },
+      "webex-core-plugin-host": {
+        "kind": "sdk",
+        "publication": "published",
+        "source_kind": "external",
+        "source": "@webex/webex-core (workspace package; module spec consulted: packages/@webex/webex-core/src/docs/README.md)",
+        "summary": "Authorization extends WebexPlugin in namespace Credentials, is registered with registerPlugin (first-wins, proxies supported), sends requests with this.webex.request, reads this.webex.getWindow(), and is called by WebexCore#logout."
+      },
+      "webex-core-credentials": {
+        "kind": "sdk",
+        "publication": "published",
+        "source_kind": "external",
+        "source": "@webex/webex-core credentials (module spec consulted: packages/@webex/webex-core/src/lib/credentials/docs/README.md)",
+        "summary": "buildLoginUrl, buildThirdPartyLoginUrl, and buildLogoutUrl build URLs; credentials.set({supertoken}) stores tokens; grantErrors.select maps OAuth error strings; credentials calls config.refreshCallback to refresh a browser token; config.tokenUrl names the token endpoint."
+      },
+      "webex-core-services": {
+        "kind": "sdk",
+        "publication": "published",
+        "source_kind": "external",
+        "source": "@webex/webex-core services (module spec consulted: packages/@webex/webex-core/src/lib/services/docs/README.md)",
+        "summary": "collectPreauthCatalog(hint) is called before the startup exchange with {emailhash} or {orgId} or no hint; get('oauth-helper') supplies the helper URL embedded in the QR verification URL."
+      },
+      "webex-common-utilities": {
+        "kind": "sdk",
+        "publication": "published",
+        "source_kind": "external",
+        "source": "@webex/common (workspace package; module spec consulted: packages/@webex/common/src/docs/README.md)",
+        "summary": "oneFlight and whileInFlight decorate requestAuthorizationCodeGrant and initiateAuthorizationCodeGrant; encodeState and decodeState carry the OAuth state as base64url JSON."
+      },
+      "crypto-js": {
+        "kind": "sdk",
+        "publication": "published",
+        "source_kind": "external",
+        "source": "crypto-js@^4.1.1 (npm)",
+        "summary": "SHA256 hashes the email and the PKCE verifier; enc-base64url encodes the challenge and supplies the verifier alphabet."
+      },
+      "uuid": {
+        "kind": "sdk",
+        "publication": "published",
+        "source_kind": "external",
+        "source": "uuid@^3.3.2 (npm)",
+        "summary": "uuid.v4 generates the CSRF token."
+      },
+      "lodash": {
+        "kind": "sdk",
+        "publication": "published",
+        "source_kind": "external",
+        "source": "lodash@^4.17.21 (npm)",
+        "summary": "cloneDeep, isEmpty, omit, and isObject for option cloning, state validation, and URL cleanup."
+      }
+    }
+  },
+  "spec_policy": {
+    "require_what_and_why": true,
+    "require_provenance": true,
+    "protected_specs": [
+      "src/docs/README.md"
+    ]
+  },
+  "validation": {
+    "generator_runtime": "claude-code",
+    "generator_model": "claude-opus-5-5",
+    "generator_runtime_source": "host-metadata",
+    "source_commit": "108f963a6d7240fb9dab5ee1b0b09a7727646386",
+    "minimum_independence": "different-runtime",
+    "blocking_severities": [
+      "Blocking"
+    ],
+    "validator_runtime": "Codex Desktop",
+    "validator_run_id": "01a1a00a-3708-7d11-9bad-6309010d8dfb",
+    "validator_runtime_source": "host-metadata",
+    "runtime_fallback_tier": "different-runtime"
+  },
+  "layout": {
+    "sdd_root": ".sdd",
+    "docs_root": "docs",
+    "agent_entry_path": "AGENTS.md",
+    "standing_docs_root": "docs",
+    "spec_index_path": "docs/specs/README.md",
+    "module_docs_strategy": "source-local",
+    "module_docs_relative_path": "docs/README.md",
+    "module_docs_decision": {
+      "basis": "repo-standards-default",
+      "reason": "No module-local documentation existed. The source-local default gives src/docs/README.md. test:style runs eslint ./src/**/*.*, which only warns on the Markdown because the root .eslintignore ignores *.md, and build:src processes -js -ts only, so Markdown under src/ does not enter the build output.",
+      "decided_by": "rarajes2@cisco.com (bootstrap questionnaire)",
+      "decided_at": "2026-11-03T05:46:20Z"
+    },
+    "repo_context_decision": {
+      "path": ".repo-context.json",
+      "schema_path": "schemas/repo-context.schema.json",
+      "action": "create",
+      "schema_action": "create",
+      "reason": "Neither the operational context nor its schema existed in this package. The context is created from package evidence and the schema is copied from the repository-root .sdd/templates/repo-standards/schemas/repo-context.schema.json.",
+      "decided_by": "rarajes2@cisco.com (bootstrap questionnaire)",
+      "decided_at": "2026-11-03T05:46:20Z"
+    },
+    "artifact_decisions": [
+      {
+        "path": "docs/service.md",
+        "action": "omit",
+        "reason": "Library package, not a deployable service. package.json has no start script, container, or deployment descriptor.",
+        "decided_by": "claude-code (code evidence)",
+        "decided_at": "2026-11-03T05:46:20Z"
+      },
+      {
+        "path": "mkdocs.yml",
+        "action": "omit",
+        "reason": "No package-level documentation site exists. Documentation publishing stays with the workspace.",
+        "decided_by": "claude-code (code evidence)",
+        "decided_at": "2026-11-03T05:46:20Z"
+      },
+      {
+        "path": "api-specs/openapi.yaml",
+        "action": "omit",
+        "reason": "The package serves no HTTP routes. It is an HTTP client and browser-navigation library; its published surface is the npm export described by authorization-browser-first-party-sdk and the events described by authorization-plugin-events.",
+        "decided_by": "claude-code (code evidence)",
+        "decided_at": "2026-11-03T05:46:20Z"
+      },
+      {
+        "path": "SECURITY.md",
+        "action": "omit",
+        "reason": "No package-level security policy exists. The workspace owns security policy, and a per-package copy would duplicate it; security architecture is described in docs/architecture.md.",
+        "decided_by": "claude-code (code evidence)",
+        "decided_at": "2026-11-03T05:46:20Z"
+      },
+      {
+        "path": "CONTRIBUTING.md",
+        "action": "omit",
+        "reason": "Contribution instructions are owned at the workspace root and linked from this package README.md.",
+        "decided_by": "claude-code (code evidence)",
+        "decided_at": "2026-11-03T05:46:20Z"
+      },
+      {
+        "path": "CHANGELOG.md",
+        "action": "omit",
+        "reason": "Changelog generation is owned at the workspace root. This package has no changelog file.",
+        "decided_by": "claude-code (code evidence)",
+        "decided_at": "2026-11-03T05:46:20Z"
+      },
+      {
+        "path": "CTO_CHECKLIST.yml",
+        "action": "omit",
+        "reason": "The CTO readiness checklist applies to deployable services. This package is a library.",
+        "decided_by": "claude-code (code evidence)",
+        "decided_at": "2026-11-03T05:46:20Z"
+      },
+      {
+        "path": "schemas/cto-checklist.schema.json",
+        "action": "omit",
+        "reason": "Omitted together with CTO_CHECKLIST.yml.",
+        "decided_by": "claude-code (code evidence)",
+        "decided_at": "2026-11-03T05:46:20Z"
+      }
+    ],
+    "template_roots": {
+      "canonical": ".sdd/templates/repo-standards"
+    },
+    "contract_index_path": "docs/architecture.md",
+    "repo_skills_root": ".sdd/skills",
+    "monorepo_package": {
+      "package_path": "packages/@webex/plugin-authorization-browser-first-party",
+      "root_manifest_path": "../../../.sdd/manifest.json",
+      "templates_root_path": "../../../.sdd/templates/repo-standards"
+    }
+  },
+  "tooling": {
+    "sdlc_skills": {
+      "source_ref": "repo-annotation@2.3.1"
+    }
+  },
+  "coverage_ratchet": {
+    "enabled": true,
+    "waivers": []
+  },
+  "substrate": {
+    "source": "WebexTools/repo-standards@d89a7fe59126ae3ad9bac9ca352aa7f12b4c85dc",
+    "consumed": [
+      "@webex/eslint-config-legacy via .eslintrc.js",
+      "@webex/babel-config-legacy via babel.config.js",
+      "@webex/jest-config-legacy via jest.config.js",
+      "@webex/legacy-tools build and test runner via package.json",
+      "package README.md",
+      "Repo Standards templates at the monorepo root .sdd/templates/repo-standards, referred to through layout.monorepo_package.templates_root_path (this package holds no templates)"
+    ],
+    "compliance_tier": "baseline"
+  },
+  "section_profiles": {
+    "repo": {
+      "owns_datastore": false,
+      "holds_client_state": true,
+      "components_interact": true,
+      "domain_data_across_components": true,
+      "caches_data": false,
+      "observability_convention": true,
+      "deploys_to_infra": false,
+      "shared_base_libs": true,
+      "is_monorepo": false,
+      "multi_platform": false,
+      "published_package": true,
+      "embedded_in_host": false,
+      "cross_repo_deps_material": true,
+      "security_arch_warranted": true,
+      "exposes_commands_or_artifacts": true
+    },
+    "resolved_by": "claude-code (code evidence; bootstrap questionnaire)",
+    "resolved_at": "2026-11-03T05:46:20Z"
+  }
+}
