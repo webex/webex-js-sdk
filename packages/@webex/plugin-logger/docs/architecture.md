@@ -54,8 +54,8 @@ The package does not start a server, open a network connection, or persist data.
 - Use `webex.logger.on('log:record', listener)` for future retained records. Use `off('log:record', listener)` to remove the same listener.
 - Events run synchronously. Listeners must not throw or log back into the same logger synchronously. Nested events can reach later listeners out of order.
 - `config.logger.metadataField` selects caller metadata for `source`, `eventName` and `attributes`. Callers must supply safe values and leave them unchanged.
-- Optional `config.logger.consoleMethods` supplies original host console functions. Buffered calls use a supplied function to avoid a duplicate host-capture record.
-- Printed-only calls and missing supplied functions use normal console methods. Print and buffer thresholds stay unchanged.
+- Optional `config.logger.consoleMethods` maps normal method names to saved names on `console`. Buffered calls use the named function to avoid a duplicate host-capture record.
+- Printed-only calls and unavailable saved methods use normal console methods. Print and buffer thresholds stay unchanged.
 - The SDK owns retained history. Consumers own conversion and delivery. This package adds no OTel dependency, export queue or HTTP request.
 
 ## Resource inventory and responsibilities

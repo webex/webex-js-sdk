@@ -550,8 +550,14 @@ function makeLoggerMethod(level, impl, type, {neverPrint = false, alwaysBuffer =
           toPrint.unshift(this.webex.internal.device.url.slice(-3));
         }
         // Bypass host capture only when this call will also enter the SDK buffer.
-        // eslint-disable-next-line no-console
-        const consoleMethod = (shouldBuffer && this.config.consoleMethods?.[impl]) || console[impl];
+        const consoleMethodName = (shouldBuffer && this.config.consoleMethods?.[impl]) || impl;
+        /* eslint-disable no-console */
+        const consoleMethod =
+          typeof console[consoleMethodName] === 'function'
+            ? console[consoleMethodName]
+            : console[impl];
+        /* eslint-enable no-console */
+
         consoleMethod.apply(console, toPrint);
       }
 

@@ -1572,11 +1572,11 @@ describe('plugin-logger', () => {
     };
 
     const configureConsoleMethod = (level) => {
-      const method = sinon.spy();
+      const method = sandbox.stub(console, 'dir');
 
       webex.logger.config.consoleMethods = {
         ...webex.logger.config.consoleMethods,
-        [impl(level)]: method,
+        [impl(level)]: 'dir',
       };
 
       return method;
@@ -2145,8 +2145,8 @@ describe('plugin-logger', () => {
       });
     }
 
-    it('uses console methods supplied in startup configuration', () => {
-      const output = sinon.spy();
+    it('uses console method names supplied in startup configuration', () => {
+      const output = configureConsoleMethod('info');
       const configured = new MockWebex({
         children: {logger: Logger},
         config: {
@@ -2154,7 +2154,7 @@ describe('plugin-logger', () => {
             level: 'info',
             bufferLogLevel: 'info',
             historyLength: 10000,
-            consoleMethods: {info: output},
+            consoleMethods: {info: 'dir'},
           },
         },
       });
@@ -2194,6 +2194,38 @@ describe('plugin-logger', () => {
       assert.calledOnceWithExactly(console.info, 'wx-js-sdk', 'message');
       assert.notCalled(error);
       assert.deepEqual(webex.logger.getRecords(), [expectedRecord(1)]);
+    });
+
+    for (const savedMethod of [undefined, {}]) {
+      it(`uses the normal console method when the saved value is ${typeof savedMethod}`, () => {
+        webex.logger.config.level = 'info';
+        webex.logger.config.consoleMethods = {info: 'dir'};
+        sandbox.stub(console, 'dir').value(savedMethod);
+
+        webex.logger.info('message');
+        assert.calledOnceWithExactly(console.info, 'wx-js-sdk', 'message');
+        assert.strictEqual(console.info.firstCall.thisValue, console);
+        assert.deepEqual(webex.logger.getRecords(), [expectedRecord(1)]);
+      });
+    }
+
+    it('uses the saved method when it becomes available after configuration', () => {
+      webex.logger.config.level = 'info';
+      webex.logger.config.consoleMethods = {info: 'dir'};
+      sandbox.stub(console, 'dir').value(undefined);
+
+      webex.logger.info('before capture');
+      const output = sinon.spy();
+
+      console.dir = output;
+      webex.logger.info('after capture');
+      assert.calledOnceWithExactly(console.info, 'wx-js-sdk', 'before capture');
+      assert.calledOnceWithExactly(output, 'wx-js-sdk', 'after capture');
+      assert.strictEqual(output.firstCall.thisValue, console);
+      assert.deepEqual(webex.logger.getRecords(), [
+        expectedRecord(1, {values: ['before capture']}),
+        expectedRecord(2, {values: ['after capture']}),
+      ]);
     });
 
     for (const type of ['sdk', 'client']) {

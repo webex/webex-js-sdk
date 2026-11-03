@@ -116,7 +116,7 @@ Contract `plugin-logger-sdk` is published and its native artifact is `package.js
 - Records contain `sequence`, `timestamp`, `level`, `source` and `body`. Time is SDK acceptance time in Unix milliseconds. Sequence increases once per retained entry in one logger instance.
 - `body` keeps the existing formatted support text. Record fields do not change the support-buffer array layout.
 - `config.logger.metadataField` selects caller metadata for `source`, `eventName` and `attributes`. Text redaction does not sanitize metadata. Callers must supply safe values; callers and consumers must leave shared metadata unchanged.
-- Optional `config.logger.consoleMethods` supplies host console functions by method name. Buffered calls use a supplied function. Printed-only calls and missing functions use the normal console method. Print and buffer thresholds stay unchanged.
+- Optional `config.logger.consoleMethods` maps normal method names to saved names on `console`, for example `{info: 'stdinfo'}`. Buffered calls use the named function with `console` as its receiver. Printed-only calls and unavailable saved methods use the normal console method. Print and buffer thresholds stay unchanged.
 - Native events run synchronously. Listeners must not throw or log back into the same logger synchronously. Nested events can reach later listeners out of order; a throwing listener can stop later listeners.
 - Consumers own record conversion and delivery. The SDK adds no OTel dependency, export queue or timer. See `index.d.ts` for record types and the `record bridge` tests for this contract.
 
