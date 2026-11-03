@@ -10,6 +10,10 @@
       <h1>Configuration</h1>
     </header>
     <main>
+      <p>Configure one organization and its Service App token.</p>
+      {{#if errorMessage}}
+        <p role="alert">{{errorMessage}}</p>
+      {{/if}}
       <form action="/config" method="post">
         <div>
           <label for="clientId">Client ID:</label>
@@ -19,7 +23,15 @@
           <label for="clientSecret">Client Secret:</label>
           <input type="password" id="clientSecret" name="clientSecret" required />
         </div>
-        <button type="submit">Submit</button>
+        <div>
+          <label for="orgId">Organization ID:</label>
+          <input type="text" id="orgId" name="orgId" autocomplete="off" spellcheck="false" required />
+        </div>
+        <div>
+          <label for="refreshToken">Service App Refresh Token:</label>
+          <input type="password" id="refreshToken" name="refreshToken" autocomplete="off" required />
+        </div>
+        <button type="submit">Authorize and open data sources</button>
       </form>
     </main>
     <footer>

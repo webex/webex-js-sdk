@@ -9,10 +9,7 @@ describe('getUmdAssetsBaseUrl()', () => {
   it('builds a versioned UMD asset directory URL', () => {
     const url = getUmdAssetsBaseUrl('plugin-meetings', '3.12.0-next.252', '2.0.0');
 
-    assert.equal(
-      url,
-      'https://unpkg.com/webex@3.12.0-next.252/umd/assets/plugin-meetings/'
-    );
+    assert.equal(url, 'https://unpkg.com/webex@3.12.0-next.252/umd/assets/plugin-meetings/');
   });
 
   it('supports other plugin asset directory names', () => {
