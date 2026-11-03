@@ -39,7 +39,7 @@ export const MEDIA_ENCRYPTION_SERVICE = 'media-encryption';
 export const MEDIA_SERVICE_DEVICE_TYPE = 'MEDIA_SERVICE';
 
 /** Static asset filenames published with plugin-meetings. */
-export const E2EE_WASM_ASSET = 'e2ee.wasm';
+export const E2EE_WASM_ASSET = 'e2ee-0.0.1.wasm';
 
 /** Default URL of the e2ee WASM binary (the `.js` loader URL is derived from it). */
 export const E2EE_WASM_URL = `/assets/plugin-meetings/${E2EE_WASM_ASSET}`;
