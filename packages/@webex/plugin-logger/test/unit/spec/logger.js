@@ -1661,6 +1661,37 @@ describe('plugin-logger', () => {
       }
     });
 
+    nodeOnly(it)('uses the saved method for the resolved console fallback', () => {
+      const output = sandbox.stub(console, 'dir');
+      const {trace} = console;
+
+      console.trace = undefined;
+      try {
+        let FallbackLogger;
+
+        jest.isolateModules(() => {
+          // eslint-disable-next-line global-require, @typescript-eslint/no-var-requires
+          FallbackLogger = require('../../../src/logger').default;
+        });
+        const other = new MockWebex({children: {logger: FallbackLogger}});
+
+        Object.assign(other.logger.config, {
+          level: 'trace',
+          bufferLogLevel: 'trace',
+          consoleMethods: {log: 'dir'},
+        });
+        other.logger.trace('fallback');
+        assert.calledOnceWithExactly(output, 'wx-js-sdk', 'fallback');
+        assert.strictEqual(output.firstCall.thisValue, console);
+        assert.notCalled(console.log);
+        assert.deepEqual(other.logger.getRecords(), [
+          expectedRecord(1, {level: 'trace', values: ['fallback']}),
+        ]);
+      } finally {
+        console.trace = trace;
+      }
+    });
+
     it('keeps the configured history default at 10,000 entries', () => {
       assert.strictEqual(loggerConfig.logger.historyLength, 10000);
     });
@@ -1933,6 +1964,31 @@ describe('plugin-logger', () => {
       }
     }
 
+    for (const separate of [false, true]) {
+      it(`keeps acceptance order when the clock moves backward; separate=${separate}`, () => {
+        webex.logger.config.separateLogBuffers = separate;
+        webex.logger.info('first');
+        clock.setSystemTime(timestamp - 1000);
+        webex.logger.client_info('second');
+        clock.setSystemTime(timestamp + 2000);
+        webex.logger.info('third');
+
+        assert.deepEqual(webex.logger.getRecords(), [
+          expectedRecord(1, {values: ['first']}),
+          {
+            ...expectedRecord(2, {type: 'client', values: ['second']}),
+            timestamp: timestamp - 1000,
+            body: ',2023-11-14T22:13:19.123Z,WebClient,second',
+          },
+          {
+            ...expectedRecord(3, {values: ['third']}),
+            timestamp: timestamp + 2000,
+            body: ',2023-11-14T22:13:22.123Z,wx-js-sdk,third',
+          },
+        ]);
+      });
+    }
+
     it('creates fresh history wrappers and shares only caller metadata values', () => {
       const attributes = {nested: {value: 'kept'}};
       const metadata = {eventName: 'event', attributes};
@@ -2143,6 +2199,34 @@ describe('plugin-logger', () => {
         assert.deepEqual(webex.logger.getRecords(), [record]);
         assert.notCalled(output);
       });
+    }
+
+    for (const method of ['logToBuffer', 'client_logToBuffer']) {
+      for (const listenerThrows of [false, true]) {
+        it(`keeps ${method} silent with trace levels; listenerThrows=${listenerThrows}`, () => {
+          Object.assign(webex.logger.config, {
+            level: 'trace',
+            clientLevel: 'trace',
+            bufferLogLevel: 'silent',
+          });
+          const output = configureConsoleMethod('info');
+          const listener = sinon.spy();
+
+          webex.logger.on('log:record', listener);
+          if (listenerThrows) {
+            webex.logger.on('log:record', () => {
+              throw new Error('listener failed');
+            });
+          }
+          assert.doesNotThrow(() => webex.logger[method]('message'));
+          const record = expectedRecord(1, {type: method.startsWith('client_') ? 'client' : 'sdk'});
+
+          assert.calledOnceWithExactly(listener, record);
+          assert.deepEqual(webex.logger.getRecords(), [record]);
+          assert.notCalled(output);
+          Object.values(logSpies).forEach((logSpy) => assert.notCalled(logSpy));
+        });
+      }
     }
 
     it('uses console method names supplied in startup configuration', () => {
