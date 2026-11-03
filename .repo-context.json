@@ -110,6 +110,13 @@
           "packages/@webex/internal-plugin-wdm"
         ],
         "notes": "Onboarded package: its own AGENTS.md, docs/, and .sdd/manifest.json are routed from .sdd/manifest.json packages."
+      },
+      {
+        "name": "@webex/plugin-authorization-browser-first-party",
+        "paths": [
+          "packages/@webex/plugin-authorization-browser-first-party"
+        ],
+        "notes": "Onboarded package: its own AGENTS.md, docs/, and .sdd/manifest.json are routed from .sdd/manifest.json packages."
       }
     ],
     "source_surfaces": [
