@@ -1666,6 +1666,69 @@ describe('plugin-meetings', () => {
 
               assert.calledOnce(MeetingUtil.cleanUp);
             });
+
+            it('protect meetings with no locusUrl but active deferJoin from cleanup during syncMeetings', async () => {
+              const meetingWithActiveDeferJoin = {
+                locusUrl: null,
+                deferJoin: Promise.resolve(), // active deferJoin
+                sendCallAnalyzerMetrics: sinon.stub(),
+              };
+              const meetingWithoutDeferJoin = {
+                locusUrl: null,
+                deferJoin: undefined,
+                sendCallAnalyzerMetrics: sinon.stub(),
+              };
+
+              webex.meetings.meetingCollection.getAll = sinon
+                .stub()
+                .returns({
+                  protectedMeeting: meetingWithActiveDeferJoin,
+                  unprotectedMeeting: meetingWithoutDeferJoin,
+                });
+              webex.meetings.request.getActiveMeetings = sinon.stub().returns(
+                Promise.resolve({
+                  loci: [],
+                })
+              );
+
+              await webex.meetings.syncMeetings({keepOnlyLocusMeetings: true});
+
+              // Only the unprotected meeting should be destroyed
+              assert.calledOnceWithExactly(destroySpy, meetingWithoutDeferJoin);
+              assert.notCalled(webex.meetings.destroy.withArgs(meetingWithActiveDeferJoin));
+            });
+
+            it('destroy meetings with no locusUrl when deferJoin settles', async () => {
+              let deferJoinResolve;
+              const meetingWithSettledDeferJoin = {
+                locusUrl: null,
+                deferJoin: new Promise((resolve) => {
+                  deferJoinResolve = resolve;
+                }),
+                sendCallAnalyzerMetrics: sinon.stub(),
+              };
+
+              webex.meetings.meetingCollection.getAll = sinon
+                .stub()
+                .returns({
+                  meeting: meetingWithSettledDeferJoin,
+                });
+              webex.meetings.request.getActiveMeetings = sinon.stub().returns(
+                Promise.resolve({
+                  loci: [],
+                })
+              );
+
+              // Resolve the deferJoin
+              deferJoinResolve();
+              await testUtils.flushPromises();
+
+              // After deferJoin settles, it should be protected no longer
+              await webex.meetings.syncMeetings({keepOnlyLocusMeetings: true});
+
+              // Now it should be destroyed (after settles, deferJoin becomes undefined/falsy)
+              assert.calledOnceWithExactly(destroySpy, meetingWithSettledDeferJoin);
+            });
           });
         });
 
@@ -2459,21 +2522,15 @@ describe('plugin-meetings', () => {
             let resolveFetch;
             let rejectFetch;
 
-            // Mirrors createMeeting(): the tracked entry settles whether the fetch succeeds or fails,
-            // and removes itself from the set before it settles
+            // Uses the real trackMeetingInfoFetch helper from Meetings,
+            // ensuring tests verify the actual implementation
             const trackFetch = () => {
               const fetch = {};
               const fetchPromise = new Promise((resolve, reject) => {
                 fetch.resolve = resolve;
                 fetch.reject = reject;
               });
-              const trackedFetch = fetchPromise
-                .catch(() => undefined)
-                .then(() => {
-                  webex.meetings.meetingInfoFetchesInProgress.delete(trackedFetch);
-                });
-
-              webex.meetings.meetingInfoFetchesInProgress.add(trackedFetch);
+              webex.meetings.trackMeetingInfoFetch(fetchPromise);
 
               return fetch;
             };
@@ -2574,12 +2631,19 @@ describe('plugin-meetings', () => {
               const createdMeeting = {id: 'meeting-id', locusInfo: {...locusInfo, initialSetup}};
 
               // like the real create(), the meeting is only added to the collection after some async steps
+              // Use explicit async gate to demonstrate serialization requirement
+              let meetingAddedToCollection = false;
+              const meetingAddedGate = new Promise((resolve) => {
+                setTimeout(() => {
+                  meetingAddedToCollection = true;
+                  resolve();
+                }, 0);
+              });
               webex.meetings.create = sinon.stub().callsFake(async () => {
-                await Promise.resolve();
-                await Promise.resolve();
+                await meetingAddedGate;
                 webex.meetings.meetingCollection.getByKey = sinon
                   .stub()
-                  .callsFake((key) => (key === 'locusUrl' ? createdMeeting : undefined));
+                  .callsFake((key) => (key === 'locusUrl' && meetingAddedToCollection ? createdMeeting : undefined));
 
                 return createdMeeting;
               });

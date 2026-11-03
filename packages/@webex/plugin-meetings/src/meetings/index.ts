@@ -558,6 +558,92 @@ export default class Meetings extends WebexPlugin {
    * @private
    * @memberof Meetings
    */
+  /**
+   * Track a meeting-info fetch promise and automatically remove it from tracking
+   * when it settles. This ensures waiters see an up-to-date set of pending fetches.
+   * @param {Promise} fetchPromise - the fetch promise to track
+   * @private
+   * @memberof Meetings
+   */
+  private trackMeetingInfoFetch(fetchPromise: Promise<any>): void {
+    const trackedFetch = fetchPromise
+      .catch(() => undefined)
+      .then(() => {
+        this.meetingInfoFetchesInProgress.delete(trackedFetch);
+      });
+    this.meetingInfoFetchesInProgress.add(trackedFetch);
+  }
+
+  /**
+   * Wait for meeting-info fetches and active deferJoin promises to settle.
+   * After each settle phase, re-evaluates joining meetings to handle cases where
+   * new joins started during the previous wait phase.
+   * @private
+   * @memberof Meetings
+   */
+  private async waitForActiveMeetingWork(): Promise<void> {
+    while (this.meetingInfoFetchesInProgress.size > 0) {
+      // Fetches can start while waiting, so wait until none are left rather than for a snapshot
+      // eslint-disable-next-line no-await-in-loop
+      await Promise.all([...this.meetingInfoFetchesInProgress]);
+    }
+
+    // Re-evaluate active joining meetings after fetches settle.
+    // Treat failures as non-blocking: we'll try again to match the event
+    // in case a meeting was created and is now in the collection.
+    const joiningMeetings = Object.values(this.meetingCollection.getAll()).filter(
+      (meeting: any) => meeting?.deferJoin
+    ) as any[];
+
+    if (joiningMeetings.length > 0) {
+      await Promise.allSettled(joiningMeetings.map((meeting) => meeting.deferJoin));
+    }
+  }
+
+  /**
+   * Enqueue a deferred locus event for replay after all active meeting work settles.
+   * Handles the orchestration of waiting for fetches and joins, then replaying the event.
+   * @param {Object} data - the locus event to defer
+   * @param {boolean} useRandomDelayForInfo - whether to use random delay for meeting info fetch
+   * @private
+   * @memberof Meetings
+   */
+  private enqueueAndReplayDeferredLocusEvent(
+    data: LocusEvent,
+    useRandomDelayForInfo: boolean
+  ): void {
+    LoggerProxy.logger.info(
+      `Meetings:index#enqueueAndReplayDeferredLocusEvent --> no meeting found for locus event, waiting for ${this.meetingInfoFetchesInProgress.size} meeting info fetch(es) and active joining meetings before creating one`
+    );
+
+    // Replay deferred events one at a time, so a meeting created for one is in the collection before the next is matched
+    this.deferredLocusEvents = this.deferredLocusEvents
+      .then(async () => {
+        // Wait for fetches and any meetings that are actively joining (deferJoin)
+        await this.waitForActiveMeetingWork();
+        // Handled synchronously after work was seen complete, so no new work can start in between
+        return this.handleLocusEvent(data, useRandomDelayForInfo, true);
+      })
+      .catch((error) => {
+        LoggerProxy.logger.error(
+          `Meetings:index#enqueueAndReplayDeferredLocusEvent --> Error handling deferred locus event: ${error.message}`
+        );
+      });
+  }
+
+  /**
+   * Check if a meeting should be protected from cleanup during syncMeetings.
+   * Meetings with no locusUrl and an active deferJoin are protected because they
+   * are in the process of being created and may still match incoming locus events.
+   * @param {Object} meeting - the meeting to check
+   * @returns {boolean} true if the meeting should be protected from cleanup
+   * @private
+   * @memberof Meetings
+   */
+  private isMeetingProtectedFromCleanup(meeting: any): boolean {
+    return !meeting.locusUrl && meeting.deferJoin;
+  }
+
   private handleLocusEvent(
     data: LocusEvent,
     useRandomDelayForInfo = false,
@@ -600,28 +686,7 @@ export default class Meetings extends WebexPlugin {
       // A meeting this client is creating has no locusUrl, sipUri or meeting number until its meeting info arrives,
       // so this event can't be matched to it yet. Creating a meeting now would leave two meetings for the same locus,
       // so wait until no fetches are in progress and try to match the event again before treating it as a new meeting.
-      LoggerProxy.logger.info(
-        `Meetings:index#handleLocusEvent --> no meeting found for locus event, waiting for ${this.meetingInfoFetchesInProgress.size} meeting info fetch(es) in progress before creating one`
-      );
-
-      // Replay deferred events one at a time, so a meeting created for one is in the collection before the next is matched
-      this.deferredLocusEvents = this.deferredLocusEvents
-        .then(async () => {
-          // Fetches can start while this event waits, so wait until none are left rather than for a snapshot
-          while (this.meetingInfoFetchesInProgress.size > 0) {
-            // eslint-disable-next-line no-await-in-loop
-            await Promise.all([...this.meetingInfoFetchesInProgress]);
-          }
-
-          // Handled synchronously after the set was seen empty, so no new fetch can start in between
-          return this.handleLocusEvent(data, useRandomDelayForInfo, true);
-        })
-        .catch((error) => {
-          LoggerProxy.logger.error(
-            `Meetings:index#handleLocusEvent --> Error handling deferred locus event: ${error.message}`
-          );
-        });
-
+      this.enqueueAndReplayDeferredLocusEvent(data, useRandomDelayForInfo);
       return undefined;
     }
 
@@ -1916,15 +1981,8 @@ export default class Meetings extends WebexPlugin {
           const fetchMeetingInfoPromise = meeting.fetchMeetingInfo(meetingInfoOptions);
 
           // Locus-created meetings already carry their locus, so only track meetings created by this client.
-          // The tracked entry never rejects and removes itself before settling, so waiters see an up to date set.
           if (type !== DESTINATION_TYPE.LOCUS_ID) {
-            const trackedFetch = fetchMeetingInfoPromise
-              .catch(() => undefined)
-              .then(() => {
-                this.meetingInfoFetchesInProgress.delete(trackedFetch);
-              });
-
-            this.meetingInfoFetchesInProgress.add(trackedFetch);
+            this.trackMeetingInfoFetch(fetchMeetingInfoPromise);
           }
 
           await fetchMeetingInfoPromise;
@@ -2086,6 +2144,12 @@ export default class Meetings extends WebexPlugin {
             // @ts-ignore
             const {locusUrl, locusInfo} = meeting;
             if ((keepOnlyLocusMeetings || locusUrl) && !activeLocusUrl.includes(locusUrl)) {
+              // Protect meetings with no locusUrl and active deferJoin from cleanup
+              // They are in the process of being created and may still match incoming locus events
+              if (this.isMeetingProtectedFromCleanup(meeting)) {
+                continue;
+              }
+
               const globalMeetingId = locusInfo?.info?.globalMeetingId;
 
               if (
