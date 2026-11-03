@@ -287,7 +287,7 @@ Changing the entry order or the timestamp index breaks `formatLogs` merging and 
 - A string that contains an email has only its emails redacted. Its MTID is left in place, because the MTID branch is an `else`.
 - `/[Aa]uthorization/` does not match `AUTHORIZATION`.
 - Because `Error` arguments skip redaction (`MOD-007`), an error that is not a `WebexHttpError` and carries a token or email in its message reaches the console and buffer unchanged.
-- `logToBuffer` and `client_logToBuffer` retain info records without printing, regardless of the configured level.
+- `logToBuffer` and `client_logToBuffer` always buffer messages at `info` severity, even when logging is set to `silent`, because `alwaysBuffer` bypasses the configured level check. `neverPrint` prevents console output.
 - With `separateLogBuffers`, `clientHistoryLength` caps the SDK buffer as well as the client buffer.
 - `config.level` is not validated against `levels`. An unknown value makes `precedence[...]` `undefined`, so nothing prints.
 - `src/config.js` reads `process.env.WEBEX_LOG_LEVEL` once at module load. The default `historyLength` is `10000`.
