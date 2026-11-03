@@ -40,6 +40,11 @@ export class MercuryPlugin extends (WebexPlugin as any) {
     return this._mercury?.socket;
   }
 
+  /** The active retry controller for the primary Mercury connection. */
+  get backoffCall(): any {
+    return this._mercury?.backoffCall;
+  }
+
   /** Cluster service URLs received from registration status event. */
   get localClusterServiceUrls(): any {
     return this._mercury?.localClusterServiceUrls;

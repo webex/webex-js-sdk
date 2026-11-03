@@ -5,6 +5,12 @@
  */
 export interface ListConfig {
   /**
+   * Whether to use only committed changes for documentation-only detection.
+   * Applies when `since` is provided. Other change sets use Yarn's selection.
+   */
+  committed?: boolean;
+
+  /**
    * Whether to output the results as JSON.
    */
   json?: boolean;

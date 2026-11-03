@@ -6,6 +6,7 @@
 
 - [Install](#install)
 - [Usage](#usage)
+- [KMS certificate validation](#kms-certificate-validation)
 - [API Docs and Sample App](#api-docs-and-sample-app)
 - [Sample Code](#sample-code)
 - [Contribute](#contribute)
@@ -36,6 +37,42 @@ In addition to the module consumption via NPMJS, this module can also be consume
 ## Usage
 
 This is a plugin for the Cisco Webex JS SDK. Please see our [developer portal](https://developer.webex.com/) and the [API reference](https://webex.github.io/webex-js-sdk/plugin-encryption/) for full details.
+
+## KMS certificate validation
+
+KMS certificate-chain validation is disabled by default. To enable it, set
+`config.encryption.shouldValidateKMSCertificate` to `true`. For example, with
+trusted CA roots supplied by your application:
+
+```js
+const webex = Webex.init({
+  config: {
+    encryption: {
+      shouldValidateKMSCertificate: true,
+      caroots, // Array of raw base64-encoded CA root certificates.
+    },
+  },
+  credentials: {access_token},
+});
+```
+
+Supplying `caroots` alone does not enable validation. Once enabled, validation
+fails closed if trusted roots cannot be loaded or the KMS certificate chain is
+untrusted. If roots are not supplied, the SDK loads and verifies its signed CA
+roots asset. See the [KMS configuration and asset-hosting guide](../internal-plugin-encryption/README.md#kms-certificate-validation)
+for download configuration and offline deployments.
+
+To observe a separate signed root bundle, set
+`config.encryption.reportOnlyAssetsBaseUrl` to its asset directory. This option
+has no default URL. It starts a background check after mandatory and enforced
+validation succeed. Download, verification and chain failures report metrics
+without delaying or rejecting setup. It works while enforcement is enabled,
+including when `caroots` supplies a different enforced root set. The explicit URL
+is honored in both browsers and Node.
+
+Existing `carootsReportOnly` arrays retain their awaited behavior and take
+precedence over the new report-only URL. See the configuration guide above for
+asset filenames, verification, source caching and background-reporting limits.
 
 ## API Docs and Sample App
 
