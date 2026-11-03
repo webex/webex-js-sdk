@@ -52,8 +52,9 @@ standard browser authorization plugin when it is imported first, as `webex-first
 the page loads with `?code=`, runs device (QR) login, handles the third-party login callback, and
 redirects on logout.
 
-The plugin owns flows, not tokens. Every successful flow ends with
-`webex.credentials.set({supertoken})`, and URL builders, token refresh scheduling, and OAuth error
+The plugin owns flows, not tokens. A successful authorization-code exchange or device poll ends with
+`webex.credentials.set({supertoken})`; the third-party callback returns its values to the caller and
+logout only navigates. URL builders, token refresh scheduling, and OAuth error
 classes stay in webex-core credentials. The package adds the browser `refreshCallback` and the
 `clientType` default to the shared `credentials` configuration.
 
@@ -250,6 +251,7 @@ flowchart LR
   Helper -->|token body| Auth
   Auth -->|set supertoken| Cred[webex-core credentials]
   Auth -->|qRCodeLogin authorizationSuccess with token body| Listeners[eventEmitter listeners]
+  Auth -->|login redirectToLoginUrl with full login URL| Listeners
   Auth -->|handleThirdPartyCallback returns idToken and email| Caller[Callback caller]
   Auth -->|logout URL query with token| IdB
 ```
@@ -258,6 +260,9 @@ flowchart LR
   and each is removed when first read. The CSRF token also travels in the base64url `state` of the
   authorize and third-party login URLs and returns in the redirect. The verifier is sent only in the
   token-exchange form; the authorize URL carries only its S256 `code_challenge`.
+- Before navigating, `initiateAuthorizationCodeGrant` emits the full login URL, with the CSRF token,
+  caller state, and email hash in `state`, as the `login` `redirectToLoginUrl` event. Every `login`
+  listener on the shared `eventEmitter` receives it, a trust boundary inside the page.
 - The redirect is checked against the stored CSRF token when one exists; the third-party callback
   requires one. Only after that check passes are the authorization code, `id_token`, email, and CSRF
   token scrubbed from the visible URL, and only when `history.replaceState` exists. A missing or

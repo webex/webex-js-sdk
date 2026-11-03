@@ -133,7 +133,7 @@ the [package architecture](../../docs/architecture.md#public-and-consumer-surfac
 
 | Dependency | Why it is required | Failure behavior |
 | ---------- | ------------------ | ---------------- |
-| `@webex/webex-core` credentials (module spec consulted) | `buildLoginUrl`, `buildThirdPartyLoginUrl`, `buildLogoutUrl`, `credentials.set({supertoken})`, `tokenUrl`, and `grantErrors` | A builder throw rejects `initiateThirdPartyLoginRedirect`; it propagates synchronously from `initiateAuthorizationCodeGrant` and `logout` |
+| `@webex/webex-core` credentials (module spec consulted) | `buildLoginUrl`, `buildThirdPartyLoginUrl`, `buildLogoutUrl`, `credentials.set({supertoken})`, `tokenUrl`, and `grantErrors` | A builder throw rejects `initiateThirdPartyLoginRedirect` and, through the `whileInFlight` promise executor, `initiateAuthorizationCodeGrant` and `initiateLogin`, leaving `isAuthorizing` `true`; it propagates synchronously from `logout` |
 | `@webex/webex-core` services (module spec consulted) | `collectPreauthCatalog` before the startup exchange; `get('oauth-helper')` for the QR verification URL | Catalog failure is swallowed; the exchange still runs |
 | `@webex/webex-core` plugin host (module spec consulted) | `WebexPlugin`, `registerPlugin`, `this.webex.request`, `getWindow()`, namespaced `config`, and `logger` | Request rejections are handled per flow (see Caller-visible failure modes) |
 | `@webex/common` (module spec consulted) | `oneFlight`, `whileInFlight`, `encodeState`, `decodeState` | A malformed `state` makes `decodeState` throw |
@@ -168,7 +168,7 @@ the [package architecture](../../docs/architecture.md#public-and-consumer-surfac
 | `MOD-018` | `initQRCodeLogin` emits `getUserCodeFailure` when a polling timer exists; otherwise it POSTs `client_id` and `scope` to `oauth-helper` `/actions/device/authorize` with HTTP Basic client credentials, emits `getUserCodeSuccess` with `userCode`, `verificationUri`, and the rewritten `verificationUriComplete`, and starts polling; a rejection emits `getUserCodeFailure` with the response body. The guard checks only `pollingTimer`, so a second call while the first authorize request is in flight sends another authorize request and emits another `getUserCodeSuccess`. | The JSDoc: obtain codes for the QR display, then poll. | `src/authorization.js` | `test/unit/spec/authorization.js` "should prevent concurrent request if there is already a polling request", "should send correct request parameters to the API", "should emit getUserCodeFailure event" | Device flow uses Basic auth regardless of `clientType`; the in-flight authorize window is untested | Present |
 | `MOD-019` | A verification URI carrying a `userCode` parameter is rewritten to `https://web.webex.com/deviceAuth?usercode=<code>&oauthhelper=<oauth-helper URL>`; otherwise it is returned unchanged. | The JSDoc: scanning the QR code deep-links into Webex web with the user code and helper base URL. | `src/authorization.js` | `test/unit/spec/authorization.js` "should generate a QR code URL when a userCode is present", "should return the original verificationUrl when userCode is not present" | Host is hard-coded | Present |
 | `MOD-020` | `_startQRCodePolling` emits `authorizationFailure` without `device_code` or when already polling; otherwise it arms an `expires_in` (default 300 s) timeout and polls `/actions/device/token` every `interval` (default 2 s). | The JSDoc: interval from the server, global timeout for the attempt. | `src/authorization.js` | `test/unit/spec/authorization.js` "requires a deviceCode", "should respect polling interval", "should timeout after expires_in seconds", "should prevent concurrent polling attempts if this is already a polling request" | None | Present |
-| `MOD-021` | A poll success emits `authorizationSuccess`, sets the supertoken, then cancels (emitting `pollingCanceled`). A 400 with `body.message === 'slow_down'` schedules only the next poll at twice the base interval. A 428 emits `authorizationPending` and polls again. Any other rejection cancels (emitting `pollingCanceled`) and then emits `authorizationFailure`. A timeout cancels without `pollingCanceled` and emits `authorizationFailure` "Authorization timed out". | The JSDoc lists the polling behavior; `slow_down` "doubles interval once". | `src/authorization.js` | `test/unit/spec/authorization.js` "should send correct request parameters to the API", "should skip a interval when server ask for slow_down", "should timeout after expires_in seconds" | Terminal non-428 failure ordering is not asserted | Present |
+| `MOD-021` | A poll success emits `authorizationSuccess`, sets the supertoken, then cancels (emitting `pollingCanceled`). A 400 with `body.message === 'slow_down'` schedules only the next poll at twice the base interval. A 428 emits `authorizationPending` and polls again. Any other rejection cancels (emitting `pollingCanceled`) and then emits `authorizationFailure`. A timeout cancels without `pollingCanceled` and emits `authorizationFailure` "Authorization timed out". If an `authorizationSuccess` listener throws, the `.catch` receives that error: the supertoken is not set, and the poll cancels (emitting `pollingCanceled`) and emits `authorizationFailure` with `data` `undefined`. | The JSDoc lists the polling behavior; `slow_down` "doubles interval once". | `src/authorization.js` | `test/unit/spec/authorization.js` "should send correct request parameters to the API", "should skip a interval when server ask for slow_down", "should timeout after expires_in seconds" | Terminal non-428 failure ordering and the throwing-listener path are not asserted | Present |
 | `MOD-022` | A poll response that settles after `cancelQRCodePolling` is ignored until a newer poll request starts. The check compares the shared `currentPollingId` and `pollingId`, not an id captured per request, so an old response that settles after a replacement poll has sent its first request is processed as current: it can emit `authorizationSuccess`, set its token, and cancel the replacement. | The JSDoc of `pollingId`: safely ignore late poll responses after a cancel or reset. | `src/authorization.js` | `test/unit/spec/authorization.js` "should ignore the response from the previous polling" (the old response settles before the replacement's first request), "should stop polling after cancellation" | The delayed-response case is untested, and the JSDoc goal is not met for it | Present |
 | `MOD-023` | `cancelQRCodePolling(withCancelEvent = true)` emits `pollingCanceled` only when a polling timer is set and the flag is true, then clears both timers and the current poll id. | Callers need a cancel signal, and the timeout path suppresses it. | `src/authorization.js` | `test/unit/spec/authorization.js` "should clear interval and reset polling request", "should handle cancellation when no polling is in progress" | None | Present |
 | `MOD-024` | `_generateCodeChallenge` fills 128 bytes from `window.crypto.getRandomValues`, maps each into the 64-character base64url alphabet, stores the 128-character verifier in `oauth2-code-verifier`, and returns its SHA-256 base64url challenge. | The JSDoc cites RFC 7636 and a cryptographically secure random source. | `src/authorization.js` | `test/unit/spec/authorization.js` "uses a 128-byte CSPRNG and does not use insecure random generators", "generates a 128-character verifier from the base64url-safe alphabet", "stores the verifier and returns its SHA-256 base64url challenge" | None | Present |
@@ -192,7 +192,8 @@ code. The exchange is decorated with `oneFlight` and `whileInFlight('isAuthorizi
 The device flow stays on one page and is event-driven. `initQRCodeLogin` obtains codes from
 `oauth-helper`, emits them for the host to render, and `_startQRCodePolling` polls the device token
 endpoint on timers. A poll id guards against late responses, and an expiration timer bounds the attempt.
-Results reach the host only through `qRCodeLogin` events on `eventEmitter`.
+Progress reaches the host only through `qRCodeLogin` events on `eventEmitter`. A successful poll also
+passes the token body, after the `authorizationSuccess` event, to `webex.credentials.set`.
 
 The third-party flow mirrors the code flow without PKCE or a token exchange. The callback returns the
 parsed `id_token` to the caller, who exchanges it elsewhere.
@@ -576,7 +577,11 @@ exchange, so the outcome stays `not_attempted` and `ready` stays `false`.
 - `clientType` defaults to `'public'` in `src/config.js`. A configuration that sets `client_secret`
   without `clientType` still uses public form authentication for the code exchange and refresh.
 - `isAuthorizing` around `initiateAuthorizationCodeGrant` is true only until its already-resolved
-  promise settles, not until the redirect completes.
+  promise settles, not until the redirect completes. If `buildLoginUrl` throws, the call rejects
+  instead of throwing, and `isAuthorizing` stays `true` because the throw precedes the decorator's
+  cleanup.
+- A `qRCodeLogin` listener that throws on `authorizationSuccess` prevents `credentials.set`, and the
+  same poll then emits `pollingCanceled` and `authorizationFailure`.
 - `_cleanUrl` keeps every other query parameter, including `error`.
 - `logout` returns `undefined` although its JSDoc says `Promise<void>`.
 - The QR verification host `https://web.webex.com/deviceAuth` is hard-coded.
@@ -595,7 +600,8 @@ exchange, so the outcome stays `not_attempted` and `ready` stays `false`.
   exchange and refresh stay consistent (`src/config.js`).
 - Do: keep `requestAuthorizationCodeGrant` decorated with `whileInFlight('isAuthorizing')` and
   `oneFlight` (`INV-007`, Concurrency and reactive flow).
-- Do not: send the raw email anywhere (`INV-002`).
+- Do not: send the caller's raw email from `initiateLogin` or its preauth state (`INV-002`); the
+  third-party callback's returned `email` is a separate, supported field.
 - Do not: relax `requireMatch` on the third-party callback (`INV-006`).
 
 ## Export stability

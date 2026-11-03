@@ -109,7 +109,8 @@ Definition of done:
 - The CSRF token (`oauth2-csrf-token`) and PKCE verifier (`oauth2-code-verifier`) are single-use
   `sessionStorage` entries removed on first read. Keep the key names; a login started by one page load
   finishes on the next.
-- Never send the raw email. `initiateLogin` replaces it with its SHA-256 (`emailHash`, `state.emailhash`).
+- `initiateLogin` must never send the caller's raw email; it sends only its SHA-256 (`emailHash`,
+  `state.emailhash`). This does not cover the callback email that `handleThirdPartyCallback` returns.
 - After a successful CSRF check, `initialize` must keep scrubbing `code`, `id_token`, `email`, and
   `csrf_token` from the URL (a failed check throws first and leaves them), and must set `ready` to
   `true` whether the startup exchange succeeds or fails.
@@ -118,8 +119,11 @@ Definition of done:
   `getClientAuthenticationOptions`.
 - `eventEmitter` is shared by every instance in the page, and hosts switch on `eventType`. The QR
   `authorizationSuccess` event carries the token response body, so treat its listeners as token
-  consumers. `handleThirdPartyCallback` returns the raw `idToken` and email to its caller, and the
-  logout redirect URL carries the `options.token` that `WebexCore#logout` supplies.
+  consumers. The `login` `redirectToLoginUrl` event carries the full login URL, including the CSRF
+  token and email hash. `handleThirdPartyCallback` returns the raw `idToken` and email to its caller,
+  and the logout redirect URL carries the `options.token` that `WebexCore#logout` supplies.
+- QR success emits `authorizationSuccess` before `credentials.set`; a listener that throws skips the
+  set and yields `pollingCanceled` and `authorizationFailure` with no `data`. This is untested.
 - The QR guards are partial: `pollingTimer` is `null` during the authorize request, and the poll-id
   check stops filtering an old response once a newer poll starts. Add a fake-timer case before relying
   on either.
