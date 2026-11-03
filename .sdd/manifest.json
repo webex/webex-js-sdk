@@ -66,12 +66,38 @@
   ],
   "packages": [
     {
+      "id": "@webex/internal-plugin-feature",
+      "path": "packages/@webex/internal-plugin-feature",
+      "manifest": "packages/@webex/internal-plugin-feature/.sdd/manifest.json",
+      "agent_entry": "packages/@webex/internal-plugin-feature/AGENTS.md",
+      "index": "packages/@webex/internal-plugin-feature/docs/index.md",
+      "onboarded_at": "2026-10-28T00:00:00Z",
+      "onboarded_by": "claude-code"
+    },
+    {
       "id": "@webex/internal-plugin-user",
       "path": "packages/@webex/internal-plugin-user",
       "manifest": "packages/@webex/internal-plugin-user/.sdd/manifest.json",
       "agent_entry": "packages/@webex/internal-plugin-user/AGENTS.md",
       "index": "packages/@webex/internal-plugin-user/docs/index.md",
       "onboarded_at": "2026-10-22T00:00:00Z",
+      "onboarded_by": "claude-code"
+    },
+    {
+      "id": "@webex/internal-plugin-wdm",
+      "path": "packages/@webex/internal-plugin-wdm",
+      "manifest": "packages/@webex/internal-plugin-wdm/.sdd/manifest.json",
+      "agent_entry": "packages/@webex/internal-plugin-wdm/AGENTS.md",
+      "index": "packages/@webex/internal-plugin-wdm/docs/index.md",
+      "onboarded_at": "2026-10-28T14:44:56Z",
+    },
+    {
+      "id": "@webex/plugin-authorization-browser-first-party",
+      "path": "packages/@webex/plugin-authorization-browser-first-party",
+      "manifest": "packages/@webex/plugin-authorization-browser-first-party/.sdd/manifest.json",
+      "agent_entry": "packages/@webex/plugin-authorization-browser-first-party/AGENTS.md",
+      "index": "packages/@webex/plugin-authorization-browser-first-party/docs/index.md",
+      "onboarded_at": "2026-11-03T05:46:20Z",
       "onboarded_by": "claude-code"
     }
   ],
@@ -81,7 +107,7 @@
   },
   "provenance": {
     "generated_by": "claude-code",
-    "approved_by": "riag@cisco.com",
-    "updated_at": "2026-10-22T00:00:00Z"
+    "approved_by": "rarajes2@cisco.com",
+    "updated_at": "2026-11-03T05:46:20Z"
   }
 }

@@ -127,6 +127,7 @@ describe('release change selection', () => {
     write(file);
 
     assert.strictEqual(await getReleaseRef(base), shouldRelease ? base : undefined);
+    assert.isUndefined(await getReleaseRef(base, true));
   });
 
   it.each([false, true])('should retain %s staged source changes', async (staged) => {
@@ -137,27 +138,62 @@ describe('release change selection', () => {
     }
 
     assert.strictEqual(await getReleaseRef(base), base);
+    assert.isUndefined(await getReleaseRef(base, true));
+  });
+
+  it.each([false, true])('should omit docs-only commits with a %s staged manifest rewrite', async (staged) => {
+    const file = 'packages/example/package.json';
+    const manifest = {
+      name: '@fixture/example',
+      browser: { './b.js': './b.browser.js', './a.js': './a.browser.js' },
+    };
+
+    write(file, JSON.stringify(manifest));
+    commit();
+    const reference = git('rev-parse', 'HEAD');
+
+    write('packages/example/README.md');
+    commit();
+    write(file, JSON.stringify({
+      ...manifest,
+      browser: { './a.js': './a.browser.js', './b.js': './b.browser.js' },
+    }));
+
+    if (staged) {
+      git('add', file);
+    }
+
+    assert.strictEqual(await getReleaseRef(reference), reference);
+    assert.isUndefined(await getReleaseRef(reference, true));
+  });
+
+  it('should retain committed code when a local edit restores the old contents', async () => {
+    write('packages/example/src/index.js', 'module.exports = 2;\n');
+    commit();
+    write('packages/example/src/index.js', 'module.exports = 1;\n');
+
+    assert.strictEqual(await getReleaseRef(base, true), base);
   });
 
   it('should return no comparison commit for an empty change set', async () => {
     assert.isUndefined(await getReleaseRef(base));
   });
 
-  it('should retain code in a push whose last commit changes only docs', async () => {
+  it.each([false, true])('should retain code before the last docs commit with committed=%s', async (committed) => {
     write('packages/example/src/index.js');
     commit();
     write('README.md');
     commit();
 
-    assert.strictEqual(await getReleaseRef(base), base);
+    assert.strictEqual(await getReleaseRef(base, committed), base);
   });
 
-  it('should retain a mixed documentation and source change set', async () => {
+  it.each([false, true])('should retain mixed docs and code with committed=%s', async (committed) => {
     write('packages/example/docs/diagram.svg');
     write('packages/example/src/index.js');
     commit();
 
-    assert.strictEqual(await getReleaseRef(base), base);
+    assert.strictEqual(await getReleaseRef(base, committed), base);
   });
 
   it('should check all packages when invoked from a workspace directory', async () => {
