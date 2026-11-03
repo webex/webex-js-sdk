@@ -244,7 +244,7 @@ describe('MediaConnectionAwaiter', () => {
       assert.equal(rejectedIceConnected, true);
     });
 
-    it('switches to the shorter DTLS timeout once ICE connects', async () => {
+    it('switches to the 15-second DTLS timeout once ICE connects', async () => {
       mockMC.getConnectionState.returns(ConnectionState.Connecting);
       mockMC.getIceGatheringState.returns('complete');
 
