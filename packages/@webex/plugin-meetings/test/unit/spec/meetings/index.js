@@ -129,6 +129,7 @@ describe('plugin-meetings', () => {
           enable: true,
           verboseEvents: true,
         },
+        assetsBaseUrl: '/assets/plugin-meetings/',
       });
 
       Object.assign(webex, {

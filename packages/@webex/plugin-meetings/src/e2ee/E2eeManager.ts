@@ -37,7 +37,7 @@ export default class E2eeManager {
     this.wasmLoader = wasmLoader;
     this.identityProvider = webex.internal.identity;
     this.assetLoader = new StaticAssetLoader(
-      {baseUrl: webex.config?.meetings?.assetsBaseUrl ?? '/assets/plugin-meetings/'},
+      {baseUrl: webex.config.meetings.assetsBaseUrl},
       {parent: webex}
     );
   }
