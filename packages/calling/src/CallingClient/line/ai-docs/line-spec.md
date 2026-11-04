@@ -122,7 +122,7 @@ Compatibility notes:
 |-------|------|---------|---------|
 | `connecting` | `LINE_EVENTS.CONNECTING` | _(none)_ | `register()` called |
 | `registered` | `LINE_EVENTS.REGISTERED` | `ILine` | Device registration succeeded |
-| `unregistered` | `LINE_EVENTS.UNREGISTERED` | _(none)_ | Device deregistered |
+| `unregistered` | `LINE_EVENTS.UNREGISTERED` | `LineError` (optional) | Device deregistered, registration down, or session superseded. The `LineError` is present only when the SDK will not re-register — currently a `409 Conflict` on keepalive, reported as `ERROR_TYPE.SESSION_SUPERSEDED` |
 | `reconnecting` | `LINE_EVENTS.RECONNECTING` | _(none)_ | Keepalive failure, attempting recovery |
 | `reconnected` | `LINE_EVENTS.RECONNECTED` | _(none)_ | Recovery succeeded |
 | `error` | `LINE_EVENTS.ERROR` | `LineError` | Registration or line error |
@@ -215,6 +215,7 @@ type LineEmitterCallback = (
 |---|---|---|---|---|---|---|
 | LINE-R-001 | ILine call and registration operations | One per-device Line contract gives applications a stable place to register, deregister, inspect status, and create or find calls. | `src/CallingClient/line/index.ts` | `src/CallingClient/line/line.test.ts` | none identified | PRESENT |
 | LINE-R-002 | Typed line and incoming-call events | Typed events let applications react to registration recovery and incoming calls without polling Line or Registration internals. | `src/CallingClient/line/index.ts` | `src/CallingClient/line/line.test.ts` | none identified | PRESENT |
+| LINE-R-003 | When constructed with a `localAudioStream`, `register()` awaits `discoverHostIps(localAudioStream)` before entering the mutex and triggering the registration, so the registration reports the addresses the client's interfaces carry at that moment. Without a stream the discovery is skipped and the registration reports `hostIps: []`. | `Registration.postRegistration` reads the addresses synchronously, so they must be stored before the registration is triggered or it would race the discovery. Doing this per `register()` keeps the addresses current and keeps the cost off the automatic retry paths, which drive `Registration` directly; keeping it outside `runExclusive` avoids holding a mutex shared with failback and keepalive recovery for the duration of the negotiation. | `src/CallingClient/line/index.ts`; `src/common/callUtils.ts` | `src/CallingClient/line/line.test.ts`; `src/CallingClient/CallingClient.test.ts` | Automatic re-registrations bypass `register()` and reuse the last stored addresses | PRESENT |
 
 ### Key Capabilities
 
@@ -252,6 +253,7 @@ constructor(
   logLevel: LOGGER,                            // Log verbosity
   serviceDataConfig?: CallingClientConfig['serviceData'],  // Backend config
   jwe?: string,                                // Optional JWE token
+  localAudioStream?: LocalMicrophoneStream,    // Optional mic stream, used by register() for host ip discovery
   phoneNumber?: string,                        // Optional initial phone number (from provisioning)
   extension?: string,                          // Optional initial extension
   voicemail?: string,                          // Optional voicemail number
@@ -314,12 +316,12 @@ flowchart TD
   E --> F[emit REGISTERED with Line instance]
   C -- No --> Z[No-op]
 
-  B -->|UNREGISTERED| G[emit UNREGISTERED]
+  B -->|UNREGISTERED| G[emit UNREGISTERED with optional LineError reason]
   B -->|RECONNECTED| H[emit RECONNECTED]
   B -->|RECONNECTING| I[emit RECONNECTING]
 
   B -->|ERROR| J{lineError provided?}
-  J -- Yes --> K[emit ERROR with LineError]
+  J -- Yes --> K[emit event with LineError]
   J -- No --> Z
 
   F --> APP[Application receives event]
@@ -374,6 +376,11 @@ The actual implementation uses `this.#mutex.runExclusive()` to prevent concurren
 
 ```typescript
 async register(): Promise<void> {
+  // Refresh the host ip addresses the registration will report, outside the mutex
+  if (this.#localAudioStream) {
+    await discoverHostIps(this.#localAudioStream);
+  }
+
   await this.#mutex.runExclusive(async () => {
     // Emit CONNECTING to notify application
     this.emit(LINE_EVENTS.CONNECTING);
@@ -384,6 +391,8 @@ async register(): Promise<void> {
   });
 }
 ```
+
+`discoverHostIps` is awaited before `triggerRegistration()` because `Registration.postRegistration` reads the addresses synchronously through `getHostIps()`, and outside `runExclusive` because that mutex is shared with failback and keepalive recovery. See [CallingClient spec — Host IP Discovery](../../ai-docs/calling-client-spec.md#host-ip-discovery).
 
 ### deregister()
 
@@ -447,6 +456,9 @@ sequenceDiagram
   participant Mutex
   participant Registration
   App->>Line: register()
+  opt localAudioStream configured
+    Line->>Line: await discoverHostIps(localAudioStream)
+  end
   Line-->>App: emit CONNECTING
   Line->>Mutex: runExclusive
   Mutex->>Registration: triggerRegistration()
@@ -640,6 +652,7 @@ Unit tests are co-located under `src/CallingClient/line/` and exercise positive,
 |---|---|---|
 | LINE-R-001 | `src/CallingClient/line/line.test.ts` | Re-check negative/error edge coverage during independent validation |
 | LINE-R-002 | `src/CallingClient/line/line.test.ts` | Re-check negative/error edge coverage during independent validation |
+| LINE-R-003 | `src/CallingClient/line/line.test.ts`; `src/CallingClient/CallingClient.test.ts` | Ordering against `triggerRegistration()` is asserted; the skip-without-a-stream case is covered from `CallingClient.test.ts` |
 
 ## Traceability
 

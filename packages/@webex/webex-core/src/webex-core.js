@@ -17,6 +17,7 @@ import AmpState from 'ampersand-state';
 import uuid from 'uuid';
 
 import AuthInterceptor from './interceptors/auth';
+import CatalogUrlInterceptor from './interceptors/catalog-url';
 import NetworkTimingInterceptor from './interceptors/network-timing';
 import PayloadTransformerInterceptor from './interceptors/payload-transformer';
 import RedirectInterceptor from './interceptors/redirect';
@@ -58,6 +59,7 @@ const interceptors = {
   /* eslint-enable no-extra-parens */
   RequestTimingInterceptor: RequestTimingInterceptor.create,
   ServiceInterceptor: undefined,
+  CatalogUrlInterceptor: CatalogUrlInterceptor.create,
   UserAgentInterceptor: UserAgentInterceptor.create,
   ProxyInterceptor: ProxyInterceptor.create,
   WebexUserAgentInterceptor: WebexUserAgentInterceptor.create,
@@ -83,6 +85,7 @@ const preInterceptors = [
   'RequestEventInterceptor',
   'WebexTrackingIdInterceptor',
   'RateLimitInterceptor',
+  'CatalogUrlInterceptor',
 ];
 
 const postInterceptors = [
@@ -390,6 +393,11 @@ const WebexCore = AmpState.extend({
       const interceptor = interceptorsObj[key];
 
       if (!isFunction(interceptor)) {
+        return ints;
+      }
+
+      // CatalogUrlInterceptor is opt-in via config.services.validateCatalogUrls
+      if (key === 'CatalogUrlInterceptor' && this.config.services?.validateCatalogUrls !== true) {
         return ints;
       }
 

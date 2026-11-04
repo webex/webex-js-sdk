@@ -1,0 +1,519 @@
+{
+  "$schema": "./schemas/repo-context.schema.json",
+  "version": 1,
+  "repository": {
+    "name": "@webex/internal-plugin-device",
+    "purpose": "Device registration for the Webex JS SDK: registers, refreshes, and unregisters this client's device with the WDM service and exposes the device-derived state (URLs, feature toggles, organization policy) as the webex.internal.device plugin."
+  },
+  "commands": {
+    "compile": "yarn workspace @webex/internal-plugin-device build:src",
+    "build": "yarn workspace @webex/internal-plugin-device build",
+    "unit-test": "yarn workspace @webex/internal-plugin-device test:unit",
+    "browser-test": "yarn workspace @webex/internal-plugin-device test:browser",
+    "lint": "yarn workspace @webex/internal-plugin-device test:style",
+    "deploy": "yarn workspace @webex/internal-plugin-device deploy:npm"
+  },
+  "task_playbooks": [
+    {
+      "task": "change-device-behavior",
+      "reference": "src/docs/README.md",
+      "when_to_use": "Changing registration, refresh, unregister, cleanup, feature handling, inactivity logout, the device-url interceptor, or IP network detection.",
+      "start_with": [
+        "src/docs/README.md",
+        "docs/architecture.md",
+        "src/device.js"
+      ],
+      "evidence_required": [
+        "src/device.js",
+        "test/unit/spec/device.js",
+        "src/docs/README.md"
+      ],
+      "allowed_edits": [
+        "src/**",
+        "test/**",
+        "src/docs/README.md",
+        "docs/architecture.md"
+      ],
+      "validate_with": [
+        "yarn workspace @webex/internal-plugin-device test:unit",
+        "yarn workspace @webex/internal-plugin-device test:style"
+      ],
+      "fallback": "If a requirement or invariant in the module spec conflicts with the code, stop and report the conflict instead of changing either silently."
+    },
+    {
+      "task": "update-sdd-docs",
+      "reference": "docs/specs/README.md",
+      "when_to_use": "Code changes alter a requirement, invariant, public surface, dependency, or failure mode documented in the module spec.",
+      "start_with": [
+        "docs/specs/README.md",
+        "src/docs/README.md",
+        ".sdd/manifest.json"
+      ],
+      "evidence_required": [
+        "src/device.js",
+        "package.json"
+      ],
+      "allowed_edits": [
+        "src/docs/README.md",
+        "docs/architecture.md",
+        "docs/specs/README.md",
+        ".sdd/manifest.json"
+      ],
+      "validate_with": [
+        "Run the Repo Annotation spec-index and manifest checkers through the active installation"
+      ],
+      "fallback": "Leave generated metadata and validation status untouched; validation is run by an independent runtime."
+    }
+  ],
+  "public_interfaces": [
+    {
+      "name": "device-plugin-sdk",
+      "kind": "package_export",
+      "source": "package.json",
+      "entrypoints": [
+        "import '@webex/internal-plugin-device'",
+        "webex.internal.device",
+        "webex.config.device"
+      ],
+      "audience": "Webex SDK plugins and first-party Webex clients",
+      "notes": "Internal plugin; verify exports in src/index.js and behavior in src/docs/README.md."
+    },
+    {
+      "name": "device-registration-events",
+      "kind": "package_export",
+      "source": "src/device.js",
+      "entrypoints": [
+        "registration:success",
+        "change",
+        "change:features",
+        "change:developer, change:entitlement, change:user"
+      ],
+      "audience": "Plugins listening on webex.internal.device",
+      "notes": "Names declared in src/constants.js; emitted by src/device.js and src/features/features-model.js. Relied on by dependent SDK packages."
+    },
+    {
+      "name": "cisco-device-url-header",
+      "kind": "package_export",
+      "source": "src/interceptors/device-url.js",
+      "entrypoints": [
+        "DeviceUrlInterceptor"
+      ],
+      "audience": "Webex backend services",
+      "notes": "Never attached for idbroker, oauth, or saml; verify with test/unit/spec/interceptors/device-url.js."
+    }
+  ],
+  "source_of_truth": [
+    {
+      "surface": "device behavior",
+      "paths": [
+        "src/device.js",
+        "src/index.js",
+        "src/config.js",
+        "src/constants.js",
+        "src/types.ts",
+        "src/metrics.js"
+      ],
+      "generated_artifacts": [
+        "dist"
+      ],
+      "refresh_with": [
+        "yarn workspace @webex/internal-plugin-device build:src"
+      ],
+      "validate_with": [
+        "yarn workspace @webex/internal-plugin-device test:unit"
+      ]
+    },
+    {
+      "surface": "feature toggles",
+      "paths": [
+        "src/features/feature-model.js",
+        "src/features/feature-collection.js",
+        "src/features/features-model.js"
+      ],
+      "generated_artifacts": [
+        "dist"
+      ],
+      "refresh_with": [
+        "yarn workspace @webex/internal-plugin-device build:src"
+      ],
+      "validate_with": [
+        "yarn workspace @webex/internal-plugin-device test:unit"
+      ]
+    },
+    {
+      "surface": "request decoration and network detection",
+      "paths": [
+        "src/interceptors/device-url.js",
+        "src/ipNetworkDetector.ts"
+      ],
+      "generated_artifacts": [
+        "dist"
+      ],
+      "refresh_with": [
+        "yarn workspace @webex/internal-plugin-device build:src"
+      ],
+      "validate_with": [
+        "yarn workspace @webex/internal-plugin-device test:unit"
+      ]
+    },
+    {
+      "surface": "SDD documentation",
+      "paths": [
+        "AGENTS.md",
+        "docs",
+        "src/docs/README.md",
+        ".sdd/manifest.json"
+      ],
+      "generated_artifacts": [],
+      "refresh_with": [
+        "Re-run Repo Annotation through the active installation"
+      ],
+      "validate_with": [
+        "Run the Repo Annotation spec-index, manifest, and repository-context checkers through the active installation"
+      ]
+    }
+  ],
+  "generated_artifacts": [
+    {
+      "path": "dist",
+      "generated_from": "src",
+      "refresh_with": "yarn workspace @webex/internal-plugin-device build:src"
+    },
+    {
+      "path": ".sdd/templates/repo-standards/template-map.json",
+      "generated_from": "WebexTools/repo-standards@d89a7fe59126ae3ad9bac9ca352aa7f12b4c85dc",
+      "refresh_with": "Run the setup script of the active Repo Annotation installation against the monorepo root"
+    }
+  ],
+  "validation_matrix": [
+    {
+      "paths": [
+        "src/device.js",
+        "src/config.js",
+        "src/constants.js",
+        "src/features/**"
+      ],
+      "minimum": [
+        "yarn workspace @webex/internal-plugin-device test:unit"
+      ],
+      "recommended": [
+        "yarn workspace @webex/internal-plugin-device test:style",
+        "yarn workspace @webex/internal-plugin-device test:browser"
+      ]
+    },
+    {
+      "paths": [
+        "src/interceptors/**",
+        "src/ipNetworkDetector.ts"
+      ],
+      "minimum": [
+        "yarn workspace @webex/internal-plugin-device test:unit"
+      ],
+      "recommended": [
+        "yarn workspace @webex/internal-plugin-device test:style"
+      ]
+    },
+    {
+      "paths": [
+        "src/docs/README.md",
+        "docs/**",
+        "AGENTS.md",
+        ".sdd/manifest.json"
+      ],
+      "minimum": [
+        "Run the Repo Annotation spec-index and manifest checkers through the active installation"
+      ],
+      "recommended": [
+        "Independent spec validation on a different runtime"
+      ]
+    }
+  ],
+  "change_impact": [
+    {
+      "paths": [
+        "src/device.js"
+      ],
+      "affects": [
+        "Every SDK plugin that reads webex.internal.device",
+        "Mercury WebSocket URL retrieval",
+        "Meetings and calling packages"
+      ],
+      "refresh_with": [
+        "yarn workspace @webex/internal-plugin-device build:src"
+      ],
+      "validate_with": [
+        "yarn workspace @webex/internal-plugin-device test:unit"
+      ],
+      "avoid_direct_edits": [
+        "dist"
+      ],
+      "notes": "Property names and event names are consumed across the monorepo."
+    },
+    {
+      "paths": [
+        "src/constants.js"
+      ],
+      "affects": [
+        "Cleanup thresholds exercised by test/unit/spec/device.js",
+        "registration:success event consumers"
+      ],
+      "validate_with": [
+        "yarn workspace @webex/internal-plugin-device test:unit"
+      ],
+      "avoid_direct_edits": [
+        "dist"
+      ],
+      "notes": "Constants are imported by both the plugin and its tests."
+    },
+    {
+      "paths": [
+        "src/interceptors/device-url.js"
+      ],
+      "affects": [
+        "Every outbound request through the shared request pipeline"
+      ],
+      "validate_with": [
+        "yarn workspace @webex/internal-plugin-device test:unit"
+      ],
+      "avoid_direct_edits": [
+        "dist"
+      ],
+      "notes": "The header excludes idbroker, oauth, and saml."
+    }
+  ],
+  "glossary": [
+    {
+      "term": "WDM",
+      "definition": "Web device manager: the Webex service that stores device registrations.",
+      "notes": "Reached through the wdm entry of the service catalog."
+    },
+    {
+      "term": "Device",
+      "definition": "This client's registration at WDM plus its local state, exposed as webex.internal.device."
+    },
+    {
+      "term": "Ephemeral device",
+      "definition": "A registration created with a TTL and refreshed on a timer instead of being persisted.",
+      "notes": "Controlled by config.device.ephemeral."
+    },
+    {
+      "term": "Feature toggle",
+      "definition": "A named value from WDM in the developer, entitlement, or user collection, typed on parse."
+    }
+  ],
+  "evidence_rules": [
+    {
+      "claim_category": "command_name",
+      "sources": [
+        "package.json"
+      ],
+      "requirement": "Cite only a script defined in package.json; the test script references test:integration, which package.json does not define."
+    },
+    {
+      "claim_category": "behavior_claim",
+      "sources": [
+        "src/device.js",
+        "test/unit/spec/device.js",
+        "test/integration/spec/device.js"
+      ],
+      "requirement": "State a behavior only when the source implements it; call it tested only when a test invokes it."
+    },
+    {
+      "claim_category": "import_path",
+      "sources": [
+        "src/index.js"
+      ],
+      "requirement": "Document an export only if src/index.js exports it."
+    }
+  ],
+  "negative_guidance": [
+    {
+      "rule": "Do not use commit or pull-request history as evidence for why behavior exists.",
+      "why": "The package owner declared history is not trusted rationale evidence."
+    },
+    {
+      "rule": "Do not describe the WDM service contract beyond what the code sends and reads.",
+      "why": "No machine-readable WDM contract is committed in this repository."
+    }
+  ],
+  "confidence_policy": {
+    "high": {
+      "action": "update",
+      "expectation": "Source and a behavioral test both confirm the claim."
+    },
+    "medium": {
+      "action": "narrow-scope",
+      "expectation": "Only source confirms the claim; state the missing test as a gap."
+    },
+    "low": {
+      "action": "noop",
+      "expectation": "Neither source nor test confirms it; report the gap instead of documenting it."
+    }
+  },
+  "repository_topology": {
+    "main_entrypoints": [
+      {
+        "name": "plugin registration",
+        "path": "src/index.js",
+        "purpose": "Registers the device plugin, interceptor, and logout hook and defines the export surface."
+      }
+    ],
+    "workspace_packages": [
+      {
+        "name": "@webex/internal-plugin-device",
+        "paths": [
+          "."
+        ],
+        "notes": "Single package; its dependencies are other packages of the surrounding Yarn workspace."
+      }
+    ],
+    "source_surfaces": [
+      {
+        "name": "plugin source",
+        "paths": [
+          "src/*.js",
+          "src/*.ts"
+        ],
+        "notes": "Device model, config, constants, metrics names, detector."
+      },
+      {
+        "name": "feature models",
+        "paths": [
+          "src/features/*.js"
+        ],
+        "notes": "Feature collections and typing."
+      },
+      {
+        "name": "interceptors",
+        "paths": [
+          "src/interceptors/*.js"
+        ],
+        "notes": "The cisco-device-url interceptor."
+      }
+    ],
+    "generated_surfaces": [
+      {
+        "name": "compiled package",
+        "paths": [
+          "dist"
+        ],
+        "generated_from": "src",
+        "refresh_with": "yarn workspace @webex/internal-plugin-device build:src"
+      },
+      {
+        "name": "repo-standards templates",
+        "paths": [
+          ".sdd/templates/repo-standards"
+        ],
+        "generated_from": "WebexTools/repo-standards@d89a7fe59126ae3ad9bac9ca352aa7f12b4c85dc",
+        "refresh_with": "Run the setup script of the active Repo Annotation installation against the monorepo root",
+        "notes": "Resolved from the monorepo root .sdd directory; no package-level copy exists."
+      }
+    ],
+    "sync_paths": [
+      {
+        "source": "WebexTools/repo-standards@d89a7fe59126ae3ad9bac9ca352aa7f12b4c85dc",
+        "targets": [
+          ".sdd/templates/repo-standards"
+        ],
+        "mechanism": "Setup script of the active Repo Annotation installation",
+        "notes": "Run at the monorepo root."
+      }
+    ],
+    "validation_entrypoints": [
+      {
+        "name": "unit tests",
+        "command": "yarn workspace @webex/internal-plugin-device test:unit",
+        "scope": "Jest suites under test/unit"
+      },
+      {
+        "name": "lint",
+        "command": "yarn workspace @webex/internal-plugin-device test:style",
+        "scope": "ESLint over src"
+      },
+      {
+        "name": "browser integration tests",
+        "command": "yarn workspace @webex/internal-plugin-device test:browser",
+        "scope": "Mocha specs under test/integration through Karma"
+      }
+    ]
+  },
+  "folder_readme_contract": {
+    "required_sections": [
+      "purpose",
+      "boundaries",
+      "key-files",
+      "common-tasks"
+    ],
+    "rules": [
+      "Orient first: state what the folder owns before listing files."
+    ],
+    "example_policy": "Examples are allowed only when taken from source or tests in this package.",
+    "fallback": "Omit a folder README when the module spec already covers the folder."
+  },
+  "surface_owners": [
+    {
+      "surface": "src",
+      "owner": "Webex JS SDK maintainers",
+      "edit_boundary": "Source and tests; keep the module spec in step with behavior changes."
+    },
+    {
+      "surface": "docs and AGENTS.md",
+      "owner": "Webex JS SDK maintainers",
+      "edit_boundary": "Generated by Repo Annotation; edit through spec-reconcile and review."
+    }
+  ],
+  "do_not_edit": [
+    "dist",
+    "node_modules"
+  ],
+  "marker_scopes": {
+    "sdd-generated-metadata": [
+      "AGENTS.md",
+      "docs/index.md",
+      "docs/architecture.md",
+      "docs/getting-started.md",
+      "docs/specs/README.md",
+      "docs/adr/index.md",
+      "src/docs/README.md"
+    ]
+  },
+  "fallback_rules": [
+    "If a command is not defined in package.json, report it as missing instead of inventing one.",
+    "If code and a spec disagree, surface the conflict and do not edit the spec to match unverified behavior."
+  ],
+  "downstream_context_pack": {
+    "required_human_surfaces": [
+      "docs/index.md",
+      "docs/architecture.md",
+      "docs/specs/README.md",
+      "src/docs/README.md"
+    ],
+    "required_agent_operational_surfaces": [
+      "AGENTS.md"
+    ],
+    "required_machine_readable_surface": ".repo-context.json",
+    "recommended_machine_readable_sections": [
+      "task_playbooks",
+      "public_interfaces",
+      "change_impact",
+      "glossary",
+      "evidence_rules",
+      "negative_guidance",
+      "confidence_policy",
+      "repository_topology",
+      "folder_readme_contract",
+      "regression_feedback_rules"
+    ]
+  },
+  "regression_feedback_rules": [
+    {
+      "trigger": "A change to device.js behavior ships without a matching requirement, invariant, or test update",
+      "required_followups": [
+        "Update the affected requirement or invariant in src/docs/README.md",
+        "Add a unit test in test/unit/spec/device.js for the new behavior"
+      ],
+      "notes": "Requirements without test evidence are listed as gaps in the module spec Verification section."
+    }
+  ]
+}

@@ -13,6 +13,73 @@ jobs:
     name: Remove reusable validated label
     runs-on: ubuntu-latest
     steps:
+      # DRY RUN: nothing is gated yet. This only logs whether the PR author and
+      # the pusher are on @webex/web-sdk, so the lookup can be checked against
+      # real PRs before it gates the removal below. Author and pusher differ
+      # whenever someone pushes to another person's branch, which is the case
+      # that decides which of them the rule should key off. The default
+      # GITHUB_TOKEN cannot read org team membership, hence ORG_READ_TOKEN.
+      - name: Check web-sdk team membership (log only)
+        if: contains(github.event.pull_request.labels.*.name, 'validated')
+        continue-on-error: true
+        uses: actions/github-script@v8
+        with:
+          github-token: ${{ secrets.ORG_READ_TOKEN }}
+          script: |
+            const org = 'webex';
+            const team_slug = 'web-sdk';
+
+            // GitHub answers 404 for resources a token cannot see, so a
+            // membership 404 only means "not a member" once the token is known
+            // to be able to read the team at all.
+            try {
+              await github.rest.teams.getByName({org, team_slug});
+            } catch (error) {
+              core.setFailed(
+                `Cannot read @${org}/${team_slug} (${error.status} ${error.message}); ` +
+                  'a membership 404 would be indistinguishable from missing access.'
+              );
+
+              return;
+            }
+
+            // 'active' for members, 'pending' for invited-but-not-joined, 404
+            // for everyone else. Any other failure stays 'unknown' so an outage
+            // is never logged as a confirmed non-member.
+            const membershipState = async (username) => {
+              try {
+                const {data} = await github.rest.teams.getMembershipForUserInOrg({
+                  org,
+                  team_slug,
+                  username,
+                });
+
+                return data.state;
+              } catch (error) {
+                if (error.status === 404) {
+                  return 'none';
+                }
+
+                core.warning(`Lookup for ${username} failed: ${error.status} ${error.message}`);
+
+                return 'unknown';
+              }
+            };
+
+            const author = context.payload.pull_request.user.login;
+            const pusher = context.payload.sender.login;
+            const [authorState, pusherState] = await Promise.all([
+              membershipState(author),
+              membershipState(pusher),
+            ]);
+
+            core.info(`PR author ${author} on @${org}/${team_slug}: ${authorState}`);
+            core.info(`Pusher ${pusher} on @${org}/${team_slug}: ${pusherState}`);
+
+            if (authorState === 'unknown' || pusherState === 'unknown') {
+              core.setFailed('Membership lookup was inconclusive; this run produced no usable data.');
+            }
+
       - name: Remove validated label from PR
         uses: actions/github-script@v8
         with:

@@ -1,0 +1,328 @@
+{
+  "manifest_version": 1,
+  "repository": {
+    "name": "@webex/helper-image",
+    "purpose": "A Webex JavaScript SDK helper package that reads EXIF orientation onto image files, resolves their MIME type, and measures and thumbnails them through separate Node and browser implementations.",
+    "category": "cat2-legacy",
+    "primary_languages": [
+      "javascript"
+    ]
+  },
+  "topology": "Single-repo",
+  "commands": {
+    "install": {
+      "command": "yarn install",
+      "source_file": "package.json",
+      "role": "install",
+      "verified_at": "2026-09-28T13:42:25Z"
+    },
+    "compile": "[NEEDS HUMAN INPUT] -- no standalone compile step exists: the sources are JavaScript transpiled by Babel as part of build:src, and package.json declares no typecheck or compile-only target.",
+    "build": {
+      "command": "yarn workspace @webex/helper-image build",
+      "source_file": "package.json",
+      "role": "package",
+      "verified_at": "2026-09-28T13:42:25Z"
+    },
+    "unit-test": {
+      "command": "yarn workspace @webex/helper-image test:unit",
+      "source_file": "package.json",
+      "role": "unit-test",
+      "verified_at": "2026-09-28T13:42:25Z"
+    },
+    "browser-test": {
+      "command": "yarn workspace @webex/helper-image test:browser",
+      "source_file": "package.json",
+      "role": "other",
+      "verified_at": "2026-09-28T13:42:25Z"
+    },
+    "lint": {
+      "command": "yarn workspace @webex/helper-image test:style",
+      "source_file": "package.json",
+      "role": "lint",
+      "verified_at": "2026-09-28T13:42:25Z"
+    },
+    "deploy": {
+      "command": "yarn workspace @webex/helper-image deploy:npm",
+      "source_file": "package.json",
+      "role": "deploy",
+      "verified_at": "2026-09-28T13:42:25Z"
+    },
+    "test": {
+      "command": "yarn workspace @webex/helper-image test",
+      "source_file": "package.json",
+      "role": "other",
+      "verified_at": "2026-09-28T13:42:25Z"
+    }
+  },
+  "toolchain": [
+    {
+      "name": "node",
+      "version": ">=18",
+      "origin": "repo-config",
+      "source_file": "package.json"
+    }
+  ],
+  "tests": {
+    "unit": {
+      "command_ref": "unit-test",
+      "dir": "test/unit/spec",
+      "framework": "Mocha with chai assertions via @webex/test-helper-chai and Sinon stubs, executed by @webex/legacy-tools. The same spec directory also runs under Karma in a real browser through the browser-test command, which is the only way the browserOnly cases in test/unit/spec/index.js execute; Chrome and Firefox are that runner's defaults and it also needs the fixture server that serves the test image. There is no separate integration or end-to-end suite in this package."
+    }
+  },
+  "quality_gates": {
+    "code_coverage": {
+      "origin": "none",
+      "declared_by": "rarajes2@cisco.com"
+    }
+  },
+  "modules": [
+    {
+      "path": "src/",
+      "coverage_status": "Partial",
+      "coverage_evidence": "Canonical spec generated from the complete committed source and its unit suite. The public surface, dual-runtime split, invariants and failure modes are backed by file evidence. No characterization baseline exists yet: the only suite is test/unit/spec/index.js, whose readExifData cases are disabled with xdescribe, so the EXIF parsing path is unpinned and a characterization baseline is required before risky modification.",
+      "canonical_spec": "src/docs/README.md",
+      "contracts": {
+        "provides": [
+          "helper-image-package-api",
+          "image-thumbnail-png"
+        ],
+        "requires": [
+          "http-core-detect",
+          "exifr-parse",
+          "graphicsmagick-cli",
+          "browser-image-apis"
+        ]
+      },
+      "last_assessed": "2026-09-28",
+      "section_profile": {
+        "has_ui": false,
+        "crosses_service_boundaries": false,
+        "enforces_domain_rules": true,
+        "is_concurrent_async": true,
+        "owns_persistence": false,
+        "returns_caller_errors": true,
+        "has_design_tradeoff": true,
+        "stateful_transitions": false,
+        "exposes_wire_protocol": true,
+        "ui_multi_screen": false,
+        "large_data_model": false,
+        "has_tiers": false,
+        "module_specific_conventions": true,
+        "published_package": true,
+        "embedded_in_host": false,
+        "holds_client_state": false,
+        "resolved_by": "claude-opus-5",
+        "resolved_at": "2026-09-28T13:42:25Z",
+        "has_submodules": false,
+        "has_submodules_computed_by": "scripts/module_tree.py",
+        "has_submodules_computed_at": "2026-09-28T13:45:06Z"
+      }
+    }
+  ],
+  "contract_catalog": {
+    "index_path": "docs/architecture.md",
+    "definitions": {
+      "helper-image-package-api": {
+        "kind": "sdk",
+        "publication": "published",
+        "source_kind": "repository-path",
+        "source": "package.json",
+        "summary": "Published package export surface. package.json declares the entry points (main, devMain) and the browser field that substitutes the browser implementation of processImage; src/index.js declares the four exported functions updateImageOrientation, readExifData, processImage and detectFileType. The package ships no .d.ts or API report, so these two declarations together are the ecosystem-native contract."
+      },
+      "image-thumbnail-png": {
+        "kind": "file",
+        "publication": "published",
+        "source_kind": "repository-path",
+        "source": "src/process-image.js",
+        "summary": "The [thumbnail, fileDimensions, thumbnailDimensions] triple returned by processImage, whose thumbnail is PNG-encoded in both runtimes and whose orientation semantics follow EXIF values 1 through 8."
+      },
+      "http-core-detect": {
+        "kind": "sdk",
+        "publication": "internal",
+        "source_kind": "external",
+        "source": "@webex/http-core package export: detect",
+        "summary": "Magic-byte MIME sniffing used by detectFileType when a file carries neither type nor mimeType. Runs locally with no network call and rejects anything that is not a Blob, ArrayBuffer or Uint8Array."
+      },
+      "exifr-parse": {
+        "kind": "sdk",
+        "publication": "internal",
+        "source_kind": "external",
+        "source": "exifr/dist/lite.umd package export: parse",
+        "summary": "EXIF tag reader used by readExifData to obtain Orientation, ExifImageHeight and ExifImageWidth from JPEG bytes."
+      },
+      "graphicsmagick-cli": {
+        "kind": "cli",
+        "publication": "internal",
+        "source_kind": "external",
+        "source": "gm npm package invoking the host GraphicsMagick or ImageMagick binary",
+        "summary": "Host image toolchain the Node implementation shells out to for size measurement and thumbnail generation. Its absence is detected through an EPIPE error string and degrades to an undefined result rather than a rejection."
+      },
+      "browser-image-apis": {
+        "kind": "sdk",
+        "publication": "internal",
+        "source_kind": "external",
+        "source": "DOM platform APIs: FileReader, Blob, URL.createObjectURL, Image, HTMLCanvasElement, atob",
+        "summary": "Browser platform surface the browser implementation and updateImageOrientation depend on for byte reading, decoding, canvas rasterization and base64 conversion."
+      }
+    }
+  },
+  "spec_source_policy": {
+    "mode": "keep-separate",
+    "decided_by": "rarajes2@cisco.com",
+    "decided_at": "2026-09-28T13:42:25Z",
+    "decision_record": ".generated/sdd/bootstrap-questionnaire.md"
+  },
+  "spec_sources": [
+    {
+      "path": "README.md",
+      "scope": "repo",
+      "role": "reference-only",
+      "canonical": false,
+      "use_by_agents": "context-only",
+      "post_migration_action": "retain",
+      "deletion_status": "not-applicable",
+      "notes": "Consumer-facing npm README in standard-readme form. Left byte-for-byte unchanged under keep-separate and used as context only. It documents updateImageOrientation, readExifData and orient, omits processImage and detectFileType, and presents the module-internal orient as if it were a package export; the canonical module spec states the real boundary."
+    }
+  ],
+  "spec_policy": {
+    "require_what_and_why": true,
+    "require_provenance": true,
+    "protected_specs": [
+      "src/docs/README.md"
+    ]
+  },
+  "validation": {
+    "generator_runtime": "claude-opus-5",
+    "generator_model": "claude-opus-5",
+    "generator_runtime_source": "invocation-input",
+    "minimum_independence": "different-runtime",
+    "blocking_severities": [
+      "Blocking"
+    ],
+    "validator_runtime": "current-session",
+    "validator_runtime_source": "invocation-input",
+    "runtime_fallback_tier": "different-runtime"
+  },
+  "layout": {
+    "sdd_root": ".sdd",
+    "docs_root": "docs",
+    "agent_entry_path": "AGENTS.md",
+    "standing_docs_root": "docs",
+    "spec_index_path": "docs/specs/README.md",
+    "module_docs_strategy": "source-local",
+    "module_docs_relative_path": "docs/README.md",
+    "module_docs_decision": {
+      "basis": "repo-standards-default",
+      "reason": "The package holds no module-local documentation folder or competing docs convention, so the source-local default resolves without collision: the single module at src/ takes src/docs/README.md.",
+      "decided_by": "claude-opus-5",
+      "decided_at": "2026-09-28T13:42:25Z"
+    },
+    "repo_context_decision": {
+      "path": ".repo-context.json",
+      "schema_path": "schemas/repo-context.schema.json",
+      "action": "create",
+      "schema_action": "create",
+      "reason": "Neither target exists in the package. The schemas/ directory is present but empty, so both the context and its schema are created from the Repo Standards snapshot rather than reused.",
+      "decided_by": "claude-opus-5",
+      "decided_at": "2026-09-28T13:42:25Z"
+    },
+    "artifact_decisions": [
+      {
+        "path": "docs/service.md",
+        "action": "omit",
+        "reason": "Not a deployable service. package.json publishes a library to npm and its only release command is deploy:npm; there is no runtime, deployment descriptor or service entry point.",
+        "decided_by": "claude-opus-5",
+        "decided_at": "2026-09-28T13:42:25Z"
+      },
+      {
+        "path": "mkdocs.yml",
+        "action": "omit",
+        "reason": "Absent and not selected. The package publishes no documentation site; API reference for the SDK is generated at the workspace level, and no package in the workspace carries an mkdocs configuration.",
+        "decided_by": "claude-opus-5",
+        "decided_at": "2026-09-28T13:42:25Z"
+      },
+      {
+        "path": "api-specs/openapi.yaml",
+        "action": "omit",
+        "reason": "Absent and not applicable. The published surface is an ecosystem-native JavaScript package export surface declared in src/index.js and package.json; the package owns no HTTP route and makes no network call.",
+        "decided_by": "claude-opus-5",
+        "decided_at": "2026-09-28T13:42:25Z"
+      },
+      {
+        "path": "SECURITY.md",
+        "action": "omit",
+        "reason": "Absent and not selected. Security reporting is owned at the workspace level, not per package; no @webex/helper-* package carries a package-level security policy.",
+        "decided_by": "claude-opus-5",
+        "decided_at": "2026-09-28T13:42:25Z"
+      },
+      {
+        "path": "CONTRIBUTING.md",
+        "action": "omit",
+        "reason": "Absent and not selected. README.md already links contributors to the workspace-level CONTRIBUTING guide, so a package-level copy would create a second authority.",
+        "decided_by": "claude-opus-5",
+        "decided_at": "2026-09-28T13:42:25Z"
+      },
+      {
+        "path": "CHANGELOG.md",
+        "action": "omit",
+        "reason": "Absent and not selected. Release notes and version bumps are produced at the workspace level rather than per package; the package declares no changelog tooling.",
+        "decided_by": "claude-opus-5",
+        "decided_at": "2026-09-28T13:42:25Z"
+      },
+      {
+        "path": "CTO_CHECKLIST.yml",
+        "action": "omit",
+        "reason": "Absent and not selected. The checklist pair applies to a deployable service, and this package is a published library with no deployment surface.",
+        "decided_by": "claude-opus-5",
+        "decided_at": "2026-09-28T13:42:25Z"
+      },
+      {
+        "path": "schemas/cto-checklist.schema.json",
+        "action": "omit",
+        "reason": "Absent and not selected. It is selected only together with CTO_CHECKLIST.yml, which is omitted for this non-deployable library.",
+        "decided_by": "claude-opus-5",
+        "decided_at": "2026-09-28T13:42:25Z"
+      }
+    ],
+    "template_roots": {
+      "canonical": ".sdd/templates/repo-standards"
+    },
+    "repo_skills_root": ".sdd/skills",
+    "contract_index_path": "docs/architecture.md"
+  },
+  "coverage_ratchet": {
+    "enabled": true
+  },
+  "substrate": {
+    "source": "WebexTools/repo-standards",
+    "consumed": [
+      "lint config inherited from @webex/eslint-config-legacy via .eslintrc.js",
+      "Babel config inherited from @webex/babel-config-legacy via babel.config.js",
+      "Jest config inherited from @webex/jest-config-legacy via jest.config.js",
+      "build and test runner provided by @webex/legacy-tools via package.json scripts",
+      "consumer-facing README.md retained unchanged as reference-only"
+    ],
+    "compliance_tier": "legacy"
+  },
+  "section_profiles": {
+    "repo": {
+      "owns_datastore": false,
+      "holds_client_state": false,
+      "components_interact": false,
+      "domain_data_across_components": false,
+      "caches_data": false,
+      "observability_convention": true,
+      "deploys_to_infra": false,
+      "shared_base_libs": true,
+      "is_monorepo": false,
+      "multi_platform": true,
+      "published_package": true,
+      "embedded_in_host": false,
+      "cross_repo_deps_material": true,
+      "security_arch_warranted": false,
+      "exposes_commands_or_artifacts": false
+    },
+    "resolved_by": "claude-opus-5",
+    "resolved_at": "2026-09-28T13:42:25Z"
+  }
+}

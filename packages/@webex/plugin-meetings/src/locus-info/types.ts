@@ -80,6 +80,7 @@ export type ReplacesInfo = {
 
 export const LocusErrorCodes = {
   LOCUS_INACTIVE: 2403004,
+  LOCUS_USER_FULL: 2423001,
 } as const;
 
 export type LocusErrorCodes = Enum<typeof LocusErrorCodes>;

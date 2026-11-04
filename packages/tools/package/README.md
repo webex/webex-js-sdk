@@ -41,6 +41,21 @@ To see a list of available commands and their associated options, run the follow
 webex-package-tools --help
 ```
 
+When `list --since <ref>` finds only documentation or SDD changes, it returns an
+empty package list. This includes Markdown, MDX, documentation folders, `.sdd`,
+and repository-context metadata. Node output is an empty string. Yarn output is
+`{}`. Source, package manifests, lockfiles, assets, and package ignore files
+remain eligible for release. Other change sets use Yarn's existing package and
+dependent selection. Listing packages without `--since` keeps its existing
+behavior.
+
+For CI releases, use `list --since <ref> --committed`. The documentation-only
+check compares the merge base with `HEAD`, so manifest rewrites or generated
+files from an install or build cannot enable a documentation-only release.
+Without this flag, the check includes local changes. When the committed change
+set can affect a release, Yarn's existing package and dependent selection still
+applies, including local changes.
+
 This package can also be consumed as a module. Note that this is not an explicitly intended use-case, but may provide more flexibility when performing complicated workflows.
 
 ```js

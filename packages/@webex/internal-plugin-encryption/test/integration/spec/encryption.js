@@ -35,9 +35,12 @@ describe('Encryption', function () {
   );
 
   before('create unbound key', () =>
-    webex.internal.encryption.kms.createUnboundKeys({count: 1}).then(([k]) => {
-      key = k;
-    })
+    webex.internal.encryption.kms
+      .createUnboundKeys({count: 1})
+      .then(([k]) => webex.internal.encryption.kms.fetchKey({uri: k.uri}))
+      .then((k) => {
+        key = k;
+      })
   );
 
   before('fetch file fixture', () =>
@@ -47,7 +50,7 @@ describe('Encryption', function () {
         responseType: 'buffer',
       })
       .then((res) => {
-        FILE = res.body;
+        FILE = Buffer.from(res.body);
       })
   );
 
@@ -97,7 +100,7 @@ describe('Encryption', function () {
   describe('#decryptBinaryData()', () => {
     it('decrypts binary data', () =>
       webex.internal.encryption
-        .encryptText(key, FILE.toString('base64'))
+        .encryptBinaryData(key, FILE)
         .then((ciphertext) => {
           assert.notEqual(ciphertext, FILE.toString('base64'));
 
@@ -112,7 +115,7 @@ describe('Encryption', function () {
       const binaryData = Buffer.from('test binary data', 'utf8');
 
       return webex.internal.encryption
-        .encryptText(key, binaryData.toString('base64'))
+        .encryptBinaryData(key, binaryData)
         .then((ciphertext) => {
           assert.notEqual(ciphertext, binaryData.toString('base64'));
 
@@ -128,7 +131,7 @@ describe('Encryption', function () {
       const binaryData = Buffer.from('test binary data with options', 'utf8');
 
       return webex.internal.encryption
-        .encryptText(key, binaryData.toString('base64'))
+        .encryptBinaryData(key, binaryData)
         .then((ciphertext) => {
           assert.notEqual(ciphertext, binaryData.toString('base64'));
 
@@ -163,7 +166,7 @@ describe('Encryption', function () {
       assert.equal(largeString.length, 3000);
 
       return webex.internal.encryption
-        .encryptText(key, binaryData.toString('base64'))
+        .encryptBinaryData(key, binaryData)
         .then((ciphertext) => {
           assert.notEqual(ciphertext, binaryData.toString('base64'));
 
@@ -521,7 +524,7 @@ describe('Encryption', function () {
       const binaryData = Buffer.from('compliance test binary data', 'utf8');
 
       return webex.internal.encryption
-        .encryptText(key, binaryData.toString('base64'))
+        .encryptBinaryData(key, binaryData)
         .then((ciphertext) => {
           assert.notEqual(ciphertext, binaryData.toString('base64'));
 

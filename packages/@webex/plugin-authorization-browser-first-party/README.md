@@ -12,6 +12,7 @@
   - [When To Use This Package](#when-to-use-this-package)
   - [Key Features](#key-features)
   - [Basic Usage](#basic-usage)
+    - [Public Client with PKCE](#public-client-with-pkce)
     - [Standard Login (Authorization Code + PKCE)](#standard-login-authorization-code--pkce)
     - [Popup / Separate Window Login](#popup--separate-window-login)
     - [Device Authorization (QR Code Login)](#device-authorization-qr-code-login)
@@ -96,6 +97,37 @@ webex.authorization.initiateLogin({
 });
 ```
 
+### Public Client with PKCE
+
+To use a public OAuth client, set `clientType` to `public` and omit
+`client_secret`:
+
+```javascript
+const publicClientWebex = Webex.init({
+  credentials: {
+    clientType: 'public',
+    client_id: 'first-party-public-client-id',
+    redirect_uri: 'https://web.webex.com/auth/callback',
+    scope: 'spark:all'
+  }
+});
+
+publicClientWebex.authorization.initiateLogin({
+  email: 'user@example.com',
+  state: { returnTo: '/home' }
+});
+```
+
+The authorization-code exchange and token refresh requests send `client_id`
+in the form without HTTP Basic client authentication.
+
+For an existing confidential client, set `clientType` to `confidential` and
+provide both `client_id` and `client_secret`. The plugin continues to use HTTP
+Basic client authentication for authorization-code exchange and token refresh.
+
+Public-client device authorization and token revocation are not changed by
+this support.
+
 ### Standard Login (Authorization Code + PKCE)
 
 1. `initiateLogin()` creates:
@@ -178,13 +210,44 @@ webex.authorization.initQRCodeLogin();
 
 ### Properties
 
-| Property           | Type             | Description                                               |
-| ------------------ | ---------------- | --------------------------------------------------------- |
-| `isAuthorizing`    | boolean          | True while a grant request is in flight                   |
-| `isAuthenticating` | boolean          | Alias of `isAuthorizing`                                  |
-| `ready`            | boolean          | Set true after initial redirect/code processing completes |
-| `eventEmitter`     | EventEmitter     | Emits QR/Device login lifecycle events                    |
-| `Events`           | enum-like object | Accessible names for event types                          |
+| Property                               | Type             | Description                                               |
+| -------------------------------------- | ---------------- | --------------------------------------------------------- |
+| `initialAuthorizationCodeGrantOutcome` | string           | Retained outcome of the automatic initialization exchange |
+| `isAuthorizing`                        | boolean          | True while a grant request is in flight                   |
+| `isAuthenticating`                     | boolean          | Alias of `isAuthorizing`                                  |
+| `ready`                                | boolean          | Set true after initial redirect/code processing completes |
+| `eventEmitter`                         | EventEmitter     | Emits QR/Device login lifecycle events                    |
+| `Events`                               | enum-like object | Accessible names for event types                          |
+
+#### Initial authorization-code grant outcome
+
+```javascript
+import {InitialAuthorizationCodeGrantOutcomes} from '@webex/plugin-authorization-browser-first-party';
+
+const didInitialExchangeSucceed =
+  webex.authorization.initialAuthorizationCodeGrantOutcome ===
+  InitialAuthorizationCodeGrantOutcomes.success;
+```
+
+`initialAuthorizationCodeGrantOutcome` describes only the automatic
+`requestAuthorizationCodeGrant()` call made while this authorization plugin
+instance initializes. Read it after `ready`:
+
+- `not_attempted`: initialization did not invoke the exchange.
+- `success`: the initialization exchange fulfilled.
+- `failure`: the initialization exchange threw or rejected.
+
+The value is a historical result retained for the lifetime of the SDK instance
+and is not reset by logout. It does not represent current authorization state
+or credentials hydrated from storage. It also does not track guest or device
+authentication, token refreshes, or authorization-code exchanges requested
+later on the same SDK instance.
+
+OAuth redirect errors and CSRF validation failures occur before the exchange,
+so the value remains `not_attempted`; these errors can throw before `ready`
+becomes `true`. A non-redirecting logout does not cancel an initialization
+exchange already in flight. If that exchange later settles, it can still update
+credentials and this retained outcome.
 
 ## Security Considerations
 

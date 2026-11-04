@@ -338,7 +338,7 @@ flowchart LR
 |---|---|---|
 | `isSocketEnabled()` | `isMobiusWssEnabled(webex)` (in `utils/wsFeatureFlag.ts`) | `CallingClient`, `Registration`, `CallManager` (to skip the Mercury `event:mobius` listener when WSS is on). |
 | `connectToMobiusSocket(wssUrl)` | `MobiusSocket#isConnected`, `MobiusSocket#connect`, `MobiusSocket#getConnectedWebSocketUrl` | `CallingClient.connectToMobiusSocket` (post-discovery), `Registration.attemptRegistrationWithServers` (per server URI). |
-| `disconnectFromMobiusSocket(options?)` | `MobiusSocket#disconnect` | `Registration.restorePreviousRegistration` / `startFailoverTimer` / `executeFailback` / `deregister` / `performRegistrationDownCleanup` / `attemptRegistrationWithServers` error branch. |
+| `disconnectFromMobiusSocket(options?)` | `MobiusSocket#disconnect` | `Registration.restorePreviousRegistration` / `startFailoverTimer` / `executeFailback` / `deregister` / `registrationCleanup` / `attemptRegistrationWithServers` error branch. |
 | `getConnectedWebSocketUrl()` | `MobiusSocket#getConnectedWebSocketUrl` | `Registration` (to decide whether the current connection still matches `activeMobiusUrl`). |
 | `makeRequest(request)` | `MobiusSocket#sendWssRequest` when WSS is enabled, otherwise `webex.request` | Mobius REST traffic routed through `APIRequest`: register, deregister, call setup/state/media/status, supplementary services, keepalive 404 recovery, etc. **Not** used for Mobius server discovery (`getMobiusServers`), device listing (`getDevices`), or failback health pings (`Registration.isPrimaryActive`) — those call `webex.request()` directly. |
 | `registerMobiusSocketListener(cb)` | `MobiusSocket#on('event:async_event', cb)` | `CallingClient.init` (when WSS is enabled), invoking `handleMobiusAsyncEvent` to fan out to `CallManager.dequeueWsEvents` or `Registration.handleRegistrationDownEvent`. |
@@ -871,6 +871,7 @@ The singleton owns the active Socket, cached URL, connected/connecting flags, co
 - Deduplicate async events by eventId with bounded LRU eviction.
 - Treat close codes according to the documented permanent/replaced/transient/auth/throttle matrix.
 - Authorization/token values exist only in socket metadata/refresh flows and must never be emitted or logged. Evidence: `src/mobius-socket/` implementation and tests.
+- **Trusted-host allowlist before token transmission (AC-2 / CAI-8461):** `Socket#open` (`socket-base.ts`) validates the target hostname against `MOBIUS_WSS_ALLOWED_DOMAINS` (`src/common/constants.ts`) before the WebSocket is created. If the host is not allowlisted the promise rejects with a typed `ConnectionError` and `authorize(token)` is never called, ensuring the bearer token cannot be exfiltrated to an arbitrary discovery-named host. `filterMobiusUris` (`src/common/Utils.ts`) provides a second layer by dropping non-allowlisted WSS entries from discovery responses before they reach the socket layer.
 
 ## Concurrency & Reactive Flow
 

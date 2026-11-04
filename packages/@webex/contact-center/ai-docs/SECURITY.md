@@ -45,7 +45,7 @@
 |---|---|---|---|
 | Log upload | Runtime context could contain sensitive values | Shared error helpers upload only approved diagnostic context; never add credentials/payload dumps | Contact Center maintainers |
 | WebSocket event parsing | Malformed/unexpected remote data | Parse defensively, map known event constants, ignore/reject invalid transitions | Core/Task maintainers |
-| Public dial/contact inputs | PII and external numbers | Validate and avoid logging raw values | Contact Center maintainers |
+| Public dial/contact/participant-drop inputs | PII, external numbers, and participant identifiers | Validate and avoid logging raw values; sensitive AQM operations redact dynamic URLs and raw routing failures | Contact Center maintainers |
 
 ## Reporting & Review
 

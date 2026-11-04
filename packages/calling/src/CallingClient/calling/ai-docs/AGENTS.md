@@ -60,7 +60,8 @@ All paths are relative to `CallingClient/calling/` (the directory containing `ca
 | `Eventing` | `../../Events/impl` |
 | `CallError`, `createCallError` | `../../Errors/catalog/CallError` |
 | `ERROR_LAYER`, `ERROR_TYPE`, `ErrorContext` | `../../Errors/types` |
-| `handleCallErrors`, `modifySdpForIPv4`, `parseMediaQualityStatistics`, `serviceErrorCodeHandler`, `uploadLogs` | `../../common/Utils` |
+| `handleCallErrors`, `parseMediaQualityStatistics`, `serviceErrorCodeHandler`, `uploadLogs` | `../../common/Utils` |
+| `getHostIpsFromSdp`, `modifySdpForIPv4` | `../../common/callUtils` |
 | `CallDetails`, `CallDirection`, `CallId`, `CorrelationId`, `DisplayInformation`, `HTTP_METHODS`, `ServiceIndicator`, `WebexRequestPayload`, `ALLOWED_SERVICES` | `../../common/types` |
 | `SDKConnector` | `../../SDKConnector` |
 | `ISDKConnector`, `WebexSDK` | `../../SDKConnector/types` |

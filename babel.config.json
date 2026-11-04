@@ -52,5 +52,11 @@
     ],
     "@babel/preset-typescript"
   ],
+  "overrides": [
+    {
+      "test": "./packages/@webex/kms-caroots",
+      "sourceType": "unambiguous"
+    }
+  ],
   "sourceMaps": true
 }

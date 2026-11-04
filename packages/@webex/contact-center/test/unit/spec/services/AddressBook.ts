@@ -99,7 +99,8 @@ describe('AddressBook', () => {
 
       expect(mockWebex.request).toHaveBeenCalledWith({
         service: 'wcc-api-gateway',
-        resource: '/organization/test-org-id/v2/address-book/test-address-book-id/entry?page=0&pageSize=100',
+        resource:
+          '/organization/test-org-id/v2/address-book/test-address-book-id/entry?page=0&pageSize=100&sort=name%2CASC',
         method: HTTP_METHODS.GET,
       });
 
@@ -133,7 +134,8 @@ describe('AddressBook', () => {
         module: 'AddressBook',
         method: 'getEntries',
         data: {
-          resource: '/organization/test-org-id/v2/address-book/test-address-book-id/entry?page=0&pageSize=100',
+          resource:
+            '/organization/test-org-id/v2/address-book/test-address-book-id/entry?page=0&pageSize=100&sort=name%2CASC',
           service: 'wcc-api-gateway',
         },
       });
@@ -155,7 +157,8 @@ describe('AddressBook', () => {
 
       expect(mockWebex.request).toHaveBeenCalledWith({
         service: 'wcc-api-gateway',
-        resource: '/organization/test-org-id/v2/address-book/custom-book-id/entry?page=1&pageSize=25&filter=name%3D%3D%22John+Doe%22&attributes=id%2Cname%2Cnumber&search=john',
+        resource:
+          '/organization/test-org-id/v2/address-book/custom-book-id/entry?page=1&pageSize=25&filter=name%3D%3D%22John+Doe%22&attributes=id%2Cname%2Cnumber&search=john&sort=name%2CASC',
         method: HTTP_METHODS.GET,
       });
 
@@ -175,6 +178,31 @@ describe('AddressBook', () => {
       );
     });
 
+    it('should allow callers to override the default backend sorting and bypass the default page cache', async () => {
+      (mockWebex.request as jest.Mock).mockResolvedValue(mockResponse);
+
+      await addressBookAPI.getEntries({
+        page: 0,
+        pageSize: 25,
+        sortBy: 'name',
+        sortOrder: 'desc',
+      });
+      await addressBookAPI.getEntries({
+        page: 0,
+        pageSize: 25,
+        sortBy: 'name',
+        sortOrder: 'desc',
+      });
+
+      expect(mockWebex.request).toHaveBeenCalledTimes(2);
+      expect(mockWebex.request).toHaveBeenLastCalledWith({
+        service: 'wcc-api-gateway',
+        resource:
+          '/organization/test-org-id/v2/address-book/test-address-book-id/entry?page=0&pageSize=25&sort=name%2CDESC',
+        method: HTTP_METHODS.GET,
+      });
+    });
+
     it('should handle API errors and track metrics', async () => {
       (mockWebex.request as jest.Mock).mockRejectedValue(new Error('Internal Server Error'));
 
@@ -182,7 +210,8 @@ describe('AddressBook', () => {
 
       expect(mockWebex.request).toHaveBeenCalledWith({
         service: 'wcc-api-gateway',
-        resource: '/organization/test-org-id/v2/address-book/test-address-book-id/entry?page=0&pageSize=100',
+        resource:
+          '/organization/test-org-id/v2/address-book/test-address-book-id/entry?page=0&pageSize=100&sort=name%2CASC',
         method: HTTP_METHODS.GET,
       });
 
@@ -316,14 +345,16 @@ describe('AddressBook', () => {
       expect(result.meta.page).toBe(1);
       expect(mockWebex.request).toHaveBeenCalledWith({
         service: 'wcc-api-gateway',
-        resource: '/organization/test-org-id/v2/address-book/test-address-book-id/entry?page=1&pageSize=100',
+        resource:
+          '/organization/test-org-id/v2/address-book/test-address-book-id/entry?page=1&pageSize=100&sort=name%2CASC',
         method: HTTP_METHODS.GET,
       });
       expect(LoggerProxy.info).toHaveBeenCalledWith('Making API request to fetch address book entries', {
         module: 'AddressBook',
         method: 'getEntries',
         data: {
-          resource: '/organization/test-org-id/v2/address-book/test-address-book-id/entry?page=1&pageSize=100',
+          resource:
+            '/organization/test-org-id/v2/address-book/test-address-book-id/entry?page=1&pageSize=100&sort=name%2CASC',
           service: 'wcc-api-gateway',
         },
       });

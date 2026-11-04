@@ -303,6 +303,28 @@ const Conversation = WebexPlugin.extend({
   },
 
   /**
+   * Builds the recipients items array for a reaction based on the recipientId.
+   * Supports special `allPanelists` and `allPanelists:<attendeeId>` formats.
+   * @param {String} recipientId used when reacting to direct IMC messages
+   * @private
+   * @returns {Array<Object>}
+   */
+  _buildReactionRecipientItems(recipientId) {
+    if (recipientId.startsWith('allPanelists')) {
+      const items = [{objectType: 'groupMention', groupType: 'allPanelists'}];
+      const [, attendeeId] = recipientId.split(':');
+
+      if (attendeeId) {
+        items.push({id: attendeeId, entryUUID: attendeeId, objectType: 'person'});
+      }
+
+      return items;
+    }
+
+    return [{id: recipientId, objectType: 'person'}];
+  },
+
+  /**
    * create a reaction
    * @param {Object} conversation the conversation in which the reaction will be added
    * @param {Object} reactionId reaction activity to be deleted
@@ -327,7 +349,7 @@ const Conversation = WebexPlugin.extend({
 
     // Is not required for the request to be accepted, but follows specification.
     if (recipientId) {
-      deleteReactionPayload.recipients = {items: [{id: recipientId, objectType: 'person'}]};
+      deleteReactionPayload.recipients = {items: this._buildReactionRecipientItems(recipientId)};
     }
 
     return this.sendReaction(conversation, deleteReactionPayload);
@@ -368,7 +390,7 @@ const Conversation = WebexPlugin.extend({
     };
 
     if (recipientId) {
-      addReactionPayload.recipients = {items: [{id: recipientId, objectType: 'person'}]};
+      addReactionPayload.recipients = {items: this._buildReactionRecipientItems(recipientId)};
     }
 
     return this.sendReaction(conversation, addReactionPayload);

@@ -6,7 +6,14 @@
  */
 
 import type {AnyStateNodeConfig, ActionFunctionMap, EventObject, ActionArgs} from 'xstate';
-import {DestinationType, TaskChannelType, TaskData, TaskUIControls, VoiceVariant} from '../types';
+import {
+  ConsultTransferDestinationConfig,
+  DestinationType,
+  TaskChannelType,
+  TaskData,
+  TaskUIControls,
+  VoiceVariant,
+} from '../types';
 import {TaskEvent, TaskState} from './constants';
 
 /**
@@ -43,6 +50,14 @@ export interface UIControlConfig {
   isRecordingEnabled: boolean;
   /** Current agent ID for ownership checks (transfer conference) */
   agentId?: string;
+  /** Agent-profile policy for ordered consult/transfer destinations */
+  consultTransferConfig?: ConsultTransferDestinationConfig;
+  /** Whether wxApp thick-client answer is enabled (WXCC-6026) */
+  enableWxBetterTogether?: boolean;
+  /** True while wxApp telephony answer is in flight (outdial Calling… label) */
+  wxAppAnswerPending?: boolean;
+  /** True only during the wxApp accept REST call (decline disabled for inbound + outdial) */
+  wxAppAcceptInFlight?: boolean;
 }
 
 /**

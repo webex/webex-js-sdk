@@ -10,4 +10,4 @@ import config from './config';
 
 registerInternalPlugin('aisummary', AISummary, {config});
 
-export {default} from './ai-summary';
+export default AISummary;

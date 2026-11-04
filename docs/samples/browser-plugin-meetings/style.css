@@ -346,6 +346,333 @@ button.btn-code {
   display: none;
 }
 
+.breakout-configuration {
+  margin-top: 1rem;
+}
+
+.breakout-control,
+.breakout-assignment-option,
+.breakout-automatic-options {
+  margin-bottom: 0.75rem;
+}
+
+.breakout-automatic-options {
+  margin-left: 1.5rem;
+}
+
+.breakout-automatic-options div {
+  margin-bottom: 0.5rem;
+}
+
+#breakout-session-count {
+  width: 5rem;
+}
+
+.breakout-table {
+  max-width: 100%;
+  margin-top: 1rem;
+}
+
+.breakout-sessions-table {
+  width: 100%;
+  table-layout: fixed;
+  border-collapse: collapse;
+  font-size: 0.85rem;
+}
+
+.breakout-table h3 {
+  margin-bottom: 0.5rem;
+  font-size: 1.1rem;
+}
+
+.breakout-sessions-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 0.75rem;
+  margin-bottom: 0.5rem;
+}
+
+.breakout-sessions-header h3 {
+  margin: 0;
+}
+
+.breakout-sessions-header button {
+  flex: 0 0 auto;
+  margin: 0;
+}
+
+.breakout-broadcast {
+  margin-bottom: 1rem;
+  padding: 0.75rem;
+  border: 1px solid #d6d6d6;
+  border-radius: 0.5rem;
+  background-color: #f4f4f4;
+}
+
+.breakout-broadcast h3 {
+  margin-top: 0;
+}
+
+.breakout-broadcast-controls {
+  display: grid;
+  grid-template-columns: minmax(0, 1.1fr) minmax(0, 1.3fr) minmax(0, 1.5fr) auto auto;
+  align-items: center;
+  gap: 0.4rem;
+}
+
+.breakout-broadcast-controls select,
+.breakout-broadcast-controls input,
+.breakout-broadcast-controls button {
+  box-sizing: border-box;
+  min-width: 0;
+  min-height: 2rem;
+  margin: 0;
+  padding: 0.35rem 0.5rem;
+  font-size: 0.85rem;
+  line-height: 1.2;
+}
+
+.breakout-broadcast-controls select {
+  background-color: rgb(208, 207, 207);
+}
+
+.breakout-unassigned {
+  margin-bottom: 1rem;
+  padding: 0.75rem;
+  border: 1px solid #d6d6d6;
+  border-radius: 0.5rem;
+  background-color: #f4f4f4;
+}
+
+.breakout-unassigned > h3 {
+  margin-top: 0;
+}
+
+.breakout-unassigned-group {
+  margin-bottom: 0.75rem;
+}
+
+.breakout-unassigned-group h4 {
+  margin: 0 0 0.35rem;
+  font-size: 0.95rem;
+}
+
+.breakout-unassigned-table {
+  width: 100%;
+  table-layout: fixed;
+  border-collapse: collapse;
+  font-size: 0.85rem;
+}
+
+.breakout-unassigned-table th,
+.breakout-unassigned-table td {
+  box-sizing: border-box;
+  padding: 0.35rem 0.4rem;
+  overflow-wrap: anywhere;
+  text-align: left;
+}
+
+.breakout-unassigned-table tbody tr {
+  border-top: 1px solid #d6d6d6;
+}
+
+.breakout-unassigned-table th:nth-child(1),
+.breakout-unassigned-table td:nth-child(1) {
+  width: 12%;
+}
+
+.breakout-unassigned-table th:nth-child(2),
+.breakout-unassigned-table td:nth-child(2) {
+  width: 48%;
+}
+
+.breakout-unassigned-table th:nth-child(3),
+.breakout-unassigned-table td:nth-child(3) {
+  width: 40%;
+}
+
+.breakout-unassigned-actions {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 0.75rem;
+  flex-wrap: wrap;
+}
+
+.breakout-unassigned-actions > label {
+  display: flex;
+  align-items: center;
+  gap: 0.35rem;
+  margin: 0;
+}
+
+.breakout-unassigned-move-controls {
+  display: grid;
+  justify-items: end;
+  gap: 0.3rem;
+}
+
+.breakout-unassigned-move-controls button,
+.breakout-unassigned-move-controls select {
+  min-height: 2rem;
+  padding: 0.35rem 0.6rem;
+  font-size: 0.85rem;
+  line-height: 1.2;
+}
+
+.breakout-sessions-table > thead > tr > th,
+.breakout-session-row > td {
+  box-sizing: border-box;
+  padding: 0.35rem 0.4rem;
+  line-height: 1.25;
+  overflow-wrap: anywhere;
+}
+
+.breakout-session-row {
+  border-top: 1px solid #d6d6d6;
+}
+
+.breakout-sessions-table > thead > tr > th:nth-child(1),
+.breakout-session-row > td:nth-child(1) {
+  width: 25%;
+}
+
+.breakout-sessions-table > thead > tr > th:nth-child(2),
+.breakout-session-row > td:nth-child(2),
+.breakout-sessions-table > thead > tr > th:nth-child(3),
+.breakout-session-row > td:nth-child(3) {
+  width: 9%;
+}
+
+.breakout-sessions-table > thead > tr > th:nth-child(4),
+.breakout-session-row > td:nth-child(4),
+.breakout-sessions-table > thead > tr > th:nth-child(6),
+.breakout-session-row > td:nth-child(6) {
+  width: 10%;
+}
+
+.breakout-sessions-table > thead > tr > th:nth-child(5),
+.breakout-session-row > td:nth-child(5) {
+  width: 14%;
+}
+
+.breakout-sessions-table > thead > tr > th:nth-child(7),
+.breakout-session-row > td:nth-child(7) {
+  width: 23%;
+}
+
+.breakout-session-controls {
+  display: flex;
+  align-items: center;
+  justify-content: flex-start;
+  flex-wrap: wrap;
+  gap: 0.3rem;
+}
+
+.breakout-session-controls button,
+.breakout-session-controls select {
+  min-height: 2rem;
+  padding: 0.35rem 0.6rem;
+  font-size: 0.85rem;
+  line-height: 1.2;
+}
+
+.breakout-session-more {
+  max-width: 8.5rem;
+  color: #222222;
+  background-color: #e2e2e2;
+  border: 1px solid #8a8a8a;
+  border-radius: 0.25rem;
+}
+
+.breakout-session-name-input {
+  box-sizing: border-box;
+  width: 100%;
+  min-height: 2rem;
+  padding: 0.3rem 0.4rem;
+  font: inherit;
+}
+
+.breakout-session-name-input:focus {
+  outline: 2px solid #555555;
+  outline-offset: 1px;
+}
+
+.breakout-participants-row > td {
+  padding: 0.3rem 0.5rem 0.75rem 1rem;
+}
+
+.breakout-participants {
+  padding: 0.5rem;
+  background-color: #eeeeee;
+}
+
+.breakout-participants-table {
+  width: 100%;
+  table-layout: fixed;
+  border-collapse: collapse;
+  font-size: 0.82rem;
+}
+
+.breakout-participants-table th,
+.breakout-participants-table td {
+  box-sizing: border-box;
+  padding: 0.35rem 0.4rem;
+  overflow-wrap: anywhere;
+  text-align: left;
+}
+
+.breakout-participants-table th:nth-child(1),
+.breakout-participants-table td:nth-child(1) {
+  width: 28%;
+}
+
+.breakout-participants-table th:nth-child(2),
+.breakout-participants-table td:nth-child(2) {
+  width: 22%;
+}
+
+.breakout-participants-table th:nth-child(3),
+.breakout-participants-table td:nth-child(3) {
+  width: 50%;
+}
+
+.breakout-participant-controls {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 0.3rem;
+}
+
+.breakout-participant-controls button,
+.breakout-action-picker select {
+  min-width: 0;
+  width: 100%;
+  min-height: 2rem;
+  padding: 0.35rem 0.25rem;
+  font-size: 0.85rem;
+  line-height: 1.2;
+}
+
+.breakout-participant-controls > button,
+.breakout-action-picker button {
+  white-space: normal;
+}
+
+.breakout-session-controls button:disabled,
+.breakout-session-controls select:disabled,
+.breakout-participant-controls button:disabled {
+  cursor: not-allowed;
+  opacity: 0.55;
+}
+
+.breakout-action-picker {
+  display: grid;
+  grid-column: 1 / -1;
+  grid-template-columns: minmax(0, 1fr) auto auto;
+  gap: 0.3rem;
+}
+
 .media-button-label {
   flex: 0.25;
   font-weight: 500;

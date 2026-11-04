@@ -7,6 +7,7 @@ import {assert} from '@webex/test-helper-chai';
 import {base64} from '@webex/common';
 import WebexCore from '@webex/webex-core';
 import testUsers from '@webex/test-helper-test-users';
+import {nodeOnly} from '@webex/test-helper-mocha';
 
 describe('plugin-encryption', () => {
   let other, webex;
@@ -26,8 +27,10 @@ describe('plugin-encryption', () => {
 
   before('register with wdm', () => webex.internal.device.register());
 
+  after(() => webex && webex.internal.mercury.disconnect());
+
   describe('when a DRY response has an error', () => {
-    it('decrypts the error message', () =>
+    nodeOnly(it)('decrypts the error message', () =>
       assert
         .isRejected(
           webex.request({

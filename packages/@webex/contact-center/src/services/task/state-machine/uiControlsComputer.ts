@@ -3,6 +3,7 @@
  */
 
 import {
+  CONSULT_TRANSFER_DESTINATION_TYPE,
   InteractionUIControls,
   TASK_CHANNEL_TYPE,
   TaskData,
@@ -11,6 +12,10 @@ import {
   VOICE_VARIANT,
 } from '../types';
 import {TaskContext, UIControlConfig} from './types';
+import {
+  getWebexCallingDeviceDetailsForAgent,
+  isWxAppEngagedForControls,
+} from '../WebexCallingUtils';
 import {TaskState, MAX_PARTICIPANTS_IN_MULTIPARTY_CONFERENCE, INTERACTION_STATE} from './constants';
 import {
   getIsCustomerInCall,
@@ -20,10 +25,40 @@ import {
   getIsConsultedAgentForControls,
   getServerHoldStateForControls,
 } from '../TaskUtils';
+import {INBOUND_DIRECTION, OUTDIAL_DIRECTION} from '../../../constants';
+import {COLLABORATION_ACCESS} from '../../config/constants';
+
+type DestinationControls = TaskUIControls['consultTransferDestinations'];
 
 const DISABLED = {isVisible: false, isEnabled: false} as const;
 const VISIBLE_ENABLED = {isVisible: true, isEnabled: true} as const;
 const VISIBLE_DISABLED = {isVisible: true, isEnabled: false} as const;
+
+/** wxApp telephony controls live on the main leg only (mute/keypad via wxApp APIs). */
+function withWxAppTelephonyControls(
+  controls: InteractionUIControls,
+  isWxAppEngaged: boolean,
+  currentLeg: TaskUILeg,
+  isWrappingUp: boolean
+): InteractionUIControls {
+  if (!isWxAppEngaged || isWrappingUp) {
+    return controls;
+  }
+
+  if (currentLeg === 'main') {
+    return {
+      ...controls,
+      mute: VISIBLE_ENABLED,
+      keypad: VISIBLE_ENABLED,
+    };
+  }
+
+  return {
+    ...controls,
+    mute: DISABLED,
+    keypad: DISABLED,
+  };
+}
 
 function getDefaultInteractionUIControls(): InteractionUIControls {
   return {
@@ -43,18 +78,24 @@ function getDefaultInteractionUIControls(): InteractionUIControls {
     transferConference: DISABLED,
     mergeToConference: DISABLED,
     switch: DISABLED,
+    keypad: DISABLED,
   };
 }
 
 function createTaskUIControls(
   main: InteractionUIControls,
   consult: InteractionUIControls,
-  activeLeg: TaskUILeg
+  activeLeg: TaskUILeg,
+  consultTransferDestinations: DestinationControls = {
+    consult: [],
+    transfer: [],
+  }
 ): TaskUIControls {
   return {
     main,
     consult,
     activeLeg,
+    consultTransferDestinations,
   };
 }
 
@@ -64,6 +105,53 @@ export function getDefaultUIControls(): TaskUIControls {
     getDefaultInteractionUIControls(),
     'main'
   );
+}
+
+function getConsultTransferDestinations(
+  config: UIControlConfig,
+  taskData?: TaskData | null
+): DestinationControls {
+  const destinationConfig = config.consultTransferConfig;
+  if (!destinationConfig) {
+    return {consult: [], transfer: []};
+  }
+
+  const isVoice = config.channelType === TASK_CHANNEL_TYPE.VOICE;
+  const interaction = taskData?.interaction;
+  const direction = interaction?.contactDirection?.type?.toUpperCase();
+  const destinations: DestinationControls = {
+    consult: [],
+    transfer: [],
+  };
+
+  if (destinationConfig.accessBuddyTeam?.toUpperCase() !== COLLABORATION_ACCESS.NONE) {
+    destinations.consult.push(CONSULT_TRANSFER_DESTINATION_TYPE.AGENT);
+    destinations.transfer.push(CONSULT_TRANSFER_DESTINATION_TYPE.AGENT);
+  }
+
+  if (destinationConfig.accessQueue?.toUpperCase() !== COLLABORATION_ACCESS.NONE) {
+    const canConsultQueue = !isVoice || destinationConfig.allowConsultToQueue;
+    const canTransferQueue =
+      !isVoice ||
+      direction === INBOUND_DIRECTION ||
+      (direction === OUTDIAL_DIRECTION &&
+        interaction?.callProcessingDetails?.outdialTransferToQueueEnabled === true);
+
+    if (canConsultQueue) destinations.consult.push(CONSULT_TRANSFER_DESTINATION_TYPE.QUEUE);
+    if (canTransferQueue) destinations.transfer.push(CONSULT_TRANSFER_DESTINATION_TYPE.QUEUE);
+  }
+
+  if (isVoice) {
+    destinations.consult.push(CONSULT_TRANSFER_DESTINATION_TYPE.DIALNUMBER);
+    destinations.transfer.push(CONSULT_TRANSFER_DESTINATION_TYPE.DIALNUMBER);
+
+    if (destinationConfig.accessEntryPoint?.toUpperCase() !== COLLABORATION_ACCESS.NONE) {
+      destinations.consult.push(CONSULT_TRANSFER_DESTINATION_TYPE.ENTRYPOINT);
+      destinations.transfer.push(CONSULT_TRANSFER_DESTINATION_TYPE.ENTRYPOINT);
+    }
+  }
+
+  return destinations;
 }
 
 /** Consult media must exist on the interaction payload, not only as a stale resource id. */
@@ -134,6 +222,23 @@ function computeVoiceInteractionUIControls(
     interaction && mainCallId ? getConferenceParticipantsCount(interaction, mainCallId) : 0;
   const maxParticipants = participantCount >= MAX_PARTICIPANTS_IN_MULTIPARTY_CONFERENCE;
   const selfAgentId = config.agentId ?? taskData?.agentId;
+  const enableWxBetterTogether = config.enableWxBetterTogether ?? false;
+  const wxAppDeviceDetails = enableWxBetterTogether
+    ? getWebexCallingDeviceDetailsForAgent(selfAgentId, interaction?.participants)
+    : undefined;
+  const isWxAppParticipant = enableWxBetterTogether && wxAppDeviceDetails?.deviceType === 'wxApp';
+  const isWxAppOffer =
+    isWxAppParticipant && Boolean(wxAppDeviceDetails) && state === TaskState.OFFERED;
+  const isWxAppInboundOffer = isWxAppOffer && !isOutdial;
+  const isWxAppOutdialOffer = isWxAppOffer && isOutdial;
+  const wxAppAnswerPending = config.wxAppAnswerPending ?? false;
+  const wxAppAcceptInFlight = config.wxAppAcceptInFlight ?? false;
+  const isWxAppEngaged = isWxAppEngagedForControls(
+    enableWxBetterTogether,
+    selfAgentId,
+    interaction?.participants,
+    state
+  );
   const consultInProgress = getIsConsultInProgressForConferenceControls(
     interaction,
     mainCallId,
@@ -376,37 +481,52 @@ function computeVoiceInteractionUIControls(
         ? VISIBLE_ENABLED
         : DISABLED;
 
-    return {
-      ...getDefaultInteractionUIControls(),
-      hold: VISIBLE_ENABLED,
-      transfer: VISIBLE_ENABLED,
-      consult: VISIBLE_ENABLED,
-      recording: recordingControl,
-      end: VISIBLE_DISABLED,
-    };
+    return withWxAppTelephonyControls(
+      {
+        ...getDefaultInteractionUIControls(),
+        hold: VISIBLE_ENABLED,
+        transfer: VISIBLE_ENABLED,
+        consult: VISIBLE_ENABLED,
+        recording: recordingControl,
+        end: VISIBLE_DISABLED,
+      },
+      isWxAppEngaged,
+      currentLeg,
+      isWrappingUp
+    );
   }
 
   if (isConsultRequestedPhase && !isEpDnPendingConferenceMergeUi) {
     if (currentLeg === 'main') {
-      return {
-        ...getDefaultInteractionUIControls(),
-        transfer: shouldHideBlindTransferForEpDnPendingConferenceMerge
-          ? DISABLED
-          : VISIBLE_DISABLED,
-        conference: VISIBLE_DISABLED,
-        end: VISIBLE_DISABLED,
-      };
+      return withWxAppTelephonyControls(
+        {
+          ...getDefaultInteractionUIControls(),
+          transfer: shouldHideBlindTransferForEpDnPendingConferenceMerge
+            ? DISABLED
+            : VISIBLE_DISABLED,
+          conference: VISIBLE_DISABLED,
+          end: VISIBLE_DISABLED,
+        },
+        isWxAppEngaged,
+        currentLeg,
+        isWrappingUp
+      );
     }
 
     if (currentLeg === 'consult') {
-      return {
-        ...getDefaultInteractionUIControls(),
-        endConsult: VISIBLE_ENABLED,
-        switch: VISIBLE_DISABLED,
-        transfer: VISIBLE_DISABLED,
-        transferConference: inConference ? VISIBLE_DISABLED : DISABLED,
-        mergeToConference: VISIBLE_DISABLED,
-      };
+      return withWxAppTelephonyControls(
+        {
+          ...getDefaultInteractionUIControls(),
+          endConsult: VISIBLE_ENABLED,
+          switch: VISIBLE_DISABLED,
+          transfer: VISIBLE_DISABLED,
+          transferConference: inConference ? VISIBLE_DISABLED : DISABLED,
+          mergeToConference: VISIBLE_DISABLED,
+        },
+        isWxAppEngaged,
+        currentLeg,
+        isWrappingUp
+      );
     }
   }
 
@@ -415,11 +535,24 @@ function computeVoiceInteractionUIControls(
     // Desktop/WebRTC + inbound: accept enabled (agent manually accepts)
     // Desktop/WebRTC + outdial: accept disabled (auto-answer handles it; Widgets show "Accept" disabled)
     // Extension mode (non-WebRTC): accept disabled (Widgets show "Ringing...")
-    accept:
-      state === TaskState.OFFERED && !interaction?.isTerminated
-        ? {isVisible: true, isEnabled: isWebrtc && !isOutdial}
-        : DISABLED,
+    accept: (() => {
+      if (isWxAppInboundOffer) {
+        return wxAppAcceptInFlight || wxAppAnswerPending ? VISIBLE_DISABLED : VISIBLE_ENABLED;
+      }
+      if (isWxAppOutdialOffer) {
+        return wxAppAcceptInFlight || wxAppAnswerPending ? VISIBLE_DISABLED : VISIBLE_ENABLED;
+      }
+      if (state === TaskState.OFFERED && !interaction?.isTerminated) {
+        return {isVisible: true, isEnabled: isWebrtc && !isOutdial};
+      }
+
+      return DISABLED;
+    })(),
     decline: (() => {
+      if (wxAppAcceptInFlight) return VISIBLE_DISABLED;
+      if (wxAppAnswerPending && isWxAppInboundOffer) return VISIBLE_DISABLED;
+      if (isWxAppInboundOffer) return VISIBLE_ENABLED;
+      if (isWxAppOutdialOffer) return VISIBLE_ENABLED;
       if (!isWebrtc || state !== TaskState.OFFERED || interaction?.isTerminated) return DISABLED;
 
       return isOutdial ? VISIBLE_DISABLED : VISIBLE_ENABLED;
@@ -447,8 +580,11 @@ function computeVoiceInteractionUIControls(
       return canHold ? VISIBLE_ENABLED : VISIBLE_DISABLED;
     })(),
 
-    // Mute: WebRTC only, active calls; hidden entirely during wrapup
+    // Mute: WebRTC or wxApp engaged calls; hidden entirely during wrapup
     mute: (() => {
+      if (isWxAppEngaged && !isWrappingUp) {
+        return currentLeg === 'main' ? VISIBLE_ENABLED : DISABLED;
+      }
       if (!isWebrtc) return DISABLED;
       if (isWrappingUp) return DISABLED;
       if (isEpDnPostCallCustomerLeft && inConference) return VISIBLE_DISABLED;
@@ -712,6 +848,14 @@ function computeVoiceInteractionUIControls(
 
       return DISABLED;
     })(),
+
+    keypad: (() => {
+      if (isWxAppEngaged && !isWrappingUp) {
+        return currentLeg === 'main' ? VISIBLE_ENABLED : DISABLED;
+      }
+
+      return DISABLED;
+    })(),
   };
 }
 
@@ -743,6 +887,7 @@ function computeDigitalInteractionUIControls(
     transferConference: DISABLED,
     mergeToConference: DISABLED,
     switch: DISABLED,
+    keypad: DISABLED,
   };
 }
 
@@ -896,6 +1041,11 @@ export function computeUIControls(
     return getDefaultUIControls();
   }
 
+  const consultTransferDestinations = getConsultTransferDestinations(
+    context.uiControlConfig,
+    fallbackTaskData ?? context.taskData
+  );
+
   switch (context.uiControlConfig.channelType) {
     case TASK_CHANNEL_TYPE.VOICE: {
       const {hasConsultLeg, activeLeg, mainState, consultState} = getVoiceLegState(
@@ -922,13 +1072,19 @@ export function computeUIControls(
           )
         : getDefaultInteractionUIControls();
 
-      return createTaskUIControls(mainControls, consultControls, activeLeg);
+      return createTaskUIControls(
+        mainControls,
+        consultControls,
+        activeLeg,
+        consultTransferDestinations
+      );
     }
     case TASK_CHANNEL_TYPE.DIGITAL:
       return createTaskUIControls(
         computeDigitalInteractionUIControls(currentState, context, fallbackTaskData),
         getDefaultInteractionUIControls(),
-        'main'
+        'main',
+        consultTransferDestinations
       );
     default:
       return getDefaultUIControls();
@@ -947,6 +1103,16 @@ function haveInteractionUIControlsChanged(
   });
 }
 
+function haveDestinationListChanged(
+  previous: DestinationControls['consult'],
+  next: DestinationControls['consult']
+): boolean {
+  return (
+    previous.length !== next.length ||
+    previous.some((destination, index) => destination !== next[index])
+  );
+}
+
 export function haveUIControlsChanged(
   previous: TaskUIControls | undefined,
   next: TaskUIControls
@@ -955,6 +1121,14 @@ export function haveUIControlsChanged(
 
   return (
     previous.activeLeg !== next.activeLeg ||
+    haveDestinationListChanged(
+      previous.consultTransferDestinations.consult,
+      next.consultTransferDestinations.consult
+    ) ||
+    haveDestinationListChanged(
+      previous.consultTransferDestinations.transfer,
+      next.consultTransferDestinations.transfer
+    ) ||
     haveInteractionUIControlsChanged(previous.main, next.main) ||
     haveInteractionUIControlsChanged(previous.consult, next.consult)
   );

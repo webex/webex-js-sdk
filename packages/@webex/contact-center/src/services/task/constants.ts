@@ -14,6 +14,8 @@ export const CONSULT = '/consult';
 export const CONSULT_ACCEPT = '/consult/accept';
 export const CONSULT_END = '/consult/end';
 export const TRANSFER = '/transfer';
+/** Backend destination value for direct entry-point transfers through the vteam endpoint. */
+export const ENTRY_POINT_TRANSFER_DESTINATION_TYPE = 'entrypointDialNumber';
 export const CONSULT_TRANSFER = '/consult/transfer';
 export const PAUSE = '/record/pause';
 export const RESUME = '/record/resume';
@@ -28,6 +30,10 @@ export const CAMPAIGN_PREVIEW_SKIP = '/skip';
 export const CAMPAIGN_PREVIEW_REMOVE = '/remove';
 /** 80-second timeout for accepting preview contact (outbound call setup takes longer than default 20s) */
 export const TIMEOUT_PREVIEW_ACCEPT = 80000;
+/** RTD result deadline; the initiating HTTP acknowledgement uses the 20-second service timeout. */
+export const AI_SUMMARY_DURATION_MS = 15000;
+export const AI_SUMMARY_REQUEST_CANCELLED = 'AI_SUMMARY_REQUEST_CANCELLED' as const;
+
 export const TASK_MANAGER_FILE = 'taskManager';
 export const TASK_FILE = 'task';
 
@@ -73,6 +79,7 @@ export const METHODS = {
   TRANSFER: 'transfer',
   CONSULT_TRANSFER: 'consultTransfer',
   CONSULT_CONFERENCE: 'consultConference',
+  DROP_CONFERENCE_PARTICIPANT: 'dropConferenceParticipant',
   EXIT_CONFERENCE: 'exitConference',
   TRANSFER_CONFERENCE: 'transferConference',
   UPDATE_TASK_DATA: 'updateTaskData',
@@ -90,6 +97,12 @@ export const METHODS = {
   SETUP_AUTO_WRAPUP_TIMER: 'setupAutoWrapupTimer',
   CANCEL_AUTO_WRAPUP_TIMER: 'cancelAutoWrapupTimer',
   REQUEST_REAL_TIME_TRANSCRIPTS: 'requestRealTimeTranscripts',
+  REQUEST_POST_CALL_SUMMARY: 'requestPostCallSummary',
+  SEND_POST_CALL_SUMMARY_RESPONSE: 'sendPostCallSummaryResponse',
+  REQUEST_MID_CALL_SUMMARY: 'requestMidCallSummary',
+  SEND_MID_CALL_SUMMARY_RESPONSE: 'sendMidCallSummaryResponse',
+  HANDLE_AI_SUMMARY_EVENT: 'handleAISummaryEvent',
+  CLEAR_AI_SUMMARY_STATE: 'clearAISummaryState',
 };
 
 export const TRANSCRIPT_EVENT_MAP = {

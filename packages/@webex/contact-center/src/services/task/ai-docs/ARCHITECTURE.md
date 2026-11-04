@@ -35,6 +35,7 @@
 - `state?: SnapshotFrom<TaskStateMachine>`
 - `autoWrapup?: AutoWrapup`
 - `uiControls: TaskUIControls` (getter)
+  - includes ordered, action-specific `consultTransferDestinations` computed from Task profile configuration and live interaction data
 
 **Methods**
 

@@ -1,0 +1,466 @@
+{
+  "$schema": "./schemas/repo-context.schema.json",
+  "version": 1,
+  "repository": {
+    "name": "@webex/internal-plugin-metrics",
+    "purpose": "Internal Webex SDK plugin that collects, enriches, batches and submits every SDK-owned telemetry family — legacy client metrics, tagged behavioral/operational/business events, Call Analyzer diagnostic events, WebRTC stats, browser unhandled exceptions and SDK network-request summaries — to the Webex metrics and unified-telemetry services."
+  },
+  "commands": {
+    "clone": "git clone https://github.com/webex/webex-js-sdk.git",
+    "install": "yarn install",
+    "consumer-install": "npm install --save @webex/internal-plugin-metrics",
+    "compile": "yarn workspace @webex/internal-plugin-metrics build",
+    "package": "yarn workspace @webex/internal-plugin-metrics build:src",
+    "unit-test": "yarn workspace @webex/internal-plugin-metrics test:unit",
+    "unit-test-focused": "yarn workspace @webex/internal-plugin-metrics test:unit --targets network-telemetry.ts",
+    "lint": "yarn workspace @webex/internal-plugin-metrics test:style",
+    "deploy": "yarn workspace @webex/internal-plugin-metrics deploy:npm"
+  },
+  "public_interfaces": [
+    {
+      "name": "package-entry",
+      "kind": "package_export",
+      "source": "src/index.ts",
+      "entrypoints": [
+        "import '@webex/internal-plugin-metrics'",
+        "webex.internal.metrics",
+        "webex.internal.newMetrics"
+      ],
+      "audience": "Sibling Webex JS SDK workspace packages and first party clients",
+      "notes": "Importing the package registers both internal plugins; the named export list in src/index.ts is the published surface."
+    },
+    {
+      "name": "event-types",
+      "kind": "package_export",
+      "source": "src/metrics.types.ts",
+      "entrypoints": [
+        "import type {ClientEvent} from '@webex/internal-plugin-metrics'"
+      ],
+      "audience": "Consumers typing their own event payloads",
+      "notes": "Derived from the externally owned @webex/event-dictionary-ts schema pinned in package.json."
+    },
+    {
+      "name": "npm-scripts",
+      "kind": "npm_scripts",
+      "source": "package.json",
+      "entrypoints": [
+        "yarn workspace @webex/internal-plugin-metrics build",
+        "yarn workspace @webex/internal-plugin-metrics build:src",
+        "yarn workspace @webex/internal-plugin-metrics test:unit",
+        "yarn workspace @webex/internal-plugin-metrics test:style"
+      ],
+      "audience": "Contributors and CI",
+      "notes": "The package test script is not a working gate: it chains test:integration and test:browser, which are not defined."
+    }
+  ],
+  "source_of_truth": [
+    {
+      "surface": "module-source",
+      "paths": [
+        "src/"
+      ],
+      "generated_artifacts": [
+        "dist/"
+      ],
+      "refresh_with": [
+        "yarn workspace @webex/internal-plugin-metrics build:src"
+      ],
+      "validate_with": [
+        "yarn workspace @webex/internal-plugin-metrics test:unit",
+        "yarn workspace @webex/internal-plugin-metrics test:style"
+      ]
+    },
+    {
+      "surface": "behavior-baseline",
+      "paths": [
+        "test/unit/spec/"
+      ],
+      "generated_artifacts": [],
+      "refresh_with": [],
+      "validate_with": [
+        "yarn workspace @webex/internal-plugin-metrics test:unit"
+      ]
+    },
+    {
+      "surface": "sdd-documentation",
+      "paths": [
+        "AGENTS.md",
+        "docs/index.md",
+        "docs/architecture.md",
+        "docs/getting-started.md",
+        "docs/specs/README.md",
+        "docs/adr/index.md",
+        "src/docs/README.md",
+        "src/call-diagnostic/docs/README.md",
+        "src/privacy-and-security-permission-enricher/docs/README.md",
+        "src/rtcMetrics/docs/README.md",
+        "src/unhandled-exception-telemetry/docs/README.md",
+        ".sdd/manifest.json"
+      ],
+      "generated_artifacts": [],
+      "refresh_with": [],
+      "validate_with": [
+        "spec-drift-changed over the changed source files and their owning module spec"
+      ]
+    },
+    {
+      "surface": "published-readme",
+      "paths": [
+        "README.md"
+      ],
+      "generated_artifacts": [],
+      "refresh_with": [],
+      "validate_with": [
+        "human review against src/docs/README.md and src/unhandled-exception-telemetry/docs/README.md"
+      ]
+    }
+  ],
+  "generated_artifacts": [
+    {
+      "path": "dist/",
+      "generated_from": "src/",
+      "refresh_with": "yarn workspace @webex/internal-plugin-metrics build:src"
+    },
+    {
+      "path": ".sdd/templates/repo-standards/template-map.json",
+      "generated_from": "WebexTools/repo-standards",
+      "refresh_with": "Re-run Repo Annotation template setup against the bundled Repo Standards snapshot"
+    }
+  ],
+  "validation_matrix": [
+    {
+      "paths": [
+        "src/**"
+      ],
+      "minimum": [
+        "yarn workspace @webex/internal-plugin-metrics test:unit"
+      ],
+      "recommended": [
+        "yarn workspace @webex/internal-plugin-metrics test:style",
+        "yarn workspace @webex/internal-plugin-metrics build:src"
+      ]
+    },
+    {
+      "paths": [
+        "test/**"
+      ],
+      "minimum": [
+        "yarn workspace @webex/internal-plugin-metrics test:unit"
+      ],
+      "recommended": []
+    },
+    {
+      "paths": [
+        "docs/**",
+        "src/**/docs/README.md",
+        "AGENTS.md",
+        ".sdd/manifest.json"
+      ],
+      "minimum": [
+        "human review against the cited source paths"
+      ],
+      "recommended": [
+        "spec-drift-changed for the affected module spec"
+      ]
+    }
+  ],
+  "change_impact": [
+    {
+      "paths": [
+        "src/index.ts",
+        "src/metrics.types.ts"
+      ],
+      "affects": [
+        "Seven dependent workspace packages that import the plugin surface or its types"
+      ],
+      "refresh_with": [
+        "yarn workspace @webex/internal-plugin-metrics build"
+      ],
+      "validate_with": [
+        "yarn workspace @webex/internal-plugin-metrics test:unit"
+      ],
+      "avoid_direct_edits": [
+        "dist/"
+      ],
+      "notes": "Removing or renaming an export is breaking for the monorepo; land consumers in the same change."
+    },
+    {
+      "paths": [
+        "src/network-telemetry.ts",
+        "src/unhandled-exception-telemetry/**",
+        "src/rtcMetrics/**",
+        "src/call-diagnostic/**"
+      ],
+      "affects": [
+        "Submitted payload shapes consumed by Webex metrics, Call Analyzer and unified telemetry ingestion"
+      ],
+      "refresh_with": [],
+      "validate_with": [
+        "yarn workspace @webex/internal-plugin-metrics test:unit"
+      ],
+      "avoid_direct_edits": [
+        "dist/"
+      ],
+      "notes": "Payload field removals or renames break ingestion; update the owning module spec's Protocol and wire format section."
+    },
+    {
+      "paths": [
+        "package.json"
+      ],
+      "affects": [
+        "Commands in .sdd/manifest.json and this file",
+        "The pinned Call Analyzer event schema"
+      ],
+      "refresh_with": [],
+      "validate_with": [
+        "yarn workspace @webex/internal-plugin-metrics test:unit",
+        "yarn workspace @webex/internal-plugin-metrics build"
+      ],
+      "avoid_direct_edits": [
+        "dist/"
+      ],
+      "notes": "Bumping @webex/event-dictionary-ts can change exported types."
+    }
+  ],
+  "glossary": [
+    {
+      "term": "client event",
+      "definition": "A Call Analyzer diagnostic event describing a client-side call milestone or failure.",
+      "notes": "Built in src/call-diagnostic/call-diagnostic-metrics.ts."
+    },
+    {
+      "term": "tagged event",
+      "definition": "A behavioral, operational or business metric built as a metric name plus tags.",
+      "notes": "Contrast with a Call Analyzer envelope; see src/generic-metrics.ts."
+    },
+    {
+      "term": "pre-login identifier",
+      "definition": "A caller-supplied identifier that attributes telemetry before sign-in, sent as a header on the unauthenticated resource.",
+      "notes": "See src/prelogin-metrics-batcher.ts."
+    },
+    {
+      "term": "reporting window",
+      "definition": "The accumulation period after which a collector submits one aggregate and resets.",
+      "notes": "See src/network-telemetry.ts."
+    }
+  ],
+  "evidence_rules": [
+    {
+      "claim_category": "command_name",
+      "sources": [
+        "package.json"
+      ],
+      "requirement": "A command must exist in package.json scripts and match .sdd/manifest.json."
+    },
+    {
+      "claim_category": "import_path",
+      "sources": [
+        "src/index.ts"
+      ],
+      "requirement": "An exported name must appear in src/index.ts."
+    },
+    {
+      "claim_category": "behavior_claim",
+      "sources": [
+        "src/",
+        "test/unit/spec/"
+      ],
+      "requirement": "Cite the implementing source file and, for verified behavior, a test that exercises it.",
+      "notes": "Commit history is not acceptable evidence for this package."
+    }
+  ],
+  "negative_guidance": [
+    {
+      "rule": "Do not treat the package test script as a working gate.",
+      "why": "It chains test:integration and test:browser, which this package does not define."
+    },
+    {
+      "rule": "Do not hand-declare Call Analyzer event names or fields.",
+      "why": "They are owned by @webex/event-dictionary-ts and derived in src/metrics.types.ts."
+    },
+    {
+      "rule": "Do not cite commit history as rationale.",
+      "why": "The owner declared history untrustworthy as evidence; derive why from code and tests."
+    }
+  ],
+  "confidence_policy": {
+    "high": {
+      "action": "update",
+      "expectation": "The claim is backed by a cited source file and, for behavior, a test that exercises it."
+    },
+    "medium": {
+      "action": "narrow-scope",
+      "expectation": "Source evidence exists but no test pins it; document the behavior and record the coverage gap."
+    },
+    "low": {
+      "action": "noop",
+      "expectation": "Neither source nor test supports the claim; stop and report the gap rather than inferring it."
+    }
+  },
+  "repository_topology": {
+    "main_entrypoints": [
+      {
+        "name": "package-entry",
+        "path": "src/index.ts",
+        "purpose": "Registers the metrics and newMetrics internal plugins and defines the export surface."
+      }
+    ],
+    "workspace_packages": [
+      {
+        "name": "@webex/internal-plugin-metrics",
+        "paths": [
+          "./"
+        ],
+        "notes": "One workspace package of the webex-js-sdk monorepo; it is the SDD root."
+      }
+    ],
+    "source_surfaces": [
+      {
+        "name": "plugin-root",
+        "paths": [
+          "src/*.ts",
+          "src/*.js"
+        ],
+        "notes": "Registration, both facades, batchers, tagged events and network telemetry."
+      },
+      {
+        "name": "call-diagnostic",
+        "paths": [
+          "src/call-diagnostic/"
+        ],
+        "notes": "Call Analyzer events and the latency ledger."
+      },
+      {
+        "name": "permission-enricher",
+        "paths": [
+          "src/privacy-and-security-permission-enricher/"
+        ],
+        "notes": "Permission-change enrichment."
+      },
+      {
+        "name": "rtc-metrics",
+        "paths": [
+          "src/rtcMetrics/"
+        ],
+        "notes": "WebRTC stats telemetry."
+      },
+      {
+        "name": "unhandled-exception-telemetry",
+        "paths": [
+          "src/unhandled-exception-telemetry/"
+        ],
+        "notes": "Browser exception reporting."
+      }
+    ],
+    "generated_surfaces": [
+      {
+        "name": "build-output",
+        "paths": [
+          "dist/"
+        ],
+        "generated_from": "module-source",
+        "refresh_with": "yarn workspace @webex/internal-plugin-metrics build:src",
+        "notes": "Git-ignored; produced per build and published to npm."
+      },
+      {
+        "name": "repo-standards-templates",
+        "paths": [
+          ".sdd/templates/repo-standards"
+        ],
+        "generated_from": "WebexTools/repo-standards",
+        "refresh_with": "Re-run Repo Annotation template setup against the bundled Repo Standards snapshot",
+        "notes": "A symlink to the monorepo-root template set, so this package holds no template copies of its own."
+      }
+    ],
+    "sync_paths": [
+      {
+        "source": "WebexTools/repo-standards",
+        "targets": [
+          ".sdd/templates/repo-standards"
+        ],
+        "mechanism": "Repo Annotation template setup, resolved from the bundled checksum-verified snapshot",
+        "notes": "Reached through the symlink to the monorepo root; never seeded per package."
+      }
+    ],
+    "validation_entrypoints": [
+      {
+        "name": "unit",
+        "command": "yarn workspace @webex/internal-plugin-metrics test:unit",
+        "scope": "All unit specs under test/unit/spec/; accepts --targets relative to that directory."
+      },
+      {
+        "name": "lint",
+        "command": "yarn workspace @webex/internal-plugin-metrics test:style",
+        "scope": "ESLint over src/ only."
+      }
+    ]
+  },
+  "surface_owners": [
+    {
+      "surface": "module-source",
+      "owner": "Cisco Webex JS SDK maintainers",
+      "edit_boundary": "Behavioral changes must update the owning module spec and the unit suite in the same change."
+    },
+    {
+      "surface": "sdd-documentation",
+      "owner": "Cisco Webex JS SDK maintainers",
+      "edit_boundary": "Module specs are protected canonical specs; changes go through spec reconciliation rather than in-place overwrite."
+    },
+    {
+      "surface": "published-readme",
+      "owner": "Cisco Webex JS SDK maintainers",
+      "edit_boundary": "Owner-authored npm landing page; not generated and never rewritten by documentation tooling."
+    }
+  ],
+  "do_not_edit": [
+    "dist/",
+    "node_modules/"
+  ],
+  "marker_scopes": {
+    "sdd-generated": [
+      "AGENTS.md",
+      "docs/index.md",
+      "docs/architecture.md",
+      "docs/getting-started.md",
+      "docs/specs/README.md",
+      "docs/adr/index.md",
+      "src/docs/README.md",
+      "src/call-diagnostic/docs/README.md",
+      "src/privacy-and-security-permission-enricher/docs/README.md",
+      "src/rtcMetrics/docs/README.md",
+      "src/unhandled-exception-telemetry/docs/README.md"
+    ]
+  },
+  "fallback_rules": [
+    "When a command role has no committed command, record it as needing human input rather than inventing one.",
+    "When source and the package README disagree, follow the source and record the README statement as stale.",
+    "When a behavior has no test, document it and record the coverage gap instead of asserting it is verified."
+  ],
+  "downstream_context_pack": {
+    "required_human_surfaces": [
+      "README.md",
+      "docs/index.md",
+      "docs/getting-started.md"
+    ],
+    "required_agent_operational_surfaces": [
+      "AGENTS.md",
+      "docs/architecture.md",
+      "docs/specs/README.md",
+      "src/docs/README.md",
+      "src/call-diagnostic/docs/README.md",
+      "src/privacy-and-security-permission-enricher/docs/README.md",
+      "src/rtcMetrics/docs/README.md",
+      "src/unhandled-exception-telemetry/docs/README.md"
+    ],
+    "required_machine_readable_surface": ".repo-context.json",
+    "recommended_machine_readable_sections": [
+      "public_interfaces",
+      "change_impact",
+      "glossary",
+      "evidence_rules",
+      "negative_guidance",
+      "confidence_policy",
+      "repository_topology"
+    ]
+  }
+}
