@@ -26,7 +26,7 @@ export default class E2eeManager {
     this.webex = webex;
     this.wasmLoader = wasmLoader;
     this.assetLoader = new StaticAssetLoader(
-      {baseUrl: webex.config?.meetings?.assetsBaseUrl ?? '/assets/plugin-meetings/'},
+      {baseUrl: webex.config.meetings.assetsBaseUrl},
       {parent: webex}
     );
   }
