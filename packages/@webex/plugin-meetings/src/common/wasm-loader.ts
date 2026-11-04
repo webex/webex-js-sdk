@@ -15,52 +15,17 @@ export type EmscriptenModuleFactory<TModule = unknown> = (moduleOverrides?: {
 type ModuleImporter = (jsUrl: string) => Promise<{default: EmscriptenModuleFactory}>;
 
 /**
- * Performs an un-bundled ES dynamic import of an emscripten loader at runtime.
+ * Natively imports an emscripten loader served at runtime.
  *
- * Plugin-meetings ships pre-compiled to CommonJS, and Babel rewrites `import()` into a webpack
- * `require()`. Importing through a module script keeps the runtime-served loader out of the bundle.
- * @param {string} jsUrl - URL of the emscripten loader module.
+ * This must stay a real `import()`: babel.config.js excludes `transform-dynamic-import` for this
+ * file so Babel doesn't rewrite it to `require()`, and `webpackIgnore` stops consumers' webpack
+ * from trying to bundle it. The URL is resolved against the document because a native `import()`
+ * would otherwise resolve relative paths against the SDK bundle's URL.
+ * @param {string} jsUrl - URL of the emscripten loader module (e.g. '/assets/plugin-meetings/e2ee.js').
  * @returns {Promise<{default: EmscriptenModuleFactory}>}
  */
-function importModuleViaScriptTag(jsUrl: string): Promise<{default: EmscriptenModuleFactory}> {
-  return new Promise((resolve, reject) => {
-    const callbackKey = `__webexWasmModule_${Math.random().toString(36).slice(2)}`;
-    const absoluteJsUrl = new URL(jsUrl, window.location.href).href;
-    const blobUrl = URL.createObjectURL(
-      new Blob(
-        [
-          `import * as module from ${JSON.stringify(absoluteJsUrl)};\nwindow[${JSON.stringify(
-            callbackKey
-          )}](module);`,
-        ],
-        {type: 'text/javascript'}
-      )
-    );
-    const script = document.createElement('script');
-
-    const cleanup = () => {
-      delete (window as any)[callbackKey];
-      URL.revokeObjectURL(blobUrl);
-      script.remove();
-    };
-
-    (window as any)[callbackKey] = (module: {default: EmscriptenModuleFactory}) => {
-      cleanup();
-      resolve(module);
-    };
-
-    script.type = 'module';
-    script.src = blobUrl;
-    script.onerror = () => {
-      cleanup();
-      reject(new Error(`Failed to import module: ${jsUrl}`));
-    };
-
-    document.head.appendChild(script);
-  });
-}
-
-const defaultImporter: ModuleImporter = importModuleViaScriptTag;
+const nativeImport: ModuleImporter = (jsUrl) =>
+  import(/* webpackIgnore: true */ new URL(jsUrl, document.baseURI).href);
 
 interface CachedModule {
   instance: unknown | null;
@@ -68,9 +33,10 @@ interface CachedModule {
 }
 
 /**
- * Loads and caches emscripten WebAssembly modules, each uniquely identified by its `.wasm` URL.
- * The matching `.js` loader URL is derived from it. A loader can cache multiple modules and warm
- * each module before the code that needs it runs.
+ * Loads and caches emscripten WebAssembly modules, each uniquely identified by its `.wasm` URL
+ * (the `.js` loader URL is derived by replacing the `.wasm` suffix). A single instance can load
+ * multiple distinct modules; each URL is loaded at most once and cached. Instantiated once per
+ * session so slow loads can be warmed ahead of when they're needed.
  */
 export default class WasmLoader {
   private readonly importModule: ModuleImporter;
@@ -79,15 +45,15 @@ export default class WasmLoader {
 
   /**
    * @param {Object} [options]
-   * @param {Function} [options.importModule] - Override the dynamic import.
+   * @param {Function} [options.importModule] - Override the dynamic import (used by tests).
    */
   constructor({importModule}: {importModule?: ModuleImporter} = {}) {
-    this.importModule = importModule || defaultImporter;
+    this.importModule = importModule || nativeImport;
   }
 
   /**
    * @param {string} wasmUrl
-   * @returns {boolean} whether the module has finished loading and is cached.
+   * @returns {boolean} whether the module for the given URL has finished loading and is cached.
    */
   isLoaded(wasmUrl: string): boolean {
     const cached = this.modules.get(wasmUrl);
@@ -96,7 +62,8 @@ export default class WasmLoader {
   }
 
   /**
-   * Warms the cache for the given module URL. Concurrent calls share a single load.
+   * Warms the cache for the given module URL. Safe to call repeatedly; concurrent calls share a
+   * single load.
    * @param {string} wasmUrl
    * @returns {Promise<void>}
    */
@@ -117,7 +84,7 @@ export default class WasmLoader {
       this.modules.set(wasmUrl, cached);
     }
 
-    if (cached.instance) {
+    if (cached.instance !== null) {
       return Promise.resolve(cached.instance as TModule);
     }
     if (!cached.loadPromise) {
@@ -133,24 +100,25 @@ export default class WasmLoader {
    * @returns {Promise<unknown>}
    */
   private async load(wasmUrl: string, cached: CachedModule): Promise<unknown> {
-    const jsUrl = wasmUrl.replace('.wasm', '.js');
+    const jsUrl = wasmUrl.replace(/\.wasm(?=[?#]|$)/, '.js');
 
     try {
       const {default: factory} = await this.importModule(jsUrl);
-      const module = await factory({
+      const instance = await factory({
         locateFile: (path: string) => (path.endsWith('.wasm') ? wasmUrl : path),
       });
 
-      cached.instance = module;
+      cached.instance = instance;
 
-      return module;
+      return instance;
     } catch (error) {
+      // Reset so a failed load can be retried on the next get().
       cached.loadPromise = null;
       LoggerProxy.logger.error(
         `WasmLoader#load --> failed to load WASM module ${wasmUrl}: ${error}`
       );
 
-      throw new Error(`Failed to load WASM module ${wasmUrl}: ${error}`);
+      throw new Error(`Failed to load WASM module ${wasmUrl}: ${error}`, {cause: error});
     }
   }
 }

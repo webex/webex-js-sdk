@@ -26,7 +26,7 @@ describe('plugin-meetings', () => {
     });
 
     describe('get', () => {
-      it('derives the loader URL and points locateFile at the WASM binary', async () => {
+      it('derives the .js loader url from the .wasm url and points locateFile at the .wasm binary', async () => {
         const loader = new WasmLoader({importModule});
 
         const result = await loader.get(WASM_URL);
@@ -39,7 +39,25 @@ describe('plugin-meetings', () => {
         assert.strictEqual(result, moduleInstance);
       });
 
-      it('loads each URL only once and returns the cached instance', async () => {
+      [
+        {
+          wasmUrl: 'https://cdn.example.com/x.wasm-assets/e2ee-0.0.1.wasm',
+          jsUrl: 'https://cdn.example.com/x.wasm-assets/e2ee-0.0.1.js',
+        },
+        {wasmUrl: '/assets/e2ee.wasm?v=1', jsUrl: '/assets/e2ee.js?v=1'},
+        {wasmUrl: '/assets/e2ee.wasm#hash', jsUrl: '/assets/e2ee.js#hash'},
+      ].forEach(({wasmUrl, jsUrl}) => {
+        it(`imports ${jsUrl} for ${wasmUrl}, replacing only the .wasm suffix`, async () => {
+          const loader = new WasmLoader({importModule});
+
+          await loader.get(wasmUrl);
+
+          assert.calledOnceWithExactly(importModule, jsUrl);
+          assert.equal(factory.firstCall.args[0].locateFile('e2ee.wasm'), wasmUrl);
+        });
+      });
+
+      it('loads each url only once and returns the cached instance on subsequent calls', async () => {
         const loader = new WasmLoader({importModule});
 
         const first = await loader.get(WASM_URL);
@@ -50,7 +68,7 @@ describe('plugin-meetings', () => {
         assert.strictEqual(first, second);
       });
 
-      it('shares a load across concurrent calls for the same URL', async () => {
+      it('shares a single load across concurrent calls for the same url', async () => {
         const loader = new WasmLoader({importModule});
 
         const [first, second] = await Promise.all([loader.get(WASM_URL), loader.get(WASM_URL)]);
@@ -59,7 +77,7 @@ describe('plugin-meetings', () => {
         assert.strictEqual(first, second);
       });
 
-      it('loads distinct URLs independently', async () => {
+      it('loads distinct urls independently', async () => {
         const otherInstance = {name: 'other-module'};
         importModule
           .withArgs('/assets/e2ee.js')
@@ -78,7 +96,7 @@ describe('plugin-meetings', () => {
         assert.strictEqual(other, otherInstance);
       });
 
-      it('allows a failed load to be retried', async () => {
+      it('resets so a failed load can be retried, then rejects', async () => {
         const error = new Error('network down');
         importModule.onFirstCall().rejects(error).onSecondCall().resolves({default: factory});
         const loader = new WasmLoader({importModule});
@@ -94,10 +112,24 @@ describe('plugin-meetings', () => {
         assert.calledTwice(importModule);
         assert.strictEqual(result, moduleInstance);
       });
+
+      it('preserves the underlying error as the cause when the factory fails', async () => {
+        const error = new Error('instantiate failed');
+        factory.rejects(error);
+        const loader = new WasmLoader({importModule});
+
+        const rejection = await loader.get(WASM_URL).catch((e) => e);
+
+        assert.equal(
+          rejection.message,
+          'Failed to load WASM module /assets/e2ee.wasm: Error: instantiate failed'
+        );
+        assert.strictEqual(rejection.cause, error);
+      });
     });
 
     describe('preload', () => {
-      it('warms the cache for the given URL', async () => {
+      it('warms the cache for the given url', async () => {
         const loader = new WasmLoader({importModule});
 
         await loader.preload(WASM_URL);
@@ -108,35 +140,25 @@ describe('plugin-meetings', () => {
     });
 
     describe('isLoaded', () => {
-      it('is false for a module that has not started loading', () => {
+      it('is false for an unknown url', () => {
         const loader = new WasmLoader({importModule});
 
         assert.isFalse(loader.isLoaded(WASM_URL));
       });
 
-      it('becomes true only after loading completes', async () => {
+      it('is false while loading is in flight and true once resolved', async () => {
         const loader = new WasmLoader({importModule});
-        let resolveFactory;
-        factory = sinon.stub().callsFake(
-          () =>
-            new Promise((resolve) => {
-              resolveFactory = resolve;
-            })
-        );
-        importModule.resolves({default: factory});
 
         const pending = loader.get(WASM_URL);
 
         assert.isFalse(loader.isLoaded(WASM_URL));
 
-        await Promise.resolve();
-        resolveFactory(moduleInstance);
         await pending;
 
         assert.isTrue(loader.isLoaded(WASM_URL));
       });
 
-      it('tracks module URLs independently', async () => {
+      it('tracks each url independently', async () => {
         const loader = new WasmLoader({importModule});
 
         await loader.get(WASM_URL);

@@ -45,7 +45,7 @@ describe('plugin-meetings', () => {
 
         assert.calledOnceWithExactly(
           wasmLoader.preload,
-          'https://cdn.example.com/sdk/meetings/e2ee.wasm'
+          'https://cdn.example.com/sdk/meetings/e2ee-0.0.1.wasm'
         );
       });
 

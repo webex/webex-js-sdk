@@ -9,7 +9,7 @@ import {StaticAssetLoader} from '@webex/webex-core';
 import LoggerProxy from '../common/logs/logger-proxy';
 import WasmLoader from '../common/wasm-loader';
 
-const E2EE_WASM_ASSET = 'e2ee.wasm';
+const E2EE_WASM_ASSET = 'e2ee-0.0.1.wasm';
 
 /**
  * Owns E2EE resource preloading for a Meetings plugin session. The per-meeting controller is added
