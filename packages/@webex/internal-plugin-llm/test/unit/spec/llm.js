@@ -1,7 +1,7 @@
 import MockWebex from '@webex/test-helper-mock-webex';
 import {assert} from '@webex/test-helper-chai';
 import sinon from 'sinon';
-import Mercury from '@webex/internal-plugin-mercury';
+import Mercury, {Socket} from '@webex/internal-plugin-mercury';
 import LLMChannel from '@webex/internal-plugin-llm/src/llm';
 
 describe('plugin-llm', () => {
@@ -339,6 +339,42 @@ describe('plugin-llm', () => {
     });
 
     describe('#disconnect', () => {
+      [false, true].forEach((hasSocket) => {
+        it(`completes real Mercury disconnect after clearing LLM state (socket=${hasSocket})`, async () => {
+          Object.getPrototypeOf(Object.getPrototypeOf(llmChannel)).disconnect.restore();
+          webex.internal.newMetrics.callDiagnosticMetrics.setMercuryConnectedStatus = sinon.stub();
+          await llmChannel.registerAndConnect(locusUrl, datachannelUrl);
+          llmChannel.setDatachannelToken('test-token');
+          if (hasSocket) llmChannel.socket = new Socket();
+          const disconnected = sinon.spy(() => {
+            assert.deepEqual(
+              {
+                locusUrl: llmChannel.getLocusUrl(),
+                datachannelUrl: llmChannel.getDatachannelUrl(),
+                binding: llmChannel.getBinding(),
+                token: llmChannel.getDatachannelToken(),
+                connected: llmChannel.isConnected(),
+                connecting: llmChannel.isConnecting(),
+                socket: llmChannel.getSocket(),
+              },
+              {
+                locusUrl: undefined,
+                datachannelUrl: undefined,
+                binding: undefined,
+                token: undefined,
+                connected: false,
+                connecting: false,
+                socket: undefined,
+              }
+            );
+          });
+          llmChannel.on('disconnected', disconnected);
+          await llmChannel.disconnect({code: 3050, reason: 'meetings unregister'});
+          assert.calledOnce(disconnected);
+          assert.isNull(llmChannel._disconnectPromise);
+        });
+      });
+
       it('calls super.disconnect and clears all connection state', async () => {
         await llmChannel.registerAndConnect(locusUrl, datachannelUrl);
         llmChannel.setDatachannelToken('token123');
@@ -706,6 +742,5 @@ describe('plugin-llm', () => {
         assert.include(result, 'subscriptionAwareSubchannels=channel1');
       });
     });
-
   });
 });
