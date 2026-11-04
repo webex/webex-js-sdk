@@ -4,10 +4,19 @@ run-name: ${{ github.actor }} is running Pull Request CI
 on:
   pull_request_target:
     types: [opened, labeled, reopened]
+  # Called by remove-validated-on-synchronize.yml, which gates on the push being
+  # trusted. synchronize is absent above because its payload still carries the
+  # pre-push label, so trusting it here would run CI with secrets too early.
+  workflow_call:
   workflow_dispatch:
 
 concurrency:
-  group: ${{ github.workflow }}-${{ github.event.pull_request.number || github.ref }}
+  # Under workflow_call the github context belongs to the caller, so
+  # github.workflow here would read "Remove Validated Label On New Push" and put
+  # push-triggered runs in a different group from label-triggered ones. Both
+  # paths test the same PR, so they must share a group for cancel-in-progress to
+  # stop a superseded run. A fixed prefix is the only value both paths agree on.
+  group: pull-request-ci-${{ github.event.pull_request.number || github.ref }}
   cancel-in-progress: true
 
 env:

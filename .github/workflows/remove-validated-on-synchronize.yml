@@ -6,30 +6,32 @@ on:
     types: [synchronize]
 
 permissions:
+  # A called workflow's token can only narrow the caller's, so the CI jobs below
+  # get these and nothing more. contents: read is for actions/checkout.
+  contents: read
   pull-requests: write
 
 jobs:
   remove-validated-label:
     name: Remove reusable validated label
     runs-on: ubuntu-latest
+    outputs:
+      # From the step that acts on the label, not recomputed, so CI can only run
+      # on a push that actually kept its validation.
+      keep_label: ${{ steps.label.outputs.keep_label }}
     steps:
-      # The validated label survives a push only when both the PR author and the
-      # pusher are active members of @webex/web-sdk. Both identities matter, for
-      # different reasons: anyone can be given push access to someone else's
-      # branch, so a non-member pushing to a member's PR must still invalidate
-      # the label; and a PR opened by a non-member should revalidate even when a
-      # member later pushes to it. Commit author metadata is deliberately not
-      # consulted, as it is self-reported and spoofable, while both of these
-      # identities are authenticated by GitHub. The default GITHUB_TOKEN cannot
-      # read org team membership, hence ORG_READ_TOKEN. The team's actual
-      # membership is the single source of truth, no usernames are hardcoded.
-      # Only runs when there is a label to act on.
+      # The label survives a push only when the GitHub actor behind it is an
+      # active @webex/web-sdk member. The PR author is deliberately not
+      # consulted: a non-member push is already caught here, so requiring the
+      # author too would add no protection and would force revalidation whenever
+      # a maintainer pushes to a contributor's branch. Commit metadata is
+      # spoofable, the actor is not. GITHUB_TOKEN cannot read team membership,
+      # hence ORG_READ_TOKEN.
       - name: Check web-sdk team membership
         id: team
         if: contains(github.event.pull_request.labels.*.name, 'validated')
-        # An inconclusive lookup must not strand the label. This step is allowed
-        # to fail so the removal below still runs, which is the safe direction,
-        # while the failure annotation keeps the problem visible.
+        # Allowed to fail so an inconclusive lookup still falls through to the
+        # removal below, which is the safe direction.
         continue-on-error: true
         uses: actions/github-script@v8
         with:
@@ -38,11 +40,9 @@ jobs:
             const org = 'webex';
             const team_slug = 'web-sdk';
 
-            // GitHub answers 404 for resources a token cannot see, so a
-            // membership 404 only means "not a member" once the token is known
-            // to be able to read the team at all. Without this check, a token
-            // that loses visibility would report every user as a non-member and
-            // quietly turn the skip off for good.
+            // A membership 404 only means "not a member" if the token can read
+            // the team at all; without this, lost access would silently report
+            // every user as a non-member.
             try {
               await github.rest.teams.getByName({org, team_slug});
             } catch (error) {
@@ -54,9 +54,8 @@ jobs:
               return;
             }
 
-            // 'active' for members, 'pending' for invited-but-not-joined, 404
-            // for everyone else (including bots and apps, which have no
-            // membership). Any other failure stays 'unknown' so an outage is
+            // 'active' for members, 'pending' for invited, 404 for everyone
+            // else including bots. Other failures stay 'unknown' so an outage is
             // never mistaken for a confirmed non-member.
             const membershipState = async (username) => {
               try {
@@ -78,23 +77,19 @@ jobs:
               }
             };
 
-            const author = context.payload.pull_request.user.login;
-            const pusher = context.payload.sender.login;
-            const [authorState, pusherState] = await Promise.all([
-              membershipState(author),
-              membershipState(pusher),
-            ]);
+            const actor = context.payload.sender.login;
+            const actorState = await membershipState(actor);
 
-            core.info(`PR author ${author} on @${org}/${team_slug}: ${authorState}`);
-            core.info(`Pusher ${pusher} on @${org}/${team_slug}: ${pusherState}`);
+            core.info(`Push by ${actor}; @${org}/${team_slug} membership: ${actorState}`);
 
-            core.setOutput('keep_label', authorState === 'active' && pusherState === 'active');
+            core.setOutput('keep_label', actorState === 'active');
 
-            if (authorState === 'unknown' || pusherState === 'unknown') {
+            if (actorState === 'unknown') {
               core.setFailed('Membership lookup was inconclusive; removing the validated label as the safe default.');
             }
 
       - name: Remove validated label from PR
+        id: label
         env:
           KEEP_LABEL: ${{ steps.team.outputs.keep_label }}
         uses: actions/github-script@v8
@@ -104,26 +99,43 @@ jobs:
             const repo = context.repo.repo;
             const pull_number = context.payload.pull_request.number;
 
-            const labels = context.payload.pull_request.labels.map((label) => label.name);
-            if (!labels.includes('validated')) {
-              core.info('No validated label found; skipping.');
-              return;
-            }
+            // Output is written once at the end so no early return can leave it
+            // unset.
+            const keptLabel = async () => {
+              const labels = context.payload.pull_request.labels.map((label) => label.name);
+              if (!labels.includes('validated')) {
+                core.info('No validated label found; skipping.');
+                return false;
+              }
 
-            if (process.env.KEEP_LABEL === 'true') {
-              core.info('PR author and pusher are both active members of @webex/web-sdk; keeping the validated label.');
-              return;
-            }
+              if (process.env.KEEP_LABEL === 'true') {
+                core.info('Push came from an active member of @webex/web-sdk; keeping the validated label.');
+                return true;
+              }
 
-            try {
-              await github.rest.issues.removeLabel({
-                owner,
-                repo,
-                issue_number: pull_number,
-                name: 'validated',
-              });
+              try {
+                await github.rest.issues.removeLabel({
+                  owner,
+                  repo,
+                  issue_number: pull_number,
+                  name: 'validated',
+                });
 
-              core.info('Removed validated label after synchronize event.');
-            } catch (error) {
-              core.warning(`Failed to remove validated label: ${error.message}`);
-            }
+                core.info('Removed validated label after synchronize event.');
+              } catch (error) {
+                core.warning(`Failed to remove validated label: ${error.message}`);
+              }
+
+              return false;
+            };
+
+            core.setOutput('keep_label', await keptLabel());
+
+  # Keeping the label fires no labeled event, so nothing else would test the new
+  # commits. The called workflow reads this run's pull_request_target payload.
+  pull-request-ci:
+    name: Pull Request CI
+    needs: remove-validated-label
+    if: needs.remove-validated-label.outputs.keep_label == 'true'
+    uses: ./.github/workflows/pull-request.yml
+    secrets: inherit
