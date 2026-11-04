@@ -5,6 +5,7 @@ import {createClient} from './CallingClient/CallingClient';
 import {createCallHistoryClient} from './CallHistory/CallHistory';
 import {createVoicemailClient} from './Voicemail/Voicemail';
 import {createCallRecordingClient} from './CallRecording/CallRecording';
+import {createCallQueueClient} from './CallQueue/CallQueue';
 import Logger from './Logger';
 
 export {
@@ -15,6 +16,7 @@ export {
   createMicrophoneStream,
   createVoicemailClient,
   createCallRecordingClient,
+  createCallQueueClient,
   Logger,
   NoiseReductionEffect,
 };
@@ -38,6 +40,15 @@ export {
   RecordingResponseFor,
 } from './CallRecording/types';
 export {getRemoteParty} from './CallRecording/utils';
+export {CallQueueClient} from './CallQueue/CallQueue';
+export {
+  ACD_STATE,
+  CallQueue,
+  CallQueueAgentStatus,
+  CallQueueResponse,
+  ICallQueue,
+  UpdateCallQueueSettingsRequest,
+} from './CallQueue/types';
 export {
   CallForwardSetting,
   CallForwardAlwaysSetting,
