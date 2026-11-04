@@ -13,10 +13,10 @@
     "node": ">=18"
   },
   "browser": {
-    "./dist/ensure-buffer.js": "./dist/ensure-buffer.browser.js",
-    "./src/ensure-buffer.js": "./src/ensure-buffer.browser.js",
     "./dist/caroots-asset.js": "./dist/caroots-asset.browser.js",
-    "./src/caroots-asset.js": "./src/caroots-asset.browser.js"
+    "./dist/ensure-buffer.js": "./dist/ensure-buffer.browser.js",
+    "./src/caroots-asset.js": "./src/caroots-asset.browser.js",
+    "./src/ensure-buffer.js": "./src/ensure-buffer.browser.js"
   },
   "browserify": {
     "transform": [
