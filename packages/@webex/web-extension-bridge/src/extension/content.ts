@@ -14,7 +14,7 @@ import {EnvelopeKind, EnvelopeSource, createEnvelope} from '../core/protocol';
 import type {Envelope} from '../core/protocol';
 import {RateLimiter, rateLimitKey} from '../core/rateLimit';
 import {SeenIds} from '../core/replay';
-import {validateEnvelope} from '../core/validate';
+import {DropReason, validateEnvelope} from '../core/validate';
 import {RelayKind, asRelayRequest} from './messages';
 import type {RelayRequest, RelayResult, RelayToWorker} from './messages';
 import {resolveChrome} from './platform';
@@ -325,9 +325,16 @@ export function createContentRelay(
     if (!validated.ok) {
       logger.warn('rejected relay request from worker', {channel, reason: validated.reason});
 
+      // A request for another session is the worker addressing a document this relay
+      // replaced. `NOT_CONNECTED` tells it so, and lets it drop the stale record; any
+      // other failure is the request itself being malformed.
       const rejected: RelayResult = {
         ok: false,
-        error: toWireError(new BridgeError('INVALID_PAYLOAD')),
+        error: toWireError(
+          new BridgeError(
+            validated.reason === DropReason.SESSION_MISMATCH ? 'NOT_CONNECTED' : 'INVALID_PAYLOAD'
+          )
+        ),
       };
 
       sendResponse(rejected);

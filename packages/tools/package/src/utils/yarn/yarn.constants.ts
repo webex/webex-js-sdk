@@ -6,6 +6,7 @@ const COMMANDS = {
 };
 
 const LIST_CONFIG: ListConfig = {
+  committed: false,
   json: true,
   noPrivate: true,
   recursive: true,
