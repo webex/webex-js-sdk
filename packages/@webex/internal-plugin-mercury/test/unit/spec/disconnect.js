@@ -179,6 +179,88 @@ describe('plugin-mercury disconnect lifecycle', () => {
     assert.calledOnce(spies.disconnected);
   });
 
+  [false, true].forEach((opensBeforeRetry) => {
+    it(`rejects a native close error while connecting and permits retry (opensBeforeRetry=${opensBeforeRetry})`, async () => {
+      const authorize = sinon.spy(socket, '_authorize');
+      const opening = socket.open('ws://example.com', {
+        ...config.mercury,
+        logger: webex.logger,
+        token: 'test-token',
+        trackingId: 'test-tracking-id',
+      });
+      const cancelled = assert.isRejected(opening, /closed/);
+      const error = new SyntaxError('close reason exceeds 123 bytes');
+      const invalidOptions = {code: 3050, reason: 'x'.repeat(124)};
+      nativeSocket.readyState = 0;
+      nativeSocket.close.throws(error);
+
+      const failure = mercury.disconnect(invalidOptions);
+      const observedError = sinon.spy();
+      failure.catch(observedError);
+      await assert.isRejected(failure, /close reason exceeds 123 bytes/);
+      await cancelled;
+      assert.calledOnceWithExactly(observedError, error);
+      assert.notCalled(spies.offline);
+      assert.notCalled(spies.disconnected);
+      assert.notCalled(spies.status);
+      assert.strictEqual(mercury.socket, socket);
+      assert.isNull(mercury._disconnectPromise);
+
+      nativeSocket.close.resetBehavior();
+      if (opensBeforeRetry) {
+        nativeSocket.readyState = 1;
+        nativeSocket.onopen();
+        assert.notCalled(authorize);
+        assert.notCalled(nativeSocket.send);
+      }
+
+      const retry = mercury.disconnect(options);
+      if (opensBeforeRetry) {
+        nativeSocket.readyState = 3;
+        nativeSocket.onclose(options);
+      }
+      await retry;
+      assert.deepEqual(nativeSocket.close.args, [
+        [3050, invalidOptions.reason],
+        [3050, options.reason],
+      ]);
+      assert.calledOnce(spies.offline);
+      assert.calledOnce(spies.disconnected);
+      assert.notCalled(spies.online);
+      assert.notCalled(spies.reconnect);
+      assert.isUndefined(mercury.socket);
+    });
+  });
+
+  it('rejects a synthetic connecting-close handler error and permits retry', async () => {
+    const opening = socket.open('ws://example.com', {
+      ...config.mercury,
+      logger: webex.logger,
+      token: 'test-token',
+      trackingId: 'test-tracking-id',
+    });
+    const cancelled = assert.isRejected(opening, /closed/);
+    nativeSocket.readyState = 0;
+    const handler = sinon.stub(socket, 'onclose').throws(new Error('close handler failed'));
+
+    await assert.isRejected(mercury.disconnect(options), /close handler failed/);
+    await cancelled;
+    assert.calledOnceWithExactly(nativeSocket.close, 3050, options.reason);
+    assert.notCalled(spies.offline);
+    assert.notCalled(spies.disconnected);
+    assert.strictEqual(mercury.socket, socket);
+
+    handler.restore();
+    const retry = mercury.disconnect(options);
+    assert.calledOnce(nativeSocket.close);
+    nativeSocket.readyState = 3;
+    nativeSocket.onclose(options);
+    await retry;
+    assert.calledOnce(spies.offline);
+    assert.calledOnce(spies.disconnected);
+    assert.isUndefined(mercury.socket);
+  });
+
   [
     {failedSocket: 'active', synchronous: false},
     {failedSocket: 'active', synchronous: true},
@@ -294,8 +376,78 @@ describe('plugin-mercury disconnect lifecycle', () => {
     nativeSocket.readyState = 3;
     nativeSocket.onclose(options);
     await disconnecting;
-    await connecting;
+    await clock.tickAsync(0);
     assert.calledOnceWithExactly(connect, 'ws://replacement.example.com');
+    await connecting;
+  });
+
+  it('deduplicates connections queued during disconnect', async () => {
+    await openSocket();
+    const connect = sinon.stub(mercury, '_connectWithBackoff').resolves();
+    const disconnecting = mercury.disconnect(options);
+    const first = mercury.connect('ws://first.example.com');
+    const second = mercury.connect('ws://second.example.com');
+
+    assert.strictEqual(first, second);
+    assert.notCalled(connect);
+    nativeSocket.readyState = 3;
+    nativeSocket.onclose(options);
+    await Promise.all([disconnecting, first, second]);
+    assert.calledOnceWithExactly(connect, 'ws://first.example.com');
+    assert.isNull(mercury._connectPromise);
+  });
+
+  it('cancels a queued connection when disconnect is requested again', async () => {
+    await openSocket();
+    const connect = sinon.stub(mercury, '_connectWithBackoff').resolves();
+    const disconnecting = mercury.disconnect(options);
+    const connecting = mercury.connect('ws://cancelled.example.com');
+    const rejected = assert.isRejected(connecting, /Mercury Connection Aborted/);
+    const cancelling = mercury.disconnect(options);
+
+    assert.strictEqual(cancelling, disconnecting);
+    nativeSocket.readyState = 3;
+    nativeSocket.onclose(options);
+    await Promise.all([disconnecting, cancelling, rejected]);
+    assert.notCalled(connect);
+    assert.isNull(mercury._connectPromise);
+    assert.isFalse(mercury.connecting);
+    assert.calledOnce(spies.disconnected);
+  });
+
+  it('preserves a later queued connection when the cancelled one settles', async () => {
+    await openSocket();
+    let finishConnection;
+    const connect = sinon.stub(mercury, '_connectWithBackoff').returns(
+      new Promise((resolve) => {
+        finishConnection = resolve;
+      })
+    );
+    const disconnecting = mercury.disconnect(options);
+    const cancelled = mercury.connect('ws://cancelled.example.com');
+    const rejected = assert.isRejected(cancelled, /Mercury Connection Aborted/);
+    const cancelledSettled = sinon.spy();
+    cancelled.then(cancelledSettled, cancelledSettled);
+    assert.strictEqual(mercury.disconnect(options), disconnecting);
+    const replacement = mercury.connect('ws://replacement.example.com');
+
+    nativeSocket.readyState = 3;
+    nativeSocket.onclose(options);
+    await disconnecting;
+    await clock.tickAsync(0);
+    assert.calledOnce(cancelledSettled);
+    await rejected;
+    assert.calledOnceWithExactly(connect, 'ws://replacement.example.com');
+    assert.isTrue(mercury.connecting);
+    const active = mercury._connectPromise;
+    assert.isNotNull(active);
+    const shared = mercury.connect('ws://ignored.example.com');
+    assert.strictEqual(shared, active);
+    assert.calledOnceWithExactly(connect, 'ws://replacement.example.com');
+    finishConnection();
+    await Promise.all([replacement, shared]);
+    assert.isNull(mercury._connectPromise);
+    assert.isFalse(mercury.connecting);
   });
 
   it('does not start a replacement connection when disconnect fails', async () => {
@@ -310,6 +462,7 @@ describe('plugin-mercury disconnect lifecycle', () => {
     await Promise.all([disconnecting, connecting]);
     assert.notCalled(connect);
     assert.strictEqual(mercury.socket, socket);
+    assert.isNull(mercury._connectPromise);
     assert.notCalled(spies.disconnected);
   });
 
@@ -409,6 +562,41 @@ describe('plugin-mercury disconnect lifecycle', () => {
     await first;
     assert.strictEqual(reentrantClose, first);
     assert.calledOnce(nativeSocket.close);
+  });
+
+  it('handles a synchronous native close while connecting only after requesting it', async () => {
+    const opening = socket.open('ws://example.com', {
+      ...config.mercury,
+      logger: webex.logger,
+      token: 'test-token',
+      trackingId: 'test-tracking-id',
+    });
+    const rejected = assert.isRejected(opening, /closed/);
+    nativeSocket.readyState = 0;
+    nativeSocket.close.callsFake(() => {
+      nativeSocket.readyState = 3;
+      nativeSocket.onclose({code: 1006, reason: ''});
+    });
+    let reentrantClose;
+    const closed = sinon.spy(() => {
+      assert.calledOnceWithExactly(nativeSocket.close, 3050, options.reason);
+      reentrantClose = socket.close(options);
+    });
+    socket.on('close', closed);
+
+    const first = socket.close(options);
+    await rejected;
+    assert.deepEqual(await first, options);
+    assert.strictEqual(reentrantClose, first);
+    assert.calledOnceWithExactly(closed, options);
+    assert.calledOnce(spies.offline);
+    assert.notCalled(spies.reconnect);
+    assert.equal(clock.countTimers(), 0);
+    nativeSocket.onclose({code: 1006, reason: ''});
+    await clock.tickAsync(config.mercury.forceCloseDelay);
+    assert.calledOnce(closed);
+    assert.calledOnce(spies.offline);
+    assert.notCalled(spies.reconnect);
   });
 
   it('rejects unfinished open and ignores a late native open after cancellation', async () => {

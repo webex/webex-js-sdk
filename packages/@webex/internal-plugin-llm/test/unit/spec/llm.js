@@ -1,8 +1,12 @@
 import MockWebex from '@webex/test-helper-mock-webex';
 import {assert} from '@webex/test-helper-chai';
 import sinon from 'sinon';
-import Mercury, {Socket} from '@webex/internal-plugin-mercury';
-import LLMChannel from '@webex/internal-plugin-llm/src/llm';
+import Mercury, {
+  MercuryPlugin,
+  Socket,
+  config as mercuryConfig,
+} from '@webex/internal-plugin-mercury';
+import LLMChannel, {config as llmConfig} from '@webex/internal-plugin-llm/src/llm';
 
 describe('plugin-llm', () => {
   const locusUrl = 'locusUrl';
@@ -740,6 +744,128 @@ describe('plugin-llm', () => {
 
         assert.include(result, 'existing=param');
         assert.include(result, 'subscriptionAwareSubchannels=channel1');
+      });
+    });
+  });
+
+  describe('real Mercury lifecycle', () => {
+    let webex;
+    let llm;
+    let status;
+
+    beforeEach(() => {
+      webex = new MockWebex({children: {mercury: MercuryPlugin, llm: LLMChannel}});
+      webex.config.mercury = mercuryConfig.mercury;
+      webex.config.llm = llmConfig.llm;
+      webex.internal.device = {
+        registered: true,
+        url: 'https://example.com/device',
+        webSocketUrl: 'wss://example.com/primary',
+      };
+      webex.internal.feature = {getFeature: sinon.stub().resolves(false)};
+      status = sinon.stub();
+      webex.internal.newMetrics.callDiagnosticMetrics.setMercuryConnectedStatus = status;
+      llm = webex.internal.llm;
+      llm.request = sinon.stub().resolves({
+        body: {binding: 'binding', webSocketUrl: 'wss://example.com/llm'},
+      });
+    });
+
+    afterEach(() => {
+      if (webex.internal.mercury.socket) {
+        webex.internal.mercury.socket.removeAllListeners();
+      }
+      if (llm.socket) llm.socket.removeAllListeners();
+      llm.removeAllListeners();
+      sinon.restore();
+    });
+
+    it('does not change primary Mercury diagnostics during LLM lifecycle transitions', async () => {
+      const primary = webex.internal.mercury;
+      sinon.stub(primary._mercury, '_prepareAndOpenSocket').callsFake(function preparePrimary() {
+        this.resolvedWebSocketUrl = 'wss://example.com/primary';
+
+        return Promise.resolve('wss://example.com/primary');
+      });
+      sinon.stub(llm, '_prepareAndOpenSocket').callsFake(function prepareLlm() {
+        this.resolvedWebSocketUrl = 'wss://example.com/llm';
+
+        return Promise.resolve('wss://example.com/llm');
+      });
+
+      await primary.connect();
+      assert.isTrue(primary.connected);
+      assert.deepEqual(status.args, [[true]]);
+
+      llm.socket = new Socket();
+      await llm.disconnect({code: 3050, reason: 'meeting cleanup'});
+      assert.isTrue(primary.connected);
+      assert.deepEqual(status.args, [[true]]);
+
+      await llm.registerAndConnect(locusUrl, datachannelUrl);
+      assert.isTrue(llm.isConnected());
+      assert.deepEqual(status.args, [[true]]);
+
+      llm.socket.emit('close', {code: 3050, reason: 'meeting cleanup'});
+      assert.isFalse(llm.isConnected());
+      assert.isTrue(primary.connected);
+      assert.deepEqual(status.args, [[true]]);
+
+      await primary.disconnect({code: 3050, reason: 'meeting cleanup'});
+      assert.isFalse(primary.connected);
+      assert.deepEqual(status.args, [[true], [false]]);
+
+      await llm.registerAndConnect(locusUrl, datachannelUrl);
+      assert.isTrue(llm.isConnected());
+      assert.isFalse(primary.connected);
+      assert.deepEqual(status.args, [[true], [false]]);
+      await llm.disconnect({code: 3050, reason: 'meeting cleanup'});
+      assert.isFalse(llm.isConnected());
+      assert.deepEqual(status.args, [[true], [false]]);
+    });
+
+    [false, true].forEach((cancelAgain) => {
+      it(`handles a queued LLM connection with another disconnect=${cancelAgain}`, async () => {
+        let finishClose;
+        const socket = new Socket();
+        llm.socket = socket;
+        llm.connected = true;
+        sinon.stub(socket, 'close').returns(
+          new Promise((resolve) => {
+            finishClose = resolve;
+          })
+        );
+        const connect = sinon.stub(llm, '_connectWithBackoff').resolves();
+        const connectionRequest = sinon.spy(llm, 'connect');
+        const disconnecting = llm.disconnect({code: 3050, reason: 'meeting cleanup'});
+        const registration = llm.registerAndConnect(locusUrl, datachannelUrl);
+        const rejected = cancelAgain
+          ? assert.isRejected(registration, /Mercury Connection Aborted/)
+          : undefined;
+        await new Promise((resolve) => setImmediate(resolve));
+        assert.calledOnce(connectionRequest);
+        assert.notCalled(connect);
+
+        const cancelling = cancelAgain
+          ? llm.disconnect({code: 3050, reason: 'meeting cleanup'})
+          : Promise.resolve();
+        finishClose();
+        await Promise.all([disconnecting, cancelling]);
+        if (cancelAgain) {
+          await rejected;
+          assert.notCalled(connect);
+          assert.isFalse(llm.isConnecting());
+          assert.isUndefined(llm.getLocusUrl());
+          assert.isUndefined(llm.getBinding());
+        } else {
+          const timing = await registration;
+          assert.hasAllKeys(timing, [
+            'clientLLMDatachannelResponseTime',
+            'clientLLMWebSocketConnectTime',
+          ]);
+          assert.calledOnceWithExactly(connect, 'wss://example.com/llm');
+        }
+        assert.notCalled(status);
       });
     });
   });

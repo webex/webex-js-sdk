@@ -49,6 +49,10 @@ const Mercury = WebexPlugin.extend({
     backoffCall: 'object',
     _connectPromise: 'object',
     _disconnectPromise: 'object',
+    _isPrimaryMercury: {
+      default: false,
+      type: 'boolean',
+    },
     _shutdownSwitchoverSocket: 'object',
     _shutdownSwitchoverBackoffCall: 'object',
     _shutdownSwitchoverId: 'string',
@@ -117,6 +121,12 @@ const Mercury = WebexPlugin.extend({
     socket.on('pong', (...args) => this._setTimeOffset(...args));
     socket.on('sequence-mismatch', (...args) => this._emit('sequence-mismatch', ...args));
     socket.on('ping-pong-latency', (...args) => this._emit('ping-pong-latency', ...args));
+  },
+
+  _setMercuryConnectedStatus(connected) {
+    if (this._isPrimaryMercury || this.webex.internal.mercury === this) {
+      this.webex.internal.newMetrics.callDiagnosticMetrics.setMercuryConnectedStatus(connected);
+    }
   },
 
   /**
@@ -198,7 +208,23 @@ const Mercury = WebexPlugin.extend({
 
   connect(webSocketUrl) {
     if (this._disconnectPromise) {
-      return this._disconnectPromise.then(() => this.connect(webSocketUrl));
+      if (this._connectPromise) return this._connectPromise;
+
+      const connecting = this._disconnectPromise
+        .then(() => {
+          if (this._connectPromise !== connecting) {
+            throw new Error('Mercury Connection Aborted');
+          }
+          this._connectPromise = null;
+
+          return this.connect(webSocketUrl);
+        })
+        .finally(() => {
+          if (this._connectPromise === connecting) this._connectPromise = null;
+        });
+      this._connectPromise = connecting;
+
+      return connecting;
     }
 
     if (this.connected) {
@@ -244,6 +270,8 @@ const Mercury = WebexPlugin.extend({
 
   disconnect(options) {
     if (this._disconnectPromise) {
+      this._connectPromise = null;
+
       return this._disconnectPromise;
     }
 
@@ -266,7 +294,7 @@ const Mercury = WebexPlugin.extend({
         if (socket && this.socket === socket) {
           this.unset('socket');
           this.connected = false;
-          this.webex.internal.newMetrics.callDiagnosticMetrics.setMercuryConnectedStatus(false);
+          this._setMercuryConnectedStatus(false);
         }
         if (this._shutdownSwitchoverSocket === pendingSocket) {
           this._shutdownSwitchoverSocket = undefined;
@@ -676,7 +704,7 @@ const Mercury = WebexPlugin.extend({
           this.connected = true;
           this.hasEverConnected = true;
           this._emit('online');
-          this.webex.internal.newMetrics.callDiagnosticMetrics.setMercuryConnectedStatus(true);
+          this._setMercuryConnectedStatus(true);
         }
 
         return resolve();
@@ -832,7 +860,7 @@ const Mercury = WebexPlugin.extend({
         this.unset('socket');
         this.connected = false;
         this._emit('offline', event);
-        this.webex.internal.newMetrics.callDiagnosticMetrics.setMercuryConnectedStatus(false);
+        this._setMercuryConnectedStatus(false);
       } else {
         // Old socket closed; do not flip connection state
         this.logger.info(
