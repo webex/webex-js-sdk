@@ -43,6 +43,7 @@ export type TransactionResult = JoinSuccessResult | UpdateSuccessResult | Transa
 
 export interface HTTPRequest {
   url: string;
+  /** A view into WASM memory (`typed_memory_view`); only valid during the callback — copy before async use. */
   body: Uint8Array;
   handlerId: number;
 }

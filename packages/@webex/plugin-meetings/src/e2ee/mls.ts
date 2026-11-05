@@ -33,6 +33,7 @@ const WASM_LOG_LEVELS = ['', 'FATAL', 'ERROR', 'WARN', 'INFO', 'DEBUG'];
 export interface MLSEventMap {
   joinSuccess: {epoch: number; securityCode: string; sframe: SframeParams; key: E2eeKey};
   joinFailure: {reason: string};
+  mediaEncryptionRequestFailure: {errorCode: number; message: string};
   newKey: E2eeKey;
   useKey: {epoch: number};
   purgeKeys: {epoch: number};
@@ -185,20 +186,24 @@ export default class MLS {
     });
 
     e2ee.setOnHttpRequest((request: HTTPRequest) => {
+      const {url, handlerId} = request;
+      // The body is a view into WASM memory that is only valid during this callback, so copy it now.
+      const body = new Uint8Array(request.body);
+
       // Complete asynchronously so the engine is never re-entered from inside its own request call.
       Promise.resolve()
-        .then(() => this.sendHttpRequest(request))
+        .then(() => this.sendHttpRequest(url, body))
         .then((responseBytes) => {
-          this.e2ee?.completeHttpRequest(request.handlerId, true, responseBytes, 0, '');
+          this.completeHttpRequest(handlerId, true, responseBytes, 0, '');
         })
         .catch((error) => {
-          this.e2ee?.completeHttpRequest(
-            request.handlerId,
-            false,
-            new Uint8Array(0),
-            error?.code || 0,
-            error?.message || 'Request failed'
+          const errorCode = MLS.getMesErrorCode(error);
+          const message = error?.message || 'Request failed';
+
+          LoggerProxy.logger.warn(
+            `e2ee: MLS --> HTTP request failed (url=${url}, errorCode=${errorCode}): ${message}`
           );
+          this.completeHttpRequest(handlerId, false, new Uint8Array(0), errorCode, message);
         });
     });
 
@@ -279,10 +284,11 @@ export default class MLS {
    * Converts an engine HTTP request from JSON bytes to an object, sends it through the injected
    * {@link IMlsHttpClient}, and converts the response object back to JSON bytes for the engine.
    * JSON conversion failures are logged and rejected so the engine's request is completed as failed.
-   * @param {HTTPRequest} request
+   * @param {string} url - The absolute request URL provided by the engine.
+   * @param {Uint8Array} body - JSON request payload as bytes (owned copy, not a WASM memory view).
    * @returns {Promise<Uint8Array>} JSON response payload as bytes.
    */
-  private async sendHttpRequest({url, body}: HTTPRequest): Promise<Uint8Array> {
+  private async sendHttpRequest(url: string, body: Uint8Array): Promise<Uint8Array> {
     let requestBody: unknown;
 
     try {
@@ -304,6 +310,49 @@ export default class MLS {
       );
       throw new Error(`Unserializable HTTP response body: ${error?.message}`);
     }
+  }
+
+  /**
+   * Hands a media-encryption service request outcome back to the engine. libe2ee throws
+   * `e2ee_negotiation_failure` out of this call when it can't recover from the service's error code
+   * or fails to process a successful response; this surfaces in JS as an opaque value with no
+   * message. That is unrecoverable for the in-flight operation, so it is reported as
+   * `mediaEncryptionRequestFailure` instead of escaping as an unhandled rejection.
+   * @param {number} handlerId
+   * @param {boolean} success
+   * @param {Uint8Array} body
+   * @param {number} errorCode - Media-encryption service error code, or 0 when not applicable.
+   * @param {string} message
+   * @returns {void}
+   */
+  private completeHttpRequest(
+    handlerId: number,
+    success: boolean,
+    body: Uint8Array,
+    errorCode: number,
+    message: string
+  ): void {
+    try {
+      this.e2ee?.completeHttpRequest(handlerId, success, body, errorCode, message);
+    } catch (error) {
+      LoggerProxy.logger.error(
+        `e2ee: MLS --> engine threw while completing HTTP request (success=${success}, errorCode=${errorCode}): ${error}`
+      );
+      this.emitEvent('mediaEncryptionRequestFailure', {
+        errorCode,
+        message: success ? 'Engine failed to process HTTP response' : message,
+      });
+    }
+  }
+
+  /**
+   * @param {*} error - Rejection from the HTTP client.
+   * @returns {number} the media-encryption service error code from the response body, or 0.
+   */
+  private static getMesErrorCode(error: any): number {
+    const errorCode = error?.body?.errorCode;
+
+    return Number.isInteger(errorCode) ? errorCode : 0;
   }
 
   /**
