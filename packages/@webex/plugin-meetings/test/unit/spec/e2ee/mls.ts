@@ -72,9 +72,12 @@ describe('plugin-meetings', () => {
       fakeE2ee = buildFakeE2ee();
       const module = {WebE2EE: sinon.stub().returns(fakeE2ee)};
 
-      loadModule = sinon.stub().resolves(module);
-      httpClient = {request: sinon.stub().resolves(new Uint8Array([1, 2, 3]))};
-      session = new MLS({httpClient, loadModule});
+      wasmLoader = sinon.createStubInstance(WasmLoader);
+      wasmLoader.get.resolves(module);
+      wasmLoader.preload.resolves();
+      wasmLoader.isLoaded.returns(true);
+      httpClient = {request: sinon.stub().resolves({result: 'ok', n: 1})};
+      session = new MLS({httpClient, wasmLoader, wasmUrl: '/assets/e2ee.wasm'});
     });
 
     afterEach(() => {
@@ -324,24 +327,33 @@ describe('plugin-meetings', () => {
         await session.initialize(config);
       });
 
-      it('routes an http request to the client and completes it on success', async () => {
+      const encodeJson = (value) => new TextEncoder().encode(JSON.stringify(value));
+      const decodeJson = (bytes) => JSON.parse(new TextDecoder().decode(bytes));
+
+      it('decodes the request bytes, routes the object to the client and completes with encoded response bytes', async () => {
         callbacks.httpRequest({
           url: 'https://mes.webex.com/op',
-          body: new Uint8Array([10]),
+          body: encodeJson({op: 'join', epoch: 2}),
           handlerId: 42,
         });
 
-        assert.calledOnce(httpClient.request);
-        assert.equal(httpClient.request.firstCall.args[0], 'https://mes.webex.com/op');
+        assert.notCalled(httpClient.request);
 
         await flushPromises();
+
+        assert.calledOnceWithExactly(httpClient.request, 'https://mes.webex.com/op', {
+          op: 'join',
+          epoch: 2,
+        });
+        assert.calledOnce(fakeE2ee.completeHttpRequest);
 
         const [handlerId, success, body, code, message] =
           fakeE2ee.completeHttpRequest.firstCall.args;
 
         assert.equal(handlerId, 42);
         assert.isTrue(success);
-        assert.deepEqual(Array.from(body), [1, 2, 3]);
+        assert.instanceOf(body, Uint8Array);
+        assert.deepEqual(decodeJson(body), {result: 'ok', n: 1});
         assert.equal(code, 0);
         assert.equal(message, '');
       });
@@ -352,13 +364,11 @@ describe('plugin-meetings', () => {
         error.code = 503;
         httpClient.request.rejects(error);
 
-        callbacks.httpRequest({
-          url: 'https://mes.webex.com/op',
-          body: new Uint8Array(),
-          handlerId: 7,
-        });
+        callbacks.httpRequest({url: 'https://mes.webex.com/op', body: encodeJson({}), handlerId: 7});
 
         await flushPromises();
+
+        assert.calledOnce(fakeE2ee.completeHttpRequest);
 
         const [handlerId, success, body, code, message] =
           fakeE2ee.completeHttpRequest.firstCall.args;
@@ -368,6 +378,64 @@ describe('plugin-meetings', () => {
         assert.equal(body.length, 0);
         assert.equal(code, 503);
         assert.equal(message, 'nope');
+      });
+
+      it('logs and completes an http request as failed when the request body is not valid JSON', async () => {
+        const errorLog = sinon.stub(LoggerProxy.logger, 'error');
+
+        callbacks.httpRequest({
+          url: 'https://mes.webex.com/op',
+          body: new TextEncoder().encode('{not json'),
+          handlerId: 8,
+        });
+
+        assert.notCalled(fakeE2ee.completeHttpRequest);
+
+        await flushPromises();
+
+        assert.notCalled(httpClient.request);
+        assert.calledOnce(errorLog);
+        assert.match(
+          errorLog.firstCall.args[0],
+          /^e2ee: MLS --> failed to parse engine HTTP request body as JSON \(url=https:\/\/mes\.webex\.com\/op\): /
+        );
+        assert.calledOnce(fakeE2ee.completeHttpRequest);
+
+        const [handlerId, success, body, code, message] =
+          fakeE2ee.completeHttpRequest.firstCall.args;
+
+        assert.equal(handlerId, 8);
+        assert.isFalse(success);
+        assert.equal(body.length, 0);
+        assert.equal(code, 0);
+        assert.match(message, /^Invalid JSON in HTTP request body: /);
+      });
+
+      it('logs and completes an http request as failed when the response cannot be serialized to JSON', async () => {
+        const errorLog = sinon.stub(LoggerProxy.logger, 'error');
+
+        httpClient.request.resolves({big: BigInt(1)});
+
+        callbacks.httpRequest({url: 'https://mes.webex.com/op', body: encodeJson({}), handlerId: 9});
+
+        await flushPromises();
+
+        assert.calledOnceWithExactly(httpClient.request, 'https://mes.webex.com/op', {});
+        assert.calledOnce(errorLog);
+        assert.match(
+          errorLog.firstCall.args[0],
+          /^e2ee: MLS --> failed to serialize HTTP response body as JSON \(url=https:\/\/mes\.webex\.com\/op\): /
+        );
+        assert.calledOnce(fakeE2ee.completeHttpRequest);
+
+        const [handlerId, success, body, code, message] =
+          fakeE2ee.completeHttpRequest.firstCall.args;
+
+        assert.equal(handlerId, 9);
+        assert.isFalse(success);
+        assert.equal(body.length, 0);
+        assert.equal(code, 0);
+        assert.match(message, /^Unserializable HTTP response body: /);
       });
 
       it('schedules a wait and completes it', () => {

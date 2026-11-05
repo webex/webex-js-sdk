@@ -101,9 +101,13 @@ export interface MLSConfig {
   coalesceWindow?: number;
 }
 
-/** HTTP transport injected into the engine so protocol I/O stays outside the MLS wrapper. */
+/**
+ * HTTP transport the MLS engine uses for its protocol requests. Implemented by
+ * MediaEncryptionService (which routes to webex.request); injected so the engine stays pure.
+ * Bodies are plain JS objects: MLS converts the engine's JSON bytes to/from objects at its boundary.
+ */
 export interface IMlsHttpClient {
-  request(url: string, body: Uint8Array): Promise<Uint8Array>;
+  request(url: string, body: unknown): Promise<unknown>;
 }
 
 /** Signaling transport that delivered an MLS protocol message. */

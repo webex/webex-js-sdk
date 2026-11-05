@@ -185,10 +185,11 @@ export default class MLS {
     });
 
     e2ee.setOnHttpRequest((request: HTTPRequest) => {
-      this.httpClient
-        .request(request.url, new Uint8Array(request.body))
-        .then((response) => {
-          this.e2ee?.completeHttpRequest(request.handlerId, true, new Uint8Array(response), 0, '');
+      // Complete asynchronously so the engine is never re-entered from inside its own request call.
+      Promise.resolve()
+        .then(() => this.sendHttpRequest(request))
+        .then((responseBytes) => {
+          this.e2ee?.completeHttpRequest(request.handlerId, true, responseBytes, 0, '');
         })
         .catch((error) => {
           this.e2ee?.completeHttpRequest(
@@ -272,6 +273,37 @@ export default class MLS {
           LoggerProxy.logger.info(`e2ee: [E2EE ${label}] ${message}`);
       }
     });
+  }
+
+  /**
+   * Converts an engine HTTP request from JSON bytes to an object, sends it through the injected
+   * {@link IMlsHttpClient}, and converts the response object back to JSON bytes for the engine.
+   * JSON conversion failures are logged and rejected so the engine's request is completed as failed.
+   * @param {HTTPRequest} request
+   * @returns {Promise<Uint8Array>} JSON response payload as bytes.
+   */
+  private async sendHttpRequest({url, body}: HTTPRequest): Promise<Uint8Array> {
+    let requestBody: unknown;
+
+    try {
+      requestBody = JSON.parse(new TextDecoder().decode(body));
+    } catch (error) {
+      LoggerProxy.logger.error(
+        `e2ee: MLS --> failed to parse engine HTTP request body as JSON (url=${url}): ${error?.message}`
+      );
+      throw new Error(`Invalid JSON in HTTP request body: ${error?.message}`);
+    }
+
+    const response = await this.httpClient.request(url, requestBody);
+
+    try {
+      return new TextEncoder().encode(JSON.stringify(response));
+    } catch (error) {
+      LoggerProxy.logger.error(
+        `e2ee: MLS --> failed to serialize HTTP response body as JSON (url=${url}): ${error?.message}`
+      );
+      throw new Error(`Unserializable HTTP response body: ${error?.message}`);
+    }
   }
 
   /**
