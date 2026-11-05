@@ -462,7 +462,6 @@ WebSocketManager owns socket/welcome/worker state. AqmReqs owns pending success/
 - AQM routing-failure logs never contain the raw routing payload or error verbatim. Enforced in `src/services/core/aqm-reqs.ts`.
 - Remote socket payloads are parsed defensively: `ConnectionService.onPing` never throws on malformed input and logs-and-ignores it. Enforced in `src/services/core/websocket/connection-service.ts`.
 - AQM type-map discrimination only honors own enumerable keys of the conditions map, so inherited prototype keys in a server-controlled message type cannot satisfy a bind. Enforced in `src/services/core/aqm-reqs.ts`.
-- The keepalive worker performs no console logging and communicates only through `postMessage`/worker events. Enforced in `src/services/core/websocket/keepalive.worker.js`.
 - Untrusted remote strings are passed through `sanitizeForObservability` before being written to logs or metrics. Enforced in `src/services/core/Utils.ts`.
 - Rollout applicability is N/A for Core: keepalive, timeout, and reconnect constants control behavior, while Services constructs Core without a feature gate.
 

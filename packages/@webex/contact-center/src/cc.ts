@@ -1361,7 +1361,7 @@ export default class ContactCenter extends WebexPlugin implements IContactCenter
         METRIC_EVENT_NAMES.STATION_LOGOUT_FAILED,
         {
           ...MetricsManager.getCommonTrackingFieldForAQMResponseFailed(failure),
-          logoutReason: data.logoutReason,
+          logoutReason: sanitizeForObservability(data.logoutReason),
         },
         ['behavioral', 'business', 'operational']
       );

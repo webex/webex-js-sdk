@@ -3348,6 +3348,26 @@ describe('webex.cc', () => {
         {module: CC_FILE, method: 'stationLogout', trackingId: error.details.trackingId}
       );
     });
+
+    it('logout reason is sanitized before metrics in error path', async () => {
+      const data = {logoutReason: 'Logout\r\ninjected: evil'};
+      const error = {
+        details: {
+          trackingId: '1234',
+          data: {reason: 'station logout failed'},
+        },
+      };
+
+      jest.spyOn(webex.cc.services.agent, 'logout').mockRejectedValue(error);
+
+      await expect(webex.cc.stationLogout(data)).rejects.toThrow();
+
+      expect(mockMetricsManager.trackEvent).toHaveBeenCalledWith(
+        METRIC_EVENT_NAMES.STATION_LOGOUT_FAILED,
+        expect.objectContaining({logoutReason: 'Logoutinjected: evil'}),
+        ['behavioral', 'business', 'operational']
+      );
+    });
   });
 
   describe('setAgentStatus', () => {

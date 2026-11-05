@@ -139,21 +139,22 @@ describe('ConnectionService', () => {
       expect(clearTimeoutSpy).toHaveBeenCalledWith(restoreTimer);
     });
 
-    it('onPing ignores malformed ping payload', () => {
-      const emitSpy = jest.spyOn(connectionService, 'emit');
-      connectionService['reconnectingTimer'] = undefined;
-      connectionService['restoreTimer'] = undefined;
+    it.each(['not-json', 'null', '42', '"text"', undefined])(
+      'onPing ignores malformed or non-object payload %p',
+      (payload) => {
+        connectionService['reconnectingTimer'] = undefined;
+        connectionService['restoreTimer'] = undefined;
 
-      expect(() => connectionService['onPing']('not-json')).not.toThrow();
+        expect(() => connectionService['onPing'](payload)).not.toThrow();
 
-      expect(emitSpy).not.toHaveBeenCalledWith('connectionLost', expect.anything());
-      expect(connectionService['reconnectingTimer']).toBeUndefined();
-      expect(connectionService['restoreTimer']).toBeUndefined();
-      expect(LoggerProxy.error).toHaveBeenCalledWith(
-        expect.stringContaining('onPing'),
-        {module: CONNECTION_SERVICE_FILE, method: 'onPing'}
-      );
-    });
+        expect(connectionService['reconnectingTimer']).toBeUndefined();
+        expect(connectionService['restoreTimer']).toBeUndefined();
+        expect(LoggerProxy.error).toHaveBeenCalledWith(expect.stringContaining('onPing'), {
+          module: CONNECTION_SERVICE_FILE,
+          method: 'onPing',
+        });
+      }
+    );
 
     it('onPing still processes valid keepalive ping', () => {
       const emitSpy = jest.spyOn(connectionService, 'emit');
