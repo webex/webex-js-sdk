@@ -89,12 +89,9 @@ describe('plugin-meetings', () => {
       fakeE2ee = buildFakeE2ee();
       const module = {WebE2EE: sinon.stub().returns(fakeE2ee)};
 
-      wasmLoader = sinon.createStubInstance(WasmLoader);
-      wasmLoader.get.resolves(module);
-      wasmLoader.preload.resolves();
-      wasmLoader.isLoaded.returns(true);
+      loadModule = sinon.stub().resolves(module);
       httpClient = {request: sinon.stub().resolves({result: 'ok', n: 1})};
-      session = new MLS({httpClient, wasmLoader, wasmUrl: '/assets/e2ee.wasm'});
+      session = new MLS({httpClient, loadModule});
     });
 
     afterEach(() => {
