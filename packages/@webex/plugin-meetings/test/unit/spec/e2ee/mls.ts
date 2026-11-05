@@ -18,6 +18,23 @@ describe('plugin-meetings', () => {
     let httpClient;
     let session;
 
+    // Replaces the whole logger: other specs install loggers whose methods are already sinon stubs,
+    // so stubbing individual methods of LoggerProxy.logger fails depending on test order.
+    const stubLogger = () => {
+      const logger = {
+        info: sinon.stub(),
+        log: sinon.stub(),
+        warn: sinon.stub(),
+        error: sinon.stub(),
+        trace: sinon.stub(),
+        debug: sinon.stub(),
+      };
+
+      sinon.stub(LoggerProxy, 'logger').value(logger);
+
+      return logger;
+    };
+
     const config = {
       participantId: 'user-1',
       deviceUrl: 'https://wdm.webex.com/device-1',
@@ -328,6 +345,21 @@ describe('plugin-meetings', () => {
       const encodeJson = (value) => new TextEncoder().encode(JSON.stringify(value));
       const decodeJson = (bytes) => JSON.parse(new TextDecoder().decode(bytes));
 
+      it('copies the request body before the callback returns, since the engine reuses that memory', async () => {
+        const body = encodeJson({op: 'llmConnected'});
+
+        callbacks.httpRequest({url: 'https://mes.webex.com/op', body, handlerId: 43});
+        body.fill(0x7b);
+
+        await flushPromises();
+
+        assert.calledOnceWithExactly(httpClient.request, 'https://mes.webex.com/op', {
+          op: 'llmConnected',
+        });
+        assert.calledOnce(fakeE2ee.completeHttpRequest);
+        assert.isTrue(fakeE2ee.completeHttpRequest.firstCall.args[1]);
+      });
+
       it('decodes the request bytes, routes the object to the client and completes with encoded response bytes', async () => {
         callbacks.httpRequest({
           url: 'https://mes.webex.com/op',
@@ -356,30 +388,113 @@ describe('plugin-meetings', () => {
         assert.equal(message, '');
       });
 
-      it('completes an http request as failed when the client rejects', async () => {
-        const error = new Error('nope');
+      [
+        {
+          description: 'passes the media-encryption error code from the response body',
+          error: Object.assign(new Error('nope'), {code: 503, body: {errorCode: 78400011}}),
+          expectedCode: 78400011,
+          expectedMessage: 'nope',
+        },
+        {
+          description: 'passes 0 when the rejection has no response body',
+          error: Object.assign(new Error('network down'), {code: 503}),
+          expectedCode: 0,
+          expectedMessage: 'network down',
+        },
+        {
+          description: 'passes 0 when the response body error code is not an integer',
+          error: Object.assign(new Error('odd'), {body: {errorCode: '78400011'}}),
+          expectedCode: 0,
+          expectedMessage: 'odd',
+        },
+        {
+          description: 'uses a default message when the rejection has none',
+          error: {body: {errorCode: 78400003}},
+          expectedCode: 78400003,
+          expectedMessage: 'Request failed',
+        },
+      ].forEach(({description, error, expectedCode, expectedMessage}) => {
+        it(`completes an http request as failed when the client rejects and ${description}`, async () => {
+          const warnLog = stubLogger().warn;
 
-        error.code = 503;
-        httpClient.request.rejects(error);
+          httpClient.request.rejects(error);
+
+          callbacks.httpRequest({url: 'https://mes.webex.com/op', body: encodeJson({}), handlerId: 7});
+
+          await flushPromises();
+
+          assert.calledOnceWithExactly(
+            warnLog,
+            `e2ee: MLS --> HTTP request failed (url=https://mes.webex.com/op, errorCode=${expectedCode}): ${expectedMessage}`
+          );
+          assert.calledOnce(fakeE2ee.completeHttpRequest);
+
+          const [handlerId, success, body, code, message] =
+            fakeE2ee.completeHttpRequest.firstCall.args;
+
+          assert.equal(handlerId, 7);
+          assert.isFalse(success);
+          assert.equal(body.length, 0);
+          assert.equal(code, expectedCode);
+          assert.equal(message, expectedMessage);
+        });
+      });
+
+      it('emits mediaEncryptionRequestFailure instead of rejecting when the engine throws on a failed completion', async () => {
+        const errorLog = stubLogger().error;
+        const mediaEncryptionRequestFailure = sinon.stub();
+        const unhandledRejection = sinon.stub();
+
+        process.on('unhandledRejection', unhandledRejection);
+        session.on('mediaEncryptionRequestFailure', mediaEncryptionRequestFailure);
+        httpClient.request.rejects(Object.assign(new Error('not leader'), {body: {errorCode: 78400011}}));
+        // Emscripten surfaces a thrown C++ exception as its numeric pointer.
+        fakeE2ee.completeHttpRequest.throws(12345);
+
+        try {
+          callbacks.httpRequest({url: 'https://mes.webex.com/op', body: encodeJson({}), handlerId: 7});
+
+          await flushPromises();
+          await flushPromises();
+        } finally {
+          process.off('unhandledRejection', unhandledRejection);
+        }
+
+        assert.calledOnce(fakeE2ee.completeHttpRequest);
+        assert.calledOnce(errorLog);
+        assert.match(
+          errorLog.firstCall.args[0],
+          /^e2ee: MLS --> engine threw while completing HTTP request \(success=false, errorCode=78400011\): /
+        );
+        assert.calledOnceWithExactly(mediaEncryptionRequestFailure, {errorCode: 78400011, message: 'not leader'});
+        assert.notCalled(unhandledRejection);
+      });
+
+      it('emits mediaEncryptionRequestFailure without retrying completion when the engine throws on a successful completion', async () => {
+        const errorLog = stubLogger().error;
+        const mediaEncryptionRequestFailure = sinon.stub();
+
+        session.on('mediaEncryptionRequestFailure', mediaEncryptionRequestFailure);
+        fakeE2ee.completeHttpRequest.throws(new Error('json parse'));
 
         callbacks.httpRequest({url: 'https://mes.webex.com/op', body: encodeJson({}), handlerId: 7});
 
         await flushPromises();
 
         assert.calledOnce(fakeE2ee.completeHttpRequest);
-
-        const [handlerId, success, body, code, message] =
-          fakeE2ee.completeHttpRequest.firstCall.args;
-
-        assert.equal(handlerId, 7);
-        assert.isFalse(success);
-        assert.equal(body.length, 0);
-        assert.equal(code, 503);
-        assert.equal(message, 'nope');
+        assert.isTrue(fakeE2ee.completeHttpRequest.firstCall.args[1]);
+        assert.calledOnceWithExactly(
+          errorLog,
+          'e2ee: MLS --> engine threw while completing HTTP request (success=true, errorCode=0): Error: json parse'
+        );
+        assert.calledOnceWithExactly(mediaEncryptionRequestFailure, {
+          errorCode: 0,
+          message: 'Engine failed to process HTTP response',
+        });
       });
 
       it('logs and completes an http request as failed when the request body is not valid JSON', async () => {
-        const errorLog = sinon.stub(LoggerProxy.logger, 'error');
+        const errorLog = stubLogger().error;
 
         callbacks.httpRequest({
           url: 'https://mes.webex.com/op',
@@ -410,7 +525,7 @@ describe('plugin-meetings', () => {
       });
 
       it('logs and completes an http request as failed when the response cannot be serialized to JSON', async () => {
-        const errorLog = sinon.stub(LoggerProxy.logger, 'error');
+        const errorLog = stubLogger().error;
 
         httpClient.request.resolves({big: BigInt(1)});
 

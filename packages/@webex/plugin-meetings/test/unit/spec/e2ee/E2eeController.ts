@@ -229,7 +229,7 @@ describe('plugin-meetings', () => {
 
         assert.equal(e2ee.state, 'failed');
         assert.calledOnce(leaveStub);
-        assert.equal(offStub.callCount, 6);
+        assert.equal(offStub.callCount, 7);
         assert.deepEqual(Object.keys(sessionHandlers), []);
       });
     });
@@ -304,7 +304,7 @@ describe('plugin-meetings', () => {
         assert.isUndefined(e2ee.getSecurityCode());
         assert.calledOnce(signalingStopStub);
         assert.calledOnce(leaveStub);
-        assert.equal(offStub.callCount, 6);
+        assert.equal(offStub.callCount, 7);
         assert.deepEqual(Object.keys(sessionHandlers), []);
 
         const securityCodeCalls = emitted(EVENT_TRIGGERS.MEETING_E2EE_SECURITY_CODE_UPDATED);
@@ -320,8 +320,22 @@ describe('plugin-meetings', () => {
         assert.equal(e2ee.state, 'evicted');
         assert.calledOnce(signalingStopStub);
         assert.calledOnce(leaveStub);
-        assert.equal(offStub.callCount, 6);
+        assert.equal(offStub.callCount, 7);
         assert.equal(emitted(EVENT_TRIGGERS.MEETING_E2EE_FAILURE).length, 1);
+      });
+
+      it('cleans up the session on mediaEncryptionRequestFailure', () => {
+        emitSession('mediaEncryptionRequestFailure', {errorCode: 78400011, message: 'not leader'});
+        assert.equal(e2ee.state, 'failed');
+        assert.calledOnce(signalingStopStub);
+        assert.calledOnce(leaveStub);
+        assert.equal(offStub.callCount, 7);
+        assert.deepEqual(Object.keys(sessionHandlers), []);
+
+        const failureCalls = emitted(EVENT_TRIGGERS.MEETING_E2EE_FAILURE);
+
+        assert.equal(failureCalls.length, 1);
+        assert.deepEqual(failureCalls[0].args[3], {reason: 'mediaEncryptionRequestFailure'});
       });
     });
 
@@ -389,7 +403,11 @@ describe('plugin-meetings', () => {
 
     describe('stop', () => {
       it('is a silent no-op when E2EE was never started', async () => {
-        const loggerInfoStub = sinon.stub(LoggerProxy.logger, 'info');
+        const loggerInfoStub = sinon.stub();
+
+        // Replace the whole logger: other specs install loggers whose methods are already sinon
+        // stubs, so stubbing LoggerProxy.logger.info directly fails depending on test order.
+        sinon.stub(LoggerProxy, 'logger').value({...LoggerProxy.logger, info: loggerInfoStub});
 
         assert.equal(e2ee.state, 'disabled');
 
@@ -399,8 +417,6 @@ describe('plugin-meetings', () => {
         assert.notCalled(signalingStopStub);
         assert.notCalled(leaveStub);
         assert.notCalled(loggerInfoStub);
-
-        loggerInfoStub.restore();
       });
 
       it('tears down signaling and session and resets to left', async () => {
@@ -412,7 +428,7 @@ describe('plugin-meetings', () => {
 
         assert.calledOnce(signalingStopStub);
         assert.calledOnce(leaveStub);
-        assert.equal(offStub.callCount, 6);
+        assert.equal(offStub.callCount, 7);
         assert.deepEqual(Object.keys(sessionHandlers), []);
         assert.equal(e2ee.state, 'left');
         assert.isUndefined(e2ee.getSecurityCode());

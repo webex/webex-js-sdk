@@ -329,6 +329,9 @@ Emits (typed `EventEmitter` or callback registry):
 
 - `joinSuccess` `{ epoch, securityCode, sframe: SframeParams, key: E2eeKey }`
 - `joinFailure` `{ reason }`
+- `mediaEncryptionRequestFailure` `{ errorCode, message }` — the engine could not recover from a
+  media-encryption service request outcome (see below); unrecoverable for the in-flight operation,
+  whether during or after join.
 - `newKey` `(E2eeKey)` · `useKey` `{ epoch }` · `purgeKeys` `{ epoch }`
 - `rosterAdded` `(E2eeRosterMember[])` · `rosterRemoved` `{ urls: string[] }`
 - `leaderChanged` `{ isLeader }` · `evicted` · `versionNegotiated` `{ version }`
@@ -338,9 +341,18 @@ Internals map the WASM callbacks: `setOnHttpRequest` → JSON-decode the engine'
 `httpClient.request(url, object)` → JSON-encode the response object → `completeHttpRequest`;
 `setOnWait` → `timers.setTimeout` → `completeWait`. MLS owns the bytes ⇄ JSON conversion. If
 decoding the request, the HTTP call, or encoding the response fails, MLS logs the failure and calls
-`completeHttpRequest(handlerId, false, …)`. libe2ee's `HTTPFailure` only carries an MES error code,
-so client-side JSON failures are reported with `errorCode` `0` and a descriptive message.
+`completeHttpRequest(handlerId, false, …)`. libe2ee's `HTTPFailure` only carries an MES error code:
+for rejected HTTP calls MLS passes the media-encryption service code from `error.body.errorCode`, and
+client-side failures (JSON, network, no code in the body) are reported with `errorCode` `0` and a
+descriptive message.
 Completion is always asynchronous, so the engine is never re-entered from inside its own request call.
+
+When libe2ee can't recover from the service's error code, or fails to process a successful
+response, it throws `e2ee_negotiation_failure` out of `completeHttpRequest`. Recoverable codes
+(`not_leader`, `epochs_not_matching`) are handled inside the engine and don't throw. The WASM build
+surfaces the exception as an opaque value (the exception pointer) with no message. MLS catches it,
+logs it, and emits `mediaEncryptionRequestFailure` rather than letting it escape as an unhandled
+rejection.
 
 ```ts
 interface IMlsHttpClient { request(url: string, body: unknown): Promise<unknown>; }
@@ -607,7 +619,7 @@ local display-name lookup, update processing, and reporting changed members. `Me
      if our own device URL is now in the roster and `state !== 'joined'`, set `state = 'joined'`
      and Meeting emits `STATE_CHANGED` (this is what flips the trust state to `ZeroTrust`).
    - `securityCodeChanged` → Meeting emits `SECURITY_CODE_UPDATED`
-   - `joinFailure` / `evicted` / `timeout` → `handleFatal(reason)`
+   - `joinFailure` / `mediaEncryptionRequestFailure` / `evicted` / `timeout` → `handleFatal(reason)`
 10. `signaling = new E2eeSignaling({ llm: meeting.getLlmChannel(),`
     `  getLocusUrl: () => meeting.locusInfo?.url, session }); signaling.start();`
     then `session.join()`
@@ -755,7 +767,7 @@ to surface the meeting's zero-trust state.
 - Reconnect: `closePeerConnections()` → `detach`; `createMediaConnection()` → `attach`
   (replays keys). The MLS session and LLM persist, so the MLS group is **not** re-joined.
 - Roster/Member out-of-order: solved by the reconciler map + reapply on `MEMBERS_UPDATE`.
-- Failures: `joinFailure` / `evicted` / `timeout` → `handleFatal` → state +
+- Failures: `joinFailure` / `mediaEncryptionRequestFailure` / `evicted` / `timeout` → `handleFatal` → state +
   `MEETING_E2EE_FAILURE { reason }` + force-leave with an `E2EE_*` reason + `E2eeError`.
 - The WASM engine exposes `keepAlive()` for backend services such as Homer. The client SDK does not
   call it; backend services own that keep-alive behavior.
