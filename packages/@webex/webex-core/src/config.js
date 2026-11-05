@@ -119,7 +119,7 @@ export default {
 
     /**
      * Domain fallback for requests outside the catalog and allowedDomains.
-     * Matching requests omit Authorization. Domains include subdomains.
+     * Matching requests do not get the SDK bearer token. Domains include subdomains.
      *
      * @type {Array<string>}
      */

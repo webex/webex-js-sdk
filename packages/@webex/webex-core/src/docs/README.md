@@ -217,18 +217,19 @@ and the `Logger` class in `src/plugins/logger.js` are not exported from `src/ind
 `services.allowedWithoutAuthHeader` is an opt-in `string[]` domain fallback.
 It defaults to `[]` and reuses `matchAllowedDomain` and `normalizeAllowedDomains`.
 Catalog and ordinary `allowedDomains` trust keep precedence. Only requests that
-need this fallback have Authorization removed and token attachment/refresh disabled.
+need this fallback skip SDK bearer attachment and refresh. Inherited SDK-added
+bearer headers are removed; caller-provided authentication is unchanged.
 No path, scheme, port, or separate domain validation policy is added.
 
 The existing Catalog interceptor admits the fallback. The existing Auth interceptor
-removes inherited credentials and sets `addAuthHeader` and
+removes an inherited SDK bearer token and sets `addAuthHeader` and
 `shouldRefreshAccessToken` to false. No new request API, interceptor, or chain ordering is added.
 Core request functions and `setConfig` retain their original implementations.
 Per-request interceptor replacement remains application-controlled. The fallback
 uses existing absolute-URL matching and adds no URL-object or `baseUrl` support.
 Native HTTP redirects inside XHR do not pass through SDK interceptors.
 
-See the [configuration example](../../README.md#requests-without-authorization).
+See the [configuration example](../../README.md#requests-without-the-sdk-bearer-token).
 The behavior is tested in `test/unit/spec/anonymous-request.js`.
 
 ## Requirements

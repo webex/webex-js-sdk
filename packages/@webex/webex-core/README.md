@@ -42,7 +42,7 @@ webex.request({
 
 ## Configuration
 
-### Requests without Authorization
+### Requests without the SDK bearer token
 
 Use `services.allowedWithoutAuthHeader` for domains that may receive requests
 outside the service catalog and ordinary `allowedDomains`:
@@ -60,17 +60,18 @@ is added. Configure the list when creating the SDK instance.
 
 Catalog and ordinary `allowedDomains` trust retain precedence. For example,
 a catalogued home site still receives its normal authentication when
-`webex.com` is also in the new list. A URL admitted only by the new list omits
-Authorization. The SDK removes supplied and inherited header variants and
-disables token attachment, refresh, and transport authentication. URL userinfo
-is rejected on this fallback because Node can turn it into Basic authorization.
+`webex.com` is also in the new list. A URL admitted only by the new list does not
+receive an automatically attached SDK bearer token.
+If a redirect carries a bearer header that the SDK added, Auth removes that
+header without changing the source request. Caller-provided headers and transport
+authentication options retain their existing behavior.
 
 The existing Catalog interceptor admits this fallback. The existing Auth
-interceptor clears its credentials. Requests still use
+interceptor skips the SDK bearer token. Requests still use
 `webex.request`, its normal transport, and its existing interceptor chain. The Auth
 interceptor already honors `addAuthHeader: false` and
 `shouldRefreshAccessToken: false`; this fallback sets those options and clears
-inherited credentials. It adds no request API or interceptor.
+an inherited SDK bearer token. It adds no request API or interceptor.
 
 Existing per-request interceptor replacement remains application-controlled.
 Matching uses existing absolute URLs; no URL-object, `baseUrl`, or runtime
