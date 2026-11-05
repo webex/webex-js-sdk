@@ -204,7 +204,7 @@ keys below are read by the interceptors themselves.
 
 ## Anonymous domain fallback
 
-`src/lib/anonymous-request.ts` reuses the existing domain matcher for
+The existing Catalog and Auth interceptors reuse the domain matcher for
 `config.services.allowedWithoutAuthHeader: string[]`. Catalog and ordinary
 `allowedDomains` trust keep their existing authentication behavior. The new list
 only admits otherwise-untrusted domains without granting credential trust.
@@ -212,7 +212,7 @@ only admits otherwise-untrusted domains without granting credential trust.
 - `CatalogUrlInterceptor` tries this fallback after existing trusted checks.
 - `AuthInterceptor` removes fallback credentials before its supplied-header shortcut.
 
-The existing request and interceptor chain remain unchanged. The helper uses the
+The existing request and interceptor chain remain unchanged. Auth uses the
 existing `addAuthHeader` and `shouldRefreshAccessToken` controls. Credential removal
 copies headers before removing Authorization case variants.
 False transport-auth options prevent defaults and signers from recreating the

@@ -65,7 +65,8 @@ Authorization. The SDK removes supplied and inherited header variants and
 disables token attachment, refresh, and transport authentication. URL userinfo
 is rejected on this fallback because Node can turn it into Basic authorization.
 
-The existing Catalog and Auth interceptors apply this fallback. Requests still use
+The existing Catalog interceptor admits this fallback. The existing Auth
+interceptor clears its credentials. Requests still use
 `webex.request`, its normal transport, and its existing interceptor chain. The Auth
 interceptor already honors `addAuthHeader: false` and
 `shouldRefreshAccessToken: false`; this fallback sets those options and clears

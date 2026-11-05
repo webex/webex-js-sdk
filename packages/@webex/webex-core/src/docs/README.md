@@ -220,9 +220,9 @@ Catalog and ordinary `allowedDomains` trust keep precedence. Only requests that
 need this fallback have Authorization removed and token attachment/refresh disabled.
 No path, scheme, port, or separate domain validation policy is added.
 
-The existing Catalog and Auth interceptors apply the shared helper. It sets the
-existing `addAuthHeader` and `shouldRefreshAccessToken` options to false and removes
-inherited credentials. No new request API, interceptor, or chain ordering is added.
+The existing Catalog interceptor admits the fallback. The existing Auth interceptor
+removes inherited credentials and sets `addAuthHeader` and
+`shouldRefreshAccessToken` to false. No new request API, interceptor, or chain ordering is added.
 Core request functions and `setConfig` retain their original implementations.
 Per-request interceptor replacement remains application-controlled. The fallback
 uses existing absolute-URL matching and adds no URL-object or `baseUrl` support.

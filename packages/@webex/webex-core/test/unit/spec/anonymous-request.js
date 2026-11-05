@@ -11,7 +11,6 @@ import WebexCore, {
   registerPlugin,
 } from '@webex/webex-core';
 import DefaultLogger from '@webex/webex-core/dist/plugins/logger';
-import applyAnonymousRequestPolicy from '@webex/webex-core/src/lib/anonymous-request';
 
 const PATH = '/wbxappapi/v1/meetingInfo';
 const TARGET = `https://site.example.com${PATH}`;
@@ -48,6 +47,15 @@ const createMock = () => ({
   logger: {info: sinon.stub(), warn: sinon.stub()},
 });
 
+const authorize = (options, domains, services) => {
+  const webex = createMock();
+  webex.config.services.allowedWithoutAuthHeader = domains;
+  if (services) {
+    webex.internal.services = services;
+  }
+  return Reflect.apply(AuthInterceptor.create, webex, []).onRequest(options);
+};
+
 describe('anonymous domain fallback', () => {
   afterEach(() => sinon.restore());
 
@@ -60,10 +68,10 @@ describe('anonymous domain fallback', () => {
       `https://site.example.com.${PATH}`,
       'http://site.example.com:8080/another/path',
     ].forEach((uri) => {
-      it(`uses ordinary domain matching for ${uri}`, () => {
+      it(`uses ordinary domain matching for ${uri}`, async () => {
         const options = {uri, headers: {Authorization: 'Bearer inherited'}};
 
-        assert.isTrue(applyAnonymousRequestPolicy(options, DOMAINS));
+        await authorize(options, DOMAINS);
         assertAnonymous(options);
       });
     });
@@ -75,10 +83,10 @@ describe('anonymous domain fallback', () => {
       'not a URL',
       undefined,
     ].forEach((uri) => {
-      it(`does not grant new permission to ${uri}`, () => {
+      it(`does not grant new permission to ${uri}`, async () => {
         const options = {uri, headers: {Authorization: 'Bearer explicit'}};
 
-        assert.isFalse(applyAnonymousRequestPolicy(options, DOMAINS));
+        await authorize(options, DOMAINS);
         assert.deepEqual(options, {uri, headers: {Authorization: 'Bearer explicit'}});
       });
     });
@@ -86,23 +94,23 @@ describe('anonymous domain fallback', () => {
     [undefined, [], null, ['another.test']].forEach((domains) => {
       it(`preserves existing behavior for unmatched configuration ${JSON.stringify(
         domains
-      )}`, () => {
+      )}`, async () => {
         const options = {uri: TARGET, headers: {Authorization: 'Bearer explicit'}};
 
-        assert.isFalse(applyAnonymousRequestPolicy(options, domains));
+        await authorize(options, domains);
         assert.deepEqual(options, {uri: TARGET, headers: {Authorization: 'Bearer explicit'}});
       });
     });
 
-    it('uses existing domain normalization without a separate schema', () => {
+    it('uses existing domain normalization without a separate schema', async () => {
       const options = {url: TARGET};
 
-      assert.isTrue(applyAnonymousRequestPolicy(options, [null, 42, 'EXAMPLE.COM.']));
+      await authorize(options, [null, 42, 'EXAMPLE.COM.']);
       assertAnonymous(options);
     });
 
     ['catalog', 'allowedDomains'].forEach((trust) => {
-      it(`preserves existing ${trust} credential trust on an overlapping domain`, () => {
+      it(`preserves existing ${trust} credential trust on an overlapping domain`, async () => {
         const webex = createMock();
         const services = webex.internal.services;
         if (trust === 'catalog') {
@@ -111,25 +119,25 @@ describe('anonymous domain fallback', () => {
           services.hasAllowedDomains.returns(true);
           services.isAllowedDomainUrl.returns(true);
         }
-        const options = {uri: TARGET, headers: {Authorization: 'Bearer trusted'}};
+        const options = {uri: TARGET, headers: {authorization: 'Bearer trusted'}};
 
-        assert.isFalse(applyAnonymousRequestPolicy(options, DOMAINS, services));
-        assert.deepEqual(options, {uri: TARGET, headers: {Authorization: 'Bearer trusted'}});
+        await authorize(options, DOMAINS, services);
+        assert.deepEqual(options, {uri: TARGET, headers: {authorization: 'Bearer trusted'}});
       });
     });
 
-    it('does not grant disabled ordinary domain trust precedence', () => {
+    it('does not grant disabled ordinary domain trust precedence', async () => {
       const services = createMock().internal.services;
       services.validateDomains = false;
       services.hasAllowedDomains.returns(true);
       services.isAllowedDomainUrl.returns(true);
       const options = {uri: TARGET};
 
-      assert.isTrue(applyAnonymousRequestPolicy(options, DOMAINS, services));
+      await authorize(options, DOMAINS, services);
       assertAnonymous(options);
     });
 
-    it('removes all Authorization casings without changing source headers', () => {
+    it('removes all Authorization casings without changing source headers', async () => {
       const headers = {
         authorization: 'Bearer inherited',
         Authorization: 'Basic explicit',
@@ -138,7 +146,7 @@ describe('anonymous domain fallback', () => {
       };
       const options = {uri: TARGET, headers, auth: {user: 'user', pass: 'password'}};
 
-      assert.isTrue(applyAnonymousRequestPolicy(options, DOMAINS));
+      await authorize(options, DOMAINS);
       assertAnonymous(options);
       assert.deepEqual(options.headers, {accept: 'application/json'});
       assert.deepEqual(headers, {
@@ -150,13 +158,9 @@ describe('anonymous domain fallback', () => {
     });
 
     ['user', 'user:password'].forEach((userinfo) => {
-      it(`rejects URL userinfo that can recreate transport auth: ${userinfo}`, () => {
-        assert.throws(
-          () =>
-            applyAnonymousRequestPolicy(
-              {uri: `https://${userinfo}@site.example.com${PATH}`},
-              DOMAINS
-            ),
+      it(`rejects URL userinfo that can recreate transport auth: ${userinfo}`, async () => {
+        await assert.isRejected(
+          authorize({uri: `https://${userinfo}@site.example.com${PATH}`}, DOMAINS),
           /URL credentials/
         );
       });
@@ -182,7 +186,7 @@ describe('anonymous domain fallback', () => {
       const options = {uri: TARGET};
 
       await catalog.onRequest(options).then((result) => assert.strictEqual(result, options));
-      assertAnonymous(options);
+      assert.deepEqual(options, {uri: TARGET});
       assert.isFalse(webex.internal.services.isAllowedDomainUrl(TARGET));
     });
   });

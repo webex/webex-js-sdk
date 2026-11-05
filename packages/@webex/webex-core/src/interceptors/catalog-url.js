@@ -4,7 +4,7 @@
 
 import {Interceptor} from '@webex/http-core';
 
-import applyAnonymousRequestPolicy from '../lib/anonymous-request';
+import {matchAllowedDomain, normalizeAllowedDomains} from '../lib/domains';
 
 /**
  * Validates that request URLs are in the service catalog.
@@ -61,10 +61,9 @@ export default class CatalogUrlInterceptor extends Interceptor {
     }
 
     if (
-      applyAnonymousRequestPolicy(
-        options,
-        this.webex.config?.services?.allowedWithoutAuthHeader,
-        this.webex.internal?.services
+      matchAllowedDomain(
+        url,
+        normalizeAllowedDomains(this.webex.config?.services?.allowedWithoutAuthHeader)
       )
     ) {
       return Promise.resolve(options);

@@ -2,9 +2,11 @@
  * Copyright (c) 2015-2020 Cisco Systems, Inc. See LICENSE file.
  */
 
+import Url from 'url';
+
 import {Interceptor} from '@webex/http-core';
 
-import applyAnonymousRequestPolicy from '../lib/anonymous-request';
+import {matchAllowedDomain, normalizeAllowedDomains} from '../lib/domains';
 
 /**
  * @class
@@ -23,13 +25,42 @@ export default class AuthInterceptor extends Interceptor {
    * @returns {Object}
    */
   onRequest(options) {
+    const url = options.uri || options.url;
+    const services = this.webex.internal?.services;
+    const anonymousDomains = normalizeAllowedDomains(
+      this.webex.config?.services?.allowedWithoutAuthHeader
+    );
+
     if (
-      applyAnonymousRequestPolicy(
-        options,
-        this.webex.config?.services?.allowedWithoutAuthHeader,
-        this.webex.internal?.services
+      anonymousDomains.length &&
+      matchAllowedDomain(url, anonymousDomains) &&
+      !services?.getServiceFromUrl(url) &&
+      !(
+        services?.validateDomains &&
+        services.hasAllowedDomains() &&
+        services.isAllowedDomainUrl(url)
       )
     ) {
+      if (Url.parse(url).auth) {
+        return Promise.reject(
+          new Error('Request blocked: URL credentials are not allowed for anonymous requests.')
+        );
+      }
+      // Redirects shallow-copy options. Preserve the source request's headers.
+      options.headers = {...options.headers};
+      Object.keys(options.headers).forEach((name) => {
+        if (name.toLowerCase() === 'authorization') {
+          Reflect.deleteProperty(options.headers, name);
+        }
+      });
+      options.auth = false;
+      options.oauth = false;
+      options.hawk = false;
+      options.httpSignature = false;
+      options.aws = false;
+      options.addAuthHeader = false;
+      options.shouldRefreshAccessToken = false;
+
       return Promise.resolve(options);
     }
 
