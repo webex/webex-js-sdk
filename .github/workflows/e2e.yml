@@ -11,8 +11,8 @@ run-name: ${{ github.actor }} is running E2E tests (${{ github.event_name }})
 #   CALLING_E2E_ENV contents of the repo-root .env   (USER_N_EMAIL / _PASSWORD / _PHONE_NUMBER and the
 #                                                      _INT_ variants; see packages/calling/playwright/test-data.ts)
 #
-# Triggers: manual and workflow_call. pull-request.yml calls this workflow unconditionally for every
-# PR it runs CI for, so E2E needs no opt-in of its own.
+# Triggers: manual and workflow_call. pull-request.yml calls this workflow for PRs that carry
+# the `test_e2e` label.
 
 on:
   workflow_call:

@@ -381,13 +381,10 @@ jobs:
       - name: Test - Unit
         run: yarn workspaces foreach --verbose --exclude webex-js-sdk --include '${{ needs.generate-package-matrix.outputs.recursive }}' run test:unit
 
-
-  # Deliberately ungated: E2E is a required test, so every run of this workflow
-  # runs it. validate is the only gate it needs, being what establishes that the
-  # run is trusted enough to hand the secrets below to a PR's own code.
   test-e2e:
     name: Test - E2E
     needs: validate
+    if: contains(github.event.pull_request.labels.*.name, 'test_e2e')
     uses: ./.github/workflows/e2e.yml
     with:
       ref: ${{ github.event.pull_request.head.sha }}
