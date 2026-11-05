@@ -6,8 +6,8 @@ doc_kind: standing-doc
 generated_from: docs-index@0.3.0
 generated_by: claude-code
 approved_by: riag@cisco.com
-updated_at: 2026-10-22T06:52:30Z
-validation_status: pass
+updated_at: 2026-11-05T16:10:55Z
+validation_status: pass-with-warnings
 -->
 
 # webex-js-sdk documentation
@@ -31,6 +31,7 @@ package owns its architecture, specifications, and decisions beside its code. Th
 | `@webex/internal-plugin-user` | `packages/@webex/internal-plugin-user/` | [AGENTS.md](../packages/@webex/internal-plugin-user/AGENTS.md) | [docs/index.md](../packages/@webex/internal-plugin-user/docs/index.md) | [.sdd/manifest.json](../packages/@webex/internal-plugin-user/.sdd/manifest.json) |
 | `@webex/internal-plugin-wdm` | `packages/@webex/internal-plugin-wdm/` | [AGENTS.md](../packages/@webex/internal-plugin-wdm/AGENTS.md) | [docs/index.md](../packages/@webex/internal-plugin-wdm/docs/index.md) | [.sdd/manifest.json](../packages/@webex/internal-plugin-wdm/.sdd/manifest.json) |
 | `@webex/plugin-authorization-browser-first-party` | `packages/@webex/plugin-authorization-browser-first-party/` | [AGENTS.md](../packages/@webex/plugin-authorization-browser-first-party/AGENTS.md) | [docs/index.md](../packages/@webex/plugin-authorization-browser-first-party/docs/index.md) | [.sdd/manifest.json](../packages/@webex/plugin-authorization-browser-first-party/.sdd/manifest.json) |
+| `@webex/plugin-encryption` | `packages/@webex/plugin-encryption/` | [AGENTS.md](../packages/@webex/plugin-encryption/AGENTS.md) | [docs/index.md](../packages/@webex/plugin-encryption/docs/index.md) | [.sdd/manifest.json](../packages/@webex/plugin-encryption/.sdd/manifest.json) |
 <!-- sdd-package-routing:end -->
 
 ## Decisions
