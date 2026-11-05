@@ -132,13 +132,16 @@ describe('anonymous domain fallback', () => {
       assertNoSdkBearer(options);
     });
 
-    it('removes only the SDK-added bearer from redirected headers and preserves source headers', async () => {
+    it('removes bearer headers from a redirect and preserves source headers', async () => {
       const webex = createMock();
       webex.internal.services.getServiceFromUrl.callsFake((uri) =>
         uri === SOURCE ? {name: 'home'} : undefined
       );
       const auth = Reflect.apply(AuthInterceptor.create, webex, []);
-      const source = {uri: SOURCE, headers: {accept: 'application/json'}};
+      const source = {
+        uri: SOURCE,
+        headers: {accept: 'application/json', 'x-context': 'Bearer metadata'},
+      };
 
       await auth.onRequest(source);
       source.headers.Authorization = 'Basic caller';
@@ -149,11 +152,12 @@ describe('anonymous domain fallback', () => {
       assertNoSdkBearer(redirected);
       assert.deepEqual(redirected.headers, {
         accept: 'application/json',
+        'x-context': 'Bearer metadata',
         Authorization: 'Basic caller',
-        AUTHORIZATION: 'Bearer caller-uppercase',
       });
       assert.deepEqual(source.headers, {
         accept: 'application/json',
+        'x-context': 'Bearer metadata',
         authorization: 'Bearer user-token',
         Authorization: 'Basic caller',
         AUTHORIZATION: 'Bearer caller-uppercase',
@@ -161,22 +165,33 @@ describe('anonymous domain fallback', () => {
       assert.calledOnceWithExactly(webex.credentials.getUserToken);
     });
 
-    ['Basic caller', 'Bearer caller', 'Bearer user-token'].forEach((authorization) => {
-      it(`preserves caller-supplied Authorization ${authorization}`, async () => {
+    ['Bearer caller', 'Bearer user-token', 'bEaReR caller'].forEach((authorization) => {
+      it(`strips supplied bearer Authorization ${authorization}`, async () => {
         const webex = createMock();
         const auth = Reflect.apply(AuthInterceptor.create, webex, []);
         const headers = {authorization};
         const options = {uri: TARGET, headers};
 
         await auth.onRequest(options);
-        assert.strictEqual(options.headers, headers);
-        assert.deepEqual(options.headers, {authorization});
-        assert.strictEqual(options.addAuthHeader, false);
+        assert.deepEqual(options.headers, {});
+        assert.deepEqual(headers, {authorization});
+        assertNoSdkBearer(options);
         assert.notCalled(webex.credentials.getUserToken);
       });
     });
 
-    it('preserves a caller replacement of an SDK-added bearer', async () => {
+    it('preserves a caller-supplied Basic authorization header', async () => {
+      const webex = createMock();
+      const auth = Reflect.apply(AuthInterceptor.create, webex, []);
+      const options = {uri: TARGET, headers: {authorization: 'Basic caller'}};
+
+      await auth.onRequest(options);
+      assert.deepEqual(options.headers, {authorization: 'Basic caller'});
+      assertNoSdkBearer(options);
+      assert.notCalled(webex.credentials.getUserToken);
+    });
+
+    it('strips a caller replacement bearer on a fallback redirect', async () => {
       const webex = createMock();
       webex.internal.services.getServiceFromUrl.callsFake((uri) =>
         uri === SOURCE ? {name: 'home'} : undefined
@@ -188,7 +203,7 @@ describe('anonymous domain fallback', () => {
       const redirected = {...source, uri: TARGET};
 
       await auth.onRequest(redirected);
-      assert.deepEqual(redirected.headers, {authorization: 'Bearer caller-replacement'});
+      assert.deepEqual(redirected.headers, {});
       assertNoSdkBearer(redirected);
       assert.calledOnceWithExactly(webex.credentials.getUserToken);
     });
@@ -275,7 +290,7 @@ describe('anonymous domain fallback', () => {
     const respond = (options) => ({statusCode: 200, headers: {}, body: {ok: true}, options});
 
     [true, false].forEach((validateCatalogUrls) => {
-      it(`skips SDK bearer but preserves caller authentication with catalog validation ${validateCatalogUrls}`, async () => {
+      it(`skips SDK bearer but preserves other caller authentication with catalog validation ${validateCatalogUrls}`, async () => {
         const webex = await createCore({
           services: {validateCatalogUrls},
           defaultRequestOptions: {
@@ -293,13 +308,13 @@ describe('anonymous domain fallback', () => {
           assert.deepEqual(options.hawk, {credentials: {key: 'hawk-key'}});
           assert.deepEqual(options.httpSignature, {key: 'signature-key'});
           assert.deepEqual(options.aws, {key: 'aws-key'});
-          assert.equal(options.headers.Authorization, 'Bearer supplied');
+          assert.equal(options.headers.Authorization, 'Basic supplied');
           return respond(options);
         });
 
         await webex.request({
           uri: TARGET,
-          headers: {Authorization: 'Bearer supplied'},
+          headers: {Authorization: 'Basic supplied'},
           request: transport,
         });
         assert.calledOnce(transport);
@@ -389,6 +404,32 @@ describe('anonymous domain fallback', () => {
         );
         assert.calledOnceWithExactly(webex.credentials.getUserToken);
       });
+    });
+
+    it('keeps the bearer absent across two fallback redirects', async () => {
+      const webex = await createCore();
+      const final = `https://other.example.com${PATH}`;
+      const sent = [];
+      const transport = sinon.spy((options) => {
+        sent.push({uri: options.uri, headers: {...options.headers}});
+        if (options.uri === SOURCE) {
+          return {...respond(options), headers: {'cisco-location': TARGET}};
+        }
+        assertNoSdkBearer(options);
+        if (options.uri === TARGET) {
+          return {...respond(options), headers: {'cisco-location': final}};
+        }
+        return respond(options);
+      });
+
+      await webex.request({uri: SOURCE, request: transport});
+      assert.deepEqual(
+        sent.map(({uri}) => uri),
+        [SOURCE, TARGET, final]
+      );
+      assert.equal(sent[0].headers.authorization, 'Bearer user-token');
+      sent.slice(1).forEach(({headers}) => assert.notProperty(headers, 'authorization'));
+      assert.calledOnceWithExactly(webex.credentials.getUserToken);
     });
 
     it('blocks a redirect outside all allowed domains', async () => {

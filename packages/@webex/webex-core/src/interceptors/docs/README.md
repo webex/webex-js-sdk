@@ -210,13 +210,14 @@ The existing Catalog and Auth interceptors reuse the domain matcher for
 only admits otherwise-untrusted domains without granting credential trust.
 
 - `CatalogUrlInterceptor` tries this fallback after existing trusted checks.
-- `AuthInterceptor` removes an inherited SDK bearer before its supplied-header shortcut.
+- `AuthInterceptor` removes existing Bearer headers before its supplied-header shortcut.
 
 The existing request and interceptor chain remain unchanged. Auth uses the
-existing `addAuthHeader` and `shouldRefreshAccessToken` controls. A private WeakMap
-records only bearer values added by Auth, keyed by the headers object. SDK redirects
-shallow-copy options and retain that object, so Auth can identify its inherited bearer.
-It copies headers before removing that SDK value. Caller-provided Authorization,
+existing `addAuthHeader` and `shouldRefreshAccessToken` controls. Auth copies headers
+and removes each Authorization header with a Bearer scheme, regardless of who added it.
+Header names and the Bearer scheme are matched without case sensitivity.
+The source request keeps its headers. Each SDK redirect checks its destination again.
+There is no request tracking or token ownership map. Other authorization schemes,
 URL credentials, and transport signers retain their existing behavior.
 SDK redirect replay checks each destination. Existing per-request chain replacement
 remains an application customization, as it is for ordinary domain validation.
@@ -226,7 +227,7 @@ There are no new URL-object, `baseUrl`, path, scheme, port, or runtime config ru
 
 | ID | WHAT | WHY | Source evidence | Test or example evidence | Assumptions or gaps | Confidence |
 | --- | --- | --- | --- | --- | --- | --- |
-| `INT-001` | `AuthInterceptor` preserves caller-provided authentication when `options.headers` already holds an `authorization` key or `options.auth` is present; a falsy `authorization` value is deleted | A caller-supplied credential must win, and a null header must not trigger a CORS preflight | `src/interceptors/auth.js` | `test/unit/spec/interceptors/auth.js` | none | Present |
+| `INT-001` | Except for Bearer headers removed by the domain fallback, `AuthInterceptor` preserves caller-provided authentication when `options.headers` already holds an `authorization` key or `options.auth` is present; a falsy `authorization` value is deleted | A caller-supplied credential must win, and a null header must not trigger a CORS preflight | `src/interceptors/auth.js` | `test/unit/spec/interceptors/auth.js` | none | Present |
 | `INT-002` | `AuthInterceptor` sets `authorization` to `webex.credentials.getUserToken()` stringified only when `requiresCredentials` resolves true | Only requests bound for Webex services should carry the user token | `src/interceptors/auth.js` | `test/unit/spec/interceptors/auth.js` | none | Present |
 | `INT-003` | `requiresCredentials` resolves false when `options.addAuthHeader === false` or when the services plugin is not mounted | Lets callers opt out, and avoids a catalog lookup before the plugin exists | `src/interceptors/auth.js` | `test/unit/spec/interceptors/auth.js` | none | Present |
 | `INT-004` | The `u2c` service (by `options.service`, `options.api`, or URL match) requires credentials unless `options.resource` or `options.uri` contains `limited` | The limited U2C catalog is the unauthenticated bootstrap path | `src/interceptors/auth.js` | `test/unit/spec/interceptors/auth.js` | none | Present |

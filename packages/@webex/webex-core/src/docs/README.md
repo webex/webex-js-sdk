@@ -217,8 +217,9 @@ and the `Logger` class in `src/plugins/logger.js` are not exported from `src/ind
 `services.allowedWithoutAuthHeader` is an opt-in `string[]` domain fallback.
 It defaults to `[]` and reuses `matchAllowedDomain` and `normalizeAllowedDomains`.
 Catalog and ordinary `allowedDomains` trust keep precedence. Only requests that
-need this fallback skip SDK bearer attachment and refresh. Inherited SDK-added
-bearer headers are removed; caller-provided authentication is unchanged.
+need this fallback skip SDK bearer attachment and refresh. Existing Bearer
+authorization headers are removed, including caller-provided values. Other
+authorization schemes and transport authentication options stay unchanged.
 No path, scheme, port, or separate domain validation policy is added.
 
 The existing Catalog interceptor admits the fallback. The existing Auth interceptor

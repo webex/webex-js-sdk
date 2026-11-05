@@ -6,8 +6,6 @@ import {Interceptor} from '@webex/http-core';
 
 import {matchAllowedDomain, normalizeAllowedDomains} from '../lib/domains';
 
-const sdkAuthorization = new WeakMap();
-
 /**
  * @class
  */
@@ -31,6 +29,7 @@ export default class AuthInterceptor extends Interceptor {
       this.webex.config?.services?.allowedWithoutAuthHeader
     );
 
+    // SDK redirects run this check again for each destination URL.
     if (
       anonymousDomains.length &&
       matchAllowedDomain(url, anonymousDomains) &&
@@ -41,13 +40,15 @@ export default class AuthInterceptor extends Interceptor {
         services.isAllowedDomainUrl(url)
       )
     ) {
-      const sdkBearer = sdkAuthorization.get(options.headers);
-
-      if (sdkBearer && options.headers.authorization === sdkBearer) {
-        // Redirects share headers. Remove only the bearer this SDK added.
-        options.headers = {...options.headers};
-        Reflect.deleteProperty(options.headers, 'authorization');
-      }
+      // SDK redirects can carry a bearer token from the source request.
+      // Copy headers first so removing it does not change the source request.
+      options.headers = {...options.headers};
+      Object.keys(options.headers).forEach((name) => {
+        if (name.toLowerCase() === 'authorization' && /^Bearer\s/i.test(options.headers[name])) {
+          Reflect.deleteProperty(options.headers, name);
+        }
+      });
+      // Do not add an SDK token or refresh it for this destination.
       options.addAuthHeader = false;
       options.shouldRefreshAccessToken = false;
     }
@@ -72,7 +73,6 @@ export default class AuthInterceptor extends Interceptor {
 
       return this.webex.credentials.getUserToken().then((token) => {
         options.headers.authorization = token.toString();
-        sdkAuthorization.set(options.headers, options.headers.authorization);
 
         return options;
       });

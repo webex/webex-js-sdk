@@ -62,9 +62,10 @@ Catalog and ordinary `allowedDomains` trust retain precedence. For example,
 a catalogued home site still receives its normal authentication when
 `webex.com` is also in the new list. A URL admitted only by the new list does not
 receive an automatically attached SDK bearer token.
-If a redirect carries a bearer header that the SDK added, Auth removes that
-header without changing the source request. Caller-provided headers and transport
-authentication options retain their existing behavior.
+Auth removes any existing Bearer authorization header on this fallback.
+This includes headers from callers and earlier SDK requests. It copies headers
+before removal so the source request stays unchanged. Other authorization schemes
+and transport authentication options retain their existing behavior.
 
 The existing Catalog interceptor admits this fallback. The existing Auth
 interceptor skips the SDK bearer token. Requests still use
