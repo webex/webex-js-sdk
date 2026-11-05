@@ -46,11 +46,11 @@ human-readable mirror and the reconciliation surface for `check_spec_index.py`.
 
 | Module | Responsibility | Manifest coverage state | Start here |
 | --- | --- | --- | --- |
-| `src/` | Encryption and KMS client plugin: registers `webex.internal.encryption` with a `kms` child, negotiates the KMS session (including optional certificate-chain enforcement and report-only CA-root trials), fetches and caches keys, encrypts and decrypts text, binary data, and SCRs, downloads encrypted files, and wraps and unwraps KMS messages in service payloads | Untracked | `src/docs/README.md` |
+| `src/` | Encryption and KMS client plugin: registers `webex.internal.encryption` with a `kms` child, negotiates the KMS session (including optional certificate-chain enforcement and report-only CA-root trials), fetches and caches keys, encrypts and decrypts text, binary data, and SCRs, downloads encrypted files, and wraps and unwraps KMS messages in service payloads | Partial | `src/docs/README.md` |
 
 Generator-side drafts of every document were produced on 2026-11-05. Independent validation passed on 2026-11-05 with
-zero findings. Coverage measurement has not been run; the module specification's `Coverage score` row stays pending
-until that measurement exists.
+zero findings. Generator-side field measurement is complete: 93.3% (14 of 15 mandatory fields). The module was promoted from `Untracked` to `Partial` on 2026-11-05 with owner approval;
+promotion to `Specced` is held because the drift measurement and the pull-request churn gate for `Specced` have not been run.
 
 Known weak areas, recorded in the module specification's Verification section: the request retry and context
 renegotiation policy (`MOD-008`) and browser buffer conversion (`MOD-019`) have no automated evidence; several

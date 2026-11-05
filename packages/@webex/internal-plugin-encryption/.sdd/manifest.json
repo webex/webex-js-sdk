@@ -95,8 +95,8 @@
   "modules": [
     {
       "path": "src/",
-      "coverage_status": "Untracked",
-      "coverage_evidence": "Generator draft written 2026-11-05; coverage-review has not been run, so no field-completeness or drift measurement exists. Known test gaps are listed in the module spec Verification section (retry and renegotiation policy, browser buffer conversion, payload predicates, and error formatting have no automated evidence). Independent validation is run by a separate runtime.",
+      "coverage_status": "Partial",
+      "coverage_evidence": "Generator-side field measurement 93.3% (14 of 15 mandatory fields PRESENT, critical 7 of 7) assessed 2026-11-05. No drift percentage was measured; the independent validator reported no drift findings. Promoted Untracked to Partial on 2026-11-05 with approval from riag@cisco.com (meets the 40% field-score rule; drift is unmeasured). Specced is held because the drift measurement and pull-request churn gate were not run.",
       "canonical_spec": "src/docs/README.md",
       "contracts": {
         "provides": [

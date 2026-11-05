@@ -36,7 +36,7 @@ Related context: [documentation index](../../docs/index.md) ·
 | Module id         | `src`                                                                                                                      |
 | Parent spec       | —                                                                                                                          |
 | Doc kind          | Module spec                                                                                                                |
-| Coverage score    | Pending coverage assessment                                                                                                |
+| Coverage score    | 93.3% (14 of 15 mandatory fields PRESENT; critical 7 of 7) assessed 2026-11-05 |
 | Validation status | pass — assessed 2026-11-05 by validator runtime `codex`; 0 Blocking, Important, Medium, or Minor findings |
 
 ## Applicability
