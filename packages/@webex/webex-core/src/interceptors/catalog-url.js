@@ -4,6 +4,8 @@
 
 import {Interceptor} from '@webex/http-core';
 
+import {applyAnonymousRequestPolicy} from '../lib/anonymous-request';
+
 /**
  * Validates that request URLs are in the service catalog.
  * Prevents SSRF attacks by blocking requests to unknown hosts.
@@ -22,7 +24,13 @@ export default class CatalogUrlInterceptor extends Interceptor {
    * @param {Object} options
    * @returns {Object}
    */
-  onRequest(options) {
+  async onRequest(options) {
+    if (
+      applyAnonymousRequestPolicy(options, this.webex.config?.services?.allowedWithoutAuthHeader)
+    ) {
+      return options;
+    }
+
     if (options.service && !options.uri && !options.url) {
       return Promise.resolve(options);
     }

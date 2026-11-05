@@ -116,6 +116,15 @@ export default {
      * @type {Array<string>}
      */
     allowedDomains: [],
+
+    /**
+     * HTTPS endpoints that may receive requests without Authorization.
+     * Domains include subdomains; paths match exactly. Supports setConfig updates.
+     * Matching rules override catalog and allowedDomains credential trust.
+     *
+     * @type {Array<{domain: string, paths: Array<string>}>}
+     */
+    allowedWithoutAuthHeader: [],
   },
   device: {
     preDiscoveryServices: {

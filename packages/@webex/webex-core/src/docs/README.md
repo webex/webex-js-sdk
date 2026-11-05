@@ -212,6 +212,33 @@ and the `Logger` class in `src/plugins/logger.js` are not exported from `src/ind
 | `@webex/internal-plugin-device`, `@webex/plugin-logger`, test helpers | Dev dependencies only; not imported by `src` | Absence affects tests only |
 | `crypto-js`, `jsonwebtoken` | Declared dependencies used by the services and credentials children | Child concern |
 
+## Anonymous request configuration
+
+`services.allowedWithoutAuthHeader` is an opt-in list of `{domain, paths}` rules.
+It defaults to `[]`. Domains use DNS label matching. Paths are exact,
+case-sensitive endpoints. Only unambiguous HTTPS URLs on the standard port are
+admitted. Userinfo and conflicting host/path parses for configured endpoints
+are rejected. Invalid configuration fails initialization.
+
+A matching rule permits a request without granting credential trust. It takes
+precedence over the catalog and `allowedDomains` for Authorization. The shared
+helper in `src/lib/anonymous-request.ts` removes supplied and inherited headers,
+sets `auth: false`, and prevents automatic token attachment and refresh.
+
+Rules can be configured at construction or through `setConfig`. Updates replace
+the complete rule list; `[]` clears it. At each call, core appends the private
+`AnonymousRequestInterceptor` after the selected default, configured, or
+per-request chain. Both `request` and `prepareFetchOptions` use this safeguard.
+Empty configuration preserves existing interceptor selection and ordering.
+Native URL objects are serialized before transport. Ambiguous legacy/plain URL
+objects are rejected while rules are configured. Built-in transport signers are
+disabled for matching endpoints. Node `baseUrl` is resolved before matching.
+The redirect guarantee covers SDK application-level replay. Native HTTP redirects
+inside XHR do not pass through SDK interceptors.
+
+See the [configuration example](../../README.md#requests-without-authorization).
+The behavior is tested in `test/unit/spec/anonymous-request.js`.
+
 ## Requirements
 
 | ID | WHAT | WHY | Source evidence | Test or example evidence | Assumptions or gaps | Confidence |
@@ -227,7 +254,7 @@ and the `Logger` class in `src/plugins/logger.js` are not exported from `src/ind
 | `MOD-009` | Default config carries `maxAppLevelRedirects: 10`, `maxLocusRedirects: 5`, `maxAuthenticationReplays: 1`, `maxReconnectAttempts: 1`, `trackingIdPrefix: 'webex-js-sdk'`, empty `trackingIdSuffix`, empty `onBeforeLogout`, memory adapters for both storage slots, `payloadTransformer` with empty predicates and transforms, and `skipRepeatedInboundTransforms: false` | Safe defaults let a bare `new WebexCore()` work offline | `src/config.js` | `test/unit/spec/webex-core.js` | Only `fedramp` presence is asserted | Present |
 | `MOD-010` | `config.fedramp` is `process.env.ENABLE_FEDRAMP || false`, evaluated once at import | Selects FedRAMP behavior by environment | `src/config.js` | `test/unit/spec/webex-core.js` | Any non-empty string, including `false`, is truthy; only key presence is tested | Present |
 | `MOD-011` | `services.discovery` URLs default to the hydra, region-discovery, and U2C endpoints and are overridden by `HYDRA_SERVICE_URL`, `SQDISCOVERY_SERVICE_URL`, `U2C_SERVICE_URL` at import; `device.preDiscoveryServices` also reads `HYDRA_SERVICE_URL` | Lets test and non-production environments redirect discovery | `src/config.js` | none found | Gap: no test covers the overrides | Present |
-| `MOD-012` | `services.validateCatalogUrls` defaults to `false`; `services.validateDomains` defaults to `true`; `services.allowedDomains` defaults to an empty list; `services.catalogInitTimeout` defaults to 15000 ms; `services.useCatalogOverride`, `skipPreauthCatalogOnUnauthenticated`, and `useUserOnboardingServiceForActivations` default to `false`; `calling.cacheU2C` defaults to `false` | Opt-in flags keep default behavior unchanged for existing hosts | `src/config.js` | `test/unit/spec/webex-core.js` | Consumption of these keys is specified in the services child; only `validateCatalogUrls` is asserted here | Present |
+| `MOD-012` | `services.validateCatalogUrls` defaults to `false`; `services.validateDomains` defaults to `true`; `services.allowedDomains` and `services.allowedWithoutAuthHeader` default to empty lists; `services.catalogInitTimeout` defaults to 15000 ms; `services.useCatalogOverride`, `skipPreauthCatalogOnUnauthenticated`, and `useUserOnboardingServiceForActivations` default to `false`; `calling.cacheU2C` defaults to `false` | Opt-in flags keep default behavior unchanged for existing hosts | `src/config.js` | `test/unit/spec/webex-core.js` | Consumption of these keys is specified in the services child; only `validateCatalogUrls` is asserted here | Present |
 | `MOD-013` | `registerPlugin(name, ctor, options)` returns immediately without changing anything if `name` is already a child, unless `options.replace` is truthy; none of the options are applied on the early return | Prevents a second import of a plugin from duplicating interceptors, config, and logout handlers | `src/lib/webex-core-plugin-mixin.js`, `src/lib/webex-internal-core-plugin-mixin.js` | `test/unit/spec/_setup.js` | Gap: the no-replace early return is not directly asserted | Present |
 | `MOD-014` | Registration writes the constructor into the prototype `_children` map, so every later `WebexCore` instance gets `webex.<name>` and instances created earlier do not | Plugins are discovered by import, not by per-instance configuration | `src/lib/webex-core-plugin-mixin.js` | `test/unit/spec/webex-core.js` | Registration after construction is not tested | Present |
 | `MOD-015` | `options.proxies` creates one derived property per key on `WebexCore` that reads the same key from the plugin (for example `canAuthorize`, `canRefresh` from credentials) | Gives hosts a flat shortcut without copying state | `src/lib/webex-core-plugin-mixin.js`, `src/lib/credentials/index.js` | `test/unit/spec/webex-core.js` | Verified only through `canAuthorize` | Present |

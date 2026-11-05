@@ -4,6 +4,8 @@
 
 import {Interceptor} from '@webex/http-core';
 
+import {applyAnonymousRequestPolicy} from '../lib/anonymous-request';
+
 /**
  * @class
  */
@@ -20,7 +22,13 @@ export default class AuthInterceptor extends Interceptor {
    * @param {Object} options
    * @returns {Object}
    */
-  onRequest(options) {
+  async onRequest(options) {
+    if (
+      applyAnonymousRequestPolicy(options, this.webex.config?.services?.allowedWithoutAuthHeader)
+    ) {
+      return options;
+    }
+
     options.headers = options.headers || {};
 
     // If Authorizations is already set, don't overwrite it
@@ -53,7 +61,13 @@ export default class AuthInterceptor extends Interceptor {
    * @param {Object} options
    * @returns {Promise<boolean>}
    */
-  requiresCredentials(options) {
+  async requiresCredentials(options) {
+    if (
+      applyAnonymousRequestPolicy(options, this.webex.config?.services?.allowedWithoutAuthHeader)
+    ) {
+      return false;
+    }
+
     // Validate that authorization is necessary.
     if (options.addAuthHeader === false) {
       return Promise.resolve(false);
@@ -172,7 +186,14 @@ export default class AuthInterceptor extends Interceptor {
    * @param {Object} options
    * @returns {Promise<boolean>}
    */
-  shouldAttemptReauth(reason, options) {
+  async shouldAttemptReauth(reason, options) {
+    if (
+      options &&
+      applyAnonymousRequestPolicy(options, this.webex.config?.services?.allowedWithoutAuthHeader)
+    ) {
+      return false;
+    }
+
     if (options && options.shouldRefreshAccessToken === false) {
       return Promise.resolve(false);
     }
