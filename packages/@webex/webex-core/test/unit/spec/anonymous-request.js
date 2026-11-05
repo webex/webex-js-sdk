@@ -2,29 +2,21 @@
  * Copyright (c) 2026 Cisco Systems, Inc. See LICENSE file.
  */
 
-import Url from 'url';
 import {assert} from '@webex/test-helper-chai';
 import sinon from 'sinon';
 import WebexCore, {
   AuthInterceptor,
   CatalogUrlInterceptor,
-  DefaultOptionsInterceptor,
-  RedirectInterceptor,
   WebexPlugin,
   registerPlugin,
 } from '@webex/webex-core';
 import DefaultLogger from '@webex/webex-core/dist/plugins/logger';
-import AnonymousRequestInterceptor from '@webex/webex-core/src/interceptors/anonymous-request';
-import {
-  applyAnonymousRequestPolicy,
-  hasAnonymousRequestRules,
-  isAnonymousRequest,
-} from '@webex/webex-core/src/lib/anonymous-request';
+import applyAnonymousRequestPolicy from '@webex/webex-core/src/lib/anonymous-request';
 
 const PATH = '/wbxappapi/v1/meetingInfo';
 const TARGET = `https://site.example.com${PATH}`;
 const SOURCE = `https://trusted.example.test${PATH}`;
-const RULES = [{domain: 'example.com', paths: [PATH]}];
+const DOMAINS = ['example.com'];
 
 const assertAnonymous = (options) => {
   assert.isFalse(
@@ -38,7 +30,7 @@ const assertAnonymous = (options) => {
 };
 
 const createMock = () => ({
-  config: {services: {allowedWithoutAuthHeader: RULES}},
+  config: {services: {allowedWithoutAuthHeader: DOMAINS}},
   credentials: {
     getUserToken: sinon.stub().resolves({toString: () => 'Bearer user-token'}),
     refresh: sinon.stub().resolves(),
@@ -47,242 +39,155 @@ const createMock = () => ({
   internal: {
     services: {
       validateDomains: true,
-      getServiceFromUrl: sinon.stub().returns({name: 'trusted'}),
-      hasAllowedDomains: sinon.stub().returns(true),
-      isAllowedDomainUrl: sinon.stub().returns(true),
+      getServiceFromUrl: sinon.stub().returns(undefined),
+      hasAllowedDomains: sinon.stub().returns(false),
+      isAllowedDomainUrl: sinon.stub().returns(false),
       waitForService: sinon.stub().resolves(SOURCE),
     },
   },
   logger: {info: sinon.stub(), warn: sinon.stub()},
 });
 
-describe('anonymous request policy', () => {
+describe('anonymous domain fallback', () => {
   afterEach(() => sinon.restore());
 
-  describe('endpoint rules', () => {
+  describe('shared domain policy', () => {
     [
       `https://example.com${PATH}`,
       TARGET,
-      `https://nested.site.example.com${PATH}?format=json`,
+      'https://nested.site.example.com/another/path?format=json',
       `https://SITE.EXAMPLE.COM:443${PATH}`,
       `https://site.example.com.${PATH}`,
-    ].forEach((url) => {
-      it(`matches the configured HTTPS endpoint ${url}`, () => {
-        assert.isTrue(isAnonymousRequest(url, RULES));
+      'http://site.example.com:8080/another/path',
+    ].forEach((uri) => {
+      it(`uses ordinary domain matching for ${uri}`, () => {
+        const options = {uri, headers: {Authorization: 'Bearer inherited'}};
+
+        assert.isTrue(applyAnonymousRequestPolicy(options, DOMAINS));
+        assertAnonymous(options);
       });
     });
 
     [
       `https://example.com.attacker.test${PATH}`,
       `https://notexample.com${PATH}`,
-      `https://other.test${PATH}`,
-      `${TARGET}/extra`,
-      'https://site.example.com/wbxappapi/v1/users/me',
+      `https://%73ite.example.com${PATH}`,
       'not a URL',
       undefined,
-    ].forEach((url) => {
-      it(`does not grant anonymous permission to ${url}`, () => {
-        assert.isFalse(isAnonymousRequest(url, RULES));
+    ].forEach((uri) => {
+      it(`does not grant new permission to ${uri}`, () => {
+        const options = {uri, headers: {Authorization: 'Bearer explicit'}};
+
+        assert.isFalse(applyAnonymousRequestPolicy(options, DOMAINS));
+        assert.deepEqual(options, {uri, headers: {Authorization: 'Bearer explicit'}});
       });
     });
 
-    [
-      `http://site.example.com${PATH}`,
-      `ftp://site.example.com${PATH}`,
-      `https://site.example.com:8443${PATH}`,
-      `https://user@site.example.com${PATH}`,
-      `https://user:password@site.example.com${PATH}`,
-      `https://site.example.com/other/..${PATH}`,
-      `https://site.example.com/other/%2e%2e${PATH}`,
-    ].forEach((url) => {
-      it(`rejects an unsafe form of a configured endpoint ${url}`, () => {
-        assert.throws(() => isAnonymousRequest(url, RULES), /unsafe URL for an anonymous request/);
+    [undefined, [], null, ['another.test']].forEach((domains) => {
+      it(`preserves existing behavior for unmatched configuration ${JSON.stringify(
+        domains
+      )}`, () => {
+        const options = {uri: TARGET, headers: {Authorization: 'Bearer explicit'}};
+
+        assert.isFalse(applyAnonymousRequestPolicy(options, domains));
+        assert.deepEqual(options, {uri: TARGET, headers: {Authorization: 'Bearer explicit'}});
       });
     });
 
-    [
-      null,
-      'example.com',
-      {},
-      [null],
-      ['example.com'],
-      [{domain: '*.example.com', paths: [PATH]}],
-      [{domain: 'example.com/other', paths: [PATH]}],
-      [{domain: 'example.com', paths: []}],
-      [{domain: 'example.com', paths: ['relative']}],
-      [{domain: 'example.com', paths: [`${PATH}?query=true`]}],
-      [{domain: 'example.com', paths: [PATH, undefined]}],
-    ].forEach((rules) => {
-      it(`rejects malformed policy configuration ${JSON.stringify(rules)}`, () => {
-        assert.throws(() => hasAnonymousRequestRules(rules), TypeError);
-      });
-    });
+    it('uses existing domain normalization without a separate schema', () => {
+      const options = {url: TARGET};
 
-    it('preserves an unmatched request and supports an absent or empty configuration', () => {
-      const options = {uri: SOURCE, headers: {Authorization: 'Bearer source-token'}};
-
-      assert.isFalse(hasAnonymousRequestRules(undefined));
-      assert.isFalse(hasAnonymousRequestRules([]));
-      assert.isFalse(isAnonymousRequest(TARGET, []));
-      assert.isFalse(applyAnonymousRequestPolicy(options, RULES));
-      assert.deepEqual(options, {uri: SOURCE, headers: {Authorization: 'Bearer source-token'}});
-    });
-
-    it('serializes native URL input into the actual anonymous transport URI', () => {
-      const uri = new URL(TARGET);
-      Object.defineProperty(uri, 'href', {value: SOURCE});
-      const options = {uri, headers: {Authorization: 'Bearer inherited'}};
-
-      assert.isTrue(applyAnonymousRequestPolicy(options, RULES));
-      assert.equal(options.uri, TARGET);
+      assert.isTrue(applyAnonymousRequestPolicy(options, [null, 42, 'EXAMPLE.COM.']));
       assertAnonymous(options);
     });
 
-    [
-      Url.parse(TARGET),
-      {href: TARGET, protocol: 'https:', hostname: 'attacker.test', pathname: PATH},
-      {protocol: 'https:', hostname: 'site.example.com', pathname: PATH},
-    ].forEach((uri) => {
-      it(`rejects ambiguous transport URL objects ${JSON.stringify(uri)}`, () => {
-        assert.throws(
-          () =>
-            applyAnonymousRequestPolicy({uri, headers: {Authorization: 'Bearer inherited'}}, RULES),
-          /string or native URL/
-        );
+    ['catalog', 'allowedDomains'].forEach((trust) => {
+      it(`preserves existing ${trust} credential trust on an overlapping domain`, () => {
+        const webex = createMock();
+        const services = webex.internal.services;
+        if (trust === 'catalog') {
+          services.getServiceFromUrl.returns({name: 'home'});
+        } else {
+          services.hasAllowedDomains.returns(true);
+          services.isAllowedDomainUrl.returns(true);
+        }
+        const options = {uri: TARGET, headers: {Authorization: 'Bearer trusted'}};
+
+        assert.isFalse(applyAnonymousRequestPolicy(options, DOMAINS, services));
+        assert.deepEqual(options, {uri: TARGET, headers: {Authorization: 'Bearer trusted'}});
       });
     });
 
-    [
-      {baseUrl: 'https://site.example.com', uri: PATH},
-      {baseUrl: 'https://site.example.com/', uri: PATH},
-      {baseUrl: 'https://site.example.com', uri: PATH.slice(1)},
-      {baseUrl: 'https://site.example.com/', uri: PATH.slice(1)},
-      {baseUrl: TARGET, uri: ''},
-    ].forEach((request) => {
-      it(`checks the effective baseUrl destination ${JSON.stringify(request)}`, () => {
-        const options = {...request, headers: {Authorization: 'Bearer inherited'}};
+    it('does not grant disabled ordinary domain trust precedence', () => {
+      const services = createMock().internal.services;
+      services.validateDomains = false;
+      services.hasAllowedDomains.returns(true);
+      services.isAllowedDomainUrl.returns(true);
+      const options = {uri: TARGET};
 
-        assert.isTrue(applyAnonymousRequestPolicy(options, RULES));
-        assert.equal(options.uri, TARGET);
-        assert.strictEqual(options.baseUrl, false);
-        assertAnonymous(options);
-      });
+      assert.isTrue(applyAnonymousRequestPolicy(options, DOMAINS, services));
+      assertAnonymous(options);
     });
 
-    it('removes every Authorization casing without mutating inherited source headers', () => {
+    it('removes all Authorization casings without changing source headers', () => {
       const headers = {
         authorization: 'Bearer inherited',
-        Authorization: 'Bearer alternate',
-        AUTHORIZATION: 'Basic credentials',
-        'content-type': 'application/json',
+        Authorization: 'Basic explicit',
+        AUTHORIZATION: 'Bearer alternate',
+        accept: 'application/json',
       };
-      const options = {url: TARGET, headers, auth: {user: 'user', pass: 'password'}};
+      const options = {uri: TARGET, headers, auth: {user: 'user', pass: 'password'}};
 
-      assert.isTrue(applyAnonymousRequestPolicy(options, RULES));
+      assert.isTrue(applyAnonymousRequestPolicy(options, DOMAINS));
       assertAnonymous(options);
-      assert.deepEqual(options.headers, {'content-type': 'application/json'});
+      assert.deepEqual(options.headers, {accept: 'application/json'});
       assert.deepEqual(headers, {
         authorization: 'Bearer inherited',
-        Authorization: 'Bearer alternate',
-        AUTHORIZATION: 'Basic credentials',
-        'content-type': 'application/json',
+        Authorization: 'Basic explicit',
+        AUTHORIZATION: 'Bearer alternate',
+        accept: 'application/json',
+      });
+    });
+
+    ['user', 'user:password'].forEach((userinfo) => {
+      it(`rejects URL userinfo that can recreate transport auth: ${userinfo}`, () => {
+        assert.throws(
+          () =>
+            applyAnonymousRequestPolicy(
+              {uri: `https://${userinfo}@site.example.com${PATH}`},
+              DOMAINS
+            ),
+          /URL credentials/
+        );
       });
     });
   });
 
-  describe('auth and catalog interceptors', () => {
-    [
-      {headers: {}},
-      {headers: {authorization: 'Bearer inherited'}},
-      {headers: {Authorization: 'Bearer alternate'}},
-      {headers: {}, auth: {user: 'user', pass: 'password'}},
-    ].forEach((credentials) => {
-      it(`overrides catalog and domain auth trust for ${JSON.stringify(credentials)}`, async () => {
-        const webex = createMock();
-        const auth = Reflect.apply(AuthInterceptor.create, webex, []);
-        const options = {uri: TARGET, ...credentials};
-
-        await auth.onRequest(options).then((result) => assert.strictEqual(result, options));
-
-        assertAnonymous(options);
-        assert.notCalled(webex.credentials.getUserToken);
-        assert.notCalled(webex.internal.services.getServiceFromUrl);
-      });
-    });
-
-    it('does not retrieve or refresh a token for a direct credential/401 check', async () => {
+  describe('interceptor contracts', () => {
+    it('strips inherited auth before the Auth interceptor supplied-header shortcut', async () => {
       const webex = createMock();
       const auth = Reflect.apply(AuthInterceptor.create, webex, []);
       const options = {uri: TARGET, headers: {Authorization: 'Bearer inherited'}};
-      const reason = {statusCode: 401, options};
 
-      await auth.requiresCredentials({uri: TARGET}).then((requires) => assert.isFalse(requires));
-      await auth.shouldAttemptReauth(reason, options).then((reauth) => assert.isFalse(reauth));
-      await assert.isRejected(auth.onResponseError(options, reason));
+      await auth.onRequest(options).then((result) => assert.strictEqual(result, options));
       assertAnonymous(options);
+      assert.isFalse(await auth.shouldAttemptReauth({statusCode: 401}, options));
       assert.notCalled(webex.credentials.getUserToken);
-      assert.notCalled(webex.credentials.refresh);
+      assert.notCalled(webex.internal.services.waitForService);
     });
 
-    it('preserves normal automatic authorization for unmatched endpoints', async () => {
+    it('admits an anonymous fallback without adding catalog or credential trust', async () => {
       const webex = createMock();
-      const auth = Reflect.apply(AuthInterceptor.create, webex, []);
-      const options = {uri: SOURCE};
-
-      await auth.onRequest(options);
-
-      assert.deepEqual(options, {uri: SOURCE, headers: {authorization: 'Bearer user-token'}});
-      assert.calledOnceWithExactly(webex.credentials.getUserToken);
-    });
-
-    it('admits an anonymous URL without adding it to catalog or domain trust', async () => {
-      const webex = createMock();
-      webex.internal.services.getServiceFromUrl.returns(undefined);
-      webex.internal.services.isAllowedDomainUrl.returns(false);
-      webex.internal.services.validateDomains = false;
       const catalog = Reflect.apply(CatalogUrlInterceptor.create, webex, []);
       const options = {uri: TARGET};
 
       await catalog.onRequest(options).then((result) => assert.strictEqual(result, options));
-
       assertAnonymous(options);
-      assert.notCalled(webex.internal.services.getServiceFromUrl);
-      assert.notCalled(webex.internal.services.isAllowedDomainUrl);
-    });
-
-    [
-      `https://example.com.attacker.test${PATH}`,
-      `${TARGET}/extra`,
-      `https://unknown.test${PATH}`,
-    ].forEach((uri) => {
-      it(`does not grant catalog admission to ${uri}`, async () => {
-        const webex = createMock();
-        webex.internal.services.getServiceFromUrl.returns(undefined);
-        webex.internal.services.hasAllowedDomains.returns(false);
-        const catalog = Reflect.apply(CatalogUrlInterceptor.create, webex, []);
-
-        await assert.isRejected(catalog.onRequest({uri}), /Request blocked/);
-      });
-    });
-
-    [AuthInterceptor, CatalogUrlInterceptor, AnonymousRequestInterceptor].forEach((Interceptor) => {
-      it(`prevents unsafe configured URLs regaining trust through ${Interceptor.name}`, async () => {
-        const webex = createMock();
-        const interceptor = Reflect.apply(Interceptor.create, webex, []);
-
-        await assert.isRejected(
-          Promise.resolve().then(() =>
-            interceptor.onRequest({uri: `https://user@site.example.com${PATH}`})
-          ),
-          /unsafe URL for an anonymous request/
-        );
-        assert.notCalled(webex.credentials.getUserToken);
-        assert.notCalled(webex.internal.services.getServiceFromUrl);
-      });
+      assert.isFalse(webex.internal.services.isAllowedDomainUrl(TARGET));
     });
   });
 
-  describe('complete request pipeline', () => {
+  describe('normal SDK request pipeline', () => {
     const QuietLogger = WebexPlugin.extend({
       namespace: 'Logger',
       error() {},
@@ -292,7 +197,6 @@ describe('anonymous request policy', () => {
       log() {},
       trace() {},
     });
-
     beforeAll(() => registerPlugin('logger', QuietLogger, {replace: true}));
     afterAll(() => registerPlugin('logger', DefaultLogger, {replace: true}));
 
@@ -305,7 +209,7 @@ describe('anonymous request policy', () => {
           services: {
             skipPreauthCatalogOnUnauthenticated: true,
             validateCatalogUrls: true,
-            allowedWithoutAuthHeader: RULES,
+            allowedWithoutAuthHeader: DOMAINS,
             ...services,
           },
         },
@@ -323,19 +227,13 @@ describe('anonymous request policy', () => {
       if (!webex.loaded) {
         await new Promise((resolve) => webex.once('loaded', resolve));
       }
-
       return webex;
     };
 
-    const respond = (options, body = {ok: true}) => ({
-      statusCode: 200,
-      headers: {},
-      body,
-      options,
-    });
+    const respond = (options) => ({statusCode: 200, headers: {}, body: {ok: true}, options});
 
     [true, false].forEach((validateCatalogUrls) => {
-      it(`keeps requests anonymous with catalog validation ${validateCatalogUrls}`, async () => {
+      it(`keeps fallback requests anonymous with catalog validation ${validateCatalogUrls}`, async () => {
         const webex = await createCore({
           services: {validateCatalogUrls},
           defaultRequestOptions: {
@@ -348,173 +246,59 @@ describe('anonymous request policy', () => {
         });
         const transport = sinon.spy((options) => {
           assertAnonymous(options);
-
           return respond(options);
         });
 
         await webex.request({
           uri: TARGET,
-          headers: {Authorization: 'Bearer explicit'},
+          headers: {Authorization: 'Bearer supplied'},
           request: transport,
         });
-
         assert.calledOnce(transport);
         assert.notCalled(webex.credentials.getUserToken);
       });
     });
 
-    it('sanitizes the final destination after a late host rewrite', async () => {
+    it('retains automatic auth for a catalogued home site covered by the new domain list', async () => {
+      const webex = await createCore();
+      const home = `https://home.example.com${PATH}`;
+      webex.internal.services.getServiceFromUrl.callsFake((url) =>
+        [home, SOURCE].includes(url) ? {name: 'home'} : undefined
+      );
+      const options = {uri: home};
+
+      await webex.prepareFetchOptions(options);
+      assert.equal(options.headers.authorization, 'Bearer user-token');
+      assert.calledOnceWithExactly(webex.credentials.getUserToken);
+    });
+
+    it('retains automatic auth for an ordinary allowed domain covered by the new list', async () => {
+      const webex = await createCore();
+      webex.internal.services.hasAllowedDomains.returns(true);
+      webex.internal.services.isAllowedDomainUrl.returns(true);
+      const options = {uri: TARGET};
+
+      await webex.prepareFetchOptions(options);
+      assert.equal(options.headers.authorization, 'Bearer user-token');
+      assert.calledOnceWithExactly(webex.credentials.getUserToken);
+    });
+
+    it('strips auth after a late destination rewrite in the configured chain', async () => {
       const webex = await createCore();
       webex.internal.services.replaceHostFromHostmap.returns(TARGET);
       const options = {uri: SOURCE};
 
       await webex.prepareFetchOptions(options);
-
       assert.equal(options.uri, TARGET);
       assertAnonymous(options);
-      assert.calledOnceWithExactly(webex.credentials.getUserToken);
-    });
-
-    it('enforces the final safeguard after custom interceptors inject credentials', async () => {
-      const webex = await createCore({
-        interceptors: {
-          injectCredentials() {
-            return {
-              logOptions() {},
-              onRequest(options) {
-                options.headers.Authorization = 'Bearer late';
-                options.auth = {user: 'late', pass: 'password'};
-                options.oauth = {token: 'late-oauth-token'};
-                options.aws = {key: 'late-aws-key'};
-
-                return options;
-              },
-            };
-          },
-          DefaultOptionsInterceptor: DefaultOptionsInterceptor.create,
-        },
-      });
-      const options = {uri: TARGET};
-
-      await webex.prepareFetchOptions(options);
-
-      assertAnonymous(options);
-      assert.equal(options.interceptors.at(-1).constructor.name, 'AnonymousRequestInterceptor');
-    });
-
-    ['request', 'prepareFetchOptions'].forEach((method) => {
-      it(`retains anonymous enforcement with per-request replacement for ${method}`, async () => {
-        const webex = await createCore();
-        const options = {
-          uri: TARGET,
-          headers: {Authorization: 'Bearer caller'},
-          auth: {user: 'user', pass: 'password'},
-          interceptors: [
-            {
-              logOptions() {},
-              onRequest(request) {
-                request.headers.AUTHORIZATION = 'Bearer injected';
-                request.hawk = {credentials: {key: 'late-key'}};
-
-                return request;
-              },
-            },
-          ],
-          request: (request) => respond(request),
-        };
-
-        await webex[method](options);
-
-        assertAnonymous(options);
-        assert.equal(options.interceptors.at(-1).constructor.name, 'AnonymousRequestInterceptor');
-        assert.notCalled(webex.credentials.getUserToken);
-      });
-    });
-
-    it('enforces no-auth after Node baseUrl resolution with a replaced request chain', async () => {
-      const webex = await createCore();
-      const transport = sinon.spy((options) => {
-        assert.equal(options.uri, TARGET);
-        assert.strictEqual(options.baseUrl, false);
-        assertAnonymous(options);
-
-        return respond(options);
-      });
-
-      await webex.request({
-        baseUrl: 'https://site.example.com',
-        uri: PATH,
-        headers: {Authorization: 'Bearer supplied'},
-        interceptors: [],
-        request: transport,
-      });
-
-      assert.calledOnce(transport);
-    });
-
-    it('supports URI-string shorthand and native URL request options', async () => {
-      const webex = await createCore();
-      const transport = sinon.spy((options) => {
-        assert.equal(options.uri, TARGET);
-        assertAnonymous(options);
-
-        return respond(options);
-      });
-
-      await webex.request(TARGET, {
-        request: transport,
-        headers: {Authorization: 'Bearer inherited'},
-      });
-      await webex.request({url: new URL(TARGET), request: transport});
-
-      assert.calledTwice(transport);
-      assert.notCalled(webex.credentials.getUserToken);
-    });
-
-    it('supports adding, replacing, and clearing anonymous rules through setConfig', async () => {
-      const webex = await createCore({services: {allowedWithoutAuthHeader: []}});
-      const replacement = [{domain: 'other.test', paths: ['/public']}];
-
-      webex.setConfig({services: {allowedWithoutAuthHeader: RULES}});
-      const anonymous = {uri: SOURCE};
-      webex.internal.services.replaceHostFromHostmap.returns(TARGET);
-      await webex.prepareFetchOptions(anonymous);
-      assertAnonymous(anonymous);
-
-      webex.setConfig({services: {allowedWithoutAuthHeader: replacement}});
-      replacement[0].paths.push('/mutated-after-update');
-      assert.deepEqual(webex.config.services.allowedWithoutAuthHeader, [
-        {domain: 'other.test', paths: ['/public']},
-      ]);
-
-      webex.setConfig({services: {allowedWithoutAuthHeader: []}});
-      webex.internal.services.replaceHostFromHostmap.returns(SOURCE);
-      const authenticated = {uri: SOURCE};
-      await webex.prepareFetchOptions(authenticated);
-      assert.equal(authenticated.headers.authorization, 'Bearer user-token');
-      assert.isFalse(
-        authenticated.interceptors.some(
-          (item) => item.constructor.name === 'AnonymousRequestInterceptor'
-        )
-      );
-    });
-
-    it('rejects invalid rule updates without changing the active policy', async () => {
-      const webex = await createCore();
-
-      assert.throws(
-        () => webex.setConfig({services: {allowedWithoutAuthHeader: ['example.com']}}),
-        TypeError
-      );
-      assert.deepEqual(webex.config.services.allowedWithoutAuthHeader, RULES);
     });
 
     ['header', 'locus', 'appapi'].forEach((redirectType) => {
-      it(`rechecks and strips inherited auth on ${redirectType} redirect replay`, async () => {
+      it(`strips inherited auth on ${redirectType} redirect to a request-only domain`, async () => {
         const webex = await createCore();
         const sent = [];
         const transport = sinon.spy((options) => {
-          sent.push({uri: options.uri, headers: {...options.headers}, auth: options.auth});
+          sent.push({uri: options.uri, headers: {...options.headers}});
           if (options.uri === SOURCE) {
             const response = {statusCode: 200, headers: {}, body: {}, options};
             if (redirectType === 'header') {
@@ -525,27 +309,23 @@ describe('anonymous request policy', () => {
               response.statusCode = 404;
               response.body = {code: 404100, data: {siteFullUrl: 'site.example.com'}};
             }
-
             return response;
           }
           assertAnonymous(options);
-
           return respond(options);
         });
 
         await webex.request({uri: SOURCE, method: 'POST', request: transport});
-
         assert.equal(sent.length, 2);
         assert.equal(sent[0].headers.authorization, 'Bearer user-token');
         assert.isFalse(
-          Object.keys(sent[1].headers).some((key) => key.toLowerCase() === 'authorization')
+          Object.keys(sent[1].headers).some((name) => name.toLowerCase() === 'authorization')
         );
-        assert.strictEqual(sent[1].auth, false);
         assert.calledOnceWithExactly(webex.credentials.getUserToken);
       });
     });
 
-    it('does not extend anonymous admission to an unknown redirect target', async () => {
+    it('blocks a redirect outside all allowed domains', async () => {
       const webex = await createCore();
       const transport = sinon.spy((options) => ({
         statusCode: 200,
@@ -555,44 +335,40 @@ describe('anonymous request policy', () => {
       }));
 
       await assert.isRejected(webex.request({uri: TARGET, request: transport}), /Request blocked/);
-
       assert.calledOnce(transport);
       assert.notCalled(webex.credentials.getUserToken);
     });
 
-    ['request', 'prepareFetchOptions'].forEach((method) => {
-      it(`rejects policy validation failures through the ${method} Promise`, async () => {
-        const webex = await createCore();
-        const transport = sinon.spy();
-        const result = webex[method]({
-          uri: `https://user@site.example.com${PATH}`,
-          request: transport,
-        });
-
-        await assert.isRejected(result, /unsafe URL for an anonymous request/);
-        assert.notCalled(transport);
-        assert.notCalled(webex.credentials.getUserToken);
-      });
-    });
-
-    it('does not authenticate or refresh a rejected anonymous request', async () => {
+    it('does not refresh credentials after an anonymous401', async () => {
       const webex = await createCore();
       const refresh = sinon.stub(webex.credentials, 'refresh').resolves();
       const transport = sinon.spy((options) => ({statusCode: 401, headers: {}, body: {}, options}));
 
       await assert.isRejected(webex.request({uri: TARGET, request: transport}));
-
       assert.calledOnce(transport);
       assert.notCalled(webex.credentials.getUserToken);
       assert.notCalled(refresh);
     });
 
-    it('retains the existing custom-chain behavior with the new option empty', async () => {
+    ['request', 'prepareFetchOptions'].forEach((method) => {
+      it(`rejects URL userinfo through the normal ${method} Promise`, async () => {
+        const webex = await createCore();
+        const transport = sinon.spy();
+
+        await assert.isRejected(
+          webex[method]({uri: `https://user@site.example.com${PATH}`, request: transport}),
+          /URL credentials/
+        );
+        assert.notCalled(transport);
+        assert.notCalled(webex.credentials.getUserToken);
+      });
+    });
+
+    it('leaves the existing custom chain unchanged when the new list is empty', async () => {
       const webex = await createCore({interceptors: {}, services: {allowedWithoutAuthHeader: []}});
       const options = {uri: TARGET, headers: {Authorization: 'Bearer explicit'}};
 
       await webex.prepareFetchOptions(options);
-
       assert.deepEqual(options.interceptors, []);
       assert.equal(options.headers.Authorization, 'Bearer explicit');
     });

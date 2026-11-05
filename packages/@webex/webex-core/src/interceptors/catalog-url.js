@@ -4,7 +4,7 @@
 
 import {Interceptor} from '@webex/http-core';
 
-import {applyAnonymousRequestPolicy} from '../lib/anonymous-request';
+import applyAnonymousRequestPolicy from '../lib/anonymous-request';
 
 /**
  * Validates that request URLs are in the service catalog.
@@ -25,12 +25,6 @@ export default class CatalogUrlInterceptor extends Interceptor {
    * @returns {Object}
    */
   onRequest(options) {
-    if (
-      applyAnonymousRequestPolicy(options, this.webex.config?.services?.allowedWithoutAuthHeader)
-    ) {
-      return Promise.resolve(options);
-    }
-
     if (options.service && !options.uri && !options.url) {
       return Promise.resolve(options);
     }
@@ -62,6 +56,16 @@ export default class CatalogUrlInterceptor extends Interceptor {
       services.validateDomains &&
       services.hasAllowedDomains() &&
       services.isAllowedDomainUrl(url)
+    ) {
+      return Promise.resolve(options);
+    }
+
+    if (
+      applyAnonymousRequestPolicy(
+        options,
+        this.webex.config?.services?.allowedWithoutAuthHeader,
+        this.webex.internal?.services
+      )
     ) {
       return Promise.resolve(options);
     }

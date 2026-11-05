@@ -12,26 +12,14 @@ import {
   protoprepareFetchOptions as prepareFetchOptions,
   setTimingsAndFetch as _setTimingsAndFetch,
 } from '@webex/http-core';
-import {
-  cloneDeep,
-  defaultsDeep,
-  get,
-  has,
-  isFunction,
-  isString,
-  last,
-  merge,
-  omit,
-  set,
-  unset,
-} from 'lodash';
+import {defaultsDeep, get, isFunction, isString, last, merge, omit, set, unset} from 'lodash';
 import AmpState from 'ampersand-state';
 import uuid from 'uuid';
 
 import AuthInterceptor from './interceptors/auth';
 import CatalogUrlInterceptor from './interceptors/catalog-url';
 import AnonymousRequestInterceptor from './interceptors/anonymous-request';
-import {applyAnonymousRequestPolicy, hasAnonymousRequestRules} from './lib/anonymous-request';
+import {normalizeAllowedDomains} from './lib/domains';
 import NetworkTimingInterceptor from './interceptors/network-timing';
 import PayloadTransformerInterceptor from './interceptors/payload-transformer';
 import RedirectInterceptor from './interceptors/redirect';
@@ -432,55 +420,19 @@ const WebexCore = AmpState.extend({
       ints = postInterceptors.reduce(addInterceptor, ints);
     }
 
-    hasAnonymousRequestRules(this.config.services?.allowedWithoutAuthHeader);
-    const anonymousGuard = Reflect.apply(AnonymousRequestInterceptor.create, this, []);
-    const withAnonymousPolicy =
-      (request) =>
-      (...args) => {
-        try {
-          const rules = this.config.services?.allowedWithoutAuthHeader;
+    if (normalizeAllowedDomains(this.config.services?.allowedWithoutAuthHeader).length) {
+      ints.push(Reflect.apply(AnonymousRequestInterceptor.create, this, []));
+    }
 
-          if (!hasAnonymousRequestRules(rules)) {
-            return Reflect.apply(request, this, args);
-          }
+    this.request = requestDefaults({
+      json: true,
+      interceptors: ints,
+    });
 
-          const [input, requestOptions] = args;
-          const options = isString(input) ? requestOptions || {} : input;
-
-          if (isString(input)) {
-            options.uri = input;
-          }
-          if (options.url) {
-            options.uri = options.url;
-            options.url = null;
-          }
-          applyAnonymousRequestPolicy(options, rules);
-          options.interceptors = [
-            ...(options.interceptors || ints).filter(
-              (interceptor) => interceptor !== anonymousGuard
-            ),
-            anonymousGuard,
-          ];
-
-          return Reflect.apply(request, this, [options]);
-        } catch (error) {
-          return Promise.reject(error);
-        }
-      };
-
-    this.request = withAnonymousPolicy(
-      requestDefaults({
-        json: true,
-        interceptors: ints,
-      })
-    );
-
-    this.prepareFetchOptions = withAnonymousPolicy(
-      prepareFetchOptions({
-        json: true,
-        interceptors: ints,
-      })
-    );
+    this.prepareFetchOptions = prepareFetchOptions({
+      json: true,
+      interceptors: ints,
+    });
 
     this.setTimingsAndFetch = _setTimingsAndFetch;
 
@@ -508,20 +460,7 @@ const WebexCore = AmpState.extend({
    * @returns {null}
    */
   setConfig(newConfig = {}) {
-    const replaceAnonymousRules = has(newConfig, 'services.allowedWithoutAuthHeader');
-
-    if (replaceAnonymousRules) {
-      hasAnonymousRequestRules(newConfig.services.allowedWithoutAuthHeader);
-    }
-
-    const nextConfig = merge({}, this.config, newConfig);
-
-    if (replaceAnonymousRules) {
-      nextConfig.services.allowedWithoutAuthHeader = cloneDeep(
-        newConfig.services.allowedWithoutAuthHeader
-      );
-    }
-    this.config = nextConfig;
+    this.config = merge({}, this.config, newConfig);
   },
 
   /**

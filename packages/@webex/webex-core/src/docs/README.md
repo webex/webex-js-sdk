@@ -214,27 +214,18 @@ and the `Logger` class in `src/plugins/logger.js` are not exported from `src/ind
 
 ## Anonymous request configuration
 
-`services.allowedWithoutAuthHeader` is an opt-in list of `{domain, paths}` rules.
-It defaults to `[]`. Domains use DNS label matching. Paths are exact,
-case-sensitive endpoints. Only unambiguous HTTPS URLs on the standard port are
-admitted. Userinfo and conflicting host/path parses for configured endpoints
-are rejected. Invalid configuration fails initialization.
+`services.allowedWithoutAuthHeader` is an opt-in `string[]` domain fallback.
+It defaults to `[]` and reuses `matchAllowedDomain` and `normalizeAllowedDomains`.
+Catalog and ordinary `allowedDomains` trust keep precedence. Only requests that
+need this fallback have Authorization removed and token attachment/refresh disabled.
+No path, scheme, port, or separate domain validation policy is added.
 
-A matching rule permits a request without granting credential trust. It takes
-precedence over the catalog and `allowedDomains` for Authorization. The shared
-helper in `src/lib/anonymous-request.ts` removes supplied and inherited headers,
-sets `auth: false`, and prevents automatic token attachment and refresh.
-
-Rules can be configured at construction or through `setConfig`. Updates replace
-the complete rule list; `[]` clears it. At each call, core appends the private
-`AnonymousRequestInterceptor` after the selected default, configured, or
-per-request chain. Both `request` and `prepareFetchOptions` use this safeguard.
-Empty configuration preserves existing interceptor selection and ordering.
-Native URL objects are serialized before transport. Ambiguous legacy/plain URL
-objects are rejected while rules are configured. Built-in transport signers are
-disabled for matching endpoints. Node `baseUrl` is resolved before matching.
-The redirect guarantee covers SDK application-level replay. Native HTTP redirects
-inside XHR do not pass through SDK interceptors.
+The private `AnonymousRequestInterceptor` is appended to the instance chain when
+the list is configured. It reapplies credential removal after defaults and host
+rewrites. Core request functions and `setConfig` retain their existing behavior.
+Per-request interceptor replacement remains application-controlled. The fallback
+uses existing absolute-URL matching and adds no URL-object or `baseUrl` support.
+Native HTTP redirects inside XHR do not pass through SDK interceptors.
 
 See the [configuration example](../../README.md#requests-without-authorization).
 The behavior is tested in `test/unit/spec/anonymous-request.js`.

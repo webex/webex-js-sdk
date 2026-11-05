@@ -118,11 +118,10 @@ export default {
     allowedDomains: [],
 
     /**
-     * HTTPS endpoints that may receive requests without Authorization.
-     * Domains include subdomains; paths match exactly. Supports setConfig updates.
-     * Matching rules override catalog and allowedDomains credential trust.
+     * Domain fallback for requests outside the catalog and allowedDomains.
+     * Matching requests omit Authorization. Domains include subdomains.
      *
-     * @type {Array<{domain: string, paths: Array<string>}>}
+     * @type {Array<string>}
      */
     allowedWithoutAuthHeader: [],
   },

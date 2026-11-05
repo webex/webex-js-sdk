@@ -4,10 +4,10 @@
 
 import {Interceptor} from '@webex/http-core';
 
-import {applyAnonymousRequestPolicy} from '../lib/anonymous-request';
+import applyAnonymousRequestPolicy from '../lib/anonymous-request';
 
 /**
- * Enforce anonymous endpoint rules after defaults and destination rewrites.
+ * Remove fallback credentials after defaults and destination rewrites.
  */
 export default class AnonymousRequestInterceptor extends Interceptor {
   /**
@@ -22,7 +22,11 @@ export default class AnonymousRequestInterceptor extends Interceptor {
    * @returns {Object} Request options without prohibited authorization.
    */
   onRequest(options) {
-    applyAnonymousRequestPolicy(options, this.webex.config?.services?.allowedWithoutAuthHeader);
+    applyAnonymousRequestPolicy(
+      options,
+      this.webex.config?.services?.allowedWithoutAuthHeader,
+      this.webex.internal?.services
+    );
 
     return options;
   }

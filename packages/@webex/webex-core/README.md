@@ -44,52 +44,34 @@ webex.request({
 
 ### Requests without Authorization
 
-Keep `services.allowedDomains` for destinations that may receive SDK tokens. Use
-`services.allowedWithoutAuthHeader` for approved endpoints that must not receive
-an Authorization header:
+Use `services.allowedWithoutAuthHeader` for domains that may receive requests
+outside the service catalog and ordinary `allowedDomains`:
 
 ```js
-const webex = new WebexCore({
-  config: {
-    fedramp: true,
-    services: {
-      validateCatalogUrls: true,
-      allowedWithoutAuthHeader: [
-        {domain: 'webex.com', paths: ['/wbxappapi/v1/meetingInfo']}
-      ]
-    }
-  }
-});
+services: {
+  validateCatalogUrls: true,
+  allowedWithoutAuthHeader: ['webex.com']
+}
 ```
 
-The default is `[]`. Existing `allowedDomains` behavior is unchanged.
+The default is `[]`. Matching uses the same domain helper as `allowedDomains`.
+A plain domain covers itself and its subdomains. No path, scheme, or port policy
+is added. Configure the list when creating the SDK instance.
 
-- Configure rules when creating the SDK instance or through `setConfig()`.
-  An update replaces this rule list. Set it to `[]` to remove anonymous rules.
-- Use a plain domain such as `webex.com`. It covers that domain and its subdomains.
-  Do not use `*.webex.com`.
-- Paths match exactly and are case-sensitive. Query parameters do not change the
-  path match. Path prefixes and wildcards are not supported.
-- Anonymous endpoints require HTTPS on the standard port. URL userinfo and
-  conflicting URL-parser results are rejected. Invalid rule configuration also
-  rejects initialization or the configuration update.
-- A matching rule overrides catalog and `allowedDomains` credential trust. The
-  SDK removes every case variant of Authorization and disables `options.auth`,
-  automatic token attachment, transport signers, and token refresh for that request.
-- SDK redirect replay checks the destination again. An anonymous rule does not
-  grant request permission to another host or path. Native HTTP redirects inside
-  XHR do not pass through SDK interceptors.
-- The SDK appends a final safeguard after the selected default, configured, or
-  per-request interceptor list. Request defaults and late destination rewrites
-  cannot restore Authorization on a matching endpoint.
-- String URLs and native `URL` objects are supported. Native objects are converted
-  to their branded serialized URL before transport. Legacy and plain URL objects
-  are rejected while rules are configured because transports can interpret their
-  fields differently. Node `baseUrl` requests are resolved before policy checks.
+Catalog and ordinary `allowedDomains` trust retain precedence. For example,
+a catalogued home site still receives its normal authentication when
+`webex.com` is also in the new list. A URL admitted only by the new list omits
+Authorization. The SDK removes supplied and inherited header variants and
+disables token attachment, refresh, and transport authentication. URL userinfo
+is rejected on this fallback because Node can turn it into Basic authorization.
 
-This option controls Authorization and transport authentication. It does not
-change request bodies or browser cookie settings. It does not add domains to the
-service catalog or the credential allowlist.
+A final interceptor reapplies credential removal after defaults and destination
+rewrites in the instance chain. Existing per-request interceptor replacement
+still replaces that chain; applications that replace it own the policy there.
+This option uses the existing absolute-URL matching contract. It adds no URL-object,
+`baseUrl`, or runtime configuration mechanism. It does not change bodies or cookies.
+SDK redirect replay is checked again. Native HTTP redirects inside XHR remain
+outside the SDK interceptor mechanism.
 
 ### Client Scope Requirements
 
