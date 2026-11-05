@@ -202,7 +202,7 @@ describe('anonymous request policy', () => {
         const auth = Reflect.apply(AuthInterceptor.create, webex, []);
         const options = {uri: TARGET, ...credentials};
 
-        await auth.onRequest(options);
+        await auth.onRequest(options).then((result) => assert.strictEqual(result, options));
 
         assertAnonymous(options);
         assert.notCalled(webex.credentials.getUserToken);
@@ -216,8 +216,8 @@ describe('anonymous request policy', () => {
       const options = {uri: TARGET, headers: {Authorization: 'Bearer inherited'}};
       const reason = {statusCode: 401, options};
 
-      assert.isFalse(await auth.requiresCredentials({uri: TARGET}));
-      assert.isFalse(await auth.shouldAttemptReauth(reason, options));
+      await auth.requiresCredentials({uri: TARGET}).then((requires) => assert.isFalse(requires));
+      await auth.shouldAttemptReauth(reason, options).then((reauth) => assert.isFalse(reauth));
       await assert.isRejected(auth.onResponseError(options, reason));
       assertAnonymous(options);
       assert.notCalled(webex.credentials.getUserToken);
@@ -243,7 +243,7 @@ describe('anonymous request policy', () => {
       const catalog = Reflect.apply(CatalogUrlInterceptor.create, webex, []);
       const options = {uri: TARGET};
 
-      await catalog.onRequest(options);
+      await catalog.onRequest(options).then((result) => assert.strictEqual(result, options));
 
       assertAnonymous(options);
       assert.notCalled(webex.internal.services.getServiceFromUrl);
@@ -558,6 +558,21 @@ describe('anonymous request policy', () => {
 
       assert.calledOnce(transport);
       assert.notCalled(webex.credentials.getUserToken);
+    });
+
+    ['request', 'prepareFetchOptions'].forEach((method) => {
+      it(`rejects policy validation failures through the ${method} Promise`, async () => {
+        const webex = await createCore();
+        const transport = sinon.spy();
+        const result = webex[method]({
+          uri: `https://user@site.example.com${PATH}`,
+          request: transport,
+        });
+
+        await assert.isRejected(result, /unsafe URL for an anonymous request/);
+        assert.notCalled(transport);
+        assert.notCalled(webex.credentials.getUserToken);
+      });
     });
 
     it('does not authenticate or refresh a rejected anonymous request', async () => {

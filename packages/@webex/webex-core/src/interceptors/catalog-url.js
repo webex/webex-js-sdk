@@ -24,11 +24,11 @@ export default class CatalogUrlInterceptor extends Interceptor {
    * @param {Object} options
    * @returns {Object}
    */
-  async onRequest(options) {
+  onRequest(options) {
     if (
       applyAnonymousRequestPolicy(options, this.webex.config?.services?.allowedWithoutAuthHeader)
     ) {
-      return options;
+      return Promise.resolve(options);
     }
 
     if (options.service && !options.uri && !options.url) {

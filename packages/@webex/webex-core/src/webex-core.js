@@ -436,30 +436,36 @@ const WebexCore = AmpState.extend({
     const anonymousGuard = Reflect.apply(AnonymousRequestInterceptor.create, this, []);
     const withAnonymousPolicy =
       (request) =>
-      async (...args) => {
-        const rules = this.config.services?.allowedWithoutAuthHeader;
+      (...args) => {
+        try {
+          const rules = this.config.services?.allowedWithoutAuthHeader;
 
-        if (!hasAnonymousRequestRules(rules)) {
-          return Reflect.apply(request, this, args);
+          if (!hasAnonymousRequestRules(rules)) {
+            return Reflect.apply(request, this, args);
+          }
+
+          const [input, requestOptions] = args;
+          const options = isString(input) ? requestOptions || {} : input;
+
+          if (isString(input)) {
+            options.uri = input;
+          }
+          if (options.url) {
+            options.uri = options.url;
+            options.url = null;
+          }
+          applyAnonymousRequestPolicy(options, rules);
+          options.interceptors = [
+            ...(options.interceptors || ints).filter(
+              (interceptor) => interceptor !== anonymousGuard
+            ),
+            anonymousGuard,
+          ];
+
+          return Reflect.apply(request, this, [options]);
+        } catch (error) {
+          return Promise.reject(error);
         }
-
-        const [input, requestOptions] = args;
-        const options = isString(input) ? requestOptions || {} : input;
-
-        if (isString(input)) {
-          options.uri = input;
-        }
-        if (options.url) {
-          options.uri = options.url;
-          options.url = null;
-        }
-        applyAnonymousRequestPolicy(options, rules);
-        options.interceptors = [
-          ...(options.interceptors || ints).filter((interceptor) => interceptor !== anonymousGuard),
-          anonymousGuard,
-        ];
-
-        return Reflect.apply(request, this, [options]);
       };
 
     this.request = withAnonymousPolicy(

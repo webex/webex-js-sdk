@@ -22,11 +22,11 @@ export default class AuthInterceptor extends Interceptor {
    * @param {Object} options
    * @returns {Object}
    */
-  async onRequest(options) {
+  onRequest(options) {
     if (
       applyAnonymousRequestPolicy(options, this.webex.config?.services?.allowedWithoutAuthHeader)
     ) {
-      return options;
+      return Promise.resolve(options);
     }
 
     options.headers = options.headers || {};
@@ -61,11 +61,11 @@ export default class AuthInterceptor extends Interceptor {
    * @param {Object} options
    * @returns {Promise<boolean>}
    */
-  async requiresCredentials(options) {
+  requiresCredentials(options) {
     if (
       applyAnonymousRequestPolicy(options, this.webex.config?.services?.allowedWithoutAuthHeader)
     ) {
-      return false;
+      return Promise.resolve(false);
     }
 
     // Validate that authorization is necessary.
@@ -186,12 +186,12 @@ export default class AuthInterceptor extends Interceptor {
    * @param {Object} options
    * @returns {Promise<boolean>}
    */
-  async shouldAttemptReauth(reason, options) {
+  shouldAttemptReauth(reason, options) {
     if (
       options &&
       applyAnonymousRequestPolicy(options, this.webex.config?.services?.allowedWithoutAuthHeader)
     ) {
-      return false;
+      return Promise.resolve(false);
     }
 
     if (options && options.shouldRefreshAccessToken === false) {
