@@ -283,14 +283,32 @@ describe('anonymous domain fallback', () => {
       assert.calledOnceWithExactly(webex.credentials.getUserToken);
     });
 
-    it('strips auth after a late destination rewrite in the configured chain', async () => {
+    it('keeps an anonymous request anonymous through downstream host mapping', async () => {
       const webex = await createCore();
-      webex.internal.services.replaceHostFromHostmap.returns(TARGET);
-      const options = {uri: SOURCE};
+      const mapped = `https://routed.example.com${PATH}`;
+      webex.internal.services.replaceHostFromHostmap.returns(mapped);
+      const options = {uri: TARGET, headers: {Authorization: 'Bearer inherited'}};
 
       await webex.prepareFetchOptions(options);
-      assert.equal(options.uri, TARGET);
+      assert.equal(options.uri, mapped);
       assertAnonymous(options);
+      assert.notCalled(webex.credentials.getUserToken);
+    });
+
+    it('uses the existing interceptor chain with the anonymous domain list configured', async () => {
+      const normal = await createCore({services: {allowedWithoutAuthHeader: []}});
+      const anonymous = await createCore();
+      const normalOptions = {uri: SOURCE};
+      const anonymousOptions = {uri: TARGET};
+
+      await normal.prepareFetchOptions(normalOptions);
+      await anonymous.prepareFetchOptions(anonymousOptions);
+
+      assert.deepEqual(
+        anonymousOptions.interceptors.map((interceptor) => interceptor.constructor.name),
+        normalOptions.interceptors.map((interceptor) => interceptor.constructor.name)
+      );
+      assertAnonymous(anonymousOptions);
     });
 
     ['header', 'locus', 'appapi'].forEach((redirectType) => {

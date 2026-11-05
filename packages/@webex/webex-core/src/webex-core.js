@@ -18,8 +18,6 @@ import uuid from 'uuid';
 
 import AuthInterceptor from './interceptors/auth';
 import CatalogUrlInterceptor from './interceptors/catalog-url';
-import AnonymousRequestInterceptor from './interceptors/anonymous-request';
-import {normalizeAllowedDomains} from './lib/domains';
 import NetworkTimingInterceptor from './interceptors/network-timing';
 import PayloadTransformerInterceptor from './interceptors/payload-transformer';
 import RedirectInterceptor from './interceptors/redirect';
@@ -418,10 +416,6 @@ const WebexCore = AmpState.extend({
         .filter((key) => !(preInterceptors.includes(key) || postInterceptors.includes(key)))
         .reduce(addInterceptor, ints);
       ints = postInterceptors.reduce(addInterceptor, ints);
-    }
-
-    if (normalizeAllowedDomains(this.config.services?.allowedWithoutAuthHeader).length) {
-      ints.push(Reflect.apply(AnonymousRequestInterceptor.create, this, []));
     }
 
     this.request = requestDefaults({

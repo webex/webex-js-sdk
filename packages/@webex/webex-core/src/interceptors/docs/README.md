@@ -148,9 +148,9 @@ relies on it.
 | `src/interceptors/webex-tracking-id.js`   | Sets the `trackingid` header as `<sessionId>_<sequence>`, with a replay suffix                   |
 | `src/interceptors/webex-user-agent.js`    | Sets the `spark-user-agent` header                                                               |
 
-Each interceptor file exports one default class with a static `create()` that is invoked with the
+Every file exports exactly one default class with a static `create()` that is invoked with the
 `WebexCore` instance as `this`. Only `src/interceptors/webex-tracking-id.js` has a second export
-(`sequenceNumbers`). `src/index.js` re-exports the existing sixteen public classes and the counter map (as `webexTrackingIdSequenceNumbers`).
+(`sequenceNumbers`). `src/index.js` re-exports all sixteen classes and the counter map (as `webexTrackingIdSequenceNumbers`).
 
 ## Public surface
 
@@ -211,10 +211,10 @@ only admits otherwise-untrusted domains without granting credential trust.
 
 - `CatalogUrlInterceptor` tries this fallback after existing trusted checks.
 - `AuthInterceptor` removes fallback credentials before its supplied-header shortcut.
-- The private `AnonymousRequestInterceptor` reapplies removal after defaults and
-  destination rewrites in the instance chain when the list is configured.
 
-Credential removal copies headers before removing Authorization case variants.
+The existing request and interceptor chain remain unchanged. The helper uses the
+existing `addAuthHeader` and `shouldRefreshAccessToken` controls. Credential removal
+copies headers before removing Authorization case variants.
 False transport-auth options prevent defaults and signers from recreating the
 header. `addAuthHeader` and `shouldRefreshAccessToken` are also false. URL userinfo
 is rejected on fallback requests because Node can independently create Basic auth.

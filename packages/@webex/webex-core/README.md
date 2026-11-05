@@ -65,13 +65,17 @@ Authorization. The SDK removes supplied and inherited header variants and
 disables token attachment, refresh, and transport authentication. URL userinfo
 is rejected on this fallback because Node can turn it into Basic authorization.
 
-A final interceptor reapplies credential removal after defaults and destination
-rewrites in the instance chain. Existing per-request interceptor replacement
-still replaces that chain; applications that replace it own the policy there.
-This option uses the existing absolute-URL matching contract. It adds no URL-object,
-`baseUrl`, or runtime configuration mechanism. It does not change bodies or cookies.
-SDK redirect replay is checked again. Native HTTP redirects inside XHR remain
-outside the SDK interceptor mechanism.
+The existing Catalog and Auth interceptors apply this fallback. Requests still use
+`webex.request`, its normal transport, and its existing interceptor chain. The Auth
+interceptor already honors `addAuthHeader: false` and
+`shouldRefreshAccessToken: false`; this fallback sets those options and clears
+inherited credentials. It adds no request API or interceptor.
+
+Existing per-request interceptor replacement remains application-controlled.
+Matching uses existing absolute URLs; no URL-object, `baseUrl`, or runtime
+configuration mechanism is added. Bodies and cookies retain existing behavior.
+SDK redirect replay checks the new destination through the same request pipeline.
+Native HTTP redirects inside XHR remain outside that mechanism.
 
 ### Client Scope Requirements
 
