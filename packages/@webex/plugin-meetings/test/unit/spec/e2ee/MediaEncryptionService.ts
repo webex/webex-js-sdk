@@ -20,31 +20,24 @@ describe('plugin-meetings', () => {
       sinon.restore();
     });
 
-    it('posts to the media-encryption service, decoding request and encoding response bytes', async () => {
+    it('posts the request object to the media-encryption service and resolves with the response body', async () => {
       const requestBody = {op: 'join', epoch: 2};
-      const bodyBytes = new TextEncoder().encode(JSON.stringify(requestBody));
 
-      const result = await service.request('https://mes.webex.com/op', bodyBytes);
+      const result = await service.request('https://mes.webex.com/op', requestBody);
 
-      assert.calledOnce(webexRequest);
-      const args = webexRequest.firstCall.args[0];
-
-      assert.equal(args.method, 'POST');
-      assert.equal(args.service, 'media-encryption');
-      assert.equal(args.url, 'https://mes.webex.com/op');
-      assert.deepEqual(args.body, requestBody);
-
-      assert.instanceOf(result, Uint8Array);
-      assert.deepEqual(JSON.parse(new TextDecoder().decode(result)), {result: 'ok', n: 1});
+      assert.calledOnceWithExactly(webexRequest, {
+        method: 'POST',
+        service: 'media-encryption',
+        url: 'https://mes.webex.com/op',
+        body: requestBody,
+      });
+      assert.deepEqual(result, {result: 'ok', n: 1});
     });
 
     it('rejects when webex.request rejects', async () => {
       webexRequest.rejects(new Error('boom'));
 
-      await assert.isRejected(
-        service.request('https://mes.webex.com/op', new TextEncoder().encode('{}')),
-        /boom/
-      );
+      await assert.isRejected(service.request('https://mes.webex.com/op', {}), /boom/);
     });
   });
 });

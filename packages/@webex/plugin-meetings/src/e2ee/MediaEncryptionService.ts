@@ -8,7 +8,7 @@ import type {IMlsHttpClient} from './types';
 
 /**
  * Routes the MLS engine's protocol HTTP requests to the media-encryption service via
- * webex.request. The engine speaks raw bytes; this adapter (de)serializes JSON at the boundary.
+ * webex.request. Bodies are plain JS objects; MLS owns the conversion to/from the engine's bytes.
  * Requests use standard webex auth (Authorization bearer token) — no custom header is needed.
  */
 export default class MediaEncryptionService implements IMlsHttpClient {
@@ -24,18 +24,17 @@ export default class MediaEncryptionService implements IMlsHttpClient {
 
   /**
    * @param {string} url - The absolute request URL provided by the engine.
-   * @param {Uint8Array} body - JSON request payload as bytes.
-   * @returns {Promise<Uint8Array>} JSON response payload as bytes.
+   * @param {unknown} body - Request payload, sent as JSON.
+   * @returns {Promise<unknown>} The JSON-parsed response body.
    */
-  async request(url: string, body: Uint8Array): Promise<Uint8Array> {
-    const response = await this.webexRequest({
+  async request(url: string, body: unknown): Promise<unknown> {
+    const {body: responseBody} = await this.webexRequest({
       method: 'POST',
       service: MEDIA_ENCRYPTION_SERVICE,
       url,
-      body: JSON.parse(new TextDecoder().decode(body)),
+      body,
     });
 
-    // webex.request auto-parses JSON, so response.body is an object; the engine expects raw bytes.
-    return new TextEncoder().encode(JSON.stringify(response.body));
+    return responseBody;
   }
 }

@@ -334,21 +334,25 @@ Emits (typed `EventEmitter` or callback registry):
 - `leaderChanged` `{ isLeader }` · `evicted` · `versionNegotiated` `{ version }`
 - `securityCodeChanged` `{ code }`
 
-Internals map the WASM callbacks: `setOnHttpRequest` → `httpClient.request(url, bytes)` →
-`completeHttpRequest`; `setOnWait` → `timers.setTimeout` → `completeWait`.
+Internals map the WASM callbacks: `setOnHttpRequest` → JSON-decode the engine's request bytes →
+`httpClient.request(url, object)` → JSON-encode the response object → `completeHttpRequest`;
+`setOnWait` → `timers.setTimeout` → `completeWait`. MLS owns the bytes ⇄ JSON conversion. If
+decoding the request, the HTTP call, or encoding the response fails, MLS logs the failure and calls
+`completeHttpRequest(handlerId, false, …)`. libe2ee's `HTTPFailure` only carries an MES error code,
+so client-side JSON failures are reported with `errorCode` `0` and a descriptive message.
+Completion is always asynchronous, so the engine is never re-entered from inside its own request call.
 
 ```ts
-interface IMlsHttpClient { request(url: string, body: Uint8Array): Promise<Uint8Array>; }
+interface IMlsHttpClient { request(url: string, body: unknown): Promise<unknown>; }
 ```
 
 ### `MediaEncryptionService` (implements `IMlsHttpClient`)
 
 ```ts
 constructor(deps: { webexRequest: WebexRequestMethod }); // a bound webex.request, not the whole webex
-request(url: string, body: Uint8Array): Promise<Uint8Array>;
-//  -> webexRequest({ method:'POST', service:'media-encryption', url,
-//                    body: JSON.parse(decode(body)) })
-//     then re-encode response.body to Uint8Array (matches the PoC makeHttpRequest).
+request(url: string, body: unknown): Promise<unknown>;
+//  -> webexRequest({ method:'POST', service:'media-encryption', url, body })
+//     and resolves with the (auto-parsed JSON) response.body.
 ```
 
 Requests use the standard webex auth (`Authorization` bearer token added by webex-core).
@@ -767,8 +771,10 @@ mock webex. (Filenames below are illustrative — each maps to a spec under `tes
 - `E2eeManager.test.ts` — `isEnabled` from config; `preload` warms WASM only, only when
   enabled, and never rejects; `createE2eeController` injects shared instances; disabled → no-op facade.
 - `MLS.test.ts` — mock `WasmLoader` returning a fake `WebE2EE`; assert callbacks
-  map to emitted events; HTTP/wait routed to injected deps. Pure, no webex.
-- `MediaEncryptionService.test.ts` — mock `webexRequest`; assert service/url/body encode+decode.
+  map to emitted events; HTTP/wait routed to injected deps, including JSON bytes ⇄ object
+  conversion and failure completion on invalid JSON. Pure, no webex.
+- `MediaEncryptionService.test.ts` — mock `webexRequest`; assert service/url and that request and
+  response bodies pass through as objects.
 - `E2eeSignaling.test.ts` — mock `llm` (`on/off/isConnected/getLocusUrl`) + a `getLocusUrl`
   callback; assert subscription, locus-URL guard, forwarding, teardown.
 - `internal-plugin-identity/test/unit/spec/identity.ts` — mock `webex.request` (CA request); assert CSR built, caching, trust anchors.
