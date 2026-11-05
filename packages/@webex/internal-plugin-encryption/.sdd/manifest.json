@@ -1,0 +1,363 @@
+{
+  "manifest_version": 1,
+  "repository": {
+    "name": "@webex/internal-plugin-encryption",
+    "purpose": "Internal Webex JS SDK plugin for encryption and the Key Management Service (KMS) client. It registers webex.internal.encryption with a kms child, negotiates the KMS session (with optional certificate-chain enforcement and report-only CA-root trials), fetches and caches keys, encrypts and decrypts text, binary data, and SCRs, downloads encrypted files, and wraps and unwraps KMS messages in service payloads.",
+    "category": "cat2-legacy",
+    "primary_languages": [
+      "javascript"
+    ]
+  },
+  "topology": "Orchestrator-plus-components",
+  "commands": {
+    "compile": {
+      "command": "yarn workspace @webex/internal-plugin-encryption build:src",
+      "source_file": "package.json",
+      "role": "compile"
+    },
+    "build": {
+      "command": "yarn workspace @webex/internal-plugin-encryption build",
+      "source_file": "package.json",
+      "role": "package"
+    },
+    "unit-test": {
+      "command": "yarn workspace @webex/internal-plugin-encryption test:unit",
+      "source_file": "package.json",
+      "role": "unit-test"
+    },
+    "integration-test": {
+      "command": "yarn workspace @webex/internal-plugin-encryption test:integration",
+      "source_file": "package.json",
+      "role": "integration-test"
+    },
+    "browser-test": {
+      "command": "yarn workspace @webex/internal-plugin-encryption test:browser",
+      "source_file": "package.json",
+      "role": "other"
+    },
+    "lint": {
+      "command": "yarn workspace @webex/internal-plugin-encryption test:style",
+      "source_file": "package.json",
+      "role": "lint"
+    },
+    "deploy": {
+      "command": "yarn workspace @webex/internal-plugin-encryption deploy:npm",
+      "source_file": "package.json",
+      "role": "deploy"
+    },
+    "refresh-caroots-bundle": {
+      "command": "yarn workspace @webex/internal-plugin-encryption assets:refresh",
+      "source_file": "package.json",
+      "role": "other"
+    }
+  },
+  "toolchain": [
+    {
+      "name": "node",
+      "version": ">=18",
+      "origin": "repo-config",
+      "source_file": "package.json"
+    },
+    {
+      "name": "node",
+      "version": "22.14",
+      "origin": "human-declared",
+      "declared_by": "riag@cisco.com (declared 2026-11-05 as the Node.js version for running this package's tests and build commands from the monorepo, matching the monorepo agent instructions; package.json engines >=18 remains the consumer runtime floor)"
+    }
+  ],
+  "tests": {
+    "unit": {
+      "command_ref": "unit-test",
+      "dir": "test/unit",
+      "framework": "jest"
+    },
+    "integration": {
+      "command_ref": "integration-test",
+      "dir": "test/integration",
+      "framework": "mocha",
+      "external_deps": [
+        "Provisioned Webex test users via @webex/test-helper-test-users",
+        "Network access to Webex services"
+      ]
+    }
+  },
+  "quality_gates": {
+    "code_coverage": {
+      "origin": "none",
+      "declared_by": "riag@cisco.com via bootstrap questionnaire on 2026-11-05: no coverage gate specific to this package (its test:unit defines no threshold; the monorepo root jest.config.js carries its own global thresholds, which the owner did not designate as this package's gate)"
+    }
+  },
+  "coverage_status_definitions": {
+    "specced": ">=80% public surface specced, drift <5% — spec is authoritative",
+    "partial": "40-80% specced — spec is a hint, cross-check code",
+    "untracked": "<40% specced — code is the source of truth"
+  },
+  "modules": [
+    {
+      "path": "src/",
+      "coverage_status": "Untracked",
+      "coverage_evidence": "Generator draft written 2026-11-05; coverage-review has not been run, so no field-completeness or drift measurement exists. Known test gaps are listed in the module spec Verification section (retry and renegotiation policy, browser buffer conversion, payload predicates, and error formatting have no automated evidence). Independent validation is run by a separate runtime.",
+      "canonical_spec": "src/docs/README.md",
+      "contracts": {
+        "provides": [
+          "encryption-plugin-sdk"
+        ],
+        "requires": [
+          "device-plugin-sdk",
+          "mercury-sdk",
+          "webex-core-sdk",
+          "webex-common-js-api",
+          "common-timers-sdk",
+          "http-core-sdk",
+          "kms-caroots-verify"
+        ]
+      },
+      "last_assessed": "2026-11-05",
+      "section_profile": {
+        "has_ui": false,
+        "crosses_service_boundaries": true,
+        "enforces_domain_rules": true,
+        "is_concurrent_async": true,
+        "owns_persistence": false,
+        "returns_caller_errors": true,
+        "has_design_tradeoff": true,
+        "stateful_transitions": true,
+        "exposes_wire_protocol": true,
+        "ui_multi_screen": false,
+        "large_data_model": false,
+        "has_tiers": false,
+        "module_specific_conventions": true,
+        "published_package": true,
+        "embedded_in_host": false,
+        "holds_client_state": true,
+        "has_submodules": false,
+        "has_submodules_computed_by": "scripts/module_tree.py",
+        "has_submodules_computed_at": "2026-11-05T09:00:00Z",
+        "resolved_by": "claude-code/claude-sonnet-5-5 (host metadata; bootstrap questionnaire)",
+        "resolved_at": "2026-11-05T09:00:00Z"
+      }
+    }
+  ],
+  "contract_catalog": {
+    "index_path": "docs/architecture.md",
+    "definitions": {
+      "encryption-plugin-sdk": {
+        "kind": "sdk",
+        "publication": "published",
+        "source_kind": "repository-path",
+        "source": "package.json",
+        "summary": "Published npm package surface (main: dist/index.js, devMain: src/index.js): the default export Encryption, named exports KMS, KmsError, and DryError, the registered internal plugin webex.internal.encryption with its kms child, the webex.config.encryption namespace, the key-revocation failure event, KMS metrics, and the payload transformer entries encryptKmsMessage, decryptKmsMessage, and decryptErrorResponse. Internal plugin: semantic versioning is not strictly followed. Per-member detail lives in the owning module spec Public surface and the JSDoc of src/encryption.js and src/kms.js."
+      },
+      "device-plugin-sdk": {
+        "kind": "sdk",
+        "publication": "published",
+        "source_kind": "external",
+        "source": "@webex/internal-plugin-device (workspace package; module spec consulted: packages/@webex/internal-plugin-device/src/docs/README.md, contract device-plugin-sdk in its manifest)",
+        "summary": "Device plugin imported for its registration side effect; device.userId and device.url build the KMS details request."
+      },
+      "mercury-sdk": {
+        "kind": "sdk",
+        "publication": "published",
+        "source_kind": "external",
+        "source": "@webex/internal-plugin-mercury (workspace package; module spec consulted: packages/@webex/internal-plugin-mercury/src/docs/README.md, contract mercury-sdk in its manifest)",
+        "summary": "Mercury plugin: mercury.connect() runs before every KMS request because KMS responses arrive over the websocket."
+      },
+      "webex-core-sdk": {
+        "kind": "sdk",
+        "publication": "published",
+        "source_kind": "external",
+        "source": "@webex/webex-core (workspace package; module spec consulted: packages/@webex/webex-core/src/docs/README.md, contract webex-core-sdk in its manifest)",
+        "summary": "Plugin host: WebexPlugin, Batcher, StaticAssetLoader, WebexHttpError, registerInternalPlugin, and unboundedStorage."
+      },
+      "webex-common-js-api": {
+        "kind": "sdk",
+        "publication": "published",
+        "source_kind": "external",
+        "source": "@webex/common (workspace package; module spec consulted: packages/@webex/common/src/docs/README.md, contract webex-common-js-api in its manifest)",
+        "summary": "Helpers used by the module: oneFlight, tap, proxyEvents, transferEvents, Exception, isBuffer, getUmdAssetsBaseUrl."
+      },
+      "common-timers-sdk": {
+        "kind": "sdk",
+        "publication": "published",
+        "source_kind": "external",
+        "source": "@webex/common-timers (workspace package; module spec consulted: packages/@webex/common-timers/src/docs/README.md, contract common-timers-sdk in its manifest)",
+        "summary": "safeSetTimeout for request timeouts and context expiry."
+      },
+      "http-core-sdk": {
+        "kind": "sdk",
+        "publication": "published",
+        "source_kind": "external",
+        "source": "@webex/http-core (workspace package; module spec consulted: packages/@webex/http-core/src/docs/README.md, contract http-core-sdk in its manifest)",
+        "summary": "Interceptor base class for the test-only KMS dry-error interceptor."
+      },
+      "kms-caroots-verify": {
+        "kind": "sdk",
+        "publication": "published",
+        "source_kind": "external",
+        "source": "@webex/kms-caroots (workspace package; no module spec, so source was used: packages/@webex/kms-caroots/src/verify.js and index.d.ts)",
+        "summary": "verifyUnionBundle verifies the signed CA-root bundle before the module trusts it."
+      }
+    }
+  },
+  "spec_sources": [
+    {
+      "path": "README.md",
+      "scope": "repo",
+      "role": "reference-only",
+      "canonical": false,
+      "use_by_agents": "context-only",
+      "post_migration_action": "retain",
+      "deletion_status": "not-applicable",
+      "notes": "The package's npm landing page (certificate-validation configuration, maintainers, license). Kept separate and untouched; facts were reconciled from code. Never a deletion candidate."
+    }
+  ],
+  "spec_policy": {
+    "require_what_and_why": true,
+    "require_provenance": true,
+    "protected_specs": [
+      "src/docs/README.md"
+    ]
+  },
+  "validation": {
+    "generator_runtime": "claude-code",
+    "generator_model": "claude-sonnet-5-5",
+    "generator_runtime_source": "host-metadata",
+    "minimum_independence": "different-runtime",
+    "runtime_fallback_tier": "different-runtime",
+    "validator_runtime": "codex",
+    "validator_run_id": "01a1ab83-b6cc-7e80-a09d-a6520a97d975",
+    "validator_runtime_source": "invocation-input",
+    "blocking_severities": [
+      "Blocking"
+    ]
+  },
+  "layout": {
+    "sdd_root": ".sdd",
+    "docs_root": "docs",
+    "agent_entry_path": "AGENTS.md",
+    "standing_docs_root": "docs",
+    "spec_index_path": "docs/specs/README.md",
+    "module_docs_strategy": "source-local",
+    "module_docs_relative_path": "docs/README.md",
+    "module_docs_decision": {
+      "basis": "repo-standards-default",
+      "reason": "The package has no module-local documentation folder, documentation build, or protected authored file that collides with the source-local default.",
+      "decided_by": "claude-code (bootstrap questionnaire)",
+      "decided_at": "2026-11-05T09:00:00Z"
+    },
+    "repo_context_decision": {
+      "path": ".repo-context.json",
+      "schema_path": "schemas/repo-context.schema.json",
+      "action": "create",
+      "schema_action": "create",
+      "reason": "Neither the operational context nor its schema existed in this package. The context is created from package evidence and the schema is copied from the Repo Standards snapshot resolved at the monorepo root.",
+      "decided_by": "claude-code (bootstrap questionnaire)",
+      "decided_at": "2026-11-05T09:00:00Z"
+    },
+    "artifact_decisions": [
+      {
+        "path": "docs/service.md",
+        "action": "omit",
+        "reason": "The package is a published library, not a deployable service; it declares no deployment descriptor, container, or runtime entry point.",
+        "decided_by": "claude-code (bootstrap questionnaire)",
+        "decided_at": "2026-11-05T09:00:00Z"
+      },
+      {
+        "path": "mkdocs.yml",
+        "action": "omit",
+        "reason": "No documentation build exists for this package.",
+        "decided_by": "claude-code (bootstrap questionnaire)",
+        "decided_at": "2026-11-05T09:00:00Z"
+      },
+      {
+        "path": "api-specs/openapi.yaml",
+        "action": "omit",
+        "reason": "The package serves no HTTP routes; its published surface is the npm package declared in package.json, so no OpenAPI source applies.",
+        "decided_by": "claude-code (bootstrap questionnaire)",
+        "decided_at": "2026-11-05T09:00:00Z"
+      },
+      {
+        "path": "SECURITY.md",
+        "action": "omit",
+        "reason": "Absent at the package; the questionnaire did not select a security-policy artifact and no reporting contact is established.",
+        "decided_by": "claude-code (bootstrap questionnaire)",
+        "decided_at": "2026-11-05T09:00:00Z"
+      },
+      {
+        "path": "CONTRIBUTING.md",
+        "action": "omit",
+        "reason": "No package-level contribution guide exists; the package README points to the surrounding monorepo root for contribution rules.",
+        "decided_by": "claude-code (bootstrap questionnaire)",
+        "decided_at": "2026-11-05T09:00:00Z"
+      },
+      {
+        "path": "CHANGELOG.md",
+        "action": "omit",
+        "reason": "No package-level changelog exists; release notes are owned at the surrounding monorepo root.",
+        "decided_by": "claude-code (bootstrap questionnaire)",
+        "decided_at": "2026-11-05T09:00:00Z"
+      },
+      {
+        "path": "CTO_CHECKLIST.yml",
+        "action": "omit",
+        "reason": "The CTO readiness workflow applies to deployable services; this package is a published library.",
+        "decided_by": "claude-code (bootstrap questionnaire)",
+        "decided_at": "2026-11-05T09:00:00Z"
+      },
+      {
+        "path": "schemas/cto-checklist.schema.json",
+        "action": "omit",
+        "reason": "Selected together with CTO_CHECKLIST.yml, which is omitted.",
+        "decided_by": "claude-code (bootstrap questionnaire)",
+        "decided_at": "2026-11-05T09:00:00Z"
+      }
+    ],
+    "template_roots": {
+      "canonical": ".sdd/templates/repo-standards"
+    },
+    "repo_skills_root": ".sdd/skills",
+    "contract_index_path": "docs/architecture.md",
+    "monorepo_package": {
+      "package_path": "packages/@webex/internal-plugin-encryption",
+      "root_manifest_path": "../../../.sdd/manifest.json",
+      "templates_root_path": "../../../.sdd/templates/repo-standards"
+    }
+  },
+  "substrate": {
+    "source": "WebexTools/repo-standards@d89a7fe59126ae3ad9bac9ca352aa7f12b4c85dc",
+    "consumed": [
+      "@webex/eslint-config-legacy and ESLint through package.json scripts",
+      "@webex/babel-config-legacy via babel.config.js",
+      "@webex/jest-config-legacy via jest.config.js",
+      "@webex/legacy-tools build and test runner via package.json",
+      "package README.md"
+    ],
+    "compliance_tier": "baseline"
+  },
+  "section_profiles": {
+    "repo": {
+      "owns_datastore": false,
+      "holds_client_state": true,
+      "components_interact": true,
+      "domain_data_across_components": false,
+      "caches_data": true,
+      "observability_convention": false,
+      "deploys_to_infra": false,
+      "shared_base_libs": false,
+      "is_monorepo": false,
+      "multi_platform": true,
+      "published_package": true,
+      "embedded_in_host": false,
+      "cross_repo_deps_material": false,
+      "security_arch_warranted": true,
+      "exposes_commands_or_artifacts": true
+    },
+    "resolved_by": "claude-code/claude-sonnet-5-5 (host metadata; bootstrap questionnaire)",
+    "resolved_at": "2026-11-05T09:00:00Z"
+  },
+  "tooling": {
+    "sdlc_skills": {
+      "source_ref": "repo-annotation@2.3.1"
+    }
+  }
+}
