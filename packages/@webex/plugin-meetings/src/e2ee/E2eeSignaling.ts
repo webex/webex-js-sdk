@@ -75,7 +75,7 @@ export default class E2eeSignaling {
       this.mercury.on(event, this.onMercuryEvent);
     });
 
-    if (this.llm && this.isLlmOnlineForThisMeeting()) {
+    if (this.llm && this.isLlmOnlineForThisSession()) {
       this.session.setLlmConnectedBeforeJoin(true);
     }
     this.subscribeToLlmEvents();
@@ -116,7 +116,7 @@ export default class E2eeSignaling {
 
     this.subscribeToLlmEvents();
 
-    if (this.isLlmOnlineForThisMeeting()) {
+    if (this.isLlmOnlineForThisSession()) {
       this.session.llmConnected();
     }
   }
@@ -154,7 +154,7 @@ export default class E2eeSignaling {
    * @returns {void}
    */
   private onLlmOnline = (): void => {
-    if (this.isLlmOnlineForThisMeeting()) {
+    if (this.isLlmOnlineForThisSession()) {
       this.session.llmConnected();
     }
   };
@@ -168,7 +168,7 @@ export default class E2eeSignaling {
     MEDIA_ENCRYPTION_MERCURY_EVENTS.forEach((event) => {
       this.llm?.on(event, this.onLlmEvent);
     });
-    if (!this.isLlmOnlineForThisMeeting()) {
+    if (!this.isLlmOnlineForThisSession()) {
       this.llm.on(LLM_ONLINE_EVENT, this.onLlmOnline);
     }
   }
@@ -182,13 +182,13 @@ export default class E2eeSignaling {
   }
 
   /**
-   * @returns {boolean} whether the LLM is connected for this specific meeting (locus-url matched).
+   * @returns {boolean} whether the LLM is connected for this specific session (locus-url matched).
    */
-  private isLlmOnlineForThisMeeting(): boolean {
-    const meetingLocusUrl = this.getLocusUrl();
+  private isLlmOnlineForThisSession(): boolean {
+    const sessionLocusUrl = this.getLocusUrl();
 
     return (
-      !!meetingLocusUrl && !!this.llm?.isConnected() && meetingLocusUrl === this.llm.getLocusUrl()
+      !!sessionLocusUrl && !!this.llm?.isConnected() && sessionLocusUrl === this.llm.getLocusUrl()
     );
   }
 }
