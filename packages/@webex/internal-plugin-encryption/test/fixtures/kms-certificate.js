@@ -2,6 +2,11 @@
  * Copyright (c) 2026 Cisco Systems, Inc. See LICENSE file.
  */
 
+import {Buffer} from 'safe-buffer';
+import {Certificate} from 'pkijs';
+
+import chainFixture from './certificate-diagnostics.json';
+
 // Real CA root that signed the `x5c` certificate below.
 export const caroots = [
   'MIID6TCCAtGgAwIBAgIURmBu688C9oUIJXlykr1J3fi5H4kwDQYJKoZIhvcNAQELBQAwgYMxCzAJBgNVBAYTAlVTMREwDwYDVQQIDAhDb2xvcmFkbzEPMA0GA1UEBwwGRGVudmVyMRAwDgYDVQQKDAdFeGFtcGxlMR8wHQYDVQQDDBZodHRwczovL2NhLmV4YW1wbGUuY29tMR0wGwYJKoZIhvcNAQkBFg5jYUBleGFtcGxlLmNvbTAeFw0yMDAyMDYyMDIyMDhaFw00MDAyMDEyMDIyMDhaMIGDMQswCQYDVQQGEwJVUzERMA8GA1UECAwIQ29sb3JhZG8xDzANBgNVBAcMBkRlbnZlcjEQMA4GA1UECgwHRXhhbXBsZTEfMB0GA1UEAwwWaHR0cHM6Ly9jYS5leGFtcGxlLmNvbTEdMBsGCSqGSIb3DQEJARYOY2FAZXhhbXBsZS5jb20wggEiMA0GCSqGSIb3DQEBAQUAA4IBDwAwggEKAoIBAQC7TaDWldwjU65y4fnNDIuNu4dZi3bZvaN9nJ3A8D9pwFcNx3DL5cPpafAkJuE/2ZBrsZxJWKwXLQFuNE9V3XVslv0OPgEZVfY5AKuPhVezRqEqsCdUgODMkJat6PE02r0NZRFpBiRCThh0wY5u/tiTiPgjHwEPhBEyLgcJ6FOWLn9wBsS4SvBzfppYGL5GW1G0eN9yORnKKgqkgyf0x8FvTMyVSjtkhcI/kA/8061sl4DFG6sefQmAOVvH7tp7YmN+jpQ7cOKQtjOpZS6Gp22u7LEI0/qb5n2QvjjcUQM81mN6CZ8nciWXRgjBhdAJJhmyMvcx8rnVb6vtU26fCaetAgMBAAGjUzBRMB0GA1UdDgQWBBRZiCyKaTYL94gwhxzktYg32qMOYjAfBgNVHSMEGDAWgBRZiCyKaTYL94gwhxzktYg32qMOYjAPBgNVHRMBAf8EBTADAQH/MA0GCSqGSIb3DQEBCwUAA4IBAQATa2QkTGcj8IPjItnvg23ihlRjHdFHn6lB7uYPhcDurwRlBrlC2/OB44P3dHB9tEPbV4unoF9ftEKO3nNY3HUDcPrQwRqkPftlYYr4/6z/jnmNBRgiDICVaiTZNlX54fLiPsSAbIymPWLLLNtq17vjVEcfGUXhi/F+EkN/uXZ4yH6RK0YjBRwPV9cfziz1YsF2WVYVYtQErf+NTjnYR5S4Ba2kEqhI5j7mNhiafPNODaOchHcaRMvfWcBhlHt+atwNyPxNr4NP+cDjAWg0I8xAUdbZGQiRJecjkctolLHsfZXj+ulEv3eaKw7gSo3Aekexw8aZS7soy+VM1fzmLopw',
@@ -20,3 +25,236 @@ export const validKey = {
   n: '2OObWUoNG0Wv4zYuhGUT7JNiUkefUsFZ384NS2l5VOB_lSNcElBtmX55yPcjvPnukfpETDUG82K8ncOwCuV8ZTpvzM3QHSIHGyO5JBFJ38U6Pq6kHje6An-eSHLCVkQfOlf4TCRb8SlcEoi8wkl3IIGewzC0_87b1OvyYTb8BHZJVeUV7AxcZChkAA_IJV5ADnmc_6ZCihXVuCWJgTFpLLv7HVqE924lNDTgRn64ioCpHK4pC1FFqQKLlsq0tV75gc5d7A6m5_9znEvg02JuqUFd9LdOcnf8QeTkyg6OTTvJUUa39KZDKONi8MXiECacGU6VbUvuKOXZU49UeqVKQQ',
 };
 export const invalidKey = {kty: 'NOT_RSA', kid: 'kms://kms.example.com'};
+
+const corruptSignature = (certificate) => {
+  const bytes = Buffer.from(certificate, 'base64');
+
+  bytes[bytes.length - 1] = (bytes[bytes.length - 1] + 1) % 256;
+
+  return bytes.toString('base64');
+};
+
+export const certificateChainCases = [
+  {name: 'one certificate', key: validKey, roots: caroots, valid: true},
+  {name: 'leaf and intermediate', key: chainFixture.key, roots: [chainFixture.root], valid: true},
+  {
+    name: 'included root',
+    key: {...chainFixture.key, x5c: [...chainFixture.key.x5c, chainFixture.root]},
+    roots: [chainFixture.root],
+    valid: true,
+  },
+  {
+    name: 'extra trusted certificate',
+    key: {...chainFixture.key, x5c: [...chainFixture.key.x5c, unrelatedCaroots[0]]},
+    roots: [chainFixture.root, ...unrelatedCaroots],
+    valid: true,
+  },
+  {
+    name: 'expired leaf with valid intermediate',
+    key: chainFixture.key,
+    roots: [chainFixture.root],
+    date: '2036-01-01T00:00:00Z',
+    valid: false,
+  },
+  {
+    name: 'future leaf with valid intermediate',
+    key: chainFixture.key,
+    roots: [chainFixture.root],
+    date: '2024-01-01T00:00:00Z',
+    valid: false,
+  },
+  {
+    name: 'invalid leaf signature',
+    key: {
+      ...chainFixture.key,
+      x5c: [corruptSignature(chainFixture.key.x5c[0]), chainFixture.intermediate],
+    },
+    roots: [chainFixture.root],
+    valid: false,
+  },
+  {
+    name: 'invalid intermediate signature',
+    key: {
+      ...chainFixture.key,
+      x5c: [chainFixture.key.x5c[0], corruptSignature(chainFixture.intermediate)],
+    },
+    roots: [chainFixture.root],
+    valid: false,
+  },
+  {
+    name: 'missing intermediate',
+    key: {...chainFixture.key, x5c: [chainFixture.key.x5c[0]]},
+    roots: [chainFixture.root],
+    valid: false,
+  },
+  {
+    name: 'untrusted complete chain',
+    key: {...chainFixture.key, x5c: [...chainFixture.key.x5c, chainFixture.root]},
+    roots: unrelatedCaroots,
+    valid: false,
+  },
+  {
+    name: 'invalid leaf before unrelated trusted certificate',
+    key: {
+      ...chainFixture.key,
+      x5c: [
+        corruptSignature(chainFixture.key.x5c[0]),
+        chainFixture.intermediate,
+        unrelatedCaroots[0],
+      ],
+    },
+    roots: [chainFixture.root, ...unrelatedCaroots],
+    valid: false,
+  },
+  {
+    name: 'duplicated root',
+    key: {
+      ...chainFixture.key,
+      x5c: [...chainFixture.key.x5c, chainFixture.root, chainFixture.root],
+    },
+    roots: [chainFixture.root],
+    valid: true,
+  },
+  ...[
+    {name: 'valid', valid: true},
+    {name: 'expired', date: '2036-01-01T00:00:00Z', valid: false},
+    {name: 'future', date: '2024-01-01T00:00:00Z', valid: false},
+  ].flatMap(({name, date, valid}) => [
+    {
+      name: `${name} duplicated leaf`,
+      key: {...chainFixture.key, x5c: [...chainFixture.key.x5c, chainFixture.key.x5c[0]]},
+      roots: [chainFixture.root],
+      date,
+      valid,
+    },
+    ...[
+      [chainFixture.key.x5c[0], chainFixture.root],
+      [chainFixture.root, chainFixture.key.x5c[0]],
+    ].map((roots, index) => ({
+      name: `${name} leaf in trust store position ${index}`,
+      key: chainFixture.key,
+      roots,
+      date,
+      valid,
+    })),
+  ]),
+  {
+    name: 'invalid leaf followed by valid duplicate TBS',
+    key: {
+      ...chainFixture.key,
+      x5c: [
+        corruptSignature(chainFixture.key.x5c[0]),
+        chainFixture.intermediate,
+        chainFixture.key.x5c[0],
+      ],
+    },
+    roots: [chainFixture.root],
+    valid: false,
+  },
+  {
+    name: 'valid leaf followed by invalid duplicate TBS',
+    key: {
+      ...chainFixture.key,
+      x5c: [...chainFixture.key.x5c, corruptSignature(chainFixture.key.x5c[0])],
+    },
+    roots: [chainFixture.root],
+    valid: true,
+  },
+  {
+    name: 'invalid leaf matching trusted TBS',
+    key: {
+      ...chainFixture.key,
+      x5c: [corruptSignature(chainFixture.key.x5c[0]), chainFixture.intermediate],
+    },
+    roots: [chainFixture.key.x5c[0], chainFixture.root],
+    valid: false,
+  },
+  {
+    name: 'valid leaf matching invalid trusted TBS',
+    key: chainFixture.key,
+    roots: [corruptSignature(chainFixture.key.x5c[0]), chainFixture.root],
+    valid: true,
+  },
+  {
+    name: 'missing intermediate with leaf in trust store',
+    key: {...chainFixture.key, x5c: [chainFixture.key.x5c[0]]},
+    roots: [chainFixture.key.x5c[0], chainFixture.root],
+    valid: false,
+  },
+  {
+    name: 'non-CA leaf as the only trust anchor',
+    key: chainFixture.key,
+    roots: [chainFixture.key.x5c[0]],
+    valid: false,
+  },
+];
+
+const selfIssuedKey = {
+  ...Certificate.fromBER(Buffer.from(unrelatedCaroots[0], 'base64')).subjectPublicKeyInfo.toJSON(),
+  kid: validKey.kid,
+  x5c: [unrelatedCaroots[0], ...chainFixture.key.x5c],
+};
+
+certificateChainCases.push(
+  {
+    name: 'explicitly trusted self-issued CA after an unrelated root',
+    key: selfIssuedKey,
+    roots: [chainFixture.root, ...unrelatedCaroots],
+    valid: true,
+  },
+  ...[
+    {name: 'valid', valid: true},
+    {name: 'expired', date: '2041-01-01T00:00:00Z', valid: false},
+    {name: 'future', date: '2019-01-01T00:00:00Z', valid: false},
+  ].map(({name, date, valid}) => ({
+    name: `${name} explicitly trusted self-issued CA with extra certificates`,
+    key: selfIssuedKey,
+    roots: [...unrelatedCaroots, chainFixture.root],
+    date,
+    valid,
+  })),
+  {
+    name: 'untrusted self-issued CA',
+    key: selfIssuedKey,
+    roots: [chainFixture.root],
+    valid: false,
+  },
+  {
+    name: 'invalid self-issued leaf signature matching trusted TBS',
+    key: {...selfIssuedKey, x5c: [corruptSignature(unrelatedCaroots[0]), ...chainFixture.key.x5c]},
+    roots: [...unrelatedCaroots, chainFixture.root],
+    valid: false,
+  }
+);
+
+export const invalidIdentityCases = [
+  {name: 'key type', key: {...chainFixture.key, kty: 'EC'}, error: /'kty' header/},
+  {name: 'key URI', key: {...chainFixture.key, kid: 'invalid'}, error: /not a valid URI/},
+  {
+    name: 'key protocol',
+    key: {...chainFixture.key, kid: 'https://kms.diagnostics.invalid'},
+    error: /protocol/,
+  },
+  {
+    name: 'missing certificates',
+    key: {...chainFixture.key, x5c: undefined},
+    error: /list of certificates/,
+  },
+  {name: 'empty certificates', key: {...chainFixture.key, x5c: []}, error: /list of certificates/},
+  {
+    name: 'non-string certificate',
+    key: {...chainFixture.key, x5c: [null]},
+    error: /needs to be a string/,
+  },
+  {
+    name: 'hostname',
+    key: {...chainFixture.key, kid: 'kms://wrong.invalid'},
+    error: /does not match/,
+  },
+  {
+    name: 'public exponent',
+    key: {...chainFixture.key, e: 'wrong'},
+    error: /Public exponent is invalid/,
+  },
+  {name: 'modulus', key: {...chainFixture.key, n: 'wrong'}, error: /Modulus is invalid/},
+];

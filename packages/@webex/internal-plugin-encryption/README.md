@@ -93,6 +93,20 @@ verification and staleness metrics carry `validationMode: 'enforced'` or
 `'report-only'`; chain failures use the same tag on
 `JS_SDK_KMS_CERTIFICATE_VALIDATION_FAILED`.
 
+### Certificate-chain order
+
+The KMS public key supplies its identity certificate first, followed by its
+signing certificates. The SDK checks that first certificate's identity and public
+key. It also requires the validated path to start with that same certificate.
+
+PKI.js 3.3.3 removes certificates with duplicate to-be-signed (TBS) bytes before
+selecting the last certificate for path construction. The SDK removes other
+copies of the leaf's TBS from the supplied certificates and trust-store inputs,
+then places the original leaf last. A different signature over the same TBS
+cannot replace the leaf. An explicitly trusted self-issued certificate is
+validated alone, with an exact certificate match required for this existing
+trust-anchor case. The original public key and certificate lists are not changed.
+
 ### Asset verification and caching
 
 Both asset sources use the existing JavaScript verifier. It checks the CMS
