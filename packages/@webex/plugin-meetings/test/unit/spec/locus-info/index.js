@@ -1438,6 +1438,9 @@ describe('plugin-meetings', () => {
             lastModified: 'TODAY',
             modifiedByServiceAppName: undefined,
             modifiedByServiceAppId: undefined,
+            lastDuration: undefined,
+            lastTime: undefined,
+            needCalculate: undefined,
           }
         );
       });
@@ -1474,6 +1477,9 @@ describe('plugin-meetings', () => {
             lastModified: 'TODAY',
             modifiedByServiceAppName: undefined,
             modifiedByServiceAppId: undefined,
+            lastDuration: undefined,
+            lastTime: undefined,
+            needCalculate: undefined,
           }
         );
       });
@@ -1511,6 +1517,9 @@ describe('plugin-meetings', () => {
             lastModified: 'TODAY',
             modifiedByServiceAppName: undefined,
             modifiedByServiceAppId: undefined,
+            lastDuration: undefined,
+            lastTime: undefined,
+            needCalculate: undefined,
           }
         );
       });
@@ -1549,6 +1558,9 @@ describe('plugin-meetings', () => {
             lastModified: 'TODAY',
             modifiedByServiceAppName: undefined,
             modifiedByServiceAppId: undefined,
+            lastDuration: undefined,
+            lastTime: undefined,
+            needCalculate: undefined,
           }
         );
       });
@@ -1586,6 +1598,9 @@ describe('plugin-meetings', () => {
             lastModified: 'TODAY',
             modifiedByServiceAppName: undefined,
             modifiedByServiceAppId: undefined,
+            lastDuration: undefined,
+            lastTime: undefined,
+            needCalculate: undefined,
           }
         );
       });
@@ -1622,6 +1637,48 @@ describe('plugin-meetings', () => {
             lastModified: 'TODAY',
             modifiedByServiceAppName: 'My Bot',
             modifiedByServiceAppId: 'app-id-123',
+            lastDuration: undefined,
+            lastTime: undefined,
+            needCalculate: undefined,
+          }
+        );
+      });
+
+      it('should include recording duration metadata in the event when present', () => {
+        locusInfo.controls = {
+          record: {
+            recording: false,
+            paused: false,
+            meta: {lastModified: 'TODAY', modifiedBy: 'George Kittle'},
+          },
+          shareControl: {},
+          transcribe: {},
+        };
+        newControls.record.recording = true;
+        newControls.record.meta.duration = {
+          lastDuration: 12345,
+          lastTime: '2026-06-03T10:00:00Z',
+          needCalculate: true,
+        };
+        locusInfo.emitScoped = sinon.stub();
+        locusInfo.updateControls(newControls);
+
+        assert.calledWith(
+          locusInfo.emitScoped,
+          {
+            file: 'locus-info',
+            function: 'updateControls',
+          },
+          LOCUSINFO.EVENTS.CONTROLS_RECORDING_UPDATED,
+          {
+            state: RECORDING_STATE.RECORDING,
+            modifiedBy: 'George Kittle',
+            lastModified: 'TODAY',
+            modifiedByServiceAppName: undefined,
+            modifiedByServiceAppId: undefined,
+            lastDuration: 12345,
+            lastTime: '2026-06-03T10:00:00Z',
+            needCalculate: true,
           }
         );
       });

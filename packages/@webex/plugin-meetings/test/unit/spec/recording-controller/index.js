@@ -358,6 +358,109 @@ describe('plugin-meetings', () => {
           });
         });
       });
+
+      describe('getRecordingStatus', () => {
+        let controller;
+
+        beforeEach(() => {
+          request = {
+            request: sinon.stub(),
+          };
+          controller = new RecordingController(request);
+          controller.set({
+            serviceUrl: 'test',
+            sessionId: 'testId',
+            locusUrl: 'test/id',
+            displayHints: [],
+          });
+        });
+
+        it('returns undefined when serviceUrl is missing', async () => {
+          const noUrlController = new RecordingController({request: sinon.stub()});
+
+          const result = await noUrlController.getRecordingStatus();
+
+          assert.isUndefined(result);
+        });
+
+        it('issues a GET to the recording stream resource endpoint', async () => {
+          request.request.resolves({body: {recording: []}});
+
+          await controller.getRecordingStatus();
+
+          assert.calledWith(request.request, {
+            uri: 'test/loci/id/resource',
+            method: HTTP_VERBS.GET,
+          });
+        });
+
+        it('parses status and duration from the first recording entry', async () => {
+          request.request.resolves({
+            body: {
+              recording: [
+                {
+                  status: 'recording',
+                  duration: {
+                    lastDuration: 12345,
+                    lastTime: '2026-06-03T10:00:00Z',
+                    needCalculate: true,
+                  },
+                },
+              ],
+            },
+          });
+
+          const result = await controller.getRecordingStatus();
+
+          assert.deepEqual(result, {
+            status: 'recording',
+            lastDuration: 12345,
+            lastTime: '2026-06-03T10:00:00Z',
+            needCalculate: true,
+          });
+        });
+
+        it('handles a response without a body wrapper', async () => {
+          request.request.resolves({
+            recording: [
+              {
+                status: 'paused',
+                duration: {lastDuration: 100, lastTime: '2026-06-03T11:00:00Z', needCalculate: false},
+              },
+            ],
+          });
+
+          const result = await controller.getRecordingStatus();
+
+          assert.deepEqual(result, {
+            status: 'paused',
+            lastDuration: 100,
+            lastTime: '2026-06-03T11:00:00Z',
+            needCalculate: false,
+          });
+        });
+
+        it('returns an object with all undefined fields when recording array is empty', async () => {
+          request.request.resolves({body: {recording: []}});
+
+          const result = await controller.getRecordingStatus();
+
+          assert.deepEqual(result, {
+            status: undefined,
+            lastDuration: undefined,
+            lastTime: undefined,
+            needCalculate: undefined,
+          });
+        });
+
+        it('returns undefined when the request rejects', async () => {
+          request.request.rejects(new Error('boom'));
+
+          const result = await controller.getRecordingStatus();
+
+          assert.isUndefined(result);
+        });
+      });
     });
   });
 });
