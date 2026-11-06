@@ -126,6 +126,14 @@ export default class MLS {
     LoggerProxy.logger.info('e2ee: MLS --> initialize: loading WASM and instantiating engine');
     const module = await this.wasmLoader.get<ModuleInstance>(this.wasmUrl);
 
+    // When loadModule uses WasmLoader.get(), repeated calls share the in-flight promise or return
+    // the cached module, so this check can stay after loading.
+    if (this.e2ee) {
+      LoggerProxy.logger.info('e2ee: MLS --> initialize: already initialized');
+
+      return;
+    }
+
     this.e2ee = new module.WebE2EE();
     this.setupCallbacks();
 
