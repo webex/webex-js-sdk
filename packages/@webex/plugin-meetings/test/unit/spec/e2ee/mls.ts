@@ -156,18 +156,20 @@ describe('plugin-meetings', () => {
 
       it('emits joinSuccess on a successful join transaction', () => {
         const spy = sinon.stub();
+        const baseKey = new Uint8Array([1, 2]);
 
         session.on('joinSuccess', spy);
         callbacks.completeTransaction('tx-1', {
           status: 'join_success',
           epoch: 3,
-          base_key: new Uint8Array([1, 2]),
+          base_key: baseKey,
           index: 5,
           index_bits: 8,
           sec_code: 'SEC-CODE',
           sframe_cipher_suite: 1,
           sframe_epoch_bits: 4,
         });
+        baseKey.fill(0);
 
         assert.calledOnce(spy);
         const payload = spy.firstCall.args[0];
@@ -181,13 +183,24 @@ describe('plugin-meetings', () => {
         assert.isFalse(payload.key.canEncrypt);
       });
 
-      it('emits joinFailure on a failed transaction', () => {
+      it('emits joinFailure when the join transaction fails', () => {
         const spy = sinon.stub();
 
         session.on('joinFailure', spy);
         callbacks.completeTransaction('tx-1', {status: 'failure', reason: 'join_failure'});
 
         assert.calledOnceWithExactly(spy, {reason: 'join_failure'});
+      });
+
+      it('does not emit events to a listener after it is removed', () => {
+        const spy = sinon.stub();
+
+        session.on('evicted', spy);
+        callbacks.evicted();
+        session.off('evicted', spy);
+        callbacks.evicted();
+
+        assert.calledOnceWithExactly(spy, undefined);
       });
 
       it('emits newKey when the engine reports a key', () => {
@@ -240,10 +253,10 @@ describe('plugin-meetings', () => {
                 result: 0,
                 member_certs: [
                   {
-                    primary_name: 'alice@example.com',
-                    common_name: 'Alice',
+                    primary_name: 'bob@example.com',
+                    common_name: 'Bob',
                     organization_name: 'Example',
-                    email_addresses: ['alice@example.com'],
+                    email_addresses: ['bob@example.com'],
                     domain_names: ['example.com'],
                     not_before: 1000,
                     not_after: 2000,
@@ -270,10 +283,10 @@ describe('plugin-meetings', () => {
                 result: 0,
                 certificateChain: [
                   {
-                    primaryName: 'alice@example.com',
-                    commonName: 'Alice',
+                    primaryName: 'bob@example.com',
+                    commonName: 'Bob',
                     organizationName: 'Example',
-                    emailAddresses: ['alice@example.com'],
+                    emailAddresses: ['bob@example.com'],
                     domainNames: ['example.com'],
                     notBefore: 1000,
                     notAfter: 2000,
@@ -332,6 +345,7 @@ describe('plugin-meetings', () => {
         // Changed -> emit once.
         fakeE2ee.securityCode.returns('CODE-2');
         callbacks.addRoster([]);
+        callbacks.addRoster([]);
         assert.calledOnceWithExactly(spy, {code: 'CODE-2'});
       });
     });
@@ -383,6 +397,30 @@ describe('plugin-meetings', () => {
         assert.isTrue(success);
         assert.instanceOf(body, Uint8Array);
         assert.deepEqual(decodeJson(body), {result: 'ok', n: 1});
+        assert.equal(code, 0);
+        assert.equal(message, '');
+      });
+
+      it('completes an undefined HTTP response as successful empty bytes', async () => {
+        httpClient.request.resolves(undefined);
+
+        callbacks.httpRequest({
+          url: 'https://mes.webex.com/op',
+          body: encodeJson({op: 'join'}),
+          handlerId: 44,
+        });
+
+        await flushPromises();
+
+        assert.calledOnce(httpClient.request);
+        assert.calledOnce(fakeE2ee.completeHttpRequest);
+
+        const [handlerId, success, body, code, message] =
+          fakeE2ee.completeHttpRequest.firstCall.args;
+
+        assert.equal(handlerId, 44);
+        assert.isTrue(success);
+        assert.deepEqual(Array.from(body), []);
         assert.equal(code, 0);
         assert.equal(message, '');
       });
@@ -571,38 +609,20 @@ describe('plugin-meetings', () => {
       });
 
       it('maps WASM log levels to the plugin logger', () => {
-        const {logger} = LoggerProxy;
-        const originalLoggerMethods = {
-          info: logger.info,
-          warn: logger.warn,
-          error: logger.error,
-          debug: logger.debug,
-        };
+        const logger = stubLogger();
 
-        logger.info = sinon.stub();
-        logger.warn = sinon.stub();
-        logger.error = sinon.stub();
-        logger.debug = sinon.stub();
+        // Engine LogLevel: fatal=1, error=2, warn=3, info=4, debug=5.
+        callbacks.log(1, 'a fatal');
+        callbacks.log(2, 'an error');
+        callbacks.log(3, 'a warning');
+        callbacks.log(4, 'an info');
+        callbacks.log(5, 'a debug');
 
-        try {
-          // Engine LogLevel: fatal=1, error=2, warn=3, info=4, debug=5.
-          callbacks.log(1, 'a fatal');
-          callbacks.log(2, 'an error');
-          callbacks.log(3, 'a warning');
-          callbacks.log(4, 'an info');
-          callbacks.log(5, 'a debug');
-
-          assert.calledWithMatch(logger.error, 'a fatal');
-          assert.calledWithMatch(logger.error, 'an error');
-          assert.calledWithMatch(logger.warn, 'a warning');
-          assert.calledWithMatch(logger.info, 'an info');
-          assert.calledWithMatch(logger.debug, 'a debug');
-        } finally {
-          logger.info = originalLoggerMethods.info;
-          logger.warn = originalLoggerMethods.warn;
-          logger.error = originalLoggerMethods.error;
-          logger.debug = originalLoggerMethods.debug;
-        }
+        assert.calledWithMatch(logger.error, 'a fatal');
+        assert.calledWithMatch(logger.error, 'an error');
+        assert.calledWithMatch(logger.warn, 'a warning');
+        assert.calledWithMatch(logger.info, 'an info');
+        assert.calledWithMatch(logger.debug, 'a debug');
       });
     });
 
