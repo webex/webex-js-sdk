@@ -6,23 +6,42 @@ import {union} from 'lodash';
 import ServiceUrl from './service-url';
 import {matchAllowedDomain, normalizeAllowedDomains} from '../domains';
 
-// Catalog base URLs are a small, stable set, so their parsed origin/path is
-// memoized to avoid repeated `new URL()` work when scanning the catalog on the
-// request hot path.
-const catalogUrlCache = new Map();
+/**
+ * Derive the canonical host that the URL matcher will see. Applying an alternate
+ * host to the URL also preserves inherited ports and performs URL normalization.
+ *
+ * @param {string} defaultUrl - Catalog URL used as the matching base
+ * @param {string} [alternateHost] - Optional alternate host to apply
+ * @returns {string | undefined} - Canonical effective host, or undefined
+ */
+function getMatchHost(defaultUrl, alternateHost) {
+  try {
+    const parsedUrl = new URL(defaultUrl);
+
+    if (alternateHost !== undefined) {
+      if (!alternateHost) {
+        return undefined;
+      }
+
+      parsedUrl.host = alternateHost;
+    }
+
+    return parsedUrl.host;
+  } catch {
+    return undefined;
+  }
+}
 
 /**
- * Parse a catalog URL into the origin and normalized path used for matching,
- * memoizing the result. Returns null when the URL is unparsable.
+ * Parse a catalog URL into the origin and normalized path used for matching.
+ * Results are not retained because host prefiltering limits parsing to plausible
+ * matches and catalogs can introduce new URLs throughout a session.
+ * Returns null when the URL is unparsable.
  *
  * @param {string} catalogUrlString - The catalog URL to parse
  * @returns {{origin: string, path: string} | null} - Parsed catalog URL, or null
  */
 export function parseCatalogUrl(catalogUrlString) {
-  if (catalogUrlCache.has(catalogUrlString)) {
-    return catalogUrlCache.get(catalogUrlString);
-  }
-
   let parsed = null;
 
   try {
@@ -33,8 +52,6 @@ export function parseCatalogUrl(catalogUrlString) {
   } catch {
     parsed = null;
   }
-
-  catalogUrlCache.set(catalogUrlString, parsed);
 
   return parsed;
 }
@@ -339,7 +356,7 @@ const ServiceCatalog = AmpState.extend({
       ...this.serviceGroups.override,
     ];
 
-    // Invalid URLs cannot match any service
+    // Parse the candidate once so invalid URLs fail before scanning thousands of catalog entries.
     let candidateUrl;
 
     try {
@@ -349,18 +366,26 @@ const ServiceCatalog = AmpState.extend({
     }
 
     return serviceUrls.find((serviceUrl) => {
+      // Trusted host metadata is a cheap rejection check. Missing metadata falls through to the
+      // full comparison for older, invalid, or directly injected catalog entries.
       // Check if the URL matches the default URL with proper origin validation
-      if (matchesParsedCatalogUrl(candidateUrl, parseCatalogUrl(serviceUrl.defaultUrl))) {
+      if (
+        (!serviceUrl.matchHost || serviceUrl.matchHost === candidateUrl.host) &&
+        matchesParsedCatalogUrl(candidateUrl, parseCatalogUrl(serviceUrl.defaultUrl))
+      ) {
         return true;
       }
 
       // Check alternate URLs (built by swapping host with alternate hosts)
       for (const host of serviceUrl.hosts) {
-        const alternateUrl = new URL(serviceUrl.defaultUrl);
-        alternateUrl.host = host.host;
+        // Avoid constructing an alternate URL when its known host cannot match the candidate.
+        if (!host.matchHost || host.matchHost === candidateUrl.host) {
+          const alternateUrl = new URL(serviceUrl.defaultUrl);
+          alternateUrl.host = host.host;
 
-        if (matchesParsedCatalogUrl(candidateUrl, parseCatalogUrl(alternateUrl.toString()))) {
-          return true;
+          if (matchesParsedCatalogUrl(candidateUrl, parseCatalogUrl(alternateUrl.toString()))) {
+            return true;
+          }
         }
       }
 
@@ -494,15 +519,27 @@ const ServiceCatalog = AmpState.extend({
     this._unloadServiceUrls(serviceGroup, unusedUrls);
 
     serviceHostmap.forEach((serviceObj) => {
-      const service = this._getUrl(serviceObj.name, serviceGroup);
+      // Derive canonical match hosts once during ingestion so repeated lookups can reject
+      // impossible entries without changing URL normalization or inherited-port behavior.
+      const normalizedServiceObj = {
+        ...serviceObj,
+        matchHost: getMatchHost(serviceObj.defaultUrl),
+        hosts: (serviceObj.hosts || []).map((host) => ({
+          ...host,
+          matchHost: getMatchHost(serviceObj.defaultUrl, host.host),
+        })),
+      };
+      const service = this._getUrl(normalizedServiceObj.name, serviceGroup);
 
       if (service) {
-        service.defaultUrl = serviceObj.defaultUrl;
-        service.hosts = serviceObj.hosts || [];
+        // Keep the trusted prefilter metadata synchronized with refreshed catalog URLs.
+        service.matchHost = normalizedServiceObj.matchHost;
+        service.defaultUrl = normalizedServiceObj.defaultUrl;
+        service.hosts = normalizedServiceObj.hosts;
       } else {
         this._loadServiceUrls(serviceGroup, [
           new ServiceUrl({
-            ...serviceObj,
+            ...normalizedServiceObj,
           }),
         ]);
       }
