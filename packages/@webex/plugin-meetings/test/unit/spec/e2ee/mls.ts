@@ -347,6 +347,8 @@ describe('plugin-meetings', () => {
         fakeE2ee.securityCode.returns('CODE-2');
         callbacks.addRoster([]);
         callbacks.addRoster([]);
+        callbacks.removeRoster(['d1']);
+        callbacks.removeRoster(['d1']);
         assert.calledOnceWithExactly(spy, {code: 'CODE-2'});
       });
     });
