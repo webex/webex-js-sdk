@@ -1,0 +1,438 @@
+{
+  "$schema": "./schemas/repo-context.schema.json",
+  "version": 1,
+  "repository": {
+    "name": "@webex/internal-plugin-flag",
+    "purpose": "Internal Webex JS SDK plugin registered as webex.internal.flag. Importing it imports @webex/internal-plugin-conversation and @webex/internal-plugin-device for their side effects and registers the Flag plugin with an empty config under the flag key. Flag creates and lists activity flags through catalog service userApps (resource /flags), archives, unflags, or deletes a flag through its url, and maps flags to activities with one bulk_activities_fetch request per conversation URL whose prefix the service catalog names as service conversation."
+  },
+  "commands": {
+    "install": "yarn install",
+    "compile": "yarn workspace @webex/internal-plugin-flag build:src",
+    "build": "yarn workspace @webex/internal-plugin-flag build",
+    "unit-test": "yarn workspace @webex/internal-plugin-flag test:unit",
+    "integration-test": "yarn workspace @webex/internal-plugin-flag test:browser",
+    "lint": "yarn workspace @webex/internal-plugin-flag test:style",
+    "deploy": "yarn workspace @webex/internal-plugin-flag deploy:npm"
+  },
+  "public_interfaces": [
+    {
+      "name": "@webex/internal-plugin-flag package barrel",
+      "kind": "package_export",
+      "source": "src/index.js",
+      "entrypoints": [
+        "import Flag from '@webex/internal-plugin-flag'"
+      ],
+      "audience": "sibling packages webex-server and recipe-private-web-client (import for side effect); any application that imports the package",
+      "notes": "Importing the package imports @webex/internal-plugin-conversation and @webex/internal-plugin-device for their side effects and registers Flag as internal plugin 'flag' with config {flag: {}}. Only the default export exists."
+    },
+    {
+      "name": "webex.internal.flag methods",
+      "kind": "plugin_api",
+      "source": "src/flag.js",
+      "entrypoints": [
+        "webex.internal.flag.archive(flag, options)",
+        "webex.internal.flag.create(activity, options)",
+        "webex.internal.flag.delete(flag, options)",
+        "webex.internal.flag.list(options)",
+        "webex.internal.flag.mapToActivities(flags)",
+        "webex.internal.flag.unflag(flag, options)"
+      ],
+      "audience": "applications built on the Webex JS SDK",
+      "notes": "create, archive, unflag, and delete reject when the required url field is missing. The options argument is nested under a request key and does not change the request. mapToActivities sends a bulk fetch only to conversation hosts named by the service catalog. See src/docs/README.md."
+    },
+    {
+      "name": "package scripts",
+      "kind": "npm_scripts",
+      "source": "package.json",
+      "entrypoints": [
+        "build",
+        "build:src",
+        "test:style",
+        "test:unit",
+        "test:browser",
+        "deploy:npm"
+      ],
+      "audience": "contributors and CI",
+      "notes": "Do not use the aggregate test script; it calls test:integration, which is not defined. test:unit needs this package's build output and the sibling packages' build output. deploy:npm is run by the repository release workflow (.github/workflows/deploy.yml) with public access, the branch dist-tag, and an npm token; a direct run uses Yarn's default access and dist-tag, the registry from the root .yarnrc.yml npmRegistryServer, and the caller's own npm auth."
+    }
+  ],
+  "source_of_truth": [
+    {
+      "surface": "Flag plugin implementation",
+      "paths": [
+        "src/index.js",
+        "src/flag.js",
+        "src/config.js"
+      ],
+      "generated_artifacts": [
+        "dist"
+      ],
+      "refresh_with": [
+        "yarn workspace @webex/internal-plugin-flag build"
+      ],
+      "validate_with": [
+        "yarn workspace @webex/internal-plugin-flag build",
+        "yarn workspace @webex/internal-plugin-flag test:unit",
+        "yarn workspace @webex/internal-plugin-flag test:style"
+      ]
+    },
+    {
+      "surface": "module specification",
+      "paths": [
+        "src/docs/README.md"
+      ],
+      "generated_artifacts": [],
+      "refresh_with": [
+        "update alongside the behavior change in the same commit"
+      ],
+      "validate_with": [
+        "spec-validator on an independent runtime"
+      ]
+    }
+  ],
+  "generated_artifacts": [
+    {
+      "path": "dist",
+      "generated_from": "src",
+      "refresh_with": "yarn workspace @webex/internal-plugin-flag build"
+    },
+    {
+      "path": ".sdd/templates/repo-standards/template-map.json",
+      "generated_from": "WebexTools/repo-standards@d89a7fe59126ae3ad9bac9ca352aa7f12b4c85dc",
+      "refresh_with": "Read from the JS SDK root .sdd/templates/repo-standards (Repo Standards 0.3.0 snapshot from PR 5246). Only to run the Repo Annotation checkers and validator, a temporary local symlink at .sdd/templates/repo-standards points there; it is never committed, and templates are never copied into the package."
+    }
+  ],
+  "validation_matrix": [
+    {
+      "paths": [
+        "src/**"
+      ],
+      "minimum": [
+        "yarn workspace @webex/internal-plugin-flag build",
+        "yarn workspace @webex/internal-plugin-flag test:unit",
+        "yarn workspace @webex/internal-plugin-flag test:style"
+      ],
+      "recommended": []
+    },
+    {
+      "paths": [
+        "src/flag.js"
+      ],
+      "minimum": [
+        "yarn workspace @webex/internal-plugin-flag build",
+        "yarn workspace @webex/internal-plugin-flag test:unit",
+        "yarn workspace @webex/internal-plugin-flag test:style"
+      ],
+      "recommended": [
+        "add a unit case for each changed request shape or resolved value, because only the url guards and the mapToActivities host check have unit cases today",
+        "yarn workspace @webex/internal-plugin-flag test:browser"
+      ]
+    },
+    {
+      "paths": [
+        "package.json"
+      ],
+      "minimum": [
+        "yarn workspace @webex/internal-plugin-flag build",
+        "yarn workspace @webex/internal-plugin-flag test:unit",
+        "yarn workspace @webex/internal-plugin-flag test:style"
+      ],
+      "recommended": [
+        "yarn workspace @webex/internal-plugin-flag test:browser"
+      ]
+    }
+  ],
+  "change_impact": [
+    {
+      "paths": [
+        "src/flag.js"
+      ],
+      "affects": [
+        "requests to the user-apps flags service, flag URLs, and conversation bulk_activities_fetch",
+        "the values resolved to callers of webex.internal.flag"
+      ],
+      "refresh_with": [
+        "yarn workspace @webex/internal-plugin-flag build"
+      ],
+      "validate_with": [
+        "yarn workspace @webex/internal-plugin-flag build",
+        "yarn workspace @webex/internal-plugin-flag test:unit",
+        "yarn workspace @webex/internal-plugin-flag test:style"
+      ],
+      "avoid_direct_edits": [
+        "dist"
+      ],
+      "notes": "Keep the url guards (INV-002) and the conversation-host check before the bulk fetch (INV-003) with their unit cases."
+    },
+    {
+      "paths": [
+        "src/index.js",
+        "src/config.js"
+      ],
+      "affects": [
+        "the package export",
+        "the internal plugin name 'flag'",
+        "webex.config.flag",
+        "the conversation and device plugins registered by the import"
+      ],
+      "refresh_with": [
+        "yarn workspace @webex/internal-plugin-flag build"
+      ],
+      "validate_with": [
+        "yarn workspace @webex/internal-plugin-flag build",
+        "yarn workspace @webex/internal-plugin-flag test:unit",
+        "yarn workspace @webex/internal-plugin-flag test:style"
+      ],
+      "avoid_direct_edits": [
+        "dist"
+      ],
+      "notes": "Renaming the plugin is a breaking change for importers such as webex-server and recipe-private-web-client. The plugin name, namespace Flag, and config key flag must stay aligned (INV-001)."
+    },
+    {
+      "paths": [
+        "package.json"
+      ],
+      "affects": [
+        "the published entry points (main, devMain)",
+        "package scripts and the manifest commands that call them",
+        "runtime dependencies resolved by importers"
+      ],
+      "refresh_with": [
+        "yarn workspace @webex/internal-plugin-flag build"
+      ],
+      "validate_with": [
+        "yarn workspace @webex/internal-plugin-flag build",
+        "yarn workspace @webex/internal-plugin-flag test:unit",
+        "yarn workspace @webex/internal-plugin-flag test:style"
+      ],
+      "avoid_direct_edits": [
+        "dist"
+      ],
+      "notes": "package.json is the native artifact of the published flag-sdk contract; update .sdd/manifest.json commands and docs/getting-started.md when a script changes."
+    }
+  ],
+  "evidence_rules": [
+    {
+      "claim_category": "command_name",
+      "sources": [
+        "package.json"
+      ],
+      "requirement": "The script must exist in package.json scripts.",
+      "notes": "Never cite the aggregate test script or test:integration as a verification command."
+    },
+    {
+      "claim_category": "import_path",
+      "sources": [
+        "src/index.js"
+      ],
+      "requirement": "A binding is public only if exported from src/index.js.",
+      "notes": "Only the default Flag export exists; there are no subpath entry points."
+    },
+    {
+      "claim_category": "behavior_claim",
+      "sources": [
+        "src",
+        "test/unit/spec"
+      ],
+      "requirement": "Ground every behavioral claim in source or unit test evidence.",
+      "notes": "Commit history is not an evidence source for this package. README.md is retained product documentation, not the behavioral authority. The integration spec needs live test users; it was not run during Stage 0."
+    }
+  ],
+  "negative_guidance": [
+    {
+      "rule": "Do not send the mapToActivities bulk fetch to a URL built from flag-item without checking the host against the service catalog.",
+      "why": "The INV-003 check keeps activity URLs from being posted to an unknown host; the unit cases marked SECURITY pin it. archive, unflag, and delete send to flag.url without a host check today; adding one is a separate, tested behavior change."
+    },
+    {
+      "rule": "Do not pass request settings through the options argument of the flag methods.",
+      "why": "The methods nest options under a request key and do not merge it, so headers, qs, and other transport settings there are not applied (MOD-009). The conversation inbound predicates read deferDecrypt from the request's top level, not from the nested object."
+    },
+    {
+      "rule": "Do not describe the README usage line webex.internal.flag.WHATEVER as an API.",
+      "why": "It is a placeholder; the methods are listed in src/docs/README.md. See docs/adr/0001-retain-product-readme.md."
+    },
+    {
+      "rule": "Do not infer a coverage threshold for this package.",
+      "why": "No coverage gate applies: jest-config-legacy sets collectCoverage false and package.json has no coverage script."
+    }
+  ],
+  "confidence_policy": {
+    "high": {
+      "action": "update",
+      "expectation": "Source and unit test evidence both support the change, for example the url guards and the mapToActivities host check."
+    },
+    "medium": {
+      "action": "narrow-scope",
+      "expectation": "Only source evidence or the live integration spec exists, for example the request shapes of create, list, archive, unflag, and delete, and the '200' filter. Pin current behavior with a characterization test before modifying."
+    },
+    "low": {
+      "action": "noop",
+      "expectation": "Neither source nor tests settle the question, for example the user-apps service's paging or status formats. Stop and report the gap."
+    }
+  },
+  "repository_topology": {
+    "main_entrypoints": [
+      {
+        "name": "package barrel",
+        "path": "src/index.js",
+        "purpose": "Imports the conversation and device plugins for their side effects, registers the plugin with its config, and re-exports Flag",
+        "notes": "No subpath exports."
+      }
+    ],
+    "workspace_packages": [
+      {
+        "name": "@webex/internal-plugin-flag",
+        "paths": [
+          "src",
+          "test"
+        ],
+        "notes": "One module; this SDD root is the package directory inside the webex-js-sdk monorepo."
+      }
+    ],
+    "source_surfaces": [
+      {
+        "name": "Flag plugin",
+        "paths": [
+          "src"
+        ],
+        "notes": "index.js, flag.js, config.js. Specified at src/docs/README.md."
+      },
+      {
+        "name": "tests",
+        "paths": [
+          "test/unit/spec",
+          "test/integration/spec"
+        ],
+        "notes": "One Jest spec with nine cases; one live integration spec with six cases collected by test:browser."
+      }
+    ],
+    "generated_surfaces": [
+      {
+        "name": "build output",
+        "paths": [
+          "dist"
+        ],
+        "generated_from": "src",
+        "refresh_with": "yarn workspace @webex/internal-plugin-flag build",
+        "notes": "Produced by webex-legacy-tools. Do not edit by hand."
+      },
+      {
+        "name": "repo-standards template map",
+        "paths": [
+          ".sdd/templates/repo-standards"
+        ],
+        "generated_from": "WebexTools/repo-standards@d89a7fe59126ae3ad9bac9ca352aa7f12b4c85dc",
+        "refresh_with": "Read from the JS SDK root .sdd/templates/repo-standards (Repo Standards 0.3.0 snapshot from PR 5246). Only to run the Repo Annotation checkers and validator, a temporary local symlink at .sdd/templates/repo-standards points there; it is never committed, and templates are never copied into the package.",
+        "notes": "Read from the JS SDK root .sdd/templates/repo-standards (Repo Standards 0.3.0 snapshot from PR 5246). Only to run the Repo Annotation checkers and validator, a temporary local symlink at .sdd/templates/repo-standards points there; it is never committed, and templates are never copied into the package."
+      }
+    ],
+    "validation_entrypoints": [
+      {
+        "name": "unit tests",
+        "command": "yarn workspace @webex/internal-plugin-flag test:unit",
+        "scope": "test/unit/spec",
+        "notes": "Jest, through the test:unit script. Build first: the spec imports the package by name, which resolves to dist/."
+      },
+      {
+        "name": "integration tests",
+        "command": "yarn workspace @webex/internal-plugin-flag test:browser",
+        "scope": "test/integration/spec",
+        "notes": "Mocha specs with Chai assertions, run in browsers by the karma runner through the test:browser script, integration files only (no test:integration script exists). Build first: the spec imports the package by name, which resolves to dist/; the unit spec is not collected. Needs Chrome and Firefox (the karma-browsers default), network access, and the WEBEX_CLIENT_ID and WEBEX_CLIENT_SECRET environment variables required by the workspace test-users helper."
+      },
+      {
+        "name": "lint",
+        "command": "yarn workspace @webex/internal-plugin-flag test:style",
+        "scope": "src",
+        "notes": "eslint via the local root .eslintrc.js; *.md files are ignored by the shared config."
+      }
+    ],
+    "sync_paths": [
+      {
+        "source": "WebexTools/repo-standards@d89a7fe59126ae3ad9bac9ca352aa7f12b4c85dc",
+        "targets": [
+          ".sdd/templates/repo-standards"
+        ],
+        "mechanism": "Read from the JS SDK root .sdd/templates/repo-standards (Repo Standards 0.3.0 snapshot from PR 5246). Only to run the Repo Annotation checkers and validator, a temporary local symlink at .sdd/templates/repo-standards points there; it is never committed, and templates are never copied into the package.",
+        "notes": "Read from the JS SDK root .sdd/templates/repo-standards (Repo Standards 0.3.0 snapshot from PR 5246). Only to run the Repo Annotation checkers and validator, a temporary local symlink at .sdd/templates/repo-standards points there; it is never committed, and templates are never copied into the package."
+      }
+    ]
+  },
+  "folder_readme_contract": {
+    "required_sections": [
+      "purpose",
+      "boundaries",
+      "key-files",
+      "common-tasks"
+    ],
+    "rules": [
+      "Orient the reader before describing detail.",
+      "Link to the module specification rather than duplicating it."
+    ],
+    "example_policy": "Examples are allowed only when verified against src/ or test/.",
+    "fallback": "Omit a section rather than inventing content; report unresolved facts as gaps."
+  },
+  "regression_feedback_rules": [
+    {
+      "trigger": "mapToActivities returns fewer activities than expected or sends a request to an unexpected host.",
+      "required_followups": [
+        "Add a unit case in test/unit/spec/flag.js that stubs webex.internal.services for the case",
+        "Update INV-003 and INV-005 in src/docs/README.md"
+      ],
+      "notes": "The '200' filter and multi-conversation grouping have no unit case today."
+    },
+    {
+      "trigger": "A flag method sends a different request or resolves a different value.",
+      "required_followups": [
+        "Add a unit case that asserts the webex.request arguments and the resolved value",
+        "Update the Requirements and Protocol and wire format sections in src/docs/README.md"
+      ],
+      "notes": "Only the live integration spec exercises the request shapes today."
+    }
+  ],
+  "surface_owners": [
+    {
+      "surface": "module implementation and specification",
+      "owner": "@webex/web-sdk",
+      "edit_boundary": "The monorepo .github/CODEOWNERS has no entry for packages/@webex/internal-plugin-flag, so the default * rule applies."
+    }
+  ],
+  "do_not_edit": [
+    "dist",
+    ".sdd/templates/repo-standards"
+  ],
+  "marker_scopes": {
+    "sdd": [
+      ".sdd/manifest.json",
+      "src/docs/README.md",
+      "docs"
+    ]
+  },
+  "fallback_rules": [
+    "When source and tests disagree, code is the referee and the disagreement is recorded rather than silently resolved.",
+    "When neither source nor tests settle a question, report it as a gap instead of inferring.",
+    "Commit history is not a valid rationale source for this package."
+  ],
+  "downstream_context_pack": {
+    "required_human_surfaces": [
+      "README.md",
+      "docs/index.md",
+      "docs/architecture.md",
+      "src/docs/README.md"
+    ],
+    "required_agent_operational_surfaces": [
+      "AGENTS.md",
+      "docs/specs/README.md"
+    ],
+    "required_machine_readable_surface": ".sdd/manifest.json",
+    "recommended_machine_readable_sections": [
+      "public_interfaces",
+      "change_impact",
+      "evidence_rules",
+      "negative_guidance",
+      "confidence_policy",
+      "repository_topology",
+      "folder_readme_contract",
+      "regression_feedback_rules"
+    ]
+  }
+}

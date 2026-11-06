@@ -1,0 +1,381 @@
+{
+  "manifest_version": 1,
+  "repository": {
+    "name": "@webex/internal-plugin-flag",
+    "purpose": "Internal Webex JS SDK plugin registered as webex.internal.flag. Importing it imports @webex/internal-plugin-conversation and @webex/internal-plugin-device for their side effects and registers the Flag plugin with an empty config under the flag key. Flag creates and lists activity flags through catalog service userApps (resource /flags), archives, unflags, or deletes a flag through its url, and maps flags to activities with one bulk_activities_fetch request per conversation URL whose prefix the service catalog names as service conversation.",
+    "category": "cat2-legacy",
+    "primary_languages": [
+      "javascript"
+    ]
+  },
+  "topology": "Single-repo",
+  "commands": {
+    "install": {
+      "command": "yarn install",
+      "source_file": "package.json",
+      "role": "install"
+    },
+    "compile": {
+      "command": "yarn workspace @webex/internal-plugin-flag build:src",
+      "source_file": "package.json",
+      "role": "compile"
+    },
+    "build": {
+      "command": "yarn workspace @webex/internal-plugin-flag build",
+      "source_file": "package.json",
+      "role": "package"
+    },
+    "unit-test": {
+      "command": "yarn workspace @webex/internal-plugin-flag test:unit",
+      "source_file": "package.json",
+      "role": "unit-test"
+    },
+    "integration-test": {
+      "command": "yarn workspace @webex/internal-plugin-flag test:browser",
+      "source_file": "package.json",
+      "role": "integration-test"
+    },
+    "lint": {
+      "command": "yarn workspace @webex/internal-plugin-flag test:style",
+      "source_file": "package.json",
+      "role": "lint"
+    },
+    "deploy": {
+      "command": "yarn workspace @webex/internal-plugin-flag deploy:npm",
+      "source_file": "package.json",
+      "role": "deploy"
+    }
+  },
+  "toolchain": [
+    {
+      "name": "node",
+      "version": "22.14",
+      "origin": "human-declared",
+      "declared_by": "akulakum@cisco.com (bootstrap instruction to use Node 22.14.0; the workspace root AGENTS.md requires Node 22.14 for development; the root package.json engines value 18.x conflicts with it, and the owner chose to follow the root AGENTS.md; consumer floor: the node-consumer-floor entry and docs/getting-started.md Prerequisites)"
+    },
+    {
+      "name": "node-consumer-floor",
+      "version": ">=18",
+      "origin": "repo-config",
+      "source_file": "package.json"
+    },
+    {
+      "name": "yarn",
+      "version": "3.4.1",
+      "origin": "human-declared",
+      "declared_by": "akulakum@cisco.com (workspace setup evidence: the JS SDK root package.json packageManager yarn@3.4.1 and the root .yarnrc.yml yarnPath .yarn/releases/yarn-3.4.1.cjs; provided through Corepack per the root CONTRIBUTING.md; root files are not cited as source_file because they sit outside this package)"
+    },
+    {
+      "name": "babel",
+      "version": "^7.17.10",
+      "origin": "repo-config",
+      "source_file": "package.json"
+    },
+    {
+      "name": "eslint",
+      "version": "^8.24.0",
+      "origin": "repo-config",
+      "source_file": "package.json"
+    },
+    {
+      "name": "prettier",
+      "version": "^2.7.1",
+      "origin": "repo-config",
+      "source_file": "package.json"
+    },
+    {
+      "name": "mocha",
+      "version": "^10.2.0",
+      "origin": "repo-config",
+      "source_file": "package.json"
+    }
+  ],
+  "registries": [
+    {
+      "name": "npm-public",
+      "type": "npm",
+      "host": "registry.npmjs.org",
+      "egress_required": true,
+      "origin": "human-declared",
+      "declared_by": "akulakum@cisco.com (workspace setup evidence: the JS SDK root .yarnrc.yml npmRegistryServer https://registry.npmjs.org; no auth variables; the Yarn cache is not committed, so yarn install needs network access)"
+    }
+  ],
+  "tests": {
+    "unit": {
+      "command_ref": "unit-test",
+      "dir": "test/unit/spec",
+      "framework": "jest"
+    },
+    "integration": {
+      "command_ref": "integration-test",
+      "dir": "test/integration/spec",
+      "framework": "mocha",
+      "external_deps": [
+        "runner: karma, selected by the integration-test command (test:browser script); karma frameworks browserify, mocha, chai",
+        "browsers: Chrome and Firefox (legacy-tools karma-browsers default)",
+        "network access",
+        "env: WEBEX_CLIENT_ID, WEBEX_CLIENT_SECRET (test-users helper)"
+      ]
+    }
+  },
+  "quality_gates": {
+    "code_coverage": {
+      "origin": "none",
+      "declared_by": "akulakum@cisco.com via bootstrap questionnaire (delegated check: jest.config.js re-exports @webex/jest-config-legacy, which sets collectCoverage false and no coverageThreshold; the unit-test command runs the jest runner; package.json defines no coverage script)"
+    }
+  },
+  "coverage_status_definitions": {
+    "specced": ">=80% public surface specced, drift <5% - spec is authoritative",
+    "partial": "40-80% specced - spec is a hint, cross-check code",
+    "untracked": "<40% specced - code is the source of truth"
+  },
+  "spec_source_policy": {
+    "mode": "keep-separate",
+    "migrated_source_disposition": "retain",
+    "disposition_decided_by": "akulakum@cisco.com",
+    "disposition_decided_at": "2026-10-12T10:57:23Z",
+    "decided_by": "akulakum@cisco.com",
+    "decided_at": "2026-10-12T10:57:23Z",
+    "decision_record": "docs/adr/0001-retain-product-readme.md"
+  },
+  "spec_sources": [],
+  "modules": [
+    {
+      "path": "src",
+      "canonical_spec": "src/docs/README.md",
+      "coverage_status": "Partial",
+      "coverage_evidence": "Field coverage 93.3% (14/15) assessed 2026-10-12 by the generator; critical field coverage 8/8. The one WEAK field is test strategy: 9 unit tests cover the four url-required rejections and five mapToActivities host-validation cases; no unit test covers the request shapes or resolved values of create, list, archive, unflag, or delete, the catalog wait, the '200' filter, several conversation groups, or a failed bulk fetch; the six integration cases need live test users and were not run; no characterization baseline exists. Independent validation is pass-with-warnings, assessed 2026-10-15 by validator current-session (round 7 at fbb8720), as recorded in the module spec Validation status row. Held at Partial: weak test strategy, no characterization baseline, and no spec-drift record.",
+      "last_assessed": "2026-10-12",
+      "contracts": {
+        "provides": [
+          "flag-sdk"
+        ],
+        "requires": [
+          "webex-core-plugin-host",
+          "conversation-sdk",
+          "webex-device-registration",
+          "user-apps-flags-http",
+          "conversation-bulk-activities-http"
+        ]
+      },
+      "section_profile": {
+        "has_tiers": false,
+        "has_ui": false,
+        "crosses_service_boundaries": true,
+        "holds_client_state": false,
+        "enforces_domain_rules": true,
+        "is_concurrent_async": true,
+        "owns_persistence": false,
+        "stateful_transitions": false,
+        "exposes_wire_protocol": true,
+        "ui_multi_screen": false,
+        "large_data_model": false,
+        "returns_caller_errors": true,
+        "module_specific_conventions": true,
+        "published_package": true,
+        "embedded_in_host": false,
+        "has_design_tradeoff": true,
+        "resolved_by": "claude-cowork (code evidence; bootstrap questionnaire)",
+        "resolved_at": "2026-10-12T10:57:23Z",
+        "has_submodules": false,
+        "has_submodules_computed_by": "scripts/module_tree.py",
+        "has_submodules_computed_at": "2026-10-12T11:03:13Z"
+      }
+    }
+  ],
+  "contract_catalog": {
+    "index_path": "docs/architecture.md",
+    "definitions": {
+      "flag-sdk": {
+        "kind": "sdk",
+        "publication": "published",
+        "source_kind": "repository-path",
+        "source": "package.json",
+        "summary": "Published npm package. main is dist/index.js and devMain is src/index.js. Importing the package imports @webex/internal-plugin-conversation and @webex/internal-plugin-device for their side effects and registers Flag as the internal plugin 'flag' with config {flag: {}} and empty payload-transformer predicate and transform lists. The barrel src/index.js exports only Flag as default. Per-method behavior is in src/docs/README.md."
+      },
+      "webex-core-plugin-host": {
+        "kind": "sdk",
+        "publication": "internal",
+        "source_kind": "external",
+        "source": "@webex/webex-core (WebexPlugin, registerInternalPlugin, webex.request, webex.internal.services)",
+        "summary": "Host contract consumed by Flag: WebexPlugin.extend supplies this.webex, this.logger, this.config, and request(), which delegates to webex.request; registerInternalPlugin installs the plugin and merges its config; mapToActivities calls webex.internal.services.waitForCatalog('postauth') and getServiceFromUrl."
+      },
+      "conversation-sdk": {
+        "kind": "sdk",
+        "publication": "internal",
+        "source_kind": "external",
+        "source": "@webex/internal-plugin-conversation (webex.internal.conversation and its registered payload transforms)",
+        "summary": "Imported for its registration side effect in src/index.js. Its inbound payload predicates, including the one on body.multistatus, can run on this package's responses through webex-core's PayloadTransformerInterceptor when it is in the interceptor set (default set; see src/docs/README.md Dependencies); create reads the conversation activity fields url and target.url. Owned by @webex/internal-plugin-conversation."
+      },
+      "webex-device-registration": {
+        "kind": "sdk",
+        "publication": "internal",
+        "source_kind": "external",
+        "source": "@webex/internal-plugin-device (packages/@webex/internal-plugin-device/src/docs/README.md)",
+        "summary": "Imported for its registration side effect in src/index.js only; src/ calls no device API. Owned and specified by @webex/internal-plugin-device."
+      },
+      "user-apps-flags-http": {
+        "kind": "http",
+        "publication": "internal",
+        "source_kind": "external",
+        "source": "User-apps flags service REST API (catalog service 'userApps', resource /flags)",
+        "summary": "Consumed, not served. create sends POST /flags with body keys conversation-url (omitted when activity.target.url is undefined), flag-item, and state flagged; list sends GET /flags with qs state flagged and reads body.items; archive and unflag send PUT to a flag's url with state archived or unflagged; delete sends DELETE to a flag's url. Fields read by this package are listed under Protocol and wire format in src/docs/README.md."
+      },
+      "conversation-bulk-activities-http": {
+        "kind": "http",
+        "publication": "internal",
+        "source_kind": "external",
+        "source": "Conversation service bulk_activities_fetch endpoint on a catalog 'conversation' URL",
+        "summary": "Consumed, not served. mapToActivities sends POST <conversation URL>/bulk_activities_fetch with body {activityUrls} and reads body.multistatus[].status and data.activity."
+      }
+    }
+  },
+  "spec_policy": {
+    "require_what_and_why": true,
+    "require_provenance": true,
+    "protected_specs": [
+      "src/docs/README.md"
+    ]
+  },
+  "validation": {
+    "generator_runtime": "claude-cowork",
+    "generator_model": "claude-opus-5-5",
+    "generator_runtime_source": "host-metadata",
+    "generator_run_id": "spark-853128-flag-sdd-stage0-2026-10-12",
+    "minimum_independence": "different-runtime",
+    "blocking_severities": [
+      "Blocking"
+    ],
+    "base_ref": "next",
+    "head_ref": "FLAG_INTERNAL_PLUGIN_SDD",
+    "validator_runtime": "current-session",
+    "validator_runtime_source": "invocation-input",
+    "validator_run_id": "spark-853128-flag-spec-validator-2026-10-15-round-7",
+    "runtime_fallback_tier": "different-runtime",
+    "source_commit": "fbb8720bac63aaaca2190a34981404d0179b4559"
+  },
+  "layout": {
+    "sdd_root": ".sdd",
+    "docs_root": "docs",
+    "agent_entry_path": "AGENTS.md",
+    "standing_docs_root": "docs",
+    "spec_index_path": "docs/specs/README.md",
+    "module_docs_strategy": "source-local",
+    "module_docs_relative_path": "docs/README.md",
+    "module_docs_decision": {
+      "basis": "repo-standards-default",
+      "reason": "No module-local documentation existed. The source-local default gives src/docs/README.md. the lint command lints src/ and the shared eslint config ignores *.md, and build:src processes -js -ts only, so Markdown under src/ does not enter the build output.",
+      "decided_by": "akulakum@cisco.com (bootstrap questionnaire)",
+      "decided_at": "2026-10-12T10:57:23Z"
+    },
+    "repo_context_decision": {
+      "path": ".repo-context.json",
+      "schema_path": "schemas/repo-context.schema.json",
+      "action": "create",
+      "schema_action": "create",
+      "reason": "Neither the operational context nor its schema existed in this package. The context is created from package evidence and the schema is copied from packages/@webex/common/schemas/repo-context.schema.json (Repo Standards 0.3.0).",
+      "decided_by": "akulakum@cisco.com (bootstrap questionnaire)",
+      "decided_at": "2026-10-12T10:57:23Z"
+    },
+    "artifact_decisions": [
+      {
+        "path": "docs/service.md",
+        "action": "omit",
+        "reason": "Library package, not a deployable service. package.json has no start script, container, or deployment descriptor.",
+        "decided_by": "claude-cowork (code evidence)",
+        "decided_at": "2026-10-12T10:57:23Z"
+      },
+      {
+        "path": "mkdocs.yml",
+        "action": "omit",
+        "reason": "No package-level documentation site exists. Documentation publishing stays with the workspace.",
+        "decided_by": "akulakum@cisco.com (bootstrap questionnaire)",
+        "decided_at": "2026-10-12T10:57:23Z"
+      },
+      {
+        "path": "api-specs/openapi.yaml",
+        "action": "omit",
+        "reason": "The package serves no HTTP routes. It consumes the user-apps flags and conversation bulk-fetch APIs through webex.request, recorded as external contracts; its published surface is the npm export described by flag-sdk.",
+        "decided_by": "claude-cowork (code evidence)",
+        "decided_at": "2026-10-12T10:57:23Z"
+      },
+      {
+        "path": "SECURITY.md",
+        "action": "omit",
+        "reason": "Neither this package nor the workspace root has a SECURITY.md; a security policy is outside the scope of this package's documentation and is not created here.",
+        "decided_by": "akulakum@cisco.com (bootstrap questionnaire)",
+        "decided_at": "2026-10-12T10:57:23Z"
+      },
+      {
+        "path": "CONTRIBUTING.md",
+        "action": "omit",
+        "reason": "Contribution instructions are owned at the workspace root and linked from this package README.md.",
+        "decided_by": "akulakum@cisco.com (bootstrap questionnaire)",
+        "decided_at": "2026-10-12T10:57:23Z"
+      },
+      {
+        "path": "CHANGELOG.md",
+        "action": "omit",
+        "reason": "Changelog generation is owned at the workspace root. This package has no changelog file.",
+        "decided_by": "akulakum@cisco.com (bootstrap questionnaire)",
+        "decided_at": "2026-10-12T10:57:23Z"
+      },
+      {
+        "path": "CTO_CHECKLIST.yml",
+        "action": "omit",
+        "reason": "The CTO readiness checklist applies to deployable services. This package is a library.",
+        "decided_by": "claude-cowork (code evidence)",
+        "decided_at": "2026-10-12T10:57:23Z"
+      },
+      {
+        "path": "schemas/cto-checklist.schema.json",
+        "action": "omit",
+        "reason": "Omitted together with CTO_CHECKLIST.yml.",
+        "decided_by": "claude-cowork (code evidence)",
+        "decided_at": "2026-10-12T10:57:23Z"
+      }
+    ],
+    "template_roots": {
+      "canonical": ".sdd/templates/repo-standards"
+    },
+    "repo_skills_root": ".sdd/skills",
+    "contract_index_path": "docs/architecture.md"
+  },
+  "coverage_ratchet": {
+    "enabled": true,
+    "waivers": []
+  },
+  "substrate": {
+    "source": "WebexTools/repo-standards@d89a7fe59126ae3ad9bac9ca352aa7f12b4c85dc",
+    "consumed": [
+      "@webex/eslint-config-legacy via .eslintrc.js",
+      "@webex/babel-config-legacy via babel.config.js",
+      "@webex/jest-config-legacy via jest.config.js",
+      "@webex/legacy-tools build and test runner via package.json",
+      "package README.md",
+      "Repo Standards 0.3.0 templates at the JS SDK root .sdd/templates/repo-standards; the Repo Annotation checkers and validator reach them through a temporary, uncommitted local symlink at .sdd/templates/repo-standards"
+    ],
+    "compliance_tier": "baseline"
+  },
+  "section_profiles": {
+    "repo": {
+      "owns_datastore": false,
+      "holds_client_state": false,
+      "components_interact": false,
+      "domain_data_across_components": false,
+      "caches_data": false,
+      "observability_convention": false,
+      "deploys_to_infra": false,
+      "shared_base_libs": true,
+      "is_monorepo": false,
+      "multi_platform": true,
+      "published_package": true,
+      "embedded_in_host": false,
+      "cross_repo_deps_material": true,
+      "security_arch_warranted": true,
+      "exposes_commands_or_artifacts": true
+    },
+    "resolved_by": "claude-cowork (code evidence; bootstrap questionnaire)",
+    "resolved_at": "2026-10-12T10:57:23Z"
+  }
+}
