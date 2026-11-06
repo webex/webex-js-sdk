@@ -32,8 +32,42 @@ jobs:
     name: Validate Pull Request
     runs-on: ubuntu-latest
 
+    permissions:
+      pull-requests: read
+
+    outputs:
+      documentation-only: ${{ steps.documentation.outputs.documentation-only }}
+
     steps:
+      # The pattern mirrors DOCUMENTATION_PATHS in
+      # packages/tools/package/src/utils/yarn/yarn.changes.ts, so a change set
+      # that cannot produce a release cannot require validation here either.
+      # GitHub lists these files relative to the merge base, so commits added to
+      # the base branch after the pull request branched are never counted.
+      - id: documentation
+        name: Detect Documentation Only Changes
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: |
+          DOCUMENTATION='\.mdx?$|(^|/)(ai-docs|docs|\.sdd)/|(^|/)\.repo-context\.json$|(^|/)schemas/repo-context\.schema\.json$|^documentation/'
+
+          FILES=$(gh api --paginate \
+            'repos/${{ github.repository }}/pulls/${{ github.event.pull_request.number }}/files' \
+            --jq '.[].filename')
+
+          RELEASABLE=$(grep -Ev "$DOCUMENTATION" <<< "$FILES" || true)
+
+          if [ -n "$RELEASABLE" ]
+          then
+            echo 'change set affects a release, validating'
+            echo 'documentation-only=false' >> $GITHUB_OUTPUT
+          else
+            echo 'change set is documentation only, skipping tests'
+            echo 'documentation-only=true' >> $GITHUB_OUTPUT
+          fi
+
       - name: Validate Labels
+        if: steps.documentation.outputs.documentation-only != 'true'
         run: |
           HEAD_REPO=${{ github.event.pull_request.head.repo.full_name }}
           BASE_REPO=${{ github.event.pull_request.base.repo.full_name }}
@@ -57,6 +91,8 @@ jobs:
   generate-package-matrix:
     name: Determine Changed Packages
     needs: validate
+    # Skipping this skips every test job that needs its matrix.
+    if: needs.validate.outputs.documentation-only != 'true'
     runs-on: ubuntu-latest
 
     outputs:
@@ -384,7 +420,7 @@ jobs:
   test-e2e:
     name: Test - E2E
     needs: validate
-    if: contains(github.event.pull_request.labels.*.name, 'test_e2e')
+    if: needs.validate.outputs.documentation-only != 'true' && contains(github.event.pull_request.labels.*.name, 'test_e2e')
     uses: ./.github/workflows/e2e.yml
     with:
       ref: ${{ github.event.pull_request.head.sha }}
