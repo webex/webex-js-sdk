@@ -37,6 +37,7 @@ import {
   EVENT_TRIGGERS,
   DESTINATION_TYPE,
   INITIAL_REGISTRATION_STATUS,
+  MEETING_REMOVED_REASON,
 } from '../../../../src/constants';
 import CaptchaError from '@webex/plugin-meetings/src/common/errors/captcha-error';
 import {forEach} from 'lodash';
@@ -1636,7 +1637,7 @@ describe('plugin-meetings', () => {
             it('destroy any meeting that has no active locus url if keepOnlyLocusMeetings is not defined', async () => {
               await webex.meetings.syncMeetings();
               assert.calledOnce(webex.meetings.request.getActiveMeetings);
-              assert.calledTwice(webex.meetings.meetingCollection.getAll);
+              assert.callCount(webex.meetings.meetingCollection.getAll, 3);
               assert.calledWith(destroySpy, meetingCollectionMeetings.noLongerValidLocusMeeting);
               assert.calledWith(destroySpy, meetingCollectionMeetings.otherNonLocusMeeting1);
               assert.calledWith(destroySpy, meetingCollectionMeetings.otherNonLocusMeeting2);
@@ -1648,7 +1649,7 @@ describe('plugin-meetings', () => {
             it('destroy any meeting that has no active locus url if keepOnlyLocusMeetings === true', async () => {
               await webex.meetings.syncMeetings({keepOnlyLocusMeetings: true});
               assert.calledOnce(webex.meetings.request.getActiveMeetings);
-              assert.calledTwice(webex.meetings.meetingCollection.getAll);
+              assert.callCount(webex.meetings.meetingCollection.getAll, 3);
               assert.calledWith(destroySpy, meetingCollectionMeetings.noLongerValidLocusMeeting);
               assert.calledWith(destroySpy, meetingCollectionMeetings.otherNonLocusMeeting1);
               assert.calledWith(destroySpy, meetingCollectionMeetings.otherNonLocusMeeting2);
@@ -1660,11 +1661,82 @@ describe('plugin-meetings', () => {
             it('destroy any LOCUS meetings that have no active locus url if keepOnlyLocusMeetings === false', async () => {
               await webex.meetings.syncMeetings({keepOnlyLocusMeetings: false});
               assert.calledOnce(webex.meetings.request.getActiveMeetings);
-              assert.calledTwice(webex.meetings.meetingCollection.getAll);
+              assert.callCount(webex.meetings.meetingCollection.getAll, 3);
               assert.calledWith(destroySpy, meetingCollectionMeetings.noLongerValidLocusMeeting);
               assert.callCount(destroySpy, 1);
 
               assert.calledOnce(MeetingUtil.cleanUp);
+            });
+
+            it('protect meetings with no locusUrl but active deferJoin from cleanup during syncMeetings', async () => {
+              const meetingWithActiveDeferJoin = {
+                locusUrl: null,
+                deferJoin: new Promise(() => {}),
+                sendCallAnalyzerMetrics: sinon.stub(),
+              };
+              const meetingWithoutDeferJoin = {
+                locusUrl: null,
+                deferJoin: undefined,
+                sendCallAnalyzerMetrics: sinon.stub(),
+              };
+
+              webex.meetings.meetingCollection.getAll = sinon.stub().returns({
+                protectedMeeting: meetingWithActiveDeferJoin,
+                unprotectedMeeting: meetingWithoutDeferJoin,
+              });
+              webex.meetings.request.getActiveMeetings = sinon.stub().returns(
+                Promise.resolve({
+                  loci: [],
+                })
+              );
+
+              await webex.meetings.syncMeetings({keepOnlyLocusMeetings: true});
+
+              // Only the unprotected meeting should be destroyed
+              assert.calledOnceWithExactly(
+                destroySpy,
+                meetingWithoutDeferJoin,
+                MEETING_REMOVED_REASON.NO_MEETINGS_TO_SYNC
+              );
+              assert.notCalled(webex.meetings.destroy.withArgs(meetingWithActiveDeferJoin));
+            });
+
+            it('destroy meetings with no locusUrl when deferJoin settles', async () => {
+              let deferJoinResolve;
+              const meetingWithSettledDeferJoin = {
+                locusUrl: null,
+                deferJoin: undefined,
+                sendCallAnalyzerMetrics: sinon.stub(),
+              };
+              const deferJoin = new Promise((resolve) => {
+                deferJoinResolve = resolve;
+              }).finally(() => {
+                meetingWithSettledDeferJoin.deferJoin = undefined;
+              });
+              meetingWithSettledDeferJoin.deferJoin = deferJoin;
+
+              webex.meetings.meetingCollection.getAll = sinon.stub().returns({
+                meeting: meetingWithSettledDeferJoin,
+              });
+              webex.meetings.request.getActiveMeetings = sinon.stub().returns(
+                Promise.resolve({
+                  loci: [],
+                })
+              );
+
+              // Resolve the deferJoin
+              deferJoinResolve();
+              await deferJoin;
+
+              // After deferJoin settles, it should be protected no longer
+              await webex.meetings.syncMeetings({keepOnlyLocusMeetings: true});
+
+              // Now it should be destroyed (after settles, deferJoin becomes undefined/falsy)
+              assert.calledOnceWithExactly(
+                destroySpy,
+                meetingWithSettledDeferJoin,
+                MEETING_REMOVED_REASON.NO_MEETINGS_TO_SYNC
+              );
             });
           });
         });
@@ -2418,7 +2490,8 @@ describe('plugin-meetings', () => {
               eventType: 'locus.difference',
               locusUrl: url1,
             });
-            assert.callCount(webex.meetings.meetingCollection.getByKey, 6);
+            assert.callCount(webex.meetings.meetingCollection.getByKey, 7);
+            assert.calledWith(webex.meetings.meetingCollection.getByKey, 'id', 'meeting-id');
             assert.calledWith(webex.meetings.meetingCollection.getByKey, 'locusUrl', url1);
             assert.calledWith(
               webex.meetings.meetingCollection.getByKey,
@@ -2448,6 +2521,255 @@ describe('plugin-meetings', () => {
               hashTreeMessage: undefined,
             }, sinon.match.func);
           });
+          describe('while meeting info fetches are in progress', () => {
+            const locusEvent = {
+              locus: {id: uuid1, self: {devices: []}, info: {webExMeetingId}},
+              eventType: 'locus.difference',
+              locusUrl: url1,
+            };
+
+            let resolveFetch;
+            let rejectFetch;
+
+            // Uses the real trackMeetingInfoFetch helper from Meetings,
+            // ensuring tests verify the actual implementation
+            const trackFetch = () => {
+              const fetch = {};
+              const fetchPromise = new Promise((resolve, reject) => {
+                fetch.resolve = resolve;
+                fetch.reject = reject;
+              });
+              webex.meetings.trackMeetingInfoFetch(fetchPromise);
+
+              return fetch;
+            };
+
+            beforeEach(() => {
+              ({resolve: resolveFetch, reject: rejectFetch} = trackFetch());
+            });
+
+            afterEach(() => {
+              webex.meetings.meetingInfoFetchesInProgress.clear();
+            });
+
+            it('waits for the fetches and handles the event for the meeting they were for', async () => {
+              const existingMeeting = {locusInfo};
+
+              webex.meetings.handleLocusEvent(locusEvent);
+              await testUtils.flushPromises();
+
+              assert.notCalled(webex.meetings.create);
+              assert.notCalled(locusInfo.parse);
+
+              // the meeting being created can now be matched by locusUrl
+              webex.meetings.meetingCollection.getByKey = sinon
+                .stub()
+                .callsFake((key) => (key === 'locusUrl' ? existingMeeting : undefined));
+              resolveFetch();
+              await testUtils.flushPromises();
+
+              assert.notCalled(webex.meetings.create);
+              assert.calledOnceWithExactly(locusInfo.parse, existingMeeting, locusEvent);
+            });
+
+            it('creates a meeting once the fetches settle if the event still has no meeting', async () => {
+              webex.meetings.handleLocusEvent(locusEvent);
+              await testUtils.flushPromises();
+
+              assert.notCalled(webex.meetings.create);
+
+              rejectFetch(new Error('meeting info failed'));
+              await testUtils.flushPromises();
+
+              assert.calledOnceWithExactly(
+                webex.meetings.create,
+                locusEvent.locus,
+                'LOCUS_ID',
+                false
+              );
+              assert.calledOnce(initialSetup);
+            });
+
+            it('also waits for meeting info fetches that start while the event is waiting', async () => {
+              const existingMeeting = {locusInfo};
+
+              webex.meetings.handleLocusEvent(locusEvent);
+              await testUtils.flushPromises();
+
+              // the meeting this event is for starts fetching its info after the event was deferred
+              const laterFetch = trackFetch();
+
+              resolveFetch();
+              await testUtils.flushPromises();
+
+              assert.notCalled(webex.meetings.create);
+              assert.notCalled(locusInfo.parse);
+
+              webex.meetings.meetingCollection.getByKey = sinon
+                .stub()
+                .callsFake((key) => (key === 'locusUrl' ? existingMeeting : undefined));
+              laterFetch.resolve();
+              await testUtils.flushPromises();
+
+              assert.notCalled(webex.meetings.create);
+              assert.calledOnceWithExactly(locusInfo.parse, existingMeeting, locusEvent);
+              assert.equal(webex.meetings.meetingInfoFetchesInProgress.size, 0);
+            });
+
+            it('waits for a join that starts while the event is waiting for meeting info', async () => {
+              const existingMeeting = {locusInfo};
+              let resolveJoin;
+              let joined = false;
+              const joiningMeeting = {locusUrl: null, deferJoin: undefined, locusInfo};
+              const deferJoin = new Promise((resolve) => {
+                resolveJoin = resolve;
+              }).finally(() => {
+                joiningMeeting.deferJoin = undefined;
+              });
+              joiningMeeting.deferJoin = deferJoin;
+
+              webex.meetings.handleLocusEvent(locusEvent);
+              await testUtils.flushPromises();
+
+              webex.meetings.meetingCollection.getAll = sinon.stub().returns({joiningMeeting});
+              resolveFetch();
+              await testUtils.flushPromises();
+
+              assert.notCalled(webex.meetings.create);
+              assert.notCalled(locusInfo.parse);
+
+              joined = true;
+              webex.meetings.meetingCollection.getByKey = sinon
+                .stub()
+                .callsFake((key) => (key === 'locusUrl' && joined ? existingMeeting : undefined));
+              resolveJoin();
+              await deferJoin;
+              await testUtils.flushPromises();
+
+              assert.notCalled(webex.meetings.create);
+              assert.calledOnceWithExactly(locusInfo.parse, existingMeeting, locusEvent);
+            });
+
+            it('keeps deferred events in arrival order when a meeting info fetch starts while they wait', async () => {
+              const existingMeeting = {locusInfo};
+              const laterLocusEvent = {...locusEvent, eventType: 'locus.state_message'};
+
+              webex.meetings.handleLocusEvent(locusEvent);
+              webex.meetings.handleLocusEvent(laterLocusEvent);
+              await testUtils.flushPromises();
+
+              const laterFetch = trackFetch();
+
+              resolveFetch();
+              await testUtils.flushPromises();
+
+              webex.meetings.meetingCollection.getByKey = sinon
+                .stub()
+                .callsFake((key) => (key === 'locusUrl' ? existingMeeting : undefined));
+              laterFetch.resolve();
+              await testUtils.flushPromises();
+
+              assert.notCalled(webex.meetings.create);
+              assert.calledTwice(locusInfo.parse);
+              assert.deepEqual(locusInfo.parse.firstCall.args, [existingMeeting, locusEvent]);
+              assert.deepEqual(locusInfo.parse.secondCall.args, [existingMeeting, laterLocusEvent]);
+            });
+
+            it('creates only one meeting for several deferred events for the same new locus', async () => {
+              const createdMeeting = {id: 'meeting-id', locusInfo: {...locusInfo, initialSetup}};
+
+              let resolveMeetingCreation;
+              const meetingAddedToCollection = new Promise((resolve) => {
+                resolveMeetingCreation = resolve;
+              });
+              webex.meetings.create = sinon.stub().callsFake(async () => {
+                await meetingAddedToCollection;
+                webex.meetings.meetingCollection.getByKey = sinon
+                  .stub()
+                  .callsFake((key) => (key === 'locusUrl' ? createdMeeting : undefined));
+
+                return createdMeeting;
+              });
+
+              webex.meetings.handleLocusEvent(locusEvent);
+              webex.meetings.handleLocusEvent(locusEvent);
+              resolveFetch();
+              await testUtils.flushPromises();
+
+              assert.calledOnceWithExactly(
+                webex.meetings.create,
+                locusEvent.locus,
+                'LOCUS_ID',
+                false
+              );
+              resolveMeetingCreation();
+              await testUtils.flushPromises();
+
+              assert.calledOnce(initialSetup);
+              assert.calledOnceWithExactly(locusInfo.parse, createdMeeting, locusEvent);
+            });
+          });
+
+          describe('while a meeting join is in progress', () => {
+            const locusEvent = {
+              locus: {id: uuid1, self: {devices: []}, info: {webExMeetingId}},
+              eventType: 'locus.difference',
+              locusUrl: url1,
+            };
+
+            let joiningMeeting;
+            let resolveJoin;
+            let rejectJoin;
+            let joined;
+
+            beforeEach(() => {
+              joined = false;
+              joiningMeeting = {locusUrl: null, deferJoin: undefined, locusInfo};
+              const deferJoin = new Promise((resolve, reject) => {
+                resolveJoin = resolve;
+                rejectJoin = reject;
+              }).finally(() => {
+                joiningMeeting.deferJoin = undefined;
+              });
+              joiningMeeting.deferJoin = deferJoin;
+              webex.meetings.meetingCollection.getAll = sinon.stub().returns({joiningMeeting});
+              webex.meetings.meetingCollection.getByKey = sinon
+                .stub()
+                .callsFake((key) => (key === 'locusUrl' && joined ? joiningMeeting : undefined));
+            });
+
+            it('replays the event to the joining meeting after its join response arrives', async () => {
+              webex.meetings.handleLocusEvent(locusEvent);
+              await testUtils.flushPromises();
+
+              assert.notCalled(webex.meetings.create);
+              assert.notCalled(locusInfo.parse);
+
+              joined = true;
+              resolveJoin();
+              await testUtils.flushPromises();
+
+              assert.notCalled(webex.meetings.create);
+              assert.calledOnceWithExactly(locusInfo.parse, joiningMeeting, locusEvent);
+            });
+
+            it('creates a meeting after the join rejects and the event is still unmatched', async () => {
+              webex.meetings.handleLocusEvent(locusEvent);
+              await testUtils.flushPromises();
+
+              rejectJoin(new Error('join failed'));
+              await testUtils.flushPromises();
+
+              assert.calledOnceWithExactly(
+                webex.meetings.create,
+                locusEvent.locus,
+                'LOCUS_ID',
+                false
+              );
+              assert.calledOnce(initialSetup);
+            });
+          });
+
           it('should setup the meeting from a hash tree event', async () => {
             const selfData = {};
             const infoData = {webExMeetingId};
@@ -2537,7 +2859,8 @@ describe('plugin-meetings', () => {
               eventType: 'locus.difference',
               locusUrl: url1,
             });
-            assert.callCount(webex.meetings.meetingCollection.getByKey, 5);
+            assert.callCount(webex.meetings.meetingCollection.getByKey, 6);
+            assert.calledWith(webex.meetings.meetingCollection.getByKey, 'id', 'meeting-id');
             assert.calledWith(webex.meetings.meetingCollection.getByKey, 'locusUrl', url1);
             assert.calledWith(
               webex.meetings.meetingCollection.getByKey,
@@ -2613,7 +2936,8 @@ describe('plugin-meetings', () => {
               eventType: test1,
               locusUrl: url1,
             });
-            assert.callCount(webex.meetings.meetingCollection.getByKey, 5);
+            assert.callCount(webex.meetings.meetingCollection.getByKey, 6);
+            assert.calledWith(webex.meetings.meetingCollection.getByKey, 'id', 'meeting-id');
             assert.calledWith(webex.meetings.meetingCollection.getByKey, 'locusUrl', url1);
             assert.calledWith(
               webex.meetings.meetingCollection.getByKey,
@@ -2659,7 +2983,8 @@ describe('plugin-meetings', () => {
 
           it('should not try to match USM meetings by conversation url', async () => {
             await webex.meetings.handleLocusEvent(generateFakeLocusData(true));
-            assert.callCount(webex.meetings.meetingCollection.getByKey, 4);
+            assert.callCount(webex.meetings.meetingCollection.getByKey, 5);
+            assert.calledWith(webex.meetings.meetingCollection.getByKey, 'id', 'meeting-id');
             assert.deepEqual(webex.meetings.meetingCollection.getByKey.getCall(0).args, [
               'locusUrl',
               url1,
@@ -2676,7 +3001,8 @@ describe('plugin-meetings', () => {
           });
           it('should try to match non-USM meetings by conversation url', async () => {
             await webex.meetings.handleLocusEvent(generateFakeLocusData(false));
-            assert.callCount(webex.meetings.meetingCollection.getByKey, 5);
+            assert.callCount(webex.meetings.meetingCollection.getByKey, 6);
+            assert.calledWith(webex.meetings.meetingCollection.getByKey, 'id', 'meeting-id');
             assert.deepEqual(webex.meetings.meetingCollection.getByKey.getCall(0).args, [
               'locusUrl',
               url1,
@@ -2698,6 +3024,50 @@ describe('plugin-meetings', () => {
         });
       });
       describe('#createMeeting', () => {
+        it('tracks the meeting info fetch only while it is in progress', async () => {
+          let resolveFetch;
+
+          webex.meetings.meetingInfo.fetchMeetingInfo = sinon.stub().returns(
+            new Promise((resolve) => {
+              resolveFetch = resolve;
+            })
+          );
+
+          const createPromise = webex.meetings.createMeeting('test destination', 'test type');
+
+          await testUtils.flushPromises();
+          assert.equal(webex.meetings.meetingInfoFetchesInProgress.size, 1);
+
+          resolveFetch({body: {}});
+          await createPromise;
+          await testUtils.flushPromises();
+
+          assert.equal(webex.meetings.meetingInfoFetchesInProgress.size, 0);
+        });
+
+        it('tracks a failed meeting info fetch until it settles, without rejecting the tracked entry', async () => {
+          let rejectFetch;
+
+          webex.meetings.meetingInfoFetchesInProgress.clear();
+          webex.meetings.meetingInfo.fetchMeetingInfo = sinon.stub().returns(
+            new Promise((resolve, reject) => {
+              rejectFetch = reject;
+            })
+          );
+
+          const createPromise = webex.meetings.createMeeting('test destination', 'test type');
+
+          await testUtils.flushPromises();
+          assert.equal(webex.meetings.meetingInfoFetchesInProgress.size, 1);
+          const [trackedFetch] = [...webex.meetings.meetingInfoFetchesInProgress];
+
+          rejectFetch(new Error('meeting info failed'));
+          await createPromise;
+          await testUtils.flushPromises();
+
+          await trackedFetch;
+          assert.equal(webex.meetings.meetingInfoFetchesInProgress.size, 0);
+        });
         beforeEach(() => {
           webex.internal.device.userId = uuid1;
           webex.internal.device.url = url1;
