@@ -1495,7 +1495,7 @@ const Services = WebexPlugin.extend({
         this.initServiceCatalogs().catch((error) => {
           this.initFailed = true;
           this.logger.error(
-            `services: failed to init initial services when credentials available, ${error?.message}`
+            `services: failed to init services when credentials available, ${error?.message}`
           );
         });
       } else {
@@ -1552,7 +1552,7 @@ const Services = WebexPlugin.extend({
           .catch((error) => {
             this.initFailed = true;
             this.logger.error(
-              `services: failed to init initial services when credentials available, ${error?.message}`
+              `services: failed to init services when credentials available, ${error?.message}`
             );
           })
           .finally(() => this._finalizeReady());
