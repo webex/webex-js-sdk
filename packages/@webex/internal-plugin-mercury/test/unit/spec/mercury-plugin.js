@@ -69,6 +69,32 @@ describe('plugin-mercury', () => {
       });
     });
 
+    describe('connection diagnostics', () => {
+      ['socket close', 'explicit disconnect'].forEach((closeType) => {
+        it(`reports the primary connection and ${closeType}`, async () => {
+          const status = webex.internal.newMetrics.callDiagnosticMetrics.setMercuryConnectedStatus;
+          sinon.stub(mercuryPlugin._mercury, '_prepareAndOpenSocket').callsFake(function prepare() {
+            this.resolvedWebSocketUrl = 'ws://example.com';
+
+            return Promise.resolve('ws://example.com');
+          });
+
+          await mercuryPlugin.connect();
+          assert.isTrue(mercuryPlugin.connected);
+          assert.deepEqual(status.args, [[true]]);
+
+          if (closeType === 'socket close') {
+            mercuryPlugin.socket.emit('close', {code: 3050, reason: 'meetings unregister'});
+          } else {
+            await mercuryPlugin.disconnect({code: 3050, reason: 'meetings unregister'});
+          }
+
+          assert.isFalse(mercuryPlugin.connected);
+          assert.deepEqual(status.args, [[true], [false]]);
+        });
+      });
+    });
+
     describe('#connected', () => {
       it('returns false when Mercury is not connected', () => {
         assert.equal(mercuryPlugin.connected, false);
