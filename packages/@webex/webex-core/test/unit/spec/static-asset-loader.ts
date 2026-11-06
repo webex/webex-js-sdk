@@ -19,8 +19,7 @@ describe('StaticAssetLoader', () => {
     sinon.restore();
   });
 
-  const createLoader = (baseUrl = '/assets/') =>
-    new StaticAssetLoader({baseUrl}, {parent: webex});
+  const createLoader = (baseUrl = '/assets/') => new StaticAssetLoader({baseUrl}, {parent: webex});
 
   const resolveWith = (overrides: Record<string, any> = {}) => {
     webexRequestStub.resolves({
@@ -220,5 +219,66 @@ describe('StaticAssetLoader', () => {
 
     assert.deepEqual(second, new Uint8Array([0x01, 0x02, 0x03]));
     sinon.assert.calledOnce(webexRequestStub);
+  });
+
+  [
+    {statusCode: 200, mime: 'text/html', body: '<html>Access denied</html>', kind: 'html'},
+    {
+      statusCode: 200,
+      mime: 'application/octet-stream',
+      body: '<html>Access denied</html>',
+      kind: 'html',
+    },
+    {statusCode: 403, mime: 'text/html', body: '<html>Access denied</html>', kind: 'http'},
+    {statusCode: 200, mime: 'application/octet-stream', body: undefined, kind: 'invalid-body'},
+  ].forEach(({statusCode, mime, body, kind}) => {
+    it(`retains ${kind} response diagnostics for status ${statusCode} and MIME ${mime}`, async () => {
+      const bytes = body ? new TextEncoder().encode(body).buffer : undefined;
+
+      resolveWith({
+        statusCode,
+        headers: {'content-type': mime, 'x-amz-cf-id': 'edge-id'},
+        body: bytes,
+      });
+      const error = await createLoader()
+        .getBytes('roots.p7b')
+        .then(
+          () => assert.fail('expected rejection'),
+          (reason) => reason
+        );
+
+      assert.equal(error.assetDiagnostics.failureKind, kind);
+      assert.equal(error.assetDiagnostics.httpStatus, statusCode);
+      assert.equal(error.assetDiagnostics.responseContentType, mime);
+      assert.equal(error.assetDiagnostics.cdnRequestId, 'edge-id');
+      assert.isAtLeast(error.assetDiagnostics.durationMs, 0);
+    });
+  });
+
+  it('retains network diagnostics and clears a failed shared request before recovery', async () => {
+    const failure = new Error('network down');
+
+    webexRequestStub.onFirstCall().rejects(failure);
+    webexRequestStub
+      .onSecondCall()
+      .resolves({statusCode: 200, headers: {}, body: new Uint8Array([1, 2]).buffer});
+    const loader = createLoader();
+    const results = await Promise.all(
+      [1, 2].map(() =>
+        loader.getBytes('roots.p7b').then(
+          () => ({status: 'fulfilled'}),
+          (reason) => ({status: 'rejected', reason})
+        )
+      )
+    );
+
+    results.forEach((result: any) => {
+      assert.equal(result.status, 'rejected');
+      assert.equal(result.reason, failure);
+      assert.equal(result.reason.assetDiagnostics.failureKind, 'network');
+      assert.equal(result.reason.assetDiagnostics.httpStatus, 0);
+    });
+    assert.deepEqual(await loader.getBytes('roots.p7b'), new Uint8Array([1, 2]));
+    sinon.assert.calledTwice(webexRequestStub);
   });
 });
