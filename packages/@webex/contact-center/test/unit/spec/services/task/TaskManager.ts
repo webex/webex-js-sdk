@@ -625,6 +625,28 @@ describe('TaskManager', () => {
     );
   });
 
+  it('requestRealTimeTranscripts rejects invalid interactionId', () => {
+    taskManager.setConfigFlags({
+      isEndTaskEnabled: true,
+      isEndConsultEnabled: true,
+      webRtcEnabled: true,
+      autoWrapup: false,
+      aiFeature: {
+        id: 'ai-feature-1',
+        realtimeTranscripts: {
+          enable: true,
+        },
+      },
+    });
+
+    (taskManager as any)['requestRealTimeTranscripts'](
+      CC_EVENTS.AGENT_CONTACT_ASSIGNED,
+      '   '
+    );
+
+    expect(mockApiAIAssistant.sendEvent).not.toHaveBeenCalled();
+  });
+
   it('should not invoke sendEvent when realtime transcripts are disabled in aiFeature', () => {
     taskManager.setConfigFlags({
       isEndTaskEnabled: true,
