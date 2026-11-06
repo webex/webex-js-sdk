@@ -1654,7 +1654,7 @@ export async function resolveContact(
 }
 
 /**
- * Store encrypted voicemailList in SessionStorage.
+ * Store base64-encoded voicemailList in SessionStorage.
  *
  * @param context - Context for storage.
  * @param voiceMessageList - List of voicemessage.
@@ -1666,7 +1666,7 @@ export function storeVoicemailList(context: string, voiceMessageList: MessageInf
 }
 
 /**
- * Fetch decrypted voicemailList from SessionStorage.
+ * Fetch base64-decoded voicemailList from SessionStorage.
  *
  * @param context - Context for the storage.
  * @param offset - Number of voicemail records to skip.
