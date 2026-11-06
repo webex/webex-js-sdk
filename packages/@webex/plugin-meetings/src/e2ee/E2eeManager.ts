@@ -9,6 +9,9 @@ import {StaticAssetLoader} from '@webex/webex-core';
 import LoggerProxy from '../common/logs/logger-proxy';
 import WasmLoader from '../common/wasm-loader';
 
+/* The WASM module that contains the libe2ee + mlspp libraries with a WebE2EE wrapper around them, required for joining MLS group for E2EE meetings.
+ * The version is in the filename as it is important that JS-SDK implementation of MLS class matches the WASM module version.
+ */
 const E2EE_WASM_ASSET = 'e2ee-0.0.1.wasm';
 
 /**
