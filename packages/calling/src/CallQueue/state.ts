@@ -96,11 +96,12 @@ export function parseCallQueueCatalog(body: unknown): CallQueueCatalogPage {
     return {entries: []};
   }
   const record = body as Record<string, unknown>;
-  const list = Array.isArray(record.queues)
-    ? record.queues
-    : Array.isArray(record.items)
-    ? record.items
-    : [];
+  let list: unknown[] = [];
+  if (Array.isArray(record.queues)) {
+    list = record.queues;
+  } else if (Array.isArray(record.items)) {
+    list = record.items;
+  }
   const entries = list.flatMap((value) => {
     if (!value || typeof value !== 'object') {
       return [];
@@ -210,11 +211,10 @@ export function applyCallQueueEvent(
     return current;
   }
   const base = current ?? INITIAL_STATUS;
-  const queues = incomingQueues
-    ? kind === 'sync'
-      ? incomingQueues
-      : mergeQueues(base.queues, incomingQueues)
-    : base.queues;
+  let queues = base.queues;
+  if (incomingQueues) {
+    queues = kind === 'sync' ? incomingQueues : mergeQueues(base.queues, incomingQueues);
+  }
 
   return {
     acdState: acdState ?? base.acdState,

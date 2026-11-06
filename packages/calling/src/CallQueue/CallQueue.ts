@@ -240,7 +240,12 @@ export class CallQueueClient extends Eventing<CallQueueEventTypes> implements IC
     );
     this.emit(COMMON_EVENT_KEYS.CALL_QUEUE_UPDATED, named);
     if (named.queues.some((queue) => !queue.name)) {
-      void this.refreshQueueNames(named, generation);
+      this.refreshQueueNames(named, generation).catch((err: unknown) => {
+        log.error(`Failed to refresh call queue names: ${String(err)}`, {
+          file: CALL_QUEUE_FILE,
+          method: 'refreshQueueNames',
+        });
+      });
     }
   }
 
@@ -266,28 +271,29 @@ export class CallQueueClient extends Eventing<CallQueueEventTypes> implements IC
 
   private async loadQueueCatalog(neededIds: string[]): Promise<void> {
     const loggerContext = {file: CALL_QUEUE_FILE, method: METHODS.GET_CALL_QUEUE_NAMES};
-    let uri = this.joinUrl(QUEUES_CATALOG_PATH);
-    try {
-      for (let page = 0; page < MAX_QUEUE_CATALOG_PAGES; page += 1) {
-        if (neededIds.every((id) => this.queueNames.has(id))) {
-          return;
-        }
-        const response = <WebexRequestPayload>await this.webex.request({
-          uri,
-          method: HTTP_METHODS.GET,
-        });
-        const catalog = parseCallQueueCatalog(response.body);
-        catalog.entries.forEach((entry) => {
-          if (entry.name) {
-            this.queueNames.set(entry.id, entry.name);
-          }
-        });
-        const next = this.catalogNextUrl(catalog.next);
-        if (!next) {
-          return;
-        }
-        uri = next;
+    const loadPage = async (uri: string, remainingPages: number): Promise<void> => {
+      if (remainingPages === 0 || neededIds.every((id) => this.queueNames.has(id))) {
+        return;
       }
+
+      const response = <WebexRequestPayload>await this.webex.request({
+        uri,
+        method: HTTP_METHODS.GET,
+      });
+      const catalog = parseCallQueueCatalog(response.body);
+      catalog.entries.forEach((entry) => {
+        if (entry.name) {
+          this.queueNames.set(entry.id, entry.name);
+        }
+      });
+      const next = this.catalogNextUrl(catalog.next);
+      if (next) {
+        await loadPage(next, remainingPages - 1);
+      }
+    };
+
+    try {
+      await loadPage(this.joinUrl(QUEUES_CATALOG_PATH), MAX_QUEUE_CATALOG_PAGES);
     } catch (err: unknown) {
       const statusCode =
         err && typeof err === 'object' && 'statusCode' in err
