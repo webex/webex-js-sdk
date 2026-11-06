@@ -1,0 +1,449 @@
+{
+  "manifest_version": 1,
+  "repository": {
+    "name": "@webex/plugin-authorization-browser",
+    "purpose": "Browser authorization plugin registered as webex.authorization for the public browser build (re-exported by the @webex/plugin-authorization browser entry). It starts OAuth implicit-grant (public client, default) or authorization-code (confidential client) logins with a single-use CSRF token, parses an implicit-grant access token from the redirect URL hash during construction (CSRF check, URL scrubbing, next-tick hand-off to credentials), exchanges a host JWT for an access token through hydra jwt/login, mints HS256 guest JWTs, and redirects on logout. It does not exchange authorization codes.",
+    "category": "cat2-legacy",
+    "primary_languages": [
+      "javascript"
+    ]
+  },
+  "topology": "Orchestrator-plus-components",
+  "commands": {
+    "install": {
+      "command": "yarn",
+      "source_file": "../../../.github/workflows/deploy.yml",
+      "role": "install"
+    },
+    "compile": {
+      "command": "yarn workspace @webex/plugin-authorization-browser build:src",
+      "source_file": "package.json",
+      "role": "compile"
+    },
+    "build": {
+      "command": "yarn workspace @webex/plugin-authorization-browser build",
+      "source_file": "package.json",
+      "role": "package"
+    },
+    "unit-test": {
+      "command": "yarn workspace @webex/plugin-authorization-browser test:unit",
+      "source_file": "package.json",
+      "role": "unit-test"
+    },
+    "browser-integration-test": {
+      "command": "yarn workspace @webex/plugin-authorization-browser test:browser:broken",
+      "source_file": "package.json",
+      "role": "integration-test"
+    },
+    "lint": {
+      "command": "yarn workspace @webex/plugin-authorization-browser test:style",
+      "source_file": "package.json",
+      "role": "lint"
+    },
+    "test": {
+      "command": "yarn workspace @webex/plugin-authorization-browser test",
+      "source_file": "package.json",
+      "role": "other"
+    },
+    "deploy": {
+      "command": "yarn workspace @webex/plugin-authorization-browser deploy:npm",
+      "source_file": "package.json",
+      "role": "deploy"
+    }
+  },
+  "toolchain": [
+    {
+      "name": "node",
+      "version": ">=18",
+      "origin": "repo-config",
+      "source_file": "package.json"
+    },
+    {
+      "name": "node",
+      "version": "22.14",
+      "origin": "repo-config",
+      "source_file": "../../../AGENTS.md"
+    },
+    {
+      "name": "node",
+      "version": "lts/jod",
+      "origin": "repo-config",
+      "source_file": "../../../.nvmrc"
+    },
+    {
+      "name": "yarn",
+      "version": "3.4.1",
+      "origin": "repo-config",
+      "source_file": "../../../package.json"
+    },
+    {
+      "name": "babel",
+      "version": "^7.17.10",
+      "origin": "repo-config",
+      "source_file": "package.json"
+    },
+    {
+      "name": "eslint",
+      "version": "^8.24.0",
+      "origin": "repo-config",
+      "source_file": "package.json"
+    },
+    {
+      "name": "prettier",
+      "version": "^2.7.1",
+      "origin": "repo-config",
+      "source_file": "package.json"
+    },
+    {
+      "name": "sinon",
+      "version": "^9.2.4",
+      "origin": "repo-config",
+      "source_file": "package.json"
+    }
+  ],
+  "tests": {
+    "unit": {
+      "command_ref": "unit-test",
+      "dir": "test/unit/spec",
+      "framework": "jest"
+    },
+    "integration": {
+      "command_ref": "browser-integration-test",
+      "dir": "test/integration/spec",
+      "framework": "mocha via karma (webex-legacy-tools --integration --runner karma)",
+      "external_deps": [
+        "live Webex services (hydra jwt/login)",
+        "test app user credentials WEBEX_APPID_ORGID and WEBEX_APPID_SECRET read by @webex/test-helper-appid",
+        "a browser (the spec is browserOnly)"
+      ]
+    }
+  },
+  "quality_gates": {
+    "code_coverage": {
+      "origin": "none",
+      "declared_by": "rarajes2@cisco.com via bootstrap questionnaire (generator check: test:unit runs webex-legacy-tools with --runner jest; jest.config.js re-exports @webex/jest-config-legacy, which sets no coverageThreshold; package.json defines no coverage script)"
+    }
+  },
+  "coverage_status_definitions": {
+    "specced": ">=80% public surface specced, drift <5% - spec is authoritative",
+    "partial": "40-80% specced - spec is a hint, cross-check code",
+    "untracked": "<40% specced - code is the source of truth"
+  },
+  "spec_source_policy": {
+    "mode": "keep-separate",
+    "migrated_source_disposition": "retain",
+    "disposition_decided_by": "rarajes2@cisco.com",
+    "disposition_decided_at": "2026-11-04T06:35:39Z",
+    "decided_by": "rarajes2@cisco.com",
+    "decided_at": "2026-11-04T06:35:39Z",
+    "decision_record": "docs/adr/0001-keep-existing-docs-separate.md"
+  },
+  "spec_sources": [
+    {
+      "path": "README.md",
+      "scope": "repo",
+      "role": "reference-only",
+      "canonical": false,
+      "use_by_agents": "context-only",
+      "post_migration_action": "retain",
+      "deletion_status": "not-applicable",
+      "notes": "npm usage page, kept unchanged under keep-separate. Not the behavioral authority; its differences from code are listed in docs/adr/0001-keep-existing-docs-separate.md."
+    },
+    {
+      "path": "BROWSER-OAUTH-FLOW-GUIDE.md",
+      "scope": "repo",
+      "role": "reference-only",
+      "canonical": false,
+      "use_by_agents": "context-only",
+      "post_migration_action": "retain",
+      "deletion_status": "not-applicable",
+      "notes": "Technical guide, kept unchanged under keep-separate. Parts describe webex-core behavior; its differences from code are listed in docs/adr/0001-keep-existing-docs-separate.md."
+    }
+  ],
+  "modules": [
+    {
+      "path": "src",
+      "canonical_spec": "src/docs/README.md",
+      "coverage_status": "Partial",
+      "coverage_evidence": "Field coverage 93.3% (14/15) assessed 2026-11-04 by the generator; critical field coverage 8/8. The one WEAK field is test strategy: test/unit/spec/authorization.js covers URL parsing, CSRF, URL cleanup, login initiation, popup login, and the in-flight flags (22 cases), but registration and proxies, requestAccessTokenFromJwt (browser-only integration cases against live services), createJwt, logout, and a hash without access_token have no unit case, the redirect-error case pins a TypeError rather than a grant error, and both automation suites are describe.skip. Independent validation passed with warnings 2026-11-04 on runtime 01a1a557-67e4-7fe3-8b88-0a3848d9da25 (0 Blocking, 1 Important). Held at Partial because no characterization baseline or spec-drift record exists.",
+      "last_assessed": "2026-11-04",
+      "contracts": {
+        "provides": [
+          "authorization-browser-sdk"
+        ],
+        "requires": [
+          "idbroker-oauth-pages",
+          "hydra-jwt-login",
+          "webex-core-plugin-host",
+          "webex-core-credentials",
+          "webex-core-services",
+          "webex-common-utilities",
+          "internal-plugin-device-registration",
+          "jsonwebtoken",
+          "uuid",
+          "lodash"
+        ]
+      },
+      "section_profile": {
+        "has_tiers": false,
+        "has_ui": false,
+        "crosses_service_boundaries": true,
+        "holds_client_state": true,
+        "enforces_domain_rules": true,
+        "is_concurrent_async": true,
+        "owns_persistence": false,
+        "stateful_transitions": false,
+        "exposes_wire_protocol": true,
+        "ui_multi_screen": false,
+        "large_data_model": false,
+        "returns_caller_errors": true,
+        "module_specific_conventions": true,
+        "published_package": true,
+        "embedded_in_host": false,
+        "has_design_tradeoff": true,
+        "resolved_by": "claude-code (code evidence; bootstrap questionnaire)",
+        "resolved_at": "2026-11-04T06:35:39Z",
+        "has_submodules": false,
+        "has_submodules_computed_by": "scripts/module_tree.py",
+        "has_submodules_computed_at": "2026-11-04T06:42:44Z"
+      }
+    }
+  ],
+  "contract_catalog": {
+    "index_path": "docs/architecture.md",
+    "definitions": {
+      "authorization-browser-sdk": {
+        "kind": "sdk",
+        "publication": "published",
+        "source_kind": "repository-path",
+        "source": "package.json",
+        "summary": "Published npm package. main is dist/index.js and devMain is src/index.js. Importing it imports @webex/internal-plugin-device and registers Authorization as public plugin 'authorization' with proxies isAuthorizing and isAuthenticating and the credentials config default clientType 'public' from src/config.js; the first registration of the name wins. Exports are the default Authorization class and the named config. The plugin API on webex.authorization is initiateLogin, initiateImplicitGrant, initiateAuthorizationCodeGrant, requestAccessTokenFromJwt, createJwt, and logout, plus the ready, isAuthorizing, and isAuthenticating properties. Per-method behavior is in src/docs/README.md."
+      },
+      "idbroker-oauth-pages": {
+        "kind": "http",
+        "publication": "internal",
+        "source_kind": "external",
+        "source": "Identity broker authorize and logout pages (URLs from webex-core credentials config; route definitions are not in this repository)",
+        "summary": "Reached only by browser navigation to URLs built by credentials buildLoginUrl ({response_type token or code, client_id, redirect_uri, scope, base64url state with csrf_token, and other options}) and buildLogoutUrl ({cisService, goto, token, and other options}). The implicit-grant redirect returns access_token, token_type, expires_in, optional refresh_token and refresh_token_expires_in, and state in the URL hash; an OAuth error returns in the query."
+      },
+      "hydra-jwt-login": {
+        "kind": "http",
+        "publication": "internal",
+        "source_kind": "external",
+        "source": "Hydra jwt/login (reached as service name 'hydra' through the services catalog, else HYDRA_SERVICE_URL, else https://api.ciscospark.com/v1/; route definitions are not in this repository)",
+        "summary": "POST <hydra>jwt/login with the JWT in the authorization header returns {token, expiresIn}, mapped to a Bearer supertoken."
+      },
+      "webex-core-plugin-host": {
+        "kind": "sdk",
+        "publication": "published",
+        "source_kind": "external",
+        "source": "@webex/webex-core (workspace package; module spec consulted: packages/@webex/webex-core/src/docs/README.md)",
+        "summary": "Authorization extends WebexPlugin in namespace Credentials, is registered with registerPlugin (first-wins, proxies supported), sends requests with this.webex.request, reads this.webex.getWindow(), and is called by WebexCore#logout with token defaulted from the supertoken."
+      },
+      "webex-core-credentials": {
+        "kind": "sdk",
+        "publication": "published",
+        "source_kind": "external",
+        "source": "@webex/webex-core credentials (module spec consulted: packages/@webex/webex-core/src/lib/credentials/docs/README.md)",
+        "summary": "buildLoginUrl and buildLogoutUrl build URLs; credentials.set({supertoken}) stores tokens; grantErrors.select maps OAuth error strings; in JWT mode refresh() calls jwtRefreshCallback and then this plugin's requestAccessTokenFromJwt."
+      },
+      "webex-core-services": {
+        "kind": "sdk",
+        "publication": "published",
+        "source_kind": "external",
+        "source": "@webex/webex-core services (module spec consulted: packages/@webex/webex-core/src/lib/services/docs/README.md)",
+        "summary": "get('hydra', true) supplies the hydra URL; initServiceCatalogs() runs after a JWT exchange."
+      },
+      "webex-common-utilities": {
+        "kind": "sdk",
+        "publication": "published",
+        "source_kind": "external",
+        "source": "@webex/common (workspace package; module spec consulted: packages/@webex/common/src/docs/README.md)",
+        "summary": "base64 (base64url) decodes and encodes the OAuth state in the hash; oneFlight decorates requestAccessTokenFromJwt; whileInFlight decorates initiateImplicitGrant and initiateAuthorizationCodeGrant."
+      },
+      "internal-plugin-device-registration": {
+        "kind": "sdk",
+        "publication": "published",
+        "source_kind": "external",
+        "source": "@webex/internal-plugin-device (workspace package; module spec consulted: packages/@webex/internal-plugin-device/src/docs/README.md)",
+        "summary": "Imported by src/index.js only for its side effect of registering internal plugin 'device' and its onBeforeLogout unregister hook."
+      },
+      "jsonwebtoken": {
+        "kind": "sdk",
+        "publication": "published",
+        "source_kind": "external",
+        "source": "jsonwebtoken@^9.0.2 (npm)",
+        "summary": "jwt.sign(payload, secret, {expiresIn}) produces the HS256 guest JWT; an undefined expiresIn option is rejected."
+      },
+      "uuid": {
+        "kind": "sdk",
+        "publication": "published",
+        "source_kind": "external",
+        "source": "uuid@^3.3.2 (npm)",
+        "summary": "uuid.v4 generates the CSRF token; the default export generates the guest subject and default display name."
+      },
+      "lodash": {
+        "kind": "sdk",
+        "publication": "published",
+        "source_kind": "external",
+        "source": "lodash@^4.17.21 (npm)",
+        "summary": "cloneDeep, isEmpty, and omit for hash parsing and URL cleanup."
+      }
+    }
+  },
+  "spec_policy": {
+    "require_what_and_why": true,
+    "require_provenance": true,
+    "protected_specs": [
+      "src/docs/README.md"
+    ]
+  },
+  "validation": {
+    "generator_runtime": "claude-code",
+    "generator_model": "claude-opus-5-5",
+    "generator_runtime_source": "host-metadata",
+    "source_commit": "6b61acf37af523beb4eaedb5353752f9de15b454",
+    "minimum_independence": "different-runtime",
+    "validator_runtime": "01a1a557-67e4-7fe3-8b88-0a3848d9da25",
+    "validator_runtime_source": "human-provided",
+    "validator_run_id": "01a1a557-67e4-7fe3-8b88-0a3848d9da25",
+    "runtime_fallback_tier": "different-runtime",
+    "blocking_severities": [
+      "Blocking"
+    ]
+  },
+  "layout": {
+    "sdd_root": ".sdd",
+    "docs_root": "docs",
+    "agent_entry_path": "AGENTS.md",
+    "standing_docs_root": "docs",
+    "spec_index_path": "docs/specs/README.md",
+    "module_docs_strategy": "source-local",
+    "module_docs_relative_path": "docs/README.md",
+    "module_docs_decision": {
+      "basis": "repo-standards-default",
+      "reason": "No module-local documentation existed. The source-local default gives src/docs/README.md. test:style runs eslint ./src/**/*.*, and the root .eslintignore ignores *.md; build:src processes -js -ts only, so Markdown under src/ does not enter the build output.",
+      "decided_by": "rarajes2@cisco.com (bootstrap questionnaire)",
+      "decided_at": "2026-11-04T06:35:39Z"
+    },
+    "repo_context_decision": {
+      "path": ".repo-context.json",
+      "schema_path": "schemas/repo-context.schema.json",
+      "action": "create",
+      "schema_action": "create",
+      "reason": "Neither the operational context nor its schema existed in this package. The context is created from package evidence and the schema is copied from the repository-root .sdd/templates/repo-standards/schemas/repo-context.schema.json.",
+      "decided_by": "rarajes2@cisco.com (bootstrap questionnaire)",
+      "decided_at": "2026-11-04T06:35:39Z"
+    },
+    "artifact_decisions": [
+      {
+        "path": "docs/service.md",
+        "action": "omit",
+        "reason": "Library package, not a deployable service. package.json has no start script, container, or deployment descriptor.",
+        "decided_by": "claude-code (code evidence)",
+        "decided_at": "2026-11-04T06:35:39Z"
+      },
+      {
+        "path": "mkdocs.yml",
+        "action": "omit",
+        "reason": "No package-level documentation site exists. Documentation publishing stays with the workspace.",
+        "decided_by": "claude-code (code evidence)",
+        "decided_at": "2026-11-04T06:35:39Z"
+      },
+      {
+        "path": "api-specs/openapi.yaml",
+        "action": "omit",
+        "reason": "The package serves no HTTP routes. It is an HTTP client and browser-navigation library; its published surface is the npm export described by authorization-browser-sdk.",
+        "decided_by": "claude-code (code evidence)",
+        "decided_at": "2026-11-04T06:35:39Z"
+      },
+      {
+        "path": "SECURITY.md",
+        "action": "omit",
+        "reason": "No package-level security policy exists. The workspace owns security policy, and a per-package copy would duplicate it; security architecture is described in docs/architecture.md.",
+        "decided_by": "claude-code (code evidence)",
+        "decided_at": "2026-11-04T06:35:39Z"
+      },
+      {
+        "path": "CONTRIBUTING.md",
+        "action": "omit",
+        "reason": "Contribution instructions are owned at the workspace root CONTRIBUTING.md.",
+        "decided_by": "claude-code (code evidence)",
+        "decided_at": "2026-11-04T06:35:39Z"
+      },
+      {
+        "path": "CHANGELOG.md",
+        "action": "omit",
+        "reason": "Changelog generation is owned at the workspace root. This package has no changelog file.",
+        "decided_by": "claude-code (code evidence)",
+        "decided_at": "2026-11-04T06:35:39Z"
+      },
+      {
+        "path": "CTO_CHECKLIST.yml",
+        "action": "omit",
+        "reason": "The CTO readiness checklist applies to deployable services. This package is a library.",
+        "decided_by": "claude-code (code evidence)",
+        "decided_at": "2026-11-04T06:35:39Z"
+      },
+      {
+        "path": "schemas/cto-checklist.schema.json",
+        "action": "omit",
+        "reason": "Omitted together with CTO_CHECKLIST.yml.",
+        "decided_by": "claude-code (code evidence)",
+        "decided_at": "2026-11-04T06:35:39Z"
+      }
+    ],
+    "template_roots": {
+      "canonical": ".sdd/templates/repo-standards"
+    },
+    "contract_index_path": "docs/architecture.md",
+    "repo_skills_root": ".sdd/skills",
+    "monorepo_package": {
+      "package_path": "packages/@webex/plugin-authorization-browser",
+      "root_manifest_path": "../../../.sdd/manifest.json",
+      "templates_root_path": "../../../.sdd/templates/repo-standards"
+    }
+  },
+  "tooling": {
+    "sdlc_skills": {
+      "source_ref": "repo-annotation@2.3.1"
+    }
+  },
+  "coverage_ratchet": {
+    "enabled": true,
+    "waivers": []
+  },
+  "substrate": {
+    "source": "WebexTools/repo-standards@d89a7fe59126ae3ad9bac9ca352aa7f12b4c85dc",
+    "consumed": [
+      "@webex/eslint-config-legacy via .eslintrc.js",
+      "@webex/babel-config-legacy via babel.config.js",
+      "@webex/jest-config-legacy via jest.config.js",
+      "@webex/legacy-tools build and test runner via package.json",
+      "package README.md and BROWSER-OAUTH-FLOW-GUIDE.md (context only)",
+      "Repo Standards templates at the monorepo root .sdd/templates/repo-standards, referred to through layout.monorepo_package.templates_root_path (this package holds no templates)"
+    ],
+    "compliance_tier": "baseline"
+  },
+  "section_profiles": {
+    "repo": {
+      "owns_datastore": false,
+      "holds_client_state": true,
+      "components_interact": true,
+      "domain_data_across_components": true,
+      "caches_data": false,
+      "observability_convention": true,
+      "deploys_to_infra": false,
+      "shared_base_libs": true,
+      "is_monorepo": false,
+      "multi_platform": false,
+      "published_package": true,
+      "embedded_in_host": false,
+      "cross_repo_deps_material": true,
+      "security_arch_warranted": true,
+      "exposes_commands_or_artifacts": true
+    },
+    "resolved_by": "claude-code (code evidence; bootstrap questionnaire)",
+    "resolved_at": "2026-11-04T06:35:39Z"
+  }
+}
