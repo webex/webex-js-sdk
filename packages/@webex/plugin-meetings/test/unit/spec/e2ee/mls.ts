@@ -17,6 +17,7 @@ describe('plugin-meetings', () => {
     let fakeE2ee;
     let callbacks;
     let loadModule;
+    let webE2eeConstructor;
     let httpClient;
     let session;
 
@@ -87,7 +88,8 @@ describe('plugin-meetings', () => {
 
     beforeEach(() => {
       fakeE2ee = buildFakeE2ee();
-      const module = {WebE2EE: sinon.stub().returns(fakeE2ee)};
+      webE2eeConstructor = sinon.stub().returns(fakeE2ee);
+      const module = {WebE2EE: webE2eeConstructor};
 
       loadModule = sinon.stub().resolves(module);
       httpClient = {request: sinon.stub().resolves({result: 'ok', n: 1})};
@@ -116,6 +118,24 @@ describe('plugin-meetings', () => {
         assert.calledOnceWithExactly(fakeE2ee.setCoalesceWindow, 500);
         assert.notCalled(fakeE2ee.addX509Credential);
         assert.notCalled(fakeE2ee.setTrustAnchors);
+      });
+
+      it('does not initialize a second engine when called again', async () => {
+        await session.initialize(config);
+        await session.initialize({...config, participantId: 'user-2'});
+
+        // The loader may be called again, but returns the cached WASM module.
+        assert.calledTwice(loadModule);
+        assert.calledOnce(webE2eeConstructor);
+        assert.calledOnceWithExactly(
+          fakeE2ee.initialize,
+          'user-1',
+          'https://wdm.webex.com/device-1',
+          'WEB',
+          'corr-1',
+          'Alice',
+          'https://mes.webex.com/group-1'
+        );
       });
 
       it('applies credentials, trust anchors, device type and custom timeouts', async () => {
@@ -169,6 +189,7 @@ describe('plugin-meetings', () => {
           sframe_cipher_suite: 1,
           sframe_epoch_bits: 4,
         });
+        // Mutate the key to verify that we emit a copy.
         baseKey.fill(0);
 
         assert.calledOnce(spy);
