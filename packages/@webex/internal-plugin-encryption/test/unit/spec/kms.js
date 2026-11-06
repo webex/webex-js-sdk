@@ -15,6 +15,37 @@ import {UNION_BUNDLE_ASSET} from '../../../dist/union-bundle';
 import {caroots, unrelatedCaroots, validKey, invalidKey} from '../../fixtures/kms-certificate';
 
 describe('internal-plugin-encryption', () => {
+  const assertAssetStages = (metric, outcome = 'success', validationMode = 'enforced') => {
+    ['DOWNLOAD', 'VERIFICATION'].forEach((stage) => {
+      const name = `JS_SDK_KMS_CAROOTS_ASSET_${stage}_SUCCESS`;
+      const expected = stage === 'DOWNLOAD' ? outcome !== 'download-failed' : outcome === 'success';
+
+      if (expected) {
+        assert.calledOnceWithExactly(metric.withArgs(name), name, {
+          fields: {success: true},
+          tags: {validationMode, carootsAsset: UNION_BUNDLE_ASSET},
+        });
+      } else assert.notCalled(metric.withArgs(name));
+    });
+  };
+  const assertCertificateSuccess = (metric, validationMode = 'enforced', count = 1) => {
+    const name = 'JS_SDK_KMS_CERTIFICATE_VALIDATION_SUCCESS';
+    const calls = metric.withArgs(
+      name,
+      sinon.match.hasNested('tags.validationMode', validationMode)
+    );
+
+    assert.equal(calls.callCount, count);
+    calls.getCalls().forEach(({args}) =>
+      assert.deepEqual(args, [
+        name,
+        {
+          fields: {success: true},
+          tags: {validationMode, signatureValidation: 'enabled'},
+        },
+      ])
+    );
+  };
   describe('kms', () => {
     let webex;
 
@@ -276,6 +307,7 @@ describe('internal-plugin-encryption', () => {
                 reason: "INVALID KMS: 'kty' header must be 'RSA'",
                 kid: 'kms://kms.example.com',
                 validationMode: 'enforced',
+                signatureValidation: shouldValidateKMSCertificate ? 'enabled' : 'disabled',
               },
             }
           );
@@ -303,6 +335,7 @@ describe('internal-plugin-encryption', () => {
               reason: "INVALID KMS: 'kty' header must be 'RSA'",
               kid: 'kms://kms.example.com',
               validationMode: 'enforced',
+              signatureValidation: 'enabled',
             },
           }
         );
@@ -328,6 +361,7 @@ describe('internal-plugin-encryption', () => {
               reason: 'INVALID KMS: no CA roots configured to validate the KMS certificate against',
               kid: 'kms://kms.example.com',
               validationMode: 'enforced',
+              signatureValidation: 'enabled',
             },
           }
         );
@@ -345,17 +379,18 @@ describe('internal-plugin-encryption', () => {
         assert.notCalled(webex.internal.metrics.submitClientMetrics);
       });
 
-      it('resolves without a metric when no report-only bundle is configured', async () => {
+      it('reports enforced success when no report-only bundle is configured', async () => {
         const result = await webex.internal.encryption.kms._validateKMSStaticPubKey(
           validKey,
           caroots
         );
 
         assert.equal(result, validKey);
-        assert.notCalled(webex.internal.metrics.submitClientMetrics);
+        assertCertificateSuccess(webex.internal.metrics.submitClientMetrics);
+        assert.calledOnce(webex.internal.metrics.submitClientMetrics);
       });
 
-      it('resolves without a metric when the report-only bundle also validates', async () => {
+      it('reports both successful checks when the report-only bundle also validates', async () => {
         webex.internal.encryption.config.carootsReportOnly = caroots;
 
         const result = await webex.internal.encryption.kms._validateKMSStaticPubKey(
@@ -364,7 +399,9 @@ describe('internal-plugin-encryption', () => {
         );
 
         assert.equal(result, validKey);
-        assert.notCalled(webex.internal.metrics.submitClientMetrics);
+        assertCertificateSuccess(webex.internal.metrics.submitClientMetrics);
+        assertCertificateSuccess(webex.internal.metrics.submitClientMetrics, 'report-only');
+        assert.calledTwice(webex.internal.metrics.submitClientMetrics);
       });
 
       // Explicit report-only roots are checked independently of enforcement; failures never block.
@@ -382,9 +419,14 @@ describe('internal-plugin-encryption', () => {
           );
 
           assert.equal(result, validKey);
-          assert.calledOnce(webex.internal.metrics.submitClientMetrics);
+          assert.equal(
+            webex.internal.metrics.submitClientMetrics.callCount,
+            Number(shouldValidateKMSCertificate) + 1
+          );
 
-          const [name, payload] = webex.internal.metrics.submitClientMetrics.args[0];
+          const [name, payload] = webex.internal.metrics.submitClientMetrics.withArgs(
+            'JS_SDK_KMS_CERTIFICATE_VALIDATION_FAILED'
+          ).firstCall.args;
 
           assert.equal(name, 'JS_SDK_KMS_CERTIFICATE_VALIDATION_FAILED');
           assert.deepEqual(payload.fields, {success: false});
@@ -443,8 +485,15 @@ describe('internal-plugin-encryption', () => {
         };
 
         const assertReportChainFailure = () => {
+          assert.equal(
+            webex.internal.metrics.submitClientMetrics.callCount,
+            kms.config.shouldValidateKMSCertificate ? 4 : 3
+          );
+          assertAssetStages(webex.internal.metrics.submitClientMetrics, 'success', 'report-only');
           assert.calledOnceWithExactly(
-            webex.internal.metrics.submitClientMetrics,
+            webex.internal.metrics.submitClientMetrics.withArgs(
+              'JS_SDK_KMS_CERTIFICATE_VALIDATION_FAILED'
+            ),
             'JS_SDK_KMS_CERTIFICATE_VALIDATION_FAILED',
             {
               fields: {success: false},
@@ -452,6 +501,7 @@ describe('internal-plugin-encryption', () => {
                 reason: sinon.match(/^INVALID KMS: Certificate Validation failed/),
                 kid: validKey.kid,
                 validationMode: 'report-only',
+                signatureValidation: 'enabled',
               },
             }
           );
@@ -528,8 +578,16 @@ describe('internal-plugin-encryption', () => {
             }
             assertContext(await kms._prepareContext());
             await report.returnValues[0];
-            assert.calledOnce(webex.internal.metrics.submitClientMetrics);
-            const [name, payload] = webex.internal.metrics.submitClientMetrics.firstCall.args;
+            assert.equal(
+              webex.internal.metrics.submitClientMetrics.callCount,
+              failure.includes('download') ? 1 : 2
+            );
+            assertAssetStages(
+              webex.internal.metrics.submitClientMetrics,
+              failure.includes('download') ? 'download-failed' : 'verification-failed',
+              'report-only'
+            );
+            const [name, payload] = webex.internal.metrics.submitClientMetrics.lastCall.args;
             assert.equal(
               name,
               failure.includes('download')
@@ -558,7 +616,18 @@ describe('internal-plugin-encryption', () => {
             assert.notCalled(report);
             assert.notCalled(kms._getReportOnlyCarootsAssetBytes);
             assert.notCalled(kms._getCarootsAssetBytes);
-            assert.equal(webex.internal.metrics.submitClientMetrics.callCount, failures);
+            assert.equal(webex.internal.metrics.submitClientMetrics.callCount, 1);
+            assert.equal(
+              webex.internal.metrics.submitClientMetrics.withArgs(
+                'JS_SDK_KMS_CERTIFICATE_VALIDATION_FAILED'
+              ).callCount,
+              failures
+            );
+            assertCertificateSuccess(
+              webex.internal.metrics.submitClientMetrics,
+              'report-only',
+              1 - failures
+            );
           });
         });
 
@@ -616,6 +685,8 @@ describe('internal-plugin-encryption', () => {
             await Promise.all(report.returnValues);
             assert.lengthOf(await kms._loadCaroots({reportOnly: true}), 231);
             assert.calledOnce(kms._getReportOnlyCarootsAssetBytes);
+            assertAssetStages(webex.internal.metrics.submitClientMetrics, 'success', 'report-only');
+            assert.equal(webex.internal.metrics.submitClientMetrics.callCount, 4);
           } finally {
             complete(bundle.slice());
             await Promise.all(report.returnValues);
@@ -790,7 +861,7 @@ describe('internal-plugin-encryption', () => {
               kms.config.assetsBaseUrl,
               kms.config.carootsAsset
             );
-            assert.notCalled(webex.internal.metrics.submitClientMetrics);
+            assertAssetStages(webex.internal.metrics.submitClientMetrics);
           });
         });
 
@@ -801,6 +872,7 @@ describe('internal-plugin-encryption', () => {
           assert.equal(first, second);
           assert.equal(first, third);
           assert.calledOnce(kms._getCarootsAssetBytes);
+          assertAssetStages(webex.internal.metrics.submitClientMetrics);
         });
 
         [
@@ -825,7 +897,9 @@ describe('internal-plugin-encryption', () => {
             assertFailClosedError(error, `"${UNION_BUNDLE_ASSET}" could not be loaded`);
             assert.include(error.message, `Cause: ${reason}`);
             assert.calledOnceWithExactly(
-              webex.internal.metrics.submitClientMetrics,
+              webex.internal.metrics.submitClientMetrics.withArgs(
+                'JS_SDK_KMS_CAROOTS_ASSET_DOWNLOAD_FAILED'
+              ),
               'JS_SDK_KMS_CAROOTS_ASSET_DOWNLOAD_FAILED',
               {
                 fields: {success: false},
@@ -833,9 +907,12 @@ describe('internal-plugin-encryption', () => {
                   reason,
                   assetsBaseUrl: 'https://cdn.example.com/assets/internal-plugin-encryption/',
                   validationMode: 'enforced',
+                  carootsAsset: UNION_BUNDLE_ASSET,
                 },
               }
             );
+            assert.calledOnce(webex.internal.metrics.submitClientMetrics);
+            assertAssetStages(webex.internal.metrics.submitClientMetrics, 'download-failed');
 
             assert.lengthOf(await kms._getCaroots(), 231);
             assert.calledTwice(kms._getCarootsAssetBytes);
@@ -854,9 +931,10 @@ describe('internal-plugin-encryption', () => {
           );
 
           assertFailClosedError(error, `"${UNION_BUNDLE_ASSET}" failed verification`);
-          assert.calledOnce(webex.internal.metrics.submitClientMetrics);
+          assert.calledTwice(webex.internal.metrics.submitClientMetrics);
+          assertAssetStages(webex.internal.metrics.submitClientMetrics, 'verification-failed');
 
-          const [name, payload] = webex.internal.metrics.submitClientMetrics.args[0];
+          const [name, payload] = webex.internal.metrics.submitClientMetrics.lastCall.args;
 
           assert.equal(name, 'JS_SDK_KMS_CAROOTS_ASSET_VERIFICATION_FAILED');
           assert.deepEqual(payload.fields, {success: false});
@@ -878,7 +956,7 @@ describe('internal-plugin-encryption', () => {
             }
             assert.lengthOf(await kms._loadCaroots({reportOnly}), 231);
             assert.calledOnceWithExactly(
-              webex.internal.metrics.submitClientMetrics,
+              webex.internal.metrics.submitClientMetrics.withArgs('JS_SDK_KMS_CAROOTS_ASSET_STALE'),
               'JS_SDK_KMS_CAROOTS_ASSET_STALE',
               {
                 fields: {ageInDays: 400},
@@ -887,6 +965,12 @@ describe('internal-plugin-encryption', () => {
                   validationMode: reportOnly ? 'report-only' : 'enforced',
                 },
               }
+            );
+            assert.calledThrice(webex.internal.metrics.submitClientMetrics);
+            assertAssetStages(
+              webex.internal.metrics.submitClientMetrics,
+              'success',
+              reportOnly ? 'report-only' : 'enforced'
             );
           });
         });

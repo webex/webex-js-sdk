@@ -109,9 +109,61 @@ an enforced load succeed.
 The SDK reports these metrics:
 
 - `JS_SDK_KMS_CAROOTS_ASSET_DOWNLOAD_FAILED`
+- `JS_SDK_KMS_CAROOTS_ASSET_DOWNLOAD_SUCCESS`
 - `JS_SDK_KMS_CAROOTS_ASSET_VERIFICATION_FAILED`
+- `JS_SDK_KMS_CAROOTS_ASSET_VERIFICATION_SUCCESS`
 - `JS_SDK_KMS_CAROOTS_ASSET_STALE`
 - `JS_SDK_KMS_CERTIFICATE_VALIDATION_FAILED`
+- `JS_SDK_KMS_CERTIFICATE_VALIDATION_SUCCESS`
+
+### Count completed stages
+
+Each stage emits its own success or failure event. Count these events on the
+dashboard; the SDK does not store a running counter. For each stage, calculate:
+
+`failure rate = FAILED / (FAILED + SUCCESS)`
+
+| Stage                      | Success means                                                 | When it can run                                                        |
+| -------------------------- | ------------------------------------------------------------- | ---------------------------------------------------------------------- |
+| Root-file download         | The root-file bytes were loaded                               | A fresh logical asset load, including internal retries                 |
+| Root-file verification     | The signed root file passed verification                      | After the bytes were loaded                                            |
+| KMS certificate validation | The full certificate/key check, including chain trust, passed | KMS context setup or renewal, including independent report-only checks |
+
+A later failure does not remove an earlier success. A downloaded file that fails
+signature verification emits DOWNLOAD_SUCCESS and VERIFICATION_FAILED. A verified
+root file followed by an untrusted KMS certificate emits both asset successes and
+CERTIFICATE_VALIDATION_FAILED. A stale but verified root file emits both asset
+successes and the separate stale warning.
+
+All success events have `fields.success: true` and a `validationMode` tag of
+`enforced` or `report-only`. Root-file success and failure events also have the
+captured `carootsAsset` filename. Certificate success and failure events have
+`signatureValidation: enabled | disabled`. Full-validation successes always have
+`enabled`; valid identity-only checks with chain validation disabled emit no
+certificate success. Existing identity-only failures remain diagnostic events
+with `disabled`. Filter certificate failure rates to `signatureValidation=enabled`.
+Malformed keys or missing roots during an enabled full check count as failures.
+
+Use the same SDK version, time window and validation mode for both sides of each
+rate. Use the same asset filename when filtering root-file stages. Filter to SDK
+versions that emit these success events and matching failure tags. Success events
+do not carry the error reason or KMS key ID, so do not filter only failures by
+those values when calculating a rate. Do not combine the three stages into one
+denominator: a root file can serve many subsequent certificate checks.
+
+Cache hits and callers sharing a pending asset load do not add root-file events.
+Internal HTTP retries belong to one logical download. A failed load is evicted,
+so a later load can report another result. Node packaged-file loads also count;
+DOWNLOAD_SUCCESS means bytes were loaded, not necessarily that HTTP was used.
+Supplied roots skip both file stages but can still produce certificate results.
+Disabled or skipped full checks produce no certificate success. Activity decrypts
+and cached KMS contexts produce no new validation events. Each mode counts its
+own actual checks; certificate checks that reuse cached roots still count.
+
+A stage emits no result until it completes. For example, a pending signature
+check can already have DOWNLOAD_SUCCESS but no verification result. Unfinished
+stages are excluded. Metric delivery is best effort, so rates describe received
+events. These metrics do not depend on optional asset error diagnostics.
 
 ### Hosting the assets
 
