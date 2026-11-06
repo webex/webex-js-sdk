@@ -48,7 +48,15 @@ Telemetry is disabled by default. Enable it with
 include application context such as `orgId` and `dataCenter`. Metadata must not contain personally
 identifiable information or credentials.
 
-````js
+The SDK emits `unhandledExceptionTelemetry:started` synchronously, with no payload, after both browser
+listeners are installed. Subscribe on the SDK instance immediately after construction, before waiting
+for `ready`: reporter installation runs inside the SDK's `ready` event. The event is not replayed to
+late subscribers. It fires once for each successful reporter installation and does not fire when
+telemetry is disabled, the environment is unsupported, or installation fails. Exceptions from event
+notification are logged and contained; the installed reporter remains active. This notification
+confirms listener installation, not delivery of telemetry.
+
+```js
 import Webex from 'webex';
 
 const webex = Webex.init({
@@ -64,6 +72,12 @@ const webex = Webex.init({
     },
   },
 });
+
+webex.once('unhandledExceptionTelemetry:started', () => {
+  // Both browser exception listeners are installed.
+});
+```
+
 ## Network request telemetry
 
 Network request telemetry is disabled by default. Enable it with
