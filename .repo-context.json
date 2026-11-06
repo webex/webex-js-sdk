@@ -117,6 +117,13 @@
           "packages/@webex/plugin-authorization-browser-first-party"
         ],
         "notes": "Onboarded package: its own AGENTS.md, docs/, and .sdd/manifest.json are routed from .sdd/manifest.json packages."
+      },
+      {
+        "name": "@webex/plugin-encryption",
+        "paths": [
+          "packages/@webex/plugin-encryption"
+        ],
+        "notes": "Onboarded package: its own AGENTS.md, docs/, and .sdd/manifest.json are routed from .sdd/manifest.json packages."
       }
     ],
     "source_surfaces": [
