@@ -230,7 +230,7 @@ module.exports = (env = {NODE_ENV: process.env.NODE_ENV || 'production'}) => ({
               HYDRA_SERVICE_URL: JSON.stringify('https://api.ciscospark.com/v1'),
               IDBROKER_BASE_URL: JSON.stringify('https://idbroker.webex.com'),
               IDENTITY_BASE_URL: JSON.stringify('https://identity.webex.com'),
-              U2C_SERVICE_URL: JSON.stringify('https://u2c.wbx2.com/u2c/api/v1'),
+              U2C_SERVICE_URL: JSON.stringify('https://u2c.svc.webex.com/u2c/api/v1'),
               SQDISCOVERY_SERVICE_URL: JSON.stringify('https://ds.ciscospark.com/v1/region'),
               WDM_SERVICE_URL: JSON.stringify('https://wdm-a.wbx2.com/wdm/api/v1'),
               WHISTLER_API_SERVICE_URL: JSON.stringify(
