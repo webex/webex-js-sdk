@@ -288,27 +288,44 @@ export default class MLS {
   }
 
   /**
-   * Converts an engine HTTP request from JSON bytes to an object, sends it through the injected
-   * {@link IMlsHttpClient}, and converts the response object back to JSON bytes for the engine.
-   * JSON conversion failures are logged and rejected so the engine's request is completed as failed.
+   * Sends an engine HTTP request through the injected {@link IMlsHttpClient}, converting between
+   * the engine's JSON bytes and the client's objects. Conversion failures reject so the engine's
+   * request is completed as failed.
    * @param {string} url - The absolute request URL provided by the engine.
    * @param {Uint8Array} body - JSON request payload as bytes (owned copy, not a WASM memory view).
    * @returns {Promise<Uint8Array>} JSON response payload as bytes.
    */
   private async sendHttpRequest(url: string, body: Uint8Array): Promise<Uint8Array> {
-    let requestBody: unknown;
+    const requestBody = MLS.decodeRequestBody(url, body);
+    const response = await this.httpClient.request(url, requestBody);
 
+    return MLS.encodeResponseBody(url, response);
+  }
+
+  /**
+   * @param {string} url - Request URL, used only for logging.
+   * @param {Uint8Array} body - JSON request payload as bytes.
+   * @returns {unknown} the parsed request body.
+   * @throws {Error} when the bytes are not valid JSON.
+   */
+  private static decodeRequestBody(url: string, body: Uint8Array): unknown {
     try {
-      requestBody = JSON.parse(new TextDecoder().decode(body));
+      return JSON.parse(new TextDecoder().decode(body));
     } catch (error) {
       LoggerProxy.logger.error(
         `e2ee: MLS --> failed to parse engine HTTP request body as JSON (url=${url}): ${error?.message}`
       );
       throw new Error(`Invalid JSON in HTTP request body: ${error?.message}`);
     }
+  }
 
-    const response = await this.httpClient.request(url, requestBody);
-
+  /**
+   * @param {string} url - Request URL, used only for logging.
+   * @param {unknown} response - Response object from the HTTP client.
+   * @returns {Uint8Array} the response serialized as JSON bytes.
+   * @throws {Error} when the response cannot be serialized to JSON.
+   */
+  private static encodeResponseBody(url: string, response: unknown): Uint8Array {
     try {
       return new TextEncoder().encode(JSON.stringify(response));
     } catch (error) {
