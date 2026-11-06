@@ -8,6 +8,7 @@
 |---|---|---|---|
 | `src/CallHistory/` | createCallHistoryClient(webex, logger) -> ICallHistory | Partial | [`src/CallHistory/ai-docs/call-history-spec.md`](../src/CallHistory/ai-docs/call-history-spec.md) |
 | `src/CallRecording/` | createCallRecordingClient(webex, logger) -> ICallRecording | Partial | [`src/CallRecording/ai-docs/call-recording-spec.md`](../src/CallRecording/ai-docs/call-recording-spec.md) |
+| `src/CallQueue/` | createCallQueueClient(webex, logger) -> ICallQueue | Partial | [`src/CallQueue/ai-docs/call-queue-spec.md`](../src/CallQueue/ai-docs/call-queue-spec.md) |
 | `src/CallSettings/` | createCallSettingsClient(webex, logger) -> ICallSettings | Partial | [`src/CallSettings/ai-docs/call-settings-spec.md`](../src/CallSettings/ai-docs/call-settings-spec.md) |
 | `src/CallingClient/` | createClient(config) -> ICallingClient | Partial | [`src/CallingClient/ai-docs/calling-client-spec.md`](../src/CallingClient/ai-docs/calling-client-spec.md) |
 | `src/CallingClient/calling/` | ICall and CallManager call lifecycle operations | Partial | [`src/CallingClient/calling/ai-docs/calling-spec.md`](../src/CallingClient/calling/ai-docs/calling-spec.md) |
@@ -30,6 +31,7 @@
 | Adding or changing an implementation pattern | matching file under `patterns/` |
 | Working in `src/CallHistory/` | [`src/CallHistory/ai-docs/call-history-spec.md`](../src/CallHistory/ai-docs/call-history-spec.md) plus the relevant `RULES.md`/pattern sections |
 | Working in `src/CallRecording/` | [`src/CallRecording/ai-docs/call-recording-spec.md`](../src/CallRecording/ai-docs/call-recording-spec.md) plus the relevant `RULES.md`/pattern sections |
+| Working in `src/CallQueue/` | [`src/CallQueue/ai-docs/call-queue-spec.md`](../src/CallQueue/ai-docs/call-queue-spec.md) plus the relevant `RULES.md`/pattern sections |
 | Working in `src/CallSettings/` | [`src/CallSettings/ai-docs/call-settings-spec.md`](../src/CallSettings/ai-docs/call-settings-spec.md) plus the relevant `RULES.md`/pattern sections |
 | Working in `src/CallingClient/` | [`src/CallingClient/ai-docs/calling-client-spec.md`](../src/CallingClient/ai-docs/calling-client-spec.md) plus the relevant `RULES.md`/pattern sections |
 | Working in `src/CallingClient/calling/` | [`src/CallingClient/calling/ai-docs/calling-spec.md`](../src/CallingClient/calling/ai-docs/calling-spec.md) plus the relevant `RULES.md`/pattern sections |
