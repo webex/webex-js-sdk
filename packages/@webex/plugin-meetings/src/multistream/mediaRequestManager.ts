@@ -13,6 +13,8 @@ import {
   SupportedResolution,
   AV1EncodingParams,
   MediaType,
+  getMediaFamily,
+  MediaFamily,
   MediaCodecMimeType,
 } from '@webex/internal-media-core';
 import {cloneDeepWith, debounce} from 'lodash';
@@ -79,19 +81,21 @@ type GetIngressPayloadTypeCallback = (
   mediaType: MediaType,
   codecMimeType: MediaCodecMimeType
 ) => number | undefined;
-type Kind = 'audio' | 'video';
+type IsReadyToSendRequestsCallback = () => boolean;
 
 type AudioMediaRequestManagerOptions = {
   degradationPreferences: DegradationPreferences;
-  kind: 'audio';
+  mediaType: MediaType.AudioMain | MediaType.AudioSlides;
   trimRequestsToNumOfSources: boolean; // if enabled, AS speaker requests will be trimmed based on the calls to setNumCurrentSources()
+  isReadyToSendRequests: IsReadyToSendRequestsCallback; // if it returns false, the latest request state is sent by sendPendingRequests()
 };
 
 type VideoMediaRequestManagerOptions = {
   degradationPreferences: DegradationPreferences;
-  kind: 'video';
+  mediaType: MediaType.VideoMain | MediaType.VideoSlides;
   trimRequestsToNumOfSources: boolean;
   enableAv1?: boolean;
+  isReadyToSendRequests: IsReadyToSendRequestsCallback;
 };
 
 type Options = AudioMediaRequestManagerOptions | VideoMediaRequestManagerOptions;
@@ -103,7 +107,11 @@ export class MediaRequestManager {
 
   private getIngressPayloadTypeCallback: GetIngressPayloadTypeCallback;
 
-  private kind: Kind;
+  private isReadyToSendRequests: IsReadyToSendRequestsCallback;
+
+  private hasPendingRequests = false;
+
+  private mediaType: MediaType;
 
   private counter: number;
 
@@ -127,14 +135,18 @@ export class MediaRequestManager {
   ) {
     this.sendMediaRequestsCallback = sendMediaRequestsCallback;
     this.getIngressPayloadTypeCallback = getIngressPayloadTypeCallback;
+    this.isReadyToSendRequests = options.isReadyToSendRequests;
     this.counter = 0;
     this.numLiveSources = 0;
     this.numTotalSources = 0;
     this.clientRequests = {};
     this.degradationPreferences = options.degradationPreferences;
-    this.kind = options.kind;
+    this.mediaType = options.mediaType;
     this.trimRequestsToNumOfSources = options.trimRequestsToNumOfSources;
-    this.enableAv1 = options.kind === 'video' && !!options.enableAv1;
+    this.enableAv1 =
+      getMediaFamily(options.mediaType) === MediaFamily.Video &&
+      'enableAv1' in options &&
+      !!options.enableAv1;
     this.sourceUpdateListener = this.commit.bind(this);
     this.debouncedSourceUpdateListener = debounce(
       this.sourceUpdateListener,
@@ -190,15 +202,15 @@ export class MediaRequestManager {
   /**
    * Returns the maxPayloadBitsPerSecond per Stream
    *
-   * If MediaRequestManager kind is "audio", a constant bitrate will be returned.
-   * If MediaRequestManager kind is "video", the bitrate will be calculated based
+   * If the media family is audio, a constant bitrate will be returned.
+   * If the media family is video, the bitrate will be calculated based
    * on maxFs (default h264 maxFs as fallback if maxFs is not defined)
    *
    * @param {MediaRequest} mediaRequest  - mediaRequest to take data from
    * @returns {number} maxPayloadBitsPerSecond
    */
   private getMaxPayloadBitsPerSecond(mediaRequest: MediaRequest): number {
-    if (this.kind === 'audio') {
+    if (getMediaFamily(this.mediaType) === MediaFamily.Audio) {
       // return mono_music bitrate default if the kind of mediarequest manager is audio:
       return RecommendedOpusBitrates.FB_MONO_MUSIC;
     }
@@ -383,6 +395,16 @@ export class MediaRequestManager {
   }
 
   private sendRequests() {
+    if (!this.isReadyToSendRequests()) {
+      if (!this.hasPendingRequests) {
+        LoggerProxy.logger.info(
+          `multistream:sendRequests --> connection not ready, latest ${this.mediaType} media request state will be synchronized when ready`
+        );
+      }
+      this.hasPendingRequests = true;
+
+      return;
+    }
     const streamRequests: StreamRequest[] = [];
 
     // clone the requests so that any modifications we do to them don't affect the original ones
@@ -422,7 +444,13 @@ export class MediaRequestManager {
       }
     });
 
+    if (this.hasPendingRequests) {
+      LoggerProxy.logger.info(
+        `multistream:sendRequests --> connection ready, synchronizing latest ${this.mediaType} media request state`
+      );
+    }
     this.sendMediaRequestsCallback(streamRequests);
+    this.hasPendingRequests = false;
     LoggerProxy.logger.info(`multistream:sendRequests --> media requests sent.`);
   }
 
@@ -469,7 +497,23 @@ export class MediaRequestManager {
     return this.sendRequests();
   }
 
+  /**
+   * Synchronizes the latest request state if it could not be sent earlier because the connection was not ready.
+   * @returns {void}
+   */
+  public sendPendingRequests() {
+    if (!this.hasPendingRequests) {
+      LoggerProxy.logger.info(
+        `multistream:sendPendingRequests --> no pending ${this.mediaType} media request state, skipping synchronization`
+      );
+
+      return;
+    }
+    this.sendRequests();
+  }
+
   public reset() {
+    this.hasPendingRequests = false;
     this.clientRequests = {};
     this.numTotalSources = 0;
     this.numLiveSources = 0;
