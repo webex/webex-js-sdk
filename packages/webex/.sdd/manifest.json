@@ -1,0 +1,401 @@
+{
+  "manifest_version": 1,
+  "repository": {
+    "name": "webex",
+    "purpose": "The webex npm package of the Webex JS SDK. Its entry files require plugin packages for their side effects and extend the webex-core WebexCore constructor, giving a full Webex constructor (main export), a meetings constructor (webex/meetings), a Calling wrapper around an SDK instance (webex/calling), and encryption and first-party variants. It also selects storage adapters per platform, ships Node and browser helper files, and carries committed UMD bundles.",
+    "category": "cat2-legacy",
+    "primary_languages": [
+      "javascript"
+    ]
+  },
+  "topology": "Single-repo",
+  "commands": {
+    "install": {
+      "command": "yarn install",
+      "source_file": "package.json",
+      "role": "install"
+    },
+    "compile": {
+      "command": "yarn workspace webex build:src",
+      "source_file": "package.json",
+      "role": "compile"
+    },
+    "build": {
+      "command": "yarn workspace webex build",
+      "source_file": "package.json",
+      "role": "package"
+    },
+    "unit-test": {
+      "command": "yarn workspace webex test:unit",
+      "source_file": "package.json",
+      "role": "unit-test"
+    },
+    "integration-test": {
+      "command": "yarn workspace webex test:integration",
+      "source_file": "package.json",
+      "role": "integration-test"
+    },
+    "browser-test": {
+      "command": "yarn workspace webex test:browser:broken",
+      "source_file": "package.json",
+      "role": "other"
+    },
+    "lint": {
+      "command": "yarn workspace webex test:style",
+      "source_file": "package.json",
+      "role": "lint"
+    },
+    "deploy": {
+      "command": "yarn workspace webex deploy:npm",
+      "source_file": "package.json",
+      "role": "deploy"
+    },
+    "workspace-prebuild": "yarn prebuild:modules",
+    "umd-refresh": "yarn build:script",
+    "lint-helpers": "yarn workspace webex eslint ./env.js ./browser.js ./process",
+    "integration-commonjs": "yarn workspace webex test:integration --targets commonjs.js",
+    "integration-init": "yarn workspace webex test:integration --targets init.js"
+  },
+  "toolchain": [
+    {
+      "name": "node",
+      "version": "22.14",
+      "origin": "human-declared",
+      "declared_by": "akulakum@cisco.com (bootstrap instruction 'nvm use 22.14.0'; the workspace root AGENTS.md requires Node 22.14 for development; package.json engines >=18 is the consumer floor)"
+    },
+    {
+      "name": "yarn",
+      "version": "3.4.1",
+      "origin": "human-declared",
+      "declared_by": "akulakum@cisco.com (workspace root package.json packageManager yarn@3.4.1, provided through Corepack per the workspace root CONTRIBUTING.md; install runs from the workspace root)"
+    },
+    {
+      "name": "corepack",
+      "version": "bundled with node 22.14",
+      "origin": "human-declared",
+      "declared_by": "akulakum@cisco.com (workspace root CONTRIBUTING.md setup step enables Corepack for the selected Node.js version)"
+    },
+    {
+      "name": "babel",
+      "version": "^7.22.11",
+      "origin": "repo-config",
+      "source_file": "package.json"
+    },
+    {
+      "name": "eslint",
+      "version": "^8.24.0",
+      "origin": "repo-config",
+      "source_file": "package.json"
+    },
+    {
+      "name": "prettier",
+      "version": "^2.7.1",
+      "origin": "repo-config",
+      "source_file": "package.json"
+    }
+  ],
+  "tests": {
+    "unit": {
+      "command_ref": "unit-test",
+      "dir": "test/unit/spec",
+      "framework": "jest"
+    },
+    "integration": {
+      "command_ref": "integration-test",
+      "dir": "test/integration/spec",
+      "framework": "mocha"
+    }
+  },
+  "quality_gates": {
+    "code_coverage": {
+      "origin": "none",
+      "declared_by": "akulakum@cisco.com via bootstrap questionnaire (checked first: jest.config.js re-exports @webex/jest-config-legacy, which sets collectCoverage false and no coverageThreshold; test:unit runs webex-legacy-tools with --runner jest; package.json defines no coverage script)"
+    }
+  },
+  "coverage_status_definitions": {
+    "specced": ">=80% public surface specced, drift <5% - spec is authoritative",
+    "partial": "40-80% specced - spec is a hint, cross-check code",
+    "untracked": "<40% specced - code is the source of truth"
+  },
+  "spec_source_policy": {
+    "mode": "keep-separate",
+    "migrated_source_disposition": "retain",
+    "disposition_decided_by": "akulakum@cisco.com",
+    "disposition_decided_at": "2026-10-13T04:41:34Z",
+    "decided_by": "akulakum@cisco.com",
+    "decided_at": "2026-10-13T04:41:34Z",
+    "decision_record": "docs/adr/0001-retain-product-readme.md"
+  },
+  "spec_sources": [],
+  "modules": [
+    {
+      "path": "src",
+      "canonical_spec": "src/docs/README.md",
+      "coverage_status": "Partial",
+      "coverage_evidence": "Field coverage 93.3% (14/15) assessed 2026-10-13 by the generator; critical field coverage 8/8. The one WEAK field is test strategy: test/unit/spec/webex.js runs 4 Jest cases (version and fedramp) and three loadable Mocha integration specs cover commonjs loading, init merge, and the user-agent header (the request.js user-agent case fails while package.json has no version) (the fourth, test/integration/spec/env.js, requires the unexported webex/env subpath and cannot reach env.js), but no test exercises meetings, encryption, first-party, Calling, the storage choice, or the UMD bundles, and no characterization baseline exists. Independent validation: see the Validation status row of the module spec. Held at Partial: untested entries, no characterization baseline, and no spec-drift record. PASS-WITH-WARNINGS; validator current-session; assessed 2026-10-15; source 8d56e3b; findings: 0 Blocking, 1 Important, 0 Medium, 1 Minor.",
+      "last_assessed": "2026-10-13",
+      "contracts": {
+        "provides": [
+          "webex-sdk",
+          "webex-umd-bundles"
+        ],
+        "requires": [
+          "webex-core-plugin-host",
+          "webex-public-plugins",
+          "webex-internal-plugins",
+          "webex-calling-sdk",
+          "webex-contact-center-sdk",
+          "storage-adapter-local-storage",
+          "babel-polyfill",
+          "lodash"
+        ]
+      },
+      "section_profile": {
+        "has_tiers": false,
+        "has_ui": false,
+        "crosses_service_boundaries": true,
+        "holds_client_state": true,
+        "enforces_domain_rules": true,
+        "is_concurrent_async": true,
+        "owns_persistence": false,
+        "stateful_transitions": false,
+        "exposes_wire_protocol": false,
+        "ui_multi_screen": false,
+        "large_data_model": false,
+        "returns_caller_errors": true,
+        "module_specific_conventions": true,
+        "published_package": true,
+        "embedded_in_host": false,
+        "has_design_tradeoff": true,
+        "resolved_by": "claude-cowork (code evidence; bootstrap questionnaire)",
+        "resolved_at": "2026-10-13T04:41:34Z",
+        "has_submodules": false,
+        "has_submodules_computed_by": "scripts/module_tree.py",
+        "has_submodules_computed_at": "2026-10-13T04:41:34Z"
+      }
+    }
+  ],
+  "contract_catalog": {
+    "index_path": "docs/architecture.md",
+    "definitions": {
+      "webex-sdk": {
+        "kind": "sdk",
+        "publication": "published",
+        "source_kind": "repository-path",
+        "source": "package.json",
+        "summary": "Published npm package webex. main is dist/index.js and devMain is src/index.js. exports maps . to dist/index.js, ./calling to dist/calling.js, ./meetings to dist/meetings.js, and ./package to package.json. The browser field maps config-storage to config-storage.shim in dist and src. Per-entry behavior is in src/docs/README.md. The exports map has no ./env, ./encryption, or ./webex-first-party entry."
+      },
+      "webex-umd-bundles": {
+        "kind": "file",
+        "publication": "published",
+        "source_kind": "repository-path",
+        "source": "umd",
+        "summary": "Committed minified bundles webex, webex-first-party, meetings, encryption, and calling with source maps, built by the workspace root webpack config with the umd flag. Globals: Webex for all but calling, which exposes Calling from its default export."
+      },
+      "webex-core-plugin-host": {
+        "kind": "rpc",
+        "publication": "internal",
+        "source_kind": "external",
+        "source": "@webex/webex-core (WebexCore, MemoryStoreAdapter, registerPlugin, registerInternalPlugin)",
+        "summary": "WebexCore.extend gives each entry its constructor; initialize merges config; plugin packages register on one registry per loaded webex-core copy, kept on the WebexCore and WebexInternalCore prototypes, where the first registration of a name wins unless replace is passed. Request, credentials, services, and storage behavior are owned by webex-core."
+      },
+      "webex-public-plugins": {
+        "kind": "sdk",
+        "publication": "internal",
+        "source_kind": "external",
+        "source": "@webex/plugin-* workspace packages listed in package.json dependencies",
+        "summary": "Required for their registration side effect: plugin-authorization (or plugin-authorization-browser-first-party), plugin-attachment-actions, plugin-device-manager, plugin-encryption, plugin-logger, plugin-meetings, plugin-memberships, plugin-messages, plugin-people, plugin-rooms, plugin-team-memberships, plugin-teams, and plugin-webhooks. Each plugin's behavior is owned by its package."
+      },
+      "webex-internal-plugins": {
+        "kind": "sdk",
+        "publication": "internal",
+        "source_kind": "external",
+        "source": "@webex/internal-plugin-* workspace packages and @webex/common",
+        "summary": "Required for their registration side effect: internal-plugin-calendar, -device, -dss, -llm, -mercury, -presence, -support, -task, and -voicea (declared), plus internal-plugin-encryption, -metrics, and -user (required by src/ but not declared in package.json). Calling uses webex.internal.device and webex.internal.mercury."
+      },
+      "webex-calling-sdk": {
+        "kind": "sdk",
+        "publication": "internal",
+        "source_kind": "external",
+        "source": "@webex/calling (packages/calling)",
+        "summary": "src/calling.js imports the namespace and uses Logger, createClient, createContactsClient, createCallHistoryClient, createVoicemailClient, createCallSettingsClient, createCallRecordingClient, createMicrophoneStream, and NoiseReductionEffect."
+      },
+      "webex-contact-center-sdk": {
+        "kind": "sdk",
+        "publication": "internal",
+        "source_kind": "external",
+        "source": "@webex/contact-center",
+        "summary": "Required by src/webex.js for its registration side effect only."
+      },
+      "storage-adapter-local-storage": {
+        "kind": "sdk",
+        "publication": "internal",
+        "source_kind": "external",
+        "source": "@webex/storage-adapter-local-storage",
+        "summary": "src/config-storage.shim.js constructs LocalStorageStoreAdapter with namespace webex for bounded storage in browsers."
+      },
+      "babel-polyfill": {
+        "kind": "sdk",
+        "publication": "published",
+        "source_kind": "external",
+        "source": "@babel/polyfill@^7.12.1 (npm)",
+        "summary": "Required by the guarded entry files when global._babelPolyfill is not set."
+      },
+      "lodash": {
+        "kind": "sdk",
+        "publication": "published",
+        "source_kind": "external",
+        "source": "lodash@^4.17.21 (npm)",
+        "summary": "lodash/merge builds the init config in src/webex.js, src/meetings.js, src/encryption.js, and src/calling.js."
+      }
+    }
+  },
+  "spec_policy": {
+    "require_what_and_why": true,
+    "require_provenance": true,
+    "protected_specs": [
+      "src/docs/README.md"
+    ]
+  },
+  "validation": {
+    "generator_runtime": "claude-cowork",
+    "generator_model": "claude-opus-5-5",
+    "generator_runtime_source": "host-metadata",
+    "generator_run_id": "spark-853131-sdd-stage0-2026-10-13",
+    "minimum_independence": "different-runtime",
+    "runtime_fallback_tier": "different-runtime",
+    "blocking_severities": [
+      "Blocking"
+    ],
+    "base_ref": "next",
+    "head_ref": "APPLY_SDD_FOR_WEBEX_PACKAGE",
+    "validator_runtime": "current-session",
+    "validator_runtime_source": "invocation-input",
+    "validator_run_id": "spark-853131-spec-validator-r9-2026-10-15",
+    "source_commit": "8d56e3b16e005bb958c27e13ff93fc03544052f1"
+  },
+  "layout": {
+    "sdd_root": ".sdd",
+    "docs_root": "docs",
+    "agent_entry_path": "AGENTS.md",
+    "standing_docs_root": "docs",
+    "spec_index_path": "docs/specs/README.md",
+    "module_docs_strategy": "source-local",
+    "module_docs_relative_path": "docs/README.md",
+    "module_docs_decision": {
+      "basis": "repo-standards-default",
+      "reason": "No module-local documentation existed. The source-local default gives src/docs/README.md. test:style runs eslint ./src/**/*.* and the workspace .eslintignore ignores *.md; build:src processes -js -ts only, so Markdown under src/ does not enter the build output.",
+      "decided_by": "akulakum@cisco.com (bootstrap questionnaire)",
+      "decided_at": "2026-10-13T04:41:34Z"
+    },
+    "repo_context_decision": {
+      "path": ".repo-context.json",
+      "schema_path": "schemas/repo-context.schema.json",
+      "action": "create",
+      "schema_action": "create",
+      "reason": "Neither the operational context nor its schema existed in this package. The context is created from package evidence and the schema is copied from packages/@webex/common/schemas/repo-context.schema.json (Repo Standards 0.3.0).",
+      "decided_by": "akulakum@cisco.com (bootstrap questionnaire)",
+      "decided_at": "2026-10-13T04:41:34Z"
+    },
+    "artifact_decisions": [
+      {
+        "path": "docs/service.md",
+        "action": "omit",
+        "reason": "Library package, not a deployable service. package.json has no start script, container, or deployment descriptor.",
+        "decided_by": "claude-cowork (code evidence)",
+        "decided_at": "2026-10-13T04:41:34Z"
+      },
+      {
+        "path": "mkdocs.yml",
+        "action": "omit",
+        "reason": "No package-level documentation site exists. Documentation publishing stays with the workspace.",
+        "decided_by": "akulakum@cisco.com (bootstrap questionnaire)",
+        "decided_at": "2026-10-13T04:41:34Z"
+      },
+      {
+        "path": "api-specs/openapi.yaml",
+        "action": "omit",
+        "reason": "The package serves no HTTP routes and sends no request itself; its published surfaces are the npm exports (webex-sdk) and the UMD bundles (webex-umd-bundles).",
+        "decided_by": "claude-cowork (code evidence)",
+        "decided_at": "2026-10-13T04:41:34Z"
+      },
+      {
+        "path": "SECURITY.md",
+        "action": "omit",
+        "reason": "No security policy file exists in this package or at the workspace root. Stage 0 creates none; a policy is a governance decision outside this package's annotation.",
+        "decided_by": "akulakum@cisco.com (bootstrap questionnaire)",
+        "decided_at": "2026-10-13T04:41:34Z"
+      },
+      {
+        "path": "CONTRIBUTING.md",
+        "action": "omit",
+        "reason": "Contribution instructions are owned at the workspace root and linked from this package README.md.",
+        "decided_by": "akulakum@cisco.com (bootstrap questionnaire)",
+        "decided_at": "2026-10-13T04:41:34Z"
+      },
+      {
+        "path": "CHANGELOG.md",
+        "action": "omit",
+        "reason": "Changelog generation is owned at the workspace root. This package has no changelog file.",
+        "decided_by": "akulakum@cisco.com (bootstrap questionnaire)",
+        "decided_at": "2026-10-13T04:41:34Z"
+      },
+      {
+        "path": "CTO_CHECKLIST.yml",
+        "action": "omit",
+        "reason": "The CTO readiness checklist applies to deployable services. This package is a library.",
+        "decided_by": "claude-cowork (code evidence)",
+        "decided_at": "2026-10-13T04:41:34Z"
+      },
+      {
+        "path": "schemas/cto-checklist.schema.json",
+        "action": "omit",
+        "reason": "Omitted together with CTO_CHECKLIST.yml.",
+        "decided_by": "claude-cowork (code evidence)",
+        "decided_at": "2026-10-13T04:41:34Z"
+      }
+    ],
+    "template_roots": {
+      "canonical": ".sdd/templates/repo-standards"
+    },
+    "repo_skills_root": ".sdd/skills",
+    "contract_index_path": "docs/architecture.md"
+  },
+  "coverage_ratchet": {
+    "enabled": true,
+    "waivers": []
+  },
+  "substrate": {
+    "source": "WebexTools/repo-standards@d89a7fe59126ae3ad9bac9ca352aa7f12b4c85dc",
+    "consumed": [
+      "@webex/babel-config-legacy via babel.config.js",
+      "@webex/jest-config-legacy via jest.config.js",
+      "workspace root .eslintrc.js and .eslintignore for test:style (the package has no eslint config of its own; @webex/eslint-config-legacy is a devDependency that no package file references)",
+      "@webex/legacy-tools build and test runner via package.json",
+      "package README.md",
+      "Repo Standards 0.3.0 templates at the JS SDK root .sdd/templates/repo-standards (PR 5246); the package tracks none, and a temporary untracked local symlink .sdd/templates/repo-standards is created only to run the Repo Annotation checkers"
+    ],
+    "compliance_tier": "baseline"
+  },
+  "section_profiles": {
+    "repo": {
+      "owns_datastore": false,
+      "holds_client_state": false,
+      "components_interact": false,
+      "domain_data_across_components": false,
+      "caches_data": false,
+      "observability_convention": false,
+      "deploys_to_infra": false,
+      "shared_base_libs": true,
+      "is_monorepo": false,
+      "multi_platform": true,
+      "published_package": true,
+      "embedded_in_host": false,
+      "cross_repo_deps_material": true,
+      "security_arch_warranted": true,
+      "exposes_commands_or_artifacts": true
+    },
+    "resolved_by": "claude-cowork (code evidence; bootstrap questionnaire)",
+    "resolved_at": "2026-10-13T04:41:34Z"
+  }
+}
