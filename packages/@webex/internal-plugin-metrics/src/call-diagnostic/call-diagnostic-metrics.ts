@@ -1337,6 +1337,10 @@ export default class CallDiagnosticMetrics extends StatelessWebexPlugin {
     // merge any new properties, or override existing ones
     clientEventObject = merge(clientEventObject, payload);
 
+    if (options.omitMeetingJoinPhase && !meetingId) {
+      delete clientEventObject.meetingJoinPhase;
+    }
+
     // append client event data to the call diagnostic event
     const diagnosticEvent = this.prepareDiagnosticEvent(clientEventObject, options);
 

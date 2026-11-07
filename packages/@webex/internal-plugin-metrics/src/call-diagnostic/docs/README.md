@@ -81,6 +81,11 @@ satisfies its condition.
 
 ## Purpose and boundary
 
+Standalone client diagnostics can set `SubmitClientEventOptions.omitMeetingJoinPhase` to omit
+`meetingJoinPhase` when no `meetingId` is supplied. This applies to normal submission and prepared
+fetch options, including an explicit phase in the payload. Existing callers retain their current
+phase defaults. Events associated with a meeting retain their meeting phase.
+
 - Responsibility: building, enriching and submitting Call Analyzer events — client events, feature
   events and media quality events — and maintaining the latency ledger from which join-time metrics
   are derived.
