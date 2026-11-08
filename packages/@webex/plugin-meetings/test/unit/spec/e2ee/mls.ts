@@ -180,6 +180,7 @@ describe('plugin-meetings', () => {
         const baseKey = new Uint8Array([1, 2]);
 
         session.on('joinSuccess', spy);
+        callbacks.newTransaction({id: 'tx-1', type: 'join'});
         callbacks.completeTransaction('tx-1', {
           status: 'join_success',
           epoch: 3,
@@ -209,9 +210,76 @@ describe('plugin-meetings', () => {
         const spy = sinon.stub();
 
         session.on('joinFailure', spy);
+        callbacks.newTransaction({id: 'tx-1', type: 'join'});
         callbacks.completeTransaction('tx-1', {status: 'failure', reason: 'join_failure'});
 
         assert.calledOnceWithExactly(spy, {reason: 'join_failure'});
+      });
+
+      it('logs an update transaction failure without emitting joinFailure', () => {
+        const errorLog = stubLogger().error;
+        const joinFailureSpy = sinon.stub();
+
+        session.on('joinFailure', joinFailureSpy);
+        callbacks.newTransaction({id: 'update-1', type: 'update'});
+        callbacks.completeTransaction('update-1', {status: 'failure', reason: 'update_override'});
+        // A repeated completion is ignored after the transaction has been removed.
+        callbacks.completeTransaction('update-1', {status: 'failure', reason: 'update_override'});
+
+        assert.calledOnceWithExactly(
+          errorLog,
+          'e2ee: MLS --> update transaction failed (id=update-1, reason=update_override)'
+        );
+        assert.notCalled(joinFailureSpy);
+      });
+
+      it('does not emit joinFailure when an update succeeds', () => {
+        const joinFailureSpy = sinon.stub();
+
+        session.on('joinFailure', joinFailureSpy);
+        callbacks.newTransaction({id: 'update-1', type: 'update'});
+        callbacks.completeTransaction('update-1', {status: 'update_success'});
+
+        assert.notCalled(joinFailureSpy);
+      });
+
+      it('ignores a join success result for an update transaction', () => {
+        const joinSuccessSpy = sinon.stub();
+
+        session.on('joinSuccess', joinSuccessSpy);
+        callbacks.newTransaction({id: 'update-1', type: 'update'});
+        callbacks.completeTransaction('update-1', {
+          status: 'join_success',
+          epoch: 3,
+          base_key: new Uint8Array([1]),
+          index: 0,
+          index_bits: 0,
+          sec_code: 'SEC-CODE',
+          sframe_cipher_suite: 1,
+          sframe_epoch_bits: 4,
+        });
+
+        assert.notCalled(joinSuccessSpy);
+      });
+
+      it('ignores completion for a transaction that was not registered', () => {
+        const joinFailureSpy = sinon.stub();
+
+        session.on('joinFailure', joinFailureSpy);
+        callbacks.completeTransaction('unknown', {status: 'failure', reason: 'update_override'});
+
+        assert.notCalled(joinFailureSpy);
+      });
+
+      it('ignores outstanding transaction completions after leave', () => {
+        const joinFailureSpy = sinon.stub();
+
+        session.on('joinFailure', joinFailureSpy);
+        callbacks.newTransaction({id: 'join-1', type: 'join'});
+        session.leave();
+        callbacks.completeTransaction('join-1', {status: 'failure', reason: 'timeout'});
+
+        assert.notCalled(joinFailureSpy);
       });
 
       it('does not emit events to a listener after it is removed', () => {
@@ -349,6 +417,7 @@ describe('plugin-meetings', () => {
 
         // Establish the baseline security code via a successful join.
         fakeE2ee.securityCode.returns('CODE-1');
+        callbacks.newTransaction({id: 'tx', type: 'join'});
         callbacks.completeTransaction('tx', {
           status: 'join_success',
           epoch: 1,
