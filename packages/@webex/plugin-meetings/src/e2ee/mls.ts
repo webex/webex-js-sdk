@@ -18,6 +18,7 @@ import type {
   HTTPRequest,
   ModuleInstance,
   RosterMember,
+  Transaction,
   TransactionResult,
   WebE2EEInstance,
 } from './wasm';
@@ -58,6 +59,8 @@ export default class MLS {
   private readonly httpClient: IMlsHttpClient;
 
   private readonly emitter = new EventEmitter();
+
+  private readonly transactions = new Map<string, Transaction['type']>();
 
   private e2ee: WebE2EEInstance | null = null;
 
@@ -123,6 +126,7 @@ export default class MLS {
     // the cached module, so this check can stay after loading.
     if (this.e2ee) {
       LoggerProxy.logger.info('e2ee: MLS --> initialize: already initialized');
+
       return;
     }
 
@@ -169,8 +173,30 @@ export default class MLS {
       return;
     }
 
-    e2ee.setOnCompleteTransaction((_id, result: TransactionResult) => {
+    e2ee.setOnNewTransaction(({id, type}: Transaction) => {
+      this.transactions.set(id, type);
+    });
+
+    e2ee.setOnCompleteTransaction((id, result: TransactionResult) => {
+      const transactionType = this.transactions.get(id);
+
+      if (!transactionType) {
+        LoggerProxy.logger.warn(`e2ee: MLS --> completion for unknown transaction (id=${id})`);
+
+        return;
+      }
+
+      this.transactions.delete(id);
+
       if (result.status === 'join_success') {
+        if (transactionType !== 'join') {
+          LoggerProxy.logger.warn(
+            `e2ee: MLS --> join success for non-join transaction (id=${id}, type=${transactionType})`
+          );
+
+          return;
+        }
+
         this.lastSecurityCode = result.sec_code;
         this.emitEvent('joinSuccess', {
           epoch: result.epoch,
@@ -187,8 +213,20 @@ export default class MLS {
             canEncrypt: false,
           },
         });
+      } else if (result.status === 'update_success') {
+        if (transactionType !== 'update') {
+          LoggerProxy.logger.warn(
+            `e2ee: MLS --> update success for non-update transaction (id=${id}, type=${transactionType})`
+          );
+        }
       } else if (result.status === 'failure') {
-        this.emitEvent('joinFailure', {reason: result.reason});
+        if (transactionType === 'join') {
+          this.emitEvent('joinFailure', {reason: result.reason});
+        } else {
+          LoggerProxy.logger.error(
+            `e2ee: MLS --> update transaction failed (id=${id}, reason=${result.reason})`
+          );
+        }
       }
     });
 
@@ -406,6 +444,7 @@ export default class MLS {
    */
   leave(): void {
     LoggerProxy.logger.info('e2ee: MLS --> leave: leaving MLS group');
+    this.transactions.clear();
     this.assertInitialized().leave();
   }
 
