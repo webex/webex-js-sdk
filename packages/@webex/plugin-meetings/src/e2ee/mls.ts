@@ -5,7 +5,6 @@
 import EventEmitter from 'events';
 
 import LoggerProxy from '../common/logs/logger-proxy';
-import type WasmLoader from '../common/wasm-loader';
 import type {
   E2eeKey,
   E2eeRosterMember,
@@ -55,9 +54,7 @@ export type MLSEvent = keyof MLSEventMap;
  * emitted as typed events. This keeps it unit-testable in isolation.
  */
 export default class MLS {
-  private readonly wasmLoader: WasmLoader;
-
-  private readonly wasmUrl: string;
+  private readonly loadModule: () => Promise<ModuleInstance>;
 
   private readonly httpClient: IMlsHttpClient;
 
@@ -72,21 +69,17 @@ export default class MLS {
   /**
    * @param {Object} deps
    * @param {IMlsHttpClient} deps.httpClient - Transport for the engine's protocol requests.
-   * @param {WasmLoader} deps.wasmLoader - Loader for the (pre-warmed) WASM module.
-   * @param {string} deps.wasmUrl - URL identifying the e2ee WASM module to load.
+   * @param {Function} deps.loadModule - Loads the (pre-warmed) WASM module.
    */
   constructor({
     httpClient,
-    wasmLoader,
-    wasmUrl,
+    loadModule,
   }: {
     httpClient: IMlsHttpClient;
-    wasmLoader: WasmLoader;
-    wasmUrl: string;
+    loadModule: () => Promise<ModuleInstance>;
   }) {
     this.httpClient = httpClient;
-    this.wasmLoader = wasmLoader;
-    this.wasmUrl = wasmUrl;
+    this.loadModule = loadModule;
   }
 
   /**
@@ -127,10 +120,9 @@ export default class MLS {
    */
   async initialize(config: MLSConfig): Promise<void> {
     LoggerProxy.logger.info('e2ee: MLS --> initialize: loading WASM and instantiating engine');
-    const module = await this.wasmLoader.get<ModuleInstance>(this.wasmUrl);
+    const module = await this.loadModule();
 
-    // When loadModule uses WasmLoader.get(), repeated calls share the in-flight promise or return
-    // the cached module, so this check can stay after loading.
+    // Repeated calls can share the in-flight module promise; this check can stay after loading.
     if (this.e2ee) {
       LoggerProxy.logger.info('e2ee: MLS --> initialize: already initialized');
 

@@ -201,8 +201,7 @@ export default class E2eeController extends EventsScope {
       });
       const session = new MLS({
         httpClient,
-        wasmLoader: this.wasmLoader,
-        wasmUrl,
+        loadModule: () => this.wasmLoader.get(wasmUrl),
       });
       const mediaEncryptionGroupUrl = this.context.getLocusInfo()?.info?.mediaEncryptionGroupUrl;
 

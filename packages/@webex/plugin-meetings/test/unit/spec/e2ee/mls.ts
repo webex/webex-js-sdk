@@ -5,7 +5,6 @@ import 'jsdom-global/register';
 import {assert} from '@webex/test-helper-chai';
 import sinon from 'sinon';
 import MLS from '@webex/plugin-meetings/src/e2ee/mls';
-import WasmLoader from '@webex/plugin-meetings/src/common/wasm-loader';
 import LoggerProxy from '@webex/plugin-meetings/src/common/logs/logger-proxy';
 
 const flushPromises = () => new Promise((resolve) => setTimeout(resolve, 0));
@@ -18,7 +17,6 @@ describe('plugin-meetings', () => {
     let webE2eeConstructor;
     let httpClient;
     let session;
-    let wasmLoader;
 
     // Replaces the whole logger: other specs install loggers whose methods are already sinon stubs,
     // so stubbing individual methods of LoggerProxy.logger fails depending on test order.
@@ -90,12 +88,9 @@ describe('plugin-meetings', () => {
       webE2eeConstructor = sinon.stub().returns(fakeE2ee);
       const module = {WebE2EE: webE2eeConstructor};
 
-      wasmLoader = sinon.createStubInstance(WasmLoader);
-      wasmLoader.get.resolves(module);
-      wasmLoader.preload.resolves();
-      wasmLoader.isLoaded.returns(true);
+      loadModule = sinon.stub().resolves(module);
       httpClient = {request: sinon.stub().resolves({result: 'ok', n: 1})};
-      session = new MLS({httpClient, wasmLoader, wasmUrl: '/assets/e2ee.wasm'});
+      session = new MLS({httpClient, loadModule});
     });
 
     afterEach(() => {
@@ -106,7 +101,7 @@ describe('plugin-meetings', () => {
       it('loads the module, wires callbacks and initializes with defaults', async () => {
         await session.initialize(config);
 
-        assert.calledOnceWithExactly(wasmLoader.get, '/assets/e2ee.wasm');
+        assert.calledOnce(loadModule);
         assert.calledOnceWithExactly(
           fakeE2ee.initialize,
           'user-1',
@@ -126,8 +121,8 @@ describe('plugin-meetings', () => {
         await session.initialize(config);
         await session.initialize({...config, participantId: 'user-2'});
 
-        // The loader may be called again, but returns the cached WASM module.
-        assert.calledTwice(wasmLoader.get);
+        // The module callback may be called again; the shared loader returns its cached module.
+        assert.calledTwice(loadModule);
         assert.calledOnce(webE2eeConstructor);
         assert.calledOnceWithExactly(
           fakeE2ee.initialize,
