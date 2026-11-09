@@ -296,8 +296,8 @@ createE2eeController(context): E2eeController; // factory; injects wasmLoader + 
 Uses the shared `WasmLoader` and `webex.internal.identity` plugin. `createE2eeController` receives an
 `E2eeMeetingContext` containing the correlation ID, a getter for current E2EE-relevant locus values,
 and the existing `Members` instance. It returns an `E2eeController`; the E2EE implementation does not
-retain or import the `Meeting` class. The facade's `start()` is a no-op when `!isEnabled`, keeping
-`Meeting` code uniform.
+retain or import the `Meeting` class. The facade's `start()` is guarded by the shared Webex
+configuration check, keeping `Meeting` code uniform.
 
 ### `MLS` (pure engine; no webex/HTTP/LLM deps)
 
@@ -558,7 +558,6 @@ constructor(deps: {
 });
 
 get state(): E2eeState;
-get isEnabled(): boolean;
 getSecurityCode(): string | undefined;
 get hasUntrustedMediaServices(): boolean; // currently true if the MLS roster contains any media service
 on(event: string, listener: (payload: object) => void): this;

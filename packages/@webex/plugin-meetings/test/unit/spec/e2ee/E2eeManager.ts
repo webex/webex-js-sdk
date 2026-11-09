@@ -99,7 +99,6 @@ describe('plugin-meetings', () => {
 
         assert.isDefined(e2eeController);
         assert.equal(e2eeController.state, 'disabled');
-        assert.isTrue(e2eeController.isEnabled);
       });
     });
   });

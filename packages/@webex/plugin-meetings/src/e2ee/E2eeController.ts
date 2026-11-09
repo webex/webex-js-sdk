@@ -103,13 +103,6 @@ export default class E2eeController extends EventsScope {
   }
 
   /**
-   * @returns {boolean} whether E2EE is enabled via config.
-   */
-  get isEnabled(): boolean {
-    return MeetingsUtil.isE2eeEnabledAndSupported(this.webex?.config);
-  }
-
-  /**
    * @returns {boolean} whether the MLS roster contains a media service currently considered untrusted.
    */
   get hasUntrustedMediaServices(): boolean {
