@@ -4,7 +4,6 @@
 
 import {MEDIA_ENCRYPTION_SERVICE} from './constants';
 import type {WebexRequestMethod} from '../common/types';
-import type {IMlsHttpClient} from './types';
 
 /**
  * Routes the MLS engine's protocol HTTP requests to the media-encryption service via

@@ -69,7 +69,7 @@ export default class MLS {
   /**
    * @param {Object} deps
    * @param {IMlsHttpClient} deps.httpClient - Transport for the engine's protocol requests.
-   * @param {Function} deps.loadModule - Loads the (pre-warmed) WASM module.
+   * @param {Function} deps.loadModule - Loads the WASM module instance; supplied by the integration layer.
    */
   constructor({
     httpClient,
@@ -122,7 +122,8 @@ export default class MLS {
     LoggerProxy.logger.info('e2ee: MLS --> initialize: loading WASM and instantiating engine');
     const module = await this.loadModule();
 
-    // Repeated calls can share the in-flight module promise; this check can stay after loading.
+    // When loadModule uses WasmLoader.get(), repeated calls share the in-flight promise or return
+    // the cached module, so this check can stay after loading.
     if (this.e2ee) {
       LoggerProxy.logger.info('e2ee: MLS --> initialize: already initialized');
 

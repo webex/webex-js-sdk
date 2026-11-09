@@ -1161,7 +1161,7 @@ export default class Meetings extends WebexPlugin {
         this.registered = true;
         Metrics.sendBehavioralMetric(BEHAVIORAL_METRICS.MEETINGS_REGISTRATION_SUCCESS);
 
-        // Warm E2EE resources (e.g. WASM) off the join path; must never affect registration.
+        // Preload is best-effort and must not delay or fail Meetings registration.
         this.e2eeManager?.preload().catch((error) => {
           LoggerProxy.logger.warn(
             `Meetings:index#register --> E2EE preload failed: ${error?.message || error}`
