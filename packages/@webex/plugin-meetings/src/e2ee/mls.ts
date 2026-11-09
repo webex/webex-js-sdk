@@ -271,7 +271,7 @@ export default class MLS {
         baseKey: new Uint8Array(epoch.base_key),
         index: epoch.index,
         indexBits: epoch.index_bits,
-        canEncrypt: false,
+        canEncrypt: false, // the key can only be used for encryption after onUseKey is called
       });
     });
 

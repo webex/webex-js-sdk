@@ -620,12 +620,14 @@ local display-name lookup, update processing, and reporting changed members. `Me
      and Meeting emits `STATE_CHANGED` (this is what flips the trust state to `ZeroTrust`).
    - `securityCodeChanged` → Meeting emits `SECURITY_CODE_UPDATED`
    - `joinFailure` / `mediaEncryptionRequestFailure` / `evicted` / `timeout` → `handleFatal(reason)`
+   - Update transaction failures, including `update_override`, are logged and do not invoke
+     `handleFatal`; the engine rolls back to `FullJoined` and continues with the group.
 10. `signaling = new E2eeSignaling({ llm: meeting.getLlmChannel(),`
     `  getLocusUrl: () => meeting.locusInfo?.url, session }); signaling.start();`
     then `session.join()`
 
-`stop()`: `signaling.stop()`; `session.leave()`; `reconciler.reset()`;
-`mediaController.detach()`; unsubscribe members; `setState('left')`.
+`stop()`: `signaling.stop()`; `session.leave()` (which clears pending transaction records);
+`reconciler.reset()`; `mediaController.detach()`; unsubscribe members; `setState('left')`.
 
 `handleFatal(reason)`: `setState('failed' | 'evicted')`; Meeting emits
 `MEETING_E2EE_FAILURE { reason }`; then **force-leave**:
@@ -782,9 +784,10 @@ mock webex. (Filenames below are illustrative — each maps to a spec under `tes
 - `WasmLoader.test.ts` — `preload` caches, `get()` awaits/returns cache, idempotent, error resets.
 - `E2eeManager.test.ts` — `isEnabled` from config; `preload` warms WASM only, only when
   enabled, and never rejects; `createE2eeController` injects shared instances; disabled → no-op facade.
-- `MLS.test.ts` — mock `WasmLoader` returning a fake `WebE2EE`; assert callbacks
-  map to emitted events; HTTP/wait routed to injected deps, including JSON bytes ⇄ object
-  conversion and failure completion on invalid JSON. Pure, no webex.
+- `MLS.test.ts` — mock `WasmLoader` returning a fake `WebE2EE`; assert callbacks map to emitted
+  events, including join/update transaction type correlation, unknown/duplicate completions, and
+  pending-transaction cleanup on leave; HTTP/wait routed to injected deps, including JSON bytes ⇄
+  object conversion and failure completion on invalid JSON. Pure, no webex.
 - `MediaEncryptionService.test.ts` — mock `webexRequest`; assert service/url and that request and
   response bodies pass through as objects.
 - `E2eeSignaling.test.ts` — mock `llm` (`on/off/isConnected/getLocusUrl`) + a `getLocusUrl`

@@ -38,7 +38,9 @@ export const MEDIA_ENCRYPTION_SERVICE = 'media-encryption';
 /** MLS roster device type identifying a media service (breaks zero-trust). */
 export const MEDIA_SERVICE_DEVICE_TYPE = 'MEDIA_SERVICE';
 
-/** Static asset filenames published with plugin-meetings. */
+/* The WASM module that contains the libe2ee + mlspp libraries with a WebE2EE wrapper around them, required for joining MLS group for E2EE meetings.
+ * The version is in the filename as it is important that JS-SDK implementation of MLS class matches the WASM module version.
+ */
 export const E2EE_WASM_ASSET = 'e2ee-0.0.1.wasm';
 
 /** Default URL of the e2ee WASM binary (the `.js` loader URL is derived from it). */
