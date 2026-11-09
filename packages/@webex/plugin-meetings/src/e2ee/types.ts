@@ -32,22 +32,28 @@ export interface E2eeConfig {
 }
 
 /** Lifecycle state of a per-meeting MLS session. */
-export type E2eeState =
-  | 'disabled'
-  | 'initializing'
-  | 'joining'
-  | 'joined'
-  | 'failed'
-  | 'evicted'
-  | 'left';
+export const E2eeState = {
+  Disabled: 'disabled',
+  Initializing: 'initializing',
+  Joining: 'joining',
+  Joined: 'joined',
+  Failed: 'failed',
+  Evicted: 'evicted',
+  Left: 'left',
+} as const;
+
+export type E2eeState = Enum<typeof E2eeState>;
 
 /** The meeting's overall E2EE trust state, surfaced to the app for its UI indicator. */
-export type TrustState =
-  | 'calculating'
-  | 'strong'
-  | 'zeroTrust'
-  | 'adaptiveStrong'
-  | 'adaptiveZeroTrust';
+export const TrustState = {
+  Calculating: 'calculating',
+  Strong: 'strong',
+  ZeroTrust: 'zeroTrust',
+  AdaptiveStrong: 'adaptiveStrong',
+  AdaptiveZeroTrust: 'adaptiveZeroTrust',
+} as const;
+
+export type TrustState = Enum<typeof TrustState>;
 
 /** A media-encryption (SFrame) key for a given MLS epoch. */
 export interface E2eeKey {
@@ -144,11 +150,14 @@ export interface E2eeDeviceVerification {
 }
 
 /** A member's aggregate E2EE verification state across all of their devices. */
-export type E2eeMemberVerificationState =
-  | 'unknown'
-  | 'verified'
-  | 'unverified'
-  | 'partiallyVerified';
+export const E2eeMemberVerificationState = {
+  Unknown: 'unknown',
+  Verified: 'verified',
+  Unverified: 'unverified',
+  PartiallyVerified: 'partiallyVerified',
+} as const;
+
+export type E2eeMemberVerificationState = Enum<typeof E2eeMemberVerificationState>;
 
 /** Configuration for initializing an MLS group session. */
 export interface MLSConfig {
@@ -174,4 +183,9 @@ export interface IMlsHttpClient {
 }
 
 /** Which signaling channel an incoming MLS protocol event arrived on. */
-export type E2eeSignalingSource = 'llm' | 'mercury';
+export const E2eeSignalingSource = {
+  Llm: 'llm',
+  Mercury: 'mercury',
+} as const;
+
+export type E2eeSignalingSource = Enum<typeof E2eeSignalingSource>;
