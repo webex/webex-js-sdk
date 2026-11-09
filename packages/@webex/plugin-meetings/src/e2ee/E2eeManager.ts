@@ -10,7 +10,8 @@ import {StaticAssetLoader} from '@webex/webex-core';
 import LoggerProxy from '../common/logs/logger-proxy';
 import WasmLoader from '../common/wasm-loader';
 import E2eeController from './E2eeController';
-import {E2EE_WASM_ASSET, isE2eeEnabledAndSupported} from './constants';
+import {E2EE_WASM_ASSET} from './constants';
+import MeetingsUtil from '../meetings/util';
 import type {E2eeMeetingContext} from './types';
 
 /**
@@ -42,7 +43,7 @@ export default class E2eeManager {
    * @returns {boolean} whether E2EE is enabled via config.
    */
   get isEnabled(): boolean {
-    return isE2eeEnabledAndSupported(!!this.webex?.config?.meetings?.enableE2ee);
+    return MeetingsUtil.isE2eeEnabledAndSupported(!!this.webex?.config?.meetings?.enableE2ee);
   }
 
   /**

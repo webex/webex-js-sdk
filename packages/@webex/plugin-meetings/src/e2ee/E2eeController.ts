@@ -16,7 +16,8 @@ import MLS, {type MLSEvent, type MLSEventMap} from './mls';
 import MediaEncryptionService from './MediaEncryptionService';
 import E2eeSignaling from './E2eeSignaling';
 import MemberMLSReconciler from './MemberMLSReconciler';
-import {E2EE_WASM_ASSET, isE2eeEnabledAndSupported, MEDIA_SERVICE_DEVICE_TYPE} from './constants';
+import {E2EE_WASM_ASSET, MEDIA_SERVICE_DEVICE_TYPE} from './constants';
+import MeetingsUtil from '../meetings/util';
 import type WasmLoader from '../common/wasm-loader';
 import type {E2eeConfig, E2eeMeetingContext, E2eeState} from './types';
 
@@ -88,7 +89,7 @@ export default class E2eeController extends EventsScope {
     this.identityProvider = identityProvider;
     this.config = config;
 
-    if (isE2eeEnabledAndSupported(!!config.enableE2ee)) {
+    if (MeetingsUtil.isE2eeEnabledAndSupported(!!config.enableE2ee)) {
       // Created eagerly (not on join) and registered as the Members pre-emit processor, so member
       // verification is stamped into every members:update - even for member changes outside a
       // joined meeting. Roster-driven verification changes are reported back through Members too.
@@ -113,7 +114,7 @@ export default class E2eeController extends EventsScope {
    * @returns {boolean} whether E2EE is enabled via config.
    */
   get isEnabled(): boolean {
-    return isE2eeEnabledAndSupported(!!this.config.enableE2ee);
+    return MeetingsUtil.isE2eeEnabledAndSupported(!!this.config.enableE2ee);
   }
 
   /**
@@ -157,7 +158,7 @@ export default class E2eeController extends EventsScope {
     const locusInfo = this.context.getLocusInfo();
 
     return (
-      isE2eeEnabledAndSupported(!!this.config.enableE2ee) &&
+      MeetingsUtil.isE2eeEnabledAndSupported(!!this.config.enableE2ee) &&
       !!locusInfo?.info?.isV2E2EEncrypted &&
       !!locusInfo?.info?.mediaEncryptionGroupUrl
     );
