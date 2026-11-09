@@ -187,6 +187,7 @@ export default class MeetingRequest extends StatelessWebexPlugin {
       supportsNativeLobby: 1,
       // @ts-ignore - config comes from registerPlugin
       supportsV2E2EEncryption: MeetingsUtil.isE2eeEnabledAndSupported(
+        // @ts-ignore - config comes from registerPlugin
         !!this.config.meetings.enableE2ee
       ),
       clientMediaPreferences,
@@ -211,7 +212,12 @@ export default class MeetingRequest extends StatelessWebexPlugin {
       );
     }
     // @ts-ignore - config comes from registerPlugin
-    if (MeetingsUtil.isE2eeEnabledAndSupported(!!this.config.meetings.enableE2ee)) {
+    if (
+      MeetingsUtil.isE2eeEnabledAndSupported(
+        // @ts-ignore - config comes from registerPlugin
+        !!this.config.meetings.enableE2ee
+      )
+    ) {
       deviceCapabilities.push(E2EE_1K_SUPPORTED);
     }
 

@@ -6,7 +6,7 @@ import {assert} from '@webex/test-helper-chai';
 import sinon from 'sinon';
 import E2eeManager from '@webex/plugin-meetings/src/e2ee/E2eeManager';
 import WasmLoader from '@webex/plugin-meetings/src/common/wasm-loader';
-import {E2EE_WASM_ASSET, E2EE_WASM_URL} from '@webex/plugin-meetings/src/e2ee/constants';
+import {E2EE_WASM_ASSET} from '@webex/plugin-meetings/src/e2ee/constants';
 import {CapabilityState, WebCapabilities} from '@webex/web-capabilities';
 
 describe('plugin-meetings', () => {
@@ -32,9 +32,9 @@ describe('plugin-meetings', () => {
 
       return wasmLoader;
     };
-    const makeAssetLoader = () => ({
-      getUrl: sinon.stub().returns(`/assets/plugin-meetings/${E2EE_WASM_ASSET}`),
-    });
+    const wasmUrl = `/assets/plugin-meetings/${E2EE_WASM_ASSET}`;
+    const makeManager = (enableE2ee?: boolean, wasmLoader = makeWasmLoader()) =>
+      new E2eeManager({webex: makeWebex(enableE2ee), wasmLoader, wasmUrl});
 
     beforeEach(() => {
       supportsWasmStub = sinon
@@ -48,33 +48,31 @@ describe('plugin-meetings', () => {
 
     describe('isEnabled', () => {
       it('reflects webex.config.meetings.enableE2ee', () => {
-        assert.isTrue(new E2eeManager({webex: makeWebex(true), wasmLoader: makeWasmLoader(), assetLoader: makeAssetLoader()}).isEnabled);
-        assert.isFalse(new E2eeManager({webex: makeWebex(false), wasmLoader: makeWasmLoader(), assetLoader: makeAssetLoader()}).isEnabled);
-        assert.isFalse(new E2eeManager({webex: makeWebex(), wasmLoader: makeWasmLoader(), assetLoader: makeAssetLoader()}).isEnabled);
+        assert.isTrue(makeManager(true).isEnabled);
+        assert.isFalse(makeManager(false).isEnabled);
+        assert.isFalse(makeManager().isEnabled);
       });
 
       it('disables E2EE when the browser cannot run WebAssembly', () => {
         supportsWasmStub.returns(CapabilityState.NOT_CAPABLE);
 
-        assert.isFalse(new E2eeManager({webex: makeWebex(true), wasmLoader: makeWasmLoader(), assetLoader: makeAssetLoader()}).isEnabled);
+        assert.isFalse(makeManager(true).isEnabled);
       });
     });
 
     describe('preload', () => {
       it('warms the WASM module when enabled', async () => {
         const wasmLoader = makeWasmLoader();
-        const assetLoader = makeAssetLoader();
-        const manager = new E2eeManager({webex: makeWebex(true), wasmLoader, assetLoader});
+        const manager = makeManager(true, wasmLoader);
 
         await manager.preload();
 
-        assert.calledOnceWithExactly(wasmLoader.preload, `/assets/plugin-meetings/${E2EE_WASM_ASSET}`);
-        assert.calledOnceWithExactly(assetLoader.getUrl, E2EE_WASM_ASSET);
+        assert.calledOnceWithExactly(wasmLoader.preload, wasmUrl);
       });
 
       it('does nothing when disabled', async () => {
         const wasmLoader = makeWasmLoader();
-        const manager = new E2eeManager({webex: makeWebex(false), wasmLoader, assetLoader: makeAssetLoader()});
+        const manager = makeManager(false, wasmLoader);
 
         await manager.preload();
 
@@ -84,7 +82,7 @@ describe('plugin-meetings', () => {
 
     describe('createE2eeController', () => {
       it('returns a per-meeting E2EE controller', () => {
-        const manager = new E2eeManager({webex: makeWebex(true), wasmLoader: makeWasmLoader(), assetLoader: makeAssetLoader()});
+        const manager = makeManager(true);
         const context = {
           correlationId: 'correlation-id',
           getLocusInfo: () => undefined,

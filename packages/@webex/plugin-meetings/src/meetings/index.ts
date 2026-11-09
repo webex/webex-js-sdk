@@ -25,6 +25,7 @@ import Media from '../media';
 import MeetingUtil from '../meeting/util';
 import WasmLoader from '../common/wasm-loader';
 import E2eeManager from '../e2ee/E2eeManager';
+import {E2EE_WASM_ASSET} from '../e2ee/constants';
 import {
   MEETINGS,
   EVENTS,
@@ -215,7 +216,7 @@ export default class Meetings extends WebexPlugin {
   namespace = MEETINGS;
   registrationStatus: MeetingRegistrationStatus;
   wasmLoader?: WasmLoader;
-  assetLoader?: StaticAssetLoader;
+  e2eeWasmUrl: string;
   e2eeManager?: E2eeManager;
 
   /**
@@ -362,16 +363,18 @@ export default class Meetings extends WebexPlugin {
      * @private
      * @memberof Meetings
      */
-    // @ts-ignore
-    this.assetLoader = new StaticAssetLoader(
-      {
-        baseUrl:
-          this.config?.assetsBaseUrl ||
-          this.webex?.config?.meetings?.assetsBaseUrl ||
-          '/assets/plugin-meetings/',
-      },
+    const assetsBaseUrl =
+      // @ts-ignore - config comes from plugin registration.
+      this.config?.assetsBaseUrl ||
+      // @ts-ignore - parent is provided by WebexPlugin.
+      this.webex?.config?.meetings?.assetsBaseUrl ||
+      '/assets/plugin-meetings/';
+    const assetLoader = new StaticAssetLoader(
+      {baseUrl: assetsBaseUrl},
+      // @ts-ignore - parent is provided by WebexPlugin.
       {parent: this.webex}
     );
+    this.e2eeWasmUrl = assetLoader.getUrl(E2EE_WASM_ASSET);
 
     /**
      * Loads and caches WASM modules (for example needed for E2EE).
@@ -843,14 +846,16 @@ export default class Meetings extends WebexPlugin {
       mediaLogger = new MediaLogger();
       setLogger(mediaLogger);
 
-      // E2eeManager is created here (not in the constructor) because webex.request isn't available
-      // yet at plugin-construction time, so webex.request.bind() inside E2eeManager would throw. The
-      // WASM loader isn't E2EE-specific, so Meetings owns it and passes it in.
+      // Create E2eeManager after Webex is ready so its dependencies, including the identity plugin,
+      // are available. Meetings owns the shared loaders and resolved WASM URL.
       // @ts-ignore
       this.e2eeManager = new E2eeManager({
+        // @ts-ignore - parent is provided by WebexPlugin.
         webex: this.webex,
+        // @ts-ignore - initialized in the Meetings constructor.
         wasmLoader: this.wasmLoader,
-        assetLoader: this.assetLoader,
+        // @ts-ignore - initialized in the Meetings constructor.
+        wasmUrl: this.e2eeWasmUrl,
       });
 
       /**

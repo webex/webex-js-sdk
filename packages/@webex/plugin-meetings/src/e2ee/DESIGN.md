@@ -106,8 +106,10 @@ per-meeting `E2eeController` facade (alongside `Members` and `MediaProperties`).
 graph TD
     Meetings[Meetings plugin] -->|creates| Meeting[Meeting]
     Meetings -->|owns| WasmLoader[WasmLoader common/]
+    Meetings -->|resolves WASM URL with| Assets[StaticAssetLoader]
     Meetings -->|owns one| Mgr[E2eeManager]
     WasmLoader -.->|injected| Mgr
+    Meetings -.->|passes wasmUrl| Mgr
     Webex -->|registers| Ident[internal-plugin-identity]
     Mgr -->|uses shared instance| Ident
     Mgr -->|createE2eeController| E2eeController[E2eeController facade]
@@ -121,7 +123,8 @@ graph TD
 
 The `E2eeController` facade orchestrates five collaborators and reuses the shared `Identity` plugin
 (registered on the Webex client) and the generic `WasmLoader` (owned by `Meetings`, injected via
-`E2eeManager`).
+`E2eeManager`). `Meetings` resolves the E2EE module URL once with `StaticAssetLoader` and passes the
+URL through the manager and controller.
 
 ```mermaid
 graph TD
@@ -169,7 +172,7 @@ breakout moves). Meeting updates the adapter when its LLM channel is replaced du
 ```
 packages/@webex/plugin-meetings/src/e2ee/
 ├── index.ts                  # barrel exports
-├── E2eeManager.ts            # One instance per Meetings plugin: owns IdentityProvider + injected WasmLoader,
+├── E2eeManager.ts            # One instance per Meetings plugin: receives injected WasmLoader + wasmUrl,
 │                             #   preloads WASM in register(), factory for E2eeController
 ├── E2eeController.ts            # per-meeting facade / orchestrator (this.e2ee on Meeting)
 ├── mls.ts                    # MLS WASM protocol engine (refactor of the POC mls.ts)
@@ -184,16 +187,10 @@ packages/@webex/plugin-meetings/src/e2ee/
 ```
 
 The generic `WasmLoader` is **not** E2EE-specific and lives outside this folder in
-`common/wasm-loader.ts`; `Meetings` owns it and injects it into `E2eeManager`. The generic
-`StaticAssetLoader` in `@webex/webex-core` resolves and caches binary assets from a configured
-asset base URL. It joins the configured base URL with an asset filename and uses the parent Webex
-instance's `request` method to retrieve the response as bytes. Concurrent and later requests for
-the same URL share a cached successful
-response; failed requests are evicted so they can be retried. It rejects HTML responses by MIME
-type and also checks the response body for an HTML document prefix, since some servers return an
-HTML not-found page with a successful status and a generic binary MIME type. This prevents HTML
-from reaching binary asset consumers; E2EE handles failure to load the optional public roots asset
-as a non-fatal condition. The default base URL is `/assets/plugin-meetings/`.
+`common/wasm-loader.ts`; `Meetings` owns it and injects it into `E2eeManager`. `Meetings` also
+creates `StaticAssetLoader` and resolves the E2EE WASM URL during construction. Only the URL is
+passed into the manager and controller, since they do not need the static asset loader itself. The
+default base URL is `/assets/plugin-meetings/`.
 
 - The `e2ee/mls.ts` from POC code becomes `mls.ts` (stripped of webex/HTTP/LLM).
 - `loadWasmModule` become `WasmLoader.preload(wasmUrl)` / `get(wasmUrl)`, warmed once per session
@@ -287,12 +284,12 @@ E2EE module is loaded from `e2ee.wasm` under `meetings.assetsBaseUrl` (default
 ### `E2eeManager` (one instance per Meetings plugin)
 
 ```ts
-constructor(deps: { webex; wasmLoader });  // wasmLoader injected (owned by Meetings)
+constructor(deps: { webex; wasmLoader; wasmUrl });  // both resources are owned/resolved by Meetings
 get isEnabled(): boolean;         // webex.config.meetings.enableE2ee
 preload(): Promise<void>;         // called from Meetings.register(); if isEnabled ->
                                   //   warms the WASM module; failure must not block registration
                                   //   (credentials and trust-root bundle stay lazy)
-createE2eeController(context): E2eeController; // factory; injects shared wasmLoader + identityProvider
+createE2eeController(context): E2eeController; // factory; injects wasmLoader + wasmUrl + identityProvider
 ```
 
 Uses the shared `WasmLoader` and `webex.internal.identity` plugin. `createE2eeController` receives an
@@ -306,8 +303,7 @@ retain or import the `Meeting` class. The facade's `start()` is a no-op when `!i
 ```ts
 constructor(deps: {
   httpClient: IMlsHttpClient;
-  wasmLoader: WasmLoader;
-  wasmUrl: string;            // module URL resolved from meetings.assetsBaseUrl
+  loadModule: () => Promise<ModuleInstance>; // callback backed by the shared WasmLoader
 });
 
 initialize(cfg: {
@@ -556,7 +552,7 @@ Created by `E2eeManager.createE2eeController(context)`.
 
 ```ts
 constructor(deps: {
-  context: E2eeMeetingContext; webex; wasmLoader: WasmLoader;
+  context: E2eeMeetingContext; webex; wasmLoader: WasmLoader; wasmUrl: string;
   identityProvider: IdentityProvider; config;
 });
 
@@ -595,11 +591,11 @@ local display-name lookup, update processing, and reporting changed members. `Me
 
 1. `if (!required()) return;` (state stays `disabled`; `required()` already checks
    `config.enableE2ee` + `isV2E2EEncrypted` + `mediaEncryptionGroupUrl`)
-2. `await wasmLoader.get()` (already preloaded in `register()` → fast)
-3. `creds = await identityProvider.getCredentials(webex.internal.device.userId)` (cached unless
+2. In parallel, `await wasmLoader.get(wasmUrl)` (already preloaded in `register()` → fast) and
+   `creds = await identityProvider.getCredentials(webex.internal.device.userId)` (cached unless
    the leaf certificate expires in less than one day, in which case credentials are renewed)
 4. `httpClient = new MediaEncryptionService({ webexRequest: webex.request.bind(webex) })`
-5. `session = new MLS({ httpClient, wasmLoader })`
+5. `session = new MLS({ httpClient, loadModule: () => wasmLoader.get(wasmUrl) })`
 6. `await session.initialize({ participantId: device.userId, deviceUrl: device.url,`
    `  deviceType: 'WEB', correlationId: meeting.correlationId, displayName: <self name>,`
    `  serviceUrl: meeting.locusInfo.info.mediaEncryptionGroupUrl, credentials: creds,`
@@ -670,10 +666,9 @@ to surface the meeting's zero-trust state.
 
 ## `Meetings`-plugin integration (`meetings/index.ts`)
 
-- `onReady()` (the `READY` handler): `this.e2eeManager = new E2eeManager({ webex: this.webex });`.
-  Created here — **not** in the plugin constructor — because `webex.request` isn't available yet at
-  construction time, and `E2eeManager` binds `webex.request` for its HTTP adapters. `onReady` runs
-  before any meeting is created from a locus event, so `createMeeting` always has the manager.
+- The constructor creates `StaticAssetLoader`, resolves the E2EE module URL, and creates the shared
+  `WasmLoader`. `onReady()` (the `READY` handler) creates `E2eeManager` with the parent Webex
+  instance, shared loader, and resolved URL before any meeting is created from a locus event.
 - `register()`: after a successful register, fire-and-forget `this.e2eeManager?.preload()`, wrapped
   in a non-blocking `catch` (like `startReachability`), so it never blocks/fails registration. This
   warms the WASM module (no-op when `enableE2ee` is false). Credentials are not pre-warmed here —
@@ -782,9 +777,9 @@ stubs/spies, `assert` from `@webex/test-helper-chai`, and `@webex/test-helper-mo
 mock webex. (Filenames below are illustrative — each maps to a spec under `test/unit/spec/e2ee/`.)
 
 - `WasmLoader.test.ts` — `preload` caches, `get()` awaits/returns cache, idempotent, error resets.
-- `E2eeManager.test.ts` — `isEnabled` from config; `preload` warms WASM only, only when
-  enabled, and never rejects; `createE2eeController` injects shared instances; disabled → no-op facade.
-- `MLS.test.ts` — mock `WasmLoader` returning a fake `WebE2EE`; assert callbacks map to emitted
+- `E2eeManager.test.ts` — `isEnabled` from config; `preload` warms the injected WASM URL only when
+  enabled, and never rejects; `createE2eeController` injects the shared loader and URL.
+- `MLS.test.ts` — mock the `loadModule` callback returning a fake `WebE2EE`; assert callbacks map to emitted
   events, including join/update transaction type correlation, unknown/duplicate completions, and
   pending-transaction cleanup on leave; HTTP/wait routed to injected deps, including JSON bytes ⇄
   object conversion and failure completion on invalid JSON. Pure, no webex.
