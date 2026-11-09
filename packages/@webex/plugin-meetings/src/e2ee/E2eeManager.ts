@@ -5,7 +5,7 @@
 import type {IdentityProvider} from '@webex/internal-plugin-identity';
 import {CapabilityState, WebCapabilities} from '@webex/web-capabilities';
 // @ts-ignore - StaticAssetLoader is exported from webex-core's JavaScript entry point.
-import {StaticAssetLoader} from '@webex/webex-core';
+import type {StaticAssetLoader} from '@webex/webex-core';
 
 import LoggerProxy from '../common/logs/logger-proxy';
 import WasmLoader from '../common/wasm-loader';
@@ -29,14 +29,20 @@ export default class E2eeManager {
    * @param {Object} deps
    * @param {Object} deps.webex - The parent webex instance.
    * @param {WasmLoader} deps.wasmLoader - Shared WASM loader, owned by Meetings.
+   * @param {StaticAssetLoader} deps.assetLoader - Shared static-asset URL resolver, owned by Meetings.
    */
-  constructor({webex, wasmLoader}: {webex: any; wasmLoader: WasmLoader}) {
+  constructor({
+    webex,
+    wasmLoader,
+    assetLoader,
+  }: {
+    webex: any;
+    wasmLoader: WasmLoader;
+    assetLoader: StaticAssetLoader;
+  }) {
     this.webex = webex;
     this.wasmLoader = wasmLoader;
-    this.assetLoader = new StaticAssetLoader(
-      {baseUrl: webex.config.meetings.assetsBaseUrl},
-      {parent: webex}
-    );
+    this.assetLoader = assetLoader;
   }
 
   /**
