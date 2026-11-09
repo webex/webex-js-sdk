@@ -136,7 +136,7 @@ flowchart TB
         Mercury[Mercury WebSocket]
         Mobius[Mobius API]
         MobiusWss[Mobius WebSocket<br/>wss://...]
-        DS[ds.ciscospark.com<br/>Region Discovery]
+        DS[sqdiscovery.webex.com<br/>Region Discovery]
     end
 
     App -->|createClient| CC
@@ -186,7 +186,7 @@ sequenceDiagram
     participant API as APIRequest
     participant MS as MobiusSocket
     participant Line as Line
-    participant DS as ds.ciscospark.com
+    participant DS as sqdiscovery.webex.com
     participant Mobius as Mobius API
 
     App->>CC: createClient(webex, config)
