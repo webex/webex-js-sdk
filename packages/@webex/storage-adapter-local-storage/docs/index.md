@@ -6,7 +6,7 @@ doc_kind: standing-doc
 generated_from: docs-index@0.3.0
 generated_by: claude-code
 approved_by: rsarika@cisco.com
-updated_at: 2026-10-14T11:32:45Z
+updated_at: 2026-11-09T10:36:32Z
 validation_status: pass-with-warnings
 -->
 
@@ -26,9 +26,8 @@ npm ES module export declared in `package.json`.
 ## Decisions
 
 No architectural decision records exist for this package yet. When one is needed, add it as a
-concrete file under `docs/adr/`. Repo Annotation generates blank ADR templates locally under
-`.sdd/templates/repo-standards/`; that cache is not version-controlled. Regenerate it with the plugin setup
-before running template-based SDD checks in a fresh clone.
+concrete file under `docs/adr/`, instantiated from the ADR template in the monorepo root snapshot
+(`.sdd/templates/repo-standards/` at the repository root). This package holds no templates of its own.
 
 ## Specifications and contracts
 
@@ -45,10 +44,11 @@ owning module spec instead of copying them into Markdown.
 
 ## Related repository resources
 
-- `../README.md` — the npm-facing package reference. Registered as **reference-only** under a
-  `keep-separate` source policy and **not authoritative**; it describes `clear()` as
+- `../README.md` — the npm-facing package reference. Registered as **reference-only** context and
+  **not authoritative**; it describes `clear()` as
   namespace-scoped, which the code contradicts. Use the module spec for behavior.
 - `../AGENTS.md` — agent instructions for this package.
 - `../.sdd/manifest.json` — the SDD manifest: modules, contracts, layout, and coverage state.
 - The repository root carries its own `AGENTS.md`, `CONTRIBUTING.md`, and CI workflows that govern
-  this package alongside the rest of the monorepo.
+  this package alongside the rest of the monorepo; the root
+  [package routing table](../../../../docs/index.md#sdd-package-routing) lists every onboarded package.

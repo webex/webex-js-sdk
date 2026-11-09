@@ -15,31 +15,31 @@
       "command": "yarn workspace @webex/storage-adapter-local-storage build:src",
       "source_file": "package.json",
       "role": "package",
-      "verified_at": "2026-10-01T06:20:02Z"
+      "verified_at": "2026-11-09T10:45:00Z"
     },
     "unit-test": {
       "command": "yarn workspace @webex/storage-adapter-local-storage test:unit",
       "source_file": "package.json",
       "role": "unit-test",
-      "verified_at": "2026-10-01T06:20:02Z"
+      "verified_at": "2026-11-09T10:45:00Z"
     },
     "browser-test": {
       "command": "yarn workspace @webex/storage-adapter-local-storage test:browser",
       "source_file": "package.json",
       "role": "other",
-      "verified_at": "2026-10-01T06:20:02Z"
+      "verified_at": "2026-11-09T10:45:00Z"
     },
     "lint": {
       "command": "yarn workspace @webex/storage-adapter-local-storage test:style",
       "source_file": "package.json",
       "role": "lint",
-      "verified_at": "2026-10-01T06:20:02Z"
+      "verified_at": "2026-11-09T10:45:00Z"
     },
     "test": {
       "command": "yarn workspace @webex/storage-adapter-local-storage test",
       "source_file": "package.json",
       "role": "other",
-      "verified_at": "2026-10-01T06:20:02Z"
+      "verified_at": "2026-11-09T10:45:00Z"
     },
     "publish": {
       "command": "yarn workspace @webex/storage-adapter-local-storage deploy:npm",
@@ -51,6 +51,12 @@
       "source_file": "../../../package.json",
       "role": "install",
       "verified_at": "2026-10-04T00:00:00Z"
+    },
+    "clone": {
+      "command": "git clone https://github.com/webex/webex-js-sdk.git",
+      "source_file": "package.json",
+      "role": "other",
+      "verified_at": "2026-11-09T10:45:00Z"
     }
   },
   "toolchain": [
@@ -58,13 +64,13 @@
       "name": "node",
       "version": ">=18",
       "origin": "repo-config",
-      "source_file": "packages/@webex/storage-adapter-local-storage/package.json"
+      "source_file": "package.json"
     },
     {
       "name": "yarn",
       "version": "3.4.1",
       "origin": "repo-config",
-      "source_file": "package.json"
+      "source_file": "../../../package.json"
     }
   ],
   "tests": {
@@ -81,17 +87,17 @@
     }
   },
   "coverage_status_definitions": {
-    "specced": ">=80% public surface specced, drift <5% \u2014 spec is authoritative",
-    "partial": "40-80% specced \u2014 spec is a hint, cross-check code",
-    "untracked": "<40% specced \u2014 code is the source of truth"
+    "specced": ">=80% public surface specced, drift <5% — spec is authoritative",
+    "partial": "40-80% specced — spec is a hint, cross-check code",
+    "untracked": "<40% specced — code is the source of truth"
   },
   "modules": [
     {
       "path": "src",
       "coverage_status": "Partial",
-      "coverage_evidence": "The canonical spec at src/docs/README.md is structurally complete against the module-spec template, with every public surface, invariant, and failure mode mapped to a source file. Coverage is held at Partial rather than Specced because neither of this package's own test routes executes a case: test:unit skips all 21 declared cases under Node (skipInNode) and test:browser completes 0 tests because the shared abstract suite calls the Jest global beforeAll under mocha, both measured 2026-10-01 and confirmed independently 2026-10-04. That measurement covers this package's routes only; a repository-wide claim that nothing anywhere executes the adapter is not established, since authorization-browser automation fixtures also import it. Holding at Partial also reflects the recorded thresholds: the partial_to_specced rule requires a clean drift record across touching PRs, and independent validation on 2026-10-06 passed with warnings (0 Blocking, 3 Important, 1 Medium) under runtime 01a10f92-381f-7211-8991-8b2425672ee1. Requiring an executing verification route before promotion is a recommendation from this assessment, not a threshold in coverage_status_definitions.",
+      "coverage_evidence": "Field coverage measured 2026-11-09 at 96% (26 of 27 mandatory fields PRESENT, every critical field PRESENT). The one WEAK field is test and characterization coverage: neither of this package's own test routes executes a case (test:unit skips all 21 declared cases under Node; test:browser completes 0 tests and exits 1 because the shared suite calls the Jest beforeAll global under mocha), and no characterization baseline is committed, so a characterization baseline is required before any risky modification. Status stays Partial: Partial to Specced needs a clean drift record across the PRs that next touch the module, and independent validation of this revision has not run.",
       "canonical_spec": "src/docs/README.md",
-      "last_assessed": "2026-10-04",
+      "last_assessed": "2026-11-09",
       "contracts": {
         "provides": [
           "storage-adapter-local-storage-sdk",
@@ -120,9 +126,17 @@
         "holds_client_state": false,
         "has_submodules": false,
         "has_submodules_computed_by": "scripts/module_tree.py",
-        "has_submodules_computed_at": "2026-10-01T06:31:07Z",
-        "resolved_by": "rsarika@cisco.com",
-        "resolved_at": "2026-10-01T06:20:02Z"
+        "has_submodules_computed_at": "2026-11-09T10:17:40Z",
+        "resolved_by": "rsarika@cisco.com (confirmed against code by claude-code)",
+        "resolved_at": "2026-11-09T10:45:00Z"
+      },
+      "source_policy": {
+        "mode": "reconcile",
+        "existing_sources": [
+          "src/docs/README.md"
+        ],
+        "conflict_status": "resolved",
+        "decision_record": "Reconciled in place: the existing module spec is the canonical overlap. Owner answers on 2026-11-09 resolved the three open items (clear() full-basekey purge intent, cross-release readability of the at-rest document, and the parameterless clear() contract); no unresolved conflict remains."
       }
     }
   ],
@@ -141,7 +155,7 @@
         "publication": "internal",
         "source_kind": "repository-path",
         "source": "src/index.js",
-        "summary": "At-rest JSON document written to localStorage under the constructor basekey, shaped {namespace: {key: value}}. Read by _getRawData/_load and written by _save. It survives page reloads and releases, and the code carries no version field, no migration step, and no schema validation. Whether cross-release readability is a committed promise is an unresolved owner decision recorded in src/docs/README.md; this entry states current behavior only."
+        "summary": "At-rest JSON document written to localStorage under the constructor basekey, shaped {namespace: {key: value}}. Read by _getRawData/_load and written by _save. Owner-confirmed compatibility promise: a newer release must read a document written by an older one, so a layout or encoding change needs a migration and is breaking. The code carries no version field, no migration step, and no schema validation."
       },
       "webex-core-store-adapter-interface": {
         "kind": "sdk",
@@ -153,19 +167,91 @@
     }
   },
   "spec_source_policy": {
-    "mode": "keep-separate",
+    "mode": "reconcile",
+    "migrated_source_disposition": "retain",
+    "disposition_decided_by": "rsarika@cisco.com",
+    "disposition_decided_at": "2026-11-09T10:45:00Z",
     "decided_by": "rsarika@cisco.com",
-    "decided_at": "2026-10-01T06:20:02Z",
-    "decision_record": "No prior intent or design spec exists in this package. README.md is an install/usage reference only; it is preserved byte-for-byte and used as corroborating context, never routed as spec source, so the sources stay separate from the canonical spec at src/docs/README.md. The one known README-vs-code conflict (clear() described as namespace-scoped, while the implementation removes the whole basekey) is recorded in spec_sources.notes and in the Defects recorded, not repaired section of the canonical spec. Decision records are not cited from .generated/, which this package deliberately keeps out of version control."
+    "decided_at": "2026-11-09T09:40:00Z",
+    "decision_record": "The package already carried SDD docs at every canonical path. The owner chose reconcile: each existing doc is an in-place canonical overlap compared against current code, keeping code-supported content, correcting it from code where it drifted, and recording conflicts. README.md stays reference-only context and is not edited. No routed source is a deletion candidate, so the disposition is retain."
   },
   "spec_sources": [
+    {
+      "path": "AGENTS.md",
+      "scope": "repo",
+      "role": "source-material",
+      "canonical": true,
+      "use_by_agents": "source-for-reconciliation",
+      "canonical_target": "AGENTS.md",
+      "post_migration_action": "retain",
+      "deletion_status": "not-applicable",
+      "notes": "Canonical overlap: Package agent entry, reconciled in place. Never a deletion candidate."
+    },
+    {
+      "path": "docs/index.md",
+      "scope": "repo",
+      "role": "source-material",
+      "canonical": true,
+      "use_by_agents": "source-for-reconciliation",
+      "canonical_target": "docs/index.md",
+      "post_migration_action": "retain",
+      "deletion_status": "not-applicable",
+      "notes": "Canonical overlap: Package documentation index, reconciled in place. Never a deletion candidate."
+    },
+    {
+      "path": "docs/architecture.md",
+      "scope": "repo",
+      "role": "source-material",
+      "canonical": true,
+      "use_by_agents": "source-for-reconciliation",
+      "canonical_target": "docs/architecture.md",
+      "post_migration_action": "retain",
+      "deletion_status": "not-applicable",
+      "notes": "Canonical overlap: Package architecture and contract index, reconciled in place. Never a deletion candidate."
+    },
+    {
+      "path": "docs/getting-started.md",
+      "scope": "repo",
+      "role": "source-material",
+      "canonical": true,
+      "use_by_agents": "source-for-reconciliation",
+      "canonical_target": "docs/getting-started.md",
+      "post_migration_action": "retain",
+      "deletion_status": "not-applicable",
+      "notes": "Canonical overlap: Package getting-started guide, reconciled in place. Never a deletion candidate."
+    },
+    {
+      "path": "docs/specs/README.md",
+      "scope": "repo",
+      "role": "source-material",
+      "canonical": true,
+      "use_by_agents": "source-for-reconciliation",
+      "canonical_target": "docs/specs/README.md",
+      "post_migration_action": "retain",
+      "deletion_status": "not-applicable",
+      "notes": "Canonical overlap: Package spec registry, reconciled in place. Never a deletion candidate."
+    },
+    {
+      "path": "src/docs/README.md",
+      "scope": "module",
+      "module": "src",
+      "role": "source-material",
+      "canonical": true,
+      "use_by_agents": "source-for-reconciliation",
+      "canonical_target": "src/docs/README.md",
+      "post_migration_action": "retain",
+      "deletion_status": "not-applicable",
+      "notes": "Canonical overlap: Canonical module spec, reconciled in place. Never a deletion candidate."
+    },
     {
       "path": "README.md",
       "scope": "reference",
       "role": "reference-only",
       "canonical": false,
       "use_by_agents": "context-only",
-      "notes": "Package install/usage reference. Left byte-for-byte unchanged under keep-separate. Known conflict with code: it describes clear() as clearing data for the bound namespace, but src/index.js:77 removes the whole basekey across every namespace. Treat src/docs/README.md as authoritative for behavior."
+      "post_migration_action": "retain",
+      "deletion_status": "not-applicable",
+      "notes": "Package install/usage reference, left byte-for-byte unchanged. Known conflict with code: it describes clear() as clearing data for the bound namespace, but src/index.js removes the whole basekey across every namespace. Treat src/docs/README.md as authoritative for behavior."
     }
   ],
   "spec_policy": {
@@ -177,19 +263,20 @@
   },
   "validation": {
     "generator_runtime": "claude-code",
-    "generator_model": "claude-opus-5[1m]",
-    "generator_run_id": "e8887ad7-222e-4457-a435-0f4676db3f8d",
+    "generator_model": "claude-opus-5-5",
+    "generator_run_id": "f52420c1-2f02-41be-a487-d717836bbfdb",
     "generator_runtime_source": "host-metadata",
-    "validator_runtime": "use-codex",
-    "validator_runtime_source": "human-provided",
+    "validator_runtime": "01a1bf1a-7e46-7451-9bed-7ebfbdc56def",
+    "validator_model": "gpt-6-luna",
+    "validator_run_id": "01a1bfde-6ecc-76f0-9402-8e05fd678b6e",
+    "validator_runtime_source": "host-metadata",
     "runtime_fallback_tier": "different-runtime",
     "minimum_independence": "different-runtime",
     "blocking_severities": [
       "Blocking"
     ],
-    "source_commit": "c622eb661258aaeccbfa06ed9dee3c18be0f4d40",
-    "base_ref": "next",
-    "head_ref": "77d86ff048dfbfb74ffd394e522b943ef34ff4e7"
+    "source_commit": "94f94f516b0e63f6bdff9337b40b5981a699bef1",
+    "base_ref": "next"
   },
   "layout": {
     "sdd_root": ".sdd",
@@ -214,10 +301,10 @@
       "path": ".repo-context.json",
       "schema_path": "schemas/repo-context.schema.json",
       "action": "create",
-      "schema_action": "create",
-      "reason": "Neither target existed in the package before this run, so both are created from the bundled Repo Standards snapshot and populated from repository evidence.",
+      "schema_action": "reuse",
+      "reason": "The owner approved replacing the existing package context as a repository change, because it described a keep-separate policy and a package-local template map that no longer apply; it is regenerated from current code and this manifest. The schema already exists, is byte-identical to the root snapshot schema, and is reused unchanged.",
       "decided_by": "rsarika@cisco.com",
-      "decided_at": "2026-10-01T06:20:02Z"
+      "decided_at": "2026-11-09T10:45:00Z"
     },
     "artifact_decisions": [
       {
@@ -276,7 +363,12 @@
         "decided_by": "rsarika@cisco.com",
         "decided_at": "2026-10-01T06:20:02Z"
       }
-    ]
+    ],
+    "monorepo_package": {
+      "package_path": "packages/@webex/storage-adapter-local-storage",
+      "root_manifest_path": "../../../.sdd/manifest.json",
+      "templates_root_path": "../../../.sdd/templates/repo-standards"
+    }
   },
   "substrate": {
     "source": "WebexTools/repo-standards",
@@ -289,6 +381,11 @@
       "repository CI workflows (.github/workflows/pull-request.yml)",
       "existing package reference documentation (README.md, reference-only)"
     ]
+  },
+  "tooling": {
+    "sdlc_skills": {
+      "source_ref": "repo-annotation@2.3.1"
+    }
   },
   "coverage_ratchet": {
     "enabled": true,
@@ -312,7 +409,7 @@
       "cross_repo_deps_material": false,
       "security_arch_warranted": true
     },
-    "resolved_by": "rsarika@cisco.com",
-    "resolved_at": "2026-10-01T06:20:02Z"
+    "resolved_by": "rsarika@cisco.com (confirmed against code by claude-code)",
+    "resolved_at": "2026-11-09T10:45:00Z"
   }
 }

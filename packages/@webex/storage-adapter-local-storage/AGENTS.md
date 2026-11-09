@@ -3,15 +3,17 @@ doc_kind: agent-entry
 generated_from: agents@0.3.0
 generated_by: claude-code
 approved_by: rsarika@cisco.com
-updated_at: 2026-10-14T11:32:45Z
+updated_at: 2026-11-09T10:36:32Z
 validation_status: pass-with-warnings
 -->
 
 # AI Agent Instructions
 
 Instructions for AI coding assistants working in
-`packages/@webex/storage-adapter-local-storage`. The repository root carries its own `AGENTS.md`
-with monorepo-wide rules; this file governs only this package and does not replace it.
+`packages/@webex/storage-adapter-local-storage`. The repository root carries its own
+[`AGENTS.md`](../../../AGENTS.md) with monorepo-wide rules, and the root
+[package routing table](../../../docs/index.md#sdd-package-routing) lists every onboarded package;
+this file governs only this package and does not replace either.
 
 ## Working Method
 
@@ -41,9 +43,8 @@ API, so there is no OpenAPI document. The manifest remains authoritative for can
 artifact decisions.
 
 `README.md` at the package root is **reference-only and not authoritative**. It is registered in the
-manifest as `reference-only` under a `keep-separate` source policy, and it contains at least one
-statement the code contradicts (it describes `clear()` as namespace-scoped; it is not). Use
-`src/docs/README.md` for behavior.
+manifest as reference-only context, and it contains at least one statement the code contradicts (it
+describes `clear()` as namespace-scoped; it is not). Use `src/docs/README.md` for behavior.
 
 ## 1. Commands (Run First)
 
@@ -54,7 +55,7 @@ the repository root with Node 22.14 (`nvm use 22.14`).
 | ---------------------- | ------------------- |
 | Install dependencies   | `yarn install` (repository root) |
 | Start dev environment  | Not applicable — this is a library with no runnable entry point |
-| Run tests              | `yarn workspace @webex/storage-adapter-local-storage test:unit` — but see section 4; it verifies nothing |
+| Run tests              | `yarn workspace @webex/storage-adapter-local-storage test:unit` — but see section 4; it executes no case |
 | Run linters            | `yarn workspace @webex/storage-adapter-local-storage test:style` |
 | Build/release artifact | `yarn workspace @webex/storage-adapter-local-storage build:src` |
 | Format code            | No package-local format script; Prettier is a devDependency and formatting is enforced through lint |
@@ -103,30 +104,32 @@ Definition of done:
   abstract suite and skips it under Node.
 - `docs/`: package-level standing documentation (index, architecture, getting started, spec registry).
 - `.sdd/manifest.json`: SDD manifest — modules, contracts, layout, coverage state.
-- `.sdd/templates/repo-standards/`: a local generated template cache. Keep it out of commits. In a fresh clone,
-  regenerate it with the Repo Annotation plugin setup before running template-based SDD checks.
-  Do not edit or generate its contents by hand.
+- Templates: this package holds none. It refers to the monorepo root snapshot at
+  `../../../.sdd/templates/repo-standards` through `layout.monorepo_package.templates_root_path` in
+  `.sdd/manifest.json`. Do not create package-level templates, and do not hand-edit the root snapshot.
 - `process`: a one-line CommonJS file exporting `{browser: true}` for the browserify/envify transform.
 - `README.md`: npm-facing reference. Reference-only, not authoritative.
 
 ### Critical Constraints
 
 - **Browser-only.** The module uses the `localStorage` global with no feature detection
-  (`src/index.js` lines 5 and 41). It is unreachable in Node builds by design: `@webex/webex` selects it only
+  (`src/index.js`). It is unreachable in Node builds by design: `@webex/webex` selects it only
   through the `browser` field substitution of `config-storage.shim.js`.
 - **`clear()` is basekey-scoped, not namespace-scoped.** It removes the whole `localStorage` entry
-  and therefore every namespace (`src/index.js` line 77). This differs from `MemoryStoreAdapter` and is
-  the single most consequential behavior in the package. Do not "fix" it to be namespace-scoped
-  without an explicit decision — the purge-on-logout path depends on the current scope.
+  and therefore every namespace (`src/index.js`). This differs from `MemoryStoreAdapter` and is
+  the single most consequential behavior in the package. It is owner-confirmed intent: logout must
+  remove all persisted SDK state under the basekey, including namespaces not bound in the current
+  session. Do not "fix" it to be namespace-scoped, and do not give `clear()` a parameter — its
+  contract takes none, and its `@param key` JSDoc is stale.
 - **The at-rest document is a compatibility surface.** `localStorage[basekey]` holds
   `{ "<namespace>": { "<key>": <value> } }` with no version field and no migration step
-  (`src/index.js` lines 41–67). It has no version field and no migration step. Whether a newer release
-  must still read an older document is an **unresolved owner decision** — do not assume either way,
-  and do not add a statement that settles it without `@webex/web-client` saying so.
-- **Presence is `typeof value !== 'undefined'`, never truthiness** (`src/index.js` line 107). Changing
+  (`src/index.js`). Owner-confirmed: a newer release must still read a document written by an older
+  one. Any change to the layout or its JSON encoding needs a migration that reads the previous
+  layout, and is a breaking change.
+- **Presence is `typeof value !== 'undefined'`, never truthiness** (`src/index.js`). Changing
   this corrupts legitimately stored `0`, `false`, `null`, and `''`.
 - **Security:** in a browser bundle this adapter persists OAuth access and refresh tokens as
-  plaintext JSON (`webex-core/src/lib/storage/decorators.js` lines 53 and 57). Never add logging of stored
+  plaintext JSON (webex-core `src/lib/storage/decorators.js`). Never add logging of stored
   values, and never widen what is persisted without a security review.
 - **Backward compatibility:** the published constructor signature and the `bind`/`get`/`put`/`del`/
   `clear` shape are breaking-change boundaries for `@webex/webex`,
@@ -140,18 +143,19 @@ Run checks in this order:
 2. `yarn workspace @webex/storage-adapter-local-storage test:style`
 3. `yarn workspace @webex/storage-adapter-local-storage test:browser`
 
-**Read this before trusting any of those results.** Measured 2026-10-01 on Node v22.14.0, no
+**Read this before trusting any of those results.** Measured 2026-11-09 on Node v22.14.0, no
 automated test executes this package in either route:
 
-- `test:unit` exits 0 having **skipped all 21 cases**. `testEnvironment` is `node`
-  (`packages/legacy/jest/static/index.js` line 4), `localStorage` does not exist there, and
-  `test/unit/spec/storage-adapter-local-storage.js` line 9 wraps the suite in `skipInNode`.
-- `test:browser` exits 0 having **completed 0 tests**. Both Firefox and Chrome Headless report
-  `ReferenceError: beforeAll is not defined`, because `@webex/storage-adapter-spec/src/index.js` line 40
-  uses a Jest global under Karma's Mocha runner, so the suite throws while being defined.
+- `test:unit` exits 0 having **skipped all 21 cases**. `testEnvironment` is `node` (the shared
+  config in workspace package `packages/legacy/jest`, reached through `jest.config.js`),
+  `localStorage` does not exist there, and `test/unit/spec/storage-adapter-local-storage.js` wraps the
+  suite in `skipInNode`.
+- `test:browser` **completes 0 tests and exits 1**. Both Firefox and Chrome Headless report
+  `ReferenceError: beforeAll is not defined`, because the `@webex/storage-adapter-spec` suite calls a
+  Jest global under Karma's Mocha runner, so the suite throws while being defined.
 
-Both routes report success while verifying nothing. Check the reported test *count*, not the exit
-code. If you change behavior in `src/index.js`, no existing check will catch a regression — verify
+The unit route reports success while verifying nothing, and the browser route fails before any case
+runs. Check the reported test *count*, not only the exit code. If you change behavior in `src/index.js`, no existing check will catch a regression — verify
 manually in a browser and say so explicitly in the PR.
 
 Testing rules:
@@ -184,15 +188,15 @@ Coding expectations:
   Consumers should import from the owning module; package barrels should use direct named re-exports.
 - Do not write inline runtime `typeof` checks outside descriptively named guard implementations.
   Import and reuse the owning guard instead; TypeScript type-position `typeof` queries remain
-  allowed. **Exception, grandfathered:** `src/index.js` line 107 uses a bare `typeof value !== 'undefined'`
+  allowed. **Exception, grandfathered:** `get` in `src/index.js` uses a bare `typeof value !== 'undefined'`
   to implement the presence rule. It is the rule itself, not an ad-hoc check; preserve it as written.
 
 Package-local conventions, with evidence:
 
-- Keep `basekey` captured in the constructor closure (`src/index.js` lines 21–25). Do not promote it to an
+- Keep `basekey` captured in the constructor closure (`src/index.js`). Do not promote it to an
   instance property.
-- Keep per-binding state in the module-level `WeakMap`s (`src/index.js` lines 9–10), not on the instance.
-- Keep `/* eslint-env browser */` at the top of browser-only sources (`src/index.js` line 5).
+- Keep per-binding state in the module-level `WeakMap`s (`src/index.js`), not on the instance.
+- Keep `/* eslint-env browser */` at the top of browser-only sources (`src/index.js`).
 
 Pattern example:
 
@@ -236,7 +240,7 @@ PR checklist:
 
 - Adding new dependencies or external services.
 - Large refactors or schema migrations — including any change to the at-rest document layout.
-- Changing `clear()` scope, the presence rule, or the published constructor signature.
+- Changing `clear()` scope or parameters, the presence rule, or the published constructor signature.
 - Security-sensitive changes (auth, encryption, secrets handling). Note that this package already
   persists OAuth tokens in plaintext.
 - Any destructive data or infrastructure operation.
@@ -249,5 +253,5 @@ PR checklist:
 - Rewrite history on shared branches.
 - Change unrelated files "while here" without clear need.
 - Edit `README.md` to match the code without an explicit source-policy decision; it is registered as
-  protected reference-only material.
+  reference-only material.
 - Hand-edit files under `.sdd/templates/repo-standards/`.

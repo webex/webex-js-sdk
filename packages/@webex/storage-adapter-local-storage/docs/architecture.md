@@ -9,7 +9,7 @@ doc_kind: standing-doc
 generated_from: architecture@0.3.0
 generated_by: claude-code
 approved_by: rsarika@cisco.com
-updated_at: 2026-10-14T11:32:45Z
+updated_at: 2026-11-09T10:36:32Z
 validation_status: pass-with-warnings
 -->
 
@@ -59,7 +59,7 @@ how the host selects this adapter, and how the adapter maps the host's namespace
 
 Adapter selection happens entirely outside this package. `@webex/webex` declares a `browser` field
 that substitutes `config-storage.shim.js` for `config-storage.js`, and only the shim instantiates
-this adapter (`../../../webex/src/config-storage.shim.js` line 9). A Node bundle of the same SDK keeps
+this adapter (sibling package webex, file `src/config-storage.shim.js`). A Node bundle of the same SDK keeps
 `MemoryStoreAdapter`. That substitution is why a package with no runtime feature detection can
 safely assume a browser global.
 
@@ -67,7 +67,8 @@ The one consequential internal decision is that every namespace shares a single 
 entry named by the constructor `basekey`. It makes a full purge trivial and needs no key-prefixing
 convention, at the cost of whole-document access on every `get`, `put`, and `del` (a read and parse
 for `get`, which never writes, and a read-modify-write for `put` and `del`, as the module's
-operation inventory records), a `clear()` whose blast radius exceeds the binding that calls it, and
+operation inventory records), a `clear()` whose blast radius exceeds the binding that calls it — the
+owner-confirmed logout intent — and
 an isolation guarantee that is weaker than it looks. A rewrite round-trips sibling namespaces
 through `JSON.parse`/`JSON.stringify`; namespace
 and key lookup do not check own properties, so `Object.prototype` names are not usable; and the
@@ -118,10 +119,10 @@ flowchart LR
 
 | Dependency | Type | Used by | Purpose | Version, failure, or fallback policy |
 | ---------- | ---- | ------- | ------- | ------------------------------------ |
-| `@webex/webex-core` | Internal (workspace) | `src/index.js` line 7 | Supplies `NotFoundError`, the rejection type callers branch on | `workspace:*`; a type change here is a breaking change for consumers' `catch` branches |
-| `@webex/storage-adapter-spec` | Internal (workspace, contract/test) | `test/unit/spec/storage-adapter-local-storage.js` line 5 | Declares the shared abstract adapter contract | `workspace:*`; currently non-executing in this package — see the module spec's Verification section |
+| `@webex/webex-core` | Internal (workspace) | `src/index.js` | Supplies `NotFoundError`, the rejection type callers branch on | `workspace:*`; a type change here is a breaking change for consumers' `catch` branches |
+| `@webex/storage-adapter-spec` | Internal (workspace, contract/test) | `test/unit/spec/storage-adapter-local-storage.js` | Declares the shared abstract adapter contract | `workspace:*`; currently non-executing in this package — see the module spec's Verification section |
 | `@webex/test-helper-mocha` | Internal (workspace) | `test/unit/spec/storage-adapter-local-storage.js` | Provides `skipInNode`, which disables the only test suite under Node | `workspace:*` |
-| Browser `localStorage` | External (platform) | `src/index.js` lines 41, 66 and 77 | The backing store | No feature detection and no fallback; absence is a hard failure |
+| Browser `localStorage` | External (platform) | `src/index.js` | The backing store | No feature detection and no fallback; absence is a hard failure |
 | `@webex/babel-config-legacy`, `@webex/eslint-config-legacy`, `@webex/jest-config-legacy` | Internal (workspace, build) | `babel.config.js`, `.eslintrc.js`, `jest.config.js` | Shared build, lint, and test configuration | `workspace:*`; the jest config's `testEnvironment: 'node'` is what forces the Node test skip |
 
 There are no dependency cycles. The single ordering constraint is that `@webex/webex-core` must
@@ -138,14 +139,14 @@ authoritative for publication state and canonical source.
 | Surface | Type | Owner | Consumers | Compatibility policy | Source |
 | ------- | ---- | ----- | --------- | -------------------- | ------ |
 | `storage-adapter-local-storage-sdk` | SDK | `src` | `@webex/webex` (browser), `@webex/recipe-private-web-client`, authorization-browser automation fixtures | Published npm surface. The constructor signature and the `bind`/`get`/`put`/`del`/`clear` shape are breaking-change boundaries. No `.d.ts` or API report ships, so `package.json` is the only machine-readable declaration. | `package.json` |
-| `local-storage-bounded-document` | File | `src` | Any future release of this package reading data written by an earlier one | Internal. The at-rest JSON document `{ "<namespace>": { "<key>": <value> } }` persists across releases but carries no version field and no migration step. | `src/index.js` |
+| `local-storage-bounded-document` | File | `src` | Any future release of this package reading data written by an earlier one | Internal, with an owner-confirmed cross-release promise: the at-rest JSON document `{ "<namespace>": { "<key>": <value> } }` must stay readable by later releases, so a layout or encoding change needs a migration and is breaking. It carries no version field and no migration step today. | `src/index.js` |
 | `webex-core-store-adapter-interface` | SDK | `@webex/webex-core` (external to this SDD root) | consumed by `src` | Internal. The `bind(namespace, {logger})` plus `get`/`put`/`del`/`clear` shape webex-core calls. This package implements it; it does not own it. | packages/@webex/webex-core/src/lib/storage/make-webex-store.js |
 
 ## Repository data and schema
 
 | Datastore or schema | Owning resource | Source of truth | Migration and compatibility rule |
 | ------------------- | --------------- | --------------- | -------------------------------- |
-| `localStorage[basekey]` JSON document | `src` | src/index.js | No version field, no migration step, no schema validation. Whether a newer release must stay able to read an older document is an unresolved owner decision, not a rule this document sets; if the encoding changes without one, the effect would be missing or malformed values at read time rather than a detected upgrade. Entities and retention detail live in the [module specification](../src/docs/README.md). |
+| `localStorage[basekey]` JSON document | `src` | src/index.js | No version field, no migration step, no schema validation. A newer release must stay able to read a document written by an older one (owner-confirmed; module spec `MOD-018`), so a layout or encoding change needs a migration that reads the previous layout and is a breaking change. Without one, the effect would be missing or malformed values at read time rather than a detected upgrade. Entities and retention detail live in the [module specification](../src/docs/README.md). |
 
 In the browser `webex` bundle the basekey is `webex` and the document holds the `@persist`ed
 Credentials (including `supertoken`), Device, and User records. `@webex/recipe-private-web-client`
@@ -160,9 +161,9 @@ uses the separate basekey `web-client-internal`.
   whatever the host hands it under the configured basekey.
 - Sensitive surfaces and data classes: OAuth access and refresh tokens. `@persist` writes
   `Credentials` — including `supertoken` — through `boundedStorage.put`
-  (`../../../webex-core/src/lib/storage/decorators.js` lines 53 and 57;
-  `../../../webex-core/src/lib/credentials/credentials.js` line 465), and in a browser bundle the
-  bounded adapter is this package (`../../../../webex/src/config-storage.shim.js` line 9). Device and
+  (webex-core `src/lib/storage/decorators.js` and the `@persist('@')` decoration in
+  `src/lib/credentials/credentials.js`), and in a browser bundle the bounded adapter is this package
+  (sibling package webex, file `src/config-storage.shim.js`). Device and
   User records persist by the same route.
 - Encryption and secret boundaries: **none**. Values are stored as plaintext JSON, readable by any
   script executing on the origin. The package implements no encryption, no integrity check, and no
@@ -174,7 +175,7 @@ uses the separate basekey `web-client-internal`.
 
 - Logging and correlation: every operation logs through the logger injected at `bind` time, never
   through a module-level logger. Messages are prefixed `local-storage-store-adapter:`
-  (`src/index.js` lines 75, 87, 103, 123 and 150). There is no correlation id; the host logger supplies context.
+  (`src/index.js`). There is no correlation id; the host logger supplies context.
 - Metrics, traces, and audit signals: none. The package emits no metrics and no traces, and records
   no audit trail of reads or writes.
 - Ownership and operational entry points: owned by `@webex/web-client`, assigned in `.github/CODEOWNERS`.
@@ -185,16 +186,16 @@ uses the separate basekey `web-client-internal`.
 Expectations that fit a published browser SDK package:
 
 - Footprint: one source file compiling to a single `dist/index.js` plus source map
-  (`build:src`, measured 2026-10-01).
+  (`build:src`, measured 2026-11-09).
 - Compatibility: the published constructor and bound-store shape are stable surfaces; the at-rest
-  document currently carries no version field and no migration step; whether cross-release
-  readability is a committed promise is an open owner decision (see the module specification).
+  document carries no version field and no migration step, but cross-release readability is an
+  owner-confirmed promise, so a layout change needs a migration (see the module specification).
 - Main-thread cost: `get` parses the entire document and `put`/`del` additionally re-serialize and
   rewrite all of it, so their cost scales with total stored size across all namespaces rather than
   with the value being written. `bind` and `clear` are exempt — `bind` touches no storage and
   `clear` only calls `removeItem`.
 - Verification: **currently unmet.** No automated test executes this package in either route — the
-  Node route skips all 21 declared cases and the browser route completes 0 tests while exiting 0.
+  Node route skips all 21 declared cases and the browser route completes 0 tests and exits 1.
   See the module specification's Verification section.
 
 ## Observability patterns
@@ -215,7 +216,7 @@ stated reason; it is recorded in the module spec as `MOD-014` rather than ration
 | ------- | ------------------------ | --------- | ------------- | ------------------ |
 | `@webex/webex-core` | Error taxonomy (`NotFoundError extends StorageError extends Exception`) and the storage-layer contract this package implements | `src` | `workspace:*` | Changing the error type or the adapter interface breaks this package and every other adapter |
 | `@webex/babel-config-legacy` | Transpilation settings for `build:src` | `babel.config.js` | `workspace:*` | Shared across legacy packages; not overridden here |
-| `@webex/eslint-config-legacy` | Lint rules | `.eslintrc.js` (declared `root: true`) | `workspace:*` | Package-local root; `src/index.js` line 5 adds the browser env |
+| `@webex/eslint-config-legacy` | Lint rules | `.eslintrc.js` (declared `root: true`) | `workspace:*` | Package-local root; the `/* eslint-env browser */` directive in `src/index.js` adds the browser env |
 | `@webex/jest-config-legacy` | Unit-test runner configuration | `jest.config.js` | `workspace:*` | Imposes `testEnvironment: 'node'`, which is the direct cause of the skipped unit route |
 | `@webex/legacy-tools` | `webex-legacy-tools` build and test runner binary | `package.json` scripts | `workspace:*` | Supplies both the `build:src` and the karma `test:browser` routes |
 
@@ -236,11 +237,11 @@ The repository is classified `Orchestrator-plus-components`: one Git repository 
 independently built and independently published workspace packages, coordinated by the root
 `workspaces` declaration, root `AGENTS.md`, `CONTRIBUTING.md`, `.github/CODEOWNERS`, and a
 repository-wide release pipeline. That classification follows the repository structure, not the SDD
-root, even though this SDD root covers a single package with a single build. The doc tree mirrors it
-and already did before the value was corrected on 2026-10-14: the monorepo-level document is the
-repository root `AGENTS.md`, this package carries its own component-level standing docs and agent
-entry, and coverage status is tracked per component in `.sdd/manifest.json`. No document moved when
-the value changed from `Single-repo`, which had scoped the judgment to this onboarding root.
+root, even though this SDD root covers a single package with a single build. The doc tree mirrors it:
+the monorepo-level documents are the repository root `AGENTS.md` and the root `docs/index.md`
+package routing table, this package carries its own component-level standing docs and agent entry,
+and coverage status is tracked per component in `.sdd/manifest.json`. The package holds no
+templates; it refers to the monorepo root snapshot at `../../../.sdd/templates/repo-standards`.
 
 Dependency direction is one-way: this package imports from `@webex/webex-core` and nothing in the
 workspace imports it except as configuration. `@webex/webex-node` declares it as a dependency but
@@ -252,7 +253,7 @@ release pipeline; all internal ranges are `workspace:*`.
 
 | Artifact | Publish target | Versioning rule | Deprecation window | Changelog or migration obligation |
 | -------- | -------------- | --------------- | ------------------ | --------------------------------- |
-| `@webex/storage-adapter-local-storage` | npm (`deploy:npm` → `yarn npm publish`) | Versioned and released by the monorepo's automated release pipeline, not hand-maintained in this package | Not defined at package level | No package-local `CHANGELOG.md`; release notes are produced repository-wide. A change to the constructor signature, the bound-store method set, or the at-rest document layout is a breaking change for the consumers listed above. |
+| `@webex/storage-adapter-local-storage` | npm (`yarn workspace @webex/storage-adapter-local-storage deploy:npm`, which runs the package's `deploy:npm` script) | Versioned and released by the monorepo's automated release pipeline, not hand-maintained in this package | Not defined at package level | No package-local `CHANGELOG.md`; release notes are produced repository-wide. A change to the constructor signature, the bound-store method set, or the at-rest document layout is a breaking change for the consumers listed above. |
 | `dist/index.js`, `dist/index.js.map` | Build output bundled into the npm artifact | Regenerated by `build:src` on every release | — | Not version-controlled — the repository-root `.gitignore` ignores `dist` |
 
 ## Host integration and theming
@@ -270,11 +271,11 @@ and exposes no teardown hook, so nothing requires disposal.
 
 | Command or artifact | Owner | Inputs | Output or side effect | Compatibility boundary |
 | ------------------- | ----- | ------ | --------------------- | ---------------------- |
-| `yarn workspace @webex/storage-adapter-local-storage build:src` | `@webex/web-client` | `src/**` | `dist/index.js` + `dist/index.js.map`. Measured 2026-10-01: exit 0, 1 file emitted. | `dist/index.js` is the published `main`; its shape is the consumer contract |
-| `... test:style` | `@webex/web-client` | `src/**`, `.eslintrc.js` | Lint report. Measured 2026-10-04: exit 0, 0 errors, 1 warning. The warning is `src/docs/README.md` — the lint glob `./src/**/*.*` matches the canonical module spec, which ESLint then reports as ignored. | — |
-| `... test:unit` | `@webex/web-client` | `test/unit/**` | Jest run. Measured 2026-10-01: exit 0, **21 skipped, 0 executed**. | Reports success while verifying nothing |
-| `... test:browser` | `@webex/web-client` | `test/unit/**` | Karma run. Measured 2026-10-01: exit 0, **0 tests completed**, `beforeAll is not defined` in both browsers. | Reports success while verifying nothing |
-| `... test` | `@webex/web-client` | all of the above | Measured 2026-10-01: **exit 1** — `Couldn't find a script named "test:integration"`. | Known broken aggregate |
+| `yarn workspace @webex/storage-adapter-local-storage build:src` | `@webex/web-client` | `src/**` | `dist/index.js` + `dist/index.js.map`. Measured 2026-11-09: exit 0, 1 file emitted. | `dist/index.js` is the published `main`; its shape is the consumer contract |
+| `... test:style` | `@webex/web-client` | `src/**`, `.eslintrc.js` | Lint report. Measured 2026-11-09: exit 0, 0 errors, 1 warning. The warning is `src/docs/README.md` — the lint glob `./src/**/*.*` matches the canonical module spec, which ESLint then reports as ignored. | — |
+| `... test:unit` | `@webex/web-client` | `test/unit/**` | Jest run. Measured 2026-11-09: exit 0, **21 skipped, 0 executed**. | Reports success while verifying nothing |
+| `... test:browser` | `@webex/web-client` | `test/unit/**` | Karma run. Measured 2026-11-09: **exit 1**, **0 tests completed**, `beforeAll is not defined` in both browsers. | Fails before any case runs |
+| `... test` | `@webex/web-client` | all of the above | Measured 2026-11-09: **exit 1** — `Couldn't find a script named "test:integration"`. | Known broken aggregate |
 | `... deploy:npm` | release pipeline | `dist/**`, `package.json` | Publishes the package to npm | Publishing boundary |
 
 ## Security architecture
@@ -305,9 +306,9 @@ Architectural controls and their absence:
 - Expiry: none. Entries persist until `del`, `clear`, or the user clears site data. Token lifetime
   is enforced by the host's credential logic, not by the store.
 - Purge on logout: `clear()` removes the entire `basekey` entry, which does remove persisted
-  credentials. That purge is the one security-relevant behavior the adapter implements, and the
-  reason its blast radius exceeds a single namespace is recorded as `[NEEDS HUMAN INPUT]` in the
-  module spec (`MOD-010`).
+  credentials. That purge is the one security-relevant behavior the adapter implements, and its
+  basekey-wide blast radius is owner-confirmed intent: logout must remove every namespace under the
+  basekey, including namespaces not bound in the current session (module spec `MOD-010`).
 - Node safety: the adapter is unreachable in Node builds, so server-side token persistence through
   this path is not possible.
 - Prototype pollution (CWE-1321): binding the namespace `__proto__` and calling `put` installs the
@@ -336,8 +337,8 @@ at-rest document contract for existing users.
 | basekey | The single `localStorage` key under which one adapter instance stores every namespace. Fixed at construction and captured in a closure. | src/index.js |
 | namespace | The host's isolation unit within the document, one per webex plugin. Selects a slice of the stored object. | src/index.js |
 | binding (`Bound`) | A namespace-scoped store returned by `bind()`. Holds no data itself; its namespace and logger live in module-level `WeakMap`s. | src/index.js |
-| bounded adapter | The webex-core storage role this package fills — durable, size-limited storage, as opposed to the unbounded adapter. Selected via `config.storage.boundedAdapter`. | ../../../webex-core/src/lib/storage/make-webex-store.js |
-| abstract adapter spec | The shared contract suite in `@webex/storage-adapter-spec` that every adapter is expected to satisfy. | ../../../storage-adapter-spec/src/index.js |
+| bounded adapter | The webex-core storage role this package fills — durable, size-limited storage, as opposed to the unbounded adapter. Selected via `config.storage.boundedAdapter`. | webex-core storage spec (sibling package webex-core, file src/lib/storage/docs/README.md) |
+| abstract adapter spec | The shared contract suite in `@webex/storage-adapter-spec` that every adapter is expected to satisfy. | storage-adapter-spec module spec (sibling package storage-adapter-spec, file src/docs/README.md) |
 
 ## References and maintenance
 

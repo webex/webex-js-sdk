@@ -9,7 +9,7 @@ doc_kind: standing-doc
 generated_from: getting-started@0.3.0
 generated_by: claude-code
 approved_by: rsarika@cisco.com
-updated_at: 2026-10-14T11:32:45Z
+updated_at: 2026-11-09T10:36:32Z
 validation_status: pass-with-warnings
 -->
 
@@ -29,10 +29,11 @@ root, not the package directory.
 
 ## Install
 
+Switch to Node 22.14 first (`nvm use 22.14`, as the repository root `AGENTS.md` instructs), then
+run every command below from the root of the cloned repository:
+
 ```bash
 git clone https://github.com/webex/webex-js-sdk.git
-cd webex-js-sdk
-nvm use 22.14
 yarn install
 ```
 
@@ -42,14 +43,14 @@ yarn install
 yarn workspace @webex/storage-adapter-local-storage build:src
 ```
 
-Emits `dist/index.js` and `dist/index.js.map`. Measured 2026-10-01: exit 0, 1 file emitted. `dist/`
+Emits `dist/index.js` and `dist/index.js.map`. Measured 2026-11-09: exit 0, 1 file emitted. `dist/`
 is not version-controlled — the repository-root `.gitignore` ignores `dist`.
 
 ## Run
 
 This package has no runnable entry point — it is a library consumed in-process. To exercise it,
-configure it as a bounded adapter in a browser build of the SDK, as
-`packages/webex/src/config-storage.shim.js` line 9 does:
+configure it as a bounded adapter in a browser build of the SDK, as the sibling package webex does in
+`src/config-storage.shim.js`:
 
 ```js
 import StorageAdapterLocalStorage from '@webex/storage-adapter-local-storage';
@@ -74,13 +75,14 @@ yarn workspace @webex/storage-adapter-local-storage test:unit
 | Unit         | `yarn workspace @webex/storage-adapter-local-storage test:unit` | `test/unit/spec` | Jest via `@webex/jest-config-legacy` | None |
 | Browser      | `yarn workspace @webex/storage-adapter-local-storage test:browser` | `test/unit/spec` | Karma + Mocha via `webex-legacy-tools` | Firefox, Chrome Headless |
 
-Measured 2026-10-01 with Node v22.14.0:
+Measured 2026-11-09 with Node v22.14.0:
 
 - `test:unit` → exit 0, **21 tests skipped, 0 executed**. `testEnvironment` is `node`
-  (`packages/legacy/jest/static/index.js` line 4), `localStorage` is absent, and
-  `test/unit/spec/storage-adapter-local-storage.js` line 9 wraps the suite in `skipInNode`.
-- `test:browser` → exit 0, **0 tests completed**. Both browsers report
-  `ReferenceError: beforeAll is not defined`, because `@webex/storage-adapter-spec/src/index.js` line 40
+  (the shared config in workspace package `packages/legacy/jest`, reached through `jest.config.js`),
+  `localStorage` is absent, and `test/unit/spec/storage-adapter-local-storage.js` wraps the suite in
+  `skipInNode`.
+- `test:browser` → **exit 1**, **0 tests completed**. Both browsers (Chrome Headless 156, Firefox 159)
+  report `ReferenceError: beforeAll is not defined`, because the `@webex/storage-adapter-spec` suite
   uses a Jest global under Mocha, so the suite throws while being defined.
 - `test:style` → exit 0, 0 errors, **1 warning**. The warning is `src/docs/README.md`: the lint
   script globs `./src/**/*.*`, which matches the canonical module spec, and ESLint reports the
@@ -92,8 +94,9 @@ contract lives in a sibling package, where `@webex/webex-core` runs the same abs
 `MemoryStoreAdapter` — that exercises the contract, not this implementation.
 
 - Coverage or quality gate: **none**. Owner-verified absence.
-- Enforcement source: `packages/legacy/jest/static/index.js` line 5 sets `collectCoverage: false`; no
-  threshold is configured, and the CI job `.github/workflows/pull-request.yml` lines 150–192 runs
+- Enforcement source: the shared jest config (workspace package `packages/legacy/jest`) sets
+  `collectCoverage: false`; no threshold is configured, and the `Test - Coverage` job in the repository
+  workflow `.github/workflows/pull-request.yml` runs
   `test:coverage`, which this package does not define.
 - Test environment or QA dependencies: none beyond the local browsers for the Karma route.
 

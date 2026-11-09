@@ -9,7 +9,7 @@ doc_kind: standing-doc
 generated_from: spec-index@0.3.0
 generated_by: claude-code
 approved_by: rsarika@cisco.com
-updated_at: 2026-10-14T11:32:45Z
+updated_at: 2026-11-09T10:36:32Z
 validation_status: pass-with-warnings
 -->
 
@@ -35,11 +35,11 @@ this package is a published library, not a deployable service.
 
 | Resource   | Role                       | Canonical path         | Owner          | Status                                  | Last verified |
 | ---------- | -------------------------- | ---------------------- | -------------- | --------------------------------------- | ------------- |
-| Repository | Architecture               | `docs/architecture.md` | `@webex/web-client` | Active                             | 2026-10-03    |
-| `src` | Module | `src/docs/README.md` | `@webex/web-client` | Active | 2026-10-03 |
-| `storage-adapter-local-storage-sdk` | Contract (SDK, published) | `package.json` | `@webex/web-client` | Active | 2026-10-03 |
-| `local-storage-bounded-document` | Contract (file, internal) | `src/index.js` | `@webex/web-client` | Active | 2026-10-03 |
-| `webex-core-store-adapter-interface` | Contract (SDK, internal, consumed) | packages/@webex/webex-core/src/lib/storage/make-webex-store.js | `@webex/web-sdk` | Active | 2026-10-03 |
+| Repository | Architecture               | `docs/architecture.md` | `@webex/web-client` | Active                             | 2026-11-09    |
+| `src` | Module | `src/docs/README.md` | `@webex/web-client` | Active | 2026-11-09 |
+| `storage-adapter-local-storage-sdk` | Contract (SDK, published) | `package.json` | `@webex/web-client` | Active | 2026-11-09 |
+| `local-storage-bounded-document` | Contract (file, internal; cross-release readability committed) | `src/index.js` | `@webex/web-client` | Active | 2026-11-09 |
+| `webex-core-store-adapter-interface` | Contract (SDK, internal, consumed) | Sibling package webex-core, spec src/lib/storage/docs/README.md | `@webex/web-client`, `@webex/web-sdk` | Active | 2026-11-09 |
 
 ### Module registry
 
@@ -49,6 +49,10 @@ human-readable mirror and the reconciliation surface for `scripts/check_spec_ind
 | Module | Responsibility | Manifest coverage state | Start here |
 | --- | --- | --- | --- |
 | `src/` | Browser localStorage-backed bounded storage adapter for the webex-core storage layer | Partial | `src/docs/README.md` |
+
+Generator-side field measurement is complete for `src`: 96% of mandatory fields are PRESENT, assessed
+2026-11-09. The state stays `Partial` until independent validation passes and the PRs that next touch
+the module leave a clean drift record; the one weak field is executing test coverage.
 
 ## Change and verification routing
 
