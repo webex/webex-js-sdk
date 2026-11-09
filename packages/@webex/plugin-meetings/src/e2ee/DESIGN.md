@@ -188,7 +188,8 @@ packages/@webex/plugin-meetings/src/e2ee/
 
 The generic `WasmLoader` is **not** E2EE-specific and lives outside this folder in
 `common/wasm-loader.ts`; `Meetings` owns it and injects it into `E2eeManager`. `Meetings` also
-creates `StaticAssetLoader` and resolves the E2EE WASM URL during construction. Only the URL is
+creates `StaticAssetLoader` and resolves the E2EE WASM URL in its `READY` handler, because
+`webex.config` is not yet assigned when plugins are constructed. Only the URL is
 passed into the manager and controller, since they do not need the static asset loader itself. The
 default base URL is `/assets/plugin-meetings/`.
 
@@ -666,9 +667,11 @@ to surface the meeting's zero-trust state.
 
 ## `Meetings`-plugin integration (`meetings/index.ts`)
 
-- The constructor creates `StaticAssetLoader`, resolves the E2EE module URL, and creates the shared
-  `WasmLoader`. `onReady()` (the `READY` handler) creates `E2eeManager` with the parent Webex
-  instance, shared loader, and resolved URL before any meeting is created from a locus event.
+- The constructor creates the shared `WasmLoader`. `onReady()` (the `READY` handler) creates
+  `StaticAssetLoader`, resolves the E2EE module URL from `meetings.assetsBaseUrl`, and creates
+  `E2eeManager` with the parent Webex instance, shared loader, and resolved URL before any meeting is
+  created from a locus event. The URL cannot be resolved in the constructor: `WebexCore` assigns
+  `webex.config` in `initialize()`, which runs after its plugin children are constructed.
 - `register()`: after a successful register, fire-and-forget `this.e2eeManager?.preload()`, wrapped
   in a non-blocking `catch` (like `startReachability`), so it never blocks/fails registration. This
   warms the WASM module (no-op when `enableE2ee` is false). Credentials are not pre-warmed here —

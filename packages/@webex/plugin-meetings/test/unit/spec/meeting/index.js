@@ -240,6 +240,7 @@ describe('plugin-meetings', () => {
           client_id: 'mock-client-id',
         },
         meetings: {
+          assetsBaseUrl: '/assets/plugin-meetings/',
           reconnection: {
             enabled: false,
           },
@@ -763,6 +764,7 @@ describe('plugin-meetings', () => {
                 client_id: 'mock-client-id',
               },
               meetings: {
+                assetsBaseUrl: '/assets/plugin-meetings/',
                 reconnection: {
                   enabled: false,
                 },
