@@ -9,8 +9,8 @@ doc_kind: standing-doc
 generated_from: architecture@0.3.0
 generated_by: claude-code
 approved_by: pending
-updated_at: 2026-10-16T01:43:45Z
-validation_status: pass
+updated_at: 2026-11-09T11:26:47Z
+validation_status: pass-with-warnings
 -->
 
 # @webex/internal-plugin-conversation architecture
@@ -45,7 +45,9 @@ Related context: [specification registry](specs/README.md) ·
 ## Design overview
 
 The package is a single internal WebexCore plugin. Importing it registers
-`webex.internal.conversation` and a set of payload-transformer predicates and transforms. Methods
+`webex.internal.conversation` with its payload-transformer predicates and normalize transforms; the
+encryption and decryption transform sets are appended to the host's transform list on the WebexCore
+`ready` event, each gated by `includeEncryptionTransforms` or `includeDecryptionTransforms`. Methods
 build plaintext Activity Streams-style activities and send them through WebexCore's request
 pipeline; the outbound transform encrypts them with KMS keys and the inbound transform decrypts and
 normalizes every conversation object returned, whether by HTTP response or realtime event. This
@@ -70,27 +72,30 @@ flowchart LR
   Core --> CS[Conversation service]
   Convo --> Share[ShareActivity]
   Share --> FS[Files service upload sessions]
-  Mercury[Realtime events] --> Core
+  Mercury[Mercury autowired handler] --> Convo
 ```
 
 | From | To | Interaction or transport | Purpose | Failure or compatibility behavior |
 | ---- | -- | ------------------------ | ------- | --------------------------------- |
 | Caller | Conversation plugin | Method call | Conversation and activity operations | Guard errors throw or reject |
-| Conversation plugin | Conversation service | HTTPS through WebexCore | Read and write conversations and activities | Errors reject; key-rotation codes trigger one background re-send |
+| Conversation plugin | Conversation service | HTTPS through WebexCore | Read and write conversations and activities | Errors reject, except the three key-rotation codes: the caller's promise resolves `undefined` while one unawaited re-send runs |
 | Payload transformer | Encryption plugin | Import | Encrypt outbound and decrypt inbound fields | Text decryption failures become a placeholder |
 | ShareActivity | Files service | HTTPS upload sessions | Upload encrypted files and thumbnails | Upload failure rejects the share |
-| Realtime events | Payload transformer | Event payload | Decrypt incoming activities | Same as inbound decryption |
+| Mercury | Conversation plugin | Autowired handler call for `conversation.activity` and `conversation.inmeetingchat` events | `processActivityEvent` / `processInmeetingchatEvent` run the inbound transform over the event | Same as inbound decryption; Mercury logs a handler rejection |
 
 ## Dependency topology
 
 | Dependency | Type | Used by | Purpose | Version, failure, or fallback policy |
 | ---------- | ---- | ------- | ------- | ------------------------------------ |
-| @webex/webex-core | Internal | Conversation plugin | Plugin base, requests, uploads, catalog, payload transformer | workspace:*; unknown transform names are no-ops |
-| @webex/internal-plugin-encryption | Internal | Payload transforms, download, share | KMS and SCR cryptography | workspace:*; text failures substituted |
-| @webex/internal-plugin-user | Internal | create, add, leave, moderators, normalizePerson | UUID resolution | workspace:*; rejects unless partial creation |
-| @webex/common | Internal | Events, tap, patterns, Exception | Shared utilities | workspace:*; module spec present in that package |
-| @webex/helper-html | Internal | normalizePropContent | HTML sanitization | workspace:* |
-| @webex/helper-image | Internal | download, ShareActivity | EXIF, type detection, thumbnails | workspace:*; module spec present in that package |
+| @webex/webex-core (spec: sibling package webex-core, file src/docs/README.md, services spec: sibling package webex-core, file src/lib/services/docs/README.md) | Internal | Conversation plugin | Plugin base, requests, uploads, services catalog and cluster URLs, payload transformer | workspace:*; an unknown transform name matches no transform and is skipped (code: sibling package webex-core, file src/webex-core.js; not stated in its spec) |
+| @webex/internal-plugin-encryption (no SDD spec; code: sibling package internal-plugin-encryption, files src/encryption.js and src/kms.js) | Internal | Payload transforms, download, share, createReactionHmac | KMS keys including `kms.createUnboundKeys`, SCR and text cryptography, `unboundedStorage` | workspace:*; text failures substituted |
+| @webex/internal-plugin-user (spec: sibling package internal-plugin-user, file src/docs/README.md) | Internal | create, get, add, leave, moderators, normalizePerson, and participant caching through recordUUID | UUID resolution | workspace:*; `create` and `add` pass `{create: true}`, and `create` rejects on a lookup failure unless `allowPartialCreation`; `get`, `leave`, moderator, and person-normalization lookups pass no flag and can receive the user plugin's fake id for an unknown email |
+| @webex/common (spec: sibling package common, file src/docs/README.md) | Internal | Events, tap, patterns, Exception | Shared utilities | workspace:* |
+| @webex/helper-html (spec: sibling package helper-html, file src/docs/README.md) | Internal | normalizePropContent | HTML sanitization: inbound `filter`, outbound `filterEscape` | workspace:*; in Node both return the input unparsed |
+| @webex/helper-image (spec: sibling package helper-image, file src/docs/README.md) | Internal | download, ShareActivity | EXIF, type detection, thumbnails | workspace:* |
+| Device plugin `webex.internal.device` (spec: sibling package internal-plugin-device, file src/docs/README.md) | Undeclared runtime peer | Default actor, reactions | `device.userId` | Not in `package.json`; the host must load it |
+| Feature plugin `webex.internal.feature` (spec: sibling package internal-plugin-feature, file src/docs/README.md) | Undeclared runtime peer | `_inferConversationUrl` only, which nothing in `src` calls | `getFeature('developer', 'web-high-availability')` | Not in `package.json` |
+| Mercury plugin (spec: sibling package internal-plugin-mercury, file src/docs/README.md) | Undeclared runtime peer | processActivityEvent, processInmeetingchatEvent | Autowired realtime event delivery | Not in `package.json`; without it no realtime events arrive |
 | crypto-js, node-scr, lodash, uuid | External | Conversation plugin, ShareActivity | Hashing, SCR, utilities, ids | Ranges in `package.json` |
 
 No cycles: this package depends on the platform packages and is consumed by higher-level plugins.
@@ -123,8 +128,10 @@ This section is the contract index (`contract_catalog.index_path`).
 - Trust boundaries and identity flow: requests are authorized by WebexCore credentials; the plugin
   adds no auth of its own. The default actor is the current device user.
 - Sensitive surfaces and data classes: message text, file metadata, card inputs, and display names
-  are encrypted end to end; inbound and outbound `content` is HTML-filtered with configured
-  allow-lists and URL schemes, and `javascript`, `vbscript`, and `data` schemes are always blocked.
+  are encrypted end to end. In browser bundles, inbound `content` passes through helper-html `filter`
+  and outbound `content` through `filterEscape`, with the configured allow-lists and URL schemes,
+  and `javascript`, `vbscript`, and `data` schemes are always blocked; in Node, helper-html returns
+  `content` unparsed.
 - Encryption and secret boundaries: keys and KMS messages are owned by the encryption plugin; this
   package only selects keys and substitutes KMS placeholders.
 
@@ -181,7 +188,7 @@ bound thread-ordering fetches (at most 100 fetch loops per batch, default 20 vis
 
 | Host or integration | Mount or entry contract | Required providers or peers | Theming and accessibility constraints |
 | ------------------- | ----------------------- | --------------------------- | ------------------------------------- |
-| WebexCore | registerInternalPlugin conversation with payloadTransformer and config | Services, device, user, encryption, feature plugins | N/A |
+| WebexCore | registerInternalPlugin conversation with payloadTransformer and config | Services (from webex-core), user and encryption (declared dependencies), and device, feature, and Mercury (undeclared runtime peers) | N/A |
 
 ## Commands and generated artifacts
 
@@ -209,7 +216,7 @@ flowchart LR
   Enc -->|KMS key| KMS[KMS]
   Enc -->|ciphertext| CS[Conversation service]
   CS -->|ciphertext| Dec[Inbound transform]
-  Dec -->|plaintext, HTML filtered| Caller
+  Dec -->|plaintext, HTML filtered in browsers| Caller
 ```
 
 With the crypto transforms enabled (the default), ciphertext is the only form of encrypted fields
@@ -224,16 +231,17 @@ activities are deliberately skipped by the outbound transform.
 | ---- | --------------------------- | -------------------- |
 | conversation | A Webex space; addressed by its URL | `src/conversation.js` |
 | activity | One verb applied to an object in a conversation | `src/conversation.js` |
-| thread parent | thread parent, parent - an activity that has replies | `src/activities.js` |
-| root activity | root activity, root - an activity that is or could be a thread parent | `src/activities.js` |
-| child activity | child activity, child - an activity that points to a parent activity, but not necessarily a root | `src/activities.js` |
-| thread reply | thread reply, thread - an activity that is a reply to a root activity | `src/activities.js` |
-| orphan | orphan - a child activity whose parent has not been fetched | `src/activities.js` |
+| thread parent | thread parent, parent - an activity that has replies | `src/activities.js` getActivityType and getParentId |
+| root activity | root activity, root - an activity that is or could be a thread parent | `src/activities.js` isRootActivity; `src/conversation.js` rootActivityManager use |
+| child activity | child activity, child - an activity that points to a parent activity, but not necessarily a root | `src/activities.js` getActivityType and determineActivityType |
+| thread reply | thread reply, thread - an activity that is a reply to a root activity | `src/activities.js` isReplyActivity |
+| orphan | orphan - a child activity whose parent has not been fetched | `src/activities.js` getIsActivityOrphaned |
 | KRO | KMS resource object URL bound to a conversation, substituted for the `<KRO>` placeholder | `src/encryption-transforms.js` |
 | SCR | Encrypted file reference carrying the key and location of uploaded content | `src/share-activity.js` |
 
 ## References and maintenance
 
+- Maintainer: this package is maintained by Cisco Webex for Developers (https://developer.webex.com/).
 - Decisions: [adr/](adr/index.md)
 - Instantiated specifications and routing: [specs/README.md](specs/README.md)
 - Repository rules and patterns: the repository-root `AGENTS.md`

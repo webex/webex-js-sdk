@@ -8,7 +8,7 @@
       "javascript"
     ]
   },
-  "topology": "Single-repo",
+  "topology": "Orchestrator-plus-components",
   "commands": {
     "install": {
       "command": "yarn install",
@@ -29,6 +29,11 @@
       "command": "yarn workspace @webex/internal-plugin-conversation test:unit",
       "source_file": "package.json",
       "role": "unit-test"
+    },
+    "test": {
+      "command": "yarn workspace @webex/internal-plugin-conversation test",
+      "source_file": "package.json",
+      "role": "other"
     },
     "lint": {
       "command": "yarn workspace @webex/internal-plugin-conversation test:style",
@@ -102,17 +107,17 @@
     }
   },
   "coverage_status_definitions": {
-    "specced": ">=80% public surface specced, drift <5% \u2014 spec is authoritative",
-    "partial": "40-80% specced \u2014 spec is a hint, cross-check code",
-    "untracked": "<40% specced \u2014 code is the source of truth"
+    "specced": ">=80% public surface specced, drift <5% — spec is authoritative",
+    "partial": "40-80% specced — spec is a hint, cross-check code",
+    "untracked": "<40% specced — code is the source of truth"
   },
   "spec_source_policy": {
     "mode": "reconcile",
     "migrated_source_disposition": "retain",
     "disposition_decided_by": "rsarika@cisco.com",
-    "disposition_decided_at": "2026-10-15T10:29:38Z",
+    "disposition_decided_at": "2026-11-09T11:06:48Z",
     "decided_by": "rsarika@cisco.com",
-    "decided_at": "2026-10-15T10:29:38Z",
+    "decided_at": "2026-11-09T11:06:48Z",
     "decision_record": ".generated/sdd/spec-source-policy/decision.md"
   },
   "spec_sources": [
@@ -144,7 +149,7 @@
     {
       "path": "src/",
       "coverage_status": "Partial",
-      "coverage_evidence": "Generator-side field coverage 93% (13 of 14 mandatory fields present, 6 of 6 critical) assessed 2026-10-15 against src/docs/README.md, with 20 requirements; field measurement is complete. Independent revalidation passed 2026-10-16 by runtime 01a13fa3-fe4d-7852-9680-59b67b1829e4 with 0 Blocking and 0 warnings; all prior findings are closed in the assessed scope. Direct package manifest/index/context/cleanup checks, five source-fidelity inventories (111 units), and seven generated-document structural checks pass. All 97 unit cases pass under Node 22.14.0. Nine Weak requirements and the missing characterization baseline remain disclosed. Partial retained; this validation does not measure a code-coverage or drift percentage or apply coverage promotion.",
+      "coverage_evidence": "Generator-side field coverage 93% (13 of 14 mandatory fields present, 6 of 6 critical) assessed 2026-11-09 against src/docs/README.md, with 20 requirements (5 Present, 15 Weak); field measurement is complete. The 2026-11-09 refresh moved the package to the monorepo root-templates layout and merged code-verified corrections (typing status, download and typing-status sequences, synchronous helpers, listActivities federation, encryption verb scope, batch sizing, Mercury autowiring, dependency spec references, and test evidence that does not assert its claim). Direct package manifest, spec-index, and repository-context checks, the orchestrator-root check, and four source-fidelity inventories (111 units) pass. Unit tests were not executed in this refresh because the checkout has no installed workspace dependencies; no characterization baseline exists. Partial retained: the weak test and characterization field is an important gap, and promotion needs the pending independent validation; PR-history drift was not measured because git history is excluded as evidence for this package.",
       "canonical_spec": "src/docs/README.md",
       "contracts": {
         "provides": [
@@ -165,7 +170,7 @@
           "helper-image-sdk"
         ]
       },
-      "last_assessed": "2026-10-15",
+      "last_assessed": "2026-11-09",
       "section_profile": {
         "has_ui": false,
         "crosses_service_boundaries": true,
@@ -255,42 +260,42 @@
         "kind": "sdk",
         "publication": "internal",
         "source_kind": "external",
-        "source": "@webex/webex-core (workspace package; no SDD spec, code is the reference)",
+        "source": "@webex/webex-core (workspace package; module specs consulted: packages/@webex/webex-core/src/docs/README.md and packages/@webex/webex-core/src/lib/services/docs/README.md; the no-op handling of unknown transform names is verified in packages/@webex/webex-core/src/webex-core.js)",
         "summary": "WebexPlugin base, registerInternalPlugin, Page, request/upload, service catalog, and the payload-transformer engine."
       },
       "webex-encryption-sdk": {
         "kind": "sdk",
         "publication": "internal",
         "source_kind": "external",
-        "source": "@webex/internal-plugin-encryption (workspace package; no SDD spec, code is the reference)",
-        "summary": "KMS key creation, text/binary/SCR encryption and decryption, encrypted download, and KMS message encryption."
+        "source": "@webex/internal-plugin-encryption (workspace package; no SDD spec, code is the reference: packages/@webex/internal-plugin-encryption/src/encryption.js and src/kms.js)",
+        "summary": "KMS key creation including kms.createUnboundKeys, text/binary/SCR encryption and decryption, encrypted download, KMS message encryption, and unboundedStorage for reaction keys."
       },
       "webex-user-sdk": {
         "kind": "sdk",
         "publication": "internal",
         "source_kind": "external",
-        "source": "@webex/internal-plugin-user (workspace package; no SDD spec, code is the reference)",
+        "source": "@webex/internal-plugin-user (workspace package; module spec consulted: packages/@webex/internal-plugin-user/src/docs/README.md)",
         "summary": "asUUID and recordUUID for participant identity."
       },
       "webex-common-sdk": {
         "kind": "sdk",
         "publication": "published",
         "source_kind": "external",
-        "source": "@webex/common (workspace package; its src/docs/README.md module spec is the reference)",
+        "source": "@webex/common (workspace package; module spec consulted: packages/@webex/common/src/docs/README.md)",
         "summary": "proxyEvents, transferEvents, tap, patterns, and Exception."
       },
       "helper-html-sdk": {
         "kind": "sdk",
         "publication": "published",
         "source_kind": "external",
-        "source": "@webex/helper-html (workspace package; no SDD spec, code is the reference)",
-        "summary": "filter and filterEscape used for inbound and outbound content sanitization."
+        "source": "@webex/helper-html (workspace package; module spec consulted: packages/@webex/helper-html/src/docs/README.md)",
+        "summary": "filter (inbound) and filterEscape (outbound) used for content sanitization; in Node both return the input unparsed."
       },
       "helper-image-sdk": {
         "kind": "sdk",
         "publication": "published",
         "source_kind": "external",
-        "source": "@webex/helper-image (workspace package; its src/docs/README.md module spec is the reference)",
+        "source": "@webex/helper-image (workspace package; module spec consulted: packages/@webex/helper-image/src/docs/README.md)",
         "summary": "readExifData, detectFileType, and processImage used by download and ShareActivity."
       }
     }
@@ -305,18 +310,17 @@
   "validation": {
     "generator_runtime": "claude-code",
     "generator_model": "claude-opus-5-5",
-    "generator_run_id": "bcc4adc6-fc47-4b61-b5c1-a43d07d38c03",
+    "generator_run_id": "904c640c-b917-46e5-af82-d55953d30f52",
     "generator_runtime_source": "host-metadata",
+    "validator_runtime": "01a1c00d-149c-7960-90e2-67a9a2ddf0fa",
+    "validator_runtime_source": "invocation-input",
+    "runtime_fallback_tier": "different-runtime",
     "minimum_independence": "different-runtime",
     "blocking_severities": [
       "Blocking"
     ],
-    "source_commit": "d2e34dabee",
-    "base_ref": "next",
-    "validator_runtime": "01a13fa3-fe4d-7852-9680-59b67b1829e4",
-    "validator_run_id": "01a13fa3-fe4d-7852-9680-59b67b1829e4",
-    "validator_runtime_source": "invocation-input",
-    "runtime_fallback_tier": "different-runtime"
+    "source_commit": "22fc0c7d76",
+    "base_ref": "next"
   },
   "layout": {
     "sdd_root": ".sdd",
@@ -337,7 +341,7 @@
       "schema_path": "schemas/repo-context.schema.json",
       "action": "create",
       "schema_action": "create",
-      "reason": "Neither the operational context nor its schema exists in this package; both are created from the repository-root Repo Standards templates and verified repository evidence.",
+      "reason": "Neither the operational context nor its schema existed in this package at first onboarding; both were created from the monorepo-root .sdd/templates/repo-standards snapshot (reached through layout.monorepo_package.templates_root_path) and verified package evidence. The package holds no templates of its own.",
       "decided_by": "rsarika@cisco.com via bootstrap questionnaire",
       "decided_at": "2026-10-15T10:29:38Z"
     },
@@ -403,15 +407,16 @@
       "canonical": ".sdd/templates/repo-standards"
     },
     "repo_skills_root": ".sdd/skills",
-    "contract_index_path": "docs/architecture.md"
+    "contract_index_path": "docs/architecture.md",
+    "monorepo_package": {
+      "package_path": "packages/@webex/internal-plugin-conversation",
+      "root_manifest_path": "../../../.sdd/manifest.json",
+      "templates_root_path": "../../../.sdd/templates/repo-standards"
+    }
   },
   "tooling": {
     "sdlc_skills": {
-      "install_mode": "copy",
-      "installed_at": "2026-10-15T10:29:38Z",
-      "plugins": [
-        "repo-annotation@2.0.5"
-      ]
+      "source_ref": "repo-annotation@2.3.1"
     }
   },
   "substrate": {
@@ -421,7 +426,8 @@
       "@webex/babel-config-legacy via babel.config.js",
       "@webex/jest-config-legacy via jest.config.js",
       "@webex/legacy-tools build and test runner via package.json",
-      "package README.md"
+      "package README.md",
+      "Repo Standards templates at the monorepo root .sdd/templates/repo-standards, referred to through layout.monorepo_package.templates_root_path (this package holds no templates, copy, or link)"
     ],
     "compliance_tier": "baseline"
   },

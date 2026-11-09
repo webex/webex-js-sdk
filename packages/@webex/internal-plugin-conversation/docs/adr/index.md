@@ -3,8 +3,8 @@ doc_kind: standing-doc
 generated_from: adr-index@0.3.0
 generated_by: claude-code
 approved_by: pending
-updated_at: 2026-10-16T01:43:45Z
-validation_status: pass
+updated_at: 2026-11-09T11:26:47Z
+validation_status: pass-with-warnings
 -->
 
 # Architectural decision records

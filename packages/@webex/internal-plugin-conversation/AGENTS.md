@@ -3,8 +3,8 @@ doc_kind: agent-entry
 generated_from: agents@0.3.0
 generated_by: claude-code
 approved_by: pending
-updated_at: 2026-10-16T01:43:45Z
-validation_status: pass
+updated_at: 2026-11-09T11:26:47Z
+validation_status: pass-with-warnings
 -->
 
 # AI Agent Instructions
@@ -20,12 +20,15 @@ This file covers **only** `packages/@webex/internal-plugin-conversation`. The re
 `--targets` usage, test-writing guidelines, refactoring guidance, and the pattern-search procedure —
 and stays authoritative for them. Read it first; this file adds package-specific facts.
 
-The SDD templates for this package are the repository-root `.sdd/templates/repo-standards/`
-snapshot; there is no package-level template copy. For local SDD validation, the package path
-`.sdd/templates/repo-standards` is an untracked relative symlink to that shared snapshot so the
-checkers resolve it when run with `--repo-root` set to this package. Recreate this local alias
-when setting up a new checkout; its target is `../../../../../.sdd/templates/repo-standards`.
-Keep the symlink out of commits and do not replace it with a package-level template copy.
+This package is one onboarded package of the webex-js-sdk monorepo. The monorepo-root
+`.sdd/manifest.json` routes to it, and the SDD package routing table in the monorepo-root
+`docs/index.md` lists every onboarded package. This package's `.sdd/manifest.json` routes back to
+the root through `layout.monorepo_package.root_manifest_path` (`../../../.sdd/manifest.json`).
+
+The SDD templates are the shared monorepo-root snapshot at `../../../.sdd/templates/repo-standards`,
+reached through `layout.monorepo_package.templates_root_path`. The package holds no templates: do not
+create a package-level `.sdd/templates` directory, copy, or symlink. Refresh the root snapshot
+instead.
 
 ## Working Method
 
@@ -90,9 +93,12 @@ Definition of done:
 
 ## 3. Repository Knowledge
 
-Importing the package registers `webex.internal.conversation` and its payload transforms. Methods
-build plaintext activities; encryption happens in the outbound payload transform and decryption in
-the inbound one, through `@webex/internal-plugin-encryption` and KMS.
+Importing the package registers `webex.internal.conversation` with its payload-transformer
+predicates and normalize transforms; the encryption and decryption transform sets are appended on
+the WebexCore `ready` event, gated by `includeEncryptionTransforms` and
+`includeDecryptionTransforms`. Methods build plaintext activities; encryption happens in the
+outbound payload transform and decryption in the inbound one, through
+`@webex/internal-plugin-encryption` and KMS.
 
 ### Tech Stack
 
@@ -111,6 +117,7 @@ the inbound one, through `@webex/internal-plugin-encryption` and KMS.
 - `src/share-activity.js`: `ShareActivity` file and GIF share builder.
 - `src/activities.js`, `src/activity-thread-ordering.js`: thread-ordering helpers.
 - `src/config.js`: configuration defaults under `webex.config.conversation`.
+- `src/constants.js`, `src/convo-error.js`, `src/to-array.js`: key-rotation error codes, exported error classes, and the transform-map helper.
 - `src/docs/README.md`: the canonical module specification.
 
 ### Critical Constraints
@@ -127,7 +134,7 @@ the inbound one, through `@webex/internal-plugin-encryption` and KMS.
 
 Run checks in this order:
 
-1. `yarn workspace @webex/internal-plugin-conversation test:unit` (97 cases, all passing)
+1. `yarn workspace @webex/internal-plugin-conversation test:unit` (four Jest spec files under `test/unit/spec`)
 2. `yarn workspace @webex/internal-plugin-conversation test:style`
 3. `yarn workspace @webex/internal-plugin-conversation test:browser` — integration specs under
    `test/integration/spec`; they need live Webex test users.

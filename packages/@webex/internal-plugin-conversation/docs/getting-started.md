@@ -9,8 +9,8 @@ doc_kind: standing-doc
 generated_from: getting-started@0.3.0
 generated_by: claude-code
 approved_by: pending
-updated_at: 2026-10-16T01:43:45Z
-validation_status: pass
+updated_at: 2026-11-09T11:26:47Z
+validation_status: pass-with-warnings
 -->
 
 # Getting started
@@ -73,10 +73,12 @@ yarn workspace @webex/internal-plugin-conversation test:unit
 ## Configuration and secrets
 
 - Required configuration: none; defaults live in `src/config.js` under `webex.config.conversation`
-  (HTML allow-lists, URL schemes, thumbnail limits, decryption failure message, and the two crypto
-  transform toggles).
-- This is the list of environment variables that affect this plugin (read by the WebexCore services
-  plugin when this plugin resolves a cluster URL):
+  (HTML tag and style allow-lists and process hooks, URL schemes, thumbnail limits,
+  `keepEncryptedProperties`, decryption failure message, and the two crypto transform toggles).
+- This is the list of environment variables that affect this plugin (read once when the
+  `@webex/webex-core` services module loads and used by `getServiceUrlFromClusterId` when this
+  plugin builds a cluster-derived URL; see the
+  services specification: sibling package webex-core, file src/lib/services/docs/README.md):
   - `WEBEX_CONVERSATION_DEFAULT_CLUSTER` - The name of the conversation cluster that contains all of
     the organizations and spaces prior to federation phase 2. This defaults to
     `urn:TEAM:us-east-2_a:identityLookup` for production but can be changed to
@@ -96,7 +98,7 @@ yarn workspace @webex/internal-plugin-conversation test:unit
 2. Check that `dist/index.js` exists.
 3. Run `yarn workspace @webex/internal-plugin-conversation test:unit`.
 
-Expected result: 4 test suites and 97 tests pass.
+Expected result: the four unit spec files under `test/unit/spec` pass.
 
 ## Next steps
 

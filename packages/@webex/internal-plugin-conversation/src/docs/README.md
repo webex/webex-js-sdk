@@ -9,8 +9,8 @@ doc_kind: module-spec
 generated_from: module-spec@0.3.0
 generated_by: claude-code
 approved_by: pending
-updated_at: 2026-10-16T01:43:45Z
-validation_status: pass
+updated_at: 2026-11-09T11:26:47Z
+validation_status: pass-with-warnings
 -->
 
 # internal-plugin-conversation conversation plugin
@@ -35,12 +35,12 @@ Related context: [repository architecture](../../docs/architecture.md) ·
 | Source path       | `src`                                                                                                 |
 | Resource kind     | Internal SDK plugin module                                                                            |
 | Status            | Active                                                                                                |
-| Last verified     | 2026-10-15 at `d2e34dabee`                                                                            |
+| Last verified     | 2026-11-09 at `22fc0c7d76`                                                                            |
 | Module id         | `src`                                                                                                 |
 | Parent spec       | —                                                                                                     |
 | Doc kind          | Module spec                                                                                           |
-| Coverage score | 93% assessed 2026-10-15; 13 of 14 mandatory fields present and 6 of 6 critical fields present. Generator-side field measurement is complete; test and characterization coverage remains weak. Independent revalidation passed 2026-10-16: 0 Blocking, 0 warnings |
-| Validation status | pass; validator `01a13fa3-fe4d-7852-9680-59b67b1829e4`; revalidated 2026-10-16; 0 Blocking, 0 warnings; all prior findings closed in the assessed scope |
+| Coverage score | 93% assessed 2026-11-09; 13 of 14 mandatory fields present and 6 of 6 critical fields present. Generator-side field measurement is complete; test and characterization coverage remains weak (15 of 20 requirements Weak). Coverage state stays Partial because of those evidence gaps |
+| Validation status | pass-with-warnings; assessed 2026-11-09 by validator runtime `01a1c00d-149c-7960-90e2-67a9a2ddf0fa`; 0 blocking findings and 1 warning |
 
 ## Applicability
 
@@ -148,24 +148,26 @@ compatibility only.
 | Simple verbs generated on the prototype: favorite, hide, lock, mute, unfavorite, unhide, unlock, unmute, assignModerator, unassignModerator, setSpaceProperty, unsetSpaceProperty, tag, untag | Rooms, memberships, and team plugins | Names are generated from string lists at module load | `src/conversation.js` |
 | Tag helpers: muteMentions, unmuteMentions, muteMessages, unmuteMessages, ignore, unignore, removeAllMuteTags | Notification-settings callers | Fixed tag strings per helper | `src/conversation.js` |
 | Reactions: addReaction, deleteReaction, sendReaction, createReactionHmac, getReactionSummaryByParentId | Messaging clients | The HMAC must match other Webex clients byte for byte | `src/conversation.js` |
-| Activity reads: listActivities, listMentions, listThreads, bulkActivitiesFetch, listParentActivityIds, listChildActivitiesByParentId, listAllChildActivitiesByParentId | Messaging, search, and ediscovery plugins | Shapes differ per method: listActivities, listMentions, and listThreads resolve item arrays with each cluster's page oldest first and clusters concatenated; bulkActivitiesFetch resolves the successful multistatus activities in response order; listParentActivityIds resolves the response body grouped by child type; listChildActivitiesByParentId resolves the full HTTP response; listAllChildActivitiesByParentId resolves every child oldest first | `src/conversation.js` |
+| Activity reads: listActivities, listMentions, listThreads, bulkActivitiesFetch, listParentActivityIds, listChildActivitiesByParentId, listAllChildActivitiesByParentId | Messaging, search, and ediscovery plugins | Shapes differ per method: listMentions and listThreads resolve item arrays with each cluster's page oldest first and clusters concatenated; listActivities resolves the home cluster's page oldest first, but its `additionalUrls` requests go to `<host>/undefined` because `_listActivities` does not pass `resource` to `_list` (see Pitfalls); bulkActivitiesFetch resolves the successful multistatus activities in response order; listParentActivityIds resolves the response body grouped by child type; listChildActivitiesByParentId resolves the full HTTP response; listAllChildActivitiesByParentId resolves every child oldest first | `src/conversation.js` |
 | Thread-ordered reads: listActivitiesThreadOrdered returning getOlder, getNewer, jumpToActivity | Messaging clients | The facade is returned synchronously (and throws synchronously without a URL or id); each returned function resolves an iterator-protocol object with done and value | `src/conversation.js` |
-| Realtime helpers: processActivityEvent, processInmeetingchatEvent, updateTypingStatus | Clients handling mercury events | Event handlers run the inbound transform and resolve the same event | `src/conversation.js` |
-| Files: download, makeShare, ShareActivity.create, add, addGif, remove, getFiles | Messaging and board plugins | download resolves a file whose progress events are proxied; makeShare and ShareActivity.create return an instance and getFiles returns an array, all synchronously | `src/share-activity.js` |
-| URL helpers: getConvoUrl, getUrlFromClusterId, getConversationUrl | Every caller of a conversation method | getConvoUrl throws synchronously when no URL can be found | `src/conversation.js` |
-| Configuration under webex.config.conversation | Host applications | Defaults may be overridden per WebexCore instance | `src/config.js` |
+| Inbound event helpers: processActivityEvent, processInmeetingchatEvent | Clients handling mercury events | Run the inbound transform over the event's activity (or in-meeting chat object) and resolve the same event | `src/conversation.js` |
+| Typing status: updateTypingStatus | Messaging clients | Outbound request, not an event handler: derives `conversation.id` from the URL's last path segment when absent (rejects when neither exists), then POSTs `{conversationId, eventType}` with `status.start_typing` or `status.stop_typing` to `<conversation url>/status/typing` and resolves the HTTP response | `src/conversation.js` |
+| Files: download, makeShare, ShareActivity.create, add, addGif, remove, getFiles | Messaging and board plugins | download resolves a file whose progress events are proxied; makeShare and ShareActivity.create return an instance and getFiles returns an array, all synchronously | `src/conversation.js` (download, makeShare); `src/share-activity.js` (ShareActivity) |
+| URL helpers: getConvoUrl, getUrlFromClusterId, getConversationUrl | Every caller of a conversation method | getConvoUrl throws synchronously when no URL can be found; getUrlFromClusterId defaults `cluster` to `us` and returns the cluster base URL when no `id` is given | `src/conversation.js` |
+| Configuration under webex.config.conversation | Host applications | Defaults may be overridden per WebexCore instance: `allowedInboundTags`/`allowedOutboundTags` (`webex-mention` with its data attributes), no-op `inboundProcessFunc`/`outboundProcessFunc`, empty `allowedInboundStyles`/`allowedOutboundStyles` and `additionalAllowedUrlSchemes`, `thumbnailMaxHeight` 960, `thumbnailMaxWidth` 640, `keepEncryptedProperties` false, `decryptionFailureMessage` "This message cannot be decrypted", and both `includeDecryptionTransforms` and `includeEncryptionTransforms` true | `src/config.js` |
 
 ## Dependencies
 
 | Dependency | Why it is required | Failure behavior |
 | ---------- | ------------------ | ---------------- |
-| `@webex/webex-core` (code; no spec exists in that package) | WebexPlugin base, `registerInternalPlugin`, `Page`, `request`/`upload`, service catalog lookups, and the payload-transformer engine | Request failures reject the caller's promise; an unknown transform name resolves as a no-op |
-| `@webex/internal-plugin-encryption` (code; no spec exists) | KMS keys, text/binary/SCR encryption and decryption, `encryptKmsMessage`, and `unboundedStorage` for reaction keys | Text decryption failures are replaced by the configured failure message; SCR failures and key-creation failures reject |
-| `@webex/internal-plugin-user` (code; no spec exists) | `asUUID` for participants and moderators, and `recordUUID` for participant caching | `asUUID` failures reject unless `allowPartialCreation`; `recordUUID` failures are logged and ignored |
-| `@webex/common` (its module spec is the reference) | `proxyEvents`, `transferEvents`, `tap`, `patterns`, and the `Exception` base class | `tap` never breaks the chain; event proxies only copy listeners |
-| `@webex/helper-html` (code; no spec exists) | `filter` and `filterEscape` for inbound and outbound `content` sanitization | Filter rejections reject the transform and therefore the request |
-| `@webex/helper-image` (its module spec is the reference) | `readExifData` on download, and `detectFileType` and `processImage` for share thumbnails | A rejection fails the download or the upload promise |
-| Device, feature, and services plugins reached through `webex.internal` | `device.userId` as the default actor, the `web-high-availability` developer feature, and cluster URL lookups | Loaded transitively by the encryption and user plugins; absence surfaces as a TypeError |
+| `@webex/webex-core` (module spec: sibling package webex-core, file src/docs/README.md; services spec: sibling package webex-core, file src/lib/services/docs/README.md) | WebexPlugin base, `registerInternalPlugin`, `Page`, `request`/`upload`, service catalog lookups including `getServiceUrlFromClusterId`, and the payload-transformer engine | Request failures reject the caller's promise; an unknown transform name matches no transform and is skipped (verified in sibling package webex-core, file src/webex-core.js; that spec does not state it) |
+| `@webex/internal-plugin-encryption` (no SDD spec; code is the reference: sibling package internal-plugin-encryption, files src/encryption.js and src/kms.js) | KMS keys, text/binary/SCR encryption and decryption, `encryptKmsMessage`, and `unboundedStorage` for reaction keys | Text decryption failures are replaced by the configured failure message; SCR failures and key-creation failures reject |
+| `@webex/internal-plugin-user` (module spec: sibling package internal-plugin-user, file src/docs/README.md) | `asUUID` for participants and moderators, and `recordUUID` for participant caching | `create` and `add` call `asUUID` with `{create: true}`; `create` rejects on a lookup failure unless `allowPartialCreation`; lookups without that flag can resolve the user plugin's fake id for an unknown email; `recordUUID` failures are logged and ignored |
+| `@webex/common` (module spec: sibling package common, file src/docs/README.md) | `proxyEvents`, `transferEvents`, `tap`, `patterns`, and the `Exception` base class | `tap` never breaks the chain; event proxies only copy listeners |
+| `@webex/helper-html` (module spec: sibling package helper-html, file src/docs/README.md) | `filter` for inbound and `filterEscape` for outbound `content` sanitization | Filter rejections reject the transform and therefore the request; in Node both return the input unparsed, so sanitization happens only in browser bundles |
+| `@webex/helper-image` (module spec: sibling package helper-image, file src/docs/README.md) | `readExifData` on download, and `detectFileType` and `processImage` for share thumbnails | A rejection fails the download or the upload promise |
+| Device (module spec: sibling package internal-plugin-device, file src/docs/README.md), feature (module spec: sibling package internal-plugin-feature, file src/docs/README.md), and services plugins reached through `webex.internal` | `device.userId` as the default actor, the `web-high-availability` developer feature read only by `_inferConversationUrl` (which has no caller in `src`), and cluster URL lookups | Not declared in `package.json`; the host must load them, and absence surfaces as a TypeError |
+| Mercury plugin (module spec: sibling package internal-plugin-mercury, file src/docs/README.md) | Autowires `conversation.activity` and `conversation.inmeetingchat` events to `processActivityEvent` and `processInmeetingchatEvent` | Not declared in `package.json`; Mercury logs a rejected handler instead of propagating it |
 | `crypto-js`, `node-scr`, `lodash`, `uuid` | HMAC and SHA-256 hashing, GIF SCR creation, object utilities, and `clientTempId` generation | Synchronous library errors propagate |
 | Webex conversation service (external HTTP) | System of record for conversations and activities | Errors reject; three error codes trigger a key-rotation retry |
 | Webex files service (external HTTP, via space URLs) | Upload sessions for shared files and thumbnails | Upload failures reject the share |
@@ -174,22 +176,22 @@ compatibility only.
 
 | ID        | WHAT | WHY | Source evidence | Test or example evidence | Assumptions or gaps | Confidence |
 | --------- | ---- | --- | --------------- | ------------------------ | ------------------- | ---------- |
-| `MOD-001` | Importing the package registers `webex.internal.conversation` with the payload-transformer predicates and normalize transforms, and on the host `ready` event appends the decryption and encryption transform sets according to `includeDecryptionTransforms` and `includeEncryptionTransforms` | Consumers gain encryption-transparent conversation objects by import alone, and hosts that handle crypto elsewhere can opt out | `src/index.js`, `src/conversation.js`, `src/config.js` | `test/unit/spec/conversation.js` parametrizes all four toggle combinations | none | Present |
-| `MOD-002` | Every activity sent through an activity-submission method is built by `prepare` (defaults for verb, objectType, clientTempId, actor; parent and recipients carried over) and sent by `submit` to `<conversation url>/activities`, or `/content` with transcode for `share`. Conversation creation is excluded: it embeds `expand`-built activities in the `_create` POST body, and `updateTypingStatus` posts its status request directly | One code path guarantees consistent activity shape and the user-activity trigger that resets the logout timer | `src/conversation.js` | `test/unit/spec/conversation.js` prepare and delete cases; `test/integration/spec/verbs.js` | none | Present |
+| `MOD-001` | Importing the package registers `webex.internal.conversation` with the payload-transformer predicates and normalize transforms, and on the host `ready` event appends the decryption and encryption transform sets according to `includeDecryptionTransforms` and `includeEncryptionTransforms` | Consumers gain encryption-transparent conversation objects by import alone, and hosts that handle crypto elsewhere can opt out | `src/index.js`, `src/conversation.js`, `src/config.js` | `test/unit/spec/conversation.js` parametrizes all four toggle combinations | The helper only checks that appended transform names are a subset of the expected set, so the cases also pass when nothing is appended | Weak |
+| `MOD-002` | Every activity sent through an activity-submission method is built by `prepare` (defaults for verb, objectType, clientTempId, actor; parent and recipients carried over) and sent by `submit` to `<conversation url>/activities`, or `/content` with transcode for `share`. Conversation creation is excluded: it embeds `expand`-built activities in the `_create` POST body, and `updateTypingStatus` posts its status request directly | One code path guarantees consistent activity shape and the user-activity trigger that resets the logout timer | `src/conversation.js` | `test/unit/spec/conversation.js` prepare cases; `test/integration/spec/verbs.js` | The unit delete cases stub `prepare` and `submit`; no unit case exercises `submit` | Weak |
 | `MOD-003` | `prepare` rejects an activity whose actor, object, or target lacks objectType, and one whose object has `content` without `displayName` | The conversation service requires typed objects and a plaintext fallback for rich content | `src/conversation.js` | none found | No unit case covers the two rejections | Weak |
 | `MOD-004` | `create` resolves participant UUIDs, adds the current user, deduplicates, routes exactly two participants to a 1:1 flow unless `forceGrouped`, reuses an existing 1:1 (posting the optional comment) or creates one on 404, and otherwise creates a grouped conversation with create/add/post/classification/favorite activities and a KMS create message | Reusing 1:1 spaces avoids duplicate direct conversations, and the KMS message binds participants to the new key | `src/conversation.js` | `test/integration/spec/create.js` | none | Present |
-| `MOD-005` | `getConvoUrl` returns a team's general-conversation URL, then an explicit `url`, then a cluster-derived URL, then a cached URL for an id, and throws otherwise | Federated conversations live on different clusters, so the URL is the stable address | `src/conversation.js` | `test/unit/spec/conversation.js` getConvoUrl and getUrlFromClusterId cases | none | Present |
+| `MOD-005` | `getConvoUrl` returns a team's general-conversation URL, then an explicit `url`, then a cluster-derived URL, then a cached URL for an id, and throws otherwise | Federated conversations live on different clusters, so the URL is the stable address | `src/conversation.js` | `test/unit/spec/conversation.js` getConvoUrl case for an explicit url | Only the explicit-url branch is asserted; the team, cluster, cache, and throw branches are untested and the getUrlFromClusterId cases only check pass-through | Weak |
 | `MOD-006` | `get`, `list`, `listLeft`, and `create` record id-to-URL pairs in a module-level map shared by every plugin instance | Later id-only calls can still be routed to the right cluster | `src/conversation.js` | none found | Cache sharing across WebexCore instances is untested | Weak |
-| `MOD-007` | `_list` defaults query parameters, reverses each newest-first page to oldest first, follows `additionalUrls` while dividing any remaining `conversationsLimit` across them, concatenates the home cluster's items before each additional cluster's items without a global merge, and records participant UUIDs | Callers receive data from every federated cluster in one array; ordering is chronological only within each cluster's segment | `src/conversation.js` | `test/integration/spec/get.js` | Federation splitting is not exercised in unit tests | Weak |
-| `MOD-008` | Outbound conversation objects are normalized, encrypted, and have their KMS message encrypted; inbound objects are decrypted then normalized, including multistatus bulk results and `/threads` child activities | Plaintext does not leave the client and callers receive decrypted objects, except when a host disables the crypto transforms, a list is fetched with `deferDecrypt` (items stay encrypted until their bound decrypt runs), or a meeting-container policies or inMeetingSummary update is sent unencrypted by design | `src/index.js`, `src/encryption-transforms.js`, `src/decryption-transforms.js` | `test/unit/spec/decrypt-transforms.js`, `test/unit/spec/encryption-transforms.js`, `test/integration/spec/mercury.js` | none | Present |
+| `MOD-007` | `_list` defaults query parameters, reverses each newest-first page to oldest first, follows `additionalUrls` while dividing any remaining `conversationsLimit` across them, concatenates the home cluster's items before each additional cluster's items without a global merge, and records participant UUIDs. The fan-out runs even when the home page is empty and is skipped only when a limit was requested and the per-cluster remainder is exactly 0 | Callers receive data from every federated cluster in one array; ordering is chronological only within each cluster's segment | `src/conversation.js` | `test/integration/spec/get.js` | Federation splitting is not exercised in unit tests | Weak |
+| `MOD-008` | Outbound conversation objects are normalized, encrypted, and have their KMS message encrypted (object encryption runs only for verbs with an `encrypt<Verb>Activity` transform — add, assign, create, post, share, cardAction, and update; other verbs get KMS-message preparation only); inbound objects are decrypted then normalized, including multistatus bulk results and `/threads` child activities | Plaintext does not leave the client and callers receive decrypted objects, except when a host disables the crypto transforms, a list is fetched with `deferDecrypt` (items stay encrypted until their bound decrypt runs), or a meeting-container policies or inMeetingSummary update is sent unencrypted by design | `src/index.js`, `src/encryption-transforms.js`, `src/decryption-transforms.js` | `test/unit/spec/decrypt-transforms.js`, `test/unit/spec/encryption-transforms.js`, `test/integration/spec/mercury.js` | none | Present |
 | `MOD-009` | A text or card-input decryption failure replaces the value with `decryptionFailureMessage` and logs a warning instead of rejecting | One undecryptable field must not hide the rest of a conversation | `src/decryption-transforms.js`, `src/config.js` | none found | No unit case makes decryption reject or asserts `decryptionFailureMessage`; the decrypt suite only checks dispatch | Weak |
-| `MOD-010` | `encryptActivity` skips meeting-container `policies` and `inMeetingSummary` updates and activities already carrying `encryptionKeyUrl` or `object.created === 'True'` | Those payloads are server-encrypted or must stay plaintext; re-encryption would corrupt them | `src/encryption-transforms.js` | `test/unit/spec/encryption-transforms.js` | none | Present |
-| `MOD-011` | When an activity has no key, the target's `defaultActivityEncryptionKeyUrl` and `kmsResourceObjectUrl` are used, otherwise the conversation is fetched and, if it has no key, `updateKey` creates one | Callers may pass partial conversation objects and still produce encrypted activities | `src/encryption-transforms.js` | `test/integration/spec/encryption.js` | none | Present |
-| `MOD-012` | `<KRO>` and `<KEYURL>` placeholders in a KMS message are replaced from the target and key; without a key the KMS message is removed, and a `<KRO>` with no target KRO throws | Unencrypted conversations must still accept leave or delete, while encrypted ones must never send unresolved placeholders | `src/encryption-transforms.js` | `test/unit/spec/encryption-transforms.js` delete case; `test/unit/spec/conversation.js` delete cases | none | Present |
-| `MOD-013` | `submit` retries with a cleared key on error 1400087 and with a freshly fetched key on 1409004 or 1400049, and rethrows every other error | The service signals key rotation through these codes and the post should still land | `src/conversation.js`, `src/constants.js` | `test/integration/spec/verbs.js` key-rotation case | The retry is fire-and-forget and the integration case does not await its promise | Weak |
+| `MOD-010` | `encryptActivity` skips meeting-container `policies` and `inMeetingSummary` updates and activities already carrying `encryptionKeyUrl` or `object.created === 'True'` | Those payloads are server-encrypted or must stay plaintext; re-encryption would corrupt them | `src/encryption-transforms.js` | `test/unit/spec/encryption-transforms.js` meeting-container and created-flag cases | The meeting-container cases assert an `undefined` result that holds whether or not the skip fires, the `created === 'True'` case does not await its promise, and the `encryptionKeyUrl` skip is untested | Weak |
+| `MOD-011` | For the verbs that encrypt their object (see `MOD-008`), when an activity has no key, the target's `defaultActivityEncryptionKeyUrl` and `kmsResourceObjectUrl` are used, otherwise the conversation is fetched and, if it has no key, `updateKey` creates one | Callers may pass partial conversation objects and still produce encrypted activities | `src/encryption-transforms.js` | `test/integration/spec/encryption.js` | none | Present |
+| `MOD-012` | `<KRO>` and `<KEYURL>` placeholders in a KMS message are replaced from the target and key; without a key the KMS message is removed, and a `<KRO>` with no target KRO throws | Unencrypted conversations must still accept leave or delete, while encrypted ones must never send unresolved placeholders | `src/encryption-transforms.js` | `test/unit/spec/encryption-transforms.js` delete case | The `test/unit/spec/conversation.js` delete cases stub `prepare` and `submit` and inspect the KMS message before transforms run; KMS-message removal without a key and `<KEYURL>` substitution are untested | Weak |
+| `MOD-013` | `submit` retries with a cleared key on error 1400087 and, on 1409004 or 1400049, with the key from a fresh `GET conversations/<target id>` on the home-cluster conversation service, and rethrows every other error | The service signals key rotation through these codes and the post should still land | `src/conversation.js`, `src/constants.js` | none observing: the `test/integration/spec/verbs.js` key-rotation case neither awaits its promise nor reaches post, because it reads res.body from a Promise.all array | The retry is fire-and-forget and has no executing test | Weak |
 | `MOD-014` | `addReaction` computes an HMAC over the ordered JWK fields, parent id, and display name (skipped when encryption transforms are disabled); `deleteReaction` sends a delete verb; both default the actor to the device user and add recipients when given | Deterministic HMACs let every client deduplicate the same reaction | `src/conversation.js` | `test/unit/spec/conversation.js` addReaction and deleteReaction cases | The unit cases stub createReactionHmac, so the JWK field order and HMAC computation have no executing test | Weak |
-| `MOD-015` | `listActivitiesThreadOrdered` returns getOlder, getNewer, and jumpToActivity over a generator that jumpToActivity replaces; each resolves `{done, value}` where value is roots in published order, each followed by its replies, with the latest edit and reactions merged | Clients need displayable thread order without implementing it themselves | `src/conversation.js`, `src/activity-thread-ordering.js`, `src/activities.js` | `test/unit/spec/conversation.js`; `test/integration/spec/get.js` | Reply reaction summaries are not fetched by the secondary path (see Pitfalls); the jumpToActivity rejection unit cases do not await their assertions | Weak |
-| `MOD-016` | A thread-ordered fetch stops at `minActivities` visible activities, at the conversation's create activity, at an empty newer page, or throws after 100 fetch loops | Bounded fetching prevents runaway request loops | `src/conversation.js`, `src/activity-thread-ordering.js` | `test/unit/spec/conversation.js` getLoopCounterFailsafe and noMoreActivitiesManager cases | none | Present |
+| `MOD-015` | `listActivitiesThreadOrdered` returns getOlder, getNewer, and jumpToActivity over a generator that jumpToActivity replaces; each resolves `{done, value}` where value is roots in published order, each followed by its replies, with the latest edit and reactions merged | Clients need displayable thread order without implementing it themselves | `src/conversation.js`, `src/activity-thread-ordering.js`, `src/activities.js` | `test/integration/spec/get.js` (ordering and edit merging); `test/unit/spec/conversation.js` (facade wiring only) | Every unit facade case stubs `_listActivitiesThreadOrdered`; reply reaction summaries are not fetched by the secondary path and `add`-verb activities are classified as reactions (see Pitfalls); the jumpToActivity rejection unit cases do not await their assertions | Weak |
+| `MOD-016` | A thread-ordered fetch stops at `minActivities` visible activities, at the conversation's create activity, at an empty newer page, or throws after 100 fetch loops; a mid query stops only when its visible activities are below the batch size and the create activity has been seen | Bounded fetching prevents runaway request loops | `src/conversation.js`, `src/activity-thread-ordering.js` | `test/unit/spec/conversation.js` noMoreActivitiesManager cases assert the create-activity and empty-newer-page stops | The getLoopCounterFailsafe case asserts only inside `catch`, so it passes even if no error is thrown; the `minActivities` stop has no unit assertion | Weak |
 | `MOD-017` | `ShareActivity.add` detects type, builds a thumbnail, encrypts the file and thumbnail, uploads them to the space and hidden-space upload sessions, and `prepare` waits for every upload and derives `contentCategory` | Shares carry encrypted content and correct categories for client rendering | `src/share-activity.js` | `test/unit/spec/share-activity.js`; `test/integration/spec/share.js` | none | Present |
 | `MOD-018` | `assign` rejects avatars over 1 MiB and uploads with the `spaceAvatar` role and thumbnails disabled | The service enforces the avatar size and role | `src/conversation.js` | `test/integration/spec/verbs.js` | No unit case covers the size rejection | Weak |
 | `MOD-019` | `download` uses encrypted download when `scr.key` exists, otherwise a buffer request, proxies progress events, applies EXIF data unless `shouldNotAddExifData`, and fills missing name and type | Callers get usable, correctly oriented files from one API | `src/conversation.js` | `test/integration/spec/get.js` | none | Present |
@@ -213,8 +215,9 @@ transformed as thread objects. The crypto transform sets are appended on the hos
 host can drop them through configuration.
 
 Shared state is minimal: a module-level `idToUrl` map, the `_spaceUrl` and `_hiddenSpaceUrl`
-memoized onto a conversation object by `ShareActivity`, and generator-scoped state for thread
-ordering.
+memoized by `ShareActivity` onto the conversation object it was created with, and generator-scoped
+state for thread ordering. `makeShare` and `assign` pass the caller's object, so the memo persists
+there; `share` passes a spread copy, so its memo is discarded.
 
 ### Thread ordering
 
@@ -301,7 +304,7 @@ instantiated here and maintained for the life of the generator:
 
 - oldestAct - the oldest activity (by published date) that has been fetched by the generator instance
 - newestAct - the newest activity that has been fetched by the generator instance
-- batchSize - the number of activities to fetch to achieve minActivities. This value is set lower in cases where we fetch children, because adding the children to their parents may help us reach minActivities count. It equals `minActivities` for initial and older queries and `max(10, ceil(minActivities / 2))` otherwise.
+- batchSize - the number of activities to fetch to achieve minActivities. This value is set lower in cases where we fetch children, because adding the children to their parents may help us reach minActivities count. It is computed once from the creation query type after `newer` is coerced to `initial`: `minActivities` for initial and older generators and `max(10, ceil(minActivities / 2))` only for generators created as `mid` (an explicit `mid` or `jumpToActivity`). Later `next` queries keep the current batch size, including any mid growth, so `getNewer` on a default facade fetches `minActivities`.
 - query - initialize fetching query from the creation `queryType`. An omitted or `newer` query type becomes `initial`, which fetches the newest activities in a space to initialize the activity states; an explicit `older` or `mid` is used as given. A `mid` first query centres on `search` (its parent's published date for a reply or edit), so a caller can start with a MID search directly; a `search` passed with any other query type does not affect the first query
 - child activity hashes: cache objects for children activities. These caches store all child activity types (replies, edits, reactions, self reactions) returned from convo fetches in order to keep track of "orphans", or child activities that come in before their parent activity
 
@@ -326,7 +329,7 @@ itself.
 Activities returned to us by convo fetches are sorted and placed into maps based off their activity
 type. Root activities are stored on a per-batch basis, whereas children are stored globally (prevents
 orphans). Root activities are keyed by their ID, where children are keyed by their parent's ID
-(`activity.parent.id`). Delete activities are ignored.
+(`activity.parent.id`). Delete activities are ignored. Any activity with `verb: 'add'`, including a participant add, is classified as a reaction, so it never becomes a root and is stored under its (possibly undefined) parent id.
 
 When reactions are fetched, however, we call a different convo API
 (`getReactionSummaryByParentId`) that helps us reduce server roundtrips, which is why the fetch for
@@ -363,19 +366,44 @@ ReactionSelfSummary), each an empty object when absent; nested `replies` are rem
 are spread beneath the parent. See the generator and
 the entry builders in `src/conversation.js` and `src/activities.js`.
 
+Call sequences (behavior of the generator and facade in `src/conversation.js`):
+
+- Private generator: `webex.internal.conversation._listActivitiesThreadOrdered(options)` with
+  options such as `url`, `minActivities` 20, `queryType: 'older'`, and `search: null` returns the
+  generator, and each `await` of `next()` resolves `{done: boolean, value: IActivity[]}`.
+- getOlder: with `opts` passed to `webex.internal.conversation.listActivitiesThreadOrdered`, the
+  first `await getOlder()` resolves `{done, value}` whose value holds the most recent activities
+  from the given conversation; a second `getOlder()` resolves IActivity entries older than the first
+  batch's first entry, with done true once the beginning of the conversation is reached (a short
+  conversation can already report done true on the first call).
+- jumpToActivity: `await jumpToActivity(activitySearchResult)`, where the search result is the
+  actual server activity object most commonly returned by activity search, resolves done true and a
+  value with older IActivity entries, the searched activity, then newer entries.
+- getNewer: on a fresh facade the first `await getNewer()` resolves done false with the most recent
+  activities from the given conversation; when no new activities were created since, a second call
+  resolves done true with an empty value.
+- getNewer after a jump: after `jumpToActivity(activitySearchResult)` (an actual server activity
+  object returned by search) resolves the searched batch, `await getNewer()` resolves done false and
+  a value whose first IActivity is the next activity after the last entry of that batch.
+
 ## Data flow and sequence coverage
 
-All calls are promise-based HTTP requests through WebexCore `request`/`upload`, with payload
-transforms applied by the WebexCore payload-transformer interceptor.
+Service operations are promise-based HTTP requests through WebexCore `request`/`upload`, with
+payload transforms applied by the WebexCore payload-transformer interceptor. The module also exposes
+synchronous local helpers that send nothing — `getConvoUrl`, `getUrlFromClusterId`, `expand`,
+`prepareConversation`, `makeShare`, `ShareActivity.create`, `getFiles`, and construction of the
+`listActivitiesThreadOrdered` facade (see Concurrency and reactive flow).
 
 | Operation group | Entry and outcome | Diagram or evidence | Failure and recovery coverage |
 | --------------- | ----------------- | ------------------- | ----------------------------- |
 | Activity submission | A verb method resolves the URL, prepares, transforms outbound, POSTs, transforms the response inbound, and resolves the activity | Activity submission diagram; `src/conversation.js` | Guard rejections, sync URL throws, and key-rotation retries are drawn |
 | Conversation creation | create resolves UUIDs, then reuses or creates a 1:1 or creates a grouped conversation, then optionally shares files | Creation diagram; `src/conversation.js` | 404 fallback and partial creation are drawn |
-| Listing and federation | list-style methods GET the home cluster, then follow additionalUrls | `src/conversation.js` | Empty pages and zero remaining limit stop the fan-out |
+| Listing and federation | list-style methods GET the home cluster, then follow additionalUrls | `src/conversation.js` | An empty home page still fans out; only a requested limit whose per-cluster remainder is exactly 0 skips the additional clusters; listActivities fan-out targets `<host>/undefined` |
 | Thread-ordered read | getOlder, getNewer, or jumpToActivity resumes the generator, which loops fetches until a stop condition | Thread-ordering diagram; State machine | Loop failsafe and closed generator are drawn |
 | File share | ShareActivity.add uploads encrypted file and thumbnail; share prepares and submits | File share diagram; `src/share-activity.js` | Upload rejection fails the share |
 | Inbound realtime event | processActivityEvent runs the inbound transform over event.activity | `src/conversation.js`; `test/integration/spec/mercury.js` | Decryption failures become the failure message |
+| File download | download takes the encrypted path through the encryption plugin when `item.scr.key` exists, otherwise a buffer GET; then applies EXIF data and fills name and type | File download diagram; `src/conversation.js` | Request, decryption, or EXIF failures reject; both branches are drawn |
+| Typing status | updateTypingStatus resolves the id and URL, then POSTs the typing event directly without `prepare`/`submit` | Typing status diagram; `src/conversation.js` | Missing id and URL rejects; missing resolvable URL throws synchronously |
 
 Activity submission:
 
@@ -475,13 +503,60 @@ sequenceDiagram
   participant Enc as Encryption plugin
   participant FS as Files service
   participant CS as Conversation service
+  Caller->>Share: ShareActivity.create or makeShare(conversation)
+  Share->>CS: PUT url/space and url/space/hidden (at construction)
   Caller->>Share: add(file)
-  Share->>CS: PUT url/space and url/space/hidden
   Share->>Share: detectFileType and processImage
   Share->>Enc: encryptBinary file and thumbnail
   Share->>FS: upload sessions (initialize, upload, finalize)
   Caller->>CS: share(conversation, shareActivity)
   Share-->>CS: prepare waits for uploads, POST url/content
+```
+
+File download:
+
+```mermaid
+sequenceDiagram
+  participant Caller
+  participant Convo as webex.internal.conversation
+  participant Enc as Encryption plugin
+  participant FS as Files service or file host
+  Caller->>Convo: download(item, options)
+  alt item.scr.key present
+    Convo->>Enc: download(item.url, item.scr, item.options)
+    Enc->>FS: POST /v1/download/endpoints to resolve the download URL
+    Enc->>FS: GET resolved URL as buffer
+    Enc->>Enc: decryptBinary with scr
+    Enc-->>Convo: decrypted file (progress events proxied)
+  else no scr key
+    Convo->>FS: GET item.url as buffer with options.headers
+    FS-->>Convo: body
+  end
+  alt options.shouldNotAddExifData
+    Convo->>Convo: keep file as returned
+  else
+    Convo->>Convo: readExifData(item, file)
+  end
+  Convo->>Convo: fill file.name from displayName and file.type from mimeType when missing
+  Convo-->>Caller: file, or rejection from the request, decryption, or EXIF step
+```
+
+Typing status:
+
+```mermaid
+sequenceDiagram
+  participant Caller
+  participant Convo as webex.internal.conversation
+  participant CS as Conversation service
+  Caller->>Convo: updateTypingStatus(conversation, {typing})
+  alt no conversation.id and no conversation.url
+    Convo-->>Caller: rejects "conversation: could not identify conversation"
+  else no id but url
+    Convo->>Convo: id = last path segment of url
+  end
+  Convo->>Convo: getConvoUrl (throws when no URL)
+  Convo->>CS: POST url/status/typing {conversationId, eventType start_typing or stop_typing}
+  CS-->>Caller: HTTP response
 ```
 
 ## Class and component relationships
@@ -511,7 +586,7 @@ classDiagram
 | `UC-004` | Client UI | jumpToActivity(search): returns the searched activity as the middle activity in a batch with older and newer activities surrounding, always with done true; a reply or edit centres on its parent's published date | Rejects without a search object or without its target URL | `src/conversation.js`, `test/unit/spec/conversation.js` |
 | `UC-005` | Client UI | getNewer: returns most recent activities, then any newer activities than the newest fetched, with done true when none were returned. getNewer is of limited use at first, but in conjunction with jumpToActivity it continues forward from the searched batch | none | `src/conversation.js`, `test/integration/spec/get.js` |
 | `UC-006` | Messaging plugin | share files or a GIF; uploads encrypted content then submits a share activity | Share with no files throws | `src/share-activity.js`, `test/integration/spec/share.js` |
-| `UC-007` | Client handling realtime events | processActivityEvent decrypts and normalizes an incoming activity | Undecryptable fields become the failure message | `src/conversation.js`, `test/integration/spec/mercury.js` |
+| `UC-007` | Mercury autowired handler | processActivityEvent (for `conversation.activity`) or processInmeetingchatEvent decrypts and normalizes an incoming activity | Undecryptable fields become the failure message | `src/conversation.js`, `test/integration/spec/mercury.js` |
 | `UC-008` | Messaging client | addReaction or deleteReaction on an activity | Missing stored key for the parent rejects the HMAC | `src/conversation.js`, `test/unit/spec/conversation.js` |
 
 ### Cross-boundary use-case flow
@@ -522,12 +597,14 @@ classDiagram
 - Ordering: `_list` concatenates the home cluster's items before each `additionalUrls` cluster's
   items, each reversed to oldest first. Parallel child fetches in thread ordering are awaited together
   before a batch is built.
-- Compatibility: requests carry `personRefresh=true` and, for reads, `uuidEntryFormat=true`;
-  `get` defaults `includeParticipants=false` unless the caller passes `participantAckFilter` or
+- Compatibility: `submit` sends `personRefresh=true`; `get`, the first `paginate` request, and
+  `_list` send both `personRefresh=true` and `uuidEntryFormat=true`; other requests (creation,
+  typing status, bulk fetch, parent and child reads, reaction summaries, paginate continuations,
+  and unencrypted download) send neither. `get` defaults `includeParticipants=false` unless the caller passes `participantAckFilter` or
   `participantsLimit`.
 - Timeout and retry: no timeout is set here; the only retries are the key-rotation re-sends in
-  `submit`. When the `web-high-availability` developer feature is on, `_inferConversationUrl`
-  recomputes the URL on every use because the host may have changed.
+  `submit`. `_inferConversationUrl` would recompute the URL on every use when the
+  `web-high-availability` developer feature is on, but nothing in `src` calls it.
 
 ## Client state model
 
@@ -537,16 +614,16 @@ classDiagram
 | Thread-ordering bookends and child hashes | generator instance | empty | each fetched batch | Discarded when the generator is closed or replaced by jumpToActivity |
 | Thread-ordering root hash | one execution of next | empty | each fetch loop | Rebuilt per batch |
 | ShareActivity uploads | ShareActivity instance | empty Map | add, addGif, remove | Lives with the instance |
-| Space URL memo | conversation object passed in | absent | first ShareActivity for that object | Lives on the caller's object |
+| Space URL memo | conversation object passed to ShareActivity.create | absent | ShareActivity construction for that object | Lives on the caller's object for makeShare and assign; discarded with the spread copy that `share` builds |
 
 ## Business rules and invariants
 
 | ID        | Invariant | WHY | Enforcement source | Test evidence |
 | --------- | --------- | --- | ------------------ | ------------- |
-| `INV-001` | Only the newest edit and the newest reaction summary per parent are kept. The tombstone guard compares the activity verb with the uppercase classified type `TOMBSTONE`, but the wire verb is lowercase `tombstone`, so lowercase tombstone edits are kept and a newer one replaces the stored edit | The display must show the latest state of a message | `src/activity-thread-ordering.js`, `src/activities.js` | `test/unit/spec/conversation.js` (uses an uppercase fixture only) |
+| `INV-001` | Only the newest edit and the newest reaction summary per parent are kept. The tombstone guard compares the activity verb with the uppercase classified type `TOMBSTONE`, but the wire verb is lowercase `tombstone`, so lowercase tombstone edits are kept and a newer one replaces the stored edit | The display must show the latest state of a message | `src/activity-thread-ordering.js`, `src/activities.js` | `test/unit/spec/conversation.js` (uppercase fixture with an equal published date, so the guard is not observed) |
 | `INV-002` | An edit of a reply is classified as a reply edit only when its parent is a known reply | Edited replies otherwise look identical to edits | `src/activities.js` | `test/unit/spec/conversation.js` |
-| `INV-003` | A parsed activity whose parent is absent from the supplied hash throws instead of rendering an orphan | Orphans would render without context | `src/conversation.js` | `test/unit/spec/conversation.js` |
-| `INV-004` | Room avatars larger than 1 MiB are rejected; exactly 1 MiB is accepted | Service limit | `src/conversation.js` | `test/integration/spec/verbs.js` |
+| `INV-003` | A parsed activity whose parent is absent from the supplied hash throws instead of rendering an orphan | Orphans would render without context | `src/conversation.js` | none observing: the orphan case for _createParsedServerActivity in `test/unit/spec/conversation.js` invokes the function before assert.throws runs and swallows the error, so it never asserts the throw |
+| `INV-004` | Room avatars larger than 1 MiB are rejected; exactly 1 MiB is accepted | Service limit | `src/conversation.js` | none observing: `test/integration/spec/verbs.js` has only a positive assign case |
 | `INV-005` | A share needs at least one file | A share without content is meaningless to the service | `src/share-activity.js` | none found |
 | `INV-006` | Content category is images or videos only when every file shares that MIME family, otherwise documents; a whiteboard action forces documents | Clients render galleries by category | `src/share-activity.js` | `test/unit/spec/share-activity.js` |
 
@@ -619,17 +696,23 @@ queries afterwards are relative to that single set of timestamps.
 | Thread ordering loop runaway | Rejects "max fetches reached" | Create a new facade | none | `src/activity-thread-ordering.js` |
 | Key rotation error codes | Resolves undefined while a re-send runs in the background | Do not rely on the resolved value | Automatic single re-send | `src/conversation.js` |
 | Text decryption failure | Field becomes decryptionFailureMessage | Show the placeholder | none | `src/decryption-transforms.js` |
+| Typing status without conversation id or url | Rejects "conversation: could not identify conversation" | Pass the conversation url or id | none | `src/conversation.js` |
+| delete without a nested `object.object` | Synchronous TypeError reading `objectType` | Pass the full activity being deleted | none | `src/conversation.js` |
+| listAllChildActivitiesByParentId without `options.query` | Rejects with a TypeError | Pass the query with `activityType` | none | `src/conversation.js` |
+| getNewer after the generator failed or closed | Rejects with a TypeError reading `value.length`; getOlder instead resolves `{done: true, value: []}` | Create a new facade | none | `src/conversation.js` |
 
 ## Pitfalls and constraints
 
 - Most methods call `getConvoUrl` before returning a promise, so a missing URL throws synchronously;
-  only `get` converts it into a rejection.
+  `get` and methods declared `async`, such as `addReaction`, convert it into a rejection.
 - On key-rotation errors `submit` does not await or return the re-sent request, so the caller's
   promise resolves `undefined` and a failed re-send is unobserved. The 1409004/1400049 branch reads
   `defaultActivityEncryptionkeyUrl` (lowercase k) from the fetched conversation, which differs from the
   property name used everywhere else. Recorded as current behavior, not fixed here.
 - `getConversationUrl` falls back to `webex.internal.waitForCatalog('postauth')`, which no package in
-  this workspace defines; the fallback therefore fails with a TypeError. Recorded as current behavior.
+  this workspace defines (the services plugin defines `webex.internal.services.waitForCatalog`); the
+  fallback therefore throws a TypeError synchronously instead of rejecting. Recorded as current
+  behavior.
 - The public facade forwards caller-supplied `queryType` and `search` into the generator's first
   query. Omitted means initial and `newer` is coerced to initial; an explicit `mid` with `search` is a
   supported initial MID search. An explicit `older` builds `maxDate` from an absent oldest activity,
@@ -639,12 +722,21 @@ queries afterwards are relative to that single set of timestamps.
   for real tombstones; recorded as current behavior.
 - The secondary reaction-summary fetch for reply parents filters reply arrays by `id` and is skipped
   for normal responses; recorded as current behavior.
-- Some cited unit cases have weak assertions: the orphan case accepts any thrown error, the
-  jumpToActivity rejection cases and the pagination rejection case do not await or return their
-  promises, so a regression there can pass silently.
+- Some unit cases have weak assertions: the orphan case calls `_createParsedServerActivity` before
+  `assert.throws` runs and swallows the error, the getLoopCounterFailsafe case asserts only inside
+  `catch`, and the jumpToActivity rejection cases and the pagination rejection case do not await or
+  return their promises, so a regression there can pass silently.
 - `idToUrl` is module-global, so two WebexCore instances in one process share cached URLs.
 - `processActivityEvent` and `processInmeetingchatEvent` have no caller inside this package; the
-  realtime pipeline reaches the inbound transform through the `activity` predicate.
+  Mercury plugin autowires them by event name (`conversation.activity`, `conversation.inmeetingchat`),
+  and they reach decryption through the inbound transform's `activity` predicate.
+- `_listActivities` does not forward `resource` to `_list`, so federated `listActivities` requests go
+  to `<host>/undefined`. Recorded as current behavior.
+- `getActivityType` classifies every `verb: 'add'` activity as a reaction, so raw add activities can
+  fill the `reaction` slot of a thread-ordered entry. Recorded as current behavior.
+- `updateTypingStatus` writes the inferred `id` onto the caller's conversation object, and `assign`
+  creates its ShareActivity from the caller's object rather than the URL-resolved copy, so an
+  id-only conversation requests `undefined/space`.
 - The `test` script runs `test:integration`, which this package does not define and resolves to the
   workspace-root script; integration specs need live test users.
 
@@ -653,7 +745,10 @@ queries afterwards are relative to that single set of timestamps.
 - Do: name a new transform `encrypt<ObjectType>`, `decrypt<ObjectType>`, `normalize<ObjectType>`, or
   `encrypt<Verb>Activity` (lodash `capitalize`, so `meetingContainer` becomes `Meetingcontainer`),
   because dispatch builds the name at runtime in `src/encryption-transforms.js`,
-  `src/decryption-transforms.js`, and `src/index.js`.
+  `src/decryption-transforms.js`, and `src/index.js`. `capitalize` lowercases the rest of the name,
+  so the existing `encryptUpdateKeyActivity`, `encryptImageURI`, and `decryptImageURI` transforms are
+  never dispatched (the runtime names are `encryptUpdatekeyActivity`, `encryptImageuri`, and
+  `decryptImageuri`).
 - Do not: assume a missing transform fails loudly; WebexCore resolves an unknown transform name as a
   no-op, so a new objectType or verb without its transform is sent unencrypted or returned undecrypted.
 - Do: route every new verb through `prepare` and `submit` so KMS placeholders, `clientTempId`, and
@@ -691,35 +786,39 @@ queries afterwards are relative to that single set of timestamps.
 
 | Requirement or invariant | Test level | Positive evidence | Negative or boundary evidence | Gap |
 | ------------------------ | ---------- | ----------------- | ----------------------------- | --- |
-| `MOD-001` | Unit | `test/unit/spec/conversation.js` | `test/unit/spec/conversation.js` | none |
-| `MOD-002` | Unit / Integration | `test/unit/spec/conversation.js` | none found | No unit case for share submit query |
+| `MOD-001` | Unit | `test/unit/spec/conversation.js` | none found | Subset-only check passes when nothing is appended |
+| `MOD-002` | Unit / Integration | `test/unit/spec/conversation.js` prepare cases; `test/integration/spec/verbs.js` | none found | No unit case for `submit` or the share submit query |
 | `MOD-003` | Unit | none found | none found | Both rejections untested |
 | `MOD-004` | Integration | `test/integration/spec/create.js` | `test/integration/spec/create.js` | No unit coverage |
-| `MOD-005` | Unit | `test/unit/spec/conversation.js` | `test/unit/spec/conversation.js` | none |
+| `MOD-005` | Unit | `test/unit/spec/conversation.js` (explicit url) | none found | Team, cluster, cache, and throw branches untested |
 | `MOD-006` | none | none found | none found | Cache sharing untested |
 | `MOD-007` | Integration | `test/integration/spec/get.js` | none found | Federation split untested |
 | `MOD-008` | Unit / Integration | `test/unit/spec/decrypt-transforms.js` | `test/integration/spec/encryption.js` | none |
 | `MOD-009` | Unit | none found | none found | Failure substitution has no executing test |
-| `MOD-010` | Unit | `test/unit/spec/encryption-transforms.js` | `test/unit/spec/encryption-transforms.js` | none |
+| `MOD-010` | Unit | none observing | none found | Skip assertions hold either way; `encryptionKeyUrl` skip untested |
 | `MOD-011` | Integration | `test/integration/spec/encryption.js` | `test/integration/spec/encryption.js` | No unit coverage |
-| `MOD-012` | Unit | `test/unit/spec/conversation.js` | `test/unit/spec/encryption-transforms.js` | KRO throw untested |
-| `MOD-013` | Integration | `test/integration/spec/verbs.js` | none found | Retry promise is not awaited by the test |
+| `MOD-012` | Unit | `test/unit/spec/encryption-transforms.js` delete case | none found | KRO throw, key-less removal, and `<KEYURL>` substitution untested |
+| `MOD-013` | none | none found | none found | The integration case is not awaited and fails before `post` |
 | `MOD-014` | Unit | `test/unit/spec/conversation.js` | `test/unit/spec/conversation.js` | HMAC computation is stubbed; byte layout untested |
-| `MOD-015` | Unit / Integration | `test/unit/spec/conversation.js` | `test/unit/spec/conversation.js` | Rejection cases do not await; reply reaction path untested |
-| `MOD-016` | Unit | `test/unit/spec/conversation.js` | `test/unit/spec/conversation.js` | none |
+| `MOD-015` | Integration / Unit | `test/integration/spec/get.js` | `test/unit/spec/conversation.js` (facade wiring) | Unit cases stub the generator; rejection cases do not await; reply reaction path untested |
+| `MOD-016` | Unit | `test/unit/spec/conversation.js` (noMoreActivitiesManager stops) | none found | 100-loop failsafe assertion sits inside `catch`; `minActivities` stop unasserted |
 | `MOD-017` | Unit / Integration | `test/unit/spec/share-activity.js` | `test/integration/spec/share.js` | none |
 | `MOD-018` | Integration | `test/integration/spec/verbs.js` | none found | Size rejection untested |
 | `MOD-019` | Integration | `test/integration/spec/get.js` | none found | No unit coverage |
 | `MOD-020` | Integration | `test/integration/spec/get.js` | none found | Sanitization and normalizePerson untested |
-| `INV-001` | Unit | `test/unit/spec/conversation.js` | none found | Fixture uses uppercase `TOMBSTONE`; lowercase wire verb untested |
+| `INV-001` | Unit | `test/unit/spec/conversation.js` | none found | Fixture uses uppercase `TOMBSTONE` with the same `published` date as the stored edit, so it passes even without the guard; lowercase wire verb untested |
 | `INV-002` | Unit | `test/unit/spec/conversation.js` | none found | none |
-| `INV-003` | Unit | `test/unit/spec/conversation.js` | `test/unit/spec/conversation.js` | The case accepts any thrown error |
+| `INV-003` | none | none found | none found | The orphan case swallows the thrown error and asserts nothing |
+| `INV-004` | Integration | `test/integration/spec/verbs.js` (positive assign only) | none found | No size or 1 MiB boundary case |
+| `INV-005` | none | none found | none found | Share without files untested |
 | `INV-006` | Unit | `test/unit/spec/share-activity.js` | `test/unit/spec/share-activity.js` | none |
 
 `paginate` belongs to the lifecycle Public surface and has no MOD requirement; its only unit case,
 the no-next-link rejection in `test/unit/spec/conversation.js`, does not return its promise, so the
 rejection is not asserted.
 
-The unit suite (4 files, 97 cases) passes with `yarn workspace @webex/internal-plugin-conversation test:unit`.
+The unit suite is the four spec files under `test/unit/spec`, run with
+`yarn workspace @webex/internal-plugin-conversation test:unit`; this refresh did not execute it
+because the checkout has no installed workspace dependencies.
 No characterization baseline exists for this module; one is required before risky modification of
 the key-rotation, URL-fallback, or thread-ordering paths.

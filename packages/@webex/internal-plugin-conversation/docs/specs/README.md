@@ -9,8 +9,8 @@ doc_kind: standing-doc
 generated_from: spec-index@0.3.0
 generated_by: claude-code
 approved_by: pending
-updated_at: 2026-10-16T01:43:45Z
-validation_status: pass
+updated_at: 2026-11-09T11:26:47Z
+validation_status: pass-with-warnings
 -->
 
 # Specification registry
@@ -35,9 +35,9 @@ service, so no service specification exists.
 
 | Resource | Role | Canonical path | Owner | Status | Last verified |
 | -------- | ---- | -------------- | ----- | ------ | ------------- |
-| Repository | Architecture | `docs/architecture.md` | Cisco Webex for Developers | Draft | 2026-10-15 |
-| Conversation plugin | Module | `src/docs/README.md` | Cisco Webex for Developers | Draft | 2026-10-15 |
-| conversation-package-entry | Contract | `package.json` | Cisco Webex for Developers | Active | 2026-10-15 |
+| Repository | Architecture | `docs/architecture.md` | Cisco Webex for Developers | Draft | 2026-11-09 |
+| Conversation plugin | Module | `src/docs/README.md` | Cisco Webex for Developers | Draft | 2026-11-09 |
+| conversation-package-entry | Contract | `package.json` | Cisco Webex for Developers | Active | 2026-11-09 |
 
 ### Module registry
 
@@ -52,7 +52,7 @@ service, so no service specification exists.
 | Package boundaries or cross-cutting architecture | `docs/architecture.md` and applicable ADRs | Unit tests plus the affected module spec |
 | A stable code, package, or component boundary | `src/docs/README.md` | `yarn workspace @webex/internal-plugin-conversation test:unit` |
 | A public API, event, command, package, or file contract | The architecture contract index, the module Public surface, and the native source | Unit tests plus dependent-package review |
-| Payload transforms or encryption | `src/docs/README.md` Protocol, Failure modes, and Module-specific rules | Unit transform specs plus integration encryption specs |
+| Payload transforms or encryption | `src/docs/README.md` Protocol and wire format, Caller-visible failure modes, and Module-specific rules | Unit transform specs plus integration encryption specs |
 
 ## Module and contract registration
 
