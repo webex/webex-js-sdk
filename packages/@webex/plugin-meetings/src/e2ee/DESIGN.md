@@ -554,7 +554,7 @@ Created by `E2eeManager.createE2eeController(context)`.
 ```ts
 constructor(deps: {
   context: E2eeMeetingContext; webex; wasmLoader: WasmLoader; wasmUrl: string;
-  identityProvider: IdentityProvider; config;
+  identityProvider: IdentityProvider;
 });
 
 get state(): E2eeState;

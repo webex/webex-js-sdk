@@ -24,13 +24,6 @@ export interface E2eeMeetingContext {
  * SDK-facing E2EE types (camelCase), mapped from the raw WASM boundary shapes in wasm.d.ts.
  */
 
-/** E2EE feature config (a slice of the meetings plugin config). */
-export interface E2eeConfig {
-  enableE2ee?: boolean;
-  /** Base URL from which plugin-meetings static assets are served. */
-  assetsBaseUrl?: string;
-}
-
 /** Lifecycle state of a per-meeting MLS session. */
 export const E2eeState = {
   Disabled: 'disabled',

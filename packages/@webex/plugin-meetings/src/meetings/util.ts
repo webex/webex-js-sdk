@@ -46,11 +46,11 @@ const MeetingsUtil: any = {};
 
 /**
  * E2EE can only be enabled when requested and WebAssembly is available in this browser.
- * @param {boolean} configured - Whether the SDK's E2EE config is enabled.
+ * @param {Object} config - The Webex SDK configuration.
  * @returns {boolean} whether E2EE can run in this browser.
  */
-MeetingsUtil.isE2eeEnabledAndSupported = (configured: boolean): boolean =>
-  configured && WebCapabilities.supportsWasm() === CapabilityState.CAPABLE;
+MeetingsUtil.isE2eeEnabledAndSupported = (config?: {meetings?: {enableE2ee?: boolean}}): boolean =>
+  !!config?.meetings?.enableE2ee && WebCapabilities.supportsWasm() === CapabilityState.CAPABLE;
 
 MeetingsUtil.getMeetingAddedType = (type: DESTINATION_TYPE) =>
   type === DESTINATION_TYPE.LOCUS_ID ? _INCOMING_ : _CREATED_;

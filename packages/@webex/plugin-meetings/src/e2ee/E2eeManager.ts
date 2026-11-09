@@ -37,7 +37,7 @@ export default class E2eeManager {
    * @returns {boolean} whether E2EE is enabled via config.
    */
   get isEnabled(): boolean {
-    return MeetingsUtil.isE2eeEnabledAndSupported(!!this.webex?.config?.meetings?.enableE2ee);
+    return MeetingsUtil.isE2eeEnabledAndSupported(this.webex?.config);
   }
 
   /**
@@ -76,7 +76,6 @@ export default class E2eeManager {
       wasmLoader: this.wasmLoader,
       wasmUrl: this.wasmUrl,
       identityProvider: this.webex.internal.identity,
-      config: this.webex.config.meetings,
     });
   }
 }

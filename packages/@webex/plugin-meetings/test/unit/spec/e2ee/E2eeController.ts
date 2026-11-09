@@ -20,7 +20,6 @@ describe('plugin-meetings', () => {
     let wasmLoader;
     let identityProvider;
     let getLlmChannel;
-    let config;
     let e2ee;
     let sessionHandlers;
     let rosterStub;
@@ -77,6 +76,7 @@ describe('plugin-meetings', () => {
       };
       getLlmChannel = sinon.stub().returns(undefined);
       webex = {
+        config: {meetings: {enableE2ee: true}},
         internal: {
           device: {userId: 'user-1', url: OWN_DEVICE_URL},
           llm: {on: sinon.stub(), off: sinon.stub(), isConnected: sinon.stub().returns(false)},
@@ -103,8 +103,6 @@ describe('plugin-meetings', () => {
           reportMembersUpdated: sinon.stub(),
         },
       };
-      config = {enableE2ee: true};
-
       e2ee = new E2eeController({
         context: {
           correlationId: meeting.correlationId,
@@ -116,7 +114,6 @@ describe('plugin-meetings', () => {
         wasmLoader,
         wasmUrl: '/assets/plugin-meetings/e2ee.wasm',
         identityProvider,
-        config,
       });
     });
 
@@ -129,7 +126,7 @@ describe('plugin-meetings', () => {
 
     describe('start guard (required)', () => {
       it('is a no-op when E2EE is disabled in config', async () => {
-        config.enableE2ee = false;
+        webex.config.meetings.enableE2ee = false;
 
         await e2ee.start();
 

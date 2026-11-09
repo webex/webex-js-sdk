@@ -17,7 +17,7 @@ import MemberMLSReconciler from './MemberMLSReconciler';
 import {MEDIA_SERVICE_DEVICE_TYPE} from './constants';
 import MeetingsUtil from '../meetings/util';
 import type WasmLoader from '../common/wasm-loader';
-import type {E2eeConfig, E2eeMeetingContext, E2eeState} from './types';
+import type {E2eeMeetingContext, E2eeState} from './types';
 
 const DEVICE_TYPE = 'WEB';
 const TRIGGER_SCOPE = {file: 'e2ee/E2eeController', function: 'e2ee'};
@@ -38,8 +38,6 @@ export default class E2eeController extends EventsScope {
   private readonly wasmUrl: string;
 
   private readonly identityProvider: IdentityProvider;
-
-  private readonly config: E2eeConfig;
 
   private session?: MLS;
 
@@ -62,7 +60,6 @@ export default class E2eeController extends EventsScope {
    * @param {WasmLoader} deps.wasmLoader - Shared (pre-warmed) WASM loader.
    * @param {string} deps.wasmUrl - URL of the E2EE WASM module.
    * @param {IdentityProvider} deps.identityProvider - Shared identity/credential provider.
-   * @param {E2eeConfig} deps.config - The meetings plugin config.
    */
   constructor({
     context,
@@ -70,14 +67,12 @@ export default class E2eeController extends EventsScope {
     wasmLoader,
     wasmUrl,
     identityProvider,
-    config,
   }: {
     context: E2eeMeetingContext;
     webex: any;
     wasmLoader: WasmLoader;
     wasmUrl: string;
     identityProvider: IdentityProvider;
-    config: E2eeConfig;
   }) {
     super();
     this.context = context;
@@ -85,9 +80,8 @@ export default class E2eeController extends EventsScope {
     this.wasmLoader = wasmLoader;
     this.wasmUrl = wasmUrl;
     this.identityProvider = identityProvider;
-    this.config = config;
 
-    if (MeetingsUtil.isE2eeEnabledAndSupported(!!config.enableE2ee)) {
+    if (MeetingsUtil.isE2eeEnabledAndSupported(this.webex?.config)) {
       // Created eagerly (not on join) and registered as the Members pre-emit processor, so member
       // verification is stamped into every members:update - even for member changes outside a
       // joined meeting. Roster-driven verification changes are reported back through Members too.
@@ -112,7 +106,7 @@ export default class E2eeController extends EventsScope {
    * @returns {boolean} whether E2EE is enabled via config.
    */
   get isEnabled(): boolean {
-    return MeetingsUtil.isE2eeEnabledAndSupported(!!this.config.enableE2ee);
+    return MeetingsUtil.isE2eeEnabledAndSupported(this.webex?.config);
   }
 
   /**
@@ -156,7 +150,7 @@ export default class E2eeController extends EventsScope {
     const locusInfo = this.context.getLocusInfo();
 
     return (
-      MeetingsUtil.isE2eeEnabledAndSupported(!!this.config.enableE2ee) &&
+      MeetingsUtil.isE2eeEnabledAndSupported(this.webex?.config) &&
       !!locusInfo?.info?.isV2E2EEncrypted &&
       !!locusInfo?.info?.mediaEncryptionGroupUrl
     );
