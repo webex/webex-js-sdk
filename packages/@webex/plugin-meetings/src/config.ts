@@ -84,6 +84,7 @@ export default {
     receiveTranscription: false,
     enableExtmap: false,
     enableAutomaticLLM: false,
+    enableE2ee: false,
     assetsBaseUrl: getUmdAssetsBaseUrl('plugin-meetings', SDK_VERSION, PACKAGE_VERSION),
     installedOrgID: undefined,
     multipartSitePrefixList: ['.my.', '.mydmz.', '.mybts.', '.mydev.', '.myats2.', '.myats.'],
