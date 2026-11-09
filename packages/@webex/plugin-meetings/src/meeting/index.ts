@@ -1174,21 +1174,7 @@ export default class Meeting extends StatelessWebexPlugin {
      * @memberof Meeting
      */
     this.e2ee = attrs.e2eeManager?.createE2eeController(e2eeContext);
-    const {e2ee} = this;
-
-    if (e2ee) {
-      [
-        EVENT_TRIGGERS.MEETING_E2EE_SECURITY_CODE_UPDATED,
-        EVENT_TRIGGERS.MEETING_E2EE_STATE_CHANGED,
-        EVENT_TRIGGERS.MEETING_E2EE_MEDIA_SERVICES_CHANGED,
-        EVENT_TRIGGERS.MEETING_E2EE_FAILURE,
-      ].forEach((event) => this.forwardEvent(e2ee, event, event));
-
-      [
-        EVENT_TRIGGERS.MEETING_E2EE_STATE_CHANGED,
-        EVENT_TRIGGERS.MEETING_E2EE_MEDIA_SERVICES_CHANGED,
-      ].forEach((event) => e2ee.on(event, () => this.updateTrustState()));
-    }
+    this.setupE2eeEventForwarding(this.e2ee);
     /**
      * indicates if an SDP exchange is happening
      *
@@ -4550,6 +4536,30 @@ export default class Meeting extends StatelessWebexPlugin {
       EVENT_TRIGGERS.MEETING_E2EE_TRUST_STATE_CHANGED,
       {trustState}
     );
+  }
+
+  /**
+   * Forwards E2EE controller events and updates the derived trust state when relevant E2EE state changes.
+   * @param {E2eeController | undefined} e2ee
+   * @returns {void}
+   * @private
+   */
+  private setupE2eeEventForwarding(e2ee?: E2eeController): void {
+    if (!e2ee) {
+      return;
+    }
+
+    [
+      EVENT_TRIGGERS.MEETING_E2EE_SECURITY_CODE_UPDATED,
+      EVENT_TRIGGERS.MEETING_E2EE_STATE_CHANGED,
+      EVENT_TRIGGERS.MEETING_E2EE_MEDIA_SERVICES_CHANGED,
+      EVENT_TRIGGERS.MEETING_E2EE_FAILURE,
+    ].forEach((event) => this.forwardEvent(e2ee, event, event));
+
+    [
+      EVENT_TRIGGERS.MEETING_E2EE_STATE_CHANGED,
+      EVENT_TRIGGERS.MEETING_E2EE_MEDIA_SERVICES_CHANGED,
+    ].forEach((event) => e2ee.on(event, () => this.updateTrustState()));
   }
 
   /**
