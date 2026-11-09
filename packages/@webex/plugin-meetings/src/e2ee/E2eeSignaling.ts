@@ -3,7 +3,8 @@
  */
 
 import type LLMChannel from '@webex/internal-plugin-llm';
-import {LLM_ONLINE_EVENT, MEDIA_ENCRYPTION_MERCURY_EVENTS} from './constants';
+import {ONLINE} from '../constants';
+import {MEDIA_ENCRYPTION_MERCURY_EVENTS} from './constants';
 import type {E2eeSignalingSource} from './types';
 
 /** The subset of the MLS engine the signaling adapter drives. */
@@ -169,13 +170,13 @@ export default class E2eeSignaling {
       this.llm?.on(event, this.onLlmEvent);
     });
     if (!this.isLlmOnlineForThisSession()) {
-      this.llm.on(LLM_ONLINE_EVENT, this.onLlmOnline);
+      this.llm.on(ONLINE, this.onLlmOnline);
     }
   }
 
   /** @returns {void} */
   private unsubscribeFromLlmEvents(): void {
-    this.llm?.off(LLM_ONLINE_EVENT, this.onLlmOnline);
+    this.llm?.off(ONLINE, this.onLlmOnline);
     MEDIA_ENCRYPTION_MERCURY_EVENTS.forEach((event) => {
       this.llm?.off(event, this.onLlmEvent);
     });

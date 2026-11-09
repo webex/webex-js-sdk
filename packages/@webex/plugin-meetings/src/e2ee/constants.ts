@@ -19,9 +19,6 @@ export const MEDIA_ENCRYPTION_MERCURY_EVENTS = [
   'event:media_encryption.message_segment',
 ];
 
-/** LLM lifecycle event fired when the signaling channel connects. */
-export const LLM_ONLINE_EVENT = 'online';
-
 /** Webex service names resolved from the service catalog. */
 export const MEDIA_ENCRYPTION_SERVICE = 'media-encryption';
 
