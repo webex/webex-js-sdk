@@ -40,6 +40,7 @@ import type {
   RelayResult,
   RelayToWorker,
 } from './messages';
+import {hasUrlChange, isStorableUrl, originOf} from './navigation';
 import {requireSessionStorage, requireTabs, resolveChrome} from './platform';
 import type {ChromeLike, ChromeSender, SendResponse} from './platform';
 import {isFromContentScript, isFromExtensionPage, isOriginAllowed, isOwnExtension} from './senders';
@@ -196,11 +197,29 @@ export function createExtensionBridgeWith(
     return current.find((entry) => entry.tabId === tabId);
   };
 
-  const upsertConnection = (record: StoredConnection): Promise<StoredConnection[]> =>
-    connections.update((current) => [
-      ...current.filter((entry) => entry.tabId !== record.tabId),
-      record,
-    ]);
+  /**
+   * Install a tab's connection record, replacing whatever the tab held.
+   *
+   * The replaced record is read inside the same update that writes the new one, so a
+   * `PUSH` queued right behind a `CONNECT` always reads the new session — a separate
+   * read before the write would let that push in between and drop it as stale.
+   *
+   * @param record - Connection record to install.
+   * @returns The record it replaced, if any.
+   */
+  const upsertConnection = async (
+    record: StoredConnection
+  ): Promise<StoredConnection | undefined> => {
+    let replaced: StoredConnection | undefined;
+
+    await connections.update((current) => {
+      replaced = current.find((entry) => entry.tabId === record.tabId);
+
+      return [...current.filter((entry) => entry.tabId !== record.tabId), record];
+    });
+
+    return replaced;
+  };
 
   /**
    * Remove a tab's connection record.
@@ -253,8 +272,8 @@ export function createExtensionBridgeWith(
   };
 
   /**
-   * Tear down everything held for a tab, regardless of session. For events about the
-   * tab itself (removed, navigated, unreachable), where the document is gone either way.
+   * Tear down everything held for a tab, regardless of session. For the tab itself
+   * being removed, where no session on it can survive.
    *
    * @param tabId - Tab to tear down.
    * @param reason - Logged reason.
@@ -292,6 +311,62 @@ export function createExtensionBridgeWith(
     }
 
     settleTab(tabId, reason);
+  };
+
+  /**
+   * React to a tab reporting a new url.
+   *
+   * Only one thing here is decidable from a tab update: whether the tab is still on the
+   * origin it connected from. Leaving it is a teardown, because nothing on the far side
+   * was ever checked against the allow-list and no content script will be injected
+   * there. Staying on it is not, whether or not the document was replaced — that
+   * question has no answer in a tab update, and guessing it wrong is what broke
+   * single-page apps.
+   *
+   * So a same-origin url is simply recorded. If the document did survive, the record
+   * is now in step with the route. If it did not, the replacement relay's `CONNECT`
+   * overwrites the record moments later, and until then the only cost is that
+   * `listConnections()` names a tab whose relay is gone — which the first send to it
+   * corrects.
+   *
+   * The rewrite is scoped to the session that was connected when the navigation was
+   * observed, mirroring `removeConnection`'s guard: a document replaced between this
+   * read and its write owns the tab now, and must not inherit the previous route's url.
+   *
+   * @param tabId - Tab that navigated.
+   * @param url - Url the tab navigated to.
+   */
+  const followTabNavigation = async (tabId: number, url: string): Promise<void> => {
+    const connection = await findConnection(tabId);
+
+    if (!connection) {
+      return;
+    }
+
+    if (originOf(url) !== connection.origin) {
+      // Its own reason: an operator reading the log needs to tell a tab that went
+      // somewhere no content script will be injected from an ordinary document load.
+      // Scoped to the session read above, because a relay on the new origin may have
+      // connected while that read was pending, and its record must survive this.
+      logger.info('dropping connection', {channel, tabId, reason: 'tab-left-origin'});
+      await removeConnectionForSession(tabId, connection.session, 'tab-left-origin');
+
+      return;
+    }
+
+    // Kept rather than stored: the connection is to a document, not to a url, so an
+    // unreasonably long one costs the record its accuracy and nothing else. Dropping
+    // here would hand the page a way to disconnect itself by navigating.
+    if (connection.url === url || !isStorableUrl(url)) {
+      return;
+    }
+
+    logger.debug('following tab navigation', {channel, tabId});
+    await connections.update((current) =>
+      current.map((entry) =>
+        entry.tabId === tabId && entry.session === connection.session ? {...entry, url} : entry
+      )
+    );
   };
 
   /**
@@ -463,8 +538,18 @@ export function createExtensionBridgeWith(
           record.url = sender.tab.url;
         }
 
+        // A second relay announcing itself on a tab that already holds a session is
+        // proof the first document is gone — the only proof a tab update never gave
+        // us. Anything still waiting on it is waiting on a page that cannot answer, so
+        // it is settled now rather than left to time out.
         logger.info('tab attached', {channel, tabId, origin});
-        await upsertConnection(record);
+
+        const superseded = await upsertConnection(record);
+
+        if (superseded && superseded.session !== relay.session) {
+          settleTab(tabId, 'tab-superseded');
+        }
+
         break;
       }
 
@@ -501,11 +586,27 @@ export function createExtensionBridgeWith(
     return tabId;
   };
 
-  const settleFromRelay = (id: string, topic: string, session: string, response: unknown): void => {
+  const settleFromRelay = async (
+    id: string,
+    topic: string,
+    tabId: number,
+    session: string,
+    response: unknown
+  ): Promise<void> => {
     const ok = readOwn(response, 'ok');
 
     if (ok !== true) {
-      pending.reject(id, fromWireError(readOwn(response, 'error'), topic));
+      const error = fromWireError(readOwn(response, 'error'), topic);
+
+      pending.reject(id, error);
+
+      // A relay answering `NOT_CONNECTED` does not hold this session: the document it
+      // was minted in has gone, and its replacement never connected (a same-origin page
+      // without a page bridge). No `CONNECT` will overwrite the record, so the relay's
+      // answer is the only signal that it is stale.
+      if (error.code === 'NOT_CONNECTED') {
+        await removeConnectionForSession(tabId, session, 'relay-not-connected');
+      }
 
       return;
     }
@@ -616,7 +717,7 @@ export function createExtensionBridgeWith(
       // if the relay never answers. Whichever happens first wins, and the loser is a
       // no-op because correlation is single-use.
       void Promise.resolve(tabsApi.sendMessage(tabId, relayRequest)).then(
-        (response) => settleFromRelay(id, topic, connection.session, response),
+        (response) => settleFromRelay(id, topic, tabId, connection.session, response),
         async () => {
           // Reject this request first, so it reports why *it* failed (dropping the
           // connection settles everything else on the tab as `DISCONNECTED`, and
@@ -806,9 +907,18 @@ export function createExtensionBridgeWith(
   logger.info('extension bridge started', {channel, count: allowedOrigins.size});
   tabsApi.onRemoved.addListener((tabId) => dropConnection(tabId, 'tab-removed'));
   tabsApi.onUpdated.addListener((tabId, changeInfo) => {
-    // A killed or navigating page cannot send BYE, so navigation is its own signal.
-    if (changeInfo.status === 'loading' || typeof changeInfo.url === 'string') {
-      dropConnection(tabId, 'tab-navigated');
+    // Only where the tab went, never whether its document survived the trip: Chrome
+    // reports a route change and a followed link identically (see `navigation.ts`), so
+    // a status-based teardown here cannot tell a single-page app changing route from a
+    // page genuinely leaving, and tearing down on the former leaves the page reporting
+    // `isConnected` while every push is dropped as a stale session — unrecoverable,
+    // because the relay sends CONNECT once per document and the page is never told.
+    //
+    // A document that really did go is learned from the document itself: its
+    // replacement announces a new session, and a send to a tab with no relay left
+    // fails and removes the record.
+    if (hasUrlChange(changeInfo)) {
+      void followTabNavigation(tabId, changeInfo.url);
     }
   });
 

@@ -10,7 +10,7 @@ permissions:
 
 jobs:
   remove-validated-label:
-    name: Remove reusable validated label
+    name: Remove reusable validated and test_e2e labels
     runs-on: ubuntu-latest
     steps:
       # DRY RUN: nothing is gated yet. This only logs whether the PR author and
@@ -80,7 +80,7 @@ jobs:
               core.setFailed('Membership lookup was inconclusive; this run produced no usable data.');
             }
 
-      - name: Remove validated label from PR
+      - name: Remove validated and test_e2e labels from PR
         uses: actions/github-script@v8
         with:
           script: |
@@ -89,20 +89,23 @@ jobs:
             const pull_number = context.payload.pull_request.number;
 
             const labels = context.payload.pull_request.labels.map((label) => label.name);
-            if (!labels.includes('validated')) {
-              core.info('No validated label found; skipping.');
-              return;
-            }
 
-            try {
-              await github.rest.issues.removeLabel({
-                owner,
-                repo,
-                issue_number: pull_number,
-                name: 'validated',
-              });
+            for (const name of ['validated', 'test_e2e']) {
+              if (!labels.includes(name)) {
+                core.info(`No ${name} label found; skipping.`);
+                continue;
+              }
 
-              core.info('Removed validated label after synchronize event.');
-            } catch (error) {
-              core.warning(`Failed to remove validated label: ${error.message}`);
+              try {
+                await github.rest.issues.removeLabel({
+                  owner,
+                  repo,
+                  issue_number: pull_number,
+                  name,
+                });
+
+                core.info(`Removed ${name} label after synchronize event.`);
+              } catch (error) {
+                core.warning(`Failed to remove ${name} label: ${error.message}`);
+              }
             }

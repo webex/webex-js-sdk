@@ -18,6 +18,7 @@ describe('plugin-meetings', () => {
     let webE2eeConstructor;
     let httpClient;
     let session;
+    let wasmLoader;
 
     // Replaces the whole logger: other specs install loggers whose methods are already sinon stubs,
     // so stubbing individual methods of LoggerProxy.logger fails depending on test order.
@@ -126,7 +127,7 @@ describe('plugin-meetings', () => {
         await session.initialize({...config, participantId: 'user-2'});
 
         // The loader may be called again, but returns the cached WASM module.
-        assert.calledTwice(loadModule);
+        assert.calledTwice(wasmLoader.get);
         assert.calledOnce(webE2eeConstructor);
         assert.calledOnceWithExactly(
           fakeE2ee.initialize,

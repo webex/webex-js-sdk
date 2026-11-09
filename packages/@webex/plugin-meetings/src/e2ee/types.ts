@@ -42,7 +42,7 @@ export type E2eeState =
   | 'left';
 
 /** The meeting's overall E2EE trust state, surfaced to the app for its UI indicator. */
-export type E2eeTrustState =
+export type TrustState =
   | 'calculating'
   | 'strong'
   | 'zeroTrust'

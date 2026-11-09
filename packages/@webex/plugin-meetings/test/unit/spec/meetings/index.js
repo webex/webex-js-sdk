@@ -466,7 +466,7 @@ describe('plugin-meetings', () => {
           assert.isTrue(webex.meetings.registered);
         });
 
-        it('warms E2EE resources via e2eeManager.preload on successful register', async () => {
+        it('preloads E2EE resources after successful registration', async () => {
           webex.canAuthorize = true;
           const preloadStub = sinon.stub(E2eeManager.prototype, 'preload').resolves();
 
@@ -475,9 +475,9 @@ describe('plugin-meetings', () => {
           assert.calledOnce(preloadStub);
         });
 
-        it('does not fail register when e2eeManager.preload rejects', async () => {
+        it('does not fail registration when E2EE preloading rejects', async () => {
           webex.canAuthorize = true;
-          sinon.stub(E2eeManager.prototype, 'preload').rejects(new Error('fake e2ee error'));
+          sinon.stub(E2eeManager.prototype, 'preload').rejects(new Error('asset load failed'));
 
           await webex.meetings.register();
 

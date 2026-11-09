@@ -3,6 +3,7 @@
  */
 
 import type {IdentityProvider} from '@webex/internal-plugin-identity';
+import {CapabilityState, WebCapabilities} from '@webex/web-capabilities';
 // @ts-ignore - StaticAssetLoader is exported from webex-core's JavaScript entry point.
 import {StaticAssetLoader} from '@webex/webex-core';
 
@@ -13,10 +14,8 @@ import {E2EE_WASM_ASSET, isE2eeEnabledAndSupported} from './constants';
 import type {E2eeMeetingContext} from './types';
 
 /**
- * Owns the shared, session-scoped E2EE identity provider and static-asset loader, warms the E2EE
- * WASM during registration so per-meeting init stays off the join path, and acts as the factory for
- * per-meeting {@link E2eeController} facades. The Meetings plugin creates a single instance of this.
- * The WASM loader is owned by `Meetings` (it is not E2EE-specific) and injected here.
+ * Owns E2EE resource preloading for a Meetings plugin session. The per-meeting controller is added
+ * in the follow-up integration change; this first step keeps the slow WASM load off the join path.
  */
 export default class E2eeManager {
   private readonly webex: any;

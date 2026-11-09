@@ -90,7 +90,7 @@ import ReconnectionNotStartedError from '../common/errors/reconnection-not-start
 import MeetingRequest from './request';
 import Members from '../members/index';
 import type E2eeController from '../e2ee/E2eeController';
-import type {E2eeLocusInfo, E2eeMeetingContext, E2eeTrustState} from '../e2ee/types';
+import type {E2eeLocusInfo, E2eeMeetingContext, TrustState} from '../e2ee/types';
 import MeetingUtil from './util';
 import MeetingsUtil from '../meetings/util';
 import RecordingUtil from '../recording-controller/util';
@@ -636,7 +636,7 @@ export default class Meeting extends StatelessWebexPlugin {
   meetingRequest: MeetingRequest;
   members: Members;
   e2ee?: E2eeController;
-  private lastE2eeTrustState?: E2eeTrustState;
+  private lastTrustState?: TrustState;
   options: object;
   orgId: string;
   owner: string;
@@ -1159,13 +1159,6 @@ export default class Meeting extends StatelessWebexPlugin {
     // @ts-ignore - Fix type
     this.roap = new Roap({}, {parent: this.webex});
 
-    /**
-     * The per-meeting E2EE facade (undefined when no E2EE manager is provided).
-     * @instance
-     * @type {E2eeController}
-     * @private
-     * @memberof Meeting
-     */
     const e2eeContext: E2eeMeetingContext = {
       correlationId: this.correlationId,
       getLocusInfo: (): E2eeLocusInfo | undefined => this.locusInfo,
@@ -1173,6 +1166,13 @@ export default class Meeting extends StatelessWebexPlugin {
       members: this.members,
     };
 
+    /**
+     * The per-meeting E2EE facade (undefined when no E2EE manager is provided).
+     * @instance
+     * @type {E2eeController}
+     * @private
+     * @memberof Meeting
+     */
     this.e2ee = attrs.e2eeManager?.createE2eeController(e2eeContext);
     const {e2ee} = this;
 
@@ -1187,7 +1187,7 @@ export default class Meeting extends StatelessWebexPlugin {
       [
         EVENT_TRIGGERS.MEETING_E2EE_STATE_CHANGED,
         EVENT_TRIGGERS.MEETING_E2EE_MEDIA_SERVICES_CHANGED,
-      ].forEach((event) => e2ee.on(event, () => this.updateE2eeTrustState()));
+      ].forEach((event) => e2ee.on(event, () => this.updateTrustState()));
     }
     /**
      * indicates if an SDP exchange is happening
@@ -1702,7 +1702,7 @@ export default class Meeting extends StatelessWebexPlugin {
 
     this.setUpLocusInfoListeners();
     this.locusInfo.init(attrs.locus ? attrs.locus : {});
-    this.lastE2eeTrustState = this.e2eeTrustState;
+    this.lastTrustState = this.trustState;
     this.hasJoinedOnce = false;
 
     /**
@@ -3867,7 +3867,7 @@ export default class Meeting extends StatelessWebexPlugin {
       }
     });
     this.locusInfo.on(LOCUSINFO.EVENTS.MEETING_INFO_UPDATED, ({isInitializing}) => {
-      this.updateE2eeTrustState();
+      this.updateTrustState();
       this.updateMeetingActions();
       this.recordingController.setDisplayHints(this.userDisplayHints);
       this.recordingController.setUserPolicy(this.selfUserPolicies);
@@ -4502,11 +4502,11 @@ export default class Meeting extends StatelessWebexPlugin {
   /**
    * The meeting's overall E2EE trust state, derived from the Locus E2EE flags, the MLS join state
    * and media-service presence. Undefined when the local device is not joined to the meeting.
-   * @returns {E2eeTrustState | undefined}
+   * @returns {TrustState | undefined}
    * @public
    * @memberof Meeting
    */
-  public get e2eeTrustState(): E2eeTrustState | undefined {
+  public get trustState(): TrustState | undefined {
     if (!this.isJoined()) {
       return undefined;
     }
@@ -4533,22 +4533,22 @@ export default class Meeting extends StatelessWebexPlugin {
    * @returns {void}
    * @private
    */
-  private updateE2eeTrustState(): void {
-    const {e2eeTrustState} = this;
+  private updateTrustState(): void {
+    const {trustState} = this;
 
-    if (this.lastE2eeTrustState === e2eeTrustState) {
+    if (this.lastTrustState === trustState) {
       return;
     }
 
-    this.lastE2eeTrustState = e2eeTrustState;
+    this.lastTrustState = trustState;
     Trigger.trigger(
       this,
       {
         file: 'meeting/index',
-        function: 'updateE2eeTrustState',
+        function: 'updateTrustState',
       },
       EVENT_TRIGGERS.MEETING_E2EE_TRUST_STATE_CHANGED,
-      {e2eeTrustState}
+      {trustState}
     );
   }
 
@@ -7067,8 +7067,7 @@ export default class Meeting extends StatelessWebexPlugin {
 
     // Create a new LLM channel for this meeting
     // @ts-ignore - Fix type
-    const llmChannel = this.webex.internal.llm.createChannel();
-    this.llmChannel = llmChannel;
+    this.llmChannel = this.webex.internal.llm.createChannel();
     this.e2ee?.llmChannelChanged();
 
     // Get token from pending (saved from join response) or channel
@@ -7170,11 +7169,9 @@ export default class Meeting extends StatelessWebexPlugin {
           error,
         });
 
-        // Clean up the channel on failure if it is still the active meeting channel.
-        if (this.llmChannel === llmChannel) {
-          this.llmChannel = undefined;
-          this.e2ee?.llmChannelChanged();
-        }
+        // Clean up the channel on failure
+        this.llmChannel = undefined;
+        this.e2ee?.llmChannelChanged();
 
         return Promise.reject(error);
       });
@@ -10685,7 +10682,7 @@ export default class Meeting extends StatelessWebexPlugin {
     // A new voiceaChannel is created on the next join. In-session LLM reconnects and
     // practice-session transitions use their own cleanup paths and preserve the channel.
 
-    await this.cleanupLLMConneciton({throwOnError: false});
+    await this.cleanupLLMConneciton({throwOnError: false, preserveVoiceaChannel: false});
 
     await this.e2ee?.stop();
   };

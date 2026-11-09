@@ -353,8 +353,8 @@ export default class Meetings extends WebexPlugin {
     };
 
     /**
-     * Loads and caches WASM modules (e.g. E2EE). Not E2EE-specific, so Meetings owns it and passes
-     * it to E2eeManager. Safe to create here as it has no dependency on webex.request.
+     * Loads and caches WASM modules (for example needed for E2EE).
+     * Safe to create here as it has no dependency on webex.request.
      * @instance
      * @type {WasmLoader}
      * @private
@@ -1146,8 +1146,7 @@ export default class Meetings extends WebexPlugin {
         this.registered = true;
         Metrics.sendBehavioralMetric(BEHAVIORAL_METRICS.MEETINGS_REGISTRATION_SUCCESS);
 
-        // Warm E2EE resources (e.g. WASM) off the join path; must never affect registration. The
-        // manager itself is created in onReady() (where webex.request is available).
+        // Warm E2EE resources (e.g. WASM) off the join path; must never affect registration.
         this.e2eeManager?.preload().catch((error) => {
           LoggerProxy.logger.warn(
             `Meetings:index#register --> E2EE preload failed: ${error?.message || error}`

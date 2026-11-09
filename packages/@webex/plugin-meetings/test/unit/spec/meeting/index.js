@@ -566,23 +566,23 @@ describe('plugin-meetings', () => {
             {isInitializing: false}
           );
 
-          assert.equal(meetingWithE2ee.e2eeTrustState, 'zeroTrust');
-          assert.deepEqual(listener.args, [[{e2eeTrustState: 'zeroTrust'}]]);
+          assert.equal(meetingWithE2ee.trustState, 'zeroTrust');
+          assert.deepEqual(listener.args, [[{trustState: 'zeroTrust'}]]);
 
           e2ee.state = 'joining';
           e2ee.emit(EVENT_TRIGGERS.MEETING_E2EE_STATE_CHANGED, {state: 'joining'});
 
-          assert.equal(meetingWithE2ee.e2eeTrustState, 'calculating');
+          assert.equal(meetingWithE2ee.trustState, 'calculating');
           assert.calledTwice(listener);
-          assert.calledWithExactly(listener.secondCall, {e2eeTrustState: 'calculating'});
+          assert.calledWithExactly(listener.secondCall, {trustState: 'calculating'});
 
           e2ee.state = 'joined';
           e2ee.hasUntrustedMediaServices = true;
           e2ee.emit(EVENT_TRIGGERS.MEETING_E2EE_MEDIA_SERVICES_CHANGED, {hasMediaServices: true});
 
-          assert.equal(meetingWithE2ee.e2eeTrustState, 'strong');
+          assert.equal(meetingWithE2ee.trustState, 'strong');
           assert.calledThrice(listener);
-          assert.calledWithExactly(listener.thirdCall, {e2eeTrustState: 'strong'});
+          assert.calledWithExactly(listener.thirdCall, {trustState: 'strong'});
         });
 
         it('returns undefined for the E2EE trust state when the local device is not joined', () => {
@@ -606,13 +606,13 @@ describe('plugin-meetings', () => {
 
           meetingWithE2ee.locusInfo.info = {isV2E2EEncrypted: true};
 
-          assert.isUndefined(meetingWithE2ee.e2eeTrustState);
+          assert.isUndefined(meetingWithE2ee.trustState);
 
           meetingWithE2ee.joinedWith = {state: 'JOINED'};
-          assert.equal(meetingWithE2ee.e2eeTrustState, 'calculating');
+          assert.equal(meetingWithE2ee.trustState, 'calculating');
 
           meetingWithE2ee.joinedWith = {state: 'NOT_JOINED'};
-          assert.isUndefined(meetingWithE2ee.e2eeTrustState);
+          assert.isUndefined(meetingWithE2ee.trustState);
         });
 
         it('should have created a meeting object with public properties', () => {
