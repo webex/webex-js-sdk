@@ -24,10 +24,10 @@ const DEVICE_TYPE = 'WEB';
 const TRIGGER_SCOPE = {file: 'e2ee/E2eeController', function: 'e2ee'};
 
 /**
- * Per-meeting E2EE facade (owned by Meeting as `this.e2ee`). It orchestrates the MLS engine, the
+ * Per-meeting E2EE controller (owned by Meeting as `this.e2ee`). It orchestrates the MLS engine, the
  * signaling adapter and the HTTP transport for one meeting, exposes the security code, media-service
  * presence and lifecycle state, and re-emits E2EE events on the meeting. Its start() is a no-op
- * unless the meeting requires E2EE (a V2/zero-trust meeting) and E2EE is enabled in config.
+ * unless the meeting requires E2EE (a V2/zero-trust meeting) and E2EE is enabled and supported.
  */
 export default class E2eeController extends EventsScope {
   private readonly context: E2eeMeetingContext;

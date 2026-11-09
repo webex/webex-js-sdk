@@ -22,8 +22,6 @@ export default class E2eeManager {
 
   private readonly wasmLoader: WasmLoader;
 
-  private readonly identityProvider: IdentityProvider;
-
   private readonly assetLoader: StaticAssetLoader;
 
   /**
@@ -34,7 +32,6 @@ export default class E2eeManager {
   constructor({webex, wasmLoader}: {webex: any; wasmLoader: WasmLoader}) {
     this.webex = webex;
     this.wasmLoader = wasmLoader;
-    this.identityProvider = webex.internal.identity;
     this.assetLoader = new StaticAssetLoader(
       {baseUrl: webex.config.meetings.assetsBaseUrl},
       {parent: webex}
@@ -55,7 +52,9 @@ export default class E2eeManager {
    */
   async preload(): Promise<void> {
     if (!this.isEnabled) {
-      LoggerProxy.logger.info('e2ee: E2eeManager#preload --> E2EE disabled, skipping WASM preload');
+      LoggerProxy.logger.info(
+        'e2ee: E2eeManager#preload --> E2EE disabled or not supported, skipping WASM preload'
+      );
 
       return;
     }
@@ -66,7 +65,7 @@ export default class E2eeManager {
   }
 
   /**
-   * Creates the per-meeting E2EE facade, injecting the shared loader, identity provider and config.
+   * Creates the per-meeting E2EE controller, injecting the shared loader, identity provider and config.
    * The returned facade's start() is a no-op unless the meeting requires E2EE and E2EE is enabled.
    * @param {E2eeMeetingContext} context - The meeting data and operations used by E2EE.
    * @returns {E2eeController}
@@ -81,7 +80,7 @@ export default class E2eeManager {
       webex: this.webex,
       wasmLoader: this.wasmLoader,
       assetLoader: this.assetLoader,
-      identityProvider: this.identityProvider,
+      identityProvider: this.webex.internal.identity,
       config: this.webex.config.meetings,
     });
   }

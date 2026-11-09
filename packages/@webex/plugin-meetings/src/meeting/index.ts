@@ -1167,7 +1167,7 @@ export default class Meeting extends StatelessWebexPlugin {
     };
 
     /**
-     * The per-meeting E2EE facade (undefined when no E2EE manager is provided).
+     * The per-meeting E2EE controller (undefined when no E2EE manager is provided).
      * @instance
      * @type {E2eeController}
      * @private

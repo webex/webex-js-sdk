@@ -391,7 +391,7 @@ describe('plugin-meetings', () => {
 
     describe('Public Api Contract', () => {
       describe('#constructor', () => {
-        it('forwards E2EE facade events and keeps facade APIs off Meeting', () => {
+        it('forwards E2EE controller events and keeps facade APIs off Meeting', () => {
           TriggerProxy.trigger.restore();
           const e2ee = new EventEmitter();
           const e2eeManager = {createE2eeController: sinon.stub().returns(e2ee)};

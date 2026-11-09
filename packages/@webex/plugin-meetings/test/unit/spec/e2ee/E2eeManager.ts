@@ -6,7 +6,7 @@ import {assert} from '@webex/test-helper-chai';
 import sinon from 'sinon';
 import E2eeManager from '@webex/plugin-meetings/src/e2ee/E2eeManager';
 import WasmLoader from '@webex/plugin-meetings/src/common/wasm-loader';
-import {E2EE_WASM_URL} from '@webex/plugin-meetings/src/e2ee/constants';
+import {E2EE_WASM_ASSET, E2EE_WASM_URL} from '@webex/plugin-meetings/src/e2ee/constants';
 import {CapabilityState, WebCapabilities} from '@webex/web-capabilities';
 
 describe('plugin-meetings', () => {
@@ -64,7 +64,7 @@ describe('plugin-meetings', () => {
 
         await manager.preload();
 
-        assert.calledOnceWithExactly(wasmLoader.preload, E2EE_WASM_URL);
+        assert.calledOnceWithExactly(wasmLoader.preload, `/assets/plugin-meetings/${E2EE_WASM_ASSET}`);
       });
 
       it('does nothing when disabled', async () => {
@@ -78,7 +78,7 @@ describe('plugin-meetings', () => {
     });
 
     describe('createE2eeController', () => {
-      it('returns a per-meeting E2EE facade', () => {
+      it('returns a per-meeting E2EE controller', () => {
         const manager = new E2eeManager({webex: makeWebex(true), wasmLoader: makeWasmLoader()});
         const context = {
           correlationId: 'correlation-id',

@@ -12,7 +12,7 @@ import {CapabilityState, WebCapabilities} from '@webex/web-capabilities';
 export const isE2eeEnabledAndSupported = (configured: boolean): boolean =>
   configured && WebCapabilities.supportsWasm() === CapabilityState.CAPABLE;
 
-/** LLM mercury events carrying MLS protocol messages, forwarded to the engine. */
+/** LLM mercury events carrying MLS protocol messages, forwarded to the MLS engine. */
 export const MEDIA_ENCRYPTION_MERCURY_EVENTS = [
   'event:media_encryption.leader_nominated',
   'event:media_encryption.welcome',
@@ -35,16 +35,13 @@ export const LLM_ONLINE_EVENT = 'online';
 /** Webex service names resolved from the service catalog. */
 export const MEDIA_ENCRYPTION_SERVICE = 'media-encryption';
 
-/** MLS roster device type identifying a media service (breaks zero-trust). */
+/** MLS roster device type identifying a backend media service. */
 export const MEDIA_SERVICE_DEVICE_TYPE = 'MEDIA_SERVICE';
 
 /* The WASM module that contains the libe2ee + mlspp libraries with a WebE2EE wrapper around them, required for joining MLS group for E2EE meetings.
  * The version is in the filename as it is important that JS-SDK implementation of MLS class matches the WASM module version.
  */
 export const E2EE_WASM_ASSET = 'e2ee-0.0.1.wasm';
-
-/** Default URL of the e2ee WASM binary (the `.js` loader URL is derived from it). */
-export const E2EE_WASM_URL = `/assets/plugin-meetings/${E2EE_WASM_ASSET}`;
 
 /** Locus join-request device capability advertising support for large (1K) E2EE meetings. */
 export const E2EE_1K_SUPPORTED = 'E2EE_1K_SUPPORTED';

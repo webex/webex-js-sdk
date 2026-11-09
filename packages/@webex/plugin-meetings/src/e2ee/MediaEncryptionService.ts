@@ -11,7 +11,7 @@ import type {IMlsHttpClient} from './types';
  * webex.request. Bodies are plain JS objects; MLS owns the conversion to/from the engine's bytes.
  * Requests use standard webex auth (Authorization bearer token) — no custom header is needed.
  */
-export default class MediaEncryptionService implements IMlsHttpClient {
+export default class MediaEncryptionService {
   private readonly webexRequest: WebexRequestMethod;
 
   /**
