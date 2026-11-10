@@ -1,20 +1,37 @@
 // TEMPORARY DEBUG: report what keeps the node process alive after the integration suite finishes.
 
+const isNode = typeof process !== 'undefined' && typeof process._getActiveHandles === 'function';
+
+// Track creation stacks of async resources that can hold the event loop open.
+const tracked = new Map();
+
+if (isNode) {
+  // eslint-disable-next-line global-require
+  const asyncHooks = require('async_hooks');
+  const TYPES = ['Timeout', 'TCPWRAP', 'TLSWRAP', 'PROCESSWRAP', 'PIPEWRAP', 'Immediate'];
+
+  asyncHooks
+    .createHook({
+      init(asyncId, type, triggerAsyncId, resource) {
+        if (TYPES.includes(type)) {
+          tracked.set(asyncId, {type, resource, stack: new Error().stack.split('\n').slice(2, 14).join('\n')});
+        }
+      },
+      destroy(asyncId) {
+        tracked.delete(asyncId);
+      },
+    })
+    .enable();
+}
+
 const describeHandle = (handle) => {
   const name = handle && handle.constructor ? handle.constructor.name : typeof handle;
   const details = [];
 
-  if (name === 'Timeout' || name === 'Immediate') {
-    details.push(`idleTimeout=${handle._idleTimeout}`, `repeat=${handle._repeat}`);
-    if (handle._onTimeout) {
-      details.push(`fn=${handle._onTimeout.toString().slice(0, 300).replace(/\s+/g, ' ')}`);
-    }
-  }
   if (handle && typeof handle.remoteAddress !== 'undefined') {
     details.push(
       `remote=${handle.remoteAddress}:${handle.remotePort}`,
-      `local=${handle.localAddress}:${handle.localPort}`,
-      `servername=${handle.servername || (handle._host || '')}`
+      `servername=${handle.servername || handle._host || ''}`
     );
   }
   if (handle && handle.spawnfile) {
@@ -23,8 +40,8 @@ const describeHandle = (handle) => {
   if (handle && typeof handle.fd === 'number') {
     details.push(`fd=${handle.fd}`);
   }
-  if (handle && typeof handle.hasRef === 'function') {
-    details.push(`hasRef=${handle.hasRef()}`);
+  if (handle && handle._handle && typeof handle._handle.hasRef === 'function') {
+    details.push(`hasRef=${handle._handle.hasRef()}`);
   }
 
   return `${name} ${details.join(' ')}`;
@@ -33,14 +50,35 @@ const describeHandle = (handle) => {
 const dumpActiveHandles = (label) => {
   /* eslint-disable no-console, no-underscore-dangle */
   const handles = process._getActiveHandles();
-  const requests = process._getActiveRequests();
 
-  console.log(`\n[active-handles] ${label}: ${handles.length} handles, ${requests.length} requests`);
+  console.log(`\n[active-handles] ${label}: ${handles.length} handles`);
   handles.forEach((handle, i) => console.log(`[active-handles]   handle ${i}: ${describeHandle(handle)}`));
-  requests.forEach((req, i) => console.log(`[active-handles]   request ${i}: ${describeHandle(req)}`));
   if (typeof process.getActiveResourcesInfo === 'function') {
     console.log(`[active-handles]   resources: ${process.getActiveResourcesInfo().join(', ')}`);
   }
+
+  tracked.forEach(({type, resource, stack}, asyncId) => {
+    if (type === 'Timeout') {
+      // eslint-disable-next-line no-underscore-dangle
+      const cleared = resource._destroyed || resource._idleTimeout === -1;
+      const hasRef = typeof resource.hasRef === 'function' ? resource.hasRef() : 'n/a';
+
+      if (cleared || hasRef === false) {
+        return;
+      }
+      console.log(
+        `[active-handles]   timer ${asyncId}: hasRef=${hasRef} ms=${resource._idleTimeout} repeat=${resource._repeat}` +
+          ` fn=${String(resource._onTimeout).slice(0, 200).replace(/\s+/g, ' ')}\n${stack}`
+      );
+    } else if (type !== 'Immediate' && type !== 'TLSWRAP') {
+      const hasRef = typeof resource.hasRef === 'function' ? resource.hasRef() : 'n/a';
+
+      if (hasRef === false) {
+        return;
+      }
+      console.log(`[active-handles]   ${type} ${asyncId}: hasRef=${hasRef}\n${stack}`);
+    }
+  });
   /* eslint-enable no-console, no-underscore-dangle */
 };
 
@@ -48,7 +86,7 @@ describe('zz-active-handles (debug)', () => {
   it('noop', () => {});
 });
 
-if (typeof process !== 'undefined' && typeof process._getActiveHandles === 'function') {
+if (isNode) {
   after(() => {
     dumpActiveHandles('after all tests');
 
