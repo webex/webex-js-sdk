@@ -1,818 +1,356 @@
-# E2EE / MLS integration into `plugin-meetings` — Design
+# E2EE / MLS in `plugin-meetings` — Design
 
 > Status: **Under review.**
-> This document describes how end-to-end-encrypted (E2EE) meetings, backed by MLS,
-> are integrated into `@webex/plugin-meetings` so that SDK clients join an E2EE
-> meeting exactly like any other meeting — the plugin handles all E2EE concerns.
+> End-to-end-encrypted (E2EE) meetings, backed by MLS, are handled inside `@webex/plugin-meetings`,
+> so an SDK client joins an E2EE meeting exactly like any other meeting (`meeting.joinWithMedia()`).
 
-## Goal / Requirements
+## Requirements
 
-Move E2EE (MLS) handling from the web-app proof-of-concept
-(`webex-web-client/src/lib/mls.ts` from this [POC PR](https://github.com/WebexServices/webex-web-client/pull/10231)) into `plugin-meetings`, so any JS-SDK client
-just calls `meeting.joinWithMedia()` as usual. The SDK must:
+The SDK must:
 
-1. Let a client query the meeting **Security Code**.
-2. Let a client query per-**Member** identity-verification status + certificate
-   data (sourced from MLS roster updates).
-3. Pass media encryption (SFrame) keys into the media connection stored in
-   `MediaProperties.webrtcMediaConnection`
-   (`RoapMediaConnection` | `MultistreamRoapMediaConnection`).
-4. Detect whether **media services** (e.g. recording / transcoding / streaming
-   servers) are present in the MLS roster, and expose it as a boolean on the
-   meeting. Their presence means the meeting is not fully zero-trust, so the app
-   needs this to indicate the meeting's zero-trust state in the UI.
-5. Expose the meeting's **E2EE trust state** (`calculating` | `strong` | `zeroTrust` |
-   `adaptiveStrong` | `adaptiveZeroTrust`) as a getter on `Meeting`, derived **live** from the
-   Locus DTO E2EE flags, the E2EE (MLS) state, and `hasUntrustedMediaServices`. `calculating` is
-   reported while a zero-trust meeting's MLS join is still in progress.
+1. Expose the meeting **security code**.
+2. Expose per-**member** identity-verification status and certificate data, sourced from the MLS roster.
+3. Pass SFrame media-encryption keys to the media connection
+   (`MediaProperties.webrtcMediaConnection`).
+4. Report whether **media services** (recording / transcoding / streaming servers) are in the MLS
+   roster. Their presence means the meeting is not fully zero-trust.
+5. Expose the meeting **trust state** (`calculating` | `strong` | `zeroTrust` | `adaptiveStrong` |
+   `adaptiveZeroTrust`), derived live from the Locus flags, the MLS state and media-service presence.
 
-### Capability signalling flow (how a meeting becomes E2EE)
+The WASM module (libe2ee + mlspp, with a `WebE2EE` wrapper) is built outside this package and
+placed in `packages/@webex/plugin-meetings/assets`.
 
-Whether a given meeting is E2EE is negotiated with **Locus** through capabilities the client
-advertises on the **join request** and flags Locus returns on the **Locus DTO**. Outbound signalling
-requires both the `enableE2ee` config and WebAssembly support reported by
-`WebCapabilities.supportsWasm()`. A client that has not enabled E2EE, or cannot run WebAssembly,
-does not advertise E2EE support and does not start an MLS session.
+## How a meeting becomes E2EE
 
-**Outbound (client → Locus), set in the join request** (`meeting/request.ts` `joinMeeting`, only
-when `enableE2ee` is on):
+E2EE is gated by the `meetings.enableE2ee` config (default `false`) **and** WebAssembly support
+(`WebCapabilities.supportsWasm()`); both are checked by `MeetingsUtil.isE2eeEnabledAndSupported()`.
 
-- `supportsV2E2EEncryption: true` — tells Locus this client supports **E2EE**
-- `E2EE_1K_SUPPORTED` device capability — advertises support for E2EE meetings; pushed onto `deviceCapabilities`.
+**Client → Locus** (join request, `meeting/request.ts`, only when E2EE is enabled and supported):
 
-Both fields are set only when `WebCapabilities.supportsWasm()` reports `CAPABLE`.
+- `supportsV2E2EEncryption: true`
+- `E2EE_1K_SUPPORTED` pushed onto `deviceCapabilities`
 
-**Inbound (Locus → client), parsed from the Locus DTO `info` onto `locusInfo.info`:**
+**Locus → client** (read from `locusInfo.info`):
 
-- `isV2E2EEncrypted` — this meeting is an E2EE meeting, so an **MLS join and Sframe encryption for media is
-  required**.
-- `isBestEffortE2EEncryption` — the meeting uses **adaptive ("best effort")** E2EE; drives the
-  `Adaptive*` trust states.
-- `mediaEncryptionGroupUrl` — the **MLS group service URL** to join
+- `isV2E2EEncrypted` — the meeting requires an MLS join and SFrame media encryption.
+- `isBestEffortE2EEncryption` — adaptive ("best effort") E2EE; selects the `adaptive*` trust states.
+- `mediaEncryptionGroupUrl` — the MLS group service URL.
 
-The SDK only performs an actual MLS join when **`enableE2ee` is on AND `isV2E2EEncrypted` is true
-AND `mediaEncryptionGroupUrl` is present** (see `E2eeController.required()`). `isV2E2EEncrypted` and
-`isBestEffortE2EEncryption` together (plus `hasUntrustedMediaServices`) drive the `e2eeTrustState` getter.
+An MLS join happens only when E2EE is enabled and supported, `isV2E2EEncrypted` is true and
+`mediaEncryptionGroupUrl` is present (`E2eeController.required()`).
 
-**No SFrame ↔ SRTP upgrade/downgrade.** Once a meeting is joined with MLS, we **keep using the MLS
-session and SFrame media encryption for the whole meeting** — there is no switching back to plain
-SRTP mid-meeting (and no switching the other way). This holds even when the meeting's overall trust
-level is **downgraded from "zero trust" to "strong"**: in an adaptive (`isBestEffortE2EEncryption`)
-meeting this happens when a non-E2EE-capable client joins and **Homer** (a media service) handles
-encryption on its behalf — the meeting is no longer fully zero-trust (`hasUntrustedMediaServices` becomes
-true, so `e2eeTrustState` drops `adaptiveZeroTrust → adaptiveStrong`), but our own media stays
-SFrame-encrypted via the existing MLS session. The downgrade only changes the reported trust state,
-not the media encryption path.
+Once joined, the meeting **stays on MLS + SFrame** for its whole lifetime; there is no switching to
+or from plain SRTP. In an adaptive meeting a non-E2EE client may join and have a media service
+(Homer) encrypt on its behalf. That only changes the reported trust state
+(`adaptiveZeroTrust → adaptiveStrong`), not our media encryption path.
 
-### Assumptions
-
-- The building of the WASM module e2ee.wasm (with e2ee.js loader) is outside of the scope of this design doc.
-  It is assumed that the module is already built (by building the libe2ee, mlspp v3,v4 and v5 c++ libraries)
-  and is placed in `packages/@webex/plugin-meetings/assets` folder.
-
-## Confirmed decisions
+## Decisions
 
 | # | Decision |
 |---|----------|
-| D1 | Media-key injection: **define the interface** `plugin-meetings` needs; assume `@webex/internal-media-core` implements it. The internal-media-core implementation is **out of scope**. The new internal-media-core method will be something like `MultistreamConnection.setEncryptionKeys(...)`. |
-| D2 | Ownership: E2EE is a **per-meeting component** composed inside `Meeting` (`this.e2ee`), analogous to `this.members` / `this.roap`. |
-| D3 | Member verification: public API **extends `Member`**, but internally MLS roster data lives in a **separate registry keyed by device URL**, because Locus member updates and MLS roster updates arrive independently, in any order, and either can be delayed. A reconciler merges them. |
-| D4 | Security Code and E2EE facade state are read from `meeting.e2ee`; E2EE events are also forwarded on `Meeting`. |
-| D5 | Identity/credentials: a **separate identity/credential provider** (CSR / CA / trust anchors), split from MLS group-session logic. |
-| D6 | The SDK creates a **single `Identity` plugin instance per Webex client session**. It caches credentials per contact and reuses them across meetings; when the cached leaf certificate expires in less than one day, the plugin generates a new CSR and requests replacement credentials. |
-| D7 | Verification: a `validationResult` of `E2eeValidationResult.Success` means **verified**. Surface per-device data **and** an aggregated state on `Member`. |
-| D8 | Failure policy: on MLS `join_failure` / `evicted` / `timeout`, **force-leave** the meeting via `meeting.leave()` with **new dedicated leave reasons**, emit a **new failure event**, and surface a **new error class** so the app understands what happened. The meeting does **not** continue unencrypted. |
-| D9 | A **new config entry** (`enableE2ee`, default `false`) gates the feature. |
-| — | **WASM preloading**: the WASM load is slow, so it must **not** happen at join time. When `enableE2ee` is set, `Meetings.register()` preloads the WASM module so per-meeting init is fast. Credentials are **not** pre-warmed — they are generated + cached lazily on the first E2EE meeting. |
+| D1 | E2EE is a **per-meeting component** owned by `Meeting` (`meeting.e2ee`), like `members` / `roap`. |
+| D2 | The MLS engine is **isolated from I/O**: HTTP, signaling and module loading are injected adapters. |
+| D3 | Identity/credentials live in a separate plugin, **`@webex/internal-plugin-identity`** (one instance per Webex client), split from MLS group logic. |
+| D4 | Member verification is exposed on `Member`, but MLS roster data is kept in a **separate registry keyed by device URL** and reconciled, because Locus member updates and MLS roster updates arrive independently and in any order. |
+| D5 | A device is **verified** when its selected X.509 identity result is `E2eeValidationResult.Success` with a verified identity type. `Member` exposes per-device data and an aggregated state. |
+| D6 | The WASM module is **preloaded** in `Meetings.register()`; credentials are fetched lazily on the first E2EE meeting and cached. |
+| D7 | MLS failures are **fatal for E2EE**: the session is torn down, a failure event and a behavioral metric are emitted. The meeting never silently continues without E2EE (see [Planned](#planned--not-yet-implemented) for force-leave). |
+| D8 | Media-key injection uses a **new `internal-media-core` API** defined by this package (`IE2eeMediaConnection`); its implementation is out of scope here. |
 
-## Still-open items
+## Architecture
 
-- Exact name/shape of the new `internal-media-core` key API (`setEncryptionKeys`?) —
-  align with the media team.
+Code lives in `src/e2ee/`; the generic WASM loader is `src/common/wasm-loader.ts`; credentials
+come from `@webex/internal-plugin-identity` (imported by `plugin-meetings` and available as
+`webex.internal.identity`).
 
-## Architecture overview
-
-E2EE integration code lives under `packages/@webex/plugin-meetings/src/e2ee/`; identity and
-certificate issuance live in `packages/@webex/internal-plugin-identity/`. The design is shown as
-three focused views: **ownership/composition**, the **per-meeting components**, and the **runtime
-data flow** across the engine and external boundaries.
-
-### Ownership & composition
-
-Who creates and owns what. The Meetings plugin creates one `E2eeManager` instance; each `Meeting` owns a
-per-meeting `E2eeController` facade (alongside `Members` and `MediaProperties`).
+**Ownership** — who owns or creates what:
 
 ```mermaid
 graph TD
-    Meetings[Meetings plugin] -->|creates| Meeting[Meeting]
-    Meetings -->|owns| WasmLoader[WasmLoader common/]
-    Meetings -->|resolves WASM URL with| Assets[StaticAssetLoader]
+    Meetings[Meetings plugin] -->|owns| WasmLoader
     Meetings -->|owns one| Mgr[E2eeManager]
-    WasmLoader -.->|injected| Mgr
-    Meetings -.->|passes wasmUrl| Mgr
-    Webex -->|registers| Ident[internal-plugin-identity]
-    Mgr -->|uses shared instance| Ident
-    Mgr -->|createE2eeController| E2eeController[E2eeController facade]
-    Meeting -->|owns this.e2ee| E2eeController
-    App[SDK client / web app] -->|join / e2ee API / events| Meeting
-    Meeting --- Members
-    Meeting --- MediaProps[MediaProperties.webrtcMediaConnection]
+    Meetings -->|creates| Meeting
+    Meeting -->|owns| Members
+    Meeting -->|owns| LLM[LLM channel]
+    Mgr -->|createE2eeController| Ctl[E2eeController]
+    Meeting -->|this.e2ee| Ctl
+    Ctl -->|creates in constructor| Recon[MemberMLSReconciler]
+    Ctl -->|"creates in start()"| MLS[MLS engine]
+    Ctl -->|"creates in start()"| Sig[E2eeSignaling]
+    Ctl -->|"creates in start(),<br/>passes to MLS"| Svc[MediaEncryptionService]
 ```
 
-### Per-meeting E2EE components
-
-The `E2eeController` facade orchestrates five collaborators and reuses the shared `Identity` plugin
-(registered on the Webex client) and the generic `WasmLoader` (owned by `Meetings`, injected via
-`E2eeManager`). `Meetings` resolves the E2EE module URL once with `StaticAssetLoader` and passes the
-URL through the manager and controller.
-
-```mermaid
-graph TD
-    E2eeController[E2eeController facade] --> MLS[MLS WASM engine]
-    E2eeController --> Sig[E2eeSignaling LLM adapter]
-    E2eeController --> Svc[MediaEncryptionService HTTP adapter]
-    E2eeController --> Recon[MemberMLSReconciler]
-    E2eeController --> MediaCtl[MediaKeyController]
-    E2eeController -.->|shared instance| Ident[internal-plugin-identity]
-    E2eeController -.->|shared loader| WasmLoader[WasmLoader common/]
-
-    style MLS fill:#e8f5e9
-    style Recon fill:#e3f2fd
-    style MediaCtl fill:#fff3e0
-```
-
-### Runtime data flow & external boundaries
-
-How the MLS engine's outputs reach media and members, and how the adapters reach external services.
+**MLS protocol** — how the engine gets its inputs and talks to the service:
 
 ```mermaid
 graph LR
-    MLS[MLS] -->|SFrame keys| MediaCtl[MediaKeyController]
-    MediaCtl -->|IE2eeMediaConnection| MediaProps[MediaProperties.webrtcMediaConnection]
-    MLS -->|roster updates| Recon[MemberMLSReconciler]
-    Recon <-->|verify by device.url| Members
-
-    Sig[E2eeSignaling] -->|media_encryption.* events| LLM[Meeting-owned LLM channel]
-    Sig -->|media_encryption.* events| Mercury[webex.internal.mercury]
-    Svc[MediaEncryptionService] -->|POST| MES[webex.request media-encryption]
-    Ident[internal-plugin-identity] -->|CSR / cert| CA[webex.request certificate-authority]
+    Mercury -->|media_encryption.*| Sig[E2eeSignaling]
+    LLM[LLM channel] -->|media_encryption.* / online| Sig
+    Sig -->|"handleEvent / llmConnected<br/>(IMlsSignalingTarget)"| MLS[MLS engine]
+    Ctl[E2eeController] -->|initialize / join / leave| MLS
+    Ctl -->|getCredentials / getTrustAnchors| Ident[internal-plugin-identity]
+    Ident -->|CSR / cert| CA[webex-certificate-authority]
+    MLS -->|loadModule| WasmLoader
+    MLS -->|"request<br/>(IMlsHttpClient)"| Svc[MediaEncryptionService]
+    Svc -->|POST| MES[media-encryption service]
 ```
 
-Key property: `MLS` (the WASM protocol engine) has **no** webex / LLM /
-HTTP dependencies — all I/O flows through injected adapters, so the engine is fully
-unit-testable. The media-core coupling is isolated behind `IE2eeMediaConnection`.
+**State to the app** — how MLS results reach `Meeting`, `Members` and the SDK client (dashed
+arrows are events):
 
-`MediaEncryptionService` receives a bound `webex.request`; the identity plugin uses the request
-method on its parent Webex client. `E2eeSignaling` receives the current meeting-owned LLM channel
-and `webex.internal.mercury` plus a `getLocusUrl()` callback (so it tracks the live locus URL across
-breakout moves). Meeting updates the adapter when its LLM channel is replaced during reconnection.
-
-## File layout
-
-```
-packages/@webex/plugin-meetings/src/e2ee/
-├── index.ts                  # barrel exports
-├── E2eeManager.ts            # One instance per Meetings plugin: receives injected WasmLoader + wasmUrl,
-│                             #   preloads WASM in register(), factory for E2eeController
-├── E2eeController.ts            # per-meeting facade / orchestrator (this.e2ee on Meeting)
-├── mls.ts                    # MLS WASM protocol engine (refactor of the POC mls.ts)
-├── E2eeSignaling.ts          # LLM adapter (meeting-owned LLM + mercury media_encryption.* events)
-├── MediaEncryptionService.ts # HTTP adapter (webex.request service:'media-encryption')
-├── MemberMLSReconciler.ts   # MLS roster <-> Members reconciliation
-├── MediaKeyController.ts      # key injection into IE2eeMediaConnection (buffers keys)
-├── IE2eeMediaConnection.ts   # interface contract implemented by internal-media-core
-├── types.ts                  # shared E2EE types
-├── constants.ts              # e2ee constants (static asset names, event / mercury names, timeouts)
-└── wasm.d.ts                 # existing WASM typings (keep)
+```mermaid
+graph LR
+    MLS[MLS engine] -.->|joinSuccess / roster* / failures| Ctl[E2eeController]
+    Meeting -->|start / stop / llmChannelChanged| Ctl
+    Ctl -.->|e2ee:* events| Meeting
+    Meeting -.->|e2ee:* / trustState events| App[SDK client]
+    Ctl -->|applyRosterAdded / applyRosterRemoved| Recon[MemberMLSReconciler]
+    Members -->|processMembersUpdate| Recon
+    Recon -->|setE2eeDeviceVerification / reportMembersUpdated| Members
+    Members -.->|members:update| App
 ```
 
-The generic `WasmLoader` is **not** E2EE-specific and lives outside this folder in
-`common/wasm-loader.ts`; `Meetings` owns it and injects it into `E2eeManager`. `Meetings` also
-creates `StaticAssetLoader` and resolves the E2EE WASM URL in its `READY` handler, because
-`webex.config` is not yet assigned when plugins are constructed. Only the URL is
-passed into the manager and controller, since they do not need the static asset loader itself. The
-default base URL is `/assets/plugin-meetings/`.
-
-- The `e2ee/mls.ts` from POC code becomes `mls.ts` (stripped of webex/HTTP/LLM).
-- `loadWasmModule` become `WasmLoader.preload(wasmUrl)` / `get(wasmUrl)`, warmed once per session
-  and keyed by URL so one loader can serve many modules.
-- The shared `WebexRequestMethod` type (a bound `webex.request`) lives in `common/types.ts`
-  (reused by `hashTree` and the e2ee HTTP adapters), not under `e2ee/`.
-
-## Shared types (`types.ts`)
-
-```ts
-interface E2eeKey {
-  epoch: number;
-  baseKey: Uint8Array;
-  index: number;
-  indexBits: number;
-  canEncrypt: boolean;
-}
-
-interface SframeParams { cipherSuite: number; epochBits: number; } // from join_success
-
-interface E2eeRosterMember {
-  url: string;
-  displayName: string;
-  deviceType: string;
-  validationResult: E2eeValidationResult;
-  identityResults?: E2eeIdentityResult[]; // one result per X.509 credential in a MultiCredential
-}
-
-interface E2eeIdentityResult {
-  result: E2eeValidationResult;
-  certificateChain: E2eeCertificateInfo[]; // leaf first
-  failedCertIndex?: number;
-}
-
-interface E2eeCertificateInfo {
-  primaryName: string;
-  commonName: string;
-  organizationName: string;
-  emailAddresses: string[];
-  domainNames: string[];
-  notBefore: number; // Unix milliseconds
-  notAfter: number; // Unix milliseconds
-  signatureAlgorithm: string;
-  publicKeyAlgorithm: string;
-  identityType?: number; // set only for the leaf certificate
-  der: Uint8Array;
-}
-
-interface E2eeDeviceVerification {
-  deviceUrl: string;
-  validationResult: E2eeValidationResult;  // overall libe2ee result for this device's credential(s)
-  displayName?: string;
-  deviceType?: string;
-  identityResults?: E2eeIdentityResult[];
-}
-
-type E2eeMemberVerificationState =
-  | 'unknown' | 'verified' | 'unverified' | 'partiallyVerified';
-
-type E2eeState =
-  | 'disabled' | 'initializing' | 'joining' | 'joined' | 'failed' | 'evicted' | 'left';
-
-type E2eeTrustState =
-  | 'calculating' | 'strong' | 'zeroTrust' | 'adaptiveStrong' | 'adaptiveZeroTrust';
-
-interface E2eeMeetingConfig {
-  serviceUrl: string;
-  joinTimeout: number;
-  coalesceWindow: number;
-  wasmUrl?: string;
-}
+```
+src/e2ee/
+├── E2eeManager.ts            # one per Meetings plugin; preloads WASM, creates E2eeController
+├── E2eeController.ts         # per-meeting orchestrator (meeting.e2ee)
+├── mls.ts                    # MLS engine wrapping the WebE2EE WASM module (no I/O deps)
+├── E2eeSignaling.ts          # LLM + mercury media_encryption.* events -> MLS
+├── MediaEncryptionService.ts # MLS HTTP requests -> webex.request (media-encryption)
+├── MemberMLSReconciler.ts    # MLS roster <-> Members verification
+├── types.ts                  # shared E2EE types and enums
+├── constants.ts              # event names, service name, timeouts, WASM asset name
+└── wasm.d.ts                 # WebE2EE WASM typings
 ```
 
-## Module APIs
+## Components
 
-### `WasmLoader` (generic; owned by Meetings, lives in `common/wasm-loader.ts`)
+### `WasmLoader` (`common/wasm-loader.ts`)
 
-```ts
-constructor(options?: { importModule?: ModuleImporter });  // importModule override for tests
-preload(wasmUrl: string): Promise<void>;     // loads + caches the module (the slow part); idempotent
-get<TModule>(wasmUrl: string): Promise<TModule>;  // returns the cached module or awaits its load
-isLoaded(wasmUrl: string): boolean;
-```
+Generic, not E2EE-specific. `preload(wasmUrl)`, `get(wasmUrl)` and `isLoaded(wasmUrl)` load and
+cache a module keyed by its `.wasm` URL; the `.js` loader URL is derived by replacing the suffix.
+`Meetings` owns one instance.
 
-Refactor of `loadWasmModule` + the `moduleInstance` / `moduleLoadPromise` globals into instance
-state. Each module is uniquely identified by its `.wasm` URL (the `.js` loader URL is derived by
-replacing the `.wasm` suffix), so a single loader can load and cache multiple distinct modules. The
-E2EE module is loaded from `e2ee.wasm` under `meetings.assetsBaseUrl` (default
-`/assets/plugin-meetings/`). The same asset directory contains `e2ee.js`.
+### `E2eeManager`
 
-### `E2eeManager` (one instance per Meetings plugin)
+One per `Meetings` plugin, created in the `READY` handler (`webex.config` and `webex.request` are not
+available when plugins are constructed). `Meetings` resolves the WASM URL from
+`meetings.assetsBaseUrl` + `E2EE_WASM_ASSET` and passes it in.
 
-```ts
-constructor(deps: { webex; wasmLoader; wasmUrl });  // both resources are owned/resolved by Meetings
-get isEnabled(): boolean;         // webex.config.meetings.enableE2ee
-preload(): Promise<void>;         // called from Meetings.register(); if isEnabled ->
-                                  //   warms the WASM module; failure must not block registration
-                                  //   (credentials and trust-root bundle stay lazy)
-createE2eeController(context): E2eeController; // factory; injects wasmLoader + wasmUrl + identityProvider
-```
+- `isEnabled` — `isE2eeEnabledAndSupported(webex.config)`.
+- `preload()` — warms the WASM module when enabled. `register()` calls it fire-and-forget, so a
+  failure never blocks registration.
+- `createE2eeController(context)` — injects the loader, WASM URL and `webex.internal.identity`.
 
-Uses the shared `WasmLoader` and `webex.internal.identity` plugin. `createE2eeController` receives an
-`E2eeMeetingContext` containing the correlation ID, a getter for current E2EE-relevant locus values,
-and the existing `Members` instance. It returns an `E2eeController`; the E2EE implementation does not
-retain or import the `Meeting` class. The facade's `start()` is guarded by the shared Webex
-configuration check, keeping `Meeting` code uniform.
+### `MLS` (`mls.ts`)
 
-### `MLS` (pure engine; no webex/HTTP/LLM deps)
+Wraps `WebE2EE`. Constructed with an `IMlsHttpClient` and a `loadModule()` callback; it has no
+webex, HTTP or LLM dependencies.
 
-```ts
-constructor(deps: {
-  httpClient: IMlsHttpClient;
-  loadModule: () => Promise<ModuleInstance>; // callback backed by the shared WasmLoader
-});
+- Methods: `initialize(config)`, `join()`, `leave()`, `handleEvent(bytes, source)`,
+  `setLlmConnectedBeforeJoin(connected)`, `llmConnected()`, `getSecurityCode()`, `getRoster()`,
+  `isLeader()`, `on()` / `off()`.
+- Events: `joinSuccess` `{epoch, securityCode, sframe, key}`, `joinFailure` `{reason}`,
+  `mediaEncryptionRequestFailure` `{errorCode, message}`, `newKey`, `useKey` `{epoch}`,
+  `purgeKeys` `{epoch}`, `rosterAdded` `E2eeRosterMember[]`, `rosterRemoved` `{urls}`,
+  `leaderChanged`, `evicted`, `versionNegotiated`, `securityCodeChanged` `{code}`.
 
-initialize(cfg: {
-  participantId; deviceUrl; deviceType; correlationId; displayName; serviceUrl;
-  credentials?; trustAnchors?; joinTimeout; coalesceWindow;
-}): Promise<void>;
+Transactions are tracked by ID so a completion maps to its `join` or `update` origin. A failed
+`join` emits `joinFailure` with the engine's reason (`timeout`, `join_failure`,
+`tree_fetch_failure`, `commit_fetch_failure`). A failed `update` (including
+`update_override`) is only logged: the engine rolls back and stays in the group.
 
-join(): void;
-leave(): void;
-handleEvent(bytes: Uint8Array, source: E2eeSignalingSource): void;
-setLlmConnectedBeforeJoin(b: boolean): void;
-llmConnected(): void;
-getSecurityCode(): string;
-getRoster(): E2eeRosterMember[];
-isLeader(): boolean;
-```
+**HTTP:** the engine's request bytes are JSON-decoded, sent via `httpClient.request(url, body)`, and
+the response is JSON-encoded back into `completeHttpRequest`. Completion is always asynchronous so
+the engine is never re-entered from its own callback. On failure MLS completes the request as failed
+with the service's `error.body.errorCode`, or `0` for client-side errors (JSON, network).
 
-Emits (typed `EventEmitter` or callback registry):
-
-- `joinSuccess` `{ epoch, securityCode, sframe: SframeParams, key: E2eeKey }`
-- `joinFailure` `{ reason }`
-- `mediaEncryptionRequestFailure` `{ errorCode, message }` — the engine could not recover from a
-  media-encryption service request outcome (see below); unrecoverable for the in-flight operation,
-  whether during or after join.
-- `newKey` `(E2eeKey)` · `useKey` `{ epoch }` · `purgeKeys` `{ epoch }`
-- `rosterAdded` `(E2eeRosterMember[])` · `rosterRemoved` `{ urls: string[] }`
-- `leaderChanged` `{ isLeader }` · `evicted` · `versionNegotiated` `{ version }`
-- `securityCodeChanged` `{ code }`
-
-Internals map the WASM callbacks: `setOnHttpRequest` → JSON-decode the engine's request bytes →
-`httpClient.request(url, object)` → JSON-encode the response object → `completeHttpRequest`;
-`setOnWait` → `timers.setTimeout` → `completeWait`. MLS owns the bytes ⇄ JSON conversion. If
-decoding the request, the HTTP call, or encoding the response fails, MLS logs the failure and calls
-`completeHttpRequest(handlerId, false, …)`. libe2ee's `HTTPFailure` only carries an MES error code:
-for rejected HTTP calls MLS passes the media-encryption service code from `error.body.errorCode`, and
-client-side failures (JSON, network, no code in the body) are reported with `errorCode` `0` and a
-descriptive message.
-Completion is always asynchronous, so the engine is never re-entered from inside its own request call.
-
-When libe2ee can't recover from the service's error code, or fails to process a successful
-response, it throws `e2ee_negotiation_failure` out of `completeHttpRequest`. Recoverable codes
-(`not_leader`, `epochs_not_matching`) are handled inside the engine and don't throw. The WASM build
-surfaces the exception as an opaque value (the exception pointer) with no message. MLS catches it,
-logs it, and emits `mediaEncryptionRequestFailure` rather than letting it escape as an unhandled
+If libe2ee cannot recover from a service error code, or fails to process a response, it throws
+`e2ee_negotiation_failure` out of `completeHttpRequest` (recoverable codes such as `not_leader` and
+`epochs_not_matching` are handled internally). In WASM this is an opaque value with no message, so MLS
+catches it and emits `mediaEncryptionRequestFailure` instead of letting it become an unhandled
 rejection.
 
-```ts
-interface IMlsHttpClient { request(url: string, body: unknown): Promise<unknown>; }
-```
+The engine's `keepAlive()` is for backend services (e.g. Homer) and is not called by the SDK.
 
-### `MediaEncryptionService` (implements `IMlsHttpClient`)
+### `MediaEncryptionService`
 
-```ts
-constructor(deps: { webexRequest: WebexRequestMethod }); // a bound webex.request, not the whole webex
-request(url: string, body: unknown): Promise<unknown>;
-//  -> webexRequest({ method:'POST', service:'media-encryption', url, body })
-//     and resolves with the (auto-parsed JSON) response.body.
-```
+Implements `IMlsHttpClient` with a bound `webex.request`:
+`POST {service: 'media-encryption', url, body}`, resolving with the parsed response body.
+Standard webex auth applies.
 
-Requests use the standard webex auth (`Authorization` bearer token added by webex-core).
+### `E2eeSignaling`
 
-### `E2eeSignaling` (LLM + mercury adapter)
+Subscribes to the `media_encryption.*` events (see `MEDIA_ENCRYPTION_MERCURY_EVENTS`) on **both**
+the meeting's LLM channel and mercury, since either can deliver them, and forwards each envelope to
+`session.handleEvent(bytes, source)` tagged `'llm'` or `'mercury'`.
 
-```ts
-constructor(deps: {
-  llm?: LLMChannel;                  // this meeting's LLM channel, when available
-  mercury;                          // webex.internal.mercury (IMercuryChannel: on/off)
-  getLocusUrl: () => string | undefined; // reads the meeting's live locus url (callback, not a ref)
-  session: MLS;
-});
-start(): void;
-stop(): void;
-```
+When the LLM channel is already connected for this meeting's locus it calls
+`setLlmConnectedBeforeJoin(true)`; otherwise it calls `llmConnected()` on the next locus-matched
+`online`. The locus URL is read through a `getLocusUrl()` callback so it stays correct across
+breakout moves. `setLlmChannel()` swaps the channel when `Meeting` replaces it on reconnect.
 
-Subscribes **both** `llm` and `mercury` to the `media_encryption.*` events
-(`leader_nominated`, `welcome`, `annotated_welcome`, `multi_welcome`, `group_update`,
-`annotated_commit`, `large_group_update`, `use_key`, `join_request`, `leave_request`,
-`join_failure`, `leader_changed`) — the same events can arrive on either channel — and forwards
-each envelope to `session.handleEvent(bytes, source)`, tagging `source` as `'llm'` or `'mercury'`
-(via per-channel handlers) so the engine's receive logs show which channel delivered the event.
+### `internal-plugin-identity`
 
-Online handling (LLM-only): if `llm.isConnected()` and the locus URL matches this meeting, call
-`session.setLlmConnectedBeforeJoin(true)`; otherwise listen once for `'online'`
-(locus-URL matched) and call `session.llmConnected()`.
-Guard: `getLocusUrl() === llm.getLocusUrl()`. `getLocusUrl` is a callback (not a stored meeting
-reference) so the check stays correct when the locus URL changes, e.g. moving between breakouts.
-
-### `@webex/internal-plugin-identity` (credentials; one instance per Webex client)
-
-```ts
-// Available as webex.internal.identity; registered by plugin-meetings.
-getCredentials(contactId: string): Promise<{ privateKey: Uint8Array; certChain: Uint8Array[] }>;
-//  -> generate EC P-256 CSR (pkijs/asn1js)
-//  -> webex.request({ service:'webex-certificate-authority', resource:'certificates',
-//                    headers:{ 'include-root-cert':'true' } })
-//  -> parse PEM chain; CACHE result (per device/user) for reuse across meetings.
-//  -> before reuse, check the leaf certificate's notAfter; renew when less than one day remains.
-getTrustAnchors(): { webexCaRoots; userIdentityRoots };
-```
-
-The plugin owns the production, FedRAMP and integration Webex CA roots. It selects the integration
-roots when `webex.internal.services.isIntegrationEnvironment()` is true; other environments use
-production plus FedRAMP roots, matching UCF's environment-specific root selection. The top-level
-`environment` config can explicitly be set to `'integration'` or `'production'`; when omitted, the
-SDK infers the environment from the U2C discovery URL. It also owns `generateCsr` and the PEM
-helpers. `userIdentityRoots` is currently empty.
-
-The consuming application hosts the plugin's static assets and configures `meetings.assetsBaseUrl`.
-For npm builds, assets are in `plugin-meetings/dist/assets`; for UMD builds,
-`yarn build:script` copies them to `packages/webex/umd/assets/plugin-meetings`. Use a version-pinned
-URL for CDN hosting so the assets remain compatible with the JavaScript SDK version. CDN hosts must
-allow cross-origin requests from the application and serve `e2ee.js` with a JavaScript MIME type:
-
-```ts
-meetings: {
-  assetsBaseUrl: 'https://cdn.example.com/webex-js-sdk/1.2.3/umd/assets/plugin-meetings/',
-}
-```
-
-These files are runtime assets, not part of the SDK JavaScript bundle. Each plugin keeps its files
-in its own `assets` folder; the shared package build helper copies them into that plugin's
-`dist/assets`. The UMD Webpack build gathers every plugin `assets` folder under
-`packages/webex/umd/assets/<plugin-name>/`, so assets with the same filename cannot overwrite each
-other. CDN deployments should publish this tree alongside the version-matched UMD bundles and set
-each plugin's `assetsBaseUrl` to its own directory. For local SDK samples, `samples:serve` maps each
-plugin's source `assets` folder to `/assets/<plugin-name>`, so the default URL works without first
-building the plugin package. Other development or deployment servers need to provide the same URL
-mapping (or configure `assetsBaseUrl` to their hosted location).
+- `getCredentials(contactId)` — generates an EC P-256 CSR, requests a certificate from
+  `webex-certificate-authority` (including the root), and caches the in-flight promise per contact.
+  Cached credentials are renewed when the leaf certificate expires within a day; concurrent callers
+  share one renewal.
+- `getTrustAnchors()` — `{webexCaRoots, userIdentityRoots}`. Integration roots when
+  `services.isIntegrationEnvironment()` is true, otherwise production + FedRAMP roots.
+  `userIdentityRoots` is currently empty.
 
 ### `MemberMLSReconciler`
 
-```ts
-constructor(deps: { membersCollection; reportMembersUpdated: (members) => void });
-processMembersUpdate(payload: {delta}): void; // from the Members pre-emit processor
-applyRosterAdded(added: E2eeRosterMember[]): void;
-applyRosterRemoved(urls: string[]): void;
-getDeviceVerification(url: string): E2eeDeviceVerification | undefined;
-reset(): void;
-```
+Holds only the MLS roster (`Map<deviceUrl, E2eeRosterMember>`). The `deviceUrl → Member` index
+lives in `MembersCollection.getMemberByDeviceUrl()`, and verification is stored on each `Member`.
+Matching is per device: `rosterMember.url === member.participant.devices[i].url`.
 
-The reconciler holds only `rosterByDeviceUrl: Map<string, E2eeRosterMember>` (the MLS roster).
-The `deviceUrl -> Member` reverse index lives in **`MembersCollection`**
-(`getMemberByDeviceUrl`, maintained in `set`/`remove`/`setAll`/`reset`), so it's always current and
-reusable. Verification lives on each `Member` (`setE2eeDeviceVerification` /
-`removeE2eeDeviceVerification` return whether they changed). Every path iterates its argument once.
+Verification is surfaced through the existing `members:update` event; there is no dedicated event:
 
-There is **no separate `MEETING_E2EE_MEMBERS_VERIFICATION_UPDATED` event**. Verification is
-surfaced through the existing `members:update`, which is always emitted by `Members`:
+- **Locus-driven** — `Members` calls a registered pre-emit processor (`setMembersUpdateProcessor`)
+  before emitting `members:update`; `processMembersUpdate` stamps verification onto the delta members.
+- **Roster-driven** — `applyRosterAdded` / `applyRosterRemoved` update the affected devices and pass
+  members whose verification changed to `reportMembersUpdated`, which makes `Members` emit
+  `members:update` with them in `delta.updated`.
 
-- **Member-driven** (a Locus participant update): `Members.locusParticipantsUpdate` invokes a
-  registered pre-emit processor (`setMembersUpdateProcessor`) right before it triggers
-  `members:update`. The reconciler registers `processMembersUpdate` as that processor; it stamps
-  verification onto the (recreated) delta members from the roster, so it's present in that event.
-- **Roster-driven** (MLS validation completes, no Locus update): `applyRosterAdded/Removed` look up
-  each affected member via `membersCollection.getMemberByDeviceUrl` and update just that device;
-  members whose verification actually changed are handed to `reportMembersUpdated`, which asks
-  `Members` to emit a `members:update` (with those members in `delta.updated`).
+Roster entries without a matching member stay in the map and are applied when that member next
+appears, so ordering does not matter. The controller creates the reconciler in its constructor
+(when E2EE is enabled), so verification is stamped for the whole meeting lifetime.
 
-Matching key: **`MLS RosterMember.url === Member.participant.devices[i].url`** (per-device).
-The `validationResult` on a device is libe2ee's overall result for its credential or MultiCredential.
-Ordering between MLS roster events and Locus member updates does not matter — roster entries with
-no matching member yet remain pending in the map and are applied when that member is next processed.
-The roster's parsed X.509 chain data is retained on each device verification so clients can display
-identity, domain, partner, certificate validity, and fingerprint details without reparsing the DER.
+**Member state.** Each device verification keeps libe2ee's overall `validationResult` and the parsed
+X.509 `identityResults` (one per credential, each with its chain leaf-first), so apps can show
+identity and certificate details without parsing DER. Per device, the first successful result is
+selected, falling back to the first result. A failed selected result is unverified; otherwise its
+leaf `identityType` decides: Webex user/machine and external verified identities are verified,
+anonymous identities are unverified, and no result or an unknown type is unknown. `Member.e2eeVerificationState`
+aggregates devices: all verified → `verified`; all unknown → `unknown`; none verified but at least
+one unverified → `unverified`; otherwise `partiallyVerified`. Verifiable-credential identities are
+not supported.
 
-For a MultiCredential, `identityResults` contains one result per X.509 credential; each result's
-`certificateChain` contains that credential's chain, leaf first. A single credential with a
-three-certificate chain therefore has one `identityResults` entry with three certificates in its
-`certificateChain`. The current WASM and SDK roster shape carries X.509 results only.
+### `E2eeController` (`meeting.e2ee`)
 
-The libe2ee verifier used by UCF also validates the `userinfo_vc_draft_00` credential type and
-includes those outcomes in the overall MultiCredential result. However, it's been confirmed
-that this is not needed and this UCF code will be deleted and we don't have to support VC identities
-on web.
+Constructed with an `E2eeMeetingContext` (`correlationId`, `getLocusInfo()`, `getLlmChannel()`,
+`members`), so it never references `Meeting` directly.
 
-`PartialSuccess` means at least one credential binding succeeded and at least one failed. An app
-that wants to match UCF's per-device identity display should select a successful `identityResults`
-entry when present (libe2ee sorts successful X.509 results first, but consumers should check
-`result`), then use that entry's `certificateChain` and leaf `identityType` to determine the
-displayed identity status. UCF treats Webex user and machine identities as verified, partner
-verified identities as partner-verified, and anonymous identities as unverified. If no X.509
-result succeeded, UCF falls back to the first X.509 result and displays its failure status. This
-selection is per device. `Member.e2eeVerificationState` derives each device's identity status from
-the selected result and leaf identity type, then aggregates those device states across the Webex
-`Member`'s devices. Devices with no X.509 result or an unrecognized identity type are `unknown`; if
-all devices are unknown, the member state is `unknown`. If no device is verified and at least one
-is known to be unverified, the member state is `unverified`. A mix of verified and
-non-verified/unknown devices is `partiallyVerified`.
+Public API: `state`, `getSecurityCode()`, `hasUntrustedMediaServices`, `start()`, `stop()`,
+`llmChannelChanged()`, plus events (`EventsScope`).
 
-The `E2eeController` facade creates the reconciler in its **constructor** (gated on
-`config.enableE2ee`) and registers the processor there, so member verification is stamped for the
-whole meeting lifetime — even for member changes that occur outside a joined meeting.
+`start()` is idempotent, never rejects, and is a no-op unless `required()`:
 
-### `IE2eeMediaConnection` (contract; implemented by `internal-media-core`, out of scope)
+1. State → `initializing`. Load the WASM module and fetch credentials in parallel.
+2. Create `MediaEncryptionService` and `MLS`, wire session events, and `initialize()` with the device,
+   correlation ID, display name, group URL, credentials, trust anchors and timeouts.
+3. Start `E2eeSignaling`, state → `joining`, `session.join()`.
 
-```ts
-interface IE2eeMediaConnection {
-  setEncryptionKeys(config: {
-    cipherSuite: number;
-    epochBits: number;
-    keys: Array<{ epoch: number; baseKey: Uint8Array; index: number; indexBits: number }>;
-    activeEncryptionEpoch?: number;   // undefined => decrypt-only (no egress encryption yet)
-  }): void;
-}
+Session events:
 
-function hasE2eeSupport(mc): mc is IE2eeMediaConnection; // feature-detect during rollout
-```
+- `joinSuccess` / `securityCodeChanged` → update the security code and emit
+  `SECURITY_CODE_UPDATED`.
+- `rosterAdded` / `rosterRemoved` → update the reconciler, recompute media-service presence, and
+  check join completion.
+- `joinFailure` / `mediaEncryptionRequestFailure` / `evicted` → `handleFatal()`.
 
-Implemented by both `RoapMediaConnection` and `MultistreamRoapMediaConnection`;
-`internal-media-core` owns the SFrame worker + frame transforms internally. This is a
-**new dedicated method** (working name `setEncryptionKeys`), **not** the existing
-`setupEncodedTransform`; the exact name/shape must be aligned with the media team.
+**Join completion.** State becomes `joined` only when our own device URL appears in the MLS roster,
+not on `joinSuccess`. This is what moves the trust state from `calculating` to `zeroTrust`.
 
-Design choice: pass the **full key set** on every call (idempotent — replaces media-core's
-key table). This is resilient to reconnect, out-of-order delivery, and epoch rotation, and
-pairs cleanly with the controller's buffer.
+**Media services.** `hasUntrustedMediaServices` is true when any roster member has device type
+`MEDIA_SERVICE`. It is recomputed on every roster change and cleared on teardown; changes emit
+`MEDIA_SERVICES_CHANGED {hasMediaServices}`. Some media services (video mesh) could be trusted in
+future; for now any media service counts as untrusted.
 
-### `MediaKeyController` (buffers keys; survives media reconnect)
+**`handleFatal(state, reason, details)`** logs, sends the `js_sdk_e2ee_failure` behavioral metric
+(`correlation_id`, `state`, `reason`, plus `errorCode` / `error` when available), tears down the
+session, sets state `failed` or `evicted` (clearing the security code), and emits
+`MEETING_E2EE_FAILURE {reason}`. Reasons: `startFailed`, the engine's join-failure reason,
+`mediaEncryptionRequestFailure`, `evicted`.
 
-```ts
-constructor();
-setSframeParams(p: SframeParams): void;
-attachMediaConnection(mc: IE2eeMediaConnection): void; // store mc, then flush()
-detachMediaConnection(): void;                         // on closePeerConnections
-addKey(k: E2eeKey): void;                              // buffer, then flush()
-setActiveEpoch(epoch: number): void;                   // buffer, then flush()
-purgeBefore(epoch: number): void;                      // drop from buffer, then flush()
-private flush(): void {
-  if (this.mc && this.params) {
-    this.mc.setEncryptionKeys({
-      ...this.params,
-      keys: [...this.keys.values()],
-      activeEncryptionEpoch: this.activeEpoch,
-    });
-  }
-}
-```
+**`stop()`** tears down (stop signaling, unsubscribe, `session.leave()`, reset the reconciler) and
+sets state `left`. It is silent when state is `disabled`, so callers can invoke it unconditionally.
 
-State: `mc?`, `params?: SframeParams`, `keys: Map<epoch, E2eeKey>`, `activeEpoch?`.
-Handles keys arriving before media (buffered) and media recreated on reconnect (a single
-idempotent `flush()`).
+## Integration
 
-### `E2eeController` (facade; `this.e2ee` on `Meeting`)
+**`Meetings`** — owns `WasmLoader` and `E2eeManager`, preloads in `register()`, and passes
+`e2eeManager` to each `Meeting`.
 
-Created by `E2eeManager.createE2eeController(context)`.
+**`Meeting`**
 
-```ts
-constructor(deps: {
-  context: E2eeMeetingContext; webex; wasmLoader: WasmLoader; wasmUrl: string;
-  identityProvider: IdentityProvider;
-});
-
-get state(): E2eeState;
-getSecurityCode(): string | undefined;
-get hasUntrustedMediaServices(): boolean; // currently true if the MLS roster contains any media service
-on(event: string, listener: (payload: object) => void): this;
-start(): Promise<void>;   // idempotent; guarded by required() + config.enableE2ee
-stop(): Promise<void>;
-attachMediaConnection(mc): void;
-detachMediaConnection(): void;
-private required(): boolean {
-  const locusInfo = this.context.getLocusInfo();
-
-  return (
-    this.config.enableE2ee &&
-    !!locusInfo?.info?.isV2E2EEncrypted && // MLS join only for V2/zero-trust meetings
-    !!locusInfo?.info?.mediaEncryptionGroupUrl // group URL is the MLS serviceUrl
-  );
-}
-```
-
-`E2eeMeetingContext` exposes only the meeting data and Members operations used by E2EE: an immutable
-`correlationId`, a live `getLocusInfo()` getter returning the `url` and `info` fields from the Locus
-DTO (the locus URL can change when moving breakout rooms), a `getLlmChannel()` getter for the
-meeting-owned LLM channel, and the existing `Members` instance. When Meeting changes its LLM
-channel, it calls `llmChannelChanged()` on the controller; the controller reads the current channel
-from its context and updates signaling.
-`E2eeController` uses `MembersCollection` for device lookup and the existing `Members` methods for
-local display-name lookup, update processing, and reporting changed members. `Meeting` returns its
-`locusInfo` instance directly through the getter and stores the controller through the
-`E2eeController` class.
-
-`start()`:
-
-1. `if (!required()) return;` (state stays `disabled`; `required()` already checks
-   `config.enableE2ee` + `isV2E2EEncrypted` + `mediaEncryptionGroupUrl`)
-2. In parallel, `await wasmLoader.get(wasmUrl)` (already preloaded in `register()` → fast) and
-   `creds = await identityProvider.getCredentials(webex.internal.device.userId)` (cached unless
-   the leaf certificate expires in less than one day, in which case credentials are renewed)
-4. `httpClient = new MediaEncryptionService({ webexRequest: webex.request.bind(webex) })`
-5. `session = new MLS({ httpClient, loadModule: () => wasmLoader.get(wasmUrl) })`
-6. `await session.initialize({ participantId: device.userId, deviceUrl: device.url,`
-   `  deviceType: webex.config.meetings.deviceType, correlationId: meeting.correlationId, displayName: <self name>,`
-   `  serviceUrl: meeting.locusInfo.info.mediaEncryptionGroupUrl, credentials: creds,`
-   `  trustAnchors: identityProvider.getTrustAnchors(), joinTimeout, coalesceWindow })`
-7. the reconciler is already created + registered as the Members pre-emit processor in the facade
-   constructor (see `MemberMLSReconciler`); `start()` only wires its roster events
-8. `mediaController = new MediaKeyController();` if
-   `meeting.mediaProperties.webrtcMediaConnection` present → attach
-9. wire session events:
-   - `joinSuccess` → `mediaController.setSframeParams(sframe)`; `addKey(key)`;
-     Meeting emits `SECURITY_CODE_UPDATED`. (Does NOT set `'joined'` — see completion rule.)
-   - `newKey` → `mediaController.addKey`; `useKey` → `mediaController.setActiveEpoch`;
-     `purgeKeys` → `mediaController.purgeBefore`
-   - `rosterAdded` / `rosterRemoved` → `reconciler.applyRosterAdded` / `applyRosterRemoved`,
-     then recompute `hasUntrustedMediaServices` from the full roster (`session.getRoster()`); if it
-     changed, Meeting emits `MEDIA_SERVICES_CHANGED`. Also re-check the join-completion rule:
-     if our own device URL is now in the roster and `state !== 'joined'`, set `state = 'joined'`
-     and Meeting emits `STATE_CHANGED` (this is what flips the trust state to `ZeroTrust`).
-   - `securityCodeChanged` → Meeting emits `SECURITY_CODE_UPDATED`
-   - `joinFailure` / `mediaEncryptionRequestFailure` / `evicted` / `timeout` → `handleFatal(reason)`
-   - Update transaction failures, including `update_override`, are logged and do not invoke
-     `handleFatal`; the engine rolls back to `FullJoined` and continues with the group.
-10. `signaling = new E2eeSignaling({ llm: meeting.getLlmChannel(),`
-    `  getLocusUrl: () => meeting.locusInfo?.url, session }); signaling.start();`
-    then `session.join()`
-
-`stop()`: `signaling.stop()`; `session.leave()` (which clears pending transaction records);
-`reconciler.reset()`; `mediaController.detach()`; unsubscribe members; `setState('left')`.
-
-`handleFatal(reason)`: `setState('failed' | 'evicted')`; Meeting emits
-`MEETING_E2EE_FAILURE { reason }`; then **force-leave**:
-`meeting.leave({ reason: MEETING_REMOVED_REASON.E2EE_<reason> })`, so the app gets
-`meeting:removed` with an E2EE reason plus an `E2eeError`.
-
-**MLS join completion:** `state` becomes `'joined'` only once our own device URL
-(`webex.internal.device.url`) appears in the MLS roster — not merely on the WASM
-`joinSuccess` event. `session.join()` moves `state` to `'joining'`; every roster change is
-checked for our own device URL, which flips `state` to `'joined'` (and emits `STATE_CHANGED`).
-This is the single source of truth for "MLS join complete" that `Meeting.e2eeTrustState`
-relies on to move a zero-trust meeting from `calculating` to `zeroTrust`.
-
-`hasUntrustedMediaServices` is derived from the MLS roster: `true` when any roster member's
-`deviceType` is `'MEDIA_SERVICE'` (recording / transcoding / streaming server). It is
-recomputed on every roster change and reset to `false` on `stop()`; changes emit
-`MEETING_E2EE_MEDIA_SERVICES_CHANGED { hasMediaServices }`. This is what the app uses
-to surface the meeting's zero-trust state.
-
-> **Future:** some media services can be *trusted*. If every media service in the
-> roster is trusted, the meeting can retain its "zero-trust" status even though media
-> services are present. This applies only to **video mesh** meetings. The current
-> design treats any `'MEDIA_SERVICE'` presence as breaking zero-trust; the trusted-service
-> distinction is out of scope for now but `hasUntrustedMediaServices` (and the zero-trust
-> computation behind it) should be able to evolve to account for it.
-
-## `Member` changes (`member/index.ts`, `member/types.ts`, `members/index.ts`)
-
-- `member/types.ts`: add `url: string` to `ParticipantDevice` (exists at runtime — used at
-  `members/index.ts` for SIP lookup — but missing from the TS type).
-- `Member`:
-  - private `e2eeDeviceVerifications: Map<string, E2eeDeviceVerification> = new Map();`
-  - public `e2eeVerificationState: E2eeMemberVerificationState = 'unknown';`
-  - `setE2eeDeviceVerification(deviceUrl, data)`, `getE2eeDeviceVerification(deviceUrl)`,
-    `getE2eeDeviceVerifications(): E2eeDeviceVerification[]`, `recomputeE2eeVerificationState()`.
-- The reconciler is the source of truth and reapplies on each `MEMBERS_UPDATE`, so no
-  change to `propsToKeepOnUpdate` is strictly needed. (Alternative: add
-  `'e2eeDeviceVerifications'` to that array; the reapply approach is cleaner and avoids
-  stale data.)
-
-## `Meetings`-plugin integration (`meetings/index.ts`)
-
-- The constructor creates the shared `WasmLoader`. `onReady()` (the `READY` handler) creates
-  `StaticAssetLoader`, resolves the E2EE module URL from `meetings.assetsBaseUrl`, and creates
-  `E2eeManager` with the parent Webex instance, shared loader, and resolved URL before any meeting is
-  created from a locus event. The URL cannot be resolved in the constructor: `WebexCore` assigns
-  `webex.config` in `initialize()`, which runs after its plugin children are constructed.
-- `register()`: after a successful register, fire-and-forget `this.e2eeManager?.preload()`, wrapped
-  in a non-blocking `catch` (like `startReachability`), so it never blocks/fails registration. This
-  warms the WASM module (no-op when `enableE2ee` is false). Credentials are not pre-warmed here —
-  they are generated + cached lazily on the first E2EE meeting.
-- `createMeeting()`: pass `e2eeManager` into `Meeting` attrs alongside
-  `userId` / `deviceUrl` / `orgId`.
-
-## `Meeting` integration (`meeting/index.ts`)
-
-- Constructor: build an `E2eeMeetingContext` from the correlation ID, current locus and LLM channel
-  getters, and Members instance, then assign
-  `this.e2ee = attrs.e2eeManager?.createE2eeController(context)` (or an undefined-safe no-op facade).
-  Because `createE2eeController` returns a facade whose `start()`
-  no-ops when E2EE is disabled, call sites stay unconditional.
-- **E2EE MLS lifecycle is driven from self-state changes in `updateE2eeOnSelfChange`**, called by the
-  `setUpLocusSelfListener` (`LOCUS_INFO_UPDATE_SELF`) handler:
-  - **Join** when this WDM device's `joinedWith` edges to `JOINED` (`oldSelf.joinedWith.state !== JOINED`,
-    `newSelf.joinedWith.state === JOINED`) → `this.e2ee.start()`. Gating on `joinedWith` for `this.deviceUrl`,
-    not the aggregate `self.state`, avoids joining when another device for the same user joins; lobby/pre-join
-    selves are never `JOINED`.
-  - **Leave** when the host moves this device back into the lobby (`oldSelf.isUserUnadmitted !== true`,
-    `newSelf.isUserUnadmitted === true`) → `this.e2ee.stop()`. `stop()` is a silent no-op while `disabled`
-    (never started), and resets to `left` so a later re-admit re-runs `start()`.
-  - `start()`/`stop()` are idempotent and self-guarded, so the edge checks only keep logs clean.
-- `createMediaConnection()`: after `setMediaPeerConnection(mc)`, call
-  `this.e2ee.attachMediaConnection(this.mediaProperties.webrtcMediaConnection)`.
-- `closePeerConnections()`: `this.e2ee.detachMediaConnection()` before `mc.close()`.
-- `clearMeetingData()`: `await this.e2ee.stop()`.
-- E2EE facade methods and state are accessed through `meeting.e2ee` (for example,
-  `meeting.e2ee.getSecurityCode()`, `meeting.e2ee.state`, and
-  `meeting.e2ee.hasUntrustedMediaServices`). E2EE facade events are forwarded by `Meeting.forwardEvent()`
-  and remain available on the `Meeting` event emitter. `getMembers()` is unchanged.
-- `get e2eeTrustState(): E2eeTrustState | undefined` — derived **live** from `locusInfo.info`
-  flags plus `this.e2ee`:
-  - Returns `undefined` while the local device is not joined to the meeting, including after leaving.
-  - `isBestEffortE2EEncryption` → `Adaptive*` (true) vs non-adaptive (false)
-  - `isV2E2EEncrypted` → zero-trust (true) vs strong (false)
-  - A zero-trust (`isV2E2EEncrypted`) meeting reports `calculating` until MLS join is
-    complete (`this.e2ee.state === 'joined'` — i.e. our own device URL is in the roster,
-    see "MLS join completion" below). Only then is it eligible for `zeroTrust`.
-  - `hasUntrustedMediaServices` downgrades a completed zero-trust result to the matching strong value
-    (`zeroTrust` → `strong`, `adaptiveZeroTrust` → `adaptiveStrong`), since (untrusted)
-    media services break zero trust.
+- Constructor: `this.e2ee = attrs.e2eeManager?.createE2eeController(context)`; E2EE events are
+  forwarded on the `Meeting` emitter.
+- Lifecycle (`updateE2eeOnSelfChange`, on `LOCUS_INFO_UPDATE_SELF`):
+  - **start** when this device's `joinedWith` transitions to `JOINED`. Gating on this device, not the
+    aggregate self state, avoids starting when another of the user's devices joins.
+  - **stop** when the device is moved back into the lobby (`isUserUnadmitted` becomes true); a later
+    re-admit starts again.
+  - **stop** in `clearMeetingData()`.
+- `llmChannelChanged()` is called whenever `Meeting` replaces its LLM channel.
+- `trustState` getter:
 
   ```ts
-  const info = this.locusInfo?.info;
+  if (!this.isJoined()) return undefined;
   const adaptive = !!info?.isBestEffortE2EEncryption;
   const isEncrypted = !!info?.isV2E2EEncrypted;
-  if (!this.isJoined()) return undefined;
-  // a zero-trust meeting isn't zero-trust until our MLS join completes.
   if (isEncrypted && this.e2ee?.state !== 'joined') return 'calculating';
   const zeroTrust = isEncrypted && !this.e2ee?.hasUntrustedMediaServices;
   if (adaptive) return zeroTrust ? 'adaptiveZeroTrust' : 'adaptiveStrong';
   return zeroTrust ? 'zeroTrust' : 'strong';
   ```
-  (`strong` / `adaptiveStrong` meetings do no MLS join, so they report immediately.)
-  `meeting:trustStateChanged` is emitted whenever this computed value changes, including
-  changes caused by Locus info, MLS state, or untrusted media-service presence. Its payload is
-  `{ e2eeTrustState }`.
 
-### New constants / errors / config
+  `meeting:trustStateChanged {trustState}` is emitted whenever this value changes.
 
-- `constants.ts` `EVENT_TRIGGERS`:
-  - `MEETING_E2EE_SECURITY_CODE_UPDATED: 'meeting:e2ee:securityCodeUpdated'`
-  - `MEETING_E2EE_STATE_CHANGED: 'meeting:e2ee:stateChanged'`
-  - `MEETING_E2EE_MEDIA_SERVICES_CHANGED: 'meeting:e2ee:mediaServicesChanged'` (payload `{ hasMediaServices }`)
-  - `MEETING_TRUST_STATE_CHANGED: 'meeting:trustStateChanged'` (payload `{ e2eeTrustState }`)
-  - `MEETING_E2EE_FAILURE: 'meeting:e2ee:failure'` (payload `{ reason }`)
-  - Member verification is surfaced via the existing `members:update` (no dedicated event); see
-    `MemberMLSReconciler`.
-- `constants.ts` `MEETING_REMOVED_REASON`: add `E2EE_JOIN_FAILURE`, `E2EE_EVICTED`,
-  `E2EE_TIMEOUT` (used as leave/removed reasons on force-leave, so `meeting:removed`
-  carries the cause).
-- `common/errors/e2ee-error.ts`: new `E2eeError` (extends the existing error base) with a
-  `reason` field; surfaced on the force-leave path.
-- Config: add `enableE2ee` (default `false`) to the plugin-meetings config and
-  `meetings.types`; read via `this.config.enableE2ee`.
-- Join request (`meeting/request.ts` `joinMeeting`), both gated on the E2EE config flag
-  (`enableE2ee`) so E2EE is only advertised to Locus when the SDK's E2EE config is enabled:
-  - set `supportsV2E2EEncryption` from `enableE2ee`.
-  - push the `E2EE_1K_SUPPORTED` device capability (constant in `e2ee/constants.ts`) onto
-    `deviceCapabilities` when `enableE2ee` is set. This advertises support for large (1K) E2EE
-    meetings
-- `locus-info/infoUtils.ts`: parse `isV2E2EEncrypted`, `isBestEffortE2EEncryption`, and
-  `mediaEncryptionGroupUrl` from the Locus DTO `info` onto `locusInfo.info`.
+**`Member`** — `e2eeVerificationState` plus per-device `get/set/removeE2eeDeviceVerification(s)`.
+`ParticipantDevice` gains `url` (present at runtime, previously missing from the type).
 
-## Lifecycle ordering / edge cases
+**Events** (`EVENT_TRIGGERS`):
 
-- The MLS group join is **independent** of media; keys are buffered in the controller until
-  the media connection attaches.
-- LLM may already be online when `start()` runs → signaling checks `isConnected()` + locus
-  match and calls `setLlmConnectedBeforeJoin(true)` instead of waiting for `'online'`.
-- Reconnect: `closePeerConnections()` → `detach`; `createMediaConnection()` → `attach`
-  (replays keys). The MLS session and LLM persist, so the MLS group is **not** re-joined.
-- Roster/Member out-of-order: solved by the reconciler map + reapply on `MEMBERS_UPDATE`.
-- Failures: `joinFailure` / `mediaEncryptionRequestFailure` / `evicted` / `timeout` → `handleFatal` → state +
-  `MEETING_E2EE_FAILURE { reason }` + force-leave with an `E2EE_*` reason + `E2eeError`.
-- The WASM engine exposes `keepAlive()` for backend services such as Homer. The client SDK does not
-  call it; backend services own that keep-alive behavior.
+| Event | Payload |
+|-------|---------|
+| `meeting:e2ee:securityCodeUpdated` | `{securityCode}` |
+| `meeting:e2ee:stateChanged` | `{state}` |
+| `meeting:e2ee:mediaServicesChanged` | `{hasMediaServices}` |
+| `meeting:e2ee:failure` | `{reason}` |
+| `meeting:trustStateChanged` | `{trustState}` |
 
-## Test strategy
+## Static assets
 
-Per the webex-js-sdk conventions: specs live under `test/unit/spec/e2ee/**` (mirroring `src/`),
-run with mocha (`yarn workspace @webex/plugin-meetings test:unit`), using `sinon` for
-stubs/spies, `assert` from `@webex/test-helper-chai`, and `@webex/test-helper-mock-webex` for a
-mock webex. (Filenames below are illustrative — each maps to a spec under `test/unit/spec/e2ee/`.)
+The WASM module (`E2EE_WASM_ASSET`, with a sibling `.js` loader) is a runtime asset, not part of the
+JS bundle, and is loaded from `meetings.assetsBaseUrl`. By default that URL is version-pinned on
+unpkg (`webex@<sdk>/umd/assets/plugin-meetings/`, falling back to the plugin's `dist/assets/`), or
+`/assets/plugin-meetings/` in development and when no version is known.
 
-- `WasmLoader.test.ts` — `preload` caches, `get()` awaits/returns cache, idempotent, error resets.
-- `E2eeManager.test.ts` — `isEnabled` from config; `preload` warms the injected WASM URL only when
-  enabled, and never rejects; `createE2eeController` injects the shared loader and URL.
-- `MLS.test.ts` — mock the `loadModule` callback returning a fake `WebE2EE`; assert callbacks map to emitted
-  events, including join/update transaction type correlation, unknown/duplicate completions, and
-  pending-transaction cleanup on leave; HTTP/wait routed to injected deps, including JSON bytes ⇄
-  object conversion and failure completion on invalid JSON. Pure, no webex.
-- `MediaEncryptionService.test.ts` — mock `webexRequest`; assert service/url and that request and
-  response bodies pass through as objects.
-- `E2eeSignaling.test.ts` — mock `llm` (`on/off/isConnected/getLocusUrl`) + a `getLocusUrl`
-  callback; assert subscription, locus-URL guard, forwarding, teardown.
-- `internal-plugin-identity/test/unit/spec/identity.ts` — mock `webex.request` (CA request); assert CSR built, caching, trust anchors.
-- `MemberMLSReconciler.test.ts` — fake members collection + roster; assert out-of-order both
-  directions, per-device match by URL, aggregate state, reapply on `MEMBERS_UPDATE`.
-- `MediaKeyController.test.ts` — fake `IE2eeMediaConnection`; keys-before-media buffering,
-  replay on attach, reconnect replay, purge / active epoch.
-- `E2eeController.test.ts` — wire fakes; `start` guarded by `required()` + flag; happy path + failure;
-  `hasUntrustedMediaServices` derived from roster (media-service device type present/absent) + change event.
-- Meeting integration — extend `meeting/index` tests for `getSecurityCode`, start/stop hooks,
-  attach/detach on media create/close, and the new `EVENT_TRIGGERS`.
+Each plugin keeps its files in its own `assets` folder. The package build copies them to
+`dist/assets`, and the UMD build gathers them under `packages/webex/umd/assets/<plugin-name>/`, so
+same-named files cannot collide. `samples:serve` serves each plugin's `assets` at
+`/assets/<plugin-name>`. Self-hosting apps set `assetsBaseUrl` to a version-matched location; the
+host must allow cross-origin requests and serve the `.js` file with a JavaScript MIME type.
 
-## Delivery phases (each independently testable)
+## Planned / not yet implemented
 
-| Phase | Scope |
-|-------|-------|
-| **P0** | `enableE2ee` config + `E2eeManager` + `WasmLoader` + `Meetings.register()` preload wiring (no per-meeting behavior yet; proves early WASM warm-up + single-instance plumbing). |
-| **P1** | Extract/refactor `MLS` (engine) + `types` + WASM-loader use (no behavior change vs PoC). |
-| **P2** | `MediaEncryptionService` + `internal-plugin-identity` (one instance per client) + `E2eeSignaling` (I/O adapters). |
-| **P3** | `E2eeController` facade + `Meeting` wiring (start/stop, direct facade API, forwarded events) — **security code works end-to-end**. |
-| **P4** | `MemberMLSReconciler` + `Member` extension + verification events. |
-| **P5** | `IE2eeMediaConnection` contract + `MediaKeyController` (media key injection); media-core impl (new `setEncryptionKeys` method) tracked separately (out of scope). |
-| **P6** | Reconnection + force-leave failure policy (reasons/errors/events). |
+- **Media-key injection.** `internal-media-core` will implement a new method (working name
+  `setEncryptionKeys`; exact shape to be agreed with the media team) on both media connection types:
 
-## Design principles applied
+  ```ts
+  interface IE2eeMediaConnection {
+    setEncryptionKeys(config: {
+      cipherSuite: number;
+      epochBits: number;
+      keys: Array<{epoch: number; baseKey: Uint8Array; index: number; indexBits: number}>;
+      activeEncryptionEpoch?: number; // undefined => decrypt-only
+    }): void;
+  }
+  ```
 
-Single-responsibility modules; dependency inversion at the `IE2eeMediaConnection` boundary;
-adapter pattern for signaling / service / media; facade (`E2eeController`); and isolation of the
-protocol engine from I/O for testability.
+  A `MediaKeyController` will buffer the SFrame params (from `joinSuccess`) and keys (`newKey`,
+  `useKey`, `purgeKeys`), and pass the **full key set** on every change. The call is idempotent, so
+  keys that arrive before media and media recreated on reconnect are both handled by replaying the
+  set. `Meeting` will attach it after `createMediaConnection()` and detach it in
+  `closePeerConnections()`. The MLS session and LLM persist across media reconnects, so the group is
+  not rejoined.
+- **Force-leave on fatal failure.** `handleFatal` will also call `meeting.leave()` with new
+  `MEETING_REMOVED_REASON` values (`E2EE_JOIN_FAILURE`, `E2EE_EVICTED`, ...) and surface an
+  `E2eeError`, so the app gets `meeting:removed` with the cause.
+
+## Testing
+
+Unit specs live in `test/unit/spec/e2ee/` (one per module) plus `common/wasm-loader`, `meeting`,
+`meetings`, `member(s)` and `internal-plugin-identity` specs. `MLS` is tested against a fake `WebE2EE` module with no webex dependency, and the adapters against stubbed `webex.request`, LLM and mercury.
