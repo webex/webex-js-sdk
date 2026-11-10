@@ -66,6 +66,15 @@
   ],
   "packages": [
     {
+      "id": "@webex/internal-plugin-encryption",
+      "path": "packages/@webex/internal-plugin-encryption",
+      "manifest": "packages/@webex/internal-plugin-encryption/.sdd/manifest.json",
+      "agent_entry": "packages/@webex/internal-plugin-encryption/AGENTS.md",
+      "index": "packages/@webex/internal-plugin-encryption/docs/index.md",
+      "onboarded_at": "2026-11-05T09:00:00Z",
+      "onboarded_by": "claude-code"
+    },
+    {
       "id": "@webex/internal-plugin-feature",
       "path": "packages/@webex/internal-plugin-feature",
       "manifest": "packages/@webex/internal-plugin-feature/.sdd/manifest.json",
@@ -90,6 +99,7 @@
       "agent_entry": "packages/@webex/internal-plugin-wdm/AGENTS.md",
       "index": "packages/@webex/internal-plugin-wdm/docs/index.md",
       "onboarded_at": "2026-10-28T14:44:56Z",
+      "onboarded_by": "claude-code"
     },
     {
       "id": "@webex/plugin-authorization-browser-first-party",
@@ -108,6 +118,6 @@
   "provenance": {
     "generated_by": "claude-code",
     "approved_by": "rarajes2@cisco.com",
-    "updated_at": "2026-11-03T05:46:20Z"
+    "updated_at": "2026-11-05T09:00:00Z"
   }
 }
