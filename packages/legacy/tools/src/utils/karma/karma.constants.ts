@@ -11,8 +11,7 @@ const CONFIG = {
     debug: true,
     extensions: ['.ts', '.js'],
     transform: [
-      // babelify only handles babel's DEFAULT_EXTENSIONS (no .ts) unless told otherwise.
-      ['babelify', { extensions: ['.ts', '.js'] }],
+      'babelify',
       // isbot (used by @webex/internal-plugin-metrics) and jose (used by
       // @webex/plugin-meetings) ship ESM-only browser entries; compile them so
       // browserify can bundle them.
