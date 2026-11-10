@@ -727,7 +727,7 @@ to surface the meeting's zero-trust state.
   return zeroTrust ? 'zeroTrust' : 'strong';
   ```
   (`strong` / `adaptiveStrong` meetings do no MLS join, so they report immediately.)
-  `meeting:e2eeTrustStateChanged` is emitted whenever this computed value changes, including
+  `meeting:trustStateChanged` is emitted whenever this computed value changes, including
   changes caused by Locus info, MLS state, or untrusted media-service presence. Its payload is
   `{ e2eeTrustState }`.
 
@@ -737,7 +737,7 @@ to surface the meeting's zero-trust state.
   - `MEETING_E2EE_SECURITY_CODE_UPDATED: 'meeting:e2ee:securityCodeUpdated'`
   - `MEETING_E2EE_STATE_CHANGED: 'meeting:e2ee:stateChanged'`
   - `MEETING_E2EE_MEDIA_SERVICES_CHANGED: 'meeting:e2ee:mediaServicesChanged'` (payload `{ hasMediaServices }`)
-  - `MEETING_E2EE_TRUST_STATE_CHANGED: 'meeting:e2eeTrustStateChanged'` (payload `{ e2eeTrustState }`)
+  - `MEETING_TRUST_STATE_CHANGED: 'meeting:trustStateChanged'` (payload `{ e2eeTrustState }`)
   - `MEETING_E2EE_FAILURE: 'meeting:e2ee:failure'` (payload `{ reason }`)
   - Member verification is surfaced via the existing `members:update` (no dedicated event); see
     `MemberMLSReconciler`.

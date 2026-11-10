@@ -4533,7 +4533,7 @@ export default class Meeting extends StatelessWebexPlugin {
         file: 'meeting/index',
         function: 'updateTrustState',
       },
-      EVENT_TRIGGERS.MEETING_E2EE_TRUST_STATE_CHANGED,
+      EVENT_TRIGGERS.MEETING_TRUST_STATE_CHANGED,
       {trustState}
     );
   }

@@ -388,7 +388,7 @@ export const EVENT_TRIGGERS = {
   MEETING_E2EE_SECURITY_CODE_UPDATED: 'meeting:e2ee:securityCodeUpdated',
   MEETING_E2EE_STATE_CHANGED: 'meeting:e2ee:stateChanged',
   MEETING_E2EE_MEDIA_SERVICES_CHANGED: 'meeting:e2ee:mediaServicesChanged',
-  MEETING_E2EE_TRUST_STATE_CHANGED: 'meeting:e2eeTrustStateChanged',
+  MEETING_TRUST_STATE_CHANGED: 'meeting:trustStateChanged',
   MEETING_E2EE_FAILURE: 'meeting:e2ee:failure',
 
   MEETING_TRANSCRIPTION_CONNECTED: 'meeting:transcription:connected',

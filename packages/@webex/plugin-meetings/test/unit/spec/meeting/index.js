@@ -559,7 +559,8 @@ describe('plugin-meetings', () => {
           const listener = sinon.spy();
 
           meetingWithE2ee.joinedWith = {state: 'JOINED'};
-          meetingWithE2ee.on(EVENT_TRIGGERS.MEETING_E2EE_TRUST_STATE_CHANGED, listener);
+          assert.equal(EVENT_TRIGGERS.MEETING_TRUST_STATE_CHANGED, 'meeting:trustStateChanged');
+          meetingWithE2ee.on(EVENT_TRIGGERS.MEETING_TRUST_STATE_CHANGED, listener);
           meetingWithE2ee.locusInfo.info = {isV2E2EEncrypted: true};
           meetingWithE2ee.locusInfo.emitScoped(
             {},
