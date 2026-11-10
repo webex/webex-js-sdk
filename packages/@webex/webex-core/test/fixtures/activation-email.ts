@@ -16,7 +16,7 @@ import uuid from 'uuid';
  * @returns {string} e.g. `Collabctg+webex-js-sdk-1a2b3c4d5e6f7a8b9c0d@gmail.com`
  */
 export function createActivationEmail(): string {
-  return `collabctg+webex-js-sdk-${uuid.v4().replace(/-/g, '').slice(0, 20)}@gmail.com`;
+  return `Collabctg+webex-js-sdk-${uuid.v4().replace(/-/g, '').slice(0, 20)}@gmail.com`;
 }
 
 export default createActivationEmail;
