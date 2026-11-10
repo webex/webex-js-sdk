@@ -5,7 +5,6 @@
 import type {IdentityProvider} from '@webex/internal-plugin-identity';
 
 import EventsScope from '../common/events/events-scope';
-import Trigger from '../common/events/trigger-proxy';
 import LoggerProxy from '../common/logs/logger-proxy';
 import Metrics from '../metrics';
 import BEHAVIORAL_METRICS from '../metrics/constants';
@@ -123,16 +122,6 @@ export default class E2eeController extends EventsScope {
    */
   llmChannelChanged(): void {
     this.signaling?.setLlmChannel(this.context.getLlmChannel());
-  }
-
-  /**
-   * Emits an E2EE event on the facade so it can be observed directly or forwarded by Meeting.
-   * @param {string} event
-   * @param {object} payload
-   * @returns {void}
-   */
-  trigger(event: string, payload: object): void {
-    this.emit(TRIGGER_SCOPE, event, payload);
   }
 
   /**
@@ -418,6 +407,6 @@ export default class E2eeController extends EventsScope {
    */
   private emitE2eeEvent(event: string, payload: object): void {
     LoggerProxy.logger.info(`e2ee: E2eeController --> emitting event: ${event}`);
-    Trigger.trigger(this, TRIGGER_SCOPE, event, payload);
+    this.emit(TRIGGER_SCOPE, event, payload);
   }
 }

@@ -8,7 +8,6 @@ import E2eeController from '@webex/plugin-meetings/src/e2ee/E2eeController';
 import MLS from '@webex/plugin-meetings/src/e2ee/mls';
 import E2eeSignaling from '@webex/plugin-meetings/src/e2ee/E2eeSignaling';
 import WasmLoader from '@webex/plugin-meetings/src/common/wasm-loader';
-import Trigger from '@webex/plugin-meetings/src/common/events/trigger-proxy';
 import LoggerProxy from '@webex/plugin-meetings/src/common/logs/logger-proxy';
 import {EVENT_TRIGGERS} from '@webex/plugin-meetings/src/constants';
 
@@ -29,7 +28,7 @@ describe('plugin-meetings', () => {
     let leaveStub;
     let signalingStartStub;
     let signalingStopStub;
-    let triggerStub;
+    let emitSpy;
 
     const OWN_DEVICE_URL = 'https://wdm.webex.com/device-1';
 
@@ -60,7 +59,6 @@ describe('plugin-meetings', () => {
       });
       signalingStartStub = sinon.stub(E2eeSignaling.prototype, 'start');
       signalingStopStub = sinon.stub(E2eeSignaling.prototype, 'stop');
-      triggerStub = sinon.stub(Trigger, 'trigger');
 
       wasmLoader = sinon.createStubInstance(WasmLoader);
       wasmLoader.get.resolves({});
@@ -115,14 +113,14 @@ describe('plugin-meetings', () => {
         wasmUrl: '/assets/plugin-meetings/e2ee.wasm',
         identityProvider,
       });
+      emitSpy = sinon.spy(e2ee, 'emit');
     });
 
     afterEach(() => {
       sinon.restore();
     });
 
-    const emitted = (event) =>
-      triggerStub.getCalls().filter((call) => call.args[2] === event);
+    const emitted = (event) => emitSpy.getCalls().filter((call) => call.args[1] === event);
 
     describe('start guard (required)', () => {
       it('is a no-op when E2EE is disabled in config', async () => {
@@ -240,13 +238,12 @@ describe('plugin-meetings', () => {
         const calls = emitted(EVENT_TRIGGERS.MEETING_E2EE_SECURITY_CODE_UPDATED);
 
         assert.equal(calls.length, 1);
-        assert.deepEqual(calls[0].args[3], {securityCode: 'SEC-1'});
+        assert.deepEqual(calls[0].args[2], {securityCode: 'SEC-1'});
       });
 
       it('emits E2EE events from the facade for direct consumers', () => {
         const listener = sinon.spy();
 
-        triggerStub.restore();
         e2ee.on(EVENT_TRIGGERS.MEETING_E2EE_SECURITY_CODE_UPDATED, listener);
         emitSession('securityCodeChanged', {code: 'SEC-3'});
 
@@ -273,7 +270,7 @@ describe('plugin-meetings', () => {
 
         const stateCalls = emitted(EVENT_TRIGGERS.MEETING_E2EE_STATE_CHANGED);
 
-        assert.deepEqual(stateCalls[stateCalls.length - 1].args[3], {state: 'joined'});
+        assert.deepEqual(stateCalls[stateCalls.length - 1].args[2], {state: 'joined'});
       });
 
       it('detects media services in the roster and emits a change', () => {
@@ -288,7 +285,7 @@ describe('plugin-meetings', () => {
         const calls = emitted(EVENT_TRIGGERS.MEETING_E2EE_MEDIA_SERVICES_CHANGED);
 
         assert.equal(calls.length, 1);
-        assert.deepEqual(calls[0].args[3], {hasMediaServices: true});
+        assert.deepEqual(calls[0].args[2], {hasMediaServices: true});
       });
 
       it('cleans up the session on joinFailure', () => {
@@ -303,7 +300,7 @@ describe('plugin-meetings', () => {
 
         const securityCodeCalls = emitted(EVENT_TRIGGERS.MEETING_E2EE_SECURITY_CODE_UPDATED);
 
-        assert.deepEqual(securityCodeCalls[securityCodeCalls.length - 1].args[3], {
+        assert.deepEqual(securityCodeCalls[securityCodeCalls.length - 1].args[2], {
           securityCode: undefined,
         });
         assert.equal(emitted(EVENT_TRIGGERS.MEETING_E2EE_FAILURE).length, 1);
@@ -329,7 +326,7 @@ describe('plugin-meetings', () => {
         const failureCalls = emitted(EVENT_TRIGGERS.MEETING_E2EE_FAILURE);
 
         assert.equal(failureCalls.length, 1);
-        assert.deepEqual(failureCalls[0].args[3], {reason: 'mediaEncryptionRequestFailure'});
+        assert.deepEqual(failureCalls[0].args[2], {reason: 'mediaEncryptionRequestFailure'});
       });
     });
 
@@ -431,7 +428,7 @@ describe('plugin-meetings', () => {
         const securityCodeCalls = emitted(EVENT_TRIGGERS.MEETING_E2EE_SECURITY_CODE_UPDATED);
 
         assert.equal(securityCodeCalls.length, 2);
-        assert.deepEqual(securityCodeCalls[securityCodeCalls.length - 1].args[3], {
+        assert.deepEqual(securityCodeCalls[securityCodeCalls.length - 1].args[2], {
           securityCode: undefined,
         });
       });
