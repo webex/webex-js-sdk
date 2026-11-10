@@ -53,6 +53,7 @@ Config.webex = {
       autoSendMQA: true,
     },
     autoUploadLogs: false,
+    assetsBaseUrl: '/assets/plugin-meetings/',
     reconnection: {
       enabled: true,
     },

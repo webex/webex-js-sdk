@@ -4,13 +4,10 @@
 import 'jsdom-global/register';
 import {assert} from '@webex/test-helper-chai';
 import sinon from 'sinon';
-import MLS from '../../../../src/e2ee/mls';
-import LoggerProxy from '../../../../src/common/logs/logger-proxy';
+import MLS from '@webex/plugin-meetings/src/e2ee/mls';
+import LoggerProxy from '@webex/plugin-meetings/src/common/logs/logger-proxy';
 
-const flushPromises = () =>
-  new Promise((resolve) => {
-    setTimeout(resolve, 0);
-  });
+const flushPromises = () => new Promise((resolve) => setTimeout(resolve, 0));
 
 describe('plugin-meetings', () => {
   describe('MLS', () => {
@@ -41,6 +38,7 @@ describe('plugin-meetings', () => {
     const config = {
       participantId: 'user-1',
       deviceUrl: 'https://wdm.webex.com/device-1',
+      deviceType: 'WEB',
       correlationId: 'corr-1',
       displayName: 'Alice',
       serviceUrl: 'https://mes.webex.com/group-1',

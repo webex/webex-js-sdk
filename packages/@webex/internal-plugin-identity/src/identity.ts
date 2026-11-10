@@ -128,7 +128,7 @@ class Identity extends WebexPlugin {
    * @returns {Promise<IdentityCredentials>}
    */
   private async requestCredentials(contactId: string): Promise<IdentityCredentials> {
-    this.logger.info('identity: requestCredentials: generating CSR');
+    this.logger.info(`identity: requestCredentials: generating CSR for contactId=${contactId}`);
     const {privKeyDer, csr} = await generateCsr(contactId);
 
     this.logger.info('identity: requestCredentials: requesting certificate from CA');

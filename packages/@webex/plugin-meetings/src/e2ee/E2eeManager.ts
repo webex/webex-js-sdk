@@ -2,57 +2,78 @@
  * Copyright (c) 2015-2026 Cisco Systems, Inc. See LICENSE file.
  */
 
-import {CapabilityState, WebCapabilities} from '@webex/web-capabilities';
-// @ts-ignore - StaticAssetLoader is exported from webex-core's JavaScript entry point.
-import {StaticAssetLoader} from '@webex/webex-core';
-
 import LoggerProxy from '../common/logs/logger-proxy';
 import WasmLoader from '../common/wasm-loader';
-
-/* The WASM module that contains the libe2ee + mlspp libraries with a WebE2EE wrapper around them, required for joining MLS group for E2EE meetings.
- * The version is in the filename as it is important that JS-SDK implementation of MLS class matches the WASM module version.
- */
-const E2EE_WASM_ASSET = 'e2ee-0.0.1.wasm';
+import E2eeController from './E2eeController';
+import MeetingsUtil from '../meetings/util';
+import type {E2eeMeetingContext} from './types';
 
 /**
- * Owns E2EE resource preloading for a Meetings plugin session. The per-meeting controller is added
- * in the follow-up integration change; this first step keeps the slow WASM load off the join path.
+ * Owns E2EE resource preloading for a Meetings plugin session and creates its per-meeting
+ * controllers. Meetings supplies the shared WASM loader and resolved module URL.
  */
 export default class E2eeManager {
   private readonly webex: any;
 
   private readonly wasmLoader: WasmLoader;
 
-  private readonly assetLoader: StaticAssetLoader;
+  private readonly wasmUrl: string;
 
-  constructor({webex, wasmLoader}: {webex: any; wasmLoader: WasmLoader}) {
+  /**
+   * @param {Object} deps
+   * @param {Object} deps.webex - The parent webex instance.
+   * @param {WasmLoader} deps.wasmLoader - Shared WASM loader, owned by Meetings.
+   * @param {string} deps.wasmUrl - URL of the E2EE WASM module, resolved by Meetings.
+   */
+  constructor({webex, wasmLoader, wasmUrl}: {webex: any; wasmLoader: WasmLoader; wasmUrl: string}) {
     this.webex = webex;
     this.wasmLoader = wasmLoader;
-    this.assetLoader = new StaticAssetLoader(
-      {baseUrl: webex.config.meetings.assetsBaseUrl},
-      {parent: webex}
-    );
+    this.wasmUrl = wasmUrl;
   }
 
   /**
-   * Warms the E2EE WASM module when configured and supported. Callers should not await this from
-   * registration; a loading failure must not prevent the client from registering for meetings.
+   * @returns {boolean} whether E2EE is enabled via config.
+   */
+  get isEnabled(): boolean {
+    return MeetingsUtil.isE2eeEnabledAndSupported(this.webex?.config);
+  }
+
+  /**
+   * Warms the shared E2EE resources (WASM module) when enabled. No-op when disabled. Rejection is
+   * handled by the caller (register wires this fire-and-forget so it can never fail registration).
    * @returns {Promise<void>}
    */
   async preload(): Promise<void> {
-    const enabled = !!this.webex?.config?.meetings?.enableE2ee;
-    const supported = WebCapabilities.supportsWasm() === CapabilityState.CAPABLE;
-
-    if (!enabled || !supported) {
-      LoggerProxy.logger.info('e2ee: E2eeManager#preload --> E2EE disabled or unsupported');
+    if (!this.isEnabled) {
+      LoggerProxy.logger.info(
+        'e2ee: E2eeManager#preload --> E2EE disabled or not supported, skipping WASM preload'
+      );
 
       return;
     }
 
-    const wasmUrl = this.assetLoader.getUrl(E2EE_WASM_ASSET);
-
     LoggerProxy.logger.info('e2ee: E2eeManager#preload --> preloading WASM module');
-    await this.wasmLoader.preload(wasmUrl);
+    await this.wasmLoader.preload(this.wasmUrl);
     LoggerProxy.logger.info('e2ee: E2eeManager#preload --> WASM module preloaded');
+  }
+
+  /**
+   * Creates the per-meeting E2EE controller, injecting the shared loader, module URL, identity provider and config.
+   * The returned facade's start() is a no-op unless the meeting requires E2EE and E2EE is enabled.
+   * @param {E2eeMeetingContext} context - The meeting data and operations used by E2EE.
+   * @returns {E2eeController}
+   */
+  createE2eeController(context: E2eeMeetingContext): E2eeController {
+    LoggerProxy.logger.info(
+      'e2ee: E2eeManager#createE2eeController --> creating E2EE meeting facade'
+    );
+
+    return new E2eeController({
+      context,
+      webex: this.webex,
+      wasmLoader: this.wasmLoader,
+      wasmUrl: this.wasmUrl,
+      identityProvider: this.webex.internal.identity,
+    });
   }
 }

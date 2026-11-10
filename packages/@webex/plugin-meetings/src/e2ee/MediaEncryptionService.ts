@@ -2,10 +2,8 @@
  * Copyright (c) 2015-2026 Cisco Systems, Inc. See LICENSE file.
  */
 
-const MEDIA_ENCRYPTION_SERVICE = 'media-encryption';
-
-/** The bound webex.request function shape consumed by this adapter. */
-type WebexRequestMethod = (options: Record<string, any>) => Promise<any>;
+import {MEDIA_ENCRYPTION_SERVICE} from './constants';
+import type {WebexRequestMethod} from '../common/types';
 
 /**
  * Routes the MLS engine's protocol HTTP requests to the media-encryption service via
