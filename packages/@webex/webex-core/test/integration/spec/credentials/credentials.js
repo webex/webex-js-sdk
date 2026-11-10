@@ -110,15 +110,12 @@ describe('webex-core', () => {
         });
       });
 
-      browserOnly(it)('throws without a refresh callback', async () => {
+      browserOnly(it)('throws without a refresh callback', () => {
         const webex = new WebexCore({
           credentials: user.token,
         });
-        await webex.credentials.refresh().then(() => {
-          assert(false, 'resolved, should have thrown');
-        }).catch((err) => {
-          assert(false);
-        });
+
+        return assert.isRejected(webex.credentials.refresh());
       });
 
       browserOnly(it)('refreshes with a refresh callback', () => {
