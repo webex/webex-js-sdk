@@ -259,8 +259,8 @@ type E2eeTrustState =
 
 interface E2eeMeetingConfig {
   serviceUrl: string;
-  joinTimeout?: number;
-  coalesceWindow?: number;
+  joinTimeout: number;
+  coalesceWindow: number;
   wasmUrl?: string;
 }
 ```
@@ -309,7 +309,7 @@ constructor(deps: {
 
 initialize(cfg: {
   participantId; deviceUrl; deviceType; correlationId; displayName; serviceUrl;
-  credentials?; trustAnchors?; joinTimeout?; coalesceWindow?;
+  credentials?; trustAnchors?; joinTimeout; coalesceWindow;
 }): Promise<void>;
 
 join(): void;

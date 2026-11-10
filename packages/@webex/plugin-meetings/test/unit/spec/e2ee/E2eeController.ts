@@ -7,6 +7,10 @@ import sinon from 'sinon';
 import E2eeController from '@webex/plugin-meetings/src/e2ee/E2eeController';
 import MLS from '@webex/plugin-meetings/src/e2ee/mls';
 import E2eeSignaling from '@webex/plugin-meetings/src/e2ee/E2eeSignaling';
+import {
+  DEFAULT_COALESCE_WINDOW,
+  DEFAULT_JOIN_TIMEOUT,
+} from '@webex/plugin-meetings/src/e2ee/constants';
 import WasmLoader from '@webex/plugin-meetings/src/common/wasm-loader';
 import LoggerProxy from '@webex/plugin-meetings/src/common/logs/logger-proxy';
 import {EVENT_TRIGGERS} from '@webex/plugin-meetings/src/constants';
@@ -166,6 +170,8 @@ describe('plugin-meetings', () => {
         assert.equal(initConfig.correlationId, 'corr-1');
         assert.equal(initConfig.displayName, 'Alice');
         assert.equal(initConfig.serviceUrl, 'https://mes.webex.com/group-1');
+        assert.equal(initConfig.joinTimeout, DEFAULT_JOIN_TIMEOUT);
+        assert.equal(initConfig.coalesceWindow, DEFAULT_COALESCE_WINDOW);
         assert.deepEqual(initConfig.trustAnchors, {
           webexCaRoots: 'ca',
           domainNameRoots: '',

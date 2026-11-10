@@ -13,7 +13,11 @@ import MLS, {type MLSEvent, type MLSEventMap} from './mls';
 import MediaEncryptionService from './MediaEncryptionService';
 import E2eeSignaling from './E2eeSignaling';
 import MemberMLSReconciler from './MemberMLSReconciler';
-import {MEDIA_SERVICE_DEVICE_TYPE} from './constants';
+import {
+  DEFAULT_COALESCE_WINDOW,
+  DEFAULT_JOIN_TIMEOUT,
+  MEDIA_SERVICE_DEVICE_TYPE,
+} from './constants';
 import MeetingsUtil from '../meetings/util';
 import type WasmLoader from '../common/wasm-loader';
 import type {E2eeMeetingContext, E2eeState} from './types';
@@ -193,6 +197,8 @@ export default class E2eeController extends EventsScope {
         serviceUrl: mediaEncryptionGroupUrl,
         credentials,
         trustAnchors: this.identityProvider.getTrustAnchors(),
+        joinTimeout: DEFAULT_JOIN_TIMEOUT,
+        coalesceWindow: DEFAULT_COALESCE_WINDOW,
       });
 
       this.signaling = new E2eeSignaling({

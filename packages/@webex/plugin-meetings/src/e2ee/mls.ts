@@ -23,9 +23,6 @@ import type {
   WebE2EEInstance,
 } from './wasm';
 
-const DEFAULT_JOIN_TIMEOUT = 180_000;
-const DEFAULT_COALESCE_WINDOW = 500;
-
 // WASM log levels, indexed by the numeric level the engine emits (see LogLevel in libe2ee).
 const WASM_LOG_LEVELS = ['', 'FATAL', 'ERROR', 'WARN', 'INFO', 'DEBUG'];
 
@@ -156,8 +153,8 @@ export default class MLS {
       );
     }
 
-    this.e2ee.setJoinTimeout(config.joinTimeout ?? DEFAULT_JOIN_TIMEOUT);
-    this.e2ee.setCoalesceWindow(config.coalesceWindow ?? DEFAULT_COALESCE_WINDOW);
+    this.e2ee.setJoinTimeout(config.joinTimeout);
+    this.e2ee.setCoalesceWindow(config.coalesceWindow);
 
     LoggerProxy.logger.info('e2ee: MLS --> initialize: engine initialized');
   }
