@@ -1,0 +1,362 @@
+{
+  "manifest_version": 1,
+  "repository": {
+    "name": "@webex/plugin-encryption",
+    "purpose": "Public Cypher plugin registered as webex.cypher. It downloads an encrypted Webex attachment and decrypts it (resolving keyUri and JWE from the file URI or the options, then calling the internal encryption plugin's decryptScr and download), registers and unregisters the device through the internal device plugin behind a registered flag, and provides the main Webex bundle entry that loads the authorization and internal encryption plugins and applies memory-storage defaults.",
+    "category": "cat2-legacy",
+    "primary_languages": [
+      "typescript",
+      "javascript"
+    ]
+  },
+  "topology": "Orchestrator-plus-components",
+  "commands": {
+    "install": {
+      "command": "yarn",
+      "source_file": "../../../.github/workflows/deploy.yml",
+      "role": "install"
+    },
+    "compile": {
+      "command": "yarn workspace @webex/plugin-encryption build:src",
+      "source_file": "package.json",
+      "role": "compile"
+    },
+    "build": {
+      "command": "yarn workspace @webex/plugin-encryption build",
+      "source_file": "package.json",
+      "role": "package"
+    },
+    "unit-test": {
+      "command": "yarn workspace @webex/plugin-encryption test:unit",
+      "source_file": "package.json",
+      "role": "unit-test"
+    },
+    "browser-test": {
+      "command": "yarn workspace @webex/plugin-encryption test:browser",
+      "source_file": "package.json",
+      "role": "other"
+    },
+    "lint": {
+      "command": "yarn workspace @webex/plugin-encryption test:style",
+      "source_file": "package.json",
+      "role": "lint"
+    },
+    "deploy": {
+      "command": "yarn workspace @webex/plugin-encryption deploy:npm",
+      "source_file": "package.json",
+      "role": "deploy"
+    }
+  },
+  "toolchain": [
+    {
+      "name": "node",
+      "version": ">=16",
+      "origin": "repo-config",
+      "source_file": "package.json"
+    },
+    {
+      "name": "typescript",
+      "version": "^4.9.5",
+      "origin": "repo-config",
+      "source_file": "package.json"
+    },
+    {
+      "name": "babel",
+      "version": "^7.22.11",
+      "origin": "repo-config",
+      "source_file": "package.json"
+    },
+    {
+      "name": "eslint",
+      "version": "^8.24.0",
+      "origin": "repo-config",
+      "source_file": "package.json"
+    },
+    {
+      "name": "prettier",
+      "version": "^2.7.1",
+      "origin": "repo-config",
+      "source_file": "package.json"
+    }
+  ],
+  "tests": {
+    "unit": {
+      "command_ref": "unit-test",
+      "dir": "test/unit/spec",
+      "framework": "jest"
+    }
+  },
+  "quality_gates": {
+    "code_coverage": {
+      "origin": "repo-config",
+      "min": 85,
+      "kind": "unit-test",
+      "applies_to": "total",
+      "source_file": "jest.config.js",
+      "enforced": true
+    }
+  },
+  "coverage_status_definitions": {
+    "specced": ">=80% public surface specced, drift <5% - spec is authoritative",
+    "partial": "40-80% specced - spec is a hint, cross-check code",
+    "untracked": "<40% specced - code is the source of truth"
+  },
+  "spec_source_policy": {
+    "mode": "migrate-existing",
+    "migrated_source_disposition": "retain",
+    "disposition_decided_by": "riag@cisco.com",
+    "disposition_decided_at": "2026-11-05T13:16:22Z",
+    "decided_by": "riag@cisco.com",
+    "decided_at": "2026-11-05T13:16:22Z",
+    "decision_record": "docs/adr/0001-migrate-readme-and-quickstart.md"
+  },
+  "spec_sources": [
+    {
+      "path": "README.md",
+      "scope": "module",
+      "module": "src",
+      "role": "source-material",
+      "canonical": false,
+      "use_by_agents": "source-for-migration",
+      "canonical_target": "src/docs/README.md"
+    },
+    {
+      "path": "developer-quickstart.md",
+      "scope": "module",
+      "module": "src",
+      "role": "source-material",
+      "canonical": false,
+      "use_by_agents": "source-for-migration",
+      "canonical_target": "src/docs/README.md"
+    }
+  ],
+  "modules": [
+    {
+      "path": "src",
+      "canonical_spec": "src/docs/README.md",
+      "coverage_status": "Partial",
+      "coverage_evidence": "Field coverage 92.9% (13/14 applicable fields) assessed 2026-11-05 by the generator; critical field coverage 7/7. Test strategy is Partial: test/unit/spec/cypher/index.ts has 11 cases and no unit case covers an invalid fileUri, a one-parameter URL, the wrapped versus raw error shapes, the registered flag after success, overlapping register calls, or src/webex.js. Held at Partial: no characterization baseline or spec-drift record exists, and IEncryption in src/cypher/types.ts declares options as required while the implementation defaults it.",
+      "last_assessed": "2026-11-05",
+      "contracts": {
+        "provides": [
+          "cypher-encryption-sdk"
+        ],
+        "requires": [
+          "webex-core-plugin-host",
+          "device-plugin-registration",
+          "internal-encryption-api"
+        ]
+      },
+      "section_profile": {
+        "has_tiers": false,
+        "has_ui": false,
+        "crosses_service_boundaries": true,
+        "holds_client_state": true,
+        "enforces_domain_rules": true,
+        "is_concurrent_async": true,
+        "owns_persistence": false,
+        "stateful_transitions": true,
+        "exposes_wire_protocol": true,
+        "ui_multi_screen": false,
+        "large_data_model": false,
+        "returns_caller_errors": true,
+        "module_specific_conventions": true,
+        "published_package": true,
+        "embedded_in_host": false,
+        "has_design_tradeoff": true,
+        "resolved_by": "claude-code (code evidence; bootstrap questionnaire)",
+        "resolved_at": "2026-11-05T13:16:22Z",
+        "has_submodules": false,
+        "has_submodules_computed_by": "scripts/module_tree.py",
+        "has_submodules_computed_at": "2026-11-05T13:16:22Z"
+      }
+    }
+  ],
+  "contract_catalog": {
+    "index_path": "docs/architecture.md",
+    "definitions": {
+      "cypher-encryption-sdk": {
+        "kind": "sdk",
+        "publication": "published",
+        "source_kind": "repository-path",
+        "source": "package.json",
+        "summary": "Published npm package. main is dist/webex.js (a Webex class whose init merges the src/webex-config.ts exports under the caller's config; they land under config.default, so the defaults are not applied at the top level), types is dist/types/index.d.ts (declares the default export as Cypher), and devMain is src/index.ts. Importing src/index.ts registers Cypher as public plugin 'cypher' with config {cypher: {}}. The plugin API on webex.cypher is register, deregister, downloadAndDecryptFile(fileUri, options), and the public registered flag; FileDownloadOptions and IEncryption are type exports. Per-method behavior is in src/docs/README.md."
+      },
+      "webex-core-plugin-host": {
+        "kind": "sdk",
+        "publication": "published",
+        "source_kind": "external",
+        "source": "@webex/webex-core (workspace package; module spec consulted: packages/@webex/webex-core/src/docs/README.md)",
+        "summary": "Cypher extends WebexPlugin, is registered with registerPlugin (first registration of a name wins), and the bundle builds on WebexCore.extend; MemoryStoreAdapter supplies the bundle's storage defaults."
+      },
+      "device-plugin-registration": {
+        "kind": "sdk",
+        "publication": "published",
+        "source_kind": "external",
+        "source": "@webex/internal-plugin-device (workspace package; module spec consulted: packages/@webex/internal-plugin-device/src/docs/README.md)",
+        "summary": "webex.internal.device.register() and unregister(); register() on an already-registered device refreshes it. The package is loaded through @webex/internal-plugin-encryption and is not declared as a dependency here."
+      },
+      "internal-encryption-api": {
+        "kind": "sdk",
+        "publication": "published",
+        "source_kind": "external",
+        "source": "@webex/internal-plugin-encryption (workspace package; no specification exists, code consulted: packages/@webex/internal-plugin-encryption/src/encryption.js)",
+        "summary": "webex.internal.encryption.decryptScr(keyUri, jwe) resolves the SCR through a KMS key fetch; download(fileUri, scr, {useFileService}) resolves the download URL (direct HTTPS or through the files service), fetches the bytes, and decrypts them with the SCR. KMS certificate validation is configured on the internal plugin, default off."
+      }
+    }
+  },
+  "spec_policy": {
+    "require_what_and_why": true,
+    "require_provenance": true,
+    "protected_specs": [
+      "src/docs/README.md"
+    ]
+  },
+  "validation": {
+    "generator_runtime": "claude-code",
+    "generator_model": "claude-sonnet-5-5",
+    "generator_runtime_source": "host-metadata",
+    "minimum_independence": "different-runtime",
+    "blocking_severities": [
+      "Blocking"
+    ],
+    "validator_runtime": "codex",
+    "validator_run_id": "01a1ac84-8211-73a1-bad5-41e2bb381d6a",
+    "validator_runtime_source": "invocation-input",
+    "runtime_fallback_tier": "different-runtime"
+  },
+  "layout": {
+    "sdd_root": ".sdd",
+    "docs_root": "docs",
+    "agent_entry_path": "AGENTS.md",
+    "standing_docs_root": "docs",
+    "spec_index_path": "docs/specs/README.md",
+    "module_docs_strategy": "source-local",
+    "module_docs_relative_path": "docs/README.md",
+    "module_docs_decision": {
+      "basis": "repo-standards-default",
+      "reason": "No module-local documentation existed under src/. The source-local default gives src/docs/README.md. build:src processes -js -ts only and tsc includes only .ts sources, so Markdown under src/ does not enter the build output.",
+      "decided_by": "riag@cisco.com (bootstrap questionnaire)",
+      "decided_at": "2026-11-05T13:16:22Z"
+    },
+    "repo_context_decision": {
+      "path": ".repo-context.json",
+      "schema_path": "schemas/repo-context.schema.json",
+      "action": "create",
+      "schema_action": "create",
+      "reason": "Neither the operational context nor its schema existed in this package. The context is created from package evidence and the schema is copied from the repository-root .sdd/templates/repo-standards/schemas/repo-context.schema.json.",
+      "decided_by": "riag@cisco.com (bootstrap questionnaire)",
+      "decided_at": "2026-11-05T13:16:22Z"
+    },
+    "artifact_decisions": [
+      {
+        "path": "docs/service.md",
+        "action": "omit",
+        "reason": "Library package, not a deployable service. package.json has no start script, container, or deployment descriptor.",
+        "decided_by": "claude-code (code evidence)",
+        "decided_at": "2026-11-05T13:16:22Z"
+      },
+      {
+        "path": "mkdocs.yml",
+        "action": "omit",
+        "reason": "No package-level documentation site exists. Documentation publishing stays with the workspace (build:docs writes typedoc output to the repository docs folder).",
+        "decided_by": "claude-code (code evidence)",
+        "decided_at": "2026-11-05T13:16:22Z"
+      },
+      {
+        "path": "api-specs/openapi.yaml",
+        "action": "omit",
+        "reason": "The package serves no HTTP routes. Its published surface is the npm export described by cypher-encryption-sdk.",
+        "decided_by": "claude-code (code evidence)",
+        "decided_at": "2026-11-05T13:16:22Z"
+      },
+      {
+        "path": "SECURITY.md",
+        "action": "omit",
+        "reason": "No package-level security policy exists. The workspace owns security policy; security architecture is described in docs/architecture.md.",
+        "decided_by": "claude-code (code evidence)",
+        "decided_at": "2026-11-05T13:16:22Z"
+      },
+      {
+        "path": "CONTRIBUTING.md",
+        "action": "omit",
+        "reason": "Contribution instructions are owned at the workspace root and linked from the package README.md.",
+        "decided_by": "claude-code (code evidence)",
+        "decided_at": "2026-11-05T13:16:22Z"
+      },
+      {
+        "path": "CHANGELOG.md",
+        "action": "omit",
+        "reason": "Changelog generation is owned at the workspace root. This package has no changelog file.",
+        "decided_by": "claude-code (code evidence)",
+        "decided_at": "2026-11-05T13:16:22Z"
+      },
+      {
+        "path": "CTO_CHECKLIST.yml",
+        "action": "omit",
+        "reason": "The CTO readiness checklist applies to deployable services. This package is a library.",
+        "decided_by": "claude-code (code evidence)",
+        "decided_at": "2026-11-05T13:16:22Z"
+      },
+      {
+        "path": "schemas/cto-checklist.schema.json",
+        "action": "omit",
+        "reason": "Omitted together with CTO_CHECKLIST.yml.",
+        "decided_by": "claude-code (code evidence)",
+        "decided_at": "2026-11-05T13:16:22Z"
+      }
+    ],
+    "template_roots": {
+      "canonical": ".sdd/templates/repo-standards"
+    },
+    "contract_index_path": "docs/architecture.md",
+    "repo_skills_root": ".sdd/skills",
+    "monorepo_package": {
+      "package_path": "packages/@webex/plugin-encryption",
+      "root_manifest_path": "../../../.sdd/manifest.json",
+      "templates_root_path": "../../../.sdd/templates/repo-standards"
+    }
+  },
+  "tooling": {
+    "sdlc_skills": {
+      "source_ref": "repo-annotation@2.3.1"
+    }
+  },
+  "coverage_ratchet": {
+    "enabled": true,
+    "waivers": []
+  },
+  "substrate": {
+    "source": "WebexTools/repo-standards@d89a7fe59126ae3ad9bac9ca352aa7f12b4c85dc",
+    "consumed": [
+      "@webex/eslint-config-legacy via .eslintrc.js",
+      "@webex/babel-config-legacy via babel.config.js",
+      "@webex/jest-config-legacy via jest.config.js",
+      "@webex/legacy-tools build and test runner via package.json",
+      "package README.md",
+      "Repo Standards templates at the monorepo root .sdd/templates/repo-standards, referred to through layout.monorepo_package.templates_root_path (this package holds no templates)"
+    ],
+    "compliance_tier": "baseline"
+  },
+  "section_profiles": {
+    "repo": {
+      "owns_datastore": false,
+      "holds_client_state": true,
+      "components_interact": true,
+      "domain_data_across_components": true,
+      "caches_data": false,
+      "observability_convention": true,
+      "deploys_to_infra": false,
+      "shared_base_libs": true,
+      "is_monorepo": false,
+      "multi_platform": false,
+      "published_package": true,
+      "embedded_in_host": false,
+      "cross_repo_deps_material": true,
+      "security_arch_warranted": true,
+      "exposes_commands_or_artifacts": true
+    },
+    "resolved_by": "claude-code (code evidence; bootstrap questionnaire)",
+    "resolved_at": "2026-11-05T13:16:22Z"
+  }
+}
