@@ -1,0 +1,72 @@
+# TEMPORARY: exercises the Test - Browser job from pull-request.yml (including the
+# "Set up HTTPS for Karma" step) on push, since pull_request_target always runs next's copy.
+name: Debug - Karma HTTPS
+
+on:
+  push:
+    branches: [debug/karma-https-ci*]
+
+env:
+  SKIP_FLAKY_TESTS: ${{ secrets.SKIP_FLAKY_TESTS }}
+  WEBEX_APPID_ORGID: ${{ secrets.WEBEX_APPID_ORGID }}
+  WEBEX_APPID_SECRET: ${{ secrets.WEBEX_APPID_SECRET }}
+  WEBEX_CLIENT_ID: ${{ secrets.WEBEX_CLIENT_ID }}
+  WEBEX_CLIENT_SECRET: ${{ secrets.WEBEX_CLIENT_SECRET }}
+
+jobs:
+  test-browser:
+    name: Test - Browser
+    runs-on: ubuntu-latest
+    timeout-minutes: 60
+
+    steps:
+      - name: Checkout Project
+        uses: actions/checkout@v6
+        with:
+          persist-credentials: false
+
+      - name: Setup Node
+        uses: actions/setup-node@v6
+        with:
+          node-version-file: '.nvmrc'
+          registry-url: 'https://registry.npmjs.org'
+          cache: 'yarn'
+
+      - name: Write Environment Variables
+        run: |
+          touch ./.env
+          echo "SKIP_FLAKY_TESTS=\"${{ secrets.SKIP_FLAKY_TESTS }}\"" >> ./.env
+          echo "WEBEX_APPID_ORGID=\"${{ secrets.WEBEX_APPID_ORGID }}\"" >> ./.env
+          echo "WEBEX_APPID_SECRET=\"${{ secrets.WEBEX_APPID_SECRET }}\"" >> ./.env
+          echo "WEBEX_CLIENT_ID=\"${{ secrets.WEBEX_CLIENT_ID }}\"" >> ./.env
+          echo "WEBEX_CLIENT_SECRET=\"${{ secrets.WEBEX_CLIENT_SECRET }}\"" >> ./.env
+
+      - name: Install Dependencies
+        run: yarn
+
+      - name: Build Tools
+        run: yarn workspaces foreach --from '@webex/*-tools' --topological-dev --parallel --verbose run build:src
+
+      - name: Build Webex Core
+        run: yarn workspace @webex/webex-core run build:src
+
+      - name: Build Other Packages
+        run: yarn workspaces foreach --parallel --topological --verbose run build:src
+
+      # Webex services only accept CORS requests from allow-listed origins, so Karma is served from
+      # https://localhost.webex.com (resolves to 127.0.0.1) on port 443 with a mkcert certificate.
+      - name: Set up HTTPS for Karma
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y mkcert libnss3-tools
+          # mkcert -install only adds its CA to NSS databases that already exist (used by Chrome).
+          mkdir -p "$HOME/.pki/nssdb"
+          [ -f "$HOME/.pki/nssdb/cert9.db" ] || certutil -d "sql:$HOME/.pki/nssdb" -N --empty-password
+          mkcert -install
+          # localhost.webex.com resolves to 127.0.0.1 publicly; pin it so DNS can't interfere.
+          echo "127.0.0.1 localhost.webex.com" | sudo tee -a /etc/hosts
+          sudo sysctl -w net.ipv4.ip_unprivileged_port_start=443
+          echo "KARMA_HTTPS=true" >> "$GITHUB_ENV"
+
+      - name: Test - Browser
+        run: yarn workspaces foreach --verbose --exclude webex-js-sdk --include '@webex/webex-core' run test:browser
