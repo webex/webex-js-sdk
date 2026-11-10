@@ -285,6 +285,12 @@ describe('Karma', () => {
           expect(karmaConfig.httpsServerOptions).toBeUndefined();
         }));
 
+      it('should reject when the karma config cannot be parsed and https is not enabled', () => {
+        spies.KarmaRunner.config.parseConfig.and.rejectWith(new Error('bad config'));
+
+        return expectAsync(Karma.test(config)).toBeRejectedWithError('bad config');
+      });
+
       describe('when https is enabled', () => {
         let https;
 
