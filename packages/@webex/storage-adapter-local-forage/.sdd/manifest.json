@@ -8,11 +8,11 @@
       "javascript"
     ]
   },
-  "topology": "Single-repo",
+  "topology": "Orchestrator-plus-components",
   "commands": {
     "install": {
       "command": "yarn install",
-      "source_file": "package.json",
+      "source_file": "../../../package.json",
       "role": "install"
     },
     "compile": "[NEEDS HUMAN INPUT] -- no standalone compile step exists; build:src transpiles src into dist and emits the distributable output in one step, so there is no compile-only command.",
@@ -36,6 +36,11 @@
       "command": "yarn workspace @webex/storage-adapter-local-forage deploy:npm",
       "source_file": "package.json",
       "role": "deploy"
+    },
+    "consumer-install": {
+      "command": "npm install --save @webex/storage-adapter-local-forage",
+      "source_file": "README.md",
+      "role": "other"
     }
   },
   "toolchain": [
@@ -66,8 +71,8 @@
   "modules": [
     {
       "path": "src/",
-      "coverage_status": "Untracked",
-      "coverage_evidence": "Generator-side field measurement complete 2026-10-06: 93%, 13 of 14 mandatory fields PRESENT, critical 7 of 7. The canonical spec at src/docs/README.md records 13 requirements and 1 invariant. The one WEAK field is test and characterization coverage: no automated test executes the module (the shared suite is skipped in Node and cannot load under Karma with Mocha) and no characterization baseline exists; one is required before risky modification. Independent validation on 2026-10-06 found no Blocking spec/code drift; status remains Untracked while the behavioral test and characterization gaps remain.",
+      "coverage_status": "Partial",
+      "coverage_evidence": "Generator-side field measurement complete 2026-11-09: 93%, 13 of 14 mandatory fields PRESENT, critical 7 of 7. The canonical spec at src/docs/README.md records 13 requirements and 1 invariant; the 2026-11-09 reconcile found no spec/code drift and refreshed dependency evidence to the webex-core storage sub-module spec. Promoted Untracked -> Partial on 2026-11-09 by rsarika@cisco.com (default policy: field score >=40% and drift <10%). The one WEAK field is test and characterization coverage: no automated test executes the module (the shared suite is skipped in Node and is expected to fail at load under Karma with Mocha) and no characterization baseline exists; that gap blocks promotion to Specced. Independent validation on 2026-11-10 by runtime codex passed with warnings: 0 Blocking and 2 Important findings (I-01, I-02).",
       "canonical_spec": "src/docs/README.md",
       "contracts": {
         "provides": [
@@ -81,7 +86,7 @@
           "localforage-api"
         ]
       },
-      "last_assessed": "2026-10-06",
+      "last_assessed": "2026-11-09",
       "section_profile": {
         "has_ui": false,
         "crosses_service_boundaries": false,
@@ -142,7 +147,7 @@
         "kind": "sdk",
         "publication": "published",
         "source_kind": "external",
-        "source": "Workspace package @webex/webex-core (workspace paths packages/@webex/webex-core/src/lib/storage/errors.js and packages/@webex/webex-core/src/lib/storage/make-webex-store.js; no canonical spec exists)",
+        "source": "Workspace package @webex/webex-core (workspace paths packages/@webex/webex-core/src/lib/storage/make-webex-store.js and packages/@webex/webex-core/src/lib/storage/errors.js; canonical spec packages/@webex/webex-core/src/lib/storage/docs/README.md)",
         "summary": "The SDK storage layer that drives the adapter: it calls bind(namespace, {logger}) once per namespace, caches the binding, routes get/put/del/clear to it, and treats a NotFoundError rejection as no data. It also exports the NotFoundError class this package rejects with."
       },
       "localforage-api": {
@@ -154,6 +159,28 @@
       }
     }
   },
+  "spec_source_policy": {
+    "mode": "reconcile",
+    "migrated_source_disposition": "retain",
+    "disposition_decided_by": "rsarika@cisco.com",
+    "disposition_decided_at": "2026-11-09T11:55:37Z",
+    "decided_by": "rsarika@cisco.com",
+    "decided_at": "2026-11-09T11:55:37Z",
+    "decision_record": ".generated/sdd/spec-source-policy/decision.md"
+  },
+  "spec_sources": [
+    {
+      "path": "README.md",
+      "scope": "repo",
+      "role": "source-material",
+      "canonical": false,
+      "use_by_agents": "source-for-reconciliation",
+      "canonical_target": "docs/getting-started.md",
+      "post_migration_action": "retain",
+      "deletion_status": "not-applicable",
+      "notes": "Native npm-facing readme. Its install command reconciles into docs/getting-started.md (consumer install) and its purpose statement into docs/index.md and docs/architecture.md; its contribution and maintainer pointers stay owned at the workspace root. Remains the authoritative npm readme in place, unchanged by this run, and is never a deletion candidate."
+    }
+  ],
   "spec_policy": {
     "require_what_and_why": true,
     "require_provenance": true,
@@ -164,16 +191,16 @@
   "validation": {
     "generator_runtime": "claude-code",
     "generator_model": "claude-opus-5-5",
-    "generator_run_id": "38a5740d-1d53-4ce6-aa9a-25bf0a1911e4",
+    "generator_run_id": "727b3c81-99c9-47f8-8f45-88547401958e",
     "generator_runtime_source": "host-metadata",
     "minimum_independence": "different-runtime",
     "blocking_severities": [
       "Blocking"
     ],
-    "source_commit": "94dd92abed",
+    "source_commit": "696c161e6e",
     "base_ref": "next",
-    "head_ref": "next",
-    "validator_runtime": "use-codex",
+    "head_ref": "chore/spec-validator-local-forage",
+    "validator_runtime": "codex",
     "validator_runtime_source": "human-provided",
     "runtime_fallback_tier": "different-runtime"
   },
@@ -196,7 +223,7 @@
       "schema_path": "schemas/repo-context.schema.json",
       "action": "create",
       "schema_action": "create",
-      "reason": "Neither the operational context nor its schema exists in this package; both are created from the Repo Standards templates and verified package evidence.",
+      "reason": "Neither the operational context nor its schema existed in this package at first onboarding (2026-10-06); both were created from the monorepo-root .sdd/templates/repo-standards snapshot (reached through layout.monorepo_package.templates_root_path) and verified package evidence. The 2026-11-09 refresh updates the context in place; the schema is unchanged and byte-identical to the root snapshot copy. The package holds no templates of its own.",
       "decided_by": "claude-code (bootstrap questionnaire)",
       "decided_at": "2026-10-06T11:32:37Z"
     },
@@ -262,12 +289,17 @@
       "canonical": ".sdd/templates/repo-standards"
     },
     "repo_skills_root": ".sdd/skills",
-    "contract_index_path": "docs/architecture.md"
+    "contract_index_path": "docs/architecture.md",
+    "monorepo_package": {
+      "package_path": "packages/@webex/storage-adapter-local-forage",
+      "root_manifest_path": "../../../.sdd/manifest.json",
+      "templates_root_path": "../../../.sdd/templates/repo-standards"
+    }
   },
   "substrate": {
     "source": "WebexTools/repo-standards@d89a7fe59126ae3ad9bac9ca352aa7f12b4c85dc",
     "consumed": [
-      "the workspace-root .sdd/templates/repo-standards snapshot, shared rather than copied into this package by owner instruction (verified against the bundled snapshot on 2026-10-06)",
+      "the monorepo-root .sdd/templates/repo-standards snapshot, referred to through layout.monorepo_package.templates_root_path and never copied or linked into this package (resolve_templates.py --check passed against the bundled snapshot on 2026-11-09)",
       "@webex/eslint-config-legacy via .eslintrc.js",
       "@webex/babel-config-legacy via babel.config.js",
       "@webex/jest-config-legacy via jest.config.js",
@@ -296,5 +328,10 @@
     },
     "resolved_by": "claude-code/claude-opus-5-5 (host metadata; bootstrap questionnaire)",
     "resolved_at": "2026-10-06T11:27:43Z"
+  },
+  "tooling": {
+    "sdlc_skills": {
+      "source_ref": "repo-annotation@2.3.1"
+    }
   }
 }

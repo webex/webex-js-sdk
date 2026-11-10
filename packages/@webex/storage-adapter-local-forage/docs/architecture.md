@@ -9,7 +9,7 @@ doc_kind: standing-doc
 generated_from: architecture@0.3.0
 generated_by: claude-code
 approved_by: rsarika@cisco.com
-updated_at: 2026-10-06T12:02:00Z
+updated_at: 2026-11-10T00:00:00Z
 validation_status: pass-with-warnings
 -->
 
@@ -36,7 +36,7 @@ Related context: [specification registry](specs/README.md) ·
 | `repo.observability_convention`      | Applicable | `src/index.js` requires an injected logger and logs every operation under a fixed prefix | Observability patterns |
 | `repo.deploys_to_infra`              | N/A        | `package.json` declares a library with no deployable runtime | Runtime and infrastructure |
 | `repo.shared_base_libs`              | Applicable | `package.json`, `.eslintrc.js`, `babel.config.js`, and `jest.config.js` inherit shared workspace libraries and configuration | Shared and base libraries |
-| `repo.is_monorepo`                   | N/A        | The package is its own documentation root with one build (owner-confirmed 2026-10-06); sibling workspace packages are dependencies | Package map and dependencies |
+| `repo.is_monorepo`                   | N/A        | The onboarding scope is this one package with one build (owner-confirmed 2026-10-06 and 2026-11-09). The monorepo root only routes to it and holds the shared templates; sibling workspace packages are dependencies | Package map and dependencies |
 | `repo.multi_platform`                | N/A        | `src/index.js` is browser-only, and `test/unit/spec/storage-adapter-local-forage.js` skips in Node | Platform matrix |
 | `repo.published_package`             | Applicable | `package.json` declares npm entry points and a deploy:npm script | Release and versioning |
 | `repo.embedded_in_host`              | Applicable | A host plugs the adapter into its Webex SDK storage configuration; `src/index.js` implements that contract | Host integration and theming |
@@ -96,9 +96,9 @@ flowchart LR
 | Dependency | Type | Used by | Purpose | Version, failure, or fallback policy |
 | ---------- | ---- | ------- | ------- | ------------------------------------ |
 | `localforage` | External | `src/` | All persistence through the default instance | `^1.7.3` in `package.json`, resolving to 1.10.0; flagged stale by the workspace unmaintained-dependency catalog; no fallback when no driver exists |
-| `@webex/common` | Internal (workspace) | `src/` | `oneFlight` decorator for `get` and `del` | `workspace:*`; documented by its own canonical spec |
-| `@webex/webex-core` | Internal (workspace) | `src/` | `NotFoundError` type; also the runtime caller of the adapter | `workspace:*`; no canonical spec yet, so behavior is taken from its storage-layer code |
-| `@webex/storage-adapter-spec` | Internal (workspace) | Package test | Shared conformance suite | `workspace:*`; declared as a runtime dependency though only the test imports it |
+| `@webex/common` | Internal (workspace) | `src/` | `oneFlight` decorator for `get` and `del` | `workspace:*`; documented by its own canonical spec (sibling package `packages/@webex/common`, file `src/docs/README.md`) |
+| `@webex/webex-core` | Internal (workspace) | `src/` | `NotFoundError` type; also the runtime caller of the adapter | `workspace:*`; documented by its storage sub-module spec (sibling package `packages/@webex/webex-core`, file `src/lib/storage/docs/README.md`), cross-checked against its storage code because that spec is rated Partial |
+| `@webex/storage-adapter-spec` | Internal (workspace) | Package test | Shared conformance suite | `workspace:*`; declared as a runtime dependency though only the test imports it. Its spec (sibling package `packages/@webex/storage-adapter-spec`, file `src/docs/README.md`) is rated Untracked, so its code is authoritative |
 
 There are no cycles: this package depends on `@webex/common` and `@webex/webex-core`, and neither of
 them imports it. The single point of failure is the browser storage engine behind `localforage`.
@@ -208,7 +208,7 @@ schema.
 | `build` (runs the `build:src` script) | Package | `src/` | `dist/index.js` and source maps through `webex-legacy-tools build` | `dist/index.js` is the published `main` entry |
 | `deploy:npm` | Package | Built `dist/` and `package.json` | Publishes the package to npm | Run by the workspace release workflow |
 | `test:style` | Package | `./src/**/*.*` | ESLint report | Markdown under `src/` matches the glob but is ignored by the shared ESLint configuration |
-| `test:browser` | Package | `test/unit` | Karma run (unit scope) | Not the canonical unit-test command; the shared suite cannot load under Mocha |
+| `test:browser` | Package | `test/unit` | Karma run (unit scope); CI's `Test - Browser` job runs it for every changed workspace | Not the canonical unit-test command; the shared suite cannot load under Mocha, so that CI run is expected to fail at load (derived from code, not measured) |
 
 <!-- Include if: trust boundaries or identity flows warrant a dedicated architectural view. [condition-id: repo.security_arch_warranted] -->
 
@@ -247,11 +247,14 @@ flowchart LR
 | Binding | The object `bind(namespace, options)` resolves, exposing `get`, `put`, `del`, and `clear` for one namespace | `src/index.js` |
 | Namespace | The SDK plugin's storage namespace; the first segment of every stored key | `src/index.js` |
 | Composed key | `${namespace}/${key}`, the record key actually stored in `localforage` | `src/index.js` |
-| Bounded and unbounded storage | The SDK's two storage slots; the in-repo host uses this adapter for the unbounded slot | `.sdd/manifest.json` (contract webex-core-storage-layer, external to this package) |
+| Bounded and unbounded storage | The SDK's two storage slots; the in-repo host uses this adapter for the unbounded slot | `.sdd/manifest.json` (contract webex-core-storage-layer, external to this package and specified by the webex-core storage sub-module spec) |
 | Stored null | A record whose value is `null`; `get` resolves it, unlike a missing key, which rejects | `src/index.js` |
 
 ## References and maintenance
 
+- Maintainers: `README.md` states that the package is maintained by
+  [Cisco Webex for Developers](https://developer.webex.com/). Code ownership in the workspace
+  CODEOWNERS file is `@webex/web-client`, the owner used throughout this documentation.
 - Decisions: [adr/](adr/index.md)
 - Instantiated specifications and routing: [specs/README.md](specs/README.md)
 - Module specification: [src/docs/README.md](../src/docs/README.md)

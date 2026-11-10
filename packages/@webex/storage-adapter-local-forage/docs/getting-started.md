@@ -9,7 +9,7 @@ doc_kind: standing-doc
 generated_from: getting-started@0.3.0
 generated_by: claude-code
 approved_by: rsarika@cisco.com
-updated_at: 2026-10-06T11:32:37Z
+updated_at: 2026-11-10T00:00:00Z
 validation_status: pass-with-warnings
 -->
 
@@ -23,7 +23,7 @@ workspace. Run every command below from the workspace root.
 | Tool or access                         | Version or requirement |
 | -------------------------------------- | ---------------------- |
 | Node.js                                | `>=18` per `engines` in `package.json`; the workspace's contributor instructions use Node 22.14 through nvm |
-| Yarn                                   | The workspace's pinned Yarn 3 release (the package scripts call `yarn`) |
+| Yarn                                   | `yarn@3.4.1`, pinned by `packageManager` in the workspace-root `package.json` (the package scripts call `yarn`) |
 | Browser                                | Needed to exercise the adapter at all; it has no Node storage driver |
 | Container, registry, VPN, or account   | N/A; dependencies resolve from the public npm registry configured at the workspace root |
 
@@ -34,6 +34,13 @@ Clone the Webex JS SDK repository (`https://github.com/webex/webex-js-sdk.git`, 
 
 ```bash
 yarn install
+```
+
+A host application that consumes the published package installs it from npm instead, as
+`README.md` documents:
+
+```bash
+npm install --save @webex/storage-adapter-local-forage
 ```
 
 ## Build
@@ -64,7 +71,9 @@ yarn workspace @webex/storage-adapter-local-forage test:browser
 This package has no canonical unit-test command. `package.json` defines no `test:unit` script, and
 the owner confirmed on 2026-10-06 that none is canonical. The command above is the only committed
 test runner, but it is not a working tier: it runs Karma with Mocha, and the shared conformance suite
-it loads calls the Jest-only `beforeAll`. That result is derived from code and has not been measured.
+it loads calls the Jest-only `beforeAll`, which Mocha does not define, so the run is expected to fail
+while loading the suite. CI's `Test - Browser` job runs this command in every changed workspace, so a
+change to this package triggers that run. That result is derived from code and has not been measured.
 Do not run the aggregate `test` script; it chains `test:unit` and `test:integration`, neither of which
 exists in this package.
 
@@ -100,6 +109,11 @@ Expected result: the build writes `dist/index.js` with a source map, and ESLint 
 
 ## Next steps
 
+- This is a part of the Cisco Webex JS SDK. For SDK-level usage, see the
+  [developer portal](https://developer.webex.com/) and the
+  [API docs](https://webex.github.io/webex-js-sdk/api/), as `README.md` points out.
+- Pull requests are welcome. Contribution guidelines are in `CONTRIBUTING.md` at the Webex JS SDK
+  workspace root, not in this package.
 - [Repository architecture](architecture.md)
 - [Specification registry](specs/README.md)
 - [Documentation index](index.md)

@@ -3,7 +3,7 @@ doc_kind: agent-entry
 generated_from: agents@0.3.0
 generated_by: claude-code
 approved_by: rsarika@cisco.com
-updated_at: 2026-10-06T11:51:18Z
+updated_at: 2026-11-10T00:00:00Z
 validation_status: pass-with-warnings
 -->
 
@@ -41,6 +41,12 @@ publishes two contracts: `local-forage-storage-adapter`, an npm package surface 
 is the entry point declared in `package.json`, and `local-forage-indexeddb-store`, the on-device record
 layout defined in `src/index.js`. There is no OpenAPI document because the package serves no HTTP. The
 manifest remains authoritative for canonical paths and artifact decisions.
+
+The SDD templates are the shared monorepo-root snapshot at `../../../.sdd/templates/repo-standards`,
+reached through `layout.monorepo_package.templates_root_path`. The package holds no templates: do not
+create a package-level `.sdd/templates` directory, copy, or symlink. Refresh the root snapshot
+instead. The monorepo-root routing manifest at `../../../.sdd/manifest.json`
+(`layout.monorepo_package.root_manifest_path`) lists this package.
 
 ## 1. Commands (Run First)
 
@@ -100,9 +106,9 @@ Definition of done:
   conformance suite inside `skipInNode(describe)` and declares no case of its own.
 - `docs/`: package-wide standing documentation (index, architecture, getting started, spec registry,
   ADR index).
-- `.sdd/manifest.json`: SDD routing, coverage state, contracts, and artifact decisions. The Repo
-  Standards template snapshot is shared from the workspace root's `.sdd/templates/repo-standards`
-  and is not copied into this package.
+- `.sdd/manifest.json`: SDD routing, coverage state, contracts, artifact decisions, and the route back
+  to the monorepo root (`layout.monorepo_package`). The Repo Standards templates live only in the
+  monorepo root's `.sdd/templates/repo-standards`.
 - `process`: a one-line module exporting `{browser: true}`; nothing in this package or its build
   tooling references it.
 - `jest.config.js`, `babel.config.js`, `.eslintrc.js`: thin files over shared workspace configuration.
@@ -126,7 +132,8 @@ Definition of done:
 
 Run checks in this order:
 
-1. No unit tier executes today. Do not treat a green `test:browser` run as evidence of behavior.
+1. No unit tier executes today. In Node the suite is skipped, and the `test:browser` run that CI starts
+   for a change here is expected to fail while loading the suite. Neither is evidence of behavior.
 2. `yarn workspace @webex/storage-adapter-local-forage test:style`
 3. `yarn workspace @webex/storage-adapter-local-forage build`
 

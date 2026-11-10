@@ -9,7 +9,7 @@ doc_kind: module-spec
 generated_from: module-spec@0.3.0
 generated_by: claude-code
 approved_by: rsarika@cisco.com
-updated_at: 2026-10-06T12:05:00Z
+updated_at: 2026-11-10T00:00:00Z
 validation_status: pass-with-warnings
 -->
 
@@ -34,12 +34,12 @@ Related context: [repository architecture](../../docs/architecture.md) ·
 | Source path       | `src/` |
 | Resource kind     | Published npm package module (browser storage adapter) |
 | Status            | Active |
-| Last verified     | 2026-10-06 at `94dd92abed` |
+| Last verified     | 2026-11-09 at `696c161e6e` |
 | Module id         | `storage-adapter-local-forage` |
 | Parent spec       | — |
 | Doc kind          | Module spec |
-| Coverage score    | 93% assessed 2026-10-06; 13 of 14 mandatory fields present, critical fields 7 of 7. Weak field: test and characterization coverage (no executing test, no characterization baseline) |
-| Validation status | pass-with-warnings; validator `codex`, assessed 2026-10-06; 0 Blocking findings and 2 Important findings |
+| Coverage score    | 93% assessed 2026-11-09; 13 of 14 mandatory fields present, critical fields 7 of 7. Generator-side field measurement is complete. Weak field: test and characterization coverage (no executing test, no characterization baseline). Coverage state Partial (promoted from Untracked on 2026-11-09; no spec/code drift found) |
+| Validation status | Pass-with-warnings, validated 2026-11-10 by runtime `codex`; 0 Blocking and 2 Important findings (I-01, I-02) |
 
 ## Applicability
 
@@ -66,7 +66,8 @@ Related context: [repository architecture](../../docs/architecture.md) ·
 ## Evidence register
 
 Rationale in this specification comes from code, tests, the canonical specifications of dependency
-packages, and owner answers recorded on 2026-10-06. Commit history is not used as evidence.
+packages, and owner answers recorded on 2026-10-06 and re-confirmed on 2026-11-09. Commit history is
+not used as evidence.
 
 | Evidence | What it establishes |
 | -------- | ------------------- |
@@ -75,13 +76,24 @@ packages, and owner answers recorded on 2026-10-06. Commit history is not used a
 | `package.json` | Entry points, runtime dependencies (including `localforage ^1.7.3`), scripts, and the absence of `test:unit` and `test:integration` scripts |
 | `README.md` | The npm-facing statement of purpose |
 | `.eslintrc.js`, `babel.config.js`, `jest.config.js` | All three inherit shared legacy configuration: the decorator transform, the Node Jest environment, and lint rules that ignore Markdown |
+| Workspace-root Jest configuration (file jest.config.js at the monorepo root) | Lists this package among its Jest projects with `testEnvironment: 'node'`, so a root Jest run also skips the suite |
+| Workspace pull-request workflow (file .github/workflows/pull-request.yml at the monorepo root) | The `Test - Browser` job runs `test:browser` in every changed workspace, so a change to this package triggers the Karma run |
+| Legacy tools Karma constants (sibling package packages/legacy/tools, file src/utils/karma/karma.constants.ts) | Karma loads the `mocha` framework, which provides `before` but not the Jest-style `beforeAll` the shared suite calls |
 
-Dependency facts were taken from the canonical specification of `@webex/common` (for `oneFlight`,
-cross-checked against its code because that spec is rated Partial) and of
-`@webex/storage-adapter-spec` (whose code is authoritative because that spec is rated Untracked).
-`@webex/webex-core` has no specification, so its storage-layer code was read directly.
-`localforage` behavior was read from version 1.10.0, the version the workspace lockfile resolves for
-`^1.7.3`.
+Dependency facts come from each dependency's canonical specification where one exists, and from its
+code otherwise:
+
+- `@webex/common`: its module spec (sibling package `packages/@webex/common`, file
+  `src/docs/README.md`, `MOD-002` for `oneFlight`). That spec is rated Partial, so the facts were
+  cross-checked against its `src/one-flight.js`.
+- `@webex/webex-core`: its storage sub-module spec (sibling package `packages/@webex/webex-core`, file
+  `src/lib/storage/docs/README.md`), cited by requirement ID below. That spec is rated Partial, so the
+  facts were cross-checked against `src/lib/storage/make-webex-store.js` and
+  `src/lib/storage/errors.js` in the same package.
+- `@webex/storage-adapter-spec`: its module spec (sibling package `packages/@webex/storage-adapter-spec`,
+  file `src/docs/README.md`). That spec is rated Untracked, so its `src/index.js` is authoritative.
+- `localforage`: no specification exists in this repository. Its behavior was read from version
+  1.10.0, the version the workspace lockfile resolves for `^1.7.3`.
 
 ## Purpose and boundary
 
@@ -132,7 +144,7 @@ The published contract ids are `local-forage-storage-adapter` (the npm surface) 
 | ---------- | ------------------ | ---------------- |
 | `localforage` (npm `^1.7.3`, resolves to 1.10.0) | All persistence: `getItem`, `setItem`, `removeItem`, `keys`, and `clear` on the default instance | Its rejections propagate unchanged (`MOD-013` covers the no-driver case) |
 | `@webex/common` `oneFlight` | De-duplicates concurrent `get` and `del` calls | See Concurrency and reactive flow |
-| `@webex/webex-core` `NotFoundError` | The rejection type for a missing key | The storage layer treats any other rejection type as a real failure rather than "no data" |
+| `@webex/webex-core` `NotFoundError` | The rejection type for a missing key (`NotFoundError` extends `StorageError`; webex-core storage spec `MOD-033`) | The storage layer's hydration paths treat `NotFoundError` as "no data" and any other rejection as a real failure (webex-core storage spec `MOD-016`, `MOD-027`) |
 | Injected `options.logger` | Info and debug logging | Required by `bind`; a logger without `debug` makes later calls throw synchronously |
 | `@webex/storage-adapter-spec` | Shared conformance suite run by the package test | Test-only in practice (see Pitfalls and constraints) |
 | Browser storage engine (IndexedDB, else WebSQL, else `localStorage`) | Backing store selected by `localforage` | Quota, private-mode, and transaction errors surface as `localforage` rejections; the adapter does not retry |
@@ -403,8 +415,9 @@ missing-key versus stored-`null` distinction (`MOD-006`). One invariant has no r
   JSDoc still documents a `basekey` parameter that does not exist.
 - **Logout erasure depends on a binding existing.** A storage clears only bindings it has created in
   the current session, so persisted data survives logout when no namespace was accessed through it.
-- **The test never exercises the adapter.** A green CI run says nothing about this module's behavior;
-  see Verification.
+- **No passing run exercises the adapter.** In Node the suite is skipped, so a pass there says nothing
+  about this module. The Karma run that CI starts for a change to this package is expected to fail
+  while loading the suite. See Verification.
 - **Installing this package also installs the test suite.** `package.json` lists
   `@webex/storage-adapter-spec`, and with it its chai helper, under runtime `dependencies` although
   only the test imports it.
@@ -441,14 +454,16 @@ missing-key versus stored-`null` distinction (`MOD-006`). One invariant has no r
 ## Host integration and theming
 
 - Mount or entry contract: the host assigns an adapter instance to `storage.boundedAdapter` or
-  `storage.unboundedAdapter` in its Webex SDK configuration. The storage layer then calls
-  `bind(namespace, {logger: webex.logger})` once per namespace, caches the binding, and routes
-  `get`/`put`/`del`/`clear` to it.
+  `storage.unboundedAdapter` in its Webex SDK configuration. The storage layer reads the slot on each
+  use, calls `bind(namespace, {logger})` once per namespace, caches the binding (concurrent first
+  operations share one `bind`; a rejected `bind` is not cached), and routes `get`/`put`/`del`/`clear`
+  to it (webex-core storage spec `MOD-017`, `MOD-018`, `MOD-019`).
 - Required providers, peers, or host versions: the `@webex/webex-core` storage layer (for the binding
   lifecycle and `NotFoundError`), and a browser in which `localforage` finds a storage driver.
 - Theme and design-token contract: N/A; the module has no UI.
 - Accessibility and lifecycle obligations: no accessibility surface. Bindings live as long as the
-  storage layer that cached them; logout drives `clear()` as shown in the Clear diagram.
+  storage layer that cached them; logout drives `clear()` as shown in the Clear diagram. The storage
+  layer clears only bindings it created in this session (webex-core storage spec `MOD-022`).
 
 <!-- Include if: the module has a non-obvious design trade-off consumers or maintainers must preserve. [condition-id: module.has_design_tradeoff] -->
 
@@ -467,10 +482,13 @@ The package has no executing automated coverage:
 - `package.json` defines no `test:unit` script; the owner confirmed on 2026-10-06 that no canonical
   unit-test command exists.
 - Under the shared Jest configuration (Node environment) the test file's `skipInNode(describe)` skips
-  the suite.
+  the suite. The workspace-root Jest configuration also lists this package with a Node environment, so
+  the same skip applies there.
 - `test:browser` runs Karma with the Mocha framework, while the shared suite calls the Jest-only
-  `beforeAll` hook. This is derived from code and was not measured, because the generation worktree
-  had no installed dependencies.
+  `beforeAll` hook, which Mocha does not define. CI's `Test - Browser` job runs `test:browser` in
+  every changed workspace, so a change to this package is expected to fail while loading the suite
+  rather than run its cases. This is derived from code and was not measured, because the generation
+  worktree had no installed dependencies.
 
 This module has no characterization baseline. One is required before any risky modification. Every
 "none executing" entry below names a shared-suite case that exists but does not run.

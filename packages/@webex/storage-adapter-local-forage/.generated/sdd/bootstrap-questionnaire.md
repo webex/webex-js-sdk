@@ -195,3 +195,24 @@ Not applicable — no existing intent/design specs routed; no source-policy migr
 
 - Corrected module set / topology / contracts: one module `src/` (spec `src/docs/README.md`); topology Single-repo (package-level doc root); provides `local-forage-storage-adapter` (sdk, published) and `local-forage-indexeddb-store` (file, published); requires `storage-adapter-spec-suite`, `webex-common-js-api`, `webex-core-storage-layer`, `localforage-api`.
 - `[NEEDS HUMAN INPUT]` markers raised: 2 manifest command placeholders (`compile`: no standalone compile step; `unit-test`: owner-confirmed missing).
+
+## Re-run 2026-11-09 (root-templates refresh)
+
+- Runtime: claude-code (model claude-opus-5-5, run 727b3c81-99c9-47f8-8f45-88547401958e, host metadata) · Intensity: rigorous · Manifest persistence: approved (file-touch plan approved by rsarika@cisco.com 2026-11-09)
+- Git history: excluded as evidence (owner instruction, unchanged).
+
+| # | Question | Answer | Status | Evidence (file path) | Who answered | When |
+|---|---|---|---|---|---|---|
+| R0a | Scope and layout | Package `packages/@webex/storage-adapter-local-forage`; templates only at the monorepo root, docs/specs in the package | VERIFIED_FROM_DEVELOPER | `workspace:.sdd/manifest.json` (orchestrator-root) | rsarika@cisco.com (initial instruction) | 2026-11-09 |
+| R0b | Dependency evidence | Dependency specs when present, else code | VERIFIED_FROM_DEVELOPER | `workspace:packages/@webex/webex-core/src/lib/storage/docs/README.md` | rsarika@cisco.com (initial instruction) | 2026-11-09 |
+| R0c | Validation | Separate runtime; generator-only run | VERIFIED_FROM_DEVELOPER | n/a | rsarika@cisco.com (initial instruction) | 2026-11-09 |
+| R1 | How to treat the 2026-10-06 SDD docs | Reconcile; README.md retained | VERIFIED_FROM_DEVELOPER | `README.md`, `src/docs/README.md` | rsarika@cisco.com | 2026-11-09T11:55:37Z |
+| R2 | Protected spec differs from code-derived content | Merge in place; keep MOD/INV IDs | VERIFIED_FROM_DEVELOPER | `src/index.js`, `workspace:packages/@webex/webex-core/src/lib/storage/docs/README.md` | rsarika@cisco.com | 2026-11-09T11:55:37Z |
+| R3 | Root manifest invalid JSON (wdm entry) | Fix; `onboarded_by: claude-code` | VERIFIED_FROM_DEVELOPER | `workspace:packages/@webex/internal-plugin-wdm/AGENTS.md` | rsarika@cisco.com | 2026-11-09T11:55:37Z |
+| R4 | File-touch plan | Approved (package docs/manifest/context; root manifest, docs/index.md, .repo-context.json) | VERIFIED_FROM_DEVELOPER | n/a | rsarika@cisco.com | 2026-11-09T11:55:37Z |
+| R5 | Coverage promotion for `src/` | Promote Untracked → Partial | VERIFIED_FROM_DEVELOPER | `src/docs/README.md` | rsarika@cisco.com | 2026-11-09 |
+
+- Verified from code this run: webex-core now owns a storage sub-module spec (Partial), cross-checked against `make-webex-store.js` and `errors.js`; workspace-root `jest.config.js` lists this package with a Node environment; `.github/workflows/pull-request.yml` runs `test:browser` for changed workspaces; Karma uses the `mocha` framework and nothing defines `beforeAll`; root `package.json` pins `yarn@3.4.1`.
+- Section profiles: unchanged; re-confirmed against code (no new conditions apply).
+- Open conflicts: none. Blocking conflicts: none.
+- Older reports `conformance/bootstrap-2026-10-06T120200Z.md`, `coverage-review.md`, and `validation/2026-10-06.md` describe the 2026-10-06 content; this run's reports are `conformance/727b3c81.md`, `coverage/727b3c81.md`, and `source-fidelity/727b3c81/*.json`.

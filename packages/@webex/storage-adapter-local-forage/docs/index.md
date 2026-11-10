@@ -6,14 +6,15 @@ doc_kind: standing-doc
 generated_from: docs-index@0.3.0
 generated_by: claude-code
 approved_by: rsarika@cisco.com
-updated_at: 2026-10-06T11:32:37Z
+updated_at: 2026-11-10T00:00:00Z
 validation_status: pass-with-warnings
 -->
 
 # @webex/storage-adapter-local-forage documentation
 
-Doc map for developers and agents working on the browser storage adapter that persists Webex JS SDK
-data in IndexedDB through `localforage`.
+Doc map for developers and agents working on the Local Forage adapter for the Cisco Webex JS SDK: a
+browser storage adapter that persists Webex JS SDK data through `localforage`, which uses IndexedDB
+first and falls back to WebSQL, then `localStorage`.
 
 ## Start here
 
@@ -38,8 +39,8 @@ library with no deployable runtime and no HTTP surface, and both omissions are r
 - [specs/README.md](specs/README.md) — module and specification registry
 - [`src/docs/README.md`](../src/docs/README.md) — the owning specification beside the module's code:
   public surface, requirements, data layout, failure modes, hazards, and verification gaps
-- [adr/](adr/index.md) — concrete architectural decisions; the blank ADR template stays hidden in
-  the shared template snapshot
+- [adr/](adr/index.md) — concrete architectural decisions; the blank ADR template stays in the
+  monorepo-root template snapshot, which this package refers to and does not copy
 
 The package publishes two contracts. `local-forage-storage-adapter` is the npm package surface; its
 native source is the entry point declared by `main` and `devMain` in [`package.json`](../package.json),
@@ -53,3 +54,6 @@ the module specification details them; neither copies the declarations into Mark
   documentation)
 - Contribution guidelines, changelog generation, and the release pipeline are owned at the Webex JS
   SDK workspace root, not in this package
+- The monorepo-root routing manifest (`../../../.sdd/manifest.json`, reached through
+  `layout.monorepo_package.root_manifest_path` in `.sdd/manifest.json`) lists this package with the
+  other onboarded packages

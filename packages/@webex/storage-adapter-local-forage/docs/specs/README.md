@@ -9,7 +9,7 @@ doc_kind: standing-doc
 generated_from: spec-index@0.3.0
 generated_by: claude-code
 approved_by: rsarika@cisco.com
-updated_at: 2026-10-06T12:05:00Z
+updated_at: 2026-11-10T00:00:00Z
 validation_status: pass-with-warnings
 -->
 
@@ -35,10 +35,10 @@ because the package is a published library rather than a deployable service.
 
 | Resource | Role | Canonical path | Owner | Status | Last verified |
 | -------- | ---- | -------------- | ----- | ------ | ------------- |
-| `@webex/storage-adapter-local-forage` | Architecture | `docs/architecture.md` | `@webex/web-client` | Active | 2026-10-06 |
-| `src/` | Module | `src/docs/README.md` | `@webex/web-client` | Active | 2026-10-06 |
-| `local-forage-storage-adapter` | Contract | `package.json` | `@webex/web-client` | Active | 2026-10-06 |
-| `local-forage-indexeddb-store` | Contract | `src/index.js` | `@webex/web-client` | Active | 2026-10-06 |
+| `@webex/storage-adapter-local-forage` | Architecture | `docs/architecture.md` | `@webex/web-client` | Active | 2026-11-09 |
+| `src/` | Module | `src/docs/README.md` | `@webex/web-client` | Active | 2026-11-09 |
+| `local-forage-storage-adapter` | Contract | `package.json` | `@webex/web-client` | Active | 2026-11-09 |
+| `local-forage-indexeddb-store` | Contract | `src/index.js` | `@webex/web-client` | Active | 2026-11-09 |
 
 ### Module registry
 
@@ -47,16 +47,17 @@ human-readable mirror and the reconciliation surface for `check_spec_index.py`.
 
 | Module | Responsibility | Manifest coverage state | Start here |
 | --- | --- | --- | --- |
-| `src/` | `StorageAdapterLocalForage`: namespaced Webex storage-adapter bindings persisted in the browser's default `localforage` (IndexedDB) database | Untracked | `src/docs/README.md` |
+| `src/` | `StorageAdapterLocalForage`: namespaced Webex storage-adapter bindings persisted in the browser's default `localforage` (IndexedDB) database | Partial | `src/docs/README.md` |
 
 Generator-side field measurement for `src/` is complete: 93% (13 of 14 mandatory fields) assessed
-2026-10-06, with critical fields at 7 of 7. The score and its evidence summary are recorded in the
+2026-11-09, with critical fields at 7 of 7. The score and its evidence summary are recorded in the
 module specification's `Coverage score` metadata row.
 
-`src/` stays `Untracked` for now, and two gates hold promotion open. The one weak field is test and
-characterization coverage: no automated test executes the module and no characterization baseline
-exists. Promotion to `Partial` also needs a drift measurement, which independent validation has not
-produced yet.
+`src/` was promoted from `Untracked` to `Partial` on 2026-11-09 with owner approval: the field score
+is above the 40% threshold and the generator-side review found no spec/code drift. The one weak field
+is test and characterization coverage: no automated test executes the module and no characterization
+baseline exists, which keeps promotion to `Specced` closed. Independent validation of this refresh is
+still pending.
 
 ## Change and verification routing
 

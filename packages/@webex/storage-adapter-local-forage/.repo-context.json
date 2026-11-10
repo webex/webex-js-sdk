@@ -10,7 +10,8 @@
     "build": "yarn workspace @webex/storage-adapter-local-forage build",
     "lint": "yarn workspace @webex/storage-adapter-local-forage test:style",
     "browser-test": "yarn workspace @webex/storage-adapter-local-forage test:browser",
-    "deploy": "yarn workspace @webex/storage-adapter-local-forage deploy:npm"
+    "deploy": "yarn workspace @webex/storage-adapter-local-forage deploy:npm",
+    "consumer-install": "npm install --save @webex/storage-adapter-local-forage"
   },
   "public_interfaces": [
     {
@@ -127,9 +128,9 @@
   ],
   "generated_artifacts": [
     {
-      "path": ".sdd/templates/repo-standards/template-map.json",
+      "path": "../../../.sdd/templates/repo-standards/template-map.json",
       "generated_from": "WebexTools/repo-standards@d89a7fe59126ae3ad9bac9ca352aa7f12b4c85dc",
-      "refresh_with": "Owned at the Webex JS SDK workspace root: the Repo Standards snapshot lives in the root .sdd/templates/repo-standards and is shared with this package rather than copied into it; re-materialize it there with the active Repo Annotation installation's setup-skills.sh"
+      "refresh_with": "The package holds no templates. It refers to the monorepo root snapshot at ../../../.sdd/templates/repo-standards through layout.monorepo_package.templates_root_path in .sdd/manifest.json. Refresh the root snapshot with the active Repo Annotation installation's setup-skills.sh at the Webex JS SDK workspace root, not this package."
     },
     {
       "path": "dist",
@@ -227,7 +228,7 @@
         "Run the active Repo Annotation installation's check_manifest.py and check_spec_index.py against this package"
       ],
       "avoid_direct_edits": [
-        ".sdd/templates/repo-standards"
+        "../../../.sdd/templates/repo-standards"
       ],
       "notes": "The manifest is authoritative for module routing, coverage state, contracts, and artifact decisions; the specification registry is its human-readable mirror."
     },
@@ -302,10 +303,10 @@
     {
       "claim_category": "placeholder_token",
       "sources": [
-        ".sdd/templates/repo-standards/template-map.json"
+        "../../../.sdd/templates/repo-standards/template-map.json"
       ],
       "requirement": "Never ship a template placeholder in a generated document; replace it with verified package evidence or surface the gap as a blocking question.",
-      "notes": "The template map lives in the workspace-root snapshot."
+      "notes": "The template map lives in the monorepo-root snapshot, reached through layout.monorepo_package.templates_root_path."
     }
   ],
   "negative_guidance": [
@@ -319,7 +320,7 @@
     },
     {
       "rule": "Do not treat a green test or CI run as evidence of adapter behavior.",
-      "why": "No automated test executes this module: the suite is skipped in Node and cannot load under Karma with Mocha."
+      "why": "No automated test executes this module: the suite is skipped in Node, and under Karma with Mocha (the test:browser run CI starts for a change here) it is expected to fail while loading because Mocha does not define beforeAll."
     },
     {
       "rule": "Do not change the stored key format, database, or store name without a migration.",
@@ -331,7 +332,7 @@
     },
     {
       "rule": "Do not copy Repo Standards templates into this package.",
-      "why": "The owner chose to share the workspace-root template snapshot instead of a package-level copy."
+      "why": "The owner chose the root-templates layout: the package refers to the monorepo-root snapshot through layout.monorepo_package.templates_root_path and holds no templates, copies, or symlinks."
     }
   ],
   "confidence_policy": {
@@ -363,7 +364,7 @@
         "paths": [
           "package.json"
         ],
-        "notes": "One published library package inside the Webex JS SDK yarn workspace, documented as its own SDD root."
+        "notes": "One published library package inside the Webex JS SDK yarn workspace, documented as its own SDD root under the monorepo orchestrator root (../../../.sdd/manifest.json)."
       }
     ],
     "source_surfaces": [
@@ -396,11 +397,11 @@
       {
         "name": "Repo Standards template snapshot",
         "paths": [
-          ".sdd/templates/repo-standards"
+          "../../../.sdd/templates/repo-standards"
         ],
         "generated_from": "WebexTools/repo-standards@d89a7fe59126ae3ad9bac9ca352aa7f12b4c85dc",
-        "refresh_with": "Run the active Repo Annotation installation's setup-skills.sh at the Webex JS SDK workspace root",
-        "notes": "Resolved from the workspace-root .sdd/templates/repo-standards snapshot, which this package shares by owner instruction; no package-level copy exists."
+        "refresh_with": "The package holds no templates. It refers to the monorepo root snapshot at ../../../.sdd/templates/repo-standards through layout.monorepo_package.templates_root_path in .sdd/manifest.json. Refresh the root snapshot with the active Repo Annotation installation's setup-skills.sh at the Webex JS SDK workspace root, not this package.",
+        "notes": "The package holds no templates. It refers to the monorepo root snapshot at ../../../.sdd/templates/repo-standards through layout.monorepo_package.templates_root_path in .sdd/manifest.json. Refresh the root snapshot with the active Repo Annotation installation's setup-skills.sh at the Webex JS SDK workspace root, not this package."
       },
       {
         "name": "build output",
@@ -416,10 +417,10 @@
       {
         "source": "WebexTools/repo-standards@d89a7fe59126ae3ad9bac9ca352aa7f12b4c85dc",
         "targets": [
-          ".sdd/templates/repo-standards"
+          "../../../.sdd/templates/repo-standards"
         ],
-        "mechanism": "Run the active Repo Annotation installation's setup-skills.sh at the Webex JS SDK workspace root",
-        "notes": "The shared snapshot was verified against the bundled upstream snapshot on 2026-10-06."
+        "mechanism": "The package holds no templates. It refers to the monorepo root snapshot at ../../../.sdd/templates/repo-standards through layout.monorepo_package.templates_root_path in .sdd/manifest.json. Refresh the root snapshot with the active Repo Annotation installation's setup-skills.sh at the Webex JS SDK workspace root, not this package.",
+        "notes": "The monorepo-root snapshot was verified against the bundled upstream snapshot on 2026-11-09 (resolve_templates.py --check)."
       }
     ],
     "validation_entrypoints": [
@@ -450,7 +451,7 @@
     {
       "surface": "module specification and package standing documentation",
       "owner": "@webex/web-client",
-      "edit_boundary": "Generated from the shared Repo Standards templates and routed by .sdd/manifest.json; edit the generated documents in place."
+      "edit_boundary": "Generated from the monorepo-root Repo Standards templates and routed by .sdd/manifest.json; edit the generated documents in place."
     },
     {
       "surface": "build, lint, and test configuration",

@@ -90,6 +90,7 @@
       "agent_entry": "packages/@webex/internal-plugin-wdm/AGENTS.md",
       "index": "packages/@webex/internal-plugin-wdm/docs/index.md",
       "onboarded_at": "2026-10-28T14:44:56Z",
+      "onboarded_by": "claude-code"
     },
     {
       "id": "@webex/plugin-authorization-browser-first-party",
@@ -99,6 +100,15 @@
       "index": "packages/@webex/plugin-authorization-browser-first-party/docs/index.md",
       "onboarded_at": "2026-11-03T05:46:20Z",
       "onboarded_by": "claude-code"
+    },
+    {
+      "id": "@webex/storage-adapter-local-forage",
+      "path": "packages/@webex/storage-adapter-local-forage",
+      "manifest": "packages/@webex/storage-adapter-local-forage/.sdd/manifest.json",
+      "agent_entry": "packages/@webex/storage-adapter-local-forage/AGENTS.md",
+      "index": "packages/@webex/storage-adapter-local-forage/docs/index.md",
+      "onboarded_at": "2026-11-09T12:30:00Z",
+      "onboarded_by": "claude-code"
     }
   ],
   "substrate": {
@@ -107,7 +117,7 @@
   },
   "provenance": {
     "generated_by": "claude-code",
-    "approved_by": "rarajes2@cisco.com",
-    "updated_at": "2026-11-03T05:46:20Z"
+    "approved_by": "rsarika@cisco.com",
+    "updated_at": "2026-11-09T12:30:00Z"
   }
 }
