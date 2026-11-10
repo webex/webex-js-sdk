@@ -75,11 +75,18 @@ class Https {
   public static setup(): HttpsSetup {
     Https.assertCanBindPort();
 
-    const caRoot = Https.run('mkcert', ['-CAROOT'], 'mkcert must be installed and on the PATH');
+    const caRoot = Https.run(
+      'mkcert',
+      ['-CAROOT'],
+      'mkcert must be installed and on the PATH, run "yarn setup:karma-https" first',
+    );
     const caCertPath = path.join(caRoot, 'rootCA.pem');
 
     if (!fs.existsSync(caCertPath)) {
-      throw new Error(`${Https.ENV_VAR}: mkcert root CA not found at ${caCertPath}, run "mkcert -install" first`);
+      throw new Error(
+        `${Https.ENV_VAR}: mkcert root CA not found at ${caCertPath}, `
+        + 'run "mkcert -install" first (or "yarn setup:karma-https")',
+      );
     }
 
     const dir = fs.mkdtempSync(path.join(os.tmpdir(), 'karma-https-'));
@@ -107,7 +114,7 @@ class Https {
         createFirefoxProfile: () => {
           const profile = fs.mkdtempSync(path.join(dir, 'firefox-profile-'));
           const db = `sql:${profile}`;
-          const hint = 'certutil (libnss3-tools) must be installed and on the PATH';
+          const hint = 'certutil (libnss3-tools) must be installed and on the PATH, run "yarn setup:karma-https" first';
 
           Https.run('certutil', ['-N', '--empty-password', '-d', db], hint);
           Https.run('certutil', ['-A', '-n', 'mkcert development CA', '-t', 'C,,', '-i', caCertPath, '-d', db], hint);
@@ -137,7 +144,7 @@ class Https {
     if (unprivilegedPortStart > Https.PORT) {
       throw new Error(
         `${Https.ENV_VAR}: cannot listen on port ${Https.PORT}, `
-        + `run "sudo sysctl -w net.ipv4.ip_unprivileged_port_start=${Https.PORT}" first`,
+        + `run "sudo sysctl -w net.ipv4.ip_unprivileged_port_start=${Https.PORT}" first (or "yarn setup:karma-https")`,
       );
     }
   }
