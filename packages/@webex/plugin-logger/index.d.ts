@@ -34,6 +34,8 @@ export interface LogRecord extends LogMetadata {
   readonly body: string;
 }
 
+// Set logger.logAttributes to shared attributes for future records; explicit record attributes win.
+// Each record copies the attribute map. Nested values must remain unchanged after logging.
 // Keep existing JavaScript callers and instance-type imports compatible.
 declare const Logger: any;
 type Logger = InstanceType<typeof Logger>;

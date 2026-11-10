@@ -6,8 +6,7 @@ import {DESTINATION_TYPE} from '@webex/plugin-meetings/src/constants';
 import MeetingInfo from '@webex/plugin-meetings/src/meeting-info/index';
 import MeetingInfoUtil from '@webex/plugin-meetings/src/meeting-info/util';
 import MeetingInfoRequest from '@webex/plugin-meetings/src/meeting-info/request';
-
-const flushPromises = () => new Promise(setImmediate);
+import testUtils from '../../../utils/testUtils';
 
 describe('plugin-meetings', () => {
   let webex;
@@ -257,7 +256,7 @@ describe('plugin-meetings', () => {
 
           requestStub.resolves({});
 
-          await flushPromises();
+          await testUtils.flushPromises();
 
           submitInternalEventCalls = webex.internal.newMetrics.submitInternalEvent.getCalls();
           submitClientEventCalls = webex.internal.newMetrics.submitClientEvent.getCalls();
