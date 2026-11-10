@@ -82,6 +82,106 @@ const dumpActiveHandles = (label) => {
   /* eslint-enable no-console, no-underscore-dangle */
 };
 
+// Tag every webex instance with the spec location that created it, and once all tests have
+// finished, log every batcher request/flush so we can see which instance keeps the loop alive.
+let currentTest = '(before any test)';
+let instanceCounter = 0;
+let tracingBatchers = false;
+let batcherLogCount = 0;
+const MAX_BATCHER_LOGS = 40;
+
+const specFrames = (stack) =>
+  stack
+    .split('\n')
+    .filter((line) => line.includes('/test/integration/spec/') && !line.includes('zz-active-handles'))
+    .slice(0, 3)
+    .map((line) => line.trim())
+    .join(' <- ');
+
+const describeWebex = (webex) => {
+  if (!webex) {
+    return 'webex=<none>';
+  }
+  const services = webex.internal && webex.internal.services;
+  let servicesInfo = 'services=<none>';
+
+  if (services) {
+    let metricsUrl;
+    let catalogInfo = '';
+
+    try {
+      metricsUrl = services.get('metrics');
+    } catch (e) {
+      metricsUrl = `<error ${e.message}>`;
+    }
+    try {
+      const catalog = services._getCatalog();
+      const groups = catalog.serviceGroups || {};
+
+      catalogInfo = ` isReady=${catalog.isReady} groups=${Object.keys(groups)
+        .map((g) => `${g}:${(groups[g] || []).length}`)
+        .join(',')}`;
+    } catch (e) {
+      catalogInfo = ` catalog=<error ${e.message}>`;
+    }
+    const impl = typeof services.switchActiveClusterIds === 'function' ? 'ServicesV2' : 'Services';
+
+    servicesInfo = `services=${impl} metricsUrl=${metricsUrl}${catalogInfo}`;
+  }
+
+  return `webex=${webex.__debugTag || '<untagged>'} authed=${
+    webex.credentials && webex.credentials.canAuthorize
+  } ${servicesInfo}`;
+};
+
+if (isNode) {
+  // eslint-disable-next-line global-require
+  const webexCore = require('@webex/webex-core');
+  const WebexCore = webexCore.default;
+  const {Batcher} = webexCore;
+
+  const originalInitialize = WebexCore.prototype.initialize;
+
+  WebexCore.prototype.initialize = function initialize(...args) {
+    instanceCounter += 1;
+    this.__debugTag = `#${instanceCounter} [test: ${currentTest}] [at: ${specFrames(new Error().stack)}]`;
+
+    return Reflect.apply(originalInitialize, this, args);
+  };
+
+  const logBatcher = (batcher, what) => {
+    if (!tracingBatchers || batcherLogCount >= MAX_BATCHER_LOGS) {
+      return;
+    }
+    batcherLogCount += 1;
+    // eslint-disable-next-line no-console
+    console.log(
+      `[batcher-loop] ${batcher.constructor && batcher.constructor.name}/${batcher.namespace} ${what}\n` +
+        `[batcher-loop]   ${describeWebex(batcher.webex)}`
+    );
+  };
+
+  const originalRequest = Batcher.prototype.request;
+
+  Batcher.prototype.request = function request(item) {
+    logBatcher(this, `request item=${JSON.stringify(item).slice(0, 500)}`);
+
+    return Reflect.apply(originalRequest, this, [item]);
+  };
+
+  const originalExecuteQueue = Batcher.prototype.executeQueue;
+
+  Batcher.prototype.executeQueue = function executeQueue(...args) {
+    logBatcher(this, `executeQueue queueLength=${this.queue.length}`);
+
+    return Reflect.apply(originalExecuteQueue, this, args);
+  };
+
+  beforeEach(function setCurrentTest() {
+    currentTest = this.currentTest ? this.currentTest.fullTitle() : '(unknown)';
+  });
+}
+
 describe('zz-active-handles (debug)', () => {
   it('noop', () => {});
 });
@@ -89,6 +189,7 @@ describe('zz-active-handles (debug)', () => {
 if (isNode) {
   after(() => {
     dumpActiveHandles('after all tests');
+    tracingBatchers = true;
 
     [15000, 60000, 300000].forEach((delay) => {
       setTimeout(() => dumpActiveHandles(`${delay / 1000}s after all tests`), delay).unref();
