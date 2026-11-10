@@ -143,6 +143,21 @@ jobs:
       - name: Build Other Packages
         run: yarn workspaces foreach --parallel --topological --verbose run build:src
 
+      # Webex services only accept CORS requests from allow-listed origins, so Karma is served from
+      # https://localhost.webex.com (resolves to 127.0.0.1) on port 443 with a mkcert certificate.
+      - name: Set up HTTPS for Karma
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y mkcert libnss3-tools
+          # mkcert -install only adds its CA to NSS databases that already exist (used by Chrome).
+          mkdir -p "$HOME/.pki/nssdb"
+          [ -f "$HOME/.pki/nssdb/cert9.db" ] || certutil -d "sql:$HOME/.pki/nssdb" -N --empty-password
+          mkcert -install
+          # localhost.webex.com resolves to 127.0.0.1 publicly; pin it so DNS can't interfere.
+          echo "127.0.0.1 localhost.webex.com" | sudo tee -a /etc/hosts
+          sudo sysctl -w net.ipv4.ip_unprivileged_port_start=443
+          echo "KARMA_HTTPS=true" >> "$GITHUB_ENV"
+
       - name: Test - Browser
         run: yarn workspaces foreach --verbose --exclude webex-js-sdk --include '${{ needs.generate-package-matrix.outputs.changed }}' run test:browser
 
