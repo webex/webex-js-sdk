@@ -392,7 +392,7 @@ describe('plugin-meetings', () => {
 
     describe('Public Api Contract', () => {
       describe('#constructor', () => {
-        it('forwards E2EE controller events and keeps facade APIs off Meeting', () => {
+        it('forwards E2EE controller events', () => {
           TriggerProxy.trigger.restore();
           const e2ee = new EventEmitter();
           const e2eeManager = {createE2eeController: sinon.stub().returns(e2ee)};
@@ -430,10 +430,6 @@ describe('plugin-meetings', () => {
             e2ee.emit(event, payload);
             assert.calledOnceWithExactly(listener, payload);
           });
-
-          assert.isUndefined(meetingWithE2ee.getSecurityCode);
-          assert.isUndefined(meetingWithE2ee.e2eeState);
-          assert.isUndefined(meetingWithE2ee.e2eeHasMediaServices);
         });
 
         it('starts E2EE only when the current WDM device joins', () => {

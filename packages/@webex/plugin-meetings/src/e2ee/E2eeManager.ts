@@ -2,8 +2,6 @@
  * Copyright (c) 2015-2026 Cisco Systems, Inc. See LICENSE file.
  */
 
-import type {IdentityProvider} from '@webex/internal-plugin-identity';
-import {CapabilityState, WebCapabilities} from '@webex/web-capabilities';
 import LoggerProxy from '../common/logs/logger-proxy';
 import WasmLoader from '../common/wasm-loader';
 import E2eeController from './E2eeController';

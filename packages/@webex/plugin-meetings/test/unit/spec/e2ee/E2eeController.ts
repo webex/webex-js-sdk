@@ -74,7 +74,7 @@ describe('plugin-meetings', () => {
       };
       getLlmChannel = sinon.stub().returns(undefined);
       webex = {
-        config: {meetings: {enableE2ee: true, deviceType: 'MAC'}},
+        config: {meetings: {enableE2ee: true, deviceType: 'WEB'}},
         internal: {
           device: {userId: 'user-1', url: OWN_DEVICE_URL},
           llm: {on: sinon.stub(), off: sinon.stub(), isConnected: sinon.stub().returns(false)},
@@ -162,7 +162,7 @@ describe('plugin-meetings', () => {
 
         assert.equal(initConfig.participantId, 'user-1');
         assert.equal(initConfig.deviceUrl, OWN_DEVICE_URL);
-        assert.equal(initConfig.deviceType, 'MAC');
+        assert.equal(initConfig.deviceType, 'WEB');
         assert.equal(initConfig.correlationId, 'corr-1');
         assert.equal(initConfig.displayName, 'Alice');
         assert.equal(initConfig.serviceUrl, 'https://mes.webex.com/group-1');
@@ -241,7 +241,7 @@ describe('plugin-meetings', () => {
         assert.deepEqual(calls[0].args[2], {securityCode: 'SEC-1'});
       });
 
-      it('emits E2EE events from the facade for direct consumers', () => {
+      it('emits E2EE events from the E2eeController for direct consumers', () => {
         const listener = sinon.spy();
 
         e2ee.on(EVENT_TRIGGERS.MEETING_E2EE_SECURITY_CODE_UPDATED, listener);

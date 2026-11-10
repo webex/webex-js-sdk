@@ -122,7 +122,7 @@ describe('plugin-meetings', () => {
         await session.initialize(config);
         await session.initialize({...config, participantId: 'user-2'});
 
-        // The module callback may be called again; the shared loader returns its cached module.
+        // The loader may be called again, but returns the cached WASM module.
         assert.calledTwice(loadModule);
         assert.calledOnce(webE2eeConstructor);
         assert.calledOnceWithExactly(
