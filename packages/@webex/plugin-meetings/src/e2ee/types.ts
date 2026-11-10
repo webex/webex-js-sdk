@@ -156,7 +156,7 @@ export type E2eeMemberVerificationState = Enum<typeof E2eeMemberVerificationStat
 export interface MLSConfig {
   participantId: string;
   deviceUrl: string;
-  deviceType?: string;
+  deviceType: string;
   correlationId: string;
   displayName: string;
   serviceUrl: string;

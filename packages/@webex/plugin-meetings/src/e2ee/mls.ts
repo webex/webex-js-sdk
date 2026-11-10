@@ -25,7 +25,6 @@ import type {
 
 const DEFAULT_JOIN_TIMEOUT = 180_000;
 const DEFAULT_COALESCE_WINDOW = 500;
-const DEFAULT_DEVICE_TYPE = 'WEB';
 
 // WASM log levels, indexed by the numeric level the engine emits (see LogLevel in libe2ee).
 const WASM_LOG_LEVELS = ['', 'FATAL', 'ERROR', 'WARN', 'INFO', 'DEBUG'];
@@ -136,7 +135,7 @@ export default class MLS {
     this.e2ee.initialize(
       config.participantId,
       config.deviceUrl,
-      config.deviceType || DEFAULT_DEVICE_TYPE,
+      config.deviceType,
       config.correlationId,
       config.displayName,
       config.serviceUrl

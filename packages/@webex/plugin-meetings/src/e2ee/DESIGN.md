@@ -597,7 +597,7 @@ local display-name lookup, update processing, and reporting changed members. `Me
 4. `httpClient = new MediaEncryptionService({ webexRequest: webex.request.bind(webex) })`
 5. `session = new MLS({ httpClient, loadModule: () => wasmLoader.get(wasmUrl) })`
 6. `await session.initialize({ participantId: device.userId, deviceUrl: device.url,`
-   `  deviceType: 'WEB', correlationId: meeting.correlationId, displayName: <self name>,`
+   `  deviceType: webex.config.meetings.deviceType, correlationId: meeting.correlationId, displayName: <self name>,`
    `  serviceUrl: meeting.locusInfo.info.mediaEncryptionGroupUrl, credentials: creds,`
    `  trustAnchors: identityProvider.getTrustAnchors(), joinTimeout, coalesceWindow })`
 7. the reconciler is already created + registered as the Members pre-emit processor in the facade

@@ -19,7 +19,6 @@ import MeetingsUtil from '../meetings/util';
 import type WasmLoader from '../common/wasm-loader';
 import type {E2eeMeetingContext, E2eeState} from './types';
 
-const DEVICE_TYPE = 'WEB';
 const TRIGGER_SCOPE = {file: 'e2ee/E2eeController', function: 'e2ee'};
 
 /**
@@ -199,7 +198,7 @@ export default class E2eeController extends EventsScope {
       await session.initialize({
         participantId: device.userId,
         deviceUrl: device.url,
-        deviceType: DEVICE_TYPE,
+        deviceType: this.webex.config.meetings.deviceType,
         correlationId: this.context.correlationId,
         displayName: this.getSelfDisplayName(),
         serviceUrl: mediaEncryptionGroupUrl,

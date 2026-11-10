@@ -38,6 +38,7 @@ describe('plugin-meetings', () => {
     const config = {
       participantId: 'user-1',
       deviceUrl: 'https://wdm.webex.com/device-1',
+      deviceType: 'WEB',
       correlationId: 'corr-1',
       displayName: 'Alice',
       serviceUrl: 'https://mes.webex.com/group-1',

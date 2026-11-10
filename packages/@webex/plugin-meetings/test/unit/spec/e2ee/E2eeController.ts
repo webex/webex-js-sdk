@@ -76,7 +76,7 @@ describe('plugin-meetings', () => {
       };
       getLlmChannel = sinon.stub().returns(undefined);
       webex = {
-        config: {meetings: {enableE2ee: true}},
+        config: {meetings: {enableE2ee: true, deviceType: 'MAC'}},
         internal: {
           device: {userId: 'user-1', url: OWN_DEVICE_URL},
           llm: {on: sinon.stub(), off: sinon.stub(), isConnected: sinon.stub().returns(false)},
@@ -164,7 +164,7 @@ describe('plugin-meetings', () => {
 
         assert.equal(initConfig.participantId, 'user-1');
         assert.equal(initConfig.deviceUrl, OWN_DEVICE_URL);
-        assert.equal(initConfig.deviceType, 'WEB');
+        assert.equal(initConfig.deviceType, 'MAC');
         assert.equal(initConfig.correlationId, 'corr-1');
         assert.equal(initConfig.displayName, 'Alice');
         assert.equal(initConfig.serviceUrl, 'https://mes.webex.com/group-1');
