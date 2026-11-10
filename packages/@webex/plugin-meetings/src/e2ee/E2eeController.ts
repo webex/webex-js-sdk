@@ -213,7 +213,7 @@ export default class E2eeController extends EventsScope {
       session.join();
     } catch (error) {
       LoggerProxy.logger.error(`e2ee: E2eeController#start --> failed to start E2EE: ${error}`);
-      this.handleFatal('failed', 'startFailed');
+      this.handleFatal('failed', 'startFailed', {error: error?.message ?? String(error)});
     }
   }
 
@@ -267,8 +267,8 @@ export default class E2eeController extends EventsScope {
     });
 
     subscribe('joinFailure', ({reason}) => this.handleFatal('failed', reason));
-    subscribe('mediaEncryptionRequestFailure', () =>
-      this.handleFatal('failed', 'mediaEncryptionRequestFailure')
+    subscribe('mediaEncryptionRequestFailure', ({errorCode, message}) =>
+      this.handleFatal('failed', 'mediaEncryptionRequestFailure', {errorCode, error: message})
     );
     subscribe('evicted', () => this.handleFatal('evicted', 'evicted'));
   }
@@ -306,12 +306,25 @@ export default class E2eeController extends EventsScope {
   /**
    * @param {E2eeState} state
    * @param {string} reason
+   * @param {Object} [details] - Extra diagnostics included only in the behavioral metric.
+   * @param {number} [details.errorCode] - Media-encryption service error code.
+   * @param {string} [details.error] - Error message.
    * @returns {void}
    */
-  private handleFatal(state: 'failed' | 'evicted', reason: string): void {
+  private handleFatal(
+    state: 'failed' | 'evicted',
+    reason: string,
+    details: {errorCode?: number; error?: string} = {}
+  ): void {
     LoggerProxy.logger.error(
       `e2ee: E2eeController --> fatal E2EE error: state=${state} reason=${reason}`
     );
+    Metrics.sendBehavioralMetric(BEHAVIORAL_METRICS.E2EE_FAILURE, {
+      correlation_id: this.context.correlationId,
+      state,
+      reason,
+      ...details,
+    });
     this.cleanupSession();
     this.setState(state);
     this.emitE2eeEvent(EVENT_TRIGGERS.MEETING_E2EE_FAILURE, {reason});

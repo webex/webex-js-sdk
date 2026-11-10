@@ -14,6 +14,7 @@ import {
 import WasmLoader from '@webex/plugin-meetings/src/common/wasm-loader';
 import LoggerProxy from '@webex/plugin-meetings/src/common/logs/logger-proxy';
 import {EVENT_TRIGGERS} from '@webex/plugin-meetings/src/constants';
+import Metrics from '@webex/plugin-meetings/src/metrics';
 
 describe('plugin-meetings', () => {
   describe('E2eeController', () => {
@@ -33,6 +34,7 @@ describe('plugin-meetings', () => {
     let signalingStartStub;
     let signalingStopStub;
     let emitSpy;
+    let sendBehavioralMetricStub;
 
     const OWN_DEVICE_URL = 'https://wdm.webex.com/device-1';
 
@@ -63,6 +65,7 @@ describe('plugin-meetings', () => {
       });
       signalingStartStub = sinon.stub(E2eeSignaling.prototype, 'start');
       signalingStopStub = sinon.stub(E2eeSignaling.prototype, 'stop');
+      sendBehavioralMetricStub = sinon.stub(Metrics, 'sendBehavioralMetric');
 
       wasmLoader = sinon.createStubInstance(WasmLoader);
       wasmLoader.get.resolves({});
@@ -217,6 +220,12 @@ describe('plugin-meetings', () => {
 
         assert.equal(e2ee.state, 'failed');
         assert.equal(emitted(EVENT_TRIGGERS.MEETING_E2EE_FAILURE).length, 1);
+        assert.calledOnceWithExactly(sendBehavioralMetricStub, 'js_sdk_e2ee_failure', {
+          correlation_id: 'corr-1',
+          state: 'failed',
+          reason: 'startFailed',
+          error: 'CA down',
+        });
         assert.notCalled(joinStub);
       });
 
@@ -310,6 +319,11 @@ describe('plugin-meetings', () => {
           securityCode: undefined,
         });
         assert.equal(emitted(EVENT_TRIGGERS.MEETING_E2EE_FAILURE).length, 1);
+        assert.calledOnceWithExactly(sendBehavioralMetricStub, 'js_sdk_e2ee_failure', {
+          correlation_id: 'corr-1',
+          state: 'failed',
+          reason: 'join_failure',
+        });
       });
 
       it('cleans up the session when evicted', () => {
@@ -319,6 +333,11 @@ describe('plugin-meetings', () => {
         assert.calledOnce(leaveStub);
         assert.equal(offStub.callCount, 7);
         assert.equal(emitted(EVENT_TRIGGERS.MEETING_E2EE_FAILURE).length, 1);
+        assert.calledOnceWithExactly(sendBehavioralMetricStub, 'js_sdk_e2ee_failure', {
+          correlation_id: 'corr-1',
+          state: 'evicted',
+          reason: 'evicted',
+        });
       });
 
       it('cleans up the session on mediaEncryptionRequestFailure', () => {
@@ -333,6 +352,13 @@ describe('plugin-meetings', () => {
 
         assert.equal(failureCalls.length, 1);
         assert.deepEqual(failureCalls[0].args[2], {reason: 'mediaEncryptionRequestFailure'});
+        assert.calledOnceWithExactly(sendBehavioralMetricStub, 'js_sdk_e2ee_failure', {
+          correlation_id: 'corr-1',
+          state: 'failed',
+          reason: 'mediaEncryptionRequestFailure',
+          errorCode: 78400011,
+          error: 'not leader',
+        });
       });
     });
 
