@@ -69,7 +69,7 @@
     "deploy:npm": "yarn npm publish",
     "test": "yarn test:style && yarn test:unit && yarn test:integration && yarn test:browser",
     "test:browser": "webex-legacy-tools test --integration --runner karma",
-    "test:integration": "webex-legacy-tools test --integration --runner mocha",
+    "test:integration": "webex-legacy-tools test --integration --runner mocha --targets '{services-v2/services-v2.js,zz-active-handles.js}'",
     "test:style": "eslint ./src/**/*.*",
     "test:unit": "webex-legacy-tools test --unit --runner jest"
   }
