@@ -4,7 +4,7 @@
 import 'jsdom-global/register';
 import {assert} from '@webex/test-helper-chai';
 import sinon from 'sinon';
-import MediaEncryptionService from '../../../../src/e2ee/MediaEncryptionService';
+import MediaEncryptionService from '@webex/plugin-meetings/src/e2ee/MediaEncryptionService';
 
 describe('plugin-meetings', () => {
   describe('MediaEncryptionService', () => {
