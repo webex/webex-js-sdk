@@ -8,6 +8,7 @@ import {Enum, HTTP_VERBS} from '../constants';
 import {DataSetNames, DATA_SET_INIT_PRIORITY, EMPTY_HASH, LLM_DATASET_NAMES} from './constants';
 import {ObjectType, HtMeta, HashTreeObject} from './types';
 import {LocusDTO, LocusErrorCodes} from '../locus-info/types';
+import type {WebexRequestMethod} from '../common/types';
 import {deleteNestedObjectsWithHtMeta, isMetadata, sleep, sortByInitPriority} from './utils';
 
 export enum SyncAllBackoffType {
@@ -61,7 +62,6 @@ interface InternalDataSet extends DataSet {
   syncAbortController?: AbortController;
 }
 
-type WebexRequestMethod = (options: Record<string, any>) => Promise<any>;
 type GenerateTrackingId = () => string | undefined;
 
 export const LocusInfoUpdateType = {
