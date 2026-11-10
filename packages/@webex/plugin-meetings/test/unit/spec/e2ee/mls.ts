@@ -4,13 +4,9 @@
 import 'jsdom-global/register';
 import {assert} from '@webex/test-helper-chai';
 import sinon from 'sinon';
-import MLS from '../../../../src/e2ee/mls';
-import LoggerProxy from '../../../../src/common/logs/logger-proxy';
-
-const flushPromises = () =>
-  new Promise((resolve) => {
-    setTimeout(resolve, 0);
-  });
+import MLS from '@webex/plugin-meetings/src/e2ee/mls';
+import LoggerProxy from '@webex/plugin-meetings/src/common/logs/logger-proxy';
+import testUtils from '../../../utils/testUtils';
 
 describe('plugin-meetings', () => {
   describe('MLS', () => {
@@ -456,7 +452,7 @@ describe('plugin-meetings', () => {
         callbacks.httpRequest({url: 'https://mes.webex.com/op', body, handlerId: 43});
         body.fill(0x7b);
 
-        await flushPromises();
+        await testUtils.flushPromises();
 
         assert.calledOnceWithExactly(httpClient.request, 'https://mes.webex.com/op', {
           op: 'llmConnected',
@@ -474,7 +470,7 @@ describe('plugin-meetings', () => {
 
         assert.notCalled(httpClient.request);
 
-        await flushPromises();
+        await testUtils.flushPromises();
 
         assert.calledOnceWithExactly(httpClient.request, 'https://mes.webex.com/op', {
           op: 'join',
@@ -502,7 +498,7 @@ describe('plugin-meetings', () => {
           handlerId: 44,
         });
 
-        await flushPromises();
+        await testUtils.flushPromises();
 
         assert.calledOnce(httpClient.request);
         assert.calledOnce(fakeE2ee.completeHttpRequest);
@@ -550,7 +546,7 @@ describe('plugin-meetings', () => {
 
           callbacks.httpRequest({url: 'https://mes.webex.com/op', body: encodeJson({}), handlerId: 7});
 
-          await flushPromises();
+          await testUtils.flushPromises();
 
           assert.calledOnceWithExactly(
             warnLog,
@@ -583,8 +579,8 @@ describe('plugin-meetings', () => {
         try {
           callbacks.httpRequest({url: 'https://mes.webex.com/op', body: encodeJson({}), handlerId: 7});
 
-          await flushPromises();
-          await flushPromises();
+          await testUtils.flushPromises();
+          await testUtils.flushPromises();
         } finally {
           process.off('unhandledRejection', unhandledRejection);
         }
@@ -608,7 +604,7 @@ describe('plugin-meetings', () => {
 
         callbacks.httpRequest({url: 'https://mes.webex.com/op', body: encodeJson({}), handlerId: 7});
 
-        await flushPromises();
+        await testUtils.flushPromises();
 
         assert.calledOnce(fakeE2ee.completeHttpRequest);
         assert.isTrue(fakeE2ee.completeHttpRequest.firstCall.args[1]);
@@ -633,7 +629,7 @@ describe('plugin-meetings', () => {
 
         assert.notCalled(fakeE2ee.completeHttpRequest);
 
-        await flushPromises();
+        await testUtils.flushPromises();
 
         assert.notCalled(httpClient.request);
         assert.calledOnce(errorLog);
@@ -660,7 +656,7 @@ describe('plugin-meetings', () => {
 
         callbacks.httpRequest({url: 'https://mes.webex.com/op', body: encodeJson({}), handlerId: 9});
 
-        await flushPromises();
+        await testUtils.flushPromises();
 
         assert.calledOnceWithExactly(httpClient.request, 'https://mes.webex.com/op', {});
         assert.calledOnce(errorLog);
