@@ -3,7 +3,7 @@ doc_kind: agent-entry
 generated_from: agents@0.3.0
 generated_by: claude-code
 approved_by: rarajes2@cisco.com
-updated_at: 2026-11-11T09:32:15Z
+updated_at: 2026-11-11T10:02:07Z
 validation_status: pass-with-warnings
 -->
 
@@ -46,7 +46,7 @@ commands from the monorepo root.
 
 | Task                   | Command |
 | ---------------------- | ------- |
-| Install dependencies   | `yarn` (workspace root; the deploy workflow runs the same command) |
+| Install dependencies   | `yarn` (workspace root; the deploy workflow runs the same command); on a fresh checkout run `yarn prebuild:modules` once, because `yarn` does not build `@webex/legacy-tools` or sibling `dist/` |
 | Start dev environment  | N/A — library package with no start script in `package.json` |
 | Run tests              | `yarn workspace @webex/plugin-authorization-node test:unit` (jest) after `build:src` |
 | Run linters            | `yarn workspace @webex/plugin-authorization-node test:style` |

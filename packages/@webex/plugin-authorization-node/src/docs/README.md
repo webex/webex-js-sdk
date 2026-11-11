@@ -9,7 +9,7 @@ doc_kind: module-spec
 generated_from: module-spec@0.3.0
 generated_by: claude-code
 approved_by: rarajes2@cisco.com
-updated_at: 2026-11-11T09:32:15Z
+updated_at: 2026-11-11T10:02:07Z
 validation_status: pass-with-warnings
 -->
 
@@ -323,7 +323,7 @@ references of its own.
 | Boundary | Transport and ordering | Compatibility | Timeout, retry, and recovery |
 | -------- | ---------------------- | ------------- | ---------------------------- |
 | Identity broker token endpoint (`UC-001`) | HTTPS POST through `webex.request`, urlencoded form, Basic client credentials | Form fields under Protocol and wire format; error body `error` | No retry; `oneFlight` collapses simultaneous calls |
-| Hydra `jwt/login` (`UC-002`, `UC-003`) | HTTPS POST through `webex.request` with the JWT in the `authorization` header | Response fields `token` and `expiresIn` | No retry; `oneFlight` collapses simultaneous calls |
+| Hydra `jwt/login` (`UC-002`, `UC-003`) | HTTPS POST through `webex.request` with the JWT in the `authorization` header | Response fields `token` and `expiresIn` | No plugin-local retry; `oneFlight` collapses simultaneous calls. The request does not set `shouldRefreshAccessToken: false`, so on HTTP 401 the webex-core `AuthInterceptor` refreshes credentials when `canRefresh` and replays it (at most `maxAuthenticationReplays`, default 1) |
 | Identity broker logout endpoint (`UC-004`) | HTTPS POST through `webex.request` after credentials are invalidated; not awaited | Body `token` and `cisService` | None; a failure is not observed |
 
 ## Client state model
@@ -352,7 +352,9 @@ references of its own.
   invalidated, and `client:logout` fires without waiting for the logout request.
 - Idempotency and retry: `oneFlight` makes simultaneous calls of the same method share one request.
   Its key is the method name, so a second concurrent call with a different `code` or `jwt` receives
-  the first call's result. No request is retried.
+  the first call's result. This module adds no retry. The webex-core `AuthInterceptor` still applies
+  its HTTP 401 refresh-and-replay to every request that does not set `shouldRefreshAccessToken:
+  false`: the JWT exchange and the logout request, but not the code grant.
 - Shared-state protection: `whileInFlight('isAuthorizing')` wraps the `oneFlight`-wrapped
   `requestAuthorizationCodeGrant`, so every concurrent caller raises the flag and each clears it when
   the shared promise settles.
@@ -377,7 +379,7 @@ references of its own.
 | Token endpoint returns HTTP 400 | Rejected grant error (`InvalidGrantError`, `InvalidClientError`, and so on, else `OAuthError`) | Branch on the class or `error` | Obtain a new code | `src/authorization.js` |
 | Token endpoint fails otherwise | The `webex.request` rejection, unchanged | Handle the HTTP error | Caller may retry with the same code if the broker allows | `src/authorization.js` |
 | `requestAccessTokenFromJwt()` with no argument | Synchronous `TypeError` from destructuring | Pass `{jwt}` | None | `src/authorization.js` |
-| Hydra `jwt/login` fails | The `webex.request` rejection, unchanged | Handle the HTTP error | Caller may retry | `src/authorization.js`, `test/integration/spec/authorization.js` |
+| Hydra `jwt/login` fails | The `webex.request` rejection, unchanged; an HTTP 401 is first refreshed and replayed by the webex-core `AuthInterceptor` when credentials can refresh | Handle the HTTP error | Caller may retry | `src/authorization.js`, `test/integration/spec/authorization.js` |
 | `initServiceCatalogs` fails after the JWT exchange | Rejected promise, though the supertoken is already set | Check `canAuthorize` before retrying | Caller may retry catalog initialization | `src/authorization.js` |
 | `createJwt` without `secretId`, or with no argument | Synchronous `TypeError` (from `Buffer.from` or destructuring), not a rejection | Fix the arguments | None | `src/authorization.js` |
 | `createJwt` cannot sign (for example `expiresIn` omitted) | Rejected promise with the `jsonwebtoken` error | Fix the arguments | None | `src/authorization.js` |
@@ -409,6 +411,11 @@ references of its own.
 - `requestAccessTokenFromJwt` falls back to `process.env.HYDRA_SERVICE_URL` and then to
   `https://api.ciscospark.com/v1/` when the catalog has no `hydra` entry, and it requires
   `webex.internal.services`.
+- A `jwt/login` HTTP 401 is not always one request. When `credentials.canRefresh` is true (always, in
+  JWT mode), the webex-core `AuthInterceptor` calls `credentials.refresh()`, deletes the
+  `authorization` header, and replays the request, so the replay does not carry the original JWT. In
+  JWT mode that refresh calls `requestAccessTokenFromJwt` again, which `oneFlight` joins to the
+  pending call (inferred from code; not exercised by a test).
 - `createJwt` decodes `secretId` before its `try`, so a missing secret, or one `Buffer.from` cannot
   accept (for example a number), throws synchronously instead of rejecting. A missing `expiresIn` rejects. Without `displayName`, `sub` and
   `name` carry two different uuids.

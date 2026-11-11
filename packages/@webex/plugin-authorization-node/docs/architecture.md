@@ -86,7 +86,7 @@ flowchart LR
 | ---- | -- | ------------------------ | ------- | --------------------------------- |
 | Node application | Authorization plugin | In-process calls | Exchange codes and JWTs, mint guest JWTs, read flags | Rejections propagate; HTTP 400 on the code grant becomes a grant error |
 | Authorization plugin | Identity broker token endpoint | HTTPS POST through `webex.request` | Authorization-code grant | No retry |
-| Authorization plugin | Hydra `jwt/login` | HTTPS POST through `webex.request` | JWT exchange | Rejection propagates |
+| Authorization plugin | Hydra `jwt/login` | HTTPS POST through `webex.request` | JWT exchange | Rejection propagates; an HTTP 401 is refreshed and replayed once by the webex-core `AuthInterceptor` when credentials can refresh |
 | Authorization plugin | webex-core services | In-process calls | Hydra URL, catalog initialization after a JWT exchange | Catalog rejection propagates after the token is set |
 | Authorization plugin | Identity broker logout endpoint | HTTPS POST through `webex.request`, not awaited | Logout | Failure is not observed |
 | webex-core credentials | Authorization plugin | `requestAccessTokenFromJwt` call | JWT-mode refresh | Rejection fails the refresh |

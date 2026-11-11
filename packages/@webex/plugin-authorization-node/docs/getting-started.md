@@ -9,7 +9,7 @@ doc_kind: standing-doc
 generated_from: getting-started@0.3.0
 generated_by: claude-code
 approved_by: rarajes2@cisco.com
-updated_at: 2026-11-11T09:32:15Z
+updated_at: 2026-11-11T10:02:07Z
 validation_status: pass-with-warnings
 -->
 
@@ -33,6 +33,17 @@ yarn
 ```
 
 The workspace `deploy.yml` workflow installs with the same command.
+
+On a fresh checkout, prebuild the workspace before the first package build. `yarn` does not build
+`@webex/legacy-tools`, whose `webex-legacy-tools` binary is the untracked `dist/cli/index.js`, or the
+sibling packages' `dist/`:
+
+```bash
+yarn prebuild:modules
+```
+
+It runs `yarn`, then builds the tools, the legacy tools, `@webex/webex-core`, and every package, in
+that order (root `package.json`; see the workspace `CONTRIBUTING.md` "Prebuilding").
 
 ## Build
 
