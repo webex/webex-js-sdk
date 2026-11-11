@@ -68,6 +68,17 @@ describe('plugin-meetings', () => {
       assert.deepEqual(sessionHandlers, {});
     };
 
+    const createDeferred = () => {
+      let resolve;
+      let reject;
+      const promise = new Promise((res, rej) => {
+        resolve = res;
+        reject = rej;
+      });
+
+      return {promise, resolve, reject};
+    };
+
     beforeEach(() => {
       sessionHandlers = {};
       membersById = {};
@@ -296,6 +307,78 @@ describe('plugin-meetings', () => {
         assert.calledTwice(initializeStub);
         assert.calledTwice(joinStub);
         assert.equal(e2ee.state, 'joining');
+      });
+
+      describe('when stopped during startup', () => {
+        it('does not create a session if stopped while loading credentials', async () => {
+          const credentials = createDeferred();
+
+          identityProvider.getCredentials.returns(credentials.promise);
+          const starting = e2ee.start();
+
+          await e2ee.stop();
+          credentials.resolve(CREDENTIALS);
+          await starting;
+
+          assert.notCalled(initializeStub);
+          assert.notCalled(signalingStartStub);
+          assert.notCalled(joinStub);
+          assert.equal(e2ee.state, 'left');
+          assert.deepEqual(events.state.args, [[{state: 'initializing'}], [{state: 'left'}]]);
+        });
+
+        it('leaves the session and does not join if stopped while MLS initializes', async () => {
+          const initialized = createDeferred();
+
+          initializeStub.returns(initialized.promise);
+          const starting = e2ee.start();
+
+          await new Promise((resolve) => setImmediate(resolve));
+          assert.calledOnce(initializeStub);
+          await e2ee.stop();
+          initialized.resolve();
+          await starting;
+
+          assert.calledOnce(initializeStub);
+          assert.calledOnce(leaveStub);
+          assert.deepEqual(sessionHandlers, {});
+          assert.notCalled(signalingStartStub);
+          assert.notCalled(joinStub);
+          assert.equal(e2ee.state, 'left');
+        });
+
+        it('does not report a failure when the cancelled startup step then rejects', async () => {
+          const initialized = createDeferred();
+
+          initializeStub.returns(initialized.promise);
+          const starting = e2ee.start();
+
+          await new Promise((resolve) => setImmediate(resolve));
+          assert.calledOnce(initializeStub);
+          await e2ee.stop();
+          initialized.reject(new Error('session left'));
+          await starting;
+
+          assert.equal(e2ee.state, 'left');
+          assert.notCalled(events.failure);
+          assert.notCalled(sendBehavioralMetricStub);
+        });
+
+        it('lets a new start proceed while the cancelled one is still pending', async () => {
+          const firstCredentials = createDeferred();
+
+          identityProvider.getCredentials.onFirstCall().returns(firstCredentials.promise);
+          const cancelledStart = e2ee.start();
+
+          await e2ee.stop();
+          await e2ee.start();
+          firstCredentials.resolve(CREDENTIALS);
+          await cancelledStart;
+
+          assert.calledOnce(initializeStub);
+          assert.calledOnce(joinStub);
+          assert.equal(e2ee.state, 'joining');
+        });
       });
 
       [

@@ -52,6 +52,10 @@ export default class E2eeController extends EventsScope {
 
   private mediaServicesPresent = false;
 
+  // Incremented by every start() and stop(); an in-flight start() whose attempt is no longer the
+  // latest was cancelled by stop() while it was awaiting, and must not continue.
+  private startAttempt = 0;
+
   /**
    * @param {Object} deps
    * @param {E2eeMeetingContext} deps.context - The meeting data and operations used by E2EE.
@@ -148,14 +152,31 @@ export default class E2eeController extends EventsScope {
     }
 
     LoggerProxy.logger.info('e2ee: E2eeController#start --> starting E2EE session');
+    this.startAttempt += 1;
+    const attempt = this.startAttempt;
+    const isCancelled = () => attempt !== this.startAttempt;
+    // Awaits a startup step, then aborts start() (via the catch below) if stop() ran meanwhile.
+    const step = async <T>(promise: Promise<T>): Promise<T> => {
+      const result = await promise;
+
+      if (isCancelled()) {
+        throw new Error('E2EE start cancelled');
+      }
+
+      return result;
+    };
+
     this.setState('initializing');
 
     try {
       const {device} = this.webex.internal;
-      const [, credentials] = await Promise.all([
-        this.wasmLoader.get(this.wasmUrl),
-        this.identityProvider.getCredentials(device.userId),
-      ]);
+      const [, credentials] = await step(
+        Promise.all([
+          this.wasmLoader.get(this.wasmUrl),
+          this.identityProvider.getCredentials(device.userId),
+        ])
+      );
+
       const httpClient = new MediaEncryptionService({
         webexRequest: this.webex.request.bind(this.webex),
       });
@@ -172,18 +193,21 @@ export default class E2eeController extends EventsScope {
       this.session = session;
       this.wireSessionEvents(session);
 
-      await session.initialize({
-        participantId: device.userId,
-        deviceUrl: device.url,
-        deviceType: this.webex.config.meetings.deviceType,
-        correlationId: this.context.correlationId,
-        displayName: this.getSelfDisplayName(),
-        serviceUrl: mediaEncryptionGroupUrl,
-        credentials,
-        trustAnchors: this.identityProvider.getTrustAnchors(),
-        joinTimeout: DEFAULT_JOIN_TIMEOUT,
-        coalesceWindow: DEFAULT_COALESCE_WINDOW,
-      });
+      // If cancelled, stop() has already left and detached this session.
+      await step(
+        session.initialize({
+          participantId: device.userId,
+          deviceUrl: device.url,
+          deviceType: this.webex.config.meetings.deviceType,
+          correlationId: this.context.correlationId,
+          displayName: this.getSelfDisplayName(),
+          serviceUrl: mediaEncryptionGroupUrl,
+          credentials,
+          trustAnchors: this.identityProvider.getTrustAnchors(),
+          joinTimeout: DEFAULT_JOIN_TIMEOUT,
+          coalesceWindow: DEFAULT_COALESCE_WINDOW,
+        })
+      );
 
       this.signaling = new E2eeSignaling({
         llm: this.context.getLlmChannel(),
@@ -196,13 +220,22 @@ export default class E2eeController extends EventsScope {
       this.setState('joining');
       session.join();
     } catch (error) {
+      if (isCancelled()) {
+        LoggerProxy.logger.info(
+          'e2ee: E2eeController#start --> cancelled by stop() during startup'
+        );
+
+        return;
+      }
+
       LoggerProxy.logger.error(`e2ee: E2eeController#start --> failed to start E2EE: ${error}`);
       this.handleFatal('failed', 'startFailed', {error: error?.message ?? String(error)});
     }
   }
 
   /**
-   * Tears down the MLS session and resets state. Idempotent.
+   * Tears down the MLS session and resets state, cancelling a start() that is still in progress.
+   * Idempotent.
    * @returns {Promise<void>}
    */
   async stop(): Promise<void> {
@@ -213,6 +246,7 @@ export default class E2eeController extends EventsScope {
     }
 
     LoggerProxy.logger.info('e2ee: E2eeController#stop --> stopping E2EE session');
+    this.startAttempt += 1;
     this.cleanupSession();
     this.setState('left');
   }
