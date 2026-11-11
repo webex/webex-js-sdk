@@ -413,6 +413,7 @@ describe('plugin-meetings', () => {
           const e2eeContext = e2eeManager.createE2eeController.firstCall.args[0];
 
           assert.equal(e2eeContext.correlationId, correlationId);
+          assert.strictEqual(e2eeContext.members, meetingWithE2ee.members);
           assert.strictEqual(e2eeContext.getLocusInfo(), meetingWithE2ee.locusInfo);
           assert.strictEqual(e2eeContext.getLlmChannel(), meetingWithE2ee.llmChannel);
           const events = [

@@ -20,6 +20,7 @@ describe('plugin-meetings', () => {
   describe('E2eeController', () => {
     let webex;
     let meeting;
+    let membersById;
     let wasmLoader;
     let identityProvider;
     let getLlmChannel;
@@ -39,8 +40,19 @@ describe('plugin-meetings', () => {
 
     const emitSession = (event, payload) => sessionHandlers[event]?.(payload);
 
+    const makeFakeMember = (id, deviceUrls) => ({
+      id,
+      participant: {devices: deviceUrls.map((url) => ({url}))},
+      e2eeVerificationState: 'unknown',
+      setE2eeDeviceVerifications: sinon.stub(),
+      setE2eeDeviceVerification: sinon.stub().returns(true),
+      removeE2eeDeviceVerification: sinon.stub().returns(true),
+      getE2eeDeviceVerifications: sinon.stub().returns([]),
+    });
+
     beforeEach(() => {
       sessionHandlers = {};
+      membersById = {};
       initializeStub = sinon.stub(MLS.prototype, 'initialize').resolves();
       joinStub = sinon.stub(MLS.prototype, 'join');
       leaveStub = sinon.stub(MLS.prototype, 'leave');
@@ -82,16 +94,26 @@ describe('plugin-meetings', () => {
         locusInfo: {
           info: {isV2E2EEncrypted: true, mediaEncryptionGroupUrl: 'https://mes.webex.com/group-1'},
         },
+        members: {
+          selfId: 's1',
+          membersCollection: {
+            get: (id) => (id === 's1' ? {name: 'Alice'} : membersById[id]),
+            getAll: () => membersById,
+            getMemberByDeviceUrl: (url) =>
+              Object.values(membersById).find((member) =>
+                member.participant?.devices?.some((device) => device.url === url)
+              ),
+          },
+          setMembersUpdateProcessor: sinon.stub(),
+          reportMembersUpdated: sinon.stub(),
+        },
       };
       e2ee = new E2eeController({
         context: {
           correlationId: meeting.correlationId,
           getLocusInfo: () => meeting.locusInfo,
           getLlmChannel,
-          members: {
-            selfId: 's1',
-            membersCollection: {get: () => ({name: 'Alice'})},
-          },
+          members: meeting.members,
         } as any,
         webex,
         wasmLoader,
@@ -340,6 +362,68 @@ describe('plugin-meetings', () => {
       });
     });
 
+    describe('roster reconciliation (verification)', () => {
+      const rosterEntry = {
+        url: OWN_DEVICE_URL,
+        deviceType: 'WEB',
+        displayName: 'Alice',
+        validationResult: 0,
+      };
+      const expectedVerification = {
+        deviceUrl: OWN_DEVICE_URL,
+        validationResult: 0,
+        displayName: 'Alice',
+        deviceType: 'WEB',
+      };
+
+      // The reconciler is created in the constructor and registered as the Members processor.
+      const getProcessor = () => meeting.members.setMembersUpdateProcessor.args[0][0];
+
+      beforeEach(async () => {
+        await e2ee.start();
+      });
+
+      it('registers a members-update processor on construction', () => {
+        assert.calledOnce(meeting.members.setMembersUpdateProcessor);
+        assert.isFunction(getProcessor());
+      });
+
+      it('stamps verification onto members changed by a Locus update (via the processor)', () => {
+        // Roster arrives while no member owns the device yet, then the member appears.
+        emitSession('rosterAdded', [rosterEntry]);
+        const member = makeFakeMember('m1', [OWN_DEVICE_URL]);
+        membersById.m1 = member;
+
+        getProcessor()({delta: {added: [member]}});
+
+        assert.calledWithExactly(member.setE2eeDeviceVerifications, [expectedVerification]);
+        // Member-driven: Members emits members:update itself, the reconciler does not report.
+        assert.notCalled(meeting.members.reportMembersUpdated);
+      });
+
+      it('reports roster-driven verification changes through Members', () => {
+        const member = makeFakeMember('m1', [OWN_DEVICE_URL]);
+        membersById.m1 = member;
+
+        emitSession('rosterAdded', [rosterEntry]);
+
+        assert.calledWithExactly(member.setE2eeDeviceVerification, OWN_DEVICE_URL, expectedVerification);
+        assert.calledWith(meeting.members.reportMembersUpdated, [member]);
+      });
+
+      it('reports members cleared when their device leaves the roster', () => {
+        const member = makeFakeMember('m1', [OWN_DEVICE_URL]);
+        membersById.m1 = member;
+        emitSession('rosterAdded', [rosterEntry]);
+        meeting.members.reportMembersUpdated.resetHistory();
+
+        emitSession('rosterRemoved', {urls: [OWN_DEVICE_URL]});
+
+        assert.calledWith(member.removeE2eeDeviceVerification, OWN_DEVICE_URL);
+        assert.calledWith(meeting.members.reportMembersUpdated, [member]);
+      });
+    });
+
     describe('stop', () => {
       it('is a silent no-op when E2EE was never started', async () => {
         const loggerInfoStub = sinon.stub();
@@ -381,6 +465,21 @@ describe('plugin-meetings', () => {
         });
       });
 
+      it('resets the roster on stop, clearing and reporting verified members', async () => {
+        const member = makeFakeMember('m1', [OWN_DEVICE_URL]);
+        membersById.m1 = member;
+        await e2ee.start();
+        emitSession('rosterAdded', [
+          {url: OWN_DEVICE_URL, deviceType: 'WEB', displayName: 'Alice', validationResult: 0},
+        ]);
+        member.removeE2eeDeviceVerification.resetHistory();
+        meeting.members.reportMembersUpdated.resetHistory();
+
+        await e2ee.stop();
+
+        assert.calledWith(member.removeE2eeDeviceVerification, OWN_DEVICE_URL);
+        assert.calledWith(meeting.members.reportMembersUpdated, [member]);
+      });
     });
   });
 });
