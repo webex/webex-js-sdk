@@ -82,6 +82,7 @@
   },
   "resolutions": {
     "@webex/json-multistream": "2.4.3",
+    "node-forge": "^1.4.3",
     "pkijs/asn1js": "3.0.10"
   },
   "devDependencies": {

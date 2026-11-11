@@ -26222,7 +26222,7 @@ __metadata:
   languageName: node
   linkType: hard
 
-"node-forge@npm:^1, node-forge@npm:^1.2.1":
+"node-forge@npm:^1.4.3":
   version: 1.4.3
   resolution: "node-forge@npm:1.4.3"
   checksum: 4ddd9d9eaf2f1b67282af205546ea53665b7e3853fea46c5cd7350fbcb949c1264609e6c03eca99ee8ba605dd5f51feac8be8130ac5afb528d9ae7749f70d077
