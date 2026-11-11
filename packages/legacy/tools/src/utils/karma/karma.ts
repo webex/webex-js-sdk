@@ -5,6 +5,7 @@ import KarmaRunner from 'karma';
 import { startServer, stopServer } from '../server';
 
 import Browsers from './browsers';
+import Https from './https';
 
 import CONSTANTS from './karma.constants';
 
@@ -39,11 +40,40 @@ class Karma {
     // Plugin runtime assets (e.g. /assets/internal-plugin-encryption/), served by the test server.
     config.proxies['/assets/'] = `http://localhost:${config.port - 1}/assets/`;
 
+    const https = Karma.Https.isEnabled() ? Karma.Https.setup() : undefined;
+
+    if (https) {
+      try {
+        config.protocol = 'https:';
+        config.hostname = Karma.Https.HOSTNAME;
+        config.port = Karma.Https.PORT;
+        config.httpsServerOptions = { key: https.key, cert: https.cert };
+        // Clone the launchers so the shared browser constants are not mutated.
+        config.customLaunchers = Object.fromEntries(
+          Object.entries(browserConfigs).map(([name, launcher]: [string, any]) => [
+            name,
+            /firefox/i.test(launcher.base)
+              ? { ...launcher, profile: https.createFirefoxProfile() }
+              : { ...launcher },
+          ]),
+        );
+      } catch (error) {
+        https.cleanup();
+        throw error;
+      }
+    }
+
     return KarmaRunner.config.parseConfig(null, config, { promiseConfig: true, throwErrors: true })
+      .catch((error: any) => {
+        https?.cleanup();
+        throw error;
+      })
       .then((parsedConfig: any) => new Promise((resolve, reject) => {
         // Resolve on run completion (not after start) so callers can clean up
         // generated files only once Karma has finished browserifying/running.
         const server = new KarmaRunner.Server(parsedConfig, (code) => {
+          https?.cleanup();
+
           if (code === 0) {
             resolve(undefined);
           } else {
@@ -78,6 +108,13 @@ class Karma {
    */
   public static get Browsers() {
     return Browsers;
+  }
+
+  /**
+   * Https class object.
+   */
+  public static get Https() {
+    return Https;
   }
 
   /**
