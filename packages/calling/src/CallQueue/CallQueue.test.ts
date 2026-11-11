@@ -155,11 +155,65 @@ describe('CallQueue client', () => {
     });
   });
 
+  it('uses the target line settings when a queue is updated', async () => {
+    const lineAwareClient = createCallQueueClient(webex, {level: LOGGER.INFO});
+    webex.request.mockImplementation(async (options: {uri: string; method?: string}) => {
+      if (options.method === HTTP_METHODS.PATCH) {
+        return <WebexRequestPayload>(<unknown>{statusCode: 204});
+      }
+
+      const isSecondaryLine = options.uri.includes('/secondarylines/line-owner-2/');
+
+      return <WebexRequestPayload>(<unknown>{
+        statusCode: 200,
+        body: {
+          agentACDState: 'AVAILABLE',
+          queues: [
+            {
+              id: 'shared-queue',
+              name: 'Shared queue',
+              available: true,
+              allowLogOffEnabled: !isSecondaryLine,
+            },
+          ],
+        },
+      });
+    });
+
+    await lineAwareClient.getCallQueueSettings();
+    await lineAwareClient.updateCallQueueSettings(
+      {queues: [{id: 'shared-queue', available: false}]},
+      'line-owner-2'
+    );
+
+    expect(webex.request).toHaveBeenNthCalledWith(1, {
+      uri: `${HYDRA}telephony/config/people/me/settings/queues`,
+      method: HTTP_METHODS.GET,
+    });
+    expect(webex.request).toHaveBeenNthCalledWith(2, {
+      uri: `${HYDRA}telephony/config/people/me/settings/secondarylines/line-owner-2/queues`,
+      method: HTTP_METHODS.GET,
+    });
+    expect(webex.request).toHaveBeenNthCalledWith(3, {
+      uri: `${HYDRA}telephony/config/people/me/settings/secondarylines/line-owner-2/queues`,
+      method: HTTP_METHODS.PATCH,
+      body: {queues: [{id: 'shared-queue', available: true}]},
+    });
+  });
+
   it('rejects an update that sets nothing', async () => {
     const response = await client.updateCallQueueSettings({});
 
     expect(webex.request).not.toHaveBeenCalled();
     expect(response.statusCode).toBe(400);
+  });
+
+  it('rejects an empty queue update', async () => {
+    const response = await client.updateCallQueueSettings({queues: []});
+
+    expect(webex.request).not.toHaveBeenCalled();
+    expect(response.statusCode).toBe(400);
+    expect(response.data.error).toBe('queues must include at least one queue update');
   });
 
   it('rejects an unsupported ACD state', async () => {

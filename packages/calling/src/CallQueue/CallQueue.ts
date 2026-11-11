@@ -64,7 +64,7 @@ export class CallQueueClient extends Eventing<CallQueueEventTypes> implements IC
 
   private hydraEndpoint: string;
 
-  private current?: CallQueueAgentStatus;
+  private currentByLine = new Map<string | undefined, CallQueueAgentStatus>();
 
   private queueNames = new Map<string, string>();
 
@@ -107,11 +107,12 @@ export class CallQueueClient extends Eventing<CallQueueEventTypes> implements IC
       const parsed = parseCallQueueSettings(response.body);
       const named = parsed ? await this.fillQueueNames(parsed) : undefined;
       if (named) {
-        this.current = named;
+        this.currentByLine.set(lineOwnerId, named);
       }
+      const current = this.currentByLine.get(lineOwnerId);
       log.log(
-        `Call queue settings loaded, state=${this.current?.acdState ?? 'unknown'}, queues=${
-          this.current?.queues.length ?? 0
+        `Call queue settings loaded, state=${current?.acdState ?? 'unknown'}, queues=${
+          current?.queues.length ?? 0
         }`,
         loggerContext
       );
@@ -136,18 +137,32 @@ export class CallQueueClient extends Eventing<CallQueueEventTypes> implements IC
     if (rejected) {
       return rejected;
     }
-    const body = this.buildUpdateBody(request);
 
     try {
+      if (this.needsQueuePolicyRefresh(request, lineOwnerId)) {
+        const settings = await this.getCallQueueSettings(lineOwnerId);
+        if (settings.statusCode >= 400) {
+          return settings;
+        }
+        if (!settings.data.callQueue) {
+          return this.failure(
+            400,
+            'Call queue settings are required before updating queue membership'
+          );
+        }
+      }
+
+      const body = this.buildUpdateBody(request, lineOwnerId);
       const response = <WebexRequestPayload>await this.webex.request({
         uri: this.queuesUrl(lineOwnerId),
         method: HTTP_METHODS.PATCH,
         body,
       });
       log.log(`Response trackingId: ${response?.headers?.trackingid}`, loggerContext);
-      const parsed = parseCallQueueSettings(response.body) ?? this.applyLocalUpdate(request);
+      const parsed =
+        parseCallQueueSettings(response.body) ?? this.applyLocalUpdate(request, lineOwnerId);
       const named = await this.fillQueueNames(parsed);
-      this.current = named;
+      this.currentByLine.set(lineOwnerId, named);
       log.log(
         `Call queue settings updated, state=${named.acdState}, queues=${named.queues.length}`,
         loggerContext
@@ -185,12 +200,13 @@ export class CallQueueClient extends Eventing<CallQueueEventTypes> implements IC
       log.log(`Response trackingId: ${response?.headers?.trackingid}`, loggerContext);
       const parsed = parseCallQueueSettings(response.body);
       if (parsed) {
-        this.current = await this.fillQueueNames(parsed);
-      } else if (this.current) {
-        this.current = await this.fillQueueNames(this.current);
+        this.currentByLine.set(undefined, await this.fillQueueNames(parsed));
+      } else if (this.currentByLine.has(undefined)) {
+        const current = this.currentByLine.get(undefined) as CallQueueAgentStatus;
+        this.currentByLine.set(undefined, await this.fillQueueNames(current));
       }
 
-      return this.success(response, this.current);
+      return this.success(response, this.currentByLine.get(undefined));
     } catch (err: unknown) {
       return this.fail(err, loggerContext, 'Failed to sync telephony calls');
     }
@@ -223,17 +239,16 @@ export class CallQueueClient extends Eventing<CallQueueEventTypes> implements IC
   private handleAgentEvent(kind: CallQueueEventKind, event: unknown) {
     const generation = this.eventGeneration + 1;
     this.eventGeneration = generation;
-    const next = applyCallQueueEvent(this.current, kind, event);
+    const current = this.currentByLine.get(undefined);
+    const next = applyCallQueueEvent(current, kind, event);
     if (
       !next ||
-      (this.current &&
-        next.acdState === this.current.acdState &&
-        next.queues === this.current.queues)
+      (current && next.acdState === current.acdState && next.queues === current.queues)
     ) {
       return;
     }
     const named = applyQueueNames(next, this.queueNames);
-    this.current = named;
+    this.currentByLine.set(undefined, named);
     log.log(
       `Call queue ${kind} event applied, state=${named.acdState}, queues=${named.queues.length}`,
       {file: CALL_QUEUE_FILE, method: 'handleAgentEvent'}
@@ -254,7 +269,7 @@ export class CallQueueClient extends Eventing<CallQueueEventTypes> implements IC
     if (generation !== this.eventGeneration || named === status) {
       return;
     }
-    this.current = named;
+    this.currentByLine.set(undefined, named);
     this.emit(COMMON_EVENT_KEYS.CALL_QUEUE_UPDATED, named);
   }
 
@@ -365,6 +380,9 @@ export class CallQueueClient extends Eventing<CallQueueEventTypes> implements IC
     if (hasState && !SUPPORTED_STATES.has(request.agentACDState as string)) {
       return this.failure(400, 'agentACDState is not a supported ACD state');
     }
+    if (hasQueues && request.queues?.length === 0) {
+      return this.failure(400, 'queues must include at least one queue update');
+    }
     if (hasQueues) {
       const invalid = request.queues?.some(
         (queue) =>
@@ -381,7 +399,10 @@ export class CallQueueClient extends Eventing<CallQueueEventTypes> implements IC
     return undefined;
   }
 
-  private buildUpdateBody(request: UpdateCallQueueSettingsRequest): Record<string, unknown> {
+  private buildUpdateBody(
+    request: UpdateCallQueueSettingsRequest,
+    lineOwnerId?: string
+  ): Record<string, unknown> {
     const body: Record<string, unknown> = {};
     if (request.agentACDState) {
       body.agentACDState = request.agentACDState;
@@ -389,15 +410,15 @@ export class CallQueueClient extends Eventing<CallQueueEventTypes> implements IC
     if (request.queues) {
       body.queues = request.queues.map((queue) => ({
         id: queue.id,
-        available: this.canChangeJoin(queue.id) ? queue.available : true,
+        available: this.canChangeJoin(queue.id, lineOwnerId) ? queue.available : true,
       }));
     }
 
     return body;
   }
 
-  private canChangeJoin(queueId: string): boolean {
-    const known = this.current?.queues.find((queue) => queue.id === queueId);
+  private canChangeJoin(queueId: string, lineOwnerId?: string): boolean {
+    const known = this.currentByLine.get(lineOwnerId)?.queues.find((queue) => queue.id === queueId);
     if (!known || known.allowLogOffEnabled === undefined) {
       return true;
     }
@@ -405,12 +426,35 @@ export class CallQueueClient extends Eventing<CallQueueEventTypes> implements IC
     return known.allowLogOffEnabled;
   }
 
-  private applyLocalUpdate(request: UpdateCallQueueSettingsRequest): CallQueueAgentStatus {
-    const base = this.current ?? {acdState: ACD_STATE.SIGN_OUT, queues: []};
+  private needsQueuePolicyRefresh(
+    request: UpdateCallQueueSettingsRequest,
+    lineOwnerId?: string
+  ): boolean {
+    const status = this.currentByLine.get(lineOwnerId);
+
+    return Boolean(
+      request.queues?.some(
+        (queue) =>
+          !queue.available &&
+          !status?.queues.some(
+            (known) => known.id === queue.id && known.allowLogOffEnabled !== undefined
+          )
+      )
+    );
+  }
+
+  private applyLocalUpdate(
+    request: UpdateCallQueueSettingsRequest,
+    lineOwnerId?: string
+  ): CallQueueAgentStatus {
+    const base = this.currentByLine.get(lineOwnerId) ?? {
+      acdState: ACD_STATE.SIGN_OUT,
+      queues: [],
+    };
     const queues = request.queues
       ? request.queues.reduce((list, update) => {
           const index = list.findIndex((queue) => queue.id === update.id);
-          const available = this.canChangeJoin(update.id) ? update.available : true;
+          const available = this.canChangeJoin(update.id, lineOwnerId) ? update.available : true;
           if (index === -1) {
             return list.concat({id: update.id, available});
           }
