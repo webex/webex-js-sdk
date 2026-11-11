@@ -22,6 +22,23 @@ export interface HttpsSetup {
 }
 
 /**
+ * Runs a command synchronously and returns its trimmed stdout.
+ *
+ * @param command - Executable to run.
+ * @param args - Arguments for the executable.
+ * @param hint - Context added to the error message on failure.
+ * @returns - Trimmed stdout.
+ */
+function runShellCommand(command: string, args: Array<string>, hint: string): string {
+  try {
+    return childProcess.execFileSync(command, args, { encoding: 'utf8', stdio: ['ignore', 'pipe', 'pipe'] }).trim();
+  } catch (error: any) {
+    // eslint-disable-next-line @typescript-eslint/no-use-before-define
+    throw new Error(`${Https.ENV_VAR}: ${hint} (${command} ${args.join(' ')}: ${error.message})`);
+  }
+}
+
+/**
  * Karma HTTPS utility methods, backed by mkcert (https://github.com/FiloSottile/mkcert).
  *
  * Webex services only accept CORS requests from allow-listed origins. Some reject `http://`
@@ -75,7 +92,7 @@ class Https {
   public static setup(): HttpsSetup {
     Https.assertCanBindPort();
 
-    const caRoot = Https.run(
+    const caRoot = runShellCommand(
       'mkcert',
       ['-CAROOT'],
       'mkcert must be installed and on the PATH, run "yarn setup:karma-https" first',
@@ -101,7 +118,7 @@ class Https {
     process.once('exit', cleanup);
 
     try {
-      Https.run(
+      runShellCommand(
         'mkcert',
         ['-cert-file', certPath, '-key-file', keyPath, Https.HOSTNAME, 'localhost', '127.0.0.1', '::1'],
         'failed to generate a localhost certificate with mkcert',
@@ -116,8 +133,12 @@ class Https {
           const db = `sql:${profile}`;
           const hint = 'certutil (libnss3-tools) must be installed and on the PATH, run "yarn setup:karma-https" first';
 
-          Https.run('certutil', ['-N', '--empty-password', '-d', db], hint);
-          Https.run('certutil', ['-A', '-n', 'mkcert development CA', '-t', 'C,,', '-i', caCertPath, '-d', db], hint);
+          runShellCommand('certutil', ['-N', '--empty-password', '-d', db], hint);
+          runShellCommand(
+            'certutil',
+            ['-A', '-n', 'mkcert development CA', '-t', 'C,,', '-i', caCertPath, '-d', db],
+            hint,
+          );
 
           return profile;
         },
@@ -146,22 +167,6 @@ class Https {
         `${Https.ENV_VAR}: cannot listen on port ${Https.PORT}, `
         + `run "sudo sysctl -w net.ipv4.ip_unprivileged_port_start=${Https.PORT}" first (or "yarn setup:karma-https")`,
       );
-    }
-  }
-
-  /**
-   * Runs a command synchronously and returns its trimmed stdout.
-   *
-   * @param command - Executable to run.
-   * @param args - Arguments for the executable.
-   * @param hint - Context added to the error message on failure.
-   * @returns - Trimmed stdout.
-   */
-  private static run(command: string, args: Array<string>, hint: string): string {
-    try {
-      return childProcess.execFileSync(command, args, { encoding: 'utf8', stdio: ['ignore', 'pipe', 'pipe'] }).trim();
-    } catch (error: any) {
-      throw new Error(`${Https.ENV_VAR}: ${hint} (${command} ${args.join(' ')}: ${error.message})`);
     }
   }
 }
