@@ -69,16 +69,6 @@ describe('plugin-meetings', () => {
       assert.deepEqual(sessionHandlers, {});
     };
 
-    const makeFakeMember = (id, deviceUrls) => ({
-      id,
-      participant: {devices: deviceUrls.map((url) => ({url}))},
-      e2eeVerificationState: 'unknown',
-      setE2eeDeviceVerifications: sinon.stub(),
-      setE2eeDeviceVerification: sinon.stub().returns(true),
-      removeE2eeDeviceVerification: sinon.stub().returns(true),
-      getE2eeDeviceVerifications: sinon.stub().returns([]),
-    });
-
     beforeEach(() => {
       sessionHandlers = {};
       membersById = {};
@@ -121,7 +111,6 @@ describe('plugin-meetings', () => {
           selfId: 's1',
           membersCollection: {
             get: (id) => (id === 's1' ? {name: 'Alice'} : membersById[id]),
-            getAll: () => membersById,
             getMemberByDeviceUrl: (url) =>
               Object.values(membersById).find((member: any) =>
                 member.participant?.devices?.some((device) => device.url === url)
@@ -163,6 +152,10 @@ describe('plugin-meetings', () => {
     });
 
     describe('constructor', () => {
+      it('registers a members-update processor when E2EE is enabled', () => {
+        assert.calledOnceWithExactly(meeting.members.setMembersUpdateProcessor, sinon.match.func);
+      });
+
       it('does not register a members-update processor when E2EE is disabled', () => {
         webex.config.meetings.enableE2ee = false;
         meeting.members.setMembersUpdateProcessor.resetHistory();
@@ -480,65 +473,58 @@ describe('plugin-meetings', () => {
       });
     });
 
-    describe('roster reconciliation (verification)', () => {
-      const rosterEntry = {
-        url: OWN_DEVICE_URL,
-        deviceType: 'WEB',
-        displayName: 'Alice',
-        validationResult: 0,
-      };
-      const expectedVerification = {
-        deviceUrl: OWN_DEVICE_URL,
-        validationResult: 0,
-        displayName: 'Alice',
-        deviceType: 'WEB',
-      };
-
-      // The reconciler is created in the constructor and registered as the Members processor.
-      const getProcessor = () => meeting.members.setMembersUpdateProcessor.args[0][0];
+    describe('roster reconciliation', () => {
+      let member;
 
       beforeEach(async () => {
+        member = {
+          participant: {devices: [{url: OWN_DEVICE_URL}]},
+          setE2eeDeviceVerification: sinon.stub().returns(true),
+          removeE2eeDeviceVerification: sinon.stub().returns(true),
+        };
+        membersById.m1 = member;
         await e2ee.start();
       });
 
-      it('registers a members-update processor on construction', () => {
-        assert.calledOnce(meeting.members.setMembersUpdateProcessor);
-        assert.isFunction(getProcessor());
+      it('runs Locus member updates through the reconciler', () => {
+        const processMembersUpdateSpy = sinon.spy(
+          MemberMLSReconciler.prototype,
+          'processMembersUpdate'
+        );
+        const payload = {delta: {added: [member], updated: []}};
+        const [processor] = meeting.members.setMembersUpdateProcessor.firstCall.args;
+
+        processor(payload);
+
+        assert.calledOnceWithExactly(processMembersUpdateSpy, payload);
       });
 
-      it('stamps verification onto members changed by a Locus update (via the processor)', () => {
-        // Roster arrives while no member owns the device yet, then the member appears.
-        emitSession('rosterAdded', [rosterEntry]);
-        const member = makeFakeMember('m1', [OWN_DEVICE_URL]);
-        membersById.m1 = member;
+      it('applies roster changes and reports the affected members through Members', () => {
+        const applyRosterAddedSpy = sinon.spy(MemberMLSReconciler.prototype, 'applyRosterAdded');
+        const applyRosterRemovedSpy = sinon.spy(
+          MemberMLSReconciler.prototype,
+          'applyRosterRemoved'
+        );
+        const entry = makeRosterEntry({url: OWN_DEVICE_URL});
 
-        getProcessor()({delta: {added: [member]}});
+        emitSession('rosterAdded', [entry]);
 
-        assert.calledWithExactly(member.setE2eeDeviceVerifications, [expectedVerification]);
-        // Member-driven: Members emits members:update itself, the reconciler does not report.
-        assert.notCalled(meeting.members.reportMembersUpdated);
-      });
+        assert.calledOnceWithExactly(applyRosterAddedSpy, [entry]);
+        assert.calledOnceWithExactly(meeting.members.reportMembersUpdated, [member]);
 
-      it('reports roster-driven verification changes through Members', () => {
-        const member = makeFakeMember('m1', [OWN_DEVICE_URL]);
-        membersById.m1 = member;
-
-        emitSession('rosterAdded', [rosterEntry]);
-
-        assert.calledWithExactly(member.setE2eeDeviceVerification, OWN_DEVICE_URL, expectedVerification);
-        assert.calledWith(meeting.members.reportMembersUpdated, [member]);
-      });
-
-      it('reports members cleared when their device leaves the roster', () => {
-        const member = makeFakeMember('m1', [OWN_DEVICE_URL]);
-        membersById.m1 = member;
-        emitSession('rosterAdded', [rosterEntry]);
         meeting.members.reportMembersUpdated.resetHistory();
-
         emitSession('rosterRemoved', {urls: [OWN_DEVICE_URL]});
 
-        assert.calledWith(member.removeE2eeDeviceVerification, OWN_DEVICE_URL);
-        assert.calledWith(meeting.members.reportMembersUpdated, [member]);
+        assert.calledOnceWithExactly(applyRosterRemovedSpy, [OWN_DEVICE_URL]);
+        assert.calledOnceWithExactly(meeting.members.reportMembersUpdated, [member]);
+      });
+
+      it('resets the reconciler on stop', async () => {
+        const resetSpy = sinon.spy(MemberMLSReconciler.prototype, 'reset');
+
+        await e2ee.stop();
+
+        assert.calledOnce(resetSpy);
       });
     });
 
@@ -625,22 +611,6 @@ describe('plugin-meetings', () => {
           assert.calledOnceWithExactly(events.mediaServices, {hasMediaServices: false});
           assert.equal(e2ee.state, 'left');
         });
-      });
-
-      it('resets the roster on stop, clearing and reporting verified members', async () => {
-        const member = makeFakeMember('m1', [OWN_DEVICE_URL]);
-        membersById.m1 = member;
-        await e2ee.start();
-        emitSession('rosterAdded', [
-          {url: OWN_DEVICE_URL, deviceType: 'WEB', displayName: 'Alice', validationResult: 0},
-        ]);
-        member.removeE2eeDeviceVerification.resetHistory();
-        meeting.members.reportMembersUpdated.resetHistory();
-
-        await e2ee.stop();
-
-        assert.calledWith(member.removeE2eeDeviceVerification, OWN_DEVICE_URL);
-        assert.calledWith(meeting.members.reportMembersUpdated, [member]);
       });
     });
   });
