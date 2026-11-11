@@ -266,6 +266,8 @@ session, sets state `failed` or `evicted` (clearing the security code), and emit
 
 **`stop()`** tears down (stop signaling, unsubscribe, `session.leave()`, reset the reconciler) and
 sets state `left`. It is silent when state is `disabled`, so callers can invoke it unconditionally.
+It also cancels a `start()` still awaiting the WASM module, credentials or MLS initialization: that
+`start()` returns without starting signaling or joining, and without reporting a failure.
 
 ## Integration
 
