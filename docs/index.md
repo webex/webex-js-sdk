@@ -31,6 +31,7 @@ package owns its architecture, specifications, and decisions beside its code. Th
 | `@webex/internal-plugin-user` | `packages/@webex/internal-plugin-user/` | [AGENTS.md](../packages/@webex/internal-plugin-user/AGENTS.md) | [docs/index.md](../packages/@webex/internal-plugin-user/docs/index.md) | [.sdd/manifest.json](../packages/@webex/internal-plugin-user/.sdd/manifest.json) |
 | `@webex/internal-plugin-wdm` | `packages/@webex/internal-plugin-wdm/` | [AGENTS.md](../packages/@webex/internal-plugin-wdm/AGENTS.md) | [docs/index.md](../packages/@webex/internal-plugin-wdm/docs/index.md) | [.sdd/manifest.json](../packages/@webex/internal-plugin-wdm/.sdd/manifest.json) |
 | `@webex/plugin-authorization-browser-first-party` | `packages/@webex/plugin-authorization-browser-first-party/` | [AGENTS.md](../packages/@webex/plugin-authorization-browser-first-party/AGENTS.md) | [docs/index.md](../packages/@webex/plugin-authorization-browser-first-party/docs/index.md) | [.sdd/manifest.json](../packages/@webex/plugin-authorization-browser-first-party/.sdd/manifest.json) |
+| `@webex/plugin-authorization-node` | `packages/@webex/plugin-authorization-node/` | [AGENTS.md](../packages/@webex/plugin-authorization-node/AGENTS.md) | [docs/index.md](../packages/@webex/plugin-authorization-node/docs/index.md) | [.sdd/manifest.json](../packages/@webex/plugin-authorization-node/.sdd/manifest.json) |
 <!-- sdd-package-routing:end -->
 
 ## Decisions
