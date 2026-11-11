@@ -90,6 +90,7 @@
       "agent_entry": "packages/@webex/internal-plugin-wdm/AGENTS.md",
       "index": "packages/@webex/internal-plugin-wdm/docs/index.md",
       "onboarded_at": "2026-10-28T14:44:56Z",
+      "onboarded_by": "claude-code"
     },
     {
       "id": "@webex/plugin-authorization-browser-first-party",
@@ -98,6 +99,15 @@
       "agent_entry": "packages/@webex/plugin-authorization-browser-first-party/AGENTS.md",
       "index": "packages/@webex/plugin-authorization-browser-first-party/docs/index.md",
       "onboarded_at": "2026-11-03T05:46:20Z",
+      "onboarded_by": "claude-code"
+    },
+    {
+      "id": "@webex/plugin-authorization-node",
+      "path": "packages/@webex/plugin-authorization-node",
+      "manifest": "packages/@webex/plugin-authorization-node/.sdd/manifest.json",
+      "agent_entry": "packages/@webex/plugin-authorization-node/AGENTS.md",
+      "index": "packages/@webex/plugin-authorization-node/docs/index.md",
+      "onboarded_at": "2026-11-11T08:35:47Z",
       "onboarded_by": "claude-code"
     }
   ],
@@ -108,6 +118,6 @@
   "provenance": {
     "generated_by": "claude-code",
     "approved_by": "rarajes2@cisco.com",
-    "updated_at": "2026-11-03T05:46:20Z"
+    "updated_at": "2026-11-11T08:35:47Z"
   }
 }
