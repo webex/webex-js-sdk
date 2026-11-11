@@ -1,6 +1,5 @@
 # E2EE / MLS in `plugin-meetings` — Design
 
-> Status: **Under review.**
 > End-to-end-encrypted (E2EE) meetings, backed by MLS, are handled inside `@webex/plugin-meetings`,
 > so an SDK client joins an E2EE meeting exactly like any other meeting (`meeting.joinWithMedia()`).
 
@@ -54,7 +53,7 @@ or from plain SRTP. In an adaptive meeting a non-E2EE client may join and have a
 | D4 | Member verification is exposed on `Member`, but MLS roster data is kept in a **separate registry keyed by device URL** and reconciled, because Locus member updates and MLS roster updates arrive independently and in any order. |
 | D5 | A device is **verified** when its selected X.509 identity result is `E2eeValidationResult.Success` with a verified identity type. `Member` exposes per-device data and an aggregated state. |
 | D6 | The WASM module is **preloaded** in `Meetings.register()`; credentials are fetched lazily on the first E2EE meeting and cached. |
-| D7 | MLS failures are **fatal for E2EE**: the session is torn down, a failure event and a behavioral metric are emitted. The meeting never silently continues without E2EE (see [Planned](#planned--not-yet-implemented) for force-leave). |
+| D7 | MLS failures are **fatal for E2EE**: the session is torn down, a failure event and a behavioral metric are emitted. The meeting never silently continues without E2EE (see [Planned](#planned--not-yet-implemented) for fatal failure handling). |
 | D8 | Media-key injection uses a **new `internal-media-core` API** defined by this package (`IE2eeMediaConnection`); its implementation is out of scope here. |
 
 ## Architecture
@@ -346,7 +345,7 @@ host must allow cross-origin requests and serve the `.js` file with a JavaScript
   set. `Meeting` will attach it after `createMediaConnection()` and detach it in
   `closePeerConnections()`. The MLS session and LLM persist across media reconnects, so the group is
   not rejoined.
-- **Force-leave on fatal failure.** `handleFatal` will also call `meeting.leave()` with new
+- **Fatal failure handling.** `handleFatal` will also call `meeting.leave()` with new
   `MEETING_REMOVED_REASON` values (`E2EE_JOIN_FAILURE`, `E2EE_EVICTED`, ...) and surface an
   `E2eeError`, so the app gets `meeting:removed` with the cause.
 
