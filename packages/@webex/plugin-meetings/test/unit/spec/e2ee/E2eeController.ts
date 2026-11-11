@@ -7,10 +7,6 @@ import sinon from 'sinon';
 import E2eeController from '@webex/plugin-meetings/src/e2ee/E2eeController';
 import MLS from '@webex/plugin-meetings/src/e2ee/mls';
 import E2eeSignaling from '@webex/plugin-meetings/src/e2ee/E2eeSignaling';
-import {
-  DEFAULT_COALESCE_WINDOW,
-  DEFAULT_JOIN_TIMEOUT,
-} from '@webex/plugin-meetings/src/e2ee/constants';
 import WasmLoader from '@webex/plugin-meetings/src/common/wasm-loader';
 import LoggerProxy from '@webex/plugin-meetings/src/common/logs/logger-proxy';
 import {EVENT_TRIGGERS} from '@webex/plugin-meetings/src/constants';
@@ -20,32 +16,66 @@ describe('plugin-meetings', () => {
   describe('E2eeController', () => {
     let webex;
     let meeting;
+    let membersById;
     let wasmLoader;
     let identityProvider;
     let getLlmChannel;
+    let createController;
     let e2ee;
+    let events;
     let sessionHandlers;
     let rosterStub;
     let initializeStub;
+    let onStub;
     let offStub;
     let joinStub;
     let leaveStub;
     let signalingStartStub;
     let signalingStopStub;
-    let emitSpy;
     let sendBehavioralMetricStub;
 
     const OWN_DEVICE_URL = 'https://wdm.webex.com/device-1';
+    const WASM_URL = '/assets/plugin-meetings/e2ee.wasm';
+    const GROUP_URL = 'https://mes.webex.com/group-1';
+    const LOCUS_URL = 'https://locus.webex.com/locus-1';
+    const CREDENTIALS = {privateKey: new Uint8Array([1]), certChain: [new ArrayBuffer(1)]};
+    const TRUST_ANCHORS = {webexCaRoots: 'ca', domainNameRoots: '', userIdentityRoots: ''};
 
-    const emitSession = (event, payload) => sessionHandlers[event]?.(payload);
+    const emitSession = (event, payload?) => sessionHandlers[event]?.(payload);
+
+    const makeRosterEntry = ({url, deviceType = 'WEB'}) => ({
+      url,
+      deviceType,
+      displayName: '',
+      validationResult: 0,
+    });
+
+    const MEDIA_SERVICE = makeRosterEntry({
+      url: 'https://ms.webex.com/1',
+      deviceType: 'MEDIA_SERVICE',
+    });
+
+    const addMediaServiceToRoster = () => {
+      rosterStub.returns([MEDIA_SERVICE]);
+      emitSession('rosterAdded', [MEDIA_SERVICE]);
+    };
+
+    const resetEventSpies = () => Object.values(events).forEach((spy: any) => spy.resetHistory());
+
+    const assertSessionTornDown = () => {
+      assert.calledOnce(signalingStopStub);
+      assert.calledOnce(leaveStub);
+      assert.deepEqual(sessionHandlers, {});
+    };
 
     beforeEach(() => {
       sessionHandlers = {};
+      membersById = {};
       initializeStub = sinon.stub(MLS.prototype, 'initialize').resolves();
       joinStub = sinon.stub(MLS.prototype, 'join');
       leaveStub = sinon.stub(MLS.prototype, 'leave');
       rosterStub = sinon.stub(MLS.prototype, 'getRoster').returns([]);
-      sinon.stub(MLS.prototype, 'on').callsFake((event, handler) => {
+      onStub = sinon.stub(MLS.prototype, 'on').callsFake((event, handler) => {
         sessionHandlers[event] = handler;
       });
       offStub = sinon.stub(MLS.prototype, 'off').callsFake((event) => {
@@ -57,22 +87,15 @@ describe('plugin-meetings', () => {
 
       wasmLoader = sinon.createStubInstance(WasmLoader);
       wasmLoader.get.resolves({});
-      wasmLoader.preload.resolves();
-      wasmLoader.isLoaded.returns(true);
       identityProvider = {
-        getCredentials: sinon
-          .stub()
-          .resolves({privateKey: new Uint8Array([1]), certChain: [new ArrayBuffer(1)]}),
-        getTrustAnchors: sinon
-          .stub()
-          .returns({webexCaRoots: 'ca', domainNameRoots: '', userIdentityRoots: ''}),
+        getCredentials: sinon.stub().resolves(CREDENTIALS),
+        getTrustAnchors: sinon.stub().returns(TRUST_ANCHORS),
       };
       getLlmChannel = sinon.stub().returns(undefined);
       webex = {
         config: {meetings: {enableE2ee: true, deviceType: 'WEB'}},
         internal: {
           device: {userId: 'user-1', url: OWN_DEVICE_URL},
-          llm: {on: sinon.stub(), off: sinon.stub(), isConnected: sinon.stub().returns(false)},
           mercury: {on: sinon.stub(), off: sinon.stub()},
         },
         request: sinon.stub().resolves({body: ''}),
@@ -80,262 +103,368 @@ describe('plugin-meetings', () => {
       meeting = {
         correlationId: 'corr-1',
         locusInfo: {
-          info: {isV2E2EEncrypted: true, mediaEncryptionGroupUrl: 'https://mes.webex.com/group-1'},
+          url: LOCUS_URL,
+          info: {isV2E2EEncrypted: true, mediaEncryptionGroupUrl: GROUP_URL},
+        },
+        members: {
+          selfId: 's1',
+          membersCollection: {
+            get: (id) => (id === 's1' ? {name: 'Alice'} : membersById[id]),
+            getAll: () => membersById,
+            getMemberByDeviceUrl: (url) =>
+              Object.values(membersById).find((member: any) =>
+                member.participant?.devices?.some((device) => device.url === url)
+              ),
+          },
+          setMembersUpdateProcessor: sinon.stub(),
+          reportMembersUpdated: sinon.stub(),
         },
       };
-      e2ee = new E2eeController({
-        context: {
-          correlationId: meeting.correlationId,
-          getLocusInfo: () => meeting.locusInfo,
-          getLlmChannel,
-          members: {
-            selfId: 's1',
-            membersCollection: {get: () => ({name: 'Alice'})},
-          },
-        } as any,
-        webex,
-        wasmLoader,
-        wasmUrl: '/assets/plugin-meetings/e2ee.wasm',
-        identityProvider,
-      });
-      emitSpy = sinon.spy(e2ee, 'emit');
+      createController = () =>
+        new E2eeController({
+          context: {
+            correlationId: meeting.correlationId,
+            getLocusInfo: () => meeting.locusInfo,
+            getLlmChannel,
+            members: meeting.members,
+          } as any,
+          webex,
+          wasmLoader,
+          wasmUrl: WASM_URL,
+          identityProvider,
+        });
+      e2ee = createController();
+
+      events = {
+        securityCode: sinon.spy(),
+        state: sinon.spy(),
+        mediaServices: sinon.spy(),
+        failure: sinon.spy(),
+      };
+      e2ee.on(EVENT_TRIGGERS.MEETING_E2EE_SECURITY_CODE_UPDATED, events.securityCode);
+      e2ee.on(EVENT_TRIGGERS.MEETING_E2EE_STATE_CHANGED, events.state);
+      e2ee.on(EVENT_TRIGGERS.MEETING_E2EE_MEDIA_SERVICES_CHANGED, events.mediaServices);
+      e2ee.on(EVENT_TRIGGERS.MEETING_E2EE_FAILURE, events.failure);
     });
 
     afterEach(() => {
       sinon.restore();
     });
 
-    const emitted = (event) => emitSpy.getCalls().filter((call) => call.args[1] === event);
-
-    describe('start guard (required)', () => {
-      it('is a no-op when E2EE is disabled in config', async () => {
+    describe('constructor', () => {
+      it('does not register a members-update processor when E2EE is disabled', () => {
         webex.config.meetings.enableE2ee = false;
+        meeting.members.setMembersUpdateProcessor.resetHistory();
 
-        await e2ee.start();
+        createController();
 
-        assert.equal(e2ee.state, 'disabled');
-        assert.notCalled(initializeStub);
-      });
-
-      it('is a no-op when the meeting is not V2 E2E encrypted', async () => {
-        meeting.locusInfo.info.isV2E2EEncrypted = false;
-
-        await e2ee.start();
-
-        assert.equal(e2ee.state, 'disabled');
-        assert.notCalled(initializeStub);
-      });
-
-      it('is a no-op when there is no media-encryption group url', async () => {
-        meeting.locusInfo.info.mediaEncryptionGroupUrl = undefined;
-
-        await e2ee.start();
-
-        assert.equal(e2ee.state, 'disabled');
-        assert.notCalled(initializeStub);
+        assert.notCalled(meeting.members.setMembersUpdateProcessor);
       });
     });
 
-    describe('start (happy path)', () => {
-      it('initializes the session, starts signaling, joins and moves to joining', async () => {
+    describe('start', () => {
+      [
+        {
+          when: 'E2EE is disabled in config',
+          setup: () => (webex.config.meetings.enableE2ee = false),
+        },
+        {
+          when: 'the meeting is not V2 E2E encrypted',
+          setup: () => (meeting.locusInfo.info.isV2E2EEncrypted = false),
+        },
+        {
+          when: 'there is no media-encryption group url',
+          setup: () => (meeting.locusInfo.info.mediaEncryptionGroupUrl = undefined),
+        },
+        {when: 'there is no locus info', setup: () => (meeting.locusInfo = undefined)},
+      ].forEach(({when, setup}) => {
+        it(`is a no-op when ${when}`, async () => {
+          setup();
+
+          await e2ee.start();
+
+          assert.equal(e2ee.state, 'disabled');
+          assert.notCalled(identityProvider.getCredentials);
+          assert.notCalled(initializeStub);
+          assert.notCalled(events.state);
+        });
+      });
+
+      it('initializes the session, then starts signaling, then joins', async () => {
         await e2ee.start();
 
-        assert.calledOnceWithExactly(wasmLoader.get, '/assets/plugin-meetings/e2ee.wasm');
+        assert.calledOnceWithExactly(wasmLoader.get, WASM_URL);
         assert.calledOnceWithExactly(identityProvider.getCredentials, 'user-1');
-
-        const initConfig = initializeStub.firstCall.args[0];
-
-        assert.equal(initConfig.participantId, 'user-1');
-        assert.equal(initConfig.deviceUrl, OWN_DEVICE_URL);
-        assert.equal(initConfig.deviceType, 'WEB');
-        assert.equal(initConfig.correlationId, 'corr-1');
-        assert.equal(initConfig.displayName, 'Alice');
-        assert.equal(initConfig.serviceUrl, 'https://mes.webex.com/group-1');
-        assert.equal(initConfig.joinTimeout, DEFAULT_JOIN_TIMEOUT);
-        assert.equal(initConfig.coalesceWindow, DEFAULT_COALESCE_WINDOW);
-        assert.deepEqual(initConfig.trustAnchors, {
-          webexCaRoots: 'ca',
-          domainNameRoots: '',
-          userIdentityRoots: '',
+        assert.calledOnceWithExactly(initializeStub, {
+          participantId: 'user-1',
+          deviceUrl: OWN_DEVICE_URL,
+          deviceType: 'WEB',
+          correlationId: 'corr-1',
+          displayName: 'Alice',
+          serviceUrl: GROUP_URL,
+          credentials: CREDENTIALS,
+          trustAnchors: TRUST_ANCHORS,
+          joinTimeout: 180_000,
+          coalesceWindow: 500,
         });
+        sinon.assert.callOrder(initializeStub, signalingStartStub, joinStub);
+        assert.deepEqual(events.state.args, [[{state: 'initializing'}], [{state: 'joining'}]]);
+        assert.equal(e2ee.state, 'joining');
+      });
 
-        assert.calledOnce(signalingStartStub);
+      it('uses an empty display name when the self member is unknown', async () => {
+        meeting.members.selfId = 'unknown';
+
+        await e2ee.start();
+
+        assert.equal(initializeStub.firstCall.args[0].displayName, '');
+      });
+
+      it('gives MLS the WASM loader and a media-encryption service bound to webex.request', async () => {
+        await e2ee.start();
+        const session = initializeStub.firstCall.thisValue;
+
+        wasmLoader.get.resetHistory();
+        await session.loadModule();
+        assert.calledOnceWithExactly(wasmLoader.get, WASM_URL);
+
+        webex.request.resolves({body: {ok: true}});
+        const response = await session.httpClient.request(`${GROUP_URL}/commit`, {a: 1});
+
+        assert.deepEqual(response, {ok: true});
+        assert.calledOnceWithExactly(webex.request, {
+          method: 'POST',
+          service: 'media-encryption',
+          url: `${GROUP_URL}/commit`,
+          body: {a: 1},
+        });
+        assert.equal(webex.request.firstCall.thisValue, webex);
+      });
+
+      it('connects signaling to mercury, the LLM channel of this locus and the MLS session', async () => {
+        signalingStartStub.restore();
+        const handleEventStub = sinon.stub(MLS.prototype, 'handleEvent');
+        const setLlmConnectedBeforeJoinStub = sinon.stub(
+          MLS.prototype,
+          'setLlmConnectedBeforeJoin'
+        );
+        const llm = {
+          on: sinon.stub(),
+          off: sinon.stub(),
+          isConnected: sinon.stub().returns(true),
+          getLocusUrl: sinon.stub().returns(LOCUS_URL),
+        };
+
+        getLlmChannel.returns(llm);
+
+        await e2ee.start();
+
+        assert.calledOnceWithExactly(setLlmConnectedBeforeJoinStub, true);
+
+        const [event, onMercuryEvent] = webex.internal.mercury.on.firstCall.args;
+
+        assert.calledWith(llm.on, event, sinon.match.func);
+
+        onMercuryEvent({data: {type: 'welcome'}});
+
+        assert.calledOnceWithExactly(
+          handleEventStub,
+          sinon.match.instanceOf(Uint8Array),
+          'mercury'
+        );
+        assert.equal(
+          new TextDecoder().decode(handleEventStub.firstCall.args[0]),
+          '{"type":"welcome"}'
+        );
+      });
+
+      it('ignores start while a session is starting or running', async () => {
+        await Promise.all([e2ee.start(), e2ee.start()]);
+        await e2ee.start();
+
+        assert.calledOnce(initializeStub);
         assert.calledOnce(joinStub);
         assert.equal(e2ee.state, 'joining');
       });
 
-      it('uses the current context LLM channel and refreshes it when Meeting reports a change', async () => {
-        const createLlmChannel = (id) => ({
-          id,
-          on: sinon.stub(),
-          off: sinon.stub(),
-          isConnected: sinon.stub().returns(false),
-          getLocusUrl: sinon.stub().returns('locus-1'),
-        });
-        const initialLlm = createLlmChannel('initial');
-        const replacementLlm = createLlmChannel('replacement');
+      it('can start again after stop', async () => {
+        await e2ee.start();
+        await e2ee.stop();
 
-        getLlmChannel.returns(initialLlm);
         await e2ee.start();
 
-        assert.equal((e2ee as any).signaling.llm, initialLlm);
+        assert.calledTwice(initializeStub);
+        assert.calledTwice(joinStub);
+        assert.equal(e2ee.state, 'joining');
+      });
+
+      [
+        {
+          when: 'the credentials cannot be fetched',
+          fail: () => identityProvider.getCredentials.rejects(new Error('CA down')),
+          error: 'CA down',
+          sessionCreated: false,
+        },
+        {
+          when: 'the WASM module fails to load with a non-Error value',
+          fail: () => wasmLoader.get.callsFake(() => Promise.reject('boom')),
+          error: 'boom',
+          sessionCreated: false,
+        },
+        {
+          when: 'the locus loses its media-encryption group url during startup',
+          fail: () =>
+            identityProvider.getCredentials.callsFake(async () => {
+              meeting.locusInfo.info.mediaEncryptionGroupUrl = undefined;
+
+              return CREDENTIALS;
+            }),
+          error: 'Meeting locus has no media encryption group URL',
+          sessionCreated: false,
+        },
+        {
+          when: 'the MLS session fails to initialize',
+          fail: () => initializeStub.rejects(new Error('MLS init failed')),
+          error: 'MLS init failed',
+          sessionCreated: true,
+        },
+      ].forEach(({when, fail, error, sessionCreated}) => {
+        it(`fails and reports startFailed when ${when}`, async () => {
+          fail();
+
+          await e2ee.start();
+
+          assert.equal(e2ee.state, 'failed');
+          assert.deepEqual(events.state.args, [[{state: 'initializing'}], [{state: 'failed'}]]);
+          assert.calledOnceWithExactly(events.failure, {reason: 'startFailed'});
+          assert.calledOnceWithExactly(sendBehavioralMetricStub, 'js_sdk_e2ee_failure', {
+            correlation_id: 'corr-1',
+            state: 'failed',
+            reason: 'startFailed',
+            error,
+          });
+          assert.notCalled(signalingStartStub);
+          assert.notCalled(joinStub);
+          assert.equal(leaveStub.callCount, sessionCreated ? 1 : 0);
+          assert.deepEqual(sessionHandlers, {});
+        });
+      });
+    });
+
+    describe('llmChannelChanged', () => {
+      let setLlmChannelStub;
+
+      beforeEach(() => {
+        setLlmChannelStub = sinon.stub(E2eeSignaling.prototype, 'setLlmChannel');
+      });
+
+      it('is a no-op before start', () => {
+        e2ee.llmChannelChanged();
+
+        assert.notCalled(setLlmChannelStub);
+      });
+
+      it('passes the current LLM channel to signaling', async () => {
+        const replacementLlm = {id: 'replacement'};
+
+        await e2ee.start();
 
         getLlmChannel.returns(replacementLlm);
         e2ee.llmChannelChanged();
-
-        assert.equal((e2ee as any).signaling.llm, replacementLlm);
-
         getLlmChannel.returns(undefined);
         e2ee.llmChannelChanged();
 
-        assert.isUndefined((e2ee as any).signaling.llm);
-      });
-
-      it('transitions to failed and emits a failure when start throws', async () => {
-        identityProvider.getCredentials.rejects(new Error('CA down'));
-
-        await e2ee.start();
-
-        assert.equal(e2ee.state, 'failed');
-        assert.equal(emitted(EVENT_TRIGGERS.MEETING_E2EE_FAILURE).length, 1);
-        assert.calledOnceWithExactly(sendBehavioralMetricStub, 'js_sdk_e2ee_failure', {
-          correlation_id: 'corr-1',
-          state: 'failed',
-          reason: 'startFailed',
-          error: 'CA down',
-        });
-        assert.notCalled(joinStub);
-      });
-
-      it('cleans up the initialized session when startup fails', async () => {
-        initializeStub.rejects(new Error('MLS init failed'));
-
-        await e2ee.start();
-
-        assert.equal(e2ee.state, 'failed');
-        assert.calledOnce(leaveStub);
-        assert.equal(offStub.callCount, 7);
-        assert.deepEqual(Object.keys(sessionHandlers), []);
+        assert.deepEqual(setLlmChannelStub.args, [[replacementLlm], [undefined]]);
       });
     });
 
     describe('session events', () => {
       beforeEach(async () => {
         await e2ee.start();
+        resetEventSpies();
       });
 
-      it('records the security code and emits on joinSuccess', () => {
+      it('records the security code on joinSuccess and refreshes the join state', () => {
+        rosterStub.returns([makeRosterEntry({url: OWN_DEVICE_URL})]);
+
         emitSession('joinSuccess', {securityCode: 'SEC-1'});
 
         assert.equal(e2ee.getSecurityCode(), 'SEC-1');
-        const calls = emitted(EVENT_TRIGGERS.MEETING_E2EE_SECURITY_CODE_UPDATED);
-
-        assert.equal(calls.length, 1);
-        assert.deepEqual(calls[0].args[2], {securityCode: 'SEC-1'});
-      });
-
-      it('emits E2EE events from the E2eeController for direct consumers', () => {
-        const listener = sinon.spy();
-
-        e2ee.on(EVENT_TRIGGERS.MEETING_E2EE_SECURITY_CODE_UPDATED, listener);
-        emitSession('securityCodeChanged', {code: 'SEC-3'});
-
-        assert.calledOnceWithExactly(listener, {securityCode: 'SEC-3'});
+        assert.calledOnceWithExactly(events.securityCode, {securityCode: 'SEC-1'});
+        assert.equal(e2ee.state, 'joined');
       });
 
       it('updates the security code on securityCodeChanged', () => {
         emitSession('securityCodeChanged', {code: 'SEC-2'});
 
         assert.equal(e2ee.getSecurityCode(), 'SEC-2');
-        assert.equal(emitted(EVENT_TRIGGERS.MEETING_E2EE_SECURITY_CODE_UPDATED).length, 1);
+        assert.calledOnceWithExactly(events.securityCode, {securityCode: 'SEC-2'});
       });
 
       it('marks joined only once our own device url is in the roster', () => {
-        rosterStub.returns([{url: 'other', deviceType: 'WEB', displayName: '', validationResult: 0}]);
+        rosterStub.returns([makeRosterEntry({url: 'https://wdm.webex.com/other'})]);
         emitSession('rosterAdded', []);
         assert.equal(e2ee.state, 'joining');
 
-        rosterStub.returns([
-          {url: OWN_DEVICE_URL, deviceType: 'WEB', displayName: '', validationResult: 0},
-        ]);
+        rosterStub.returns([makeRosterEntry({url: OWN_DEVICE_URL})]);
         emitSession('rosterAdded', []);
         assert.equal(e2ee.state, 'joined');
-
-        const stateCalls = emitted(EVENT_TRIGGERS.MEETING_E2EE_STATE_CHANGED);
-
-        assert.deepEqual(stateCalls[stateCalls.length - 1].args[2], {state: 'joined'});
+        assert.calledOnceWithExactly(events.state, {state: 'joined'});
       });
 
-      it('detects media services in the roster and emits a change', () => {
+      it('emits a media-services change only when their presence in the roster changes', () => {
         assert.isFalse(e2ee.hasUntrustedMediaServices);
 
-        rosterStub.returns([
-          {url: 'ms', deviceType: 'MEDIA_SERVICE', displayName: '', validationResult: 0},
-        ]);
+        addMediaServiceToRoster();
+        assert.isTrue(e2ee.hasUntrustedMediaServices);
+
         emitSession('rosterAdded', []);
 
-        assert.isTrue(e2ee.hasUntrustedMediaServices);
-        const calls = emitted(EVENT_TRIGGERS.MEETING_E2EE_MEDIA_SERVICES_CHANGED);
+        rosterStub.returns([]);
+        emitSession('rosterRemoved', {urls: [MEDIA_SERVICE.url]});
+        assert.isFalse(e2ee.hasUntrustedMediaServices);
 
-        assert.equal(calls.length, 1);
-        assert.deepEqual(calls[0].args[2], {hasMediaServices: true});
+        assert.deepEqual(events.mediaServices.args, [
+          [{hasMediaServices: true}],
+          [{hasMediaServices: false}],
+        ]);
       });
 
-      it('cleans up the session on joinFailure', () => {
-        emitSession('joinSuccess', {securityCode: 'SEC-1'});
-        emitSession('joinFailure', {reason: 'join_failure'});
-        assert.equal(e2ee.state, 'failed');
-        assert.isUndefined(e2ee.getSecurityCode());
-        assert.calledOnce(signalingStopStub);
-        assert.calledOnce(leaveStub);
-        assert.equal(offStub.callCount, 7);
-        assert.deepEqual(Object.keys(sessionHandlers), []);
-
-        const securityCodeCalls = emitted(EVENT_TRIGGERS.MEETING_E2EE_SECURITY_CODE_UPDATED);
-
-        assert.deepEqual(securityCodeCalls[securityCodeCalls.length - 1].args[2], {
-          securityCode: undefined,
-        });
-        assert.equal(emitted(EVENT_TRIGGERS.MEETING_E2EE_FAILURE).length, 1);
-        assert.calledOnceWithExactly(sendBehavioralMetricStub, 'js_sdk_e2ee_failure', {
-          correlation_id: 'corr-1',
+      [
+        {
+          event: 'joinFailure',
+          payload: {reason: 'join_failure'},
           state: 'failed',
           reason: 'join_failure',
-        });
-      });
-
-      it('cleans up the session when evicted', () => {
-        emitSession('evicted');
-        assert.equal(e2ee.state, 'evicted');
-        assert.calledOnce(signalingStopStub);
-        assert.calledOnce(leaveStub);
-        assert.equal(offStub.callCount, 7);
-        assert.equal(emitted(EVENT_TRIGGERS.MEETING_E2EE_FAILURE).length, 1);
-        assert.calledOnceWithExactly(sendBehavioralMetricStub, 'js_sdk_e2ee_failure', {
-          correlation_id: 'corr-1',
-          state: 'evicted',
-          reason: 'evicted',
-        });
-      });
-
-      it('cleans up the session on mediaEncryptionRequestFailure', () => {
-        emitSession('mediaEncryptionRequestFailure', {errorCode: 78400011, message: 'not leader'});
-        assert.equal(e2ee.state, 'failed');
-        assert.calledOnce(signalingStopStub);
-        assert.calledOnce(leaveStub);
-        assert.equal(offStub.callCount, 7);
-        assert.deepEqual(Object.keys(sessionHandlers), []);
-
-        const failureCalls = emitted(EVENT_TRIGGERS.MEETING_E2EE_FAILURE);
-
-        assert.equal(failureCalls.length, 1);
-        assert.deepEqual(failureCalls[0].args[2], {reason: 'mediaEncryptionRequestFailure'});
-        assert.calledOnceWithExactly(sendBehavioralMetricStub, 'js_sdk_e2ee_failure', {
-          correlation_id: 'corr-1',
+          details: {},
+        },
+        {
+          event: 'mediaEncryptionRequestFailure',
+          payload: {errorCode: 78400011, message: 'not leader'},
           state: 'failed',
           reason: 'mediaEncryptionRequestFailure',
-          errorCode: 78400011,
-          error: 'not leader',
+          details: {errorCode: 78400011, error: 'not leader'},
+        },
+        {event: 'evicted', payload: undefined, state: 'evicted', reason: 'evicted', details: {}},
+      ].forEach(({event, payload, state, reason, details}) => {
+        it(`tears down the session, moves to ${state} and reports a failure on ${event}`, () => {
+          emitSession('joinSuccess', {securityCode: 'SEC-1'});
+          resetEventSpies();
+
+          emitSession(event, payload);
+
+          assertSessionTornDown();
+          assert.equal(e2ee.state, state);
+          assert.isUndefined(e2ee.getSecurityCode());
+          assert.calledOnceWithExactly(events.securityCode, {securityCode: undefined});
+          assert.calledOnceWithExactly(events.state, {state});
+          assert.calledOnceWithExactly(events.failure, {reason});
+          assert.calledOnceWithExactly(sendBehavioralMetricStub, 'js_sdk_e2ee_failure', {
+            correlation_id: 'corr-1',
+            state,
+            reason,
+            ...details,
+          });
         });
       });
     });
@@ -348,36 +477,75 @@ describe('plugin-meetings', () => {
         // stubs, so stubbing LoggerProxy.logger.info directly fails depending on test order.
         sinon.stub(LoggerProxy, 'logger').value({...LoggerProxy.logger, info: loggerInfoStub});
 
-        assert.equal(e2ee.state, 'disabled');
-
         await e2ee.stop();
 
         assert.equal(e2ee.state, 'disabled');
         assert.notCalled(signalingStopStub);
         assert.notCalled(leaveStub);
+        assert.notCalled(events.state);
         assert.notCalled(loggerInfoStub);
       });
 
-      it('tears down signaling and session and resets to left', async () => {
+      it('tears down the session and moves to left without reporting a failure', async () => {
         await e2ee.start();
         emitSession('joinSuccess', {securityCode: 'SEC-1'});
+        resetEventSpies();
 
         await e2ee.stop();
-        emitSession('securityCodeChanged', {code: 'SEC-STALE'});
 
-        assert.calledOnce(signalingStopStub);
-        assert.calledOnce(leaveStub);
-        assert.equal(offStub.callCount, 7);
-        assert.deepEqual(Object.keys(sessionHandlers), []);
+        assertSessionTornDown();
         assert.equal(e2ee.state, 'left');
         assert.isUndefined(e2ee.getSecurityCode());
+        assert.calledOnceWithExactly(events.securityCode, {securityCode: undefined});
+        assert.calledOnceWithExactly(events.state, {state: 'left'});
+        assert.notCalled(events.failure);
+        assert.notCalled(sendBehavioralMetricStub);
+      });
+
+      it('reports media services gone when they were present', async () => {
+        await e2ee.start();
+        addMediaServiceToRoster();
+        resetEventSpies();
+
+        await e2ee.stop();
+
         assert.isFalse(e2ee.hasUntrustedMediaServices);
+        assert.calledOnceWithExactly(events.mediaServices, {hasMediaServices: false});
+      });
 
-        const securityCodeCalls = emitted(EVENT_TRIGGERS.MEETING_E2EE_SECURITY_CODE_UPDATED);
+      it('does nothing when called again', async () => {
+        await e2ee.start();
+        await e2ee.stop();
+        signalingStopStub.resetHistory();
+        leaveStub.resetHistory();
+        resetEventSpies();
 
-        assert.equal(securityCodeCalls.length, 2);
-        assert.deepEqual(securityCodeCalls[securityCodeCalls.length - 1].args[2], {
-          securityCode: undefined,
+        await e2ee.stop();
+
+        assert.equal(e2ee.state, 'left');
+        assert.notCalled(signalingStopStub);
+        assert.notCalled(leaveStub);
+        assert.notCalled(events.state);
+      });
+
+      [
+        {step: 'signaling.stop', fail: () => signalingStopStub.throws(new Error('stop failed'))},
+        {step: 'session.off', fail: () => offStub.throws(new Error('off failed'))},
+        {step: 'session.leave', fail: () => leaveStub.throws(new Error('leave failed'))},
+      ].forEach(({step, fail}) => {
+        it(`still completes cleanup when ${step} throws`, async () => {
+          await e2ee.start();
+          addMediaServiceToRoster();
+          resetEventSpies();
+          fail();
+
+          await e2ee.stop();
+
+          assert.calledOnce(signalingStopStub);
+          assert.calledOnce(leaveStub);
+          assert.equal(offStub.callCount, onStub.callCount);
+          assert.calledOnceWithExactly(events.mediaServices, {hasMediaServices: false});
+          assert.equal(e2ee.state, 'left');
         });
       });
 
