@@ -12,7 +12,6 @@
     "unit-test": "yarn workspace @webex/plugin-authorization-browser test:unit",
     "browser-integration-test": "yarn workspace @webex/plugin-authorization-browser test:browser:broken",
     "lint": "yarn workspace @webex/plugin-authorization-browser test:style",
-    "test": "yarn workspace @webex/plugin-authorization-browser test",
     "deploy": "yarn workspace @webex/plugin-authorization-browser deploy:npm"
   },
   "public_interfaces": [
@@ -223,7 +222,7 @@
     },
     {
       "rule": "Do not describe or rely on an authorization-code exchange in this package.",
-      "why": "initialize parses only the URL hash; no code exchange exists here."
+      "why": "initialize reads tokens only from the URL hash and checks the query only for an OAuth error; no code exchange exists here."
     },
     {
       "rule": "Do not treat README.md or BROWSER-OAUTH-FLOW-GUIDE.md as the method, error, or refresh reference.",

@@ -111,8 +111,9 @@ Definition of done:
   throws during construction. The credentials hand-off stays on `process.nextTick`.
 - After a hash token is accepted, `_cleanUrl` must keep removing the token fields and `csrf_token`
   from the URL.
-- Only the URL hash is parsed. This package does not exchange authorization codes; do not document or
-  rely on a code exchange here.
+- Tokens are read only from the URL hash; the query is inspected only for an OAuth `error`, which
+  `_checkForErrors` throws before the hash is read. Keep that query check. This package does not
+  exchange authorization codes; do not document or rely on a code exchange here.
 - `initiateLogin` adds the CSRF token; `initiateImplicitGrant` and `initiateAuthorizationCodeGrant`
   called directly do not.
 - `requestAccessTokenFromJwt` is called by webex-core credentials in JWT mode; keep its name,

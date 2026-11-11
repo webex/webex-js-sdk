@@ -43,7 +43,7 @@ Checking both against `src/` and `test/` found these differences, with code as t
 | README: `createJwt` lists `expiresIn` as an option | Omitting `expiresIn` rejects, because `jsonwebtoken` 9 rejects an undefined `expiresIn` option | `src/authorization.js`, `package.json` |
 | README: `webex.on('unauthorized')` under authentication status | That event belongs to webex-core, not this plugin | `src/authorization.js` |
 | README: "Cross-browser compatibility" | No code or test in this package supports or tests a browser matrix | `src/authorization.js` |
-| Guide §1.3 and §4.2: the code grant "exchanges code for tokens" and the code is "captured from URL" | `initialize` parses only the URL hash; a `?code=` query is ignored, and no code exchange exists in this package | `src/authorization.js`, `test/automation/fixtures/app.js` |
+| Guide §1.3 and §4.2: the code grant "exchanges code for tokens" and the code is "captured from URL" | `initialize` reads tokens only from the URL hash and checks the query only for `error`; a `?code=` query is ignored, and no code exchange exists in this package | `src/authorization.js`, `test/automation/fixtures/app.js` |
 | Guide §1.5 and §3.3: the plugin parses the URL "for OAuth tokens/codes" | Only hash tokens are parsed | `src/authorization.js` |
 | Guide §4.1: the hash carries `scope` | `scope` and any other hash key are passed to credentials and are not scrubbed from the URL | `src/authorization.js` |
 | Guide §5.4: "JWT refresh implementation in browser authorization plugin" | webex-core credentials reads `jwtRefreshCallback` and then calls this plugin's `requestAccessTokenFromJwt`; this plugin has no refresh logic | `src/authorization.js` |

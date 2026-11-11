@@ -40,11 +40,6 @@
       "source_file": "package.json",
       "role": "lint"
     },
-    "test": {
-      "command": "yarn workspace @webex/plugin-authorization-browser test",
-      "source_file": "package.json",
-      "role": "other"
-    },
     "deploy": {
       "command": "yarn workspace @webex/plugin-authorization-browser deploy:npm",
       "source_file": "package.json",

@@ -189,8 +189,8 @@ Login spans two page loads. `initiateLogin` writes a CSRF token to `sessionStora
 token in the URL hash, and the code grant puts a code in the query. On the next page load the webex
 instance constructs this plugin. `initialize` does all URL, storage, and CSRF work synchronously so
 that a forged or failed redirect throws during construction. It then defers the hand-off to
-credentials by one tick. Only the hash is parsed. A code in the query is left to the host's backend,
-because this package has no code exchange.
+credentials by one tick. Tokens are read only from the hash; the query is checked only for an OAuth
+`error`. A code in the query is left to the host's backend, because this package has no code exchange.
 
 JWT login stays on one page: the host obtains a JWT (or mints a guest one with `createJwt`) and
 `requestAccessTokenFromJwt` exchanges it with hydra. Credentials also reuses that method when JWT mode
@@ -441,8 +441,8 @@ references of its own.
   query object to the error constructor, and `test/unit/spec/authorization.js` "throws a grant error
   when the url contains one" asserts the resulting message "Cannot convert object to primitive
   value". `README.md` describes an `OAuthError`. This is pinned behavior, not fixed here.
-- Only the URL hash is parsed. A `?code=` returned to a confidential client is ignored: `initialize`
-  finds no hash and sets `ready`. No code exchange exists in this package, so the host backend must
+- Tokens are read only from the URL hash; the query is checked only for `error` (`MOD-003`). A
+  `?code=` returned to a confidential client is ignored: `initialize` finds no hash and sets `ready`. No code exchange exists in this package, so the host backend must
   exchange the code.
 - `initiateAuthorizationCodeGrant` ignores `separateWindow` and always navigates the current tab, so
   popup login works only for public clients.
