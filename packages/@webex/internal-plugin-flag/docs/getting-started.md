@@ -9,8 +9,8 @@ doc_kind: standing-doc
 generated_from: getting-started@0.3.0
 generated_by: claude-cowork
 approved_by: akulakum@cisco.com
-updated_at: 2026-11-12T14:31:48Z
-validation_status: pass-with-warnings
+updated_at: 2026-11-12T14:44:08Z
+validation_status: pending
 -->
 
 # Getting started
@@ -24,6 +24,7 @@ Onboarding for **@webex/internal-plugin-flag**. Commands run from the webex-js-s
 | Node.js | 22.14, required for working in this repository by the workspace root `AGENTS.md`; the root `.nvmrc` selects the Node 22 LTS line. The workspace root `package.json` `engines` field still says `18.x`; follow the root `AGENTS.md` |
 | Yarn | The version pinned by the workspace root `packageManager` field, run from the release that the root `.yarnrc.yml` `yarnPath` names, provided through Corepack: enable Corepack for the selected Node.js version, as the workspace root `CONTRIBUTING.md` setup steps require. Workspaces are used, so install from the workspace root rather than this directory |
 | Browsers for `test:browser` | Chrome and Firefox. The script passes no browser list, so the legacy-tools `karma-browsers` option keeps its default of both (sibling package legacy-tools, file src/commands/run-tests/run-tests.constants.ts), and karma starts both headless launchers (file src/utils/karma/browsers/browsers.ts of the same package) |
+| Karma over HTTPS for `test:browser` | Required for the live integration spec, which calls Webex services: the root `CONTRIBUTING.md` "Browser tests over HTTPS" section says those services reject requests from `http://` origins such as the default Karma page. Do its one-time setup (the root `setup:karma-https` script) and set `KARMA_HTTPS` to `true` in your root `.env`; the root `.env.default` leaves it commented out, and legacy-tools serves Karma over HTTPS only when it is set (sibling package legacy-tools, file src/utils/karma/https/https.ts) |
 
 Applications that install the package need Node 18 or later: this package's `package.json`
 `engines` says `>=18`, as do its direct workspace dependencies webex-core,
@@ -67,7 +68,7 @@ yarn workspace @webex/internal-plugin-flag test:unit
 | Tier | Command | Test location | Framework | External dependencies |
 | ---- | ------- | ------------- | --------- | --------------------- |
 | Unit | `yarn workspace @webex/internal-plugin-flag test:unit` | `test/unit/spec` | Jest | This package's build output and the built workspace packages it imports |
-| Integration | `yarn workspace @webex/internal-plugin-flag test:browser` | `test/integration/spec` | Mocha with Chai assertions (karma runner) | Chrome and Firefox (see Prerequisites), network access, and the `WEBEX_CLIENT_ID` and `WEBEX_CLIENT_SECRET` environment variables that the workspace test-users helper requires; its other settings have defaults in the workspace root `.env.default`; this package's build output, which the spec imports by name |
+| Integration | `yarn workspace @webex/internal-plugin-flag test:browser` | `test/integration/spec` | Mocha with Chai assertions (karma runner) | Chrome and Firefox (see Prerequisites), network access, and the `WEBEX_CLIENT_ID` and `WEBEX_CLIENT_SECRET` environment variables that the workspace test-users helper requires; Karma served over HTTPS with `KARMA_HTTPS` set (see Prerequisites); this package's build output, which the spec imports by name |
 | Lint | `yarn workspace @webex/internal-plugin-flag test:style` | `src/` | eslint | None |
 
 - The integration tier is manifest `commands.integration-test` and `tests.integration`. The package

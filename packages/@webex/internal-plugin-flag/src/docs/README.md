@@ -9,8 +9,8 @@ doc_kind: module-spec
 generated_from: module-spec@0.3.0
 generated_by: claude-cowork
 approved_by: akulakum@cisco.com
-updated_at: 2026-11-12T14:31:48Z
-validation_status: pass-with-warnings
+updated_at: 2026-11-12T14:44:08Z
+validation_status: pending
 -->
 
 # Flag plugin
@@ -38,7 +38,7 @@ Related context: [documentation index](../../docs/index.md) ·
 | Parent spec       | — |
 | Doc kind          | Module spec |
 | Coverage score    | 93.3% assessed 2026-10-12 — 14 of 15 mandatory fields PRESENT, critical 8 of 8; test strategy is WEAK (gaps listed under Verification) and no characterization baseline exists. Independent validation: pass-with-warnings assessed 2026-11-12 by validator current-session (at f620469); see the Validation status row |
-| Validation status | pass-with-warnings; assessed 2026-11-12 by validator current-session; 0 Blocking, 1 Medium, 8 Minor |
+| Validation status | pending |
 
 ## Applicability
 
@@ -306,7 +306,7 @@ classDiagram
 | -------- | --------------- | ------------------------- | ---------------------------- | -------- |
 | `UC-001` | Application flagging a message | Passes a conversation activity to `create`; receives the response body; the live integration spec expects `state` `flagged`, `flag-item`, and `conversation-url` in it (service contract not in this repository) | Missing `url` rejects; missing `target` throws | `test/integration/spec/flag.js` #create() |
 | `UC-002` | Application showing flagged messages | Calls `list`, then `mapToActivities` with the result; receives the activities | Activities on unrecognized hosts are skipped with a warning | Partial: `test/integration/spec/flag.js` #mapToActivities() passes a flag returned by create, not by list; the list-then-map flow has no test (Verification) |
-| `UC-003` | Application clearing a flag | Passes a flag from `create` or `list` to `unflag`, `archive`, or `delete` | Missing `url` rejects | Partial: `test/integration/spec/flag.js` #unflag(), #archive(), #remove() pass a flag returned by create; no test passes a flag from list |
+| `UC-003` | Application clearing a flag | Passes a flag from `create` or `list` to `unflag`, `archive`, or `delete` | Missing `url` rejects | Partial: `test/integration/spec/flag.js` #unflag(), #archive(), #remove() pass a flag returned by create. The spec's afterEach cleanup lists the flags and deletes each one returned, but catches delete errors and asserts nothing afterwards; no dedicated case passes a flag from list to unflag or archive |
 
 ### Cross-boundary use-case flow
 
@@ -436,7 +436,7 @@ No TypeScript declaration or API report exists for this package.
 | `MOD-003` to `MOD-006`, `INV-004` | Integration (`test:browser`, live) | `test/integration/spec/flag.js` | none found | No unit test of request shape or resolved value |
 | `MOD-001`, `INV-001` | Integration (live) | `test/integration/spec/flag.js` uses webex.internal.flag | none found | No unit test |
 | `MOD-008`, `MOD-009` | none | none found | none found | No config or `options` test |
-| `UC-002`, `UC-003` composed flows | Integration (live) | `test/integration/spec/flag.js` (flags returned by create) | none found | No test of `list` followed by `mapToActivities`, `unflag`, `archive`, or `delete` |
+| `UC-002`, `UC-003` composed flows | Integration (live) | `test/integration/spec/flag.js` (flags returned by create) | none found | No dedicated case for `list` followed by `mapToActivities`, `unflag`, `archive`, or `delete`; the afterEach cleanup exercises `list` followed by `delete` without assertions |
 
 Test tiers, the First-run verification precondition, and the expected unit count are described in
 [Getting started](../../docs/getting-started.md).

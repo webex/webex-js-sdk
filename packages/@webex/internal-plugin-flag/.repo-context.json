@@ -337,7 +337,7 @@
         "name": "integration tests",
         "command": "yarn workspace @webex/internal-plugin-flag test:browser",
         "scope": "test/integration/spec",
-        "notes": "Mocha specs with Chai assertions, run in browsers by the karma runner through the test:browser script, integration files only (no test:integration script exists). Build first: the spec imports the package by name, which resolves to dist/; the unit spec is not collected. Needs Chrome and Firefox (the karma-browsers default), network access, and the WEBEX_CLIENT_ID and WEBEX_CLIENT_SECRET environment variables required by the workspace test-users helper."
+        "notes": "Mocha specs with Chai assertions, run in browsers by the karma runner through the test:browser script, integration files only (no test:integration script exists). Build first: the spec imports the package by name, which resolves to dist/; the unit spec is not collected. Needs Chrome and Firefox (the karma-browsers default), Karma served over HTTPS (the root CONTRIBUTING.md one-time setup and KARMA_HTTPS set to true), network access, and the WEBEX_CLIENT_ID and WEBEX_CLIENT_SECRET environment variables required by the workspace test-users helper."
       },
       {
         "name": "lint",

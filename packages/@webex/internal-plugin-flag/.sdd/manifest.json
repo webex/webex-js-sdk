@@ -114,7 +114,8 @@
         "runner: karma, selected by the integration-test command (test:browser script); karma frameworks browserify, mocha, chai",
         "browsers: Chrome and Firefox (legacy-tools karma-browsers default)",
         "network access",
-        "env: WEBEX_CLIENT_ID, WEBEX_CLIENT_SECRET (test-users helper)"
+        "env: WEBEX_CLIENT_ID, WEBEX_CLIENT_SECRET (test-users helper)",
+        "env: KARMA_HTTPS=true, after the root setup:karma-https one-time setup (root CONTRIBUTING.md Browser tests over HTTPS)"
       ]
     }
   },
