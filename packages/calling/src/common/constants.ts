@@ -47,6 +47,8 @@ export const SCIM_WEBEXIDENTITY_USER = 'urn:scim:schemas:extension:cisco:webexid
 export const SCIM_ENTERPRISE_USER = 'urn:ietf:params:scim:schemas:extension:enterprise:2.0:User';
 export const WEBEX_API_PROD = 'https://webexapis.com';
 export const WEBEX_API_BTS = 'https://integration.webexapis.com';
+export const WEBEX_CALLING_GATEWAY_PROD = WEBEX_API_PROD;
+export const WEBEX_CALLING_GATEWAY_INT = WEBEX_API_BTS;
 export const WEBEX_API_FEDRAMP = 'https://api-usgov.webex.com';
 
 /**

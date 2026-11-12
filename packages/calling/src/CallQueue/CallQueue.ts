@@ -9,8 +9,8 @@ import {
   METHOD_START_MESSAGE,
   STATUS_CODE,
   SUCCESS_MESSAGE,
-  WEBEX_API_BTS,
-  WEBEX_API_PROD,
+  WEBEX_CALLING_GATEWAY_INT,
+  WEBEX_CALLING_GATEWAY_PROD,
 } from '../common/constants';
 import {Eventing} from '../Events/impl';
 import {COMMON_EVENT_KEYS, MOBIUS_EVENT_KEYS} from '../Events/types';
@@ -66,7 +66,7 @@ export class CallQueueClient extends Eventing<CallQueueEventTypes> implements IC
 
   private hydraEndpoint: string;
 
-  private webexApiEndpoint: string;
+  private webexCallingGatewayEndpoint: string;
 
   private currentByLine = new Map<string | undefined, CallQueueAgentStatus>();
 
@@ -86,7 +86,9 @@ export class CallQueueClient extends Eventing<CallQueueEventTypes> implements IC
       this.webex.internal.services._serviceUrls?.hydra ||
       this.webex.internal.services.get(this.webex.internal.services._activeServices.hydra);
     const isProd = !this.webex.internal.device.url.includes('-int');
-    this.webexApiEndpoint = isProd ? WEBEX_API_PROD : WEBEX_API_BTS;
+    this.webexCallingGatewayEndpoint = isProd
+      ? WEBEX_CALLING_GATEWAY_PROD
+      : WEBEX_CALLING_GATEWAY_INT;
     this.registerAgentListeners();
     log.setLogger(logger.level, CALL_QUEUE_FILE);
   }
@@ -354,18 +356,18 @@ export class CallQueueClient extends Eventing<CallQueueEventTypes> implements IC
 
   private queuesUrl(lineOwnerId?: string): string {
     if (!lineOwnerId) {
-      return this.joinWebexApiUrl(QUEUES_PATH);
+      return this.joinWebexCallingGatewayUrl(QUEUES_PATH);
     }
 
-    return this.joinWebexApiUrl(
+    return this.joinWebexCallingGatewayUrl(
       `${SECONDARY_LINES_PATH}/${encodeURIComponent(lineOwnerId)}/queues`
     );
   }
 
-  private joinWebexApiUrl(path: string): string {
-    const base = this.webexApiEndpoint.endsWith('/')
-      ? this.webexApiEndpoint
-      : `${this.webexApiEndpoint}/`;
+  private joinWebexCallingGatewayUrl(path: string): string {
+    const base = this.webexCallingGatewayEndpoint.endsWith('/')
+      ? this.webexCallingGatewayEndpoint
+      : `${this.webexCallingGatewayEndpoint}/`;
 
     return `${base}v1/${path}`;
   }

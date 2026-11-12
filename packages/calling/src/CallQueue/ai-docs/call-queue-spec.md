@@ -9,7 +9,7 @@ Cloud Webex Calling only. `createCallQueueClient(webex, logger)` returns a clien
 - listens for Mercury `event:telephony_agent.sync`, `event:telephony_agent.state`, and `event:telephony_agent.join`
 - emits `callQueue:updated` with `{ acdState, queues }`
 
-The settings routes are sent to the public Webex API gateway, which routes `/v1/telephony/config/people/me/**` to Calling Subscriber Gateway. The queue catalog and sync routes are not part of that CSG route mapping.
+The settings routes are sent to the public Calling Gateway, which routes `/v1/telephony/config/people/me/**` to Calling Subscriber Gateway. The queue catalog and sync routes are not part of that CSG route mapping.
 
 `lineOwnerId` must match `^[A-Za-z0-9_-]{1,128}$`. Cached agent status is scoped to its line. Before patching a queue to `available: false`, the client loads that line's settings if it does not already know the queue's `allowLogOffEnabled` value. A queue with `allowLogOffEnabled: false` cannot be patched to `available: false`. Empty `queues` updates are rejected.
 
