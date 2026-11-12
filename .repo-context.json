@@ -112,6 +112,13 @@
         "notes": "Onboarded package: its own AGENTS.md, docs/, and .sdd/manifest.json are routed from .sdd/manifest.json packages."
       },
       {
+        "name": "@webex/internal-plugin-scheduler",
+        "paths": [
+          "packages/@webex/internal-plugin-scheduler"
+        ],
+        "notes": "Onboarded package: its own AGENTS.md, docs/, and .sdd/manifest.json are routed from .sdd/manifest.json packages."
+      },
+      {
         "name": "@webex/internal-plugin-task",
         "paths": [
           "packages/@webex/internal-plugin-task"
