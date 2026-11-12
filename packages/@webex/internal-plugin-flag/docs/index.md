@@ -6,7 +6,7 @@ doc_kind: standing-doc
 generated_from: docs-index@0.3.0
 generated_by: claude-cowork
 approved_by: akulakum@cisco.com
-updated_at: 2026-10-15T14:22:13Z
+updated_at: 2026-11-12T14:31:48Z
 validation_status: pass-with-warnings
 -->
 
