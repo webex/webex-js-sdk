@@ -10,7 +10,7 @@ generated_from: module-spec@0.3.0
 generated_by: claude-cowork
 approved_by: akulakum@cisco.com
 updated_at: 2026-10-15T11:06:00Z
-validation_status: pass-with-warnings
+validation_status: pending
 -->
 
 # Scheduler plugin
@@ -37,7 +37,7 @@ Related context: [documentation index](../../docs/index.md) ·
 | Parent spec       | — |
 | Doc kind          | Module spec |
 | Coverage score    | 93.3% assessed 2026-10-12 — 14 of 15 mandatory fields PRESENT, critical 8 of 8; test strategy is WEAK (gaps listed under Verification) and no characterization baseline exists. Independent validation: see the Validation status row |
-| Validation status | pass-with-warnings — 2026-10-15; validator runtime `current-session`; 0 Blocking, 5 Minor warnings |
+| Validation status | pending |
 
 ## Applicability
 
@@ -77,14 +77,14 @@ Related context: [documentation index](../../docs/index.md) ·
 | `test/unit/spec/scheduler/scheduler.js` | Two cases: `request` and `logger` exist on a Scheduler mounted in `MockWebex` |
 | `test/integration/spec/scheduler/scheduler.js`, `test/integration/spec/payloadTransformer/predicates.js`, `test/integration/spec/payloadTransformer/transformers.js` | Placeholder specs; each has one `assert.isTrue(true)` case |
 | `README.md` | Retained product documentation, not the behavioral authority. See ADR 0001. |
-| Sibling package webex-core, file src/lib/webex-plugin.js | `WebexPlugin`: `request` delegates to `webex.request`; `logger` is `webex.logger` or `console`; `config` is `webex.config` under the namespace; its `initialize` propagates `change` events to the parent |
-| Sibling package webex-core, file src/lib/webex-internal-core-plugin-mixin.js | How `registerInternalPlugin` stores the plugin, merges `config`, and concatenates payload-transformer predicates and transforms |
-| Sibling package webex-core, file src/webex-core.js | `transform` and `applyNamedTransform`; the `change:config` and `ready` triggers |
-| Sibling package webex-core, file src/interceptors/payload-transformer.js | The interceptor that calls `webex.transform` for requests, responses, and response errors |
-| Sibling package webex-core, file src/interceptors/auth.js | An existing `authorization` header is kept |
-| Sibling package webex-core, files src/lib/services/index.js and src/lib/interceptors/service.js | The services plugin registers the service interceptor that resolves `service` to a URL |
+| Sibling package webex-core, SDD module spec src/docs/README.md (Requirements MOD-031, MOD-044, MOD-045), and file src/lib/webex-plugin.js for the request delegation | `WebexPlugin`: `request` delegates to `webex.request`; `logger` is `webex.logger` or `console`; `config` is `webex.config` under the namespace; its `initialize` propagates `change` events to the parent |
+| Sibling package webex-core, SDD module spec src/docs/README.md (Requirements MOD-008, MOD-014; use case UC-003) | How `registerInternalPlugin` stores the plugin, merges `config`, and concatenates payload-transformer predicates and transforms |
+| Sibling package webex-core, SDD module spec src/docs/README.md (Requirements MOD-006, MOD-030, MOD-037), and file src/webex-core.js for the name and direction filter in applyNamedTransform | `transform` and `applyNamedTransform`; the `change:config` and `ready` triggers |
+| Sibling package webex-core, interceptors SDD spec src/interceptors/docs/README.md (Requirements INT-018, INT-019) | The interceptor that calls `webex.transform` for requests, responses, and response errors |
+| Sibling package webex-core, interceptors SDD spec src/interceptors/docs/README.md (Requirements INT-001 to INT-009) | An existing `authorization` header is kept; 401 refresh and replay |
+| Sibling package webex-core, SDD module spec src/docs/README.md (Requirements MOD-021) and services SDD spec src/lib/services/docs/README.md (Requirements SVC-023) | The services plugin registers the service interceptor that resolves `service` to a URL |
 | Sibling package internal-plugin-encryption, files src/index.js and src/encryption.js | The import registers the device and Mercury plugins; no `example` method exists |
-| Sibling package internal-plugin-mercury, files src/index.js and src/mercury-plugin.ts | `webex.internal.mercury` is the `MercuryPlugin` wrapper: `connect(webSocketUrl)` delegates to its inner Mercury, and every event the inner Mercury triggers after the wrapper's constructor attaches its `all` listener is re-emitted on the plugin |
+| Sibling package internal-plugin-mercury, files src/index.js and src/mercury-plugin.ts (its SDD spec still names the inner Mercury class as the registered plugin, so code is cited) | `webex.internal.mercury` is the `MercuryPlugin` wrapper: `connect(webSocketUrl)` delegates to its inner Mercury, and every event the inner Mercury triggers after the wrapper's constructor attaches its `all` listener is re-emitted on the plugin |
 | Ampersand packages ampersand-state and ampersand-events (npm) | The base constructor calls `initialize`; `listenTo` throws when its target is undefined |
 
 ## Purpose and boundary
@@ -359,10 +359,10 @@ classDiagram
 | Condition | Signal or result | Caller behavior | Retry or recovery | Evidence |
 | --------- | ---------------- | --------------- | ----------------- | -------- |
 | `exampleEventUsage()` | Throws `Error` "Trying to listenTo event: 'event:scope' but the target object is undefined" after adding two handlers | Do not call it | None | `src/scheduler/scheduler.js`; ampersand-events |
-| `exampleRequestUsage()` GET fails (default interceptor set; see Dependencies) | Unhandled rejection. When `example-service` is not in the catalog, the service interceptor that the webex-core services plugin registers rejects with a plain `Error` | None possible; the promise is not returned | None | `src/scheduler/scheduler.js`; sibling package webex-core, files src/lib/services/index.js and src/lib/interceptors/service.js |
-| `exampleRequestUsage()` POST fails (default interceptor set) | An HTTP status failure rejects with the `WebexHttpError` subtype for the final status. Pipeline failures include a plain `Error` from the catalog check when `validateCatalogUrls` is on, or from exceeding the configured `maxAuthenticationReplays`, `maxAppLevelRedirects`, or `maxLocusRedirects` limit (webex-core defaults 1, 10, and 5 in its file src/config.js). Other rejections are possible, such as a failed credentials refresh, the device-URL interceptor when a device is registered, or another plugin's payload transform | Inspect the class or status | None here | Sibling package http-core, file src/interceptors/http-status.js; sibling package webex-core, files src/interceptors/catalog-url.js, src/interceptors/auth.js, src/interceptors/redirect.js, and src/interceptors/payload-transformer.js; sibling package internal-plugin-device, file src/interceptors/device-url.js |
+| `exampleRequestUsage()` GET fails (default interceptor set; see Dependencies) | Unhandled rejection. When `example-service` is not in the catalog, the service interceptor that the webex-core services plugin registers rejects with a plain `Error` | None possible; the promise is not returned | None | `src/scheduler/scheduler.js`; sibling package webex-core, services SDD spec src/lib/services/docs/README.md (Caller-visible failure modes) |
+| `exampleRequestUsage()` POST fails (default interceptor set) | An HTTP status failure rejects with the `WebexHttpError` subtype for the final status. Pipeline failures include a plain `Error` from the catalog check when `validateCatalogUrls` is on, or from exceeding the configured `maxAuthenticationReplays`, `maxAppLevelRedirects`, or `maxLocusRedirects` limit (webex-core defaults 1, 10, and 5 in its file src/config.js). Other rejections are possible, such as a failed credentials refresh, the device-URL interceptor when a device is registered, or another plugin's payload transform | Inspect the class or status | None here | Sibling package http-core, SDD spec src/docs/README.md (Caller-visible failure modes); sibling package webex-core, interceptors SDD spec src/interceptors/docs/README.md (Requirements INT-007, INT-009, INT-011, INT-018, INT-024 to INT-026) and SDD module spec src/docs/README.md (Requirements MOD-009); sibling package internal-plugin-device, SDD spec src/docs/README.md (Caller-visible failure modes) |
 | `exampleMercuryConnection()` connect fails | Unhandled rejection; the method already returned `undefined` | None possible | None | `src/scheduler/scheduler.js` |
-| Outbound `webex.transform` with a matching predicate | Rejects with a TypeError because `encryption.example` is not a function; for a request through the payload-transformer interceptor, the request rejects | Avoid the trigger fields (`INV-002`) | None | `src/payloadTransformer/transformers.js`; sibling package webex-core, file src/webex-core.js |
+| Outbound `webex.transform` with a matching predicate | Rejects with a TypeError because `encryption.example` is not a function; for a request through the payload-transformer interceptor, the request rejects | Avoid the trigger fields (`INV-002`) | None | `src/payloadTransformer/transformers.js`; sibling package webex-core, SDD module spec src/docs/README.md (Requirements MOD-037) and file src/webex-core.js |
 | Inbound `webex.transform` with a matching predicate | The transform never settles: the two transforms call each other through promise callbacks without yielding, so timers and I/O stop running and memory grows until the runtime runs out of it. A sandbox simulation of webex-core's transform with these transforms ended with a Node heap out-of-memory abort | Avoid the trigger fields | Restart the runtime | Same as above |
 
 ## Pitfalls and constraints

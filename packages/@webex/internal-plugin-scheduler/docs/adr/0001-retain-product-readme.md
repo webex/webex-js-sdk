@@ -12,7 +12,7 @@ generated_from: adr@0.3.0
 generated_by: claude-cowork
 approved_by: akulakum@cisco.com
 updated_at: 2026-10-15T11:06:00Z
-validation_status: pass-with-warnings
+validation_status: pending
 -->
 
 # ADR-0001 - Retain the product README

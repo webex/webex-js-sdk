@@ -10,7 +10,7 @@ generated_from: spec-index@0.3.0
 generated_by: claude-cowork
 approved_by: akulakum@cisco.com
 updated_at: 2026-10-15T11:06:00Z
-validation_status: pass-with-warnings
+validation_status: pending
 -->
 
 # Specification registry

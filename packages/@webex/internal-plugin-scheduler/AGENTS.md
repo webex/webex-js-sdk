@@ -4,7 +4,7 @@ generated_from: agents@0.3.0
 generated_by: claude-cowork
 approved_by: akulakum@cisco.com
 updated_at: 2026-10-15T11:06:00Z
-validation_status: pass-with-warnings
+validation_status: pending
 -->
 
 # AI Agent Instructions
@@ -82,10 +82,10 @@ Definition of done:
 | Area             | Tooling | Version |
 | ---------------- | ------- | ------- |
 | Language runtime | node | 22.14 for development (workspace root `AGENTS.md`); consumer floor: see [`docs/getting-started.md`](docs/getting-started.md) Prerequisites |
-| Package manager  | Yarn through Corepack | 3.4.1, pinned by the workspace root `packageManager` field and run from the `.yarnrc.yml` `yarnPath` release |
-| Build tool       | `@webex/legacy-tools` over babel | `@babel/core` `^7.17.10` |
-| Test framework   | Jest via `webex-legacy-tools` (`test:unit`); karma (`test:browser`) | workspace versions; `chai` `^4.3.4`, `sinon` `^9.2.4` |
-| Lint/format      | eslint via `@webex/eslint-config-legacy`, prettier | eslint `^8.24.0`, prettier `^2.7.1` |
+| Package manager  | Yarn through Corepack | The version pinned by the workspace root `packageManager` field, run from the `.yarnrc.yml` `yarnPath` release |
+| Build tool       | `@webex/legacy-tools` over babel | `@babel/core` version in `package.json` `devDependencies` |
+| Test framework   | Jest via `webex-legacy-tools` (`test:unit`); karma (`test:browser`) | workspace versions; `chai` and `sinon` versions in `package.json` `devDependencies` |
+| Lint/format      | eslint via `@webex/eslint-config-legacy`, prettier | eslint and prettier versions in `package.json` `devDependencies` |
 
 ### Project Map
 
@@ -192,7 +192,6 @@ PR checklist:
 - Bypass required checks by disabling tests or linters.
 - Rewrite history on shared branches.
 - Change unrelated files "while here" without clear need.
-- Copy template bodies or `template-map.json` into this package, or commit anything under
-  `.sdd/templates/`. The repository-root `.sdd/templates/repo-standards` snapshot is the template
-  source for this package. The Repo Annotation checkers and validator expect a temporary, uncommitted
-  local symlink to it at `.sdd/templates/repo-standards`, which is removed before a PR.
+- Add a `.sdd/templates` directory, a copy of the templates, or a link to them in this package. The
+  templates live once at the monorepo root, `../../../.sdd/templates/repo-standards`, and
+  `.sdd/manifest.json` refers to them.

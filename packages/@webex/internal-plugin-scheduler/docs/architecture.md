@@ -10,7 +10,7 @@ generated_from: architecture@0.3.0
 generated_by: claude-cowork
 approved_by: akulakum@cisco.com
 updated_at: 2026-10-15T11:06:00Z
-validation_status: pass-with-warnings
+validation_status: pending
 -->
 
 # @webex/internal-plugin-scheduler architecture
@@ -115,9 +115,9 @@ No dependency cycle exists inside the package.
 | Surface | Type | Owner | Consumers | Compatibility policy | Source |
 | ------- | ---- | ----- | --------- | -------------------- | ------ |
 | `scheduler-sdk` (published) | SDK | Scheduler plugin | None in this workspace; any code that imports the package | Internal plugin; see Release and versioning | `package.json` |
-| `webex-core-plugin-host` (required) | SDK | sibling package webex-core | Scheduler plugin | External | `@webex/webex-core` |
+| `webex-core-plugin-host` (required) | SDK | sibling package webex-core | Scheduler plugin | Specified in its SDD module spec, file src/docs/README.md of that package | `@webex/webex-core` |
 | `encryption-sdk` (required) | SDK | sibling package internal-plugin-encryption | Package barrel and transforms | External | `@webex/internal-plugin-encryption` |
-| `mercury-sdk` (required) | SDK | sibling package internal-plugin-mercury | Scheduler plugin | Its files src/index.js and src/mercury-plugin.ts (the `MercuryPlugin` wrapper) | `@webex/internal-plugin-mercury` |
+| `mercury-sdk` (required) | SDK | sibling package internal-plugin-mercury | Scheduler plugin | Its files src/index.js and src/mercury-plugin.ts (the `MercuryPlugin` wrapper); its SDD spec still names the inner Mercury class as the registered plugin | `@webex/internal-plugin-mercury` |
 
 `scheduler-sdk` entry points: `main` points at the build output and `devMain` at `src/index.js`. No
 HTTP surface is served, so `api-specs/openapi.yaml` is omitted.
@@ -210,23 +210,23 @@ Controls and boundaries:
   `authorization` header with a fixed placeholder value (Scheduler plugin spec Protocol and wire
   format).
 - Authorization, host validation, and redirect handling belong to the sibling package webex-core
-  request pipeline (files src/webex-core.js and src/config.js, and the interceptors under
-  src/interceptors/). With webex-core's default interceptor set:
+  request pipeline, specified in its SDD module spec src/docs/README.md and its interceptors SDD spec
+  src/interceptors/docs/README.md. With webex-core's default interceptor set:
   - The auth interceptor keeps an `authorization` header that the request already carries, and
-    otherwise adds the user's token when its credentials check passes (file src/interceptors/auth.js).
+    otherwise adds the user's token when its credentials check passes (interceptors spec INT-001 and INT-002).
     The example POST's first attempt therefore carries the placeholder value. On a 401, unless the
     request sets `shouldRefreshAccessToken: false`, the auth interceptor removes the header and, when
     the credentials can refresh, refreshes and replays; otherwise the 401 rejects. The replay goes
     back through the auth interceptor, which adds the user's token when its `requiresCredentials`
-    check passes for the request URL (file src/interceptors/auth.js).
-  - When `config.services.validateCatalogUrls` is `true` (default `false`, files src/config.js and
-    src/webex-core.js), `CatalogUrlInterceptor` rejects a request whose `uri` is outside the
+    check passes for the request URL (interceptors spec INT-002 to INT-009).
+  - When `config.services.validateCatalogUrls` is `true` (default `false`, webex-core module spec
+    MOD-012 and MOD-025), `CatalogUrlInterceptor` rejects a request whose `uri` is outside the
     catalog and allowed domains, which would include the example POST unless the host's catalog or
-    `allowedDomains` covers `www.example.com` (file
-    src/interceptors/catalog-url.js). A request that carries `service` and no `uri` is not checked.
+    `allowedDomains` covers `www.example.com` (interceptors spec
+    INT-011 and INT-013). A request that carries `service` and no `uri` is not checked (INT-010).
   - `PayloadTransformerInterceptor` passes requests, responses, and response errors through
-    `webex.transform`, where this package's predicates are evaluated (file
-    src/interceptors/payload-transformer.js). Requests that set `noTransform` skip the outbound pass,
+    `webex.transform`, where this package's predicates are evaluated (interceptors spec
+    INT-018). Requests that set `noTransform` skip the outbound pass,
     and requests that set `disableTransform` skip the inbound pass in its `onResponse` step.
     Response errors are passed to `webex.transform` regardless of `disableTransform`, so an error
     object that carries a trigger field can still match an inbound predicate (Scheduler plugin spec
