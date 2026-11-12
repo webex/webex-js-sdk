@@ -120,6 +120,15 @@
       "onboarded_by": "claude-code"
     },
     {
+      "id": "@webex/internal-plugin-lyra",
+      "path": "packages/@webex/internal-plugin-lyra",
+      "manifest": "packages/@webex/internal-plugin-lyra/.sdd/manifest.json",
+      "agent_entry": "packages/@webex/internal-plugin-lyra/AGENTS.md",
+      "index": "packages/@webex/internal-plugin-lyra/docs/index.md",
+      "onboarded_at": "2026-11-12T14:57:32Z",
+      "onboarded_by": "claude-code"
+    },
+    {
       "id": "@webex/internal-plugin-presence",
       "path": "packages/@webex/internal-plugin-presence",
       "manifest": "packages/@webex/internal-plugin-presence/.sdd/manifest.json",
@@ -226,6 +235,6 @@
   "provenance": {
     "generated_by": "claude-code",
     "approved_by": "rarajes2@cisco.com",
-    "updated_at": "2026-11-12T14:03:04Z"
+    "updated_at": "2026-11-12T14:57:32Z"
   }
 }
