@@ -9,8 +9,8 @@ doc_kind: standing-doc
 generated_from: getting-started@0.3.0
 generated_by: claude-cowork
 approved_by: akulakum@cisco.com
-updated_at: 2026-11-12T09:38:38Z
-validation_status: pass-with-warnings
+updated_at: 2026-11-12T11:30:00Z
+validation_status: pending
 -->
 
 # Getting started
@@ -49,8 +49,8 @@ yarn workspace @webex/internal-plugin-locus build
 
 ## Run
 
-N/A — library package with no start script. Import the package from a consumer so that
-`webex.internal.locus` exists.
+N/A — library package with no start script. Import the package before constructing the Webex
+instance; only instances constructed after the import get `webex.internal.locus`.
 
 ## Tests
 

@@ -9,8 +9,8 @@ doc_kind: standing-doc
 generated_from: spec-index@0.3.0
 generated_by: claude-cowork
 approved_by: akulakum@cisco.com
-updated_at: 2026-11-12T09:38:38Z
-validation_status: pass-with-warnings
+updated_at: 2026-11-12T11:30:00Z
+validation_status: pending
 -->
 
 # Specification registry
@@ -55,6 +55,9 @@ Generator-side field measurement is complete. Field coverage measured 2026-10-09
 | Sequence comparison or delta merge | `src/docs/README.md` and the fixtures in `test/unit/lib` | `yarn workspace @webex/internal-plugin-locus test:unit` |
 | A REST wrapper, request body, or Conflict handling | `src/docs/README.md` | `yarn workspace @webex/internal-plugin-locus test:unit`, after adding the missing unit case |
 | A public export, the plugin name, or `eventKeys` | `src/docs/README.md` and `docs/architecture.md`; check internal-plugin-lyra | `yarn workspace @webex/internal-plugin-locus test:unit` |
+
+Run `yarn workspace @webex/internal-plugin-locus build` before `test:unit` after any `src/` change; the unit
+spec imports this package by name, which resolves to the build output.
 
 ## Module and contract registration
 

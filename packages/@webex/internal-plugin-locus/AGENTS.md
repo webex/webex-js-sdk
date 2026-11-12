@@ -3,8 +3,8 @@ doc_kind: agent-entry
 generated_from: agents@0.3.0
 generated_by: claude-cowork
 approved_by: akulakum@cisco.com
-updated_at: 2026-11-12T09:38:38Z
-validation_status: pass-with-warnings
+updated_at: 2026-11-12T11:30:00Z
+validation_status: pending
 -->
 
 # AI Agent Instructions
@@ -113,8 +113,11 @@ Definition of done:
 
 Run checks in this order:
 
-1. `yarn workspace @webex/internal-plugin-locus test:unit`
-2. `yarn workspace @webex/internal-plugin-locus test:style`
+1. `yarn workspace @webex/internal-plugin-locus build`. The unit spec imports this package by
+   name, which resolves to the build output (`package.json` `main`), so rebuild after any `src/`
+   change.
+2. `yarn workspace @webex/internal-plugin-locus test:unit`
+3. `yarn workspace @webex/internal-plugin-locus test:style`
 
 The browser run is recorded in `.sdd/manifest.json` as `commands.browser-test` (role `other`), not
 under `tests`, because the SDD manifest `tests` schema allows only `unit`, `integration`, `e2e`, and
