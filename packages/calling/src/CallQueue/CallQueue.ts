@@ -30,6 +30,7 @@ import {
   applyQueueNames,
   parseCallQueueCatalog,
   parseCallQueueSettings,
+  queueIdKey,
 } from './state';
 import {
   ACD_STATE,
@@ -289,8 +290,8 @@ export class CallQueueClient extends Eventing<CallQueueEventTypes> implements IC
 
   private async fillQueueNames(status: CallQueueAgentStatus): Promise<CallQueueAgentStatus> {
     const missingIds = status.queues
-      .filter((queue) => !queue.name && !this.queueNames.has(queue.id))
-      .map((queue) => queue.id);
+      .filter((queue) => !queue.name && !this.queueNames.has(queueIdKey(queue.id)))
+      .map((queue) => queueIdKey(queue.id));
     if (missingIds.length > 0) {
       await this.loadQueueCatalog(missingIds);
     }
@@ -312,7 +313,7 @@ export class CallQueueClient extends Eventing<CallQueueEventTypes> implements IC
       const catalog = parseCallQueueCatalog(response.body);
       catalog.entries.forEach((entry) => {
         if (entry.name) {
-          this.queueNames.set(entry.id, entry.name);
+          this.queueNames.set(queueIdKey(entry.id), entry.name);
         }
       });
       const next = this.catalogNextUrl(catalog.next);

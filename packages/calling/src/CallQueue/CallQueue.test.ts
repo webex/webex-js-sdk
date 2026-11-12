@@ -135,6 +135,7 @@ describe('CallQueue client', () => {
   it('fills a missing display name from the queue catalog', async () => {
     const queueId =
       'Y2lzY29zcGFyazovL3VzL0NBTExfUVVFVUUvNGFiNmJkZGEtYzY4NC00OGYzLTkyMTctNjBmZGJiODA0OWIz';
+    const gatewayQueueId = '4ab6bdda-c684-48f3-9217-60fdbb8049b3';
     webex.request.mockImplementation(async (options: {uri: string}) => {
       if (options.uri.endsWith('telephony/config/queues')) {
         return {
@@ -149,7 +150,9 @@ describe('CallQueue client', () => {
         statusCode: 200,
         body: {
           agentACDState: 'SIGN_OUT',
-          queues: [{id: queueId, available: true, extension: '4000', allowLogOffEnabled: false}],
+          queues: [
+            {id: gatewayQueueId, available: true, extension: '4000', allowLogOffEnabled: false},
+          ],
         },
       };
     });
@@ -161,6 +164,7 @@ describe('CallQueue client', () => {
       method: HTTP_METHODS.GET,
     });
     expect(response.data.callQueue?.queues[0].name).toBe('TestQueue');
+    expect(response.data.callQueue?.queues[0].id).toBe(gatewayQueueId);
     expect(response.data.callQueue?.queues[0].allowLogOffEnabled).toBe(false);
   });
 

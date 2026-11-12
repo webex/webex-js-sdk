@@ -88,6 +88,25 @@ export type CallQueueCatalogPage = {
   next?: string;
 };
 
+/** Match CSG UUIDs with catalog IDs encoded as ciscospark queue URIs. */
+export function queueIdKey(id: string): string {
+  const uuidPattern = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
+  if (uuidPattern.test(id)) {
+    return id.toLowerCase();
+  }
+  try {
+    const decoded = atob(id.replace(/-/g, '+').replace(/_/g, '/'));
+    const match = /^ciscospark:\/\/[^/]+\/CALL_QUEUE\/([^/]+)$/i.exec(decoded);
+    if (match && uuidPattern.test(match[1])) {
+      return match[1].toLowerCase();
+    }
+  } catch {
+    // IDs outside the encoded catalog format are compared unchanged.
+  }
+
+  return id;
+}
+
 /**
  * Reads the org queue list. That list carries the display name the agent settings call omits.
  */
@@ -133,7 +152,7 @@ export function applyQueueNames(
 ): CallQueueAgentStatus {
   let changed = false;
   const queues = status.queues.map((queue) => {
-    const name = names.get(queue.id);
+    const name = names.get(queueIdKey(queue.id));
     if (!name || queue.name) {
       return queue;
     }

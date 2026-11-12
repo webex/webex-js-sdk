@@ -5,9 +5,22 @@ import {
   normalizeAcdState,
   parseCallQueueCatalog,
   parseCallQueueSettings,
+  queueIdKey,
 } from './state';
 
 describe('call queue state', () => {
+  it('matches CSG UUIDs to encoded queue catalog IDs without changing other IDs', () => {
+    const id = '4ab6bdda-c684-48f3-9217-60fdbb8049b3';
+    const encodedQueue =
+      'Y2lzY29zcGFyazovL3VzL0NBTExfUVVFVUUvNGFiNmJkZGEtYzY4NC00OGYzLTkyMTctNjBmZGJiODA0OWIz';
+    const encodedPerson = btoa(`ciscospark://us/PEOPLE/${id}`);
+
+    expect(queueIdKey(encodedQueue)).toBe(id);
+    expect(queueIdKey(id.toUpperCase())).toBe(id);
+    expect(queueIdKey(encodedPerson)).toBe(encodedPerson);
+    expect(queueIdKey('not-an-id')).toBe('not-an-id');
+  });
+
   describe('normalizeAcdState', () => {
     it.each([
       ['SIGN_IN', ACD_STATE.SIGN_IN],
