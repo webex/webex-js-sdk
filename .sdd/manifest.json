@@ -66,6 +66,15 @@
   ],
   "packages": [
     {
+      "id": "@webex/internal-plugin-conversation",
+      "path": "packages/@webex/internal-plugin-conversation",
+      "manifest": "packages/@webex/internal-plugin-conversation/.sdd/manifest.json",
+      "agent_entry": "packages/@webex/internal-plugin-conversation/AGENTS.md",
+      "index": "packages/@webex/internal-plugin-conversation/docs/index.md",
+      "onboarded_at": "2026-11-09T11:06:48Z",
+      "onboarded_by": "claude-code"
+    },
+    {
       "id": "@webex/internal-plugin-feature",
       "path": "packages/@webex/internal-plugin-feature",
       "manifest": "packages/@webex/internal-plugin-feature/.sdd/manifest.json",
@@ -90,6 +99,15 @@
       "agent_entry": "packages/@webex/internal-plugin-wdm/AGENTS.md",
       "index": "packages/@webex/internal-plugin-wdm/docs/index.md",
       "onboarded_at": "2026-10-28T14:44:56Z",
+      "onboarded_by": "claude-code"
+    },
+    {
+      "id": "@webex/plugin-authorization-browser",
+      "path": "packages/@webex/plugin-authorization-browser",
+      "manifest": "packages/@webex/plugin-authorization-browser/.sdd/manifest.json",
+      "agent_entry": "packages/@webex/plugin-authorization-browser/AGENTS.md",
+      "index": "packages/@webex/plugin-authorization-browser/docs/index.md",
+      "onboarded_at": "2026-11-04T06:35:39Z",
       "onboarded_by": "claude-code"
     },
     {

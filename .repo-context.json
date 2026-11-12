@@ -91,6 +91,13 @@
     ],
     "workspace_packages": [
       {
+        "name": "@webex/internal-plugin-conversation",
+        "paths": [
+          "packages/@webex/internal-plugin-conversation"
+        ],
+        "notes": "Onboarded package: its own AGENTS.md, docs/, and .sdd/manifest.json are routed from .sdd/manifest.json packages."
+      },
+      {
         "name": "@webex/internal-plugin-feature",
         "paths": [
           "packages/@webex/internal-plugin-feature"
@@ -108,6 +115,13 @@
         "name": "@webex/internal-plugin-wdm",
         "paths": [
           "packages/@webex/internal-plugin-wdm"
+        ],
+        "notes": "Onboarded package: its own AGENTS.md, docs/, and .sdd/manifest.json are routed from .sdd/manifest.json packages."
+      },
+      {
+        "name": "@webex/plugin-authorization-browser",
+        "paths": [
+          "packages/@webex/plugin-authorization-browser"
         ],
         "notes": "Onboarded package: its own AGENTS.md, docs/, and .sdd/manifest.json are routed from .sdd/manifest.json packages."
       },
