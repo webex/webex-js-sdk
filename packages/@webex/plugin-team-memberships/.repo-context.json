@@ -1,0 +1,422 @@
+{
+  "$schema": "./schemas/repo-context.schema.json",
+  "version": 1,
+  "repository": {
+    "name": "@webex/plugin-team-memberships",
+    "purpose": "Public plugin registered as webex.teamMemberships that manages Webex team memberships through the Webex REST API team/memberships resource (catalog service hydra): create POSTs the caller's membership object (teamId plus personId or personEmail, optionally isModerator), get and remove take a membership object or its id, list sends its options as the query and resolves a webex-core Page, update PUTs the whole membership object, and remove resolves undefined on 204. Each method sends one request through webex.request and resolves the response; nothing is validated, cached, persisted, or logged."
+  },
+  "commands": {
+    "install": "yarn",
+    "prebuild": "yarn prebuild:modules",
+    "compile": "yarn build",
+    "build": "yarn build:src",
+    "unit-test": "[NEEDS HUMAN INPUT] -- package.json defines no test:unit script and the package has no test/unit directory; its only spec, test/integration/spec/team-memberships.js, runs only under test:browser, which currently bundles nothing. Add a unit suite and script before recording a command here.",
+    "lint": "yarn test:style",
+    "browser-test": "yarn test:browser",
+    "deploy": "yarn deploy:npm"
+  },
+  "public_interfaces": [
+    {
+      "name": "@webex/plugin-team-memberships package entry",
+      "kind": "package_export",
+      "source": "src/index.js",
+      "entrypoints": [
+        "import '@webex/plugin-team-memberships'",
+        "import TeamMemberships from '@webex/plugin-team-memberships'"
+      ],
+      "audience": "SDK bundles (webex, webex-node) and applications that build their own webex instance",
+      "notes": "Importing the package registers TeamMemberships as public plugin 'teamMemberships' with no config; the first registration of the name wins. The default export TeamMemberships is the only export."
+    },
+    {
+      "name": "webex.teamMemberships methods",
+      "kind": "plugin_api",
+      "source": "src/team-memberships.js",
+      "entrypoints": [
+        "webex.teamMemberships.create(membership)",
+        "webex.teamMemberships.get(membership)",
+        "webex.teamMemberships.list(options)",
+        "webex.teamMemberships.update(membership)",
+        "webex.teamMemberships.remove(membership)"
+      ],
+      "audience": "applications",
+      "notes": "Each method sends one hydra team/memberships request. create POSTs the caller's object unchanged; get, update, and remove take membership.id, else the argument, and throw a TypeError synchronously on null or undefined; update also sends a string argument as the body; list resolves a webex-core Page; remove resolves undefined on 204. Nothing is validated or cached."
+    },
+    {
+      "name": "package scripts",
+      "kind": "npm_scripts",
+      "source": "package.json",
+      "entrypoints": [
+        "build",
+        "build:src",
+        "test:style",
+        "test:browser",
+        "test",
+        "deploy:npm"
+      ],
+      "audience": "contributors and CI",
+      "notes": "build runs build:src, which writes dist. There is no test:unit script and no unit test. test:browser (commands.browser-test) runs karma over test/integration/spec but bundles nothing today (no case run, exit 0). The aggregate test script runs test:style, then exits 1 because test:unit is not defined (it also names test:integration, which is not defined either); it is deliberately not a manifest command."
+    }
+  ],
+  "source_of_truth": [
+    {
+      "surface": "Team Memberships plugin implementation",
+      "paths": [
+        "src/index.js",
+        "src/team-memberships.js"
+      ],
+      "generated_artifacts": [
+        "dist"
+      ],
+      "refresh_with": [
+        "yarn build:src"
+      ],
+      "validate_with": [
+        "yarn test:style"
+      ]
+    },
+    {
+      "surface": "module specification",
+      "paths": [
+        "src/docs/README.md"
+      ],
+      "generated_artifacts": [],
+      "refresh_with": [
+        "update alongside the behavior change in the same commit"
+      ],
+      "validate_with": [
+        "spec-validator on an independent runtime"
+      ]
+    }
+  ],
+  "generated_artifacts": [
+    {
+      "path": "dist",
+      "generated_from": "src",
+      "refresh_with": "yarn build:src"
+    },
+    {
+      "path": "../../../.sdd/templates/repo-standards/template-map.json",
+      "generated_from": "WebexTools/repo-standards@d89a7fe59126ae3ad9bac9ca352aa7f12b4c85dc",
+      "refresh_with": "The package holds no templates. It refers to the monorepo root snapshot at ../../../.sdd/templates/repo-standards through layout.monorepo_package.templates_root_path in .sdd/manifest.json. Refresh the root snapshot, not this package."
+    }
+  ],
+  "validation_matrix": [
+    {
+      "paths": [
+        "src/**"
+      ],
+      "minimum": [
+        "yarn build:src",
+        "yarn test:style"
+      ],
+      "recommended": [
+        "add a test/unit/spec case and a test:unit script for the changed behavior; the package has no unit tests"
+      ]
+    },
+    {
+      "paths": [
+        "src/team-memberships.js"
+      ],
+      "minimum": [
+        "yarn build:src",
+        "yarn test:style"
+      ],
+      "recommended": [
+        "pin the request options, the object-or-id rule, and the 204 branch with unit cases before changing them"
+      ]
+    },
+    {
+      "paths": [
+        "src/index.js"
+      ],
+      "minimum": [
+        "yarn build:src",
+        "yarn test:style"
+      ],
+      "recommended": [
+        "check the bundles that register the plugin (webex, webex-node) and the webex integration spec commonjs.js when the registered name changes"
+      ]
+    }
+  ],
+  "change_impact": [
+    {
+      "paths": [
+        "src/team-memberships.js"
+      ],
+      "affects": [
+        "the hydra team/memberships requests and their result shapes",
+        "the object-or-id argument of get, update, and remove",
+        "the undefined result of remove on 204"
+      ],
+      "refresh_with": [
+        "yarn build:src"
+      ],
+      "validate_with": [
+        "yarn test:style"
+      ],
+      "avoid_direct_edits": [
+        "dist"
+      ],
+      "notes": "No unit case covers any method; add one before changing behavior."
+    },
+    {
+      "paths": [
+        "src/index.js"
+      ],
+      "affects": [
+        "the registered plugin name"
+      ],
+      "refresh_with": [
+        "yarn build:src"
+      ],
+      "validate_with": [
+        "yarn test:style"
+      ],
+      "avoid_direct_edits": [
+        "dist"
+      ],
+      "notes": "webex and webex-node register the plugin by import, and the webex integration spec checks webex.teamMemberships (MOD-001)."
+    }
+  ],
+  "evidence_rules": [
+    {
+      "claim_category": "command_name",
+      "sources": [
+        "package.json"
+      ],
+      "requirement": "The script must exist in package.json scripts.",
+      "notes": "test:unit and test:integration do not exist, so the aggregate test script fails; test:browser currently verifies nothing."
+    },
+    {
+      "claim_category": "import_path",
+      "sources": [
+        "src/index.js"
+      ],
+      "requirement": "A binding is public only if exported from src/index.js.",
+      "notes": "The only export is the default TeamMemberships."
+    },
+    {
+      "claim_category": "behavior_claim",
+      "sources": [
+        "src"
+      ],
+      "requirement": "Ground every behavioral claim in source evidence.",
+      "notes": "Commit history is not an evidence source for this package. README.md is context only (docs/adr/0001-retain-product-readme.md). The integration spec under test/integration/spec states intended behavior but no script runs it. The webex-core, plugin-rooms, internal-plugin-device, and plugin-logger specs were consulted; plugin-teams and test-helper-chai have no spec, so their code was read."
+    }
+  ],
+  "negative_guidance": [
+    {
+      "rule": "Do not send team membership requests other than through this.request with service hydra.",
+      "why": "webex-core interceptors add authorization, resolve the catalog, and convert errors (INV-001)."
+    },
+    {
+      "rule": "Do not drop the object-or-id argument of get, update, or remove.",
+      "why": "The JSDoc and callers pass either form (INV-002)."
+    },
+    {
+      "rule": "Do not validate or rewrite the caller's membership object without a change request.",
+      "why": "The service owns membership rules and callers rely on the body passing through (INV-004)."
+    },
+    {
+      "rule": "Do not log person emails, person ids, or team ids through webex.logger.",
+      "why": "They identify users and teams; the plugin logs nothing today."
+    },
+    {
+      "rule": "Do not treat README.md as the behavior reference.",
+      "why": "Its only example uses webex.team-memberships, which is not valid JavaScript; see docs/adr/0001-retain-product-readme.md."
+    },
+    {
+      "rule": "Do not infer a coverage threshold or a unit-test command for this package.",
+      "why": "No unit test, test:unit script, coverage script, or threshold exists."
+    }
+  ],
+  "confidence_policy": {
+    "high": {
+      "action": "update",
+      "expectation": "Source and a unit case agree; no such case exists in this package yet."
+    },
+    "medium": {
+      "action": "narrow-scope",
+      "expectation": "Only source evidence exists, or only the unrun integration spec, as for every method today. Pin current behavior with a unit case before modifying."
+    },
+    "low": {
+      "action": "noop",
+      "expectation": "Neither source, tests, nor a dependency's spec or code settles the question, as for what Hydra answers to a duplicate create or a string update body. Stop and report the gap."
+    }
+  },
+  "repository_topology": {
+    "main_entrypoints": [
+      {
+        "name": "package entry",
+        "path": "src/index.js",
+        "purpose": "Registers the teamMemberships plugin and exports the class",
+        "notes": "No subpath exports; package.json main is dist/index.js and devMain is src/index.js."
+      }
+    ],
+    "workspace_packages": [
+      {
+        "name": "@webex/plugin-team-memberships",
+        "paths": [
+          "src",
+          "test"
+        ],
+        "notes": "One module; this SDD root is the package directory inside the webex-js-sdk monorepo."
+      }
+    ],
+    "source_surfaces": [
+      {
+        "name": "Team Memberships plugin",
+        "paths": [
+          "src"
+        ],
+        "notes": "index.js and team-memberships.js. Specified at src/docs/README.md."
+      },
+      {
+        "name": "tests",
+        "paths": [
+          "test/integration/spec"
+        ],
+        "notes": "One live-service integration spec that only test:browser would run, and it bundles nothing today. There is no unit spec."
+      }
+    ],
+    "generated_surfaces": [
+      {
+        "name": "build output",
+        "paths": [
+          "dist"
+        ],
+        "generated_from": "src",
+        "refresh_with": "yarn build:src",
+        "notes": "JavaScript and source maps from webex-legacy-tools; no type declarations. Do not edit by hand."
+      },
+      {
+        "name": "repo-standards template map",
+        "paths": [
+          "../../../.sdd/templates/repo-standards"
+        ],
+        "generated_from": "WebexTools/repo-standards@d89a7fe59126ae3ad9bac9ca352aa7f12b4c85dc",
+        "refresh_with": "The package holds no templates. It refers to the monorepo root snapshot at ../../../.sdd/templates/repo-standards through layout.monorepo_package.templates_root_path in .sdd/manifest.json. Refresh the root snapshot, not this package.",
+        "notes": "The package holds no templates. It refers to the monorepo root snapshot at ../../../.sdd/templates/repo-standards through layout.monorepo_package.templates_root_path in .sdd/manifest.json. Refresh the root snapshot, not this package."
+      }
+    ],
+    "validation_entrypoints": [
+      {
+        "name": "compile",
+        "command": "yarn build",
+        "scope": "src",
+        "notes": "Runs build:src."
+      },
+      {
+        "name": "lint",
+        "command": "yarn test:style",
+        "scope": "src",
+        "notes": "eslint via the local .eslintrc.js; docs/** and *.md are ignored."
+      }
+    ],
+    "sync_paths": [
+      {
+        "source": "src/team-memberships.js",
+        "targets": [
+          "src/docs/README.md"
+        ],
+        "mechanism": "Manual; update the module specification in the same change that alters observable behavior.",
+        "notes": "Keep the request, result, failure-mode, and wire rows of the specification aligned with src/team-memberships.js and src/index.js."
+      },
+      {
+        "source": "WebexTools/repo-standards@d89a7fe59126ae3ad9bac9ca352aa7f12b4c85dc",
+        "targets": [
+          "../../../.sdd/templates/repo-standards"
+        ],
+        "mechanism": "The package holds no templates. It refers to the monorepo root snapshot at ../../../.sdd/templates/repo-standards through layout.monorepo_package.templates_root_path in .sdd/manifest.json. Refresh the root snapshot, not this package.",
+        "notes": "The package holds no templates. It refers to the monorepo root snapshot at ../../../.sdd/templates/repo-standards through layout.monorepo_package.templates_root_path in .sdd/manifest.json. Refresh the root snapshot, not this package."
+      }
+    ]
+  },
+  "folder_readme_contract": {
+    "required_sections": [
+      "purpose",
+      "boundaries",
+      "key-files",
+      "common-tasks"
+    ],
+    "rules": [
+      "Orient the reader before describing detail.",
+      "Link to the module specification rather than duplicating it."
+    ],
+    "example_policy": "Examples are allowed only when verified against src/ or test/.",
+    "fallback": "Omit a section rather than inventing content; report unresolved facts as gaps."
+  },
+  "regression_feedback_rules": [
+    {
+      "trigger": "A team memberships request or its result handling in src/team-memberships.js changes.",
+      "required_followups": [
+        "Add a test:unit script and a test/unit/spec case asserting the request options and the resolved value",
+        "Update MOD-002 to MOD-006 in src/docs/README.md"
+      ],
+      "notes": "No unit case exists for any method today."
+    },
+    {
+      "trigger": "The id resolution of get, update, or remove, or the 204 branch of remove, changes.",
+      "required_followups": [
+        "Add parametrized unit cases for an object, an id string, an object without id, and a missing argument",
+        "Update INV-002 and INV-003 and the Caller-visible failure modes in src/docs/README.md"
+      ],
+      "notes": "A missing argument throws synchronously today."
+    },
+    {
+      "trigger": "The registration in src/index.js changes.",
+      "required_followups": [
+        "Check webex, webex-node, and the webex integration spec commonjs.js",
+        "Update MOD-001 in src/docs/README.md"
+      ],
+      "notes": "Applications reach the plugin as webex.teamMemberships."
+    }
+  ],
+  "surface_owners": [
+    {
+      "surface": "module implementation and specifications",
+      "owner": "@webex/web-sdk",
+      "edit_boundary": "No packages/@webex/plugin-team-memberships line exists in the monorepo .github/CODEOWNERS, so its default * rule assigns @webex/web-sdk."
+    }
+  ],
+  "do_not_edit": [
+    "dist",
+    "../../../.sdd/templates/repo-standards"
+  ],
+  "marker_scopes": {
+    "sdd": [
+      ".sdd/manifest.json",
+      "src/docs/README.md",
+      "docs"
+    ]
+  },
+  "fallback_rules": [
+    "When source and tests disagree, code is the referee and the disagreement is recorded rather than silently resolved.",
+    "When neither source nor tests settle a question, report it as a gap instead of inferring.",
+    "Commit history is not a valid rationale source for this package.",
+    "When a dependency's specification disagrees with that dependency's code, use the code and record the disagreement; when a dependency has no specification, use its code."
+  ],
+  "downstream_context_pack": {
+    "required_human_surfaces": [
+      "README.md",
+      "docs/index.md",
+      "docs/architecture.md",
+      "src/docs/README.md"
+    ],
+    "required_agent_operational_surfaces": [
+      "AGENTS.md",
+      "docs/specs/README.md"
+    ],
+    "required_machine_readable_surface": ".sdd/manifest.json",
+    "recommended_machine_readable_sections": [
+      "public_interfaces",
+      "change_impact",
+      "evidence_rules",
+      "negative_guidance",
+      "confidence_policy",
+      "repository_topology",
+      "folder_readme_contract",
+      "regression_feedback_rules"
+    ]
+  }
+}

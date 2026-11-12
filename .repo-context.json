@@ -154,6 +154,13 @@
         "notes": "Onboarded package: its own AGENTS.md, docs/, and .sdd/manifest.json are routed from .sdd/manifest.json packages."
       },
       {
+        "name": "@webex/plugin-team-memberships",
+        "paths": [
+          "packages/@webex/plugin-team-memberships"
+        ],
+        "notes": "Onboarded package: its own AGENTS.md, docs/, and .sdd/manifest.json are routed from .sdd/manifest.json packages."
+      },
+      {
         "name": "@webex/internal-plugin-dss",
         "paths": [
           "packages/@webex/internal-plugin-dss"
