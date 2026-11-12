@@ -1675,7 +1675,7 @@ describe('webex-core', () => {
           environment: 'integration',
           services: {
             discovery: {
-              u2c: 'https://u2c.wbx2.com/u2c/api/v1',
+              u2c: 'https://u2c.svc.webex.com/u2c/api/v1',
             },
           },
         };
@@ -1711,7 +1711,7 @@ describe('webex-core', () => {
         services.webex.config = {
           services: {
             discovery: {
-              u2c: 'https://u2c.wbx2.com/u2c/api/v1',
+              u2c: 'https://u2c.svc.webex.com/u2c/api/v1',
             },
           },
         };
@@ -1936,7 +1936,7 @@ describe('webex-core', () => {
         // arrange config for env fingerprint
         services.webex.config = services.webex.config || {};
         services.webex.config.services = services.webex.config.services || {discovery: {}};
-        services.webex.config.services.discovery.u2c = 'https://u2c.wbx2.com/u2c/api/v1';
+        services.webex.config.services.discovery.u2c = 'https://u2c.svc.webex.com/u2c/api/v1';
         services.webex.config.fedramp = false;
 
         // write cache with meta
@@ -1952,7 +1952,7 @@ describe('webex-core', () => {
         assert.equal(parsed.orgId, undefined, 'orgId not set without credentials');
         assert.deepEqual(parsed.env, {
           fedramp: false,
-          u2cDiscoveryUrl: 'https://u2c.wbx2.com/u2c/api/v1',
+          u2cDiscoveryUrl: 'https://u2c.svc.webex.com/u2c/api/v1',
         });
         assert.isObject(parsed.preauth);
         assert.deepEqual(parsed.preauth.meta, {
@@ -1971,14 +1971,14 @@ describe('webex-core', () => {
         // set current env to match cached env
         services.webex.config = services.webex.config || {};
         services.webex.config.services = services.webex.config.services || {discovery: {}};
-        services.webex.config.services.discovery.u2c = 'https://u2c.wbx2.com/u2c/api/v1';
+        services.webex.config.services.discovery.u2c = 'https://u2c.svc.webex.com/u2c/api/v1';
         services.webex.config.fedramp = false;
         // cache with matching orgId selection
         window.localStorage.setItem(
           CATALOG_CACHE_KEY_V1,
           JSON.stringify({
             cachedAt: Date.now(),
-            env: {fedramp: false, u2cDiscoveryUrl: 'https://u2c.wbx2.com/u2c/api/v1'},
+            env: {fedramp: false, u2cDiscoveryUrl: 'https://u2c.svc.webex.com/u2c/api/v1'},
             preauth: {
               hostMap: {serviceLinks: {}, hostCatalog: {}},
               meta: {selectionType: 'orgId', selectionValue: 'urn:EXAMPLE:org'},
@@ -2003,7 +2003,7 @@ describe('webex-core', () => {
           CATALOG_CACHE_KEY_V1,
           JSON.stringify({
             cachedAt: Date.now(),
-            env: {fedramp: false, u2cDiscoveryUrl: 'https://u2c.wbx2.com/u2c/api/v1'},
+            env: {fedramp: false, u2cDiscoveryUrl: 'https://u2c.svc.webex.com/u2c/api/v1'},
             preauth: {
               hostMap: {serviceLinks: {}, hostCatalog: {}},
               meta: {selectionType: 'mode', selectionValue: 'DEFAULT_BY_PROXIMITY'},
@@ -2032,7 +2032,7 @@ describe('webex-core', () => {
           CATALOG_CACHE_KEY_V1,
           JSON.stringify({
             cachedAt: Date.now(),
-            env: {fedramp: false, u2cDiscoveryUrl: 'https://u2c.wbx2.com/u2c/api/v1'},
+            env: {fedramp: false, u2cDiscoveryUrl: 'https://u2c.svc.webex.com/u2c/api/v1'},
             preauth: {
               hostMap: {serviceLinks: {}, hostCatalog: {}},
               meta: {selectionType: 'orgId', selectionValue: 'urn:DIFF:org'},
@@ -2062,7 +2062,7 @@ describe('webex-core', () => {
         // current env
         services.webex.config = services.webex.config || {};
         services.webex.config.services = services.webex.config.services || {discovery: {}};
-        services.webex.config.services.discovery.u2c = 'https://u2c.wbx2.com/u2c/api/v1';
+        services.webex.config.services.discovery.u2c = 'https://u2c.svc.webex.com/u2c/api/v1';
         services.webex.config.fedramp = false;
 
         const warmed = await services._loadCatalogFromCache();

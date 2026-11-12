@@ -40,7 +40,7 @@ describe('webex-core', () => {
         'https://u2c.gov.ciscospark.com/u2c/api/v1',
         'https://u2c.svc.webexgov.us/u2c/api/v1',
         'https://u2c.example.com/u2c/api/v1',
-        'https://u2c.wbx2.com/u2c/api/v1',
+        'https://u2c.svc.webex.com/u2c/api/v1',
       ])('preserves the existing FedRAMP U2C discovery URL %s', (u2c) => {
         const discovery = {
           hydra: 'https://hydra.example.com/v1',
@@ -84,7 +84,7 @@ describe('webex-core', () => {
       it('leaves commercial discovery configuration unchanged', () => {
         const discovery = {
           hydra: 'https://api.ciscospark.com/v1',
-          u2c: 'https://u2c.wbx2.com/u2c/api/v1',
+          u2c: 'https://u2c.svc.webex.com/u2c/api/v1',
           sqdiscovery: 'https://ds.ciscospark.com/v1/region',
         };
         webex.config = {
@@ -1610,7 +1610,7 @@ describe('webex-core', () => {
           environment: 'integration',
           services: {
             discovery: {
-              u2c: 'https://u2c.wbx2.com/u2c/api/v1',
+              u2c: 'https://u2c.svc.webex.com/u2c/api/v1',
             },
           },
         };
@@ -1646,7 +1646,7 @@ describe('webex-core', () => {
         services.webex.config = {
           services: {
             discovery: {
-              u2c: 'https://u2c.wbx2.com/u2c/api/v1',
+              u2c: 'https://u2c.svc.webex.com/u2c/api/v1',
             },
           },
         };
@@ -1711,7 +1711,7 @@ describe('webex-core', () => {
         services.webex.config = services.webex.config || {};
         services.webex.config.services = services.webex.config.services || {discovery: {}};
         services.webex.config.services.discovery.u2c =
-          services.webex.config.services.discovery.u2c || 'https://u2c.wbx2.com/u2c/api/v1';
+          services.webex.config.services.discovery.u2c || 'https://u2c.svc.webex.com/u2c/api/v1';
         services.webex.config.fedramp =
           typeof services.webex.config.fedramp === 'boolean'
             ? services.webex.config.fedramp
@@ -1733,7 +1733,7 @@ describe('webex-core', () => {
 
       it('stores selection metadata and env on cache write for preauth', async () => {
         // Arrange env
-        services.webex.config.services.discovery.u2c = 'https://u2c.wbx2.com/u2c/api/v1';
+        services.webex.config.services.discovery.u2c = 'https://u2c.svc.webex.com/u2c/api/v1';
         services.webex.config.fedramp = false;
 
         // Act
@@ -1749,7 +1749,7 @@ describe('webex-core', () => {
         const parsed = JSON.parse(raw as string);
         assert.deepEqual(parsed.env, {
           fedramp: false,
-          u2cDiscoveryUrl: 'https://u2c.wbx2.com/u2c/api/v1',
+          u2cDiscoveryUrl: 'https://u2c.svc.webex.com/u2c/api/v1',
         });
         assert.isObject(parsed.preauth);
         assert.deepEqual(parsed.preauth.meta, {
@@ -1760,7 +1760,7 @@ describe('webex-core', () => {
 
       it('warms preauth from cache when selection meta matches intended orgId', async () => {
         // Arrange current env and credentials
-        services.webex.config.services.discovery.u2c = 'https://u2c.wbx2.com/u2c/api/v1';
+        services.webex.config.services.discovery.u2c = 'https://u2c.svc.webex.com/u2c/api/v1';
         services.webex.config.fedramp = false;
         services.webex.credentials = {
           canAuthorize: true,
@@ -1771,7 +1771,7 @@ describe('webex-core', () => {
           CATALOG_CACHE_KEY_V2,
           JSON.stringify({
             cachedAt: Date.now(),
-            env: {fedramp: false, u2cDiscoveryUrl: 'https://u2c.wbx2.com/u2c/api/v1'},
+            env: {fedramp: false, u2cDiscoveryUrl: 'https://u2c.svc.webex.com/u2c/api/v1'},
             preauth: {
               hostMap: {services: [], timestamp: '1'},
               meta: {selectionType: 'orgId', selectionValue: 'urn:EXAMPLE:org'},
@@ -1795,13 +1795,13 @@ describe('webex-core', () => {
 
       it('does not warm preauth when selection meta is proximity mode', async () => {
         // Arrange env
-        services.webex.config.services.discovery.u2c = 'https://u2c.wbx2.com/u2c/api/v1';
+        services.webex.config.services.discovery.u2c = 'https://u2c.svc.webex.com/u2c/api/v1';
         services.webex.config.fedramp = false;
         window.localStorage.setItem(
           CATALOG_CACHE_KEY_V2,
           JSON.stringify({
             cachedAt: Date.now(),
-            env: {fedramp: false, u2cDiscoveryUrl: 'https://u2c.wbx2.com/u2c/api/v1'},
+            env: {fedramp: false, u2cDiscoveryUrl: 'https://u2c.svc.webex.com/u2c/api/v1'},
             preauth: {
               hostMap: {services: [], timestamp: '1'},
               meta: {selectionType: 'mode', selectionValue: 'DEFAULT_BY_PROXIMITY'},
@@ -1824,7 +1824,7 @@ describe('webex-core', () => {
 
       it('does not warm preauth when selection meta mismatches intended selection', async () => {
         // Arrange env and credentials
-        services.webex.config.services.discovery.u2c = 'https://u2c.wbx2.com/u2c/api/v1';
+        services.webex.config.services.discovery.u2c = 'https://u2c.svc.webex.com/u2c/api/v1';
         services.webex.config.fedramp = false;
         services.webex.credentials = {
           canAuthorize: true,
@@ -1834,7 +1834,7 @@ describe('webex-core', () => {
           CATALOG_CACHE_KEY_V2,
           JSON.stringify({
             cachedAt: Date.now(),
-            env: {fedramp: false, u2cDiscoveryUrl: 'https://u2c.wbx2.com/u2c/api/v1'},
+            env: {fedramp: false, u2cDiscoveryUrl: 'https://u2c.svc.webex.com/u2c/api/v1'},
             preauth: {
               hostMap: {services: [], timestamp: '1'},
               meta: {selectionType: 'orgId', selectionValue: 'urn:DIFF:org'},
