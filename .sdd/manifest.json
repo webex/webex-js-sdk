@@ -1,0 +1,141 @@
+{
+  "manifest_version": 1,
+  "manifest_kind": "orchestrator-root",
+  "topology": "Orchestrator-plus-components",
+  "repository": {
+    "name": "webex-js-sdk",
+    "purpose": "JavaScript SDK for interacting with the Webex API.",
+    "workspace_declarations": [
+      {
+        "source_file": "package.json",
+        "patterns": [
+          "./packages/@webex/*",
+          "./packages/webex",
+          "./packages/webex-node",
+          "./packages/calling",
+          "./packages/byods",
+          "./packages/byods-demo-server",
+          "./packages/webexconnect",
+          "./packages/config/*",
+          "./packages/legacy/*",
+          "./packages/tools/*"
+        ]
+      }
+    ]
+  },
+  "layout": {
+    "agent_entry_path": "AGENTS.md",
+    "index_path": "docs/index.md",
+    "repo_context_path": ".repo-context.json",
+    "repo_context_schema_path": "schemas/repo-context.schema.json",
+    "template_roots": {
+      "canonical": ".sdd/templates/repo-standards",
+      "overrides": ".sdd/templates/repo-annotation"
+    },
+    "overrides_registry_path": ".sdd/config/root-overrides.json"
+  },
+  "root_artifact_decisions": [
+    {
+      "path": "AGENTS.md",
+      "action": "update-routing",
+      "reason": "The root agent entry is human-owned and already exists; only the marker-delimited package-routing block is inserted.",
+      "decided_by": "riag@cisco.com",
+      "decided_at": "2026-10-22T00:00:00Z"
+    },
+    {
+      "path": "docs/index.md",
+      "action": "create",
+      "reason": "No root docs/index.md exists. The root docs/ folder also holds the published website source (docs/CNAME, amplify.yml baseDirectory docs/, and the build:docs publish step in .github/workflows/deploy.yml); the owner chose the root-templates layout, so the routing page is created there.",
+      "decided_by": "riag@cisco.com",
+      "decided_at": "2026-10-22T00:00:00Z"
+    },
+    {
+      "path": ".repo-context.json",
+      "action": "create",
+      "reason": "No root repository context exists; it is created from the root override template and lists each onboarded package once.",
+      "decided_by": "riag@cisco.com",
+      "decided_at": "2026-10-22T00:00:00Z"
+    },
+    {
+      "path": "schemas/repo-context.schema.json",
+      "action": "create",
+      "reason": "No root schema exists; it is copied from the seeded Repo Standards snapshot.",
+      "decided_by": "riag@cisco.com",
+      "decided_at": "2026-10-22T00:00:00Z"
+    }
+  ],
+  "packages": [
+    {
+      "id": "@webex/internal-plugin-conversation",
+      "path": "packages/@webex/internal-plugin-conversation",
+      "manifest": "packages/@webex/internal-plugin-conversation/.sdd/manifest.json",
+      "agent_entry": "packages/@webex/internal-plugin-conversation/AGENTS.md",
+      "index": "packages/@webex/internal-plugin-conversation/docs/index.md",
+      "onboarded_at": "2026-11-09T11:06:48Z",
+      "onboarded_by": "claude-code"
+    },
+    {
+      "id": "@webex/internal-plugin-feature",
+      "path": "packages/@webex/internal-plugin-feature",
+      "manifest": "packages/@webex/internal-plugin-feature/.sdd/manifest.json",
+      "agent_entry": "packages/@webex/internal-plugin-feature/AGENTS.md",
+      "index": "packages/@webex/internal-plugin-feature/docs/index.md",
+      "onboarded_at": "2026-10-28T00:00:00Z",
+      "onboarded_by": "claude-code"
+    },
+    {
+      "id": "@webex/internal-plugin-user",
+      "path": "packages/@webex/internal-plugin-user",
+      "manifest": "packages/@webex/internal-plugin-user/.sdd/manifest.json",
+      "agent_entry": "packages/@webex/internal-plugin-user/AGENTS.md",
+      "index": "packages/@webex/internal-plugin-user/docs/index.md",
+      "onboarded_at": "2026-10-22T00:00:00Z",
+      "onboarded_by": "claude-code"
+    },
+    {
+      "id": "@webex/internal-plugin-wdm",
+      "path": "packages/@webex/internal-plugin-wdm",
+      "manifest": "packages/@webex/internal-plugin-wdm/.sdd/manifest.json",
+      "agent_entry": "packages/@webex/internal-plugin-wdm/AGENTS.md",
+      "index": "packages/@webex/internal-plugin-wdm/docs/index.md",
+      "onboarded_at": "2026-10-28T14:44:56Z",
+      "onboarded_by": "claude-code"
+    },
+    {
+      "id": "@webex/plugin-authorization-browser",
+      "path": "packages/@webex/plugin-authorization-browser",
+      "manifest": "packages/@webex/plugin-authorization-browser/.sdd/manifest.json",
+      "agent_entry": "packages/@webex/plugin-authorization-browser/AGENTS.md",
+      "index": "packages/@webex/plugin-authorization-browser/docs/index.md",
+      "onboarded_at": "2026-11-04T06:35:39Z",
+      "onboarded_by": "claude-code"
+    },
+    {
+      "id": "@webex/plugin-authorization-browser-first-party",
+      "path": "packages/@webex/plugin-authorization-browser-first-party",
+      "manifest": "packages/@webex/plugin-authorization-browser-first-party/.sdd/manifest.json",
+      "agent_entry": "packages/@webex/plugin-authorization-browser-first-party/AGENTS.md",
+      "index": "packages/@webex/plugin-authorization-browser-first-party/docs/index.md",
+      "onboarded_at": "2026-11-03T05:46:20Z",
+      "onboarded_by": "claude-code"
+    },
+    {
+      "id": "@webex/storage-adapter-local-storage",
+      "path": "packages/@webex/storage-adapter-local-storage",
+      "manifest": "packages/@webex/storage-adapter-local-storage/.sdd/manifest.json",
+      "agent_entry": "packages/@webex/storage-adapter-local-storage/AGENTS.md",
+      "index": "packages/@webex/storage-adapter-local-storage/docs/index.md",
+      "onboarded_at": "2026-11-09T10:45:00Z",
+      "onboarded_by": "claude-code"
+    }
+  ],
+  "substrate": {
+    "source": "WebexTools/repo-standards@d89a7fe59126ae3ad9bac9ca352aa7f12b4c85dc",
+    "overrides_source": "repo-annotation-overrides@1.0.0"
+  },
+  "provenance": {
+    "generated_by": "claude-code",
+    "approved_by": "rsarika@cisco.com",
+    "updated_at": "2026-11-09T10:45:00Z"
+  }
+}

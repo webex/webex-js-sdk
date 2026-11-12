@@ -43,9 +43,20 @@ Related context: [specification registry](specs/README.md) · [package agent ins
 
 `@webex/plugin-logger` is a published library with one module. Importing it registers `Logger` as the `logger` child of every webex instance, replacing the minimal logger that `@webex/webex-core` registers in `src/plugins/logger.js`. Callers use `webex.logger.<level>()` for SDK logs and `webex.logger.client_<level>()` for client logs.
 
-Each call decides printing and buffering separately, redacts a deep clone of the arguments, prints through `console`, and appends to a bounded buffer. `@webex/internal-plugin-support` later reads the buffer through `formatLogs` and uploads it.
+Each call decides printing and buffering separately, redacts a deep clone of the message arguments, prints through `console`, and appends to a bounded buffer. `@webex/internal-plugin-support` later reads the buffer through `formatLogs` and uploads it.
 
 The package does not start a server, open a network connection, or persist data.
+
+## Record consumers and host console
+
+- `getRecords()` returns new record wrappers from retained history, in sequence order. It leaves support-upload cursors unchanged.
+- Records contain `sequence`, `timestamp`, `level`, `source` and `body`. Time is SDK acceptance time in Unix milliseconds.
+- Use `webex.logger.on('log:record', listener)` for future retained records. Use `off('log:record', listener)` to remove the same listener.
+- Events run synchronously. Listeners must not throw or log back into the same logger synchronously. Nested events can reach later listeners out of order.
+- `config.logger.metadataField` selects caller metadata for `source`, `eventName` and `attributes`. Callers must supply safe values and leave them unchanged.
+- Optional `config.logger.consoleMethods` maps normal method names to saved names on `console`. Buffered calls use the named function to avoid a duplicate host-capture record.
+- Printed-only calls and unavailable saved methods use normal console methods. Print and buffer thresholds stay unchanged.
+- The SDK owns retained history. Consumers own conversion and delivery. This package adds no OTel dependency, export queue or HTTP request.
 
 ## Resource inventory and responsibilities
 
@@ -129,7 +140,7 @@ Details are in the module spec.
 
 ### Security
 
-The trust boundary is the point where caller-supplied values leave the process: the console and the upload buffer. Every log method crosses it only through `Logger#filter`. The controls and their gaps are listed under Security architecture.
+The trust boundary is the point where caller-supplied values leave the process: the console and the upload buffer. Message arguments pass through `Logger#filter`. Structured metadata passes through unchanged; callers must supply safe values. The controls and their gaps are listed under Security architecture.
 
 The package does not authenticate users, store secrets, or verify certificates.
 
@@ -220,7 +231,7 @@ Threat addressed: tokens and personal data written to the console or included in
 
 Controls in `src/logger.js`:
 
-- Deep clone before redaction, so caller objects are not mutated.
+- Deep clone of message arguments before redaction, so caller objects are not mutated.
 - Removal of keys matching `/[Aa]uthorization/` at any depth.
 - Replacement of email addresses with `[REDACTED]`.
 - Replacement of `MTID=<value>` with `MTID=[REDACTED]`.

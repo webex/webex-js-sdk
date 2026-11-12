@@ -65,10 +65,11 @@ Related context: [documentation index](../../../docs/index.md) · [package agent
 | `src/extension/background.ts` | Worker bridge, required origins, buffer, rate limit |
 | `src/extension/client.ts` | Popup/options/side-panel proxy |
 | `src/extension/senders.ts` | `isOwnExtension`, `isFromContentScript`, `isOriginAllowed` |
+| `src/extension/navigation.ts` | `hasUrlChange`, `isStorableUrl`, `originOf`; records that `changeInfo` cannot distinguish a route change from a followed link, so navigation is not a teardown signal |
 | `src/extension/sessionStore.ts` | Session storage accessor |
 | `src/extension/platform.ts` | `ChromeLike`; storage required |
 | `src/content-script.ts` | Side-effect default-channel start |
-| `test/unit/spec/extension/` | background, client, content, senders, sessionStore |
+| `test/unit/spec/extension/` | background, client, content, senders, navigation, sessionStore |
 | `test/unit/spec/security/threats.ts` | T1–T14 |
 | `test/unit/spec/integration/bridge.ts` | In-process page/relay/worker path |
 
@@ -91,6 +92,7 @@ Related context: [documentation index](../../../docs/index.md) · [package agent
 | `src/extension/client.ts` | `createExtensionClient` |
 | `src/extension/messages.ts` | Internal `__webexBridgeRelay` / `__webexBridgeClient` wrappers |
 | `src/extension/senders.ts` | Runtime sender checks |
+| `src/extension/navigation.ts` | Runtime `tabs.onUpdated` checks |
 | `src/extension/platform.ts` | Chrome surface used by this package |
 | `src/extension/sessionStore.ts` | Serialized session store |
 | `src/content-script.ts` | Manifest wiring entry |
@@ -113,7 +115,7 @@ Related context: [documentation index](../../../docs/index.md) · [package agent
 | `src/core` | Envelope, validation, rate limit, errors | Coded drops and throws |
 | `chrome.runtime` | Privileged messages | Sender checks fail closed |
 | `chrome.storage.session` | Connections + FR8 buffer | Construction throws; add `"storage"` permission |
-| `chrome.tabs.query` / `sendMessage` / `onRemoved` / `onUpdated` | FR5 targeting and lifecycle | Comments: no `tabs` permission required for this query |
+| `chrome.tabs.query` / `sendMessage` / `onRemoved` / `onUpdated` | FR5 targeting and lifecycle | Comments: no `tabs` permission required for this query. `onUpdated` is the only navigation signal available at this permission level, and it cannot express whether a navigation replaced the document (`EXT-009`); `chrome.webNavigation`, which can, is not worth a second permission |
 
 ## Requirements
 
@@ -127,6 +129,7 @@ Related context: [documentation index](../../../docs/index.md) · [package agent
 | `EXT-006` | `createExtensionClient` proxies FR1/FR2 results for UI surfaces | FR6 without duplicating transport | `src/extension/client.ts` | `test/unit/spec/extension/client.ts` | none | Present |
 | `EXT-007` | Every accepted push is appended best-effort to a bounded session buffer (even when UI listeners are active). A refused `chrome.storage.session` write increments `storageWriteFailed.buffer` and does not throw; listeners still fire. `subscribe` does not drain it; `getBufferedMessages` is read-only (TTL is a read-time filter). Expired entries leave storage on the next append. Eviction is also maxEntries / maxBytes measured on `{topic, payload}` only (not `meta` / `storedAt` / `bytes`); a single newest entry may exceed `maxBytes`. | FR8 | `src/extension/background.ts`, `src/extension/sessionStore.ts` | `test/unit/spec/extension/sessionStore.ts` | none | Present |
 | `EXT-008` | `createExtensionBridge`, `createExtensionClient`, and `startContentRelay` accept `logLevel`, `debug`, and `logSink` and pass them to `createLogger`. Invalid `logLevel` does not throw `INSECURE_CONFIG`. | Same logger contract as the page factory; a mistyped log setting must not refuse the extension | `src/types.ts`, `src/extension/background.ts`, `src/extension/client.ts`, `src/extension/content.ts` | `test/unit/spec/core/logger.ts` | none | Present |
+| `EXT-009` | A `tabs.onUpdated` update tears the connection down only when the tab's url leaves the origin it connected from (`tab-left-origin`); no `changeInfo.status` is a teardown signal. Any other url on that origin keeps the connection and its in-flight requests and only refreshes the stored `url`, under the session that was connected when it was observed, and only when the url is within `MAX_STORED_URL_LENGTH`. A document that really was replaced is learned from its successor's `CONNECT`, which settles the superseded session's in-flight requests, from a send that fails because no relay is listening, or from a relay answering `NOT_CONNECTED` because it no longer holds the stored session. | Chrome reports a route change and a followed link identically, as `{status: 'loading', url}`, so no predicate over `changeInfo` can tell them apart. Guessing is unrecoverable in the route-change direction: the relay mints one session per document and sends `CONNECT` once, so the page keeps reporting `isConnected` while every push is dropped as a stale session | `src/extension/background.ts`, `src/extension/navigation.ts` | `test/unit/spec/extension/navigation.ts`, `test/unit/spec/extension/background.ts`, `test/unit/spec/integration/bridge.ts` | A cross-document navigation to the same origin keeps the record until its replacement connects; in between, `listConnections()` can name a tab whose relay has gone, which the first send to it corrects. A tab update omits `url` for a destination the extension has no host permission for, so leaving the origin is only observable — and only needs to be — when `matches` is broader than `allowedOrigins` | Present |
 
 ## Design overview
 
@@ -179,7 +182,7 @@ The extension MUST be able to target a specific tab for FR2, defaulting to the a
 | State or slice | Owner | Initial state | Transition triggers | Reset or persistence boundary |
 | -------------- | ----- | ------------- | ------------------- | ----------------------------- |
 | Relay session | content relay | minted id | start / destroy | Isolated world; new per load |
-| Connections | worker session store | empty set of tabs | CONNECT adds one tab; DISCONNECT / tab removed / navigation remove that tab | `chrome.storage.session` |
+| Connections | worker session store | empty set of tabs | CONNECT adds one tab, replacing any record the tab already held; DISCONNECT / tab removed / a url off the connected origin remove that tab; any other navigation only refreshes its `url` | `chrome.storage.session` |
 | UI listeners | extension client | empty | subscribe | Popup lifetime |
 
 ## Business rules and invariants
@@ -212,10 +215,15 @@ Retention: TTL and maxEntries/maxBytes eviction. Not a product database.
 stateDiagram-v2
   [*] --> Absent
   Absent --> Present: CONNECT from allowed origin
-  Present --> Absent: DISCONNECT or tabs.onRemoved or navigation
+  Present --> Absent: DISCONNECT or tabs.onRemoved or document-replacing navigation
+  Present --> Present: navigation within the connected origin
 ```
 
-This machine is **per tab**. CONNECT adds that tab to the worker connection set; DISCONNECT / `tabs.onRemoved` / navigation remove only that tab. Other connected tabs stay Present.
+This machine is **per tab**. CONNECT adds that tab to the worker connection set; DISCONNECT / `tabs.onRemoved` / a document-replacing navigation remove only that tab. Other connected tabs stay Present.
+
+Navigation within the connected origin is a self-transition, not a teardown (`EXT-009`). It has to be: Chrome reports a single-page app's route change and a followed link with the same fields, so a teardown keyed on `status` tears down route changes too, and that is unrecoverable. Only a url whose origin is not the connected one is a navigation away. When the document really was replaced, the record is corrected by the successor's `CONNECT` rather than guessed at in advance.
+
+Chrome withholds `changeInfo.url` for a destination outside the extension's host permissions, so the `Present --> Absent` edge on a cross-origin navigation fires only when host permissions reach further than `allowedOrigins`. Where they do not, the extension cannot reach the new document either, and the record is cleared by the first send that fails.
 
 Rejected: accepting a content-script message whose origin is not in `allowedOrigins`.
 
@@ -243,6 +251,7 @@ Rejected: accepting a content-script message whose origin is not in `allowedOrig
 - Do not publish `createExtensionBridgeWith` — it bypasses sender-verification assumptions.
 - Do not treat manifest `matches` as a substitute for `allowedOrigins`.
 - Do not document `externally_connectable` or a `tabs` permission as required by this package's source.
+- Do not treat `changeInfo.status === 'loading'` as a document replacement. Chrome sets it for `history.pushState` too, so a teardown keyed on it kills every single-page app route change, and the kill is unrecoverable (`EXT-009`). The table in `navigation.ts` records what Chrome actually sends.
 
 ## Module-specific rules
 
@@ -282,4 +291,5 @@ Rejected: accepting a content-script message whose origin is not in `allowedOrig
 | `EXT-005` | Unit | `test/unit/spec/extension/senders.ts` | missing origin | none |
 | `EXT-006` | Unit | `test/unit/spec/extension/client.ts` | none found beyond unit | no e2e suite |
 | `EXT-008` | Unit | `test/unit/spec/core/logger.ts` | unrecognised `logLevel` does not throw | none |
+| `EXT-009` | Unit + integration | `test/unit/spec/extension/navigation.ts`, same-origin cases in `test/unit/spec/extension/background.ts`, `test/unit/spec/integration/bridge.ts` | Cross-origin and opaque-scheme urls still drop, including over-long ones; a replacement `CONNECT` settles the superseded session; a `PUSH` right behind `CONNECT` is accepted; leaving the origin removes only the session it observed; a relay `NOT_CONNECTED` removes the stale record | none |
 | End-to-end hops | Integration (in mocha unit runner) | `test/unit/spec/integration/bridge.ts` | fake chrome/window | no browser e2e |

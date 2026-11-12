@@ -143,6 +143,11 @@ jobs:
       - name: Build Other Packages
         run: yarn workspaces foreach --parallel --topological --verbose run build:src
 
+      # Webex services only accept CORS requests from allow-listed origins, so Karma is served from
+      # https://localhost.webex.com (resolves to 127.0.0.1) on port 443 with a mkcert certificate.
+      - name: Set up HTTPS for Karma
+        run: ./scripts/setup-karma-https.sh --ci
+
       - name: Test - Browser
         run: yarn workspaces foreach --verbose --exclude webex-js-sdk --include '${{ needs.generate-package-matrix.outputs.changed }}' run test:browser
 
@@ -371,3 +376,15 @@ jobs:
 
       - name: Test - Unit
         run: yarn workspaces foreach --verbose --exclude webex-js-sdk --include '${{ needs.generate-package-matrix.outputs.recursive }}' run test:unit
+
+
+  test-e2e:
+    name: Test - E2E
+    needs: validate
+    if: contains(github.event.pull_request.labels.*.name, 'test_e2e')
+    uses: ./.github/workflows/e2e.yml
+    with:
+      ref: ${{ github.event.pull_request.head.sha }}
+    secrets:
+      CC_E2E_ENV: ${{ secrets.CC_E2E_ENV }}
+      CALLING_E2E_ENV: ${{ secrets.CALLING_E2E_ENV }}

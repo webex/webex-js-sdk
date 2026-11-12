@@ -17,6 +17,13 @@ export default {
   trackingIdSuffix: '',
   AlternateLogger: undefined,
   credentials: new CredentialsConfig(),
+  /**
+   * Explicitly selects the Webex environment. When omitted, the environment is inferred from the
+   * U2C discovery URL.
+   *
+   * @type {'integration'|'production'|undefined}
+   */
+  environment: undefined,
   fedramp: process.env.ENABLE_FEDRAMP || false,
   services: {
     /**
