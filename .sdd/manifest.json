@@ -66,6 +66,15 @@
   ],
   "packages": [
     {
+      "id": "@webex/internal-plugin-ai-assistant",
+      "path": "packages/@webex/internal-plugin-ai-assistant",
+      "manifest": "packages/@webex/internal-plugin-ai-assistant/.sdd/manifest.json",
+      "agent_entry": "packages/@webex/internal-plugin-ai-assistant/AGENTS.md",
+      "index": "packages/@webex/internal-plugin-ai-assistant/docs/index.md",
+      "onboarded_at": "2026-11-12T09:33:08Z",
+      "onboarded_by": "claude-code"
+    },
+    {
       "id": "@webex/internal-plugin-feature",
       "path": "packages/@webex/internal-plugin-feature",
       "manifest": "packages/@webex/internal-plugin-feature/.sdd/manifest.json",
@@ -118,6 +127,6 @@
   "provenance": {
     "generated_by": "claude-code",
     "approved_by": "rarajes2@cisco.com",
-    "updated_at": "2026-11-11T08:35:47Z"
+    "updated_at": "2026-11-12T09:33:08Z"
   }
 }
