@@ -78,6 +78,59 @@ describe('CallQueue client', () => {
     }
   });
 
+  it('uses the Integration gateway when U2C discovery identifies Integration', async () => {
+    const originalDeviceUrl = webex.internal.device.url;
+    const originalServices = webex.config.services;
+
+    try {
+      // Some Integration registrations return a device URL without `-int`.
+      webex.internal.device.url =
+        'https://wdm-a.wbx2.com/wdm/api/v1/devices/c5ae3b86-1bb7-40f1-a6a9-c296ee7e61d5';
+      webex.config.services = {
+        discovery: {u2c: 'https://u2c-intb.ciscospark.com/u2c/api/v1'},
+      };
+      const integrationClient = createCallQueueClient(webex, {level: LOGGER.INFO});
+      webex.request.mockResolvedValue(<WebexRequestPayload>(<unknown>{
+        statusCode: 200,
+        body: {agentACDState: 'SIGN_OUT', queues: []},
+      }));
+
+      await integrationClient.getCallQueueSettings();
+
+      expect(webex.request).toHaveBeenCalledWith({
+        uri: `${WEBEX_CALLING_GATEWAY_INT}telephony/config/people/me/settings/queues`,
+        method: HTTP_METHODS.GET,
+      });
+    } finally {
+      webex.internal.device.url = originalDeviceUrl;
+      webex.config.services = originalServices;
+    }
+  });
+
+  it('uses an explicit calling gateway override for local browser testing', async () => {
+    const originalServices = webex.config.services;
+
+    try {
+      webex.config.services = {
+        discovery: {callingGateway: 'https://localhost:8081/__calling_gateway'},
+      };
+      const localClient = createCallQueueClient(webex, {level: LOGGER.INFO});
+      webex.request.mockResolvedValue(<WebexRequestPayload>(<unknown>{
+        statusCode: 200,
+        body: {agentACDState: 'SIGN_OUT', queues: []},
+      }));
+
+      await localClient.getCallQueueSettings();
+
+      expect(webex.request).toHaveBeenCalledWith({
+        uri: 'https://localhost:8081/__calling_gateway/v1/telephony/config/people/me/settings/queues',
+        method: HTTP_METHODS.GET,
+      });
+    } finally {
+      webex.config.services = originalServices;
+    }
+  });
+
   it('fills a missing display name from the queue catalog', async () => {
     const queueId =
       'Y2lzY29zcGFyazovL3VzL0NBTExfUVVFVUUvNGFiNmJkZGEtYzY4NC00OGYzLTkyMTctNjBmZGJiODA0OWIz';

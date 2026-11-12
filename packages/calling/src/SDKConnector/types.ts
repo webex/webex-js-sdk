@@ -98,6 +98,12 @@ export interface WebexSDK {
   // top level primitives/funcs
   config: {
     fedramp: boolean;
+    services?: {
+      discovery?: {
+        u2c?: string;
+        callingGateway?: string;
+      };
+    };
     defaultMobiusSocketOptions?: Record<string, unknown>;
   };
   version: string;

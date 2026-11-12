@@ -85,10 +85,16 @@ export class CallQueueClient extends Eventing<CallQueueEventTypes> implements IC
     this.hydraEndpoint =
       this.webex.internal.services._serviceUrls?.hydra ||
       this.webex.internal.services.get(this.webex.internal.services._activeServices.hydra);
-    const isProd = !this.webex.internal.device.url.includes('-int');
-    this.webexCallingGatewayEndpoint = isProd
-      ? WEBEX_CALLING_GATEWAY_PROD
-      : WEBEX_CALLING_GATEWAY_INT;
+    const deviceUrl = this.webex.internal.device?.url || '';
+    const u2cDiscoveryUrl = this.webex.config?.services?.discovery?.u2c || '';
+    const callingGatewayOverride = this.webex.config?.services?.discovery?.callingGateway;
+    // In some Integration accounts, device registration succeeds against WDM
+    // Integration but returns a device URL without `-int`. Prefer either
+    // environment signal so an Integration token is never sent to Production.
+    const isIntegration = deviceUrl.includes('-int') || u2cDiscoveryUrl.includes('-int');
+    this.webexCallingGatewayEndpoint =
+      callingGatewayOverride ||
+      (isIntegration ? WEBEX_CALLING_GATEWAY_INT : WEBEX_CALLING_GATEWAY_PROD);
     this.registerAgentListeners();
     log.setLogger(logger.level, CALL_QUEUE_FILE);
   }
