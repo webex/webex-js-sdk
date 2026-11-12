@@ -690,6 +690,7 @@ flowchart TD
 - `WebexRequestPayload.statusCode`
 - `WebexRequestPayload.body` (mapped from `wsResponse.data` on WSS path)
 - `WebexRequestPayload.headers.trackingid` (preserved from the response or carried error)
+- WSS response metadata keys are normalized to lowercase on success and failure, matching HTTP header handling. This preserves `Retry-After` as `headers['retry-after']` for the registration retry handler regardless of its casing.
 
 This keeps `handleRegistrationErrors`, `handleCallErrors`, and downstream consumers transport-agnostic.
 

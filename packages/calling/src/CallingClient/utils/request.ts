@@ -21,6 +21,16 @@ import {getMetricManager} from '../../Metrics';
 import {IMetricManager, METRIC_EVENT, METRIC_TYPE, MOBIUS_SOCKET_ACTION} from '../../Metrics/types';
 
 /**
+ * Normalizes WSS metadata to the lowercase header names used by HTTP responses.
+ * @param metadata - Response metadata returned by Mobius.
+ */
+function normalizeWsHeaders(metadata?: MobiusSocketResponse['metadata']): Record<string, string> {
+  return Object.fromEntries(
+    Object.entries(metadata ?? {}).map(([name, value]) => [name.toLowerCase(), value])
+  ) as Record<string, string>;
+}
+
+/**
  * Converts a MobiusSocketResponse into the WebexRequestPayload shape that
  * all callers (registration, call, keepalive error-handlers) expect.
  */
@@ -30,7 +40,7 @@ function normalizeWsResponse(wsResponse: MobiusSocketResponse): WebexRequestPayl
     body: (wsResponse.data as object) ?? undefined,
     headers: {
       trackingid: wsResponse.trackingId,
-      ...((wsResponse.metadata as Record<string, string>) ?? {}),
+      ...normalizeWsHeaders(wsResponse.metadata),
     },
   };
 }
@@ -52,7 +62,7 @@ function normalizeWsError(err: unknown): WebexRequestPayload {
     body: (wsErr.response?.data as object) ?? undefined,
     headers: {
       trackingid: wsErr.trackingId ?? wsErr.response?.trackingId ?? '',
-      ...((wsErr.response?.metadata as Record<string, string>) ?? {}),
+      ...normalizeWsHeaders(wsErr.response?.metadata),
     },
   };
 }

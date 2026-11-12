@@ -587,7 +587,7 @@ describe('APIRequest', () => {
         statusMessage: 'Created',
         trackingId: 'track-123',
         data: {deviceId: 'device-456', correlationId: 'corr-789'},
-        metadata: {'x-response-header': 'value'},
+        metadata: {'X-Response-Header': 'value'},
       };
       mockMobiusSocket.sendWssRequest.mockResolvedValue(wsResponse);
       const apiRequest = APIRequest.getInstance({webex});
@@ -645,6 +645,34 @@ describe('APIRequest', () => {
         method: 'makeRequest',
       });
     });
+
+    it.each(['retry-after', 'Retry-After', 'RETRY-AFTER', 'rEtRy-AfTeR'])(
+      'preserves a WSS 429 %s metadata value for the retry handler',
+      async (headerName) => {
+        const metadata = {[headerName]: '4', 'x-error-code': 'RATE_LIMITED'};
+        mockMobiusSocket.sendWssRequest.mockRejectedValue({
+          statusCode: 429,
+          trackingId: 'rate-limit-tracking-id',
+          response: {statusCode: 429, metadata},
+        });
+        const apiRequest = APIRequest.getInstance({webex});
+
+        await expect(
+          apiRequest.makeRequest({
+            uri: '/api/v1/calling/web/devices/device-1/status',
+            method: HTTP_METHODS.POST,
+          })
+        ).rejects.toMatchObject({
+          statusCode: 429,
+          headers: {
+            trackingid: 'rate-limit-tracking-id',
+            'retry-after': '4',
+            'x-error-code': 'RATE_LIMITED',
+          },
+        });
+        expect(metadata).toEqual({[headerName]: '4', 'x-error-code': 'RATE_LIMITED'});
+      }
+    );
   });
 
   describe('registerMobiusSocketListener', () => {
