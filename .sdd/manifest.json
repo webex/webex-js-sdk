@@ -102,6 +102,15 @@
       "onboarded_by": "claude-code"
     },
     {
+      "id": "@webex/plugin-authorization-browser",
+      "path": "packages/@webex/plugin-authorization-browser",
+      "manifest": "packages/@webex/plugin-authorization-browser/.sdd/manifest.json",
+      "agent_entry": "packages/@webex/plugin-authorization-browser/AGENTS.md",
+      "index": "packages/@webex/plugin-authorization-browser/docs/index.md",
+      "onboarded_at": "2026-11-04T06:35:39Z",
+      "onboarded_by": "claude-code"
+    },
+    {
       "id": "@webex/plugin-authorization-browser-first-party",
       "path": "packages/@webex/plugin-authorization-browser-first-party",
       "manifest": "packages/@webex/plugin-authorization-browser-first-party/.sdd/manifest.json",
