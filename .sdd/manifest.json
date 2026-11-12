@@ -84,6 +84,15 @@
       "onboarded_by": "claude-code"
     },
     {
+      "id": "@webex/internal-plugin-locus",
+      "path": "packages/@webex/internal-plugin-locus",
+      "manifest": "packages/@webex/internal-plugin-locus/.sdd/manifest.json",
+      "agent_entry": "packages/@webex/internal-plugin-locus/AGENTS.md",
+      "index": "packages/@webex/internal-plugin-locus/docs/index.md",
+      "onboarded_at": "2026-11-12T09:25:08Z",
+      "onboarded_by": "claude-cowork"
+    },
+    {
       "id": "@webex/internal-plugin-user",
       "path": "packages/@webex/internal-plugin-user",
       "manifest": "packages/@webex/internal-plugin-user/.sdd/manifest.json",
