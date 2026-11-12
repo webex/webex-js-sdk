@@ -1,0 +1,457 @@
+{
+  "$schema": "./schemas/repo-context.schema.json",
+  "version": 1,
+  "repository": {
+    "name": "@webex/internal-plugin-team",
+    "purpose": "Internal plugin registered as webex.internal.team for Webex teams on the conversation service. create() resolves participants to uuids (creator first), builds a conversation-shaped payload with objectType 'team', and POSTs it to the conversation service resource teams; get(), list() (including the additionalUrls hosts), and listConversations() read teams and their conversations and record member uuids; createConversation() and joinConversation() create and join team conversations, granting the general conversation's KMS resource access to new ones. Membership, moderator, conversation, archive, and field changes are activities posted to the team's general conversation through webex.internal.conversation. Importing the package also registers payload transforms that encrypt a team's displayName and summary with a new KMS key, decrypt them and the team's conversations on the way in, normalize its lists, and decrypt teamRoomStatus events. It stores nothing itself."
+  },
+  "commands": {
+    "install": "yarn",
+    "prebuild": "yarn prebuild:modules",
+    "compile": "yarn workspace @webex/internal-plugin-team build",
+    "build": "yarn workspace @webex/internal-plugin-team build:src",
+    "unit-test": "yarn workspace @webex/internal-plugin-team test:unit",
+    "lint": "yarn workspace @webex/internal-plugin-team test:style",
+    "deploy": "yarn workspace @webex/internal-plugin-team deploy:npm"
+  },
+  "public_interfaces": [
+    {
+      "name": "@webex/internal-plugin-team package entry",
+      "kind": "package_export",
+      "source": "src/index.js",
+      "entrypoints": [
+        "import '@webex/internal-plugin-team'",
+        "import Team from '@webex/internal-plugin-team'"
+      ],
+      "audience": "first-party Webex clients and the SDK packages that register it",
+      "notes": "Importing the package imports the conversation, user, and encryption plugins, then registers Team as internal plugin 'team' with config {team: {}} and payload transforms that encrypt and decrypt team displayName and summary, normalize team lists, and decrypt teamRoomStatus events; the first registration of the name wins. The default export is the only export."
+    },
+    {
+      "name": "webex.internal.team methods",
+      "kind": "plugin_api",
+      "source": "src/team.js",
+      "entrypoints": [
+        "webex.internal.team.create(params)",
+        "webex.internal.team.get(team, options)",
+        "webex.internal.team.list(options)",
+        "webex.internal.team.listConversations(team)",
+        "webex.internal.team.createConversation(team, params, options)",
+        "webex.internal.team.joinConversation(team, conversation, userId)",
+        "webex.internal.team.addConversation(team, conversation, activity)",
+        "webex.internal.team.removeConversation(team, conversation, activity)",
+        "webex.internal.team.addMember(team, participant, activity)",
+        "webex.internal.team.removeMember(team, participant, activity)",
+        "webex.internal.team.assignModerator(team, member, activity)",
+        "webex.internal.team.unassignModerator(team, member, activity)",
+        "webex.internal.team.archive(target, activity)",
+        "webex.internal.team.unarchive(target, activity)",
+        "webex.internal.team.update(team, object, activity)"
+      ],
+      "audience": "first-party Webex clients",
+      "notes": "create, get, list, listConversations, createConversation, and joinConversation request the conversation service directly; every other method posts an activity to the team's general conversation through webex.internal.conversation. create and createConversation write the resolved participant uuids back to params.participants. Argument guards reject before any request; a team object without conversations makes the activity methods throw synchronously."
+    },
+    {
+      "name": "package scripts",
+      "kind": "npm_scripts",
+      "source": "package.json",
+      "entrypoints": [
+        "build",
+        "build:src",
+        "test:unit",
+        "test:style",
+        "test:browser",
+        "test",
+        "deploy:npm"
+      ],
+      "audience": "contributors and CI",
+      "notes": "build runs build:src, which writes dist. test:unit runs the jest unit spec, which imports the package by name and so tests dist; run build:src first. There is no test:integration script, so the aggregate test stops there; test:browser currently bundles nothing (0 tests)."
+    }
+  ],
+  "source_of_truth": [
+    {
+      "surface": "Team plugin implementation",
+      "paths": [
+        "src/index.js",
+        "src/team.js",
+        "src/config.js"
+      ],
+      "generated_artifacts": [
+        "dist"
+      ],
+      "refresh_with": [
+        "yarn workspace @webex/internal-plugin-team build:src"
+      ],
+      "validate_with": [
+        "yarn workspace @webex/internal-plugin-team test:unit",
+        "yarn workspace @webex/internal-plugin-team test:style"
+      ]
+    },
+    {
+      "surface": "module specification",
+      "paths": [
+        "src/docs/README.md"
+      ],
+      "generated_artifacts": [],
+      "refresh_with": [
+        "update alongside the behavior change in the same commit"
+      ],
+      "validate_with": [
+        "spec-validator on an independent runtime"
+      ]
+    }
+  ],
+  "generated_artifacts": [
+    {
+      "path": "dist",
+      "generated_from": "src",
+      "refresh_with": "yarn workspace @webex/internal-plugin-team build:src"
+    },
+    {
+      "path": "../../../.sdd/templates/repo-standards/template-map.json",
+      "generated_from": "WebexTools/repo-standards@d89a7fe59126ae3ad9bac9ca352aa7f12b4c85dc",
+      "refresh_with": "The package holds no templates. It refers to the monorepo root snapshot at ../../../.sdd/templates/repo-standards through layout.monorepo_package.templates_root_path in .sdd/manifest.json. Refresh the root snapshot, not this package."
+    }
+  ],
+  "validation_matrix": [
+    {
+      "paths": [
+        "src/**"
+      ],
+      "minimum": [
+        "yarn workspace @webex/internal-plugin-team build:src",
+        "yarn workspace @webex/internal-plugin-team test:unit",
+        "yarn workspace @webex/internal-plugin-team test:style"
+      ],
+      "recommended": [
+        "add or update cases in test/unit/spec/team.js for the changed behavior"
+      ]
+    },
+    {
+      "paths": [
+        "src/team.js"
+      ],
+      "minimum": [
+        "yarn workspace @webex/internal-plugin-team build:src",
+        "yarn workspace @webex/internal-plugin-team test:unit",
+        "yarn workspace @webex/internal-plugin-team test:style"
+      ],
+      "recommended": [
+        "check the conversation plugin methods the change calls, and keep team activities on the general conversation, when a request body, KMS message, or activity changes"
+      ]
+    },
+    {
+      "paths": [
+        "src/index.js",
+        "src/config.js"
+      ],
+      "minimum": [
+        "yarn workspace @webex/internal-plugin-team build:src",
+        "yarn workspace @webex/internal-plugin-team test:unit",
+        "yarn workspace @webex/internal-plugin-team test:style"
+      ],
+      "recommended": [
+        "check the conversation plugin's objectType dispatch when a transform name or direction changes, and the packages that register the plugin (@webex/webex-server, @webex/recipe-private-web-client) when the registered name changes"
+      ]
+    }
+  ],
+  "change_impact": [
+    {
+      "paths": [
+        "src/team.js"
+      ],
+      "affects": [
+        "the team, team-conversation, and participant request bodies",
+        "the activities posted to the general conversation",
+        "participant resolution and ordering",
+        "member uuid records"
+      ],
+      "refresh_with": [
+        "yarn workspace @webex/internal-plugin-team build:src"
+      ],
+      "validate_with": [
+        "yarn workspace @webex/internal-plugin-team test:unit",
+        "yarn workspace @webex/internal-plugin-team test:style"
+      ],
+      "avoid_direct_edits": [
+        "dist"
+      ],
+      "notes": "Keep team activities on the general conversation and the general KRO in team-conversation KMS messages (INV-001, INV-003)."
+    },
+    {
+      "paths": [
+        "src/index.js",
+        "src/config.js"
+      ],
+      "affects": [
+        "encryption and decryption of team displayName and summary",
+        "normalization of team lists",
+        "decryption of teamRoomStatus events",
+        "the registered plugin name and config"
+      ],
+      "refresh_with": [
+        "yarn workspace @webex/internal-plugin-team build:src"
+      ],
+      "validate_with": [
+        "yarn workspace @webex/internal-plugin-team test:unit",
+        "yarn workspace @webex/internal-plugin-team test:style"
+      ],
+      "avoid_direct_edits": [
+        "dist"
+      ],
+      "notes": "No unit case covers the transforms; add one before changing them."
+    }
+  ],
+  "evidence_rules": [
+    {
+      "claim_category": "command_name",
+      "sources": [
+        "package.json"
+      ],
+      "requirement": "The script must exist in package.json scripts.",
+      "notes": "test:integration does not exist, so the aggregate test script fails; test:browser currently verifies nothing."
+    },
+    {
+      "claim_category": "import_path",
+      "sources": [
+        "src/index.js"
+      ],
+      "requirement": "A binding is public only if exported from src/index.js.",
+      "notes": "The only export is the default Team."
+    },
+    {
+      "claim_category": "behavior_claim",
+      "sources": [
+        "src",
+        "test/unit/spec"
+      ],
+      "requirement": "Ground every behavioral claim in source and unit-test evidence.",
+      "notes": "Commit history is not an evidence source for this package. README.md is context only (docs/adr/0001-retain-product-readme.md). The webex-core, internal-plugin-user, and internal-plugin-device specs were consulted; internal-plugin-conversation and internal-plugin-encryption have no spec, so their code was used."
+    }
+  ],
+  "negative_guidance": [
+    {
+      "rule": "Do not encrypt or decrypt team fields inside Team methods.",
+      "why": "The transforms in src/index.js own that and run through the conversation plugin's dispatch."
+    },
+    {
+      "rule": "Do not post team activities to the team URL.",
+      "why": "Team activities are posted to the general conversation (INV-001)."
+    },
+    {
+      "rule": "Do not rename decryptTeam, encryptTeam, or normalizeTeam.",
+      "why": "The conversation plugin reaches them by name from objectType 'team'."
+    },
+    {
+      "rule": "Do not drop the general conversation KRO from a team conversation's KMS message.",
+      "why": "Team members decrypt open room titles through it (INV-003)."
+    },
+    {
+      "rule": "Do not log team names, summaries, member records, or tokens.",
+      "why": "They are user data; the only existing log line carries an error object."
+    },
+    {
+      "rule": "Do not treat README.md as a usage reference.",
+      "why": "Its Usage block names a placeholder member; see docs/adr/0001-retain-product-readme.md."
+    },
+    {
+      "rule": "Do not infer a coverage threshold for this package.",
+      "why": "No coverage script or threshold exists."
+    }
+  ],
+  "confidence_policy": {
+    "high": {
+      "action": "update",
+      "expectation": "Source and a unit case in test/unit/spec/team.js agree."
+    },
+    "medium": {
+      "action": "narrow-scope",
+      "expectation": "Only source evidence exists, as for registration, the transforms, and every success path except joinConversation. Pin current behavior with a unit case before modifying."
+    },
+    "low": {
+      "action": "noop",
+      "expectation": "Neither source, tests, nor a dependency's spec or code settles the question. Stop and report the gap."
+    }
+  },
+  "repository_topology": {
+    "main_entrypoints": [
+      {
+        "name": "package entry",
+        "path": "src/index.js",
+        "purpose": "Registers the team plugin and its transforms and default-exports the class",
+        "notes": "No subpath exports; package.json main is dist/index.js and devMain is src/index.js."
+      }
+    ],
+    "workspace_packages": [
+      {
+        "name": "@webex/internal-plugin-team",
+        "paths": [
+          "src",
+          "test"
+        ],
+        "notes": "One module; this SDD root is the package directory inside the webex-js-sdk monorepo."
+      }
+    ],
+    "source_surfaces": [
+      {
+        "name": "Team plugin",
+        "paths": [
+          "src"
+        ],
+        "notes": "index.js, team.js, config.js. Specified at src/docs/README.md."
+      },
+      {
+        "name": "tests",
+        "paths": [
+          "test/unit/spec",
+          "test/integration/spec"
+        ],
+        "notes": "Unit spec run by test:unit; four live-service specs run only by test:browser."
+      }
+    ],
+    "generated_surfaces": [
+      {
+        "name": "build output",
+        "paths": [
+          "dist"
+        ],
+        "generated_from": "src",
+        "refresh_with": "yarn workspace @webex/internal-plugin-team build:src",
+        "notes": "JavaScript and source maps from webex-legacy-tools; no type declarations. Do not edit by hand."
+      },
+      {
+        "name": "repo-standards template map",
+        "paths": [
+          "../../../.sdd/templates/repo-standards"
+        ],
+        "generated_from": "WebexTools/repo-standards@d89a7fe59126ae3ad9bac9ca352aa7f12b4c85dc",
+        "refresh_with": "The package holds no templates. It refers to the monorepo root snapshot at ../../../.sdd/templates/repo-standards through layout.monorepo_package.templates_root_path in .sdd/manifest.json. Refresh the root snapshot, not this package.",
+        "notes": "The package holds no templates. It refers to the monorepo root snapshot at ../../../.sdd/templates/repo-standards through layout.monorepo_package.templates_root_path in .sdd/manifest.json. Refresh the root snapshot, not this package."
+      }
+    ],
+    "validation_entrypoints": [
+      {
+        "name": "compile",
+        "command": "yarn workspace @webex/internal-plugin-team build",
+        "scope": "src",
+        "notes": "Runs build:src."
+      },
+      {
+        "name": "unit-test",
+        "command": "yarn workspace @webex/internal-plugin-team test:unit",
+        "scope": "test/unit/spec",
+        "notes": "Run build:src first; the spec tests dist."
+      },
+      {
+        "name": "lint",
+        "command": "yarn workspace @webex/internal-plugin-team test:style",
+        "scope": "src",
+        "notes": "eslint via the local .eslintrc.js; docs/** and *.md are ignored."
+      }
+    ],
+    "sync_paths": [
+      {
+        "source": "src/team.js",
+        "targets": [
+          "src/docs/README.md"
+        ],
+        "mechanism": "Manual; update the module specification in the same change that alters observable behavior.",
+        "notes": "Keep the request body, activity, guard, and transform rows of the specification aligned with the code."
+      },
+      {
+        "source": "WebexTools/repo-standards@d89a7fe59126ae3ad9bac9ca352aa7f12b4c85dc",
+        "targets": [
+          "../../../.sdd/templates/repo-standards"
+        ],
+        "mechanism": "The package holds no templates. It refers to the monorepo root snapshot at ../../../.sdd/templates/repo-standards through layout.monorepo_package.templates_root_path in .sdd/manifest.json. Refresh the root snapshot, not this package.",
+        "notes": "The package holds no templates. It refers to the monorepo root snapshot at ../../../.sdd/templates/repo-standards through layout.monorepo_package.templates_root_path in .sdd/manifest.json. Refresh the root snapshot, not this package."
+      }
+    ]
+  },
+  "folder_readme_contract": {
+    "required_sections": [
+      "purpose",
+      "boundaries",
+      "key-files",
+      "common-tasks"
+    ],
+    "rules": [
+      "Orient the reader before describing detail.",
+      "Link to the module specification rather than duplicating it."
+    ],
+    "example_policy": "Examples are allowed only when verified against src/ or test/.",
+    "fallback": "Omit a section rather than inventing content; report unresolved facts as gaps."
+  },
+  "regression_feedback_rules": [
+    {
+      "trigger": "A request body, KMS message, or activity built in src/team.js changes.",
+      "required_followups": [
+        "Add or update a unit case in test/unit/spec/team.js asserting the request",
+        "Update MOD-005 to MOD-015 and INV-001 to INV-003 in src/docs/README.md"
+      ],
+      "notes": "Only joinConversation's request is asserted today."
+    },
+    {
+      "trigger": "A transform or predicate in src/index.js changes.",
+      "required_followups": [
+        "Add unit cases for the transform; none exist today",
+        "Update MOD-002 to MOD-004 and INV-004 in src/docs/README.md"
+      ],
+      "notes": "The conversation plugin dispatches to the transforms by name."
+    },
+    {
+      "trigger": "Member uuid recording changes.",
+      "required_followups": [
+        "Fix the vacuous LYRA_SPACE case in the #recordUUIDs block",
+        "Update MOD-017 and INV-005 in src/docs/README.md"
+      ],
+      "notes": "recordUUID failures must not reject get or list."
+    }
+  ],
+  "surface_owners": [
+    {
+      "surface": "module implementation and specifications",
+      "owner": "@webex/web-sdk",
+      "edit_boundary": "Owner per the default rule of the monorepo .github/CODEOWNERS; the file has no line for packages/@webex/internal-plugin-team."
+    }
+  ],
+  "do_not_edit": [
+    "dist",
+    "../../../.sdd/templates/repo-standards"
+  ],
+  "marker_scopes": {
+    "sdd": [
+      ".sdd/manifest.json",
+      "src/docs/README.md",
+      "docs"
+    ]
+  },
+  "fallback_rules": [
+    "When source and tests disagree, code is the referee and the disagreement is recorded rather than silently resolved.",
+    "When neither source nor tests settle a question, report it as a gap instead of inferring.",
+    "Commit history is not a valid rationale source for this package.",
+    "When a dependency's specification disagrees with that dependency's code, use the code and record the disagreement; when a dependency has no specification, use its code."
+  ],
+  "downstream_context_pack": {
+    "required_human_surfaces": [
+      "README.md",
+      "docs/index.md",
+      "docs/architecture.md",
+      "src/docs/README.md"
+    ],
+    "required_agent_operational_surfaces": [
+      "AGENTS.md",
+      "docs/specs/README.md"
+    ],
+    "required_machine_readable_surface": ".sdd/manifest.json",
+    "recommended_machine_readable_sections": [
+      "public_interfaces",
+      "change_impact",
+      "evidence_rules",
+      "negative_guidance",
+      "confidence_policy",
+      "repository_topology",
+      "folder_readme_contract",
+      "regression_feedback_rules"
+    ]
+  }
+}
