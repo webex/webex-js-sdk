@@ -110,6 +110,18 @@ export function queueIdKey(id: string): string {
   return id;
 }
 
+/** Encode a raw UUID for public Webex APIs; leave already encoded IDs unchanged. */
+export function publicApiId(id: string, type: 'CALL_QUEUE' | 'VIRTUAL_LINE'): string {
+  const uuidPattern = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
+
+  return uuidPattern.test(id)
+    ? btoa(`ciscospark://us/${type}/${id}`)
+        .replace(/\+/g, '-')
+        .replace(/\//g, '_')
+        .replace(/=+$/, '')
+    : id;
+}
+
 /**
  * Reads the org queue list. That list carries the display name the agent settings call omits.
  */
@@ -204,10 +216,11 @@ export function unwrapAgentPayload(event: unknown): TelephonyAgentPayload | unde
 }
 
 function mergeQueues(current: CallQueue[], incoming: CallQueue[]): CallQueue[] {
-  const byId = new Map(current.map((queue) => [queue.id, queue]));
+  const byId = new Map(current.map((queue) => [queueIdKey(queue.id), queue]));
   incoming.forEach((queue) => {
-    const previous = byId.get(queue.id);
-    byId.set(queue.id, previous ? {...previous, ...queue} : queue);
+    const key = queueIdKey(queue.id);
+    const previous = byId.get(key);
+    byId.set(key, previous ? {...previous, ...queue, id: previous.id} : queue);
   });
 
   return Array.from(byId.values());
@@ -251,7 +264,16 @@ export function applyCallQueueEvent(
   const base = current ?? INITIAL_STATUS;
   let queues = base.queues;
   if (incomingQueues) {
-    queues = kind === 'sync' ? incomingQueues : mergeQueues(base.queues, incomingQueues);
+    if (kind === 'sync') {
+      const previous = new Map(base.queues.map((queue) => [queueIdKey(queue.id), queue]));
+      queues = incomingQueues.map((queue) => {
+        const existing = previous.get(queueIdKey(queue.id));
+
+        return existing ? {...existing, ...queue, id: existing.id} : queue;
+      });
+    } else {
+      queues = mergeQueues(base.queues, incomingQueues);
+    }
   }
   if (hasJoinUpdates && joinUpdates) {
     const currentById = new Map(base.queues.map((queue) => [queueIdKey(queue.id), queue]));

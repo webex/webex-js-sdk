@@ -5,10 +5,17 @@ import {
   normalizeAcdState,
   parseCallQueueCatalog,
   parseCallQueueSettings,
+  publicApiId,
   queueIdKey,
 } from './state';
 
 describe('call queue state', () => {
+  it.each(['CALL_QUEUE', 'VIRTUAL_LINE'] as const)('encodes %s UUIDs for public APIs', (type) => {
+    const id = '4ab6bdda-c684-48f3-9217-60fdbb8049b3';
+    const encoded = publicApiId(id, type);
+    expect(atob(encoded)).toBe(`ciscospark://us/${type}/${id}`);
+    expect(publicApiId(encoded, type)).toBe(encoded);
+  });
   it('matches CSG UUIDs to encoded queue catalog IDs without changing other IDs', () => {
     const id = '4ab6bdda-c684-48f3-9217-60fdbb8049b3';
     const encodedQueue =
@@ -138,6 +145,14 @@ describe('call queue state', () => {
   });
 
   describe('applyCallQueueEvent', () => {
+    it('merges an event UUID into the corresponding encoded queue ID', () => {
+      const id = '4ab6bdda-c684-48f3-9217-60fdbb8049b3';
+      const encoded = publicApiId(id, 'CALL_QUEUE');
+      const current = {acdState: ACD_STATE.AVAILABLE, queues: [{id: encoded, available: false}]};
+      const result = applyCallQueueEvent(current, 'join', {queues: [{id, available: true}]});
+
+      expect(result?.queues).toEqual([{id: encoded, available: true}]);
+    });
     const current = {
       acdState: ACD_STATE.AVAILABLE,
       queues: [

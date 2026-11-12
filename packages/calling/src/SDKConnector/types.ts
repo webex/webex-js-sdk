@@ -101,7 +101,6 @@ export interface WebexSDK {
     services?: {
       discovery?: {
         u2c?: string;
-        callingGateway?: string;
       };
     };
     defaultMobiusSocketOptions?: Record<string, unknown>;

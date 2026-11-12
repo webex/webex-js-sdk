@@ -9,8 +9,9 @@ import {
   METHOD_START_MESSAGE,
   STATUS_CODE,
   SUCCESS_MESSAGE,
-  WEBEX_CALLING_GATEWAY_INT,
-  WEBEX_CALLING_GATEWAY_PROD,
+  WEBEX_API_BTS,
+  WEBEX_API_FEDRAMP,
+  WEBEX_API_PROD,
 } from '../common/constants';
 import {Eventing} from '../Events/impl';
 import {COMMON_EVENT_KEYS, MOBIUS_EVENT_KEYS} from '../Events/types';
@@ -31,6 +32,7 @@ import {
   normalizeAcdState,
   parseCallQueueCatalog,
   parseCallQueueSettings,
+  publicApiId,
   queueIdKey,
   unwrapAgentPayload,
 } from './state';
@@ -69,7 +71,7 @@ function actorIdentity(value: string): {id: string; type?: string} {
 /**
  * Webex Calling cloud client for call-queue agent status.
  *
- * Reads and updates `GET/PATCH /api/v1/users/me/settings/queues`,
+ * Reads and updates `GET/PUT /v1/telephony/config/people/me/settings/queues`,
  * asks CXAPI to sync with `POST /v1/telephony/calls/sync/invoke`, and keeps the
  * local status current from Mercury `telephony_agents` events.
  *
@@ -84,9 +86,7 @@ export class CallQueueClient extends Eventing<CallQueueEventTypes> implements IC
 
   private callingBackend: CALLING_BACKEND;
 
-  private hydraEndpoint: string;
-
-  private webexCallingGatewayEndpoint: string;
+  private webexApiEndpoint?: string;
 
   private currentByLine = new Map<string | undefined, CallQueueAgentStatus>();
 
@@ -102,28 +102,64 @@ export class CallQueueClient extends Eventing<CallQueueEventTypes> implements IC
 
   private mercuryListeners: Array<{event: string; listener: (data?: unknown) => void}> = [];
 
+  private disposed = false;
+
   constructor(webex: WebexSDK, logger: LoggerInterface) {
     super();
     if (!SDKConnector.getWebex()) {
       SDKConnector.setWebex(webex);
     }
     this.webex = webex;
-    this.callingBackend = getCallingBackEnd(this.webex);
-    this.hydraEndpoint =
-      this.webex.internal.services._serviceUrls?.hydra ||
-      this.webex.internal.services.get(this.webex.internal.services._activeServices.hydra);
-    const deviceUrl = this.webex.internal.device?.url || '';
-    const u2cDiscoveryUrl = this.webex.config?.services?.discovery?.u2c || '';
-    const callingGatewayOverride = this.webex.config?.services?.discovery?.callingGateway;
-    // In some Integration accounts, device registration succeeds against WDM
-    // Integration but returns a device URL without `-int`. Prefer either
-    // environment signal so an Integration token is never sent to Production.
-    const isIntegration = deviceUrl.includes('-int') || u2cDiscoveryUrl.includes('-int');
-    this.webexCallingGatewayEndpoint =
-      callingGatewayOverride ||
-      (isIntegration ? WEBEX_CALLING_GATEWAY_INT : WEBEX_CALLING_GATEWAY_PROD);
+    this.callingBackend = this.resolveCallingBackend();
     this.registerAgentListeners();
     log.setLogger(logger.level, CALL_QUEUE_FILE);
+  }
+
+  private resolveCallingBackend(): CALLING_BACKEND {
+    try {
+      return getCallingBackEnd(this.webex);
+    } catch {
+      // Device features may not be available until registration finishes.
+      return CALLING_BACKEND.INVALID;
+    }
+  }
+
+  private resolveWebexApiEndpoint(): string | undefined {
+    const deviceUrl = this.webex.internal.device?.url || '';
+    const u2cDiscoveryUrl = this.webex.config?.services?.discovery?.u2c || '';
+    const services = this.webex.internal.services;
+    let developerApiUrl = services._serviceUrls?.hydraDeveloperApi || '';
+    const activeDeveloperApi = services._activeServices?.hydraDeveloperApi;
+    if (!developerApiUrl && activeDeveloperApi && typeof services.get === 'function') {
+      try {
+        developerApiUrl = services.get(activeDeveloperApi) || '';
+      } catch {
+        // U2C or device registration may still identify the environment.
+      }
+    }
+    // Local clients use Integration's U2C; device URLs can use a shared WDM host.
+    const isIntegration =
+      deviceUrl.includes('-int') ||
+      deviceUrl.includes('://int-') ||
+      u2cDiscoveryUrl.includes('-int') ||
+      u2cDiscoveryUrl.includes('://int-') ||
+      /^https:\/\/integration\.webexapis\.com(?:[/:]|$)/i.test(developerApiUrl);
+    const isGovernment =
+      this.webex.config.fedramp ||
+      /(?:gov\.ciscospark\.com|webexgov\.us|api-usgov\.webex\.com)/i.test(
+        `${deviceUrl} ${u2cDiscoveryUrl} ${developerApiUrl}`
+      );
+    const isProduction =
+      /^https:\/\/(?:u2c\.wbx2\.com|u2c\.svc\.webex\.com)(?:[/:]|$)/i.test(u2cDiscoveryUrl) ||
+      /^https:\/\/webexapis\.com(?:[/:]|$)/i.test(developerApiUrl);
+    // Unknown or conflicting evidence must not send a token to the wrong cloud.
+    if (isGovernment) {
+      return `${WEBEX_API_FEDRAMP}/v1`;
+    }
+
+    return isIntegration !== isProduction
+      ? `${isIntegration ? WEBEX_API_BTS : WEBEX_API_PROD}/v1`
+      : undefined;
   }
 
   /**
@@ -215,7 +251,7 @@ export class CallQueueClient extends Eventing<CallQueueEventTypes> implements IC
       const sequence = this.requestSequence;
       const response = <WebexRequestPayload>await this.webex.request({
         uri: this.queuesUrl(lineOwnerId),
-        method: HTTP_METHODS.PATCH,
+        method: HTTP_METHODS.PUT,
         body,
       });
       log.log(`Response trackingId: ${response?.headers?.trackingid}`, loggerContext);
@@ -300,6 +336,7 @@ export class CallQueueClient extends Eventing<CallQueueEventTypes> implements IC
 
   /** Unsubscribe only the Mercury listeners created by this client. */
   public dispose(): void {
+    this.disposed = true;
     this.mercuryListeners.forEach(({event, listener}) => {
       this.webex.internal.mercury.off(event, listener);
     });
@@ -407,6 +444,7 @@ export class CallQueueClient extends Eventing<CallQueueEventTypes> implements IC
   }
 
   private async refreshEventLine(lineOwnerId: string | undefined, generation: number) {
+    if (this.rejectBeforeRequest(lineOwnerId)) return;
     this.requestSequence += 1;
     const sequence = this.requestSequence;
     try {
@@ -481,7 +519,12 @@ export class CallQueueClient extends Eventing<CallQueueEventTypes> implements IC
           this.queueNames.set(queueIdKey(entry.id), entry.name);
         }
       });
-      const next = this.catalogNextUrl(catalog.next);
+      const link = response.headers?.link || response.headers?.Link;
+      const headerNext = link
+        ?.split(',')
+        .map((entry) => /<([^>]+)>\s*;\s*rel=["']?next["']?/i.exec(entry)?.[1])
+        .find(Boolean);
+      const next = this.catalogNextUrl(headerNext || catalog.next);
       if (next) {
         await loadPage(next, remainingPages - 1);
       }
@@ -505,15 +548,19 @@ export class CallQueueClient extends Eventing<CallQueueEventTypes> implements IC
     if (!next || next.includes('..') || next.includes('\\') || next.includes('@')) {
       return undefined;
     }
-    const base = this.hydraEndpoint.endsWith('/') ? this.hydraEndpoint : `${this.hydraEndpoint}/`;
-    if (next.startsWith(base)) {
-      return next;
-    }
-    if (next.startsWith(QUEUES_CATALOG_PATH)) {
-      return this.joinUrl(next);
-    }
+    try {
+      const catalog = new URL(this.joinUrl(QUEUES_CATALOG_PATH));
+      const candidate = new URL(
+        next.startsWith(QUEUES_CATALOG_PATH) ? this.joinUrl(next) : next,
+        catalog
+      );
 
-    return undefined;
+      return candidate.origin === catalog.origin && candidate.pathname === catalog.pathname
+        ? candidate.toString()
+        : undefined;
+    } catch {
+      return undefined;
+    }
   }
 
   private wdmDeviceId(): string | undefined {
@@ -528,35 +575,39 @@ export class CallQueueClient extends Eventing<CallQueueEventTypes> implements IC
 
   private queuesUrl(lineOwnerId?: string): string {
     if (!lineOwnerId) {
-      return this.joinWebexCallingGatewayUrl(QUEUES_PATH);
+      return this.joinUrl(QUEUES_PATH);
     }
 
-    return this.joinWebexCallingGatewayUrl(
-      `${SECONDARY_LINES_PATH}/${encodeURIComponent(lineOwnerId)}/queues`
+    return this.joinUrl(
+      `${SECONDARY_LINES_PATH}/${encodeURIComponent(
+        publicApiId(lineOwnerId, 'VIRTUAL_LINE')
+      )}/queues`
     );
   }
 
-  private joinWebexCallingGatewayUrl(path: string): string {
-    const base = this.webexCallingGatewayEndpoint.endsWith('/')
-      ? this.webexCallingGatewayEndpoint
-      : `${this.webexCallingGatewayEndpoint}/`;
-
-    return `${base}${path}`;
-  }
-
   private joinUrl(path: string): string {
-    const base = this.hydraEndpoint.endsWith('/') ? this.hydraEndpoint : `${this.hydraEndpoint}/`;
+    const endpoint = this.webexApiEndpoint || '';
+    const base = endpoint.endsWith('/') ? endpoint : `${endpoint}/`;
 
     return `${base}${path}`;
   }
 
   private rejectBeforeRequest(lineOwnerId?: string): CallQueueResponse | undefined {
+    if (this.disposed) return this.failure(400, 'Call queue client has been disposed');
+    this.callingBackend = this.resolveCallingBackend();
     if (this.callingBackend !== CALLING_BACKEND.WXC) {
       return this.failure(501, UNSUPPORTED_BACKEND_MESSAGE);
     }
+    if (!this.mercuryListeners.length) this.registerAgentListeners();
     if (lineOwnerId !== undefined && !LINE_OWNER_ID_PATTERN.test(lineOwnerId)) {
       return this.failure(400, 'lineOwnerId is not a valid line id');
     }
+    const endpoint = this.resolveWebexApiEndpoint();
+    if (!endpoint || (this.webexApiEndpoint && endpoint !== this.webexApiEndpoint)) {
+      return this.failure(400, 'Unable to determine the Webex API environment for call queues');
+    }
+    // Once established, keep in-flight operations bound to the same cloud.
+    this.webexApiEndpoint = endpoint;
 
     return undefined;
   }
@@ -599,7 +650,7 @@ export class CallQueueClient extends Eventing<CallQueueEventTypes> implements IC
     }
     if (request.queues) {
       body.queues = request.queues.map((queue) => ({
-        id: queue.id,
+        id: publicApiId(queue.id, 'CALL_QUEUE'),
         available: this.canChangeJoin(queue.id, lineOwnerId) ? queue.available : true,
       }));
     }
@@ -608,7 +659,9 @@ export class CallQueueClient extends Eventing<CallQueueEventTypes> implements IC
   }
 
   private canChangeJoin(queueId: string, lineOwnerId?: string): boolean {
-    const known = this.currentByLine.get(lineOwnerId)?.queues.find((queue) => queue.id === queueId);
+    const known = this.currentByLine
+      .get(lineOwnerId)
+      ?.queues.find((queue) => queueIdKey(queue.id) === queueIdKey(queueId));
     if (!known || known.allowLogOffEnabled === undefined) {
       return true;
     }
@@ -627,7 +680,9 @@ export class CallQueueClient extends Eventing<CallQueueEventTypes> implements IC
         (queue) =>
           !queue.available &&
           !status?.queues.some(
-            (known) => known.id === queue.id && known.allowLogOffEnabled !== undefined
+            (known) =>
+              queueIdKey(known.id) === queueIdKey(queue.id) &&
+              known.allowLogOffEnabled !== undefined
           )
       )
     );
@@ -640,7 +695,7 @@ export class CallQueueClient extends Eventing<CallQueueEventTypes> implements IC
     const base = this.currentByLine.get(lineOwnerId) as CallQueueAgentStatus;
     const queues = request.queues
       ? request.queues.reduce((list, update) => {
-          const index = list.findIndex((queue) => queue.id === update.id);
+          const index = list.findIndex((queue) => queueIdKey(queue.id) === queueIdKey(update.id));
           const available = this.canChangeJoin(update.id, lineOwnerId) ? update.available : true;
           if (index === -1) {
             return list.concat({id: update.id, available});
