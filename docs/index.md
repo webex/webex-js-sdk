@@ -27,6 +27,7 @@ package owns its architecture, specifications, and decisions beside its code. Th
 
 | Package | Path | Agent entry | Docs | Manifest |
 | --- | --- | --- | --- | --- |
+| `@webex/internal-plugin-calendar` | `packages/@webex/internal-plugin-calendar/` | [AGENTS.md](../packages/@webex/internal-plugin-calendar/AGENTS.md) | [docs/index.md](../packages/@webex/internal-plugin-calendar/docs/index.md) | [.sdd/manifest.json](../packages/@webex/internal-plugin-calendar/.sdd/manifest.json) |
 | `@webex/internal-plugin-board` | `packages/@webex/internal-plugin-board/` | [AGENTS.md](../packages/@webex/internal-plugin-board/AGENTS.md) | [docs/index.md](../packages/@webex/internal-plugin-board/docs/index.md) | [.sdd/manifest.json](../packages/@webex/internal-plugin-board/.sdd/manifest.json) |
 | `@webex/internal-plugin-ediscovery` | `packages/@webex/internal-plugin-ediscovery/` | [AGENTS.md](../packages/@webex/internal-plugin-ediscovery/AGENTS.md) | [docs/index.md](../packages/@webex/internal-plugin-ediscovery/docs/index.md) | [.sdd/manifest.json](../packages/@webex/internal-plugin-ediscovery/.sdd/manifest.json) |
 | `@webex/internal-plugin-feature` | `packages/@webex/internal-plugin-feature/` | [AGENTS.md](../packages/@webex/internal-plugin-feature/AGENTS.md) | [docs/index.md](../packages/@webex/internal-plugin-feature/docs/index.md) | [.sdd/manifest.json](../packages/@webex/internal-plugin-feature/.sdd/manifest.json) |
