@@ -1,0 +1,438 @@
+{
+  "$schema": "./schemas/repo-context.schema.json",
+  "version": 1,
+  "repository": {
+    "name": "@webex/internal-plugin-support",
+    "purpose": "Internal plugin registered as webex.internal.support for support and log-upload endpoints. getFeedbackUrl() POSTs users/deskFeedbackUrl and getSupportUrl() GETs users/deskSupportUrl on the conversation service, each resolving body.url. submitLogs() takes the SDK logger's full or incremental (diff) log text, or caller-supplied logs, and uploads it through webex.upload to the clientLogs service in three phases (logs/urls, PUT to the returned tempURL, logs/meta with a key-value metadata array), authorizing with the user token or, failing that, a client token; it advances the logger's last-submitted index on success and, for a failed diff upload with retryFailedLogUploadsAtNextInterval, rolls the logger back so the next diff resends the span. It stores nothing itself."
+  },
+  "commands": {
+    "install": "yarn",
+    "prebuild": "yarn prebuild:modules",
+    "compile": "yarn workspace @webex/internal-plugin-support build",
+    "build": "yarn workspace @webex/internal-plugin-support build:src",
+    "unit-test": "yarn workspace @webex/internal-plugin-support test:unit",
+    "lint": "yarn workspace @webex/internal-plugin-support test:style",
+    "deploy": "yarn workspace @webex/internal-plugin-support deploy:npm"
+  },
+  "public_interfaces": [
+    {
+      "name": "@webex/internal-plugin-support package entry",
+      "kind": "package_export",
+      "source": "src/index.js",
+      "entrypoints": [
+        "import '@webex/internal-plugin-support'",
+        "import Support from '@webex/internal-plugin-support'"
+      ],
+      "audience": "first-party Webex clients and the SDK packages that register it",
+      "notes": "Importing the package imports the device plugin, then registers Support as internal plugin 'support' with config.support defaults {appType: '', appVersion: '', languageCode: '', incrementalLogs: false} and config.device.preDiscoveryServices entries for atlas and clientLogs; the first registration of the name wins. The default export is the only export."
+    },
+    {
+      "name": "webex.internal.support methods",
+      "kind": "plugin_api",
+      "source": "src/support.js",
+      "entrypoints": [
+        "webex.internal.support.submitLogs(metadata, logs, options)",
+        "webex.internal.support.getFeedbackUrl(options)",
+        "webex.internal.support.getSupportUrl()"
+      ],
+      "audience": "first-party Webex clients, @webex/calling, @webex/contact-center, and @webex/plugin-meetings",
+      "notes": "submitLogs uploads the logger's full or diff log text (or the given logs) to the clientLogs service through webex.upload with a key-value metadata list, commits the logger index on success, rolls it back for a failed diff upload when config.support.retryFailedLogUploadsAtNextInterval is truthy, and always rejects with the upload error. getFeedbackUrl and getSupportUrl resolve body.url from the conversation service; getFeedbackUrl modifies the caller's options object."
+    },
+    {
+      "name": "package scripts",
+      "kind": "npm_scripts",
+      "source": "package.json",
+      "entrypoints": [
+        "build",
+        "build:src",
+        "test:unit",
+        "test:style",
+        "test:browser",
+        "test",
+        "deploy:npm"
+      ],
+      "audience": "contributors and CI",
+      "notes": "build runs build:src, which writes dist. test:unit runs the jest unit spec, which imports the package by name and so tests dist; run build:src first. There is no test:integration script (the mocha script is named test:integratio:broken), so the aggregate test stops there; test:browser currently bundles nothing (0 tests)."
+    }
+  ],
+  "source_of_truth": [
+    {
+      "surface": "Support plugin implementation",
+      "paths": [
+        "src/index.js",
+        "src/support.js",
+        "src/config.js"
+      ],
+      "generated_artifacts": [
+        "dist"
+      ],
+      "refresh_with": [
+        "yarn workspace @webex/internal-plugin-support build:src"
+      ],
+      "validate_with": [
+        "yarn workspace @webex/internal-plugin-support test:unit",
+        "yarn workspace @webex/internal-plugin-support test:style"
+      ]
+    },
+    {
+      "surface": "module specification",
+      "paths": [
+        "src/docs/README.md"
+      ],
+      "generated_artifacts": [],
+      "refresh_with": [
+        "update alongside the behavior change in the same commit"
+      ],
+      "validate_with": [
+        "spec-validator on an independent runtime"
+      ]
+    }
+  ],
+  "generated_artifacts": [
+    {
+      "path": "dist",
+      "generated_from": "src",
+      "refresh_with": "yarn workspace @webex/internal-plugin-support build:src"
+    },
+    {
+      "path": "../../../.sdd/templates/repo-standards/template-map.json",
+      "generated_from": "WebexTools/repo-standards@d89a7fe59126ae3ad9bac9ca352aa7f12b4c85dc",
+      "refresh_with": "The package holds no templates. It refers to the monorepo root snapshot at ../../../.sdd/templates/repo-standards through layout.monorepo_package.templates_root_path in .sdd/manifest.json. Refresh the root snapshot, not this package."
+    }
+  ],
+  "validation_matrix": [
+    {
+      "paths": [
+        "src/**"
+      ],
+      "minimum": [
+        "yarn workspace @webex/internal-plugin-support build:src",
+        "yarn workspace @webex/internal-plugin-support test:unit",
+        "yarn workspace @webex/internal-plugin-support test:style"
+      ],
+      "recommended": [
+        "add or update cases in test/unit/spec/support.js for the changed behavior"
+      ]
+    },
+    {
+      "paths": [
+        "src/support.js"
+      ],
+      "minimum": [
+        "yarn workspace @webex/internal-plugin-support build:src",
+        "yarn workspace @webex/internal-plugin-support test:unit",
+        "yarn workspace @webex/internal-plugin-support test:style"
+      ],
+      "recommended": [
+        "review @webex/calling, @webex/contact-center, and @webex/plugin-meetings, which call submitLogs and read url, userId, and trackingid, when an argument, metadata key, upload option, or resolved field changes"
+      ]
+    },
+    {
+      "paths": [
+        "src/config.js",
+        "src/index.js"
+      ],
+      "minimum": [
+        "yarn workspace @webex/internal-plugin-support build:src",
+        "yarn workspace @webex/internal-plugin-support test:unit",
+        "yarn workspace @webex/internal-plugin-support test:style"
+      ],
+      "recommended": [
+        "check the packages that register the plugin (webex, webex-node, @webex/webex-server, @webex/recipe-private-web-client, @webex/contact-center) when a default or the registered name changes"
+      ]
+    }
+  ],
+  "change_impact": [
+    {
+      "paths": [
+        "src/support.js"
+      ],
+      "affects": [
+        "the log upload request bodies and metadata list",
+        "when the logger diff index is committed or rolled back",
+        "the token used for the upload",
+        "the desk feedback and support requests"
+      ],
+      "refresh_with": [
+        "yarn workspace @webex/internal-plugin-support build:src"
+      ],
+      "validate_with": [
+        "yarn workspace @webex/internal-plugin-support test:unit",
+        "yarn workspace @webex/internal-plugin-support test:style"
+      ],
+      "avoid_direct_edits": [
+        "dist"
+      ],
+      "notes": "Keep the commit after a resolved upload only and the rollback for a failed diff upload with the retry config only (INV-001, INV-002)."
+    },
+    {
+      "paths": [
+        "src/config.js"
+      ],
+      "affects": [
+        "config.support defaults read by every method",
+        "config.device.preDiscoveryServices entries, which no workspace code reads"
+      ],
+      "refresh_with": [
+        "yarn workspace @webex/internal-plugin-support build:src"
+      ],
+      "validate_with": [
+        "yarn workspace @webex/internal-plugin-support test:unit",
+        "yarn workspace @webex/internal-plugin-support test:style"
+      ],
+      "avoid_direct_edits": [
+        "dist"
+      ],
+      "notes": "No test asserts the defaults; add one before changing them."
+    }
+  ],
+  "evidence_rules": [
+    {
+      "claim_category": "command_name",
+      "sources": [
+        "package.json"
+      ],
+      "requirement": "The script must exist in package.json scripts.",
+      "notes": "test:integration does not exist, so the aggregate test script fails; test:browser currently verifies nothing."
+    },
+    {
+      "claim_category": "import_path",
+      "sources": [
+        "src/index.js"
+      ],
+      "requirement": "A binding is public only if exported from src/index.js.",
+      "notes": "The only export is the default Support."
+    },
+    {
+      "claim_category": "behavior_claim",
+      "sources": [
+        "src",
+        "test/unit/spec"
+      ],
+      "requirement": "Ground every behavioral claim in source and unit-test evidence.",
+      "notes": "Commit history is not an evidence source for this package. README.md is context only (docs/adr/0001-retain-product-readme.md). The webex-core, plugin-logger, and internal-plugin-device specs were consulted; their code is the referee where a spec is silent."
+    }
+  ],
+  "negative_guidance": [
+    {
+      "rule": "Do not retry the upload inside submitLogs.",
+      "why": "webex.upload retries its upload phase, and the diff rollback defers failed spans to the next call."
+    },
+    {
+      "rule": "Do not commit or roll back the logger index outside the upload result handlers.",
+      "why": "The index decides which logs the next diff upload sends."
+    },
+    {
+      "rule": "Do not swallow an upload rejection.",
+      "why": "Callers in calling, contact-center, and plugin-meetings log and report the failure."
+    },
+    {
+      "rule": "Do not log log text, metadata values, tokens, user ids, or org ids.",
+      "why": "They are user and identity data; the only existing log line carries an error object."
+    },
+    {
+      "rule": "Do not treat README.md as a usage reference.",
+      "why": "Its Usage block names a placeholder member; see docs/adr/0001-retain-product-readme.md."
+    },
+    {
+      "rule": "Do not infer a coverage threshold for this package.",
+      "why": "No coverage script or threshold exists."
+    }
+  ],
+  "confidence_policy": {
+    "high": {
+      "action": "update",
+      "expectation": "Source and a unit case in test/unit/spec/support.js agree."
+    },
+    "medium": {
+      "action": "narrow-scope",
+      "expectation": "Only source evidence exists, as for registration, the config defaults, and the desk URL methods. Pin current behavior with a unit case before modifying."
+    },
+    "low": {
+      "action": "noop",
+      "expectation": "Neither source, tests, nor a dependency's spec or code settles the question. Stop and report the gap."
+    }
+  },
+  "repository_topology": {
+    "main_entrypoints": [
+      {
+        "name": "package entry",
+        "path": "src/index.js",
+        "purpose": "Registers the support plugin and default-exports the class",
+        "notes": "No subpath exports; package.json main is dist/index.js and devMain is src/index.js."
+      }
+    ],
+    "workspace_packages": [
+      {
+        "name": "@webex/internal-plugin-support",
+        "paths": [
+          "src",
+          "test"
+        ],
+        "notes": "One module; this SDD root is the package directory inside the webex-js-sdk monorepo."
+      }
+    ],
+    "source_surfaces": [
+      {
+        "name": "Support plugin",
+        "paths": [
+          "src"
+        ],
+        "notes": "index.js, support.js, config.js. Specified at src/docs/README.md."
+      },
+      {
+        "name": "tests",
+        "paths": [
+          "test/unit/spec",
+          "test/integration/spec"
+        ],
+        "notes": "Unit spec run by test:unit; live-service spec run only by test:browser."
+      }
+    ],
+    "generated_surfaces": [
+      {
+        "name": "build output",
+        "paths": [
+          "dist"
+        ],
+        "generated_from": "src",
+        "refresh_with": "yarn workspace @webex/internal-plugin-support build:src",
+        "notes": "JavaScript and source maps from webex-legacy-tools; no type declarations. Do not edit by hand."
+      },
+      {
+        "name": "repo-standards template map",
+        "paths": [
+          "../../../.sdd/templates/repo-standards"
+        ],
+        "generated_from": "WebexTools/repo-standards@d89a7fe59126ae3ad9bac9ca352aa7f12b4c85dc",
+        "refresh_with": "The package holds no templates. It refers to the monorepo root snapshot at ../../../.sdd/templates/repo-standards through layout.monorepo_package.templates_root_path in .sdd/manifest.json. Refresh the root snapshot, not this package.",
+        "notes": "The package holds no templates. It refers to the monorepo root snapshot at ../../../.sdd/templates/repo-standards through layout.monorepo_package.templates_root_path in .sdd/manifest.json. Refresh the root snapshot, not this package."
+      }
+    ],
+    "validation_entrypoints": [
+      {
+        "name": "compile",
+        "command": "yarn workspace @webex/internal-plugin-support build",
+        "scope": "src",
+        "notes": "Runs build:src."
+      },
+      {
+        "name": "unit-test",
+        "command": "yarn workspace @webex/internal-plugin-support test:unit",
+        "scope": "test/unit/spec",
+        "notes": "Run build:src first; the spec tests dist."
+      },
+      {
+        "name": "lint",
+        "command": "yarn workspace @webex/internal-plugin-support test:style",
+        "scope": "src",
+        "notes": "eslint via the local .eslintrc.js; docs/** and *.md are ignored."
+      }
+    ],
+    "sync_paths": [
+      {
+        "source": "src/support.js",
+        "targets": [
+          "src/docs/README.md"
+        ],
+        "mechanism": "Manual; update the module specification in the same change that alters observable behavior.",
+        "notes": "Keep the upload option, metadata key, and index commit and rollback rows of the specification aligned with the code."
+      },
+      {
+        "source": "WebexTools/repo-standards@d89a7fe59126ae3ad9bac9ca352aa7f12b4c85dc",
+        "targets": [
+          "../../../.sdd/templates/repo-standards"
+        ],
+        "mechanism": "The package holds no templates. It refers to the monorepo root snapshot at ../../../.sdd/templates/repo-standards through layout.monorepo_package.templates_root_path in .sdd/manifest.json. Refresh the root snapshot, not this package.",
+        "notes": "The package holds no templates. It refers to the monorepo root snapshot at ../../../.sdd/templates/repo-standards through layout.monorepo_package.templates_root_path in .sdd/manifest.json. Refresh the root snapshot, not this package."
+      }
+    ]
+  },
+  "folder_readme_contract": {
+    "required_sections": [
+      "purpose",
+      "boundaries",
+      "key-files",
+      "common-tasks"
+    ],
+    "rules": [
+      "Orient the reader before describing detail.",
+      "Link to the module specification rather than duplicating it."
+    ],
+    "example_policy": "Examples are allowed only when verified against src/ or test/.",
+    "fallback": "Omit a section rather than inventing content; report unresolved facts as gaps."
+  },
+  "regression_feedback_rules": [
+    {
+      "trigger": "The log choice, upload options, or index commit and rollback in submitLogs change.",
+      "required_followups": [
+        "Update the parametrized cases in test/unit/spec/support.js",
+        "Update MOD-005 to MOD-009 and INV-001 to INV-003 in src/docs/README.md"
+      ],
+      "notes": "Consumers rely on diff uploads not resending committed logs."
+    },
+    {
+      "trigger": "The metadata key list changes.",
+      "required_followups": [
+        "Add a case per key to the #_constructFileMetadata block",
+        "Update MOD-010 and INV-004 in src/docs/README.md"
+      ],
+      "notes": "Keys outside the list are dropped."
+    },
+    {
+      "trigger": "getFeedbackUrl, getSupportUrl, or the config defaults change.",
+      "required_followups": [
+        "Add unit cases; none exist today",
+        "Update MOD-002 to MOD-004 in src/docs/README.md"
+      ],
+      "notes": "No case covers these today."
+    }
+  ],
+  "surface_owners": [
+    {
+      "surface": "module implementation and specifications",
+      "owner": "@webex/web-sdk",
+      "edit_boundary": "Owner per the default rule of the monorepo .github/CODEOWNERS; the file has no line for packages/@webex/internal-plugin-support."
+    }
+  ],
+  "do_not_edit": [
+    "dist",
+    "../../../.sdd/templates/repo-standards"
+  ],
+  "marker_scopes": {
+    "sdd": [
+      ".sdd/manifest.json",
+      "src/docs/README.md",
+      "docs"
+    ]
+  },
+  "fallback_rules": [
+    "When source and tests disagree, code is the referee and the disagreement is recorded rather than silently resolved.",
+    "When neither source nor tests settle a question, report it as a gap instead of inferring.",
+    "Commit history is not a valid rationale source for this package.",
+    "When a dependency's specification disagrees with that dependency's code, use the code and record the disagreement; when a dependency has no specification, use its code."
+  ],
+  "downstream_context_pack": {
+    "required_human_surfaces": [
+      "README.md",
+      "docs/index.md",
+      "docs/architecture.md",
+      "src/docs/README.md"
+    ],
+    "required_agent_operational_surfaces": [
+      "AGENTS.md",
+      "docs/specs/README.md"
+    ],
+    "required_machine_readable_surface": ".sdd/manifest.json",
+    "recommended_machine_readable_sections": [
+      "public_interfaces",
+      "change_impact",
+      "evidence_rules",
+      "negative_guidance",
+      "confidence_policy",
+      "repository_topology",
+      "folder_readme_contract",
+      "regression_feedback_rules"
+    ]
+  }
+}
