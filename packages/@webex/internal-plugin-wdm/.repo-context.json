@@ -1,0 +1,401 @@
+{
+  "$schema": "./schemas/repo-context.schema.json",
+  "version": 1,
+  "repository": {
+    "name": "@webex/internal-plugin-wdm",
+    "purpose": "Deprecated alias package of the Webex JS SDK: keeps the historical @webex/internal-plugin-wdm import path working by re-exporting the Device plugin and its config, constants, interceptor, and feature classes from @webex/internal-plugin-device."
+  },
+  "commands": {
+    "compile": "yarn workspace @webex/internal-plugin-wdm build:src",
+    "build": "yarn workspace @webex/internal-plugin-wdm build",
+    "unit-test": "yarn workspace @webex/internal-plugin-wdm test:unit",
+    "browser-test": "yarn workspace @webex/internal-plugin-wdm test:browser",
+    "lint": "yarn workspace @webex/internal-plugin-wdm test:style",
+    "deploy": "yarn workspace @webex/internal-plugin-wdm deploy:npm"
+  },
+  "task_playbooks": [
+    {
+      "task": "change-alias-exports",
+      "reference": "src/docs/README.md",
+      "when_to_use": "Changing the re-exports in src/index.js or the package entry points in package.json.",
+      "start_with": [
+        "src/docs/README.md",
+        "docs/architecture.md",
+        "src/index.js"
+      ],
+      "evidence_required": [
+        "src/index.js",
+        "package.json",
+        "src/docs/README.md"
+      ],
+      "allowed_edits": [
+        "src/index.js",
+        "test/**",
+        "src/docs/README.md",
+        "docs/architecture.md"
+      ],
+      "validate_with": [
+        "yarn workspace @webex/internal-plugin-wdm test:unit",
+        "yarn workspace @webex/internal-plugin-wdm test:style"
+      ],
+      "fallback": "If the alias must gain behavior, stop: behavior belongs in @webex/internal-plugin-device. Report the conflict instead of adding logic here."
+    },
+    {
+      "task": "update-sdd-docs",
+      "reference": "docs/specs/README.md",
+      "when_to_use": "Code changes alter a requirement, the public surface, a dependency, or a pitfall documented in the module spec.",
+      "start_with": [
+        "docs/specs/README.md",
+        "src/docs/README.md",
+        ".sdd/manifest.json"
+      ],
+      "evidence_required": [
+        "src/index.js",
+        "package.json"
+      ],
+      "allowed_edits": [
+        "src/docs/README.md",
+        "docs/architecture.md",
+        "docs/specs/README.md",
+        ".sdd/manifest.json"
+      ],
+      "validate_with": [
+        "Run the Repo Annotation spec-index and manifest checkers through the active installation"
+      ],
+      "fallback": "Leave generated metadata and validation status untouched; validation is run by an independent runtime."
+    }
+  ],
+  "public_interfaces": [
+    {
+      "name": "wdm-alias-sdk",
+      "kind": "package_export",
+      "source": "src/index.js",
+      "entrypoints": [
+        "import '@webex/internal-plugin-wdm'",
+        "default export Device",
+        "config",
+        "constants",
+        "DeviceUrlInterceptor",
+        "FeatureCollection",
+        "FeatureModel",
+        "FeaturesModel"
+      ],
+      "audience": "Legacy importers of the package name",
+      "notes": "Deprecated alias of @webex/internal-plugin-device; verify exports in src/index.js. It defines no webex.internal.wdm."
+    }
+  ],
+  "source_of_truth": [
+    {
+      "surface": "alias exports",
+      "paths": [
+        "src/index.js",
+        "package.json"
+      ],
+      "generated_artifacts": [
+        "dist"
+      ],
+      "refresh_with": [
+        "yarn workspace @webex/internal-plugin-wdm build:src"
+      ],
+      "validate_with": [
+        "yarn workspace @webex/internal-plugin-wdm test:unit"
+      ]
+    },
+    {
+      "surface": "SDD documentation",
+      "paths": [
+        "AGENTS.md",
+        "docs",
+        "src/docs/README.md",
+        ".sdd/manifest.json"
+      ],
+      "generated_artifacts": [],
+      "refresh_with": [
+        "Re-run Repo Annotation through the active installation"
+      ],
+      "validate_with": [
+        "Run the Repo Annotation spec-index, manifest, and repository-context checkers through the active installation"
+      ]
+    }
+  ],
+  "generated_artifacts": [
+    {
+      "path": "dist",
+      "generated_from": "src",
+      "refresh_with": "yarn workspace @webex/internal-plugin-wdm build:src"
+    },
+    {
+      "path": "../../../.sdd/templates/repo-standards/template-map.json",
+      "generated_from": "WebexTools/repo-standards@d89a7fe59126ae3ad9bac9ca352aa7f12b4c85dc",
+      "refresh_with": "Run the setup script of the active Repo Annotation installation against the monorepo root"
+    }
+  ],
+  "validation_matrix": [
+    {
+      "paths": [
+        "src/index.js",
+        "package.json"
+      ],
+      "minimum": [
+        "yarn workspace @webex/internal-plugin-wdm test:unit"
+      ],
+      "recommended": [
+        "yarn workspace @webex/internal-plugin-wdm test:style",
+        "yarn workspace @webex/internal-plugin-wdm test:browser"
+      ]
+    },
+    {
+      "paths": [
+        "src/docs/README.md",
+        "docs/**",
+        "AGENTS.md",
+        ".sdd/manifest.json"
+      ],
+      "minimum": [
+        "Run the Repo Annotation spec-index and manifest checkers through the active installation"
+      ],
+      "recommended": [
+        "Independent spec validation on a different runtime"
+      ]
+    }
+  ],
+  "change_impact": [
+    {
+      "paths": [
+        "src/index.js"
+      ],
+      "affects": [
+        "Legacy importers of @webex/internal-plugin-wdm",
+        "Root jest and @legacy script package lists that name this package"
+      ],
+      "refresh_with": [
+        "yarn workspace @webex/internal-plugin-wdm build:src"
+      ],
+      "validate_with": [
+        "yarn workspace @webex/internal-plugin-wdm test:unit"
+      ],
+      "avoid_direct_edits": [
+        "dist"
+      ],
+      "notes": "The alias must stay in step with the export list of @webex/internal-plugin-device; nothing in this package compares the two."
+    }
+  ],
+  "glossary": [
+    {
+      "term": "WDM",
+      "definition": "Web device manager: the Webex service that stores device registrations.",
+      "notes": "This package is named after it; registration behavior lives in the device package."
+    },
+    {
+      "term": "Alias",
+      "definition": "This package: it re-exports the device plugin and adds no behavior."
+    },
+    {
+      "term": "Device plugin",
+      "definition": "The internal plugin device exposed as webex.internal.device, implemented in @webex/internal-plugin-device."
+    }
+  ],
+  "evidence_rules": [
+    {
+      "claim_category": "command_name",
+      "sources": [
+        "package.json"
+      ],
+      "requirement": "Cite only a script defined in package.json; the test script references test:integration, which package.json does not define."
+    },
+    {
+      "claim_category": "behavior_claim",
+      "sources": [
+        "src/index.js",
+        "test/integration/spec/webex.js"
+      ],
+      "requirement": "State a behavior only when src/index.js implements it or the device package specification states it; call it tested only when a test invokes it (the unit test asserts true and does not count)."
+    },
+    {
+      "claim_category": "import_path",
+      "sources": [
+        "src/index.js"
+      ],
+      "requirement": "Document an export only if src/index.js exports it."
+    }
+  ],
+  "negative_guidance": [
+    {
+      "rule": "Do not use commit or pull-request history as evidence for why behavior exists.",
+      "why": "The package owner directed that the codebase, not git history, is the evidence source."
+    },
+    {
+      "rule": "Do not document registration, refresh, or feature behavior here.",
+      "why": "That behavior is owned by @webex/internal-plugin-device and specified in its module specification."
+    },
+    {
+      "rule": "Do not document webex.internal.wdm as available.",
+      "why": "No code in the monorepo registers a plugin named wdm."
+    }
+  ],
+  "confidence_policy": {
+    "high": {
+      "action": "update",
+      "expectation": "Source and a behavioral test both confirm the claim."
+    },
+    "medium": {
+      "action": "narrow-scope",
+      "expectation": "Only source confirms the claim; state the missing test as a gap."
+    },
+    "low": {
+      "action": "noop",
+      "expectation": "Neither source nor test confirms it; report the gap instead of documenting it."
+    }
+  },
+  "repository_topology": {
+    "main_entrypoints": [
+      {
+        "name": "alias entry",
+        "path": "src/index.js",
+        "purpose": "Re-exports the device plugin's default export and six named exports."
+      }
+    ],
+    "workspace_packages": [
+      {
+        "name": "@webex/internal-plugin-wdm",
+        "paths": [
+          "."
+        ],
+        "notes": "Single package; its dependencies are other packages of the surrounding Yarn workspace."
+      }
+    ],
+    "source_surfaces": [
+      {
+        "name": "alias source",
+        "paths": [
+          "src/index.js"
+        ],
+        "notes": "The only source file."
+      }
+    ],
+    "generated_surfaces": [
+      {
+        "name": "compiled package",
+        "paths": [
+          "dist"
+        ],
+        "generated_from": "src",
+        "refresh_with": "yarn workspace @webex/internal-plugin-wdm build:src"
+      },
+      {
+        "name": "repo-standards templates",
+        "paths": [
+          "../../../.sdd/templates/repo-standards"
+        ],
+        "generated_from": "WebexTools/repo-standards@d89a7fe59126ae3ad9bac9ca352aa7f12b4c85dc",
+        "refresh_with": "Run the setup script of the active Repo Annotation installation against the monorepo root",
+        "notes": "The package holds no templates. It refers to the monorepo root snapshot at ../../../.sdd/templates/repo-standards through layout.monorepo_package.templates_root_path in .sdd/manifest.json."
+      }
+    ],
+    "sync_paths": [
+      {
+        "source": "WebexTools/repo-standards@d89a7fe59126ae3ad9bac9ca352aa7f12b4c85dc",
+        "targets": [
+          "../../../.sdd/templates/repo-standards"
+        ],
+        "mechanism": "Setup script of the active Repo Annotation installation",
+        "notes": "The package holds no templates. It refers to the monorepo root snapshot at ../../../.sdd/templates/repo-standards through layout.monorepo_package.templates_root_path in .sdd/manifest.json."
+      }
+    ],
+    "validation_entrypoints": [
+      {
+        "name": "unit tests",
+        "command": "yarn workspace @webex/internal-plugin-wdm test:unit",
+        "scope": "Jest suite under test/unit (a placeholder)"
+      },
+      {
+        "name": "lint",
+        "command": "yarn workspace @webex/internal-plugin-wdm test:style",
+        "scope": "ESLint over src"
+      },
+      {
+        "name": "browser integration tests",
+        "command": "yarn workspace @webex/internal-plugin-wdm test:browser",
+        "scope": "Mocha spec under test/integration through Karma"
+      }
+    ]
+  },
+  "folder_readme_contract": {
+    "required_sections": [
+      "purpose",
+      "boundaries",
+      "key-files",
+      "common-tasks"
+    ],
+    "rules": [
+      "Orient first: state what the folder owns before listing files."
+    ],
+    "example_policy": "Examples are allowed only when taken from source or tests in this package.",
+    "fallback": "Omit a folder README when the module spec already covers the folder."
+  },
+  "surface_owners": [
+    {
+      "surface": "src",
+      "owner": "Cisco Webex for Developers (named in README.md)",
+      "edit_boundary": "Source and tests; keep the module spec in step with behavior changes."
+    },
+    {
+      "surface": "docs and AGENTS.md",
+      "owner": "Cisco Webex for Developers (named in README.md)",
+      "edit_boundary": "Generated by Repo Annotation; edit through spec-reconcile and review."
+    }
+  ],
+  "do_not_edit": [
+    "dist",
+    "node_modules"
+  ],
+  "marker_scopes": {
+    "sdd-generated-metadata": [
+      "AGENTS.md",
+      "docs/index.md",
+      "docs/architecture.md",
+      "docs/getting-started.md",
+      "docs/specs/README.md",
+      "docs/adr/index.md",
+      "src/docs/README.md"
+    ]
+  },
+  "fallback_rules": [
+    "If a command is not defined in package.json, report it as missing instead of inventing one.",
+    "If code and a spec disagree, surface the conflict and do not edit the spec to match unverified behavior."
+  ],
+  "downstream_context_pack": {
+    "required_human_surfaces": [
+      "docs/index.md",
+      "docs/architecture.md",
+      "docs/specs/README.md",
+      "src/docs/README.md"
+    ],
+    "required_agent_operational_surfaces": [
+      "AGENTS.md"
+    ],
+    "required_machine_readable_surface": ".repo-context.json",
+    "recommended_machine_readable_sections": [
+      "task_playbooks",
+      "public_interfaces",
+      "change_impact",
+      "glossary",
+      "evidence_rules",
+      "negative_guidance",
+      "confidence_policy",
+      "repository_topology",
+      "folder_readme_contract",
+      "regression_feedback_rules"
+    ]
+  },
+  "regression_feedback_rules": [
+    {
+      "trigger": "The export list of src/index.js changes without a matching module spec update",
+      "required_followups": [
+        "Update MOD-002, MOD-003, and Public surface in src/docs/README.md",
+        "Add a unit test that asserts the re-exports"
+      ],
+      "notes": "Requirements without test evidence are listed as gaps in the module spec Verification section."
+    }
+  ]
+}

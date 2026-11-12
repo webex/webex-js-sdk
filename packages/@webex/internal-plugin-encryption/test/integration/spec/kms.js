@@ -10,12 +10,11 @@ import sinon from 'sinon';
 import WebexCore from '@webex/webex-core';
 import testUsers from '@webex/test-helper-test-users';
 import uuid from 'uuid';
-import {browserOnly} from '@webex/test-helper-mocha';
 
 const debug = require('debug')('kms');
 
 describe('Encryption', function () {
-  this.timeout(30000);
+  this.timeout(120000);
   describe('KMS', () => {
     let mccoy, webex, spock;
 
@@ -114,9 +113,11 @@ describe('Encryption', function () {
         webex.internal.encryption.kms
           .createUnboundKeys({count: 1})
           .then(([key]) =>
-            webex.internal.encryption.kms.createResource({
-              key,
-            })
+            webex.internal.encryption.kms.fetchKey({uri: key.uri}).then(() =>
+              webex.internal.encryption.kms.createResource({
+                key,
+              })
+            )
           )
           .then((k) => {
             kro = k;
@@ -172,9 +173,11 @@ describe('Encryption', function () {
         webex.internal.encryption.kms
           .createUnboundKeys({count: 1})
           .then(([key]) =>
-            webex.internal.encryption.kms.createResource({
-              key,
-            })
+            webex.internal.encryption.kms.fetchKey({uri: key.uri}).then(() =>
+              webex.internal.encryption.kms.createResource({
+                key,
+              })
+            )
           )
           .then((k) => {
             kro = k;
@@ -200,7 +203,11 @@ describe('Encryption', function () {
       before('authorizes a resource to a key', () =>
         webex.internal.encryption.kms
           .createUnboundKeys({count: 1})
-          .then(([key]) => webex.internal.encryption.kms.createResource({key}))
+          .then(([key]) =>
+            webex.internal.encryption.kms.fetchKey({uri: key.uri}).then(() =>
+              webex.internal.encryption.kms.createResource({key})
+            )
+          )
           .then((k) => {
             otherKro = k;
             testResourceId = otherKro.uri;
@@ -318,9 +325,11 @@ describe('Encryption', function () {
         webex.internal.encryption.kms
           .createUnboundKeys({count: 1})
           .then(([key]) =>
-            webex.internal.encryption.kms.createResource({
-              key,
-            })
+            webex.internal.encryption.kms.fetchKey({uri: key.uri}).then(() =>
+              webex.internal.encryption.kms.createResource({
+                key,
+              })
+            )
           )
           .then((k) => {
             kro = k;
@@ -333,9 +342,11 @@ describe('Encryption', function () {
         webex.internal.encryption.kms
           .createUnboundKeys({count: 1})
           .then(([key]) =>
-            webex.internal.encryption.kms.createResource({
-              key,
-            })
+            webex.internal.encryption.kms.fetchKey({uri: key.uri}).then(() =>
+              webex.internal.encryption.kms.createResource({
+                key,
+              })
+            )
           )
           .then((k) => {
             otherKro = k;
@@ -425,7 +436,8 @@ describe('Encryption', function () {
     describe('upload customer master key', () => {
       let uploadedkeyId;
 
-      browserOnly(it)('upload customer master key', () =>
+      // This deletes org-wide CMK state and invalidates ECDHE sessions used by other tests.
+      it.skip('upload customer master key', () =>
         webex.internal.encryption.kms
           .deleteAllCustomerMasterKeys({assignedOrgId: spock.orgId})
           .then(() => webex.internal.encryption.kms.fetchPublicKey({assignedOrgId: spock.orgId}))

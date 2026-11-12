@@ -37,13 +37,13 @@ The Core service provides the foundational infrastructure layer that all other s
 
 | Component | File | Description |
 |---|---|---|
-| `WebSocketManager` | [`WebSocketManager.ts`](../websocket/WebSocketManager.ts) | Manages the WebSocket connection lifecycle including initialization, message dispatch, and graceful shutdown. Emits `message` events for incoming data and `socketClose` when the connection drops while reconnect is allowed. |
+| `WebSocketManager` | [`WebSocketManager.ts`](../websocket/WebSocketManager.ts) | Manages the WebSocket connection lifecycle including initialization, message dispatch, and graceful shutdown. Validates the subscribe/register `webSocketUrl` against the RoutingNotifs allow-list before opening a socket. Emits `message` events for incoming data and `socketClose` when the connection drops while reconnect is allowed. |
 | `ConnectionService` | [`connection-service.ts`](../websocket/connection-service.ts) | Orchestrates reconnection logic and keepalive heartbeats on top of `WebSocketManager`. Detects connection loss/recovery and emits `connectionLost` details; ContactCenter owns any `silentRelogin()` policy. |
 | `WebexRequest` | [`WebexRequest.ts`](../WebexRequest.ts) | Singleton HTTP client that forwards service/resource/method/body options to the authenticated host request API and provides `uploadLogs` diagnostics. |
 | `AqmReqs` | [`aqm-reqs.ts`](../aqm-reqs.ts) | Factory for creating request methods that send HTTP requests and wait for correlated WebSocket notifications (success or failure). Used by routing and task services to implement their API methods. |
 | `Utils` | [`Utils.ts`](../Utils.ts) | Shared utility functions including `getErrorDetails()` for standardized error handling, `generateTaskErrorObject()` for task-specific errors, and `createErrDetailsObject()` for constructing error detail objects. |
 | `Err` | [`Err.ts`](../Err.ts) | Error class definitions. `Err.Details` carries structured error metadata (status, type, trackingId) for consistent error propagation. |
-| `constants` | [`constants.ts`](../constants.ts) | Timeout values, interval durations, participant types, interaction states, and method name constants used throughout the core layer. Any new constants for core should be defined here. |
+| `constants` | [`constants.ts`](../constants.ts) | Timeout values, interval durations, participant types, interaction states, method name constants, and the `ALLOWED_ROUTING_NOTIFS_DOMAINS` WebSocket host allow-list used throughout the core layer. Any new constants for core should be defined here. |
 
 ## Purpose / Responsibility
 Own authenticated HTTP, realtime WebSocket lifecycle, AQM request correlation, reconnect/keepalive behavior, and shared error normalization.
@@ -259,13 +259,14 @@ connectionService.on('connectionLost', (details: ConnectionLostDetails) => {
 | CORE-R-004 | ConnectionService must emit transport-state details and retry `initWebSocket({body, resource})`; ContactCenter owns relogin policy. | Separating transport detection from agent recovery prevents Core from mutating package-level session state. | `src/services/core/websocket/connection-service.ts` | `test/unit/spec/services/core/websocket/connection-service.ts` | None; source and test evidence rechecked during the 2026-07-09 remediation; independent document revalidation pending. | PRESENT |
 | CORE-R-005 | The keepalive worker must use the configured 4-second interval and 16-second close-socket timeout; AQM defaults to 20 seconds unless disabled/overridden. | Accurate timing is required for predictable recovery and request failure behavior. | `src/services/core/constants.ts` | `test/unit/spec/services/core/websocket/WebSocketManager.ts` | None; source and test evidence rechecked during the 2026-07-09 remediation; independent document revalidation pending. | PRESENT |
 | CORE-R-006 | Treat Core timeout, keepalive, and recovery constants as fixed behavior controls, not rollout flags; Core owns no feature-gate evaluation. | Conflating operational constants with rollout policy could disable transport or correlation paths unexpectedly. | `src/services/core/constants.ts`, `src/services/index.ts` | `test/unit/spec/services/core/websocket/WebSocketManager.ts` | None; rollout applicability is explicitly N/A for Core. | PRESENT |
-| CORE-R-007 | When an AQM request sets `redactSensitiveLogs`, routing-failure and timeout logs must omit the request URL, bind key, response, and raw routing payload while preserving settlement and cleanup behavior. | Dynamic request paths and routing messages can contain participant identifiers or phone numbers that must not enter diagnostic logs. | `src/services/core/aqm-reqs.ts`, `src/services/core/types.ts` | `test/unit/spec/services/core/aqm-reqs.ts` | The flag is internal and opt-in; ordinary AQM logging remains backward compatible. | PRESENT |
+| CORE-R-007 | AQM routing-failure logging never emits the raw routing message payload or error verbatim; the failure-bind path logs only a fixed redacted diagnostic regardless of `redactSensitiveLogs`. When an AQM request additionally sets `redactSensitiveLogs`, timeout logs must also omit the request URL, bind key, and response while preserving settlement and cleanup behavior. | Dynamic request paths and routing messages can contain participant identifiers or phone numbers that must not enter diagnostic logs. | `src/services/core/aqm-reqs.ts`, `src/services/core/types.ts` | `test/unit/spec/services/core/aqm-reqs.ts` | The timeout flag is internal and opt-in; ordinary AQM logging remains backward compatible while routing-failure logging is unconditionally redacted. | PRESENT |
+| CORE-R-008 | `WebSocketManager` opens a socket only for a subscribe/register `webSocketUrl` that parses as a `wss` URL whose host equals, or is a subdomain of, an entry in `ALLOWED_ROUTING_NOTIFS_DOMAINS`; a malformed, non-`wss`, or non-allow-listed URL is rejected with an error and no socket is opened. | A server-controlled subscribe response could otherwise direct the realtime connection to an untrusted or non-secure endpoint. | `src/services/core/websocket/WebSocketManager.ts`, `src/services/core/constants.ts` | `test/unit/spec/services/core/websocket/WebSocketManager.ts` | The allow-list is a fixed domain set; subdomain matching is exact suffix matching on the parsed hostname. | PRESENT |
 
 ## Design Overview
 Core separates four responsibilities:
 
 1. `WebexRequest` wraps the authenticated host request API and service-catalog routing.
-2. `WebSocketManager` registers a subscription using both `body` and `resource`, connects the socket, owns the keepalive worker, and emits raw messages/socket lifecycle events.
+2. `WebSocketManager` registers a subscription using both `body` and `resource`, validates the returned `webSocketUrl` against the `ALLOWED_ROUTING_NOTIFS_DOMAINS` allow-list before connecting the socket, owns the keepalive worker, and emits raw messages/socket lifecycle events.
 3. `AqmReqs` registers bind matchers on the primary WebSocket, sends HTTP through WebexRequest, and settles requests only from matching notifications, HTTP failure, or timeout.
 4. `ConnectionService` observes message/socket liveness, emits connection-state details, and retries socket initialization. ContactCenter listens to those details and owns optional silent relogin.
 
@@ -294,7 +295,7 @@ const setState = aqmReqs.req((p: {data: Agent.StateChange}) => ({
 await setState({data: stateChangePayload});
 ```
 
-`CLOSE_SOCKET_TIMEOUT` is 16000 ms. `CONNECTIVITY_CHECK_INTERVAL` drives reconnect attempts separately. `TIMEOUT_REQ` is the 20000 ms default AQM timeout; `WEBSOCKET_EVENT_TIMEOUT` is not the active AqmReqs default. A request configuration may set internal `redactSensitiveLogs: true`; this changes only routing-failure and timeout diagnostics, not correlation, errors, timing, or cleanup.
+`CLOSE_SOCKET_TIMEOUT` is 16000 ms. `CONNECTIVITY_CHECK_INTERVAL` drives reconnect attempts separately. `TIMEOUT_REQ` is the 20000 ms default AQM timeout; `WEBSOCKET_EVENT_TIMEOUT` is not the active AqmReqs default. Routing-failure diagnostics are always redacted to a fixed message that omits the raw payload and error. A request configuration may additionally set internal `redactSensitiveLogs: true` to redact timeout diagnostics (request URL, bind key, and response); neither redaction changes correlation, errors, timing, or cleanup.
 
 ## Data Flow
 ```mermaid
@@ -365,12 +366,17 @@ sequenceDiagram
   Caller->>WSM: initWebSocket({body, resource})
   WSM->>Host: register(body, resource)
   Host-->>WSM: WebSocket URL/subscription
-  WSM->>WS: connect()
-  alt welcome
-    WS-->>WSM: Welcome event
-    WSM-->>Caller: WelcomeResponse
-  else register/connect failure
-    WSM-->>Caller: throw error
+  WSM->>WSM: validate webSocketUrl against wss + allow-list
+  alt allow-listed wss URL
+    WSM->>WS: connect()
+    alt welcome
+      WS-->>WSM: Welcome event
+      WSM-->>Caller: WelcomeResponse
+    else connect failure
+      WSM-->>Caller: throw error
+    end
+  else malformed / non-wss / non-allow-listed URL
+    WSM-->>Caller: throw error (no socket opened)
   end
 ```
 
@@ -448,6 +454,8 @@ WebSocketManager owns socket/welcome/worker state. AqmReqs owns pending success/
 
 ## Business Rules & Invariants
 - Core must preserve its typed public/event contracts and must not invent backend states or responses. Enforced in `src/services/core/WebexRequest.ts`.
+- A subscribe/register `webSocketUrl` is trusted only when it is a `wss` URL on the `ALLOWED_ROUTING_NOTIFS_DOMAINS` allow-list; otherwise `WebSocketManager` throws and never opens a socket. Enforced in `src/services/core/websocket/WebSocketManager.ts`.
+- AQM routing-failure logs never contain the raw routing payload or error verbatim. Enforced in `src/services/core/aqm-reqs.ts`.
 - Rollout applicability is N/A for Core: keepalive, timeout, and reconnect constants control behavior, while Services constructs Core without a feature gate.
 
 ## Concurrency & Reactive Flow
@@ -468,7 +476,7 @@ stateDiagram-v2
 ```
 
 ## Protocol / Wire Format
-`WebSocketManager.initWebSocket` accepts `{body: SubscribeRequest, resource: string}`. Subscription uses the host Webex request API; AqmReqs operational HTTP uses the WebexRequest wrapper. AQM request configs carry `host`, `url`, optional `method`/`data`, `notifSuccess.bind`, optional `notifFail.bind`, optional cancel bind, and optional timeout. HTTP acknowledgement never substitutes for the matching WebSocket operation result.
+`WebSocketManager.initWebSocket` accepts `{body: SubscribeRequest, resource: string}`. Subscription uses the host Webex request API; the returned `webSocketUrl` must be a `wss` URL on the `ALLOWED_ROUTING_NOTIFS_DOMAINS` allow-list or the socket is not opened. AqmReqs operational HTTP uses the WebexRequest wrapper. AQM request configs carry `host`, `url`, optional `method`/`data`, `notifSuccess.bind`, optional `notifFail.bind`, optional cancel bind, and optional timeout. HTTP acknowledgement never substitutes for the matching WebSocket operation result.
 
 ## Error Handling & Failure Modes
 | Condition | Signal (error/code/result) | Caller recovery |
@@ -712,7 +720,8 @@ export const generateTaskErrorObject = (
 ## Pitfalls
 - `initWebSocket` requires both `body` and `resource`; omitting `resource` registers against no durable subscription endpoint.
 - AqmReqs installs notification binds before HTTP and never resolves from acknowledgement; duplicate binds, timeout, and cleanup ordering are correctness-critical.
-- Sensitive AQM configurations must use the opt-in redaction flag so dynamic URLs and raw routing messages are not included in timeout/failure logs.
+- AQM routing-failure logs are always redacted; sensitive AQM configurations must also use the opt-in `redactSensitiveLogs` flag so dynamic URLs and responses are not included in timeout logs.
+- Do not open the WebSocket directly from a subscribe/register response; the `webSocketUrl` must first pass `wss` scheme and allow-listed host validation.
 - Keepalive closure (16 seconds), lost-connection detection (8 seconds), reconnect interval (5 seconds), and recovery timeout (50 seconds) are separate controls and must not be conflated.
 
 ## Module Do's / Don'ts
@@ -751,6 +760,7 @@ Unit tests mirror module paths under `test/unit/spec/services/core`. Preserve po
 | `CORE-R-005` | `test/unit/spec/services/core/websocket/WebSocketManager.ts` | Keep timer-value assertions synchronized with constants. |
 | `CORE-R-006` | `test/unit/spec/services/core/websocket/WebSocketManager.ts` | Feature-gate absence is verified from construction/source rather than a dedicated negative test. |
 | `CORE-R-007` | `test/unit/spec/services/core/aqm-reqs.ts` | None. |
+| `CORE-R-008` | `test/unit/spec/services/core/websocket/WebSocketManager.ts` | None. |
 
 ## Traceability
 - Repo architecture: `../../../../ai-docs/ARCHITECTURE.md` · Registry: `../../../../ai-docs/SPEC_INDEX.md`
