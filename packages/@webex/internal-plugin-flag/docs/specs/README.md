@@ -9,7 +9,7 @@ doc_kind: standing-doc
 generated_from: spec-index@0.3.0
 generated_by: claude-cowork
 approved_by: akulakum@cisco.com
-updated_at: 2026-11-12T14:31:48Z
+updated_at: 2026-11-12T15:05:59Z
 validation_status: pass-with-warnings
 -->
 
@@ -48,7 +48,7 @@ Generator-side field measurement is complete. Field coverage measured 2026-10-12
 mandatory fields PRESENT for `src`). Critical fields are 8 of 8 PRESENT. The WEAK field is test
 strategy; the untested paths are listed in the module spec's Verification section. Independent
 validation is pass-with-warnings, assessed 2026-11-12 by validator current-session (at
-f620469), as recorded in the module spec Validation status row. Coverage state stays `Partial`
+ be7ebaab), as recorded in the module spec Validation status row. Coverage state stays `Partial`
 until the missing tests and a characterization baseline exist and a spec-drift record exists.
 
 ## Change and verification routing
