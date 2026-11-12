@@ -42,6 +42,7 @@ package owns its architecture, specifications, and decisions beside its code. Th
 | `@webex/plugin-authorization` | `packages/@webex/plugin-authorization/` | [AGENTS.md](../packages/@webex/plugin-authorization/AGENTS.md) | [docs/index.md](../packages/@webex/plugin-authorization/docs/index.md) | [.sdd/manifest.json](../packages/@webex/plugin-authorization/.sdd/manifest.json) |
 | `@webex/plugin-authorization-browser-first-party` | `packages/@webex/plugin-authorization-browser-first-party/` | [AGENTS.md](../packages/@webex/plugin-authorization-browser-first-party/AGENTS.md) | [docs/index.md](../packages/@webex/plugin-authorization-browser-first-party/docs/index.md) | [.sdd/manifest.json](../packages/@webex/plugin-authorization-browser-first-party/.sdd/manifest.json) |
 | `@webex/plugin-authorization-node` | `packages/@webex/plugin-authorization-node/` | [AGENTS.md](../packages/@webex/plugin-authorization-node/AGENTS.md) | [docs/index.md](../packages/@webex/plugin-authorization-node/docs/index.md) | [.sdd/manifest.json](../packages/@webex/plugin-authorization-node/.sdd/manifest.json) |
+| `@webex/plugin-presence` | `packages/@webex/plugin-presence/` | [AGENTS.md](../packages/@webex/plugin-presence/AGENTS.md) | [docs/index.md](../packages/@webex/plugin-presence/docs/index.md) | [.sdd/manifest.json](../packages/@webex/plugin-presence/.sdd/manifest.json) |
 <!-- sdd-package-routing:end -->
 
 ## Decisions

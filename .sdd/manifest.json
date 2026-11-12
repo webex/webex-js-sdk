@@ -199,6 +199,15 @@
       "index": "packages/@webex/plugin-authorization-node/docs/index.md",
       "onboarded_at": "2026-11-11T08:35:47Z",
       "onboarded_by": "claude-code"
+    },
+    {
+      "id": "@webex/plugin-presence",
+      "path": "packages/@webex/plugin-presence",
+      "manifest": "packages/@webex/plugin-presence/.sdd/manifest.json",
+      "agent_entry": "packages/@webex/plugin-presence/AGENTS.md",
+      "index": "packages/@webex/plugin-presence/docs/index.md",
+      "onboarded_at": "2026-11-12T13:29:35Z",
+      "onboarded_by": "claude-code"
     }
   ],
   "substrate": {
@@ -208,6 +217,6 @@
   "provenance": {
     "generated_by": "claude-code",
     "approved_by": "rarajes2@cisco.com",
-    "updated_at": "2026-11-12T12:59:00Z"
+    "updated_at": "2026-11-12T13:29:35Z"
   }
 }
