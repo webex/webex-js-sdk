@@ -140,6 +140,13 @@
         "notes": "Onboarded package: its own AGENTS.md, docs/, and .sdd/manifest.json are routed from .sdd/manifest.json packages."
       },
       {
+        "name": "@webex/internal-plugin-avatar",
+        "paths": [
+          "packages/@webex/internal-plugin-avatar"
+        ],
+        "notes": "Onboarded package: its own AGENTS.md, docs/, and .sdd/manifest.json are routed from .sdd/manifest.json packages."
+      },
+      {
         "name": "@webex/internal-plugin-calendar",
         "paths": [
           "packages/@webex/internal-plugin-calendar"
