@@ -91,17 +91,23 @@
     ],
     "workspace_packages": [
       {
+        "name": "@webex/internal-plugin-search",
+        "paths": [
+          "packages/@webex/internal-plugin-search"
+        ],
+        "notes": "Onboarded package: its own AGENTS.md, docs/, and .sdd/manifest.json are routed from .sdd/manifest.json packages."
+      },
+      {
         "name": "@webex/internal-plugin-dss",
         "paths": [
           "packages/@webex/internal-plugin-dss"
-        
         ],
         "notes": "Onboarded package: its own AGENTS.md, docs/, and .sdd/manifest.json are routed from .sdd/manifest.json packages."
       },
       {
         "name": "@webex/internal-plugin-ai-assistant",
         "paths": [
-          "packages/@webex/internal-plugin-ai-assistant" 
+          "packages/@webex/internal-plugin-ai-assistant"
         ],
         "notes": "Onboarded package: its own AGENTS.md, docs/, and .sdd/manifest.json are routed from .sdd/manifest.json packages."
       },
