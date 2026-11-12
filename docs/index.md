@@ -33,6 +33,7 @@ package owns its architecture, specifications, and decisions beside its code. Th
 | `@webex/internal-plugin-wdm` | `packages/@webex/internal-plugin-wdm/` | [AGENTS.md](../packages/@webex/internal-plugin-wdm/AGENTS.md) | [docs/index.md](../packages/@webex/internal-plugin-wdm/docs/index.md) | [.sdd/manifest.json](../packages/@webex/internal-plugin-wdm/.sdd/manifest.json) |
 | `@webex/plugin-authorization-browser` | `packages/@webex/plugin-authorization-browser/` | [AGENTS.md](../packages/@webex/plugin-authorization-browser/AGENTS.md) | [docs/index.md](../packages/@webex/plugin-authorization-browser/docs/index.md) | [.sdd/manifest.json](../packages/@webex/plugin-authorization-browser/.sdd/manifest.json) |
 | `@webex/plugin-authorization-browser-first-party` | `packages/@webex/plugin-authorization-browser-first-party/` | [AGENTS.md](../packages/@webex/plugin-authorization-browser-first-party/AGENTS.md) | [docs/index.md](../packages/@webex/plugin-authorization-browser-first-party/docs/index.md) | [.sdd/manifest.json](../packages/@webex/plugin-authorization-browser-first-party/.sdd/manifest.json) |
+| `@webex/storage-adapter-local-storage` | `packages/@webex/storage-adapter-local-storage/` | [AGENTS.md](../packages/@webex/storage-adapter-local-storage/AGENTS.md) | [docs/index.md](../packages/@webex/storage-adapter-local-storage/docs/index.md) | [.sdd/manifest.json](../packages/@webex/storage-adapter-local-storage/.sdd/manifest.json) |
 <!-- sdd-package-routing:end -->
 
 ## Decisions

@@ -118,6 +118,15 @@
       "index": "packages/@webex/plugin-authorization-browser-first-party/docs/index.md",
       "onboarded_at": "2026-11-03T05:46:20Z",
       "onboarded_by": "claude-code"
+    },
+    {
+      "id": "@webex/storage-adapter-local-storage",
+      "path": "packages/@webex/storage-adapter-local-storage",
+      "manifest": "packages/@webex/storage-adapter-local-storage/.sdd/manifest.json",
+      "agent_entry": "packages/@webex/storage-adapter-local-storage/AGENTS.md",
+      "index": "packages/@webex/storage-adapter-local-storage/docs/index.md",
+      "onboarded_at": "2026-11-09T10:45:00Z",
+      "onboarded_by": "claude-code"
     }
   ],
   "substrate": {
@@ -127,6 +136,6 @@
   "provenance": {
     "generated_by": "claude-code",
     "approved_by": "rsarika@cisco.com",
-    "updated_at": "2026-11-09T11:06:48Z"
+    "updated_at": "2026-11-09T10:45:00Z"
   }
 }
