@@ -21,13 +21,21 @@ import {getMetricManager} from '../../Metrics';
 import {IMetricManager, METRIC_EVENT, METRIC_TYPE, MOBIUS_SOCKET_ACTION} from '../../Metrics/types';
 
 /**
- * Normalizes WSS metadata to the lowercase header names used by HTTP responses.
+ * Preserves WSS metadata and exposes Retry-After under the existing lowercase lookup.
  * @param metadata - Response metadata returned by Mobius.
  */
 function normalizeWsHeaders(metadata?: MobiusSocketResponse['metadata']): Record<string, string> {
-  return Object.fromEntries(
-    Object.entries(metadata ?? {}).map(([name, value]) => [name.toLowerCase(), value])
-  ) as Record<string, string>;
+  const headers = {...metadata} as Record<string, string>;
+
+  if (!Object.prototype.hasOwnProperty.call(headers, 'retry-after')) {
+    const retryAfter = Object.keys(headers).find((name) => name.toLowerCase() === 'retry-after');
+
+    if (retryAfter) {
+      headers['retry-after'] = headers[retryAfter];
+    }
+  }
+
+  return headers;
 }
 
 /**

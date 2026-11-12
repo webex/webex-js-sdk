@@ -1701,7 +1701,7 @@ describe('Registration Tests', () => {
       const keepaliveInterval = reg.deviceInfo.keepaliveInterval as number;
       // Choose a retryAfter strictly greater than keepaliveInterval so the
       // adjusted resume delay (retryAfter - keepaliveInterval) is positive and verifiable.
-      const retryAfter = keepaliveInterval + 30;
+      const retryAfter = 120;
       const adjustedResumeDelayMs = (retryAfter - keepaliveInterval) * SEC_TO_MSEC_MFACTOR;
 
       reg.webWorker.onmessage({
