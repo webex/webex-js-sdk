@@ -9,6 +9,8 @@ import {
   METHOD_START_MESSAGE,
   STATUS_CODE,
   SUCCESS_MESSAGE,
+  WEBEX_API_BTS,
+  WEBEX_API_PROD,
 } from '../common/constants';
 import {Eventing} from '../Events/impl';
 import {COMMON_EVENT_KEYS, MOBIUS_EVENT_KEYS} from '../Events/types';
@@ -64,6 +66,8 @@ export class CallQueueClient extends Eventing<CallQueueEventTypes> implements IC
 
   private hydraEndpoint: string;
 
+  private webexApiEndpoint: string;
+
   private currentByLine = new Map<string | undefined, CallQueueAgentStatus>();
 
   private queueNames = new Map<string, string>();
@@ -81,6 +85,8 @@ export class CallQueueClient extends Eventing<CallQueueEventTypes> implements IC
     this.hydraEndpoint =
       this.webex.internal.services._serviceUrls?.hydra ||
       this.webex.internal.services.get(this.webex.internal.services._activeServices.hydra);
+    const isProd = !this.webex.internal.device.url.includes('-int');
+    this.webexApiEndpoint = isProd ? WEBEX_API_PROD : WEBEX_API_BTS;
     this.registerAgentListeners();
     log.setLogger(logger.level, CALL_QUEUE_FILE);
   }
@@ -348,10 +354,20 @@ export class CallQueueClient extends Eventing<CallQueueEventTypes> implements IC
 
   private queuesUrl(lineOwnerId?: string): string {
     if (!lineOwnerId) {
-      return this.joinUrl(QUEUES_PATH);
+      return this.joinWebexApiUrl(QUEUES_PATH);
     }
 
-    return this.joinUrl(`${SECONDARY_LINES_PATH}/${encodeURIComponent(lineOwnerId)}/queues`);
+    return this.joinWebexApiUrl(
+      `${SECONDARY_LINES_PATH}/${encodeURIComponent(lineOwnerId)}/queues`
+    );
+  }
+
+  private joinWebexApiUrl(path: string): string {
+    const base = this.webexApiEndpoint.endsWith('/')
+      ? this.webexApiEndpoint
+      : `${this.webexApiEndpoint}/`;
+
+    return `${base}v1/${path}`;
   }
 
   private joinUrl(path: string): string {

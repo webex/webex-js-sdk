@@ -8,6 +8,8 @@ import {ACD_STATE} from './types';
 
 const webex = getTestUtilsWebex();
 const HYDRA = 'https://hydra-a.wbx2.com/v1/';
+const WEBEX_API_INT = 'https://integration.webexapis.com/v1/';
+const WEBEX_API_PROD = 'https://webexapis.com/v1/';
 const client = createCallQueueClient(webex, {level: LOGGER.INFO});
 const mercuryHandlers = new Map<string, (event?: unknown) => void>(
   (webex.internal.mercury.on as jest.Mock).mock.calls.map((call) => [call[0], call[1]])
@@ -45,12 +47,35 @@ describe('CallQueue client', () => {
     const response = await client.getCallQueueSettings();
 
     expect(webex.request).toHaveBeenCalledWith({
-      uri: `${HYDRA}telephony/config/people/me/settings/queues`,
+      uri: `${WEBEX_API_INT}telephony/config/people/me/settings/queues`,
       method: HTTP_METHODS.GET,
     });
     expect(response.statusCode).toBe(200);
     expect(response.data.callQueue?.acdState).toBe(ACD_STATE.SIGN_OUT);
     expect(response.data.callQueue?.queues[0].id).toBe('queue-1');
+  });
+
+  it('uses the production Webex API base for a production device', async () => {
+    const originalDeviceUrl = webex.internal.device.url;
+
+    try {
+      webex.internal.device.url =
+        'https://wdm-a.wbx2.com/wdm/api/v1/devices/c5ae3b86-1bb7-40f1-a6a9-c296ee7e61d5';
+      const productionClient = createCallQueueClient(webex, {level: LOGGER.INFO});
+      webex.request.mockResolvedValue(<WebexRequestPayload>(<unknown>{
+        statusCode: 200,
+        body: {agentACDState: 'AVAILABLE', queues: []},
+      }));
+
+      await productionClient.getCallQueueSettings();
+
+      expect(webex.request).toHaveBeenCalledWith({
+        uri: `${WEBEX_API_PROD}telephony/config/people/me/settings/queues`,
+        method: HTTP_METHODS.GET,
+      });
+    } finally {
+      webex.internal.device.url = originalDeviceUrl;
+    }
   });
 
   it('fills a missing display name from the queue catalog', async () => {
@@ -94,7 +119,7 @@ describe('CallQueue client', () => {
     await client.getCallQueueSettings('line-owner-1');
 
     expect(webex.request).toHaveBeenCalledWith({
-      uri: `${HYDRA}telephony/config/people/me/settings/secondarylines/line-owner-1/queues`,
+      uri: `${WEBEX_API_INT}telephony/config/people/me/settings/secondarylines/line-owner-1/queues`,
       method: HTTP_METHODS.GET,
     });
   });
@@ -121,7 +146,7 @@ describe('CallQueue client', () => {
     });
 
     expect(webex.request).toHaveBeenCalledWith({
-      uri: `${HYDRA}telephony/config/people/me/settings/queues`,
+      uri: `${WEBEX_API_INT}telephony/config/people/me/settings/queues`,
       method: HTTP_METHODS.PATCH,
       body: {
         agentACDState: ACD_STATE.AVAILABLE,
@@ -147,7 +172,7 @@ describe('CallQueue client', () => {
     });
 
     expect(webex.request).toHaveBeenLastCalledWith({
-      uri: `${HYDRA}telephony/config/people/me/settings/queues`,
+      uri: `${WEBEX_API_INT}telephony/config/people/me/settings/queues`,
       method: HTTP_METHODS.PATCH,
       body: {
         queues: [{id: 'locked', available: true}],
@@ -187,15 +212,15 @@ describe('CallQueue client', () => {
     );
 
     expect(webex.request).toHaveBeenNthCalledWith(1, {
-      uri: `${HYDRA}telephony/config/people/me/settings/queues`,
+      uri: `${WEBEX_API_INT}telephony/config/people/me/settings/queues`,
       method: HTTP_METHODS.GET,
     });
     expect(webex.request).toHaveBeenNthCalledWith(2, {
-      uri: `${HYDRA}telephony/config/people/me/settings/secondarylines/line-owner-2/queues`,
+      uri: `${WEBEX_API_INT}telephony/config/people/me/settings/secondarylines/line-owner-2/queues`,
       method: HTTP_METHODS.GET,
     });
     expect(webex.request).toHaveBeenNthCalledWith(3, {
-      uri: `${HYDRA}telephony/config/people/me/settings/secondarylines/line-owner-2/queues`,
+      uri: `${WEBEX_API_INT}telephony/config/people/me/settings/secondarylines/line-owner-2/queues`,
       method: HTTP_METHODS.PATCH,
       body: {queues: [{id: 'shared-queue', available: true}]},
     });
@@ -259,6 +284,42 @@ describe('CallQueue client', () => {
 
     expect(listener).toHaveBeenCalledWith(
       expect.objectContaining({acdState: ACD_STATE.UNAVAILABLE})
+    );
+    client.off(COMMON_EVENT_KEYS.CALL_QUEUE_UPDATED, listener);
+  });
+
+  it('emits the full queue snapshot when a Mercury sync event arrives', () => {
+    const listener = jest.fn();
+    client.on(COMMON_EVENT_KEYS.CALL_QUEUE_UPDATED, listener);
+    const syncHandler = mercuryHandlers.get(MOBIUS_EVENT_KEYS.TELEPHONY_AGENT_SYNC);
+
+    syncHandler?.({
+      data: {
+        agentACDState: 'available',
+        queues: [{id: 'sync-queue', name: 'Sync queue', available: true}],
+      },
+    });
+
+    expect(listener).toHaveBeenCalledWith({
+      acdState: ACD_STATE.AVAILABLE,
+      queues: [{id: 'sync-queue', name: 'Sync queue', available: true}],
+    });
+    client.off(COMMON_EVENT_KEYS.CALL_QUEUE_UPDATED, listener);
+  });
+
+  it('emits the queue membership change when a Mercury join event arrives', () => {
+    const listener = jest.fn();
+    client.on(COMMON_EVENT_KEYS.CALL_QUEUE_UPDATED, listener);
+    const joinHandler = mercuryHandlers.get(MOBIUS_EVENT_KEYS.TELEPHONY_AGENT_JOIN);
+
+    joinHandler?.({data: {queues: [{id: 'joined-queue', name: 'Joined queue', available: true}]}});
+
+    expect(listener).toHaveBeenCalledWith(
+      expect.objectContaining({
+        queues: expect.arrayContaining([
+          expect.objectContaining({id: 'joined-queue', name: 'Joined queue', available: true}),
+        ]),
+      })
     );
     client.off(COMMON_EVENT_KEYS.CALL_QUEUE_UPDATED, listener);
   });
