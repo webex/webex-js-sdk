@@ -126,6 +126,13 @@
         "notes": "Onboarded package: its own AGENTS.md, docs/, and .sdd/manifest.json are routed from .sdd/manifest.json packages."
       },
       {
+        "name": "@webex/internal-plugin-voicea",
+        "paths": [
+          "packages/@webex/internal-plugin-voicea"
+        ],
+        "notes": "Onboarded package: its own AGENTS.md, docs/, and .sdd/manifest.json are routed from .sdd/manifest.json packages."
+      },
+      {
         "name": "@webex/internal-plugin-wdm",
         "paths": [
           "packages/@webex/internal-plugin-wdm"
