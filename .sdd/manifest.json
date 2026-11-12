@@ -66,6 +66,15 @@
   ],
   "packages": [
     {
+      "id": "@webex/internal-plugin-conversation",
+      "path": "packages/@webex/internal-plugin-conversation",
+      "manifest": "packages/@webex/internal-plugin-conversation/.sdd/manifest.json",
+      "agent_entry": "packages/@webex/internal-plugin-conversation/AGENTS.md",
+      "index": "packages/@webex/internal-plugin-conversation/docs/index.md",
+      "onboarded_at": "2026-11-09T11:06:48Z",
+      "onboarded_by": "claude-code"
+    },
+    {
       "id": "@webex/internal-plugin-feature",
       "path": "packages/@webex/internal-plugin-feature",
       "manifest": "packages/@webex/internal-plugin-feature/.sdd/manifest.json",
@@ -109,6 +118,15 @@
       "index": "packages/@webex/plugin-authorization-browser-first-party/docs/index.md",
       "onboarded_at": "2026-11-03T05:46:20Z",
       "onboarded_by": "claude-code"
+    },
+    {
+      "id": "@webex/storage-adapter-local-storage",
+      "path": "packages/@webex/storage-adapter-local-storage",
+      "manifest": "packages/@webex/storage-adapter-local-storage/.sdd/manifest.json",
+      "agent_entry": "packages/@webex/storage-adapter-local-storage/AGENTS.md",
+      "index": "packages/@webex/storage-adapter-local-storage/docs/index.md",
+      "onboarded_at": "2026-11-09T10:45:00Z",
+      "onboarded_by": "claude-code"
     }
   ],
   "substrate": {
@@ -117,7 +135,7 @@
   },
   "provenance": {
     "generated_by": "claude-code",
-    "approved_by": "rarajes2@cisco.com",
-    "updated_at": "2026-11-04T06:35:39Z"
+    "approved_by": "rsarika@cisco.com",
+    "updated_at": "2026-11-09T10:45:00Z"
   }
 }
