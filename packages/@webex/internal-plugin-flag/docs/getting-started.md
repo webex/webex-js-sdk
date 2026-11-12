@@ -9,8 +9,8 @@ doc_kind: standing-doc
 generated_from: getting-started@0.3.0
 generated_by: claude-cowork
 approved_by: akulakum@cisco.com
-updated_at: 2026-10-15T14:22:13Z
-validation_status: pass-with-warnings
+updated_at: 2026-11-12T14:21:53Z
+validation_status: pending
 -->
 
 # Getting started
@@ -22,7 +22,7 @@ Onboarding for **@webex/internal-plugin-flag**. Commands run from the webex-js-s
 | Tool or access | Version or requirement |
 | -------------- | ---------------------- |
 | Node.js | 22.14, required for working in this repository by the workspace root `AGENTS.md`; the root `.nvmrc` selects the Node 22 LTS line. The workspace root `package.json` `engines` field still says `18.x`; follow the root `AGENTS.md` |
-| Yarn | 3.4.1, pinned by the workspace root `packageManager` field and run from the release that the root `.yarnrc.yml` `yarnPath` names, provided through Corepack: enable Corepack for the selected Node.js version, as the workspace root `CONTRIBUTING.md` setup steps require. Workspaces are used, so install from the workspace root rather than this directory |
+| Yarn | The version pinned by the workspace root `packageManager` field, run from the release that the root `.yarnrc.yml` `yarnPath` names, provided through Corepack: enable Corepack for the selected Node.js version, as the workspace root `CONTRIBUTING.md` setup steps require. Workspaces are used, so install from the workspace root rather than this directory |
 | Browsers for `test:browser` | Chrome and Firefox. The script passes no browser list, so the legacy-tools `karma-browsers` option keeps its default of both (sibling package legacy-tools, file src/commands/run-tests/run-tests.constants.ts), and karma starts both headless launchers (file src/utils/karma/browsers/browsers.ts of the same package) |
 
 Applications that install the package need Node 18 or later: this package's `package.json`
