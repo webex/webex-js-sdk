@@ -1,0 +1,653 @@
+{
+  "$schema": "./schemas/repo-context.schema.json",
+  "version": 1,
+  "repository": {
+    "name": "@webex/webex-core",
+    "purpose": "Core library of the Cisco Webex JS SDK: the plugin host and WebexCore class, the HTTP interceptor pipeline, OAuth credentials and token lifecycle, U2C service discovery (v1 and opt-in v2), and the pluggable storage layer that every other SDK plugin builds on."
+  },
+  "commands": {
+    "install": "yarn install",
+    "compile": "yarn workspace @webex/webex-core build:src",
+    "build": "yarn workspace @webex/webex-core build",
+    "unit-test": "yarn workspace @webex/webex-core test:unit",
+    "integration-test": "yarn workspace @webex/webex-core test:integration",
+    "lint": "yarn workspace @webex/webex-core test:style",
+    "deploy": "yarn workspace @webex/webex-core deploy:npm",
+    "browser-test": "yarn workspace @webex/webex-core test:browser",
+    "test-all": "yarn workspace @webex/webex-core test"
+  },
+  "public_interfaces": [
+    {
+      "name": "package exports",
+      "kind": "package_export",
+      "source": "package.json",
+      "entrypoints": [
+        "default (WebexCore)",
+        "registerPlugin",
+        "registerInternalPlugin",
+        "WebexPlugin",
+        "StatelessWebexPlugin",
+        "Batcher",
+        "Page",
+        "WebexHttpError",
+        "config",
+        "Credentials",
+        "Token",
+        "Services",
+        "ServicesV2",
+        "makeWebexStore",
+        "persist",
+        "MemoryStoreAdapter",
+        "AuthInterceptor"
+      ],
+      "audience": "About 47 workspace packages inside the Webex JS SDK plus external npm consumers of @webex/webex-core.",
+      "notes": "Verify names against src/index.js and the compatibility commitments against the Public surface sections of the module specifications."
+    },
+    {
+      "name": "package scripts",
+      "kind": "npm_scripts",
+      "source": "package.json",
+      "entrypoints": [
+        "build",
+        "build:src",
+        "test:unit",
+        "test:integration",
+        "test:browser",
+        "test:style",
+        "deploy:npm"
+      ],
+      "audience": "Contributors and CI jobs operating on this package from the workspace root.",
+      "notes": "The aggregate test script chains lint, unit, integration and browser tiers and needs provisioned test users and live services."
+    }
+  ],
+  "source_of_truth": [
+    {
+      "surface": "plugin host and export surface",
+      "paths": [
+        "src/index.js",
+        "src/webex-core.js",
+        "src/webex-internal-core.js",
+        "src/config.js"
+      ],
+      "generated_artifacts": [
+        "dist"
+      ],
+      "refresh_with": [
+        "yarn workspace @webex/webex-core build:src"
+      ],
+      "validate_with": [
+        "yarn workspace @webex/webex-core test:unit",
+        "yarn workspace @webex/webex-core test:style"
+      ]
+    },
+    {
+      "surface": "interceptors",
+      "paths": [
+        "src/interceptors"
+      ],
+      "generated_artifacts": [
+        "dist"
+      ],
+      "refresh_with": [
+        "yarn workspace @webex/webex-core build:src"
+      ],
+      "validate_with": [
+        "yarn workspace @webex/webex-core test:unit"
+      ]
+    },
+    {
+      "surface": "credentials",
+      "paths": [
+        "src/lib/credentials",
+        "src/credentials-config.js"
+      ],
+      "generated_artifacts": [
+        "dist"
+      ],
+      "refresh_with": [
+        "yarn workspace @webex/webex-core build:src"
+      ],
+      "validate_with": [
+        "yarn workspace @webex/webex-core test:unit"
+      ]
+    },
+    {
+      "surface": "service discovery",
+      "paths": [
+        "src/lib/services",
+        "src/lib/interceptors",
+        "src/lib/services-v2"
+      ],
+      "generated_artifacts": [
+        "dist"
+      ],
+      "refresh_with": [
+        "yarn workspace @webex/webex-core build:src"
+      ],
+      "validate_with": [
+        "yarn workspace @webex/webex-core test:unit"
+      ]
+    },
+    {
+      "surface": "storage layer",
+      "paths": [
+        "src/lib/storage"
+      ],
+      "generated_artifacts": [
+        "dist"
+      ],
+      "refresh_with": [
+        "yarn workspace @webex/webex-core build:src"
+      ],
+      "validate_with": [
+        "yarn workspace @webex/webex-core test:unit"
+      ]
+    },
+    {
+      "surface": "module specifications",
+      "paths": [
+        "src/docs/README.md",
+        "src/interceptors/docs/README.md",
+        "src/lib/credentials/docs/README.md",
+        "src/lib/services/docs/README.md",
+        "src/lib/services-v2/docs/README.md",
+        "src/lib/storage/docs/README.md"
+      ],
+      "generated_artifacts": [],
+      "refresh_with": [],
+      "validate_with": [
+        "Run the active Repo Annotation installation's spec-drift-changed skill on the current diff"
+      ]
+    },
+    {
+      "surface": "package standing documentation",
+      "paths": [
+        "docs/index.md",
+        "docs/architecture.md",
+        "docs/getting-started.md",
+        "docs/specs/README.md",
+        "docs/adr/index.md",
+        "AGENTS.md"
+      ],
+      "generated_artifacts": [],
+      "refresh_with": [],
+      "validate_with": [
+        "Run the active Repo Annotation installation's check_spec_index.py and check_repo_context.py against this package"
+      ]
+    },
+    {
+      "surface": "unit test suite",
+      "paths": [
+        "test/unit/spec"
+      ],
+      "generated_artifacts": [],
+      "refresh_with": [],
+      "validate_with": [
+        "yarn workspace @webex/webex-core test:unit"
+      ]
+    },
+    {
+      "surface": "SDD routing and coverage state",
+      "paths": [
+        ".sdd/manifest.json"
+      ],
+      "generated_artifacts": [],
+      "refresh_with": [],
+      "validate_with": [
+        "Run the active Repo Annotation installation's check_manifest.py against this package"
+      ]
+    }
+  ],
+  "generated_artifacts": [
+    {
+      "path": ".sdd/templates/repo-standards/template-map.json",
+      "generated_from": "WebexTools/repo-standards@d89a7fe59126ae3ad9bac9ca352aa7f12b4c85dc",
+      "refresh_with": "Run the active Repo Annotation installation's setup-skills.sh against the workspace root; the snapshot is shared at the repository root and not copied into this package"
+    },
+    {
+      "path": "dist",
+      "generated_from": "src",
+      "refresh_with": "yarn workspace @webex/webex-core build:src"
+    }
+  ],
+  "validation_matrix": [
+    {
+      "paths": [
+        "src"
+      ],
+      "minimum": [
+        "yarn workspace @webex/webex-core test:unit"
+      ],
+      "recommended": [
+        "yarn workspace @webex/webex-core test:style",
+        "yarn workspace @webex/webex-core build:src"
+      ]
+    },
+    {
+      "paths": [
+        "test/unit/spec"
+      ],
+      "minimum": [
+        "yarn workspace @webex/webex-core test:unit"
+      ],
+      "recommended": []
+    },
+    {
+      "paths": [
+        "package.json",
+        "jest.config.js",
+        "babel.config.js",
+        ".eslintrc.js"
+      ],
+      "minimum": [
+        "yarn workspace @webex/webex-core test:unit"
+      ],
+      "recommended": [
+        "yarn workspace @webex/webex-core test:style",
+        "yarn workspace @webex/webex-core build:src"
+      ]
+    },
+    {
+      "paths": [
+        "src/docs/README.md",
+        "src/interceptors/docs/README.md",
+        "src/lib/credentials/docs/README.md",
+        "src/lib/services/docs/README.md",
+        "src/lib/services-v2/docs/README.md",
+        "src/lib/storage/docs/README.md",
+        "docs",
+        "AGENTS.md",
+        ".sdd/manifest.json"
+      ],
+      "minimum": [
+        "Run the active Repo Annotation installation's check_manifest.py, check_spec_index.py, and check_repo_context.py against this package"
+      ],
+      "recommended": [
+        "Run the active Repo Annotation installation's spec-drift-changed skill on the current diff"
+      ]
+    }
+  ],
+  "change_impact": [
+    {
+      "paths": [
+        "src/index.js",
+        "src/webex-core.js",
+        "src/config.js"
+      ],
+      "affects": [
+        "@webex/webex-core consumers: every workspace plugin that registers with WebexCore",
+        "@webex/webex",
+        "@webex/plugin-meetings",
+        "@webex/internal-plugin-mercury",
+        "@webex/internal-plugin-device",
+        "external npm consumers of @webex/webex-core"
+      ],
+      "refresh_with": [
+        "yarn workspace @webex/webex-core build:src"
+      ],
+      "validate_with": [
+        "yarn workspace @webex/webex-core test:unit"
+      ],
+      "avoid_direct_edits": [
+        "dist"
+      ],
+      "notes": "Any change to an exported name, event name, config key or the interceptor order is a published surface change; update the owning module specification in the same commit."
+    },
+    {
+      "paths": [
+        "src/lib/credentials",
+        "src/credentials-config.js"
+      ],
+      "affects": [
+        "@webex/plugin-authorization-browser",
+        "@webex/plugin-authorization-node",
+        "@webex/internal-plugin-metrics",
+        "@webex/contact-center"
+      ],
+      "refresh_with": [
+        "yarn workspace @webex/webex-core build:src"
+      ],
+      "validate_with": [
+        "yarn workspace @webex/webex-core test:unit"
+      ],
+      "avoid_direct_edits": [
+        "dist"
+      ],
+      "notes": "Tokens are persisted as plaintext; treat logging or persistence changes as security-sensitive."
+    },
+    {
+      "paths": [
+        "src/lib/storage"
+      ],
+      "affects": [
+        "@webex/storage-adapter-local-storage",
+        "@webex/storage-adapter-session-storage",
+        "@webex/storage-adapter-local-forage",
+        "@webex/internal-plugin-device",
+        "@webex/internal-plugin-user"
+      ],
+      "refresh_with": [
+        "yarn workspace @webex/webex-core build:src"
+      ],
+      "validate_with": [
+        "yarn workspace @webex/webex-core test:unit"
+      ],
+      "avoid_direct_edits": [
+        "dist"
+      ]
+    },
+    {
+      "paths": [
+        ".sdd/manifest.json"
+      ],
+      "affects": [
+        "docs/specs/README.md",
+        "docs/architecture.md",
+        "src/docs/README.md",
+        "src/interceptors/docs/README.md",
+        "src/lib/credentials/docs/README.md",
+        "src/lib/services/docs/README.md",
+        "src/lib/services-v2/docs/README.md",
+        "src/lib/storage/docs/README.md"
+      ],
+      "refresh_with": [],
+      "validate_with": [
+        "Run the active Repo Annotation installation's check_manifest.py and check_spec_index.py against this package"
+      ],
+      "avoid_direct_edits": [
+        ".sdd/templates/repo-standards"
+      ],
+      "notes": "The manifest is authoritative for module routing, coverage state, contracts and artifact decisions; the specification registry is its human-readable mirror."
+    },
+    {
+      "paths": [
+        "package.json"
+      ],
+      "affects": [
+        ".repo-context.json",
+        ".sdd/manifest.json",
+        "docs/getting-started.md",
+        "AGENTS.md"
+      ],
+      "refresh_with": [],
+      "validate_with": [
+        "Run the active Repo Annotation installation's check_repo_context.py against this package"
+      ],
+      "avoid_direct_edits": [
+        "dist"
+      ],
+      "notes": "Command strings are duplicated between the manifest and this context by contract and must stay identical."
+    }
+  ],
+  "glossary": [
+    {
+      "term": "supertoken",
+      "definition": "The user's top-level OAuth token set from which scoped user tokens are downscoped.",
+      "notes": "Held by the credentials module and persisted through the storage layer."
+    },
+    {
+      "term": "U2C",
+      "definition": "The service-discovery API that returns the hostmap of Webex service URLs.",
+      "notes": "The discovery URL is configured in src/config.js."
+    },
+    {
+      "term": "catalog",
+      "definition": "The service-name to host mapping the services plugins hold, grouped as preauth, postauth, signin and discovery.",
+      "notes": "Lookup precedence differs between name and URL lookups in v1."
+    },
+    {
+      "term": "interceptor",
+      "definition": "A request/response hook run in a fixed chain assembled by WebexCore.",
+      "notes": "config.interceptors replaces the whole chain."
+    },
+    {
+      "term": "bounded and unbounded storage",
+      "definition": "The two store instances configured by storage.boundedAdapter and storage.unboundedAdapter.",
+      "notes": "@persist writes only to the bounded store."
+    }
+  ],
+  "evidence_rules": [
+    {
+      "claim_category": "command_name",
+      "sources": [
+        "package.json"
+      ],
+      "requirement": "Emit a command only when its script exists in package.json and uses the workspace-scoped invocation.",
+      "notes": "The aggregate test script needs live services and test users; do not present it as a quick check."
+    },
+    {
+      "claim_category": "import_path",
+      "sources": [
+        "src/index.js",
+        "package.json"
+      ],
+      "requirement": "Emit an export name only when it is re-exported by src/index.js and reachable through the entry point declared by main or devMain."
+    },
+    {
+      "claim_category": "behavior_claim",
+      "sources": [
+        "src",
+        "test/unit/spec"
+      ],
+      "requirement": "Ground every behavior claim in the implementation and state separately whether a test observes it.",
+      "notes": "Commit history is not acceptable rationale evidence for this package."
+    },
+    {
+      "claim_category": "placeholder_token",
+      "sources": [
+        ".sdd/templates/repo-standards/template-map.json"
+      ],
+      "requirement": "Never ship a template placeholder in a generated document; replace it with verified repository evidence or surface the gap as a blocking question."
+    }
+  ],
+  "negative_guidance": [
+    {
+      "rule": "Do not reorder the imports in src/index.js.",
+      "why": "Services and credentials must initialize inside core before consumer plugins register."
+    },
+    {
+      "rule": "Do not treat the README storage example as current.",
+      "why": "It documents storage.adapter and webex.storage, which the code does not implement; the code uses boundedAdapter/unboundedAdapter."
+    },
+    {
+      "rule": "Do not assume services-v2 is active.",
+      "why": "It is exported but registered only when a host calls registerInternalPlugin with replace."
+    },
+    {
+      "rule": "Do not log or persist tokens in new ways.",
+      "why": "Tokens are already persisted as plaintext JSON; every additional sink widens exposure."
+    },
+    {
+      "rule": "Do not cite commit or pull-request history as rationale for current behavior.",
+      "why": "The owner directed that onboarding evidence come from the working tree only."
+    },
+    {
+      "rule": "Do not publish a Repo Standards template out of .sdd/templates into docs.",
+      "why": "Authoring templates stay hidden; only instantiated, repository-grounded documents belong in the visible documentation tree."
+    }
+  ],
+  "confidence_policy": {
+    "high": {
+      "action": "update",
+      "expectation": "The claim is backed by source and tests and the affected specification sections are updated in the same change."
+    },
+    "medium": {
+      "action": "narrow-scope",
+      "expectation": "Implementation evidence exists but no test observes the behavior. Record the gap in the Verification section rather than asserting verified coverage."
+    },
+    "low": {
+      "action": "noop",
+      "expectation": "Neither code nor tests establish the fact. Stop and ask the package owner; do not fall back to commit history or a plausible default."
+    }
+  },
+  "repository_topology": {
+    "main_entrypoints": [
+      {
+        "name": "package entry point",
+        "path": "src/index.js",
+        "purpose": "Barrel declaring the entire public surface and loading the core plugins in a fixed order.",
+        "notes": "Workspace consumers resolve it through devMain; published consumers resolve dist through main."
+      }
+    ],
+    "workspace_packages": [
+      {
+        "name": "@webex/webex-core",
+        "paths": [
+          "package.json"
+        ],
+        "notes": "One published library package inside the Webex JS SDK yarn workspace."
+      }
+    ],
+    "source_surfaces": [
+      {
+        "name": "module source",
+        "paths": [
+          "src"
+        ],
+        "notes": "Root module plus interceptors, credentials, services, services-v2 and storage children."
+      },
+      {
+        "name": "tests",
+        "paths": [
+          "test/unit",
+          "test/integration",
+          "test/fixtures"
+        ],
+        "notes": "Unit tests mirror the src layout; integration tests need test users and live services."
+      },
+      {
+        "name": "inherited configuration",
+        "paths": [
+          "jest.config.js",
+          "babel.config.js",
+          ".eslintrc.js",
+          "process"
+        ],
+        "notes": "Re-export shared workspace configuration; process is a browser shim."
+      }
+    ],
+    "generated_surfaces": [
+      {
+        "name": "Repo Standards template snapshot",
+        "paths": [
+          ".sdd/templates/repo-standards"
+        ],
+        "generated_from": "WebexTools/repo-standards@d89a7fe59126ae3ad9bac9ca352aa7f12b4c85dc",
+        "refresh_with": "Run the active Repo Annotation installation's setup-skills.sh against the workspace root",
+        "notes": "Shared at the workspace root and deliberately not copied into this package."
+      },
+      {
+        "name": "build output",
+        "paths": [
+          "dist"
+        ],
+        "generated_from": "src",
+        "refresh_with": "yarn workspace @webex/webex-core build:src",
+        "notes": "Ignored by version control and never edited directly."
+      }
+    ],
+    "sync_paths": [
+      {
+        "source": "WebexTools/repo-standards@d89a7fe59126ae3ad9bac9ca352aa7f12b4c85dc",
+        "targets": [
+          ".sdd/templates/repo-standards"
+        ],
+        "mechanism": "Run the active Repo Annotation installation's setup-skills.sh against the workspace root",
+        "notes": "The snapshot is checksum-verified against the bundled upstream inventory before it is applied."
+      }
+    ],
+    "validation_entrypoints": [
+      {
+        "name": "unit tests",
+        "command": "yarn workspace @webex/webex-core test:unit",
+        "scope": "Interceptors, credentials, services, storage and plugin-host behavior.",
+        "notes": "Coverage collection is disabled by the resolved jest configuration, so no threshold gates this package."
+      },
+      {
+        "name": "lint",
+        "command": "yarn workspace @webex/webex-core test:style",
+        "scope": "ESLint over src, using the shared workspace rule set."
+      },
+      {
+        "name": "build",
+        "command": "yarn workspace @webex/webex-core build:src",
+        "scope": "Transpilation of js and ts sources for the published artifact."
+      }
+    ]
+  },
+  "surface_owners": [
+    {
+      "surface": "plugin host, interceptors, credentials, services and storage",
+      "owner": "Cisco Webex for Developers",
+      "edit_boundary": "A change to an exported surface must update the owning module specification in the same commit."
+    },
+    {
+      "surface": "module specifications and standing documentation",
+      "owner": "Cisco Webex for Developers",
+      "edit_boundary": "Generated from the Repo Standards templates and routed by .sdd/manifest.json. Edit generated documents in place; never edit the hidden templates."
+    },
+    {
+      "surface": "build, lint, and test configuration",
+      "owner": "Webex JS SDK workspace",
+      "edit_boundary": "Owned by the shared @webex legacy config packages; change the shared configuration instead."
+    },
+    {
+      "surface": "release, changelog, contribution policy, and security policy",
+      "owner": "Webex JS SDK workspace root",
+      "edit_boundary": "Not owned by this package. It intentionally ships no CHANGELOG.md, CONTRIBUTING.md, or SECURITY.md."
+    }
+  ],
+  "do_not_edit": [
+    "dist",
+    ".sdd/templates/repo-standards"
+  ],
+  "marker_scopes": {
+    "sdd-generated-metadata": [
+      "AGENTS.md",
+      "docs/index.md",
+      "docs/architecture.md",
+      "docs/getting-started.md",
+      "docs/specs/README.md",
+      "docs/adr/index.md",
+      "src/docs/README.md",
+      "src/interceptors/docs/README.md",
+      "src/lib/credentials/docs/README.md",
+      "src/lib/services/docs/README.md",
+      "src/lib/services-v2/docs/README.md",
+      "src/lib/storage/docs/README.md"
+    ]
+  },
+  "fallback_rules": [
+    "When code and this context disagree, the code wins; correct the context and the affected specification sections in the same change.",
+    "When a fact cannot be established from source, tests or package.json, stop and ask the package owner rather than inferring it from commit history.",
+    "When a required command is missing, say so and stop; do not substitute a plausible alternative.",
+    "When a change would alter the published export surface, treat it as breaking until a dependent-package review proves otherwise."
+  ],
+  "downstream_context_pack": {
+    "required_human_surfaces": [
+      "README.md",
+      "docs/index.md",
+      "docs/getting-started.md",
+      "docs/architecture.md"
+    ],
+    "required_agent_operational_surfaces": [
+      "AGENTS.md",
+      "docs/specs/README.md",
+      "src/docs/README.md"
+    ],
+    "required_machine_readable_surface": ".repo-context.json",
+    "recommended_machine_readable_sections": [
+      "public_interfaces",
+      "source_of_truth",
+      "generated_artifacts",
+      "validation_matrix",
+      "change_impact",
+      "glossary",
+      "evidence_rules",
+      "negative_guidance",
+      "confidence_policy",
+      "repository_topology",
+      "surface_owners"
+    ]
+  }
+}

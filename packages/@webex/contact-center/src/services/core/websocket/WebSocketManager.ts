@@ -5,8 +5,14 @@ import {ConnectionLostDetails} from './types';
 import {CC_EVENTS, SubscribeResponse, WelcomeResponse} from '../../config/types';
 import LoggerProxy from '../../../logger-proxy';
 import workerScript from './keepalive.worker';
-import {KEEPALIVE_WORKER_INTERVAL, CLOSE_SOCKET_TIMEOUT, METHODS} from '../constants';
+import {
+  KEEPALIVE_WORKER_INTERVAL,
+  CLOSE_SOCKET_TIMEOUT,
+  METHODS,
+  ALLOWED_ROUTING_NOTIFS_DOMAINS,
+} from '../constants';
 import {WEB_SOCKET_MANAGER_FILE} from '../../../constants';
+import {isAllowedUrlHost} from '../Utils';
 
 /**
  * WebSocketManager handles the WebSocket connection for Contact Center operations.
@@ -107,7 +113,25 @@ export class WebSocketManager extends EventEmitter {
         body: connectionConfig,
         headers: isIntEnv && orgId ? {'X-ORGANIZATION-ID': orgId} : undefined,
       });
-      this.url = subscribeResponse.body.webSocketUrl;
+      const {webSocketUrl} = subscribeResponse.body;
+
+      // Only a `wss` URL whose hostname is, or is a subdomain of, one of the allow-listed
+      // RoutingNotifs domains is considered trusted.
+      let isWssUrl = false;
+
+      try {
+        isWssUrl = !!webSocketUrl && new URL(webSocketUrl).protocol === 'wss:';
+      } catch (error) {
+        isWssUrl = false;
+      }
+
+      if (!isWssUrl || !isAllowedUrlHost(webSocketUrl, ALLOWED_ROUTING_NOTIFS_DOMAINS)) {
+        throw new Error(
+          'Rejected webSocketUrl from RoutingNotifs registration: scheme or host not allow-listed'
+        );
+      }
+
+      this.url = webSocketUrl;
     } catch (e) {
       LoggerProxy.error(
         `Register API Failed, Request to RoutingNotifs websocket registration API failed ${e}`,

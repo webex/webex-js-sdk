@@ -92,7 +92,7 @@ const webex = new WebexCore({
 
 The default configuration includes the following service urls:
 
-- `U2C_SERVICE_URL` [U2C] - `https://u2c.wbx2.com/u2c/api/v1`
+- `U2C_SERVICE_URL` [U2C] - `https://u2c.svc.webex.com/u2c/api/v1`
 - `HYDRA_SERVICE_URL` [Hydra] - `https://webexapis.com/v1`
 - `SQDISCOVERY_SERVICE_URL` [SQDISCOVERY] - `https://ds.ciscospark.com/v1/region`
 
