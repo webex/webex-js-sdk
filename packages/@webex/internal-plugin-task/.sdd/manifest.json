@@ -8,7 +8,7 @@
       "javascript"
     ]
   },
-  "topology": "Single-repo",
+  "topology": "Orchestrator-plus-components",
   "commands": {
     "install": {
       "command": "yarn install",
@@ -342,7 +342,12 @@
       "canonical": ".sdd/templates/repo-standards"
     },
     "repo_skills_root": ".sdd/skills",
-    "contract_index_path": "docs/architecture.md"
+    "contract_index_path": "docs/architecture.md",
+    "monorepo_package": {
+      "package_path": "packages/@webex/internal-plugin-task",
+      "root_manifest_path": "../../../.sdd/manifest.json",
+      "templates_root_path": "../../../.sdd/templates/repo-standards"
+    }
   },
   "coverage_ratchet": {
     "enabled": true,
@@ -356,7 +361,7 @@
       "@webex/jest-config-legacy via jest.config.js",
       "@webex/legacy-tools build and test runner via package.json",
       "package README.md",
-      "Repo Standards 0.3.0 templates at the JS SDK root .sdd/templates/repo-standards; the Repo Annotation checkers and validator reach them through a temporary, uncommitted local symlink at .sdd/templates/repo-standards"
+      "Repo Standards 0.3.0 templates at the monorepo root .sdd/templates/repo-standards, referred to through layout.monorepo_package.templates_root_path; the package holds no templates"
     ],
     "compliance_tier": "baseline"
   },
@@ -380,5 +385,10 @@
     },
     "resolved_by": "claude-cowork (code evidence; bootstrap questionnaire; Codex review on PR 5280)",
     "resolved_at": "2026-10-12T07:56:23Z"
+  },
+  "tooling": {
+    "sdlc_skills": {
+      "source_ref": "repo-annotation@2.3.1"
+    }
   }
 }

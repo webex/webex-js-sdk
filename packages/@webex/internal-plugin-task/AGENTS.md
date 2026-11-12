@@ -3,8 +3,8 @@ doc_kind: agent-entry
 generated_from: agents@0.3.0
 generated_by: claude-cowork
 approved_by: akulakum@cisco.com
-updated_at: 2026-10-15T03:55:32Z
-validation_status: pass-with-warnings
+updated_at: 2026-11-12T12:47:05Z
+validation_status: pending
 -->
 
 # AI Agent Instructions
@@ -81,9 +81,9 @@ Definition of done:
 | ---------------- | ------- | ------- |
 | Language runtime | node | 22.14 for development (workspace root `AGENTS.md`); `>=18` for consumers (`package.json` engines) |
 | Package manager  | Yarn through Corepack | Pinned by the workspace root `packageManager` field |
-| Build tool       | `@webex/legacy-tools` over babel | `@babel/core` `^7.17.10` |
-| Test framework   | Jest via `webex-legacy-tools` (`test:unit`); mocha (`test:integration`); karma (`test:browser`) | workspace versions; `sinon` `^9.2.4` |
-| Lint/format      | eslint via `@webex/eslint-config-legacy`, prettier | eslint `^8.24.0`, prettier `^2.7.1` |
+| Build tool       | `@webex/legacy-tools` over babel | `@babel/core` version in `package.json` `devDependencies` |
+| Test framework   | Jest via `webex-legacy-tools` (`test:unit`); mocha (`test:integration`); karma (`test:browser`) | workspace versions; `sinon` version in `package.json` `devDependencies` |
+| Lint/format      | eslint via `@webex/eslint-config-legacy`, prettier | eslint and prettier versions in `package.json` `devDependencies` |
 
 ### Project Map
 
@@ -201,7 +201,6 @@ PR checklist:
 - Bypass required checks by disabling tests or linters.
 - Rewrite history on shared branches.
 - Change unrelated files "while here" without clear need.
-- Copy template bodies or `template-map.json` into this package, or commit anything under
-  `.sdd/templates/`. The repository-root `.sdd/templates/repo-standards` snapshot is the only
-  template source. The Repo Annotation checkers and validator expect a temporary, uncommitted
-  local symlink to it at `.sdd/templates/repo-standards`, which is removed before a PR.
+- Add a `.sdd/templates` directory, a copy of the templates, or a link to them in this package. The
+  templates live once at the monorepo root, `../../../.sdd/templates/repo-standards`, and
+  `.sdd/manifest.json` refers to them.
