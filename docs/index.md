@@ -48,6 +48,7 @@ package owns its architecture, specifications, and decisions beside its code. Th
 | `@webex/plugin-people` | `packages/@webex/plugin-people/` | [AGENTS.md](../packages/@webex/plugin-people/AGENTS.md) | [docs/index.md](../packages/@webex/plugin-people/docs/index.md) | [.sdd/manifest.json](../packages/@webex/plugin-people/.sdd/manifest.json) |
 | `@webex/plugin-presence` | `packages/@webex/plugin-presence/` | [AGENTS.md](../packages/@webex/plugin-presence/AGENTS.md) | [docs/index.md](../packages/@webex/plugin-presence/docs/index.md) | [.sdd/manifest.json](../packages/@webex/plugin-presence/.sdd/manifest.json) |
 | `@webex/plugin-rooms` | `packages/@webex/plugin-rooms/` | [AGENTS.md](../packages/@webex/plugin-rooms/AGENTS.md) | [docs/index.md](../packages/@webex/plugin-rooms/docs/index.md) | [.sdd/manifest.json](../packages/@webex/plugin-rooms/.sdd/manifest.json) |
+| `@webex/plugin-teams` | `packages/@webex/plugin-teams/` | [AGENTS.md](../packages/@webex/plugin-teams/AGENTS.md) | [docs/index.md](../packages/@webex/plugin-teams/docs/index.md) | [.sdd/manifest.json](../packages/@webex/plugin-teams/.sdd/manifest.json) |
 <!-- sdd-package-routing:end -->
 
 ## Decisions
