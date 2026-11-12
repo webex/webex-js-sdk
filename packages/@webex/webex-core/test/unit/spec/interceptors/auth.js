@@ -239,7 +239,7 @@ describe('webex-core', () => {
         beforeEach(() => {
           services = {
             hydra: 'https://hydra-a.wbx.com',
-            u2c: 'https://u2c.wbx2.com/u2c/api/v1',
+            u2c: 'https://u2c.svc.webex.com/u2c/api/v1',
             example: 'https://service.example.com',
           };
 
