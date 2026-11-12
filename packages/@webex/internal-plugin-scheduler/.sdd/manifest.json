@@ -227,9 +227,9 @@
     "generator_run_id": "spark-853128-scheduler-sdd-stage0-2026-10-12",
     "validator_runtime": "current-session",
     "validator_runtime_source": "invocation-input",
-    "validator_run_id": "spark-853128-scheduler-spec-validator-2026-10-15-round-5",
+    "validator_run_id": "spark-853128-scheduler-spec-validator-2026-11-12-round-6",
     "runtime_fallback_tier": "different-runtime",
-    "source_commit": "c095bb52afb0a1c5e6b17346c0c2b09a4c78a949",
+    "source_commit": "b4906d131159d156ff5b830ec8e42dda117688b2",
     "minimum_independence": "different-runtime",
     "blocking_severities": [
       "Blocking"
