@@ -41,6 +41,7 @@ export {default, registerPlugin, registerInternalPlugin} from './webex-core';
 export {default as WebexHttpError} from './lib/webex-http-error';
 export {default as StatelessWebexPlugin} from './lib/stateless-webex-plugin';
 export {default as WebexPlugin} from './lib/webex-plugin';
+export {default as StaticAssetLoader} from './lib/static-asset-loader';
 export {default as AuthInterceptor} from './interceptors/auth';
 export {default as CatalogUrlInterceptor} from './interceptors/catalog-url';
 export {default as NetworkTimingInterceptor} from './interceptors/network-timing';

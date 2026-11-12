@@ -97,6 +97,26 @@ describe('plugin-mercury', () => {
       });
     });
 
+    describe('#backoffCall', () => {
+      it('returns undefined when no primary connection retry is active', () => {
+        assert.isUndefined(mercuryPlugin.backoffCall);
+      });
+
+      it('returns the primary Mercury connection retry controller', () => {
+        const backoffCall = {getNumRetries: sinon.stub().returns(2)};
+
+        mercuryPlugin._mercury.backoffCall = backoffCall;
+
+        assert.equal(mercuryPlugin.backoffCall, backoffCall);
+      });
+
+      it('returns undefined when _mercury is undefined', () => {
+        mercuryPlugin._mercury = undefined;
+
+        assert.isUndefined(mercuryPlugin.backoffCall);
+      });
+    });
+
     describe('#localClusterServiceUrls', () => {
       it('returns undefined when not set', () => {
         assert.isUndefined(mercuryPlugin.localClusterServiceUrls);
