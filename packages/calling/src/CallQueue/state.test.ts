@@ -78,6 +78,32 @@ describe('call queue state', () => {
       expect(parseCallQueueSettings({status: 'ok'})).toBeUndefined();
       expect(parseCallQueueSettings(null)).toBeUndefined();
     });
+
+    it('does not invent an agent state when it is absent', () => {
+      const body = {queues: [{id: 'queue-1', available: true}]};
+      expect(parseCallQueueSettings(body)).toBeUndefined();
+      expect(parseCallQueueSettings(body, {acdState: ACD_STATE.UNAVAILABLE, queues: []})).toEqual({
+        acdState: ACD_STATE.UNAVAILABLE,
+        queues: body.queues,
+      });
+      expect(
+        parseCallQueueSettings(
+          {agentACDState: 'bad', queues: []},
+          {
+            acdState: ACD_STATE.AVAILABLE,
+            queues: [],
+          }
+        )
+      ).toBeUndefined();
+    });
+
+    it('retains a queue when the optional availability field is absent', () => {
+      const parsed = parseCallQueueSettings({
+        agentACDState: 'AVAILABLE',
+        queues: [{id: 'queue-1', extension: '4000'}],
+      });
+      expect(parsed?.queues).toEqual([{id: 'queue-1', extension: '4000'}]);
+    });
   });
 
   describe('queue catalog names', () => {
@@ -160,6 +186,47 @@ describe('call queue state', () => {
     it('ignores an event with no state and no queues', () => {
       expect(applyCallQueueEvent(current, 'state', {data: {eventType: 'heartbeat'}})).toBe(current);
       expect(applyCallQueueEvent(current, 'state', null)).toBe(current);
+    });
+
+    it('applies a documented agent sync with joinInfo while preserving known metadata', () => {
+      const next = applyCallQueueEvent(current, 'sync', {
+        data: {
+          acdStateInfo: {state: 'unavailable'},
+          joinInfo: [{queueId: 'queue-2', status: 'joined'}],
+        },
+      });
+      expect(next).toEqual({
+        acdState: ACD_STATE.UNAVAILABLE,
+        queues: [{id: 'queue-2', name: 'Support', available: true, allowLogOffEnabled: true}],
+      });
+    });
+
+    it.each([
+      ['joined', true],
+      ['unjoined', false],
+    ])('maps a %s join event to queue availability', (status, available) => {
+      const next = applyCallQueueEvent(current, 'join', {
+        data: {joinInfo: [{queueId: 'queue-2', status}]},
+      });
+      expect(next?.queues).toEqual([current.queues[0], {...current.queues[1], available}]);
+    });
+
+    it('removes unassigned queues and ignores unrecognized join statuses', () => {
+      const removed = applyCallQueueEvent(current, 'join', {
+        data: {joinInfo: [{queueId: 'queue-1', status: 'unassigned'}]},
+      });
+      expect(removed?.queues).toEqual([current.queues[1]]);
+      expect(
+        applyCallQueueEvent(current, 'join', {
+          data: {joinInfo: [{queueId: 'queue-1', status: 'other'}]},
+        })
+      ).toBe(current);
+    });
+
+    it('accepts top-level state in a Mercury data envelope', () => {
+      expect(applyCallQueueEvent(current, 'state', {data: {state: 'unavailable'}})?.acdState).toBe(
+        ACD_STATE.UNAVAILABLE
+      );
     });
   });
 });

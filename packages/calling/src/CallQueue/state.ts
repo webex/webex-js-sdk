@@ -52,10 +52,13 @@ function readQueue(value: unknown): CallQueue | undefined {
   const record = value as Record<string, unknown>;
   const id = readString(record.id);
   const available = readBoolean(record.available);
-  if (!id || available === undefined) {
+  if (!id) {
     return undefined;
   }
-  const queue: CallQueue = {id, available};
+  const queue: CallQueue = {id};
+  if (available !== undefined) {
+    queue.available = available;
+  }
   const name = readString(record.name);
   const phoneNumber = readString(record.phoneNumber);
   const extension = readString(record.extension);
@@ -167,26 +170,27 @@ export function applyQueueNames(
 /**
  * Reads a GET/PATCH body. Returns undefined when the body is not a queue settings document.
  */
-export function parseCallQueueSettings(body: unknown): CallQueueAgentStatus | undefined {
+export function parseCallQueueSettings(
+  body: unknown,
+  previous?: CallQueueAgentStatus
+): CallQueueAgentStatus | undefined {
   if (!body || typeof body !== 'object') {
     return undefined;
   }
   const record = body as Record<string, unknown>;
-  const acdState = normalizeAcdState(readString(record.agentACDState));
-  if (!Array.isArray(record.queues) && !acdState) {
+  const rawState = readString(record.agentACDState);
+  const acdState = record.agentACDState == null ? previous?.acdState : normalizeAcdState(rawState);
+  if ((!Array.isArray(record.queues) && !rawState) || !acdState) {
     return undefined;
   }
   const queues = Array.isArray(record.queues)
     ? record.queues.map(readQueue).filter((queue): queue is CallQueue => Boolean(queue))
-    : [];
+    : previous?.queues ?? [];
 
-  return {
-    acdState: acdState ?? ACD_STATE.SIGN_OUT,
-    queues,
-  };
+  return {acdState, queues};
 }
 
-function unwrapPayload(event: unknown): TelephonyAgentPayload | undefined {
+export function unwrapAgentPayload(event: unknown): TelephonyAgentPayload | undefined {
   if (!event || typeof event !== 'object') {
     return undefined;
   }
@@ -218,21 +222,56 @@ export function applyCallQueueEvent(
   kind: CallQueueEventKind,
   event: unknown
 ): CallQueueAgentStatus | undefined {
-  const payload = unwrapPayload(event);
+  const payload = unwrapAgentPayload(event);
   if (!payload) {
     return current;
   }
-  const acdState = normalizeAcdState(payload.agentACDState ?? payload.acdStateInfo?.state);
+  const acdState = normalizeAcdState(
+    payload.agentACDState ?? payload.acdStateInfo?.state ?? payload.state
+  );
   const incomingQueues = Array.isArray(payload.queues)
     ? payload.queues.map(readQueue).filter((queue): queue is CallQueue => Boolean(queue))
     : undefined;
-  if (!acdState && !incomingQueues) {
+  const joinUpdates = Array.isArray(payload.joinInfo)
+    ? payload.joinInfo.flatMap((entry) => {
+        const id = readString(entry?.queueId);
+        const status = readString(entry?.status)?.toLowerCase().trim();
+        if (!id || !status || !['joined', 'unjoined', 'unassigned'].includes(status)) {
+          return [];
+        }
+
+        return [{id, status}];
+      })
+    : undefined;
+  const hasJoinUpdates =
+    joinUpdates !== undefined && (payload.joinInfo?.length === 0 || joinUpdates.length > 0);
+  if (!acdState && !incomingQueues && !hasJoinUpdates) {
     return current;
   }
   const base = current ?? INITIAL_STATUS;
   let queues = base.queues;
   if (incomingQueues) {
     queues = kind === 'sync' ? incomingQueues : mergeQueues(base.queues, incomingQueues);
+  }
+  if (hasJoinUpdates && joinUpdates) {
+    const currentById = new Map(base.queues.map((queue) => [queueIdKey(queue.id), queue]));
+    const joined = joinUpdates.flatMap(({id, status}) => {
+      if (status === 'unassigned') return [];
+      const previous = currentById.get(queueIdKey(id));
+
+      return [{...previous, id: previous?.id ?? id, available: status === 'joined'}];
+    });
+    if (kind === 'sync') {
+      queues = joined;
+    } else {
+      const removed = new Set(
+        joinUpdates.filter(({status}) => status === 'unassigned').map(({id}) => queueIdKey(id))
+      );
+      queues = mergeQueues(
+        queues.filter((queue) => !removed.has(queueIdKey(queue.id))),
+        joined
+      );
+    }
   }
 
   return {

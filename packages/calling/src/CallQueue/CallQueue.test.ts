@@ -16,6 +16,15 @@ const mercuryHandlers = new Map<string, (event?: unknown) => void>(
   (webex.internal.mercury.on as jest.Mock).mock.calls.map((call) => [call[0], call[1]])
 );
 
+function deferredResponse() {
+  let resolve!: (value: WebexRequestPayload) => void;
+  const promise = new Promise<WebexRequestPayload>((done) => {
+    resolve = done;
+  });
+
+  return {promise, resolve};
+}
+
 describe('CallQueue client', () => {
   beforeEach(() => {
     jest.spyOn(utils, 'uploadLogs').mockResolvedValue();
@@ -28,9 +37,10 @@ describe('CallQueue client', () => {
   it('registers Mercury listeners for telephony agent sync, state, and join', () => {
     expect(Array.from(mercuryHandlers.keys())).toEqual(
       expect.arrayContaining([
-        MOBIUS_EVENT_KEYS.TELEPHONY_AGENT_SYNC,
-        MOBIUS_EVENT_KEYS.TELEPHONY_AGENT_STATE,
-        MOBIUS_EVENT_KEYS.TELEPHONY_AGENT_JOIN,
+        'event:telephony_agents.sync',
+        'event:telephony_agents.state',
+        'event:telephony_agents.join',
+        'event:telephony_agent.sync',
       ])
     );
   });
@@ -327,10 +337,377 @@ describe('CallQueue client', () => {
     expect(webex.request).toHaveBeenCalledWith({
       uri: `${HYDRA}telephony/calls/sync/invoke`,
       method: HTTP_METHODS.POST,
-      body: {wdmDeviceId: 'c5ae3b86-1bb7-40f1-a6a9-c296ee7e61d5'},
+      body: {
+        wdmUrl: webex.internal.device.url,
+        resources: [{resource: 'telephony_agents'}],
+      },
     });
     expect(response.statusCode).toBe(204);
     expect(response.message).toBe('SUCCESS');
+  });
+
+  it('rejects sync without a registered device URL', async () => {
+    const original = webex.internal.device.url;
+    try {
+      webex.internal.device.url = '';
+      const response = await client.syncTelephonyCalls();
+      expect(response.statusCode).toBe(400);
+      expect(webex.request).not.toHaveBeenCalled();
+    } finally {
+      webex.internal.device.url = original;
+    }
+  });
+
+  it('scopes virtual-line events and ignores events for another person', async () => {
+    const lineId = '36d87d6c-7531-4b2f-a4ef-d71e6aacb86f';
+    const scoped = createCallQueueClient(webex, {level: LOGGER.INFO});
+    const listener = jest.fn();
+    scoped.on(COMMON_EVENT_KEYS.CALL_QUEUE_UPDATED, listener);
+    webex.request.mockResolvedValue(<WebexRequestPayload>(<unknown>{
+      statusCode: 200,
+      body: {agentACDState: 'AVAILABLE', queues: [{id: 'queue-1', name: 'Sales', available: true}]},
+    }));
+    await scoped.getCallQueueSettings(lineId);
+    const handlers = new Map<string, (event?: unknown) => void>(
+      (webex.internal.mercury.on as jest.Mock).mock.calls.map((call) => [call[0], call[1]])
+    );
+    const join = handlers.get(MOBIUS_EVENT_KEYS.TELEPHONY_AGENT_JOIN);
+    join?.({
+      data: {
+        actorType: 'PERSON',
+        actorId: 'a-different-person',
+        joinInfo: [{queueId: 'queue-1', status: 'unjoined'}],
+      },
+    });
+    join?.({
+      data: {
+        actorType: 'PLACE',
+        actorId: lineId,
+        joinInfo: [{queueId: 'queue-1', status: 'unjoined'}],
+      },
+    });
+    expect(listener).not.toHaveBeenCalled();
+    join?.({
+      data: {
+        actorType: 'VIRTUAL_LINE',
+        actorId: btoa(`ciscospark://us/VIRTUAL_LINE/${lineId}`),
+        joinInfo: [{queueId: 'queue-1', status: 'unjoined'}],
+      },
+    });
+    expect(listener).toHaveBeenCalledWith({
+      acdState: ACD_STATE.AVAILABLE,
+      queues: [{id: 'queue-1', name: 'Sales', available: false}],
+      lineOwnerId: lineId,
+    });
+    scoped.dispose();
+  });
+
+  it('refreshes the actual state when a join event arrives before settings have loaded', async () => {
+    const otherWebex = getTestUtilsWebex();
+    const other = createCallQueueClient(otherWebex, {level: LOGGER.INFO});
+    const listener = jest.fn();
+    other.on(COMMON_EVENT_KEYS.CALL_QUEUE_UPDATED, listener);
+    otherWebex.request.mockResolvedValue(<WebexRequestPayload>(<unknown>{
+      statusCode: 200,
+      body: {agentACDState: 'AVAILABLE', queues: [{id: 'queue-1', name: 'Sales', available: true}]},
+    }));
+    const handlers = new Map<string, (event?: unknown) => void>(
+      (otherWebex.internal.mercury.on as jest.Mock).mock.calls.map((call) => [call[0], call[1]])
+    );
+    handlers.get(MOBIUS_EVENT_KEYS.TELEPHONY_AGENT_JOIN)?.({
+      data: {
+        actorType: 'PERSON',
+        actorId: btoa(`ciscospark://us/PEOPLE/${otherWebex.internal.device.userId}`),
+        joinInfo: [{queueId: 'queue-1', status: 'joined'}],
+      },
+    });
+    expect(listener).not.toHaveBeenCalled();
+    await new Promise<void>((resolve) => {
+      setTimeout(resolve, 0);
+    });
+    expect(otherWebex.request).toHaveBeenCalledWith({
+      uri: `${WEBEX_CALLING_GATEWAY_INT}users/me/settings/queues`,
+      method: HTTP_METHODS.GET,
+    });
+    expect(listener).toHaveBeenCalledWith({
+      acdState: ACD_STATE.AVAILABLE,
+      queues: [{id: 'queue-1', name: 'Sales', available: true}],
+    });
+    other.dispose();
+  });
+
+  it('refreshes again when an uncached join event is followed by a state event', async () => {
+    const otherWebex = getTestUtilsWebex();
+    const other = createCallQueueClient(otherWebex, {level: LOGGER.INFO});
+    const listener = jest.fn();
+    other.on(COMMON_EVENT_KEYS.CALL_QUEUE_UPDATED, listener);
+    const first = deferredResponse();
+    const second = deferredResponse();
+    otherWebex.request.mockReturnValueOnce(first.promise).mockReturnValueOnce(second.promise);
+    const handlers = new Map<string, (event?: unknown) => void>(
+      (otherWebex.internal.mercury.on as jest.Mock).mock.calls.map((call) => [call[0], call[1]])
+    );
+    const actorId = otherWebex.internal.device.userId;
+    handlers.get(MOBIUS_EVENT_KEYS.TELEPHONY_AGENT_JOIN)?.({
+      data: {actorType: 'PERSON', actorId, joinInfo: [{queueId: 'queue-1', status: 'joined'}]},
+    });
+    handlers.get(MOBIUS_EVENT_KEYS.TELEPHONY_AGENT_STATE)?.({
+      data: {actorType: 'PERSON', actorId, acdStateInfo: {state: 'unavailable'}},
+    });
+    first.resolve(<WebexRequestPayload>(<unknown>{
+      statusCode: 200,
+      body: {agentACDState: 'AVAILABLE', queues: [{id: 'queue-1', name: 'Sales', available: true}]},
+    }));
+    await new Promise<void>((resolve) => {
+      setTimeout(resolve, 0);
+    });
+    expect(listener).not.toHaveBeenCalled();
+    second.resolve(<WebexRequestPayload>(<unknown>{
+      statusCode: 200,
+      body: {
+        agentACDState: 'UNAVAILABLE',
+        queues: [{id: 'queue-1', name: 'Sales', available: true}],
+      },
+    }));
+    await new Promise<void>((resolve) => {
+      setTimeout(resolve, 0);
+    });
+    expect(listener).toHaveBeenCalledWith({
+      acdState: ACD_STATE.UNAVAILABLE,
+      queues: [{id: 'queue-1', name: 'Sales', available: true}],
+    });
+    other.dispose();
+  });
+
+  it('does not overwrite a newer Mercury state with an older in-flight GET', async () => {
+    const otherWebex = getTestUtilsWebex();
+    const other = createCallQueueClient(otherWebex, {level: LOGGER.INFO});
+    const body = {
+      agentACDState: 'AVAILABLE',
+      queues: [{id: 'queue-1', name: 'Sales', available: true}],
+    };
+    otherWebex.request.mockResolvedValueOnce(<WebexRequestPayload>(
+      (<unknown>{statusCode: 200, body})
+    ));
+    await other.getCallQueueSettings();
+    const oldGet = deferredResponse();
+    otherWebex.request.mockReturnValueOnce(oldGet.promise);
+    const read = other.getCallQueueSettings();
+    const handlers = new Map<string, (event?: unknown) => void>(
+      (otherWebex.internal.mercury.on as jest.Mock).mock.calls.map((call) => [call[0], call[1]])
+    );
+    handlers.get(MOBIUS_EVENT_KEYS.TELEPHONY_AGENT_STATE)?.({
+      data: {actorType: 'PERSON', actorId: otherWebex.internal.device.userId, state: 'unavailable'},
+    });
+    oldGet.resolve(<WebexRequestPayload>(<unknown>{statusCode: 200, body}));
+    const response = await read;
+    expect(response.data.callQueue?.acdState).toBe(ACD_STATE.UNAVAILABLE);
+    expect(response.data.callQueue?.queues).toEqual(body.queues);
+    other.dispose();
+  });
+
+  it('waits for the latest replacement event refresh while a GET is pending', async () => {
+    const otherWebex = getTestUtilsWebex();
+    const other = createCallQueueClient(otherWebex, {level: LOGGER.INFO});
+    const original = deferredResponse();
+    const first = deferredResponse();
+    const second = deferredResponse();
+    otherWebex.request
+      .mockReturnValueOnce(original.promise)
+      .mockReturnValueOnce(first.promise)
+      .mockReturnValueOnce(second.promise);
+    let settled = false;
+    const read = other.getCallQueueSettings().then((result) => {
+      settled = true;
+
+      return result;
+    });
+    const handlers = new Map<string, (event?: unknown) => void>(
+      (otherWebex.internal.mercury.on as jest.Mock).mock.calls.map((call) => [call[0], call[1]])
+    );
+    const actorId = otherWebex.internal.device.userId;
+    handlers.get(MOBIUS_EVENT_KEYS.TELEPHONY_AGENT_JOIN)?.({
+      data: {actorType: 'PERSON', actorId, joinInfo: [{queueId: 'q1', status: 'joined'}]},
+    });
+    original.resolve(<WebexRequestPayload>(<unknown>{
+      statusCode: 200,
+      body: {
+        agentACDState: 'AVAILABLE',
+        queues: [],
+      },
+    }));
+    await new Promise<void>((resolve) => {
+      setTimeout(resolve, 0);
+    });
+    handlers.get(MOBIUS_EVENT_KEYS.TELEPHONY_AGENT_STATE)?.({
+      data: {actorType: 'PERSON', actorId, state: 'unavailable'},
+    });
+    first.resolve(<WebexRequestPayload>(<unknown>{
+      statusCode: 200,
+      body: {
+        agentACDState: 'AVAILABLE',
+        queues: [],
+      },
+    }));
+    await new Promise<void>((resolve) => {
+      setTimeout(resolve, 0);
+    });
+    expect(settled).toBe(false);
+    second.resolve(<WebexRequestPayload>(<unknown>{
+      statusCode: 200,
+      body: {
+        agentACDState: 'UNAVAILABLE',
+        queues: [],
+      },
+    }));
+    const response = await read;
+    expect(response.data.callQueue?.acdState).toBe(ACD_STATE.UNAVAILABLE);
+    other.dispose();
+  });
+
+  it('does not let an older event refresh overwrite a later GET', async () => {
+    const otherWebex = getTestUtilsWebex();
+    const other = createCallQueueClient(otherWebex, {level: LOGGER.INFO});
+    const listener = jest.fn();
+    other.on(COMMON_EVENT_KEYS.CALL_QUEUE_UPDATED, listener);
+    const oldGet = deferredResponse();
+    otherWebex.request
+      .mockReturnValueOnce(oldGet.promise)
+      .mockResolvedValueOnce(<WebexRequestPayload>(
+        (<unknown>{statusCode: 200, body: {agentACDState: 'UNAVAILABLE', queues: []}})
+      ));
+    const handlers = new Map<string, (event?: unknown) => void>(
+      (otherWebex.internal.mercury.on as jest.Mock).mock.calls.map((call) => [call[0], call[1]])
+    );
+    handlers.get(MOBIUS_EVENT_KEYS.TELEPHONY_AGENT_STATE)?.({
+      data: {actorType: 'PERSON', actorId: otherWebex.internal.device.userId, state: 'available'},
+    });
+    await other.getCallQueueSettings();
+    oldGet.resolve(<WebexRequestPayload>(
+      (<unknown>{statusCode: 200, body: {agentACDState: 'AVAILABLE', queues: []}})
+    ));
+    await new Promise<void>((resolve) => {
+      setTimeout(resolve, 0);
+    });
+    expect(listener).not.toHaveBeenCalled();
+    otherWebex.request.mockResolvedValueOnce(<WebexRequestPayload>(<unknown>{statusCode: 204}));
+    const updated = await other.updateCallQueueSettings({queues: [{id: 'q1', available: true}]});
+    expect(updated.data.callQueue?.acdState).toBe(ACD_STATE.UNAVAILABLE);
+    other.dispose();
+  });
+
+  it('does not let an older GET overwrite a successful PATCH', async () => {
+    const otherWebex = getTestUtilsWebex();
+    const other = createCallQueueClient(otherWebex, {level: LOGGER.INFO});
+    const initial = {agentACDState: 'AVAILABLE', queues: []};
+    otherWebex.request.mockResolvedValueOnce(<WebexRequestPayload>(
+      (<unknown>{statusCode: 200, body: initial})
+    ));
+    await other.getCallQueueSettings();
+    const oldGet = deferredResponse();
+    otherWebex.request
+      .mockReturnValueOnce(oldGet.promise)
+      .mockResolvedValueOnce(<WebexRequestPayload>(<unknown>{statusCode: 204}));
+    const read = other.getCallQueueSettings();
+    await other.updateCallQueueSettings({agentACDState: ACD_STATE.UNAVAILABLE});
+    oldGet.resolve(<WebexRequestPayload>(<unknown>{statusCode: 200, body: initial}));
+    expect((await read).data.callQueue?.acdState).toBe(ACD_STATE.UNAVAILABLE);
+    other.dispose();
+  });
+
+  it('does not let an older GET overwrite a later completed GET', async () => {
+    const otherWebex = getTestUtilsWebex();
+    const other = createCallQueueClient(otherWebex, {level: LOGGER.INFO});
+    const oldGet = deferredResponse();
+    otherWebex.request
+      .mockReturnValueOnce(oldGet.promise)
+      .mockResolvedValueOnce(<WebexRequestPayload>(
+        (<unknown>{statusCode: 200, body: {agentACDState: 'UNAVAILABLE', queues: []}})
+      ));
+    const read = other.getCallQueueSettings();
+    await other.getCallQueueSettings();
+    oldGet.resolve(<WebexRequestPayload>(
+      (<unknown>{statusCode: 200, body: {agentACDState: 'AVAILABLE', queues: []}})
+    ));
+    expect((await read).data.callQueue?.acdState).toBe(ACD_STATE.UNAVAILABLE);
+    other.dispose();
+  });
+
+  it('refreshes after a PATCH overlaps a Mercury event', async () => {
+    const otherWebex = getTestUtilsWebex();
+    const other = createCallQueueClient(otherWebex, {level: LOGGER.INFO});
+    otherWebex.request.mockResolvedValueOnce(<WebexRequestPayload>(
+      (<unknown>{statusCode: 200, body: {agentACDState: 'AVAILABLE', queues: []}})
+    ));
+    await other.getCallQueueSettings();
+    const patch = deferredResponse();
+    otherWebex.request
+      .mockReturnValueOnce(patch.promise)
+      .mockResolvedValueOnce(<WebexRequestPayload>(
+        (<unknown>{statusCode: 200, body: {agentACDState: 'WRAP_UP', queues: []}})
+      ));
+    const update = other.updateCallQueueSettings({agentACDState: ACD_STATE.WRAP_UP});
+    const handlers = new Map<string, (event?: unknown) => void>(
+      (otherWebex.internal.mercury.on as jest.Mock).mock.calls.map((call) => [call[0], call[1]])
+    );
+    handlers.get(MOBIUS_EVENT_KEYS.TELEPHONY_AGENT_STATE)?.({
+      data: {actorType: 'PERSON', actorId: otherWebex.internal.device.userId, state: 'unavailable'},
+    });
+    patch.resolve(<WebexRequestPayload>(<unknown>{statusCode: 204}));
+    const response = await update;
+    expect(response.statusCode).toBe(204);
+    expect(response.data.callQueue?.acdState).toBe(ACD_STATE.WRAP_UP);
+    expect(otherWebex.request).toHaveBeenCalledTimes(3);
+    other.dispose();
+  });
+
+  it('fails safely when the first GET has no agent state', async () => {
+    const otherWebex = getTestUtilsWebex();
+    const other = createCallQueueClient(otherWebex, {level: LOGGER.INFO});
+    otherWebex.request.mockResolvedValueOnce(<WebexRequestPayload>(
+      (<unknown>{statusCode: 200, body: {queues: [{id: 'q1', name: 'Sales', available: true}]}})
+    ));
+    const response = await other.getCallQueueSettings();
+    expect(response.statusCode).toBe(502);
+    expect(response.data.callQueue).toBeUndefined();
+    other.dispose();
+  });
+
+  it('loads settings after a queue-only PATCH with no cached state', async () => {
+    const otherWebex = getTestUtilsWebex();
+    const other = createCallQueueClient(otherWebex, {level: LOGGER.INFO});
+    otherWebex.request
+      .mockResolvedValueOnce(<WebexRequestPayload>(<unknown>{statusCode: 204}))
+      .mockResolvedValueOnce(<WebexRequestPayload>(<unknown>{
+        statusCode: 200,
+        body: {
+          agentACDState: 'UNAVAILABLE',
+          queues: [{id: 'q1', name: 'Sales', available: true}],
+        },
+      }));
+    const response = await other.updateCallQueueSettings({queues: [{id: 'q1', available: true}]});
+    expect(response.statusCode).toBe(204);
+    expect(response.data.callQueue?.acdState).toBe(ACD_STATE.UNAVAILABLE);
+    expect(otherWebex.request).toHaveBeenCalledTimes(2);
+    other.dispose();
+  });
+
+  it('uses the supplied Webex instance and disposes only its own Mercury listeners', async () => {
+    const otherWebex = getTestUtilsWebex();
+    const other = createCallQueueClient(otherWebex, {level: LOGGER.INFO});
+    const registered = (otherWebex.internal.mercury.on as jest.Mock).mock.calls.slice();
+    otherWebex.request.mockResolvedValue(<WebexRequestPayload>(<unknown>{
+      statusCode: 200,
+      body: {agentACDState: 'AVAILABLE', queues: []},
+    }));
+    await other.getCallQueueSettings();
+    expect(otherWebex.request).toHaveBeenCalledTimes(1);
+    expect(webex.request).not.toHaveBeenCalled();
+    other.dispose();
+    registered.forEach(([event, callback]) => {
+      expect(otherWebex.internal.mercury.off).toHaveBeenCalledWith(event, callback);
+    });
+    expect(otherWebex.internal.mercury.off).toHaveBeenCalledTimes(registered.length);
   });
 
   it('emits the merged status when a Mercury state event arrives', () => {

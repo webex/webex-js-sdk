@@ -1,6 +1,6 @@
 /* eslint-disable no-underscore-dangle */
 import SDKConnector from '../SDKConnector';
-import {ISDKConnector, WebexSDK} from '../SDKConnector/types';
+import {WebexSDK} from '../SDKConnector/types';
 import {CALLING_BACKEND, HTTP_METHODS, WebexRequestPayload} from '../common/types';
 import log from '../Logger';
 import {getCallingBackEnd, serviceErrorCodeHandler, uploadLogs} from '../common/Utils';
@@ -28,9 +28,11 @@ import {
 import {
   applyCallQueueEvent,
   applyQueueNames,
+  normalizeAcdState,
   parseCallQueueCatalog,
   parseCallQueueSettings,
   queueIdKey,
+  unwrapAgentPayload,
 } from './state';
 import {
   ACD_STATE,
@@ -45,12 +47,31 @@ import {
 
 const SUPPORTED_STATES = new Set<string>(Object.values(ACD_STATE));
 
+type EventLine = {kind: 'primary'} | {kind: 'secondary'; lineOwnerId: string} | {kind: 'ignore'};
+
+function actorIdentity(value: string): {id: string; type?: string} {
+  const parse = (candidate: string) =>
+    /^ciscospark:\/\/[^/]+\/(PEOPLE|PERSON|VIRTUAL_LINE)\/([^/]+)$/i.exec(candidate);
+  let match = parse(value);
+  if (!match) {
+    try {
+      match = parse(atob(value.replace(/-/g, '+').replace(/_/g, '/')));
+    } catch {
+      // An unencoded actor ID is also valid.
+    }
+  }
+
+  return match
+    ? {type: match[1].toUpperCase(), id: match[2].toLowerCase()}
+    : {id: value.toLowerCase()};
+}
+
 /**
  * Webex Calling cloud client for call-queue agent status.
  *
  * Reads and updates `GET/PATCH /api/v1/users/me/settings/queues`,
  * asks CXAPI to sync with `POST /v1/telephony/calls/sync/invoke`, and keeps the
- * local status current from Mercury `telephony_agent` events.
+ * local status current from Mercury `telephony_agents` events.
  *
  * @example
  * ```javascript
@@ -59,8 +80,6 @@ const SUPPORTED_STATES = new Set<string>(Object.values(ACD_STATE));
  * ```
  */
 export class CallQueueClient extends Eventing<CallQueueEventTypes> implements ICallQueue {
-  private sdkConnector: ISDKConnector;
-
   private webex: WebexSDK;
 
   private callingBackend: CALLING_BACKEND;
@@ -73,15 +92,22 @@ export class CallQueueClient extends Eventing<CallQueueEventTypes> implements IC
 
   private queueNames = new Map<string, string>();
 
-  private eventGeneration = 0;
+  private eventGeneration = new Map<string | undefined, number>();
+
+  private requestSequence = 0;
+
+  private committedSequence = new Map<string | undefined, number>();
+
+  private pendingEventRefresh = new Map<string | undefined, Promise<void>>();
+
+  private mercuryListeners: Array<{event: string; listener: (data?: unknown) => void}> = [];
 
   constructor(webex: WebexSDK, logger: LoggerInterface) {
     super();
-    this.sdkConnector = SDKConnector;
-    if (!this.sdkConnector.getWebex()) {
+    if (!SDKConnector.getWebex()) {
       SDKConnector.setWebex(webex);
     }
-    this.webex = this.sdkConnector.getWebex();
+    this.webex = webex;
     this.callingBackend = getCallingBackEnd(this.webex);
     this.hydraEndpoint =
       this.webex.internal.services._serviceUrls?.hydra ||
@@ -113,17 +139,33 @@ export class CallQueueClient extends Eventing<CallQueueEventTypes> implements IC
       return rejected;
     }
 
+    const generation = this.eventGeneration.get(lineOwnerId) ?? 0;
+    this.requestSequence += 1;
+    const sequence = this.requestSequence;
     try {
       const response = <WebexRequestPayload>await this.webex.request({
         uri: this.queuesUrl(lineOwnerId),
         method: HTTP_METHODS.GET,
       });
       log.log(`Response trackingId: ${response?.headers?.trackingid}`, loggerContext);
-      const parsed = parseCallQueueSettings(response.body);
+      const parsed = parseCallQueueSettings(response.body, this.currentByLine.get(lineOwnerId));
       const named = parsed ? await this.fillQueueNames(parsed) : undefined;
-      if (named) {
-        this.currentByLine.set(lineOwnerId, named);
+      if (
+        (this.eventGeneration.get(lineOwnerId) ?? 0) !== generation ||
+        (this.committedSequence.get(lineOwnerId) ?? 0) > sequence
+      ) {
+        await this.waitForEventRefreshes(lineOwnerId);
+        const latest = this.currentByLine.get(lineOwnerId);
+
+        return latest
+          ? this.success(response, latest)
+          : this.failure(409, 'Call queue settings changed while loading; retry the request');
       }
+      if (!named) {
+        return this.failure(502, 'Call queue settings response did not include agent status');
+      }
+      this.currentByLine.set(lineOwnerId, named);
+      this.committedSequence.set(lineOwnerId, sequence);
       const current = this.currentByLine.get(lineOwnerId);
       log.log(
         `Call queue settings loaded, state=${current?.acdState ?? 'unknown'}, queues=${
@@ -168,16 +210,32 @@ export class CallQueueClient extends Eventing<CallQueueEventTypes> implements IC
       }
 
       const body = this.buildUpdateBody(request, lineOwnerId);
+      const generation = this.eventGeneration.get(lineOwnerId) ?? 0;
+      this.requestSequence += 1;
+      const sequence = this.requestSequence;
       const response = <WebexRequestPayload>await this.webex.request({
         uri: this.queuesUrl(lineOwnerId),
         method: HTTP_METHODS.PATCH,
         body,
       });
       log.log(`Response trackingId: ${response?.headers?.trackingid}`, loggerContext);
-      const parsed =
-        parseCallQueueSettings(response.body) ?? this.applyLocalUpdate(request, lineOwnerId);
-      const named = await this.fillQueueNames(parsed);
+      const current = this.currentByLine.get(lineOwnerId);
+      const parsed = parseCallQueueSettings(response.body, current);
+      const local = parsed ?? (current ? this.applyLocalUpdate(request, lineOwnerId) : undefined);
+      const named = local ? await this.fillQueueNames(local) : undefined;
+      if (
+        !named ||
+        (this.eventGeneration.get(lineOwnerId) ?? 0) !== generation ||
+        (this.committedSequence.get(lineOwnerId) ?? 0) > sequence
+      ) {
+        const refreshed = await this.getCallQueueSettings(lineOwnerId);
+
+        return refreshed.data.callQueue
+          ? this.success(response, refreshed.data.callQueue)
+          : refreshed;
+      }
       this.currentByLine.set(lineOwnerId, named);
+      this.committedSequence.set(lineOwnerId, sequence);
       log.log(
         `Call queue settings updated, state=${named.acdState}, queues=${named.queues.length}`,
         loggerContext
@@ -191,7 +249,7 @@ export class CallQueueClient extends Eventing<CallQueueEventTypes> implements IC
 
   /**
    * Asks the calling service to publish the current agent state on Mercury.
-   * Sends the registered WDM device id. The queue list arrives on `telephony_agent.sync`.
+   * Sends the registered WDM device URL. The queue list arrives on `telephony_agents.sync`.
    */
   public async syncTelephonyCalls(): Promise<CallQueueResponse> {
     const loggerContext = {file: CALL_QUEUE_FILE, method: METHODS.SYNC_TELEPHONY_CALLS};
@@ -201,8 +259,8 @@ export class CallQueueClient extends Eventing<CallQueueEventTypes> implements IC
       return rejected;
     }
 
-    const wdmDeviceId = this.wdmDeviceId();
-    if (!wdmDeviceId) {
+    const wdmUrl = this.webex.internal.device?.url;
+    if (!wdmUrl || !this.wdmDeviceId()) {
       return this.failure(400, 'A registered device is required to sync telephony calls');
     }
 
@@ -210,16 +268,10 @@ export class CallQueueClient extends Eventing<CallQueueEventTypes> implements IC
       const response = <WebexRequestPayload>await this.webex.request({
         uri: this.joinUrl(SYNC_PATH),
         method: HTTP_METHODS.POST,
-        body: {wdmDeviceId},
+        body: {wdmUrl, resources: [{resource: 'telephony_agents'}]},
       });
       log.log(`Response trackingId: ${response?.headers?.trackingid}`, loggerContext);
-      const parsed = parseCallQueueSettings(response.body);
-      if (parsed) {
-        this.currentByLine.set(undefined, await this.fillQueueNames(parsed));
-      } else if (this.currentByLine.has(undefined)) {
-        const current = this.currentByLine.get(undefined) as CallQueueAgentStatus;
-        this.currentByLine.set(undefined, await this.fillQueueNames(current));
-      }
+      // The sync endpoint returns 204; authoritative settings arrive via Mercury.
 
       return this.success(response, this.currentByLine.get(undefined));
     } catch (err: unknown) {
@@ -231,30 +283,93 @@ export class CallQueueClient extends Eventing<CallQueueEventTypes> implements IC
     if (this.callingBackend !== CALLING_BACKEND.WXC) {
       return;
     }
-    this.sdkConnector.registerListener(
-      MOBIUS_EVENT_KEYS.TELEPHONY_AGENT_SYNC,
-      (event?: unknown) => {
-        this.handleAgentEvent('sync', event);
-      }
+    const events: Array<[string, CallQueueEventKind]> = [
+      [MOBIUS_EVENT_KEYS.TELEPHONY_AGENT_SYNC, 'sync'],
+      [MOBIUS_EVENT_KEYS.TELEPHONY_AGENT_STATE, 'state'],
+      [MOBIUS_EVENT_KEYS.TELEPHONY_AGENT_JOIN, 'join'],
+      ['event:telephony_agent.sync', 'sync'],
+      ['event:telephony_agent.state', 'state'],
+      ['event:telephony_agent.join', 'join'],
+    ];
+    events.forEach(([event, kind]) => {
+      const listener = (data?: unknown) => this.handleAgentEvent(kind, data);
+      this.webex.internal.mercury.on(event, listener);
+      this.mercuryListeners.push({event, listener});
+    });
+  }
+
+  /** Unsubscribe only the Mercury listeners created by this client. */
+  public dispose(): void {
+    this.mercuryListeners.forEach(({event, listener}) => {
+      this.webex.internal.mercury.off(event, listener);
+    });
+    this.mercuryListeners = [];
+    this.eventGeneration.clear();
+    this.committedSequence.clear();
+    this.pendingEventRefresh.clear();
+    this.removeAllListeners();
+  }
+
+  private eventLine(event: unknown): EventLine {
+    const payload = unwrapAgentPayload(event);
+    if (payload?.actorType !== undefined && typeof payload.actorType !== 'string') {
+      return {kind: 'ignore'};
+    }
+    const type = payload?.actorType?.toUpperCase();
+    const actorId =
+      payload?.actorId ?? (type === 'VIRTUAL_LINE' ? undefined : payload?.actorPersonId);
+    if (!actorId) {
+      return type ? {kind: 'ignore'} : {kind: 'primary'};
+    }
+    if (typeof actorId !== 'string') return {kind: 'ignore'};
+    const actor = actorIdentity(actorId);
+    const actorType = type ?? actor.type;
+    const primaryId = this.webex.internal.device?.userId;
+    if (actorType === 'PERSON' || actorType === 'PEOPLE') {
+      return primaryId && actor.id === actorIdentity(primaryId).id
+        ? {kind: 'primary'}
+        : {kind: 'ignore'};
+    }
+    if (actorType && actorType !== 'VIRTUAL_LINE') return {kind: 'ignore'};
+    const cachedLine = [...this.currentByLine.keys()].find(
+      (id) => id !== undefined && actorIdentity(id).id === actor.id
     );
-    this.sdkConnector.registerListener(
-      MOBIUS_EVENT_KEYS.TELEPHONY_AGENT_STATE,
-      (event?: unknown) => {
-        this.handleAgentEvent('state', event);
-      }
-    );
-    this.sdkConnector.registerListener(
-      MOBIUS_EVENT_KEYS.TELEPHONY_AGENT_JOIN,
-      (event?: unknown) => {
-        this.handleAgentEvent('join', event);
-      }
-    );
+    if (actorType === 'VIRTUAL_LINE') {
+      const lineOwnerId = cachedLine ?? actor.id;
+
+      return LINE_OWNER_ID_PATTERN.test(lineOwnerId)
+        ? {kind: 'secondary', lineOwnerId}
+        : {kind: 'ignore'};
+    }
+    if (primaryId && actor.id === actorIdentity(primaryId).id) return {kind: 'primary'};
+
+    return cachedLine ? {kind: 'secondary', lineOwnerId: cachedLine} : {kind: 'ignore'};
   }
 
   private handleAgentEvent(kind: CallQueueEventKind, event: unknown) {
-    const generation = this.eventGeneration + 1;
-    this.eventGeneration = generation;
-    const current = this.currentByLine.get(undefined);
+    const line = this.eventLine(event);
+    if (line.kind === 'ignore') return;
+    const lineOwnerId = line.kind === 'secondary' ? line.lineOwnerId : undefined;
+    const generation = (this.eventGeneration.get(lineOwnerId) ?? 0) + 1;
+    this.eventGeneration.set(lineOwnerId, generation);
+    const current = this.currentByLine.get(lineOwnerId);
+    const payload = unwrapAgentPayload(event);
+    const eventState = normalizeAcdState(
+      payload?.agentACDState ?? payload?.acdStateInfo?.state ?? payload?.state
+    );
+    if (!current) {
+      if (eventState || Array.isArray(payload?.joinInfo) || Array.isArray(payload?.queues)) {
+        const pending = this.refreshEventLine(lineOwnerId, generation);
+        this.pendingEventRefresh.set(lineOwnerId, pending);
+        pending.then(() => {
+          if (this.pendingEventRefresh.get(lineOwnerId) === pending) {
+            this.pendingEventRefresh.delete(lineOwnerId);
+          }
+        });
+      }
+
+      return;
+    }
     const next = applyCallQueueEvent(current, kind, event);
     if (
       !next ||
@@ -263,14 +378,14 @@ export class CallQueueClient extends Eventing<CallQueueEventTypes> implements IC
       return;
     }
     const named = applyQueueNames(next, this.queueNames);
-    this.currentByLine.set(undefined, named);
+    this.currentByLine.set(lineOwnerId, named);
     log.log(
       `Call queue ${kind} event applied, state=${named.acdState}, queues=${named.queues.length}`,
       {file: CALL_QUEUE_FILE, method: 'handleAgentEvent'}
     );
-    this.emit(COMMON_EVENT_KEYS.CALL_QUEUE_UPDATED, named);
+    this.emit(COMMON_EVENT_KEYS.CALL_QUEUE_UPDATED, lineOwnerId ? {...named, lineOwnerId} : named);
     if (named.queues.some((queue) => !queue.name)) {
-      this.refreshQueueNames(named, generation).catch((err: unknown) => {
+      this.refreshQueueNames(named, generation, lineOwnerId).catch((err: unknown) => {
         log.error(`Failed to refresh call queue names: ${String(err)}`, {
           file: CALL_QUEUE_FILE,
           method: 'refreshQueueNames',
@@ -279,13 +394,63 @@ export class CallQueueClient extends Eventing<CallQueueEventTypes> implements IC
     }
   }
 
-  private async refreshQueueNames(status: CallQueueAgentStatus, generation: number) {
+  private async waitForEventRefreshes(lineOwnerId: string | undefined): Promise<void> {
+    let pending = this.pendingEventRefresh.get(lineOwnerId);
+    while (pending) {
+      // A replacement refresh is discoverable only after the previous one settles.
+      // eslint-disable-next-line no-await-in-loop
+      await pending;
+      const next = this.pendingEventRefresh.get(lineOwnerId);
+      if (next === pending) return;
+      pending = next;
+    }
+  }
+
+  private async refreshEventLine(lineOwnerId: string | undefined, generation: number) {
+    this.requestSequence += 1;
+    const sequence = this.requestSequence;
+    try {
+      const response = <WebexRequestPayload>await this.webex.request({
+        uri: this.queuesUrl(lineOwnerId),
+        method: HTTP_METHODS.GET,
+      });
+      const parsed = parseCallQueueSettings(response.body, this.currentByLine.get(lineOwnerId));
+      if (!parsed) return;
+      const named = await this.fillQueueNames(parsed);
+      if (
+        generation !== this.eventGeneration.get(lineOwnerId) ||
+        (this.committedSequence.get(lineOwnerId) ?? 0) > sequence
+      )
+        return;
+      this.currentByLine.set(lineOwnerId, named);
+      this.committedSequence.set(lineOwnerId, sequence);
+      this.emit(
+        COMMON_EVENT_KEYS.CALL_QUEUE_UPDATED,
+        lineOwnerId ? {...named, lineOwnerId} : named
+      );
+    } catch {
+      log.error('Failed to refresh call queue settings after an event', {
+        file: CALL_QUEUE_FILE,
+        method: 'refreshEventLine',
+      });
+    }
+  }
+
+  private async refreshQueueNames(
+    status: CallQueueAgentStatus,
+    generation: number,
+    lineOwnerId?: string
+  ) {
     const named = await this.fillQueueNames(status);
-    if (generation !== this.eventGeneration || named === status) {
+    if (
+      generation !== this.eventGeneration.get(lineOwnerId) ||
+      this.currentByLine.get(lineOwnerId) !== status ||
+      named === status
+    ) {
       return;
     }
-    this.currentByLine.set(undefined, named);
-    this.emit(COMMON_EVENT_KEYS.CALL_QUEUE_UPDATED, named);
+    this.currentByLine.set(lineOwnerId, named);
+    this.emit(COMMON_EVENT_KEYS.CALL_QUEUE_UPDATED, lineOwnerId ? {...named, lineOwnerId} : named);
   }
 
   private async fillQueueNames(status: CallQueueAgentStatus): Promise<CallQueueAgentStatus> {
@@ -472,10 +637,7 @@ export class CallQueueClient extends Eventing<CallQueueEventTypes> implements IC
     request: UpdateCallQueueSettingsRequest,
     lineOwnerId?: string
   ): CallQueueAgentStatus {
-    const base = this.currentByLine.get(lineOwnerId) ?? {
-      acdState: ACD_STATE.SIGN_OUT,
-      queues: [],
-    };
+    const base = this.currentByLine.get(lineOwnerId) as CallQueueAgentStatus;
     const queues = request.queues
       ? request.queues.reduce((list, update) => {
           const index = list.findIndex((queue) => queue.id === update.id);

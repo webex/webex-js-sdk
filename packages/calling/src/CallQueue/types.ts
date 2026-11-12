@@ -21,7 +21,7 @@ export type CallQueue = {
   name?: string;
   phoneNumber?: string;
   extension?: string;
-  available: boolean;
+  available?: boolean;
   skillLevel?: number;
   allowLogOffEnabled?: boolean;
   hasCxEssentials?: boolean;
@@ -52,7 +52,9 @@ export type CallQueueResponse = {
 };
 
 export type CallQueueEventTypes = {
-  [COMMON_EVENT_KEYS.CALL_QUEUE_UPDATED]: (status: CallQueueAgentStatus) => void;
+  [COMMON_EVENT_KEYS.CALL_QUEUE_UPDATED]: (
+    status: CallQueueAgentStatus & {lineOwnerId?: string}
+  ) => void;
 };
 
 export interface ICallQueue {
@@ -62,6 +64,8 @@ export interface ICallQueue {
     lineOwnerId?: string
   ): Promise<CallQueueResponse>;
   syncTelephonyCalls(): Promise<CallQueueResponse>;
+  /** Remove this client's Mercury listeners. */
+  dispose(): void;
 }
 
 export type CallQueueEventKind = 'sync' | 'state' | 'join';
@@ -79,9 +83,14 @@ export type TelephonyAgentQueue = {
 
 export type TelephonyAgentPayload = {
   eventType?: string;
+  actorId?: string;
+  actorPersonId?: string;
+  actorType?: string;
+  state?: string;
   agentACDState?: string;
   acdStateInfo?: {
     state?: string;
   };
   queues?: TelephonyAgentQueue[];
+  joinInfo?: Array<{queueId?: string; status?: string; skillLevel?: string | number}>;
 };
