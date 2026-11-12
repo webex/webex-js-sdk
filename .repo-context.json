@@ -94,6 +94,35 @@
         "name": "@webex/internal-plugin-dss",
         "paths": [
           "packages/@webex/internal-plugin-dss"
+        
+        ],
+        "notes": "Onboarded package: its own AGENTS.md, docs/, and .sdd/manifest.json are routed from .sdd/manifest.json packages."
+      },
+      {
+        "name": "@webex/internal-plugin-ai-assistant",
+        "paths": [
+          "packages/@webex/internal-plugin-ai-assistant" 
+        ],
+        "notes": "Onboarded package: its own AGENTS.md, docs/, and .sdd/manifest.json are routed from .sdd/manifest.json packages."
+      },
+      {
+        "name": "@webex/internal-plugin-calendar",
+        "paths": [
+          "packages/@webex/internal-plugin-calendar"
+        ],
+        "notes": "Onboarded package: its own AGENTS.md, docs/, and .sdd/manifest.json are routed from .sdd/manifest.json packages."
+      },
+      {
+        "name": "@webex/internal-plugin-board",
+        "paths": [
+          "packages/@webex/internal-plugin-board"
+        ],
+        "notes": "Onboarded package: its own AGENTS.md, docs/, and .sdd/manifest.json are routed from .sdd/manifest.json packages."
+      },
+      {
+        "name": "@webex/internal-plugin-ediscovery",
+        "paths": [
+          "packages/@webex/internal-plugin-ediscovery"
         ],
         "notes": "Onboarded package: its own AGENTS.md, docs/, and .sdd/manifest.json are routed from .sdd/manifest.json packages."
       },
@@ -112,9 +141,23 @@
         "notes": "Onboarded package: its own AGENTS.md, docs/, and .sdd/manifest.json are routed from .sdd/manifest.json packages."
       },
       {
+        "name": "@webex/internal-plugin-voicea",
+        "paths": [
+          "packages/@webex/internal-plugin-voicea"
+        ],
+        "notes": "Onboarded package: its own AGENTS.md, docs/, and .sdd/manifest.json are routed from .sdd/manifest.json packages."
+      },
+      {
         "name": "@webex/internal-plugin-wdm",
         "paths": [
           "packages/@webex/internal-plugin-wdm"
+        ],
+        "notes": "Onboarded package: its own AGENTS.md, docs/, and .sdd/manifest.json are routed from .sdd/manifest.json packages."
+      },
+      {
+        "name": "@webex/plugin-authorization",
+        "paths": [
+          "packages/@webex/plugin-authorization"
         ],
         "notes": "Onboarded package: its own AGENTS.md, docs/, and .sdd/manifest.json are routed from .sdd/manifest.json packages."
       },
