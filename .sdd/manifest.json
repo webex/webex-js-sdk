@@ -93,6 +93,15 @@
       "onboarded_by": "claude-cowork"
     },
     {
+      "id": "@webex/internal-plugin-task",
+      "path": "packages/@webex/internal-plugin-task",
+      "manifest": "packages/@webex/internal-plugin-task/.sdd/manifest.json",
+      "agent_entry": "packages/@webex/internal-plugin-task/AGENTS.md",
+      "index": "packages/@webex/internal-plugin-task/docs/index.md",
+      "onboarded_at": "2026-11-12T12:47:05Z",
+      "onboarded_by": "claude-cowork"
+    },
+    {
       "id": "@webex/internal-plugin-user",
       "path": "packages/@webex/internal-plugin-user",
       "manifest": "packages/@webex/internal-plugin-user/.sdd/manifest.json",
