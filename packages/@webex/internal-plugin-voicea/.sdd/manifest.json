@@ -1,0 +1,402 @@
+{
+  "manifest_version": 1,
+  "repository": {
+    "name": "@webex/internal-plugin-voicea",
+    "purpose": "Internal plugin registered as webex.internal.voicea (required by the webex package and used by plugin-meetings). It is a factory: createChannel(llmChannel?) returns a VoiceaChannel per meeting, which borrows a caller-owned LLM data channel. A channel PUTs Locus controls to turn captions, transcription, and manual captions on and to set the spoken language; announces the client to the voicea service, requests caption languages, sends manual captions, and manages the transcription subchannel over the LLM channel; re-emits inbound relay events as voicea:* and aibridge:* events; and rebinds to another LLM channel while restoring captions. It stores nothing and owns no connection.",
+    "category": "cat2-legacy",
+    "primary_languages": [
+      "typescript"
+    ]
+  },
+  "topology": "Orchestrator-plus-components",
+  "commands": {
+    "install": {
+      "command": "yarn",
+      "source_file": "../../../.github/workflows/deploy.yml",
+      "role": "install"
+    },
+    "prebuild": {
+      "command": "yarn prebuild:modules",
+      "source_file": "../../../CONTRIBUTING.md",
+      "role": "other"
+    },
+    "compile": {
+      "command": "yarn workspace @webex/internal-plugin-voicea build",
+      "source_file": "package.json",
+      "role": "compile",
+      "verified_at": "2026-11-12T09:07:12Z"
+    },
+    "build": {
+      "command": "yarn workspace @webex/internal-plugin-voicea build:src",
+      "source_file": "../../../AGENTS.md",
+      "role": "package",
+      "verified_at": "2026-11-12T09:07:16Z"
+    },
+    "unit-test": {
+      "command": "yarn workspace @webex/internal-plugin-voicea test:unit",
+      "source_file": "../../../AGENTS.md",
+      "role": "unit-test",
+      "verified_at": "2026-11-12T09:07:18Z"
+    },
+    "lint": {
+      "command": "yarn workspace @webex/internal-plugin-voicea test:style",
+      "source_file": "package.json",
+      "role": "lint",
+      "verified_at": "2026-11-12T09:07:21Z"
+    },
+    "deploy": {
+      "command": "yarn workspace @webex/internal-plugin-voicea deploy:npm",
+      "source_file": "package.json",
+      "role": "deploy"
+    }
+  },
+  "toolchain": [
+    {
+      "name": "node",
+      "version": ">=18",
+      "origin": "repo-config",
+      "source_file": "package.json"
+    },
+    {
+      "name": "node",
+      "version": "22.14",
+      "origin": "repo-config",
+      "source_file": "../../../AGENTS.md"
+    },
+    {
+      "name": "node",
+      "version": "lts/jod",
+      "origin": "repo-config",
+      "source_file": "../../../.nvmrc"
+    },
+    {
+      "name": "node",
+      "version": "18.x",
+      "origin": "repo-config",
+      "source_file": "../../../package.json"
+    },
+    {
+      "name": "yarn",
+      "version": "3.4.1",
+      "origin": "repo-config",
+      "source_file": "../../../package.json"
+    },
+    {
+      "name": "babel",
+      "version": "^7.17.10",
+      "origin": "repo-config",
+      "source_file": "package.json"
+    },
+    {
+      "name": "eslint",
+      "version": "^8.24.0",
+      "origin": "repo-config",
+      "source_file": "package.json"
+    },
+    {
+      "name": "prettier",
+      "version": "^2.7.1",
+      "origin": "repo-config",
+      "source_file": "package.json"
+    },
+    {
+      "name": "sinon",
+      "version": "^9.2.4",
+      "origin": "repo-config",
+      "source_file": "package.json"
+    }
+  ],
+  "tests": {
+    "unit": {
+      "command_ref": "unit-test",
+      "dir": "test/unit/spec",
+      "framework": "jest"
+    }
+  },
+  "quality_gates": {
+    "code_coverage": {
+      "origin": "none",
+      "declared_by": "rarajes2@cisco.com via bootstrap questionnaire (generator check: test:unit runs webex-legacy-tools with --runner jest; jest.config.js re-exports @webex/jest-config-legacy, which sets no coverageThreshold; package.json defines no coverage script)"
+    }
+  },
+  "coverage_status_definitions": {
+    "specced": ">=80% public surface specced, drift <5% - spec is authoritative",
+    "partial": "40-80% specced - spec is a hint, cross-check code",
+    "untracked": "<40% specced - code is the source of truth"
+  },
+  "spec_source_policy": {
+    "mode": "keep-separate",
+    "migrated_source_disposition": "retain",
+    "disposition_decided_by": "rarajes2@cisco.com",
+    "disposition_decided_at": "2026-11-12T08:36:43Z",
+    "decided_by": "rarajes2@cisco.com",
+    "decided_at": "2026-11-12T08:36:43Z",
+    "decision_record": "docs/adr/0001-retain-product-readme.md"
+  },
+  "spec_sources": [
+    {
+      "path": "README.md",
+      "scope": "repo",
+      "role": "reference-only",
+      "canonical": false,
+      "use_by_agents": "context-only",
+      "post_migration_action": "retain",
+      "deletion_status": "not-applicable",
+      "notes": "npm usage page, kept unchanged under keep-separate. Partly stale: it documents webex.internal.voicea.registerAndConnect, which no longer exists, calls channel methods on the plugin, and names voicea:spokenLanguageSet instead of voicea:spokenLanguageUpdate; see docs/adr/0001-retain-product-readme.md."
+    }
+  ],
+  "modules": [
+    {
+      "path": "src",
+      "canonical_spec": "src/docs/README.md",
+      "coverage_status": "Partial",
+      "coverage_evidence": "Field coverage 93.3% (14/15) assessed 2026-11-12 by the generator; critical field coverage 8/8. The one WEAK field is test strategy: 84 unit cases in three suites pass under Node 22.14 after build:src and cover createChannel, the constructor, every relay type, announce, language requests, manual captions, the four Locus control methods, subchannel subscriptions, switchLLMChannel (11 cases), and deregisterEvents, but registration through src/index.ts, the trackingId prefix, the turnOnCaptions request body, the toggleManualCaption status leak without a channel, re-binding the same channel after deregisterEvents, and the formatter's 0:60 rounding edge have no case, and no characterization baseline exists. Independent validation reran 2026-11-12 using validator runtime 01a1cef2-ab9c-7f50-baf4-643aeae8b469 and passed with warnings: 0 Blocking and 1 Important command-source finding. Generated-doc conformance has 0 Blocking findings and confirms the questionnaire gate; the orchestrator-root check passes when run against the worktree root. The remaining command-source finding is documented as an accepted Important warning because the workspace-qualified command form is retained by developer decision.",
+      "last_assessed": "2026-11-12",
+      "contracts": {
+        "provides": [
+          "voicea-internal-sdk"
+        ],
+        "requires": [
+          "locus-controls",
+          "voicea-relay-data-channel",
+          "webex-core-plugin-host",
+          "internal-plugin-llm-channel",
+          "internal-plugin-mercury-events",
+          "uuid"
+        ]
+      },
+      "section_profile": {
+        "has_tiers": false,
+        "has_ui": false,
+        "crosses_service_boundaries": true,
+        "holds_client_state": true,
+        "enforces_domain_rules": true,
+        "is_concurrent_async": true,
+        "owns_persistence": false,
+        "stateful_transitions": true,
+        "exposes_wire_protocol": true,
+        "ui_multi_screen": false,
+        "large_data_model": false,
+        "returns_caller_errors": true,
+        "module_specific_conventions": true,
+        "published_package": true,
+        "embedded_in_host": false,
+        "has_design_tradeoff": true,
+        "resolved_by": "claude-code (code evidence; bootstrap questionnaire)",
+        "resolved_at": "2026-11-12T08:36:43Z",
+        "has_submodules": false,
+        "has_submodules_computed_by": "scripts/module_tree.py",
+        "has_submodules_computed_at": "2026-11-12T08:36:43Z"
+      }
+    }
+  ],
+  "contract_catalog": {
+    "index_path": "docs/architecture.md",
+    "definitions": {
+      "voicea-internal-sdk": {
+        "kind": "sdk",
+        "publication": "published",
+        "source_kind": "repository-path",
+        "source": "package.json",
+        "summary": "Published npm package (internal plugin). main is dist/index.js, types is dist/types/index.d.ts, and devMain names src/index.js although the entry is src/index.ts. Importing it registers VoiceaPlugin as internal plugin 'voicea' with empty options; the first registration of the name wins. Exports: default and named VoiceaPlugin, VoiceaChannel, EVENT_TRIGGERS, TURN_ON_CAPTION_STATUS, and the types MeetingTranscriptPayload and SpeakerNameUpdatePayload. webex.internal.voicea.createChannel(llmChannel?) returns a VoiceaChannel; its methods and the voicea:* and aibridge:newManualCaption events are specified in src/docs/README.md."
+      },
+      "locus-controls": {
+        "kind": "http",
+        "publication": "internal",
+        "source_kind": "external",
+        "source": "Locus controls endpoint (<locusUrl>/controls/, where locusUrl comes from the bound LLM channel; route definitions are not in this repository)",
+        "summary": "PUT bodies: {transcribe: {caption: true}, languageCode}; {transcribe: {transcribing}, spokenLanguage}; {transcribe: {spokenLanguage, languageAssignment?}}; {manualCaption: {enable}}. Sent through webex.request."
+      },
+      "voicea-relay-data-channel": {
+        "kind": "event",
+        "publication": "internal",
+        "source_kind": "external",
+        "source": "Voicea service and AI bridge relay over the LLM data channel (relay types in src/constants.ts; service definitions are not in this repository)",
+        "summary": "Outbound publishRequest frames with relayType client.annc (clientPayload version v2), voicea.transl.req, and client.manual_transcription, plus subchannelSubscriptionRequest; id is the shared sequence number and trackingId is <trackingIdPrefix>_<uuid>. Inbound relay events voicea.annc, voicea.transl.rsp, voicea.transcription, voicea.update_speakername, aibridge.manual_transcription, and client.manual_transcription."
+      },
+      "webex-core-plugin-host": {
+        "kind": "sdk",
+        "publication": "published",
+        "source_kind": "external",
+        "source": "@webex/webex-core (workspace package; module spec consulted: packages/@webex/webex-core/src/docs/README.md)",
+        "summary": "registerInternalPlugin (first-wins, no proxies) registers the factory; WebexPlugin supplies webex and request, which createChannel binds into each channel; the named config export supplies trackingIdPrefix (default webex-js-sdk) for outbound frames."
+      },
+      "internal-plugin-llm-channel": {
+        "kind": "sdk",
+        "publication": "published",
+        "source_kind": "external",
+        "source": "@webex/internal-plugin-llm LLMChannel (workspace package; module spec consulted: packages/@webex/internal-plugin-llm/src/docs/README.md, found stale on the plugin shape; code consulted: packages/@webex/internal-plugin-llm/src/llm-plugin.ts and src/llm.ts)",
+        "summary": "Imported only as a type. The caller supplies a caller-owned LLMChannel from webex.internal.llm.createChannel(); voicea uses isConnected, getSocket().send, getBinding, getLocusUrl, getDatachannelUrl, isDataChannelTokenEnabled, and on, once, and off for event:relay.event and online."
+      },
+      "internal-plugin-mercury-events": {
+        "kind": "sdk",
+        "publication": "published",
+        "source_kind": "external",
+        "source": "@webex/internal-plugin-mercury (workspace package, reached through LLMChannel; module spec consulted: packages/@webex/internal-plugin-mercury/src/docs/README.md)",
+        "summary": "LLMChannel connects on the default session, whose events carry no suffix, so inbound relay frames arrive as event:relay.event and connection as online. Declared in package.json dependencies but imported only by the unit specs."
+      },
+      "uuid": {
+        "kind": "sdk",
+        "publication": "published",
+        "source_kind": "external",
+        "source": "uuid@^3.3.2 (npm)",
+        "summary": "uuid.v4 generates trackingId suffixes, translation-request ids, and manual-caption ids."
+      }
+    }
+  },
+  "spec_policy": {
+    "require_what_and_why": true,
+    "require_provenance": true,
+    "protected_specs": [
+      "src/docs/README.md"
+    ]
+  },
+  "validation": {
+    "generator_runtime": "claude-code",
+    "generator_model": "claude-opus-5-5",
+    "generator_runtime_source": "host-metadata",
+    "source_commit": "ecd5af12a1abf47fc6ed7dd72cb308b259d45fb8",
+    "minimum_independence": "different-runtime",
+    "blocking_severities": [
+      "Blocking"
+    ],
+    "validator_runtime": "01a1cef2-ab9c-7f50-baf4-643aeae8b469",
+    "validator_runtime_source": "host-metadata",
+    "runtime_fallback_tier": "different-runtime"
+  },
+  "layout": {
+    "sdd_root": ".sdd",
+    "docs_root": "docs",
+    "agent_entry_path": "AGENTS.md",
+    "standing_docs_root": "docs",
+    "spec_index_path": "docs/specs/README.md",
+    "module_docs_strategy": "source-local",
+    "module_docs_relative_path": "docs/README.md",
+    "module_docs_decision": {
+      "basis": "repo-standards-default",
+      "reason": "No module-local documentation existed. The source-local default gives src/docs/README.md. test:style runs eslint ./src/**/*.*, and the shared @webex/eslint-config-legacy ignore patterns exclude docs/** and *.md; build:src processes -js -ts only and tsconfig.json emits declarations only, so Markdown under src/ does not enter the build output.",
+      "decided_by": "rarajes2@cisco.com (bootstrap questionnaire)",
+      "decided_at": "2026-11-12T08:36:43Z"
+    },
+    "repo_context_decision": {
+      "path": ".repo-context.json",
+      "schema_path": "schemas/repo-context.schema.json",
+      "action": "create",
+      "schema_action": "create",
+      "reason": "Neither the operational context nor its schema existed in this package. The context is created from package evidence and the schema is copied from the repository-root .sdd/templates/repo-standards/schemas/repo-context.schema.json.",
+      "decided_by": "rarajes2@cisco.com (bootstrap questionnaire)",
+      "decided_at": "2026-11-12T08:36:43Z"
+    },
+    "artifact_decisions": [
+      {
+        "path": "docs/service.md",
+        "action": "omit",
+        "reason": "Library package, not a deployable service. package.json has no start script, container, or deployment descriptor.",
+        "decided_by": "claude-code (code evidence)",
+        "decided_at": "2026-11-12T08:36:43Z"
+      },
+      {
+        "path": "mkdocs.yml",
+        "action": "omit",
+        "reason": "No package-level documentation site exists. Documentation publishing stays with the workspace.",
+        "decided_by": "claude-code (code evidence)",
+        "decided_at": "2026-11-12T08:36:43Z"
+      },
+      {
+        "path": "api-specs/openapi.yaml",
+        "action": "omit",
+        "reason": "The package serves no HTTP routes. It is a client of Locus controls and the voicea relay; its published surface is the npm export described by voicea-internal-sdk.",
+        "decided_by": "claude-code (code evidence)",
+        "decided_at": "2026-11-12T08:36:43Z"
+      },
+      {
+        "path": "SECURITY.md",
+        "action": "omit",
+        "reason": "No package-level security policy exists. The workspace owns security policy, and a per-package copy would duplicate it; security architecture is described in docs/architecture.md.",
+        "decided_by": "claude-code (code evidence)",
+        "decided_at": "2026-11-12T08:36:43Z"
+      },
+      {
+        "path": "CONTRIBUTING.md",
+        "action": "omit",
+        "reason": "Contribution instructions are owned at the workspace root CONTRIBUTING.md.",
+        "decided_by": "claude-code (code evidence)",
+        "decided_at": "2026-11-12T08:36:43Z"
+      },
+      {
+        "path": "CHANGELOG.md",
+        "action": "omit",
+        "reason": "Changelog generation is owned at the workspace root. This package has no changelog file.",
+        "decided_by": "claude-code (code evidence)",
+        "decided_at": "2026-11-12T08:36:43Z"
+      },
+      {
+        "path": "CTO_CHECKLIST.yml",
+        "action": "omit",
+        "reason": "The CTO readiness checklist applies to deployable services. This package is a library.",
+        "decided_by": "claude-code (code evidence)",
+        "decided_at": "2026-11-12T08:36:43Z"
+      },
+      {
+        "path": "schemas/cto-checklist.schema.json",
+        "action": "omit",
+        "reason": "Omitted together with CTO_CHECKLIST.yml.",
+        "decided_by": "claude-code (code evidence)",
+        "decided_at": "2026-11-12T08:36:43Z"
+      }
+    ],
+    "template_roots": {
+      "canonical": ".sdd/templates/repo-standards"
+    },
+    "contract_index_path": "docs/architecture.md",
+    "repo_skills_root": ".sdd/skills",
+    "monorepo_package": {
+      "package_path": "packages/@webex/internal-plugin-voicea",
+      "root_manifest_path": "../../../.sdd/manifest.json",
+      "templates_root_path": "../../../.sdd/templates/repo-standards"
+    }
+  },
+  "tooling": {
+    "sdlc_skills": {
+      "source_ref": "repo-annotation@2.3.1"
+    }
+  },
+  "coverage_ratchet": {
+    "enabled": true,
+    "waivers": []
+  },
+  "substrate": {
+    "source": "WebexTools/repo-standards@d89a7fe59126ae3ad9bac9ca352aa7f12b4c85dc",
+    "consumed": [
+      "@webex/eslint-config-legacy via .eslintrc.js",
+      "@webex/babel-config-legacy via babel.config.js",
+      "@webex/jest-config-legacy via jest.config.js",
+      "@webex/legacy-tools build and test runner via package.json",
+      "workspace tsconfig.json via tsconfig.json (emitDeclarationOnly)",
+      "package README.md (context only)",
+      "Repo Standards templates at the monorepo root .sdd/templates/repo-standards, referred to through layout.monorepo_package.templates_root_path (this package holds no templates)"
+    ],
+    "compliance_tier": "baseline"
+  },
+  "section_profiles": {
+    "repo": {
+      "owns_datastore": false,
+      "holds_client_state": true,
+      "components_interact": true,
+      "domain_data_across_components": true,
+      "caches_data": false,
+      "observability_convention": false,
+      "deploys_to_infra": false,
+      "shared_base_libs": true,
+      "is_monorepo": false,
+      "multi_platform": false,
+      "published_package": true,
+      "embedded_in_host": false,
+      "cross_repo_deps_material": true,
+      "security_arch_warranted": true,
+      "exposes_commands_or_artifacts": true
+    },
+    "resolved_by": "claude-code (code evidence; bootstrap questionnaire)",
+    "resolved_at": "2026-11-12T08:36:43Z"
+  }
+}
