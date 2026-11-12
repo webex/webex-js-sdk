@@ -1,0 +1,485 @@
+{
+  "manifest_version": 1,
+  "repository": {
+    "name": "@webex/internal-plugin-board",
+    "purpose": "Internal whiteboard plugin registered as webex.internal.board. It creates, lists, locks, keeps alive, and deletes board channels bound to a conversation ACL (routing create and list to the board cluster that matches the ACL cluster), adds and reads KMS-encrypted board contents in serial chunks, uploads board images and snapshots to Webex Files, authorizes a transcoder for whiteboard sharing to mobile, and carries live board activity over Mercury through its realtime child, either on a board socket of its own or on the shared Mercury socket. Its payload transformer creates each channel's content key and decrypts content reads.",
+    "category": "cat2-legacy",
+    "primary_languages": [
+      "javascript"
+    ]
+  },
+  "topology": "Orchestrator-plus-components",
+  "commands": {
+    "install": {
+      "command": "yarn",
+      "source_file": "../../../.github/workflows/deploy.yml",
+      "role": "install"
+    },
+    "prebuild": {
+      "command": "yarn prebuild:modules",
+      "source_file": "../../../package.json",
+      "role": "other"
+    },
+    "compile": {
+      "command": "yarn workspace @webex/internal-plugin-board build:src",
+      "source_file": "package.json",
+      "role": "compile"
+    },
+    "build": {
+      "command": "yarn workspace @webex/internal-plugin-board build",
+      "source_file": "package.json",
+      "role": "package"
+    },
+    "unit-test": {
+      "command": "yarn workspace @webex/internal-plugin-board test:unit",
+      "source_file": "package.json",
+      "role": "unit-test"
+    },
+    "integration-test": {
+      "command": "yarn workspace @webex/internal-plugin-board test:browser",
+      "source_file": "package.json",
+      "role": "integration-test"
+    },
+    "lint": {
+      "command": "yarn workspace @webex/internal-plugin-board test:style",
+      "source_file": "package.json",
+      "role": "lint"
+    },
+    "deploy": {
+      "command": "yarn workspace @webex/internal-plugin-board deploy:npm",
+      "source_file": "package.json",
+      "role": "deploy"
+    }
+  },
+  "toolchain": [
+    {
+      "name": "node",
+      "version": ">=16",
+      "origin": "repo-config",
+      "source_file": "package.json"
+    },
+    {
+      "name": "node",
+      "version": "22.14",
+      "origin": "repo-config",
+      "source_file": "../../../AGENTS.md"
+    },
+    {
+      "name": "node",
+      "version": "lts/jod",
+      "origin": "repo-config",
+      "source_file": "../../../.nvmrc"
+    },
+    {
+      "name": "node",
+      "version": "18.x",
+      "origin": "repo-config",
+      "source_file": "../../../package.json"
+    },
+    {
+      "name": "yarn",
+      "version": "3.4.1",
+      "origin": "repo-config",
+      "source_file": "../../../package.json"
+    },
+    {
+      "name": "babel",
+      "version": "^7.17.10",
+      "origin": "repo-config",
+      "source_file": "package.json"
+    },
+    {
+      "name": "eslint",
+      "version": "^8.24.0",
+      "origin": "repo-config",
+      "source_file": "package.json"
+    },
+    {
+      "name": "prettier",
+      "version": "^2.7.1",
+      "origin": "repo-config",
+      "source_file": "package.json"
+    },
+    {
+      "name": "sinon",
+      "version": "^9.2.4",
+      "origin": "repo-config",
+      "source_file": "package.json"
+    }
+  ],
+  "tests": {
+    "unit": {
+      "command_ref": "unit-test",
+      "dir": "test/unit/spec",
+      "framework": "jest"
+    },
+    "integration": {
+      "command_ref": "integration-test",
+      "dir": "test/integration/spec",
+      "framework": "karma (webex-legacy-tools --integration --runner karma; runs the unit and integration specs in browsers)",
+      "external_deps": [
+        "live Webex services (board, ACL, Webex Files, KMS, Mercury)",
+        "test-user credentials read by @webex/test-helper-test-users",
+        "a karma browser"
+      ]
+    }
+  },
+  "quality_gates": {
+    "code_coverage": {
+      "origin": "none",
+      "declared_by": "rarajes2@cisco.com via bootstrap questionnaire (generator check: test:unit runs webex-legacy-tools with --runner jest; jest.config.js re-exports @webex/jest-config-legacy, which sets collectCoverage false and no coverageThreshold; package.json defines no coverage script)"
+    }
+  },
+  "coverage_status_definitions": {
+    "specced": ">=80% public surface specced, drift <5% - spec is authoritative",
+    "partial": "40-80% specced - spec is a hint, cross-check code",
+    "untracked": "<40% specced - code is the source of truth"
+  },
+  "spec_source_policy": {
+    "mode": "keep-separate",
+    "migrated_source_disposition": "retain",
+    "disposition_decided_by": "rarajes2@cisco.com",
+    "disposition_decided_at": "2026-11-12T06:57:16Z",
+    "decided_by": "rarajes2@cisco.com",
+    "decided_at": "2026-11-12T06:57:16Z",
+    "decision_record": "docs/adr/0001-retain-product-readme.md"
+  },
+  "spec_sources": [
+    {
+      "path": "README.md",
+      "scope": "repo",
+      "role": "reference-only",
+      "canonical": false,
+      "use_by_agents": "context-only",
+      "post_migration_action": "retain",
+      "deletion_status": "not-applicable",
+      "notes": "npm usage page, kept unchanged under keep-separate. Its usage block is the placeholder webex.internal.board.WHATEVER and it states no method, event, or error; see docs/adr/0001-retain-product-readme.md."
+    }
+  ],
+  "modules": [
+    {
+      "path": "src",
+      "canonical_spec": "src/docs/README.md",
+      "coverage_status": "Partial",
+      "coverage_evidence": "Field coverage 93.3% (14/15) assessed 2026-11-12 by the generator; critical field coverage 8/8. The one WEAK field is test strategy: 58 unit cases pass under Node 22.14 after build:src and cover channel, content, upload, registration, and realtime paths, but the payload transformer predicates and transforms, authorizeMediaInjector, unauthorizeMediaInjector, processActivityEvent, unregisterFromSharedMercury, and the shared-socket refresh have no test, the realtime and sharing-mercury integration specs are describe.skip, and no characterization baseline exists. Independent validation passed 2026-11-12 on runtime 01a1cea3-02b3-7c72-ac41-7a08f195b1f3 with zero Blocking findings.",
+      "last_assessed": "2026-11-12",
+      "contracts": {
+        "provides": [
+          "board-internal-sdk"
+        ],
+        "requires": [
+          "board-service-http",
+          "acl-links-http",
+          "webex-files-upload",
+          "mercury-board-activity",
+          "webex-core-plugin-host",
+          "webex-core-services",
+          "internal-plugin-encryption",
+          "internal-plugin-mercury",
+          "internal-plugin-feature",
+          "internal-plugin-conversation",
+          "internal-plugin-device",
+          "webex-common-utilities",
+          "ampersand-collection",
+          "es6-promise-series",
+          "uuid"
+        ]
+      },
+      "section_profile": {
+        "has_tiers": false,
+        "has_ui": false,
+        "crosses_service_boundaries": true,
+        "holds_client_state": true,
+        "enforces_domain_rules": true,
+        "is_concurrent_async": true,
+        "owns_persistence": false,
+        "stateful_transitions": false,
+        "exposes_wire_protocol": true,
+        "ui_multi_screen": false,
+        "large_data_model": false,
+        "returns_caller_errors": true,
+        "module_specific_conventions": true,
+        "published_package": true,
+        "embedded_in_host": false,
+        "has_design_tradeoff": true,
+        "resolved_by": "claude-code (code evidence; bootstrap questionnaire)",
+        "resolved_at": "2026-11-12T06:57:16Z",
+        "has_submodules": false,
+        "has_submodules_computed_by": "scripts/module_tree.py",
+        "has_submodules_computed_at": "2026-11-12T06:57:16Z"
+      }
+    }
+  ],
+  "contract_catalog": {
+    "index_path": "docs/architecture.md",
+    "definitions": {
+      "board-internal-sdk": {
+        "kind": "sdk",
+        "publication": "published",
+        "source_kind": "repository-path",
+        "source": "package.json",
+        "summary": "Published npm package (internal plugin; README says semver is not strictly followed). main is dist/index.js and devMain is src/index.js. Importing it imports the mercury, encryption, conversation, and feature plugins and registers Board as internal plugin 'board' with child realtime, the config in src/config.js, and the decryptContents and encryptChannel payload transformers. Exports are the default Board class and the named config and RealtimeChannel. The plugin API is webex.internal.board (channel, content, image, registration, shared-Mercury, and media-injector methods) and webex.internal.board.realtime (publish, connect, disconnect, activity routing). Per-method behavior is in src/docs/README.md."
+      },
+      "board-service-http": {
+        "kind": "http",
+        "publication": "internal",
+        "source_kind": "external",
+        "source": "Webex board service (catalog service 'board', or the cluster-local board service resolved from the conversation ACL cluster, plus per-channel channelUrl; route definitions are not in this repository)",
+        "summary": "POST/GET /channels, GET/PATCH channelUrl, POST/GET/DELETE channelUrl/contents, POST channelUrl/lock?intent=delete, POST channelUrl/keepAlive, PUT channelUrl/spaces/open|hidden, POST channelUrl/register, PUT channelUrl/sharePolicies/transcoder, GET /ping, POST /registrations. Bodies are listed under Protocol and wire format in src/docs/README.md."
+      },
+      "acl-links-http": {
+        "kind": "http",
+        "publication": "internal",
+        "source_kind": "external",
+        "source": "Webex ACL service (the channel aclUrl returned by the board service; route definitions are not in this repository)",
+        "summary": "PUT <aclUrl>/links with {aclLinkType: INCOMING, linkedAcl, kmsMessage delete of the conversation authorization, aclLinkOperation: DELETE} removes the conversation-to-board link."
+      },
+      "webex-files-upload": {
+        "kind": "http",
+        "publication": "internal",
+        "source_kind": "external",
+        "source": "Webex Files upload sessions under the board space URL (reached through webex.upload; route definitions are not in this repository)",
+        "summary": "Three-phase upload to <spaceUrl>/upload_sessions with qs transcode true and fileSize in initialize and finalize; the finalize response downloadUrl becomes the SCR loc."
+      },
+      "mercury-board-activity": {
+        "kind": "event",
+        "publication": "internal",
+        "source_kind": "external",
+        "source": "Mercury web socket frames for board bindings (Mercury service; framing owned by @webex/internal-plugin-mercury, module spec consulted: packages/@webex/internal-plugin-mercury/src/docs/README.md)",
+        "summary": "Outbound publishRequest frame {id, type: publishRequest, recipients [{alertType none, route binding, headers {}}], data {eventType board.activity, contentType, payload, envelope {encryptionKeyUrl, channelId}}}; inbound board.activity envelopes routed by envelope.channelId."
+      },
+      "webex-core-plugin-host": {
+        "kind": "sdk",
+        "publication": "published",
+        "source_kind": "external",
+        "source": "@webex/webex-core (workspace package; module spec consulted: packages/@webex/webex-core/src/docs/README.md)",
+        "summary": "Board and RealtimeService extend WebexPlugin in namespace Board (config is webex.config.board); registerInternalPlugin merges config and concatenates payloadTransformer predicates and transforms; transforms without a direction match every direction; Page wraps list responses; webex.request and webex.upload carry every HTTP call."
+      },
+      "webex-core-services": {
+        "kind": "sdk",
+        "publication": "published",
+        "source_kind": "external",
+        "source": "@webex/webex-core services (module spec consulted: packages/@webex/webex-core/src/lib/services/docs/README.md)",
+        "summary": "getClusterId(aclUrl) and getServiceFromClusterId({clusterId}) resolve the cluster-local board URL; getServiceFromUrl(uri) identifies board requests for the encryptChannel predicate; catalog service 'board' is the fallback."
+      },
+      "internal-plugin-encryption": {
+        "kind": "sdk",
+        "publication": "published",
+        "source_kind": "external",
+        "source": "@webex/internal-plugin-encryption (workspace package; no spec exists; code consulted: packages/@webex/internal-plugin-encryption/src/encryption.js, src/kms.js, src/index.js)",
+        "summary": "encryptText, decryptText, encryptScr (rejects without scr.loc), decryptScr, encryptBinary resolving {scr, cdata}; kms.createUnboundKeys, prepareRequest, decryptKmsMessage, listAuthorizations, removeAuthorization; the encryptKmsMessage predicate skips a kmsMessage with empty keyUris and its transform wraps the message."
+      },
+      "internal-plugin-mercury": {
+        "kind": "sdk",
+        "publication": "published",
+        "source_kind": "external",
+        "source": "@webex/internal-plugin-mercury (workspace package; module spec consulted: packages/@webex/internal-plugin-mercury/src/docs/README.md)",
+        "summary": "RealtimeChannel extends the Mercury class; connect(webSocketUrl) and disconnect() own socket lifecycle with timers from the plugin namespace config; the shared plugin exposes socket, localClusterServiceUrls, the online event, and event:board.activity."
+      },
+      "internal-plugin-feature": {
+        "kind": "sdk",
+        "publication": "published",
+        "source_kind": "external",
+        "source": "@webex/internal-plugin-feature (workspace package; module spec consulted: packages/@webex/internal-plugin-feature/src/docs/README.md)",
+        "summary": "getFeature('developer', 'web-shared-mercury') resolves the toggle value, or null when unknown; a falsy value disables shared Mercury registration."
+      },
+      "internal-plugin-conversation": {
+        "kind": "sdk",
+        "publication": "published",
+        "source_kind": "external",
+        "source": "@webex/internal-plugin-conversation (workspace package; no spec exists; code consulted: packages/@webex/internal-plugin-conversation/src/index.js)",
+        "summary": "Imported only for its side effect of registering internal plugin 'conversation'. Callers pass conversation objects whose aclUrl and kmsResourceObjectUrl this module reads."
+      },
+      "internal-plugin-device": {
+        "kind": "sdk",
+        "publication": "published",
+        "source_kind": "external",
+        "source": "@webex/internal-plugin-device (workspace package, not declared in package.json and registered through the mercury plugin import; module spec consulted: packages/@webex/internal-plugin-device/src/docs/README.md)",
+        "summary": "deviceType is stamped on encrypted contents and webSocketUrl is sent on shared Mercury registration."
+      },
+      "webex-common-utilities": {
+        "kind": "sdk",
+        "publication": "published",
+        "source_kind": "external",
+        "source": "@webex/common (workspace package; module spec consulted: packages/@webex/common/src/docs/README.md)",
+        "summary": "tap passes the original value through and never rejects; used around collection removal after disconnect."
+      },
+      "ampersand-collection": {
+        "kind": "sdk",
+        "publication": "published",
+        "source_kind": "external",
+        "source": "ampersand-collection@^2.0.2 (npm)",
+        "summary": "RealtimeChannelCollection extends it with mainIndex channelId and model RealtimeChannel."
+      },
+      "es6-promise-series": {
+        "kind": "sdk",
+        "publication": "published",
+        "source_kind": "external",
+        "source": "es6-promise-series@^0.2.2 (npm)",
+        "summary": "Called with an array of functions, it runs them one at a time and resolves the concatenation of their results; the first rejection rejects the series."
+      },
+      "uuid": {
+        "kind": "sdk",
+        "publication": "published",
+        "source_kind": "external",
+        "source": "uuid@^3.3.2 (npm)",
+        "summary": "v4 generates the id of each publishRequest frame."
+      }
+    }
+  },
+  "spec_policy": {
+    "require_what_and_why": true,
+    "require_provenance": true,
+    "protected_specs": [
+      "src/docs/README.md"
+    ]
+  },
+  "validation": {
+    "generator_runtime": "claude-code",
+    "generator_model": "claude-opus-5-5",
+    "generator_runtime_source": "host-metadata",
+    "source_commit": "ecd5af12a1abf47fc6ed7dd72cb308b259d45fb8",
+    "minimum_independence": "different-runtime",
+    "blocking_severities": [
+      "Blocking"
+    ],
+    "validator_runtime": "01a1cea3-02b3-7c72-ac41-7a08f195b1f3",
+    "validator_run_id": "01a1cea3-02b3-7c72-ac41-7a08f195b1f3",
+    "validator_runtime_source": "invocation-input",
+    "runtime_fallback_tier": "different-runtime"
+  },
+  "layout": {
+    "sdd_root": ".sdd",
+    "docs_root": "docs",
+    "agent_entry_path": "AGENTS.md",
+    "standing_docs_root": "docs",
+    "spec_index_path": "docs/specs/README.md",
+    "module_docs_strategy": "source-local",
+    "module_docs_relative_path": "docs/README.md",
+    "module_docs_decision": {
+      "basis": "repo-standards-default",
+      "reason": "No module-local documentation existed. The source-local default gives src/docs/README.md, matching the onboarded sibling packages. test:style runs eslint ./src/**/*.*, and the shared @webex/eslint-config-legacy ignore patterns exclude docs/** and *.md; build:src processes -js -ts only, so Markdown under src/ does not enter the build output.",
+      "decided_by": "rarajes2@cisco.com (bootstrap questionnaire)",
+      "decided_at": "2026-11-12T06:57:16Z"
+    },
+    "repo_context_decision": {
+      "path": ".repo-context.json",
+      "schema_path": "schemas/repo-context.schema.json",
+      "action": "create",
+      "schema_action": "create",
+      "reason": "Neither the operational context nor its schema existed in this package. The context is created from package evidence and the schema is copied from the repository-root .sdd/templates/repo-standards/schemas/repo-context.schema.json.",
+      "decided_by": "rarajes2@cisco.com (bootstrap questionnaire)",
+      "decided_at": "2026-11-12T06:57:16Z"
+    },
+    "artifact_decisions": [
+      {
+        "path": "docs/service.md",
+        "action": "omit",
+        "reason": "Library package, not a deployable service. package.json has no start script, container, or deployment descriptor.",
+        "decided_by": "claude-code (code evidence)",
+        "decided_at": "2026-11-12T06:57:16Z"
+      },
+      {
+        "path": "mkdocs.yml",
+        "action": "omit",
+        "reason": "No package-level documentation site exists. Documentation publishing stays with the workspace.",
+        "decided_by": "claude-code (code evidence)",
+        "decided_at": "2026-11-12T06:57:16Z"
+      },
+      {
+        "path": "api-specs/openapi.yaml",
+        "action": "omit",
+        "reason": "The package serves no HTTP routes. It is a client of the board, ACL, and Files services; its published surface is the npm export described by board-internal-sdk.",
+        "decided_by": "claude-code (code evidence)",
+        "decided_at": "2026-11-12T06:57:16Z"
+      },
+      {
+        "path": "SECURITY.md",
+        "action": "omit",
+        "reason": "No package-level security policy exists. The workspace owns security policy; security architecture is described in docs/architecture.md.",
+        "decided_by": "claude-code (code evidence)",
+        "decided_at": "2026-11-12T06:57:16Z"
+      },
+      {
+        "path": "CONTRIBUTING.md",
+        "action": "omit",
+        "reason": "Contribution instructions are owned at the workspace root CONTRIBUTING.md.",
+        "decided_by": "claude-code (code evidence)",
+        "decided_at": "2026-11-12T06:57:16Z"
+      },
+      {
+        "path": "CHANGELOG.md",
+        "action": "omit",
+        "reason": "Changelog generation is owned at the workspace root. This package has no changelog file.",
+        "decided_by": "claude-code (code evidence)",
+        "decided_at": "2026-11-12T06:57:16Z"
+      },
+      {
+        "path": "CTO_CHECKLIST.yml",
+        "action": "omit",
+        "reason": "The CTO readiness checklist applies to deployable services. This package is a library.",
+        "decided_by": "claude-code (code evidence)",
+        "decided_at": "2026-11-12T06:57:16Z"
+      },
+      {
+        "path": "schemas/cto-checklist.schema.json",
+        "action": "omit",
+        "reason": "Omitted together with CTO_CHECKLIST.yml.",
+        "decided_by": "claude-code (code evidence)",
+        "decided_at": "2026-11-12T06:57:16Z"
+      }
+    ],
+    "template_roots": {
+      "canonical": ".sdd/templates/repo-standards"
+    },
+    "contract_index_path": "docs/architecture.md",
+    "repo_skills_root": ".sdd/skills",
+    "monorepo_package": {
+      "package_path": "packages/@webex/internal-plugin-board",
+      "root_manifest_path": "../../../.sdd/manifest.json",
+      "templates_root_path": "../../../.sdd/templates/repo-standards"
+    }
+  },
+  "tooling": {
+    "sdlc_skills": {
+      "source_ref": "repo-annotation@2.3.1"
+    }
+  },
+  "coverage_ratchet": {
+    "enabled": true,
+    "waivers": []
+  },
+  "substrate": {
+    "source": "WebexTools/repo-standards@d89a7fe59126ae3ad9bac9ca352aa7f12b4c85dc",
+    "consumed": [
+      "@webex/eslint-config-legacy via .eslintrc.js",
+      "@webex/babel-config-legacy via babel.config.js",
+      "@webex/jest-config-legacy via jest.config.js",
+      "@webex/legacy-tools build and test runner via package.json",
+      "package README.md (context only)",
+      "Repo Standards templates at the monorepo root .sdd/templates/repo-standards, referred to through layout.monorepo_package.templates_root_path (this package holds no templates)"
+    ],
+    "compliance_tier": "baseline"
+  },
+  "section_profiles": {
+    "repo": {
+      "owns_datastore": false,
+      "holds_client_state": true,
+      "components_interact": true,
+      "domain_data_across_components": true,
+      "caches_data": false,
+      "observability_convention": true,
+      "deploys_to_infra": false,
+      "shared_base_libs": true,
+      "is_monorepo": false,
+      "multi_platform": false,
+      "published_package": true,
+      "embedded_in_host": false,
+      "cross_repo_deps_material": true,
+      "security_arch_warranted": true,
+      "exposes_commands_or_artifacts": true
+    },
+    "resolved_by": "claude-code (code evidence; bootstrap questionnaire)",
+    "resolved_at": "2026-11-12T06:57:16Z"
+  }
+}
