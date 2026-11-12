@@ -511,18 +511,18 @@ describe('webex-core', () => {
 
       it('resolves to an authed u2c hostmap when no params specified', () => {
         assert.typeOf(fullRemoteHM, 'object');
-        assert.property(fullRemoteHM, 'serviceLinks');
-        assert.property(fullRemoteHM, 'hostCatalog');
-        assert.equal(fullRemoteHM.format, 'hostmap');
-        assert.isAbove(Object.keys(fullRemoteHM.serviceLinks).length, 0);
+        assert.property(fullRemoteHM, 'activeServices');
+        assert.typeOf(fullRemoteHM.services, 'array');
+        assert.equal(fullRemoteHM.format, 'U2CV2');
+        assert.isAbove(fullRemoteHM.services.length, 0);
       });
 
       it('resolves to a limited u2c hostmap when params specified', () => {
         assert.typeOf(limitedRemoteHM, 'object');
-        assert.property(limitedRemoteHM, 'serviceLinks');
-        assert.property(limitedRemoteHM, 'hostCatalog');
-        assert.equal(limitedRemoteHM.format, 'hostmap');
-        assert.isAbove(Object.keys(limitedRemoteHM.serviceLinks).length, 0);
+        assert.property(limitedRemoteHM, 'activeServices');
+        assert.typeOf(limitedRemoteHM.services, 'array');
+        assert.equal(limitedRemoteHM.format, 'U2CV2');
+        assert.isAbove(limitedRemoteHM.services.length, 0);
       });
 
       it('rejects if the params provided are invalid', () =>
