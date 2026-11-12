@@ -66,6 +66,15 @@
   ],
   "packages": [
     {
+      "id": "@webex/internal-plugin-ediscovery",
+      "path": "packages/@webex/internal-plugin-ediscovery",
+      "manifest": "packages/@webex/internal-plugin-ediscovery/.sdd/manifest.json",
+      "agent_entry": "packages/@webex/internal-plugin-ediscovery/AGENTS.md",
+      "index": "packages/@webex/internal-plugin-ediscovery/docs/index.md",
+      "onboarded_at": "2026-11-12T05:59:56Z",
+      "onboarded_by": "claude-code"
+    },
+    {
       "id": "@webex/internal-plugin-feature",
       "path": "packages/@webex/internal-plugin-feature",
       "manifest": "packages/@webex/internal-plugin-feature/.sdd/manifest.json",
@@ -118,6 +127,6 @@
   "provenance": {
     "generated_by": "claude-code",
     "approved_by": "rarajes2@cisco.com",
-    "updated_at": "2026-11-11T08:35:47Z"
+    "updated_at": "2026-11-12T05:59:56Z"
   }
 }
