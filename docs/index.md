@@ -6,7 +6,7 @@ doc_kind: standing-doc
 generated_from: docs-index@0.3.0
 generated_by: claude-code
 approved_by: riag@cisco.com
-updated_at: 2026-10-22T06:52:30Z
+updated_at: 2026-11-09T11:26:47Z
 validation_status: pass
 -->
 
@@ -27,6 +27,7 @@ package owns its architecture, specifications, and decisions beside its code. Th
 
 | Package | Path | Agent entry | Docs | Manifest |
 | --- | --- | --- | --- | --- |
+| `@webex/internal-plugin-conversation` | `packages/@webex/internal-plugin-conversation/` | [AGENTS.md](../packages/@webex/internal-plugin-conversation/AGENTS.md) | [docs/index.md](../packages/@webex/internal-plugin-conversation/docs/index.md) | [.sdd/manifest.json](../packages/@webex/internal-plugin-conversation/.sdd/manifest.json) |
 | `@webex/internal-plugin-feature` | `packages/@webex/internal-plugin-feature/` | [AGENTS.md](../packages/@webex/internal-plugin-feature/AGENTS.md) | [docs/index.md](../packages/@webex/internal-plugin-feature/docs/index.md) | [.sdd/manifest.json](../packages/@webex/internal-plugin-feature/.sdd/manifest.json) |
 | `@webex/internal-plugin-user` | `packages/@webex/internal-plugin-user/` | [AGENTS.md](../packages/@webex/internal-plugin-user/AGENTS.md) | [docs/index.md](../packages/@webex/internal-plugin-user/docs/index.md) | [.sdd/manifest.json](../packages/@webex/internal-plugin-user/.sdd/manifest.json) |
 | `@webex/internal-plugin-wdm` | `packages/@webex/internal-plugin-wdm/` | [AGENTS.md](../packages/@webex/internal-plugin-wdm/AGENTS.md) | [docs/index.md](../packages/@webex/internal-plugin-wdm/docs/index.md) | [.sdd/manifest.json](../packages/@webex/internal-plugin-wdm/.sdd/manifest.json) |
