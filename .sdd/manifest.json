@@ -228,6 +228,15 @@
       "onboarded_by": "claude-code"
     },
     {
+      "id": "@webex/plugin-memberships",
+      "path": "packages/@webex/plugin-memberships",
+      "manifest": "packages/@webex/plugin-memberships/.sdd/manifest.json",
+      "agent_entry": "packages/@webex/plugin-memberships/AGENTS.md",
+      "index": "packages/@webex/plugin-memberships/docs/index.md",
+      "onboarded_at": "2026-11-12T17:28:00Z",
+      "onboarded_by": "claude-code"
+    },
+    {
       "id": "@webex/plugin-people",
       "path": "packages/@webex/plugin-people",
       "manifest": "packages/@webex/plugin-people/.sdd/manifest.json",
@@ -262,6 +271,6 @@
   "provenance": {
     "generated_by": "claude-code",
     "approved_by": "rarajes2@cisco.com",
-    "updated_at": "2026-11-12T16:55:00Z"
+    "updated_at": "2026-11-12T17:28:00Z"
   }
 }
