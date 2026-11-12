@@ -47,7 +47,7 @@ const SUPPORTED_STATES = new Set<string>(Object.values(ACD_STATE));
 /**
  * Webex Calling cloud client for call-queue agent status.
  *
- * Reads and updates `GET/PATCH /v1/telephony/config/people/me/settings/queues`,
+ * Reads and updates `GET/PATCH /api/v1/users/me/settings/queues`,
  * asks CXAPI to sync with `POST /v1/telephony/calls/sync/invoke`, and keeps the
  * local status current from Mercury `telephony_agent` events.
  *
@@ -375,7 +375,7 @@ export class CallQueueClient extends Eventing<CallQueueEventTypes> implements IC
       ? this.webexCallingGatewayEndpoint
       : `${this.webexCallingGatewayEndpoint}/`;
 
-    return `${base}v1/${path}`;
+    return `${base}${path}`;
   }
 
   private joinUrl(path: string): string {

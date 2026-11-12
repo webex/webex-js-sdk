@@ -8,8 +8,9 @@ import {ACD_STATE} from './types';
 
 const webex = getTestUtilsWebex();
 const HYDRA = 'https://hydra-a.wbx2.com/v1/';
-const WEBEX_CALLING_GATEWAY_INT = 'https://integration.webexapis.com/v1/';
-const WEBEX_CALLING_GATEWAY_PROD = 'https://webexapis.com/v1/';
+const WEBEX_CALLING_GATEWAY_INT =
+  'https://int-first-calling.svc.webex.com/calling-subscriber-gateway/api/v1/';
+const WEBEX_CALLING_GATEWAY_PROD = 'https://calling-subscriber-gateway-a.wbx2.com/api/v1/';
 const client = createCallQueueClient(webex, {level: LOGGER.INFO});
 const mercuryHandlers = new Map<string, (event?: unknown) => void>(
   (webex.internal.mercury.on as jest.Mock).mock.calls.map((call) => [call[0], call[1]])
@@ -47,7 +48,7 @@ describe('CallQueue client', () => {
     const response = await client.getCallQueueSettings();
 
     expect(webex.request).toHaveBeenCalledWith({
-      uri: `${WEBEX_CALLING_GATEWAY_INT}telephony/config/people/me/settings/queues`,
+      uri: `${WEBEX_CALLING_GATEWAY_INT}users/me/settings/queues`,
       method: HTTP_METHODS.GET,
     });
     expect(response.statusCode).toBe(200);
@@ -55,7 +56,7 @@ describe('CallQueue client', () => {
     expect(response.data.callQueue?.queues[0].id).toBe('queue-1');
   });
 
-  it('uses the production Webex API base for a production device', async () => {
+  it('uses the production Calling Subscriber Gateway for a production device', async () => {
     const originalDeviceUrl = webex.internal.device.url;
 
     try {
@@ -70,7 +71,7 @@ describe('CallQueue client', () => {
       await productionClient.getCallQueueSettings();
 
       expect(webex.request).toHaveBeenCalledWith({
-        uri: `${WEBEX_CALLING_GATEWAY_PROD}telephony/config/people/me/settings/queues`,
+        uri: `${WEBEX_CALLING_GATEWAY_PROD}users/me/settings/queues`,
         method: HTTP_METHODS.GET,
       });
     } finally {
@@ -98,7 +99,7 @@ describe('CallQueue client', () => {
       await integrationClient.getCallQueueSettings();
 
       expect(webex.request).toHaveBeenCalledWith({
-        uri: `${WEBEX_CALLING_GATEWAY_INT}telephony/config/people/me/settings/queues`,
+        uri: `${WEBEX_CALLING_GATEWAY_INT}users/me/settings/queues`,
         method: HTTP_METHODS.GET,
       });
     } finally {
@@ -123,7 +124,7 @@ describe('CallQueue client', () => {
       await localClient.getCallQueueSettings();
 
       expect(webex.request).toHaveBeenCalledWith({
-        uri: 'https://localhost:8081/__calling_gateway/v1/telephony/config/people/me/settings/queues',
+        uri: 'https://localhost:8081/__calling_gateway/users/me/settings/queues',
         method: HTTP_METHODS.GET,
       });
     } finally {
@@ -172,7 +173,7 @@ describe('CallQueue client', () => {
     await client.getCallQueueSettings('line-owner-1');
 
     expect(webex.request).toHaveBeenCalledWith({
-      uri: `${WEBEX_CALLING_GATEWAY_INT}telephony/config/people/me/settings/secondarylines/line-owner-1/queues`,
+      uri: `${WEBEX_CALLING_GATEWAY_INT}users/me/settings/secondarylines/line-owner-1/queues`,
       method: HTTP_METHODS.GET,
     });
   });
@@ -199,7 +200,7 @@ describe('CallQueue client', () => {
     });
 
     expect(webex.request).toHaveBeenCalledWith({
-      uri: `${WEBEX_CALLING_GATEWAY_INT}telephony/config/people/me/settings/queues`,
+      uri: `${WEBEX_CALLING_GATEWAY_INT}users/me/settings/queues`,
       method: HTTP_METHODS.PATCH,
       body: {
         agentACDState: ACD_STATE.AVAILABLE,
@@ -225,7 +226,7 @@ describe('CallQueue client', () => {
     });
 
     expect(webex.request).toHaveBeenLastCalledWith({
-      uri: `${WEBEX_CALLING_GATEWAY_INT}telephony/config/people/me/settings/queues`,
+      uri: `${WEBEX_CALLING_GATEWAY_INT}users/me/settings/queues`,
       method: HTTP_METHODS.PATCH,
       body: {
         queues: [{id: 'locked', available: true}],
@@ -265,15 +266,15 @@ describe('CallQueue client', () => {
     );
 
     expect(webex.request).toHaveBeenNthCalledWith(1, {
-      uri: `${WEBEX_CALLING_GATEWAY_INT}telephony/config/people/me/settings/queues`,
+      uri: `${WEBEX_CALLING_GATEWAY_INT}users/me/settings/queues`,
       method: HTTP_METHODS.GET,
     });
     expect(webex.request).toHaveBeenNthCalledWith(2, {
-      uri: `${WEBEX_CALLING_GATEWAY_INT}telephony/config/people/me/settings/secondarylines/line-owner-2/queues`,
+      uri: `${WEBEX_CALLING_GATEWAY_INT}users/me/settings/secondarylines/line-owner-2/queues`,
       method: HTTP_METHODS.GET,
     });
     expect(webex.request).toHaveBeenNthCalledWith(3, {
-      uri: `${WEBEX_CALLING_GATEWAY_INT}telephony/config/people/me/settings/secondarylines/line-owner-2/queues`,
+      uri: `${WEBEX_CALLING_GATEWAY_INT}users/me/settings/secondarylines/line-owner-2/queues`,
       method: HTTP_METHODS.PATCH,
       body: {queues: [{id: 'shared-queue', available: true}]},
     });
