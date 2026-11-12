@@ -119,21 +119,12 @@ export default class AqmReqs {
             if ('errId' in notifFail) {
               const error = new Err.Details(notifFail.errId, msg as any);
 
-              if (c.redactSensitiveLogs) {
-                LoggerProxy.log('Routing request failed (sensitive details redacted)', {
-                  module: AQM_REQS_FILE,
-                  method: METHODS.CREATE_PROMISE,
-                });
-              } else {
-                LoggerProxy.log(`Routing request failed: ${JSON.stringify(msg)}`, {
-                  module: AQM_REQS_FILE,
-                  method: METHODS.CREATE_PROMISE,
-                });
-                LoggerProxy.log(`Routing request failed: ${error}`, {
-                  module: AQM_REQS_FILE,
-                  method: METHODS.CREATE_PROMISE,
-                });
-              }
+              // The raw routing-failure payload/error is never logged verbatim; only a
+              // redacted, non-sensitive diagnostic is emitted regardless of redactSensitiveLogs.
+              LoggerProxy.log('Routing request failed (sensitive details redacted)', {
+                module: AQM_REQS_FILE,
+                method: METHODS.CREATE_PROMISE,
+              });
               reject(error);
             } else {
               reject(notifFail.err(msg as any));

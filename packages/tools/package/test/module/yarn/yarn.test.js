@@ -1,11 +1,19 @@
+/* eslint jest/expect-expect: ["warn", {"assertFunctionNames": ["expect", "assert.*"]}] */
 const { Executor } = require('@webex/cli-tools');
 const { Yarn } = require('@webex/package-tools');
+const { assert } = require('@webex/test-helper-chai');
+const sinon = require('sinon');
+
+const changes = require('../../../dist/module/utils/yarn/yarn.changes');
 
 describe('Yarn', () => {
   const executorExecuteResolve = '{ "key": "value" }';
   const spies = {};
+  const sandbox = sinon.createSandbox();
+  const reference = 'a'.repeat(40);
 
   beforeEach(() => {
+    spies.releaseRef = sandbox.stub(changes, 'default').resolves(reference);
     spies.Executor = {
       execute: jest.spyOn(Executor, 'execute').mockResolvedValue(executorExecuteResolve),
     };
@@ -14,6 +22,8 @@ describe('Yarn', () => {
       parse: jest.spyOn(JSON, 'parse').mockReturnValue({ key: 'value' }),
     };
   });
+
+  afterEach(() => sandbox.restore());
 
   describe('static', () => {
     describe('CONSTANTS', () => {
@@ -124,22 +134,44 @@ describe('Yarn', () => {
           expect(calledWith.includes('--recursive')).toBeTruthy();
         }));
 
-      it('should inject "--since" with the provided value into the command when "since" is provided', () => {
+      it.each([undefined, false, true])('should use the release comparison commit with committed=%s', (committed) => {
         const since = 'example-since';
 
-        return Yarn.list({ since })
+        return Yarn.list({ since, committed })
           .then(() => {
             const calledWith = spies.Executor.execute.mock.calls[0][0];
 
-            expect(calledWith.includes(`--since="${since}"`)).toBeTruthy();
+            assert.calledOnceWithExactly(spies.releaseRef, since, !!committed);
+            assert.include(calledWith, `--since="${reference}"`);
           });
       });
 
-      it('should not inject "--since" into the command when "since" is not provided', () => Yarn.list({})
+      it.each([false, true])('should return an empty docs-only list with committed=%s', async (committed) => {
+        spies.releaseRef.resolves(undefined);
+
+        const packages = await Yarn.list({ since: 'comparison-ref', committed });
+
+        assert.deepEqual(packages, []);
+        assert.calledOnceWithExactly(spies.releaseRef, 'comparison-ref', committed);
+        assert.strictEqual(spies.Executor.execute.mock.calls.length, 0);
+      });
+
+      it('should keep comparison errors visible', async () => {
+        const error = new Error('Invalid comparison ref');
+        spies.releaseRef.rejects(error);
+
+        await assert.isRejected(Yarn.list({ since: 'missing-ref' }), 'Invalid comparison ref');
+        assert.strictEqual(spies.Executor.execute.mock.calls.length, 0);
+      });
+
+      it.each([false, true])('should list all packages without since with committed=%s', (committed) => Yarn.list({
+        committed,
+      })
         .then(() => {
           const calledWith = spies.Executor.execute.mock.calls[0][0];
 
-          expect(calledWith.includes('--since')).toBeFalsy();
+          assert.notCalled(spies.releaseRef);
+          assert.notInclude(calledWith, '--since');
         }));
 
       it('should inject "--verbose" into the command when "verbose" boolean is "true"', () => {
