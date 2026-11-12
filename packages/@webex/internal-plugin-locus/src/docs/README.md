@@ -9,8 +9,8 @@ doc_kind: module-spec
 generated_from: module-spec@0.3.0
 generated_by: claude-cowork
 approved_by: akulakum@cisco.com
-updated_at: 2026-11-12T11:30:00Z
-validation_status: pending
+updated_at: 2026-11-12T10:59:20Z
+validation_status: pass-with-warnings
 -->
 
 # Locus plugin
@@ -37,7 +37,7 @@ Related context: [documentation index](../../docs/index.md) ·
 | Parent spec       | — |
 | Doc kind          | Module spec |
 | Coverage score    | 93.3% assessed 2026-10-09 — 14 of 15 mandatory fields PRESENT, critical 8 of 8; test strategy is WEAK (gaps listed under Verification) and no characterization baseline exists |
-| Validation status | pass-with-warnings; independent validator current-session, 2026-11-12; 0 Blocking; test coverage gaps remain |
+| Validation status | pass-with-warnings; validator current-session, run `01a1cf57-d89e-7bc0-9a6a-d3345c695e50`, 2026-11-12; 0 Blocking; test coverage gaps remain |
 
 ## Applicability
 
