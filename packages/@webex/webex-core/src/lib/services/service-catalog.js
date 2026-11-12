@@ -328,9 +328,11 @@ const ServiceCatalog = AmpState.extend({
   /**
    * Find a service based on the provided url.
    * @param {string} url - Must be parsable by `Url`
+   * @param {string} [name] - Only match services with this name. Several services can share
+   * urls (for example aliases of the same backend), so without a name the first match is returned.
    * @returns {serviceUrl} - ServiceUrl assocated with provided url
    */
-  findServiceUrlFromUrl(url) {
+  findServiceUrlFromUrl(url, name) {
     const serviceUrls = [
       ...this.serviceGroups.discovery,
       ...this.serviceGroups.preauth,
@@ -349,6 +351,10 @@ const ServiceCatalog = AmpState.extend({
     }
 
     return serviceUrls.find((serviceUrl) => {
+      if (name && serviceUrl.name !== name) {
+        return false;
+      }
+
       // Check if the URL matches the default URL with proper origin validation
       if (matchesParsedCatalogUrl(candidateUrl, parseCatalogUrl(serviceUrl.defaultUrl))) {
         return true;
@@ -433,21 +439,20 @@ const ServiceCatalog = AmpState.extend({
 
   /**
    * Mark a priority host service url as failed.
-   * This will mark the host associated with the
-   * `ServiceUrl` to be removed from the its
-   * respective host array, and then return the next
-   * viable host from the `ServiceUrls` host array,
-   * or the `ServiceUrls` default url if no other priority
-   * hosts are available, or if `noPriorityHosts` is set to
-   * `true`.
+   * This will mark the host as failed on every
+   * `ServiceUrl` that has it (several services can share a host),
+   * and then return the next viable host from the first such
+   * `ServiceUrls` host array, or the `ServiceUrls` default url
+   * if no other priority hosts are available, or if
+   * `noPriorityHosts` is set to `true`.
    * @param {string} url
    * @param {boolean} noPriorityHosts
    * @returns {string}
    */
   markFailedUrl(url, noPriorityHosts) {
-    const serviceUrl = this._getUrl(
-      Object.keys(this.list()).find((key) => this._getUrl(key).failHost(url))
-    );
+    const [serviceUrl] = Object.keys(this.list())
+      .map((key) => this._getUrl(key))
+      .filter((service) => service.failHost(url));
 
     if (!serviceUrl) {
       return undefined;

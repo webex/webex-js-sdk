@@ -1019,13 +1019,16 @@ const Services = WebexPlugin.extend({
    * catalog.
    *
    * @param {string} url - The url to be validated.
+   * @param {object} [options]
+   * @param {string} [options.name] - Only match services with this name. Without it, the first
+   * service whose urls match is returned, which may be another service sharing the same urls.
    * @returns {object} - Service object.
    * @returns {object.name} - The name of the service found.
    * @returns {object.priorityUrl} - The priority url of the found service.
    * @returns {object.defaultUrl} - The default url of the found service.
    */
-  getServiceFromUrl(url = '') {
-    const service = this._getCatalog().findServiceUrlFromUrl(url);
+  getServiceFromUrl(url = '', {name} = {}) {
+    const service = this._getCatalog().findServiceUrlFromUrl(url, name);
 
     if (!service) {
       return undefined;

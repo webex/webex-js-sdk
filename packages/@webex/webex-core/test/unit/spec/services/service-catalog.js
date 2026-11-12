@@ -4,7 +4,7 @@
 
 import {assert} from '@webex/test-helper-chai';
 import MockWebex from '@webex/test-helper-mock-webex';
-import {Services} from '@webex/webex-core';
+import {Services, ServiceUrl} from '@webex/webex-core';
 import {
   matchesCatalogUrl,
   matchesParsedCatalogUrl,
@@ -606,6 +606,74 @@ describe('webex-core', () => {
 
           assert.equal(service, exampleService);
         });
+      });
+
+      describe('when several services share a url', () => {
+        const url = 'https://example2.com/resource/id';
+        const aliasService = {
+          name: 'alias',
+          defaultUrl: 'https://example.com/resource',
+          hosts: [{host: 'example2.com'}],
+        };
+        const namedService = {
+          name: 'named',
+          defaultUrl: 'https://example.com/resource',
+          hosts: [{host: 'example2.com'}],
+        };
+
+        beforeEach(() => {
+          catalog.serviceGroups.postauth.push(aliasService, namedService);
+        });
+
+        it.each([
+          ['the first matching service', undefined, aliasService],
+          ['the named service', 'named', namedService],
+          ['the named service', 'alias', aliasService],
+          ['undefined for an unmatched name', 'other', undefined],
+        ])('returns %s when the name is %s', (_description, name, expected) => {
+          assert.equal(catalog.findServiceUrlFromUrl(url, name), expected);
+        });
+
+        it('does not match a named service on a similar-looking host (SECURITY)', () => {
+          assert.isUndefined(
+            catalog.findServiceUrlFromUrl('https://example2.com.attacker.com/resource/id', 'named')
+          );
+        });
+      });
+    });
+
+    describe('#markFailedUrl()', () => {
+      const createServiceUrl = (name) =>
+        new ServiceUrl({
+          name,
+          defaultUrl: 'https://conv.example.com/conversation/api/v1',
+          hosts: [
+            {host: 'conv.example.com', priority: 1, homeCluster: true},
+            {host: 'conv-b.example.com', priority: 2, homeCluster: true},
+          ],
+        });
+
+      it('marks the host failed on every service that shares it', () => {
+        const aliasService = createServiceUrl('alias');
+        const namedService = createServiceUrl('named');
+
+        catalog.serviceGroups.postauth.push(aliasService, namedService);
+
+        const nextHighest = catalog.markFailedUrl(
+          'https://conv.example.com/conversation/api/v1/conversations/id'
+        );
+
+        assert.equal(nextHighest, 'https://conv-b.example.com/conversation/api/v1');
+        assert.equal(aliasService.get(true), 'https://conv-b.example.com/conversation/api/v1');
+        assert.equal(namedService.get(true), 'https://conv-b.example.com/conversation/api/v1');
+      });
+
+      it('returns undefined when no service has the host', () => {
+        catalog.serviceGroups.postauth.push(createServiceUrl('named'));
+
+        assert.isUndefined(
+          catalog.markFailedUrl('https://doesnotexist.com/conversation/api/v1/id')
+        );
       });
     });
   });
