@@ -130,7 +130,7 @@ const callingClient = await createClient(webex, {
 The `createClient` factory instantiates `CallingClient` and calls `init()`, which:
 
 1. Performs ICE warmup (Windows Chromium only)
-2. Discovers Mobius servers for the client region (via `ds.ciscospark.com`)
+2. Discovers Mobius servers for the client region (via `sqdiscovery.webex.com`)
 3. Creates a Line object internally
 
 **Note:** `init()` does NOT register the line. The application must call `line.register()` explicitly after obtaining the line via `getLines()`.
