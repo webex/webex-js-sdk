@@ -23,6 +23,9 @@ import {UNION_BUNDLE_VERSION} from './union-bundle';
 import {
   CAROOTS_ASSET_STALE_AFTER_DAYS,
   JS_SDK_KMS_CAROOTS_ASSET_DOWNLOAD_FAILED,
+  JS_SDK_KMS_CAROOTS_ASSET_DOWNLOAD_SUCCESS,
+  JS_SDK_KMS_CAROOTS_ASSET_VERIFICATION_SUCCESS,
+  JS_SDK_KMS_CERTIFICATE_VALIDATION_SUCCESS,
   JS_SDK_KMS_CAROOTS_ASSET_STALE,
   JS_SDK_KMS_CAROOTS_ASSET_VERIFICATION_FAILED,
   JS_SDK_KMS_CERTIFICATE_VALIDATION_FAILED,
@@ -942,6 +945,11 @@ const KMS = WebexPlugin.extend({
     reportOnly = false,
   } = {}) {
     const validationMode = reportOnly ? 'report-only' : 'enforced';
+    const reportSuccess = (name) =>
+      this._submitMetric(name, {
+        fields: {success: true},
+        tags: {validationMode, carootsAsset},
+      });
     // HTTP errors carry the response body in `message`; summarize them instead.
     const describe = (reason) =>
       reason && reason.statusCode
@@ -969,8 +977,10 @@ const KMS = WebexPlugin.extend({
           : this._getCarootsAssetBytes(assetsBaseUrl, carootsAsset)
       )
       .then(
-        (bytes) =>
-          verifyUnionBundle(bytes, {crypto, minBundleVersion: UNION_BUNDLE_VERSION}).then(
+        (bytes) => {
+          reportSuccess(JS_SDK_KMS_CAROOTS_ASSET_DOWNLOAD_SUCCESS);
+
+          return verifyUnionBundle(bytes, {crypto, minBundleVersion: UNION_BUNDLE_VERSION}).then(
             ({caroots, bundleVersion, signingTime}) => {
               const ageInDays = Math.floor((new Date() - signingTime) / 86400000);
 
@@ -986,23 +996,31 @@ const KMS = WebexPlugin.extend({
                 });
               }
 
+              reportSuccess(JS_SDK_KMS_CAROOTS_ASSET_VERIFICATION_SUCCESS);
+
               return caroots;
             },
             (reason) => {
               this.logger.error('kms: CA roots asset failed verification', reason);
               this._submitMetric(JS_SDK_KMS_CAROOTS_ASSET_VERIFICATION_FAILED, {
                 fields: {success: false},
-                tags: {reason: reason.reason || 'unknown', message: reason.message, validationMode},
+                tags: {
+                  reason: reason.reason || 'unknown',
+                  message: reason.message,
+                  validationMode,
+                  carootsAsset,
+                },
               });
 
               return Promise.reject(fail(reason, `"${carootsAsset}" failed verification`));
             }
-          ),
+          );
+        },
         (reason) => {
           this.logger.error('kms: failed to load CA roots asset', reason);
           this._submitMetric(JS_SDK_KMS_CAROOTS_ASSET_DOWNLOAD_FAILED, {
             fields: {success: false},
-            tags: {reason: describe(reason), assetsBaseUrl, validationMode},
+            tags: {reason: describe(reason), assetsBaseUrl, validationMode, carootsAsset},
           });
 
           return Promise.reject(fail(reason, `"${carootsAsset}" could not be loaded`));
@@ -1016,9 +1034,10 @@ const KMS = WebexPlugin.extend({
    * @param {Object} kmsStaticPubKey
    * @param {Error} reason
    * @param {string} validationMode
+   * @param {boolean} [validateSignature=true]
    * @returns {void}
    */
-  _reportKMSValidationFailure(kmsStaticPubKey, reason, validationMode) {
+  _reportKMSValidationFailure(kmsStaticPubKey, reason, validationMode, validateSignature = true) {
     this.logger.warn(`kms: ${validationMode} certificate validation failed`, reason);
     this._submitMetric(JS_SDK_KMS_CERTIFICATE_VALIDATION_FAILED, {
       fields: {success: false},
@@ -1026,7 +1045,21 @@ const KMS = WebexPlugin.extend({
         reason: reason.message,
         kid: kmsStaticPubKey && kmsStaticPubKey.kid,
         validationMode,
+        signatureValidation: validateSignature ? 'enabled' : 'disabled',
       },
+    });
+  },
+
+  /**
+   * Reports a completed full certificate check without changing its policy.
+   * @private
+   * @param {string} validationMode
+   * @returns {void}
+   */
+  _reportKMSValidationSuccess(validationMode) {
+    this._submitMetric(JS_SDK_KMS_CERTIFICATE_VALIDATION_SUCCESS, {
+      fields: {success: true},
+      tags: {validationMode, signatureValidation: 'enabled'},
     });
   },
 
@@ -1047,8 +1080,9 @@ const KMS = WebexPlugin.extend({
       .then(() => this._loadCaroots(source))
       .then(
         (caroots) =>
-          validateKMS({caroots})(kmsStaticPubKey).catch((reason) =>
-            this._reportKMSValidationFailure(kmsStaticPubKey, reason, 'report-only')
+          validateKMS({caroots})(kmsStaticPubKey).then(
+            () => this._reportKMSValidationSuccess('report-only'),
+            (reason) => this._reportKMSValidationFailure(kmsStaticPubKey, reason, 'report-only')
           ),
         (reason) => this.logger.warn('kms: report-only CA roots unavailable', reason)
       )
@@ -1067,14 +1101,27 @@ const KMS = WebexPlugin.extend({
    * @returns {Promise<Object>} the KMS static public key
    */
   _validateKMSStaticPubKey(kmsStaticPubKey, caroots) {
-    const {carootsReportOnly, shouldValidateKMSCertificate, reportOnlyAssetsBaseUrl} = this.config;
+    const {
+      carootsReportOnly,
+      shouldValidateKMSCertificate = true,
+      reportOnlyAssetsBaseUrl,
+    } = this.config;
 
     return validateKMS({caroots, validateSignature: shouldValidateKMSCertificate})(kmsStaticPubKey)
       .catch((reason) => {
-        this._reportKMSValidationFailure(kmsStaticPubKey, reason, 'enforced');
+        this._reportKMSValidationFailure(
+          kmsStaticPubKey,
+          reason,
+          'enforced',
+          shouldValidateKMSCertificate
+        );
         throw reason;
       })
       .then((jwt) => {
+        if (shouldValidateKMSCertificate) {
+          this._reportKMSValidationSuccess('enforced');
+        }
+
         if (!carootsReportOnly) {
           if (reportOnlyAssetsBaseUrl) {
             this._reportKMSStaticPubKey(jwt).catch((reason) => {
@@ -1086,8 +1133,9 @@ const KMS = WebexPlugin.extend({
         }
 
         return validateKMS({caroots: carootsReportOnly})(kmsStaticPubKey)
-          .catch((reason) =>
-            this._reportKMSValidationFailure(kmsStaticPubKey, reason, 'report-only')
+          .then(
+            () => this._reportKMSValidationSuccess('report-only'),
+            (reason) => this._reportKMSValidationFailure(kmsStaticPubKey, reason, 'report-only')
           )
           .then(() => jwt);
       });
