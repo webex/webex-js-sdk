@@ -9,8 +9,8 @@ doc_kind: standing-doc
 generated_from: architecture@0.3.0
 generated_by: claude-cowork
 approved_by: akulakum@cisco.com
-updated_at: 2026-11-13T06:24:37Z
-validation_status: pass-with-warnings
+updated_at: 2026-11-13T06:59:50Z
+validation_status: not-run
 -->
 
 # webex architecture
@@ -146,7 +146,7 @@ Public members per published flavour (behavior stays in the module spec or the o
 | npm `webex` (`.`); UMD `webex` and `webex-first-party` | `new Webex(attrs)`, `Webex.init(attrs)`, static `Webex.version`, instance `version` | Module spec `MOD-003`, `MOD-004`, `MOD-006`; first-party selection `MOD-007` |
 | npm `webex/meetings`; UMD `meetings` | `new Webex(attrs)`, `Webex.init(attrs)`, static `Webex.version`, instance `version` | Module spec `MOD-004`, `MOD-008`, `INV-001` |
 | UMD `encryption` | `new Webex(attrs)`, `Webex.init(attrs)`, static `Webex.version`, instance `version` | Owned by the sibling package plugin-encryption, file src/webex.js; its `init` merges its own config and sets no `sdkType`, so module spec `MOD-009` does not apply |
-| npm `webex/calling`; UMD `calling` | See the next paragraph | Module spec `MOD-010` to `MOD-014` |
+| npm `webex/calling`; UMD `calling` | See the next paragraph | Module spec `MOD-010` to `MOD-014` for npm `webex/calling` (`src/`, `dist/`); the committed UMD `calling` bundle has no call-recording client and a different `deregister` (module spec Pitfalls) |
 
 Under `./calling`, `webex-sdk` also
 exposes the `Calling` class operations `new Calling`, `register`, `deregister`, `initializeClients`,
@@ -203,7 +203,7 @@ is omitted.
 | Artifact | Publish target | Versioning rule | Deprecation window | Changelog or migration obligation |
 | -------- | -------------- | --------------- | ------------------ | --------------------------------- |
 | `webex` | npm, through the `deploy:npm` script (manifest `commands.deploy`) | Workspace release tooling; the committed `package.json` has no `version` field | None declared in code | No package-local changelog; workspace tooling owns it |
-| `umd/` bundles | Published inside the npm package | Rebuilt by the workspace root webpack config; the committed bundles report `version` as `"undefined"` (module spec `MOD-004`), and the committed `umd/webex.min.js` predates the current `src/webex.js` (module spec Pitfalls) | None declared | Must match the entry files at release; rebuild in a separate artifact change |
+| `umd/` bundles | Published inside the npm package | Rebuilt by the workspace root webpack config; the committed bundles report `version` as `"undefined"` (module spec `MOD-004`), and the committed `umd/webex.min.js` and `umd/calling.min.js` predate the current `src/webex.js` and `src/calling.js` (module spec Pitfalls) | None declared | Must match the entry files at release; rebuild in a separate artifact change |
 
 ## Commands and generated artifacts
 

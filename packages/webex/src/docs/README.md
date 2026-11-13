@@ -9,8 +9,8 @@ doc_kind: module-spec
 generated_from: module-spec@0.3.0
 generated_by: claude-cowork
 approved_by: akulakum@cisco.com
-updated_at: 2026-11-13T06:24:37Z
-validation_status: pass-with-warnings
+updated_at: 2026-11-13T06:59:50Z
+validation_status: not-run
 -->
 
 # webex bundle entry points
@@ -37,7 +37,7 @@ Related context: [documentation index](../../docs/index.md) ·
 | Parent spec | — |
 | Doc kind | Module spec |
 | Coverage score | 93.3% assessed 2026-10-13 — 14 of 15 mandatory fields PRESENT, critical 8 of 8; test strategy is WEAK (gaps listed under Verification) and no characterization baseline exists |
-| Validation status | PASS-WITH-WARNINGS; Session B independent validation on 2026-11-13 at 7a23c26. All seven required Repo Annotation checks exited 0; source audit confirms the documented undeclared required plugins and untested entry behavior remain. |
+| Validation status | not-run on this content; awaiting independent validation |
 
 ## Applicability
 
@@ -188,7 +188,7 @@ Contracts provided: `webex-sdk` (native artifact `package.json`) and `webex-umd-
 | `MOD-016` | `env.js` throws `webex/env cannot be used in browser environments` when `inBrowser` is true; otherwise it exports `new Webex({credentials: process.env.WEBEX_ACCESS_TOKEN})`. | Shell and script quick start. | `env.js` | none found | `test/integration/spec/env.js` requires `webex/env`, which the `exports` map does not list, so Node's exports resolution rejects that require; the spec was not run here (see Pitfalls) | Present |
 | `MOD-017` | `browser.js` assigns the constructor to `window.webex` and exports it. | Global access for bundled pages. | `browser.js` | none found | The UMD global is `Webex` | Present |
 | `MOD-018` | `src/_setup.js` creates one test user in a Mocha `before` hook and sets `global.webex` when it is unset. | Shared integration fixture. | `src/_setup.js` | none found | Built into the package output with the runtime files | Present |
-| `MOD-019` | The `umd/` bundles expose global `Webex` for `webex`, `webex-first-party`, `meetings`, and `encryption`, and global `Calling` (default export) for `calling`. | Script-tag consumers. | `umd/webex.min.js`, `umd/calling.min.js`, and the workspace root webpack config | none found | Rebuilt outside this package's scripts | Present |
+| `MOD-019` | The `umd/` bundles expose global `Webex` for `webex`, `webex-first-party`, `meetings`, and `encryption`, and global `Calling` (default export) for `calling`. `MOD-010` to `MOD-014` and `INV-004` describe `src/` and `dist/`; the committed UMD bundles can differ (see Pitfalls). | Script-tag consumers. | `umd/webex.min.js`, `umd/calling.min.js`, and the workspace root webpack config | none found | Rebuilt outside this package's scripts | Present |
 
 ## Design overview
 
@@ -436,6 +436,11 @@ classDiagram
   include `@webex/internal-plugin-task`, which `src/webex.js` now requires, while
   `umd/webex-first-party.min.js` does. The committed bundles are not proof of source parity; rebuild
   them with the manifest `umd-refresh` command in a separate release-artifact change, never by hand.
+- The committed `umd/calling.min.js` and its source map also predate the current `src/calling.js`:
+  they have no `callRecording` branch, so the UMD `Calling` never creates `callRecordingClient`, and
+  its `deregister()` calls `line.deregister()` without `true`. `MOD-012` (`deregister(true)`) and the
+  `callRecording` part of `INV-004` therefore hold for `src/` and `dist/` only, not for the committed
+  UMD `calling` bundle.
 - Run untargeted, the manifest integration command also runs `test/integration/spec/env.js`, which requires the unexported `webex/env` subpath, so the whole tier fails whenever that spec runs. Target `commonjs.js` and `init.js` instead (see Verification); `request.js` has its own caveat below.
 - `test/integration/spec/request.js` builds its expected user agent from `package.json` `version`. With
   no `version` field it expects `webex/undefined`, while the legacy babel plugin injects `0.0.0`, so its
