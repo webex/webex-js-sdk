@@ -252,6 +252,9 @@
       "agent_entry": "packages/@webex/plugin-authorization/AGENTS.md",
       "index": "packages/@webex/plugin-authorization/docs/index.md",
       "onboarded_at": "2026-11-12T05:11:05Z",
+      "onboarded_by": "claude-code"
+    },
+    {
       "id": "@webex/plugin-authorization-browser",
       "path": "packages/@webex/plugin-authorization-browser",
       "manifest": "packages/@webex/plugin-authorization-browser/.sdd/manifest.json",
