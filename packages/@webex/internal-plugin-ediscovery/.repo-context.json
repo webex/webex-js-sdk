@@ -1,0 +1,478 @@
+{
+  "$schema": "./schemas/repo-context.schema.json",
+  "version": 1,
+  "repository": {
+    "name": "@webex/internal-plugin-ediscovery",
+    "purpose": "Internal Webex JS SDK plugin registered as webex.internal.ediscovery for first-party compliance clients. It creates, lists, reads, restarts, and deletes compliance reports on the eDiscovery service, reads the client config, posts the summary-download audit event, and pages report content and content containers by report UUID or remote report URL with an in-memory container cache. Payload transforms registered with webex-core encrypt report requests under a new KMS key before they are sent and decrypt report requests, activities, and containers on the way in, on behalf of each container's onBehalfOfUser, recording failures as error or warning properties instead of rejecting."
+  },
+  "commands": {
+    "install": "yarn",
+    "prebuild": "yarn prebuild:modules",
+    "compile": "yarn workspace @webex/internal-plugin-ediscovery build:src",
+    "build": "yarn workspace @webex/internal-plugin-ediscovery build",
+    "unit-test": "yarn workspace @webex/internal-plugin-ediscovery test:unit",
+    "browser-test-broken": "yarn workspace @webex/internal-plugin-ediscovery test:browser:broken",
+    "lint": "yarn workspace @webex/internal-plugin-ediscovery test:style",
+    "deploy": "yarn workspace @webex/internal-plugin-ediscovery deploy:npm"
+  },
+  "public_interfaces": [
+    {
+      "name": "@webex/internal-plugin-ediscovery package entry",
+      "kind": "package_export",
+      "source": "src/index.js",
+      "entrypoints": [
+        "import EDiscovery from '@webex/internal-plugin-ediscovery'",
+        "import {ReportRequest, EdiscoveryError, InvalidEmailAddressError} from '@webex/internal-plugin-ediscovery'",
+        "import '@webex/internal-plugin-ediscovery'"
+      ],
+      "audience": "first-party compliance clients",
+      "notes": "Importing the package imports @webex/internal-plugin-encryption and @webex/internal-plugin-conversation and registers EDiscovery as internal plugin 'ediscovery' with seven payload predicates and transforms that join the module-level webex config. The named config export resolves to undefined because src/config.js has only a default export."
+    },
+    {
+      "name": "webex.internal.ediscovery runtime methods",
+      "kind": "plugin_api",
+      "source": "src/ediscovery.js",
+      "entrypoints": [
+        "webex.internal.ediscovery.createReport()",
+        "webex.internal.ediscovery.getReport()",
+        "webex.internal.ediscovery.getReports()",
+        "webex.internal.ediscovery.deleteReport()",
+        "webex.internal.ediscovery.restartReport()",
+        "webex.internal.ediscovery.getContent()",
+        "webex.internal.ediscovery.getContentContainer()",
+        "webex.internal.ediscovery.getContentContainerByContainerId()",
+        "webex.internal.ediscovery.getClientConfig()",
+        "webex.internal.ediscovery.postAuditLog()",
+        "webex.internal.ediscovery.clearCache()"
+      ],
+      "audience": "first-party compliance clients and the activity decryption transform",
+      "notes": "The three content methods accept a report UUID or a report URL and are decorated with oneFlight. Responses arrive decrypted, or with error and warning properties on items that could not be decrypted."
+    },
+    {
+      "name": "payload transforms",
+      "kind": "plugin_api",
+      "source": "src/index.js",
+      "entrypoints": [
+        "encryptReportRequest",
+        "decryptReportRequest",
+        "decryptReportRequestArray",
+        "decryptReportContent",
+        "decryptReportContentArray",
+        "decryptReportContentContainer",
+        "decryptReportContentContainerArray"
+      ],
+      "audience": "the webex-core payload-transformer pipeline",
+      "notes": "Predicates match by field name (keywords, spaceNames, emails outbound; reportRequest, activityId, containerId inbound) on every request and response of the webex instance. Implementations are in src/transforms.js."
+    },
+    {
+      "name": "ediscovery configuration",
+      "kind": "configuration",
+      "source": "src/config.js",
+      "entrypoints": [
+        "webex.config.ediscovery.defaultOptions.offset",
+        "webex.config.ediscovery.defaultOptions.size",
+        "webex.config.ediscovery.defaultOptions.timeoutMs",
+        "webex.config.ediscovery.defaultOptions.types"
+      ],
+      "audience": "integrators configuring the webex instance",
+      "notes": "Defaults offset 0, size 100, timeoutMs 30000, types empty; per-call options override them."
+    },
+    {
+      "name": "package scripts",
+      "kind": "npm_scripts",
+      "source": "package.json",
+      "entrypoints": [
+        "build",
+        "build:src",
+        "test:style",
+        "test:unit",
+        "test:browser:broken",
+        "deploy:npm"
+      ],
+      "audience": "contributors and CI",
+      "notes": "Run build:src before test:unit because the unit specs import the package by name and load dist. test:style does not lint src/ediscovery.js (shared ignore list) and src/index.js disables every rule. The aggregate test script chains test:integration and test:browser, which are not defined. No script runs test/integration/spec."
+    }
+  ],
+  "source_of_truth": [
+    {
+      "surface": "eDiscovery plugin implementation",
+      "paths": [
+        "src/index.js",
+        "src/ediscovery.js",
+        "src/transforms.js",
+        "src/retry.js",
+        "src/report-request.js",
+        "src/ediscovery-error.js",
+        "src/config.js"
+      ],
+      "generated_artifacts": [
+        "dist"
+      ],
+      "refresh_with": [
+        "yarn workspace @webex/internal-plugin-ediscovery build:src"
+      ],
+      "validate_with": [
+        "yarn workspace @webex/internal-plugin-ediscovery test:unit",
+        "yarn workspace @webex/internal-plugin-ediscovery test:style"
+      ]
+    },
+    {
+      "surface": "module specification",
+      "paths": [
+        "src/docs/README.md"
+      ],
+      "generated_artifacts": [],
+      "refresh_with": [
+        "update alongside the behavior change in the same commit"
+      ],
+      "validate_with": [
+        "spec-validator on an independent runtime"
+      ]
+    }
+  ],
+  "generated_artifacts": [
+    {
+      "path": "dist",
+      "generated_from": "src",
+      "refresh_with": "yarn workspace @webex/internal-plugin-ediscovery build:src"
+    },
+    {
+      "path": "../../../.sdd/templates/repo-standards/template-map.json",
+      "generated_from": "WebexTools/repo-standards@d89a7fe59126ae3ad9bac9ca352aa7f12b4c85dc",
+      "refresh_with": "The package holds no templates. It refers to the monorepo root snapshot at ../../../.sdd/templates/repo-standards through layout.monorepo_package.templates_root_path in .sdd/manifest.json. Refresh the root snapshot, not this package."
+    }
+  ],
+  "validation_matrix": [
+    {
+      "paths": [
+        "src/**"
+      ],
+      "minimum": [
+        "yarn workspace @webex/internal-plugin-ediscovery build:src",
+        "yarn workspace @webex/internal-plugin-ediscovery test:unit"
+      ],
+      "recommended": [
+        "yarn workspace @webex/internal-plugin-ediscovery test:style"
+      ]
+    },
+    {
+      "paths": [
+        "src/index.js",
+        "src/transforms.js",
+        "src/retry.js"
+      ],
+      "minimum": [
+        "yarn workspace @webex/internal-plugin-ediscovery build:src",
+        "yarn workspace @webex/internal-plugin-ediscovery test:unit"
+      ],
+      "recommended": [
+        "check which other plugins send or receive payloads with the field names the predicates in src/index.js match",
+        "review src/index.js and src/ediscovery.js by hand, because test:style does not lint them"
+      ]
+    }
+  ],
+  "change_impact": [
+    {
+      "paths": [
+        "src/transforms.js",
+        "src/retry.js"
+      ],
+      "affects": [
+        "report-request encryption before createReport",
+        "report, activity, and container decryption",
+        "the error and warning properties the downloader records",
+        "KMS retry behavior"
+      ],
+      "refresh_with": [
+        "yarn workspace @webex/internal-plugin-ediscovery build:src"
+      ],
+      "validate_with": [
+        "yarn workspace @webex/internal-plugin-ediscovery test:unit"
+      ],
+      "avoid_direct_edits": [
+        "dist"
+      ],
+      "notes": "Decryption failures must annotate the payload and resolve; content is decrypted on behalf of the container's onBehalfOfUser."
+    },
+    {
+      "paths": [
+        "src/ediscovery.js"
+      ],
+      "affects": [
+        "report record calls",
+        "content and container reads by UUID or URL",
+        "the container cache used by activity decryption",
+        "oneFlight sharing of content requests"
+      ],
+      "refresh_with": [
+        "yarn workspace @webex/internal-plugin-ediscovery build:src"
+      ],
+      "validate_with": [
+        "yarn workspace @webex/internal-plugin-ediscovery test:unit"
+      ],
+      "avoid_direct_edits": [
+        "dist"
+      ],
+      "notes": "Error code 14400001 maps to InvalidEmailAddressError; paging options must stay in oneFlight keys."
+    },
+    {
+      "paths": [
+        "src/index.js",
+        "src/config.js"
+      ],
+      "affects": [
+        "registration as webex.internal.ediscovery",
+        "the payload predicates applied to every webex request and response",
+        "default options"
+      ],
+      "refresh_with": [
+        "yarn workspace @webex/internal-plugin-ediscovery build:src"
+      ],
+      "validate_with": [
+        "yarn workspace @webex/internal-plugin-ediscovery test:unit"
+      ],
+      "avoid_direct_edits": [
+        "dist"
+      ],
+      "notes": "Predicates join the module-level webex config at import time."
+    }
+  ],
+  "evidence_rules": [
+    {
+      "claim_category": "command_name",
+      "sources": [
+        "package.json"
+      ],
+      "requirement": "The script must exist in package.json scripts.",
+      "notes": "test:integration and test:browser are referenced by the test script but not defined. test:browser:broken needs live services."
+    },
+    {
+      "claim_category": "import_path",
+      "sources": [
+        "src/index.js"
+      ],
+      "requirement": "A binding is public only if exported from src/index.js.",
+      "notes": "Exports: default EDiscovery, ReportRequest, EdiscoveryError, InvalidEmailAddressError, and config (undefined)."
+    },
+    {
+      "claim_category": "behavior_claim",
+      "sources": [
+        "src",
+        "test/unit/spec"
+      ],
+      "requirement": "Ground every behavioral claim in source or test evidence.",
+      "notes": "Commit history is not an evidence source for this package. README.md is context only (docs/adr/0001-retain-product-readme.md). Transport, transform orchestration, storage gating, and cryptography are owned by the sibling packages webex-core and internal-plugin-encryption."
+    }
+  ],
+  "negative_guidance": [
+    {
+      "rule": "Do not reject an inbound transform because one field failed to decrypt.",
+      "why": "The downloader records error and warning properties per item; a rejection would fail a whole page of content."
+    },
+    {
+      "rule": "Do not add a payload predicate on a field name other plugins use.",
+      "why": "Predicates run on every request and response of the webex instance once this package is imported."
+    },
+    {
+      "rule": "Do not bypass getContentContainerByContainerId when decrypting activities.",
+      "why": "It reads the container cache first, which avoids a network call per activity."
+    },
+    {
+      "rule": "Do not drop paging options from the oneFlight keys.",
+      "why": "Paged requests must not share a flight with another page."
+    },
+    {
+      "rule": "Do not treat README.md as the method list or the way to run tests.",
+      "why": "Its usage block is a placeholder and its test commands do not match package.json; see docs/adr/0001-retain-product-readme.md."
+    },
+    {
+      "rule": "Do not run test:unit against a stale dist.",
+      "why": "The unit specs import the package by name, which resolves main (dist/index.js)."
+    },
+    {
+      "rule": "Do not infer a coverage threshold for this package.",
+      "why": "The developer confirmed no coverage gate applies; the legacy Jest config sets no threshold."
+    }
+  ],
+  "confidence_policy": {
+    "high": {
+      "action": "update",
+      "expectation": "Source and unit test evidence both support the change, and the behavior has a case in test/unit/spec."
+    },
+    "medium": {
+      "action": "narrow-scope",
+      "expectation": "Only source evidence exists, for example registration, the array transforms, container decryption, or requestWithRetries. Pin current behavior with a characterization test before modifying."
+    },
+    "low": {
+      "action": "noop",
+      "expectation": "Neither source nor tests settle the question. Stop and report the gap."
+    }
+  },
+  "repository_topology": {
+    "main_entrypoints": [
+      {
+        "name": "package entry",
+        "path": "src/index.js",
+        "purpose": "Imports the encryption and conversation plugins, registers the ediscovery plugin and its payload transformer, and re-exports the public bindings",
+        "notes": "No subpath exports."
+      }
+    ],
+    "workspace_packages": [
+      {
+        "name": "@webex/internal-plugin-ediscovery",
+        "paths": [
+          "src",
+          "test"
+        ],
+        "notes": "One module; this SDD root is the package directory inside the webex-js-sdk monorepo."
+      }
+    ],
+    "source_surfaces": [
+      {
+        "name": "eDiscovery plugin",
+        "paths": [
+          "src"
+        ],
+        "notes": "index.js, ediscovery.js, transforms.js, retry.js, report-request.js, ediscovery-error.js, config.js. Specified at src/docs/README.md."
+      },
+      {
+        "name": "tests",
+        "paths": [
+          "test/unit/spec",
+          "test/integration/spec"
+        ],
+        "notes": "Three unit specs (122 cases) run by Jest through webex-legacy-tools. The integration spec needs a compliance test user and the live eDiscovery service and has no package script."
+      }
+    ],
+    "generated_surfaces": [
+      {
+        "name": "build output",
+        "paths": [
+          "dist"
+        ],
+        "generated_from": "src",
+        "refresh_with": "yarn workspace @webex/internal-plugin-ediscovery build:src",
+        "notes": "Produced by webex-legacy-tools. Do not edit by hand. The unit specs load it."
+      },
+      {
+        "name": "repo-standards template map",
+        "paths": [
+          "../../../.sdd/templates/repo-standards"
+        ],
+        "generated_from": "WebexTools/repo-standards@d89a7fe59126ae3ad9bac9ca352aa7f12b4c85dc",
+        "refresh_with": "The package holds no templates. It refers to the monorepo root snapshot at ../../../.sdd/templates/repo-standards through layout.monorepo_package.templates_root_path in .sdd/manifest.json. Refresh the root snapshot, not this package.",
+        "notes": "The package holds no templates. It refers to the monorepo root snapshot at ../../../.sdd/templates/repo-standards through layout.monorepo_package.templates_root_path in .sdd/manifest.json. Refresh the root snapshot, not this package."
+      }
+    ],
+    "validation_entrypoints": [
+      {
+        "name": "unit tests",
+        "command": "yarn workspace @webex/internal-plugin-ediscovery test:unit",
+        "scope": "test/unit/spec",
+        "notes": "jest via webex-legacy-tools --runner jest; run build:src first."
+      },
+      {
+        "name": "lint",
+        "command": "yarn workspace @webex/internal-plugin-ediscovery test:style",
+        "scope": "src",
+        "notes": "eslint via the local .eslintrc.js; the shared ignore patterns skip src/ediscovery.js, and src/index.js disables every rule."
+      }
+    ],
+    "sync_paths": [
+      {
+        "source": "src/ediscovery.js",
+        "targets": [
+          "src/docs/README.md"
+        ],
+        "mechanism": "Manual; update the module specification in the same change that alters observable behavior.",
+        "notes": "src/transforms.js and src/index.js follow the same rule."
+      },
+      {
+        "source": "WebexTools/repo-standards@d89a7fe59126ae3ad9bac9ca352aa7f12b4c85dc",
+        "targets": [
+          "../../../.sdd/templates/repo-standards"
+        ],
+        "mechanism": "The package holds no templates. It refers to the monorepo root snapshot at ../../../.sdd/templates/repo-standards through layout.monorepo_package.templates_root_path in .sdd/manifest.json. Refresh the root snapshot, not this package.",
+        "notes": "The package holds no templates. It refers to the monorepo root snapshot at ../../../.sdd/templates/repo-standards through layout.monorepo_package.templates_root_path in .sdd/manifest.json. Refresh the root snapshot, not this package."
+      }
+    ]
+  },
+  "folder_readme_contract": {
+    "required_sections": [
+      "purpose",
+      "boundaries",
+      "key-files",
+      "common-tasks"
+    ],
+    "rules": [
+      "Orient the reader before describing detail.",
+      "Link to the module specification rather than duplicating it."
+    ],
+    "example_policy": "Examples are allowed only when verified against src/ or test/.",
+    "fallback": "Omit a section rather than inventing content; report unresolved facts as gaps."
+  },
+  "regression_feedback_rules": [
+    {
+      "trigger": "A payload predicate or transform in src/index.js or src/transforms.js changes.",
+      "required_followups": [
+        "Add a case to test/unit/spec/transforms.js",
+        "Update MOD-001 and MOD-012 to MOD-020 in src/docs/README.md as affected"
+      ],
+      "notes": "The downloader relies on the error and warning properties."
+    },
+    {
+      "trigger": "A request method, its URL handling, its oneFlight key, or the container cache changes.",
+      "required_followups": [
+        "Add a case to test/unit/spec/content.js or test/unit/spec/report.js",
+        "Update MOD-002 to MOD-011 in src/docs/README.md as affected"
+      ],
+      "notes": "Activity decryption depends on the cache."
+    }
+  ],
+  "surface_owners": [
+    {
+      "surface": "module implementation and specifications",
+      "owner": "@webex/web-sdk",
+      "edit_boundary": "Owner per the monorepo .github/CODEOWNERS default rule; the package has no explicit entry."
+    }
+  ],
+  "do_not_edit": [
+    "dist",
+    "../../../.sdd/templates/repo-standards"
+  ],
+  "marker_scopes": {
+    "sdd": [
+      ".sdd/manifest.json",
+      "src/docs/README.md",
+      "docs"
+    ]
+  },
+  "fallback_rules": [
+    "When source and tests disagree, code is the referee and the disagreement is recorded rather than silently resolved.",
+    "When neither source nor tests settle a question, report it as a gap instead of inferring.",
+    "Commit history is not a valid rationale source for this package."
+  ],
+  "downstream_context_pack": {
+    "required_human_surfaces": [
+      "README.md",
+      "docs/index.md",
+      "docs/architecture.md",
+      "src/docs/README.md"
+    ],
+    "required_agent_operational_surfaces": [
+      "AGENTS.md",
+      "docs/specs/README.md"
+    ],
+    "required_machine_readable_surface": ".sdd/manifest.json",
+    "recommended_machine_readable_sections": [
+      "public_interfaces",
+      "change_impact",
+      "evidence_rules",
+      "negative_guidance",
+      "confidence_policy",
+      "repository_topology",
+      "folder_readme_contract",
+      "regression_feedback_rules"
+    ]
+  }
+}

@@ -1,0 +1,444 @@
+{
+  "$schema": "./schemas/repo-context.schema.json",
+  "version": 1,
+  "repository": {
+    "name": "@webex/internal-plugin-voicea",
+    "purpose": "Internal plugin registered as webex.internal.voicea (required by the webex package and used by plugin-meetings). It is a factory: createChannel(llmChannel?) returns a VoiceaChannel per meeting, which borrows a caller-owned LLM data channel. A channel PUTs Locus controls to turn captions, transcription, and manual captions on and to set the spoken language; announces the client to the voicea service, requests caption languages, sends manual captions, and manages the transcription subchannel over the LLM channel; re-emits inbound relay events as voicea:* and aibridge:* events; and rebinds to another LLM channel while restoring captions. It stores nothing and owns no connection."
+  },
+  "commands": {
+    "install": "yarn",
+    "prebuild": "yarn prebuild:modules",
+    "compile": "yarn workspace @webex/internal-plugin-voicea build",
+    "build": "yarn workspace @webex/internal-plugin-voicea build:src",
+    "unit-test": "yarn workspace @webex/internal-plugin-voicea test:unit",
+    "lint": "yarn workspace @webex/internal-plugin-voicea test:style",
+    "deploy": "yarn workspace @webex/internal-plugin-voicea deploy:npm"
+  },
+  "public_interfaces": [
+    {
+      "name": "@webex/internal-plugin-voicea package entry",
+      "kind": "package_export",
+      "source": "src/index.ts",
+      "entrypoints": [
+        "import '@webex/internal-plugin-voicea'",
+        "import VoiceaPlugin from '@webex/internal-plugin-voicea'",
+        "import {VoiceaPlugin, VoiceaChannel, EVENT_TRIGGERS, TURN_ON_CAPTION_STATUS} from '@webex/internal-plugin-voicea'",
+        "import {type MeetingTranscriptPayload, type SpeakerNameUpdatePayload} from '@webex/internal-plugin-voicea'"
+      ],
+      "audience": "plugin-meetings and the webex package",
+      "notes": "Importing the package registers VoiceaPlugin as internal plugin 'voicea' with empty options; the first registration of the name wins."
+    },
+    {
+      "name": "webex.internal.voicea factory",
+      "kind": "plugin_api",
+      "source": "src/voicea-plugin.ts",
+      "entrypoints": [
+        "webex.internal.voicea.createChannel()",
+        "webex.internal.voicea.createChannel(llmChannel)"
+      ],
+      "audience": "plugin-meetings",
+      "notes": "Returns a new VoiceaChannel bound to webex.request. The caller keeps ownership of the LLM channel."
+    },
+    {
+      "name": "VoiceaChannel methods and events",
+      "kind": "plugin_api",
+      "source": "src/voicea.ts",
+      "entrypoints": [
+        "switchLLMChannel(llmChannel)",
+        "turnOnCaptions(spokenLanguage)",
+        "toggleTranscribing(activate, spokenLanguage)",
+        "toggleManualCaption(enable)",
+        "setSpokenLanguage(languageCode, languageAssignment)",
+        "requestLanguage(languageCode)",
+        "sendManualClosedCaption(text, timeStamp, csis, isFinal)",
+        "updateSubchannelSubscriptionsAndSyncCaptionState(options, keepSubscribed)",
+        "deregisterEvents()",
+        "on(EVENT_TRIGGERS.NEW_CAPTION, listener)"
+      ],
+      "audience": "plugin-meetings",
+      "notes": "Event names come from EVENT_TRIGGERS in src/constants.ts. Locus control methods throw synchronously without a bound LLM channel; data-channel sends are skipped while disconnected."
+    },
+    {
+      "name": "package scripts",
+      "kind": "npm_scripts",
+      "source": "package.json",
+      "entrypoints": [
+        "build",
+        "build:src",
+        "test:style",
+        "test:unit",
+        "test:browser",
+        "test",
+        "deploy:npm"
+      ],
+      "audience": "contributors and CI",
+      "notes": "build is tsc with emitDeclarationOnly; build:src writes dist and then runs build. test chains test:integration, which is not defined, and test:browser finds no test/integration directory, so use test:unit and test:style."
+    }
+  ],
+  "source_of_truth": [
+    {
+      "surface": "voicea plugin and channel implementation",
+      "paths": [
+        "src/index.ts",
+        "src/voicea-plugin.ts",
+        "src/voicea.ts",
+        "src/constants.ts",
+        "src/voicea.types.ts",
+        "src/utils.ts"
+      ],
+      "generated_artifacts": [
+        "dist"
+      ],
+      "refresh_with": [
+        "yarn workspace @webex/internal-plugin-voicea build:src"
+      ],
+      "validate_with": [
+        "yarn workspace @webex/internal-plugin-voicea test:unit",
+        "yarn workspace @webex/internal-plugin-voicea test:style"
+      ]
+    },
+    {
+      "surface": "module specification",
+      "paths": [
+        "src/docs/README.md"
+      ],
+      "generated_artifacts": [],
+      "refresh_with": [
+        "update alongside the behavior change in the same commit"
+      ],
+      "validate_with": [
+        "spec-validator on an independent runtime"
+      ]
+    }
+  ],
+  "generated_artifacts": [
+    {
+      "path": "dist",
+      "generated_from": "src",
+      "refresh_with": "yarn workspace @webex/internal-plugin-voicea build:src"
+    },
+    {
+      "path": "../../../.sdd/templates/repo-standards/template-map.json",
+      "generated_from": "WebexTools/repo-standards@d89a7fe59126ae3ad9bac9ca352aa7f12b4c85dc",
+      "refresh_with": "The package holds no templates. It refers to the monorepo root snapshot at ../../../.sdd/templates/repo-standards through layout.monorepo_package.templates_root_path in .sdd/manifest.json. Refresh the root snapshot, not this package."
+    }
+  ],
+  "validation_matrix": [
+    {
+      "paths": [
+        "src/**"
+      ],
+      "minimum": [
+        "yarn workspace @webex/internal-plugin-voicea build:src",
+        "yarn workspace @webex/internal-plugin-voicea test:unit"
+      ],
+      "recommended": [
+        "yarn workspace @webex/internal-plugin-voicea test:style"
+      ]
+    },
+    {
+      "paths": [
+        "src/constants.ts",
+        "src/voicea.types.ts",
+        "src/index.ts"
+      ],
+      "minimum": [
+        "yarn workspace @webex/internal-plugin-voicea build:src",
+        "yarn workspace @webex/internal-plugin-voicea test:unit"
+      ],
+      "recommended": [
+        "review the plugin-meetings callers in packages/@webex/plugin-meetings/src/meeting/index.ts and src/meeting/voicea-meeting.ts when an event name, exported constant, or exported type changes"
+      ]
+    }
+  ],
+  "change_impact": [
+    {
+      "paths": [
+        "src/voicea.ts"
+      ],
+      "affects": [
+        "caption, transcription, and manual-caption control through Locus",
+        "the voicea announcement, language requests, and manual captions over the LLM channel",
+        "relay-event translation into voicea:* events",
+        "LLM channel switching and caption restore"
+      ],
+      "refresh_with": [
+        "yarn workspace @webex/internal-plugin-voicea build:src"
+      ],
+      "validate_with": [
+        "yarn workspace @webex/internal-plugin-voicea test:unit"
+      ],
+      "avoid_direct_edits": [
+        "dist"
+      ],
+      "notes": "plugin-meetings calls switchLLMChannel after each LLM connection and deregisterEvents on stop and cleanup; keep the reconciler idempotent and the error messages stable."
+    },
+    {
+      "paths": [
+        "src/constants.ts",
+        "src/voicea.types.ts",
+        "src/index.ts",
+        "src/voicea-plugin.ts"
+      ],
+      "affects": [
+        "event names and payload types read by plugin-meetings",
+        "registration as webex.internal.voicea",
+        "the createChannel factory"
+      ],
+      "refresh_with": [
+        "yarn workspace @webex/internal-plugin-voicea build:src"
+      ],
+      "validate_with": [
+        "yarn workspace @webex/internal-plugin-voicea test:unit"
+      ],
+      "avoid_direct_edits": [
+        "dist"
+      ],
+      "notes": "plugin-meetings imports EVENT_TRIGGERS, TURN_ON_CAPTION_STATUS, VoiceaChannel, and MeetingTranscriptPayload."
+    }
+  ],
+  "evidence_rules": [
+    {
+      "claim_category": "command_name",
+      "sources": [
+        "package.json"
+      ],
+      "requirement": "The script must exist in package.json scripts.",
+      "notes": "test:integration does not exist, so the aggregate test script fails; test:browser verifies nothing."
+    },
+    {
+      "claim_category": "import_path",
+      "sources": [
+        "src/index.ts"
+      ],
+      "requirement": "A binding is public only if exported from src/index.ts.",
+      "notes": "Exports: default and named VoiceaPlugin, VoiceaChannel, EVENT_TRIGGERS, TURN_ON_CAPTION_STATUS, and types MeetingTranscriptPayload and SpeakerNameUpdatePayload."
+    },
+    {
+      "claim_category": "behavior_claim",
+      "sources": [
+        "src",
+        "test/unit/spec"
+      ],
+      "requirement": "Ground every behavioral claim in source or test evidence.",
+      "notes": "Commit history is not an evidence source for this package. README.md is context only and partly stale (docs/adr/0001-retain-product-readme.md). The internal-plugin-llm specification is stale on the LLM plugin shape; use that package's code."
+    }
+  ],
+  "negative_guidance": [
+    {
+      "rule": "Do not connect, disconnect, or tear down the LLM channel inside this package.",
+      "why": "The caller owns it; createChannel's JSDoc says the channel does not take ownership."
+    },
+    {
+      "rule": "Do not call channel methods on webex.internal.voicea.",
+      "why": "The plugin only creates channels; registerAndConnect and the other README methods on the plugin no longer exist."
+    },
+    {
+      "rule": "Do not rename an EVENT_TRIGGERS value or change TURN_ON_CAPTION_STATUS without updating plugin-meetings.",
+      "why": "plugin-meetings listens to six of the events and compares caption status values."
+    },
+    {
+      "rule": "Do not send a data-channel frame without the shared sequence number.",
+      "why": "Frames continue the data channel's numbering from the last inbound relay event."
+    },
+    {
+      "rule": "Do not change a status flag before the checks that can throw.",
+      "why": "toggleManualCaption already leaves its status stuck at sending when requireLLMChannel throws."
+    },
+    {
+      "rule": "Do not treat README.md as the method, event, or connection reference.",
+      "why": "Several of its claims differ from code; see docs/adr/0001-retain-product-readme.md."
+    },
+    {
+      "rule": "Do not infer a coverage threshold for this package.",
+      "why": "The developer confirmed no coverage gate applies; the legacy Jest config sets no threshold."
+    }
+  ],
+  "confidence_policy": {
+    "high": {
+      "action": "update",
+      "expectation": "Source and unit test evidence both support the change, and the behavior has a case in test/unit/spec."
+    },
+    "medium": {
+      "action": "narrow-scope",
+      "expectation": "Only source evidence exists, for example registration, the trackingId prefix, the turnOnCaptions body, or re-binding after deregisterEvents. Pin current behavior with a characterization test before modifying."
+    },
+    "low": {
+      "action": "noop",
+      "expectation": "Neither source nor tests settle the question. Stop and report the gap."
+    }
+  },
+  "repository_topology": {
+    "main_entrypoints": [
+      {
+        "name": "package entry",
+        "path": "src/index.ts",
+        "purpose": "Registers the voicea plugin and re-exports the class, channel, constants, and types",
+        "notes": "No subpath exports; package.json devMain still names src/index.js."
+      }
+    ],
+    "workspace_packages": [
+      {
+        "name": "@webex/internal-plugin-voicea",
+        "paths": [
+          "src",
+          "test"
+        ],
+        "notes": "One module; this SDD root is the package directory inside the webex-js-sdk monorepo."
+      }
+    ],
+    "source_surfaces": [
+      {
+        "name": "voicea plugin and channel",
+        "paths": [
+          "src"
+        ],
+        "notes": "index.ts, voicea-plugin.ts, voicea.ts, constants.ts, voicea.types.ts, utils.ts. Specified at src/docs/README.md."
+      },
+      {
+        "name": "tests",
+        "paths": [
+          "test/unit/spec"
+        ],
+        "notes": "Three unit specs run by Jest through webex-legacy-tools (84 cases). No integration tests."
+      }
+    ],
+    "generated_surfaces": [
+      {
+        "name": "build output",
+        "paths": [
+          "dist"
+        ],
+        "generated_from": "src",
+        "refresh_with": "yarn workspace @webex/internal-plugin-voicea build:src",
+        "notes": "JavaScript from webex-legacy-tools and declarations in dist/types from tsc. Do not edit by hand."
+      },
+      {
+        "name": "repo-standards template map",
+        "paths": [
+          "../../../.sdd/templates/repo-standards"
+        ],
+        "generated_from": "WebexTools/repo-standards@d89a7fe59126ae3ad9bac9ca352aa7f12b4c85dc",
+        "refresh_with": "The package holds no templates. It refers to the monorepo root snapshot at ../../../.sdd/templates/repo-standards through layout.monorepo_package.templates_root_path in .sdd/manifest.json. Refresh the root snapshot, not this package.",
+        "notes": "The package holds no templates. It refers to the monorepo root snapshot at ../../../.sdd/templates/repo-standards through layout.monorepo_package.templates_root_path in .sdd/manifest.json. Refresh the root snapshot, not this package."
+      }
+    ],
+    "validation_entrypoints": [
+      {
+        "name": "unit tests",
+        "command": "yarn workspace @webex/internal-plugin-voicea test:unit",
+        "scope": "test/unit/spec",
+        "notes": "jest via webex-legacy-tools --runner jest; the specs import src directly and sibling packages from their dist."
+      },
+      {
+        "name": "type check",
+        "command": "yarn workspace @webex/internal-plugin-voicea build",
+        "scope": "src",
+        "notes": "tsc with the workspace emitDeclarationOnly setting."
+      },
+      {
+        "name": "lint",
+        "command": "yarn workspace @webex/internal-plugin-voicea test:style",
+        "scope": "src",
+        "notes": "eslint via the local .eslintrc.js with the shared TypeScript override; docs/** and *.md are ignored."
+      }
+    ],
+    "sync_paths": [
+      {
+        "source": "src/voicea.ts",
+        "targets": [
+          "src/docs/README.md"
+        ],
+        "mechanism": "Manual; update the module specification in the same change that alters observable behavior.",
+        "notes": "plugin-meetings depends on the channel methods and events; keep their behavior aligned with packages/@webex/plugin-meetings/src/meeting/index.ts."
+      },
+      {
+        "source": "WebexTools/repo-standards@d89a7fe59126ae3ad9bac9ca352aa7f12b4c85dc",
+        "targets": [
+          "../../../.sdd/templates/repo-standards"
+        ],
+        "mechanism": "The package holds no templates. It refers to the monorepo root snapshot at ../../../.sdd/templates/repo-standards through layout.monorepo_package.templates_root_path in .sdd/manifest.json. Refresh the root snapshot, not this package.",
+        "notes": "The package holds no templates. It refers to the monorepo root snapshot at ../../../.sdd/templates/repo-standards through layout.monorepo_package.templates_root_path in .sdd/manifest.json. Refresh the root snapshot, not this package."
+      }
+    ]
+  },
+  "folder_readme_contract": {
+    "required_sections": [
+      "purpose",
+      "boundaries",
+      "key-files",
+      "common-tasks"
+    ],
+    "rules": [
+      "Orient the reader before describing detail.",
+      "Link to the module specification rather than duplicating it."
+    ],
+    "example_policy": "Examples are allowed only when verified against src/ or test/.",
+    "fallback": "Omit a section rather than inventing content; report unresolved facts as gaps."
+  },
+  "regression_feedback_rules": [
+    {
+      "trigger": "A Locus controls body, a relay frame, or a relay type changes.",
+      "required_followups": [
+        "Add or update a case in test/unit/spec/voicea.js",
+        "Update Protocol and wire format and the matching MOD row in src/docs/README.md"
+      ],
+      "notes": "Locus and the voicea service parse these shapes."
+    },
+    {
+      "trigger": "switchLLMChannel, reconcile, or deregisterEvents changes.",
+      "required_followups": [
+        "Add a case to the #switchLLMChannel or #deregisterEvents block of test/unit/spec/voicea.js",
+        "Update MOD-017 and MOD-018 in src/docs/README.md"
+      ],
+      "notes": "plugin-meetings relies on caption restore across LLM reconnects and practice-session switches."
+    }
+  ],
+  "surface_owners": [
+    {
+      "surface": "module implementation and specifications",
+      "owner": "@webex/web-client, @webex/web-sdk",
+      "edit_boundary": "Owners per the monorepo .github/CODEOWNERS entry for packages/@webex/internal-plugin-voicea."
+    }
+  ],
+  "do_not_edit": [
+    "dist",
+    "../../../.sdd/templates/repo-standards"
+  ],
+  "marker_scopes": {
+    "sdd": [
+      ".sdd/manifest.json",
+      "src/docs/README.md",
+      "docs"
+    ]
+  },
+  "fallback_rules": [
+    "When source and tests disagree, code is the referee and the disagreement is recorded rather than silently resolved.",
+    "When neither source nor tests settle a question, report it as a gap instead of inferring.",
+    "Commit history is not a valid rationale source for this package.",
+    "When a dependency's specification disagrees with that dependency's code, use the code and record the disagreement."
+  ],
+  "downstream_context_pack": {
+    "required_human_surfaces": [
+      "README.md",
+      "docs/index.md",
+      "docs/architecture.md",
+      "src/docs/README.md"
+    ],
+    "required_agent_operational_surfaces": [
+      "AGENTS.md",
+      "docs/specs/README.md"
+    ],
+    "required_machine_readable_surface": ".sdd/manifest.json",
+    "recommended_machine_readable_sections": [
+      "public_interfaces",
+      "change_impact",
+      "evidence_rules",
+      "negative_guidance",
+      "confidence_policy",
+      "repository_topology",
+      "folder_readme_contract",
+      "regression_feedback_rules"
+    ]
+  }
+}
