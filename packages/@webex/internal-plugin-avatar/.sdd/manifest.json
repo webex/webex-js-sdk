@@ -1,0 +1,425 @@
+{
+  "manifest_version": 1,
+  "repository": {
+    "name": "@webex/internal-plugin-avatar",
+    "purpose": "Internal plugin registered as webex.internal.avatar that resolves Webex users to avatar URLs. retrieveAvatarUrl(user, options) turns a uuid, email, or user object into a uuid through webex.internal.user.asUUID, answers from an in-memory store keyed by uuid and size, and on a miss requests the asked size plus every configured size (40, 50, 80, 110, 135, 192, 640, 1600; default 80) through a batcher that groups lookups into one POST profiles/urls to the avatar service; entries expire after cacheControl seconds (3600 by default), and hideDefaultAvatar makes a default avatar resolve null. setAvatar(file) resizes the image with @webex/helper-image, uploads it as the current user's avatar through the three-phase webex-core upload to profile sessions of the avatar service, clears that user's cached sizes, and resolves the new URL. Nothing is persisted.",
+    "category": "cat2-legacy",
+    "primary_languages": [
+      "javascript"
+    ]
+  },
+  "topology": "Orchestrator-plus-components",
+  "commands": {
+    "install": {
+      "command": "yarn",
+      "source_file": "../../../.github/workflows/deploy.yml",
+      "role": "install"
+    },
+    "prebuild": {
+      "command": "yarn prebuild:modules",
+      "source_file": "../../../CONTRIBUTING.md",
+      "role": "other"
+    },
+    "compile": {
+      "command": "yarn build",
+      "source_file": "package.json",
+      "role": "compile",
+      "verified_at": "2026-11-12T15:27:46Z"
+    },
+    "build": {
+      "command": "yarn build:src",
+      "source_file": "package.json",
+      "role": "package",
+      "verified_at": "2026-11-12T15:27:26Z"
+    },
+    "unit-test": {
+      "command": "yarn test:unit",
+      "source_file": "package.json",
+      "role": "unit-test",
+      "verified_at": "2026-11-12T15:27:36Z"
+    },
+    "lint": {
+      "command": "yarn test:style",
+      "source_file": "package.json",
+      "role": "lint",
+      "verified_at": "2026-11-12T15:27:44Z"
+    },
+    "browser-test": {
+      "command": "yarn test:browser",
+      "source_file": "package.json",
+      "role": "other"
+    },
+    "deploy": {
+      "command": "yarn deploy:npm",
+      "source_file": "package.json",
+      "role": "deploy"
+    }
+  },
+  "toolchain": [
+    {
+      "name": "node",
+      "version": ">=16",
+      "origin": "repo-config",
+      "source_file": "package.json"
+    },
+    {
+      "name": "node",
+      "version": "22.14",
+      "origin": "repo-config",
+      "source_file": "../../../AGENTS.md"
+    },
+    {
+      "name": "node",
+      "version": "lts/jod",
+      "origin": "repo-config",
+      "source_file": "../../../.nvmrc"
+    },
+    {
+      "name": "node",
+      "version": "18.x",
+      "origin": "repo-config",
+      "source_file": "../../../package.json"
+    },
+    {
+      "name": "yarn",
+      "version": "3.4.1",
+      "origin": "repo-config",
+      "source_file": "../../../package.json"
+    },
+    {
+      "name": "babel",
+      "version": "^7.17.10",
+      "origin": "repo-config",
+      "source_file": "package.json"
+    },
+    {
+      "name": "eslint",
+      "version": "^8.24.0",
+      "origin": "repo-config",
+      "source_file": "package.json"
+    },
+    {
+      "name": "prettier",
+      "version": "^2.7.1",
+      "origin": "repo-config",
+      "source_file": "package.json"
+    }
+  ],
+  "tests": {
+    "unit": {
+      "command_ref": "unit-test",
+      "dir": "test/unit/spec",
+      "framework": "jest"
+    }
+  },
+  "quality_gates": {
+    "code_coverage": {
+      "origin": "none",
+      "declared_by": "rarajes2@cisco.com via the bootstrap questionnaire (generator check: test:unit runs webex-legacy-tools with --runner jest; jest.config.js re-exports @webex/jest-config-legacy, which sets no coverageThreshold; package.json defines no coverage script)"
+    }
+  },
+  "coverage_status_definitions": {
+    "specced": ">=80% public surface specced, drift <5% - spec is authoritative",
+    "partial": "40-80% specced - spec is a hint, cross-check code",
+    "untracked": "<40% specced - code is the source of truth"
+  },
+  "spec_source_policy": {
+    "mode": "keep-separate",
+    "migrated_source_disposition": "retain",
+    "disposition_decided_by": "rarajes2@cisco.com",
+    "disposition_decided_at": "2026-11-12T15:30:00Z",
+    "decided_by": "rarajes2@cisco.com",
+    "decided_at": "2026-11-12T15:30:00Z",
+    "decision_record": "docs/adr/0001-retain-product-readme.md"
+  },
+  "spec_sources": [
+    {
+      "path": "README.md",
+      "scope": "repo",
+      "role": "reference-only",
+      "canonical": false,
+      "use_by_agents": "context-only",
+      "post_migration_action": "retain",
+      "deletion_status": "not-applicable",
+      "notes": "npm page, kept unchanged under keep-separate. Its Usage block ends with the placeholder member webex.internal.avatar.WHATEVER and documents no method, option, or result; see docs/adr/0001-retain-product-readme.md."
+    }
+  ],
+  "modules": [
+    {
+      "path": "src",
+      "canonical_spec": "src/docs/README.md",
+      "coverage_status": "Partial",
+      "coverage_evidence": "Field coverage 100% (14/14) assessed 2026-11-12 by the generator; critical field coverage 7/7. test:unit runs test/unit/spec/avatar.js, test/unit/spec/avatar-url-batcher.js, and test/unit/spec/avatar-url-store.js, 23 passing and 1 skipped under Node 22.14 after build:src on 2026-11-12; they cover MOD-004 to MOD-008, MOD-010, MOD-011, INV-002, and INV-004 (retrieval, batching to one request, hideDefaultAvatar, fingerprints, the profiles/urls request, didItemFail, and the store guards). MOD-001, MOD-002, MOD-009, MOD-012, INV-001 (the expiry timer), INV-003 (the HTTP error and missing-size paths; the missing-size case is it.skip), and INV-005 have no unit case. The integration spec test/integration/spec/avatar.js has every case commented out, and test:browser bundles nothing (0 tests, exit 0). build:src, build, and test:style exit 0 (13 warnings, 0 errors before this spec existed). No characterization baseline exists; the module remains Partial pending a characterization baseline and promotion review. Independent validation on 2026-11-12 by the validator runtime passed with 0 Blocking and 0 Important findings. The prior two Important A16 command-catalog findings were fixed by the generator and rechecked in this run: browser-test is catalogued and the failing aggregate test script is described only as not to run. Runtime separation: different-runtime. A characterization baseline and promotion review remain pending.",
+      "last_assessed": "2026-11-12",
+      "contracts": {
+        "provides": [
+          "avatar-internal-sdk"
+        ],
+        "requires": [
+          "avatar-http",
+          "webex-core-plugin-host",
+          "webex-core-batcher",
+          "webex-core-upload",
+          "internal-plugin-user-uuid",
+          "internal-plugin-device-identity",
+          "helper-image-processing",
+          "common-one-flight",
+          "common-timers-safe-timeout"
+        ]
+      },
+      "section_profile": {
+        "has_tiers": false,
+        "has_ui": false,
+        "crosses_service_boundaries": true,
+        "holds_client_state": true,
+        "enforces_domain_rules": true,
+        "is_concurrent_async": true,
+        "owns_persistence": false,
+        "stateful_transitions": false,
+        "exposes_wire_protocol": true,
+        "ui_multi_screen": false,
+        "large_data_model": false,
+        "returns_caller_errors": true,
+        "module_specific_conventions": true,
+        "published_package": true,
+        "embedded_in_host": false,
+        "has_design_tradeoff": true,
+        "resolved_by": "claude-code (code evidence; bootstrap questionnaire)",
+        "resolved_at": "2026-11-12T15:35:00Z",
+        "has_submodules": false,
+        "has_submodules_computed_by": "scripts/module_tree.py",
+        "has_submodules_computed_at": "2026-11-12T15:35:00Z"
+      }
+    }
+  ],
+  "contract_catalog": {
+    "index_path": "docs/architecture.md",
+    "definitions": {
+      "avatar-internal-sdk": {
+        "kind": "sdk",
+        "publication": "published",
+        "source_kind": "repository-path",
+        "source": "package.json",
+        "summary": "Published npm package (internal plugin). main is dist/index.js and devMain is src/index.js; no type declarations are published. Importing it imports @webex/internal-plugin-user and @webex/internal-plugin-device, then registers Avatar as internal plugin 'avatar' with the avatar config from src/config.js; the first registration of the name wins. The entry exports only the default Avatar class. webex.internal.avatar exposes retrieveAvatarUrl(user, options) and setAvatar(file), the enableThumbnails session property, the store session property, the batcher child, and the underscore-prefixed _fetchAvatarUrl and _fetchAllAvatarUrlSizes; specified in src/docs/README.md."
+      },
+      "avatar-http": {
+        "kind": "http",
+        "publication": "internal",
+        "source_kind": "external",
+        "source": "Avatar service (catalog service name avatar, reached through api: 'avatar' in src/avatar-url-batcher.js and src/avatar.js; route definitions are not in this repository)",
+        "summary": "POST /profiles/urls with body [{uuid, sizes}] answering {<uuid>: {<size>: {size, url, defaultAvatar, cacheControl}}}; POST /profile/<userId>/session answering an upload session {id, url}; PUT to the session url with the image bytes; PUT /profile/<userId>/session/<sessionId> answering the new avatar url."
+      },
+      "webex-core-plugin-host": {
+        "kind": "sdk",
+        "publication": "published",
+        "source_kind": "external",
+        "source": "@webex/webex-core (workspace package; module spec consulted: packages/@webex/webex-core/src/docs/README.md MOD-008, MOD-013, MOD-044)",
+        "summary": "registerInternalPlugin keys the plugin by its raw name (avatar, first registration wins) and merges its config into the defaults; WebexPlugin supplies webex, children, session properties, namespaced config, logger, request, and upload."
+      },
+      "webex-core-batcher": {
+        "kind": "sdk",
+        "publication": "published",
+        "source_kind": "external",
+        "source": "@webex/webex-core Batcher (module spec consulted: packages/@webex/webex-core/src/docs/README.md MOD-050 to MOD-053; code consulted: packages/@webex/webex-core/src/lib/batcher.js)",
+        "summary": "Batcher.request de-duplicates by fingerprint, flushes through a capped debounce read from the subclass namespace config (batcherWait, batcherMaxWait, batcherMaxCalls), maps responses back through getDeferredForResponse, and on failure settles every queued deferred."
+      },
+      "webex-core-upload": {
+        "kind": "sdk",
+        "publication": "published",
+        "source_kind": "external",
+        "source": "@webex/webex-core upload (module spec consulted: packages/@webex/webex-core/src/docs/README.md MOD-038 to MOD-042)",
+        "summary": "upload rejects without options.file, runs initialize (POST), upload (PUT, no SDK authorization, retried), and finalize phases, replaces $-prefixed phase keys with functions of the initialize body, and resolves the finalize body merged with its headers."
+      },
+      "internal-plugin-user-uuid": {
+        "kind": "sdk",
+        "publication": "published",
+        "source_kind": "external",
+        "source": "@webex/internal-plugin-user (workspace package; module spec consulted: packages/@webex/internal-plugin-user/src/docs/README.md MOD-002, MOD-004)",
+        "summary": "asUUID(user) rejects a missing user, returns a uuid unchanged, and resolves an email through the user batcher."
+      },
+      "internal-plugin-device-identity": {
+        "kind": "sdk",
+        "publication": "published",
+        "source_kind": "external",
+        "source": "@webex/internal-plugin-device (workspace package; module spec consulted: packages/@webex/internal-plugin-device/src/docs/README.md)",
+        "summary": "Imported by src/index.js for registration. userId is a registration property read from webex.internal.device by setAvatar."
+      },
+      "helper-image-processing": {
+        "kind": "sdk",
+        "publication": "published",
+        "source_kind": "external",
+        "source": "@webex/helper-image (workspace package; module spec consulted: packages/@webex/helper-image/src/docs/README.md MOD-002, MOD-007 to MOD-009, MOD-013, MOD-014)",
+        "summary": "detectFileType(file, logger) resolves a MIME type or null; processImage resolves undefined for a non-image or the triple [thumbnail, fileDimensions, thumbnailDimensions], with an empty thumbnail when enableThumbnails is off; the bundler selects a Node (GraphicsMagick) or browser (canvas) implementation, and only the browser one honors isAvatar."
+      },
+      "common-one-flight": {
+        "kind": "sdk",
+        "publication": "published",
+        "source_kind": "external",
+        "source": "@webex/common (workspace package; module spec consulted: packages/@webex/common/src/docs/README.md; code consulted: packages/@webex/common/src/one-flight.js, src/patterns.js)",
+        "summary": "oneFlight keys a flight per instance by method name plus keyFactory(...args) and drops it on settle unless cacheSuccesses or cacheFailures is set; patterns.uuid matches lowercase hex uuids only."
+      },
+      "common-timers-safe-timeout": {
+        "kind": "sdk",
+        "publication": "published",
+        "source_kind": "external",
+        "source": "@webex/common-timers (workspace package; module spec consulted: packages/@webex/common-timers/src/docs/README.md MOD-001, MOD-002)",
+        "summary": "safeSetTimeout forwards to setTimeout and unrefs the handle where the platform supports it, so store expiry timers do not keep a Node process alive."
+      }
+    }
+  },
+  "spec_policy": {
+    "require_what_and_why": true,
+    "require_provenance": true,
+    "protected_specs": [
+      "src/docs/README.md"
+    ]
+  },
+  "validation": {
+    "generator_runtime": "claude-code",
+    "generator_model": "claude-opus-5-5",
+    "generator_runtime_source": "host-metadata",
+    "source_commit": "6a61caf21b1cd4f005a1013fa4fbe3c92f69abbf",
+    "minimum_independence": "different-runtime",
+    "blocking_severities": [
+      "Blocking"
+    ],
+    "validator_runtime": "Validate internal-plugin-avatar specs",
+    "validator_run_id": "01a1d06c-9064-7763-a1da-54a63ad26ec0",
+    "validator_runtime_source": "invocation-input",
+    "runtime_fallback_tier": "different-runtime"
+  },
+  "layout": {
+    "sdd_root": ".sdd",
+    "docs_root": "docs",
+    "agent_entry_path": "AGENTS.md",
+    "standing_docs_root": "docs",
+    "spec_index_path": "docs/specs/README.md",
+    "module_docs_strategy": "source-local",
+    "module_docs_relative_path": "docs/README.md",
+    "module_docs_decision": {
+      "basis": "repo-standards-default",
+      "reason": "No module-local documentation existed. The source-local default gives src/docs/README.md. test:style runs eslint ./src/**/*.*, and the shared @webex/eslint-config-legacy ignore patterns exclude docs/** and *.md; build:src processes -js -ts only, so Markdown under src/ does not enter dist/.",
+      "decided_by": "rarajes2@cisco.com (bootstrap questionnaire)",
+      "decided_at": "2026-11-12T15:35:00Z"
+    },
+    "repo_context_decision": {
+      "path": ".repo-context.json",
+      "schema_path": "schemas/repo-context.schema.json",
+      "action": "create",
+      "schema_action": "create",
+      "reason": "Neither the operational context nor its schema existed in this package. The context is created from package evidence and the schema is copied from the repository-root .sdd/templates/repo-standards/schemas/repo-context.schema.json.",
+      "decided_by": "rarajes2@cisco.com (bootstrap questionnaire)",
+      "decided_at": "2026-11-12T15:35:00Z"
+    },
+    "artifact_decisions": [
+      {
+        "path": "docs/service.md",
+        "action": "omit",
+        "reason": "Library package, not a deployable service. package.json has no start script, container, or deployment descriptor.",
+        "decided_by": "claude-code (code evidence)",
+        "decided_at": "2026-11-12T15:35:00Z"
+      },
+      {
+        "path": "mkdocs.yml",
+        "action": "omit",
+        "reason": "No package-level documentation site exists. Documentation publishing stays with the workspace.",
+        "decided_by": "claude-code (code evidence)",
+        "decided_at": "2026-11-12T15:35:00Z"
+      },
+      {
+        "path": "api-specs/openapi.yaml",
+        "action": "omit",
+        "reason": "The package serves no HTTP routes. It is a client of the avatar service; its published surface is the npm export described by avatar-internal-sdk.",
+        "decided_by": "claude-code (code evidence)",
+        "decided_at": "2026-11-12T15:35:00Z"
+      },
+      {
+        "path": "SECURITY.md",
+        "action": "omit",
+        "reason": "No package-level security policy exists. The workspace owns security policy, and a per-package copy would duplicate it; security architecture is described in docs/architecture.md.",
+        "decided_by": "claude-code (code evidence)",
+        "decided_at": "2026-11-12T15:35:00Z"
+      },
+      {
+        "path": "CONTRIBUTING.md",
+        "action": "omit",
+        "reason": "Contribution instructions are owned at the workspace root CONTRIBUTING.md.",
+        "decided_by": "claude-code (code evidence)",
+        "decided_at": "2026-11-12T15:35:00Z"
+      },
+      {
+        "path": "CHANGELOG.md",
+        "action": "omit",
+        "reason": "Changelog generation is owned at the workspace root. This package has no changelog file.",
+        "decided_by": "claude-code (code evidence)",
+        "decided_at": "2026-11-12T15:35:00Z"
+      },
+      {
+        "path": "CTO_CHECKLIST.yml",
+        "action": "omit",
+        "reason": "The CTO readiness checklist applies to deployable services. This package is a library.",
+        "decided_by": "claude-code (code evidence)",
+        "decided_at": "2026-11-12T15:35:00Z"
+      },
+      {
+        "path": "schemas/cto-checklist.schema.json",
+        "action": "omit",
+        "reason": "Omitted together with CTO_CHECKLIST.yml.",
+        "decided_by": "claude-code (code evidence)",
+        "decided_at": "2026-11-12T15:35:00Z"
+      }
+    ],
+    "template_roots": {
+      "canonical": ".sdd/templates/repo-standards"
+    },
+    "contract_index_path": "docs/architecture.md",
+    "repo_skills_root": ".sdd/skills",
+    "monorepo_package": {
+      "package_path": "packages/@webex/internal-plugin-avatar",
+      "root_manifest_path": "../../../.sdd/manifest.json",
+      "templates_root_path": "../../../.sdd/templates/repo-standards"
+    }
+  },
+  "tooling": {
+    "sdlc_skills": {
+      "source_ref": "repo-annotation@2.3.1"
+    }
+  },
+  "coverage_ratchet": {
+    "enabled": true,
+    "waivers": []
+  },
+  "substrate": {
+    "source": "WebexTools/repo-standards@d89a7fe59126ae3ad9bac9ca352aa7f12b4c85dc",
+    "consumed": [
+      "@webex/eslint-config-legacy via .eslintrc.js",
+      "@webex/babel-config-legacy via babel.config.js",
+      "@webex/jest-config-legacy via jest.config.js",
+      "@webex/legacy-tools build and test runner via package.json",
+      "package README.md (context only)",
+      "Repo Standards templates at the monorepo root .sdd/templates/repo-standards, referred to through layout.monorepo_package.templates_root_path (this package holds no templates)"
+    ],
+    "compliance_tier": "baseline"
+  },
+  "section_profiles": {
+    "repo": {
+      "owns_datastore": false,
+      "holds_client_state": true,
+      "components_interact": true,
+      "domain_data_across_components": true,
+      "caches_data": true,
+      "observability_convention": false,
+      "deploys_to_infra": false,
+      "shared_base_libs": true,
+      "is_monorepo": false,
+      "multi_platform": true,
+      "published_package": true,
+      "embedded_in_host": false,
+      "cross_repo_deps_material": true,
+      "security_arch_warranted": true,
+      "exposes_commands_or_artifacts": true
+    },
+    "resolved_by": "claude-code (code evidence; bootstrap questionnaire)",
+    "resolved_at": "2026-11-12T15:35:00Z"
+  }
+}

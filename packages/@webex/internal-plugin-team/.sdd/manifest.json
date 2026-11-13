@@ -1,0 +1,435 @@
+{
+  "manifest_version": 1,
+  "repository": {
+    "name": "@webex/internal-plugin-team",
+    "purpose": "Internal plugin registered as webex.internal.team for Webex teams on the conversation service. create() resolves participants to uuids (creator first), builds a conversation-shaped payload with objectType 'team', and POSTs it to the conversation service resource teams; get(), list() (including the additionalUrls hosts), and listConversations() read teams and their conversations and record member uuids; createConversation() and joinConversation() create and join team conversations, granting the general conversation's KMS resource access to new ones. Membership, moderator, conversation, archive, and field changes are activities posted to the team's general conversation through webex.internal.conversation. Importing the package also registers payload transforms that encrypt a team's displayName and summary with a new KMS key, decrypt them and the team's conversations on the way in, normalize its lists, and decrypt teamRoomStatus events. It stores nothing itself.",
+    "category": "cat2-legacy",
+    "primary_languages": [
+      "javascript"
+    ]
+  },
+  "topology": "Orchestrator-plus-components",
+  "commands": {
+    "install": {
+      "command": "yarn",
+      "source_file": "../../../.github/workflows/deploy.yml",
+      "role": "install"
+    },
+    "prebuild": {
+      "command": "yarn prebuild:modules",
+      "source_file": "../../../CONTRIBUTING.md",
+      "role": "other"
+    },
+    "compile": {
+      "command": "yarn workspace @webex/internal-plugin-team build",
+      "source_file": "package.json",
+      "role": "compile",
+      "verified_at": "2026-11-12T13:53:26Z"
+    },
+    "build": {
+      "command": "yarn workspace @webex/internal-plugin-team build:src",
+      "source_file": "../../../AGENTS.md",
+      "role": "package",
+      "verified_at": "2026-11-12T13:52:57Z"
+    },
+    "unit-test": {
+      "command": "yarn workspace @webex/internal-plugin-team test:unit",
+      "source_file": "../../../AGENTS.md",
+      "role": "unit-test",
+      "verified_at": "2026-11-12T13:53:08Z"
+    },
+    "lint": {
+      "command": "yarn workspace @webex/internal-plugin-team test:style",
+      "source_file": "package.json",
+      "role": "lint",
+      "verified_at": "2026-11-12T13:53:17Z"
+    },
+    "deploy": {
+      "command": "yarn workspace @webex/internal-plugin-team deploy:npm",
+      "source_file": "package.json",
+      "role": "deploy"
+    }
+  },
+  "toolchain": [
+    {
+      "name": "node",
+      "version": ">=18",
+      "origin": "repo-config",
+      "source_file": "package.json"
+    },
+    {
+      "name": "node",
+      "version": "22.14",
+      "origin": "repo-config",
+      "source_file": "../../../AGENTS.md"
+    },
+    {
+      "name": "node",
+      "version": "lts/jod",
+      "origin": "repo-config",
+      "source_file": "../../../.nvmrc"
+    },
+    {
+      "name": "node",
+      "version": "18.x",
+      "origin": "repo-config",
+      "source_file": "../../../package.json"
+    },
+    {
+      "name": "yarn",
+      "version": "3.4.1",
+      "origin": "repo-config",
+      "source_file": "../../../package.json"
+    },
+    {
+      "name": "babel",
+      "version": "^7.17.10",
+      "origin": "repo-config",
+      "source_file": "package.json"
+    },
+    {
+      "name": "eslint",
+      "version": "^8.24.0",
+      "origin": "repo-config",
+      "source_file": "package.json"
+    },
+    {
+      "name": "prettier",
+      "version": "^2.7.1",
+      "origin": "repo-config",
+      "source_file": "package.json"
+    }
+  ],
+  "tests": {
+    "unit": {
+      "command_ref": "unit-test",
+      "dir": "test/unit/spec",
+      "framework": "jest"
+    }
+  },
+  "quality_gates": {
+    "code_coverage": {
+      "origin": "none",
+      "declared_by": "rarajes2@cisco.com via the approved bootstrap file-touch plan (generator check: test:unit runs webex-legacy-tools with --runner jest; jest.config.js re-exports @webex/jest-config-legacy, which sets no coverageThreshold; package.json defines no coverage script)"
+    }
+  },
+  "coverage_status_definitions": {
+    "specced": ">=80% public surface specced, drift <5% - spec is authoritative",
+    "partial": "40-80% specced - spec is a hint, cross-check code",
+    "untracked": "<40% specced - code is the source of truth"
+  },
+  "spec_source_policy": {
+    "mode": "keep-separate",
+    "migrated_source_disposition": "retain",
+    "disposition_decided_by": "rarajes2@cisco.com",
+    "disposition_decided_at": "2026-11-12T13:55:40Z",
+    "decided_by": "rarajes2@cisco.com",
+    "decided_at": "2026-11-12T13:55:40Z",
+    "decision_record": "docs/adr/0001-retain-product-readme.md"
+  },
+  "spec_sources": [
+    {
+      "path": "README.md",
+      "scope": "repo",
+      "role": "reference-only",
+      "canonical": false,
+      "use_by_agents": "context-only",
+      "post_migration_action": "retain",
+      "deletion_status": "not-applicable",
+      "notes": "npm page, kept unchanged under keep-separate. Its Usage block ends with the placeholder member webex.internal.team.WHATEVER and documents no method, transform, or result; see docs/adr/0001-retain-product-readme.md."
+    }
+  ],
+  "modules": [
+    {
+      "path": "src",
+      "canonical_spec": "src/docs/README.md",
+      "coverage_status": "Partial",
+      "coverage_evidence": "Field coverage 100% (13/13) assessed 2026-11-12 by the generator; critical field coverage 7/7. test:unit runs test/unit/spec/team.js, 14 of 14 passing under Node 22.14 after build:src on 2026-11-12; it covers the argument guards of MOD-005 to MOD-010 and MOD-013, the early returns of MOD-017, the MOD-009 request body, and INV-006. MOD-001 to MOD-004, MOD-008, MOD-011, MOD-012, MOD-014 to MOD-016, and INV-002, INV-004, and INV-005 have no unit case. The four integration specs in test/integration/spec run only under test:browser, which bundles nothing (0 tests, exit 0). build:src and test:style exit 0. No characterization baseline exists. Independent validation passed with warnings on 2026-11-12 (validator runtime 01a1d014-9c2d-7e83-93cc-06aec7587d43; 0 Blocking and one Important command-source finding covering five entries). Held at Partial pending a characterization baseline and promotion review. B11-001 is an accepted warning (rarajes2@cisco.com, 2026-11-12T14:15:30Z): the workspace-qualified form (yarn workspace @webex/internal-plugin-team followed by the script name) stays recorded for compile, build, unit-test, lint, and deploy, because no committed file outside the generated docs contains those exact strings and the package-directory alternative would contradict the root AGENTS.md convention.",
+      "last_assessed": "2026-11-12",
+      "contracts": {
+        "provides": [
+          "team-internal-sdk"
+        ],
+        "requires": [
+          "conversation-teams-http",
+          "webex-core-plugin-host",
+          "webex-core-services",
+          "internal-plugin-conversation-activities",
+          "internal-plugin-conversation-transforms",
+          "internal-plugin-encryption-kms",
+          "internal-plugin-user-uuids",
+          "internal-plugin-device-identity",
+          "webex-core-credentials",
+          "lodash",
+          "uuid"
+        ]
+      },
+      "section_profile": {
+        "has_tiers": false,
+        "has_ui": false,
+        "crosses_service_boundaries": true,
+        "holds_client_state": false,
+        "enforces_domain_rules": true,
+        "is_concurrent_async": true,
+        "owns_persistence": false,
+        "stateful_transitions": false,
+        "exposes_wire_protocol": true,
+        "ui_multi_screen": false,
+        "large_data_model": false,
+        "returns_caller_errors": true,
+        "module_specific_conventions": true,
+        "published_package": true,
+        "embedded_in_host": false,
+        "has_design_tradeoff": true,
+        "resolved_by": "claude-code (code evidence; bootstrap questionnaire)",
+        "resolved_at": "2026-11-12T13:55:40Z",
+        "has_submodules": false,
+        "has_submodules_computed_by": "scripts/module_tree.py",
+        "has_submodules_computed_at": "2026-11-12T13:55:40Z"
+      }
+    }
+  ],
+  "contract_catalog": {
+    "index_path": "docs/architecture.md",
+    "definitions": {
+      "team-internal-sdk": {
+        "kind": "sdk",
+        "publication": "published",
+        "source_kind": "repository-path",
+        "source": "package.json",
+        "summary": "Published npm package (internal plugin). main is dist/index.js and devMain is src/index.js; no type declarations are published. Importing it imports @webex/internal-plugin-conversation, @webex/internal-plugin-user, and @webex/internal-plugin-encryption, then registers Team as internal plugin 'team' with config {team: {}} and a payloadTransformer of one inbound predicate (decryptTeamRoomStatus) and six transforms (decryptTeam, decryptTeamRoomStatus, decryptPropSummary, encryptTeam, encryptPropSummary, normalizeTeam); the first registration of the name wins. The entry exports only the default Team class. webex.internal.team exposes create, get, list, listConversations, createConversation, joinConversation, addConversation, removeConversation, addMember, removeMember, assignModerator, unassignModerator, archive, unarchive, and update, plus underscore-prefixed helpers; specified in src/docs/README.md."
+      },
+      "conversation-teams-http": {
+        "kind": "http",
+        "publication": "internal",
+        "source_kind": "external",
+        "source": "Conversation service (catalog service name conversation, reached through service: 'conversation' and api: 'conversation' in src/team.js; route definitions are not in this repository)",
+        "summary": "POST teams with a conversation-shaped creation payload of objectType 'team'; GET <team.url> and GET teams (also <additionalUrl>/teams) with query includeTeamConversations and includeTeamMembers; GET <team.url>/conversations resolving items; POST <team.url>/conversations with optional query includeAllTeamMembers; POST <team.url>/conversations/<id>/participants with a kmsMessage that carries the device url and the supertoken access token as the KMS client credential."
+      },
+      "webex-core-plugin-host": {
+        "kind": "sdk",
+        "publication": "published",
+        "source_kind": "external",
+        "source": "@webex/webex-core (workspace package; module spec consulted: packages/@webex/webex-core/src/docs/README.md MOD-008, MOD-013, MOD-037, MOD-044; code consulted: packages/@webex/webex-core/src/webex-core.js)",
+        "summary": "registerInternalPlugin keys the plugin by its raw name (team, first registration wins) and concatenates its payloadTransformer predicates and transforms into the defaults; transform runs matching predicates and applyNamedTransform runs every transform with the given name whose direction matches or is unset; WebexPlugin supplies webex, namespaced config, logger, and request."
+      },
+      "webex-core-services": {
+        "kind": "sdk",
+        "publication": "published",
+        "source_kind": "external",
+        "source": "@webex/webex-core services plugin (services spec consulted: packages/@webex/webex-core/src/lib/services/docs/README.md SVC-022)",
+        "summary": "ServiceInterceptor maps api to service, requires resource and service, waits for the service, and joins its catalog URL with the resource; it leaves a request with uri unchanged."
+      },
+      "internal-plugin-conversation-activities": {
+        "kind": "sdk",
+        "publication": "published",
+        "source_kind": "external",
+        "source": "@webex/internal-plugin-conversation (workspace package; no spec exists; code consulted: packages/@webex/internal-plugin-conversation/src/conversation.js)",
+        "summary": "prepare(activity, params) fills verb, kmsMessage, actor, object, and a target picked to id, url, objectType, kmsResourceObjectUrl, and defaultActivityEncryptionKeyUrl; submit(activity, endpoint) posts it; add, leave, update, assignModerator, and unassignModerator build and submit those activities; get({id}) fetches a conversation; getConvoUrl returns, for an object with generalConversationUuid, the url of that entry in conversations.items; prepareConversation picks a conversation reference; _prepareConversationForCreation builds the create and add activities and a KMS create /resources message."
+      },
+      "internal-plugin-conversation-transforms": {
+        "kind": "sdk",
+        "publication": "published",
+        "source_kind": "external",
+        "source": "@webex/internal-plugin-conversation transforms (no spec exists; code consulted: packages/@webex/internal-plugin-conversation/src/index.js, src/encryption-transforms.js, src/decryption-transforms.js)",
+        "summary": "transformObject runs normalizeObject, encryptObject, and encryptKmsMessage outbound and decryptObject then normalizeObject inbound for a body with objectType; decryptObject, encryptObject, and normalizeObject dispatch to decrypt<ObjectType>, encrypt<ObjectType>, and normalize<ObjectType>; decryptTextProp and encryptTextProp decrypt or encrypt one named property with a key; decryptPropDisplayName and encryptPropDisplayName are those for displayName."
+      },
+      "internal-plugin-encryption-kms": {
+        "kind": "sdk",
+        "publication": "published",
+        "source_kind": "external",
+        "source": "@webex/internal-plugin-encryption (workspace package; no spec exists; code consulted: packages/@webex/internal-plugin-encryption/src/kms.js, src/encryption.js)",
+        "summary": "kms.createUnboundKeys({count}) resolves new unbound keys with a uri; encryptText(key, plaintext) and decryptText(key, ciphertext) encrypt and decrypt text with a key or key url."
+      },
+      "internal-plugin-user-uuids": {
+        "kind": "sdk",
+        "publication": "published",
+        "source_kind": "external",
+        "source": "@webex/internal-plugin-user (workspace package; module spec consulted: packages/@webex/internal-plugin-user/src/docs/README.md MOD-002, MOD-003, MOD-006)",
+        "summary": "asUUID(user, {create: true}) returns uuids unchanged and resolves emails through getUUID, rejecting a cached entry without userExists for create callers; recordUUID(user) rejects a user without a uuid id or a valid email, else adds it to the store."
+      },
+      "internal-plugin-device-identity": {
+        "kind": "sdk",
+        "publication": "published",
+        "source_kind": "external",
+        "source": "@webex/internal-plugin-device (workspace package; module spec consulted: packages/@webex/internal-plugin-device/src/docs/README.md; code consulted: packages/@webex/internal-plugin-device/src/device.js)",
+        "summary": "Not imported by src/; registered through the user and encryption plugins. userId and url are registration properties read from webex.internal.device."
+      },
+      "webex-core-credentials": {
+        "kind": "sdk",
+        "publication": "published",
+        "source_kind": "external",
+        "source": "@webex/webex-core credentials (credentials spec consulted: packages/@webex/webex-core/src/lib/credentials/docs/README.md)",
+        "summary": "webex.credentials.supertoken holds the supertoken; joinConversation reads its access_token."
+      },
+      "lodash": {
+        "kind": "sdk",
+        "publication": "published",
+        "source_kind": "external",
+        "source": "lodash@^4.17.21 (npm)",
+        "summary": "isArray, has, get, find, pick, and uniq for team payloads, lookups, and participant de-duplication."
+      },
+      "uuid": {
+        "kind": "sdk",
+        "publication": "published",
+        "source_kind": "external",
+        "source": "uuid@^3.3.2 (npm)",
+        "summary": "v4 generates the KMS requestId of joinConversation."
+      }
+    }
+  },
+  "spec_policy": {
+    "require_what_and_why": true,
+    "require_provenance": true,
+    "protected_specs": [
+      "src/docs/README.md"
+    ]
+  },
+  "validation": {
+    "generator_runtime": "claude-code",
+    "generator_model": "claude-opus-5-5",
+    "generator_runtime_source": "host-metadata",
+    "source_commit": "86132099070b9ee3f2323f98c3207720788cb5aa",
+    "minimum_independence": "different-runtime",
+    "blocking_severities": [
+      "Blocking"
+    ],
+    "validator_runtime": "01a1d014-9c2d-7e83-93cc-06aec7587d43",
+    "validator_runtime_source": "invocation-input",
+    "runtime_fallback_tier": "different-runtime"
+  },
+  "layout": {
+    "sdd_root": ".sdd",
+    "docs_root": "docs",
+    "agent_entry_path": "AGENTS.md",
+    "standing_docs_root": "docs",
+    "spec_index_path": "docs/specs/README.md",
+    "module_docs_strategy": "source-local",
+    "module_docs_relative_path": "docs/README.md",
+    "module_docs_decision": {
+      "basis": "repo-standards-default",
+      "reason": "No module-local documentation existed. The source-local default gives src/docs/README.md. test:style runs eslint ./src/**/*.*, and the shared @webex/eslint-config-legacy ignore patterns exclude docs/** and *.md; build:src processes -js -ts only, so Markdown under src/ does not enter dist/.",
+      "decided_by": "rarajes2@cisco.com (bootstrap questionnaire)",
+      "decided_at": "2026-11-12T13:55:40Z"
+    },
+    "repo_context_decision": {
+      "path": ".repo-context.json",
+      "schema_path": "schemas/repo-context.schema.json",
+      "action": "create",
+      "schema_action": "create",
+      "reason": "Neither the operational context nor its schema existed in this package. The context is created from package evidence and the schema is copied from the repository-root .sdd/templates/repo-standards/schemas/repo-context.schema.json.",
+      "decided_by": "rarajes2@cisco.com (bootstrap questionnaire)",
+      "decided_at": "2026-11-12T13:55:40Z"
+    },
+    "artifact_decisions": [
+      {
+        "path": "docs/service.md",
+        "action": "omit",
+        "reason": "Library package, not a deployable service. package.json has no start script, container, or deployment descriptor.",
+        "decided_by": "claude-code (code evidence)",
+        "decided_at": "2026-11-12T13:55:40Z"
+      },
+      {
+        "path": "mkdocs.yml",
+        "action": "omit",
+        "reason": "No package-level documentation site exists. Documentation publishing stays with the workspace.",
+        "decided_by": "claude-code (code evidence)",
+        "decided_at": "2026-11-12T13:55:40Z"
+      },
+      {
+        "path": "api-specs/openapi.yaml",
+        "action": "omit",
+        "reason": "The package serves no HTTP routes. It is a client of the conversation service; its published surface is the npm export described by team-internal-sdk.",
+        "decided_by": "claude-code (code evidence)",
+        "decided_at": "2026-11-12T13:55:40Z"
+      },
+      {
+        "path": "SECURITY.md",
+        "action": "omit",
+        "reason": "No package-level security policy exists. The workspace owns security policy, and a per-package copy would duplicate it; security architecture is described in docs/architecture.md.",
+        "decided_by": "claude-code (code evidence)",
+        "decided_at": "2026-11-12T13:55:40Z"
+      },
+      {
+        "path": "CONTRIBUTING.md",
+        "action": "omit",
+        "reason": "Contribution instructions are owned at the workspace root CONTRIBUTING.md.",
+        "decided_by": "claude-code (code evidence)",
+        "decided_at": "2026-11-12T13:55:40Z"
+      },
+      {
+        "path": "CHANGELOG.md",
+        "action": "omit",
+        "reason": "Changelog generation is owned at the workspace root. This package has no changelog file.",
+        "decided_by": "claude-code (code evidence)",
+        "decided_at": "2026-11-12T13:55:40Z"
+      },
+      {
+        "path": "CTO_CHECKLIST.yml",
+        "action": "omit",
+        "reason": "The CTO readiness checklist applies to deployable services. This package is a library.",
+        "decided_by": "claude-code (code evidence)",
+        "decided_at": "2026-11-12T13:55:40Z"
+      },
+      {
+        "path": "schemas/cto-checklist.schema.json",
+        "action": "omit",
+        "reason": "Omitted together with CTO_CHECKLIST.yml.",
+        "decided_by": "claude-code (code evidence)",
+        "decided_at": "2026-11-12T13:55:40Z"
+      }
+    ],
+    "template_roots": {
+      "canonical": ".sdd/templates/repo-standards"
+    },
+    "contract_index_path": "docs/architecture.md",
+    "repo_skills_root": ".sdd/skills",
+    "monorepo_package": {
+      "package_path": "packages/@webex/internal-plugin-team",
+      "root_manifest_path": "../../../.sdd/manifest.json",
+      "templates_root_path": "../../../.sdd/templates/repo-standards"
+    }
+  },
+  "tooling": {
+    "sdlc_skills": {
+      "source_ref": "repo-annotation@2.3.1"
+    }
+  },
+  "coverage_ratchet": {
+    "enabled": true,
+    "waivers": []
+  },
+  "substrate": {
+    "source": "WebexTools/repo-standards@d89a7fe59126ae3ad9bac9ca352aa7f12b4c85dc",
+    "consumed": [
+      "@webex/eslint-config-legacy via .eslintrc.js",
+      "@webex/babel-config-legacy via babel.config.js",
+      "@webex/jest-config-legacy via jest.config.js",
+      "@webex/legacy-tools build and test runner via package.json",
+      "package README.md (context only)",
+      "Repo Standards templates at the monorepo root .sdd/templates/repo-standards, referred to through layout.monorepo_package.templates_root_path (this package holds no templates)"
+    ],
+    "compliance_tier": "baseline"
+  },
+  "section_profiles": {
+    "repo": {
+      "owns_datastore": false,
+      "holds_client_state": false,
+      "components_interact": true,
+      "domain_data_across_components": true,
+      "caches_data": false,
+      "observability_convention": true,
+      "deploys_to_infra": false,
+      "shared_base_libs": true,
+      "is_monorepo": false,
+      "multi_platform": false,
+      "published_package": true,
+      "embedded_in_host": false,
+      "cross_repo_deps_material": true,
+      "security_arch_warranted": true,
+      "exposes_commands_or_artifacts": true
+    },
+    "resolved_by": "claude-code (code evidence; bootstrap questionnaire)",
+    "resolved_at": "2026-11-12T13:55:40Z"
+  }
+}

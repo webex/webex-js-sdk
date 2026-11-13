@@ -1,0 +1,411 @@
+{
+  "manifest_version": 1,
+  "repository": {
+    "name": "@webex/internal-plugin-lyra",
+    "purpose": "Internal plugin registered as webex.internal.lyra for Lyra spaces (room devices). getAdvertisedEndpoint() resolves an ultrasound token to the advertising space through the proximity service. The space child lists and reads the user's spaces, joins (default pass type MANUAL, with the current device url) and leaves them, verifies occupants, reads bindings, and binds and unbinds conversations with KMS create and delete authorization messages for the space identity; join, leave, bindConversation, and unbindConversation take a space.url relative to the lyra service, while the other space methods take an absolute one. The device child reads and reports audio state and invokes mute, unmute, and volume actions under the audio resource of the space url. It stores nothing itself.",
+    "category": "cat2-legacy",
+    "primary_languages": [
+      "javascript"
+    ]
+  },
+  "topology": "Orchestrator-plus-components",
+  "commands": {
+    "install": {
+      "command": "yarn",
+      "source_file": "../../../.github/workflows/deploy.yml",
+      "role": "install"
+    },
+    "prebuild": {
+      "command": "yarn prebuild:modules",
+      "source_file": "../../../CONTRIBUTING.md",
+      "role": "other"
+    },
+    "compile": {
+      "command": "yarn build",
+      "source_file": "package.json",
+      "role": "compile",
+      "verified_at": "2026-11-12T15:10:37Z"
+    },
+    "build": {
+      "command": "yarn build:src",
+      "source_file": "package.json",
+      "role": "package",
+      "verified_at": "2026-11-12T15:10:36Z"
+    },
+    "unit-test": {
+      "command": "yarn test:unit",
+      "source_file": "package.json",
+      "role": "unit-test",
+      "verified_at": "2026-11-12T15:10:41Z"
+    },
+    "lint": {
+      "command": "yarn test:style",
+      "source_file": "package.json",
+      "role": "lint",
+      "verified_at": "2026-11-12T15:10:44Z"
+    },
+    "deploy": {
+      "command": "yarn deploy:npm",
+      "source_file": "package.json",
+      "role": "deploy"
+    }
+  },
+  "toolchain": [
+    {
+      "name": "node",
+      "version": ">=18",
+      "origin": "repo-config",
+      "source_file": "package.json"
+    },
+    {
+      "name": "node",
+      "version": "22.14",
+      "origin": "repo-config",
+      "source_file": "../../../AGENTS.md"
+    },
+    {
+      "name": "node",
+      "version": "lts/jod",
+      "origin": "repo-config",
+      "source_file": "../../../.nvmrc"
+    },
+    {
+      "name": "node",
+      "version": "18.x",
+      "origin": "repo-config",
+      "source_file": "../../../package.json"
+    },
+    {
+      "name": "yarn",
+      "version": "3.4.1",
+      "origin": "repo-config",
+      "source_file": "../../../package.json"
+    },
+    {
+      "name": "babel",
+      "version": "^7.17.10",
+      "origin": "repo-config",
+      "source_file": "package.json"
+    },
+    {
+      "name": "eslint",
+      "version": "^8.24.0",
+      "origin": "repo-config",
+      "source_file": "package.json"
+    },
+    {
+      "name": "prettier",
+      "version": "^2.7.1",
+      "origin": "repo-config",
+      "source_file": "package.json"
+    }
+  ],
+  "tests": {
+    "unit": {
+      "command_ref": "unit-test",
+      "dir": "test/unit/spec",
+      "framework": "jest"
+    }
+  },
+  "quality_gates": {
+    "code_coverage": {
+      "origin": "none",
+      "declared_by": "rarajes2@cisco.com via the bootstrap questionnaire (generator check: test:unit runs webex-legacy-tools with --runner jest; jest.config.js re-exports @webex/jest-config-legacy, which sets no coverageThreshold; package.json defines no coverage script)"
+    }
+  },
+  "coverage_status_definitions": {
+    "specced": ">=80% public surface specced, drift <5% - spec is authoritative",
+    "partial": "40-80% specced - spec is a hint, cross-check code",
+    "untracked": "<40% specced - code is the source of truth"
+  },
+  "spec_source_policy": {
+    "mode": "keep-separate",
+    "migrated_source_disposition": "retain",
+    "disposition_decided_by": "rarajes2@cisco.com",
+    "disposition_decided_at": "2026-11-12T14:45:00Z",
+    "decided_by": "rarajes2@cisco.com",
+    "decided_at": "2026-11-12T14:45:00Z",
+    "decision_record": "docs/adr/0001-retain-product-readme.md"
+  },
+  "spec_sources": [
+    {
+      "path": "README.md",
+      "scope": "repo",
+      "role": "reference-only",
+      "canonical": false,
+      "use_by_agents": "context-only",
+      "post_migration_action": "retain",
+      "deletion_status": "not-applicable",
+      "notes": "npm page, kept unchanged under keep-separate. Its Usage block ends with the placeholder member webex.internal.lyra.WHATEVER and documents no method, option, or result; see docs/adr/0001-retain-product-readme.md."
+    }
+  ],
+  "modules": [
+    {
+      "path": "src",
+      "canonical_spec": "src/docs/README.md",
+      "coverage_status": "Partial",
+      "coverage_evidence": "Field coverage 100% (13/13) assessed 2026-11-12 by the generator; critical field coverage 7/7. test:unit runs test/unit/spec/lyra.js, test/unit/spec/space.js, and test/unit/spec/device.js, 20 of 20 passing under Node 22.14 after build:src on 2026-11-12; they cover the argument guards of MOD-005, MOD-010, MOD-012 to MOD-014 (INV-002), the MOD-003 request, the four MOD-006 join bodies (INV-004), and the MOD-015 setVolume default. MOD-001, MOD-002 (only indirectly), MOD-004, MOD-007 to MOD-009, MOD-011, the success paths of MOD-010 and MOD-012 to MOD-014, INV-001, and INV-003 have no unit case. The two integration specs in test/integration/spec run only under test:browser, which bundles nothing (0 tests, exit 0). build:src and test:style exit 0. No characterization baseline exists. Independent validation passed on 2026-11-12 (0 Blocking, 0 findings; validator runtime 01a1d048-7850-76c1-b613-3973b3145b4d). Prior finding B11-001 was rechecked and fixed: the five package-directory commands (yarn build, yarn build:src, yarn test:unit, yarn test:style, yarn deploy:npm) resolve to scripts defined in package.json. The first four were re-run under Node 22.14 at 2026-11-12T15:10Z and exit 0 (20 of 20 unit tests). Held at Partial pending a characterization baseline and promotion review.",
+      "last_assessed": "2026-11-12",
+      "contracts": {
+        "provides": [
+          "lyra-internal-sdk"
+        ],
+        "requires": [
+          "lyra-http",
+          "proximity-http",
+          "webex-core-plugin-host",
+          "webex-core-services",
+          "internal-plugin-encryption-kms",
+          "internal-plugin-device-identity",
+          "common-base64",
+          "internal-plugin-side-effect-imports"
+        ]
+      },
+      "section_profile": {
+        "has_tiers": false,
+        "has_ui": false,
+        "crosses_service_boundaries": true,
+        "holds_client_state": false,
+        "enforces_domain_rules": true,
+        "is_concurrent_async": true,
+        "owns_persistence": false,
+        "stateful_transitions": false,
+        "exposes_wire_protocol": true,
+        "ui_multi_screen": false,
+        "large_data_model": false,
+        "returns_caller_errors": true,
+        "module_specific_conventions": true,
+        "published_package": true,
+        "embedded_in_host": false,
+        "has_design_tradeoff": true,
+        "resolved_by": "claude-code (code evidence; bootstrap questionnaire)",
+        "resolved_at": "2026-11-12T14:50:30Z",
+        "has_submodules": false,
+        "has_submodules_computed_by": "scripts/module_tree.py",
+        "has_submodules_computed_at": "2026-11-12T14:50:30Z"
+      }
+    }
+  ],
+  "contract_catalog": {
+    "index_path": "docs/architecture.md",
+    "definitions": {
+      "lyra-internal-sdk": {
+        "kind": "sdk",
+        "publication": "published",
+        "source_kind": "repository-path",
+        "source": "package.json",
+        "summary": "Published npm package (internal plugin). main is dist/index.js and devMain is src/index.js; no type declarations are published. Importing it imports @webex/internal-plugin-mercury, @webex/internal-plugin-encryption, @webex/internal-plugin-conversation, and @webex/internal-plugin-feature, then registers Lyra as internal plugin 'lyra' with config {lyra: {}}; the first registration of the name wins. The entry exports the default Lyra class and the named config. webex.internal.lyra exposes getAdvertisedEndpoint and the children space (list, get, join, leave, verifyOccupant, getCurrentBindings, bindConversation, unbindConversation, deleteBinding, plus _bindConversation) and device (getAudioState, putAudioState, mute, unmute, increaseVolume, decreaseVolume, setVolume); specified in src/docs/README.md."
+      },
+      "lyra-http": {
+        "kind": "http",
+        "publication": "internal",
+        "source_kind": "external",
+        "source": "Lyra service (catalog service name lyra, reached through api: 'lyra' and through caller-supplied space URLs in src/space.js and src/device.js; route definitions are not in this repository)",
+        "summary": "GET /spaces and /spaces/<id>; PUT and DELETE <space.url>/occupants/@me (body {pass: {type, data}, deviceUrl, verificationInitiation}; optional query deviceUrl); PUT <space.url>/occupants/<occupantId> with pass type VERIFICATION; GET, POST, and DELETE <space.url>/bindings with a KMS authorization message in the body or, wrapped, in the query; DELETE <space.url>/bindings/<bindingId>; GET and PUT <space.url>/audio; POST <space.url>/audio/microphones/actions/{mute,un-mute}/invoke and <space.url>/audio/volume/actions/{increase,decrease,set}/invoke."
+      },
+      "proximity-http": {
+        "kind": "http",
+        "publication": "internal",
+        "source_kind": "external",
+        "source": "Proximity service (catalog service name proximity, reached through api: 'proximity' in src/lyra.js; route definitions are not in this repository)",
+        "summary": "GET /ultrasound/advertisements?token=<decoded ultrasound token> resolving the advertised endpoint: advertiser {id, displayName, orgId}, links addMeToSpace and lyra_space, proof, and token."
+      },
+      "webex-core-plugin-host": {
+        "kind": "sdk",
+        "publication": "published",
+        "source_kind": "external",
+        "source": "@webex/webex-core (workspace package; module spec consulted: packages/@webex/webex-core/src/docs/README.md MOD-008, MOD-013, MOD-044)",
+        "summary": "registerInternalPlugin keys the plugin by its raw name (lyra, first registration wins) and merges its config into the defaults; WebexPlugin supplies webex, children, namespaced config, and request."
+      },
+      "webex-core-services": {
+        "kind": "sdk",
+        "publication": "published",
+        "source_kind": "external",
+        "source": "@webex/webex-core services plugin (services spec consulted: packages/@webex/webex-core/src/lib/services/docs/README.md SVC-022; code consulted: packages/@webex/webex-core/src/lib/interceptors/service.js)",
+        "summary": "ServiceInterceptor maps api to service, requires resource and service, waits for the service, and joins its catalog URL with the resource by concatenation after trimming one slash; it leaves a request with uri unchanged."
+      },
+      "internal-plugin-encryption-kms": {
+        "kind": "sdk",
+        "publication": "published",
+        "source_kind": "external",
+        "source": "@webex/internal-plugin-encryption (workspace package; no spec exists; code consulted: packages/@webex/internal-plugin-encryption/src/kms.js, src/index.js)",
+        "summary": "kms.prepareRequest(payload) resolves a request whose wrapped field is the encrypted KMS message; the outbound encryptKmsMessage predicate and transform wrap an object body.kmsMessage unless it carries an empty keyUris or a <KRO> or <KEYURL> template."
+      },
+      "internal-plugin-device-identity": {
+        "kind": "sdk",
+        "publication": "published",
+        "source_kind": "external",
+        "source": "@webex/internal-plugin-device (workspace package; module spec consulted: packages/@webex/internal-plugin-device/src/docs/README.md)",
+        "summary": "Neither imported by src/ nor declared in package.json; registered through the encryption plugin's imports. url is a registration property read from webex.internal.device."
+      },
+      "common-base64": {
+        "kind": "sdk",
+        "publication": "published",
+        "source_kind": "external",
+        "source": "@webex/common (workspace package; module spec consulted: packages/@webex/common/src/docs/README.md; code consulted: packages/@webex/common/src/base64.js)",
+        "summary": "base64.toBase64Url and base64.encode produce base64url strings; toBase64Url builds a Buffer from its input and throws for undefined."
+      },
+      "internal-plugin-side-effect-imports": {
+        "kind": "sdk",
+        "publication": "published",
+        "source_kind": "external",
+        "source": "@webex/internal-plugin-mercury (module spec consulted: packages/@webex/internal-plugin-mercury/src/docs/README.md, stale on sessions), @webex/internal-plugin-conversation (no spec), @webex/internal-plugin-feature (module spec consulted: packages/@webex/internal-plugin-feature/src/docs/README.md)",
+        "summary": "Imported by src/index.js for registration only; no src/ file calls them. The Lyra service delivers lyra.* events to room devices through mercury, whose emit scheme (event:<eventType> for dotted types) the integration specs rely on."
+      }
+    }
+  },
+  "spec_policy": {
+    "require_what_and_why": true,
+    "require_provenance": true,
+    "protected_specs": [
+      "src/docs/README.md"
+    ]
+  },
+  "validation": {
+    "generator_runtime": "claude-code",
+    "generator_model": "claude-opus-5-5",
+    "generator_runtime_source": "host-metadata",
+    "source_commit": "bd4ed4b952d7d2fae2a4803d54bf4acb9d97f361",
+    "minimum_independence": "different-runtime",
+    "blocking_severities": [
+      "Blocking"
+    ],
+    "validator_runtime": "01a1d048-7850-76c1-b613-3973b3145b4d",
+    "validator_runtime_source": "invocation-input",
+    "runtime_fallback_tier": "different-runtime"
+  },
+  "layout": {
+    "sdd_root": ".sdd",
+    "docs_root": "docs",
+    "agent_entry_path": "AGENTS.md",
+    "standing_docs_root": "docs",
+    "spec_index_path": "docs/specs/README.md",
+    "module_docs_strategy": "source-local",
+    "module_docs_relative_path": "docs/README.md",
+    "module_docs_decision": {
+      "basis": "repo-standards-default",
+      "reason": "No module-local documentation existed. The source-local default gives src/docs/README.md. test:style runs eslint ./src/**/*.*, and the shared @webex/eslint-config-legacy ignore patterns exclude docs/** and *.md; build:src processes -js -ts only, so Markdown under src/ does not enter dist/.",
+      "decided_by": "rarajes2@cisco.com (bootstrap questionnaire)",
+      "decided_at": "2026-11-12T14:50:30Z"
+    },
+    "repo_context_decision": {
+      "path": ".repo-context.json",
+      "schema_path": "schemas/repo-context.schema.json",
+      "action": "create",
+      "schema_action": "create",
+      "reason": "Neither the operational context nor its schema existed in this package. The context is created from package evidence and the schema is copied from the repository-root .sdd/templates/repo-standards/schemas/repo-context.schema.json.",
+      "decided_by": "rarajes2@cisco.com (bootstrap questionnaire)",
+      "decided_at": "2026-11-12T14:50:30Z"
+    },
+    "artifact_decisions": [
+      {
+        "path": "docs/service.md",
+        "action": "omit",
+        "reason": "Library package, not a deployable service. package.json has no start script, container, or deployment descriptor.",
+        "decided_by": "claude-code (code evidence)",
+        "decided_at": "2026-11-12T14:50:30Z"
+      },
+      {
+        "path": "mkdocs.yml",
+        "action": "omit",
+        "reason": "No package-level documentation site exists. Documentation publishing stays with the workspace.",
+        "decided_by": "claude-code (code evidence)",
+        "decided_at": "2026-11-12T14:50:30Z"
+      },
+      {
+        "path": "api-specs/openapi.yaml",
+        "action": "omit",
+        "reason": "The package serves no HTTP routes. It is a client of the Lyra and proximity services; its published surface is the npm export described by lyra-internal-sdk.",
+        "decided_by": "claude-code (code evidence)",
+        "decided_at": "2026-11-12T14:50:30Z"
+      },
+      {
+        "path": "SECURITY.md",
+        "action": "omit",
+        "reason": "No package-level security policy exists. The workspace owns security policy, and a per-package copy would duplicate it; security architecture is described in docs/architecture.md.",
+        "decided_by": "claude-code (code evidence)",
+        "decided_at": "2026-11-12T14:50:30Z"
+      },
+      {
+        "path": "CONTRIBUTING.md",
+        "action": "omit",
+        "reason": "Contribution instructions are owned at the workspace root CONTRIBUTING.md.",
+        "decided_by": "claude-code (code evidence)",
+        "decided_at": "2026-11-12T14:50:30Z"
+      },
+      {
+        "path": "CHANGELOG.md",
+        "action": "omit",
+        "reason": "Changelog generation is owned at the workspace root. This package has no changelog file.",
+        "decided_by": "claude-code (code evidence)",
+        "decided_at": "2026-11-12T14:50:30Z"
+      },
+      {
+        "path": "CTO_CHECKLIST.yml",
+        "action": "omit",
+        "reason": "The CTO readiness checklist applies to deployable services. This package is a library.",
+        "decided_by": "claude-code (code evidence)",
+        "decided_at": "2026-11-12T14:50:30Z"
+      },
+      {
+        "path": "schemas/cto-checklist.schema.json",
+        "action": "omit",
+        "reason": "Omitted together with CTO_CHECKLIST.yml.",
+        "decided_by": "claude-code (code evidence)",
+        "decided_at": "2026-11-12T14:50:30Z"
+      }
+    ],
+    "template_roots": {
+      "canonical": ".sdd/templates/repo-standards"
+    },
+    "contract_index_path": "docs/architecture.md",
+    "repo_skills_root": ".sdd/skills",
+    "monorepo_package": {
+      "package_path": "packages/@webex/internal-plugin-lyra",
+      "root_manifest_path": "../../../.sdd/manifest.json",
+      "templates_root_path": "../../../.sdd/templates/repo-standards"
+    }
+  },
+  "tooling": {
+    "sdlc_skills": {
+      "source_ref": "repo-annotation@2.3.1"
+    }
+  },
+  "coverage_ratchet": {
+    "enabled": true,
+    "waivers": []
+  },
+  "substrate": {
+    "source": "WebexTools/repo-standards@d89a7fe59126ae3ad9bac9ca352aa7f12b4c85dc",
+    "consumed": [
+      "@webex/eslint-config-legacy via .eslintrc.js",
+      "@webex/babel-config-legacy via babel.config.js",
+      "@webex/jest-config-legacy via jest.config.js",
+      "@webex/legacy-tools build and test runner via package.json",
+      "package README.md (context only)",
+      "Repo Standards templates at the monorepo root .sdd/templates/repo-standards, referred to through layout.monorepo_package.templates_root_path (this package holds no templates)"
+    ],
+    "compliance_tier": "baseline"
+  },
+  "section_profiles": {
+    "repo": {
+      "owns_datastore": false,
+      "holds_client_state": false,
+      "components_interact": true,
+      "domain_data_across_components": true,
+      "caches_data": false,
+      "observability_convention": false,
+      "deploys_to_infra": false,
+      "shared_base_libs": true,
+      "is_monorepo": false,
+      "multi_platform": false,
+      "published_package": true,
+      "embedded_in_host": false,
+      "cross_repo_deps_material": true,
+      "security_arch_warranted": true,
+      "exposes_commands_or_artifacts": true
+    },
+    "resolved_by": "claude-code (code evidence; bootstrap questionnaire)",
+    "resolved_at": "2026-11-12T14:50:30Z"
+  }
+}
