@@ -4,7 +4,7 @@
 
 import type {IdentityProvider} from '@webex/internal-plugin-identity';
 
-import EventsScope from '../common/events/events-scope';
+import TypedEventsScope from '../common/events/typed-events-scope';
 import LoggerProxy from '../common/logs/logger-proxy';
 import Metrics from '../metrics';
 import BEHAVIORAL_METRICS from '../metrics/constants';
@@ -15,7 +15,12 @@ import E2eeSignaling from './E2eeSignaling';
 import {MEDIA_SERVICE_DEVICE_TYPE} from './constants';
 import MeetingsUtil from '../meetings/util';
 import type WasmLoader from '../common/wasm-loader';
-import type {E2eeMeetingContext, E2eeState} from './types';
+import type {
+  E2eeControllerEvent,
+  E2eeControllerEventMap,
+  E2eeMeetingContext,
+  E2eeState,
+} from './types';
 
 const TRIGGER_SCOPE = {file: 'e2ee/E2eeController', function: 'e2ee'};
 
@@ -25,7 +30,7 @@ const TRIGGER_SCOPE = {file: 'e2ee/E2eeController', function: 'e2ee'};
  * presence and lifecycle state, and re-emits E2EE events on the meeting. Its start() is a no-op
  * unless the meeting requires E2EE (a V2/zero-trust meeting) and E2EE is enabled and supported.
  */
-export default class E2eeController extends EventsScope {
+export default class E2eeController extends TypedEventsScope<E2eeControllerEventMap> {
   private readonly context: E2eeMeetingContext;
 
   private readonly webex: any;
@@ -430,12 +435,10 @@ export default class E2eeController extends EventsScope {
     this.emitE2eeEvent(EVENT_TRIGGERS.MEETING_E2EE_STATE_CHANGED, {state});
   }
 
-  /**
-   * @param {string} event
-   * @param {object} payload
-   * @returns {void}
-   */
-  private emitE2eeEvent(event: string, payload: object): void {
+  private emitE2eeEvent<K extends E2eeControllerEvent>(
+    event: K,
+    payload: E2eeControllerEventMap[K]
+  ): void {
     LoggerProxy.logger.info(`e2ee: E2eeController --> emitting event: ${event}`);
     this.emit(TRIGGER_SCOPE, event, payload);
   }

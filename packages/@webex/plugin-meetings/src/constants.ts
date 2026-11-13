@@ -385,10 +385,10 @@ export const EVENT_TRIGGERS = {
   MEETING_LOCUS_URL_UPDATE: 'meeting:locus:locusUrl:update',
   MEETING_STREAM_PUBLISH_STATE_CHANGED: 'meeting:streamPublishStateChanged',
 
-  MEETING_E2EE_SECURITY_CODE_UPDATED: 'meeting:e2ee:securityCodeUpdated',
-  MEETING_E2EE_STATE_CHANGED: 'meeting:e2ee:stateChanged',
-  MEETING_E2EE_MEDIA_SERVICES_CHANGED: 'meeting:e2ee:mediaServicesChanged',
-  MEETING_E2EE_FAILURE: 'meeting:e2ee:failure',
+  MEETING_E2EE_SECURITY_CODE_UPDATED: 'meeting:e2ee:securityCodeUpdated' as const,
+  MEETING_E2EE_STATE_CHANGED: 'meeting:e2ee:stateChanged' as const,
+  MEETING_E2EE_MEDIA_SERVICES_CHANGED: 'meeting:e2ee:mediaServicesChanged' as const,
+  MEETING_E2EE_FAILURE: 'meeting:e2ee:failure' as const,
 
   MEETING_TRUST_STATE_CHANGED: 'meeting:trustStateChanged',
   MEETING_TRANSCRIPTION_CONNECTED: 'meeting:transcription:connected',

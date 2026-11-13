@@ -72,6 +72,7 @@ export type {
   SitePreferencesResponse,
 } from './meetings/meetings.types';
 export type {Interpreter, InterpreterUsingResource} from './interpretation/interpretation.types';
+export type {E2eeControllerEvent, E2eeControllerEventMap} from './e2ee/types';
 
 export {
   CaptchaError,
