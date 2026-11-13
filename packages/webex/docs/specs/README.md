@@ -9,7 +9,7 @@ doc_kind: standing-doc
 generated_from: spec-index@0.3.0
 generated_by: claude-cowork
 approved_by: akulakum@cisco.com
-updated_at: 2026-11-13T06:29:16Z
+updated_at: 2026-11-13T07:05:01Z
 validation_status: pass-with-warnings
 -->
 
@@ -45,7 +45,7 @@ package is a library published to npm, so that artifact is omitted in `.sdd/mani
 | --- | --- | --- | --- |
 | `src/` | Entry files, package config, storage choice, and the `Calling` wrapper | Partial | `src/docs/README.md` |
 
-Generator-side field measurement is complete. Field coverage measured 2026-10-13 is 93.3% (14 of 15 mandatory fields PRESENT for `src`). Critical fields are 8 of 8 PRESENT. The WEAK field is test strategy: 30 unit cases in 2 suites (`webex.js` 6; `assets-config.js` 24, encryption asset configuration across the entries), 2 Playwright cases for the encryption UMD, and three loadable integration specs (`commonjs.js`, `init.js`, `request.js`, whose user-agent case fails while `package.json` has no `version`) cover the main entry; the fourth integration spec, `env.js`, requires the unexported `webex/env` subpath and cannot reach `env.js`, and the untested entries are listed in the module spec's Verification section. Independent validation: PASS-WITH-WARNINGS; validator current-session (Session B); assessed 2026-11-13; source 7a23c26; required Repo Annotation 2.3.1 checks: 7 passed, 0 failed; 0 Blocking, 1 Important, 1 Medium, 0 Minor. Coverage state stays `Partial` until the other entries and `Calling` are tested, a characterization baseline exists, and a spec-drift record exists.
+Generator-side field measurement is complete. Field coverage measured 2026-10-13 is 93.3% (14 of 15 mandatory fields PRESENT for `src`). Critical fields are 8 of 8 PRESENT. The WEAK field is test strategy: 30 unit cases in 2 suites (`webex.js` 6; `assets-config.js` 24, encryption asset configuration across the entries), 2 Playwright cases for the encryption UMD, and three loadable integration specs (`commonjs.js`, `init.js`, `request.js`, whose user-agent case fails while `package.json` has no `version`) cover the main entry; the fourth integration spec, `env.js`, requires the unexported `webex/env` subpath and cannot reach `env.js`, and the untested entries are listed in the module spec's Verification section. Independent validation: PASS-WITH-WARNINGS; validator current-session (Session B); assessed 2026-11-13; source b8f9d0b; required Repo Annotation 2.3.1 checks: 7 passed, 0 failed; 0 Blocking, 1 Important, 1 Medium, 0 Minor. Coverage state stays `Partial` until the other entries and `Calling` are tested, a characterization baseline exists, and a spec-drift record exists.
 
 ## Change and verification routing
 

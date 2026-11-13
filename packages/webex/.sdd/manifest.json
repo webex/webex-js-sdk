@@ -147,8 +147,8 @@
       "path": "src",
       "canonical_spec": "src/docs/README.md",
       "coverage_status": "Partial",
-      "coverage_evidence": "Field coverage 93.3% (14/15) assessed 2026-10-13 by the generator; critical field coverage 8/8. The one WEAK field is test strategy: test/unit/spec/webex.js runs 6 Jest cases (version, encryption.assetsBaseUrl, fedramp) and test/unit/spec/assets-config.js runs 24 (encryption asset configuration across 6 entry points, including dist/encryption, dist/meetings, and dist/calling); test/browser/assets-config.spec.js runs 2 Playwright cases for the encryption UMD and three loadable Mocha integration specs cover commonjs loading, init merge, and the user-agent header (the request.js user-agent case fails while package.json has no version) (the fourth, test/integration/spec/env.js, requires the unexported webex/env subpath and cannot reach env.js), but no test asserts the plugin sets, sdkType, or lifecycle of meetings, encryption, first-party, or Calling (assets-config.js asserts only encryption asset configuration), the storage choice, or UMD bundles other than the encryption asset default, and no characterization baseline exists. Independent validation: PASS-WITH-WARNINGS; validator current-session (Session B); assessed 2026-11-13; source 7a23c26; required Repo Annotation 2.3.1 checks: 7 passed, 0 failed; 0 Blocking, 1 Important, 1 Medium, 0 Minor. Held at Partial: untested entries, no characterization baseline, and no spec-drift record.",
-      "last_assessed": "2026-10-13",
+      "coverage_evidence": "Field coverage 93.3% (14/15) assessed 2026-10-13 by the generator; critical field coverage 8/8. The one WEAK field is test strategy: test/unit/spec/webex.js runs 6 Jest cases (version, encryption.assetsBaseUrl, fedramp) and test/unit/spec/assets-config.js runs 24 (encryption asset configuration across 6 entry points, including dist/encryption, dist/meetings, and dist/calling); test/browser/assets-config.spec.js runs 2 Playwright cases for the encryption UMD and three loadable Mocha integration specs cover commonjs loading, init merge, and the user-agent header (the request.js user-agent case fails while package.json has no version) (the fourth, test/integration/spec/env.js, requires the unexported webex/env subpath and cannot reach env.js), but no test asserts the plugin sets, sdkType, or lifecycle of meetings, encryption, first-party, or Calling (assets-config.js asserts only encryption asset configuration), the storage choice, or UMD bundles other than the encryption asset default, and no characterization baseline exists. Independent validation: PASS-WITH-WARNINGS; validator current-session (Session B); assessed 2026-11-13; source b8f9d0b; required Repo Annotation 2.3.1 checks: 7 passed, 0 failed; 0 Blocking, 1 Important, 1 Medium, 0 Minor. Held at Partial: untested entries, no characterization baseline, and no spec-drift record.",
+      "last_assessed": "2026-11-13",
       "contracts": {
         "provides": [
           "webex-sdk",
@@ -286,8 +286,8 @@
     "head_ref": "APPLY_SDD_FOR_WEBEX_PACKAGE",
     "validator_runtime": "current-session",
     "validator_runtime_source": "invocation-input",
-    "validator_run_id": "01a1d38e-226e-77c0-ad59-e2ea02900be2",
-    "source_commit": "7a23c26057dc4dcc1e4bd7ee37d60b45b60a8dcb"
+    "validator_run_id": "session-b-2026-11-13-4",
+    "source_commit": "b8f9d0baf97030687da231f74448c4ab3476394e"
   },
   "layout": {
     "sdd_root": ".sdd",
