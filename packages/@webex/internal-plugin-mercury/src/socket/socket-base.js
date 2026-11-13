@@ -105,90 +105,125 @@ export default class Socket extends EventEmitter {
    * @returns {Promise}
    */
   close(options) {
-    return new Promise((resolve, reject) => {
-      const socket = sockets.get(this);
+    if (this._closePromise) {
+      return this._closePromise;
+    }
 
-      if (!socket) {
-        // Open has not been called yet so there is no socket to close
-        resolve();
+    const socket = sockets.get(this);
+    if (
+      socket &&
+      socket.readyState !== SOCKET_READY_STATE.CLOSED &&
+      options?.code &&
+      options.code !== 1000 &&
+      (options.code < 3000 || options.code > 4999)
+    ) {
+      return Promise.reject(
+        new Error('`options.code` must be 1000 or between 3000 and 4999 (inclusive)')
+      );
+    }
 
-        return;
-      }
-      // logger is defined once open is called
-      this.logger.info(`socket,${this._domain}: closing`);
-
-      if (
-        socket.readyState === SOCKET_READY_STATE.CLOSING ||
-        socket.readyState === SOCKET_READY_STATE.CLOSED
-      ) {
-        this.logger.info(`socket,${this._domain}: already closed`);
-        resolve();
-
-        return;
-      }
-
-      options = options || {};
-      if (options.code && options.code !== 1000 && (options.code < 3000 || options.code > 4999)) {
-        reject(new Error('`options.code` must be 1000 or between 3000 and 4999 (inclusive)'));
-
-        return;
-      }
-
-      const originalCode = options.code;
-      const originalReason = options.reason;
-
-      options = defaults(options, {
-        code: 1000,
-        reason: 'Done',
-      });
-
-      const closeTimer = safeSetTimeout(() => {
-        try {
-          this.logger.info(`socket,${this._domain}: no close event received, forcing closure`);
-          resolve(
-            this.onclose(
-              originalCode
-                ? {code: originalCode, reason: originalReason || 'Done (unknown)'}
-                : {
-                    code: 1000,
-                    reason: 'Done (forced)',
-                  }
-            )
-          );
-        } catch (error) {
-          this.logger.warn(`socket,${this._domain}: force-close failed`, error);
-        }
-      }, this.forceCloseDelay);
-
-      socket.onclose = (event) => {
-        this.logger.info(`socket,${this._domain}: close event fired`, event.code, event.reason);
-        clearTimeout(closeTimer);
-        this.onclose(event);
-        resolve(event);
-      };
-
-      // If socket is still connecting, manually trigger close handler with desired code
-      // because calling close() on a CONNECTING socket may not preserve custom codes
-      if (socket.readyState === SOCKET_READY_STATE.CONNECTING) {
-        this.logger.info(
-          `socket,${this._domain}: socket still connecting, triggering close manually`
-        );
-        clearTimeout(closeTimer);
-        const closeEvent = {code: options.code, reason: options.reason};
-        this.onclose(closeEvent);
-        resolve(closeEvent);
-        try {
-          socket.close(options.code, options.reason);
-        } catch (error) {
-          this.logger.info(
-            `socket,${this._domain}: error while closing CONNECTING socket, likely due to browser incompatibility with custom close codes`,
-            error
-          );
-        }
-      } else {
-        socket.close(options.code, options.reason);
-      }
+    this._closeRequested = true;
+    let resolveClose;
+    const closed = new Promise((resolve) => {
+      resolveClose = resolve;
     });
+    this._closePromise = closed.catch((error) => {
+      this._closePromise = null;
+      throw error;
+    });
+    resolveClose(
+      new Promise((resolve, reject) => {
+        if (this._cancelOpen) this._cancelOpen(new Error('Socket has been closed'));
+        if (!socket) {
+          // Open has not been called yet so there is no socket to close
+          resolve();
+
+          return;
+        }
+        // logger is defined once open is called
+        this.logger.info(`socket,${this._domain}: closing`);
+
+        if (socket.readyState === SOCKET_READY_STATE.CLOSED) {
+          this.logger.info(`socket,${this._domain}: already closed`);
+          clearTimeout(this.pongTimer);
+          clearTimeout(this.pingTimer);
+          resolve();
+
+          return;
+        }
+
+        options = options || {};
+        const originalCode = options.code;
+        const originalReason = options.reason;
+
+        options = defaults(options, {
+          code: 1000,
+          reason: 'Done',
+        });
+
+        const closeTimer = safeSetTimeout(() => {
+          try {
+            this.logger.info(`socket,${this._domain}: no close event received, forcing closure`);
+            resolve(
+              this.onclose(
+                originalCode
+                  ? {code: originalCode, reason: originalReason || 'Done (unknown)'}
+                  : {
+                      code: 1000,
+                      reason: 'Done (forced)',
+                    }
+              )
+            );
+          } catch (error) {
+            this.logger.warn(`socket,${this._domain}: force-close failed`, error);
+            reject(error);
+          }
+        }, this.forceCloseDelay);
+
+        socket.onclose = (event) => {
+          this.logger.info(`socket,${this._domain}: close event fired`, event.code, event.reason);
+          clearTimeout(closeTimer);
+          try {
+            this.onclose(event);
+            resolve(event);
+          } catch (error) {
+            reject(error);
+          }
+        };
+
+        if (socket.readyState === SOCKET_READY_STATE.CLOSING) {
+          return;
+        }
+
+        if (socket.readyState === SOCKET_READY_STATE.CONNECTING) {
+          this.logger.info(
+            `socket,${this._domain}: socket still connecting, triggering close manually`
+          );
+          clearTimeout(closeTimer);
+          const closeEvent = {code: options.code, reason: options.reason};
+          // Browsers can drop the requested close code while CONNECTING.
+          socket.onclose = null;
+          try {
+            socket.close(options.code, options.reason);
+          } catch (error) {
+            reject(error);
+
+            return;
+          }
+          this.onclose(closeEvent);
+          resolve(closeEvent);
+        } else {
+          try {
+            socket.close(options.code, options.reason);
+          } catch (error) {
+            clearTimeout(closeTimer);
+            reject(error);
+          }
+        }
+      })
+    );
+
+    return this._closePromise;
   }
 
   /**
@@ -211,8 +246,15 @@ export default class Socket extends EventEmitter {
       this._domain = url;
     }
 
+    let cancelOpen;
+
     return new Promise((resolve, reject) => {
       /* eslint complexity: [0] */
+      if (this._closeRequested) {
+        reject(new Error('Socket has been closed'));
+
+        return;
+      }
       if (!url) {
         reject(new Error('`url` is required'));
 
@@ -243,6 +285,8 @@ export default class Socket extends EventEmitter {
 
       this.logger.info(`socket,${this._domain}: creating WebSocket`);
       const socket = new WebSocket(url, [], options);
+      cancelOpen = reject;
+      this._cancelOpen = cancelOpen;
 
       socket.binaryType = 'arraybuffer';
       socket.onmessage = this.onmessage;
@@ -271,9 +315,17 @@ export default class Socket extends EventEmitter {
       };
 
       socket.onopen = () => {
+        if (this._closeRequested) {
+          reject(new Error('Socket has been closed'));
+
+          return;
+        }
         this.logger.info(`socket,${this._domain}: connected`);
         this._authorize()
           .then(() => {
+            if (this._closeRequested) {
+              throw new Error('Socket has been closed');
+            }
             this.logger.info(`socket,${this._domain}: authorized`);
             socket.onclose = this.onclose;
             resolve();
@@ -287,6 +339,10 @@ export default class Socket extends EventEmitter {
 
       sockets.set(this, socket);
       this.logger.info(`socket,${this._domain}: waiting for server`);
+    }).finally(() => {
+      if (this._cancelOpen === cancelOpen) {
+        this._cancelOpen = null;
+      }
     });
   }
 
