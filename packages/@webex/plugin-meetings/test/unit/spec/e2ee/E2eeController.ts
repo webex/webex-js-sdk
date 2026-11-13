@@ -520,10 +520,10 @@ describe('plugin-meetings', () => {
           details: {},
         },
         {
-          event: 'mediaEncryptionRequestFailure',
+          event: 'mediaEncryptionServiceFailure',
           payload: {errorCode: 78400011, message: 'not leader'},
           state: 'failed',
-          reason: 'mediaEncryptionRequestFailure',
+          reason: 'mediaEncryptionServiceFailure',
           details: {errorCode: 78400011, errorMessage: 'not leader'},
         },
         {event: 'evicted', payload: undefined, state: 'evicted', reason: 'evicted', details: {}},

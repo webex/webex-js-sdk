@@ -282,8 +282,8 @@ export default class E2eeController extends EventsScope {
     });
 
     subscribe('joinFailure', ({reason}) => this.handleFatal('failed', reason));
-    subscribe('mediaEncryptionRequestFailure', ({errorCode, message}) =>
-      this.handleFatal('failed', 'mediaEncryptionRequestFailure', {
+    subscribe('mediaEncryptionServiceFailure', ({errorCode, message}) =>
+      this.handleFatal('failed', 'mediaEncryptionServiceFailure', {
         errorCode,
         errorMessage: message,
       })
