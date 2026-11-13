@@ -138,6 +138,15 @@
       "onboarded_by": "claude-code"
     },
     {
+      "id": "@webex/internal-plugin-flag",
+      "path": "packages/@webex/internal-plugin-flag",
+      "manifest": "packages/@webex/internal-plugin-flag/.sdd/manifest.json",
+      "agent_entry": "packages/@webex/internal-plugin-flag/AGENTS.md",
+      "index": "packages/@webex/internal-plugin-flag/docs/index.md",
+      "onboarded_at": "2026-11-12T14:20:04Z",
+      "onboarded_by": "claude-cowork"
+    },
+    {
       "id": "@webex/internal-plugin-lyra",
       "path": "packages/@webex/internal-plugin-lyra",
       "manifest": "packages/@webex/internal-plugin-lyra/.sdd/manifest.json",

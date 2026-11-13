@@ -238,6 +238,13 @@
         "notes": "Onboarded package: its own AGENTS.md, docs/, and .sdd/manifest.json are routed from .sdd/manifest.json packages."
       },
       {
+        "name": "@webex/internal-plugin-flag",
+        "paths": [
+          "packages/@webex/internal-plugin-flag"
+        ],
+        "notes": "Onboarded package: its own AGENTS.md, docs/, and .sdd/manifest.json are routed from .sdd/manifest.json packages."
+      },
+      {
         "name": "@webex/internal-plugin-lyra",
         "paths": [
           "packages/@webex/internal-plugin-lyra"
