@@ -4,6 +4,8 @@
 
 import {Interceptor} from '@webex/http-core';
 
+import {isCatalogAuthReason} from '../services/catalog-auth';
+
 const trailingSlashes = /(?:^\/)|(?:\/$)/;
 
 /**
@@ -47,9 +49,15 @@ export default class ServiceInterceptor extends Interceptor {
 
         return options;
       })
-      .catch(() =>
-        Promise.reject(new Error(`service-interceptor: '${service}' is not a known service`))
-      );
+      .catch((error) => {
+        if (error && isCatalogAuthReason(error.reason)) {
+          return Promise.reject(error);
+        }
+
+        return Promise.reject(
+          new Error(`service-interceptor: '${service}' is not a known service`)
+        );
+      });
   }
 
   /* eslint-disable class-methods-use-this */

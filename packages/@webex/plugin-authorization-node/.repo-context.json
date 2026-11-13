@@ -1,0 +1,430 @@
+{
+  "$schema": "./schemas/repo-context.schema.json",
+  "version": 1,
+  "repository": {
+    "name": "@webex/plugin-authorization-node",
+    "purpose": "Node authorization plugin registered as webex.authorization for Node builds (re-exported by the @webex/plugin-authorization Node entry, which webex-node and webex require, and imported directly by @webex/webex-server). It exchanges an OAuth authorization code at the identity broker token endpoint with the confidential client id and secret and maps HTTP 400 responses to grant errors, exchanges a host JWT for an access token through hydra jwt/login, mints HS256 guest JWTs, and posts a logout request without awaiting it. It performs no CSRF or state check and stores no tokens itself."
+  },
+  "commands": {
+    "install": "yarn",
+    "compile": "yarn workspace @webex/plugin-authorization-node build:src",
+    "build": "yarn workspace @webex/plugin-authorization-node build",
+    "unit-test": "yarn workspace @webex/plugin-authorization-node test:unit",
+    "integration-test": "yarn workspace @webex/plugin-authorization-node test:integration",
+    "lint": "yarn workspace @webex/plugin-authorization-node test:style",
+    "deploy": "yarn workspace @webex/plugin-authorization-node deploy:npm"
+  },
+  "public_interfaces": [
+    {
+      "name": "@webex/plugin-authorization-node package entry",
+      "kind": "package_export",
+      "source": "src/index.js",
+      "entrypoints": [
+        "import Authorization from '@webex/plugin-authorization-node'",
+        "import {config} from '@webex/plugin-authorization-node'",
+        "import '@webex/plugin-authorization-node'"
+      ],
+      "audience": "the @webex/plugin-authorization Node entry, webex-node, webex in Node, @webex/webex-server, and Node applications",
+      "notes": "Importing the package imports @webex/internal-plugin-device and registers Authorization as public plugin 'authorization' with proxies isAuthorizing and isAuthenticating and the empty credentials config. The first registration of the name wins."
+    },
+    {
+      "name": "webex.authorization runtime methods",
+      "kind": "plugin_api",
+      "source": "src/authorization.js",
+      "entrypoints": [
+        "webex.authorization.requestAuthorizationCodeGrant()",
+        "webex.authorization.requestAccessTokenFromJwt()",
+        "webex.authorization.createJwt()",
+        "webex.authorization.logout()"
+      ],
+      "audience": "Node applications, webex-core credentials (JWT-mode refresh), and WebexCore#logout",
+      "notes": "requestAuthorizationCodeGrant sends the confidential client id and secret as Basic credentials and maps HTTP 400 to grant errors. oneFlight is keyed by method name, so concurrent calls with different arguments share the first result. logout returns undefined without awaiting its request."
+    },
+    {
+      "name": "credentials configuration read by the plugin",
+      "kind": "configuration",
+      "source": "src/authorization.js",
+      "entrypoints": [
+        "webex.config.credentials.client_id",
+        "webex.config.credentials.client_secret",
+        "webex.config.credentials.redirect_uri",
+        "webex.config.credentials.tokenUrl",
+        "webex.config.credentials.logoutUrl",
+        "webex.config.credentials.service"
+      ],
+      "audience": "integrators configuring Webex.init and webex-core credentials",
+      "notes": "The plugin namespace is Credentials, so it reads the shared credentials configuration owned by webex-core. src/config.js contributes {credentials: {}}. service is not declared by CredentialsConfig and is undefined unless the host sets it."
+    },
+    {
+      "name": "package scripts",
+      "kind": "npm_scripts",
+      "source": "package.json",
+      "entrypoints": [
+        "build",
+        "build:src",
+        "test:style",
+        "test:unit",
+        "test:integration",
+        "test:browser",
+        "deploy:npm"
+      ],
+      "audience": "contributors and CI",
+      "notes": "Run build:src before test:unit because the unit spec imports the package by name and loads dist. test:integration needs live services and test-user credentials. test:browser runs under karma where every nodeOnly suite is skipped, so it verifies no behavior. test:style does not lint src/authorization.js because the shared lint config ignores that file name."
+    }
+  ],
+  "source_of_truth": [
+    {
+      "surface": "Node authorization plugin implementation",
+      "paths": [
+        "src/index.js",
+        "src/authorization.js",
+        "src/config.js"
+      ],
+      "generated_artifacts": [
+        "dist"
+      ],
+      "refresh_with": [
+        "yarn workspace @webex/plugin-authorization-node build:src"
+      ],
+      "validate_with": [
+        "yarn workspace @webex/plugin-authorization-node test:unit",
+        "yarn workspace @webex/plugin-authorization-node test:style"
+      ]
+    },
+    {
+      "surface": "module specification",
+      "paths": [
+        "src/docs/README.md"
+      ],
+      "generated_artifacts": [],
+      "refresh_with": [
+        "update alongside the behavior change in the same commit"
+      ],
+      "validate_with": [
+        "spec-validator on an independent runtime"
+      ]
+    }
+  ],
+  "generated_artifacts": [
+    {
+      "path": "dist",
+      "generated_from": "src",
+      "refresh_with": "yarn workspace @webex/plugin-authorization-node build:src"
+    },
+    {
+      "path": "../../../.sdd/templates/repo-standards/template-map.json",
+      "generated_from": "WebexTools/repo-standards@d89a7fe59126ae3ad9bac9ca352aa7f12b4c85dc",
+      "refresh_with": "The package holds no templates. It refers to the monorepo root snapshot at ../../../.sdd/templates/repo-standards through layout.monorepo_package.templates_root_path in .sdd/manifest.json. Refresh the root snapshot, not this package."
+    }
+  ],
+  "validation_matrix": [
+    {
+      "paths": [
+        "src/**"
+      ],
+      "minimum": [
+        "yarn workspace @webex/plugin-authorization-node build:src",
+        "yarn workspace @webex/plugin-authorization-node test:unit"
+      ],
+      "recommended": [
+        "yarn workspace @webex/plugin-authorization-node test:style"
+      ]
+    },
+    {
+      "paths": [
+        "src/authorization.js",
+        "src/index.js"
+      ],
+      "minimum": [
+        "yarn workspace @webex/plugin-authorization-node build:src",
+        "yarn workspace @webex/plugin-authorization-node test:unit"
+      ],
+      "recommended": [
+        "review the sibling package files packages/@webex/plugin-authorization/src/index.js, packages/@webex/webex-core/src/lib/credentials/credentials.js, and packages/@webex/webex-core/src/webex-core.js when the plugin name, requestAccessTokenFromJwt, or logout change",
+        "review src/authorization.js by hand, because test:style does not lint it"
+      ]
+    }
+  ],
+  "change_impact": [
+    {
+      "paths": [
+        "src/authorization.js"
+      ],
+      "affects": [
+        "the authorization-code exchange and its grant-error mapping",
+        "JWT login and webex-core credentials JWT-mode refresh",
+        "guest JWT creation",
+        "the logout request from WebexCore#logout"
+      ],
+      "refresh_with": [
+        "yarn workspace @webex/plugin-authorization-node build:src"
+      ],
+      "validate_with": [
+        "yarn workspace @webex/plugin-authorization-node test:unit"
+      ],
+      "avoid_direct_edits": [
+        "dist"
+      ],
+      "notes": "The Basic client credentials, shouldRefreshAccessToken false, the HTTP 400 grant-error mapping, and the oneFlight decorator on requestAccessTokenFromJwt are relied on by hosts and by webex-core credentials."
+    },
+    {
+      "paths": [
+        "src/index.js",
+        "src/config.js"
+      ],
+      "affects": [
+        "registration as webex.authorization and its proxies",
+        "the internal device plugin import",
+        "the credentials configuration merge"
+      ],
+      "refresh_with": [
+        "yarn workspace @webex/plugin-authorization-node build:src"
+      ],
+      "validate_with": [
+        "yarn workspace @webex/plugin-authorization-node test:unit"
+      ],
+      "avoid_direct_edits": [
+        "dist"
+      ],
+      "notes": "The plugin namespace Credentials means config.js contributes to the shared credentials configuration."
+    }
+  ],
+  "evidence_rules": [
+    {
+      "claim_category": "command_name",
+      "sources": [
+        "package.json"
+      ],
+      "requirement": "The script must exist in package.json scripts.",
+      "notes": "Never cite test:browser as passing evidence: every nodeOnly suite is skipped there. test:integration needs live services."
+    },
+    {
+      "claim_category": "import_path",
+      "sources": [
+        "src/index.js"
+      ],
+      "requirement": "A binding is public only if exported from src/index.js.",
+      "notes": "Exports: default Authorization and config."
+    },
+    {
+      "claim_category": "behavior_claim",
+      "sources": [
+        "src",
+        "test/unit/spec"
+      ],
+      "requirement": "Ground every behavioral claim in source or test evidence.",
+      "notes": "Commit history is not an evidence source for this package. README.md and NODE-OAUTH-FLOW-GUIDE.md are context only (docs/adr/0001-keep-existing-docs-separate.md). Broker URLs, token storage and refresh, and grant errors are owned by the sibling package webex-core."
+    }
+  ],
+  "negative_guidance": [
+    {
+      "rule": "Do not drop the Basic client credentials or shouldRefreshAccessToken false from the code grant.",
+      "why": "The confidential client authenticates with its secret, and a failing grant must not recurse into access-token refresh."
+    },
+    {
+      "rule": "Do not store tokens in this package.",
+      "why": "Every token goes to webex.credentials.set({supertoken}); credentials owns storage, scheduling, and refresh."
+    },
+    {
+      "rule": "Do not rename requestAccessTokenFromJwt, change its {jwt} argument, or remove its oneFlight decorator.",
+      "why": "webex-core credentials calls it during JWT-mode refresh."
+    },
+    {
+      "rule": "Do not read a credentials key that CredentialsConfig does not declare.",
+      "why": "An undeclared key is silently undefined; logout's config.service is the existing example."
+    },
+    {
+      "rule": "Do not treat README.md or NODE-OAUTH-FLOW-GUIDE.md as the method, event, error, or refresh reference.",
+      "why": "Several claims differ from code or describe webex-core and host behavior; see docs/adr/0001-keep-existing-docs-separate.md."
+    },
+    {
+      "rule": "Do not run test:unit against a stale dist.",
+      "why": "The unit spec imports the package by name, which resolves main (dist/index.js)."
+    },
+    {
+      "rule": "Do not infer a coverage threshold for this package.",
+      "why": "The developer confirmed no coverage gate applies; the legacy Jest config sets no threshold."
+    }
+  ],
+  "confidence_policy": {
+    "high": {
+      "action": "update",
+      "expectation": "Source and unit test evidence both support the change, and the behavior has a case in test/unit/spec/authorization.js."
+    },
+    "medium": {
+      "action": "narrow-scope",
+      "expectation": "Only source evidence exists, for example registration, the HTTP 400 grant-error mapping, requestAccessTokenFromJwt, createJwt, or logout. Pin current behavior with a characterization test before modifying."
+    },
+    "low": {
+      "action": "noop",
+      "expectation": "Neither source nor tests settle the question. Stop and report the gap."
+    }
+  },
+  "repository_topology": {
+    "main_entrypoints": [
+      {
+        "name": "package entry",
+        "path": "src/index.js",
+        "purpose": "Imports the device plugin, registers the authorization plugin, and re-exports the class and config",
+        "notes": "No subpath exports."
+      }
+    ],
+    "workspace_packages": [
+      {
+        "name": "@webex/plugin-authorization-node",
+        "paths": [
+          "src",
+          "test"
+        ],
+        "notes": "One module; this SDD root is the package directory inside the webex-js-sdk monorepo."
+      }
+    ],
+    "source_surfaces": [
+      {
+        "name": "Node authorization plugin",
+        "paths": [
+          "src"
+        ],
+        "notes": "index.js, authorization.js, config.js. Specified at src/docs/README.md."
+      },
+      {
+        "name": "tests",
+        "paths": [
+          "test/unit/spec",
+          "test/integration/spec"
+        ],
+        "notes": "One unit spec run by Jest through webex-legacy-tools (4 nodeOnly cases). The integration spec is nodeOnly and needs live services and test-user credentials."
+      }
+    ],
+    "generated_surfaces": [
+      {
+        "name": "build output",
+        "paths": [
+          "dist"
+        ],
+        "generated_from": "src",
+        "refresh_with": "yarn workspace @webex/plugin-authorization-node build:src",
+        "notes": "Produced by webex-legacy-tools. Do not edit by hand. The unit spec loads it."
+      },
+      {
+        "name": "repo-standards template map",
+        "paths": [
+          "../../../.sdd/templates/repo-standards"
+        ],
+        "generated_from": "WebexTools/repo-standards@d89a7fe59126ae3ad9bac9ca352aa7f12b4c85dc",
+        "refresh_with": "The package holds no templates. It refers to the monorepo root snapshot at ../../../.sdd/templates/repo-standards through layout.monorepo_package.templates_root_path in .sdd/manifest.json. Refresh the root snapshot, not this package.",
+        "notes": "The package holds no templates. It refers to the monorepo root snapshot at ../../../.sdd/templates/repo-standards through layout.monorepo_package.templates_root_path in .sdd/manifest.json. Refresh the root snapshot, not this package."
+      }
+    ],
+    "validation_entrypoints": [
+      {
+        "name": "unit tests",
+        "command": "yarn workspace @webex/plugin-authorization-node test:unit",
+        "scope": "test/unit/spec",
+        "notes": "jest via webex-legacy-tools --runner jest; run build:src first."
+      },
+      {
+        "name": "lint",
+        "command": "yarn workspace @webex/plugin-authorization-node test:style",
+        "scope": "src",
+        "notes": "eslint via the local .eslintrc.js; the shared ignore patterns skip src/authorization.js, so only src/index.js and src/config.js are linted."
+      }
+    ],
+    "sync_paths": [
+      {
+        "source": "src/authorization.js",
+        "targets": [
+          "src/docs/README.md"
+        ],
+        "mechanism": "Manual; update the module specification in the same change that alters observable behavior.",
+        "notes": "requestAccessTokenFromJwt is also called by webex-core credentials, and logout by WebexCore#logout; keep both contracts aligned with that package's specifications."
+      },
+      {
+        "source": "WebexTools/repo-standards@d89a7fe59126ae3ad9bac9ca352aa7f12b4c85dc",
+        "targets": [
+          "../../../.sdd/templates/repo-standards"
+        ],
+        "mechanism": "The package holds no templates. It refers to the monorepo root snapshot at ../../../.sdd/templates/repo-standards through layout.monorepo_package.templates_root_path in .sdd/manifest.json. Refresh the root snapshot, not this package.",
+        "notes": "The package holds no templates. It refers to the monorepo root snapshot at ../../../.sdd/templates/repo-standards through layout.monorepo_package.templates_root_path in .sdd/manifest.json. Refresh the root snapshot, not this package."
+      }
+    ]
+  },
+  "folder_readme_contract": {
+    "required_sections": [
+      "purpose",
+      "boundaries",
+      "key-files",
+      "common-tasks"
+    ],
+    "rules": [
+      "Orient the reader before describing detail.",
+      "Link to the module specification rather than duplicating it."
+    ],
+    "example_policy": "Examples are allowed only when verified against src/ or test/.",
+    "fallback": "Omit a section rather than inventing content; report unresolved facts as gaps."
+  },
+  "regression_feedback_rules": [
+    {
+      "trigger": "The code-grant request, its client authentication, or its HTTP 400 grant-error mapping changes.",
+      "required_followups": [
+        "Add a case to test/unit/spec/authorization.js",
+        "Update MOD-004, MOD-005, and INV-002 in src/docs/README.md"
+      ],
+      "notes": "Hosts branch on the grant-error class."
+    },
+    {
+      "trigger": "requestAccessTokenFromJwt changes its request, response mapping, or decorator.",
+      "required_followups": [
+        "Add a unit case to test/unit/spec/authorization.js",
+        "Update MOD-007 and MOD-008 in src/docs/README.md"
+      ],
+      "notes": "webex-core credentials calls it during JWT-mode refresh."
+    }
+  ],
+  "surface_owners": [
+    {
+      "surface": "module implementation and specifications",
+      "owner": "@webex/web-sdk",
+      "edit_boundary": "Owner per the monorepo .github/CODEOWNERS default rule; the package has no explicit entry."
+    }
+  ],
+  "do_not_edit": [
+    "dist",
+    "../../../.sdd/templates/repo-standards"
+  ],
+  "marker_scopes": {
+    "sdd": [
+      ".sdd/manifest.json",
+      "src/docs/README.md",
+      "docs"
+    ]
+  },
+  "fallback_rules": [
+    "When source and tests disagree, code is the referee and the disagreement is recorded rather than silently resolved.",
+    "When neither source nor tests settle a question, report it as a gap instead of inferring.",
+    "Commit history is not a valid rationale source for this package."
+  ],
+  "downstream_context_pack": {
+    "required_human_surfaces": [
+      "README.md",
+      "docs/index.md",
+      "docs/architecture.md",
+      "src/docs/README.md"
+    ],
+    "required_agent_operational_surfaces": [
+      "AGENTS.md",
+      "docs/specs/README.md"
+    ],
+    "required_machine_readable_surface": ".sdd/manifest.json",
+    "recommended_machine_readable_sections": [
+      "public_interfaces",
+      "change_impact",
+      "evidence_rules",
+      "negative_guidance",
+      "confidence_policy",
+      "repository_topology",
+      "folder_readme_contract",
+      "regression_feedback_rules"
+    ]
+  }
+}

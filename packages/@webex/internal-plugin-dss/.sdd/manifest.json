@@ -1,0 +1,434 @@
+{
+  "manifest_version": 1,
+  "repository": {
+    "name": "@webex/internal-plugin-dss",
+    "purpose": "Internal plugin registered as webex.internal.dss for the Directory Search Service (DSS). register() connects the shared mercury socket and listens for directory lookup and search events; lookupDetail, lookup, lookupByEmail, lookupByPhoneNumbers, search, and searchPlaces POST a query with a generated requestId to the directorySearch service, then collect the sequenced result pages that arrive over mercury until the finished page, rejecting with DssTimeoutError when no page arrives within requestTimeout. lookup is batched per resource through a webex-core Batcher by default. It stores nothing.",
+    "category": "cat2-legacy",
+    "primary_languages": [
+      "typescript"
+    ]
+  },
+  "topology": "Orchestrator-plus-components",
+  "commands": {
+    "install": {
+      "command": "yarn",
+      "source_file": "../../../.github/workflows/deploy.yml",
+      "role": "install"
+    },
+    "prebuild": {
+      "command": "yarn prebuild:modules",
+      "source_file": "../../../CONTRIBUTING.md",
+      "role": "other"
+    },
+    "compile": {
+      "command": "yarn workspace @webex/internal-plugin-dss build",
+      "source_file": "package.json",
+      "role": "compile",
+      "verified_at": "2026-11-12T10:08:50Z"
+    },
+    "build": {
+      "command": "yarn workspace @webex/internal-plugin-dss build:src",
+      "source_file": "../../../AGENTS.md",
+      "role": "package",
+      "verified_at": "2026-11-12T10:05:20Z"
+    },
+    "unit-test": {
+      "command": "yarn workspace @webex/internal-plugin-dss test:unit",
+      "source_file": "../../../AGENTS.md",
+      "role": "unit-test",
+      "verified_at": "2026-11-12T10:05:30Z"
+    },
+    "lint": {
+      "command": "yarn workspace @webex/internal-plugin-dss test:style",
+      "source_file": "package.json",
+      "role": "lint",
+      "verified_at": "2026-11-12T10:05:36Z"
+    },
+    "deploy": {
+      "command": "yarn workspace @webex/internal-plugin-dss deploy:npm",
+      "source_file": "package.json",
+      "role": "deploy"
+    }
+  },
+  "toolchain": [
+    {
+      "name": "node",
+      "version": ">=16",
+      "origin": "repo-config",
+      "source_file": "package.json"
+    },
+    {
+      "name": "node",
+      "version": "22.14",
+      "origin": "repo-config",
+      "source_file": "../../../AGENTS.md"
+    },
+    {
+      "name": "node",
+      "version": "lts/jod",
+      "origin": "repo-config",
+      "source_file": "../../../.nvmrc"
+    },
+    {
+      "name": "node",
+      "version": "18.x",
+      "origin": "repo-config",
+      "source_file": "../../../package.json"
+    },
+    {
+      "name": "yarn",
+      "version": "3.4.1",
+      "origin": "repo-config",
+      "source_file": "../../../package.json"
+    },
+    {
+      "name": "babel",
+      "version": "^7.17.10",
+      "origin": "repo-config",
+      "source_file": "package.json"
+    },
+    {
+      "name": "eslint",
+      "version": "^8.24.0",
+      "origin": "repo-config",
+      "source_file": "package.json"
+    },
+    {
+      "name": "prettier",
+      "version": "^2.7.1",
+      "origin": "repo-config",
+      "source_file": "package.json"
+    },
+    {
+      "name": "sinon",
+      "version": "^9.2.4",
+      "origin": "repo-config",
+      "source_file": "package.json"
+    }
+  ],
+  "tests": {
+    "unit": {
+      "command_ref": "unit-test",
+      "dir": "test/unit/spec",
+      "framework": "jest"
+    }
+  },
+  "quality_gates": {
+    "code_coverage": {
+      "origin": "none",
+      "declared_by": "rarajes2@cisco.com via the approved bootstrap file-touch plan (generator check: test:unit runs webex-legacy-tools with --runner jest; jest.config.js re-exports @webex/jest-config-legacy, which sets no coverageThreshold; package.json defines no coverage script)"
+    }
+  },
+  "coverage_status_definitions": {
+    "specced": ">=80% public surface specced, drift <5% - spec is authoritative",
+    "partial": "40-80% specced - spec is a hint, cross-check code",
+    "untracked": "<40% specced - code is the source of truth"
+  },
+  "spec_source_policy": {
+    "mode": "keep-separate",
+    "migrated_source_disposition": "retain",
+    "disposition_decided_by": "rarajes2@cisco.com",
+    "disposition_decided_at": "2026-11-12T10:05:00Z",
+    "decided_by": "rarajes2@cisco.com",
+    "decided_at": "2026-11-12T10:05:00Z",
+    "decision_record": "docs/adr/0001-retain-product-readme.md"
+  },
+  "spec_sources": [
+    {
+      "path": "README.md",
+      "scope": "repo",
+      "role": "reference-only",
+      "canonical": false,
+      "use_by_agents": "context-only",
+      "post_migration_action": "retain",
+      "deletion_status": "not-applicable",
+      "notes": "npm usage page, kept unchanged under keep-separate. Partly stale: it shows lookup({ids: [...]}) and lookupByEmail({emails: [...]}) while the code takes one id or email, says unregister disconnects mercury (it only removes listeners), and omits lookupByPhoneNumbers, searchPlaces, shouldBatch, and the dss:* events; see docs/adr/0001-retain-product-readme.md."
+    }
+  ],
+  "modules": [
+    {
+      "path": "src",
+      "canonical_spec": "src/docs/README.md",
+      "coverage_status": "Partial",
+      "coverage_evidence": "Field coverage 93.3% (14/15) assessed 2026-11-12 by the generator; critical field coverage 8/8. The one WEAK field is test strategy: 61 unit cases in test/unit/spec/dss.ts and test/unit/spec/dss-batcher.ts (60 passed, 1 skipped) pass under Node 22.14 after build:src and cover register, unregister, every query method's resource and body, out-of-order and partial pages, the 6000 ms timeout message, the phone-number limit, and batching across one and two resources, but registration through src/index.ts, the already-registered and connect-failure paths of register, a webex.request rejection, a batch timeout (its case is it.skip), a batched value missing from both found lists, and the searchPlaces resolved value have no case; test/integration/spec/dss.js expects a mercury.disconnect the code never makes and its test:browser run bundles nothing (0 tests, exit 0); no characterization baseline exists. Held at Partial; independent validation passed with warnings on 2026-11-12 under validator runtime 01a1cf44-b40f-7ee2-ab94-d19b99d9fd43 (0 Blocking, 1 Important finding). The Important finding is B11-CMD-001 (command-source parity): the workspace-qualified form (yarn workspace @webex/internal-plugin-dss followed by the script name) recorded for compile, build, unit-test, lint, and deploy appears verbatim in no committed source outside the generated docs; it is an accepted warning because the developer retained that command form (rarajes2@cisco.com, 2026-11-12).",
+      "last_assessed": "2026-11-12",
+      "contracts": {
+        "provides": [
+          "dss-internal-sdk"
+        ],
+        "requires": [
+          "directory-search-http",
+          "directory-search-mercury-events",
+          "webex-core-plugin-host",
+          "webex-core-batcher",
+          "internal-plugin-mercury-events",
+          "internal-plugin-device-org",
+          "common-exception",
+          "common-timers-timer",
+          "uuid",
+          "lodash"
+        ]
+      },
+      "section_profile": {
+        "has_tiers": false,
+        "has_ui": false,
+        "crosses_service_boundaries": true,
+        "holds_client_state": true,
+        "enforces_domain_rules": true,
+        "is_concurrent_async": true,
+        "owns_persistence": false,
+        "stateful_transitions": true,
+        "exposes_wire_protocol": true,
+        "ui_multi_screen": false,
+        "large_data_model": false,
+        "returns_caller_errors": true,
+        "module_specific_conventions": true,
+        "published_package": true,
+        "embedded_in_host": false,
+        "has_design_tradeoff": true,
+        "resolved_by": "claude-code (code evidence; bootstrap questionnaire)",
+        "resolved_at": "2026-11-12T10:05:00Z",
+        "has_submodules": false,
+        "has_submodules_computed_by": "scripts/module_tree.py",
+        "has_submodules_computed_at": "2026-11-12T10:05:00Z"
+      }
+    }
+  ],
+  "contract_catalog": {
+    "index_path": "docs/architecture.md",
+    "definitions": {
+      "dss-internal-sdk": {
+        "kind": "sdk",
+        "publication": "published",
+        "source_kind": "repository-path",
+        "source": "package.json",
+        "summary": "Published npm package (internal plugin). main is dist/index.js and devMain is src/index.ts; no type declarations are published. Importing it registers DSS as internal plugin 'dss' with config {dss: {requestTimeout: 6000, batcherWait: 50, batcherMaxCalls: 50, batcherMaxWait: 150}}; the first registration of the name wins. The entry exports only the default DSS class. webex.internal.dss exposes register, unregister, lookupDetail, lookup, lookupByEmail, lookupByPhoneNumbers, search, and searchPlaces, rejects queries with DssTimeoutError, and emits dss:registered, dss:unregistered, and dss:lookup.result; specified in src/docs/README.md."
+      },
+      "directory-search-http": {
+        "kind": "http",
+        "publication": "internal",
+        "source_kind": "external",
+        "source": "Directory Search Service (catalog service name directorySearch in src/constants.ts; route definitions are not in this repository)",
+        "summary": "POST /lookup/orgid/<orgId>/identity/<id>/detail with body {requestId}; POST /lookup/orgid/<orgId>/identities, /entityprovidertype/<type>, /emails, or /phonenumbers with body {requestId, lookupValues}; POST /search/orgid/<orgId>/entities with {requestId, queryString, resultSize, requestedTypes, includeCommonAreaPhones?, includeOnlyPairableDevices?, includePersonalDevices?}; POST /search/orgid/<orgId>/places with {requestId, queryString, resultSize, isOnlySchedulableRooms}. All application/json; the HTTP response is not read."
+      },
+      "directory-search-mercury-events": {
+        "kind": "event",
+        "publication": "internal",
+        "source_kind": "external",
+        "source": "Directory Search Service result pages delivered over mercury (event names and result paths in src/constants.ts; service definitions are not in this repository)",
+        "summary": "event:directory.lookup envelopes carry data {requestId, sequence, finished?, lookupResult: {entities, entitiesFound, entitiesNotFound}}; event:directory.search envelopes carry data {requestId, sequence, finished?, directoryEntities}. A query is complete when the finished page and every lower sequence have arrived."
+      },
+      "webex-core-plugin-host": {
+        "kind": "sdk",
+        "publication": "published",
+        "source_kind": "external",
+        "source": "@webex/webex-core (workspace package; module spec consulted: packages/@webex/webex-core/src/docs/README.md)",
+        "summary": "registerInternalPlugin keys the plugin by its raw name (dss, first registration wins) and merges its config into the defaults; WebexPlugin supplies webex, logger, config (webex.config[namespace.toLowerCase()]), and the ampersand-events listenTo, stopListening, and trigger; webex.request resolves service directorySearch through the service catalog; webex.canAuthorize proxies the credentials."
+      },
+      "webex-core-batcher": {
+        "kind": "sdk",
+        "publication": "published",
+        "source_kind": "external",
+        "source": "@webex/webex-core Batcher (workspace package; module spec consulted: packages/@webex/webex-core/src/docs/README.md; code consulted: packages/@webex/webex-core/src/lib/batcher.js)",
+        "summary": "Batcher.request(value) shares one promise per identical pending value and flushes through cappedDebounce with batcherWait, batcherMaxCalls, and batcherMaxWait read once from the subclass namespace config (webex.config.dss); a flush calls prepareRequest, submitHttpRequest, and handleHttpSuccess; a non-HTTP rejection rejects every queued deferred; a response value with no pending request throws."
+      },
+      "internal-plugin-mercury-events": {
+        "kind": "sdk",
+        "publication": "published",
+        "source_kind": "external",
+        "source": "@webex/internal-plugin-mercury (workspace package; module spec consulted: packages/@webex/internal-plugin-mercury/src/docs/README.md, found stale on the session model; code consulted: packages/@webex/internal-plugin-mercury/src/mercury.js)",
+        "summary": "Imported for its registration side effect. connect() resolves at once when connected and shares one socket per webex instance; inbound envelopes are emitted as event, event:<namespace>, and event:<eventType>, so directory.lookup arrives as event:directory.lookup with the whole envelope. off(name) without a handler removes every listener for that name."
+      },
+      "internal-plugin-device-org": {
+        "kind": "sdk",
+        "publication": "published",
+        "source_kind": "external",
+        "source": "@webex/internal-plugin-device (workspace package; module spec consulted: packages/@webex/internal-plugin-device/src/docs/README.md, silent on orgId; code consulted: packages/@webex/internal-plugin-device/src/device.js)",
+        "summary": "webex.internal.device.orgId is not a declared property: it is set from the WDM registration body (extraProperties allow) and cleared on unregister, so it is undefined before device registration. Not declared in this package's package.json; the host bundle registers the device plugin."
+      },
+      "common-exception": {
+        "kind": "sdk",
+        "publication": "published",
+        "source_kind": "external",
+        "source": "@webex/common (workspace package; module spec consulted: packages/@webex/common/src/docs/README.md)",
+        "summary": "Exception builds its message from the subclass parse(details) and sets name to the class name; DssTimeoutError extends it."
+      },
+      "common-timers-timer": {
+        "kind": "sdk",
+        "publication": "published",
+        "source_kind": "external",
+        "source": "@webex/common-timers (workspace package; module spec consulted: packages/@webex/common-timers/src/docs/README.md)",
+        "summary": "Timer(callback, timeout) with start (only from init), reset and cancel (only while running). Used for the per-query inactivity timeout."
+      },
+      "uuid": {
+        "kind": "sdk",
+        "publication": "published",
+        "source_kind": "external",
+        "source": "uuid@^3.3.2 (npm)",
+        "summary": "uuid.v4 generates the requestId of every query."
+      },
+      "lodash": {
+        "kind": "sdk",
+        "publication": "published",
+        "source_kind": "external",
+        "source": "lodash@^4.17.21 (npm)",
+        "summary": "get reads result pages by path; range and isEqual decide when every sequence has arrived."
+      }
+    }
+  },
+  "spec_policy": {
+    "require_what_and_why": true,
+    "require_provenance": true,
+    "protected_specs": [
+      "src/docs/README.md"
+    ]
+  },
+  "validation": {
+    "generator_runtime": "claude-code",
+    "generator_model": "claude-opus-5-5",
+    "generator_runtime_source": "host-metadata",
+    "source_commit": "ecd5af12a1abf47fc6ed7dd72cb308b259d45fb8",
+    "minimum_independence": "different-runtime",
+    "blocking_severities": [
+      "Blocking"
+    ],
+    "validator_runtime": "01a1cf44-b40f-7ee2-ab94-d19b99d9fd43",
+    "validator_run_id": "01a1cf44-b40f-7ee2-ab94-d19b99d9fd43",
+    "validator_runtime_source": "host-metadata",
+    "runtime_fallback_tier": "different-runtime"
+  },
+  "layout": {
+    "sdd_root": ".sdd",
+    "docs_root": "docs",
+    "agent_entry_path": "AGENTS.md",
+    "standing_docs_root": "docs",
+    "spec_index_path": "docs/specs/README.md",
+    "module_docs_strategy": "source-local",
+    "module_docs_relative_path": "docs/README.md",
+    "module_docs_decision": {
+      "basis": "repo-standards-default",
+      "reason": "No module-local documentation existed. The source-local default gives src/docs/README.md. test:style runs eslint ./src/**/*.*, and the shared @webex/eslint-config-legacy ignore patterns exclude docs/** and *.md; build:src processes -js -ts only, so Markdown under src/ does not enter dist/.",
+      "decided_by": "rarajes2@cisco.com (bootstrap questionnaire)",
+      "decided_at": "2026-11-12T10:05:00Z"
+    },
+    "repo_context_decision": {
+      "path": ".repo-context.json",
+      "schema_path": "schemas/repo-context.schema.json",
+      "action": "create",
+      "schema_action": "create",
+      "reason": "Neither the operational context nor its schema existed in this package. The context is created from package evidence and the schema is copied from the repository-root .sdd/templates/repo-standards/schemas/repo-context.schema.json.",
+      "decided_by": "rarajes2@cisco.com (bootstrap questionnaire)",
+      "decided_at": "2026-11-12T10:05:00Z"
+    },
+    "artifact_decisions": [
+      {
+        "path": "docs/service.md",
+        "action": "omit",
+        "reason": "Library package, not a deployable service. package.json has no start script, container, or deployment descriptor.",
+        "decided_by": "claude-code (code evidence)",
+        "decided_at": "2026-11-12T10:05:00Z"
+      },
+      {
+        "path": "mkdocs.yml",
+        "action": "omit",
+        "reason": "No package-level documentation site exists. Documentation publishing stays with the workspace.",
+        "decided_by": "claude-code (code evidence)",
+        "decided_at": "2026-11-12T10:05:00Z"
+      },
+      {
+        "path": "api-specs/openapi.yaml",
+        "action": "omit",
+        "reason": "The package serves no HTTP routes. It is a client of the Directory Search Service; its published surface is the npm export described by dss-internal-sdk.",
+        "decided_by": "claude-code (code evidence)",
+        "decided_at": "2026-11-12T10:05:00Z"
+      },
+      {
+        "path": "SECURITY.md",
+        "action": "omit",
+        "reason": "No package-level security policy exists. The workspace owns security policy, and a per-package copy would duplicate it; security architecture is described in docs/architecture.md.",
+        "decided_by": "claude-code (code evidence)",
+        "decided_at": "2026-11-12T10:05:00Z"
+      },
+      {
+        "path": "CONTRIBUTING.md",
+        "action": "omit",
+        "reason": "Contribution instructions are owned at the workspace root CONTRIBUTING.md.",
+        "decided_by": "claude-code (code evidence)",
+        "decided_at": "2026-11-12T10:05:00Z"
+      },
+      {
+        "path": "CHANGELOG.md",
+        "action": "omit",
+        "reason": "Changelog generation is owned at the workspace root. This package has no changelog file.",
+        "decided_by": "claude-code (code evidence)",
+        "decided_at": "2026-11-12T10:05:00Z"
+      },
+      {
+        "path": "CTO_CHECKLIST.yml",
+        "action": "omit",
+        "reason": "The CTO readiness checklist applies to deployable services. This package is a library.",
+        "decided_by": "claude-code (code evidence)",
+        "decided_at": "2026-11-12T10:05:00Z"
+      },
+      {
+        "path": "schemas/cto-checklist.schema.json",
+        "action": "omit",
+        "reason": "Omitted together with CTO_CHECKLIST.yml.",
+        "decided_by": "claude-code (code evidence)",
+        "decided_at": "2026-11-12T10:05:00Z"
+      }
+    ],
+    "template_roots": {
+      "canonical": ".sdd/templates/repo-standards"
+    },
+    "contract_index_path": "docs/architecture.md",
+    "repo_skills_root": ".sdd/skills",
+    "monorepo_package": {
+      "package_path": "packages/@webex/internal-plugin-dss",
+      "root_manifest_path": "../../../.sdd/manifest.json",
+      "templates_root_path": "../../../.sdd/templates/repo-standards"
+    }
+  },
+  "tooling": {
+    "sdlc_skills": {
+      "source_ref": "repo-annotation@2.3.1"
+    }
+  },
+  "coverage_ratchet": {
+    "enabled": true,
+    "waivers": []
+  },
+  "substrate": {
+    "source": "WebexTools/repo-standards@d89a7fe59126ae3ad9bac9ca352aa7f12b4c85dc",
+    "consumed": [
+      "@webex/eslint-config-legacy via .eslintrc.js",
+      "@webex/babel-config-legacy via babel.config.js",
+      "@webex/jest-config-legacy via jest.config.js",
+      "@webex/legacy-tools build and test runner via package.json",
+      "package README.md (context only)",
+      "Repo Standards templates at the monorepo root .sdd/templates/repo-standards, referred to through layout.monorepo_package.templates_root_path (this package holds no templates)"
+    ],
+    "compliance_tier": "baseline"
+  },
+  "section_profiles": {
+    "repo": {
+      "owns_datastore": false,
+      "holds_client_state": true,
+      "components_interact": true,
+      "domain_data_across_components": true,
+      "caches_data": false,
+      "observability_convention": true,
+      "deploys_to_infra": false,
+      "shared_base_libs": true,
+      "is_monorepo": false,
+      "multi_platform": false,
+      "published_package": true,
+      "embedded_in_host": false,
+      "cross_repo_deps_material": true,
+      "security_arch_warranted": true,
+      "exposes_commands_or_artifacts": true
+    },
+    "resolved_by": "claude-code (code evidence; bootstrap questionnaire)",
+    "resolved_at": "2026-11-12T10:05:00Z"
+  }
+}
