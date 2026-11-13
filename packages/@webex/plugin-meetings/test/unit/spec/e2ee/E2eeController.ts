@@ -215,8 +215,6 @@ describe('plugin-meetings', () => {
           serviceUrl: GROUP_URL,
           credentials: CREDENTIALS,
           trustAnchors: TRUST_ANCHORS,
-          joinTimeout: 180_000,
-          coalesceWindow: 500,
         });
         sinon.assert.callOrder(initializeStub, signalingStartStub, joinStub);
         assert.deepEqual(events.state.args, [[{state: 'initializing'}], [{state: 'joining'}]]);

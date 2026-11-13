@@ -25,12 +25,6 @@ export const MEDIA_ENCRYPTION_SERVICE = 'media-encryption';
 /** MLS roster device type identifying a backend media service. */
 export const MEDIA_SERVICE_DEVICE_TYPE = 'MEDIA_SERVICE';
 
-/** MLS group join timeout in milliseconds. Copied from UCF's E2EE default. */
-export const DEFAULT_JOIN_TIMEOUT = 180_000;
-
-/** MLS commit coalescing window in milliseconds. Copied from UCF's E2EE default. */
-export const DEFAULT_COALESCE_WINDOW = 500;
-
 /* The WASM module that contains the libe2ee + mlspp libraries with a WebE2EE wrapper around them, required for joining MLS group for E2EE meetings.
  * The version is in the filename as it is important that JS-SDK implementation of MLS class matches the WASM module version.
  */

@@ -5,10 +5,6 @@ import 'jsdom-global/register';
 import {assert} from '@webex/test-helper-chai';
 import sinon from 'sinon';
 import MLS from '@webex/plugin-meetings/src/e2ee/mls';
-import {
-  DEFAULT_COALESCE_WINDOW,
-  DEFAULT_JOIN_TIMEOUT,
-} from '@webex/plugin-meetings/src/e2ee/constants';
 import LoggerProxy from '@webex/plugin-meetings/src/common/logs/logger-proxy';
 import testUtils from '../../../utils/testUtils';
 
@@ -42,8 +38,6 @@ describe('plugin-meetings', () => {
       participantId: 'user-1',
       deviceUrl: 'https://wdm.webex.com/device-1',
       deviceType: 'WEB',
-      joinTimeout: DEFAULT_JOIN_TIMEOUT,
-      coalesceWindow: DEFAULT_COALESCE_WINDOW,
       correlationId: 'corr-1',
       displayName: 'Alice',
       serviceUrl: 'https://mes.webex.com/group-1',
@@ -104,7 +98,7 @@ describe('plugin-meetings', () => {
     });
 
     describe('initialize', () => {
-      it('loads the module, wires callbacks and initializes with defaults', async () => {
+      it('loads the module, wires callbacks and initializes without optional timeouts', async () => {
         await session.initialize(config);
 
         assert.calledOnce(loadModule);
@@ -117,8 +111,8 @@ describe('plugin-meetings', () => {
           'Alice',
           'https://mes.webex.com/group-1'
         );
-        assert.calledOnceWithExactly(fakeE2ee.setJoinTimeout, DEFAULT_JOIN_TIMEOUT);
-        assert.calledOnceWithExactly(fakeE2ee.setCoalesceWindow, DEFAULT_COALESCE_WINDOW);
+        assert.notCalled(fakeE2ee.setJoinTimeout);
+        assert.notCalled(fakeE2ee.setCoalesceWindow);
         assert.notCalled(fakeE2ee.addX509Credential);
         assert.notCalled(fakeE2ee.setTrustAnchors);
       });

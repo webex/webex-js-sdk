@@ -133,8 +133,8 @@ export interface MLSConfig {
   serviceUrl: string;
   credentials?: IdentityCredentials;
   trustAnchors?: IdentityTrustAnchors;
-  joinTimeout: number;
-  coalesceWindow: number;
+  joinTimeout?: number;
+  coalesceWindow?: number;
 }
 
 /**
