@@ -37,7 +37,7 @@ export default class E2eeController extends EventsScope {
 
   private readonly identityProvider: IdentityProvider;
 
-  private session?: MLS;
+  private mlsSession?: MLS;
 
   private signaling?: E2eeSignaling;
 
@@ -207,8 +207,8 @@ export default class E2eeController extends EventsScope {
         throw new Error('Meeting locus has no media encryption group URL');
       }
 
-      this.session = session;
-      this.wireSessionEvents(session);
+      this.mlsSession = session;
+      this.setupMlsSessionListeners(session);
 
       // If cancelled, stop() has already left and detached this session.
       await step(
@@ -270,7 +270,7 @@ export default class E2eeController extends EventsScope {
    * @param {MLS} session
    * @returns {void}
    */
-  private wireSessionEvents(session: MLS): void {
+  private setupMlsSessionListeners(session: MLS): void {
     const subscribe = <K extends MLSEvent>(
       event: K,
       listener: (payload: MLSEventMap[K]) => void
@@ -315,11 +315,11 @@ export default class E2eeController extends EventsScope {
    * @returns {void}
    */
   private updateFromRoster(): void {
-    if (!this.session) {
+    if (!this.mlsSession) {
       return;
     }
 
-    const roster = this.session.getRoster();
+    const roster = this.mlsSession.getRoster();
 
     const hasMediaServices = roster.some(
       (member) => member.deviceType === MEDIA_SERVICE_DEVICE_TYPE
@@ -388,12 +388,12 @@ export default class E2eeController extends EventsScope {
     });
     this.sessionUnsubscribers = [];
 
-    const {session} = this;
+    const {mlsSession} = this;
 
-    this.session = undefined;
+    this.mlsSession = undefined;
 
     try {
-      session?.leave();
+      mlsSession?.leave();
     } catch (error) {
       LoggerProxy.logger.warn(`e2ee: E2eeController --> error leaving MLS session: ${error}`);
     }
