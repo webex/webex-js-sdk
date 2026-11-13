@@ -9,8 +9,8 @@ doc_kind: standing-doc
 generated_from: architecture@0.3.0
 generated_by: claude-cowork
 approved_by: akulakum@cisco.com
-updated_at: 2026-10-15T15:50:41Z
-validation_status: pass-with-warnings
+updated_at: 2026-11-13T05:41:21Z
+validation_status: not-run
 -->
 
 # webex architecture
@@ -214,6 +214,7 @@ is omitted.
 | `yarn workspace webex build:src` | package | `src/` (`.js` and `.ts`) | `dist/` with source maps | Markdown under `src/` is not processed |
 | `yarn workspace webex test:unit` | package | `test/unit/spec/` | Jest result | — |
 | `yarn workspace webex test:integration` | package | `test/integration/spec/` | Mocha result | Needs test users and network |
+| `yarn workspace webex test:browser` | package | `test/browser/` | Playwright result | Needs Chrome; builds the encryption UMD in a temporary directory |
 | `yarn workspace webex test:browser:broken` | package | `test/integration/spec/` | karma result | Name marks it broken |
 | `yarn workspace webex test:style` | package | files under `src/` | eslint result | Markdown is reported as ignored |
 | `yarn workspace webex eslint ./env.js ./browser.js ./process` | package | `env.js`, `browser.js`, `process` | eslint result | Covers the package-root helpers that `test:style` skips |

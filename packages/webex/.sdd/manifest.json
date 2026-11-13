@@ -8,7 +8,7 @@
       "javascript"
     ]
   },
-  "topology": "Single-repo",
+  "topology": "Orchestrator-plus-components",
   "commands": {
     "install": {
       "command": "yarn install",
@@ -54,7 +54,12 @@
     "umd-refresh": "yarn build:script",
     "lint-helpers": "yarn workspace webex eslint ./env.js ./browser.js ./process",
     "integration-commonjs": "yarn workspace webex test:integration --targets commonjs.js",
-    "integration-init": "yarn workspace webex test:integration --targets init.js"
+    "integration-init": "yarn workspace webex test:integration --targets init.js",
+    "test-browser": {
+      "command": "yarn workspace webex test:browser",
+      "source_file": "package.json",
+      "role": "other"
+    }
   },
   "toolchain": [
     {
@@ -132,7 +137,7 @@
       "path": "src",
       "canonical_spec": "src/docs/README.md",
       "coverage_status": "Partial",
-      "coverage_evidence": "Field coverage 93.3% (14/15) assessed 2026-10-13 by the generator; critical field coverage 8/8. The one WEAK field is test strategy: test/unit/spec/webex.js runs 4 Jest cases (version and fedramp) and three loadable Mocha integration specs cover commonjs loading, init merge, and the user-agent header (the request.js user-agent case fails while package.json has no version) (the fourth, test/integration/spec/env.js, requires the unexported webex/env subpath and cannot reach env.js), but no test exercises meetings, encryption, first-party, Calling, the storage choice, or the UMD bundles, and no characterization baseline exists. Independent validation: see the Validation status row of the module spec. Held at Partial: untested entries, no characterization baseline, and no spec-drift record. PASS-WITH-WARNINGS; validator current-session; assessed 2026-10-15; source 8d56e3b; findings: 0 Blocking, 1 Important, 0 Medium, 1 Minor.",
+      "coverage_evidence": "Field coverage 93.3% (14/15) assessed 2026-10-13 by the generator; critical field coverage 8/8. The one WEAK field is test strategy: test/unit/spec/webex.js runs 6 Jest cases (version, encryption.assetsBaseUrl, fedramp) and test/unit/spec/assets-config.js runs 24 (encryption asset configuration across 6 entry points, including dist/encryption, dist/meetings, and dist/calling); test/browser/assets-config.spec.js runs 2 Playwright cases for the encryption UMD and three loadable Mocha integration specs cover commonjs loading, init merge, and the user-agent header (the request.js user-agent case fails while package.json has no version) (the fourth, test/integration/spec/env.js, requires the unexported webex/env subpath and cannot reach env.js), but no test asserts the plugin sets, sdkType, or lifecycle of meetings, encryption, first-party, or Calling (assets-config.js asserts only encryption asset configuration), the storage choice, or UMD bundles other than the encryption asset default, and no characterization baseline exists. Independent validation: not-run on this content; awaiting independent validation. Held at Partial: untested entries, no characterization baseline, and no spec-drift record.",
       "last_assessed": "2026-10-13",
       "contracts": {
         "provides": [
@@ -359,7 +364,12 @@
       "canonical": ".sdd/templates/repo-standards"
     },
     "repo_skills_root": ".sdd/skills",
-    "contract_index_path": "docs/architecture.md"
+    "contract_index_path": "docs/architecture.md",
+    "monorepo_package": {
+      "package_path": "packages/webex",
+      "root_manifest_path": "../../.sdd/manifest.json",
+      "templates_root_path": "../../.sdd/templates/repo-standards"
+    }
   },
   "coverage_ratchet": {
     "enabled": true,
@@ -373,7 +383,7 @@
       "workspace root .eslintrc.js and .eslintignore for test:style (the package has no eslint config of its own; @webex/eslint-config-legacy is a devDependency that no package file references)",
       "@webex/legacy-tools build and test runner via package.json",
       "package README.md",
-      "Repo Standards 0.3.0 templates at the JS SDK root .sdd/templates/repo-standards (PR 5246); the package tracks none, and a temporary untracked local symlink .sdd/templates/repo-standards is created only to run the Repo Annotation checkers"
+      "Repo Standards 0.3.0 templates at the monorepo root .sdd/templates/repo-standards, referred to through layout.monorepo_package.templates_root_path; the package holds no templates"
     ],
     "compliance_tier": "baseline"
   },
@@ -397,5 +407,10 @@
     },
     "resolved_by": "claude-cowork (code evidence; bootstrap questionnaire)",
     "resolved_at": "2026-10-13T04:41:34Z"
+  },
+  "tooling": {
+    "sdlc_skills": {
+      "source_ref": "repo-annotation@2.3.1"
+    }
   }
 }

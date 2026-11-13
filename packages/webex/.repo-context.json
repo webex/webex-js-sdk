@@ -18,7 +18,8 @@
     "umd-refresh": "yarn build:script",
     "lint-helpers": "yarn workspace webex eslint ./env.js ./browser.js ./process",
     "integration-commonjs": "yarn workspace webex test:integration --targets commonjs.js",
-    "integration-init": "yarn workspace webex test:integration --targets init.js"
+    "integration-init": "yarn workspace webex test:integration --targets init.js",
+    "test-browser": "yarn workspace webex test:browser"
   },
   "public_interfaces": [
     {
@@ -49,12 +50,23 @@
       "source": "src/calling.js",
       "entrypoints": [
         "import Calling from 'webex/calling'",
+        "require('webex/calling').default",
         "Calling.init(attrs)",
         "Calling.createMicrophoneStream",
         "Calling.createNoiseReductionEffect(options)"
       ],
       "audience": "calling applications",
-      "notes": "ES default export; register and deregister drive the device and Mercury plugins."
+      "notes": "ES default export (src/calling.js); a CommonJS require returns the module object, so use .default. register and deregister drive the device and Mercury plugins."
+    },
+    {
+      "name": "webex/package subpath",
+      "kind": "package_export",
+      "source": "package.json",
+      "entrypoints": [
+        "require('webex/package')"
+      ],
+      "audience": "tooling that reads the package manifest",
+      "notes": "exports maps ./package to ./package.json; changing or removing it is breaking for those consumers."
     },
     {
       "name": "UMD bundles",
@@ -80,6 +92,7 @@
         "test:style",
         "test:unit",
         "test:integration",
+        "test:browser",
         "test:browser:broken",
         "deploy:npm"
       ],
@@ -111,7 +124,11 @@
       "validate_with": [
         "yarn workspace webex build:src",
         "yarn workspace webex test:unit",
-        "yarn workspace webex test:style"
+        "yarn workspace webex test:style",
+        "a new focused test for the changed behavior of src/meetings.js, src/webex-first-party.js, or src/calling.js (test/unit/spec/assets-config.js asserts only encryption asset configuration, and no test loads src/webex-first-party.js)",
+        "yarn build:script",
+        "after yarn build:script, read the webpack output for errors and confirm the umd/ bundles were rewritten",
+        "yarn workspace webex test:browser"
       ]
     },
     {
@@ -129,7 +146,9 @@
       "validate_with": [
         "yarn workspace webex build:src",
         "yarn workspace webex test:unit",
-        "yarn workspace webex test:style"
+        "yarn workspace webex test:style",
+        "a new focused test that loads src/_setup.js when it changes (no script or test references it; build:src only transpiles it)",
+        "a new focused test for the changed behavior of src/encryption.js (test/unit/spec/assets-config.js asserts only encryption asset configuration)"
       ]
     },
     {
@@ -174,9 +193,9 @@
       "refresh_with": "yarn build:script"
     },
     {
-      "path": ".sdd/templates/repo-standards/template-map.json",
+      "path": "../../.sdd/templates/repo-standards/template-map.json",
       "generated_from": "WebexTools/repo-standards@d89a7fe59126ae3ad9bac9ca352aa7f12b4c85dc",
-      "refresh_with": "The package tracks no templates. Create a temporary, untracked local symlink .sdd/templates/repo-standards to the JS SDK root .sdd/templates/repo-standards (Repo Standards 0.3.0 snapshot from PR 5246) only to run the Repo Annotation checkers, and never stage it."
+      "refresh_with": "Run the setup script of the active Repo Annotation installation against the monorepo root"
     }
   ],
   "validation_matrix": [
@@ -259,9 +278,10 @@
         "yarn workspace webex test:style",
         "yarn workspace webex test:integration --targets commonjs.js",
         "yarn workspace webex test:integration --targets init.js",
-        "a new focused test that loads src/meetings.js or src/webex-first-party.js when either changes",
+        "a new focused test for the changed behavior of src/meetings.js or src/webex-first-party.js (assets-config.js covers only encryption asset configuration; no test loads src/webex-first-party.js)",
         "yarn build:script",
-        "after yarn build:script, read the webpack output for errors and confirm the umd/ bundles were rewritten"
+        "after yarn build:script, read the webpack output for errors and confirm the umd/ bundles were rewritten",
+        "yarn workspace webex test:browser"
       ],
       "avoid_direct_edits": [
         "dist",
@@ -281,7 +301,7 @@
         "yarn workspace webex build:src"
       ],
       "validate_with": [
-        "a new focused test that loads src/encryption.js (no existing test does)",
+        "a new focused test for the changed behavior of src/encryption.js (test/unit/spec/assets-config.js loads it through dist/encryption but asserts only encryption asset configuration)",
         "yarn workspace webex build:src",
         "yarn workspace webex test:unit",
         "yarn workspace webex test:style"
@@ -305,7 +325,7 @@
         "yarn build:script"
       ],
       "validate_with": [
-        "a new focused test that loads src/calling.js and exercises the changed Calling behavior (no existing test loads it)",
+        "a new focused test that exercises the changed Calling behavior (test/unit/spec/assets-config.js loads dist/calling but asserts only encryption asset configuration)",
         "yarn workspace webex build:src",
         "yarn workspace webex test:unit",
         "yarn workspace webex test:style",
@@ -371,6 +391,27 @@
         "umd"
       ],
       "notes": "The existing unit spec asserts only version and fedramp. Config and the storage files are bundled into umd/ by the webpack entries; yarn build:script can exit 0 after a failed build."
+    },
+    {
+      "paths": [
+        "src/_setup.js"
+      ],
+      "affects": [
+        "integration test setup that uses the Mocha before hook (no script or test in this package references it)",
+        "dist/_setup.js"
+      ],
+      "refresh_with": [
+        "yarn workspace webex build:src"
+      ],
+      "validate_with": [
+        "a new focused test that loads src/_setup.js and asserts its test-user setup",
+        "yarn workspace webex build:src",
+        "yarn workspace webex test:style"
+      ],
+      "avoid_direct_edits": [
+        "dist"
+      ],
+      "notes": "build:src only transpiles src/_setup.js, the unit specs import the main entry, and test:style only parses it, so none of them exercises this hook."
     }
   ],
   "glossary": [
@@ -529,11 +570,11 @@
       {
         "name": "repo-standards template map",
         "paths": [
-          ".sdd/templates/repo-standards"
+          "../../.sdd/templates/repo-standards"
         ],
         "generated_from": "WebexTools/repo-standards@d89a7fe59126ae3ad9bac9ca352aa7f12b4c85dc",
-        "refresh_with": "The package tracks no templates. Create a temporary, untracked local symlink .sdd/templates/repo-standards to the JS SDK root .sdd/templates/repo-standards (Repo Standards 0.3.0 snapshot from PR 5246) only to run the Repo Annotation checkers, and never stage it.",
-        "notes": "The package tracks no templates. Create a temporary, untracked local symlink .sdd/templates/repo-standards to the JS SDK root .sdd/templates/repo-standards (Repo Standards 0.3.0 snapshot from PR 5246) only to run the Repo Annotation checkers, and never stage it."
+        "refresh_with": "Run the setup script of the active Repo Annotation installation against the monorepo root",
+        "notes": "The package holds no templates. It refers to the monorepo root snapshot at ../../.sdd/templates/repo-standards through layout.monorepo_package.templates_root_path in .sdd/manifest.json."
       }
     ],
     "validation_entrypoints": [
@@ -547,7 +588,19 @@
         "name": "integration test commonjs",
         "command": "yarn workspace webex test:integration --targets commonjs.js",
         "scope": "test/integration/spec",
-        "notes": "Mocha; needs test-user credentials and network access. Also run yarn workspace webex test:integration --targets init.js. Untargeted, env.js fails on the unexported webex/env subpath; request.js expects webex/undefined while package.json has no version."
+        "notes": "Mocha; needs test-user credentials and network access. Untargeted, env.js fails on the unexported webex/env subpath; request.js expects webex/undefined while package.json has no version."
+      },
+      {
+        "name": "integration test init",
+        "command": "yarn workspace webex test:integration --targets init.js",
+        "scope": "test/integration/spec/init.js",
+        "notes": "Mocha; needs test-user credentials and network access. Covers the main-entry init config merge."
+      },
+      {
+        "name": "browser assets (Playwright)",
+        "command": "yarn workspace webex test:browser",
+        "scope": "test/browser/assets-config.spec.js",
+        "notes": "Builds the encryption UMD in a temporary directory and checks its asset default in Chrome; no Webex credentials."
       },
       {
         "name": "browser tests",
@@ -584,10 +637,10 @@
       {
         "source": "WebexTools/repo-standards@d89a7fe59126ae3ad9bac9ca352aa7f12b4c85dc",
         "targets": [
-          ".sdd/templates/repo-standards"
+          "../../.sdd/templates/repo-standards"
         ],
-        "mechanism": "The package tracks no templates. Create a temporary, untracked local symlink .sdd/templates/repo-standards to the JS SDK root .sdd/templates/repo-standards (Repo Standards 0.3.0 snapshot from PR 5246) only to run the Repo Annotation checkers, and never stage it.",
-        "notes": "The package tracks no templates. Create a temporary, untracked local symlink .sdd/templates/repo-standards to the JS SDK root .sdd/templates/repo-standards (Repo Standards 0.3.0 snapshot from PR 5246) only to run the Repo Annotation checkers, and never stage it."
+        "mechanism": "Setup script of the active Repo Annotation installation",
+        "notes": "The package holds no templates. It refers to the monorepo root snapshot at ../../.sdd/templates/repo-standards through layout.monorepo_package.templates_root_path in .sdd/manifest.json."
       }
     ]
   },
@@ -633,7 +686,7 @@
   "do_not_edit": [
     "dist",
     "umd",
-    ".sdd/templates/repo-standards"
+    "../../.sdd/templates/repo-standards"
   ],
   "marker_scopes": {
     "sdd": [

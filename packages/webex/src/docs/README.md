@@ -9,8 +9,8 @@ doc_kind: module-spec
 generated_from: module-spec@0.3.0
 generated_by: claude-cowork
 approved_by: akulakum@cisco.com
-updated_at: 2026-10-15T15:50:41Z
-validation_status: pass-with-warnings
+updated_at: 2026-11-13T05:41:21Z
+validation_status: not-run
 -->
 
 # webex bundle entry points
@@ -37,7 +37,7 @@ Related context: [documentation index](../../docs/index.md) ·
 | Parent spec | — |
 | Doc kind | Module spec |
 | Coverage score | 93.3% assessed 2026-10-13 — 14 of 15 mandatory fields PRESENT, critical 8 of 8; test strategy is WEAK (gaps listed under Verification) and no characterization baseline exists |
-| Validation status | PASS-WITH-WARNINGS; validator current-session; assessed 2026-10-15; source 8d56e3b; findings: 0 Blocking, 1 Important, 0 Medium, 1 Minor. |
+| Validation status | not-run on this content; awaiting independent validation |
 
 ## Applicability
 
@@ -75,7 +75,9 @@ Related context: [documentation index](../../docs/index.md) ·
 | `src/_setup.js` | Mocha `before` hook that creates a test user and `global.webex` |
 | `env.js`, `browser.js`, `process` | Package-root helper files outside `src/` |
 | `package.json` | Name, `exports`, `browser` field, dependencies, and scripts |
-| `test/unit/spec/webex.js` | Four Jest cases: static and instance `version`, and the `fedramp` config |
+| `test/unit/spec/webex.js` | Six Jest cases: static and instance `version`, the two `encryption.assetsBaseUrl` cases, and the two `fedramp` cases |
+| `test/unit/spec/assets-config.js` | 24 Jest cases (6 entry points × 4 cases): `encryption.assetsBaseUrl` inheritance and overrides for webex-core, the full SDK, `dist/encryption`, `dist/meetings`, the plugin-encryption UMD entry, and `dist/calling` |
+| `test/browser/assets-config.spec.js`, `test/browser/playwright.config.js` | Two Playwright cases that build the encryption UMD in a temporary directory for a versioned and an unversioned release and check its asset default in Chrome |
 | `test/integration/spec/commonjs.js`, `test/integration/spec/init.js`, `test/integration/spec/request.js`, `test/integration/spec/env.js` | Mocha integration cases against real Webex services with test users; `env.js` requires the unexported `webex/env` subpath |
 | Workspace files packages/@webex/webex-core/src/webex-core.js and packages/@webex/webex-core/src/lib/webex-core-plugin-mixin.js | `WebexCore.extend`, `initialize` config merge, the shared plugin registry, and first-registration-wins |
 | Workspace file packages/@webex/webex-core/src/interceptors/webex-user-agent.js | The `webex` flag selects the `webex` library name in the `spark-user-agent` header |
@@ -108,9 +110,9 @@ Related context: [documentation index](../../docs/index.md) ·
 | Path | Responsibility |
 | ---- | -------------- |
 | `src/index.js` | `main` and `.` export target: loads `@babel/polyfill` unless `global._babelPolyfill` is set, then exports `src/webex.js` |
-| `src/webex.js` | Requires 21 plugin packages for their side effects and defines `Webex` and `Webex.init` (sdkType `webex`) |
+| `src/webex.js` | Requires 22 plugin packages for their side effects and defines `Webex` and `Webex.init` (sdkType `webex`) |
 | `src/webex-first-party.js` | Polyfill guard, requires `@webex/plugin-authorization-browser-first-party`, then exports `src/webex.js` |
-| `src/meetings.js` | `./meetings` export target: polyfill guard, 11 side-effect requires, `Webex.init` (sdkType `meetings`) |
+| `src/meetings.js` | `./meetings` export target: polyfill guard, 12 side-effect requires, `Webex.init` (sdkType `meetings`) |
 | `src/calling.js` | `./calling` export target: ES default export `Calling` |
 | `src/encryption.js` | Polyfill guard, 3 side-effect requires, `Webex.init` (sdkType `encryption`); no `exports` entry |
 | `src/config.js` | Package config object (ES default export): hydra URLs, `credentials.clientType`, `device`, `storage` |
@@ -169,19 +171,19 @@ Contracts provided: `webex-sdk` (native artifact `package.json`) and `webex-umd-
 | ID | WHAT | WHY | Source evidence | Test or example evidence | Assumptions or gaps | Confidence |
 | -- | ---- | --- | --------------- | ------------------------ | ------------------- | ---------- |
 | `MOD-001` | The main entry applies `INV-003` and exports the constructor from `src/webex.js`. | Consumers get one constructor regardless of polyfill state. | `src/index.js` | `test/integration/spec/commonjs.js` requires webex | — | Present |
-| `MOD-002` | `src/webex.js` requires the 21 plugin packages listed under Structure and key files for their side effects before defining `Webex`, so instances expose those namespaces. | The full SDK is a sum of registered plugins (`INV-002`). | `src/webex.js` | `test/integration/spec/commonjs.js` asserts canAuthorize, credentials, meetings, memberships, messages, people, rooms, teamMemberships, teams, webhooks | Not every namespace is asserted | Present |
+| `MOD-002` | `src/webex.js` requires the 22 plugin packages listed under Structure and key files for their side effects before defining `Webex`, so instances expose those namespaces. | The full SDK is a sum of registered plugins (`INV-002`). | `src/webex.js` | `test/integration/spec/commonjs.js` asserts canAuthorize, credentials, meetings, memberships, messages, people, rooms, teamMemberships, teams, webhooks | Not every namespace is asserted | Present |
 | `MOD-003` | `Webex.init(attrs)` replaces `attrs.config` by `INV-001` and returns `new Webex(attrs)`; `attrs` defaults to `{}`. | One call configures and constructs. | `src/webex.js` | `test/integration/spec/init.js` "merges config correctly"; `test/unit/spec/webex.js` fedramp | `attrs` is mutated | Present |
 | `MOD-004` | Instances carry `version` equal to this package's `PACKAGE_VERSION` (the `WebexCore.extend` prototype value). Static `Webex.version` is copied from webex-core's `WebexCore.version` by ampersand-state `extend`, so it is webex-core's version. In `dist/` and Jest the legacy babel plugin injects the working-directory `package.json` version, or `0.0.0` when it has none. | Version reporting and the user-agent header. | `src/webex.js` | `test/unit/spec/webex.js` ".version" and "#version" assert 0.0.0 | Both values are `0.0.0` in the test, so the spec cannot tell them apart; the committed `package.json` has no `version` field; the UMD bundles carry `"undefined"` | Present |
 | `MOD-005` | `Webex` is extended with `webex: true`. When the active interceptor set includes webex-core's `WebexUserAgentInterceptor` (see the webex-core Dependencies row), that interceptor reads the flag so that `spark-user-agent` starts with `webex/<instance version> (node or web)`, subject to that interceptor's URL exclusions, a caller-supplied header, and its `appName` and `appPlatform` suffixes. | Lets services attribute SDK traffic (assumption: how services use the header is not defined in this repository). | `src/webex.js` | `test/integration/spec/request.js` "includes webex in the spark-user-agent header" | Header logic is owned by webex-core. That case expects `webex/${pkg.version}`; with no `version` in `package.json` it expects `webex/undefined` while the build injects `0.0.0`, so it fails on such a checkout (see Pitfalls) | Present |
 | `MOD-006` | `new Webex(attrs)` passes `attrs` straight to webex-core; no `sdkType` and no package config is added. | `init` is the configured path; `new` is the bare constructor. | `src/webex.js` | `test/unit/spec/webex.js` uses "new Webex()" for fedramp false | No test asserts the absent `sdkType` | Present |
 | `MOD-007` | `src/webex-first-party.js` registers `@webex/plugin-authorization-browser-first-party` before `src/webex.js` requires `@webex/plugin-authorization`, then exports the same `Webex`. | First-party browser apps need the first-party authorization flow under the same `authorization` name (`INV-002`). | `src/webex-first-party.js` | none found | Effective only when it is the first entry that registers `authorization` | Present |
-| `MOD-008` | `src/meetings.js` loads the 11 meetings-related packages and its `init` applies `INV-001` with defaults `sdkType: 'meetings'` and `meetings.disableHydraId: true`. | A smaller constructor for meetings-only apps. | `src/meetings.js` | none found | — | Present |
-| `MOD-009` | `src/encryption.js` loads `@webex/plugin-authorization`, `@webex/internal-plugin-encryption`, and `@webex/plugin-encryption`, and its `init` applies `INV-001` with `sdkType: 'encryption'`. | A constructor for encryption-only use. | `src/encryption.js` | none found | Not reachable through `exports`; the UMD `encryption` bundle uses a different entry (see Pitfalls) | Present |
-| `MOD-010` | `new Calling({webex, webexConfig, callingConfig})` sets the Calling logger level from `callingConfig.logger.level`. With `webex`, it reuses that instance and overrides its logger level when one is given. Without `webex`, it merges `webexConfig.config` by `INV-001` (no `sdkType`), builds its own `Webex`, and on that instance's `ready` sets the logger, emits `ready`, and switches `log` to `webex.logger`. | Lets calling apps either share an SDK instance or own one. | `src/calling.js` | none found | — | Present |
+| `MOD-008` | `src/meetings.js` loads the 12 meetings-related packages and its `init` applies `INV-001` with defaults `sdkType: 'meetings'` and `meetings.disableHydraId: true`. | A smaller constructor for meetings-only apps. | `src/meetings.js` | `test/unit/spec/assets-config.js` loads this entry through dist/ (encryption asset config only) | — | Present |
+| `MOD-009` | `src/encryption.js` loads `@webex/plugin-authorization`, `@webex/internal-plugin-encryption`, and `@webex/plugin-encryption`, and its `init` applies `INV-001` with `sdkType: 'encryption'`. | A constructor for encryption-only use. | `src/encryption.js` | `test/unit/spec/assets-config.js` loads this entry through dist/ (encryption asset config only) | Not reachable through `exports`; the UMD `encryption` bundle uses a different entry (see Pitfalls) | Present |
+| `MOD-010` | `new Calling({webex, webexConfig, callingConfig})` sets the Calling logger level from `callingConfig.logger.level`. With `webex`, it reuses that instance and overrides its logger level when one is given. Without `webex`, it merges `webexConfig.config` by `INV-001` (no `sdkType`), builds its own `Webex`, and on that instance's `ready` sets the logger, emits `ready`, and switches `log` to `webex.logger`. | Lets calling apps either share an SDK instance or own one. | `src/calling.js` | `test/unit/spec/assets-config.js` loads this entry through dist/ (encryption asset config only) | — | Present |
 | `MOD-011` | `register()` runs `INV-005` and sets `registered` to true after Mercury `connect()` resolves. | Calling needs device registration and a resolved Mercury `connect()` before clients start; connection state is owned by the Mercury plugin (sibling package internal-plugin-mercury, file src/mercury.js). | `src/calling.js` | none found | — | Present |
 | `MOD-012` | `deregister()` resolves at once when `registered` is false. Otherwise it calls `deregister(true)` on every line whose status is `active`, disconnects Mercury, unregisters the device, and sets `registered` to false; a failure in the last two is logged at warn and the promise resolves. | Ends the SDK's line, Mercury, and device sessions in order (assumption: the services release the matching resources). | `src/calling.js` | none found | Throws without a calling client (see Pitfalls) | Present |
 | `MOD-013` | `initializeClients()` creates each client by `INV-004` and stores it on the instance. | Apps enable only the clients they need. | `src/calling.js` | none found | — | Present |
-| `MOD-014` | `Calling.init(attrs)` constructs `Calling`; when `attrs.webex` is given it also awaits `initializeClients()` before resolving. `Calling.createMicrophoneStream` returns the factory that the calling package re-exports from `@webex/media-helpers` and `Calling.createNoiseReductionEffect(options)` returns a new `NoiseReductionEffect`. | With a shared instance, the enabled client references exist on resolve; otherwise the app calls `register`. Readiness of each client is owned by `@webex/calling`: its `createClient` awaits the calling client's own `init()`, while `createVoicemailClient` returns a voicemail client whose `init()` the app must still call. | `src/calling.js` | none found | — | Present |
+| `MOD-014` | `Calling.init(attrs)` constructs `Calling`; when `attrs.webex` is given it also awaits `initializeClients()` before resolving. `Calling.createMicrophoneStream` returns the factory that the calling package re-exports from `@webex/media-helpers` and `Calling.createNoiseReductionEffect(options)` returns a new `NoiseReductionEffect`. | With a shared instance, `initializeClients()` has run on resolve; otherwise the app calls `register`. An enabled client can still be `undefined`: `callRecordingClient` is set to `undefined` with a warning when `createCallRecordingClient` is missing or throws (`INV-004`). Readiness of each client is owned by `@webex/calling`: its `createClient` awaits the calling client's own `init()`, while `createVoicemailClient` returns a voicemail client whose `init()` the app must still call. | `src/calling.js` | none found | — | Present |
 | `MOD-015` | Through the `browser` field, bundlers map `config-storage` to the shim; Node uses `MemoryStoreAdapter` for both storage kinds. | Browser persistence of bounded data under the `webex` namespace. | `package.json`, `src/config-storage.js`, `src/config-storage.shim.js` | none found | Not applied at runtime (see Pitfalls) | Present |
 | `MOD-016` | `env.js` throws `webex/env cannot be used in browser environments` when `inBrowser` is true; otherwise it exports `new Webex({credentials: process.env.WEBEX_ACCESS_TOKEN})`. | Shell and script quick start. | `env.js` | none found | `test/integration/spec/env.js` requires `webex/env`, which the `exports` map does not list, so Node's exports resolution rejects that require; the spec was not run here (see Pitfalls) | Present |
 | `MOD-017` | `browser.js` assigns the constructor to `window.webex` and exports it. | Global access for bundled pages. | `browser.js` | none found | The UMD global is `Webex` | Present |
@@ -330,9 +332,9 @@ classDiagram
 | Use case | Actor or caller | Primary steps and outcome | Failure or boundary behavior | Evidence |
 | -------- | --------------- | ------------------------- | ---------------------------- | -------- |
 | `UC-001` | Node or bundled app | Requires `webex`, calls `Webex.init({credentials})`, uses `webex.rooms` and other namespaces | Credentials handling is webex-core's | `src/webex.js`, `test/integration/spec/init.js` |
-| `UC-002` | Meetings-only app | Imports `webex/meetings` and calls `init` | The 11 packages and what they load; another entry loaded earlier can add public plugins (`INV-002`) | `src/meetings.js` |
+| `UC-002` | Meetings-only app | Imports `webex/meetings` and calls `init` | The 12 packages and what they load; another entry loaded earlier can add public plugins (`INV-002`) | `src/meetings.js` |
 | `UC-003` | Calling app with its own SDK | `Calling.init({webexConfig, callingConfig})`, waits for `ready`, calls `register()` | Register failures are only logged; a client failure leaves `registered` true | `src/calling.js` |
-| `UC-004` | Calling app sharing an SDK | `Calling.init({webex, callingConfig})`; the enabled client references exist on resolve | Assumption: `@webex/calling` clients read `webex.internal.device` state, so register the shared instance first; the voicemail client still needs its own `init()` (`MOD-014`) | `src/calling.js` |
+| `UC-004` | Calling app sharing an SDK | `Calling.init({webex, callingConfig})`; `initializeClients()` has run on resolve, and an enabled `callRecordingClient` may still be `undefined` (`INV-004`) | Assumption: `@webex/calling` clients read `webex.internal.device` state, so register the shared instance first; the voicemail client still needs its own `init()` (`MOD-014`) | `src/calling.js` |
 | `UC-005` | Script-tag page | Loads `umd/webex.min.js` and uses global `Webex` | — | `umd/webex.min.js`, `umd/calling.min.js` |
 | `UC-006` | Shell script in Node | Sets `WEBEX_ACCESS_TOKEN` and requires the package file `env.js` by path | Throws in browsers; the `webex/env` subpath is not exported | `env.js` |
 
@@ -360,7 +362,7 @@ classDiagram
 | `INV-001` | Config merge order, later wins: the entry's defaults (`sdkType`, plus `meetings.disableHydraId` in meetings), then the `src/config.js` module object, then the caller's `attrs.config`. `src/calling.js` merges `{}`, the module object, and `webexConfig.config` into `webexConfig.config`. | Caller config overrides package defaults. | `src/webex.js`, `src/meetings.js`, `src/encryption.js`, `src/calling.js` | `test/integration/spec/init.js` "merges config correctly" |
 | `INV-002` | Registration is global to the loaded copy of webex-core (one per workspace install; Jest gives each test file its own), and the first registration of a name wins unless the plugin passes `replace`. A public namespace exists on a constructor's instances only if its plugin was registered before that entry file called `WebexCore.extend`, because ampersand-state copies the parent's children map at extend time. An internal namespace exists if its plugin was registered before the instance was constructed, because each instance builds a new webex-core `WebexInternalCore`. | Entry files differ in which packages they load (and in their `init` defaults, `INV-001`), and their load order decides what a later or earlier entry sees. | `src/webex.js`, `src/meetings.js`, `src/encryption.js`, `src/calling.js`; workspace files packages/@webex/webex-core/src/lib/webex-core-plugin-mixin.js and packages/@webex/webex-core/src/lib/webex-internal-core-plugin-mixin.js; installed dependency file node_modules/ampersand-state/ampersand-state.js | none found; `test/integration/spec/commonjs.js` checks presence only |
 | `INV-003` | `src/index.js`, `src/webex-first-party.js`, `src/meetings.js`, and `src/encryption.js` require `@babel/polyfill` only when `global._babelPolyfill` is falsy. `src/webex.js` and `src/calling.js` do not load it. | Avoid loading the polyfill twice. | `src/index.js`, `src/webex-first-party.js`, `src/meetings.js`, `src/encryption.js` | none found |
-| `INV-004` | Each Calling client is created only when its `clientConfig` flag is truthy: `calling` (awaited `createClient(webex, callingClientConfig)`), `contact`, `callHistory`, `voicemail`, `callSettings`, `callRecording`. An undefined `callRecording` is first set to `false` on the caller's object. | Apps opt in per client. | `src/calling.js` | none found |
+| `INV-004` | Each Calling client is created only when its `clientConfig` flag is truthy: `calling` (awaited `createClient(webex, callingClientConfig)`), `contact`, `callHistory`, `voicemail`, `callSettings`, `callRecording`. An undefined `callRecording` is first set to `false` on the caller's object. For `callRecording` only, a missing `createCallRecordingClient` export or a throw from it is caught: the client is set to `undefined` and a warning is logged, so `initializeClients()` still resolves. | Apps opt in per client. | `src/calling.js` | none found |
 | `INV-005` | `register()` runs device `register`, then Mercury `connect`, sets `registered` to true, then runs `initializeClients`; each failure is logged at warn and the returned promise resolves. | Calling requires both before clients start. | `src/calling.js` | none found |
 
 ## Concurrency and reactive flow
@@ -400,9 +402,9 @@ classDiagram
 - The `storage` values in `src/config.js` set each adapter key to the whole storage choice object
   (`{boundedAdapter, unboundedAdapter}`), not to an adapter. This is hidden today by the previous
   pitfall.
-- `src/calling.js`, `src/encryption.js`, and `src/meetings.js` require `@webex/internal-plugin-encryption`,
-  `@webex/internal-plugin-metrics`, and `@webex/internal-plugin-user`, which are not in
-  `dependencies`. They resolve inside the workspace; a standalone install depends on other packages
+- `src/calling.js`, `src/encryption.js`, `src/meetings.js`, and `src/webex.js` require
+  `@webex/internal-plugin-encryption`, `@webex/internal-plugin-metrics`, `@webex/internal-plugin-user`,
+  and `@webex/internal-plugin-identity`, which are not in `dependencies`. They resolve inside the workspace; a standalone install depends on other packages
   bringing them in.
 - `deregister()` calls `Object.values(this.callingClient?.getLines())`; the optional chain does not
   protect `Object.values`, which causes the failure-mode row for a missing calling client.
@@ -486,16 +488,19 @@ No TypeScript declaration or API report exists for this package.
 | `MOD-003`, `INV-001` | Integration | `test/integration/spec/init.js` | none found | Precedence against package defaults untested |
 | `MOD-005` | Integration | `test/integration/spec/request.js` | none found | Fails while `package.json` has no version; suffixes and exclusions are webex-core's |
 | `MOD-016` | none | Source only | none found | `test/integration/spec/env.js` requires the unexported webex/env subpath |
-| `MOD-007` to `MOD-015`, `MOD-017` to `MOD-019`, `INV-003` to `INV-005` | none | Source only | none found | No test for meetings, encryption, first-party, Calling, storage choice, or UMD |
+| `MOD-008`, `MOD-009`, `MOD-010`, `MOD-014` (load and config inheritance only) | Unit | `test/unit/spec/assets-config.js` loads dist/encryption, dist/meetings, and dist/calling and asserts encryption.assetsBaseUrl inheritance and overrides | none found | Plugin sets, `sdkType`, `meetings.disableHydraId`, and Calling lifecycle are not asserted |
+| `MOD-019` (encryption UMD asset default only) | Browser (Playwright) | `test/browser/assets-config.spec.js` | none found | Other UMD bundles and globals are not asserted |
+| `MOD-007`, `MOD-011` to `MOD-013`, `MOD-015`, `MOD-017`, `MOD-018`, `INV-003` to `INV-005` | none | Source only | none found | No test for first-party, Calling register/deregister/clients, storage choice, `browser.js`, or `src/_setup.js` |
 
 After a `src/` change, run `yarn workspace webex build:src` first: the specs import `webex`, which
 resolves to `dist/index.js`, and the test runner does not rebuild it, so a stale `dist/` can pass
-without exercising the change. Unit checks run with `yarn workspace webex test:unit` (4 tests). Integration checks need test users
+without exercising the change. Unit checks run with `yarn workspace webex test:unit` (2 suites, 30 tests). The Playwright browser check runs with `yarn workspace webex test:browser` (Chrome required). Integration checks need test users
 and network access; run `yarn workspace webex test:integration --targets commonjs.js`
 and `yarn workspace webex test:integration --targets init.js` (manifest `integration-commonjs` and `integration-init`); `request.js` is not a
 required target while `package.json` has no `version` (see Pitfalls). A change to
 the main entry's plugin set also needs an assertion for the namespace it adds or removes:
-`test/integration/spec/commonjs.js` asserts ten public namespaces only. No existing
-test loads `src/meetings.js`, `src/encryption.js`, `src/webex-first-party.js`, or `src/calling.js`, so a
-change to one of them needs a new focused test that loads that entry. The tiers are described in
+`test/integration/spec/commonjs.js` asserts ten public namespaces only. `test/unit/spec/assets-config.js`
+loads `src/meetings.js`, `src/encryption.js`, and `src/calling.js` through `dist/` but asserts only
+encryption asset configuration, and no test loads `src/webex-first-party.js`, so a change to an
+entry's plugin set or behavior needs a new focused test for that behavior. The tiers are described in
 [Getting started](../../docs/getting-started.md).

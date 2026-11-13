@@ -3,8 +3,8 @@ doc_kind: agent-entry
 generated_from: agents@0.3.0
 generated_by: claude-cowork
 approved_by: akulakum@cisco.com
-updated_at: 2026-10-15T15:50:41Z
-validation_status: pass-with-warnings
+updated_at: 2026-11-13T05:41:21Z
+validation_status: not-run
 -->
 
 # AI Agent Instructions
@@ -52,8 +52,9 @@ commands from the monorepo root.
 | Format code            | N/A — no format script; `prettier` is a devDependency used through eslint |
 
 The `package.json` script `test` chains `test:style`, `test:unit`, and `test:integration`. The
-karma runner is `yarn workspace webex test:browser:broken`; its script name marks it broken, so it
-is not a verification command. The UMD bundles in `umd/` are built by the workspace root webpack
+Playwright browser check is `yarn workspace webex test:browser` (Chrome required). The karma runner
+is `yarn workspace webex test:browser:broken`; its script name marks it broken, so it is not a
+verification command. The UMD bundles in `umd/` are built by the workspace root webpack
 configuration, not by a script of this package.
 
 If a required command is unknown, stop and ask for the exact command.
@@ -82,9 +83,9 @@ Definition of done:
 | Area             | Tooling | Version |
 | ---------------- | ------- | ------- |
 | Language runtime | node | 22.14 for development (workspace root `AGENTS.md`); `>=18` for consumers (`package.json` engines) |
-| Build tool       | `@webex/legacy-tools` over babel | `@babel/core` `^7.22.11` |
-| Test framework   | Jest via `webex-legacy-tools` (`test:unit`); Mocha via `test:integration`; chai and `@webex/test-helper-*` | workspace versions |
-| Lint/format      | eslint with the workspace root configuration, prettier | eslint `^8.24.0`, prettier `^2.7.1` |
+| Build tool       | `@webex/legacy-tools` over babel | `@babel/core` version in `package.json` `devDependencies` |
+| Test framework   | Jest via `webex-legacy-tools` (`test:unit`); Mocha via `test:integration`; Playwright via `test:browser`; chai and `@webex/test-helper-*` | workspace versions |
+| Lint/format      | eslint with the workspace root configuration, prettier | eslint and prettier versions in `package.json` `devDependencies` |
 
 ### Project Map
 
@@ -96,7 +97,8 @@ Definition of done:
 - `src/_setup.js`: Mocha test helper kept in `src/`.
 - `env.js`, `browser.js`, `process`: package-root helpers.
 - `umd/`: committed UMD bundles. Generated. Never edit by hand.
-- `test/unit/spec/webex.js`: the only unit spec. `test/integration/spec/`: four Mocha specs.
+- `test/unit/spec/webex.js` and `test/unit/spec/assets-config.js`: the unit specs (30 cases).
+  `test/integration/spec/`: four Mocha specs. `test/browser/`: the Playwright encryption-UMD check.
 - Build output from `build:src`: generated. Never edit by hand.
 - `README.md`: retained product readme. It is not the behavioral authority.
 
@@ -126,12 +128,15 @@ Run checks in this order:
    its user-agent case then expects `webex/undefined` (module spec Pitfalls). Run untargeted, it also runs
    `test/integration/spec/env.js`, which requires the unexported `webex/env` subpath and fails, so
    the whole tier fails (module spec Pitfalls). A change to the main entry's plugin set also needs an
-   assertion for the namespace it adds or removes. No existing test loads `src/meetings.js`,
-   `src/encryption.js`, `src/webex-first-party.js`, or `src/calling.js`; a change to one of them
-   needs a new focused test that loads that entry.
+   assertion for the namespace it adds or removes. `test/unit/spec/assets-config.js` loads
+   `src/meetings.js`, `src/encryption.js`, and `src/calling.js` through `dist/` but asserts only
+   encryption asset configuration, and no test loads `src/webex-first-party.js`; a change to an
+   entry's plugin set or behavior needs a new focused test for that behavior.
+4. `yarn workspace webex test:browser` when a change touches the encryption UMD or its asset default
+   (Playwright; Chrome required).
 
-The karma run is recorded in `.sdd/manifest.json` as `commands.browser-test` (role `other`), not
-under `tests`, because the SDD manifest `tests` schema has no browser tier. The integration tier needs test-user credentials and network access; see
+The Playwright run is recorded in `.sdd/manifest.json` as `commands.test-browser` and the karma run
+as `commands.browser-test` (both role `other`), not under `tests`, because the SDD manifest `tests` schema has no browser tier. The integration tier needs test-user credentials and network access; see
 [Getting started](docs/getting-started.md).
 
 Testing rules:
@@ -200,7 +205,6 @@ PR checklist:
 
 - Edit build output or `umd/` by hand.
 - Commit secrets, tokens, or credentials, including in tests or `.env` files.
-- Copy template bodies or `template-map.json` into this package, or commit anything under
-  `.sdd/templates/`. This package tracks only `.sdd/manifest.json`. To run the Repo Annotation
-  checkers, create a temporary local symlink `.sdd/templates/repo-standards` to the repository-root
-  `.sdd/templates/repo-standards` snapshot (the only template source) and never stage it.
+- Add a `.sdd/templates` directory, a copy of the templates, or a link to them in this package. The
+  templates live once at the monorepo root, `../../.sdd/templates/repo-standards`, and
+  `.sdd/manifest.json` refers to them through `layout.monorepo_package.templates_root_path`.

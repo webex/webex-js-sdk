@@ -9,8 +9,8 @@ doc_kind: standing-doc
 generated_from: getting-started@0.3.0
 generated_by: claude-cowork
 approved_by: akulakum@cisco.com
-updated_at: 2026-10-15T15:50:41Z
-validation_status: pass-with-warnings
+updated_at: 2026-11-13T05:41:21Z
+validation_status: not-run
 -->
 
 # Getting started
@@ -23,7 +23,7 @@ webex-js-sdk workspace root.
 | Tool or access | Version or requirement |
 | -------------- | ---------------------- |
 | Node.js | 22.14, required for working in this repository by the workspace root `AGENTS.md`; the root `.nvmrc` selects the Node 22 LTS line |
-| Yarn | 3.4.1, the version pinned by the workspace root `packageManager` field, provided through Corepack: enable Corepack for the selected Node.js version, as the workspace root `CONTRIBUTING.md` setup steps require. Workspaces are used, so install from the workspace root rather than this directory |
+| Yarn | The version in the workspace root `package.json` `packageManager` field, provided through Corepack: enable Corepack for the selected Node.js version, as the workspace root `CONTRIBUTING.md` setup steps require. Workspaces are used, so install from the workspace root rather than this directory |
 | Test-user access for `test:integration` | `WEBEX_CLIENT_ID` and `WEBEX_CLIENT_SECRET` (described in the workspace root `CONTRIBUTING.md` and `ENV.md`), and network access to Webex services |
 | Browser for the karma run | A local browser for the karma runner that `test:browser:broken` starts through `@webex/legacy-tools` |
 
@@ -53,8 +53,10 @@ webpack configuration, not by this package's scripts.
 
 ## Run
 
-N/A — library package with no start script. Require `webex` (or `webex/meetings`, `webex/calling`)
-from a consumer and call `init`.
+N/A — library package with no start script. From a consumer, require `webex` or `webex/meetings`
+and call `init`. `webex/calling` is an ES default export (`src/calling.js`), so a CommonJS consumer
+uses `require('webex/calling').default` (or a bundler-transpiled default import) and calls
+`Calling.init`.
 
 ## Tests
 
@@ -64,9 +66,10 @@ yarn workspace webex test:unit
 
 | Tier | Command | Test location | Framework | External dependencies |
 | ---- | ------- | ------------- | --------- | --------------------- |
-| Unit | `yarn workspace webex test:unit` | `test/unit/spec` | Jest, chai | Built workspace packages that the spec imports |
+| Unit | `yarn workspace webex test:unit` | `test/unit/spec` (`webex.js`, `assets-config.js`) | Jest, chai | Built workspace packages and this package's `dist/` (`assets-config.js` imports `dist/encryption`, `dist/meetings`, `dist/calling`) |
 | Integration | `yarn workspace webex test:integration` | `test/integration/spec` | Mocha, chai, sinon, `@webex/test-helper-test-users` | Test-user credentials and Webex services |
 | Browser | `yarn workspace webex test:browser:broken` | `test/integration/spec` under karma | karma | A browser; not a no-op here, because four integration specs exist; the script name marks it broken |
+| Browser (Playwright) | `yarn workspace webex test:browser` | `test/browser/assets-config.spec.js` | Playwright | Chrome; builds the encryption UMD in a temporary directory, no Webex credentials |
 | Lint | `yarn workspace webex test:style` | `src/` | eslint | None |
 | Helper lint | `yarn workspace webex eslint ./env.js ./browser.js ./process` | `env.js`, `browser.js`, `process` | eslint | None |
 
@@ -123,8 +126,9 @@ yarn workspace webex test:unit
    `calling.js`.
 4. Run `yarn workspace webex test:unit`.
 
-Expected result: Jest reports one suite passing with 4 tests: `.version`, `#version`, and the two
-`fedramp` cases.
+Expected result: Jest reports 2 suites and 30 tests passing: 6 in `test/unit/spec/webex.js`
+(`.version`, `#version`, two `encryption.assetsBaseUrl` cases, two `fedramp` cases) and 24 in
+`test/unit/spec/assets-config.js` (6 entry points × 4 cases).
 
 ## Next steps
 
