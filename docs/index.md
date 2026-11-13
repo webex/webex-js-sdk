@@ -52,6 +52,7 @@ package owns its architecture, specifications, and decisions beside its code. Th
 | `@webex/plugin-rooms` | `packages/@webex/plugin-rooms/` | [AGENTS.md](../packages/@webex/plugin-rooms/AGENTS.md) | [docs/index.md](../packages/@webex/plugin-rooms/docs/index.md) | [.sdd/manifest.json](../packages/@webex/plugin-rooms/.sdd/manifest.json) |
 | `@webex/plugin-team-memberships` | `packages/@webex/plugin-team-memberships/` | [AGENTS.md](../packages/@webex/plugin-team-memberships/AGENTS.md) | [docs/index.md](../packages/@webex/plugin-team-memberships/docs/index.md) | [.sdd/manifest.json](../packages/@webex/plugin-team-memberships/.sdd/manifest.json) |
 | `@webex/plugin-teams` | `packages/@webex/plugin-teams/` | [AGENTS.md](../packages/@webex/plugin-teams/AGENTS.md) | [docs/index.md](../packages/@webex/plugin-teams/docs/index.md) | [.sdd/manifest.json](../packages/@webex/plugin-teams/.sdd/manifest.json) |
+| `@webex/plugin-webhooks` | `packages/@webex/plugin-webhooks/` | [AGENTS.md](../packages/@webex/plugin-webhooks/AGENTS.md) | [docs/index.md](../packages/@webex/plugin-webhooks/docs/index.md) | [.sdd/manifest.json](../packages/@webex/plugin-webhooks/.sdd/manifest.json) |
 <!-- sdd-package-routing:end -->
 
 ## Decisions
