@@ -1,0 +1,480 @@
+{
+  "$schema": "./schemas/repo-context.schema.json",
+  "version": 1,
+  "repository": {
+    "name": "@webex/internal-plugin-calendar",
+    "purpose": "Internal calendar plugin registered as webex.internal.calendar. It registers the device and Mercury and keeps an in-memory meeting collection current from Mercury calendar create, update, and delete events; lists and syncs meetings for a date window (fetching participants a listing omits); reads notes, participants, and scheduler data; creates, updates, and deletes calendar events with payloads encrypted under a KMS key it creates on first use; and runs free-busy lookups that are sent over HTTPS and answered over Mercury. Its inbound payload transformer decrypts meeting reads through the conversation plugin's decryptTextProp transform."
+  },
+  "commands": {
+    "install": "yarn",
+    "prebuild": "yarn prebuild:modules",
+    "compile": "yarn workspace @webex/internal-plugin-calendar build:src",
+    "build": "yarn workspace @webex/internal-plugin-calendar build",
+    "unit-test": "yarn workspace @webex/internal-plugin-calendar test:unit",
+    "integration-test": "yarn workspace @webex/internal-plugin-calendar test:browser",
+    "lint": "yarn workspace @webex/internal-plugin-calendar test:style",
+    "deploy": "yarn workspace @webex/internal-plugin-calendar deploy:npm"
+  },
+  "public_interfaces": [
+    {
+      "name": "@webex/internal-plugin-calendar package entry",
+      "kind": "package_export",
+      "source": "src/index.js",
+      "entrypoints": [
+        "import Calendar from '@webex/internal-plugin-calendar'",
+        "import '@webex/internal-plugin-calendar'"
+      ],
+      "audience": "webex, webex-node, @webex/webex-server, @webex/recipe-private-web-client, and first-party clients",
+      "notes": "Importing the package imports the device, encryption, and conversation plugins and registers Calendar as internal plugin 'calendar' with the calendar config and the inbound transformMeetingNotes, transformMeetingParticipants, transformMeetingArray, and transformMeeting payload transformers. The default export is the only export."
+    },
+    {
+      "name": "webex.internal.calendar runtime methods",
+      "kind": "plugin_api",
+      "source": "src/calendar.js",
+      "entrypoints": [
+        "webex.internal.calendar.register()",
+        "webex.internal.calendar.unregister()",
+        "webex.internal.calendar.syncCalendar()",
+        "webex.internal.calendar.getAll()",
+        "webex.internal.calendar.getByType()",
+        "webex.internal.calendar.list()",
+        "webex.internal.calendar.getNotes()",
+        "webex.internal.calendar.getSchedulerData()",
+        "webex.internal.calendar.createCalendarEvent()",
+        "webex.internal.calendar.updateCalendarEvent()",
+        "webex.internal.calendar.deleteCalendarEvent()",
+        "webex.internal.calendar.getFreeBusy()"
+      ],
+      "audience": "first-party clients",
+      "notes": "Representative entry points; the full list is the Public surface section of src/docs/README.md. getFreeBusy resolves from a later Mercury event matched by data.requestId and has no timeout. getByType throws for keys other than spaceURI, spaceMeetURL, and conversationId."
+    },
+    {
+      "name": "calendar plugin events",
+      "kind": "event",
+      "source": "src/constants.js",
+      "entrypoints": [
+        "calendar:registered",
+        "calendar:unregistered",
+        "calendar:create",
+        "calendar:update",
+        "calendar:delete"
+      ],
+      "audience": "first-party clients through webex.internal.calendar.on",
+      "notes": "Create, update, and delete fire after the meeting collection changes, with the stored or removed item. The JSDoc in src/calendar.js names calendar:meeting:* instead; src/constants.js is authoritative."
+    },
+    {
+      "name": "calendar configuration",
+      "kind": "configuration",
+      "source": "src/config.js",
+      "entrypoints": [
+        "webex.config.calendar.fromDate",
+        "webex.config.calendar.toDate"
+      ],
+      "audience": "integrators configuring Webex.init",
+      "notes": "Defaults are now minus one day and now plus seven days, computed once when the module loads. syncCalendar() without arguments uses them."
+    },
+    {
+      "name": "package scripts",
+      "kind": "npm_scripts",
+      "source": "package.json",
+      "entrypoints": [
+        "build",
+        "build:src",
+        "test:style",
+        "test:unit",
+        "test:browser",
+        "deploy:npm"
+      ],
+      "audience": "contributors and CI",
+      "notes": "Run build:src before test:unit because test/unit/spec/calendar.js imports the package by name and loads dist. test:browser runs the specs under karma against live services. The aggregate test script calls test:integration, which is not defined, so it fails at that step."
+    }
+  ],
+  "source_of_truth": [
+    {
+      "surface": "calendar plugin implementation",
+      "paths": [
+        "src/index.js",
+        "src/calendar.js",
+        "src/collection.js",
+        "src/util.js",
+        "src/calendar.encrypt.helper.js",
+        "src/calendar.decrypt.helper.js",
+        "src/config.js",
+        "src/constants.js"
+      ],
+      "generated_artifacts": [
+        "dist"
+      ],
+      "refresh_with": [
+        "yarn workspace @webex/internal-plugin-calendar build:src"
+      ],
+      "validate_with": [
+        "yarn workspace @webex/internal-plugin-calendar test:unit",
+        "yarn workspace @webex/internal-plugin-calendar test:style"
+      ]
+    },
+    {
+      "surface": "module specification",
+      "paths": [
+        "src/docs/README.md"
+      ],
+      "generated_artifacts": [],
+      "refresh_with": [
+        "update alongside the behavior change in the same commit"
+      ],
+      "validate_with": [
+        "spec-validator on an independent runtime"
+      ]
+    }
+  ],
+  "generated_artifacts": [
+    {
+      "path": "dist",
+      "generated_from": "src",
+      "refresh_with": "yarn workspace @webex/internal-plugin-calendar build:src"
+    },
+    {
+      "path": "../../../.sdd/templates/repo-standards/template-map.json",
+      "generated_from": "WebexTools/repo-standards@d89a7fe59126ae3ad9bac9ca352aa7f12b4c85dc",
+      "refresh_with": "The package holds no templates. It refers to the monorepo root snapshot at ../../../.sdd/templates/repo-standards through layout.monorepo_package.templates_root_path in .sdd/manifest.json. Refresh the root snapshot, not this package."
+    }
+  ],
+  "validation_matrix": [
+    {
+      "paths": [
+        "src/**"
+      ],
+      "minimum": [
+        "yarn workspace @webex/internal-plugin-calendar build:src",
+        "yarn workspace @webex/internal-plugin-calendar test:unit"
+      ],
+      "recommended": [
+        "yarn workspace @webex/internal-plugin-calendar test:style"
+      ]
+    },
+    {
+      "paths": [
+        "src/index.js",
+        "src/calendar.encrypt.helper.js",
+        "src/calendar.decrypt.helper.js"
+      ],
+      "minimum": [
+        "yarn workspace @webex/internal-plugin-calendar build:src",
+        "yarn workspace @webex/internal-plugin-calendar test:unit"
+      ],
+      "recommended": [
+        "review the sibling package specifications packages/@webex/webex-core/src/docs/README.md and packages/@webex/webex-core/src/interceptors/docs/README.md, and the conversation plugin's src/decryption-transforms.js, when the transformer or the encrypted field set changes",
+        "add unit cases for the payload transformer and attendee encryption, which have none today"
+      ]
+    }
+  ],
+  "change_impact": [
+    {
+      "paths": [
+        "src/calendar.js"
+      ],
+      "affects": [
+        "device and Mercury registration and teardown",
+        "Mercury calendar event handling and the plugin events",
+        "meeting list, sync, notes, participants, and scheduler data reads",
+        "calendar event create, update, and delete",
+        "free-busy requests and their Mercury answers"
+      ],
+      "refresh_with": [
+        "yarn workspace @webex/internal-plugin-calendar build:src"
+      ],
+      "validate_with": [
+        "yarn workspace @webex/internal-plugin-calendar test:unit"
+      ],
+      "avoid_direct_edits": [
+        "dist"
+      ],
+      "notes": "unregister() disconnects Mercury and unregisters the device for the whole SDK instance, so changes there affect every plugin that shares them."
+    },
+    {
+      "paths": [
+        "src/calendar.encrypt.helper.js",
+        "src/calendar.decrypt.helper.js"
+      ],
+      "affects": [
+        "which write fields are encrypted and with which key",
+        "the free-busy encryptionKeyUrl rule",
+        "scheduler-data and free-busy decryption"
+      ],
+      "refresh_with": [
+        "yarn workspace @webex/internal-plugin-calendar build:src"
+      ],
+      "validate_with": [
+        "yarn workspace @webex/internal-plugin-calendar test:unit"
+      ],
+      "avoid_direct_edits": [
+        "dist"
+      ],
+      "notes": "Other clients read the same encrypted meetings, so the encrypted field set is a cross-client contract. Attendee encryption is currently not awaited."
+    },
+    {
+      "paths": [
+        "src/index.js",
+        "src/config.js",
+        "src/collection.js",
+        "src/util.js",
+        "src/constants.js"
+      ],
+      "affects": [
+        "registration as webex.internal.calendar and the sibling plugin imports",
+        "the inbound meeting payload transformers",
+        "the default sync window",
+        "the shared meeting collection and the derived endTime",
+        "the plugin event names"
+      ],
+      "refresh_with": [
+        "yarn workspace @webex/internal-plugin-calendar build:src"
+      ],
+      "validate_with": [
+        "yarn workspace @webex/internal-plugin-calendar test:unit"
+      ],
+      "avoid_direct_edits": [
+        "dist"
+      ],
+      "notes": "The transformers have no unit case; changes need a new test or a live check."
+    }
+  ],
+  "evidence_rules": [
+    {
+      "claim_category": "command_name",
+      "sources": [
+        "package.json"
+      ],
+      "requirement": "The script must exist in package.json scripts.",
+      "notes": "test:integration does not exist; the integration spec runs only through test:browser, which needs live services."
+    },
+    {
+      "claim_category": "import_path",
+      "sources": [
+        "src/index.js"
+      ],
+      "requirement": "A binding is public only if exported from src/index.js.",
+      "notes": "Exports: default Calendar only."
+    },
+    {
+      "claim_category": "behavior_claim",
+      "sources": [
+        "src",
+        "test/unit/spec"
+      ],
+      "requirement": "Ground every behavioral claim in source or test evidence.",
+      "notes": "Commit history is not an evidence source for this package. README.md is context only (docs/adr/0001-retain-product-readme.md). Socket lifecycle, device registration, KMS, and the decryptTextProp transform are owned by sibling packages; consult their specifications when present, else their code."
+    }
+  ],
+  "negative_guidance": [
+    {
+      "rule": "Do not send meeting subjects, notes, webexOptions, attendee fields, or free-busy emails without encrypting them with the plugin's encryptionKeyUrl.",
+      "why": "The calendar service stores ciphertext and other clients decrypt with that key."
+    },
+    {
+      "rule": "Do not send encryptionKeyUrl in a free-busy request that has no emails array.",
+      "why": "The encryptFreeBusyRequest JSDoc: the calendar service answers 400 unless the key URL and the sensitive data are both present."
+    },
+    {
+      "rule": "Do not remove the schedulerData exclusion from the meeting predicates while getSchedulerData decrypts explicitly.",
+      "why": "The response would be decrypted twice."
+    },
+    {
+      "rule": "Do not treat README.md as the method, event, or error reference.",
+      "why": "Its usage block is a placeholder; see docs/adr/0001-retain-product-readme.md."
+    },
+    {
+      "rule": "Do not trust the calendar:meeting:* event names in the src/calendar.js JSDoc.",
+      "why": "The emitted names are calendar:create, calendar:update, and calendar:delete in src/constants.js."
+    },
+    {
+      "rule": "Do not run test:unit against a stale dist.",
+      "why": "test/unit/spec/calendar.js imports the package by name, which resolves main (dist/index.js)."
+    },
+    {
+      "rule": "Do not infer a coverage threshold for this package.",
+      "why": "The developer confirmed no coverage gate applies; the legacy Jest config sets none."
+    }
+  ],
+  "confidence_policy": {
+    "high": {
+      "action": "update",
+      "expectation": "Source and unit test evidence both support the change, and the behavior has a case in test/unit/spec."
+    },
+    "medium": {
+      "action": "narrow-scope",
+      "expectation": "Only source evidence exists, for example the payload transformer, getFreeBusy, getByType, processMeetingEvent, or attendee encryption. Pin current behavior with a characterization test before modifying."
+    },
+    "low": {
+      "action": "noop",
+      "expectation": "Neither source nor tests settle the question, for example the calendar service's free-busy timing. Stop and report the gap."
+    }
+  },
+  "repository_topology": {
+    "main_entrypoints": [
+      {
+        "name": "package entry",
+        "path": "src/index.js",
+        "purpose": "Imports the sibling plugins, registers the calendar plugin with its config and payload transformer, and re-exports Calendar",
+        "notes": "No subpath exports."
+      }
+    ],
+    "workspace_packages": [
+      {
+        "name": "@webex/internal-plugin-calendar",
+        "paths": [
+          "src",
+          "test"
+        ],
+        "notes": "One module; this SDD root is the package directory inside the webex-js-sdk monorepo."
+      }
+    ],
+    "source_surfaces": [
+      {
+        "name": "calendar plugin",
+        "paths": [
+          "src"
+        ],
+        "notes": "index.js, calendar.js, collection.js, util.js, calendar.encrypt.helper.js, calendar.decrypt.helper.js, config.js, constants.js. Specified at src/docs/README.md."
+      },
+      {
+        "name": "tests",
+        "paths": [
+          "test/unit/spec",
+          "test/integration/spec"
+        ],
+        "notes": "Four unit specs run by Jest through webex-legacy-tools (28 cases). One integration spec, run only by test:browser, which is describe.skip."
+      }
+    ],
+    "generated_surfaces": [
+      {
+        "name": "build output",
+        "paths": [
+          "dist"
+        ],
+        "generated_from": "src",
+        "refresh_with": "yarn workspace @webex/internal-plugin-calendar build:src",
+        "notes": "Produced by webex-legacy-tools. Do not edit by hand. The unit specs load it."
+      },
+      {
+        "name": "repo-standards template map",
+        "paths": [
+          "../../../.sdd/templates/repo-standards"
+        ],
+        "generated_from": "WebexTools/repo-standards@d89a7fe59126ae3ad9bac9ca352aa7f12b4c85dc",
+        "refresh_with": "The package holds no templates. It refers to the monorepo root snapshot at ../../../.sdd/templates/repo-standards through layout.monorepo_package.templates_root_path in .sdd/manifest.json. Refresh the root snapshot, not this package.",
+        "notes": "The package holds no templates. It refers to the monorepo root snapshot at ../../../.sdd/templates/repo-standards through layout.monorepo_package.templates_root_path in .sdd/manifest.json. Refresh the root snapshot, not this package."
+      }
+    ],
+    "validation_entrypoints": [
+      {
+        "name": "unit tests",
+        "command": "yarn workspace @webex/internal-plugin-calendar test:unit",
+        "scope": "test/unit/spec",
+        "notes": "jest via webex-legacy-tools --runner jest; run build:src first."
+      },
+      {
+        "name": "lint",
+        "command": "yarn workspace @webex/internal-plugin-calendar test:style",
+        "scope": "src",
+        "notes": "eslint via the local .eslintrc.js; exits 0 with 15 require-jsdoc warnings; the shared ignore patterns skip src/docs/README.md."
+      }
+    ],
+    "sync_paths": [
+      {
+        "source": "src/calendar.js",
+        "targets": [
+          "src/docs/README.md"
+        ],
+        "mechanism": "Manual; update the module specification in the same change that alters observable behavior.",
+        "notes": "The same applies to src/index.js, the two helpers, src/collection.js, src/config.js, and src/constants.js."
+      },
+      {
+        "source": "WebexTools/repo-standards@d89a7fe59126ae3ad9bac9ca352aa7f12b4c85dc",
+        "targets": [
+          "../../../.sdd/templates/repo-standards"
+        ],
+        "mechanism": "The package holds no templates. It refers to the monorepo root snapshot at ../../../.sdd/templates/repo-standards through layout.monorepo_package.templates_root_path in .sdd/manifest.json. Refresh the root snapshot, not this package.",
+        "notes": "The package holds no templates. It refers to the monorepo root snapshot at ../../../.sdd/templates/repo-standards through layout.monorepo_package.templates_root_path in .sdd/manifest.json. Refresh the root snapshot, not this package."
+      }
+    ]
+  },
+  "folder_readme_contract": {
+    "required_sections": [
+      "purpose",
+      "boundaries",
+      "key-files",
+      "common-tasks"
+    ],
+    "rules": [
+      "Orient the reader before describing detail.",
+      "Link to the module specification rather than duplicating it."
+    ],
+    "example_policy": "Examples are allowed only when verified against src/ or test/.",
+    "fallback": "Omit a section rather than inventing content; report unresolved facts as gaps."
+  },
+  "regression_feedback_rules": [
+    {
+      "trigger": "The encrypted field set, the free-busy payload, or the event names change.",
+      "required_followups": [
+        "Add or update cases in test/unit/spec/calendar.js or the helper specs",
+        "Update MOD-005, MOD-013, MOD-015, INV-001, and INV-002 in src/docs/README.md"
+      ],
+      "notes": "Other clients read the same encrypted meetings."
+    },
+    {
+      "trigger": "The payload transformer predicates or transforms change.",
+      "required_followups": [
+        "Add a unit case for the changed predicate or transform",
+        "Update MOD-010, MOD-011, and INV-003 in src/docs/README.md"
+      ],
+      "notes": "Scheduler data is excluded from the meeting predicates because getSchedulerData decrypts it explicitly."
+    }
+  ],
+  "surface_owners": [
+    {
+      "surface": "module implementation and specifications",
+      "owner": "@webex/web-sdk",
+      "edit_boundary": "Owner per the monorepo .github/CODEOWNERS default rule; the package has no explicit entry."
+    }
+  ],
+  "do_not_edit": [
+    "dist",
+    "../../../.sdd/templates/repo-standards"
+  ],
+  "marker_scopes": {
+    "sdd": [
+      ".sdd/manifest.json",
+      "src/docs/README.md",
+      "docs"
+    ]
+  },
+  "fallback_rules": [
+    "When source and tests disagree, code is the referee and the disagreement is recorded rather than silently resolved.",
+    "When neither source nor tests settle a question, report it as a gap instead of inferring.",
+    "Commit history is not a valid rationale source for this package."
+  ],
+  "downstream_context_pack": {
+    "required_human_surfaces": [
+      "README.md",
+      "docs/index.md",
+      "docs/architecture.md",
+      "src/docs/README.md"
+    ],
+    "required_agent_operational_surfaces": [
+      "AGENTS.md",
+      "docs/specs/README.md"
+    ],
+    "required_machine_readable_surface": ".sdd/manifest.json",
+    "recommended_machine_readable_sections": [
+      "public_interfaces",
+      "change_impact",
+      "evidence_rules",
+      "negative_guidance",
+      "confidence_policy",
+      "repository_topology",
+      "folder_readme_contract",
+      "regression_feedback_rules"
+    ]
+  }
+}

@@ -1,0 +1,489 @@
+{
+  "$schema": "./schemas/repo-context.schema.json",
+  "version": 1,
+  "repository": {
+    "name": "@webex/plugin-device-manager",
+    "purpose": "Public plugin registered as webex.devicemanager that manages the user's Webex room devices and Lyra spaces: refresh lists the recent auxiliary devices from WDM (devices/auxiliary) into a module-level collection that getAll reads, upsert and remove add and delete WDM entries, search finds devices through the directory search plugin, get resolves the Lyra endpoint for an ultrasound token, requestPin and pair run a Lyra PIN challenge and record the paired device on the instance, bindSpace and unbindSpace bind a conversation to the paired device, getAudioState and the mute and volume methods call the Lyra device API for the paired device and reject without one, while putAudioState passes the caller's space and audio state to Lyra with no pairing guard. A Mercury lyra.space_updated listener drops a pairing Lyra no longer verifies. User-assigned device names are decrypted through the encryption plugin. Argument and pairing guards log and reject with DeviceManager#method messages; Lyra, search, and WDM failures are logged and rejected, except that audio failures reject unlogged, refresh logs and resolves undefined, and the Mercury handler logs and resolves; a failed name decryption logs and yields undefined; nothing is persisted."
+  },
+  "commands": {
+    "install": "yarn",
+    "prebuild": "yarn prebuild:modules",
+    "compile": "yarn build",
+    "build": "yarn build:src",
+    "unit-test": "yarn test:unit",
+    "lint": "yarn test:style",
+    "browser-test": "yarn test:browser",
+    "deploy": "yarn deploy:npm"
+  },
+  "public_interfaces": [
+    {
+      "name": "@webex/plugin-device-manager package entry",
+      "kind": "package_export",
+      "source": "src/index.js",
+      "entrypoints": [
+        "import '@webex/plugin-device-manager'",
+        "import DeviceManager, {config} from '@webex/plugin-device-manager'"
+      ],
+      "audience": "SDK bundles (webex, webex-node) and applications that build their own webex instance",
+      "notes": "Importing the package imports @webex/internal-plugin-device and registers DeviceManager as public plugin 'devicemanager' with config {}; src/device-manager.js also imports the Lyra and search plugins. The first registration of the name wins. The entry exports the default DeviceManager and the named config."
+    },
+    {
+      "name": "webex.devicemanager methods",
+      "kind": "plugin_api",
+      "source": "src/device-manager.js",
+      "entrypoints": [
+        "webex.devicemanager.getAll()",
+        "webex.devicemanager.refresh()",
+        "webex.devicemanager.search(options)",
+        "webex.devicemanager.upsert(device)",
+        "webex.devicemanager.get(token)",
+        "webex.devicemanager.remove(deviceId)",
+        "webex.devicemanager.requestPin(device, options)",
+        "webex.devicemanager.pair(options)",
+        "webex.devicemanager.unpair(options)",
+        "webex.devicemanager.bindSpace(options)",
+        "webex.devicemanager.unbindSpace()",
+        "webex.devicemanager.getAudioState()",
+        "webex.devicemanager.putAudioState(space, audioState)",
+        "webex.devicemanager.mute()",
+        "webex.devicemanager.unmute()",
+        "webex.devicemanager.increaseVolume()",
+        "webex.devicemanager.decreaseVolume()",
+        "webex.devicemanager.setVolume(level)",
+        "webex.devicemanager.getPairedDevice()",
+        "webex.devicemanager.getPairedMethod()",
+        "webex.devicemanager.setPairedMethod(method)"
+      ],
+      "audience": "applications",
+      "notes": "getAll returns an array synchronously; refresh resolves the device array, or undefined after any failure; binding and audio methods except putAudioState reject without a paired device; upsert always moves the pending PIN device to paired; guards reject with an Error whose message starts with DeviceManager#method."
+    },
+    {
+      "name": "package scripts",
+      "kind": "npm_scripts",
+      "source": "package.json",
+      "entrypoints": [
+        "build",
+        "build:src",
+        "test:unit",
+        "test:style",
+        "test:browser",
+        "test",
+        "deploy:npm"
+      ],
+      "audience": "contributors and CI",
+      "notes": "build runs build:src, which writes dist. test:unit runs 14 jest cases in test/unit/spec. test:browser (commands.browser-test) collects test/integration/spec, which does not exist, so it starts nothing and exits 0. The aggregate test script runs test:style and test:unit, then exits 1 because test:integration is not defined; it is deliberately not a manifest command."
+    }
+  ],
+  "source_of_truth": [
+    {
+      "surface": "Device Manager plugin implementation",
+      "paths": [
+        "src/index.js",
+        "src/device-manager.js",
+        "src/collection.js",
+        "src/constants.js",
+        "src/config.js"
+      ],
+      "generated_artifacts": [
+        "dist"
+      ],
+      "refresh_with": [
+        "yarn build:src"
+      ],
+      "validate_with": [
+        "yarn test:unit",
+        "yarn test:style"
+      ]
+    },
+    {
+      "surface": "module specification",
+      "paths": [
+        "src/docs/README.md"
+      ],
+      "generated_artifacts": [],
+      "refresh_with": [
+        "update alongside the behavior change in the same commit"
+      ],
+      "validate_with": [
+        "spec-validator on an independent runtime"
+      ]
+    }
+  ],
+  "generated_artifacts": [
+    {
+      "path": "dist",
+      "generated_from": "src",
+      "refresh_with": "yarn build:src"
+    },
+    {
+      "path": "../../../.sdd/templates/repo-standards/template-map.json",
+      "generated_from": "WebexTools/repo-standards@d89a7fe59126ae3ad9bac9ca352aa7f12b4c85dc",
+      "refresh_with": "The package holds no templates. It refers to the monorepo root snapshot at ../../../.sdd/templates/repo-standards through layout.monorepo_package.templates_root_path in .sdd/manifest.json. Refresh the root snapshot, not this package."
+    }
+  ],
+  "validation_matrix": [
+    {
+      "paths": [
+        "src/**"
+      ],
+      "minimum": [
+        "yarn build:src",
+        "yarn test:unit",
+        "yarn test:style"
+      ],
+      "recommended": [
+        "add a test/unit/spec case for the changed behavior; most methods have none"
+      ]
+    },
+    {
+      "paths": [
+        "src/device-manager.js",
+        "src/collection.js"
+      ],
+      "minimum": [
+        "yarn build:src",
+        "yarn test:unit",
+        "yarn test:style"
+      ],
+      "recommended": [
+        "pin the guards, the pairing transitions, the WDM requests, and the refresh result with unit cases before changing them; reset DeviceCollection between cases"
+      ]
+    },
+    {
+      "paths": [
+        "src/index.js"
+      ],
+      "minimum": [
+        "yarn build:src",
+        "yarn test:unit",
+        "yarn test:style"
+      ],
+      "recommended": [
+        "check the bundles that register the plugin (webex, webex-node) when the registered name or the side-effect imports change"
+      ]
+    }
+  ],
+  "change_impact": [
+    {
+      "paths": [
+        "src/device-manager.js"
+      ],
+      "affects": [
+        "the WDM devices/auxiliary requests and the refresh result",
+        "the Lyra PIN, binding, and audio calls and their space URLs",
+        "the pairing state and its guards",
+        "the lyra.space_updated handler",
+        "the DeviceManager#method log and error messages"
+      ],
+      "refresh_with": [
+        "yarn build:src"
+      ],
+      "validate_with": [
+        "yarn test:unit",
+        "yarn test:style"
+      ],
+      "avoid_direct_edits": [
+        "dist"
+      ],
+      "notes": "Unit cases cover only getPairedDevice and the paired-method accessors; add cases before changing other behavior."
+    },
+    {
+      "paths": [
+        "src/collection.js"
+      ],
+      "affects": [
+        "the device list shared by every instance in the process"
+      ],
+      "refresh_with": [
+        "yarn build:src"
+      ],
+      "validate_with": [
+        "yarn test:unit",
+        "yarn test:style"
+      ],
+      "avoid_direct_edits": [
+        "dist"
+      ],
+      "notes": "INV-004: one object per loaded module."
+    },
+    {
+      "paths": [
+        "src/index.js"
+      ],
+      "affects": [
+        "the registered plugin name and the side-effect imports"
+      ],
+      "refresh_with": [
+        "yarn build:src"
+      ],
+      "validate_with": [
+        "yarn test:unit",
+        "yarn test:style"
+      ],
+      "avoid_direct_edits": [
+        "dist"
+      ],
+      "notes": "webex and webex-node register the plugin by import (MOD-001)."
+    }
+  ],
+  "evidence_rules": [
+    {
+      "claim_category": "command_name",
+      "sources": [
+        "package.json"
+      ],
+      "requirement": "The script must exist in package.json scripts.",
+      "notes": "test:integration does not exist, so the aggregate test script fails; test:browser currently verifies nothing."
+    },
+    {
+      "claim_category": "import_path",
+      "sources": [
+        "src/index.js"
+      ],
+      "requirement": "A binding is public only if exported from src/index.js.",
+      "notes": "The exports are the default DeviceManager and the named config."
+    },
+    {
+      "claim_category": "behavior_claim",
+      "sources": [
+        "src",
+        "test/unit/spec"
+      ],
+      "requirement": "Ground every behavioral claim in source or test evidence.",
+      "notes": "Commit history is not an evidence source for this package. README.md is context only (docs/adr/0001-retain-product-readme.md). The lyra, search, mercury, device, and webex-core specs were consulted; encryption has no spec, so its code was read, and the mercury code was checked for the emit scheme."
+    }
+  ],
+  "negative_guidance": [
+    {
+      "rule": "Do not call Lyra, search, or KMS endpoints directly; go through webex.internal.lyra, webex.internal.search, and webex.internal.encryption.",
+      "why": "Those plugins own the URLs, request bodies, and KMS wrapping."
+    },
+    {
+      "rule": "Do not change when upsert sets the paired device without a change request.",
+      "why": "pair relies on upsert moving the pending PIN device to paired (INV-003)."
+    },
+    {
+      "rule": "Do not make the device list per instance or reset it outside refresh without a change request.",
+      "why": "getAll and the Mercury handler read the shared module-level list (INV-004)."
+    },
+    {
+      "rule": "Do not pass absolute space URLs to join, leave, or the bindings.",
+      "why": "Lyra sends them as catalog resources and needs the relative form (INV-005)."
+    },
+    {
+      "rule": "Do not log PINs, decrypted device names, KMS key URLs, ultrasound tokens, or search queries through webex.logger.",
+      "why": "They identify users and grant access; the plugin logs only messages, error objects, and one device id today."
+    },
+    {
+      "rule": "Do not treat README.md as the behavior reference.",
+      "why": "Its samples command, connect snippet, and chained flow do not run; see docs/adr/0001-retain-product-readme.md."
+    },
+    {
+      "rule": "Do not infer a coverage threshold for this package.",
+      "why": "No coverage script or threshold exists."
+    }
+  ],
+  "confidence_policy": {
+    "high": {
+      "action": "update",
+      "expectation": "Source and a unit case agree, as for getPairedDevice and the paired-method accessors."
+    },
+    "medium": {
+      "action": "narrow-scope",
+      "expectation": "Only source evidence exists, as for every other method today. Pin current behavior with a unit case before modifying."
+    },
+    "low": {
+      "action": "noop",
+      "expectation": "Neither source, tests, nor a dependency's spec or code settles the question, as for why upsert changes pairing or why uc-cloud ids get the WDM URL. Stop and report the gap."
+    }
+  },
+  "repository_topology": {
+    "main_entrypoints": [
+      {
+        "name": "package entry",
+        "path": "src/index.js",
+        "purpose": "Registers the devicemanager plugin and exports the class and config",
+        "notes": "No subpath exports; package.json main is dist/index.js and devMain is src/index.js."
+      }
+    ],
+    "workspace_packages": [
+      {
+        "name": "@webex/plugin-device-manager",
+        "paths": [
+          "src",
+          "test"
+        ],
+        "notes": "One module; this SDD root is the package directory inside the webex-js-sdk monorepo."
+      }
+    ],
+    "source_surfaces": [
+      {
+        "name": "Device Manager plugin",
+        "paths": [
+          "src"
+        ],
+        "notes": "index.js, device-manager.js, collection.js, constants.js, and config.js. Specified at src/docs/README.md."
+      },
+      {
+        "name": "tests",
+        "paths": [
+          "test/unit/spec"
+        ],
+        "notes": "One jest spec with 14 cases. There is no integration spec."
+      },
+      {
+        "name": "manual trial files",
+        "paths": [
+          "webex.js",
+          "sample"
+        ],
+        "notes": "A browser harness and page that no script builds or serves."
+      }
+    ],
+    "generated_surfaces": [
+      {
+        "name": "build output",
+        "paths": [
+          "dist"
+        ],
+        "generated_from": "src",
+        "refresh_with": "yarn build:src",
+        "notes": "JavaScript and source maps from webex-legacy-tools; no type declarations. Do not edit by hand."
+      },
+      {
+        "name": "repo-standards template map",
+        "paths": [
+          "../../../.sdd/templates/repo-standards"
+        ],
+        "generated_from": "WebexTools/repo-standards@d89a7fe59126ae3ad9bac9ca352aa7f12b4c85dc",
+        "refresh_with": "The package holds no templates. It refers to the monorepo root snapshot at ../../../.sdd/templates/repo-standards through layout.monorepo_package.templates_root_path in .sdd/manifest.json. Refresh the root snapshot, not this package.",
+        "notes": "The package holds no templates. It refers to the monorepo root snapshot at ../../../.sdd/templates/repo-standards through layout.monorepo_package.templates_root_path in .sdd/manifest.json. Refresh the root snapshot, not this package."
+      }
+    ],
+    "validation_entrypoints": [
+      {
+        "name": "compile",
+        "command": "yarn build",
+        "scope": "src",
+        "notes": "Runs build:src."
+      },
+      {
+        "name": "unit-test",
+        "command": "yarn test:unit",
+        "scope": "test/unit/spec",
+        "notes": "Jest through webex-legacy-tools; imports src by relative path."
+      },
+      {
+        "name": "lint",
+        "command": "yarn test:style",
+        "scope": "src",
+        "notes": "eslint via the local .eslintrc.js; docs/** and *.md are ignored."
+      }
+    ],
+    "sync_paths": [
+      {
+        "source": "src/device-manager.js",
+        "targets": [
+          "src/docs/README.md"
+        ],
+        "mechanism": "Manual; update the module specification in the same change that alters observable behavior.",
+        "notes": "Keep the requirement, state machine, failure-mode, and wire rows of the specification aligned with src/device-manager.js, src/collection.js, and src/index.js."
+      },
+      {
+        "source": "WebexTools/repo-standards@d89a7fe59126ae3ad9bac9ca352aa7f12b4c85dc",
+        "targets": [
+          "../../../.sdd/templates/repo-standards"
+        ],
+        "mechanism": "The package holds no templates. It refers to the monorepo root snapshot at ../../../.sdd/templates/repo-standards through layout.monorepo_package.templates_root_path in .sdd/manifest.json. Refresh the root snapshot, not this package.",
+        "notes": "The package holds no templates. It refers to the monorepo root snapshot at ../../../.sdd/templates/repo-standards through layout.monorepo_package.templates_root_path in .sdd/manifest.json. Refresh the root snapshot, not this package."
+      }
+    ]
+  },
+  "folder_readme_contract": {
+    "required_sections": [
+      "purpose",
+      "boundaries",
+      "key-files",
+      "common-tasks"
+    ],
+    "rules": [
+      "Orient the reader before describing detail.",
+      "Link to the module specification rather than duplicating it."
+    ],
+    "example_policy": "Examples are allowed only when verified against src/ or test/.",
+    "fallback": "Omit a section rather than inventing content; report unresolved facts as gaps."
+  },
+  "regression_feedback_rules": [
+    {
+      "trigger": "A WDM request or the refresh result in src/device-manager.js changes.",
+      "required_followups": [
+        "Add a test/unit/spec case asserting the request options and the resolved value",
+        "Update MOD-004, MOD-006, MOD-008, and the Protocol and wire format rows in src/docs/README.md"
+      ],
+      "notes": "No unit case covers a WDM request today."
+    },
+    {
+      "trigger": "The pairing state, a guard, or the lyra.space_updated handler changes.",
+      "required_followups": [
+        "Add parametrized unit cases for the guards and the transitions",
+        "Update INV-001, INV-003, the Client state model, and the State machine in src/docs/README.md"
+      ],
+      "notes": "upsert, unpair, and the Mercury handler have recorded behavior callers may rely on."
+    },
+    {
+      "trigger": "The registration or side-effect imports in src/index.js or src/device-manager.js change.",
+      "required_followups": [
+        "Check webex and webex-node",
+        "Update MOD-001 in src/docs/README.md"
+      ],
+      "notes": "Applications reach the plugin as webex.devicemanager."
+    }
+  ],
+  "surface_owners": [
+    {
+      "surface": "module implementation and specifications",
+      "owner": "@webex/web-client @webex/web-sdk",
+      "edit_boundary": "The monorepo .github/CODEOWNERS line for packages/@webex/plugin-device-manager assigns @webex/web-client and @webex/web-sdk."
+    }
+  ],
+  "do_not_edit": [
+    "dist",
+    "../../../.sdd/templates/repo-standards"
+  ],
+  "marker_scopes": {
+    "sdd": [
+      ".sdd/manifest.json",
+      "src/docs/README.md",
+      "docs"
+    ]
+  },
+  "fallback_rules": [
+    "When source and tests disagree, code is the referee and the disagreement is recorded rather than silently resolved.",
+    "When neither source nor tests settle a question, report it as a gap instead of inferring.",
+    "Commit history is not a valid rationale source for this package.",
+    "When a dependency's specification disagrees with that dependency's code, use the code and record the disagreement; when a dependency has no specification, use its code."
+  ],
+  "downstream_context_pack": {
+    "required_human_surfaces": [
+      "README.md",
+      "docs/index.md",
+      "docs/architecture.md",
+      "src/docs/README.md"
+    ],
+    "required_agent_operational_surfaces": [
+      "AGENTS.md",
+      "docs/specs/README.md"
+    ],
+    "required_machine_readable_surface": ".sdd/manifest.json",
+    "recommended_machine_readable_sections": [
+      "public_interfaces",
+      "change_impact",
+      "evidence_rules",
+      "negative_guidance",
+      "confidence_policy",
+      "repository_topology",
+      "folder_readme_contract",
+      "regression_feedback_rules"
+    ]
+  }
+}
