@@ -9,8 +9,8 @@ doc_kind: standing-doc
 generated_from: architecture@0.3.0
 generated_by: claude-cowork
 approved_by: akulakum@cisco.com
-updated_at: 2026-10-15T23:00:24Z
-validation_status: pass-with-warnings
+updated_at: 2026-11-13T09:16:21Z
+validation_status: not-run
 -->
 
 # webex-node architecture
@@ -214,10 +214,14 @@ Controls and boundaries:
   `device.validateDomains: true`, but these values are nested under `config.default` and are not
   applied (module spec `MOD-007`). The values in effect are webex-core's and the plugins' defaults
   unless the application sets them in `config`.
-- `HYDRA_SERVICE_URL` is read from the environment by `src/config.js`; because of the same nesting,
-  that value is not applied either.
+- `HYDRA_SERVICE_URL` is read by `src/config.js` into the `hydra` and `hydraServiceUrl` keys of
+  its default export, which are nested under `config.default` the same way and not applied. The
+  variable still takes effect through webex-core: its own configuration reads it into
+  `services.discovery.hydra` and `device.preDiscoveryServices` (sibling package webex-core, file
+  src/config.js), and those defaults apply unless the caller overrides them or FedRAMP replaces
+  `services.discovery`.
 
-The workspace root `SECURITY.md` is the security policy; this package adds none.
+No security policy file exists in this package or at the workspace root; Stage 0 creates none.
 
 ## Domain language
 

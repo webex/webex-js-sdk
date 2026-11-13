@@ -9,8 +9,8 @@ doc_kind: standing-doc
 generated_from: getting-started@0.3.0
 generated_by: claude-cowork
 approved_by: akulakum@cisco.com
-updated_at: 2026-10-15T23:00:24Z
-validation_status: pass-with-warnings
+updated_at: 2026-11-13T09:16:21Z
+validation_status: not-run
 -->
 
 # Getting started
@@ -83,12 +83,13 @@ yarn workspace webex-node test:unit
 
 ## Configuration and secrets
 
-- Required configuration: none to build or test. At runtime, `src/config.js` reads
-  `HYDRA_SERVICE_URL`; the values it declares are not applied today (module spec `MOD-007`).
+- Required configuration: none to build or test. At runtime, `HYDRA_SERVICE_URL` sets the Hydra
+  discovery URL through webex-core's configuration; this package's own aliases for it in
+  `src/config.js` are not applied today (module spec `MOD-007`).
 - Secret source: the application passes its access token or OAuth settings to `WebexNode.init`.
   The unit spec reads an optional `token` environment variable for one test, which passes without it.
-- Package or artifact access: `yarn install` needs network access to the configured npm registry
-  (or a proxy), because registry packages such as `lodash`, `@babel/polyfill`, and `eslint` are
+- Package or artifact access: `yarn install` needs network access to the npm registry set in the
+  workspace root `.yarnrc.yml` (`registry.npmjs.org`), or a proxy, because registry packages such as `lodash`, `@babel/polyfill`, and `eslint` are
   declared and no Yarn cache is committed.
 - Required neighboring repositories or workspace layout: the webex-js-sdk workspace, because
   webex-core and the plugin packages are `workspace:*` dependencies.

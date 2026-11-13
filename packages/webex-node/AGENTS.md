@@ -3,8 +3,8 @@ doc_kind: agent-entry
 generated_from: agents@0.3.0
 generated_by: claude-cowork
 approved_by: akulakum@cisco.com
-updated_at: 2026-10-15T23:00:24Z
-validation_status: pass-with-warnings
+updated_at: 2026-11-13T09:16:21Z
+validation_status: not-run
 -->
 
 # AI Agent Instructions
@@ -79,9 +79,9 @@ Definition of done:
 | Area             | Tooling | Version |
 | ---------------- | ------- | ------- |
 | Language runtime | node | 22.14 for development (workspace root `AGENTS.md`; the root `.nvmrc` selects the Node 22 LTS line; the root `package.json` `engines.node` still declares `18.x`); `>=18` for consumers (`package.json` engines) |
-| Build tool       | `@webex/legacy-tools` over babel | `@babel/core` `^7.22.11` |
+| Build tool       | `@webex/legacy-tools` over babel | `@babel/core` version in `package.json` `devDependencies` |
 | Test framework   | Jest via `webex-legacy-tools` (`test:unit`) | workspace versions |
-| Lint/format      | eslint with the workspace root `.eslintrc.js` (which applies prettier through its prettier plugin) | eslint `^8.24.0`, prettier `^2.7.1` |
+| Lint/format      | eslint with the workspace root `.eslintrc.js` (which applies prettier through its prettier plugin) | eslint and prettier versions in `package.json` `devDependencies` |
 
 ### Project Map
 
@@ -177,7 +177,6 @@ PR checklist:
 
 - Edit build output by hand.
 - Commit secrets, tokens, or credentials, including in test fixtures.
-- Copy template bodies or `template-map.json` into this package, or commit anything under
-  `.sdd/templates/`. The repository-root `.sdd/templates/repo-standards` snapshot is the only
-  template source. The Repo Annotation checkers and validator expect a temporary, uncommitted
-  local symlink to it at `.sdd/templates/repo-standards`, which is removed before a PR.
+- Add a `.sdd/templates` directory, a copy of the templates, or a link to them in this package. The
+  templates live once at the monorepo root, `../../.sdd/templates/repo-standards`, and
+  `.sdd/manifest.json` refers to them through `layout.monorepo_package.templates_root_path`.

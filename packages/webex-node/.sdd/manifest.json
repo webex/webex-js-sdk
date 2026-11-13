@@ -8,7 +8,7 @@
       "javascript"
     ]
   },
-  "topology": "Single-repo",
+  "topology": "Orchestrator-plus-components",
   "commands": {
     "install": {
       "command": "yarn install",
@@ -49,6 +49,18 @@
       "declared_by": "akulakum@cisco.com (bootstrap instruction 'nvm use 22.14.0'; the workspace root AGENTS.md requires Node 22.14 for development and the root .nvmrc selects the Node 22 LTS line; package.json engines >=18 is the consumer floor; the root package.json engines.node still declares 18.x)"
     },
     {
+      "name": "yarn",
+      "version": "3.4.1",
+      "origin": "human-declared",
+      "declared_by": "akulakum@cisco.com (workspace root package.json packageManager yarn@3.4.1, provided through Corepack per the workspace root CONTRIBUTING.md; install runs from the workspace root)"
+    },
+    {
+      "name": "corepack",
+      "version": "bundled with node 22.14",
+      "origin": "human-declared",
+      "declared_by": "akulakum@cisco.com (workspace root CONTRIBUTING.md setup step enables Corepack for the selected Node.js version)"
+    },
+    {
       "name": "babel",
       "version": "^7.22.11",
       "origin": "repo-config",
@@ -65,6 +77,16 @@
       "version": "^2.7.1",
       "origin": "repo-config",
       "source_file": "package.json"
+    }
+  ],
+  "registries": [
+    {
+      "name": "npm",
+      "type": "npm",
+      "host": "registry.npmjs.org",
+      "origin": "human-declared",
+      "egress_required": true,
+      "declared_by": "akulakum@cisco.com (verified from the workspace root .yarnrc.yml npmRegistryServer: https://registry.npmjs.org; the committed configuration declares no registry authentication, so no auth_env is recorded)"
     }
   ],
   "tests": {
@@ -100,7 +122,7 @@
       "path": "src",
       "canonical_spec": "src/docs/README.md",
       "coverage_status": "Partial",
-      "coverage_evidence": "Field coverage 93.3% (14/15) assessed 2026-10-15 by the generator; critical field coverage 8/8. The one WEAK field is test strategy: test/unit/spec/webex-node.test.js runs 5 tests that cover init merging, the sdkType override, the webex property, and the webex-core fedramp setting, but no test asserts any src/config.js value at the top level, plugin registration, the polyfill guard, the CommonJS export, or init mutating its argument, and no characterization baseline exists. Independent validation: pass-with-warnings assessed 2026-10-16 by current-session (different-runtime); 0 Blocking, 2 Minor tooling warnings. Held at Partial: untested configuration and registration behavior, no characterization baseline, and no spec-drift record.",
+      "coverage_evidence": "Field coverage 93.3% (14/15) assessed 2026-10-15 by the generator; critical field coverage 8/8. The one WEAK field is test strategy: test/unit/spec/webex-node.test.js runs 5 tests that cover init merging, the sdkType override, the webex property, and the webex-core fedramp setting, but no test asserts any src/config.js value at the top level, plugin registration, the polyfill guard, the CommonJS export, or init mutating its argument, and no characterization baseline exists. Independent validation: not-run on this content; awaiting independent validation. Held at Partial: untested configuration and registration behavior, no characterization baseline, and no spec-drift record.",
       "last_assessed": "2026-10-15",
       "contracts": {
         "provides": [
@@ -146,7 +168,7 @@
         "publication": "published",
         "source_kind": "repository-path",
         "source": "package.json",
-        "summary": "Published npm package webex-node. main and exports['.'] point at dist/index.js, exports['./package'] at package.json, and devMain at src/index.js. require('webex-node') returns the WebexNode class (CommonJS module.exports, no named exports). Loading it installs @babel/polyfill when global._babelPolyfill is not set and loads the 17 plugin packages listed in src/webex-node.js. WebexNode.init(attrs) merges {sdkType: 'webex-node'}, the src/config.js module object, and attrs.config into attrs.config and returns new WebexNode(attrs). Per-file behavior is in src/docs/README.md."
+        "summary": "Published npm package webex-node. main and exports['.'] point at dist/index.js, exports['./package'] at package.json, and devMain at src/index.js. require('webex-node') returns the WebexNode class (CommonJS module.exports, no named exports). Loading it installs @babel/polyfill when global._babelPolyfill is not set and loads the 17 plugin packages listed in src/webex-node.js. WebexNode.init(attrs) merges {sdkType: 'webex-node'}, the src/config.js module object, and attrs.config into attrs.config and returns new WebexNode(attrs). Per-file behavior is in src/docs/README.md. Declared in package.json but not required by src/: @webex/common, @webex/internal-plugin-voicea, and @webex/storage-adapter-local-storage. @babel/runtime-corejs2 is used by the build output (Babel transform-runtime helpers), not by src/."
       },
       "webex-core-plugin-host": {
         "kind": "sdk",
@@ -250,7 +272,7 @@
       {
         "path": "SECURITY.md",
         "action": "omit",
-        "reason": "No package-level security policy exists. The workspace root SECURITY.md is not overwritten and a per-package copy would duplicate it.",
+        "reason": "No security policy file exists in this package or at the workspace root. Stage 0 creates none; a policy is a governance decision outside this package's annotation.",
         "decided_by": "akulakum@cisco.com (bootstrap questionnaire)",
         "decided_at": "2026-10-15T16:41:58Z"
       },
@@ -287,7 +309,12 @@
       "canonical": ".sdd/templates/repo-standards"
     },
     "repo_skills_root": ".sdd/skills",
-    "contract_index_path": "docs/architecture.md"
+    "contract_index_path": "docs/architecture.md",
+    "monorepo_package": {
+      "package_path": "packages/webex-node",
+      "root_manifest_path": "../../.sdd/manifest.json",
+      "templates_root_path": "../../.sdd/templates/repo-standards"
+    }
   },
   "coverage_ratchet": {
     "enabled": true,
@@ -301,7 +328,7 @@
       "@webex/jest-config-legacy via jest.config.js",
       "@webex/legacy-tools build and test runner via package.json",
       "package README.md",
-      "Repo Standards 0.3.0 templates at the JS SDK root .sdd/templates/repo-standards; the Repo Annotation checkers and validator reach them through a temporary, uncommitted local symlink at .sdd/templates/repo-standards"
+      "Repo Standards 0.3.0 templates at the monorepo root ../../.sdd/templates/repo-standards, referred to through layout.monorepo_package.templates_root_path; the package holds no templates"
     ],
     "compliance_tier": "baseline"
   },
@@ -325,5 +352,10 @@
     },
     "resolved_by": "claude-cowork (code evidence; bootstrap questionnaire)",
     "resolved_at": "2026-10-15T16:41:58Z"
+  },
+  "tooling": {
+    "sdlc_skills": {
+      "source_ref": "repo-annotation@2.3.1"
+    }
   }
 }

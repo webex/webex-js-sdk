@@ -406,6 +406,15 @@
       "index": "packages/webex/docs/index.md",
       "onboarded_at": "2026-11-13T05:41:34Z",
       "onboarded_by": "claude-cowork"
+    },
+    {
+      "id": "webex-node",
+      "path": "packages/webex-node",
+      "manifest": "packages/webex-node/.sdd/manifest.json",
+      "agent_entry": "packages/webex-node/AGENTS.md",
+      "index": "packages/webex-node/docs/index.md",
+      "onboarded_at": "2026-11-13T09:16:21Z",
+      "onboarded_by": "claude-cowork"
     }
   ],
   "substrate": {

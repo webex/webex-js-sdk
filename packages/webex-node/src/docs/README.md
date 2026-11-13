@@ -9,8 +9,8 @@ doc_kind: module-spec
 generated_from: module-spec@0.3.0
 generated_by: claude-cowork
 approved_by: akulakum@cisco.com
-updated_at: 2026-10-15T23:00:24Z
-validation_status: pass-with-warnings
+updated_at: 2026-11-13T09:16:21Z
+validation_status: not-run
 -->
 
 # webex-node SDK entry
@@ -38,7 +38,7 @@ Related context: [documentation index](../../docs/index.md) ·
 | Parent spec       | — |
 | Doc kind          | Module spec |
 | Coverage score    | 93.3% assessed 2026-10-15 — 14 of 15 mandatory fields PRESENT, critical 8 of 8; test strategy is WEAK (the 5 unit tests do not assert the package configuration, plugin registration, or the polyfill guard; gaps listed under Verification) and no characterization baseline exists. Independent validation: see the Validation status row |
-| Validation status | pass-with-warnings; assessed 2026-10-16 by current-session (different-runtime); 0 Blocking, 2 Minor tooling warnings |
+| Validation status | not-run on this content; awaiting independent validation |
 
 ## Applicability
 
@@ -285,7 +285,9 @@ classDiagram
   two `undefined` values into webex-core's `MemoryStoreAdapter` default; lodash `merge` keeps the
   existing adapter functions, so storage still works, but each adapter gains two stray keys.
 - `HYDRA_SERVICE_URL` is read when `src/config.js` loads, so setting it later has no effect on that
-  module's values.
+  module's values. Those values are the unused aliases of `MOD-007`; the variable itself still sets
+  the Hydra discovery URL through webex-core's configuration (sibling package webex-core, file
+  src/config.js), unless the caller overrides it or FedRAMP replaces `services.discovery`.
 - `init` mutates its argument (`INV-002`). Reusing one `attrs` object for two `init` calls merges
   the earlier result into the next one.
 - `new WebexNode(attrs)` does not add `sdkType` or the package configuration; only webex-core, plugin, and caller configuration apply (`MOD-005`).
