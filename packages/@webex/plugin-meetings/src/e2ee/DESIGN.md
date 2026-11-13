@@ -53,7 +53,7 @@ or from plain SRTP. In an adaptive meeting a non-E2EE client may join and have a
 | D4 | Member verification is exposed on `Member`, but MLS roster data is kept in a **separate registry keyed by device URL** and reconciled, because Locus member updates and MLS roster updates arrive independently and in any order. |
 | D5 | A device is **verified** when its selected X.509 identity result is `E2eeValidationResult.Success` with a verified identity type. `Member` exposes per-device data and an aggregated state. |
 | D6 | The WASM module is **preloaded** in `Meetings.register()`; credentials are fetched lazily on the first E2EE meeting and cached. |
-| D7 | MLS failures are **fatal for E2EE**: the session is torn down, a failure event and a behavioral metric are emitted. The meeting never silently continues without E2EE (see [Planned](#planned--not-yet-implemented) for fatal failure handling). |
+| D7 | MLS failures are **fatal for the E2EE session**, not the meeting: the session is torn down, a failure event and a behavioral metric are emitted, and the state becomes `failed` / `evicted`. The SDK does not leave the meeting; the app decides whether to retry (`meeting.e2ee.start()`) or leave. |
 | D8 | Media-key injection uses a **new `internal-media-core` API** defined by this package (`IE2eeMediaConnection`); its implementation is out of scope here. |
 
 ## Architecture
@@ -235,7 +235,9 @@ Constructed with an `E2eeMeetingContext` (`correlationId`, `getLocusInfo()`, `ge
 Public API: `state`, `getSecurityCode()`, `hasUntrustedMediaServices`, `start()`, `stop()`,
 `llmChannelChanged()`, plus events (`EventsScope`).
 
-`start()` is idempotent, never rejects, and is a no-op unless `required()`:
+`start()` never rejects, and is a no-op unless `required()` or while a session is already
+`initializing`, `joining` or `joined`. It runs from `disabled`, `left`, `failed` and `evicted`, so an
+app can retry after a failure by calling it again; each run creates a fresh MLS session:
 
 1. State → `initializing`. Load the WASM module and fetch credentials in parallel.
 2. Create `MediaEncryptionService` and `MLS`, wire session events, and `initialize()` with the device,
@@ -259,10 +261,11 @@ not on `joinSuccess`. This is what moves the trust state from `calculating` to `
 future; for now any media service counts as untrusted.
 
 **`handleFatal(state, reason, details)`** logs, sends the `js_sdk_e2ee_failure` behavioral metric
-(`correlation_id`, `state`, `reason`, plus `errorCode` / `error` when available), tears down the
+(`correlation_id`, `state`, `reason`, plus `errorCode` / `errorMessage` when available), tears down the
 session, sets state `failed` or `evicted` (clearing the security code), and emits
-`MEETING_E2EE_FAILURE {reason}`. Reasons: `startFailed`, the engine's join-failure reason,
-`mediaEncryptionRequestFailure`, `evicted`.
+`MEETING_E2EE_FAILURE {reason, errorCode?, errorMessage?}`. Reasons: `startFailed`, the engine's join-failure reason,
+`mediaEncryptionRequestFailure`, `evicted`. It does not leave the meeting (see D7); the SDK does not
+retry on its own.
 
 **`stop()`** tears down (stop signaling, unsubscribe, `session.leave()`, reset the reconciler) and
 sets state `left`. It is silent when state is `disabled`, so callers can invoke it unconditionally.
@@ -309,7 +312,7 @@ It also cancels a `start()` still awaiting the WASM module, credentials or MLS i
 | `meeting:e2ee:securityCodeUpdated` | `{securityCode}` |
 | `meeting:e2ee:stateChanged` | `{state}` |
 | `meeting:e2ee:mediaServicesChanged` | `{hasMediaServices}` |
-| `meeting:e2ee:failure` | `{reason}` |
+| `meeting:e2ee:failure` | `{reason, errorCode?, errorMessage?}` |
 | `meeting:trustStateChanged` | `{trustState}` |
 
 ## Static assets
@@ -347,9 +350,10 @@ host must allow cross-origin requests and serve the `.js` file with a JavaScript
   set. `Meeting` will attach it after `createMediaConnection()` and detach it in
   `closePeerConnections()`. The MLS session and LLM persist across media reconnects, so the group is
   not rejoined.
-- **Fatal failure handling.** `handleFatal` will also call `meeting.leave()` with new
-  `MEETING_REMOVED_REASON` values (`E2EE_JOIN_FAILURE`, `E2EE_EVICTED`, ...) and surface an
-  `E2eeError`, so the app gets `meeting:removed` with the cause.
+- **Media while E2EE has failed.** Because the SDK no longer leaves on failure (D7), the
+  `MediaKeyController` must ensure media is never sent unencrypted while E2EE is `failed` /
+  `evicted`. `trustState` currently stays `calculating` in that case; a dedicated failed value may
+  be added for app UIs.
 
 ## Testing
 
