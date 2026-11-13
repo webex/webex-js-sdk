@@ -201,6 +201,15 @@
       "onboarded_by": "claude-code"
     },
     {
+      "id": "@webex/plugin-attachment-actions",
+      "path": "packages/@webex/plugin-attachment-actions",
+      "manifest": "packages/@webex/plugin-attachment-actions/.sdd/manifest.json",
+      "agent_entry": "packages/@webex/plugin-attachment-actions/AGENTS.md",
+      "index": "packages/@webex/plugin-attachment-actions/docs/index.md",
+      "onboarded_at": "2026-11-13T02:40:00Z",
+      "onboarded_by": "claude-code"
+    },
+    {
       "id": "@webex/plugin-authorization",
       "path": "packages/@webex/plugin-authorization",
       "manifest": "packages/@webex/plugin-authorization/.sdd/manifest.json",
@@ -307,6 +316,6 @@
   "provenance": {
     "generated_by": "claude-code",
     "approved_by": "rarajes2@cisco.com",
-    "updated_at": "2026-11-13T02:29:00Z"
+    "updated_at": "2026-11-13T02:40:00Z"
   }
 }
