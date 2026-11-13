@@ -318,6 +318,50 @@ describe('webex-core', () => {
       });
     });
 
+    describe('#markFailedServiceUrl() with hosts shared across service details', () => {
+      it('marks the host failed on every service detail that shares it', () => {
+        const sharedServiceUrls = () => [
+          {
+            host: 'conv.example.com',
+            baseUrl: 'https://conv.example.com/conversation/api/v1',
+            priority: 1,
+          },
+          {
+            host: 'conv-b.example.com',
+            baseUrl: 'https://conv-b.example.com/conversation/api/v1',
+            priority: 2,
+          },
+        ];
+
+        catalog.updateServiceGroups('postauth', [
+          {
+            id: 'urn:TEAM:a:identityLookup',
+            serviceName: 'identityLookup',
+            serviceUrls: sharedServiceUrls(),
+          },
+          {
+            id: 'urn:TEAM:a:conversation',
+            serviceName: 'conversation',
+            serviceUrls: sharedServiceUrls(),
+          },
+        ]);
+
+        const nextHighest = catalog.markFailedServiceUrl(
+          'https://conv.example.com/conversation/api/v1/conversations/id'
+        );
+
+        assert.equal(nextHighest, 'https://conv-b.example.com/conversation/api/v1');
+        assert.equal(
+          catalog._getServiceDetail('urn:TEAM:a:identityLookup').get(),
+          'https://conv-b.example.com/conversation/api/v1'
+        );
+        assert.equal(
+          catalog._getServiceDetail('urn:TEAM:a:conversation').get(),
+          'https://conv-b.example.com/conversation/api/v1'
+        );
+      });
+    });
+
     describe('findServiceDetailFromUrl()', () => {
       const otherService = {
         serviceUrls: [
@@ -405,6 +449,40 @@ describe('webex-core', () => {
         catalog.serviceGroups.postauth.push(exampleService);
 
         assert.isUndefined(catalog.findServiceDetailFromUrl('not-a-url'));
+      });
+
+      describe('when several service details share a url', () => {
+        const url = 'https://example.com/resource/id';
+        const aliasService = {
+          serviceName: 'alias',
+          serviceUrls: [{baseUrl: 'https://example.com/resource'}],
+        };
+        const namedService = {
+          serviceName: 'named',
+          serviceUrls: [{baseUrl: 'https://example.com/resource'}],
+        };
+
+        beforeEach(() => {
+          catalog.serviceGroups.postauth.push(aliasService, namedService);
+        });
+
+        it.each([
+          ['the first matching detail', undefined, aliasService],
+          ['the named detail', 'named', namedService],
+          ['the named detail', 'alias', aliasService],
+          ['undefined for an unmatched name', 'other', undefined],
+        ])('returns %s when the service name is %s', (_description, serviceName, expected) => {
+          assert.equal(catalog.findServiceDetailFromUrl(url, serviceName), expected);
+        });
+
+        it('does not match a named service on a similar-looking host (SECURITY)', () => {
+          assert.isUndefined(
+            catalog.findServiceDetailFromUrl(
+              'https://example.com.attacker.com/resource/id',
+              'named'
+            )
+          );
+        });
       });
     });
   });

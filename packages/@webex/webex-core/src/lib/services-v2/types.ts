@@ -74,7 +74,7 @@ export interface IServiceCatalog {
     clusterId: ClusterId;
     serviceGroup?: ServiceGroup;
   }): {name: string; url: string} | undefined;
-  findServiceDetailFromUrl(url: string): IServiceDetail | undefined;
+  findServiceDetailFromUrl(url: string, serviceName?: string): IServiceDetail | undefined;
   findAllowedDomain(url: string): string | undefined;
   get(clusterId: ClusterId, serviceGroup?: ServiceGroup): string | undefined;
   getAllowedDomains(): string[];

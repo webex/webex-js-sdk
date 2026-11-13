@@ -1009,6 +1009,34 @@ describe('webex-core', () => {
           defaultUrl: baseUrl,
         });
       });
+
+      it('returns the named service when another service with the same urls is listed first', () => {
+        const serviceUrls = () => [
+          {
+            host: 'conv.example.com',
+            baseUrl: 'https://conv.example.com/conversation/api/v1',
+            priority: 1,
+          },
+        ];
+        const url = 'https://conv.example.com/conversation/api/v1/conversations/id';
+
+        catalog.updateServiceGroups('postauth', [
+          {
+            id: 'urn:TEAM:a:identityLookup',
+            serviceName: 'identityLookup',
+            serviceUrls: serviceUrls(),
+          },
+          {id: 'urn:TEAM:a:conversation', serviceName: 'conversation', serviceUrls: serviceUrls()},
+        ]);
+
+        assert.equal(services.getServiceFromUrl(url).name, 'identityLookup');
+        assert.deepEqual(services.getServiceFromUrl(url, {name: 'conversation'}), {
+          name: 'conversation',
+          priorityUrl: 'https://conv.example.com/conversation/api/v1',
+          defaultUrl: 'https://conv.example.com/conversation/api/v1',
+        });
+        assert.isUndefined(services.getServiceFromUrl(url, {name: 'meeting-container'}));
+      });
     });
 
     describe('#_formatReceivedHostmap()', () => {

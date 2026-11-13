@@ -195,9 +195,12 @@ const ServiceCatalog = AmpState.extend({
   /**
    * Find a service based on the provided url.
    * @param {string} url - Must be parsable by `Url`
+   * @param {string} [serviceName] - Only match service details with this name. Several details can
+   * share base URLs (for example aliases of the same backend), so without a name the first match in
+   * lookup order is returned.
    * @returns {IServiceDetail} - ServiceDetail assocated with provided url
    */
-  findServiceDetailFromUrl(url: string): IServiceDetail | undefined {
+  findServiceDetailFromUrl(url: string, serviceName?: string): IServiceDetail | undefined {
     const serviceDetails = this._getAllServiceDetails();
 
     let candidateUrl: URL;
@@ -208,8 +211,12 @@ const ServiceCatalog = AmpState.extend({
       return undefined;
     }
 
-    return serviceDetails.find(({serviceUrls}) => {
-      for (const serviceUrl of serviceUrls) {
+    return serviceDetails.find((serviceDetail) => {
+      if (serviceName && serviceDetail.serviceName !== serviceName) {
+        return false;
+      }
+
+      for (const serviceUrl of serviceDetail.serviceUrls) {
         if (matchesParsedCatalogUrl(candidateUrl, parseCatalogUrl(serviceUrl.baseUrl))) {
           return true;
         }
@@ -254,20 +261,17 @@ const ServiceCatalog = AmpState.extend({
 
   /**
    * Mark a priority host service url as failed.
-   * This will mark the host associated with the
-   * `ServiceDetail` to be removed from the its
-   * respective host array, and then return the next
-   * viable host from the `ServiceDetail` host array,
-   * or the `ServiceDetail` default url if no other priority
-   * hosts are available, or if `noPriorityHosts` is set to
-   * `true`.
+   * This marks the host as failed on every `ServiceDetail`
+   * that has it (several details can share a host), and then
+   * returns the next viable url of the first such
+   * `ServiceDetail` in lookup order.
    * @param {string} url
    * @returns {string}
    */
   markFailedServiceUrl(url: string): string | undefined {
     const serviceDetails = this._getAllServiceDetails();
 
-    const serviceDetailWithFailedHost = serviceDetails.find((serviceDetail: IServiceDetail) =>
+    const [serviceDetailWithFailedHost] = serviceDetails.filter((serviceDetail: IServiceDetail) =>
       serviceDetail.failHost(url)
     );
 

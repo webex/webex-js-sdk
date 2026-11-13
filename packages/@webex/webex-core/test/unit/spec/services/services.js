@@ -5,7 +5,7 @@
 import {assert} from '@webex/test-helper-chai';
 import MockWebex from '@webex/test-helper-mock-webex';
 import sinon from 'sinon';
-import {Services, ServiceRegistry, ServiceState} from '@webex/webex-core';
+import {Services, ServiceRegistry, ServiceState, ServiceUrl} from '@webex/webex-core';
 import {NewMetrics} from '@webex/internal-plugin-metrics';
 
 const waitForAsync = () =>
@@ -682,6 +682,27 @@ describe('webex-core', () => {
           assert.typeOf(key, 'string');
           assert.typeOf(serviceList[key], 'string');
         });
+      });
+    });
+
+    describe('#getServiceFromUrl()', () => {
+      it('returns the named service when another service with the same urls is listed first', () => {
+        const url = 'https://conv.example.com/conversation/api/v1/conversations/id';
+        const createServiceUrl = (name) =>
+          new ServiceUrl({name, defaultUrl: 'https://conv.example.com/conversation/api/v1'});
+
+        catalog.serviceGroups.postauth.push(
+          createServiceUrl('identityLookup'),
+          createServiceUrl('conversation')
+        );
+
+        assert.equal(services.getServiceFromUrl(url).name, 'identityLookup');
+        assert.deepEqual(services.getServiceFromUrl(url, {name: 'conversation'}), {
+          name: 'conversation',
+          priorityUrl: 'https://conv.example.com/conversation/api/v1',
+          defaultUrl: 'https://conv.example.com/conversation/api/v1',
+        });
+        assert.isUndefined(services.getServiceFromUrl(url, {name: 'meeting-container'}));
       });
     });
 
