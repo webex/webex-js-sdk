@@ -58,7 +58,7 @@ import {
 import AutoWrapup from './AutoWrapup';
 import type {WrapupData} from '../config/types';
 import {AIAssistantEventName, AIAssistantEventType} from '../../types';
-import {createSummaryError} from './TaskUtils';
+import {createSummaryError, validateCadAttributes} from './TaskUtils';
 import type ApiAIAssistant from '../ApiAiAssistant';
 
 type UIControlConfigInput = Omit<UIControlConfig, 'channelType'> & {
@@ -1139,6 +1139,61 @@ export default abstract class Task extends EventEmitter implements ITask {
         },
         ['operational', 'behavioral', 'business']
       );
+      throw detailedError;
+    }
+  }
+
+  /**
+   * Updates CAD/global-variable attributes on the live task.
+   * @param attributes - Attribute names and string values to update
+   * @returns Promise<TaskResponse>
+   * @throws Error when the attributes exceed Contact Center limits or the update fails
+   */
+  public async updateCadVariables(attributes: Record<string, string>): Promise<TaskResponse> {
+    LoggerProxy.log('Updating task CAD variables', {
+      module: TASK_FILE,
+      method: METHODS.UPDATE_CAD_VARIABLES,
+      interactionId: this.data?.interactionId,
+    });
+
+    try {
+      this.metricsManager.timeEvent([
+        METRIC_EVENT_NAMES.TASK_CAD_UPDATE_SUCCESS,
+        METRIC_EVENT_NAMES.TASK_CAD_UPDATE_FAILED,
+      ]);
+      validateCadAttributes(attributes);
+
+      const response = await this.contact.updateCadVariables({
+        interactionId: this.data.interactionId,
+        data: {attributes},
+      });
+
+      this.metricsManager.trackEvent(
+        METRIC_EVENT_NAMES.TASK_CAD_UPDATE_SUCCESS,
+        {
+          taskId: this.data.interactionId,
+          attributeCount: Object.keys(attributes).length,
+          ...MetricsManager.getCommonTrackingFieldForAQMResponse(response),
+        },
+        ['operational', 'behavioral']
+      );
+
+      return response;
+    } catch (error) {
+      const {error: detailedError} = getErrorDetails(error, METHODS.UPDATE_CAD_VARIABLES, CC_FILE);
+
+      this.metricsManager.trackEvent(
+        METRIC_EVENT_NAMES.TASK_CAD_UPDATE_FAILED,
+        {
+          taskId: this.data?.interactionId,
+          attributeCount: Object.keys(attributes ?? {}).length,
+          ...MetricsManager.getCommonTrackingFieldForAQMResponseFailed(
+            (error as any)?.details || {}
+          ),
+        },
+        ['operational', 'behavioral']
+      );
+
       throw detailedError;
     }
   }

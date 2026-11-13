@@ -17,6 +17,26 @@ type AISummaryError = Error & {data?: Record<string, unknown>};
 export const isNonEmptyString = (value: unknown): value is string =>
   typeof value === 'string' && value.length > 0;
 
+/**
+ * Validates task attributes against the Contact Center CAD limits.
+ * @param attributes - Attribute values to send to Contact Center
+ * @throws Error when the payload exceeds the supported count or value length
+ */
+export const validateCadAttributes = (attributes: Record<string, string>): void => {
+  if (!attributes || typeof attributes !== 'object' || Array.isArray(attributes)) {
+    throw new Error('CAD attributes must be an object of string values.');
+  }
+
+  const entries = Object.entries(attributes);
+  if (entries.length > 30) {
+    throw new Error('CAD attributes may contain no more than 30 entries.');
+  }
+
+  if (entries.some(([, value]) => typeof value !== 'string' || value.length > 256)) {
+    throw new Error('CAD attribute values must be strings no longer than 256 characters.');
+  }
+};
+
 export const createSummaryError = (errorCode: string): AISummaryError => {
   const error = new Error(errorCode) as AISummaryError;
 
