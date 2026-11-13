@@ -355,6 +355,13 @@
           "packages/webex"
         ],
         "notes": "Onboarded package: its own AGENTS.md, docs/, and .sdd/manifest.json are routed from .sdd/manifest.json packages."
+      },
+      {
+        "name": "webex-node",
+        "paths": [
+          "packages/webex-node"
+        ],
+        "notes": "Onboarded package: its own AGENTS.md, docs/, and .sdd/manifest.json are routed from .sdd/manifest.json packages."
       }
     ],
     "source_surfaces": [
