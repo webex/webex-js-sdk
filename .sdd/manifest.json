@@ -390,6 +390,15 @@
       "onboarded_by": "claude-code"
     },
     {
+      "id": "@webex/storage-adapter-session-storage",
+      "path": "packages/@webex/storage-adapter-session-storage",
+      "manifest": "packages/@webex/storage-adapter-session-storage/.sdd/manifest.json",
+      "agent_entry": "packages/@webex/storage-adapter-session-storage/AGENTS.md",
+      "index": "packages/@webex/storage-adapter-session-storage/docs/index.md",
+      "onboarded_at": "2026-11-13T06:07:00Z",
+      "onboarded_by": "claude-code"
+    },
+    {
       "id": "webex",
       "path": "packages/webex",
       "manifest": "packages/webex/.sdd/manifest.json",
@@ -406,6 +415,6 @@
   "provenance": {
     "generated_by": "claude-code",
     "approved_by": "rarajes2@cisco.com",
-    "updated_at": "2026-11-13T02:40:00Z"
+    "updated_at": "2026-11-13T06:07:00Z"
   }
 }
