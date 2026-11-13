@@ -150,7 +150,7 @@ webex, HTTP or LLM dependencies.
   `setLlmConnectedBeforeJoin(connected)`, `llmConnected()`, `getSecurityCode()`, `getRoster()`,
   `isLeader()`, `on()` / `off()`.
 - Events: `joinSuccess` `{epoch, securityCode, sframe, key}`, `joinFailure` `{reason}`,
-  `mediaEncryptionRequestFailure` `{errorCode, message}`, `newKey`, `useKey` `{epoch}`,
+  `mediaEncryptionServiceFailure` `{errorCode, message}`, `newKey`, `useKey` `{epoch}`,
   `purgeKeys` `{epoch}`, `rosterAdded` `E2eeRosterMember[]`, `rosterRemoved` `{urls}`,
   `leaderChanged`, `evicted`, `versionNegotiated`, `securityCodeChanged` `{code}`.
 
@@ -167,7 +167,7 @@ with the service's `error.body.errorCode`, or `0` for client-side errors (JSON, 
 If libe2ee cannot recover from a service error code, or fails to process a response, it throws
 `e2ee_negotiation_failure` out of `completeHttpRequest` (recoverable codes such as `not_leader` and
 `epochs_not_matching` are handled internally). In WASM this is an opaque value with no message, so MLS
-catches it and emits `mediaEncryptionRequestFailure` instead of letting it become an unhandled
+catches it and emits `mediaEncryptionServiceFailure` instead of letting it become an unhandled
 rejection.
 
 The engine's `keepAlive()` is for backend services (e.g. Homer) and is not called by the SDK.
@@ -250,7 +250,7 @@ Session events:
   `SECURITY_CODE_UPDATED`.
 - `rosterAdded` / `rosterRemoved` → update the reconciler, recompute media-service presence, and
   check join completion.
-- `joinFailure` / `mediaEncryptionRequestFailure` / `evicted` → `handleFatal()`.
+- `joinFailure` / `mediaEncryptionServiceFailure` / `evicted` → `handleFatal()`.
 
 **Join completion.** State becomes `joined` only when our own device URL appears in the MLS roster,
 not on `joinSuccess`. This is what moves the trust state from `calculating` to `zeroTrust`.
@@ -264,7 +264,7 @@ future; for now any media service counts as untrusted.
 (`correlation_id`, `state`, `reason`, plus `errorCode` / `errorMessage` when available), tears down the
 session, sets state `failed` or `evicted` (clearing the security code), and emits
 `MEETING_E2EE_FAILURE {reason, errorCode?, errorMessage?}`. Reasons: `startFailed`, the engine's join-failure reason,
-`mediaEncryptionRequestFailure`, `evicted`. It does not leave the meeting (see D7); the SDK does not
+`mediaEncryptionServiceFailure`, `evicted`. It does not leave the meeting (see D7); the SDK does not
 retry on its own.
 
 **`stop()`** tears down (stop signaling, unsubscribe, `session.leave()`, reset the reconciler) and

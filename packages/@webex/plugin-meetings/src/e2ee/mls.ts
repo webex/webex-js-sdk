@@ -30,7 +30,7 @@ const WASM_LOG_LEVELS = ['', 'FATAL', 'ERROR', 'WARN', 'INFO', 'DEBUG'];
 export interface MLSEventMap {
   joinSuccess: {epoch: number; securityCode: string; sframe: SframeParams; key: E2eeKey};
   joinFailure: {reason: string};
-  mediaEncryptionRequestFailure: {errorCode: number; message: string};
+  mediaEncryptionServiceFailure: {errorCode: number; message: string};
   newKey: E2eeKey;
   useKey: {epoch: number};
   purgeKeys: {epoch: number};
@@ -379,7 +379,7 @@ export default class MLS {
    * `e2ee_negotiation_failure` out of this call when it can't recover from the service's error code
    * or fails to process a successful response; this surfaces in JS as an opaque value with no
    * message. That is unrecoverable for the in-flight operation, so it is reported as
-   * `mediaEncryptionRequestFailure` instead of escaping as an unhandled rejection.
+   * `mediaEncryptionServiceFailure` instead of escaping as an unhandled rejection.
    * @param {number} handlerId
    * @param {boolean} success
    * @param {Uint8Array} body
@@ -400,7 +400,7 @@ export default class MLS {
       LoggerProxy.logger.error(
         `e2ee: MLS --> engine threw while completing HTTP request (success=${success}, errorCode=${errorCode}): ${error}`
       );
-      this.emitEvent('mediaEncryptionRequestFailure', {
+      this.emitEvent('mediaEncryptionServiceFailure', {
         errorCode,
         message: success ? 'Engine failed to process HTTP response' : message,
       });
