@@ -42,7 +42,7 @@
         "require('webex/meetings')"
       ],
       "audience": "meetings-only applications",
-      "notes": "Loads 11 packages; init defaults sdkType meetings and meetings.disableHydraId true."
+      "notes": "Loads 12 packages; init defaults sdkType meetings and meetings.disableHydraId true."
     },
     {
       "name": "webex/calling subpath",

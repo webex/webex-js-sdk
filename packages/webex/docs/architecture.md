@@ -9,8 +9,8 @@ doc_kind: standing-doc
 generated_from: architecture@0.3.0
 generated_by: claude-cowork
 approved_by: akulakum@cisco.com
-updated_at: 2026-11-13T06:02:34Z
-validation_status: pass-with-warnings
+updated_at: 2026-11-13T06:12:48Z
+validation_status: not-run
 -->
 
 # webex architecture
@@ -111,7 +111,7 @@ flowchart LR
 | ---------- | ---- | ------- | ------- | ------------------------------------ |
 | `@webex/webex-core` | Internal | `src` | Constructor base and plugin registry | Workspace version |
 | Public plugin packages (`@webex/plugin-*`) | Internal | `src` | Side-effect registration | Workspace versions |
-| Internal plugin packages (`@webex/internal-plugin-*`) | Internal | `src` | Side-effect registration | Workspace versions; three are required but undeclared (module spec Pitfalls) |
+| Internal plugin packages (`@webex/internal-plugin-*`) | Internal | `src` | Side-effect registration | Workspace versions; four are required but undeclared, including `@webex/internal-plugin-identity` (module spec Pitfalls) |
 | `@webex/common` | Internal | `src/meetings.js`, `env.js` | Utility module (`inBrowser` in `env.js`); `src/meetings.js` requires it without using a binding. It registers no plugin | Workspace version |
 | `@webex/calling`, `@webex/contact-center` | Internal | `src/calling.js`, `src/webex.js` | Calling clients; contact-center registration | Workspace versions |
 | `@webex/storage-adapter-local-storage` | Internal | `src/config-storage.shim.js` | Browser bounded storage | Workspace version |

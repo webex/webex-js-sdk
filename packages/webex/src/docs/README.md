@@ -9,8 +9,8 @@ doc_kind: module-spec
 generated_from: module-spec@0.3.0
 generated_by: claude-cowork
 approved_by: akulakum@cisco.com
-updated_at: 2026-11-13T06:02:34Z
-validation_status: pass-with-warnings
+updated_at: 2026-11-13T06:10:36Z
+validation_status: not-run
 -->
 
 # webex bundle entry points
@@ -37,7 +37,7 @@ Related context: [documentation index](../../docs/index.md) ·
 | Parent spec | — |
 | Doc kind | Module spec |
 | Coverage score | 93.3% assessed 2026-10-13 — 14 of 15 mandatory fields PRESENT, critical 8 of 8; test strategy is WEAK (gaps listed under Verification) and no characterization baseline exists |
-| Validation status | PASS-WITH-WARNINGS; validator current-session; assessed 2026-11-13; source 4f4f008; 0 Blocking, 1 Important, 1 Medium, 0 Minor |
+| Validation status | not-run on this content; awaiting independent validation |
 
 ## Applicability
 
@@ -159,7 +159,7 @@ Contracts provided: `webex-sdk` (native artifact `package.json`) and `webex-umd-
 | ---------- | ------------------ | ---------------- |
 | `@webex/webex-core` (`webex-core-plugin-host`) | `WebexCore.extend`, the plugin registry, `MemoryStoreAdapter`, and the instance runtime behavior that webex-core owns (plugin behavior belongs to each plugin package) | This package sends no request itself. Requests made through an instance use webex-core's request pipeline: error classes (`WebexHttpError` via `HttpStatusInterceptor`), host checks, auth, and redirects assume webex-core's default interceptor set (which registered plugins can extend), and a host-supplied `config.interceptors` set replaces it |
 | Public plugin packages (`webex-public-plugins`) | Side-effect registration of `authorization`, `rooms`, `messages`, `meetings`, and the other public namespaces | A missing package fails the `require` at load time |
-| Internal plugin packages (`webex-internal-plugins`) | Side-effect registration under `webex.internal` | Same as above. `@webex/internal-plugin-encryption`, `@webex/internal-plugin-metrics`, and `@webex/internal-plugin-user` are required by `src/` but not declared in `package.json` (see Pitfalls) |
+| Internal plugin packages (`webex-internal-plugins`) | Side-effect registration under `webex.internal` | Same as above. `@webex/internal-plugin-encryption`, `@webex/internal-plugin-metrics`, `@webex/internal-plugin-user`, and `@webex/internal-plugin-identity` (required by `src/webex.js` and `src/meetings.js`) are required by `src/` but not declared in `package.json` (see Pitfalls) |
 | `@webex/calling` (`webex-calling-sdk`) | Client factories, `Logger`, `createMicrophoneStream`, `NoiseReductionEffect` | Rejections from `createClient` propagate out of `initializeClients` (`MOD-013`) |
 | `@webex/contact-center` (`webex-contact-center-sdk`) | Side-effect registration in `src/webex.js` | Load-time only |
 | `@webex/storage-adapter-local-storage` | Browser bounded storage in the shim | Only through the `browser` field mapping |

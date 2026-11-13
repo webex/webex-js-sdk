@@ -99,6 +99,16 @@
       "source_file": "package.json"
     }
   ],
+  "registries": [
+    {
+      "name": "npm",
+      "type": "npm",
+      "host": "registry.npmjs.org",
+      "egress_required": true,
+      "origin": "human-declared",
+      "declared_by": "akulakum@cisco.com (verified from the workspace root .yarnrc.yml npmRegistryServer: https://registry.npmjs.org; the committed configuration declares no registry authentication, so no auth_env is recorded)"
+    }
+  ],
   "tests": {
     "unit": {
       "command_ref": "unit-test",
@@ -216,7 +226,7 @@
         "publication": "internal",
         "source_kind": "external",
         "source": "@webex/internal-plugin-* workspace packages and @webex/common",
-        "summary": "Required for their registration side effect: internal-plugin-calendar, -device, -dss, -llm, -mercury, -presence, -support, -task, and -voicea (declared), plus internal-plugin-encryption, -metrics, and -user (required by src/ but not declared in package.json). Calling uses webex.internal.device and webex.internal.mercury."
+        "summary": "Required for their registration side effect: internal-plugin-calendar, -device, -dss, -llm, -mercury, -presence, -support, -task, and -voicea (declared), plus internal-plugin-encryption, -metrics, -user, and -identity (required by src/ but not declared in package.json; identity is required by src/webex.js and src/meetings.js). Calling uses webex.internal.device and webex.internal.mercury."
       },
       "webex-calling-sdk": {
         "kind": "sdk",
