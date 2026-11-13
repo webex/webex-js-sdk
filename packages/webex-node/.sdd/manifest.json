@@ -122,7 +122,7 @@
       "path": "src",
       "canonical_spec": "src/docs/README.md",
       "coverage_status": "Partial",
-      "coverage_evidence": "Field coverage 93.3% (14/15) assessed 2026-10-15 by the generator; critical field coverage 8/8. The one WEAK field is test strategy: test/unit/spec/webex-node.test.js runs 5 tests that cover init merging, the sdkType override, the webex property, and the webex-core fedramp setting, but no test asserts any src/config.js value at the top level, plugin registration, the polyfill guard, the CommonJS export, or init mutating its argument, and no characterization baseline exists. Independent validation: not-run on this content; awaiting independent validation. Held at Partial: untested configuration and registration behavior, no characterization baseline, and no spec-drift record.",
+      "coverage_evidence": "Field coverage 93.3% (14/15) assessed 2026-10-15 by the generator; critical field coverage 8/8. The one WEAK field is test strategy: test/unit/spec/webex-node.test.js runs 5 tests that cover init merging, the sdkType override, the webex property, and the webex-core fedramp setting, but no test asserts any src/config.js value at the top level, plugin registration, the polyfill guard, the CommonJS export, or init mutating its argument, and no characterization baseline exists. Independent validation: PASS-WITH-WARNINGS on 2026-11-13 by current-session; 0 Blocking, 0 Important, 0 Medium, 2 Minor tooling warnings. Held at Partial: untested configuration and registration behavior, no characterization baseline, and no spec-drift record.",
       "last_assessed": "2026-10-15",
       "contracts": {
         "provides": [
@@ -221,8 +221,8 @@
     "head_ref": "WEBEX_NODE_PACKAGE_SDD",
     "validator_runtime": "current-session",
     "validator_runtime_source": "invocation-input",
-    "validator_run_id": "spark-853131-spec-validator-2026-10-16-session-b-round-2",
-    "source_commit": "5e5097093ca0039a6eb66b215eb2ed0546f33754"
+    "validator_run_id": "spark-853131-spec-validator-2026-11-13-session-b",
+    "source_commit": "5cecfb62833a413f7b9c7d7dbf00c597024d563c"
   },
   "layout": {
     "sdd_root": ".sdd",

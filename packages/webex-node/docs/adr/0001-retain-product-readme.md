@@ -11,7 +11,7 @@ doc_kind: standing-doc
 generated_from: adr@0.3.0
 generated_by: claude-cowork
 approved_by: akulakum@cisco.com
-updated_at: 2026-10-15T23:00:24Z
+updated_at: 2026-11-13T09:30:49Z
 validation_status: pass-with-warnings
 -->
 

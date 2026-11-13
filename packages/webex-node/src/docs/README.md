@@ -9,8 +9,8 @@ doc_kind: module-spec
 generated_from: module-spec@0.3.0
 generated_by: claude-cowork
 approved_by: akulakum@cisco.com
-updated_at: 2026-11-13T09:16:21Z
-validation_status: not-run
+updated_at: 2026-11-13T09:30:49Z
+validation_status: pass-with-warnings
 -->
 
 # webex-node SDK entry
@@ -33,12 +33,12 @@ Related context: [documentation index](../../docs/index.md) ·
 | Source path       | `src` |
 | Resource kind     | package |
 | Status            | Draft |
-| Last verified     | 2026-10-15 at `db802dc99d` |
+| Last verified     | 2026-11-13 at `5cecfb6283` |
 | Module id         | `webex-node` |
 | Parent spec       | — |
 | Doc kind          | Module spec |
-| Coverage score    | 93.3% assessed 2026-10-15 — 14 of 15 mandatory fields PRESENT, critical 8 of 8; test strategy is WEAK (the 5 unit tests do not assert the package configuration, plugin registration, or the polyfill guard; gaps listed under Verification) and no characterization baseline exists. Independent validation: see the Validation status row |
-| Validation status | not-run on this content; awaiting independent validation |
+| Coverage score    | 93.3% assessed 2026-10-15 — 14 of 15 mandatory fields PRESENT, critical 8 of 8; test strategy is WEAK (the 5 unit tests do not assert the package configuration, plugin registration, or the polyfill guard; gaps listed under Verification) and no characterization baseline exists. Independent validation: PASS-WITH-WARNINGS on 2026-11-13; see the Validation status row |
+| Validation status | pass-with-warnings on 2026-11-13 — validator `current-session`; 0 Blocking, 0 Important, 0 Medium, 2 Minor tooling warnings (validator wrapper absent; Mermaid parser unavailable; diagrams reviewed manually) |
 
 ## Applicability
 
