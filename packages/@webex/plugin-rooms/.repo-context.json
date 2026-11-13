@@ -1,0 +1,427 @@
+{
+  "$schema": "./schemas/repo-context.schema.json",
+  "version": 1,
+  "repository": {
+    "name": "@webex/plugin-rooms",
+    "purpose": "Public plugin registered as webex.rooms that manages Webex rooms (spaces) through the Webex REST API rooms resource (catalog service hydra): create POSTs rooms, get and remove take a room object or id, list resolves a webex-core Page, and update PUTs the whole room object. listWithReadStatus(maxRecent) and getWithReadStatus(roomId) wait for the postauth service catalog, read conversations from the internal conversation plugin, and resolve objects with the hydra room id, type direct or group, title, lastActivityDate, and lastSeenActivityDate, newest activity first. listen() builds a webhook-style event envelope, connects the Mercury socket, and turns conversation activities with the verbs create, update, lock, and unlock into created and updated events on webex.rooms. Importing the package also registers the conversation and mercury internal plugins. Nothing is cached or persisted."
+  },
+  "commands": {
+    "install": "yarn",
+    "prebuild": "yarn prebuild:modules",
+    "compile": "yarn build",
+    "build": "yarn build:src",
+    "unit-test": "[NEEDS HUMAN INPUT] -- package.json defines no test:unit script and the package has no test/unit directory; its only spec, test/integration/spec/rooms.js, runs only under test:browser:broken, which currently bundles nothing. Add a unit suite and script before recording a command here.",
+    "lint": "yarn test:style",
+    "browser-test": "yarn test:browser:broken",
+    "deploy": "yarn deploy:npm"
+  },
+  "public_interfaces": [
+    {
+      "name": "@webex/plugin-rooms package entry",
+      "kind": "package_export",
+      "source": "src/index.js",
+      "entrypoints": [
+        "import '@webex/plugin-rooms'",
+        "import Rooms from '@webex/plugin-rooms'"
+      ],
+      "audience": "SDK bundles (webex, webex-node) and applications that build their own webex instance",
+      "notes": "Importing the package registers the internal plugins conversation and mercury, then Rooms as public plugin 'rooms' with no config; the first registration of the name wins. The default export Rooms is the only export."
+    },
+    {
+      "name": "webex.rooms methods and events",
+      "kind": "plugin_api",
+      "source": "src/rooms.js",
+      "entrypoints": [
+        "webex.rooms.create(room)",
+        "webex.rooms.get(room, options)",
+        "webex.rooms.list(options)",
+        "webex.rooms.update(room)",
+        "webex.rooms.remove(room)",
+        "webex.rooms.listWithReadStatus(maxRecent)",
+        "webex.rooms.getWithReadStatus(roomId)",
+        "webex.rooms.listen()",
+        "webex.rooms.on('created' or 'updated', handler)"
+      ],
+      "audience": "applications and the workspace samples browser-socket and browser-read-status",
+      "notes": "create, get, list, update, and remove send one hydra rooms request each; list resolves a webex-core Page and remove resolves undefined on 204. listWithReadStatus rejects a negative maxRecent before any request, but a value above 100 is not rejected; it resolves {items} sorted newest activity first. getWithReadStatus decodes a hydra room id. listen() needs spark:all and spark:kms; each call adds another Mercury listener. onWebexApiEvent and getRoomEvent are marked @private."
+    },
+    {
+      "name": "package scripts",
+      "kind": "npm_scripts",
+      "source": "package.json",
+      "entrypoints": [
+        "build",
+        "build:src",
+        "test:style",
+        "test:browser:broken",
+        "test",
+        "deploy:npm"
+      ],
+      "audience": "contributors and CI",
+      "notes": "build runs build:src, which writes dist. There is no test:unit script and no unit test. test:browser:broken (commands.browser-test) runs karma over test/integration/spec but bundles nothing today (no case run, exit 0). The aggregate test script runs test:style, then exits 1 because test:unit is not defined (it also names test:integration and test:browser, which are not defined either); it is deliberately not a manifest command."
+    }
+  ],
+  "source_of_truth": [
+    {
+      "surface": "Rooms plugin implementation",
+      "paths": [
+        "src/index.js",
+        "src/rooms.js"
+      ],
+      "generated_artifacts": [
+        "dist"
+      ],
+      "refresh_with": [
+        "yarn build:src"
+      ],
+      "validate_with": [
+        "yarn test:style"
+      ]
+    },
+    {
+      "surface": "module specification",
+      "paths": [
+        "src/docs/README.md"
+      ],
+      "generated_artifacts": [],
+      "refresh_with": [
+        "update alongside the behavior change in the same commit"
+      ],
+      "validate_with": [
+        "spec-validator on an independent runtime"
+      ]
+    }
+  ],
+  "generated_artifacts": [
+    {
+      "path": "dist",
+      "generated_from": "src",
+      "refresh_with": "yarn build:src"
+    },
+    {
+      "path": "../../../.sdd/templates/repo-standards/template-map.json",
+      "generated_from": "WebexTools/repo-standards@d89a7fe59126ae3ad9bac9ca352aa7f12b4c85dc",
+      "refresh_with": "The package holds no templates. It refers to the monorepo root snapshot at ../../../.sdd/templates/repo-standards through layout.monorepo_package.templates_root_path in .sdd/manifest.json. Refresh the root snapshot, not this package."
+    }
+  ],
+  "validation_matrix": [
+    {
+      "paths": [
+        "src/**"
+      ],
+      "minimum": [
+        "yarn build:src",
+        "yarn test:style"
+      ],
+      "recommended": [
+        "add a test/unit/spec case and a test:unit script for the changed behavior; the package has no unit tests"
+      ]
+    },
+    {
+      "paths": [
+        "src/rooms.js"
+      ],
+      "minimum": [
+        "yarn build:src",
+        "yarn test:style"
+      ],
+      "recommended": [
+        "pin the request paths, the read-status object, the maxRecent checks, and the verb-to-event mapping with unit cases before changing them; check the workspace samples browser-socket and browser-read-status, which use listen and listWithReadStatus"
+      ]
+    },
+    {
+      "paths": [
+        "src/index.js"
+      ],
+      "minimum": [
+        "yarn build:src",
+        "yarn test:style"
+      ],
+      "recommended": [
+        "check the bundles that register the plugin (webex, webex-node) when the registered name or the conversation and mercury imports change"
+      ]
+    }
+  ],
+  "change_impact": [
+    {
+      "paths": [
+        "src/rooms.js"
+      ],
+      "affects": [
+        "the hydra rooms requests and their result shapes",
+        "the read-status object and the maxRecent rules",
+        "the created and updated events and their envelope"
+      ],
+      "refresh_with": [
+        "yarn build:src"
+      ],
+      "validate_with": [
+        "yarn test:style"
+      ],
+      "avoid_direct_edits": [
+        "dist"
+      ],
+      "notes": "No unit case covers any method; add one before changing behavior."
+    },
+    {
+      "paths": [
+        "src/index.js"
+      ],
+      "affects": [
+        "the registered plugin name",
+        "registration of webex.internal.conversation and webex.internal.mercury"
+      ],
+      "refresh_with": [
+        "yarn build:src"
+      ],
+      "validate_with": [
+        "yarn test:style"
+      ],
+      "avoid_direct_edits": [
+        "dist"
+      ],
+      "notes": "The read-status methods and listen() depend on the two internal plugins registered here (MOD-001)."
+    }
+  ],
+  "evidence_rules": [
+    {
+      "claim_category": "command_name",
+      "sources": [
+        "package.json"
+      ],
+      "requirement": "The script must exist in package.json scripts.",
+      "notes": "test:unit, test:integration, and test:browser do not exist, so the aggregate test script fails; test:browser:broken currently verifies nothing."
+    },
+    {
+      "claim_category": "import_path",
+      "sources": [
+        "src/index.js"
+      ],
+      "requirement": "A binding is public only if exported from src/index.js.",
+      "notes": "The only export is the default Rooms."
+    },
+    {
+      "claim_category": "behavior_claim",
+      "sources": [
+        "src"
+      ],
+      "requirement": "Ground every behavioral claim in source evidence.",
+      "notes": "Commit history is not an evidence source for this package. README.md is context only (docs/adr/0001-retain-product-readme.md). The integration spec under test/integration/spec states intended behavior but no script runs it. The webex-core, common, and internal-plugin-mercury specs were consulted; internal-plugin-conversation has no spec, so its code was read, as were the webex-core services and the common helpers where those specs are silent."
+    }
+  ],
+  "negative_guidance": [
+    {
+      "rule": "Do not build Hydra ids by hand or with a fixed cluster.",
+      "why": "Read-status and event ids must match the ids the rooms resource returns (INV-003)."
+    },
+    {
+      "rule": "Do not let getRoomEvent or onWebexApiEvent throw.",
+      "why": "They run inside the Mercury listener chain; getRoomEvent logs and returns null on error (INV-004)."
+    },
+    {
+      "rule": "Do not fill an event without deep-cloning the stored envelope.",
+      "why": "One envelope is shared by every event (INV-005)."
+    },
+    {
+      "rule": "Do not log room titles, room ids, or person ids through webex.logger.",
+      "why": "They identify users and spaces; only the conversion error is logged today."
+    },
+    {
+      "rule": "Do not treat README.md as the behavior reference.",
+      "why": "It shows only get(id); see docs/adr/0001-retain-product-readme.md."
+    },
+    {
+      "rule": "Do not infer a coverage threshold or a unit-test command for this package.",
+      "why": "No unit test, test:unit script, coverage script, or threshold exists."
+    }
+  ],
+  "confidence_policy": {
+    "high": {
+      "action": "update",
+      "expectation": "Source and a unit case agree; no such case exists in this package yet."
+    },
+    "medium": {
+      "action": "narrow-scope",
+      "expectation": "Only source evidence exists, or only the unrun integration spec, as for every method and event today. Pin current behavior with a unit case before modifying."
+    },
+    "low": {
+      "action": "noop",
+      "expectation": "Neither source, tests, nor a dependency's spec or code settles the question, as for which activity fields Mercury delivers for each verb. Stop and report the gap."
+    }
+  },
+  "repository_topology": {
+    "main_entrypoints": [
+      {
+        "name": "package entry",
+        "path": "src/index.js",
+        "purpose": "Registers the conversation and mercury internal plugins and the rooms plugin, and exports the class",
+        "notes": "No subpath exports; package.json main is dist/index.js and devMain is src/index.js."
+      }
+    ],
+    "workspace_packages": [
+      {
+        "name": "@webex/plugin-rooms",
+        "paths": [
+          "src",
+          "test"
+        ],
+        "notes": "One module; this SDD root is the package directory inside the webex-js-sdk monorepo."
+      }
+    ],
+    "source_surfaces": [
+      {
+        "name": "Rooms plugin",
+        "paths": [
+          "src"
+        ],
+        "notes": "index.js and rooms.js. Specified at src/docs/README.md."
+      },
+      {
+        "name": "tests",
+        "paths": [
+          "test/integration/spec"
+        ],
+        "notes": "One live-service integration spec that only test:browser:broken would run, and it bundles nothing today. There is no unit spec."
+      }
+    ],
+    "generated_surfaces": [
+      {
+        "name": "build output",
+        "paths": [
+          "dist"
+        ],
+        "generated_from": "src",
+        "refresh_with": "yarn build:src",
+        "notes": "JavaScript and source maps from webex-legacy-tools; no type declarations. Do not edit by hand."
+      },
+      {
+        "name": "repo-standards template map",
+        "paths": [
+          "../../../.sdd/templates/repo-standards"
+        ],
+        "generated_from": "WebexTools/repo-standards@d89a7fe59126ae3ad9bac9ca352aa7f12b4c85dc",
+        "refresh_with": "The package holds no templates. It refers to the monorepo root snapshot at ../../../.sdd/templates/repo-standards through layout.monorepo_package.templates_root_path in .sdd/manifest.json. Refresh the root snapshot, not this package.",
+        "notes": "The package holds no templates. It refers to the monorepo root snapshot at ../../../.sdd/templates/repo-standards through layout.monorepo_package.templates_root_path in .sdd/manifest.json. Refresh the root snapshot, not this package."
+      }
+    ],
+    "validation_entrypoints": [
+      {
+        "name": "compile",
+        "command": "yarn build",
+        "scope": "src",
+        "notes": "Runs build:src."
+      },
+      {
+        "name": "lint",
+        "command": "yarn test:style",
+        "scope": "src",
+        "notes": "eslint via the local .eslintrc.js; docs/** and *.md are ignored."
+      }
+    ],
+    "sync_paths": [
+      {
+        "source": "src/rooms.js",
+        "targets": [
+          "src/docs/README.md"
+        ],
+        "mechanism": "Manual; update the module specification in the same change that alters observable behavior.",
+        "notes": "Keep the request, read-status, event, and wire rows of the specification aligned with src/rooms.js and src/index.js."
+      },
+      {
+        "source": "WebexTools/repo-standards@d89a7fe59126ae3ad9bac9ca352aa7f12b4c85dc",
+        "targets": [
+          "../../../.sdd/templates/repo-standards"
+        ],
+        "mechanism": "The package holds no templates. It refers to the monorepo root snapshot at ../../../.sdd/templates/repo-standards through layout.monorepo_package.templates_root_path in .sdd/manifest.json. Refresh the root snapshot, not this package.",
+        "notes": "The package holds no templates. It refers to the monorepo root snapshot at ../../../.sdd/templates/repo-standards through layout.monorepo_package.templates_root_path in .sdd/manifest.json. Refresh the root snapshot, not this package."
+      }
+    ]
+  },
+  "folder_readme_contract": {
+    "required_sections": [
+      "purpose",
+      "boundaries",
+      "key-files",
+      "common-tasks"
+    ],
+    "rules": [
+      "Orient the reader before describing detail.",
+      "Link to the module specification rather than duplicating it."
+    ],
+    "example_policy": "Examples are allowed only when verified against src/ or test/.",
+    "fallback": "Omit a section rather than inventing content; report unresolved facts as gaps."
+  },
+  "regression_feedback_rules": [
+    {
+      "trigger": "A rooms request or its result handling in src/rooms.js changes.",
+      "required_followups": [
+        "Add a test:unit script and a test/unit/spec case asserting the request options and the resolved value",
+        "Update MOD-002 to MOD-006 in src/docs/README.md"
+      ],
+      "notes": "No unit case exists for any method today."
+    },
+    {
+      "trigger": "listWithReadStatus, getWithReadStatus, or buildRoomInfo in src/rooms.js changes.",
+      "required_followups": [
+        "Add unit cases for the maxRecent branches, the catalog wait, and the read-status object",
+        "Update MOD-007 to MOD-009, INV-001 to INV-003 in src/docs/README.md"
+      ],
+      "notes": "The samples read items, lastActivityDate, and lastSeenActivityDate."
+    },
+    {
+      "trigger": "listen, onWebexApiEvent, or getRoomEvent in src/rooms.js, or the imports in src/index.js, change.",
+      "required_followups": [
+        "Add parametrized unit cases for each activity verb, the lock flag, and the logged error path",
+        "Update MOD-001, MOD-010 to MOD-012, INV-004, and INV-005 in src/docs/README.md"
+      ],
+      "notes": "Listeners rely on the event names created and updated and on the envelope fields."
+    }
+  ],
+  "surface_owners": [
+    {
+      "surface": "module implementation and specifications",
+      "owner": "@webex/web-client @webex/web-sdk",
+      "edit_boundary": "Owners per the packages/@webex/plugin-rooms line of the monorepo .github/CODEOWNERS."
+    }
+  ],
+  "do_not_edit": [
+    "dist",
+    "../../../.sdd/templates/repo-standards"
+  ],
+  "marker_scopes": {
+    "sdd": [
+      ".sdd/manifest.json",
+      "src/docs/README.md",
+      "docs"
+    ]
+  },
+  "fallback_rules": [
+    "When source and tests disagree, code is the referee and the disagreement is recorded rather than silently resolved.",
+    "When neither source nor tests settle a question, report it as a gap instead of inferring.",
+    "Commit history is not a valid rationale source for this package.",
+    "When a dependency's specification disagrees with that dependency's code, use the code and record the disagreement; when a dependency has no specification, use its code."
+  ],
+  "downstream_context_pack": {
+    "required_human_surfaces": [
+      "README.md",
+      "docs/index.md",
+      "docs/architecture.md",
+      "src/docs/README.md"
+    ],
+    "required_agent_operational_surfaces": [
+      "AGENTS.md",
+      "docs/specs/README.md"
+    ],
+    "required_machine_readable_surface": ".sdd/manifest.json",
+    "recommended_machine_readable_sections": [
+      "public_interfaces",
+      "change_impact",
+      "evidence_rules",
+      "negative_guidance",
+      "confidence_policy",
+      "repository_topology",
+      "folder_readme_contract",
+      "regression_feedback_rules"
+    ]
+  }
+}
