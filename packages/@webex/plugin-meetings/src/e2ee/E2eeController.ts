@@ -1,0 +1,431 @@
+/*!
+ * Copyright (c) 2015-2026 Cisco Systems, Inc. See LICENSE file.
+ */
+
+import type {IdentityProvider} from '@webex/internal-plugin-identity';
+
+import EventsScope from '../common/events/events-scope';
+import LoggerProxy from '../common/logs/logger-proxy';
+import Metrics from '../metrics';
+import BEHAVIORAL_METRICS from '../metrics/constants';
+import {EVENT_TRIGGERS} from '../constants';
+import MLS, {type MLSEvent, type MLSEventMap} from './mls';
+import MediaEncryptionService from './MediaEncryptionService';
+import E2eeSignaling from './E2eeSignaling';
+import MemberMLSReconciler from './MemberMLSReconciler';
+import {
+  DEFAULT_COALESCE_WINDOW,
+  DEFAULT_JOIN_TIMEOUT,
+  MEDIA_SERVICE_DEVICE_TYPE,
+} from './constants';
+import MeetingsUtil from '../meetings/util';
+import type WasmLoader from '../common/wasm-loader';
+import type {E2eeMeetingContext, E2eeState} from './types';
+
+const TRIGGER_SCOPE = {file: 'e2ee/E2eeController', function: 'e2ee'};
+
+/**
+ * Per-meeting E2EE controller (owned by Meeting as `this.e2ee`). It orchestrates the MLS engine, the
+ * signaling adapter and the HTTP transport for one meeting, exposes the security code, media-service
+ * presence and lifecycle state, and re-emits E2EE events on the meeting. Its start() is a no-op
+ * unless the meeting requires E2EE (a V2/zero-trust meeting) and E2EE is enabled and supported.
+ */
+export default class E2eeController extends EventsScope {
+  private readonly context: E2eeMeetingContext;
+
+  private readonly webex: any;
+
+  private readonly wasmLoader: WasmLoader;
+
+  private readonly wasmUrl: string;
+
+  private readonly identityProvider: IdentityProvider;
+
+  private session?: MLS;
+
+  private signaling?: E2eeSignaling;
+
+  private reconciler?: MemberMLSReconciler;
+
+  private sessionUnsubscribers: Array<() => void> = [];
+
+  private currentState: E2eeState = 'disabled';
+
+  private securityCode?: string;
+
+  private mediaServicesPresent = false;
+
+  /**
+   * @param {Object} deps
+   * @param {E2eeMeetingContext} deps.context - The meeting data and operations used by E2EE.
+   * @param {Object} deps.webex - The parent webex instance.
+   * @param {WasmLoader} deps.wasmLoader - Shared (pre-warmed) WASM loader.
+   * @param {string} deps.wasmUrl - URL of the E2EE WASM module.
+   * @param {IdentityProvider} deps.identityProvider - Shared identity/credential provider.
+   */
+  constructor({
+    context,
+    webex,
+    wasmLoader,
+    wasmUrl,
+    identityProvider,
+  }: {
+    context: E2eeMeetingContext;
+    webex: any;
+    wasmLoader: WasmLoader;
+    wasmUrl: string;
+    identityProvider: IdentityProvider;
+  }) {
+    super();
+    this.context = context;
+    this.webex = webex;
+    this.wasmLoader = wasmLoader;
+    this.wasmUrl = wasmUrl;
+    this.identityProvider = identityProvider;
+
+    if (MeetingsUtil.isE2eeEnabledAndSupported(this.webex?.config)) {
+      // Created eagerly (not on join) and registered as the Members pre-emit processor, so member
+      // verification is stamped into every members:update - even for member changes outside a
+      // joined meeting. Roster-driven verification changes are reported back through Members too.
+      this.reconciler = new MemberMLSReconciler({
+        membersCollection: context.members.membersCollection,
+        reportMembersUpdated: (members) => context.members.reportMembersUpdated(members),
+      });
+      context.members.setMembersUpdateProcessor((payload) =>
+        this.reconciler?.processMembersUpdate(payload)
+      );
+    }
+  }
+
+  /**
+   * @returns {E2eeState} the current E2EE lifecycle state.
+   */
+  get state(): E2eeState {
+    return this.currentState;
+  }
+
+  /**
+   * @returns {boolean} whether the MLS roster contains a media service currently considered untrusted.
+   */
+  get hasUntrustedMediaServices(): boolean {
+    // For now, assume every media service is untrusted. Determining which services are trusted is
+    // tracked by SPARK-863974.
+    return this.mediaServicesPresent;
+  }
+
+  /**
+   * @returns {string|undefined} the meeting security code, once available.
+   */
+  getSecurityCode(): string | undefined {
+    return this.securityCode;
+  }
+
+  /**
+   * Refreshes the LLM channel used for MLS signaling after Meeting changes its channel.
+   * @returns {void}
+   */
+  llmChannelChanged(): void {
+    this.signaling?.setLlmChannel(this.context.getLlmChannel());
+  }
+
+  /**
+   * @returns {boolean} whether this meeting requires an MLS join (V2/zero-trust) and E2EE is enabled.
+   */
+  private required(): boolean {
+    const locusInfo = this.context.getLocusInfo();
+
+    return (
+      MeetingsUtil.isE2eeEnabledAndSupported(this.webex?.config) &&
+      !!locusInfo?.info?.isV2E2EEncrypted &&
+      !!locusInfo?.info?.mediaEncryptionGroupUrl
+    );
+  }
+
+  /**
+   * Starts the MLS session for this meeting. Idempotent and self-guarded: a no-op unless the
+   * meeting requires E2EE. Never rejects — failures transition to the `failed` state and emit an
+   * E2EE failure event.
+   * @returns {Promise<void>}
+   */
+  async start(): Promise<void> {
+    if (this.currentState !== 'disabled' && this.currentState !== 'left') {
+      LoggerProxy.logger.info(
+        `e2ee: E2eeController#start --> ignoring, already in state: ${this.currentState}`
+      );
+
+      return;
+    }
+    if (!this.required()) {
+      LoggerProxy.logger.info(
+        'e2ee: E2eeController#start --> not required for this meeting, skipping'
+      );
+
+      return;
+    }
+
+    LoggerProxy.logger.info('e2ee: E2eeController#start --> starting E2EE session');
+    this.setState('initializing');
+
+    try {
+      const {device} = this.webex.internal;
+      const [, credentials] = await Promise.all([
+        this.wasmLoader.get(this.wasmUrl),
+        this.identityProvider.getCredentials(device.userId),
+      ]);
+      const httpClient = new MediaEncryptionService({
+        webexRequest: this.webex.request.bind(this.webex),
+      });
+      const session = new MLS({
+        httpClient,
+        loadModule: () => this.wasmLoader.get(this.wasmUrl),
+      });
+      const mediaEncryptionGroupUrl = this.context.getLocusInfo()?.info?.mediaEncryptionGroupUrl;
+
+      if (!mediaEncryptionGroupUrl) {
+        throw new Error('Meeting locus has no media encryption group URL');
+      }
+
+      this.session = session;
+      this.wireSessionEvents(session);
+
+      await session.initialize({
+        participantId: device.userId,
+        deviceUrl: device.url,
+        deviceType: this.webex.config.meetings.deviceType,
+        correlationId: this.context.correlationId,
+        displayName: this.getSelfDisplayName(),
+        serviceUrl: mediaEncryptionGroupUrl,
+        credentials,
+        trustAnchors: this.identityProvider.getTrustAnchors(),
+        joinTimeout: DEFAULT_JOIN_TIMEOUT,
+        coalesceWindow: DEFAULT_COALESCE_WINDOW,
+      });
+
+      this.signaling = new E2eeSignaling({
+        llm: this.context.getLlmChannel(),
+        mercury: this.webex.internal.mercury,
+        getLocusUrl: () => this.context.getLocusInfo()?.url,
+        session,
+      });
+      this.signaling.start();
+
+      this.setState('joining');
+      session.join();
+    } catch (error) {
+      LoggerProxy.logger.error(`e2ee: E2eeController#start --> failed to start E2EE: ${error}`);
+      this.handleFatal('failed', 'startFailed', {error: error?.message ?? String(error)});
+    }
+  }
+
+  /**
+   * Tears down the MLS session and resets state. Idempotent.
+   * @returns {Promise<void>}
+   */
+  async stop(): Promise<void> {
+    if (this.currentState === 'disabled') {
+      // E2EE was never started (not required for this meeting, or still pre-join). Nothing to tear
+      // down, and we stay silent so callers can invoke stop() unconditionally without log noise.
+      return;
+    }
+
+    LoggerProxy.logger.info('e2ee: E2eeController#stop --> stopping E2EE session');
+    this.cleanupSession();
+    this.setState('left');
+  }
+
+  /**
+   * @param {MLS} session
+   * @returns {void}
+   */
+  private wireSessionEvents(session: MLS): void {
+    const subscribe = <K extends MLSEvent>(
+      event: K,
+      listener: (payload: MLSEventMap[K]) => void
+    ) => {
+      session.on(event, listener);
+      this.sessionUnsubscribers.push(() => session.off(event, listener));
+    };
+
+    subscribe('joinSuccess', ({securityCode}) => {
+      this.securityCode = securityCode;
+      this.emitE2eeEvent(EVENT_TRIGGERS.MEETING_E2EE_SECURITY_CODE_UPDATED, {securityCode});
+      this.updateFromRoster();
+    });
+
+    subscribe('securityCodeChanged', ({code}) => {
+      this.securityCode = code;
+      this.emitE2eeEvent(EVENT_TRIGGERS.MEETING_E2EE_SECURITY_CODE_UPDATED, {securityCode: code});
+    });
+
+    subscribe('rosterAdded', (added) => {
+      this.reconciler?.applyRosterAdded(added);
+      this.updateFromRoster();
+    });
+    subscribe('rosterRemoved', ({urls}) => {
+      this.reconciler?.applyRosterRemoved(urls);
+      this.updateFromRoster();
+    });
+
+    subscribe('joinFailure', ({reason}) => this.handleFatal('failed', reason));
+    subscribe('mediaEncryptionRequestFailure', ({errorCode, message}) =>
+      this.handleFatal('failed', 'mediaEncryptionRequestFailure', {errorCode, error: message})
+    );
+    subscribe('evicted', () => this.handleFatal('evicted', 'evicted'));
+  }
+
+  /**
+   * Recomputes media-service presence and MLS-join completion from the current roster. MLS join is
+   * complete only once our own device URL appears in the roster.
+   * @returns {void}
+   */
+  private updateFromRoster(): void {
+    if (!this.session) {
+      return;
+    }
+
+    const roster = this.session.getRoster();
+
+    const hasMediaServices = roster.some(
+      (member) => member.deviceType === MEDIA_SERVICE_DEVICE_TYPE
+    );
+
+    if (hasMediaServices !== this.mediaServicesPresent) {
+      this.mediaServicesPresent = hasMediaServices;
+      this.emitE2eeEvent(EVENT_TRIGGERS.MEETING_E2EE_MEDIA_SERVICES_CHANGED, {hasMediaServices});
+    }
+
+    if (this.currentState === 'joining') {
+      const ownDeviceUrl = this.webex.internal.device.url;
+
+      if (roster.some((member) => member.url === ownDeviceUrl)) {
+        this.setState('joined');
+      }
+    }
+  }
+
+  /**
+   * @param {E2eeState} state
+   * @param {string} reason
+   * @param {Object} [details] - Extra diagnostics included only in the behavioral metric.
+   * @param {number} [details.errorCode] - Media-encryption service error code.
+   * @param {string} [details.error] - Error message.
+   * @returns {void}
+   */
+  private handleFatal(
+    state: 'failed' | 'evicted',
+    reason: string,
+    details: {errorCode?: number; error?: string} = {}
+  ): void {
+    LoggerProxy.logger.error(
+      `e2ee: E2eeController --> fatal E2EE error: state=${state} reason=${reason}`
+    );
+    Metrics.sendBehavioralMetric(BEHAVIORAL_METRICS.E2EE_FAILURE, {
+      correlation_id: this.context.correlationId,
+      state,
+      reason,
+      ...details,
+    });
+    this.cleanupSession();
+    this.setState(state);
+    this.emitE2eeEvent(EVENT_TRIGGERS.MEETING_E2EE_FAILURE, {reason});
+  }
+
+  /**
+   * Stops signaling, detaches session listeners, leaves the MLS group, and resets roster state.
+   * @returns {void}
+   */
+  private cleanupSession(): void {
+    try {
+      this.signaling?.stop();
+    } catch (error) {
+      LoggerProxy.logger.warn(`e2ee: E2eeController --> error stopping signaling: ${error}`);
+    }
+    this.signaling = undefined;
+
+    this.sessionUnsubscribers.forEach((unsubscribe) => {
+      try {
+        unsubscribe();
+      } catch (error) {
+        LoggerProxy.logger.warn(`e2ee: E2eeController --> error removing MLS listener: ${error}`);
+      }
+    });
+    this.sessionUnsubscribers = [];
+
+    const {session} = this;
+
+    this.session = undefined;
+
+    try {
+      session?.leave();
+    } catch (error) {
+      LoggerProxy.logger.warn(`e2ee: E2eeController --> error leaving MLS session: ${error}`);
+    }
+
+    try {
+      this.reconciler?.reset();
+    } catch (error) {
+      LoggerProxy.logger.warn(
+        `e2ee: E2eeController --> error resetting member verification: ${error}`
+      );
+    }
+
+    if (this.mediaServicesPresent) {
+      this.mediaServicesPresent = false;
+      this.emitE2eeEvent(EVENT_TRIGGERS.MEETING_E2EE_MEDIA_SERVICES_CHANGED, {
+        hasMediaServices: false,
+      });
+    }
+  }
+
+  /**
+   * Clears a security code that is no longer valid for the current MLS session.
+   * @returns {void}
+   */
+  private clearSecurityCode(): void {
+    if (this.securityCode === undefined) {
+      return;
+    }
+
+    this.securityCode = undefined;
+    this.emitE2eeEvent(EVENT_TRIGGERS.MEETING_E2EE_SECURITY_CODE_UPDATED, {
+      securityCode: undefined,
+    });
+  }
+
+  /**
+   * @returns {string} the self participant's display name, or '' if unavailable.
+   */
+  private getSelfDisplayName(): string {
+    return this.context.members.membersCollection.get(this.context.members.selfId)?.name ?? '';
+  }
+
+  /**
+   * @param {E2eeState} state
+   * @returns {void}
+   */
+  private setState(state: E2eeState): void {
+    if (this.currentState === state) {
+      return;
+    }
+
+    if (state === 'failed' || state === 'evicted' || state === 'left') {
+      this.clearSecurityCode();
+    }
+
+    LoggerProxy.logger.info(
+      `e2ee: E2eeController --> state changed: ${this.currentState} -> ${state}`
+    );
+    this.currentState = state;
+    this.emitE2eeEvent(EVENT_TRIGGERS.MEETING_E2EE_STATE_CHANGED, {state});
+  }
+
+  /**
+   * @param {string} event
+   * @param {object} payload
+   * @returns {void}
+   */
+  private emitE2eeEvent(event: string, payload: object): void {
+    LoggerProxy.logger.info(`e2ee: E2eeController --> emitting event: ${event}`);
+    this.emit(TRIGGER_SCOPE, event, payload);
+  }
+}

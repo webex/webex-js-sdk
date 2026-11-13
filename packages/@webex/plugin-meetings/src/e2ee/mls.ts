@@ -23,10 +23,6 @@ import type {
   WebE2EEInstance,
 } from './wasm';
 
-const DEFAULT_JOIN_TIMEOUT = 180_000;
-const DEFAULT_COALESCE_WINDOW = 500;
-const DEFAULT_DEVICE_TYPE = 'WEB';
-
 // WASM log levels, indexed by the numeric level the engine emits (see LogLevel in libe2ee).
 const WASM_LOG_LEVELS = ['', 'FATAL', 'ERROR', 'WARN', 'INFO', 'DEBUG'];
 
@@ -136,7 +132,7 @@ export default class MLS {
     this.e2ee.initialize(
       config.participantId,
       config.deviceUrl,
-      config.deviceType || DEFAULT_DEVICE_TYPE,
+      config.deviceType,
       config.correlationId,
       config.displayName,
       config.serviceUrl
@@ -157,8 +153,8 @@ export default class MLS {
       );
     }
 
-    this.e2ee.setJoinTimeout(config.joinTimeout ?? DEFAULT_JOIN_TIMEOUT);
-    this.e2ee.setCoalesceWindow(config.coalesceWindow ?? DEFAULT_COALESCE_WINDOW);
+    this.e2ee.setJoinTimeout(config.joinTimeout);
+    this.e2ee.setCoalesceWindow(config.coalesceWindow);
 
     LoggerProxy.logger.info('e2ee: MLS --> initialize: engine initialized');
   }
@@ -264,7 +260,7 @@ export default class MLS {
         baseKey: new Uint8Array(epoch.base_key),
         index: epoch.index,
         indexBits: epoch.index_bits,
-        canEncrypt: false,
+        canEncrypt: false, // the key can only be used for encryption after onUseKey is called
       });
     });
 
