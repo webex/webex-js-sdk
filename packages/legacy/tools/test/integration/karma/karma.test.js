@@ -127,6 +127,10 @@ describe('Karma', () => {
           Browsers: {
             get: spyOn(Karma.Browsers, 'get').and.callFake(mocks.Browsers.get),
           },
+          Https: {
+            isEnabled: spyOn(Karma.Https, 'isEnabled').and.returnValue(false),
+            setup: spyOn(Karma.Https, 'setup'),
+          },
         };
 
         spies.KarmaRunner = {
@@ -270,6 +274,100 @@ describe('Karma', () => {
         eventCallback.run_complete();
 
         expect(console.log).toHaveBeenCalledWith('Test run complete');
+      });
+
+      it('should not set up https when it is not enabled', () => Karma.test(config)
+        .then(() => {
+          const karmaConfig = spies.KarmaRunner.config.parseConfig.calls.all()[0].args[1];
+
+          expect(spies.Karma.Https.setup).not.toHaveBeenCalled();
+          expect(karmaConfig.protocol).toBeUndefined();
+          expect(karmaConfig.httpsServerOptions).toBeUndefined();
+        }));
+
+      it('should reject when the karma config cannot be parsed and https is not enabled', () => {
+        spies.KarmaRunner.config.parseConfig.and.rejectWith(new Error('bad config'));
+
+        return expectAsync(Karma.test(config)).toBeRejectedWithError('bad config');
+      });
+
+      describe('when https is enabled', () => {
+        let https;
+
+        beforeEach(() => {
+          https = {
+            cert: 'cert',
+            key: 'key',
+            createFirefoxProfile: jasmine.createSpy('createFirefoxProfile').and.returnValue('/tmp/profile'),
+            cleanup: jasmine.createSpy('cleanup'),
+          };
+
+          spies.Karma.Https.isEnabled.and.returnValue(true);
+          spies.Karma.Https.setup.and.returnValue(https);
+          spies.Karma.Browsers.get.and.returnValue({
+            Chrome: { base: 'ChromeHeadless', flags: ['--chrome'] },
+            Firefox: { base: 'FirefoxHeadless', prefs: { pref: true } },
+          });
+        });
+
+        it('should serve karma over https on the https hostname and port', () => Karma.test(config)
+          .then(() => {
+            const karmaConfig = spies.KarmaRunner.config.parseConfig.calls.all()[0].args[1];
+
+            expect(karmaConfig.protocol).toBe('https:');
+            expect(karmaConfig.hostname).toBe(Karma.Https.HOSTNAME);
+            expect(karmaConfig.port).toBe(Karma.Https.PORT);
+            expect(karmaConfig.httpsServerOptions).toEqual({ key: 'key', cert: 'cert' });
+          }));
+
+        it('should keep proxying to the test server based on the requested karma port', () => Karma.test({ ...config, port: '1234' })
+          .then(() => {
+            const { proxies } = spies.KarmaRunner.config.parseConfig.calls.all()[0].args[1];
+
+            expect(proxies['/fixtures/']).toBe('http://localhost:1233');
+            expect(proxies['/upload']).toBe('http://localhost:1233/upload');
+            expect(proxies['/assets/']).toBe('http://localhost:1233/assets/');
+          }));
+
+        it('should give firefox launchers a profile that trusts the CA without mutating the browser configs', () => {
+          const browserConfigs = spies.Karma.Browsers.get();
+
+          return Karma.test(config)
+            .then(() => {
+              const karmaConfig = spies.KarmaRunner.config.parseConfig.calls.all()[0].args[1];
+
+              expect(karmaConfig.customLaunchers).toEqual({
+                Chrome: { base: 'ChromeHeadless', flags: ['--chrome'] },
+                Firefox: { base: 'FirefoxHeadless', prefs: { pref: true }, profile: '/tmp/profile' },
+              });
+
+              expect(browserConfigs.Firefox.profile).toBeUndefined();
+              expect(https.createFirefoxProfile).toHaveBeenCalledTimes(1);
+            });
+        });
+
+        it('should clean up once the run completes', () => Karma.test(config)
+          .then(() => {
+            expect(https.cleanup).toHaveBeenCalledTimes(1);
+          }));
+
+        it('should clean up when the karma config cannot be parsed', () => {
+          spies.KarmaRunner.config.parseConfig.and.rejectWith(new Error('bad config'));
+
+          return expectAsync(Karma.test(config)).toBeRejectedWithError('bad config')
+            .then(() => {
+              expect(https.cleanup).toHaveBeenCalledTimes(1);
+            });
+        });
+
+        it('should clean up when a firefox profile cannot be created', () => {
+          https.createFirefoxProfile.and.throwError(new Error('no certutil'));
+
+          return expectAsync(Karma.test(config)).toBeRejectedWithError('no certutil')
+            .then(() => {
+              expect(https.cleanup).toHaveBeenCalledTimes(1);
+            });
+        });
       });
     });
   });

@@ -1,0 +1,544 @@
+{
+  "$schema": "./schemas/repo-context.schema.json",
+  "version": 1,
+  "repository": {
+    "name": "@webex/plugin-presence",
+    "purpose": "Public TypeScript plugin registered as webex.presence for the presence service (catalog name apheleia). get() reads one user's composed presence; list() reads many through a Batcher that folds lookups into POST compositions; subscribe() POSTs subscriptions in batches of 50 and unsubscribe() sends subscriptionTtl 0; setStatus() POSTs events for the device user, without a label for dnd; enable(), disable(), and isEnabled() set and read the user-presence-enabled toggle through the feature plugin. Registration adds an inbound transform that copies body.eventType to body.status. An optional PresenceWorker, started by initializeWorker() or config.presence.initializeWorker, counts enqueue/dequeue watchers, fetches stale presence after a 300 ms debounce, subscribes users watched for a minute, renews watched subscriptions, listens to the Mercury event apheleia.subscription_update, expires update times after 10 minutes, and reports every change as an 'updated' event with a subscription, presence, or delete envelope. src/interface.ts types the surface; build emits declarations to dist/types. It stores nothing."
+  },
+  "commands": {
+    "install": "yarn",
+    "prebuild": "yarn prebuild:modules",
+    "compile": "yarn workspace @webex/plugin-presence build",
+    "build": "yarn workspace @webex/plugin-presence build:src",
+    "unit-test": "yarn workspace @webex/plugin-presence test:unit",
+    "lint": "yarn workspace @webex/plugin-presence test:style",
+    "docs": "yarn workspace @webex/plugin-presence build:docs",
+    "deploy": "yarn workspace @webex/plugin-presence deploy:npm"
+  },
+  "public_interfaces": [
+    {
+      "name": "@webex/plugin-presence package entry",
+      "kind": "package_export",
+      "source": "src/index.ts",
+      "entrypoints": [
+        "import '@webex/plugin-presence'",
+        "import Presence from '@webex/plugin-presence'"
+      ],
+      "audience": "applications that install the package from npm beside @webex/webex-core",
+      "notes": "Importing the package imports the device plugin, then registers Presence as public plugin 'presence' with config.presence defaults {batcherWait: 50, batcherMaxCalls: 50, batcherMaxWait: 150} and the inbound transform normalizeSingleStatusResponse, which copies body.eventType to body.status on any response with body.eventType and body.subject; the first registration of the name wins. The default export is the only export; no workspace package imports this package."
+    },
+    {
+      "name": "webex.presence methods and events",
+      "kind": "plugin_api",
+      "source": "src/presence.ts",
+      "entrypoints": [
+        "webex.presence.get(personId)",
+        "webex.presence.list(personIds)",
+        "webex.presence.subscribe(personIds, subscriptionTtl)",
+        "webex.presence.unsubscribe(personIds)",
+        "webex.presence.setStatus(status, ttl)",
+        "webex.presence.enable()",
+        "webex.presence.disable()",
+        "webex.presence.isEnabled()",
+        "webex.presence.initializeWorker()",
+        "webex.presence.enqueue(id)",
+        "webex.presence.dequeue(id)",
+        "webex.presence.on('updated', handler)"
+      ],
+      "audience": "applications",
+      "notes": "Requests go to the apheleia service; list batches lookups into POST compositions; subscribe sends at most 50 subjects per request; setStatus leaves out label for dnd; unsubscribe resolves the whole response. enable, disable, and isEnabled need the host to register the feature plugin. The worker emits 'updated' with {type: 'subscription' | 'presence' | 'delete', payload}."
+    },
+    {
+      "name": "TypeScript declarations",
+      "kind": "type_declarations",
+      "source": "src/interface.ts",
+      "entrypoints": [
+        "dist/types/index.d.ts"
+      ],
+      "audience": "TypeScript applications",
+      "notes": "package.json types points to dist/types/index.d.ts, which only build (tsc) writes. It declares the default Presence as IPresence. IPresence omits initializeWorker and types unsubscribe as {responses: any}; the entry re-exports no type. typedoc (build:docs) renders src/interface.ts."
+    },
+    {
+      "name": "package scripts",
+      "kind": "npm_scripts",
+      "source": "package.json",
+      "entrypoints": [
+        "build",
+        "build:src",
+        "build:docs",
+        "test:unit",
+        "test:style",
+        "test:browser:broken",
+        "test",
+        "deploy:npm"
+      ],
+      "audience": "contributors and CI",
+      "notes": "build runs tsc for declarations, then build:src, which writes dist. test:unit runs the jest unit specs, which import the package by name and so test dist; run build:src first; 29 of 29 pass. test:style exits 1 in the onboarding checkout because the package-local node_modules ESLint cannot load @humanwhocodes/object-schema. There is no test:integration or test:browser script, so the aggregate test stops at test:integration; the karma script is named test:browser:broken."
+    }
+  ],
+  "source_of_truth": [
+    {
+      "surface": "Presence plugin implementation",
+      "paths": [
+        "src/index.ts",
+        "src/presence.ts",
+        "src/presence-batcher.ts",
+        "src/presence-worker.ts",
+        "src/interface.ts",
+        "src/constants.ts",
+        "src/config.ts"
+      ],
+      "generated_artifacts": [
+        "dist"
+      ],
+      "refresh_with": [
+        "yarn workspace @webex/plugin-presence build:src",
+        "yarn workspace @webex/plugin-presence build"
+      ],
+      "validate_with": [
+        "yarn workspace @webex/plugin-presence test:unit",
+        "yarn workspace @webex/plugin-presence test:style"
+      ]
+    },
+    {
+      "surface": "module specification",
+      "paths": [
+        "src/docs/README.md"
+      ],
+      "generated_artifacts": [],
+      "refresh_with": [
+        "update alongside the behavior change in the same commit"
+      ],
+      "validate_with": [
+        "spec-validator on an independent runtime"
+      ]
+    }
+  ],
+  "generated_artifacts": [
+    {
+      "path": "dist",
+      "generated_from": "src",
+      "refresh_with": "yarn workspace @webex/plugin-presence build:src"
+    },
+    {
+      "path": "dist/types",
+      "generated_from": "src",
+      "refresh_with": "yarn workspace @webex/plugin-presence build"
+    },
+    {
+      "path": "../../../.sdd/templates/repo-standards/template-map.json",
+      "generated_from": "WebexTools/repo-standards@d89a7fe59126ae3ad9bac9ca352aa7f12b4c85dc",
+      "refresh_with": "The package holds no templates. It refers to the monorepo root snapshot at ../../../.sdd/templates/repo-standards through layout.monorepo_package.templates_root_path in .sdd/manifest.json. Refresh the root snapshot, not this package."
+    }
+  ],
+  "validation_matrix": [
+    {
+      "paths": [
+        "src/**"
+      ],
+      "minimum": [
+        "yarn workspace @webex/plugin-presence build:src",
+        "yarn workspace @webex/plugin-presence test:unit",
+        "yarn workspace @webex/plugin-presence test:style"
+      ],
+      "recommended": [
+        "add or update a case in test/unit/spec/presence.ts or test/unit/spec/presence-worker.ts for the changed behavior"
+      ]
+    },
+    {
+      "paths": [
+        "src/presence-worker.ts",
+        "src/constants.ts"
+      ],
+      "minimum": [
+        "yarn workspace @webex/plugin-presence build:src",
+        "yarn workspace @webex/plugin-presence test:unit",
+        "yarn workspace @webex/plugin-presence test:style"
+      ],
+      "recommended": [
+        "use sinon.useFakeTimers() for the 300 ms debounce and the 20-second groundskeeper, and check the updated envelope types clients switch on"
+      ]
+    },
+    {
+      "paths": [
+        "src/index.ts",
+        "src/config.ts"
+      ],
+      "minimum": [
+        "yarn workspace @webex/plugin-presence build:src",
+        "yarn workspace @webex/plugin-presence test:unit",
+        "yarn workspace @webex/plugin-presence test:style"
+      ],
+      "recommended": [
+        "no workspace package registers this plugin; when a default, the transform, or the registered name changes, check @webex/internal-plugin-presence, which registers the same transform name and config"
+      ]
+    },
+    {
+      "paths": [
+        "src/interface.ts"
+      ],
+      "minimum": [
+        "yarn workspace @webex/plugin-presence build",
+        "yarn workspace @webex/plugin-presence test:unit",
+        "yarn workspace @webex/plugin-presence test:style"
+      ],
+      "recommended": [
+        "keep IPresence and the result types in step with src/presence.ts; build fails on a type error"
+      ]
+    }
+  ],
+  "change_impact": [
+    {
+      "paths": [
+        "src/presence.ts",
+        "src/presence-batcher.ts"
+      ],
+      "affects": [
+        "the compositions, subscriptions, and events request bodies",
+        "the resolved result shapes {statusList} and {responses}",
+        "the presence feature toggle",
+        "the IPresence declarations in src/interface.ts"
+      ],
+      "refresh_with": [
+        "yarn workspace @webex/plugin-presence build:src"
+      ],
+      "validate_with": [
+        "yarn workspace @webex/plugin-presence test:unit",
+        "yarn workspace @webex/plugin-presence test:style"
+      ],
+      "avoid_direct_edits": [
+        "dist"
+      ],
+      "notes": "Keep at most 50 subjects per subscribe request and the dnd label rule (INV-001, INV-003)."
+    },
+    {
+      "paths": [
+        "src/presence-worker.ts",
+        "src/constants.ts"
+      ],
+      "affects": [
+        "when the worker fetches, subscribes, renews, and expires",
+        "the 'updated' event and its envelope types"
+      ],
+      "refresh_with": [
+        "yarn workspace @webex/plugin-presence build:src"
+      ],
+      "validate_with": [
+        "yarn workspace @webex/plugin-presence test:unit",
+        "yarn workspace @webex/plugin-presence test:style"
+      ],
+      "avoid_direct_edits": [
+        "dist"
+      ],
+      "notes": "The worker keeps times and counts only; each start adds a listener and an interval that nothing removes."
+    },
+    {
+      "paths": [
+        "src/index.ts",
+        "src/config.ts"
+      ],
+      "affects": [
+        "config.presence batcher defaults",
+        "the SDK-wide inbound transform normalizeSingleStatusResponse"
+      ],
+      "refresh_with": [
+        "yarn workspace @webex/plugin-presence build:src"
+      ],
+      "validate_with": [
+        "yarn workspace @webex/plugin-presence test:unit",
+        "yarn workspace @webex/plugin-presence test:style"
+      ],
+      "avoid_direct_edits": [
+        "dist"
+      ],
+      "notes": "The transform runs on every inbound SDK response; no test asserts it or the defaults."
+    },
+    {
+      "paths": [
+        "src/interface.ts"
+      ],
+      "affects": [
+        "the published declarations at dist/types",
+        "the typedoc pages under the workspace docs/presence folder"
+      ],
+      "refresh_with": [
+        "yarn workspace @webex/plugin-presence build"
+      ],
+      "validate_with": [
+        "yarn workspace @webex/plugin-presence test:unit",
+        "yarn workspace @webex/plugin-presence test:style"
+      ],
+      "avoid_direct_edits": [
+        "dist"
+      ],
+      "notes": "Types are erased from dist/*.js; only build writes dist/types."
+    }
+  ],
+  "evidence_rules": [
+    {
+      "claim_category": "command_name",
+      "sources": [
+        "package.json"
+      ],
+      "requirement": "The script must exist in package.json scripts.",
+      "notes": "test:integration and test:browser do not exist, so the aggregate test script fails; the karma script is test:browser:broken and the integration spec is skipped."
+    },
+    {
+      "claim_category": "import_path",
+      "sources": [
+        "src/index.ts"
+      ],
+      "requirement": "A binding is public only if exported from src/index.ts.",
+      "notes": "The only export is the default Presence; the src/interface.ts types are not re-exported."
+    },
+    {
+      "claim_category": "behavior_claim",
+      "sources": [
+        "src",
+        "test/unit/spec"
+      ],
+      "requirement": "Ground every behavioral claim in source and unit-test evidence.",
+      "notes": "Commit history is not an evidence source for this package. README.md is context only (docs/adr/0001-retain-product-readme.md). The webex-core, internal-plugin-mercury, internal-plugin-feature, internal-plugin-device, and internal-plugin-presence specs were consulted; their code is the referee where a spec is silent or, as for Mercury's session model, stale. All 29 unit cases run."
+    }
+  ],
+  "negative_guidance": [
+    {
+      "rule": "Do not store presence objects in the worker.",
+      "why": "The client owns presence data and receives it through 'updated' envelopes."
+    },
+    {
+      "rule": "Do not send more than 50 subjects in one subscribe request.",
+      "why": "The code comment limits batches to 50 ids per request."
+    },
+    {
+      "rule": "Do not widen the inbound transform predicate.",
+      "why": "It runs on every inbound SDK response, not only presence responses."
+    },
+    {
+      "rule": "Do not start another interval or Mercury listener without a way to stop it.",
+      "why": "Nothing removes the existing ones; each start duplicates work and events."
+    },
+    {
+      "rule": "Do not log presence data, statuses, or user ids.",
+      "why": "They are other users' personal data; the package has no log line today."
+    },
+    {
+      "rule": "Do not treat README.md as a usage reference.",
+      "why": "Its Usage block names a placeholder member; see docs/adr/0001-retain-product-readme.md."
+    },
+    {
+      "rule": "Do not infer a coverage threshold for this package.",
+      "why": "No coverage script or threshold exists."
+    },
+    {
+      "rule": "Do not change a method signature without changing src/interface.ts.",
+      "why": "The published declarations come from it, and they already omit initializeWorker."
+    }
+  ],
+  "confidence_policy": {
+    "high": {
+      "action": "update",
+      "expectation": "Source and a running unit case agree, as for the argument checks, subscribe batching, the dnd label rule, initializeWorker, and the worker map rules."
+    },
+    "medium": {
+      "action": "narrow-scope",
+      "expectation": "Only source evidence, or a skipped integration case, exists, as for registration, the transform, the feature toggle, the batcher, and the Mercury update. Pin current behavior with a running unit case before modifying."
+    },
+    "low": {
+      "action": "noop",
+      "expectation": "Neither source, tests, nor a dependency's spec or code settles the question. Stop and report the gap."
+    }
+  },
+  "repository_topology": {
+    "main_entrypoints": [
+      {
+        "name": "package entry",
+        "path": "src/index.ts",
+        "purpose": "Registers the presence plugin and its transform, and default-exports the class",
+        "notes": "No subpath exports; package.json main is dist/index.js, types is dist/types/index.d.ts, and devMain is src/index.js."
+      }
+    ],
+    "workspace_packages": [
+      {
+        "name": "@webex/plugin-presence",
+        "paths": [
+          "src",
+          "test"
+        ],
+        "notes": "One module; this SDD root is the package directory inside the webex-js-sdk monorepo."
+      }
+    ],
+    "source_surfaces": [
+      {
+        "name": "Presence plugin",
+        "paths": [
+          "src"
+        ],
+        "notes": "index.ts, presence.ts, presence-batcher.ts, presence-worker.ts, interface.ts, constants.ts, config.ts. Specified at src/docs/README.md."
+      },
+      {
+        "name": "tests",
+        "paths": [
+          "test/unit/spec",
+          "test/integration/spec"
+        ],
+        "notes": "Unit specs run by test:unit, 29 of 29 passing; the live-service spec is skipped and no script runs it."
+      }
+    ],
+    "generated_surfaces": [
+      {
+        "name": "build output",
+        "paths": [
+          "dist"
+        ],
+        "generated_from": "src",
+        "refresh_with": "yarn workspace @webex/plugin-presence build:src",
+        "notes": "JavaScript and source maps from webex-legacy-tools; build also writes dist/types through tsc. Do not edit by hand."
+      },
+      {
+        "name": "repo-standards template map",
+        "paths": [
+          "../../../.sdd/templates/repo-standards"
+        ],
+        "generated_from": "WebexTools/repo-standards@d89a7fe59126ae3ad9bac9ca352aa7f12b4c85dc",
+        "refresh_with": "The package holds no templates. It refers to the monorepo root snapshot at ../../../.sdd/templates/repo-standards through layout.monorepo_package.templates_root_path in .sdd/manifest.json. Refresh the root snapshot, not this package.",
+        "notes": "The package holds no templates. It refers to the monorepo root snapshot at ../../../.sdd/templates/repo-standards through layout.monorepo_package.templates_root_path in .sdd/manifest.json. Refresh the root snapshot, not this package."
+      }
+    ],
+    "validation_entrypoints": [
+      {
+        "name": "compile",
+        "command": "yarn workspace @webex/plugin-presence build",
+        "scope": "src",
+        "notes": "Runs tsc for declarations into dist/types, then build:src."
+      },
+      {
+        "name": "unit-test",
+        "command": "yarn workspace @webex/plugin-presence test:unit",
+        "scope": "test/unit/spec",
+        "notes": "Run build:src first; the specs test dist. 29 of 29 cases pass."
+      },
+      {
+        "name": "lint",
+        "command": "yarn workspace @webex/plugin-presence test:style",
+        "scope": "src",
+        "notes": "eslint via the local .eslintrc.js; docs/** and *.md are ignored."
+      }
+    ],
+    "sync_paths": [
+      {
+        "source": "src/presence-worker.ts",
+        "targets": [
+          "src/docs/README.md"
+        ],
+        "mechanism": "Manual; update the module specification in the same change that alters observable behavior.",
+        "notes": "Keep the request, worker timing, envelope type, and transform rows of the specification aligned with the code."
+      },
+      {
+        "source": "src/presence.ts",
+        "targets": [
+          "src/interface.ts",
+          "src/docs/README.md"
+        ],
+        "mechanism": "Manual; change the IPresence declaration and the module specification in the same change as a method.",
+        "notes": "build fails on a type error but does not detect a method missing from IPresence."
+      },
+      {
+        "source": "WebexTools/repo-standards@d89a7fe59126ae3ad9bac9ca352aa7f12b4c85dc",
+        "targets": [
+          "../../../.sdd/templates/repo-standards"
+        ],
+        "mechanism": "The package holds no templates. It refers to the monorepo root snapshot at ../../../.sdd/templates/repo-standards through layout.monorepo_package.templates_root_path in .sdd/manifest.json. Refresh the root snapshot, not this package.",
+        "notes": "The package holds no templates. It refers to the monorepo root snapshot at ../../../.sdd/templates/repo-standards through layout.monorepo_package.templates_root_path in .sdd/manifest.json. Refresh the root snapshot, not this package."
+      }
+    ]
+  },
+  "folder_readme_contract": {
+    "required_sections": [
+      "purpose",
+      "boundaries",
+      "key-files",
+      "common-tasks"
+    ],
+    "rules": [
+      "Orient the reader before describing detail.",
+      "Link to the module specification rather than duplicating it."
+    ],
+    "example_policy": "Examples are allowed only when verified against src/ or test/.",
+    "fallback": "Omit a section rather than inventing content; report unresolved facts as gaps."
+  },
+  "regression_feedback_rules": [
+    {
+      "trigger": "A request method, body, resource, or result shape in src/presence.ts or src/presence-batcher.ts changes.",
+      "required_followups": [
+        "Add or update a case in test/unit/spec/presence.ts",
+        "Update src/interface.ts",
+        "Update MOD-004 to MOD-010 and INV-001, INV-002, INV-003, INV-006 in src/docs/README.md"
+      ],
+      "notes": "Clients read {statusList} and {responses}."
+    },
+    {
+      "trigger": "A worker timing, map rule, or envelope type changes.",
+      "required_followups": [
+        "Add or update a case in test/unit/spec/presence-worker.ts with fake timers",
+        "Update MOD-011 to MOD-017, INV-004, INV-005, and the State machine in src/docs/README.md"
+      ],
+      "notes": "Clients switch on the 'updated' envelope type."
+    },
+    {
+      "trigger": "The registration, transform, or config defaults change.",
+      "required_followups": [
+        "Add unit cases; none exist today",
+        "Update MOD-001 to MOD-003 in src/docs/README.md"
+      ],
+      "notes": "The transform applies to every inbound SDK response."
+    }
+  ],
+  "surface_owners": [
+    {
+      "surface": "module implementation and specifications",
+      "owner": "@webex/web-sdk",
+      "edit_boundary": "Owner per the default rule of the monorepo .github/CODEOWNERS; the file has no line for packages/@webex/plugin-presence."
+    }
+  ],
+  "do_not_edit": [
+    "dist",
+    "../../../.sdd/templates/repo-standards"
+  ],
+  "marker_scopes": {
+    "sdd": [
+      ".sdd/manifest.json",
+      "src/docs/README.md",
+      "docs"
+    ]
+  },
+  "fallback_rules": [
+    "When source and tests disagree, code is the referee and the disagreement is recorded rather than silently resolved.",
+    "When neither source nor tests settle a question, report it as a gap instead of inferring.",
+    "Commit history is not a valid rationale source for this package.",
+    "When a dependency's specification disagrees with that dependency's code, use the code and record the disagreement; when a dependency has no specification, use its code."
+  ],
+  "downstream_context_pack": {
+    "required_human_surfaces": [
+      "README.md",
+      "docs/index.md",
+      "docs/architecture.md",
+      "src/docs/README.md"
+    ],
+    "required_agent_operational_surfaces": [
+      "AGENTS.md",
+      "docs/specs/README.md"
+    ],
+    "required_machine_readable_surface": ".sdd/manifest.json",
+    "recommended_machine_readable_sections": [
+      "public_interfaces",
+      "change_impact",
+      "evidence_rules",
+      "negative_guidance",
+      "confidence_policy",
+      "repository_topology",
+      "folder_readme_contract",
+      "regression_feedback_rules"
+    ]
+  }
+}

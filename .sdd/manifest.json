@@ -66,6 +66,69 @@
   ],
   "packages": [
     {
+      "id": "@webex/internal-plugin-ai-assistant",
+      "path": "packages/@webex/internal-plugin-ai-assistant",
+      "manifest": "packages/@webex/internal-plugin-ai-assistant/.sdd/manifest.json",
+      "agent_entry": "packages/@webex/internal-plugin-ai-assistant/AGENTS.md",
+      "index": "packages/@webex/internal-plugin-ai-assistant/docs/index.md",
+      "onboarded_at": "2026-11-12T09:33:08Z",
+      "onboarded_by": "claude-code"
+    },
+    {
+      "id": "@webex/internal-plugin-avatar",
+      "path": "packages/@webex/internal-plugin-avatar",
+      "manifest": "packages/@webex/internal-plugin-avatar/.sdd/manifest.json",
+      "agent_entry": "packages/@webex/internal-plugin-avatar/AGENTS.md",
+      "index": "packages/@webex/internal-plugin-avatar/docs/index.md",
+      "onboarded_at": "2026-11-12T15:40:00Z",
+      "onboarded_by": "claude-code"
+    },
+    {
+      "id": "@webex/internal-plugin-board",
+      "path": "packages/@webex/internal-plugin-board",
+      "manifest": "packages/@webex/internal-plugin-board/.sdd/manifest.json",
+      "agent_entry": "packages/@webex/internal-plugin-board/AGENTS.md",
+      "index": "packages/@webex/internal-plugin-board/docs/index.md",
+      "onboarded_at": "2026-11-12T06:57:16Z",
+      "onboarded_by": "claude-code"
+    },
+    {
+      "id": "@webex/internal-plugin-calendar",
+      "path": "packages/@webex/internal-plugin-calendar",
+      "manifest": "packages/@webex/internal-plugin-calendar/.sdd/manifest.json",
+      "agent_entry": "packages/@webex/internal-plugin-calendar/AGENTS.md",
+      "index": "packages/@webex/internal-plugin-calendar/docs/index.md",
+      "onboarded_at": "2026-11-12T07:53:58Z",
+      "onboarded_by": "claude-code"
+    },
+    {
+      "id": "@webex/internal-plugin-dss",
+      "path": "packages/@webex/internal-plugin-dss",
+      "manifest": "packages/@webex/internal-plugin-dss/.sdd/manifest.json",
+      "agent_entry": "packages/@webex/internal-plugin-dss/AGENTS.md",
+      "index": "packages/@webex/internal-plugin-dss/docs/index.md",
+      "onboarded_at": "2026-11-12T10:16:31Z",
+      "onboarded_by": "claude-code"
+    },
+    {
+      "id": "@webex/internal-plugin-ediscovery",
+      "path": "packages/@webex/internal-plugin-ediscovery",
+      "manifest": "packages/@webex/internal-plugin-ediscovery/.sdd/manifest.json",
+      "agent_entry": "packages/@webex/internal-plugin-ediscovery/AGENTS.md",
+      "index": "packages/@webex/internal-plugin-ediscovery/docs/index.md",
+      "onboarded_at": "2026-11-12T05:59:56Z",
+      "onboarded_by": "claude-code"
+    },
+    {
+      "id": "@webex/internal-plugin-conversation",
+      "path": "packages/@webex/internal-plugin-conversation",
+      "manifest": "packages/@webex/internal-plugin-conversation/.sdd/manifest.json",
+      "agent_entry": "packages/@webex/internal-plugin-conversation/AGENTS.md",
+      "index": "packages/@webex/internal-plugin-conversation/docs/index.md",
+      "onboarded_at": "2026-11-09T11:06:48Z",
+      "onboarded_by": "claude-code"
+    },
+    {
       "id": "@webex/internal-plugin-feature",
       "path": "packages/@webex/internal-plugin-feature",
       "manifest": "packages/@webex/internal-plugin-feature/.sdd/manifest.json",
@@ -75,12 +138,102 @@
       "onboarded_by": "claude-code"
     },
     {
+      "id": "@webex/internal-plugin-flag",
+      "path": "packages/@webex/internal-plugin-flag",
+      "manifest": "packages/@webex/internal-plugin-flag/.sdd/manifest.json",
+      "agent_entry": "packages/@webex/internal-plugin-flag/AGENTS.md",
+      "index": "packages/@webex/internal-plugin-flag/docs/index.md",
+      "onboarded_at": "2026-11-12T14:20:04Z",
+      "onboarded_by": "claude-cowork"
+    },
+    {
+      "id": "@webex/internal-plugin-lyra",
+      "path": "packages/@webex/internal-plugin-lyra",
+      "manifest": "packages/@webex/internal-plugin-lyra/.sdd/manifest.json",
+      "agent_entry": "packages/@webex/internal-plugin-lyra/AGENTS.md",
+      "index": "packages/@webex/internal-plugin-lyra/docs/index.md",
+      "onboarded_at": "2026-11-12T14:57:32Z",
+      "onboarded_by": "claude-code"
+    },
+    {
+      "id": "@webex/internal-plugin-presence",
+      "path": "packages/@webex/internal-plugin-presence",
+      "manifest": "packages/@webex/internal-plugin-presence/.sdd/manifest.json",
+      "agent_entry": "packages/@webex/internal-plugin-presence/AGENTS.md",
+      "index": "packages/@webex/internal-plugin-presence/docs/index.md",
+      "onboarded_at": "2026-11-12T12:59:00Z",
+      "onboarded_by": "claude-code"
+    },
+    {
+      "id": "@webex/internal-plugin-search",
+      "path": "packages/@webex/internal-plugin-search",
+      "manifest": "packages/@webex/internal-plugin-search/.sdd/manifest.json",
+      "agent_entry": "packages/@webex/internal-plugin-search/AGENTS.md",
+      "index": "packages/@webex/internal-plugin-search/docs/index.md",
+      "onboarded_at": "2026-11-12T11:22:13Z",
+      "onboarded_by": "claude-code"
+    },
+    {
+      "id": "@webex/internal-plugin-support",
+      "path": "packages/@webex/internal-plugin-support",
+      "manifest": "packages/@webex/internal-plugin-support/.sdd/manifest.json",
+      "agent_entry": "packages/@webex/internal-plugin-support/AGENTS.md",
+      "index": "packages/@webex/internal-plugin-support/docs/index.md",
+      "onboarded_at": "2026-11-12T12:04:00Z",
+      "onboarded_by": "claude-code"
+    },
+    {
+      "id": "@webex/internal-plugin-team",
+      "path": "packages/@webex/internal-plugin-team",
+      "manifest": "packages/@webex/internal-plugin-team/.sdd/manifest.json",
+      "agent_entry": "packages/@webex/internal-plugin-team/AGENTS.md",
+      "index": "packages/@webex/internal-plugin-team/docs/index.md",
+      "onboarded_at": "2026-11-12T14:03:04Z",
+      "onboarded_by": "claude-code"
+    },
+    {
+      "id": "@webex/internal-plugin-locus",
+      "path": "packages/@webex/internal-plugin-locus",
+      "manifest": "packages/@webex/internal-plugin-locus/.sdd/manifest.json",
+      "agent_entry": "packages/@webex/internal-plugin-locus/AGENTS.md",
+      "index": "packages/@webex/internal-plugin-locus/docs/index.md",
+      "onboarded_at": "2026-11-12T09:25:08Z",
+      "onboarded_by": "claude-cowork"
+    },
+    {
+      "id": "@webex/internal-plugin-scheduler",
+      "path": "packages/@webex/internal-plugin-scheduler",
+      "manifest": "packages/@webex/internal-plugin-scheduler/.sdd/manifest.json",
+      "agent_entry": "packages/@webex/internal-plugin-scheduler/AGENTS.md",
+      "index": "packages/@webex/internal-plugin-scheduler/docs/index.md",
+      "onboarded_at": "2026-11-12T13:34:35Z",
+      "onboarded_by": "claude-cowork"
+    },
+    {
+      "id": "@webex/internal-plugin-task",
+      "path": "packages/@webex/internal-plugin-task",
+      "manifest": "packages/@webex/internal-plugin-task/.sdd/manifest.json",
+      "agent_entry": "packages/@webex/internal-plugin-task/AGENTS.md",
+      "index": "packages/@webex/internal-plugin-task/docs/index.md",
+      "onboarded_at": "2026-11-12T12:47:05Z",
+      "onboarded_by": "claude-cowork"
+    },
+    {
       "id": "@webex/internal-plugin-user",
       "path": "packages/@webex/internal-plugin-user",
       "manifest": "packages/@webex/internal-plugin-user/.sdd/manifest.json",
       "agent_entry": "packages/@webex/internal-plugin-user/AGENTS.md",
       "index": "packages/@webex/internal-plugin-user/docs/index.md",
       "onboarded_at": "2026-10-22T00:00:00Z",
+      "onboarded_by": "claude-code"
+    },
+    {
+      "id": "@webex/internal-plugin-voicea",
+      "path": "packages/@webex/internal-plugin-voicea",
+      "manifest": "packages/@webex/internal-plugin-voicea/.sdd/manifest.json",
+      "agent_entry": "packages/@webex/internal-plugin-voicea/AGENTS.md",
+      "index": "packages/@webex/internal-plugin-voicea/docs/index.md",
+      "onboarded_at": "2026-11-12T08:36:43Z",
       "onboarded_by": "claude-code"
     },
     {
@@ -93,12 +246,129 @@
       "onboarded_by": "claude-code"
     },
     {
+      "id": "@webex/plugin-attachment-actions",
+      "path": "packages/@webex/plugin-attachment-actions",
+      "manifest": "packages/@webex/plugin-attachment-actions/.sdd/manifest.json",
+      "agent_entry": "packages/@webex/plugin-attachment-actions/AGENTS.md",
+      "index": "packages/@webex/plugin-attachment-actions/docs/index.md",
+      "onboarded_at": "2026-11-13T02:40:00Z",
+      "onboarded_by": "claude-code"
+    },
+    {
+      "id": "@webex/plugin-authorization",
+      "path": "packages/@webex/plugin-authorization",
+      "manifest": "packages/@webex/plugin-authorization/.sdd/manifest.json",
+      "agent_entry": "packages/@webex/plugin-authorization/AGENTS.md",
+      "index": "packages/@webex/plugin-authorization/docs/index.md",
+      "onboarded_at": "2026-11-12T05:11:05Z",
+      "onboarded_by": "claude-code"
+    },
+    {
+      "id": "@webex/plugin-authorization-browser",
+      "path": "packages/@webex/plugin-authorization-browser",
+      "manifest": "packages/@webex/plugin-authorization-browser/.sdd/manifest.json",
+      "agent_entry": "packages/@webex/plugin-authorization-browser/AGENTS.md",
+      "index": "packages/@webex/plugin-authorization-browser/docs/index.md",
+      "onboarded_at": "2026-11-04T06:35:39Z",
+      "onboarded_by": "claude-code"
+    },
+    {
       "id": "@webex/plugin-authorization-browser-first-party",
       "path": "packages/@webex/plugin-authorization-browser-first-party",
       "manifest": "packages/@webex/plugin-authorization-browser-first-party/.sdd/manifest.json",
       "agent_entry": "packages/@webex/plugin-authorization-browser-first-party/AGENTS.md",
       "index": "packages/@webex/plugin-authorization-browser-first-party/docs/index.md",
       "onboarded_at": "2026-11-03T05:46:20Z",
+      "onboarded_by": "claude-code"
+    },
+    {
+      "id": "@webex/plugin-authorization-node",
+      "path": "packages/@webex/plugin-authorization-node",
+      "manifest": "packages/@webex/plugin-authorization-node/.sdd/manifest.json",
+      "agent_entry": "packages/@webex/plugin-authorization-node/AGENTS.md",
+      "index": "packages/@webex/plugin-authorization-node/docs/index.md",
+      "onboarded_at": "2026-11-11T08:35:47Z",
+      "onboarded_by": "claude-code"
+    },
+    {
+      "id": "@webex/plugin-device-manager",
+      "path": "packages/@webex/plugin-device-manager",
+      "manifest": "packages/@webex/plugin-device-manager/.sdd/manifest.json",
+      "agent_entry": "packages/@webex/plugin-device-manager/AGENTS.md",
+      "index": "packages/@webex/plugin-device-manager/docs/index.md",
+      "onboarded_at": "2026-11-13T02:40:00Z",
+      "onboarded_by": "claude-code"
+    },
+    {
+      "id": "@webex/plugin-memberships",
+      "path": "packages/@webex/plugin-memberships",
+      "manifest": "packages/@webex/plugin-memberships/.sdd/manifest.json",
+      "agent_entry": "packages/@webex/plugin-memberships/AGENTS.md",
+      "index": "packages/@webex/plugin-memberships/docs/index.md",
+      "onboarded_at": "2026-11-12T17:28:00Z",
+      "onboarded_by": "claude-code"
+    },
+    {
+      "id": "@webex/plugin-messages",
+      "path": "packages/@webex/plugin-messages",
+      "manifest": "packages/@webex/plugin-messages/.sdd/manifest.json",
+      "agent_entry": "packages/@webex/plugin-messages/AGENTS.md",
+      "index": "packages/@webex/plugin-messages/docs/index.md",
+      "onboarded_at": "2026-11-12T17:30:00Z",
+      "onboarded_by": "claude-code"
+    },
+    {
+      "id": "@webex/plugin-people",
+      "path": "packages/@webex/plugin-people",
+      "manifest": "packages/@webex/plugin-people/.sdd/manifest.json",
+      "agent_entry": "packages/@webex/plugin-people/AGENTS.md",
+      "index": "packages/@webex/plugin-people/docs/index.md",
+      "onboarded_at": "2026-11-12T16:30:00Z",
+      "onboarded_by": "claude-code"
+    },
+    {
+      "id": "@webex/plugin-presence",
+      "path": "packages/@webex/plugin-presence",
+      "manifest": "packages/@webex/plugin-presence/.sdd/manifest.json",
+      "agent_entry": "packages/@webex/plugin-presence/AGENTS.md",
+      "index": "packages/@webex/plugin-presence/docs/index.md",
+      "onboarded_at": "2026-11-12T13:29:35Z",
+      "onboarded_by": "claude-code"
+    },
+    {
+      "id": "@webex/plugin-rooms",
+      "path": "packages/@webex/plugin-rooms",
+      "manifest": "packages/@webex/plugin-rooms/.sdd/manifest.json",
+      "agent_entry": "packages/@webex/plugin-rooms/AGENTS.md",
+      "index": "packages/@webex/plugin-rooms/docs/index.md",
+      "onboarded_at": "2026-11-12T16:55:00Z",
+      "onboarded_by": "claude-code"
+    },
+    {
+      "id": "@webex/plugin-team-memberships",
+      "path": "packages/@webex/plugin-team-memberships",
+      "manifest": "packages/@webex/plugin-team-memberships/.sdd/manifest.json",
+      "agent_entry": "packages/@webex/plugin-team-memberships/AGENTS.md",
+      "index": "packages/@webex/plugin-team-memberships/docs/index.md",
+      "onboarded_at": "2026-11-12T17:30:00Z",
+      "onboarded_by": "claude-code"
+    },
+    {
+      "id": "@webex/plugin-teams",
+      "path": "packages/@webex/plugin-teams",
+      "manifest": "packages/@webex/plugin-teams/.sdd/manifest.json",
+      "agent_entry": "packages/@webex/plugin-teams/AGENTS.md",
+      "index": "packages/@webex/plugin-teams/docs/index.md",
+      "onboarded_at": "2026-11-12T17:45:00Z",
+      "onboarded_by": "claude-code"
+    },
+    {
+      "id": "@webex/plugin-webhooks",
+      "path": "packages/@webex/plugin-webhooks",
+      "manifest": "packages/@webex/plugin-webhooks/.sdd/manifest.json",
+      "agent_entry": "packages/@webex/plugin-webhooks/AGENTS.md",
+      "index": "packages/@webex/plugin-webhooks/docs/index.md",
+      "onboarded_at": "2026-11-13T02:29:00Z",
       "onboarded_by": "claude-code"
     },
     {
@@ -109,6 +379,15 @@
       "index": "packages/@webex/storage-adapter-local-forage/docs/index.md",
       "onboarded_at": "2026-11-09T12:30:00Z",
       "onboarded_by": "claude-code"
+    },
+    {
+      "id": "@webex/storage-adapter-local-storage",
+      "path": "packages/@webex/storage-adapter-local-storage",
+      "manifest": "packages/@webex/storage-adapter-local-storage/.sdd/manifest.json",
+      "agent_entry": "packages/@webex/storage-adapter-local-storage/AGENTS.md",
+      "index": "packages/@webex/storage-adapter-local-storage/docs/index.md",
+      "onboarded_at": "2026-11-09T10:45:00Z",
+      "onboarded_by": "claude-code"
     }
   ],
   "substrate": {
@@ -117,7 +396,7 @@
   },
   "provenance": {
     "generated_by": "claude-code",
-    "approved_by": "rsarika@cisco.com",
-    "updated_at": "2026-11-09T12:30:00Z"
+    "approved_by": "rarajes2@cisco.com",
+    "updated_at": "2026-11-13T02:40:00Z"
   }
 }
