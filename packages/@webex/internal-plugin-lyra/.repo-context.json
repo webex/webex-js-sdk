@@ -1,0 +1,477 @@
+{
+  "$schema": "./schemas/repo-context.schema.json",
+  "version": 1,
+  "repository": {
+    "name": "@webex/internal-plugin-lyra",
+    "purpose": "Internal plugin registered as webex.internal.lyra for Lyra spaces (room devices). getAdvertisedEndpoint() resolves an ultrasound token to the advertising space through the proximity service. The space child lists and reads the user's spaces, joins (default pass type MANUAL, with the current device url) and leaves them, verifies occupants, reads bindings, and binds and unbinds conversations with KMS create and delete authorization messages for the space identity; join, leave, bindConversation, and unbindConversation take a space.url relative to the lyra service, while the other space methods take an absolute one. The device child reads and reports audio state and invokes mute, unmute, and volume actions under the audio resource of the space url. It stores nothing itself."
+  },
+  "commands": {
+    "install": "yarn",
+    "prebuild": "yarn prebuild:modules",
+    "compile": "yarn build",
+    "build": "yarn build:src",
+    "unit-test": "yarn test:unit",
+    "lint": "yarn test:style",
+    "deploy": "yarn deploy:npm"
+  },
+  "public_interfaces": [
+    {
+      "name": "@webex/internal-plugin-lyra package entry",
+      "kind": "package_export",
+      "source": "src/index.js",
+      "entrypoints": [
+        "import '@webex/internal-plugin-lyra'",
+        "import Lyra, {config} from '@webex/internal-plugin-lyra'"
+      ],
+      "audience": "first-party Webex clients and the SDK packages that register it",
+      "notes": "Importing the package imports the mercury, encryption, conversation, and feature plugins, then registers Lyra as internal plugin 'lyra' with config {lyra: {}}; the first registration of the name wins. The default export Lyra and the named export config are the only exports."
+    },
+    {
+      "name": "webex.internal.lyra methods",
+      "kind": "plugin_api",
+      "source": "src/lyra.js",
+      "entrypoints": [
+        "webex.internal.lyra.getAdvertisedEndpoint(token)",
+        "webex.internal.lyra.space.list()",
+        "webex.internal.lyra.space.get(space)",
+        "webex.internal.lyra.space.join(space, options)",
+        "webex.internal.lyra.space.leave(space, options)",
+        "webex.internal.lyra.space.verifyOccupant(space, occupantId)",
+        "webex.internal.lyra.space.getCurrentBindings(space)",
+        "webex.internal.lyra.space.bindConversation(space, conversation, options)",
+        "webex.internal.lyra.space.unbindConversation(space, conversation, options)",
+        "webex.internal.lyra.space.deleteBinding(space, options)",
+        "webex.internal.lyra.device.getAudioState(space)",
+        "webex.internal.lyra.device.putAudioState(space, audioState)",
+        "webex.internal.lyra.device.mute(space)",
+        "webex.internal.lyra.device.unmute(space)",
+        "webex.internal.lyra.device.increaseVolume(space)",
+        "webex.internal.lyra.device.decreaseVolume(space)",
+        "webex.internal.lyra.device.setVolume(space, level)"
+      ],
+      "audience": "@webex/plugin-device-manager and first-party Webex clients",
+      "notes": "The space and device children are defined in src/space.js and src/device.js. join, leave, bindConversation, and unbindConversation take a space.url relative to the lyra service (/spaces/ followed by the space id); verifyOccupant, getCurrentBindings, deleteBinding, and every device method take an absolute space.url. getAdvertisedEndpoint, list, get, getCurrentBindings, bindConversation, getAudioState, and putAudioState resolve the response body (items for list); the others resolve the whole response. Argument guards reject before any request; a missing space throws synchronously."
+    },
+    {
+      "name": "package scripts",
+      "kind": "npm_scripts",
+      "source": "package.json",
+      "entrypoints": [
+        "build",
+        "build:src",
+        "test:unit",
+        "test:style",
+        "test:browser",
+        "test",
+        "deploy:npm"
+      ],
+      "audience": "contributors and CI",
+      "notes": "build runs build:src, which writes dist. test:unit runs the jest unit specs, which import the package by name and so test dist; run build:src first. There is no test:integration script, so the aggregate test stops there; test:browser currently bundles nothing (0 tests)."
+    }
+  ],
+  "source_of_truth": [
+    {
+      "surface": "Lyra plugin implementation",
+      "paths": [
+        "src/index.js",
+        "src/lyra.js",
+        "src/space.js",
+        "src/device.js",
+        "src/config.js"
+      ],
+      "generated_artifacts": [
+        "dist"
+      ],
+      "refresh_with": [
+        "yarn build:src"
+      ],
+      "validate_with": [
+        "yarn test:unit",
+        "yarn test:style"
+      ]
+    },
+    {
+      "surface": "module specification",
+      "paths": [
+        "src/docs/README.md"
+      ],
+      "generated_artifacts": [],
+      "refresh_with": [
+        "update alongside the behavior change in the same commit"
+      ],
+      "validate_with": [
+        "spec-validator on an independent runtime"
+      ]
+    }
+  ],
+  "generated_artifacts": [
+    {
+      "path": "dist",
+      "generated_from": "src",
+      "refresh_with": "yarn build:src"
+    },
+    {
+      "path": "../../../.sdd/templates/repo-standards/template-map.json",
+      "generated_from": "WebexTools/repo-standards@d89a7fe59126ae3ad9bac9ca352aa7f12b4c85dc",
+      "refresh_with": "The package holds no templates. It refers to the monorepo root snapshot at ../../../.sdd/templates/repo-standards through layout.monorepo_package.templates_root_path in .sdd/manifest.json. Refresh the root snapshot, not this package."
+    }
+  ],
+  "validation_matrix": [
+    {
+      "paths": [
+        "src/**"
+      ],
+      "minimum": [
+        "yarn build:src",
+        "yarn test:unit",
+        "yarn test:style"
+      ],
+      "recommended": [
+        "add or update cases in test/unit/spec/lyra.js, test/unit/spec/space.js, or test/unit/spec/device.js for the changed behavior"
+      ]
+    },
+    {
+      "paths": [
+        "src/space.js",
+        "src/device.js"
+      ],
+      "minimum": [
+        "yarn build:src",
+        "yarn test:unit",
+        "yarn test:style"
+      ],
+      "recommended": [
+        "check the calls in @webex/plugin-device-manager and the space.url form each method expects (INV-001) when a request path, body, query string, KMS message, or resolved value changes"
+      ]
+    },
+    {
+      "paths": [
+        "src/index.js",
+        "src/lyra.js",
+        "src/config.js"
+      ],
+      "minimum": [
+        "yarn build:src",
+        "yarn test:unit",
+        "yarn test:style"
+      ],
+      "recommended": [
+        "check the packages that register the plugin (@webex/plugin-device-manager, @webex/recipe-private-web-client) when the registered name, a child name, or an import changes"
+      ]
+    }
+  ],
+  "change_impact": [
+    {
+      "paths": [
+        "src/space.js"
+      ],
+      "affects": [
+        "the occupancy, verification, and binding requests",
+        "the KMS authorization messages and their wrapping",
+        "the space.url form each method expects"
+      ],
+      "refresh_with": [
+        "yarn build:src"
+      ],
+      "validate_with": [
+        "yarn test:unit",
+        "yarn test:style"
+      ],
+      "avoid_direct_edits": [
+        "dist"
+      ],
+      "notes": "Keep INV-001 (relative versus absolute space.url) and INV-003 (wrap query-string KMS messages) intact."
+    },
+    {
+      "paths": [
+        "src/device.js"
+      ],
+      "affects": [
+        "the audio state and action requests"
+      ],
+      "refresh_with": [
+        "yarn build:src"
+      ],
+      "validate_with": [
+        "yarn test:unit",
+        "yarn test:style"
+      ],
+      "avoid_direct_edits": [
+        "dist"
+      ],
+      "notes": "Only the setVolume default and the putAudioState guard are unit-tested today."
+    },
+    {
+      "paths": [
+        "src/index.js",
+        "src/lyra.js",
+        "src/config.js"
+      ],
+      "affects": [
+        "the registered plugin name, children, and config",
+        "the plugins imported for registration",
+        "the proximity lookup"
+      ],
+      "refresh_with": [
+        "yarn build:src"
+      ],
+      "validate_with": [
+        "yarn test:unit",
+        "yarn test:style"
+      ],
+      "avoid_direct_edits": [
+        "dist"
+      ],
+      "notes": "No unit case covers registration; add one before changing it."
+    }
+  ],
+  "evidence_rules": [
+    {
+      "claim_category": "command_name",
+      "sources": [
+        "package.json"
+      ],
+      "requirement": "The script must exist in package.json scripts.",
+      "notes": "test:integration does not exist, so the aggregate test script fails; test:browser currently verifies nothing."
+    },
+    {
+      "claim_category": "import_path",
+      "sources": [
+        "src/index.js"
+      ],
+      "requirement": "A binding is public only if exported from src/index.js.",
+      "notes": "The exports are the default Lyra and the named config."
+    },
+    {
+      "claim_category": "behavior_claim",
+      "sources": [
+        "src",
+        "test/unit/spec"
+      ],
+      "requirement": "Ground every behavioral claim in source and unit-test evidence.",
+      "notes": "Commit history is not an evidence source for this package. README.md is context only (docs/adr/0001-retain-product-readme.md). The webex-core, common, internal-plugin-device, internal-plugin-mercury, and internal-plugin-feature specs were consulted; internal-plugin-encryption, internal-plugin-conversation, and plugin-device-manager have no spec, so their code was used."
+    }
+  ],
+  "negative_guidance": [
+    {
+      "rule": "Do not pass an absolute space.url to join, leave, bindConversation, or unbindConversation, or a relative one to the other space and device methods.",
+      "why": "The first group sends it as a lyra catalog resource and the second as the request uri (INV-001)."
+    },
+    {
+      "rule": "Do not put an unwrapped KMS message in a query string.",
+      "why": "The outbound KMS transform only reaches body.kmsMessage (INV-003)."
+    },
+    {
+      "rule": "Do not change which methods resolve the body and which the whole response.",
+      "why": "@webex/plugin-device-manager and first-party clients read those values."
+    },
+    {
+      "rule": "Do not log ultrasound tokens, proofs, device URLs, or KMS messages.",
+      "why": "They identify users and devices; the package has no log line today."
+    },
+    {
+      "rule": "Do not treat README.md as a usage reference.",
+      "why": "Its Usage block names a placeholder member; see docs/adr/0001-retain-product-readme.md."
+    },
+    {
+      "rule": "Do not infer a coverage threshold for this package.",
+      "why": "No coverage script or threshold exists."
+    }
+  ],
+  "confidence_policy": {
+    "high": {
+      "action": "update",
+      "expectation": "Source and a unit case in test/unit/spec agree."
+    },
+    "medium": {
+      "action": "narrow-scope",
+      "expectation": "Only source evidence exists, as for registration, list, leave, verifyOccupant, the bindings success paths, and most device requests. Pin current behavior with a unit case before modifying."
+    },
+    "low": {
+      "action": "noop",
+      "expectation": "Neither source, tests, nor a dependency's spec or code settles the question. Stop and report the gap."
+    }
+  },
+  "repository_topology": {
+    "main_entrypoints": [
+      {
+        "name": "package entry",
+        "path": "src/index.js",
+        "purpose": "Registers the lyra plugin and exports the class and its config",
+        "notes": "No subpath exports; package.json main is dist/index.js and devMain is src/index.js."
+      }
+    ],
+    "workspace_packages": [
+      {
+        "name": "@webex/internal-plugin-lyra",
+        "paths": [
+          "src",
+          "test"
+        ],
+        "notes": "One module; this SDD root is the package directory inside the webex-js-sdk monorepo."
+      }
+    ],
+    "source_surfaces": [
+      {
+        "name": "Lyra plugin",
+        "paths": [
+          "src"
+        ],
+        "notes": "index.js, lyra.js, space.js, device.js, config.js. Specified at src/docs/README.md."
+      },
+      {
+        "name": "tests",
+        "paths": [
+          "test/unit/spec",
+          "test/integration/spec"
+        ],
+        "notes": "Three unit specs run by test:unit; two live-service specs run only by test:browser."
+      }
+    ],
+    "generated_surfaces": [
+      {
+        "name": "build output",
+        "paths": [
+          "dist"
+        ],
+        "generated_from": "src",
+        "refresh_with": "yarn build:src",
+        "notes": "JavaScript and source maps from webex-legacy-tools; no type declarations. Do not edit by hand."
+      },
+      {
+        "name": "repo-standards template map",
+        "paths": [
+          "../../../.sdd/templates/repo-standards"
+        ],
+        "generated_from": "WebexTools/repo-standards@d89a7fe59126ae3ad9bac9ca352aa7f12b4c85dc",
+        "refresh_with": "The package holds no templates. It refers to the monorepo root snapshot at ../../../.sdd/templates/repo-standards through layout.monorepo_package.templates_root_path in .sdd/manifest.json. Refresh the root snapshot, not this package.",
+        "notes": "The package holds no templates. It refers to the monorepo root snapshot at ../../../.sdd/templates/repo-standards through layout.monorepo_package.templates_root_path in .sdd/manifest.json. Refresh the root snapshot, not this package."
+      }
+    ],
+    "validation_entrypoints": [
+      {
+        "name": "compile",
+        "command": "yarn build",
+        "scope": "src",
+        "notes": "Runs build:src."
+      },
+      {
+        "name": "unit-test",
+        "command": "yarn test:unit",
+        "scope": "test/unit/spec",
+        "notes": "Run build:src first; the specs test dist."
+      },
+      {
+        "name": "lint",
+        "command": "yarn test:style",
+        "scope": "src",
+        "notes": "eslint via the local .eslintrc.js; docs/** and *.md are ignored."
+      }
+    ],
+    "sync_paths": [
+      {
+        "source": "src/space.js",
+        "targets": [
+          "src/docs/README.md"
+        ],
+        "mechanism": "Manual; update the module specification in the same change that alters observable behavior.",
+        "notes": "Keep the request, guard, KMS message, and space.url rows of the specification aligned with src/space.js, src/device.js, and src/lyra.js."
+      },
+      {
+        "source": "WebexTools/repo-standards@d89a7fe59126ae3ad9bac9ca352aa7f12b4c85dc",
+        "targets": [
+          "../../../.sdd/templates/repo-standards"
+        ],
+        "mechanism": "The package holds no templates. It refers to the monorepo root snapshot at ../../../.sdd/templates/repo-standards through layout.monorepo_package.templates_root_path in .sdd/manifest.json. Refresh the root snapshot, not this package.",
+        "notes": "The package holds no templates. It refers to the monorepo root snapshot at ../../../.sdd/templates/repo-standards through layout.monorepo_package.templates_root_path in .sdd/manifest.json. Refresh the root snapshot, not this package."
+      }
+    ]
+  },
+  "folder_readme_contract": {
+    "required_sections": [
+      "purpose",
+      "boundaries",
+      "key-files",
+      "common-tasks"
+    ],
+    "rules": [
+      "Orient the reader before describing detail.",
+      "Link to the module specification rather than duplicating it."
+    ],
+    "example_policy": "Examples are allowed only when verified against src/ or test/.",
+    "fallback": "Omit a section rather than inventing content; report unresolved facts as gaps."
+  },
+  "regression_feedback_rules": [
+    {
+      "trigger": "A request path, body, or query string built in src/space.js or src/device.js changes.",
+      "required_followups": [
+        "Add or update a unit case in test/unit/spec asserting the request",
+        "Update MOD-004 to MOD-015 and INV-001 in src/docs/README.md"
+      ],
+      "notes": "Only the join bodies, the proximity request, and the setVolume default are asserted today."
+    },
+    {
+      "trigger": "A KMS message or its wrapping in src/space.js changes.",
+      "required_followups": [
+        "Add unit cases stubbing webex.internal.encryption.kms.prepareRequest; none exist today",
+        "Update MOD-010, MOD-012, MOD-013, and INV-003 in src/docs/README.md"
+      ],
+      "notes": "The bindings integration blocks are skipped."
+    },
+    {
+      "trigger": "Registration, children, or imports in src/index.js or src/lyra.js change.",
+      "required_followups": [
+        "Add a unit case for registration; none exists today",
+        "Update MOD-001 and MOD-002 in src/docs/README.md"
+      ],
+      "notes": "@webex/plugin-device-manager reaches the children as webex.internal.lyra.space and webex.internal.lyra.device."
+    }
+  ],
+  "surface_owners": [
+    {
+      "surface": "module implementation and specifications",
+      "owner": "@webex/web-sdk",
+      "edit_boundary": "Owner per the default rule of the monorepo .github/CODEOWNERS; the file has no line for packages/@webex/internal-plugin-lyra."
+    }
+  ],
+  "do_not_edit": [
+    "dist",
+    "../../../.sdd/templates/repo-standards"
+  ],
+  "marker_scopes": {
+    "sdd": [
+      ".sdd/manifest.json",
+      "src/docs/README.md",
+      "docs"
+    ]
+  },
+  "fallback_rules": [
+    "When source and tests disagree, code is the referee and the disagreement is recorded rather than silently resolved.",
+    "When neither source nor tests settle a question, report it as a gap instead of inferring.",
+    "Commit history is not a valid rationale source for this package.",
+    "When a dependency's specification disagrees with that dependency's code, use the code and record the disagreement; when a dependency has no specification, use its code."
+  ],
+  "downstream_context_pack": {
+    "required_human_surfaces": [
+      "README.md",
+      "docs/index.md",
+      "docs/architecture.md",
+      "src/docs/README.md"
+    ],
+    "required_agent_operational_surfaces": [
+      "AGENTS.md",
+      "docs/specs/README.md"
+    ],
+    "required_machine_readable_surface": ".sdd/manifest.json",
+    "recommended_machine_readable_sections": [
+      "public_interfaces",
+      "change_impact",
+      "evidence_rules",
+      "negative_guidance",
+      "confidence_policy",
+      "repository_topology",
+      "folder_readme_contract",
+      "regression_feedback_rules"
+    ]
+  }
+}

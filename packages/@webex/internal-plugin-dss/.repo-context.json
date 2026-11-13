@@ -1,0 +1,445 @@
+{
+  "$schema": "./schemas/repo-context.schema.json",
+  "version": 1,
+  "repository": {
+    "name": "@webex/internal-plugin-dss",
+    "purpose": "Internal plugin registered as webex.internal.dss for the Directory Search Service (DSS). register() connects the shared mercury socket and listens for directory lookup and search events; lookupDetail, lookup, lookupByEmail, lookupByPhoneNumbers, search, and searchPlaces POST a query with a generated requestId to the directorySearch service, then collect the sequenced result pages that arrive over mercury until the finished page, rejecting with DssTimeoutError when no page arrives within requestTimeout. lookup is batched per resource through a webex-core Batcher by default. It stores nothing."
+  },
+  "commands": {
+    "install": "yarn",
+    "prebuild": "yarn prebuild:modules",
+    "compile": "yarn workspace @webex/internal-plugin-dss build",
+    "build": "yarn workspace @webex/internal-plugin-dss build:src",
+    "unit-test": "yarn workspace @webex/internal-plugin-dss test:unit",
+    "lint": "yarn workspace @webex/internal-plugin-dss test:style",
+    "deploy": "yarn workspace @webex/internal-plugin-dss deploy:npm"
+  },
+  "public_interfaces": [
+    {
+      "name": "@webex/internal-plugin-dss package entry",
+      "kind": "package_export",
+      "source": "src/index.ts",
+      "entrypoints": [
+        "import '@webex/internal-plugin-dss'",
+        "import DSS from '@webex/internal-plugin-dss'"
+      ],
+      "audience": "first-party Webex clients",
+      "notes": "Importing the package registers DSS as internal plugin 'dss' with config {dss: {requestTimeout: 6000, batcherWait: 50, batcherMaxCalls: 50, batcherMaxWait: 150}}; the first registration of the name wins. The default export is the only export; constants, types, and DssTimeoutError are reachable only by deep src paths."
+    },
+    {
+      "name": "webex.internal.dss methods and events",
+      "kind": "plugin_api",
+      "source": "src/dss.ts",
+      "entrypoints": [
+        "webex.internal.dss.register()",
+        "webex.internal.dss.unregister()",
+        "webex.internal.dss.lookupDetail({id})",
+        "webex.internal.dss.lookup({id, entityProviderType, shouldBatch})",
+        "webex.internal.dss.lookupByEmail({email})",
+        "webex.internal.dss.lookupByPhoneNumbers(phoneNumbers)",
+        "webex.internal.dss.search(options)",
+        "webex.internal.dss.searchPlaces(options)"
+      ],
+      "audience": "first-party Webex clients",
+      "notes": "Results arrive over mercury only after register(). lookupDetail, lookup, and lookupByEmail resolve one entity or null; lookupByPhoneNumbers and searchPlaces resolve {resultArray, ...}; search resolves an array. Silence for requestTimeout rejects with DssTimeoutError. Events: dss:registered, dss:unregistered, dss:lookup.result."
+    },
+    {
+      "name": "package scripts",
+      "kind": "npm_scripts",
+      "source": "package.json",
+      "entrypoints": [
+        "build",
+        "build:src",
+        "test:style",
+        "test:unit",
+        "test:browser",
+        "test",
+        "deploy:npm"
+      ],
+      "audience": "contributors and CI",
+      "notes": "build runs build:src, which writes dist. test chains test:integration, which is not defined; test:browser runs test/integration/spec/dss.js through karma but currently bundles nothing and reports 0 tests, so use test:unit and test:style."
+    }
+  ],
+  "source_of_truth": [
+    {
+      "surface": "DSS plugin implementation",
+      "paths": [
+        "src/index.ts",
+        "src/dss.ts",
+        "src/dss-batcher.ts",
+        "src/dss-errors.ts",
+        "src/constants.ts",
+        "src/types.ts",
+        "src/config.ts"
+      ],
+      "generated_artifacts": [
+        "dist"
+      ],
+      "refresh_with": [
+        "yarn workspace @webex/internal-plugin-dss build:src"
+      ],
+      "validate_with": [
+        "yarn workspace @webex/internal-plugin-dss test:unit",
+        "yarn workspace @webex/internal-plugin-dss test:style"
+      ]
+    },
+    {
+      "surface": "module specification",
+      "paths": [
+        "src/docs/README.md"
+      ],
+      "generated_artifacts": [],
+      "refresh_with": [
+        "update alongside the behavior change in the same commit"
+      ],
+      "validate_with": [
+        "spec-validator on an independent runtime"
+      ]
+    }
+  ],
+  "generated_artifacts": [
+    {
+      "path": "dist",
+      "generated_from": "src",
+      "refresh_with": "yarn workspace @webex/internal-plugin-dss build:src"
+    },
+    {
+      "path": "../../../.sdd/templates/repo-standards/template-map.json",
+      "generated_from": "WebexTools/repo-standards@d89a7fe59126ae3ad9bac9ca352aa7f12b4c85dc",
+      "refresh_with": "The package holds no templates. It refers to the monorepo root snapshot at ../../../.sdd/templates/repo-standards through layout.monorepo_package.templates_root_path in .sdd/manifest.json. Refresh the root snapshot, not this package."
+    }
+  ],
+  "validation_matrix": [
+    {
+      "paths": [
+        "src/**"
+      ],
+      "minimum": [
+        "yarn workspace @webex/internal-plugin-dss build:src",
+        "yarn workspace @webex/internal-plugin-dss test:unit"
+      ],
+      "recommended": [
+        "yarn workspace @webex/internal-plugin-dss test:style"
+      ]
+    },
+    {
+      "paths": [
+        "src/constants.ts",
+        "src/types.ts",
+        "src/index.ts",
+        "src/config.ts"
+      ],
+      "minimum": [
+        "yarn workspace @webex/internal-plugin-dss build:src",
+        "yarn workspace @webex/internal-plugin-dss test:unit"
+      ],
+      "recommended": [
+        "review first-party clients that call webex.internal.dss when a method, event name, result path, default, or the registered name changes; inside this repository only packages/webex/src/webex.js loads the plugin, and it calls no method"
+      ]
+    }
+  ],
+  "change_impact": [
+    {
+      "paths": [
+        "src/dss.ts"
+      ],
+      "affects": [
+        "registration and the mercury listeners",
+        "each query's resource path, body, and resolved value",
+        "page assembly and the inactivity timeout",
+        "lookup batching"
+      ],
+      "refresh_with": [
+        "yarn workspace @webex/internal-plugin-dss build:src"
+      ],
+      "validate_with": [
+        "yarn workspace @webex/internal-plugin-dss test:unit"
+      ],
+      "avoid_direct_edits": [
+        "dist"
+      ],
+      "notes": "Keep pages matched by requestId, ordered by sequence, and complete only with the finished page and every lower sequence."
+    },
+    {
+      "paths": [
+        "src/dss-batcher.ts",
+        "src/config.ts"
+      ],
+      "affects": [
+        "how lookup calls coalesce per resource",
+        "which callers resolve, resolve null, or reject per batch"
+      ],
+      "refresh_with": [
+        "yarn workspace @webex/internal-plugin-dss build:src"
+      ],
+      "validate_with": [
+        "yarn workspace @webex/internal-plugin-dss test:unit"
+      ],
+      "avoid_direct_edits": [
+        "dist"
+      ],
+      "notes": "The webex-core Batcher reads the three batcher limits from webex.config.dss once per batcher; cover changes in the batched lookup cases of test/unit/spec/dss.ts and in test/unit/spec/dss-batcher.ts."
+    },
+    {
+      "paths": [
+        "src/constants.ts",
+        "src/dss-errors.ts"
+      ],
+      "affects": [
+        "mercury and dss: event names, the service name, and result paths",
+        "the DssTimeoutError message that the unit tests match"
+      ],
+      "refresh_with": [
+        "yarn workspace @webex/internal-plugin-dss build:src"
+      ],
+      "validate_with": [
+        "yarn workspace @webex/internal-plugin-dss test:unit"
+      ],
+      "avoid_direct_edits": [
+        "dist"
+      ],
+      "notes": "A renamed result path or event name silently stops results from arriving; the query then times out."
+    }
+  ],
+  "evidence_rules": [
+    {
+      "claim_category": "command_name",
+      "sources": [
+        "package.json"
+      ],
+      "requirement": "The script must exist in package.json scripts.",
+      "notes": "test:integration does not exist, so the aggregate test script fails; test:browser currently verifies nothing."
+    },
+    {
+      "claim_category": "import_path",
+      "sources": [
+        "src/index.ts"
+      ],
+      "requirement": "A binding is public only if exported from src/index.ts.",
+      "notes": "The only export is the default DSS. Constants, types, DssBatcher, and DssTimeoutError are reachable only by deep src paths, which the unit specs use."
+    },
+    {
+      "claim_category": "behavior_claim",
+      "sources": [
+        "src",
+        "test/unit/spec"
+      ],
+      "requirement": "Ground every behavioral claim in source or test evidence.",
+      "notes": "Commit history is not an evidence source for this package. README.md is context only and partly stale (docs/adr/0001-retain-product-readme.md). The internal-plugin-mercury specification is stale on the session model and the internal-plugin-device specification is silent on orgId; use those packages' code."
+    }
+  ],
+  "negative_guidance": [
+    {
+      "rule": "Do not call lookup or lookupByEmail with arrays (ids or emails).",
+      "why": "Both take one value (src/types.ts); only the README shows arrays. Several ids coalesce through the batcher instead."
+    },
+    {
+      "rule": "Do not expect results without register().",
+      "why": "Results arrive over mercury, which register() connects and subscribes to; the HTTP response is never read."
+    },
+    {
+      "rule": "Do not read the webex.request response for results.",
+      "why": "The service delivers results as sequenced mercury pages matched by requestId."
+    },
+    {
+      "rule": "Do not log looked-up ids, emails, phone numbers, query strings, or entities.",
+      "why": "They are organization directory data; existing log lines carry only error messages and counts."
+    },
+    {
+      "rule": "Do not treat README.md as the signature or unregister reference.",
+      "why": "Several of its claims differ from code; see docs/adr/0001-retain-product-readme.md."
+    },
+    {
+      "rule": "Do not infer a coverage threshold for this package.",
+      "why": "The legacy Jest config sets no threshold and no coverage script exists."
+    }
+  ],
+  "confidence_policy": {
+    "high": {
+      "action": "update",
+      "expectation": "Source and unit test evidence both support the change, and the behavior has a case in test/unit/spec."
+    },
+    "medium": {
+      "action": "narrow-scope",
+      "expectation": "Only source evidence exists, for example registration through the entry, connect failure, webex.request failure, a batch timeout, or the searchPlaces result. Pin current behavior with a characterization test before modifying."
+    },
+    "low": {
+      "action": "noop",
+      "expectation": "Neither source nor tests settle the question. Stop and report the gap."
+    }
+  },
+  "repository_topology": {
+    "main_entrypoints": [
+      {
+        "name": "package entry",
+        "path": "src/index.ts",
+        "purpose": "Registers the dss plugin and default-exports the class",
+        "notes": "No subpath exports; package.json main is dist/index.js and devMain is src/index.ts."
+      }
+    ],
+    "workspace_packages": [
+      {
+        "name": "@webex/internal-plugin-dss",
+        "paths": [
+          "src",
+          "test"
+        ],
+        "notes": "One module; this SDD root is the package directory inside the webex-js-sdk monorepo."
+      }
+    ],
+    "source_surfaces": [
+      {
+        "name": "DSS plugin",
+        "paths": [
+          "src"
+        ],
+        "notes": "index.ts, dss.ts, dss-batcher.ts, dss-errors.ts, constants.ts, types.ts, config.ts. Specified at src/docs/README.md."
+      },
+      {
+        "name": "tests",
+        "paths": [
+          "test/unit/spec",
+          "test/integration/spec"
+        ],
+        "notes": "Two unit specs run by Jest through webex-legacy-tools (61 cases, 1 skipped) and one MockWebex spec run only by test:browser."
+      }
+    ],
+    "generated_surfaces": [
+      {
+        "name": "build output",
+        "paths": [
+          "dist"
+        ],
+        "generated_from": "src",
+        "refresh_with": "yarn workspace @webex/internal-plugin-dss build:src",
+        "notes": "JavaScript and source maps from webex-legacy-tools; no type declarations. test/unit/spec/dss.ts imports it by package name. Do not edit by hand."
+      },
+      {
+        "name": "repo-standards template map",
+        "paths": [
+          "../../../.sdd/templates/repo-standards"
+        ],
+        "generated_from": "WebexTools/repo-standards@d89a7fe59126ae3ad9bac9ca352aa7f12b4c85dc",
+        "refresh_with": "The package holds no templates. It refers to the monorepo root snapshot at ../../../.sdd/templates/repo-standards through layout.monorepo_package.templates_root_path in .sdd/manifest.json. Refresh the root snapshot, not this package.",
+        "notes": "The package holds no templates. It refers to the monorepo root snapshot at ../../../.sdd/templates/repo-standards through layout.monorepo_package.templates_root_path in .sdd/manifest.json. Refresh the root snapshot, not this package."
+      }
+    ],
+    "validation_entrypoints": [
+      {
+        "name": "unit tests",
+        "command": "yarn workspace @webex/internal-plugin-dss test:unit",
+        "scope": "test/unit/spec",
+        "notes": "jest via webex-legacy-tools --runner jest; run build:src first because the spec loads this package's dist."
+      },
+      {
+        "name": "compile",
+        "command": "yarn workspace @webex/internal-plugin-dss build",
+        "scope": "src",
+        "notes": "Runs build:src."
+      },
+      {
+        "name": "lint",
+        "command": "yarn workspace @webex/internal-plugin-dss test:style",
+        "scope": "src",
+        "notes": "eslint via the local .eslintrc.js with the shared TypeScript override; docs/** and *.md are ignored."
+      }
+    ],
+    "sync_paths": [
+      {
+        "source": "src/dss.ts",
+        "targets": [
+          "src/docs/README.md"
+        ],
+        "mechanism": "Manual; update the module specification in the same change that alters observable behavior.",
+        "notes": "Keep the resource, body, result-path, and timeout rows of the specification aligned with the code."
+      },
+      {
+        "source": "WebexTools/repo-standards@d89a7fe59126ae3ad9bac9ca352aa7f12b4c85dc",
+        "targets": [
+          "../../../.sdd/templates/repo-standards"
+        ],
+        "mechanism": "The package holds no templates. It refers to the monorepo root snapshot at ../../../.sdd/templates/repo-standards through layout.monorepo_package.templates_root_path in .sdd/manifest.json. Refresh the root snapshot, not this package.",
+        "notes": "The package holds no templates. It refers to the monorepo root snapshot at ../../../.sdd/templates/repo-standards through layout.monorepo_package.templates_root_path in .sdd/manifest.json. Refresh the root snapshot, not this package."
+      }
+    ]
+  },
+  "folder_readme_contract": {
+    "required_sections": [
+      "purpose",
+      "boundaries",
+      "key-files",
+      "common-tasks"
+    ],
+    "rules": [
+      "Orient the reader before describing detail.",
+      "Link to the module specification rather than duplicating it."
+    ],
+    "example_policy": "Examples are allowed only when verified against src/ or test/.",
+    "fallback": "Omit a section rather than inventing content; report unresolved facts as gaps."
+  },
+  "regression_feedback_rules": [
+    {
+      "trigger": "A DSS resource path, request body field, or result path changes.",
+      "required_followups": [
+        "Add or update the matching case in test/unit/spec/dss.ts (the testMakeRequest assertions)",
+        "Update Protocol and wire format and the owning MOD row in src/docs/README.md"
+      ],
+      "notes": "The Directory Search Service parses these shapes, and a wrong result path makes queries time out."
+    },
+    {
+      "trigger": "Batching, the batcher defaults, or the found and not-found mapping changes.",
+      "required_followups": [
+        "Add or update a batched lookup case in test/unit/spec/dss.ts and the hook cases in test/unit/spec/dss-batcher.ts",
+        "Update MOD-009 in src/docs/README.md"
+      ],
+      "notes": "Each batched caller must still resolve its own entity or null."
+    }
+  ],
+  "surface_owners": [
+    {
+      "surface": "module implementation and specifications",
+      "owner": "@webex/web-sdk",
+      "edit_boundary": "Owner per the default rule of the monorepo .github/CODEOWNERS; the file has no line for packages/@webex/internal-plugin-dss."
+    }
+  ],
+  "do_not_edit": [
+    "dist",
+    "../../../.sdd/templates/repo-standards"
+  ],
+  "marker_scopes": {
+    "sdd": [
+      ".sdd/manifest.json",
+      "src/docs/README.md",
+      "docs"
+    ]
+  },
+  "fallback_rules": [
+    "When source and tests disagree, code is the referee and the disagreement is recorded rather than silently resolved.",
+    "When neither source nor tests settle a question, report it as a gap instead of inferring.",
+    "Commit history is not a valid rationale source for this package.",
+    "When a dependency's specification disagrees with that dependency's code, use the code and record the disagreement."
+  ],
+  "downstream_context_pack": {
+    "required_human_surfaces": [
+      "README.md",
+      "docs/index.md",
+      "docs/architecture.md",
+      "src/docs/README.md"
+    ],
+    "required_agent_operational_surfaces": [
+      "AGENTS.md",
+      "docs/specs/README.md"
+    ],
+    "required_machine_readable_surface": ".sdd/manifest.json",
+    "recommended_machine_readable_sections": [
+      "public_interfaces",
+      "change_impact",
+      "evidence_rules",
+      "negative_guidance",
+      "confidence_policy",
+      "repository_topology",
+      "folder_readme_contract",
+      "regression_feedback_rules"
+    ]
+  }
+}
