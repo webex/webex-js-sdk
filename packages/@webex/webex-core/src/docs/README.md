@@ -625,6 +625,30 @@ state here and is owned by Diagram 3 and `MOD-018`; the `ready` property itself 
 | `Page.next()` without a next link | Request issued with an undefined URI; transport decides the outcome | Check `hasNext()` first | None | `src/lib/page.js` |
 | `when(event, callback)` | Throws: `#when() does not accept a callback` | Use the returned promise | None | `src/lib/webex-plugin.js` |
 
+## Static asset failure context
+
+`StaticAssetLoader.getBytes()` still resolves isolated binary bytes and evicts
+failed loads. Its request suppresses authentication and SDK custom headers;
+non-2xx, HTML and nonbinary responses remain rejected. Failures now carry a
+non-enumerable `assetDiagnostics` property with bounded response metadata from
+`src/lib/static-asset-diagnostics.ts`. Existing extensible Error instances retain
+their identity; primitive or frozen rejections are wrapped without losing the
+HTTP status or legacy message needed by consumers.
+
+The helper inspects at most 8192 body bytes and retains only a fixed response
+header allowlist, bounded to 256 printable characters per header. HTML hints and
+a tag-structure SHA-256 hash describe the response without retaining raw HTML,
+titles, text, attributes, comments or script/style contents. Hints and structural
+hashes are diagnostic grouping aids, not authenticated provenance. KMS explicitly
+projects this context into its existing download-failure metric; the full schema
+is documented in `packages/@webex/internal-plugin-encryption/README.md`. Same-origin responses
+can expose custom headers; cross-origin hosts must expose them through CORS.
+Missing headers are not proof that no intermediary exists.
+
+Validation: `test/unit/spec/static-asset-loader.ts`,
+`test/unit/spec/static-asset-diagnostics.ts`, and the encryption plugin's real
+browser `test/integration/spec/caroots.js` fixture scenarios.
+
 ## Pitfalls and constraints
 
 - **Registration is silent and global.** A second registration of the same name returns without applying
