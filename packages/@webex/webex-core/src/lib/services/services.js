@@ -4,6 +4,12 @@ import {union, forEach} from 'lodash';
 import WebexPlugin from '../webex-plugin';
 
 import METRICS from '../metrics';
+import {
+  clearCatalogAuthFailure,
+  getCatalogAuthFailure,
+  recordCatalogAuthFailure,
+  serviceLookupError,
+} from './catalog-auth';
 import ServiceCatalog from './service-catalog';
 import ServiceRegistry from './service-registry';
 import ServiceState from './service-state';
@@ -112,6 +118,42 @@ const Services = WebexPlugin.extend({
    */
   _getCatalog() {
     return this._catalogs.get(this.webex);
+  },
+
+  /**
+   * Remember a postauth catalog failure caused by HTTP 401 or 403.
+   * 401 means the access token was rejected. 403 means the token can be
+   * valid and the caller still has no access. A refresh or replay failure
+   * that replaced a catalog 401 is recorded as invalid_access_token.
+   * A refresh 403 keeps that original 401 on error.catalogAuthStatus.
+   * Other failures clear any previously stored auth failure.
+   *
+   * @private
+   * @param {Error} error
+   * @returns {void}
+   */
+  _recordCatalogAuthFailure(error) {
+    recordCatalogAuthFailure(this, error);
+  },
+
+  /**
+   * @private
+   * @returns {{status: number, reason: string}|null}
+   */
+  _getCatalogAuthFailure() {
+    return getCatalogAuthFailure(this);
+  },
+
+  /**
+   * Build the rejection for a service that could not be resolved.
+   * A stored catalog auth failure replaces the generic not-found text.
+   *
+   * @private
+   * @param {string} fallbackMessage
+   * @returns {Error}
+   */
+  _serviceLookupError(fallbackMessage) {
+    return serviceLookupError(this, fallbackMessage);
   },
 
   /**
@@ -401,9 +443,19 @@ const Services = WebexPlugin.extend({
         catalog.updateServiceUrls(serviceGroup, formattedServiceHostMap);
         this.updateCredentialsConfig();
         catalog.status[serviceGroup].collecting = false;
+
+        // A successful postauth catalog replaces any remembered 401/403.
+        // Preauth and signin updates leave that marker alone.
+        if (serviceGroup === 'postauth') {
+          clearCatalogAuthFailure(this);
+        }
       })
       .catch((error) => {
         catalog.status[serviceGroup].collecting = false;
+
+        if (serviceGroup === 'postauth') {
+          this._recordCatalogAuthFailure(error);
+        }
 
         return Promise.reject(error);
       });
@@ -820,7 +872,7 @@ const Services = WebexPlugin.extend({
       });
 
       return Promise.reject(
-        new Error(`services: service '${name}' was not found in any of the catalogs`)
+        this._serviceLookupError(`services: service '${name}' was not found in any of the catalogs`)
       );
     }
 
@@ -843,7 +895,7 @@ const Services = WebexPlugin.extend({
         this.webex.internal.metrics.submitClientMetrics(METRICS.JS_SDK_SERVICE_NOT_FOUND, {
           fields: {service_name: name},
         });
-        reject(new Error(`services: service '${name}' was not found after waiting`));
+        reject(this._serviceLookupError(`services: service '${name}' was not found after waiting`));
       });
     });
   },
