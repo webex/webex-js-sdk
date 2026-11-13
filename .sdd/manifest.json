@@ -399,6 +399,15 @@
       "onboarded_by": "claude-code"
     },
     {
+      "id": "@webex/byods",
+      "path": "packages/byods",
+      "manifest": "packages/byods/.sdd/manifest.json",
+      "agent_entry": "packages/byods/AGENTS.md",
+      "index": "packages/byods/docs/index.md",
+      "onboarded_at": "2026-11-13T13:20:00Z",
+      "onboarded_by": "claude-code"
+    },
+    {
       "id": "webex",
       "path": "packages/webex",
       "manifest": "packages/webex/.sdd/manifest.json",
@@ -424,6 +433,6 @@
   "provenance": {
     "generated_by": "claude-code",
     "approved_by": "rarajes2@cisco.com",
-    "updated_at": "2026-11-13T06:07:00Z"
+    "updated_at": "2026-11-13T13:20:00Z"
   }
 }

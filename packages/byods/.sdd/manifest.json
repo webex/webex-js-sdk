@@ -1,0 +1,429 @@
+{
+  "manifest_version": 1,
+  "repository": {
+    "name": "@webex/byods",
+    "purpose": "Published Node.js SDK for Webex Bring Your Own Data Source (BYoDS). One BYODS instance, built from a Service App client ID, client secret, and organization ID, obtains a Service App token pair from a personal access token or refresh token, keeps it in a caller-replaceable TokenStorageAdapter (one in-memory slot by default), and refreshes the access token when an expired one is read. Its data source client creates, reads, lists, updates, and deletes Webex /dataSources records with that token and can renew a data source JWS on a jittered timer; verifyJWSToken checks a JWS against the Webex identity broker key set and resolves a validity result. BYODS_ENVIRONMENT selects production or integration hosts at construction.",
+    "category": "cat2-legacy",
+    "primary_languages": [
+      "typescript"
+    ]
+  },
+  "topology": "Orchestrator-plus-components",
+  "commands": {
+    "install": {
+      "command": "yarn",
+      "source_file": "../../.github/workflows/deploy.yml",
+      "role": "install"
+    },
+    "prebuild": {
+      "command": "yarn prebuild:modules",
+      "source_file": "../../CONTRIBUTING.md",
+      "role": "other"
+    },
+    "compile": {
+      "command": "yarn build",
+      "source_file": "package.json",
+      "role": "compile",
+      "verified_at": "2026-11-13T13:33:26Z"
+    },
+    "build": {
+      "command": "yarn build:src",
+      "source_file": "package.json",
+      "role": "package",
+      "verified_at": "2026-11-13T13:33:22Z"
+    },
+    "unit-test": {
+      "command": "yarn test:unit",
+      "source_file": "package.json",
+      "role": "unit-test",
+      "verified_at": "2026-11-13T13:33:27Z"
+    },
+    "lint": {
+      "command": "yarn test:style",
+      "source_file": "package.json",
+      "role": "lint",
+      "verified_at": "2026-11-13T13:33:32Z"
+    },
+    "test": {
+      "command": "yarn test",
+      "source_file": "package.json",
+      "role": "other",
+      "verified_at": "2026-11-13T13:33:36Z"
+    },
+    "docs-check": {
+      "command": "yarn docs",
+      "source_file": "package.json",
+      "role": "other",
+      "verified_at": "2026-11-13T13:33:34Z"
+    },
+    "docs-build": {
+      "command": "yarn build:docs",
+      "source_file": "package.json",
+      "role": "other"
+    },
+    "clean": {
+      "command": "yarn prebuild",
+      "source_file": "package.json",
+      "role": "other",
+      "verified_at": "2026-11-13T13:33:21Z"
+    },
+    "fix-lint": {
+      "command": "yarn fix:lint",
+      "source_file": "package.json",
+      "role": "other"
+    },
+    "format": {
+      "command": "yarn fix:prettier",
+      "source_file": "package.json",
+      "role": "other"
+    },
+    "deploy": {
+      "command": "yarn deploy:npm",
+      "source_file": "package.json",
+      "role": "deploy"
+    }
+  },
+  "toolchain": [
+    {
+      "name": "node",
+      "version": "22.14",
+      "origin": "repo-config",
+      "source_file": "../../AGENTS.md"
+    },
+    {
+      "name": "node",
+      "version": "lts/jod",
+      "origin": "repo-config",
+      "source_file": "../../.nvmrc"
+    },
+    {
+      "name": "node",
+      "version": "18.x",
+      "origin": "repo-config",
+      "source_file": "../../package.json"
+    },
+    {
+      "name": "yarn",
+      "version": "3.4.1",
+      "origin": "repo-config",
+      "source_file": "../../package.json"
+    },
+    {
+      "name": "typescript",
+      "version": "4.9.5",
+      "origin": "repo-config",
+      "source_file": "package.json"
+    },
+    {
+      "name": "jest",
+      "version": "27.5.1",
+      "origin": "repo-config",
+      "source_file": "package.json"
+    },
+    {
+      "name": "babel",
+      "version": "^7.22.11",
+      "origin": "repo-config",
+      "source_file": "package.json"
+    },
+    {
+      "name": "eslint",
+      "version": "^8.24.0",
+      "origin": "repo-config",
+      "source_file": "package.json"
+    },
+    {
+      "name": "prettier",
+      "version": "2.5.1",
+      "origin": "repo-config",
+      "source_file": "package.json"
+    },
+    {
+      "name": "typedoc",
+      "version": "0.23.26",
+      "origin": "repo-config",
+      "source_file": "package.json"
+    }
+  ],
+  "tests": {
+    "unit": {
+      "command_ref": "unit-test",
+      "dir": "test/unit/spec",
+      "framework": "jest"
+    }
+  },
+  "quality_gates": {
+    "code_coverage": {
+      "origin": "repo-config",
+      "source_file": "jest.config.js",
+      "min": 85,
+      "kind": "unit-test",
+      "applies_to": "total",
+      "enforced": true
+    }
+  },
+  "coverage_status_definitions": {
+    "specced": ">=80% public surface specced, drift <5% - spec is authoritative",
+    "partial": "40-80% specced - spec is a hint, cross-check code",
+    "untracked": "<40% specced - code is the source of truth"
+  },
+  "spec_source_policy": {
+    "mode": "keep-separate",
+    "migrated_source_disposition": "retain",
+    "disposition_decided_by": "rarajes2@cisco.com (confirmed in chat)",
+    "disposition_decided_at": "2026-11-13T13:36:52Z",
+    "decided_by": "rarajes2@cisco.com (confirmed in chat)",
+    "decided_at": "2026-11-13T13:36:52Z",
+    "decision_record": "docs/adr/0001-retain-product-readme.md"
+  },
+  "spec_sources": [],
+  "modules": [
+    {
+      "path": "src",
+      "canonical_spec": "src/docs/README.md",
+      "coverage_status": "Partial",
+      "coverage_evidence": "Field coverage 100% (18/18) assessed 2026-11-13 by the generator; critical field coverage 7/7. test:unit runs 7 suites and 83 tests, all passing, at 96.9% statements, 93.8% branches, and 100% functions against the jest.config.js threshold. MOD-001 to MOD-020 and INV-001 to INV-005 rest on source reading and the unit suite; MOD-016, MOD-017, and MOD-020 rest on a generator behavior probe of the built output (not committed), and the exact renewal payload in MOD-015 likewise. Independent validation passed 2026-11-13 by validator runtime 01a1d521-829f-75f0-b109-9b44c29a9ae4, with 0 Blocking, 0 Important, 0 Medium, and 0 Minor findings. Held at Partial pending characterization tests for the probe-only requirements.",
+      "last_assessed": "2026-11-13",
+      "contracts": {
+        "provides": [
+          "byods-sdk"
+        ],
+        "requires": [
+          "webex-access-token-http",
+          "webex-datasources-http",
+          "webex-idbroker-jwks",
+          "jose-jwt",
+          "node-fetch-http"
+        ]
+      },
+      "section_profile": {
+        "has_tiers": false,
+        "has_ui": false,
+        "crosses_service_boundaries": true,
+        "holds_client_state": true,
+        "enforces_domain_rules": true,
+        "is_concurrent_async": true,
+        "owns_persistence": false,
+        "stateful_transitions": true,
+        "exposes_wire_protocol": true,
+        "ui_multi_screen": false,
+        "large_data_model": false,
+        "returns_caller_errors": true,
+        "module_specific_conventions": true,
+        "published_package": true,
+        "embedded_in_host": false,
+        "has_design_tradeoff": true,
+        "resolved_by": "claude-code (code evidence; bootstrap questionnaire)",
+        "resolved_at": "2026-11-13T13:20:00Z",
+        "has_submodules": false,
+        "has_submodules_computed_by": "scripts/module_tree.py",
+        "has_submodules_computed_at": "2026-11-13T13:20:00Z"
+      }
+    }
+  ],
+  "contract_catalog": {
+    "index_path": "docs/architecture.md",
+    "definitions": {
+      "byods-sdk": {
+        "kind": "sdk",
+        "publication": "published",
+        "source_kind": "repository-path",
+        "source": "package.json",
+        "summary": "Published npm package @webex/byods (files: dist). Entry src/index.ts exports BYODS, TokenManager, BaseClient, DataSourceClient, LOGGER, and InMemoryTokenStorageAdapter, and the types TokenStorageAdapter, SDKConfig, and ServiceAppToken; declarations are written to dist/types/index.d.ts. package.json main names dist/module/index.js, which no script in the repository writes (build:src writes dist/index.js), so resolving the package name against a repository build fails. Runtime dependencies: jose, node-fetch, @types/node-fetch. Per-method behavior is in src/docs/README.md."
+      },
+      "webex-access-token-http": {
+        "kind": "http",
+        "publication": "published",
+        "source_kind": "external",
+        "source": "https://webexapis.com/v1/access_token (integration host: https://integration.webexapis.com/v1/access_token)",
+        "summary": "POST with a personal access token as bearer and JSON targetOrgId, clientId, clientSecret; or POST form grant_type=refresh_token with client_id, client_secret, refresh_token. Response JSON access_token, expires_in, refresh_token, refresh_token_expires_in, token_type. Owned by Webex."
+      },
+      "webex-datasources-http": {
+        "kind": "http",
+        "publication": "published",
+        "source_kind": "external",
+        "source": "https://webexapis.com/v1/dataSources (integration host: https://integration.webexapis.com/v1/dataSources)",
+        "summary": "POST, GET, PUT, and DELETE on /dataSources and /dataSources/{id} with the Service App bearer token; list responses wrap records in items. Request and response shapes are mirrored in src/data-source-client/types.ts. Owned by Webex."
+      },
+      "webex-idbroker-jwks": {
+        "kind": "http",
+        "publication": "published",
+        "source_kind": "external",
+        "source": "https://idbroker.webex.com/idb/oauth2/v2/keys/verificationjwk (integration: https://idbrokerbts.webex.com/idb/oauth2/v2/keys/verificationjwk)",
+        "summary": "JWKS document fetched by jose createRemoteJWKSet for verifyJWSToken, cached per BYODS instance for up to 10 minutes with a 30-second refetch cooldown. Owned by Webex."
+      },
+      "jose-jwt": {
+        "kind": "sdk",
+        "publication": "published",
+        "source_kind": "external",
+        "source": "jose@5.8.0 (npm)",
+        "summary": "createRemoteJWKSet and jwksCache for the key set, jwtVerify for verifyJWSToken (no issuer, audience, subject, or algorithm options), and decodeJwt for the unverified claims read by the renewal tick."
+      },
+      "node-fetch-http": {
+        "kind": "sdk",
+        "publication": "published",
+        "source_kind": "external",
+        "source": "node-fetch@3.3.2 (npm)",
+        "summary": "HTTP client loaded with a dynamic import on each request by src/http-utils/index.ts, with an AbortController timeout of 30 seconds."
+      }
+    }
+  },
+  "spec_policy": {
+    "require_what_and_why": true,
+    "require_provenance": true,
+    "protected_specs": [
+      "src/docs/README.md"
+    ]
+  },
+  "validation": {
+    "generator_runtime": "claude-code",
+    "generator_model": "claude-opus-5-5",
+    "generator_runtime_source": "host-metadata",
+    "generator_run_id": "8d222cce-4567-4bdc-8204-f26d1a1397e3",
+    "source_commit": "7feffdcb2e6e1a236b62a989e23ab3aa7424ab84",
+    "base_ref": "next",
+    "head_ref": "sdd-byods",
+    "minimum_independence": "different-runtime",
+    "validator_runtime": "01a1d521-829f-75f0-b109-9b44c29a9ae4",
+    "validator_runtime_source": "host-metadata",
+    "runtime_fallback_tier": "different-runtime",
+    "blocking_severities": [
+      "Blocking"
+    ]
+  },
+  "layout": {
+    "sdd_root": ".sdd",
+    "docs_root": "docs",
+    "agent_entry_path": "AGENTS.md",
+    "standing_docs_root": "docs",
+    "spec_index_path": "docs/specs/README.md",
+    "module_docs_strategy": "source-local",
+    "module_docs_relative_path": "docs/README.md",
+    "module_docs_decision": {
+      "basis": "repo-standards-default",
+      "reason": "No module-local documentation existed. The source-local default gives src/docs/README.md. test:style lints only src/**/*.ts, build:src compiles -js -ts only, tsc compiles TypeScript under src, typedoc starts at src/index.ts, and package.json files publishes dist only, so Markdown under src/ enters neither the build output, the API docs, nor the npm tarball.",
+      "decided_by": "claude-code (DEFAULTED_FROM_PRECEDENT; pending confirmation by the package owner)",
+      "decided_at": "2026-11-13T13:20:00Z"
+    },
+    "repo_context_decision": {
+      "path": ".repo-context.json",
+      "schema_path": "schemas/repo-context.schema.json",
+      "action": "create",
+      "schema_action": "create",
+      "reason": "Neither the operational context nor its schema existed in this package. The context is created from package evidence and the schema is copied byte for byte from the monorepo root .sdd/templates/repo-standards/schemas/repo-context.schema.json.",
+      "decided_by": "claude-code (DEFAULTED_FROM_PRECEDENT; pending confirmation by the package owner)",
+      "decided_at": "2026-11-13T13:20:00Z"
+    },
+    "artifact_decisions": [
+      {
+        "path": "docs/service.md",
+        "action": "omit",
+        "reason": "Library package, not a deployable service. package.json has no start script, container, or deployment descriptor; the runnable sample is the separate byods-demo-server workspace.",
+        "decided_by": "claude-code (code evidence)",
+        "decided_at": "2026-11-13T13:20:00Z"
+      },
+      {
+        "path": "mkdocs.yml",
+        "action": "omit",
+        "reason": "No package-level documentation site exists. build:docs writes typedoc output into the workspace docs tree, which the workspace owns.",
+        "decided_by": "claude-code (code evidence)",
+        "decided_at": "2026-11-13T13:20:00Z"
+      },
+      {
+        "path": "api-specs/openapi.yaml",
+        "action": "omit",
+        "reason": "The package serves no HTTP routes. The Webex endpoints it calls are external contracts owned by Webex; its published surface is the npm export described by byods-sdk.",
+        "decided_by": "claude-code (code evidence)",
+        "decided_at": "2026-11-13T13:20:00Z"
+      },
+      {
+        "path": "SECURITY.md",
+        "action": "omit",
+        "reason": "No security policy file exists in this package or at the workspace root. Stage 0 creates none; security architecture is described in docs/architecture.md.",
+        "decided_by": "claude-code (code evidence)",
+        "decided_at": "2026-11-13T13:20:00Z"
+      },
+      {
+        "path": "CONTRIBUTING.md",
+        "action": "omit",
+        "reason": "Contribution instructions are owned at the workspace root CONTRIBUTING.md.",
+        "decided_by": "claude-code (code evidence)",
+        "decided_at": "2026-11-13T13:20:00Z"
+      },
+      {
+        "path": "CHANGELOG.md",
+        "action": "omit",
+        "reason": "Changelog generation is owned at the workspace root. This package has no changelog file.",
+        "decided_by": "claude-code (code evidence)",
+        "decided_at": "2026-11-13T13:20:00Z"
+      },
+      {
+        "path": "CTO_CHECKLIST.yml",
+        "action": "omit",
+        "reason": "The CTO readiness checklist applies to deployable services. This package is a library.",
+        "decided_by": "claude-code (code evidence)",
+        "decided_at": "2026-11-13T13:20:00Z"
+      },
+      {
+        "path": "schemas/cto-checklist.schema.json",
+        "action": "omit",
+        "reason": "Omitted together with CTO_CHECKLIST.yml.",
+        "decided_by": "claude-code (code evidence)",
+        "decided_at": "2026-11-13T13:20:00Z"
+      }
+    ],
+    "template_roots": {
+      "canonical": ".sdd/templates/repo-standards"
+    },
+    "repo_skills_root": ".sdd/skills",
+    "contract_index_path": "docs/architecture.md",
+    "monorepo_package": {
+      "package_path": "packages/byods",
+      "root_manifest_path": "../../.sdd/manifest.json",
+      "templates_root_path": "../../.sdd/templates/repo-standards"
+    }
+  },
+  "coverage_ratchet": {
+    "enabled": true,
+    "waivers": []
+  },
+  "substrate": {
+    "source": "WebexTools/repo-standards@d89a7fe59126ae3ad9bac9ca352aa7f12b4c85dc",
+    "consumed": [
+      "@webex/babel-config-legacy via babel.config.js",
+      "@webex/jest-config-legacy via jest.config.js",
+      "@webex/legacy-tools build and test runner via package.json",
+      "workspace root tsconfig.json via tsconfig.json extends",
+      "workspace root .eslintrc.js via the test:style script (no package-level eslint config)",
+      "package README.md (context only)",
+      "Repo Standards 0.3.0 templates at the monorepo root ../../.sdd/templates/repo-standards, referred to through layout.monorepo_package.templates_root_path; the package holds no templates"
+    ],
+    "compliance_tier": "baseline"
+  },
+  "section_profiles": {
+    "repo": {
+      "owns_datastore": false,
+      "holds_client_state": true,
+      "components_interact": true,
+      "domain_data_across_components": true,
+      "caches_data": true,
+      "observability_convention": true,
+      "deploys_to_infra": false,
+      "shared_base_libs": true,
+      "is_monorepo": false,
+      "multi_platform": false,
+      "published_package": true,
+      "embedded_in_host": false,
+      "cross_repo_deps_material": true,
+      "security_arch_warranted": true,
+      "exposes_commands_or_artifacts": true
+    },
+    "resolved_by": "claude-code (code evidence; bootstrap questionnaire)",
+    "resolved_at": "2026-11-13T13:20:00Z"
+  },
+  "tooling": {
+    "sdlc_skills": {
+      "source_ref": "repo-annotation@2.3.1"
+    }
+  }
+}
