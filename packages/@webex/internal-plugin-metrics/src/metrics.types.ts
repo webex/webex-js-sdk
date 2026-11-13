@@ -145,6 +145,8 @@ export type SubmitClientEventOptions = {
   locusCluster?: string;
   joinFlowVersion?: MetricEventJoinFlowVersion;
   meetingJoinPhase?: MetricEventMeetingJoinPhase;
+  /** Omit the meeting phase for standalone diagnostics without a meetingId. */
+  omitMeetingJoinPhase?: boolean;
   triggeredTime?: string;
   emailInput?: ClientEmailInput;
   userNameInput?: ClientUserNameInput;

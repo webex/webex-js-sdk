@@ -4,14 +4,6 @@ import {assert} from '@webex/test-helper-chai';
 import {WebexHttpError} from '@webex/webex-core';
 import {BrowserDetection} from '@webex/common';
 import window from 'global/window';
-import {
-  CallDiagnosticLatencies,
-  CallDiagnosticMetrics,
-  getOSNameInternal,
-  CallDiagnosticUtils,
-  AutomatedUserUtils,
-  config,
-} from '@webex/internal-plugin-metrics';
 import uuid from 'uuid';
 import {omit} from 'lodash';
 import {glob} from 'glob';
@@ -20,6 +12,14 @@ import {
   ClientEmailInput,
   ClientUserNameInput,
 } from '@webex/internal-plugin-metrics/src/metrics.types';
+import {
+  CallDiagnosticLatencies,
+  CallDiagnosticMetrics,
+  getOSNameInternal,
+  CallDiagnosticUtils,
+  AutomatedUserUtils,
+  config,
+} from '../../../../src';
 
 //@ts-ignore
 global.window = {location: {hostname: 'whatever'}};
@@ -4648,6 +4648,65 @@ describe('internal-plugin-metrics', () => {
     });
 
     describe('#buildClientEventFetchRequestOptions', () => {
+      ['client.sign-in.start', 'client.idbroker.authorize.request', 'client.sign-in.end'].forEach(
+        (name) => {
+          [undefined, 'pre-login-id'].forEach((preLoginId) => {
+            it(`omits meetingJoinPhase for standalone ${name} with preLoginId ${preLoginId}`, async () => {
+              const options = {
+                correlationId: 'auth-correlation-id',
+                preLoginId,
+                omitMeetingJoinPhase: true,
+              };
+              const event = cd.prepareClientEvent({
+                name,
+                payload: {meetingJoinPhase: 'pre-join'},
+                options,
+              });
+              assert.notProperty(event.event, 'meetingJoinPhase');
+              assert.equal(event.event.identifiers.correlationId, 'auth-correlation-id');
+
+              const fetchOptions = await cd.buildClientEventFetchRequestOptions({name, options});
+              assert.notProperty(
+                fetchOptions.body.metrics[0].eventPayload.event,
+                'meetingJoinPhase'
+              );
+            });
+
+            it(`preserves the phase default for existing ${name} callers`, () => {
+              const event = cd.prepareClientEvent({
+                name,
+                options: {correlationId: 'meeting-correlation-id', preLoginId},
+              });
+              assert.equal(event.event.meetingJoinPhase, 'pre-join');
+            });
+          });
+        }
+      );
+
+      it('preserves an explicit meeting phase when omission is disabled', () => {
+        const event = cd.prepareClientEvent({
+          name: 'client.sign-in.end',
+          options: {
+            correlationId: 'meeting-correlation-id',
+            meetingJoinPhase: 'join',
+            omitMeetingJoinPhase: false,
+          },
+        });
+        assert.equal(event.event.meetingJoinPhase, 'join');
+      });
+
+      it('preserves the phase for events associated with a meeting', () => {
+        const event = cd.prepareClientEvent({
+          name: 'client.sign-in.end',
+          options: {
+            meetingId: fakeMeeting.id,
+            omitMeetingJoinPhase: true,
+            meetingJoinPhase: 'join',
+          },
+        });
+        assert.equal(event.event.meetingJoinPhase, 'join');
+      });
+
       it('should add the locusCluster option to a pre-meeting event', async () => {
         const fetchOptions = await cd.buildClientEventFetchRequestOptions({
           name: 'client.interstitial-window.launched',
@@ -4872,7 +4931,10 @@ describe('internal-plugin-metrics', () => {
           options,
         });
 
-        assert.equal(fetchOptions.body.metrics[0].eventPayload.event.meetingJoinPhase, 'in-meeting');
+        assert.equal(
+          fetchOptions.body.metrics[0].eventPayload.event.meetingJoinPhase,
+          'in-meeting'
+        );
       });
 
       it('prioritizes meetingJoinPhase from options over meeting callStateForMetrics', async () => {
