@@ -6,7 +6,7 @@ doc_kind: standing-doc
 generated_from: docs-index@0.3.0
 generated_by: claude-code
 approved_by: riag@cisco.com
-updated_at: 2026-10-22T06:52:30Z
+updated_at: 2026-11-09T11:26:47Z
 validation_status: pass
 -->
 
@@ -39,6 +39,11 @@ package owns its architecture, specifications, and decisions beside its code. Th
 | `@webex/internal-plugin-search` | `packages/@webex/internal-plugin-search/` | [AGENTS.md](../packages/@webex/internal-plugin-search/AGENTS.md) | [docs/index.md](../packages/@webex/internal-plugin-search/docs/index.md) | [.sdd/manifest.json](../packages/@webex/internal-plugin-search/.sdd/manifest.json) |
 | `@webex/internal-plugin-support` | `packages/@webex/internal-plugin-support/` | [AGENTS.md](../packages/@webex/internal-plugin-support/AGENTS.md) | [docs/index.md](../packages/@webex/internal-plugin-support/docs/index.md) | [.sdd/manifest.json](../packages/@webex/internal-plugin-support/.sdd/manifest.json) |
 | `@webex/internal-plugin-team` | `packages/@webex/internal-plugin-team/` | [AGENTS.md](../packages/@webex/internal-plugin-team/AGENTS.md) | [docs/index.md](../packages/@webex/internal-plugin-team/docs/index.md) | [.sdd/manifest.json](../packages/@webex/internal-plugin-team/.sdd/manifest.json) |
+| `@webex/internal-plugin-conversation` | `packages/@webex/internal-plugin-conversation/` | [AGENTS.md](../packages/@webex/internal-plugin-conversation/AGENTS.md) | [docs/index.md](../packages/@webex/internal-plugin-conversation/docs/index.md) | [.sdd/manifest.json](../packages/@webex/internal-plugin-conversation/.sdd/manifest.json) |
+| `@webex/internal-plugin-feature` | `packages/@webex/internal-plugin-feature/` | [AGENTS.md](../packages/@webex/internal-plugin-feature/AGENTS.md) | [docs/index.md](../packages/@webex/internal-plugin-feature/docs/index.md) | [.sdd/manifest.json](../packages/@webex/internal-plugin-feature/.sdd/manifest.json) |
+| `@webex/internal-plugin-locus` | `packages/@webex/internal-plugin-locus/` | [AGENTS.md](../packages/@webex/internal-plugin-locus/AGENTS.md) | [docs/index.md](../packages/@webex/internal-plugin-locus/docs/index.md) | [.sdd/manifest.json](../packages/@webex/internal-plugin-locus/.sdd/manifest.json) |
+| `@webex/internal-plugin-scheduler` | `packages/@webex/internal-plugin-scheduler/` | [AGENTS.md](../packages/@webex/internal-plugin-scheduler/AGENTS.md) | [docs/index.md](../packages/@webex/internal-plugin-scheduler/docs/index.md) | [.sdd/manifest.json](../packages/@webex/internal-plugin-scheduler/.sdd/manifest.json) |
+| `@webex/internal-plugin-task` | `packages/@webex/internal-plugin-task/` | [AGENTS.md](../packages/@webex/internal-plugin-task/AGENTS.md) | [docs/index.md](../packages/@webex/internal-plugin-task/docs/index.md) | [.sdd/manifest.json](../packages/@webex/internal-plugin-task/.sdd/manifest.json) |
 | `@webex/internal-plugin-user` | `packages/@webex/internal-plugin-user/` | [AGENTS.md](../packages/@webex/internal-plugin-user/AGENTS.md) | [docs/index.md](../packages/@webex/internal-plugin-user/docs/index.md) | [.sdd/manifest.json](../packages/@webex/internal-plugin-user/.sdd/manifest.json) |
 | `@webex/internal-plugin-voicea` | `packages/@webex/internal-plugin-voicea/` | [AGENTS.md](../packages/@webex/internal-plugin-voicea/AGENTS.md) | [docs/index.md](../packages/@webex/internal-plugin-voicea/docs/index.md) | [.sdd/manifest.json](../packages/@webex/internal-plugin-voicea/.sdd/manifest.json) |
 | `@webex/internal-plugin-wdm` | `packages/@webex/internal-plugin-wdm/` | [AGENTS.md](../packages/@webex/internal-plugin-wdm/AGENTS.md) | [docs/index.md](../packages/@webex/internal-plugin-wdm/docs/index.md) | [.sdd/manifest.json](../packages/@webex/internal-plugin-wdm/.sdd/manifest.json) |
@@ -55,6 +60,9 @@ package owns its architecture, specifications, and decisions beside its code. Th
 | `@webex/plugin-team-memberships` | `packages/@webex/plugin-team-memberships/` | [AGENTS.md](../packages/@webex/plugin-team-memberships/AGENTS.md) | [docs/index.md](../packages/@webex/plugin-team-memberships/docs/index.md) | [.sdd/manifest.json](../packages/@webex/plugin-team-memberships/.sdd/manifest.json) |
 | `@webex/plugin-teams` | `packages/@webex/plugin-teams/` | [AGENTS.md](../packages/@webex/plugin-teams/AGENTS.md) | [docs/index.md](../packages/@webex/plugin-teams/docs/index.md) | [.sdd/manifest.json](../packages/@webex/plugin-teams/.sdd/manifest.json) |
 | `@webex/plugin-webhooks` | `packages/@webex/plugin-webhooks/` | [AGENTS.md](../packages/@webex/plugin-webhooks/AGENTS.md) | [docs/index.md](../packages/@webex/plugin-webhooks/docs/index.md) | [.sdd/manifest.json](../packages/@webex/plugin-webhooks/.sdd/manifest.json) |
+| `@webex/plugin-authorization-browser` | `packages/@webex/plugin-authorization-browser/` | [AGENTS.md](../packages/@webex/plugin-authorization-browser/AGENTS.md) | [docs/index.md](../packages/@webex/plugin-authorization-browser/docs/index.md) | [.sdd/manifest.json](../packages/@webex/plugin-authorization-browser/.sdd/manifest.json) |
+| `@webex/plugin-authorization-browser-first-party` | `packages/@webex/plugin-authorization-browser-first-party/` | [AGENTS.md](../packages/@webex/plugin-authorization-browser-first-party/AGENTS.md) | [docs/index.md](../packages/@webex/plugin-authorization-browser-first-party/docs/index.md) | [.sdd/manifest.json](../packages/@webex/plugin-authorization-browser-first-party/.sdd/manifest.json) |
+| `@webex/storage-adapter-local-storage` | `packages/@webex/storage-adapter-local-storage/` | [AGENTS.md](../packages/@webex/storage-adapter-local-storage/AGENTS.md) | [docs/index.md](../packages/@webex/storage-adapter-local-storage/docs/index.md) | [.sdd/manifest.json](../packages/@webex/storage-adapter-local-storage/.sdd/manifest.json) |
 <!-- sdd-package-routing:end -->
 
 ## Decisions

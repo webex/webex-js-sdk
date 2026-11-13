@@ -120,6 +120,15 @@
       "onboarded_by": "claude-code"
     },
     {
+      "id": "@webex/internal-plugin-conversation",
+      "path": "packages/@webex/internal-plugin-conversation",
+      "manifest": "packages/@webex/internal-plugin-conversation/.sdd/manifest.json",
+      "agent_entry": "packages/@webex/internal-plugin-conversation/AGENTS.md",
+      "index": "packages/@webex/internal-plugin-conversation/docs/index.md",
+      "onboarded_at": "2026-11-09T11:06:48Z",
+      "onboarded_by": "claude-code"
+    },
+    {
       "id": "@webex/internal-plugin-feature",
       "path": "packages/@webex/internal-plugin-feature",
       "manifest": "packages/@webex/internal-plugin-feature/.sdd/manifest.json",
@@ -174,6 +183,33 @@
       "onboarded_by": "claude-code"
     },
     {
+      "id": "@webex/internal-plugin-locus",
+      "path": "packages/@webex/internal-plugin-locus",
+      "manifest": "packages/@webex/internal-plugin-locus/.sdd/manifest.json",
+      "agent_entry": "packages/@webex/internal-plugin-locus/AGENTS.md",
+      "index": "packages/@webex/internal-plugin-locus/docs/index.md",
+      "onboarded_at": "2026-11-12T09:25:08Z",
+      "onboarded_by": "claude-cowork"
+    },
+    {
+      "id": "@webex/internal-plugin-scheduler",
+      "path": "packages/@webex/internal-plugin-scheduler",
+      "manifest": "packages/@webex/internal-plugin-scheduler/.sdd/manifest.json",
+      "agent_entry": "packages/@webex/internal-plugin-scheduler/AGENTS.md",
+      "index": "packages/@webex/internal-plugin-scheduler/docs/index.md",
+      "onboarded_at": "2026-11-12T13:34:35Z",
+      "onboarded_by": "claude-cowork"
+    },
+    {
+      "id": "@webex/internal-plugin-task",
+      "path": "packages/@webex/internal-plugin-task",
+      "manifest": "packages/@webex/internal-plugin-task/.sdd/manifest.json",
+      "agent_entry": "packages/@webex/internal-plugin-task/AGENTS.md",
+      "index": "packages/@webex/internal-plugin-task/docs/index.md",
+      "onboarded_at": "2026-11-12T12:47:05Z",
+      "onboarded_by": "claude-cowork"
+    },
+    {
       "id": "@webex/internal-plugin-user",
       "path": "packages/@webex/internal-plugin-user",
       "manifest": "packages/@webex/internal-plugin-user/.sdd/manifest.json",
@@ -216,6 +252,12 @@
       "agent_entry": "packages/@webex/plugin-authorization/AGENTS.md",
       "index": "packages/@webex/plugin-authorization/docs/index.md",
       "onboarded_at": "2026-11-12T05:11:05Z",
+      "id": "@webex/plugin-authorization-browser",
+      "path": "packages/@webex/plugin-authorization-browser",
+      "manifest": "packages/@webex/plugin-authorization-browser/.sdd/manifest.json",
+      "agent_entry": "packages/@webex/plugin-authorization-browser/AGENTS.md",
+      "index": "packages/@webex/plugin-authorization-browser/docs/index.md",
+      "onboarded_at": "2026-11-04T06:35:39Z",
       "onboarded_by": "claude-code"
     },
     {
@@ -315,6 +357,15 @@
       "agent_entry": "packages/@webex/plugin-webhooks/AGENTS.md",
       "index": "packages/@webex/plugin-webhooks/docs/index.md",
       "onboarded_at": "2026-11-13T02:29:00Z",
+      "onboarded_by": "claude-code"
+    },
+    {
+      "id": "@webex/storage-adapter-local-storage",
+      "path": "packages/@webex/storage-adapter-local-storage",
+      "manifest": "packages/@webex/storage-adapter-local-storage/.sdd/manifest.json",
+      "agent_entry": "packages/@webex/storage-adapter-local-storage/AGENTS.md",
+      "index": "packages/@webex/storage-adapter-local-storage/docs/index.md",
+      "onboarded_at": "2026-11-09T10:45:00Z",
       "onboarded_by": "claude-code"
     }
   ],

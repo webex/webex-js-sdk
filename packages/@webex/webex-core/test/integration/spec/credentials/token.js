@@ -7,6 +7,7 @@ import {assert} from '@webex/test-helper-chai';
 import testUsers from '@webex/test-helper-test-users';
 import WebexCore, {filterScope} from '@webex/webex-core';
 import refreshCallback from '@webex/test-helper-refresh-callback';
+import sinon from 'sinon';
 
 /* eslint camelcase: [0] */
 
@@ -89,6 +90,13 @@ describe('webex-core', () => {
       describe('#revoke()', () => {
         it('revokes the token', () => {
           webex = new WebexCore({credentials: user.token});
+          // Once revoked, every metrics POST fails to downscope the token and submits a
+          // JS_SDK_CREDENTIALS_DOWNSCOPE_FAILED metric, which is itself POSTed, looping forever
+          // and keeping the node process alive after the suite finishes. The metrics plugin is
+          // only registered when another spec file (e.g. via internal-plugin-device) imports it.
+          if (webex.internal.metrics) {
+            sinon.stub(webex.internal.metrics, 'submitClientMetrics');
+          }
 
           return webex.credentials.supertoken.revoke().then(() => {
             assert.isUndefined(webex.credentials.supertoken.access_token);
