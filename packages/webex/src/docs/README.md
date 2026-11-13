@@ -9,8 +9,8 @@ doc_kind: module-spec
 generated_from: module-spec@0.3.0
 generated_by: claude-cowork
 approved_by: akulakum@cisco.com
-updated_at: 2026-11-13T06:10:36Z
-validation_status: not-run
+updated_at: 2026-11-13T06:24:37Z
+validation_status: pass-with-warnings
 -->
 
 # webex bundle entry points
@@ -37,7 +37,7 @@ Related context: [documentation index](../../docs/index.md) ·
 | Parent spec | — |
 | Doc kind | Module spec |
 | Coverage score | 93.3% assessed 2026-10-13 — 14 of 15 mandatory fields PRESENT, critical 8 of 8; test strategy is WEAK (gaps listed under Verification) and no characterization baseline exists |
-| Validation status | not-run on this content; awaiting independent validation |
+| Validation status | PASS-WITH-WARNINGS; Session B independent validation on 2026-11-13 at 7a23c26. All seven required Repo Annotation checks exited 0; source audit confirms the documented undeclared required plugins and untested entry behavior remain. |
 
 ## Applicability
 
