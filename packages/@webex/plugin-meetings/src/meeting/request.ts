@@ -1,5 +1,5 @@
 import uuid from 'uuid';
-import {debounce} from 'lodash';
+import {debounce, isEmpty} from 'lodash';
 // @ts-ignore
 import {StatelessWebexPlugin} from '@webex/webex-core';
 // @ts-ignore
@@ -269,6 +269,13 @@ export default class MeetingRequest extends StatelessWebexPlugin {
         );
         throw e;
       }
+    }
+
+    if (isEmpty(url)) {
+      LoggerProxy.logger.error(
+        'Meeting:request#joinMeeting Error: Locus join meeting URL is empty'
+      );
+      throw new Error('Locus join meeting URL is empty');
     }
 
     // TODO: -- this will be resolved in SDK request
