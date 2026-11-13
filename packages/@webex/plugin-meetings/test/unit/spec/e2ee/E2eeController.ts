@@ -385,13 +385,13 @@ describe('plugin-meetings', () => {
         {
           when: 'the credentials cannot be fetched',
           fail: () => identityProvider.getCredentials.rejects(new Error('CA down')),
-          error: 'CA down',
+          errorMessage: 'CA down',
           sessionCreated: false,
         },
         {
           when: 'the WASM module fails to load with a non-Error value',
           fail: () => wasmLoader.get.callsFake(() => Promise.reject('boom')),
-          error: 'boom',
+          errorMessage: 'boom',
           sessionCreated: false,
         },
         {
@@ -402,16 +402,16 @@ describe('plugin-meetings', () => {
 
               return CREDENTIALS;
             }),
-          error: 'Meeting locus has no media encryption group URL',
+          errorMessage: 'Meeting locus has no media encryption group URL',
           sessionCreated: false,
         },
         {
           when: 'the MLS session fails to initialize',
           fail: () => initializeStub.rejects(new Error('MLS init failed')),
-          error: 'MLS init failed',
+          errorMessage: 'MLS init failed',
           sessionCreated: true,
         },
-      ].forEach(({when, fail, error, sessionCreated}) => {
+      ].forEach(({when, fail, errorMessage, sessionCreated}) => {
         it(`fails and reports startFailed when ${when}`, async () => {
           fail();
 
@@ -419,12 +419,12 @@ describe('plugin-meetings', () => {
 
           assert.equal(e2ee.state, 'failed');
           assert.deepEqual(events.state.args, [[{state: 'initializing'}], [{state: 'failed'}]]);
-          assert.calledOnceWithExactly(events.failure, {reason: 'startFailed'});
+          assert.calledOnceWithExactly(events.failure, {reason: 'startFailed', errorMessage});
           assert.calledOnceWithExactly(sendBehavioralMetricStub, 'js_sdk_e2ee_failure', {
             correlation_id: 'corr-1',
             state: 'failed',
             reason: 'startFailed',
-            error,
+            errorMessage,
           });
           assert.notCalled(signalingStartStub);
           assert.notCalled(joinStub);
@@ -526,7 +526,7 @@ describe('plugin-meetings', () => {
           payload: {errorCode: 78400011, message: 'not leader'},
           state: 'failed',
           reason: 'mediaEncryptionRequestFailure',
-          details: {errorCode: 78400011, error: 'not leader'},
+          details: {errorCode: 78400011, errorMessage: 'not leader'},
         },
         {event: 'evicted', payload: undefined, state: 'evicted', reason: 'evicted', details: {}},
       ].forEach(({event, payload, state, reason, details}) => {
@@ -541,7 +541,7 @@ describe('plugin-meetings', () => {
           assert.isUndefined(e2ee.getSecurityCode());
           assert.calledOnceWithExactly(events.securityCode, {securityCode: undefined});
           assert.calledOnceWithExactly(events.state, {state});
-          assert.calledOnceWithExactly(events.failure, {reason});
+          assert.calledOnceWithExactly(events.failure, {reason, ...details});
           assert.calledOnceWithExactly(sendBehavioralMetricStub, 'js_sdk_e2ee_failure', {
             correlation_id: 'corr-1',
             state,
@@ -549,6 +549,32 @@ describe('plugin-meetings', () => {
             ...details,
           });
         });
+
+        it(`creates a fresh session when started again after ${event}`, async () => {
+          const failedSession = initializeStub.firstCall.thisValue;
+
+          emitSession(event, payload);
+          resetEventSpies();
+
+          await e2ee.start();
+
+          assert.calledTwice(initializeStub);
+          assert.notStrictEqual(initializeStub.secondCall.thisValue, failedSession);
+          assert.calledTwice(joinStub);
+          assert.equal(e2ee.state, 'joining');
+          assert.deepEqual(events.state.args, [[{state: 'initializing'}], [{state: 'joining'}]]);
+          assert.notCalled(events.failure);
+        });
+      });
+
+      it('ignores start once joined', async () => {
+        rosterStub.returns([makeRosterEntry({url: OWN_DEVICE_URL})]);
+        emitSession('joinSuccess', {securityCode: 'SEC-1'});
+
+        await e2ee.start();
+
+        assert.calledOnce(initializeStub);
+        assert.equal(e2ee.state, 'joined');
       });
     });
 

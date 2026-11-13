@@ -131,12 +131,17 @@ export default class E2eeController extends EventsScope {
 
   /**
    * Starts the MLS session for this meeting. Idempotent and self-guarded: a no-op unless the
-   * meeting requires E2EE. Never rejects — failures transition to the `failed` state and emit an
-   * E2EE failure event.
+   * meeting requires E2EE, and while a session is already starting or running. Never rejects —
+   * failures transition to the `failed` state and emit an E2EE failure event. Calling it again
+   * from `failed` or `evicted` retries with a fresh MLS session.
    * @returns {Promise<void>}
    */
   async start(): Promise<void> {
-    if (this.currentState !== 'disabled' && this.currentState !== 'left') {
+    if (
+      this.currentState === 'initializing' ||
+      this.currentState === 'joining' ||
+      this.currentState === 'joined'
+    ) {
       LoggerProxy.logger.info(
         `e2ee: E2eeController#start --> ignoring, already in state: ${this.currentState}`
       );
@@ -229,7 +234,7 @@ export default class E2eeController extends EventsScope {
       }
 
       LoggerProxy.logger.error(`e2ee: E2eeController#start --> failed to start E2EE: ${error}`);
-      this.handleFatal('failed', 'startFailed', {error: error?.message ?? String(error)});
+      this.handleFatal('failed', 'startFailed', {errorMessage: error?.message ?? String(error)});
     }
   }
 
@@ -284,7 +289,10 @@ export default class E2eeController extends EventsScope {
 
     subscribe('joinFailure', ({reason}) => this.handleFatal('failed', reason));
     subscribe('mediaEncryptionRequestFailure', ({errorCode, message}) =>
-      this.handleFatal('failed', 'mediaEncryptionRequestFailure', {errorCode, error: message})
+      this.handleFatal('failed', 'mediaEncryptionRequestFailure', {
+        errorCode,
+        errorMessage: message,
+      })
     );
     subscribe('evicted', () => this.handleFatal('evicted', 'evicted'));
   }
@@ -330,10 +338,11 @@ export default class E2eeController extends EventsScope {
   private handleFatal(
     state: 'failed' | 'evicted',
     reason: string,
-    details: {errorCode?: number; error?: string} = {}
+    details: {errorCode?: number; errorMessage?: string} = {}
   ): void {
     LoggerProxy.logger.error(
-      `e2ee: E2eeController --> fatal E2EE error: state=${state} reason=${reason}`
+      `e2ee: E2eeController --> fatal E2EE error: state=${state} reason=${reason} details=`,
+      details
     );
     Metrics.sendBehavioralMetric(BEHAVIORAL_METRICS.E2EE_FAILURE, {
       correlation_id: this.context.correlationId,
@@ -343,7 +352,7 @@ export default class E2eeController extends EventsScope {
     });
     this.cleanupSession();
     this.setState(state);
-    this.emitE2eeEvent(EVENT_TRIGGERS.MEETING_E2EE_FAILURE, {reason});
+    this.emitE2eeEvent(EVENT_TRIGGERS.MEETING_E2EE_FAILURE, {reason, ...details});
   }
 
   /**

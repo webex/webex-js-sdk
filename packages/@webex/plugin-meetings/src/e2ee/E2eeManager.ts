@@ -59,13 +59,13 @@ export default class E2eeManager {
 
   /**
    * Creates the per-meeting E2EE controller, injecting the shared loader, module URL, identity provider and config.
-   * The returned facade's start() is a no-op unless the meeting requires E2EE and E2EE is enabled.
+   * The returned controller's start() is a no-op unless the meeting requires E2EE and E2EE is enabled.
    * @param {E2eeMeetingContext} context - The meeting data and operations used by E2EE.
    * @returns {E2eeController}
    */
   createE2eeController(context: E2eeMeetingContext): E2eeController {
     LoggerProxy.logger.info(
-      'e2ee: E2eeManager#createE2eeController --> creating E2EE meeting facade'
+      'e2ee: E2eeManager#createE2eeController --> creating E2EE meeting controller'
     );
 
     return new E2eeController({

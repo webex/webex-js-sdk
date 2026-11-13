@@ -2,7 +2,7 @@
  * Copyright (c) 2015-2026 Cisco Systems, Inc. See LICENSE file.
  */
 
-/** LLM mercury events carrying MLS protocol messages, forwarded to the MLS engine. */
+/** LLM/Mercury events carrying MLS protocol messages, forwarded to the MLS engine. */
 export const MEDIA_ENCRYPTION_MERCURY_EVENTS = [
   'event:media_encryption.leader_nominated',
   'event:media_encryption.welcome',
