@@ -153,8 +153,12 @@ export default class MLS {
       );
     }
 
-    this.e2ee.setJoinTimeout(config.joinTimeout);
-    this.e2ee.setCoalesceWindow(config.coalesceWindow);
+    if (config.joinTimeout !== undefined) {
+      this.e2ee.setJoinTimeout(config.joinTimeout);
+    }
+    if (config.coalesceWindow !== undefined) {
+      this.e2ee.setCoalesceWindow(config.coalesceWindow);
+    }
 
     LoggerProxy.logger.info('e2ee: MLS --> initialize: engine initialized');
   }
