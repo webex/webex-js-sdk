@@ -10,7 +10,7 @@ import {
 /* eslint-disable no-shadow */
 
 type Listener = (e: string, data?: unknown) => void;
-type ListenerOff = (e: string) => void;
+type ListenerOff = (e: string, listener?: (data?: unknown) => void) => void;
 
 export type ServiceHost = {
   host: string;
@@ -98,6 +98,11 @@ export interface WebexSDK {
   // top level primitives/funcs
   config: {
     fedramp: boolean;
+    services?: {
+      discovery?: {
+        u2c?: string;
+      };
+    };
     defaultMobiusSocketOptions?: Record<string, unknown>;
   };
   version: string;

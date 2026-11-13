@@ -17,6 +17,7 @@ export enum COMMON_EVENT_KEYS {
   CALL_RECORDING_CREATED = 'callRecording:created',
   CALL_RECORDING_UPDATED = 'callRecording:updated',
   CALL_RECORDING_DELETED = 'callRecording:deleted',
+  CALL_QUEUE_UPDATED = 'callQueue:updated',
 }
 
 export enum LINE_EVENT_KEYS {
@@ -177,6 +178,9 @@ export enum MOBIUS_EVENT_KEYS {
   RECORDING_EVENT_CREATED = 'event:convergedRecordings.created',
   RECORDING_EVENT_UPDATED = 'event:convergedRecordings.updated',
   RECORDING_EVENT_DELETED = 'event:convergedRecordings.deleted',
+  TELEPHONY_AGENT_SYNC = 'event:telephony_agents.sync',
+  TELEPHONY_AGENT_STATE = 'event:telephony_agents.state',
+  TELEPHONY_AGENT_JOIN = 'event:telephony_agents.join',
 }
 
 export type CallSessionData = {
