@@ -309,11 +309,13 @@ It also cancels a `start()` still awaiting the WASM module, credentials or MLS i
 
 | Event | Payload |
 |-------|---------|
-| `meeting:e2ee:securityCodeUpdated` | `{securityCode}` |
-| `meeting:e2ee:stateChanged` | `{state}` |
+| `meeting:e2ee:securityCodeUpdated` | `{securityCode: string | undefined}` |
+| `meeting:e2ee:stateChanged` | `{state: E2eeState}` |
 | `meeting:e2ee:mediaServicesChanged` | `{hasMediaServices}` |
-| `meeting:e2ee:failure` | `{reason, errorCode?, errorMessage?}` |
+| `meeting:e2ee:failure` | `{reason: string, errorCode?: number, errorMessage?: string}` |
 | `meeting:trustStateChanged` | `{trustState}` |
+
+The E2EE controller payloads are typed by `E2eeControllerEventMap` in `e2ee/types.ts`.
 
 ## Static assets
 

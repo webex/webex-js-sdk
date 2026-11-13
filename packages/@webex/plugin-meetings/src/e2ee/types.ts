@@ -5,7 +5,7 @@
 import type {IdentityCredentials, IdentityTrustAnchors} from '@webex/internal-plugin-identity';
 import type LLMChannel from '@webex/internal-plugin-llm';
 
-import type {Enum} from '../constants';
+import {EVENT_TRIGGERS, type Enum} from '../constants';
 import type {LocusDTO} from '../locus-info/types';
 import type Members from '../members';
 
@@ -36,6 +36,20 @@ export const E2eeState = {
 } as const;
 
 export type E2eeState = Enum<typeof E2eeState>;
+
+/** Event payloads emitted by E2eeController and forwarded through Meeting. */
+export interface E2eeControllerEventMap {
+  [EVENT_TRIGGERS.MEETING_E2EE_SECURITY_CODE_UPDATED]: {securityCode: string | undefined};
+  [EVENT_TRIGGERS.MEETING_E2EE_STATE_CHANGED]: {state: E2eeState};
+  [EVENT_TRIGGERS.MEETING_E2EE_MEDIA_SERVICES_CHANGED]: {hasMediaServices: boolean};
+  [EVENT_TRIGGERS.MEETING_E2EE_FAILURE]: {
+    reason: string;
+    errorCode?: number;
+    errorMessage?: string;
+  };
+}
+
+export type E2eeControllerEvent = keyof E2eeControllerEventMap;
 
 /** The meeting's overall E2EE trust state, surfaced to the app for its UI indicator. */
 export const TrustState = {
