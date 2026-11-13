@@ -3,29 +3,9 @@
  */
 
 import type LLMChannel from '@webex/internal-plugin-llm';
-
-/** Source labels passed to the MLS engine for incoming signaling messages. */
-type E2eeSignalingSource = 'llm' | 'mercury';
-
-/** LLM event carrying the channel's connection state. */
-export const LLM_ONLINE_EVENT = 'online';
-
-/** Mercury events carrying MLS protocol messages. */
-export const MEDIA_ENCRYPTION_MERCURY_EVENTS = [
-  'event:media_encryption.leader_nominated',
-  'event:media_encryption.welcome',
-  'event:media_encryption.annotated_welcome',
-  'event:media_encryption.multi_welcome',
-  'event:media_encryption.group_update',
-  'event:media_encryption.annotated_commit',
-  'event:media_encryption.large_group_update',
-  'event:media_encryption.use_key',
-  'event:media_encryption.join_request',
-  'event:media_encryption.leave_request',
-  'event:media_encryption.join_failure',
-  'event:media_encryption.leader_changed',
-  'event:media_encryption.message_segment',
-];
+import {ONLINE} from '../constants';
+import {MEDIA_ENCRYPTION_MERCURY_EVENTS} from './constants';
+import type {E2eeSignalingSource} from './types';
 
 /** The subset of the MLS engine the signaling adapter drives. */
 export interface IMlsSignalingTarget {
@@ -190,13 +170,13 @@ export default class E2eeSignaling {
       this.llm?.on(event, this.onLlmEvent);
     });
     if (!this.isLlmOnlineForThisSession()) {
-      this.llm.on(LLM_ONLINE_EVENT, this.onLlmOnline);
+      this.llm.on(ONLINE, this.onLlmOnline);
     }
   }
 
   /** @returns {void} */
   private unsubscribeFromLlmEvents(): void {
-    this.llm?.off(LLM_ONLINE_EVENT, this.onLlmOnline);
+    this.llm?.off(ONLINE, this.onLlmOnline);
     MEDIA_ENCRYPTION_MERCURY_EVENTS.forEach((event) => {
       this.llm?.off(event, this.onLlmEvent);
     });

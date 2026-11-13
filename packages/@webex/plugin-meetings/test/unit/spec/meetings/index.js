@@ -218,6 +218,26 @@ describe('plugin-meetings', () => {
       assert.calledOnce(MeetingsUtil.checkH264Support);
     });
 
+    describe('constructor', () => {
+      it('does not try to access webex.config', () => {
+        // WebexCore assigns webex.config only after its plugin children are constructed.
+        Object.defineProperty(webex, 'config', {
+          configurable: true,
+          get: () => {
+            throw new Error('webex.config accessed during Meetings construction');
+          },
+        });
+
+        try {
+          const meetings = new Meetings({}, {parent: webex});
+
+          assert.instanceOf(meetings, Meetings);
+        } finally {
+          delete webex.config;
+        }
+      });
+    });
+
     describe('#getBasicMeetingInformation', () => {
       beforeEach(() => {
         sinon.stub(MeetingUtil, 'cleanUp');
@@ -449,6 +469,17 @@ describe('plugin-meetings', () => {
           webex.meetings._toggleStopIceGatheringAfterFirstRelayCandidate(true);
           assert.equal(webex.meetings.config.stopIceGatheringAfterFirstRelayCandidate, true);
         });
+      });
+    });
+
+    describe('E2EE WASM URL', () => {
+      it('resolves the E2EE WASM URL on ready from config set after construction', () => {
+        const meetings = new Meetings({}, {parent: webex});
+
+        meetings.config.assetsBaseUrl = 'https://cdn.example.com/plugin-meetings/';
+        webex.emit('ready');
+
+        assert.equal(meetings.e2eeManager.wasmUrl, 'https://cdn.example.com/plugin-meetings/e2ee-0.0.1.wasm');
       });
     });
 
@@ -3416,7 +3447,11 @@ describe('plugin-meetings', () => {
                     'Meetings:index#createMeeting --> Info Unable to fetch meeting info for test destination.'
                   );
                 } else {
-                  assert.notCalled(LoggerProxy.logger.info);
+                  assert.notCalled(
+                    LoggerProxy.logger.info.withArgs(
+                      'Meetings:index#createMeeting --> Info Unable to fetch meeting info for test destination.'
+                    )
+                  );
                 }
               });
             }

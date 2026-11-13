@@ -23,10 +23,6 @@ import type {
   WebE2EEInstance,
 } from './wasm';
 
-const DEFAULT_JOIN_TIMEOUT = 180_000;
-const DEFAULT_COALESCE_WINDOW = 500;
-const DEFAULT_DEVICE_TYPE = 'WEB';
-
 // WASM log levels, indexed by the numeric level the engine emits (see LogLevel in libe2ee).
 const WASM_LOG_LEVELS = ['', 'FATAL', 'ERROR', 'WARN', 'INFO', 'DEBUG'];
 
@@ -34,7 +30,7 @@ const WASM_LOG_LEVELS = ['', 'FATAL', 'ERROR', 'WARN', 'INFO', 'DEBUG'];
 export interface MLSEventMap {
   joinSuccess: {epoch: number; securityCode: string; sframe: SframeParams; key: E2eeKey};
   joinFailure: {reason: string};
-  mediaEncryptionRequestFailure: {errorCode: number; message: string};
+  mediaEncryptionServiceFailure: {errorCode: number; message: string};
   newKey: E2eeKey;
   useKey: {epoch: number};
   purgeKeys: {epoch: number};
@@ -136,7 +132,7 @@ export default class MLS {
     this.e2ee.initialize(
       config.participantId,
       config.deviceUrl,
-      config.deviceType || DEFAULT_DEVICE_TYPE,
+      config.deviceType,
       config.correlationId,
       config.displayName,
       config.serviceUrl
@@ -157,8 +153,12 @@ export default class MLS {
       );
     }
 
-    this.e2ee.setJoinTimeout(config.joinTimeout ?? DEFAULT_JOIN_TIMEOUT);
-    this.e2ee.setCoalesceWindow(config.coalesceWindow ?? DEFAULT_COALESCE_WINDOW);
+    if (config.joinTimeout !== undefined) {
+      this.e2ee.setJoinTimeout(config.joinTimeout);
+    }
+    if (config.coalesceWindow !== undefined) {
+      this.e2ee.setCoalesceWindow(config.coalesceWindow);
+    }
 
     LoggerProxy.logger.info('e2ee: MLS --> initialize: engine initialized');
   }
@@ -264,7 +264,7 @@ export default class MLS {
         baseKey: new Uint8Array(epoch.base_key),
         index: epoch.index,
         indexBits: epoch.index_bits,
-        canEncrypt: false,
+        canEncrypt: false, // the key can only be used for encryption after onUseKey is called
       });
     });
 
@@ -379,7 +379,7 @@ export default class MLS {
    * `e2ee_negotiation_failure` out of this call when it can't recover from the service's error code
    * or fails to process a successful response; this surfaces in JS as an opaque value with no
    * message. That is unrecoverable for the in-flight operation, so it is reported as
-   * `mediaEncryptionRequestFailure` instead of escaping as an unhandled rejection.
+   * `mediaEncryptionServiceFailure` instead of escaping as an unhandled rejection.
    * @param {number} handlerId
    * @param {boolean} success
    * @param {Uint8Array} body
@@ -400,7 +400,7 @@ export default class MLS {
       LoggerProxy.logger.error(
         `e2ee: MLS --> engine threw while completing HTTP request (success=${success}, errorCode=${errorCode}): ${error}`
       );
-      this.emitEvent('mediaEncryptionRequestFailure', {
+      this.emitEvent('mediaEncryptionServiceFailure', {
         errorCode,
         message: success ? 'Engine failed to process HTTP response' : message,
       });
