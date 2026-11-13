@@ -231,6 +231,91 @@ describe('Call history tests', () => {
     });
   });
 
+  describe('Call History Session Event guards', () => {
+    let callHistory: CallHistory;
+    let emitSpy: jest.SpyInstance;
+
+    beforeEach(() => {
+      callHistory = new CallHistory(webex, {level: LOGGER.INFO});
+      emitSpy = jest.spyOn(callHistory, 'emit');
+    });
+
+    afterEach(() => {
+      emitSpy.mockRestore();
+    });
+
+    it('malformed session event does not throw', async () => {
+      const malformedEvents: unknown[] = [undefined, {}, {data: {}}, {data: {userSessions: {}}}];
+
+      for (const malformedEvent of malformedEvents) {
+        // eslint-disable-next-line no-await-in-loop
+        await expect(
+          callHistory.handleSessionEvents(malformedEvent as CallSessionEvent)
+        ).resolves.not.toThrow();
+      }
+
+      expect(emitSpy).not.toHaveBeenCalled();
+    });
+
+    it('malformed user-read session event does not throw', async () => {
+      const malformedEvents: unknown[] = [
+        undefined,
+        {},
+        {data: {}},
+        {data: {userReadSessions: {}}},
+      ];
+
+      for (const malformedEvent of malformedEvents) {
+        // eslint-disable-next-line no-await-in-loop
+        await expect(
+          callHistory.handleUserReadSessionEvents(malformedEvent as CallSessionViewedEvent)
+        ).resolves.not.toThrow();
+      }
+
+      expect(emitSpy).not.toHaveBeenCalled();
+    });
+
+    it('malformed user-sessions-deleted event does not throw', async () => {
+      const malformedEvents: unknown[] = [undefined, {}, {data: {}}];
+
+      for (const malformedEvent of malformedEvents) {
+        // eslint-disable-next-line no-await-in-loop
+        await expect(
+          callHistory.handleUserSessionsDeletedEvents(malformedEvent as CallSessionDeletedEvent)
+        ).resolves.not.toThrow();
+      }
+
+      expect(emitSpy).not.toHaveBeenCalled();
+    });
+
+    it('well-formed session event still emits', async () => {
+      await callHistory.handleSessionEvents(MOCK_SESSION_EVENT);
+
+      expect(emitSpy).toHaveBeenCalledWith(
+        COMMON_EVENT_KEYS.CALL_HISTORY_USER_SESSION_INFO,
+        MOCK_SESSION_EVENT
+      );
+    });
+
+    it('well-formed user-read session event still emits', async () => {
+      await callHistory.handleUserReadSessionEvents(MOCK_SESSION_EVENT_VIEWED);
+
+      expect(emitSpy).toHaveBeenCalledWith(
+        COMMON_EVENT_KEYS.CALL_HISTORY_USER_VIEWED_SESSIONS,
+        MOCK_SESSION_EVENT_VIEWED
+      );
+    });
+
+    it('well-formed user-sessions-deleted event still emits', async () => {
+      await callHistory.handleUserSessionsDeletedEvents(MOCK_SESSION_EVENT_DELETED);
+
+      expect(emitSpy).toHaveBeenCalledWith(
+        COMMON_EVENT_KEYS.CALL_HISTORY_USER_SESSIONS_DELETED,
+        MOCK_SESSION_EVENT_DELETED
+      );
+    });
+  });
+
   describe('Update missed calls test', () => {
     const methodDetails = {
       file: CALL_HISTORY_FILE,
@@ -714,6 +799,70 @@ describe('Call history tests', () => {
         /.*\/history\/userSessions.*limit=10.*includeNewSessionTypes=true.*sort=DESC.*/
       );
       expect(callArgs.uri).toContain('&includeSharedSessions=true');
+    });
+  });
+
+  describe('Call history limit clamping', () => {
+    let webexRequestSpy: jest.SpyInstance;
+
+    beforeEach(() => {
+      webexRequestSpy = jest.spyOn(webex, 'request').mockResolvedValue({
+        statusCode: 200,
+        body: {
+          statusCode: 200,
+          userSessions: [],
+        },
+      });
+    });
+
+    afterEach(() => {
+      jest.restoreAllMocks();
+    });
+
+    it.each([
+      ['limit above MAX_LIMIT is clamped to MAX_LIMIT', 2000, 500],
+      ['limit of 0 is clamped to MIN_LIMIT', 0, 1],
+      ['negative limit is clamped to MIN_LIMIT', -5, 1],
+      ['fractional limit is floored then clamped', 10.9, 10],
+      ['fractional limit above MAX_LIMIT is floored then clamped to MAX_LIMIT', 500.9, 500],
+      ['NaN limit falls back to the default limit', NaN, 50],
+      ['Infinity limit falls back to the default limit', Infinity, 50],
+      ['-Infinity limit falls back to the default limit', -Infinity, 50],
+    ])('%s (input=%p, expected=%p)', async (_label, inputLimit, expectedLimit) => {
+      await callHistory.getCallHistoryData(7, inputLimit as number, SORT.DEFAULT, SORT_BY.DEFAULT);
+
+      const callArgs = webexRequestSpy.mock.calls[0][0];
+
+      expect(callArgs.uri).toContain(`&limit=${expectedLimit}`);
+    });
+
+    it('a runtime non-number limit falls back to the default limit', async () => {
+      await callHistory.getCallHistoryData(
+        7,
+        'not-a-number' as unknown as number,
+        SORT.DEFAULT,
+        SORT_BY.DEFAULT
+      );
+
+      const callArgs = webexRequestSpy.mock.calls[0][0];
+
+      expect(callArgs.uri).toContain('&limit=50');
+    });
+
+    it('the default limit (no argument supplied) is unchanged', async () => {
+      await callHistory.getCallHistoryData(7, undefined, SORT.DEFAULT, SORT_BY.DEFAULT);
+
+      const callArgs = webexRequestSpy.mock.calls[0][0];
+
+      expect(callArgs.uri).toContain('&limit=50');
+    });
+
+    it('a typical in-range limit produces a byte-identical query as before clamping', async () => {
+      await callHistory.getCallHistoryData(7, 20, SORT.DEFAULT, SORT_BY.DEFAULT);
+
+      const callArgs = webexRequestSpy.mock.calls[0][0];
+
+      expect(callArgs.uri).toContain('&limit=20');
     });
   });
 });

@@ -177,9 +177,11 @@ The `CallHistory` constructor accepts:
 | Parameter | Type | Default | Description |
 | --------- | ---- | ------- | ----------- |
 | `days` | `number` | `10` | Number of days of history to fetch |
-| `limit` | `number` | `50` | Maximum number of records to return |
-| `sort` | `SORT` | `SORT.DEFAULT` | Sort order (ASC/DESC) |
-| `sortBy` | `SORT_BY` | `SORT_BY.DEFAULT` | Sort field (startTime/endTime) |
+| `limit` | `number` | `50` | Maximum number of records to return; clamped to `[MIN_LIMIT, MAX_LIMIT]` before the Janus query (see below) |
+| `sort` | `SORT` | `SORT.DEFAULT` | Sort order (ASC/DESC); values outside the `SORT` enum fall back to `SORT.DEFAULT` |
+| `sortBy` | `SORT_BY` | `SORT_BY.DEFAULT` | Sort field (startTime/endTime); values outside the `SORT_BY` enum fall back to `SORT_BY.DEFAULT` |
+
+The `limit` supplied to `getCallHistoryData` is validated and clamped before it is placed into the Janus query URL: a well-formed in-range integer (including the default `50`) is used unchanged, fractional values are floored, and `NaN`/`Infinity`/`-Infinity` or a non-number value falls back to the default `LIMIT`. The resulting value is bounded to `[MIN_LIMIT, MAX_LIMIT]`, so only a safe numeric limit ever reaches the query string.
 
 ### Mercury Event Keys
 
@@ -222,7 +224,7 @@ The `CallHistory` constructor accepts:
 | CALLHISTORY-R-002 | Supports sorting by `startTime` or `endTime` in ascending or descending order. Default sort is by `endTime` descending. | A deterministic newest-first default matches the primary recent-calls use case while explicit alternatives keep pagination and presentation ordering predictable. | `src/CallHistory/CallHistory.ts` | `src/CallHistory/CallHistory.test.ts` | none identified | PRESENT |
 | CALLHISTORY-R-003 | Marks missed call records as read by posting `endTime` and `sessionId` pairs to the Janus `setReadState` endpoint. | Janus identifies the exact viewed records by the end-time/session-id pair, preventing unrelated missed calls from being marked read. | `src/CallHistory/CallHistory.ts` | `src/CallHistory/CallHistory.test.ts` | none identified | PRESENT |
 | CALLHISTORY-R-004 | Deletes call history records by posting `endTime` and `sessionId` pairs to the Janus `markAsDeleted` endpoint. Validates date formats before submission. | Validating and sending the record identity pair prevents malformed dates or ambiguous session identifiers from deleting the wrong history entries. | `src/CallHistory/CallHistory.ts` | `src/CallHistory/CallHistory.test.ts` | none identified | PRESENT |
-| CALLHISTORY-R-005 | Listens for Mercury WebSocket events (`callSessionEventInclusive`, `callSessionEventLegacy`, `callSessionEventViewed`, `callSessionEventDeleted`) and emits them to the application. | Forwarding Janus lifecycle events keeps consumer history state current without polling after sessions are created, viewed, or deleted. | `src/CallHistory/CallHistory.ts` | `src/CallHistory/CallHistory.test.ts` | none identified | PRESENT |
+| CALLHISTORY-R-005 | Listens for Mercury WebSocket events (`callSessionEventInclusive`, `callSessionEventLegacy`, `callSessionEventViewed`, `callSessionEventDeleted`) and emits them to the application. Each handler guards the expected nested payload shape and only emits when that payload is present, so malformed or absent events are ignored rather than throwing. | Forwarding Janus lifecycle events keeps consumer history state current without polling after sessions are created, viewed, or deleted, while shape guards keep malformed events from raising uncaught exceptions. | `src/CallHistory/CallHistory.ts` | `src/CallHistory/CallHistory.test.ts` | none identified | PRESENT |
 | CALLHISTORY-R-006 | Standardized error handling via `serviceErrorCodeHandler` with automatic log upload on failures. | A common error response and diagnostic-upload path gives callers stable failure handling and preserves evidence needed to diagnose remote-service failures. | `src/CallHistory/CallHistory.ts` | `src/CallHistory/CallHistory.test.ts` | none identified | PRESENT |
 | CALLHISTORY-R-007 | Adds `includeSharedSessions=true` so shared session types (`WEBEXCALLING_SHARED`) are included in call history queries. | Shared-line sessions must be requested explicitly so users see calls placed or received on shared Webex Calling lines. | `src/CallHistory/CallHistory.ts` | `src/CallHistory/CallHistory.test.ts` | none identified | PRESENT |
 | CALLHISTORY-R-008 | Enriches call history records with `ucmLineNumber` by matching `self.cucmDN` against UCM Lines API (`dnorpattern`). | UCM records need line-pattern enrichment so multi-line clients can associate a history entry with the correct provisioned line. | `src/CallHistory/CallHistory.ts` | `src/CallHistory/CallHistory.test.ts` | none identified | PRESENT |
@@ -281,6 +283,7 @@ Notes:
 - `includeNewSessionTypes=true` is always appended.
 - `includeSharedSessions=true` is appended only for WXC backend.
 - `sortBy` is applied in module logic after fetch (for `startTime`) and is not sent as a URL parameter.
+- `limit` is clamped to `[MIN_LIMIT, MAX_LIMIT]` and `sort` is validated against the `SORT` enum before being placed into the query string, so only bounded, known values reach the URL.
 
 ### CallHistory Module — Architecture
 
@@ -299,6 +302,8 @@ Notes:
 |----------|-------|-------------|
 | `NUMBER_OF_DAYS` | `10` | Default number of days for call history fetch |
 | `LIMIT` | `50` | Default maximum records to fetch |
+| `MIN_LIMIT` | `1` | Lower bound the record limit is clamped to before the Janus query |
+| `MAX_LIMIT` | `500` | Upper bound the record limit is clamped to before the Janus query |
 
 ### HTTP Client Pattern
 
@@ -580,8 +585,9 @@ if (response.statusCode === 200) {
 
 - Query defaults remain 10 days, 50 records, `endTime`, descending unless the caller supplies alternatives.
 - Missed-call and delete mutations require valid `endTime`/`sessionId` pairs.
+- The `limit` reaching the Janus query is always a bounded integer within `[MIN_LIMIT, MAX_LIMIT]`, and `sort`/`sortBy` are always members of their respective enums (defaulting otherwise).
 - WXC queries include shared sessions; UCM results are enriched by matching `self.cucmDN` to line `dnorpattern`.
-- Mercury events retain their typed payload and event-key mapping. Evidence: `src/CallHistory/CallHistory.ts`, `src/CallHistory/CallHistory.test.ts`.
+- Mercury events retain their typed payload and event-key mapping; a session-event handler emits only when the expected nested payload is present and otherwise ignores the event without throwing. Evidence: `src/CallHistory/CallHistory.ts`, `src/CallHistory/CallHistory.test.ts`.
 
 ## Concurrency & Reactive Flow
 
