@@ -21,6 +21,24 @@ import {getMetricManager} from '../../Metrics';
 import {IMetricManager, METRIC_EVENT, METRIC_TYPE, MOBIUS_SOCKET_ACTION} from '../../Metrics/types';
 
 /**
+ * Preserves WSS metadata and exposes Retry-After under the existing lowercase lookup.
+ * @param metadata - Response metadata returned by Mobius.
+ */
+function normalizeWsHeaders(metadata?: MobiusSocketResponse['metadata']): Record<string, string> {
+  const headers = {...metadata} as Record<string, string>;
+
+  if (!Object.prototype.hasOwnProperty.call(headers, 'retry-after')) {
+    const retryAfter = Object.keys(headers).find((name) => name.toLowerCase() === 'retry-after');
+
+    if (retryAfter) {
+      headers['retry-after'] = headers[retryAfter];
+    }
+  }
+
+  return headers;
+}
+
+/**
  * Converts a MobiusSocketResponse into the WebexRequestPayload shape that
  * all callers (registration, call, keepalive error-handlers) expect.
  */
@@ -30,7 +48,7 @@ function normalizeWsResponse(wsResponse: MobiusSocketResponse): WebexRequestPayl
     body: (wsResponse.data as object) ?? undefined,
     headers: {
       trackingid: wsResponse.trackingId,
-      ...((wsResponse.metadata as Record<string, string>) ?? {}),
+      ...normalizeWsHeaders(wsResponse.metadata),
     },
   };
 }
@@ -52,7 +70,7 @@ function normalizeWsError(err: unknown): WebexRequestPayload {
     body: (wsErr.response?.data as object) ?? undefined,
     headers: {
       trackingid: wsErr.trackingId ?? wsErr.response?.trackingId ?? '',
-      ...((wsErr.response?.metadata as Record<string, string>) ?? {}),
+      ...normalizeWsHeaders(wsErr.response?.metadata),
     },
   };
 }

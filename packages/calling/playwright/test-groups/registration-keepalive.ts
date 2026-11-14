@@ -187,7 +187,7 @@ export function registrationKeepaliveTests() {
                 return {
                   statusCode: 429,
                   statusMessage: 'Too Many Requests',
-                  metadata: {'retry-after': String(RETRY_AFTER_SECONDS)},
+                  metadata: {'Retry-After': String(RETRY_AFTER_SECONDS)},
                   data: {message: 'Too Many Requests'},
                 };
               }
