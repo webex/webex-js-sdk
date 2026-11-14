@@ -11,6 +11,7 @@ import {
 import {CONNECTION_SERVICE_FILE} from '../../../constants';
 import {SubscribeRequest} from '../../../types';
 import {SUBSCRIBE_API} from '../../constants';
+import {isRecord} from '../Utils';
 
 export class ConnectionService extends EventEmitter {
   private connectionProp: ConnectionProp = {
@@ -90,8 +91,26 @@ export class ConnectionService extends EventEmitter {
     this.connectionProp = prop;
   }
 
-  private onPing = (event: any): void => {
-    const parsedEvent = JSON.parse(event);
+  private onPing = (event: unknown): void => {
+    let parsedEvent: unknown;
+    try {
+      parsedEvent = JSON.parse(event as string);
+    } catch (error) {
+      LoggerProxy.error(`onPing failed to parse payload: ${(error as Error)?.message}`, {
+        module: CONNECTION_SERVICE_FILE,
+        method: METHODS.ON_PING,
+      });
+
+      return;
+    }
+    if (!isRecord(parsedEvent)) {
+      LoggerProxy.error(`onPing received non-object payload, ignoring`, {
+        module: CONNECTION_SERVICE_FILE,
+        method: METHODS.ON_PING,
+      });
+
+      return;
+    }
     if (this.reconnectingTimer) {
       clearTimeout(this.reconnectingTimer);
     }

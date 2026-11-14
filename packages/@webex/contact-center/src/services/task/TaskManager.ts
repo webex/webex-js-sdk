@@ -1692,10 +1692,20 @@ export default class TaskManager extends EventEmitter {
     if (!action || !this.apiAIAssistant) return;
     if (this.configFlags?.aiFeature?.realtimeTranscripts?.enable !== true) return;
 
+    const trimmedId = interactionId.trim();
+    if (typeof interactionId !== 'string' || trimmedId.length === 0) {
+      LoggerProxy.error(`Rejected transcript ${action} event with invalid interactionId`, {
+        module: TASK_MANAGER_FILE,
+        method: METHODS.REQUEST_REAL_TIME_TRANSCRIPTS,
+      });
+
+      return;
+    }
+
     this.apiAIAssistant
       .sendEvent(
         this.agentId,
-        interactionId,
+        trimmedId,
         AIAssistantEventType.CUSTOM_EVENT,
         AIAssistantEventName.GET_TRANSCRIPTS,
         {action}

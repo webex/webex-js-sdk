@@ -277,7 +277,10 @@ export default class AqmReqs {
     const typeField = typeMap.typeField || 'type';
     const msgType = msg[typeField];
 
-    if (typeMap.conditions && typeMap.conditions[msgType]) {
+    if (
+      typeMap.conditions &&
+      Object.prototype.hasOwnProperty.call(typeMap.conditions, msgType)
+    ) {
       const condition = typeMap.conditions[msgType];
       for (const field of Object.keys(condition)) {
         if (!msg[field] || msg[field] !== condition[field]) {
