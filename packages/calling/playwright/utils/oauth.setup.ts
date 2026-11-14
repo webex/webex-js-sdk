@@ -56,6 +56,10 @@ const fetchAccessToken = async (
   password: string,
   tokenPortalUrl: string
 ): Promise<string> => {
+  // Test-only: retained because OAuth token capture drives a browser against
+  // the same self-signed test endpoint during setup. Scoped to this single
+  // browser.newContext call in fetchAccessToken only; never applied to src/
+  // runtime code or the published package.
   const context = await browser.newContext({ignoreHTTPSErrors: true});
   const page = await context.newPage();
 
