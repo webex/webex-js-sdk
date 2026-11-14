@@ -13,7 +13,7 @@ import {
   ServiceIndicator,
 } from '../../common/types';
 import {ILine, LINE_EVENTS} from './types';
-import {LINE_FILE, METHODS, VALID_PHONE_REGEX} from '../constants';
+import {LINE_FILE, MAKE_CALL_PHONE_REGEX, METHODS, VALID_PHONE_REGEX} from '../constants';
 import log from '../../Logger';
 import {IRegistration} from '../registration/types';
 import {createRegistration} from '../registration';
@@ -271,13 +271,8 @@ export default class Line extends Eventing<LineEventTypes> implements ILine {
     let call;
 
     if (dest) {
-      const match = dest.address.match(VALID_PHONE_REGEX);
-
-      if (match && match[0].length === dest.address.length) {
-        const sanitizedNumber = dest.address
-          .replace(/[^[*+]\d#]/gi, '')
-          .replace(/\s+/gi, '')
-          .replace(/-/gi, '');
+      if (MAKE_CALL_PHONE_REGEX.test(dest.address)) {
+        const sanitizedNumber = dest.address.replace(/[^+*#\d]/g, '');
         const formattedDest = {
           type: dest.type,
           address: `tel:${sanitizedNumber}`,
