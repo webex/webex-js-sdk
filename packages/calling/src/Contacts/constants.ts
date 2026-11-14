@@ -21,6 +21,13 @@ export enum encryptedFields {
   TITLE = 'title',
 }
 
+/**
+ * Validates that a KMS URL uses the kms:// scheme and an allowed Cisco/Webex host.
+ * Guards against MITM'd service responses that inject attacker-controlled key URIs.
+ */
+export const TRUSTED_KMS_URL_PATTERN =
+  /^kms:\/\/([a-zA-Z0-9-]+\.)*(?:cisco\.com|webex\.com|ciscospark\.com|wbx2\.com)\//i;
+
 export const METHODS = {
   GET_CONTACTS: 'getContacts',
   CREATE_NEW_ENCRYPTION_KEY_URL: 'createNewEncryptionKeyUrl',

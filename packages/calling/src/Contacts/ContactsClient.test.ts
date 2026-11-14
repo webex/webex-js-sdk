@@ -701,6 +701,60 @@ describe('ContactClient Tests', () => {
     });
   });
 
+  describe('decryptContact security', () => {
+    it('skips decryption for contacts with untrusted encryptionKeyUrl', async () => {
+      const attackerKeyUrl = 'kms://attacker.example.com/keys/evil-key';
+      const encryptedDisplayName = 'ciphertext-display-name';
+      const contact = {
+        contactId: 'test-id',
+        contactType: 'CUSTOM',
+        displayName: encryptedDisplayName,
+        encryptionKeyUrl: attackerKeyUrl,
+      } as Contact;
+
+      const result = await contactClient['decryptContact'](contact);
+
+      expect(webex.internal.encryption.decryptText).not.toHaveBeenCalledWith(
+        attackerKeyUrl,
+        expect.anything()
+      );
+      expect(result.displayName).toBe(encryptedDisplayName);
+    });
+  });
+
+  it('getContacts skips group name decryption for untrusted encryptionKeyUrl', async () => {
+    const attackerKeyUrl = 'kms://attacker.example.com/keys/evil-key';
+    const encryptedGroupName = 'ciphertext-group-name';
+    const responseBody = {
+      contacts: [],
+      groups: [
+        {
+          groupId: 'test-group-id',
+          groupType: 'NORMAL',
+          ownerId: 'test-owner',
+          displayName: encryptedGroupName,
+          encryptionKeyUrl: attackerKeyUrl,
+          members: [],
+          isMigration: false,
+          meta: {
+            created: '2024-01-01T00:00:00.000Z',
+            lastModified: '2024-01-01T00:00:00.000Z',
+          },
+        },
+      ],
+    };
+
+    webex.request.mockResolvedValueOnce({statusCode: 200, body: responseBody});
+
+    await contactClient.getContacts();
+
+    expect(webex.internal.encryption.decryptText).not.toHaveBeenCalledWith(
+      attackerKeyUrl,
+      expect.anything()
+    );
+    expect(contactClient['groups']?.[0].displayName).toBe(encryptedGroupName);
+  });
+
   it('create a contact without a group and encryptionKey', async () => {
     const mockContactResponse = mockContactResponseBodyOne.contacts[1];
 

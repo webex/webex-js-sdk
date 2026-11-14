@@ -24,6 +24,7 @@ import {
   METHODS,
   OR,
   SCIM_ID_FILTER,
+  TRUSTED_KMS_URL_PATTERN,
   USERS,
   encryptedFields,
 } from './constants';
@@ -75,6 +76,10 @@ export class ContactsClient implements IContacts {
    * `createContactGroup` releases before returning to `fetchEncryptionKeyUrl`).
    */
   private mutex: Mutex;
+
+  private isValidEncryptionKeyUrl(encryptionKeyUrl: string | undefined): boolean {
+    return !!(encryptionKeyUrl && TRUSTED_KMS_URL_PATTERN.test(encryptionKeyUrl));
+  }
 
   /**
    * @ignore
@@ -253,6 +258,16 @@ export class ContactsClient implements IContacts {
    */
   private async decryptContact(contact: Contact): Promise<Contact> {
     const {encryptionKeyUrl} = contact;
+
+    if (!this.isValidEncryptionKeyUrl(encryptionKeyUrl)) {
+      log.warn('Skipping decryption of contact with untrusted encryptionKeyUrl', {
+        file: CONTACTS_CLIENT,
+        method: 'decryptContact',
+      });
+
+      return {...contact};
+    }
+
     const decryptedContact: Contact = {...contact};
 
     const decryptionPromises = Object.values(encryptedFields).map(async (field) => {
@@ -464,6 +479,14 @@ export class ContactsClient implements IContacts {
 
       await Promise.all(
         groups.map(async (group, idx) => {
+          if (!this.isValidEncryptionKeyUrl(group.encryptionKeyUrl)) {
+            log.warn('Skipping group name decryption due to untrusted encryptionKeyUrl', {
+              file: CONTACTS_CLIENT,
+              method: METHODS.GET_CONTACTS,
+            });
+
+            return;
+          }
           groups[idx].displayName = await this.webex.internal.encryption.decryptText(
             group.encryptionKeyUrl,
             group.displayName
