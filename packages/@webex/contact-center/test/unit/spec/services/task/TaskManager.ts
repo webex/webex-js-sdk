@@ -647,6 +647,36 @@ describe('TaskManager', () => {
     expect(mockApiAIAssistant.sendEvent).not.toHaveBeenCalled();
   });
 
+  it('requestRealTimeTranscripts trims whitespace from interactionId before sending', () => {
+    taskManager.setConfigFlags({
+      isEndTaskEnabled: true,
+      isEndConsultEnabled: true,
+      webRtcEnabled: true,
+      autoWrapup: false,
+      aiFeature: {
+        id: 'ai-feature-1',
+        realtimeTranscripts: {
+          enable: true,
+        },
+      },
+    });
+
+    const paddedId = `  ${taskId}  `;
+
+    (taskManager as any)['requestRealTimeTranscripts'](
+      CC_EVENTS.AGENT_CONTACT_ASSIGNED,
+      paddedId
+    );
+
+    expect(mockApiAIAssistant.sendEvent).toHaveBeenCalledWith(
+      expect.any(String),
+      taskId,
+      expect.any(String),
+      expect.any(String),
+      expect.any(Object)
+    );
+  });
+
   it('should not invoke sendEvent when realtime transcripts are disabled in aiFeature', () => {
     taskManager.setConfigFlags({
       isEndTaskEnabled: true,
