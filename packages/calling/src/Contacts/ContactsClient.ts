@@ -490,6 +490,10 @@ export class ContactsClient implements IContacts {
     // istanbul ignore else
     if (this.groups === undefined) {
       await this.getContacts();
+      // Re-check: a concurrent caller may have created the key while getContacts was in flight.
+      if (this.encryptionKeyUrl) {
+        return this.encryptionKeyUrl;
+      }
     }
     // istanbul ignore else
     if (this.groups && this.groups.length) {
@@ -583,6 +587,15 @@ export class ContactsClient implements IContacts {
       file: CONTACTS_CLIENT,
       method: this.fetchDefaultGroup.name,
     });
+
+    // fetchEncryptionKeyUrl creates the default group as part of its key-creation
+    // flow. Awaiting its in-flight promise lets us reuse the group it creates
+    // instead of issuing a duplicate POST that would receive a 400 error.
+    if (this.encryptionKeyUrlPromise) {
+      await this.encryptionKeyUrlPromise;
+
+      return this.defaultGroupId || '';
+    }
 
     const response: ContactResponse = await this.createContactGroup(DEFAULT_GROUP_NAME);
 
