@@ -824,10 +824,12 @@ describe('plugin-mobius-socket', () => {
           }),
         });
 
-        request.then(() => {
-          assert.called(spy);
-          done();
-        }).catch(done);
+        request
+          .then(() => {
+            assert.called(spy);
+            done();
+          })
+          .catch(done);
       });
     });
 
