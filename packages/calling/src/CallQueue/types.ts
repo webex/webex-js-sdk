@@ -58,6 +58,16 @@ export type CallQueueEventTypes = {
 };
 
 export interface ICallQueue {
+  /** Subscribe to a typed call-queue update event. */
+  on<Event extends keyof CallQueueEventTypes>(
+    event: Event,
+    listener: CallQueueEventTypes[Event]
+  ): this;
+  /** Remove a previously registered call-queue update listener. */
+  off<Event extends keyof CallQueueEventTypes>(
+    event: Event,
+    listener: CallQueueEventTypes[Event]
+  ): this;
   getCallQueueSettings(lineOwnerId?: string): Promise<CallQueueResponse>;
   updateCallQueueSettings(
     request: UpdateCallQueueSettingsRequest,

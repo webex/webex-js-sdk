@@ -4,7 +4,7 @@ import {CALLING_BACKEND, HTTP_METHODS, WebexRequestPayload} from '../common/type
 import {COMMON_EVENT_KEYS, MOBIUS_EVENT_KEYS} from '../Events/types';
 import * as utils from '../common/Utils';
 import {createCallQueueClient} from './CallQueue';
-import {ACD_STATE} from './types';
+import {ACD_STATE, ICallQueue} from './types';
 
 const webex = getTestUtilsWebex();
 const WEBEX_API_INT = 'https://integration.webexapis.com/v1/';
@@ -982,8 +982,9 @@ describe('CallQueue client', () => {
   });
 
   it('emits the merged status when a Mercury state event arrives', () => {
+    const publicClient: ICallQueue = client;
     const listener = jest.fn();
-    client.on(COMMON_EVENT_KEYS.CALL_QUEUE_UPDATED, listener);
+    publicClient.on(COMMON_EVENT_KEYS.CALL_QUEUE_UPDATED, listener);
     const stateHandler = mercuryHandlers.get(MOBIUS_EVENT_KEYS.TELEPHONY_AGENT_STATE);
 
     stateHandler?.({data: {acdStateInfo: {state: 'unavailable'}}});
@@ -991,7 +992,10 @@ describe('CallQueue client', () => {
     expect(listener).toHaveBeenCalledWith(
       expect.objectContaining({acdState: ACD_STATE.UNAVAILABLE})
     );
-    client.off(COMMON_EVENT_KEYS.CALL_QUEUE_UPDATED, listener);
+    publicClient.off(COMMON_EVENT_KEYS.CALL_QUEUE_UPDATED, listener);
+    listener.mockClear();
+    stateHandler?.({data: {acdStateInfo: {state: 'available'}}});
+    expect(listener).not.toHaveBeenCalled();
   });
 
   it('emits the full queue snapshot when a Mercury sync event arrives', () => {
