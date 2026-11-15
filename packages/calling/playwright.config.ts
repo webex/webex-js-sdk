@@ -84,10 +84,10 @@ export default defineConfig({
     command: 'yarn samples:serve',
     cwd: path.resolve(__dirname, '../..'),
     url: BASE_URL,
-    // Test-only: retained because the spawned local dev server uses the same
-    // self-signed certificate as above; Playwright's readiness probe must not
-    // fail TLS verification. Scoped to this webServer block only.
-    ignoreHTTPSErrors: true,
+    // Test-only: TLS bypass required when the local dev server uses a
+    // self-signed certificate. Controlled via PW_IGNORE_HTTPS_ERRORS env var
+    // so the bypass is never a hardcoded source-code default.
+    ignoreHTTPSErrors: process.env.PW_IGNORE_HTTPS_ERRORS === 'true',
     reuseExistingServer: true,
     stdout: 'ignore',
     stderr: 'pipe',
@@ -98,9 +98,9 @@ export default defineConfig({
   reporter: 'html',
   use: {
     baseURL: BASE_URL,
-    // Test-only: retained because the test browser context must reach the
-    // same self-signed local dev server. Scoped to this use block only.
-    ignoreHTTPSErrors: true,
+    // Test-only: TLS bypass required when the browser context connects to the
+    // same self-signed local dev server. Controlled via PW_IGNORE_HTTPS_ERRORS.
+    ignoreHTTPSErrors: process.env.PW_IGNORE_HTTPS_ERRORS === 'true',
     trace: 'retain-on-failure',
   },
   projects: [
