@@ -505,6 +505,42 @@ describe('CallingClient Tests', () => {
           expect.arrayContaining([expect.stringContaining(discoveryBody.backup.uris[0])])
         );
       });
+
+      it('getMobiusServers discards http:// and ws:// URIs even when the hostname is trusted', async () => {
+        const trustedHost = 'mobius-dfw.prod.infra.webex.com';
+        const insecureDiscoveryPayload = <WebexRequestPayload>(<unknown>{
+          statusCode: 200,
+          body: {
+            primary: {
+              region: 'US-EAST',
+              uris: [`http://${trustedHost}/api/v1`],
+              wss: [`ws://${trustedHost}/api/v1`],
+            },
+            backup: {
+              region: 'US-WEST',
+              uris: [discoveryBody.backup.uris[0]],
+            },
+          },
+        });
+
+        webex.request
+          .mockResolvedValueOnce(regionPayload)
+          .mockResolvedValueOnce(insecureDiscoveryPayload);
+
+        callingClient = await createClient(webex, {logger: {level: LOGGER.INFO}});
+
+        // Plain-HTTP and plain-WS URIs must be discarded even though the hostname is trusted
+        expect(callingClient.primaryMobiusUris).not.toEqual(
+          expect.arrayContaining([expect.stringContaining(`http://${trustedHost}`)])
+        );
+        expect(callingClient['primaryWssMobiusUris']).not.toEqual(
+          expect.arrayContaining([expect.stringContaining(`ws://${trustedHost}`)])
+        );
+        // The trusted HTTPS backup URI from the same response is retained
+        expect(callingClient.backupMobiusUris).toEqual(
+          expect.arrayContaining([expect.stringContaining(discoveryBody.backup.uris[0])])
+        );
+      });
     });
   });
 

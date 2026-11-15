@@ -574,7 +574,8 @@ export class CallingClient extends Eventing<CallingClientEventTypes> implements 
   /**
    * Validates that a full HTTP/WSS URI returned by Mobius discovery points at the trusted
    * Mobius domain. Unlike `isTrustedMobiusHost`, a real path is expected here, so only the
-   * parsed hostname is checked.
+   * parsed hostname is checked. Only https: and wss: schemes are accepted; plain http: or ws:
+   * URIs are rejected even when the hostname is trusted.
    */
   private isTrustedMobiusUri(uri: string): boolean {
     if (typeof uri !== 'string' || !uri) {
@@ -582,7 +583,12 @@ export class CallingClient extends Eventing<CallingClientEventTypes> implements 
     }
 
     try {
-      return this.isTrustedMobiusDomain(new URL(uri).hostname);
+      const parsed = new URL(uri);
+
+      return (
+        (parsed.protocol === 'https:' || parsed.protocol === 'wss:') &&
+        this.isTrustedMobiusDomain(parsed.hostname)
+      );
     } catch {
       return false;
     }

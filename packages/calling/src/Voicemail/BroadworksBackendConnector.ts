@@ -150,13 +150,25 @@ export class BroadworksBackendConnector implements IBroadworksCallBackendConnect
       throw new Error(`${ERROR_CODE.UNAUTHORIZED}`);
     }
 
-    const jwksResponse = await fetch(`${payload.iss}${BW_TOKEN_JWKS_PATH}`);
+    let jwksResponse: Response;
+
+    try {
+      jwksResponse = await fetch(`${payload.iss}${BW_TOKEN_JWKS_PATH}`);
+    } catch {
+      throw new Error(`${ERROR_CODE.UNAUTHORIZED}`);
+    }
 
     if (!jwksResponse.ok) {
       throw new Error(`${ERROR_CODE.UNAUTHORIZED}`);
     }
 
-    const {keys} = (await jwksResponse.json()) as {keys?: JsonWebKey[]};
+    let keys: JsonWebKey[] | undefined;
+
+    try {
+      ({keys} = (await jwksResponse.json()) as {keys?: JsonWebKey[]});
+    } catch {
+      throw new Error(`${ERROR_CODE.UNAUTHORIZED}`);
+    }
     const candidateKeys = (keys ?? []).filter((key) => !header.kid || key.kid === header.kid);
     const signature = Buffer.from(signatureB64, 'base64url');
     const signingInput = Buffer.from(`${headerB64}.${payloadB64}`, BINARY);

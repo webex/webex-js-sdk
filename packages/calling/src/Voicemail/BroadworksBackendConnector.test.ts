@@ -826,5 +826,54 @@ describe('Voicemail Broadworks Backend Connector Test case', () => {
       expect(broadworksBackendConnector.userId).toBe(expectedSub);
       expect(global.fetch).toHaveBeenCalledWith(`${TRUSTED_ISSUER}/oauth2/v2/keys/verificationjwk`);
     });
+
+    it('getUserId returns 401 when JWKS fetch() rejects with a network error', async () => {
+      const validPayload = {
+        sub: 'victim@broadworks.example.com',
+        iss: TRUSTED_ISSUER,
+        iat: nowInSeconds(),
+        exp: nowInSeconds() + 3600,
+      };
+      const validToken = await signBwToken(validPayload);
+
+      webex.request.mockResolvedValueOnce({body: {token: {bearer: validToken}}});
+      webex.request.mockResolvedValueOnce(mockBWRKSData);
+
+      // Simulate network failure during JWKS fetch
+      global.fetch = jest.fn().mockRejectedValueOnce(new Error('Failed to fetch')) as jest.Mock;
+
+      const response = await broadworksBackendConnector.init();
+
+      expect(response.statusCode).toBe(401);
+      expect(response.message).toBe(FAILURE_MESSAGE);
+    });
+
+    it('getUserId returns 401 when JWKS response.json() throws a parse error', async () => {
+      const validPayload = {
+        sub: 'victim@broadworks.example.com',
+        iss: TRUSTED_ISSUER,
+        iat: nowInSeconds(),
+        exp: nowInSeconds() + 3600,
+      };
+      const validToken = await signBwToken(validPayload);
+
+      webex.request.mockResolvedValueOnce({body: {token: {bearer: validToken}}});
+      webex.request.mockResolvedValueOnce(mockBWRKSData);
+
+      // Simulate successful fetch response but JSON parse failure
+      global.fetch = jest.fn(() =>
+        Promise.resolve({
+          ok: true,
+          json: () => {
+            throw new SyntaxError('Unexpected token < in JSON at position 0');
+          },
+        })
+      ) as jest.Mock;
+
+      const response = await broadworksBackendConnector.init();
+
+      expect(response.statusCode).toBe(401);
+      expect(response.message).toBe(FAILURE_MESSAGE);
+    });
   });
 });
