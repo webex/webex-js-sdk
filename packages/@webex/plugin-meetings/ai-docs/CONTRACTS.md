@@ -95,6 +95,10 @@ This table is generated from current public emission call sites. The local mecha
 | `meeting:controls:webcast:updated` | `EVENT_TRIGGERS.MEETING_CONTROLS_WEBCAST_UPDATED` | `src/meeting/index.ts` |
 | `meeting:embeddedApps:update` | `EVENT_TRIGGERS.MEETING_EMBEDDED_APPS_UPDATE` | `src/meeting/index.ts` |
 | `meeting:entryExitTone:update` | `EVENT_TRIGGERS.MEETING_ENTRY_EXIT_TONE_UPDATE` | `src/meeting/index.ts` |
+| `meeting:e2ee:failure` | `EVENT_TRIGGERS.MEETING_E2EE_FAILURE` | `src/e2ee/E2eeController.ts` |
+| `meeting:e2ee:mediaServicesChanged` | `EVENT_TRIGGERS.MEETING_E2EE_MEDIA_SERVICES_CHANGED` | `src/e2ee/E2eeController.ts` |
+| `meeting:e2ee:securityCodeUpdated` | `EVENT_TRIGGERS.MEETING_E2EE_SECURITY_CODE_UPDATED` | `src/e2ee/E2eeController.ts` |
+| `meeting:e2ee:stateChanged` | `EVENT_TRIGGERS.MEETING_E2EE_STATE_CHANGED` | `src/e2ee/E2eeController.ts` |
 | `meeting:interpretation:handoffRequestsArrived` | `EVENT_TRIGGERS.MEETING_INTERPRETATION_HANDOFF_REQUESTS_ARRIVED` | `src/meeting/index.ts` |
 | `meeting:interpretation:supportLanguagesUpdate` | `EVENT_TRIGGERS.MEETING_INTERPRETATION_SUPPORT_LANGUAGES_UPDATE` | `src/meeting/index.ts` |
 | `meeting:interpretation:update` | `EVENT_TRIGGERS.MEETING_INTERPRETATION_UPDATE` | `src/meeting/index.ts`, `src/meeting/util.ts` |
