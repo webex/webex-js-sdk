@@ -561,6 +561,15 @@
       "onboarded_by": "claude-code"
     },
     {
+      "id": "@webex/calling",
+      "path": "packages/calling",
+      "manifest": "packages/calling/.sdd/manifest.json",
+      "agent_entry": "packages/calling/AGENTS.md",
+      "index": "packages/calling/docs/index.md",
+      "onboarded_at": "2026-11-16T13:50:00Z",
+      "onboarded_by": "claude-code"
+    },
+    {
       "id": "webex",
       "path": "packages/webex",
       "manifest": "packages/webex/.sdd/manifest.json",

@@ -82,6 +82,7 @@ package owns its architecture, specifications, and decisions beside its code. Th
 | `@webex/web-extension-bridge` | `packages/@webex/web-extension-bridge/` | [AGENTS.md](../packages/@webex/web-extension-bridge/AGENTS.md) | [docs/index.md](../packages/@webex/web-extension-bridge/docs/index.md) | [.sdd/manifest.json](../packages/@webex/web-extension-bridge/.sdd/manifest.json) |
 | `@webex/webex-core` | `packages/@webex/webex-core/` | [AGENTS.md](../packages/@webex/webex-core/AGENTS.md) | [docs/index.md](../packages/@webex/webex-core/docs/index.md) | [.sdd/manifest.json](../packages/@webex/webex-core/.sdd/manifest.json) |
 | `@webex/byods` | `packages/byods/` | [AGENTS.md](../packages/byods/AGENTS.md) | [docs/index.md](../packages/byods/docs/index.md) | [.sdd/manifest.json](../packages/byods/.sdd/manifest.json) |
+| `@webex/calling` | `packages/calling/` | [AGENTS.md](../packages/calling/AGENTS.md) | [docs/index.md](../packages/calling/docs/index.md) | [.sdd/manifest.json](../packages/calling/.sdd/manifest.json) |
 | `webex` | `packages/webex/` | [AGENTS.md](../packages/webex/AGENTS.md) | [docs/index.md](../packages/webex/docs/index.md) | [.sdd/manifest.json](../packages/webex/.sdd/manifest.json) |
 | `webex-node` | `packages/webex-node/` | [AGENTS.md](../packages/webex-node/AGENTS.md) | [docs/index.md](../packages/webex-node/docs/index.md) | [.sdd/manifest.json](../packages/webex-node/.sdd/manifest.json) |
 <!-- sdd-package-routing:end -->
