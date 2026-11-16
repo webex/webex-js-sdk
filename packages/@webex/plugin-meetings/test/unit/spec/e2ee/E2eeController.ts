@@ -7,17 +7,19 @@ import sinon from 'sinon';
 import E2eeController from '@webex/plugin-meetings/src/e2ee/E2eeController';
 import MLS from '@webex/plugin-meetings/src/e2ee/mls';
 import E2eeSignaling from '@webex/plugin-meetings/src/e2ee/E2eeSignaling';
-import MemberMLSReconciler from '@webex/plugin-meetings/src/e2ee/MemberMLSReconciler';
+import * as MemberMLSReconcilerModule from '@webex/plugin-meetings/src/e2ee/MemberMLSReconciler';
 import WasmLoader from '@webex/plugin-meetings/src/common/wasm-loader';
 import LoggerProxy from '@webex/plugin-meetings/src/common/logs/logger-proxy';
 import {EVENT_TRIGGERS} from '@webex/plugin-meetings/src/constants';
 import Metrics from '@webex/plugin-meetings/src/metrics';
+import {E2eeValidationResult} from '@webex/plugin-meetings/src/e2ee/types';
 
 describe('plugin-meetings', () => {
   describe('E2eeController', () => {
     let webex;
     let meeting;
-    let membersById;
+    let reconcilerCtorStub;
+    let reconciler;
     let wasmLoader;
     let identityProvider;
     let getLlmChannel;
@@ -48,7 +50,7 @@ describe('plugin-meetings', () => {
       url,
       deviceType,
       displayName: '',
-      validationResult: 0,
+      validationResult: E2eeValidationResult.Success,
     });
 
     const MEDIA_SERVICE = makeRosterEntry({
@@ -82,7 +84,8 @@ describe('plugin-meetings', () => {
 
     beforeEach(() => {
       sessionHandlers = {};
-      membersById = {};
+      reconciler = sinon.createStubInstance(MemberMLSReconcilerModule.default);
+      reconcilerCtorStub = sinon.stub(MemberMLSReconcilerModule, 'default').returns(reconciler);
       initializeStub = sinon.stub(MLS.prototype, 'initialize').resolves();
       joinStub = sinon.stub(MLS.prototype, 'join');
       leaveStub = sinon.stub(MLS.prototype, 'leave');
@@ -121,11 +124,7 @@ describe('plugin-meetings', () => {
         members: {
           selfId: 's1',
           membersCollection: {
-            get: (id) => (id === 's1' ? {name: 'Alice'} : membersById[id]),
-            getMemberByDeviceUrl: (url) =>
-              Object.values(membersById).find((member: any) =>
-                member.participant?.devices?.some((device) => device.url === url)
-              ),
+            get: (id) => (id === 's1' ? {name: 'Alice'} : undefined),
           },
           setMembersUpdateProcessor: sinon.stub(),
           reportMembersUpdated: sinon.stub(),
@@ -163,16 +162,41 @@ describe('plugin-meetings', () => {
     });
 
     describe('constructor', () => {
-      it('registers a members-update processor when E2EE is enabled', () => {
+      it('creates a reconciler over the members collection and registers it as the members-update processor', () => {
+        assert.calledOnceWithExactly(reconcilerCtorStub, {
+          membersCollection: meeting.members.membersCollection,
+          reportMembersUpdated: sinon.match.func,
+        });
+        assert.isTrue(reconcilerCtorStub.calledWithNew());
         assert.calledOnceWithExactly(meeting.members.setMembersUpdateProcessor, sinon.match.func);
       });
 
-      it('does not register a members-update processor when E2EE is disabled', () => {
+      it('forwards Locus member updates to the reconciler', () => {
+        const payload = {delta: {added: [{id: 'm1'}], updated: []}, isReplace: false};
+        const [processor] = meeting.members.setMembersUpdateProcessor.firstCall.args;
+
+        processor(payload);
+
+        assert.calledOnceWithExactly(reconciler.processMembersUpdate, payload);
+      });
+
+      it('forwards members reported by the reconciler to Members', () => {
+        const updatedMembers = [{id: 'm1'}, {id: 'm2'}];
+        const [{reportMembersUpdated}] = reconcilerCtorStub.firstCall.args;
+
+        reportMembersUpdated(updatedMembers);
+
+        assert.calledOnceWithExactly(meeting.members.reportMembersUpdated, updatedMembers);
+      });
+
+      it('does not create a reconciler nor register a members-update processor when E2EE is disabled', () => {
         webex.config.meetings.enableE2ee = false;
+        reconcilerCtorStub.resetHistory();
         meeting.members.setMembersUpdateProcessor.resetHistory();
 
         createController();
 
+        assert.notCalled(reconcilerCtorStub);
         assert.notCalled(meeting.members.setMembersUpdateProcessor);
       });
     });
@@ -539,6 +563,7 @@ describe('plugin-meetings', () => {
           emitSession(event, payload);
 
           assertSessionTornDown();
+          assert.calledOnce(reconciler.reset);
           assert.equal(e2ee.state, state);
           assert.isUndefined(e2ee.getSecurityCode());
           assert.calledOnceWithExactly(events.securityCode, {securityCode: undefined});
@@ -581,57 +606,40 @@ describe('plugin-meetings', () => {
     });
 
     describe('roster reconciliation', () => {
-      let member;
+      const entry = makeRosterEntry({url: OWN_DEVICE_URL});
 
       beforeEach(async () => {
-        member = {
-          participant: {devices: [{url: OWN_DEVICE_URL}]},
-          setE2eeDeviceVerification: sinon.stub().returns(true),
-          removeE2eeDeviceVerification: sinon.stub().returns(true),
-        };
-        membersById.m1 = member;
         await e2ee.start();
       });
 
-      it('runs Locus member updates through the reconciler', () => {
-        const processMembersUpdateSpy = sinon.spy(
-          MemberMLSReconciler.prototype,
-          'processMembersUpdate'
-        );
-        const payload = {delta: {added: [member], updated: []}};
-        const [processor] = meeting.members.setMembersUpdateProcessor.firstCall.args;
-
-        processor(payload);
-
-        assert.calledOnceWithExactly(processMembersUpdateSpy, payload);
-      });
-
-      it('applies roster changes and reports the affected members through Members', () => {
-        const applyRosterAddedSpy = sinon.spy(MemberMLSReconciler.prototype, 'applyRosterAdded');
-        const applyRosterRemovedSpy = sinon.spy(
-          MemberMLSReconciler.prototype,
-          'applyRosterRemoved'
-        );
-        const entry = makeRosterEntry({url: OWN_DEVICE_URL});
-
+      it('applies roster additions and removals to the reconciler', () => {
         emitSession('rosterAdded', [entry]);
 
-        assert.calledOnceWithExactly(applyRosterAddedSpy, [entry]);
-        assert.calledOnceWithExactly(meeting.members.reportMembersUpdated, [member]);
+        assert.calledOnceWithExactly(reconciler.applyRosterAdded, [entry]);
+        assert.notCalled(reconciler.applyRosterRemoved);
 
-        meeting.members.reportMembersUpdated.resetHistory();
         emitSession('rosterRemoved', {urls: [OWN_DEVICE_URL]});
 
-        assert.calledOnceWithExactly(applyRosterRemovedSpy, [OWN_DEVICE_URL]);
-        assert.calledOnceWithExactly(meeting.members.reportMembersUpdated, [member]);
+        assert.calledOnceWithExactly(reconciler.applyRosterRemoved, [OWN_DEVICE_URL]);
+        assert.calledOnce(reconciler.applyRosterAdded);
       });
 
       it('resets the reconciler on stop', async () => {
-        const resetSpy = sinon.spy(MemberMLSReconciler.prototype, 'reset');
-
         await e2ee.stop();
 
-        assert.calledOnce(resetSpy);
+        assert.calledOnce(reconciler.reset);
+      });
+
+      it('applies roster changes from the new session after a restart', async () => {
+        await e2ee.stop();
+        await e2ee.start();
+
+        emitSession('rosterAdded', [entry]);
+        emitSession('rosterRemoved', {urls: [OWN_DEVICE_URL]});
+
+        assert.calledOnce(reconciler.reset);
+        assert.calledOnceWithExactly(reconciler.applyRosterAdded, [entry]);
+        assert.calledOnceWithExactly(reconciler.applyRosterRemoved, [OWN_DEVICE_URL]);
       });
     });
 
@@ -648,6 +656,7 @@ describe('plugin-meetings', () => {
         assert.equal(e2ee.state, 'disabled');
         assert.notCalled(signalingStopStub);
         assert.notCalled(leaveStub);
+        assert.notCalled(reconciler.reset);
         assert.notCalled(events.state);
         assert.notCalled(loggerInfoStub);
       });
@@ -700,8 +709,7 @@ describe('plugin-meetings', () => {
         {step: 'session.leave', fail: () => leaveStub.throws(new Error('leave failed'))},
         {
           step: 'reconciler.reset',
-          fail: () =>
-            sinon.stub(MemberMLSReconciler.prototype, 'reset').throws(new Error('reset failed')),
+          fail: () => reconciler.reset.throws(new Error('reset failed')),
         },
       ].forEach(({step, fail}) => {
         it(`still completes cleanup when ${step} throws`, async () => {
