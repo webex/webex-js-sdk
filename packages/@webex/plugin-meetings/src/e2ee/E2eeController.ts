@@ -12,6 +12,7 @@ import {EVENT_TRIGGERS} from '../constants';
 import MLS, {type MLSEvent, type MLSEventMap} from './mls';
 import MediaEncryptionService from './MediaEncryptionService';
 import E2eeSignaling from './E2eeSignaling';
+import MemberMLSReconciler from './MemberMLSReconciler';
 import {MEDIA_SERVICE_DEVICE_TYPE} from './constants';
 import MeetingsUtil from '../meetings/util';
 import type WasmLoader from '../common/wasm-loader';
@@ -48,6 +49,8 @@ export default class E2eeController extends TypedEventsScope<E2eeControllerEvent
   private mlsSession?: MLS;
 
   private signaling?: E2eeSignaling;
+
+  private reconciler?: MemberMLSReconciler;
 
   private sessionUnsubscribers: Array<() => void> = [];
 
@@ -88,6 +91,19 @@ export default class E2eeController extends TypedEventsScope<E2eeControllerEvent
     this.wasmLoader = wasmLoader;
     this.wasmUrl = wasmUrl;
     this.identityProvider = identityProvider;
+
+    if (MeetingsUtil.isE2eeEnabledAndSupported(this.webex?.config)) {
+      // Created eagerly (not on join) and registered as the Members pre-emit processor, so member
+      // verification is stamped into every members:update - even for member changes outside a
+      // joined meeting. Roster-driven verification changes are reported back through Members too.
+      this.reconciler = new MemberMLSReconciler({
+        membersCollection: context.members.membersCollection,
+        reportMembersUpdated: (members) => context.members.reportMembersUpdated(members),
+      });
+      context.members.setMembersUpdateProcessor((payload) =>
+        this.reconciler?.processMembersUpdate(payload)
+      );
+    }
   }
 
   /**
@@ -281,9 +297,11 @@ export default class E2eeController extends TypedEventsScope<E2eeControllerEvent
     });
 
     subscribe('rosterAdded', (added) => {
+      this.reconciler?.applyRosterAdded(added);
       this.updateFromRoster({added, removed: []});
     });
     subscribe('rosterRemoved', ({urls}) => {
+      this.reconciler?.applyRosterRemoved(urls);
       this.updateFromRoster({added: [], removed: urls});
     });
 
@@ -426,6 +444,14 @@ export default class E2eeController extends TypedEventsScope<E2eeControllerEvent
       mlsSession?.cleanUp();
     } catch (error) {
       LoggerProxy.logger.warn(`e2ee: E2eeController --> error cleaning up MLS session: ${error}`);
+    }
+
+    try {
+      this.reconciler?.reset();
+    } catch (error) {
+      LoggerProxy.logger.warn(
+        `e2ee: E2eeController --> error resetting member verification: ${error}`
+      );
     }
 
     if (hadMediaServices) {
