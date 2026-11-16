@@ -4,6 +4,6 @@
     "noEmit": true,
     "rootDir": "../.."
   },
-  "include": ["./CallQueue.ts"],
+  "include": ["./**/*.ts"],
   "exclude": []
 }

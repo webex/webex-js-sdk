@@ -216,6 +216,56 @@ describe('call queue state', () => {
       });
     });
 
+    it('merges sync queue metadata with joinInfo and keeps stable encoded IDs', () => {
+      const id = '4ab6bdda-c684-48f3-9217-60fdbb8049b3';
+      const encoded = publicApiId(id, 'CALL_QUEUE');
+      const previous = {
+        acdState: ACD_STATE.AVAILABLE,
+        queues: [
+          {id: encoded, name: 'Old name', available: true, allowLogOffEnabled: true},
+          {id: 'fallback', name: 'Previously known', available: false},
+          {id: 'removed', name: 'Removed queue', available: true},
+        ],
+      };
+      const next = applyCallQueueEvent(previous, 'sync', {
+        queues: [
+          {id, name: 'Updated name', extension: '4000', allowLogOffEnabled: false, available: true},
+          {id: 'new', name: 'New queue', available: false},
+          {id: 'removed', name: 'Still removed'},
+        ],
+        joinInfo: [
+          {queueId: id, status: 'unjoined'},
+          {queueId: 'new', status: 'joined'},
+          {queueId: 'fallback', status: 'joined'},
+          {queueId: 'removed', status: 'unassigned'},
+        ],
+      });
+
+      expect(next?.queues).toEqual([
+        {
+          id: encoded,
+          name: 'Updated name',
+          extension: '4000',
+          available: false,
+          allowLogOffEnabled: false,
+        },
+        {id: 'new', name: 'New queue', available: true},
+        {id: 'fallback', name: 'Previously known', available: true},
+      ]);
+    });
+
+    it('keeps incoming metadata when a join event also contains joinInfo', () => {
+      const next = applyCallQueueEvent(current, 'join', {
+        queues: [{id: 'queue-2', name: 'Updated support', allowLogOffEnabled: false}],
+        joinInfo: [{queueId: 'queue-2', status: 'joined'}],
+      });
+
+      expect(next?.queues).toEqual([
+        current.queues[0],
+        {id: 'queue-2', name: 'Updated support', available: true, allowLogOffEnabled: false},
+      ]);
+    });
+
     it.each([
       ['joined', true],
       ['unjoined', false],

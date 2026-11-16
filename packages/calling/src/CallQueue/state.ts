@@ -277,6 +277,7 @@ export function applyCallQueueEvent(
   }
   if (hasJoinUpdates && joinUpdates) {
     const currentById = new Map(base.queues.map((queue) => [queueIdKey(queue.id), queue]));
+    queues.forEach((queue) => currentById.set(queueIdKey(queue.id), queue));
     const joined = joinUpdates.flatMap(({id, status}) => {
       if (status === 'unassigned') return [];
       const previous = currentById.get(queueIdKey(id));
