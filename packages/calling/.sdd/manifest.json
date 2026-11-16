@@ -1056,7 +1056,7 @@
     }
   },
   "template_migration": {
-    "status": "staged",
+    "status": "complete",
     "target_source": "repo-standards",
     "target_source_commit": "d89a7fe59126ae3ad9bac9ca352aa7f12b4c85dc",
     "detected_footprints": [
@@ -1078,7 +1078,9 @@
     ],
     "old_template_disposition": "remove-after-validation",
     "decided_by": "rarajes2@cisco.com (confirmed in chat)",
-    "decided_at": "2026-11-16T13:44:27Z"
+    "decided_at": "2026-11-16T13:44:27Z",
+    "completed_by": "rarajes2@cisco.com (approved the reviewed diff in chat)",
+    "completed_at": "2026-11-16T14:48:34Z"
   },
   "spec_source_policy": {
     "mode": "migrate-existing",
@@ -1109,7 +1111,7 @@
       "use_by_agents": "source-for-migration",
       "canonical_target": "docs/architecture.md",
       "post_migration_action": "delete-after-validation",
-      "deletion_status": "pending",
+      "deletion_status": "deleted",
       "notes": "Legacy Repo Annotation ai-docs content, migrated by meaning; deleted in a separate commit after review."
     },
     {
@@ -1120,7 +1122,7 @@
       "use_by_agents": "source-for-migration",
       "canonical_target": "docs/architecture.md",
       "post_migration_action": "delete-after-validation",
-      "deletion_status": "pending",
+      "deletion_status": "deleted",
       "notes": "Legacy Repo Annotation ai-docs content, migrated by meaning; deleted in a separate commit after review."
     },
     {
@@ -1131,7 +1133,7 @@
       "use_by_agents": "source-for-migration",
       "canonical_target": "docs/getting-started.md",
       "post_migration_action": "delete-after-validation",
-      "deletion_status": "pending",
+      "deletion_status": "deleted",
       "notes": "Legacy Repo Annotation ai-docs content, migrated by meaning; deleted in a separate commit after review."
     },
     {
@@ -1142,7 +1144,7 @@
       "use_by_agents": "source-for-migration",
       "canonical_target": "docs/architecture.md",
       "post_migration_action": "delete-after-validation",
-      "deletion_status": "pending",
+      "deletion_status": "deleted",
       "notes": "Legacy Repo Annotation ai-docs content, migrated by meaning; deleted in a separate commit after review."
     },
     {
@@ -1153,7 +1155,7 @@
       "use_by_agents": "source-for-migration",
       "canonical_target": "docs/index.md",
       "post_migration_action": "delete-after-validation",
-      "deletion_status": "pending",
+      "deletion_status": "deleted",
       "notes": "Legacy Repo Annotation ai-docs content, migrated by meaning; deleted in a separate commit after review."
     },
     {
@@ -1164,7 +1166,7 @@
       "use_by_agents": "source-for-migration",
       "canonical_target": "AGENTS.md",
       "post_migration_action": "delete-after-validation",
-      "deletion_status": "pending",
+      "deletion_status": "deleted",
       "notes": "Legacy Repo Annotation ai-docs content, migrated by meaning; deleted in a separate commit after review."
     },
     {
@@ -1175,7 +1177,7 @@
       "use_by_agents": "source-for-migration",
       "canonical_target": "AGENTS.md",
       "post_migration_action": "delete-after-validation",
-      "deletion_status": "pending",
+      "deletion_status": "deleted",
       "notes": "Legacy Repo Annotation ai-docs content, migrated by meaning; deleted in a separate commit after review."
     },
     {
@@ -1186,7 +1188,7 @@
       "use_by_agents": "source-for-migration",
       "canonical_target": "docs/architecture.md",
       "post_migration_action": "delete-after-validation",
-      "deletion_status": "pending",
+      "deletion_status": "deleted",
       "notes": "Legacy Repo Annotation ai-docs content, migrated by meaning; deleted in a separate commit after review."
     },
     {
@@ -1197,7 +1199,7 @@
       "use_by_agents": "source-for-migration",
       "canonical_target": "docs/architecture.md",
       "post_migration_action": "delete-after-validation",
-      "deletion_status": "pending",
+      "deletion_status": "deleted",
       "notes": "Legacy Repo Annotation ai-docs content, migrated by meaning; deleted in a separate commit after review."
     },
     {
@@ -1208,7 +1210,7 @@
       "use_by_agents": "source-for-migration",
       "canonical_target": "docs/specs/README.md",
       "post_migration_action": "delete-after-validation",
-      "deletion_status": "pending",
+      "deletion_status": "deleted",
       "notes": "Legacy Repo Annotation ai-docs content, migrated by meaning; deleted in a separate commit after review."
     },
     {
@@ -1219,7 +1221,7 @@
       "use_by_agents": "source-for-migration",
       "canonical_target": "docs/adr/index.md",
       "post_migration_action": "delete-after-validation",
-      "deletion_status": "pending",
+      "deletion_status": "deleted",
       "notes": "Legacy Repo Annotation ai-docs content, migrated by meaning; deleted in a separate commit after review."
     },
     {
@@ -1230,7 +1232,7 @@
       "use_by_agents": "source-for-migration",
       "canonical_target": "AGENTS.md",
       "post_migration_action": "delete-after-validation",
-      "deletion_status": "pending",
+      "deletion_status": "deleted",
       "notes": "Legacy Repo Annotation ai-docs content, migrated by meaning; deleted in a separate commit after review."
     },
     {
@@ -1241,7 +1243,7 @@
       "use_by_agents": "source-for-migration",
       "canonical_target": "docs/architecture.md",
       "post_migration_action": "delete-after-validation",
-      "deletion_status": "pending",
+      "deletion_status": "deleted",
       "notes": "Legacy Repo Annotation ai-docs content, migrated by meaning; deleted in a separate commit after review."
     },
     {
@@ -1252,7 +1254,7 @@
       "use_by_agents": "source-for-migration",
       "canonical_target": "docs/architecture.md",
       "post_migration_action": "delete-after-validation",
-      "deletion_status": "pending",
+      "deletion_status": "deleted",
       "notes": "Legacy Repo Annotation ai-docs content, migrated by meaning; deleted in a separate commit after review."
     },
     {
@@ -1263,7 +1265,7 @@
       "use_by_agents": "source-for-migration",
       "canonical_target": "docs/architecture.md",
       "post_migration_action": "delete-after-validation",
-      "deletion_status": "pending",
+      "deletion_status": "deleted",
       "notes": "Legacy Repo Annotation ai-docs content, migrated by meaning; deleted in a separate commit after review."
     },
     {
@@ -1274,7 +1276,7 @@
       "use_by_agents": "source-for-migration",
       "canonical_target": "AGENTS.md",
       "post_migration_action": "delete-after-validation",
-      "deletion_status": "pending",
+      "deletion_status": "deleted",
       "notes": "Legacy Repo Annotation ai-docs content, migrated by meaning; deleted in a separate commit after review."
     },
     {
@@ -1285,7 +1287,7 @@
       "use_by_agents": "source-for-migration",
       "canonical_target": "AGENTS.md",
       "post_migration_action": "delete-after-validation",
-      "deletion_status": "pending",
+      "deletion_status": "deleted",
       "notes": "Legacy Repo Annotation ai-docs content, migrated by meaning; deleted in a separate commit after review."
     },
     {
@@ -1296,7 +1298,7 @@
       "use_by_agents": "source-for-migration",
       "canonical_target": "AGENTS.md",
       "post_migration_action": "delete-after-validation",
-      "deletion_status": "pending",
+      "deletion_status": "deleted",
       "notes": "Legacy Repo Annotation ai-docs content, migrated by meaning; deleted in a separate commit after review."
     },
     {
@@ -1307,7 +1309,7 @@
       "use_by_agents": "source-for-migration",
       "canonical_target": "AGENTS.md",
       "post_migration_action": "delete-after-validation",
-      "deletion_status": "pending",
+      "deletion_status": "deleted",
       "notes": "Legacy Repo Annotation ai-docs content, migrated by meaning; deleted in a separate commit after review."
     },
     {
@@ -1318,7 +1320,7 @@
       "use_by_agents": "source-for-migration",
       "canonical_target": "AGENTS.md",
       "post_migration_action": "delete-after-validation",
-      "deletion_status": "pending",
+      "deletion_status": "deleted",
       "notes": "Legacy Repo Annotation ai-docs content, migrated by meaning; deleted in a separate commit after review."
     },
     {
@@ -1329,7 +1331,7 @@
       "use_by_agents": "source-for-migration",
       "canonical_target": "AGENTS.md",
       "post_migration_action": "delete-after-validation",
-      "deletion_status": "pending",
+      "deletion_status": "deleted",
       "notes": "Legacy Repo Annotation ai-docs content, migrated by meaning; deleted in a separate commit after review."
     },
     {
@@ -1340,7 +1342,7 @@
       "use_by_agents": "source-for-migration",
       "canonical_target": "AGENTS.md",
       "post_migration_action": "delete-after-validation",
-      "deletion_status": "pending",
+      "deletion_status": "deleted",
       "notes": "Legacy Repo Annotation ai-docs content, migrated by meaning; deleted in a separate commit after review."
     },
     {
@@ -1351,7 +1353,7 @@
       "use_by_agents": "source-for-migration",
       "canonical_target": "AGENTS.md",
       "post_migration_action": "delete-after-validation",
-      "deletion_status": "pending",
+      "deletion_status": "deleted",
       "notes": "Legacy Repo Annotation ai-docs content, migrated by meaning; deleted in a separate commit after review."
     },
     {
@@ -1362,7 +1364,7 @@
       "use_by_agents": "source-for-migration",
       "canonical_target": "AGENTS.md",
       "post_migration_action": "delete-after-validation",
-      "deletion_status": "pending",
+      "deletion_status": "deleted",
       "notes": "Legacy Repo Annotation ai-docs content, migrated by meaning; deleted in a separate commit after review."
     },
     {
@@ -1373,7 +1375,7 @@
       "use_by_agents": "source-for-migration",
       "canonical_target": "AGENTS.md",
       "post_migration_action": "delete-after-validation",
-      "deletion_status": "pending",
+      "deletion_status": "deleted",
       "notes": "Legacy Repo Annotation ai-docs content, migrated by meaning; deleted in a separate commit after review."
     },
     {
@@ -1384,7 +1386,7 @@
       "use_by_agents": "source-for-migration",
       "canonical_target": "AGENTS.md",
       "post_migration_action": "delete-after-validation",
-      "deletion_status": "pending",
+      "deletion_status": "deleted",
       "notes": "Legacy Repo Annotation ai-docs content, migrated by meaning; deleted in a separate commit after review."
     },
     {
@@ -1395,7 +1397,7 @@
       "use_by_agents": "source-for-migration",
       "canonical_target": "AGENTS.md",
       "post_migration_action": "delete-after-validation",
-      "deletion_status": "pending",
+      "deletion_status": "deleted",
       "notes": "Legacy Repo Annotation ai-docs content, migrated by meaning; deleted in a separate commit after review."
     },
     {
@@ -1406,7 +1408,7 @@
       "use_by_agents": "source-for-migration",
       "canonical_target": "AGENTS.md",
       "post_migration_action": "delete-after-validation",
-      "deletion_status": "pending",
+      "deletion_status": "deleted",
       "notes": "Legacy Repo Annotation ai-docs content, migrated by meaning; deleted in a separate commit after review."
     },
     {
@@ -1417,7 +1419,7 @@
       "use_by_agents": "source-for-migration",
       "canonical_target": "AGENTS.md",
       "post_migration_action": "delete-after-validation",
-      "deletion_status": "pending",
+      "deletion_status": "deleted",
       "notes": "Legacy Repo Annotation ai-docs content, migrated by meaning; deleted in a separate commit after review."
     },
     {
@@ -1428,7 +1430,7 @@
       "use_by_agents": "source-for-migration",
       "canonical_target": "AGENTS.md",
       "post_migration_action": "delete-after-validation",
-      "deletion_status": "pending",
+      "deletion_status": "deleted",
       "notes": "Legacy Repo Annotation ai-docs content, migrated by meaning; deleted in a separate commit after review."
     },
     {
@@ -1439,7 +1441,7 @@
       "use_by_agents": "source-for-migration",
       "canonical_target": "AGENTS.md",
       "post_migration_action": "delete-after-validation",
-      "deletion_status": "pending",
+      "deletion_status": "deleted",
       "notes": "Legacy Repo Annotation ai-docs content, migrated by meaning; deleted in a separate commit after review."
     },
     {
@@ -1451,7 +1453,7 @@
       "use_by_agents": "source-for-migration",
       "canonical_target": "src/CallHistory/docs/README.md",
       "post_migration_action": "delete-after-validation",
-      "deletion_status": "pending",
+      "deletion_status": "deleted",
       "notes": "Legacy Repo Annotation ai-docs content, migrated by meaning; deleted in a separate commit after review."
     },
     {
@@ -1463,7 +1465,7 @@
       "use_by_agents": "source-for-migration",
       "canonical_target": "src/CallHistory/docs/README.md",
       "post_migration_action": "delete-after-validation",
-      "deletion_status": "pending",
+      "deletion_status": "deleted",
       "notes": "Legacy Repo Annotation ai-docs content, migrated by meaning; deleted in a separate commit after review."
     },
     {
@@ -1475,7 +1477,7 @@
       "use_by_agents": "source-for-migration",
       "canonical_target": "src/CallHistory/docs/README.md",
       "post_migration_action": "delete-after-validation",
-      "deletion_status": "pending",
+      "deletion_status": "deleted",
       "notes": "Legacy Repo Annotation ai-docs content, migrated by meaning; deleted in a separate commit after review."
     },
     {
@@ -1487,7 +1489,7 @@
       "use_by_agents": "source-for-migration",
       "canonical_target": "src/CallRecording/docs/README.md",
       "post_migration_action": "delete-after-validation",
-      "deletion_status": "pending",
+      "deletion_status": "deleted",
       "notes": "Legacy Repo Annotation ai-docs content, migrated by meaning; deleted in a separate commit after review."
     },
     {
@@ -1499,7 +1501,7 @@
       "use_by_agents": "source-for-migration",
       "canonical_target": "src/CallRecording/docs/README.md",
       "post_migration_action": "delete-after-validation",
-      "deletion_status": "pending",
+      "deletion_status": "deleted",
       "notes": "Legacy Repo Annotation ai-docs content, migrated by meaning; deleted in a separate commit after review."
     },
     {
@@ -1511,7 +1513,7 @@
       "use_by_agents": "source-for-migration",
       "canonical_target": "src/CallRecording/docs/README.md",
       "post_migration_action": "delete-after-validation",
-      "deletion_status": "pending",
+      "deletion_status": "deleted",
       "notes": "Legacy Repo Annotation ai-docs content, migrated by meaning; deleted in a separate commit after review."
     },
     {
@@ -1523,7 +1525,7 @@
       "use_by_agents": "source-for-migration",
       "canonical_target": "src/CallSettings/docs/README.md",
       "post_migration_action": "delete-after-validation",
-      "deletion_status": "pending",
+      "deletion_status": "deleted",
       "notes": "Legacy Repo Annotation ai-docs content, migrated by meaning; deleted in a separate commit after review."
     },
     {
@@ -1535,7 +1537,7 @@
       "use_by_agents": "source-for-migration",
       "canonical_target": "src/CallSettings/docs/README.md",
       "post_migration_action": "delete-after-validation",
-      "deletion_status": "pending",
+      "deletion_status": "deleted",
       "notes": "Legacy Repo Annotation ai-docs content, migrated by meaning; deleted in a separate commit after review."
     },
     {
@@ -1547,7 +1549,7 @@
       "use_by_agents": "source-for-migration",
       "canonical_target": "src/CallSettings/docs/README.md",
       "post_migration_action": "delete-after-validation",
-      "deletion_status": "pending",
+      "deletion_status": "deleted",
       "notes": "Legacy Repo Annotation ai-docs content, migrated by meaning; deleted in a separate commit after review."
     },
     {
@@ -1559,7 +1561,7 @@
       "use_by_agents": "source-for-migration",
       "canonical_target": "src/CallingClient/docs/README.md",
       "post_migration_action": "delete-after-validation",
-      "deletion_status": "pending",
+      "deletion_status": "deleted",
       "notes": "Legacy Repo Annotation ai-docs content, migrated by meaning; deleted in a separate commit after review."
     },
     {
@@ -1571,7 +1573,7 @@
       "use_by_agents": "source-for-migration",
       "canonical_target": "src/CallingClient/docs/README.md",
       "post_migration_action": "delete-after-validation",
-      "deletion_status": "pending",
+      "deletion_status": "deleted",
       "notes": "Legacy Repo Annotation ai-docs content, migrated by meaning; deleted in a separate commit after review."
     },
     {
@@ -1583,7 +1585,7 @@
       "use_by_agents": "source-for-migration",
       "canonical_target": "src/CallingClient/docs/README.md",
       "post_migration_action": "delete-after-validation",
-      "deletion_status": "pending",
+      "deletion_status": "deleted",
       "notes": "Legacy Repo Annotation ai-docs content, migrated by meaning; deleted in a separate commit after review."
     },
     {
@@ -1595,7 +1597,7 @@
       "use_by_agents": "source-for-migration",
       "canonical_target": "src/CallingClient/calling/CallerId/docs/README.md",
       "post_migration_action": "delete-after-validation",
-      "deletion_status": "pending",
+      "deletion_status": "deleted",
       "notes": "Legacy Repo Annotation ai-docs content, migrated by meaning; deleted in a separate commit after review."
     },
     {
@@ -1607,7 +1609,7 @@
       "use_by_agents": "source-for-migration",
       "canonical_target": "src/CallingClient/calling/CallerId/docs/README.md",
       "post_migration_action": "delete-after-validation",
-      "deletion_status": "pending",
+      "deletion_status": "deleted",
       "notes": "Legacy Repo Annotation ai-docs content, migrated by meaning; deleted in a separate commit after review."
     },
     {
@@ -1619,7 +1621,7 @@
       "use_by_agents": "source-for-migration",
       "canonical_target": "src/CallingClient/calling/docs/README.md",
       "post_migration_action": "delete-after-validation",
-      "deletion_status": "pending",
+      "deletion_status": "deleted",
       "notes": "Legacy Repo Annotation ai-docs content, migrated by meaning; deleted in a separate commit after review."
     },
     {
@@ -1631,7 +1633,7 @@
       "use_by_agents": "source-for-migration",
       "canonical_target": "src/CallingClient/calling/docs/README.md",
       "post_migration_action": "delete-after-validation",
-      "deletion_status": "pending",
+      "deletion_status": "deleted",
       "notes": "Legacy Repo Annotation ai-docs content, migrated by meaning; deleted in a separate commit after review."
     },
     {
@@ -1643,7 +1645,7 @@
       "use_by_agents": "source-for-migration",
       "canonical_target": "src/CallingClient/calling/docs/README.md",
       "post_migration_action": "delete-after-validation",
-      "deletion_status": "pending",
+      "deletion_status": "deleted",
       "notes": "Legacy Repo Annotation ai-docs content, migrated by meaning; deleted in a separate commit after review."
     },
     {
@@ -1655,7 +1657,7 @@
       "use_by_agents": "source-for-migration",
       "canonical_target": "src/CallingClient/line/docs/README.md",
       "post_migration_action": "delete-after-validation",
-      "deletion_status": "pending",
+      "deletion_status": "deleted",
       "notes": "Legacy Repo Annotation ai-docs content, migrated by meaning; deleted in a separate commit after review."
     },
     {
@@ -1667,7 +1669,7 @@
       "use_by_agents": "source-for-migration",
       "canonical_target": "src/CallingClient/line/docs/README.md",
       "post_migration_action": "delete-after-validation",
-      "deletion_status": "pending",
+      "deletion_status": "deleted",
       "notes": "Legacy Repo Annotation ai-docs content, migrated by meaning; deleted in a separate commit after review."
     },
     {
@@ -1679,7 +1681,7 @@
       "use_by_agents": "source-for-migration",
       "canonical_target": "src/CallingClient/line/docs/README.md",
       "post_migration_action": "delete-after-validation",
-      "deletion_status": "pending",
+      "deletion_status": "deleted",
       "notes": "Legacy Repo Annotation ai-docs content, migrated by meaning; deleted in a separate commit after review."
     },
     {
@@ -1691,7 +1693,7 @@
       "use_by_agents": "source-for-migration",
       "canonical_target": "src/CallingClient/registration/docs/README.md",
       "post_migration_action": "delete-after-validation",
-      "deletion_status": "pending",
+      "deletion_status": "deleted",
       "notes": "Legacy Repo Annotation ai-docs content, migrated by meaning; deleted in a separate commit after review."
     },
     {
@@ -1703,7 +1705,7 @@
       "use_by_agents": "source-for-migration",
       "canonical_target": "src/CallingClient/registration/docs/README.md",
       "post_migration_action": "delete-after-validation",
-      "deletion_status": "pending",
+      "deletion_status": "deleted",
       "notes": "Legacy Repo Annotation ai-docs content, migrated by meaning; deleted in a separate commit after review."
     },
     {
@@ -1715,7 +1717,7 @@
       "use_by_agents": "source-for-migration",
       "canonical_target": "src/CallingClient/registration/docs/README.md",
       "post_migration_action": "delete-after-validation",
-      "deletion_status": "pending",
+      "deletion_status": "deleted",
       "notes": "Legacy Repo Annotation ai-docs content, migrated by meaning; deleted in a separate commit after review."
     },
     {
@@ -1727,7 +1729,7 @@
       "use_by_agents": "source-for-migration",
       "canonical_target": "src/Contacts/docs/README.md",
       "post_migration_action": "delete-after-validation",
-      "deletion_status": "pending",
+      "deletion_status": "deleted",
       "notes": "Legacy Repo Annotation ai-docs content, migrated by meaning; deleted in a separate commit after review."
     },
     {
@@ -1739,7 +1741,7 @@
       "use_by_agents": "source-for-migration",
       "canonical_target": "src/Contacts/docs/README.md",
       "post_migration_action": "delete-after-validation",
-      "deletion_status": "pending",
+      "deletion_status": "deleted",
       "notes": "Legacy Repo Annotation ai-docs content, migrated by meaning; deleted in a separate commit after review."
     },
     {
@@ -1751,7 +1753,7 @@
       "use_by_agents": "source-for-migration",
       "canonical_target": "src/Contacts/docs/README.md",
       "post_migration_action": "delete-after-validation",
-      "deletion_status": "pending",
+      "deletion_status": "deleted",
       "notes": "Legacy Repo Annotation ai-docs content, migrated by meaning; deleted in a separate commit after review."
     },
     {
@@ -1763,7 +1765,7 @@
       "use_by_agents": "source-for-migration",
       "canonical_target": "src/Metrics/docs/README.md",
       "post_migration_action": "delete-after-validation",
-      "deletion_status": "pending",
+      "deletion_status": "deleted",
       "notes": "Legacy Repo Annotation ai-docs content, migrated by meaning; deleted in a separate commit after review."
     },
     {
@@ -1775,7 +1777,7 @@
       "use_by_agents": "source-for-migration",
       "canonical_target": "src/Metrics/docs/README.md",
       "post_migration_action": "delete-after-validation",
-      "deletion_status": "pending",
+      "deletion_status": "deleted",
       "notes": "Legacy Repo Annotation ai-docs content, migrated by meaning; deleted in a separate commit after review."
     },
     {
@@ -1787,7 +1789,7 @@
       "use_by_agents": "source-for-migration",
       "canonical_target": "src/Metrics/docs/README.md",
       "post_migration_action": "delete-after-validation",
-      "deletion_status": "pending",
+      "deletion_status": "deleted",
       "notes": "Legacy Repo Annotation ai-docs content, migrated by meaning; deleted in a separate commit after review."
     },
     {
@@ -1799,7 +1801,7 @@
       "use_by_agents": "source-for-migration",
       "canonical_target": "src/SDKConnector/docs/README.md",
       "post_migration_action": "delete-after-validation",
-      "deletion_status": "pending",
+      "deletion_status": "deleted",
       "notes": "Legacy Repo Annotation ai-docs content, migrated by meaning; deleted in a separate commit after review."
     },
     {
@@ -1811,7 +1813,7 @@
       "use_by_agents": "source-for-migration",
       "canonical_target": "src/Voicemail/docs/README.md",
       "post_migration_action": "delete-after-validation",
-      "deletion_status": "pending",
+      "deletion_status": "deleted",
       "notes": "Legacy Repo Annotation ai-docs content, migrated by meaning; deleted in a separate commit after review."
     },
     {
@@ -1823,7 +1825,7 @@
       "use_by_agents": "source-for-migration",
       "canonical_target": "src/Voicemail/docs/README.md",
       "post_migration_action": "delete-after-validation",
-      "deletion_status": "pending",
+      "deletion_status": "deleted",
       "notes": "Legacy Repo Annotation ai-docs content, migrated by meaning; deleted in a separate commit after review."
     },
     {
@@ -1835,7 +1837,7 @@
       "use_by_agents": "source-for-migration",
       "canonical_target": "src/Voicemail/docs/README.md",
       "post_migration_action": "delete-after-validation",
-      "deletion_status": "pending",
+      "deletion_status": "deleted",
       "notes": "Legacy Repo Annotation ai-docs content, migrated by meaning; deleted in a separate commit after review."
     },
     {
@@ -1846,7 +1848,7 @@
       "use_by_agents": "source-for-migration",
       "canonical_target": "docs/architecture.md",
       "post_migration_action": "delete-after-validation",
-      "deletion_status": "pending",
+      "deletion_status": "deleted",
       "notes": "Legacy Repo Annotation ai-docs content, migrated by meaning; deleted in a separate commit after review."
     },
     {
@@ -1857,7 +1859,7 @@
       "use_by_agents": "source-for-migration",
       "canonical_target": "docs/architecture.md",
       "post_migration_action": "delete-after-validation",
-      "deletion_status": "pending",
+      "deletion_status": "deleted",
       "notes": "Legacy Repo Annotation ai-docs content, migrated by meaning; deleted in a separate commit after review."
     },
     {
@@ -1869,7 +1871,7 @@
       "use_by_agents": "source-for-migration",
       "canonical_target": "src/mobius-socket/docs/README.md",
       "post_migration_action": "delete-after-validation",
-      "deletion_status": "pending",
+      "deletion_status": "deleted",
       "notes": "Legacy Repo Annotation ai-docs content, migrated by meaning; deleted in a separate commit after review."
     },
     {
@@ -1881,7 +1883,7 @@
       "use_by_agents": "source-for-migration",
       "canonical_target": "src/mobius-socket/docs/README.md",
       "post_migration_action": "delete-after-validation",
-      "deletion_status": "pending",
+      "deletion_status": "deleted",
       "notes": "Legacy Repo Annotation ai-docs content, migrated by meaning; deleted in a separate commit after review."
     },
     {
@@ -1893,7 +1895,7 @@
       "use_by_agents": "source-for-migration",
       "canonical_target": "src/mobius-socket/docs/README.md",
       "post_migration_action": "delete-after-validation",
-      "deletion_status": "pending",
+      "deletion_status": "deleted",
       "notes": "Legacy Repo Annotation ai-docs content, migrated by meaning; deleted in a separate commit after review."
     },
     {
