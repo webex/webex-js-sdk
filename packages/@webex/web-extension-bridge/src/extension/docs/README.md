@@ -44,12 +44,12 @@ Related context: [documentation index](../../../docs/index.md) · [package agent
 | `module.holds_client_state`          | Applicable  | connections, client listeners | Client state model |
 | `module.enforces_domain_rules`       | Applicable  | sender and origin checks | Business rules and invariants |
 | `module.is_concurrent_async`         | Applicable  | async request, session store | Concurrency and reactive flow |
-| `module.owns_persistence`            | Applicable  | `chrome.storage.session` | Data, schema, and migration |
+| `module.owns_persistence`            | Applicable  | chrome.storage.session | Data, schema, and migration |
 | `module.stateful_transitions`        | Applicable  | tab connected / gone | State machine |
 | `module.exposes_wire_protocol`       | Applicable  | Envelope plus internal IPC wrappers | Protocol and wire format |
 | `module.ui_multi_screen`             | N/A         | No screens in this SDK | UI flow |
 | `module.large_data_model`            | N/A         | Connection and buffer records only | Data model |
-| `module.returns_caller_errors`       | Applicable  | `BridgeError` on request | Caller-visible failure modes |
+| `module.returns_caller_errors`       | Applicable  | BridgeError on request | Caller-visible failure modes |
 | `module.module_specific_conventions` | Applicable  | Isolated world; unpublished test seams | Module-specific rules |
 | `module.published_package`           | Applicable  | package.json exports for extension and content-script | Export stability |
 | `module.embedded_in_host`            | Applicable  | Host MV3 extension | Host integration and theming |
@@ -69,7 +69,7 @@ Related context: [documentation index](../../../docs/index.md) · [package agent
 | `src/extension/sessionStore.ts` | Session storage accessor |
 | `src/extension/platform.ts` | `ChromeLike`; storage required |
 | `src/content-script.ts` | Side-effect default-channel start |
-| `test/unit/spec/extension/` | background, client, content, senders, navigation, sessionStore |
+| test/unit/spec/extension/ | background, client, content, senders, navigation, sessionStore |
 | `test/unit/spec/security/threats.ts` | T1–T14 |
 | `test/unit/spec/integration/bridge.ts` | In-process page/relay/worker path |
 
@@ -142,7 +142,7 @@ One published `/extension` facade rather than layout-shaped subpaths. Bundlers t
 | Relay page→worker | postMessage → runtime.sendMessage | `src/extension/content.ts` | Three consecutive notify failures stop connected signaling |
 | Worker request | `request(topic)` → tabs.sendMessage REQUEST | `src/extension/background.ts` | `NO_TAB`, `TIMEOUT`, `NOT_CONNECTED` |
 | UI proxy | client command → worker | `src/extension/client.ts` | Worker gone → raw transport `Error` |
-| Buffer | every accepted push → session store (non-draining, best-effort persist) | `sessionStore.ts` | read-time TTL filter; lazy write-time eviction; maxEntries / maxBytes of `{topic, payload}` only (one newest entry may exceed `maxBytes`); refused write → `storageWriteFailed.buffer` |
+| Buffer | every accepted push → session store (non-draining, best-effort persist) | `src/extension/sessionStore.ts` | read-time TTL filter; lazy write-time eviction; maxEntries / maxBytes of `{topic, payload}` only (one newest entry may exceed `maxBytes`); refused write → `storageWriteFailed.buffer` |
 
 ```mermaid
 flowchart LR
@@ -290,6 +290,6 @@ Rejected: accepting a content-script message whose origin is not in `allowedOrig
 | `EXT-004` | Unit | `test/unit/spec/extension/background.ts` | wildcard origins | none |
 | `EXT-005` | Unit | `test/unit/spec/extension/senders.ts` | missing origin | none |
 | `EXT-006` | Unit | `test/unit/spec/extension/client.ts` | none found beyond unit | no e2e suite |
-| `EXT-008` | Unit | `test/unit/spec/core/logger.ts` | unrecognised `logLevel` does not throw | none |
-| `EXT-009` | Unit + integration | `test/unit/spec/extension/navigation.ts`, same-origin cases in `test/unit/spec/extension/background.ts`, `test/unit/spec/integration/bridge.ts` | Cross-origin and opaque-scheme urls still drop, including over-long ones; a replacement `CONNECT` settles the superseded session; a `PUSH` right behind `CONNECT` is accepted; leaving the origin removes only the session it observed; a relay `NOT_CONNECTED` removes the stale record | none |
+| `EXT-008` | Unit | `test/unit/spec/core/logger.ts` | unrecognised logLevel does not throw | none |
+| `EXT-009` | Unit + integration | `test/unit/spec/extension/navigation.ts`, same-origin cases in `test/unit/spec/extension/background.ts`, `test/unit/spec/integration/bridge.ts` | Cross-origin and opaque-scheme urls still drop, including over-long ones; a replacement CONNECT settles the superseded session; a PUSH right behind CONNECT is accepted; leaving the origin removes only the session it observed; a relay NOT_CONNECTED removes the stale record | none |
 | End-to-end hops | Integration (in mocha unit runner) | `test/unit/spec/integration/bridge.ts` | fake chrome/window | no browser e2e |
