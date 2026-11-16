@@ -6,6 +6,7 @@ import {assert} from '@webex/test-helper-chai';
 import sinon from 'sinon';
 import E2eeController from '@webex/plugin-meetings/src/e2ee/E2eeController';
 import MLS from '@webex/plugin-meetings/src/e2ee/mls';
+import * as MLSModule from '@webex/plugin-meetings/src/e2ee/mls';
 import E2eeSignaling from '@webex/plugin-meetings/src/e2ee/E2eeSignaling';
 import * as MemberMLSReconcilerModule from '@webex/plugin-meetings/src/e2ee/MemberMLSReconciler';
 import WasmLoader from '@webex/plugin-meetings/src/common/wasm-loader';
@@ -258,15 +259,23 @@ describe('plugin-meetings', () => {
       });
 
       it('gives MLS the WASM loader and a media-encryption service bound to webex.request', async () => {
+        const mlsCtorSpy = sinon.spy(MLSModule, 'default');
+
         await e2ee.start();
-        const session = initializeStub.firstCall.thisValue;
+
+        assert.calledOnceWithExactly(mlsCtorSpy, {
+          httpClient: sinon.match.object,
+          loadModule: sinon.match.func,
+        });
+        assert.isTrue(mlsCtorSpy.calledWithNew());
+        const [{httpClient, loadModule}] = mlsCtorSpy.firstCall.args;
 
         wasmLoader.get.resetHistory();
-        await session.loadModule();
+        await loadModule();
         assert.calledOnceWithExactly(wasmLoader.get, WASM_URL);
 
         webex.request.resolves({body: {ok: true}});
-        const response = await session.httpClient.request(`${GROUP_URL}/commit`, {a: 1});
+        const response = await httpClient.request(`${GROUP_URL}/commit`, {a: 1});
 
         assert.deepEqual(response, {ok: true});
         assert.calledOnceWithExactly(webex.request, {
