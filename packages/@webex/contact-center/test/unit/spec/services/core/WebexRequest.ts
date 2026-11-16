@@ -51,6 +51,7 @@ describe('WebexRequest', () => {
         resource: 'resource',
         method: HTTP_METHODS.POST,
         body: { key: 'value' },
+        headers: {'x-test-header': 'test-value'},
       });
 
       expect(result).toEqual(mockResponse);
@@ -59,6 +60,7 @@ describe('WebexRequest', () => {
         resource: 'resource',
         method: HTTP_METHODS.POST,
         body: { key: 'value' },
+        headers: {'x-test-header': 'test-value'},
       });
     });
 
@@ -89,9 +91,8 @@ describe('WebexRequest', () => {
         trackEvent: jest.fn(),
         timeEvent: jest.fn(),
       };
-      
+
       jest.spyOn(MetricsManager, 'getInstance').mockReturnValue(mockMetricsManager);
-      
     });
 
     it('should upload logs and return the response', async () => {
@@ -112,8 +113,8 @@ describe('WebexRequest', () => {
         {module: WEBEX_REQUEST_FILE, method: 'uploadLogs'}
       );
       expect(mockMetricsManager.trackEvent).toBeCalledWith(
-        "Upload Logs Success", 
-        {feedbackId: "mocked-uuid-12345", trackingId: '1234'}, 
+        "Upload Logs Success",
+        {feedbackId: "mocked-uuid-12345", trackingId: '1234'},
         ["behavioral"]
       );
       expect(mockWebex.internal.support.submitLogs).toHaveBeenCalledWith({... mockMetaData, feedbackId: "mocked-uuid-12345"}, undefined, {type: 'diff'});
@@ -135,8 +136,8 @@ describe('WebexRequest', () => {
         {module: WEBEX_REQUEST_FILE, method: 'uploadLogs'}
       );
       expect(mockMetricsManager.trackEvent).toBeCalledWith(
-        "Upload Logs Failed", 
-        {stack: "My stack", feedbackId: "mocked-uuid-12345", correlationId: 'correlation-id'}, 
+        "Upload Logs Failed",
+        {stack: "My stack", feedbackId: "mocked-uuid-12345", correlationId: 'correlation-id'},
         ["behavioral"]
       );
     });

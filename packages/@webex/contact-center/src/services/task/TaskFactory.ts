@@ -7,7 +7,8 @@ import WebRTC from './voice/WebRTC';
 import Digital from './digital/Digital';
 import {MEDIA_CHANNEL, TaskData} from './types';
 import {ConfigFlags, LoginOption} from '../../types';
-import {WrapupData} from '../config/types';
+import type {WrapupData} from '../config/types';
+import type ApiAIAssistant from '../ApiAiAssistant';
 
 export default class TaskFactory {
   /**
@@ -20,10 +21,12 @@ export default class TaskFactory {
     configFlags: ConfigFlags,
     wrapupData?: WrapupData,
     agentId?: string,
-    answerCallOnWebexService?: AnswerCallOnWebexService
+    agentName?: string,
+    answerCallOnWebexService?: AnswerCallOnWebexService,
+    apiAIAssistant?: ApiAIAssistant
   ): Task {
     const mediaType = data.interaction.mediaType ?? MEDIA_CHANNEL.TELEPHONY;
-    const {isEndTaskEnabled, isEndConsultEnabled} = configFlags;
+    const {isEndTaskEnabled, isEndConsultEnabled, consultTransfer} = configFlags;
     const recordingEnabled = data?.interaction?.callProcessingDetails?.pauseResumeEnabled ?? true;
     const voiceControlOptions = {
       isEndTaskEnabled,
@@ -31,6 +34,8 @@ export default class TaskFactory {
       isRecordingEnabled: recordingEnabled,
       enableWxBetterTogether: configFlags.enableWxBetterTogether ?? false,
       answerCallOnWebexService,
+      getUsersubPublished: configFlags.getWxAppUsersubPublished,
+      consultTransferConfig: consultTransfer,
     };
     switch (mediaType) {
       case MEDIA_CHANNEL.TELEPHONY:
@@ -41,16 +46,34 @@ export default class TaskFactory {
             data,
             voiceControlOptions,
             wrapupData,
-            agentId
+            agentId,
+            agentName,
+            apiAIAssistant
           );
         }
 
-        return new Voice(contact, data, voiceControlOptions, wrapupData, agentId);
+        return new Voice(
+          contact,
+          data,
+          voiceControlOptions,
+          wrapupData,
+          agentId,
+          agentName,
+          apiAIAssistant
+        );
 
       case MEDIA_CHANNEL.CHAT:
       case MEDIA_CHANNEL.EMAIL:
       case MEDIA_CHANNEL.SOCIAL:
-        return new Digital(contact, data, wrapupData, agentId);
+        return new Digital(
+          contact,
+          data,
+          wrapupData,
+          agentId,
+          consultTransfer,
+          agentName,
+          apiAIAssistant
+        );
 
       default:
         throw new Error(`Unknown media type: ${mediaType}`);

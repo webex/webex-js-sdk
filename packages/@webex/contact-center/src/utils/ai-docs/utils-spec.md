@@ -31,7 +31,7 @@ The utils scope currently provides shared pagination and cache behavior for cont
 
 - **Generic In-Memory Page Caching**: `PageCache<T>` utility for simple pagination reuse
 
-- **Cache Safety Rules**: Explicit bypass behavior for search/filter/sort scenarios
+- **Cache Safety Rules**: Explicit bypass behavior for search/filter/sort and enabled result/shape flags
 
 - **Spec-Driven Utility Workflow**: Utility-specific implementation and validation flow documented inline in this file
 
@@ -88,7 +88,7 @@ No claim is made that `src/types.ts`, AddressBook, EntryPoint, or Queue is imple
 ## Requirements
 | ID | WHAT | WHY | Source Evidence | Test / Example Evidence | Assumptions / Gaps | Confidence |
 |---|---|---|---|---|---|---|
-| UTILS-R-001 | Use cache only for simple pagination requests without search, filter, attributes, or sortBy. | Parameterized queries cannot safely reuse a page keyed only by scope/page/pageSize. | `src/utils/PageCache.ts` | `test/unit/spec/services/AddressBook.ts` | None; source and test evidence rechecked during the 2026-07-09 remediation; independent document revalidation pending. | PRESENT |
+| UTILS-R-001 | Use cache only for simple pagination requests without search, filter, attributes, sortBy, or enabled desktop-profile/provisioning/single-object flags. Explicit `false` flags remain cache-compatible because they do not change the base result or response shape. | Parameterized or enabled variant queries cannot safely reuse a page keyed only by scope/page/pageSize, while a disabled boolean is semantically the same as omission. | `src/utils/PageCache.ts` | `test/unit/spec/services/AddressBook.ts`, `test/unit/spec/services/Queue.ts` | None. | PRESENT |
 | UTILS-R-002 | Build cache keys from a caller-defined `scopeId` plus `page:pageSize`: `orgId` for EntryPoint/Queue and `bookId` for AddressBook. | Consumer scope and page boundaries prevent cross-scope or cross-page reuse. | `src/utils/PageCache.ts`, `src/services/AddressBook.ts`, `src/services/EntryPoint.ts`, `src/services/Queue.ts` | `test/unit/spec/services/AddressBook.ts`, `test/unit/spec/services/EntryPoint.ts`, `test/unit/spec/services/Queue.ts` | `PageCache.buildCacheKey` names its first implementation parameter `orgId`, but runtime callers establish the broader `scopeId` semantics. | PRESENT |
 | UTILS-R-003 | Expire entries after the configured five-minute TTL and delete them on stale lookup. | Bounded staleness prevents indefinite reuse of remote service data. | `src/utils/PageCache.ts` | None | Direct fake-clock expiration coverage is absent from current consumer tests. | PRESENT |
 | UTILS-R-004 | Cache data with total-page/record metadata and allow owning consumers to clear the cache. | Paginated services need consistent metadata without transferring ownership of remote records to the SDK. | `src/utils/PageCache.ts` | `test/unit/spec/services/AddressBook.ts` | Cache hit/miss and metadata are exercised through consumers; `clearCache()` has no direct assertion. | PRESENT |
@@ -96,7 +96,7 @@ No claim is made that `src/types.ts`, AddressBook, EntryPoint, or Queue is imple
 | UTILS-R-006 | Keep PageCache free of rollout flags; consuming services decide whether to invoke it and query parameters determine cache eligibility. | Cache correctness must depend on request shape, not hidden deployment state. | `src/utils/PageCache.ts` | `test/unit/spec/services/AddressBook.ts`, `test/unit/spec/services/Queue.ts` | None; rollout applicability is explicitly N/A. | PRESENT |
 
 ## Design Overview
-Utils separates its stable consumption boundary from collaborators so ownership and failure behavior stay explicit. Caching is intentionally limited to simple page browsing; search/filter/sort requests bypass cache to prevent incorrect reuse.
+Utils separates its stable consumption boundary from collaborators so ownership and failure behavior stay explicit. Caching is intentionally limited to simple page browsing; search/filter/sort requests and enabled result/shape flags bypass cache to prevent incorrect reuse.
 
 > **This is the authoritative documentation for the `src/utils` scope.** It covers shared pagination/cache contracts used by data services. For task routing and cross-service conventions, see the [root orchestrator AGENTS.md](../../../AGENTS.md).
 
@@ -117,7 +117,7 @@ Cross-scope mention:
 ```mermaid
 flowchart LR
   Service[AddressBook / EntryPoint / Queue] --> Eligible{canUseCache params?}
-  Eligible -->|search/filter/attributes/sort present| Backend[Fetch without cache]
+  Eligible -->|query variant or enabled result/shape flag| Backend[Fetch without cache]
   Eligible -->|simple pagination| Key[buildCacheKey scopeId:page:pageSize]
   Key --> Lookup[getCachedPage]
   Lookup -->|fresh| Hit[Return cached page]
@@ -201,7 +201,7 @@ classDiagram
 ```
 
 ## Use Cases
-- **UC-1 Cache eligibility:** AddressBook, EntryPoint, or Queue bypasses cache whenever search, filter, attributes, or sort is supplied. Evidence: `src/utils/PageCache.ts`, `test/unit/spec/services/AddressBook.ts`.
+- **UC-1 Cache eligibility:** AddressBook, EntryPoint, or Queue bypasses cache whenever search, filter, attributes, sort, or an enabled desktop-profile/provisioning/single-object flag is supplied; explicit `false` flags stay eligible. Evidence: `src/utils/PageCache.ts`, `test/unit/spec/services/AddressBook.ts`, `test/unit/spec/services/Queue.ts`.
 - **UC-2 Cache-key construction:** a simple page lookup uses `<scopeId>:page:pageSize`; AddressBook supplies `bookId`, while EntryPoint and Queue supply `orgId`. Evidence: `src/utils/PageCache.ts`, `src/services/AddressBook.ts`, `src/services/EntryPoint.ts`, `src/services/Queue.ts`.
 - **UC-3 TTL lookup/expiry:** a fresh cached entry is returned; an expired entry is deleted and treated as a miss. Evidence: `src/utils/PageCache.ts`; no direct expiration test currently exists.
 - **UC-4 Page insertion and clearing:** successful page data and normalized totals are cached, while `clearCache()` removes all entries for that service instance. Evidence: `src/utils/PageCache.ts`; consumer tests cover insertion/hit behavior, but not direct clearing.
@@ -209,7 +209,7 @@ classDiagram
 ## State Model
 Utils retains only in-memory runtime state. Durable domain records remain owned by remote Webex services. State changes are driven by explicit calls, events, timers, or actor transitions documented below.
 
-`PageCache<T>` provides a consistent caching model for paginated list APIs. It is optimized for simple page browsing and intentionally bypasses cache for parameterized query cases (`search`, `filter`, `attributes`, `sortBy`).
+`PageCache<T>` provides a consistent caching model for paginated list APIs. It is optimized for simple page browsing and intentionally bypasses cache for parameterized query cases (`search`, `filter`, `attributes`, `sortBy`) and enabled result/shape flags (`desktopProfileFilter`, `provisioningView`, `singleObjectResponse`).
 
 ```typescript
 import PageCache, {PAGINATION_DEFAULTS} from '../utils/PageCache';
@@ -222,8 +222,16 @@ const pageSize = PAGINATION_DEFAULTS.PAGE_SIZE;
 const scopeId = bookIdOrOrgId;
 const cacheKey = cache.buildCacheKey(scopeId, page, pageSize);
 
-// Include sortBy only for services that support sorting.
-const canUseCache = cache.canUseCache({search, filter, attributes, sortBy});
+// Include every supported result- or shape-changing input.
+const canUseCache = cache.canUseCache({
+  search,
+  filter,
+  attributes,
+  sortBy,
+  desktopProfileFilter,
+  provisioningView,
+  singleObjectResponse,
+});
 
 if (canUseCache) {
   const cachedEntry = cache.getCachedPage(cacheKey);
@@ -251,7 +259,7 @@ return response;
 ```mermaid
 graph TD
   A[Request arrives with scopeId/page/pageSize] --> B{canUseCache?}
-  B -->|No: search/filter/attributes/sortBy provided| C[Bypass cache and call API]
+  B -->|No: query variant or enabled result/shape flag| C[Bypass cache and call API]
   B -->|Yes| D[buildCacheKey scopeId:page:pageSize]
   D --> E["getCachedPage(cacheKey)"]
   E -->|Miss| C
@@ -277,7 +285,9 @@ Returns `true` only when all of these are absent:
 
 - `sortBy`
 
-`sortOrder` alone does not trigger cache bypass because `CacheValidationParams` currently keys bypass on fields that materially change the query result set in existing consumers.
+- `desktopProfileFilter`, `provisioningView`, or `singleObjectResponse` when `true`
+
+An explicit `false` boolean remains eligible because it is semantically identical to omitting that flag. Services must pass an effective `sortBy` whenever `sortOrder` changes the wire order; Queue normalizes a direction-only request to `sortBy=name` before cache validation.
 
 Builds deterministic cache key format:
 
@@ -320,7 +330,7 @@ Note: `clearCache()` and `getCacheSize()` are available for future use and are n
 
 ## Pitfalls
 - Do not describe the first cache-key field as universally `orgId`: AddressBook passes `bookId`, while EntryPoint and Queue pass `orgId`.
-- Do not cache queries containing `search`, `filter`, `attributes`, or `sortBy`; their result set is not represented in the key.
+- Do not cache queries containing `search`, `filter`, `attributes`, `sortBy`, or enabled desktop-profile/provisioning/single-object flags; their result set or shape is not represented in the key. Explicit `false` flags do not create a variant.
 - Do not treat an expired entry as usable data. `getCachedPage` deletes it and returns `null`.
 - Do not cache a rejected request or a response without data; only the consuming service owns the backend request and decides when to call `cachePage`.
 

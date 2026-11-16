@@ -1,0 +1,112 @@
+{
+  "schema_version": 1,
+  "profile": "sdd-legacy",
+  "library_version": "0.2.2",
+  "registry": {
+    "heading": "Module Registry",
+    "columns": 4,
+    "module_column": 0,
+    "spec_column": 3
+  },
+  "module_spec_marker": {
+    "field": "Doc kind",
+    "value": "Module spec"
+  },
+  "layout_defaults": {
+    "docs_root": "ai-docs",
+    "standing_docs_root": "ai-docs",
+    "spec_index_path": "ai-docs/SPEC_INDEX.md",
+    "module_docs_strategy": "source-local",
+    "module_docs_folder_name": "ai-docs",
+    "module_spec_pattern": "<module-path>/ai-docs/<module-name>-spec.md"
+  },
+  "generated_metadata_position": "byte-1",
+  "provenance": {
+    "profile": "sdd-legacy",
+    "source_repo": "WebexDevPlatform/RepoAnnotation-Templates",
+    "source_commit": "0aa65d93f019e5313ec2ddfac9b0c7352a2882cc",
+    "resolved_from": "vendored tree"
+  },
+  "templates": [
+    {
+      "template_id": "module-spec",
+      "template": "module-docs/module-spec.template.md",
+      "generates": "<module-path>/ai-docs/<module-name>-spec.md"
+    },
+    {
+      "template_id": "adr",
+      "template": "reference-docs/adr/_adr-example.md",
+      "generates": "ai-docs/adr/NNNN-<kebab-title>.md"
+    },
+    {
+      "template_id": "pattern",
+      "template": "reference-docs/patterns/_pattern-example.md",
+      "generates": "ai-docs/patterns/<name>.md"
+    },
+    {
+      "template_id": "rule",
+      "template": "reference-docs/rules/_rule-example.md",
+      "generates": "ai-docs/rules/<name>.md"
+    },
+    {
+      "template_id": "agents",
+      "template": "standing-docs/AGENTS.template.md",
+      "generates": "AGENTS.md"
+    },
+    {
+      "template_id": "architecture",
+      "template": "standing-docs/ARCHITECTURE.template.md",
+      "generates": "ai-docs/ARCHITECTURE.md"
+    },
+    {
+      "template_id": "contracts",
+      "template": "standing-docs/CONTRACTS.template.md",
+      "generates": "ai-docs/CONTRACTS.md"
+    },
+    {
+      "template_id": "data-model",
+      "template": "standing-docs/DATA_MODEL.template.md",
+      "generates": "ai-docs/DATA_MODEL.md"
+    },
+    {
+      "template_id": "getting-started",
+      "template": "standing-docs/GETTING_STARTED.template.md",
+      "generates": "ai-docs/GETTING_STARTED.md"
+    },
+    {
+      "template_id": "glossary",
+      "template": "standing-docs/GLOSSARY.template.md",
+      "generates": "ai-docs/GLOSSARY.md"
+    },
+    {
+      "template_id": "review-checklist",
+      "template": "standing-docs/REVIEW_CHECKLIST.template.md",
+      "generates": "ai-docs/REVIEW_CHECKLIST.md"
+    },
+    {
+      "template_id": "rules",
+      "template": "standing-docs/RULES.template.md",
+      "generates": "ai-docs/RULES.md"
+    },
+    {
+      "template_id": "security",
+      "template": "standing-docs/SECURITY.template.md",
+      "generates": "ai-docs/SECURITY.md"
+    },
+    {
+      "template_id": "service-state",
+      "template": "standing-docs/SERVICE_STATE.template.md",
+      "generates": "ai-docs/SERVICE_STATE.md"
+    },
+    {
+      "template_id": "spec-index",
+      "template": "standing-docs/SPEC_INDEX.template.md",
+      "generates": "ai-docs/SPEC_INDEX.md"
+    },
+    {
+      "template_id": "test-index",
+      "template": "standing-docs/TEST_INDEX.template.md",
+      "generates": "ai-docs/TEST_INDEX.md"
+    }
+  ]
+}

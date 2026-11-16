@@ -55,9 +55,9 @@ describe('MediaProperties', () => {
 
       await mediaProperties.waitForMediaConnectionConnected(correlationId);
 
-      assert.calledOnce(stub);
-      assert.equal(capturedInstance.correlationId, correlationId);
-      assert.equal(capturedInstance.webrtcMediaConnection, mockMC);
+      assert.calledOnceWithExactly(stub);
+      assert.equal(capturedInstance.props.correlationId, correlationId);
+      assert.equal(capturedInstance.props.webrtcMediaConnection, mockMC);
     });
     it('rejects if media connection is not connected', async () => {
       const waitForMediaConnectionConnectedResult = new Defer();

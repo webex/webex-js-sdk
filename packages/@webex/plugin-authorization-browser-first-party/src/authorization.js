@@ -20,10 +20,7 @@ import {cloneDeep, isEmpty, omit, isObject} from 'lodash';
 import uuid from 'uuid';
 import base64url from 'crypto-js/enc-base64url';
 import CryptoJS from 'crypto-js';
-
-// Necessary to require lodash this way in order to stub
-// methods in the unit test
-const lodash = require('lodash');
+import {getClientAuthenticationOptions} from './config';
 
 const OAUTH2_CSRF_TOKEN = 'oauth2-csrf-token';
 const OAUTH2_CODE_VERIFIER = 'oauth2-code-verifier';
@@ -478,7 +475,7 @@ const Authorization = WebexPlugin.extend({
 
     location.query.state = decodeState(location.query.state || 'e30');
 
-    this._verifySecurityToken(location.query, {requireMatch: true});
+    this._verifySecurityToken(location.query);
     this._cleanUrl(location);
 
     const {
@@ -548,16 +545,16 @@ const Authorization = WebexPlugin.extend({
       form.code_verifier = options.codeVerifier;
     }
 
+    const {form: clientForm = {}, ...clientAuthentication} = getClientAuthenticationOptions(
+      this.config
+    );
+
     return this.webex
       .request({
         method: 'POST',
         uri: this.config.tokenUrl,
-        form,
-        auth: {
-          user: this.config.client_id,
-          pass: this.config.client_secret,
-          sendImmediately: true,
-        },
+        form: {...form, ...clientForm},
+        ...clientAuthentication,
         shouldRefreshAccessToken: false, // This is the token acquisition call itself
       })
       .then((res) => {
@@ -887,7 +884,8 @@ const Authorization = WebexPlugin.extend({
    * during authorization code exchange; removes it once consumed.
    *
    * Implementation details:
-   * - Creates a 128 character string using base64url safe alphabet.
+   * - Creates a 128 character string using a cryptographically secure random
+   *   source and the base64url safe alphabet.
    * - Computes SHA256 hash, encodes to base64url (no padding).
    *
    * @instance
@@ -900,10 +898,14 @@ const Authorization = WebexPlugin.extend({
 
     // eslint-disable-next-line no-underscore-dangle
     const safeCharacterMap = base64url._safe_map;
+    const randomValues = new Uint8Array(128);
 
-    const codeVerifier = lodash
-      .times(128, () => safeCharacterMap[lodash.random(0, safeCharacterMap.length - 1)])
-      .join('');
+    this.webex.getWindow().crypto.getRandomValues(randomValues);
+
+    const codeVerifier = Array.from(
+      randomValues,
+      (randomValue) => safeCharacterMap[randomValue & (safeCharacterMap.length - 1)]
+    ).join('');
 
     const codeChallenge = CryptoJS.SHA256(codeVerifier).toString(base64url);
 
@@ -942,29 +944,20 @@ const Authorization = WebexPlugin.extend({
    * - Ensure state + state.csrf_token exist.
    * - Compare values; throw descriptive errors on mismatch / absence.
    *
-   * If no stored token (e.g., user navigated directly), silently returns
-   * unless `options.requireMatch` is `true`, in which case absence of a
-   * stored token is treated as a CSRF failure.
+   * If no stored token exists, treats the callback as a CSRF failure.
    *
    * @instance
    * @memberof AuthorizationBrowserFirstParty
    * @param {Object} query - Parsed query (location.query)
-   * @param {Object} [options]
-   * @param {boolean} [options.requireMatch=false] - When true, throws if
-   *   no stored sessionToken is present.
    * @private
    * @returns {void}
    */
-  _verifySecurityToken(query, options = {}) {
+  _verifySecurityToken(query) {
     const sessionToken = this.webex.getWindow().sessionStorage.getItem(OAUTH2_CSRF_TOKEN);
 
     this.webex.getWindow().sessionStorage.removeItem(OAUTH2_CSRF_TOKEN);
     if (!sessionToken) {
-      if (options.requireMatch) {
-        throw new Error('CSRF token missing from session storage');
-      }
-
-      return;
+      throw new Error('CSRF token missing from session storage');
     }
 
     if (!query.state?.csrf_token) {

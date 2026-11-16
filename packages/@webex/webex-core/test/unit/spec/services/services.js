@@ -6,6 +6,7 @@ import {assert} from '@webex/test-helper-chai';
 import MockWebex from '@webex/test-helper-mock-webex';
 import sinon from 'sinon';
 import {Services, ServiceRegistry, ServiceState} from '@webex/webex-core';
+import grantErrors from '@webex/webex-core/dist/lib/credentials/grant-errors';
 import {NewMetrics} from '@webex/internal-plugin-metrics';
 
 const waitForAsync = () =>
@@ -149,9 +150,55 @@ describe('webex-core', () => {
         const [, event] = services.listenToOnce.getCall(1).args;
         assert.equal(event, 'ready', 'default path listens on webex ready');
       });
+
+      it('skips preauth catalog collection when skipPreauthCatalogOnUnauthenticated is true and no credentials', async () => {
+        services.webex.config = {
+          ...(services.webex.config || {}),
+          services: {skipPreauthCatalogOnUnauthenticated: true},
+        };
+        services.listenToOnce = sinon.stub();
+        services.collectPreauthCatalog = sinon.stub().returns(Promise.resolve());
+        services.logger.info = sinon.stub();
+
+        services.initialize();
+        services.listenToOnce.getCall(0).args[2]();
+        services.listenToOnce.getCall(1).args[2]();
+        await waitForAsync();
+
+        assert.isFalse(
+          services.collectPreauthCatalog.called,
+          'must not collect preauth catalog while unauthenticated when option is enabled'
+        );
+        assert.isFalse(services.initFailed);
+        sinon.assert.calledWith(
+          services.logger.info,
+          'services: skipping preauth catalog collection while unauthenticated as per the config'
+        );
+      });
+
+      it('still collects preauth catalog when skipPreauthCatalogOnUnauthenticated is false (default)', async () => {
+        services.webex.config = {
+          ...(services.webex.config || {}),
+          services: {skipPreauthCatalogOnUnauthenticated: false},
+        };
+        services.listenToOnce = sinon.stub();
+        services.collectPreauthCatalog = sinon.stub().returns(Promise.resolve());
+
+        services.initialize();
+        services.listenToOnce.getCall(0).args[2]();
+        services.listenToOnce.getCall(1).args[2]();
+        await waitForAsync();
+
+        assert.isTrue(
+          services.collectPreauthCatalog.called,
+          'must collect preauth catalog when option is disabled'
+        );
+      });
     });
 
     describe('#initialize (waitForCatalogInit=true)', () => {
+      let clock;
+
       beforeEach(() => {
         services.webex.config = {
           ...(services.webex.config || {}),
@@ -162,6 +209,15 @@ describe('webex-core', () => {
         // true). We reset here so tests that call initialize() a second time
         // with the flag enabled observe the gated behavior from a clean state.
         services.ready = false;
+        // The gated path schedules a real 15s setTimeout via _makeInitTimeout()
+        // that is not cleared when the init race resolves. Fake only setTimeout/
+        // clearTimeout (leaving setImmediate real so waitForAsync still works)
+        // so restoring in afterEach clears the pending timer and Jest can exit.
+        clock = sinon.useFakeTimers({toFake: ['setTimeout', 'clearTimeout']});
+      });
+
+      afterEach(() => {
+        clock.restore();
       });
 
       it('leaves services.ready=false after initialize (does not flip until finalize)', () => {
@@ -242,7 +298,6 @@ describe('webex-core', () => {
       });
 
       it('flips services.ready=true when init times out', async () => {
-        const clock = sinon.useFakeTimers();
         services.listenToOnce = sinon.stub();
         // Never resolves - the timeout must win the race.
         services.initServiceCatalogs = sinon.stub().returns(new Promise(() => {}));
@@ -259,7 +314,6 @@ describe('webex-core', () => {
         // rejected timeout can propagate through .catch and .finally into
         // _finalizeReady().
         await clock.tickAsync(15_001);
-        clock.restore();
 
         assert.isTrue(services.initFailed);
         assert.isTrue(services.ready);
@@ -382,6 +436,86 @@ describe('webex-core', () => {
       });
     });
 
+    describe('#initialize (waitForCatalogInit=true, skipPreauthCatalogOnUnauthenticated=true)', () => {
+      beforeEach(() => {
+        services.webex.config = {
+          ...(services.webex.config || {}),
+          services: {
+            waitForCatalogInit: true,
+            catalogInitTimeout: 15000,
+            skipPreauthCatalogOnUnauthenticated: true,
+          },
+        };
+        services.ready = false;
+      });
+
+      it('skips preauth catalog collection but still finalizes services.ready when unauthenticated', async () => {
+        services.listenToOnce = sinon.stub();
+        services.collectPreauthCatalog = sinon.stub().returns(Promise.resolve());
+        services.logger.info = sinon.stub();
+
+        services.initialize();
+        services.listenToOnce.getCall(0).args[2]();
+        services.listenToOnce.getCall(1).args[2]();
+        await waitForAsync();
+
+        assert.isFalse(
+          services.collectPreauthCatalog.called,
+          'must not collect preauth catalog while unauthenticated when option is enabled'
+        );
+        assert.isTrue(services.ready, 'must still finalize ready so webex.ready is not stalled');
+        sinon.assert.calledWith(
+          services.logger.info,
+          'services: skipping preauth catalog collection while unauthenticated as per the config'
+        );
+      });
+
+      it('still registers a change:canAuthorize listener when skipping preauth (fresh-login path)', async () => {
+        services.listenToOnce = sinon.stub();
+        services.collectPreauthCatalog = sinon.stub().returns(Promise.resolve());
+        services.initServiceCatalogs = sinon.stub().returns(Promise.resolve());
+
+        services.initialize();
+        const currentCatalog = services._getCatalog();
+        services.listenToOnce.getCall(0).args[2]();
+        services.listenToOnce.getCall(1).args[2]();
+        await waitForAsync();
+
+        const freshLoginCall = services.listenToOnce
+          .getCalls()
+          .find((call) => call.args[1] === 'change:canAuthorize');
+        assert.isDefined(freshLoginCall, 'expected change:canAuthorize listener to be registered');
+
+        services.webex.canAuthorize = true;
+        currentCatalog.status.postauth.ready = false;
+        freshLoginCall.args[2]();
+
+        assert.isTrue(
+          services.initServiceCatalogs.called,
+          'expected postauth catalog init after canAuthorize flips'
+        );
+        await waitForAsync();
+      });
+
+      it('does not schedule an init timeout when skipping preauth (no stray timer/rejection)', async () => {
+        const clock = sinon.useFakeTimers();
+        services.listenToOnce = sinon.stub();
+        services.collectPreauthCatalog = sinon.stub().returns(Promise.resolve());
+        services.logger.error = sinon.stub();
+
+        services.initialize();
+        services.listenToOnce.getCall(0).args[2]();
+        services.listenToOnce.getCall(1).args[2]();
+
+        // Advance well past the configured init timeout; since no timeout was
+        // scheduled in skip mode, no timeout error should ever be logged.
+        await clock.tickAsync(30_000);
+        clock.restore();
+
+        sinon.assert.neverCalledWithMatch(services.logger.error, /services: init timed out/);
+      });
+    });
+
     describe('#_finalizeReady', () => {
       beforeEach(() => {
         // Outer beforeEach construction already ran initialize() (ungated,
@@ -478,6 +612,314 @@ describe('webex-core', () => {
 
         sinon.assert.calledWith(services.collectPreauthCatalog, {orgId: 'orgId'});
         sinon.assert.calledWith(services.logger.warn, 'services: cannot retrieve postauth catalog');
+        assert.isNull(services._getCatalogAuthFailure());
+      });
+
+      it.each([
+        {statusField: 'statusCode', status: 401, reason: 'invalid_access_token'},
+        {statusField: 'status', status: 403, reason: 'access_denied'},
+      ])(
+        'stores $reason when the postauth catalog fails with $status',
+        async ({statusField, status, reason}) => {
+          const error = new Error('catalog failed');
+
+          error[statusField] = status;
+
+          services.webex.credentials = {
+            getOrgId: sinon.stub().returns('orgId'),
+            canAuthorize: true,
+          };
+          services.collectPreauthCatalog = sinon.stub().resolves();
+          sinon.stub(services, '_fetchNewServiceHostmap').rejects(error);
+          services.logger.error = sinon.stub();
+
+          await services.initServiceCatalogs();
+
+          assert.isTrue(services.initFailed);
+          sinon.assert.calledWith(services.logger.warn, 'services: cannot retrieve postauth catalog');
+          assert.deepEqual(services._getCatalogAuthFailure(), {status, reason});
+        }
+      );
+
+      it.each([
+        {statusField: 'statusCode', status: 401, reason: 'invalid_access_token'},
+        {statusField: 'status', status: 403, reason: 'access_denied'},
+      ])(
+        'keeps a stored $reason when a second init times out during the postauth fetch',
+        async ({statusField, status, reason}) => {
+          let rejectFetch;
+          const fetchPromise = new Promise((resolve, reject) => {
+            rejectFetch = reject;
+          });
+          const clock = sinon.useFakeTimers({toFake: ['setTimeout', 'clearTimeout']});
+
+          services.webex.credentials = {
+            getOrgId: sinon.stub().returns('orgId'),
+            canAuthorize: true,
+            supertoken: {access_token: 'token'},
+          };
+          services.collectPreauthCatalog = sinon.stub().resolves();
+          sinon.stub(services, '_fetchNewServiceHostmap').returns(fetchPromise);
+
+          try {
+            const firstInit = services.initServiceCatalogs();
+
+            await waitForAsync();
+            assert.isTrue(catalog.status.postauth.collecting);
+
+            const secondInit = services.initServiceCatalogs();
+
+            await waitForAsync();
+            assert.calledOnce(services._fetchNewServiceHostmap);
+
+            const error = new Error('catalog failed');
+
+            error[statusField] = status;
+            rejectFetch(error);
+            await firstInit;
+
+            assert.deepEqual(services._getCatalogAuthFailure(), {status, reason});
+
+            clock.tick(60 * 1000);
+            await secondInit;
+
+            assert.deepEqual(services._getCatalogAuthFailure(), {status, reason});
+          } finally {
+            clock.restore();
+          }
+        }
+      );
+    });
+
+    describe('#updateServices catalog auth failure', () => {
+      const emptyHostmap = {
+        serviceLinks: {},
+        hostCatalog: {},
+      };
+
+      const recordAuthFailure = (status) => {
+        services._recordCatalogAuthFailure(
+          Object.assign(new Error('catalog failed'), {statusCode: status})
+        );
+      };
+
+      it.each([
+        {status: 401, reason: 'invalid_access_token'},
+        {status: 403, reason: 'access_denied'},
+      ])(
+        'clears a stored $reason after a successful postauth update and reports a missing service as unknown',
+        async ({status}) => {
+          services.webex.config.services = {
+            servicesNotNeedValidation: [],
+          };
+          services.webex.internal.metrics = {
+            submitClientMetrics: sinon.stub(),
+          };
+          recordAuthFailure(status);
+          sinon.stub(services, '_fetchNewServiceHostmap').resolves(emptyHostmap);
+
+          await services.updateServices();
+
+          assert.isNull(services._getCatalogAuthFailure());
+          catalog.isReady = true;
+
+          try {
+            await services.waitForService({name: 'wcc-api-gateway'});
+            assert.fail('expected waitForService to reject');
+          } catch (error) {
+            assert.equal(
+              error.message,
+              "services: service 'wcc-api-gateway' was not found in any of the catalogs"
+            );
+            assert.isUndefined(error.reason);
+          }
+        }
+      );
+
+      it.each([
+        {status: 401, reason: 'invalid_access_token'},
+        {status: 403, reason: 'access_denied'},
+      ])(
+        'clears a stored $reason when waitForCatalog(postauth) reloads through updateServices',
+        async ({status}) => {
+          services.webex.credentials = {
+            supertoken: {
+              access_token: 'token',
+            },
+          };
+          catalog.status.preauth.ready = true;
+          catalog.status.postauth.ready = false;
+          catalog.status.postauth.collecting = false;
+          recordAuthFailure(status);
+          sinon.stub(services, 'initServiceCatalogs');
+          sinon.stub(services, '_fetchNewServiceHostmap').resolves(emptyHostmap);
+
+          await services.waitForCatalog('postauth');
+
+          assert.notCalled(services.initServiceCatalogs);
+          assert.isNull(services._getCatalogAuthFailure());
+        }
+      );
+
+      it.each([
+        {statusField: 'statusCode', status: 401, reason: 'invalid_access_token'},
+        {statusField: 'status', status: 403, reason: 'access_denied'},
+      ])(
+        'stores $reason when a direct postauth update fails with $status',
+        async ({statusField, status, reason}) => {
+          const error = new Error('catalog failed');
+
+          error[statusField] = status;
+          sinon.stub(services, '_fetchNewServiceHostmap').rejects(error);
+          sinon.spy(services, 'initServiceCatalogs');
+
+          try {
+            await services.updateServices();
+            assert.fail('expected updateServices to reject');
+          } catch (rejected) {
+            assert.equal(rejected, error);
+          }
+
+          assert.notCalled(services.initServiceCatalogs);
+          assert.deepEqual(services._getCatalogAuthFailure(), {status, reason});
+        }
+      );
+
+      it('stores invalid_access_token when a refresh 403 replaced a catalog 401', async () => {
+        const error = new Error('forbidden');
+
+        error.statusCode = 403;
+        error.catalogAuthStatus = 401;
+        sinon.stub(services, '_fetchNewServiceHostmap').rejects(error);
+
+        try {
+          await services.updateServices();
+          assert.fail('expected updateServices to reject');
+        } catch (rejected) {
+          assert.equal(rejected, error);
+          assert.equal(rejected.statusCode, 403);
+        }
+
+        assert.deepEqual(services._getCatalogAuthFailure(), {
+          status: 401,
+          reason: 'invalid_access_token',
+        });
+      });
+
+      it('stores invalid_access_token when a postauth update fails with InvalidGrantError', async () => {
+        const error = new grantErrors.InvalidGrantError({
+          body: {
+            error: 'invalid_grant',
+            error_description: 'The refresh token is invalid',
+          },
+        });
+
+        sinon.stub(services, '_fetchNewServiceHostmap').rejects(error);
+
+        try {
+          await services.updateServices();
+          assert.fail('expected updateServices to reject');
+        } catch (rejected) {
+          assert.equal(rejected, error);
+        }
+
+        assert.deepEqual(services._getCatalogAuthFailure(), {
+          status: 401,
+          reason: 'invalid_access_token',
+        });
+      });
+
+      it('stores invalid_access_token when a postauth update fails after the auth replay limit', async () => {
+        const error = new Error('Failed after 1 replay attempts');
+
+        sinon.stub(services, '_fetchNewServiceHostmap').rejects(error);
+
+        try {
+          await services.updateServices();
+          assert.fail('expected updateServices to reject');
+        } catch (rejected) {
+          assert.equal(rejected, error);
+        }
+
+        assert.deepEqual(services._getCatalogAuthFailure(), {
+          status: 401,
+          reason: 'invalid_access_token',
+        });
+      });
+
+      it('clears a stored auth failure when a postauth update fails with a statusless error', async () => {
+        const error = new Error('catalog failed');
+
+        recordAuthFailure(401);
+        sinon.stub(services, '_fetchNewServiceHostmap').rejects(error);
+
+        try {
+          await services.updateServices();
+          assert.fail('expected updateServices to reject');
+        } catch (rejected) {
+          assert.equal(rejected, error);
+        }
+
+        assert.isNull(services._getCatalogAuthFailure());
+      });
+
+      it.each([
+        {label: 'preauth', args: {from: 'limited', query: {orgId: 'urn:EXAMPLE:org'}}},
+        {label: 'signin', args: {from: 'signin', query: {email: 'user@example.com'}}},
+      ])('leaves a postauth auth failure in place after a successful $label update', async ({args}) => {
+        recordAuthFailure(401);
+        sinon.stub(services, '_fetchNewServiceHostmap').resolves(emptyHostmap);
+
+        await services.updateServices(args);
+
+        assert.deepEqual(services._getCatalogAuthFailure(), {
+          status: 401,
+          reason: 'invalid_access_token',
+        });
+      });
+    });
+
+    describe('#waitForService', () => {
+      it('rejects with invalid_access_token when the postauth catalog failed with 401 and the service is missing', async () => {
+        services.webex.config.services = {
+          servicesNotNeedValidation: [],
+        };
+        services.webex.internal.metrics = {
+          submitClientMetrics: sinon.stub(),
+        };
+        services._recordCatalogAuthFailure(
+          Object.assign(new Error('unauthorized'), {statusCode: 401})
+        );
+        catalog.isReady = true;
+
+        try {
+          await services.waitForService({name: 'wcc-api-gateway'});
+          assert.fail('expected waitForService to reject');
+        } catch (error) {
+          assert.equal(error.reason, 'invalid_access_token');
+          assert.equal(error.statusCode, 401);
+          assert.equal(error.message, 'invalid_access_token');
+        }
+      });
+
+      it('rejects with access_denied when the postauth catalog failed with 403 and the service is missing', async () => {
+        services.webex.config.services = {
+          servicesNotNeedValidation: [],
+        };
+        services.webex.internal.metrics = {
+          submitClientMetrics: sinon.stub(),
+        };
+        services._recordCatalogAuthFailure(Object.assign(new Error('forbidden'), {statusCode: 403}));
+        catalog.isReady = true;
+
+        try {
+          await services.waitForService({name: 'wcc-api-gateway'});
+          assert.fail('expected waitForService to reject');
+        } catch (error) {
+          assert.equal(error.reason, 'access_denied');
+          assert.equal(error.statusCode, 403);
+          assert.equal(error.message, 'access_denied');
+        }
       });
     });
 
@@ -1228,6 +1670,32 @@ describe('webex-core', () => {
     });
 
     describe('#isIntegrationEnvironment', () => {
+      it('uses the integration environment config when set, regardless of the u2c URL', () => {
+        services.webex.config = {
+          environment: 'integration',
+          services: {
+            discovery: {
+              u2c: 'https://u2c.svc.webex.com/u2c/api/v1',
+            },
+          },
+        };
+
+        assert.isTrue(services.isIntegrationEnvironment());
+      });
+
+      it('uses the production environment config when set, regardless of the u2c URL', () => {
+        services.webex.config = {
+          environment: 'production',
+          services: {
+            discovery: {
+              u2c: 'https://u2c-intb.ciscospark.com/u2c/api/v1',
+            },
+          },
+        };
+
+        assert.isFalse(services.isIntegrationEnvironment());
+      });
+
       it('returns true when u2c URL contains "intb"', () => {
         services.webex.config = {
           services: {
@@ -1243,7 +1711,7 @@ describe('webex-core', () => {
         services.webex.config = {
           services: {
             discovery: {
-              u2c: 'https://u2c.wbx2.com/u2c/api/v1',
+              u2c: 'https://u2c.svc.webex.com/u2c/api/v1',
             },
           },
         };
@@ -1468,7 +1936,7 @@ describe('webex-core', () => {
         // arrange config for env fingerprint
         services.webex.config = services.webex.config || {};
         services.webex.config.services = services.webex.config.services || {discovery: {}};
-        services.webex.config.services.discovery.u2c = 'https://u2c.wbx2.com/u2c/api/v1';
+        services.webex.config.services.discovery.u2c = 'https://u2c.svc.webex.com/u2c/api/v1';
         services.webex.config.fedramp = false;
 
         // write cache with meta
@@ -1484,7 +1952,7 @@ describe('webex-core', () => {
         assert.equal(parsed.orgId, undefined, 'orgId not set without credentials');
         assert.deepEqual(parsed.env, {
           fedramp: false,
-          u2cDiscoveryUrl: 'https://u2c.wbx2.com/u2c/api/v1',
+          u2cDiscoveryUrl: 'https://u2c.svc.webex.com/u2c/api/v1',
         });
         assert.isObject(parsed.preauth);
         assert.deepEqual(parsed.preauth.meta, {
@@ -1503,14 +1971,14 @@ describe('webex-core', () => {
         // set current env to match cached env
         services.webex.config = services.webex.config || {};
         services.webex.config.services = services.webex.config.services || {discovery: {}};
-        services.webex.config.services.discovery.u2c = 'https://u2c.wbx2.com/u2c/api/v1';
+        services.webex.config.services.discovery.u2c = 'https://u2c.svc.webex.com/u2c/api/v1';
         services.webex.config.fedramp = false;
         // cache with matching orgId selection
         window.localStorage.setItem(
           CATALOG_CACHE_KEY_V1,
           JSON.stringify({
             cachedAt: Date.now(),
-            env: {fedramp: false, u2cDiscoveryUrl: 'https://u2c.wbx2.com/u2c/api/v1'},
+            env: {fedramp: false, u2cDiscoveryUrl: 'https://u2c.svc.webex.com/u2c/api/v1'},
             preauth: {
               hostMap: {serviceLinks: {}, hostCatalog: {}},
               meta: {selectionType: 'orgId', selectionValue: 'urn:EXAMPLE:org'},
@@ -1535,7 +2003,7 @@ describe('webex-core', () => {
           CATALOG_CACHE_KEY_V1,
           JSON.stringify({
             cachedAt: Date.now(),
-            env: {fedramp: false, u2cDiscoveryUrl: 'https://u2c.wbx2.com/u2c/api/v1'},
+            env: {fedramp: false, u2cDiscoveryUrl: 'https://u2c.svc.webex.com/u2c/api/v1'},
             preauth: {
               hostMap: {serviceLinks: {}, hostCatalog: {}},
               meta: {selectionType: 'mode', selectionValue: 'DEFAULT_BY_PROXIMITY'},
@@ -1564,7 +2032,7 @@ describe('webex-core', () => {
           CATALOG_CACHE_KEY_V1,
           JSON.stringify({
             cachedAt: Date.now(),
-            env: {fedramp: false, u2cDiscoveryUrl: 'https://u2c.wbx2.com/u2c/api/v1'},
+            env: {fedramp: false, u2cDiscoveryUrl: 'https://u2c.svc.webex.com/u2c/api/v1'},
             preauth: {
               hostMap: {serviceLinks: {}, hostCatalog: {}},
               meta: {selectionType: 'orgId', selectionValue: 'urn:DIFF:org'},
@@ -1594,7 +2062,7 @@ describe('webex-core', () => {
         // current env
         services.webex.config = services.webex.config || {};
         services.webex.config.services = services.webex.config.services || {discovery: {}};
-        services.webex.config.services.discovery.u2c = 'https://u2c.wbx2.com/u2c/api/v1';
+        services.webex.config.services.discovery.u2c = 'https://u2c.svc.webex.com/u2c/api/v1';
         services.webex.config.fedramp = false;
 
         const warmed = await services._loadCatalogFromCache();

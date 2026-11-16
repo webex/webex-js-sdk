@@ -1,0 +1,93 @@
+:root
+{
+    --dark-color: rgb(69, 55, 113);
+    --active-color:rgb(41, 22, 101);
+    --contrast-color: white;
+    --light-border-color: rgb(185, 174, 220);
+}
+body
+{
+    font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+    color: rgb(52, 52, 52);
+    margin: 0px;
+    padding: 0px;
+}
+label.note
+{
+    font-size:0.8em;
+    margin: 2px;
+    cursor: pointer;;
+    display: block;
+}
+
+div.item {
+    padding: 10px;
+    /* padding-left: 0px !important; */
+    border-bottom:1px solid var(--light-border-color);
+    margin: 5px;
+    /* border-radius: 5px; */
+}
+h1{
+    width: 100%;
+    display: block;
+    background-color:var(--dark-color);
+    color: var(--contrast-color);
+    font-weight: 300;
+    font-family: inherit;;
+    font-size:1.5em;
+    padding: 10px;
+}
+h2{
+    /* width: 100%; */
+    display: block;
+    color: var(--dark-color);
+    margin-top:25px;
+    border-bottom: solid 1px var(--dark-color);
+    font-weight: 300;
+    font-family: inherit;
+    font-size: 1em;
+    padding: 10px;
+}
+div.page-content
+{
+    padding: 10px !important;;
+    padding-top: 0px !important;;
+}
+input[type=text]{
+    min-height: 3em;;
+    max-height: 3em;;
+    border-radius: 5px;
+    box-shadow: none;;
+    border:solid 1px;
+    border-color: var(--light-border-color);
+    padding: 05px;
+}
+input[type=button], button{
+    background-color:var(--dark-color);
+    color: var(--contrast-color);
+    border: none;
+    padding-left: 20px;
+    padding-right: 20px;
+    min-height: 3em;;
+    max-height: 3em;;
+    border-radius: 5px;
+    box-shadow: none;;
+    margin: 2px;
+ 
+}
+input[type=button]:hover, button:hover{
+    background-color:var(--light-border-color);
+}
+input[type=button]:active, button:active{
+    background-color:var( --active-color);
+}
+
+a{
+    text-decoration: none;
+    color:var(--dark-color);
+}
+
+input[type=text].error:focus {
+    border: 5px solid #f55442;
+    
+}

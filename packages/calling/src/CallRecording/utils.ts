@@ -8,9 +8,9 @@ import {RecordingParty, RecordingServiceData} from './types';
  * - `originator` -> the owner placed the call, so the remote party is `calledParty`.
  * - `terminator` -> the owner received the call, so the remote party is `callingParty`.
  *
- * Returns `undefined` when the party details are absent (e.g. the list endpoint, which only
- * populates `locationId`/`callSessionId`) or when `personality` is unknown. The party details are
- * returned by the metadata endpoint (`GET /convergedRecordings/{recordingId}/metadata`).
+ * Returns `undefined` when the party details are absent or when `personality` is unknown.
+ * User Hub maps `callingData` onto `serviceData` for list and detail, so this works on a list row
+ * when those parties are present.
  *
  * Use `getRemoteParty(serviceData)?.actor?.id` for the Webex person UUID (avatar/presence
  * services). External/PSTN parties may have no `actor.id`; fall back to `?.name` for display.

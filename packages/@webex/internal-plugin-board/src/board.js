@@ -116,14 +116,22 @@ const Board = WebexPlugin.extend({
    * @returns {Promise<Board~Channel>}
    */
   createChannel(conversation, channel) {
-    return this.webex
-      .request({
-        method: 'POST',
-        api: 'board',
-        resource: '/channels',
-        body: this._prepareChannel(conversation, channel),
-      })
-      .then((res) => res.body);
+    const params = {
+      method: 'POST',
+      resource: '/channels',
+      body: this._prepareChannel(conversation, channel),
+    };
+
+    const boardServiceUrl = this.getClusterBoardServiceUrl(conversation);
+
+    if (boardServiceUrl) {
+      params.uri = `${boardServiceUrl}${params.resource}`;
+      delete params.resource;
+    } else {
+      params.api = 'board';
+    }
+
+    return this.webex.request(params).then((res) => res.body);
   },
 
   /**
@@ -465,6 +473,34 @@ const Board = WebexPlugin.extend({
   },
 
   /**
+   * Resolve the board service url co-located with the conversation's ACL cluster.
+   * Board data lives in the cluster encoded by the ACL url; hitting the home board
+   * cluster instead triggers a cross-cluster 307 the browser cannot follow.
+   * @memberof Board.BoardService
+   * @param {Conversation~ConversationObject} conversation
+   * @returns {string|undefined} board API base url for the conversation's cluster
+   */
+  getClusterBoardServiceUrl(conversation = {}) {
+    const {aclUrl} = conversation;
+
+    if (!aclUrl) {
+      return undefined;
+    }
+
+    const {services} = this.webex.internal;
+    const clusterId = services.getClusterId(aclUrl);
+
+    if (!clusterId) {
+      return undefined;
+    }
+
+    // Swap the trailing service token (e.g. `acl-write`) for the board API token.
+    const boardClusterId = [...clusterId.split(':').slice(0, -1), 'board'].join(':');
+
+    return services.getServiceFromClusterId({clusterId: boardClusterId})?.url;
+  },
+
+  /**
    * Gets Channels
    * @memberof Board.BoardService
    * @param {Conversation~ConversationObject} conversation
@@ -481,7 +517,6 @@ const Board = WebexPlugin.extend({
     }
 
     const params = {
-      api: 'board',
       resource: '/channels',
       qs: {
         aclUrlLink: conversation.aclUrl,
@@ -489,6 +524,15 @@ const Board = WebexPlugin.extend({
     };
 
     assign(params.qs, pick(options, 'channelsLimit', 'type'));
+
+    const boardServiceUrl = this.getClusterBoardServiceUrl(conversation);
+
+    if (boardServiceUrl) {
+      params.uri = `${boardServiceUrl}${params.resource}`;
+      delete params.resource;
+    } else {
+      params.api = 'board';
+    }
 
     return this.request(params).then((res) => new Page(res, this.webex));
   },

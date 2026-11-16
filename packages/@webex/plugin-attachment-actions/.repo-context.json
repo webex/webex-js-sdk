@@ -1,0 +1,414 @@
+{
+  "$schema": "./schemas/repo-context.schema.json",
+  "version": 1,
+  "repository": {
+    "name": "@webex/plugin-attachment-actions",
+    "purpose": "Public plugin registered as webex.attachmentActions for the submit actions of adaptive cards attached to Webex messages, through the Webex REST API attachment/actions resource (catalog service hydra): create POSTs the caller's attachment action unchanged as a JSON body and get takes a record or id and resolves the record. listen() builds a webhook-style event envelope, connects the Mercury socket, and turns conversation activities with the verb cardAction into created events built from the activity alone, with Hydra attachment action, message, person, and room ids and the decrypted card inputs; a conversion error is logged and drops the event. Importing the package also registers the conversation and mercury internal plugins. Nothing is cached or persisted."
+  },
+  "commands": {
+    "install": "yarn",
+    "prebuild": "yarn prebuild:modules",
+    "compile": "yarn build",
+    "build": "yarn build:src",
+    "unit-test": "[NEEDS HUMAN INPUT] -- package.json defines no test:unit script and the package has no test/unit directory; its only spec, test/integration/spec/attachmentActions.js, runs only under test:browser:broken, which currently bundles nothing, and there is no test:integration script. Add a unit suite and script before recording a command here.",
+    "lint": "yarn test:style",
+    "browser-test": "yarn test:browser:broken",
+    "deploy": "yarn deploy:npm"
+  },
+  "public_interfaces": [
+    {
+      "name": "@webex/plugin-attachment-actions package entry",
+      "kind": "package_export",
+      "source": "src/index.js",
+      "entrypoints": [
+        "import '@webex/plugin-attachment-actions'",
+        "import AttachmentActions from '@webex/plugin-attachment-actions'"
+      ],
+      "audience": "SDK bundles (webex, webex-node) and applications that build their own webex instance",
+      "notes": "Importing the package registers the internal plugins conversation (whose payload transformer decrypts socket activities and card inputs) and mercury, then AttachmentActions as public plugin 'attachmentActions' with no config; the first registration of the name wins. The default export AttachmentActions is the only export."
+    },
+    {
+      "name": "webex.attachmentActions methods and events",
+      "kind": "plugin_api",
+      "source": "src/attachmentActions.js",
+      "entrypoints": [
+        "webex.attachmentActions.create(attachmentAction)",
+        "webex.attachmentActions.get(attachmentAction)",
+        "webex.attachmentActions.listen()",
+        "webex.attachmentActions.on('created', handler)"
+      ],
+      "audience": "applications and the workspace sample browser-socket",
+      "notes": "create POSTs the caller's object unchanged to hydra attachment/actions and get GETs attachment/actions by record or id; get(undefined) throws synchronously. listen() needs spark:all and spark:kms; each call adds another Mercury listener. Only the verb cardAction gives created, built from the activity alone with Hydra ids and the inputs when present; there is no personEmail. A conversion error is logged through webex.logger.error and drops the event. onWebexApiEvent and getattachmentActionEvent are marked @private."
+    },
+    {
+      "name": "package scripts",
+      "kind": "npm_scripts",
+      "source": "package.json",
+      "entrypoints": [
+        "build",
+        "build:src",
+        "test:style",
+        "test:browser:broken",
+        "test",
+        "deploy:npm"
+      ],
+      "audience": "contributors and CI",
+      "notes": "build runs build:src, which writes dist. There is no test:unit script, no unit test, and no test:integration script. test:browser:broken (commands.browser-test) runs karma over test/integration/spec but bundles nothing today (no case run, exit 0). The aggregate test script runs test:style, then exits 1 because test:unit is not defined; it is deliberately not a manifest command."
+    }
+  ],
+  "source_of_truth": [
+    {
+      "surface": "Attachment actions plugin implementation",
+      "paths": [
+        "src/index.js",
+        "src/attachmentActions.js"
+      ],
+      "generated_artifacts": [
+        "dist"
+      ],
+      "refresh_with": [
+        "yarn build:src"
+      ],
+      "validate_with": [
+        "yarn test:style"
+      ]
+    },
+    {
+      "surface": "module specification",
+      "paths": [
+        "src/docs/README.md"
+      ],
+      "generated_artifacts": [],
+      "refresh_with": [
+        "update alongside the behavior change in the same commit"
+      ],
+      "validate_with": [
+        "spec-validator on an independent runtime"
+      ]
+    }
+  ],
+  "generated_artifacts": [
+    {
+      "path": "dist",
+      "generated_from": "src",
+      "refresh_with": "yarn build:src"
+    },
+    {
+      "path": "../../../.sdd/templates/repo-standards/template-map.json",
+      "generated_from": "WebexTools/repo-standards@d89a7fe59126ae3ad9bac9ca352aa7f12b4c85dc",
+      "refresh_with": "The package holds no templates. It refers to the monorepo root snapshot at ../../../.sdd/templates/repo-standards through layout.monorepo_package.templates_root_path in .sdd/manifest.json. Refresh the root snapshot, not this package."
+    }
+  ],
+  "validation_matrix": [
+    {
+      "paths": [
+        "src/**"
+      ],
+      "minimum": [
+        "yarn build:src",
+        "yarn test:style"
+      ],
+      "recommended": [
+        "add a test/unit/spec case and a test:unit script for the changed behavior; the package has no unit tests"
+      ]
+    },
+    {
+      "paths": [
+        "src/attachmentActions.js"
+      ],
+      "minimum": [
+        "yarn build:src",
+        "yarn test:style"
+      ],
+      "recommended": [
+        "pin the request paths, the cardAction-only mapping, the event fields, and the conversion error path with unit cases before changing them; check the workspace sample browser-socket, which uses listen and the created event"
+      ]
+    },
+    {
+      "paths": [
+        "src/index.js"
+      ],
+      "minimum": [
+        "yarn build:src",
+        "yarn test:style"
+      ],
+      "recommended": [
+        "check the bundles that register the plugin (webex, webex-node) when the registered name or the conversation and mercury imports change"
+      ]
+    }
+  ],
+  "change_impact": [
+    {
+      "paths": [
+        "src/attachmentActions.js"
+      ],
+      "affects": [
+        "the hydra attachment/actions requests and their result shapes",
+        "the created event and its envelope",
+        "the conversion error log line"
+      ],
+      "refresh_with": [
+        "yarn build:src"
+      ],
+      "validate_with": [
+        "yarn test:style"
+      ],
+      "avoid_direct_edits": [
+        "dist"
+      ],
+      "notes": "No unit case covers any method; add one before changing behavior."
+    },
+    {
+      "paths": [
+        "src/index.js"
+      ],
+      "affects": [
+        "the registered plugin name",
+        "registration of webex.internal.conversation and webex.internal.mercury"
+      ],
+      "refresh_with": [
+        "yarn build:src"
+      ],
+      "validate_with": [
+        "yarn test:style"
+      ],
+      "avoid_direct_edits": [
+        "dist"
+      ],
+      "notes": "listen() depends on the mercury plugin registered here, and socket activities and card inputs are decrypted by the conversation plugin registered here (MOD-001)."
+    }
+  ],
+  "evidence_rules": [
+    {
+      "claim_category": "command_name",
+      "sources": [
+        "package.json"
+      ],
+      "requirement": "The script must exist in package.json scripts.",
+      "notes": "test:unit and test:integration do not exist, so the aggregate test script fails; test:browser:broken currently verifies nothing."
+    },
+    {
+      "claim_category": "import_path",
+      "sources": [
+        "src/index.js"
+      ],
+      "requirement": "A binding is public only if exported from src/index.js.",
+      "notes": "The only export is the default AttachmentActions."
+    },
+    {
+      "claim_category": "behavior_claim",
+      "sources": [
+        "src"
+      ],
+      "requirement": "Ground every behavioral claim in source evidence.",
+      "notes": "Commit history is not an evidence source for this package. README.md is context only (docs/adr/0001-retain-product-readme.md). The integration spec under test/integration/spec states intended behavior but no working script runs it. The webex-core, common, and internal-plugin-mercury specs were consulted, and the mercury spec is stale on sessions, so its code was the referee there; internal-plugin-conversation has no spec, so its code was read, as were the webex-core services and the common helpers where those specs are silent."
+    }
+  ],
+  "negative_guidance": [
+    {
+      "rule": "Do not build Hydra ids by hand or with a fixed cluster.",
+      "why": "Event ids must match the ids the attachment actions resource returns (INV-002)."
+    },
+    {
+      "rule": "Do not let a conversion error escape getattachmentActionEvent or trigger a partial event.",
+      "why": "A failure is one error log line and no event (INV-004)."
+    },
+    {
+      "rule": "Do not fill an event without deep-cloning the stored envelope.",
+      "why": "One envelope is shared by every event (INV-003)."
+    },
+    {
+      "rule": "Do not log card inputs, ids, or email addresses through webex.logger.",
+      "why": "Inputs carry what users typed; only the fixed conversion error line is logged today."
+    },
+    {
+      "rule": "Do not treat README.md as the behavior reference.",
+      "why": "Its heading names the messages plugin and it shows no usage; see docs/adr/0001-retain-product-readme.md."
+    },
+    {
+      "rule": "Do not infer a coverage threshold or a unit-test command for this package.",
+      "why": "No unit test, test:unit script, coverage script, or threshold exists."
+    }
+  ],
+  "confidence_policy": {
+    "high": {
+      "action": "update",
+      "expectation": "Source and a unit case agree; no such case exists in this package yet."
+    },
+    "medium": {
+      "action": "narrow-scope",
+      "expectation": "Only source evidence exists, or only the integration spec that no script runs, as for every method and the event today. Pin current behavior with a unit case before modifying."
+    },
+    "low": {
+      "action": "noop",
+      "expectation": "Neither source, tests, nor a dependency's spec or code settles the question, as for why get checks res.body.items. Stop and report the gap."
+    }
+  },
+  "repository_topology": {
+    "main_entrypoints": [
+      {
+        "name": "package entry",
+        "path": "src/index.js",
+        "purpose": "Registers the conversation and mercury internal plugins and the attachmentActions plugin, and exports the class",
+        "notes": "No subpath exports; package.json main is dist/index.js and devMain is src/index.js."
+      }
+    ],
+    "workspace_packages": [
+      {
+        "name": "@webex/plugin-attachment-actions",
+        "paths": [
+          "src",
+          "test"
+        ],
+        "notes": "One module; this SDD root is the package directory inside the webex-js-sdk monorepo."
+      }
+    ],
+    "source_surfaces": [
+      {
+        "name": "Attachment actions plugin",
+        "paths": [
+          "src"
+        ],
+        "notes": "index.js and attachmentActions.js. Specified at src/docs/README.md."
+      },
+      {
+        "name": "tests",
+        "paths": [
+          "test/integration/spec"
+        ],
+        "notes": "One live-service integration spec with 2 cases; only test:browser:broken runs it, and it bundles nothing today. There is no unit spec."
+      }
+    ],
+    "generated_surfaces": [
+      {
+        "name": "build output",
+        "paths": [
+          "dist"
+        ],
+        "generated_from": "src",
+        "refresh_with": "yarn build:src",
+        "notes": "JavaScript and source maps from webex-legacy-tools; no type declarations. Do not edit by hand."
+      },
+      {
+        "name": "repo-standards template map",
+        "paths": [
+          "../../../.sdd/templates/repo-standards"
+        ],
+        "generated_from": "WebexTools/repo-standards@d89a7fe59126ae3ad9bac9ca352aa7f12b4c85dc",
+        "refresh_with": "The package holds no templates. It refers to the monorepo root snapshot at ../../../.sdd/templates/repo-standards through layout.monorepo_package.templates_root_path in .sdd/manifest.json. Refresh the root snapshot, not this package.",
+        "notes": "The package holds no templates. It refers to the monorepo root snapshot at ../../../.sdd/templates/repo-standards through layout.monorepo_package.templates_root_path in .sdd/manifest.json. Refresh the root snapshot, not this package."
+      }
+    ],
+    "validation_entrypoints": [
+      {
+        "name": "compile",
+        "command": "yarn build",
+        "scope": "src",
+        "notes": "Runs build:src."
+      },
+      {
+        "name": "lint",
+        "command": "yarn test:style",
+        "scope": "src",
+        "notes": "eslint via the local .eslintrc.js; docs/** and *.md are ignored."
+      }
+    ],
+    "sync_paths": [
+      {
+        "source": "src/attachmentActions.js",
+        "targets": [
+          "src/docs/README.md"
+        ],
+        "mechanism": "Manual; update the module specification in the same change that alters observable behavior.",
+        "notes": "Keep the request, event, failure-mode, and wire rows of the specification aligned with src/attachmentActions.js and src/index.js."
+      },
+      {
+        "source": "WebexTools/repo-standards@d89a7fe59126ae3ad9bac9ca352aa7f12b4c85dc",
+        "targets": [
+          "../../../.sdd/templates/repo-standards"
+        ],
+        "mechanism": "The package holds no templates. It refers to the monorepo root snapshot at ../../../.sdd/templates/repo-standards through layout.monorepo_package.templates_root_path in .sdd/manifest.json. Refresh the root snapshot, not this package.",
+        "notes": "The package holds no templates. It refers to the monorepo root snapshot at ../../../.sdd/templates/repo-standards through layout.monorepo_package.templates_root_path in .sdd/manifest.json. Refresh the root snapshot, not this package."
+      }
+    ]
+  },
+  "folder_readme_contract": {
+    "required_sections": [
+      "purpose",
+      "boundaries",
+      "key-files",
+      "common-tasks"
+    ],
+    "rules": [
+      "Orient the reader before describing detail.",
+      "Link to the module specification rather than duplicating it."
+    ],
+    "example_policy": "Examples are allowed only when verified against src/ or test/.",
+    "fallback": "Omit a section rather than inventing content; report unresolved facts as gaps."
+  },
+  "regression_feedback_rules": [
+    {
+      "trigger": "An attachment actions request or its result handling in src/attachmentActions.js changes.",
+      "required_followups": [
+        "Add a test:unit script and a test/unit/spec case asserting the request options and the resolved value, including the items branch of get",
+        "Update MOD-002 and MOD-003 in src/docs/README.md"
+      ],
+      "notes": "No unit case exists for any method today."
+    },
+    {
+      "trigger": "listen, onWebexApiEvent, or getattachmentActionEvent in src/attachmentActions.js, or the imports in src/index.js, change.",
+      "required_followups": [
+        "Add parametrized unit cases for each activity verb, each missing activity field, the absent inputs, and the undefined envelope",
+        "Update MOD-001, MOD-004 to MOD-007, and INV-001 to INV-004 in src/docs/README.md"
+      ],
+      "notes": "Listeners and the socket sample rely on the event name created and on the envelope and data fields."
+    }
+  ],
+  "surface_owners": [
+    {
+      "surface": "module implementation and specifications",
+      "owner": "@webex/web-sdk",
+      "edit_boundary": "The monorepo .github/CODEOWNERS has no line for packages/@webex/plugin-attachment-actions, so its default rule assigns the package to @webex/web-sdk."
+    }
+  ],
+  "do_not_edit": [
+    "dist",
+    "../../../.sdd/templates/repo-standards"
+  ],
+  "marker_scopes": {
+    "sdd": [
+      ".sdd/manifest.json",
+      "src/docs/README.md",
+      "docs"
+    ]
+  },
+  "fallback_rules": [
+    "When source and tests disagree, code is the referee and the disagreement is recorded rather than silently resolved.",
+    "When neither source nor tests settle a question, report it as a gap instead of inferring.",
+    "Commit history is not a valid rationale source for this package.",
+    "When a dependency's specification disagrees with that dependency's code, use the code and record the disagreement; when a dependency has no specification, use its code."
+  ],
+  "downstream_context_pack": {
+    "required_human_surfaces": [
+      "README.md",
+      "docs/index.md",
+      "docs/architecture.md",
+      "src/docs/README.md"
+    ],
+    "required_agent_operational_surfaces": [
+      "AGENTS.md",
+      "docs/specs/README.md"
+    ],
+    "required_machine_readable_surface": ".sdd/manifest.json",
+    "recommended_machine_readable_sections": [
+      "public_interfaces",
+      "change_impact",
+      "evidence_rules",
+      "negative_guidance",
+      "confidence_policy",
+      "repository_topology",
+      "folder_readme_contract",
+      "regression_feedback_rules"
+    ]
+  }
+}

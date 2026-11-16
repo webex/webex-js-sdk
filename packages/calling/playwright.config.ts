@@ -84,7 +84,9 @@ export default defineConfig({
   retries: 3,
   fullyParallel: false,
   workers: 10,
-  reporter: 'html',
+  // Never serve the report inline: it blocks the process until Ctrl+C, which stalls
+  // `yarn workspaces foreach run test:e2e` before it reaches the other packages.
+  reporter: [['html', {open: 'never'}]],
   use: {
     baseURL: BASE_URL,
     ignoreHTTPSErrors: true,

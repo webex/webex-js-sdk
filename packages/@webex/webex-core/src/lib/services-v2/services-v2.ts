@@ -8,6 +8,13 @@ import ServiceCatalog from './service-catalog';
 import fedRampServices from './service-fed-ramp';
 import {COMMERCIAL_ALLOWED_DOMAINS} from '../constants';
 import {
+  clearCatalogAuthFailure,
+  getCatalogAuthFailure,
+  recordCatalogAuthFailure,
+  serviceLookupError,
+} from '../services/catalog-auth';
+import {matchesCatalogUrl} from '../services/service-catalog';
+import {
   ActiveServices,
   IServiceCatalog,
   QueryOptions,
@@ -15,6 +22,7 @@ import {
   ServiceHostmap,
   ServiceGroup,
   ServiceHost,
+  ServiceUrl,
   SelectionMeta,
 } from './types';
 
@@ -74,6 +82,36 @@ const Services = WebexPlugin.extend({
    */
   _getCatalog(): IServiceCatalog {
     return this._catalogs.get(this.webex);
+  },
+
+  /**
+   * Remember a postauth catalog failure caused by HTTP 401 or 403.
+   * Other failures clear any previously stored auth failure.
+   * @private
+   * @param {Error} error
+   * @returns {void}
+   */
+  _recordCatalogAuthFailure(error) {
+    recordCatalogAuthFailure(this, error);
+  },
+
+  /**
+   * @private
+   * @returns {{status: number, reason: string}|null}
+   */
+  _getCatalogAuthFailure() {
+    return getCatalogAuthFailure(this);
+  },
+
+  /**
+   * Build the rejection for a service that could not be resolved.
+   * A stored catalog auth failure replaces the generic not-found text.
+   * @private
+   * @param {string} fallbackMessage
+   * @returns {Error}
+   */
+  _serviceLookupError(fallbackMessage: string) {
+    return serviceLookupError(this, fallbackMessage);
   },
 
   /**
@@ -216,13 +254,23 @@ const Services = WebexPlugin.extend({
   },
 
   /**
-   * Checks if the current environment is an integration (INT) environment
-   * by examining the u2c discovery URL from webex config.
+   * Checks if the current environment is an integration (INT) environment.
+   * Uses the explicit environment config when set, otherwise examines the u2c discovery URL.
    * INT environments use discovery URLs containing 'intb' (e.g., u2c-intb.ciscospark.com).
    * @returns {boolean} True if INT environment, false otherwise
    */
   isIntegrationEnvironment(): boolean {
     try {
+      const configuredEnvironment = this.webex?.config?.environment;
+
+      if (configuredEnvironment !== undefined) {
+        const isIntFromConfig = configuredEnvironment === 'integration';
+
+        this.logger.info(`services: isIntegrationEnvironment: ${isIntFromConfig} (config)`);
+
+        return isIntFromConfig;
+      }
+
       const u2cUrl = this.webex?.config?.services?.discovery?.u2c || '';
       const isInt = u2cUrl.includes('intb');
 
@@ -345,9 +393,19 @@ const Services = WebexPlugin.extend({
         this._cacheCatalog(serviceGroup, serviceHostMap, selectionMeta);
         this.updateCredentialsConfig();
         catalog.status[serviceGroup].collecting = false;
+
+        // A successful postauth catalog replaces any remembered 401/403.
+        // Preauth and signin updates leave that marker alone.
+        if (serviceGroup === 'postauth') {
+          clearCatalogAuthFailure(this);
+        }
       })
       .catch((error) => {
         catalog.status[serviceGroup].collecting = false;
+
+        if (serviceGroup === 'postauth') {
+          this._recordCatalogAuthFailure(error);
+        }
 
         return Promise.reject(error);
       });
@@ -830,7 +888,7 @@ const Services = WebexPlugin.extend({
       });
 
       return Promise.reject(
-        new Error(`services: service '${name}' was not found in any of the catalogs`)
+        this._serviceLookupError(`services: service '${name}' was not found in any of the catalogs`)
       );
     }
 
@@ -853,7 +911,7 @@ const Services = WebexPlugin.extend({
         this.webex.internal.metrics.submitClientMetrics(METRICS.JS_SDK_SERVICE_NOT_FOUND, {
           fields: {service_name: name},
         });
-        reject(new Error(`services: service '${name}' was not found after waiting`));
+        reject(this._serviceLookupError(`services: service '${name}' was not found after waiting`));
       });
     });
   },
@@ -988,7 +1046,9 @@ const Services = WebexPlugin.extend({
 
     const priorityUrl = service.get();
     const defaultUrl = new URL(
-      service.serviceUrls.find((serviceUrl) => url.startsWith(serviceUrl.baseUrl)).baseUrl
+      service.serviceUrls.find((serviceUrl: ServiceUrl) =>
+        matchesCatalogUrl(url, serviceUrl.baseUrl)
+      ).baseUrl
     ).href;
 
     return {
@@ -1257,9 +1317,16 @@ const Services = WebexPlugin.extend({
       requestObject.headers = {authorization: token};
     }
 
-    return this.webex.internal.newMetrics.callDiagnosticLatencies
-      .measureLatency(() => this.request(requestObject), 'internal.get.u2c.time')
-      .then(({body}) => this._formatReceivedHostmap(body || {}));
+    const sendRequest = () => this.request(requestObject);
+
+    const responsePromise = this.webex.internal.newMetrics
+      ? this.webex.internal.newMetrics.callDiagnosticLatencies.measureLatency(
+          sendRequest,
+          'internal.get.u2c.time'
+        )
+      : sendRequest();
+
+    return responsePromise.then(({body}) => this._formatReceivedHostmap(body || {}));
   },
 
   /**
@@ -1275,7 +1342,10 @@ const Services = WebexPlugin.extend({
     // Validate that the services configuration exists.
     if (services) {
       if (fedramp) {
-        services.discovery = fedRampServices;
+        services.discovery = {
+          ...fedRampServices,
+          u2c: services.discovery?.u2c || fedRampServices.u2c,
+        };
       }
       // Check for discovery services.
       if (services.discovery) {
@@ -1389,6 +1459,28 @@ const Services = WebexPlugin.extend({
   },
 
   /**
+   * Build a promise that rejects once the catalog init timeout elapses. Race
+   * this against catalog collection so a hung request never leaves
+   * `services.ready` false forever - that would stall `webex.ready` and leave
+   * consumers waiting on it indefinitely. Timeout is configurable via
+   * `config.services.catalogInitTimeout` (defaults to 15s in config). Created
+   * lazily so paths that skip catalog collection never schedule a stray timer.
+   *
+   * @private
+   * @returns {Promise<never>}
+   */
+  _makeInitTimeout(): Promise<never> {
+    const initTimeoutMs = this.webex.config?.services?.catalogInitTimeout;
+
+    return new Promise<never>((_, reject) => {
+      setTimeout(
+        () => reject(new Error(`services: init timed out after ${initTimeoutMs}ms`)),
+        initTimeoutMs
+      );
+    });
+  },
+
+  /**
    * Initializer
    *
    * @instance
@@ -1455,6 +1547,14 @@ const Services = WebexPlugin.extend({
       } else {
         const {email} = this.webex.config;
 
+        if (this.webex.config?.services?.skipPreauthCatalogOnUnauthenticated === true) {
+          this.logger.info(
+            'services: skipping preauth catalog collection while unauthenticated as per the config'
+          );
+
+          return;
+        }
+
         this.collectPreauthCatalog(email ? {email} : undefined).catch((error) => {
           this.initFailed = true;
           this.logger.error(
@@ -1489,24 +1589,12 @@ const Services = WebexPlugin.extend({
       }
       const {supertoken} = this.webex.credentials;
 
-      // Race init against a hard timeout so a hung request never leaves
-      // `services.ready` false forever - that would stall `webex.ready` and
-      // leave consumers waiting on it indefinitely. Timeout is configurable via
-      // `config.services.catalogInitTimeout` (defaults to 15s in config).
-      const initTimeoutMs = this.webex.config?.services?.catalogInitTimeout;
-      const initServiceCatalogsTimeout = new Promise<never>((_, reject) => {
-        setTimeout(
-          () => reject(new Error(`services: init timed out after ${initTimeoutMs}ms`)),
-          initTimeoutMs
-        );
-      });
-
       // Validate if the supertoken exists.
       if (supertoken && supertoken.access_token) {
         // `initServiceCatalogs` marks the catalog ready internally once the
         // postauth catalog is collected - even if it loses the timeout race
-        // above, so a slow fetch still eventually flips `catalog.isReady`.
-        Promise.race([this.initServiceCatalogs(), initServiceCatalogsTimeout])
+        // below, so a slow fetch still eventually flips `catalog.isReady`.
+        Promise.race([this.initServiceCatalogs(), this._makeInitTimeout()])
           .catch((error) => {
             this.initFailed = true;
             this.logger.error(
@@ -1516,18 +1604,6 @@ const Services = WebexPlugin.extend({
           .finally(() => this._finalizeReady());
       } else {
         const {email} = this.webex.config;
-
-        Promise.race([
-          this.collectPreauthCatalog(email ? {email} : undefined),
-          initServiceCatalogsTimeout,
-        ])
-          .catch((error) => {
-            this.initFailed = true;
-            this.logger.error(
-              `services: failed to init initial services when no credentials available, ${error?.message}`
-            );
-          })
-          .finally(() => this._finalizeReady());
 
         // Handle fresh login: 'loaded' fires before OAuth completes, so listen
         // for `canAuthorize` flipping true and then collect the postauth catalog.
@@ -1541,6 +1617,29 @@ const Services = WebexPlugin.extend({
             });
           }
         });
+
+        if (this.webex.config?.services?.skipPreauthCatalogOnUnauthenticated === true) {
+          // Skip the preauth catalog fetch (it will be collected manually
+          // later), but still finalize `services.ready` so `webex.ready` is not
+          // stalled while unauthenticated. No timeout is created here so there
+          // is no stray timer or unhandled rejection.
+          this.logger.info(
+            'services: skipping preauth catalog collection while unauthenticated as per the config'
+          );
+          this._finalizeReady();
+        } else {
+          Promise.race([
+            this.collectPreauthCatalog(email ? {email} : undefined),
+            this._makeInitTimeout(),
+          ])
+            .catch((error) => {
+              this.initFailed = true;
+              this.logger.error(
+                `services: failed to init initial services when no credentials available, ${error?.message}`
+              );
+            })
+            .finally(() => this._finalizeReady());
+        }
       }
     });
   },

@@ -1,0 +1,111 @@
+<div class="header">
+    <div class="nav">
+        <div class="left-button">
+            <a href="#" onclick="goBack();">
+                <imi-svg-icon src="/assets/icons/back.svg"></imi-svg-icon>
+            </a>
+        </div>
+        <div class="content">
+            <div class="title" id="divThreadTitle">Acme Utility - New Conversation</div>
+            <div class="subtitle">UK's Leading Utility Provider</div>
+            <div class="note">Typically replies in few minutes</div>
+            <a class="note" href="api-demo.html">api-demo</a> &nbsp; |
+            <a class="note" href="15304.html">15304-demo</a>
+        </div>
+        <div class="right-button">
+            <imi-connection-status-view></imi-connection-status-view>
+        </div>
+    </div>
+
+</div>
+<div class="content-area">
+    <progress-bar value="0" type="indeterminate"></progress-bar>
+    <div id="divMessagesContainer" class="container">
+    </div>
+    <div id="divThreadAlert" class="thread-alert-container">
+        <a href="javascript:void(0)" class="close-button" id="btnCloseThread">
+            <imi-svg-icon src="/assets/icons/close.svg">
+            </imi-svg-icon></a>
+        <div class="title">Conversation Summary</div>
+        <div id="divThreadAlertText" class="thread-alert-text"></div>
+    </div>
+    <imi-quick-replies-view></imi-quick-replies-view>
+</div>
+
+<div class="new-thread-footer" id="divMessageFooter">
+    <div class="content">
+        <input type="text" class="message-input" placeholder="Type a message " />
+        <input type="file" id="finAttachment" class="no-display" />
+        <div class="buttons">
+            <a class="button-secondary" name="btnAttachment">
+                <imi-svg-icon height="30px" width="30px" src="/assets/icons/attach.svg">
+                </imi-svg-icon>
+            </a>
+            <a class="button-secondary" id="btnSend" onclick="sendMessage(event)">
+                <imi-svg-icon height="30px" width="30px" src="/assets/icons/send.svg">
+                </imi-svg-icon>
+            </a>
+            <div id="ldrSendMessage" class="loader" style='display: none;'></div>
+        </div>
+    </div>
+</div>
+
+<div class="closed-thread" id="divThreadClosed">
+    <label> This thread has been closed.</label>
+</div>
+
+<template id="tmpMessage">
+    <div id="m_${message.getTransactionId() || message.getTemporaryId()}"
+        class="message ${getCSSClassForTemplateOrQuickReply(message)}">
+        <div class=" ${getCssClassByMessageOutgoing(message)}">
+            <div class="content message-content">
+                <div class="text">${message.isCOTMessage? '<type-writer
+                        text="' + message.getMessage()+'"></type-writer>':
+                    message.getMessage()||""}
+                </div>
+                <a href="javascript:void(0)" class="retry-button"
+                rel="${message.getTransactionId()||message.getTemporaryId()}">retry</a>
+                <imi-message-media-view message='${encodeURIComponent((JSON.stringify(message.toJSON())))}' ;>
+                </imi-message-media-view>
+            </div>
+            <div class="message-footer">
+                <div class="status">${getStatusForMessage(message)}</div>
+                <imi-timestamp date=${message.getSubmittedAt()} class="scroll timestamp"></imi-timestamp>
+            </div>
+            ${message.isQuickReplyOptionAwaitingInput? '<div class="quick-reply-space">&nbsp;</div>':""}
+        </div>
+    </div>
+</template>
+
+<template id="tmpMessageNoResult">
+    <div class="message">
+        <div class="no-result">No More Messages</div>
+    </div>
+</template>
+<template id="tmpCOTMessage">
+    <div id="m_${message.getTransactionId()}" class="message">
+        <div class="received">
+            <div class="content message-content">
+                <div class="typing-activity">
+                    <div class="typing-indicator"></div>
+                </div> <type-writer text='${message.getMessage() || ""}'
+                    id="type_${message.getTransactionId()}"></type-writer>
+            </div>
+            <div class="message-footer">
+                <div class="status">${getStatusForMessage(message)}</div>
+                <imi-timestamp date=${message.getSubmittedAt()} class="timestamp"></imi-timestamp>
+            </div>
+        </div>
+    </div>
+</template>
+<template id="tmpTypingAlert">
+    <div id="ta_${message.getTransactionId()}" class="message">
+        <div class="received">
+            <div class="content message-content">
+                <div class="typing-activity">
+                    <div class="typing-indicator"></div>
+                </div> <span class="text">${message.getMessage() || ""}</span>
+            </div>
+        </div>
+    </div>
+</template>

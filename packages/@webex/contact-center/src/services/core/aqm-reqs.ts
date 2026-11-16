@@ -117,16 +117,15 @@ export default class AqmReqs {
             clear();
             const notifFail = c.notifFail!;
             if ('errId' in notifFail) {
-              LoggerProxy.log(`Routing request failed: ${JSON.stringify(msg)}`, {
+              const error = new Err.Details(notifFail.errId, msg as any);
+
+              // The raw routing-failure payload/error is never logged verbatim; only a
+              // redacted, non-sensitive diagnostic is emitted regardless of redactSensitiveLogs.
+              LoggerProxy.log('Routing request failed (sensitive details redacted)', {
                 module: AQM_REQS_FILE,
                 method: METHODS.CREATE_PROMISE,
               });
-              const eerr = new Err.Details(notifFail.errId, msg as any);
-              LoggerProxy.log(`Routing request failed: ${eerr}`, {
-                module: AQM_REQS_FILE,
-                method: METHODS.CREATE_PROMISE,
-              });
-              reject(eerr);
+              reject(error);
             } else {
               reject(notifFail.err(msg as any));
             }
@@ -176,13 +175,20 @@ export default class AqmReqs {
             if (response?.headers) {
               response.headers.Authorization = '*';
             }
-            LoggerProxy.error(
-              `Routing request timeout${keySuccess}${JSON.stringify(response)}${c.url}`,
-              {
+            if (c.redactSensitiveLogs) {
+              LoggerProxy.error('Routing request timeout (sensitive details redacted)', {
                 module: AQM_REQS_FILE,
                 method: METHODS.CREATE_PROMISE,
-              }
-            );
+              });
+            } else {
+              LoggerProxy.error(
+                `Routing request timeout${keySuccess}${JSON.stringify(response)}${c.url}`,
+                {
+                  module: AQM_REQS_FILE,
+                  method: METHODS.CREATE_PROMISE,
+                }
+              );
+            }
             reject(
               new Err.Details('Service.aqm.reqs.Timeout', {
                 key: keySuccess,

@@ -14,7 +14,7 @@ const cc = webex.cc;
 // Register and login
 const profile = await cc.register();
 await cc.stationLogin({
-  teamId: profile.teams[0].teamId,
+  teamId: profile.teams[0].id,
   loginOption: 'BROWSER',
 });
 

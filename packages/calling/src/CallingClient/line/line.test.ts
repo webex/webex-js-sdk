@@ -1,4 +1,5 @@
 import {Mutex} from 'async-mutex';
+import {LocalMicrophoneStream} from '@webex/internal-media-core';
 import {
   getMobiusDiscoveryResponse,
   getMockDeviceInfo,
@@ -18,7 +19,10 @@ import {
 import {LINE_EVENTS} from './types';
 import Line from '.';
 import * as utils from '../../common/Utils';
+import * as callUtils from '../../common/callUtils';
 import SDKConnector from '../../SDKConnector';
+import {createLineError} from '../../Errors/catalog/LineError';
+import {ERROR_TYPE} from '../../Errors/types';
 import {REGISTRATION_FILE} from '../constants';
 import {LOGGER} from '../../Logger/types';
 import * as regUtils from '../registration/register';
@@ -113,6 +117,7 @@ describe('Line Tests', () => {
           userId,
           clientDeviceUri,
           serviceData: defaultServiceData,
+          hostIps: [],
         },
         uri: `${primaryUrl}device`,
         method: 'POST',
@@ -165,6 +170,7 @@ describe('Line Tests', () => {
           userId,
           clientDeviceUri,
           serviceData: {...guestServiceData, jwe: mockJwe},
+          hostIps: [],
         },
         uri: `${primaryUrl}device`,
         method: 'POST',
@@ -210,9 +216,40 @@ describe('Line Tests', () => {
           method: 'triggerRegistration',
         },
         expect.anything(),
-        expect.anything(),
         expect.any(Number)
       );
+    });
+
+    it('discovers the host ips before triggering the registration', async () => {
+      const localAudioStream = {
+        outputStream: {getAudioTracks: () => [{id: 'audio-track'}]},
+      } as unknown as LocalMicrophoneStream;
+      const lineWithStream = new Line(
+        userId,
+        clientDeviceUri,
+        mutex,
+        primaryMobiusUris(),
+        backupMobiusUris(),
+        LOGGER.INFO,
+        undefined,
+        undefined,
+        localAudioStream
+      );
+      const discoverHostIpsSpy = jest
+        .spyOn(callUtils, 'discoverHostIps')
+        .mockResolvedValue(undefined);
+      const triggerRegistrationSpy = jest.spyOn(lineWithStream.registration, 'triggerRegistration');
+
+      webex.request.mockReturnValue(registrationPayload);
+
+      await lineWithStream.register();
+
+      expect(discoverHostIpsSpy).toBeCalledOnceWith(localAudioStream);
+      expect(discoverHostIpsSpy.mock.invocationCallOrder[0]).toBeLessThan(
+        triggerRegistrationSpy.mock.invocationCallOrder[0]
+      );
+
+      lineWithStream.removeAllListeners();
     });
 
     it('verify successful de-registration cases', async () => {
@@ -224,6 +261,65 @@ describe('Line Tests', () => {
 
       await line.deregister();
       expect(line.getStatus()).toEqual(RegistrationStatus.IDLE);
+    });
+  });
+
+  describe('Line event emission tests', () => {
+    let line;
+
+    beforeEach(() => {
+      line = new Line(
+        userId,
+        clientDeviceUri,
+        mutex,
+        primaryMobiusUris(),
+        backupMobiusUris(),
+        LOGGER.INFO
+      );
+    });
+
+    afterEach(() => {
+      jest.clearAllMocks();
+      line.removeAllListeners();
+    });
+
+    const supersededError = () =>
+      createLineError(
+        'session superseded',
+        {file: REGISTRATION_FILE, method: 'startKeepaliveTimer'},
+        ERROR_TYPE.SESSION_SUPERSEDED,
+        RegistrationStatus.INACTIVE
+      );
+
+    it.each([LINE_EVENTS.ERROR, LINE_EVENTS.UNREGISTERED])(
+      're-emits %s with the line error to the consumer',
+      (event) => {
+        const listener = jest.fn();
+        const lineError = supersededError();
+
+        line.on(event, listener);
+        line.lineEmitter(event, undefined, lineError);
+
+        expect(listener).toBeCalledOnceWith(lineError);
+      }
+    );
+
+    it('emits unregistered without a reason when no line error is provided', () => {
+      const listener = jest.fn();
+
+      line.on(LINE_EVENTS.UNREGISTERED, listener);
+      line.lineEmitter(LINE_EVENTS.UNREGISTERED);
+
+      expect(listener).toBeCalledOnceWith(undefined);
+    });
+
+    it('does not emit error when no line error is provided', () => {
+      const listener = jest.fn();
+
+      line.on(LINE_EVENTS.ERROR, listener);
+      line.lineEmitter(LINE_EVENTS.ERROR);
+
+      expect(listener).not.toBeCalled();
     });
   });
 

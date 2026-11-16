@@ -12,7 +12,7 @@ The utils scope currently provides shared pagination and cache behavior for cont
 
 - **Typed Pagination Contracts**: Reusable interfaces for response metadata and query params
 - **Generic In-Memory Page Caching**: `PageCache<T>` utility for simple pagination reuse
-- **Cache Safety Rules**: Explicit bypass behavior for search/filter/sort scenarios
+- **Cache Safety Rules**: Explicit bypass behavior for query variants and enabled result/response-shape flags
 - **Spec-Driven Utility Workflow**: Utility-specific implementation and validation flow documented inline in this file
 
 | Component             | File                             | Description                                                                                                                                     |
@@ -36,7 +36,7 @@ src/utils/
 
 ## PageCache Utility
 
-`PageCache<T>` provides a consistent caching model for paginated list APIs. It is optimized for simple page browsing and intentionally bypasses cache for parameterized query cases (`search`, `filter`, `attributes`, `sortBy`).
+`PageCache<T>` provides a consistent caching model for paginated list APIs. It is optimized for simple page browsing and intentionally bypasses cache for parameterized query cases (`search`, `filter`, `attributes`, `sortBy`) and enabled result/response-shape flags (`desktopProfileFilter`, `provisioningView`, `singleObjectResponse`).
 
 ### Reference Usage
 
@@ -49,8 +49,16 @@ const page = PAGINATION_DEFAULTS.PAGE;
 const pageSize = PAGINATION_DEFAULTS.PAGE_SIZE;
 const cacheKey = cache.buildCacheKey(scopeId, page, pageSize);
 
-// Include sortBy only for services that support sorting.
-const canUseCache = cache.canUseCache({search, filter, attributes, sortBy});
+// Include every supported result- or response-shape-changing input.
+const canUseCache = cache.canUseCache({
+  search,
+  filter,
+  attributes,
+  sortBy,
+  desktopProfileFilter,
+  provisioningView,
+  singleObjectResponse,
+});
 
 if (canUseCache) {
   const cachedEntry = cache.getCachedPage(cacheKey);
@@ -80,7 +88,7 @@ return response;
 ```mermaid
 graph TD
   A[Request arrives with scopeId/page/pageSize] --> B{canUseCache?}
-  B -->|No: search/filter/attributes/sortBy provided| C[Bypass cache and call API]
+  B -->|No: query variant or enabled result/shape flag| C[Bypass cache and call API]
   B -->|Yes| D[buildCacheKey scopeId:page:pageSize]
   D --> E["getCachedPage(cacheKey)"]
   E -->|Miss| C
@@ -138,11 +146,14 @@ Contract passed to `canUseCache()`:
 - `filter?: string`
 - `attributes?: string`
 - `sortBy?: string`
+- `desktopProfileFilter?: boolean`
+- `provisioningView?: boolean`
+- `singleObjectResponse?: boolean`
 
 Behavior note:
 
-- Cache bypass is triggered by `sortBy`, not by `sortOrder` alone.
-- If a new service treats `sortOrder` as meaningful without `sortBy`, extend `CacheValidationParams` and `canUseCache()` together.
+- Cache bypass is triggered by a truthy query variant or enabled result/response-shape flag; an explicit `false` boolean remains cache-compatible because it is semantically equivalent to omission.
+- `sortOrder` is not a `CacheValidationParams` field. A service where it changes the wire order without `sortBy` must pass an effective `sortBy`; Queue normalizes a direction-only request to `sortBy: 'name'` before cache validation.
 
 ### `BaseSearchParams`
 
@@ -175,8 +186,9 @@ Returns `true` only when all of these are absent:
 - `filter`
 - `attributes`
 - `sortBy`
+- `desktopProfileFilter`, `provisioningView`, or `singleObjectResponse` when `true`
 
-`sortOrder` alone does not trigger cache bypass because `CacheValidationParams` currently keys bypass on fields that materially change the query result set in existing consumers.
+An explicit `false` boolean remains eligible. `sortOrder` is normalized by the consuming service when it changes the effective wire order; Queue passes `sortBy: 'name'` for a direction-only request.
 
 ### `buildCacheKey(scopeId: string, page: number, pageSize: number): string`
 
@@ -223,7 +235,6 @@ Current consumers of `PageCache` and defaults:
 | Consumer                | File                                                       | Usage                                                        |
 | ----------------------- | ---------------------------------------------------------- | ------------------------------------------------------------ |
 | `AddressBook`           | [`../services/AddressBook.ts`](../services/AddressBook.ts) | Caches paged address-book responses                          |
-| `EntryPoint`            | [`../services/EntryPoint.ts`](../services/EntryPoint.ts)   | Caches paged entry-point responses                           |
 | `Queue`                 | [`../services/Queue.ts`](../services/Queue.ts)             | Caches paged queue responses                                 |
 | `Public type contracts` | [`../types.ts`](../types.ts)                               | Re-exports pagination/search contracts into SDK-facing types |
 
@@ -268,7 +279,7 @@ flowchart TD
 - [ ] `canUseCache()` bypass conditions are unchanged or intentionally updated
 - [ ] `totalRecords`/`totalItems` mapping behavior is preserved
 - [ ] Logging still uses `LoggerProxy` with `module` and `method`
-- [ ] AddressBook/EntryPoint/Queue integration behavior remains correct
+- [ ] AddressBook/Queue cache integration remains correct; EntryPoint remains explicitly uncached
 
 ---
 

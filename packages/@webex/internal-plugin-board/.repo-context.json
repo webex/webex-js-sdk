@@ -1,0 +1,478 @@
+{
+  "$schema": "./schemas/repo-context.schema.json",
+  "version": 1,
+  "repository": {
+    "name": "@webex/internal-plugin-board",
+    "purpose": "Internal whiteboard plugin registered as webex.internal.board. It creates, lists, locks, keeps alive, and deletes board channels bound to a conversation ACL (routing create and list to the board cluster that matches the ACL cluster), adds and reads KMS-encrypted board contents in serial chunks, uploads board images and snapshots to Webex Files, authorizes a transcoder for whiteboard sharing to mobile, and carries live board activity over Mercury through its realtime child, either on a board socket of its own or on the shared Mercury socket. Its payload transformer creates each channel's content key and decrypts content reads."
+  },
+  "commands": {
+    "install": "yarn",
+    "prebuild": "yarn prebuild:modules",
+    "compile": "yarn workspace @webex/internal-plugin-board build:src",
+    "build": "yarn workspace @webex/internal-plugin-board build",
+    "unit-test": "yarn workspace @webex/internal-plugin-board test:unit",
+    "integration-test": "yarn workspace @webex/internal-plugin-board test:browser",
+    "lint": "yarn workspace @webex/internal-plugin-board test:style",
+    "deploy": "yarn workspace @webex/internal-plugin-board deploy:npm"
+  },
+  "public_interfaces": [
+    {
+      "name": "@webex/internal-plugin-board package entry",
+      "kind": "package_export",
+      "source": "src/index.js",
+      "entrypoints": [
+        "import Board from '@webex/internal-plugin-board'",
+        "import {config, RealtimeChannel} from '@webex/internal-plugin-board'",
+        "import '@webex/internal-plugin-board'"
+      ],
+      "audience": "@webex/webex-server, @webex/recipe-private-web-client, and first-party clients",
+      "notes": "Importing the package imports the mercury, encryption, conversation, and feature plugins and registers Board as internal plugin 'board' with child realtime, the board config, and the decryptContents and encryptChannel payload transformers."
+    },
+    {
+      "name": "webex.internal.board runtime methods",
+      "kind": "plugin_api",
+      "source": "src/board.js",
+      "entrypoints": [
+        "webex.internal.board.createChannel()",
+        "webex.internal.board.getChannels()",
+        "webex.internal.board.getChannel()",
+        "webex.internal.board.deleteChannel()",
+        "webex.internal.board.addContent()",
+        "webex.internal.board.getContents()",
+        "webex.internal.board.addImage()",
+        "webex.internal.board.setSnapshotImage()",
+        "webex.internal.board.registerToShareMercury()",
+        "webex.internal.board.authorizeMediaInjector()"
+      ],
+      "audience": "first-party clients",
+      "notes": "Representative entry points; the full list is the Public surface section of src/docs/README.md. Create and list use the cluster-local board URL when the conversation ACL cluster resolves one. The media-injector methods resolve errors as values."
+    },
+    {
+      "name": "webex.internal.board.realtime methods",
+      "kind": "plugin_api",
+      "source": "src/realtime.js",
+      "entrypoints": [
+        "webex.internal.board.realtime.publish()",
+        "webex.internal.board.realtime.connectToSharedMercury()",
+        "webex.internal.board.realtime.connectByOpenNewMercuryConnection()",
+        "webex.internal.board.realtime.disconnectFromSharedMercury()",
+        "webex.internal.board.realtime.disconnectMercuryConnection()"
+      ],
+      "audience": "first-party clients",
+      "notes": "Each RealtimeChannel emits event:board.activity. Shared mode needs the developer toggle web-shared-mercury and a registered Mercury connection."
+    },
+    {
+      "name": "board configuration",
+      "kind": "configuration",
+      "source": "src/config.js",
+      "entrypoints": [
+        "webex.config.board.numberContentsPerPageForAdd",
+        "webex.config.board.numberContentsPerPageForGet",
+        "webex.config.board.pingInterval",
+        "webex.config.board.pongTimeout",
+        "webex.config.board.forceCloseDelay",
+        "webex.config.board.mercuryBindingPrefix"
+      ],
+      "audience": "integrators configuring Webex.init",
+      "notes": "The timers default from MERCURY_PING_INTERVAL, MERCURY_PONG_TIMEOUT, and MERCURY_FORCE_CLOSE_DELAY and are strings when those variables are set. RealtimeChannel reads this block as its Mercury config."
+    },
+    {
+      "name": "package scripts",
+      "kind": "npm_scripts",
+      "source": "package.json",
+      "entrypoints": [
+        "build",
+        "build:src",
+        "test:style",
+        "test:unit",
+        "test:browser",
+        "deploy:npm"
+      ],
+      "audience": "contributors and CI",
+      "notes": "Run build:src before test:unit because the unit specs import the package by name and load dist. test:browser runs the specs under karma against live services. The aggregate test script calls test:integration, which is not defined, so it fails at that step."
+    }
+  ],
+  "source_of_truth": [
+    {
+      "surface": "board plugin implementation",
+      "paths": [
+        "src/index.js",
+        "src/board.js",
+        "src/realtime.js",
+        "src/realtime-channel.js",
+        "src/realtime-channel-collection.js",
+        "src/config.js"
+      ],
+      "generated_artifacts": [
+        "dist"
+      ],
+      "refresh_with": [
+        "yarn workspace @webex/internal-plugin-board build:src"
+      ],
+      "validate_with": [
+        "yarn workspace @webex/internal-plugin-board test:unit",
+        "yarn workspace @webex/internal-plugin-board test:style"
+      ]
+    },
+    {
+      "surface": "module specification",
+      "paths": [
+        "src/docs/README.md"
+      ],
+      "generated_artifacts": [],
+      "refresh_with": [
+        "update alongside the behavior change in the same commit"
+      ],
+      "validate_with": [
+        "spec-validator on an independent runtime"
+      ]
+    }
+  ],
+  "generated_artifacts": [
+    {
+      "path": "dist",
+      "generated_from": "src",
+      "refresh_with": "yarn workspace @webex/internal-plugin-board build:src"
+    },
+    {
+      "path": "../../../.sdd/templates/repo-standards/template-map.json",
+      "generated_from": "WebexTools/repo-standards@d89a7fe59126ae3ad9bac9ca352aa7f12b4c85dc",
+      "refresh_with": "The package holds no templates. It refers to the monorepo root snapshot at ../../../.sdd/templates/repo-standards through layout.monorepo_package.templates_root_path in .sdd/manifest.json. Refresh the root snapshot, not this package."
+    }
+  ],
+  "validation_matrix": [
+    {
+      "paths": [
+        "src/**"
+      ],
+      "minimum": [
+        "yarn workspace @webex/internal-plugin-board build:src",
+        "yarn workspace @webex/internal-plugin-board test:unit"
+      ],
+      "recommended": [
+        "yarn workspace @webex/internal-plugin-board test:style"
+      ]
+    },
+    {
+      "paths": [
+        "src/index.js",
+        "src/realtime.js",
+        "src/realtime-channel.js"
+      ],
+      "minimum": [
+        "yarn workspace @webex/internal-plugin-board build:src",
+        "yarn workspace @webex/internal-plugin-board test:unit"
+      ],
+      "recommended": [
+        "review the sibling package specifications packages/@webex/internal-plugin-mercury/src/docs/README.md and packages/@webex/webex-core/src/docs/README.md when the transformer, the RealtimeChannel base class, or the shared-socket handling change",
+        "add unit cases for the payload transformer, which has none today"
+      ]
+    }
+  ],
+  "change_impact": [
+    {
+      "paths": [
+        "src/board.js"
+      ],
+      "affects": [
+        "channel creation and its cluster-local routing",
+        "content encryption and decryption",
+        "image and snapshot upload",
+        "channel deletion and locking",
+        "shared Mercury registration",
+        "transcoder authorization for mobile sharing"
+      ],
+      "refresh_with": [
+        "yarn workspace @webex/internal-plugin-board build:src"
+      ],
+      "validate_with": [
+        "yarn workspace @webex/internal-plugin-board test:unit"
+      ],
+      "avoid_direct_edits": [
+        "dist"
+      ],
+      "notes": "Content written by older or other clients must still decrypt, so the encrypted content shape (device, type, encryptionKeyUrl, payload, file) is a cross-client contract."
+    },
+    {
+      "paths": [
+        "src/realtime.js",
+        "src/realtime-channel.js",
+        "src/realtime-channel-collection.js"
+      ],
+      "affects": [
+        "the publishRequest frame and board bindings",
+        "own-socket and shared-socket connect and disconnect",
+        "event:board.activity routing"
+      ],
+      "refresh_with": [
+        "yarn workspace @webex/internal-plugin-board build:src"
+      ],
+      "validate_with": [
+        "yarn workspace @webex/internal-plugin-board test:unit"
+      ],
+      "avoid_direct_edits": [
+        "dist"
+      ],
+      "notes": "RealtimeChannel inherits the whole Mercury implementation under namespace Board, so a Mercury change can change board sockets."
+    },
+    {
+      "paths": [
+        "src/index.js",
+        "src/config.js"
+      ],
+      "affects": [
+        "registration as webex.internal.board and the sibling plugin imports",
+        "the decryptContents and encryptChannel payload transformers",
+        "the board config, including board socket timers"
+      ],
+      "refresh_with": [
+        "yarn workspace @webex/internal-plugin-board build:src"
+      ],
+      "validate_with": [
+        "yarn workspace @webex/internal-plugin-board test:unit"
+      ],
+      "avoid_direct_edits": [
+        "dist"
+      ],
+      "notes": "The transformers have no unit case; changes need a new test or a live check."
+    }
+  ],
+  "evidence_rules": [
+    {
+      "claim_category": "command_name",
+      "sources": [
+        "package.json"
+      ],
+      "requirement": "The script must exist in package.json scripts.",
+      "notes": "test:integration does not exist; the integration specs run only through test:browser, which needs live services."
+    },
+    {
+      "claim_category": "import_path",
+      "sources": [
+        "src/index.js"
+      ],
+      "requirement": "A binding is public only if exported from src/index.js.",
+      "notes": "Exports: default Board, named config and RealtimeChannel."
+    },
+    {
+      "claim_category": "behavior_claim",
+      "sources": [
+        "src",
+        "test/unit/spec"
+      ],
+      "requirement": "Ground every behavioral claim in source or test evidence.",
+      "notes": "Commit history is not an evidence source for this package. README.md is context only (docs/adr/0001-retain-product-readme.md). Socket lifecycle, KMS, and the service catalog are owned by sibling packages; consult their specifications when present, else their code."
+    }
+  ],
+  "negative_guidance": [
+    {
+      "rule": "Do not send board content without encrypting it with channel.defaultEncryptionKeyUrl.",
+      "why": "The board service stores opaque ciphertext and other clients decrypt with that key."
+    },
+    {
+      "rule": "Do not route createChannel or getChannels to the home board cluster when the ACL cluster resolves a board service.",
+      "why": "In-code comment: the home cluster answers with a cross-cluster 307 the browser cannot follow."
+    },
+    {
+      "rule": "Do not post addContent chunks in parallel.",
+      "why": "In-code comment: parallel chunks race among patches."
+    },
+    {
+      "rule": "Do not make authorizeMediaInjector or unauthorizeMediaInjector reject on service errors without a design change.",
+      "why": "In-code comment: whiteboard sharing must keep working when only mobile delivery fails."
+    },
+    {
+      "rule": "Do not treat README.md as the method, event, or error reference.",
+      "why": "Its usage block is a placeholder; see docs/adr/0001-retain-product-readme.md."
+    },
+    {
+      "rule": "Do not run test:unit against a stale dist.",
+      "why": "The unit specs import the package by name, which resolves main (dist/index.js)."
+    },
+    {
+      "rule": "Do not infer a coverage threshold for this package.",
+      "why": "The developer confirmed no coverage gate applies; the legacy Jest config sets none."
+    }
+  ],
+  "confidence_policy": {
+    "high": {
+      "action": "update",
+      "expectation": "Source and unit test evidence both support the change, and the behavior has a case in test/unit/spec."
+    },
+    "medium": {
+      "action": "narrow-scope",
+      "expectation": "Only source evidence exists, for example the payload transformer, the media-injector methods, processActivityEvent, or the shared-socket refresh. Pin current behavior with a characterization test before modifying."
+    },
+    "low": {
+      "action": "noop",
+      "expectation": "Neither source nor tests settle the question, for example the partial-delete server API. Stop and report the gap."
+    }
+  },
+  "repository_topology": {
+    "main_entrypoints": [
+      {
+        "name": "package entry",
+        "path": "src/index.js",
+        "purpose": "Imports the sibling plugins, registers the board plugin with its config and payload transformer, and re-exports Board, config, and RealtimeChannel",
+        "notes": "No subpath exports."
+      }
+    ],
+    "workspace_packages": [
+      {
+        "name": "@webex/internal-plugin-board",
+        "paths": [
+          "src",
+          "test"
+        ],
+        "notes": "One module; this SDD root is the package directory inside the webex-js-sdk monorepo."
+      }
+    ],
+    "source_surfaces": [
+      {
+        "name": "board plugin",
+        "paths": [
+          "src"
+        ],
+        "notes": "index.js, board.js, realtime.js, realtime-channel.js, realtime-channel-collection.js, config.js. Specified at src/docs/README.md."
+      },
+      {
+        "name": "tests",
+        "paths": [
+          "test/unit/spec",
+          "test/integration/spec"
+        ],
+        "notes": "Three unit specs run by Jest through webex-legacy-tools (58 cases). Three integration specs run only by test:browser; realtime.js and sharing-mercury.js are describe.skip."
+      }
+    ],
+    "generated_surfaces": [
+      {
+        "name": "build output",
+        "paths": [
+          "dist"
+        ],
+        "generated_from": "src",
+        "refresh_with": "yarn workspace @webex/internal-plugin-board build:src",
+        "notes": "Produced by webex-legacy-tools. Do not edit by hand. The unit specs load it."
+      },
+      {
+        "name": "repo-standards template map",
+        "paths": [
+          "../../../.sdd/templates/repo-standards"
+        ],
+        "generated_from": "WebexTools/repo-standards@d89a7fe59126ae3ad9bac9ca352aa7f12b4c85dc",
+        "refresh_with": "The package holds no templates. It refers to the monorepo root snapshot at ../../../.sdd/templates/repo-standards through layout.monorepo_package.templates_root_path in .sdd/manifest.json. Refresh the root snapshot, not this package.",
+        "notes": "The package holds no templates. It refers to the monorepo root snapshot at ../../../.sdd/templates/repo-standards through layout.monorepo_package.templates_root_path in .sdd/manifest.json. Refresh the root snapshot, not this package."
+      }
+    ],
+    "validation_entrypoints": [
+      {
+        "name": "unit tests",
+        "command": "yarn workspace @webex/internal-plugin-board test:unit",
+        "scope": "test/unit/spec",
+        "notes": "jest via webex-legacy-tools --runner jest; run build:src first."
+      },
+      {
+        "name": "lint",
+        "command": "yarn workspace @webex/internal-plugin-board test:style",
+        "scope": "src",
+        "notes": "eslint via the local .eslintrc.js; exits 0 with require-jsdoc warnings; the shared ignore patterns skip src/docs/README.md."
+      }
+    ],
+    "sync_paths": [
+      {
+        "source": "src/board.js",
+        "targets": [
+          "src/docs/README.md"
+        ],
+        "mechanism": "Manual; update the module specification in the same change that alters observable behavior.",
+        "notes": "The same applies to src/realtime.js, src/index.js, and src/config.js."
+      },
+      {
+        "source": "WebexTools/repo-standards@d89a7fe59126ae3ad9bac9ca352aa7f12b4c85dc",
+        "targets": [
+          "../../../.sdd/templates/repo-standards"
+        ],
+        "mechanism": "The package holds no templates. It refers to the monorepo root snapshot at ../../../.sdd/templates/repo-standards through layout.monorepo_package.templates_root_path in .sdd/manifest.json. Refresh the root snapshot, not this package.",
+        "notes": "The package holds no templates. It refers to the monorepo root snapshot at ../../../.sdd/templates/repo-standards through layout.monorepo_package.templates_root_path in .sdd/manifest.json. Refresh the root snapshot, not this package."
+      }
+    ]
+  },
+  "folder_readme_contract": {
+    "required_sections": [
+      "purpose",
+      "boundaries",
+      "key-files",
+      "common-tasks"
+    ],
+    "rules": [
+      "Orient the reader before describing detail.",
+      "Link to the module specification rather than duplicating it."
+    ],
+    "example_policy": "Examples are allowed only when verified against src/ or test/.",
+    "fallback": "Omit a section rather than inventing content; report unresolved facts as gaps."
+  },
+  "regression_feedback_rules": [
+    {
+      "trigger": "The encrypted content shape, the publishRequest frame, or the binding format changes.",
+      "required_followups": [
+        "Add or update cases in test/unit/spec/encryption.js or test/unit/spec/realtime.js",
+        "Update MOD-010, MOD-011, MOD-021, MOD-022, and INV-004 in src/docs/README.md"
+      ],
+      "notes": "Other clients read the same board contents and frames."
+    },
+    {
+      "trigger": "The payload transformer predicates or transforms change.",
+      "required_followups": [
+        "Add a unit case for the changed predicate or transform",
+        "Update MOD-003 and MOD-004 in src/docs/README.md"
+      ],
+      "notes": "Channel creation depends on encryptChannel running before encryptKmsMessage."
+    }
+  ],
+  "surface_owners": [
+    {
+      "surface": "module implementation and specifications",
+      "owner": "@webex/web-sdk",
+      "edit_boundary": "Owner per the monorepo .github/CODEOWNERS default rule; the package has no explicit entry."
+    }
+  ],
+  "do_not_edit": [
+    "dist",
+    "../../../.sdd/templates/repo-standards"
+  ],
+  "marker_scopes": {
+    "sdd": [
+      ".sdd/manifest.json",
+      "src/docs/README.md",
+      "docs"
+    ]
+  },
+  "fallback_rules": [
+    "When source and tests disagree, code is the referee and the disagreement is recorded rather than silently resolved.",
+    "When neither source nor tests settle a question, report it as a gap instead of inferring.",
+    "Commit history is not a valid rationale source for this package."
+  ],
+  "downstream_context_pack": {
+    "required_human_surfaces": [
+      "README.md",
+      "docs/index.md",
+      "docs/architecture.md",
+      "src/docs/README.md"
+    ],
+    "required_agent_operational_surfaces": [
+      "AGENTS.md",
+      "docs/specs/README.md"
+    ],
+    "required_machine_readable_surface": ".sdd/manifest.json",
+    "recommended_machine_readable_sections": [
+      "public_interfaces",
+      "change_impact",
+      "evidence_rules",
+      "negative_guidance",
+      "confidence_policy",
+      "repository_topology",
+      "folder_readme_contract",
+      "regression_feedback_rules"
+    ]
+  }
+}

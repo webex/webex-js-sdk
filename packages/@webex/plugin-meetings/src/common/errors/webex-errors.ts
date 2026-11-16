@@ -161,6 +161,7 @@ class AddMediaFailed extends WebexMeetingsError {
   selectedCandidatePairChanges?: number;
   numTransports?: number;
   iceConnected?: boolean;
+  iceConnectedAtLeastOnce?: boolean;
 
   /**
    * Creates a new AddMediaFailed error
@@ -169,7 +170,8 @@ class AddMediaFailed extends WebexMeetingsError {
    * @param {string} [options.connectionType] - The ICE connection type at the time of failure (e.g. 'UDP', 'TURN-TLS')
    * @param {number} [options.selectedCandidatePairChanges] - Number of times the selected candidate pair changed
    * @param {number} [options.numTransports] - Number of ICE transports
-   * @param {boolean} [options.iceConnected] - Whether ICE connection was established before the failure
+   * @param {boolean} [options.iceConnected] - Whether ICE is connected at the time of failure
+   * @param {boolean} [options.iceConnectedAtLeastOnce] - Whether ICE connected at least once before failure
    */
   constructor(
     options: {
@@ -178,6 +180,7 @@ class AddMediaFailed extends WebexMeetingsError {
       selectedCandidatePairChanges?: number;
       numTransports?: number;
       iceConnected?: boolean;
+      iceConnectedAtLeastOnce?: boolean;
     } = {}
   ) {
     super(AddMediaFailed.CODE, 'Failed to add media');
@@ -186,11 +189,12 @@ class AddMediaFailed extends WebexMeetingsError {
     this.selectedCandidatePairChanges = options.selectedCandidatePairChanges;
     this.numTransports = options.numTransports;
     this.iceConnected = options.iceConnected;
+    this.iceConnectedAtLeastOnce = options.iceConnectedAtLeastOnce;
   }
 
   /**
    * Returns true if the failure was due to a DTLS handshake failure
-   * (ICE connected successfully but the overall media connection failed).
+   * (ICE is still connected but the overall media connection failed).
    */
   get isDtlsHandshakeFailure(): boolean {
     return this.iceConnected === true;
@@ -205,6 +209,7 @@ WebExMeetingsErrors[AddMediaFailed.CODE] = AddMediaFailed;
  */
 class MediaConnectionTimedOutError extends Error {
   iceConnected: boolean;
+  iceConnectedAtLeastOnce?: boolean;
 
   cause?: any;
 
@@ -212,6 +217,7 @@ class MediaConnectionTimedOutError extends Error {
     super(message);
     this.name = 'MediaConnectionTimedOutError';
     this.iceConnected = iceConnected;
+    this.iceConnectedAtLeastOnce = cause?.iceConnectedAtLeastOnce;
     this.cause = cause;
   }
 }

@@ -459,7 +459,7 @@
           "Recording read/delete operations and typed recording events"
         ],
         "requires": [
-          "Webex hydraDeveloperApi recording endpoints",
+          "User Hub webex-user-hub-service converged recordings endpoints",
           "Mercury recording lifecycle events",
           "Calling-backend resolution"
         ]

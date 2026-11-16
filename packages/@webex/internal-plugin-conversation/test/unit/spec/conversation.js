@@ -58,6 +58,36 @@ describe('plugin-conversation', () => {
         assert.deepEqual(conversation.sendReaction.args[0][1].recipients, expectedRecipients);
       });
 
+      [
+        {
+          description: 'a plain recipientId',
+          recipient: 'example-recipient-id',
+          expectedItems: [{id: 'example-recipient-id', objectType: 'person'}],
+        },
+        {
+          description: 'an allPanelists recipientId',
+          recipient: 'allPanelists',
+          expectedItems: [{objectType: 'groupMention', groupType: 'allPanelists'}],
+        },
+        {
+          description: 'an allPanelists recipientId with an attendeeId',
+          recipient: 'allPanelists:15bb5819-c2e3-11f1-806b-9f9c6163686d',
+          expectedItems: [
+            {objectType: 'groupMention', groupType: 'allPanelists'},
+            {
+              id: '15bb5819-c2e3-11f1-806b-9f9c6163686d',
+              entryUUID: '15bb5819-c2e3-11f1-806b-9f9c6163686d',
+              objectType: 'person',
+            },
+          ],
+        },
+      ].forEach(({description, recipient, expectedItems}) => {
+        it(`should build recipients from ${description}`, async () => {
+          await conversation.addReaction({}, 'example-display-name', {}, actorId, recipient);
+          assert.deepEqual(conversation.sendReaction.args[0][1].recipients, {items: expectedItems});
+        });
+      });
+
       it('will not call createReactionHmac if config prohibits', async () => {
         conversation.config.includeEncryptionTransforms = false;
 
@@ -97,6 +127,36 @@ describe('plugin-conversation', () => {
       it('should add recipients to the payload if provided', async () => {
         await conversation.deleteReaction({}, 'example-reaction-id', actorId, recipientId);
         assert.deepEqual(conversation.sendReaction.args[0][1].recipients, expectedRecipients);
+      });
+
+      [
+        {
+          description: 'a plain recipientId',
+          recipient: 'example-recipient-id',
+          expectedItems: [{id: 'example-recipient-id', objectType: 'person'}],
+        },
+        {
+          description: 'an allPanelists recipientId',
+          recipient: 'allPanelists',
+          expectedItems: [{objectType: 'groupMention', groupType: 'allPanelists'}],
+        },
+        {
+          description: 'an allPanelists recipientId with an attendeeId',
+          recipient: 'allPanelists:15bb5819-c2e3-11f1-806b-9f9c6163686d',
+          expectedItems: [
+            {objectType: 'groupMention', groupType: 'allPanelists'},
+            {
+              id: '15bb5819-c2e3-11f1-806b-9f9c6163686d',
+              entryUUID: '15bb5819-c2e3-11f1-806b-9f9c6163686d',
+              objectType: 'person',
+            },
+          ],
+        },
+      ].forEach(({description, recipient, expectedItems}) => {
+        it(`should build recipients from ${description}`, async () => {
+          await conversation.deleteReaction({}, 'example-reaction-id', actorId, recipient);
+          assert.deepEqual(conversation.sendReaction.args[0][1].recipients, {items: expectedItems});
+        });
       });
 
       it('should use actorId if provided', async () => {

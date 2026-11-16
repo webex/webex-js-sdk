@@ -13,7 +13,9 @@
     "node": ">=18"
   },
   "browser": {
+    "./dist/caroots-asset.js": "./dist/caroots-asset.browser.js",
     "./dist/ensure-buffer.js": "./dist/ensure-buffer.browser.js",
+    "./src/caroots-asset.js": "./src/caroots-asset.browser.js",
     "./src/ensure-buffer.js": "./src/ensure-buffer.browser.js"
   },
   "browserify": {
@@ -43,6 +45,7 @@
     "@webex/http-core": "workspace:*",
     "@webex/internal-plugin-device": "workspace:*",
     "@webex/internal-plugin-mercury": "workspace:*",
+    "@webex/kms-caroots": "workspace:*",
     "@webex/test-helper-file": "workspace:*",
     "@webex/webex-core": "workspace:*",
     "debug": "^4.3.4",
@@ -50,12 +53,14 @@
     "node-jose": "^2.2.0",
     "node-kms": "^0.4.1",
     "node-scr": "^0.3.0",
-    "pkijs": "^3.4.0",
+    "pkijs": "3.3.3",
     "uuid": "^3.3.2"
   },
   "scripts": {
+    "assets:refresh": "node ./scripts/refresh-union-bundle.js",
     "build": "yarn build:src",
-    "build:src": "webex-legacy-tools build -dest \"./dist\" -src \"./src\" -js -ts -maps",
+    "build:assets": "node ../../../scripts/copy-plugin-assets.js",
+    "build:src": "webex-legacy-tools build -dest \"./dist\" -src \"./src\" -js -ts -maps && yarn build:assets",
     "deploy:npm": "yarn npm publish",
     "test": "yarn test:style && yarn test:unit && yarn test:integration && yarn test:browser",
     "test:browser": "webex-legacy-tools test --integration --runner karma",

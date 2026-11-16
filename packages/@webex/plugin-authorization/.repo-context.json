@@ -1,0 +1,375 @@
+{
+  "$schema": "./schemas/repo-context.schema.json",
+  "version": 1,
+  "repository": {
+    "name": "@webex/plugin-authorization",
+    "purpose": "Environment-selecting entry for webex.authorization. Its Node entry (main dist/index.js, devMain src/index.js) re-exports default and config from @webex/plugin-authorization-node; its package.json browser field maps both the built and the source Node entry to a browser entry that re-exports them from @webex/plugin-authorization-browser. Importing the package imports the selected sibling, which registers itself as public plugin 'authorization' (first registration wins). webex, webex-node, @webex/contact-center, @webex/plugin-device-manager, and @webex/plugin-encryption import it once to obtain webex.authorization. The package has no behavior, state, or tests of its own."
+  },
+  "commands": {
+    "install": "yarn",
+    "prebuild-modules": "yarn prebuild:modules",
+    "compile": "yarn workspace @webex/plugin-authorization build:src",
+    "build": "yarn workspace @webex/plugin-authorization build",
+    "unit-test": "[NEEDS HUMAN INPUT] -- package.json defines no test:unit script and the package has no test directory; its two source files are re-exports, and the selected behavior is unit-tested in @webex/plugin-authorization-node and @webex/plugin-authorization-browser",
+    "lint": "yarn workspace @webex/plugin-authorization test:style",
+    "browser-test": "yarn workspace @webex/plugin-authorization test:browser",
+    "deploy": "yarn workspace @webex/plugin-authorization deploy:npm"
+  },
+  "public_interfaces": [
+    {
+      "name": "@webex/plugin-authorization package entry",
+      "kind": "package_export",
+      "source": "package.json",
+      "entrypoints": [
+        "import Authorization from '@webex/plugin-authorization'",
+        "import {config} from '@webex/plugin-authorization'",
+        "import '@webex/plugin-authorization'",
+        "require('@webex/plugin-authorization')"
+      ],
+      "audience": "webex (Node and browser builds), webex-node, @webex/contact-center, @webex/plugin-device-manager, @webex/plugin-encryption, and applications",
+      "notes": "main dist/index.js and devMain src/index.js re-export the Node plugin; the browser field maps ./dist/index.js and ./src/index.js to the browser entries, which re-export the browser plugin. Exports are default and config only. Importing registers the selected sibling as 'authorization'; the first registration of the name wins."
+    },
+    {
+      "name": "webex.authorization runtime methods (owned by the sibling plugins)",
+      "kind": "plugin_api",
+      "source": "src/index.js",
+      "entrypoints": [
+        "webex.authorization (Node: requestAuthorizationCodeGrant, requestAccessTokenFromJwt, createJwt, logout)",
+        "webex.authorization (browser: initiateLogin, initiateImplicitGrant, initiateAuthorizationCodeGrant, requestAccessTokenFromJwt, createJwt, logout)"
+      ],
+      "audience": "applications using webex.authorization",
+      "notes": "Not defined in this package. The method set depends on which entry the resolver selected; a method of the other environment is undefined. Behavior is owned by @webex/plugin-authorization-node and @webex/plugin-authorization-browser."
+    },
+    {
+      "name": "package scripts",
+      "kind": "npm_scripts",
+      "source": "package.json",
+      "entrypoints": [
+        "build",
+        "build:src",
+        "test:style",
+        "test:browser",
+        "test",
+        "deploy:npm"
+      ],
+      "audience": "contributors and CI",
+      "notes": "There is no test:unit or test:integration script and no test directory. test chains test:unit and test:integration and therefore fails. test:browser runs karma with no spec files. build:src writes dist/index.js and dist/index.browser.js."
+    }
+  ],
+  "source_of_truth": [
+    {
+      "surface": "environment-selecting entry",
+      "paths": [
+        "src/index.js",
+        "src/index.browser.js",
+        "package.json"
+      ],
+      "generated_artifacts": [
+        "dist"
+      ],
+      "refresh_with": [
+        "yarn workspace @webex/plugin-authorization build:src"
+      ],
+      "validate_with": [
+        "yarn workspace @webex/plugin-authorization test:style"
+      ]
+    },
+    {
+      "surface": "module specification",
+      "paths": [
+        "src/docs/README.md"
+      ],
+      "generated_artifacts": [],
+      "refresh_with": [
+        "update alongside the behavior change in the same commit"
+      ],
+      "validate_with": [
+        "spec-validator on an independent runtime"
+      ]
+    }
+  ],
+  "generated_artifacts": [
+    {
+      "path": "dist",
+      "generated_from": "src",
+      "refresh_with": "yarn workspace @webex/plugin-authorization build:src"
+    },
+    {
+      "path": "../../../.sdd/templates/repo-standards/template-map.json",
+      "generated_from": "WebexTools/repo-standards@d89a7fe59126ae3ad9bac9ca352aa7f12b4c85dc",
+      "refresh_with": "The package holds no templates. It refers to the monorepo root snapshot at ../../../.sdd/templates/repo-standards through layout.monorepo_package.templates_root_path in .sdd/manifest.json. Refresh the root snapshot, not this package."
+    }
+  ],
+  "validation_matrix": [
+    {
+      "paths": [
+        "src/**",
+        "package.json"
+      ],
+      "minimum": [
+        "yarn workspace @webex/plugin-authorization build:src",
+        "yarn workspace @webex/plugin-authorization test:style"
+      ],
+      "recommended": [
+        "check in Node that require('@webex/plugin-authorization') returns the default and config of @webex/plugin-authorization-node",
+        "check that a webex UMD build contains the browser plugin (initiateImplicitGrant) and not requestAuthorizationCodeGrant"
+      ]
+    }
+  ],
+  "change_impact": [
+    {
+      "paths": [
+        "src/index.js",
+        "src/index.browser.js"
+      ],
+      "affects": [
+        "which authorization plugin becomes webex.authorization in Node and browser builds",
+        "the default and config exports seen by every consumer"
+      ],
+      "refresh_with": [
+        "yarn workspace @webex/plugin-authorization build:src"
+      ],
+      "validate_with": [
+        "yarn workspace @webex/plugin-authorization test:style"
+      ],
+      "avoid_direct_edits": [
+        "dist"
+      ],
+      "notes": "Keep both entries pure re-exports with identical export names."
+    },
+    {
+      "paths": [
+        "package.json"
+      ],
+      "affects": [
+        "Node resolution through main and devMain",
+        "browser bundle resolution through the browser field",
+        "the workspace webpack build, which aliases this package to src/index"
+      ],
+      "refresh_with": [
+        "yarn workspace @webex/plugin-authorization build:src"
+      ],
+      "validate_with": [
+        "yarn workspace @webex/plugin-authorization test:style"
+      ],
+      "avoid_direct_edits": [
+        "dist"
+      ],
+      "notes": "Both browser mappings (./dist/index.js and ./src/index.js) are load-bearing."
+    }
+  ],
+  "evidence_rules": [
+    {
+      "claim_category": "command_name",
+      "sources": [
+        "package.json"
+      ],
+      "requirement": "The script must exist in package.json scripts.",
+      "notes": "test:unit and test:integration do not exist; never cite test or test:browser as passing evidence."
+    },
+    {
+      "claim_category": "import_path",
+      "sources": [
+        "src/index.js",
+        "src/index.browser.js"
+      ],
+      "requirement": "A binding is public only if both entries export it.",
+      "notes": "Exports: default and config."
+    },
+    {
+      "claim_category": "behavior_claim",
+      "sources": [
+        "src",
+        "package.json"
+      ],
+      "requirement": "Ground every behavioral claim in source evidence.",
+      "notes": "Commit history is not an evidence source for this package. README.md and OAUTH-FLOW-GUIDE.md are context only (docs/adr/0001-keep-existing-docs-separate.md). webex.authorization behavior is owned by the sibling plugins."
+    }
+  ],
+  "negative_guidance": [
+    {
+      "rule": "Do not add run-time environment detection to this package.",
+      "why": "Selection is by the package.json browser field at module resolution; a run-time check would bundle both plugins."
+    },
+    {
+      "rule": "Do not remove either browser field mapping.",
+      "why": "The workspace webpack build aliases this package to src/index and needs ./src/index.js; published consumers resolve dist/index.js and need ./dist/index.js."
+    },
+    {
+      "rule": "Do not register a plugin or add configuration here, and do not import both siblings from one entry.",
+      "why": "The selected sibling registers itself; webex-core registration is first-wins, which webex-first-party relies on."
+    },
+    {
+      "rule": "Do not treat README.md or OAUTH-FLOW-GUIDE.md as the reference for selection or method availability.",
+      "why": "They describe run-time detection and list getClientToken as a Node plugin method; see docs/adr/0001-keep-existing-docs-separate.md."
+    },
+    {
+      "rule": "Do not infer a coverage threshold for this package.",
+      "why": "The developer confirmed no coverage gate applies; the package has no tests."
+    }
+  ],
+  "confidence_policy": {
+    "high": {
+      "action": "update",
+      "expectation": "Source evidence and a Node or bundle check both support the change."
+    },
+    "medium": {
+      "action": "narrow-scope",
+      "expectation": "Only source evidence exists, which is true of every requirement today. Pin current selection with a characterization check before modifying."
+    },
+    "low": {
+      "action": "noop",
+      "expectation": "Neither source nor a check settles the question. Stop and report the gap."
+    }
+  },
+  "repository_topology": {
+    "main_entrypoints": [
+      {
+        "name": "Node entry",
+        "path": "src/index.js",
+        "purpose": "Re-exports default and config from @webex/plugin-authorization-node",
+        "notes": "main (dist/index.js) after build; devMain in source."
+      },
+      {
+        "name": "browser entry",
+        "path": "src/index.browser.js",
+        "purpose": "Re-exports default and config from @webex/plugin-authorization-browser",
+        "notes": "Reached only through the package.json browser field."
+      }
+    ],
+    "workspace_packages": [
+      {
+        "name": "@webex/plugin-authorization",
+        "paths": [
+          "src"
+        ],
+        "notes": "One module; this SDD root is the package directory inside the webex-js-sdk monorepo."
+      }
+    ],
+    "source_surfaces": [
+      {
+        "name": "environment-selecting entry",
+        "paths": [
+          "src"
+        ],
+        "notes": "index.js and index.browser.js. Specified at src/docs/README.md."
+      }
+    ],
+    "generated_surfaces": [
+      {
+        "name": "build output",
+        "paths": [
+          "dist"
+        ],
+        "generated_from": "src",
+        "refresh_with": "yarn workspace @webex/plugin-authorization build:src",
+        "notes": "Produced by webex-legacy-tools. Do not edit by hand. Node consumers in the workspace load it."
+      },
+      {
+        "name": "repo-standards template map",
+        "paths": [
+          "../../../.sdd/templates/repo-standards"
+        ],
+        "generated_from": "WebexTools/repo-standards@d89a7fe59126ae3ad9bac9ca352aa7f12b4c85dc",
+        "refresh_with": "The package holds no templates. It refers to the monorepo root snapshot at ../../../.sdd/templates/repo-standards through layout.monorepo_package.templates_root_path in .sdd/manifest.json. Refresh the root snapshot, not this package.",
+        "notes": "The package holds no templates. It refers to the monorepo root snapshot at ../../../.sdd/templates/repo-standards through layout.monorepo_package.templates_root_path in .sdd/manifest.json. Refresh the root snapshot, not this package."
+      }
+    ],
+    "validation_entrypoints": [
+      {
+        "name": "lint",
+        "command": "yarn workspace @webex/plugin-authorization test:style",
+        "scope": "src",
+        "notes": "eslint via the local .eslintrc.js; both entry files are linted."
+      }
+    ],
+    "sync_paths": [
+      {
+        "source": "src/index.js",
+        "targets": [
+          "src/docs/README.md"
+        ],
+        "mechanism": "Manual; update the module specification in the same change that alters an entry file or the package.json routing.",
+        "notes": "Keep src/index.browser.js export names identical to src/index.js."
+      },
+      {
+        "source": "WebexTools/repo-standards@d89a7fe59126ae3ad9bac9ca352aa7f12b4c85dc",
+        "targets": [
+          "../../../.sdd/templates/repo-standards"
+        ],
+        "mechanism": "The package holds no templates. It refers to the monorepo root snapshot at ../../../.sdd/templates/repo-standards through layout.monorepo_package.templates_root_path in .sdd/manifest.json. Refresh the root snapshot, not this package.",
+        "notes": "The package holds no templates. It refers to the monorepo root snapshot at ../../../.sdd/templates/repo-standards through layout.monorepo_package.templates_root_path in .sdd/manifest.json. Refresh the root snapshot, not this package."
+      }
+    ]
+  },
+  "folder_readme_contract": {
+    "required_sections": [
+      "purpose",
+      "boundaries",
+      "key-files",
+      "common-tasks"
+    ],
+    "rules": [
+      "Orient the reader before describing detail.",
+      "Link to the module specification rather than duplicating it."
+    ],
+    "example_policy": "Examples are allowed only when verified against src/ or package.json.",
+    "fallback": "Omit a section rather than inventing content; report unresolved facts as gaps."
+  },
+  "regression_feedback_rules": [
+    {
+      "trigger": "An entry file, the export list, or the package.json main, devMain, or browser field changes.",
+      "required_followups": [
+        "Check the Node require and the webex UMD build",
+        "Update PA-001 to PA-005 in src/docs/README.md"
+      ],
+      "notes": "Every SDK build obtains webex.authorization through this package."
+    }
+  ],
+  "surface_owners": [
+    {
+      "surface": "module implementation and specifications",
+      "owner": "@webex/web-sdk",
+      "edit_boundary": "Owner per the monorepo .github/CODEOWNERS default rule; the package has no explicit entry."
+    }
+  ],
+  "do_not_edit": [
+    "dist",
+    "../../../.sdd/templates/repo-standards"
+  ],
+  "marker_scopes": {
+    "sdd": [
+      ".sdd/manifest.json",
+      "src/docs/README.md",
+      "docs"
+    ]
+  },
+  "fallback_rules": [
+    "When documents and source disagree, code is the referee and the disagreement is recorded rather than silently resolved.",
+    "When source does not settle a question, report it as a gap instead of inferring.",
+    "Commit history is not a valid rationale source for this package."
+  ],
+  "downstream_context_pack": {
+    "required_human_surfaces": [
+      "README.md",
+      "docs/index.md",
+      "docs/architecture.md",
+      "src/docs/README.md"
+    ],
+    "required_agent_operational_surfaces": [
+      "AGENTS.md",
+      "docs/specs/README.md"
+    ],
+    "required_machine_readable_surface": ".sdd/manifest.json",
+    "recommended_machine_readable_sections": [
+      "public_interfaces",
+      "change_impact",
+      "evidence_rules",
+      "negative_guidance",
+      "confidence_policy",
+      "repository_topology",
+      "folder_readme_contract",
+      "regression_feedback_rules"
+    ]
+  }
+}

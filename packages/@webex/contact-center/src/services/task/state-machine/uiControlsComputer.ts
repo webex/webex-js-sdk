@@ -3,6 +3,7 @@
  */
 
 import {
+  CONSULT_TRANSFER_DESTINATION_TYPE,
   InteractionUIControls,
   TASK_CHANNEL_TYPE,
   TaskData,
@@ -24,6 +25,10 @@ import {
   getIsConsultedAgentForControls,
   getServerHoldStateForControls,
 } from '../TaskUtils';
+import {INBOUND_DIRECTION, OUTDIAL_DIRECTION} from '../../../constants';
+import {COLLABORATION_ACCESS} from '../../config/constants';
+
+type DestinationControls = TaskUIControls['consultTransferDestinations'];
 
 const DISABLED = {isVisible: false, isEnabled: false} as const;
 const VISIBLE_ENABLED = {isVisible: true, isEnabled: true} as const;
@@ -80,12 +85,17 @@ function getDefaultInteractionUIControls(): InteractionUIControls {
 function createTaskUIControls(
   main: InteractionUIControls,
   consult: InteractionUIControls,
-  activeLeg: TaskUILeg
+  activeLeg: TaskUILeg,
+  consultTransferDestinations: DestinationControls = {
+    consult: [],
+    transfer: [],
+  }
 ): TaskUIControls {
   return {
     main,
     consult,
     activeLeg,
+    consultTransferDestinations,
   };
 }
 
@@ -95,6 +105,53 @@ export function getDefaultUIControls(): TaskUIControls {
     getDefaultInteractionUIControls(),
     'main'
   );
+}
+
+function getConsultTransferDestinations(
+  config: UIControlConfig,
+  taskData?: TaskData | null
+): DestinationControls {
+  const destinationConfig = config.consultTransferConfig;
+  if (!destinationConfig) {
+    return {consult: [], transfer: []};
+  }
+
+  const isVoice = config.channelType === TASK_CHANNEL_TYPE.VOICE;
+  const interaction = taskData?.interaction;
+  const direction = interaction?.contactDirection?.type?.toUpperCase();
+  const destinations: DestinationControls = {
+    consult: [],
+    transfer: [],
+  };
+
+  if (destinationConfig.accessBuddyTeam?.toUpperCase() !== COLLABORATION_ACCESS.NONE) {
+    destinations.consult.push(CONSULT_TRANSFER_DESTINATION_TYPE.AGENT);
+    destinations.transfer.push(CONSULT_TRANSFER_DESTINATION_TYPE.AGENT);
+  }
+
+  if (destinationConfig.accessQueue?.toUpperCase() !== COLLABORATION_ACCESS.NONE) {
+    const canConsultQueue = !isVoice || destinationConfig.allowConsultToQueue;
+    const canTransferQueue =
+      !isVoice ||
+      direction === INBOUND_DIRECTION ||
+      (direction === OUTDIAL_DIRECTION &&
+        interaction?.callProcessingDetails?.outdialTransferToQueueEnabled === true);
+
+    if (canConsultQueue) destinations.consult.push(CONSULT_TRANSFER_DESTINATION_TYPE.QUEUE);
+    if (canTransferQueue) destinations.transfer.push(CONSULT_TRANSFER_DESTINATION_TYPE.QUEUE);
+  }
+
+  if (isVoice) {
+    destinations.consult.push(CONSULT_TRANSFER_DESTINATION_TYPE.DIALNUMBER);
+    destinations.transfer.push(CONSULT_TRANSFER_DESTINATION_TYPE.DIALNUMBER);
+
+    if (destinationConfig.accessEntryPoint?.toUpperCase() !== COLLABORATION_ACCESS.NONE) {
+      destinations.consult.push(CONSULT_TRANSFER_DESTINATION_TYPE.ENTRYPOINT);
+      destinations.transfer.push(CONSULT_TRANSFER_DESTINATION_TYPE.ENTRYPOINT);
+    }
+  }
+
+  return destinations;
 }
 
 /** Consult media must exist on the interaction payload, not only as a stale resource id. */
@@ -984,6 +1041,11 @@ export function computeUIControls(
     return getDefaultUIControls();
   }
 
+  const consultTransferDestinations = getConsultTransferDestinations(
+    context.uiControlConfig,
+    fallbackTaskData ?? context.taskData
+  );
+
   switch (context.uiControlConfig.channelType) {
     case TASK_CHANNEL_TYPE.VOICE: {
       const {hasConsultLeg, activeLeg, mainState, consultState} = getVoiceLegState(
@@ -1010,13 +1072,19 @@ export function computeUIControls(
           )
         : getDefaultInteractionUIControls();
 
-      return createTaskUIControls(mainControls, consultControls, activeLeg);
+      return createTaskUIControls(
+        mainControls,
+        consultControls,
+        activeLeg,
+        consultTransferDestinations
+      );
     }
     case TASK_CHANNEL_TYPE.DIGITAL:
       return createTaskUIControls(
         computeDigitalInteractionUIControls(currentState, context, fallbackTaskData),
         getDefaultInteractionUIControls(),
-        'main'
+        'main',
+        consultTransferDestinations
       );
     default:
       return getDefaultUIControls();
@@ -1035,6 +1103,16 @@ function haveInteractionUIControlsChanged(
   });
 }
 
+function haveDestinationListChanged(
+  previous: DestinationControls['consult'],
+  next: DestinationControls['consult']
+): boolean {
+  return (
+    previous.length !== next.length ||
+    previous.some((destination, index) => destination !== next[index])
+  );
+}
+
 export function haveUIControlsChanged(
   previous: TaskUIControls | undefined,
   next: TaskUIControls
@@ -1043,6 +1121,14 @@ export function haveUIControlsChanged(
 
   return (
     previous.activeLeg !== next.activeLeg ||
+    haveDestinationListChanged(
+      previous.consultTransferDestinations.consult,
+      next.consultTransferDestinations.consult
+    ) ||
+    haveDestinationListChanged(
+      previous.consultTransferDestinations.transfer,
+      next.consultTransferDestinations.transfer
+    ) ||
     haveInteractionUIControlsChanged(previous.main, next.main) ||
     haveInteractionUIControlsChanged(previous.consult, next.consult)
   );

@@ -1,0 +1,603 @@
+{
+  "$schema": "./schemas/repo-context.schema.json",
+  "version": 1,
+  "repository": {
+    "name": "@webex/internal-plugin-encryption",
+    "purpose": "Internal plugin registered as webex.internal.encryption that encrypts and decrypts Webex content with keys held by the Key Management Service (KMS). Encryption wraps text and binary data as JWE and files as SCRs, fetches each key from KMS once, and caches it, private key material included, in the SDK unbounded storage. Its child webex.internal.encryption.kms negotiates an ECDH session with KMS, wraps every KMS request (resources, authorizations, unbound keys, customer master keys), batches the requests to the encryption service, and matches the responses that arrive as Mercury encryption.kms_message events. Before negotiating, it validates the KMS static key: the mandatory key checks always run, and certificate-chain trust is checked only when shouldValidateKMSCertificate is true, against configured roots or the signed Cisco Union bundle shipped in assets/. Optional report-only checks only emit metrics. Registered payload transforms wrap outbound kmsMessage bodies, unwrap inbound ones, and turn DRY error responses into DryError. KMS failures reject with KmsError, KmsTimeoutError, or KMSError."
+  },
+  "commands": {
+    "install": "yarn",
+    "prebuild": "yarn prebuild:modules",
+    "compile": "yarn build",
+    "build": "yarn build:src",
+    "unit-test": "yarn test:unit",
+    "lint": "yarn test:style",
+    "integration-test": "yarn test:integration",
+    "browser-test": "yarn test:browser",
+    "assets-refresh": "yarn assets:refresh",
+    "deploy": "yarn deploy:npm"
+  },
+  "public_interfaces": [
+    {
+      "name": "@webex/internal-plugin-encryption package entry",
+      "kind": "package_export",
+      "source": "src/index.js",
+      "entrypoints": [
+        "import '@webex/internal-plugin-encryption'",
+        "import Encryption, {KMS, KmsError, DryError} from '@webex/internal-plugin-encryption'"
+      ],
+      "audience": "workspace plugins and SDK bundles",
+      "notes": "Importing the package imports the device and mercury plugins and registers Encryption as internal plugin 'encryption' with its config, the encryptKmsMessage, decryptKmsMessage, and decryptErrorResponse payload transforms, and, when NODE_ENV is test, KmsDryErrorInterceptor. The first registration of the name wins."
+    },
+    {
+      "name": "webex.internal.encryption methods",
+      "kind": "plugin_api",
+      "source": "src/encryption.js",
+      "entrypoints": [
+        "webex.internal.encryption.encryptText(key, plaintext, options)",
+        "webex.internal.encryption.decryptText(key, ciphertext, options)",
+        "webex.internal.encryption.encryptBinaryData(kmsKeyUri, data, options)",
+        "webex.internal.encryption.decryptBinaryData(kmsKeyUri, JWE, options)",
+        "webex.internal.encryption.encryptScr(key, scr, options)",
+        "webex.internal.encryption.decryptScr(key, cipherScr, options)",
+        "webex.internal.encryption.encryptBinary(file)",
+        "webex.internal.encryption.decryptBinary(scr, buffer)",
+        "webex.internal.encryption.download(fileUrl, scr, options)",
+        "webex.internal.encryption.getKey(uri, options)",
+        "webex.internal.encryption.processKmsMessageEvent(event)"
+      ],
+      "audience": "workspace plugins; Mercury for processKmsMessageEvent",
+      "notes": "getKey reads the unbounded storage first and caches fetched keys with private JWK material; options.onBehalfOf fetches keys for another user and needs the spark.kms_orgagent role; download falls back to the original URL when the files service lookup fails."
+    },
+    {
+      "name": "webex.internal.encryption.kms methods",
+      "kind": "plugin_api",
+      "source": "src/kms.js",
+      "entrypoints": [
+        "kms.bindKey(options)",
+        "kms.createResource(options)",
+        "kms.addAuthorization(options)",
+        "kms.listAuthorizations(options)",
+        "kms.removeAuthorization(options)",
+        "kms.createUnboundKeys(options)",
+        "kms.fetchKey(options)",
+        "kms.fetchPublicKey(options)",
+        "kms.uploadCustomerMasterKey(options)",
+        "kms.listAllCustomerMasterKey(options)",
+        "kms.changeCustomerMasterKeyState(options)",
+        "kms.deleteAllCustomerMasterKeys(options)",
+        "kms.useGlobalMasterKey(options)",
+        "kms.ping()",
+        "kms.asKey(key)",
+        "kms.prepareRequest(payload, onBehalfOf)",
+        "kms.request(payload, options)",
+        "kms.decryptKmsMessage(kmsMessage)"
+      ],
+      "audience": "workspace plugins and BYOK administration callers",
+      "notes": "Every request awaits mercury.connect and a negotiated ECDH context, is batched to the encryption service, and settles from the Mercury response or a timeout. KMS errors reject with KmsError, timeouts with KmsTimeoutError, certificate failures with KMSError (which also triggers client:InvalidRequestError)."
+    },
+    {
+      "name": "encryption config",
+      "kind": "config",
+      "source": "src/config.js",
+      "entrypoints": [
+        "webex.config.encryption"
+      ],
+      "audience": "applications",
+      "notes": "Timeouts, batching, JOSE options, and KMS certificate validation: shouldValidateKMSCertificate (default false), caroots, carootsAsset, assetsBaseUrl, reportOnlyAssetsBaseUrl, carootsReportOnly."
+    },
+    {
+      "name": "package scripts",
+      "kind": "npm_scripts",
+      "source": "package.json",
+      "entrypoints": [
+        "build",
+        "build:src",
+        "build:assets",
+        "assets:refresh",
+        "test:unit",
+        "test:style",
+        "test:integration",
+        "test:browser",
+        "test",
+        "deploy:npm"
+      ],
+      "audience": "contributors and CI",
+      "notes": "build runs build:src, which writes dist and runs build:assets to copy assets into dist/assets. test:unit imports dist, so build:src runs first. test:integration and test:browser need the CI test-user secrets. assets:refresh updates the shipped Union bundle. The aggregate test script chains all four test scripts and is deliberately not a manifest command."
+    }
+  ],
+  "source_of_truth": [
+    {
+      "surface": "Encryption plugin implementation",
+      "paths": [
+        "src/index.js",
+        "src/encryption.js",
+        "src/kms.js",
+        "src/kms-batcher.js",
+        "src/kms-errors.js",
+        "src/kms-certificate-validation.js",
+        "src/kms-dry-error-interceptor.js",
+        "src/config.js",
+        "src/constants.js",
+        "src/caroots-asset.js",
+        "src/caroots-asset.browser.js",
+        "src/caroots-asset-url.js",
+        "src/union-bundle.js",
+        "src/ensure-buffer.js",
+        "src/ensure-buffer.browser.js"
+      ],
+      "generated_artifacts": [
+        "dist"
+      ],
+      "refresh_with": [
+        "yarn build:src"
+      ],
+      "validate_with": [
+        "yarn test:unit",
+        "yarn test:style"
+      ]
+    },
+    {
+      "surface": "shipped Union bundle",
+      "paths": [
+        "assets/ios_union-20261022.p7b",
+        "src/union-bundle.js"
+      ],
+      "generated_artifacts": [
+        "src/union-bundle.js"
+      ],
+      "refresh_with": [
+        "yarn assets:refresh"
+      ],
+      "validate_with": [
+        "yarn test:unit"
+      ]
+    },
+    {
+      "surface": "module specification",
+      "paths": [
+        "src/docs/README.md"
+      ],
+      "generated_artifacts": [],
+      "refresh_with": [
+        "update alongside the behavior change in the same commit"
+      ],
+      "validate_with": [
+        "spec-validator on an independent runtime"
+      ]
+    }
+  ],
+  "generated_artifacts": [
+    {
+      "path": "dist",
+      "generated_from": "src",
+      "refresh_with": "yarn build:src"
+    },
+    {
+      "path": "src/union-bundle.js",
+      "generated_from": "scripts/refresh-union-bundle.js",
+      "refresh_with": "yarn assets:refresh"
+    },
+    {
+      "path": "../../../.sdd/templates/repo-standards/template-map.json",
+      "generated_from": "WebexTools/repo-standards@d89a7fe59126ae3ad9bac9ca352aa7f12b4c85dc",
+      "refresh_with": "The package holds no templates. It refers to the monorepo root snapshot at ../../../.sdd/templates/repo-standards through layout.monorepo_package.templates_root_path in .sdd/manifest.json. Refresh the root snapshot, not this package."
+    }
+  ],
+  "validation_matrix": [
+    {
+      "paths": [
+        "src/**"
+      ],
+      "minimum": [
+        "yarn build:src",
+        "yarn test:unit",
+        "yarn test:style"
+      ],
+      "recommended": [
+        "add a test/unit/spec case for the changed behavior; run yarn and yarn prebuild:modules first on an outdated checkout"
+      ]
+    },
+    {
+      "paths": [
+        "src/kms.js",
+        "src/kms-certificate-validation.js",
+        "src/caroots-asset.js",
+        "src/caroots-asset.browser.js",
+        "src/caroots-asset-url.js",
+        "src/union-bundle.js"
+      ],
+      "minimum": [
+        "yarn build:src",
+        "yarn test:unit",
+        "yarn test:style"
+      ],
+      "recommended": [
+        "keep enforced validation fail-closed and report-only checks non-blocking; review src/kms.js by hand because lint skips it; let CI run test:integration"
+      ]
+    },
+    {
+      "paths": [
+        "src/index.js"
+      ],
+      "minimum": [
+        "yarn build:src",
+        "yarn test:unit",
+        "yarn test:style"
+      ],
+      "recommended": [
+        "check the consuming plugins when the plugin name, the transforms, or the exports change"
+      ]
+    }
+  ],
+  "change_impact": [
+    {
+      "paths": [
+        "src/kms.js"
+      ],
+      "affects": [
+        "every KMS request, its retries, and its errors",
+        "the ECDH context lifecycle",
+        "the certificate validation policy and CA-roots loading",
+        "the client metrics"
+      ],
+      "refresh_with": [
+        "yarn build:src"
+      ],
+      "validate_with": [
+        "yarn test:unit",
+        "yarn test:style"
+      ],
+      "avoid_direct_edits": [
+        "dist"
+      ],
+      "notes": "Not linted by test:style. The retry ladder and the cached KMS details failure are recorded in the module spec Pitfalls."
+    },
+    {
+      "paths": [
+        "src/encryption.js"
+      ],
+      "affects": [
+        "content encryption and decryption",
+        "the key cache format",
+        "file download"
+      ],
+      "refresh_with": [
+        "yarn build:src"
+      ],
+      "validate_with": [
+        "yarn test:unit",
+        "yarn test:style"
+      ],
+      "avoid_direct_edits": [
+        "dist"
+      ],
+      "notes": "Most methods are covered only by integration cases."
+    },
+    {
+      "paths": [
+        "src/index.js"
+      ],
+      "affects": [
+        "the registered plugin name, payload transforms, and exports"
+      ],
+      "refresh_with": [
+        "yarn build:src"
+      ],
+      "validate_with": [
+        "yarn test:unit",
+        "yarn test:style"
+      ],
+      "avoid_direct_edits": [
+        "dist"
+      ],
+      "notes": "About seventeen workspace packages import this plugin."
+    },
+    {
+      "paths": [
+        "src/union-bundle.js",
+        "assets"
+      ],
+      "affects": [
+        "the trusted CA roots and the rollback floor"
+      ],
+      "refresh_with": [
+        "yarn assets:refresh"
+      ],
+      "validate_with": [
+        "yarn test:unit"
+      ],
+      "avoid_direct_edits": [
+        "src/union-bundle.js"
+      ],
+      "notes": "Generated together by scripts/refresh-union-bundle.js (INV-007)."
+    }
+  ],
+  "evidence_rules": [
+    {
+      "claim_category": "command_name",
+      "sources": [
+        "package.json"
+      ],
+      "requirement": "The script must exist in package.json scripts.",
+      "notes": "test:integration and test:browser need CI secrets; the aggregate test script is not a manifest command."
+    },
+    {
+      "claim_category": "import_path",
+      "sources": [
+        "src/index.js"
+      ],
+      "requirement": "A binding is public only if exported from src/index.js.",
+      "notes": "The exports are the default Encryption, KMS, KmsError, and DryError."
+    },
+    {
+      "claim_category": "behavior_claim",
+      "sources": [
+        "src",
+        "test/unit/spec",
+        "test/integration/spec"
+      ],
+      "requirement": "Ground every behavioral claim in source or test evidence.",
+      "notes": "Commit history is not an evidence source for this package. README.md and assets/README.md are context only (docs/adr/0001-retain-product-readme.md). Dependency specs were consulted where present; the mercury spec is stale on sessions, and kms-caroots and the webex-core StaticAssetLoader have no spec, so their code was read."
+    }
+  ],
+  "negative_guidance": [
+    {
+      "rule": "Do not call the encryption service or KMS directly; go through kms.request.",
+      "why": "It owns Mercury, the ECDH context, wrapping, batching, and retries (INV-005)."
+    },
+    {
+      "rule": "Do not make enforced certificate validation succeed without verified roots, and do not let report-only checks reject.",
+      "why": "INV-001 and INV-003."
+    },
+    {
+      "rule": "Do not edit src/union-bundle.js or rename the asset by hand.",
+      "why": "The filename and rollback floor are generated together (INV-007)."
+    },
+    {
+      "rule": "Do not log keys, JWKs, plaintext, bearer tokens, or decrypted KMS bodies.",
+      "why": "They grant access to encrypted content."
+    },
+    {
+      "rule": "Do not mutate the cached KMS context for an onBehalfOf request.",
+      "why": "Other requests share it (INV-006)."
+    },
+    {
+      "rule": "Do not trust a test:unit result from an outdated install.",
+      "why": "The pinned asn1js and pkijs and the kms-caroots link are missing there, and 18 asset cases fail for that reason."
+    },
+    {
+      "rule": "Do not infer a coverage threshold for this package.",
+      "why": "No coverage script or threshold exists."
+    }
+  ],
+  "confidence_policy": {
+    "high": {
+      "action": "update",
+      "expectation": "Source and a unit case agree, as for certificate validation, the CA-roots policy, fetchKey, and the CMK requests."
+    },
+    "medium": {
+      "action": "narrow-scope",
+      "expectation": "Only source or integration evidence exists, as for batching, retries, the transforms, and the content-crypto methods. Pin current behavior with a unit case before modifying."
+    },
+    "low": {
+      "action": "noop",
+      "expectation": "Neither source, tests, nor a dependency's spec or code settles the question, as for why the context expires 30 seconds early or why KMS details failures stay cached. Stop and report the gap."
+    }
+  },
+  "repository_topology": {
+    "main_entrypoints": [
+      {
+        "name": "package entry",
+        "path": "src/index.js",
+        "purpose": "Registers the encryption plugin and its transforms and exports the classes",
+        "notes": "No subpath exports; package.json main is dist/index.js and devMain is src/index.js; the browser field swaps the asset and buffer helpers."
+      }
+    ],
+    "workspace_packages": [
+      {
+        "name": "@webex/internal-plugin-encryption",
+        "paths": [
+          "src",
+          "test",
+          "assets",
+          "scripts"
+        ],
+        "notes": "One module; this SDD root is the package directory inside the webex-js-sdk monorepo."
+      }
+    ],
+    "source_surfaces": [
+      {
+        "name": "Encryption plugin",
+        "paths": [
+          "src"
+        ],
+        "notes": "Fifteen source files. Specified at src/docs/README.md."
+      },
+      {
+        "name": "tests",
+        "paths": [
+          "test/unit/spec",
+          "test/integration/spec",
+          "test/fixtures"
+        ],
+        "notes": "Four jest unit files with 92 cases; four mocha integration files that need CI secrets."
+      },
+      {
+        "name": "shipped assets and maintainer script",
+        "paths": [
+          "assets",
+          "scripts"
+        ],
+        "notes": "The signed Union bundle and the refresh script."
+      }
+    ],
+    "generated_surfaces": [
+      {
+        "name": "build output",
+        "paths": [
+          "dist"
+        ],
+        "generated_from": "src",
+        "refresh_with": "yarn build:src",
+        "notes": "JavaScript, source maps, and dist/assets; no type declarations. Do not edit by hand."
+      },
+      {
+        "name": "Union bundle constants",
+        "paths": [
+          "src/union-bundle.js"
+        ],
+        "generated_from": "scripts/refresh-union-bundle.js",
+        "refresh_with": "yarn assets:refresh",
+        "notes": "Do not edit by hand."
+      },
+      {
+        "name": "repo-standards template map",
+        "paths": [
+          "../../../.sdd/templates/repo-standards"
+        ],
+        "generated_from": "WebexTools/repo-standards@d89a7fe59126ae3ad9bac9ca352aa7f12b4c85dc",
+        "refresh_with": "The package holds no templates. It refers to the monorepo root snapshot at ../../../.sdd/templates/repo-standards through layout.monorepo_package.templates_root_path in .sdd/manifest.json. Refresh the root snapshot, not this package.",
+        "notes": "The package holds no templates. It refers to the monorepo root snapshot at ../../../.sdd/templates/repo-standards through layout.monorepo_package.templates_root_path in .sdd/manifest.json. Refresh the root snapshot, not this package."
+      }
+    ],
+    "validation_entrypoints": [
+      {
+        "name": "compile",
+        "command": "yarn build",
+        "scope": "src",
+        "notes": "Runs build:src."
+      },
+      {
+        "name": "unit-test",
+        "command": "yarn test:unit",
+        "scope": "test/unit/spec",
+        "notes": "Jest through webex-legacy-tools; imports dist, so build first."
+      },
+      {
+        "name": "integration-test",
+        "command": "yarn test:integration",
+        "scope": "test/integration/spec",
+        "notes": "Mocha against real KMS; needs the CI secrets."
+      },
+      {
+        "name": "lint",
+        "command": "yarn test:style",
+        "scope": "src",
+        "notes": "eslint via the local .eslintrc.js; src/kms.js, docs/**, and *.md are ignored."
+      }
+    ],
+    "sync_paths": [
+      {
+        "source": "src/kms.js",
+        "targets": [
+          "src/docs/README.md",
+          "README.md"
+        ],
+        "mechanism": "Manual; update the module specification in the same change that alters observable behavior, and check the README certificate guide.",
+        "notes": "Keep requirements, invariants, the state machine, failure modes, and wire rows aligned with src/."
+      },
+      {
+        "source": "WebexTools/repo-standards@d89a7fe59126ae3ad9bac9ca352aa7f12b4c85dc",
+        "targets": [
+          "../../../.sdd/templates/repo-standards"
+        ],
+        "mechanism": "The package holds no templates. It refers to the monorepo root snapshot at ../../../.sdd/templates/repo-standards through layout.monorepo_package.templates_root_path in .sdd/manifest.json. Refresh the root snapshot, not this package.",
+        "notes": "The package holds no templates. It refers to the monorepo root snapshot at ../../../.sdd/templates/repo-standards through layout.monorepo_package.templates_root_path in .sdd/manifest.json. Refresh the root snapshot, not this package."
+      }
+    ]
+  },
+  "folder_readme_contract": {
+    "required_sections": [
+      "purpose",
+      "boundaries",
+      "key-files",
+      "common-tasks"
+    ],
+    "rules": [
+      "Orient the reader before describing detail.",
+      "Link to the module specification rather than duplicating it."
+    ],
+    "example_policy": "Examples are allowed only when verified against src/ or test/.",
+    "fallback": "Omit a section rather than inventing content; report unresolved facts as gaps."
+  },
+  "regression_feedback_rules": [
+    {
+      "trigger": "The certificate validation policy or CA-roots loading in src/kms.js changes.",
+      "required_followups": [
+        "Update the parametrized cases in test/unit/spec/kms.js",
+        "Update MOD-024 to MOD-026 and INV-001 to INV-003 in src/docs/README.md and check README.md"
+      ],
+      "notes": "These are the best-tested paths; keep them that way."
+    },
+    {
+      "trigger": "request, the retry ladder, batching, or the context lifecycle changes.",
+      "required_followups": [
+        "Add unit cases with fake timers",
+        "Update MOD-017, MOD-018, MOD-021, the State machine, and Pitfalls in src/docs/README.md"
+      ],
+      "notes": "No unit case covers retries or batching today."
+    },
+    {
+      "trigger": "The registration, transforms, or exports in src/index.js change.",
+      "required_followups": [
+        "Check consuming plugins",
+        "Update MOD-001 to MOD-004 in src/docs/README.md"
+      ],
+      "notes": "Payload transforms affect every plugin that sends kmsMessage bodies."
+    }
+  ],
+  "surface_owners": [
+    {
+      "surface": "module implementation and specifications",
+      "owner": "@webex/web-sdk",
+      "edit_boundary": "The monorepo .github/CODEOWNERS default rule assigns @webex/web-sdk; no package-wide line exists."
+    },
+    {
+      "surface": "shipped assets",
+      "owner": "@webex/web-client @webex/web-sdk",
+      "edit_boundary": "The monorepo .github/CODEOWNERS line for packages/@webex/internal-plugin-encryption/assets/."
+    }
+  ],
+  "do_not_edit": [
+    "dist",
+    "src/union-bundle.js",
+    "../../../.sdd/templates/repo-standards"
+  ],
+  "marker_scopes": {
+    "sdd": [
+      ".sdd/manifest.json",
+      "src/docs/README.md",
+      "docs"
+    ]
+  },
+  "fallback_rules": [
+    "When source and tests disagree, code is the referee and the disagreement is recorded rather than silently resolved.",
+    "When neither source nor tests settle a question, report it as a gap instead of inferring.",
+    "Commit history is not a valid rationale source for this package.",
+    "When a dependency's specification disagrees with that dependency's code, use the code and record the disagreement; when a dependency has no specification, use its code."
+  ],
+  "downstream_context_pack": {
+    "required_human_surfaces": [
+      "README.md",
+      "docs/index.md",
+      "docs/architecture.md",
+      "src/docs/README.md"
+    ],
+    "required_agent_operational_surfaces": [
+      "AGENTS.md",
+      "docs/specs/README.md"
+    ],
+    "required_machine_readable_surface": ".sdd/manifest.json",
+    "recommended_machine_readable_sections": [
+      "public_interfaces",
+      "change_impact",
+      "evidence_rules",
+      "negative_guidance",
+      "confidence_policy",
+      "repository_topology",
+      "folder_readme_contract",
+      "regression_feedback_rules"
+    ]
+  }
+}
