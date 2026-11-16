@@ -4,10 +4,9 @@
 import 'jsdom-global/register';
 import {assert} from '@webex/test-helper-chai';
 import sinon from 'sinon';
-import E2eeSignaling, {
-  LLM_ONLINE_EVENT,
-  MEDIA_ENCRYPTION_MERCURY_EVENTS,
-} from '../../../../src/e2ee/E2eeSignaling';
+import E2eeSignaling from '@webex/plugin-meetings/src/e2ee/E2eeSignaling';
+import {ONLINE} from '@webex/plugin-meetings/src/constants';
+import {MEDIA_ENCRYPTION_MERCURY_EVENTS} from '@webex/plugin-meetings/src/e2ee/constants';
 
 describe('plugin-meetings', () => {
   describe('E2eeSignaling', () => {
@@ -85,13 +84,13 @@ describe('plugin-meetings', () => {
       signaling.start();
 
       assert.calledOnceWithExactly(session.setLlmConnectedBeforeJoin, true);
-      assert.neverCalledWith(llm.on, LLM_ONLINE_EVENT, sinon.match.func);
+      assert.neverCalledWith(llm.on, ONLINE, sinon.match.func);
     });
 
     it('waits for online and notifies only when it is for this meeting', () => {
       signaling.start();
 
-      const onlineCall = llm.on.getCalls().find((call) => call.args[0] === LLM_ONLINE_EVENT);
+      const onlineCall = llm.on.getCalls().find((call) => call.args[0] === ONLINE);
 
       assert.isDefined(onlineCall);
       const onOnline = onlineCall.args[1];
@@ -124,8 +123,8 @@ describe('plugin-meetings', () => {
         assert.calledWith(llm.off, event, sinon.match.func);
         assert.calledWith(replacementLlm.on, event, sinon.match.func);
       });
-      assert.calledWith(llm.off, LLM_ONLINE_EVENT, sinon.match.func);
-      assert.calledWith(replacementLlm.on, LLM_ONLINE_EVENT, sinon.match.func);
+      assert.calledWith(llm.off, ONLINE, sinon.match.func);
+      assert.calledWith(replacementLlm.on, ONLINE, sinon.match.func);
 
       const replacementHandler = replacementLlm.on.getCall(0).args[1];
 
@@ -141,7 +140,7 @@ describe('plugin-meetings', () => {
       MEDIA_ENCRYPTION_MERCURY_EVENTS.forEach((event) => {
         assert.calledWith(replacementLlm.off, event, sinon.match.func);
       });
-      assert.calledWith(replacementLlm.off, LLM_ONLINE_EVENT, sinon.match.func);
+      assert.calledWith(replacementLlm.off, ONLINE, sinon.match.func);
     });
 
     it('removes all subscriptions on stop', () => {
@@ -152,7 +151,7 @@ describe('plugin-meetings', () => {
         assert.calledWith(llm.off, event, sinon.match.func);
         assert.calledWith(mercury.off, event, sinon.match.func);
       });
-      assert.calledWith(llm.off, LLM_ONLINE_EVENT, sinon.match.func);
+      assert.calledWith(llm.off, ONLINE, sinon.match.func);
     });
 
     it('is idempotent across repeated start/stop calls', () => {

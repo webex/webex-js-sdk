@@ -4,8 +4,7 @@ import {WasmRuntimeProbe} from '@webex/web-capabilities';
 import '@webex/internal-plugin-mercury';
 import '@webex/internal-plugin-conversation';
 import '@webex/internal-plugin-metrics';
-// @ts-ignore
-import {WebexPlugin} from '@webex/webex-core';
+import {StaticAssetLoader, WebexPlugin} from '@webex/webex-core';
 import {setLogger} from '@webex/internal-media-core';
 import {DeviceRegistrationOptions} from '@webex/internal-plugin-device';
 
@@ -23,6 +22,7 @@ import Media from '../media';
 import MeetingUtil from '../meeting/util';
 import WasmLoader from '../common/wasm-loader';
 import E2eeManager from '../e2ee/E2eeManager';
+import {E2EE_WASM_ASSET} from '../e2ee/constants';
 import {
   MEETINGS,
   EVENTS,
@@ -352,7 +352,14 @@ export default class Meetings extends WebexPlugin {
       getUserMedia: Media.getUserMedia,
     };
 
-    // Shared runtime cache for WASM modules used by meetings.
+    /**
+     * Loads and caches WASM modules (for example needed for E2EE).
+     * Safe to create here as it has no dependency on webex.request.
+     * @instance
+     * @type {WasmLoader}
+     * @private
+     * @memberof Meetings
+     */
     this.wasmLoader = new WasmLoader();
 
     this.onReady();
@@ -815,9 +822,26 @@ export default class Meetings extends WebexPlugin {
       mediaLogger = new MediaLogger();
       setLogger(mediaLogger);
 
-      // Construct after READY because the manager uses the initialized webex client and config.
+      // Resolved here rather than in the constructor because WebexCore assigns webex.config in its
+      // initialize(), which runs after plugin children (including Meetings) are constructed.
+      const assetLoader = new StaticAssetLoader(
+        // @ts-ignore
+        {baseUrl: this.config.assetsBaseUrl},
+        // @ts-ignore
+        {parent: this.webex}
+      );
+
+      // E2eeManager is created here (not in the constructor) because webex.request isn't available
+      // yet at plugin-construction time, so webex.request.bind() inside E2eeManager would throw.
       // @ts-ignore
-      this.e2eeManager = new E2eeManager({webex: this.webex, wasmLoader: this.wasmLoader});
+      this.e2eeManager = new E2eeManager({
+        // @ts-ignore - parent is provided by WebexPlugin.
+        webex: this.webex,
+        // @ts-ignore - initialized in the Meetings constructor.
+        wasmLoader: this.wasmLoader,
+        // @ts-ignore - initialized in the Meetings constructor.
+        wasmUrl: assetLoader.getUrl(E2EE_WASM_ASSET),
+      });
 
       /**
        * The MeetingInfo object to interact with server
@@ -1821,6 +1845,7 @@ export default class Meetings extends WebexPlugin {
         destination,
         destinationType: type,
         callStateForMetrics,
+        e2eeManager: this.e2eeManager,
       },
       {
         // @ts-ignore

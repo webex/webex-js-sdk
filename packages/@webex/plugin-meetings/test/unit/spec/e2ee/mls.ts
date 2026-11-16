@@ -37,6 +37,7 @@ describe('plugin-meetings', () => {
     const config = {
       participantId: 'user-1',
       deviceUrl: 'https://wdm.webex.com/device-1',
+      deviceType: 'WEB',
       correlationId: 'corr-1',
       displayName: 'Alice',
       serviceUrl: 'https://mes.webex.com/group-1',
@@ -97,7 +98,7 @@ describe('plugin-meetings', () => {
     });
 
     describe('initialize', () => {
-      it('loads the module, wires callbacks and initializes with defaults', async () => {
+      it('loads the module, wires callbacks and initializes without optional timeouts', async () => {
         await session.initialize(config);
 
         assert.calledOnce(loadModule);
@@ -110,8 +111,8 @@ describe('plugin-meetings', () => {
           'Alice',
           'https://mes.webex.com/group-1'
         );
-        assert.calledOnceWithExactly(fakeE2ee.setJoinTimeout, 180000);
-        assert.calledOnceWithExactly(fakeE2ee.setCoalesceWindow, 500);
+        assert.notCalled(fakeE2ee.setJoinTimeout);
+        assert.notCalled(fakeE2ee.setCoalesceWindow);
         assert.notCalled(fakeE2ee.addX509Credential);
         assert.notCalled(fakeE2ee.setTrustAnchors);
       });
@@ -565,13 +566,13 @@ describe('plugin-meetings', () => {
         });
       });
 
-      it('emits mediaEncryptionRequestFailure instead of rejecting when the engine throws on a failed completion', async () => {
+      it('emits mediaEncryptionServiceFailure instead of rejecting when the engine throws on a failed completion', async () => {
         const errorLog = stubLogger().error;
-        const mediaEncryptionRequestFailure = sinon.stub();
+        const mediaEncryptionServiceFailure = sinon.stub();
         const unhandledRejection = sinon.stub();
 
         process.on('unhandledRejection', unhandledRejection);
-        session.on('mediaEncryptionRequestFailure', mediaEncryptionRequestFailure);
+        session.on('mediaEncryptionServiceFailure', mediaEncryptionServiceFailure);
         httpClient.request.rejects(Object.assign(new Error('not leader'), {body: {errorCode: 78400011}}));
         // Emscripten surfaces a thrown C++ exception as its numeric pointer.
         fakeE2ee.completeHttpRequest.throws(12345);
@@ -591,15 +592,15 @@ describe('plugin-meetings', () => {
           errorLog.firstCall.args[0],
           /^e2ee: MLS --> engine threw while completing HTTP request \(success=false, errorCode=78400011\): /
         );
-        assert.calledOnceWithExactly(mediaEncryptionRequestFailure, {errorCode: 78400011, message: 'not leader'});
+        assert.calledOnceWithExactly(mediaEncryptionServiceFailure, {errorCode: 78400011, message: 'not leader'});
         assert.notCalled(unhandledRejection);
       });
 
-      it('emits mediaEncryptionRequestFailure without retrying completion when the engine throws on a successful completion', async () => {
+      it('emits mediaEncryptionServiceFailure without retrying completion when the engine throws on a successful completion', async () => {
         const errorLog = stubLogger().error;
-        const mediaEncryptionRequestFailure = sinon.stub();
+        const mediaEncryptionServiceFailure = sinon.stub();
 
-        session.on('mediaEncryptionRequestFailure', mediaEncryptionRequestFailure);
+        session.on('mediaEncryptionServiceFailure', mediaEncryptionServiceFailure);
         fakeE2ee.completeHttpRequest.throws(new Error('json parse'));
 
         callbacks.httpRequest({url: 'https://mes.webex.com/op', body: encodeJson({}), handlerId: 7});
@@ -612,7 +613,7 @@ describe('plugin-meetings', () => {
           errorLog,
           'e2ee: MLS --> engine threw while completing HTTP request (success=true, errorCode=0): Error: json parse'
         );
-        assert.calledOnceWithExactly(mediaEncryptionRequestFailure, {
+        assert.calledOnceWithExactly(mediaEncryptionServiceFailure, {
           errorCode: 0,
           message: 'Engine failed to process HTTP response',
         });
