@@ -8,7 +8,7 @@
       "typescript"
     ]
   },
-  "topology": "Single-repo",
+  "topology": "Orchestrator-plus-components",
   "commands": {
     "install": {
       "command": "yarn install",
@@ -77,9 +77,9 @@
     }
   },
   "coverage_status_definitions": {
-    "specced": ">=80% public surface specced, drift <5% \u2014 spec is authoritative",
-    "partial": "40-80% specced \u2014 spec is a hint, cross-check code",
-    "untracked": "<40% specced \u2014 code is the source of truth"
+    "specced": ">=80% public surface specced, drift <5% — spec is authoritative",
+    "partial": "40-80% specced — spec is a hint, cross-check code",
+    "untracked": "<40% specced — code is the source of truth"
   },
   "template_migration": {
     "status": "validated",
@@ -358,7 +358,12 @@
       "canonical": ".sdd/templates/repo-standards"
     },
     "repo_skills_root": ".sdd/skills",
-    "contract_index_path": "docs/architecture.md"
+    "contract_index_path": "docs/architecture.md",
+    "monorepo_package": {
+      "package_path": "packages/@webex/internal-plugin-call-ai-summary",
+      "root_manifest_path": "../../../.sdd/manifest.json",
+      "templates_root_path": "../../../.sdd/templates/repo-standards"
+    }
   },
   "tooling": {
     "sdlc_skills": {
@@ -366,7 +371,8 @@
       "installed_at": "2026-09-23T05:24:48Z",
       "plugins": [
         "repo-annotation@2.0.3"
-      ]
+      ],
+      "source_ref": "repo-annotation@2.3.1"
     }
   },
   "substrate": {

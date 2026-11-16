@@ -45,8 +45,8 @@ One row per module in `.sdd/manifest.json`, which stays authoritative; this tabl
 | Module | Responsibility | Manifest coverage state | Start here |
 | --- | --- | --- | --- |
 | `src/core` | Env-agnostic protocol, validation, correlation, rate limit, errors, and logger | Partial | `src/core/docs/README.md` |
-| `src/web` | Page adapter: `createWebBridge` over `window.postMessage` | Partial | `src/web/docs/README.md` |
 | `src/extension` | Isolated-world relay, privileged worker bridge, and extension UI client | Partial | `src/extension/docs/README.md` |
+| `src/web` | Page adapter: `createWebBridge` over `window.postMessage` | Partial | `src/web/docs/README.md` |
 
 ## Change and verification routing
 

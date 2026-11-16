@@ -9,7 +9,7 @@
       "javascript"
     ]
   },
-  "topology": "Single-repo",
+  "topology": "Orchestrator-plus-components",
   "commands": {
     "clone": {
       "command": "git clone https://github.com/webex/webex-js-sdk.git",
@@ -581,7 +581,12 @@
       "canonical": ".sdd/templates/repo-standards"
     },
     "repo_skills_root": ".sdd/skills",
-    "contract_index_path": "docs/architecture.md"
+    "contract_index_path": "docs/architecture.md",
+    "monorepo_package": {
+      "package_path": "packages/@webex/internal-plugin-metrics",
+      "root_manifest_path": "../../../.sdd/manifest.json",
+      "templates_root_path": "../../../.sdd/templates/repo-standards"
+    }
   },
   "tooling": {
     "sdlc_skills": {
@@ -589,7 +594,8 @@
       "installed_at": "2026-10-05T06:22:10Z",
       "plugins": [
         "repo-annotation@2.0.5"
-      ]
+      ],
+      "source_ref": "repo-annotation@2.3.1"
     }
   },
   "substrate": {

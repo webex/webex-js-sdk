@@ -44,21 +44,21 @@ Related context: [documentation index](../../docs/index.md) ·
 | ------------------------------------ | ---------- | ------------------ | ------------- |
 | `module.has_tiers`                   | N/A        | No tier policy exists in this package or its `package.json` | Tier |
 | `module.has_ui`                      | N/A        | No view or screen. The module manages sockets and session records. | UI use-case flow |
-| `module.crosses_service_boundaries`  | Applicable | `register` sends an HTTP POST to the data-channel URL and the inherited Mercury `connect` opens a WebSocket, both in `src/llm.ts` | Cross-boundary use-case flow |
-| `module.holds_client_state`          | Applicable | The private `connections` map and `datachannelTokens` record in `src/llm.ts` | Client state model |
+| `module.crosses_service_boundaries`  | Applicable | register sends an HTTP POST to the data-channel URL and the inherited Mercury connect opens a WebSocket, both in `src/llm.ts` | Cross-boundary use-case flow |
+| `module.holds_client_state`          | Applicable | The private connections map and datachannelTokens record in `src/llm.ts` | Client state model |
 | `module.enforces_domain_rules`       | Applicable | Session-ownership checks guard token, refresh-handler, and disconnect operations in `src/llm.ts` | Business rules and invariants |
 | `module.is_concurrent_async`         | Applicable | Promise-based register and connect, async refresh handlers, and feature-toggle reads in `src/llm.ts` | Concurrency and reactive flow |
 | `module.owns_persistence`            | N/A        | Nothing is written to storage. All state is in memory. | Data, schema, and migration discipline |
 | `module.stateful_transitions`        | Applicable | Each session entry moves from absent to pre-connection, registered, connected, and removed | State machine |
-| `module.exposes_wire_protocol`       | Applicable | Registration request and response fields, the auth header, and the `subscriptionAwareSubchannels` query in `src/llm.ts` and `src/constants.ts` | Protocol and wire format |
+| `module.exposes_wire_protocol`       | Applicable | Registration request and response fields, the auth header, and the subscriptionAwareSubchannels query in `src/llm.ts` and `src/constants.ts` | Protocol and wire format |
 | `module.ui_multi_screen`             | N/A        | No UI | UI flow |
 | `module.large_data_model`            | N/A        | One session record type and one token record; see `src/llm.types.ts` | Data model |
-| `module.returns_caller_errors`       | Applicable | `registerAndConnect` rejects and attaches `timing`; other methods return `false`, `null`, or `undefined` on refusal | Caller-visible failure modes |
-| `module.module_specific_conventions` | Applicable | `llm#<method> -->` log prefix, the ownership-check pattern, and default-session arguments | Module-specific rules |
-| `module.published_package`           | Applicable | `package.json` names the package @webex/internal-plugin-llm and `deploy:npm` publishes it | Export stability |
+| `module.returns_caller_errors`       | Applicable | registerAndConnect rejects and attaches timing; other methods return false, null, or undefined on refusal | Caller-visible failure modes |
+| `module.module_specific_conventions` | Applicable | llm#\<method\> --\> log prefix, the ownership-check pattern, and default-session arguments | Module-specific rules |
+| `module.published_package`           | Applicable | `package.json` names the package @webex/internal-plugin-llm and deploy:npm publishes it | Export stability |
 | `module.embedded_in_host`            | N/A        | No host theme or embed API | Host integration and theming |
 | `module.has_design_tradeoff`         | Applicable | The token cache is decoupled from the connection lifecycle, and omitted owner ids are accepted for backward compatibility | Key design trade-off |
-| `module.has_submodules`              | N/A        | Computed false by the Repo Annotation module_tree.py script: `src` has no child module | Sub-modules |
+| `module.has_submodules`              | N/A        | Computed false by the Repo Annotation module_tree.py script: src has no child module | Sub-modules |
 
 ## Evidence register
 
@@ -194,7 +194,7 @@ inherited Mercury `connect`; in-process calls for everything else.
 | Ownership and tokens | `setOwnerMeetingId`, token get/set/clear, `setRefreshHandler` | Ownership diagram below | Refused non-owner calls |
 | Token refresh | `refreshDataChannelToken` → caller handler | Refresh diagram below | Missing handler or rejection returns `null` |
 | Disconnect | `disconnectLLM`, `disconnectAllLLM` → Mercury `disconnect` or `disconnectAll` | Disconnect diagram below | Non-owner returns `false`; rejection propagates |
-| URL lookup | `getSessionIdByDatachannelUrl`, `getLocusUrlByDatachannelUrl` | Synchronous scan, no diagram needed; `MOD-013` | No match or parse error returns `undefined` |
+| URL lookup | `getSessionIdByDatachannelUrl`, `getLocusUrlByDatachannelUrl` | Synchronous scan, no diagram needed; MOD-013 | No match or parse error returns `undefined` |
 
 Register and connect:
 
@@ -497,16 +497,16 @@ class through the deep path `src/llm`.
 | Chosen trade-off | Preserved invariant or benefit | Cost or limitation | Decision evidence |
 | ---------------- | ------------------------------ | ------------------ | ----------------- |
 | Token cache separate from the connection map | Reconnects can reuse a cached token (`INV-003`) | Tokens outlive sessions until `clearDatachannelToken` | `src/llm.ts` field comment |
-| Omitted owner ids pass ownership | Old call sites keep working (`INV-002`) | Any caller without an id can tear down a session | `src/llm.ts` `disconnectLLM` comment |
-| Pre-connection session entries | Refresh can be wired before registration | An entry can exist with no URLs or socket | `src/llm.ts` `setRefreshHandler` comment |
+| Omitted owner ids pass ownership | Old call sites keep working (`INV-002`) | Any caller without an id can tear down a session | `src/llm.ts` disconnectLLM comment |
+| Pre-connection session entries | Refresh can be wired before registration | An entry can exist with no URLs or socket | `src/llm.ts` setRefreshHandler comment |
 
 ## Verification
 
 | Requirement or invariant | Test level | Positive evidence | Negative or boundary evidence | Gap |
 | ------------------------ | ---------- | ----------------- | ----------------------------- | --- |
 | `MOD-001` | Unit (indirect) | `test/unit/spec/llm.js` MockWebex setup | none found | No registration assertion |
-| `MOD-002`, `MOD-004` | Unit | `test/unit/spec/llm.js` `#registerAndConnect`, `#registerAndConnect timing` | `test/unit/spec/llm.js` missing URL, no websocket URL, connect failure | Real POST with a missing URL |
-| `MOD-003`, `INV-004` | Unit | `test/unit/spec/llm.js` `#register` | `test/unit/spec/llm.js` toggle off, no token | Error log path |
+| `MOD-002`, `MOD-004` | Unit | `test/unit/spec/llm.js` #registerAndConnect, #registerAndConnect timing | `test/unit/spec/llm.js` missing URL, no websocket URL, connect failure | Real POST with a missing URL |
+| `MOD-003`, `INV-004` | Unit | `test/unit/spec/llm.js` #register | `test/unit/spec/llm.js` toggle off, no token | Error log path |
 | `MOD-005` | Unit | `test/unit/spec/llm.js` accessor cases | `test/unit/spec/llm.js` no-connection cases | `getBinding` with a value |
 | `MOD-006`, `INV-002` | Unit | `test/unit/spec/llm.js` owner cases | `test/unit/spec/llm.js` mismatched owner | `resolveSessionOwnership` direct |
 | `MOD-007` | Unit | `test/unit/spec/llm.js` token cases | none found | Refused calls; `clearDatachannelToken` |

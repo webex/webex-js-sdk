@@ -47,7 +47,7 @@ Related context: [documentation index](../../../docs/index.md) ·
 | `module.has_tiers`                   | N/A        | No tier policy exists in this package | Tier |
 | `module.has_ui`                      | N/A        | No view or screen | UI use-case flow |
 | `module.crosses_service_boundaries`  | Applicable | Opens a WebSocket to the Mercury service in `src/socket/socket-base.js` | Cross-boundary use-case flow |
-| `module.holds_client_state`          | Applicable | Private native socket, ping and pong timers, and `expectedSequenceNumber` per instance | Client state model |
+| `module.holds_client_state`          | Applicable | Private native socket, ping and pong timers, and expectedSequenceNumber per instance | Client state model |
 | `module.enforces_domain_rules`       | Applicable | Required open options, allowed close codes, and one open per instance | Business rules and invariants |
 | `module.is_concurrent_async`         | Applicable | Timer-driven ping/pong and forced close; event-driven message and close handling | Concurrency and reactive flow |
 | `module.owns_persistence`            | N/A        | No storage | Data, schema, and migration discipline |
@@ -55,11 +55,11 @@ Related context: [documentation index](../../../docs/index.md) ·
 | `module.exposes_wire_protocol`       | Applicable | Authorization, ping, pong, and ack frames and close-code handling | Protocol and wire format |
 | `module.ui_multi_screen`             | N/A        | No UI | UI flow |
 | `module.large_data_model`            | N/A        | Four small frame shapes | Data model |
-| `module.returns_caller_errors`       | Applicable | `open()`, `close()`, and `send()` reject with errors the parent classifies | Caller-visible failure modes |
-| `module.module_specific_conventions` | Applicable | `socket,<domain>:` log prefix and the `getWebSocketConstructor` platform hook | Module-specific rules |
-| `module.published_package`           | N/A        | `Socket` is exported only through the parent barrel `src/index.js`; the parent spec owns its export stability | Export stability |
+| `module.returns_caller_errors`       | Applicable | open(), close(), and send() reject with errors the parent classifies | Caller-visible failure modes |
+| `module.module_specific_conventions` | Applicable | socket,\<domain\>: log prefix and the getWebSocketConstructor platform hook | Module-specific rules |
+| `module.published_package`           | N/A        | Socket is exported only through the parent barrel `src/index.js`; the parent spec owns its export stability | Export stability |
 | `module.embedded_in_host`            | N/A        | No host embed API | Host integration and theming |
-| `module.has_design_tradeoff`         | Applicable | Private native socket in a `WeakMap`, manual close for `CONNECTING` sockets, and a forced-close timer | Key design trade-off |
+| `module.has_design_tradeoff`         | Applicable | Private native socket in a WeakMap, manual close for CONNECTING sockets, and a forced-close timer | Key design trade-off |
 | `module.has_submodules`              | N/A        | Computed false by the Repo Annotation module_tree.py script | Sub-modules |
 
 ## Evidence register
@@ -165,8 +165,8 @@ Transport: JSON text frames over WebSocket to the Mercury service; events and pr
 | --------------- | ----------------- | ------------------- | ----------------------------- |
 | Open and authorize | `open()` → native open → auth frame → readiness message → resolve | Open diagram below | Pre-open close rejects with mapped error |
 | Keepalive | ping → pong or timeout | Keepalive diagram below | Timeout and mismatch close with 1000 |
-| Inbound frame | parse → sequence check → ack → emit | `MOD-005` | Parse errors logged |
-| Send | `send()` → native send | `MOD-006` | `INVALID_STATE_ERROR` |
+| Inbound frame | parse → sequence check → ack → emit | MOD-005 | Parse errors logged |
+| Send | `send()` → native send | MOD-006 | `INVALID_STATE_ERROR` |
 | Close | `close()` → native close or forced close | State machine section | Forced close after `forceCloseDelay` |
 
 Open and authorize:
@@ -388,7 +388,7 @@ outside `INV-002`; `send()` outside `Ready`.
 | `MOD-005`, `MOD-007` | Unit | `test/unit/spec/socket.js` | `test/unit/spec/socket.js` missing id case | Unhandled rejection path |
 | `MOD-006` | Unit | `test/unit/spec/socket.js` | `test/unit/spec/socket.js` not-open case | — |
 | `MOD-008` | Unit | `test/unit/spec/socket.js` | `test/unit/spec/socket.js` timeout and mismatch | — |
-| `MOD-009`, `INV-002`, `INV-003` | Unit | `test/unit/spec/socket.js` | `test/unit/spec/socket.js` invalid code and `manually triggers close handler when socket is still connecting` | — |
+| `MOD-009`, `INV-002`, `INV-003` | Unit | `test/unit/spec/socket.js` | `test/unit/spec/socket.js` invalid code and manually triggers close handler when socket is still connecting | — |
 | `MOD-010`, `MOD-011` | Unit | `test/unit/spec/socket.js` | none found | — |
 | `MOD-012` | Unit | `test/unit/spec/socket.js` | none found | Platform hooks in `src/socket/socket.js` and `src/socket/socket.shim.js` |
 
