@@ -1693,10 +1693,10 @@ describe('Registration Tests', () => {
     });
 
     it.each([
-      {'retry-after': '120'},
-      {'Retry-After': '120'},
-      {'retry-after': '120', 'Retry-After': '60'},
-    ])('checks for keep-alive failure with 429 and %j', async (headers) => {
+      {headerNames: ['retry-after']},
+      {headerNames: ['Retry-After']},
+      {headerNames: ['retry-after', 'Retry-After']},
+    ])('checks for keep-alive failure with 429 and $headerNames', async ({headerNames}) => {
       await beforeEachSetupForKeepalive();
       const keepaliveSpy = jest.spyOn(reg, 'startKeepaliveTimer');
       const postMessageSpy = jest.spyOn(Worker.prototype, 'postMessage');
@@ -1705,7 +1705,10 @@ describe('Registration Tests', () => {
       const keepaliveInterval = reg.deviceInfo.keepaliveInterval as number;
       // Choose a retryAfter strictly greater than keepaliveInterval so the
       // adjusted resume delay (retryAfter - keepaliveInterval) is positive and verifiable.
-      const retryAfter = 120;
+      const retryAfter = keepaliveInterval + 30;
+      const headers = Object.fromEntries(
+        headerNames.map((name, index) => [name, String(retryAfter - index * 30)])
+      );
       const adjustedResumeDelayMs = (retryAfter - keepaliveInterval) * SEC_TO_MSEC_MFACTOR;
 
       const worker = reg.webWorker;

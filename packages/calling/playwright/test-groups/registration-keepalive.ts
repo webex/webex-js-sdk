@@ -6,6 +6,7 @@ import {
   verifySDKInitialized,
   setServiceIndicator,
   setEnvironmentToInt,
+  setMobiusWebSocket,
 } from '../utils/setup';
 import {
   registerLine,
@@ -251,10 +252,15 @@ export function registrationKeepaliveTests() {
       await navigateToCallingApp(page);
       if (isInt) await setEnvironmentToInt(page);
       await setServiceIndicator(page, 'calling');
+      await setMobiusWebSocket(page, mobiusWsMode);
       await initializeCallingSDK(page, getToken(role, isInt));
       await verifySDKInitialized(page);
       await registerLine(page);
       await verifyLineRegistered(page);
+
+      expect(
+        await page.evaluate(() => (window as any).callingClient?.apiRequest?.isSocketEnabled?.())
+      ).toBe(mobiusWsMode);
 
       await expect
         .poll(() => keepaliveCount, {
@@ -264,10 +270,8 @@ export function registrationKeepaliveTests() {
         })
         .toBeGreaterThanOrEqual(2);
 
-      if (firstKeepaliveTime > 0 && resumedKeepaliveTime > 0) {
-        const gap = resumedKeepaliveTime - firstKeepaliveTime;
-        expect(gap).toBeGreaterThanOrEqual((RETRY_AFTER_SECONDS - 1) * 1000);
-      }
+      const gap = resumedKeepaliveTime - firstKeepaliveTime;
+      expect(gap).toBeGreaterThanOrEqual((RETRY_AFTER_SECONDS - 1) * 1000);
 
       expect(await isLineRegistered(page)).toBe(true);
     });

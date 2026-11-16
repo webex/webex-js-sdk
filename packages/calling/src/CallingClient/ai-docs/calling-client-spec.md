@@ -690,7 +690,6 @@ flowchart TD
 - `WebexRequestPayload.statusCode`
 - `WebexRequestPayload.body` (mapped from `wsResponse.data` on WSS path)
 - `WebexRequestPayload.headers.trackingid` (preserved from the response or carried error)
-- Registration and call retry handlers read `headers['retry-after'] ?? headers['Retry-After']`, preserving lowercase precedence without changing transport metadata.
 
 This keeps `handleRegistrationErrors`, `handleCallErrors`, and downstream consumers transport-agnostic.
 
