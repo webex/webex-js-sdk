@@ -14,3 +14,5 @@ Cloud Webex Calling only. `createCallQueueClient(webex, logger)` returns a clien
 ACD values are `SIGN_IN`, `SIGN_OUT`, `AVAILABLE`, `UNAVAILABLE`, and `WRAP_UP`. Mercury camelCase values (`signIn`, `wrapUp`) map onto those names. Mercury `joinInfo` entries carry `queueId` and joined/unjoined/unassigned status; sync events replace the queue list while join events merge or remove entries. Actor IDs scope changes to the primary user or a secondary virtual line. Queue availability may be absent and must not be treated as a known false value. If an initial response omits agent status, the client returns an error rather than inventing a signed-out state. When a 204 update has no cached state, the client reloads settings before returning a snapshot.
 
 Do not log tokens or queue payloads. Unavailable reason codes are not part of this client.
+
+When a queue request fails, diagnostic log upload is best-effort: an upload or metrics failure must not replace the original request error returned to the caller. Browser network errors may lack an HTTP status, so the shared error handler's fallback status does not necessarily represent a server response.

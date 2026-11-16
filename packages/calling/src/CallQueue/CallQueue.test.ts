@@ -1042,4 +1042,36 @@ describe('CallQueue client', () => {
     expect(response.statusCode).toBe(401);
     expect(response.message).toBe('FAILURE');
   });
+
+  it.each([
+    ['read settings', () => client.getCallQueueSettings()],
+    ['update settings', () => client.updateCallQueueSettings({agentACDState: ACD_STATE.AVAILABLE})],
+    ['sync events', () => client.syncTelephonyCalls()],
+  ])('returns the original service failure when log upload fails during %s', async (_, request) => {
+    webex.request.mockRejectedValue({statusCode: 401});
+    jest.spyOn(utils, 'uploadLogs').mockRejectedValueOnce(new Error('Log upload failed'));
+
+    const response = await request();
+
+    expect(webex.request).toHaveBeenCalledTimes(1);
+    expect(utils.uploadLogs).toHaveBeenCalledTimes(1);
+    expect(response).toEqual({
+      statusCode: 401,
+      data: {error: 'User is unauthorised, possible token expiry'},
+      message: 'FAILURE',
+    });
+  });
+
+  it('returns a failure when a request rejects without an error', async () => {
+    webex.request.mockRejectedValue(undefined);
+    jest.spyOn(utils, 'uploadLogs').mockRejectedValueOnce(new Error('Log upload failed'));
+
+    const response = await client.getCallQueueSettings();
+
+    expect(response).toEqual({
+      statusCode: 422,
+      data: {error: '422 Exception has occurred'},
+      message: 'FAILURE',
+    });
+  });
 });

@@ -742,10 +742,14 @@ export class CallQueueClient extends Eventing<CallQueueEventTypes> implements IC
         ? (err as {statusCode?: number}).statusCode
         : undefined;
     log.error(`${message}: status=${statusCode ?? 'unknown'}`, loggerContext);
-    await uploadLogs();
+    try {
+      await uploadLogs();
+    } catch {
+      log.warn('Unable to upload call queue diagnostic logs', loggerContext);
+    }
 
     return serviceErrorCodeHandler(
-      err as WebexRequestPayload,
+      (err ?? {}) as WebexRequestPayload,
       loggerContext
     ) as Promise<CallQueueResponse>;
   }
