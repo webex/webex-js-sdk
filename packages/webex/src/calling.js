@@ -82,13 +82,17 @@ class Calling extends EventEmitter {
   }
 
   async deregister() {
+    if (this.callQueueClient) {
+      this.callQueueClient.dispose();
+      this.callQueueClient = undefined;
+    }
     if (!this.registered) {
       this.log.info('Authentication: webex.internal.device.deregister already done', logContext);
 
       return Promise.resolve();
     }
 
-    const lines = Object.values(this.callingClient?.getLines());
+    const lines = Object.values(this.callingClient?.getLines() || {});
 
     for (const line of lines) {
       if (line.getStatus() === 'active') {
@@ -120,7 +124,7 @@ class Calling extends EventEmitter {
   }
 
   async initializeClients() {
-    const {clientConfig, callingClientConfig, logger} = this.callingConfig;
+    const {clientConfig, callingClientConfig, callQueueClientConfig, logger} = this.callingConfig;
 
     this.callingClient = clientConfig.calling
       ? await WebexCalling.createClient(this.webex, callingClientConfig)
@@ -141,6 +145,25 @@ class Calling extends EventEmitter {
     this.callSettingsClient = clientConfig.callSettings
       ? WebexCalling.createCallSettingsClient(this.webex, logger)
       : undefined;
+
+    try {
+      if (this.callQueueClient) {
+        this.callQueueClient.dispose();
+      }
+      this.callQueueClient = undefined;
+      if (clientConfig.callQueue && typeof WebexCalling.createCallQueueClient !== 'function') {
+        this.log.warn('createCallQueueClient is not exported from @webex/calling', logContext);
+      } else if (clientConfig.callQueue) {
+        this.callQueueClient = WebexCalling.createCallQueueClient(
+          this.webex,
+          logger,
+          callQueueClientConfig
+        );
+      }
+    } catch (error) {
+      this.log.warn(`Error occurred while initializing callQueue client ${error}`, logContext);
+      this.callQueueClient = undefined;
+    }
 
     if (clientConfig.callRecording === undefined) {
       clientConfig.callRecording = false;
