@@ -84,6 +84,15 @@
       "onboarded_by": "claude-code"
     },
     {
+      "id": "@webex/contact-center",
+      "path": "packages/@webex/contact-center",
+      "manifest": "packages/@webex/contact-center/.sdd/manifest.json",
+      "agent_entry": "packages/@webex/contact-center/AGENTS.md",
+      "index": "packages/@webex/contact-center/docs/index.md",
+      "onboarded_at": "2026-11-16T13:49:22Z",
+      "onboarded_by": "claude-code"
+    },
+    {
       "id": "@webex/helper-html",
       "path": "packages/@webex/helper-html",
       "manifest": "packages/@webex/helper-html/.sdd/manifest.json",

@@ -1,0 +1,704 @@
+{
+  "$schema": "./schemas/repo-context.schema.json",
+  "version": 1,
+  "repository": {
+    "name": "@webex/contact-center",
+    "purpose": "A Webex SDK plugin package that exposes Contact Center agent, task, calling, configuration, realtime event, and telemetry APIs."
+  },
+  "commands": {
+    "install": "yarn",
+    "compile": "yarn compile",
+    "build": "yarn build:src",
+    "types": "yarn build",
+    "unit-test": "yarn test:unit",
+    "lint": "yarn test:style",
+    "test-all": "yarn test",
+    "e2e": "yarn test:e2e",
+    "fix-lint": "yarn fix:lint",
+    "fix-prettier": "yarn fix:prettier",
+    "docs-build": "yarn build:docs",
+    "deploy": "yarn deploy:npm"
+  },
+  "task_playbooks": [
+    {
+      "task": "change-public-api-or-event",
+      "reference": "docs/architecture.md",
+      "when_to_use": "Adding, renaming, or changing an export of src/index.ts, a public ContactCenter or Task method, or an event enum value.",
+      "start_with": [
+        "docs/architecture.md",
+        "src/docs/README.md"
+      ],
+      "evidence_required": [
+        "src/index.ts",
+        "the owning source file and its test under test/unit/spec"
+      ],
+      "allowed_edits": [
+        "src",
+        "test/unit/spec",
+        "the owning module docs/README.md",
+        "docs/architecture.md",
+        ".sdd/manifest.json contract_catalog"
+      ],
+      "refresh_with": [
+        "yarn build"
+      ],
+      "validate_with": [
+        "yarn test:unit",
+        "yarn test:style"
+      ],
+      "fallback": "If the change removes, renames, or reinterprets a published symbol, stop: it is a breaking change that needs a major version and consumer notes."
+    },
+    {
+      "task": "change-task-lifecycle",
+      "reference": "src/services/task/state-machine/docs/README.md",
+      "when_to_use": "Changing task states, transitions, guards, actions, or UI controls.",
+      "start_with": [
+        "src/services/task/docs/README.md",
+        "src/services/task/state-machine/docs/README.md"
+      ],
+      "evidence_required": [
+        "src/services/task/state-machine/TaskStateMachine.ts",
+        "test/unit/spec/services/task/state-machine/TaskStateMachine.ts"
+      ],
+      "allowed_edits": [
+        "src/services/task",
+        "test/unit/spec/services/task"
+      ],
+      "refresh_with": [
+        "yarn build:src"
+      ],
+      "validate_with": [
+        "yarn test:unit",
+        "yarn test:style"
+      ],
+      "fallback": "If the backend event that drives the transition cannot be confirmed in src/services/config/types.ts, do not add the transition; report the gap."
+    },
+    {
+      "task": "change-transport-or-recovery",
+      "reference": "src/services/core/docs/README.md",
+      "when_to_use": "Changing AqmReqs correlation, WebSocket connection, keepalive, reconnect, or silent relogin.",
+      "start_with": [
+        "src/services/core/docs/README.md",
+        "docs/architecture.md"
+      ],
+      "evidence_required": [
+        "src/services/core/aqm-reqs.ts",
+        "src/services/core/websocket/connection-service.ts",
+        "src/cc.ts"
+      ],
+      "allowed_edits": [
+        "src/services/core",
+        "src/cc.ts",
+        "test/unit/spec/services/core",
+        "test/unit/spec/cc.ts"
+      ],
+      "refresh_with": [
+        "yarn build:src"
+      ],
+      "validate_with": [
+        "yarn test:unit",
+        "yarn test:style"
+      ],
+      "fallback": "Keep the timeout constants in src/services/core/constants.ts unless the backend contract change is confirmed."
+    }
+  ],
+  "public_interfaces": [
+    {
+      "name": "@webex/contact-center package main",
+      "kind": "package_export",
+      "source": "package.json",
+      "entrypoints": [
+        "import Webex from '@webex/contact-center'",
+        "Webex.init(attrs)"
+      ],
+      "audience": "applications that use only the Contact Center plugin",
+      "notes": "main and exports['.'] load dist/webex.js, built from src/webex.js: a WebexCore constructor with authorization, mercury, logger, support, and the cc plugin; Webex.init merges src/webex-config.ts with attrs.config. types is dist/types/index.d.ts built from src/index.ts."
+    },
+    {
+      "name": "cc plugin registration and typed exports",
+      "kind": "package_export",
+      "source": "src/index.ts",
+      "entrypoints": [
+        "webex.cc",
+        "import {ContactCenter, routingAgent, Task, AddressBook, ApiAIAssistant, UserPreference, getDefaultUIControls, TASK_EVENTS, AGENT_EVENTS, CC_EVENTS} from '@webex/contact-center'"
+      ],
+      "audience": "applications and SDK bundles",
+      "notes": "registerPlugin('cc', ContactCenter, {config}); defaults in src/config.ts. Contract index: docs/architecture.md Public and consumer surfaces."
+    },
+    {
+      "name": "package scripts",
+      "kind": "npm_scripts",
+      "source": "package.json",
+      "entrypoints": [
+        "build:src",
+        "build",
+        "compile",
+        "test",
+        "test:unit",
+        "test:style",
+        "test:e2e",
+        "fix:lint",
+        "fix:prettier",
+        "build:docs",
+        "deploy:npm"
+      ],
+      "audience": "contributors and CI",
+      "notes": "test:unit runs jest through webex-legacy-tools with an 85% global coverage threshold (jest.config.js). test:style lints src/**/*.ts with the workspace root ESLint config. test:e2e runs the workspace Playwright config against the sample app. build:docs writes typedoc output outside the package."
+    }
+  ],
+  "source_of_truth": [
+    {
+      "surface": "Contact Center plugin implementation",
+      "paths": [
+        "src"
+      ],
+      "generated_artifacts": [
+        "dist"
+      ],
+      "refresh_with": [
+        "yarn build:src"
+      ],
+      "validate_with": [
+        "yarn test:unit",
+        "yarn test:style"
+      ]
+    },
+    {
+      "surface": "unit tests",
+      "paths": [
+        "test/unit/spec"
+      ],
+      "generated_artifacts": [
+        "coverage",
+        "junit.xml"
+      ],
+      "refresh_with": [
+        "yarn test:unit"
+      ],
+      "validate_with": [
+        "yarn test:unit"
+      ]
+    },
+    {
+      "surface": "module specifications",
+      "paths": [
+        "src/docs/README.md",
+        "src/metrics/docs/README.md",
+        "src/services/docs/README.md",
+        "src/services/agent/docs/README.md",
+        "src/services/config/docs/README.md",
+        "src/services/core/docs/README.md",
+        "src/services/task/docs/README.md",
+        "src/services/task/state-machine/docs/README.md",
+        "src/utils/docs/README.md"
+      ],
+      "generated_artifacts": [],
+      "refresh_with": [
+        "update alongside the behavior change in the same commit"
+      ],
+      "validate_with": [
+        "spec-validator on an independent runtime"
+      ]
+    },
+    {
+      "surface": "package standing documentation",
+      "paths": [
+        "AGENTS.md",
+        "docs"
+      ],
+      "generated_artifacts": [],
+      "refresh_with": [
+        "update in the same change that alters package boundaries, contracts, commands, or decisions"
+      ],
+      "validate_with": [
+        "check_spec_index.py and check_repo_context.py from the repo-annotation plugin"
+      ]
+    }
+  ],
+  "generated_artifacts": [
+    {
+      "path": "dist",
+      "generated_from": "src",
+      "refresh_with": "yarn build:src"
+    },
+    {
+      "path": "umd/contact-center.min.js",
+      "generated_from": "src/webex.js",
+      "refresh_with": "The workspace webpack UMD build (webpack.config.js contact-center entry at the workspace root); not a package script."
+    },
+    {
+      "path": "../../../.sdd/templates/repo-standards/template-map.json",
+      "generated_from": "WebexTools/repo-standards@d89a7fe59126ae3ad9bac9ca352aa7f12b4c85dc",
+      "refresh_with": "The package holds no templates. It refers to the monorepo root snapshot at ../../../.sdd/templates/repo-standards through layout.monorepo_package.templates_root_path in .sdd/manifest.json. Refresh the root snapshot, not this package."
+    }
+  ],
+  "validation_matrix": [
+    {
+      "paths": [
+        "src/**"
+      ],
+      "minimum": [
+        "yarn build:src",
+        "yarn test:unit",
+        "yarn test:style"
+      ],
+      "recommended": [
+        "add or update the matching test/unit/spec case; keep the 85% coverage threshold met"
+      ]
+    },
+    {
+      "paths": [
+        "src/index.ts",
+        "src/types.ts",
+        "src/services/*/types.ts",
+        "package.json"
+      ],
+      "minimum": [
+        "yarn build",
+        "yarn test:unit"
+      ],
+      "recommended": [
+        "test/unit/spec/index.ts checks the root exports; update docs/architecture.md and .sdd/manifest.json contract_catalog"
+      ]
+    },
+    {
+      "paths": [
+        "src/webex.js",
+        "src/webex-config.ts"
+      ],
+      "minimum": [
+        "yarn build:src",
+        "yarn test:style"
+      ],
+      "recommended": [
+        "rebuild the UMD bundle and load the Contact Center sample; yarn test:e2e when credentials are available"
+      ]
+    }
+  ],
+  "change_impact": [
+    {
+      "paths": [
+        "src/cc.ts"
+      ],
+      "affects": [
+        "every public webex.cc method and plugin event",
+        "register, deregister, and silent relogin ordering"
+      ],
+      "refresh_with": [
+        "yarn build:src"
+      ],
+      "validate_with": [
+        "yarn test:unit",
+        "yarn test:style"
+      ],
+      "avoid_direct_edits": [
+        "dist",
+        "umd/contact-center.min.js"
+      ],
+      "notes": "Collaborators are constructed on the Webex READY event; register() only subscribes and connects (src/docs/README.md)."
+    },
+    {
+      "paths": [
+        "src/services/core/**"
+      ],
+      "affects": [
+        "AQM request settlement and timeouts",
+        "WebSocket connection and recovery for every agent and task operation"
+      ],
+      "refresh_with": [
+        "yarn build:src"
+      ],
+      "validate_with": [
+        "yarn test:unit"
+      ],
+      "avoid_direct_edits": [
+        "dist"
+      ],
+      "notes": "An HTTP acknowledgement never settles an AQM request; the matched WebSocket notification or TIMEOUT_REQ does."
+    },
+    {
+      "paths": [
+        "src/services/task/**"
+      ],
+      "affects": [
+        "Task, Voice, WebRTC, and Digital behavior",
+        "TASK_EVENTS and TaskUIControls seen by applications"
+      ],
+      "refresh_with": [
+        "yarn build:src"
+      ],
+      "validate_with": [
+        "yarn test:unit"
+      ],
+      "avoid_direct_edits": [
+        "dist"
+      ],
+      "notes": "State transitions belong to the state machine; TaskManager maps backend events to TaskEvent."
+    },
+    {
+      "paths": [
+        "src/services/Queue.ts",
+        "src/services/EntryPoint.ts",
+        "src/services/AddressBook.ts",
+        "src/utils/PageCache.ts"
+      ],
+      "affects": [
+        "consult and transfer destination lists",
+        "page cache eligibility"
+      ],
+      "refresh_with": [
+        "yarn build:src"
+      ],
+      "validate_with": [
+        "yarn test:unit"
+      ],
+      "avoid_direct_edits": [
+        "dist"
+      ],
+      "notes": "Defaults and backend ordering are fixed by docs/adr/0002-consult-transfer-list-policy.md."
+    }
+  ],
+  "glossary": [
+    {
+      "term": "ContactCenter",
+      "definition": "Host-embedded Webex plugin exposing the package API, registered as cc (src/cc.ts).",
+      "notes": "Reached as webex.cc."
+    },
+    {
+      "term": "Agent Profile",
+      "definition": "Aggregated remote configuration used during an agent session (Profile in src/services/config/types.ts).",
+      "notes": "Do not call it durable local state."
+    },
+    {
+      "term": "Task",
+      "definition": "Client representation of a contact-center interaction and its operations (src/services/task/Task.ts).",
+      "notes": "Backed by remote interaction data."
+    },
+    {
+      "term": "AQM request",
+      "definition": "HTTP initiation whose success or failure is delivered by a correlated WebSocket notification (src/services/core/aqm-reqs.ts).",
+      "notes": "Not request-over-WebSocket."
+    },
+    {
+      "term": "TaskEvent",
+      "definition": "Typed internal state-machine event mapped from API calls or backend events (src/services/task/state-machine/constants.ts).",
+      "notes": "Distinct from raw CC_EVENTS."
+    },
+    {
+      "term": "PageCache",
+      "definition": "Five-minute in-memory cache for simple paginated data-service requests (src/utils/PageCache.ts).",
+      "notes": "Parameterized searches bypass it."
+    },
+    {
+      "term": "WCC",
+      "definition": "Webex Contact Center, the remote Contact Center service family."
+    },
+    {
+      "term": "RTD",
+      "definition": "Realtime data/transcription: the secondary realtime WebSocket stream."
+    },
+    {
+      "term": "RONA",
+      "definition": "Ring On No Answer: the offered-task failure state and event.",
+      "notes": "Task types also expand it as Redirection on No Answer."
+    },
+    {
+      "term": "ANI",
+      "definition": "Automatic Number Identification: outbound caller-id selection data."
+    },
+    {
+      "term": "Event",
+      "definition": "In Config and Core, a raw backend WebSocket event; in the task state machine, a typed TaskEvent after mapping."
+    },
+    {
+      "term": "State",
+      "definition": "For an agent, the backend availability or substatus; for a task, the XState lifecycle state."
+    },
+    {
+      "term": "Station login",
+      "definition": "Agent sign-in with a LoginOption of BROWSER, EXTENSION, or AGENT_DN (src/types.ts)."
+    },
+    {
+      "term": "Silent relogin",
+      "definition": "ContactCenter's private recovery that calls the agent reload request after the WebSocket reconnects, when allowAutomatedRelogin is true (src/cc.ts)."
+    }
+  ],
+  "evidence_rules": [
+    {
+      "claim_category": "command_name",
+      "sources": [
+        "package.json",
+        ".sdd/manifest.json"
+      ],
+      "requirement": "The script must exist in package.json scripts and the command must equal a manifest commands entry.",
+      "notes": "Use the package-directory form; yarn workspace @webex/contact-center plus the script name is equivalent from the workspace root."
+    },
+    {
+      "claim_category": "import_path",
+      "sources": [
+        "src/index.ts",
+        "src/webex.js",
+        "package.json"
+      ],
+      "requirement": "Typed exports are those of src/index.ts; the runtime default export is the Webex constructor from src/webex.js."
+    },
+    {
+      "claim_category": "behavior_claim",
+      "sources": [
+        "src",
+        "test/unit/spec"
+      ],
+      "requirement": "Ground every behavioral claim in source or test evidence.",
+      "notes": "Commit history is not an evidence source; the old documentation set is migrated and is not evidence."
+    }
+  ],
+  "negative_guidance": [
+    {
+      "rule": "Do not treat an AQM HTTP response as completion.",
+      "why": "AqmReqs settles on the correlated WebSocket notification or timeout (src/services/core/aqm-reqs.ts)."
+    },
+    {
+      "rule": "Do not construct collaborators in register().",
+      "why": "They are built once on the Webex READY event; register() only subscribes and connects (src/cc.ts)."
+    },
+    {
+      "rule": "Do not log tokens, dial numbers, or raw routing payloads.",
+      "why": "Sensitive AQM operations set redactSensitiveLogs; credentials are host-owned (docs/architecture.md Security architecture)."
+    },
+    {
+      "rule": "Do not sort or filter consult and transfer lists in the SDK after the response.",
+      "why": "Backend order is authoritative (docs/adr/0002-consult-transfer-list-policy.md)."
+    },
+    {
+      "rule": "Do not remove or rename a published export or event value without a major version.",
+      "why": "The package is published and semver-sensitive (docs/architecture.md Release and versioning)."
+    }
+  ],
+  "confidence_policy": {
+    "high": {
+      "action": "update",
+      "expectation": "Source and a unit case in test/unit/spec agree on the behavior."
+    },
+    "medium": {
+      "action": "narrow-scope",
+      "expectation": "Only source exists, or the behavior depends on a backend message shape mirrored in src/services/config/types.ts; pin it with a unit case before modifying."
+    },
+    "low": {
+      "action": "noop",
+      "expectation": "Neither source nor tests settle the question, such as backend ordering or eligibility rules; stop and report the gap."
+    }
+  },
+  "repository_topology": {
+    "main_entrypoints": [
+      {
+        "name": "package main",
+        "path": "src/webex.js",
+        "purpose": "Standalone Webex constructor; also the workspace UMD entry for umd/contact-center.min.js",
+        "notes": "package.json main and exports['.'] are dist/webex.js."
+      },
+      {
+        "name": "typed entry",
+        "path": "src/index.ts",
+        "purpose": "Registers the cc plugin and exports the public classes, enums, and types",
+        "notes": "package.json devMain; types is dist/types/index.d.ts."
+      },
+      {
+        "name": "plugin facade",
+        "path": "src/cc.ts",
+        "purpose": "ContactCenter: READY-time composition, register, deregister, and the public methods"
+      }
+    ],
+    "workspace_packages": [
+      {
+        "name": "@webex/contact-center",
+        "paths": [
+          "src",
+          "test"
+        ],
+        "notes": "Nine manifest modules; this SDD root is the package directory inside the webex-js-sdk monorepo."
+      }
+    ],
+    "source_surfaces": [
+      {
+        "name": "Contact Center plugin",
+        "paths": [
+          "src"
+        ],
+        "notes": "Specified by the nine module docs/README.md files listed in docs/specs/README.md."
+      },
+      {
+        "name": "tests",
+        "paths": [
+          "test/unit/spec"
+        ],
+        "notes": "Jest unit specs mirroring src; fixtures under test/unit/fixtures."
+      }
+    ],
+    "generated_surfaces": [
+      {
+        "name": "build output",
+        "paths": [
+          "dist"
+        ],
+        "generated_from": "src",
+        "refresh_with": "yarn build:src",
+        "notes": "JavaScript, source maps, and dist/types declarations. Do not edit by hand."
+      },
+      {
+        "name": "UMD bundle",
+        "paths": [
+          "umd/contact-center.min.js"
+        ],
+        "generated_from": "src/webex.js",
+        "refresh_with": "The workspace webpack UMD build",
+        "notes": "Committed bundle loaded by the Contact Center sample."
+      },
+      {
+        "name": "repo-standards template map",
+        "paths": [
+          "../../../.sdd/templates/repo-standards"
+        ],
+        "generated_from": "WebexTools/repo-standards@d89a7fe59126ae3ad9bac9ca352aa7f12b4c85dc",
+        "refresh_with": "The package holds no templates. It refers to the monorepo root snapshot at ../../../.sdd/templates/repo-standards through layout.monorepo_package.templates_root_path in .sdd/manifest.json. Refresh the root snapshot, not this package.",
+        "notes": "The package holds no templates. It refers to the monorepo root snapshot at ../../../.sdd/templates/repo-standards through layout.monorepo_package.templates_root_path in .sdd/manifest.json. Refresh the root snapshot, not this package."
+      }
+    ],
+    "sync_paths": [
+      {
+        "source": "src",
+        "targets": [
+          "src/docs/README.md",
+          "src/metrics/docs/README.md",
+          "src/services/docs/README.md",
+          "src/services/agent/docs/README.md",
+          "src/services/config/docs/README.md",
+          "src/services/core/docs/README.md",
+          "src/services/task/docs/README.md",
+          "src/services/task/state-machine/docs/README.md",
+          "src/utils/docs/README.md",
+          "docs/architecture.md"
+        ],
+        "mechanism": "Manual; update the owning module specification and the contract index in the same change that alters observable behavior or a contract.",
+        "notes": "Code is the referee."
+      },
+      {
+        "source": "WebexTools/repo-standards@d89a7fe59126ae3ad9bac9ca352aa7f12b4c85dc",
+        "targets": [
+          "../../../.sdd/templates/repo-standards"
+        ],
+        "mechanism": "The package holds no templates. It refers to the monorepo root snapshot at ../../../.sdd/templates/repo-standards through layout.monorepo_package.templates_root_path in .sdd/manifest.json. Refresh the root snapshot, not this package.",
+        "notes": "The package holds no templates. It refers to the monorepo root snapshot at ../../../.sdd/templates/repo-standards through layout.monorepo_package.templates_root_path in .sdd/manifest.json. Refresh the root snapshot, not this package."
+      }
+    ],
+    "validation_entrypoints": [
+      {
+        "name": "build",
+        "command": "yarn build:src",
+        "scope": "src",
+        "notes": "webex-legacy-tools build, then declarations."
+      },
+      {
+        "name": "unit-test",
+        "command": "yarn test:unit",
+        "scope": "test/unit/spec",
+        "notes": "Jest with the 85% global coverage threshold."
+      },
+      {
+        "name": "lint",
+        "command": "yarn test:style",
+        "scope": "src",
+        "notes": "ESLint over src/**/*.ts with the workspace root config; Markdown is not linted."
+      }
+    ]
+  },
+  "folder_readme_contract": {
+    "required_sections": [
+      "purpose",
+      "boundaries",
+      "key-files",
+      "common-tasks"
+    ],
+    "rules": [
+      "Orient the reader before describing detail.",
+      "Link to the module specification rather than duplicating it."
+    ],
+    "example_policy": "Examples are allowed only when verified against src/ or test/.",
+    "fallback": "Omit a section rather than inventing content; report unresolved facts as gaps."
+  },
+  "regression_feedback_rules": [
+    {
+      "trigger": "A change to src/cc.ts registration, deregistration, or relogin ordering.",
+      "required_followups": [
+        "Add or update the case in test/unit/spec/cc.ts",
+        "Update the lifecycle flows in src/docs/README.md"
+      ],
+      "notes": "Current risk: deregister() does not remove the connectionLost listener registered with handleConnectionLost.bind(this), nor the TASK_MERGED listener (src/cc.ts)."
+    },
+    {
+      "trigger": "A new or renamed export, event, or metric name.",
+      "required_followups": [
+        "Update docs/architecture.md Public and consumer surfaces",
+        "Update .sdd/manifest.json contract_catalog",
+        "Update the owning module specification"
+      ]
+    }
+  ],
+  "surface_owners": [
+    {
+      "surface": "module implementation and specifications",
+      "owner": "@webex/web-sdk",
+      "edit_boundary": "The monorepo .github/CODEOWNERS default rule assigns @webex/web-sdk; no line names this package."
+    }
+  ],
+  "do_not_edit": [
+    "dist",
+    "umd/contact-center.min.js",
+    "../../../.sdd/templates/repo-standards"
+  ],
+  "marker_scopes": {
+    "sdd": [
+      ".sdd/manifest.json",
+      "AGENTS.md",
+      "docs",
+      "src/docs/README.md",
+      "src/metrics/docs/README.md",
+      "src/services/docs/README.md",
+      "src/services/agent/docs/README.md",
+      "src/services/config/docs/README.md",
+      "src/services/core/docs/README.md",
+      "src/services/task/docs/README.md",
+      "src/services/task/state-machine/docs/README.md",
+      "src/utils/docs/README.md"
+    ]
+  },
+  "fallback_rules": [
+    "When source and tests disagree, code is the referee and the disagreement is recorded rather than silently resolved.",
+    "When neither source nor tests settle a question, report it as a gap instead of inferring.",
+    "Commit history is not a valid rationale source for this package."
+  ],
+  "downstream_context_pack": {
+    "required_human_surfaces": [
+      "README.md",
+      "docs/index.md",
+      "docs/architecture.md",
+      "docs/getting-started.md"
+    ],
+    "required_agent_operational_surfaces": [
+      "AGENTS.md",
+      "docs/specs/README.md"
+    ],
+    "required_machine_readable_surface": ".sdd/manifest.json",
+    "recommended_machine_readable_sections": [
+      "task_playbooks",
+      "public_interfaces",
+      "change_impact",
+      "glossary",
+      "evidence_rules",
+      "negative_guidance",
+      "confidence_policy",
+      "repository_topology",
+      "folder_readme_contract",
+      "regression_feedback_rules"
+    ]
+  }
+}
