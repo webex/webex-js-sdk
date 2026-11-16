@@ -1,0 +1,416 @@
+{
+  "manifest_version": 1,
+  "repository": {
+    "name": "@webex/plugin-device-manager",
+    "purpose": "Public plugin registered as webex.devicemanager that manages the user's Webex room devices and Lyra spaces: refresh lists the recent auxiliary devices from WDM (devices/auxiliary) into a module-level collection that getAll reads, upsert and remove add and delete WDM entries, search finds devices through the directory search plugin, get resolves the Lyra endpoint for an ultrasound token, requestPin and pair run a Lyra PIN challenge and record the paired device on the instance, bindSpace and unbindSpace bind a conversation to the paired device, getAudioState and the mute and volume methods call the Lyra device API for the paired device and reject without one, while putAudioState passes the caller's space and audio state to Lyra with no pairing guard. A Mercury lyra.space_updated listener drops a pairing Lyra no longer verifies. User-assigned device names are decrypted through the encryption plugin. Argument and pairing guards log and reject with DeviceManager#method messages; Lyra, search, and WDM failures are logged and rejected, except that audio failures reject unlogged, refresh logs and resolves undefined, and the Mercury handler logs and resolves; a failed name decryption logs and yields undefined; nothing is persisted.",
+    "category": "cat2-legacy",
+    "primary_languages": [
+      "javascript"
+    ]
+  },
+  "topology": "Orchestrator-plus-components",
+  "commands": {
+    "install": {
+      "command": "yarn",
+      "source_file": "../../../.github/workflows/deploy.yml",
+      "role": "install"
+    },
+    "prebuild": {
+      "command": "yarn prebuild:modules",
+      "source_file": "../../../CONTRIBUTING.md",
+      "role": "other"
+    },
+    "compile": {
+      "command": "yarn build",
+      "source_file": "package.json",
+      "role": "compile",
+      "verified_at": "2026-11-13T02:20:46Z"
+    },
+    "build": {
+      "command": "yarn build:src",
+      "source_file": "package.json",
+      "role": "package",
+      "verified_at": "2026-11-13T02:20:33Z"
+    },
+    "unit-test": {
+      "command": "yarn test:unit",
+      "source_file": "package.json",
+      "role": "unit-test",
+      "verified_at": "2026-11-13T02:20:48Z"
+    },
+    "lint": {
+      "command": "yarn test:style",
+      "source_file": "package.json",
+      "role": "lint",
+      "verified_at": "2026-11-13T02:32:03Z"
+    },
+    "browser-test": {
+      "command": "yarn test:browser",
+      "source_file": "package.json",
+      "role": "other"
+    },
+    "deploy": {
+      "command": "yarn deploy:npm",
+      "source_file": "package.json",
+      "role": "deploy"
+    }
+  },
+  "tests": {
+    "unit": {
+      "command_ref": "unit-test",
+      "dir": "test/unit/spec",
+      "framework": "jest"
+    }
+  },
+  "toolchain": [
+    {
+      "name": "node",
+      "version": ">=16",
+      "origin": "repo-config",
+      "source_file": "package.json"
+    },
+    {
+      "name": "node",
+      "version": "22.14",
+      "origin": "repo-config",
+      "source_file": "../../../AGENTS.md"
+    },
+    {
+      "name": "node",
+      "version": "lts/jod",
+      "origin": "repo-config",
+      "source_file": "../../../.nvmrc"
+    },
+    {
+      "name": "node",
+      "version": "18.x",
+      "origin": "repo-config",
+      "source_file": "../../../package.json"
+    },
+    {
+      "name": "yarn",
+      "version": "3.4.1",
+      "origin": "repo-config",
+      "source_file": "../../../package.json"
+    },
+    {
+      "name": "babel",
+      "version": "^7.17.10",
+      "origin": "repo-config",
+      "source_file": "package.json"
+    },
+    {
+      "name": "eslint",
+      "version": "^8.24.0",
+      "origin": "repo-config",
+      "source_file": "package.json"
+    },
+    {
+      "name": "prettier",
+      "version": "^2.7.1",
+      "origin": "repo-config",
+      "source_file": "package.json"
+    }
+  ],
+  "quality_gates": {
+    "code_coverage": {
+      "origin": "none",
+      "declared_by": "rarajes2@cisco.com via the bootstrap questionnaire (generator check: test:unit runs webex-legacy-tools with --runner jest; jest.config.js re-exports @webex/jest-config-legacy, which sets no coverageThreshold; package.json defines no coverage script)"
+    }
+  },
+  "coverage_status_definitions": {
+    "specced": ">=80% public surface specced, drift <5% - spec is authoritative",
+    "partial": "40-80% specced - spec is a hint, cross-check code",
+    "untracked": "<40% specced - code is the source of truth"
+  },
+  "spec_source_policy": {
+    "mode": "keep-separate",
+    "migrated_source_disposition": "retain",
+    "disposition_decided_by": "rarajes2@cisco.com",
+    "disposition_decided_at": "2026-11-13T02:25:00Z",
+    "decided_by": "rarajes2@cisco.com",
+    "decided_at": "2026-11-13T02:25:00Z",
+    "decision_record": "docs/adr/0001-retain-product-readme.md"
+  },
+  "spec_sources": [
+    {
+      "path": "README.md",
+      "scope": "repo",
+      "role": "reference-only",
+      "canonical": false,
+      "use_by_agents": "context-only",
+      "post_migration_action": "retain",
+      "deletion_status": "not-applicable",
+      "notes": "npm page, kept unchanged under keep-separate. It warns that the plugin is under active development with breaking changes. Its samples command (samples:devicemanager) is not defined in the workspace package.json, its connect snippet reads an undeclared webex, and its Typical flow chains methods on the array that getAll returns, so none of its examples run. It omits get, upsert, remove, getAudioState, putAudioState, setVolume, getPairedDevice, getPairedMethod, and setPairedMethod. See docs/adr/0001-retain-product-readme.md."
+    }
+  ],
+  "modules": [
+    {
+      "path": "src",
+      "canonical_spec": "src/docs/README.md",
+      "coverage_status": "Partial",
+      "coverage_evidence": "Field coverage 100% (15/15) assessed 2026-11-13 by the generator; critical field coverage 7/7. test:unit runs 14 passing jest cases in test/unit/spec/index.js covering getPairedDevice (MOD-016) and the paired-method accessors (MOD-017) only; registration, the WDM requests, search, get, the PIN flow, unpair, binding, audio, the Mercury handler, and name decryption (MOD-001, MOD-003 to MOD-015, MOD-018) and INV-001 and INV-003 to INV-006 have no unit case. The package has no integration spec; test:browser collects nothing and exits 0. build:src, build, test:unit, and test:style exit 0 (5 require-jsdoc warnings). Independent validation passed on 2026-11-13 with validator runtime 01a1d2c4-873e-7eb1-bbd2-4e40457e8616 and no findings. The prior code/spec findings were corrected, and the protected-spec drift-fix was explicitly approved through reconciliation. The module remains Partial pending unit cases, a characterization baseline, and promotion review.",
+      "last_assessed": "2026-11-13",
+      "contracts": {
+        "provides": [
+          "device-manager-public-sdk"
+        ],
+        "requires": [
+          "wdm-auxiliary-devices-http",
+          "lyra-internal-sdk",
+          "search-internal-sdk",
+          "mercury-lyra-space-events",
+          "internal-plugin-encryption-kms",
+          "internal-plugin-device-registration",
+          "webex-core-plugin-host",
+          "webex-core-services"
+        ]
+      },
+      "section_profile": {
+        "has_tiers": false,
+        "has_ui": false,
+        "crosses_service_boundaries": true,
+        "holds_client_state": true,
+        "enforces_domain_rules": true,
+        "is_concurrent_async": true,
+        "owns_persistence": false,
+        "stateful_transitions": true,
+        "exposes_wire_protocol": true,
+        "ui_multi_screen": false,
+        "large_data_model": false,
+        "returns_caller_errors": true,
+        "module_specific_conventions": true,
+        "published_package": true,
+        "embedded_in_host": false,
+        "has_design_tradeoff": true,
+        "resolved_by": "claude-code (code evidence; bootstrap questionnaire)",
+        "resolved_at": "2026-11-13T02:25:00Z",
+        "has_submodules": false,
+        "has_submodules_computed_by": "scripts/module_tree.py",
+        "has_submodules_computed_at": "2026-11-13T02:25:00Z"
+      }
+    }
+  ],
+  "contract_catalog": {
+    "index_path": "docs/architecture.md",
+    "definitions": {
+      "device-manager-public-sdk": {
+        "kind": "sdk",
+        "publication": "published",
+        "source_kind": "repository-path",
+        "source": "package.json",
+        "summary": "Published npm package (public plugin). main is dist/index.js and devMain is src/index.js; no type declarations are published. Importing it imports @webex/internal-plugin-device and registers DeviceManager as public plugin 'devicemanager' with config {}; src/device-manager.js also imports @webex/internal-plugin-lyra and @webex/internal-plugin-search. The first registration of the name wins. The entry exports the default DeviceManager and the named config. webex.devicemanager exposes getAll, refresh, search, upsert, get, remove, requestPin, pair, unpair, bindSpace, unbindSpace, getAudioState, putAudioState, mute, unmute, increaseVolume, decreaseVolume, setVolume, getPairedDevice, getPairedMethod, and setPairedMethod; specified in src/docs/README.md."
+      },
+      "wdm-auxiliary-devices-http": {
+        "kind": "http",
+        "publication": "internal",
+        "source_kind": "external",
+        "source": "WDM auxiliary devices API (catalog service name wdm, reached through api: 'wdm' in src/device-manager.js; route definitions are not in this repository)",
+        "summary": "GET devices/auxiliary answering {items: [device]}; PUT devices/auxiliary/Room/<id> with no body answering the added device; DELETE devices/auxiliary/<id>. A device carries id or identity.id, deviceClass, deviceInfo.machineType, and metadata.encryptedUserAssignedName with metadata.encryptionKeyUrl."
+      },
+      "lyra-internal-sdk": {
+        "kind": "sdk",
+        "publication": "published",
+        "source_kind": "external",
+        "source": "@webex/internal-plugin-lyra (workspace package; module spec consulted: packages/@webex/internal-plugin-lyra/src/docs/README.md MOD-003, MOD-005 to MOD-007, MOD-010, MOD-012, MOD-014, MOD-015, INV-001)",
+        "summary": "webex.internal.lyra.getAdvertisedEndpoint(token); space.get, join, leave, bindConversation, and unbindConversation; device.getAudioState, putAudioState, mute, unmute, increaseVolume, decreaseVolume, and setVolume. join, leave, and the bindings take a space whose url is the relative /spaces/<id>; this package passes the paired device (the space Lyra returned) to device.getAudioState and the mute and volume methods, and the caller's space to device.putAudioState. Its import registers the mercury and encryption plugins."
+      },
+      "search-internal-sdk": {
+        "kind": "sdk",
+        "publication": "published",
+        "source_kind": "external",
+        "source": "@webex/internal-plugin-search (workspace package; module spec consulted: packages/@webex/internal-plugin-search/src/docs/README.md MOD-004, UC-001)",
+        "summary": "webex.internal.search.people(options) POSTs options to argonaut directory and resolves the body; this package sends searchType DEVICE_SEARCH, searchEntity device, includePeople false, includeRooms true, queryString, and a v4 searchId."
+      },
+      "mercury-lyra-space-events": {
+        "kind": "event",
+        "publication": "internal",
+        "source_kind": "external",
+        "source": "@webex/internal-plugin-mercury (workspace package; module spec consulted for the emit scheme: packages/@webex/internal-plugin-mercury/src/docs/README.md MOD-009; code consulted: src/mercury.js)",
+        "summary": "webex.internal.mercury emits event:lyra.space_updated for an envelope whose data.eventType is lyra.space_updated; this package reads only data.spaceUrl. The mercury spec is stale on sessions, which this package does not use."
+      },
+      "internal-plugin-encryption-kms": {
+        "kind": "sdk",
+        "publication": "published",
+        "source_kind": "external",
+        "source": "@webex/internal-plugin-encryption (workspace package; no spec exists; code consulted: packages/@webex/internal-plugin-encryption/src/encryption.js)",
+        "summary": "webex.internal.encryption.decryptText(key, ciphertext) fetches the KMS key and resolves the plaintext; used for user-assigned device names. Not declared in package.json; registered through the Lyra plugin's import."
+      },
+      "internal-plugin-device-registration": {
+        "kind": "sdk",
+        "publication": "published",
+        "source_kind": "external",
+        "source": "@webex/internal-plugin-device (workspace package; module spec consulted: packages/@webex/internal-plugin-device/src/docs/README.md MOD-001)",
+        "summary": "Importing the package registers internal plugin device; the Lyra plugin sends webex.internal.device.url when this package joins and leaves spaces."
+      },
+      "webex-core-plugin-host": {
+        "kind": "sdk",
+        "publication": "published",
+        "source_kind": "external",
+        "source": "@webex/webex-core (workspace package; module spec consulted: packages/@webex/webex-core/src/docs/README.md MOD-013, MOD-014, MOD-028, MOD-043)",
+        "summary": "registerPlugin keys a public plugin by its raw name (devicemanager, first registration wins) and adds webex.<name> to later instances; WebexPlugin supplies webex, logger (falling back to console), config by namespace, and request, the one entry for plugin HTTP traffic."
+      },
+      "webex-core-services": {
+        "kind": "sdk",
+        "publication": "published",
+        "source_kind": "external",
+        "source": "@webex/webex-core services plugin (services spec consulted: packages/@webex/webex-core/src/lib/services/docs/README.md SVC-012, SVC-022)",
+        "summary": "webex.internal.services.waitForCatalog('postauth') resolves when the postauth catalog is ready or rejects after 60 seconds by default; get('wdm') returns the WDM service URL; a request with api and resource is joined to the catalog URL."
+      }
+    }
+  },
+  "spec_policy": {
+    "require_what_and_why": true,
+    "require_provenance": true,
+    "protected_specs": [
+      "src/docs/README.md"
+    ]
+  },
+  "validation": {
+    "generator_runtime": "claude-code",
+    "generator_model": "claude-opus-5-5",
+    "generator_runtime_source": "host-metadata",
+    "source_commit": "c22331c97be69968deddf2f8d55d26c84ae2c1ac",
+    "minimum_independence": "different-runtime",
+    "blocking_severities": [
+      "Blocking"
+    ],
+    "validator_runtime": "01a1d2c4-873e-7eb1-bbd2-4e40457e8616",
+    "validator_runtime_source": "invocation-input",
+    "runtime_fallback_tier": "different-runtime"
+  },
+  "layout": {
+    "sdd_root": ".sdd",
+    "docs_root": "docs",
+    "agent_entry_path": "AGENTS.md",
+    "standing_docs_root": "docs",
+    "spec_index_path": "docs/specs/README.md",
+    "module_docs_strategy": "source-local",
+    "module_docs_relative_path": "docs/README.md",
+    "module_docs_decision": {
+      "basis": "repo-standards-default",
+      "reason": "No module-local documentation existed. The source-local default gives src/docs/README.md. test:style runs eslint ./src/**/*.*, and the shared @webex/eslint-config-legacy ignore patterns exclude docs/** and *.md; build:src processes -js -ts only, so Markdown under src/ does not enter dist/.",
+      "decided_by": "rarajes2@cisco.com (bootstrap questionnaire)",
+      "decided_at": "2026-11-13T02:25:00Z"
+    },
+    "repo_context_decision": {
+      "path": ".repo-context.json",
+      "schema_path": "schemas/repo-context.schema.json",
+      "action": "create",
+      "schema_action": "create",
+      "reason": "Neither the operational context nor its schema existed in this package. The context is created from package evidence and the schema is copied from the repository-root .sdd/templates/repo-standards/schemas/repo-context.schema.json.",
+      "decided_by": "rarajes2@cisco.com (bootstrap questionnaire)",
+      "decided_at": "2026-11-13T02:25:00Z"
+    },
+    "artifact_decisions": [
+      {
+        "path": "docs/service.md",
+        "action": "omit",
+        "reason": "Library package, not a deployable service. package.json has no start script, container, or deployment descriptor.",
+        "decided_by": "claude-code (code evidence)",
+        "decided_at": "2026-11-13T02:25:00Z"
+      },
+      {
+        "path": "mkdocs.yml",
+        "action": "omit",
+        "reason": "No package-level documentation site exists. Documentation publishing stays with the workspace.",
+        "decided_by": "claude-code (code evidence)",
+        "decided_at": "2026-11-13T02:25:00Z"
+      },
+      {
+        "path": "api-specs/openapi.yaml",
+        "action": "omit",
+        "reason": "The package serves no HTTP routes. It is a client of the WDM auxiliary devices API and, through internal plugins, of the Lyra, directory search, and KMS services; its published surface is the npm export described by device-manager-public-sdk.",
+        "decided_by": "claude-code (code evidence)",
+        "decided_at": "2026-11-13T02:25:00Z"
+      },
+      {
+        "path": "SECURITY.md",
+        "action": "omit",
+        "reason": "No package-level security policy exists. The workspace owns security policy, and a per-package copy would duplicate it; security architecture is described in docs/architecture.md.",
+        "decided_by": "claude-code (code evidence)",
+        "decided_at": "2026-11-13T02:25:00Z"
+      },
+      {
+        "path": "CONTRIBUTING.md",
+        "action": "omit",
+        "reason": "Contribution instructions are owned at the workspace root CONTRIBUTING.md.",
+        "decided_by": "claude-code (code evidence)",
+        "decided_at": "2026-11-13T02:25:00Z"
+      },
+      {
+        "path": "CHANGELOG.md",
+        "action": "omit",
+        "reason": "Changelog generation is owned at the workspace root. This package has no changelog file.",
+        "decided_by": "claude-code (code evidence)",
+        "decided_at": "2026-11-13T02:25:00Z"
+      },
+      {
+        "path": "CTO_CHECKLIST.yml",
+        "action": "omit",
+        "reason": "The CTO readiness checklist applies to deployable services. This package is a library.",
+        "decided_by": "claude-code (code evidence)",
+        "decided_at": "2026-11-13T02:25:00Z"
+      },
+      {
+        "path": "schemas/cto-checklist.schema.json",
+        "action": "omit",
+        "reason": "Omitted together with CTO_CHECKLIST.yml.",
+        "decided_by": "claude-code (code evidence)",
+        "decided_at": "2026-11-13T02:25:00Z"
+      }
+    ],
+    "template_roots": {
+      "canonical": ".sdd/templates/repo-standards"
+    },
+    "contract_index_path": "docs/architecture.md",
+    "repo_skills_root": ".sdd/skills",
+    "monorepo_package": {
+      "package_path": "packages/@webex/plugin-device-manager",
+      "root_manifest_path": "../../../.sdd/manifest.json",
+      "templates_root_path": "../../../.sdd/templates/repo-standards"
+    }
+  },
+  "tooling": {
+    "sdlc_skills": {
+      "source_ref": "repo-annotation@2.3.1"
+    }
+  },
+  "coverage_ratchet": {
+    "enabled": true,
+    "waivers": []
+  },
+  "substrate": {
+    "source": "WebexTools/repo-standards@d89a7fe59126ae3ad9bac9ca352aa7f12b4c85dc",
+    "consumed": [
+      "@webex/eslint-config-legacy via .eslintrc.js",
+      "@webex/babel-config-legacy via babel.config.js",
+      "@webex/jest-config-legacy via jest.config.js",
+      "@webex/legacy-tools build and test runner via package.json",
+      "package README.md (context only)",
+      "Repo Standards templates at the monorepo root .sdd/templates/repo-standards, referred to through layout.monorepo_package.templates_root_path (this package holds no templates)"
+    ],
+    "compliance_tier": "baseline"
+  },
+  "section_profiles": {
+    "repo": {
+      "owns_datastore": false,
+      "holds_client_state": true,
+      "components_interact": true,
+      "domain_data_across_components": true,
+      "caches_data": true,
+      "observability_convention": true,
+      "deploys_to_infra": false,
+      "shared_base_libs": true,
+      "is_monorepo": false,
+      "multi_platform": false,
+      "published_package": true,
+      "embedded_in_host": false,
+      "cross_repo_deps_material": true,
+      "security_arch_warranted": true,
+      "exposes_commands_or_artifacts": true
+    },
+    "resolved_by": "claude-code (code evidence; bootstrap questionnaire)",
+    "resolved_at": "2026-11-13T02:25:00Z"
+  }
+}

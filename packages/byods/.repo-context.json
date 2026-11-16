@@ -1,0 +1,491 @@
+{
+  "$schema": "./schemas/repo-context.schema.json",
+  "version": 1,
+  "repository": {
+    "name": "@webex/byods",
+    "purpose": "Published Node.js SDK for Webex Bring Your Own Data Source (BYoDS). One BYODS instance, built from a Service App client ID, client secret, and organization ID, obtains a Service App token pair from a personal access token or refresh token, keeps it in a caller-replaceable TokenStorageAdapter (one in-memory slot by default), and refreshes the access token when an expired one is read. Its data source client creates, reads, lists, updates, and deletes Webex /dataSources records with that token and can renew a data source JWS on a jittered timer; verifyJWSToken checks a JWS against the Webex identity broker key set and resolves a validity result. BYODS_ENVIRONMENT selects production or integration hosts at construction."
+  },
+  "commands": {
+    "install": "yarn",
+    "prebuild": "yarn prebuild:modules",
+    "compile": "yarn build",
+    "build": "yarn build:src",
+    "unit-test": "yarn test:unit",
+    "lint": "yarn test:style",
+    "test": "yarn test",
+    "docs-check": "yarn docs",
+    "docs-build": "yarn build:docs",
+    "clean": "yarn prebuild",
+    "fix-lint": "yarn fix:lint",
+    "format": "yarn fix:prettier",
+    "deploy": "yarn deploy:npm"
+  },
+  "public_interfaces": [
+    {
+      "name": "@webex/byods package exports",
+      "kind": "package_export",
+      "source": "src/index.ts",
+      "entrypoints": [
+        "import {BYODS, TokenManager, BaseClient, DataSourceClient, LOGGER, InMemoryTokenStorageAdapter} from '@webex/byods'"
+      ],
+      "audience": "Node.js data source providers; in this workspace the private sample byods-demo-server, which imports the source path",
+      "notes": "Type exports: TokenStorageAdapter, SDKConfig, ServiceAppToken. package.json main names dist/module/index.js, which no script writes; build:src writes dist/index.js and dist/types (src/docs/README.md MOD-020)."
+    },
+    {
+      "name": "BYODS facade",
+      "kind": "sdk_api",
+      "source": "src/byods/index.ts",
+      "entrypoints": [
+        "new BYODS(config)",
+        "sdk.tokenManager",
+        "sdk.dataSource",
+        "sdk.verifyJWSToken(jws)"
+      ],
+      "audience": "Node.js data source providers",
+      "notes": "BYODS_ENVIRONMENT=integration selects integration hosts at construction; any other value selects production. verifyJWSToken resolves a result object and never rejects."
+    },
+    {
+      "name": "Token manager and storage adapter",
+      "kind": "sdk_api",
+      "source": "src/token-manager/index.ts",
+      "entrypoints": [
+        "getServiceAppTokenUsingPAT()",
+        "saveServiceAppRegistrationData()",
+        "getServiceAppToken()",
+        "refreshServiceAppAccessToken()",
+        "deleteToken()",
+        "getServiceAppId()"
+      ],
+      "audience": "Node.js data source providers",
+      "notes": "One organization and one token slot per instance; an expired access token is refreshed when read. A custom TokenStorageAdapter implements setToken, getToken, deleteToken and returns Date expiry values."
+    },
+    {
+      "name": "Data source client",
+      "kind": "sdk_api",
+      "source": "src/data-source-client/index.ts",
+      "entrypoints": [
+        "create()",
+        "get()",
+        "list()",
+        "update()",
+        "delete()",
+        "scheduleJWSTokenRefresh()"
+      ],
+      "audience": "Node.js data source providers",
+      "notes": "A failed renewal tick ends the host process through an unhandled rejection, and the default nonce generator always fails on Node.js 22.14; always pass a nonce generator (src/docs/README.md MOD-016, MOD-017)."
+    },
+    {
+      "name": "package scripts",
+      "kind": "npm_scripts",
+      "source": "package.json",
+      "entrypoints": [
+        "build:src",
+        "build",
+        "prebuild",
+        "test",
+        "test:unit",
+        "test:style",
+        "docs",
+        "build:docs",
+        "fix:lint",
+        "fix:prettier",
+        "deploy:npm"
+      ],
+      "audience": "contributors and CI",
+      "notes": "Run from packages/byods, or as yarn workspace @webex/byods followed by the script name from the workspace root. Yarn 3 does not run prebuild automatically."
+    }
+  ],
+  "source_of_truth": [
+    {
+      "surface": "BYoDS SDK implementation",
+      "paths": [
+        "src/index.ts",
+        "src/byods/index.ts",
+        "src/token-manager/index.ts",
+        "src/token-storage-adapter/index.ts",
+        "src/base-client/index.ts",
+        "src/http-utils/index.ts",
+        "src/data-source-client/index.ts",
+        "src/Logger/index.ts"
+      ],
+      "generated_artifacts": [
+        "dist"
+      ],
+      "refresh_with": [
+        "yarn build:src"
+      ],
+      "validate_with": [
+        "yarn test:unit",
+        "yarn test:style"
+      ]
+    },
+    {
+      "surface": "module specification",
+      "paths": [
+        "src/docs/README.md"
+      ],
+      "generated_artifacts": [],
+      "refresh_with": [
+        "update alongside the behavior change in the same commit"
+      ],
+      "validate_with": [
+        "spec-validator on an independent runtime"
+      ]
+    }
+  ],
+  "generated_artifacts": [
+    {
+      "path": "dist",
+      "generated_from": "src",
+      "refresh_with": "yarn build:src"
+    },
+    {
+      "path": "../../.sdd/templates/repo-standards/template-map.json",
+      "generated_from": "WebexTools/repo-standards@d89a7fe59126ae3ad9bac9ca352aa7f12b4c85dc",
+      "refresh_with": "Run the setup script of the active Repo Annotation installation against the monorepo root"
+    }
+  ],
+  "validation_matrix": [
+    {
+      "paths": [
+        "src/**"
+      ],
+      "minimum": [
+        "yarn test:unit"
+      ],
+      "recommended": [
+        "yarn test:style",
+        "yarn build:src"
+      ]
+    },
+    {
+      "paths": [
+        "src/data-source-client/index.ts"
+      ],
+      "minimum": [
+        "yarn test:unit"
+      ],
+      "recommended": [
+        "add a characterization case for a failing renewal tick and the default nonce generator before changing the timer"
+      ]
+    },
+    {
+      "paths": [
+        "src/index.ts",
+        "package.json",
+        "tsconfig.json"
+      ],
+      "minimum": [
+        "yarn build:src"
+      ],
+      "recommended": [
+        "yarn docs"
+      ]
+    }
+  ],
+  "change_impact": [
+    {
+      "paths": [
+        "src/token-manager/index.ts",
+        "src/token-storage-adapter/index.ts",
+        "src/token-storage-adapter/types.ts"
+      ],
+      "affects": [
+        "token acquisition, refresh, and storage for every instance",
+        "custom TokenStorageAdapter implementations"
+      ],
+      "refresh_with": [
+        "yarn build:src"
+      ],
+      "validate_with": [
+        "yarn test:unit"
+      ],
+      "avoid_direct_edits": [
+        "dist"
+      ],
+      "notes": "Changing the adapter contract breaks applications that supply their own storage."
+    },
+    {
+      "paths": [
+        "src/data-source-client/index.ts"
+      ],
+      "affects": [
+        "data source calls",
+        "JWS renewal timing, payload, and failure handling"
+      ],
+      "refresh_with": [
+        "yarn build:src"
+      ],
+      "validate_with": [
+        "yarn test:unit"
+      ],
+      "avoid_direct_edits": [
+        "dist"
+      ],
+      "notes": "No unit test reaches a failing tick today."
+    },
+    {
+      "paths": [
+        "src/byods/index.ts",
+        "src/constants.ts"
+      ],
+      "affects": [
+        "environment selection",
+        "Webex hosts",
+        "JWS verification"
+      ],
+      "refresh_with": [
+        "yarn build:src"
+      ],
+      "validate_with": [
+        "yarn test:unit"
+      ],
+      "avoid_direct_edits": [
+        "dist"
+      ],
+      "notes": "The API and key-set URLs must stay paired by environment."
+    },
+    {
+      "paths": [
+        "src/index.ts",
+        "package.json"
+      ],
+      "affects": [
+        "the package entry, exports, and published files"
+      ],
+      "refresh_with": [
+        "yarn build:src"
+      ],
+      "validate_with": [
+        "yarn build:src",
+        "yarn docs"
+      ],
+      "avoid_direct_edits": [
+        "dist"
+      ],
+      "notes": "main currently names a path the build does not write."
+    }
+  ],
+  "evidence_rules": [
+    {
+      "claim_category": "command_name",
+      "sources": [
+        "package.json"
+      ],
+      "requirement": "The script must exist in package.json scripts.",
+      "notes": "Workspace-root commands (yarn, yarn prebuild:modules) come from the root CONTRIBUTING.md and the deploy workflow."
+    },
+    {
+      "claim_category": "import_path",
+      "sources": [
+        "src/index.ts",
+        "package.json"
+      ],
+      "requirement": "Only names exported by src/index.ts are public imports.",
+      "notes": "Request and response types are reachable only through deep dist/types paths."
+    },
+    {
+      "claim_category": "behavior_claim",
+      "sources": [
+        "src",
+        "test/unit/spec"
+      ],
+      "requirement": "Ground every behavioral claim in source or test evidence; mark probe-only behavior as such.",
+      "notes": "Commit history is not an evidence source for this package. README.md is retained product documentation, not the behavioral authority."
+    }
+  ],
+  "negative_guidance": [
+    {
+      "rule": "Do not call scheduleJWSTokenRefresh without a nonce generator.",
+      "why": "The default generator throws on its first tick and the failure ends the process (src/docs/README.md MOD-016, MOD-017)."
+    },
+    {
+      "rule": "Do not let caller headers override the data source bearer token.",
+      "why": "Requests must act only as the configured Service App (src/docs/README.md INV-001)."
+    },
+    {
+      "rule": "Do not log token values or the client secret.",
+      "why": "Log lines go to the host console; current log calls carry no secret."
+    },
+    {
+      "rule": "Do not treat README.md as the package API.",
+      "why": "It omits renewal failure handling and the entry-field gap. See docs/adr/0001-retain-product-readme.md."
+    },
+    {
+      "rule": "Do not lower or bypass the jest.config.js coverage threshold.",
+      "why": "test:unit enforces it locally and in the pull-request workflow."
+    }
+  ],
+  "confidence_policy": {
+    "high": {
+      "action": "update",
+      "expectation": "Source and unit test evidence both support the change, for example token refresh, header precedence, and environment selection."
+    },
+    "medium": {
+      "action": "narrow-scope",
+      "expectation": "Only source or probe evidence exists, for example renewal tick failure, the default nonce generator, and the entry fields. Pin current behavior with a characterization test before modifying."
+    },
+    "low": {
+      "action": "noop",
+      "expectation": "Neither source nor tests settle the question, for example Webex server behavior on reused refresh tokens. Stop and report the gap."
+    }
+  },
+  "repository_topology": {
+    "main_entrypoints": [
+      {
+        "name": "package entry",
+        "path": "src/index.ts",
+        "purpose": "Value and type exports of the SDK",
+        "notes": "Built to dist/index.js and dist/types/index.d.ts."
+      }
+    ],
+    "workspace_packages": [
+      {
+        "name": "@webex/byods",
+        "paths": [
+          "src",
+          "test"
+        ],
+        "notes": "One module; this SDD root is the package directory packages/byods inside the webex-js-sdk monorepo."
+      }
+    ],
+    "source_surfaces": [
+      {
+        "name": "BYoDS SDK",
+        "paths": [
+          "src"
+        ],
+        "notes": "Facade, token manager, storage adapter, base client, transport, data source client, logger. Specified at src/docs/README.md."
+      },
+      {
+        "name": "tests",
+        "paths": [
+          "test/unit/spec"
+        ],
+        "notes": "Seven Jest suites, 83 tests. No integration specs exist."
+      }
+    ],
+    "generated_surfaces": [
+      {
+        "name": "build output",
+        "paths": [
+          "dist"
+        ],
+        "generated_from": "src",
+        "refresh_with": "yarn build:src",
+        "notes": "Produced by webex-legacy-tools and tsc. Do not edit by hand."
+      },
+      {
+        "name": "repo-standards template map",
+        "paths": [
+          "../../.sdd/templates/repo-standards"
+        ],
+        "generated_from": "WebexTools/repo-standards@d89a7fe59126ae3ad9bac9ca352aa7f12b4c85dc",
+        "refresh_with": "Run the setup script of the active Repo Annotation installation against the monorepo root",
+        "notes": "The package holds no templates. It refers to the monorepo root snapshot at ../../.sdd/templates/repo-standards through layout.monorepo_package.templates_root_path in .sdd/manifest.json."
+      }
+    ],
+    "validation_entrypoints": [
+      {
+        "name": "unit tests",
+        "command": "yarn test:unit",
+        "scope": "test/unit/spec",
+        "notes": "Jest via webex-legacy-tools --runner jest, with the jest.config.js coverage threshold."
+      },
+      {
+        "name": "lint",
+        "command": "yarn test:style",
+        "scope": "src",
+        "notes": "eslint over src/**/*.ts with the workspace root .eslintrc.js."
+      }
+    ],
+    "sync_paths": [
+      {
+        "source": "WebexTools/repo-standards@d89a7fe59126ae3ad9bac9ca352aa7f12b4c85dc",
+        "targets": [
+          "../../.sdd/templates/repo-standards"
+        ],
+        "mechanism": "Setup script of the active Repo Annotation installation",
+        "notes": "The package holds no templates. It refers to the monorepo root snapshot at ../../.sdd/templates/repo-standards through layout.monorepo_package.templates_root_path in .sdd/manifest.json."
+      }
+    ]
+  },
+  "folder_readme_contract": {
+    "required_sections": [
+      "purpose",
+      "boundaries",
+      "key-files",
+      "common-tasks"
+    ],
+    "rules": [
+      "Orient the reader before describing detail.",
+      "Link to the module specification rather than duplicating it."
+    ],
+    "example_policy": "Examples are allowed only when verified against src/ or test/.",
+    "fallback": "Omit a section rather than inventing content; report unresolved facts as gaps."
+  },
+  "regression_feedback_rules": [
+    {
+      "trigger": "A host process exits after a JWS renewal failure, or a renewal stops silently.",
+      "required_followups": [
+        "Add a characterization case in test/unit/spec/data-source-client/index.ts for the failing tick",
+        "Update MOD-016 in src/docs/README.md"
+      ],
+      "notes": "No unit test reaches a failing tick today."
+    },
+    {
+      "trigger": "A request is sent with an expired or caller-supplied bearer token.",
+      "required_followups": [
+        "Add a case in test/unit/spec/base-client/index.ts or test/unit/spec/token-manager/index.ts",
+        "Update INV-001 or INV-002 in src/docs/README.md"
+      ],
+      "notes": "Both invariants have unit tests today."
+    }
+  ],
+  "surface_owners": [
+    {
+      "surface": "module implementation and specification",
+      "owner": "@webex/web-sdk",
+      "edit_boundary": "The monorepo .github/CODEOWNERS has no entry for packages/byods, so the default * rule applies."
+    }
+  ],
+  "do_not_edit": [
+    "dist",
+    "../../.sdd/templates/repo-standards"
+  ],
+  "marker_scopes": {
+    "sdd": [
+      ".sdd/manifest.json",
+      "src/docs/README.md",
+      "docs"
+    ]
+  },
+  "fallback_rules": [
+    "When source and tests disagree, code is the referee and the disagreement is recorded rather than silently resolved.",
+    "When neither source nor tests settle a question, report it as a gap instead of inferring.",
+    "Commit history is not a valid rationale source for this package."
+  ],
+  "downstream_context_pack": {
+    "required_human_surfaces": [
+      "README.md",
+      "docs/index.md",
+      "docs/architecture.md",
+      "src/docs/README.md"
+    ],
+    "required_agent_operational_surfaces": [
+      "AGENTS.md",
+      "docs/specs/README.md"
+    ],
+    "required_machine_readable_surface": ".sdd/manifest.json",
+    "recommended_machine_readable_sections": [
+      "public_interfaces",
+      "change_impact",
+      "evidence_rules",
+      "negative_guidance",
+      "confidence_policy",
+      "repository_topology",
+      "folder_readme_contract",
+      "regression_feedback_rules"
+    ]
+  }
+}
