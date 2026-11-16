@@ -1,0 +1,474 @@
+{
+  "$schema": "./schemas/repo-context.schema.json",
+  "version": 1,
+  "repository": {
+    "name": "@webex/plugin-people",
+    "purpose": "Public plugin registered as webex.people that reads Webex person records from the Webex REST API (catalog service hydra). get(person) takes a uuid, a hydra person id, a person object, or the string me; me is fetched from people/me with concurrent calls sharing one request, and every other id goes through a batcher that turns concurrent lookups into one GET people/?id=...&showAllTypes=... of up to 10 ids per flush (100 ms quiet, 1500 ms at most). Ids are normalized locally: a uuid becomes the base64url hydra id ciscospark://us/PEOPLE/uuid without a request, so a uuid and its hydra id share one lookup. list(options) resolves an array of persons for an array of ids through the same batcher, or a Page of results for a query object such as email or displayName. Nothing is cached or persisted."
+  },
+  "commands": {
+    "install": "yarn",
+    "prebuild": "yarn prebuild:modules",
+    "compile": "yarn build",
+    "build": "yarn build:src",
+    "unit-test": "yarn test:unit",
+    "lint": "yarn test:style",
+    "browser-test": "yarn test:browser:broken",
+    "deploy": "yarn deploy:npm"
+  },
+  "public_interfaces": [
+    {
+      "name": "@webex/plugin-people package entry",
+      "kind": "package_export",
+      "source": "src/index.js",
+      "entrypoints": [
+        "import '@webex/plugin-people'",
+        "import People from '@webex/plugin-people'"
+      ],
+      "audience": "SDK bundles (webex, webex-node, recipe-private-web-client) and applications that build their own webex instance",
+      "notes": "Importing the package registers People as public plugin 'people' with the people config; the first registration of the name wins. The default export People is the only export; config is not exported."
+    },
+    {
+      "name": "webex.people methods",
+      "kind": "plugin_api",
+      "source": "src/people.js",
+      "entrypoints": [
+        "webex.people.get(person)",
+        "webex.people.list(options)",
+        "webex.people.inferPersonIdFromUuid(id)"
+      ],
+      "audience": "applications and SDK packages (@webex/common event envelopes, @webex/plugin-meetings meeting info, @webex/calling caller-id lookup)",
+      "notes": "get rejects a falsy person with 'A person with an id is required'; get('me') requests people/me directly; any other value is reduced to personId, then id, then the value itself, and looked up through the batcher. list with an array resolves a plain array of persons in input order (not a Page); list with an object sends it as the query string of GET people and resolves a webex-core Page. inferPersonIdFromUuid is marked @private in its JSDoc but is called by the batcher and by the integration spec. A not-found id rejects with the id string, not an Error."
+    },
+    {
+      "name": "package scripts",
+      "kind": "npm_scripts",
+      "source": "package.json",
+      "entrypoints": [
+        "build",
+        "build:src",
+        "test:unit",
+        "test:style",
+        "test:browser:broken",
+        "test",
+        "deploy:npm"
+      ],
+      "audience": "contributors and CI",
+      "notes": "build runs build:src, which writes dist. test:unit runs the jest unit specs, which import the package by name and so test dist; run build:src first. test:browser:broken (commands.browser-test) runs karma over test/integration/spec but bundles nothing today (0 tests, exit 0). The aggregate test script runs test:style and test:unit, then exits 1 because test:integration is not defined (and it names test:browser, which is not defined either); it is deliberately not a manifest command."
+    }
+  ],
+  "source_of_truth": [
+    {
+      "surface": "People plugin implementation",
+      "paths": [
+        "src/index.js",
+        "src/people.js",
+        "src/people-batcher.js",
+        "src/config.js"
+      ],
+      "generated_artifacts": [
+        "dist"
+      ],
+      "refresh_with": [
+        "yarn build:src"
+      ],
+      "validate_with": [
+        "yarn test:unit",
+        "yarn test:style"
+      ]
+    },
+    {
+      "surface": "module specification",
+      "paths": [
+        "src/docs/README.md"
+      ],
+      "generated_artifacts": [],
+      "refresh_with": [
+        "update alongside the behavior change in the same commit"
+      ],
+      "validate_with": [
+        "spec-validator on an independent runtime"
+      ]
+    }
+  ],
+  "generated_artifacts": [
+    {
+      "path": "dist",
+      "generated_from": "src",
+      "refresh_with": "yarn build:src"
+    },
+    {
+      "path": "../../../.sdd/templates/repo-standards/template-map.json",
+      "generated_from": "WebexTools/repo-standards@d89a7fe59126ae3ad9bac9ca352aa7f12b4c85dc",
+      "refresh_with": "The package holds no templates. It refers to the monorepo root snapshot at ../../../.sdd/templates/repo-standards through layout.monorepo_package.templates_root_path in .sdd/manifest.json. Refresh the root snapshot, not this package."
+    }
+  ],
+  "validation_matrix": [
+    {
+      "paths": [
+        "src/**"
+      ],
+      "minimum": [
+        "yarn build:src",
+        "yarn test:unit",
+        "yarn test:style"
+      ],
+      "recommended": [
+        "add or update cases in test/unit/spec/people.js or test/unit/spec/people-batcher.js for the changed behavior"
+      ]
+    },
+    {
+      "paths": [
+        "src/people-batcher.js",
+        "src/config.js"
+      ],
+      "minimum": [
+        "yarn build:src",
+        "yarn test:unit",
+        "yarn test:style"
+      ],
+      "recommended": [
+        "keep a uuid and its hydra id on one fingerprint (INV-002) and add a unit case that a burst of get calls sends one request (INV-001); the only cases asserting batching today are in the integration spec, which no script runs"
+      ]
+    },
+    {
+      "paths": [
+        "src/people.js"
+      ],
+      "minimum": [
+        "yarn build:src",
+        "yarn test:unit",
+        "yarn test:style"
+      ],
+      "recommended": [
+        "add unit cases for get('me'), both list paths, and inferPersonIdFromUuid before changing them; check @webex/common event-envelope, @webex/plugin-meetings meeting-info/utilv2, and @webex/calling src/common/Utils.ts, which read list results and get('me')"
+      ]
+    },
+    {
+      "paths": [
+        "src/index.js"
+      ],
+      "minimum": [
+        "yarn build:src",
+        "yarn test:unit",
+        "yarn test:style"
+      ],
+      "recommended": [
+        "check the bundles that register the plugin (webex, webex-node, recipe-private-web-client) when the registered name or the config changes"
+      ]
+    }
+  ],
+  "change_impact": [
+    {
+      "paths": [
+        "src/people.js"
+      ],
+      "affects": [
+        "the get id reduction and the me shortcut",
+        "the list array and query-object paths and their result shapes",
+        "the uuid to hydra id inference"
+      ],
+      "refresh_with": [
+        "yarn build:src"
+      ],
+      "validate_with": [
+        "yarn test:unit",
+        "yarn test:style"
+      ],
+      "avoid_direct_edits": [
+        "dist"
+      ],
+      "notes": "Only the get guard has a unit case; pin get('me'), list, and inferPersonIdFromUuid with unit cases before changing them."
+    },
+    {
+      "paths": [
+        "src/people-batcher.js"
+      ],
+      "affects": [
+        "the people/?id= request and its showAllTypes flag",
+        "fingerprinting of uuids and hydra ids",
+        "item success and notFoundIds handling"
+      ],
+      "refresh_with": [
+        "yarn build:src"
+      ],
+      "validate_with": [
+        "yarn test:unit",
+        "yarn test:style"
+      ],
+      "avoid_direct_edits": [
+        "dist"
+      ],
+      "notes": "notFoundIds rejections are not awaited (MOD-010) and the HTTP error path has no unit case (MOD-011)."
+    },
+    {
+      "paths": [
+        "src/config.js",
+        "src/index.js"
+      ],
+      "affects": [
+        "the registered plugin name and config",
+        "the batcher timings and showAllTypes default"
+      ],
+      "refresh_with": [
+        "yarn build:src"
+      ],
+      "validate_with": [
+        "yarn test:unit",
+        "yarn test:style"
+      ],
+      "avoid_direct_edits": [
+        "dist"
+      ],
+      "notes": "No unit case covers registration or the config defaults; add one before changing them."
+    }
+  ],
+  "evidence_rules": [
+    {
+      "claim_category": "command_name",
+      "sources": [
+        "package.json"
+      ],
+      "requirement": "The script must exist in package.json scripts.",
+      "notes": "test:integration and test:browser do not exist, so the aggregate test script fails; test:browser:broken currently verifies nothing."
+    },
+    {
+      "claim_category": "import_path",
+      "sources": [
+        "src/index.js"
+      ],
+      "requirement": "A binding is public only if exported from src/index.js.",
+      "notes": "The only export is the default People."
+    },
+    {
+      "claim_category": "behavior_claim",
+      "sources": [
+        "src",
+        "test/unit/spec"
+      ],
+      "requirement": "Ground every behavioral claim in source and unit-test evidence.",
+      "notes": "Commit history is not an evidence source for this package. README.md is context only (docs/adr/0001-retain-product-readme.md). The integration spec under test/integration/spec states intended behavior but no script runs it. The webex-core, common, and internal-plugin-mercury specs were consulted; the webex-core batcher and the common base64 code were read where those specs are silent."
+    }
+  ],
+  "negative_guidance": [
+    {
+      "rule": "Do not call webex.request for people/?id= outside the batcher.",
+      "why": "Lookups by id must be de-duplicated and grouped so a burst sends one request per flush (INV-001)."
+    },
+    {
+      "rule": "Do not change the fingerprint functions without keeping a uuid and its hydra id on the same key.",
+      "why": "Responses carry hydra ids; a request keyed by anything else never settles (INV-002)."
+    },
+    {
+      "rule": "Do not change the cluster in inferPersonIdFromUuid.",
+      "why": "Hydra ids for PEOPLE always use cluster us (common MOD-006); other ids would not match responses."
+    },
+    {
+      "rule": "Do not log person ids, emails, or display names.",
+      "why": "They identify users; the package logs nothing today."
+    },
+    {
+      "rule": "Do not treat README.md as the behavior reference.",
+      "why": "It shows only get(id); see docs/adr/0001-retain-product-readme.md."
+    },
+    {
+      "rule": "Do not infer a coverage threshold for this package.",
+      "why": "No coverage script or threshold exists."
+    }
+  ],
+  "confidence_policy": {
+    "high": {
+      "action": "update",
+      "expectation": "Source and a unit case in test/unit/spec agree."
+    },
+    "medium": {
+      "action": "narrow-scope",
+      "expectation": "Only source evidence exists, or only the unrun integration spec, as for registration, the config defaults, get('me'), both list paths, inferPersonIdFromUuid, the HTTP error path, and batching. Pin current behavior with a unit case before modifying."
+    },
+    "low": {
+      "action": "noop",
+      "expectation": "Neither source, tests, nor a dependency's spec or code settles the question, as for what Hydra returns in notFoundIds. Stop and report the gap."
+    }
+  },
+  "repository_topology": {
+    "main_entrypoints": [
+      {
+        "name": "package entry",
+        "path": "src/index.js",
+        "purpose": "Registers the people plugin and exports the class",
+        "notes": "No subpath exports; package.json main is dist/index.js and devMain is src/index.js."
+      }
+    ],
+    "workspace_packages": [
+      {
+        "name": "@webex/plugin-people",
+        "paths": [
+          "src",
+          "test"
+        ],
+        "notes": "One module; this SDD root is the package directory inside the webex-js-sdk monorepo."
+      }
+    ],
+    "source_surfaces": [
+      {
+        "name": "People plugin",
+        "paths": [
+          "src"
+        ],
+        "notes": "index.js, people.js, people-batcher.js, config.js. Specified at src/docs/README.md."
+      },
+      {
+        "name": "tests",
+        "paths": [
+          "test/unit/spec",
+          "test/integration/spec"
+        ],
+        "notes": "Two unit specs run by test:unit; one live-service integration spec that only test:browser:broken would run, and it bundles nothing today."
+      }
+    ],
+    "generated_surfaces": [
+      {
+        "name": "build output",
+        "paths": [
+          "dist"
+        ],
+        "generated_from": "src",
+        "refresh_with": "yarn build:src",
+        "notes": "JavaScript and source maps from webex-legacy-tools; no type declarations. Do not edit by hand."
+      },
+      {
+        "name": "repo-standards template map",
+        "paths": [
+          "../../../.sdd/templates/repo-standards"
+        ],
+        "generated_from": "WebexTools/repo-standards@d89a7fe59126ae3ad9bac9ca352aa7f12b4c85dc",
+        "refresh_with": "The package holds no templates. It refers to the monorepo root snapshot at ../../../.sdd/templates/repo-standards through layout.monorepo_package.templates_root_path in .sdd/manifest.json. Refresh the root snapshot, not this package.",
+        "notes": "The package holds no templates. It refers to the monorepo root snapshot at ../../../.sdd/templates/repo-standards through layout.monorepo_package.templates_root_path in .sdd/manifest.json. Refresh the root snapshot, not this package."
+      }
+    ],
+    "validation_entrypoints": [
+      {
+        "name": "compile",
+        "command": "yarn build",
+        "scope": "src",
+        "notes": "Runs build:src."
+      },
+      {
+        "name": "unit-test",
+        "command": "yarn test:unit",
+        "scope": "test/unit/spec",
+        "notes": "Run build:src first; the specs test dist."
+      },
+      {
+        "name": "lint",
+        "command": "yarn test:style",
+        "scope": "src",
+        "notes": "eslint via the local .eslintrc.js; docs/** and *.md are ignored."
+      }
+    ],
+    "sync_paths": [
+      {
+        "source": "src/people.js",
+        "targets": [
+          "src/docs/README.md"
+        ],
+        "mechanism": "Manual; update the module specification in the same change that alters observable behavior.",
+        "notes": "Keep the get, list, id inference, batching, and wire rows of the specification aligned with src/people.js, src/people-batcher.js, and src/config.js."
+      },
+      {
+        "source": "WebexTools/repo-standards@d89a7fe59126ae3ad9bac9ca352aa7f12b4c85dc",
+        "targets": [
+          "../../../.sdd/templates/repo-standards"
+        ],
+        "mechanism": "The package holds no templates. It refers to the monorepo root snapshot at ../../../.sdd/templates/repo-standards through layout.monorepo_package.templates_root_path in .sdd/manifest.json. Refresh the root snapshot, not this package.",
+        "notes": "The package holds no templates. It refers to the monorepo root snapshot at ../../../.sdd/templates/repo-standards through layout.monorepo_package.templates_root_path in .sdd/manifest.json. Refresh the root snapshot, not this package."
+      }
+    ]
+  },
+  "folder_readme_contract": {
+    "required_sections": [
+      "purpose",
+      "boundaries",
+      "key-files",
+      "common-tasks"
+    ],
+    "rules": [
+      "Orient the reader before describing detail.",
+      "Link to the module specification rather than duplicating it."
+    ],
+    "example_policy": "Examples are allowed only when verified against src/ or test/.",
+    "fallback": "Omit a section rather than inventing content; report unresolved facts as gaps."
+  },
+  "regression_feedback_rules": [
+    {
+      "trigger": "The people/?id= request, the fingerprints, or the response handling in src/people-batcher.js changes.",
+      "required_followups": [
+        "Add or update a unit case in test/unit/spec/people-batcher.js asserting the request, the settled callers, and the notFoundIds rejection",
+        "Update MOD-008 to MOD-011, INV-001, and INV-002 in src/docs/README.md"
+      ],
+      "notes": "The batching cases live only in the integration spec, which no script runs; the HTTP error path is untested."
+    },
+    {
+      "trigger": "get, list, inferPersonIdFromUuid, or _getMe in src/people.js changes.",
+      "required_followups": [
+        "Add unit cases for get('me'), both list paths, and inferPersonIdFromUuid; none exist today",
+        "Update MOD-004 to MOD-007, INV-002, and INV-003 in src/docs/README.md"
+      ],
+      "notes": "Consumers read list(object).items and get('me'); keep those shapes."
+    },
+    {
+      "trigger": "Registration or the config in src/index.js or src/config.js changes.",
+      "required_followups": [
+        "Add a unit case for registration and the config defaults; none exist today",
+        "Update MOD-001 to MOD-003 in src/docs/README.md"
+      ],
+      "notes": "batcherMaxCalls bounds how many ids go into one request."
+    }
+  ],
+  "surface_owners": [
+    {
+      "surface": "module implementation and specifications",
+      "owner": "@webex/web-client @webex/web-sdk",
+      "edit_boundary": "Owners per the packages/@webex/plugin-people line of the monorepo .github/CODEOWNERS."
+    }
+  ],
+  "do_not_edit": [
+    "dist",
+    "../../../.sdd/templates/repo-standards"
+  ],
+  "marker_scopes": {
+    "sdd": [
+      ".sdd/manifest.json",
+      "src/docs/README.md",
+      "docs"
+    ]
+  },
+  "fallback_rules": [
+    "When source and tests disagree, code is the referee and the disagreement is recorded rather than silently resolved.",
+    "When neither source nor tests settle a question, report it as a gap instead of inferring.",
+    "Commit history is not a valid rationale source for this package.",
+    "When a dependency's specification disagrees with that dependency's code, use the code and record the disagreement; when a dependency has no specification, use its code."
+  ],
+  "downstream_context_pack": {
+    "required_human_surfaces": [
+      "README.md",
+      "docs/index.md",
+      "docs/architecture.md",
+      "src/docs/README.md"
+    ],
+    "required_agent_operational_surfaces": [
+      "AGENTS.md",
+      "docs/specs/README.md"
+    ],
+    "required_machine_readable_surface": ".sdd/manifest.json",
+    "recommended_machine_readable_sections": [
+      "public_interfaces",
+      "change_impact",
+      "evidence_rules",
+      "negative_guidance",
+      "confidence_policy",
+      "repository_topology",
+      "folder_readme_contract",
+      "regression_feedback_rules"
+    ]
+  }
+}

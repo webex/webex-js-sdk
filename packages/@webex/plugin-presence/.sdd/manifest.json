@@ -1,0 +1,453 @@
+{
+  "manifest_version": 1,
+  "repository": {
+    "name": "@webex/plugin-presence",
+    "purpose": "Public TypeScript plugin registered as webex.presence for the presence service (catalog name apheleia). get() reads one user's composed presence; list() reads many through a Batcher that folds lookups into POST compositions; subscribe() POSTs subscriptions in batches of 50 and unsubscribe() sends subscriptionTtl 0; setStatus() POSTs events for the device user, without a label for dnd; enable(), disable(), and isEnabled() set and read the user-presence-enabled toggle through the feature plugin. Registration adds an inbound transform that copies body.eventType to body.status. An optional PresenceWorker, started by initializeWorker() or config.presence.initializeWorker, counts enqueue/dequeue watchers, fetches stale presence after a 300 ms debounce, subscribes users watched for a minute, renews watched subscriptions, listens to the Mercury event apheleia.subscription_update, expires update times after 10 minutes, and reports every change as an 'updated' event with a subscription, presence, or delete envelope. src/interface.ts types the surface; build emits declarations to dist/types. It stores nothing.",
+    "category": "cat2-legacy",
+    "primary_languages": [
+      "typescript"
+    ]
+  },
+  "topology": "Orchestrator-plus-components",
+  "commands": {
+    "install": {
+      "command": "yarn",
+      "source_file": "../../../.github/workflows/deploy.yml",
+      "role": "install"
+    },
+    "prebuild": {
+      "command": "yarn prebuild:modules",
+      "source_file": "../../../CONTRIBUTING.md",
+      "role": "other"
+    },
+    "compile": {
+      "command": "yarn workspace @webex/plugin-presence build",
+      "source_file": "package.json",
+      "role": "compile",
+      "verified_at": "2026-11-12T13:30:28Z"
+    },
+    "build": {
+      "command": "yarn workspace @webex/plugin-presence build:src",
+      "source_file": "../../../AGENTS.md",
+      "role": "package",
+      "verified_at": "2026-11-12T13:30:25Z"
+    },
+    "unit-test": {
+      "command": "yarn workspace @webex/plugin-presence test:unit",
+      "source_file": "../../../AGENTS.md",
+      "role": "unit-test",
+      "verified_at": "2026-11-12T13:30:31Z"
+    },
+    "lint": {
+      "command": "yarn workspace @webex/plugin-presence test:style",
+      "source_file": "package.json",
+      "role": "lint"
+    },
+    "docs": {
+      "command": "yarn workspace @webex/plugin-presence build:docs",
+      "source_file": "package.json",
+      "role": "other"
+    },
+    "deploy": {
+      "command": "yarn workspace @webex/plugin-presence deploy:npm",
+      "source_file": "package.json",
+      "role": "deploy"
+    }
+  },
+  "toolchain": [
+    {
+      "name": "node",
+      "version": ">=18",
+      "origin": "repo-config",
+      "source_file": "package.json"
+    },
+    {
+      "name": "node",
+      "version": "22.14",
+      "origin": "repo-config",
+      "source_file": "../../../AGENTS.md"
+    },
+    {
+      "name": "node",
+      "version": "lts/jod",
+      "origin": "repo-config",
+      "source_file": "../../../.nvmrc"
+    },
+    {
+      "name": "node",
+      "version": "18.x",
+      "origin": "repo-config",
+      "source_file": "../../../package.json"
+    },
+    {
+      "name": "yarn",
+      "version": "3.4.1",
+      "origin": "repo-config",
+      "source_file": "../../../package.json"
+    },
+    {
+      "name": "babel",
+      "version": "7.17.10",
+      "origin": "repo-config",
+      "source_file": "package.json"
+    },
+    {
+      "name": "eslint",
+      "version": "8.24.0",
+      "origin": "repo-config",
+      "source_file": "package.json"
+    },
+    {
+      "name": "prettier",
+      "version": "2.7.1",
+      "origin": "repo-config",
+      "source_file": "package.json"
+    },
+    {
+      "name": "typescript",
+      "version": "^4.7.4",
+      "origin": "repo-config",
+      "source_file": "../../../package.json"
+    },
+    {
+      "name": "typedoc",
+      "version": "0.23.26",
+      "origin": "repo-config",
+      "source_file": "package.json"
+    }
+  ],
+  "tests": {
+    "unit": {
+      "command_ref": "unit-test",
+      "dir": "test/unit/spec",
+      "framework": "jest"
+    }
+  },
+  "quality_gates": {
+    "code_coverage": {
+      "origin": "none",
+      "declared_by": "rarajes2@cisco.com via the bootstrap questionnaire (generator check: test:unit runs webex-legacy-tools with --runner jest; jest.config.js re-exports @webex/jest-config-legacy, which sets no coverageThreshold; package.json defines no coverage script)"
+    }
+  },
+  "coverage_status_definitions": {
+    "specced": ">=80% public surface specced, drift <5% - spec is authoritative",
+    "partial": "40-80% specced - spec is a hint, cross-check code",
+    "untracked": "<40% specced - code is the source of truth"
+  },
+  "spec_source_policy": {
+    "mode": "keep-separate",
+    "migrated_source_disposition": "retain",
+    "disposition_decided_by": "rarajes2@cisco.com",
+    "disposition_decided_at": "2026-11-12T13:21:56Z",
+    "decided_by": "rarajes2@cisco.com",
+    "decided_at": "2026-11-12T13:21:56Z",
+    "decision_record": "docs/adr/0001-retain-product-readme.md"
+  },
+  "spec_sources": [
+    {
+      "path": "README.md",
+      "scope": "repo",
+      "role": "reference-only",
+      "canonical": false,
+      "use_by_agents": "context-only",
+      "post_migration_action": "retain",
+      "deletion_status": "not-applicable",
+      "notes": "npm page, kept unchanged under keep-separate. Its Usage block ends with the placeholder member webex.presence.WHATEVER and documents no method, type, event, or configuration; see docs/adr/0001-retain-product-readme.md."
+    }
+  ],
+  "modules": [
+    {
+      "path": "src",
+      "canonical_spec": "src/docs/README.md",
+      "coverage_status": "Partial",
+      "coverage_evidence": "Field coverage 100% (15/15) assessed 2026-11-12 by the generator; critical field coverage 8/8. test:unit runs test/unit/spec/presence.ts and test/unit/spec/presence-worker.ts under Node 22.14 after build:src on 2026-11-12: 29 of 29 passing, exit 0, with one unhandled TypeError printed after the suites from the real debounced fetch that the enqueue cases schedule. Running cases cover MOD-005, MOD-006, MOD-008 to MOD-010, MOD-012 to MOD-014, MOD-016, MOD-017, INV-001, INV-003, INV-004, and INV-006 (several on argument checks only). MOD-001, MOD-003, MOD-004, MOD-007, MOD-015, MOD-018, INV-002, and INV-005 have no running case. The integration spec test/integration/spec/presence.ts is describe.skip (SPARK-413317) and no script runs it. build:src and build exit 0. test:style exits 1 in this checkout because the package-local node_modules/@humanwhocodes/object-schema has no dist/; the workspace-root ESLint 8.57.1 with the package config reports 0 errors and 4 require-jsdoc warnings over src/, plus File ignored for src/docs/README.md when the file list is expanded. No characterization baseline exists. Independent validation passed with warnings on 2026-11-12 (validator runtime 01a1cff7-a8f6-7912-803f-b7cabdeaa0bf; 0 Blocking, 1 Important B11-cmd). VAL-B11-CMD-001 is an accepted warning (rarajes2@cisco.com, 2026-11-12T13:45:00Z): the workspace-qualified form (yarn workspace @webex/plugin-presence followed by the script name) stays recorded for compile, lint, docs, and deploy, whose cited package.json holds the scripts rather than the exact strings. Held at Partial pending a characterization baseline and promotion review.",
+      "last_assessed": "2026-11-12",
+      "contracts": {
+        "provides": [
+          "presence-public-sdk"
+        ],
+        "requires": [
+          "apheleia-presence-http",
+          "mercury-apheleia-subscription-update",
+          "webex-core-plugin-host",
+          "webex-core-batcher",
+          "webex-core-payload-transformer",
+          "webex-core-services",
+          "internal-plugin-feature-toggles",
+          "internal-plugin-mercury-connection",
+          "internal-plugin-device-identity",
+          "lodash",
+          "internal-plugin-presence-parallel"
+        ]
+      },
+      "section_profile": {
+        "has_tiers": false,
+        "has_ui": false,
+        "crosses_service_boundaries": true,
+        "holds_client_state": true,
+        "enforces_domain_rules": true,
+        "is_concurrent_async": true,
+        "owns_persistence": false,
+        "stateful_transitions": true,
+        "exposes_wire_protocol": true,
+        "ui_multi_screen": false,
+        "large_data_model": false,
+        "returns_caller_errors": true,
+        "module_specific_conventions": true,
+        "published_package": true,
+        "embedded_in_host": false,
+        "has_design_tradeoff": true,
+        "resolved_by": "claude-code (code evidence; bootstrap questionnaire)",
+        "resolved_at": "2026-11-12T13:21:56Z",
+        "has_submodules": false,
+        "has_submodules_computed_by": "scripts/module_tree.py",
+        "has_submodules_computed_at": "2026-11-12T13:21:56Z"
+      }
+    }
+  ],
+  "contract_catalog": {
+    "index_path": "docs/architecture.md",
+    "definitions": {
+      "presence-public-sdk": {
+        "kind": "sdk",
+        "publication": "published",
+        "source_kind": "repository-path",
+        "source": "package.json",
+        "summary": "Published npm package (public plugin). main is dist/index.js, types is dist/types/index.d.ts (written by build through tsc, not by build:src), and devMain is src/index.js. Importing it imports @webex/internal-plugin-device, then registers Presence as public plugin 'presence' with config {presence: {batcherWait: 50, batcherMaxCalls: 50, batcherMaxWait: 150}} and the inbound payloadTransformer predicate and transform normalizeSingleStatusResponse; the first registration of the name wins. The entry exports only the default Presence, declared as IPresence from src/interface.ts. webex.presence exposes enable, disable, isEnabled, get, list, subscribe, unsubscribe, setStatus, initializeWorker, enqueue, dequeue, emitEvent, and the 'updated' event with {type: subscription|presence|delete, payload}; specified in src/docs/README.md."
+      },
+      "apheleia-presence-http": {
+        "kind": "http",
+        "publication": "internal",
+        "source_kind": "external",
+        "source": "Presence service (catalog service name apheleia, reached through api: 'apheleia' and service: 'apheleia' in src/presence.ts and src/presence-batcher.ts; route definitions are not in this repository)",
+        "summary": "GET compositions?userId=<id> resolves one presence status object; POST compositions {subjects} resolves {statusList}; POST subscriptions {subjects, subscriptionTtl, includeStatus: true} resolves {responses: [{subject, responseCode, subscriptionTtl, status}]}, and subscriptionTtl 0 ends subscriptions; POST events {subject, eventType, label (absent for dnd), ttl} resolves a body with eventType and subject."
+      },
+      "mercury-apheleia-subscription-update": {
+        "kind": "event",
+        "publication": "internal",
+        "source_kind": "external",
+        "source": "Presence service push through Mercury (event name in src/constants.ts; payload definition is not in this repository)",
+        "summary": "Mercury envelope whose data.eventType is apheleia.subscription_update, emitted by Mercury as event:apheleia.subscription_update; the worker reads data.subject and forwards data unchanged."
+      },
+      "webex-core-plugin-host": {
+        "kind": "sdk",
+        "publication": "published",
+        "source_kind": "external",
+        "source": "@webex/webex-core (workspace package; module spec consulted: packages/@webex/webex-core/src/docs/README.md)",
+        "summary": "registerPlugin keys the plugin by its raw name on WebexCore (presence, first registration wins unless replace is set, MOD-013) and merges its config and payloadTransformer entries into the module-level default config (MOD-008); WebexPlugin supplies webex, namespaced config (config.presence), trigger, and request; webex.ready and the ready event fire once the SDK is ready."
+      },
+      "webex-core-batcher": {
+        "kind": "sdk",
+        "publication": "published",
+        "source_kind": "external",
+        "source": "@webex/webex-core Batcher (module spec consulted: packages/@webex/webex-core/src/docs/README.md MOD-050 to MOD-053; code consulted: packages/@webex/webex-core/src/lib/batcher.js)",
+        "summary": "request(item) shares one promise per fingerprint; a capped debounce flushes at most batcherMaxCalls items using batcherWait and batcherMaxWait from the subclass namespace; a WebexHttpError whose options.body has no map, or any other flush error, rejects every queued item; a response item with no pending fingerprint throws Could not find pending request for received response."
+      },
+      "webex-core-payload-transformer": {
+        "kind": "sdk",
+        "publication": "published",
+        "source_kind": "external",
+        "source": "@webex/webex-core transform pipeline (module spec consulted: packages/@webex/webex-core/src/docs/README.md MOD-037; interceptors spec consulted: packages/@webex/webex-core/src/interceptors/docs/README.md INT-018)",
+        "summary": "transform('inbound', response) runs on every inbound response and error unless the request sets disableTransform; every predicate whose direction matches is tested, and each match applies every transform with the predicate's name."
+      },
+      "webex-core-services": {
+        "kind": "sdk",
+        "publication": "published",
+        "source_kind": "external",
+        "source": "@webex/webex-core services plugin (services spec consulted: packages/@webex/webex-core/src/lib/services/docs/README.md SVC-022)",
+        "summary": "ServiceInterceptor maps api to service, requires resource and service, waits for the service, and joins its catalog URL with the resource."
+      },
+      "internal-plugin-feature-toggles": {
+        "kind": "sdk",
+        "publication": "published",
+        "source_kind": "external",
+        "source": "@webex/internal-plugin-feature (workspace package, not declared in package.json; module spec consulted: packages/@webex/internal-plugin-feature/src/docs/README.md MOD-003, MOD-004, MOD-006)",
+        "summary": "getFeature('user', key) resolves the record value or null; setFeature('user', key, value) POSTs {key, mutable: true, val} to features/users/<userId>/user and resolves the merged record."
+      },
+      "internal-plugin-mercury-connection": {
+        "kind": "sdk",
+        "publication": "published",
+        "source_kind": "external",
+        "source": "@webex/internal-plugin-mercury (workspace package; module spec consulted, stale on its session model: packages/@webex/internal-plugin-mercury/src/docs/README.md MOD-009; code consulted: packages/@webex/internal-plugin-mercury/src/mercury.js)",
+        "summary": "connected is a boolean; connect() resolves at once when connected, registers the device first otherwise, and shares one in-flight promise; an envelope with a dotted data.eventType is emitted as event, event:<namespace>, and event:<eventType>."
+      },
+      "internal-plugin-device-identity": {
+        "kind": "sdk",
+        "publication": "published",
+        "source_kind": "external",
+        "source": "@webex/internal-plugin-device (workspace package; module spec consulted: packages/@webex/internal-plugin-device/src/docs/README.md)",
+        "summary": "Imported for its registration side effect. userId is a registration DTO property set from the WDM body."
+      },
+      "lodash": {
+        "kind": "sdk",
+        "publication": "published",
+        "source_kind": "external",
+        "source": "lodash@4.17.21 (npm)",
+        "summary": "has tests the transform predicate path; debounce delays the worker fetch until 300 ms after the last enqueue that needs one."
+      },
+      "internal-plugin-presence-parallel": {
+        "kind": "sdk",
+        "publication": "published",
+        "source_kind": "external",
+        "source": "@webex/internal-plugin-presence (workspace package, not a dependency; module spec consulted: packages/@webex/internal-plugin-presence/src/docs/README.md)",
+        "summary": "Same requests, worker, config defaults, and transform name, registered as internal plugin presence; the webex bundle loads it. Both packages merge a normalizeSingleStatusResponse predicate and transform into the same default config, so a host that loads both runs the transform twice with the same result."
+      }
+    }
+  },
+  "spec_policy": {
+    "require_what_and_why": true,
+    "require_provenance": true,
+    "protected_specs": [
+      "src/docs/README.md"
+    ]
+  },
+  "validation": {
+    "generator_runtime": "claude-code",
+    "generator_model": "claude-opus-5-5",
+    "generator_runtime_source": "host-metadata",
+    "source_commit": "b8bc13e04237b0962ccb77bceee33a414ac0d6e0",
+    "minimum_independence": "different-runtime",
+    "blocking_severities": [
+      "Blocking"
+    ],
+    "validator_runtime": "01a1cff7-a8f6-7912-803f-b7cabdeaa0bf",
+    "validator_run_id": "01a1cff7-a8f6-7912-803f-b7cabdeaa0bf",
+    "validator_runtime_source": "host-metadata",
+    "runtime_fallback_tier": "different-runtime"
+  },
+  "layout": {
+    "sdd_root": ".sdd",
+    "docs_root": "docs",
+    "agent_entry_path": "AGENTS.md",
+    "standing_docs_root": "docs",
+    "spec_index_path": "docs/specs/README.md",
+    "module_docs_strategy": "source-local",
+    "module_docs_relative_path": "docs/README.md",
+    "module_docs_decision": {
+      "basis": "repo-standards-default",
+      "reason": "No module-local documentation existed. The source-local default gives src/docs/README.md. test:style runs eslint ./src/**/*.*, and the shared @webex/eslint-config-legacy ignore patterns exclude docs/** and *.md; build:src processes -js -ts only and tsconfig.json compiles TypeScript only, so Markdown under src/ does not enter dist/.",
+      "decided_by": "rarajes2@cisco.com (bootstrap questionnaire)",
+      "decided_at": "2026-11-12T13:21:56Z"
+    },
+    "repo_context_decision": {
+      "path": ".repo-context.json",
+      "schema_path": "schemas/repo-context.schema.json",
+      "action": "create",
+      "schema_action": "create",
+      "reason": "Neither the operational context nor its schema existed in this package. The context is created from package evidence and the schema is copied from the repository-root .sdd/templates/repo-standards/schemas/repo-context.schema.json.",
+      "decided_by": "rarajes2@cisco.com (bootstrap questionnaire)",
+      "decided_at": "2026-11-12T13:21:56Z"
+    },
+    "artifact_decisions": [
+      {
+        "path": "docs/service.md",
+        "action": "omit",
+        "reason": "Library package, not a deployable service. package.json has no start script, container, or deployment descriptor.",
+        "decided_by": "claude-code (code evidence)",
+        "decided_at": "2026-11-12T13:21:56Z"
+      },
+      {
+        "path": "mkdocs.yml",
+        "action": "omit",
+        "reason": "No package-level documentation site exists. Documentation publishing stays with the workspace.",
+        "decided_by": "claude-code (code evidence)",
+        "decided_at": "2026-11-12T13:21:56Z"
+      },
+      {
+        "path": "api-specs/openapi.yaml",
+        "action": "omit",
+        "reason": "The package serves no HTTP routes. It is a client of the presence service; its published surface is the npm export and declarations described by presence-public-sdk.",
+        "decided_by": "claude-code (code evidence)",
+        "decided_at": "2026-11-12T13:21:56Z"
+      },
+      {
+        "path": "SECURITY.md",
+        "action": "omit",
+        "reason": "No package-level security policy exists. The workspace owns security policy, and a per-package copy would duplicate it; security architecture is described in docs/architecture.md.",
+        "decided_by": "claude-code (code evidence)",
+        "decided_at": "2026-11-12T13:21:56Z"
+      },
+      {
+        "path": "CONTRIBUTING.md",
+        "action": "omit",
+        "reason": "Contribution instructions are owned at the workspace root CONTRIBUTING.md.",
+        "decided_by": "claude-code (code evidence)",
+        "decided_at": "2026-11-12T13:21:56Z"
+      },
+      {
+        "path": "CHANGELOG.md",
+        "action": "omit",
+        "reason": "Changelog generation is owned at the workspace root. This package has no changelog file.",
+        "decided_by": "claude-code (code evidence)",
+        "decided_at": "2026-11-12T13:21:56Z"
+      },
+      {
+        "path": "CTO_CHECKLIST.yml",
+        "action": "omit",
+        "reason": "The CTO readiness checklist applies to deployable services. This package is a library.",
+        "decided_by": "claude-code (code evidence)",
+        "decided_at": "2026-11-12T13:21:56Z"
+      },
+      {
+        "path": "schemas/cto-checklist.schema.json",
+        "action": "omit",
+        "reason": "Omitted together with CTO_CHECKLIST.yml.",
+        "decided_by": "claude-code (code evidence)",
+        "decided_at": "2026-11-12T13:21:56Z"
+      }
+    ],
+    "template_roots": {
+      "canonical": ".sdd/templates/repo-standards"
+    },
+    "contract_index_path": "docs/architecture.md",
+    "repo_skills_root": ".sdd/skills",
+    "monorepo_package": {
+      "package_path": "packages/@webex/plugin-presence",
+      "root_manifest_path": "../../../.sdd/manifest.json",
+      "templates_root_path": "../../../.sdd/templates/repo-standards"
+    }
+  },
+  "tooling": {
+    "sdlc_skills": {
+      "source_ref": "repo-annotation@2.3.1"
+    }
+  },
+  "coverage_ratchet": {
+    "enabled": true,
+    "waivers": []
+  },
+  "substrate": {
+    "source": "WebexTools/repo-standards@d89a7fe59126ae3ad9bac9ca352aa7f12b4c85dc",
+    "consumed": [
+      "@webex/eslint-config-legacy via .eslintrc.js",
+      "@webex/babel-config-legacy via babel.config.js",
+      "@webex/jest-config-legacy via jest.config.js",
+      "@webex/legacy-tools build and test runner via package.json",
+      "workspace TypeScript configuration via tsconfig.json extends",
+      "package README.md (context only)",
+      "Repo Standards templates at the monorepo root .sdd/templates/repo-standards, referred to through layout.monorepo_package.templates_root_path (this package holds no templates)"
+    ],
+    "compliance_tier": "baseline"
+  },
+  "section_profiles": {
+    "repo": {
+      "owns_datastore": false,
+      "holds_client_state": true,
+      "components_interact": true,
+      "domain_data_across_components": true,
+      "caches_data": false,
+      "observability_convention": false,
+      "deploys_to_infra": false,
+      "shared_base_libs": true,
+      "is_monorepo": false,
+      "multi_platform": false,
+      "published_package": true,
+      "embedded_in_host": false,
+      "cross_repo_deps_material": true,
+      "security_arch_warranted": true,
+      "exposes_commands_or_artifacts": true
+    },
+    "resolved_by": "claude-code (code evidence; bootstrap questionnaire)",
+    "resolved_at": "2026-11-12T13:21:56Z"
+  }
+}

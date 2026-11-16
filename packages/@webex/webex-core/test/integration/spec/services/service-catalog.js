@@ -26,6 +26,11 @@ describe('webex-core', () => {
               setTimeout(() => {
                 webexUser = user;
                 webex = new WebexCore({credentials: user.token});
+                // Tests below replace the postauth catalog with fixtures that lack `metrics`.
+                // Any client metric from this instance then fails waitForService('metrics'),
+                // which submits JS_SDK_SERVICE_NOT_FOUND, which is POSTed in turn - forever,
+                // keeping the node process alive after the suite finishes.
+                sinon.stub(webex.internal.metrics, 'submitClientMetrics');
                 services = webex.internal.services;
                 catalog = services._getCatalog();
                 resolve();

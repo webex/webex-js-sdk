@@ -1,0 +1,412 @@
+{
+  "$schema": "./schemas/repo-context.schema.json",
+  "version": 1,
+  "repository": {
+    "name": "@webex/storage-adapter-session-storage",
+    "purpose": "Published webex-core storage adapter backed by the browser sessionStorage API. new StorageAdapterSessionStorage(basekey) keeps every namespace of one instance in a single JSON document under that sessionStorage key. bind(namespace, options) checks the namespace and logger and resolves a binding whose get, put, and del read and rewrite the document and whose clear removes the whole basekey entry for every namespace. Absent keys reject with the webex-core NotFoundError, and each call logs one info line through the bound logger. No workspace package configures it; an application places an instance in a webex-core storage adapter slot."
+  },
+  "commands": {
+    "install": "yarn",
+    "prebuild": "yarn prebuild:modules",
+    "compile": "yarn build",
+    "build": "yarn build:src",
+    "unit-test": "yarn test:unit",
+    "lint": "yarn test:style",
+    "browser-test": "yarn test:browser",
+    "deploy": "yarn deploy:npm"
+  },
+  "public_interfaces": [
+    {
+      "name": "@webex/storage-adapter-session-storage package entry",
+      "kind": "package_export",
+      "source": "src/index.js",
+      "entrypoints": [
+        "import StorageAdapterSessionStorage from '@webex/storage-adapter-session-storage'",
+        "new StorageAdapterSessionStorage(basekey)"
+      ],
+      "audience": "applications that configure a webex-core storage adapter slot",
+      "notes": "Default export only; importing has no side effects. No workspace package configures this adapter. package.json main is dist/index.js and devMain is src/index.js."
+    },
+    {
+      "name": "adapter and binding methods",
+      "kind": "plugin_api",
+      "source": "src/index.js",
+      "entrypoints": [
+        "adapter.bind(namespace, options)",
+        "bound.get(key)",
+        "bound.put(key, value)",
+        "bound.del(key)",
+        "bound.clear()"
+      ],
+      "audience": "webex-core WebexStore",
+      "notes": "bind rejects on a falsy namespace or missing options.logger and throws synchronously when the logger has no info method. get rejects NotFoundError for an absent key and resolves falsey values. put stores JSON-serializable values only. clear removes the whole basekey entry for every namespace, ignores any argument, and throws synchronously when sessionStorage is absent. Object.prototype names as keys or namespaces misbehave, and namespace __proto__ pollutes a built-in prototype."
+    },
+    {
+      "name": "package scripts",
+      "kind": "npm_scripts",
+      "source": "package.json",
+      "entrypoints": [
+        "build",
+        "build:src",
+        "test:unit",
+        "test:style",
+        "test:browser",
+        "test",
+        "deploy:npm"
+      ],
+      "audience": "contributors and CI",
+      "notes": "build runs build:src, which writes dist. test:unit exits 0 with all 21 shared-suite cases skipped under Node. test:browser (commands.browser-test) runs karma over test/unit/spec, completes 0 tests because the shared suite calls the Jest beforeAll global, and exits 0. The aggregate test script runs test:style and test:unit, then exits 1 because test:integration is not defined; it is deliberately not a manifest command."
+    }
+  ],
+  "source_of_truth": [
+    {
+      "surface": "sessionStorage adapter implementation",
+      "paths": [
+        "src/index.js"
+      ],
+      "generated_artifacts": [
+        "dist"
+      ],
+      "refresh_with": [
+        "yarn build:src"
+      ],
+      "validate_with": [
+        "yarn test:unit",
+        "yarn test:style"
+      ]
+    },
+    {
+      "surface": "module specification",
+      "paths": [
+        "src/docs/README.md"
+      ],
+      "generated_artifacts": [],
+      "refresh_with": [
+        "update alongside the behavior change in the same commit"
+      ],
+      "validate_with": [
+        "spec-validator on an independent runtime"
+      ]
+    }
+  ],
+  "generated_artifacts": [
+    {
+      "path": "dist",
+      "generated_from": "src",
+      "refresh_with": "yarn build:src"
+    },
+    {
+      "path": "../../../.sdd/templates/repo-standards/template-map.json",
+      "generated_from": "WebexTools/repo-standards@d89a7fe59126ae3ad9bac9ca352aa7f12b4c85dc",
+      "refresh_with": "The package holds no templates. It refers to the monorepo root snapshot at ../../../.sdd/templates/repo-standards through layout.monorepo_package.templates_root_path in .sdd/manifest.json. Refresh the root snapshot, not this package."
+    }
+  ],
+  "validation_matrix": [
+    {
+      "paths": [
+        "src/**"
+      ],
+      "minimum": [
+        "yarn build:src",
+        "yarn test:unit",
+        "yarn test:style"
+      ],
+      "recommended": [
+        "add a test that actually executes the changed path with a sessionStorage stand-in; the existing unit tier skips every case"
+      ]
+    },
+    {
+      "paths": [
+        "src/index.js"
+      ],
+      "minimum": [
+        "yarn build:src",
+        "yarn test:unit",
+        "yarn test:style"
+      ],
+      "recommended": [
+        "pin clear scope, the bind checks, the NotFoundError contract, and the document layout with executing cases before changing them"
+      ]
+    }
+  ],
+  "change_impact": [
+    {
+      "paths": [
+        "src/index.js"
+      ],
+      "affects": [
+        "the sessionStorage document layout under the basekey",
+        "clear removing every namespace",
+        "the bind checks and the NotFoundError rejection",
+        "the session-storage-store-adapter info log lines"
+      ],
+      "refresh_with": [
+        "yarn build:src"
+      ],
+      "validate_with": [
+        "yarn test:unit",
+        "yarn test:style"
+      ],
+      "avoid_direct_edits": [
+        "dist"
+      ],
+      "notes": "No route executes a case today; add executing cases before changing behavior. The unit spec loads dist, so build first."
+    }
+  ],
+  "evidence_rules": [
+    {
+      "claim_category": "command_name",
+      "sources": [
+        "package.json"
+      ],
+      "requirement": "The script must exist in package.json scripts.",
+      "notes": "test:integration does not exist, so the aggregate test script fails; test:unit and test:browser currently execute no case."
+    },
+    {
+      "claim_category": "import_path",
+      "sources": [
+        "src/index.js"
+      ],
+      "requirement": "A binding is public only if exported from src/index.js.",
+      "notes": "The only export is the default StorageAdapterSessionStorage."
+    },
+    {
+      "claim_category": "behavior_claim",
+      "sources": [
+        "src",
+        "test/unit/spec"
+      ],
+      "requirement": "Ground every behavioral claim in source or test evidence.",
+      "notes": "Commit history is not an evidence source for this package. README.md is context only (docs/adr/0001-retain-product-readme.md). The webex-core storage spec and the storage-adapter-spec spec were consulted, and webex-core make-webex-store.js was read for how bind and clear are called."
+    }
+  ],
+  "negative_guidance": [
+    {
+      "rule": "Do not test stored values for truthiness.",
+      "why": "0, false, null, and empty string are legitimate stored values (INV-002)."
+    },
+    {
+      "rule": "Do not scope clear to one namespace or give it a key parameter without a change request.",
+      "why": "Host logout relies on one clear call removing every namespace under the basekey (MOD-010, MOD-011)."
+    },
+    {
+      "rule": "Do not change the stored document layout or encoding without handling documents already stored.",
+      "why": "The document has no version field, and _load returns an empty object for anything it cannot find, so a layout change would silently drop data."
+    },
+    {
+      "rule": "Do not use Object.prototype property names as keys or namespaces.",
+      "why": "Lookups have no own-property test, and namespace __proto__ pollutes a built-in prototype (MOD-016)."
+    },
+    {
+      "rule": "Do not log stored values through the bound logger.",
+      "why": "Hosts persist credentials and device state through storage adapters; only key names are logged today."
+    },
+    {
+      "rule": "Do not treat README.md as the behavior reference.",
+      "why": "It calls the package a localStorage adapter; see docs/adr/0001-retain-product-readme.md."
+    },
+    {
+      "rule": "Do not read a zero exit from test:unit or test:browser as passing behavior.",
+      "why": "test:unit skips all 21 cases and test:browser completes 0 tests."
+    },
+    {
+      "rule": "Do not infer a coverage threshold for this package.",
+      "why": "No coverage script or threshold exists."
+    }
+  ],
+  "confidence_policy": {
+    "high": {
+      "action": "update",
+      "expectation": "Source and an executing test agree. No requirement reaches this level today."
+    },
+    "medium": {
+      "action": "narrow-scope",
+      "expectation": "Source evidence, the host code, or the probe settles the behavior, as for every requirement today. Add an executing case before modifying."
+    },
+    "low": {
+      "action": "noop",
+      "expectation": "Neither source, tests, nor a dependency's spec or code settles the question, as for why every log line is info or whether the stored layout must stay readable across releases. Stop and report the gap."
+    }
+  },
+  "repository_topology": {
+    "main_entrypoints": [
+      {
+        "name": "package entry",
+        "path": "src/index.js",
+        "purpose": "Default-exports StorageAdapterSessionStorage",
+        "notes": "No subpath exports; package.json main is dist/index.js and devMain is src/index.js."
+      }
+    ],
+    "workspace_packages": [
+      {
+        "name": "@webex/storage-adapter-session-storage",
+        "paths": [
+          "src",
+          "test"
+        ],
+        "notes": "One module; this SDD root is the package directory inside the webex-js-sdk monorepo."
+      }
+    ],
+    "source_surfaces": [
+      {
+        "name": "sessionStorage adapter",
+        "paths": [
+          "src"
+        ],
+        "notes": "index.js only. Specified at src/docs/README.md."
+      },
+      {
+        "name": "tests",
+        "paths": [
+          "test/unit/spec"
+        ],
+        "notes": "One file that runs the shared storage-adapter-spec suite, skipped under Node."
+      }
+    ],
+    "generated_surfaces": [
+      {
+        "name": "build output",
+        "paths": [
+          "dist"
+        ],
+        "generated_from": "src",
+        "refresh_with": "yarn build:src",
+        "notes": "JavaScript and source map from webex-legacy-tools; no type declarations. Do not edit by hand."
+      },
+      {
+        "name": "repo-standards template map",
+        "paths": [
+          "../../../.sdd/templates/repo-standards"
+        ],
+        "generated_from": "WebexTools/repo-standards@d89a7fe59126ae3ad9bac9ca352aa7f12b4c85dc",
+        "refresh_with": "The package holds no templates. It refers to the monorepo root snapshot at ../../../.sdd/templates/repo-standards through layout.monorepo_package.templates_root_path in .sdd/manifest.json. Refresh the root snapshot, not this package.",
+        "notes": "The package holds no templates. It refers to the monorepo root snapshot at ../../../.sdd/templates/repo-standards through layout.monorepo_package.templates_root_path in .sdd/manifest.json. Refresh the root snapshot, not this package."
+      }
+    ],
+    "validation_entrypoints": [
+      {
+        "name": "compile",
+        "command": "yarn build",
+        "scope": "src",
+        "notes": "Runs build:src."
+      },
+      {
+        "name": "unit-test",
+        "command": "yarn test:unit",
+        "scope": "test/unit/spec",
+        "notes": "Jest through webex-legacy-tools; imports the package by name, so it loads dist. Currently skips all 21 cases."
+      },
+      {
+        "name": "lint",
+        "command": "yarn test:style",
+        "scope": "src",
+        "notes": "eslint via the local .eslintrc.js; docs/** and *.md are ignored."
+      }
+    ],
+    "sync_paths": [
+      {
+        "source": "src/index.js",
+        "targets": [
+          "src/docs/README.md"
+        ],
+        "mechanism": "Manual; update the module specification in the same change that alters observable behavior.",
+        "notes": "Keep the requirement, invariant, data, and failure-mode rows of the specification aligned with src/index.js."
+      },
+      {
+        "source": "WebexTools/repo-standards@d89a7fe59126ae3ad9bac9ca352aa7f12b4c85dc",
+        "targets": [
+          "../../../.sdd/templates/repo-standards"
+        ],
+        "mechanism": "The package holds no templates. It refers to the monorepo root snapshot at ../../../.sdd/templates/repo-standards through layout.monorepo_package.templates_root_path in .sdd/manifest.json. Refresh the root snapshot, not this package.",
+        "notes": "The package holds no templates. It refers to the monorepo root snapshot at ../../../.sdd/templates/repo-standards through layout.monorepo_package.templates_root_path in .sdd/manifest.json. Refresh the root snapshot, not this package."
+      }
+    ]
+  },
+  "folder_readme_contract": {
+    "required_sections": [
+      "purpose",
+      "boundaries",
+      "key-files",
+      "common-tasks"
+    ],
+    "rules": [
+      "Orient the reader before describing detail.",
+      "Link to the module specification rather than duplicating it."
+    ],
+    "example_policy": "Examples are allowed only when verified against src/ or test/.",
+    "fallback": "Omit a section rather than inventing content; report unresolved facts as gaps."
+  },
+  "regression_feedback_rules": [
+    {
+      "trigger": "clear, the document layout, or the encoding in src/index.js changes.",
+      "required_followups": [
+        "Add executing cases that observe another namespace before and after clear and read a document written by the previous layout",
+        "Update MOD-001, MOD-010, MOD-011, and Data, schema, and migration discipline in src/docs/README.md"
+      ],
+      "notes": "No executing case covers these today."
+    },
+    {
+      "trigger": "bind, get, put, or del error handling or logging changes.",
+      "required_followups": [
+        "Add parametrized executing cases for the bind checks, the missing global, and the not-found path",
+        "Update MOD-002 to MOD-007, MOD-014, MOD-015, and the failure-mode table in src/docs/README.md"
+      ],
+      "notes": "The logger method and the synchronous-throw exits are observable to hosts."
+    },
+    {
+      "trigger": "Key or namespace lookup in src/index.js changes, including any Object.prototype hardening.",
+      "required_followups": [
+        "Add executing cases for inherited names and namespace __proto__",
+        "Update MOD-016, MOD-017, and INV-002 in src/docs/README.md"
+      ],
+      "notes": "A fix must cover _load, get, _save, and the objects JSON.parse returns."
+    }
+  ],
+  "surface_owners": [
+    {
+      "surface": "module implementation and specifications",
+      "owner": "@webex/web-client",
+      "edit_boundary": "The monorepo .github/CODEOWNERS line for packages/@webex/storage-adapter-session-storage assigns @webex/web-client."
+    }
+  ],
+  "do_not_edit": [
+    "dist",
+    "../../../.sdd/templates/repo-standards"
+  ],
+  "marker_scopes": {
+    "sdd": [
+      ".sdd/manifest.json",
+      "src/docs/README.md",
+      "docs"
+    ]
+  },
+  "fallback_rules": [
+    "When source and tests disagree, code is the referee and the disagreement is recorded rather than silently resolved.",
+    "When neither source nor tests settle a question, report it as a gap instead of inferring.",
+    "Commit history is not a valid rationale source for this package.",
+    "When a dependency's specification disagrees with that dependency's code, use the code and record the disagreement; when a dependency has no specification, use its code."
+  ],
+  "downstream_context_pack": {
+    "required_human_surfaces": [
+      "README.md",
+      "docs/index.md",
+      "docs/architecture.md",
+      "src/docs/README.md"
+    ],
+    "required_agent_operational_surfaces": [
+      "AGENTS.md",
+      "docs/specs/README.md"
+    ],
+    "required_machine_readable_surface": ".sdd/manifest.json",
+    "recommended_machine_readable_sections": [
+      "public_interfaces",
+      "change_impact",
+      "evidence_rules",
+      "negative_guidance",
+      "confidence_policy",
+      "repository_topology",
+      "folder_readme_contract",
+      "regression_feedback_rules"
+    ]
+  }
+}
