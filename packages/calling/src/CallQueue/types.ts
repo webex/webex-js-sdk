@@ -5,6 +5,11 @@ export interface LoggerInterface {
   level: LOGGER;
 }
 
+/** Public Webex API gateway used for call queue requests. */
+export type CallQueueClientOptions = {
+  webexApiBaseUrl: string;
+};
+
 /**
  * Agent ACD state. REST uses these names. Mercury may send the camelCase form.
  */

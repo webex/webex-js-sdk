@@ -45,6 +45,7 @@ export {
   ACD_STATE,
   CallQueue,
   CallQueueAgentStatus,
+  CallQueueClientOptions,
   CallQueueResponse,
   ICallQueue,
   UpdateCallQueueSettingsRequest,

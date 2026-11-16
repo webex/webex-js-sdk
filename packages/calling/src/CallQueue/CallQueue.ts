@@ -1,4 +1,3 @@
-/* eslint-disable no-underscore-dangle */
 import SDKConnector from '../SDKConnector';
 import {WebexSDK} from '../SDKConnector/types';
 import {CALLING_BACKEND, HTTP_METHODS, WebexRequestPayload} from '../common/types';
@@ -39,6 +38,7 @@ import {
 import {
   ACD_STATE,
   CallQueueAgentStatus,
+  CallQueueClientOptions,
   CallQueueEventKind,
   CallQueueEventTypes,
   CallQueueResponse,
@@ -77,7 +77,9 @@ function actorIdentity(value: string): {id: string; type?: string} {
  *
  * @example
  * ```javascript
- * const callQueue = createCallQueueClient(webex, logger);
+ * const callQueue = createCallQueueClient(webex, logger, {
+ *   webexApiBaseUrl: 'https://webexapis.com',
+ * });
  * const status = await callQueue.getCallQueueSettings();
  * ```
  */
@@ -86,7 +88,7 @@ export class CallQueueClient extends Eventing<CallQueueEventTypes> implements IC
 
   private callingBackend: CALLING_BACKEND;
 
-  private webexApiEndpoint?: string;
+  private readonly webexApiEndpoint?: string;
 
   private currentByLine = new Map<string | undefined, CallQueueAgentStatus>();
 
@@ -104,12 +106,16 @@ export class CallQueueClient extends Eventing<CallQueueEventTypes> implements IC
 
   private disposed = false;
 
-  constructor(webex: WebexSDK, logger: LoggerInterface) {
+  constructor(webex: WebexSDK, logger: LoggerInterface, options: CallQueueClientOptions) {
     super();
     if (!SDKConnector.getWebex()) {
       SDKConnector.setWebex(webex);
     }
     this.webex = webex;
+    const apiBaseUrl = options?.webexApiBaseUrl;
+    const allowedOrigins = [WEBEX_API_BTS, WEBEX_API_PROD, WEBEX_API_FEDRAMP];
+    const normalized = typeof apiBaseUrl === 'string' ? apiBaseUrl.replace(/\/$/, '') : '';
+    this.webexApiEndpoint = allowedOrigins.includes(normalized) ? `${normalized}/v1` : undefined;
     this.callingBackend = this.resolveCallingBackend();
     this.registerAgentListeners();
     log.setLogger(logger.level, CALL_QUEUE_FILE);
@@ -122,44 +128,6 @@ export class CallQueueClient extends Eventing<CallQueueEventTypes> implements IC
       // Device features may not be available until registration finishes.
       return CALLING_BACKEND.INVALID;
     }
-  }
-
-  private resolveWebexApiEndpoint(): string | undefined {
-    const deviceUrl = this.webex.internal.device?.url || '';
-    const u2cDiscoveryUrl = this.webex.config?.services?.discovery?.u2c || '';
-    const services = this.webex.internal.services;
-    let developerApiUrl = services._serviceUrls?.hydraDeveloperApi || '';
-    const activeDeveloperApi = services._activeServices?.hydraDeveloperApi;
-    if (!developerApiUrl && activeDeveloperApi && typeof services.get === 'function') {
-      try {
-        developerApiUrl = services.get(activeDeveloperApi) || '';
-      } catch {
-        // U2C or device registration may still identify the environment.
-      }
-    }
-    // Local clients use Integration's U2C; device URLs can use a shared WDM host.
-    const isIntegration =
-      deviceUrl.includes('-int') ||
-      deviceUrl.includes('://int-') ||
-      u2cDiscoveryUrl.includes('-int') ||
-      u2cDiscoveryUrl.includes('://int-') ||
-      /^https:\/\/integration\.webexapis\.com(?:[/:]|$)/i.test(developerApiUrl);
-    const isGovernment =
-      this.webex.config.fedramp ||
-      /(?:gov\.ciscospark\.com|webexgov\.us|api-usgov\.webex\.com)/i.test(
-        `${deviceUrl} ${u2cDiscoveryUrl} ${developerApiUrl}`
-      );
-    const isProduction =
-      /^https:\/\/(?:u2c\.wbx2\.com|u2c\.svc\.webex\.com)(?:[/:]|$)/i.test(u2cDiscoveryUrl) ||
-      /^https:\/\/webexapis\.com(?:[/:]|$)/i.test(developerApiUrl);
-    // Unknown or conflicting evidence must not send a token to the wrong cloud.
-    if (isGovernment) {
-      return `${WEBEX_API_FEDRAMP}/v1`;
-    }
-
-    return isIntegration !== isProduction
-      ? `${isIntegration ? WEBEX_API_BTS : WEBEX_API_PROD}/v1`
-      : undefined;
   }
 
   /**
@@ -602,12 +570,9 @@ export class CallQueueClient extends Eventing<CallQueueEventTypes> implements IC
     if (lineOwnerId !== undefined && !LINE_OWNER_ID_PATTERN.test(lineOwnerId)) {
       return this.failure(400, 'lineOwnerId is not a valid line id');
     }
-    const endpoint = this.resolveWebexApiEndpoint();
-    if (!endpoint || (this.webexApiEndpoint && endpoint !== this.webexApiEndpoint)) {
-      return this.failure(400, 'Unable to determine the Webex API environment for call queues');
+    if (!this.webexApiEndpoint) {
+      return this.failure(400, 'A supported Webex API base URL is required for call queues');
     }
-    // Once established, keep in-flight operations bound to the same cloud.
-    this.webexApiEndpoint = endpoint;
 
     return undefined;
   }
@@ -758,5 +723,8 @@ export class CallQueueClient extends Eventing<CallQueueEventTypes> implements IC
 /**
  * Creates a call-queue client for the signed-in Webex Calling user.
  */
-export const createCallQueueClient = (webex: WebexSDK, logger: LoggerInterface): CallQueueClient =>
-  new CallQueueClient(webex, logger);
+export const createCallQueueClient = (
+  webex: WebexSDK,
+  logger: LoggerInterface,
+  options: CallQueueClientOptions
+): CallQueueClient => new CallQueueClient(webex, logger, options);

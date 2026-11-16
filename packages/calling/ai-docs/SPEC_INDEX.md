@@ -8,7 +8,7 @@
 |---|---|---|---|
 | `src/CallHistory/` | createCallHistoryClient(webex, logger) -> ICallHistory | Partial | [`src/CallHistory/ai-docs/call-history-spec.md`](../src/CallHistory/ai-docs/call-history-spec.md) |
 | `src/CallRecording/` | createCallRecordingClient(webex, logger) -> ICallRecording | Partial | [`src/CallRecording/ai-docs/call-recording-spec.md`](../src/CallRecording/ai-docs/call-recording-spec.md) |
-| `src/CallQueue/` | createCallQueueClient(webex, logger) -> ICallQueue | Partial | [`src/CallQueue/ai-docs/call-queue-spec.md`](../src/CallQueue/ai-docs/call-queue-spec.md) |
+| `src/CallQueue/` | createCallQueueClient(webex, logger, options) -> ICallQueue | Partial | [`src/CallQueue/ai-docs/call-queue-spec.md`](../src/CallQueue/ai-docs/call-queue-spec.md) |
 | `src/CallSettings/` | createCallSettingsClient(webex, logger) -> ICallSettings | Partial | [`src/CallSettings/ai-docs/call-settings-spec.md`](../src/CallSettings/ai-docs/call-settings-spec.md) |
 | `src/CallingClient/` | createClient(config) -> ICallingClient | Partial | [`src/CallingClient/ai-docs/calling-client-spec.md`](../src/CallingClient/ai-docs/calling-client-spec.md) |
 | `src/CallingClient/calling/` | ICall and CallManager call lifecycle operations | Partial | [`src/CallingClient/calling/ai-docs/calling-spec.md`](../src/CallingClient/calling/ai-docs/calling-spec.md) |

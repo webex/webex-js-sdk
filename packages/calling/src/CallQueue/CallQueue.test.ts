@@ -8,8 +8,8 @@ import {ACD_STATE, ICallQueue} from './types';
 
 const webex = getTestUtilsWebex();
 const WEBEX_API_INT = 'https://integration.webexapis.com/v1/';
-const WEBEX_API_PROD = 'https://webexapis.com/v1/';
-const client = createCallQueueClient(webex, {level: LOGGER.INFO});
+const TEST_OPTIONS = {webexApiBaseUrl: 'https://integration.webexapis.com'};
+const client = createCallQueueClient(webex, {level: LOGGER.INFO}, TEST_OPTIONS);
 const mercuryHandlers = new Map<string, (event?: unknown) => void>(
   (webex.internal.mercury.on as jest.Mock).mock.calls.map((call) => [call[0], call[1]])
 );
@@ -64,193 +64,130 @@ describe('CallQueue client', () => {
     expect(response.data.callQueue?.queues[0].id).toBe('queue-1');
   });
 
-  it('uses the production public API for a production device', async () => {
-    const originalDeviceUrl = webex.internal.device.url;
-    const originalDeveloperApi = webex.internal.services._serviceUrls.hydraDeveloperApi;
+  it.each([
+    ['Integration', 'https://integration.webexapis.com'],
+    ['Production', 'https://webexapis.com'],
+    ['FedRAMP', 'https://api-usgov.webex.com'],
+  ])('routes queue reads, catalog, writes, and sync to the supplied %s API', async (_, baseUrl) => {
+    const otherWebex = getTestUtilsWebex();
+    const queueClient = createCallQueueClient(
+      otherWebex,
+      {level: LOGGER.INFO},
+      {webexApiBaseUrl: baseUrl}
+    );
+    otherWebex.request.mockImplementation(
+      async ({uri}: {uri: string}) => <WebexRequestPayload>(<unknown>{
+          statusCode: 200,
+          body: uri.endsWith('/telephony/config/queues')
+            ? {queues: [{id: 'queue-1', name: 'Sales'}]}
+            : {agentACDState: 'AVAILABLE', queues: [{id: 'queue-1', available: true}]},
+        })
+    );
 
-    try {
-      webex.internal.services._serviceUrls.hydraDeveloperApi = WEBEX_API_PROD;
-      webex.internal.device.url =
-        'https://wdm-a.wbx2.com/wdm/api/v1/devices/c5ae3b86-1bb7-40f1-a6a9-c296ee7e61d5';
-      const productionClient = createCallQueueClient(webex, {level: LOGGER.INFO});
-      webex.request.mockResolvedValue(<WebexRequestPayload>(<unknown>{
-        statusCode: 200,
-        body: {agentACDState: 'AVAILABLE', queues: []},
-      }));
-
-      await productionClient.getCallQueueSettings();
-
-      expect(webex.request).toHaveBeenCalledWith({
-        uri: `${WEBEX_API_PROD}telephony/config/people/me/settings/queues`,
+    expect((await queueClient.getCallQueueSettings()).statusCode).toBe(200);
+    expect(
+      (await queueClient.updateCallQueueSettings({agentACDState: ACD_STATE.UNAVAILABLE})).statusCode
+    ).toBe(200);
+    expect((await queueClient.syncTelephonyCalls()).statusCode).toBe(200);
+    expect(otherWebex.request).toHaveBeenNthCalledWith(
+      1,
+      expect.objectContaining({
+        uri: `${baseUrl}/v1/telephony/config/people/me/settings/queues`,
         method: HTTP_METHODS.GET,
-      });
-    } finally {
-      webex.internal.device.url = originalDeviceUrl;
-      webex.internal.services._serviceUrls.hydraDeveloperApi = originalDeveloperApi;
-    }
+      })
+    );
+    expect(otherWebex.request).toHaveBeenNthCalledWith(
+      2,
+      expect.objectContaining({
+        uri: `${baseUrl}/v1/telephony/config/queues`,
+        method: HTTP_METHODS.GET,
+      })
+    );
+    expect(otherWebex.request).toHaveBeenNthCalledWith(
+      3,
+      expect.objectContaining({
+        uri: `${baseUrl}/v1/telephony/config/people/me/settings/queues`,
+        method: HTTP_METHODS.PUT,
+      })
+    );
+    expect(otherWebex.request).toHaveBeenNthCalledWith(
+      4,
+      expect.objectContaining({
+        uri: `${baseUrl}/v1/telephony/calls/sync/invoke`,
+        method: HTTP_METHODS.POST,
+      })
+    );
+    queueClient.dispose();
   });
 
-  it('uses the Integration API when U2C discovery identifies Integration', async () => {
-    const originalDeviceUrl = webex.internal.device.url;
-    const originalServices = webex.config.services;
-
-    try {
-      // Some Integration registrations return a device URL without `-int`.
-      webex.internal.device.url =
-        'https://wdm-a.wbx2.com/wdm/api/v1/devices/c5ae3b86-1bb7-40f1-a6a9-c296ee7e61d5';
-      webex.config.services = {
-        discovery: {u2c: 'https://u2c-intb.ciscospark.com/u2c/api/v1'},
-      };
-      const integrationClient = createCallQueueClient(webex, {level: LOGGER.INFO});
-      webex.request.mockResolvedValue(<WebexRequestPayload>(<unknown>{
-        statusCode: 200,
-        body: {agentACDState: 'SIGN_OUT', queues: []},
-      }));
-
-      await integrationClient.getCallQueueSettings();
-
-      expect(webex.request).toHaveBeenCalledWith({
+  it('accepts one trailing slash without duplicating the version segment', async () => {
+    const otherWebex = getTestUtilsWebex();
+    const queueClient = createCallQueueClient(
+      otherWebex,
+      {level: LOGGER.INFO},
+      {
+        webexApiBaseUrl: 'https://integration.webexapis.com/',
+      }
+    );
+    otherWebex.request.mockResolvedValue(<WebexRequestPayload>(<unknown>{
+      statusCode: 200,
+      body: {agentACDState: 'AVAILABLE', queues: []},
+    }));
+    await queueClient.getCallQueueSettings();
+    expect(otherWebex.request).toHaveBeenCalledWith(
+      expect.objectContaining({
         uri: `${WEBEX_API_INT}telephony/config/people/me/settings/queues`,
-        method: HTTP_METHODS.GET,
-      });
-    } finally {
-      webex.internal.device.url = originalDeviceUrl;
-      webex.config.services = originalServices;
-    }
+      })
+    );
+    queueClient.dispose();
   });
 
-  it('detects Integration from an int-first device when discovery is unavailable', async () => {
-    const originalDeviceUrl = webex.internal.device.url;
-    const originalServices = webex.config.services;
-    const originalDeveloperApi = webex.internal.services._serviceUrls.hydraDeveloperApi;
-    try {
-      webex.internal.device.url =
-        'https://int-first-registration.svc.webex.com/wdm/api/v1/devices/device-1';
-      webex.config.services = undefined;
-      webex.internal.services._serviceUrls.hydraDeveloperApi = undefined;
-      const integrationClient = createCallQueueClient(webex, {level: LOGGER.INFO});
-      webex.request.mockResolvedValue(<WebexRequestPayload>(<unknown>{
-        statusCode: 200,
-        body: {agentACDState: 'SIGN_OUT', queues: []},
-      }));
-
-      await integrationClient.getCallQueueSettings();
-
-      expect(webex.request).toHaveBeenCalledWith({
-        uri: `${WEBEX_API_INT}telephony/config/people/me/settings/queues`,
-        method: HTTP_METHODS.GET,
-      });
-    } finally {
-      webex.internal.device.url = originalDeviceUrl;
-      webex.config.services = originalServices;
-      webex.internal.services._serviceUrls.hydraDeveloperApi = originalDeveloperApi;
-    }
+  it.each([
+    '',
+    'http://webexapis.com',
+    'https://webexapis.com.evil.example',
+    'https://webexapis.com@evil.example',
+    'https://user@webexapis.com',
+    'https://webexapis.com:443',
+    'https://webexapis.com/v1',
+    'https://webexapis.com?foo=bar',
+    'https://webexapis.com#fragment',
+    'https://webexapis.com//',
+  ])('rejects an invalid API base %s before sending requests', async (baseUrl) => {
+    const otherWebex = getTestUtilsWebex();
+    const queueClient = createCallQueueClient(
+      otherWebex,
+      {level: LOGGER.INFO},
+      {webexApiBaseUrl: baseUrl}
+    );
+    expect((await queueClient.getCallQueueSettings()).statusCode).toBe(400);
+    expect(
+      (await queueClient.updateCallQueueSettings({agentACDState: ACD_STATE.AVAILABLE})).statusCode
+    ).toBe(400);
+    expect((await queueClient.syncTelephonyCalls()).statusCode).toBe(400);
+    const syncListener = otherWebex.internal.mercury.on.mock.calls.find(
+      ([event]) => event === MOBIUS_EVENT_KEYS.TELEPHONY_AGENT_SYNC
+    )?.[1];
+    syncListener?.({data: {agentACDState: 'AVAILABLE'}});
+    await Promise.resolve();
+    expect(otherWebex.request).not.toHaveBeenCalled();
+    queueClient.dispose();
   });
 
-  it('uses active service discovery when the developer API URL is not cached', async () => {
-    const services = webex.internal.services;
-    const originalDeviceUrl = webex.internal.device.url;
-    const originalServices = webex.config.services;
-    const originalDeveloperApi = services._serviceUrls.hydraDeveloperApi;
-    const originalActive = services._activeServices;
-    const originalGet = services.get;
-    try {
-      webex.internal.device.url = 'https://wdm-a.wbx2.com/wdm/api/v1/devices/device-1';
-      webex.config.services = undefined;
-      services._serviceUrls.hydraDeveloperApi = undefined;
-      services._activeServices = {
-        broadworksIdpProxy: '',
-        contactsService: '',
-        hydra: '',
-        janus: '',
-        mercuryApi: '',
-        mobius: '',
-        hydraDeveloperApi: 'active-developer-api',
-      };
-      services.get = jest.fn().mockReturnValue(WEBEX_API_PROD);
-      const productionClient = createCallQueueClient(webex, {level: LOGGER.INFO});
-      webex.request.mockResolvedValue(<WebexRequestPayload>(<unknown>{
-        statusCode: 200,
-        body: {agentACDState: 'AVAILABLE', queues: []},
-      }));
-
-      await productionClient.getCallQueueSettings();
-
-      expect(services.get).toHaveBeenCalledWith('active-developer-api');
-      expect(webex.request).toHaveBeenCalledWith({
-        uri: `${WEBEX_API_PROD}telephony/config/people/me/settings/queues`,
-        method: HTTP_METHODS.GET,
-      });
-    } finally {
-      webex.internal.device.url = originalDeviceUrl;
-      webex.config.services = originalServices;
-      services._serviceUrls.hydraDeveloperApi = originalDeveloperApi;
-      services._activeServices = originalActive;
-      services.get = originalGet;
-    }
-  });
-
-  it('uses the SDK default Production U2C when developer discovery is unavailable', async () => {
-    const originalDeviceUrl = webex.internal.device.url;
-    const originalServices = webex.config.services;
-    const originalDeveloperApi = webex.internal.services._serviceUrls.hydraDeveloperApi;
-    try {
-      webex.internal.device.url = 'https://wdm-a.wbx2.com/wdm/api/v1/devices/device-1';
-      webex.config.services = {discovery: {u2c: 'https://u2c.svc.webex.com/u2c/api/v1'}};
-      webex.internal.services._serviceUrls.hydraDeveloperApi = undefined;
-      const productionClient = createCallQueueClient(webex, {level: LOGGER.INFO});
-      webex.request.mockResolvedValue(<WebexRequestPayload>(<unknown>{
-        statusCode: 200,
-        body: {agentACDState: 'AVAILABLE', queues: []},
-      }));
-
-      await productionClient.getCallQueueSettings();
-
-      expect(webex.request).toHaveBeenCalledWith({
-        uri: `${WEBEX_API_PROD}telephony/config/people/me/settings/queues`,
-        method: HTTP_METHODS.GET,
-      });
-    } finally {
-      webex.internal.device.url = originalDeviceUrl;
-      webex.config.services = originalServices;
-      webex.internal.services._serviceUrls.hydraDeveloperApi = originalDeveloperApi;
-    }
-  });
-
-  it('resolves the environment after a client is created before discovery is ready', async () => {
-    const originalDeviceUrl = webex.internal.device.url;
-    const originalServices = webex.config.services;
-    const originalDeveloperApi = webex.internal.services._serviceUrls.hydraDeveloperApi;
-    try {
-      webex.internal.device.url = 'https://wdm-a.wbx2.com/wdm/api/v1/devices/device-1';
-      webex.config.services = undefined;
-      webex.internal.services._serviceUrls.hydraDeveloperApi = undefined;
-      const earlyClient = createCallQueueClient(webex, {level: LOGGER.INFO});
-      expect((await earlyClient.getCallQueueSettings()).statusCode).toBe(400);
-      expect(webex.request).not.toHaveBeenCalled();
-
-      webex.config.services = {discovery: {u2c: 'https://u2c-intb.ciscospark.com/u2c/api/v1'}};
-      webex.request.mockResolvedValue(<WebexRequestPayload>(<unknown>{
-        statusCode: 200,
-        body: {agentACDState: 'AVAILABLE', queues: []},
-      }));
-      expect((await earlyClient.getCallQueueSettings()).statusCode).toBe(200);
-      expect(webex.request).toHaveBeenCalledWith({
-        uri: `${WEBEX_API_INT}telephony/config/people/me/settings/queues`,
-        method: HTTP_METHODS.GET,
-      });
-    } finally {
-      webex.internal.device.url = originalDeviceUrl;
-      webex.config.services = originalServices;
-      webex.internal.services._serviceUrls.hydraDeveloperApi = originalDeveloperApi;
-    }
+  it('fails closed when JavaScript callers omit options', async () => {
+    const otherWebex = getTestUtilsWebex();
+    // @ts-expect-error Exercise a JavaScript caller that omits the required options.
+    const queueClient = createCallQueueClient(otherWebex, {level: LOGGER.INFO});
+    expect((await queueClient.getCallQueueSettings()).statusCode).toBe(400);
+    expect(otherWebex.request).not.toHaveBeenCalled();
+    queueClient.dispose();
   });
 
   it('starts accepting requests after delayed device registration', async () => {
     const lateWebex = getTestUtilsWebex();
     const features = lateWebex.internal.device.features;
     (lateWebex.internal.device as any).features = undefined;
-    const earlyClient = createCallQueueClient(lateWebex, {level: LOGGER.INFO});
+    const earlyClient = createCallQueueClient(lateWebex, {level: LOGGER.INFO}, TEST_OPTIONS);
     expect((await earlyClient.getCallQueueSettings()).statusCode).toBe(501);
     expect(lateWebex.request).not.toHaveBeenCalled();
 
@@ -265,81 +202,6 @@ describe('CallQueue client', () => {
       expect.any(Function)
     );
     earlyClient.dispose();
-  });
-
-  it('does not change clouds after an environment has been selected', async () => {
-    const otherWebex = getTestUtilsWebex();
-    const stableClient = createCallQueueClient(otherWebex, {level: LOGGER.INFO});
-    otherWebex.request.mockResolvedValue(<WebexRequestPayload>(<unknown>{
-      statusCode: 200,
-      body: {agentACDState: 'AVAILABLE', queues: []},
-    }));
-    expect((await stableClient.getCallQueueSettings()).statusCode).toBe(200);
-
-    otherWebex.internal.device.url = 'https://wdm-a.wbx2.com/wdm/api/v1/devices/device-1';
-    otherWebex.config.services = {discovery: {u2c: 'https://u2c.wbx2.com/u2c/api/v1'}};
-    otherWebex.internal.services._serviceUrls.hydraDeveloperApi = WEBEX_API_PROD;
-    expect((await stableClient.getCallQueueSettings()).statusCode).toBe(400);
-    expect(otherWebex.request).toHaveBeenCalledTimes(1);
-    stableClient.dispose();
-  });
-
-  it('does not send a token when the environment cannot be determined', async () => {
-    const originalDeviceUrl = webex.internal.device.url;
-    const originalServices = webex.config.services;
-    const originalDeveloperApi = webex.internal.services._serviceUrls.hydraDeveloperApi;
-    try {
-      webex.internal.device.url = 'https://wdm-a.wbx2.com/wdm/api/v1/devices/device-1';
-      webex.config.services = undefined;
-      webex.internal.services._serviceUrls.hydraDeveloperApi = undefined;
-      const unknownClient = createCallQueueClient(webex, {level: LOGGER.INFO});
-
-      const response = await unknownClient.getCallQueueSettings();
-
-      expect(response.statusCode).toBe(400);
-      expect(webex.request).not.toHaveBeenCalled();
-    } finally {
-      webex.internal.device.url = originalDeviceUrl;
-      webex.config.services = originalServices;
-      webex.internal.services._serviceUrls.hydraDeveloperApi = originalDeveloperApi;
-    }
-  });
-
-  it('does not send a token when Integration and Production evidence conflicts', async () => {
-    const originalDeviceUrl = webex.internal.device.url;
-    const originalServices = webex.config.services;
-    try {
-      webex.internal.device.url = 'https://wdm-a.wbx2.com/wdm/api/v1/devices/device-1';
-      webex.config.services = {discovery: {u2c: 'https://u2c.wbx2.com/u2c/api/v1'}};
-      const conflictingClient = createCallQueueClient(webex, {level: LOGGER.INFO});
-
-      const response = await conflictingClient.getCallQueueSettings();
-
-      expect(response.statusCode).toBe(400);
-      expect(webex.request).not.toHaveBeenCalled();
-    } finally {
-      webex.internal.device.url = originalDeviceUrl;
-      webex.config.services = originalServices;
-    }
-  });
-
-  it('uses the FedRAMP API for government configurations', async () => {
-    const originalFedramp = webex.config.fedramp;
-    try {
-      webex.config.fedramp = true;
-      const governmentClient = createCallQueueClient(webex, {level: LOGGER.INFO});
-      webex.request.mockResolvedValue(<WebexRequestPayload>(<unknown>{
-        statusCode: 200,
-        body: {agentACDState: 'AVAILABLE', queues: []},
-      }));
-      await governmentClient.getCallQueueSettings();
-      expect(webex.request).toHaveBeenCalledWith({
-        uri: 'https://api-usgov.webex.com/v1/telephony/config/people/me/settings/queues',
-        method: HTTP_METHODS.GET,
-      });
-    } finally {
-      webex.config.fedramp = originalFedramp;
-    }
   });
 
   it('fills a missing display name from the queue catalog', async () => {
@@ -379,7 +241,7 @@ describe('CallQueue client', () => {
   });
 
   it('follows same-catalog Link headers to find queue names', async () => {
-    const catalogClient = createCallQueueClient(webex, {level: LOGGER.INFO});
+    const catalogClient = createCallQueueClient(webex, {level: LOGGER.INFO}, TEST_OPTIONS);
     const next = `${WEBEX_API_INT}telephony/config/queues?start=1`;
     webex.request.mockImplementation(async (options: {uri: string}) => {
       if (options.uri === next) {
@@ -399,7 +261,7 @@ describe('CallQueue client', () => {
   });
 
   it('does not follow a catalog Link to another origin', async () => {
-    const catalogClient = createCallQueueClient(webex, {level: LOGGER.INFO});
+    const catalogClient = createCallQueueClient(webex, {level: LOGGER.INFO}, TEST_OPTIONS);
     webex.request
       .mockResolvedValueOnce(<WebexRequestPayload>(<unknown>{
         statusCode: 200,
@@ -520,7 +382,7 @@ describe('CallQueue client', () => {
   });
 
   it('uses the target line settings when a queue is updated', async () => {
-    const lineAwareClient = createCallQueueClient(webex, {level: LOGGER.INFO});
+    const lineAwareClient = createCallQueueClient(webex, {level: LOGGER.INFO}, TEST_OPTIONS);
     webex.request.mockImplementation(async (options: {uri: string; method?: string}) => {
       if (options.method === HTTP_METHODS.PUT) {
         return <WebexRequestPayload>(<unknown>{statusCode: 204});
@@ -591,7 +453,7 @@ describe('CallQueue client', () => {
 
   it('does not call the network when the user is not on Webex Calling cloud', async () => {
     const backend = jest.spyOn(utils, 'getCallingBackEnd').mockReturnValue(CALLING_BACKEND.UCM);
-    const other = createCallQueueClient(webex, {level: LOGGER.INFO});
+    const other = createCallQueueClient(webex, {level: LOGGER.INFO}, TEST_OPTIONS);
 
     const response = await other.getCallQueueSettings();
     backend.mockRestore();
@@ -631,7 +493,7 @@ describe('CallQueue client', () => {
 
   it('scopes virtual-line events and ignores events for another person', async () => {
     const lineId = '36d87d6c-7531-4b2f-a4ef-d71e6aacb86f';
-    const scoped = createCallQueueClient(webex, {level: LOGGER.INFO});
+    const scoped = createCallQueueClient(webex, {level: LOGGER.INFO}, TEST_OPTIONS);
     const listener = jest.fn();
     scoped.on(COMMON_EVENT_KEYS.CALL_QUEUE_UPDATED, listener);
     webex.request.mockResolvedValue(<WebexRequestPayload>(<unknown>{
@@ -675,7 +537,7 @@ describe('CallQueue client', () => {
 
   it('refreshes the actual state when a join event arrives before settings have loaded', async () => {
     const otherWebex = getTestUtilsWebex();
-    const other = createCallQueueClient(otherWebex, {level: LOGGER.INFO});
+    const other = createCallQueueClient(otherWebex, {level: LOGGER.INFO}, TEST_OPTIONS);
     const listener = jest.fn();
     other.on(COMMON_EVENT_KEYS.CALL_QUEUE_UPDATED, listener);
     otherWebex.request.mockResolvedValue(<WebexRequestPayload>(<unknown>{
@@ -709,7 +571,7 @@ describe('CallQueue client', () => {
 
   it('refreshes again when an uncached join event is followed by a state event', async () => {
     const otherWebex = getTestUtilsWebex();
-    const other = createCallQueueClient(otherWebex, {level: LOGGER.INFO});
+    const other = createCallQueueClient(otherWebex, {level: LOGGER.INFO}, TEST_OPTIONS);
     const listener = jest.fn();
     other.on(COMMON_EVENT_KEYS.CALL_QUEUE_UPDATED, listener);
     const first = deferredResponse();
@@ -752,7 +614,7 @@ describe('CallQueue client', () => {
 
   it('does not overwrite a newer Mercury state with an older in-flight GET', async () => {
     const otherWebex = getTestUtilsWebex();
-    const other = createCallQueueClient(otherWebex, {level: LOGGER.INFO});
+    const other = createCallQueueClient(otherWebex, {level: LOGGER.INFO}, TEST_OPTIONS);
     const body = {
       agentACDState: 'AVAILABLE',
       queues: [{id: 'queue-1', name: 'Sales', available: true}],
@@ -779,7 +641,7 @@ describe('CallQueue client', () => {
 
   it('waits for the latest replacement event refresh while a GET is pending', async () => {
     const otherWebex = getTestUtilsWebex();
-    const other = createCallQueueClient(otherWebex, {level: LOGGER.INFO});
+    const other = createCallQueueClient(otherWebex, {level: LOGGER.INFO}, TEST_OPTIONS);
     const original = deferredResponse();
     const first = deferredResponse();
     const second = deferredResponse();
@@ -838,7 +700,7 @@ describe('CallQueue client', () => {
 
   it('does not let an older event refresh overwrite a later GET', async () => {
     const otherWebex = getTestUtilsWebex();
-    const other = createCallQueueClient(otherWebex, {level: LOGGER.INFO});
+    const other = createCallQueueClient(otherWebex, {level: LOGGER.INFO}, TEST_OPTIONS);
     const listener = jest.fn();
     other.on(COMMON_EVENT_KEYS.CALL_QUEUE_UPDATED, listener);
     const oldGet = deferredResponse();
@@ -869,7 +731,7 @@ describe('CallQueue client', () => {
 
   it('does not let an older GET overwrite a successful PATCH', async () => {
     const otherWebex = getTestUtilsWebex();
-    const other = createCallQueueClient(otherWebex, {level: LOGGER.INFO});
+    const other = createCallQueueClient(otherWebex, {level: LOGGER.INFO}, TEST_OPTIONS);
     const initial = {agentACDState: 'AVAILABLE', queues: []};
     otherWebex.request.mockResolvedValueOnce(<WebexRequestPayload>(
       (<unknown>{statusCode: 200, body: initial})
@@ -888,7 +750,7 @@ describe('CallQueue client', () => {
 
   it('does not let an older GET overwrite a later completed GET', async () => {
     const otherWebex = getTestUtilsWebex();
-    const other = createCallQueueClient(otherWebex, {level: LOGGER.INFO});
+    const other = createCallQueueClient(otherWebex, {level: LOGGER.INFO}, TEST_OPTIONS);
     const oldGet = deferredResponse();
     otherWebex.request
       .mockReturnValueOnce(oldGet.promise)
@@ -906,7 +768,7 @@ describe('CallQueue client', () => {
 
   it('refreshes after a PATCH overlaps a Mercury event', async () => {
     const otherWebex = getTestUtilsWebex();
-    const other = createCallQueueClient(otherWebex, {level: LOGGER.INFO});
+    const other = createCallQueueClient(otherWebex, {level: LOGGER.INFO}, TEST_OPTIONS);
     otherWebex.request.mockResolvedValueOnce(<WebexRequestPayload>(
       (<unknown>{statusCode: 200, body: {agentACDState: 'AVAILABLE', queues: []}})
     ));
@@ -934,7 +796,7 @@ describe('CallQueue client', () => {
 
   it('fails safely when the first GET has no agent state', async () => {
     const otherWebex = getTestUtilsWebex();
-    const other = createCallQueueClient(otherWebex, {level: LOGGER.INFO});
+    const other = createCallQueueClient(otherWebex, {level: LOGGER.INFO}, TEST_OPTIONS);
     otherWebex.request.mockResolvedValueOnce(<WebexRequestPayload>(
       (<unknown>{statusCode: 200, body: {queues: [{id: 'q1', name: 'Sales', available: true}]}})
     ));
@@ -946,7 +808,7 @@ describe('CallQueue client', () => {
 
   it('loads settings after a queue-only PATCH with no cached state', async () => {
     const otherWebex = getTestUtilsWebex();
-    const other = createCallQueueClient(otherWebex, {level: LOGGER.INFO});
+    const other = createCallQueueClient(otherWebex, {level: LOGGER.INFO}, TEST_OPTIONS);
     otherWebex.request
       .mockResolvedValueOnce(<WebexRequestPayload>(<unknown>{statusCode: 204}))
       .mockResolvedValueOnce(<WebexRequestPayload>(<unknown>{
@@ -965,7 +827,7 @@ describe('CallQueue client', () => {
 
   it('uses the supplied Webex instance and disposes only its own Mercury listeners', async () => {
     const otherWebex = getTestUtilsWebex();
-    const other = createCallQueueClient(otherWebex, {level: LOGGER.INFO});
+    const other = createCallQueueClient(otherWebex, {level: LOGGER.INFO}, TEST_OPTIONS);
     const registered = (otherWebex.internal.mercury.on as jest.Mock).mock.calls.slice();
     otherWebex.request.mockResolvedValue(<WebexRequestPayload>(<unknown>{
       statusCode: 200,

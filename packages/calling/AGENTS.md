@@ -39,7 +39,7 @@ flowchart LR
 packages/calling/
 ├── src/CallHistory/ — createCallHistoryClient(webex, logger) -> ICallHistory
 ├── src/CallRecording/ — createCallRecordingClient(webex, logger) -> ICallRecording
-├── src/CallQueue/ — createCallQueueClient(webex, logger) -> ICallQueue
+├── src/CallQueue/ — createCallQueueClient(webex, logger, options) -> ICallQueue
 ├── src/CallSettings/ — createCallSettingsClient(webex, logger) -> ICallSettings
 ├── src/CallingClient/ — createClient(config) -> ICallingClient
 ├── src/CallingClient/calling/ — ICall and CallManager call lifecycle operations

@@ -1,8 +1,8 @@
 # Call queue agent status
 
-Cloud Webex Calling only. `createCallQueueClient(webex, logger)` returns a client that:
+Cloud Webex Calling only. `createCallQueueClient(webex, logger, {webexApiBaseUrl})` returns a client that:
 
-- Chooses `https://integration.webexapis.com/v1` for Integration (including locally hosted clients configured with Integration U2C), `https://webexapis.com/v1` for commercial Production, and `https://api-usgov.webex.com/v1` for FedRAMP. Unknown or conflicting environment signals fail closed.
+- Uses the caller-supplied API origin: `https://integration.webexapis.com` for Integration, `https://webexapis.com` for commercial Production, or `https://api-usgov.webex.com` for FedRAMP. It validates the origin against these exact HTTPS hosts, permits an optional trailing slash, and appends `/v1`; missing or invalid options fail closed before any queue request. Consumers must supply the effective origin for their environment.
 - Uses `GET`/`PUT /telephony/config/people/me/settings/queues` for the primary line and `GET`/`PUT /telephony/config/people/me/settings/secondaryLines/{lineOwnerId}/queues` for a secondary virtual line. Raw virtual-line UUIDs are encoded as `VIRTUAL_LINE` Webex IDs before constructing the public API URL.
 - `GET`s `/telephony/config/queues` through the same environment-selected public API to fill a queue display name when agent settings omit it. Catalog access is optional and may be forbidden for some users. Pagination follows a same-origin `Link: ...; rel="next"` header, with a bounded fallback for body `paging.next`.
 - `POST`s `/telephony/calls/sync/invoke` through the same public API with the registered `wdmUrl` and `resources: [{resource: 'telephony_agents'}]`. An Integration test returned HTTP 204; live Mercury event delivery and Production still require end-to-end verification.

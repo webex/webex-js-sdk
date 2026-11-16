@@ -19,7 +19,12 @@ import {Voicemail, createVoicemailClient} from './Voicemail/Voicemail';
 import {IVoicemail, VoicemailResponseEvent} from './Voicemail/types';
 import {CallRecording, createCallRecordingClient} from './CallRecording/CallRecording';
 import {CallQueueClient, createCallQueueClient} from './CallQueue/CallQueue';
-import {ICallQueue, ACD_STATE, UpdateCallQueueSettingsRequest} from './CallQueue/types';
+import {
+  ICallQueue,
+  ACD_STATE,
+  CallQueueClientOptions,
+  UpdateCallQueueSettingsRequest,
+} from './CallQueue/types';
 import {
   ICallRecording,
   Recording,
@@ -69,6 +74,7 @@ export {
   RecordingResponse,
   GetRecordingsOptions,
   ACD_STATE,
+  CallQueueClientOptions,
   UpdateCallQueueSettingsRequest,
 };
 
