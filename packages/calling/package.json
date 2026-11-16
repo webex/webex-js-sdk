@@ -33,7 +33,6 @@
     "build:src": "tsc",
     "compile": "yarn workspaces foreach -tR --from @webex/calling run build:src",
     "test:unit": "jest --config=jest.config.js --runInBand",
-    "test:syntax": "tsc --project test/typecheck/tsconfig.json",
     "test:style": "eslint 'src/**/*.ts'",
     "fix:lint": "eslint 'src/**/*.ts' --fix",
     "fix:prettier": "prettier \"src/**/*.ts\" --write",
