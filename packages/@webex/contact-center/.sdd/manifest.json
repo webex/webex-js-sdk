@@ -769,8 +769,8 @@
       "use_by_agents": "source-for-migration",
       "canonical_target": "docs/index.md",
       "post_migration_action": "delete-after-validation",
-      "deletion_status": "pending",
-      "notes": "Older Repo Annotation ai-docs output (brownfield-onboarding@0.1.6). Primary route only; per-unit routing, including units placed in other canonical documents, is authoritative in the source-fidelity inventories."
+      "deletion_status": "deleted",
+      "notes": "Older Repo Annotation ai-docs output (brownfield-onboarding@0.1.6). Primary route only; per-unit routing, including units placed in other canonical documents, is authoritative in the source-fidelity inventories. Deleted 2026-11-16 in a separate commit after the owner reviewed the migration diff; recoverable from the parent commit."
     },
     {
       "path": "ai-docs/ARCHITECTURE.md",
@@ -780,8 +780,8 @@
       "use_by_agents": "source-for-migration",
       "canonical_target": "docs/architecture.md",
       "post_migration_action": "delete-after-validation",
-      "deletion_status": "pending",
-      "notes": "Older Repo Annotation ai-docs output (brownfield-onboarding@0.1.6). Primary route only; per-unit routing, including units placed in other canonical documents, is authoritative in the source-fidelity inventories."
+      "deletion_status": "deleted",
+      "notes": "Older Repo Annotation ai-docs output (brownfield-onboarding@0.1.6). Primary route only; per-unit routing, including units placed in other canonical documents, is authoritative in the source-fidelity inventories. Deleted 2026-11-16 in a separate commit after the owner reviewed the migration diff; recoverable from the parent commit."
     },
     {
       "path": "ai-docs/CONTRACTS.md",
@@ -791,8 +791,8 @@
       "use_by_agents": "source-for-migration",
       "canonical_target": "docs/architecture.md",
       "post_migration_action": "delete-after-validation",
-      "deletion_status": "pending",
-      "notes": "Older Repo Annotation ai-docs output (brownfield-onboarding@0.1.6). Primary route only; per-unit routing, including units placed in other canonical documents, is authoritative in the source-fidelity inventories."
+      "deletion_status": "deleted",
+      "notes": "Older Repo Annotation ai-docs output (brownfield-onboarding@0.1.6). Primary route only; per-unit routing, including units placed in other canonical documents, is authoritative in the source-fidelity inventories. Deleted 2026-11-16 in a separate commit after the owner reviewed the migration diff; recoverable from the parent commit."
     },
     {
       "path": "ai-docs/GETTING_STARTED.md",
@@ -802,8 +802,8 @@
       "use_by_agents": "source-for-migration",
       "canonical_target": "docs/getting-started.md",
       "post_migration_action": "delete-after-validation",
-      "deletion_status": "pending",
-      "notes": "Older Repo Annotation ai-docs output (brownfield-onboarding@0.1.6). Primary route only; per-unit routing, including units placed in other canonical documents, is authoritative in the source-fidelity inventories."
+      "deletion_status": "deleted",
+      "notes": "Older Repo Annotation ai-docs output (brownfield-onboarding@0.1.6). Primary route only; per-unit routing, including units placed in other canonical documents, is authoritative in the source-fidelity inventories. Deleted 2026-11-16 in a separate commit after the owner reviewed the migration diff; recoverable from the parent commit."
     },
     {
       "path": "ai-docs/GLOSSARY.md",
@@ -813,8 +813,8 @@
       "use_by_agents": "source-for-migration",
       "canonical_target": "docs/architecture.md",
       "post_migration_action": "delete-after-validation",
-      "deletion_status": "pending",
-      "notes": "Older Repo Annotation ai-docs output (brownfield-onboarding@0.1.6). Primary route only; per-unit routing, including units placed in other canonical documents, is authoritative in the source-fidelity inventories."
+      "deletion_status": "deleted",
+      "notes": "Older Repo Annotation ai-docs output (brownfield-onboarding@0.1.6). Primary route only; per-unit routing, including units placed in other canonical documents, is authoritative in the source-fidelity inventories. Deleted 2026-11-16 in a separate commit after the owner reviewed the migration diff; recoverable from the parent commit."
     },
     {
       "path": "ai-docs/REVIEW_CHECKLIST.md",
@@ -824,8 +824,8 @@
       "use_by_agents": "source-for-migration",
       "canonical_target": "AGENTS.md",
       "post_migration_action": "delete-after-validation",
-      "deletion_status": "pending",
-      "notes": "Older Repo Annotation ai-docs output (brownfield-onboarding@0.1.6). Primary route only; per-unit routing, including units placed in other canonical documents, is authoritative in the source-fidelity inventories."
+      "deletion_status": "deleted",
+      "notes": "Older Repo Annotation ai-docs output (brownfield-onboarding@0.1.6). Primary route only; per-unit routing, including units placed in other canonical documents, is authoritative in the source-fidelity inventories. Deleted 2026-11-16 in a separate commit after the owner reviewed the migration diff; recoverable from the parent commit."
     },
     {
       "path": "ai-docs/RULES.md",
@@ -835,8 +835,8 @@
       "use_by_agents": "source-for-migration",
       "canonical_target": "AGENTS.md",
       "post_migration_action": "delete-after-validation",
-      "deletion_status": "pending",
-      "notes": "Older Repo Annotation ai-docs output (brownfield-onboarding@0.1.6). Primary route only; per-unit routing, including units placed in other canonical documents, is authoritative in the source-fidelity inventories."
+      "deletion_status": "deleted",
+      "notes": "Older Repo Annotation ai-docs output (brownfield-onboarding@0.1.6). Primary route only; per-unit routing, including units placed in other canonical documents, is authoritative in the source-fidelity inventories. Deleted 2026-11-16 in a separate commit after the owner reviewed the migration diff; recoverable from the parent commit."
     },
     {
       "path": "ai-docs/SECURITY.md",
@@ -846,8 +846,8 @@
       "use_by_agents": "source-for-migration",
       "canonical_target": "docs/architecture.md",
       "post_migration_action": "delete-after-validation",
-      "deletion_status": "pending",
-      "notes": "Older Repo Annotation ai-docs output (brownfield-onboarding@0.1.6). Primary route only; per-unit routing, including units placed in other canonical documents, is authoritative in the source-fidelity inventories."
+      "deletion_status": "deleted",
+      "notes": "Older Repo Annotation ai-docs output (brownfield-onboarding@0.1.6). Primary route only; per-unit routing, including units placed in other canonical documents, is authoritative in the source-fidelity inventories. Deleted 2026-11-16 in a separate commit after the owner reviewed the migration diff; recoverable from the parent commit."
     },
     {
       "path": "ai-docs/SERVICE_STATE.md",
@@ -857,8 +857,8 @@
       "use_by_agents": "source-for-migration",
       "canonical_target": "docs/architecture.md",
       "post_migration_action": "delete-after-validation",
-      "deletion_status": "pending",
-      "notes": "Older Repo Annotation ai-docs output (brownfield-onboarding@0.1.6). Primary route only; per-unit routing, including units placed in other canonical documents, is authoritative in the source-fidelity inventories."
+      "deletion_status": "deleted",
+      "notes": "Older Repo Annotation ai-docs output (brownfield-onboarding@0.1.6). Primary route only; per-unit routing, including units placed in other canonical documents, is authoritative in the source-fidelity inventories. Deleted 2026-11-16 in a separate commit after the owner reviewed the migration diff; recoverable from the parent commit."
     },
     {
       "path": "ai-docs/SPEC_INDEX.md",
@@ -868,8 +868,8 @@
       "use_by_agents": "source-for-migration",
       "canonical_target": "docs/specs/README.md",
       "post_migration_action": "delete-after-validation",
-      "deletion_status": "pending",
-      "notes": "Older Repo Annotation ai-docs output (brownfield-onboarding@0.1.6). Primary route only; per-unit routing, including units placed in other canonical documents, is authoritative in the source-fidelity inventories."
+      "deletion_status": "deleted",
+      "notes": "Older Repo Annotation ai-docs output (brownfield-onboarding@0.1.6). Primary route only; per-unit routing, including units placed in other canonical documents, is authoritative in the source-fidelity inventories. Deleted 2026-11-16 in a separate commit after the owner reviewed the migration diff; recoverable from the parent commit."
     },
     {
       "path": "ai-docs/adr/0001-spec-source-policy.md",
@@ -879,8 +879,8 @@
       "use_by_agents": "source-for-migration",
       "canonical_target": "docs/adr/0001-spec-source-policy.md",
       "post_migration_action": "delete-after-validation",
-      "deletion_status": "pending",
-      "notes": "Older Repo Annotation ai-docs output (brownfield-onboarding@0.1.6). Primary route only; per-unit routing, including units placed in other canonical documents, is authoritative in the source-fidelity inventories."
+      "deletion_status": "deleted",
+      "notes": "Older Repo Annotation ai-docs output (brownfield-onboarding@0.1.6). Primary route only; per-unit routing, including units placed in other canonical documents, is authoritative in the source-fidelity inventories. Deleted 2026-11-16 in a separate commit after the owner reviewed the migration diff; recoverable from the parent commit."
     },
     {
       "path": "ai-docs/adr/README.md",
@@ -890,8 +890,8 @@
       "use_by_agents": "source-for-migration",
       "canonical_target": "docs/adr/index.md",
       "post_migration_action": "delete-after-validation",
-      "deletion_status": "pending",
-      "notes": "Older Repo Annotation ai-docs output (brownfield-onboarding@0.1.6). Primary route only; per-unit routing, including units placed in other canonical documents, is authoritative in the source-fidelity inventories."
+      "deletion_status": "deleted",
+      "notes": "Older Repo Annotation ai-docs output (brownfield-onboarding@0.1.6). Primary route only; per-unit routing, including units placed in other canonical documents, is authoritative in the source-fidelity inventories. Deleted 2026-11-16 in a separate commit after the owner reviewed the migration diff; recoverable from the parent commit."
     },
     {
       "path": "ai-docs/adr/_adr-template.md",
@@ -901,8 +901,8 @@
       "use_by_agents": "source-for-migration",
       "canonical_target": "docs/adr/index.md",
       "post_migration_action": "delete-after-validation",
-      "deletion_status": "pending",
-      "notes": "Older Repo Annotation ai-docs output (brownfield-onboarding@0.1.6). Primary route only; per-unit routing, including units placed in other canonical documents, is authoritative in the source-fidelity inventories."
+      "deletion_status": "deleted",
+      "notes": "Older Repo Annotation ai-docs output (brownfield-onboarding@0.1.6). Primary route only; per-unit routing, including units placed in other canonical documents, is authoritative in the source-fidelity inventories. Deleted 2026-11-16 in a separate commit after the owner reviewed the migration diff; recoverable from the parent commit."
     },
     {
       "path": "ai-docs/contact-center-spec.md",
@@ -913,8 +913,8 @@
       "use_by_agents": "source-for-migration",
       "canonical_target": "src/docs/README.md",
       "post_migration_action": "delete-after-validation",
-      "deletion_status": "pending",
-      "notes": "Older Repo Annotation ai-docs output (brownfield-onboarding@0.1.6). Primary route only; per-unit routing, including units placed in other canonical documents, is authoritative in the source-fidelity inventories."
+      "deletion_status": "deleted",
+      "notes": "Older Repo Annotation ai-docs output (brownfield-onboarding@0.1.6). Primary route only; per-unit routing, including units placed in other canonical documents, is authoritative in the source-fidelity inventories. Deleted 2026-11-16 in a separate commit after the owner reviewed the migration diff; recoverable from the parent commit."
     },
     {
       "path": "ai-docs/features/consult-transfer-list-policy/spec/feature-spec.md",
@@ -924,8 +924,8 @@
       "use_by_agents": "source-for-migration",
       "canonical_target": "docs/adr/0002-consult-transfer-list-policy.md",
       "post_migration_action": "delete-after-validation",
-      "deletion_status": "pending",
-      "notes": "Older Repo Annotation ai-docs output (brownfield-onboarding@0.1.6). Primary route only; per-unit routing, including units placed in other canonical documents, is authoritative in the source-fidelity inventories."
+      "deletion_status": "deleted",
+      "notes": "Older Repo Annotation ai-docs output (brownfield-onboarding@0.1.6). Primary route only; per-unit routing, including units placed in other canonical documents, is authoritative in the source-fidelity inventories. Deleted 2026-11-16 in a separate commit after the owner reviewed the migration diff; recoverable from the parent commit."
     },
     {
       "path": "ai-docs/features/contact-owner-change-refactor.md",
@@ -935,8 +935,8 @@
       "use_by_agents": "source-for-migration",
       "canonical_target": "src/services/task/docs/README.md",
       "post_migration_action": "delete-after-validation",
-      "deletion_status": "pending",
-      "notes": "Older Repo Annotation ai-docs output (brownfield-onboarding@0.1.6). Primary route only; per-unit routing, including units placed in other canonical documents, is authoritative in the source-fidelity inventories."
+      "deletion_status": "deleted",
+      "notes": "Older Repo Annotation ai-docs output (brownfield-onboarding@0.1.6). Primary route only; per-unit routing, including units placed in other canonical documents, is authoritative in the source-fidelity inventories. Deleted 2026-11-16 in a separate commit after the owner reviewed the migration diff; recoverable from the parent commit."
     },
     {
       "path": "ai-docs/features/generated-spec-conformance-fidelity-remediation/spec/feature-spec.md",
@@ -946,8 +946,8 @@
       "use_by_agents": "source-for-migration",
       "canonical_target": "docs/specs/README.md",
       "post_migration_action": "delete-after-validation",
-      "deletion_status": "pending",
-      "notes": "Older Repo Annotation ai-docs output (brownfield-onboarding@0.1.6). Primary route only; per-unit routing, including units placed in other canonical documents, is authoritative in the source-fidelity inventories."
+      "deletion_status": "deleted",
+      "notes": "Older Repo Annotation ai-docs output (brownfield-onboarding@0.1.6). Primary route only; per-unit routing, including units placed in other canonical documents, is authoritative in the source-fidelity inventories. Deleted 2026-11-16 in a separate commit after the owner reviewed the migration diff; recoverable from the parent commit."
     },
     {
       "path": "ai-docs/features/residual-warning-coverage-completion/spec/feature-spec.md",
@@ -957,8 +957,8 @@
       "use_by_agents": "source-for-migration",
       "canonical_target": "docs/specs/README.md",
       "post_migration_action": "delete-after-validation",
-      "deletion_status": "pending",
-      "notes": "Older Repo Annotation ai-docs output (brownfield-onboarding@0.1.6). Primary route only; per-unit routing, including units placed in other canonical documents, is authoritative in the source-fidelity inventories."
+      "deletion_status": "deleted",
+      "notes": "Older Repo Annotation ai-docs output (brownfield-onboarding@0.1.6). Primary route only; per-unit routing, including units placed in other canonical documents, is authoritative in the source-fidelity inventories. Deleted 2026-11-16 in a separate commit after the owner reviewed the migration diff; recoverable from the parent commit."
     },
     {
       "path": "ai-docs/features/validator-code-fidelity-drift-fix/spec/feature-spec.md",
@@ -968,8 +968,8 @@
       "use_by_agents": "source-for-migration",
       "canonical_target": "docs/specs/README.md",
       "post_migration_action": "delete-after-validation",
-      "deletion_status": "pending",
-      "notes": "Older Repo Annotation ai-docs output (brownfield-onboarding@0.1.6). Primary route only; per-unit routing, including units placed in other canonical documents, is authoritative in the source-fidelity inventories."
+      "deletion_status": "deleted",
+      "notes": "Older Repo Annotation ai-docs output (brownfield-onboarding@0.1.6). Primary route only; per-unit routing, including units placed in other canonical documents, is authoritative in the source-fidelity inventories. Deleted 2026-11-16 in a separate commit after the owner reviewed the migration diff; recoverable from the parent commit."
     },
     {
       "path": "ai-docs/patterns/event-driven-patterns.md",
@@ -979,8 +979,8 @@
       "use_by_agents": "source-for-migration",
       "canonical_target": "AGENTS.md",
       "post_migration_action": "delete-after-validation",
-      "deletion_status": "pending",
-      "notes": "Older Repo Annotation ai-docs output (brownfield-onboarding@0.1.6). Primary route only; per-unit routing, including units placed in other canonical documents, is authoritative in the source-fidelity inventories."
+      "deletion_status": "deleted",
+      "notes": "Older Repo Annotation ai-docs output (brownfield-onboarding@0.1.6). Primary route only; per-unit routing, including units placed in other canonical documents, is authoritative in the source-fidelity inventories. Deleted 2026-11-16 in a separate commit after the owner reviewed the migration diff; recoverable from the parent commit."
     },
     {
       "path": "ai-docs/patterns/testing-patterns.md",
@@ -990,8 +990,8 @@
       "use_by_agents": "source-for-migration",
       "canonical_target": "AGENTS.md",
       "post_migration_action": "delete-after-validation",
-      "deletion_status": "pending",
-      "notes": "Older Repo Annotation ai-docs output (brownfield-onboarding@0.1.6). Primary route only; per-unit routing, including units placed in other canonical documents, is authoritative in the source-fidelity inventories."
+      "deletion_status": "deleted",
+      "notes": "Older Repo Annotation ai-docs output (brownfield-onboarding@0.1.6). Primary route only; per-unit routing, including units placed in other canonical documents, is authoritative in the source-fidelity inventories. Deleted 2026-11-16 in a separate commit after the owner reviewed the migration diff; recoverable from the parent commit."
     },
     {
       "path": "ai-docs/patterns/typescript-patterns.md",
@@ -1001,8 +1001,8 @@
       "use_by_agents": "source-for-migration",
       "canonical_target": "AGENTS.md",
       "post_migration_action": "delete-after-validation",
-      "deletion_status": "pending",
-      "notes": "Older Repo Annotation ai-docs output (brownfield-onboarding@0.1.6). Primary route only; per-unit routing, including units placed in other canonical documents, is authoritative in the source-fidelity inventories."
+      "deletion_status": "deleted",
+      "notes": "Older Repo Annotation ai-docs output (brownfield-onboarding@0.1.6). Primary route only; per-unit routing, including units placed in other canonical documents, is authoritative in the source-fidelity inventories. Deleted 2026-11-16 in a separate commit after the owner reviewed the migration diff; recoverable from the parent commit."
     },
     {
       "path": "ai-docs/templates/README.md",
@@ -1012,8 +1012,8 @@
       "use_by_agents": "source-for-migration",
       "canonical_target": "AGENTS.md",
       "post_migration_action": "delete-after-validation",
-      "deletion_status": "pending",
-      "notes": "Older Repo Annotation ai-docs output (brownfield-onboarding@0.1.6). Primary route only; per-unit routing, including units placed in other canonical documents, is authoritative in the source-fidelity inventories."
+      "deletion_status": "deleted",
+      "notes": "Older Repo Annotation ai-docs output (brownfield-onboarding@0.1.6). Primary route only; per-unit routing, including units placed in other canonical documents, is authoritative in the source-fidelity inventories. Deleted 2026-11-16 in a separate commit after the owner reviewed the migration diff; recoverable from the parent commit."
     },
     {
       "path": "ai-docs/templates/documentation/create-agents-md.md",
@@ -1023,8 +1023,8 @@
       "use_by_agents": "source-for-migration",
       "canonical_target": "AGENTS.md",
       "post_migration_action": "delete-after-validation",
-      "deletion_status": "pending",
-      "notes": "Older Repo Annotation ai-docs output (brownfield-onboarding@0.1.6). Primary route only; per-unit routing, including units placed in other canonical documents, is authoritative in the source-fidelity inventories."
+      "deletion_status": "deleted",
+      "notes": "Older Repo Annotation ai-docs output (brownfield-onboarding@0.1.6). Primary route only; per-unit routing, including units placed in other canonical documents, is authoritative in the source-fidelity inventories. Deleted 2026-11-16 in a separate commit after the owner reviewed the migration diff; recoverable from the parent commit."
     },
     {
       "path": "ai-docs/templates/documentation/create-architecture-md.md",
@@ -1034,8 +1034,8 @@
       "use_by_agents": "source-for-migration",
       "canonical_target": "AGENTS.md",
       "post_migration_action": "delete-after-validation",
-      "deletion_status": "pending",
-      "notes": "Older Repo Annotation ai-docs output (brownfield-onboarding@0.1.6). Primary route only; per-unit routing, including units placed in other canonical documents, is authoritative in the source-fidelity inventories."
+      "deletion_status": "deleted",
+      "notes": "Older Repo Annotation ai-docs output (brownfield-onboarding@0.1.6). Primary route only; per-unit routing, including units placed in other canonical documents, is authoritative in the source-fidelity inventories. Deleted 2026-11-16 in a separate commit after the owner reviewed the migration diff; recoverable from the parent commit."
     },
     {
       "path": "ai-docs/templates/existing-service/bug-fix.md",
@@ -1045,8 +1045,8 @@
       "use_by_agents": "source-for-migration",
       "canonical_target": "AGENTS.md",
       "post_migration_action": "delete-after-validation",
-      "deletion_status": "pending",
-      "notes": "Older Repo Annotation ai-docs output (brownfield-onboarding@0.1.6). Primary route only; per-unit routing, including units placed in other canonical documents, is authoritative in the source-fidelity inventories."
+      "deletion_status": "deleted",
+      "notes": "Older Repo Annotation ai-docs output (brownfield-onboarding@0.1.6). Primary route only; per-unit routing, including units placed in other canonical documents, is authoritative in the source-fidelity inventories. Deleted 2026-11-16 in a separate commit after the owner reviewed the migration diff; recoverable from the parent commit."
     },
     {
       "path": "ai-docs/templates/existing-service/feature-enhancement.md",
@@ -1056,8 +1056,8 @@
       "use_by_agents": "source-for-migration",
       "canonical_target": "AGENTS.md",
       "post_migration_action": "delete-after-validation",
-      "deletion_status": "pending",
-      "notes": "Older Repo Annotation ai-docs output (brownfield-onboarding@0.1.6). Primary route only; per-unit routing, including units placed in other canonical documents, is authoritative in the source-fidelity inventories."
+      "deletion_status": "deleted",
+      "notes": "Older Repo Annotation ai-docs output (brownfield-onboarding@0.1.6). Primary route only; per-unit routing, including units placed in other canonical documents, is authoritative in the source-fidelity inventories. Deleted 2026-11-16 in a separate commit after the owner reviewed the migration diff; recoverable from the parent commit."
     },
     {
       "path": "ai-docs/templates/new-method/00-master.md",
@@ -1067,8 +1067,8 @@
       "use_by_agents": "source-for-migration",
       "canonical_target": "AGENTS.md",
       "post_migration_action": "delete-after-validation",
-      "deletion_status": "pending",
-      "notes": "Older Repo Annotation ai-docs output (brownfield-onboarding@0.1.6). Primary route only; per-unit routing, including units placed in other canonical documents, is authoritative in the source-fidelity inventories."
+      "deletion_status": "deleted",
+      "notes": "Older Repo Annotation ai-docs output (brownfield-onboarding@0.1.6). Primary route only; per-unit routing, including units placed in other canonical documents, is authoritative in the source-fidelity inventories. Deleted 2026-11-16 in a separate commit after the owner reviewed the migration diff; recoverable from the parent commit."
     },
     {
       "path": "ai-docs/templates/new-method/01-requirements.md",
@@ -1078,8 +1078,8 @@
       "use_by_agents": "source-for-migration",
       "canonical_target": "AGENTS.md",
       "post_migration_action": "delete-after-validation",
-      "deletion_status": "pending",
-      "notes": "Older Repo Annotation ai-docs output (brownfield-onboarding@0.1.6). Primary route only; per-unit routing, including units placed in other canonical documents, is authoritative in the source-fidelity inventories."
+      "deletion_status": "deleted",
+      "notes": "Older Repo Annotation ai-docs output (brownfield-onboarding@0.1.6). Primary route only; per-unit routing, including units placed in other canonical documents, is authoritative in the source-fidelity inventories. Deleted 2026-11-16 in a separate commit after the owner reviewed the migration diff; recoverable from the parent commit."
     },
     {
       "path": "ai-docs/templates/new-method/02-implementation.md",
@@ -1089,8 +1089,8 @@
       "use_by_agents": "source-for-migration",
       "canonical_target": "AGENTS.md",
       "post_migration_action": "delete-after-validation",
-      "deletion_status": "pending",
-      "notes": "Older Repo Annotation ai-docs output (brownfield-onboarding@0.1.6). Primary route only; per-unit routing, including units placed in other canonical documents, is authoritative in the source-fidelity inventories."
+      "deletion_status": "deleted",
+      "notes": "Older Repo Annotation ai-docs output (brownfield-onboarding@0.1.6). Primary route only; per-unit routing, including units placed in other canonical documents, is authoritative in the source-fidelity inventories. Deleted 2026-11-16 in a separate commit after the owner reviewed the migration diff; recoverable from the parent commit."
     },
     {
       "path": "ai-docs/templates/new-method/03-tests.md",
@@ -1100,8 +1100,8 @@
       "use_by_agents": "source-for-migration",
       "canonical_target": "AGENTS.md",
       "post_migration_action": "delete-after-validation",
-      "deletion_status": "pending",
-      "notes": "Older Repo Annotation ai-docs output (brownfield-onboarding@0.1.6). Primary route only; per-unit routing, including units placed in other canonical documents, is authoritative in the source-fidelity inventories."
+      "deletion_status": "deleted",
+      "notes": "Older Repo Annotation ai-docs output (brownfield-onboarding@0.1.6). Primary route only; per-unit routing, including units placed in other canonical documents, is authoritative in the source-fidelity inventories. Deleted 2026-11-16 in a separate commit after the owner reviewed the migration diff; recoverable from the parent commit."
     },
     {
       "path": "ai-docs/templates/new-method/04-validation.md",
@@ -1111,8 +1111,8 @@
       "use_by_agents": "source-for-migration",
       "canonical_target": "AGENTS.md",
       "post_migration_action": "delete-after-validation",
-      "deletion_status": "pending",
-      "notes": "Older Repo Annotation ai-docs output (brownfield-onboarding@0.1.6). Primary route only; per-unit routing, including units placed in other canonical documents, is authoritative in the source-fidelity inventories."
+      "deletion_status": "deleted",
+      "notes": "Older Repo Annotation ai-docs output (brownfield-onboarding@0.1.6). Primary route only; per-unit routing, including units placed in other canonical documents, is authoritative in the source-fidelity inventories. Deleted 2026-11-16 in a separate commit after the owner reviewed the migration diff; recoverable from the parent commit."
     },
     {
       "path": "ai-docs/templates/new-service/00-master.md",
@@ -1122,8 +1122,8 @@
       "use_by_agents": "source-for-migration",
       "canonical_target": "AGENTS.md",
       "post_migration_action": "delete-after-validation",
-      "deletion_status": "pending",
-      "notes": "Older Repo Annotation ai-docs output (brownfield-onboarding@0.1.6). Primary route only; per-unit routing, including units placed in other canonical documents, is authoritative in the source-fidelity inventories."
+      "deletion_status": "deleted",
+      "notes": "Older Repo Annotation ai-docs output (brownfield-onboarding@0.1.6). Primary route only; per-unit routing, including units placed in other canonical documents, is authoritative in the source-fidelity inventories. Deleted 2026-11-16 in a separate commit after the owner reviewed the migration diff; recoverable from the parent commit."
     },
     {
       "path": "ai-docs/templates/new-service/01-pre-questions.md",
@@ -1133,8 +1133,8 @@
       "use_by_agents": "source-for-migration",
       "canonical_target": "AGENTS.md",
       "post_migration_action": "delete-after-validation",
-      "deletion_status": "pending",
-      "notes": "Older Repo Annotation ai-docs output (brownfield-onboarding@0.1.6). Primary route only; per-unit routing, including units placed in other canonical documents, is authoritative in the source-fidelity inventories."
+      "deletion_status": "deleted",
+      "notes": "Older Repo Annotation ai-docs output (brownfield-onboarding@0.1.6). Primary route only; per-unit routing, including units placed in other canonical documents, is authoritative in the source-fidelity inventories. Deleted 2026-11-16 in a separate commit after the owner reviewed the migration diff; recoverable from the parent commit."
     },
     {
       "path": "ai-docs/templates/new-service/02-code-generation.md",
@@ -1144,8 +1144,8 @@
       "use_by_agents": "source-for-migration",
       "canonical_target": "AGENTS.md",
       "post_migration_action": "delete-after-validation",
-      "deletion_status": "pending",
-      "notes": "Older Repo Annotation ai-docs output (brownfield-onboarding@0.1.6). Primary route only; per-unit routing, including units placed in other canonical documents, is authoritative in the source-fidelity inventories."
+      "deletion_status": "deleted",
+      "notes": "Older Repo Annotation ai-docs output (brownfield-onboarding@0.1.6). Primary route only; per-unit routing, including units placed in other canonical documents, is authoritative in the source-fidelity inventories. Deleted 2026-11-16 in a separate commit after the owner reviewed the migration diff; recoverable from the parent commit."
     },
     {
       "path": "ai-docs/templates/new-service/03-integration.md",
@@ -1155,8 +1155,8 @@
       "use_by_agents": "source-for-migration",
       "canonical_target": "AGENTS.md",
       "post_migration_action": "delete-after-validation",
-      "deletion_status": "pending",
-      "notes": "Older Repo Annotation ai-docs output (brownfield-onboarding@0.1.6). Primary route only; per-unit routing, including units placed in other canonical documents, is authoritative in the source-fidelity inventories."
+      "deletion_status": "deleted",
+      "notes": "Older Repo Annotation ai-docs output (brownfield-onboarding@0.1.6). Primary route only; per-unit routing, including units placed in other canonical documents, is authoritative in the source-fidelity inventories. Deleted 2026-11-16 in a separate commit after the owner reviewed the migration diff; recoverable from the parent commit."
     },
     {
       "path": "ai-docs/templates/new-service/04-test-generation.md",
@@ -1166,8 +1166,8 @@
       "use_by_agents": "source-for-migration",
       "canonical_target": "AGENTS.md",
       "post_migration_action": "delete-after-validation",
-      "deletion_status": "pending",
-      "notes": "Older Repo Annotation ai-docs output (brownfield-onboarding@0.1.6). Primary route only; per-unit routing, including units placed in other canonical documents, is authoritative in the source-fidelity inventories."
+      "deletion_status": "deleted",
+      "notes": "Older Repo Annotation ai-docs output (brownfield-onboarding@0.1.6). Primary route only; per-unit routing, including units placed in other canonical documents, is authoritative in the source-fidelity inventories. Deleted 2026-11-16 in a separate commit after the owner reviewed the migration diff; recoverable from the parent commit."
     },
     {
       "path": "ai-docs/templates/new-service/05-validation.md",
@@ -1177,8 +1177,8 @@
       "use_by_agents": "source-for-migration",
       "canonical_target": "AGENTS.md",
       "post_migration_action": "delete-after-validation",
-      "deletion_status": "pending",
-      "notes": "Older Repo Annotation ai-docs output (brownfield-onboarding@0.1.6). Primary route only; per-unit routing, including units placed in other canonical documents, is authoritative in the source-fidelity inventories."
+      "deletion_status": "deleted",
+      "notes": "Older Repo Annotation ai-docs output (brownfield-onboarding@0.1.6). Primary route only; per-unit routing, including units placed in other canonical documents, is authoritative in the source-fidelity inventories. Deleted 2026-11-16 in a separate commit after the owner reviewed the migration diff; recoverable from the parent commit."
     },
     {
       "path": "src/metrics/ai-docs/AGENTS.md",
@@ -1189,8 +1189,8 @@
       "use_by_agents": "source-for-migration",
       "canonical_target": "src/metrics/docs/README.md",
       "post_migration_action": "delete-after-validation",
-      "deletion_status": "pending",
-      "notes": "Older Repo Annotation ai-docs output (brownfield-onboarding@0.1.6). Primary route only; per-unit routing, including units placed in other canonical documents, is authoritative in the source-fidelity inventories."
+      "deletion_status": "deleted",
+      "notes": "Older Repo Annotation ai-docs output (brownfield-onboarding@0.1.6). Primary route only; per-unit routing, including units placed in other canonical documents, is authoritative in the source-fidelity inventories. Deleted 2026-11-16 in a separate commit after the owner reviewed the migration diff; recoverable from the parent commit."
     },
     {
       "path": "src/metrics/ai-docs/ARCHITECTURE.md",
@@ -1201,8 +1201,8 @@
       "use_by_agents": "source-for-migration",
       "canonical_target": "src/metrics/docs/README.md",
       "post_migration_action": "delete-after-validation",
-      "deletion_status": "pending",
-      "notes": "Older Repo Annotation ai-docs output (brownfield-onboarding@0.1.6). Primary route only; per-unit routing, including units placed in other canonical documents, is authoritative in the source-fidelity inventories."
+      "deletion_status": "deleted",
+      "notes": "Older Repo Annotation ai-docs output (brownfield-onboarding@0.1.6). Primary route only; per-unit routing, including units placed in other canonical documents, is authoritative in the source-fidelity inventories. Deleted 2026-11-16 in a separate commit after the owner reviewed the migration diff; recoverable from the parent commit."
     },
     {
       "path": "src/metrics/ai-docs/metrics-spec.md",
@@ -1213,8 +1213,8 @@
       "use_by_agents": "source-for-migration",
       "canonical_target": "src/metrics/docs/README.md",
       "post_migration_action": "delete-after-validation",
-      "deletion_status": "pending",
-      "notes": "Older Repo Annotation ai-docs output (brownfield-onboarding@0.1.6). Primary route only; per-unit routing, including units placed in other canonical documents, is authoritative in the source-fidelity inventories."
+      "deletion_status": "deleted",
+      "notes": "Older Repo Annotation ai-docs output (brownfield-onboarding@0.1.6). Primary route only; per-unit routing, including units placed in other canonical documents, is authoritative in the source-fidelity inventories. Deleted 2026-11-16 in a separate commit after the owner reviewed the migration diff; recoverable from the parent commit."
     },
     {
       "path": "src/services/ai-docs/AGENTS.md",
@@ -1225,8 +1225,8 @@
       "use_by_agents": "source-for-migration",
       "canonical_target": "src/services/docs/README.md",
       "post_migration_action": "delete-after-validation",
-      "deletion_status": "pending",
-      "notes": "Older Repo Annotation ai-docs output (brownfield-onboarding@0.1.6). Primary route only; per-unit routing, including units placed in other canonical documents, is authoritative in the source-fidelity inventories."
+      "deletion_status": "deleted",
+      "notes": "Older Repo Annotation ai-docs output (brownfield-onboarding@0.1.6). Primary route only; per-unit routing, including units placed in other canonical documents, is authoritative in the source-fidelity inventories. Deleted 2026-11-16 in a separate commit after the owner reviewed the migration diff; recoverable from the parent commit."
     },
     {
       "path": "src/services/ai-docs/services-spec.md",
@@ -1237,8 +1237,8 @@
       "use_by_agents": "source-for-migration",
       "canonical_target": "src/services/docs/README.md",
       "post_migration_action": "delete-after-validation",
-      "deletion_status": "pending",
-      "notes": "Older Repo Annotation ai-docs output (brownfield-onboarding@0.1.6). Primary route only; per-unit routing, including units placed in other canonical documents, is authoritative in the source-fidelity inventories."
+      "deletion_status": "deleted",
+      "notes": "Older Repo Annotation ai-docs output (brownfield-onboarding@0.1.6). Primary route only; per-unit routing, including units placed in other canonical documents, is authoritative in the source-fidelity inventories. Deleted 2026-11-16 in a separate commit after the owner reviewed the migration diff; recoverable from the parent commit."
     },
     {
       "path": "src/services/agent/ai-docs/AGENTS.md",
@@ -1249,8 +1249,8 @@
       "use_by_agents": "source-for-migration",
       "canonical_target": "src/services/agent/docs/README.md",
       "post_migration_action": "delete-after-validation",
-      "deletion_status": "pending",
-      "notes": "Older Repo Annotation ai-docs output (brownfield-onboarding@0.1.6). Primary route only; per-unit routing, including units placed in other canonical documents, is authoritative in the source-fidelity inventories."
+      "deletion_status": "deleted",
+      "notes": "Older Repo Annotation ai-docs output (brownfield-onboarding@0.1.6). Primary route only; per-unit routing, including units placed in other canonical documents, is authoritative in the source-fidelity inventories. Deleted 2026-11-16 in a separate commit after the owner reviewed the migration diff; recoverable from the parent commit."
     },
     {
       "path": "src/services/agent/ai-docs/ARCHITECTURE.md",
@@ -1261,8 +1261,8 @@
       "use_by_agents": "source-for-migration",
       "canonical_target": "src/services/agent/docs/README.md",
       "post_migration_action": "delete-after-validation",
-      "deletion_status": "pending",
-      "notes": "Older Repo Annotation ai-docs output (brownfield-onboarding@0.1.6). Primary route only; per-unit routing, including units placed in other canonical documents, is authoritative in the source-fidelity inventories."
+      "deletion_status": "deleted",
+      "notes": "Older Repo Annotation ai-docs output (brownfield-onboarding@0.1.6). Primary route only; per-unit routing, including units placed in other canonical documents, is authoritative in the source-fidelity inventories. Deleted 2026-11-16 in a separate commit after the owner reviewed the migration diff; recoverable from the parent commit."
     },
     {
       "path": "src/services/agent/ai-docs/agent-spec.md",
@@ -1273,8 +1273,8 @@
       "use_by_agents": "source-for-migration",
       "canonical_target": "src/services/agent/docs/README.md",
       "post_migration_action": "delete-after-validation",
-      "deletion_status": "pending",
-      "notes": "Older Repo Annotation ai-docs output (brownfield-onboarding@0.1.6). Primary route only; per-unit routing, including units placed in other canonical documents, is authoritative in the source-fidelity inventories."
+      "deletion_status": "deleted",
+      "notes": "Older Repo Annotation ai-docs output (brownfield-onboarding@0.1.6). Primary route only; per-unit routing, including units placed in other canonical documents, is authoritative in the source-fidelity inventories. Deleted 2026-11-16 in a separate commit after the owner reviewed the migration diff; recoverable from the parent commit."
     },
     {
       "path": "src/services/config/ai-docs/AGENTS.md",
@@ -1285,8 +1285,8 @@
       "use_by_agents": "source-for-migration",
       "canonical_target": "src/services/config/docs/README.md",
       "post_migration_action": "delete-after-validation",
-      "deletion_status": "pending",
-      "notes": "Older Repo Annotation ai-docs output (brownfield-onboarding@0.1.6). Primary route only; per-unit routing, including units placed in other canonical documents, is authoritative in the source-fidelity inventories."
+      "deletion_status": "deleted",
+      "notes": "Older Repo Annotation ai-docs output (brownfield-onboarding@0.1.6). Primary route only; per-unit routing, including units placed in other canonical documents, is authoritative in the source-fidelity inventories. Deleted 2026-11-16 in a separate commit after the owner reviewed the migration diff; recoverable from the parent commit."
     },
     {
       "path": "src/services/config/ai-docs/ARCHITECTURE.md",
@@ -1297,8 +1297,8 @@
       "use_by_agents": "source-for-migration",
       "canonical_target": "src/services/config/docs/README.md",
       "post_migration_action": "delete-after-validation",
-      "deletion_status": "pending",
-      "notes": "Older Repo Annotation ai-docs output (brownfield-onboarding@0.1.6). Primary route only; per-unit routing, including units placed in other canonical documents, is authoritative in the source-fidelity inventories."
+      "deletion_status": "deleted",
+      "notes": "Older Repo Annotation ai-docs output (brownfield-onboarding@0.1.6). Primary route only; per-unit routing, including units placed in other canonical documents, is authoritative in the source-fidelity inventories. Deleted 2026-11-16 in a separate commit after the owner reviewed the migration diff; recoverable from the parent commit."
     },
     {
       "path": "src/services/config/ai-docs/config-spec.md",
@@ -1309,8 +1309,8 @@
       "use_by_agents": "source-for-migration",
       "canonical_target": "src/services/config/docs/README.md",
       "post_migration_action": "delete-after-validation",
-      "deletion_status": "pending",
-      "notes": "Older Repo Annotation ai-docs output (brownfield-onboarding@0.1.6). Primary route only; per-unit routing, including units placed in other canonical documents, is authoritative in the source-fidelity inventories."
+      "deletion_status": "deleted",
+      "notes": "Older Repo Annotation ai-docs output (brownfield-onboarding@0.1.6). Primary route only; per-unit routing, including units placed in other canonical documents, is authoritative in the source-fidelity inventories. Deleted 2026-11-16 in a separate commit after the owner reviewed the migration diff; recoverable from the parent commit."
     },
     {
       "path": "src/services/core/ai-docs/AGENTS.md",
@@ -1321,8 +1321,8 @@
       "use_by_agents": "source-for-migration",
       "canonical_target": "src/services/core/docs/README.md",
       "post_migration_action": "delete-after-validation",
-      "deletion_status": "pending",
-      "notes": "Older Repo Annotation ai-docs output (brownfield-onboarding@0.1.6). Primary route only; per-unit routing, including units placed in other canonical documents, is authoritative in the source-fidelity inventories."
+      "deletion_status": "deleted",
+      "notes": "Older Repo Annotation ai-docs output (brownfield-onboarding@0.1.6). Primary route only; per-unit routing, including units placed in other canonical documents, is authoritative in the source-fidelity inventories. Deleted 2026-11-16 in a separate commit after the owner reviewed the migration diff; recoverable from the parent commit."
     },
     {
       "path": "src/services/core/ai-docs/ARCHITECTURE.md",
@@ -1333,8 +1333,8 @@
       "use_by_agents": "source-for-migration",
       "canonical_target": "src/services/core/docs/README.md",
       "post_migration_action": "delete-after-validation",
-      "deletion_status": "pending",
-      "notes": "Older Repo Annotation ai-docs output (brownfield-onboarding@0.1.6). Primary route only; per-unit routing, including units placed in other canonical documents, is authoritative in the source-fidelity inventories."
+      "deletion_status": "deleted",
+      "notes": "Older Repo Annotation ai-docs output (brownfield-onboarding@0.1.6). Primary route only; per-unit routing, including units placed in other canonical documents, is authoritative in the source-fidelity inventories. Deleted 2026-11-16 in a separate commit after the owner reviewed the migration diff; recoverable from the parent commit."
     },
     {
       "path": "src/services/core/ai-docs/core-spec.md",
@@ -1345,8 +1345,8 @@
       "use_by_agents": "source-for-migration",
       "canonical_target": "src/services/core/docs/README.md",
       "post_migration_action": "delete-after-validation",
-      "deletion_status": "pending",
-      "notes": "Older Repo Annotation ai-docs output (brownfield-onboarding@0.1.6). Primary route only; per-unit routing, including units placed in other canonical documents, is authoritative in the source-fidelity inventories."
+      "deletion_status": "deleted",
+      "notes": "Older Repo Annotation ai-docs output (brownfield-onboarding@0.1.6). Primary route only; per-unit routing, including units placed in other canonical documents, is authoritative in the source-fidelity inventories. Deleted 2026-11-16 in a separate commit after the owner reviewed the migration diff; recoverable from the parent commit."
     },
     {
       "path": "src/services/task/ai-docs/AGENTS.md",
@@ -1357,8 +1357,8 @@
       "use_by_agents": "source-for-migration",
       "canonical_target": "src/services/task/docs/README.md",
       "post_migration_action": "delete-after-validation",
-      "deletion_status": "pending",
-      "notes": "Older Repo Annotation ai-docs output (brownfield-onboarding@0.1.6). Primary route only; per-unit routing, including units placed in other canonical documents, is authoritative in the source-fidelity inventories."
+      "deletion_status": "deleted",
+      "notes": "Older Repo Annotation ai-docs output (brownfield-onboarding@0.1.6). Primary route only; per-unit routing, including units placed in other canonical documents, is authoritative in the source-fidelity inventories. Deleted 2026-11-16 in a separate commit after the owner reviewed the migration diff; recoverable from the parent commit."
     },
     {
       "path": "src/services/task/ai-docs/ARCHITECTURE.md",
@@ -1369,8 +1369,8 @@
       "use_by_agents": "source-for-migration",
       "canonical_target": "src/services/task/docs/README.md",
       "post_migration_action": "delete-after-validation",
-      "deletion_status": "pending",
-      "notes": "Older Repo Annotation ai-docs output (brownfield-onboarding@0.1.6). Primary route only; per-unit routing, including units placed in other canonical documents, is authoritative in the source-fidelity inventories."
+      "deletion_status": "deleted",
+      "notes": "Older Repo Annotation ai-docs output (brownfield-onboarding@0.1.6). Primary route only; per-unit routing, including units placed in other canonical documents, is authoritative in the source-fidelity inventories. Deleted 2026-11-16 in a separate commit after the owner reviewed the migration diff; recoverable from the parent commit."
     },
     {
       "path": "src/services/task/ai-docs/task-spec.md",
@@ -1381,8 +1381,8 @@
       "use_by_agents": "source-for-migration",
       "canonical_target": "src/services/task/docs/README.md",
       "post_migration_action": "delete-after-validation",
-      "deletion_status": "pending",
-      "notes": "Older Repo Annotation ai-docs output (brownfield-onboarding@0.1.6). Primary route only; per-unit routing, including units placed in other canonical documents, is authoritative in the source-fidelity inventories."
+      "deletion_status": "deleted",
+      "notes": "Older Repo Annotation ai-docs output (brownfield-onboarding@0.1.6). Primary route only; per-unit routing, including units placed in other canonical documents, is authoritative in the source-fidelity inventories. Deleted 2026-11-16 in a separate commit after the owner reviewed the migration diff; recoverable from the parent commit."
     },
     {
       "path": "src/services/task/state-machine/ai-docs/AGENTS.md",
@@ -1393,8 +1393,8 @@
       "use_by_agents": "source-for-migration",
       "canonical_target": "src/services/task/state-machine/docs/README.md",
       "post_migration_action": "delete-after-validation",
-      "deletion_status": "pending",
-      "notes": "Older Repo Annotation ai-docs output (brownfield-onboarding@0.1.6). Primary route only; per-unit routing, including units placed in other canonical documents, is authoritative in the source-fidelity inventories."
+      "deletion_status": "deleted",
+      "notes": "Older Repo Annotation ai-docs output (brownfield-onboarding@0.1.6). Primary route only; per-unit routing, including units placed in other canonical documents, is authoritative in the source-fidelity inventories. Deleted 2026-11-16 in a separate commit after the owner reviewed the migration diff; recoverable from the parent commit."
     },
     {
       "path": "src/services/task/state-machine/ai-docs/ARCHITECTURE.md",
@@ -1405,8 +1405,8 @@
       "use_by_agents": "source-for-migration",
       "canonical_target": "src/services/task/state-machine/docs/README.md",
       "post_migration_action": "delete-after-validation",
-      "deletion_status": "pending",
-      "notes": "Older Repo Annotation ai-docs output (brownfield-onboarding@0.1.6). Primary route only; per-unit routing, including units placed in other canonical documents, is authoritative in the source-fidelity inventories."
+      "deletion_status": "deleted",
+      "notes": "Older Repo Annotation ai-docs output (brownfield-onboarding@0.1.6). Primary route only; per-unit routing, including units placed in other canonical documents, is authoritative in the source-fidelity inventories. Deleted 2026-11-16 in a separate commit after the owner reviewed the migration diff; recoverable from the parent commit."
     },
     {
       "path": "src/services/task/state-machine/ai-docs/task-state-machine-spec.md",
@@ -1417,8 +1417,8 @@
       "use_by_agents": "source-for-migration",
       "canonical_target": "src/services/task/state-machine/docs/README.md",
       "post_migration_action": "delete-after-validation",
-      "deletion_status": "pending",
-      "notes": "Older Repo Annotation ai-docs output (brownfield-onboarding@0.1.6). Primary route only; per-unit routing, including units placed in other canonical documents, is authoritative in the source-fidelity inventories."
+      "deletion_status": "deleted",
+      "notes": "Older Repo Annotation ai-docs output (brownfield-onboarding@0.1.6). Primary route only; per-unit routing, including units placed in other canonical documents, is authoritative in the source-fidelity inventories. Deleted 2026-11-16 in a separate commit after the owner reviewed the migration diff; recoverable from the parent commit."
     },
     {
       "path": "src/utils/ai-docs/utils-spec.md",
@@ -1429,8 +1429,8 @@
       "use_by_agents": "source-for-migration",
       "canonical_target": "src/utils/docs/README.md",
       "post_migration_action": "delete-after-validation",
-      "deletion_status": "pending",
-      "notes": "Older Repo Annotation ai-docs output (brownfield-onboarding@0.1.6). Primary route only; per-unit routing, including units placed in other canonical documents, is authoritative in the source-fidelity inventories."
+      "deletion_status": "deleted",
+      "notes": "Older Repo Annotation ai-docs output (brownfield-onboarding@0.1.6). Primary route only; per-unit routing, including units placed in other canonical documents, is authoritative in the source-fidelity inventories. Deleted 2026-11-16 in a separate commit after the owner reviewed the migration diff; recoverable from the parent commit."
     },
     {
       "path": "src/utils/AGENTS.md",
