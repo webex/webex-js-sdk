@@ -1692,7 +1692,11 @@ describe('Registration Tests', () => {
       expect(registerSpy).toBeCalledOnceWith(KEEPALIVE_UTIL);
     });
 
-    it('checks for keep-alive failure with 429', async () => {
+    it.each([
+      {'retry-after': '120'},
+      {'Retry-After': '120'},
+      {'retry-after': '120', 'Retry-After': '60'},
+    ])('checks for keep-alive failure with 429 and %j', async (headers) => {
       await beforeEachSetupForKeepalive();
       const keepaliveSpy = jest.spyOn(reg, 'startKeepaliveTimer');
       const postMessageSpy = jest.spyOn(Worker.prototype, 'postMessage');
@@ -1704,10 +1708,27 @@ describe('Registration Tests', () => {
       const retryAfter = 120;
       const adjustedResumeDelayMs = (retryAfter - keepaliveInterval) * SEC_TO_MSEC_MFACTOR;
 
-      reg.webWorker.onmessage({
+      const worker = reg.webWorker;
+      jest.spyOn(reg, 'postKeepAlive').mockRejectedValueOnce({statusCode: 429, headers});
+
+      await worker.onmessage({data: {type: WorkerMessageType.SEND_KEEPALIVE}} as MessageEvent);
+      const [result] = postMessageSpy.mock.calls.find(
+        ([message]) => message.type === WorkerMessageType.KEEPALIVE_RESULT
+      );
+      expect(result).toEqual({
+        type: WorkerMessageType.KEEPALIVE_RESULT,
+        err: {
+          statusCode: 429,
+          headers: {trackingid: undefined, 'retry-after': String(retryAfter)},
+          statusText: undefined,
+          type: undefined,
+        },
+      });
+
+      await worker.onmessage({
         data: {
           type: WorkerMessageType.KEEPALIVE_FAILURE,
-          err: {statusCode: 429, headers: {'retry-after': retryAfter}},
+          err: result.err,
           keepAliveRetryCount: 1,
         },
       } as MessageEvent);
@@ -1721,7 +1742,7 @@ describe('Registration Tests', () => {
         })
       );
       expect(handleErrorSpy).toBeCalledOnceWith(
-        {statusCode: 429, headers: {'retry-after': retryAfter}},
+        result.err,
         expect.anything(),
         {
           file: REGISTRATION_FILE,
