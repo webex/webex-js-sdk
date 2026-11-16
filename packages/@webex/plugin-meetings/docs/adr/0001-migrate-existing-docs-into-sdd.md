@@ -120,7 +120,7 @@ human-authored documents as part of spec maintenance, and do not recreate an `ai
 
 ## Follow-up
 
-- [ ] Delete the old `ai-docs/` set after the migrated docs pass review.
+- [x] Delete the old `ai-docs/` set after the migrated docs pass review (done 2026-11-16 after rarajes2@cisco.com reviewed the migration).
 - [ ] Specify `src/common/`, `src/e2ee/`, and `src/transcription/`, which have no module specification.
 - [ ] Run coverage review and independent validation before promoting any module beyond `Partial`.
 

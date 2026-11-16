@@ -234,7 +234,7 @@
       "use_by_agents": "source-for-migration",
       "canonical_target": "docs/architecture.md",
       "post_migration_action": "delete-after-validation",
-      "deletion_status": "pending"
+      "deletion_status": "deleted"
     },
     {
       "path": "ai-docs/CONTRACTS.md",
@@ -244,7 +244,7 @@
       "use_by_agents": "source-for-migration",
       "canonical_target": "docs/architecture.md",
       "post_migration_action": "delete-after-validation",
-      "deletion_status": "pending"
+      "deletion_status": "deleted"
     },
     {
       "path": "ai-docs/DATA_MODEL.md",
@@ -254,7 +254,7 @@
       "use_by_agents": "source-for-migration",
       "canonical_target": "docs/architecture.md",
       "post_migration_action": "delete-after-validation",
-      "deletion_status": "pending"
+      "deletion_status": "deleted"
     },
     {
       "path": "ai-docs/SERVICE_STATE.md",
@@ -264,7 +264,7 @@
       "use_by_agents": "source-for-migration",
       "canonical_target": "docs/architecture.md",
       "post_migration_action": "delete-after-validation",
-      "deletion_status": "pending"
+      "deletion_status": "deleted"
     },
     {
       "path": "ai-docs/SECURITY.md",
@@ -274,7 +274,7 @@
       "use_by_agents": "source-for-migration",
       "canonical_target": "docs/architecture.md",
       "post_migration_action": "delete-after-validation",
-      "deletion_status": "pending"
+      "deletion_status": "deleted"
     },
     {
       "path": "ai-docs/GLOSSARY.md",
@@ -284,7 +284,7 @@
       "use_by_agents": "source-for-migration",
       "canonical_target": "docs/architecture.md",
       "post_migration_action": "delete-after-validation",
-      "deletion_status": "pending"
+      "deletion_status": "deleted"
     },
     {
       "path": "ai-docs/GETTING_STARTED.md",
@@ -294,7 +294,7 @@
       "use_by_agents": "source-for-migration",
       "canonical_target": "docs/getting-started.md",
       "post_migration_action": "delete-after-validation",
-      "deletion_status": "pending"
+      "deletion_status": "deleted"
     },
     {
       "path": "ai-docs/TEST_INDEX.md",
@@ -304,7 +304,7 @@
       "use_by_agents": "source-for-migration",
       "canonical_target": "docs/getting-started.md",
       "post_migration_action": "delete-after-validation",
-      "deletion_status": "pending"
+      "deletion_status": "deleted"
     },
     {
       "path": "ai-docs/SPEC_INDEX.md",
@@ -314,7 +314,7 @@
       "use_by_agents": "source-for-migration",
       "canonical_target": "docs/specs/README.md",
       "post_migration_action": "delete-after-validation",
-      "deletion_status": "pending"
+      "deletion_status": "deleted"
     },
     {
       "path": "ai-docs/RULES.md",
@@ -324,7 +324,7 @@
       "use_by_agents": "source-for-migration",
       "canonical_target": "AGENTS.md",
       "post_migration_action": "delete-after-validation",
-      "deletion_status": "pending"
+      "deletion_status": "deleted"
     },
     {
       "path": "ai-docs/REVIEW_CHECKLIST.md",
@@ -334,7 +334,7 @@
       "use_by_agents": "source-for-migration",
       "canonical_target": "AGENTS.md",
       "post_migration_action": "delete-after-validation",
-      "deletion_status": "pending"
+      "deletion_status": "deleted"
     },
     {
       "path": "ai-docs/adr/0001-migrate-existing-docs-into-sdd.md",
@@ -344,7 +344,7 @@
       "use_by_agents": "source-for-migration",
       "canonical_target": "docs/adr/0001-migrate-existing-docs-into-sdd.md",
       "post_migration_action": "delete-after-validation",
-      "deletion_status": "pending"
+      "deletion_status": "deleted"
     },
     {
       "path": "ai-docs/patterns/defensive-error-propagation.md",
@@ -354,7 +354,7 @@
       "use_by_agents": "source-for-migration",
       "canonical_target": "AGENTS.md",
       "post_migration_action": "delete-after-validation",
-      "deletion_status": "pending"
+      "deletion_status": "deleted"
     },
     {
       "path": "ai-docs/patterns/event-scope-emission.md",
@@ -364,7 +364,7 @@
       "use_by_agents": "source-for-migration",
       "canonical_target": "AGENTS.md",
       "post_migration_action": "delete-after-validation",
-      "deletion_status": "pending"
+      "deletion_status": "deleted"
     },
     {
       "path": "ai-docs/patterns/source-to-test-path-mirroring.md",
@@ -374,7 +374,7 @@
       "use_by_agents": "source-for-migration",
       "canonical_target": "AGENTS.md",
       "post_migration_action": "delete-after-validation",
-      "deletion_status": "pending"
+      "deletion_status": "deleted"
     },
     {
       "path": "ai-docs/patterns/stateless-plugin-request-classes.md",
@@ -384,7 +384,7 @@
       "use_by_agents": "source-for-migration",
       "canonical_target": "AGENTS.md",
       "post_migration_action": "delete-after-validation",
-      "deletion_status": "pending"
+      "deletion_status": "deleted"
     },
     {
       "path": "ai-docs/patterns/typed-constants-and-enum-values.md",
@@ -394,7 +394,7 @@
       "use_by_agents": "source-for-migration",
       "canonical_target": "AGENTS.md",
       "post_migration_action": "delete-after-validation",
-      "deletion_status": "pending"
+      "deletion_status": "deleted"
     },
     {
       "path": "src/meetings/ai-docs/meetings-spec.md",
@@ -405,7 +405,7 @@
       "use_by_agents": "source-for-migration",
       "canonical_target": "src/meetings/docs/README.md",
       "post_migration_action": "delete-after-validation",
-      "deletion_status": "pending"
+      "deletion_status": "deleted"
     },
     {
       "path": "src/meeting/ai-docs/meeting-spec.md",
@@ -416,7 +416,7 @@
       "use_by_agents": "source-for-migration",
       "canonical_target": "src/meeting/docs/README.md",
       "post_migration_action": "delete-after-validation",
-      "deletion_status": "pending"
+      "deletion_status": "deleted"
     },
     {
       "path": "src/meeting-info/ai-docs/meeting-info-spec.md",
@@ -427,7 +427,7 @@
       "use_by_agents": "source-for-migration",
       "canonical_target": "src/meeting-info/docs/README.md",
       "post_migration_action": "delete-after-validation",
-      "deletion_status": "pending"
+      "deletion_status": "deleted"
     },
     {
       "path": "src/locus-info/ai-docs/locus-info-spec.md",
@@ -438,7 +438,7 @@
       "use_by_agents": "source-for-migration",
       "canonical_target": "src/locus-info/docs/README.md",
       "post_migration_action": "delete-after-validation",
-      "deletion_status": "pending"
+      "deletion_status": "deleted"
     },
     {
       "path": "src/hashTree/ai-docs/hash-tree-spec.md",
@@ -449,7 +449,7 @@
       "use_by_agents": "source-for-migration",
       "canonical_target": "src/hashTree/docs/README.md",
       "post_migration_action": "delete-after-validation",
-      "deletion_status": "pending"
+      "deletion_status": "deleted"
     },
     {
       "path": "src/member/ai-docs/member-spec.md",
@@ -460,7 +460,7 @@
       "use_by_agents": "source-for-migration",
       "canonical_target": "src/member/docs/README.md",
       "post_migration_action": "delete-after-validation",
-      "deletion_status": "pending"
+      "deletion_status": "deleted"
     },
     {
       "path": "src/members/ai-docs/members-spec.md",
@@ -471,7 +471,7 @@
       "use_by_agents": "source-for-migration",
       "canonical_target": "src/members/docs/README.md",
       "post_migration_action": "delete-after-validation",
-      "deletion_status": "pending"
+      "deletion_status": "deleted"
     },
     {
       "path": "src/media/ai-docs/media-spec.md",
@@ -482,7 +482,7 @@
       "use_by_agents": "source-for-migration",
       "canonical_target": "src/media/docs/README.md",
       "post_migration_action": "delete-after-validation",
-      "deletion_status": "pending"
+      "deletion_status": "deleted"
     },
     {
       "path": "src/multistream/ai-docs/multistream-spec.md",
@@ -493,7 +493,7 @@
       "use_by_agents": "source-for-migration",
       "canonical_target": "src/multistream/docs/README.md",
       "post_migration_action": "delete-after-validation",
-      "deletion_status": "pending"
+      "deletion_status": "deleted"
     },
     {
       "path": "src/roap/ai-docs/roap-spec.md",
@@ -504,7 +504,7 @@
       "use_by_agents": "source-for-migration",
       "canonical_target": "src/roap/docs/README.md",
       "post_migration_action": "delete-after-validation",
-      "deletion_status": "pending"
+      "deletion_status": "deleted"
     },
     {
       "path": "src/reachability/ai-docs/reachability-spec.md",
@@ -515,7 +515,7 @@
       "use_by_agents": "source-for-migration",
       "canonical_target": "src/reachability/docs/README.md",
       "post_migration_action": "delete-after-validation",
-      "deletion_status": "pending"
+      "deletion_status": "deleted"
     },
     {
       "path": "src/reconnection-manager/ai-docs/reconnection-manager-spec.md",
@@ -526,7 +526,7 @@
       "use_by_agents": "source-for-migration",
       "canonical_target": "src/reconnection-manager/docs/README.md",
       "post_migration_action": "delete-after-validation",
-      "deletion_status": "pending"
+      "deletion_status": "deleted"
     },
     {
       "path": "src/breakouts/ai-docs/breakouts-spec.md",
@@ -537,7 +537,7 @@
       "use_by_agents": "source-for-migration",
       "canonical_target": "src/breakouts/docs/README.md",
       "post_migration_action": "delete-after-validation",
-      "deletion_status": "pending"
+      "deletion_status": "deleted"
     },
     {
       "path": "src/interpretation/ai-docs/interpretation-spec.md",
@@ -548,7 +548,7 @@
       "use_by_agents": "source-for-migration",
       "canonical_target": "src/interpretation/docs/README.md",
       "post_migration_action": "delete-after-validation",
-      "deletion_status": "pending"
+      "deletion_status": "deleted"
     },
     {
       "path": "src/annotation/ai-docs/annotation-spec.md",
@@ -559,7 +559,7 @@
       "use_by_agents": "source-for-migration",
       "canonical_target": "src/annotation/docs/README.md",
       "post_migration_action": "delete-after-validation",
-      "deletion_status": "pending"
+      "deletion_status": "deleted"
     },
     {
       "path": "src/aiEnableRequest/ai-docs/ai-enable-request-spec.md",
@@ -570,7 +570,7 @@
       "use_by_agents": "source-for-migration",
       "canonical_target": "src/aiEnableRequest/docs/README.md",
       "post_migration_action": "delete-after-validation",
-      "deletion_status": "pending"
+      "deletion_status": "deleted"
     },
     {
       "path": "src/webinar/ai-docs/webinar-spec.md",
@@ -581,7 +581,7 @@
       "use_by_agents": "source-for-migration",
       "canonical_target": "src/webinar/docs/README.md",
       "post_migration_action": "delete-after-validation",
-      "deletion_status": "pending"
+      "deletion_status": "deleted"
     },
     {
       "path": "src/recording-controller/ai-docs/recording-controller-spec.md",
@@ -592,7 +592,7 @@
       "use_by_agents": "source-for-migration",
       "canonical_target": "src/recording-controller/docs/README.md",
       "post_migration_action": "delete-after-validation",
-      "deletion_status": "pending"
+      "deletion_status": "deleted"
     },
     {
       "path": "src/controls-options-manager/ai-docs/controls-options-manager-spec.md",
@@ -603,7 +603,7 @@
       "use_by_agents": "source-for-migration",
       "canonical_target": "src/controls-options-manager/docs/README.md",
       "post_migration_action": "delete-after-validation",
-      "deletion_status": "pending"
+      "deletion_status": "deleted"
     },
     {
       "path": "src/personal-meeting-room/ai-docs/personal-meeting-room-spec.md",
@@ -614,7 +614,7 @@
       "use_by_agents": "source-for-migration",
       "canonical_target": "src/personal-meeting-room/docs/README.md",
       "post_migration_action": "delete-after-validation",
-      "deletion_status": "pending"
+      "deletion_status": "deleted"
     },
     {
       "path": "src/reactions/ai-docs/reactions-spec.md",
@@ -625,7 +625,7 @@
       "use_by_agents": "source-for-migration",
       "canonical_target": "src/reactions/docs/README.md",
       "post_migration_action": "delete-after-validation",
-      "deletion_status": "pending"
+      "deletion_status": "deleted"
     },
     {
       "path": "src/interceptors/ai-docs/interceptors-spec.md",
@@ -636,7 +636,7 @@
       "use_by_agents": "source-for-migration",
       "canonical_target": "src/interceptors/docs/README.md",
       "post_migration_action": "delete-after-validation",
-      "deletion_status": "pending"
+      "deletion_status": "deleted"
     },
     {
       "path": "src/metrics/ai-docs/metrics-spec.md",
@@ -647,7 +647,7 @@
       "use_by_agents": "source-for-migration",
       "canonical_target": "src/metrics/docs/README.md",
       "post_migration_action": "delete-after-validation",
-      "deletion_status": "pending"
+      "deletion_status": "deleted"
     },
     {
       "path": "README.md",
@@ -763,7 +763,7 @@
         "resolved_at": "2026-11-16T13:50:45Z",
         "has_submodules": false,
         "has_submodules_computed_by": "scripts/module_tree.py",
-        "has_submodules_computed_at": "2026-11-16T15:03:08Z"
+        "has_submodules_computed_at": "2026-11-16T15:05:44Z"
       },
       "source_policy": {
         "mode": "migrate-existing",
@@ -821,7 +821,7 @@
         "resolved_at": "2026-11-16T13:50:45Z",
         "has_submodules": false,
         "has_submodules_computed_by": "scripts/module_tree.py",
-        "has_submodules_computed_at": "2026-11-16T15:03:08Z"
+        "has_submodules_computed_at": "2026-11-16T15:05:44Z"
       },
       "source_policy": {
         "mode": "migrate-existing",
@@ -867,7 +867,7 @@
         "resolved_at": "2026-11-16T13:50:45Z",
         "has_submodules": false,
         "has_submodules_computed_by": "scripts/module_tree.py",
-        "has_submodules_computed_at": "2026-11-16T15:03:08Z"
+        "has_submodules_computed_at": "2026-11-16T15:05:44Z"
       },
       "source_policy": {
         "mode": "migrate-existing",
@@ -912,7 +912,7 @@
         "resolved_at": "2026-11-16T13:50:45Z",
         "has_submodules": false,
         "has_submodules_computed_by": "scripts/module_tree.py",
-        "has_submodules_computed_at": "2026-11-16T15:03:08Z"
+        "has_submodules_computed_at": "2026-11-16T15:05:44Z"
       },
       "source_policy": {
         "mode": "migrate-existing",
@@ -956,7 +956,7 @@
         "resolved_at": "2026-11-16T13:50:45Z",
         "has_submodules": false,
         "has_submodules_computed_by": "scripts/module_tree.py",
-        "has_submodules_computed_at": "2026-11-16T15:03:08Z"
+        "has_submodules_computed_at": "2026-11-16T15:05:44Z"
       },
       "source_policy": {
         "mode": "migrate-existing",
@@ -998,7 +998,7 @@
         "resolved_at": "2026-11-16T13:50:45Z",
         "has_submodules": false,
         "has_submodules_computed_by": "scripts/module_tree.py",
-        "has_submodules_computed_at": "2026-11-16T15:03:08Z"
+        "has_submodules_computed_at": "2026-11-16T15:05:44Z"
       },
       "source_policy": {
         "mode": "migrate-existing",
@@ -1043,7 +1043,7 @@
         "resolved_at": "2026-11-16T13:50:45Z",
         "has_submodules": false,
         "has_submodules_computed_by": "scripts/module_tree.py",
-        "has_submodules_computed_at": "2026-11-16T15:03:08Z"
+        "has_submodules_computed_at": "2026-11-16T15:05:44Z"
       },
       "source_policy": {
         "mode": "migrate-existing",
@@ -1088,7 +1088,7 @@
         "resolved_at": "2026-11-16T13:50:45Z",
         "has_submodules": false,
         "has_submodules_computed_by": "scripts/module_tree.py",
-        "has_submodules_computed_at": "2026-11-16T15:03:08Z"
+        "has_submodules_computed_at": "2026-11-16T15:05:44Z"
       },
       "source_policy": {
         "mode": "migrate-existing",
@@ -1132,7 +1132,7 @@
         "resolved_at": "2026-11-16T13:50:45Z",
         "has_submodules": false,
         "has_submodules_computed_by": "scripts/module_tree.py",
-        "has_submodules_computed_at": "2026-11-16T15:03:08Z"
+        "has_submodules_computed_at": "2026-11-16T15:05:44Z"
       },
       "source_policy": {
         "mode": "migrate-existing",
@@ -1177,7 +1177,7 @@
         "resolved_at": "2026-11-16T13:50:45Z",
         "has_submodules": false,
         "has_submodules_computed_by": "scripts/module_tree.py",
-        "has_submodules_computed_at": "2026-11-16T15:03:08Z"
+        "has_submodules_computed_at": "2026-11-16T15:05:44Z"
       },
       "source_policy": {
         "mode": "migrate-existing",
@@ -1222,7 +1222,7 @@
         "resolved_at": "2026-11-16T13:50:45Z",
         "has_submodules": false,
         "has_submodules_computed_by": "scripts/module_tree.py",
-        "has_submodules_computed_at": "2026-11-16T15:03:08Z"
+        "has_submodules_computed_at": "2026-11-16T15:05:44Z"
       },
       "source_policy": {
         "mode": "migrate-existing",
@@ -1267,7 +1267,7 @@
         "resolved_at": "2026-11-16T13:50:45Z",
         "has_submodules": false,
         "has_submodules_computed_by": "scripts/module_tree.py",
-        "has_submodules_computed_at": "2026-11-16T15:03:08Z"
+        "has_submodules_computed_at": "2026-11-16T15:05:44Z"
       },
       "source_policy": {
         "mode": "migrate-existing",
@@ -1314,7 +1314,7 @@
         "resolved_at": "2026-11-16T13:50:45Z",
         "has_submodules": false,
         "has_submodules_computed_by": "scripts/module_tree.py",
-        "has_submodules_computed_at": "2026-11-16T15:03:08Z"
+        "has_submodules_computed_at": "2026-11-16T15:05:44Z"
       },
       "source_policy": {
         "mode": "migrate-existing",
@@ -1360,7 +1360,7 @@
         "resolved_at": "2026-11-16T13:50:45Z",
         "has_submodules": false,
         "has_submodules_computed_by": "scripts/module_tree.py",
-        "has_submodules_computed_at": "2026-11-16T15:03:08Z"
+        "has_submodules_computed_at": "2026-11-16T15:05:44Z"
       },
       "source_policy": {
         "mode": "migrate-existing",
@@ -1407,7 +1407,7 @@
         "resolved_at": "2026-11-16T13:50:45Z",
         "has_submodules": false,
         "has_submodules_computed_by": "scripts/module_tree.py",
-        "has_submodules_computed_at": "2026-11-16T15:03:08Z"
+        "has_submodules_computed_at": "2026-11-16T15:05:44Z"
       },
       "source_policy": {
         "mode": "migrate-existing",
@@ -1451,7 +1451,7 @@
         "resolved_at": "2026-11-16T13:50:45Z",
         "has_submodules": false,
         "has_submodules_computed_by": "scripts/module_tree.py",
-        "has_submodules_computed_at": "2026-11-16T15:03:08Z"
+        "has_submodules_computed_at": "2026-11-16T15:05:44Z"
       },
       "source_policy": {
         "mode": "migrate-existing",
@@ -1496,7 +1496,7 @@
         "resolved_at": "2026-11-16T13:50:45Z",
         "has_submodules": false,
         "has_submodules_computed_by": "scripts/module_tree.py",
-        "has_submodules_computed_at": "2026-11-16T15:03:08Z"
+        "has_submodules_computed_at": "2026-11-16T15:05:44Z"
       },
       "source_policy": {
         "mode": "migrate-existing",
@@ -1540,7 +1540,7 @@
         "resolved_at": "2026-11-16T13:50:45Z",
         "has_submodules": false,
         "has_submodules_computed_by": "scripts/module_tree.py",
-        "has_submodules_computed_at": "2026-11-16T15:03:08Z"
+        "has_submodules_computed_at": "2026-11-16T15:05:44Z"
       },
       "source_policy": {
         "mode": "migrate-existing",
@@ -1584,7 +1584,7 @@
         "resolved_at": "2026-11-16T13:50:45Z",
         "has_submodules": false,
         "has_submodules_computed_by": "scripts/module_tree.py",
-        "has_submodules_computed_at": "2026-11-16T15:03:08Z"
+        "has_submodules_computed_at": "2026-11-16T15:05:44Z"
       },
       "source_policy": {
         "mode": "migrate-existing",
@@ -1629,7 +1629,7 @@
         "resolved_at": "2026-11-16T13:50:45Z",
         "has_submodules": false,
         "has_submodules_computed_by": "scripts/module_tree.py",
-        "has_submodules_computed_at": "2026-11-16T15:03:08Z"
+        "has_submodules_computed_at": "2026-11-16T15:05:44Z"
       },
       "source_policy": {
         "mode": "migrate-existing",
@@ -1670,7 +1670,7 @@
         "resolved_at": "2026-11-16T13:50:45Z",
         "has_submodules": false,
         "has_submodules_computed_by": "scripts/module_tree.py",
-        "has_submodules_computed_at": "2026-11-16T15:03:08Z"
+        "has_submodules_computed_at": "2026-11-16T15:05:44Z"
       },
       "source_policy": {
         "mode": "migrate-existing",
@@ -1715,7 +1715,7 @@
         "resolved_at": "2026-11-16T13:50:45Z",
         "has_submodules": false,
         "has_submodules_computed_by": "scripts/module_tree.py",
-        "has_submodules_computed_at": "2026-11-16T15:03:08Z"
+        "has_submodules_computed_at": "2026-11-16T15:05:44Z"
       },
       "source_policy": {
         "mode": "migrate-existing",
@@ -1759,7 +1759,7 @@
         "resolved_at": "2026-11-16T13:50:45Z",
         "has_submodules": false,
         "has_submodules_computed_by": "scripts/module_tree.py",
-        "has_submodules_computed_at": "2026-11-16T15:03:08Z"
+        "has_submodules_computed_at": "2026-11-16T15:05:44Z"
       },
       "source_policy": {
         "mode": "migrate-existing",
