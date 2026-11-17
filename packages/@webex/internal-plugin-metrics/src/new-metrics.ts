@@ -22,6 +22,7 @@ import {
   MediaQualityEvent,
   InternalEvent,
   SubmitClientEventOptions,
+  SubmitClientEventArgs,
   Table,
   DelayedClientEvent,
   DelayedClientFeatureEvent,
@@ -32,6 +33,7 @@ import {setMetricTimings} from './call-diagnostic/call-diagnostic-metrics.util';
 import {generateCommonErrorMetadata} from './utils';
 import {isAutomatedUser as detectAutomatedUser} from './automated-user';
 import PrivacyAndSecurityPermissionEnricher from './privacy-and-security-permission-enricher';
+import {assertValidClientEventArgs} from './call-diagnostic/auth-diagnostic';
 import {startUnhandledExceptionTelemetry} from './unhandled-exception-telemetry';
 
 /**
@@ -374,15 +376,8 @@ class Metrics extends WebexPlugin {
    * @public
    * @param args
    */
-  public submitClientEvent({
-    name,
-    payload,
-    options,
-  }: {
-    name: ClientEvent['name'];
-    payload?: RecursivePartial<ClientEvent['payload']>;
-    options?: SubmitClientEventOptions;
-  }): Promise<any> {
+  public submitClientEvent(args: SubmitClientEventArgs): Promise<any> {
+    const {name, payload, options} = args;
     if (!this.isReady) {
       // @ts-ignore
       this.webex.logger.log(
@@ -402,10 +397,16 @@ class Metrics extends WebexPlugin {
       scope: this.getPermissionScope(options),
     });
 
-    return this.callDiagnosticMetrics.submitClientEvent({
+    const submission = {
       name,
       payload: enrichedPayload,
       options,
+    };
+
+    assertValidClientEventArgs(submission);
+
+    return this.callDiagnosticMetrics.submitClientEvent({
+      ...submission,
       delaySubmitEvent: this.delaySubmitClientEvents,
     });
   }
@@ -490,20 +491,8 @@ class Metrics extends WebexPlugin {
    * @param {Object} arg.options - other options
    * @returns {Promise} promise that resolves to options to be used with fetch
    */
-  public async buildClientEventFetchRequestOptions({
-    name,
-    payload,
-    options,
-  }: {
-    name: ClientEvent['name'];
-    payload?: RecursivePartial<ClientEvent['payload']>;
-    options?: SubmitClientEventOptions;
-  }): Promise<any> {
-    return this.callDiagnosticMetrics.buildClientEventFetchRequestOptions({
-      name,
-      payload,
-      options,
-    });
+  public async buildClientEventFetchRequestOptions(args: SubmitClientEventArgs): Promise<any> {
+    return this.callDiagnosticMetrics.buildClientEventFetchRequestOptions(args);
   }
 
   /**

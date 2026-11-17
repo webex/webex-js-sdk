@@ -81,10 +81,13 @@ satisfies its condition.
 
 ## Purpose and boundary
 
-Standalone client diagnostics can set `SubmitClientEventOptions.omitMeetingJoinPhase` to omit
-`meetingJoinPhase` when no `meetingId` is supplied. This applies to normal submission and prepared
-fetch options, including an explicit phase in the payload. Existing callers retain their current
-phase defaults. Events associated with a meeting retain their meeting phase.
+Client events select auth construction with `diagnosticType: 'auth'`. The auth path requires a
+correlation ID and validates its options and payload before construction or delayed submission.
+It builds common identity and client context directly, so it never adds a meeting phase, conference
+identifiers, preload state or Mercury connection state. Existing callers without a diagnostic type
+retain their meeting and pre-meeting behavior. Normal submission and prepared fetch use the same
+builder and transport. Argument types and accepted field lists are in
+[`auth-diagnostic.ts`](../auth-diagnostic.ts).
 
 - Responsibility: building, enriching and submitting Call Analyzer events — client events, feature
   events and media quality events — and maintaining the latency ledger from which join-time metrics
@@ -144,7 +147,7 @@ Analyzer schema through `src/metrics.types.ts`.
 
 | ID        | WHAT                                                                                                                                         | WHY                                                                                                                                                          | Source evidence                                              | Test or example evidence                                              | Assumptions or gaps | Confidence |
 | --------- | -------------------------------------------------------------------------------------------------------------------------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------ | ------------------------------------------------------------ | --------------------------------------------------------------------- | ------------------- | ---------- |
-| `MOD-001` | A client event is built in-meeting when a meeting identifier is supplied, pre-meeting when only a correlation identifier is supplied, and otherwise preparation throws | Call Analyzer correlates every event to one call; an event with no call identity cannot be attributed                                     | `src/call-diagnostic/call-diagnostic-metrics.ts`             | `test/unit/spec/call-diagnostic/call-diagnostic-metrics.ts`           | none                | Present    |
+| `MOD-001` | An explicit auth event uses the auth builder; otherwise a meeting identifier selects in-meeting construction, a correlation identifier selects pre-meeting construction, and missing identity throws | Each diagnostic event needs an identity for its auth flow or call                                     | `src/call-diagnostic/call-diagnostic-metrics.ts`             | `test/unit/spec/call-diagnostic/call-diagnostic-metrics.ts`           | none                | Present    |
 | `MOD-002` | When a meeting identifier is supplied but the meeting cannot be found, a failed-to-send client metric is recorded instead of the event            | The lost event must remain visible as a count rather than disappearing silently                                                                              | `src/call-diagnostic/call-diagnostic-metrics.ts`             | `test/unit/spec/call-diagnostic/call-diagnostic-metrics.ts`           | none                | Present    |
 | `MOD-003` | Origin requires a client type and sub-client type, from options or from meetings configuration, and throws when neither supplies both           | Call Analyzer segments every event by client; an unclassified event is unusable                                                                              | `src/call-diagnostic/call-diagnostic-metrics.ts`             | `test/unit/spec/call-diagnostic/call-diagnostic-metrics.ts`           | none                | Present    |
 | `MOD-004` | Public and local network prefixes are anonymized before they enter the origin                                                                  | Raw IP addresses are personal data                                                                                                                           | `src/call-diagnostic/call-diagnostic-metrics.util.ts`         | `test/unit/spec/call-diagnostic/call-diagnostic-metrics.ts`           | none                | Present    |
@@ -173,10 +176,13 @@ a batcher.
 
 **The event builder** (`src/call-diagnostic/call-diagnostic-metrics.ts`) turns a name, a partial
 payload and options into a complete Call Analyzer event. Every event family goes through the same
-two stages: a family-specific object is built — in-meeting, pre-meeting or media-quality — and is
+two stages: a family-specific object is built — auth, in-meeting, pre-meeting or media-quality — and is
 then wrapped by `prepareDiagnosticEvent`, which adds the event identifier, version, origin, trigger
 time and sender country, and sanitizes empty keys for every family except media quality. Caller
-payloads are deep-merged last, so a caller can override any computed field.
+payloads are deep-merged last. Meeting callers retain their existing override behavior. Auth callers
+can supply only the fields accepted by the auth input contract; unsupported fields are rejected
+before they can enter the merge. The auth builder selects common identifiers from the shared
+identifier result because that helper can also include registered-device locus data.
 
 Origin and identifiers are resolved from the host on every event rather than cached, because they
 change during a call: the meeting gains a Locus URL and conference identifiers, the device registers,
@@ -231,7 +237,9 @@ sequenceDiagram
     opt raw error supplied
       CD->>CD: classify error, or reuse cached payload
     end
-    alt meeting identifier
+    alt explicit auth diagnostic
+      CD->>CD: validate auth input and build common identity/context
+    else meeting identifier
       CD->>Host: read meeting, identifiers and origin
       opt meeting not found
         CD->>Facade: record failed-to-send metric
@@ -446,12 +454,19 @@ missing a required milestone is never reported, it returns undefined and is clea
 
 The envelope is declared through `src/metrics.types.ts`; it is not restated here.
 
+`diagnosticType` selects SDK construction and is not a new wire field. Auth events use the existing
+`diagnostic-event` envelope and authenticated or pre-login endpoint. Their payload has no meeting
+phase or meeting identifiers. The input contract derives its accepted fields from the external
+schema and rejects unsupported options or payload fields, including an injected meeting phase.
+The builder does not create a pre-meeting event and remove fields afterward.
+
 <!-- Include if: the module returns or raises errors callers must handle. [condition-id: module.returns_caller_errors] -->
 
 ## Caller-visible failure modes
 
 | Condition                                             | Signal or result                                  | Caller behavior                                     | Retry or recovery                            | Evidence                                                    |
 | ----------------------------------------------------- | ------------------------------------------------- | --------------------------------------------------- | -------------------------------------------- | ----------------------------------------------------------- |
+| Invalid explicit auth options or payload | Synchronous input error, or rejected prepared-fetch promise | Supply a correlation ID and supported auth fields | None; caller bug | `src/call-diagnostic/auth-diagnostic.ts` |
 | Neither meeting nor correlation identifier supplied    | Synchronous `Error` from event preparation          | Supply call identity before submitting               | None; caller bug                             | `src/call-diagnostic/call-diagnostic-metrics.ts`            |
 | Client type or sub-client type unresolved              | Synchronous `Error` from origin resolution          | Configure the meetings metrics client types           | None; configuration bug                      | `src/call-diagnostic/call-diagnostic-metrics.ts`            |
 | Correlation identifier resolves to nothing             | Synchronous `Error` from identifier resolution      | Supply a correlation identifier                       | None                                         | `src/call-diagnostic/call-diagnostic-metrics.ts`            |

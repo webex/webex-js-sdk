@@ -5,6 +5,11 @@ import type {
   FeatureEvent as RawFeatureEvent,
 } from '@webex/event-dictionary-ts';
 
+import type {
+  AuthDiagnosticEventArgs,
+  AuthDiagnosticOptions,
+} from './call-diagnostic/auth-diagnostic';
+
 export type Event = Omit<RawEvent, 'event'> & {
   event: RawClientEvent | RawMediaQualityEvent | RawFeatureEvent;
 };
@@ -129,7 +134,15 @@ export type MetricEventVerb =
 export type MetricEventJoinFlowVersion = 'Other' | 'NewFTE';
 export type MetricEventMeetingJoinPhase = 'pre-join' | 'join' | 'in-meeting';
 
-export type SubmitClientEventOptions = {
+export type ClientType = NonNullable<RawEvent['origin']['clientInfo']>['clientType'];
+export type SubClientType = NonNullable<RawEvent['origin']['clientInfo']>['subClientType'];
+export type NetworkType = NonNullable<RawEvent['origin']>['networkType'];
+
+export type MeetingClientEventOptions = {
+  diagnosticType?: undefined;
+  clientType?: ClientType;
+  subClientType?: SubClientType;
+  networkType?: NetworkType;
   meetingId?: string;
   mediaConnections?: any[];
   rawError?: any;
@@ -145,13 +158,13 @@ export type SubmitClientEventOptions = {
   locusCluster?: string;
   joinFlowVersion?: MetricEventJoinFlowVersion;
   meetingJoinPhase?: MetricEventMeetingJoinPhase;
-  /** Omit the meeting phase for standalone diagnostics without a meetingId. */
-  omitMeetingJoinPhase?: boolean;
   triggeredTime?: string;
   emailInput?: ClientEmailInput;
   userNameInput?: ClientUserNameInput;
   vendorId?: string;
 };
+
+export type SubmitClientEventOptions = MeetingClientEventOptions | AuthDiagnosticOptions;
 
 export type SubmitMQEOptions = {
   meetingId: string;
@@ -243,7 +256,7 @@ export type OperationalEvent = TaggedEvent;
 export interface FeatureEvent {
   name: RawFeatureEvent['name'];
   payload?: RawFeatureEvent;
-  options?: SubmitClientEventOptions;
+  options?: MeetingClientEventOptions;
 }
 
 export interface MediaQualityEvent {
@@ -270,9 +283,6 @@ export type MetricEventNames =
   | MediaQualityEvent['name'];
 
 export type ClientInfo = NonNullable<RawEvent['origin']['clientInfo']>;
-export type ClientType = NonNullable<RawEvent['origin']['clientInfo']>['clientType'];
-export type SubClientType = NonNullable<RawEvent['origin']['clientInfo']>['subClientType'];
-export type NetworkType = NonNullable<RawEvent['origin']>['networkType'];
 
 export type ClientSubServiceType = NonNullable<ClientEvent['payload']>['webexSubServiceType'];
 export type ClientEventPayload = RecursivePartial<ClientEvent['payload']>;
@@ -306,11 +316,15 @@ export type SubmitBehavioralEvent = (args: {
   payload?: EventPayload;
 }) => void;
 
-export type SubmitClientEvent = (args: {
-  name: ClientEvent['name'];
-  payload?: RecursivePartial<ClientEvent['payload']>;
-  options?: SubmitClientEventOptions;
-}) => Promise<any>;
+export type SubmitClientEventArgs =
+  | AuthDiagnosticEventArgs
+  | {
+      name: ClientEvent['name'];
+      payload?: ClientEventPayload;
+      options?: MeetingClientEventOptions;
+    };
+
+export type SubmitClientEvent = (args: SubmitClientEventArgs) => Promise<any>;
 
 export type SubmitOperationalEvent = (args: {
   name: OperationalEvent['metricName'];
@@ -330,11 +344,7 @@ export type SubmitMQE = (args: {
   options: any;
 }) => void;
 
-export type BuildClientEventFetchRequestOptions = (args: {
-  name: ClientEvent['name'];
-  payload?: RecursivePartial<ClientEvent['payload']>;
-  options?: SubmitClientEventOptions;
-}) => Promise<any>;
+export type BuildClientEventFetchRequestOptions = (args: SubmitClientEventArgs) => Promise<any>;
 
 export type PreComputedLatencies =
   | 'internal.client.pageJMT'
@@ -376,11 +386,11 @@ export interface DelayedClientEvent {
 export type SubmitFeatureEvent = (args: {
   name: FeatureEvent['name'];
   payload?: RecursivePartial<FeatureEvent['payload']>;
-  options?: SubmitClientEventOptions;
+  options?: MeetingClientEventOptions;
 }) => Promise<any>;
 
 export interface DelayedClientFeatureEvent {
   name: FeatureEvent['name'];
   payload?: RecursivePartial<FeatureEvent['payload']>;
-  options?: SubmitClientEventOptions;
+  options?: MeetingClientEventOptions;
 }

@@ -4647,31 +4647,213 @@ describe('internal-plugin-metrics', () => {
       });
     });
 
+    describe('#auth diagnostics', () => {
+      const authNames = [
+        'client.sign-in.start',
+        'client.idbroker.authorize.request',
+        'client.sign-in.end',
+      ];
+      const triggeredTime = '2026-11-17T12:00:00.000Z';
+      const getAuthArgs = (name = 'client.sign-in.start', preLoginId = undefined) => ({
+        name,
+        options: {
+          diagnosticType: 'auth' as const,
+          correlationId: 'auth-correlation-id',
+          preLoginId,
+          triggeredTime,
+        },
+        payload: {
+          loginInfo: {loginType: 'web-client', method: 'social', signInSignUpType: 'sign-in'},
+          eventData: {oauthProvider: 'google'},
+          telemetryOptOut: 'manual',
+        },
+      });
+      const expectedAuthEvent = (name) => ({
+        name,
+        canProceed: true,
+        identifiers: {
+          correlationId: 'auth-correlation-id',
+          deviceId: 'deviceUrl',
+          orgId: 'orgId',
+          userId: 'userId',
+          machineId: 'machineId',
+        },
+        eventData: {webClientDomain: 'whatever', oauthProvider: 'google'},
+        loginType: 'login-ci',
+        telemetryOptOut: 'manual',
+        isAutomatedUser: false,
+        userActivation: {hasBeenActive: true, isActive: false},
+        loginInfo: {loginType: 'web-client', method: 'social', signInSignUpType: 'sign-in'},
+      });
+
+      beforeEach(() => {
+        cd.setDeviceInfo({...webex.internal.device, config: {installationId: 'machineId'}});
+        cd.setMercuryConnectedStatus(true);
+        webex.meetings.config.metrics.webClientPreload = true;
+        sinon.stub(cd, 'getUserActivation').returns({hasBeenActive: true, isActive: false});
+      });
+
+      authNames.forEach((name) => {
+        [undefined, 'pre-login-id'].forEach((preLoginId) => {
+          it(`builds auth ${name} without meeting context for preLoginId ${preLoginId}`, async () => {
+            const args = getAuthArgs(name, preLoginId);
+            const originalPayload = JSON.parse(JSON.stringify(args.payload));
+            const event = cd.prepareClientEvent(args);
+
+            assert.deepEqual(event.event, expectedAuthEvent(name));
+            assert.deepEqual(event.originTime, {triggered: triggeredTime, sent: 'not_defined_yet'});
+            assert.equal(event.origin.clientInfo.clientType, 'TEAMS_CLIENT');
+            assert.equal(event.origin.clientInfo.subClientType, 'WEB_APP');
+
+            const request = await cd.buildClientEventFetchRequestOptions(args);
+            assert.deepEqual(request.body.metrics[0].eventPayload.event, expectedAuthEvent(name));
+            assert.equal(request.resource, preLoginId ? 'clientmetrics-prelogin' : 'clientmetrics');
+            assert.deepEqual(
+              request.headers,
+              preLoginId ? {authorization: false, 'x-prelogin-userid': preLoginId} : {}
+            );
+            assert.deepEqual(args.payload, originalPayload);
+          });
+
+          it(`submits auth ${name} through the existing transport for preLoginId ${preLoginId}`, async () => {
+            const authenticated = sinon.stub(cd, 'submitToCallDiagnostics').resolves();
+            const preLogin = sinon.stub(cd, 'submitToCallDiagnosticsPreLogin').resolves();
+
+            await cd.submitClientEvent(getAuthArgs(name, preLoginId));
+            if (preLoginId) {
+              assert.calledOnceWithExactly(
+                preLogin,
+                sinon.match({event: expectedAuthEvent(name)}),
+                preLoginId
+              );
+              assert.notCalled(authenticated);
+            } else {
+              assert.calledOnceWithExactly(
+                authenticated,
+                sinon.match({event: expectedAuthEvent(name)})
+              );
+              assert.notCalled(preLogin);
+            }
+          });
+        });
+      });
+
+      [undefined, 'signed-in-user-id'].forEach((userId) => {
+        it(`keeps the common user identifier without a device for userId ${userId}`, () => {
+          cd.setDeviceInfo(undefined);
+          webex.credentials.getUserId = sinon.stub().returns(userId);
+          const event = cd.prepareClientEvent(getAuthArgs('client.sign-in.start', 'pre-login-id'));
+          assert.deepEqual(event.event.identifiers, {
+            correlationId: 'auth-correlation-id',
+            userId: userId || 'pre-login-id',
+          });
+        });
+      });
+
+      it('keeps generated errors and supported caller metadata', () => {
+        const generatedError = {name: 'test-error'};
+        const error = new Error('test');
+        sinon.stub(cd, 'generateClientEventErrorPayload').returns([generatedError, false]);
+        const args = getAuthArgs();
+        args.options.rawError = error;
+        args.payload.canProceed = false;
+        args.payload.privacyAndSecurityPermission = {camera: {status: 'GRANTED'}};
+        const event = cd.prepareClientEvent(args);
+        assert.deepEqual(event.event.errors, [generatedError]);
+        assert.isFalse(event.event.canProceed);
+        assert.deepEqual(event.event.privacyAndSecurityPermission, {camera: {status: 'GRANTED'}});
+      });
+
+      [undefined, null, '', ' ', 123].forEach((correlationId) => {
+        it(`rejects auth input without a usable correlation ID: ${correlationId}`, () => {
+          const args = getAuthArgs();
+          args.options.correlationId = correlationId;
+          assert.throws(
+            () => cd.prepareClientEvent(args),
+            'Auth diagnostics require a correlation ID'
+          );
+          assert.notCalled(webex.prepareFetchOptions);
+        });
+      });
+
+      [
+        ['meetingId', fakeMeeting.id],
+        ['mediaConnections', []],
+        ['sessionCorrelationId', 'meeting-session'],
+        ['globalMeetingId', 'conference'],
+        ['webexConferenceIdStr', 'conference'],
+        ['locusCluster', 'cluster'],
+        ['joinFlowVersion', 'NewFTE'],
+        ['meetingJoinPhase', 'pre-join'],
+        ['emailInput', 'private@example.test'],
+        ['userNameInput', 'Private Name'],
+      ].forEach(([key, value]) => {
+        it(`rejects unsupported auth option ${key} before submission`, () => {
+          const args = getAuthArgs();
+          args.options[key] = value;
+          assert.throws(
+            () => cd.submitClientEvent(args),
+            'Auth diagnostic options contain unsupported fields'
+          );
+          assert.notCalled(webex.request);
+        });
+      });
+
+      [
+        ['meetingJoinPhase', 'pre-join'],
+        ['joinFlowVersion', 'NewFTE'],
+        ['webClientPreload', true],
+        ['identifiers', {correlationId: 'another-id', globalMeetingId: 'meeting'}],
+      ].forEach(([key, value]) => {
+        it(`rejects unsupported auth payload field ${key} before fetch preparation`, async () => {
+          const args = getAuthArgs();
+          args.payload[key] = value;
+          await assert.isRejected(
+            cd.buildClientEventFetchRequestOptions(args),
+            Error,
+            'Auth diagnostic payload contains unsupported fields'
+          );
+          assert.notCalled(webex.prepareFetchOptions);
+        });
+      });
+
+      [null, [], 'invalid'].forEach((payload) => {
+        it(`rejects malformed auth payload ${JSON.stringify(payload)}`, () => {
+          const args = {...getAuthArgs(), payload};
+          assert.throws(
+            () => cd.prepareClientEvent(args),
+            'Auth diagnostic payload must be an object'
+          );
+        });
+      });
+
+      it('rejects an unsupported diagnostic type', () => {
+        const args = getAuthArgs();
+        args.options.diagnosticType = 'unsupported';
+        assert.throws(() => cd.prepareClientEvent(args), 'Unsupported diagnostic type');
+      });
+
+      it('keeps auth mode and trigger time through delayed submission', async () => {
+        const submit = sinon.stub(cd, 'submitToCallDiagnostics').resolves();
+        const args = getAuthArgs();
+        await cd.submitClientEvent({...args, delaySubmitEvent: true});
+        assert.notCalled(submit);
+        await cd.submitDelayedClientEvents();
+        assert.calledOnceWithExactly(
+          submit,
+          sinon.match({
+            event: expectedAuthEvent(args.name),
+            originTime: {triggered: now.toISOString(), sent: 'not_defined_yet'},
+          })
+        );
+        assert.deepEqual(cd.delayedClientEvents, []);
+      });
+    });
+
     describe('#buildClientEventFetchRequestOptions', () => {
       ['client.sign-in.start', 'client.idbroker.authorize.request', 'client.sign-in.end'].forEach(
         (name) => {
           [undefined, 'pre-login-id'].forEach((preLoginId) => {
-            it(`omits meetingJoinPhase for standalone ${name} with preLoginId ${preLoginId}`, async () => {
-              const options = {
-                correlationId: 'auth-correlation-id',
-                preLoginId,
-                omitMeetingJoinPhase: true,
-              };
-              const event = cd.prepareClientEvent({
-                name,
-                payload: {meetingJoinPhase: 'pre-join'},
-                options,
-              });
-              assert.notProperty(event.event, 'meetingJoinPhase');
-              assert.equal(event.event.identifiers.correlationId, 'auth-correlation-id');
-
-              const fetchOptions = await cd.buildClientEventFetchRequestOptions({name, options});
-              assert.notProperty(
-                fetchOptions.body.metrics[0].eventPayload.event,
-                'meetingJoinPhase'
-              );
-            });
-
             it(`preserves the phase default for existing ${name} callers`, () => {
               const event = cd.prepareClientEvent({
                 name,
@@ -4683,13 +4865,12 @@ describe('internal-plugin-metrics', () => {
         }
       );
 
-      it('preserves an explicit meeting phase when omission is disabled', () => {
+      it('preserves an explicit meeting phase for a pre-meeting caller', () => {
         const event = cd.prepareClientEvent({
           name: 'client.sign-in.end',
           options: {
             correlationId: 'meeting-correlation-id',
             meetingJoinPhase: 'join',
-            omitMeetingJoinPhase: false,
           },
         });
         assert.equal(event.event.meetingJoinPhase, 'join');
@@ -4700,7 +4881,6 @@ describe('internal-plugin-metrics', () => {
           name: 'client.sign-in.end',
           options: {
             meetingId: fakeMeeting.id,
-            omitMeetingJoinPhase: true,
             meetingJoinPhase: 'join',
           },
         });

@@ -30,6 +30,59 @@ describe('internal-plugin-metrics', () => {
       },
     });
 
+  describe('auth diagnostic API', () => {
+    let webex;
+    let submit;
+    let build;
+    const args = {
+      name: 'client.sign-in.start' as const,
+      options: {diagnosticType: 'auth' as const, correlationId: 'auth-correlation-id'},
+      payload: {
+        loginInfo: {loginType: 'web-client' as const, signInSignUpType: 'sign-in' as const},
+        privacyAndSecurityPermission: {camera: {status: 'GRANTED' as const}},
+      },
+    };
+
+    beforeEach(() => {
+      webex = mockWebex(SourceNewMetrics);
+      webex.emit('ready');
+      submit = sinon
+        .stub(webex.internal.newMetrics.callDiagnosticMetrics, 'submitClientEvent')
+        .resolves();
+      build = sinon
+        .stub(
+          webex.internal.newMetrics.callDiagnosticMetrics,
+          'buildClientEventFetchRequestOptions'
+        )
+        .resolves({body: 'prepared'});
+    });
+
+    afterEach(() => sinon.restore());
+
+    it('forwards auth options and supported permission metadata', () => {
+      webex.internal.newMetrics.submitClientEvent(args);
+      assert.calledOnceWithExactly(submit, {...args, delaySubmitEvent: false});
+    });
+
+    it('rejects a meeting field from a JavaScript auth caller before submission', () => {
+      assert.throws(
+        () =>
+          webex.internal.newMetrics.submitClientEvent({
+            ...args,
+            payload: {...args.payload, meetingJoinPhase: 'pre-join'},
+          }),
+        'Auth diagnostic payload contains unsupported fields'
+      );
+      assert.notCalled(submit);
+    });
+
+    it('forwards prepared auth request construction', async () => {
+      const request = await webex.internal.newMetrics.buildClientEventFetchRequestOptions(args);
+      assert.deepEqual(request, {body: 'prepared'});
+      assert.calledOnceWithExactly(build, args);
+    });
+  });
+
   describe('check submitClientEvent, submitFeatureEvent when webex is not ready', () => {
     let webex;
     //@ts-ignore
@@ -108,7 +161,6 @@ describe('internal-plugin-metrics', () => {
 
       assert.calledOnceWithExactly(stub, {
         name: 'client.alert.displayed',
-        payload: undefined,
         options: {correlationId: 'test-id'},
       });
       assert.deepEqual(result, {url: 'https://metrics.example.com'});
@@ -425,11 +477,10 @@ describe('internal-plugin-metrics', () => {
           },
         });
 
-        assert.calledWith(
+        assert.calledOnceWithExactly(
           webex.internal.newMetrics.callDiagnosticMetrics.buildClientEventFetchRequestOptions,
           {
             name: 'client.alert.displayed',
-            payload: undefined,
             options: {meetingId: '123'},
           }
         );

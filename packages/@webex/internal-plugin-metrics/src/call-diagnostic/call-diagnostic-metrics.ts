@@ -3,7 +3,7 @@
 /* eslint-disable valid-jsdoc */
 import {BrowserDetection, getBrowserSerial} from '@webex/common';
 import uuid from 'uuid';
-import {merge} from 'lodash';
+import {merge, pick} from 'lodash';
 import {StatelessWebexPlugin} from '@webex/webex-core';
 import {getOSNameInternal} from '../metrics';
 import * as AutomatedUserUtils from '../automated-user';
@@ -31,6 +31,8 @@ import {
   NewEnvironmentType,
   ClientEvent,
   SubmitClientEventOptions,
+  SubmitClientEventArgs,
+  MeetingClientEventOptions,
   MediaQualityEvent,
   SubmitMQEOptions,
   SubmitMQEPayload,
@@ -46,6 +48,12 @@ import {
   FeatureEvent,
   ClientFeatureEventPayload,
 } from '../metrics.types';
+import {
+  AUTH_DIAGNOSTIC_IDENTIFIER_FIELDS,
+  assertValidClientEventArgs,
+  isAuthDiagnosticOptions,
+} from './auth-diagnostic';
+import type {AuthDiagnosticOptions} from './auth-diagnostic';
 import CallDiagnosticEventsBatcher from './call-diagnostic-metrics-batcher';
 import PreLoginMetricsBatcher from '../prelogin-metrics-batcher';
 
@@ -565,7 +573,7 @@ export default class CallDiagnosticMetrics extends StatelessWebexPlugin {
   }: {
     name: FeatureEvent['name'];
     payload?: ClientFeatureEventPayload;
-    options?: SubmitClientEventOptions;
+    options?: MeetingClientEventOptions;
   }) {
     const {meetingId, correlationId} = options;
     let featureEventObject: FeatureEvent['payload'];
@@ -599,7 +607,7 @@ export default class CallDiagnosticMetrics extends StatelessWebexPlugin {
   }: {
     name: FeatureEvent['name'];
     payload?: ClientFeatureEventPayload;
-    options?: SubmitClientEventOptions;
+    options?: MeetingClientEventOptions;
     delaySubmitEvent?: boolean;
   }) {
     if (delaySubmitEvent) {
@@ -1288,6 +1296,35 @@ export default class CallDiagnosticMetrics extends StatelessWebexPlugin {
     return clientEventObject;
   }
 
+  /** Build auth diagnostics without inheriting pre-meeting defaults. */
+  private createClientEventObjectAuthAnalysis({
+    name,
+    options,
+    errors,
+  }: {
+    name: ClientEvent['name'];
+    options: AuthDiagnosticOptions;
+    errors?: ClientEventPayloadError;
+  }): ClientEvent['payload'] {
+    const {correlationId, preLoginId} = options;
+
+    return {
+      name,
+      errors,
+      canProceed: true,
+      // The shared helper can add locus data for a registered device. Select only common IDs.
+      identifiers: pick(
+        this.getIdentifiers({correlationId, preLoginId}),
+        AUTH_DIAGNOSTIC_IDENTIFIER_FIELDS
+      ),
+      eventData: {webClientDomain: window.location.hostname},
+      loginType: this.getCurLoginType(),
+      telemetryOptOut: this.getTelemetryOptOut(),
+      isAutomatedUser: AutomatedUserUtils.isAutomatedUser(),
+      userActivation: this.getUserActivation(),
+    };
+  }
+
   /**
    * Prepare Client Event CA event.
    * @param arg - submit params
@@ -1306,6 +1343,7 @@ export default class CallDiagnosticMetrics extends StatelessWebexPlugin {
     payload?: ClientEventPayload;
     options?: SubmitClientEventOptions;
   }) {
+    assertValidClientEventArgs({name, payload, options});
     const {meetingId, correlationId, rawError} = options;
     let clientEventObject: ClientEvent['payload'];
 
@@ -1324,11 +1362,12 @@ export default class CallDiagnosticMetrics extends StatelessWebexPlugin {
       );
     }
 
-    // events that will most likely happen in join phase
-    if (meetingId) {
+    if (isAuthDiagnosticOptions(options)) {
+      clientEventObject = this.createClientEventObjectAuthAnalysis({name, options, errors});
+    } else if (meetingId) {
       clientEventObject = this.createClientEventObjectInMeeting({name, options, errors});
     } else if (correlationId) {
-      // any pre join events or events that are outside the meeting.
+      // Preserve the existing pre-meeting path when no diagnostic type is selected.
       clientEventObject = this.createClientEventObjectPreMeeting({name, options, errors});
     } else {
       throw new Error('Not implemented');
@@ -1336,10 +1375,6 @@ export default class CallDiagnosticMetrics extends StatelessWebexPlugin {
 
     // merge any new properties, or override existing ones
     clientEventObject = merge(clientEventObject, payload);
-
-    if (options.omitMeetingJoinPhase && !meetingId) {
-      delete clientEventObject.meetingJoinPhase;
-    }
 
     // append client event data to the call diagnostic event
     const diagnosticEvent = this.prepareDiagnosticEvent(clientEventObject, options);
@@ -1356,17 +1391,9 @@ export default class CallDiagnosticMetrics extends StatelessWebexPlugin {
    * @param arg.delaySubmitEvent - a boolean value indicating whether to delay the submission of client events.
    * @throws
    */
-  public submitClientEvent({
-    name,
-    payload,
-    options,
-    delaySubmitEvent,
-  }: {
-    name: ClientEvent['name'];
-    payload?: ClientEventPayload;
-    options?: SubmitClientEventOptions;
-    delaySubmitEvent?: boolean;
-  }) {
+  public submitClientEvent(args: SubmitClientEventArgs & {delaySubmitEvent?: boolean}) {
+    assertValidClientEventArgs(args);
+    const {name, payload, options, delaySubmitEvent} = args;
     if (delaySubmitEvent) {
       // Preserve the time when the event was triggered if delaying the submission to Call Diagnostics
       const delayedOptions = {
@@ -1418,9 +1445,13 @@ export default class CallDiagnosticMetrics extends StatelessWebexPlugin {
 
     const promises = this.delayedClientEvents.map((delayedSubmitClientEventParams) => {
       const {name, payload, options} = delayedSubmitClientEventParams;
-      const optionsWithOverrides: DelayedClientEvent['options'] = {...options, ...overrides};
+      const optionsWithOverrides = {...options, ...overrides};
 
-      return this.submitClientEvent({name, payload, options: optionsWithOverrides});
+      const args = {name, payload, options: optionsWithOverrides};
+
+      assertValidClientEventArgs(args);
+
+      return this.submitClientEvent(args);
     });
 
     this.delayedClientEvents = [];
@@ -1431,7 +1462,9 @@ export default class CallDiagnosticMetrics extends StatelessWebexPlugin {
   /**
    * Submit Delayed feature Event CA events. Clears submitDelayedClientFeatureEvents array after submission.
    */
-  public submitDelayedClientFeatureEvents(overrides?: Partial<DelayedClientEvent['options']>) {
+  public submitDelayedClientFeatureEvents(
+    overrides?: Partial<DelayedClientFeatureEvent['options']>
+  ) {
     this.logger.log(
       CALL_FEATURE_LOG_IDENTIFIER,
       'CallDiagnosticMetrics: @submitDelayedClientFeatureEvents. Submitting delayed feature events.'
@@ -1443,7 +1476,7 @@ export default class CallDiagnosticMetrics extends StatelessWebexPlugin {
 
     const promises = this.delayedClientFeatureEvents.map((delayedSubmitClientEventParams) => {
       const {name, payload, options} = delayedSubmitClientEventParams;
-      const optionsWithOverrides: DelayedClientEvent['options'] = {...options, ...overrides};
+      const optionsWithOverrides: DelayedClientFeatureEvent['options'] = {...options, ...overrides};
 
       return this.submitFeatureEvent({name, payload, options: optionsWithOverrides});
     });
@@ -1499,11 +1532,7 @@ export default class CallDiagnosticMetrics extends StatelessWebexPlugin {
     name,
     payload,
     options,
-  }: {
-    name: ClientEvent['name'];
-    payload?: ClientEventPayload;
-    options?: SubmitClientEventOptions;
-  }): Promise<any> {
+  }: SubmitClientEventArgs): Promise<any> {
     this.logger.log(
       CALL_DIAGNOSTIC_LOG_IDENTIFIER,
       'CallDiagnosticMetrics: @buildClientEventFetchRequestOptions. Building request options object for fetch()...',
