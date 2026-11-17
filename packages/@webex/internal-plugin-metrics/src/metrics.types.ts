@@ -377,11 +377,7 @@ export interface IMetricsAttributes {
   callId?: string;
 }
 
-export interface DelayedClientEvent {
-  name: ClientEvent['name'];
-  payload?: RecursivePartial<ClientEvent['payload']>;
-  options?: SubmitClientEventOptions;
-}
+export type DelayedClientEvent = SubmitClientEventArgs;
 
 export type SubmitFeatureEvent = (args: {
   name: FeatureEvent['name'];

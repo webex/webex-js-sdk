@@ -1392,20 +1392,17 @@ export default class CallDiagnosticMetrics extends StatelessWebexPlugin {
    * @throws
    */
   public submitClientEvent(args: SubmitClientEventArgs & {delaySubmitEvent?: boolean}) {
-    assertValidClientEventArgs(args);
     const {name, payload, options, delaySubmitEvent} = args;
     if (delaySubmitEvent) {
       // Preserve the time when the event was triggered if delaying the submission to Call Diagnostics
-      const delayedOptions = {
-        ...options,
-        triggeredTime: new Date().toISOString(),
-      };
-
-      this.delayedClientEvents.push({
+      const delayedArgs = {
         name,
         payload,
-        options: delayedOptions,
-      });
+        options: {...options, triggeredTime: new Date().toISOString()},
+      };
+
+      assertValidClientEventArgs(delayedArgs);
+      this.delayedClientEvents.push(delayedArgs);
 
       return Promise.resolve();
     }

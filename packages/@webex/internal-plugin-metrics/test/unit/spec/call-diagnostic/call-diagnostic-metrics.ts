@@ -4833,6 +4833,18 @@ describe('internal-plugin-metrics', () => {
         assert.throws(() => cd.prepareClientEvent(args), 'Unsupported diagnostic type');
       });
 
+      it('rejects invalid auth input before queueing', () => {
+        const args = getAuthArgs();
+        args.payload.meetingJoinPhase = 'pre-join';
+
+        assert.throws(
+          () => cd.submitClientEvent({...args, delaySubmitEvent: true}),
+          'Auth diagnostic payload contains unsupported fields'
+        );
+        assert.deepEqual(cd.delayedClientEvents, []);
+        assert.notCalled(webex.request);
+      });
+
       it('keeps auth mode and trigger time through delayed submission', async () => {
         const submit = sinon.stub(cd, 'submitToCallDiagnostics').resolves();
         const args = getAuthArgs();
