@@ -23,9 +23,9 @@ Files that are a module `canonical_spec`, the package `AGENTS.md`, or under the 
 ### List B: Source files covered by a module spec
 For each other changed file, pick the module whose `path` is the longest prefix of the file path (relative to the package root). Its `canonical_spec` needs validation. Unit tests map through the source path they mirror: `test/unit/spec/<rel>` maps like `src/<rel>`. Any other package file (for example `package.json` or build config) maps to the package spec `src/docs/README.md`.
 
-Use this to build the mapping:
+Use this to build the mapping (the subshell keeps the shell at the repository root for Step 5):
 ```bash
-cd packages/@webex/contact-center && python3 - <<'PY'
+(cd packages/@webex/contact-center && python3 - <<'PY'
 import json, subprocess
 mods = json.load(open('.sdd/manifest.json'))['modules']
 specs = {m['canonical_spec'] for m in mods}
@@ -40,6 +40,7 @@ for f in (x[len(pre):] for x in out if x.startswith(pre)):
                 key=lambda m: len(m['path']), default=None)
     print(f"{f} -> {owner['canonical_spec'] if owner else 'src/docs/README.md'}")
 PY
+)
 ```
 
 Example mapping:
@@ -145,7 +146,9 @@ Specs checked: {list}
 After presenting the validation report (regardless of findings, and also when Step 2 found no affected specs), create a verification marker so the pre-commit hook allows the commit:
 
 ```bash
-# Hash staged content (not just paths) — must match the hook's hash logic exactly
+# Hash staged content (not just paths) — must match the hook's hash logic exactly.
+# Run from the repository root: CC_PKG is a root-relative pathspec, as in the hook.
+cd "$(git rev-parse --show-toplevel)"
 CC_PKG="packages/@webex/contact-center"
 STAGED_CC=$(git diff --cached --name-only 2>/dev/null | grep "^${CC_PKG}/")
 if [ -n "$STAGED_CC" ]; then

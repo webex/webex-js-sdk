@@ -15,7 +15,7 @@ A module spec covers the files under its `path` except those owned by a deeper m
 
 Build an inventory:
 ```bash
-cd packages/@webex/contact-center && python3 -c "import json; [print(m['canonical_spec'], '->', m['path']) for m in json.load(open('.sdd/manifest.json'))['modules']]"
+(cd packages/@webex/contact-center && python3 -c "import json; [print(m['canonical_spec'], '->', m['path']) for m in json.load(open('.sdd/manifest.json'))['modules']]")
 ```
 ```
 module spec                                         → source directory
