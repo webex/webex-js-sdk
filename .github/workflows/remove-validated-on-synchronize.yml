@@ -99,8 +99,7 @@ jobs:
             const repo = context.repo.repo;
             const pull_number = context.payload.pull_request.number;
 
-            // Output is written once at the end so no early return can leave it
-            // unset.
+            // Output is written once at the end so no early return can leave it unset. 
             const keptLabel = async () => {
               const labels = context.payload.pull_request.labels.map((label) => label.name);
               if (!labels.includes('validated')) {
@@ -125,7 +124,7 @@ jobs:
               } catch (error) {
                 core.warning(`Failed to remove validated label: ${error.message}`);
               }
-
+              core.setFailed(`Failed to remove validated label: ${error.message}`);
               return false;
             };
 
