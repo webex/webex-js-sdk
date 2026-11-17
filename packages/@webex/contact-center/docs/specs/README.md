@@ -9,8 +9,8 @@ doc_kind: standing-doc
 generated_from: spec-index@0.3.0
 generated_by: claude-code
 approved_by: rarajes2@cisco.com
-updated_at: 2026-11-17T00:00:00Z
-validation_status: blocked
+updated_at: 2026-11-17T03:03:58Z
+validation_status: pass-with-warnings
 -->
 
 # Specification registry
@@ -67,7 +67,7 @@ this package is a library: `package.json` has no start script or deployment desc
 | ↳ `src/utils/` | Own shared pagination contracts and the bounded in-memory page cache used by Contact Center data services. | Partial | `src/utils/docs/README.md` |
 
 All nine modules remain `Partial` in `.sdd/manifest.json`; coverage review is pending. Independent
-validation on 2026-11-17 is blocked by three Blocking findings. No coverage promotion was performed.
+validation on 2026-11-17 passed with warnings (0 Blocking, 0 Important, 4 Minor). No coverage promotion was performed.
 
 Three documentation-only correction records from July 2026 (a validator drift fix, a residual-warning
 completion, and a conformance and fidelity remediation) are folded into the nine module specifications.
