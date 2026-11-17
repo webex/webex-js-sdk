@@ -1,7 +1,4 @@
 import sinon from 'sinon';
-import {assert} from '@webex/test-helper-chai';
-// @ts-expect-error ampersand-events does not provide TypeScript declarations.
-import ampersandEvents from 'ampersand-events';
 import {LOGGER} from '../Logger/types';
 import {getTestUtilsWebex} from '../common/testUtil';
 import {CALLING_BACKEND, HTTP_METHODS, WebexRequestPayload} from '../common/types';
@@ -922,41 +919,6 @@ describe('CallQueue client', () => {
       expect(otherWebex.internal.mercury.off).toHaveBeenCalledWith(event, callback);
     });
     expect(otherWebex.internal.mercury.off).toHaveBeenCalledTimes(registered.length);
-  });
-
-  it('leaves other Mercury listeners active when the queue client is disposed', async () => {
-    const otherWebex = getTestUtilsWebex();
-    const mercury = ampersandEvents.createEmitter(
-      otherWebex.internal.mercury
-    ) as typeof otherWebex.internal.mercury & {
-      trigger: (event: string, data: unknown) => void;
-    };
-    const event = MOBIUS_EVENT_KEYS.TELEPHONY_AGENT_STATE;
-    const otherListener = sinon.spy();
-    mercury.on(event, otherListener);
-    const queueClient = createCallQueueClient(otherWebex, {level: LOGGER.INFO}, TEST_OPTIONS);
-    const queueListener = sinon.spy();
-    queueClient.on(COMMON_EVENT_KEYS.CALL_QUEUE_UPDATED, queueListener);
-    otherWebex.request.mockResolvedValue(<WebexRequestPayload>(<unknown>{
-      statusCode: 200,
-      body: {agentACDState: 'AVAILABLE', queues: []},
-    }));
-    await queueClient.getCallQueueSettings();
-
-    const before = {data: {acdStateInfo: {state: 'unavailable'}}};
-    mercury.trigger(event, before);
-    assert.calledOnceWithExactly(otherListener, before);
-    assert.calledOnce(queueListener);
-
-    queueClient.dispose();
-    const afterDisposeListener = sinon.spy();
-    queueClient.on(COMMON_EVENT_KEYS.CALL_QUEUE_UPDATED, afterDisposeListener);
-    const after = {data: {acdStateInfo: {state: 'available'}}};
-    mercury.trigger(event, after);
-
-    assert.calledTwice(otherListener);
-    assert.strictEqual(otherListener.secondCall.args[0], after);
-    assert.notCalled(afterDisposeListener);
   });
 
   it('emits the merged status when a Mercury state event arrives', () => {

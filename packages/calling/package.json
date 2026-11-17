@@ -79,7 +79,6 @@
     "@webex/test-helper-chai": "workspace:*",
     "@webex/test-helper-mock-web-socket": "workspace:*",
     "@webex/test-helper-mock-webex": "workspace:*",
-    "ampersand-events": "^2.0.2",
     "chai": "4.3.4",
     "cspell": "5.19.2",
     "esbuild": "^0.17.19",
