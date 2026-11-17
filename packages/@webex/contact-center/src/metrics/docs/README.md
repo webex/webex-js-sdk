@@ -87,8 +87,7 @@ Related context: [documentation index](../../../docs/index.md) ·
 
 ## Purpose and boundary
 
-- Responsibility: Own timing, taxonomy, queuing, payload preparation, and submission for Contact Center behavioral, operational, and business telemetry. Metrics is one of nine Contact Center SDK modules in the manifest.
-- Purpose: Track behavioral, operational, and business metrics for Contact Center SDK operations using a singleton `MetricsManager`. Provides event timing, payload preparation, batching, and submission to the Webex metrics backend.
+- Responsibility: Track behavioral, operational, and business metrics for Contact Center SDK operations using a singleton `MetricsManager`. Provides event timing, behavioral taxonomy, in-memory queuing until the host Webex SDK is ready, payload preparation, and submission to the Webex metrics backend.
 - In scope: the `METRIC_EVENT_NAMES` catalog, the behavioral taxonomy map, timers, the three pending queues, payload cleanup, name transforms, the readiness and disabled gates, and the AQM tracking-field helpers.
 - Also in scope, as the telemetry contract dashboards and support read: the payload fields of the Webex Together (`WXAPP_*`) metrics and the console search terms that pair their `WXCC_SDK_WXAPP_*` wire names with `[CC wxApp]` diagnostic lines. The calling modules own the call sites; this spec owns what the emitted names and fields mean.
 - Out of scope: the call sites that decide when an operation emits a metric (the calling modules), transport, batching, and authentication to the metrics backend (`@webex/internal-plugin-metrics` and the host Webex SDK), and the implementation of the `[CC wxApp]` diagnostic logging helpers (`src/services/wxAppDiagnosticLogging.ts`, specified with the services layer in [the services spec](../../services/docs/README.md)).
@@ -96,15 +95,6 @@ Related context: [documentation index](../../../docs/index.md) ·
 - Stack: TypeScript 5.4 singleton service, Webex internal metrics APIs, LoggerProxy, Jest 27.
 
 ## Structure and key files
-
-```text
-src/metrics/
-├── MetricsManager.ts
-├── behavioral-events.ts
-├── constants.ts
-└── docs/
-    └── README.md
-```
 
 | Path | Responsibility |
 | --- | --- |
@@ -342,7 +332,7 @@ Special events (no success/failure pair):
 - `WEBSOCKET_EVENT_RECEIVED` — **no** behavioral taxonomy (not in `eventTaxonomyMap`)
 - `WXAPP_SESSION_SKIPPED` — has behavioral taxonomy (`wxcc_sdk.user.webex_together_session_init.ignore`)
 
-Of the 121 defined metric names, 97 have behavioral taxonomy and 24 do not. The unmapped names are the eight original `AI_ASSISTANT_*` names, three Agent Wellness Break `AI_ASSISTANT_WELLNESS_*` names, two `WELLBEING_BREAK_IDLE_CODE_FETCH_*` names, eight `AI_SUMMARY_*` names, and three WebSocket names (`WEBSOCKET_DEREGISTER_SUCCESS`, `WEBSOCKET_DEREGISTER_FAIL`, and `WEBSOCKET_EVENT_RECEIVED`). Agent Wellness Break and AI summary metrics are intentionally operational-only.
+The 24 unmapped names are the eight original `AI_ASSISTANT_*` names, three Agent Wellness Break `AI_ASSISTANT_WELLNESS_*` names, two `WELLBEING_BREAK_IDLE_CODE_FETCH_*` names, eight `AI_SUMMARY_*` names, and three WebSocket names (`WEBSOCKET_DEREGISTER_SUCCESS`, `WEBSOCKET_DEREGISTER_FAIL`, and `WEBSOCKET_EVENT_RECEIVED`). Agent Wellness Break and AI summary metrics are intentionally operational-only.
 
 ### Webex Together behavioral taxonomy
 
@@ -419,7 +409,7 @@ Every Webex Together metric is tracked with `['operational', 'behavioral']`.
 
 ## Design overview
 
-Metrics separates its stable consumption boundary from collaborators so ownership and failure behavior stay explicit. Telemetry is deliberately non-blocking and queue-backed so product behavior never waits for metrics; failures are logged rather than propagated.
+Metrics separates its stable consumption boundary from collaborators so ownership and failure behavior stay explicit. Telemetry is deliberately non-blocking and queue-backed so product behavior never waits for metrics; failures are logged rather than propagated (Key design trade-off records the cost).
 
 - **Singleton Pattern**: Single `MetricsManager` instance shared across the entire SDK
 - **Three Metric Types**: Behavioral (user actions), operational (system events), business (business-level analytics)
@@ -447,14 +437,6 @@ Each metric event name maps to a `BehavioralEventTaxonomy` with four fields, dec
 > **Note**: The 24 names catalogued above as lacking `eventTaxonomyMap` entries, including the five wellness-related names, are operational-only; Pitfalls and constraints records what happens when one reaches the behavioral category.
 
 Participant Drop uses target `task_conference_participant_drop` with `complete` for success and `fail` for failure. Its metric payload is limited to task/request correlation and standard AQM tracking fields; participant IDs, numbers, names, URLs, headers, and raw routing payloads are excluded.
-
-MetricsManager is designed to be non-blocking and does not throw errors to callers. Metric failures do not propagate to callers:
-
-- If `webex` is not yet ready, events are queued in `pendingBehavioralEvents`, `pendingOperationalEvents`, or `pendingBusinessEvents`
-- Once `webex.ready` fires, all pending events are flushed
-- Invalid metric types are logged via `LoggerProxy.error`
-- Empty `timeEvent` key arrays are logged and ignored
-- Disabled state (`metricsDisabled`) prevents both timing and tracking and silently drops new events
 
 ## Data flow and sequence coverage
 
@@ -564,8 +546,6 @@ classDiagram
 
 `MetricsManager` uses a private constructor with a static `getInstance` factory ([MetricsManager.ts](../MetricsManager.ts)): `getInstance(options?: {webex: WebexSDK})` creates the private static `instance` with `new MetricsManager()` when none exists, calls `setWebex(options.webex)` only while the instance has no `webex` and options carry one, and returns the instance.
 
-- The Webex SDK instance is set once via `setWebex()`, which listens for the `ready` event before flushing pending queues.
-
 ## Use cases and flows
 
 | Use case | Actor or caller | Primary steps and outcome | Failure or boundary behavior | Evidence |
@@ -574,19 +554,6 @@ classDiagram
 | `UC-002` | `ContactCenter` READY callback and service constructors | Queue until SDK readiness: events remain in the behavioral/operational/business pending queues until the host is ready, then the ready callback drains them. | Events tracked before `getInstance({webex})` also wait; nothing is persisted across reloads | `src/metrics/MetricsManager.ts`, `test/unit/spec/metrics/MetricsManager.ts` |
 | `UC-003` | Any tracking caller | Submit event categories: each requested metric service uses its matching `webex.internal.newMetrics` submission method; taxonomy is applied only where `eventTaxonomyMap` contains the name. | Unknown category logged; unmapped behavioral name breaks the drain (Pitfalls and constraints) | `src/metrics/MetricsManager.ts`, `src/metrics/behavioral-events.ts`, `test/unit/spec/metrics/MetricsManager.ts` |
 | `UC-004` | `WebexCrossClientService` usersub publish | Times the publish, tracks success or failure, and cancels the timer when a newer teardown or disable makes the result stale | `cancelTimedEvent` runs only while the publish still owns the timer (`usersubPublishMetricsId`) | `src/services/WebexCrossClientService.ts`, `test/unit/spec/services/WebexCrossClientService.ts` |
-
-```typescript
-import MetricsManager from '../metrics/MetricsManager';
-import {METRIC_EVENT_NAMES} from '../metrics/constants';
-
-// Get the singleton instance (webex is set during the ContactCenter READY callback)
-const metrics = MetricsManager.getInstance();
-
-// Time an operation, then track its result
-metrics.timeEvent(METRIC_EVENT_NAMES.STATION_LOGIN_SUCCESS);
-// ... perform the operation ...
-metrics.trackEvent(METRIC_EVENT_NAMES.STATION_LOGIN_SUCCESS, {agentId: '123'});
-```
 
 The standard pattern used throughout the Contact Center SDK (as in `cc.ts` station login, which also adds `loginType` and other fields):
 

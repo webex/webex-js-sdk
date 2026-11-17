@@ -113,27 +113,27 @@ Related context: [documentation index](../../../../docs/index.md) ·
 
 ```text
 src/services/task/
-├── Task.ts                  # Task class (ITask implementation)
-├── TaskManager.ts           # Singleton task manager
-├── TaskFactory.ts           # Task factory
-├── contact.ts               # Contact operations (AQM)
-├── dialer.ts                # Outbound dialing (AQM)
-├── AutoWrapup.ts            # Auto wrapup handler
-├── TaskUtils.ts             # Helper functions
-├── WebexCallingUtils.ts     # Webex Calling participant device helpers
-├── taskDataNormalizer.ts    # Task data normalization helpers
-├── types.ts                 # Task types and events
-├── constants.ts             # Task constants
-├── digital/                 # Digital task implementations
+├── Task.ts
+├── TaskManager.ts
+├── TaskFactory.ts
+├── contact.ts
+├── dialer.ts
+├── AutoWrapup.ts
+├── TaskUtils.ts
+├── WebexCallingUtils.ts
+├── taskDataNormalizer.ts
+├── types.ts
+├── constants.ts
+├── digital/
 │   └── Digital.ts
-├── voice/                   # Voice task implementations
+├── voice/
 │   ├── Voice.ts
 │   ├── WebRTC.ts
 │   ├── wxAppVoiceMethods.ts
 │   └── wxAppOfferObservability.ts
-├── state-machine/           # XState task lifecycle engine (sub-module)
+├── state-machine/
 └── docs/
-    └── README.md            # This module specification
+    └── README.md
 ```
 
 | Path | Responsibility |
@@ -642,53 +642,45 @@ promotes a new primary Agent, existing SDK tasks publish the updated owner throu
 `task:hydrate` event so widgets immediately recompute the Primary label, icon, and Drop permission.
 There is no public API, routing-event, state-machine transition, Participant Drop request, or widget
 contract change. TASK-R-010 states the correlation and recovery rule; this subsection records the
-mechanism.
+mechanism and why each part exists.
 
-Primary-Agent promotion remains backend-authoritative and follows the two-event
-desktop contract. `ContactOwnerChanged` updates the promoted Agent; TaskManager
-prefers an exact task, then one unique related task resolved through nested
-main/parent identifiers, the task collection key, or the `mainCall` media-map
-identity. The incoming snapshot's owner proof permits an authoritative promotion payload to repair a
-stale child-keyed snapshot. The update keeps the surviving main interaction identity even when the
-notification names a promoted-Agent child interaction. The ignore and reject rules are the
-protections list below.
+- Remaining conference Agents receive `ContactUpdated`, not necessarily `ContactOwnerChanged`, so an
+  owner-changing `ContactUpdated` (non-empty `interaction.owner` that differs from the current owner)
+  maps to `CONTACT_OWNER_CHANGED`; the existing state-machine action synchronizes task data and emits
+  `task:hydrate`. Same-owner and owner-less updates remain data-only.
+- Exact-ID lookup stays first because it is the existing lookup contract. The related-task fallback
+  also reads the task collection key and the `mainCall` media-map key because some supported
+  owner-change payloads identify the surviving call through a child top-level ID and omit
+  `mainInteractionId`.
+- A local child task can be briefly stale when the owner-change payload first proves promotion, so the
+  incoming snapshot's owner proof can repair a stale child-keyed snapshot. The update keeps the
+  surviving main interaction identity even when the notification names a promoted-Agent child
+  interaction.
+- Participant Drop can deliver owner-change and participant-left notifications in either order. A late
+  `ParticipantLeftConference` that still names the departed participant as owner keeps the already
+  confirmed owner only when the new roster proves that confirmed owner remains active on `mainCall`
+  and explicitly names the incoming owner as `participantId` or marks it `hasLeft`. Main-call omission
+  alone is not departure evidence.
+- Recovery additionally requires a non-terminal telephony payload and a stable main interaction ID, and
+  does not use `toOwner`. A later canonical contact or merge event reuses the recovered task rather
+  than creating an alias.
 
-Recovery (TASK-R-010) is intentionally narrow. It also requires a non-terminal telephony payload and a
-stable main interaction ID, is rejected whenever any related task or canonical-key occupant already
-exists, does not use `toOwner`, and does not create a task for a missing owner-changing `ContactUpdated`
-event. A later canonical contact or merge event reuses the recovered task rather than creating an
-alias; missing, partial, departed, and non-promoted payloads are not recovered.
-
-For other surviving Agents, an owner-changing `ContactUpdated` is one whose non-empty
-`interaction.owner` differs from the current owner; same-owner or owner-less updates remain data-only.
-A late `ParticipantLeftConference` that still names the departed participant as owner keeps the
-already confirmed owner only when the new roster proves that confirmed owner remains active on
-`mainCall` and explicitly names the incoming owner as `participantId` or marks it `hasLeft`. Main-call
-omission alone is not departure evidence. The SDK never chooses the successor locally.
-
-| Behavior | Why it remains | Existing-flow impact |
-| -------- | -------------- | -------------------- |
-| Map an owner-changing `ContactUpdated` to `CONTACT_OWNER_CHANGED` | Remaining conference Agents receive `ContactUpdated`, not necessarily `ContactOwnerChanged`. The existing state-machine action synchronizes task data and emits `task:hydrate`. | Preserves immediate owner/Primary UI updates without adding a new public event or state transition. Same-owner and owner-less updates remain data-only. |
-| Resolve `ContactOwnerChanged` by exact ID before related IDs | Exact identity remains the safest and existing lookup contract. | Existing exact task routing is unchanged. |
-| Resolve one unique related task using nested interaction IDs, the collection key, or the `mainCall` media-map key | Some supported owner-change payloads identify the surviving call through a child top-level ID and omit `mainInteractionId`. | Preserves cross-channel promotion across the documented payload variants. |
-| Accept current-Agent main-leg evidence from the existing task or authoritative incoming promotion | A local child task can be briefly stale when the owner-change payload first proves promotion. | Preserves the stale-snapshot fix. |
-| Preserve a confirmed owner across a late `ParticipantLeftConference` snapshot that still names the departed owner | Participant Drop can deliver owner change and participant-left notifications in either order. | Prevents the Primary UI from reverting after it has already received the authoritative new owner. |
-
-Owner-change correlation and recovery retain the following protections:
+Owner-change correlation and recovery retain the following protections. This list is the single home
+for the owner-change ignore rules; an ignored event produces no task event:
 
 - generic lifecycle-event correlation is unchanged; collection-key and media-key matching are enabled only for `ContactOwnerChanged`;
 - only a task selected by the related-interaction fallback may be re-keyed;
 - conflicting task/payload main IDs are ignored;
-- a stable main key already owned by a different Task causes the event to be ignored; and
+- a stable main key already owned by a different Task causes the event to be ignored;
 - an exact child task is never normalized over a distinct main task;
 - aliases of the same Task object are deduplicated before uniqueness is tested;
-- consult-only and ambiguous matches are rejected.
+- consult-only and ambiguous matches are ignored: a related task is a candidate only when its snapshot shows the current Agent active on `mainCall`, or the incoming payload names the current Agent as `interaction.owner` with the same active main-leg membership, and more than one candidate is ambiguous; and
+- recovery is skipped whenever any related task or canonical-key occupant already exists.
 
 These protections prevent the scenario where an exact child task could be normalized to a main key and
 silently replace the actual main Task, orphaning its listeners and resources. The resulting event flow
 is the Owner change diagram in Data flow and sequence coverage; `ParticipantLeftConference` continues
-through its existing event/state-machine path, no client elects a successor, and no Drop completion
-fabricates an owner.
+through its existing event/state-machine path, and no Drop completion fabricates an owner (INV-005).
 
 ### RTD and AI Assistant event routing
 
@@ -783,7 +775,7 @@ calls.
 | wxApp telephony | `accept`, `decline`, `toggleMute`, `transmitDtmf` on a wxApp Voice task call `AnswerCallOnWebexService` | wxApp telephony | Validation errors and REST failures are mapped and rethrown; accept clears the answer-pending flag on failure; mute sync retries 3 times at 50 ms while the call ID is unknown |
 | Outdial and preview campaign | `cc.startOutdial` and the three preview methods call `aqmDialer`; the task arrives through TaskManager | Outdial and preview campaign | Disabled skip or remove throws before transport; preview accept times out at 80000 ms; failure notifications reject and emit `task:outdialFailed` or `task:campaignPreview*Failed` |
 | ContactMerged and participant departure | `ContactMerged` removes the EP-DN child and publishes `task:merged`; `ParticipantLeftConference` is correlated to one task | ContactMerged and participant departure | Ambiguous related matches and events without correlation IDs are ignored |
-| Owner change | `ContactOwnerChanged` or owner-changing `ContactUpdated` yields one `task:hydrate` | Owner change | Ambiguous, conflicting, consult-only, or non-promoted payloads are ignored; recovery is limited to a complete promotion payload |
+| Owner change | `ContactOwnerChanged` or owner-changing `ContactUpdated` yields one `task:hydrate` | Owner change | Payloads that fail the owner-change protections (Contact owner change propagation) are ignored; recovery is limited to a complete promotion payload (TASK-R-010) |
 | RTD transcript and suggestion routing | Transcript start or stop events go out on CC events; RTD frames are emitted on the owning task | RTD transcript routing | Parse errors and unknown tasks are logged and dropped; acknowledgement frames are not emitted; start or stop failures are logged |
 | AI summary | Summary request resolves on the RTD summary frame | AI summary request | Disabled flags, POST failure, and the 15-second RTD deadline reject |
 
@@ -1122,7 +1114,7 @@ sequenceDiagram
       TM->>Task: re-key to main interaction, CONTACT_OWNER_CHANGED
     else no related task and a complete promotion payload
       TM->>Task: create, internal HYDRATE before listeners, CONTACT_OWNER_CHANGED
-    else conflicting, ambiguous, consult-only, or occupied key
+    else an owner-change protection fails
       TM->>TM: ignore
     end
   else other surviving Agent
@@ -1333,7 +1325,7 @@ isSecondaryEpDnAgent(interaction);
 | `UC-003` | Host application | Consult/transfer/conference: Voice coordinates contact routing with initiating/stable actor states and emits the corresponding complete `TASK_EVENTS` contract. | Failure notifications drive failure events; queue consult transfer needs an accepting agent | `src/services/task/voice/Voice.ts`, `src/services/task/types.ts`, `test/unit/spec/services/task/voice/Voice.ts` |
 | `UC-004` | Host application and backend | Wrapup/end: backend end/wrapup notifications drive WRAPPING_UP and final COMPLETED/TERMINATED outcomes without collapsing them into one result. | Missing wrap-up fields reject locally | `src/services/task/Task.ts`, `test/unit/spec/services/task/Task.ts` |
 | `UC-005` | Host application on a wxApp, BROWSER, or digital login | Receives the channel-specific task TaskFactory selected (TASK-R-001) and calls the same `ITask` methods | Methods the channel does not support throw `Unsupported operation` | `src/services/task/TaskFactory.ts`, `test/unit/spec/services/task/TaskFactory.ts` |
-| `UC-006` | Backend and surviving agents | Primary-Agent promotion reaches every surviving agent as one `task:hydrate` | Ambiguous or non-promoted payloads are ignored | `src/services/task/TaskManager.ts`, `test/unit/spec/services/task/TaskManager.ts` |
+| `UC-006` | Backend and surviving agents | Primary-Agent promotion reaches every surviving agent as one `task:hydrate` | Payloads that fail the owner-change protections are ignored | `src/services/task/TaskManager.ts`, `test/unit/spec/services/task/TaskManager.ts` |
 | `UC-007` | Host application | Requests a post-call or mid-call summary and reports the agent's response | Disabled flags, POST failure, or the RTD deadline reject | `src/services/task/Task.ts`, `test/unit/spec/services/task/Task.ts` |
 
 > **Host-application example:** This consumer callback performs task operations without logging raw interaction data.
@@ -1559,14 +1551,14 @@ Use `test/unit/spec/services/task/Task.ts`, `TaskFactory.ts`, `TaskManager.ts`, 
 | `TASK-R-009` | Unit | `test/unit/spec/cc.ts`, `test/unit/spec/services/task/TaskFactory.ts`, `test/unit/spec/services/task/state-machine/uiControlsComputer.ts` | None found | None |
 | `TASK-R-010`, `INV-005` | Unit | `test/unit/spec/services/task/TaskManager.ts` (Contact owner propagation), `test/unit/spec/services/task/Task.ts` | `test/unit/spec/services/task/TaskManager.ts` consult-only, ambiguous, and distinct-canonical-key cases | None |
 | `TASK-R-011`, `INV-006` | Unit | `test/unit/spec/services/task/TaskManager.ts`, `test/unit/spec/services/task/voice/Voice.ts`, `test/unit/spec/services/task/Task.ts`, `test/unit/spec/services/task/state-machine/TaskStateMachine.ts` | `test/unit/spec/services/task/TaskManager.ts` remaining-agent stamping cases | None |
+| `TASK-R-012` | Unit | `test/unit/spec/services/task/Task.ts` stale media and participants case | `test/unit/spec/services/task/Task.ts` partial-update case | `normalizeTaskData` has no dedicated suite |
 | `TASK-R-013` | Unit | `test/unit/spec/services/task/Task.ts` (Task AI summary APIs), `test/unit/spec/services/ApiAiAssistant.ts` | `test/unit/spec/services/task/Task.ts` disabled and timeout cases | None |
 | `TASK-R-014` | Unit | `test/unit/spec/services/task/TaskManager.ts` | `test/unit/spec/services/task/TaskManager.ts` case dropping a receiving summary held for a ringing task | No expiry bounds the pending maps |
-| `TASK-R-012` | Unit | `test/unit/spec/services/task/Task.ts` stale media and participants case | `test/unit/spec/services/task/Task.ts` partial-update case | `normalizeTaskData` has no dedicated suite |
 
 The focused TaskManager tests cover owner-changing versus data-only
 `ContactUpdated`, exact and child-keyed correlation, collection-key and
 `mainCall` media-key payloads, stale incoming promotion evidence, consult-only
-and ambiguous rejection, narrow missing-task recovery, listener/alias safety,
+and ambiguous ignore cases, narrow missing-task recovery, listener/alias safety,
 later `AgentContact` and `ContactMerged` reuse, exact-child/main-task collision
 protection, and both owner-change/participant-left orders (the Contact owner propagation block of
 `test/unit/spec/services/task/TaskManager.ts`).
