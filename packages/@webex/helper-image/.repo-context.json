@@ -6,8 +6,7 @@
     "purpose": "A Webex JavaScript SDK helper package that reads EXIF orientation onto image files, resolves their MIME type, and measures and thumbnails them through separate Node and browser implementations."
   },
   "commands": {
-    "install": "yarn install",
-    "compile": "[NEEDS HUMAN INPUT] -- no standalone compile step exists: the sources are JavaScript transpiled by Babel as part of build:src, and package.json declares no typecheck or compile-only target.",
+    "install": "yarn",
     "build": "yarn workspace @webex/helper-image build",
     "unit-test": "yarn workspace @webex/helper-image test:unit",
     "browser-test": "yarn workspace @webex/helper-image test:browser",
@@ -228,7 +227,7 @@
         "Which processImage implementation each consumer resolves, plus the published entry points"
       ],
       "refresh_with": [
-        "yarn install",
+        "yarn",
         "yarn workspace @webex/helper-image build"
       ],
       "validate_with": [

@@ -6,16 +6,14 @@
     "purpose": "A Webex internal plugin for AI-generated call summary retrieval. Resolves a Pragya container for a call, fetches AI Bridge summary, notes, action-item, and transcript content, and returns it decrypted through the Webex KMS encryption plugin."
   },
   "commands": {
-    "install": "yarn install",
-    "build": "yarn build",
-    "lint": "yarn test:style",
-    "unit-test": "yarn test:unit",
-    "all-checks": "yarn test",
-    "compile": "yarn build:src",
-    "test-all": "yarn test",
-    "deploy": "yarn deploy:npm",
-    "manual-pragya-check": "node src/manual-pragya-api-test.js",
-    "manual-integration-check": "node src/manual-integration-test.js"
+    "install": "yarn",
+    "build": "yarn workspace @webex/internal-plugin-call-ai-summary build",
+    "lint": "yarn workspace @webex/internal-plugin-call-ai-summary test:style",
+    "unit-test": "yarn workspace @webex/internal-plugin-call-ai-summary test:unit",
+    "all-checks": "yarn workspace @webex/internal-plugin-call-ai-summary test",
+    "compile": "yarn workspace @webex/internal-plugin-call-ai-summary build:src",
+    "test-all": "yarn workspace @webex/internal-plugin-call-ai-summary test",
+    "deploy": "yarn workspace @webex/internal-plugin-call-ai-summary deploy:npm"
   },
   "public_interfaces": [
     {
@@ -59,10 +57,10 @@
         "dist/"
       ],
       "refresh_with": [
-        "yarn build"
+        "yarn workspace @webex/internal-plugin-call-ai-summary build"
       ],
       "validate_with": [
-        "yarn test:style"
+        "yarn workspace @webex/internal-plugin-call-ai-summary test:style"
       ]
     },
     {
@@ -74,10 +72,10 @@
         "dist/"
       ],
       "refresh_with": [
-        "yarn build"
+        "yarn workspace @webex/internal-plugin-call-ai-summary build"
       ],
       "validate_with": [
-        "yarn test:style"
+        "yarn workspace @webex/internal-plugin-call-ai-summary test:style"
       ]
     },
     {
@@ -98,7 +96,7 @@
     {
       "path": "dist/",
       "generated_from": "src/",
-      "refresh_with": "yarn build"
+      "refresh_with": "yarn workspace @webex/internal-plugin-call-ai-summary build"
     },
     {
       "path": ".sdd/templates/repo-standards/template-map.json",
@@ -112,11 +110,11 @@
         "src/**/*.ts"
       ],
       "minimum": [
-        "yarn test:style"
+        "yarn workspace @webex/internal-plugin-call-ai-summary test:style"
       ],
       "recommended": [
-        "yarn build",
-        "yarn test:unit"
+        "yarn workspace @webex/internal-plugin-call-ai-summary build",
+        "yarn workspace @webex/internal-plugin-call-ai-summary test:unit"
       ]
     },
     {
@@ -141,10 +139,10 @@
         "every consumer of webex.internal.aisummary"
       ],
       "refresh_with": [
-        "yarn build"
+        "yarn workspace @webex/internal-plugin-call-ai-summary build"
       ],
       "validate_with": [
-        "yarn test:style"
+        "yarn workspace @webex/internal-plugin-call-ai-summary test:style"
       ],
       "avoid_direct_edits": [
         "dist/"
@@ -160,7 +158,7 @@
       ],
       "refresh_with": [],
       "validate_with": [
-        "yarn test:style"
+        "yarn workspace @webex/internal-plugin-call-ai-summary test:style"
       ],
       "avoid_direct_edits": [
         "dist/"
@@ -192,7 +190,7 @@
         "package.json"
       ],
       "requirement": "A command must appear in package.json scripts before it is documented.",
-      "notes": "yarn test:unit runs 35 tests from test/unit/spec/ai-summary.ts."
+      "notes": "yarn workspace @webex/internal-plugin-call-ai-summary test:unit runs 35 tests from test/unit/spec/ai-summary.ts."
     },
     {
       "claim_category": "behavior_claim",
@@ -279,7 +277,7 @@
           "dist/"
         ],
         "generated_from": "src/",
-        "refresh_with": "yarn build",
+        "refresh_with": "yarn workspace @webex/internal-plugin-call-ai-summary build",
         "notes": "Never edit directly."
       },
       {
@@ -305,13 +303,13 @@
     "validation_entrypoints": [
       {
         "name": "lint",
-        "command": "yarn test:style",
+        "command": "yarn workspace @webex/internal-plugin-call-ai-summary test:style",
         "scope": "src/**/*",
         "notes": "The only validation that currently exercises anything."
       },
       {
         "name": "unit",
-        "command": "yarn test:unit",
+        "command": "yarn workspace @webex/internal-plugin-call-ai-summary test:unit",
         "scope": "unit tests",
         "notes": "35 tests in test/unit/spec/ai-summary.ts."
       }
