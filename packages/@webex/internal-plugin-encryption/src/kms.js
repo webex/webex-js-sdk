@@ -11,7 +11,6 @@ import {WebexPlugin} from '@webex/webex-core';
 import {verifyUnionBundle} from '@webex/kms-caroots';
 import {Context, Request, Response} from 'node-kms';
 import jose from 'node-jose';
-import crypto from 'isomorphic-webcrypto';
 import {isArray, omit} from 'lodash';
 import uuid from 'uuid';
 
@@ -970,7 +969,7 @@ const KMS = WebexPlugin.extend({
       )
       .then(
         (bytes) =>
-          verifyUnionBundle(bytes, {crypto, minBundleVersion: UNION_BUNDLE_VERSION}).then(
+          verifyUnionBundle(bytes, {minBundleVersion: UNION_BUNDLE_VERSION}).then(
             ({caroots, bundleVersion, signingTime}) => {
               const ageInDays = Math.floor((new Date() - signingTime) / 86400000);
 

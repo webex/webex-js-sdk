@@ -36,7 +36,7 @@ yarn
 ```
 
 The workspace `deploy.yml` workflow installs with the same command. Run it again whenever the
-lockfile changes: this package pins `asn1js` 3.0.10 and `pkijs` 3.3.3 and depends on the workspace
+lockfile changes: this package pins `pkijs` 3.3.3 and depends on the workspace
 package `@webex/kms-caroots`, and an older install lacks both (see [Tests](#tests)).
 
 On a fresh checkout, prebuild the workspace before the first package build. `yarn` does not build

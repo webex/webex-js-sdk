@@ -47,7 +47,7 @@ workspace root, `yarn workspace @webex/internal-plugin-encryption <script>` runs
 
 | Task                   | Command |
 | ---------------------- | ------- |
-| Install dependencies   | `yarn` (workspace root; rerun it after lockfile changes, since this package pins `asn1js` and `pkijs` and needs the `@webex/kms-caroots` link); on a fresh checkout run `yarn prebuild:modules` once |
+| Install dependencies   | `yarn` (workspace root; rerun it after lockfile changes, since this package pins `pkijs` and needs the `@webex/kms-caroots` link); on a fresh checkout run `yarn prebuild:modules` once |
 | Start dev environment  | N/A — library package with no start script in `package.json` |
 | Run tests              | `yarn build:src`, then `yarn test:unit` (the unit specs import `dist/`) |
 | Run linters            | `yarn test:style` |

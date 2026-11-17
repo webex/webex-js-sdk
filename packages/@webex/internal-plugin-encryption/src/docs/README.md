@@ -179,7 +179,7 @@ contracts `encryption-key-cache-entry`, `encryption-kms-events`, and `cisco-unio
 | `@webex/http-core` (spec consulted) | `Interceptor` base of the test-only interceptor | — |
 | `@webex/kms-caroots` (no spec; code consulted) | `verifyUnionBundle` for the CA-roots asset; `loadUnionBundle` in the refresh script | A verification rejection becomes a KMSError (see Caller-visible failure modes) |
 | `node-kms`, `node-jose`, `node-scr` | KMS message wrapping and ECDH; JWE and JWK; SCR | Their errors propagate as rejections |
-| `pkijs` 3.3.3, `asn1js` 3.0.10, `isomorphic-webcrypto`, `safe-buffer`, `valid-url` | Certificate parsing and chain verification; WebCrypto; base64 decoding; kid URI check | Pinned exact versions; an older root install breaks bundle parsing (see Verification) |
+| `pkijs` 3.3.3 | Certificate parsing and chain verification, using the runtime `globalThis.crypto` for WebCrypto | Pinned exact version, matching `@webex/kms-caroots`; an older root install breaks bundle parsing (see Verification) |
 | `lodash`, `uuid`, `debug` | Helpers, CMK request ids, and the `kms` debug channel for timeouts | — |
 | `@webex/test-helper-file` | Listed in `dependencies`, but no file under src imports it | — |
 | Encryption service, KMS, files service, Union bundle host (external) | Key operations and file download URLs; CA roots | See Cross-boundary use-case flow |
