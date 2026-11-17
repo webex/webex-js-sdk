@@ -9,8 +9,8 @@ doc_kind: module-spec
 generated_from: module-spec@0.3.0
 generated_by: claude-code
 approved_by: rarajes2@cisco.com
-updated_at: 2026-11-16T14:00:00Z
-validation_status: not-run
+updated_at: 2026-11-17T00:00:00Z
+validation_status: blocked
 -->
 
 # Services
@@ -41,7 +41,7 @@ Related context: [documentation index](../../../docs/index.md) ·
 | Parent spec | [Contact Center SDK package spec](../../docs/README.md) |
 | Doc kind | Module spec |
 | Coverage score | Pending coverage assessment |
-| Validation status | not-run — independent validation pending in another runtime |
+| Validation status | blocked — assessed 2026-11-17; validator runtime 01a1e76f-2293-79a0-9f8f-f060038448dd; package gate has 3 Blocking findings (A0, MET-B5, TASK-T-02). |
 
 ## Applicability
 

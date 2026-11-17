@@ -11,8 +11,8 @@ doc_kind: standing-doc
 generated_from: adr@0.3.0
 generated_by: claude-code
 approved_by: rarajes2@cisco.com
-updated_at: 2026-11-16T14:00:00Z
-validation_status: not-run
+updated_at: 2026-11-17T00:00:00Z
+validation_status: blocked
 -->
 
 # ADR-0001 - Migrate legacy Contact Center AI docs into canonical SDD specs

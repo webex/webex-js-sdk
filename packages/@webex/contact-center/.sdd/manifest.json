@@ -185,7 +185,7 @@
       "path": "src",
       "canonical_spec": "src/docs/README.md",
       "coverage_status": "Partial",
-      "coverage_evidence": "Canonical spec is structurally complete with 15/15 required documentation fields and source/test evidence mapped by requirement. Independent PR #5088 remediation validation completed on claude-code (2026-07-15); coverage remains Partial until post-baseline promotion criteria are satisfied. Migrated on 2026-11-16 from the older ai-docs layout to the source-local repo-standards spec; coverage is carried, not reassessed, and a fresh coverage review and independent validation are pending.",
+      "coverage_evidence": "Canonical spec is structurally complete with 15/15 required documentation fields and source/test evidence mapped by requirement. Independent PR #5088 remediation validation completed on claude-code (2026-07-15); coverage remains Partial until post-baseline promotion criteria are satisfied. Migrated on 2026-11-16 from the older ai-docs layout to the source-local repo-standards spec; coverage is carried, not reassessed, and coverage review remains pending. Independent validation on 2026-11-17 is blocked (3 Blocking findings; validator runtime 01a1e76f-2293-79a0-9f8f-f060038448dd); no coverage promotion was performed.",
       "contracts": {
         "provides": [
           "contact-center-sdk"
@@ -235,7 +235,7 @@
       "path": "src/metrics",
       "canonical_spec": "src/metrics/docs/README.md",
       "coverage_status": "Partial",
-      "coverage_evidence": "Canonical spec is structurally complete with 15/15 required documentation fields and source/test evidence mapped by requirement. Independent PR #5088 remediation validation completed on claude-code (2026-07-15); coverage remains Partial until post-baseline promotion criteria are satisfied. Migrated on 2026-11-16 from the older ai-docs layout to the source-local repo-standards spec; coverage is carried, not reassessed, and a fresh coverage review and independent validation are pending.",
+      "coverage_evidence": "Canonical spec is structurally complete with 15/15 required documentation fields and source/test evidence mapped by requirement. Independent PR #5088 remediation validation completed on claude-code (2026-07-15); coverage remains Partial until post-baseline promotion criteria are satisfied. Migrated on 2026-11-16 from the older ai-docs layout to the source-local repo-standards spec; coverage is carried, not reassessed, and coverage review remains pending. Independent validation on 2026-11-17 is blocked (3 Blocking findings; validator runtime 01a1e76f-2293-79a0-9f8f-f060038448dd); no coverage promotion was performed.",
       "contracts": {
         "provides": [
           "contact-center-metrics"
@@ -283,7 +283,7 @@
       "path": "src/services",
       "canonical_spec": "src/services/docs/README.md",
       "coverage_status": "Partial",
-      "coverage_evidence": "Canonical spec is structurally complete with 15/15 required documentation fields and source/test evidence mapped by requirement. Independent PR #5088 remediation validation completed on claude-code (2026-07-15); coverage remains Partial until post-baseline promotion criteria are satisfied. Migrated on 2026-11-16 from the older ai-docs layout to the source-local repo-standards spec; coverage is carried, not reassessed, and a fresh coverage review and independent validation are pending.",
+      "coverage_evidence": "Canonical spec is structurally complete with 15/15 required documentation fields and source/test evidence mapped by requirement. Independent PR #5088 remediation validation completed on claude-code (2026-07-15); coverage remains Partial until post-baseline promotion criteria are satisfied. Migrated on 2026-11-16 from the older ai-docs layout to the source-local repo-standards spec; coverage is carried, not reassessed, and coverage review remains pending. Independent validation on 2026-11-17 is blocked (3 Blocking findings; validator runtime 01a1e76f-2293-79a0-9f8f-f060038448dd); no coverage promotion was performed.",
       "contracts": {
         "provides": [
           "contact-center-services"
@@ -331,7 +331,7 @@
       "path": "src/services/agent",
       "canonical_spec": "src/services/agent/docs/README.md",
       "coverage_status": "Partial",
-      "coverage_evidence": "Canonical spec is structurally complete with 15/15 required documentation fields and source/test evidence mapped by requirement. Independent PR #5088 remediation validation completed on claude-code (2026-07-15); coverage remains Partial until post-baseline promotion criteria are satisfied. Migrated on 2026-11-16 from the older ai-docs layout to the source-local repo-standards spec; coverage is carried, not reassessed, and a fresh coverage review and independent validation are pending.",
+      "coverage_evidence": "Canonical spec is structurally complete with 15/15 required documentation fields and source/test evidence mapped by requirement. Independent PR #5088 remediation validation completed on claude-code (2026-07-15); coverage remains Partial until post-baseline promotion criteria are satisfied. Migrated on 2026-11-16 from the older ai-docs layout to the source-local repo-standards spec; coverage is carried, not reassessed, and coverage review remains pending. Independent validation on 2026-11-17 is blocked (3 Blocking findings; validator runtime 01a1e76f-2293-79a0-9f8f-f060038448dd); no coverage promotion was performed.",
       "contracts": {
         "provides": [
           "contact-center-agent-events"
@@ -379,7 +379,7 @@
       "path": "src/services/config",
       "canonical_spec": "src/services/config/docs/README.md",
       "coverage_status": "Partial",
-      "coverage_evidence": "Canonical spec is structurally complete with 15/15 required documentation fields and source/test evidence mapped by requirement. Independent PR #5088 remediation validation completed on claude-code (2026-07-15); coverage remains Partial until post-baseline promotion criteria are satisfied. Migrated on 2026-11-16 from the older ai-docs layout to the source-local repo-standards spec; coverage is carried, not reassessed, and a fresh coverage review and independent validation are pending.",
+      "coverage_evidence": "Canonical spec is structurally complete with 15/15 required documentation fields and source/test evidence mapped by requirement. Independent PR #5088 remediation validation completed on claude-code (2026-07-15); coverage remains Partial until post-baseline promotion criteria are satisfied. Migrated on 2026-11-16 from the older ai-docs layout to the source-local repo-standards spec; coverage is carried, not reassessed, and coverage review remains pending. Independent validation on 2026-11-17 is blocked (3 Blocking findings; validator runtime 01a1e76f-2293-79a0-9f8f-f060038448dd); no coverage promotion was performed.",
       "contracts": {
         "provides": [
           "contact-center-cc-events"
@@ -427,7 +427,7 @@
       "path": "src/services/core",
       "canonical_spec": "src/services/core/docs/README.md",
       "coverage_status": "Partial",
-      "coverage_evidence": "Canonical spec is structurally complete with 15/15 required documentation fields and source/test evidence mapped by requirement. Independent PR #5088 remediation validation completed on claude-code (2026-07-15); coverage remains Partial until post-baseline promotion criteria are satisfied. Migrated on 2026-11-16 from the older ai-docs layout to the source-local repo-standards spec; coverage is carried, not reassessed, and a fresh coverage review and independent validation are pending.",
+      "coverage_evidence": "Canonical spec is structurally complete with 15/15 required documentation fields and source/test evidence mapped by requirement. Independent PR #5088 remediation validation completed on claude-code (2026-07-15); coverage remains Partial until post-baseline promotion criteria are satisfied. Migrated on 2026-11-16 from the older ai-docs layout to the source-local repo-standards spec; coverage is carried, not reassessed, and coverage review remains pending. Independent validation on 2026-11-17 is blocked (3 Blocking findings; validator runtime 01a1e76f-2293-79a0-9f8f-f060038448dd); no coverage promotion was performed.",
       "contracts": {
         "provides": [
           "contact-center-core-transport"
@@ -477,7 +477,7 @@
       "path": "src/services/task",
       "canonical_spec": "src/services/task/docs/README.md",
       "coverage_status": "Partial",
-      "coverage_evidence": "Canonical spec is structurally complete with 15/15 required documentation fields and source/test evidence mapped by requirement. Independent PR #5088 remediation validation completed on claude-code (2026-07-15); AI summary method, delivery, enablement, and cleanup updates are pending independent review (2026-10-06); coverage remains Partial until post-baseline promotion criteria are satisfied. Migrated on 2026-11-16 from the older ai-docs layout to the source-local repo-standards spec; coverage is carried, not reassessed, and a fresh coverage review and independent validation are pending.",
+      "coverage_evidence": "Canonical spec is structurally complete with 15/15 required documentation fields and source/test evidence mapped by requirement. Independent PR #5088 remediation validation completed on claude-code (2026-07-15); AI summary method, delivery, enablement, and cleanup updates are pending independent review (2026-10-06); coverage remains Partial until post-baseline promotion criteria are satisfied. Migrated on 2026-11-16 from the older ai-docs layout to the source-local repo-standards spec; coverage is carried, not reassessed, and coverage review remains pending. Independent validation on 2026-11-17 is blocked (3 Blocking findings; validator runtime 01a1e76f-2293-79a0-9f8f-f060038448dd); no coverage promotion was performed.",
       "contracts": {
         "provides": [
           "contact-center-task-events"
@@ -528,7 +528,7 @@
       "path": "src/services/task/state-machine",
       "canonical_spec": "src/services/task/state-machine/docs/README.md",
       "coverage_status": "Partial",
-      "coverage_evidence": "Canonical spec is structurally complete with 15/15 required documentation fields and source/test evidence mapped by requirement. Independent PR #5088 remediation validation completed on claude-code (2026-07-15); coverage remains Partial until post-baseline promotion criteria are satisfied. Migrated on 2026-11-16 from the older ai-docs layout to the source-local repo-standards spec; coverage is carried, not reassessed, and a fresh coverage review and independent validation are pending.",
+      "coverage_evidence": "Canonical spec is structurally complete with 15/15 required documentation fields and source/test evidence mapped by requirement. Independent PR #5088 remediation validation completed on claude-code (2026-07-15); coverage remains Partial until post-baseline promotion criteria are satisfied. Migrated on 2026-11-16 from the older ai-docs layout to the source-local repo-standards spec; coverage is carried, not reassessed, and coverage review remains pending. Independent validation on 2026-11-17 is blocked (3 Blocking findings; validator runtime 01a1e76f-2293-79a0-9f8f-f060038448dd); no coverage promotion was performed.",
       "contracts": {
         "provides": [
           "contact-center-task-state-machine"
@@ -575,7 +575,7 @@
       "path": "src/utils",
       "canonical_spec": "src/utils/docs/README.md",
       "coverage_status": "Partial",
-      "coverage_evidence": "Canonical spec is structurally complete with 15/15 required documentation fields and source/test evidence mapped by requirement. Independent PR #5088 remediation validation completed on claude-code (2026-07-15); coverage remains Partial until post-baseline promotion criteria are satisfied. Migrated on 2026-11-16 from the older ai-docs layout to the source-local repo-standards spec; coverage is carried, not reassessed, and a fresh coverage review and independent validation are pending.",
+      "coverage_evidence": "Canonical spec is structurally complete with 15/15 required documentation fields and source/test evidence mapped by requirement. Independent PR #5088 remediation validation completed on claude-code (2026-07-15); coverage remains Partial until post-baseline promotion criteria are satisfied. Migrated on 2026-11-16 from the older ai-docs layout to the source-local repo-standards spec; coverage is carried, not reassessed, and coverage review remains pending. Independent validation on 2026-11-17 is blocked (3 Blocking findings; validator runtime 01a1e76f-2293-79a0-9f8f-f060038448dd); no coverage promotion was performed.",
       "contracts": {
         "provides": [
           "contact-center-page-cache"
@@ -1471,9 +1471,10 @@
     "blocking_severities": [
       "Blocking"
     ],
-    "validator_runtime": "[NEEDS HUMAN INPUT] independent validator runs later in another runtime",
+    "validator_runtime": "01a1e76f-2293-79a0-9f8f-f060038448dd",
     "validator_runtime_source": "invocation-input",
-    "runtime_fallback_tier": "different-runtime"
+    "runtime_fallback_tier": "different-runtime",
+    "validator_run_id": "01a1e76f-2293-79a0-9f8f-f060038448dd"
   },
   "layout": {
     "sdd_root": ".sdd",

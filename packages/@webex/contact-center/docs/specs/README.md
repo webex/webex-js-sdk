@@ -9,8 +9,8 @@ doc_kind: standing-doc
 generated_from: spec-index@0.3.0
 generated_by: claude-code
 approved_by: rarajes2@cisco.com
-updated_at: 2026-11-16T14:00:00Z
-validation_status: not-run
+updated_at: 2026-11-17T00:00:00Z
+validation_status: blocked
 -->
 
 # Specification registry
@@ -66,8 +66,8 @@ this package is a library: `package.json` has no start script or deployment desc
 | ↳ ↳ ↳ `src/services/task/state-machine/` | Own deterministic task lifecycle states, transition guards/actions, typed internal events, and state-derived UI-control availability. | Partial | `src/services/task/state-machine/docs/README.md` |
 | ↳ `src/utils/` | Own shared pagination contracts and the bounded in-memory page cache used by Contact Center data services. | Partial | `src/utils/docs/README.md` |
 
-All nine modules are `Partial` in `.sdd/manifest.json`; a coverage review and an independent
-validation are pending.
+All nine modules remain `Partial` in `.sdd/manifest.json`; coverage review is pending. Independent
+validation on 2026-11-17 is blocked by three Blocking findings. No coverage promotion was performed.
 
 Three documentation-only correction records from July 2026 (a validator drift fix, a residual-warning
 completion, and a conformance and fidelity remediation) are folded into the nine module specifications.
