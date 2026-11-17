@@ -207,6 +207,7 @@ The `encryptContact()` method is called for **both** `CUSTOM` and `CLOUD` contac
 | `SDKConnector` | Singleton bridge to Webex SDK |
 | `Logger` | Structured logging with file/method context |
 | `scimQuery` | Utility for querying SCIM to resolve CLOUD contacts (from `common/Utils.ts`) |
+| `escapeScimValue` | Escapes SCIM filter metacharacters in a contactId before it is placed into an `id eq "<value>"` clause (from `common/Utils.ts`) |
 | `serviceErrorCodeHandler` | Standardized error response formatting |
 | `uploadLogs` | Uploads diagnostic logs on errors |
 
@@ -301,6 +302,8 @@ CLOUD contacts are resolved via SCIM with filter queries:
 id eq "uuid1" or id eq "uuid2" or id eq "uuid3"...
 ```
 Batched in groups of 50. Uses the `scimQuery` utility from `common/Utils.ts`.
+
+Each contactId value is escaped with `escapeScimValue` (from `common/Utils.ts`) before it is interpolated into the quoted `id eq "<value>"` clause, both during batched resolution in `getContacts` and single-contact resolution after CLOUD contact creation. Escaping neutralizes SCIM filter metacharacters (backslash and double-quote) so a crafted contactId cannot break out of the quoted clause or alter the filter; a value with no metacharacters is embedded unchanged, so normal contactIds resolve identically.
 
 Resolved SCIM fields: `displayName`, `emails`, `phoneNumbers`, `photos` (avatar), `name.givenName`, `name.familyName`, `sipAddresses` (from `urn:scim:schemas:extension:cisco:webexidentity:2.0:User`), `manager`, `department` (from `urn:ietf:params:scim:schemas:extension:enterprise:2.0:User`).
 
