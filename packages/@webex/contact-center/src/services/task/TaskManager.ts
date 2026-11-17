@@ -25,6 +25,7 @@ import {
   getIsConferenceInProgress,
   isCampaignPreviewTask,
   isCampaignPreviewReservation,
+  isNonEmptyString,
   isSecondaryEpDnAgent,
   shouldAutoAnswerTask,
 } from './TaskUtils';
@@ -1693,7 +1694,7 @@ export default class TaskManager extends EventEmitter {
     if (this.configFlags?.aiFeature?.realtimeTranscripts?.enable !== true) return;
 
     const trimmedId = interactionId.trim();
-    if (typeof interactionId !== 'string' || trimmedId.length === 0) {
+    if (!isNonEmptyString(trimmedId)) {
       LoggerProxy.error(`Rejected transcript ${action} event with invalid interactionId`, {
         module: TASK_MANAGER_FILE,
         method: METHODS.REQUEST_REAL_TIME_TRANSCRIPTS,
