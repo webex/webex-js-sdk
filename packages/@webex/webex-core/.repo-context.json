@@ -6,7 +6,7 @@
     "purpose": "Core library of the Cisco Webex JS SDK: the plugin host and WebexCore class, the HTTP interceptor pipeline, OAuth credentials and token lifecycle, U2C service discovery (v1 and opt-in v2), and the pluggable storage layer that every other SDK plugin builds on."
   },
   "commands": {
-    "install": "yarn install",
+    "install": "yarn",
     "compile": "yarn workspace @webex/webex-core build:src",
     "build": "yarn workspace @webex/webex-core build",
     "unit-test": "yarn workspace @webex/webex-core test:unit",

@@ -413,6 +413,13 @@
         "notes": "Onboarded package: its own AGENTS.md, docs/, and .sdd/manifest.json are routed from .sdd/manifest.json packages."
       },
       {
+        "name": "@webex/contact-center",
+        "paths": [
+          "packages/@webex/contact-center"
+        ],
+        "notes": "Onboarded package: its own AGENTS.md, docs/, and .sdd/manifest.json are routed from .sdd/manifest.json packages."
+      },
+      {
         "name": "@webex/helper-html",
         "paths": [
           "packages/@webex/helper-html"

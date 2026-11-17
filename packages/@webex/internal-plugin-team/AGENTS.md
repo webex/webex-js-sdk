@@ -40,19 +40,21 @@ entry. It serves no HTTP, so no OpenAPI applies.
 
 ## 1. Commands (Run First)
 
-Use only documented commands. Do not invent alternatives when a command is missing. Run workspace
-commands from the monorepo root.
+Use only documented commands. Do not invent alternatives when a command is missing. Run every command from the
+workspace root: `yarn` to install, and `yarn workspace @webex/internal-plugin-team <script>` for the package scripts below, which `package.json` defines.
+Fresh-checkout workspace setup (building `webex-legacy-tools` and sibling `dist/`) is owned by the workspace root; see
+[Prebuilding](../../../CONTRIBUTING.md#prebuilding).
 
 | Task                   | Command |
 | ---------------------- | ------- |
-| Install dependencies   | `yarn` (workspace root; the deploy workflow runs the same command); on a fresh checkout run `yarn prebuild:modules` once, because `yarn` does not build `@webex/legacy-tools` or sibling `dist/` |
+| Install dependencies   | `yarn` (workspace root; the deploy workflow runs the same command) |
 | Start dev environment  | N/A — library package with no start script in `package.json` |
 | Run tests              | `yarn workspace @webex/internal-plugin-team test:unit` (after `build:src`; the spec imports the package by name, so it tests `dist/`) |
 | Run linters            | `yarn workspace @webex/internal-plugin-team test:style` |
 | Build/release artifact | `yarn workspace @webex/internal-plugin-team build:src` (JavaScript and source maps to `dist/`) |
 | Format code            | N/A — no format script; `prettier` is a devDependency used through eslint |
 
-`yarn workspace @webex/internal-plugin-team build` runs `yarn build:src` and produces the same output;
+`yarn workspace @webex/internal-plugin-team build` runs `yarn workspace @webex/internal-plugin-team build:src` and produces the same output;
 the package emits no type declarations.
 
 Do not use the aggregate `test` script: it calls `test:integration`, which this package does not
@@ -120,9 +122,6 @@ Run checks in this order:
 1. `yarn workspace @webex/internal-plugin-team build:src`
 2. `yarn workspace @webex/internal-plugin-team test:unit`
 3. `yarn workspace @webex/internal-plugin-team test:style`
-
-Run `yarn prebuild:modules` once on a fresh checkout so `webex-legacy-tools` and the sibling packages'
-`dist/` exist.
 
 Testing rules:
 

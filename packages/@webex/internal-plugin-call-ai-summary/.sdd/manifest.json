@@ -11,49 +11,39 @@
   "topology": "Orchestrator-plus-components",
   "commands": {
     "install": {
-      "command": "yarn install",
-      "source_file": "package.json",
+      "command": "yarn",
+      "source_file": "../../../.github/workflows/deploy.yml",
       "role": "install"
     },
     "build": {
-      "command": "yarn build",
+      "command": "yarn workspace @webex/internal-plugin-call-ai-summary build",
       "source_file": "package.json",
       "role": "build"
     },
     "compile": {
-      "command": "yarn build:src",
+      "command": "yarn workspace @webex/internal-plugin-call-ai-summary build:src",
       "source_file": "package.json",
       "role": "compile"
     },
     "lint": {
-      "command": "yarn test:style",
+      "command": "yarn workspace @webex/internal-plugin-call-ai-summary test:style",
       "source_file": "package.json",
       "role": "lint"
     },
     "unit-test": {
-      "command": "yarn test:unit",
+      "command": "yarn workspace @webex/internal-plugin-call-ai-summary test:unit",
       "source_file": "package.json",
       "role": "unit-test"
     },
     "test-all": {
-      "command": "yarn test",
+      "command": "yarn workspace @webex/internal-plugin-call-ai-summary test",
       "source_file": "package.json",
       "role": "other"
     },
     "deploy": {
-      "command": "yarn deploy:npm",
+      "command": "yarn workspace @webex/internal-plugin-call-ai-summary deploy:npm",
       "source_file": "package.json",
       "role": "deploy"
-    },
-    "manual-pragya-check": {
-      "command": "node src/manual-pragya-api-test.js",
-      "source_file": "src/manual-pragya-api-test.js",
-      "role": "other"
-    },
-    "manual-integration-check": {
-      "command": "node src/manual-integration-test.js",
-      "source_file": "src/manual-integration-test.js",
-      "role": "other"
     }
   },
   "toolchain": [

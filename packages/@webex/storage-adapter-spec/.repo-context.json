@@ -6,7 +6,7 @@
     "purpose": "Defines the behavioral contract every Webex storage adapter must satisfy, as an executable conformance suite that consumer packages run against their own adapter."
   },
   "commands": {
-    "install": "yarn install",
+    "install": "yarn",
     "contract-verify": "yarn workspace @webex/webex-core test:unit --targets storage/storage-adapter.js",
     "build": "yarn workspace @webex/storage-adapter-spec build",
     "lint": "yarn workspace @webex/storage-adapter-spec test:style",
@@ -98,7 +98,7 @@
         "yarn workspace @webex/storage-adapter-spec build"
       ],
       "recommended": [
-        "yarn install"
+        "yarn"
       ]
     }
   ],
@@ -131,7 +131,7 @@
         "The published entry points and the commands recorded in .sdd/manifest.json"
       ],
       "refresh_with": [
-        "yarn install"
+        "yarn"
       ],
       "validate_with": [
         "yarn workspace @webex/storage-adapter-spec build"

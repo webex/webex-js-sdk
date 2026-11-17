@@ -46,7 +46,7 @@ Use only documented commands. Do not invent alternatives when a command is missi
 
 | Task                   | Command                                                                           |
 | ---------------------- | --------------------------------------------------------------------------------- |
-| Install dependencies   | `yarn install` (monorepo root)                                                    |
+| Install dependencies   | `yarn` (monorepo root)                                                            |
 | Start dev environment  | Not applicable — this package is a library plugin with no runnable dev server      |
 | Run tests              | `yarn workspace @webex/internal-plugin-metrics test:unit`                          |
 | Run linters            | `yarn workspace @webex/internal-plugin-metrics test:style`                         |

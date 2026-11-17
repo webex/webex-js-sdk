@@ -30,7 +30,7 @@ addressed through `yarn workspace`.
 ## Install
 
 ```bash
-yarn install
+yarn
 ```
 
 Run it from the workspace root, not from this package directory — the lockfile and the

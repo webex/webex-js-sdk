@@ -37,8 +37,11 @@ The repository is already cloned when you are reading this file. Dependencies ar
 whole workspace:
 
 ```bash
-yarn install
+yarn
 ```
+
+Fresh-checkout workspace setup (building `webex-legacy-tools` and sibling `dist/`) is owned by the
+workspace root; see [Prebuilding](../../../CONTRIBUTING.md#prebuilding).
 
 ## Build
 
@@ -101,7 +104,7 @@ yarn workspace webex test:unit
 - Secret source: none in this package. Integration tests create test users through
   `@webex/test-helper-test-users`, which requires `WEBEX_CLIENT_ID` and `WEBEX_CLIENT_SECRET`; the
   service URLs it also needs default from the workspace root `.env.default`.
-- Package or artifact access: `yarn install` resolves external dependencies from the npm registry
+- Package or artifact access: `yarn` resolves external dependencies from the npm registry
   set in the workspace root `.yarnrc.yml` (`registry.npmjs.org`), so it needs network access to that
   registry; workspace packages resolve locally.
 - Required neighboring repositories or workspace layout: the webex-js-sdk workspace, because
@@ -112,12 +115,12 @@ yarn workspace webex test:unit
 ## First-run verification
 
 1. Precondition: complete the workspace root `CONTRIBUTING.md` Dependencies and Prebuilding steps.
-   Select Node.js 22.14, enable Corepack (see Prerequisites), run `yarn install` from the workspace
-   root, and then run the workspace root `prebuild:modules` script (manifest `workspace-prebuild`).
-2. Why the prebuild is required: `yarn install` does not build the
+   Select Node.js 22.14, enable Corepack (see Prerequisites), run `yarn` from the workspace root,
+   and then complete the root Prebuilding setup.
+2. Why the prebuild is required: `yarn` does not build the
    `webex-legacy-tools` CLI that this package's scripts call, because its binary lives in the
-   untracked build output of the workspace legacy tools package. That root script installs again,
-   then builds the workspace tools, the legacy tools, webex-core, and the `build:src` output of the
+   untracked build output of the workspace legacy tools package. The root Prebuilding setup builds
+   the workspace tools, the legacy tools, webex-core, and the `build:src` output of the
    workspace packages that define it, including the plugin packages, `@webex/calling`, and the test helpers that the
    unit spec loads. Without it, `test:unit` cannot start the `webex-legacy-tools` binary; with the
    tools built but the sibling packages unbuilt, Jest fails with "Cannot find module", first for the

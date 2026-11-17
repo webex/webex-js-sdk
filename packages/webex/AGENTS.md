@@ -44,7 +44,7 @@ commands from the monorepo root.
 
 | Task                   | Command |
 | ---------------------- | ------- |
-| Install dependencies   | `yarn install` (workspace root) |
+| Install dependencies   | `yarn` (workspace root) |
 | Start dev environment  | N/A — library package with no start script in `package.json` |
 | Run tests              | `yarn workspace webex test:unit` (Jest); `yarn workspace webex test:integration` (Mocha, needs test users) |
 | Run linters            | `yarn workspace webex test:style` (`src/`); `yarn workspace webex eslint ./env.js ./browser.js ./process` (package-root helpers `env.js`, `browser.js`, `process`) |

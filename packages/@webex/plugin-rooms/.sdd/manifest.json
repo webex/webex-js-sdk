@@ -15,37 +15,29 @@
       "source_file": "../../../.github/workflows/deploy.yml",
       "role": "install"
     },
-    "prebuild": {
-      "command": "yarn prebuild:modules",
-      "source_file": "../../../CONTRIBUTING.md",
-      "role": "other"
-    },
     "compile": {
-      "command": "yarn build",
+      "command": "yarn workspace @webex/plugin-rooms build",
       "source_file": "package.json",
-      "role": "compile",
-      "verified_at": "2026-11-12T16:40:56Z"
+      "role": "compile"
     },
     "build": {
-      "command": "yarn build:src",
+      "command": "yarn workspace @webex/plugin-rooms build:src",
       "source_file": "package.json",
-      "role": "package",
-      "verified_at": "2026-11-12T16:40:54Z"
+      "role": "package"
     },
     "unit-test": "[NEEDS HUMAN INPUT] -- package.json defines no test:unit script and the package has no test/unit directory; its only spec, test/integration/spec/rooms.js, runs only under test:browser:broken, which currently bundles nothing. Add a unit suite and script before recording a command here.",
     "lint": {
-      "command": "yarn test:style",
+      "command": "yarn workspace @webex/plugin-rooms test:style",
       "source_file": "package.json",
-      "role": "lint",
-      "verified_at": "2026-11-12T16:41:05Z"
+      "role": "lint"
     },
     "browser-test": {
-      "command": "yarn test:browser:broken",
+      "command": "yarn workspace @webex/plugin-rooms test:browser:broken",
       "source_file": "package.json",
       "role": "other"
     },
     "deploy": {
-      "command": "yarn deploy:npm",
+      "command": "yarn workspace @webex/plugin-rooms deploy:npm",
       "source_file": "package.json",
       "role": "deploy"
     }

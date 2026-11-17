@@ -14,7 +14,6 @@
     "e2e": "yarn workspace @webex/calling test:e2e",
     "docs-check": "yarn workspace @webex/calling docs",
     "docs-build": "yarn workspace @webex/calling build:docs",
-    "clean": "yarn workspace @webex/calling prebuild",
     "fix-lint": "yarn workspace @webex/calling fix:lint",
     "format": "yarn workspace @webex/calling fix:prettier",
     "deploy": "yarn workspace @webex/calling deploy:npm"
@@ -388,7 +387,7 @@
         "name": "TypeDoc entry",
         "path": "src/api.ts",
         "purpose": "API reference documentation exports",
-        "notes": "Read by yarn workspace @webex/calling docs and yarn build:docs."
+        "notes": "Read by yarn workspace @webex/calling docs and yarn workspace @webex/calling build:docs."
       }
     ],
     "workspace_packages": [

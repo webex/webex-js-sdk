@@ -53,7 +53,7 @@ review.
 
 | Change affects | Load and update | Verification route |
 | -------------- | --------------- | ------------------ |
-| Package boundaries or cross-cutting architecture | `docs/architecture.md` and applicable ADRs | `yarn build:src`, `test:unit`, and `test:style`, and the module spec |
+| Package boundaries or cross-cutting architecture | `docs/architecture.md` and applicable ADRs | `yarn workspace @webex/plugin-device-manager build:src`, `yarn workspace @webex/plugin-device-manager test:unit`, and `yarn workspace @webex/plugin-device-manager test:style`, and the module spec |
 | A stable code, package, or component boundary | `src/docs/README.md` | Build, unit tests, and lint |
 | A public method, guard, pairing transition, WDM request, or the registration | The owning architecture section, `src/docs/README.md`, and the native definition in `src/device-manager.js`, `src/collection.js`, `src/index.js`, or `package.json` | Build, unit tests, and lint; add a `test/unit/spec` case for the changed path, since most methods have none |
 

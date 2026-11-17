@@ -40,22 +40,22 @@ and the `src/index.ts` typed entry. It serves no HTTP, so no OpenAPI applies.
 
 ## 1. Commands (Run First)
 
-Use only documented commands. Do not invent alternatives when a command is missing. Run `yarn` and
-`yarn prebuild:modules` at the workspace root, and the package scripts below from this package
-directory, `packages/@webex/plugin-encryption`, where `package.json` defines them. From the workspace
-root, `yarn workspace @webex/plugin-encryption <script>` runs the same script.
+Use only documented commands. Do not invent alternatives when a command is missing. Run every command from the
+workspace root: `yarn` to install, and `yarn workspace @webex/plugin-encryption <script>` for the package scripts below, which `package.json` defines.
+Fresh-checkout workspace setup (building `webex-legacy-tools` and sibling `dist/`) is owned by the workspace root; see
+[Prebuilding](../../../CONTRIBUTING.md#prebuilding).
 
 | Task                   | Command |
 | ---------------------- | ------- |
-| Install dependencies   | `yarn` (workspace root); on a fresh checkout run `yarn prebuild:modules` once |
+| Install dependencies   | `yarn` (workspace root) |
 | Start dev environment  | N/A — library package with no start script in `package.json` |
-| Run tests              | `yarn build:src`, then `yarn test:unit` (Jest enforces an 85% global coverage threshold) |
-| Run linters            | `yarn test:style` |
-| Build/release artifact | `yarn build:src` (JavaScript, source maps, and `dist/types` declarations) |
+| Run tests              | `yarn workspace @webex/plugin-encryption build:src`, then `yarn workspace @webex/plugin-encryption test:unit` (Jest enforces an 85% global coverage threshold) |
+| Run linters            | `yarn workspace @webex/plugin-encryption test:style` |
+| Build/release artifact | `yarn workspace @webex/plugin-encryption build:src` (JavaScript, source maps, and `dist/types` declarations) |
 | Format code            | N/A — no format script; `prettier` is a devDependency used through eslint |
 
-`yarn build` emits only the declarations and is the last step of `build:src`. `yarn test:browser`
-runs nothing because the package has no `test/integration` directory. `yarn build:docs` writes typedoc
+`yarn workspace @webex/plugin-encryption build` emits only the declarations and is the last step of `build:src`. `yarn workspace @webex/plugin-encryption test:browser`
+runs nothing because the package has no `test/integration` directory. `yarn workspace @webex/plugin-encryption build:docs` writes typedoc
 output to the workspace `docs/` folder, outside this package. There is no aggregate `test` script and
 no `test:integration` script.
 
@@ -118,15 +118,15 @@ Definition of done:
 
 ## 4. Testing Workflow
 
-Run checks in this order, from the package directory:
+Run checks in this order, from the workspace root:
 
-1. `yarn build:src`
-2. `yarn test:unit`
-3. `yarn test:style`
+1. `yarn workspace @webex/plugin-encryption build:src`
+2. `yarn workspace @webex/plugin-encryption test:unit`
+3. `yarn workspace @webex/plugin-encryption test:style`
 
-Run `yarn` and `yarn prebuild:modules` first on a fresh or outdated checkout: the unit spec imports
-`@webex/internal-plugin-encryption` and `@webex/test-helper-mock-webex` by name, which load their
-`dist/`.
+The unit spec imports `@webex/internal-plugin-encryption` and `@webex/test-helper-mock-webex` by
+name, which load their `dist/`, so they must be built first; on a fresh or outdated checkout follow
+the root [Prebuilding](../../../CONTRIBUTING.md#prebuilding) setup.
 
 Testing rules:
 

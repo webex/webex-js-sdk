@@ -43,7 +43,7 @@ commands from the monorepo root. The workspace name is `webex-node`, with no `@w
 
 | Task                   | Command |
 | ---------------------- | ------- |
-| Install dependencies   | `yarn install` (workspace root) |
+| Install dependencies   | `yarn` (workspace root) |
 | Start dev environment  | N/A — library package with no start script in `package.json` |
 | Run tests              | `yarn workspace webex-node test:unit` (Jest) |
 | Run linters            | `yarn workspace webex-node test:style` |

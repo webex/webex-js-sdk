@@ -11,8 +11,8 @@
   "topology": "Orchestrator-plus-components",
   "commands": {
     "install": {
-      "command": "yarn install",
-      "source_file": "package.json",
+      "command": "yarn",
+      "source_file": "../../.github/workflows/deploy.yml",
       "role": "install"
     },
     "compile": {
@@ -50,7 +50,6 @@
       "source_file": "package.json",
       "role": "deploy"
     },
-    "workspace-prebuild": "yarn prebuild:modules",
     "umd-refresh": "yarn build:script",
     "lint-helpers": "yarn workspace webex eslint ./env.js ./browser.js ./process",
     "integration-commonjs": "yarn workspace webex test:integration --targets commonjs.js",
