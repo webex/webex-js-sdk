@@ -282,6 +282,52 @@ const enableWxBetterTogetherCheckbox = document.querySelector('#enableWxBetterTo
 deregisterBtn.style.backgroundColor = 'red';
 let enableProd = true;
 
+// Granular Agent State (WXCC-15791) — constants
+const GRANULAR_CHANNEL_ORDER = ['telephony', 'chat', 'email', 'social', 'workItem', 'customMessaging'];
+const GRANULAR_CHANNEL_LABELS = {
+  telephony: 'Voice',
+  chat: 'Chat',
+  email: 'Email',
+  social: 'Social',
+  workItem: 'Work Item',
+  customMessaging: 'Custom Messaging',
+};
+const GRANULAR_CHANNEL_ICONS = {
+  telephony: 'fa-phone',
+  chat: 'fa-comments',
+  email: 'fa-envelope',
+  social: 'fa-share-alt',
+  workItem: 'fa-tasks',
+  customMessaging: 'fa-comment',
+};
+
+/**
+ * Escapes HTML special characters to prevent XSS when inserting server-sourced
+ * strings (e.g. idle code names) into innerHTML / attribute values.
+ */
+function escapeHTML(str) {
+  const div = document.createElement('div');
+  div.appendChild(document.createTextNode(str ?? ''));
+  return div.innerHTML;
+}
+const GRANULAR_AVAILABLE_AUX_CODE_ID = '0';
+const GRANULAR_AGENT_STATE_AVAILABLE = 'Available';
+const GRANULAR_AGENT_STATE_IDLE = 'Idle';
+
+// Granular Agent State — DOM element refs
+const legacyAgentStateElm = document.getElementById('v1-agent-state');
+const granularAgentStateElm = document.getElementById('v2-agent-state');
+const granularStateContainerElm = document.getElementById('granular-agent-state-container');
+
+// Granular Agent State — mutable state
+let isGranularAgentStateActive = false;
+let granularIdleCodes = [];
+let channelStateListenersRegistered = false;
+let isSettingAgentState = false;
+let granularTimerInterval = null;
+let granularPanelView = null; // null = closed, 'menu', 'manage'
+let granularHoverVisible = false;
+
 function changeEnv() {
   enableProd = !enableProd;
   changeEnvBtn.innerHTML = enableProd ? 'In Production' : 'In Integration';
@@ -4830,7 +4876,9 @@ function register() {
             }
             idleCodesDropdown.add(option);
         });
+        storeGranularIdleCodes(idleCodesList);
         entryPointId = agentProfile.outDialEp;
+        registerChannelStateEventListeners();
         webex.cc.on('task:incoming', (task) => {
           console.log('Incoming task received: ', task);
           updateTaskList();
@@ -4914,6 +4962,7 @@ function register() {
       const idx    = [...idleCodesDropdown.options].findIndex(o => o.value === auxId);
       idleCodesDropdown.selectedIndex = idx >= 0 ? idx : 0;
       startStateTimer(data.lastStateChangeTimestamp, data.lastIdleCodeChangeTimestamp);
+      handleGranularStateLogin();
     });
 
         updateTaskList();
@@ -4956,6 +5005,7 @@ function resetDeregisteredSampleState() {
 
     // Hide logout button if visible
     logoutAgentElm.classList.add('hidden');
+    handleGranularStateLogout();
 }
 
 // New function to handle unregistration
@@ -5045,7 +5095,8 @@ function doAgentLogin() {
     const index = [...idleCodesDropdown.options].findIndex(option => option.value === auxCodeId);
     idleCodesDropdown.selectedIndex = index !== -1 ? index : 0;
     startStateTimer(lastStateChangeTimestamp, lastIdleCodeChangeTimestamp);
-    
+    handleGranularStateLogin();
+
   }).catch((error) => {
     console.log('Agent Login failed', error);
     if(['EXTENSION', 'AGENT_DN'].includes(error.data.fieldName))  {
@@ -5081,6 +5132,7 @@ function setAgentStatus() {
   });
 }
 
+// ─── V2 — Manage channel availability (WXCC-15791) ───────────────────────────
 
 function logoutAgent() {
   webex.cc.stationLogout({logoutReason: 'logout'})
@@ -5111,6 +5163,7 @@ function logoutAgent() {
     
     // Add an immediate call to update button state
     updateUnregisterButtonState();
+    handleGranularStateLogout();
   }
   ).catch((error) => {
     console.log('Agent logout failed', error);
@@ -6138,3 +6191,665 @@ async function deleteUserPreference() {
     console.error('deleteUserPreference error:', error);
   }
 }
+
+
+// ============================================================================
+// Granular Agent State — Widget-like UI (WXCC-15791)
+// ============================================================================
+
+/**
+ * Switches between V1 (simple dropdown) and V2 (widget-like) agent state UI.
+ * Called once after stationLogin resolves. The session version is pinned for the
+ * lifetime of the session, so this only runs once per login.
+ */
+function switchAgentStateUI(isV2) {
+  isGranularAgentStateActive = isV2;
+  if (legacyAgentStateElm) legacyAgentStateElm.style.display = isV2 ? 'none' : '';
+  if (granularAgentStateElm) granularAgentStateElm.style.display = isV2 ? '' : 'none';
+}
+
+/**
+ * Returns the ordered list of selectable channels (those with capacity > 0).
+ */
+function getSelectableChannelTypes() {
+  const channelStatesMap = webex.cc.getChannelStates() || {};
+  return GRANULAR_CHANNEL_ORDER.filter((ch) => {
+    const state = channelStatesMap[ch];
+    return state && (state.totalChannelCount ?? 0) > 0;
+  });
+}
+
+/**
+ * Builds the channel state info array used to render all widget views.
+ */
+function buildChannelStates() {
+  const channelStatesMap = webex.cc.getChannelStates() || {};
+  const now = Date.now();
+  return getSelectableChannelTypes().map((channelType) => {
+    const state = channelStatesMap[channelType] || {};
+    const elapsed = state.stateChangeTimestamp
+      ? Math.floor((now - state.stateChangeTimestamp) / 1000)
+      : 0;
+    const isAvailable =
+      state.agentState === GRANULAR_AGENT_STATE_AVAILABLE && !state.pendingIdle;
+    let displayState;
+    if (state.pendingIdle) {
+      const codeName = getIdleCodeName(state.auxCodeId);
+      displayState = `Pending ${codeName || GRANULAR_AGENT_STATE_IDLE}`;
+    } else if (state.agentState === GRANULAR_AGENT_STATE_IDLE) {
+      displayState = getIdleCodeName(state.auxCodeId) || GRANULAR_AGENT_STATE_IDLE;
+    } else {
+      displayState = state.agentState || '';
+    }
+    return {
+      channelType,
+      label: GRANULAR_CHANNEL_LABELS[channelType] || channelType,
+      agentState: state.agentState || '',
+      displayState,
+      auxCodeId: state.auxCodeId,
+      pendingIdle: Boolean(state.pendingIdle),
+      elapsedTime: elapsed > 0 ? elapsed : 0,
+      isAvailable,
+    };
+  });
+}
+
+function getIdleCodeName(auxCodeId) {
+  if (!auxCodeId) return undefined;
+  const code = granularIdleCodes.find((c) => c.id === auxCodeId);
+  return code ? code.name : undefined;
+}
+
+function getGranularPresenceType(agentState) {
+  switch ((agentState || '').toLowerCase()) {
+    case 'available': return 'active';
+    case 'idle': return 'away';
+    case 'rona': return 'dnd';
+    default: return 'busy';
+  }
+}
+
+function filterGranularIdleCodes(codes, searchText) {
+  const query = (searchText || '').trim().toLowerCase();
+  if (!query) return codes;
+  return codes.filter((c) => c.name.toLowerCase().includes(query));
+}
+
+/**
+ * Returns only channels not already in the target state (widget's getChannelsToChange).
+ */
+function getGranularChannelsToChange(channelTypes, targetState, auxCodeId) {
+  const channelStatesMap = webex.cc.getChannelStates() || {};
+  return channelTypes.filter((ch) => {
+    const state = channelStatesMap[ch];
+    if (!state) return true;
+    if (targetState === GRANULAR_AGENT_STATE_AVAILABLE) {
+      return state.agentState !== GRANULAR_AGENT_STATE_AVAILABLE || state.pendingIdle;
+    }
+    return state.agentState !== GRANULAR_AGENT_STATE_IDLE || state.auxCodeId !== auxCodeId;
+  });
+}
+
+/**
+ * Finds the last-used idle code across all channels, matching widget behavior.
+ */
+function findLastUsedIdleCode() {
+  const channelStatesMap = webex.cc.getChannelStates() || {};
+  const selectable = getSelectableIdleCodes(granularIdleCodes);
+  const lastIdle = Object.values(channelStatesMap)
+    .filter((s) => s && s.agentState === GRANULAR_AGENT_STATE_IDLE && s.auxCodeId)
+    .sort((a, b) =>
+      (b.lastIdleCodeChangeTimestamp ?? b.stateChangeTimestamp ?? 0) -
+      (a.lastIdleCodeChangeTimestamp ?? a.stateChangeTimestamp ?? 0)
+    )
+    .map((s) => selectable.find((c) => c.id === s.auxCodeId))
+    .find(Boolean);
+  return lastIdle || selectable.find((c) => c.isDefault) || selectable[0];
+}
+
+function formatGranularDuration(seconds) {
+  const safe = Math.max(0, Math.floor(seconds));
+  const h = Math.floor(safe / 3600);
+  const m = Math.floor((safe % 3600) / 60);
+  const s = safe % 60;
+  return [h, m, s].map((p) => p.toString().padStart(2, '0')).join(':');
+}
+
+// --- Rendering helpers ---
+
+function createChannelAvatarHTML(channel, size) {
+  const sz = size || 24;
+  const icon = GRANULAR_CHANNEL_ICONS[channel.channelType] || 'fa-circle';
+  const presence = getGranularPresenceType(channel.agentState);
+  return `<span class="granular-channel-avatar size-${sz} ${escapeHTML(channel.channelType)}" title="${escapeHTML(channel.label)}: ${escapeHTML(channel.displayState)}">
+    <i class="fa ${icon}" aria-hidden="true"></i>
+    <span class="presence-dot ${presence}"></span>
+  </span>`;
+}
+
+function showChannelStatePreview() {
+  granularHoverVisible = true;
+  const existing = granularStateContainerElm.querySelector('.granular-state-preview');
+  if (existing) { existing.style.display = ''; return; }
+  renderChannelStatePreview();
+}
+
+function hideChannelStatePreview() {
+  granularHoverVisible = false;
+  const el = granularStateContainerElm.querySelector('.granular-state-preview');
+  if (el) el.style.display = 'none';
+}
+
+function renderChannelStatePreview() {
+  let previewElm = granularStateContainerElm.querySelector('.granular-state-preview');
+  if (!previewElm) {
+    previewElm = document.createElement('div');
+    previewElm.className = 'granular-state-preview';
+    granularStateContainerElm.appendChild(previewElm);
+  }
+  const channels = buildChannelStates();
+  previewElm.innerHTML = channels.map((ch) =>
+    `<div class="granular-state-preview-item">
+      ${createChannelAvatarHTML(ch, 32)}
+      <span class="granular-state-preview-label">${escapeHTML(ch.label)} — ${escapeHTML(ch.displayState)}</span>
+      <span class="granular-state-preview-time">${formatGranularDuration(ch.elapsedTime)}</span>
+    </div>`
+  ).join('');
+  previewElm.style.display = granularHoverVisible && !granularPanelView ? '' : 'none';
+}
+
+/**
+ * Full re-render of the widget: pill + preview (if visible).
+ */
+function renderGranularAgentState() {
+  if (!granularStateContainerElm) return;
+  const channels = buildChannelStates();
+  const primary = channels[0];
+  const pillLabel = primary ? primary.displayState : '';
+  const pillTime = primary ? formatGranularDuration(primary.elapsedTime) : '00:00:00';
+
+  let pillElm = granularStateContainerElm.querySelector('#granular-pill-btn');
+  if (!pillElm) {
+    pillElm = document.createElement('button');
+    pillElm.id = 'granular-pill-btn';
+    pillElm.className = 'granular-state-pill';
+    pillElm.setAttribute('aria-haspopup', 'true');
+    pillElm.setAttribute('aria-expanded', 'false');
+    granularStateContainerElm.prepend(pillElm);
+    pillElm.addEventListener('click', () => {
+      if (granularPanelView) {
+        closeGranularStateMenu();
+      } else {
+        openGranularStateMenu('menu');
+      }
+    });
+    pillElm.addEventListener('mouseenter', () => {
+      if (!granularPanelView) showChannelStatePreview();
+    });
+    pillElm.addEventListener('mouseleave', () => {
+      hideChannelStatePreview();
+    });
+  }
+
+  const avatarsHTML = channels.map((ch) => createChannelAvatarHTML(ch, 24)).join('');
+  const openClass = granularPanelView ? ' open' : '';
+  pillElm.className = `granular-state-pill${openClass}`;
+  pillElm.setAttribute('aria-expanded', granularPanelView ? 'true' : 'false');
+  pillElm.innerHTML =
+    `<span class="granular-state-pill-label">${escapeHTML(pillLabel)}</span>` +
+    `<span class="granular-state-pill-time" id="granular-pill-timer">${pillTime}</span>` +
+    `<span class="granular-state-pill-separator"></span>` +
+    `<span class="granular-state-pill-channels">${avatarsHTML}</span>` +
+    `<span class="granular-state-pill-chevron"><i class="fa fa-angle-down" aria-hidden="true"></i></span>`;
+
+  if (granularHoverVisible && !granularPanelView) {
+    renderChannelStatePreview();
+  }
+}
+
+function openGranularStateMenu(view) {
+  granularPanelView = view || 'menu';
+  hideChannelStatePreview();
+  if (granularPanelView === 'menu') {
+    renderGranularStateMenuPanel();
+  } else if (granularPanelView === 'manage') {
+    renderManageChannelAvailability();
+  }
+  renderGranularAgentState();
+}
+
+function closeGranularStateMenu() {
+  granularPanelView = null;
+  const panel = granularStateContainerElm.querySelector('#granular-menu-panel');
+  if (panel) panel.remove();
+  renderGranularAgentState();
+}
+
+function renderGranularStateMenuPanel() {
+  let panel = granularStateContainerElm.querySelector('#granular-menu-panel');
+  if (!panel) {
+    panel = document.createElement('div');
+    panel.id = 'granular-menu-panel';
+    panel.className = 'granular-state-panel';
+    panel.setAttribute('role', 'menu');
+    panel.setAttribute('aria-label', 'Agent state');
+    granularStateContainerElm.appendChild(panel);
+  }
+
+  const selectableCodes = getSelectableIdleCodes(granularIdleCodes);
+  const channels = buildChannelStates();
+  const isMultiChannel = channels.length > 1;
+  const disabled = isSettingAgentState ? ' disabled' : '';
+
+  panel.innerHTML =
+    `<div class="granular-state-menu">` +
+      `<input type="text" id="granular-search-input" class="granular-state-search" placeholder="Search" aria-label="Search idle codes" />` +
+      `<div class="granular-state-menu-section">` +
+        `<button class="granular-state-menu-item"${disabled} data-action="set-available">` +
+          `<i class="fa fa-circle granular-state-available-icon" aria-hidden="true"></i>` +
+          `Set as Available${isMultiChannel ? ' (all channels)' : ''}` +
+        `</button>` +
+        (isMultiChannel
+          ? `<button class="granular-state-menu-item manage"${disabled} data-action="manage-channels">` +
+              `Manage Channel Availability <i class="fa fa-angle-right" aria-hidden="true"></i>` +
+            `</button>`
+          : '') +
+      `</div>` +
+      `<hr class="granular-state-divider" />` +
+      `<div class="granular-state-idle-title">Set as Idle${isMultiChannel ? ' (all channels)' : ''}</div>` +
+      `<div class="granular-state-idle-subtitle">Select a reason:</div>` +
+      `<div id="granular-idle-list" class="granular-state-idle-list"></div>` +
+    `</div>`;
+
+  renderIdleCodeList(panel, selectableCodes, '');
+
+  const searchInput = panel.querySelector('#granular-search-input');
+  if (searchInput) {
+    searchInput.addEventListener('input', () => {
+      const filtered = filterGranularIdleCodes(selectableCodes, searchInput.value);
+      renderIdleCodeList(panel, filtered, searchInput.value);
+    });
+    searchInput.focus();
+  }
+
+  panel.querySelector('[data-action="set-available"]')?.addEventListener('click', () => {
+    setAllChannelsAvailable();
+  });
+  panel.querySelector('[data-action="manage-channels"]')?.addEventListener('click', () => {
+    openGranularStateMenu('manage');
+  });
+}
+
+function renderIdleCodeList(panel, codes, searchText) {
+  const listElm = panel.querySelector('#granular-idle-list');
+  if (!listElm) return;
+  const disabled = isSettingAgentState ? ' disabled' : '';
+  if (codes.length === 0) {
+    listElm.innerHTML = `<div class="granular-state-no-match">No matches found</div>`;
+    return;
+  }
+  listElm.innerHTML = codes.map((code) =>
+    `<button class="granular-state-menu-item"${disabled} data-action="set-idle" data-idle-id="${escapeHTML(code.id)}" data-idle-name="${escapeHTML(code.name)}">` +
+      `<i class="fa fa-clock-o granular-state-idle-icon" aria-hidden="true"></i>` +
+      `${escapeHTML(code.name)}` +
+    `</button>`
+  ).join('');
+  listElm.querySelectorAll('[data-action="set-idle"]').forEach((btn) => {
+    btn.addEventListener('click', () => {
+      const idleCode = { id: btn.dataset.idleId, name: btn.dataset.idleName };
+      setAllChannelsIdle(idleCode);
+    });
+  });
+}
+
+function renderManageChannelAvailability() {
+  let panel = granularStateContainerElm.querySelector('#granular-menu-panel');
+  if (!panel) {
+    panel = document.createElement('div');
+    panel.id = 'granular-menu-panel';
+    panel.className = 'granular-state-panel';
+    granularStateContainerElm.appendChild(panel);
+  }
+
+  const channels = buildChannelStates();
+  const allAvailable = channels.every((ch) => ch.isAvailable);
+
+  panel.innerHTML =
+    `<div class="manage-channel-availability">` +
+      `<div class="manage-channel-availability-header">` +
+        `<button id="granular-manage-back" title="Go back"><i class="fa fa-arrow-left" aria-hidden="true"></i></button>` +
+        `<h3>Manage channel availability</h3>` +
+      `</div>` +
+      `<div class="manage-channel-availability-body">` +
+        `<div class="manage-channel-availability-row">` +
+          `<span class="manage-channel-availability-icon"><i class="fa fa-th-large" aria-hidden="true"></i></span>` +
+          `<div class="manage-channel-availability-text">` +
+            `<span class="manage-channel-availability-title">All</span>` +
+            `<span class="manage-channel-availability-subtitle">Available on all channels</span>` +
+          `</div>` +
+          `<label class="toggle-switch">` +
+            `<input type="checkbox" id="granular-toggle-all" ${allAvailable ? 'checked' : ''} />` +
+            `<span class="toggle-slider"></span>` +
+          `</label>` +
+        `</div>` +
+        channels.map((ch) => {
+          const icon = GRANULAR_CHANNEL_ICONS[ch.channelType] || 'fa-circle';
+          return `<div class="manage-channel-availability-row">` +
+            `<span class="manage-channel-availability-icon"><i class="fa ${icon}" aria-hidden="true"></i></span>` +
+            `<div class="manage-channel-availability-text">` +
+              `<span class="manage-channel-availability-title">${escapeHTML(ch.label)}</span>` +
+              `<span class="manage-channel-availability-subtitle">${escapeHTML(ch.displayState)}</span>` +
+            `</div>` +
+            `<label class="toggle-switch">` +
+              `<input type="checkbox" data-channel="${ch.channelType}" ${ch.isAvailable ? 'checked' : ''} />` +
+              `<span class="toggle-slider"></span>` +
+            `</label>` +
+          `</div>`;
+        }).join('') +
+      `</div>` +
+      `<div class="manage-channel-availability-footer">` +
+        `<button class="btn-cancel" id="granular-manage-cancel">Cancel</button>` +
+        `<button class="btn-apply" id="granular-manage-apply">Apply</button>` +
+      `</div>` +
+    `</div>`;
+
+  const toggleAllElm = panel.querySelector('#granular-toggle-all');
+  const channelToggles = panel.querySelectorAll('input[data-channel]');
+  const applyBtn = panel.querySelector('#granular-manage-apply');
+
+  function syncAllToggle() {
+    if (toggleAllElm) {
+      toggleAllElm.checked = [...channelToggles].every((t) => t.checked);
+    }
+    updateApplyState();
+  }
+
+  function updateApplyState() {
+    const hasChange = channels.some((ch) => {
+      const toggle = panel.querySelector(`input[data-channel="${ch.channelType}"]`);
+      return toggle && toggle.checked !== ch.isAvailable;
+    });
+    if (applyBtn) applyBtn.disabled = !hasChange || isSettingAgentState;
+  }
+
+  if (toggleAllElm) {
+    toggleAllElm.addEventListener('change', () => {
+      channelToggles.forEach((t) => { t.checked = toggleAllElm.checked; });
+      updateApplyState();
+    });
+  }
+  channelToggles.forEach((t) => t.addEventListener('change', syncAllToggle));
+
+  panel.querySelector('#granular-manage-back')?.addEventListener('click', () => {
+    openGranularStateMenu('menu');
+  });
+  panel.querySelector('#granular-manage-cancel')?.addEventListener('click', () => {
+    closeGranularStateMenu();
+  });
+  if (applyBtn) {
+    applyBtn.disabled = true;
+    applyBtn.addEventListener('click', () => {
+      const availability = {};
+      channelToggles.forEach((t) => {
+        availability[t.dataset.channel] = t.checked;
+      });
+      applyChannelAvailability(availability);
+    });
+  }
+}
+
+/**
+ * Sets all selectable channels to Available (skips channels already Available).
+ */
+async function setAllChannelsAvailable() {
+  if (isSettingAgentState) return;
+  const channelTypes = getSelectableChannelTypes();
+  const toChange = getGranularChannelsToChange(channelTypes, GRANULAR_AGENT_STATE_AVAILABLE, GRANULAR_AVAILABLE_AUX_CODE_ID);
+  if (toChange.length === 0) {
+    console.log('All channels already Available — nothing to change.');
+    closeGranularStateMenu();
+    return;
+  }
+  isSettingAgentState = true;
+  updateGranularUIDisabledState();
+  try {
+    await webex.cc.setAgentState({
+      state: GRANULAR_AGENT_STATE_AVAILABLE,
+      auxCodeId: GRANULAR_AVAILABLE_AUX_CODE_ID,
+      lastStateChangeReason: GRANULAR_AGENT_STATE_AVAILABLE,
+      agentId,
+      channelType: toChange,
+    });
+    console.log('setAllChannelsAvailable success', toChange);
+  } catch (error) {
+    console.error('setAllChannelsAvailable failed', error);
+  } finally {
+    isSettingAgentState = false;
+    closeGranularStateMenu();
+    updateGranularUI();
+  }
+}
+
+/**
+ * Sets all selectable channels to Idle with the given idle code (skips channels already in target state).
+ */
+async function setAllChannelsIdle(idleCode) {
+  if (isSettingAgentState || !idleCode) {
+    if (!idleCode) console.warn('No idle code available for setAllChannelsIdle');
+    return;
+  }
+  const channelTypes = getSelectableChannelTypes();
+  const toChange = getGranularChannelsToChange(channelTypes, GRANULAR_AGENT_STATE_IDLE, idleCode.id);
+  if (toChange.length === 0) {
+    console.log('All channels already Idle with this code — nothing to change.');
+    closeGranularStateMenu();
+    return;
+  }
+  isSettingAgentState = true;
+  updateGranularUIDisabledState();
+  try {
+    await webex.cc.setAgentState({
+      state: GRANULAR_AGENT_STATE_IDLE,
+      auxCodeId: idleCode.id,
+      lastStateChangeReason: idleCode.name,
+      agentId,
+      channelType: toChange,
+    });
+    console.log('setAllChannelsIdle success', toChange, idleCode.name);
+  } catch (error) {
+    console.error('setAllChannelsIdle failed', error);
+  } finally {
+    isSettingAgentState = false;
+    closeGranularStateMenu();
+    updateGranularUI();
+  }
+}
+
+/**
+ * Applies per-channel availability from the Manage panel.
+ * Available channels are set first, then Idle — sequentially, not in parallel (W-R-6).
+ */
+async function applyChannelAvailability(availability) {
+  if (isSettingAgentState) return;
+  isSettingAgentState = true;
+  updateGranularUIDisabledState();
+
+  const channelStatesMap = webex.cc.getChannelStates() || {};
+  const availableChannels = [];
+  const idleChannels = [];
+
+  Object.entries(availability).forEach(([ch, wantsAvailable]) => {
+    const current = channelStatesMap[ch];
+    if (!current) return;
+    const isCurrentlyAvailable = current.agentState === GRANULAR_AGENT_STATE_AVAILABLE && !current.pendingIdle;
+    if (wantsAvailable && !isCurrentlyAvailable) {
+      availableChannels.push(ch);
+    } else if (!wantsAvailable && isCurrentlyAvailable) {
+      idleChannels.push(ch);
+    }
+  });
+
+  try {
+    if (availableChannels.length > 0) {
+      await webex.cc.setAgentState({
+        state: GRANULAR_AGENT_STATE_AVAILABLE,
+        auxCodeId: GRANULAR_AVAILABLE_AUX_CODE_ID,
+        lastStateChangeReason: GRANULAR_AGENT_STATE_AVAILABLE,
+        agentId,
+        channelType: availableChannels,
+      });
+      console.log('applyChannelAvailability — Available channels set:', availableChannels);
+    }
+
+    if (idleChannels.length > 0) {
+      const lastIdleCode = findLastUsedIdleCode();
+      if (!lastIdleCode) {
+        console.warn('No idle code available to set Idle channels — skipping Idle step.');
+      } else {
+        await webex.cc.setAgentState({
+          state: GRANULAR_AGENT_STATE_IDLE,
+          auxCodeId: lastIdleCode.id,
+          lastStateChangeReason: lastIdleCode.name,
+          agentId,
+          channelType: idleChannels,
+        });
+        console.log('applyChannelAvailability — Idle channels set:', idleChannels, lastIdleCode.name);
+      }
+    }
+  } catch (error) {
+    console.error('applyChannelAvailability failed', error);
+  } finally {
+    isSettingAgentState = false;
+    closeGranularStateMenu();
+    updateGranularUI();
+  }
+}
+
+function updateGranularUIDisabledState() {
+  const panel = granularStateContainerElm
+    ? granularStateContainerElm.querySelector('#granular-menu-panel')
+    : null;
+  if (!panel) return;
+  panel.querySelectorAll('button.granular-state-menu-item, .manage-channel-availability-footer button').forEach((btn) => {
+    btn.disabled = isSettingAgentState;
+  });
+}
+
+function updateGranularUI() {
+  renderGranularAgentState();
+  if (granularPanelView === 'menu') {
+    renderGranularStateMenuPanel();
+  } else if (granularPanelView === 'manage') {
+    renderManageChannelAvailability();
+  }
+}
+
+function startGranularTimer() {
+  stopGranularTimer();
+  granularTimerInterval = setInterval(() => {
+    const timerElm = granularStateContainerElm
+      ? granularStateContainerElm.querySelector('#granular-pill-timer')
+      : null;
+    if (!timerElm) return;
+    const channels = buildChannelStates();
+    const primary = channels[0];
+    if (primary) {
+      timerElm.textContent = formatGranularDuration(primary.elapsedTime);
+    }
+    if (granularHoverVisible && !granularPanelView) {
+      renderChannelStatePreview();
+    }
+  }, 1000);
+}
+
+function stopGranularTimer() {
+  if (granularTimerInterval) {
+    clearInterval(granularTimerInterval);
+    granularTimerInterval = null;
+  }
+}
+
+/**
+ * Stores idle codes for the granular state widget.
+ * Applies the wellness filter first (removes isSystem codes), then additionally
+ * excludes the "Available" entry (auxCodeId '0') and error-triggering system
+ * codes that should never appear as user-selectable idle reasons — matching the
+ * widget's getSelectableIdleCodes in cc-components.
+ */
+function storeGranularIdleCodes(idleCodesList) {
+  const ERROR_TRIGGERING_NAMES = [
+    'Invalid_Number', 'Agent_Unavailable', 'Agent_Declined',
+    'Agent_Busy', 'Channel_Failure', 'RONA',
+  ];
+  granularIdleCodes = getSelectableIdleCodes(idleCodesList || []).filter(
+    (code) =>
+      code.id !== GRANULAR_AVAILABLE_AUX_CODE_ID &&
+      code.name !== GRANULAR_AGENT_STATE_AVAILABLE &&
+      !ERROR_TRIGGERING_NAMES.includes(code.name)
+  );
+}
+
+/**
+ * Called after stationLogin resolves. Detects V2 session and initializes the
+ * granular state widget.
+ */
+function handleGranularStateLogin() {
+  const control = webex.cc.getAgentStateControl?.() || {};
+  const isV2 = control.active === true;
+  switchAgentStateUI(isV2);
+  if (isV2) {
+    renderGranularAgentState();
+    startGranularTimer();
+  }
+}
+
+/**
+ * Called on logout/deregister. Tears down the widget and restores V1 UI.
+ */
+function handleGranularStateLogout() {
+  stopGranularTimer();
+  granularPanelView = null;
+  granularHoverVisible = false;
+  isSettingAgentState = false;
+  isGranularAgentStateActive = false;
+  if (granularStateContainerElm) granularStateContainerElm.innerHTML = '';
+  switchAgentStateUI(false);
+}
+
+/**
+ * Registers SDK event listeners for channel state changes. Guarded by
+ * channelStateListenersRegistered to prevent duplicate registration.
+ */
+function registerChannelStateEventListeners() {
+  if (channelStateListenersRegistered) return;
+  channelStateListenersRegistered = true;
+
+  webex.cc.on('agent:channelStateChange', (data) => {
+    console.log('agent:channelStateChange', data);
+    if (isGranularAgentStateActive) updateGranularUI();
+  });
+
+  webex.cc.on('agent:channelStateChangeFailed', (data) => {
+    console.error('agent:channelStateChangeFailed', data);
+    if (isGranularAgentStateActive) updateGranularUI();
+  });
+
+  webex.cc.on('agent:channelReloginSuccess', (data) => {
+    console.log('agent:channelReloginSuccess', data);
+    if (isGranularAgentStateActive) {
+      handleGranularStateLogin();
+    }
+  });
+
+  webex.cc.on('agent:channelRecoveryDeferred', (data) => {
+    console.log('agent:channelRecoveryDeferred', data);
+  });
+}
+
+// Close the granular panel when clicking outside
+document.addEventListener('click', (e) => {
+  if (!granularPanelView || !granularStateContainerElm) return;
+  if (!granularStateContainerElm.contains(e.target)) {
+    closeGranularStateMenu();
+  }
+});

@@ -14,7 +14,10 @@ import {CC_EVENTS} from '../config/types';
 export default function routingAgent(routing: AqmReqs) {
   return {
     /**
-     * Reloads the agent session
+     * Reloads the agent session. Uses the V1 endpoint but accepts both V1
+     * (AgentReloginSuccess) and V2 (AgentChannelReloginSuccess) responses —
+     * the server determines the response type from the persisted session
+     * version, NOT from the reload endpoint version.
      * @public
      */
     reload: routing.reqEmpty(() => ({
@@ -24,10 +27,10 @@ export default function routingAgent(routing: AqmReqs) {
       err,
       notifSuccess: {
         bind: {
-          type: CC_EVENTS.AGENT_RELOGIN_SUCCESS,
-          data: {type: CC_EVENTS.AGENT_RELOGIN_SUCCESS},
+          type: [CC_EVENTS.AGENT_RELOGIN_SUCCESS, CC_EVENTS.AGENT_CHANNEL_RELOGIN_SUCCESS],
+          data: {type: [CC_EVENTS.AGENT_RELOGIN_SUCCESS, CC_EVENTS.AGENT_CHANNEL_RELOGIN_SUCCESS]},
         },
-        msg: {} as Agent.ReloginSuccess,
+        msg: {} as Agent.ReloginSuccess | Agent.AgentChannelReloginSuccess,
       },
       notifFail: {
         bind: {
@@ -143,6 +146,93 @@ export default function routingAgent(routing: AqmReqs) {
           data: {type: CC_EVENTS.AGENT_BUDDY_AGENTS_RETRIEVE_FAILED},
         },
         errId: 'Service.aqm.agent.BuddyAgentsRetrieveFailed',
+      },
+    })),
+
+    // ─── V2 Granular Agent State Control Operations ─────────────────────
+
+    /**
+     * V2 station login with per-channel routing
+     * @param p.data - Station login parameters
+     * @public
+     */
+    stationLoginV2: routing.req((p: {data: Agent.UserStationLogin}) => ({
+      url: '/v2/agents/login',
+      host: WCC_API_GATEWAY,
+      data: p.data,
+      err: (e: any) => {
+        return new Err.Details('Service.aqm.agent.stationLoginV2', {
+          status: e.response?.status ?? 0,
+          type: e.response?.data?.errorType,
+          trackingId: e.response?.headers?.trackingid?.split('_')[1],
+        });
+      },
+      notifSuccess: {
+        bind: {
+          type: CC_EVENTS.AGENT_STATION_LOGIN,
+          data: {type: CC_EVENTS.AGENT_STATION_LOGIN_SUCCESS},
+        },
+        msg: {} as Agent.StationLoginSuccess,
+      },
+      notifFail: {
+        bind: {
+          type: CC_EVENTS.AGENT_STATION_LOGIN,
+          data: {type: CC_EVENTS.AGENT_STATION_LOGIN_FAILED},
+        },
+        errId: 'Service.aqm.agent.stationLoginV2Failed',
+      },
+    })),
+
+    /**
+     * V2 per-channel state change
+     * @param p.data - V2 state change parameters with channelType array
+     * @public
+     */
+    stateChangeV2: routing.req((p: {data: Agent.ChannelStateChangeRequest}) => ({
+      url: '/v2/agents/session/state',
+      host: WCC_API_GATEWAY,
+      data: p.data,
+      err,
+      method: HTTP_METHODS.PUT,
+      notifSuccess: {
+        bind: {
+          type: ['AgentRequestEvent', 'RoutingMessage', CC_EVENTS.AGENT_CHANNEL_STATE_CHANGE],
+          data: {type: CC_EVENTS.AGENT_CHANNEL_STATE_CHANGED},
+        },
+        msg: {} as Agent.AgentChannelStateChanged,
+      },
+      notifFail: {
+        bind: {
+          type: ['AgentRequestEvent', 'RoutingMessage', CC_EVENTS.AGENT_CHANNEL_STATE_CHANGE],
+          data: {type: CC_EVENTS.AGENT_CHANNEL_STATE_CHANGE_FAILED},
+        },
+        errId: 'Service.aqm.agent.stateChangeV2',
+      },
+    })),
+
+    /**
+     * V2 logout
+     * @param p.data - Logout parameters
+     * @public
+     */
+    logoutV2: routing.req((p: {data: Agent.Logout}) => ({
+      url: '/v2/agents/logout',
+      host: WCC_API_GATEWAY,
+      data: p.data,
+      err,
+      notifSuccess: {
+        bind: {
+          type: CC_EVENTS.AGENT_LOGOUT,
+          data: {type: CC_EVENTS.AGENT_LOGOUT_SUCCESS},
+        },
+        msg: {} as Agent.LogoutSuccess,
+      },
+      notifFail: {
+        bind: {
+          type: CC_EVENTS.AGENT_LOGOUT,
+          data: {type: CC_EVENTS.AGENT_LOGOUT_FAILED},
+        },
+        errId: 'Service.aqm.agent.logoutV2',
       },
     })),
   };

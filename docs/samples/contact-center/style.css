@@ -1188,3 +1188,429 @@ button[aria-pressed="true"] {
   padding: 0;
   margin: 0;
 }
+
+/* ========================================================================
+   Granular Agent State — Widget-like UI (WXCC-15791)
+   ======================================================================== */
+
+.granular-agent-state-container {
+  position: relative;
+  display: inline-flex;
+  flex-direction: column;
+  max-width: 100%;
+}
+
+/* --- Pill Button --- */
+.granular-state-pill {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.5rem;
+  min-height: 2.5rem;
+  padding: 0.25rem 0.75rem 0.25rem 0.375rem;
+  border: 1px solid #b0b0b0;
+  border-radius: 0.5rem;
+  background-color: #f7f7f7;
+  color: #121212;
+  cursor: pointer;
+  white-space: nowrap;
+  font-size: 14px;
+  font-family: inherit;
+  line-height: 1.4;
+  appearance: none;
+}
+
+.granular-state-pill:hover {
+  background-color: #ebebeb;
+}
+
+.granular-state-pill:focus-visible,
+.granular-state-pill.open {
+  outline: 2px solid #1170cf;
+  outline-offset: 1px;
+}
+
+.granular-state-pill-label {
+  font-size: 14px;
+}
+
+.granular-state-pill-time {
+  font-variant-numeric: tabular-nums;
+}
+
+.granular-state-pill-channels {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.25rem;
+}
+
+.granular-state-pill-separator {
+  width: 1px;
+  height: 1.5rem;
+  margin: 0 0.25rem;
+  background-color: #b0b0b0;
+}
+
+.granular-state-pill-chevron {
+  font-size: 12px;
+  margin-left: 0.25rem;
+  color: #555;
+}
+
+/* --- Channel Avatar --- */
+.granular-channel-avatar {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  border-radius: 50%;
+  background-color: #e0e0e0;
+  flex-shrink: 0;
+  position: relative;
+}
+
+.granular-channel-avatar.size-24 {
+  width: 24px;
+  height: 24px;
+  font-size: 12px;
+}
+
+.granular-channel-avatar.size-32 {
+  width: 32px;
+  height: 32px;
+  font-size: 14px;
+}
+
+.granular-channel-avatar.telephony { color: #1170cf; }
+.granular-channel-avatar.chat { color: #00804d; }
+.granular-channel-avatar.email { color: #7b40bf; }
+.granular-channel-avatar.social { color: #c25b00; }
+.granular-channel-avatar.workItem { color: #555; }
+.granular-channel-avatar.customMessaging { color: #0e8a7e; }
+
+.granular-channel-avatar .presence-dot {
+  position: absolute;
+  bottom: -1px;
+  right: -1px;
+  width: 8px;
+  height: 8px;
+  border-radius: 50%;
+  border: 1.5px solid #fff;
+}
+
+.granular-channel-avatar.size-32 .presence-dot {
+  width: 10px;
+  height: 10px;
+  bottom: -2px;
+  right: -2px;
+}
+
+.presence-dot.active { background-color: #00ab50; }
+.presence-dot.away { background-color: #d4a017; }
+.presence-dot.dnd { background-color: #f7644a; }
+.presence-dot.busy { background-color: #f7644a; }
+
+/* --- Hover Preview Tooltip --- */
+.granular-state-preview {
+  position: absolute;
+  top: calc(100% + 0.5rem);
+  left: 0;
+  z-index: 1000;
+  box-sizing: border-box;
+  min-width: 22rem;
+  padding: 0.75rem 1rem;
+  border: 1px solid #d5d5d5;
+  border-radius: 0.75rem;
+  background-color: #fff;
+  box-shadow: 0 0.25rem 1rem rgba(0, 0, 0, 0.16);
+  pointer-events: none;
+}
+
+.granular-state-preview-item {
+  display: flex;
+  align-items: center;
+  gap: 1rem;
+  padding: 0.5rem 0;
+}
+
+.granular-state-preview-label {
+  flex: 1;
+  font-size: 14px;
+}
+
+.granular-state-preview-time {
+  font-variant-numeric: tabular-nums;
+  font-size: 14px;
+}
+
+/* --- State Menu Panel --- */
+.granular-state-panel {
+  position: absolute;
+  top: calc(100% + 0.5rem);
+  left: 0;
+  z-index: 1000;
+  box-sizing: border-box;
+  width: 22rem;
+  max-width: calc(100vw - 2rem);
+  padding: 0.75rem;
+  border: 1px solid #d5d5d5;
+  border-radius: 0.75rem;
+  background-color: #fff;
+  box-shadow: 0 0.25rem 1rem rgba(0, 0, 0, 0.16);
+}
+
+.granular-state-menu {
+  display: flex;
+  flex-direction: column;
+}
+
+.granular-state-search {
+  margin-bottom: 0.5rem;
+  width: 100%;
+  box-sizing: border-box;
+  padding: 0.5rem 0.75rem;
+  border: 1px solid #b0b0b0;
+  border-radius: 0.375rem;
+  font-size: 14px;
+  font-family: inherit;
+}
+
+.granular-state-search:focus {
+  outline: 2px solid #1170cf;
+  outline-offset: -1px;
+  border-color: #1170cf;
+}
+
+.granular-state-menu-section {
+  display: flex;
+  flex-direction: column;
+}
+
+.granular-state-menu-item {
+  display: flex;
+  align-items: center;
+  gap: 0.75rem;
+  width: 100%;
+  min-height: 2.5rem;
+  padding: 0.5rem;
+  border: none;
+  border-radius: 0.5rem;
+  background: transparent;
+  color: #121212;
+  text-align: left;
+  cursor: pointer;
+  font-size: 14px;
+  font-family: inherit;
+}
+
+.granular-state-menu-item:hover:not(:disabled),
+.granular-state-menu-item:focus-visible {
+  background-color: #f0f0f0;
+}
+
+.granular-state-menu-item:disabled {
+  color: #a0a0a0;
+  cursor: not-allowed;
+}
+
+.granular-state-menu-item.manage {
+  justify-content: space-between;
+}
+
+.granular-state-available-icon { color: #00ab50; }
+.granular-state-idle-icon { color: #666; }
+
+.granular-state-divider {
+  width: 100%;
+  margin: 0.5rem 0;
+  border: none;
+  border-top: 1px solid #e0e0e0;
+}
+
+.granular-state-idle-title {
+  margin: 0.5rem 0.5rem 0.25rem;
+  font-weight: 700;
+  font-size: 14px;
+}
+
+.granular-state-idle-subtitle {
+  margin: 0 0.5rem 0.25rem;
+  font-size: 13px;
+  color: #666;
+}
+
+.granular-state-idle-list {
+  display: flex;
+  flex-direction: column;
+  max-height: 13.5rem;
+  overflow-y: auto;
+}
+
+.granular-state-no-match {
+  padding: 0.5rem;
+  color: #666;
+  font-size: 13px;
+}
+
+/* --- Manage Channel Availability Panel --- */
+.manage-channel-availability {
+  display: flex;
+  flex-direction: column;
+  gap: 0.5rem;
+}
+
+.manage-channel-availability-header {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+}
+
+.manage-channel-availability-header button {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 2rem;
+  height: 2rem;
+  border: none;
+  border-radius: 0.375rem;
+  background: transparent;
+  cursor: pointer;
+  font-size: 16px;
+  color: #333;
+}
+
+.manage-channel-availability-header button:hover {
+  background-color: #f0f0f0;
+}
+
+.manage-channel-availability-header h3 {
+  margin: 0;
+  font-size: 14px;
+  font-weight: 700;
+}
+
+.manage-channel-availability-body {
+  display: flex;
+  flex-direction: column;
+}
+
+.manage-channel-availability-row {
+  display: flex;
+  align-items: center;
+  gap: 1rem;
+  min-height: 3.5rem;
+  padding: 0 0.5rem;
+}
+
+.manage-channel-availability-icon {
+  font-size: 18px;
+  flex-shrink: 0;
+  width: 1.25rem;
+  text-align: center;
+}
+
+.manage-channel-availability-text {
+  display: flex;
+  flex: 1;
+  flex-direction: column;
+}
+
+.manage-channel-availability-title {
+  font-size: 14px;
+  font-weight: 500;
+}
+
+.manage-channel-availability-subtitle {
+  font-size: 12px;
+  color: #666;
+}
+
+.manage-channel-availability-footer {
+  display: flex;
+  justify-content: flex-end;
+  gap: 0.5rem;
+  padding: 0.5rem;
+}
+
+.manage-channel-availability-footer button {
+  padding: 0.4rem 1rem;
+  border-radius: 0.375rem;
+  font-size: 13px;
+  font-family: inherit;
+  cursor: pointer;
+}
+
+.manage-channel-availability-footer .btn-cancel {
+  border: 1px solid #b0b0b0;
+  background: #fff;
+  color: #333;
+}
+
+.manage-channel-availability-footer .btn-cancel:hover {
+  background: #f0f0f0;
+}
+
+.manage-channel-availability-footer .btn-apply {
+  border: 1px solid transparent;
+  background: #1170cf;
+  color: #fff;
+}
+
+.manage-channel-availability-footer .btn-apply:hover {
+  background: #0e5fad;
+}
+
+.manage-channel-availability-footer .btn-apply:disabled {
+  background: #a0c8ef;
+  cursor: not-allowed;
+}
+
+/* --- Toggle Switch (CSS-only) --- */
+.toggle-switch {
+  position: relative;
+  display: inline-block;
+  width: 36px;
+  height: 20px;
+  flex-shrink: 0;
+}
+
+.toggle-switch input {
+  opacity: 0;
+  width: 0;
+  height: 0;
+}
+
+.toggle-switch .toggle-slider {
+  position: absolute;
+  cursor: pointer;
+  top: 0;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  background-color: #b0b0b0;
+  transition: 0.2s;
+  border-radius: 20px;
+}
+
+.toggle-switch .toggle-slider::before {
+  position: absolute;
+  content: "";
+  height: 14px;
+  width: 14px;
+  left: 3px;
+  bottom: 3px;
+  background-color: white;
+  transition: 0.2s;
+  border-radius: 50%;
+}
+
+.toggle-switch input:checked + .toggle-slider {
+  background-color: #1170cf;
+}
+
+.toggle-switch input:checked + .toggle-slider::before {
+  transform: translateX(16px);
+}
+
+.toggle-switch input:disabled + .toggle-slider {
+  opacity: 0.5;
+  cursor: not-allowed;
+}
