@@ -525,7 +525,6 @@ try {
 | `CONFIG-R-010` | Unit | `test/unit/spec/services/config/index.ts` (minimal, full, partial parameters) | `test/unit/spec/services/config/index.ts` (rejection, 404, 500, missing body) | None |
 | `CONFIG-R-011`, `CONFIG-R-012` | Unit | `test/unit/spec/services/config/Util.ts` (aux codes, dial plan) | `test/unit/spec/services/config/Util.ts` (no default code, dial planning disabled) | None |
 
-Run `yarn test:unit` from the package directory (`yarn workspace @webex/contact-center test:unit` from
-the monorepo root is equivalent). A module specification is complete only when its public surface,
+Run `yarn workspace @webex/contact-center test:unit` from the workspace root. A module specification is complete only when its public surface,
 invariants, failure modes, and test evidence agree with the implementation; coverage is pending a fresh
 coverage review and independent validation.

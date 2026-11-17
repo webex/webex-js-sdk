@@ -17,57 +17,57 @@
       "role": "install"
     },
     "compile": {
-      "command": "yarn compile",
+      "command": "yarn workspace @webex/contact-center compile",
       "source_file": "package.json",
       "role": "compile"
     },
     "build": {
-      "command": "yarn build:src",
+      "command": "yarn workspace @webex/contact-center build:src",
       "source_file": "package.json",
       "role": "package"
     },
     "types": {
-      "command": "yarn build",
+      "command": "yarn workspace @webex/contact-center build",
       "source_file": "package.json",
       "role": "other"
     },
     "unit-test": {
-      "command": "yarn test:unit",
+      "command": "yarn workspace @webex/contact-center test:unit",
       "source_file": "package.json",
       "role": "unit-test"
     },
     "lint": {
-      "command": "yarn test:style",
+      "command": "yarn workspace @webex/contact-center test:style",
       "source_file": "package.json",
       "role": "lint"
     },
     "test-all": {
-      "command": "yarn test",
+      "command": "yarn workspace @webex/contact-center test",
       "source_file": "package.json",
       "role": "other"
     },
     "e2e": {
-      "command": "yarn test:e2e",
+      "command": "yarn workspace @webex/contact-center test:e2e",
       "source_file": "package.json",
       "role": "e2e"
     },
     "fix-lint": {
-      "command": "yarn fix:lint",
+      "command": "yarn workspace @webex/contact-center fix:lint",
       "source_file": "package.json",
       "role": "other"
     },
     "fix-prettier": {
-      "command": "yarn fix:prettier",
+      "command": "yarn workspace @webex/contact-center fix:prettier",
       "source_file": "package.json",
       "role": "other"
     },
     "docs-build": {
-      "command": "yarn build:docs",
+      "command": "yarn workspace @webex/contact-center build:docs",
       "source_file": "package.json",
       "role": "other"
     },
     "deploy": {
-      "command": "yarn deploy:npm",
+      "command": "yarn workspace @webex/contact-center deploy:npm",
       "source_file": "package.json",
       "role": "deploy"
     }

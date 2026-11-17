@@ -7,17 +7,17 @@
   },
   "commands": {
     "install": "yarn",
-    "compile": "yarn compile",
-    "build": "yarn build:src",
-    "types": "yarn build",
-    "unit-test": "yarn test:unit",
-    "lint": "yarn test:style",
-    "test-all": "yarn test",
-    "e2e": "yarn test:e2e",
-    "fix-lint": "yarn fix:lint",
-    "fix-prettier": "yarn fix:prettier",
-    "docs-build": "yarn build:docs",
-    "deploy": "yarn deploy:npm"
+    "compile": "yarn workspace @webex/contact-center compile",
+    "build": "yarn workspace @webex/contact-center build:src",
+    "types": "yarn workspace @webex/contact-center build",
+    "unit-test": "yarn workspace @webex/contact-center test:unit",
+    "lint": "yarn workspace @webex/contact-center test:style",
+    "test-all": "yarn workspace @webex/contact-center test",
+    "e2e": "yarn workspace @webex/contact-center test:e2e",
+    "fix-lint": "yarn workspace @webex/contact-center fix:lint",
+    "fix-prettier": "yarn workspace @webex/contact-center fix:prettier",
+    "docs-build": "yarn workspace @webex/contact-center build:docs",
+    "deploy": "yarn workspace @webex/contact-center deploy:npm"
   },
   "task_playbooks": [
     {
@@ -40,11 +40,11 @@
         ".sdd/manifest.json contract_catalog"
       ],
       "refresh_with": [
-        "yarn build"
+        "yarn workspace @webex/contact-center build"
       ],
       "validate_with": [
-        "yarn test:unit",
-        "yarn test:style"
+        "yarn workspace @webex/contact-center test:unit",
+        "yarn workspace @webex/contact-center test:style"
       ],
       "fallback": "If the change removes, renames, or reinterprets a published symbol, stop: it is a breaking change that needs a major version and consumer notes."
     },
@@ -65,11 +65,11 @@
         "test/unit/spec/services/task"
       ],
       "refresh_with": [
-        "yarn build:src"
+        "yarn workspace @webex/contact-center build:src"
       ],
       "validate_with": [
-        "yarn test:unit",
-        "yarn test:style"
+        "yarn workspace @webex/contact-center test:unit",
+        "yarn workspace @webex/contact-center test:style"
       ],
       "fallback": "If the backend event that drives the transition cannot be confirmed in src/services/config/types.ts, do not add the transition; report the gap."
     },
@@ -93,11 +93,11 @@
         "test/unit/spec/cc.ts"
       ],
       "refresh_with": [
-        "yarn build:src"
+        "yarn workspace @webex/contact-center build:src"
       ],
       "validate_with": [
-        "yarn test:unit",
-        "yarn test:style"
+        "yarn workspace @webex/contact-center test:unit",
+        "yarn workspace @webex/contact-center test:style"
       ],
       "fallback": "Keep the timeout constants in src/services/core/constants.ts unless the backend contract change is confirmed."
     }
@@ -156,11 +156,11 @@
         "dist"
       ],
       "refresh_with": [
-        "yarn build:src"
+        "yarn workspace @webex/contact-center build:src"
       ],
       "validate_with": [
-        "yarn test:unit",
-        "yarn test:style"
+        "yarn workspace @webex/contact-center test:unit",
+        "yarn workspace @webex/contact-center test:style"
       ]
     },
     {
@@ -173,10 +173,10 @@
         "junit.xml"
       ],
       "refresh_with": [
-        "yarn test:unit"
+        "yarn workspace @webex/contact-center test:unit"
       ],
       "validate_with": [
-        "yarn test:unit"
+        "yarn workspace @webex/contact-center test:unit"
       ]
     },
     {
@@ -219,7 +219,7 @@
     {
       "path": "dist",
       "generated_from": "src",
-      "refresh_with": "yarn build:src"
+      "refresh_with": "yarn workspace @webex/contact-center build:src"
     },
     {
       "path": "umd/contact-center.min.js",
@@ -238,9 +238,9 @@
         "src/**"
       ],
       "minimum": [
-        "yarn build:src",
-        "yarn test:unit",
-        "yarn test:style"
+        "yarn workspace @webex/contact-center build:src",
+        "yarn workspace @webex/contact-center test:unit",
+        "yarn workspace @webex/contact-center test:style"
       ],
       "recommended": [
         "add or update the matching test/unit/spec case; keep the 85% coverage threshold met"
@@ -254,8 +254,8 @@
         "package.json"
       ],
       "minimum": [
-        "yarn build",
-        "yarn test:unit"
+        "yarn workspace @webex/contact-center build",
+        "yarn workspace @webex/contact-center test:unit"
       ],
       "recommended": [
         "test/unit/spec/index.ts checks the root exports; update docs/architecture.md and .sdd/manifest.json contract_catalog"
@@ -267,11 +267,11 @@
         "src/webex-config.ts"
       ],
       "minimum": [
-        "yarn build:src",
-        "yarn test:style"
+        "yarn workspace @webex/contact-center build:src",
+        "yarn workspace @webex/contact-center test:style"
       ],
       "recommended": [
-        "rebuild the UMD bundle and load the Contact Center sample; yarn test:e2e when credentials are available"
+        "rebuild the UMD bundle and load the Contact Center sample; yarn workspace @webex/contact-center test:e2e when credentials are available"
       ]
     }
   ],
@@ -285,11 +285,11 @@
         "register, deregister, and silent relogin ordering"
       ],
       "refresh_with": [
-        "yarn build:src"
+        "yarn workspace @webex/contact-center build:src"
       ],
       "validate_with": [
-        "yarn test:unit",
-        "yarn test:style"
+        "yarn workspace @webex/contact-center test:unit",
+        "yarn workspace @webex/contact-center test:style"
       ],
       "avoid_direct_edits": [
         "dist",
@@ -306,10 +306,10 @@
         "WebSocket connection and recovery for every agent and task operation"
       ],
       "refresh_with": [
-        "yarn build:src"
+        "yarn workspace @webex/contact-center build:src"
       ],
       "validate_with": [
-        "yarn test:unit"
+        "yarn workspace @webex/contact-center test:unit"
       ],
       "avoid_direct_edits": [
         "dist"
@@ -325,10 +325,10 @@
         "TASK_EVENTS and TaskUIControls seen by applications"
       ],
       "refresh_with": [
-        "yarn build:src"
+        "yarn workspace @webex/contact-center build:src"
       ],
       "validate_with": [
-        "yarn test:unit"
+        "yarn workspace @webex/contact-center test:unit"
       ],
       "avoid_direct_edits": [
         "dist"
@@ -347,10 +347,10 @@
         "page cache eligibility"
       ],
       "refresh_with": [
-        "yarn build:src"
+        "yarn workspace @webex/contact-center build:src"
       ],
       "validate_with": [
-        "yarn test:unit"
+        "yarn workspace @webex/contact-center test:unit"
       ],
       "avoid_direct_edits": [
         "dist"
@@ -431,7 +431,7 @@
         ".sdd/manifest.json"
       ],
       "requirement": "The script must exist in package.json scripts and the command must equal a manifest commands entry.",
-      "notes": "Use the package-directory form; yarn workspace @webex/contact-center plus the script name is equivalent from the workspace root."
+      "notes": "Use the workspace form from the workspace root: yarn workspace @webex/contact-center plus the script name."
     },
     {
       "claim_category": "import_path",
@@ -541,7 +541,7 @@
           "dist"
         ],
         "generated_from": "src",
-        "refresh_with": "yarn build:src",
+        "refresh_with": "yarn workspace @webex/contact-center build:src",
         "notes": "JavaScript, source maps, and dist/types declarations. Do not edit by hand."
       },
       {
@@ -593,19 +593,19 @@
     "validation_entrypoints": [
       {
         "name": "build",
-        "command": "yarn build:src",
+        "command": "yarn workspace @webex/contact-center build:src",
         "scope": "src",
         "notes": "webex-legacy-tools build, then declarations."
       },
       {
         "name": "unit-test",
-        "command": "yarn test:unit",
+        "command": "yarn workspace @webex/contact-center test:unit",
         "scope": "test/unit/spec",
         "notes": "Jest with the 85% global coverage threshold."
       },
       {
         "name": "lint",
-        "command": "yarn test:style",
+        "command": "yarn workspace @webex/contact-center test:style",
         "scope": "src",
         "notes": "ESLint over src/**/*.ts with the workspace root config; Markdown is not linted."
       }

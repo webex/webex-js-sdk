@@ -988,7 +988,6 @@ Unit tests mirror module paths under `test/unit/spec/services/core`. Preserve po
 | `CORE-R-009` | None | None found | None found | No case for `Service.aqm.reqs.Pending` |
 | `CORE-R-015` | Unit (partial) | `test/unit/spec/services/core/Utils.ts` getErrorDetails and getStationLoginErrorData cases | `test/unit/spec/services/core/Utils.ts` silent-relogin AGENT_NOT_FOUND case | `generateTaskErrorObject` has no unit case |
 
-Run `yarn build:src` and then `yarn test:unit` from the package directory; from the monorepo root,
-`yarn workspace @webex/contact-center test:unit` is equivalent. A module specification is
+Run `yarn workspace @webex/contact-center build:src` and then `yarn workspace @webex/contact-center test:unit` from the workspace root. A module specification is
 complete only when its public surface, invariants, failure modes, and test evidence agree with the
 implementation; this module stays Partial until coverage review and independent validation run.

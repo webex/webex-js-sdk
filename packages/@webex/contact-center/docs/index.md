@@ -47,7 +47,7 @@ files named there for the events and payloads. To change behavior, follow the Wo
 ## Related repository resources
 
 - [`README.md`](../README.md) — npm package page
-- [`typedoc.md`](../typedoc.md) — landing page of the generated API reference (`yarn build:docs`)
+- [`typedoc.md`](../typedoc.md) — landing page of the generated API reference (`yarn workspace @webex/contact-center build:docs`)
 - [`src/utils/AGENTS.md`](../src/utils/AGENTS.md) — retained Utils guide; reference-only
 - The Contact Center sample app is in the workspace `docs/samples/contact-center` folder; the
   end-to-end suite in the workspace `cc_playwright` folder drives it.

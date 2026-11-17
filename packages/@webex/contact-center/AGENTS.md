@@ -87,24 +87,23 @@ coverage, and validation pass. This package publishes an SDK, so its contract ar
 
 ## 1. Commands (Run First)
 
-Use only documented commands. Do not invent alternatives when a command is missing. Run `yarn` at the
-workspace root and the package scripts below from this package directory,
-`packages/@webex/contact-center`, where `package.json` defines them. From the workspace root,
-`yarn workspace @webex/contact-center` followed by the script name runs the same script.
+Use only documented commands. Do not invent alternatives when a command is missing. Run every command
+below from the workspace root. The package scripts run through `yarn workspace @webex/contact-center`
+followed by the script name; `package.json` in `packages/@webex/contact-center` defines them.
 
 | Task                   | Command |
 | ---------------------- | ------- |
 | Install dependencies   | `yarn` (workspace root) |
 | Start dev environment  | N/A — library package with no start script in `package.json` |
-| Run tests              | `yarn test:unit` (the `@webex/contact-center` workspace `test:unit` script; Jest collects coverage) |
-| Run linters            | `yarn test:style` (the workspace `test:style` script: eslint over `src/**/*.ts`) |
-| Build/release artifact | `yarn build:src` (babel output, source maps, then `yarn build` for `@webex/calling` and the `dist/types` declarations) |
-| Format code            | `yarn fix:prettier` (prettier over `src/**/*.ts`); `yarn fix:lint` applies eslint fixes |
-| Build with dependencies | `yarn compile` (runs `build:src` for this package and its workspace dependencies in topological order) |
-| Style and unit together | `yarn test` (runs `test:style`, then `test:unit`) |
-| E2E | `yarn test:e2e` (Playwright with the workspace `playwright.config.ts`, which runs the monorepo-root `cc_playwright/` suites; see its README) |
-| API reference | `yarn build:docs` (typedoc into the workspace `docs/wxcc` folder, outside this package) |
-| Publish | `yarn deploy:npm` (release automation only) |
+| Run tests              | `yarn workspace @webex/contact-center test:unit` (the `@webex/contact-center` workspace `test:unit` script; Jest collects coverage) |
+| Run linters            | `yarn workspace @webex/contact-center test:style` (the workspace `test:style` script: eslint over `src/**/*.ts`) |
+| Build/release artifact | `yarn workspace @webex/contact-center build:src` (babel output, source maps, then the `build` script for `@webex/calling` and the `dist/types` declarations) |
+| Format code            | `yarn workspace @webex/contact-center fix:prettier` (prettier over `src/**/*.ts`); `yarn workspace @webex/contact-center fix:lint` applies eslint fixes |
+| Build with dependencies | `yarn workspace @webex/contact-center compile` (runs `build:src` for this package and its workspace dependencies in topological order) |
+| Style and unit together | `yarn workspace @webex/contact-center test` (runs `test:style`, then `test:unit`) |
+| E2E | `yarn workspace @webex/contact-center test:e2e` (Playwright with the workspace `playwright.config.ts`, which runs the monorepo-root `cc_playwright/` suites; see its README) |
+| API reference | `yarn workspace @webex/contact-center build:docs` (typedoc into the workspace `docs/wxcc` folder, outside this package) |
+| Publish | `yarn workspace @webex/contact-center deploy:npm` (release automation only) |
 
 To run one spec file, add the `--targets` option that the workspace root `AGENTS.md` describes, with a
 path relative to `test/unit/spec/` (for example `cc.ts`). There is no `test:integration` or
@@ -200,14 +199,14 @@ Key files:
 
 ## 4. Testing Workflow
 
-Run checks in this order, from the package directory:
+Run checks in this order, from the workspace root:
 
-1. `yarn build:src`
-2. `yarn test:unit`
-3. `yarn test:style`
-4. `yarn test:e2e` only when the change needs it (see Ask First).
+1. `yarn workspace @webex/contact-center build:src`
+2. `yarn workspace @webex/contact-center test:unit`
+3. `yarn workspace @webex/contact-center test:style`
+4. `yarn workspace @webex/contact-center test:e2e` only when the change needs it (see Ask First).
 
-On a fresh or outdated checkout, run `yarn compile` first so workspace dependencies such as
+On a fresh or outdated checkout, run `yarn workspace @webex/contact-center compile` first so workspace dependencies such as
 `@webex/calling` have a current `dist/`; specs also import workspace packages such as
 `@webex/test-helper-mock-webex` and `@webex/internal-plugin-mercury` by name.
 
@@ -329,7 +328,7 @@ calls. Assert the error helper with its exact arguments, for example
 
 Coding expectations:
 
-- Follow repository style rules and static analysis output. `yarn test:style` applies the monorepo root
+- Follow repository style rules and static analysis output. `yarn workspace @webex/contact-center test:style` applies the monorepo root
   `.eslintrc.js` to `src/**/*.ts` only; its ignore patterns skip `**/test/**/*`. It enforces
   `max-len` 100, single quotes, `newline-before-return`, and `no-console` (which still allows
   `console.warn` and `console.error`).
@@ -420,7 +419,7 @@ Older modules keep kebab-case or camelCase names (`aqm-reqs.ts`, `connection-ser
 `logger-proxy.ts`, `taskDataNormalizer.ts`, `uiControlsComputer.ts`); do not rename them.
 
 JSDoc: all public methods and types must have comprehensive JSDoc with `@public`, `@param`,
-`@returns`, `@throws` where the method rejects, and `@example`; typedoc (`yarn build:docs`) renders
+`@returns`, `@throws` where the method rejects, and `@example`; typedoc (`yarn workspace @webex/contact-center build:docs`) renders
 them. Mark internals with the `@private` or `@ignore` tag:
 
 ```typescript
@@ -951,7 +950,7 @@ verdict. Draft only.
 - Changing AQM bindings, timeouts, or retry and relogin behavior (`allowAutomatedRelogin`,
   `TIMEOUT_REQ`).
 - Renaming or revaluing a `METRIC_EVENT_NAMES` entry, which changes reported telemetry.
-- Running `yarn test:e2e`, which drives live Contact Center tenants with credentials from the
+- Running `yarn workspace @webex/contact-center test:e2e`, which drives live Contact Center tenants with credentials from the
   monorepo-root `cc_playwright/.env`.
 - Large refactors, and any destructive data or infrastructure operation.
 

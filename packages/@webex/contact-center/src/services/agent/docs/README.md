@@ -657,7 +657,7 @@ try {
 
 ## Verification
 
-Use `test/unit/spec/services/agent/index.ts` for the factory and `test/unit/spec/cc.ts` for public validation, metrics, calling, updateAgentProfile, and recovery ownership. Cover success, nested failure, HTTP rejection, and timeout without inventing a `deviceUpdate` factory method. The factory test only checks that each request function delegates to `req` or `reqEmpty`; endpoint, method, bind, and payload values are not asserted. Run `yarn test:unit` from the package directory (`yarn workspace @webex/contact-center test:unit` from the monorepo root is equivalent).
+Use `test/unit/spec/services/agent/index.ts` for the factory and `test/unit/spec/cc.ts` for public validation, metrics, calling, updateAgentProfile, and recovery ownership. Cover success, nested failure, HTTP rejection, and timeout without inventing a `deviceUpdate` factory method. The factory test only checks that each request function delegates to `req` or `reqEmpty`; endpoint, method, bind, and payload values are not asserted. Run `yarn workspace @webex/contact-center test:unit` from the workspace root.
 
 | Requirement or invariant | Test level | Positive evidence | Negative or boundary evidence | Gap |
 | ------------------------ | ---------- | ----------------- | ----------------------------- | --- |

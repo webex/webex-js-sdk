@@ -408,7 +408,6 @@ PageCache has no dedicated unit file; current consumer tests in `test/unit/spec/
 | `UTILS-R-006` | None | None found | None found | Static check only: `src/utils/PageCache.ts` has no feature-flag dependency; consumer tests cover invocation choices; no direct rollout test is applicable. |
 | `UTILS-R-007` | Unit | `test/unit/spec/services/AddressBook.ts`, `test/unit/spec/services/EntryPoint.ts`, `test/unit/spec/services/Queue.ts` default-parameter cases | None found | None |
 
-Run the consumer tests with `yarn test:unit` from the package directory (equivalent to
-`yarn workspace @webex/contact-center test:unit` from the monorepo root). A module specification is
+Run the consumer tests with `yarn workspace @webex/contact-center test:unit` from the workspace root. A module specification is
 complete only when its public surface, invariants, failure modes, and test evidence agree with the
 implementation.

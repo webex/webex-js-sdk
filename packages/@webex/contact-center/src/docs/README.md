@@ -678,7 +678,7 @@ Compatibility notes:
 | `exports['./package']` | Tooling | Public | Same | `package.json` |
 | `umd/contact-center.min.js` | Script-tag pages | Public | Rebuilt by the workspace webpack entry | `src/webex.js` |
 
-`yarn build` writes the declarations to dist/types; `yarn build:docs` publishes the typedoc API
+`yarn workspace @webex/contact-center build` writes the declarations to dist/types; `yarn workspace @webex/contact-center build:docs` publishes the typedoc API
 reference. No API report exists.
 
 ## Host integration and theming
@@ -701,7 +701,7 @@ The module registers as `cc` through the Webex SDK plugin system and depends on 
 
 `test/unit/spec/cc.ts` is the characterization baseline. Cover READY-time construction, registration success/failure, listener identity, existing queue/entry-point method delegation, WebSocket event mapping, preview-campaign operations (including disabled skip/remove pre-guards, which still need cases), automated-relogin enabled/disabled branches, browser-calling conditions, and deregistration cleanup/error paths. Use Queue and EntryPoint service tests for default policy and explicit existing-parameter overrides, `test/unit/spec/services/UserPreference.ts` for user-preference CRUD, and `test/unit/spec/services/task/dialer.ts` for preview AQM request contracts. Preserve the package-wide 85% branch/function/line/statement threshold.
 
-All rows are unit level (Jest through `yarn test:unit`).
+All rows are unit level (Jest through `yarn workspace @webex/contact-center test:unit`).
 
 | Requirement or invariant | Test level | Positive evidence | Negative or boundary evidence | Gap |
 | ------------------------ | ---------- | ----------------- | ----------------------------- | --- |

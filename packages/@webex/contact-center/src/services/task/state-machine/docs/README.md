@@ -1369,7 +1369,7 @@ Declared but not handled by any state or the root: `EXIT_CONFERENCE`, `EXIT_CONF
 
 ## Verification
 
-Use `test/unit/spec/services/task/state-machine/TaskStateMachine.ts`, `guards.ts`, and `uiControlsComputer.ts` to cover every documented transition/action/guard/control claim. Use `test/unit/spec/services/task/Task.ts` for injected `syncTaskDataFromEvent` behavior. Run `yarn test:unit` from the package directory (equivalent to `yarn workspace @webex/contact-center test:unit` from the monorepo root); run `yarn build:src` first because the legacy tests may import built output.
+Use `test/unit/spec/services/task/state-machine/TaskStateMachine.ts`, `guards.ts`, and `uiControlsComputer.ts` to cover every documented transition/action/guard/control claim. Use `test/unit/spec/services/task/Task.ts` for injected `syncTaskDataFromEvent` behavior. Run `yarn workspace @webex/contact-center test:unit` from the workspace root; run `yarn workspace @webex/contact-center build:src` first because the legacy tests may import built output.
 
 | Requirement or invariant | Test level                    | Positive evidence | Negative or boundary evidence | Gap                    |
 | ------------------------ | ----------------------------- | ----------------- | ----------------------------- | ---------------------- |

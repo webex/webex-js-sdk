@@ -76,9 +76,9 @@ completion, and a conformance and fidelity remediation) are folded into the nine
 
 | Change affects | Load and update | Verification route |
 | -------------- | --------------- | ------------------ |
-| Package boundaries or cross-cutting architecture | `docs/architecture.md` and applicable ADRs | `yarn build:src`, `yarn test:unit`, and `yarn test:style`, plus the affected module specs |
+| Package boundaries or cross-cutting architecture | `docs/architecture.md` and applicable ADRs | `yarn workspace @webex/contact-center build:src`, `yarn workspace @webex/contact-center test:unit`, and `yarn workspace @webex/contact-center test:style`, plus the affected module specs |
 | A stable code, package, or component boundary | Its module spec from the Module registry | Module tests under `test/unit/spec`, plus affected contracts |
-| A public API, event, or exported type | The owning module spec, the contract index in `docs/architecture.md`, `src/index.ts`, and `.sdd/manifest.json` `contract_catalog` | `yarn build` for declarations, then `yarn test:unit`; `test/unit/spec/index.ts` covers the root exports |
+| A public API, event, or exported type | The owning module spec, the contract index in `docs/architecture.md`, `src/index.ts`, and `.sdd/manifest.json` `contract_catalog` | `yarn workspace @webex/contact-center build` for declarations, then `yarn workspace @webex/contact-center test:unit`; `test/unit/spec/index.ts` covers the root exports |
 | Consult and transfer destination lists or controls | ADR-0002, the Contact Center, Services, Utils, Task, and Task state machine specs | `test/unit/spec/cc.ts`, `test/unit/spec/services/Queue.ts`, `test/unit/spec/services/EntryPoint.ts`, `test/unit/spec/services/AddressBook.ts`, `test/unit/spec/services/task/state-machine/uiControlsComputer.ts` |
 | Task state or lifecycle transitions | The Task and Task state machine module specs | `test/unit/spec/services/task/state-machine/TaskStateMachine.ts`, `test/unit/spec/services/task/TaskManager.ts` |
 | Transport, reconnect, or recovery | The Core module spec and the security architecture in `docs/architecture.md` | `test/unit/spec/services/core/aqm-reqs.ts`, `test/unit/spec/services/core/websocket/connection-service.ts`, `test/unit/spec/cc.ts` |

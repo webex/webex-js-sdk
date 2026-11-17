@@ -151,7 +151,7 @@ The collaborators in the composition tree are built once, on the Webex READY eve
 | `xstate` | external | Task state machine runtime | Pinned `5.24.0` in `package.json` |
 | `wcc-api-gateway` and the WCC notification WebSocket | external Webex service | Service-catalog identifier resolved through the host Webex SDK, not an npm package dependency; agent, task, config, and realtime contracts, required for runtime operations | Host service-catalog availability; structured error, reconnect, or timeout through the owning module against a remote compatible contract |
 
-- Workspace glob: root `package.json` `workspaces`; this scoped package is public and consumes internal/public sibling packages through `workspace:*` dependencies, so it always builds against the sibling sources in the same checkout; `yarn build` first runs `build:src` for `@webex/calling`.
+- Workspace glob: root `package.json` `workspaces`; this scoped package is public and consumes internal/public sibling packages through `workspace:*` dependencies, so it always builds against the sibling sources in the same checkout; `yarn workspace @webex/contact-center build` first runs `build:src` for `@webex/calling`.
 
 No import cycle exists: the sibling packages this package uses do not import it.
 
@@ -302,7 +302,7 @@ Cache eligibility rules are in the [Utils spec](../src/utils/docs/README.md) and
 
 | Artifact | Publish target | Versioning rule | Deprecation window | Changelog or migration obligation |
 | -------- | -------------- | --------------- | ------------------ | --------------------------------- |
-| `@webex/contact-center`, including `dist/types` | npm through `yarn deploy:npm` | Semver through the workspace release tooling | None declared | The workspace generates changelogs centrally; a removal, rename, payload reinterpretation, or semantic break needs a major-version consumer transition, consumer notes, and a `BREAKING CHANGE:` note |
+| `@webex/contact-center`, including `dist/types` | npm through `yarn workspace @webex/contact-center deploy:npm` | Semver through the workspace release tooling | None declared | The workspace generates changelogs centrally; a removal, rename, payload reinterpretation, or semantic break needs a major-version consumer transition, consumer notes, and a `BREAKING CHANGE:` note |
 | UMD `umd/contact-center.min.js` | Committed bundle served to the Contact Center sample | Built by the workspace webpack from `src/webex.js` | None declared | Rebuild with the package |
 
 - **Deprecation:** mark symbols/types in source/JSDoc, retain through an announced transition, and update changelog/spec/catalog together.
@@ -334,13 +334,13 @@ The backend-delivered `agentWellbeing.enable` value is the supported server roll
 
 | Command or artifact | Owner | Inputs | Output or side effect | Compatibility boundary |
 | ------------------- | ----- | ------ | --------------------- | ---------------------- |
-| `yarn build:src` | Package scripts | `src` | JavaScript and maps in `dist/` through `webex-legacy-tools`, then runs `build` | `dist/` is generated and ignored by Git |
-| `yarn build` | Package scripts | `src`, `tsconfig.json` | Builds `@webex/calling` sources, then declarations in `dist/types` | `types` points at them |
-| `yarn compile` | Package scripts | This package and its workspace dependencies | `build:src` for each, in topological order | Workspace order |
-| `yarn test:unit` | Package scripts | `test/unit/spec` | Jest run with the 85% coverage threshold; writes `coverage/` and `junit.xml` (ignored by Git) | Fails below 85% |
-| `yarn test:style` | Package scripts | `src/**/*.ts` | ESLint run | Markdown is not linted |
-| `yarn test:e2e` | Workspace Playwright | `../../../playwright.config.ts`, `cc_playwright` | End-to-end run against the sample app | Needs environment credentials |
-| `yarn build:docs` | Package scripts | `typedoc.json`, `src/index.ts` | API reference in the workspace `docs/wxcc` folder | Output lives outside this package |
+| `yarn workspace @webex/contact-center build:src` | Package scripts | `src` | JavaScript and maps in `dist/` through `webex-legacy-tools`, then runs `build` | `dist/` is generated and ignored by Git |
+| `yarn workspace @webex/contact-center build` | Package scripts | `src`, `tsconfig.json` | Builds `@webex/calling` sources, then declarations in `dist/types` | `types` points at them |
+| `yarn workspace @webex/contact-center compile` | Package scripts | This package and its workspace dependencies | `build:src` for each, in topological order | Workspace order |
+| `yarn workspace @webex/contact-center test:unit` | Package scripts | `test/unit/spec` | Jest run with the 85% coverage threshold; writes `coverage/` and `junit.xml` (ignored by Git) | Fails below 85% |
+| `yarn workspace @webex/contact-center test:style` | Package scripts | `src/**/*.ts` | ESLint run | Markdown is not linted |
+| `yarn workspace @webex/contact-center test:e2e` | Workspace Playwright | `../../../playwright.config.ts`, `cc_playwright` | End-to-end run against the sample app | Needs environment credentials |
+| `yarn workspace @webex/contact-center build:docs` | Package scripts | `typedoc.json`, `src/index.ts` | API reference in the workspace `docs/wxcc` folder | Output lives outside this package |
 | `umd/contact-center.min.js` | Workspace webpack | `src/webex.js` | Browser bundle for the sample | Regenerated, not hand-edited |
 
 <!-- Include if: cross-repository dependencies materially affect behavior or delivery. [condition-id: repo.cross_repo_deps_material] -->

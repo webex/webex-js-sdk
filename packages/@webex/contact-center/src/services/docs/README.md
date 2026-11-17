@@ -740,7 +740,7 @@ Request, response, and event payload ownership for the composed transports is an
 
 ## Verification
 
-Unit tests mirror module paths under `test/unit/spec/services`. Preserve positive and negative paths, event ordering, timeout/recovery behavior, and the package's 85% global branch/function/line/statement threshold. Run them with `yarn test:unit` from the package directory (equivalent to `yarn workspace @webex/contact-center test:unit` from the monorepo root).
+Unit tests mirror module paths under `test/unit/spec/services`. Preserve positive and negative paths, event ordering, timeout/recovery behavior, and the package's 85% global branch/function/line/statement threshold. Run them with `yarn workspace @webex/contact-center test:unit` from the workspace root.
 
 | Requirement or invariant | Test level | Positive evidence | Negative or boundary evidence | Gap |
 | --- | --- | --- | --- | --- |
