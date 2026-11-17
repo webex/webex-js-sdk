@@ -9,415 +9,181 @@
       "javascript"
     ]
   },
-  "topology": "Single-repo",
+  "topology": "Orchestrator-plus-components",
   "commands": {
     "install": {
-      "command": "yarn install",
-      "source_file": "package.json",
-      "verified_at": "2026-07-06T10:46:38Z"
+      "command": "yarn",
+      "source_file": "../../.github/workflows/deploy.yml",
+      "role": "install"
     },
     "compile": {
       "command": "yarn workspace @webex/calling compile",
-      "source_file": "packages/calling/package.json",
-      "verified_at": "2026-08-05T10:53:14Z"
+      "source_file": "package.json",
+      "role": "compile"
     },
     "build": {
       "command": "yarn workspace @webex/calling build:src",
-      "source_file": "packages/calling/package.json",
-      "verified_at": "2026-07-06T10:46:38Z"
+      "source_file": "package.json",
+      "role": "package",
+      "verified_at": "2026-11-17T05:15:59Z"
     },
     "unit-test": {
       "command": "yarn workspace @webex/calling test:unit",
-      "source_file": "packages/calling/package.json",
-      "verified_at": "2026-08-05T10:53:14Z"
+      "source_file": "package.json",
+      "role": "unit-test",
+      "verified_at": "2026-11-17T05:17:00Z"
     },
     "lint": {
       "command": "yarn workspace @webex/calling test:style",
-      "source_file": "packages/calling/package.json",
-      "verified_at": "2026-07-06T10:46:38Z"
+      "source_file": "package.json",
+      "role": "lint",
+      "verified_at": "2026-11-17T05:16:13Z"
     },
-    "test_e2e": {
+    "e2e": {
       "command": "yarn workspace @webex/calling test:e2e",
-      "source_file": "packages/calling/package.json",
-      "verified_at": "2026-07-06T10:46:38Z"
+      "source_file": "package.json",
+      "role": "e2e"
     },
-    "docs": {
+    "docs-check": {
+      "command": "yarn workspace @webex/calling docs",
+      "source_file": "package.json",
+      "role": "other",
+      "verified_at": "2026-11-17T05:17:09Z"
+    },
+    "docs-build": {
       "command": "yarn workspace @webex/calling build:docs",
-      "source_file": "packages/calling/package.json",
-      "verified_at": "2026-07-06T10:46:38Z"
+      "source_file": "package.json",
+      "role": "other"
+    },
+    "clean": {
+      "command": "yarn workspace @webex/calling prebuild",
+      "source_file": "package.json",
+      "role": "other"
+    },
+    "fix-lint": {
+      "command": "yarn workspace @webex/calling fix:lint",
+      "source_file": "package.json",
+      "role": "other"
+    },
+    "format": {
+      "command": "yarn workspace @webex/calling fix:prettier",
+      "source_file": "package.json",
+      "role": "other"
+    },
+    "deploy": {
+      "command": "yarn workspace @webex/calling deploy:npm",
+      "source_file": "package.json",
+      "role": "deploy"
+    }
+  },
+  "toolchain": [
+    {
+      "name": "node",
+      "version": "22.14",
+      "origin": "repo-config",
+      "source_file": "../../AGENTS.md"
+    },
+    {
+      "name": "node",
+      "version": "lts/jod",
+      "origin": "repo-config",
+      "source_file": "../../.nvmrc"
+    },
+    {
+      "name": "node",
+      "version": ">=18",
+      "origin": "repo-config",
+      "source_file": "package.json"
+    },
+    {
+      "name": "yarn",
+      "version": "3.4.1",
+      "origin": "repo-config",
+      "source_file": "../../package.json"
+    },
+    {
+      "name": "typescript",
+      "version": "4.9.5",
+      "origin": "repo-config",
+      "source_file": "package.json"
+    },
+    {
+      "name": "jest",
+      "version": "29.3.1",
+      "origin": "repo-config",
+      "source_file": "package.json"
+    },
+    {
+      "name": "eslint",
+      "version": "^8.24.0",
+      "origin": "repo-config",
+      "source_file": "package.json"
+    },
+    {
+      "name": "prettier",
+      "version": "2.5.1",
+      "origin": "repo-config",
+      "source_file": "package.json"
+    },
+    {
+      "name": "typedoc",
+      "version": "0.23.26",
+      "origin": "repo-config",
+      "source_file": "package.json"
+    },
+    {
+      "name": "playwright",
+      "version": "workspace root (yarn run -T)",
+      "origin": "repo-config",
+      "source_file": "playwright.config.ts"
+    }
+  ],
+  "tests": {
+    "unit": {
+      "command_ref": "unit-test",
+      "dir": "src",
+      "framework": "jest"
+    },
+    "e2e": {
+      "command_ref": "e2e",
+      "dir": "playwright/suites",
+      "framework": "playwright"
+    }
+  },
+  "quality_gates": {
+    "code_coverage": {
+      "origin": "repo-config",
+      "source_file": "jest.config.js",
+      "min": 85,
+      "kind": "unit-test",
+      "applies_to": "total",
+      "enforced": true
     }
   },
   "coverage_status_definitions": {
-    "specced": ">=80% public surface specced, drift <5% \u2014 spec is authoritative",
-    "partial": "40-80% specced \u2014 spec is a hint, cross-check code",
-    "untracked": "<40% specced \u2014 code is the source of truth"
+    "specced": ">=80% public surface specced, drift <5% — spec is authoritative",
+    "partial": "40-80% specced — spec is a hint, cross-check code",
+    "untracked": "<40% specced — code is the source of truth"
   },
-  "spec_source_policy": {
-    "mode": "migrate-existing",
-    "decided_by": "repository user",
-    "decided_at": "2026-07-06T10:46:38Z",
-    "decision_record": ".generated/sdd/bootstrap-questionnaire.md"
-  },
-  "spec_sources": [
-    {
-      "path": "AGENTS.md",
-      "scope": "repo",
-      "role": "source-material",
-      "canonical": true,
-      "use_by_agents": "source-for-migration",
-      "canonical_target": "AGENTS.md",
-      "notes": "Migrated in place into the canonical agent-entry template while preserving package routing and safety rules."
-    },
-    {
-      "path": "ai-docs/README.md",
-      "scope": "repo",
-      "role": "reference-only",
-      "canonical": false,
-      "use_by_agents": "context-only",
-      "canonical_target": "ai-docs/SPEC_INDEX.md",
-      "notes": "Retained as a navigation hub and updated to point at canonical SDD docs."
-    },
-    {
-      "path": "ai-docs/RULES.md",
-      "scope": "repo",
-      "role": "source-material",
-      "canonical": true,
-      "use_by_agents": "source-for-migration",
-      "canonical_target": "ai-docs/RULES.md",
-      "notes": "Migrated in place into the canonical rules template."
-    },
-    {
-      "path": "src/ai-docs/AGENTS.md",
-      "scope": "repo",
-      "role": "superseded",
-      "canonical": false,
-      "use_by_agents": "source-for-migration",
-      "canonical_target": "ai-docs/ARCHITECTURE.md",
-      "notes": "Package-source orientation content migrates into standing architecture and contract docs."
-    },
-    {
-      "path": "src/ai-docs/ARCHITECTURE.md",
-      "scope": "repo",
-      "role": "superseded",
-      "canonical": false,
-      "use_by_agents": "source-for-migration",
-      "canonical_target": "ai-docs/ARCHITECTURE.md",
-      "notes": "Package-source architecture content migrates by meaning into the canonical standing architecture."
-    },
-    {
-      "path": "usm sdk flow.md",
-      "scope": "feature",
-      "role": "reference-only",
-      "canonical": false,
-      "use_by_agents": "source-for-migration",
-      "canonical_target": "src/CallingClient/ai-docs/calling-client-spec.md",
-      "notes": "Current supported flow details are migrated into the CallingClient design; the original feature note is retained."
-    },
-    {
-      "path": "src/api.ts",
-      "scope": "reference",
-      "role": "reference-only",
-      "canonical": false,
-      "use_by_agents": "context-only",
-      "canonical_target": "ai-docs/CONTRACTS.md",
-      "notes": "Native TypeScript API export source remains authoritative for exact names and types."
-    },
-    {
-      "path": "src/CallHistory/ai-docs/AGENTS.md",
-      "scope": "module",
-      "module": "src/CallHistory/",
-      "role": "superseded",
-      "canonical": false,
-      "use_by_agents": "source-for-migration",
-      "canonical_target": "src/CallHistory/ai-docs/call-history-spec.md",
-      "notes": "Retained legacy AI documentation; current supported content is migrated by meaning into the canonical module specification."
-    },
-    {
-      "path": "src/CallHistory/ai-docs/ARCHITECTURE.md",
-      "scope": "module",
-      "module": "src/CallHistory/",
-      "role": "superseded",
-      "canonical": false,
-      "use_by_agents": "source-for-migration",
-      "canonical_target": "src/CallHistory/ai-docs/call-history-spec.md",
-      "notes": "Retained legacy AI documentation; current supported content is migrated by meaning into the canonical module specification."
-    },
-    {
-      "path": "src/CallRecording/ai-docs/AGENTS.md",
-      "scope": "module",
-      "module": "src/CallRecording/",
-      "role": "superseded",
-      "canonical": false,
-      "use_by_agents": "source-for-migration",
-      "canonical_target": "src/CallRecording/ai-docs/call-recording-spec.md",
-      "notes": "Retained legacy AI documentation; current supported content is migrated by meaning into the canonical module specification."
-    },
-    {
-      "path": "src/CallRecording/ai-docs/ARCHITECTURE.md",
-      "scope": "module",
-      "module": "src/CallRecording/",
-      "role": "superseded",
-      "canonical": false,
-      "use_by_agents": "source-for-migration",
-      "canonical_target": "src/CallRecording/ai-docs/call-recording-spec.md",
-      "notes": "Retained legacy AI documentation; current supported content is migrated by meaning into the canonical module specification."
-    },
-    {
-      "path": "src/CallSettings/ai-docs/AGENTS.md",
-      "scope": "module",
-      "module": "src/CallSettings/",
-      "role": "superseded",
-      "canonical": false,
-      "use_by_agents": "source-for-migration",
-      "canonical_target": "src/CallSettings/ai-docs/call-settings-spec.md",
-      "notes": "Retained legacy AI documentation; current supported content is migrated by meaning into the canonical module specification."
-    },
-    {
-      "path": "src/CallSettings/ai-docs/ARCHITECTURE.md",
-      "scope": "module",
-      "module": "src/CallSettings/",
-      "role": "superseded",
-      "canonical": false,
-      "use_by_agents": "source-for-migration",
-      "canonical_target": "src/CallSettings/ai-docs/call-settings-spec.md",
-      "notes": "Retained legacy AI documentation; current supported content is migrated by meaning into the canonical module specification."
-    },
-    {
-      "path": "src/CallingClient/ai-docs/AGENTS.md",
-      "scope": "module",
-      "module": "src/CallingClient/",
-      "role": "superseded",
-      "canonical": false,
-      "use_by_agents": "source-for-migration",
-      "canonical_target": "src/CallingClient/ai-docs/calling-client-spec.md",
-      "notes": "Retained legacy AI documentation; current supported content is migrated by meaning into the canonical module specification."
-    },
-    {
-      "path": "src/CallingClient/ai-docs/ARCHITECTURE.md",
-      "scope": "module",
-      "module": "src/CallingClient/",
-      "role": "superseded",
-      "canonical": false,
-      "use_by_agents": "source-for-migration",
-      "canonical_target": "src/CallingClient/ai-docs/calling-client-spec.md",
-      "notes": "Retained legacy AI documentation; current supported content is migrated by meaning into the canonical module specification."
-    },
-    {
-      "path": "src/CallingClient/calling/ai-docs/AGENTS.md",
-      "scope": "module",
-      "module": "src/CallingClient/calling/",
-      "role": "superseded",
-      "canonical": false,
-      "use_by_agents": "source-for-migration",
-      "canonical_target": "src/CallingClient/calling/ai-docs/calling-spec.md",
-      "notes": "Retained legacy AI documentation; current supported content is migrated by meaning into the canonical module specification."
-    },
-    {
-      "path": "src/CallingClient/calling/ai-docs/ARCHITECTURE.md",
-      "scope": "module",
-      "module": "src/CallingClient/calling/",
-      "role": "superseded",
-      "canonical": false,
-      "use_by_agents": "source-for-migration",
-      "canonical_target": "src/CallingClient/calling/ai-docs/calling-spec.md",
-      "notes": "Retained legacy AI documentation; current supported content is migrated by meaning into the canonical module specification."
-    },
-    {
-      "path": "src/CallingClient/calling/CallerId/ai-docs/AGENTS.md",
-      "scope": "module",
-      "module": "src/CallingClient/calling/CallerId/",
-      "role": "superseded",
-      "canonical": false,
-      "use_by_agents": "source-for-migration",
-      "canonical_target": "src/CallingClient/calling/CallerId/ai-docs/caller-id-spec.md",
-      "notes": "Retained legacy AI documentation; current supported content is migrated by meaning into the canonical module specification."
-    },
-    {
-      "path": "src/CallingClient/line/ai-docs/AGENTS.md",
-      "scope": "module",
-      "module": "src/CallingClient/line/",
-      "role": "superseded",
-      "canonical": false,
-      "use_by_agents": "source-for-migration",
-      "canonical_target": "src/CallingClient/line/ai-docs/line-spec.md",
-      "notes": "Retained legacy AI documentation; current supported content is migrated by meaning into the canonical module specification."
-    },
-    {
-      "path": "src/CallingClient/line/ai-docs/ARCHITECTURE.md",
-      "scope": "module",
-      "module": "src/CallingClient/line/",
-      "role": "superseded",
-      "canonical": false,
-      "use_by_agents": "source-for-migration",
-      "canonical_target": "src/CallingClient/line/ai-docs/line-spec.md",
-      "notes": "Retained legacy AI documentation; current supported content is migrated by meaning into the canonical module specification."
-    },
-    {
-      "path": "src/CallingClient/registration/ai-docs/AGENTS.md",
-      "scope": "module",
-      "module": "src/CallingClient/registration/",
-      "role": "superseded",
-      "canonical": false,
-      "use_by_agents": "source-for-migration",
-      "canonical_target": "src/CallingClient/registration/ai-docs/registration-spec.md",
-      "notes": "Retained legacy AI documentation; current supported content is migrated by meaning into the canonical module specification."
-    },
-    {
-      "path": "src/CallingClient/registration/ai-docs/ARCHITECTURE.md",
-      "scope": "module",
-      "module": "src/CallingClient/registration/",
-      "role": "superseded",
-      "canonical": false,
-      "use_by_agents": "source-for-migration",
-      "canonical_target": "src/CallingClient/registration/ai-docs/registration-spec.md",
-      "notes": "Retained legacy AI documentation; current supported content is migrated by meaning into the canonical module specification."
-    },
-    {
-      "path": "src/Contacts/ai-docs/AGENTS.md",
-      "scope": "module",
-      "module": "src/Contacts/",
-      "role": "superseded",
-      "canonical": false,
-      "use_by_agents": "source-for-migration",
-      "canonical_target": "src/Contacts/ai-docs/contacts-spec.md",
-      "notes": "Retained legacy AI documentation; current supported content is migrated by meaning into the canonical module specification."
-    },
-    {
-      "path": "src/Contacts/ai-docs/ARCHITECTURE.md",
-      "scope": "module",
-      "module": "src/Contacts/",
-      "role": "superseded",
-      "canonical": false,
-      "use_by_agents": "source-for-migration",
-      "canonical_target": "src/Contacts/ai-docs/contacts-spec.md",
-      "notes": "Retained legacy AI documentation; current supported content is migrated by meaning into the canonical module specification."
-    },
-    {
-      "path": "src/Metrics/ai-docs/AGENTS.md",
-      "scope": "module",
-      "module": "src/Metrics/",
-      "role": "superseded",
-      "canonical": false,
-      "use_by_agents": "source-for-migration",
-      "canonical_target": "src/Metrics/ai-docs/metrics-spec.md",
-      "notes": "Retained legacy AI documentation; current supported content is migrated by meaning into the canonical module specification."
-    },
-    {
-      "path": "src/Metrics/ai-docs/ARCHITECTURE.md",
-      "scope": "module",
-      "module": "src/Metrics/",
-      "role": "superseded",
-      "canonical": false,
-      "use_by_agents": "source-for-migration",
-      "canonical_target": "src/Metrics/ai-docs/metrics-spec.md",
-      "notes": "Retained legacy AI documentation; current supported content is migrated by meaning into the canonical module specification."
-    },
-    {
-      "path": "src/Voicemail/ai-docs/AGENTS.md",
-      "scope": "module",
-      "module": "src/Voicemail/",
-      "role": "superseded",
-      "canonical": false,
-      "use_by_agents": "source-for-migration",
-      "canonical_target": "src/Voicemail/ai-docs/voicemail-spec.md",
-      "notes": "Retained legacy AI documentation; current supported content is migrated by meaning into the canonical module specification."
-    },
-    {
-      "path": "src/Voicemail/ai-docs/ARCHITECTURE.md",
-      "scope": "module",
-      "module": "src/Voicemail/",
-      "role": "superseded",
-      "canonical": false,
-      "use_by_agents": "source-for-migration",
-      "canonical_target": "src/Voicemail/ai-docs/voicemail-spec.md",
-      "notes": "Retained legacy AI documentation; current supported content is migrated by meaning into the canonical module specification."
-    },
-    {
-      "path": "src/mobius-socket/ai-docs/AGENTS.md",
-      "scope": "module",
-      "module": "src/mobius-socket/",
-      "role": "superseded",
-      "canonical": false,
-      "use_by_agents": "source-for-migration",
-      "canonical_target": "src/mobius-socket/ai-docs/mobius-socket-spec.md",
-      "notes": "Retained legacy AI documentation; current supported content is migrated by meaning into the canonical module specification."
-    },
-    {
-      "path": "src/mobius-socket/ai-docs/ARCHITECTURE.md",
-      "scope": "module",
-      "module": "src/mobius-socket/",
-      "role": "superseded",
-      "canonical": false,
-      "use_by_agents": "source-for-migration",
-      "canonical_target": "src/mobius-socket/ai-docs/mobius-socket-spec.md",
-      "notes": "Retained legacy AI documentation; current supported content is migrated by meaning into the canonical module specification."
-    },
-    {
-      "path": "ai-docs/patterns/architecture-patterns.md",
-      "scope": "reference",
-      "role": "source-material",
-      "canonical": true,
-      "use_by_agents": "context-only",
-      "canonical_target": "ai-docs/patterns/architecture-patterns.md",
-      "notes": "Retained canonical code-grounded pattern reference; verified during onboarding."
-    },
-    {
-      "path": "ai-docs/patterns/error-handling-patterns.md",
-      "scope": "reference",
-      "role": "source-material",
-      "canonical": true,
-      "use_by_agents": "context-only",
-      "canonical_target": "ai-docs/patterns/error-handling-patterns.md",
-      "notes": "Retained canonical code-grounded pattern reference; verified during onboarding."
-    },
-    {
-      "path": "ai-docs/patterns/event-patterns.md",
-      "scope": "reference",
-      "role": "source-material",
-      "canonical": true,
-      "use_by_agents": "context-only",
-      "canonical_target": "ai-docs/patterns/event-patterns.md",
-      "notes": "Retained canonical code-grounded pattern reference; verified during onboarding."
-    },
-    {
-      "path": "ai-docs/patterns/testing-patterns.md",
-      "scope": "reference",
-      "role": "source-material",
-      "canonical": true,
-      "use_by_agents": "context-only",
-      "canonical_target": "ai-docs/patterns/testing-patterns.md",
-      "notes": "Retained canonical code-grounded pattern reference; verified during onboarding."
-    },
-    {
-      "path": "ai-docs/patterns/typescript-patterns.md",
-      "scope": "reference",
-      "role": "source-material",
-      "canonical": true,
-      "use_by_agents": "context-only",
-      "canonical_target": "ai-docs/patterns/typescript-patterns.md",
-      "notes": "Retained canonical code-grounded pattern reference; verified during onboarding."
-    }
-  ],
   "modules": [
     {
-      "path": "src/CallHistory/",
+      "path": "src/CallHistory",
+      "canonical_spec": "src/CallHistory/docs/README.md",
       "coverage_status": "Partial",
-      "coverage_evidence": "Migration, template conformance, and independent document validation completed. The module remains Partial because public-surface coverage, drift below 5%, and the required promotion history have not been established; cross-check specification claims against source code.",
-      "canonical_spec": "src/CallHistory/ai-docs/call-history-spec.md",
+      "coverage_evidence": "Pending coverage assessment after the 2026-11-16 migration to the repo-standards layout. The prior assessment (2026-07-17) rated the module Partial; cross-check specification claims against source code until coverage review reruns.",
+      "last_assessed": "2026-07-17",
+      "characterization_baseline": "src/CallHistory/CallHistory.test.ts",
       "contracts": {
         "provides": [
-          "createCallHistoryClient(webex, logger) -> ICallHistory",
-          "Call-history query/update/delete operations",
-          "Typed real-time call-session events"
+          "call-history-sdk"
         ],
         "requires": [
-          "Webex request client and Janus call-history APIs",
-          "Mercury real-time events",
-          "UCM Lines API for line enrichment"
+          "sdk-connector-internal",
+          "janus-http",
+          "mercury-events",
+          "ucm-gateway-http"
         ]
       },
-      "characterization_baseline": "src/CallHistory/CallHistory.test.ts",
-      "last_assessed": "2026-07-17",
       "section_profile": {
         "has_ui": false,
         "crosses_service_boundaries": true,
@@ -432,40 +198,43 @@
         "large_data_model": false,
         "has_tiers": false,
         "module_specific_conventions": true,
-        "published_package": false,
+        "published_package": true,
         "embedded_in_host": false,
         "holds_client_state": true,
-        "resolved_by": "Codex (bootstrap questionnaire)",
-        "resolved_at": "2026-07-06T10:46:38Z"
+        "resolved_by": "claude-code (code evidence; bootstrap questionnaire)",
+        "resolved_at": "2026-11-16T13:50:00Z",
+        "has_submodules": false,
+        "has_submodules_computed_by": "scripts/module_tree.py",
+        "has_submodules_computed_at": "2026-11-16T14:37:17Z"
       },
       "source_policy": {
         "mode": "migrate-existing",
         "existing_sources": [
           "src/CallHistory/ai-docs/AGENTS.md",
-          "src/CallHistory/ai-docs/ARCHITECTURE.md"
+          "src/CallHistory/ai-docs/ARCHITECTURE.md",
+          "src/CallHistory/ai-docs/call-history-spec.md"
         ],
         "conflict_status": "none",
-        "decision_record": ".generated/sdd/bootstrap-questionnaire.md"
+        "decision_record": "docs/adr/0001-migrate-ai-docs-to-repo-standards.md"
       }
     },
     {
-      "path": "src/CallRecording/",
+      "path": "src/CallRecording",
+      "canonical_spec": "src/CallRecording/docs/README.md",
       "coverage_status": "Partial",
-      "coverage_evidence": "Migration, template conformance, and independent document validation completed. The module remains Partial because public-surface coverage, drift below 5%, and the required promotion history have not been established; cross-check specification claims against source code.",
-      "canonical_spec": "src/CallRecording/ai-docs/call-recording-spec.md",
+      "coverage_evidence": "Pending coverage assessment after the 2026-11-16 migration to the repo-standards layout. The prior assessment (2026-07-17) rated the module Partial; cross-check specification claims against source code until coverage review reruns.",
+      "last_assessed": "2026-07-17",
+      "characterization_baseline": "src/CallRecording/CallRecording.test.ts",
       "contracts": {
         "provides": [
-          "createCallRecordingClient(webex, logger) -> ICallRecording",
-          "Recording read/delete operations and typed recording events"
+          "call-recording-sdk"
         ],
         "requires": [
-          "User Hub webex-user-hub-service converged recordings endpoints",
-          "Mercury recording lifecycle events",
-          "Calling-backend resolution"
+          "sdk-connector-internal",
+          "userhub-recordings-http",
+          "mercury-events"
         ]
       },
-      "characterization_baseline": "src/CallRecording/CallRecording.test.ts",
-      "last_assessed": "2026-07-17",
       "section_profile": {
         "has_ui": false,
         "crosses_service_boundaries": true,
@@ -480,88 +249,42 @@
         "large_data_model": false,
         "has_tiers": false,
         "module_specific_conventions": true,
-        "published_package": false,
+        "published_package": true,
         "embedded_in_host": false,
         "holds_client_state": true,
-        "resolved_by": "Codex (bootstrap questionnaire)",
-        "resolved_at": "2026-07-06T10:46:38Z"
+        "resolved_by": "claude-code (code evidence; bootstrap questionnaire)",
+        "resolved_at": "2026-11-16T13:50:00Z",
+        "has_submodules": false,
+        "has_submodules_computed_by": "scripts/module_tree.py",
+        "has_submodules_computed_at": "2026-11-16T14:37:17Z"
       },
       "source_policy": {
         "mode": "migrate-existing",
         "existing_sources": [
           "src/CallRecording/ai-docs/AGENTS.md",
-          "src/CallRecording/ai-docs/ARCHITECTURE.md"
+          "src/CallRecording/ai-docs/ARCHITECTURE.md",
+          "src/CallRecording/ai-docs/call-recording-spec.md"
         ],
         "conflict_status": "none",
-        "decision_record": ".generated/sdd/bootstrap-questionnaire.md"
+        "decision_record": "docs/adr/0001-migrate-ai-docs-to-repo-standards.md"
       }
     },
     {
-      "path": "src/CallSettings/",
-      "coverage_status": "Partial",
-      "coverage_evidence": "Migration, template conformance, and independent document validation completed. The module remains Partial because public-surface coverage, drift below 5%, and the required promotion history have not been established; cross-check specification claims against source code.",
-      "canonical_spec": "src/CallSettings/ai-docs/call-settings-spec.md",
+      "path": "src/CallQueue",
+      "canonical_spec": "src/CallQueue/docs/README.md",
+      "coverage_status": "Untracked",
+      "coverage_evidence": "Initial call queue specification; full coverage assessment has not been performed.",
+      "last_assessed": "2026-11-17",
+      "characterization_baseline": "src/CallQueue/CallQueue.test.ts",
       "contracts": {
         "provides": [
-          "createCallSettingsClient(webex, logger) -> ICallSettings",
-          "Call waiting, DND, forwarding, and voicemail-setting operations"
+          "call-queue-sdk"
         ],
         "requires": [
-          "Webex Calling XSI/Hydra services",
-          "UCM management gateway",
-          "Calling-backend resolution"
+          "sdk-connector-internal",
+          "mercury-events"
         ]
       },
-      "characterization_baseline": "src/CallSettings/CallSettings.test.ts",
-      "last_assessed": "2026-07-17",
-      "section_profile": {
-        "has_ui": false,
-        "crosses_service_boundaries": true,
-        "enforces_domain_rules": true,
-        "is_concurrent_async": true,
-        "owns_persistence": false,
-        "returns_caller_errors": true,
-        "has_design_tradeoff": true,
-        "stateful_transitions": false,
-        "exposes_wire_protocol": true,
-        "ui_multi_screen": false,
-        "large_data_model": false,
-        "has_tiers": false,
-        "module_specific_conventions": true,
-        "published_package": false,
-        "embedded_in_host": false,
-        "holds_client_state": false,
-        "resolved_by": "Codex (bootstrap questionnaire)",
-        "resolved_at": "2026-07-06T10:46:38Z"
-      },
-      "source_policy": {
-        "mode": "migrate-existing",
-        "existing_sources": [
-          "src/CallSettings/ai-docs/AGENTS.md",
-          "src/CallSettings/ai-docs/ARCHITECTURE.md"
-        ],
-        "conflict_status": "none",
-        "decision_record": ".generated/sdd/bootstrap-questionnaire.md"
-      }
-    },
-    {
-      "path": "src/CallingClient/",
-      "coverage_status": "Partial",
-      "coverage_evidence": "Migration, template conformance, and independent document validation completed. The module remains Partial because public-surface coverage, drift below 5%, and the required promotion history have not been established; cross-check specification claims against source code.",
-      "canonical_spec": "src/CallingClient/ai-docs/calling-client-spec.md",
-      "contracts": {
-        "provides": [
-          "createClient(config) -> ICallingClient",
-          "Line creation, registration orchestration, and client lifecycle events"
-        ],
-        "requires": [
-          "SDKConnector and Webex device/feature/service plugins",
-          "Calling, Line, Registration, Metrics, and mobius-socket modules",
-          "WebRTC media helpers"
-        ]
-      },
-      "characterization_baseline": "src/CallingClient/CallingClient.test.ts",
-      "last_assessed": "2026-07-17",
       "section_profile": {
         "has_ui": false,
         "crosses_service_boundaries": true,
@@ -576,41 +299,154 @@
         "large_data_model": false,
         "has_tiers": false,
         "module_specific_conventions": true,
-        "published_package": false,
+        "published_package": true,
         "embedded_in_host": false,
         "holds_client_state": true,
-        "resolved_by": "Codex (bootstrap questionnaire)",
-        "resolved_at": "2026-07-06T10:46:38Z"
+        "resolved_by": "Codex (source and test inspection)",
+        "resolved_at": "2026-11-17T07:43:01Z",
+        "has_submodules": false,
+        "has_submodules_computed_by": "scripts/module_tree.py",
+        "has_submodules_computed_at": "2026-11-16T14:37:17Z"
+      },
+      "source_policy": {
+        "mode": "migrate-existing",
+        "existing_sources": [
+          "src/CallQueue/ai-docs/call-queue-spec.md"
+        ],
+        "conflict_status": "none",
+        "decision_record": "docs/adr/0001-migrate-ai-docs-to-repo-standards.md"
+      }
+    },
+    {
+      "path": "src/CallSettings",
+      "canonical_spec": "src/CallSettings/docs/README.md",
+      "coverage_status": "Partial",
+      "coverage_evidence": "Pending coverage assessment after the 2026-11-16 migration to the repo-standards layout. The prior assessment (2026-07-17) rated the module Partial; cross-check specification claims against source code until coverage review reruns.",
+      "last_assessed": "2026-07-17",
+      "characterization_baseline": "src/CallSettings/CallSettings.test.ts",
+      "contracts": {
+        "provides": [
+          "call-settings-sdk"
+        ],
+        "requires": [
+          "sdk-connector-internal",
+          "hydra-http",
+          "webex-uc-config-http"
+        ]
+      },
+      "section_profile": {
+        "has_ui": false,
+        "crosses_service_boundaries": true,
+        "enforces_domain_rules": true,
+        "is_concurrent_async": true,
+        "owns_persistence": false,
+        "returns_caller_errors": true,
+        "has_design_tradeoff": true,
+        "stateful_transitions": false,
+        "exposes_wire_protocol": true,
+        "ui_multi_screen": false,
+        "large_data_model": false,
+        "has_tiers": false,
+        "module_specific_conventions": true,
+        "published_package": true,
+        "embedded_in_host": false,
+        "holds_client_state": false,
+        "resolved_by": "claude-code (code evidence; bootstrap questionnaire)",
+        "resolved_at": "2026-11-16T13:50:00Z",
+        "has_submodules": false,
+        "has_submodules_computed_by": "scripts/module_tree.py",
+        "has_submodules_computed_at": "2026-11-16T14:37:17Z"
+      },
+      "source_policy": {
+        "mode": "migrate-existing",
+        "existing_sources": [
+          "src/CallSettings/ai-docs/AGENTS.md",
+          "src/CallSettings/ai-docs/ARCHITECTURE.md",
+          "src/CallSettings/ai-docs/call-settings-spec.md"
+        ],
+        "conflict_status": "none",
+        "decision_record": "docs/adr/0001-migrate-ai-docs-to-repo-standards.md"
+      }
+    },
+    {
+      "path": "src/CallingClient",
+      "canonical_spec": "src/CallingClient/docs/README.md",
+      "coverage_status": "Partial",
+      "coverage_evidence": "Pending coverage assessment after the 2026-11-16 migration to the repo-standards layout. The prior assessment (2026-07-17) rated the module Partial; cross-check specification claims against source code until coverage review reruns.",
+      "last_assessed": "2026-07-17",
+      "characterization_baseline": "src/CallingClient/CallingClient.test.ts",
+      "contracts": {
+        "provides": [
+          "calling-client-sdk"
+        ],
+        "requires": [
+          "sdk-connector-internal",
+          "registration-internal",
+          "line-sdk",
+          "call-sdk",
+          "metrics-internal",
+          "mobius-socket-internal",
+          "webex-sdk-host",
+          "mobius-http",
+          "media-helpers"
+        ]
+      },
+      "section_profile": {
+        "has_ui": false,
+        "crosses_service_boundaries": true,
+        "enforces_domain_rules": true,
+        "is_concurrent_async": true,
+        "owns_persistence": false,
+        "returns_caller_errors": true,
+        "has_design_tradeoff": true,
+        "stateful_transitions": true,
+        "exposes_wire_protocol": true,
+        "ui_multi_screen": false,
+        "large_data_model": false,
+        "has_tiers": false,
+        "module_specific_conventions": true,
+        "published_package": true,
+        "embedded_in_host": false,
+        "holds_client_state": true,
+        "resolved_by": "claude-code (code evidence; bootstrap questionnaire)",
+        "resolved_at": "2026-11-16T13:50:00Z",
+        "has_submodules": true,
+        "has_submodules_computed_by": "scripts/module_tree.py",
+        "has_submodules_computed_at": "2026-11-16T14:37:17Z"
       },
       "source_policy": {
         "mode": "migrate-existing",
         "existing_sources": [
           "src/CallingClient/ai-docs/AGENTS.md",
           "src/CallingClient/ai-docs/ARCHITECTURE.md",
-          "usm sdk flow.md"
+          "src/CallingClient/ai-docs/calling-client-spec.md"
         ],
         "conflict_status": "none",
-        "decision_record": ".generated/sdd/bootstrap-questionnaire.md"
+        "decision_record": "docs/adr/0001-migrate-ai-docs-to-repo-standards.md"
       }
     },
     {
-      "path": "src/CallingClient/calling/",
+      "path": "src/CallingClient/calling",
+      "canonical_spec": "src/CallingClient/calling/docs/README.md",
       "coverage_status": "Partial",
-      "coverage_evidence": "Migration, template conformance, and independent document validation completed. The module remains Partial because public-surface coverage, drift below 5%, and the required promotion history have not been established; cross-check specification claims against source code.",
-      "canonical_spec": "src/CallingClient/calling/ai-docs/calling-spec.md",
+      "coverage_evidence": "Pending coverage assessment after the 2026-11-16 migration to the repo-standards layout. The prior assessment (2026-07-17) rated the module Partial; cross-check specification claims against source code until coverage review reruns.",
+      "last_assessed": "2026-07-17",
+      "characterization_baseline": "src/CallingClient/calling/call.test.ts",
       "contracts": {
         "provides": [
-          "ICall and CallManager call lifecycle operations",
-          "Typed call, media, supplementary-service, and error events"
+          "call-sdk"
         ],
         "requires": [
-          "Mobius signaling through APIRequest",
-          "@webex/internal-media-core ROAP/media engine",
-          "CallerId, Metrics, Logger, and SDKConnector"
+          "caller-id-internal",
+          "metrics-internal",
+          "sdk-connector-internal",
+          "mobius-http",
+          "mercury-events",
+          "internal-media-core",
+          "media-helpers",
+          "webex-metrics-plugin"
         ]
       },
-      "characterization_baseline": "src/CallingClient/calling/call.test.ts",
-      "last_assessed": "2026-07-17",
       "section_profile": {
         "has_ui": false,
         "crosses_service_boundaries": true,
@@ -625,38 +461,42 @@
         "large_data_model": false,
         "has_tiers": false,
         "module_specific_conventions": true,
-        "published_package": false,
+        "published_package": true,
         "embedded_in_host": false,
         "holds_client_state": true,
-        "resolved_by": "Codex (bootstrap questionnaire)",
-        "resolved_at": "2026-07-06T10:46:38Z"
+        "resolved_by": "claude-code (code evidence; bootstrap questionnaire)",
+        "resolved_at": "2026-11-16T13:50:00Z",
+        "has_submodules": true,
+        "has_submodules_computed_by": "scripts/module_tree.py",
+        "has_submodules_computed_at": "2026-11-16T14:37:17Z"
       },
       "source_policy": {
         "mode": "migrate-existing",
         "existing_sources": [
           "src/CallingClient/calling/ai-docs/AGENTS.md",
-          "src/CallingClient/calling/ai-docs/ARCHITECTURE.md"
+          "src/CallingClient/calling/ai-docs/ARCHITECTURE.md",
+          "src/CallingClient/calling/ai-docs/calling-spec.md"
         ],
         "conflict_status": "none",
-        "decision_record": ".generated/sdd/bootstrap-questionnaire.md"
+        "decision_record": "docs/adr/0001-migrate-ai-docs-to-repo-standards.md"
       }
     },
     {
-      "path": "src/CallingClient/calling/CallerId/",
+      "path": "src/CallingClient/calling/CallerId",
+      "canonical_spec": "src/CallingClient/calling/CallerId/docs/README.md",
       "coverage_status": "Partial",
-      "coverage_evidence": "Migration, template conformance, and independent document validation completed. The module remains Partial because public-surface coverage, drift below 5%, and the required promotion history have not been established; cross-check specification claims against source code.",
-      "canonical_spec": "src/CallingClient/calling/CallerId/ai-docs/caller-id-spec.md",
+      "coverage_evidence": "Pending coverage assessment after the 2026-11-16 migration to the repo-standards layout. The prior assessment (2026-07-17) rated the module Partial; cross-check specification claims against source code until coverage review reruns.",
+      "last_assessed": "2026-07-17",
+      "characterization_baseline": "src/CallingClient/calling/CallerId/index.test.ts",
       "contracts": {
         "provides": [
-          "Caller identity resolution and incremental display-information callbacks"
+          "caller-id-internal"
         ],
         "requires": [
-          "Mobius SIP-style identity headers",
-          "SCIM people lookup through the Webex SDK"
+          "sdk-connector-internal",
+          "contacts-service-http"
         ]
       },
-      "characterization_baseline": "src/CallingClient/calling/CallerId/index.test.ts",
-      "last_assessed": "2026-07-17",
       "section_profile": {
         "has_ui": false,
         "crosses_service_boundaries": true,
@@ -674,35 +514,39 @@
         "published_package": false,
         "embedded_in_host": false,
         "holds_client_state": true,
-        "resolved_by": "Codex (bootstrap questionnaire)",
-        "resolved_at": "2026-07-06T10:46:38Z"
+        "resolved_by": "claude-code (code evidence; bootstrap questionnaire)",
+        "resolved_at": "2026-11-16T13:50:00Z",
+        "has_submodules": false,
+        "has_submodules_computed_by": "scripts/module_tree.py",
+        "has_submodules_computed_at": "2026-11-16T14:37:17Z"
       },
       "source_policy": {
         "mode": "migrate-existing",
         "existing_sources": [
-          "src/CallingClient/calling/CallerId/ai-docs/AGENTS.md"
+          "src/CallingClient/calling/CallerId/ai-docs/AGENTS.md",
+          "src/CallingClient/calling/CallerId/ai-docs/caller-id-spec.md"
         ],
         "conflict_status": "none",
-        "decision_record": ".generated/sdd/bootstrap-questionnaire.md"
+        "decision_record": "docs/adr/0001-migrate-ai-docs-to-repo-standards.md"
       }
     },
     {
-      "path": "src/CallingClient/line/",
+      "path": "src/CallingClient/line",
+      "canonical_spec": "src/CallingClient/line/docs/README.md",
       "coverage_status": "Partial",
-      "coverage_evidence": "Migration, template conformance, and independent document validation completed. The module remains Partial because public-surface coverage, drift below 5%, and the required promotion history have not been established; cross-check specification claims against source code.",
-      "canonical_spec": "src/CallingClient/line/ai-docs/line-spec.md",
+      "coverage_evidence": "Pending coverage assessment after the 2026-11-16 migration to the repo-standards layout. The prior assessment (2026-07-17) rated the module Partial; cross-check specification claims against source code until coverage review reruns.",
+      "last_assessed": "2026-07-17",
+      "characterization_baseline": "src/CallingClient/line/line.test.ts",
       "contracts": {
         "provides": [
-          "ILine call and registration operations",
-          "Typed line and incoming-call events"
+          "line-sdk"
         ],
         "requires": [
-          "Registration and Calling submodules",
-          "SDKConnector event bridge"
+          "registration-internal",
+          "call-sdk",
+          "sdk-connector-internal"
         ]
       },
-      "characterization_baseline": "src/CallingClient/line/line.test.ts",
-      "last_assessed": "2026-07-17",
       "section_profile": {
         "has_ui": false,
         "crosses_service_boundaries": false,
@@ -717,39 +561,44 @@
         "large_data_model": false,
         "has_tiers": false,
         "module_specific_conventions": true,
-        "published_package": false,
+        "published_package": true,
         "embedded_in_host": false,
         "holds_client_state": true,
-        "resolved_by": "Codex (bootstrap questionnaire)",
-        "resolved_at": "2026-07-06T10:46:38Z"
+        "resolved_by": "claude-code (code evidence; bootstrap questionnaire)",
+        "resolved_at": "2026-11-16T13:50:00Z",
+        "has_submodules": false,
+        "has_submodules_computed_by": "scripts/module_tree.py",
+        "has_submodules_computed_at": "2026-11-16T14:37:17Z"
       },
       "source_policy": {
         "mode": "migrate-existing",
         "existing_sources": [
           "src/CallingClient/line/ai-docs/AGENTS.md",
-          "src/CallingClient/line/ai-docs/ARCHITECTURE.md"
+          "src/CallingClient/line/ai-docs/ARCHITECTURE.md",
+          "src/CallingClient/line/ai-docs/line-spec.md"
         ],
         "conflict_status": "none",
-        "decision_record": ".generated/sdd/bootstrap-questionnaire.md"
+        "decision_record": "docs/adr/0001-migrate-ai-docs-to-repo-standards.md"
       }
     },
     {
-      "path": "src/CallingClient/registration/",
+      "path": "src/CallingClient/registration",
+      "canonical_spec": "src/CallingClient/registration/docs/README.md",
       "coverage_status": "Partial",
-      "coverage_evidence": "Migration, template conformance, and independent document validation completed. The module remains Partial because public-surface coverage, drift below 5%, and the required promotion history have not been established; cross-check specification claims against source code.",
-      "canonical_spec": "src/CallingClient/registration/ai-docs/registration-spec.md",
+      "coverage_evidence": "Pending coverage assessment after the 2026-11-16 migration to the repo-standards layout. The prior assessment (2026-07-17) rated the module Partial; cross-check specification claims against source code until coverage review reruns.",
+      "last_assessed": "2026-07-17",
+      "characterization_baseline": "src/CallingClient/registration/register.test.ts",
       "contracts": {
         "provides": [
-          "Internal registration, deregistration, failover, failback, and keepalive lifecycle"
+          "registration-internal"
         ],
         "requires": [
-          "Mobius registration APIs through APIRequest",
-          "Web Worker keepalive timer",
-          "Webex bounded storage and metrics"
+          "sdk-connector-internal",
+          "metrics-internal",
+          "call-sdk",
+          "mobius-http"
         ]
       },
-      "characterization_baseline": "src/CallingClient/registration/register.test.ts",
-      "last_assessed": "2026-07-17",
       "section_profile": {
         "has_ui": false,
         "crosses_service_boundaries": true,
@@ -767,37 +616,41 @@
         "published_package": false,
         "embedded_in_host": false,
         "holds_client_state": true,
-        "resolved_by": "Codex (bootstrap questionnaire)",
-        "resolved_at": "2026-07-06T10:46:38Z"
+        "resolved_by": "claude-code (code evidence; bootstrap questionnaire)",
+        "resolved_at": "2026-11-16T13:50:00Z",
+        "has_submodules": false,
+        "has_submodules_computed_by": "scripts/module_tree.py",
+        "has_submodules_computed_at": "2026-11-16T14:37:17Z"
       },
       "source_policy": {
         "mode": "migrate-existing",
         "existing_sources": [
           "src/CallingClient/registration/ai-docs/AGENTS.md",
-          "src/CallingClient/registration/ai-docs/ARCHITECTURE.md"
+          "src/CallingClient/registration/ai-docs/ARCHITECTURE.md",
+          "src/CallingClient/registration/ai-docs/registration-spec.md"
         ],
         "conflict_status": "none",
-        "decision_record": ".generated/sdd/bootstrap-questionnaire.md"
+        "decision_record": "docs/adr/0001-migrate-ai-docs-to-repo-standards.md"
       }
     },
     {
-      "path": "src/Contacts/",
+      "path": "src/Contacts",
+      "canonical_spec": "src/Contacts/docs/README.md",
       "coverage_status": "Partial",
-      "coverage_evidence": "Migration, template conformance, and independent document validation completed. The module remains Partial because public-surface coverage, drift below 5%, and the required promotion history have not been established; cross-check specification claims against source code.",
-      "canonical_spec": "src/Contacts/ai-docs/contacts-spec.md",
+      "coverage_evidence": "Pending coverage assessment after the 2026-11-16 migration to the repo-standards layout. The prior assessment (2026-07-17) rated the module Partial; cross-check specification claims against source code until coverage review reruns.",
+      "last_assessed": "2026-07-17",
+      "characterization_baseline": "src/Contacts/ContactsClient.test.ts",
       "contracts": {
         "provides": [
-          "createContactsClient(webex, logger) -> IContacts",
-          "Contact and group CRUD with typed contact models"
+          "contacts-sdk"
         ],
         "requires": [
-          "Webex contacts service",
-          "Webex KMS encryption",
-          "SCIM people lookup"
+          "sdk-connector-internal",
+          "contacts-service-http",
+          "kms-encryption",
+          "metrics-internal"
         ]
       },
-      "characterization_baseline": "src/Contacts/ContactsClient.test.ts",
-      "last_assessed": "2026-07-17",
       "section_profile": {
         "has_ui": false,
         "crosses_service_boundaries": true,
@@ -812,38 +665,42 @@
         "large_data_model": false,
         "has_tiers": false,
         "module_specific_conventions": true,
-        "published_package": false,
+        "published_package": true,
         "embedded_in_host": false,
         "holds_client_state": true,
-        "resolved_by": "Codex (bootstrap questionnaire)",
-        "resolved_at": "2026-07-06T10:46:38Z"
+        "resolved_by": "claude-code (code evidence; bootstrap questionnaire)",
+        "resolved_at": "2026-11-16T13:50:00Z",
+        "has_submodules": false,
+        "has_submodules_computed_by": "scripts/module_tree.py",
+        "has_submodules_computed_at": "2026-11-16T14:37:17Z"
       },
       "source_policy": {
         "mode": "migrate-existing",
         "existing_sources": [
           "src/Contacts/ai-docs/AGENTS.md",
-          "src/Contacts/ai-docs/ARCHITECTURE.md"
+          "src/Contacts/ai-docs/ARCHITECTURE.md",
+          "src/Contacts/ai-docs/contacts-spec.md"
         ],
         "conflict_status": "none",
-        "decision_record": ".generated/sdd/bootstrap-questionnaire.md"
+        "decision_record": "docs/adr/0001-migrate-ai-docs-to-repo-standards.md"
       }
     },
     {
-      "path": "src/Metrics/",
+      "path": "src/Metrics",
+      "canonical_spec": "src/Metrics/docs/README.md",
       "coverage_status": "Partial",
-      "coverage_evidence": "Migration, template conformance, and independent document validation completed. The module remains Partial because public-surface coverage, drift below 5%, and the required promotion history have not been established; cross-check specification claims against source code.",
-      "canonical_spec": "src/Metrics/ai-docs/metrics-spec.md",
+      "coverage_evidence": "Pending coverage assessment after the 2026-11-16 migration to the repo-standards layout. The prior assessment (2026-07-17) rated the module Partial; cross-check specification claims against source code until coverage review reruns.",
+      "last_assessed": "2026-07-17",
+      "characterization_baseline": "src/Metrics/index.test.ts",
       "contracts": {
         "provides": [
-          "MetricManager singleton and typed calling metric submission methods"
+          "metrics-internal"
         ],
         "requires": [
-          "@webex/internal-plugin-metrics through Webex SDK",
-          "Calling error/event types"
+          "sdk-connector-internal",
+          "webex-metrics-plugin"
         ]
       },
-      "characterization_baseline": "src/Metrics/index.test.ts",
-      "last_assessed": "2026-07-17",
       "section_profile": {
         "has_ui": false,
         "crosses_service_boundaries": true,
@@ -861,34 +718,40 @@
         "published_package": false,
         "embedded_in_host": false,
         "holds_client_state": true,
-        "resolved_by": "Codex (bootstrap questionnaire)",
-        "resolved_at": "2026-07-06T10:46:38Z"
+        "resolved_by": "claude-code (code evidence; bootstrap questionnaire)",
+        "resolved_at": "2026-11-16T13:50:00Z",
+        "has_submodules": false,
+        "has_submodules_computed_by": "scripts/module_tree.py",
+        "has_submodules_computed_at": "2026-11-16T14:37:17Z"
       },
       "source_policy": {
         "mode": "migrate-existing",
         "existing_sources": [
           "src/Metrics/ai-docs/AGENTS.md",
-          "src/Metrics/ai-docs/ARCHITECTURE.md"
+          "src/Metrics/ai-docs/ARCHITECTURE.md",
+          "src/Metrics/ai-docs/metrics-spec.md"
         ],
         "conflict_status": "none",
-        "decision_record": ".generated/sdd/bootstrap-questionnaire.md"
+        "decision_record": "docs/adr/0001-migrate-ai-docs-to-repo-standards.md"
       }
     },
     {
-      "path": "src/SDKConnector/",
+      "path": "src/SDKConnector",
+      "canonical_spec": "src/SDKConnector/docs/README.md",
       "coverage_status": "Untracked",
-      "coverage_evidence": "No substantive prior module specification exists; current code and tests are the source of truth until the generated specification passes review.",
-      "canonical_spec": "src/SDKConnector/ai-docs/sdk-connector-spec.md",
+      "coverage_evidence": "Pending coverage assessment after the 2026-11-16 migration to the repo-standards layout. The prior assessment (2026-07-06) rated the module Untracked; cross-check specification claims against source code until coverage review reruns.",
+      "last_assessed": "2026-07-06",
+      "characterization_baseline": "src/SDKConnector/index.test.ts",
       "contracts": {
         "provides": [
-          "Singleton adapter for Webex SDK request, service, credential, device, and Mercury access"
+          "sdk-connector-sdk",
+          "sdk-connector-internal"
         ],
         "requires": [
-          "Initialized and authorized WebexSDK instance with Mercury"
+          "webex-sdk-host",
+          "mercury-events"
         ]
       },
-      "characterization_baseline": "src/SDKConnector/index.test.ts",
-      "last_assessed": "2026-07-06",
       "section_profile": {
         "has_ui": false,
         "crosses_service_boundaries": false,
@@ -903,30 +766,44 @@
         "large_data_model": false,
         "has_tiers": false,
         "module_specific_conventions": false,
-        "published_package": false,
+        "published_package": true,
         "embedded_in_host": false,
         "holds_client_state": true,
-        "resolved_by": "Codex (bootstrap questionnaire)",
-        "resolved_at": "2026-07-06T10:46:38Z"
+        "resolved_by": "claude-code (code evidence; bootstrap questionnaire)",
+        "resolved_at": "2026-11-16T13:50:00Z",
+        "has_submodules": false,
+        "has_submodules_computed_by": "scripts/module_tree.py",
+        "has_submodules_computed_at": "2026-11-16T14:37:17Z"
+      },
+      "source_policy": {
+        "mode": "migrate-existing",
+        "existing_sources": [
+          "src/SDKConnector/ai-docs/sdk-connector-spec.md"
+        ],
+        "conflict_status": "none",
+        "decision_record": "docs/adr/0001-migrate-ai-docs-to-repo-standards.md"
       }
     },
     {
-      "path": "src/Voicemail/",
+      "path": "src/Voicemail",
+      "canonical_spec": "src/Voicemail/docs/README.md",
       "coverage_status": "Partial",
-      "coverage_evidence": "Migration, template conformance, and independent document validation completed. The module remains Partial because public-surface coverage, drift below 5%, and the required promotion history have not been established; cross-check specification claims against source code.",
-      "canonical_spec": "src/Voicemail/ai-docs/voicemail-spec.md",
+      "coverage_evidence": "Pending coverage assessment after the 2026-11-16 migration to the repo-standards layout. The prior assessment (2026-07-17) rated the module Partial; cross-check specification claims against source code until coverage review reruns.",
+      "last_assessed": "2026-07-17",
+      "characterization_baseline": "src/Voicemail/Voicemail.test.ts",
       "contracts": {
         "provides": [
-          "createVoicemailClient(webex, logger) -> IVoicemail",
-          "Voicemail list/content/state/summary/transcript operations"
+          "voicemail-sdk"
         ],
         "requires": [
-          "Webex Calling, BroadWorks, and UCM voicemail services",
-          "Contacts resolution and Metrics"
+          "sdk-connector-internal",
+          "metrics-internal",
+          "hydra-http",
+          "broadworks-http",
+          "ucm-gateway-http",
+          "contacts-service-http"
         ]
       },
-      "characterization_baseline": "src/Voicemail/Voicemail.test.ts",
-      "last_assessed": "2026-07-17",
       "section_profile": {
         "has_ui": false,
         "crosses_service_boundaries": true,
@@ -941,39 +818,43 @@
         "large_data_model": false,
         "has_tiers": false,
         "module_specific_conventions": true,
-        "published_package": false,
+        "published_package": true,
         "embedded_in_host": false,
         "holds_client_state": true,
-        "resolved_by": "Codex (bootstrap questionnaire)",
-        "resolved_at": "2026-07-06T10:46:38Z"
+        "resolved_by": "claude-code (code evidence; bootstrap questionnaire)",
+        "resolved_at": "2026-11-16T13:50:00Z",
+        "has_submodules": false,
+        "has_submodules_computed_by": "scripts/module_tree.py",
+        "has_submodules_computed_at": "2026-11-16T14:37:17Z"
       },
       "source_policy": {
         "mode": "migrate-existing",
         "existing_sources": [
           "src/Voicemail/ai-docs/AGENTS.md",
-          "src/Voicemail/ai-docs/ARCHITECTURE.md"
+          "src/Voicemail/ai-docs/ARCHITECTURE.md",
+          "src/Voicemail/ai-docs/voicemail-spec.md"
         ],
         "conflict_status": "none",
-        "decision_record": ".generated/sdd/bootstrap-questionnaire.md"
+        "decision_record": "docs/adr/0001-migrate-ai-docs-to-repo-standards.md"
       }
     },
     {
-      "path": "src/mobius-socket/",
+      "path": "src/mobius-socket",
+      "canonical_spec": "src/mobius-socket/docs/README.md",
       "coverage_status": "Partial",
-      "coverage_evidence": "Migration, template conformance, and independent document validation completed. The module remains Partial because public-surface coverage, drift below 5%, and the required promotion history have not been established; cross-check specification claims against source code.",
-      "canonical_spec": "src/mobius-socket/ai-docs/mobius-socket-spec.md",
+      "coverage_evidence": "Pending coverage assessment after the 2026-11-16 migration to the repo-standards layout. The prior assessment (2026-07-17) rated the module Partial; cross-check specification claims against source code until coverage review reruns.",
+      "last_assessed": "2026-07-17",
+      "characterization_baseline": "src/mobius-socket/mobius-socket.test.ts",
       "contracts": {
         "provides": [
-          "MobiusSocket singleton request/response API",
-          "Typed connection and asynchronous message events"
+          "mobius-socket-internal"
         ],
         "requires": [
-          "WebSocket implementation",
-          "Webex credentials, device feature settings, and Mobius discovery"
+          "webex-sdk-host",
+          "mobius-websocket",
+          "webex-metrics-plugin"
         ]
       },
-      "characterization_baseline": "src/mobius-socket/mobius-socket.test.ts",
-      "last_assessed": "2026-07-17",
       "section_profile": {
         "has_ui": false,
         "crosses_service_boundaries": true,
@@ -991,104 +872,1221 @@
         "published_package": false,
         "embedded_in_host": false,
         "holds_client_state": true,
-        "resolved_by": "Codex (bootstrap questionnaire)",
-        "resolved_at": "2026-07-06T10:46:38Z"
+        "resolved_by": "claude-code (code evidence; bootstrap questionnaire)",
+        "resolved_at": "2026-11-16T13:50:00Z",
+        "has_submodules": false,
+        "has_submodules_computed_by": "scripts/module_tree.py",
+        "has_submodules_computed_at": "2026-11-16T14:37:17Z"
       },
       "source_policy": {
         "mode": "migrate-existing",
         "existing_sources": [
           "src/mobius-socket/ai-docs/AGENTS.md",
-          "src/mobius-socket/ai-docs/ARCHITECTURE.md"
+          "src/mobius-socket/ai-docs/ARCHITECTURE.md",
+          "src/mobius-socket/ai-docs/mobius-socket-spec.md"
         ],
         "conflict_status": "none",
-        "decision_record": ".generated/sdd/bootstrap-questionnaire.md"
+        "decision_record": "docs/adr/0001-migrate-ai-docs-to-repo-standards.md"
       }
     }
   ],
-  "spec_policy": {
-    "delta_grammar": {
-      "added": "## ADDED Requirements",
-      "modified": "## MODIFIED Requirements",
-      "removed": "## REMOVED Requirements"
+  "contract_catalog": {
+    "index_path": "docs/architecture.md",
+    "definitions": {
+      "calling-client-sdk": {
+        "kind": "sdk",
+        "publication": "published",
+        "source_kind": "repository-path",
+        "source": "package.json",
+        "summary": "Published @webex/calling export (files: dist; declarations dist/types/index.d.ts). src/index.ts re-exports createClient, ICallingClient, CallingClientConfig, IceGatheringConfig, and CALLING_CLIENT_EVENT_KEYS. Declarations live in src/CallingClient/types.ts; behavior in src/CallingClient/docs/README.md. resolveCallingBackend and CALLING_BACKEND are shared exports from src/common, described in docs/architecture.md. The same barrel re-exports the package-wide shared surface (Logger, LOGGER, ERROR_LAYER, ERROR_TYPE, CallError, LineError, the event key enums and payload types from src/Events/types.ts, the src/common/types.ts exports, and the media-helpers re-exports), owned by the package architecture."
+      },
+      "line-sdk": {
+        "kind": "sdk",
+        "publication": "published",
+        "source_kind": "repository-path",
+        "source": "package.json",
+        "summary": "Published @webex/calling export: ILine, LINE_EVENTS, and LINE_EVENT_KEYS re-exported from src/index.ts. Declarations live in src/CallingClient/line/types.ts; behavior in src/CallingClient/line/docs/README.md."
+      },
+      "call-sdk": {
+        "kind": "sdk",
+        "publication": "published",
+        "source_kind": "repository-path",
+        "source": "package.json",
+        "summary": "Published @webex/calling export: ICall, TransferType, CALL_EVENT_KEYS, CallError, and the call detail types re-exported from src/index.ts. Declarations live in src/CallingClient/calling/types.ts; behavior in src/CallingClient/calling/docs/README.md."
+      },
+      "call-history-sdk": {
+        "kind": "sdk",
+        "publication": "published",
+        "source_kind": "repository-path",
+        "source": "package.json",
+        "summary": "Published @webex/calling export: createCallHistoryClient, ICallHistory, and JanusResponseEvent re-exported from src/index.ts. Declarations live in src/CallHistory/types.ts; behavior in src/CallHistory/docs/README.md."
+      },
+      "call-recording-sdk": {
+        "kind": "sdk",
+        "publication": "published",
+        "source_kind": "repository-path",
+        "source": "package.json",
+        "summary": "Published @webex/calling export: createCallRecordingClient, ICallRecording, getRemoteParty, and the recording request and response types re-exported from src/index.ts. Declarations live in src/CallRecording/types.ts; behavior in src/CallRecording/docs/README.md."
+      },
+      "call-settings-sdk": {
+        "kind": "sdk",
+        "publication": "published",
+        "source_kind": "repository-path",
+        "source": "package.json",
+        "summary": "Published @webex/calling export: createCallSettingsClient, ICallSettings, CallForwardSetting, CallForwardAlwaysSetting, CallSettingResponse, ToggleSetting, and VoicemailSetting re-exported from src/index.ts. Declarations live in src/CallSettings/types.ts; behavior in src/CallSettings/docs/README.md."
+      },
+      "contacts-sdk": {
+        "kind": "sdk",
+        "publication": "published",
+        "source_kind": "repository-path",
+        "source": "package.json",
+        "summary": "Published @webex/calling export: createContactsClient, IContacts, Contact, ContactResponse, and GroupType re-exported from src/index.ts. Declarations live in src/Contacts/types.ts; behavior in src/Contacts/docs/README.md."
+      },
+      "voicemail-sdk": {
+        "kind": "sdk",
+        "publication": "published",
+        "source_kind": "repository-path",
+        "source": "package.json",
+        "summary": "Published @webex/calling export: createVoicemailClient, IVoicemail, SummaryInfo, and VoicemailResponseEvent re-exported from src/index.ts. Declarations live in src/Voicemail/types.ts; behavior in src/Voicemail/docs/README.md."
+      },
+      "sdk-connector-sdk": {
+        "kind": "sdk",
+        "publication": "published",
+        "source_kind": "repository-path",
+        "source": "package.json",
+        "summary": "Published @webex/calling type export WDMDevice re-exported from src/index.ts. Declarations live in src/SDKConnector/types.ts; behavior in src/SDKConnector/docs/README.md."
+      },
+      "registration-internal": {
+        "kind": "sdk",
+        "publication": "internal",
+        "source_kind": "repository-path",
+        "source": "src/CallingClient/registration/types.ts",
+        "summary": "Internal registration contract used by Line and CallingClient: register, deregister, failover, failback, and keepalive over Mobius. Not exported from src/index.ts."
+      },
+      "caller-id-internal": {
+        "kind": "sdk",
+        "publication": "internal",
+        "source_kind": "repository-path",
+        "source": "src/CallingClient/calling/CallerId/types.ts",
+        "summary": "Internal caller-identity resolver used by Call. Not exported from src/index.ts; the CallerIdDisplay event type is exported from src/Events/types.ts."
+      },
+      "metrics-internal": {
+        "kind": "sdk",
+        "publication": "internal",
+        "source_kind": "repository-path",
+        "source": "src/Metrics/types.ts",
+        "summary": "Internal MetricManager contract used by every calling module to submit calling metrics through the Webex metrics plugin. Not exported from src/index.ts."
+      },
+      "sdk-connector-internal": {
+        "kind": "sdk",
+        "publication": "internal",
+        "source_kind": "repository-path",
+        "source": "src/SDKConnector/types.ts",
+        "summary": "Internal singleton adapter contract (ISDKConnector) every module uses to reach the Webex SDK instance: request, services, credentials, device, and Mercury listeners."
+      },
+      "mobius-socket-internal": {
+        "kind": "sdk",
+        "publication": "internal",
+        "source_kind": "repository-path",
+        "source": "src/mobius-socket/types.ts",
+        "summary": "Internal MobiusSocket WebSocket client contract used by CallingClient for Mobius socket transport. Not exported from src/index.ts; disconnect event types are exported from src/Events/types.ts."
+      },
+      "webex-sdk-host": {
+        "kind": "sdk",
+        "publication": "published",
+        "source_kind": "external",
+        "source": "Host WebexSDK instance (@webex/webex-core with internal device, services, mercury, metrics, and encryption plugins)",
+        "summary": "Authorized Webex SDK instance passed to every factory. The package reads webex.request, webex.internal.services, webex.credentials, webex.internal.device, webex.internal.mercury, webex.internal.metrics, and webex.internal.encryption through SDKConnector. Owned by the host application and the Webex JS SDK."
+      },
+      "mobius-http": {
+        "kind": "http",
+        "publication": "published",
+        "source_kind": "external",
+        "source": "Webex Calling Mobius service (services catalog key mobius; getMobiusClusters)",
+        "summary": "Mobius REST endpoints for device discovery, registration, keepalive, deregistration, and call signaling (ROAP offer/answer, call control). Owned by Webex Calling."
+      },
+      "mobius-websocket": {
+        "kind": "rpc",
+        "publication": "published",
+        "source_kind": "external",
+        "source": "Webex Calling Mobius WebSocket endpoint",
+        "summary": "Mobius WebSocket used by mobius-socket for request/response and asynchronous call events. Owned by Webex Calling."
+      },
+      "mercury-events": {
+        "kind": "event",
+        "publication": "published",
+        "source_kind": "external",
+        "source": "Webex Mercury WebSocket (webex.internal.mercury)",
+        "summary": "Mercury event stream through which Mobius call events, Janus call-session events, and recording events reach the package. Owned by the Webex platform."
+      },
+      "janus-http": {
+        "kind": "http",
+        "publication": "published",
+        "source_kind": "external",
+        "source": "Webex Janus call-history service (services catalog key janus)",
+        "summary": "Call-history session list, read-state update, and delete endpoints. Owned by Webex."
+      },
+      "userhub-recordings-http": {
+        "kind": "http",
+        "publication": "published",
+        "source_kind": "external",
+        "source": "Webex User Hub converged recordings service (services catalog USERHUB_SERVICE_NAME)",
+        "summary": "Recording list, metadata, and delete endpoints. Owned by Webex."
+      },
+      "hydra-http": {
+        "kind": "http",
+        "publication": "published",
+        "source_kind": "external",
+        "source": "Webex public API (services catalog key hydra)",
+        "summary": "People, call-settings, and voicemail endpoints used for Webex Calling backends. Owned by Webex."
+      },
+      "broadworks-http": {
+        "kind": "http",
+        "publication": "published",
+        "source_kind": "external",
+        "source": "BroadWorks XSI through the broadworksIdpProxy service",
+        "summary": "BroadWorks call-settings and voicemail endpoints used for the BroadWorks backend. Owned by Cisco BroadWorks."
+      },
+      "ucm-gateway-http": {
+        "kind": "http",
+        "publication": "published",
+        "source_kind": "external",
+        "source": "UCM management gateway (services catalog key ucmgmt-gateway)",
+        "summary": "UCM line and call-forward and voicemail endpoints used for the UCM backend. Owned by Cisco UCM."
+      },
+      "contacts-service-http": {
+        "kind": "http",
+        "publication": "published",
+        "source_kind": "external",
+        "source": "Webex contacts service (services catalog key contactsService) and SCIM identity",
+        "summary": "Contact and group CRUD and SCIM user lookup. Owned by Webex."
+      },
+      "kms-encryption": {
+        "kind": "sdk",
+        "publication": "published",
+        "source_kind": "external",
+        "source": "Webex KMS through webex.internal.encryption",
+        "summary": "Key creation and encryption/decryption of contact and group fields. Owned by the Webex platform."
+      },
+      "webex-metrics-plugin": {
+        "kind": "sdk",
+        "publication": "published",
+        "source_kind": "external",
+        "source": "@webex/internal-plugin-metrics (workspace package)",
+        "summary": "Behavioral metric submission used by MetricManager. Owned by the internal-plugin-metrics package."
+      },
+      "internal-media-core": {
+        "kind": "sdk",
+        "publication": "published",
+        "source_kind": "external",
+        "source": "@webex/internal-media-core@2.32.1 (npm)",
+        "summary": "WebRTC media connection and ROAP media engine used by Call. Owned by the Webex media team."
+      },
+      "media-helpers": {
+        "kind": "sdk",
+        "publication": "published",
+        "source_kind": "external",
+        "source": "@webex/media-helpers (workspace package)",
+        "summary": "Local microphone stream and noise-reduction effect re-exported by the package and consumed by Call. Owned by the media-helpers package."
+      },
+      "webex-uc-config-http": {
+        "kind": "http",
+        "publication": "published",
+        "source_kind": "external",
+        "source": "Webex UC config API (/v1/uc/config on the Webex API host)",
+        "summary": "UCM call-forward-always configuration read by the CallSettings UCM connector. Owned by Webex."
+      },
+      "call-queue-sdk": {
+        "kind": "sdk",
+        "publication": "published",
+        "source_kind": "repository-path",
+        "source": "package.json",
+        "summary": "Published call queue client factory, agent status, membership and event types from src/index.ts; declarations live in src/CallQueue/types.ts and behavior in src/CallQueue/docs/README.md."
+      }
+    }
+  },
+  "template_migration": {
+    "status": "complete",
+    "target_source": "repo-standards",
+    "target_source_commit": "d89a7fe59126ae3ad9bac9ca352aa7f12b4c85dc",
+    "detected_footprints": [
+      "ai-docs",
+      "src/CallHistory/ai-docs",
+      "src/CallRecording/ai-docs",
+      "src/CallSettings/ai-docs",
+      "src/CallingClient/ai-docs",
+      "src/CallingClient/calling/CallerId/ai-docs",
+      "src/CallingClient/calling/ai-docs",
+      "src/CallingClient/line/ai-docs",
+      "src/CallingClient/registration/ai-docs",
+      "src/Contacts/ai-docs",
+      "src/Metrics/ai-docs",
+      "src/SDKConnector/ai-docs",
+      "src/Voicemail/ai-docs",
+      "src/ai-docs",
+      "src/mobius-socket/ai-docs"
+    ],
+    "old_template_disposition": "remove-after-validation",
+    "decided_by": "rarajes2@cisco.com (confirmed in chat)",
+    "decided_at": "2026-11-16T13:44:27Z",
+    "completed_by": "rarajes2@cisco.com (approved the reviewed diff in chat)",
+    "completed_at": "2026-11-16T14:48:34Z"
+  },
+  "spec_source_policy": {
+    "mode": "migrate-existing",
+    "migrated_source_disposition": "delete-after-validation",
+    "disposition_decided_by": "rarajes2@cisco.com (confirmed in chat)",
+    "disposition_decided_at": "2026-11-16T13:44:27Z",
+    "decided_by": "rarajes2@cisco.com (confirmed in chat)",
+    "decided_at": "2026-11-16T13:44:27Z",
+    "decision_record": "docs/adr/0001-migrate-ai-docs-to-repo-standards.md"
+  },
+  "spec_sources": [
+    {
+      "path": "AGENTS.md",
+      "scope": "repo",
+      "role": "source-material",
+      "canonical": true,
+      "use_by_agents": "source-for-migration",
+      "canonical_target": "AGENTS.md",
+      "post_migration_action": "retain",
+      "deletion_status": "not-applicable",
+      "notes": "Protected pre-existing package agent entry, merged in place into the repo-standards agent-entry template."
     },
+    {
+      "path": "ai-docs/ARCHITECTURE.md",
+      "scope": "repo",
+      "role": "superseded",
+      "canonical": false,
+      "use_by_agents": "source-for-migration",
+      "canonical_target": "docs/architecture.md",
+      "post_migration_action": "delete-after-validation",
+      "deletion_status": "deleted",
+      "notes": "Legacy Repo Annotation ai-docs content, migrated by meaning; deleted in a separate commit after review."
+    },
+    {
+      "path": "ai-docs/CONTRACTS.md",
+      "scope": "repo",
+      "role": "superseded",
+      "canonical": false,
+      "use_by_agents": "source-for-migration",
+      "canonical_target": "docs/architecture.md",
+      "post_migration_action": "delete-after-validation",
+      "deletion_status": "deleted",
+      "notes": "Legacy Repo Annotation ai-docs content, migrated by meaning; deleted in a separate commit after review."
+    },
+    {
+      "path": "ai-docs/GETTING_STARTED.md",
+      "scope": "repo",
+      "role": "superseded",
+      "canonical": false,
+      "use_by_agents": "source-for-migration",
+      "canonical_target": "docs/getting-started.md",
+      "post_migration_action": "delete-after-validation",
+      "deletion_status": "deleted",
+      "notes": "Legacy Repo Annotation ai-docs content, migrated by meaning; deleted in a separate commit after review."
+    },
+    {
+      "path": "ai-docs/GLOSSARY.md",
+      "scope": "repo",
+      "role": "superseded",
+      "canonical": false,
+      "use_by_agents": "source-for-migration",
+      "canonical_target": "docs/architecture.md",
+      "post_migration_action": "delete-after-validation",
+      "deletion_status": "deleted",
+      "notes": "Legacy Repo Annotation ai-docs content, migrated by meaning; deleted in a separate commit after review."
+    },
+    {
+      "path": "ai-docs/README.md",
+      "scope": "repo",
+      "role": "superseded",
+      "canonical": false,
+      "use_by_agents": "source-for-migration",
+      "canonical_target": "docs/index.md",
+      "post_migration_action": "delete-after-validation",
+      "deletion_status": "deleted",
+      "notes": "Legacy Repo Annotation ai-docs content, migrated by meaning; deleted in a separate commit after review."
+    },
+    {
+      "path": "ai-docs/REVIEW_CHECKLIST.md",
+      "scope": "repo",
+      "role": "superseded",
+      "canonical": false,
+      "use_by_agents": "source-for-migration",
+      "canonical_target": "AGENTS.md",
+      "post_migration_action": "delete-after-validation",
+      "deletion_status": "deleted",
+      "notes": "Legacy Repo Annotation ai-docs content, migrated by meaning; deleted in a separate commit after review."
+    },
+    {
+      "path": "ai-docs/RULES.md",
+      "scope": "repo",
+      "role": "superseded",
+      "canonical": false,
+      "use_by_agents": "source-for-migration",
+      "canonical_target": "AGENTS.md",
+      "post_migration_action": "delete-after-validation",
+      "deletion_status": "deleted",
+      "notes": "Legacy Repo Annotation ai-docs content, migrated by meaning; deleted in a separate commit after review."
+    },
+    {
+      "path": "ai-docs/SECURITY.md",
+      "scope": "repo",
+      "role": "superseded",
+      "canonical": false,
+      "use_by_agents": "source-for-migration",
+      "canonical_target": "docs/architecture.md",
+      "post_migration_action": "delete-after-validation",
+      "deletion_status": "deleted",
+      "notes": "Legacy Repo Annotation ai-docs content, migrated by meaning; deleted in a separate commit after review."
+    },
+    {
+      "path": "ai-docs/SERVICE_STATE.md",
+      "scope": "repo",
+      "role": "superseded",
+      "canonical": false,
+      "use_by_agents": "source-for-migration",
+      "canonical_target": "docs/architecture.md",
+      "post_migration_action": "delete-after-validation",
+      "deletion_status": "deleted",
+      "notes": "Legacy Repo Annotation ai-docs content, migrated by meaning; deleted in a separate commit after review."
+    },
+    {
+      "path": "ai-docs/SPEC_INDEX.md",
+      "scope": "repo",
+      "role": "superseded",
+      "canonical": false,
+      "use_by_agents": "source-for-migration",
+      "canonical_target": "docs/specs/README.md",
+      "post_migration_action": "delete-after-validation",
+      "deletion_status": "deleted",
+      "notes": "Legacy Repo Annotation ai-docs content, migrated by meaning; deleted in a separate commit after review."
+    },
+    {
+      "path": "ai-docs/adr/README.md",
+      "scope": "repo",
+      "role": "superseded",
+      "canonical": false,
+      "use_by_agents": "source-for-migration",
+      "canonical_target": "docs/adr/index.md",
+      "post_migration_action": "delete-after-validation",
+      "deletion_status": "deleted",
+      "notes": "Legacy Repo Annotation ai-docs content, migrated by meaning; deleted in a separate commit after review."
+    },
+    {
+      "path": "ai-docs/patterns/README.md",
+      "scope": "repo",
+      "role": "superseded",
+      "canonical": false,
+      "use_by_agents": "source-for-migration",
+      "canonical_target": "AGENTS.md",
+      "post_migration_action": "delete-after-validation",
+      "deletion_status": "deleted",
+      "notes": "Legacy Repo Annotation ai-docs content, migrated by meaning; deleted in a separate commit after review."
+    },
+    {
+      "path": "ai-docs/patterns/architecture-patterns.md",
+      "scope": "repo",
+      "role": "superseded",
+      "canonical": false,
+      "use_by_agents": "source-for-migration",
+      "canonical_target": "docs/architecture.md",
+      "post_migration_action": "delete-after-validation",
+      "deletion_status": "deleted",
+      "notes": "Legacy Repo Annotation ai-docs content, migrated by meaning; deleted in a separate commit after review."
+    },
+    {
+      "path": "ai-docs/patterns/error-handling-patterns.md",
+      "scope": "repo",
+      "role": "superseded",
+      "canonical": false,
+      "use_by_agents": "source-for-migration",
+      "canonical_target": "docs/architecture.md",
+      "post_migration_action": "delete-after-validation",
+      "deletion_status": "deleted",
+      "notes": "Legacy Repo Annotation ai-docs content, migrated by meaning; deleted in a separate commit after review."
+    },
+    {
+      "path": "ai-docs/patterns/event-patterns.md",
+      "scope": "repo",
+      "role": "superseded",
+      "canonical": false,
+      "use_by_agents": "source-for-migration",
+      "canonical_target": "docs/architecture.md",
+      "post_migration_action": "delete-after-validation",
+      "deletion_status": "deleted",
+      "notes": "Legacy Repo Annotation ai-docs content, migrated by meaning; deleted in a separate commit after review."
+    },
+    {
+      "path": "ai-docs/patterns/testing-patterns.md",
+      "scope": "repo",
+      "role": "superseded",
+      "canonical": false,
+      "use_by_agents": "source-for-migration",
+      "canonical_target": "AGENTS.md",
+      "post_migration_action": "delete-after-validation",
+      "deletion_status": "deleted",
+      "notes": "Legacy Repo Annotation ai-docs content, migrated by meaning; deleted in a separate commit after review."
+    },
+    {
+      "path": "ai-docs/patterns/typescript-patterns.md",
+      "scope": "repo",
+      "role": "superseded",
+      "canonical": false,
+      "use_by_agents": "source-for-migration",
+      "canonical_target": "AGENTS.md",
+      "post_migration_action": "delete-after-validation",
+      "deletion_status": "deleted",
+      "notes": "Legacy Repo Annotation ai-docs content, migrated by meaning; deleted in a separate commit after review."
+    },
+    {
+      "path": "ai-docs/rules/README.md",
+      "scope": "repo",
+      "role": "superseded",
+      "canonical": false,
+      "use_by_agents": "source-for-migration",
+      "canonical_target": "AGENTS.md",
+      "post_migration_action": "delete-after-validation",
+      "deletion_status": "deleted",
+      "notes": "Legacy Repo Annotation ai-docs content, migrated by meaning; deleted in a separate commit after review."
+    },
+    {
+      "path": "ai-docs/templates/existing-module/bug-fix.md",
+      "scope": "repo",
+      "role": "superseded",
+      "canonical": false,
+      "use_by_agents": "source-for-migration",
+      "canonical_target": "AGENTS.md",
+      "post_migration_action": "delete-after-validation",
+      "deletion_status": "deleted",
+      "notes": "Legacy Repo Annotation ai-docs content, migrated by meaning; deleted in a separate commit after review."
+    },
+    {
+      "path": "ai-docs/templates/existing-module/feature-enhancement.md",
+      "scope": "repo",
+      "role": "superseded",
+      "canonical": false,
+      "use_by_agents": "source-for-migration",
+      "canonical_target": "AGENTS.md",
+      "post_migration_action": "delete-after-validation",
+      "deletion_status": "deleted",
+      "notes": "Legacy Repo Annotation ai-docs content, migrated by meaning; deleted in a separate commit after review."
+    },
+    {
+      "path": "ai-docs/templates/new-method/00-master.md",
+      "scope": "repo",
+      "role": "superseded",
+      "canonical": false,
+      "use_by_agents": "source-for-migration",
+      "canonical_target": "AGENTS.md",
+      "post_migration_action": "delete-after-validation",
+      "deletion_status": "deleted",
+      "notes": "Legacy Repo Annotation ai-docs content, migrated by meaning; deleted in a separate commit after review."
+    },
+    {
+      "path": "ai-docs/templates/new-method/01-requirements.md",
+      "scope": "repo",
+      "role": "superseded",
+      "canonical": false,
+      "use_by_agents": "source-for-migration",
+      "canonical_target": "AGENTS.md",
+      "post_migration_action": "delete-after-validation",
+      "deletion_status": "deleted",
+      "notes": "Legacy Repo Annotation ai-docs content, migrated by meaning; deleted in a separate commit after review."
+    },
+    {
+      "path": "ai-docs/templates/new-method/02-implementation.md",
+      "scope": "repo",
+      "role": "superseded",
+      "canonical": false,
+      "use_by_agents": "source-for-migration",
+      "canonical_target": "AGENTS.md",
+      "post_migration_action": "delete-after-validation",
+      "deletion_status": "deleted",
+      "notes": "Legacy Repo Annotation ai-docs content, migrated by meaning; deleted in a separate commit after review."
+    },
+    {
+      "path": "ai-docs/templates/new-method/03-tests.md",
+      "scope": "repo",
+      "role": "superseded",
+      "canonical": false,
+      "use_by_agents": "source-for-migration",
+      "canonical_target": "AGENTS.md",
+      "post_migration_action": "delete-after-validation",
+      "deletion_status": "deleted",
+      "notes": "Legacy Repo Annotation ai-docs content, migrated by meaning; deleted in a separate commit after review."
+    },
+    {
+      "path": "ai-docs/templates/new-method/04-validation.md",
+      "scope": "repo",
+      "role": "superseded",
+      "canonical": false,
+      "use_by_agents": "source-for-migration",
+      "canonical_target": "AGENTS.md",
+      "post_migration_action": "delete-after-validation",
+      "deletion_status": "deleted",
+      "notes": "Legacy Repo Annotation ai-docs content, migrated by meaning; deleted in a separate commit after review."
+    },
+    {
+      "path": "ai-docs/templates/new-module/00-master.md",
+      "scope": "repo",
+      "role": "superseded",
+      "canonical": false,
+      "use_by_agents": "source-for-migration",
+      "canonical_target": "AGENTS.md",
+      "post_migration_action": "delete-after-validation",
+      "deletion_status": "deleted",
+      "notes": "Legacy Repo Annotation ai-docs content, migrated by meaning; deleted in a separate commit after review."
+    },
+    {
+      "path": "ai-docs/templates/new-module/01-pre-questions.md",
+      "scope": "repo",
+      "role": "superseded",
+      "canonical": false,
+      "use_by_agents": "source-for-migration",
+      "canonical_target": "AGENTS.md",
+      "post_migration_action": "delete-after-validation",
+      "deletion_status": "deleted",
+      "notes": "Legacy Repo Annotation ai-docs content, migrated by meaning; deleted in a separate commit after review."
+    },
+    {
+      "path": "ai-docs/templates/new-module/02-code-generation.md",
+      "scope": "repo",
+      "role": "superseded",
+      "canonical": false,
+      "use_by_agents": "source-for-migration",
+      "canonical_target": "AGENTS.md",
+      "post_migration_action": "delete-after-validation",
+      "deletion_status": "deleted",
+      "notes": "Legacy Repo Annotation ai-docs content, migrated by meaning; deleted in a separate commit after review."
+    },
+    {
+      "path": "ai-docs/templates/new-module/03-integration.md",
+      "scope": "repo",
+      "role": "superseded",
+      "canonical": false,
+      "use_by_agents": "source-for-migration",
+      "canonical_target": "AGENTS.md",
+      "post_migration_action": "delete-after-validation",
+      "deletion_status": "deleted",
+      "notes": "Legacy Repo Annotation ai-docs content, migrated by meaning; deleted in a separate commit after review."
+    },
+    {
+      "path": "ai-docs/templates/new-module/04-test-generation.md",
+      "scope": "repo",
+      "role": "superseded",
+      "canonical": false,
+      "use_by_agents": "source-for-migration",
+      "canonical_target": "AGENTS.md",
+      "post_migration_action": "delete-after-validation",
+      "deletion_status": "deleted",
+      "notes": "Legacy Repo Annotation ai-docs content, migrated by meaning; deleted in a separate commit after review."
+    },
+    {
+      "path": "ai-docs/templates/new-module/05-validation.md",
+      "scope": "repo",
+      "role": "superseded",
+      "canonical": false,
+      "use_by_agents": "source-for-migration",
+      "canonical_target": "AGENTS.md",
+      "post_migration_action": "delete-after-validation",
+      "deletion_status": "deleted",
+      "notes": "Legacy Repo Annotation ai-docs content, migrated by meaning; deleted in a separate commit after review."
+    },
+    {
+      "path": "src/CallHistory/ai-docs/AGENTS.md",
+      "scope": "module",
+      "module": "src/CallHistory",
+      "role": "superseded",
+      "canonical": false,
+      "use_by_agents": "source-for-migration",
+      "canonical_target": "src/CallHistory/docs/README.md",
+      "post_migration_action": "delete-after-validation",
+      "deletion_status": "deleted",
+      "notes": "Legacy Repo Annotation ai-docs content, migrated by meaning; deleted in a separate commit after review."
+    },
+    {
+      "path": "src/CallHistory/ai-docs/ARCHITECTURE.md",
+      "scope": "module",
+      "module": "src/CallHistory",
+      "role": "superseded",
+      "canonical": false,
+      "use_by_agents": "source-for-migration",
+      "canonical_target": "src/CallHistory/docs/README.md",
+      "post_migration_action": "delete-after-validation",
+      "deletion_status": "deleted",
+      "notes": "Legacy Repo Annotation ai-docs content, migrated by meaning; deleted in a separate commit after review."
+    },
+    {
+      "path": "src/CallHistory/ai-docs/call-history-spec.md",
+      "scope": "module",
+      "module": "src/CallHistory",
+      "role": "superseded",
+      "canonical": false,
+      "use_by_agents": "source-for-migration",
+      "canonical_target": "src/CallHistory/docs/README.md",
+      "post_migration_action": "delete-after-validation",
+      "deletion_status": "deleted",
+      "notes": "Legacy Repo Annotation ai-docs content, migrated by meaning; deleted in a separate commit after review."
+    },
+    {
+      "path": "src/CallRecording/ai-docs/AGENTS.md",
+      "scope": "module",
+      "module": "src/CallRecording",
+      "role": "superseded",
+      "canonical": false,
+      "use_by_agents": "source-for-migration",
+      "canonical_target": "src/CallRecording/docs/README.md",
+      "post_migration_action": "delete-after-validation",
+      "deletion_status": "deleted",
+      "notes": "Legacy Repo Annotation ai-docs content, migrated by meaning; deleted in a separate commit after review."
+    },
+    {
+      "path": "src/CallRecording/ai-docs/ARCHITECTURE.md",
+      "scope": "module",
+      "module": "src/CallRecording",
+      "role": "superseded",
+      "canonical": false,
+      "use_by_agents": "source-for-migration",
+      "canonical_target": "src/CallRecording/docs/README.md",
+      "post_migration_action": "delete-after-validation",
+      "deletion_status": "deleted",
+      "notes": "Legacy Repo Annotation ai-docs content, migrated by meaning; deleted in a separate commit after review."
+    },
+    {
+      "path": "src/CallRecording/ai-docs/call-recording-spec.md",
+      "scope": "module",
+      "module": "src/CallRecording",
+      "role": "superseded",
+      "canonical": false,
+      "use_by_agents": "source-for-migration",
+      "canonical_target": "src/CallRecording/docs/README.md",
+      "post_migration_action": "delete-after-validation",
+      "deletion_status": "deleted",
+      "notes": "Legacy Repo Annotation ai-docs content, migrated by meaning; deleted in a separate commit after review."
+    },
+    {
+      "path": "src/CallSettings/ai-docs/AGENTS.md",
+      "scope": "module",
+      "module": "src/CallSettings",
+      "role": "superseded",
+      "canonical": false,
+      "use_by_agents": "source-for-migration",
+      "canonical_target": "src/CallSettings/docs/README.md",
+      "post_migration_action": "delete-after-validation",
+      "deletion_status": "deleted",
+      "notes": "Legacy Repo Annotation ai-docs content, migrated by meaning; deleted in a separate commit after review."
+    },
+    {
+      "path": "src/CallSettings/ai-docs/ARCHITECTURE.md",
+      "scope": "module",
+      "module": "src/CallSettings",
+      "role": "superseded",
+      "canonical": false,
+      "use_by_agents": "source-for-migration",
+      "canonical_target": "src/CallSettings/docs/README.md",
+      "post_migration_action": "delete-after-validation",
+      "deletion_status": "deleted",
+      "notes": "Legacy Repo Annotation ai-docs content, migrated by meaning; deleted in a separate commit after review."
+    },
+    {
+      "path": "src/CallSettings/ai-docs/call-settings-spec.md",
+      "scope": "module",
+      "module": "src/CallSettings",
+      "role": "superseded",
+      "canonical": false,
+      "use_by_agents": "source-for-migration",
+      "canonical_target": "src/CallSettings/docs/README.md",
+      "post_migration_action": "delete-after-validation",
+      "deletion_status": "deleted",
+      "notes": "Legacy Repo Annotation ai-docs content, migrated by meaning; deleted in a separate commit after review."
+    },
+    {
+      "path": "src/CallingClient/ai-docs/AGENTS.md",
+      "scope": "module",
+      "module": "src/CallingClient",
+      "role": "superseded",
+      "canonical": false,
+      "use_by_agents": "source-for-migration",
+      "canonical_target": "src/CallingClient/docs/README.md",
+      "post_migration_action": "delete-after-validation",
+      "deletion_status": "deleted",
+      "notes": "Legacy Repo Annotation ai-docs content, migrated by meaning; deleted in a separate commit after review."
+    },
+    {
+      "path": "src/CallingClient/ai-docs/ARCHITECTURE.md",
+      "scope": "module",
+      "module": "src/CallingClient",
+      "role": "superseded",
+      "canonical": false,
+      "use_by_agents": "source-for-migration",
+      "canonical_target": "src/CallingClient/docs/README.md",
+      "post_migration_action": "delete-after-validation",
+      "deletion_status": "deleted",
+      "notes": "Legacy Repo Annotation ai-docs content, migrated by meaning; deleted in a separate commit after review."
+    },
+    {
+      "path": "src/CallingClient/ai-docs/calling-client-spec.md",
+      "scope": "module",
+      "module": "src/CallingClient",
+      "role": "superseded",
+      "canonical": false,
+      "use_by_agents": "source-for-migration",
+      "canonical_target": "src/CallingClient/docs/README.md",
+      "post_migration_action": "delete-after-validation",
+      "deletion_status": "deleted",
+      "notes": "Legacy Repo Annotation ai-docs content, migrated by meaning; deleted in a separate commit after review."
+    },
+    {
+      "path": "src/CallingClient/calling/CallerId/ai-docs/AGENTS.md",
+      "scope": "module",
+      "module": "src/CallingClient/calling/CallerId",
+      "role": "superseded",
+      "canonical": false,
+      "use_by_agents": "source-for-migration",
+      "canonical_target": "src/CallingClient/calling/CallerId/docs/README.md",
+      "post_migration_action": "delete-after-validation",
+      "deletion_status": "deleted",
+      "notes": "Legacy Repo Annotation ai-docs content, migrated by meaning; deleted in a separate commit after review."
+    },
+    {
+      "path": "src/CallingClient/calling/CallerId/ai-docs/caller-id-spec.md",
+      "scope": "module",
+      "module": "src/CallingClient/calling/CallerId",
+      "role": "superseded",
+      "canonical": false,
+      "use_by_agents": "source-for-migration",
+      "canonical_target": "src/CallingClient/calling/CallerId/docs/README.md",
+      "post_migration_action": "delete-after-validation",
+      "deletion_status": "deleted",
+      "notes": "Legacy Repo Annotation ai-docs content, migrated by meaning; deleted in a separate commit after review."
+    },
+    {
+      "path": "src/CallingClient/calling/ai-docs/AGENTS.md",
+      "scope": "module",
+      "module": "src/CallingClient/calling",
+      "role": "superseded",
+      "canonical": false,
+      "use_by_agents": "source-for-migration",
+      "canonical_target": "src/CallingClient/calling/docs/README.md",
+      "post_migration_action": "delete-after-validation",
+      "deletion_status": "deleted",
+      "notes": "Legacy Repo Annotation ai-docs content, migrated by meaning; deleted in a separate commit after review."
+    },
+    {
+      "path": "src/CallingClient/calling/ai-docs/ARCHITECTURE.md",
+      "scope": "module",
+      "module": "src/CallingClient/calling",
+      "role": "superseded",
+      "canonical": false,
+      "use_by_agents": "source-for-migration",
+      "canonical_target": "src/CallingClient/calling/docs/README.md",
+      "post_migration_action": "delete-after-validation",
+      "deletion_status": "deleted",
+      "notes": "Legacy Repo Annotation ai-docs content, migrated by meaning; deleted in a separate commit after review."
+    },
+    {
+      "path": "src/CallingClient/calling/ai-docs/calling-spec.md",
+      "scope": "module",
+      "module": "src/CallingClient/calling",
+      "role": "superseded",
+      "canonical": false,
+      "use_by_agents": "source-for-migration",
+      "canonical_target": "src/CallingClient/calling/docs/README.md",
+      "post_migration_action": "delete-after-validation",
+      "deletion_status": "deleted",
+      "notes": "Legacy Repo Annotation ai-docs content, migrated by meaning; deleted in a separate commit after review."
+    },
+    {
+      "path": "src/CallingClient/line/ai-docs/AGENTS.md",
+      "scope": "module",
+      "module": "src/CallingClient/line",
+      "role": "superseded",
+      "canonical": false,
+      "use_by_agents": "source-for-migration",
+      "canonical_target": "src/CallingClient/line/docs/README.md",
+      "post_migration_action": "delete-after-validation",
+      "deletion_status": "deleted",
+      "notes": "Legacy Repo Annotation ai-docs content, migrated by meaning; deleted in a separate commit after review."
+    },
+    {
+      "path": "src/CallingClient/line/ai-docs/ARCHITECTURE.md",
+      "scope": "module",
+      "module": "src/CallingClient/line",
+      "role": "superseded",
+      "canonical": false,
+      "use_by_agents": "source-for-migration",
+      "canonical_target": "src/CallingClient/line/docs/README.md",
+      "post_migration_action": "delete-after-validation",
+      "deletion_status": "deleted",
+      "notes": "Legacy Repo Annotation ai-docs content, migrated by meaning; deleted in a separate commit after review."
+    },
+    {
+      "path": "src/CallingClient/line/ai-docs/line-spec.md",
+      "scope": "module",
+      "module": "src/CallingClient/line",
+      "role": "superseded",
+      "canonical": false,
+      "use_by_agents": "source-for-migration",
+      "canonical_target": "src/CallingClient/line/docs/README.md",
+      "post_migration_action": "delete-after-validation",
+      "deletion_status": "deleted",
+      "notes": "Legacy Repo Annotation ai-docs content, migrated by meaning; deleted in a separate commit after review."
+    },
+    {
+      "path": "src/CallingClient/registration/ai-docs/AGENTS.md",
+      "scope": "module",
+      "module": "src/CallingClient/registration",
+      "role": "superseded",
+      "canonical": false,
+      "use_by_agents": "source-for-migration",
+      "canonical_target": "src/CallingClient/registration/docs/README.md",
+      "post_migration_action": "delete-after-validation",
+      "deletion_status": "deleted",
+      "notes": "Legacy Repo Annotation ai-docs content, migrated by meaning; deleted in a separate commit after review."
+    },
+    {
+      "path": "src/CallingClient/registration/ai-docs/ARCHITECTURE.md",
+      "scope": "module",
+      "module": "src/CallingClient/registration",
+      "role": "superseded",
+      "canonical": false,
+      "use_by_agents": "source-for-migration",
+      "canonical_target": "src/CallingClient/registration/docs/README.md",
+      "post_migration_action": "delete-after-validation",
+      "deletion_status": "deleted",
+      "notes": "Legacy Repo Annotation ai-docs content, migrated by meaning; deleted in a separate commit after review."
+    },
+    {
+      "path": "src/CallingClient/registration/ai-docs/registration-spec.md",
+      "scope": "module",
+      "module": "src/CallingClient/registration",
+      "role": "superseded",
+      "canonical": false,
+      "use_by_agents": "source-for-migration",
+      "canonical_target": "src/CallingClient/registration/docs/README.md",
+      "post_migration_action": "delete-after-validation",
+      "deletion_status": "deleted",
+      "notes": "Legacy Repo Annotation ai-docs content, migrated by meaning; deleted in a separate commit after review."
+    },
+    {
+      "path": "src/Contacts/ai-docs/AGENTS.md",
+      "scope": "module",
+      "module": "src/Contacts",
+      "role": "superseded",
+      "canonical": false,
+      "use_by_agents": "source-for-migration",
+      "canonical_target": "src/Contacts/docs/README.md",
+      "post_migration_action": "delete-after-validation",
+      "deletion_status": "deleted",
+      "notes": "Legacy Repo Annotation ai-docs content, migrated by meaning; deleted in a separate commit after review."
+    },
+    {
+      "path": "src/Contacts/ai-docs/ARCHITECTURE.md",
+      "scope": "module",
+      "module": "src/Contacts",
+      "role": "superseded",
+      "canonical": false,
+      "use_by_agents": "source-for-migration",
+      "canonical_target": "src/Contacts/docs/README.md",
+      "post_migration_action": "delete-after-validation",
+      "deletion_status": "deleted",
+      "notes": "Legacy Repo Annotation ai-docs content, migrated by meaning; deleted in a separate commit after review."
+    },
+    {
+      "path": "src/Contacts/ai-docs/contacts-spec.md",
+      "scope": "module",
+      "module": "src/Contacts",
+      "role": "superseded",
+      "canonical": false,
+      "use_by_agents": "source-for-migration",
+      "canonical_target": "src/Contacts/docs/README.md",
+      "post_migration_action": "delete-after-validation",
+      "deletion_status": "deleted",
+      "notes": "Legacy Repo Annotation ai-docs content, migrated by meaning; deleted in a separate commit after review."
+    },
+    {
+      "path": "src/Metrics/ai-docs/AGENTS.md",
+      "scope": "module",
+      "module": "src/Metrics",
+      "role": "superseded",
+      "canonical": false,
+      "use_by_agents": "source-for-migration",
+      "canonical_target": "src/Metrics/docs/README.md",
+      "post_migration_action": "delete-after-validation",
+      "deletion_status": "deleted",
+      "notes": "Legacy Repo Annotation ai-docs content, migrated by meaning; deleted in a separate commit after review."
+    },
+    {
+      "path": "src/Metrics/ai-docs/ARCHITECTURE.md",
+      "scope": "module",
+      "module": "src/Metrics",
+      "role": "superseded",
+      "canonical": false,
+      "use_by_agents": "source-for-migration",
+      "canonical_target": "src/Metrics/docs/README.md",
+      "post_migration_action": "delete-after-validation",
+      "deletion_status": "deleted",
+      "notes": "Legacy Repo Annotation ai-docs content, migrated by meaning; deleted in a separate commit after review."
+    },
+    {
+      "path": "src/Metrics/ai-docs/metrics-spec.md",
+      "scope": "module",
+      "module": "src/Metrics",
+      "role": "superseded",
+      "canonical": false,
+      "use_by_agents": "source-for-migration",
+      "canonical_target": "src/Metrics/docs/README.md",
+      "post_migration_action": "delete-after-validation",
+      "deletion_status": "deleted",
+      "notes": "Legacy Repo Annotation ai-docs content, migrated by meaning; deleted in a separate commit after review."
+    },
+    {
+      "path": "src/SDKConnector/ai-docs/sdk-connector-spec.md",
+      "scope": "module",
+      "module": "src/SDKConnector",
+      "role": "superseded",
+      "canonical": false,
+      "use_by_agents": "source-for-migration",
+      "canonical_target": "src/SDKConnector/docs/README.md",
+      "post_migration_action": "delete-after-validation",
+      "deletion_status": "deleted",
+      "notes": "Legacy Repo Annotation ai-docs content, migrated by meaning; deleted in a separate commit after review."
+    },
+    {
+      "path": "src/Voicemail/ai-docs/AGENTS.md",
+      "scope": "module",
+      "module": "src/Voicemail",
+      "role": "superseded",
+      "canonical": false,
+      "use_by_agents": "source-for-migration",
+      "canonical_target": "src/Voicemail/docs/README.md",
+      "post_migration_action": "delete-after-validation",
+      "deletion_status": "deleted",
+      "notes": "Legacy Repo Annotation ai-docs content, migrated by meaning; deleted in a separate commit after review."
+    },
+    {
+      "path": "src/Voicemail/ai-docs/ARCHITECTURE.md",
+      "scope": "module",
+      "module": "src/Voicemail",
+      "role": "superseded",
+      "canonical": false,
+      "use_by_agents": "source-for-migration",
+      "canonical_target": "src/Voicemail/docs/README.md",
+      "post_migration_action": "delete-after-validation",
+      "deletion_status": "deleted",
+      "notes": "Legacy Repo Annotation ai-docs content, migrated by meaning; deleted in a separate commit after review."
+    },
+    {
+      "path": "src/Voicemail/ai-docs/voicemail-spec.md",
+      "scope": "module",
+      "module": "src/Voicemail",
+      "role": "superseded",
+      "canonical": false,
+      "use_by_agents": "source-for-migration",
+      "canonical_target": "src/Voicemail/docs/README.md",
+      "post_migration_action": "delete-after-validation",
+      "deletion_status": "deleted",
+      "notes": "Legacy Repo Annotation ai-docs content, migrated by meaning; deleted in a separate commit after review."
+    },
+    {
+      "path": "src/ai-docs/AGENTS.md",
+      "scope": "repo",
+      "role": "superseded",
+      "canonical": false,
+      "use_by_agents": "source-for-migration",
+      "canonical_target": "docs/architecture.md",
+      "post_migration_action": "delete-after-validation",
+      "deletion_status": "deleted",
+      "notes": "Legacy Repo Annotation ai-docs content, migrated by meaning; deleted in a separate commit after review."
+    },
+    {
+      "path": "src/ai-docs/ARCHITECTURE.md",
+      "scope": "repo",
+      "role": "superseded",
+      "canonical": false,
+      "use_by_agents": "source-for-migration",
+      "canonical_target": "docs/architecture.md",
+      "post_migration_action": "delete-after-validation",
+      "deletion_status": "deleted",
+      "notes": "Legacy Repo Annotation ai-docs content, migrated by meaning; deleted in a separate commit after review."
+    },
+    {
+      "path": "src/mobius-socket/ai-docs/AGENTS.md",
+      "scope": "module",
+      "module": "src/mobius-socket",
+      "role": "superseded",
+      "canonical": false,
+      "use_by_agents": "source-for-migration",
+      "canonical_target": "src/mobius-socket/docs/README.md",
+      "post_migration_action": "delete-after-validation",
+      "deletion_status": "deleted",
+      "notes": "Legacy Repo Annotation ai-docs content, migrated by meaning; deleted in a separate commit after review."
+    },
+    {
+      "path": "src/mobius-socket/ai-docs/ARCHITECTURE.md",
+      "scope": "module",
+      "module": "src/mobius-socket",
+      "role": "superseded",
+      "canonical": false,
+      "use_by_agents": "source-for-migration",
+      "canonical_target": "src/mobius-socket/docs/README.md",
+      "post_migration_action": "delete-after-validation",
+      "deletion_status": "deleted",
+      "notes": "Legacy Repo Annotation ai-docs content, migrated by meaning; deleted in a separate commit after review."
+    },
+    {
+      "path": "src/mobius-socket/ai-docs/mobius-socket-spec.md",
+      "scope": "module",
+      "module": "src/mobius-socket",
+      "role": "superseded",
+      "canonical": false,
+      "use_by_agents": "source-for-migration",
+      "canonical_target": "src/mobius-socket/docs/README.md",
+      "post_migration_action": "delete-after-validation",
+      "deletion_status": "deleted",
+      "notes": "Legacy Repo Annotation ai-docs content, migrated by meaning; deleted in a separate commit after review."
+    },
+    {
+      "path": "usm sdk flow.md",
+      "scope": "reference",
+      "role": "reference-only",
+      "canonical": false,
+      "use_by_agents": "context-only",
+      "notes": "Retained developer note on migrating meeting customers to USM; it does not describe @webex/calling behavior and is not routed into any generated document."
+    }
+  ],
+  "spec_policy": {
     "require_what_and_why": true,
     "require_provenance": true,
     "protected_specs": [
-      "src/CallHistory/ai-docs/call-history-spec.md",
-      "src/CallRecording/ai-docs/call-recording-spec.md",
-      "src/CallSettings/ai-docs/call-settings-spec.md",
-      "src/CallingClient/ai-docs/calling-client-spec.md",
-      "src/CallingClient/calling/ai-docs/calling-spec.md",
-      "src/CallingClient/calling/CallerId/ai-docs/caller-id-spec.md",
-      "src/CallingClient/line/ai-docs/line-spec.md",
-      "src/CallingClient/registration/ai-docs/registration-spec.md",
-      "src/Contacts/ai-docs/contacts-spec.md",
-      "src/Metrics/ai-docs/metrics-spec.md",
-      "src/SDKConnector/ai-docs/sdk-connector-spec.md",
-      "src/Voicemail/ai-docs/voicemail-spec.md",
-      "src/mobius-socket/ai-docs/mobius-socket-spec.md"
-    ],
-    "required_sections_by_change_class": {
-      "core_always": [
-        "Intent (WHAT)",
-        "Rationale (WHY)",
-        "Scope/Out-of-scope",
-        "Acceptance criteria",
-        "Contracts delta"
-      ],
-      "security_or_contract_or_perf_critical": [
-        "Data",
-        "Error Matrix",
-        "Resilience",
-        "Observability",
-        "Operations"
-      ]
-    }
+      "src/CallHistory/docs/README.md",
+      "src/CallRecording/docs/README.md",
+      "src/CallSettings/docs/README.md",
+      "src/CallingClient/docs/README.md",
+      "src/CallingClient/calling/docs/README.md",
+      "src/CallingClient/calling/CallerId/docs/README.md",
+      "src/CallingClient/line/docs/README.md",
+      "src/CallingClient/registration/docs/README.md",
+      "src/Contacts/docs/README.md",
+      "src/Metrics/docs/README.md",
+      "src/SDKConnector/docs/README.md",
+      "src/Voicemail/docs/README.md",
+      "src/mobius-socket/docs/README.md"
+    ]
   },
   "validation": {
-    "generator_runtime": "codex",
-    "validator_runtime": "claude-code",
-    "must_differ": true,
+    "generator_runtime": "claude-code",
+    "generator_model": "claude-opus-5-5",
+    "generator_runtime_source": "host-metadata",
+    "generator_run_id": "calling-migration-20261116T134427Z",
+    "source_commit": "0b8c34db7f3768b8f5bfd219c73c205b95f8c551",
+    "base_ref": "next",
+    "head_ref": "claude/sdd-calling-migration-e67cfd",
+    "minimum_independence": "different-runtime",
+    "runtime_fallback_tier": "different-runtime",
     "blocking_severities": [
       "Blocking"
     ],
-    "generator_run_id": "calling-bootstrap-20260706-161638",
-    "validator_run_id": "calling-validation-20260717-124220",
-    "source_commit": "a5571787e28ac3c8ef3c448e8088c291d2ff545d",
-    "base_ref": "main",
-    "head_ref": "migrate-aidoc-callingsdk-pacakge"
+    "validator_runtime": "01a1e76e-1dbd-7680-94e4-46d29d2946d4",
+    "validator_runtime_source": "invocation-input"
   },
   "layout": {
     "sdd_root": ".sdd",
-    "docs_root": "ai-docs",
+    "docs_root": "docs",
     "agent_entry_path": "AGENTS.md",
-    "standing_docs_root": "ai-docs",
-    "spec_index_path": "ai-docs/SPEC_INDEX.md",
+    "standing_docs_root": "docs",
+    "spec_index_path": "docs/specs/README.md",
     "module_docs_strategy": "source-local",
-    "module_docs_folder_name": "ai-docs",
+    "module_docs_relative_path": "docs/README.md",
+    "module_docs_decision": {
+      "basis": "repo-standards-default",
+      "reason": "The prior generator kept module specs in per-module ai-docs folders, which this migration retires. The repo-standards source-local default <module>/docs/README.md applies. tsconfig.json compiles TypeScript only, test:style lints src/**/*.ts, typedoc starts at src/api.ts, and package.json files publishes dist only, so Markdown under src/ enters neither the build output, the API docs, nor the npm tarball.",
+      "decided_by": "rarajes2@cisco.com (confirmed in chat)",
+      "decided_at": "2026-11-16T13:44:27Z"
+    },
+    "repo_context_decision": {
+      "path": ".repo-context.json",
+      "schema_path": "schemas/repo-context.schema.json",
+      "action": "create",
+      "schema_action": "create",
+      "reason": "Neither the operational context nor its schema existed in this package. The context is created from package evidence and the schema is copied byte for byte from the monorepo root .sdd/templates/repo-standards/schemas/repo-context.schema.json.",
+      "decided_by": "rarajes2@cisco.com (confirmed in chat)",
+      "decided_at": "2026-11-16T13:44:27Z"
+    },
+    "artifact_decisions": [
+      {
+        "path": "docs/service.md",
+        "action": "omit",
+        "reason": "Library package, not a deployable service: package.json has no start script, container, or deployment descriptor.",
+        "decided_by": "claude-code (code evidence)",
+        "decided_at": "2026-11-16T13:50:00Z"
+      },
+      {
+        "path": "mkdocs.yml",
+        "action": "omit",
+        "reason": "No package-level documentation site. build:docs writes typedoc output into the workspace docs/calling tree, which the workspace owns.",
+        "decided_by": "claude-code (code evidence)",
+        "decided_at": "2026-11-16T13:50:00Z"
+      },
+      {
+        "path": "api-specs/openapi.yaml",
+        "action": "omit",
+        "reason": "The package serves no HTTP routes. Mobius, Janus, User Hub, Hydra, BroadWorks, UCM, and contacts endpoints are external contracts owned by Webex and Cisco; the published surface is the npm export described by the *-sdk contracts.",
+        "decided_by": "claude-code (code evidence)",
+        "decided_at": "2026-11-16T13:50:00Z"
+      },
+      {
+        "path": "SECURITY.md",
+        "action": "omit",
+        "reason": "No security policy file exists in this package. Security architecture is described in docs/architecture.md; the monorepo owns disclosure policy.",
+        "decided_by": "claude-code (code evidence)",
+        "decided_at": "2026-11-16T13:50:00Z"
+      },
+      {
+        "path": "CONTRIBUTING.md",
+        "action": "omit",
+        "reason": "Contribution instructions are owned at the workspace root CONTRIBUTING.md.",
+        "decided_by": "claude-code (code evidence)",
+        "decided_at": "2026-11-16T13:50:00Z"
+      },
+      {
+        "path": "CHANGELOG.md",
+        "action": "reuse",
+        "reason": "CHANGELOG.md already exists and is maintained by the workspace release tooling; it is reused unchanged.",
+        "decided_by": "claude-code (code evidence)",
+        "decided_at": "2026-11-16T13:50:00Z"
+      },
+      {
+        "path": "CTO_CHECKLIST.yml",
+        "action": "omit",
+        "reason": "The CTO readiness checklist applies to deployable services. This package is a library.",
+        "decided_by": "claude-code (code evidence)",
+        "decided_at": "2026-11-16T13:50:00Z"
+      },
+      {
+        "path": "schemas/cto-checklist.schema.json",
+        "action": "omit",
+        "reason": "No CTO checklist is created, so its schema is not needed.",
+        "decided_by": "claude-code (code evidence)",
+        "decided_at": "2026-11-16T13:50:00Z"
+      }
+    ],
     "template_roots": {
-      "canonical": "../../.sdd/templates",
-      "extensions": [
-        "../../.sdd/templates/extensions"
-      ]
+      "canonical": ".sdd/templates/repo-standards"
     },
     "repo_skills_root": "../../.agents/skills",
-    "runtime_skill_entrypoints": {
-      "codex": "../../.agents/skills",
-      "cursor": "../../.cursor/skills"
-    },
-    "contracts_strategy": "root-index-module-detail"
+    "contract_index_path": "docs/architecture.md",
+    "monorepo_package": {
+      "package_path": "packages/calling",
+      "root_manifest_path": "../../.sdd/manifest.json",
+      "templates_root_path": "../../.sdd/templates/repo-standards"
+    }
   },
   "tooling": {
     "sdlc_skills": {
-      "source_repo": "https://sqbu-github.cisco.com/WebexDevPlatform/SDLC-Skills.git",
-      "source_branch": "main",
-      "install_mode": "copy",
-      "installed_at": "2026-07-06T09:33:07Z",
-      "plugins": [
-        "brownfield-onboarding@0.1.5+codex.20260706150307",
-        "sdlc-lifecycle@0.1.1+codex.20260630150003"
-      ]
+      "source_ref": "repo-annotation@2.3.1"
     }
   },
   "coverage_ratchet": {
@@ -1096,17 +2094,14 @@
     "waivers": []
   },
   "substrate": {
-    "source": "webex-js-sdk repository standards",
+    "source": "WebexTools/repo-standards@d89a7fe59126ae3ad9bac9ca352aa7f12b4c85dc",
     "consumed": [
-      "AGENTS.md",
-      "package.json",
-      "packages/calling/package.json",
-      "packages/calling/tsconfig.json",
-      "packages/calling/jest.config.js",
-      "packages/calling/playwright.config.ts",
-      ".eslintrc.js",
-      ".prettierrc",
-      ".github/CODEOWNERS"
+      "@webex/jest-config-legacy via jest.config.js",
+      "package tsconfig.json (standalone; no extends)",
+      "workspace root .eslintrc.js via the test:style script",
+      "workspace root playwright through yarn run -T in test:e2e",
+      "package README.md (context only)",
+      "Repo Standards 0.3.0 templates at the monorepo root ../../.sdd/templates/repo-standards, referred to through layout.monorepo_package.templates_root_path; the package holds no templates"
     ],
     "compliance_tier": "baseline"
   },
@@ -1125,9 +2120,10 @@
       "published_package": true,
       "embedded_in_host": false,
       "cross_repo_deps_material": true,
-      "security_arch_warranted": true
+      "security_arch_warranted": true,
+      "exposes_commands_or_artifacts": true
     },
-    "resolved_by": "Codex (bootstrap questionnaire)",
-    "resolved_at": "2026-07-06T10:46:38Z"
+    "resolved_by": "claude-code (code evidence; bootstrap questionnaire)",
+    "resolved_at": "2026-11-16T13:50:00Z"
   }
 }

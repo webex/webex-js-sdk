@@ -133,6 +133,13 @@
         "notes": "Onboarded package: its own AGENTS.md, docs/, and .sdd/manifest.json are routed from .sdd/manifest.json packages."
       },
       {
+        "name": "@webex/plugin-meetings",
+        "paths": [
+          "packages/@webex/plugin-meetings"
+        ],
+        "notes": "Onboarded package: its own AGENTS.md, docs/, and .sdd/manifest.json are routed from .sdd/manifest.json packages."
+      },
+      {
         "name": "@webex/plugin-memberships",
         "paths": [
           "packages/@webex/plugin-memberships"
@@ -371,6 +378,13 @@
         "notes": "Onboarded package: its own AGENTS.md, docs/, and .sdd/manifest.json are routed from .sdd/manifest.json packages."
       },
       {
+        "name": "@webex/calling",
+        "paths": [
+          "packages/calling"
+        ],
+        "notes": "Onboarded package: its own AGENTS.md, docs/, and .sdd/manifest.json are routed from .sdd/manifest.json packages."
+      },
+      {
         "name": "webex",
         "paths": [
           "packages/webex"
@@ -381,6 +395,111 @@
         "name": "webex-node",
         "paths": [
           "packages/webex-node"
+        ],
+        "notes": "Onboarded package: its own AGENTS.md, docs/, and .sdd/manifest.json are routed from .sdd/manifest.json packages."
+      },
+      {
+        "name": "@webex/common",
+        "paths": [
+          "packages/@webex/common"
+        ],
+        "notes": "Onboarded package: its own AGENTS.md, docs/, and .sdd/manifest.json are routed from .sdd/manifest.json packages."
+      },
+      {
+        "name": "@webex/common-timers",
+        "paths": [
+          "packages/@webex/common-timers"
+        ],
+        "notes": "Onboarded package: its own AGENTS.md, docs/, and .sdd/manifest.json are routed from .sdd/manifest.json packages."
+      },
+      {
+        "name": "@webex/helper-html",
+        "paths": [
+          "packages/@webex/helper-html"
+        ],
+        "notes": "Onboarded package: its own AGENTS.md, docs/, and .sdd/manifest.json are routed from .sdd/manifest.json packages."
+      },
+      {
+        "name": "@webex/helper-image",
+        "paths": [
+          "packages/@webex/helper-image"
+        ],
+        "notes": "Onboarded package: its own AGENTS.md, docs/, and .sdd/manifest.json are routed from .sdd/manifest.json packages."
+      },
+      {
+        "name": "@webex/http-core",
+        "paths": [
+          "packages/@webex/http-core"
+        ],
+        "notes": "Onboarded package: its own AGENTS.md, docs/, and .sdd/manifest.json are routed from .sdd/manifest.json packages."
+      },
+      {
+        "name": "@webex/internal-plugin-call-ai-summary",
+        "paths": [
+          "packages/@webex/internal-plugin-call-ai-summary"
+        ],
+        "notes": "Onboarded package: its own AGENTS.md, docs/, and .sdd/manifest.json are routed from .sdd/manifest.json packages."
+      },
+      {
+        "name": "@webex/internal-plugin-device",
+        "paths": [
+          "packages/@webex/internal-plugin-device"
+        ],
+        "notes": "Onboarded package: its own AGENTS.md, docs/, and .sdd/manifest.json are routed from .sdd/manifest.json packages."
+      },
+      {
+        "name": "@webex/internal-plugin-llm",
+        "paths": [
+          "packages/@webex/internal-plugin-llm"
+        ],
+        "notes": "Onboarded package: its own AGENTS.md, docs/, and .sdd/manifest.json are routed from .sdd/manifest.json packages."
+      },
+      {
+        "name": "@webex/internal-plugin-mercury",
+        "paths": [
+          "packages/@webex/internal-plugin-mercury"
+        ],
+        "notes": "Onboarded package: its own AGENTS.md, docs/, and .sdd/manifest.json are routed from .sdd/manifest.json packages."
+      },
+      {
+        "name": "@webex/internal-plugin-metrics",
+        "paths": [
+          "packages/@webex/internal-plugin-metrics"
+        ],
+        "notes": "Onboarded package: its own AGENTS.md, docs/, and .sdd/manifest.json are routed from .sdd/manifest.json packages."
+      },
+      {
+        "name": "@webex/media-helpers",
+        "paths": [
+          "packages/@webex/media-helpers"
+        ],
+        "notes": "Onboarded package: its own AGENTS.md, docs/, and .sdd/manifest.json are routed from .sdd/manifest.json packages."
+      },
+      {
+        "name": "@webex/plugin-logger",
+        "paths": [
+          "packages/@webex/plugin-logger"
+        ],
+        "notes": "Onboarded package: its own AGENTS.md, docs/, and .sdd/manifest.json are routed from .sdd/manifest.json packages."
+      },
+      {
+        "name": "@webex/storage-adapter-spec",
+        "paths": [
+          "packages/@webex/storage-adapter-spec"
+        ],
+        "notes": "Onboarded package: its own AGENTS.md, docs/, and .sdd/manifest.json are routed from .sdd/manifest.json packages."
+      },
+      {
+        "name": "@webex/web-extension-bridge",
+        "paths": [
+          "packages/@webex/web-extension-bridge"
+        ],
+        "notes": "Onboarded package: its own AGENTS.md, docs/, and .sdd/manifest.json are routed from .sdd/manifest.json packages."
+      },
+      {
+        "name": "@webex/webex-core",
+        "paths": [
+          "packages/@webex/webex-core"
         ],
         "notes": "Onboarded package: its own AGENTS.md, docs/, and .sdd/manifest.json are routed from .sdd/manifest.json packages."
       }

@@ -11,6 +11,8 @@ const INITIAL_STATUS: CallQueueAgentStatus = {
   queues: [],
 };
 
+const UUID_PATTERN = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
+
 /**
  * Maps REST and Mercury ACD values onto one enum.
  * Unknown values are dropped so a bad event cannot invent a state.
@@ -93,14 +95,13 @@ export type CallQueueCatalogPage = {
 
 /** Match CSG UUIDs with catalog IDs encoded as ciscospark queue URIs. */
 export function queueIdKey(id: string): string {
-  const uuidPattern = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
-  if (uuidPattern.test(id)) {
+  if (UUID_PATTERN.test(id)) {
     return id.toLowerCase();
   }
   try {
     const decoded = atob(id.replace(/-/g, '+').replace(/_/g, '/'));
     const match = /^ciscospark:\/\/[^/]+\/CALL_QUEUE\/([^/]+)$/i.exec(decoded);
-    if (match && uuidPattern.test(match[1])) {
+    if (match && UUID_PATTERN.test(match[1])) {
       return match[1].toLowerCase();
     }
   } catch {
@@ -112,9 +113,7 @@ export function queueIdKey(id: string): string {
 
 /** Encode a raw UUID for public Webex APIs; leave already encoded IDs unchanged. */
 export function publicApiId(id: string, type: 'CALL_QUEUE' | 'VIRTUAL_LINE'): string {
-  const uuidPattern = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
-
-  return uuidPattern.test(id)
+  return UUID_PATTERN.test(id)
     ? btoa(`ciscospark://us/${type}/${id}`)
         .replace(/\+/g, '-')
         .replace(/\//g, '_')
