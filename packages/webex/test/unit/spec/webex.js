@@ -135,7 +135,7 @@ describe('Calling call queue client', () => {
   });
 
   beforeEach(() => {
-    queue = {dispose: sinon.spy()};
+    queue = {dispose: sinon.spy(), prepareForReuse: sinon.stub().returns(true)};
     factory = sinon.stub(WebexCalling, 'createCallQueueClient').returns(queue);
     logger = {level: 'info'};
     options = {webexApiBaseUrl: 'https://integration.webexapis.com'};
@@ -193,17 +193,100 @@ describe('Calling call queue client', () => {
     assert.calledOnce(warning);
   });
 
-  it('disposes the previous client when clients are initialized again', async () => {
+  it('reuses the previous client when clients are initialized again', async () => {
     const calling = await Calling.init({webex, callingConfig: config(true)});
-    const replacement = {dispose: sinon.spy()};
+
+    await calling.initializeClients();
+
+    assert.notCalled(queue.dispose);
+    assert.calledOnce(factory);
+    assert.strictEqual(calling.callQueueClient, queue);
+    await calling.deregister();
+    assert.calledOnce(queue.dispose);
+  });
+
+  it.each(['apiBaseUrl', 'webex', 'logger', 'account'])(
+    'replaces the queue client when %s changes',
+    async (changed) => {
+      webex.internal.device.userId = 'person-one';
+      const callingConfig = config(true);
+      const calling = await Calling.init({webex, callingConfig});
+      const replacement = {dispose: sinon.spy()};
+      factory.returns(replacement);
+
+      if (changed === 'apiBaseUrl') options.webexApiBaseUrl = 'https://webexapis.com';
+      if (changed === 'webex') calling.webex = {...webex};
+      if (changed === 'logger') logger.level = 'debug';
+      if (changed === 'account') webex.internal.device.userId = 'person-two';
+
+      await calling.initializeClients();
+
+      assert.calledOnce(queue.dispose);
+      assert.calledTwice(factory);
+      assert.strictEqual(calling.callQueueClient, replacement);
+      await calling.deregister();
+      assert.calledOnce(replacement.dispose);
+    }
+  );
+
+  it('replaces the client when device identity becomes available after initialization', async () => {
+    const calling = await Calling.init({webex, callingConfig: config(true)});
+    const replacement = {dispose: sinon.spy(), prepareForReuse: sinon.stub().returns(true)};
     factory.returns(replacement);
+    webex.internal.device.userId = 'person-one';
+    webex.internal.device.orgId = 'org-one';
+
+    await calling.initializeClients();
+
+    assert.calledTwice(factory);
+    assert.calledOnce(queue.dispose);
+    assert.strictEqual(calling.callQueueClient, replacement);
+  });
+
+  it('reuses the queue client when registration completes with the same identity', async () => {
+    webex.internal.device.userId = 'person-one';
+    webex.internal.device.orgId = 'org-one';
+    const calling = await Calling.init({webex, callingConfig: config(true)});
+
+    await calling.register();
+
+    assert.calledOnce(factory);
+    assert.calledOnce(queue.prepareForReuse);
+    assert.notCalled(queue.dispose);
+    assert.strictEqual(calling.callQueueClient, queue);
+  });
+
+  it('replaces a client that has already been disposed', async () => {
+    const calling = await Calling.init({webex, callingConfig: config(true)});
+    const replacement = {dispose: sinon.spy(), prepareForReuse: sinon.stub().returns(true)};
+    factory.returns(replacement);
+    queue.prepareForReuse.returns(false);
+
+    await calling.initializeClients();
+
+    assert.calledOnce(queue.prepareForReuse);
+    assert.calledOnce(queue.dispose);
+    assert.calledTwice(factory);
+    assert.strictEqual(calling.callQueueClient, replacement);
+  });
+
+  it('cleans up after readiness detection fails and continues initializing call recording', async () => {
+    const recording = {};
+    const recordingFactory = sinon.stub(WebexCalling, 'createCallRecordingClient').returns(recording);
+    const warning = sinon.spy(WebexCalling.Logger, 'warn');
+    const callingConfig = config(true);
+    callingConfig.clientConfig.callRecording = true;
+    const calling = await Calling.init({webex, callingConfig});
+    queue.prepareForReuse.throws(new Error('Unexpected backend error'));
 
     await calling.initializeClients();
 
     assert.calledOnce(queue.dispose);
-    assert.strictEqual(calling.callQueueClient, replacement);
-    await calling.deregister();
-    assert.calledOnce(replacement.dispose);
+    assert.calledOnce(factory);
+    assert.calledTwice(recordingFactory);
+    assert.calledOnce(warning);
+    assert.isUndefined(calling.callQueueClient);
+    assert.strictEqual(calling.callRecordingClient, recording);
   });
 
   it('disposes the previous client when call queues are disabled', async () => {
@@ -226,6 +309,7 @@ describe('Calling call queue client', () => {
     const calling = await Calling.init({webex, callingConfig});
     sinon.stub(WebexCalling, 'createClient').resolves({getLines: () => ({})});
     callingConfig.clientConfig.calling = true;
+    options.webexApiBaseUrl = 'https://webexapis.com';
     factory.throws(new Error('Queue initialization failed'));
 
     await calling.register();
@@ -244,6 +328,7 @@ describe('Calling call queue client', () => {
     const callingConfig = config(true);
     callingConfig.clientConfig.callRecording = true;
     const calling = await Calling.init({webex, callingConfig});
+    options.webexApiBaseUrl = 'https://webexapis.com';
     queue.dispose = sinon.stub().throws(new Error('Queue disposal failed'));
 
     await calling.initializeClients();

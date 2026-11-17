@@ -89,6 +89,8 @@ export class CallQueueClient extends Eventing<CallQueueEventTypes> implements IC
 
   private disposed = false;
 
+  private lifecycleEpoch = 0;
+
   constructor(webex: WebexSDK, logger: LoggerInterface, options: CallQueueClientOptions) {
     super();
     if (!SDKConnector.getWebex()) {
@@ -119,6 +121,7 @@ export class CallQueueClient extends Eventing<CallQueueEventTypes> implements IC
       return rejected;
     }
 
+    const epoch = this.lifecycleEpoch;
     const generation = this.eventGeneration.get(lineOwnerId) ?? 0;
     this.requestSequence += 1;
     const sequence = this.requestSequence;
@@ -127,14 +130,35 @@ export class CallQueueClient extends Eventing<CallQueueEventTypes> implements IC
         uri: this.queuesUrl(lineOwnerId),
         method: HTTP_METHODS.GET,
       });
+      if (epoch !== this.lifecycleEpoch) {
+        return {
+          statusCode: 409,
+          data: {error: 'Call queue client was reinitialized; refresh settings'},
+          message: FAILURE_MESSAGE,
+        };
+      }
       log.log(`Response trackingId: ${response?.headers?.trackingid}`, loggerContext);
       const parsed = parseCallQueueSettings(response.body, this.currentByLine.get(lineOwnerId));
       const named = parsed ? await this.fillQueueNames(parsed) : undefined;
+      if (epoch !== this.lifecycleEpoch) {
+        return {
+          statusCode: 409,
+          data: {error: 'Call queue client was reinitialized; refresh settings'},
+          message: FAILURE_MESSAGE,
+        };
+      }
       if (
         (this.eventGeneration.get(lineOwnerId) ?? 0) !== generation ||
         (this.committedSequence.get(lineOwnerId) ?? 0) > sequence
       ) {
         await this.waitForEventRefreshes(lineOwnerId);
+        if (epoch !== this.lifecycleEpoch) {
+          return {
+            statusCode: 409,
+            data: {error: 'Call queue client was reinitialized; refresh settings'},
+            message: FAILURE_MESSAGE,
+          };
+        }
         const latest = this.currentByLine.get(lineOwnerId);
 
         return latest
@@ -172,7 +196,24 @@ export class CallQueueClient extends Eventing<CallQueueEventTypes> implements IC
         message: SUCCESS_MESSAGE,
       };
     } catch (err: unknown) {
-      return this.fail(err, loggerContext, 'Failed to get call queue settings');
+      if (epoch !== this.lifecycleEpoch) {
+        return {
+          statusCode: 409,
+          data: {error: 'Call queue client was reinitialized; refresh settings'},
+          message: FAILURE_MESSAGE,
+        };
+      }
+
+      const failure = await this.fail(err, loggerContext, 'Failed to get call queue settings');
+      if (epoch !== this.lifecycleEpoch) {
+        return {
+          statusCode: 409,
+          data: {error: 'Call queue client was reinitialized; refresh settings'},
+          message: FAILURE_MESSAGE,
+        };
+      }
+
+      return failure;
     }
   }
 
@@ -191,9 +232,18 @@ export class CallQueueClient extends Eventing<CallQueueEventTypes> implements IC
       return rejected;
     }
 
+    const epoch = this.lifecycleEpoch;
+    let requestSent = false;
     try {
       if (this.needsQueuePolicyRefresh(request, lineOwnerId)) {
         const settings = await this.getCallQueueSettings(lineOwnerId);
+        if (epoch !== this.lifecycleEpoch) {
+          return {
+            statusCode: 409,
+            data: {error: 'Call queue client was reinitialized; refresh settings'},
+            message: FAILURE_MESSAGE,
+          };
+        }
         if (settings.statusCode >= 400) {
           return settings;
         }
@@ -210,22 +260,54 @@ export class CallQueueClient extends Eventing<CallQueueEventTypes> implements IC
       const generation = this.eventGeneration.get(lineOwnerId) ?? 0;
       this.requestSequence += 1;
       const sequence = this.requestSequence;
+      requestSent = true;
       const response = <WebexRequestPayload>await this.webex.request({
         uri: this.queuesUrl(lineOwnerId),
         method: HTTP_METHODS.PUT,
         body,
       });
+      if (epoch !== this.lifecycleEpoch) {
+        return {
+          statusCode: 409,
+          data: {
+            error:
+              'Call queue client was reinitialized; request may have completed; refresh settings before retrying',
+          },
+          message: FAILURE_MESSAGE,
+        };
+      }
       log.log(`Response trackingId: ${response?.headers?.trackingid}`, loggerContext);
       const current = this.currentByLine.get(lineOwnerId);
       const parsed = parseCallQueueSettings(response.body, current);
       const local = parsed ?? (current ? this.applyLocalUpdate(request, lineOwnerId) : undefined);
       const named = local ? await this.fillQueueNames(local) : undefined;
+      if (epoch !== this.lifecycleEpoch) {
+        return {
+          statusCode: 409,
+          data: {
+            error:
+              'Call queue client was reinitialized; request may have completed; refresh settings before retrying',
+          },
+          message: FAILURE_MESSAGE,
+        };
+      }
       if (
         !named ||
         (this.eventGeneration.get(lineOwnerId) ?? 0) !== generation ||
         (this.committedSequence.get(lineOwnerId) ?? 0) > sequence
       ) {
         const refreshed = await this.getCallQueueSettings(lineOwnerId);
+
+        if (epoch !== this.lifecycleEpoch) {
+          return {
+            statusCode: 409,
+            data: {
+              error:
+                'Call queue client was reinitialized; request may have completed; refresh settings before retrying',
+            },
+            message: FAILURE_MESSAGE,
+          };
+        }
 
         return refreshed.data.callQueue
           ? {
@@ -248,7 +330,32 @@ export class CallQueueClient extends Eventing<CallQueueEventTypes> implements IC
         message: SUCCESS_MESSAGE,
       };
     } catch (err: unknown) {
-      return this.fail(err, loggerContext, 'Failed to update call queue settings');
+      if (epoch !== this.lifecycleEpoch) {
+        return {
+          statusCode: 409,
+          data: {
+            error: requestSent
+              ? 'Call queue client was reinitialized; request may have completed; refresh settings before retrying'
+              : 'Call queue client was reinitialized; refresh settings',
+          },
+          message: FAILURE_MESSAGE,
+        };
+      }
+
+      const failure = await this.fail(err, loggerContext, 'Failed to update call queue settings');
+      if (epoch !== this.lifecycleEpoch) {
+        return {
+          statusCode: 409,
+          data: {
+            error: requestSent
+              ? 'Call queue client was reinitialized; request may have completed; refresh settings before retrying'
+              : 'Call queue client was reinitialized; refresh settings',
+          },
+          message: FAILURE_MESSAGE,
+        };
+      }
+
+      return failure;
     }
   }
 
@@ -273,12 +380,20 @@ export class CallQueueClient extends Eventing<CallQueueEventTypes> implements IC
       };
     }
 
+    const epoch = this.lifecycleEpoch;
     try {
       const response = <WebexRequestPayload>await this.webex.request({
         uri: this.joinUrl(SYNC_PATH),
         method: HTTP_METHODS.POST,
         body: {wdmUrl, resources: [{resource: 'telephony_agents'}]},
       });
+      if (epoch !== this.lifecycleEpoch) {
+        return {
+          statusCode: 409,
+          data: {error: 'Call queue client was reinitialized; refresh settings'},
+          message: FAILURE_MESSAGE,
+        };
+      }
       log.log(`Response trackingId: ${response?.headers?.trackingid}`, loggerContext);
       // The sync endpoint returns 204; authoritative settings arrive via Mercury.
 
@@ -290,7 +405,24 @@ export class CallQueueClient extends Eventing<CallQueueEventTypes> implements IC
         message: SUCCESS_MESSAGE,
       };
     } catch (err: unknown) {
-      return this.fail(err, loggerContext, 'Failed to sync telephony calls');
+      if (epoch !== this.lifecycleEpoch) {
+        return {
+          statusCode: 409,
+          data: {error: 'Call queue client was reinitialized; refresh settings'},
+          message: FAILURE_MESSAGE,
+        };
+      }
+
+      const failure = await this.fail(err, loggerContext, 'Failed to sync telephony calls');
+      if (epoch !== this.lifecycleEpoch) {
+        return {
+          statusCode: 409,
+          data: {error: 'Call queue client was reinitialized; refresh settings'},
+          message: FAILURE_MESSAGE,
+        };
+      }
+
+      return failure;
     }
   }
 
@@ -313,13 +445,43 @@ export class CallQueueClient extends Eventing<CallQueueEventTypes> implements IC
     });
   }
 
+  /**
+   * Refresh backend readiness before reusing this client without issuing a request.
+   *
+   * @returns False if the client is disposed or its registered backend changed.
+   */
+  public prepareForReuse(): boolean {
+    if (this.disposed) return false;
+
+    const backend = hasReadyEntitlementModels(this.webex)
+      ? getCallingBackEnd(this.webex)
+      : CALLING_BACKEND.INVALID;
+    if (this.mercuryListeners.length && backend !== CALLING_BACKEND.WXC) return false;
+
+    this.lifecycleEpoch += 1;
+    this.currentByLine.clear();
+    this.queueNames.clear();
+    this.eventGeneration.clear();
+    this.committedSequence.clear();
+    this.pendingEventRefresh.clear();
+    this.callingBackend = backend;
+    if (backend === CALLING_BACKEND.WXC && !this.mercuryListeners.length) {
+      this.registerAgentListeners();
+    }
+
+    return true;
+  }
+
   /** Unsubscribe from the queue's Mercury event names. */
   public dispose(): void {
     this.disposed = true;
+    this.lifecycleEpoch += 1;
     this.mercuryListeners.forEach((event) => {
       this.webex.internal.mercury.off(event);
     });
     this.mercuryListeners = [];
+    this.currentByLine.clear();
+    this.queueNames.clear();
     this.eventGeneration.clear();
     this.committedSequence.clear();
     this.pendingEventRefresh.clear();
@@ -363,6 +525,8 @@ export class CallQueueClient extends Eventing<CallQueueEventTypes> implements IC
   }
 
   private handleAgentEvent(kind: CallQueueEventKind, event: unknown) {
+    if (this.disposed) return;
+    const epoch = this.lifecycleEpoch;
     const line = this.eventLine(event);
     if (line.kind === 'ignore') return;
     const lineOwnerId = line.kind === 'secondary' ? line.lineOwnerId : undefined;
@@ -376,6 +540,7 @@ export class CallQueueClient extends Eventing<CallQueueEventTypes> implements IC
     if (!current) {
       if (eventState || Array.isArray(payload?.joinInfo) || Array.isArray(payload?.queues)) {
         const pending = this.refreshEventLine(lineOwnerId, generation);
+        if (epoch !== this.lifecycleEpoch) return;
         this.pendingEventRefresh.set(lineOwnerId, pending);
         pending.then(() => {
           if (this.pendingEventRefresh.get(lineOwnerId) === pending) {
@@ -400,6 +565,7 @@ export class CallQueueClient extends Eventing<CallQueueEventTypes> implements IC
       {file: CALL_QUEUE_FILE, method: 'handleAgentEvent'}
     );
     this.emit(COMMON_EVENT_KEYS.CALL_QUEUE_UPDATED, lineOwnerId ? {...named, lineOwnerId} : named);
+    if (epoch !== this.lifecycleEpoch) return;
     if (named.queues.some((queue) => !queue.name)) {
       this.refreshQueueNames(named, generation, lineOwnerId).catch((err: unknown) => {
         log.error(`Failed to refresh call queue names: ${String(err)}`, {
@@ -424,6 +590,7 @@ export class CallQueueClient extends Eventing<CallQueueEventTypes> implements IC
 
   private async refreshEventLine(lineOwnerId: string | undefined, generation: number) {
     if (this.rejectBeforeRequest(lineOwnerId)) return;
+    const epoch = this.lifecycleEpoch;
     this.requestSequence += 1;
     const sequence = this.requestSequence;
     try {
@@ -431,10 +598,12 @@ export class CallQueueClient extends Eventing<CallQueueEventTypes> implements IC
         uri: this.queuesUrl(lineOwnerId),
         method: HTTP_METHODS.GET,
       });
+      if (epoch !== this.lifecycleEpoch) return;
       const parsed = parseCallQueueSettings(response.body, this.currentByLine.get(lineOwnerId));
       if (!parsed) return;
       const named = await this.fillQueueNames(parsed);
       if (
+        epoch !== this.lifecycleEpoch ||
         generation !== this.eventGeneration.get(lineOwnerId) ||
         (this.committedSequence.get(lineOwnerId) ?? 0) > sequence
       )
@@ -458,8 +627,10 @@ export class CallQueueClient extends Eventing<CallQueueEventTypes> implements IC
     generation: number,
     lineOwnerId?: string
   ) {
+    const epoch = this.lifecycleEpoch;
     const named = await this.fillQueueNames(status);
     if (
+      epoch !== this.lifecycleEpoch ||
       generation !== this.eventGeneration.get(lineOwnerId) ||
       this.currentByLine.get(lineOwnerId) !== status ||
       named === status
@@ -483,8 +654,13 @@ export class CallQueueClient extends Eventing<CallQueueEventTypes> implements IC
 
   private async loadQueueCatalog(neededIds: string[]): Promise<void> {
     const loggerContext = {file: CALL_QUEUE_FILE, method: METHODS.GET_CALL_QUEUE_NAMES};
+    const epoch = this.lifecycleEpoch;
     const loadPage = async (uri: string, remainingPages: number): Promise<void> => {
-      if (remainingPages === 0 || neededIds.every((id) => this.queueNames.has(id))) {
+      if (
+        epoch !== this.lifecycleEpoch ||
+        remainingPages === 0 ||
+        neededIds.every((id) => this.queueNames.has(id))
+      ) {
         return;
       }
 
@@ -492,6 +668,7 @@ export class CallQueueClient extends Eventing<CallQueueEventTypes> implements IC
         uri,
         method: HTTP_METHODS.GET,
       });
+      if (epoch !== this.lifecycleEpoch) return;
       const catalog = parseCallQueueCatalog(response.body);
       catalog.entries.forEach((entry) => {
         if (entry.name) {

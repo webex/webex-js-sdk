@@ -79,6 +79,8 @@ export interface ICallQueue {
     lineOwnerId?: string
   ): Promise<CallQueueResponse>;
   syncTelephonyCalls(): Promise<CallQueueResponse>;
+  /** Refresh backend readiness and invalidate cached state and pending requests before reuse. */
+  prepareForReuse?(): boolean;
   /** Remove all Mercury listeners for the queue event names on this Webex instance. */
   dispose(): void;
 }

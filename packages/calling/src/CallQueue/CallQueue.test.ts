@@ -1,4 +1,5 @@
 import sinon from 'sinon';
+import {assert} from '@webex/test-helper-chai';
 import {LOGGER} from '../Logger/types';
 import {getTestUtilsWebex} from '../common/testUtil';
 import {CALLING_BACKEND, HTTP_METHODS, WebexRequestPayload} from '../common/types';
@@ -223,6 +224,287 @@ describe('CallQueue client', () => {
       earlyClient.dispose();
     }
   );
+
+  it('prepares an early client for reuse after registration without duplicate listeners or requests', () => {
+    const lateWebex = getTestUtilsWebex();
+    const features = lateWebex.internal.device.features;
+    Reflect.deleteProperty(lateWebex.internal.device, 'features');
+    const earlyClient = createCallQueueClient(lateWebex, {level: LOGGER.INFO}, TEST_OPTIONS);
+
+    assert.isTrue(earlyClient.prepareForReuse());
+    assert.lengthOf(lateWebex.internal.mercury.on.mock.calls, 0);
+    lateWebex.internal.device.features = features;
+    assert.isTrue(earlyClient.prepareForReuse());
+    assert.lengthOf(lateWebex.internal.mercury.on.mock.calls, 6);
+    assert.isTrue(earlyClient.prepareForReuse());
+    assert.lengthOf(lateWebex.internal.mercury.on.mock.calls, 6);
+    assert.lengthOf(lateWebex.request.mock.calls, 0);
+    earlyClient.dispose();
+  });
+
+  it('rejects reuse and requests after disposal', async () => {
+    const otherWebex = getTestUtilsWebex();
+    const other = createCallQueueClient(otherWebex, {level: LOGGER.INFO}, TEST_OPTIONS);
+    other.dispose();
+
+    assert.isFalse(other.prepareForReuse());
+    assert.lengthOf(otherWebex.internal.mercury.on.mock.calls, 6);
+    assert.equal((await other.getCallQueueSettings()).statusCode, 400);
+    assert.lengthOf(otherWebex.request.mock.calls, 0);
+  });
+
+  it('reloads queue membership policy after a client is prepared for reuse', async () => {
+    const otherWebex = getTestUtilsWebex();
+    const other = createCallQueueClient(otherWebex, {level: LOGGER.INFO}, TEST_OPTIONS);
+    const status = (allowLogOffEnabled: boolean) => <WebexRequestPayload>(<unknown>{
+        statusCode: 200,
+        body: {
+          agentACDState: 'AVAILABLE',
+          queues: [{id: 'q1', name: 'Sales', available: true, allowLogOffEnabled}],
+        },
+      });
+    otherWebex.request
+      .mockResolvedValueOnce(status(false))
+      .mockResolvedValueOnce(status(true))
+      .mockResolvedValueOnce(<WebexRequestPayload>(<unknown>{statusCode: 204}));
+
+    await other.getCallQueueSettings();
+    assert.isTrue(other.prepareForReuse());
+    const updated = await other.updateCallQueueSettings({queues: [{id: 'q1', available: false}]});
+
+    assert.equal(updated.statusCode, 204);
+    assert.lengthOf(otherWebex.request.mock.calls, 3);
+    assert.deepEqual(otherWebex.request.mock.calls[2][0].body, {
+      queues: [{id: 'q1', available: false}],
+    });
+    other.dispose();
+  });
+
+  it.each(['GET', 'PUT'])(
+    'does not commit a %s response from before reinitialization',
+    async (method) => {
+      const otherWebex = getTestUtilsWebex();
+      const other = createCallQueueClient(otherWebex, {level: LOGGER.INFO}, TEST_OPTIONS);
+      const oldRequest = deferredResponse();
+      otherWebex.request
+        .mockReturnValueOnce(oldRequest.promise)
+        .mockResolvedValueOnce(<WebexRequestPayload>(<unknown>{
+          statusCode: 200,
+          body: {agentACDState: 'UNAVAILABLE', queues: []},
+        }))
+        .mockResolvedValueOnce(<WebexRequestPayload>(<unknown>{statusCode: 204}));
+      const pending =
+        method === 'GET'
+          ? other.getCallQueueSettings()
+          : other.updateCallQueueSettings({agentACDState: ACD_STATE.AVAILABLE});
+
+      assert.isTrue(other.prepareForReuse());
+      assert.equal(
+        (await other.getCallQueueSettings()).data.callQueue?.acdState,
+        ACD_STATE.UNAVAILABLE
+      );
+      oldRequest.resolve(<WebexRequestPayload>(<unknown>{
+        statusCode: 200,
+        body: {agentACDState: 'AVAILABLE', queues: []},
+      }));
+      const staleResponse = await pending;
+      assert.equal(staleResponse.statusCode, 409);
+      if (method === 'PUT') {
+        assert.include(staleResponse.data.error, 'request may have completed');
+        assert.include(staleResponse.data.error, 'refresh settings before retrying');
+      }
+      assert.equal(
+        (await other.syncTelephonyCalls()).data.callQueue?.acdState,
+        ACD_STATE.UNAVAILABLE
+      );
+      assert.lengthOf(otherWebex.request.mock.calls, 3);
+      other.dispose();
+    }
+  );
+
+  it('does not send a membership update after its policy read is superseded', async () => {
+    const otherWebex = getTestUtilsWebex();
+    const other = createCallQueueClient(otherWebex, {level: LOGGER.INFO}, TEST_OPTIONS);
+    const policy = deferredResponse();
+    otherWebex.request.mockReturnValueOnce(policy.promise);
+    const update = other.updateCallQueueSettings({queues: [{id: 'q1', available: false}]});
+
+    assert.isTrue(other.prepareForReuse());
+    policy.resolve(<WebexRequestPayload>(<unknown>{
+      statusCode: 200,
+      body: {
+        agentACDState: 'AVAILABLE',
+        queues: [{id: 'q1', name: 'Sales', available: true, allowLogOffEnabled: true}],
+      },
+    }));
+
+    const response = await update;
+    assert.equal(response.statusCode, 409);
+    assert.notInclude(response.data.error, 'request may have completed');
+    assert.lengthOf(otherWebex.request.mock.calls, 1);
+    other.dispose();
+  });
+
+  it.each(['GET', 'PUT'])(
+    'returns a lifecycle conflict if reinitialized during %s diagnostic upload',
+    async (method) => {
+      const otherWebex = getTestUtilsWebex();
+      const other = createCallQueueClient(otherWebex, {level: LOGGER.INFO}, TEST_OPTIONS);
+      let finishUpload!: () => void;
+      const upload = new Promise<void>((resolve) => {
+        finishUpload = resolve;
+      });
+      (utils.uploadLogs as jest.Mock).mockReturnValueOnce(upload);
+      otherWebex.request.mockRejectedValueOnce({statusCode: 500});
+      const pending =
+        method === 'GET'
+          ? other.getCallQueueSettings()
+          : other.updateCallQueueSettings({agentACDState: ACD_STATE.AVAILABLE});
+      await Promise.resolve();
+      assert.lengthOf((utils.uploadLogs as jest.Mock).mock.calls, 1);
+
+      assert.isTrue(other.prepareForReuse());
+      finishUpload();
+      const response = await pending;
+
+      assert.equal(response.statusCode, 409);
+      if (method === 'PUT') assert.include(response.data.error, 'request may have completed');
+      assert.lengthOf(otherWebex.request.mock.calls, 1);
+      other.dispose();
+    }
+  );
+
+  it('rejects a sync response from an earlier lifecycle', async () => {
+    const otherWebex = getTestUtilsWebex();
+    const other = createCallQueueClient(otherWebex, {level: LOGGER.INFO}, TEST_OPTIONS);
+    const oldSync = deferredResponse();
+    otherWebex.request.mockReturnValueOnce(oldSync.promise);
+    const sync = other.syncTelephonyCalls();
+
+    assert.isTrue(other.prepareForReuse());
+    oldSync.resolve(<WebexRequestPayload>(<unknown>{statusCode: 204}));
+
+    assert.equal((await sync).statusCode, 409);
+    assert.lengthOf(otherWebex.request.mock.calls, 1);
+    other.dispose();
+  });
+
+  it('does not commit an event refresh started before reinitialization', async () => {
+    const otherWebex = getTestUtilsWebex();
+    const other = createCallQueueClient(otherWebex, {level: LOGGER.INFO}, TEST_OPTIONS);
+    const listener = sinon.spy();
+    other.on(COMMON_EVENT_KEYS.CALL_QUEUE_UPDATED, listener);
+    const oldRefresh = deferredResponse();
+    const newRefresh = deferredResponse();
+    otherWebex.request
+      .mockReturnValueOnce(oldRefresh.promise)
+      .mockReturnValueOnce(newRefresh.promise);
+    const handler = otherWebex.internal.mercury.on.mock.calls.find(
+      ([event]) => event === MOBIUS_EVENT_KEYS.TELEPHONY_AGENT_STATE
+    )?.[1];
+    handler({data: {state: 'available'}});
+    assert.isTrue(other.prepareForReuse());
+    handler({data: {state: 'unavailable'}});
+
+    oldRefresh.resolve(<WebexRequestPayload>(<unknown>{
+      statusCode: 200,
+      body: {agentACDState: 'AVAILABLE', queues: []},
+    }));
+    await new Promise<void>((resolve) => {
+      setTimeout(resolve, 0);
+    });
+    assert.notCalled(listener);
+    newRefresh.resolve(<WebexRequestPayload>(<unknown>{
+      statusCode: 200,
+      body: {agentACDState: 'UNAVAILABLE', queues: []},
+    }));
+    await new Promise<void>((resolve) => {
+      setTimeout(resolve, 0);
+    });
+    assert.calledOnceWithExactly(listener, {acdState: ACD_STATE.UNAVAILABLE, queues: []});
+    other.dispose();
+  });
+
+  it('does not fetch queue names when an event listener reinitializes the client', async () => {
+    const otherWebex = getTestUtilsWebex();
+    const other = createCallQueueClient(otherWebex, {level: LOGGER.INFO}, TEST_OPTIONS);
+    otherWebex.request.mockResolvedValueOnce(<WebexRequestPayload>(<unknown>{
+      statusCode: 200,
+      body: {agentACDState: 'AVAILABLE', queues: []},
+    }));
+    await other.getCallQueueSettings();
+    const listener = sinon.spy(() => other.prepareForReuse());
+    other.on(COMMON_EVENT_KEYS.CALL_QUEUE_UPDATED, listener);
+    const handler = otherWebex.internal.mercury.on.mock.calls.find(
+      ([event]) => event === MOBIUS_EVENT_KEYS.TELEPHONY_AGENT_JOIN
+    )?.[1];
+
+    handler({data: {joinInfo: [{queueId: 'q1', status: 'joined'}]}});
+
+    assert.calledOnce(listener);
+    assert.lengthOf(otherWebex.request.mock.calls, 1);
+    other.dispose();
+  });
+
+  it('ignores an already-dispatched Mercury callback after disposal', () => {
+    const otherWebex = getTestUtilsWebex();
+    const other = createCallQueueClient(otherWebex, {level: LOGGER.INFO}, TEST_OPTIONS);
+    const handler = otherWebex.internal.mercury.on.mock.calls.find(
+      ([event]) => event === MOBIUS_EVENT_KEYS.TELEPHONY_AGENT_STATE
+    )?.[1];
+    other.dispose();
+
+    handler({data: {state: 'available'}});
+
+    assert.lengthOf(otherWebex.request.mock.calls, 0);
+  });
+
+  it('does not retain catalog names from a request made before reinitialization', async () => {
+    const otherWebex = getTestUtilsWebex();
+    const other = createCallQueueClient(otherWebex, {level: LOGGER.INFO}, TEST_OPTIONS);
+    const oldCatalog = deferredResponse();
+    const status = <WebexRequestPayload>(<unknown>{
+      statusCode: 200,
+      body: {agentACDState: 'AVAILABLE', queues: [{id: 'q1', available: true}]},
+    });
+    otherWebex.request
+      .mockResolvedValueOnce(status)
+      .mockReturnValueOnce(oldCatalog.promise)
+      .mockResolvedValueOnce(status)
+      .mockResolvedValueOnce(<WebexRequestPayload>(<unknown>{
+        statusCode: 200,
+        body: {queues: [{id: 'q1', name: 'Current'}]},
+      }))
+      .mockResolvedValueOnce(<WebexRequestPayload>(<unknown>{statusCode: 204}));
+    const pending = other.getCallQueueSettings();
+    await Promise.resolve();
+    assert.lengthOf(otherWebex.request.mock.calls, 2);
+    assert.isTrue(other.prepareForReuse());
+    assert.equal((await other.getCallQueueSettings()).data.callQueue?.queues[0].name, 'Current');
+    oldCatalog.resolve(<WebexRequestPayload>(<unknown>{
+      statusCode: 200,
+      body: {queues: [{id: 'q1', name: 'Old'}]},
+    }));
+    assert.equal((await pending).statusCode, 409);
+    const result = await other.updateCallQueueSettings({agentACDState: ACD_STATE.UNAVAILABLE});
+    assert.equal(result.data.callQueue?.queues[0].name, 'Current');
+    other.dispose();
+  });
+
+  it.each([
+    ['UCM', 'NATIVE_SIP_CALL_TO_UCM', 'bc-sp-standard'],
+    ['BroadWorks', 'NATIVE_WEBEX_TEAMS_CALLING', 'broadworks-connector'],
+  ])('requires replacement if a listening client changes to %s', (_, behavior, entitlement) => {
+    const otherWebex = getTestUtilsWebex();
+    const other = createCallQueueClient(otherWebex, {level: LOGGER.INFO}, TEST_OPTIONS);
+    otherWebex.internal.device.callingBehavior = behavior;
+    otherWebex.internal.device.features.entitlement.models[0]._values.key = entitlement;
+
+    assert.isFalse(other.prepareForReuse());
+    assert.lengthOf(otherWebex.internal.mercury.on.mock.calls, 6);
+    assert.lengthOf(otherWebex.request.mock.calls, 0);
+    other.dispose();
+  });
 
   it.each([
     ['non-array models', {}],
