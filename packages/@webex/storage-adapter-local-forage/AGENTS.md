@@ -55,7 +55,7 @@ alternatives when a command is missing.
 
 | Task                   | Command |
 | ---------------------- | ------- |
-| Install dependencies   | `yarn install` |
+| Install dependencies   | `yarn` |
 | Start dev environment  | N/A; the package is a library with no runnable entry point |
 | Run tests              | None canonical. `yarn workspace @webex/storage-adapter-local-forage test:browser` is the only committed runner and does not execute the shared suite (see `src/docs/README.md` `Verification`) |
 | Run linters            | `yarn workspace @webex/storage-adapter-local-forage test:style` |

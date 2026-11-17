@@ -45,7 +45,7 @@ commands from the monorepo root.
 
 | Task                   | Command |
 | ---------------------- | ------- |
-| Install dependencies   | `yarn install` (workspace root) |
+| Install dependencies   | `yarn` (workspace root) |
 | Start dev environment  | N/A — library package with no start script in `package.json` |
 | Run tests              | `yarn workspace @webex/internal-plugin-flag test:unit` (Jest); `yarn workspace @webex/internal-plugin-flag test:browser` (Mocha specs run by the karma runner, the integration tier). No `test:integration` script exists |
 | Run linters            | `yarn workspace @webex/internal-plugin-flag test:style` |

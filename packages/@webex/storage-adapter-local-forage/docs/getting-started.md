@@ -29,19 +29,14 @@ workspace. Run every command below from the workspace root.
 
 ## Install
 
-Clone the Webex JS SDK repository (`https://github.com/webex/webex-js-sdk.git`, the `repository.url` in
-`package.json`), then install from its root:
+Install from the workspace root:
 
 ```bash
-yarn install
+yarn
 ```
 
 A host application that consumes the published package installs it from npm instead, as
-`README.md` documents:
-
-```bash
-npm install --save @webex/storage-adapter-local-forage
-```
+`README.md` documents.
 
 ## Build
 

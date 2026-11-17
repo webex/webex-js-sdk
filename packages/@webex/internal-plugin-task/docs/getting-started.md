@@ -34,8 +34,10 @@ The repository is already cloned when you are reading this file. Dependencies ar
 whole workspace:
 
 ```bash
-yarn install
+yarn
 ```
+
+Fresh-checkout workspace setup (building `webex-legacy-tools` and sibling `dist/`) is owned by the workspace root; see [Prebuilding](../../../../CONTRIBUTING.md#prebuilding).
 
 ## Build
 
@@ -90,7 +92,7 @@ yarn workspace @webex/internal-plugin-task test:unit
   no environment variable, and no feature toggle.
 - Secret source: none in this package. The access token is attached by the webex-core request
   pipeline at runtime, and encryption keys come from the encryption plugin.
-- Package or artifact access: no private registry or credentials. `yarn install` needs network access
+- Package or artifact access: no private registry or credentials. `yarn` needs network access
   to the public npm registry set in the workspace root `.yarnrc.yml`, because the Yarn cache is not
   committed and the package depends on public packages such as `lodash`, `uuid`, and `eslint`.
 - Required neighboring repositories or workspace layout: the webex-js-sdk workspace, because sibling
@@ -100,17 +102,11 @@ yarn workspace @webex/internal-plugin-task test:unit
 
 ## First-run verification
 
-1. Select Node.js 22.14, enable Corepack (see Prerequisites), and run `yarn install` from the
+1. Select Node.js 22.14, enable Corepack (see Prerequisites), and run `yarn` from the
    workspace root.
-2. Run the workspace root `prebuild:modules` script. `yarn install` does not build the
-   `webex-legacy-tools` CLI that this package's scripts call, because its binary lives in the
-   untracked build output of the workspace legacy tools package. That root script installs again,
-   then builds the workspace tools, the legacy tools, webex-core, and the `build:src` output of every
-   workspace package that defines that script, including this package and the sibling plugins that
-   its unit spec loads.
-3. Run `yarn workspace @webex/internal-plugin-task build` and check that the build output contains
+2. Run `yarn workspace @webex/internal-plugin-task build` and check that the build output contains
    `index.js`.
-4. Run `yarn workspace @webex/internal-plugin-task test:unit`.
+3. Run `yarn workspace @webex/internal-plugin-task test:unit`.
 
 Expected result: Jest reports 3 suites and 17 tests passing — 9 in `test/unit/spec/task.js`, 7 in the
 decrypt helper spec, and 1 in the encrypt helper spec. If `task.js` fails with

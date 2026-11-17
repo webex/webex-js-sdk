@@ -40,25 +40,23 @@ entry. It serves no HTTP, so no OpenAPI applies.
 
 ## 1. Commands (Run First)
 
-Use only documented commands. Do not invent alternatives when a command is missing. Run `yarn` and
-`yarn prebuild:modules` at the workspace root, and the package scripts below from this package
-directory, `packages/@webex/plugin-device-manager`, where `package.json` defines them. From the
-workspace root, `yarn workspace @webex/plugin-device-manager <script>` runs the same script.
+Use only documented commands. Do not invent alternatives when a command is missing. Run everything from the workspace root: `yarn` to install, and
+`yarn workspace @webex/plugin-device-manager <script>` for the package scripts below.
 
 | Task                   | Command |
 | ---------------------- | ------- |
-| Install dependencies   | `yarn` (workspace root; the deploy workflow runs the same command); on a fresh checkout run `yarn prebuild:modules` once, because `yarn` does not build `@webex/legacy-tools` or sibling `dist/` |
+| Install dependencies   | `yarn` (workspace root; the deploy workflow runs the same command) |
 | Start dev environment  | N/A — library package with no start script in `package.json` |
-| Run tests              | `yarn test:unit` |
-| Run linters            | `yarn test:style` |
-| Build/release artifact | `yarn build:src` (JavaScript and source maps to `dist/`) |
+| Run tests              | `yarn workspace @webex/plugin-device-manager test:unit` |
+| Run linters            | `yarn workspace @webex/plugin-device-manager test:style` |
+| Build/release artifact | `yarn workspace @webex/plugin-device-manager build:src` (JavaScript and source maps to `dist/`) |
 | Format code            | N/A — no format script; `prettier` is a devDependency used through eslint |
 
-`yarn build` runs `yarn build:src` and produces the same output; the package emits no type
+`yarn workspace @webex/plugin-device-manager build` runs `build:src` and produces the same output; the package emits no type
 declarations.
 
 Do not use the aggregate `test` script: after lint and unit tests it calls `test:integration`, which
-this package does not define, and exits 1. `yarn test:browser` exits 0 without running anything,
+this package does not define, and exits 1. `yarn workspace @webex/plugin-device-manager test:browser` exits 0 without running anything,
 because the package has no `test/integration` directory; see
 [Getting started](docs/getting-started.md#tests).
 
@@ -122,14 +120,14 @@ Definition of done:
 
 ## 4. Testing Workflow
 
-Run checks in this order, from the package directory:
+Run checks in this order, from the workspace root:
 
-1. `yarn build:src`
-2. `yarn test:unit`
-3. `yarn test:style`
+1. `yarn workspace @webex/plugin-device-manager build:src`
+2. `yarn workspace @webex/plugin-device-manager test:unit`
+3. `yarn workspace @webex/plugin-device-manager test:style`
 
-Run `yarn prebuild:modules` once on a fresh checkout so `webex-legacy-tools` and the sibling packages'
-`dist/` exist.
+Fresh-checkout workspace setup (building `webex-legacy-tools` and sibling `dist/`) is owned by the
+workspace root; see [Prebuilding](../../../CONTRIBUTING.md#prebuilding).
 
 Testing rules:
 

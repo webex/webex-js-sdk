@@ -15,16 +15,13 @@ validation_status: pass-with-warnings
 
 # Getting started
 
-Onboarding for **@webex/plugin-meetings**, a package inside the `webex-js-sdk` Yarn workspace. Run
-`yarn` and `yarn prebuild:modules` at the workspace root. Run the package scripts from the workspace
-root too, as `yarn workspace @webex/plugin-meetings <script>`; this package's `package.json` defines them. Inside the
-package directory, `packages/@webex/plugin-meetings`, `yarn <script>` runs the same script.
+Onboarding for **@webex/plugin-meetings**, a package inside the `webex-js-sdk` Yarn workspace. Run every command from the workspace root: `yarn` to install, and `yarn workspace @webex/plugin-meetings <script>` for the package scripts, which `package.json` defines.
 
 ## Prerequisites
 
 | Tool or access | Version or requirement |
 | -------------- | ---------------------- |
-| Node.js | Use Node.js 22.14 for this repository (`nvm install 22.14`, then `nvm use 22.14`), as the workspace root `AGENTS.md` requires; the workspace `.nvmrc` selects `lts/jod` (Node 22). This package's `engines` accepts `>=18`; the workspace root `package.json` `engines.node` reads `18.x` |
+| Node.js | Use Node.js 22.14 for this repository (Node 22.14), as the workspace root `AGENTS.md` requires; the workspace `.nvmrc` selects `lts/jod` (Node 22). This package's `engines` accepts `>=18`; the workspace root `package.json` `engines.node` reads `18.x` |
 | Yarn | The repository Yarn version, `yarn@3.4.1` (`packageManager` in the workspace root `package.json`) |
 | Webex test users | N/A for building, unit tests, and lint. The browser tier creates Webex test users through `@webex/test-helper-test-users`, which needs `WEBEX_CLIENT_ID`, `WEBEX_CLIENT_SECRET`, and related values in the workspace `.env` |
 
@@ -36,20 +33,11 @@ From the repository root:
 yarn
 ```
 
-Select Node 22.14 with `nvm use 22.14` first; `yarn` is the install command (`yarn install` is the
-same command), and the workspace `deploy.yml` workflow installs with it. Install from the repository
-root with `yarn`.
+`yarn` is the install command, and the workspace `deploy.yml` workflow installs with it. Install from
+the repository root with `yarn`.
 
-On a fresh checkout, prebuild the workspace before the first package build. `yarn` does not build
-`@webex/legacy-tools`, whose `webex-legacy-tools` binary runs this package's build and tests, or the
-sibling packages' `dist/`:
-
-```bash
-yarn prebuild:modules
-```
-
-It runs `yarn`, then builds the tools, the legacy tools, `@webex/webex-core`, and every package, in
-that order (workspace root `package.json`; see the workspace `CONTRIBUTING.md`).
+Fresh-checkout workspace setup (building `webex-legacy-tools` and sibling `dist/`) is owned by the workspace root; see
+[Prebuilding](../../../../CONTRIBUTING.md#prebuilding).
 
 The retained `internal-README.md` contains historical branch, npm, sample, and Sauce Labs
 instructions. Current root configuration and package scripts take precedence where those
@@ -62,7 +50,7 @@ yarn workspace @webex/plugin-meetings build:src
 ```
 
 `build:src` transpiles `src/` (`.js` and `.ts`, with source maps) to `dist/` through
-`webex-legacy-tools`, then runs `yarn build`, which emits TypeScript declarations to `dist/types` and
+`webex-legacy-tools`, then runs `yarn workspace @webex/plugin-meetings build`, which emits TypeScript declarations to `dist/types` and
 copies the plugin assets. Build output is `dist/`; do not hand-edit generated output.
 
 ```bash
@@ -102,7 +90,7 @@ What each command covers:
 | lint | `yarn workspace @webex/plugin-meetings test:style` | source style/static lint (`eslint ./src/**/*.*` through `@webex/eslint-config-legacy`) |
 | build/type | `yarn workspace @webex/plugin-meetings build:src` | transpilation and TypeScript declarations |
 
-Inside the package directory, `yarn <script>` runs the same package scripts.
+Run all of them from the workspace root.
 
 Run `build:src` before `test:unit`. Twelve unit spec files import the package by name
 (`@webex/plugin-meetings`, whose `main` is `dist/index.js`), so a stale or missing `dist/` skews unit
@@ -158,7 +146,7 @@ define.
 - Required neighboring repositories or workspace layout: this package lives at
   `packages/@webex/plugin-meetings/` inside the `webex-js-sdk` monorepo. Shared packages are resolved
   through Yarn workspaces. Run package scripts from the repository root as
-  `yarn workspace @webex/plugin-meetings <script>` (or `yarn <script>` inside this package directory), and avoid modifying
+  `yarn workspace @webex/plugin-meetings <script>`, and avoid modifying
   neighboring packages unless the approved task requires their contract.
 - Platform, simulator, device, or SDK setup: none for build and unit tests; the browser tier launches
   headless Chrome and Firefox.

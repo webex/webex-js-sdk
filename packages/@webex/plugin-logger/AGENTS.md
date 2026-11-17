@@ -38,7 +38,7 @@ Use only documented commands. Do not invent alternatives when a command is missi
 
 | Task                   | Command |
 | ---------------------- | ------- |
-| Install dependencies   | `yarn install` (workspace root) |
+| Install dependencies   | `yarn` (workspace root) |
 | Start dev environment  | N/A — library package with no start script |
 | Run tests              | `yarn workspace @webex/plugin-logger test:unit` (jest); `yarn workspace @webex/plugin-logger test:browser` (karma) |
 | Run linters            | `yarn workspace @webex/plugin-logger test:style` |

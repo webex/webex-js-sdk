@@ -50,7 +50,7 @@ Generator-side field measurement for the module is complete (100%, assessed 2026
 
 | Change affects | Load and update | Verification route |
 | -------------- | --------------- | ------------------ |
-| Package boundaries or cross-cutting architecture | `docs/architecture.md` and applicable ADRs | `yarn build:src`, then `test:unit` and `test:style`, and the module spec |
+| Package boundaries or cross-cutting architecture | `docs/architecture.md` and applicable ADRs | `yarn workspace @webex/internal-plugin-avatar build:src`, then `test:unit` and `test:style`, and the module spec |
 | A stable code, package, or component boundary | `src/docs/README.md` | Build, unit tests, and lint |
 | A public method, request path or body, store key or TTL, size list, or config default | The owning architecture section, `src/docs/README.md`, and the native definition in `src/avatar.js`, `src/avatar-url-batcher.js`, `src/avatar-url-store.js`, `src/index.js`, `src/config.js`, or `package.json` | Build, unit tests, and lint; keep the one-request assertions in `test/unit/spec/avatar.js` passing |
 

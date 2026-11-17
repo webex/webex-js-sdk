@@ -15,11 +15,6 @@
       "source_file": "../../../.github/workflows/deploy.yml",
       "role": "install"
     },
-    "prebuild": {
-      "command": "yarn prebuild:modules",
-      "source_file": "../../../CONTRIBUTING.md",
-      "role": "other"
-    },
     "compile": {
       "command": "yarn workspace @webex/internal-plugin-ai-assistant build",
       "source_file": "package.json",

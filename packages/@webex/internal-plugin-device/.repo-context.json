@@ -6,6 +6,7 @@
     "purpose": "Device registration for the Webex JS SDK: registers, refreshes, and unregisters this client's device with the WDM service and exposes the device-derived state (URLs, feature toggles, organization policy) as the webex.internal.device plugin."
   },
   "commands": {
+    "install": "yarn",
     "compile": "yarn workspace @webex/internal-plugin-device build:src",
     "build": "yarn workspace @webex/internal-plugin-device build",
     "unit-test": "yarn workspace @webex/internal-plugin-device test:unit",

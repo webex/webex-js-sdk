@@ -11,8 +11,8 @@
   "topology": "Orchestrator-plus-components",
   "commands": {
     "install": {
-      "command": "yarn install",
-      "source_file": "package.json",
+      "command": "yarn",
+      "source_file": "../../../.github/workflows/deploy.yml",
       "role": "install"
     },
     "compile": {
@@ -49,11 +49,6 @@
       "command": "yarn workspace @webex/internal-plugin-conversation deploy:npm",
       "source_file": "package.json",
       "role": "deploy"
-    },
-    "consumer-install": {
-      "command": "npm install --save @webex/internal-plugin-conversation",
-      "source_file": "README.md",
-      "role": "other"
     }
   },
   "toolchain": [
@@ -67,7 +62,7 @@
       "name": "node (development)",
       "version": "22.14",
       "origin": "human-declared",
-      "declared_by": "webex-js-sdk maintainers via the repository-root AGENTS.md (nvm install/use 22.14)"
+      "declared_by": "webex-js-sdk maintainers via the repository-root AGENTS.md (Node 22.14)"
     },
     {
       "name": "yarn",

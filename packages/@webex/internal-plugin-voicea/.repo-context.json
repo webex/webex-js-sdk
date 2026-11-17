@@ -7,7 +7,6 @@
   },
   "commands": {
     "install": "yarn",
-    "prebuild": "yarn prebuild:modules",
     "compile": "yarn workspace @webex/internal-plugin-voicea build",
     "build": "yarn workspace @webex/internal-plugin-voicea build:src",
     "unit-test": "yarn workspace @webex/internal-plugin-voicea test:unit",

@@ -16,9 +16,7 @@ validation_status: pass
 # Getting started
 
 Onboarding for **@webex/internal-plugin-avatar**, a package inside the `webex-js-sdk` Yarn workspace.
-Run `yarn` and `yarn prebuild:modules` at the workspace root, and the package scripts from this
-package directory, `packages/@webex/internal-plugin-avatar`, where `package.json` defines them.
-From the workspace root, `yarn workspace @webex/internal-plugin-avatar <script>` runs the same script.
+Run every command from the workspace root; package scripts run as `yarn workspace @webex/internal-plugin-avatar <script>`.
 
 ## Prerequisites
 
@@ -36,29 +34,20 @@ yarn
 
 The workspace `deploy.yml` workflow installs with the same command.
 
-On a fresh checkout, prebuild the workspace before the first package build. `yarn` does not build
-`@webex/legacy-tools`, whose `webex-legacy-tools` binary runs this package's build and tests, or the
-sibling packages' `dist/`:
-
-```bash
-yarn prebuild:modules
-```
-
-It runs `yarn`, then builds the tools, the legacy tools, `@webex/webex-core`, and every package, in
-that order (root `package.json`; see the workspace `CONTRIBUTING.md` "Prebuilding").
+Fresh-checkout workspace setup (building `webex-legacy-tools` and sibling `dist/`) is owned by the workspace root; see [Prebuilding](../../../../CONTRIBUTING.md#prebuilding).
 
 ## Build
 
 ```bash
-yarn build:src
+yarn workspace @webex/internal-plugin-avatar build:src
 ```
 
 `build:src` writes JavaScript and source maps for the five source files to `dist/` through
-`webex-legacy-tools`. `dist/` is ignored by Git. The `build` script runs `yarn build:src`; the package
+`webex-legacy-tools`. `dist/` is ignored by Git. The `build` script runs `build:src`; the package
 emits no type declarations.
 
 ```bash
-yarn build
+yarn workspace @webex/internal-plugin-avatar build
 ```
 
 ## Run
@@ -69,16 +58,16 @@ N/A — this is a library with no start script. Importing `@webex/internal-plugi
 ## Tests
 
 ```bash
-yarn test:unit
+yarn workspace @webex/internal-plugin-avatar test:unit
 ```
 
 ```bash
-yarn test:style
+yarn workspace @webex/internal-plugin-avatar test:style
 ```
 
 | Tier | Command | Test location | Framework | External dependencies |
 | ---- | ------- | ------------- | --------- | --------------------- |
-| Unit | `yarn test:unit` | `test/unit/spec` | jest through `webex-legacy-tools` and `@webex/jest-config-legacy` | None; `@webex/test-helper-mock-webex` and sinon stubs |
+| Unit | `yarn workspace @webex/internal-plugin-avatar test:unit` | `test/unit/spec` | jest through `webex-legacy-tools` and `@webex/jest-config-legacy` | None; `@webex/test-helper-mock-webex` and sinon stubs |
 
 Run `build:src` before `test:unit`. The unit specs import `@webex/internal-plugin-avatar` by name,
 which resolves to `dist/index.js`, so a stale build tests old code.
@@ -90,7 +79,7 @@ which resolves to `dist/index.js`, so a stale build tests old code.
 - Enforcement source: N/A
 - Test environment or QA dependencies: none for unit tests and lint
 
-`yarn test:browser` (manifest command `browser-test`) runs `webex-legacy-tools test --integration
+`yarn workspace @webex/internal-plugin-avatar test:browser` (manifest command `browser-test`) runs `webex-legacy-tools test --integration
 --runner karma` over `test/integration/spec/avatar.js`, which creates two test users and registers
 their devices but has every case commented out. On 2026-11-12 under Node 22.14 the karma bundle also
 failed to parse `isbot` (an ES module in the workspace `node_modules`), so the run reported "0 tests
@@ -119,10 +108,10 @@ instead.
 
 ## First-run verification
 
-1. Run `yarn build:src` and check that it reports
+1. Run `yarn workspace @webex/internal-plugin-avatar build:src` and check that it reports
    `Built internal-plugin-avatar: 5 files`.
-2. Run `yarn test:unit`.
-3. Run `yarn test:style`.
+2. Run `yarn workspace @webex/internal-plugin-avatar test:unit`.
+3. Run `yarn workspace @webex/internal-plugin-avatar test:style`.
 
 Expected result: all three commands exit zero. The unit run reports 23 passing tests and 1 skipped in 3
 suites. `test:style` prints warnings but no errors: 13 in `src/` (missing JSDoc in

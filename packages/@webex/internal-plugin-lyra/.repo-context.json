@@ -7,12 +7,11 @@
   },
   "commands": {
     "install": "yarn",
-    "prebuild": "yarn prebuild:modules",
-    "compile": "yarn build",
-    "build": "yarn build:src",
-    "unit-test": "yarn test:unit",
-    "lint": "yarn test:style",
-    "deploy": "yarn deploy:npm"
+    "compile": "yarn workspace @webex/internal-plugin-lyra build",
+    "build": "yarn workspace @webex/internal-plugin-lyra build:src",
+    "unit-test": "yarn workspace @webex/internal-plugin-lyra test:unit",
+    "lint": "yarn workspace @webex/internal-plugin-lyra test:style",
+    "deploy": "yarn workspace @webex/internal-plugin-lyra deploy:npm"
   },
   "public_interfaces": [
     {
@@ -83,11 +82,11 @@
         "dist"
       ],
       "refresh_with": [
-        "yarn build:src"
+        "yarn workspace @webex/internal-plugin-lyra build:src"
       ],
       "validate_with": [
-        "yarn test:unit",
-        "yarn test:style"
+        "yarn workspace @webex/internal-plugin-lyra test:unit",
+        "yarn workspace @webex/internal-plugin-lyra test:style"
       ]
     },
     {
@@ -108,7 +107,7 @@
     {
       "path": "dist",
       "generated_from": "src",
-      "refresh_with": "yarn build:src"
+      "refresh_with": "yarn workspace @webex/internal-plugin-lyra build:src"
     },
     {
       "path": "../../../.sdd/templates/repo-standards/template-map.json",
@@ -122,9 +121,9 @@
         "src/**"
       ],
       "minimum": [
-        "yarn build:src",
-        "yarn test:unit",
-        "yarn test:style"
+        "yarn workspace @webex/internal-plugin-lyra build:src",
+        "yarn workspace @webex/internal-plugin-lyra test:unit",
+        "yarn workspace @webex/internal-plugin-lyra test:style"
       ],
       "recommended": [
         "add or update cases in test/unit/spec/lyra.js, test/unit/spec/space.js, or test/unit/spec/device.js for the changed behavior"
@@ -136,9 +135,9 @@
         "src/device.js"
       ],
       "minimum": [
-        "yarn build:src",
-        "yarn test:unit",
-        "yarn test:style"
+        "yarn workspace @webex/internal-plugin-lyra build:src",
+        "yarn workspace @webex/internal-plugin-lyra test:unit",
+        "yarn workspace @webex/internal-plugin-lyra test:style"
       ],
       "recommended": [
         "check the calls in @webex/plugin-device-manager and the space.url form each method expects (INV-001) when a request path, body, query string, KMS message, or resolved value changes"
@@ -151,9 +150,9 @@
         "src/config.js"
       ],
       "minimum": [
-        "yarn build:src",
-        "yarn test:unit",
-        "yarn test:style"
+        "yarn workspace @webex/internal-plugin-lyra build:src",
+        "yarn workspace @webex/internal-plugin-lyra test:unit",
+        "yarn workspace @webex/internal-plugin-lyra test:style"
       ],
       "recommended": [
         "check the packages that register the plugin (@webex/plugin-device-manager, @webex/recipe-private-web-client) when the registered name, a child name, or an import changes"
@@ -171,11 +170,11 @@
         "the space.url form each method expects"
       ],
       "refresh_with": [
-        "yarn build:src"
+        "yarn workspace @webex/internal-plugin-lyra build:src"
       ],
       "validate_with": [
-        "yarn test:unit",
-        "yarn test:style"
+        "yarn workspace @webex/internal-plugin-lyra test:unit",
+        "yarn workspace @webex/internal-plugin-lyra test:style"
       ],
       "avoid_direct_edits": [
         "dist"
@@ -190,11 +189,11 @@
         "the audio state and action requests"
       ],
       "refresh_with": [
-        "yarn build:src"
+        "yarn workspace @webex/internal-plugin-lyra build:src"
       ],
       "validate_with": [
-        "yarn test:unit",
-        "yarn test:style"
+        "yarn workspace @webex/internal-plugin-lyra test:unit",
+        "yarn workspace @webex/internal-plugin-lyra test:style"
       ],
       "avoid_direct_edits": [
         "dist"
@@ -213,11 +212,11 @@
         "the proximity lookup"
       ],
       "refresh_with": [
-        "yarn build:src"
+        "yarn workspace @webex/internal-plugin-lyra build:src"
       ],
       "validate_with": [
-        "yarn test:unit",
-        "yarn test:style"
+        "yarn workspace @webex/internal-plugin-lyra test:unit",
+        "yarn workspace @webex/internal-plugin-lyra test:style"
       ],
       "avoid_direct_edits": [
         "dist"
@@ -335,7 +334,7 @@
           "dist"
         ],
         "generated_from": "src",
-        "refresh_with": "yarn build:src",
+        "refresh_with": "yarn workspace @webex/internal-plugin-lyra build:src",
         "notes": "JavaScript and source maps from webex-legacy-tools; no type declarations. Do not edit by hand."
       },
       {
@@ -351,19 +350,19 @@
     "validation_entrypoints": [
       {
         "name": "compile",
-        "command": "yarn build",
+        "command": "yarn workspace @webex/internal-plugin-lyra build",
         "scope": "src",
         "notes": "Runs build:src."
       },
       {
         "name": "unit-test",
-        "command": "yarn test:unit",
+        "command": "yarn workspace @webex/internal-plugin-lyra test:unit",
         "scope": "test/unit/spec",
         "notes": "Run build:src first; the specs test dist."
       },
       {
         "name": "lint",
-        "command": "yarn test:style",
+        "command": "yarn workspace @webex/internal-plugin-lyra test:style",
         "scope": "src",
         "notes": "eslint via the local .eslintrc.js; docs/** and *.md are ignored."
       }

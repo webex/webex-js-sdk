@@ -7,7 +7,6 @@
   },
   "commands": {
     "install": "yarn",
-    "prebuild": "yarn prebuild:modules",
     "compile": "yarn workspace @webex/internal-plugin-ediscovery build:src",
     "build": "yarn workspace @webex/internal-plugin-ediscovery build",
     "unit-test": "yarn workspace @webex/internal-plugin-ediscovery test:unit",

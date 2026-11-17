@@ -15,42 +15,33 @@
       "source_file": "../../../.github/workflows/deploy.yml",
       "role": "install"
     },
-    "prebuild": {
-      "command": "yarn prebuild:modules",
-      "source_file": "../../../CONTRIBUTING.md",
-      "role": "other"
-    },
     "compile": {
-      "command": "yarn build",
+      "command": "yarn workspace @webex/plugin-people build",
       "source_file": "package.json",
-      "role": "compile",
-      "verified_at": "2026-11-12T16:05:42Z"
+      "role": "compile"
     },
     "build": {
-      "command": "yarn build:src",
+      "command": "yarn workspace @webex/plugin-people build:src",
       "source_file": "package.json",
-      "role": "package",
-      "verified_at": "2026-11-12T16:05:58Z"
+      "role": "package"
     },
     "unit-test": {
-      "command": "yarn test:unit",
+      "command": "yarn workspace @webex/plugin-people test:unit",
       "source_file": "package.json",
-      "role": "unit-test",
-      "verified_at": "2026-11-12T16:06:01Z"
+      "role": "unit-test"
     },
     "lint": {
-      "command": "yarn test:style",
+      "command": "yarn workspace @webex/plugin-people test:style",
       "source_file": "package.json",
-      "role": "lint",
-      "verified_at": "2026-11-12T16:06:03Z"
+      "role": "lint"
     },
     "browser-test": {
-      "command": "yarn test:browser:broken",
+      "command": "yarn workspace @webex/plugin-people test:browser:broken",
       "source_file": "package.json",
       "role": "other"
     },
     "deploy": {
-      "command": "yarn deploy:npm",
+      "command": "yarn workspace @webex/plugin-people deploy:npm",
       "source_file": "package.json",
       "role": "deploy"
     }

@@ -7,7 +7,6 @@
   },
   "commands": {
     "install": "yarn",
-    "prebuild": "yarn prebuild:modules",
     "compile": "yarn workspace @webex/plugin-presence build",
     "build": "yarn workspace @webex/plugin-presence build:src",
     "unit-test": "yarn workspace @webex/plugin-presence test:unit",

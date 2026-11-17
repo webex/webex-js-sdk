@@ -85,6 +85,12 @@ const mockRestoreCb = jest.fn();
 const mock429RetryCb = jest.fn();
 const mockSessionSupersededCb = jest.fn();
 
+const retryAfterCases = [
+  {headers: {'retry-after': '120'}, retryAfter: 120},
+  {headers: {'Retry-After': '120'}, retryAfter: 120},
+  {headers: {'retry-after': '0', 'Retry-After': '120'}, retryAfter: 0},
+];
+
 const webex = getTestUtilsWebex();
 SDKConnector.setWebex(webex);
 webex.internal.metrics.submitClientMetrics = mockSubmitRegistrationMetric;
@@ -220,14 +226,14 @@ describe('Call Tests - keepalive (handleCallEstablished) cases', () => {
     expect(retrySpy).not.toHaveBeenCalled();
   });
 
-  it('500 during keepalive with retry-after triggers retryCb with interval', async () => {
+  it.each(retryAfterCases)('500 keepalive honors $headers', async ({headers, retryAfter}) => {
     let emitted = false;
     const endSpy = jest.fn();
     const retrySpy = jest.fn();
 
     const payload = <WebexRequestPayload>(<unknown>{
       statusCode: 500,
-      headers: {trackingid: 't', 'retry-after': 2},
+      headers: {trackingid: 't', ...headers},
       body: {device: {deviceId: 'd'}, errorCode: 0},
     });
 
@@ -246,7 +252,7 @@ describe('Call Tests - keepalive (handleCallEstablished) cases', () => {
 
     expect(emitted).toBe(true);
     expect(endSpy).not.toHaveBeenCalled();
-    expect(retrySpy).toHaveBeenCalledWith(2);
+    expect(retrySpy).toBeCalledOnceWith(retryAfter);
   });
 
   it('500 during keepalive without retry-after triggers retryCb without args', async () => {
@@ -303,13 +309,13 @@ describe('Call Tests - keepalive (handleCallEstablished) cases', () => {
     expect(retrySpy).not.toHaveBeenCalled();
   });
 
-  it('503 during keepalive with retry-after does not invoke emitterCb and retries with interval', async () => {
+  it.each(retryAfterCases)('503 keepalive honors $headers', async ({headers, retryAfter}) => {
     let emitted = false;
     const retrySpy = jest.fn();
 
     const payload = <WebexRequestPayload>(<unknown>{
       statusCode: 503,
-      headers: {trackingid: 't', 'retry-after': 7},
+      headers: {trackingid: 't', ...headers},
       body: {device: {deviceId: 'd'}, errorCode: 0},
     });
 
@@ -327,7 +333,7 @@ describe('Call Tests - keepalive (handleCallEstablished) cases', () => {
 
     expect(abort).toBe(false);
     expect(emitted).toBe(false);
-    expect(retrySpy).toHaveBeenCalledWith(7);
+    expect(retrySpy).toBeCalledOnceWith(retryAfter);
   });
 
   it('503 during keepalive without retry-after invokes emitterCb and triggers retryCb without args', async () => {
@@ -639,6 +645,20 @@ describe('Registration Tests', () => {
 
     expect(logSpy).toHaveBeenCalledWith(`Status code: -> ${codeObj.statusCode}`, logObj);
     expect(logSpy).toHaveBeenCalledWith(codeObj.logMsg, logObj);
+  });
+
+  it.each(retryAfterCases)('429 honors $headers', async ({headers, retryAfter}) => {
+    const webexPayload = <WebexRequestPayload>(<unknown>{
+      statusCode: ERROR_CODE.TOO_MANY_REQUESTS,
+      headers,
+    });
+
+    await handleRegistrationErrors(webexPayload, mockEmitterCb, logObj, {
+      retry429Cb: mock429RetryCb,
+    });
+
+    expect(mock429RetryCb).toBeCalledOnceWith(retryAfter, logObj.method);
+    expect(mockEmitterCb).not.toHaveBeenCalled();
   });
 
   it('verify 409 response for a caller that does not handle a superseded session', async () => {

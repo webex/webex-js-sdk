@@ -7,10 +7,8 @@
   },
   "commands": {
     "install": "yarn",
-    "prebuild-modules": "yarn prebuild:modules",
     "compile": "yarn workspace @webex/plugin-authorization build:src",
     "build": "yarn workspace @webex/plugin-authorization build",
-    "unit-test": "[NEEDS HUMAN INPUT] -- package.json defines no test:unit script and the package has no test directory; its two source files are re-exports, and the selected behavior is unit-tested in @webex/plugin-authorization-node and @webex/plugin-authorization-browser",
     "lint": "yarn workspace @webex/plugin-authorization test:style",
     "browser-test": "yarn workspace @webex/plugin-authorization test:browser",
     "deploy": "yarn workspace @webex/plugin-authorization deploy:npm"

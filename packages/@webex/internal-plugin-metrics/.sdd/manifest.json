@@ -11,20 +11,10 @@
   },
   "topology": "Orchestrator-plus-components",
   "commands": {
-    "clone": {
-      "command": "git clone https://github.com/webex/webex-js-sdk.git",
-      "source_file": "package.json",
-      "role": "other"
-    },
     "install": {
-      "command": "yarn install",
-      "source_file": "package.json",
+      "command": "yarn",
+      "source_file": "../../../.github/workflows/deploy.yml",
       "role": "install"
-    },
-    "consumer-install": {
-      "command": "npm install --save @webex/internal-plugin-metrics",
-      "source_file": "package.json",
-      "role": "other"
     },
     "compile": {
       "command": "yarn workspace @webex/internal-plugin-metrics build",

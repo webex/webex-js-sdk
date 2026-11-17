@@ -66,16 +66,16 @@ their request code from the architecture contract index.
 
 ## 1. Commands (Run First)
 
-Use only documented commands. Do not invent alternatives when a command is missing. Run `yarn` and
-`yarn prebuild:modules` at the workspace root. Run the package scripts below from the workspace root
-too, as `yarn workspace @webex/plugin-meetings <script>`; this package's `package.json` defines them. Inside the
-package directory, `packages/@webex/plugin-meetings`, `yarn <script>` runs the same script.
+Use only documented commands. Do not invent alternatives when a command is missing. Run every command from the
+workspace root: `yarn` to install, and `yarn workspace @webex/plugin-meetings <script>` for the package scripts below, which `package.json` defines.
+Fresh-checkout workspace setup (building `webex-legacy-tools` and sibling `dist/`) is owned by the workspace root; see
+[Prebuilding](../../../CONTRIBUTING.md#prebuilding).
 
 | Role | Command |
 | ---- | ------- |
-| Install | `yarn` (workspace root; the deploy workflow runs the same command); on a fresh checkout also run `yarn prebuild:modules` once |
+| Install | `yarn` (workspace root; the deploy workflow runs the same command) |
 | Start dev environment | N/A — library package with no start script in `package.json` |
-| Build | `yarn workspace @webex/plugin-meetings build:src` (transpiles `src/` to `dist/`, then runs `yarn build` for TypeScript declarations and assets) |
+| Build | `yarn workspace @webex/plugin-meetings build:src` (transpiles `src/` to `dist/`, then runs `yarn workspace @webex/plugin-meetings build` for TypeScript declarations and assets) |
 | Unit test | `yarn workspace @webex/plugin-meetings test:unit` |
 | Browser test | `yarn workspace @webex/plugin-meetings test:browser` (Karma integration suites; needs Webex test-user credentials) |
 | Lint | `yarn workspace @webex/plugin-meetings test:style` |

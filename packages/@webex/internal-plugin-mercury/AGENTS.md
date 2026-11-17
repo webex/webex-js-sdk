@@ -45,7 +45,7 @@ commands from the monorepo root.
 
 | Task                   | Command |
 | ---------------------- | ------- |
-| Install dependencies   | `yarn install` (workspace root) |
+| Install dependencies   | `yarn` (workspace root) |
 | Start dev environment  | N/A — library package with no start script in `package.json` |
 | Run tests              | `yarn workspace @webex/internal-plugin-mercury test:unit` (mocha); `yarn workspace @webex/internal-plugin-mercury test:browser` (karma) |
 | Run linters            | `yarn workspace @webex/internal-plugin-mercury test:style` |

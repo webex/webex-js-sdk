@@ -6,8 +6,7 @@
     "purpose": "Wraps internal-media-core local media streams with Webex server-mute authority and unmute gating, and re-exports the media and effects surface as one published SDK entry point."
   },
   "commands": {
-    "clone": "git clone https://github.com/webex/webex-js-sdk.git",
-    "install": "yarn install",
+    "install": "yarn",
     "compile": "yarn workspace @webex/media-helpers build",
     "package": "yarn workspace @webex/media-helpers build:src",
     "unit-test": "yarn workspace @webex/media-helpers test:unit",
@@ -174,7 +173,7 @@
         "the exact pinned upstream media and effects versions, which define most of the public surface"
       ],
       "refresh_with": [
-        "yarn install"
+        "yarn"
       ],
       "validate_with": [
         "yarn workspace @webex/media-helpers test:unit"
