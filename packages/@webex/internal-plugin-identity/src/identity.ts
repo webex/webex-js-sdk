@@ -25,6 +25,7 @@ const RAW_EC_P256_KEY_LENGTH = 32;
 class Identity extends WebexPlugin {
   namespace = 'Identity';
   credentialsCache: Map<string, Promise<IdentityCredentials>>;
+  private userIdentityRoots = '';
 
   constructor(attrs = {}, options = {}) {
     super(attrs, options);
@@ -49,8 +50,17 @@ class Identity extends WebexPlugin {
 
     return {
       webexCaRoots,
-      userIdentityRoots: '',
+      userIdentityRoots: this.userIdentityRoots,
     };
+  }
+
+  /**
+   * Sets the PEM-encoded user identity CA roots used to verify member certificates.
+   * Pass multiple roots as concatenated PEM certificates. Pass an empty string to clear them.
+   * @param {string} userIdentityRoots
+   */
+  public setUserIdentityRoots(userIdentityRoots: string): void {
+    this.userIdentityRoots = userIdentityRoots;
   }
 
   /**
