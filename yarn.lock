@@ -7459,6 +7459,7 @@ __metadata:
     "@webex/test-helper-chai": "workspace:*"
     "@webex/test-helper-mock-web-socket": "workspace:*"
     "@webex/test-helper-mock-webex": "workspace:*"
+    ampersand-events: ^2.0.2
     async-mutex: 0.4.0
     backoff: 2.5.0
     buffer: 6.0.3
