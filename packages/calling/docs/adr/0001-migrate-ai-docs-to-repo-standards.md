@@ -11,8 +11,8 @@ doc_kind: standing-doc
 generated_from: adr@0.3.0
 generated_by: claude-code
 approved_by: rarajes2@cisco.com
-updated_at: 2026-11-17T03:02:22Z
-validation_status: blocked
+updated_at: 2026-11-17T03:23:21Z
+validation_status: pass-with-warnings
 -->
 
 # ADR-0001 - Migrate the legacy AI documentation into the repo-standards layout

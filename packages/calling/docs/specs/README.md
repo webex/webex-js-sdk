@@ -9,8 +9,8 @@ doc_kind: standing-doc
 generated_from: spec-index@0.3.0
 generated_by: claude-code
 approved_by: rarajes2@cisco.com
-updated_at: 2026-11-17T03:02:22Z
-validation_status: blocked
+updated_at: 2026-11-17T03:23:21Z
+validation_status: pass-with-warnings
 -->
 
 # Specification registry
@@ -65,7 +65,7 @@ No repository-local incident/RCA index was found under `packages/calling/`. Add 
 
 Coverage states are the manifest values carried over from the previous assessment. Coverage
 measurement for the migrated specifications is pending. Independent validation ran in a different runtime
-on 2026-11-17 and is blocked by two Blocking findings; see the local validation report.
+on 2026-11-17 with one Important finding remaining; see the local validation report.
 
 ## Change and verification routing
 
