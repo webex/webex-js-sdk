@@ -896,5 +896,5 @@ Public factories, interfaces, types, and events are semver-controlled through `s
 
 Unit tests are co-located under `src/CallRecording/` and exercise positive, negative, error, and
 retry behavior. No Playwright journey under `playwright/` covers recordings. Run the module's unit
-files with `yarn test:unit` and a `CallRecording` path filter; the package suite is described in the
+files with `yarn workspace @webex/calling test:unit` and a `CallRecording` path filter; the package suite is described in the
 [package architecture](../../../docs/architecture.md).

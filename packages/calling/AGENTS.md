@@ -110,23 +110,23 @@ Use only documented commands. Do not invent alternatives when a command is missi
 
 | Task                   | Command |
 | ---------------------- | ------- |
-| Install dependencies   | `yarn` (workspace root), then `yarn prebuild:modules` (workspace root) |
+| Install dependencies   | `yarn` (workspace root), then build the workspace packages as the root `CONTRIBUTING.md` describes |
 | Start dev environment  | N/A — library package with no start script in `package.json` |
-| Build workspace dependencies and this package | `yarn compile` |
-| Build/release artifact | `yarn build:src` (`tsc` to `dist/module` and `dist/types`; the `build` script runs the same `tsc`) |
-| Clean build output     | `yarn prebuild` (removes `dist`) |
-| Run tests              | `yarn test:unit` (Jest, coverage thresholds enforced) |
-| Run linters            | `yarn test:style` (lint: eslint over `src/**/*.ts`) |
-| Fix lint issues        | `yarn fix:lint` |
-| Format code            | `yarn fix:prettier` (rewrites `src/**/*.ts`) |
-| E2E                    | `yarn test:e2e` (Playwright journeys; needs browsers and test accounts) |
-| Check API docs         | `yarn docs` (typedoc from `src/api.ts`, no output) |
-| Build API docs         | `yarn build:docs` (writes the workspace `docs/calling` tree) |
-| Publish                | `yarn deploy:npm` (release automation only; never without approval) |
+| Build workspace dependencies and this package | `yarn workspace @webex/calling compile` |
+| Build/release artifact | `yarn workspace @webex/calling build:src` (`tsc` to `dist/module` and `dist/types`; the `build` script runs the same `tsc`) |
+| Clean build output     | `yarn workspace @webex/calling prebuild` (removes `dist`) |
+| Run tests              | `yarn workspace @webex/calling test:unit` (Jest, coverage thresholds enforced) |
+| Run linters            | `yarn workspace @webex/calling test:style` (lint: eslint over `src/**/*.ts`) |
+| Fix lint issues        | `yarn workspace @webex/calling fix:lint` |
+| Format code            | `yarn workspace @webex/calling fix:prettier` (rewrites `src/**/*.ts`) |
+| E2E                    | `yarn workspace @webex/calling test:e2e` (Playwright journeys; needs browsers and test accounts) |
+| Check API docs         | `yarn workspace @webex/calling docs` (typedoc from `src/api.ts`, no output) |
+| Build API docs         | `yarn workspace @webex/calling build:docs` (writes the workspace `docs/calling` tree) |
+| Publish                | `yarn workspace @webex/calling deploy:npm` (release automation only; never without approval) |
 
 To run one test file, pass its path after the script, for example
-`yarn test:unit src/CallingClient/calling/call.test.ts`; add `-t "Call event timers tests"` to run one `describe` block.
-`yarn test:unit` runs Jest directly, so the root `AGENTS.md` convention that test `--targets` values
+`yarn workspace @webex/calling test:unit src/CallingClient/calling/call.test.ts`; add `-t "Call event timers tests"` to run one `describe` block.
+`yarn workspace @webex/calling test:unit` runs Jest directly, so the root `AGENTS.md` convention that test `--targets` values
 are relative to the test-type spec directory (not repository-relative paths) applies to the legacy
 plugins only, not here. Coverage is collected on every run (`collectCoverage: true`), so judge
 thresholds from the full run.
@@ -332,10 +332,10 @@ Common bug patterns:
 
 Run checks in this order:
 
-1. `yarn test:unit`
-2. `yarn test:style`
-3. `yarn build:src` (TypeScript compilation succeeds, no type errors, all imports resolve)
-4. `yarn test:e2e` for flows that cross modules, when browsers and test accounts are available
+1. `yarn workspace @webex/calling test:unit`
+2. `yarn workspace @webex/calling test:style`
+3. `yarn workspace @webex/calling build:src` (TypeScript compilation succeeds, no type errors, all imports resolve)
+4. `yarn workspace @webex/calling test:e2e` for flows that cross modules, when browsers and test accounts are available
 
 The manifest records a `unit` tier (Jest under `src`) and an `e2e` tier (Playwright under
 `playwright/suites`).

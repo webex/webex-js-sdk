@@ -767,5 +767,5 @@ Public factories, interfaces, types, and events are semver-controlled through `s
 Unit tests are co-located under `src/CallHistory/` and exercise positive, negative, error, retry, and cleanup behavior as applicable. Package journeys under `playwright/` cover cross-module flows.
 
 The module has no retry or cleanup paths to exercise. Run the unit file alone with
-`yarn test:unit` and a `CallHistory` path filter; the package suite and its coverage thresholds are
+`yarn workspace @webex/calling test:unit` and a `CallHistory` path filter; the package suite and its coverage thresholds are
 described in the [package architecture](../../../docs/architecture.md).

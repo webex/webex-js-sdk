@@ -71,12 +71,12 @@ on 2026-11-17 with one Important finding remaining; see the local validation rep
 
 | Change affects | Load and update | Verification route |
 | -------------- | --------------- | ------------------ |
-| Package boundaries or cross-cutting architecture | `docs/architecture.md` and applicable ADRs | `yarn test:unit` and `yarn test:style` |
+| Package boundaries or cross-cutting architecture | `docs/architecture.md` and applicable ADRs | `yarn workspace @webex/calling test:unit` and `yarn workspace @webex/calling test:style` |
 | A deployable service surface or operating posture | Not applicable — no deployable service exists in this package | Not applicable |
-| A stable code or component boundary inside one module | Its module spec from the Module registry | `yarn test:unit` |
-| A public API/event exported from `src/index.ts` or `src/api.ts` | The architecture contract index, the owning module spec, and the package agent rules | `yarn build:src`, `yarn docs`, and `yarn test:unit` |
-| Security, identity, or data handling | The architecture security sections and the owning module spec | `yarn test:unit` plus human review |
-| An implementation pattern or coding rule | The package agent instructions | `yarn test:style` |
+| A stable code or component boundary inside one module | Its module spec from the Module registry | `yarn workspace @webex/calling test:unit` |
+| A public API/event exported from `src/index.ts` or `src/api.ts` | The architecture contract index, the owning module spec, and the package agent rules | `yarn workspace @webex/calling build:src`, `yarn workspace @webex/calling docs`, and `yarn workspace @webex/calling test:unit` |
+| Security, identity, or data handling | The architecture security sections and the owning module spec | `yarn workspace @webex/calling test:unit` plus human review |
+| An implementation pattern or coding rule | The package agent instructions | `yarn workspace @webex/calling test:style` |
 
 | Phase | Load |
 |---|---|

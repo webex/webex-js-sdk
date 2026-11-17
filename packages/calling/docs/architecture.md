@@ -634,7 +634,7 @@ process-wide: the first is set once, and every `setLogger` call replaces the sha
   WebSocket for a shim (Platform matrix).
 - Resilience: registration retries, failover, failback, and keepalive recovery are owned by the
   registration module; service modules map HTTP failures to response objects (Error model).
-- Test gate: `yarn test:unit` must meet the `jest.config.js` coverage thresholds — global 85% lines,
+- Test gate: `yarn workspace @webex/calling test:unit` must meet the `jest.config.js` coverage thresholds — global 85% lines,
   functions, and statements and 80% branches, with lower per-directory floors for `src/Events/impl`,
   `src/Logger`, `src/Voicemail`, `src/SDKConnector`, and `src/CallHistory`.
 
@@ -915,9 +915,9 @@ traffic uses HTTP. On `localhost`, `127.0.0.1`, and `web-sdk.webex.com` the `mob
 | `Eventing<T>` (`src/Events/impl/index.ts`) | Typed emit, on, off; logs each emit | Every event-emitting class | in package | Change with every emitter in the same commit |
 | `ExtendedError` and subclasses (`src/Errors/`) | Error type, context, and getters/setters | Call, Line, CallingClient, handlers in `src/common/Utils.ts` | in package | `CallError` and `LineError` are exported |
 | `Logger` (`src/Logger/`) | Level, format, sink | Every module | in package | Exported as `Logger` |
-| `@webex/jest-config-legacy` | Jest base, extended by `jest.config.js` | `yarn test:unit` | workspace | Package settings override the base by spread |
-| Workspace root `.eslintrc.js` and `.prettierrc` | Lint and format rules | `yarn test:style`, `yarn fix:lint`, `yarn fix:prettier` | workspace | No package-level config exists |
-| `tsconfig.json` | Compiler options; standalone, with no `extends` | `yarn build:src`, typedoc | in package | Strict mode; `src/**/*.test.ts` excluded |
+| `@webex/jest-config-legacy` | Jest base, extended by `jest.config.js` | `yarn workspace @webex/calling test:unit` | workspace | Package settings override the base by spread |
+| Workspace root `.eslintrc.js` and `.prettierrc` | Lint and format rules | `yarn workspace @webex/calling test:style`, `yarn workspace @webex/calling fix:lint`, `yarn workspace @webex/calling fix:prettier` | workspace | No package-level config exists |
+| `tsconfig.json` | Compiler options; standalone, with no `extends` | `yarn workspace @webex/calling build:src`, typedoc | in package | Strict mode; `src/**/*.test.ts` excluded |
 
 | Library | Shared responsibility | Version floor |
 |---|---|---|
@@ -1353,7 +1353,7 @@ release process.
 | `@webex/test-helper-chai`, `@webex/test-helper-mock-web-socket`, `@webex/test-helper-mock-webex` | Internal (development) | Test helpers | — | This package's tests |
 
 Dependency direction: this package depends on workspace plugins and helpers; it must not import from
-`webex` or `@webex/contact-center`, which consume it. `yarn compile` builds this package and its
+`webex` or `@webex/contact-center`, which consume it. `yarn workspace @webex/calling compile` builds this package and its
 workspace dependencies in topological order.
 
 ## Platform matrix
@@ -1379,10 +1379,10 @@ changelog entry.
 
 | Artifact | Publish target | Versioning rule | Deprecation window | Changelog or migration obligation |
 | -------- | -------------- | --------------- | ------------------ | --------------------------------- |
-| `@webex/calling` | npm, through `yarn deploy:npm`, run by the workspace deploy workflow for changed packages with the branch name as the dist-tag | Semver; `package.json` in the repository has no `version` field, and workspace tooling sets it at publish | None declared in code | `CHANGELOG.md` is kept unchanged; workspace release tooling owns release notes |
+| `@webex/calling` | npm, through `yarn workspace @webex/calling deploy:npm`, run by the workspace deploy workflow for changed packages with the branch name as the dist-tag | Semver; `package.json` in the repository has no `version` field, and workspace tooling sets it at publish | None declared in code | `CHANGELOG.md` is kept unchanged; workspace release tooling owns release notes |
 
 `main` and `module` point at `dist/module/index.js` and `types` at `dist/types/index.d.ts`, which
-`yarn build:src` writes through `tsconfig.json`; `files` publishes `dist` only. The calling SDK version
+`yarn workspace @webex/calling build:src` writes through `tsconfig.json`; `files` publishes `dist` only. The calling SDK version
 reported in metrics is `CALLING_SDK_VERSION` from the build environment, or `unknown`
 (`src/CallingClient/constants.ts`).
 
@@ -1390,23 +1390,22 @@ reported in metrics is `CALLING_SDK_VERSION` from the build environment, or `unk
 
 | Command or artifact | Owner      | Inputs                    | Output or side effect | Compatibility boundary |
 | ------------------- | ---------- | ------------------------- | --------------------- | ---------------------- |
-| `yarn` | workspace | root `package.json`, lockfile | Installs workspace dependencies | Run from the package or workspace root |
-| `yarn prebuild:modules` | workspace | workspace packages | Installs, then builds the workspace tools, `@webex/webex-core`, and every workspace package | Needed once after install |
-| `yarn compile` | package | this package and its workspace dependencies | Runs `build:src` in topological order | — |
-| `yarn build:src` | package | `src/**/*.ts` through `tsconfig.json` | `dist/module` JavaScript and `dist/types` declarations | Type errors fail it; Markdown under `src/` is not processed |
-| `yarn prebuild` | package | — | Deletes `dist/` | Not run automatically before `build:src` |
-| `yarn test:unit` | package | `src/**/*.test.ts` | Jest result, `coverage/`, JUnit and HTML reports | Fails below the coverage thresholds |
-| `yarn test:style` | package | `src/**/*.ts` | eslint result | Markdown is outside the glob |
-| `yarn test:e2e` | package | `playwright.config.ts`, `playwright/suites`, test accounts in the root `.env` | Playwright report | Needs installed browsers and the samples server |
-| `yarn docs` | package | `src/api.ts` | typedoc check, no output | Warnings do not fail it |
-| `yarn build:docs` | package | `src/api.ts` | typedoc site written to the workspace `docs/calling` folder | Writes outside this package |
-| `yarn fix:lint` | package | `src/**/*.ts` | Rewrites source files with eslint fixes | Review the diff |
-| `yarn fix:prettier` | package | `src/**/*.ts` | Rewrites source files with Prettier | Review the diff |
-| `yarn deploy:npm` | package | `dist/`, `package.json` | Publishes to npm | Release pipeline only |
+| `yarn` | workspace | root `package.json`, lockfile | Installs workspace dependencies | Run from the workspace root; then follow the workspace build step in the root `CONTRIBUTING.md` |
+| `yarn workspace @webex/calling compile` | package | this package and its workspace dependencies | Runs `build:src` in topological order | — |
+| `yarn workspace @webex/calling build:src` | package | `src/**/*.ts` through `tsconfig.json` | `dist/module` JavaScript and `dist/types` declarations | Type errors fail it; Markdown under `src/` is not processed |
+| `yarn workspace @webex/calling prebuild` | package | — | Deletes `dist/` | Not run automatically before `build:src` |
+| `yarn workspace @webex/calling test:unit` | package | `src/**/*.test.ts` | Jest result, `coverage/`, JUnit and HTML reports | Fails below the coverage thresholds |
+| `yarn workspace @webex/calling test:style` | package | `src/**/*.ts` | eslint result | Markdown is outside the glob |
+| `yarn workspace @webex/calling test:e2e` | package | `playwright.config.ts`, `playwright/suites`, test accounts in the root `.env` | Playwright report | Needs installed browsers and the samples server |
+| `yarn workspace @webex/calling docs` | package | `src/api.ts` | typedoc check, no output | Warnings do not fail it |
+| `yarn workspace @webex/calling build:docs` | package | `src/api.ts` | typedoc site written to the workspace `docs/calling` folder | Writes outside this package |
+| `yarn workspace @webex/calling fix:lint` | package | `src/**/*.ts` | Rewrites source files with eslint fixes | Review the diff |
+| `yarn workspace @webex/calling fix:prettier` | package | `src/**/*.ts` | Rewrites source files with Prettier | Review the diff |
+| `yarn workspace @webex/calling deploy:npm` | package | `dist/`, `package.json` | Publishes to npm | Release pipeline only |
 
-Verified on 2026-11-16 with Node 22.14: `yarn build:src` exit 0, `yarn test:style` 0 errors and 111
-warnings, `yarn test:unit` 32 suites and 908 tests passing with the coverage thresholds met, and
-`yarn docs` exit 0. `yarn test:e2e` was not run.
+Verified on 2026-11-17 with Node 22.14: `yarn workspace @webex/calling build:src` exit 0, `yarn workspace @webex/calling test:style` 0 errors and 111
+warnings, `yarn workspace @webex/calling test:unit` 32 suites and 908 tests passing with the coverage thresholds met, and
+`yarn workspace @webex/calling docs` exit 0. `yarn workspace @webex/calling test:e2e` was not run.
 
 ## Cross-repository topology
 
@@ -1416,7 +1415,7 @@ warnings, `yarn test:unit` 32 suites and 908 tests passing with the coverage thr
 | Webex Calling (Mobius) | Consumes | `mobius-http`, `mobius-websocket` | Webex Calling | Discovery precedes registration; registration precedes calls |
 | Webex services (Janus, User Hub, Hydra, UC config, contacts) | Consumes | `janus-http`, `userhub-recordings-http`, `hydra-http`, `webex-uc-config-http`, `contacts-service-http` | Webex | None |
 | Cisco BroadWorks and UCM | Consumes | `broadworks-http`, `ucm-gateway-http` | Cisco | Backend detection selects the connector first |
-| Workspace packages `webex` and `@webex/contact-center` | Provides | `calling-client-sdk` and the other published `*-sdk` contracts | `@webex/web-sdk` | Built after this package by `yarn compile` |
+| Workspace packages `webex` and `@webex/contact-center` | Provides | `calling-client-sdk` and the other published `*-sdk` contracts | `@webex/web-sdk` | Built after this package by `yarn workspace @webex/calling compile` |
 
 - **Internal workspace packages:** Webex common, device, feature, metrics, test helpers, and media helpers.
 - **External packages:** `@webex/internal-media-core`, `xstate`, `ws`, `lodash`, `uuid`, and transport/test tooling.

@@ -1120,6 +1120,6 @@ Unit tests are co-located under `src/CallingClient/` and exercise positive, nega
 | `MOD-017` | Unit | `src/CallingClient/CallingClient.test.ts` | none found | Warmup failure path |
 | `INV-001` to `INV-006` | Unit | `src/CallingClient/CallingClient.test.ts` | `src/CallingClient/CallingClient.test.ts` | `INV-003` registration-down branch as for `MOD-006` |
 
-Run the module tests with the package `yarn test:unit` command (see the package agent instructions).
+Run the module tests with the package `yarn workspace @webex/calling test:unit` command (see the package agent instructions).
 The `MOD-006`, `MOD-012`, and `MOD-016` gaps keep the module at `Partial` coverage until characterization
 tests exist.

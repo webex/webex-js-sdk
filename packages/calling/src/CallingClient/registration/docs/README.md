@@ -1035,7 +1035,7 @@ Keepalive `404` / `429` / `5xx` handling is unchanged.
 
 Unit tests are co-located under `src/CallingClient/registration/` and exercise positive, negative,
 error, retry, and cleanup behavior as applicable. Package journeys under `playwright/` cover
-cross-module flows. Run them with `yarn test:unit` from the package directory; on 2026-11-16 with
+cross-module flows. Run them with `yarn workspace @webex/calling test:unit`; on 2026-11-17 with
 Node.js 22.14 the package run passed 32 suites and 908 tests.
 
 | Requirement or invariant | Test level | Positive evidence | Negative or boundary evidence | Gap |

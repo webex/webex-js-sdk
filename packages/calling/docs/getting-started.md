@@ -39,33 +39,30 @@ Clone `https://github.com/webex/webex-js-sdk.git`, `cd webex-js-sdk`, select Nod
 yarn
 ```
 
-The workspace build tools and shared packages must be built before package scripts run, as the
-workspace root `CONTRIBUTING.md` describes:
-
-```bash
-yarn prebuild:modules
-```
+The workspace build tools and shared packages must be built before package scripts run; follow the
+workspace build step in the root `CONTRIBUTING.md`. That step is a workspace-root command, so this
+package's manifest does not record it.
 
 ## Build
 
 ```bash
-yarn build:src
+yarn workspace @webex/calling build:src
 ```
 
 `build:src` runs `tsc`, which compiles `src/**/*.ts` into `dist/module` and writes declarations to
-`dist/types` (`tsconfig.json`, `package.json` `main` and `types`). `yarn compile` builds this package
+`dist/types` (`tsconfig.json`, `package.json` `main` and `types`). `yarn workspace @webex/calling compile` builds this package
 and every workspace package it depends on, in topological order. Yarn 3 does not run the `prebuild`
-script automatically; run `yarn prebuild` first when you need a clean `dist/`.
+script automatically; run `yarn workspace @webex/calling prebuild` first when you need a clean `dist/`.
 
 | Task | Command |
 |---|---|
-| Build | `yarn build:src` |
-| Unit test | `yarn test:unit` |
-| Lint | `yarn test:style` |
-| E2E | `yarn test:e2e` |
-| TypeDoc | `yarn build:docs` |
+| Build | `yarn workspace @webex/calling build:src` |
+| Unit test | `yarn workspace @webex/calling test:unit` |
+| Lint | `yarn workspace @webex/calling test:style` |
+| E2E | `yarn workspace @webex/calling test:e2e` |
+| TypeDoc | `yarn workspace @webex/calling build:docs` |
 
-`yarn build:docs` writes TypeDoc HTML to the workspace `docs/calling` tree; `yarn docs` runs the same
+`yarn workspace @webex/calling build:docs` writes TypeDoc HTML to the workspace `docs/calling` tree; `yarn workspace @webex/calling docs` runs the same
 TypeDoc entry (`src/api.ts`) without emitting output, as a documentation check.
 
 ## Run
@@ -76,21 +73,21 @@ page served at `PW_BASE_URL` (default `https://localhost:8000`, `playwright.conf
 ## Tests
 
 ```bash
-yarn test:unit
+yarn workspace @webex/calling test:unit
 ```
 
 | Tier | Command | Test location | Framework | External dependencies |
 | ---- | ------- | ------------- | --------- | --------------------- |
-| Unit | `yarn test:unit` | `src` (co-located `*.test.ts`, `jest.config.js` testMatch) | Jest 29 with ts-jest, jsdom environment, `--runInBand` | None; Webex SDK objects and media are mocked |
-| System / E2E | `yarn test:e2e` | `playwright/suites` | Playwright (workspace root binary through `yarn run -T`) | Browser, a served sample app, and approved test accounts |
+| Unit | `yarn workspace @webex/calling test:unit` | `src` (co-located `*.test.ts`, `jest.config.js` testMatch) | Jest 29 with ts-jest, jsdom environment, `--runInBand` | None; Webex SDK objects and media are mocked |
+| System / E2E | `yarn workspace @webex/calling test:e2e` | `playwright/suites` | Playwright (workspace root binary through `yarn run -T`) | Browser, a served sample app, and approved test accounts |
 
 - Coverage gate: `jest.config.js` collects coverage on every `test:unit` run and fails it below the
   global thresholds of 85% lines, functions, and statements and 80% branches, with lower per-folder
   thresholds for `src/Events/impl`, `src/Logger`, `src/Voicemail`, `src/SDKConnector`, and
   `src/CallHistory`.
 - Enforcement source: `jest.config.js`.
-- Verified on 2026-11-16 with Node.js 22.14: `yarn test:unit` passes 32 suites and 908 tests and
-  meets the thresholds; `yarn test:style` reports 0 errors and 111 warnings. `yarn test:e2e` was not
+- Verified on 2026-11-17 with Node.js 22.14: `yarn workspace @webex/calling test:unit` passes 32 suites and 908 tests and
+  meets the thresholds; `yarn workspace @webex/calling test:style` reports 0 errors and 111 warnings. `yarn workspace @webex/calling test:e2e` was not
   run because it needs browsers and test accounts.
 
 ## Configuration and secrets
@@ -112,9 +109,9 @@ yarn test:unit
 
 ## First-run verification
 
-1. Precondition: Node.js 22.14, `yarn`, and `yarn prebuild:modules` completed at the workspace root.
-2. From `packages/calling`, run the build, one targeted unit test, and lint.
-3. Run `yarn test:unit` for the full unit suite.
+1. Precondition: Node.js 22.14, `yarn`, and the root `CONTRIBUTING.md` workspace build completed at the workspace root.
+2. From the workspace root, run the build, one targeted unit test, and lint.
+3. Run `yarn workspace @webex/calling test:unit` for the full unit suite.
 
 Expected result: a successful `dist/` build plus green Jest/ESLint output verifies the package loop
 (`dist/module/index.js` and `dist/types/index.d.ts` exist; Jest reports 32 suites passing).

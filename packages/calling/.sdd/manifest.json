@@ -16,67 +16,62 @@
       "source_file": "../../.github/workflows/deploy.yml",
       "role": "install"
     },
-    "prebuild": {
-      "command": "yarn prebuild:modules",
-      "source_file": "../../CONTRIBUTING.md",
-      "role": "other"
-    },
     "compile": {
-      "command": "yarn compile",
+      "command": "yarn workspace @webex/calling compile",
       "source_file": "package.json",
       "role": "compile"
     },
     "build": {
-      "command": "yarn build:src",
+      "command": "yarn workspace @webex/calling build:src",
       "source_file": "package.json",
       "role": "package",
-      "verified_at": "2026-11-16T13:46:30Z"
+      "verified_at": "2026-11-17T05:15:59Z"
     },
     "unit-test": {
-      "command": "yarn test:unit",
+      "command": "yarn workspace @webex/calling test:unit",
       "source_file": "package.json",
       "role": "unit-test",
-      "verified_at": "2026-11-16T13:46:52Z"
+      "verified_at": "2026-11-17T05:17:00Z"
     },
     "lint": {
-      "command": "yarn test:style",
+      "command": "yarn workspace @webex/calling test:style",
       "source_file": "package.json",
       "role": "lint",
-      "verified_at": "2026-11-16T13:46:38Z"
+      "verified_at": "2026-11-17T05:16:13Z"
     },
     "e2e": {
-      "command": "yarn test:e2e",
+      "command": "yarn workspace @webex/calling test:e2e",
       "source_file": "package.json",
       "role": "e2e"
     },
     "docs-check": {
-      "command": "yarn docs",
+      "command": "yarn workspace @webex/calling docs",
       "source_file": "package.json",
       "role": "other",
-      "verified_at": "2026-11-16T13:47:36Z"
+      "verified_at": "2026-11-17T05:17:09Z"
     },
     "docs-build": {
-      "command": "yarn build:docs",
+      "command": "yarn workspace @webex/calling build:docs",
       "source_file": "package.json",
       "role": "other"
     },
     "clean": {
-      "command": "yarn prebuild",
+      "command": "yarn workspace @webex/calling prebuild",
       "source_file": "package.json",
       "role": "other"
     },
     "fix-lint": {
-      "command": "yarn fix:lint",
+      "command": "yarn workspace @webex/calling fix:lint",
       "source_file": "package.json",
       "role": "other"
     },
     "format": {
-      "command": "yarn fix:prettier",
+      "command": "yarn workspace @webex/calling fix:prettier",
       "source_file": "package.json",
       "role": "other"
     },
     "deploy": {
-      "command": "yarn deploy:npm",
+      "command": "yarn workspace @webex/calling deploy:npm",
       "source_file": "package.json",
       "role": "deploy"
     }

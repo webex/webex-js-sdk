@@ -7,18 +7,17 @@
   },
   "commands": {
     "install": "yarn",
-    "prebuild": "yarn prebuild:modules",
-    "compile": "yarn compile",
-    "build": "yarn build:src",
-    "unit-test": "yarn test:unit",
-    "lint": "yarn test:style",
-    "e2e": "yarn test:e2e",
-    "docs-check": "yarn docs",
-    "docs-build": "yarn build:docs",
-    "clean": "yarn prebuild",
-    "fix-lint": "yarn fix:lint",
-    "format": "yarn fix:prettier",
-    "deploy": "yarn deploy:npm"
+    "compile": "yarn workspace @webex/calling compile",
+    "build": "yarn workspace @webex/calling build:src",
+    "unit-test": "yarn workspace @webex/calling test:unit",
+    "lint": "yarn workspace @webex/calling test:style",
+    "e2e": "yarn workspace @webex/calling test:e2e",
+    "docs-check": "yarn workspace @webex/calling docs",
+    "docs-build": "yarn workspace @webex/calling build:docs",
+    "clean": "yarn workspace @webex/calling prebuild",
+    "fix-lint": "yarn workspace @webex/calling fix:lint",
+    "format": "yarn workspace @webex/calling fix:prettier",
+    "deploy": "yarn workspace @webex/calling deploy:npm"
   },
   "public_interfaces": [
     {
@@ -63,13 +62,13 @@
       "kind": "npm_scripts",
       "source": "package.json",
       "entrypoints": [
-        "yarn build:src",
-        "yarn test:unit",
-        "yarn test:style",
-        "yarn docs"
+        "yarn workspace @webex/calling build:src",
+        "yarn workspace @webex/calling test:unit",
+        "yarn workspace @webex/calling test:style",
+        "yarn workspace @webex/calling docs"
       ],
       "audience": "Package maintainers and agents",
-      "notes": "Run from packages/calling; yarn workspace @webex/calling plus the script name is equivalent from the workspace root."
+      "notes": "Run from anywhere in the webex-js-sdk workspace; yarn workspace @webex/calling selects this package."
     }
   ],
   "source_of_truth": [
@@ -82,11 +81,11 @@
         "dist"
       ],
       "refresh_with": [
-        "yarn build:src"
+        "yarn workspace @webex/calling build:src"
       ],
       "validate_with": [
-        "yarn test:unit",
-        "yarn test:style"
+        "yarn workspace @webex/calling test:unit",
+        "yarn workspace @webex/calling test:style"
       ]
     },
     {
@@ -119,12 +118,12 @@
     {
       "path": "dist",
       "generated_from": "src",
-      "refresh_with": "yarn build:src"
+      "refresh_with": "yarn workspace @webex/calling build:src"
     },
     {
       "path": "../../docs/calling",
       "generated_from": "src/api.ts",
-      "refresh_with": "yarn build:docs"
+      "refresh_with": "yarn workspace @webex/calling build:docs"
     },
     {
       "path": "../../.sdd/templates/repo-standards/template-map.json",
@@ -138,11 +137,11 @@
         "src/**"
       ],
       "minimum": [
-        "yarn test:unit"
+        "yarn workspace @webex/calling test:unit"
       ],
       "recommended": [
-        "yarn test:style",
-        "yarn build:src"
+        "yarn workspace @webex/calling test:style",
+        "yarn workspace @webex/calling build:src"
       ]
     },
     {
@@ -153,10 +152,10 @@
         "tsconfig.json"
       ],
       "minimum": [
-        "yarn build:src"
+        "yarn workspace @webex/calling build:src"
       ],
       "recommended": [
-        "yarn docs"
+        "yarn workspace @webex/calling docs"
       ]
     },
     {
@@ -165,7 +164,7 @@
         "playwright.config.ts"
       ],
       "minimum": [
-        "yarn test:e2e"
+        "yarn workspace @webex/calling test:e2e"
       ],
       "recommended": [
         "run with approved test accounts only"
@@ -183,11 +182,11 @@
         "TypeDoc output"
       ],
       "refresh_with": [
-        "yarn build:src",
-        "yarn docs"
+        "yarn workspace @webex/calling build:src",
+        "yarn workspace @webex/calling docs"
       ],
       "validate_with": [
-        "yarn test:unit"
+        "yarn workspace @webex/calling test:unit"
       ],
       "avoid_direct_edits": [
         "dist"
@@ -204,10 +203,10 @@
         "call and ROAP state machines and media"
       ],
       "refresh_with": [
-        "yarn build:src"
+        "yarn workspace @webex/calling build:src"
       ],
       "validate_with": [
-        "yarn test:unit"
+        "yarn workspace @webex/calling test:unit"
       ],
       "avoid_direct_edits": [
         "dist"
@@ -224,10 +223,10 @@
         "calling backend resolution"
       ],
       "refresh_with": [
-        "yarn build:src"
+        "yarn workspace @webex/calling build:src"
       ],
       "validate_with": [
-        "yarn test:unit"
+        "yarn workspace @webex/calling test:unit"
       ],
       "avoid_direct_edits": [
         "dist"
@@ -328,8 +327,8 @@
       "sources": [
         "package.json"
       ],
-      "requirement": "The script must exist in package.json scripts.",
-      "notes": "Workspace-root commands (yarn, yarn prebuild:modules) come from the root CONTRIBUTING.md and the deploy workflow."
+      "requirement": "The script must exist in package.json scripts; package scripts run through yarn workspace @webex/calling followed by the script name.",
+      "notes": "The workspace-root install command (yarn) comes from the deploy workflow."
     },
     {
       "claim_category": "import_path",
@@ -389,7 +388,7 @@
         "name": "TypeDoc entry",
         "path": "src/api.ts",
         "purpose": "API reference documentation exports",
-        "notes": "Read by yarn docs and yarn build:docs."
+        "notes": "Read by yarn workspace @webex/calling docs and yarn build:docs."
       }
     ],
     "workspace_packages": [
@@ -513,7 +512,7 @@
           "dist"
         ],
         "generated_from": "src",
-        "refresh_with": "yarn build:src",
+        "refresh_with": "yarn workspace @webex/calling build:src",
         "notes": "Produced by tsc. Do not edit by hand."
       }
     ],
@@ -530,19 +529,19 @@
     "validation_entrypoints": [
       {
         "name": "unit tests",
-        "command": "yarn test:unit",
+        "command": "yarn workspace @webex/calling test:unit",
         "scope": "src",
         "notes": "Jest over co-located src/**/*.test.ts with the jest.config.js coverage thresholds."
       },
       {
         "name": "lint",
-        "command": "yarn test:style",
+        "command": "yarn workspace @webex/calling test:style",
         "scope": "src",
         "notes": "eslint over src/**/*.ts with the workspace root .eslintrc.js."
       },
       {
         "name": "docs check",
-        "command": "yarn docs",
+        "command": "yarn workspace @webex/calling docs",
         "scope": "src/api.ts",
         "notes": "TypeDoc without output."
       }
