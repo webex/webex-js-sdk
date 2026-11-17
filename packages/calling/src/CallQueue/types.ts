@@ -85,6 +85,11 @@ export interface ICallQueue {
 
 export type CallQueueEventKind = 'sync' | 'state' | 'join';
 
+export type EventLine =
+  | {kind: 'primary'}
+  | {kind: 'secondary'; lineOwnerId: string}
+  | {kind: 'ignore'};
+
 export type TelephonyAgentQueue = {
   id?: string;
   name?: string;

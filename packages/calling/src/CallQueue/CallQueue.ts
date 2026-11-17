@@ -42,31 +42,14 @@ import {
   CallQueueEventKind,
   CallQueueEventTypes,
   CallQueueResponse,
+  EventLine,
   ICallQueue,
   LoggerInterface,
   UpdateCallQueueSettingsRequest,
 } from './types';
+import actorIdentity from './utils';
 
 const SUPPORTED_STATES = new Set<string>(Object.values(ACD_STATE));
-
-type EventLine = {kind: 'primary'} | {kind: 'secondary'; lineOwnerId: string} | {kind: 'ignore'};
-
-function actorIdentity(value: string): {id: string; type?: string} {
-  const parse = (candidate: string) =>
-    /^ciscospark:\/\/[^/]+\/(PEOPLE|PERSON|VIRTUAL_LINE)\/([^/]+)$/i.exec(candidate);
-  let match = parse(value);
-  if (!match) {
-    try {
-      match = parse(atob(value.replace(/-/g, '+').replace(/_/g, '/')));
-    } catch {
-      // An unencoded actor ID is also valid.
-    }
-  }
-
-  return match
-    ? {type: match[1].toUpperCase(), id: match[2].toLowerCase()}
-    : {id: value.toLowerCase()};
-}
 
 /**
  * Webex Calling cloud client for call-queue agent status.
@@ -162,11 +145,23 @@ export class CallQueueClient extends Eventing<CallQueueEventTypes> implements IC
         const latest = this.currentByLine.get(lineOwnerId);
 
         return latest
-          ? this.success(response, latest)
-          : this.failure(409, 'Call queue settings changed while loading; retry the request');
+          ? {
+              statusCode: Number(response[STATUS_CODE]) || 200,
+              data: {callQueue: latest},
+              message: SUCCESS_MESSAGE,
+            }
+          : {
+              statusCode: 409,
+              data: {error: 'Call queue settings changed while loading; retry the request'},
+              message: FAILURE_MESSAGE,
+            };
       }
       if (!named) {
-        return this.failure(502, 'Call queue settings response did not include agent status');
+        return {
+          statusCode: 502,
+          data: {error: 'Call queue settings response did not include agent status'},
+          message: FAILURE_MESSAGE,
+        };
       }
       this.currentByLine.set(lineOwnerId, named);
       this.committedSequence.set(lineOwnerId, sequence);
@@ -178,7 +173,11 @@ export class CallQueueClient extends Eventing<CallQueueEventTypes> implements IC
         loggerContext
       );
 
-      return this.success(response, named);
+      return {
+        statusCode: Number(response[STATUS_CODE]) || 200,
+        data: {callQueue: named},
+        message: SUCCESS_MESSAGE,
+      };
     } catch (err: unknown) {
       return this.fail(err, loggerContext, 'Failed to get call queue settings');
     }
@@ -206,10 +205,11 @@ export class CallQueueClient extends Eventing<CallQueueEventTypes> implements IC
           return settings;
         }
         if (!settings.data.callQueue) {
-          return this.failure(
-            400,
-            'Call queue settings are required before updating queue membership'
-          );
+          return {
+            statusCode: 400,
+            data: {error: 'Call queue settings are required before updating queue membership'},
+            message: FAILURE_MESSAGE,
+          };
         }
       }
 
@@ -235,7 +235,11 @@ export class CallQueueClient extends Eventing<CallQueueEventTypes> implements IC
         const refreshed = await this.getCallQueueSettings(lineOwnerId);
 
         return refreshed.data.callQueue
-          ? this.success(response, refreshed.data.callQueue)
+          ? {
+              statusCode: Number(response[STATUS_CODE]) || 200,
+              data: {callQueue: refreshed.data.callQueue},
+              message: SUCCESS_MESSAGE,
+            }
           : refreshed;
       }
       this.currentByLine.set(lineOwnerId, named);
@@ -245,7 +249,11 @@ export class CallQueueClient extends Eventing<CallQueueEventTypes> implements IC
         loggerContext
       );
 
-      return this.success(response, named);
+      return {
+        statusCode: Number(response[STATUS_CODE]) || 200,
+        data: {callQueue: named},
+        message: SUCCESS_MESSAGE,
+      };
     } catch (err: unknown) {
       return this.fail(err, loggerContext, 'Failed to update call queue settings');
     }
@@ -265,7 +273,11 @@ export class CallQueueClient extends Eventing<CallQueueEventTypes> implements IC
 
     const wdmUrl = this.webex.internal.device?.url;
     if (!wdmUrl || !this.wdmDeviceId()) {
-      return this.failure(400, 'A registered device is required to sync telephony calls');
+      return {
+        statusCode: 400,
+        data: {error: 'A registered device is required to sync telephony calls'},
+        message: FAILURE_MESSAGE,
+      };
     }
 
     try {
@@ -277,7 +289,13 @@ export class CallQueueClient extends Eventing<CallQueueEventTypes> implements IC
       log.log(`Response trackingId: ${response?.headers?.trackingid}`, loggerContext);
       // The sync endpoint returns 204; authoritative settings arrive via Mercury.
 
-      return this.success(response, this.currentByLine.get(undefined));
+      const current = this.currentByLine.get(undefined);
+
+      return {
+        statusCode: Number(response[STATUS_CODE]) || 200,
+        data: current ? {callQueue: current} : {},
+        message: SUCCESS_MESSAGE,
+      };
     } catch (err: unknown) {
       return this.fail(err, loggerContext, 'Failed to sync telephony calls');
     }
@@ -561,17 +579,35 @@ export class CallQueueClient extends Eventing<CallQueueEventTypes> implements IC
   }
 
   private rejectBeforeRequest(lineOwnerId?: string): CallQueueResponse | undefined {
-    if (this.disposed) return this.failure(400, 'Call queue client has been disposed');
+    if (this.disposed) {
+      return {
+        statusCode: 400,
+        data: {error: 'Call queue client has been disposed'},
+        message: FAILURE_MESSAGE,
+      };
+    }
     this.callingBackend = this.resolveCallingBackend();
     if (this.callingBackend !== CALLING_BACKEND.WXC) {
-      return this.failure(501, UNSUPPORTED_BACKEND_MESSAGE);
+      return {
+        statusCode: 501,
+        data: {error: UNSUPPORTED_BACKEND_MESSAGE},
+        message: FAILURE_MESSAGE,
+      };
     }
     if (!this.mercuryListeners.length) this.registerAgentListeners();
     if (lineOwnerId !== undefined && !LINE_OWNER_ID_PATTERN.test(lineOwnerId)) {
-      return this.failure(400, 'lineOwnerId is not a valid line id');
+      return {
+        statusCode: 400,
+        data: {error: 'lineOwnerId is not a valid line id'},
+        message: FAILURE_MESSAGE,
+      };
     }
     if (!this.webexApiEndpoint) {
-      return this.failure(400, 'A supported Webex API base URL is required for call queues');
+      return {
+        statusCode: 400,
+        data: {error: 'A supported Webex API base URL is required for call queues'},
+        message: FAILURE_MESSAGE,
+      };
     }
 
     return undefined;
@@ -581,13 +617,25 @@ export class CallQueueClient extends Eventing<CallQueueEventTypes> implements IC
     const hasState = request.agentACDState !== undefined;
     const hasQueues = request.queues !== undefined;
     if (!hasState && !hasQueues) {
-      return this.failure(400, 'agentACDState or queues is required');
+      return {
+        statusCode: 400,
+        data: {error: 'agentACDState or queues is required'},
+        message: FAILURE_MESSAGE,
+      };
     }
     if (hasState && !SUPPORTED_STATES.has(request.agentACDState as string)) {
-      return this.failure(400, 'agentACDState is not a supported ACD state');
+      return {
+        statusCode: 400,
+        data: {error: 'agentACDState is not a supported ACD state'},
+        message: FAILURE_MESSAGE,
+      };
     }
     if (hasQueues && request.queues?.length === 0) {
-      return this.failure(400, 'queues must include at least one queue update');
+      return {
+        statusCode: 400,
+        data: {error: 'queues must include at least one queue update'},
+        message: FAILURE_MESSAGE,
+      };
     }
     if (hasQueues) {
       const invalid = request.queues?.some(
@@ -598,7 +646,11 @@ export class CallQueueClient extends Eventing<CallQueueEventTypes> implements IC
           typeof queue.available !== 'boolean'
       );
       if (invalid) {
-        return this.failure(400, 'each queue update needs an id and an available flag');
+        return {
+          statusCode: 400,
+          data: {error: 'each queue update needs an id and an available flag'},
+          message: FAILURE_MESSAGE,
+        };
       }
     }
 
@@ -675,25 +727,6 @@ export class CallQueueClient extends Eventing<CallQueueEventTypes> implements IC
     return {
       acdState: request.agentACDState ?? base.acdState,
       queues,
-    };
-  }
-
-  private success(
-    response: WebexRequestPayload,
-    callQueue?: CallQueueAgentStatus
-  ): CallQueueResponse {
-    return {
-      statusCode: Number(response[STATUS_CODE]) || 200,
-      data: callQueue ? {callQueue} : {},
-      message: SUCCESS_MESSAGE,
-    };
-  }
-
-  private failure(statusCode: number, error: string): CallQueueResponse {
-    return {
-      statusCode,
-      data: {error},
-      message: FAILURE_MESSAGE,
     };
   }
 
