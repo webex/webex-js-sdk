@@ -1938,7 +1938,9 @@
     "runtime_fallback_tier": "different-runtime",
     "blocking_severities": [
       "Blocking"
-    ]
+    ],
+    "validator_runtime": "01a1e76e-1dbd-7680-94e4-46d29d2946d4",
+    "validator_runtime_source": "invocation-input"
   },
   "layout": {
     "sdd_root": ".sdd",

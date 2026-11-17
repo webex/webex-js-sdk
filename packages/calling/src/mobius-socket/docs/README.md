@@ -9,8 +9,8 @@ doc_kind: module-spec
 generated_from: module-spec@0.3.0
 generated_by: claude-code
 approved_by: rarajes2@cisco.com
-updated_at: 2026-11-16T14:00:00Z
-validation_status: not-run
+updated_at: 2026-11-17T03:02:22Z
+validation_status: blocked
 -->
 
 # mobius-socket
@@ -38,7 +38,7 @@ Related context: [documentation index](../../../docs/index.md) ·
 | Parent spec | — |
 | Doc kind | Module spec |
 | Coverage score | Pending coverage assessment |
-| Validation status | not-run — independent validation pending in a different runtime |
+| Validation status | blocked — validator `01a1e76e-1dbd-7680-94e4-46d29d2946d4`, assessed 2026-11-17; 2 Blocking, 1 Important (questionnaire gate evidence, UC config contract index, SDKConnector test coverage) |
 
 ## Applicability
 

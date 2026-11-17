@@ -9,8 +9,8 @@ doc_kind: standing-doc
 generated_from: architecture@0.3.0
 generated_by: claude-code
 approved_by: rarajes2@cisco.com
-updated_at: 2026-11-16T14:00:00Z
-validation_status: not-run
+updated_at: 2026-11-17T03:02:22Z
+validation_status: blocked
 -->
 
 # @webex/calling architecture
@@ -364,8 +364,8 @@ surfaces).
 | Webex User Hub converged recording endpoints | Consumed by `src/CallRecording/` through `userhub-recordings-http` | [call-recording spec](../src/CallRecording/docs/README.md) | Remote/service availability or package compatibility | Owning module retry/fallback/error behavior | `package.json` or Webex service contract |
 | Mercury recording lifecycle events | Consumed by `src/CallRecording/` through `mercury-events` | [call-recording spec](../src/CallRecording/docs/README.md) | Remote/service availability or package compatibility | Owning module retry/fallback/error behavior | `package.json` or Webex service contract |
 | Calling-backend resolution | Consumed by `src/CallRecording/` through shared `src/common/Utils.ts` | [call-recording spec](../src/CallRecording/docs/README.md) | Remote/service availability or package compatibility | Owning module retry/fallback/error behavior | `package.json` or Webex service contract |
-| Webex Calling XSI/Hydra services | Consumed by `src/CallSettings/` through `hydra-http`, `broadworks-http` | [call-settings spec](../src/CallSettings/docs/README.md) | Remote/service availability or package compatibility | Owning module retry/fallback/error behavior | `package.json` or Webex service contract |
-| UCM management gateway | Consumed by `src/CallSettings/` through `ucm-gateway-http` | [call-settings spec](../src/CallSettings/docs/README.md) | Remote/service availability or package compatibility | Owning module retry/fallback/error behavior | `package.json` or Webex service contract |
+| Webex Calling XSI/Hydra services | Consumed by `src/CallSettings/` through `hydra-http` | [call-settings spec](../src/CallSettings/docs/README.md) | Remote/service availability or package compatibility | Owning module retry/fallback/error behavior | `package.json` or Webex service contract |
+| Webex UC config API for UCM call forward always (not the UCM management gateway) | Consumed by `src/CallSettings/` through `webex-uc-config-http` | [call-settings spec](../src/CallSettings/docs/README.md) | Remote/service availability or package compatibility | Owning module retry/fallback/error behavior | `package.json` or Webex service contract |
 | Calling-backend resolution | Consumed by `src/CallSettings/` through shared `src/common/Utils.ts` | [call-settings spec](../src/CallSettings/docs/README.md) | Remote/service availability or package compatibility | Owning module retry/fallback/error behavior | `package.json` or Webex service contract |
 | SDKConnector and Webex device/feature/service plugins | Consumed by `src/CallingClient/` through `sdk-connector-internal`, `webex-sdk-host` | [calling-client spec](../src/CallingClient/docs/README.md) | Remote/service availability or package compatibility | Owning module retry/fallback/error behavior | `package.json` or Webex service contract |
 | Calling, Line, Registration, Metrics, and mobius-socket modules | Consumed by `src/CallingClient/` through `line-sdk`, `registration-internal`, `metrics-internal`, `mobius-socket-internal` | [calling-client spec](../src/CallingClient/docs/README.md) | Remote/service availability or package compatibility | Owning module retry/fallback/error behavior | `package.json` or Webex service contract |
@@ -419,8 +419,9 @@ its publication state, owner, and source; exact definitions stay in the native d
 | `janus-http` (required) | API | Webex | CallHistory | External | Janus, services catalog key janus |
 | `userhub-recordings-http` (required) | API | Webex | CallRecording | External | User Hub, service name webex-user-hub-service |
 | `hydra-http` (required) | API | Webex | CallSettings, Voicemail | External | Hydra, services catalog key hydra |
-| `broadworks-http` (required) | API | Cisco BroadWorks | CallSettings, Voicemail | External | BroadWorks XSI URL from WDM device settings |
-| `ucm-gateway-http` (required) | API | Cisco UCM | CallHistory, CallSettings, Voicemail | External | Services catalog key ucmgmt-gateway |
+| `broadworks-http` (required) | API | Cisco BroadWorks | Voicemail | External | BroadWorks XSI URL from WDM device settings |
+| `ucm-gateway-http` (required) | API | Cisco UCM | CallHistory, Voicemail | External | Services catalog key ucmgmt-gateway |
+| `webex-uc-config-http` (required) | API | Webex | CallSettings | External; production, integration, and FedRAMP `/v1/uc/config` hosts | Webex UC config API; base URLs in `src/common/constants.ts` |
 | `contacts-service-http` (required) | API | Webex | Contacts, CallerId | External | Services catalog key contactsService and SCIM |
 | `kms-encryption` (required) | SDK | Webex platform | Contacts | External | webex.internal.encryption |
 | `webex-metrics-plugin` (required) | SDK | internal-plugin-metrics package | Metrics | Workspace version | `package.json` |
@@ -1413,7 +1414,7 @@ warnings, `yarn test:unit` 32 suites and 908 tests passing with the coverage thr
 | ----------------------------- | --------------------------------- | ------------------------------ | -------------- | --------------------- |
 | Host application and Webex JS SDK | Consumes | `webex-sdk-host`, `mercury-events`, `kms-encryption` | Host application | The Webex instance must be authorized, ready, and have Mercury before any factory runs |
 | Webex Calling (Mobius) | Consumes | `mobius-http`, `mobius-websocket` | Webex Calling | Discovery precedes registration; registration precedes calls |
-| Webex services (Janus, User Hub, Hydra, contacts) | Consumes | `janus-http`, `userhub-recordings-http`, `hydra-http`, `contacts-service-http` | Webex | None |
+| Webex services (Janus, User Hub, Hydra, UC config, contacts) | Consumes | `janus-http`, `userhub-recordings-http`, `hydra-http`, `webex-uc-config-http`, `contacts-service-http` | Webex | None |
 | Cisco BroadWorks and UCM | Consumes | `broadworks-http`, `ucm-gateway-http` | Cisco | Backend detection selects the connector first |
 | Workspace packages `webex` and `@webex/contact-center` | Provides | `calling-client-sdk` and the other published `*-sdk` contracts | `@webex/web-sdk` | Built after this package by `yarn compile` |
 

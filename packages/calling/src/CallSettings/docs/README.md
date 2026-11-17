@@ -9,8 +9,8 @@ doc_kind: module-spec
 generated_from: module-spec@0.3.0
 generated_by: claude-code
 approved_by: rarajes2@cisco.com
-updated_at: 2026-11-16T14:00:00Z
-validation_status: not-run
+updated_at: 2026-11-17T03:02:22Z
+validation_status: blocked
 -->
 
 # CallSettings
@@ -39,7 +39,7 @@ Related context: [documentation index](../../../docs/index.md) ·
 | Parent spec       | — |
 | Doc kind          | Module spec |
 | Coverage score    | Pending coverage assessment |
-| Validation status | not-run — independent validation pending in a different runtime |
+| Validation status | blocked — validator `01a1e76e-1dbd-7680-94e4-46d29d2946d4`, assessed 2026-11-17; 2 Blocking, 1 Important (questionnaire gate evidence, UC config contract index, SDKConnector test coverage) |
 
 ## Applicability
 
@@ -129,7 +129,9 @@ calling backend (WXC/Broadworks or UCM).
 
 Declarations live in `src/CallSettings/types.ts` and `src/CallSettings/CallSettings.ts`; the package
 entry `src/index.ts` re-exports them and the declaration build writes `dist/types/index.d.ts`. This
-section summarises them and does not restate signatures.
+section summarises them and does not restate signatures. The module provides `call-settings-sdk` and
+requires `sdk-connector-internal`, `hydra-http`, and `webex-uc-config-http`; the required external
+contract it alone consumes is listed in the table below.
 
 | Surface | Consumer | Compatibility commitment | Source |
 | ------- | -------- | ------------------------ | ------ |
@@ -137,6 +139,7 @@ section summarises them and does not restate signatures.
 | `ICallSettings` interface | Applications | Eight methods, each returning `Promise<CallSettingResponse>` (`MOD-002` to `MOD-008`) | `src/CallSettings/types.ts` |
 | `CallSettingResponse`, `ToggleSetting`, `CallForwardSetting`, `CallForwardAlwaysSetting`, `VoicemailSetting` types | Applications | Re-exported from the package entry | `src/index.ts` |
 | `CallSettings` class | TypeDoc reference build | Listed only in the TypeDoc entry, not in the package entry | `src/api.ts` |
+| `webex-uc-config-http` (required, external, owned by Webex) | `UcmBackendConnector` for UCM call forward always (`MOD-007`) | Not a promise of this package; the module reads `callForwarding.always` from the people `callforwarding` feature and selects the production, integration, or FedRAMP `/v1/uc/config` host | `src/common/constants.ts`, `src/CallSettings/UcmBackendConnector.ts` |
 
 **Package:** `@webex/calling`
 
@@ -187,7 +190,7 @@ Response and setting shapes (declared in `src/CallSettings/types.ts`):
 | `SDKConnector` singleton (`sdk-connector-internal`) | Holds the shared Webex SDK instance; the facade and each connector call `setWebex` only when no instance is set yet | `setWebex` throws when the instance fails validation; the error propagates from the factory |
 | Hydra People API (`hydra-http`) | DND, call forwarding, and voicemail settings for WXC and BWRKS, and the organization lookup that yields the XSI Actions endpoint | Rejections become `serviceErrorCodeHandler` responses (`MOD-008`) |
 | XSI Actions `CallWaiting` service, at the endpoint returned by the Hydra organization lookup | Call waiting for WXC and BWRKS | A non-OK status or parse failure becomes a failure response (`MOD-002`) |
-| Webex UC config API (`/v1/uc/config` on the production, integration, or FedRAMP host) | Call forward always for UCM | Rejections become failure responses; a FedRAMP token failure rejects (`MOD-007`) |
+| Webex UC config API (`webex-uc-config-http`; `/v1/uc/config` on the production, integration, or FedRAMP host) | Call forward always for UCM | Rejections become failure responses; a FedRAMP token failure rejects (`MOD-007`) |
 | Webex SDK `credentials.getUserToken()` | Explicit authorization for XSI call waiting and for FedRAMP UCM requests | See the call waiting and UCM rows above |
 
 - Webex Calling XSI/Hydra services
