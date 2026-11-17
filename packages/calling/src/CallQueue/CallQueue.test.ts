@@ -1107,7 +1107,7 @@ describe('CallQueue client', () => {
     other.dispose();
   });
 
-  it('does not let an older GET overwrite a successful PATCH', async () => {
+  it('does not let an older GET overwrite a successful update', async () => {
     const otherWebex = getTestUtilsWebex();
     const other = createCallQueueClient(otherWebex, {level: LOGGER.INFO}, TEST_OPTIONS);
     const initial = {agentACDState: 'AVAILABLE', queues: []};
@@ -1144,7 +1144,7 @@ describe('CallQueue client', () => {
     other.dispose();
   });
 
-  it('refreshes after a PATCH overlaps a Mercury event', async () => {
+  it('refreshes after an update overlaps a Mercury event', async () => {
     const otherWebex = getTestUtilsWebex();
     const other = createCallQueueClient(otherWebex, {level: LOGGER.INFO}, TEST_OPTIONS);
     otherWebex.request.mockResolvedValueOnce(<WebexRequestPayload>(
@@ -1184,7 +1184,7 @@ describe('CallQueue client', () => {
     other.dispose();
   });
 
-  it('loads settings after a queue-only PATCH with no cached state', async () => {
+  it('loads settings after a queue-only update with no cached state', async () => {
     const otherWebex = getTestUtilsWebex();
     const other = createCallQueueClient(otherWebex, {level: LOGGER.INFO}, TEST_OPTIONS);
     otherWebex.request
