@@ -92,7 +92,7 @@ class Calling extends EventEmitter {
       return Promise.resolve();
     }
 
-    const lines = Object.values(this.callingClient?.getLines() || {});
+    const lines = Object.values(this.callingClient?.getLines());
 
     for (const line of lines) {
       if (line.getStatus() === 'active') {

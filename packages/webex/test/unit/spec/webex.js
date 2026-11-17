@@ -107,6 +107,7 @@ describe('Calling call queue client', () => {
       jest.doMock('@webex/calling', () => ({
         __esModule: true,
         Logger: {setLogger() {}, setWebexLogger() {}, info() {}, warn() {}},
+        createClient() {},
         createCallQueueClient() {},
         createCallRecordingClient() {},
       }));
@@ -211,6 +212,8 @@ describe('Calling call queue client', () => {
     const callingConfig = config(true);
     callingConfig.clientConfig.callRecording = true;
     const calling = await Calling.init({webex, callingConfig});
+    sinon.stub(WebexCalling, 'createClient').resolves({getLines: () => ({})});
+    callingConfig.clientConfig.calling = true;
     factory.throws(new Error('Queue initialization failed'));
 
     await calling.register();
@@ -239,14 +242,18 @@ describe('Calling call queue client', () => {
     assert.strictEqual(calling.callRecordingClient, recording);
   });
 
-  it('deregisters a queue-only client after registration', async () => {
+  it('deregisters the queue and Calling clients after registration', async () => {
     const calling = await Calling.init({webex, callingConfig: config(false)});
+    const line = {getStatus: sinon.stub().returns('active'), deregister: sinon.spy()};
+    sinon.stub(WebexCalling, 'createClient').resolves({getLines: () => ({line})});
+    calling.callingConfig.clientConfig.calling = true;
     calling.callingConfig.clientConfig.callQueue = true;
 
     await calling.register();
     await calling.deregister();
 
     assert.calledOnce(queue.dispose);
+    assert.calledOnceWithExactly(line.deregister, true);
     assert.calledOnce(webex.internal.mercury.disconnect);
     assert.calledOnce(webex.internal.device.unregister);
     assert.isFalse(calling.registered);
