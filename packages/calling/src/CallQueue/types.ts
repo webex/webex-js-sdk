@@ -79,7 +79,7 @@ export interface ICallQueue {
     lineOwnerId?: string
   ): Promise<CallQueueResponse>;
   syncTelephonyCalls(): Promise<CallQueueResponse>;
-  /** Remove this client's Mercury listeners. */
+  /** Remove all Mercury listeners for the queue event names on this Webex instance. */
   dispose(): void;
 }
 

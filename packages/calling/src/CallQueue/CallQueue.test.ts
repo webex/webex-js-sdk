@@ -903,10 +903,9 @@ describe('CallQueue client', () => {
     other.dispose();
   });
 
-  it('uses the supplied Webex instance and disposes only its own Mercury listeners', async () => {
+  it('uses the supplied Webex instance and unregisters its queue event names on disposal', async () => {
     const otherWebex = getTestUtilsWebex();
     const other = createCallQueueClient(otherWebex, {level: LOGGER.INFO}, TEST_OPTIONS);
-    const registered = (otherWebex.internal.mercury.on as jest.Mock).mock.calls.slice();
     otherWebex.request.mockResolvedValue(<WebexRequestPayload>(<unknown>{
       statusCode: 200,
       body: {agentACDState: 'AVAILABLE', queues: []},
@@ -915,10 +914,15 @@ describe('CallQueue client', () => {
     expect(otherWebex.request).toHaveBeenCalledTimes(1);
     expect(webex.request).not.toHaveBeenCalled();
     other.dispose();
-    registered.forEach(([event, callback]) => {
-      expect(otherWebex.internal.mercury.off).toHaveBeenCalledWith(event, callback);
-    });
-    expect(otherWebex.internal.mercury.off).toHaveBeenCalledTimes(registered.length);
+    expect(otherWebex.internal.mercury.off.mock.calls).toEqual([
+      [MOBIUS_EVENT_KEYS.TELEPHONY_AGENT_SYNC],
+      [MOBIUS_EVENT_KEYS.TELEPHONY_AGENT_STATE],
+      [MOBIUS_EVENT_KEYS.TELEPHONY_AGENT_JOIN],
+      ['event:telephony_agent.sync'],
+      ['event:telephony_agent.state'],
+      ['event:telephony_agent.join'],
+    ]);
+    expect(webex.internal.mercury.off).not.toHaveBeenCalled();
   });
 
   it('emits the merged status when a Mercury state event arrives', () => {

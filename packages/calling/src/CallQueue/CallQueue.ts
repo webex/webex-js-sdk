@@ -85,7 +85,7 @@ export class CallQueueClient extends Eventing<CallQueueEventTypes> implements IC
 
   private pendingEventRefresh = new Map<string | undefined, Promise<void>>();
 
-  private mercuryListeners: Array<{event: string; listener: (data?: unknown) => void}> = [];
+  private mercuryListeners: string[] = [];
 
   private disposed = false;
 
@@ -309,15 +309,15 @@ export class CallQueueClient extends Eventing<CallQueueEventTypes> implements IC
     events.forEach(([event, kind]) => {
       const listener = (data?: unknown) => this.handleAgentEvent(kind, data);
       this.webex.internal.mercury.on(event, listener);
-      this.mercuryListeners.push({event, listener});
+      this.mercuryListeners.push(event);
     });
   }
 
-  /** Unsubscribe only the Mercury listeners created by this client. */
+  /** Unsubscribe from the queue's Mercury event names. */
   public dispose(): void {
     this.disposed = true;
-    this.mercuryListeners.forEach(({event, listener}) => {
-      this.webex.internal.mercury.off(event, listener);
+    this.mercuryListeners.forEach((event) => {
+      this.webex.internal.mercury.off(event);
     });
     this.mercuryListeners = [];
     this.eventGeneration.clear();
