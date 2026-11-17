@@ -706,7 +706,9 @@ The application/SDK host owns authentication and supplies credentialed request a
   in `src/interceptors/utils.ts`; `Meeting` decodes the permission token to read user policies and
   its expiry. It keeps both the raw JWT (`permissionToken`, also inside `meetingInfo`) and the
   decoded payload (`permissionTokenPayload`) on the instance; `MeetingUtil.joinMeeting()` sends the
-  raw token with the join, and each `parseMeetingInfo()` replaces both. Neither is cleared on leave.
+  raw token with the join. `parseMeetingInfo()` always overwrites `permissionToken`, but replaces the
+  payload and `selfUserPolicies` only when the new meeting info carries a token; a token-less parse
+  leaves the previous payload and policies in place. Neither is cleared on leave.
 - Use synthetic fixtures in tests and managed configuration for browser/integration runs.
 
 ### Data classification
