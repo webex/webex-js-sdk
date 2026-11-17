@@ -15,4 +15,5 @@ export type {
   IdentityCredentials,
   IdentityProvider,
   IdentityTrustAnchors,
+  UserIdentityCredentialsInput,
 } from './types';

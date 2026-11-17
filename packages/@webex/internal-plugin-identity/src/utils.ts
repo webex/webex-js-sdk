@@ -93,3 +93,86 @@ export function pemToUint8Arrays(pemString: string): Uint8Array[] {
 
   return matches.map(pemToUint8Array);
 }
+
+/**
+ * Converts a PKCS#8 P-256 private key and leaf-first PEM certificate chain to meeting credentials.
+ * @param {string} privateKeyPkcs8Pem
+ * @param {string} certificateChainPem
+ * @returns {Promise<{privateKey: Uint8Array, certChain: Uint8Array[]}>}
+ */
+export async function parseUserIdentityCredentials(
+  privateKeyPkcs8Pem: string,
+  certificateChainPem: string
+): Promise<{privateKey: Uint8Array; certChain: Uint8Array[]}> {
+  const privateKeyPem = privateKeyPkcs8Pem.match(
+    /-----BEGIN PRIVATE KEY-----[\s\S]*?-----END PRIVATE KEY-----/
+  )?.[0];
+
+  if (!privateKeyPem) {
+    throw new Error('Private key must be an unencrypted PKCS#8 PEM block');
+  }
+
+  const privateKeyDer = pemToUint8Array(privateKeyPem);
+  const certChain = pemToUint8Arrays(certificateChainPem);
+
+  if (certChain.length === 0 || certChain.some((certificate) => certificate.length === 0)) {
+    throw new Error('Certificate chain PEM must contain at least one certificate');
+  }
+
+  const privateKey = await crypto.subtle.importKey(
+    'pkcs8',
+    privateKeyDer.buffer as ArrayBuffer,
+    {name: 'ECDSA', namedCurve: 'P-256'},
+    true,
+    ['sign']
+  );
+  const privateKeyJwk = await crypto.subtle.exportKey('jwk', privateKey);
+
+  if (!privateKeyJwk.d) {
+    throw new Error('Unable to read the P-256 private key');
+  }
+
+  const privateKeyBase64 = privateKeyJwk.d.replace(/-/g, '+').replace(/_/g, '/');
+  const rawPrivateKey = Uint8Array.from(
+    atob(`${privateKeyBase64}${'='.repeat((4 - (privateKeyBase64.length % 4)) % 4)}`),
+    (character) => character.charCodeAt(0)
+  );
+
+  if (rawPrivateKey.length !== 32) {
+    throw new Error('Private key must be an EC P-256 key');
+  }
+
+  const {offset, result} = asn1js.fromBER(certChain[0]);
+
+  if (offset === -1) {
+    throw new Error('Leaf certificate is not valid DER');
+  }
+
+  const leafCertificate = new pkijs.Certificate({schema: result});
+  const publicKeyDer = leafCertificate.subjectPublicKeyInfo.toSchema().toBER(false);
+  const publicKey = await crypto.subtle.importKey(
+    'spki',
+    publicKeyDer,
+    {name: 'ECDSA', namedCurve: 'P-256'},
+    false,
+    ['verify']
+  );
+  const challenge = crypto.getRandomValues(new Uint8Array(32));
+  const signature = await crypto.subtle.sign(
+    {name: 'ECDSA', hash: 'SHA-256'},
+    privateKey,
+    challenge
+  );
+  const keyMatchesCertificate = await crypto.subtle.verify(
+    {name: 'ECDSA', hash: 'SHA-256'},
+    publicKey,
+    signature,
+    challenge
+  );
+
+  if (!keyMatchesCertificate) {
+    throw new Error('Private key does not match the leaf certificate');
+  }
+
+  return {privateKey: rawPrivateKey, certChain};
+}

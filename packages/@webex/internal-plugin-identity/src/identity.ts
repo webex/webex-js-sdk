@@ -10,11 +10,16 @@ import {
   WEBEX_CA_INTEGRATION_ROOTS,
   WEBEX_CA_PRODUCTION_ROOTS,
 } from './constants';
-import type {IdentityCredentials, IdentityTrustAnchors} from './types';
+import type {
+  IdentityCredentials,
+  IdentityTrustAnchors,
+  UserIdentityCredentialsInput,
+} from './types';
 import {
   CERTIFICATE_RENEWAL_WINDOW_MS,
   generateCsr,
   isCertificateExpiringSoon,
+  parseUserIdentityCredentials,
   pemToUint8Arrays,
 } from './utils';
 
@@ -26,6 +31,7 @@ class Identity extends WebexPlugin {
   namespace = 'Identity';
   credentialsCache: Map<string, Promise<IdentityCredentials>>;
   private userIdentityRoots = '';
+  private userIdentityCredentials = new Map<string, Promise<IdentityCredentials>>();
 
   constructor(attrs = {}, options = {}) {
     super(attrs, options);
@@ -64,11 +70,56 @@ class Identity extends WebexPlugin {
   }
 
   /**
+   * Sets credentials for a contact. Pass undefined to resume CA-issued credentials for that contact.
+   * @param {string} contactId
+   * @param {UserIdentityCredentialsInput} credentials
+   * @returns {Promise<void>}
+   */
+  public setUserIdentityCredentials(
+    contactId: string,
+    credentials?: UserIdentityCredentialsInput
+  ): Promise<void> {
+    if (!contactId?.trim()) {
+      return Promise.reject(new Error('contactId is required to set user identity credentials'));
+    }
+
+    if (!credentials) {
+      this.userIdentityCredentials.delete(contactId);
+
+      return Promise.resolve();
+    }
+
+    const parsedCredentialsPromise = parseUserIdentityCredentials(
+      credentials.privateKeyPkcs8Pem,
+      credentials.certificateChainPem
+    );
+
+    this.userIdentityCredentials.set(contactId, parsedCredentialsPromise);
+
+    return parsedCredentialsPromise.then(
+      () => undefined,
+      (error) => {
+        if (this.userIdentityCredentials.get(contactId) === parsedCredentialsPromise) {
+          this.userIdentityCredentials.delete(contactId);
+        }
+
+        throw error;
+      }
+    );
+  }
+
+  /**
    * Returns credentials for the given contact, generating and caching them on first use.
    * @param {string} contactId
    * @returns {Promise<IdentityCredentials>}
    */
   getCredentials(contactId: string): Promise<IdentityCredentials> {
+    const userIdentityCredentials = this.userIdentityCredentials.get(contactId);
+
+    if (userIdentityCredentials) {
+      return userIdentityCredentials;
+    }
+
     const cachedCredentials = this.credentialsCache.get(contactId);
 
     if (cachedCredentials) {

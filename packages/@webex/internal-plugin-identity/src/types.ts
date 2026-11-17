@@ -7,6 +7,12 @@ export interface IdentityCredentials {
   certChain: Uint8Array[];
 }
 
+/** PEM-encoded credentials for a customer-provided user identity certificate. */
+export interface UserIdentityCredentialsInput {
+  privateKeyPkcs8Pem: string;
+  certificateChainPem: string;
+}
+
 export interface IdentityTrustAnchors {
   webexCaRoots?: string;
   /** PEM-encoded domain-name trust anchors. */
