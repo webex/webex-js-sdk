@@ -84,7 +84,7 @@ export default {
        *
        * @type {string}
        */
-      u2c: process.env.U2C_SERVICE_URL || 'https://u2c.wbx2.com/u2c/api/v1',
+      u2c: process.env.U2C_SERVICE_URL || 'https://u2c.svc.webex.com/u2c/api/v1',
     },
 
     /**

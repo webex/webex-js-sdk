@@ -40,16 +40,16 @@ Related context: [documentation index](../../docs/index.md) · [package agent in
 | ------------------------------------ | ----------- | ------------------ | ----------------------------- |
 | `module.has_tiers`                   | N/A         | No tier policy in this package | Tier                          |
 | `module.has_ui`                      | N/A         | No view or screen. The module transforms strings. | UI use-case flow              |
-| `module.crosses_service_boundaries`  | N/A         | No network or service call in `src/` | Cross-boundary use-case flow  |
+| `module.crosses_service_boundaries`  | N/A         | No network or service call in src/ | Cross-boundary use-case flow  |
 | `module.holds_client_state`          | N/A         | No stored client state | Client state model            |
 | `module.enforces_domain_rules`       | Applicable  | Tag, attribute, style, and URL-scheme allow-lists in `src/html.shim.js` | Business rules and invariants |
-| `module.is_concurrent_async`         | Applicable  | `escape`, `filter`, and `filterEscape` return promises | Concurrency and reactive flow |
+| `module.is_concurrent_async`         | Applicable  | escape, filter, and filterEscape return promises | Concurrency and reactive flow |
 | `module.owns_persistence`            | N/A         | No schema, store, or migration | Data, schema, and migration   |
 | `module.stateful_transitions`        | N/A         | No state machine | State machine                 |
 | `module.exposes_wire_protocol`       | N/A         | No wire protocol | Protocol and wire format      |
 | `module.ui_multi_screen`             | N/A         | No UI | UI flow                       |
 | `module.large_data_model`            | N/A         | Inputs are strings and plain allow-list objects | Data model                    |
-| `module.returns_caller_errors`       | Applicable  | `src/html.shim.js` throws `Error` for missing arguments and for an unremovable node | Caller-visible failure modes  |
+| `module.returns_caller_errors`       | Applicable  | `src/html.shim.js` throws Error for missing arguments and for an unremovable node | Caller-visible failure modes  |
 | `module.module_specific_conventions` | Applicable  | Node file must stay a noop filter; blocked schemes stay blocked | Module-specific rules         |
 | `module.published_package`           | Applicable  | Barrel in `src/index.js` is the published surface | Export stability              |
 | `module.embedded_in_host`            | N/A         | No host integration API | Host integration and theming  |

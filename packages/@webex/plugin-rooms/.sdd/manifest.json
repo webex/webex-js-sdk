@@ -1,0 +1,404 @@
+{
+  "manifest_version": 1,
+  "repository": {
+    "name": "@webex/plugin-rooms",
+    "purpose": "Public plugin registered as webex.rooms that manages Webex rooms (spaces) through the Webex REST API rooms resource (catalog service hydra): create POSTs rooms, get and remove take a room object or id, list resolves a webex-core Page, and update PUTs the whole room object. listWithReadStatus(maxRecent) and getWithReadStatus(roomId) wait for the postauth service catalog, read conversations from the internal conversation plugin, and resolve objects with the hydra room id, type direct or group, title, lastActivityDate, and lastSeenActivityDate, newest activity first. listen() builds a webhook-style event envelope, connects the Mercury socket, and turns conversation activities with the verbs create, update, lock, and unlock into created and updated events on webex.rooms. Importing the package also registers the conversation and mercury internal plugins. Nothing is cached or persisted.",
+    "category": "cat2-legacy",
+    "primary_languages": [
+      "javascript"
+    ]
+  },
+  "topology": "Orchestrator-plus-components",
+  "commands": {
+    "install": {
+      "command": "yarn",
+      "source_file": "../../../.github/workflows/deploy.yml",
+      "role": "install"
+    },
+    "prebuild": {
+      "command": "yarn prebuild:modules",
+      "source_file": "../../../CONTRIBUTING.md",
+      "role": "other"
+    },
+    "compile": {
+      "command": "yarn build",
+      "source_file": "package.json",
+      "role": "compile",
+      "verified_at": "2026-11-12T16:40:56Z"
+    },
+    "build": {
+      "command": "yarn build:src",
+      "source_file": "package.json",
+      "role": "package",
+      "verified_at": "2026-11-12T16:40:54Z"
+    },
+    "unit-test": "[NEEDS HUMAN INPUT] -- package.json defines no test:unit script and the package has no test/unit directory; its only spec, test/integration/spec/rooms.js, runs only under test:browser:broken, which currently bundles nothing. Add a unit suite and script before recording a command here.",
+    "lint": {
+      "command": "yarn test:style",
+      "source_file": "package.json",
+      "role": "lint",
+      "verified_at": "2026-11-12T16:41:05Z"
+    },
+    "browser-test": {
+      "command": "yarn test:browser:broken",
+      "source_file": "package.json",
+      "role": "other"
+    },
+    "deploy": {
+      "command": "yarn deploy:npm",
+      "source_file": "package.json",
+      "role": "deploy"
+    }
+  },
+  "toolchain": [
+    {
+      "name": "node",
+      "version": ">=18",
+      "origin": "repo-config",
+      "source_file": "package.json"
+    },
+    {
+      "name": "node",
+      "version": "22.14",
+      "origin": "repo-config",
+      "source_file": "../../../AGENTS.md"
+    },
+    {
+      "name": "node",
+      "version": "lts/jod",
+      "origin": "repo-config",
+      "source_file": "../../../.nvmrc"
+    },
+    {
+      "name": "node",
+      "version": "18.x",
+      "origin": "repo-config",
+      "source_file": "../../../package.json"
+    },
+    {
+      "name": "yarn",
+      "version": "3.4.1",
+      "origin": "repo-config",
+      "source_file": "../../../package.json"
+    },
+    {
+      "name": "babel",
+      "version": "^7.17.10",
+      "origin": "repo-config",
+      "source_file": "package.json"
+    },
+    {
+      "name": "eslint",
+      "version": "^8.24.0",
+      "origin": "repo-config",
+      "source_file": "package.json"
+    },
+    {
+      "name": "prettier",
+      "version": "^2.7.1",
+      "origin": "repo-config",
+      "source_file": "package.json"
+    }
+  ],
+  "quality_gates": {
+    "code_coverage": {
+      "origin": "none",
+      "declared_by": "rarajes2@cisco.com via the bootstrap questionnaire (generator check: package.json defines no test:unit or coverage script, the package has no test/unit directory, and jest.config.js re-exports @webex/jest-config-legacy, which sets no coverageThreshold)"
+    }
+  },
+  "coverage_status_definitions": {
+    "specced": ">=80% public surface specced, drift <5% - spec is authoritative",
+    "partial": "40-80% specced - spec is a hint, cross-check code",
+    "untracked": "<40% specced - code is the source of truth"
+  },
+  "spec_source_policy": {
+    "mode": "keep-separate",
+    "migrated_source_disposition": "retain",
+    "disposition_decided_by": "rarajes2@cisco.com",
+    "disposition_decided_at": "2026-11-12T16:45:00Z",
+    "decided_by": "rarajes2@cisco.com",
+    "decided_at": "2026-11-12T16:45:00Z",
+    "decision_record": "docs/adr/0001-retain-product-readme.md"
+  },
+  "spec_sources": [
+    {
+      "path": "README.md",
+      "scope": "repo",
+      "role": "reference-only",
+      "canonical": false,
+      "use_by_agents": "context-only",
+      "post_migration_action": "retain",
+      "deletion_status": "not-applicable",
+      "notes": "npm page, kept unchanged under keep-separate. It repeats its Install and Usage sections; its one example, webex.rooms.get(id), and its note that listen() needs spark:all and spark:kms match the code. It documents nothing about create, list, update, remove, the read-status methods, or the events. See docs/adr/0001-retain-product-readme.md."
+    }
+  ],
+  "modules": [
+    {
+      "path": "src",
+      "canonical_spec": "src/docs/README.md",
+      "coverage_status": "Partial",
+      "coverage_evidence": "Field coverage 100% (13/13) assessed 2026-11-12 by the generator; critical field coverage 7/7. The package has no unit tests: package.json defines no test:unit script and there is no test/unit directory, so none of MOD-001 to MOD-012 or INV-001 to INV-005 has running test evidence. The integration spec test/integration/spec/rooms.js holds 11 live-service cases (1 skipped) for create, get, list, update, remove, the read-status methods, and the created and updated events, but no package script runs it: test:browser:broken bundles nothing (isbot parse error, no case run, exit 0) and test:integration does not exist. build:src, build, and test:style exit 0 (3 warnings, 0 errors before this spec existed). Independent validation passed with warnings on 2026-11-12. No characterization baseline exists; the module remains Partial pending a unit suite, a characterization baseline, and promotion review.",
+      "last_assessed": "2026-11-12",
+      "contracts": {
+        "provides": [
+          "rooms-public-sdk"
+        ],
+        "requires": [
+          "hydra-rooms-http",
+          "webex-core-plugin-host",
+          "webex-core-page",
+          "webex-core-services",
+          "common-hydra-ids",
+          "common-event-envelope",
+          "conversation-internal-sdk",
+          "mercury-activity-events"
+        ]
+      },
+      "section_profile": {
+        "has_tiers": false,
+        "has_ui": false,
+        "crosses_service_boundaries": true,
+        "holds_client_state": false,
+        "enforces_domain_rules": true,
+        "is_concurrent_async": true,
+        "owns_persistence": false,
+        "stateful_transitions": false,
+        "exposes_wire_protocol": true,
+        "ui_multi_screen": false,
+        "large_data_model": false,
+        "returns_caller_errors": true,
+        "module_specific_conventions": true,
+        "published_package": true,
+        "embedded_in_host": false,
+        "has_design_tradeoff": true,
+        "resolved_by": "claude-code (code evidence; bootstrap questionnaire)",
+        "resolved_at": "2026-11-12T16:47:00Z",
+        "has_submodules": false,
+        "has_submodules_computed_by": "scripts/module_tree.py",
+        "has_submodules_computed_at": "2026-11-12T16:47:00Z"
+      }
+    }
+  ],
+  "contract_catalog": {
+    "index_path": "docs/architecture.md",
+    "definitions": {
+      "rooms-public-sdk": {
+        "kind": "sdk",
+        "publication": "published",
+        "source_kind": "repository-path",
+        "source": "package.json",
+        "summary": "Published npm package (public plugin). main is dist/index.js and devMain is src/index.js; no type declarations are published. Importing it registers the conversation and mercury internal plugins and then Rooms as public plugin 'rooms' with no config; the first registration of the name wins. The entry exports only the default Rooms class. webex.rooms exposes create, get, list, update, remove, listWithReadStatus, getWithReadStatus, and listen, triggers created and updated events, and carries the JSDoc-private onWebexApiEvent and getRoomEvent; specified in src/docs/README.md."
+      },
+      "hydra-rooms-http": {
+        "kind": "http",
+        "publication": "internal",
+        "source_kind": "external",
+        "source": "Webex REST API rooms resource (catalog service name hydra, reached through service: 'hydra' in src/rooms.js; route definitions are not in this repository)",
+        "summary": "POST /rooms with a room body; GET /rooms/<id> with optional query; GET /rooms/ with the caller's query object answering a paged {items} with Link headers; PUT /rooms/<id> with the whole room body; DELETE /rooms/<id> answering 204. Room ids are base64url of ciscospark://<cluster>/ROOM/<uuid>."
+      },
+      "webex-core-plugin-host": {
+        "kind": "sdk",
+        "publication": "published",
+        "source_kind": "external",
+        "source": "@webex/webex-core (workspace package; module spec consulted: packages/@webex/webex-core/src/docs/README.md MOD-013, MOD-014)",
+        "summary": "registerPlugin keys a public plugin by its raw name (rooms, first registration wins) and adds webex.<name> to later instances; WebexPlugin supplies webex, request, logger, and the ampersand event methods on, off, trigger, listenTo, and stopListening."
+      },
+      "webex-core-page": {
+        "kind": "sdk",
+        "publication": "published",
+        "source_kind": "external",
+        "source": "@webex/webex-core Page (module spec consulted: packages/@webex/webex-core/src/docs/README.md MOD-054)",
+        "summary": "new Page(res, webex) stores the body items and parsed Link headers; next and previous request the linked URL and resolve a new Page; iteration yields items in order."
+      },
+      "webex-core-services": {
+        "kind": "sdk",
+        "publication": "published",
+        "source_kind": "external",
+        "source": "@webex/webex-core services (no module spec coverage; code consulted: packages/@webex/webex-core/src/lib/services/services.js and service-catalog.js)",
+        "summary": "waitForCatalog('postauth') resolves when the post-authentication catalog is ready, starting catalog initialization when a supertoken exists and nothing is collecting, and otherwise rejects after 60 seconds; getClusterId(url) returns the catalog cluster id of a URL."
+      },
+      "common-hydra-ids": {
+        "kind": "sdk",
+        "publication": "published",
+        "source_kind": "external",
+        "source": "@webex/common (workspace package; module spec consulted: packages/@webex/common/src/docs/README.md MOD-006, INV-001, INV-005; code consulted: packages/@webex/common/src/uuid-utils.js and constants.js)",
+        "summary": "buildHydraRoomId and buildHydraPersonId encode base64url ciscospark://<cluster>/<TYPE>/<id>, PEOPLE always with cluster us; getHydraClusterString maps the internal US clusters to us and throws below three cluster parts; getHydraRoomType returns direct for the ONE_ON_ONE tag, else group; deconstructHydraId decodes an id into {id, type, cluster}; SDK_EVENT holds the activity verbs, tags, and external event names."
+      },
+      "common-event-envelope": {
+        "kind": "sdk",
+        "publication": "published",
+        "source_kind": "external",
+        "source": "@webex/common createEventEnvelope (module spec consulted: packages/@webex/common/src/docs/README.md MOD-011; code consulted: packages/@webex/common/src/event-envelope.js)",
+        "summary": "createEventEnvelope(webex, resource) fetches webex.people.get('me') once per instance and resolves {createdBy, orgId, resource, ownedBy: creator, status: active, created, data: {}}; when the identity lookup fails it resolves undefined instead of rejecting."
+      },
+      "conversation-internal-sdk": {
+        "kind": "sdk",
+        "publication": "published",
+        "source_kind": "external",
+        "source": "@webex/internal-plugin-conversation (workspace package; no module spec exists; code consulted: packages/@webex/internal-plugin-conversation/src/conversation.js)",
+        "summary": "Importing the package registers internal plugin conversation. list(options) sends the options as the query of the conversation service and resolves an array of conversations; get({id, cluster}, options) builds the conversation URL from the cluster and id, rejects with an Error when no URL can be found, and resolves one conversation with displayName, computedTitle, tags, url, and the activity dates."
+      },
+      "mercury-activity-events": {
+        "kind": "event",
+        "publication": "internal",
+        "source_kind": "external",
+        "source": "@webex/internal-plugin-mercury (workspace package; module spec consulted: packages/@webex/internal-plugin-mercury/src/docs/README.md MOD-001, MOD-002, MOD-009; code consulted: packages/@webex/internal-plugin-mercury/src/mercury.js)",
+        "summary": "Importing the package registers internal plugin mercury. connect() shares a connect in flight and resolves at once when connected; an inbound envelope with event type conversation.activity is emitted as event:conversation.activity with data.activity; a listener error is caught and logged by _emit."
+      }
+    }
+  },
+  "spec_policy": {
+    "require_what_and_why": true,
+    "require_provenance": true,
+    "protected_specs": [
+      "src/docs/README.md"
+    ]
+  },
+  "validation": {
+    "generator_runtime": "claude-code",
+    "generator_model": "claude-opus-5-5",
+    "generator_runtime_source": "host-metadata",
+    "source_commit": "30598f6e9bb411cc63b908c50021d69b3c86907d",
+    "minimum_independence": "different-runtime",
+    "blocking_severities": [
+      "Blocking"
+    ],
+    "validator_runtime": "01a1d0ab-6aa3-7f13-92ae-6e34d71a0b17",
+    "validator_runtime_source": "invocation-input",
+    "runtime_fallback_tier": "different-runtime"
+  },
+  "layout": {
+    "sdd_root": ".sdd",
+    "docs_root": "docs",
+    "agent_entry_path": "AGENTS.md",
+    "standing_docs_root": "docs",
+    "spec_index_path": "docs/specs/README.md",
+    "module_docs_strategy": "source-local",
+    "module_docs_relative_path": "docs/README.md",
+    "module_docs_decision": {
+      "basis": "repo-standards-default",
+      "reason": "No module-local documentation existed. The source-local default gives src/docs/README.md. test:style runs eslint ./src/**/*.*, and the shared @webex/eslint-config-legacy ignore patterns exclude docs/** and *.md; build:src processes -js -ts only, so Markdown under src/ does not enter dist/.",
+      "decided_by": "rarajes2@cisco.com (bootstrap questionnaire)",
+      "decided_at": "2026-11-12T16:47:00Z"
+    },
+    "repo_context_decision": {
+      "path": ".repo-context.json",
+      "schema_path": "schemas/repo-context.schema.json",
+      "action": "create",
+      "schema_action": "create",
+      "reason": "Neither the operational context nor its schema existed in this package. The context is created from package evidence and the schema is copied from the repository-root .sdd/templates/repo-standards/schemas/repo-context.schema.json.",
+      "decided_by": "rarajes2@cisco.com (bootstrap questionnaire)",
+      "decided_at": "2026-11-12T16:47:00Z"
+    },
+    "artifact_decisions": [
+      {
+        "path": "docs/service.md",
+        "action": "omit",
+        "reason": "Library package, not a deployable service. package.json has no start script, container, or deployment descriptor.",
+        "decided_by": "claude-code (code evidence)",
+        "decided_at": "2026-11-12T16:47:00Z"
+      },
+      {
+        "path": "mkdocs.yml",
+        "action": "omit",
+        "reason": "No package-level documentation site exists. Documentation publishing stays with the workspace.",
+        "decided_by": "claude-code (code evidence)",
+        "decided_at": "2026-11-12T16:47:00Z"
+      },
+      {
+        "path": "api-specs/openapi.yaml",
+        "action": "omit",
+        "reason": "The package serves no HTTP routes. It is a client of the Webex REST API rooms resource; its published surface is the npm export described by rooms-public-sdk.",
+        "decided_by": "claude-code (code evidence)",
+        "decided_at": "2026-11-12T16:47:00Z"
+      },
+      {
+        "path": "SECURITY.md",
+        "action": "omit",
+        "reason": "No package-level security policy exists. The workspace owns security policy, and a per-package copy would duplicate it; security architecture is described in docs/architecture.md.",
+        "decided_by": "claude-code (code evidence)",
+        "decided_at": "2026-11-12T16:47:00Z"
+      },
+      {
+        "path": "CONTRIBUTING.md",
+        "action": "omit",
+        "reason": "Contribution instructions are owned at the workspace root CONTRIBUTING.md.",
+        "decided_by": "claude-code (code evidence)",
+        "decided_at": "2026-11-12T16:47:00Z"
+      },
+      {
+        "path": "CHANGELOG.md",
+        "action": "omit",
+        "reason": "Changelog generation is owned at the workspace root. This package has no changelog file.",
+        "decided_by": "claude-code (code evidence)",
+        "decided_at": "2026-11-12T16:47:00Z"
+      },
+      {
+        "path": "CTO_CHECKLIST.yml",
+        "action": "omit",
+        "reason": "The CTO readiness checklist applies to deployable services. This package is a library.",
+        "decided_by": "claude-code (code evidence)",
+        "decided_at": "2026-11-12T16:47:00Z"
+      },
+      {
+        "path": "schemas/cto-checklist.schema.json",
+        "action": "omit",
+        "reason": "Omitted together with CTO_CHECKLIST.yml.",
+        "decided_by": "claude-code (code evidence)",
+        "decided_at": "2026-11-12T16:47:00Z"
+      }
+    ],
+    "template_roots": {
+      "canonical": ".sdd/templates/repo-standards"
+    },
+    "contract_index_path": "docs/architecture.md",
+    "repo_skills_root": ".sdd/skills",
+    "monorepo_package": {
+      "package_path": "packages/@webex/plugin-rooms",
+      "root_manifest_path": "../../../.sdd/manifest.json",
+      "templates_root_path": "../../../.sdd/templates/repo-standards"
+    }
+  },
+  "tooling": {
+    "sdlc_skills": {
+      "source_ref": "repo-annotation@2.3.1"
+    }
+  },
+  "coverage_ratchet": {
+    "enabled": true,
+    "waivers": []
+  },
+  "substrate": {
+    "source": "WebexTools/repo-standards@d89a7fe59126ae3ad9bac9ca352aa7f12b4c85dc",
+    "consumed": [
+      "@webex/eslint-config-legacy via .eslintrc.js",
+      "@webex/babel-config-legacy via babel.config.js",
+      "@webex/jest-config-legacy via jest.config.js (no unit spec uses it)",
+      "@webex/legacy-tools build and test runner via package.json",
+      "package README.md (context only)",
+      "Repo Standards templates at the monorepo root .sdd/templates/repo-standards, referred to through layout.monorepo_package.templates_root_path (this package holds no templates)"
+    ],
+    "compliance_tier": "baseline"
+  },
+  "section_profiles": {
+    "repo": {
+      "owns_datastore": false,
+      "holds_client_state": false,
+      "components_interact": true,
+      "domain_data_across_components": true,
+      "caches_data": false,
+      "observability_convention": false,
+      "deploys_to_infra": false,
+      "shared_base_libs": true,
+      "is_monorepo": false,
+      "multi_platform": false,
+      "published_package": true,
+      "embedded_in_host": false,
+      "cross_repo_deps_material": true,
+      "security_arch_warranted": true,
+      "exposes_commands_or_artifacts": true
+    },
+    "resolved_by": "claude-code (code evidence; bootstrap questionnaire)",
+    "resolved_at": "2026-11-12T16:47:00Z"
+  }
+}

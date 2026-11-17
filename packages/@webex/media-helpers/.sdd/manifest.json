@@ -8,7 +8,7 @@
       "typescript"
     ]
   },
-  "topology": "Single-repo",
+  "topology": "Orchestrator-plus-components",
   "commands": {
     "install": {
       "command": "yarn install",
@@ -315,7 +315,12 @@
     },
     "contract_index_path": "docs/architecture.md",
     "repo_skills_root": ".sdd/skills",
-    "module_docs_root": "docs"
+    "module_docs_root": "docs",
+    "monorepo_package": {
+      "package_path": "packages/@webex/media-helpers",
+      "root_manifest_path": "../../../.sdd/manifest.json",
+      "templates_root_path": "../../../.sdd/templates/repo-standards"
+    }
   },
   "substrate": {
     "source": "WebexTools/repo-standards",
@@ -346,5 +351,10 @@
     },
     "resolved_by": "claude-code/claude-opus-5 (host metadata; bootstrap questionnaire)",
     "resolved_at": "2026-09-29T13:33:21Z"
+  },
+  "tooling": {
+    "sdlc_skills": {
+      "source_ref": "repo-annotation@2.3.1"
+    }
   }
 }

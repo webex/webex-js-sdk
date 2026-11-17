@@ -1,0 +1,607 @@
+{
+  "$schema": "./schemas/repo-context.schema.json",
+  "version": 1,
+  "repository": {
+    "name": "@webex/calling",
+    "purpose": "TypeScript SDK package for Webex Calling clients, registration, call control and media, call history and recordings, settings, contacts, voicemail, telemetry, and Mobius WebSocket transport."
+  },
+  "commands": {
+    "install": "yarn",
+    "compile": "yarn workspace @webex/calling compile",
+    "build": "yarn workspace @webex/calling build:src",
+    "unit-test": "yarn workspace @webex/calling test:unit",
+    "lint": "yarn workspace @webex/calling test:style",
+    "e2e": "yarn workspace @webex/calling test:e2e",
+    "docs-check": "yarn workspace @webex/calling docs",
+    "docs-build": "yarn workspace @webex/calling build:docs",
+    "clean": "yarn workspace @webex/calling prebuild",
+    "fix-lint": "yarn workspace @webex/calling fix:lint",
+    "format": "yarn workspace @webex/calling fix:prettier",
+    "deploy": "yarn workspace @webex/calling deploy:npm"
+  },
+  "public_interfaces": [
+    {
+      "name": "@webex/calling package exports",
+      "kind": "package_export",
+      "source": "src/index.ts",
+      "entrypoints": [
+        "import {createClient, createCallHistoryClient, createCallSettingsClient, createContactsClient, createVoicemailClient, createCallRecordingClient, createMicrophoneStream, Logger, NoiseReductionEffect} from '@webex/calling'"
+      ],
+      "audience": "Web applications and Webex SDK consumers that add Webex Calling",
+      "notes": "src/index.ts also re-exports the event key enums, error classes, call, line, settings, history, recording, contacts, and voicemail types. Built to dist/module/index.js with declarations in dist/types/index.d.ts. TypeDoc reads src/api.ts."
+    },
+    {
+      "name": "Calling client",
+      "kind": "sdk_api",
+      "source": "src/CallingClient/CallingClient.ts",
+      "entrypoints": [
+        "await createClient(webex, config)",
+        "callingClient.getLines()",
+        "line.register()",
+        "line.makeCall(callDetails)"
+      ],
+      "audience": "Applications that place and receive Webex Calling calls",
+      "notes": "createClient is async and resolves an ICallingClient. Behavior is specified in src/CallingClient/docs/README.md and its line, calling, and registration child specs."
+    },
+    {
+      "name": "Feature clients",
+      "kind": "sdk_api",
+      "source": "src/index.ts",
+      "entrypoints": [
+        "createCallHistoryClient(webex, logger)",
+        "createCallRecordingClient(webex, logger)",
+        "createCallSettingsClient(webex, logger)",
+        "createContactsClient(webex, logger)",
+        "createVoicemailClient(webex, logger)"
+      ],
+      "audience": "Applications that read call history, recordings, settings, contacts, or voicemail",
+      "notes": "Each factory returns a client for the resolved calling backend (Webex Calling, UCM, or BroadWorks). Behavior is specified in each module's docs/README.md."
+    },
+    {
+      "name": "package scripts",
+      "kind": "npm_scripts",
+      "source": "package.json",
+      "entrypoints": [
+        "yarn workspace @webex/calling build:src",
+        "yarn workspace @webex/calling test:unit",
+        "yarn workspace @webex/calling test:style",
+        "yarn workspace @webex/calling docs"
+      ],
+      "audience": "Package maintainers and agents",
+      "notes": "Run from anywhere in the webex-js-sdk workspace; yarn workspace @webex/calling selects this package."
+    }
+  ],
+  "source_of_truth": [
+    {
+      "surface": "calling SDK implementation",
+      "paths": [
+        "src"
+      ],
+      "generated_artifacts": [
+        "dist"
+      ],
+      "refresh_with": [
+        "yarn workspace @webex/calling build:src"
+      ],
+      "validate_with": [
+        "yarn workspace @webex/calling test:unit",
+        "yarn workspace @webex/calling test:style"
+      ]
+    },
+    {
+      "surface": "module specifications",
+      "paths": [
+        "src/CallHistory/docs/README.md",
+        "src/CallRecording/docs/README.md",
+        "src/CallSettings/docs/README.md",
+        "src/CallingClient/docs/README.md",
+        "src/CallingClient/calling/docs/README.md",
+        "src/CallingClient/calling/CallerId/docs/README.md",
+        "src/CallingClient/line/docs/README.md",
+        "src/CallingClient/registration/docs/README.md",
+        "src/Contacts/docs/README.md",
+        "src/Metrics/docs/README.md",
+        "src/SDKConnector/docs/README.md",
+        "src/Voicemail/docs/README.md",
+        "src/mobius-socket/docs/README.md"
+      ],
+      "generated_artifacts": [],
+      "refresh_with": [
+        "update alongside the behavior change in the same commit"
+      ],
+      "validate_with": [
+        "spec-validator on an independent runtime"
+      ]
+    }
+  ],
+  "generated_artifacts": [
+    {
+      "path": "dist",
+      "generated_from": "src",
+      "refresh_with": "yarn workspace @webex/calling build:src"
+    },
+    {
+      "path": "../../docs/calling",
+      "generated_from": "src/api.ts",
+      "refresh_with": "yarn workspace @webex/calling build:docs"
+    },
+    {
+      "path": "../../.sdd/templates/repo-standards/template-map.json",
+      "generated_from": "WebexTools/repo-standards@d89a7fe59126ae3ad9bac9ca352aa7f12b4c85dc",
+      "refresh_with": "Run the setup script of the active Repo Annotation installation against the monorepo root"
+    }
+  ],
+  "validation_matrix": [
+    {
+      "paths": [
+        "src/**"
+      ],
+      "minimum": [
+        "yarn workspace @webex/calling test:unit"
+      ],
+      "recommended": [
+        "yarn workspace @webex/calling test:style",
+        "yarn workspace @webex/calling build:src"
+      ]
+    },
+    {
+      "paths": [
+        "src/index.ts",
+        "src/api.ts",
+        "package.json",
+        "tsconfig.json"
+      ],
+      "minimum": [
+        "yarn workspace @webex/calling build:src"
+      ],
+      "recommended": [
+        "yarn workspace @webex/calling docs"
+      ]
+    },
+    {
+      "paths": [
+        "playwright/**",
+        "playwright.config.ts"
+      ],
+      "minimum": [
+        "yarn workspace @webex/calling test:e2e"
+      ],
+      "recommended": [
+        "run with approved test accounts only"
+      ]
+    }
+  ],
+  "change_impact": [
+    {
+      "paths": [
+        "src/index.ts",
+        "src/api.ts"
+      ],
+      "affects": [
+        "the published @webex/calling import surface",
+        "TypeDoc output"
+      ],
+      "refresh_with": [
+        "yarn workspace @webex/calling build:src",
+        "yarn workspace @webex/calling docs"
+      ],
+      "validate_with": [
+        "yarn workspace @webex/calling test:unit"
+      ],
+      "avoid_direct_edits": [
+        "dist"
+      ],
+      "notes": "Removing or renaming an export is a breaking change for consumers."
+    },
+    {
+      "paths": [
+        "src/CallingClient/registration/register.ts",
+        "src/CallingClient/calling/call.ts"
+      ],
+      "affects": [
+        "registration, failover, and keepalive",
+        "call and ROAP state machines and media"
+      ],
+      "refresh_with": [
+        "yarn workspace @webex/calling build:src"
+      ],
+      "validate_with": [
+        "yarn workspace @webex/calling test:unit"
+      ],
+      "avoid_direct_edits": [
+        "dist"
+      ],
+      "notes": "State-machine and timer changes need unit tests with fake timers; see the registration and calling module specs."
+    },
+    {
+      "paths": [
+        "src/SDKConnector/index.ts",
+        "src/common/Utils.ts"
+      ],
+      "affects": [
+        "every module's access to the Webex SDK",
+        "calling backend resolution"
+      ],
+      "refresh_with": [
+        "yarn workspace @webex/calling build:src"
+      ],
+      "validate_with": [
+        "yarn workspace @webex/calling test:unit"
+      ],
+      "avoid_direct_edits": [
+        "dist"
+      ],
+      "notes": "Shared by every module."
+    }
+  ],
+  "glossary": [
+    {
+      "term": "CallingClient",
+      "definition": "Top-level calling orchestration client that creates lines and coordinates registration/call lifecycle",
+      "notes": "Not the same as an individual Call. src/CallingClient/"
+    },
+    {
+      "term": "Line",
+      "definition": "A telephony line exposed to consumers for registration and call operations",
+      "notes": "Owns a Registration instance. src/CallingClient/line/"
+    },
+    {
+      "term": "Call",
+      "definition": "One inbound/outbound call lifecycle and its signaling/media state",
+      "notes": "Managed by CallManager. src/CallingClient/calling/"
+    },
+    {
+      "term": "Registration",
+      "definition": "Mobius device registration, keepalive, failover/failback, and cleanup lifecycle",
+      "notes": "Internal to Line. src/CallingClient/registration/"
+    },
+    {
+      "term": "Mobius",
+      "definition": "Webex Calling signaling/backend service reached over HTTP or WebSocket",
+      "notes": "Not Mercury. src/mobius-socket/ and src/CallingClient/"
+    },
+    {
+      "term": "Mercury",
+      "definition": "Webex real-time event channel used for session/recording events",
+      "notes": "The host Webex SDK owns the connection. src/SDKConnector/ and src/Events/types.ts"
+    },
+    {
+      "term": "Janus",
+      "definition": "Webex call-history service",
+      "notes": "Remote service, not local storage. src/CallHistory/"
+    },
+    {
+      "term": "ROAP",
+      "definition": "WebRTC offer/answer protocol used by the media engine",
+      "notes": "Media signaling state machine. src/CallingClient/calling/"
+    },
+    {
+      "term": "Calling backend",
+      "definition": "Resolved WXC, UCM, or BroadWorks behavior/provider",
+      "notes": "Capability matrices differ. src/common/types.ts and src/common/Utils.ts"
+    },
+    {
+      "term": "SDKConnector",
+      "definition": "Singleton adapter around the host Webex SDK",
+      "notes": "Can be initialized once. src/SDKConnector/"
+    },
+    {
+      "term": "WXC",
+      "definition": "Webex Calling",
+      "notes": "Cloud calling backend"
+    },
+    {
+      "term": "UCM",
+      "definition": "Unified Communications Manager",
+      "notes": "Enterprise calling backend"
+    },
+    {
+      "term": "WDM",
+      "definition": "Webex Device Management",
+      "notes": "Device/config/service discovery"
+    },
+    {
+      "term": "SCIM",
+      "definition": "System for Cross-domain Identity Management",
+      "notes": "People/contact resolution protocol"
+    },
+    {
+      "term": "KMS",
+      "definition": "Key Management Service",
+      "notes": "Contact-field encryption/decryption"
+    },
+    {
+      "term": "DND",
+      "definition": "Do Not Disturb",
+      "notes": "User call setting"
+    },
+    {
+      "term": "CFA",
+      "definition": "Call Forward Always",
+      "notes": "User call-forwarding setting"
+    }
+  ],
+  "evidence_rules": [
+    {
+      "claim_category": "command_name",
+      "sources": [
+        "package.json"
+      ],
+      "requirement": "The script must exist in package.json scripts; package scripts run through yarn workspace @webex/calling followed by the script name.",
+      "notes": "The workspace-root install command (yarn) comes from the deploy workflow."
+    },
+    {
+      "claim_category": "import_path",
+      "sources": [
+        "src/index.ts",
+        "package.json"
+      ],
+      "requirement": "Only names exported by src/index.ts are public imports.",
+      "notes": "src/api.ts is the TypeDoc entry and must stay aligned with src/index.ts."
+    },
+    {
+      "claim_category": "behavior_claim",
+      "sources": [
+        "src"
+      ],
+      "requirement": "Ground every behavioral claim in source or co-located test evidence.",
+      "notes": "Commit history is not an evidence source for this package."
+    }
+  ],
+  "negative_guidance": [
+    {
+      "rule": "Do not log tokens, credentials, or personal data.",
+      "why": "Log lines reach the host console and support logs; see the package architecture security sections."
+    },
+    {
+      "rule": "Do not lower or bypass the jest.config.js coverage thresholds.",
+      "why": "test:unit enforces them locally and in the pull-request workflow."
+    },
+    {
+      "rule": "Do not recreate ai-docs folders or documentation outside the manifest-routed paths.",
+      "why": "docs/adr/0001-migrate-ai-docs-to-repo-standards.md retired them so each fact has one canonical home."
+    }
+  ],
+  "confidence_policy": {
+    "high": {
+      "action": "update",
+      "expectation": "Source and co-located unit tests both support the change."
+    },
+    "medium": {
+      "action": "narrow-scope",
+      "expectation": "Only source evidence exists. Pin current behavior with a characterization test before modifying."
+    },
+    "low": {
+      "action": "noop",
+      "expectation": "Neither source nor tests settle the question, for example remote Mobius or Janus server behavior. Stop and report the gap."
+    }
+  },
+  "repository_topology": {
+    "main_entrypoints": [
+      {
+        "name": "package entry",
+        "path": "src/index.ts",
+        "purpose": "Value and type exports of the SDK",
+        "notes": "Built to dist/module/index.js and dist/types/index.d.ts."
+      },
+      {
+        "name": "TypeDoc entry",
+        "path": "src/api.ts",
+        "purpose": "API reference documentation exports",
+        "notes": "Read by yarn workspace @webex/calling docs and yarn build:docs."
+      }
+    ],
+    "workspace_packages": [
+      {
+        "name": "@webex/calling",
+        "paths": [
+          "src",
+          "test",
+          "playwright"
+        ],
+        "notes": "13 modules; this SDD root is the package directory packages/calling inside the webex-js-sdk monorepo."
+      }
+    ],
+    "source_surfaces": [
+      {
+        "name": "src/CallHistory",
+        "paths": [
+          "src/CallHistory"
+        ],
+        "notes": "Specified at src/CallHistory/docs/README.md."
+      },
+      {
+        "name": "src/CallRecording",
+        "paths": [
+          "src/CallRecording"
+        ],
+        "notes": "Specified at src/CallRecording/docs/README.md."
+      },
+      {
+        "name": "src/CallSettings",
+        "paths": [
+          "src/CallSettings"
+        ],
+        "notes": "Specified at src/CallSettings/docs/README.md."
+      },
+      {
+        "name": "src/CallingClient",
+        "paths": [
+          "src/CallingClient"
+        ],
+        "notes": "Specified at src/CallingClient/docs/README.md."
+      },
+      {
+        "name": "src/CallingClient/calling",
+        "paths": [
+          "src/CallingClient/calling"
+        ],
+        "notes": "Specified at src/CallingClient/calling/docs/README.md."
+      },
+      {
+        "name": "src/CallingClient/calling/CallerId",
+        "paths": [
+          "src/CallingClient/calling/CallerId"
+        ],
+        "notes": "Specified at src/CallingClient/calling/CallerId/docs/README.md."
+      },
+      {
+        "name": "src/CallingClient/line",
+        "paths": [
+          "src/CallingClient/line"
+        ],
+        "notes": "Specified at src/CallingClient/line/docs/README.md."
+      },
+      {
+        "name": "src/CallingClient/registration",
+        "paths": [
+          "src/CallingClient/registration"
+        ],
+        "notes": "Specified at src/CallingClient/registration/docs/README.md."
+      },
+      {
+        "name": "src/Contacts",
+        "paths": [
+          "src/Contacts"
+        ],
+        "notes": "Specified at src/Contacts/docs/README.md."
+      },
+      {
+        "name": "src/Metrics",
+        "paths": [
+          "src/Metrics"
+        ],
+        "notes": "Specified at src/Metrics/docs/README.md."
+      },
+      {
+        "name": "src/SDKConnector",
+        "paths": [
+          "src/SDKConnector"
+        ],
+        "notes": "Specified at src/SDKConnector/docs/README.md."
+      },
+      {
+        "name": "src/Voicemail",
+        "paths": [
+          "src/Voicemail"
+        ],
+        "notes": "Specified at src/Voicemail/docs/README.md."
+      },
+      {
+        "name": "src/mobius-socket",
+        "paths": [
+          "src/mobius-socket"
+        ],
+        "notes": "Specified at src/mobius-socket/docs/README.md."
+      },
+      {
+        "name": "shared package code",
+        "paths": [
+          "src/common",
+          "src/Errors",
+          "src/Events",
+          "src/Logger"
+        ],
+        "notes": "No module spec; described in docs/architecture.md."
+      }
+    ],
+    "generated_surfaces": [
+      {
+        "name": "build output",
+        "paths": [
+          "dist"
+        ],
+        "generated_from": "src",
+        "refresh_with": "yarn workspace @webex/calling build:src",
+        "notes": "Produced by tsc. Do not edit by hand."
+      }
+    ],
+    "sync_paths": [
+      {
+        "source": "WebexTools/repo-standards@d89a7fe59126ae3ad9bac9ca352aa7f12b4c85dc",
+        "targets": [
+          "../../.sdd/templates/repo-standards"
+        ],
+        "mechanism": "Setup script of the active Repo Annotation installation",
+        "notes": "The package holds no templates. It refers to the monorepo root snapshot at ../../.sdd/templates/repo-standards through layout.monorepo_package.templates_root_path in .sdd/manifest.json."
+      }
+    ],
+    "validation_entrypoints": [
+      {
+        "name": "unit tests",
+        "command": "yarn workspace @webex/calling test:unit",
+        "scope": "src",
+        "notes": "Jest over co-located src/**/*.test.ts with the jest.config.js coverage thresholds."
+      },
+      {
+        "name": "lint",
+        "command": "yarn workspace @webex/calling test:style",
+        "scope": "src",
+        "notes": "eslint over src/**/*.ts with the workspace root .eslintrc.js."
+      },
+      {
+        "name": "docs check",
+        "command": "yarn workspace @webex/calling docs",
+        "scope": "src/api.ts",
+        "notes": "TypeDoc without output."
+      }
+    ]
+  },
+  "surface_owners": [
+    {
+      "surface": "package implementation and specifications",
+      "owner": "@webex/web-sdk",
+      "edit_boundary": "The monorepo .github/CODEOWNERS has no entry for packages/calling, so the default * rule applies."
+    }
+  ],
+  "do_not_edit": [
+    "dist",
+    "../../.sdd/templates/repo-standards"
+  ],
+  "marker_scopes": {
+    "sdd": [
+      ".sdd/manifest.json",
+      "docs",
+      "src/CallHistory/docs/README.md",
+      "src/CallRecording/docs/README.md",
+      "src/CallSettings/docs/README.md",
+      "src/CallingClient/docs/README.md",
+      "src/CallingClient/calling/docs/README.md",
+      "src/CallingClient/calling/CallerId/docs/README.md",
+      "src/CallingClient/line/docs/README.md",
+      "src/CallingClient/registration/docs/README.md",
+      "src/Contacts/docs/README.md",
+      "src/Metrics/docs/README.md",
+      "src/SDKConnector/docs/README.md",
+      "src/Voicemail/docs/README.md",
+      "src/mobius-socket/docs/README.md"
+    ]
+  },
+  "fallback_rules": [
+    "When source and tests disagree, code is the referee and the disagreement is recorded rather than silently resolved.",
+    "When neither source nor tests settle a question, report it as a gap instead of inferring.",
+    "Commit history is not a valid rationale source for this package."
+  ],
+  "downstream_context_pack": {
+    "required_human_surfaces": [
+      "README.md",
+      "docs/index.md",
+      "docs/architecture.md",
+      "docs/getting-started.md"
+    ],
+    "required_agent_operational_surfaces": [
+      "AGENTS.md",
+      "docs/specs/README.md"
+    ],
+    "required_machine_readable_surface": ".sdd/manifest.json",
+    "recommended_machine_readable_sections": [
+      "public_interfaces",
+      "change_impact",
+      "glossary",
+      "evidence_rules",
+      "negative_guidance",
+      "confidence_policy",
+      "repository_topology"
+    ]
+  }
+}

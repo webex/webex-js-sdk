@@ -1,0 +1,580 @@
+{
+  "$schema": "./schemas/repo-context.schema.json",
+  "version": 1,
+  "repository": {
+    "name": "@webex/plugin-meetings",
+    "purpose": "A Webex JavaScript SDK plugin that manages meeting discovery, lifecycle, realtime state, participants, media, and in-meeting capabilities."
+  },
+  "commands": {
+    "install": "yarn",
+    "prebuild": "yarn prebuild:modules",
+    "compile": "yarn workspace @webex/plugin-meetings build:src",
+    "build": "yarn workspace @webex/plugin-meetings build",
+    "unit-test": "yarn workspace @webex/plugin-meetings test:unit",
+    "lint": "yarn workspace @webex/plugin-meetings test:style",
+    "browser-test": "yarn workspace @webex/plugin-meetings test:browser",
+    "deploy": "yarn workspace @webex/plugin-meetings deploy:npm",
+    "build-assets": "yarn workspace @webex/plugin-meetings build:assets",
+    "node-install": "nvm install 22.14",
+    "node-use": "nvm use 22.14"
+  },
+  "public_interfaces": [
+    {
+      "name": "@webex/plugin-meetings package entry",
+      "kind": "package_export",
+      "source": "src/index.ts",
+      "entrypoints": [
+        "import '@webex/plugin-meetings'",
+        "import {Meeting, CONSTANTS, REACTIONS, MeetingInfoV2, RemoteMedia, TriggerProxy, getAIEnablementApprover} from '@webex/plugin-meetings'",
+        "import {createMicrophoneStream, createCameraStream, createDisplayStream} from '@webex/plugin-meetings'"
+      ],
+      "audience": "applications and the webex SDK bundles",
+      "notes": "package.json main is dist/index.js and types dist/types/index.d.ts, both built from src/index.ts. Importing it registers the meetings plugin and three request interceptors and loads @webex/internal-plugin-identity. A symbol below src/ is public only when this entry exports it or a public object such as webex.meetings or Meeting exposes it. Contract IDs plugin-meetings-sdk and meetings-plugin in .sdd/manifest.json."
+    },
+    {
+      "name": "webex.meetings and Meeting objects",
+      "kind": "plugin_api",
+      "source": "src/meetings/index.ts",
+      "entrypoints": [
+        "webex.meetings.register()",
+        "webex.meetings.unregister()",
+        "webex.meetings.create(destination, type)",
+        "webex.meetings.getAllMeetings()",
+        "webex.meetings.fetchSitePreferencesMeViaSite(options)",
+        "meeting.join(options)",
+        "meeting.addMedia(options)",
+        "meeting.leave()"
+      ],
+      "audience": "applications",
+      "notes": "Meetings owns registration, discovery, and the meeting collection; Meeting (src/meeting/index.ts) owns one meeting's lifecycle, media, controls, and events. Feature controllers (breakouts, simultaneousInterpretation, annotation, aiEnableRequest, webinar, members) hang off Meeting. Contract IDs meetings-collection-api, meeting-api and the feature *-api IDs."
+    },
+    {
+      "name": "in-process events",
+      "kind": "event_names",
+      "source": "src/constants.ts",
+      "entrypoints": [
+        "webex.meetings.on(EVENT_TRIGGERS.MEETING_ADDED, handler)",
+        "meeting.on(EVENT_TRIGGERS.MEDIA_READY, handler)",
+        "meeting.members.on(EVENT_TRIGGERS.MEMBERS_UPDATE, handler)"
+      ],
+      "audience": "applications",
+      "notes": "EVENT_TRIGGERS plus the BREAKOUTS.EVENTS, INTERPRETATION.EVENTS, and AI_ENABLE_REQUEST.EVENTS families, the annotation constants in src/annotation/constants.ts, and the reachability inline literals. The full emitted-event inventory, the declared-but-not-emitted list, and payload catalogs are in docs/architecture.md Public and consumer surfaces. Contract ID meetings-events."
+    },
+    {
+      "name": "package scripts",
+      "kind": "npm_scripts",
+      "source": "package.json",
+      "entrypoints": [
+        "build",
+        "build:src",
+        "build:assets",
+        "test:unit",
+        "test:style",
+        "test:browser",
+        "deploy:npm"
+      ],
+      "audience": "contributors and CI",
+      "notes": "build:src compiles src to dist with webex-legacy-tools and then runs build, which emits dist/types with tsc and runs build:assets to copy assets to dist/assets. test:unit runs mocha through webex-legacy-tools with no coverage threshold. test:browser runs karma over test/integration/spec. test:broken chains style, unit, integration, and browser runs and is not a manifest command."
+    }
+  ],
+  "source_of_truth": [
+    {
+      "surface": "plugin implementation",
+      "paths": [
+        "src/index.ts",
+        "src/config.ts",
+        "src/constants.ts",
+        "src/meetings",
+        "src/meeting",
+        "src/common"
+      ],
+      "generated_artifacts": [
+        "dist"
+      ],
+      "refresh_with": [
+        "yarn workspace @webex/plugin-meetings build:src"
+      ],
+      "validate_with": [
+        "yarn workspace @webex/plugin-meetings test:unit",
+        "yarn workspace @webex/plugin-meetings test:style"
+      ]
+    },
+    {
+      "surface": "runtime static assets",
+      "paths": [
+        "assets"
+      ],
+      "generated_artifacts": [
+        "dist/assets"
+      ],
+      "refresh_with": [
+        "yarn workspace @webex/plugin-meetings build"
+      ],
+      "validate_with": [
+        "yarn workspace @webex/plugin-meetings test:unit"
+      ]
+    },
+    {
+      "surface": "architecture and contract index",
+      "paths": [
+        "docs/architecture.md"
+      ],
+      "generated_artifacts": [],
+      "refresh_with": [
+        "update alongside a change to package boundaries, exports, events, or dependencies in the same commit"
+      ],
+      "validate_with": [
+        "spec-validator on an independent runtime"
+      ]
+    },
+    {
+      "surface": "module specifications",
+      "paths": [
+        "docs/specs/README.md",
+        "src/meetings/docs/README.md",
+        "src/meeting/docs/README.md"
+      ],
+      "generated_artifacts": [],
+      "refresh_with": [
+        "update the docs/README.md beside the changed module in the same commit as the behavior change"
+      ],
+      "validate_with": [
+        "spec-validator on an independent runtime"
+      ]
+    }
+  ],
+  "generated_artifacts": [
+    {
+      "path": "dist",
+      "generated_from": "src",
+      "refresh_with": "yarn workspace @webex/plugin-meetings build:src"
+    },
+    {
+      "path": "dist/assets",
+      "generated_from": "assets",
+      "refresh_with": "yarn workspace @webex/plugin-meetings build"
+    }
+  ],
+  "validation_matrix": [
+    {
+      "paths": [
+        "src/**"
+      ],
+      "minimum": [
+        "yarn workspace @webex/plugin-meetings build:src",
+        "yarn workspace @webex/plugin-meetings test:unit",
+        "yarn workspace @webex/plugin-meetings test:style"
+      ],
+      "recommended": [
+        "add or update the test/unit/spec case beside the changed module; some specs import the package by name and load dist, so build first"
+      ]
+    },
+    {
+      "paths": [
+        "src/index.ts",
+        "src/constants.ts",
+        "package.json"
+      ],
+      "minimum": [
+        "yarn workspace @webex/plugin-meetings build:src",
+        "yarn workspace @webex/plugin-meetings test:unit"
+      ],
+      "recommended": [
+        "check the export list, the event inventory, and the contract index in docs/architecture.md"
+      ]
+    },
+    {
+      "paths": [
+        "assets/**",
+        "src/e2ee/**",
+        "src/common/wasm-loader.ts"
+      ],
+      "minimum": [
+        "yarn workspace @webex/plugin-meetings build",
+        "yarn workspace @webex/plugin-meetings test:unit"
+      ],
+      "recommended": [
+        "keep the E2EE asset filename version in step with E2EE_WASM_ASSET in src/e2ee/E2eeManager.ts"
+      ]
+    }
+  ],
+  "change_impact": [
+    {
+      "paths": [
+        "src/index.ts"
+      ],
+      "affects": [
+        "the published package API",
+        "plugin registration and request interceptors"
+      ],
+      "refresh_with": [
+        "yarn workspace @webex/plugin-meetings build:src"
+      ],
+      "validate_with": [
+        "yarn workspace @webex/plugin-meetings test:unit",
+        "yarn workspace @webex/plugin-meetings test:style"
+      ],
+      "avoid_direct_edits": [
+        "dist"
+      ],
+      "notes": "Exports are semver-sensitive; prefer additive changes and update docs/architecture.md Public and consumer surfaces."
+    },
+    {
+      "paths": [
+        "src/constants.ts"
+      ],
+      "affects": [
+        "event names and wire values seen by applications"
+      ],
+      "refresh_with": [
+        "yarn workspace @webex/plugin-meetings build:src"
+      ],
+      "validate_with": [
+        "yarn workspace @webex/plugin-meetings test:unit"
+      ],
+      "avoid_direct_edits": [
+        "dist"
+      ],
+      "notes": "Never silently change an event literal or wire value; add the event to the emitted-event inventory or the declared-but-not-emitted list."
+    },
+    {
+      "paths": [
+        "src/interceptors/**"
+      ],
+      "affects": [
+        "every Locus request made through webex.request",
+        "route-token and data-channel token headers"
+      ],
+      "refresh_with": [
+        "yarn workspace @webex/plugin-meetings build:src"
+      ],
+      "validate_with": [
+        "yarn workspace @webex/plugin-meetings test:unit"
+      ],
+      "avoid_direct_edits": [
+        "dist"
+      ],
+      "notes": "Retries stay bounded: a Locus 429 or 503 is retried once and the data-channel token refresh retries once."
+    }
+  ],
+  "glossary": [
+    {
+      "term": "Meeting",
+      "definition": "Client object coordinating one Webex meeting lifecycle and media session (src/meeting/index.ts)."
+    },
+    {
+      "term": "Meetings",
+      "definition": "Registered plugin and collection-level coordinator, reached as webex.meetings (src/meetings/index.ts)."
+    },
+    {
+      "term": "Locus",
+      "definition": "Webex meeting-state service and payload projected into the client by LocusInfo (src/locus-info/index.ts)."
+    },
+    {
+      "term": "Member",
+      "definition": "Normalized participant projection (src/member/index.ts)."
+    },
+    {
+      "term": "ROAP",
+      "definition": "RTCWeb Offer/Answer Protocol, the offer/answer signaling used during media negotiation (src/roap/index.ts)."
+    },
+    {
+      "term": "multistream",
+      "definition": "Receive/send slot and remote-media management over a media connection (src/multistream)."
+    },
+    {
+      "term": "breakout",
+      "definition": "Main/session-group state and controls for breakout sessions (src/breakouts)."
+    },
+    {
+      "term": "simultaneous interpretation",
+      "definition": "Language-channel and interpreter handoff feature (src/interpretation)."
+    },
+    {
+      "term": "practice session",
+      "definition": "Webinar state/data-channel flow before public webcast (src/webinar/index.ts)."
+    },
+    {
+      "term": "PMR",
+      "definition": "Personal Meeting Room resolved or claimed for a user (src/personal-meeting-room)."
+    },
+    {
+      "term": "hash tree",
+      "definition": "Incremental Locus synchronization by dataset hash comparison, reconciled into the same projection as full state and deltas (src/hashTree/hashTreeParser.ts).",
+      "notes": "full state, delta, and hash tree are alternate Locus synchronization forms for one projection."
+    },
+    {
+      "term": "register",
+      "definition": "SDK device and Mercury registration through webex.meetings.register(), not npm package registration."
+    },
+    {
+      "term": "join",
+      "definition": "Joining meeting state; adding media is a distinct staged operation that may follow join.",
+      "notes": "leave exits the local participant; end for all is a privileged remote mutation."
+    },
+    {
+      "term": "collection",
+      "definition": "An in-memory Ampersand or package collection (src/common/collection.ts), not persistence."
+    },
+    {
+      "term": "CSI",
+      "definition": "Contributing Source Identifier used to associate media and participants."
+    },
+    {
+      "term": "BRB",
+      "definition": "Be right back meeting state."
+    },
+    {
+      "term": "E2EE preload",
+      "definition": "Best-effort load of the E2EE WASM module after registration when enableE2ee is set and WASM is supported (src/e2ee/E2eeManager.ts)."
+    }
+  ],
+  "evidence_rules": [
+    {
+      "claim_category": "command_name",
+      "sources": [
+        "package.json",
+        ".sdd/manifest.json"
+      ],
+      "requirement": "The script must exist in package.json scripts and the command must equal the manifest commands entry.",
+      "notes": "install and prebuild run at the workspace root."
+    },
+    {
+      "claim_category": "import_path",
+      "sources": [
+        "src/index.ts",
+        "package.json"
+      ],
+      "requirement": "A symbol is public only when src/index.ts exports it or a public object exposes it.",
+      "notes": "Files under src/ that src/index.ts does not export are internal."
+    },
+    {
+      "claim_category": "behavior_claim",
+      "sources": [
+        "src",
+        "test/unit/spec"
+      ],
+      "requirement": "Ground every behavioral claim in source or test evidence.",
+      "notes": "Commit history is not a rationale source for this package. README.md and UPGRADING.md are consumer context only; validate their examples against current source."
+    }
+  ],
+  "negative_guidance": [
+    {
+      "rule": "Do not present a declared EVENT_TRIGGERS constant as a live event without an emit site.",
+      "why": "media:quality, media:update, and meeting:aiEnableRequest are declared but never emitted."
+    },
+    {
+      "rule": "Do not restore participant email as a roster convenience field.",
+      "why": "It was removed in version 0.109.0 to reduce PII; consumers resolve identity through the People API (README.md)."
+    },
+    {
+      "rule": "Do not log tokens, authorization headers, participant PII, raw transcript or media, or full sensitive URLs.",
+      "why": "Logs and metrics leave the client (docs/architecture.md Security architecture)."
+    },
+    {
+      "rule": "Do not add retries, polling, or retry budgets beyond the existing bounded ones.",
+      "why": "Locus hash-tree and sync calls are deliberately never retried during a sync storm (src/interceptors/locusRetry.ts)."
+    },
+    {
+      "rule": "Do not assume all caches are process-local.",
+      "why": "Reachability results and the join cookie persist in the host's bounded storage (src/reachability/index.ts)."
+    }
+  ],
+  "confidence_policy": {
+    "high": {
+      "action": "update",
+      "expectation": "Source and a unit case agree on the behavior being changed."
+    },
+    "medium": {
+      "action": "narrow-scope",
+      "expectation": "Only source evidence exists, as for the unspecified src/common, src/e2ee, and src/transcription folders. Pin current behavior with a unit case before modifying."
+    },
+    "low": {
+      "action": "noop",
+      "expectation": "Neither source, tests, nor a dependency's code settles the question. Stop and report the gap."
+    }
+  },
+  "repository_topology": {
+    "main_entrypoints": [
+      {
+        "name": "package entry",
+        "path": "src/index.ts",
+        "purpose": "Registers the meetings plugin and interceptors and declares the public exports",
+        "notes": "package.json main is dist/index.js; types is dist/types/index.d.ts."
+      },
+      {
+        "name": "default configuration",
+        "path": "src/config.ts",
+        "purpose": "Defaults for webex.config.meetings, including assetsBaseUrl and enableE2ee",
+        "notes": "Merged by webex-core at registration."
+      }
+    ],
+    "workspace_packages": [
+      {
+        "name": "@webex/plugin-meetings",
+        "paths": [
+          "src",
+          "test",
+          "assets"
+        ],
+        "notes": "This SDD root is the package directory inside the webex-js-sdk monorepo; workspace dependencies use workspace:* in package.json."
+      }
+    ],
+    "source_surfaces": [
+      {
+        "name": "plugin modules",
+        "paths": [
+          "src"
+        ],
+        "notes": "Twenty-three specified modules, each with docs/README.md beside its code; src/common, src/e2ee, and src/transcription have no module specification."
+      },
+      {
+        "name": "tests",
+        "paths": [
+          "test/unit/spec",
+          "test/integration/spec"
+        ],
+        "notes": "Mocha unit specs mirror src; integration specs run under karma through test:browser."
+      }
+    ],
+    "generated_surfaces": [
+      {
+        "name": "build output",
+        "paths": [
+          "dist"
+        ],
+        "generated_from": "src",
+        "refresh_with": "yarn workspace @webex/plugin-meetings build:src",
+        "notes": "JavaScript, source maps, dist/types declarations, and dist/assets. Do not edit by hand."
+      },
+      {
+        "name": "repo-standards templates",
+        "paths": [
+          "../../../.sdd/templates/repo-standards"
+        ],
+        "generated_from": "WebexTools/repo-standards@d89a7fe59126ae3ad9bac9ca352aa7f12b4c85dc",
+        "refresh_with": "The package holds no templates. It refers to the monorepo root snapshot at ../../../.sdd/templates/repo-standards through layout.monorepo_package.templates_root_path in .sdd/manifest.json. Refresh the root snapshot, not this package.",
+        "notes": "Shared by every SDD package in the workspace."
+      }
+    ],
+    "sync_paths": [
+      {
+        "source": "src",
+        "targets": [
+          "docs/architecture.md",
+          "docs/specs/README.md"
+        ],
+        "mechanism": "Manual; update the architecture contract index and the module specification in the same change that alters exports, events, or observable behavior.",
+        "notes": "Keep the emitted-event inventory aligned with src/constants.ts and the emit sites."
+      },
+      {
+        "source": "WebexTools/repo-standards@d89a7fe59126ae3ad9bac9ca352aa7f12b4c85dc",
+        "targets": [
+          "../../../.sdd/templates/repo-standards"
+        ],
+        "mechanism": "The package holds no templates. It refers to the monorepo root snapshot at ../../../.sdd/templates/repo-standards through layout.monorepo_package.templates_root_path in .sdd/manifest.json. Refresh the root snapshot, not this package.",
+        "notes": "Owned by the workspace root SDD orchestrator."
+      }
+    ],
+    "validation_entrypoints": [
+      {
+        "name": "compile",
+        "command": "yarn workspace @webex/plugin-meetings build:src",
+        "scope": "src",
+        "notes": "webex-legacy-tools build to dist, then yarn build for declarations and assets."
+      },
+      {
+        "name": "unit-test",
+        "command": "yarn workspace @webex/plugin-meetings test:unit",
+        "scope": "test/unit/spec",
+        "notes": "Mocha through webex-legacy-tools; no coverage threshold."
+      },
+      {
+        "name": "lint",
+        "command": "yarn workspace @webex/plugin-meetings test:style",
+        "scope": "src",
+        "notes": "eslint over src; Markdown is ignored by the shared legacy config."
+      }
+    ]
+  },
+  "folder_readme_contract": {
+    "required_sections": [
+      "purpose",
+      "boundaries",
+      "key-files",
+      "common-tasks"
+    ],
+    "rules": [
+      "Orient the reader before describing detail.",
+      "Link to the module specification rather than duplicating it."
+    ],
+    "example_policy": "Examples are allowed only when verified against src or test.",
+    "fallback": "Omit a section rather than inventing content; report unresolved facts as gaps."
+  },
+  "regression_feedback_rules": [
+    {
+      "trigger": "An event constant is added, renamed, or removed in src/constants.ts or an emit site changes.",
+      "required_followups": [
+        "Update the emitted-event inventory or the declared-but-not-emitted list in docs/architecture.md",
+        "Add or update the unit case that asserts the trigger"
+      ],
+      "notes": "Event names and payloads are consumer contracts."
+    },
+    {
+      "trigger": "An export is added to or removed from src/index.ts.",
+      "required_followups": [
+        "Update the Package exports table and the contract index in docs/architecture.md",
+        "Record the change for the workspace release notes"
+      ],
+      "notes": "Removals need deprecation first."
+    }
+  ],
+  "surface_owners": [
+    {
+      "surface": "package implementation and specifications",
+      "owner": "@webex/web-client, @webex/web-sdk",
+      "edit_boundary": "The workspace .github/CODEOWNERS line for packages/@webex/plugin-meetings assigns both teams."
+    }
+  ],
+  "do_not_edit": [
+    "dist",
+    "../../../.sdd/templates/repo-standards"
+  ],
+  "marker_scopes": {
+    "sdd": [
+      ".sdd/manifest.json",
+      "docs",
+      "AGENTS.md"
+    ]
+  },
+  "fallback_rules": [
+    "When source and tests disagree, code is the referee and the disagreement is recorded rather than silently resolved.",
+    "When neither source nor tests settle a question, report it as a gap instead of inferring.",
+    "Commit history is not a valid rationale source for this package.",
+    "When a dependency's specification disagrees with that dependency's code, use the code and record the disagreement."
+  ],
+  "downstream_context_pack": {
+    "required_human_surfaces": [
+      "README.md",
+      "docs/index.md",
+      "docs/architecture.md",
+      "docs/getting-started.md"
+    ],
+    "required_agent_operational_surfaces": [
+      "AGENTS.md",
+      "docs/specs/README.md"
+    ],
+    "required_machine_readable_surface": ".sdd/manifest.json",
+    "recommended_machine_readable_sections": [
+      "public_interfaces",
+      "change_impact",
+      "glossary",
+      "evidence_rules",
+      "negative_guidance",
+      "confidence_policy",
+      "repository_topology",
+      "folder_readme_contract",
+      "regression_feedback_rules"
+    ]
+  }
+}
