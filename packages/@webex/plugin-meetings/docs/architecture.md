@@ -704,7 +704,9 @@ The application/SDK host owns authentication and supplies credentialed request a
 - Never commit `.env` values, test-user credentials, access/refresh tokens, JWTs, route tokens, data-channel tokens, meeting passwords, or Sauce Labs secrets.
 - Do not log raw authorization headers or token bodies. Data-channel token expiry is inspected only
   in `src/interceptors/utils.ts`; `Meeting` decodes the permission token to read user policies and
-  its expiry, and keeps only the decoded payload.
+  its expiry. It keeps both the raw JWT (`permissionToken`, also inside `meetingInfo`) and the
+  decoded payload (`permissionTokenPayload`) on the instance; `MeetingUtil.joinMeeting()` sends the
+  raw token with the join, and each `parseMeetingInfo()` replaces both. Neither is cleared on leave.
 - Use synthetic fixtures in tests and managed configuration for browser/integration runs.
 
 ### Data classification
