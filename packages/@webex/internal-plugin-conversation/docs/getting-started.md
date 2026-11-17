@@ -28,16 +28,10 @@ workspace. Commands below were verified against `package.json`.
 
 ## Install
 
-Inside the monorepo, select Node 22.14 with nvm and install from the repository root:
+Inside the monorepo, use Node 22.14 and install from the repository root:
 
 ```bash
-yarn install
-```
-
-A consuming project installs the published package:
-
-```bash
-npm install --save @webex/internal-plugin-conversation
+yarn
 ```
 
 ## Build

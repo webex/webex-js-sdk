@@ -41,11 +41,12 @@ entry. It serves no HTTP, so no OpenAPI applies.
 ## 1. Commands (Run First)
 
 Use only documented commands. Do not invent alternatives when a command is missing. Run workspace
-commands from the monorepo root.
+commands from the monorepo root. Fresh-checkout workspace setup (building `webex-legacy-tools` and sibling
+`dist/`) is owned by the workspace root; see [Prebuilding](../../../CONTRIBUTING.md#prebuilding).
 
 | Task                   | Command |
 | ---------------------- | ------- |
-| Install dependencies   | `yarn` (workspace root; the deploy workflow runs the same command); on a fresh checkout run `yarn prebuild:modules` once, because `yarn` does not build `@webex/legacy-tools` or sibling `dist/` |
+| Install dependencies   | `yarn` (workspace root; the deploy workflow runs the same command) |
 | Start dev environment  | N/A — library package with no start script in `package.json` |
 | Run tests              | N/A — the package has no unit tests and no `test:unit` script (see below) |
 | Run linters            | `yarn workspace @webex/internal-plugin-search test:style` |
@@ -123,9 +124,6 @@ Run checks in this order:
 
 1. `yarn workspace @webex/internal-plugin-search build:src`
 2. `yarn workspace @webex/internal-plugin-search test:style`
-
-Run `yarn prebuild:modules` once on a fresh checkout so `webex-legacy-tools` and the sibling packages'
-`dist/` exist.
 
 Testing rules:
 

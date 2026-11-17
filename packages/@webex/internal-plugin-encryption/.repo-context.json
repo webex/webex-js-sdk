@@ -7,15 +7,14 @@
   },
   "commands": {
     "install": "yarn",
-    "prebuild": "yarn prebuild:modules",
-    "compile": "yarn build",
-    "build": "yarn build:src",
-    "unit-test": "yarn test:unit",
-    "lint": "yarn test:style",
-    "integration-test": "yarn test:integration",
-    "browser-test": "yarn test:browser",
-    "assets-refresh": "yarn assets:refresh",
-    "deploy": "yarn deploy:npm"
+    "compile": "yarn workspace @webex/internal-plugin-encryption build",
+    "build": "yarn workspace @webex/internal-plugin-encryption build:src",
+    "unit-test": "yarn workspace @webex/internal-plugin-encryption test:unit",
+    "lint": "yarn workspace @webex/internal-plugin-encryption test:style",
+    "integration-test": "yarn workspace @webex/internal-plugin-encryption test:integration",
+    "browser-test": "yarn workspace @webex/internal-plugin-encryption test:browser",
+    "assets-refresh": "yarn workspace @webex/internal-plugin-encryption assets:refresh",
+    "deploy": "yarn workspace @webex/internal-plugin-encryption deploy:npm"
   },
   "public_interfaces": [
     {
@@ -130,11 +129,11 @@
         "dist"
       ],
       "refresh_with": [
-        "yarn build:src"
+        "yarn workspace @webex/internal-plugin-encryption build:src"
       ],
       "validate_with": [
-        "yarn test:unit",
-        "yarn test:style"
+        "yarn workspace @webex/internal-plugin-encryption test:unit",
+        "yarn workspace @webex/internal-plugin-encryption test:style"
       ]
     },
     {
@@ -147,10 +146,10 @@
         "src/union-bundle.js"
       ],
       "refresh_with": [
-        "yarn assets:refresh"
+        "yarn workspace @webex/internal-plugin-encryption assets:refresh"
       ],
       "validate_with": [
-        "yarn test:unit"
+        "yarn workspace @webex/internal-plugin-encryption test:unit"
       ]
     },
     {
@@ -171,12 +170,12 @@
     {
       "path": "dist",
       "generated_from": "src",
-      "refresh_with": "yarn build:src"
+      "refresh_with": "yarn workspace @webex/internal-plugin-encryption build:src"
     },
     {
       "path": "src/union-bundle.js",
       "generated_from": "scripts/refresh-union-bundle.js",
-      "refresh_with": "yarn assets:refresh"
+      "refresh_with": "yarn workspace @webex/internal-plugin-encryption assets:refresh"
     },
     {
       "path": "../../../.sdd/templates/repo-standards/template-map.json",
@@ -190,12 +189,12 @@
         "src/**"
       ],
       "minimum": [
-        "yarn build:src",
-        "yarn test:unit",
-        "yarn test:style"
+        "yarn workspace @webex/internal-plugin-encryption build:src",
+        "yarn workspace @webex/internal-plugin-encryption test:unit",
+        "yarn workspace @webex/internal-plugin-encryption test:style"
       ],
       "recommended": [
-        "add a test/unit/spec case for the changed behavior; run yarn and yarn prebuild:modules first on an outdated checkout"
+        "add a test/unit/spec case for the changed behavior; run yarn at the workspace root first on an outdated checkout"
       ]
     },
     {
@@ -208,9 +207,9 @@
         "src/union-bundle.js"
       ],
       "minimum": [
-        "yarn build:src",
-        "yarn test:unit",
-        "yarn test:style"
+        "yarn workspace @webex/internal-plugin-encryption build:src",
+        "yarn workspace @webex/internal-plugin-encryption test:unit",
+        "yarn workspace @webex/internal-plugin-encryption test:style"
       ],
       "recommended": [
         "keep enforced validation fail-closed and report-only checks non-blocking; review src/kms.js by hand because lint skips it; let CI run test:integration"
@@ -221,9 +220,9 @@
         "src/index.js"
       ],
       "minimum": [
-        "yarn build:src",
-        "yarn test:unit",
-        "yarn test:style"
+        "yarn workspace @webex/internal-plugin-encryption build:src",
+        "yarn workspace @webex/internal-plugin-encryption test:unit",
+        "yarn workspace @webex/internal-plugin-encryption test:style"
       ],
       "recommended": [
         "check the consuming plugins when the plugin name, the transforms, or the exports change"
@@ -242,11 +241,11 @@
         "the client metrics"
       ],
       "refresh_with": [
-        "yarn build:src"
+        "yarn workspace @webex/internal-plugin-encryption build:src"
       ],
       "validate_with": [
-        "yarn test:unit",
-        "yarn test:style"
+        "yarn workspace @webex/internal-plugin-encryption test:unit",
+        "yarn workspace @webex/internal-plugin-encryption test:style"
       ],
       "avoid_direct_edits": [
         "dist"
@@ -263,11 +262,11 @@
         "file download"
       ],
       "refresh_with": [
-        "yarn build:src"
+        "yarn workspace @webex/internal-plugin-encryption build:src"
       ],
       "validate_with": [
-        "yarn test:unit",
-        "yarn test:style"
+        "yarn workspace @webex/internal-plugin-encryption test:unit",
+        "yarn workspace @webex/internal-plugin-encryption test:style"
       ],
       "avoid_direct_edits": [
         "dist"
@@ -282,11 +281,11 @@
         "the registered plugin name, payload transforms, and exports"
       ],
       "refresh_with": [
-        "yarn build:src"
+        "yarn workspace @webex/internal-plugin-encryption build:src"
       ],
       "validate_with": [
-        "yarn test:unit",
-        "yarn test:style"
+        "yarn workspace @webex/internal-plugin-encryption test:unit",
+        "yarn workspace @webex/internal-plugin-encryption test:style"
       ],
       "avoid_direct_edits": [
         "dist"
@@ -302,10 +301,10 @@
         "the trusted CA roots and the rollback floor"
       ],
       "refresh_with": [
-        "yarn assets:refresh"
+        "yarn workspace @webex/internal-plugin-encryption assets:refresh"
       ],
       "validate_with": [
-        "yarn test:unit"
+        "yarn workspace @webex/internal-plugin-encryption test:unit"
       ],
       "avoid_direct_edits": [
         "src/union-bundle.js"
@@ -439,7 +438,7 @@
           "dist"
         ],
         "generated_from": "src",
-        "refresh_with": "yarn build:src",
+        "refresh_with": "yarn workspace @webex/internal-plugin-encryption build:src",
         "notes": "JavaScript, source maps, and dist/assets; no type declarations. Do not edit by hand."
       },
       {
@@ -448,7 +447,7 @@
           "src/union-bundle.js"
         ],
         "generated_from": "scripts/refresh-union-bundle.js",
-        "refresh_with": "yarn assets:refresh",
+        "refresh_with": "yarn workspace @webex/internal-plugin-encryption assets:refresh",
         "notes": "Do not edit by hand."
       },
       {
@@ -464,25 +463,25 @@
     "validation_entrypoints": [
       {
         "name": "compile",
-        "command": "yarn build",
+        "command": "yarn workspace @webex/internal-plugin-encryption build",
         "scope": "src",
         "notes": "Runs build:src."
       },
       {
         "name": "unit-test",
-        "command": "yarn test:unit",
+        "command": "yarn workspace @webex/internal-plugin-encryption test:unit",
         "scope": "test/unit/spec",
         "notes": "Jest through webex-legacy-tools; imports dist, so build first."
       },
       {
         "name": "integration-test",
-        "command": "yarn test:integration",
+        "command": "yarn workspace @webex/internal-plugin-encryption test:integration",
         "scope": "test/integration/spec",
         "notes": "Mocha against real KMS; needs the CI secrets."
       },
       {
         "name": "lint",
-        "command": "yarn test:style",
+        "command": "yarn workspace @webex/internal-plugin-encryption test:style",
         "scope": "src",
         "notes": "eslint via the local .eslintrc.js; src/kms.js, docs/**, and *.md are ignored."
       }

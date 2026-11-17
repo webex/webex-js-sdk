@@ -15,10 +15,7 @@ validation_status: pass
 
 # Getting started
 
-Onboarding for **@webex/plugin-encryption**, a package inside the `webex-js-sdk` Yarn workspace. Run
-`yarn` and `yarn prebuild:modules` at the workspace root, and the package scripts from this package
-directory, `packages/@webex/plugin-encryption`, where `package.json` defines them. From the workspace
-root, `yarn workspace @webex/plugin-encryption <script>` runs the same script.
+Onboarding for **@webex/plugin-encryption**, a package inside the `webex-js-sdk` Yarn workspace. Run every command from the workspace root: `yarn` to install, and `yarn workspace @webex/plugin-encryption <script>` for the package scripts, which `package.json` defines.
 
 ## Prerequisites
 
@@ -36,21 +33,13 @@ yarn
 
 The workspace `deploy.yml` workflow installs with the same command.
 
-On a fresh checkout, prebuild the workspace before the first package build. `yarn` does not build
-`@webex/legacy-tools`, whose `webex-legacy-tools` binary runs this package's build and tests, or the
-sibling packages' `dist/` that the unit spec loads:
-
-```bash
-yarn prebuild:modules
-```
-
-It runs `yarn`, then builds the tools, the legacy tools, `@webex/webex-core`, and every package, in
-that order (root `package.json`; see the workspace `CONTRIBUTING.md` "Prebuilding").
+Fresh-checkout workspace setup (building `webex-legacy-tools` and sibling `dist/`) is owned by the workspace root; see
+[Prebuilding](../../../../CONTRIBUTING.md#prebuilding).
 
 ## Build
 
 ```bash
-yarn build:src
+yarn workspace @webex/plugin-encryption build:src
 ```
 
 `build:src` compiles the eight source files to `dist/` with source maps through `webex-legacy-tools`,
@@ -58,10 +47,10 @@ then runs the `build` script, which runs `tsc` with declarations only and writes
 is ignored by Git.
 
 ```bash
-yarn build
+yarn workspace @webex/plugin-encryption build
 ```
 
-`yarn build` alone refreshes only the declarations.
+`yarn workspace @webex/plugin-encryption build` alone refreshes only the declarations.
 
 ## Run
 
@@ -73,7 +62,7 @@ The API reference is generated with typedoc into the workspace `docs/plugin-encr
 outside this package:
 
 ```bash
-yarn build:docs
+yarn workspace @webex/plugin-encryption build:docs
 ```
 
 It was not run during onboarding.
@@ -81,26 +70,26 @@ It was not run during onboarding.
 ## Tests
 
 ```bash
-yarn build:src
+yarn workspace @webex/plugin-encryption build:src
 ```
 
 ```bash
-yarn test:unit
+yarn workspace @webex/plugin-encryption test:unit
 ```
 
 ```bash
-yarn test:style
+yarn workspace @webex/plugin-encryption test:style
 ```
 
 | Tier | Command | Test location | Framework | External dependencies |
 | ---- | ------- | ------------- | --------- | --------------------- |
-| Unit | `yarn test:unit` | `test/unit/spec` | jest (`webex-legacy-tools test --unit --runner jest`) with `@webex/test-helper-mock-webex` | None |
+| Unit | `yarn workspace @webex/plugin-encryption test:unit` | `test/unit/spec` | jest (`webex-legacy-tools test --unit --runner jest`) with `@webex/test-helper-mock-webex` | None |
 
 The unit spec imports `src/cypher` relatively, but loads `@webex/internal-plugin-encryption` and
-`@webex/test-helper-mock-webex` by name, which resolve to their `dist/`. Build them (`yarn
-prebuild:modules`) before trusting a result.
+`@webex/test-helper-mock-webex` by name, which resolve to their `dist/`. Make sure they are
+built (see the workspace prebuild setup above) before trusting a result.
 
-On 2026-11-16, `yarn build:src` and `yarn test:unit` passed all 11 cases in the one suite, with
+On 2026-11-16, `yarn workspace @webex/plugin-encryption build:src` and `yarn workspace @webex/plugin-encryption test:unit` passed all 11 cases in the one suite, with
 statement coverage of 96.95% and branch coverage of 95.65% over the measured files.
 
 `test:style` lints `src/` with eslint through `@webex/eslint-config-legacy`. On 2026-11-16 it exited 0
@@ -113,12 +102,12 @@ ignore list skips `docs/**` and `*.md`.
 - Coverage or quality gate: 85% global lines, functions, branches, and statements, set by
   `coverageThreshold` in `jest.config.js` with `collectCoverage: true`. It measures only the files
   the unit spec loads, because no `collectCoverageFrom` is set
-- Enforcement source: `yarn test:unit` exits nonzero below the threshold (a generator probe with a 99%
+- Enforcement source: `yarn workspace @webex/plugin-encryption test:unit` exits nonzero below the threshold (a generator probe with a 99%
   line threshold exited 1); the pull-request workflow's Test - Unit job runs `test:unit` for changed
   packages and their dependents
 - Test environment or QA dependencies: none
 
-`yarn test:browser` (manifest command `browser-test`) asks karma to run the integration files, but
+`yarn workspace @webex/plugin-encryption test:browser` (manifest command `browser-test`) asks karma to run the integration files, but
 `webex-legacy-tools` starts karma only for a non-empty file list and this package has no
 `test/integration` directory, so it prints nothing and exits 0 (2026-11-16). The package defines no aggregate
 `test` script and no `test:integration` script.
@@ -140,9 +129,9 @@ ignore list skips `docs/**` and `*.md`.
 
 ## First-run verification
 
-1. Run `yarn build:src` and check that it reports `Built plugin-encryption: 8 files`.
-2. Run `yarn test:unit` and check that all 11 cases pass and no coverage threshold message appears.
-3. Run `yarn test:style`.
+1. Run `yarn workspace @webex/plugin-encryption build:src` and check that it reports `Built plugin-encryption: 8 files`.
+2. Run `yarn workspace @webex/plugin-encryption test:unit` and check that all 11 cases pass and no coverage threshold message appears.
+3. Run `yarn workspace @webex/plugin-encryption test:style`.
 
 Expected result: all three commands exit zero, and `test:style` reports 7 warnings (the six in `src/webex.js` and "File ignored" for `src/docs/README.md`) and no
 error.

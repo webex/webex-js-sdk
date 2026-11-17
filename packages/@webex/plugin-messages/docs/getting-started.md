@@ -15,10 +15,7 @@ validation_status: pass-with-warnings
 
 # Getting started
 
-Onboarding for **@webex/plugin-messages**, a package inside the `webex-js-sdk` Yarn workspace.
-Run `yarn` and `yarn prebuild:modules` at the workspace root, and the package scripts from this
-package directory, `packages/@webex/plugin-messages`, where `package.json` defines them.
-From the workspace root, `yarn workspace @webex/plugin-messages <script>` runs the same script.
+Onboarding for **@webex/plugin-messages**, a package inside the `webex-js-sdk` Yarn workspace. Run every command from the workspace root: `yarn` to install, and `yarn workspace @webex/plugin-messages <script>` for the package scripts, which `package.json` defines.
 
 ## Prerequisites
 
@@ -36,29 +33,21 @@ yarn
 
 The workspace `deploy.yml` workflow installs with the same command.
 
-On a fresh checkout, prebuild the workspace before the first package build. `yarn` does not build
-`@webex/legacy-tools`, whose `webex-legacy-tools` binary runs this package's build, or the sibling
-packages' `dist/`:
-
-```bash
-yarn prebuild:modules
-```
-
-It runs `yarn`, then builds the tools, the legacy tools, `@webex/webex-core`, and every package, in
-that order (root `package.json`; see the workspace `CONTRIBUTING.md` "Prebuilding").
+Fresh-checkout workspace setup (building `webex-legacy-tools` and sibling `dist/`) is owned by the workspace root; see
+[Prebuilding](../../../../CONTRIBUTING.md#prebuilding).
 
 ## Build
 
 ```bash
-yarn build:src
+yarn workspace @webex/plugin-messages build:src
 ```
 
 `build:src` writes JavaScript and source maps for the two source files to `dist/` through
-`webex-legacy-tools`. `dist/` is ignored by Git. The `build` script runs `yarn build:src`; the package
+`webex-legacy-tools`. `dist/` is ignored by Git. The `build` script runs `yarn workspace @webex/plugin-messages build:src`; the package
 emits no type declarations.
 
 ```bash
-yarn build
+yarn workspace @webex/plugin-messages build
 ```
 
 ## Run
@@ -69,7 +58,7 @@ N/A — this is a library with no start script. Importing `@webex/plugin-message
 ## Tests
 
 ```bash
-yarn test:style
+yarn workspace @webex/plugin-messages test:style
 ```
 
 | Tier | Command | Test location | Framework | External dependencies |
@@ -87,14 +76,14 @@ This package has no unit tests: `package.json` defines no `test:unit` script and
 `test/unit` directory. Add both together when you add the first unit case; sibling legacy packages
 define `test:unit` as `webex-legacy-tools test --unit --runner jest`.
 
-`yarn test:integration` (manifest command `integration-test`) runs `webex-legacy-tools test
+`yarn workspace @webex/plugin-messages test:integration` (manifest command `integration-test`) runs `webex-legacy-tools test
 --integration --runner mocha` over `test/integration/spec/messages.js`. Every case there sits inside
 `describe.skip`, so on 2026-11-12 under Node 22.14 it reported 0 passing and 14 pending and exited
 zero without creating test users or calling a service. If the skip is removed, the cases need
 provisioned test users from `@webex/test-helper-test-users`, an `EU_PRIMARY_ORG_ID` for the EU user,
 and the live services.
 
-`yarn test:browser` (manifest command `browser-test`) runs the same spec through karma. On 2026-11-12
+`yarn workspace @webex/plugin-messages test:browser` (manifest command `browser-test`) runs the same spec through karma. On 2026-11-12
 the karma bundle failed to parse `isbot` (an ES module in the workspace `node_modules`), so Chrome and
 Firefox headless reported a bundle error, ran no case, and the command still exited zero.
 
@@ -121,8 +110,8 @@ command; run the commands above instead.
 
 ## First-run verification
 
-1. Run `yarn build:src` and check that it reports `Built plugin-messages: 2 files`.
-2. Run `yarn test:style`.
+1. Run `yarn workspace @webex/plugin-messages build:src` and check that it reports `Built plugin-messages: 2 files`.
+2. Run `yarn workspace @webex/plugin-messages test:style`.
 
 Expected result: both commands exit zero. `test:style` reports no problem in the two source files and
 prints one "File ignored" warning for `src/docs/README.md`.

@@ -33,7 +33,7 @@ The unit spec is `test/unit/spec/logger.js`. `test:unit` runs it under jest in N
 Dependencies are resolved for the whole workspace, not per package:
 
 ```bash
-yarn install
+yarn
 ```
 
 Run it from the workspace root.
@@ -76,7 +76,7 @@ Do not use `package.json` `scripts.test` as a verification command. It chains `t
 
 ## First-run verification
 
-1. `yarn install` from the workspace root.
+1. `yarn` from the workspace root.
 2. `yarn workspace @webex/plugin-logger build`
 3. `yarn workspace @webex/plugin-logger test:style`
 4. `yarn workspace @webex/plugin-logger test:unit`

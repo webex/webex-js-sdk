@@ -105,16 +105,15 @@ no `docs/service.md`, because this is a library, not a deployable service.
 
 ## 1. Commands (Run First)
 
-Use only documented commands. Do not invent alternatives when a command is missing. Commands run from
-`packages/calling`; `yarn workspace @webex/calling <script>` from the workspace root is equivalent.
+Use only documented commands. Do not invent alternatives when a command is missing. Run every command
+from the workspace root; the package scripts run through `yarn workspace @webex/calling <script>`.
 
 | Task                   | Command |
 | ---------------------- | ------- |
-| Install dependencies   | `yarn` (workspace root), then build the workspace packages as the root `CONTRIBUTING.md` describes |
+| Install dependencies   | `yarn` (workspace root). Fresh-checkout workspace setup (building `webex-legacy-tools` and sibling `dist/`) is owned by the workspace root; see [Prebuilding](../../CONTRIBUTING.md#prebuilding) |
 | Start dev environment  | N/A — library package with no start script in `package.json` |
 | Build workspace dependencies and this package | `yarn workspace @webex/calling compile` |
 | Build/release artifact | `yarn workspace @webex/calling build:src` (`tsc` to `dist/module` and `dist/types`; the `build` script runs the same `tsc`) |
-| Clean build output     | `yarn workspace @webex/calling prebuild` (removes `dist`) |
 | Run tests              | `yarn workspace @webex/calling test:unit` (Jest, coverage thresholds enforced) |
 | Run linters            | `yarn workspace @webex/calling test:style` (lint: eslint over `src/**/*.ts`) |
 | Fix lint issues        | `yarn workspace @webex/calling fix:lint` |

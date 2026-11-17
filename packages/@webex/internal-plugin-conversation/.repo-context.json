@@ -6,15 +6,14 @@
     "purpose": "Internal Webex JS SDK plugin for the Webex conversation service. Registers webex.internal.conversation to create, read, and update conversations and activities, encrypts outbound and decrypts inbound conversation objects through KMS payload transforms, shares files through ShareActivity, and reads activities in thread order."
   },
   "commands": {
-    "install": "yarn install",
+    "install": "yarn",
     "compile": "yarn workspace @webex/internal-plugin-conversation build:src",
     "build": "yarn workspace @webex/internal-plugin-conversation build",
     "unit-test": "yarn workspace @webex/internal-plugin-conversation test:unit",
     "test": "yarn workspace @webex/internal-plugin-conversation test",
     "lint": "yarn workspace @webex/internal-plugin-conversation test:style",
     "browser-test": "yarn workspace @webex/internal-plugin-conversation test:browser",
-    "deploy": "yarn workspace @webex/internal-plugin-conversation deploy:npm",
-    "consumer-install": "npm install --save @webex/internal-plugin-conversation"
+    "deploy": "yarn workspace @webex/internal-plugin-conversation deploy:npm"
   },
   "public_interfaces": [
     {

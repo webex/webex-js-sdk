@@ -11,8 +11,8 @@
   "topology": "Orchestrator-plus-components",
   "commands": {
     "install": {
-      "command": "yarn install",
-      "source_file": "package.json",
+      "command": "yarn",
+      "source_file": "../../../.github/workflows/deploy.yml",
       "role": "install"
     },
     "compile": {
@@ -97,7 +97,7 @@
       "host": "registry.npmjs.org",
       "egress_required": true,
       "origin": "human-declared",
-      "declared_by": "akulakum@cisco.com (workspace setup evidence: the JS SDK root .yarnrc.yml npmRegistryServer https://registry.npmjs.org; no auth variables; the Yarn cache is not committed, so yarn install needs network access)"
+      "declared_by": "akulakum@cisco.com (workspace setup evidence: the JS SDK root .yarnrc.yml npmRegistryServer https://registry.npmjs.org; no auth variables; the Yarn cache is not committed, so yarn needs network access)"
     }
   ],
   "tests": {

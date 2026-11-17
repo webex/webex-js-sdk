@@ -15,52 +15,43 @@
       "source_file": "../../../.github/workflows/deploy.yml",
       "role": "install"
     },
-    "prebuild": {
-      "command": "yarn prebuild:modules",
-      "source_file": "../../../CONTRIBUTING.md",
-      "role": "other"
-    },
     "compile": {
-      "command": "yarn build",
+      "command": "yarn workspace @webex/internal-plugin-encryption build",
       "source_file": "package.json",
-      "role": "compile",
-      "verified_at": "2026-11-16T05:15:09Z"
+      "role": "compile"
     },
     "build": {
-      "command": "yarn build:src",
+      "command": "yarn workspace @webex/internal-plugin-encryption build:src",
       "source_file": "package.json",
-      "role": "package",
-      "verified_at": "2026-11-16T05:15:07Z"
+      "role": "package"
     },
     "unit-test": {
-      "command": "yarn test:unit",
+      "command": "yarn workspace @webex/internal-plugin-encryption test:unit",
       "source_file": "package.json",
-      "role": "unit-test",
-      "verified_at": "2026-11-16T05:54:18Z"
+      "role": "unit-test"
     },
     "lint": {
-      "command": "yarn test:style",
+      "command": "yarn workspace @webex/internal-plugin-encryption test:style",
       "source_file": "package.json",
-      "role": "lint",
-      "verified_at": "2026-11-16T05:15:35Z"
+      "role": "lint"
     },
     "integration-test": {
-      "command": "yarn test:integration",
+      "command": "yarn workspace @webex/internal-plugin-encryption test:integration",
       "source_file": "package.json",
       "role": "integration-test"
     },
     "browser-test": {
-      "command": "yarn test:browser",
+      "command": "yarn workspace @webex/internal-plugin-encryption test:browser",
       "source_file": "package.json",
       "role": "other"
     },
     "assets-refresh": {
-      "command": "yarn assets:refresh",
+      "command": "yarn workspace @webex/internal-plugin-encryption assets:refresh",
       "source_file": "package.json",
       "role": "other"
     },
     "deploy": {
-      "command": "yarn deploy:npm",
+      "command": "yarn workspace @webex/internal-plugin-encryption deploy:npm",
       "source_file": "package.json",
       "role": "deploy"
     }

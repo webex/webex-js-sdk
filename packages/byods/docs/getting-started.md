@@ -16,8 +16,8 @@ validation_status: pass
 # Getting started
 
 Onboarding for **@webex/byods**, the Bring Your Own Data Source (BYoDS) Node.js SDK. The package
-lives at `packages/byods` in the webex-js-sdk workspace. Package commands below run from that
-directory; `yarn workspace @webex/byods <script>` from the workspace root is equivalent.
+lives at `packages/byods` in the webex-js-sdk workspace. Every command below runs from the workspace
+root, as `yarn workspace @webex/byods <script>`.
 
 ## Prerequisites
 
@@ -36,28 +36,21 @@ Dependencies are resolved for the whole workspace, from the workspace root:
 yarn
 ```
 
-The workspace build tools must be built before any package script runs, as the root
-`CONTRIBUTING.md` describes:
-
-```bash
-yarn prebuild:modules
-```
+Fresh-checkout workspace setup (building `webex-legacy-tools` and sibling `dist/`) is owned by the
+workspace root; see [Prebuilding](../../../CONTRIBUTING.md#prebuilding).
 
 ## Build
 
 ```bash
-yarn build:src
+yarn workspace @webex/byods build:src
 ```
 
-`build:src` compiles `src/` into `dist/` with the workspace legacy builder and then runs `yarn build`,
+`build:src` compiles `src/` into `dist/` with the workspace legacy builder and then runs the `build` script,
 which writes TypeScript declarations to `dist/types`. To produce only the declarations:
 
 ```bash
-yarn build
+yarn workspace @webex/byods build
 ```
-
-Yarn 3 does not run the `prebuild` script automatically; run `yarn prebuild` first when you need a
-clean `dist/` (architecture Commands and generated artifacts).
 
 ## Run
 
@@ -69,16 +62,16 @@ verification command for this package.
 ## Tests
 
 ```bash
-yarn test:unit
+yarn workspace @webex/byods test:unit
 ```
 
 | Tier | Command | Test location | Framework | External dependencies |
 | ---- | ------- | ------------- | --------- | --------------------- |
-| Unit | `yarn test:unit` | `test/unit/spec` | Jest 27 with the babel-jest transform from the legacy Jest config, node test environment | None; jose and the transport are stubbed |
-| Lint | `yarn test:style` | `src/**/*.ts` | eslint with the workspace root `.eslintrc.js` | None |
-| Docs check | `yarn docs` | `src/index.ts` | typedoc, no output | None |
+| Unit | `yarn workspace @webex/byods test:unit` | `test/unit/spec` | Jest 27 with the babel-jest transform from the legacy Jest config, node test environment | None; jose and the transport are stubbed |
+| Lint | `yarn workspace @webex/byods test:style` | `src/**/*.ts` | eslint with the workspace root `.eslintrc.js` | None |
+| Docs check | `yarn workspace @webex/byods docs` | `src/index.ts` | typedoc, no output | None |
 
-- `yarn test` runs `test:style` and then `test:unit`; run the two separately to see each result.
+- `yarn workspace @webex/byods test` runs `test:style` and then `test:unit`; run the two separately to see each result.
 - No integration, browser, or end-to-end tier exists: `package.json` defines no such script and the
   package has no `test/integration` directory. Only the `unit` tier is recorded in the SDD manifest.
 - Coverage gate: `jest.config.js` collects coverage on every `test:unit` run and fails it below 85%
@@ -103,11 +96,10 @@ yarn test:unit
 
 ## First-run verification
 
-1. Precondition: Node.js 22.14, `yarn`, and `yarn prebuild:modules` completed at the workspace
-   root.
-2. From `packages/byods`, run `yarn build:src` and check that `dist/index.js` and
+1. Precondition: Node.js 22.14 and `yarn` completed at the workspace root.
+2. Run `yarn workspace @webex/byods build:src` and check that `dist/index.js` and
    `dist/types/index.d.ts` exist.
-3. Run `yarn test:unit`.
+3. Run `yarn workspace @webex/byods test:unit`.
 
 Expected result: Jest reports 7 suites and 83 tests passing, and coverage stays above the threshold
 (measured on 2026-11-13: 96.9% statements, 93.8% branches, 100% functions). Console output from the

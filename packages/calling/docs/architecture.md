@@ -1393,7 +1393,6 @@ reported in metrics is `CALLING_SDK_VERSION` from the build environment, or `unk
 | `yarn` | workspace | root `package.json`, lockfile | Installs workspace dependencies | Run from the workspace root; then follow the workspace build step in the root `CONTRIBUTING.md` |
 | `yarn workspace @webex/calling compile` | package | this package and its workspace dependencies | Runs `build:src` in topological order | — |
 | `yarn workspace @webex/calling build:src` | package | `src/**/*.ts` through `tsconfig.json` | `dist/module` JavaScript and `dist/types` declarations | Type errors fail it; Markdown under `src/` is not processed |
-| `yarn workspace @webex/calling prebuild` | package | — | Deletes `dist/` | Not run automatically before `build:src` |
 | `yarn workspace @webex/calling test:unit` | package | `src/**/*.test.ts` | Jest result, `coverage/`, JUnit and HTML reports | Fails below the coverage thresholds |
 | `yarn workspace @webex/calling test:style` | package | `src/**/*.ts` | eslint result | Markdown is outside the glob |
 | `yarn workspace @webex/calling test:e2e` | package | `playwright.config.ts`, `playwright/suites`, test accounts in the root `.env` | Playwright report | Needs installed browsers and the samples server |

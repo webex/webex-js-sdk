@@ -16,10 +16,9 @@ validation_status: pass
 # Getting started
 
 Onboarding for **@webex/internal-plugin-encryption**, a package inside the `webex-js-sdk` Yarn
-workspace. Run `yarn` and `yarn prebuild:modules` at the workspace root, and the package scripts from
-this package directory, `packages/@webex/internal-plugin-encryption`, where `package.json` defines
-them. From the workspace root, `yarn workspace @webex/internal-plugin-encryption <script>` runs the
-same script.
+workspace. Run every command from the workspace root. The package scripts run through
+`yarn workspace @webex/internal-plugin-encryption <script>`; `package.json` in
+`packages/@webex/internal-plugin-encryption` defines them.
 
 ## Prerequisites
 
@@ -39,21 +38,13 @@ The workspace `deploy.yml` workflow installs with the same command. Run it again
 lockfile changes: this package pins `asn1js` 3.0.10 and `pkijs` 3.3.3 and depends on the workspace
 package `@webex/kms-caroots`, and an older install lacks both (see [Tests](#tests)).
 
-On a fresh checkout, prebuild the workspace before the first package build. `yarn` does not build
-`@webex/legacy-tools`, whose `webex-legacy-tools` binary runs this package's build and tests, or the
-sibling packages' `dist/`:
-
-```bash
-yarn prebuild:modules
-```
-
-It runs `yarn`, then builds the tools, the legacy tools, `@webex/webex-core`, and every package, in
-that order (root `package.json`; see the workspace `CONTRIBUTING.md` "Prebuilding").
+Fresh-checkout workspace setup (building `webex-legacy-tools` and sibling `dist/`) is owned by the workspace root; see
+[Prebuilding](../../../../CONTRIBUTING.md#prebuilding).
 
 ## Build
 
 ```bash
-yarn build:src
+yarn workspace @webex/internal-plugin-encryption build:src
 ```
 
 `build:src` writes JavaScript and source maps for the 15 source files to `dist/` through
@@ -62,7 +53,7 @@ yarn build:src
 the package emits no type declarations.
 
 ```bash
-yarn build
+yarn workspace @webex/internal-plugin-encryption build
 ```
 
 ## Run
@@ -73,7 +64,7 @@ N/A — this is a library with no start script. Importing `@webex/internal-plugi
 Maintainers refresh the shipped Cisco Union bundle with:
 
 ```bash
-yarn assets:refresh
+yarn workspace @webex/internal-plugin-encryption assets:refresh
 ```
 
 It downloads the latest bundle from Cisco (or reads `--in <file>`), verifies it, refuses a downgrade,
@@ -83,21 +74,21 @@ bundle. It needs network access and was not run during onboarding.
 ## Tests
 
 ```bash
-yarn build:src
+yarn workspace @webex/internal-plugin-encryption build:src
 ```
 
 ```bash
-yarn test:unit
+yarn workspace @webex/internal-plugin-encryption test:unit
 ```
 
 ```bash
-yarn test:style
+yarn workspace @webex/internal-plugin-encryption test:style
 ```
 
 | Tier | Command | Test location | Framework | External dependencies |
 | ---- | ------- | ------------- | --------- | --------------------- |
-| Unit | `yarn test:unit` | `test/unit/spec` | jest (`webex-legacy-tools test --unit --runner jest`), sinon, `@webex/test-helper-chai` | None |
-| Integration | `yarn test:integration` | `test/integration/spec` | mocha (`webex-legacy-tools test --integration --runner mocha`) | Real KMS and test users created with the CI secrets |
+| Unit | `yarn workspace @webex/internal-plugin-encryption test:unit` | `test/unit/spec` | jest (`webex-legacy-tools test --unit --runner jest`), sinon, `@webex/test-helper-chai` | None |
+| Integration | `yarn workspace @webex/internal-plugin-encryption test:integration` | `test/integration/spec` | mocha (`webex-legacy-tools test --integration --runner mocha`) | Real KMS and test users created with the CI secrets |
 
 Run `build:src` before `test:unit`: the unit specs import `dist/` and the package by name, so a stale
 `dist/` tests old code.
@@ -116,8 +107,8 @@ skips every file named `kms.js`, so `src/kms.js` is never linted.
 - Enforcement source: N/A
 - Test environment or QA dependencies: none for unit tests and lint; integration needs the CI secrets
 
-`yarn test:integration` runs in the pull-request workflow's Test - Integration job for changed
-packages; it was not run during onboarding. `yarn test:browser` (manifest command `browser-test`)
+`yarn workspace @webex/internal-plugin-encryption test:integration` runs in the pull-request workflow's Test - Integration job for changed
+packages; it was not run during onboarding. `yarn workspace @webex/internal-plugin-encryption test:browser` (manifest command `browser-test`)
 runs the same integration specs in karma; it was not run either. Do not run the aggregate `test`
 script as a quick check: it chains lint, unit, integration, and karma, and the last two need secrets
 and test users.
@@ -132,15 +123,15 @@ and test users.
 - Secret source: N/A for this package; it holds no secret. Integration tests read the CI secrets
 - Package or artifact access: N/A
 - Required neighboring packages: the workspace `@webex/*` dependencies in `package.json`, built by
-  `yarn prebuild:modules`; the host must register `@webex/internal-plugin-metrics` for metrics
+  the workspace prebuild; the host must register `@webex/internal-plugin-metrics` for metrics
 - Platform, simulator, device, or SDK setup: none
 - Never commit credentials or copy production secrets into a local config.
 
 ## First-run verification
 
-1. Run `yarn build:src` and check that it reports `Built internal-plugin-encryption: 15 files`.
-2. Run `yarn test:unit` and check that all four suites load and pass.
-3. Run `yarn test:style`.
+1. Run `yarn workspace @webex/internal-plugin-encryption build:src` and check that it reports `Built internal-plugin-encryption: 15 files`.
+2. Run `yarn workspace @webex/internal-plugin-encryption test:unit` and check that all four suites load and pass.
+3. Run `yarn workspace @webex/internal-plugin-encryption test:style`.
 
 Expected result: all three commands exit zero. `test:style` reports 13 warnings (12 `require-jsdoc`
 and 1 `no-use-before-define`) and no error. It also prints "File ignored" for `src/kms.js` and for
