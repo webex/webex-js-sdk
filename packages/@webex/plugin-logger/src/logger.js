@@ -129,6 +129,8 @@ const Logger = WebexPlugin.extend({
     },
   },
   session: {
+    // Shared attributes for this instance. Each retained record copies their current values.
+    logAttributes: {type: 'object'},
     // Keep the counter inside an object so increments do not emit Ampersand change events.
     recordState: {
       type: 'object',
@@ -573,6 +575,12 @@ function makeLoggerMethod(level, impl, type, {neverPrint = false, alwaysBuffer =
         formatted.level = level;
         formatted.source = metadata?.source || logType;
         formatted.metadata = metadata;
+        if (this.logAttributes) {
+          formatted.metadata = {
+            ...metadata,
+            attributes: {...this.logAttributes, ...metadata?.attributes},
+          };
+        }
         bufferRef.buffer.push(formatted);
         if (bufferRef.buffer.length > historyLength) {
           // we've gone over the buffer limit, trim it down

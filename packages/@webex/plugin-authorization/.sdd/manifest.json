@@ -1,0 +1,380 @@
+{
+  "manifest_version": 1,
+  "repository": {
+    "name": "@webex/plugin-authorization",
+    "purpose": "Environment-selecting entry for webex.authorization. Its Node entry (main dist/index.js, devMain src/index.js) re-exports default and config from @webex/plugin-authorization-node; its package.json browser field maps both the built and the source Node entry to a browser entry that re-exports them from @webex/plugin-authorization-browser. Importing the package imports the selected sibling, which registers itself as public plugin 'authorization' (first registration wins). webex, webex-node, @webex/contact-center, @webex/plugin-device-manager, and @webex/plugin-encryption import it once to obtain webex.authorization. The package has no behavior, state, or tests of its own.",
+    "category": "cat2-legacy",
+    "primary_languages": [
+      "javascript"
+    ]
+  },
+  "topology": "Orchestrator-plus-components",
+  "commands": {
+    "install": {
+      "command": "yarn",
+      "source_file": "../../../.github/workflows/deploy.yml",
+      "role": "install"
+    },
+    "prebuild-modules": {
+      "command": "yarn prebuild:modules",
+      "source_file": "../../../package.json",
+      "role": "other"
+    },
+    "compile": {
+      "command": "yarn workspace @webex/plugin-authorization build:src",
+      "source_file": "package.json",
+      "role": "compile"
+    },
+    "build": {
+      "command": "yarn workspace @webex/plugin-authorization build",
+      "source_file": "package.json",
+      "role": "package"
+    },
+    "unit-test": "[NEEDS HUMAN INPUT] -- package.json defines no test:unit script and the package has no test directory; its two source files are re-exports, and the selected behavior is unit-tested in @webex/plugin-authorization-node and @webex/plugin-authorization-browser",
+    "lint": {
+      "command": "yarn workspace @webex/plugin-authorization test:style",
+      "source_file": "package.json",
+      "role": "lint"
+    },
+    "browser-test": {
+      "command": "yarn workspace @webex/plugin-authorization test:browser",
+      "source_file": "package.json",
+      "role": "other"
+    },
+    "deploy": {
+      "command": "yarn workspace @webex/plugin-authorization deploy:npm",
+      "source_file": "package.json",
+      "role": "deploy"
+    }
+  },
+  "toolchain": [
+    {
+      "name": "node",
+      "version": ">=18",
+      "origin": "repo-config",
+      "source_file": "package.json"
+    },
+    {
+      "name": "node",
+      "version": "22.14",
+      "origin": "repo-config",
+      "source_file": "../../../AGENTS.md"
+    },
+    {
+      "name": "node",
+      "version": "lts/jod",
+      "origin": "repo-config",
+      "source_file": "../../../.nvmrc"
+    },
+    {
+      "name": "node",
+      "version": "18.x",
+      "origin": "repo-config",
+      "source_file": "../../../package.json"
+    },
+    {
+      "name": "yarn",
+      "version": "3.4.1",
+      "origin": "repo-config",
+      "source_file": "../../../package.json"
+    },
+    {
+      "name": "babel",
+      "version": "^7.17.10",
+      "origin": "repo-config",
+      "source_file": "package.json"
+    },
+    {
+      "name": "eslint",
+      "version": "^8.24.0",
+      "origin": "repo-config",
+      "source_file": "package.json"
+    },
+    {
+      "name": "prettier",
+      "version": "^2.7.1",
+      "origin": "repo-config",
+      "source_file": "package.json"
+    }
+  ],
+  "quality_gates": {
+    "code_coverage": {
+      "origin": "none",
+      "declared_by": "rarajes2@cisco.com via bootstrap questionnaire (generator check: package.json defines no test:unit or coverage script, the package has no test directory, and jest.config.js re-exports @webex/jest-config-legacy, which sets no coverageThreshold)"
+    }
+  },
+  "coverage_status_definitions": {
+    "specced": ">=80% public surface specced, drift <5% - spec is authoritative",
+    "partial": "40-80% specced - spec is a hint, cross-check code",
+    "untracked": "<40% specced - code is the source of truth"
+  },
+  "spec_source_policy": {
+    "mode": "keep-separate",
+    "migrated_source_disposition": "retain",
+    "disposition_decided_by": "rarajes2@cisco.com",
+    "disposition_decided_at": "2026-11-12T05:11:05Z",
+    "decided_by": "rarajes2@cisco.com",
+    "decided_at": "2026-11-12T05:11:05Z",
+    "decision_record": "docs/adr/0001-keep-existing-docs-separate.md"
+  },
+  "spec_sources": [
+    {
+      "path": "README.md",
+      "scope": "repo",
+      "role": "reference-only",
+      "canonical": false,
+      "use_by_agents": "context-only",
+      "post_migration_action": "retain",
+      "deletion_status": "not-applicable",
+      "notes": "npm usage page, kept unchanged under keep-separate. Not the behavioral authority; its differences from code (run-time environment detection, getClientToken as a Node plugin method) are listed in docs/adr/0001-keep-existing-docs-separate.md."
+    },
+    {
+      "path": "OAUTH-FLOW-GUIDE.md",
+      "scope": "repo",
+      "role": "reference-only",
+      "canonical": false,
+      "use_by_agents": "context-only",
+      "post_migration_action": "retain",
+      "deletion_status": "not-applicable",
+      "notes": "Cross-package OAuth overview, kept unchanged under keep-separate. Most of it describes the sibling plugins and webex-core; its differences from code are listed in docs/adr/0001-keep-existing-docs-separate.md."
+    }
+  ],
+  "modules": [
+    {
+      "path": "src",
+      "canonical_spec": "src/docs/README.md",
+      "coverage_status": "Partial",
+      "coverage_evidence": "Field coverage 93.3% (14/15) assessed 2026-11-12 by the generator; critical field coverage 8/8. Independent validation passed 2026-11-12 by validator runtime 01a1ce37-eca0-7270-afda-0ea567c81b36 with 0 findings. The one WEAK field is test strategy: the package has no test directory and no test:unit script, so PA-001..PA-005 have no automated evidence (a local Node probe and the committed webex UMD bundle support PA-001 and PA-002). Held at Partial because the test-strategy gap remains, no characterization baseline exists, and a drift scan has not run.",
+      "last_assessed": "2026-11-12",
+      "contracts": {
+        "provides": [
+          "authorization-sdk"
+        ],
+        "requires": [
+          "authorization-node-sdk",
+          "authorization-browser-sdk",
+          "webex-core-plugin-host",
+          "package-browser-field-resolution"
+        ]
+      },
+      "section_profile": {
+        "has_tiers": false,
+        "has_ui": false,
+        "crosses_service_boundaries": false,
+        "holds_client_state": false,
+        "enforces_domain_rules": false,
+        "is_concurrent_async": false,
+        "owns_persistence": false,
+        "stateful_transitions": false,
+        "exposes_wire_protocol": false,
+        "ui_multi_screen": false,
+        "large_data_model": false,
+        "returns_caller_errors": true,
+        "module_specific_conventions": true,
+        "published_package": true,
+        "embedded_in_host": false,
+        "has_design_tradeoff": true,
+        "resolved_by": "claude-code (code evidence; bootstrap questionnaire)",
+        "resolved_at": "2026-11-12T05:11:05Z",
+        "has_submodules": false,
+        "has_submodules_computed_by": "scripts/module_tree.py",
+        "has_submodules_computed_at": "2026-11-12T05:18:01Z"
+      }
+    }
+  ],
+  "contract_catalog": {
+    "index_path": "docs/architecture.md",
+    "definitions": {
+      "authorization-sdk": {
+        "kind": "sdk",
+        "publication": "published",
+        "source_kind": "repository-path",
+        "source": "package.json",
+        "summary": "Published npm package. main is dist/index.js and devMain is src/index.js (Node entry, re-exporting default and config from @webex/plugin-authorization-node); the browser field maps ./dist/index.js to ./dist/index.browser.js and ./src/index.js to ./src/index.browser.js (browser entry, re-exporting them from @webex/plugin-authorization-browser). Exports are default and config, mirroring the selected sibling. Importing the package registers the selected sibling as public plugin 'authorization' (first registration wins). Per-entry behavior is in src/docs/README.md."
+      },
+      "authorization-node-sdk": {
+        "kind": "sdk",
+        "publication": "published",
+        "source_kind": "external",
+        "source": "@webex/plugin-authorization-node (workspace package; module spec consulted: packages/@webex/plugin-authorization-node/src/docs/README.md)",
+        "summary": "Exports default Authorization and config {credentials: {}}; importing it imports @webex/internal-plugin-device and registers 'authorization' with proxies isAuthorizing and isAuthenticating. Plugin API: requestAuthorizationCodeGrant, requestAccessTokenFromJwt, createJwt, logout."
+      },
+      "authorization-browser-sdk": {
+        "kind": "sdk",
+        "publication": "published",
+        "source_kind": "external",
+        "source": "@webex/plugin-authorization-browser (workspace package; no specification exists, code consulted: packages/@webex/plugin-authorization-browser/src/index.js, src/config.js, src/authorization.js, package.json)",
+        "summary": "Exports default Authorization and config {credentials: {clientType: 'public'}}; importing it imports @webex/internal-plugin-device and registers 'authorization' with proxies isAuthorizing and isAuthenticating. Plugin API: initiateLogin (authorization-code redirect when clientType is 'confidential', else implicit grant), initiateImplicitGrant, initiateAuthorizationCodeGrant, requestAccessTokenFromJwt, createJwt, logout; on initialization it parses the URL hash for a token and checks the sessionStorage CSRF token."
+      },
+      "webex-core-plugin-host": {
+        "kind": "sdk",
+        "publication": "published",
+        "source_kind": "external",
+        "source": "@webex/webex-core (workspace package; module spec consulted: packages/@webex/webex-core/src/docs/README.md)",
+        "summary": "registerPlugin(name, ctor, options) is first-wins: a second registration of a name already registered returns without changing anything unless options.replace is set (MOD-013). Reached by this package only through the sibling plugins' import side effects."
+      },
+      "package-browser-field-resolution": {
+        "kind": "file",
+        "publication": "published",
+        "source_kind": "external",
+        "source": "package.json browser field convention as applied by webpack (resolve.aliasFields) and browserify; the workspace build is the root webpack.config.js, which aliases each workspace package to src/index",
+        "summary": "A resolver that applies the browser field replaces ./dist/index.js and ./src/index.js with their .browser.js counterparts. Node require does not apply it. The committed packages/webex/umd/webex.min.js shows the workspace build applies it."
+      }
+    }
+  },
+  "spec_policy": {
+    "require_what_and_why": true,
+    "require_provenance": true,
+    "protected_specs": [
+      "src/docs/README.md"
+    ]
+  },
+  "validation": {
+    "generator_runtime": "claude-code",
+    "generator_model": "claude-opus-5-5",
+    "generator_runtime_source": "host-metadata",
+    "source_commit": "ecd5af12a1abf47fc6ed7dd72cb308b259d45fb8",
+    "minimum_independence": "different-runtime",
+    "blocking_severities": [
+      "Blocking"
+    ],
+    "validator_runtime": "01a1ce37-eca0-7270-afda-0ea567c81b36",
+    "validator_runtime_source": "invocation-input",
+    "validator_run_id": "01a1ce37-eca0-7270-afda-0ea567c81b36",
+    "runtime_fallback_tier": "different-runtime"
+  },
+  "layout": {
+    "sdd_root": ".sdd",
+    "docs_root": "docs",
+    "agent_entry_path": "AGENTS.md",
+    "standing_docs_root": "docs",
+    "spec_index_path": "docs/specs/README.md",
+    "module_docs_strategy": "source-local",
+    "module_docs_relative_path": "docs/README.md",
+    "module_docs_decision": {
+      "basis": "repo-standards-default",
+      "reason": "No module-local documentation existed. The source-local default gives src/docs/README.md. test:style runs eslint ./src/**/*.*, and the shared @webex/eslint-config-legacy ignore patterns exclude docs/** and *.md; build:src processes -js -ts only, so Markdown under src/ does not enter the build output.",
+      "decided_by": "rarajes2@cisco.com (bootstrap questionnaire)",
+      "decided_at": "2026-11-12T05:11:05Z"
+    },
+    "repo_context_decision": {
+      "path": ".repo-context.json",
+      "schema_path": "schemas/repo-context.schema.json",
+      "action": "create",
+      "schema_action": "create",
+      "reason": "Neither the operational context nor its schema existed in this package. The context is created from package evidence and the schema is copied from the repository-root .sdd/templates/repo-standards/schemas/repo-context.schema.json.",
+      "decided_by": "rarajes2@cisco.com (bootstrap questionnaire)",
+      "decided_at": "2026-11-12T05:11:05Z"
+    },
+    "artifact_decisions": [
+      {
+        "path": "docs/service.md",
+        "action": "omit",
+        "reason": "Library package, not a deployable service. package.json has no start script, container, or deployment descriptor.",
+        "decided_by": "claude-code (code evidence)",
+        "decided_at": "2026-11-12T05:11:05Z"
+      },
+      {
+        "path": "mkdocs.yml",
+        "action": "omit",
+        "reason": "No package-level documentation site exists. Documentation publishing stays with the workspace.",
+        "decided_by": "claude-code (code evidence)",
+        "decided_at": "2026-11-12T05:11:05Z"
+      },
+      {
+        "path": "api-specs/openapi.yaml",
+        "action": "omit",
+        "reason": "The package serves no HTTP routes and makes no requests. Its published surface is the npm export described by authorization-sdk, whose native source is package.json.",
+        "decided_by": "claude-code (code evidence)",
+        "decided_at": "2026-11-12T05:11:05Z"
+      },
+      {
+        "path": "SECURITY.md",
+        "action": "omit",
+        "reason": "No package-level security policy exists. The workspace owns security policy, and a per-package copy would duplicate it.",
+        "decided_by": "claude-code (code evidence)",
+        "decided_at": "2026-11-12T05:11:05Z"
+      },
+      {
+        "path": "CONTRIBUTING.md",
+        "action": "omit",
+        "reason": "Contribution instructions are owned at the workspace root CONTRIBUTING.md.",
+        "decided_by": "claude-code (code evidence)",
+        "decided_at": "2026-11-12T05:11:05Z"
+      },
+      {
+        "path": "CHANGELOG.md",
+        "action": "omit",
+        "reason": "Changelog generation is owned at the workspace root. This package has no changelog file.",
+        "decided_by": "claude-code (code evidence)",
+        "decided_at": "2026-11-12T05:11:05Z"
+      },
+      {
+        "path": "CTO_CHECKLIST.yml",
+        "action": "omit",
+        "reason": "The CTO readiness checklist applies to deployable services. This package is a library.",
+        "decided_by": "claude-code (code evidence)",
+        "decided_at": "2026-11-12T05:11:05Z"
+      },
+      {
+        "path": "schemas/cto-checklist.schema.json",
+        "action": "omit",
+        "reason": "Omitted together with CTO_CHECKLIST.yml.",
+        "decided_by": "claude-code (code evidence)",
+        "decided_at": "2026-11-12T05:11:05Z"
+      }
+    ],
+    "template_roots": {
+      "canonical": ".sdd/templates/repo-standards"
+    },
+    "contract_index_path": "docs/architecture.md",
+    "repo_skills_root": ".sdd/skills",
+    "monorepo_package": {
+      "package_path": "packages/@webex/plugin-authorization",
+      "root_manifest_path": "../../../.sdd/manifest.json",
+      "templates_root_path": "../../../.sdd/templates/repo-standards"
+    }
+  },
+  "tooling": {
+    "sdlc_skills": {
+      "source_ref": "repo-annotation@2.3.1"
+    }
+  },
+  "coverage_ratchet": {
+    "enabled": true,
+    "waivers": []
+  },
+  "substrate": {
+    "source": "WebexTools/repo-standards@d89a7fe59126ae3ad9bac9ca352aa7f12b4c85dc",
+    "consumed": [
+      "@webex/eslint-config-legacy via .eslintrc.js",
+      "@webex/babel-config-legacy via babel.config.js",
+      "@webex/jest-config-legacy via jest.config.js (no tests use it)",
+      "@webex/legacy-tools build and test runner via package.json",
+      "package README.md and OAUTH-FLOW-GUIDE.md (context only)",
+      "Repo Standards templates at the monorepo root .sdd/templates/repo-standards, referred to through layout.monorepo_package.templates_root_path (this package holds no templates)"
+    ],
+    "compliance_tier": "baseline"
+  },
+  "section_profiles": {
+    "repo": {
+      "owns_datastore": false,
+      "holds_client_state": false,
+      "components_interact": true,
+      "domain_data_across_components": false,
+      "caches_data": false,
+      "observability_convention": false,
+      "deploys_to_infra": false,
+      "shared_base_libs": true,
+      "is_monorepo": false,
+      "multi_platform": true,
+      "published_package": true,
+      "embedded_in_host": false,
+      "cross_repo_deps_material": true,
+      "security_arch_warranted": false,
+      "exposes_commands_or_artifacts": true
+    },
+    "resolved_by": "claude-code (code evidence; bootstrap questionnaire)",
+    "resolved_at": "2026-11-12T05:11:05Z"
+  }
+}

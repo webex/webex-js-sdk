@@ -1,0 +1,496 @@
+{
+  "$schema": "./schemas/repo-context.schema.json",
+  "version": 1,
+  "repository": {
+    "name": "@webex/internal-plugin-avatar",
+    "purpose": "Internal plugin registered as webex.internal.avatar that resolves Webex users to avatar URLs. retrieveAvatarUrl(user, options) turns a uuid, email, or user object into a uuid through webex.internal.user.asUUID, answers from an in-memory store keyed by uuid and size, and on a miss requests the asked size plus every configured size (40, 50, 80, 110, 135, 192, 640, 1600; default 80) through a batcher that groups lookups into one POST profiles/urls to the avatar service; entries expire after cacheControl seconds (3600 by default), and hideDefaultAvatar makes a default avatar resolve null. setAvatar(file) resizes the image with @webex/helper-image, uploads it as the current user's avatar through the three-phase webex-core upload to profile sessions of the avatar service, clears that user's cached sizes, and resolves the new URL. Nothing is persisted."
+  },
+  "commands": {
+    "install": "yarn",
+    "prebuild": "yarn prebuild:modules",
+    "compile": "yarn build",
+    "build": "yarn build:src",
+    "unit-test": "yarn test:unit",
+    "lint": "yarn test:style",
+    "browser-test": "yarn test:browser",
+    "deploy": "yarn deploy:npm"
+  },
+  "public_interfaces": [
+    {
+      "name": "@webex/internal-plugin-avatar package entry",
+      "kind": "package_export",
+      "source": "src/index.js",
+      "entrypoints": [
+        "import '@webex/internal-plugin-avatar'",
+        "import Avatar from '@webex/internal-plugin-avatar'"
+      ],
+      "audience": "first-party Webex clients and the SDK packages that register it",
+      "notes": "Importing the package imports the user and device plugins, then registers Avatar as internal plugin 'avatar' with the avatar config; the first registration of the name wins. The default export Avatar is the only export; config is not exported."
+    },
+    {
+      "name": "webex.internal.avatar methods",
+      "kind": "plugin_api",
+      "source": "src/avatar.js",
+      "entrypoints": [
+        "webex.internal.avatar.retrieveAvatarUrl(user, options)",
+        "webex.internal.avatar.setAvatar(file)",
+        "webex.internal.avatar.enableThumbnails"
+      ],
+      "audience": "first-party Webex clients",
+      "notes": "retrieveAvatarUrl resolves a URL string, or null when options.hideDefaultAvatar is set and the avatar is a default one; options.size defaults to 80 and options.cacheControl to 3600 seconds, filled only where undefined and written into the caller's object. A miss prefetches every configured size, and one missing size rejects the call with 'Failed to retrieve avatar'. setAvatar uploads the helper-image thumbnail of the file for the current user and resolves the finalize url; it rejects with a TypeError for a non-image. The store, the batcher child, and the underscore-prefixed fetch helpers are reachable but not supported entries."
+    },
+    {
+      "name": "package scripts",
+      "kind": "npm_scripts",
+      "source": "package.json",
+      "entrypoints": [
+        "build",
+        "build:src",
+        "test:unit",
+        "test:style",
+        "test:browser",
+        "test",
+        "deploy:npm"
+      ],
+      "audience": "contributors and CI",
+      "notes": "build runs build:src, which writes dist. test:unit runs the jest unit specs, which import the package by name and so test dist; run build:src first. test:browser (commands.browser-test) runs karma over test/integration/spec but bundles nothing today (0 tests, exit 0), and its one spec has every case commented out. The aggregate test script runs test:style and test:unit, then exits 1 because test:integration is not defined; it is deliberately not a manifest command."
+    }
+  ],
+  "source_of_truth": [
+    {
+      "surface": "Avatar plugin implementation",
+      "paths": [
+        "src/index.js",
+        "src/avatar.js",
+        "src/avatar-url-batcher.js",
+        "src/avatar-url-store.js",
+        "src/config.js"
+      ],
+      "generated_artifacts": [
+        "dist"
+      ],
+      "refresh_with": [
+        "yarn build:src"
+      ],
+      "validate_with": [
+        "yarn test:unit",
+        "yarn test:style"
+      ]
+    },
+    {
+      "surface": "module specification",
+      "paths": [
+        "src/docs/README.md"
+      ],
+      "generated_artifacts": [],
+      "refresh_with": [
+        "update alongside the behavior change in the same commit"
+      ],
+      "validate_with": [
+        "spec-validator on an independent runtime"
+      ]
+    }
+  ],
+  "generated_artifacts": [
+    {
+      "path": "dist",
+      "generated_from": "src",
+      "refresh_with": "yarn build:src"
+    },
+    {
+      "path": "../../../.sdd/templates/repo-standards/template-map.json",
+      "generated_from": "WebexTools/repo-standards@d89a7fe59126ae3ad9bac9ca352aa7f12b4c85dc",
+      "refresh_with": "The package holds no templates. It refers to the monorepo root snapshot at ../../../.sdd/templates/repo-standards through layout.monorepo_package.templates_root_path in .sdd/manifest.json. Refresh the root snapshot, not this package."
+    }
+  ],
+  "validation_matrix": [
+    {
+      "paths": [
+        "src/**"
+      ],
+      "minimum": [
+        "yarn build:src",
+        "yarn test:unit",
+        "yarn test:style"
+      ],
+      "recommended": [
+        "add or update cases in test/unit/spec/avatar.js, test/unit/spec/avatar-url-batcher.js, or test/unit/spec/avatar-url-store.js for the changed behavior"
+      ]
+    },
+    {
+      "paths": [
+        "src/avatar.js",
+        "src/avatar-url-batcher.js"
+      ],
+      "minimum": [
+        "yarn build:src",
+        "yarn test:unit",
+        "yarn test:style"
+      ],
+      "recommended": [
+        "keep the assertion that a burst of lookups sends one request (INV-002), and add a case for a partial response or an HTTP error when the batch handling changes (INV-003)"
+      ]
+    },
+    {
+      "paths": [
+        "src/avatar-url-store.js",
+        "src/config.js"
+      ],
+      "minimum": [
+        "yarn build:src",
+        "yarn test:unit",
+        "yarn test:style"
+      ],
+      "recommended": [
+        "change config.sizes and the fixed size list in AvatarUrlStore.remove together, and pin the expiry timer with sinon fake timers (INV-001)"
+      ]
+    },
+    {
+      "paths": [
+        "src/index.js"
+      ],
+      "minimum": [
+        "yarn build:src",
+        "yarn test:unit",
+        "yarn test:style"
+      ],
+      "recommended": [
+        "check the packages that register the plugin (@webex/webex-server, @webex/recipe-private-web-client) when the registered name or an import changes"
+      ]
+    }
+  ],
+  "change_impact": [
+    {
+      "paths": [
+        "src/avatar.js"
+      ],
+      "affects": [
+        "retrieveAvatarUrl option defaults and the hideDefaultAvatar result",
+        "the all-sizes prefetch and oneFlight keys",
+        "the setAvatar upload phases and cache invalidation"
+      ],
+      "refresh_with": [
+        "yarn build:src"
+      ],
+      "validate_with": [
+        "yarn test:unit",
+        "yarn test:style"
+      ],
+      "avoid_direct_edits": [
+        "dist"
+      ],
+      "notes": "setAvatar has no unit case; add one stubbing detectFileType, processImage, and upload before changing it."
+    },
+    {
+      "paths": [
+        "src/avatar-url-batcher.js"
+      ],
+      "affects": [
+        "the profiles/urls request body",
+        "response mapping, the size-substitution warning, and error fan-out"
+      ],
+      "refresh_with": [
+        "yarn build:src"
+      ],
+      "validate_with": [
+        "yarn test:unit",
+        "yarn test:style"
+      ],
+      "avoid_direct_edits": [
+        "dist"
+      ],
+      "notes": "handleHttpError and the missing-size path have no unit case (MOD-009, INV-003)."
+    },
+    {
+      "paths": [
+        "src/avatar-url-store.js",
+        "src/config.js"
+      ],
+      "affects": [
+        "the store key, guards, and TTL",
+        "the size list and default size",
+        "the batcher timings"
+      ],
+      "refresh_with": [
+        "yarn build:src"
+      ],
+      "validate_with": [
+        "yarn test:unit",
+        "yarn test:style"
+      ],
+      "avoid_direct_edits": [
+        "dist"
+      ],
+      "notes": "Keep INV-001 and INV-004 intact; the expiry timer is not asserted today."
+    },
+    {
+      "paths": [
+        "src/index.js"
+      ],
+      "affects": [
+        "the registered plugin name and config",
+        "the user and device plugin imports"
+      ],
+      "refresh_with": [
+        "yarn build:src"
+      ],
+      "validate_with": [
+        "yarn test:unit",
+        "yarn test:style"
+      ],
+      "avoid_direct_edits": [
+        "dist"
+      ],
+      "notes": "No unit case covers registration; add one before changing it."
+    }
+  ],
+  "evidence_rules": [
+    {
+      "claim_category": "command_name",
+      "sources": [
+        "package.json"
+      ],
+      "requirement": "The script must exist in package.json scripts.",
+      "notes": "test:integration does not exist, so the aggregate test script fails; test:browser currently verifies nothing."
+    },
+    {
+      "claim_category": "import_path",
+      "sources": [
+        "src/index.js"
+      ],
+      "requirement": "A binding is public only if exported from src/index.js.",
+      "notes": "The only export is the default Avatar."
+    },
+    {
+      "claim_category": "behavior_claim",
+      "sources": [
+        "src",
+        "test/unit/spec"
+      ],
+      "requirement": "Ground every behavioral claim in source and unit-test evidence.",
+      "notes": "Commit history is not an evidence source for this package. README.md is context only (docs/adr/0001-retain-product-readme.md). The webex-core, common, common-timers, helper-image, internal-plugin-user, and internal-plugin-device specs were consulted; the webex-core batcher and the common oneFlight and patterns code were read where those specs are silent."
+    }
+  ],
+  "negative_guidance": [
+    {
+      "rule": "Do not call webex.request for profiles/urls outside the batcher.",
+      "why": "Lookups must be de-duplicated and grouped so a burst sends one request per flush (INV-002)."
+    },
+    {
+      "rule": "Do not change config.sizes without changing the fixed size list in AvatarUrlStore.remove.",
+      "why": "setAvatar invalidation would leave sizes cached until their TTL (module spec Pitfalls)."
+    },
+    {
+      "rule": "Do not read the service cacheControl field for the TTL without updating INV-001.",
+      "why": "The store TTL comes from options.cacheControl or config.cacheControl by design (config comment)."
+    },
+    {
+      "rule": "Do not log user ids, emails, or avatar URLs.",
+      "why": "They identify users; the only log line today prints sizes only."
+    },
+    {
+      "rule": "Do not treat README.md as a usage reference.",
+      "why": "Its Usage block names a placeholder member; see docs/adr/0001-retain-product-readme.md."
+    },
+    {
+      "rule": "Do not infer a coverage threshold for this package.",
+      "why": "No coverage script or threshold exists."
+    }
+  ],
+  "confidence_policy": {
+    "high": {
+      "action": "update",
+      "expectation": "Source and a unit case in test/unit/spec agree."
+    },
+    "medium": {
+      "action": "narrow-scope",
+      "expectation": "Only source evidence exists, as for registration, the config defaults, handleHttpError, the missing-size path, the expiry timer, and setAvatar. Pin current behavior with a unit case before modifying."
+    },
+    "low": {
+      "action": "noop",
+      "expectation": "Neither source, tests, nor a dependency's spec or code settles the question. Stop and report the gap."
+    }
+  },
+  "repository_topology": {
+    "main_entrypoints": [
+      {
+        "name": "package entry",
+        "path": "src/index.js",
+        "purpose": "Registers the avatar plugin and exports the class",
+        "notes": "No subpath exports; package.json main is dist/index.js and devMain is src/index.js."
+      }
+    ],
+    "workspace_packages": [
+      {
+        "name": "@webex/internal-plugin-avatar",
+        "paths": [
+          "src",
+          "test"
+        ],
+        "notes": "One module; this SDD root is the package directory inside the webex-js-sdk monorepo."
+      }
+    ],
+    "source_surfaces": [
+      {
+        "name": "Avatar plugin",
+        "paths": [
+          "src"
+        ],
+        "notes": "index.js, avatar.js, avatar-url-batcher.js, avatar-url-store.js, config.js. Specified at src/docs/README.md."
+      },
+      {
+        "name": "tests",
+        "paths": [
+          "test/unit/spec",
+          "test/integration/spec"
+        ],
+        "notes": "Three unit specs run by test:unit; one integration spec, with every case commented out, run only by test:browser."
+      }
+    ],
+    "generated_surfaces": [
+      {
+        "name": "build output",
+        "paths": [
+          "dist"
+        ],
+        "generated_from": "src",
+        "refresh_with": "yarn build:src",
+        "notes": "JavaScript and source maps from webex-legacy-tools; no type declarations. Do not edit by hand."
+      },
+      {
+        "name": "repo-standards template map",
+        "paths": [
+          "../../../.sdd/templates/repo-standards"
+        ],
+        "generated_from": "WebexTools/repo-standards@d89a7fe59126ae3ad9bac9ca352aa7f12b4c85dc",
+        "refresh_with": "The package holds no templates. It refers to the monorepo root snapshot at ../../../.sdd/templates/repo-standards through layout.monorepo_package.templates_root_path in .sdd/manifest.json. Refresh the root snapshot, not this package.",
+        "notes": "The package holds no templates. It refers to the monorepo root snapshot at ../../../.sdd/templates/repo-standards through layout.monorepo_package.templates_root_path in .sdd/manifest.json. Refresh the root snapshot, not this package."
+      }
+    ],
+    "validation_entrypoints": [
+      {
+        "name": "compile",
+        "command": "yarn build",
+        "scope": "src",
+        "notes": "Runs build:src."
+      },
+      {
+        "name": "unit-test",
+        "command": "yarn test:unit",
+        "scope": "test/unit/spec",
+        "notes": "Run build:src first; the specs test dist."
+      },
+      {
+        "name": "lint",
+        "command": "yarn test:style",
+        "scope": "src",
+        "notes": "eslint via the local .eslintrc.js; docs/** and *.md are ignored."
+      }
+    ],
+    "sync_paths": [
+      {
+        "source": "src/avatar.js",
+        "targets": [
+          "src/docs/README.md"
+        ],
+        "mechanism": "Manual; update the module specification in the same change that alters observable behavior.",
+        "notes": "Keep the retrieval, batching, store, and upload rows of the specification aligned with src/avatar.js, src/avatar-url-batcher.js, src/avatar-url-store.js, and src/config.js."
+      },
+      {
+        "source": "WebexTools/repo-standards@d89a7fe59126ae3ad9bac9ca352aa7f12b4c85dc",
+        "targets": [
+          "../../../.sdd/templates/repo-standards"
+        ],
+        "mechanism": "The package holds no templates. It refers to the monorepo root snapshot at ../../../.sdd/templates/repo-standards through layout.monorepo_package.templates_root_path in .sdd/manifest.json. Refresh the root snapshot, not this package.",
+        "notes": "The package holds no templates. It refers to the monorepo root snapshot at ../../../.sdd/templates/repo-standards through layout.monorepo_package.templates_root_path in .sdd/manifest.json. Refresh the root snapshot, not this package."
+      }
+    ]
+  },
+  "folder_readme_contract": {
+    "required_sections": [
+      "purpose",
+      "boundaries",
+      "key-files",
+      "common-tasks"
+    ],
+    "rules": [
+      "Orient the reader before describing detail.",
+      "Link to the module specification rather than duplicating it."
+    ],
+    "example_policy": "Examples are allowed only when verified against src/ or test/.",
+    "fallback": "Omit a section rather than inventing content; report unresolved facts as gaps."
+  },
+  "regression_feedback_rules": [
+    {
+      "trigger": "The profiles/urls request, its grouping, or the response mapping in src/avatar-url-batcher.js changes.",
+      "required_followups": [
+        "Add or update a unit case in test/unit/spec/avatar-url-batcher.js or test/unit/spec/avatar.js asserting the request and the resolved items",
+        "Update MOD-007 to MOD-009 and INV-002 and INV-003 in src/docs/README.md"
+      ],
+      "notes": "handleHttpError and the missing-size path are untested; the missing-size case is skipped."
+    },
+    {
+      "trigger": "The store key, guards, TTL, or remove list in src/avatar-url-store.js or src/config.js changes.",
+      "required_followups": [
+        "Add a fake-timer unit case for expiry; none exists today",
+        "Update MOD-002, MOD-010, MOD-011, INV-001, and INV-004 in src/docs/README.md"
+      ],
+      "notes": "The remove list is fixed and not read from config.sizes."
+    },
+    {
+      "trigger": "setAvatar, registration, or the imports in src/avatar.js or src/index.js change.",
+      "required_followups": [
+        "Add unit cases for setAvatar and registration; none exist today",
+        "Update MOD-001, MOD-003, MOD-012, and INV-005 in src/docs/README.md"
+      ],
+      "notes": "The integration cases for setAvatar and retrieveAvatarUrl are commented out."
+    }
+  ],
+  "surface_owners": [
+    {
+      "surface": "module implementation and specifications",
+      "owner": "@webex/web-sdk",
+      "edit_boundary": "Owner per the default rule of the monorepo .github/CODEOWNERS; the file has no line for packages/@webex/internal-plugin-avatar."
+    }
+  ],
+  "do_not_edit": [
+    "dist",
+    "../../../.sdd/templates/repo-standards"
+  ],
+  "marker_scopes": {
+    "sdd": [
+      ".sdd/manifest.json",
+      "src/docs/README.md",
+      "docs"
+    ]
+  },
+  "fallback_rules": [
+    "When source and tests disagree, code is the referee and the disagreement is recorded rather than silently resolved.",
+    "When neither source nor tests settle a question, report it as a gap instead of inferring.",
+    "Commit history is not a valid rationale source for this package.",
+    "When a dependency's specification disagrees with that dependency's code, use the code and record the disagreement; when a dependency has no specification, use its code."
+  ],
+  "downstream_context_pack": {
+    "required_human_surfaces": [
+      "README.md",
+      "docs/index.md",
+      "docs/architecture.md",
+      "src/docs/README.md"
+    ],
+    "required_agent_operational_surfaces": [
+      "AGENTS.md",
+      "docs/specs/README.md"
+    ],
+    "required_machine_readable_surface": ".sdd/manifest.json",
+    "recommended_machine_readable_sections": [
+      "public_interfaces",
+      "change_impact",
+      "evidence_rules",
+      "negative_guidance",
+      "confidence_policy",
+      "repository_topology",
+      "folder_readme_contract",
+      "regression_feedback_rules"
+    ]
+  }
+}

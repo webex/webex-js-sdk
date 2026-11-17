@@ -39,21 +39,21 @@ Related context: [documentation index](../../docs/index.md) · [package agent in
 | Condition ID                         | Status     | Evidence or reason | Owned section |
 | ------------------------------------ | ---------- | ------------------ | ------------- |
 | `module.has_tiers`                   | N/A        | No tier policy in this package | Tier |
-| `module.has_ui`                      | N/A        | No view or screen. Output goes to `console` and an in-memory buffer. | UI use-case flow |
-| `module.crosses_service_boundaries`  | N/A        | `src/` makes no network call. Upload is done by the sibling package internal-plugin-support. | Cross-boundary use-case flow |
-| `module.holds_client_state`          | Applicable | `buffer`, `sdkBuffer`, `clientBuffer`, and `groupLevel` are session properties in `src/logger.js` | Client state model |
+| `module.has_ui`                      | N/A        | No view or screen. Output goes to console and an in-memory buffer. | UI use-case flow |
+| `module.crosses_service_boundaries`  | N/A        | src/ makes no network call. Upload is done by the sibling package internal-plugin-support. | Cross-boundary use-case flow |
+| `module.holds_client_state`          | Applicable | buffer, sdkBuffer, clientBuffer, and groupLevel are session properties in `src/logger.js` | Client state model |
 | `module.enforces_domain_rules`       | Applicable | Level precedence, buffer threshold, and redaction rules in `src/logger.js` | Business rules and invariants |
 | `module.is_concurrent_async`         | N/A        | Every method is synchronous. Record events use the native emitter; no promise or timer is added. | Concurrency and reactive flow |
 | `module.owns_persistence`            | N/A        | Buffers live in memory only. Nothing is written to storage. | Data, schema, and migration discipline |
 | `module.stateful_transitions`        | N/A        | Buffer cursors are covered under Client state model. There is no named state machine. | State machine |
-| `module.exposes_wire_protocol`       | Applicable | `formatLogs()` output is the log text that the sibling package internal-plugin-support uploads | Protocol and wire format |
+| `module.exposes_wire_protocol`       | Applicable | formatLogs() output is the log text that the sibling package internal-plugin-support uploads | Protocol and wire format |
 | `module.ui_multi_screen`             | N/A        | No UI | UI flow |
 | `module.large_data_model`            | N/A        | Buffer entries, record wrappers and logger config | Data model |
-| `module.returns_caller_errors`       | N/A        | Log methods catch every internal error and return `undefined`. No method throws to the caller. | Caller-visible failure modes |
-| `module.module_specific_conventions` | Applicable | `client_` method prefix, `wx-js-sdk` name, and redaction-before-output rules | Module-specific rules |
-| `module.published_package`           | Applicable | `package.json` names the package and `deploy:npm` publishes it | Export stability |
+| `module.returns_caller_errors`       | N/A        | Log methods catch every internal error and return undefined. No method throws to the caller. | Caller-visible failure modes |
+| `module.module_specific_conventions` | Applicable | client\_ method prefix, wx-js-sdk name, and redaction-before-output rules | Module-specific rules |
+| `module.published_package`           | Applicable | `package.json` names the package and deploy:npm publishes it | Export stability |
 | `module.embedded_in_host`            | N/A        | No host theme or embed API | Host integration and theming |
-| `module.has_design_tradeoff`         | Applicable | `debug` and `trace` are excluded from the buffer by default; browsers print stringified values | Key design trade-off |
+| `module.has_design_tradeoff`         | Applicable | debug and trace are excluded from the buffer by default; browsers print stringified values | Key design trade-off |
 | `module.has_submodules`              | N/A        | Computed false by the Repo Annotation module_tree.py script. `src/config.js` is a helper file, not a child module. | Sub-modules |
 
 ## Evidence register
@@ -318,14 +318,14 @@ In browsers the logger prints the stringified values instead of live objects. Th
 
 | Behavior | Check | Evidence | Gap |
 | -------- | ----- | -------- | --- |
-| MOD-002 to MOD-005, INV-001 to INV-003 | `yarn workspace @webex/plugin-logger test:unit` | `#shouldPrint()`, `#shouldBuffer()` | Node-only cases do not run under karma |
-| MOD-006, INV-004 | same | `#filter`, `#walkAndFilter`, per-level `removes authorization data` | Repeated strings, uppercase `AUTHORIZATION`, and email with MTID are untested |
-| MOD-007, MOD-008 | same | `#log()` error and object formatting cases | Stringify failure branch untested |
-| MOD-009, MOD-010, INV-006 | same | overflow and `limit` cases | SDK buffer capped by `clientHistoryLength` untested |
-| MOD-011, MOD-012 | same | `#formatLogs()`, `#updateLastSubmittedIndex()`, `#resetBufferToLastSuccessfulUpload()` | — |
-| MOD-013 | same | `#logToBuffer()` | — |
+| MOD-002 to MOD-005, INV-001 to INV-003 | `yarn workspace @webex/plugin-logger test:unit` | #shouldPrint(), #shouldBuffer() | Node-only cases do not run under karma |
+| MOD-006, INV-004 | same | #filter, #walkAndFilter, per-level removes authorization data | Repeated strings, uppercase `AUTHORIZATION`, and email with MTID are untested |
+| MOD-007, MOD-008 | same | #log() error and object formatting cases | Stringify failure branch untested |
+| MOD-009, MOD-010, INV-006 | same | overflow and limit cases | SDK buffer capped by `clientHistoryLength` untested |
+| MOD-011, MOD-012 | same | #formatLogs(), #updateLastSubmittedIndex(), #resetBufferToLastSuccessfulUpload() | — |
+| MOD-013 | same | #logToBuffer() | — |
 | MOD-001, MOD-014, INV-007, `group` and `groupEnd` | none | Source inspection only | No test for registration, the catch branch, default history, or group indentation |
-| Browser output | `yarn workspace @webex/plugin-logger test:browser` | `browserOnly` cases | Requires a karma browser |
-| Lint | `yarn workspace @webex/plugin-logger test:style` | `src/` | — |
+| Browser output | `yarn workspace @webex/plugin-logger test:browser` | browserOnly cases | Requires a karma browser |
+| Lint | `yarn workspace @webex/plugin-logger test:style` | src/ | — |
 
 Do not run the aggregate `test` script from `package.json` as a verification command. It chains `test:integration`, which `package.json` does not define, so it is intentionally not a manifest command.

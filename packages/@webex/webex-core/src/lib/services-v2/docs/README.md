@@ -393,7 +393,7 @@ sequenceDiagram
       Plugin-->>Caller: url unchanged
     else
       Plugin->>Metrics: submitClientMetrics(JS_SDK_SERVICE_NOT_FOUND)
-      Plugin-->>Caller: reject "service '<name>' was not found in any of the catalogs"
+      Plugin-->>Caller: reject stored catalog auth reason, else "service '<name>' was not found in any of the catalogs"
     end
   else not ready
     par each of preauth, signin, postauth
@@ -404,7 +404,7 @@ sequenceDiagram
       Plugin-->>Caller: resolve priority url
     else all waits settled without a match
       Plugin->>Metrics: submitClientMetrics(JS_SDK_SERVICE_NOT_FOUND)
-      Plugin-->>Caller: reject "service '<name>' was not found after waiting"
+      Plugin-->>Caller: reject stored catalog auth reason, else "service '<name>' was not found after waiting"
     end
   end
 ```
@@ -539,7 +539,7 @@ classDiagram
 | `UC-001` Opt in to v2 | Integrator or test | Register `ServicesV2` as the `services` plugin with `replace: true` and the two interceptors, then construct the webex instance; `webex.internal.services` is v2 | Without `replace` the second registration is refused and v1 stays; without the interceptors, requests that use `service` are not resolved | `src/lib/webex-internal-core-plugin-mixin.js`, `test/integration/spec/services-v2/services-v2.js` |
 | `UC-002` Start up with a token | SDK | Config change seeds discovery; on `ready` (or `loaded` when gated) warm from cache or fetch preauth by org then postauth; `isReady` becomes true; `ready` flips | Postauth failure sets `initFailed`; timeout (gated) finalizes anyway | `src/lib/services-v2/services-v2.ts`, `test/unit/spec/services-v2/services-v2.ts` |
 | `UC-003` Start up unauthenticated | SDK | Preauth catalog by configured email hash or proximity mode; later sign-in triggers postauth | `skipPreauthCatalogOnUnauthenticated` skips the fetch; failure sets `initFailed` | `src/lib/services-v2/services-v2.ts`, `test/unit/spec/services-v2/services-v2.ts` |
-| `UC-004` Send a request by service name | `ServiceInterceptor` | `waitForService` returns the priority URL; the interceptor appends the resource | Not found rejects; the interceptor re-wraps as "is not a known service" | `src/lib/interceptors/service.js`, `src/lib/services-v2/services-v2.ts` |
+| `UC-004` Send a request by service name | `ServiceInterceptor` | `waitForService` returns the priority URL; the interceptor appends the resource | A stored postauth catalog auth failure rejects with `error.message` and `error.reason` `invalid_access_token` and `error.statusCode` 401, or `access_denied` and `error.statusCode` 403, and the interceptor rethrows that error. Every other missing service rejects with the not-found text, which the interceptor re-wraps as "is not a known service" | `src/lib/interceptors/service.js`, `src/lib/services/catalog-auth.js`, `src/lib/services-v2/services-v2.ts` |
 | `UC-005` Decide whether to send a token to a URL | Auth interceptor | `getServiceFromUrl` match, else allowed-domain match when `validateDomains` is on | Similar-looking hosts and prefix paths are rejected by the matcher | `src/interceptors/auth.js`, `test/unit/spec/interceptors/auth.js`, `test/unit/spec/services-v2/service-catalog.ts` |
 | `UC-006` Fail over after a server error | Error interceptor | `markFailedUrl` marks the host and returns the next base URL | Unknown URL returns `undefined`; reset behavior is in the Failover state diagram | `src/lib/interceptors/server-error.js`, `test/unit/spec/services-v2/service-detail.ts`, `test/integration/spec/services-v2/services-v2.js` |
 | `UC-007` React to a cluster move | Mercury | `switchActiveClusterIds` or `invalidateCache` updates the active map or refetches | Missing cluster refetches; older timestamp is ignored | `src/lib/services-v2/services-v2.ts`, `test/unit/spec/services-v2/services-v2.ts` |
@@ -663,7 +663,7 @@ stateDiagram-v2
 | `validateUser` without email or without client credentials | Rejection with the message | Fix input or config | Retry | `src/lib/services-v2/services-v2.ts` |
 | U2C request fails | Rejection with the request error; `collecting` cleared | Inspect error | Call again | `src/lib/services-v2/services-v2.ts` |
 | Catalog wait times out | Rejection `services: timeout occured while waiting for '<group>' catalog to populate` | Treat as unavailable | Retry later | `src/lib/services-v2/service-catalog.ts` |
-| Service not found | Rejection `services: service '<name>' was not found in any of the catalogs` or `... after waiting`, plus a `JS_SDK_SERVICE_NOT_FOUND` metric | Treat as unknown | Retry after the catalog loads | `src/lib/services-v2/services-v2.ts` |
+| Service not found | Rejection `services: service '<name>' was not found in any of the catalogs` or `... after waiting`, plus a `JS_SDK_SERVICE_NOT_FOUND` metric. A stored postauth catalog auth failure instead rejects with `error.message` and `error.reason` `invalid_access_token` and `error.statusCode` 401, or `access_denied` and `error.statusCode` 403 | Treat a catalog 401 or 403 as an authorization failure; treat every other rejection as an unknown service | Retry after the catalog loads, or after the token is replaced | `src/lib/services-v2/services-v2.ts`, `src/lib/services/catalog-auth.js` |
 | `convertUrlToPriorityHostUrl` or `getServiceUrlFromClusterId` on unknown input | Thrown `No service associated with url: [...]` or `Could not find service for cluster [...]` | Guard with lookups; `replaceHostFromHostmap` already swallows | None | `src/lib/services-v2/services-v2.ts` |
 | `markFailedUrl` with an unparsable URL | Thrown `TypeError` from `new URL` | Pass a full URL | None | `src/lib/services-v2/service-detail.ts` |
 | Gated init fails or times out | `ready` still true; `initFailed` true; error logged | Check `initFailed` | Call `updateServices` | `src/lib/services-v2/services-v2.ts` |

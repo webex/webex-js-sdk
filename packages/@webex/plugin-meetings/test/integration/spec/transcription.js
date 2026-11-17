@@ -6,7 +6,7 @@ describe('transcription index', () => {
   let webSocketUrl, members, sessionId, token, transcription;
 
   beforeEach(() => {
-    webSocketUrl = 'ws://webSocketUrl';
+    webSocketUrl = 'wss://webSocketUrl';
     members = {
       membersCollection: {
         members: {

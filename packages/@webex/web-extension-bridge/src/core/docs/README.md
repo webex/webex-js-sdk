@@ -42,14 +42,14 @@ Related context: [documentation index](../../../docs/index.md) · [package agent
 | `module.has_ui`                      | N/A         | No UI files | UI use-case flow              |
 | `module.crosses_service_boundaries`  | N/A         | No HTTP/gRPC; env-agnostic | Cross-boundary use-case flow  |
 | `module.holds_client_state`          | N/A         | Helpers only; adapters own session/connection state | Client state model            |
-| `module.enforces_domain_rules`       | Applicable  | `validate.ts`, `serialize.ts`, `limits.ts` | Business rules and invariants |
-| `module.is_concurrent_async`         | Applicable  | `correlation.ts`, `rateLimit.ts` | Concurrency and reactive flow |
+| `module.enforces_domain_rules`       | Applicable  | `src/core/validate.ts`, `src/core/serialize.ts`, `src/core/limits.ts` | Business rules and invariants |
+| `module.is_concurrent_async`         | Applicable  | `src/core/correlation.ts`, `src/core/rateLimit.ts` | Concurrency and reactive flow |
 | `module.owns_persistence`            | N/A         | No datastore | Data, schema, and migration   |
 | `module.stateful_transitions`        | N/A         | No connection state machine here | State machine                 |
-| `module.exposes_wire_protocol`       | Applicable  | `protocol.ts` Envelope | Protocol and wire format      |
+| `module.exposes_wire_protocol`       | Applicable  | `src/core/protocol.ts` Envelope | Protocol and wire format      |
 | `module.ui_multi_screen`             | N/A         | No UI | UI flow                       |
 | `module.large_data_model`            | N/A         | Envelope plus helpers only | Data model                    |
-| `module.returns_caller_errors`       | Applicable  | `BridgeError` / `BRIDGE_ERROR_CODES` | Caller-visible failure modes  |
+| `module.returns_caller_errors`       | Applicable  | BridgeError / BRIDGE_ERROR_CODES | Caller-visible failure modes  |
 | `module.module_specific_conventions` | Applicable  | Null-prototype records; redacted wire errors | Module-specific rules         |
 | `module.published_package`           | Applicable  | Re-exported from `src/index.ts` | Export stability              |
 | `module.embedded_in_host`            | N/A         | Not a host mount; adapters embed | Host integration and theming  |
@@ -65,7 +65,7 @@ Related context: [documentation index](../../../docs/index.md) · [package agent
 | `src/core/errors.ts` | `BridgeErrorCode` list and wire redaction |
 | `src/core/constants.ts` | Protocol version, patterns, limits |
 | `src/core/ids.ts` | CSPRNG ids; `CRYPTO_UNAVAILABLE` |
-| `test/unit/spec/core/` | Unit coverage of protocol, validate, errors, rateLimit, replay, correlation, logger |
+| test/unit/spec/core/ | Unit coverage of protocol, validate, errors, rateLimit, replay, correlation, logger |
 | `test/unit/spec/security/threats.ts` | T1–T14 threat tests that depend on core checks |
 
 ## Purpose and boundary
@@ -89,7 +89,7 @@ Related context: [documentation index](../../../docs/index.md) · [package agent
 | `src/core/ids.ts` | CSPRNG id factory |
 | `src/core/logger.ts` | Metadata-only logger; `logLevel` threshold |
 | `src/core/counters.ts` | In-memory telemetry names |
-| `src/core/json.ts` / `serialize.ts` / `limits.ts` / `listeners.ts` / `constants.ts` | JSON walk, topic/payload checks, clamps, listener set, constants |
+| `src/core/json.ts` / `src/core/serialize.ts` / `src/core/limits.ts` / `src/core/listeners.ts` / `src/core/constants.ts` | JSON walk, topic/payload checks, clamps, listener set, constants |
 
 ## Public surface
 
@@ -239,8 +239,8 @@ Codes also defined here and thrown by adapters: `NOT_CONNECTED`, `NO_TAB`, `NO_H
 
 | Requirement or invariant | Test level | Positive evidence | Negative or boundary evidence | Gap |
 | ------------------------ | ---------- | ----------------- | ----------------------------- | --- |
-| `CORE-001` | Unit | `test/unit/spec/core/protocol.ts` | reserved-key / version tests in `validate.ts` specs | none |
+| `CORE-001` | Unit | `test/unit/spec/core/protocol.ts` | reserved-key / version tests in `src/core/validate.ts` specs | none |
 | `CORE-004` | Unit | `test/unit/spec/core/errors.ts` | unknown code rejected | none |
 | `CORE-006` | Unit | `test/unit/spec/core/ids.ts` | missing crypto throws | none |
 | `CORE-007` | Unit | `test/unit/spec/core/rateLimit.ts` | over-budget rejected | none |
-| `CORE-008` | Unit | `test/unit/spec/core/logger.ts` | unrecognised `logLevel` fallback; sink owns destination | none |
+| `CORE-008` | Unit | `test/unit/spec/core/logger.ts` | unrecognised logLevel fallback; sink owns destination | none |
