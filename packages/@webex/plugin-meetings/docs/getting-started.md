@@ -16,9 +16,9 @@ validation_status: pass-with-warnings
 # Getting started
 
 Onboarding for **@webex/plugin-meetings**, a package inside the `webex-js-sdk` Yarn workspace. Run
-`yarn` and `yarn prebuild:modules` at the workspace root, and the package scripts from this package
-directory, `packages/@webex/plugin-meetings`, where `package.json` defines them. From the workspace
-root, `yarn workspace @webex/plugin-meetings <script>` runs the same script.
+`yarn` and `yarn prebuild:modules` at the workspace root. Run the package scripts from the workspace
+root too, as `yarn workspace @webex/plugin-meetings <script>`; this package's `package.json` defines them. Inside the
+package directory, `packages/@webex/plugin-meetings`, `yarn <script>` runs the same script.
 
 ## Prerequisites
 
@@ -58,7 +58,7 @@ instructions differ.
 ## Build
 
 ```bash
-yarn build:src
+yarn workspace @webex/plugin-meetings build:src
 ```
 
 `build:src` transpiles `src/` (`.js` and `.ts`, with source maps) to `dist/` through
@@ -66,11 +66,11 @@ yarn build:src
 copies the plugin assets. Build output is `dist/`; do not hand-edit generated output.
 
 ```bash
-yarn build
+yarn workspace @webex/plugin-meetings build
 ```
 
-`yarn build` alone emits only the declarations and assets; it does not transpile `src/`, so use
-`yarn build:src` for a working `dist/`.
+The `build` script alone emits only the declarations and assets; it does not transpile `src/`, so use
+`build:src` for a working `dist/`.
 
 ## Run
 
@@ -81,39 +81,34 @@ workspace `samples:build` script). Importing `@webex/plugin-meetings` registers 
 ## Tests
 
 ```bash
-yarn test:unit
-```
-
-```bash
-yarn test:style
-```
-
-```bash
-yarn test:browser
+yarn workspace @webex/plugin-meetings build:src
+yarn workspace @webex/plugin-meetings test:style
+yarn workspace @webex/plugin-meetings test:unit
+yarn workspace @webex/plugin-meetings test:unit --targets meeting/brbState.ts
+yarn workspace @webex/plugin-meetings test:browser
 ```
 
 | Tier | Command | Test location | Framework | External dependencies |
 | ---- | ------- | ------------- | --------- | --------------------- |
-| Unit | `yarn test:unit` | `test/unit/spec` | mocha (`webex-legacy-tools test --unit --runner mocha`), sinon, `@webex/test-helper-chai` | None; a current `dist/` from `yarn build:src` |
-| Integration (browser) | `yarn test:browser` | `test/integration/spec` | karma (`webex-legacy-tools test --integration --runner karma`) with mocha, in ChromeHeadless and FirefoxHeadless | Webex test users and the services they reach; browser WebRTC and media permissions |
+| Unit | `yarn workspace @webex/plugin-meetings test:unit` | `test/unit/spec` | mocha (`webex-legacy-tools test --unit --runner mocha`), sinon, `@webex/test-helper-chai` | None; a current `dist/` from `build:src` |
+| Integration (browser) | `yarn workspace @webex/plugin-meetings test:browser` | `test/integration/spec` | karma (`webex-legacy-tools test --integration --runner karma`) with mocha, in ChromeHeadless and FirefoxHeadless | Webex test users and the services they reach; browser WebRTC and media permissions |
 
 What each command covers:
 
 | Tier | Command | What it covers |
 |---|---|---|
-| unit | `yarn test:unit` | source-mirrored behavior with Mocha/Sinon/test helpers |
-| browser/integration | `yarn test:browser` | browser/media/service integration through Karma |
-| lint | `yarn test:style` | source style/static lint (`eslint ./src/**/*.*` through `@webex/eslint-config-legacy`) |
-| build/type | `yarn build:src` | transpilation and TypeScript declarations |
+| unit | `yarn workspace @webex/plugin-meetings test:unit` | source-mirrored behavior with Mocha/Sinon/test helpers |
+| browser/integration | `yarn workspace @webex/plugin-meetings test:browser` | browser/media/service integration through Karma |
+| lint | `yarn workspace @webex/plugin-meetings test:style` | source style/static lint (`eslint ./src/**/*.*` through `@webex/eslint-config-legacy`) |
+| build/type | `yarn workspace @webex/plugin-meetings build:src` | transpilation and TypeScript declarations |
 
-From the workspace root, `yarn workspace @webex/plugin-meetings build:src`, `test:style`, `test:unit`,
-`test:unit --targets meeting/brbState.ts`, and `test:browser` run the same package scripts.
+Inside the package directory, `yarn <script>` runs the same package scripts.
 
-Run `yarn build:src` before `yarn test:unit`. Twelve unit spec files import the package by name
+Run `build:src` before `test:unit`. Twelve unit spec files import the package by name
 (`@webex/plugin-meetings`, whose `main` is `dist/index.js`), so a stale or missing `dist/` skews unit
 results.
 
-`--targets` is relative to `test/unit/spec/` for unit tests: `yarn test:unit --targets
+`--targets` is relative to `test/unit/spec/` for unit tests: `yarn workspace @webex/plugin-meetings test:unit --targets
 locus-info/controlsUtils.js` runs `test/unit/spec/locus-info/controlsUtils.js`. Plugin unit tests are
 slow. Use the smallest `--targets` value. Temporary Mocha `.only` is permitted for a focused run, but
 every `.only` must be removed before completion.
@@ -125,7 +120,7 @@ interceptors. Feature areas have owning test directories when current behavior i
 `src/reactions/` has none. Shared fixtures live under `test/unit/spec/fixture/`.
 
 Browser/integration tests live under `test/integration/spec/` and use the package test runner. On
-2026-11-16 without test-user credentials, `yarn test:browser` bundled the suites and ran them in both
+2026-11-16 without test-user credentials, `test:browser` bundled the suites and ran them in both
 browsers: the transcription cases passed, `space-meeting` failed because no test user was created,
 and the command exited 1.
 
@@ -162,8 +157,8 @@ define.
   than publishing.
 - Required neighboring repositories or workspace layout: this package lives at
   `packages/@webex/plugin-meetings/` inside the `webex-js-sdk` monorepo. Shared packages are resolved
-  through Yarn workspaces. Run package scripts from this package directory, or the equivalent
-  `yarn workspace @webex/plugin-meetings <script>` form from the repository root, and avoid modifying
+  through Yarn workspaces. Run package scripts from the repository root as
+  `yarn workspace @webex/plugin-meetings <script>` (or `yarn <script>` inside this package directory), and avoid modifying
   neighboring packages unless the approved task requires their contract.
 - Platform, simulator, device, or SDK setup: none for build and unit tests; the browser tier launches
   headless Chrome and Firefox.
@@ -172,14 +167,14 @@ define.
 ## First-run verification
 
 1. Confirm `node --version` reports the repository-required runtime, `v22.14.0`.
-2. Build the package with `yarn build:src`.
+2. Build the package with `yarn workspace @webex/plugin-meetings build:src`.
 3. Run the smallest mirrored unit-test target for the module you will change, for example
-   `yarn test:unit --targets locus-info/controlsUtils.js`.
-4. Run lint on the package with `yarn test:style`.
+   `yarn workspace @webex/plugin-meetings test:unit --targets locus-info/controlsUtils.js`.
+4. Run lint on the package with `yarn workspace @webex/plugin-meetings test:style`.
 5. Before finishing, confirm no temporary Mocha `.only` remains.
 
 Expected result: the build, the focused unit target, and lint exit zero. On 2026-11-16 the
-`locus-info/controlsUtils.js` target reported 74 passing tests, and `yarn test:style` reported 0
+`locus-info/controlsUtils.js` target reported 74 passing tests, and `test:style` reported 0
 errors and 163 warnings, including "File ignored" notices for the Markdown files under `src/`.
 
 ## Next steps

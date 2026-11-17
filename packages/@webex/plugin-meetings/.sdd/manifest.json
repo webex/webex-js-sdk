@@ -22,41 +22,41 @@
       "role": "other"
     },
     "compile": {
-      "command": "yarn build:src",
+      "command": "yarn workspace @webex/plugin-meetings build:src",
       "source_file": "package.json",
       "role": "compile",
-      "verified_at": "2026-11-16T13:54:48Z"
+      "verified_at": "2026-11-17T04:30:20Z"
     },
     "build": {
-      "command": "yarn build",
+      "command": "yarn workspace @webex/plugin-meetings build",
       "source_file": "package.json",
       "role": "package",
-      "verified_at": "2026-11-16T13:54:48Z"
+      "verified_at": "2026-11-17T04:30:24Z"
     },
     "unit-test": {
-      "command": "yarn test:unit",
+      "command": "yarn workspace @webex/plugin-meetings test:unit",
       "source_file": "package.json",
       "role": "unit-test",
-      "verified_at": "2026-11-16T13:55:28Z"
+      "verified_at": "2026-11-17T04:30:57Z"
     },
     "lint": {
-      "command": "yarn test:style",
+      "command": "yarn workspace @webex/plugin-meetings test:style",
       "source_file": "package.json",
       "role": "lint",
-      "verified_at": "2026-11-16T13:55:00Z"
+      "verified_at": "2026-11-17T04:30:36Z"
     },
     "browser-test": {
-      "command": "yarn test:browser",
+      "command": "yarn workspace @webex/plugin-meetings test:browser",
       "source_file": "package.json",
       "role": "integration-test"
     },
     "deploy": {
-      "command": "yarn deploy:npm",
+      "command": "yarn workspace @webex/plugin-meetings deploy:npm",
       "source_file": "package.json",
       "role": "deploy"
     },
     "build-assets": {
-      "command": "yarn build:assets",
+      "command": "yarn workspace @webex/plugin-meetings build:assets",
       "source_file": "package.json",
       "role": "other"
     },

@@ -80,9 +80,9 @@ code and the architecture document, and treat code as the source of truth there.
 
 | Change affects | Load and update | Verification route |
 | -------------- | --------------- | ------------------ |
-| Package boundaries or cross-cutting architecture | `docs/architecture.md` and applicable ADRs | `yarn build:src`, `yarn test:unit`, and `yarn test:style`, plus the affected module specs |
-| A stable code, package, or component boundary | Its module spec | Focused `yarn test:unit` runs of the module's suites (narrowed with `--targets`, see [Getting started](../getting-started.md#tests)) plus affected contracts |
-| A public API, event, request, or package contract | The contract index in `docs/architecture.md`, the owning module spec, and the native definition (`package.json`, `src/index.ts`, `src/constants.ts`, or the owning request file) | Build, lint, and the owning module's unit suites; `yarn test:browser` when service integration changes |
+| Package boundaries or cross-cutting architecture | `docs/architecture.md` and applicable ADRs | `yarn workspace @webex/plugin-meetings build:src`, `test:unit`, and `test:style`, plus the affected module specs |
+| A stable code, package, or component boundary | Its module spec | Focused `yarn workspace @webex/plugin-meetings test:unit` runs of the module's suites (narrowed with `--targets`, see [Getting started](../getting-started.md#tests)) plus affected contracts |
+| A public API, event, request, or package contract | The contract index in `docs/architecture.md`, the owning module spec, and the native definition (`package.json`, `src/index.ts`, `src/constants.ts`, or the owning request file) | Build, lint, and the owning module's unit suites; `yarn workspace @webex/plugin-meetings test:browser` when service integration changes |
 
 For any `src/{module}/` task, load its source-local spec from the registry and cross-check current code
 whenever its manifest state is `Partial` or `Untracked`.

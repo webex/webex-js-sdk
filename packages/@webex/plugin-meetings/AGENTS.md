@@ -67,20 +67,20 @@ their request code from the architecture contract index.
 ## 1. Commands (Run First)
 
 Use only documented commands. Do not invent alternatives when a command is missing. Run `yarn` and
-`yarn prebuild:modules` at the workspace root, and the package scripts below from this package
-directory, `packages/@webex/plugin-meetings`, where `package.json` defines them. From the workspace
-root, `yarn workspace @webex/plugin-meetings <script>` runs the same script.
+`yarn prebuild:modules` at the workspace root. Run the package scripts below from the workspace root
+too, as `yarn workspace @webex/plugin-meetings <script>`; this package's `package.json` defines them. Inside the
+package directory, `packages/@webex/plugin-meetings`, `yarn <script>` runs the same script.
 
 | Role | Command |
 | ---- | ------- |
 | Install | `yarn` (workspace root; the deploy workflow runs the same command); on a fresh checkout also run `yarn prebuild:modules` once |
 | Start dev environment | N/A — library package with no start script in `package.json` |
-| Build | `yarn build:src` (transpiles `src/` to `dist/`, then runs `yarn build` for TypeScript declarations and assets) |
-| Unit test | `yarn test:unit` |
-| Browser test | `yarn test:browser` (Karma integration suites; needs Webex test-user credentials) |
-| Lint | `yarn test:style` |
-| Build/release artifact | `yarn build` (declarations to `dist/types` and assets only; it does not transpile `src/`) |
-| Publish | `yarn deploy:npm` (ask first) |
+| Build | `yarn workspace @webex/plugin-meetings build:src` (transpiles `src/` to `dist/`, then runs `yarn build` for TypeScript declarations and assets) |
+| Unit test | `yarn workspace @webex/plugin-meetings test:unit` |
+| Browser test | `yarn workspace @webex/plugin-meetings test:browser` (Karma integration suites; needs Webex test-user credentials) |
+| Lint | `yarn workspace @webex/plugin-meetings test:style` |
+| Build/release artifact | `yarn workspace @webex/plugin-meetings build` (declarations to `dist/types` and assets only; it does not transpile `src/`) |
+| Publish | `yarn workspace @webex/plugin-meetings deploy:npm` (ask first) |
 | Format code | N/A — no format script; `prettier` is a devDependency used through eslint |
 
 Toolchain and setup: [`docs/getting-started.md`](docs/getting-started.md) · test routing:
@@ -197,18 +197,18 @@ Commit and PR history are excluded from current-behavior evidence by repository-
 
 ## 4. Testing Workflow
 
-Run checks in this order, from the package directory:
+Run checks in this order, from the workspace root:
 
-1. `yarn build:src`
-2. `yarn test:unit`
-3. `yarn test:style`
-4. `yarn test:browser`, when a change touches browser, media, or service integration and test-user
+1. `yarn workspace @webex/plugin-meetings build:src`
+2. `yarn workspace @webex/plugin-meetings test:unit`
+3. `yarn workspace @webex/plugin-meetings test:style`
+4. `yarn workspace @webex/plugin-meetings test:browser`, when a change touches browser, media, or service integration and test-user
    credentials are available
 
-Run `yarn build:src` before `yarn test:unit`, because unit specs import the built `dist/`;
+Run `build:src` before `test:unit`, because unit specs import the built `dist/`;
 [Getting started](docs/getting-started.md#tests) has the detail and the test-tier table.
 
-Pass `--targets` to `yarn test:unit` to run one file or area: `--targets` is relative to
+Pass `--targets` to `yarn workspace @webex/plugin-meetings test:unit` to run one file or area: `--targets` is relative to
 `test/unit/spec/` (for example `meeting/brbState.ts`), so a filename alone or a repository-relative
 path selects the wrong target.
 
@@ -574,7 +574,7 @@ workspace CI; run one only when explicitly requested, and do not claim it ran ot
   to Partial/Untracked modules without a baseline.
 - Reconcile before changing a protected canonical spec (`spec_policy.protected_specs` in
   `.sdd/manifest.json` lists all 23 module specs); update code and spec deltas together.
-- Do not modify remote systems, publish packages (`yarn deploy:npm`), deploy, push, or post review
+- Do not modify remote systems, publish packages (`yarn workspace @webex/plugin-meetings deploy:npm`), deploy, push, or post review
   findings without explicit permission.
 - Large refactors, and any destructive data or infrastructure operation.
 

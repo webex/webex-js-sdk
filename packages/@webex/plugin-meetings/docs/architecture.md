@@ -651,13 +651,13 @@ There is no database schema. Changes to public TypeScript shapes, event payloads
 
 | Command or artifact | Owner      | Inputs                    | Output or side effect | Compatibility boundary |
 | ------------------- | ---------- | ------------------------- | --------------------- | ---------------------- |
-| `yarn build:src` | Package scripts | `src` | Compiles JavaScript and TypeScript to `dist/` with source maps through `webex-legacy-tools`, then runs `yarn build` | `dist/` is generated and never edited by hand |
-| `yarn build` | Package scripts | `src`, `assets` | Emits declarations to `dist/types` with `tsc`, then runs `build:assets` | Same output |
-| `yarn build:assets` | Package scripts | `assets` | Copies runtime assets to `dist/assets`, excluding dotfiles, `README.md`, and source maps | Asset filenames carry the WASM module version |
-| `yarn test:unit` | Package scripts | `test/unit/spec` | Mocha run through `webex-legacy-tools` | Some unit specs import the package by name, which loads the built `dist`; run `yarn build:src` first |
-| `yarn test:style` | Package scripts | `src` | ESLint run | Markdown under `src/` is not linted |
-| `yarn test:browser` | Package scripts | `test/integration/spec` | Karma run through `webex-legacy-tools` | Needs browser and test-user configuration |
-| `yarn deploy:npm` | Package scripts | `dist` | Publishes the package to npm | Workspace release workflow only |
+| `yarn workspace @webex/plugin-meetings build:src` | Package scripts | `src` | Compiles JavaScript and TypeScript to `dist/` with source maps through `webex-legacy-tools`, then runs `yarn build` | `dist/` is generated and never edited by hand |
+| `yarn workspace @webex/plugin-meetings build` | Package scripts | `src`, `assets` | Emits declarations to `dist/types` with `tsc`, then runs `build:assets` | Same output |
+| `yarn workspace @webex/plugin-meetings build:assets` | Package scripts | `assets` | Copies runtime assets to `dist/assets`, excluding dotfiles, `README.md`, and source maps | Asset filenames carry the WASM module version |
+| `yarn workspace @webex/plugin-meetings test:unit` | Package scripts | `test/unit/spec` | Mocha run through `webex-legacy-tools` | Some unit specs import the package by name, which loads the built `dist`; run `build:src` first |
+| `yarn workspace @webex/plugin-meetings test:style` | Package scripts | `src` | ESLint run | Markdown under `src/` is not linted |
+| `yarn workspace @webex/plugin-meetings test:browser` | Package scripts | `test/integration/spec` | Karma run through `webex-legacy-tools` | Needs browser and test-user configuration |
+| `yarn workspace @webex/plugin-meetings deploy:npm` | Package scripts | `dist` | Publishes the package to npm | Workspace release workflow only |
 | `dist/assets/e2ee-0.0.1.js`, `dist/assets/e2ee-0.0.1.wasm` | `src/e2ee/` | `assets` | E2EE loader and WASM binary served from `meetings.assetsBaseUrl` | The filename version must match the MLS implementation |
 
 ## Cross-repository topology

@@ -8,13 +8,13 @@
   "commands": {
     "install": "yarn",
     "prebuild": "yarn prebuild:modules",
-    "compile": "yarn build:src",
-    "build": "yarn build",
-    "unit-test": "yarn test:unit",
-    "lint": "yarn test:style",
-    "browser-test": "yarn test:browser",
-    "deploy": "yarn deploy:npm",
-    "build-assets": "yarn build:assets",
+    "compile": "yarn workspace @webex/plugin-meetings build:src",
+    "build": "yarn workspace @webex/plugin-meetings build",
+    "unit-test": "yarn workspace @webex/plugin-meetings test:unit",
+    "lint": "yarn workspace @webex/plugin-meetings test:style",
+    "browser-test": "yarn workspace @webex/plugin-meetings test:browser",
+    "deploy": "yarn workspace @webex/plugin-meetings deploy:npm",
+    "build-assets": "yarn workspace @webex/plugin-meetings build:assets",
     "node-install": "nvm install 22.14",
     "node-use": "nvm use 22.14"
   },
@@ -92,11 +92,11 @@
         "dist"
       ],
       "refresh_with": [
-        "yarn build:src"
+        "yarn workspace @webex/plugin-meetings build:src"
       ],
       "validate_with": [
-        "yarn test:unit",
-        "yarn test:style"
+        "yarn workspace @webex/plugin-meetings test:unit",
+        "yarn workspace @webex/plugin-meetings test:style"
       ]
     },
     {
@@ -108,10 +108,10 @@
         "dist/assets"
       ],
       "refresh_with": [
-        "yarn build"
+        "yarn workspace @webex/plugin-meetings build"
       ],
       "validate_with": [
-        "yarn test:unit"
+        "yarn workspace @webex/plugin-meetings test:unit"
       ]
     },
     {
@@ -147,12 +147,12 @@
     {
       "path": "dist",
       "generated_from": "src",
-      "refresh_with": "yarn build:src"
+      "refresh_with": "yarn workspace @webex/plugin-meetings build:src"
     },
     {
       "path": "dist/assets",
       "generated_from": "assets",
-      "refresh_with": "yarn build"
+      "refresh_with": "yarn workspace @webex/plugin-meetings build"
     }
   ],
   "validation_matrix": [
@@ -161,9 +161,9 @@
         "src/**"
       ],
       "minimum": [
-        "yarn build:src",
-        "yarn test:unit",
-        "yarn test:style"
+        "yarn workspace @webex/plugin-meetings build:src",
+        "yarn workspace @webex/plugin-meetings test:unit",
+        "yarn workspace @webex/plugin-meetings test:style"
       ],
       "recommended": [
         "add or update the test/unit/spec case beside the changed module; some specs import the package by name and load dist, so build first"
@@ -176,8 +176,8 @@
         "package.json"
       ],
       "minimum": [
-        "yarn build:src",
-        "yarn test:unit"
+        "yarn workspace @webex/plugin-meetings build:src",
+        "yarn workspace @webex/plugin-meetings test:unit"
       ],
       "recommended": [
         "check the export list, the event inventory, and the contract index in docs/architecture.md"
@@ -190,8 +190,8 @@
         "src/common/wasm-loader.ts"
       ],
       "minimum": [
-        "yarn build",
-        "yarn test:unit"
+        "yarn workspace @webex/plugin-meetings build",
+        "yarn workspace @webex/plugin-meetings test:unit"
       ],
       "recommended": [
         "keep the E2EE asset filename version in step with E2EE_WASM_ASSET in src/e2ee/E2eeManager.ts"
@@ -208,11 +208,11 @@
         "plugin registration and request interceptors"
       ],
       "refresh_with": [
-        "yarn build:src"
+        "yarn workspace @webex/plugin-meetings build:src"
       ],
       "validate_with": [
-        "yarn test:unit",
-        "yarn test:style"
+        "yarn workspace @webex/plugin-meetings test:unit",
+        "yarn workspace @webex/plugin-meetings test:style"
       ],
       "avoid_direct_edits": [
         "dist"
@@ -227,10 +227,10 @@
         "event names and wire values seen by applications"
       ],
       "refresh_with": [
-        "yarn build:src"
+        "yarn workspace @webex/plugin-meetings build:src"
       ],
       "validate_with": [
-        "yarn test:unit"
+        "yarn workspace @webex/plugin-meetings test:unit"
       ],
       "avoid_direct_edits": [
         "dist"
@@ -246,10 +246,10 @@
         "route-token and data-channel token headers"
       ],
       "refresh_with": [
-        "yarn build:src"
+        "yarn workspace @webex/plugin-meetings build:src"
       ],
       "validate_with": [
-        "yarn test:unit"
+        "yarn workspace @webex/plugin-meetings test:unit"
       ],
       "avoid_direct_edits": [
         "dist"
@@ -444,7 +444,7 @@
           "dist"
         ],
         "generated_from": "src",
-        "refresh_with": "yarn build:src",
+        "refresh_with": "yarn workspace @webex/plugin-meetings build:src",
         "notes": "JavaScript, source maps, dist/types declarations, and dist/assets. Do not edit by hand."
       },
       {
@@ -479,19 +479,19 @@
     "validation_entrypoints": [
       {
         "name": "compile",
-        "command": "yarn build:src",
+        "command": "yarn workspace @webex/plugin-meetings build:src",
         "scope": "src",
         "notes": "webex-legacy-tools build to dist, then yarn build for declarations and assets."
       },
       {
         "name": "unit-test",
-        "command": "yarn test:unit",
+        "command": "yarn workspace @webex/plugin-meetings test:unit",
         "scope": "test/unit/spec",
         "notes": "Mocha through webex-legacy-tools; no coverage threshold."
       },
       {
         "name": "lint",
-        "command": "yarn test:style",
+        "command": "yarn workspace @webex/plugin-meetings test:style",
         "scope": "src",
         "notes": "eslint over src; Markdown is ignored by the shared legacy config."
       }
