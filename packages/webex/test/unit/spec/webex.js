@@ -205,6 +205,40 @@ describe('Calling call queue client', () => {
     assert.calledOnce(replacement.dispose);
   });
 
+  it('continues initializing call recording when queue creation fails during registration', async () => {
+    const recording = {};
+    const recordingFactory = sinon.stub(WebexCalling, 'createCallRecordingClient').returns(recording);
+    const callingConfig = config(true);
+    callingConfig.clientConfig.callRecording = true;
+    const calling = await Calling.init({webex, callingConfig});
+    factory.throws(new Error('Queue initialization failed'));
+
+    await calling.register();
+
+    assert.calledOnce(queue.dispose);
+    assert.calledTwice(recordingFactory);
+    assert.isUndefined(calling.callQueueClient);
+    assert.strictEqual(calling.callRecordingClient, recording);
+    assert.isTrue(calling.registered);
+    await calling.deregister();
+  });
+
+  it('continues initializing call recording when queue disposal fails', async () => {
+    const recording = {};
+    const recordingFactory = sinon.stub(WebexCalling, 'createCallRecordingClient').returns(recording);
+    const callingConfig = config(true);
+    callingConfig.clientConfig.callRecording = true;
+    const calling = await Calling.init({webex, callingConfig});
+    queue.dispose = sinon.stub().throws(new Error('Queue disposal failed'));
+
+    await calling.initializeClients();
+
+    assert.calledOnce(queue.dispose);
+    assert.calledTwice(recordingFactory);
+    assert.isUndefined(calling.callQueueClient);
+    assert.strictEqual(calling.callRecordingClient, recording);
+  });
+
   it('deregisters a queue-only client after registration', async () => {
     const calling = await Calling.init({webex, callingConfig: config(false)});
     calling.callingConfig.clientConfig.callQueue = true;

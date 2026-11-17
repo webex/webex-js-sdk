@@ -1,3 +1,4 @@
+import sinon from 'sinon';
 import {LOGGER} from '../Logger/types';
 import {getTestUtilsWebex} from '../common/testUtil';
 import {CALLING_BACKEND, HTTP_METHODS, WebexRequestPayload} from '../common/types';
@@ -183,25 +184,102 @@ describe('CallQueue client', () => {
     queueClient.dispose();
   });
 
-  it('starts accepting requests after delayed device registration', async () => {
+  it.each(['device', 'features', 'entitlement', 'models'])(
+    'starts accepting requests after delayed registration when %s is initially missing',
+    async (missing) => {
+      const lateWebex = getTestUtilsWebex();
+      const device = lateWebex.internal.device;
+      const {features} = device;
+      const {entitlement} = features;
+      const {models} = entitlement;
+      const missingFields = {
+        device: [lateWebex.internal, 'device'],
+        features: [device, 'features'],
+        entitlement: [features, 'entitlement'],
+        models: [entitlement, 'models'],
+      } as const;
+      const [target, field] = missingFields[missing as keyof typeof missingFields];
+      Reflect.deleteProperty(target, field);
+      const earlyClient = createCallQueueClient(lateWebex, {level: LOGGER.INFO}, TEST_OPTIONS);
+      expect((await earlyClient.getCallQueueSettings()).statusCode).toBe(501);
+      expect(lateWebex.request).not.toHaveBeenCalled();
+      expect(lateWebex.internal.mercury.on).not.toHaveBeenCalled();
+
+      lateWebex.internal.device = device;
+      device.features = features;
+      features.entitlement = entitlement;
+      entitlement.models = models;
+      lateWebex.request.mockResolvedValue(<WebexRequestPayload>(<unknown>{
+        statusCode: 200,
+        body: {agentACDState: 'AVAILABLE', queues: []},
+      }));
+      expect((await earlyClient.getCallQueueSettings()).statusCode).toBe(200);
+      expect((await earlyClient.getCallQueueSettings()).statusCode).toBe(200);
+      expect(lateWebex.internal.mercury.on).toHaveBeenCalledWith(
+        MOBIUS_EVENT_KEYS.TELEPHONY_AGENT_SYNC,
+        expect.any(Function)
+      );
+      expect(lateWebex.internal.mercury.on).toHaveBeenCalledTimes(6);
+      earlyClient.dispose();
+    }
+  );
+
+  it.each([
+    ['non-array models', {}],
+    ['null model', [null]],
+    ['missing values', [{}]],
+    ['null values', [{_values: null}]],
+    ['missing key', [{_values: {}}]],
+    ['non-string key', [{_values: {key: null}}]],
+    ['partially populated array', [{_values: {key: 'bc-sp-standard'}}, {}]],
+  ])('defers backend detection for %s until data is complete', async (_, incompleteModels) => {
     const lateWebex = getTestUtilsWebex();
-    const features = lateWebex.internal.device.features;
-    (lateWebex.internal.device as any).features = undefined;
+    const entitlement = lateWebex.internal.device.features.entitlement;
+    const {models} = entitlement;
+    entitlement.models = incompleteModels as typeof models;
     const earlyClient = createCallQueueClient(lateWebex, {level: LOGGER.INFO}, TEST_OPTIONS);
+
     expect((await earlyClient.getCallQueueSettings()).statusCode).toBe(501);
     expect(lateWebex.request).not.toHaveBeenCalled();
+    expect(lateWebex.internal.mercury.on).not.toHaveBeenCalled();
 
-    lateWebex.internal.device.features = features;
+    entitlement.models = models;
     lateWebex.request.mockResolvedValue(<WebexRequestPayload>(<unknown>{
       statusCode: 200,
       body: {agentACDState: 'AVAILABLE', queues: []},
     }));
     expect((await earlyClient.getCallQueueSettings()).statusCode).toBe(200);
-    expect(lateWebex.internal.mercury.on).toHaveBeenCalledWith(
-      MOBIUS_EVENT_KEYS.TELEPHONY_AGENT_SYNC,
-      expect.any(Function)
-    );
+    expect(lateWebex.internal.mercury.on).toHaveBeenCalledTimes(6);
     earlyClient.dispose();
+  });
+
+  it.each([
+    ['UCM', 'NATIVE_SIP_CALL_TO_UCM', 'bc-sp-standard'],
+    ['BroadWorks', 'NATIVE_WEBEX_TEAMS_CALLING', 'broadworks-connector'],
+  ])('does not start queue requests or listeners for %s', async (_, behavior, entitlement) => {
+    const otherWebex = getTestUtilsWebex();
+    otherWebex.internal.device.callingBehavior = behavior;
+    otherWebex.internal.device.features.entitlement.models[0]._values.key = entitlement;
+    const other = createCallQueueClient(otherWebex, {level: LOGGER.INFO}, TEST_OPTIONS);
+
+    expect((await other.getCallQueueSettings()).statusCode).toBe(501);
+    expect(otherWebex.request).not.toHaveBeenCalled();
+    expect(otherWebex.internal.mercury.on).not.toHaveBeenCalled();
+    other.dispose();
+  });
+
+  it('does not hide unexpected backend detection errors', () => {
+    const backend = sinon
+      .stub(utils, 'getCallingBackEnd')
+      .throws(new Error('Unexpected backend error'));
+
+    try {
+      expect(() => createCallQueueClient(webex, {level: LOGGER.INFO}, TEST_OPTIONS)).toThrow(
+        'Unexpected backend error'
+      );
+    } finally {
+      backend.restore();
+    }
   });
 
   it('fills a missing display name from the queue catalog', async () => {

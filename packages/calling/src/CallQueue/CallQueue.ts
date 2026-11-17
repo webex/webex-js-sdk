@@ -47,7 +47,7 @@ import {
   LoggerInterface,
   UpdateCallQueueSettingsRequest,
 } from './types';
-import actorIdentity from './utils';
+import actorIdentity, {hasReadyEntitlementModels} from './utils';
 
 const SUPPORTED_STATES = new Set<string>(Object.values(ACD_STATE));
 
@@ -99,18 +99,11 @@ export class CallQueueClient extends Eventing<CallQueueEventTypes> implements IC
     const allowedOrigins = [WEBEX_API_BTS, WEBEX_API_PROD, WEBEX_API_FEDRAMP];
     const normalized = typeof apiBaseUrl === 'string' ? apiBaseUrl.replace(/\/$/, '') : '';
     this.webexApiEndpoint = allowedOrigins.includes(normalized) ? `${normalized}/v1` : undefined;
-    this.callingBackend = this.resolveCallingBackend();
+    this.callingBackend = hasReadyEntitlementModels(this.webex)
+      ? getCallingBackEnd(this.webex)
+      : CALLING_BACKEND.INVALID;
     this.registerAgentListeners();
     log.setLogger(logger.level, CALL_QUEUE_FILE);
-  }
-
-  private resolveCallingBackend(): CALLING_BACKEND {
-    try {
-      return getCallingBackEnd(this.webex);
-    } catch {
-      // Device features may not be available until registration finishes.
-      return CALLING_BACKEND.INVALID;
-    }
   }
 
   /**
@@ -586,7 +579,10 @@ export class CallQueueClient extends Eventing<CallQueueEventTypes> implements IC
         message: FAILURE_MESSAGE,
       };
     }
-    this.callingBackend = this.resolveCallingBackend();
+    // Device entitlement data may arrive after the client is constructed.
+    this.callingBackend = hasReadyEntitlementModels(this.webex)
+      ? getCallingBackEnd(this.webex)
+      : CALLING_BACKEND.INVALID;
     if (this.callingBackend !== CALLING_BACKEND.WXC) {
       return {
         statusCode: 501,

@@ -150,16 +150,9 @@ class Calling extends EventEmitter {
       if (this.callQueueClient) {
         this.callQueueClient.dispose();
       }
-      this.callQueueClient = undefined;
-      if (clientConfig.callQueue && typeof WebexCalling.createCallQueueClient !== 'function') {
-        this.log.warn('createCallQueueClient is not exported from @webex/calling', logContext);
-      } else if (clientConfig.callQueue) {
-        this.callQueueClient = WebexCalling.createCallQueueClient(
-          this.webex,
-          logger,
-          callQueueClientConfig
-        );
-      }
+      this.callQueueClient = clientConfig.callQueue
+        ? WebexCalling.createCallQueueClient(this.webex, logger, callQueueClientConfig)
+        : undefined;
     } catch (error) {
       this.log.warn(`Error occurred while initializing callQueue client ${error}`, logContext);
       this.callQueueClient = undefined;

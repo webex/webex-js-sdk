@@ -1,3 +1,12 @@
+import type {WebexSDK} from '../SDKConnector/types';
+
+/** Device registration may populate entitlement models incrementally. */
+export function hasReadyEntitlementModels(webex: WebexSDK): boolean {
+  const models = webex.internal.device?.features?.entitlement?.models;
+
+  return Array.isArray(models) && models.every((model) => typeof model?._values?.key === 'string');
+}
+
 export default function actorIdentity(value: string): {id: string; type?: string} {
   const parse = (candidate: string) =>
     /^ciscospark:\/\/[^/]+\/(PEOPLE|PERSON|VIRTUAL_LINE)\/([^/]+)$/i.exec(candidate);
