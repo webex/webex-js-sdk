@@ -190,12 +190,12 @@ flowchart LR
 
 | Command or artifact | Owner | Inputs | Output or side effect | Compatibility boundary |
 | ------------------- | ----- | ------ | --------------------- | ---------------------- |
-| `yarn build:src` | Package scripts | `src` | Writes JavaScript and maps to `dist/` through `webex-legacy-tools`, then runs `build` | `dist/` is generated |
-| `yarn build` | Package scripts | `src`, `tsconfig.json` | Declarations in dist/types | `types` points at them |
-| `yarn build:docs` | Package scripts | `src/index.ts` through typedoc | Writes the workspace `docs/plugin-encryption` API reference | Output lives outside this package |
-| `yarn test:unit` | Package scripts | `test/unit/spec`, sibling `dist/` | Jest run with the coverage threshold; writes `coverage/` and `junit.xml` (ignored by Git) | Fails below 85% |
-| `yarn test:style` | Package scripts | `src` | ESLint run | Skips `docs/**` and `*.md` |
-| `yarn test:browser` | Package scripts | No integration files | Nothing | Runs no test |
+| `yarn workspace @webex/plugin-encryption build:src` | Package scripts | `src` | Writes JavaScript and maps to `dist/` through `webex-legacy-tools`, then runs `build` | `dist/` is generated |
+| `yarn workspace @webex/plugin-encryption build` | Package scripts | `src`, `tsconfig.json` | Declarations in dist/types | `types` points at them |
+| `yarn workspace @webex/plugin-encryption build:docs` | Package scripts | `src/index.ts` through typedoc | Writes the workspace `docs/plugin-encryption` API reference | Output lives outside this package |
+| `yarn workspace @webex/plugin-encryption test:unit` | Package scripts | `test/unit/spec`, sibling `dist/` | Jest run with the coverage threshold; writes `coverage/` and `junit.xml` (ignored by Git) | Fails below 85% |
+| `yarn workspace @webex/plugin-encryption test:style` | Package scripts | `src` | ESLint run | Skips `docs/**` and `*.md` |
+| `yarn workspace @webex/plugin-encryption test:browser` | Package scripts | No integration files | Nothing | Runs no test |
 
 ## Cross-repository topology
 

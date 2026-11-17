@@ -6,9 +6,7 @@
     "purpose": "Internal Webex SDK plugin that collects, enriches, batches and submits every SDK-owned telemetry family — legacy client metrics, tagged behavioral/operational/business events, Call Analyzer diagnostic events, WebRTC stats, browser unhandled exceptions and SDK network-request summaries — to the Webex metrics and unified-telemetry services."
   },
   "commands": {
-    "clone": "git clone https://github.com/webex/webex-js-sdk.git",
-    "install": "yarn install",
-    "consumer-install": "npm install --save @webex/internal-plugin-metrics",
+    "install": "yarn",
     "compile": "yarn workspace @webex/internal-plugin-metrics build",
     "package": "yarn workspace @webex/internal-plugin-metrics build:src",
     "unit-test": "yarn workspace @webex/internal-plugin-metrics test:unit",

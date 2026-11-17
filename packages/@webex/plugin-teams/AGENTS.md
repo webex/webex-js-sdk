@@ -39,25 +39,25 @@ entry. It serves no HTTP, so no OpenAPI applies.
 
 ## 1. Commands (Run First)
 
-Use only documented commands. Do not invent alternatives when a command is missing. Run `yarn` and
-`yarn prebuild:modules` at the workspace root, and the package scripts below from this package
-directory, `packages/@webex/plugin-teams`, where `package.json` defines them. From the workspace root,
-`yarn workspace @webex/plugin-teams <script>` runs the same script.
+Use only documented commands. Do not invent alternatives when a command is missing. Run every command
+below from the workspace root. The package scripts run through
+`yarn workspace @webex/plugin-teams <script>`; `package.json` in
+`packages/@webex/plugin-teams` defines them.
 
 | Task                   | Command |
 | ---------------------- | ------- |
-| Install dependencies   | `yarn` (workspace root; the deploy workflow runs the same command); on a fresh checkout run `yarn prebuild:modules` once, because `yarn` does not build `@webex/legacy-tools` or sibling `dist/` |
+| Install dependencies   | `yarn` (workspace root; the deploy workflow runs the same command). Fresh-checkout workspace setup (building `webex-legacy-tools` and sibling `dist/`) is owned by the workspace root; see [Prebuilding](../../../CONTRIBUTING.md#prebuilding) |
 | Start dev environment  | N/A — library package with no start script in `package.json` |
 | Run tests              | N/A — the package has no unit tests and no `test:unit` script (see below) |
-| Run linters            | `yarn test:style` |
-| Build/release artifact | `yarn build:src` (JavaScript and source maps to `dist/`) |
+| Run linters            | `yarn workspace @webex/plugin-teams test:style` |
+| Build/release artifact | `yarn workspace @webex/plugin-teams build:src` (JavaScript and source maps to `dist/`) |
 | Format code            | N/A — no format script; `prettier` is a devDependency used through eslint |
 
-`yarn build` runs `yarn build:src` and produces the same output; the package emits no type
+`yarn workspace @webex/plugin-teams build` runs `build:src` and produces the same output; the package emits no type
 declarations.
 
 Do not use the aggregate `test` script: after lint it calls `test:unit`, which this package does not
-define, and exits 1. `yarn test:browser:broken` runs `test/integration/spec` through karma but verifies
+define, and exits 1. `yarn workspace @webex/plugin-teams test:browser:broken` runs `test/integration/spec` through karma but verifies
 nothing today; see [Getting started](docs/getting-started.md#tests) for its state.
 
 If a required command is unknown, stop and ask for the exact command.
@@ -113,13 +113,10 @@ Definition of done:
 
 ## 4. Testing Workflow
 
-Run checks in this order, from the package directory:
+Run checks in this order, from the workspace root:
 
-1. `yarn build:src`
-2. `yarn test:style`
-
-Run `yarn prebuild:modules` once on a fresh checkout so `webex-legacy-tools` and the sibling packages'
-`dist/` exist.
+1. `yarn workspace @webex/plugin-teams build:src`
+2. `yarn workspace @webex/plugin-teams test:style`
 
 Testing rules:
 

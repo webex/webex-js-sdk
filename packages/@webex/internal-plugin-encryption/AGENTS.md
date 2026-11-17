@@ -40,22 +40,22 @@ entry. It serves no HTTP, so no OpenAPI applies.
 
 ## 1. Commands (Run First)
 
-Use only documented commands. Do not invent alternatives when a command is missing. Run `yarn` and
-`yarn prebuild:modules` at the workspace root, and the package scripts below from this package
-directory, `packages/@webex/internal-plugin-encryption`, where `package.json` defines them. From the
-workspace root, `yarn workspace @webex/internal-plugin-encryption <script>` runs the same script.
+Use only documented commands. Do not invent alternatives when a command is missing. Run every command
+below from the workspace root. The package scripts run through
+`yarn workspace @webex/internal-plugin-encryption <script>`; `package.json` in
+`packages/@webex/internal-plugin-encryption` defines them.
 
 | Task                   | Command |
 | ---------------------- | ------- |
-| Install dependencies   | `yarn` (workspace root; rerun it after lockfile changes, since this package pins `asn1js` and `pkijs` and needs the `@webex/kms-caroots` link); on a fresh checkout run `yarn prebuild:modules` once |
+| Install dependencies   | `yarn` (workspace root; rerun it after lockfile changes, since this package pins `asn1js` and `pkijs` and needs the `@webex/kms-caroots` link). Fresh-checkout workspace setup (building `webex-legacy-tools` and sibling `dist/`) is owned by the workspace root; see [Prebuilding](../../../CONTRIBUTING.md#prebuilding) |
 | Start dev environment  | N/A — library package with no start script in `package.json` |
-| Run tests              | `yarn build:src`, then `yarn test:unit` (the unit specs import `dist/`) |
-| Run linters            | `yarn test:style` |
-| Build/release artifact | `yarn build:src` (JavaScript, source maps, and `dist/assets`) |
+| Run tests              | `yarn workspace @webex/internal-plugin-encryption build:src`, then `yarn workspace @webex/internal-plugin-encryption test:unit` (the unit specs import `dist/`) |
+| Run linters            | `yarn workspace @webex/internal-plugin-encryption test:style` |
+| Build/release artifact | `yarn workspace @webex/internal-plugin-encryption build:src` (JavaScript, source maps, and `dist/assets`) |
 | Format code            | N/A — no format script; `prettier` is a devDependency used through eslint |
 
-`yarn build` runs `yarn build:src`. `yarn test:integration` needs the CI test-user secrets; run it in
-CI. `yarn assets:refresh` is the only way to update the shipped bundle. Do not use the aggregate
+`build` runs `build:src`. `test:integration` needs the CI test-user secrets; run it in
+CI. `yarn workspace @webex/internal-plugin-encryption assets:refresh` is the only way to update the shipped bundle. Do not use the aggregate
 `test` script as a quick check: it chains integration and karma runs that need secrets; see
 [Getting started](docs/getting-started.md#tests).
 
@@ -120,18 +120,18 @@ Definition of done:
   schema, and migration discipline).
 - The default retry ladder makes 4 attempts and never renegotiates; some `kmsInitialTimeout` values
   retry forever (module Pitfalls and constraints).
-- `src/union-bundle.js` is generated; refresh it only with `yarn assets:refresh` (`INV-007`).
+- `src/union-bundle.js` is generated; refresh it only with `yarn workspace @webex/internal-plugin-encryption assets:refresh` (`INV-007`).
 
 ## 4. Testing Workflow
 
-Run checks in this order, from the package directory:
+Run checks in this order, from the workspace root:
 
-1. `yarn build:src`
-2. `yarn test:unit`
-3. `yarn test:style`
+1. `yarn workspace @webex/internal-plugin-encryption build:src`
+2. `yarn workspace @webex/internal-plugin-encryption test:unit`
+3. `yarn workspace @webex/internal-plugin-encryption test:style`
 
-Run `yarn` and `yarn prebuild:modules` first on a fresh or outdated checkout so the pinned crypto
-packages, the `@webex/kms-caroots` link, and the sibling packages' `dist/` are current.
+Run `yarn` first on a fresh or outdated checkout so the pinned crypto packages and the
+`@webex/kms-caroots` link are current.
 
 Testing rules:
 

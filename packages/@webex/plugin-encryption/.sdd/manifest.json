@@ -16,47 +16,38 @@
       "source_file": "../../../.github/workflows/deploy.yml",
       "role": "install"
     },
-    "prebuild": {
-      "command": "yarn prebuild:modules",
-      "source_file": "../../../CONTRIBUTING.md",
-      "role": "other"
-    },
     "compile": {
-      "command": "yarn build",
+      "command": "yarn workspace @webex/plugin-encryption build",
       "source_file": "package.json",
-      "role": "compile",
-      "verified_at": "2026-11-16T06:55:50Z"
+      "role": "compile"
     },
     "build": {
-      "command": "yarn build:src",
+      "command": "yarn workspace @webex/plugin-encryption build:src",
       "source_file": "package.json",
-      "role": "package",
-      "verified_at": "2026-11-16T06:52:16Z"
+      "role": "package"
     },
     "unit-test": {
-      "command": "yarn test:unit",
+      "command": "yarn workspace @webex/plugin-encryption test:unit",
       "source_file": "package.json",
-      "role": "unit-test",
-      "verified_at": "2026-11-16T06:52:35Z"
+      "role": "unit-test"
     },
     "lint": {
-      "command": "yarn test:style",
+      "command": "yarn workspace @webex/plugin-encryption test:style",
       "source_file": "package.json",
-      "role": "lint",
-      "verified_at": "2026-11-16T07:06:32Z"
+      "role": "lint"
     },
     "browser-test": {
-      "command": "yarn test:browser",
+      "command": "yarn workspace @webex/plugin-encryption test:browser",
       "source_file": "package.json",
       "role": "other"
     },
     "docs-build": {
-      "command": "yarn build:docs",
+      "command": "yarn workspace @webex/plugin-encryption build:docs",
       "source_file": "package.json",
       "role": "other"
     },
     "deploy": {
-      "command": "yarn deploy:npm",
+      "command": "yarn workspace @webex/plugin-encryption deploy:npm",
       "source_file": "package.json",
       "role": "deploy"
     }
@@ -306,7 +297,7 @@
     "module_docs_relative_path": "docs/README.md",
     "module_docs_decision": {
       "basis": "repo-standards-default",
-      "reason": "No module-local documentation existed. The source-local default gives src/docs/README.md. test:style runs eslint ./src/**/*.*, and the shared @webex/eslint-config-legacy ignore patterns exclude docs/** and *.md; build:src compiles -js -ts only and yarn build emits declarations for src (tsconfig.json include), so Markdown under src/ does not enter dist/.",
+      "reason": "No module-local documentation existed. The source-local default gives src/docs/README.md. test:style runs eslint ./src/**/*.*, and the shared @webex/eslint-config-legacy ignore patterns exclude docs/** and *.md; build:src compiles -js -ts only and yarn workspace @webex/plugin-encryption build emits declarations for src (tsconfig.json include), so Markdown under src/ does not enter dist/.",
       "decided_by": "rarajes2@cisco.com (bootstrap questionnaire)",
       "decided_at": "2026-11-16T06:56:00Z"
     },

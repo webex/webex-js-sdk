@@ -29,10 +29,10 @@ workspace, so every command below is run from the workspace root and targets thi
 ## Install
 
 ```bash
-yarn install
+yarn
 ```
 
-Run `yarn install` once at the Webex JS SDK workspace root. It installs every package in the
+Run `yarn` once at the Webex JS SDK workspace root. It installs every package in the
 workspace, including this one; there is no package-local install step.
 
 Cloning the workspace is owned at the workspace root, not by this package, so no clone command is
@@ -103,7 +103,7 @@ yarn workspace @webex/common-timers test:style
 
 ## First-run verification
 
-1. Run `yarn install` at the workspace root.
+1. Run `yarn` at the workspace root.
 2. Run `yarn workspace @webex/common-timers test:unit`.
 3. Run `yarn workspace @webex/common-timers build:src` and confirm `dist/index.js` exists.
 

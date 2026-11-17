@@ -6,7 +6,7 @@
     "purpose": "Browser HTML allow-list filter for the Cisco Webex JS SDK. The browser build sanitizes tags, attributes, styles, and URL schemes. The Node build returns the input string for the filter exports, while escape and escapeSync always encode angle brackets and ampersands."
   },
   "commands": {
-    "install": "yarn install",
+    "install": "yarn",
     "compile": "yarn workspace @webex/helper-html build:src",
     "build": "yarn workspace @webex/helper-html build:src",
     "unit-test": "yarn workspace @webex/helper-html test:browser",

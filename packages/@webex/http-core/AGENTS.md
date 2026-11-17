@@ -48,7 +48,7 @@ Use only documented commands. Do not invent alternatives when a command is missi
 
 | Task                   | Command                                             |
 | ---------------------- | --------------------------------------------------- |
-| Install dependencies   | `yarn install` (from the workspace root)            |
+| Install dependencies   | `yarn` (from the workspace root)                    |
 | Start dev environment  | Not applicable — this package is a library          |
 | Run tests              | `yarn workspace @webex/http-core test:unit`         |
 | Run linters            | `yarn workspace @webex/http-core test:style`        |

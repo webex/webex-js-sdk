@@ -16,9 +16,9 @@ validation_status: pass-with-warnings
 # Getting started
 
 Onboarding for **@webex/plugin-teams**, a package inside the `webex-js-sdk` Yarn workspace.
-Run `yarn` and `yarn prebuild:modules` at the workspace root, and the package scripts from this
-package directory, `packages/@webex/plugin-teams`, where `package.json` defines them.
-From the workspace root, `yarn workspace @webex/plugin-teams <script>` runs the same script.
+Run every command from the workspace root. The package scripts run through
+`yarn workspace @webex/plugin-teams <script>`; `package.json` in
+`packages/@webex/plugin-teams` defines them.
 
 ## Prerequisites
 
@@ -36,21 +36,13 @@ yarn
 
 The workspace `deploy.yml` workflow installs with the same command.
 
-On a fresh checkout, prebuild the workspace before the first package build. `yarn` does not build
-`@webex/legacy-tools`, whose `webex-legacy-tools` binary runs this package's build, or the sibling
-packages' `dist/`:
-
-```bash
-yarn prebuild:modules
-```
-
-It runs `yarn`, then builds the tools, the legacy tools, `@webex/webex-core`, and every package, in
-that order (root `package.json`; see the workspace `CONTRIBUTING.md` "Prebuilding").
+Fresh-checkout workspace setup (building `webex-legacy-tools` and sibling `dist/`) is owned by the workspace root; see
+[Prebuilding](../../../../CONTRIBUTING.md#prebuilding).
 
 ## Build
 
 ```bash
-yarn build:src
+yarn workspace @webex/plugin-teams build:src
 ```
 
 `build:src` writes JavaScript and source maps for the two source files to `dist/` through
@@ -58,7 +50,7 @@ yarn build:src
 emits no type declarations.
 
 ```bash
-yarn build
+yarn workspace @webex/plugin-teams build
 ```
 
 ## Run
@@ -69,7 +61,7 @@ N/A — this is a library with no start script. Importing `@webex/plugin-teams` 
 ## Tests
 
 ```bash
-yarn test:style
+yarn workspace @webex/plugin-teams test:style
 ```
 
 | Tier | Command | Test location | Framework | External dependencies |
@@ -87,7 +79,7 @@ This package has no unit tests: `package.json` defines no `test:unit` script and
 `test/unit` directory. Add both together when you add the first unit case; sibling legacy packages
 define `test:unit` as `webex-legacy-tools test --unit --runner jest`.
 
-`yarn test:browser:broken` (manifest command `browser-test`) runs `webex-legacy-tools test
+`yarn workspace @webex/plugin-teams test:browser:broken` (manifest command `browser-test`) runs `webex-legacy-tools test
 --integration --runner karma` over `test/integration/spec/teams.js`, whose 9 cases (2 skipped) create a
 test user and call the live services. On 2026-11-12 under Node 22.14 the karma bundle failed to parse
 `isbot` (an ES module in the workspace `node_modules`), so the run reported a bundle error in Chrome
@@ -113,8 +105,8 @@ not a manifest command; run the commands above instead.
 
 ## First-run verification
 
-1. Run `yarn build:src` and check that it reports `Built plugin-teams: 2 files`.
-2. Run `yarn test:style`.
+1. Run `yarn workspace @webex/plugin-teams build:src` and check that it reports `Built plugin-teams: 2 files`.
+2. Run `yarn workspace @webex/plugin-teams test:style`.
 
 Expected result: both commands exit zero. `test:style` prints no warning for `src/teams.js` or
 `src/index.js`, only "File ignored" for `src/docs/README.md`.

@@ -6,7 +6,7 @@
     "purpose": "The webex npm package of the Webex JS SDK. Its entry files require plugin packages for their side effects and extend the webex-core WebexCore constructor, giving a full Webex constructor (main export), a meetings constructor (webex/meetings), a Calling wrapper around an SDK instance (webex/calling), and encryption and first-party variants. It also selects storage adapters per platform, ships Node and browser helper files, and carries committed UMD bundles."
   },
   "commands": {
-    "install": "yarn install",
+    "install": "yarn",
     "compile": "yarn workspace webex build:src",
     "build": "yarn workspace webex build",
     "unit-test": "yarn workspace webex test:unit",
@@ -14,11 +14,6 @@
     "browser-test": "yarn workspace webex test:browser:broken",
     "lint": "yarn workspace webex test:style",
     "deploy": "yarn workspace webex deploy:npm",
-    "workspace-prebuild": "yarn prebuild:modules",
-    "umd-refresh": "yarn build:script",
-    "lint-helpers": "yarn workspace webex eslint ./env.js ./browser.js ./process",
-    "integration-commonjs": "yarn workspace webex test:integration --targets commonjs.js",
-    "integration-init": "yarn workspace webex test:integration --targets init.js",
     "test-browser": "yarn workspace webex test:browser"
   },
   "public_interfaces": [
@@ -349,7 +344,7 @@
         "dependency set"
       ],
       "refresh_with": [
-        "yarn install"
+        "yarn"
       ],
       "validate_with": [
         "yarn workspace webex build",
@@ -613,12 +608,6 @@
         "command": "yarn workspace webex test:style",
         "scope": "src",
         "notes": "eslint via the workspace root configuration."
-      },
-      {
-        "name": "workspace prebuild",
-        "command": "yarn prebuild:modules",
-        "scope": "workspace root",
-        "notes": "Builds the legacy tools and the build:src output of each workspace that defines it; required before test:unit on a fresh clone."
       },
       {
         "name": "UMD refresh",

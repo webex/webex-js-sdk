@@ -15,37 +15,28 @@
       "source_file": "../../../.github/workflows/deploy.yml",
       "role": "install"
     },
-    "prebuild": {
-      "command": "yarn prebuild:modules",
-      "source_file": "../../../CONTRIBUTING.md",
-      "role": "other"
-    },
     "compile": {
-      "command": "yarn build",
+      "command": "yarn workspace @webex/internal-plugin-lyra build",
       "source_file": "package.json",
-      "role": "compile",
-      "verified_at": "2026-11-12T15:10:37Z"
+      "role": "compile"
     },
     "build": {
-      "command": "yarn build:src",
+      "command": "yarn workspace @webex/internal-plugin-lyra build:src",
       "source_file": "package.json",
-      "role": "package",
-      "verified_at": "2026-11-12T15:10:36Z"
+      "role": "package"
     },
     "unit-test": {
-      "command": "yarn test:unit",
+      "command": "yarn workspace @webex/internal-plugin-lyra test:unit",
       "source_file": "package.json",
-      "role": "unit-test",
-      "verified_at": "2026-11-12T15:10:41Z"
+      "role": "unit-test"
     },
     "lint": {
-      "command": "yarn test:style",
+      "command": "yarn workspace @webex/internal-plugin-lyra test:style",
       "source_file": "package.json",
-      "role": "lint",
-      "verified_at": "2026-11-12T15:10:44Z"
+      "role": "lint"
     },
     "deploy": {
-      "command": "yarn deploy:npm",
+      "command": "yarn workspace @webex/internal-plugin-lyra deploy:npm",
       "source_file": "package.json",
       "role": "deploy"
     }

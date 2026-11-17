@@ -15,42 +15,33 @@
       "source_file": "../../../.github/workflows/deploy.yml",
       "role": "install"
     },
-    "prebuild": {
-      "command": "yarn prebuild:modules",
-      "source_file": "../../../CONTRIBUTING.md",
-      "role": "other"
-    },
     "compile": {
-      "command": "yarn build",
+      "command": "yarn workspace @webex/storage-adapter-session-storage build",
       "source_file": "package.json",
-      "role": "compile",
-      "verified_at": "2026-11-13T05:53:25Z"
+      "role": "compile"
     },
     "build": {
-      "command": "yarn build:src",
+      "command": "yarn workspace @webex/storage-adapter-session-storage build:src",
       "source_file": "package.json",
-      "role": "package",
-      "verified_at": "2026-11-13T05:53:17Z"
+      "role": "package"
     },
     "unit-test": {
-      "command": "yarn test:unit",
+      "command": "yarn workspace @webex/storage-adapter-session-storage test:unit",
       "source_file": "package.json",
-      "role": "unit-test",
-      "verified_at": "2026-11-13T05:53:26Z"
+      "role": "unit-test"
     },
     "lint": {
-      "command": "yarn test:style",
+      "command": "yarn workspace @webex/storage-adapter-session-storage test:style",
       "source_file": "package.json",
-      "role": "lint",
-      "verified_at": "2026-11-13T06:04:34Z"
+      "role": "lint"
     },
     "browser-test": {
-      "command": "yarn test:browser",
+      "command": "yarn workspace @webex/storage-adapter-session-storage test:browser",
       "source_file": "package.json",
       "role": "other"
     },
     "deploy": {
-      "command": "yarn deploy:npm",
+      "command": "yarn workspace @webex/storage-adapter-session-storage deploy:npm",
       "source_file": "package.json",
       "role": "deploy"
     }

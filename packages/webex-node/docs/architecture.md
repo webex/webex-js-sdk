@@ -172,7 +172,7 @@ internal-plugin-mercury, which register as well. No dependency cycle exists insi
 
 | Command or artifact | Owner | Inputs | Output or side effect | Compatibility boundary |
 | ------------------- | ----- | ------ | --------------------- | ---------------------- |
-| `yarn install` | workspace | root `package.json` and lockfile | workspace `node_modules` | Run from the workspace root |
+| `yarn` | workspace | root `package.json` and lockfile | workspace `node_modules` | Run from the workspace root |
 | `yarn workspace webex-node build` | package | `src/` | build output through `build:src` | Build output is never edited by hand |
 | `yarn workspace webex-node build:src` | package | `src/` (`.js` and `.ts`) | build output with source maps | Markdown under `src/` is not processed |
 | `yarn workspace webex-node test:unit` | package | `test/unit/spec/` | Jest result | — |

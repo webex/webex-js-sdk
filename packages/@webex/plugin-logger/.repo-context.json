@@ -6,7 +6,7 @@
     "purpose": "Logger plugin for the Cisco Webex JS SDK. It replaces the minimal webex-core logger with leveled console output, redaction of authorization keys, email addresses, and MTID values, and in-memory log buffers that internal-plugin-support formats and uploads."
   },
   "commands": {
-    "install": "yarn install",
+    "install": "yarn",
     "compile": "yarn workspace @webex/plugin-logger build:src",
     "build": "yarn workspace @webex/plugin-logger build",
     "unit-test": "yarn workspace @webex/plugin-logger test:unit",

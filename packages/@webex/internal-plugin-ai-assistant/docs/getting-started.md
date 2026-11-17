@@ -34,16 +34,7 @@ yarn
 
 The workspace `deploy.yml` workflow installs with the same command.
 
-On a fresh checkout, prebuild the workspace before the first package build. `yarn` does not build
-`@webex/legacy-tools`, whose `webex-legacy-tools` binary runs this package's build and tests, or the
-sibling packages' `dist/`, which the unit spec loads:
-
-```bash
-yarn prebuild:modules
-```
-
-It runs `yarn`, then builds the tools, the legacy tools, `@webex/webex-core`, and every package, in
-that order (root `package.json`; see the workspace `CONTRIBUTING.md` "Prebuilding").
+Fresh-checkout workspace setup (building `webex-legacy-tools` and sibling `dist/`) is owned by the workspace root; see [Prebuilding](../../../../CONTRIBUTING.md#prebuilding).
 
 ## Build
 
@@ -52,7 +43,7 @@ yarn workspace @webex/internal-plugin-ai-assistant build:src
 ```
 
 `build:src` writes JavaScript and source maps for the six source files to `dist/` through
-`webex-legacy-tools`. `dist/` is ignored by Git. The `build` script runs `yarn build:src`; the
+`webex-legacy-tools`. `dist/` is ignored by Git. The `build` script runs `build:src`; the
 package has no `tsconfig.json` and emits no type declarations.
 
 ```bash

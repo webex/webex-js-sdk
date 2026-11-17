@@ -167,7 +167,7 @@ surface is served, so `api-specs/openapi.yaml` is omitted.
 
 | Command or artifact | Owner | Inputs | Output or side effect | Compatibility boundary |
 | ------------------- | ----- | ------ | --------------------- | ---------------------- |
-| `yarn install` | workspace | root `package.json` and lockfile | workspace `node_modules` | Run from the workspace root |
+| `yarn` | workspace | root `package.json` and lockfile | workspace `node_modules` | Run from the workspace root |
 | `yarn workspace @webex/internal-plugin-flag build` | package | `src/` | build output through `build:src` | Build output is never edited by hand |
 | `yarn workspace @webex/internal-plugin-flag build:src` | package | `src/` (`.js` and `.ts`) | build output with source maps | Markdown under `src/` is not processed |
 | `yarn workspace @webex/internal-plugin-flag test:unit` | package | `test/unit/spec/` | Jest result | See Getting started Tests |

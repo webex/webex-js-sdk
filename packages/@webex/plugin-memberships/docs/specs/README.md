@@ -50,7 +50,7 @@ Generator-side field measurement for the module is complete (100%, assessed 2026
 
 | Change affects | Load and update | Verification route |
 | -------------- | --------------- | ------------------ |
-| Package boundaries or cross-cutting architecture | `docs/architecture.md` and applicable ADRs | `yarn build:src` and `test:style`, and the module spec |
+| Package boundaries or cross-cutting architecture | `docs/architecture.md` and applicable ADRs | `yarn workspace @webex/plugin-memberships build:src` and `test:style`, and the module spec |
 | A stable code, package, or component boundary | `src/docs/README.md` | Build and lint |
 | A public method, request path, read-status or read-receipt field, event field, or the registration | The owning architecture section, `src/docs/README.md`, and the native definition in `src/memberships.js`, `src/index.js`, or `package.json` | Build and lint; add a `test/unit/spec` case and a `test:unit` script for the changed path, since the package has no unit tests and the integration spec is not run |
 

@@ -62,7 +62,7 @@ Use only documented commands. Do not invent alternatives when a command is missi
 
 | Task                   | Command             |
 | ---------------------- | ------------------- |
-| Install dependencies   | `yarn install` (from the monorepo root) |
+| Install dependencies   | `yarn` (workspace root) |
 | Start dev environment  | Not applicable — this is a library, not a runnable app |
 | Run tests              | `yarn workspace @webex/internal-plugin-conversation test:unit` |
 | Run linters            | `yarn workspace @webex/internal-plugin-conversation test:style` |

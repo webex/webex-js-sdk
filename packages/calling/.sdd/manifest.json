@@ -55,11 +55,6 @@
       "source_file": "package.json",
       "role": "other"
     },
-    "clean": {
-      "command": "yarn workspace @webex/calling prebuild",
-      "source_file": "package.json",
-      "role": "other"
-    },
     "fix-lint": {
       "command": "yarn workspace @webex/calling fix:lint",
       "source_file": "package.json",

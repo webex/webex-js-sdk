@@ -7,16 +7,13 @@
   },
   "commands": {
     "install": "yarn",
-    "prebuild": "yarn prebuild:modules",
     "compile": "yarn workspace @webex/plugin-meetings build:src",
     "build": "yarn workspace @webex/plugin-meetings build",
     "unit-test": "yarn workspace @webex/plugin-meetings test:unit",
     "lint": "yarn workspace @webex/plugin-meetings test:style",
     "browser-test": "yarn workspace @webex/plugin-meetings test:browser",
     "deploy": "yarn workspace @webex/plugin-meetings deploy:npm",
-    "build-assets": "yarn workspace @webex/plugin-meetings build:assets",
-    "node-install": "nvm install 22.14",
-    "node-use": "nvm use 22.14"
+    "build-assets": "yarn workspace @webex/plugin-meetings build:assets"
   },
   "public_interfaces": [
     {
@@ -337,7 +334,7 @@
         ".sdd/manifest.json"
       ],
       "requirement": "The script must exist in package.json scripts and the command must equal the manifest commands entry.",
-      "notes": "install and prebuild run at the workspace root."
+      "notes": "install and package scripts run from the workspace root."
     },
     {
       "claim_category": "import_path",
@@ -481,7 +478,7 @@
         "name": "compile",
         "command": "yarn workspace @webex/plugin-meetings build:src",
         "scope": "src",
-        "notes": "webex-legacy-tools build to dist, then yarn build for declarations and assets."
+        "notes": "webex-legacy-tools build to dist, then yarn workspace @webex/plugin-meetings build for declarations and assets."
       },
       {
         "name": "unit-test",

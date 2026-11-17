@@ -32,16 +32,15 @@ equivalent.
 
 ## Install
 
-Clone `https://github.com/webex/webex-js-sdk.git`, `cd webex-js-sdk`, select Node.js with
-`nvm install 22.14` and `nvm use 22.14`, then install the workspace (yarn install) from the root:
+Use Node.js 22.14, then install the workspace from the repository root:
 
 ```bash
 yarn
 ```
 
-The workspace build tools and shared packages must be built before package scripts run; follow the
-workspace build step in the root `CONTRIBUTING.md`. That step is a workspace-root command, so this
-package's manifest does not record it.
+Fresh-checkout workspace setup (building `webex-legacy-tools` and sibling `dist/`) is owned by the workspace root; see
+[Prebuilding](../../../CONTRIBUTING.md#prebuilding). The workspace build tools and shared packages must be built
+before package scripts run; this package's manifest does not record that step.
 
 ## Build
 
@@ -51,8 +50,7 @@ yarn workspace @webex/calling build:src
 
 `build:src` runs `tsc`, which compiles `src/**/*.ts` into `dist/module` and writes declarations to
 `dist/types` (`tsconfig.json`, `package.json` `main` and `types`). `yarn workspace @webex/calling compile` builds this package
-and every workspace package it depends on, in topological order. Yarn 3 does not run the `prebuild`
-script automatically; run `yarn workspace @webex/calling prebuild` first when you need a clean `dist/`.
+and every workspace package it depends on, in topological order.
 
 | Task | Command |
 |---|---|

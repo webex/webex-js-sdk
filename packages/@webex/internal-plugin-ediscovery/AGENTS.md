@@ -40,12 +40,14 @@ serves no HTTP, so no OpenAPI applies.
 
 ## 1. Commands (Run First)
 
-Use only documented commands. Do not invent alternatives when a command is missing. Run workspace
-commands from the monorepo root.
+Use only documented commands. Do not invent alternatives when a command is missing. Run every command from the
+workspace root: `yarn` to install, and `yarn workspace @webex/internal-plugin-ediscovery <script>` for the package scripts below, which `package.json` defines.
+Fresh-checkout workspace setup (building `webex-legacy-tools` and sibling `dist/`) is owned by the workspace root; see
+[Prebuilding](../../../CONTRIBUTING.md#prebuilding).
 
 | Task                   | Command |
 | ---------------------- | ------- |
-| Install dependencies   | `yarn` (workspace root; the deploy workflow runs the same command); on a fresh checkout run `yarn prebuild:modules` once, because `yarn` does not build `@webex/legacy-tools` or sibling `dist/` |
+| Install dependencies   | `yarn` (workspace root; the deploy workflow runs the same command) |
 | Start dev environment  | N/A — library package with no start script in `package.json` |
 | Run tests              | `yarn workspace @webex/internal-plugin-ediscovery test:unit` (jest) after `build:src` |
 | Run linters            | `yarn workspace @webex/internal-plugin-ediscovery test:style` |

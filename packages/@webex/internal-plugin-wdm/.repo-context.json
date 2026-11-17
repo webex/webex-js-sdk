@@ -6,6 +6,7 @@
     "purpose": "Deprecated alias package of the Webex JS SDK: keeps the historical @webex/internal-plugin-wdm import path working by re-exporting the Device plugin and its config, constants, interceptor, and feature classes from @webex/internal-plugin-device."
   },
   "commands": {
+    "install": "yarn",
     "compile": "yarn workspace @webex/internal-plugin-wdm build:src",
     "build": "yarn workspace @webex/internal-plugin-wdm build",
     "unit-test": "yarn workspace @webex/internal-plugin-wdm test:unit",

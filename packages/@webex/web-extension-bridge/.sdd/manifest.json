@@ -12,7 +12,7 @@
   "commands": {
     "install": {
       "command": "yarn",
-      "source_file": "package.json",
+      "source_file": "../../../.github/workflows/deploy.yml",
       "role": "install"
     },
     "compile": {

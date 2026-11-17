@@ -11,10 +11,9 @@
   "topology": "Orchestrator-plus-components",
   "commands": {
     "install": {
-      "command": "yarn install",
-      "source_file": "package.json",
-      "role": "install",
-      "verified_at": "2026-09-28T13:42:25Z"
+      "command": "yarn",
+      "source_file": "../../../.github/workflows/deploy.yml",
+      "role": "install"
     },
     "compile": "[NEEDS HUMAN INPUT] -- no standalone compile step exists: the sources are JavaScript transpiled by Babel as part of build:src, and package.json declares no typecheck or compile-only target.",
     "build": {
