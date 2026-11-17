@@ -42,6 +42,7 @@ export default function aqmDialer(aqm: AqmReqs) {
       host: WCC_API_GATEWAY,
       data: p.data,
       err,
+      redactSensitiveLogs: true,
       notifSuccess: {
         bind: {
           type: TASK_MESSAGE_TYPE,

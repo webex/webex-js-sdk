@@ -18,12 +18,51 @@ import {
   getServerHoldStateForControls,
   isCampaignPreviewTask,
   isCampaignPreviewReservation,
+  validateCadAttributes,
 } from '../../../../../src/services/task/TaskUtils';
 import {ITask, Interaction, TaskData} from '../../../../../src/services/task/types';
 import {LoginOption} from '../../../../../src/types';
 import {CC_EVENTS} from '../../../../../src/services/config/types';
 
 describe('TaskUtils', () => {
+  describe('validateCadAttributes', () => {
+    it('accepts up to 30 string attributes with values up to 256 characters', () => {
+      expect(() =>
+        validateCadAttributes({
+          ...Object.fromEntries(
+            Array.from({length: 29}, (_, index) => ['attribute' + index, 'value'])
+          ),
+          maximumValue: 'v'.repeat(256),
+        })
+      ).not.toThrow();
+    });
+
+    it('rejects more than 30 attributes', () => {
+      const attributes = Object.fromEntries(
+        Array.from({length: 31}, (_, index) => ['attribute' + index, 'value'])
+      );
+
+      expect(() => validateCadAttributes(attributes)).toThrow(
+        'CAD attributes may contain no more than 30 entries.'
+      );
+    });
+
+    it('rejects non-string and overlength values', () => {
+      expect(() => validateCadAttributes({value: 'v'.repeat(257)})).toThrow(
+        'CAD attribute values must be strings no longer than 256 characters.'
+      );
+      expect(() => validateCadAttributes({value: 42 as any})).toThrow(
+        'CAD attribute values must be strings no longer than 256 characters.'
+      );
+    });
+
+    it('rejects invalid attribute containers', () => {
+      expect(() => validateCadAttributes([] as any)).toThrow(
+        'CAD attributes must be an object of string values.'
+      );
+    });
+  });
+
   let mockTask: ITask;
   const mockAgentId = 'agent-123';
   const mockOtherAgentId = 'agent-456';

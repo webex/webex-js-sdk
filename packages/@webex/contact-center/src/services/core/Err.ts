@@ -21,6 +21,7 @@ export type vteamType = 'inboundqueue' | 'inboundentrypoint' | string;
 
 export type TaskErrorIds =
   | {'Service.aqm.task.accept': Failure}
+  | {'Service.aqm.task.ContactUpdateFailed': Failure}
   | {'Service.aqm.task.end': Failure}
   | {'Service.aqm.task.wrapup': Failure}
   | {'Service.aqm.task.AgentVteamTransferFailed': Failure}

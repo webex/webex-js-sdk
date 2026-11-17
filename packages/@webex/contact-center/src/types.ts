@@ -621,6 +621,7 @@ export type RequestBody =
   | Contact.cancelCtq
   | Contact.WrapupPayLoad
   | Contact.DialerPayload
+  | {attributes: Record<string, string>}
   | Contact.PreviewContactPayload
   | CreateUserPreferenceRequest
   | UpdateUserPreferenceRequest;
