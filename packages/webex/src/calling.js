@@ -1,5 +1,6 @@
 import * as WebexCalling from '@webex/calling';
 import EventEmitter from 'events';
+import initializeCallQueueClient from './call-queue-client';
 
 /* eslint-disable require-jsdoc */
 require('@webex/internal-plugin-device');
@@ -146,17 +147,15 @@ class Calling extends EventEmitter {
       ? WebexCalling.createCallSettingsClient(this.webex, logger)
       : undefined;
 
-    try {
-      if (this.callQueueClient) {
-        this.callQueueClient.dispose();
-      }
-      this.callQueueClient = clientConfig.callQueue
-        ? WebexCalling.createCallQueueClient(this.webex, logger, callQueueClientConfig)
-        : undefined;
-    } catch (error) {
-      this.log.warn(`Error occurred while initializing callQueue client ${error}`, logContext);
-      this.callQueueClient = undefined;
-    }
+    this.callQueueClient = initializeCallQueueClient({
+      enabled: clientConfig.callQueue,
+      previousClient: this.callQueueClient,
+      webex: this.webex,
+      logger,
+      options: callQueueClientConfig,
+      log: this.log,
+      logContext,
+    });
 
     if (clientConfig.callRecording === undefined) {
       clientConfig.callRecording = false;

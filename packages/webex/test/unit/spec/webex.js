@@ -206,6 +206,18 @@ describe('Calling call queue client', () => {
     assert.calledOnce(replacement.dispose);
   });
 
+  it('disposes the previous client when call queues are disabled', async () => {
+    const callingConfig = config(true);
+    const calling = await Calling.init({webex, callingConfig});
+    callingConfig.clientConfig.callQueue = false;
+
+    await calling.initializeClients();
+
+    assert.calledOnce(queue.dispose);
+    assert.calledOnce(factory);
+    assert.isUndefined(calling.callQueueClient);
+  });
+
   it('continues initializing call recording when queue creation fails during registration', async () => {
     const recording = {};
     const recordingFactory = sinon.stub(WebexCalling, 'createCallRecordingClient').returns(recording);
