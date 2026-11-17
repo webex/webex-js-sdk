@@ -2077,7 +2077,10 @@
     "minimum_independence": "different-runtime",
     "blocking_severities": [
       "Blocking"
-    ]
+    ],
+    "validator_runtime": "01a1e76c-6d26-70a1-91c6-e2d31c3fe960",
+    "validator_runtime_source": "host-metadata",
+    "runtime_fallback_tier": "different-runtime"
   },
   "layout": {
     "sdd_root": ".sdd",

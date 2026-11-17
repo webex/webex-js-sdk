@@ -9,8 +9,8 @@ doc_kind: module-spec
 generated_from: module-spec@0.3.0
 generated_by: claude-code
 approved_by: rarajes2@cisco.com
-updated_at: 2026-11-16T14:30:00Z
-validation_status: not-run
+updated_at: 2026-11-17T03:14:21Z
+validation_status: pass-with-warnings
 -->
 
 # Member

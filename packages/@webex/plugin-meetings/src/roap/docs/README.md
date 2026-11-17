@@ -9,8 +9,8 @@ doc_kind: module-spec
 generated_from: module-spec@0.3.0
 generated_by: claude-code
 approved_by: rarajes2@cisco.com
-updated_at: 2026-11-16T14:30:00Z
-validation_status: not-run
+updated_at: 2026-11-17T03:14:21Z
+validation_status: pass-with-warnings
 -->
 
 # ROAP
@@ -135,7 +135,7 @@ Manifest contracts: provides `roap-signaling`; requires `locus-http` and
 | Contract ID | Type | Surface | Purpose | Compatibility / deprecation | Schema / detail link | Root index |
 | ----------- | ---- | ------- | ------- | --------------------------- | -------------------- | ---------- |
 | `roap-signaling` | SDK / remote | `Roap.sendRoapOK()`, `sendRoapAnswer()`, `sendRoapError()`, and `sendRoapMediaRequest()` | Build and send outgoing ROAP control/media messages through the current Locus media route (`meeting.locusMediaRequest`). | Preserve message/action fields and returned promise behavior: `sendRoapMediaRequest()` resolves `{locus, roapAnswer}`, the others resolve after the request; inbound Mercury ordering is owned elsewhere. | `src/roap/index.ts` | package architecture |
-| `roap-signaling` | request adapter | `RoapRequest.sendRoap()` | Issue the outgoing Locus media request and return its response/rejection to `Roap`. | Preserve the request body `{type: 'RoapMessage', selfUrl, mediaId, roapMessage, reachability, clientMediaPreferences}` and direct promise propagation; it resolves `{locus, mediaConnections}`. | `src/roap/request.ts` | package architecture |
+| `roap-signaling` | request adapter | `RoapRequest.sendRoap()` | Issue the outgoing Locus media request and return its response/rejection to `Roap`. | Preserve the request body `{type: 'RoapMessage', selfUrl, mediaId, roapMessage, reachability, clientMediaPreferences}` and direct promise propagation; it resolves `{locus}`, with `locus.roapSeq` set to the sent `seq`, and adds `mediaConnections` (the whole response array) only when the response's first media connection is truthy, so callers must treat it as optional. | `src/roap/request.ts` | package architecture |
 | `roap-signaling` | TURN discovery | `Roap.doTurnDiscovery()`, `generateTurnDiscoveryRequestMessage()`, `handleTurnDiscoveryHttpResponse()`, and `abortTurnDiscovery()` | Delegate TURN discovery lifecycle through the active `TurnDiscovery` instance. | Preserve skip-vs-rethrow distinctions and abort ownership. | `src/roap/index.ts`, `src/roap/turnDiscovery.ts` | package architecture |
 | `roap-signaling` | TURN discovery component | `TurnDiscovery.handleTurnDiscoveryResponse()`, `generateTurnDiscoveryRequestMessage()`, `handleTurnDiscoveryHttpResponse()`, `abort()`, `sendRoapOK()`, `isSkipped()`, and `doTurnDiscovery()` | Generate the discovery offer, interpret HTTP or Mercury results, and expose normalized TURN server information or skip reason. | HTTP 409/403 are rethrown; other handled discovery failures resolve a skipped result (`failure: <message>`). `handleTurnDiscoveryHttpResponse()` throws when no discovery is in progress. | `src/roap/turnDiscovery.ts` | package architecture |
 | `roap-signaling` | exported contracts | `TurnDiscoveryResult`, `TurnServerInfo`, and `TurnDiscoverySkipReason` | Share the exact success/skip shape returned to Meeting negotiation. | Add fields and skip reasons compatibly; existing values (`missing http response`, `reachability`, `already in progress`, and `failure: <message>`) are consumer-visible. `src/roap/index.ts` re-exports the three types. | `src/roap/types.ts`, `src/roap/index.ts` | package architecture |
@@ -239,8 +239,10 @@ sequenceDiagram
       Q--xR: logged and rethrown
       R--xM: propagated rejection
     else response
-      Q-->>R: response
-      R->>M: updateMediaConnections(mediaConnections)
+      Q-->>R: {locus} plus mediaConnections only when present
+      opt response includes mediaConnections
+        R->>M: updateMediaConnections(mediaConnections)
+      end
       R-->>M: {locus, roapAnswer}
     end
   end
