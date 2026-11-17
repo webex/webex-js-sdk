@@ -787,6 +787,13 @@ export class CallQueueClient extends Eventing<CallQueueEventTypes> implements IC
   }
 
   private rejectUpdate(request: UpdateCallQueueSettingsRequest): CallQueueResponse | undefined {
+    if (!request || typeof request !== 'object' || Array.isArray(request)) {
+      return {
+        statusCode: 400,
+        data: {error: 'a call queue settings update is required'},
+        message: FAILURE_MESSAGE,
+      };
+    }
     const hasState = request.agentACDState !== undefined;
     const hasQueues = request.queues !== undefined;
     if (!hasState && !hasQueues) {
@@ -800,6 +807,13 @@ export class CallQueueClient extends Eventing<CallQueueEventTypes> implements IC
       return {
         statusCode: 400,
         data: {error: 'agentACDState is not a supported ACD state'},
+        message: FAILURE_MESSAGE,
+      };
+    }
+    if (hasQueues && !Array.isArray(request.queues)) {
+      return {
+        statusCode: 400,
+        data: {error: 'queues must be an array of queue updates'},
         message: FAILURE_MESSAGE,
       };
     }

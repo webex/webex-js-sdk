@@ -802,6 +802,24 @@ describe('CallQueue client', () => {
     expect(response.data.error).toBe('queues must include at least one queue update');
   });
 
+  it.each([
+    ['null request', null],
+    ['missing request', undefined],
+    ['array request', []],
+    ['string request', 'invalid'],
+    ['null queues', {queues: null}],
+    ['object queues', {queues: {}}],
+    ['string queues', {queues: 'invalid'}],
+    ['numeric queues', {queues: 1}],
+  ])('rejects %s from JavaScript callers without making a request', async (_, request) => {
+    const response = await client.updateCallQueueSettings(
+      request as Parameters<ICallQueue['updateCallQueueSettings']>[0]
+    );
+
+    expect(response.statusCode).toBe(400);
+    expect(webex.request).not.toHaveBeenCalled();
+  });
+
   it('rejects an unsupported ACD state', async () => {
     const response = await client.updateCallQueueSettings({
       agentACDState: 'LUNCH' as ACD_STATE,
