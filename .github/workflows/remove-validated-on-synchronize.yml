@@ -122,9 +122,9 @@ jobs:
 
                 core.info('Removed validated label after synchronize event.');
               } catch (error) {
-                core.warning(`Failed to remove validated label: ${error.message}`);
+                core.setFailed(`Failed to remove validated label: ${error.message}`);
               }
-              core.setFailed(`Failed to remove validated label: ${error.message}`);
+
               return false;
             };
 
