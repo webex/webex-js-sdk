@@ -110,6 +110,12 @@ const CredentialsConfig = AmpState.extend({
      * @type {string}
      */
     cisService: ['string', false, 'webex'],
+
+    /**
+     * Whether the client is permitted to upgrade its token scope.
+     * @type {boolean}
+     */
+    canUpgradeScope: ['boolean', false, false],
   },
 
   derived: {

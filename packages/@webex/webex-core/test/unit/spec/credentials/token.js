@@ -150,7 +150,7 @@ describe('webex-core', () => {
 
       describe('#downscope()', () => {
         it('requires an access token', () => {
-          const token = makeToken();
+          const token = makeToken({scope: 'scopeA scopeB'});
 
           token.unset('access_token');
 
@@ -158,7 +158,7 @@ describe('webex-core', () => {
         });
 
         it('requires an unexpired access token', () => {
-          const token = makeToken({expires: Date.now() - 10000});
+          const token = makeToken({expires: Date.now() - 10000, scope: 'scopeA scopeB'});
 
           return assert.isRejected(
             token.downscope('spark:kms'),
@@ -167,6 +167,15 @@ describe('webex-core', () => {
         });
 
         it('rejects downscope when the new scope is not super set of the available scopes', () => {
+          const token = makeToken({scope: 'scopeA scopeB'});
+
+          return assert.isRejected(
+            token.downscope('scopeX'),
+            /new scope \(scopeX\) is not subset of the available scopes \(scopeA scopeB\)/
+          );
+        });
+        
+        it('rejects downscope when the new scope is not super set of the available scopes - config fallback', () => {
           const token = makeToken();
           token.config.scope = 'scopeY scopeZ';
 
@@ -176,11 +185,54 @@ describe('webex-core', () => {
           );
         });
 
-        it('alphabetizes the requested scope', () => {
+        it("uses the token's scope instead of the configured scope for downscope", () => {
+          const token = makeToken({scope: 'scopeX scopeY'});
+
+          token.config.scope = 'scopeY';
+          webex.request.returns(Promise.resolve({body: {access_token: 'AT2'}}));
+
+          return token.downscope('scopeX').then(() => {
+            assert.calledOnceWithExactly(webex.request, {
+              method: 'POST',
+              uri: token.config.tokenUrl,
+              addAuthHeader: false,
+              form: {
+                grant_type: 'urn:cisco:oauth:grant-type:scope-reduction',
+                token: 'AT',
+                scope: 'scopeX',
+                client_id: token.config.client_id,
+                self_contained_token: true,
+              },
+            });
+          });
+        });
+
+        it("falls back to the configured scope for downscope", () => {
           const token = makeToken();
 
+          token.config.scope = 'scopeX scopeY';
           webex.request.returns(Promise.resolve({body: {access_token: 'AT2'}}));
-          token.config.scope = 'a b c';
+
+          return token.downscope('scopeX').then(() => {
+            assert.calledOnceWithExactly(webex.request, {
+              method: 'POST',
+              uri: token.config.tokenUrl,
+              addAuthHeader: false,
+              form: {
+                grant_type: 'urn:cisco:oauth:grant-type:scope-reduction',
+                token: 'AT',
+                scope: 'scopeX',
+                client_id: token.config.client_id,
+                self_contained_token: true,
+              },
+            });
+          });
+        });
+
+        it('alphabetizes the requested scope', () => {
+          const token = makeToken({scope: 'a b c'});
+
+          webex.request.returns(Promise.resolve({body: {access_token: 'AT2'}}));
           return token
             .downscope('b a')
             .then(() => assert.equal(webex.request.args[0][0].form.scope, 'a b'));
@@ -269,12 +321,13 @@ describe('webex-core', () => {
 
       describe('#refresh()', () => {
         browserOnly(it)('refreshes the access_token', () => {
-          const token = makeToken();
+          const token = makeToken({scope: 'scope1'});
 
           webex.config.credentials.refreshCallback = sinon.stub().returns(
             Promise.resolve({
               access_token: 'AT2',
               expires_in: 10000,
+              scope: 'scope1',
               token_type: 'Fake',
             })
           );
@@ -285,17 +338,22 @@ describe('webex-core', () => {
 
           return token.refresh().then((token2) => {
             assert.equal(token2.access_token, 'AT2');
+            assert.equal(token2.scope, 'scope1');
+            assert.calledOnceWithExactly(webex.config.credentials.refreshCallback, webex, token, {
+              upgradeScope: undefined,
+            });
           });
         });
 
         nodeOnly(it)('refreshes the access_token', () => {
-          const token = makeToken();
+          const token = makeToken({scope: 'scope1'});
 
           webex.request.onCall(0).returns(
             Promise.resolve({
               body: {
                 access_token: 'AT2',
                 expires_in: 10000,
+                scope: 'scope1',
                 token_type: 'Fake',
               },
             })
@@ -303,6 +361,83 @@ describe('webex-core', () => {
 
           return token.refresh().then((token2) => {
             assert.equal(token2.access_token, 'AT2');
+            assert.equal(token2.scope, 'scope1');
+            assert.calledOnceWithExactly(webex.request, {
+              method: 'POST',
+              uri: token.config.tokenUrl,
+              form: {
+                grant_type: 'refresh_token',
+                redirect_uri: token.config.redirect_uri,
+                refresh_token: 'RT',
+              },
+              auth: {
+                user: token.config.client_id,
+                pass: token.config.client_secret,
+                sendImmediately: true,
+              },
+              shouldRefreshAccessToken: false,
+            });
+          });
+        });
+
+        browserOnly(it)('refreshes the access_token with scope upgrade', () => {
+          const token = makeToken({scope: 'scope1'});
+
+          webex.config.credentials.refreshCallback = sinon.stub().returns(
+            Promise.resolve({
+              access_token: 'AT2',
+              expires_in: 10000,
+              scope: 'scope1 scope2',
+              token_type: 'Fake',
+            })
+          );
+
+          // FIXME this next line should be necessary. we need a better way to
+          // do config
+          token.trigger('change:config');
+
+          return token.refresh({upgradeScope: 'scope1 scope2'}).then((token2) => {
+            assert.equal(token2.access_token, 'AT2');
+            assert.equal(token2.scope, 'scope1 scope2');
+            assert.calledOnceWithExactly(webex.config.credentials.refreshCallback, webex, token, {
+              upgradeScope: 'scope1 scope2',
+            });
+          });
+        });
+
+        nodeOnly(it)('refreshes the access_token with scope upgrade', () => {
+          const token = makeToken({scope: 'scope1'});
+
+          webex.request.onCall(0).returns(
+            Promise.resolve({
+              body: {
+                access_token: 'AT2',
+                expires_in: 10000,
+                scope: 'scope1 scope2',
+                token_type: 'Fake',
+              },
+            })
+          );
+
+          return token.refresh({upgradeScope: 'scope1 scope2'}).then((token2) => {
+            assert.equal(token2.access_token, 'AT2');
+            assert.equal(token2.scope, 'scope1 scope2');
+            assert.calledOnceWithExactly(webex.request, {
+              method: 'POST',
+              uri: token.config.tokenUrl,
+              form: {
+                grant_type: 'refresh_token',
+                redirect_uri: token.config.redirect_uri,
+                refresh_token: 'RT',
+                upgrade_scope: 'scope1 scope2',
+              },
+              auth: {
+                user: token.config.client_id,
+                pass: token.config.client_secret,
+                sendImmediately: true,
+              },
+              shouldRefreshAccessToken: false,
+            });
           });
         });
 

@@ -57,12 +57,13 @@ describe('webex-core', () => {
 
       describe('#refresh()', () => {
         browserOnly(it)('refreshes the access_token', () => {
-          const token = makeToken();
+          const token = makeToken({scope: 'scope1'});
 
           webex.config.credentials.refreshCallback = sinon.stub().returns(
             Promise.resolve({
               access_token: 'AT2',
               expires_in: 10000,
+              scope: 'scope1 scope2',
               token_type: 'Fake',
             })
           );
@@ -71,8 +72,12 @@ describe('webex-core', () => {
           // do config
           token.trigger('change:config');
 
-          return token.refresh().then((token2) => {
+          return token.refresh({upgradeScope: 'scope1 scope2'}).then((token2) => {
             assert.equal(token2.access_token, 'AT2');
+            assert.equal(token2.scope, 'scope1 scope2');
+            assert.calledOnceWithExactly(webex.config.credentials.refreshCallback, webex, token, {
+              upgradeScope: 'scope1 scope2',
+            });
           });
         });
 
