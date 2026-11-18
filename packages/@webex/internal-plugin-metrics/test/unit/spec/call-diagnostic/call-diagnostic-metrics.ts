@@ -4845,7 +4845,7 @@ describe('internal-plugin-metrics', () => {
         assert.deepEqual(event.event.privacyAndSecurityPermission, {camera: {status: 'GRANTED'}});
       });
 
-      [undefined, null, '', ' ', 123].forEach((correlationId) => {
+      [undefined, null, ''].forEach((correlationId) => {
         it(`rejects auth input without a usable correlation ID: ${correlationId}`, () => {
           const args = getAuthArgs();
           args.options.correlationId = correlationId;
@@ -4857,73 +4857,56 @@ describe('internal-plugin-metrics', () => {
         });
       });
 
-      [
-        ['meetingId', fakeMeeting.id],
-        ['mediaConnections', []],
-        ['sessionCorrelationId', 'meeting-session'],
-        ['globalMeetingId', 'conference'],
-        ['webexConferenceIdStr', 'conference'],
-        ['locusCluster', 'cluster'],
-        ['joinFlowVersion', 'NewFTE'],
-        ['meetingJoinPhase', 'pre-join'],
-        ['emailInput', 'private@example.test'],
-        ['userNameInput', 'Private Name'],
-      ].forEach(([key, value]) => {
-        it(`rejects unsupported auth option ${key} before submission`, () => {
-          const args = getAuthArgs();
-          args.options[key] = value;
-          assert.throws(
-            () => cd.submitClientEvent(args),
-            'Auth diagnostic options contain unsupported fields'
-          );
-          assert.notCalled(webex.request);
-        });
-      });
-
-      [
-        ['meetingJoinPhase', 'pre-join'],
-        ['joinFlowVersion', 'NewFTE'],
-        ['webClientPreload', true],
-        ['identifiers', {correlationId: 'another-id', globalMeetingId: 'meeting'}],
-      ].forEach(([key, value]) => {
-        it(`rejects unsupported auth payload field ${key} before fetch preparation`, async () => {
-          const args = getAuthArgs();
-          args.payload[key] = value;
-          await assert.isRejected(
-            cd.buildClientEventFetchRequestOptions(args),
-            Error,
-            'Auth diagnostic payload contains unsupported fields'
-          );
-          assert.notCalled(webex.prepareFetchOptions);
-        });
-      });
-
-      [null, [], 'invalid'].forEach((payload) => {
-        it(`rejects malformed auth payload ${JSON.stringify(payload)}`, () => {
-          const args = {...getAuthArgs(), payload};
-          assert.throws(
-            () => cd.prepareClientEvent(args),
-            'Auth diagnostic payload must be an object'
-          );
-        });
-      });
-
-      it('rejects an unsupported diagnostic type', () => {
+      it('keeps the existing caller payload merge for auth events', () => {
         const args = getAuthArgs();
-        args.options.diagnosticType = 'unsupported';
-        assert.throws(() => cd.prepareClientEvent(args), 'Unsupported diagnostic type');
+        const event = cd.prepareClientEvent({
+          ...args,
+          payload: {...args.payload, canProceed: false, meetingJoinPhase: 'pre-join'},
+        });
+
+        assert.deepEqual(event.event, {
+          ...expectedAuthEvent(args.name),
+          canProceed: false,
+          meetingJoinPhase: 'pre-join',
+        });
       });
 
-      it('rejects invalid auth input before queueing', () => {
+      it('selects the auth builder before the meeting builder', () => {
         const args = getAuthArgs();
-        args.payload.meetingJoinPhase = 'pre-join';
+        const event = cd.prepareClientEvent({
+          ...args,
+          options: {...args.options, meetingId: fakeMeeting.id},
+        });
 
-        assert.throws(
-          () => cd.submitClientEvent({...args, delaySubmitEvent: true}),
-          'Auth diagnostic payload contains unsupported fields'
+        assert.deepEqual(event.event, expectedAuthEvent(args.name));
+      });
+
+      it('flushes mixed delayed events with the existing meeting override', async () => {
+        const submit = sinon.stub(cd, 'submitToCallDiagnostics').resolves();
+        const args = getAuthArgs();
+        const overrides = {meetingId: fakeMeeting.id};
+
+        await cd.submitClientEvent({
+          name: 'client.alert.displayed',
+          options: {correlationId: 'meeting-correlation-id'},
+          delaySubmitEvent: true,
+        });
+        await cd.submitClientEvent({...args, delaySubmitEvent: true});
+        assert.notCalled(submit);
+
+        await cd.submitDelayedClientEvents(overrides);
+        assert.calledTwice(submit);
+        assert.equal(submit.firstCall.args[0].event.name, 'client.alert.displayed');
+        assert.equal(
+          submit.firstCall.args[0].event.identifiers.correlationId,
+          fakeMeeting.correlationId
         );
+        assert.equal(submit.firstCall.args[0].event.identifiers.locusUrl, fakeMeeting.locusUrl);
+        assert.deepEqual(submit.secondCall.args[0].event, expectedAuthEvent(args.name));
         assert.deepEqual(cd.delayedClientEvents, []);
-        assert.notCalled(webex.request);
+
+        await cd.submitDelayedClientEvents(overrides);
+        assert.calledTwice(submit);
       });
 
       it('keeps auth mode and trigger time through delayed submission', async () => {

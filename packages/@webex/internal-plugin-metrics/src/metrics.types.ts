@@ -5,11 +5,6 @@ import type {
   FeatureEvent as RawFeatureEvent,
 } from '@webex/event-dictionary-ts';
 
-import type {
-  AuthDiagnosticEventArgs,
-  AuthDiagnosticOptions,
-} from './call-diagnostic/auth-diagnostic';
-
 export type Event = Omit<RawEvent, 'event'> & {
   event: RawClientEvent | RawMediaQualityEvent | RawFeatureEvent;
 };
@@ -138,8 +133,8 @@ export type ClientType = NonNullable<RawEvent['origin']['clientInfo']>['clientTy
 export type SubClientType = NonNullable<RawEvent['origin']['clientInfo']>['subClientType'];
 export type NetworkType = NonNullable<RawEvent['origin']>['networkType'];
 
-export type MeetingClientEventOptions = {
-  diagnosticType?: undefined;
+export type SubmitClientEventOptions = {
+  diagnosticType?: 'auth';
   clientType?: ClientType;
   subClientType?: SubClientType;
   networkType?: NetworkType;
@@ -163,8 +158,6 @@ export type MeetingClientEventOptions = {
   userNameInput?: ClientUserNameInput;
   vendorId?: string;
 };
-
-export type SubmitClientEventOptions = MeetingClientEventOptions | AuthDiagnosticOptions;
 
 export type SubmitMQEOptions = {
   meetingId: string;
@@ -256,7 +249,7 @@ export type OperationalEvent = TaggedEvent;
 export interface FeatureEvent {
   name: RawFeatureEvent['name'];
   payload?: RawFeatureEvent;
-  options?: MeetingClientEventOptions;
+  options?: SubmitClientEventOptions;
 }
 
 export interface MediaQualityEvent {
@@ -316,15 +309,11 @@ export type SubmitBehavioralEvent = (args: {
   payload?: EventPayload;
 }) => void;
 
-export type SubmitClientEventArgs =
-  | AuthDiagnosticEventArgs
-  | {
-      name: ClientEvent['name'];
-      payload?: ClientEventPayload;
-      options?: MeetingClientEventOptions;
-    };
-
-export type SubmitClientEvent = (args: SubmitClientEventArgs) => Promise<any>;
+export type SubmitClientEvent = (args: {
+  name: ClientEvent['name'];
+  payload?: RecursivePartial<ClientEvent['payload']>;
+  options?: SubmitClientEventOptions;
+}) => Promise<any>;
 
 export type SubmitOperationalEvent = (args: {
   name: OperationalEvent['metricName'];
@@ -344,7 +333,11 @@ export type SubmitMQE = (args: {
   options: any;
 }) => void;
 
-export type BuildClientEventFetchRequestOptions = (args: SubmitClientEventArgs) => Promise<any>;
+export type BuildClientEventFetchRequestOptions = (args: {
+  name: ClientEvent['name'];
+  payload?: RecursivePartial<ClientEvent['payload']>;
+  options?: SubmitClientEventOptions;
+}) => Promise<any>;
 
 export type PreComputedLatencies =
   | 'internal.client.pageJMT'
@@ -377,16 +370,20 @@ export interface IMetricsAttributes {
   callId?: string;
 }
 
-export type DelayedClientEvent = SubmitClientEventArgs;
+export interface DelayedClientEvent {
+  name: ClientEvent['name'];
+  payload?: RecursivePartial<ClientEvent['payload']>;
+  options?: SubmitClientEventOptions;
+}
 
 export type SubmitFeatureEvent = (args: {
   name: FeatureEvent['name'];
   payload?: RecursivePartial<FeatureEvent['payload']>;
-  options?: MeetingClientEventOptions;
+  options?: SubmitClientEventOptions;
 }) => Promise<any>;
 
 export interface DelayedClientFeatureEvent {
   name: FeatureEvent['name'];
   payload?: RecursivePartial<FeatureEvent['payload']>;
-  options?: MeetingClientEventOptions;
+  options?: SubmitClientEventOptions;
 }

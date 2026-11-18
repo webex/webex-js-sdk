@@ -69,12 +69,6 @@ export {
 };
 export {isAutomatedUser, isAutomatedUserAgent} from './automated-user';
 export type {
-  AuthDiagnosticEventArgs,
-  AuthDiagnosticOptions,
-  AuthDiagnosticPayload,
-} from './call-diagnostic/auth-diagnostic';
-export type {SubmitClientEventArgs} from './metrics.types';
-export type {
   ClientEvent,
   ClientEventLeaveReason,
   SubmitBehavioralEvent,
