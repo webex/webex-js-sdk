@@ -54,12 +54,12 @@ in the module spec Verification.
 
 | Change affects | Load and update | Verification route |
 | -------------- | --------------- | ------------------ |
-| Package boundaries or cross-cutting architecture | `docs/architecture.md` and applicable ADRs | `yarn test:unit` and `yarn test:style` |
+| Package boundaries or cross-cutting architecture | `docs/architecture.md` and applicable ADRs | `yarn workspace @webex/byods test:unit` and `yarn workspace @webex/byods test:style` |
 | A deployable service surface or operating posture | Not applicable — no deployable service exists in this package | Not applicable |
-| Token acquisition, refresh, or storage | `src/docs/README.md` | `yarn test:unit` |
-| Data source calls or the renewal timer | `src/docs/README.md` | `yarn test:unit`, after adding a characterization case for a failing tick |
-| JWS verification or environment selection | `src/docs/README.md` and `docs/architecture.md` Security architecture | `yarn test:unit` |
-| Exports, entry fields, or build scripts | `src/docs/README.md`, `docs/architecture.md` | `yarn build:src` and `yarn docs` |
+| Token acquisition, refresh, or storage | `src/docs/README.md` | `yarn workspace @webex/byods test:unit` |
+| Data source calls or the renewal timer | `src/docs/README.md` | `yarn workspace @webex/byods test:unit`, after adding a characterization case for a failing tick |
+| JWS verification or environment selection | `src/docs/README.md` and `docs/architecture.md` Security architecture | `yarn workspace @webex/byods test:unit` |
+| Exports, entry fields, or build scripts | `src/docs/README.md`, `docs/architecture.md` | `yarn workspace @webex/byods build:src` and `yarn workspace @webex/byods docs` |
 
 ## Module and contract registration
 

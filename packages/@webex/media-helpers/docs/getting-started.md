@@ -29,8 +29,7 @@ monorepo, so install and build commands run from the monorepo root.
 ## Install
 
 ```bash
-git clone https://github.com/webex/webex-js-sdk.git
-yarn install
+yarn
 ```
 
 ## Build

@@ -47,16 +47,9 @@
       "role": "other"
     },
     "install": {
-      "command": "yarn install",
-      "source_file": "../../../package.json",
-      "role": "install",
-      "verified_at": "2026-10-04T00:00:00Z"
-    },
-    "clone": {
-      "command": "git clone https://github.com/webex/webex-js-sdk.git",
-      "source_file": "package.json",
-      "role": "other",
-      "verified_at": "2026-11-09T10:45:00Z"
+      "command": "yarn",
+      "source_file": "../../../.github/workflows/deploy.yml",
+      "role": "install"
     }
   },
   "toolchain": [

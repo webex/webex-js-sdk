@@ -52,7 +52,7 @@ characterization baseline and promotion past Partial remain pending.
 
 | Change affects | Load and update | Verification route |
 | -------------- | --------------- | ------------------ |
-| Package boundaries or cross-cutting architecture | `docs/architecture.md` and applicable ADRs | `yarn build:src` and `test:style`, and the module spec |
+| Package boundaries or cross-cutting architecture | `docs/architecture.md` and applicable ADRs | `yarn workspace @webex/plugin-webhooks build:src` and `test:style`, and the module spec |
 | A stable code, package, or component boundary | `src/docs/README.md` | Build and lint |
 | A public method, request path, the webhook object, the 204 handling of `remove`, or the registration | The owning architecture section, `src/docs/README.md`, and the native definition in `src/webhooks.js`, `src/index.js`, or `package.json` | Build and lint; add a `test/unit/spec` case and a `test:unit` script for the changed path, since the package has no unit tests and the integration spec is skipped |
 

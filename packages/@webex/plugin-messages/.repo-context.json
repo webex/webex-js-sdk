@@ -7,14 +7,12 @@
   },
   "commands": {
     "install": "yarn",
-    "prebuild": "yarn prebuild:modules",
-    "compile": "yarn build",
-    "build": "yarn build:src",
-    "unit-test": "[NEEDS HUMAN INPUT] -- package.json defines no test:unit script and the package has no test/unit directory; its only spec, test/integration/spec/messages.js, is wrapped in describe.skip, so test:integration runs no case and test:browser bundles nothing. Add a unit suite and script before recording a command here.",
-    "lint": "yarn test:style",
-    "integration-test": "yarn test:integration",
-    "browser-test": "yarn test:browser",
-    "deploy": "yarn deploy:npm"
+    "compile": "yarn workspace @webex/plugin-messages build",
+    "build": "yarn workspace @webex/plugin-messages build:src",
+    "lint": "yarn workspace @webex/plugin-messages test:style",
+    "integration-test": "yarn workspace @webex/plugin-messages test:integration",
+    "browser-test": "yarn workspace @webex/plugin-messages test:browser",
+    "deploy": "yarn workspace @webex/plugin-messages deploy:npm"
   },
   "public_interfaces": [
     {
@@ -72,10 +70,10 @@
         "dist"
       ],
       "refresh_with": [
-        "yarn build:src"
+        "yarn workspace @webex/plugin-messages build:src"
       ],
       "validate_with": [
-        "yarn test:style"
+        "yarn workspace @webex/plugin-messages test:style"
       ]
     },
     {
@@ -96,7 +94,7 @@
     {
       "path": "dist",
       "generated_from": "src",
-      "refresh_with": "yarn build:src"
+      "refresh_with": "yarn workspace @webex/plugin-messages build:src"
     },
     {
       "path": "../../../.sdd/templates/repo-standards/template-map.json",
@@ -110,8 +108,8 @@
         "src/**"
       ],
       "minimum": [
-        "yarn build:src",
-        "yarn test:style"
+        "yarn workspace @webex/plugin-messages build:src",
+        "yarn workspace @webex/plugin-messages test:style"
       ],
       "recommended": [
         "add a test/unit/spec case and a test:unit script for the changed behavior; the package has no unit tests"
@@ -122,8 +120,8 @@
         "src/messages.js"
       ],
       "minimum": [
-        "yarn build:src",
-        "yarn test:style"
+        "yarn workspace @webex/plugin-messages build:src",
+        "yarn workspace @webex/plugin-messages test:style"
       ],
       "recommended": [
         "pin the request paths, the body-or-formData choice, the update roomId rule, and the verb-to-event mapping with unit cases before changing them; check the workspace samples browser-socket and browser-read-status, which use listen and the created and deleted events"
@@ -134,8 +132,8 @@
         "src/index.js"
       ],
       "minimum": [
-        "yarn build:src",
-        "yarn test:style"
+        "yarn workspace @webex/plugin-messages build:src",
+        "yarn workspace @webex/plugin-messages test:style"
       ],
       "recommended": [
         "check the bundles that register the plugin (webex, webex-node) when the registered name or the conversation and mercury imports change"
@@ -153,10 +151,10 @@
         "the created and deleted events and their envelope"
       ],
       "refresh_with": [
-        "yarn build:src"
+        "yarn workspace @webex/plugin-messages build:src"
       ],
       "validate_with": [
-        "yarn test:style"
+        "yarn workspace @webex/plugin-messages test:style"
       ],
       "avoid_direct_edits": [
         "dist"
@@ -172,10 +170,10 @@
         "registration of webex.internal.conversation and webex.internal.mercury"
       ],
       "refresh_with": [
-        "yarn build:src"
+        "yarn workspace @webex/plugin-messages build:src"
       ],
       "validate_with": [
-        "yarn test:style"
+        "yarn workspace @webex/plugin-messages test:style"
       ],
       "avoid_direct_edits": [
         "dist"
@@ -295,7 +293,7 @@
           "dist"
         ],
         "generated_from": "src",
-        "refresh_with": "yarn build:src",
+        "refresh_with": "yarn workspace @webex/plugin-messages build:src",
         "notes": "JavaScript and source maps from webex-legacy-tools; no type declarations. Do not edit by hand."
       },
       {
@@ -311,13 +309,13 @@
     "validation_entrypoints": [
       {
         "name": "compile",
-        "command": "yarn build",
+        "command": "yarn workspace @webex/plugin-messages build",
         "scope": "src",
         "notes": "Runs build:src."
       },
       {
         "name": "lint",
-        "command": "yarn test:style",
+        "command": "yarn workspace @webex/plugin-messages test:style",
         "scope": "src",
         "notes": "eslint via the local .eslintrc.js; docs/** and *.md are ignored."
       }

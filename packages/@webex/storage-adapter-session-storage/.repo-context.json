@@ -7,13 +7,12 @@
   },
   "commands": {
     "install": "yarn",
-    "prebuild": "yarn prebuild:modules",
-    "compile": "yarn build",
-    "build": "yarn build:src",
-    "unit-test": "yarn test:unit",
-    "lint": "yarn test:style",
-    "browser-test": "yarn test:browser",
-    "deploy": "yarn deploy:npm"
+    "compile": "yarn workspace @webex/storage-adapter-session-storage build",
+    "build": "yarn workspace @webex/storage-adapter-session-storage build:src",
+    "unit-test": "yarn workspace @webex/storage-adapter-session-storage test:unit",
+    "lint": "yarn workspace @webex/storage-adapter-session-storage test:style",
+    "browser-test": "yarn workspace @webex/storage-adapter-session-storage test:browser",
+    "deploy": "yarn workspace @webex/storage-adapter-session-storage deploy:npm"
   },
   "public_interfaces": [
     {
@@ -68,11 +67,11 @@
         "dist"
       ],
       "refresh_with": [
-        "yarn build:src"
+        "yarn workspace @webex/storage-adapter-session-storage build:src"
       ],
       "validate_with": [
-        "yarn test:unit",
-        "yarn test:style"
+        "yarn workspace @webex/storage-adapter-session-storage test:unit",
+        "yarn workspace @webex/storage-adapter-session-storage test:style"
       ]
     },
     {
@@ -93,7 +92,7 @@
     {
       "path": "dist",
       "generated_from": "src",
-      "refresh_with": "yarn build:src"
+      "refresh_with": "yarn workspace @webex/storage-adapter-session-storage build:src"
     },
     {
       "path": "../../../.sdd/templates/repo-standards/template-map.json",
@@ -107,9 +106,9 @@
         "src/**"
       ],
       "minimum": [
-        "yarn build:src",
-        "yarn test:unit",
-        "yarn test:style"
+        "yarn workspace @webex/storage-adapter-session-storage build:src",
+        "yarn workspace @webex/storage-adapter-session-storage test:unit",
+        "yarn workspace @webex/storage-adapter-session-storage test:style"
       ],
       "recommended": [
         "add a test that actually executes the changed path with a sessionStorage stand-in; the existing unit tier skips every case"
@@ -120,9 +119,9 @@
         "src/index.js"
       ],
       "minimum": [
-        "yarn build:src",
-        "yarn test:unit",
-        "yarn test:style"
+        "yarn workspace @webex/storage-adapter-session-storage build:src",
+        "yarn workspace @webex/storage-adapter-session-storage test:unit",
+        "yarn workspace @webex/storage-adapter-session-storage test:style"
       ],
       "recommended": [
         "pin clear scope, the bind checks, the NotFoundError contract, and the document layout with executing cases before changing them"
@@ -141,11 +140,11 @@
         "the session-storage-store-adapter info log lines"
       ],
       "refresh_with": [
-        "yarn build:src"
+        "yarn workspace @webex/storage-adapter-session-storage build:src"
       ],
       "validate_with": [
-        "yarn test:unit",
-        "yarn test:style"
+        "yarn workspace @webex/storage-adapter-session-storage test:unit",
+        "yarn workspace @webex/storage-adapter-session-storage test:style"
       ],
       "avoid_direct_edits": [
         "dist"
@@ -270,7 +269,7 @@
           "dist"
         ],
         "generated_from": "src",
-        "refresh_with": "yarn build:src",
+        "refresh_with": "yarn workspace @webex/storage-adapter-session-storage build:src",
         "notes": "JavaScript and source map from webex-legacy-tools; no type declarations. Do not edit by hand."
       },
       {
@@ -286,19 +285,19 @@
     "validation_entrypoints": [
       {
         "name": "compile",
-        "command": "yarn build",
+        "command": "yarn workspace @webex/storage-adapter-session-storage build",
         "scope": "src",
         "notes": "Runs build:src."
       },
       {
         "name": "unit-test",
-        "command": "yarn test:unit",
+        "command": "yarn workspace @webex/storage-adapter-session-storage test:unit",
         "scope": "test/unit/spec",
         "notes": "Jest through webex-legacy-tools; imports the package by name, so it loads dist. Currently skips all 21 cases."
       },
       {
         "name": "lint",
-        "command": "yarn test:style",
+        "command": "yarn workspace @webex/storage-adapter-session-storage test:style",
         "scope": "src",
         "notes": "eslint via the local .eslintrc.js; docs/** and *.md are ignored."
       }

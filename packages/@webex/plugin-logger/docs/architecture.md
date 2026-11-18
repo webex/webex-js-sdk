@@ -210,7 +210,7 @@ Export stability is described in the module spec.
 | `yarn workspace @webex/plugin-logger test:unit` | jest result; no committed artifact |
 | `yarn workspace @webex/plugin-logger test:browser` | karma result; no committed artifact |
 | `yarn workspace @webex/plugin-logger test:style` | eslint result; no committed artifact |
-| `yarn install` | workspace `node_modules` |
+| `yarn` | workspace `node_modules` |
 | `yarn workspace @webex/plugin-logger deploy:npm` | npm publish |
 
 At runtime, `formatLogs()` produces the log text described under Protocol and wire format in the module spec. `dist/` is generated. Do not edit it by hand.

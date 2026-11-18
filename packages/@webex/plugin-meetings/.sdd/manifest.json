@@ -16,11 +16,6 @@
       "source_file": "../../../.github/workflows/deploy.yml",
       "role": "install"
     },
-    "prebuild": {
-      "command": "yarn prebuild:modules",
-      "source_file": "../../../CONTRIBUTING.md",
-      "role": "other"
-    },
     "compile": {
       "command": "yarn workspace @webex/plugin-meetings build:src",
       "source_file": "package.json",
@@ -58,16 +53,6 @@
     "build-assets": {
       "command": "yarn workspace @webex/plugin-meetings build:assets",
       "source_file": "package.json",
-      "role": "other"
-    },
-    "node-install": {
-      "command": "nvm install 22.14",
-      "source_file": "../../../AGENTS.md",
-      "role": "other"
-    },
-    "node-use": {
-      "command": "nvm use 22.14",
-      "source_file": "../../../AGENTS.md",
       "role": "other"
     }
   },

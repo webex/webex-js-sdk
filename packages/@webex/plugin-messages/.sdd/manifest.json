@@ -15,42 +15,34 @@
       "source_file": "../../../.github/workflows/deploy.yml",
       "role": "install"
     },
-    "prebuild": {
-      "command": "yarn prebuild:modules",
-      "source_file": "../../../CONTRIBUTING.md",
-      "role": "other"
-    },
     "compile": {
-      "command": "yarn build",
+      "command": "yarn workspace @webex/plugin-messages build",
       "source_file": "package.json",
-      "role": "compile",
-      "verified_at": "2026-11-12T17:15:26Z"
+      "role": "compile"
     },
     "build": {
-      "command": "yarn build:src",
+      "command": "yarn workspace @webex/plugin-messages build:src",
       "source_file": "package.json",
-      "role": "package",
-      "verified_at": "2026-11-12T17:15:24Z"
+      "role": "package"
     },
     "unit-test": "[NEEDS HUMAN INPUT] -- package.json defines no test:unit script and the package has no test/unit directory; its only spec, test/integration/spec/messages.js, is wrapped in describe.skip, so test:integration runs no case and test:browser bundles nothing. Add a unit suite and script before recording a command here.",
     "lint": {
-      "command": "yarn test:style",
+      "command": "yarn workspace @webex/plugin-messages test:style",
       "source_file": "package.json",
-      "role": "lint",
-      "verified_at": "2026-11-12T17:15:28Z"
+      "role": "lint"
     },
     "integration-test": {
-      "command": "yarn test:integration",
+      "command": "yarn workspace @webex/plugin-messages test:integration",
       "source_file": "package.json",
       "role": "other"
     },
     "browser-test": {
-      "command": "yarn test:browser",
+      "command": "yarn workspace @webex/plugin-messages test:browser",
       "source_file": "package.json",
       "role": "other"
     },
     "deploy": {
-      "command": "yarn deploy:npm",
+      "command": "yarn workspace @webex/plugin-messages deploy:npm",
       "source_file": "package.json",
       "role": "deploy"
     }

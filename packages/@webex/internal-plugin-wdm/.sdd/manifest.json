@@ -10,6 +10,11 @@
   },
   "topology": "Orchestrator-plus-components",
   "commands": {
+    "install": {
+      "command": "yarn",
+      "source_file": "../../../.github/workflows/deploy.yml",
+      "role": "install"
+    },
     "compile": {
       "command": "yarn workspace @webex/internal-plugin-wdm build:src",
       "source_file": "package.json",

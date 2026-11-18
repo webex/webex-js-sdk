@@ -11,14 +11,9 @@
   "topology": "Orchestrator-plus-components",
   "commands": {
     "install": {
-      "command": "yarn install",
-      "source_file": "package.json",
+      "command": "yarn",
+      "source_file": "../../../.github/workflows/deploy.yml",
       "role": "install"
-    },
-    "clone": {
-      "command": "git clone https://github.com/webex/webex-js-sdk.git",
-      "source_file": "package.json",
-      "role": "other"
     },
     "compile": {
       "command": "yarn workspace @webex/media-helpers build",

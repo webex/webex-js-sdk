@@ -35,7 +35,7 @@ The repository is already cloned when you are reading this file. Dependencies ar
 whole workspace:
 
 ```bash
-yarn install
+yarn
 ```
 
 ## Build
@@ -88,7 +88,7 @@ yarn workspace webex-node test:unit
   `src/config.js` are not applied today (module spec `MOD-007`).
 - Secret source: the application passes its access token or OAuth settings to `WebexNode.init`.
   The unit spec reads an optional `token` environment variable for one test, which passes without it.
-- Package or artifact access: `yarn install` needs network access to the npm registry set in the
+- Package or artifact access: `yarn` needs network access to the npm registry set in the
   workspace root `.yarnrc.yml` (`registry.npmjs.org`), or a proxy, because registry packages such as `lodash`, `@babel/polyfill`, and `eslint` are
   declared and no Yarn cache is committed.
 - Required neighboring repositories or workspace layout: the webex-js-sdk workspace, because

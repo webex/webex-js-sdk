@@ -7,13 +7,12 @@
   },
   "commands": {
     "install": "yarn",
-    "prebuild": "yarn prebuild:modules",
-    "compile": "yarn build",
-    "build": "yarn build:src",
-    "unit-test": "yarn test:unit",
-    "lint": "yarn test:style",
-    "browser-test": "yarn test:browser",
-    "deploy": "yarn deploy:npm"
+    "compile": "yarn workspace @webex/internal-plugin-avatar build",
+    "build": "yarn workspace @webex/internal-plugin-avatar build:src",
+    "unit-test": "yarn workspace @webex/internal-plugin-avatar test:unit",
+    "lint": "yarn workspace @webex/internal-plugin-avatar test:style",
+    "browser-test": "yarn workspace @webex/internal-plugin-avatar test:browser",
+    "deploy": "yarn workspace @webex/internal-plugin-avatar deploy:npm"
   },
   "public_interfaces": [
     {
@@ -70,11 +69,11 @@
         "dist"
       ],
       "refresh_with": [
-        "yarn build:src"
+        "yarn workspace @webex/internal-plugin-avatar build:src"
       ],
       "validate_with": [
-        "yarn test:unit",
-        "yarn test:style"
+        "yarn workspace @webex/internal-plugin-avatar test:unit",
+        "yarn workspace @webex/internal-plugin-avatar test:style"
       ]
     },
     {
@@ -95,7 +94,7 @@
     {
       "path": "dist",
       "generated_from": "src",
-      "refresh_with": "yarn build:src"
+      "refresh_with": "yarn workspace @webex/internal-plugin-avatar build:src"
     },
     {
       "path": "../../../.sdd/templates/repo-standards/template-map.json",
@@ -109,9 +108,9 @@
         "src/**"
       ],
       "minimum": [
-        "yarn build:src",
-        "yarn test:unit",
-        "yarn test:style"
+        "yarn workspace @webex/internal-plugin-avatar build:src",
+        "yarn workspace @webex/internal-plugin-avatar test:unit",
+        "yarn workspace @webex/internal-plugin-avatar test:style"
       ],
       "recommended": [
         "add or update cases in test/unit/spec/avatar.js, test/unit/spec/avatar-url-batcher.js, or test/unit/spec/avatar-url-store.js for the changed behavior"
@@ -123,9 +122,9 @@
         "src/avatar-url-batcher.js"
       ],
       "minimum": [
-        "yarn build:src",
-        "yarn test:unit",
-        "yarn test:style"
+        "yarn workspace @webex/internal-plugin-avatar build:src",
+        "yarn workspace @webex/internal-plugin-avatar test:unit",
+        "yarn workspace @webex/internal-plugin-avatar test:style"
       ],
       "recommended": [
         "keep the assertion that a burst of lookups sends one request (INV-002), and add a case for a partial response or an HTTP error when the batch handling changes (INV-003)"
@@ -137,9 +136,9 @@
         "src/config.js"
       ],
       "minimum": [
-        "yarn build:src",
-        "yarn test:unit",
-        "yarn test:style"
+        "yarn workspace @webex/internal-plugin-avatar build:src",
+        "yarn workspace @webex/internal-plugin-avatar test:unit",
+        "yarn workspace @webex/internal-plugin-avatar test:style"
       ],
       "recommended": [
         "change config.sizes and the fixed size list in AvatarUrlStore.remove together, and pin the expiry timer with sinon fake timers (INV-001)"
@@ -150,9 +149,9 @@
         "src/index.js"
       ],
       "minimum": [
-        "yarn build:src",
-        "yarn test:unit",
-        "yarn test:style"
+        "yarn workspace @webex/internal-plugin-avatar build:src",
+        "yarn workspace @webex/internal-plugin-avatar test:unit",
+        "yarn workspace @webex/internal-plugin-avatar test:style"
       ],
       "recommended": [
         "check the packages that register the plugin (@webex/webex-server, @webex/recipe-private-web-client) when the registered name or an import changes"
@@ -170,11 +169,11 @@
         "the setAvatar upload phases and cache invalidation"
       ],
       "refresh_with": [
-        "yarn build:src"
+        "yarn workspace @webex/internal-plugin-avatar build:src"
       ],
       "validate_with": [
-        "yarn test:unit",
-        "yarn test:style"
+        "yarn workspace @webex/internal-plugin-avatar test:unit",
+        "yarn workspace @webex/internal-plugin-avatar test:style"
       ],
       "avoid_direct_edits": [
         "dist"
@@ -190,11 +189,11 @@
         "response mapping, the size-substitution warning, and error fan-out"
       ],
       "refresh_with": [
-        "yarn build:src"
+        "yarn workspace @webex/internal-plugin-avatar build:src"
       ],
       "validate_with": [
-        "yarn test:unit",
-        "yarn test:style"
+        "yarn workspace @webex/internal-plugin-avatar test:unit",
+        "yarn workspace @webex/internal-plugin-avatar test:style"
       ],
       "avoid_direct_edits": [
         "dist"
@@ -212,11 +211,11 @@
         "the batcher timings"
       ],
       "refresh_with": [
-        "yarn build:src"
+        "yarn workspace @webex/internal-plugin-avatar build:src"
       ],
       "validate_with": [
-        "yarn test:unit",
-        "yarn test:style"
+        "yarn workspace @webex/internal-plugin-avatar test:unit",
+        "yarn workspace @webex/internal-plugin-avatar test:style"
       ],
       "avoid_direct_edits": [
         "dist"
@@ -232,11 +231,11 @@
         "the user and device plugin imports"
       ],
       "refresh_with": [
-        "yarn build:src"
+        "yarn workspace @webex/internal-plugin-avatar build:src"
       ],
       "validate_with": [
-        "yarn test:unit",
-        "yarn test:style"
+        "yarn workspace @webex/internal-plugin-avatar test:unit",
+        "yarn workspace @webex/internal-plugin-avatar test:style"
       ],
       "avoid_direct_edits": [
         "dist"
@@ -354,7 +353,7 @@
           "dist"
         ],
         "generated_from": "src",
-        "refresh_with": "yarn build:src",
+        "refresh_with": "yarn workspace @webex/internal-plugin-avatar build:src",
         "notes": "JavaScript and source maps from webex-legacy-tools; no type declarations. Do not edit by hand."
       },
       {
@@ -370,19 +369,19 @@
     "validation_entrypoints": [
       {
         "name": "compile",
-        "command": "yarn build",
+        "command": "yarn workspace @webex/internal-plugin-avatar build",
         "scope": "src",
         "notes": "Runs build:src."
       },
       {
         "name": "unit-test",
-        "command": "yarn test:unit",
+        "command": "yarn workspace @webex/internal-plugin-avatar test:unit",
         "scope": "test/unit/spec",
         "notes": "Run build:src first; the specs test dist."
       },
       {
         "name": "lint",
-        "command": "yarn test:style",
+        "command": "yarn workspace @webex/internal-plugin-avatar test:style",
         "scope": "src",
         "notes": "eslint via the local .eslintrc.js; docs/** and *.md are ignored."
       }

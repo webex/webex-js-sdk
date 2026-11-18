@@ -52,7 +52,7 @@ fixed. A characterization baseline and promotion past Partial remain pending.
 
 | Change affects | Load and update | Verification route |
 | -------------- | --------------- | ------------------ |
-| Package boundaries or cross-cutting architecture | `docs/architecture.md` and applicable ADRs | `yarn build:src`, then `test:unit` and `test:style`, and the module spec |
+| Package boundaries or cross-cutting architecture | `docs/architecture.md` and applicable ADRs | `yarn workspace @webex/internal-plugin-lyra build:src`, then `test:unit` and `test:style`, and the module spec |
 | A stable code, package, or component boundary | `src/docs/README.md` | Build, unit tests, and lint |
 | A public method, request path, query string, body, KMS message, or config default | The owning architecture section, `src/docs/README.md`, and the native definition in `src/lyra.js`, `src/space.js`, `src/device.js`, `src/index.js`, `src/config.js`, or `package.json` | Build, unit tests, and lint; check the calls in `@webex/plugin-device-manager` when a signature, a `space.url` form, or a resolved value changes |
 

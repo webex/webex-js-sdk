@@ -29,6 +29,7 @@ package owns its architecture, specifications, and decisions beside its code. Th
 | --- | --- | --- | --- | --- |
 | `@webex/common` | `packages/@webex/common/` | [AGENTS.md](../packages/@webex/common/AGENTS.md) | [docs/index.md](../packages/@webex/common/docs/index.md) | [.sdd/manifest.json](../packages/@webex/common/.sdd/manifest.json) |
 | `@webex/common-timers` | `packages/@webex/common-timers/` | [AGENTS.md](../packages/@webex/common-timers/AGENTS.md) | [docs/index.md](../packages/@webex/common-timers/docs/index.md) | [.sdd/manifest.json](../packages/@webex/common-timers/.sdd/manifest.json) |
+| `@webex/contact-center` | `packages/@webex/contact-center/` | [AGENTS.md](../packages/@webex/contact-center/AGENTS.md) | [docs/index.md](../packages/@webex/contact-center/docs/index.md) | [.sdd/manifest.json](../packages/@webex/contact-center/.sdd/manifest.json) |
 | `@webex/helper-html` | `packages/@webex/helper-html/` | [AGENTS.md](../packages/@webex/helper-html/AGENTS.md) | [docs/index.md](../packages/@webex/helper-html/docs/index.md) | [.sdd/manifest.json](../packages/@webex/helper-html/.sdd/manifest.json) |
 | `@webex/helper-image` | `packages/@webex/helper-image/` | [AGENTS.md](../packages/@webex/helper-image/AGENTS.md) | [docs/index.md](../packages/@webex/helper-image/docs/index.md) | [.sdd/manifest.json](../packages/@webex/helper-image/.sdd/manifest.json) |
 | `@webex/http-core` | `packages/@webex/http-core/` | [AGENTS.md](../packages/@webex/http-core/AGENTS.md) | [docs/index.md](../packages/@webex/http-core/docs/index.md) | [.sdd/manifest.json](../packages/@webex/http-core/.sdd/manifest.json) |
@@ -83,6 +84,7 @@ package owns its architecture, specifications, and decisions beside its code. Th
 | `@webex/web-extension-bridge` | `packages/@webex/web-extension-bridge/` | [AGENTS.md](../packages/@webex/web-extension-bridge/AGENTS.md) | [docs/index.md](../packages/@webex/web-extension-bridge/docs/index.md) | [.sdd/manifest.json](../packages/@webex/web-extension-bridge/.sdd/manifest.json) |
 | `@webex/webex-core` | `packages/@webex/webex-core/` | [AGENTS.md](../packages/@webex/webex-core/AGENTS.md) | [docs/index.md](../packages/@webex/webex-core/docs/index.md) | [.sdd/manifest.json](../packages/@webex/webex-core/.sdd/manifest.json) |
 | `@webex/byods` | `packages/byods/` | [AGENTS.md](../packages/byods/AGENTS.md) | [docs/index.md](../packages/byods/docs/index.md) | [.sdd/manifest.json](../packages/byods/.sdd/manifest.json) |
+| `@webex/calling` | `packages/calling/` | [AGENTS.md](../packages/calling/AGENTS.md) | [docs/index.md](../packages/calling/docs/index.md) | [.sdd/manifest.json](../packages/calling/.sdd/manifest.json) |
 | `webex` | `packages/webex/` | [AGENTS.md](../packages/webex/AGENTS.md) | [docs/index.md](../packages/webex/docs/index.md) | [.sdd/manifest.json](../packages/webex/.sdd/manifest.json) |
 | `webex-node` | `packages/webex-node/` | [AGENTS.md](../packages/webex-node/AGENTS.md) | [docs/index.md](../packages/webex-node/docs/index.md) | [.sdd/manifest.json](../packages/webex-node/.sdd/manifest.json) |
 <!-- sdd-package-routing:end -->

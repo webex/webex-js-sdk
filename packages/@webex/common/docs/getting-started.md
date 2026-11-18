@@ -29,11 +29,7 @@ from the **monorepo root**, not from this package directory.
 ## Install
 
 ```bash
-git clone https://github.com/webex/webex-js-sdk.git
-```
-
-```bash
-yarn install
+yarn
 ```
 
 Install resolves the whole workspace. This package's four toolchain devDependencies

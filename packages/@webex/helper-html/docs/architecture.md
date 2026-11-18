@@ -169,7 +169,7 @@ Export stability is the barrel in `src/index.js`. The module spec lists each exp
 | `yarn workspace @webex/helper-html build:src` | `dist/` from `src/` via `webex-legacy-tools build` |
 | `yarn workspace @webex/helper-html test:browser` | karma run of the unit spec; no committed artifact |
 | `yarn workspace @webex/helper-html test:style` | eslint result; no committed artifact |
-| `yarn install` | workspace `node_modules` |
+| `yarn` | workspace `node_modules` |
 | `yarn workspace @webex/helper-html deploy:npm` | npm publish |
 
 `dist/` is generated. Do not edit it by hand.
