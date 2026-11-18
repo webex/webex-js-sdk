@@ -109,17 +109,57 @@ class Identity extends WebexPlugin {
   }
 
   /**
-   * Returns credentials for the given contact, generating and caching them on first use.
+   * Returns customer-provided credentials followed by Webex-issued credentials when available.
    * @param {string} contactId
-   * @returns {Promise<IdentityCredentials>}
+   * @returns {Promise<IdentityCredentials[]>}
    */
-  getCredentials(contactId: string): Promise<IdentityCredentials> {
+  getCredentials(contactId: string): Promise<IdentityCredentials[]> {
     const userIdentityCredentials = this.userIdentityCredentials.get(contactId);
 
     if (userIdentityCredentials) {
-      return userIdentityCredentials;
+      // The SDK's Core-JS 2 Promise shim does not implement allSettled().
+      const settle = <T>(promise: Promise<T>) =>
+        promise.then(
+          (value) => ({status: 'fulfilled' as const, value}),
+          (reason: unknown) => ({status: 'rejected' as const, reason})
+        );
+
+      return Promise.all([
+        settle(userIdentityCredentials),
+        settle(this.getWebexCredentials(contactId)),
+      ]).then(([userResult, webexResult]) => {
+        const credentials: IdentityCredentials[] = [];
+
+        if (userResult.status === 'fulfilled') {
+          credentials.push(userResult.value);
+        }
+
+        if (webexResult.status === 'fulfilled') {
+          credentials.push(webexResult.value);
+        }
+
+        if (credentials.length > 0) {
+          return credentials;
+        }
+
+        if (userResult.status === 'rejected' && webexResult.status === 'rejected') {
+          throw userResult.reason;
+        }
+
+        return credentials;
+      });
     }
 
+    return this.getWebexCredentials(contactId).then((credentials) => [credentials]);
+  }
+
+  /**
+   * Returns Webex-issued credentials for the given contact, generating and caching them on first
+   * use.
+   * @param {string} contactId
+   * @returns {Promise<IdentityCredentials>}
+   */
+  private getWebexCredentials(contactId: string): Promise<IdentityCredentials> {
     const cachedCredentials = this.credentialsCache.get(contactId);
 
     if (cachedCredentials) {

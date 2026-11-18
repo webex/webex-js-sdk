@@ -8,7 +8,8 @@ The plugin self-registers when imported and is available as `webex.internal.iden
 uses `getCredentials(contactId)` and `getTrustAnchors()` when joining E2EE meetings.
 
 For local testing with customer-provided credentials, register a PKCS#8 private key and leaf-first
-PEM certificate chain for one contact:
+PEM certificate chain for one contact. Meetings uses these credentials first and also includes
+Webex-issued credentials when available:
 
 ```js
 webex.internal.identity.setUserIdentityCredentials(contactId, {
@@ -17,6 +18,6 @@ webex.internal.identity.setUserIdentityCredentials(contactId, {
 });
 ```
 
-Passing `undefined` as the credentials removes that contact's override and resumes CA-issued
-credentials. `contactId` is the same identifier supplied to `getCredentials`; it is not the email
-address in the certificate's SAN.
+Passing `undefined` as the credentials removes the customer credentials for that contact. Meetings
+then uses Webex-issued credentials only. `contactId` is the same identifier supplied to
+`getCredentials`; it is not the email address in the certificate's SAN.

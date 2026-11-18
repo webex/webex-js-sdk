@@ -191,10 +191,10 @@ breakout moves. `setLlmChannel()` swaps the channel when `Meeting` replaces it o
 
 ### `internal-plugin-identity`
 
-- `getCredentials(contactId)` — generates an EC P-256 CSR, requests a certificate from
-  `webex-certificate-authority` (including the root), and caches the in-flight promise per contact.
-  Cached credentials are renewed when the leaf certificate expires within a day; concurrent callers
-  share one renewal.
+- `getCredentials(contactId)` — returns configured customer credentials first, followed by
+  Webex-issued credentials when available. Webex credentials are generated from an EC P-256 CSR,
+  requested from `webex-certificate-authority`, and cached per contact. Cached credentials are
+  renewed when the leaf certificate expires within a day; concurrent callers share one renewal.
 - `getTrustAnchors()` — `{webexCaRoots, userIdentityRoots}`. Integration roots when
   `services.isIntegrationEnvironment()` is true, otherwise production + FedRAMP roots.
   `userIdentityRoots` is currently empty.

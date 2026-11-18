@@ -24,7 +24,7 @@ export interface IdentityTrustAnchors {
 
 /** Methods exposed by the shared identity plugin to consuming plugins. */
 export interface IdentityProvider {
-  getCredentials(contactId: string): Promise<IdentityCredentials>;
+  getCredentials(contactId: string): Promise<IdentityCredentials[]>;
   getTrustAnchors(): IdentityTrustAnchors;
 }
 

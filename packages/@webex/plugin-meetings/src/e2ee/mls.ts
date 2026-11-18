@@ -139,9 +139,9 @@ export default class MLS {
     );
 
     if (config.credentials) {
-      const {privateKey, certChain} = config.credentials;
-
-      this.e2ee.addX509Credential(privateKey, certChain);
+      for (const {privateKey, certChain} of config.credentials) {
+        this.e2ee.addX509Credential(privateKey, certChain);
+      }
     }
 
     if (config.trustAnchors) {
