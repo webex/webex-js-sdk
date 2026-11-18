@@ -63,7 +63,7 @@ describe('webex-core', () => {
             Promise.resolve({
               access_token: 'AT2',
               expires_in: 10000,
-              scope: 'scope1 scope2',
+              scope: 'scope1',
               token_type: 'Fake',
             })
           );
@@ -72,15 +72,15 @@ describe('webex-core', () => {
           // do config
           token.trigger('change:config');
 
-          return token.refresh({upgradeScope: 'scope1 scope2'}).then((token2) => {
+          return token.refresh().then((token2) => {
             assert.equal(token2.access_token, 'AT2');
-            assert.equal(token2.scope, 'scope1 scope2');
+            assert.equal(token2.scope, 'scope1');
             assert.calledOnceWithExactly(webex.config.credentials.refreshCallback, webex, token, {
-              upgradeScope: 'scope1 scope2',
+              scope: undefined,
+              upgradeScope: undefined,
             });
           });
         });
-
 
         browserOnly(it)('revokes the previous token when set', () => {
           const token = makeToken();

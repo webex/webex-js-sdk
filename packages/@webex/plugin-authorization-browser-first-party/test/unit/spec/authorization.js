@@ -538,36 +538,51 @@ describe('plugin-authorization-browser-first-party', () => {
         assert.deepEqual(response, tokenResponse);
       });
 
-      it('uses the upgrade scope when provided', async () => {
-        const webex = {request: sinon.stub().resolves({body: tokenResponse})};
-        const token = {
-          refresh_token: 'current-refresh-token',
-          config: {
-            clientType: 'public',
-            client_id: 'public-client-id',
-            redirect_uri: 'http://example.com',
-            tokenUrl: 'https://idbroker.example.com/access_token',
-          },
-        };
-
-        const response = await authorizationConfig.credentials.refreshCallback(webex, token, {
-          upgradeScope: 'scope:one scope:two',
-        });
-
-        assert.calledOnceWithExactly(webex.request, {
-          method: 'POST',
-          uri: 'https://idbroker.example.com/access_token',
-          form: {
-            grant_type: 'refresh_token',
-            redirect_uri: 'http://example.com',
+      [
+        {
+          description: 'uses the upgrade scope when provided',
+          options: {upgradeScope: 'scope:one scope:two'},
+          form: {upgrade_scope: 'scope:one scope:two'},
+        },
+        {
+          description: 'uses the explicit scope when provided',
+          options: {scope: 'scope:one'},
+          form: {scope: 'scope:one'},
+        },
+      ].forEach(({description, options, form}) => {
+        it(description, async () => {
+          const webex = {request: sinon.stub().resolves({body: tokenResponse})};
+          const token = {
             refresh_token: 'current-refresh-token',
-            upgrade_scope: 'scope:one scope:two',
-            client_id: 'public-client-id',
-          },
-          addAuthHeader: false,
-          shouldRefreshAccessToken: false,
+            config: {
+              clientType: 'public',
+              client_id: 'public-client-id',
+              redirect_uri: 'http://example.com',
+              tokenUrl: 'https://idbroker.example.com/access_token',
+            },
+          };
+
+          const response = await authorizationConfig.credentials.refreshCallback(
+            webex,
+            token,
+            options
+          );
+
+          assert.calledOnceWithExactly(webex.request, {
+            method: 'POST',
+            uri: 'https://idbroker.example.com/access_token',
+            form: {
+              grant_type: 'refresh_token',
+              redirect_uri: 'http://example.com',
+              refresh_token: 'current-refresh-token',
+              ...form,
+              client_id: 'public-client-id',
+            },
+            addAuthHeader: false,
+            shouldRefreshAccessToken: false,
+          });
+          assert.deepEqual(response, tokenResponse);
         });
-        assert.deepEqual(response, tokenResponse);
       });
     });
 

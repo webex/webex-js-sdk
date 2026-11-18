@@ -1078,101 +1078,82 @@ describe('webex-core', () => {
     });
 
     describe('#refresh()', () => {
-      it('requests configured scopes missing from the supertoken when scope upgrade is enabled', () => {
-        const webex = new MockWebex({
-          children: {
-            metrics: Metrics,
-          },
-        });
-        const credentials = new Credentials(undefined, {parent: webex});
+      [
+        {
+          description: 'requests configured scopes missing from the supertoken',
+          canUpgradeScope: true,
+          configuredScope: 'scope1 scope2',
+          tokenScope: 'scope1',
+          expectedOptions: {scope: undefined, upgradeScope: 'scope1 scope2'},
+        },
+        {
+          description: 'narrows a broader supertoken to the configured scope',
+          canUpgradeScope: true,
+          configuredScope: 'scope1',
+          tokenScope: 'scope1 scope2',
+          expectedOptions: {scope: 'scope1', upgradeScope: undefined},
+        },
+        {
+          description:
+            'sends scope when the configured and granted scopes match in a different order',
+          canUpgradeScope: true,
+          configuredScope: 'scope2 scope1',
+          tokenScope: 'scope1 scope2',
+          expectedOptions: {scope: 'scope2 scope1', upgradeScope: undefined},
+        },
+        {
+          description: 'omits scope and upgrade scope when scope upgrading is disabled',
+          canUpgradeScope: false,
+          configuredScope: 'scope1 scope2',
+          tokenScope: 'scope1',
+          expectedOptions: {scope: undefined, upgradeScope: undefined},
+        },
+        {
+          description: 'does not narrow scope when scope upgrading is disabled',
+          canUpgradeScope: false,
+          configuredScope: 'scope1',
+          tokenScope: 'scope1 scope2',
+          expectedOptions: {scope: undefined, upgradeScope: undefined},
+        },
+        {
+          description: 'omits scope and upgrade scope when no scope is configured',
+          canUpgradeScope: true,
+          configuredScope: undefined,
+          tokenScope: 'scope1 scope2',
+          expectedOptions: {scope: undefined, upgradeScope: undefined},
+        },
+      ].forEach(({description, canUpgradeScope, configuredScope, tokenScope, expectedOptions}) => {
+        it(description, () => {
+          const webex = new MockWebex({
+            children: {
+              metrics: Metrics,
+            },
+          });
+          const credentials = new Credentials(undefined, {parent: webex});
 
-        webex.trigger('change:config');
-        credentials.config.canUpgradeScope = true;
-        credentials.config.scope = 'scope1 scope2';
+          webex.trigger('change:config');
+          credentials.config.canUpgradeScope = canUpgradeScope;
+          credentials.config.scope = configuredScope;
 
-        const st = makeToken(webex, {
-          access_token: 'ST',
-          refresh_token: 'RT',
-          scope: 'scope1',
-        });
-        const st2 = makeToken(webex, {
-          access_token: 'ST2',
-          refresh_token: 'RT2',
-          scope: 'scope1 scope2',
-        });
+          const st = makeToken(webex, {
+            access_token: 'ST',
+            refresh_token: 'RT',
+            scope: tokenScope,
+          });
+          const st2 = makeToken(webex, {
+            access_token: 'ST2',
+            refresh_token: 'RT2',
+            scope: configuredScope || tokenScope,
+          });
 
-        sinon.stub(st, 'refresh').resolves(st2);
-        sinon.stub(credentials, 'scheduleRefresh');
-        sinon.stub(webex.internal.metrics, 'submitClientMetrics');
-        credentials.supertoken = st;
+          sinon.stub(st, 'refresh').resolves(st2);
+          sinon.stub(credentials, 'scheduleRefresh');
+          sinon.stub(webex.internal.metrics, 'submitClientMetrics');
+          credentials.supertoken = st;
 
-        return credentials.refresh().then(() => {
-          assert.calledOnceWithExactly(st.refresh, {upgradeScope: 'scope1 scope2'});
-        });
-      });
-
-      it('does not request a scope upgrade when the supertoken has more scopes than configured', () => {
-        const webex = new MockWebex({
-          children: {
-            metrics: Metrics,
-          },
-        });
-        const credentials = new Credentials(undefined, {parent: webex});
-
-        webex.trigger('change:config');
-        credentials.config.canUpgradeScope = true;
-        credentials.config.scope = 'scope1';
-
-        const st = makeToken(webex, {
-          access_token: 'ST',
-          refresh_token: 'RT',
-          scope: 'scope1 scope2',
-        });
-        const st2 = makeToken(webex, {
-          access_token: 'ST2',
-          refresh_token: 'RT2',
-          scope: 'scope1 scope2',
-        });
-
-        sinon.stub(st, 'refresh').resolves(st2);
-        sinon.stub(credentials, 'scheduleRefresh');
-        sinon.stub(webex.internal.metrics, 'submitClientMetrics');
-        credentials.supertoken = st;
-
-        return credentials.refresh().then(() => {
-          assert.calledOnceWithExactly(st.refresh, {upgradeScope: undefined});
-        });
-      });
-
-      it('does not request a scope upgrade when when scope upgrade is disabled', () => {
-        const webex = new MockWebex({
-          children: {
-            metrics: Metrics,
-          },
-        });
-        const credentials = new Credentials(undefined, {parent: webex});
-
-        webex.trigger('change:config');
-        credentials.config.scope = 'scope1 scope2';
-
-        const st = makeToken(webex, {
-          access_token: 'ST',
-          refresh_token: 'RT',
-          scope: 'scope1',
-        });
-        const st2 = makeToken(webex, {
-          access_token: 'ST2',
-          refresh_token: 'RT2',
-          scope: 'scope1',
-        });
-
-        sinon.stub(st, 'refresh').resolves(st2);
-        sinon.stub(credentials, 'scheduleRefresh');
-        sinon.stub(webex.internal.metrics, 'submitClientMetrics');
-        credentials.supertoken = st;
-
-        return credentials.refresh().then(() => {
-          assert.calledOnceWithExactly(st.refresh, {upgradeScope: undefined});
+          return credentials.refresh().then(() => {
+            assert.calledOnceWithExactly(st.refresh, expectedOptions);
+          });
         });
       });
 

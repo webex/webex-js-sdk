@@ -340,10 +340,11 @@ const Token = WebexPlugin.extend({
    * @instance
    * @memberof Token
    * @param {Object} [options={}]
-   * @param {string} [options.upgradeScope]
+   * @param {string} [options.scope] Scope to request on refresh, if same or narrower than existing scope
+   * @param {string} [options.upgradeScope] Scope to request on refresh, if broader than existing scope
    * @returns {Promise<Token>}
    */
-  refresh({upgradeScope} = {}) {
+  refresh({scope, upgradeScope} = {}) {
     if (!this.canRefresh) {
       throw new Error('Not enough information available to refresh this access token');
     }
@@ -355,7 +356,9 @@ const Token = WebexPlugin.extend({
         throw new Error('Cannot refresh access token without refreshCallback');
       }
 
-      promise = Promise.resolve(this.config.refreshCallback(this.webex, this, {upgradeScope}));
+      promise = Promise.resolve(
+        this.config.refreshCallback(this.webex, this, {scope, upgradeScope})
+      );
     }
 
     return (
@@ -368,6 +371,7 @@ const Token = WebexPlugin.extend({
             grant_type: 'refresh_token',
             redirect_uri: this.config.redirect_uri,
             refresh_token: this.refresh_token,
+            ...(scope && {scope}),
             ...(upgradeScope && {upgrade_scope: upgradeScope}),
           },
           auth: {
@@ -412,7 +416,7 @@ const Token = WebexPlugin.extend({
         }
 
         obj.previousToken = this;
-        obj.scope = obj.scope || this.scope;
+        obj.scope = obj.scope || scope || this.scope;
 
         return new Token(obj, {parent: this.parent});
       })

@@ -594,17 +594,20 @@ const Credentials = WebexPlugin.extend({
       this.webex.internal.services.updateCredentialsConfig();
     }
 
+    let scope;
     let upgradeScope;
 
     if (this.config.canUpgradeScope) {
       const newScopes = diffScopes(this.config.scope, supertoken.scope);
       if (newScopes !== '') {
         upgradeScope = this.config.scope;
+      } else {
+        scope = this.config.scope;
       }
     }
 
     return supertoken
-      .refresh({upgradeScope})
+      .refresh({scope, upgradeScope})
       .catch((error) => {
         if (error instanceof OAuthError) {
           // Error: super token refresh failed with 400 status code.

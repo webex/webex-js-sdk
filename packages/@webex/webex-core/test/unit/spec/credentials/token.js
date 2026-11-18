@@ -174,7 +174,7 @@ describe('webex-core', () => {
             /new scope \(scopeX\) is not subset of the available scopes \(scopeA scopeB\)/
           );
         });
-        
+
         it('rejects downscope when the new scope is not super set of the available scopes - config fallback', () => {
           const token = makeToken();
           token.config.scope = 'scopeY scopeZ';
@@ -340,6 +340,7 @@ describe('webex-core', () => {
             assert.equal(token2.access_token, 'AT2');
             assert.equal(token2.scope, 'scope1');
             assert.calledOnceWithExactly(webex.config.credentials.refreshCallback, webex, token, {
+              scope: undefined,
               upgradeScope: undefined,
             });
           });
@@ -400,6 +401,7 @@ describe('webex-core', () => {
             assert.equal(token2.access_token, 'AT2');
             assert.equal(token2.scope, 'scope1 scope2');
             assert.calledOnceWithExactly(webex.config.credentials.refreshCallback, webex, token, {
+              scope: undefined,
               upgradeScope: 'scope1 scope2',
             });
           });
@@ -437,6 +439,122 @@ describe('webex-core', () => {
                 sendImmediately: true,
               },
               shouldRefreshAccessToken: false,
+            });
+          });
+        });
+
+        browserOnly(it)('refreshes the access_token with an explicit scope', () => {
+          const token = makeToken({scope: 'scope1 scope2'});
+
+          webex.config.credentials.refreshCallback = sinon.stub().resolves({
+            access_token: 'AT2',
+            expires_in: 10000,
+            scope: 'scope1',
+            token_type: 'Fake',
+          });
+          token.trigger('change:config');
+
+          return token.refresh({scope: 'scope1'}).then((token2) => {
+            assert.equal(token2.access_token, 'AT2');
+            assert.equal(token2.scope, 'scope1');
+            assert.calledOnceWithExactly(webex.config.credentials.refreshCallback, webex, token, {
+              scope: 'scope1',
+              upgradeScope: undefined,
+            });
+          });
+        });
+
+        nodeOnly(it)('refreshes the access_token with an explicit scope', () => {
+          const token = makeToken({scope: 'scope1 scope2'});
+
+          webex.request.resolves({
+            body: {
+              access_token: 'AT2',
+              expires_in: 10000,
+              scope: 'scope1',
+              token_type: 'Fake',
+            },
+          });
+
+          return token.refresh({scope: 'scope1'}).then((token2) => {
+            assert.equal(token2.access_token, 'AT2');
+            assert.equal(token2.scope, 'scope1');
+            assert.calledOnceWithExactly(webex.request, {
+              method: 'POST',
+              uri: token.config.tokenUrl,
+              form: {
+                grant_type: 'refresh_token',
+                redirect_uri: token.config.redirect_uri,
+                refresh_token: 'RT',
+                scope: 'scope1',
+              },
+              auth: {
+                user: token.config.client_id,
+                pass: token.config.client_secret,
+                sendImmediately: true,
+              },
+              shouldRefreshAccessToken: false,
+            });
+          });
+        });
+
+        [
+          {
+            description: 'prefers the returned scope over an explicit scope',
+            options: {scope: 'scope1 scope2'},
+            responseScope: 'scope1',
+            expectedScope: 'scope1',
+          },
+          {
+            description: 'uses the explicit scope when the response omits scope',
+            options: {scope: 'scope1'},
+            responseScope: undefined,
+            expectedScope: 'scope1',
+          },
+          {
+            description:
+              'retains the old scope when neither the request nor response supplies scope',
+            options: {},
+            responseScope: undefined,
+            expectedScope: 'scope1 scope2',
+          },
+          {
+            description: 'does not assume an upgrade succeeded when the response omits scope',
+            options: {upgradeScope: 'scope1 scope2 scope3'},
+            responseScope: undefined,
+            expectedScope: 'scope1 scope2',
+          },
+        ].forEach(({description, options, responseScope, expectedScope}) => {
+          browserOnly(it)(description, () => {
+            const token = makeToken({scope: 'scope1 scope2'});
+
+            webex.config.credentials.refreshCallback = sinon.stub().resolves({
+              access_token: 'AT2',
+              expires_in: 10000,
+              scope: responseScope,
+              token_type: 'Fake',
+            });
+            token.trigger('change:config');
+
+            return token.refresh(options).then((token2) => {
+              assert.equal(token2.scope, expectedScope);
+            });
+          });
+
+          nodeOnly(it)(description, () => {
+            const token = makeToken({scope: 'scope1 scope2'});
+
+            webex.request.resolves({
+              body: {
+                access_token: 'AT2',
+                expires_in: 10000,
+                scope: responseScope,
+                token_type: 'Fake',
+              },
+            });
+
+            return token.refresh(options).then((token2) => {
+              assert.equal(token2.scope, expectedScope);
             });
           });
         });
