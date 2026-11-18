@@ -4745,9 +4745,90 @@ describe('internal-plugin-metrics', () => {
           const event = cd.prepareClientEvent(getAuthArgs('client.sign-in.start', 'pre-login-id'));
           assert.deepEqual(event.event.identifiers, {
             correlationId: 'auth-correlation-id',
-            userId: userId || 'pre-login-id',
+            userId,
           });
         });
+      });
+
+      authNames.forEach((name) => {
+        [
+          ['anonymous UUID', 'e673e67f-451a-4469-896c-95f43e22d03d'],
+          ['email hash', 'a'.repeat(64)],
+        ].forEach(([identityType, preLoginId]) => {
+          it(`omits unknown userId from auth ${name} with an ${identityType}`, async () => {
+            cd.setDeviceInfo(undefined);
+            webex.canAuthorize = false;
+            webex.credentials.getUserId = sinon.stub().returns(undefined);
+            const args = getAuthArgs(name, preLoginId);
+            const request = await cd.buildClientEventFetchRequestOptions(args);
+            const body = JSON.parse(JSON.stringify(request.body));
+
+            assert.deepEqual(body.metrics[0].eventPayload.event, {
+              ...omit(expectedAuthEvent(name), 'loginType'),
+              identifiers: {correlationId: args.options.correlationId},
+            });
+            assert.notProperty(body.metrics[0].eventPayload.event.identifiers, 'userId');
+            assert.equal(request.resource, 'clientmetrics-prelogin');
+            assert.deepEqual(request.headers, {
+              authorization: false,
+              'x-prelogin-userid': preLoginId,
+            });
+          });
+        });
+      });
+
+      ['credentials', 'device'].forEach((source) => {
+        it(`keeps the known ${source} user UUID instead of the prelogin ID`, async () => {
+          const credentialUserId = '5621cb36-1294-40c3-a3fa-3e10fe803a74';
+          const deviceUserId = 'a16c82f4-ad21-46fa-9ff0-f9609127ab08';
+          const preLoginId = 'a'.repeat(64);
+          cd.setDeviceInfo(source === 'device' ? {userId: deviceUserId} : undefined);
+          webex.credentials.getUserId = sinon.stub().returns(credentialUserId);
+          const args = getAuthArgs('client.sign-in.end', preLoginId);
+          const request = await cd.buildClientEventFetchRequestOptions(args);
+          const body = JSON.parse(JSON.stringify(request.body));
+
+          assert.deepEqual(body.metrics[0].eventPayload.event, {
+            ...expectedAuthEvent(args.name),
+            identifiers: {
+              correlationId: args.options.correlationId,
+              userId: source === 'device' ? deviceUserId : credentialUserId,
+            },
+          });
+          assert.equal(request.resource, 'clientmetrics-prelogin');
+          assert.deepEqual(request.headers, {
+            authorization: false,
+            'x-prelogin-userid': preLoginId,
+          });
+        });
+      });
+
+      it('keeps the prelogin transport ID out of delayed auth events', async () => {
+        const preLoginId = 'a'.repeat(64);
+        const submit = sinon.stub(cd, 'submitToCallDiagnosticsPreLogin').resolves();
+        cd.setDeviceInfo(undefined);
+        webex.canAuthorize = false;
+        webex.credentials.getUserId = sinon.stub().returns(undefined);
+        const args = getAuthArgs('client.sign-in.start', preLoginId);
+
+        await cd.submitClientEvent({...args, delaySubmitEvent: true});
+        assert.notCalled(submit);
+        await cd.submitDelayedClientEvents();
+
+        assert.calledOnceWithExactly(
+          submit,
+          sinon.match({
+            event: {
+              ...omit(expectedAuthEvent(args.name), 'loginType'),
+              identifiers: {correlationId: args.options.correlationId, userId: undefined},
+            },
+            originTime: {triggered: now.toISOString(), sent: 'not_defined_yet'},
+          }),
+          preLoginId
+        );
+        const event = JSON.parse(JSON.stringify(submit.firstCall.args[0]));
+        assert.notProperty(event.event.identifiers, 'userId');
+        assert.deepEqual(cd.delayedClientEvents, []);
       });
 
       it('keeps generated errors and supported caller metadata', () => {

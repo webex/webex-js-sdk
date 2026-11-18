@@ -1306,17 +1306,14 @@ export default class CallDiagnosticMetrics extends StatelessWebexPlugin {
     options: AuthDiagnosticOptions;
     errors?: ClientEventPayloadError;
   }): ClientEvent['payload'] {
-    const {correlationId, preLoginId} = options;
+    const {correlationId} = options;
 
     return {
       name,
       errors,
       canProceed: true,
-      // The shared helper can add locus data for a registered device. Select only common IDs.
-      identifiers: pick(
-        this.getIdentifiers({correlationId, preLoginId}),
-        AUTH_DIAGNOSTIC_IDENTIFIER_FIELDS
-      ),
+      // Keep only common IDs. The prelogin transport ID does not identify a signed-in user.
+      identifiers: pick(this.getIdentifiers({correlationId}), AUTH_DIAGNOSTIC_IDENTIFIER_FIELDS),
       eventData: {webClientDomain: window.location.hostname},
       loginType: this.getCurLoginType(),
       telemetryOptOut: this.getTelemetryOptOut(),
