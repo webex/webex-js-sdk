@@ -3,6 +3,7 @@ import type {
   ChromeLike,
   ChromeSender,
   ChromeStorageArea,
+  ChromeTabChangeInfo,
   ChromeTabInfo,
   RuntimeMessageListener,
   SendResponse,
@@ -129,7 +130,7 @@ export interface FakeExtensionWorld {
   broadcasts: unknown[];
   activeTabs: ChromeTabInfo[];
   fireTabRemoved(tabId: number): void;
-  fireTabUpdated(tabId: number, changeInfo: {status?: string; url?: string}): void;
+  fireTabUpdated(tabId: number, changeInfo: ChromeTabChangeInfo): void;
   /** Send as if from a content script in an arbitrary tab, for sender-spoofing tests. */
   sendAsContentScript(message: unknown, sender?: Partial<ChromeSender>): Promise<unknown>;
   sendAsExtensionPage(message: unknown, sender?: Partial<ChromeSender>): Promise<unknown>;
@@ -166,7 +167,7 @@ export function createFakeExtensionWorld(
   const backgroundListeners = createEvent<RuntimeMessageListener>();
   const uiListeners = createEvent<RuntimeMessageListener>();
   const onRemoved = createEvent<(tab: number) => void>();
-  const onUpdated = createEvent<(tab: number, changeInfo: {status?: string; url?: string}) => void>();
+  const onUpdated = createEvent<(tab: number, changeInfo: ChromeTabChangeInfo) => void>();
 
   const storageData = new Map<string, unknown>();
   const tabMessages: {tabId: number; message: unknown}[] = [];
@@ -234,7 +235,7 @@ export function createFakeExtensionWorld(
       }
     },
 
-    fireTabUpdated(target: number, changeInfo: {status?: string; url?: string}): void {
+    fireTabUpdated(target: number, changeInfo: ChromeTabChangeInfo): void {
       for (const listener of [...onUpdated.listeners]) {
         listener(target, changeInfo);
       }

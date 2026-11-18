@@ -490,7 +490,7 @@ export async function handleRegistrationErrors(
       const caller = loggerContext.method || 'handleErrors';
 
       if (retry429Cb && err.headers) {
-        const retryAfter = Number(err.headers['retry-after']);
+        const retryAfter = Number(err.headers['retry-after'] ?? err.headers['Retry-After']);
         await retry429Cb(retryAfter, caller);
       }
       shouldDisconnect = false;
@@ -779,8 +779,12 @@ export async function handleCallErrors(
       /* Handle retry-after cases */
 
       // Common for keepalive and normal scenarios
-      if (err.headers && 'retry-after' in err.headers && retryCb) {
-        const retryInterval = Number(err.headers['retry-after'] as unknown);
+      if (
+        err.headers &&
+        ('retry-after' in err.headers || 'Retry-After' in err.headers) &&
+        retryCb
+      ) {
+        const retryInterval = Number(err.headers['retry-after'] ?? err.headers['Retry-After']);
 
         log.warn(`Retry Interval received: ${retryInterval}`, loggerContext);
         retryCb(retryInterval);
@@ -894,8 +898,8 @@ export async function handleCallErrors(
 
       if (isKeepalive && retryCb) {
         const retryInterval =
-          err.headers && 'retry-after' in err.headers
-            ? Number(err.headers['retry-after'] as unknown)
+          err.headers && ('retry-after' in err.headers || 'Retry-After' in err.headers)
+            ? Number(err.headers['retry-after'] ?? err.headers['Retry-After'])
             : DEFAULT_KEEPALIVE_INTERVAL;
 
         retryCb(retryInterval);

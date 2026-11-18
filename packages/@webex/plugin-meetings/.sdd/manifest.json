@@ -9,53 +9,53 @@
       "javascript"
     ]
   },
-  "topology": "Single-repo",
+  "topology": "Orchestrator-plus-components",
   "commands": {
     "install": {
-      "command": "yarn install",
+      "command": "yarn",
+      "source_file": "../../../.github/workflows/deploy.yml",
+      "role": "install"
+    },
+    "compile": {
+      "command": "yarn workspace @webex/plugin-meetings build:src",
       "source_file": "package.json",
-      "role": "install",
-      "verified_at": "2026-08-18T15:33:39Z"
+      "role": "compile",
+      "verified_at": "2026-11-17T04:30:20Z"
     },
     "build": {
-      "command": "yarn workspace @webex/plugin-meetings build:src",
-      "source_file": "packages/@webex/plugin-meetings/package.json",
+      "command": "yarn workspace @webex/plugin-meetings build",
+      "source_file": "package.json",
       "role": "package",
-      "verified_at": "2026-08-18T15:33:39Z"
+      "verified_at": "2026-11-17T04:30:24Z"
     },
     "unit-test": {
       "command": "yarn workspace @webex/plugin-meetings test:unit",
-      "source_file": "packages/@webex/plugin-meetings/package.json",
+      "source_file": "package.json",
       "role": "unit-test",
-      "verified_at": "2026-08-18T15:33:39Z"
-    },
-    "browser-test": {
-      "command": "yarn workspace @webex/plugin-meetings test:browser",
-      "source_file": "packages/@webex/plugin-meetings/package.json",
-      "role": "integration-test",
-      "verified_at": "2026-08-18T15:33:39Z"
+      "verified_at": "2026-11-17T04:30:57Z"
     },
     "lint": {
       "command": "yarn workspace @webex/plugin-meetings test:style",
-      "source_file": "packages/@webex/plugin-meetings/package.json",
+      "source_file": "package.json",
       "role": "lint",
-      "verified_at": "2026-08-18T15:33:39Z"
+      "verified_at": "2026-11-17T04:30:36Z"
+    },
+    "browser-test": {
+      "command": "yarn workspace @webex/plugin-meetings test:browser",
+      "source_file": "package.json",
+      "role": "integration-test"
+    },
+    "deploy": {
+      "command": "yarn workspace @webex/plugin-meetings deploy:npm",
+      "source_file": "package.json",
+      "role": "deploy"
+    },
+    "build-assets": {
+      "command": "yarn workspace @webex/plugin-meetings build:assets",
+      "source_file": "package.json",
+      "role": "other"
     }
   },
-  "toolchain": [
-    {
-      "name": "node",
-      "version": "22.14",
-      "origin": "repo-config",
-      "source_file": "AGENTS.md"
-    },
-    {
-      "name": "yarn",
-      "version": "3.4.1",
-      "origin": "repo-config",
-      "source_file": "package.json"
-    }
-  ],
   "tests": {
     "unit": {
       "command_ref": "unit-test",
@@ -67,29 +67,137 @@
       "dir": "test/integration/spec",
       "framework": "karma/mocha",
       "external_deps": [
-        "Webex test users and remote Webex services"
+        "Webex test users and remote Webex services (space-meeting cases fail without them)"
       ]
     }
   },
+  "toolchain": [
+    {
+      "name": "node",
+      "version": ">=18",
+      "origin": "repo-config",
+      "source_file": "package.json"
+    },
+    {
+      "name": "node",
+      "version": "22.14",
+      "origin": "repo-config",
+      "source_file": "../../../AGENTS.md"
+    },
+    {
+      "name": "node",
+      "version": "lts/jod",
+      "origin": "repo-config",
+      "source_file": "../../../.nvmrc"
+    },
+    {
+      "name": "node",
+      "version": "18.x",
+      "origin": "repo-config",
+      "source_file": "../../../package.json"
+    },
+    {
+      "name": "yarn",
+      "version": "3.4.1",
+      "origin": "repo-config",
+      "source_file": "../../../package.json"
+    },
+    {
+      "name": "typescript",
+      "version": "^4.7.4",
+      "origin": "repo-config",
+      "source_file": "package.json"
+    },
+    {
+      "name": "@babel/core",
+      "version": "^7.17.10",
+      "origin": "repo-config",
+      "source_file": "package.json"
+    },
+    {
+      "name": "eslint",
+      "version": "^8.24.0",
+      "origin": "repo-config",
+      "source_file": "package.json"
+    },
+    {
+      "name": "sinon",
+      "version": "^9.2.4",
+      "origin": "repo-config",
+      "source_file": "package.json"
+    },
+    {
+      "name": "prettier",
+      "version": "^2.7.1",
+      "origin": "repo-config",
+      "source_file": "package.json"
+    },
+    {
+      "name": "mocha",
+      "version": "10.0",
+      "origin": "repo-config",
+      "source_file": "../../../package.json"
+    },
+    {
+      "name": "karma",
+      "version": "^6.4.3",
+      "origin": "repo-config",
+      "source_file": "../../../package.json"
+    }
+  ],
   "quality_gates": {
     "code_coverage": {
       "origin": "none",
-      "declared_by": "repository user via bootstrap questionnaire"
+      "declared_by": "repository user via the 2026-08-18 bootstrap questionnaire; test:unit runs mocha through webex-legacy-tools with no coverage threshold"
     }
   },
   "coverage_status_definitions": {
-    "specced": ">=80% public surface specced, drift <5% \u2014 spec is authoritative",
-    "partial": "40-80% specced \u2014 spec is a hint, cross-check code",
-    "untracked": "<40% specced \u2014 code is the source of truth"
+    "specced": ">=80% public surface specced, drift <5% - spec is authoritative",
+    "partial": "40-80% specced - spec is a hint, cross-check code",
+    "untracked": "<40% specced - code is the source of truth"
+  },
+  "template_migration": {
+    "status": "staged",
+    "target_source": "repo-standards",
+    "target_source_commit": "d89a7fe59126ae3ad9bac9ca352aa7f12b4c85dc",
+    "detected_footprints": [
+      "ai-docs",
+      "src/aiEnableRequest/ai-docs",
+      "src/annotation/ai-docs",
+      "src/breakouts/ai-docs",
+      "src/controls-options-manager/ai-docs",
+      "src/hashTree/ai-docs",
+      "src/interceptors/ai-docs",
+      "src/interpretation/ai-docs",
+      "src/locus-info/ai-docs",
+      "src/media/ai-docs",
+      "src/meeting-info/ai-docs",
+      "src/meeting/ai-docs",
+      "src/meetings/ai-docs",
+      "src/member/ai-docs",
+      "src/members/ai-docs",
+      "src/metrics/ai-docs",
+      "src/multistream/ai-docs",
+      "src/personal-meeting-room/ai-docs",
+      "src/reachability/ai-docs",
+      "src/reactions/ai-docs",
+      "src/reconnection-manager/ai-docs",
+      "src/recording-controller/ai-docs",
+      "src/roap/ai-docs",
+      "src/webinar/ai-docs"
+    ],
+    "old_template_disposition": "remove-after-validation",
+    "decided_by": "rarajes2@cisco.com (confirmed in chat)",
+    "decided_at": "2026-11-16T13:50:45Z"
   },
   "spec_source_policy": {
     "mode": "migrate-existing",
-    "migrated_source_disposition": "retain",
-    "disposition_decided_by": "repository user",
-    "disposition_decided_at": "2026-08-18T15:33:39Z",
-    "decided_by": "repository user",
-    "decided_at": "2026-08-18T15:33:39Z",
-    "decision_record": "ai-docs/adr/0001-migrate-existing-docs-into-sdd.md"
+    "migrated_source_disposition": "delete-after-validation",
+    "disposition_decided_by": "rarajes2@cisco.com (confirmed in chat)",
+    "disposition_decided_at": "2026-11-16T13:50:45Z",
+    "decided_by": "rarajes2@cisco.com (confirmed in chat)",
+    "decided_at": "2026-11-16T13:50:45Z",
+    "decision_record": "docs/adr/0001-migrate-existing-docs-into-sdd.md"
   },
   "spec_sources": [
     {
@@ -101,97 +209,524 @@
       "canonical_target": "AGENTS.md",
       "post_migration_action": "retain",
       "deletion_status": "not-applicable",
-      "notes": "Host-attested canonical overlap; migrate in place from the frozen checkpoint and retain."
+      "notes": "Protected in-place canonical overlap: human-authored in April 2026, rewritten by the August 2026 generator. Authored guidance is merged losslessly into the repo-standards agent entry; the file is never deleted."
+    },
+    {
+      "path": "ai-docs/ARCHITECTURE.md",
+      "scope": "repo",
+      "role": "source-material",
+      "canonical": false,
+      "use_by_agents": "source-for-migration",
+      "canonical_target": "docs/architecture.md",
+      "post_migration_action": "delete-after-validation",
+      "deletion_status": "deleted"
+    },
+    {
+      "path": "ai-docs/CONTRACTS.md",
+      "scope": "repo",
+      "role": "source-material",
+      "canonical": false,
+      "use_by_agents": "source-for-migration",
+      "canonical_target": "docs/architecture.md",
+      "post_migration_action": "delete-after-validation",
+      "deletion_status": "deleted"
+    },
+    {
+      "path": "ai-docs/DATA_MODEL.md",
+      "scope": "repo",
+      "role": "source-material",
+      "canonical": false,
+      "use_by_agents": "source-for-migration",
+      "canonical_target": "docs/architecture.md",
+      "post_migration_action": "delete-after-validation",
+      "deletion_status": "deleted"
+    },
+    {
+      "path": "ai-docs/SERVICE_STATE.md",
+      "scope": "repo",
+      "role": "source-material",
+      "canonical": false,
+      "use_by_agents": "source-for-migration",
+      "canonical_target": "docs/architecture.md",
+      "post_migration_action": "delete-after-validation",
+      "deletion_status": "deleted"
+    },
+    {
+      "path": "ai-docs/SECURITY.md",
+      "scope": "repo",
+      "role": "source-material",
+      "canonical": false,
+      "use_by_agents": "source-for-migration",
+      "canonical_target": "docs/architecture.md",
+      "post_migration_action": "delete-after-validation",
+      "deletion_status": "deleted"
+    },
+    {
+      "path": "ai-docs/GLOSSARY.md",
+      "scope": "repo",
+      "role": "source-material",
+      "canonical": false,
+      "use_by_agents": "source-for-migration",
+      "canonical_target": "docs/architecture.md",
+      "post_migration_action": "delete-after-validation",
+      "deletion_status": "deleted"
+    },
+    {
+      "path": "ai-docs/GETTING_STARTED.md",
+      "scope": "repo",
+      "role": "source-material",
+      "canonical": false,
+      "use_by_agents": "source-for-migration",
+      "canonical_target": "docs/getting-started.md",
+      "post_migration_action": "delete-after-validation",
+      "deletion_status": "deleted"
+    },
+    {
+      "path": "ai-docs/TEST_INDEX.md",
+      "scope": "repo",
+      "role": "source-material",
+      "canonical": false,
+      "use_by_agents": "source-for-migration",
+      "canonical_target": "docs/getting-started.md",
+      "post_migration_action": "delete-after-validation",
+      "deletion_status": "deleted"
+    },
+    {
+      "path": "ai-docs/SPEC_INDEX.md",
+      "scope": "repo",
+      "role": "source-material",
+      "canonical": false,
+      "use_by_agents": "source-for-migration",
+      "canonical_target": "docs/specs/README.md",
+      "post_migration_action": "delete-after-validation",
+      "deletion_status": "deleted"
+    },
+    {
+      "path": "ai-docs/RULES.md",
+      "scope": "repo",
+      "role": "source-material",
+      "canonical": false,
+      "use_by_agents": "source-for-migration",
+      "canonical_target": "AGENTS.md",
+      "post_migration_action": "delete-after-validation",
+      "deletion_status": "deleted"
+    },
+    {
+      "path": "ai-docs/REVIEW_CHECKLIST.md",
+      "scope": "repo",
+      "role": "source-material",
+      "canonical": false,
+      "use_by_agents": "source-for-migration",
+      "canonical_target": "AGENTS.md",
+      "post_migration_action": "delete-after-validation",
+      "deletion_status": "deleted"
+    },
+    {
+      "path": "ai-docs/adr/0001-migrate-existing-docs-into-sdd.md",
+      "scope": "repo",
+      "role": "source-material",
+      "canonical": false,
+      "use_by_agents": "source-for-migration",
+      "canonical_target": "docs/adr/0001-migrate-existing-docs-into-sdd.md",
+      "post_migration_action": "delete-after-validation",
+      "deletion_status": "deleted"
+    },
+    {
+      "path": "ai-docs/patterns/defensive-error-propagation.md",
+      "scope": "repo",
+      "role": "source-material",
+      "canonical": false,
+      "use_by_agents": "source-for-migration",
+      "canonical_target": "AGENTS.md",
+      "post_migration_action": "delete-after-validation",
+      "deletion_status": "deleted"
+    },
+    {
+      "path": "ai-docs/patterns/event-scope-emission.md",
+      "scope": "repo",
+      "role": "source-material",
+      "canonical": false,
+      "use_by_agents": "source-for-migration",
+      "canonical_target": "AGENTS.md",
+      "post_migration_action": "delete-after-validation",
+      "deletion_status": "deleted"
+    },
+    {
+      "path": "ai-docs/patterns/source-to-test-path-mirroring.md",
+      "scope": "repo",
+      "role": "source-material",
+      "canonical": false,
+      "use_by_agents": "source-for-migration",
+      "canonical_target": "AGENTS.md",
+      "post_migration_action": "delete-after-validation",
+      "deletion_status": "deleted"
+    },
+    {
+      "path": "ai-docs/patterns/stateless-plugin-request-classes.md",
+      "scope": "repo",
+      "role": "source-material",
+      "canonical": false,
+      "use_by_agents": "source-for-migration",
+      "canonical_target": "AGENTS.md",
+      "post_migration_action": "delete-after-validation",
+      "deletion_status": "deleted"
+    },
+    {
+      "path": "ai-docs/patterns/typed-constants-and-enum-values.md",
+      "scope": "repo",
+      "role": "source-material",
+      "canonical": false,
+      "use_by_agents": "source-for-migration",
+      "canonical_target": "AGENTS.md",
+      "post_migration_action": "delete-after-validation",
+      "deletion_status": "deleted"
+    },
+    {
+      "path": "src/meetings/ai-docs/meetings-spec.md",
+      "scope": "module",
+      "module": "src/meetings",
+      "role": "source-material",
+      "canonical": false,
+      "use_by_agents": "source-for-migration",
+      "canonical_target": "src/meetings/docs/README.md",
+      "post_migration_action": "delete-after-validation",
+      "deletion_status": "deleted"
+    },
+    {
+      "path": "src/meeting/ai-docs/meeting-spec.md",
+      "scope": "module",
+      "module": "src/meeting",
+      "role": "source-material",
+      "canonical": false,
+      "use_by_agents": "source-for-migration",
+      "canonical_target": "src/meeting/docs/README.md",
+      "post_migration_action": "delete-after-validation",
+      "deletion_status": "deleted"
+    },
+    {
+      "path": "src/meeting-info/ai-docs/meeting-info-spec.md",
+      "scope": "module",
+      "module": "src/meeting-info",
+      "role": "source-material",
+      "canonical": false,
+      "use_by_agents": "source-for-migration",
+      "canonical_target": "src/meeting-info/docs/README.md",
+      "post_migration_action": "delete-after-validation",
+      "deletion_status": "deleted"
+    },
+    {
+      "path": "src/locus-info/ai-docs/locus-info-spec.md",
+      "scope": "module",
+      "module": "src/locus-info",
+      "role": "source-material",
+      "canonical": false,
+      "use_by_agents": "source-for-migration",
+      "canonical_target": "src/locus-info/docs/README.md",
+      "post_migration_action": "delete-after-validation",
+      "deletion_status": "deleted"
+    },
+    {
+      "path": "src/hashTree/ai-docs/hash-tree-spec.md",
+      "scope": "module",
+      "module": "src/hashTree",
+      "role": "source-material",
+      "canonical": false,
+      "use_by_agents": "source-for-migration",
+      "canonical_target": "src/hashTree/docs/README.md",
+      "post_migration_action": "delete-after-validation",
+      "deletion_status": "deleted"
+    },
+    {
+      "path": "src/member/ai-docs/member-spec.md",
+      "scope": "module",
+      "module": "src/member",
+      "role": "source-material",
+      "canonical": false,
+      "use_by_agents": "source-for-migration",
+      "canonical_target": "src/member/docs/README.md",
+      "post_migration_action": "delete-after-validation",
+      "deletion_status": "deleted"
+    },
+    {
+      "path": "src/members/ai-docs/members-spec.md",
+      "scope": "module",
+      "module": "src/members",
+      "role": "source-material",
+      "canonical": false,
+      "use_by_agents": "source-for-migration",
+      "canonical_target": "src/members/docs/README.md",
+      "post_migration_action": "delete-after-validation",
+      "deletion_status": "deleted"
+    },
+    {
+      "path": "src/media/ai-docs/media-spec.md",
+      "scope": "module",
+      "module": "src/media",
+      "role": "source-material",
+      "canonical": false,
+      "use_by_agents": "source-for-migration",
+      "canonical_target": "src/media/docs/README.md",
+      "post_migration_action": "delete-after-validation",
+      "deletion_status": "deleted"
+    },
+    {
+      "path": "src/multistream/ai-docs/multistream-spec.md",
+      "scope": "module",
+      "module": "src/multistream",
+      "role": "source-material",
+      "canonical": false,
+      "use_by_agents": "source-for-migration",
+      "canonical_target": "src/multistream/docs/README.md",
+      "post_migration_action": "delete-after-validation",
+      "deletion_status": "deleted"
+    },
+    {
+      "path": "src/roap/ai-docs/roap-spec.md",
+      "scope": "module",
+      "module": "src/roap",
+      "role": "source-material",
+      "canonical": false,
+      "use_by_agents": "source-for-migration",
+      "canonical_target": "src/roap/docs/README.md",
+      "post_migration_action": "delete-after-validation",
+      "deletion_status": "deleted"
+    },
+    {
+      "path": "src/reachability/ai-docs/reachability-spec.md",
+      "scope": "module",
+      "module": "src/reachability",
+      "role": "source-material",
+      "canonical": false,
+      "use_by_agents": "source-for-migration",
+      "canonical_target": "src/reachability/docs/README.md",
+      "post_migration_action": "delete-after-validation",
+      "deletion_status": "deleted"
+    },
+    {
+      "path": "src/reconnection-manager/ai-docs/reconnection-manager-spec.md",
+      "scope": "module",
+      "module": "src/reconnection-manager",
+      "role": "source-material",
+      "canonical": false,
+      "use_by_agents": "source-for-migration",
+      "canonical_target": "src/reconnection-manager/docs/README.md",
+      "post_migration_action": "delete-after-validation",
+      "deletion_status": "deleted"
+    },
+    {
+      "path": "src/breakouts/ai-docs/breakouts-spec.md",
+      "scope": "module",
+      "module": "src/breakouts",
+      "role": "source-material",
+      "canonical": false,
+      "use_by_agents": "source-for-migration",
+      "canonical_target": "src/breakouts/docs/README.md",
+      "post_migration_action": "delete-after-validation",
+      "deletion_status": "deleted"
+    },
+    {
+      "path": "src/interpretation/ai-docs/interpretation-spec.md",
+      "scope": "module",
+      "module": "src/interpretation",
+      "role": "source-material",
+      "canonical": false,
+      "use_by_agents": "source-for-migration",
+      "canonical_target": "src/interpretation/docs/README.md",
+      "post_migration_action": "delete-after-validation",
+      "deletion_status": "deleted"
+    },
+    {
+      "path": "src/annotation/ai-docs/annotation-spec.md",
+      "scope": "module",
+      "module": "src/annotation",
+      "role": "source-material",
+      "canonical": false,
+      "use_by_agents": "source-for-migration",
+      "canonical_target": "src/annotation/docs/README.md",
+      "post_migration_action": "delete-after-validation",
+      "deletion_status": "deleted"
+    },
+    {
+      "path": "src/aiEnableRequest/ai-docs/ai-enable-request-spec.md",
+      "scope": "module",
+      "module": "src/aiEnableRequest",
+      "role": "source-material",
+      "canonical": false,
+      "use_by_agents": "source-for-migration",
+      "canonical_target": "src/aiEnableRequest/docs/README.md",
+      "post_migration_action": "delete-after-validation",
+      "deletion_status": "deleted"
+    },
+    {
+      "path": "src/webinar/ai-docs/webinar-spec.md",
+      "scope": "module",
+      "module": "src/webinar",
+      "role": "source-material",
+      "canonical": false,
+      "use_by_agents": "source-for-migration",
+      "canonical_target": "src/webinar/docs/README.md",
+      "post_migration_action": "delete-after-validation",
+      "deletion_status": "deleted"
+    },
+    {
+      "path": "src/recording-controller/ai-docs/recording-controller-spec.md",
+      "scope": "module",
+      "module": "src/recording-controller",
+      "role": "source-material",
+      "canonical": false,
+      "use_by_agents": "source-for-migration",
+      "canonical_target": "src/recording-controller/docs/README.md",
+      "post_migration_action": "delete-after-validation",
+      "deletion_status": "deleted"
+    },
+    {
+      "path": "src/controls-options-manager/ai-docs/controls-options-manager-spec.md",
+      "scope": "module",
+      "module": "src/controls-options-manager",
+      "role": "source-material",
+      "canonical": false,
+      "use_by_agents": "source-for-migration",
+      "canonical_target": "src/controls-options-manager/docs/README.md",
+      "post_migration_action": "delete-after-validation",
+      "deletion_status": "deleted"
+    },
+    {
+      "path": "src/personal-meeting-room/ai-docs/personal-meeting-room-spec.md",
+      "scope": "module",
+      "module": "src/personal-meeting-room",
+      "role": "source-material",
+      "canonical": false,
+      "use_by_agents": "source-for-migration",
+      "canonical_target": "src/personal-meeting-room/docs/README.md",
+      "post_migration_action": "delete-after-validation",
+      "deletion_status": "deleted"
+    },
+    {
+      "path": "src/reactions/ai-docs/reactions-spec.md",
+      "scope": "module",
+      "module": "src/reactions",
+      "role": "source-material",
+      "canonical": false,
+      "use_by_agents": "source-for-migration",
+      "canonical_target": "src/reactions/docs/README.md",
+      "post_migration_action": "delete-after-validation",
+      "deletion_status": "deleted"
+    },
+    {
+      "path": "src/interceptors/ai-docs/interceptors-spec.md",
+      "scope": "module",
+      "module": "src/interceptors",
+      "role": "source-material",
+      "canonical": false,
+      "use_by_agents": "source-for-migration",
+      "canonical_target": "src/interceptors/docs/README.md",
+      "post_migration_action": "delete-after-validation",
+      "deletion_status": "deleted"
+    },
+    {
+      "path": "src/metrics/ai-docs/metrics-spec.md",
+      "scope": "module",
+      "module": "src/metrics",
+      "role": "source-material",
+      "canonical": false,
+      "use_by_agents": "source-for-migration",
+      "canonical_target": "src/metrics/docs/README.md",
+      "post_migration_action": "delete-after-validation",
+      "deletion_status": "deleted"
     },
     {
       "path": "README.md",
       "scope": "repo",
-      "role": "source-material",
+      "role": "reference-only",
       "canonical": false,
-      "use_by_agents": "source-for-migration",
-      "canonical_target": "ai-docs/CONTRACTS.md",
+      "use_by_agents": "context-only",
       "post_migration_action": "retain",
       "deletion_status": "not-applicable",
-      "notes": "Consumer APIs, events, flows, and caveats are routed by meaning across contracts, service state, getting-started, and owning module specs; source remains unchanged."
+      "notes": "Human-authored consumer or contributor document, retained in place. Its content was routed into the ai-docs set by the 2026-08-18 migration and reaches the canonical docs through that set; it is context only now."
     },
     {
       "path": "UPGRADING.md",
       "scope": "module",
-      "module": "src/meeting/",
-      "role": "source-material",
+      "role": "reference-only",
       "canonical": false,
-      "use_by_agents": "source-for-migration",
-      "canonical_target": "src/meeting/ai-docs/meeting-spec.md",
+      "use_by_agents": "context-only",
       "post_migration_action": "retain",
       "deletion_status": "not-applicable",
-      "notes": "Phone-to-meetings staged lifecycle and event behavior migrate to the Meeting spec; source remains unchanged."
+      "notes": "Human-authored consumer or contributor document, retained in place. Its content was routed into the ai-docs set by the 2026-08-18 migration and reaches the canonical docs through that set; it is context only now.",
+      "module": "src/meeting"
     },
     {
       "path": "internal-README.md",
       "scope": "repo",
-      "role": "source-material",
+      "role": "reference-only",
       "canonical": false,
-      "use_by_agents": "source-for-migration",
-      "canonical_target": "ai-docs/GETTING_STARTED.md",
+      "use_by_agents": "context-only",
       "post_migration_action": "retain",
       "deletion_status": "not-applicable",
-      "notes": "Contributor instructions migrate with current config corrections; source remains unchanged."
+      "notes": "Human-authored consumer or contributor document, retained in place. Its content was routed into the ai-docs set by the 2026-08-18 migration and reaches the canonical docs through that set; it is context only now."
     },
     {
       "path": "src/aiEnableRequest/README.md",
       "scope": "module",
-      "module": "src/aiEnableRequest/",
-      "role": "source-material",
+      "role": "reference-only",
       "canonical": false,
-      "use_by_agents": "source-for-migration",
-      "canonical_target": "src/aiEnableRequest/ai-docs/ai-enable-request-spec.md",
+      "use_by_agents": "context-only",
       "post_migration_action": "retain",
       "deletion_status": "not-applicable",
-      "notes": "AI approval workflow source; retained after migration."
+      "notes": "Human-authored consumer or contributor document, retained in place. Its content was routed into the ai-docs set by the 2026-08-18 migration and reaches the canonical docs through that set; it is context only now.",
+      "module": "src/aiEnableRequest"
     },
     {
       "path": "src/breakouts/README.md",
       "scope": "module",
-      "module": "src/breakouts/",
-      "role": "source-material",
+      "role": "reference-only",
       "canonical": false,
-      "use_by_agents": "source-for-migration",
-      "canonical_target": "src/breakouts/ai-docs/breakouts-spec.md",
+      "use_by_agents": "context-only",
       "post_migration_action": "retain",
       "deletion_status": "not-applicable",
-      "notes": "Breakout workflow source; statements contradicted by current code are marked corrected or stale."
+      "notes": "Human-authored consumer or contributor document, retained in place. Its content was routed into the ai-docs set by the 2026-08-18 migration and reaches the canonical docs through that set; it is context only now.",
+      "module": "src/breakouts"
     },
     {
       "path": "src/interpretation/README.md",
       "scope": "module",
-      "module": "src/interpretation/",
-      "role": "source-material",
+      "role": "reference-only",
       "canonical": false,
-      "use_by_agents": "source-for-migration",
-      "canonical_target": "src/interpretation/ai-docs/interpretation-spec.md",
+      "use_by_agents": "context-only",
       "post_migration_action": "retain",
       "deletion_status": "not-applicable",
-      "notes": "Simultaneous-interpretation workflow source; retained after migration."
+      "notes": "Human-authored consumer or contributor document, retained in place. Its content was routed into the ai-docs set by the 2026-08-18 migration and reaches the canonical docs through that set; it is context only now.",
+      "module": "src/interpretation"
     }
   ],
   "modules": [
     {
-      "path": "src/meetings/",
+      "path": "src/meetings",
+      "canonical_spec": "src/meetings/docs/README.md",
       "coverage_status": "Partial",
-      "coverage_evidence": "Existing consumer documentation covers creation, registration, synchronization, and collection behavior; generated spec remains a hint until coverage and independent validation pass.",
-      "canonical_spec": "src/meetings/ai-docs/meetings-spec.md",
+      "coverage_evidence": "Migrated from the routed ai-docs module spec under migrate-existing; held at Partial until coverage-review and independent validation run on the migrated spec.",
+      "last_assessed": "2026-11-16",
       "contracts": {
         "provides": [
-          "Registered webex.meetings plugin",
-          "Meeting creation, lookup, registration, and collection synchronization"
+          "plugin-meetings-sdk",
+          "meetings-plugin",
+          "meetings-collection-api",
+          "site-preferences-http"
         ],
         "requires": [
-          "Webex core plugin host",
-          "Device, Mercury, Locus, and meeting-info services"
+          "webex-core-plugin-host",
+          "internal-plugin-device-registration",
+          "internal-plugin-mercury-events",
+          "meeting-info-api",
+          "meeting-api",
+          "reachability-service",
+          "meetings-metrics",
+          "personal-meeting-room-api",
+          "locus-info-projection",
+          "hash-tree-sync"
         ]
       },
       "characterization_baseline": "test/unit/spec/meetings/index.js",
-      "last_assessed": "2026-09-08",
       "section_profile": {
         "has_ui": false,
         "crosses_service_boundaries": true,
@@ -209,31 +744,47 @@
         "published_package": false,
         "embedded_in_host": true,
         "holds_client_state": true,
+        "resolved_by": "codex bootstrap questionnaire (2026-08-18), carried forward and reconfirmed by claude-code from code evidence",
+        "resolved_at": "2026-11-16T13:50:45Z",
         "has_submodules": false,
-        "resolved_by": "codex questionnaire + scripts/module_tree.py",
-        "resolved_at": "2026-08-18T15:33:39Z"
+        "has_submodules_computed_by": "scripts/module_tree.py",
+        "has_submodules_computed_at": "2026-11-16T15:05:44Z"
       },
       "source_policy": {
-        "mode": "keep-separate",
+        "mode": "migrate-existing",
         "conflict_status": "none",
-        "decision_record": "ai-docs/adr/0001-migrate-existing-docs-into-sdd.md"
+        "decision_record": "docs/adr/0001-migrate-existing-docs-into-sdd.md"
       }
     },
     {
-      "path": "src/meeting/",
+      "path": "src/meeting",
+      "canonical_spec": "src/meeting/docs/README.md",
       "coverage_status": "Partial",
-      "coverage_evidence": "README and upgrade guidance cover the principal staged lifecycle, media, controls, and events; code must be cross-checked until validation.",
-      "canonical_spec": "src/meeting/ai-docs/meeting-spec.md",
+      "coverage_evidence": "Migrated from the routed ai-docs module spec under migrate-existing; held at Partial until coverage-review and independent validation run on the migrated spec.",
+      "last_assessed": "2026-11-16",
       "contracts": {
         "provides": [
-          "Meeting lifecycle, join/leave, media, participant, recording, sharing, and event APIs"
+          "meeting-api",
+          "meetings-events",
+          "locus-http"
         ],
         "requires": [
-          "Locus, media, ROAP, members, reachability, reconnection, and Webex services"
+          "locus-info-projection",
+          "members-api",
+          "media-connection",
+          "roap-signaling",
+          "remote-media-api",
+          "reachability-service",
+          "reconnection-manager",
+          "internal-media-core",
+          "media-helpers-streams",
+          "internal-plugin-llm-channel",
+          "internal-plugin-voicea-transcription",
+          "meetings-metrics",
+          "webex-core-plugin-host"
         ]
       },
       "characterization_baseline": "test/unit/spec/meeting/index.js",
-      "last_assessed": "2026-09-08",
       "section_profile": {
         "has_ui": false,
         "crosses_service_boundaries": true,
@@ -248,37 +799,38 @@
         "large_data_model": false,
         "has_tiers": false,
         "module_specific_conventions": true,
-        "published_package": false,
+        "published_package": true,
         "embedded_in_host": true,
         "holds_client_state": true,
+        "resolved_by": "codex bootstrap questionnaire (2026-08-18), carried forward and reconfirmed by claude-code from code evidence",
+        "resolved_at": "2026-11-16T13:50:45Z",
         "has_submodules": false,
-        "resolved_by": "codex questionnaire + scripts/module_tree.py",
-        "resolved_at": "2026-08-18T15:33:39Z"
+        "has_submodules_computed_by": "scripts/module_tree.py",
+        "has_submodules_computed_at": "2026-11-16T15:05:44Z"
       },
       "source_policy": {
         "mode": "migrate-existing",
-        "existing_sources": [
-          "UPGRADING.md"
-        ],
         "conflict_status": "none",
-        "decision_record": "ai-docs/adr/0001-migrate-existing-docs-into-sdd.md"
+        "decision_record": "docs/adr/0001-migrate-existing-docs-into-sdd.md"
       }
     },
     {
-      "path": "src/meeting-info/",
+      "path": "src/meeting-info",
+      "canonical_spec": "src/meeting-info/docs/README.md",
       "coverage_status": "Partial",
-      "coverage_evidence": "Canonical spec validated against current code and tests by an independent different-runtime validator on 2026-08-22 with zero Blocking findings; 92.9% field completeness with all critical and Important fields present; event-surface, Mermaid, evidence-binding and failure-semantics gates pass with published coverage denominators; no findings in this module. Specced withheld: the last-five-PR MODIFIED-requirement check requires commit history, which was excluded by instruction.",
-      "canonical_spec": "src/meeting-info/ai-docs/meeting-info-spec.md",
+      "coverage_evidence": "Migrated from the routed ai-docs module spec under migrate-existing; held at Partial until coverage-review and independent validation run on the migrated spec.",
+      "last_assessed": "2026-11-16",
       "contracts": {
         "provides": [
-          "Meeting destination resolution and validated metadata"
+          "meeting-info-api",
+          "meeting-info-http"
         ],
         "requires": [
-          "Webex meeting, conversation, people, and webinar services"
+          "webex-core-plugin-host",
+          "meetings-metrics"
         ]
       },
       "characterization_baseline": "test/unit/spec/meeting-info/index.js",
-      "last_assessed": "2026-09-08",
       "section_profile": {
         "has_ui": false,
         "crosses_service_boundaries": true,
@@ -296,31 +848,34 @@
         "published_package": false,
         "embedded_in_host": false,
         "holds_client_state": true,
+        "resolved_by": "codex bootstrap questionnaire (2026-08-18), carried forward and reconfirmed by claude-code from code evidence",
+        "resolved_at": "2026-11-16T13:50:45Z",
         "has_submodules": false,
-        "resolved_by": "codex questionnaire + scripts/module_tree.py",
-        "resolved_at": "2026-08-18T15:33:39Z"
+        "has_submodules_computed_by": "scripts/module_tree.py",
+        "has_submodules_computed_at": "2026-11-16T15:05:44Z"
       },
       "source_policy": {
-        "mode": "keep-separate",
+        "mode": "migrate-existing",
         "conflict_status": "none",
-        "decision_record": "ai-docs/adr/0001-migrate-existing-docs-into-sdd.md"
+        "decision_record": "docs/adr/0001-migrate-existing-docs-into-sdd.md"
       }
     },
     {
-      "path": "src/locus-info/",
+      "path": "src/locus-info",
+      "canonical_spec": "src/locus-info/docs/README.md",
       "coverage_status": "Partial",
-      "coverage_evidence": "Canonical spec validated against current code and tests by an independent different-runtime validator on 2026-08-22 with zero Blocking findings; 92.9% field completeness with all critical and Important fields present; event-surface, Mermaid, evidence-binding and failure-semantics gates pass with published coverage denominators; no findings in this module. Specced withheld: the last-five-PR MODIFIED-requirement check requires commit history, which was excluded by instruction.",
-      "canonical_spec": "src/locus-info/ai-docs/locus-info-spec.md",
+      "coverage_evidence": "Migrated from the routed ai-docs module spec under migrate-existing; held at Partial until coverage-review and independent validation run on the migrated spec.",
+      "last_assessed": "2026-11-16",
       "contracts": {
         "provides": [
-          "Normalized Locus state and change callbacks"
+          "locus-info-projection"
         ],
         "requires": [
-          "Locus full/delta/hash-tree payloads and Webex request access"
+          "hash-tree-sync",
+          "locus-http"
         ]
       },
       "characterization_baseline": "test/unit/spec/locus-info/index.js",
-      "last_assessed": "2026-09-08",
       "section_profile": {
         "has_ui": false,
         "crosses_service_boundaries": true,
@@ -338,31 +893,33 @@
         "published_package": false,
         "embedded_in_host": false,
         "holds_client_state": true,
+        "resolved_by": "codex bootstrap questionnaire (2026-08-18), carried forward and reconfirmed by claude-code from code evidence",
+        "resolved_at": "2026-11-16T13:50:45Z",
         "has_submodules": false,
-        "resolved_by": "codex questionnaire + scripts/module_tree.py",
-        "resolved_at": "2026-08-18T15:33:39Z"
+        "has_submodules_computed_by": "scripts/module_tree.py",
+        "has_submodules_computed_at": "2026-11-16T15:05:44Z"
       },
       "source_policy": {
-        "mode": "keep-separate",
+        "mode": "migrate-existing",
         "conflict_status": "none",
-        "decision_record": "ai-docs/adr/0001-migrate-existing-docs-into-sdd.md"
+        "decision_record": "docs/adr/0001-migrate-existing-docs-into-sdd.md"
       }
     },
     {
-      "path": "src/hashTree/",
+      "path": "src/hashTree",
+      "canonical_spec": "src/hashTree/docs/README.md",
       "coverage_status": "Partial",
-      "coverage_evidence": "Canonical spec validated against current code and tests by an independent different-runtime validator on 2026-08-22 with zero Blocking findings; 92.9% field completeness with all critical and Important fields present; event-surface, Mermaid, evidence-binding and failure-semantics gates pass with published coverage denominators; no findings in this module. Specced withheld: the last-five-PR MODIFIED-requirement check requires commit history, which was excluded by instruction.",
-      "canonical_spec": "src/hashTree/ai-docs/hash-tree-spec.md",
+      "coverage_evidence": "Migrated from the routed ai-docs module spec under migrate-existing; held at Partial until coverage-review and independent validation run on the migrated spec.",
+      "last_assessed": "2026-11-16",
       "contracts": {
         "provides": [
-          "Incremental Locus dataset synchronization and typed update callbacks"
+          "hash-tree-sync"
         ],
         "requires": [
-          "Hash-tree messages, dataset fetch requests, and Locus callbacks"
+          "locus-http"
         ]
       },
       "characterization_baseline": "test/unit/spec/hashTree/hashTreeParser.ts",
-      "last_assessed": "2026-09-08",
       "section_profile": {
         "has_ui": false,
         "crosses_service_boundaries": true,
@@ -380,31 +937,31 @@
         "published_package": false,
         "embedded_in_host": false,
         "holds_client_state": true,
+        "resolved_by": "codex bootstrap questionnaire (2026-08-18), carried forward and reconfirmed by claude-code from code evidence",
+        "resolved_at": "2026-11-16T13:50:45Z",
         "has_submodules": false,
-        "resolved_by": "codex questionnaire + scripts/module_tree.py",
-        "resolved_at": "2026-08-18T15:33:39Z"
+        "has_submodules_computed_by": "scripts/module_tree.py",
+        "has_submodules_computed_at": "2026-11-16T15:05:44Z"
       },
       "source_policy": {
-        "mode": "keep-separate",
+        "mode": "migrate-existing",
         "conflict_status": "none",
-        "decision_record": "ai-docs/adr/0001-migrate-existing-docs-into-sdd.md"
+        "decision_record": "docs/adr/0001-migrate-existing-docs-into-sdd.md"
       }
     },
     {
-      "path": "src/member/",
+      "path": "src/member",
+      "canonical_spec": "src/member/docs/README.md",
       "coverage_status": "Partial",
-      "coverage_evidence": "Consumer README documents participant properties; internal transformation behavior still requires code cross-checking.",
-      "canonical_spec": "src/member/ai-docs/member-spec.md",
+      "coverage_evidence": "Migrated from the routed ai-docs module spec under migrate-existing; held at Partial until coverage-review and independent validation run on the migrated spec.",
+      "last_assessed": "2026-11-16",
       "contracts": {
         "provides": [
-          "Individual meeting participant model and normalized media/role properties"
+          "member-model"
         ],
-        "requires": [
-          "Locus participant payloads"
-        ]
+        "requires": []
       },
       "characterization_baseline": "test/unit/spec/member/index.js",
-      "last_assessed": "2026-08-18",
       "section_profile": {
         "has_ui": false,
         "crosses_service_boundaries": false,
@@ -422,31 +979,34 @@
         "published_package": false,
         "embedded_in_host": false,
         "holds_client_state": true,
+        "resolved_by": "codex bootstrap questionnaire (2026-08-18), carried forward and reconfirmed by claude-code from code evidence",
+        "resolved_at": "2026-11-16T13:50:45Z",
         "has_submodules": false,
-        "resolved_by": "codex questionnaire + scripts/module_tree.py",
-        "resolved_at": "2026-08-18T15:33:39Z"
+        "has_submodules_computed_by": "scripts/module_tree.py",
+        "has_submodules_computed_at": "2026-11-16T15:05:44Z"
       },
       "source_policy": {
-        "mode": "keep-separate",
+        "mode": "migrate-existing",
         "conflict_status": "none",
-        "decision_record": "ai-docs/adr/0001-migrate-existing-docs-into-sdd.md"
+        "decision_record": "docs/adr/0001-migrate-existing-docs-into-sdd.md"
       }
     },
     {
-      "path": "src/members/",
+      "path": "src/members",
+      "canonical_spec": "src/members/docs/README.md",
       "coverage_status": "Partial",
-      "coverage_evidence": "Consumer README documents roster properties, operations, and events; code remains authoritative for update semantics.",
-      "canonical_spec": "src/members/ai-docs/members-spec.md",
+      "coverage_evidence": "Migrated from the routed ai-docs module spec under migrate-existing; held at Partial until coverage-review and independent validation run on the migrated spec.",
+      "last_assessed": "2026-11-16",
       "contracts": {
         "provides": [
-          "Roster collection, participant mutations, and members events"
+          "members-api"
         ],
         "requires": [
-          "Locus roster payloads and meeting mutation endpoints"
+          "member-model",
+          "locus-http"
         ]
       },
       "characterization_baseline": "test/unit/spec/members/index.js",
-      "last_assessed": "2026-08-18",
       "section_profile": {
         "has_ui": false,
         "crosses_service_boundaries": true,
@@ -464,73 +1024,34 @@
         "published_package": false,
         "embedded_in_host": false,
         "holds_client_state": true,
+        "resolved_by": "codex bootstrap questionnaire (2026-08-18), carried forward and reconfirmed by claude-code from code evidence",
+        "resolved_at": "2026-11-16T13:50:45Z",
         "has_submodules": false,
-        "resolved_by": "codex questionnaire + scripts/module_tree.py",
-        "resolved_at": "2026-08-18T15:33:39Z"
+        "has_submodules_computed_by": "scripts/module_tree.py",
+        "has_submodules_computed_at": "2026-11-16T15:05:44Z"
       },
       "source_policy": {
-        "mode": "keep-separate",
+        "mode": "migrate-existing",
         "conflict_status": "none",
-        "decision_record": "ai-docs/adr/0001-migrate-existing-docs-into-sdd.md"
+        "decision_record": "docs/adr/0001-migrate-existing-docs-into-sdd.md"
       }
     },
     {
-      "path": "src/media/",
+      "path": "src/media",
+      "canonical_spec": "src/media/docs/README.md",
       "coverage_status": "Partial",
-      "coverage_evidence": "Consumer docs describe media acquisition and attachment; connection implementation and failure behavior require code cross-checking.",
-      "canonical_spec": "src/media/ai-docs/media-spec.md",
+      "coverage_evidence": "Migrated from the routed ai-docs module spec under migrate-existing; held at Partial until coverage-review and independent validation run on the migrated spec.",
+      "last_assessed": "2026-11-16",
       "contracts": {
         "provides": [
-          "Media connection creation, properties, and readiness awaiting"
+          "media-connection"
         ],
         "requires": [
-          "internal-media-core, browser WebRTC, and Webex media services"
+          "internal-media-core",
+          "browser-webrtc"
         ]
       },
       "characterization_baseline": "test/unit/spec/media/index.ts",
-      "last_assessed": "2026-08-18",
-      "section_profile": {
-        "has_ui": false,
-        "crosses_service_boundaries": true,
-        "enforces_domain_rules": true,
-        "is_concurrent_async": true,
-        "owns_persistence": false,
-        "returns_caller_errors": true,
-        "has_design_tradeoff": true,
-        "stateful_transitions": false,
-        "exposes_wire_protocol": true,
-        "ui_multi_screen": false,
-        "large_data_model": false,
-        "has_tiers": false,
-        "module_specific_conventions": false,
-        "published_package": false,
-        "embedded_in_host": false,
-        "holds_client_state": true,
-        "has_submodules": false,
-        "resolved_by": "codex questionnaire + scripts/module_tree.py",
-        "resolved_at": "2026-08-18T15:33:39Z"
-      },
-      "source_policy": {
-        "mode": "keep-separate",
-        "conflict_status": "none",
-        "decision_record": "ai-docs/adr/0001-migrate-existing-docs-into-sdd.md"
-      }
-    },
-    {
-      "path": "src/multistream/",
-      "coverage_status": "Partial",
-      "coverage_evidence": "Canonical spec validated against current code and tests by an independent different-runtime validator on 2026-08-22 with zero Blocking findings; 92.9% field completeness with all critical and Important fields present; event-surface, Mermaid, evidence-binding and failure-semantics gates pass with published coverage denominators; no findings in this module. Specced withheld: the last-five-PR MODIFIED-requirement check requires commit history, which was excluded by instruction.",
-      "canonical_spec": "src/multistream/ai-docs/multistream-spec.md",
-      "contracts": {
-        "provides": [
-          "Remote-media objects, layouts, receive/send slots, and media-request arbitration"
-        ],
-        "requires": [
-          "internal-media-core multistream connections and member CSI mapping"
-        ]
-      },
-      "characterization_baseline": "test/unit/spec/multistream/remoteMediaManager.ts",
-      "last_assessed": "2026-08-22",
       "section_profile": {
         "has_ui": false,
         "crosses_service_boundaries": true,
@@ -548,31 +1069,78 @@
         "published_package": false,
         "embedded_in_host": false,
         "holds_client_state": true,
+        "resolved_by": "codex bootstrap questionnaire (2026-08-18), carried forward and reconfirmed by claude-code from code evidence",
+        "resolved_at": "2026-11-16T13:50:45Z",
         "has_submodules": false,
-        "resolved_by": "codex questionnaire + scripts/module_tree.py",
-        "resolved_at": "2026-08-18T15:33:39Z"
+        "has_submodules_computed_by": "scripts/module_tree.py",
+        "has_submodules_computed_at": "2026-11-16T15:05:44Z"
       },
       "source_policy": {
-        "mode": "keep-separate",
+        "mode": "migrate-existing",
         "conflict_status": "none",
-        "decision_record": "ai-docs/adr/0001-migrate-existing-docs-into-sdd.md"
+        "decision_record": "docs/adr/0001-migrate-existing-docs-into-sdd.md"
       }
     },
     {
-      "path": "src/roap/",
+      "path": "src/multistream",
+      "canonical_spec": "src/multistream/docs/README.md",
       "coverage_status": "Partial",
-      "coverage_evidence": "Canonical spec validated against current code and tests by an independent different-runtime validator on 2026-08-22 with zero Blocking findings; 92.9% field completeness with all critical and Important fields present; event-surface, Mermaid, evidence-binding and failure-semantics gates pass with published coverage denominators; one Minor sequence-arity defect over 58 checked claims (1.7% drift). Specced withheld: the last-five-PR MODIFIED-requirement check requires commit history, which was excluded by instruction.",
-      "canonical_spec": "src/roap/ai-docs/roap-spec.md",
+      "coverage_evidence": "Migrated from the routed ai-docs module spec under migrate-existing; held at Partial until coverage-review and independent validation run on the migrated spec.",
+      "last_assessed": "2026-11-16",
       "contracts": {
         "provides": [
-          "ROAP offer/answer processing and TURN discovery"
+          "remote-media-api"
         ],
         "requires": [
-          "Locus media requests, SDP, and Webex TURN services"
+          "internal-media-core"
+        ]
+      },
+      "characterization_baseline": "test/unit/spec/multistream/remoteMediaManager.ts",
+      "section_profile": {
+        "has_ui": false,
+        "crosses_service_boundaries": true,
+        "enforces_domain_rules": true,
+        "is_concurrent_async": true,
+        "owns_persistence": false,
+        "returns_caller_errors": true,
+        "has_design_tradeoff": true,
+        "stateful_transitions": true,
+        "exposes_wire_protocol": true,
+        "ui_multi_screen": false,
+        "large_data_model": false,
+        "has_tiers": false,
+        "module_specific_conventions": false,
+        "published_package": true,
+        "embedded_in_host": false,
+        "holds_client_state": true,
+        "resolved_by": "codex bootstrap questionnaire (2026-08-18), carried forward and reconfirmed by claude-code from code evidence",
+        "resolved_at": "2026-11-16T13:50:45Z",
+        "has_submodules": false,
+        "has_submodules_computed_by": "scripts/module_tree.py",
+        "has_submodules_computed_at": "2026-11-16T15:05:44Z"
+      },
+      "source_policy": {
+        "mode": "migrate-existing",
+        "conflict_status": "none",
+        "decision_record": "docs/adr/0001-migrate-existing-docs-into-sdd.md"
+      }
+    },
+    {
+      "path": "src/roap",
+      "canonical_spec": "src/roap/docs/README.md",
+      "coverage_status": "Partial",
+      "coverage_evidence": "Migrated from the routed ai-docs module spec under migrate-existing; held at Partial until coverage-review and independent validation run on the migrated spec.",
+      "last_assessed": "2026-11-16",
+      "contracts": {
+        "provides": [
+          "roap-signaling"
+        ],
+        "requires": [
+          "locus-http",
+          "webex-core-plugin-host"
         ]
       },
       "characterization_baseline": "test/unit/spec/roap/index.ts",
-      "last_assessed": "2026-08-22",
       "section_profile": {
         "has_ui": false,
         "crosses_service_boundaries": true,
@@ -590,37 +1158,40 @@
         "published_package": false,
         "embedded_in_host": false,
         "holds_client_state": true,
+        "resolved_by": "codex bootstrap questionnaire (2026-08-18), carried forward and reconfirmed by claude-code from code evidence",
+        "resolved_at": "2026-11-16T13:50:45Z",
         "has_submodules": false,
-        "resolved_by": "codex questionnaire + scripts/module_tree.py",
-        "resolved_at": "2026-08-18T15:33:39Z"
+        "has_submodules_computed_by": "scripts/module_tree.py",
+        "has_submodules_computed_at": "2026-11-16T15:05:44Z"
       },
       "source_policy": {
-        "mode": "keep-separate",
+        "mode": "migrate-existing",
         "conflict_status": "none",
-        "decision_record": "ai-docs/adr/0001-migrate-existing-docs-into-sdd.md"
+        "decision_record": "docs/adr/0001-migrate-existing-docs-into-sdd.md"
       }
     },
     {
-      "path": "src/reachability/",
+      "path": "src/reachability",
+      "canonical_spec": "src/reachability/docs/README.md",
       "coverage_status": "Partial",
-      "coverage_evidence": "Canonical spec validated against current code and tests by an independent different-runtime validator on 2026-08-22 with zero Blocking findings; 92.9% field completeness with all critical and Important fields present; event-surface, Mermaid, evidence-binding and failure-semantics gates pass with published coverage denominators; no findings in this module. Specced withheld: the last-five-PR MODIFIED-requirement check requires commit history, which was excluded by instruction.",
-      "canonical_spec": "src/reachability/ai-docs/reachability-spec.md",
+      "coverage_evidence": "Migrated from the routed ai-docs module spec under migrate-existing; held at Partial until coverage-review and independent validation run on the migrated spec.",
+      "last_assessed": "2026-11-16",
       "contracts": {
         "provides": [
-          "Cluster/protocol reachability results, NAT type, and backend reports"
+          "reachability-service"
         ],
         "requires": [
-          "Webex cluster discovery, STUN/TURN, and browser peer connections"
+          "browser-webrtc",
+          "webex-core-plugin-host"
         ]
       },
       "characterization_baseline": "test/unit/spec/reachability/index.ts",
-      "last_assessed": "2026-08-22",
       "section_profile": {
         "has_ui": false,
         "crosses_service_boundaries": true,
         "enforces_domain_rules": true,
         "is_concurrent_async": true,
-        "owns_persistence": false,
+        "owns_persistence": true,
         "returns_caller_errors": true,
         "has_design_tradeoff": true,
         "stateful_transitions": false,
@@ -632,31 +1203,34 @@
         "published_package": false,
         "embedded_in_host": false,
         "holds_client_state": true,
+        "resolved_by": "codex bootstrap questionnaire (2026-08-18), carried forward and reconfirmed by claude-code from code evidence",
+        "resolved_at": "2026-11-16T13:50:45Z",
         "has_submodules": false,
-        "resolved_by": "codex questionnaire + scripts/module_tree.py",
-        "resolved_at": "2026-08-18T15:33:39Z"
+        "has_submodules_computed_by": "scripts/module_tree.py",
+        "has_submodules_computed_at": "2026-11-16T15:05:44Z"
       },
       "source_policy": {
-        "mode": "keep-separate",
+        "mode": "migrate-existing",
         "conflict_status": "none",
-        "decision_record": "ai-docs/adr/0001-migrate-existing-docs-into-sdd.md"
+        "decision_record": "docs/adr/0001-migrate-existing-docs-into-sdd.md"
       }
     },
     {
-      "path": "src/reconnection-manager/",
+      "path": "src/reconnection-manager",
+      "canonical_spec": "src/reconnection-manager/docs/README.md",
       "coverage_status": "Partial",
-      "coverage_evidence": "Canonical spec validated against current code and tests by an independent different-runtime validator on 2026-08-22 with zero Blocking findings; 92.9% field completeness with all critical and Important fields present; event-surface, Mermaid, evidence-binding and failure-semantics gates pass with published coverage denominators; one Important stale class-diagram edge and two Minor citation/label defects over 66 checked claims (4.5% drift). Specced withheld: the last-five-PR MODIFIED-requirement check requires commit history, which was excluded by instruction.",
-      "canonical_spec": "src/reconnection-manager/ai-docs/reconnection-manager-spec.md",
+      "coverage_evidence": "Migrated from the routed ai-docs module spec under migrate-existing; held at Partial until coverage-review and independent validation run on the migrated spec.",
+      "last_assessed": "2026-11-16",
       "contracts": {
         "provides": [
-          "Bounded media retry, recovery, and rejoin orchestration"
+          "reconnection-manager"
         ],
         "requires": [
-          "Meeting, media, and network-state callbacks"
+          "meeting-api",
+          "media-connection"
         ]
       },
       "characterization_baseline": "test/unit/spec/reconnection-manager/index.js",
-      "last_assessed": "2026-08-22",
       "section_profile": {
         "has_ui": false,
         "crosses_service_boundaries": false,
@@ -674,31 +1248,36 @@
         "published_package": false,
         "embedded_in_host": false,
         "holds_client_state": true,
+        "resolved_by": "codex bootstrap questionnaire (2026-08-18), carried forward and reconfirmed by claude-code from code evidence",
+        "resolved_at": "2026-11-16T13:50:45Z",
         "has_submodules": false,
-        "resolved_by": "codex questionnaire + scripts/module_tree.py",
-        "resolved_at": "2026-08-18T15:33:39Z"
+        "has_submodules_computed_by": "scripts/module_tree.py",
+        "has_submodules_computed_at": "2026-11-16T15:05:44Z"
       },
       "source_policy": {
-        "mode": "keep-separate",
+        "mode": "migrate-existing",
         "conflict_status": "none",
-        "decision_record": "ai-docs/adr/0001-migrate-existing-docs-into-sdd.md"
+        "decision_record": "docs/adr/0001-migrate-existing-docs-into-sdd.md"
       }
     },
     {
-      "path": "src/breakouts/",
+      "path": "src/breakouts",
+      "canonical_spec": "src/breakouts/docs/README.md",
       "coverage_status": "Partial",
-      "coverage_evidence": "A detailed retained feature guide covers participant and host workflows; current code corrects stale implementation notes.",
-      "canonical_spec": "src/breakouts/ai-docs/breakouts-spec.md",
+      "coverage_evidence": "Migrated from the routed ai-docs module spec under migrate-existing; held at Partial until coverage-review and independent validation run on the migrated spec.",
+      "last_assessed": "2026-11-16",
       "contracts": {
         "provides": [
-          "Breakout collection/session state, attendee and host operations, and breakout events"
+          "breakouts-api"
         ],
         "requires": [
-          "Locus breakout controls, roster service, and meeting state"
+          "locus-http",
+          "webex-core-plugin-host",
+          "internal-plugin-llm-channel",
+          "internal-plugin-mercury-events"
         ]
       },
       "characterization_baseline": "test/unit/spec/breakouts/index.ts",
-      "last_assessed": "2026-08-18",
       "section_profile": {
         "has_ui": false,
         "crosses_service_boundaries": true,
@@ -716,34 +1295,35 @@
         "published_package": false,
         "embedded_in_host": false,
         "holds_client_state": true,
+        "resolved_by": "codex bootstrap questionnaire (2026-08-18), carried forward and reconfirmed by claude-code from code evidence",
+        "resolved_at": "2026-11-16T13:50:45Z",
         "has_submodules": false,
-        "resolved_by": "codex questionnaire + scripts/module_tree.py",
-        "resolved_at": "2026-08-18T15:33:39Z"
+        "has_submodules_computed_by": "scripts/module_tree.py",
+        "has_submodules_computed_at": "2026-11-16T15:05:44Z"
       },
       "source_policy": {
         "mode": "migrate-existing",
-        "existing_sources": [
-          "src/breakouts/README.md"
-        ],
-        "conflict_status": "resolved",
-        "decision_record": "ai-docs/adr/0001-migrate-existing-docs-into-sdd.md"
+        "conflict_status": "none",
+        "decision_record": "docs/adr/0001-migrate-existing-docs-into-sdd.md"
       }
     },
     {
-      "path": "src/interpretation/",
+      "path": "src/interpretation",
+      "canonical_spec": "src/interpretation/docs/README.md",
       "coverage_status": "Partial",
-      "coverage_evidence": "A retained feature guide covers language, host, and interpreter operations; code remains authoritative for exact behavior.",
-      "canonical_spec": "src/interpretation/ai-docs/interpretation-spec.md",
+      "coverage_evidence": "Migrated from the routed ai-docs module spec under migrate-existing; held at Partial until coverage-review and independent validation run on the migrated spec.",
+      "last_assessed": "2026-11-16",
       "contracts": {
         "provides": [
-          "Language subscriptions, interpreter management, direction, and handoff APIs"
+          "interpretation-api"
         ],
         "requires": [
-          "Locus interpretation controls and approval endpoints"
+          "locus-http",
+          "internal-plugin-mercury-events",
+          "webex-core-plugin-host"
         ]
       },
       "characterization_baseline": "test/unit/spec/interpretation/index.ts",
-      "last_assessed": "2026-08-18",
       "section_profile": {
         "has_ui": false,
         "crosses_service_boundaries": true,
@@ -761,34 +1341,36 @@
         "published_package": false,
         "embedded_in_host": false,
         "holds_client_state": true,
+        "resolved_by": "codex bootstrap questionnaire (2026-08-18), carried forward and reconfirmed by claude-code from code evidence",
+        "resolved_at": "2026-11-16T13:50:45Z",
         "has_submodules": false,
-        "resolved_by": "codex questionnaire + scripts/module_tree.py",
-        "resolved_at": "2026-08-18T15:33:39Z"
+        "has_submodules_computed_by": "scripts/module_tree.py",
+        "has_submodules_computed_at": "2026-11-16T15:05:44Z"
       },
       "source_policy": {
         "mode": "migrate-existing",
-        "existing_sources": [
-          "src/interpretation/README.md"
-        ],
         "conflict_status": "none",
-        "decision_record": "ai-docs/adr/0001-migrate-existing-docs-into-sdd.md"
+        "decision_record": "docs/adr/0001-migrate-existing-docs-into-sdd.md"
       }
     },
     {
-      "path": "src/annotation/",
+      "path": "src/annotation",
+      "canonical_spec": "src/annotation/docs/README.md",
       "coverage_status": "Partial",
-      "coverage_evidence": "Canonical spec validated against current code and tests by an independent different-runtime validator on 2026-08-22 with zero Blocking findings; 92.9% field completeness with all critical and Important fields present; event-surface, Mermaid, evidence-binding and failure-semantics gates pass with published coverage denominators; no findings in this module. Specced withheld: the last-five-PR MODIFIED-requirement check requires commit history, which was excluded by instruction.",
-      "canonical_spec": "src/annotation/ai-docs/annotation-spec.md",
+      "coverage_evidence": "Migrated from the routed ai-docs module spec under migrate-existing; held at Partial until coverage-review and independent validation run on the migrated spec.",
+      "last_assessed": "2026-11-16",
       "contracts": {
         "provides": [
-          "Live annotation start/stop, command relay, and annotation event APIs"
+          "annotation-api"
         ],
         "requires": [
-          "Locus annotation controls and data-channel relay"
+          "internal-plugin-llm-channel",
+          "locus-http",
+          "internal-plugin-mercury-events",
+          "webex-core-plugin-host"
         ]
       },
       "characterization_baseline": "test/unit/spec/annotation/index.ts",
-      "last_assessed": "2026-08-22",
       "section_profile": {
         "has_ui": false,
         "crosses_service_boundaries": true,
@@ -806,31 +1388,33 @@
         "published_package": false,
         "embedded_in_host": false,
         "holds_client_state": true,
+        "resolved_by": "codex bootstrap questionnaire (2026-08-18), carried forward and reconfirmed by claude-code from code evidence",
+        "resolved_at": "2026-11-16T13:50:45Z",
         "has_submodules": false,
-        "resolved_by": "codex questionnaire + scripts/module_tree.py",
-        "resolved_at": "2026-08-18T15:33:39Z"
+        "has_submodules_computed_by": "scripts/module_tree.py",
+        "has_submodules_computed_at": "2026-11-16T15:05:44Z"
       },
       "source_policy": {
-        "mode": "keep-separate",
+        "mode": "migrate-existing",
         "conflict_status": "none",
-        "decision_record": "ai-docs/adr/0001-migrate-existing-docs-into-sdd.md"
+        "decision_record": "docs/adr/0001-migrate-existing-docs-into-sdd.md"
       }
     },
     {
-      "path": "src/aiEnableRequest/",
+      "path": "src/aiEnableRequest",
+      "canonical_spec": "src/aiEnableRequest/docs/README.md",
       "coverage_status": "Partial",
-      "coverage_evidence": "A retained feature guide covers requester and approver flows; code/tests verify exact events and requests.",
-      "canonical_spec": "src/aiEnableRequest/ai-docs/ai-enable-request-spec.md",
+      "coverage_evidence": "Migrated from the routed ai-docs module spec under migrate-existing; held at Partial until coverage-review and independent validation run on the migrated spec.",
+      "last_assessed": "2026-11-16",
       "contracts": {
         "provides": [
-          "AI assistant enablement request, accept, decline, and approval events"
+          "ai-enable-request-api"
         ],
         "requires": [
-          "Meeting participants, approval URLs, and Webex request service"
+          "webex-core-plugin-host"
         ]
       },
       "characterization_baseline": "test/unit/spec/aiEnableRequest/index.ts",
-      "last_assessed": "2026-08-18",
       "section_profile": {
         "has_ui": false,
         "crosses_service_boundaries": true,
@@ -848,34 +1432,34 @@
         "published_package": false,
         "embedded_in_host": false,
         "holds_client_state": true,
+        "resolved_by": "codex bootstrap questionnaire (2026-08-18), carried forward and reconfirmed by claude-code from code evidence",
+        "resolved_at": "2026-11-16T13:50:45Z",
         "has_submodules": false,
-        "resolved_by": "codex questionnaire + scripts/module_tree.py",
-        "resolved_at": "2026-08-18T15:33:39Z"
+        "has_submodules_computed_by": "scripts/module_tree.py",
+        "has_submodules_computed_at": "2026-11-16T15:05:44Z"
       },
       "source_policy": {
         "mode": "migrate-existing",
-        "existing_sources": [
-          "src/aiEnableRequest/README.md"
-        ],
         "conflict_status": "none",
-        "decision_record": "ai-docs/adr/0001-migrate-existing-docs-into-sdd.md"
+        "decision_record": "docs/adr/0001-migrate-existing-docs-into-sdd.md"
       }
     },
     {
-      "path": "src/webinar/",
+      "path": "src/webinar",
+      "canonical_spec": "src/webinar/docs/README.md",
       "coverage_status": "Partial",
-      "coverage_evidence": "Canonical spec validated against current code and tests by an independent different-runtime validator on 2026-08-22 with zero Blocking findings; 92.9% field completeness with all critical and Important fields present; event-surface, Mermaid, evidence-binding and failure-semantics gates pass with published coverage denominators; one Minor traceability-citation defect over 58 checked claims (1.7% drift). Specced withheld: the last-five-PR MODIFIED-requirement check requires commit history, which was excluded by instruction.",
-      "canonical_spec": "src/webinar/ai-docs/webinar-spec.md",
+      "coverage_evidence": "Migrated from the routed ai-docs module spec under migrate-existing; held at Partial until coverage-review and independent validation run on the migrated spec.",
+      "last_assessed": "2026-11-16",
       "contracts": {
         "provides": [
-          "Webinar catalog, panelist, attendee, and session operations"
+          "webinar-api"
         ],
         "requires": [
-          "Webex webinar service and meeting identity"
+          "webex-core-plugin-host",
+          "locus-http"
         ]
       },
       "characterization_baseline": "test/unit/spec/webinar/index.ts",
-      "last_assessed": "2026-08-22",
       "section_profile": {
         "has_ui": false,
         "crosses_service_boundaries": true,
@@ -893,31 +1477,33 @@
         "published_package": false,
         "embedded_in_host": false,
         "holds_client_state": true,
+        "resolved_by": "codex bootstrap questionnaire (2026-08-18), carried forward and reconfirmed by claude-code from code evidence",
+        "resolved_at": "2026-11-16T13:50:45Z",
         "has_submodules": false,
-        "resolved_by": "codex questionnaire + scripts/module_tree.py",
-        "resolved_at": "2026-08-18T15:33:39Z"
+        "has_submodules_computed_by": "scripts/module_tree.py",
+        "has_submodules_computed_at": "2026-11-16T15:05:44Z"
       },
       "source_policy": {
-        "mode": "keep-separate",
+        "mode": "migrate-existing",
         "conflict_status": "none",
-        "decision_record": "ai-docs/adr/0001-migrate-existing-docs-into-sdd.md"
+        "decision_record": "docs/adr/0001-migrate-existing-docs-into-sdd.md"
       }
     },
     {
-      "path": "src/recording-controller/",
+      "path": "src/recording-controller",
+      "canonical_spec": "src/recording-controller/docs/README.md",
       "coverage_status": "Partial",
-      "coverage_evidence": "Consumer docs cover recording lifecycle operations; controller request behavior requires code cross-checking.",
-      "canonical_spec": "src/recording-controller/ai-docs/recording-controller-spec.md",
+      "coverage_evidence": "Migrated from the routed ai-docs module spec under migrate-existing; held at Partial until coverage-review and independent validation run on the migrated spec.",
+      "last_assessed": "2026-11-16",
       "contracts": {
         "provides": [
-          "Start, stop, pause, and resume recording actions"
+          "recording-controller-api"
         ],
         "requires": [
-          "Locus controls and recording status"
+          "locus-http"
         ]
       },
       "characterization_baseline": "test/unit/spec/recording-controller/index.js",
-      "last_assessed": "2026-08-18",
       "section_profile": {
         "has_ui": false,
         "crosses_service_boundaries": true,
@@ -935,31 +1521,33 @@
         "published_package": false,
         "embedded_in_host": false,
         "holds_client_state": true,
+        "resolved_by": "codex bootstrap questionnaire (2026-08-18), carried forward and reconfirmed by claude-code from code evidence",
+        "resolved_at": "2026-11-16T13:50:45Z",
         "has_submodules": false,
-        "resolved_by": "codex questionnaire + scripts/module_tree.py",
-        "resolved_at": "2026-08-18T15:33:39Z"
+        "has_submodules_computed_by": "scripts/module_tree.py",
+        "has_submodules_computed_at": "2026-11-16T15:05:44Z"
       },
       "source_policy": {
-        "mode": "keep-separate",
+        "mode": "migrate-existing",
         "conflict_status": "none",
-        "decision_record": "ai-docs/adr/0001-migrate-existing-docs-into-sdd.md"
+        "decision_record": "docs/adr/0001-migrate-existing-docs-into-sdd.md"
       }
     },
     {
-      "path": "src/controls-options-manager/",
+      "path": "src/controls-options-manager",
+      "canonical_spec": "src/controls-options-manager/docs/README.md",
       "coverage_status": "Partial",
-      "coverage_evidence": "Canonical spec validated against current code and tests by an independent different-runtime validator on 2026-08-22 with zero Blocking findings; 92.9% field completeness with all critical and Important fields present; event-surface, Mermaid, evidence-binding and failure-semantics gates pass with published coverage denominators; no findings in this module. Specced withheld: the last-five-PR MODIFIED-requirement check requires commit history, which was excluded by instruction.",
-      "canonical_spec": "src/controls-options-manager/ai-docs/controls-options-manager-spec.md",
+      "coverage_evidence": "Migrated from the routed ai-docs module spec under migrate-existing; held at Partial until coverage-review and independent validation run on the migrated spec.",
+      "last_assessed": "2026-11-16",
       "contracts": {
         "provides": [
-          "Derived availability and properties for in-meeting controls"
+          "controls-options-api"
         ],
         "requires": [
-          "Locus controls, policies, and meeting requests"
+          "locus-http"
         ]
       },
       "characterization_baseline": "test/unit/spec/controls-options-manager/index.js",
-      "last_assessed": "2026-08-22",
       "section_profile": {
         "has_ui": false,
         "crosses_service_boundaries": true,
@@ -977,31 +1565,34 @@
         "published_package": false,
         "embedded_in_host": false,
         "holds_client_state": true,
+        "resolved_by": "codex bootstrap questionnaire (2026-08-18), carried forward and reconfirmed by claude-code from code evidence",
+        "resolved_at": "2026-11-16T13:50:45Z",
         "has_submodules": false,
-        "resolved_by": "codex questionnaire + scripts/module_tree.py",
-        "resolved_at": "2026-08-18T15:33:39Z"
+        "has_submodules_computed_by": "scripts/module_tree.py",
+        "has_submodules_computed_at": "2026-11-16T15:05:44Z"
       },
       "source_policy": {
-        "mode": "keep-separate",
+        "mode": "migrate-existing",
         "conflict_status": "none",
-        "decision_record": "ai-docs/adr/0001-migrate-existing-docs-into-sdd.md"
+        "decision_record": "docs/adr/0001-migrate-existing-docs-into-sdd.md"
       }
     },
     {
-      "path": "src/personal-meeting-room/",
+      "path": "src/personal-meeting-room",
+      "canonical_spec": "src/personal-meeting-room/docs/README.md",
       "coverage_status": "Partial",
-      "coverage_evidence": "Consumer docs cover PMR get and claim operations; request and cache behavior require code cross-checking.",
-      "canonical_spec": "src/personal-meeting-room/ai-docs/personal-meeting-room-spec.md",
+      "coverage_evidence": "Migrated from the routed ai-docs module spec under migrate-existing; held at Partial until coverage-review and independent validation run on the migrated spec.",
+      "last_assessed": "2026-11-16",
       "contracts": {
         "provides": [
-          "Personal meeting room retrieval and claim APIs"
+          "personal-meeting-room-api"
         ],
         "requires": [
-          "Webex PMR service and local plugin state"
+          "webex-core-plugin-host",
+          "meeting-info-api"
         ]
       },
       "characterization_baseline": "test/unit/spec/personal-meeting-room/personal-meeting-room.js",
-      "last_assessed": "2026-08-18",
       "section_profile": {
         "has_ui": false,
         "crosses_service_boundaries": true,
@@ -1019,30 +1610,30 @@
         "published_package": false,
         "embedded_in_host": false,
         "holds_client_state": true,
+        "resolved_by": "codex bootstrap questionnaire (2026-08-18), carried forward and reconfirmed by claude-code from code evidence",
+        "resolved_at": "2026-11-16T13:50:45Z",
         "has_submodules": false,
-        "resolved_by": "codex questionnaire + scripts/module_tree.py",
-        "resolved_at": "2026-08-18T15:33:39Z"
+        "has_submodules_computed_by": "scripts/module_tree.py",
+        "has_submodules_computed_at": "2026-11-16T15:05:44Z"
       },
       "source_policy": {
-        "mode": "keep-separate",
+        "mode": "migrate-existing",
         "conflict_status": "none",
-        "decision_record": "ai-docs/adr/0001-migrate-existing-docs-into-sdd.md"
+        "decision_record": "docs/adr/0001-migrate-existing-docs-into-sdd.md"
       }
     },
     {
-      "path": "src/reactions/",
+      "path": "src/reactions",
+      "canonical_spec": "src/reactions/docs/README.md",
       "coverage_status": "Partial",
-      "coverage_evidence": "Canonical spec validated against current code and tests by an independent different-runtime validator on 2026-08-22 with zero Blocking findings; 92.9% field completeness with all critical and Important fields present; event-surface, Mermaid, evidence-binding and failure-semantics gates pass with published coverage denominators; no findings in this module. Specced withheld: the last-five-PR MODIFIED-requirement check requires commit history, which was excluded by instruction.",
-      "canonical_spec": "src/reactions/ai-docs/reactions-spec.md",
+      "coverage_evidence": "Migrated from the routed ai-docs module spec under migrate-existing; held at Partial until coverage-review and independent validation run on the migrated spec.",
+      "last_assessed": "2026-11-16",
       "contracts": {
         "provides": [
-          "Exported reaction types/constants and relay-event normalization"
+          "reactions-catalog"
         ],
-        "requires": [
-          "Meeting relay event payloads"
-        ]
+        "requires": []
       },
-      "last_assessed": "2026-08-22",
       "section_profile": {
         "has_ui": false,
         "crosses_service_boundaries": false,
@@ -1057,34 +1648,37 @@
         "large_data_model": false,
         "has_tiers": false,
         "module_specific_conventions": false,
-        "published_package": false,
+        "published_package": true,
         "embedded_in_host": false,
         "holds_client_state": false,
+        "resolved_by": "codex bootstrap questionnaire (2026-08-18), carried forward and reconfirmed by claude-code from code evidence",
+        "resolved_at": "2026-11-16T13:50:45Z",
         "has_submodules": false,
-        "resolved_by": "codex questionnaire + scripts/module_tree.py",
-        "resolved_at": "2026-08-18T15:33:39Z"
+        "has_submodules_computed_by": "scripts/module_tree.py",
+        "has_submodules_computed_at": "2026-11-16T15:05:44Z"
       },
       "source_policy": {
-        "mode": "keep-separate",
+        "mode": "migrate-existing",
         "conflict_status": "none",
-        "decision_record": "ai-docs/adr/0001-migrate-existing-docs-into-sdd.md"
+        "decision_record": "docs/adr/0001-migrate-existing-docs-into-sdd.md"
       }
     },
     {
-      "path": "src/interceptors/",
+      "path": "src/interceptors",
+      "canonical_spec": "src/interceptors/docs/README.md",
       "coverage_status": "Partial",
-      "coverage_evidence": "Canonical spec validated against current code and tests by an independent different-runtime validator on 2026-08-22 with zero Blocking findings; 92.9% field completeness with all critical and Important fields present; event-surface, Mermaid, evidence-binding and failure-semantics gates pass with published coverage denominators; no findings in this module. Specced withheld: the last-five-PR MODIFIED-requirement check requires commit history, which was excluded by instruction.",
-      "canonical_spec": "src/interceptors/ai-docs/interceptors-spec.md",
+      "coverage_evidence": "Migrated from the routed ai-docs module spec under migrate-existing; held at Partial until coverage-review and independent validation run on the migrated spec.",
+      "last_assessed": "2026-11-16",
       "contracts": {
         "provides": [
-          "Locus retry, route-token, and data-channel auth-token interceptors"
+          "locus-interceptors"
         ],
         "requires": [
-          "Webex HTTP interceptor pipeline, JWTs, and service responses"
+          "webex-core-plugin-host",
+          "internal-plugin-llm-channel"
         ]
       },
       "characterization_baseline": "test/unit/spec/interceptors/dataChannelAuthToken.ts",
-      "last_assessed": "2026-08-22",
       "section_profile": {
         "has_ui": false,
         "crosses_service_boundaries": true,
@@ -1102,31 +1696,33 @@
         "published_package": false,
         "embedded_in_host": true,
         "holds_client_state": false,
+        "resolved_by": "codex bootstrap questionnaire (2026-08-18), carried forward and reconfirmed by claude-code from code evidence",
+        "resolved_at": "2026-11-16T13:50:45Z",
         "has_submodules": false,
-        "resolved_by": "codex questionnaire + scripts/module_tree.py",
-        "resolved_at": "2026-08-18T15:33:39Z"
+        "has_submodules_computed_by": "scripts/module_tree.py",
+        "has_submodules_computed_at": "2026-11-16T15:05:44Z"
       },
       "source_policy": {
-        "mode": "keep-separate",
+        "mode": "migrate-existing",
         "conflict_status": "none",
-        "decision_record": "ai-docs/adr/0001-migrate-existing-docs-into-sdd.md"
+        "decision_record": "docs/adr/0001-migrate-existing-docs-into-sdd.md"
       }
     },
     {
-      "path": "src/metrics/",
+      "path": "src/metrics",
+      "canonical_spec": "src/metrics/docs/README.md",
       "coverage_status": "Partial",
-      "coverage_evidence": "Canonical spec validated against current code and tests by an independent different-runtime validator on 2026-08-22 with zero Blocking findings; 92.9% field completeness with all critical and Important fields present; event-surface, Mermaid, evidence-binding and failure-semantics gates pass with published coverage denominators; no findings in this module. Specced withheld: the last-five-PR MODIFIED-requirement check requires commit history, which was excluded by instruction.",
-      "canonical_spec": "src/metrics/ai-docs/metrics-spec.md",
+      "coverage_evidence": "Migrated from the routed ai-docs module spec under migrate-existing; held at Partial until coverage-review and independent validation run on the migrated spec.",
+      "last_assessed": "2026-11-16",
       "contracts": {
         "provides": [
-          "Meeting telemetry helper methods and event submission"
+          "meetings-metrics"
         ],
         "requires": [
-          "Webex internal metrics plugin and event dictionary"
+          "internal-plugin-metrics-api"
         ]
       },
       "characterization_baseline": "test/unit/spec/metrics/index.js",
-      "last_assessed": "2026-08-22",
       "section_profile": {
         "has_ui": false,
         "crosses_service_boundaries": true,
@@ -1144,132 +1740,428 @@
         "published_package": false,
         "embedded_in_host": false,
         "holds_client_state": false,
+        "resolved_by": "codex bootstrap questionnaire (2026-08-18), carried forward and reconfirmed by claude-code from code evidence",
+        "resolved_at": "2026-11-16T13:50:45Z",
         "has_submodules": false,
-        "resolved_by": "codex questionnaire + scripts/module_tree.py",
-        "resolved_at": "2026-08-18T15:33:39Z"
+        "has_submodules_computed_by": "scripts/module_tree.py",
+        "has_submodules_computed_at": "2026-11-16T15:05:44Z"
       },
       "source_policy": {
-        "mode": "keep-separate",
+        "mode": "migrate-existing",
         "conflict_status": "none",
-        "decision_record": "ai-docs/adr/0001-migrate-existing-docs-into-sdd.md"
+        "decision_record": "docs/adr/0001-migrate-existing-docs-into-sdd.md"
       }
     }
   ],
+  "contract_catalog": {
+    "index_path": "docs/architecture.md",
+    "definitions": {
+      "plugin-meetings-sdk": {
+        "kind": "sdk",
+        "publication": "published",
+        "source_kind": "repository-path",
+        "source": "package.json",
+        "summary": "Published npm package @webex/plugin-meetings. main is dist/index.js and types dist/types/index.d.ts, both built from src/index.ts, whose named exports (Meeting, CONSTANTS, REACTIONS, MeetingInfoV2, error classes, RemoteMedia, TriggerProxy, getAIEnablementApprover, media-helper stream factories and types) are the package API."
+      },
+      "meetings-plugin": {
+        "kind": "sdk",
+        "publication": "published",
+        "source_kind": "repository-path",
+        "source": "package.json",
+        "summary": "Reached through the published package (package.json); owned by src/index.ts. Importing the package calls registerPlugin('meetings', Meetings, {config, interceptors}) from @webex/webex-core, which mounts webex.meetings with the defaults in src/config.ts and installs the LocusRetryStatusInterceptor, LocusRouteTokenInterceptor and DataChannelAuthTokenInterceptor request interceptors."
+      },
+      "meetings-collection-api": {
+        "kind": "sdk",
+        "publication": "published",
+        "source_kind": "repository-path",
+        "source": "package.json",
+        "summary": "Reached through the published package (package.json); owned by src/meetings/index.ts. The Meetings plugin class: device and Mercury register/unregister, meeting create and collection lookup, sync of active meetings, reachability start, site preference fetch (fetchSitePreferencesMeViaSite), personal meeting room access, and the meetings:* events."
+      },
+      "meeting-api": {
+        "kind": "sdk",
+        "publication": "published",
+        "source_kind": "repository-path",
+        "source": "package.json",
+        "summary": "Reached through the published package (package.json); owned by src/meeting/index.ts. The Meeting class: join, leave and end, media add/update/stop, mute, share, lock, host and recording controls, feature controller accessors, Locus state application, and the meeting:*, media:* and network:* events it emits."
+      },
+      "meetings-events": {
+        "kind": "event",
+        "publication": "published",
+        "source_kind": "repository-path",
+        "source": "src/constants.ts",
+        "summary": "In-process event names declared in src/constants.ts: EVENT_TRIGGERS plus the BREAKOUTS.EVENTS, INTERPRETATION.EVENTS and AI_ENABLE_REQUEST.EVENTS families, the annotation event constants, and the reachability:* literals emitted by src/reachability/index.ts. Owned here because src/meeting emits most of them; they are emitted through TriggerProxy or the emitter on the Meetings, Meeting, Members, Breakouts, Interpretation, AI enable request, annotation and reachability scopes."
+      },
+      "meeting-info-api": {
+        "kind": "sdk",
+        "publication": "published",
+        "source_kind": "repository-path",
+        "source": "package.json",
+        "summary": "Reached through the published package (package.json); owned by src/meeting-info/meeting-info-v2.ts. MeetingInfoV2 (exported as a namespace), the MeetingInfoUtil export, and the meeting-info error classes: destination resolution to meeting metadata, password, captcha and policy failure branches."
+      },
+      "members-api": {
+        "kind": "sdk",
+        "publication": "published",
+        "source_kind": "repository-path",
+        "source": "package.json",
+        "summary": "Not a named export of src/index.ts; consumers reach it through Meeting (meeting.members) in the published package (package.json); owned by src/members/index.ts. Members collection on a Meeting: roster projection, add/remove/admit/mute/raise-hand/role mutations, and the members:* events."
+      },
+      "member-model": {
+        "kind": "sdk",
+        "publication": "published",
+        "source_kind": "repository-path",
+        "source": "package.json",
+        "summary": "Not a named export of src/index.ts; consumers reach it through Meeting (meeting.members) in the published package (package.json); owned by src/member/index.ts. Member model for one participant: identity, status, media, role and device properties derived from a Locus participant."
+      },
+      "remote-media-api": {
+        "kind": "sdk",
+        "publication": "published",
+        "source_kind": "repository-path",
+        "source": "package.json",
+        "summary": "Reached through the published package (package.json); owned by src/multistream/remoteMedia.ts. RemoteMedia (exported) plus the multistream remote media manager, groups, receive and send slot managers, and media request arbitration that back multistream layouts."
+      },
+      "breakouts-api": {
+        "kind": "sdk",
+        "publication": "published",
+        "source_kind": "repository-path",
+        "source": "package.json",
+        "summary": "Reached through the published package (package.json); owned by src/breakouts/index.ts. meeting.breakouts: breakout session collection and state, attendee and host operations (start, end, assign, broadcast, ask for help, return to main), edit lock, and the BREAKOUTS.EVENTS family."
+      },
+      "interpretation-api": {
+        "kind": "sdk",
+        "publication": "published",
+        "source_kind": "repository-path",
+        "source": "package.json",
+        "summary": "Reached through the published package (package.json); owned by src/interpretation/index.ts. meeting.simultaneousInterpretation: language subscriptions, interpreter management, direction and handoff requests, and the INTERPRETATION.EVENTS family."
+      },
+      "annotation-api": {
+        "kind": "sdk",
+        "publication": "published",
+        "source_kind": "repository-path",
+        "source": "package.json",
+        "summary": "Reached through the published package (package.json); owned by src/annotation/index.ts. meeting.annotation: live annotation start, stop and approval, command and stroke relay over the LLM data channel, and annotation events; payload types in src/annotation/annotation.types.ts."
+      },
+      "ai-enable-request-api": {
+        "kind": "sdk",
+        "publication": "published",
+        "source_kind": "repository-path",
+        "source": "package.json",
+        "summary": "Reached through the published package (package.json); owned by src/aiEnableRequest/index.ts. meeting.aiEnableRequest: AI assistant enablement request, accept and decline, plus getAIEnablementApprover (exported) for approver selection."
+      },
+      "webinar-api": {
+        "kind": "sdk",
+        "publication": "published",
+        "source_kind": "repository-path",
+        "source": "package.json",
+        "summary": "Reached through the published package (package.json); owned by src/webinar/index.ts. meeting.webinar: webinar panelist and attendee operations, practice session, webcast and role state."
+      },
+      "recording-controller-api": {
+        "kind": "sdk",
+        "publication": "published",
+        "source_kind": "repository-path",
+        "source": "package.json",
+        "summary": "Reached through the published package (package.json); owned by src/recording-controller/index.ts. Recording controller used by Meeting to start, stop, pause and resume recording: through the recording service (PUT <serviceUrl>/loci/<locusId>/recording) when a service URL is set, otherwise through Locus controls."
+      },
+      "controls-options-api": {
+        "kind": "sdk",
+        "publication": "published",
+        "source_kind": "repository-path",
+        "source": "package.json",
+        "summary": "Reached through the published package (package.json); owned by src/controls-options-manager/index.ts. Controls options manager used by Meeting to set mute-on-entry, disallow-unmute, view-participant-list and related meeting control options."
+      },
+      "personal-meeting-room-api": {
+        "kind": "sdk",
+        "publication": "published",
+        "source_kind": "repository-path",
+        "source": "package.json",
+        "summary": "Reached through the published package (package.json); owned by src/personal-meeting-room/index.ts. webex.meetings.personalMeetingRoom: retrieve and claim the user personal meeting room."
+      },
+      "reactions-catalog": {
+        "kind": "sdk",
+        "publication": "published",
+        "source_kind": "repository-path",
+        "source": "package.json",
+        "summary": "Reached through the published package (package.json); owned by src/reactions/reactions.ts. REACTIONS (exported namespace) and the Reaction type: reaction and skin-tone catalogs used to send and normalize in-meeting reactions."
+      },
+      "locus-http": {
+        "kind": "http",
+        "publication": "internal",
+        "source_kind": "repository-path",
+        "source": "src/meeting/request.ts",
+        "summary": "Client of the Webex Locus REST service. MeetingRequest builds the Locus participant, media, control and share requests that Meeting and its controllers send through webex.request; route construction stays in the request classes."
+      },
+      "site-preferences-http": {
+        "kind": "http",
+        "publication": "internal",
+        "source_kind": "repository-path",
+        "source": "src/meetings/request.ts",
+        "summary": "MeetingRequest for the Meetings plugin: active-meeting sync, geo hint, and the site /wbxappapi/v1/users/me/preference request behind fetchSitePreferencesMeViaSite."
+      },
+      "meeting-info-http": {
+        "kind": "http",
+        "publication": "internal",
+        "source_kind": "repository-path",
+        "source": "src/meeting-info/meeting-info-v2.ts",
+        "summary": "Requests to the Webex meeting-info service that resolve a destination (SIP, personal room, conversation, Locus URL, meeting link) to meeting metadata."
+      },
+      "roap-signaling": {
+        "kind": "http",
+        "publication": "internal",
+        "source_kind": "repository-path",
+        "source": "src/roap/request.ts",
+        "summary": "ROAP offer, answer, ok and error messages sent to Locus media endpoints, and the TURN discovery exchange in src/roap/turnDiscovery.ts."
+      },
+      "locus-info-projection": {
+        "kind": "sdk",
+        "publication": "internal",
+        "source_kind": "repository-path",
+        "source": "src/locus-info/index.ts",
+        "summary": "LocusInfo: applies Locus full state, deltas and hash-tree datasets to one client projection and emits scoped change callbacks consumed by Meeting and Members."
+      },
+      "hash-tree-sync": {
+        "kind": "sdk",
+        "publication": "internal",
+        "source_kind": "repository-path",
+        "source": "src/hashTree/hashTreeParser.ts",
+        "summary": "HashTreeParser: reconciles incremental Locus datasets by hash comparison, fetches missing leaves, and reports typed updates to LocusInfo."
+      },
+      "media-connection": {
+        "kind": "sdk",
+        "publication": "internal",
+        "source_kind": "repository-path",
+        "source": "src/media/index.ts",
+        "summary": "Media utilities that build internal-media-core connections, hold media properties, and await connection readiness (MediaConnectionAwaiter)."
+      },
+      "reachability-service": {
+        "kind": "sdk",
+        "publication": "internal",
+        "source_kind": "repository-path",
+        "source": "src/reachability/index.ts",
+        "summary": "Reachability: probes media clusters over UDP, TCP and TLS, records NAT type, and reports results used in join requests and metrics."
+      },
+      "reconnection-manager": {
+        "kind": "sdk",
+        "publication": "internal",
+        "source_kind": "repository-path",
+        "source": "src/reconnection-manager/index.ts",
+        "summary": "ReconnectionManager: bounded media reconnect, rejoin and network-change recovery for one Meeting, with reconnection events."
+      },
+      "locus-interceptors": {
+        "kind": "sdk",
+        "publication": "internal",
+        "source_kind": "repository-path",
+        "source": "src/interceptors/index.ts",
+        "summary": "Request interceptors for Locus retry-after handling, Locus route tokens, and LLM data-channel auth token refresh."
+      },
+      "meetings-metrics": {
+        "kind": "sdk",
+        "publication": "internal",
+        "source_kind": "repository-path",
+        "source": "src/metrics/index.ts",
+        "summary": "Behavioral metrics helper that submits meeting telemetry through webex.internal.metrics with the names in src/metrics/constants.ts."
+      },
+      "webex-core-plugin-host": {
+        "kind": "sdk",
+        "publication": "published",
+        "source_kind": "external",
+        "source": "@webex/webex-core (workspace package)",
+        "summary": "registerPlugin, WebexPlugin and StatelessWebexPlugin base classes, webex.request, service catalog and interceptor pipeline hosting the meetings plugin."
+      },
+      "internal-plugin-device-registration": {
+        "kind": "sdk",
+        "publication": "published",
+        "source_kind": "external",
+        "source": "@webex/internal-plugin-device (workspace package)",
+        "summary": "webex.internal.device register and unregister, device URL and feature toggles used during Meetings registration."
+      },
+      "internal-plugin-mercury-events": {
+        "kind": "event",
+        "publication": "published",
+        "source_kind": "external",
+        "source": "@webex/internal-plugin-mercury (workspace package)",
+        "summary": "webex.internal.mercury connect, disconnect and event:locus deliveries that feed meeting state."
+      },
+      "internal-plugin-metrics-api": {
+        "kind": "sdk",
+        "publication": "published",
+        "source_kind": "external",
+        "source": "@webex/internal-plugin-metrics (workspace package)",
+        "summary": "webex.internal.newMetrics (submitClientEvent, submitInternalEvent, submitMQE, callDiagnosticLatencies, callDiagnosticMetrics) for call analyzer telemetry, and webex.internal.metrics.submitClientMetrics for the behavioral metrics sent by src/metrics/index.ts."
+      },
+      "internal-media-core": {
+        "kind": "sdk",
+        "publication": "published",
+        "source_kind": "external",
+        "source": "@webex/internal-media-core (pinned exact version in package.json)",
+        "summary": "WebRTC media connection, multistream and ROAP primitives used by media, multistream and roap."
+      },
+      "media-helpers-streams": {
+        "kind": "sdk",
+        "publication": "published",
+        "source_kind": "external",
+        "source": "@webex/media-helpers (workspace package)",
+        "summary": "Local camera, microphone and display stream classes and factories re-exported from src/index.ts."
+      },
+      "internal-plugin-llm-channel": {
+        "kind": "sdk",
+        "publication": "published",
+        "source_kind": "external",
+        "source": "@webex/internal-plugin-llm (workspace package)",
+        "summary": "LLM data channel connections used for annotation relay, captions and in-meeting AI features."
+      },
+      "internal-plugin-voicea-transcription": {
+        "kind": "sdk",
+        "publication": "published",
+        "source_kind": "external",
+        "source": "@webex/internal-plugin-voicea (workspace package)",
+        "summary": "Voicea transcription and caption service used by Meeting transcription features."
+      },
+      "browser-webrtc": {
+        "kind": "sdk",
+        "publication": "published",
+        "source_kind": "external",
+        "source": "W3C WebRTC and Media Capture APIs (browser)",
+        "summary": "RTCPeerConnection and media device APIs used for reachability probes and media connections."
+      }
+    }
+  },
   "spec_policy": {
-    "delta_grammar": {
-      "added": "## ADDED Requirements",
-      "modified": "## MODIFIED Requirements",
-      "removed": "## REMOVED Requirements"
-    },
     "require_what_and_why": true,
     "require_provenance": true,
     "protected_specs": [
-      "src/meetings/ai-docs/meetings-spec.md",
-      "src/meeting/ai-docs/meeting-spec.md",
-      "src/meeting-info/ai-docs/meeting-info-spec.md",
-      "src/locus-info/ai-docs/locus-info-spec.md",
-      "src/hashTree/ai-docs/hash-tree-spec.md",
-      "src/member/ai-docs/member-spec.md",
-      "src/members/ai-docs/members-spec.md",
-      "src/media/ai-docs/media-spec.md",
-      "src/multistream/ai-docs/multistream-spec.md",
-      "src/roap/ai-docs/roap-spec.md",
-      "src/reachability/ai-docs/reachability-spec.md",
-      "src/reconnection-manager/ai-docs/reconnection-manager-spec.md",
-      "src/breakouts/ai-docs/breakouts-spec.md",
-      "src/interpretation/ai-docs/interpretation-spec.md",
-      "src/annotation/ai-docs/annotation-spec.md",
-      "src/aiEnableRequest/ai-docs/ai-enable-request-spec.md",
-      "src/webinar/ai-docs/webinar-spec.md",
-      "src/recording-controller/ai-docs/recording-controller-spec.md",
-      "src/controls-options-manager/ai-docs/controls-options-manager-spec.md",
-      "src/personal-meeting-room/ai-docs/personal-meeting-room-spec.md",
-      "src/reactions/ai-docs/reactions-spec.md",
-      "src/interceptors/ai-docs/interceptors-spec.md",
-      "src/metrics/ai-docs/metrics-spec.md"
-    ],
-    "required_sections_by_change_class": {
-      "core_always": [
-        "Intent (WHAT)",
-        "Rationale (WHY)",
-        "Scope/Out-of-scope",
-        "Acceptance criteria",
-        "Contracts delta"
-      ],
-      "security_or_contract_or_perf_critical": [
-        "Data",
-        "Error Matrix",
-        "Resilience",
-        "Observability",
-        "Operations"
-      ]
-    }
+      "src/meetings/docs/README.md",
+      "src/meeting/docs/README.md",
+      "src/meeting-info/docs/README.md",
+      "src/locus-info/docs/README.md",
+      "src/hashTree/docs/README.md",
+      "src/member/docs/README.md",
+      "src/members/docs/README.md",
+      "src/media/docs/README.md",
+      "src/multistream/docs/README.md",
+      "src/roap/docs/README.md",
+      "src/reachability/docs/README.md",
+      "src/reconnection-manager/docs/README.md",
+      "src/breakouts/docs/README.md",
+      "src/interpretation/docs/README.md",
+      "src/annotation/docs/README.md",
+      "src/aiEnableRequest/docs/README.md",
+      "src/webinar/docs/README.md",
+      "src/recording-controller/docs/README.md",
+      "src/controls-options-manager/docs/README.md",
+      "src/personal-meeting-room/docs/README.md",
+      "src/reactions/docs/README.md",
+      "src/interceptors/docs/README.md",
+      "src/metrics/docs/README.md"
+    ]
   },
   "validation": {
-    "generator_runtime": "codex",
-    "generator_runtime_source": "invocation-input",
+    "generator_runtime": "claude-code",
+    "generator_model": "claude-opus-5-5",
+    "generator_runtime_source": "host-metadata",
+    "source_commit": "0b8c34db7f3768b8f5bfd219c73c205b95f8c551",
+    "base_ref": "next",
     "minimum_independence": "different-runtime",
     "blocking_severities": [
       "Blocking"
     ],
-    "generator_run_id": "plugin-meetings-bootstrap-20260818T153339Z",
-    "source_commit": "b7b93b443e90d3707a886d8dd7f485bd23bc9cbc",
-    "base_ref": "next",
-    "head_ref": "repo-annotation-plugin-meetings",
-    "validator_runtime": "runtime-b",
-    "validator_runtime_source": "invocation-input",
-    "validator_run_id": "plugin-meetings-participant-role-validation-20260822",
-    "runtime_fallback_tier": "different-runtime",
-    "previous_source_commit": "f9a29f61cf5d0b0311c729bceaeb41ae648cf862",
-    "revalidation": {
-      "revalidated_at": "2026-09-08",
-      "method": "manual-diff-review",
-      "method_note": "The repo-annotation tooling is not vendored in this repository, so this pass was a manual review of every source diff between previous_source_commit and source_commit against the owning module spec. It is not equivalent to a generator/validator tool run and does not claim different-runtime independence.",
-      "modules_with_source_changes": [
-        "src/meetings/",
-        "src/meeting/",
-        "src/meeting-info/",
-        "src/locus-info/",
-        "src/hashTree/"
-      ],
-      "modules_unchanged_since_previous_source_commit": 18,
-      "spec_updates_applied": [
-        "MEETINGS-R-007 \u2014 WasmRuntimeProbe telemetry payload, null measurement defaults, and swallowed failures",
-        "MEETING-R-009 \u2014 joinWithMedia retry classification and LOCUS_USER_FULL precedence over firstError",
-        "MEETING-R-010 \u2014 processNewCaptions final-only caption guard",
-        "MEETING-INFO-R-004 \u2014 correlationId request header gated on meetingId + sendCAevents + correlationId",
-        "LOCUS-INFO-R-007 \u2014 LocusErrorCodes catalogue and the isLlmExpected joinedWith gate",
-        "HASH-TREE-R-004 \u2014 heartbeat watchdog visibility/LLM gating and re-arm ordering"
-      ]
-    }
+    "validator_runtime": "01a1e76c-6d26-70a1-91c6-e2d31c3fe960",
+    "validator_runtime_source": "host-metadata",
+    "runtime_fallback_tier": "different-runtime"
   },
   "layout": {
     "sdd_root": ".sdd",
-    "docs_root": "ai-docs",
+    "docs_root": "docs",
     "agent_entry_path": "AGENTS.md",
-    "standing_docs_root": "ai-docs",
-    "spec_index_path": "ai-docs/SPEC_INDEX.md",
+    "standing_docs_root": "docs",
+    "spec_index_path": "docs/specs/README.md",
     "module_docs_strategy": "source-local",
-    "module_docs_folder_name": "ai-docs",
-    "template_profile": "sdd-legacy",
-    "template_roots": {
-      "canonical": ".sdd/templates",
-      "extensions": [
-        ".sdd/templates/extensions"
-      ]
+    "module_docs_relative_path": "docs/README.md",
+    "module_docs_decision": {
+      "basis": "repo-standards-default",
+      "reason": "Migration moves each src/<module>/ai-docs/<name>-spec.md to the source-local default src/<module>/docs/README.md; no src/*/docs folder existed, so there is no collision. test:style lints ./src/**/*.* and the shared legacy eslint ignore patterns exclude Markdown; build:src compiles -js -ts only, so Markdown under src/ does not enter dist/.",
+      "decided_by": "rarajes2@cisco.com (confirmed in chat)",
+      "decided_at": "2026-11-16T13:50:45Z"
     },
-    "contracts_strategy": "root-index-module-detail"
+    "repo_context_decision": {
+      "path": ".repo-context.json",
+      "schema_path": "schemas/repo-context.schema.json",
+      "action": "create",
+      "schema_action": "create",
+      "reason": "Neither the operational context nor its schema existed in this package; the context is created from package evidence and the migrated glossary.",
+      "decided_by": "rarajes2@cisco.com (confirmed in chat)",
+      "decided_at": "2026-11-16T13:50:45Z"
+    },
+    "artifact_decisions": [
+      {
+        "path": "docs/service.md",
+        "action": "omit",
+        "reason": "Library package, not a deployable service: package.json has no start script, container, or deployment descriptor.",
+        "decided_by": "claude-code (code evidence)",
+        "decided_at": "2026-11-16T13:50:45Z"
+      },
+      {
+        "path": "mkdocs.yml",
+        "action": "omit",
+        "reason": "No package-level documentation site exists; documentation publishing stays with the workspace.",
+        "decided_by": "claude-code (code evidence)",
+        "decided_at": "2026-11-16T13:50:45Z"
+      },
+      {
+        "path": "api-specs/openapi.yaml",
+        "action": "omit",
+        "reason": "The package serves no HTTP routes. Its HTTP contracts are internal clients of Webex services (locus-http, site-preferences-http, meeting-info-http, roap-signaling); the published surface is the npm export described by plugin-meetings-sdk.",
+        "decided_by": "claude-code (code evidence)",
+        "decided_at": "2026-11-16T13:50:45Z"
+      },
+      {
+        "path": "SECURITY.md",
+        "action": "omit",
+        "reason": "The workspace owns security policy; security architecture is described in docs/architecture.md.",
+        "decided_by": "claude-code (code evidence)",
+        "decided_at": "2026-11-16T13:50:45Z"
+      },
+      {
+        "path": "CONTRIBUTING.md",
+        "action": "omit",
+        "reason": "Contribution instructions are owned at the workspace root CONTRIBUTING.md.",
+        "decided_by": "claude-code (code evidence)",
+        "decided_at": "2026-11-16T13:50:45Z"
+      },
+      {
+        "path": "CHANGELOG.md",
+        "action": "omit",
+        "reason": "Changelog generation is owned at the workspace root; this package has no changelog file.",
+        "decided_by": "claude-code (code evidence)",
+        "decided_at": "2026-11-16T13:50:45Z"
+      },
+      {
+        "path": "CTO_CHECKLIST.yml",
+        "action": "omit",
+        "reason": "The CTO readiness checklist applies to deployable services; this package is a library.",
+        "decided_by": "claude-code (code evidence)",
+        "decided_at": "2026-11-16T13:50:45Z"
+      },
+      {
+        "path": "schemas/cto-checklist.schema.json",
+        "action": "omit",
+        "reason": "Omitted together with CTO_CHECKLIST.yml.",
+        "decided_by": "claude-code (code evidence)",
+        "decided_at": "2026-11-16T13:50:45Z"
+      }
+    ],
+    "template_roots": {
+      "canonical": ".sdd/templates/repo-standards"
+    },
+    "contract_index_path": "docs/architecture.md",
+    "repo_skills_root": ".sdd/skills",
+    "monorepo_package": {
+      "package_path": "packages/@webex/plugin-meetings",
+      "root_manifest_path": "../../../.sdd/manifest.json",
+      "templates_root_path": "../../../.sdd/templates/repo-standards"
+    }
   },
   "tooling": {
     "sdlc_skills": {
-      "source_repo": "https://github.com/WebexServices/agent-skills/tree/main/skills/repo-annotation",
-      "source_ref": "a662b7346d3408f253e4d893694e71d9a5ec2349",
-      "source_branch": "main",
-      "install_mode": "copy",
-      "installed_at": "2026-08-18T15:33:39Z",
-      "plugins": [
-        "repo-annotation@1.0.5+codex.20260818094939"
-      ]
+      "source_ref": "repo-annotation@2.3.1"
     }
   },
   "coverage_ratchet": {
@@ -1277,15 +2169,14 @@
     "waivers": []
   },
   "substrate": {
-    "source": "webex-js-sdk repository standards and the packages/calling SDD layout precedent",
+    "source": "WebexTools/repo-standards@d89a7fe59126ae3ad9bac9ca352aa7f12b4c85dc",
     "consumed": [
-      "AGENTS.md",
-      "package.json",
-      "packages/@webex/plugin-meetings/package.json",
-      "packages/@webex/plugin-meetings/jest.config.js",
-      ".eslintrc.js",
-      ".prettierrc",
-      ".github/workflows/pull-request.yml"
+      "@webex/eslint-config-legacy via .eslintrc.js",
+      "@webex/babel-config-legacy via babel.config.js",
+      "@webex/jest-config-legacy via jest.config.js",
+      "@webex/legacy-tools build and test runner via package.json",
+      "retained README.md, UPGRADING.md, internal-README.md and feature READMEs (context only)",
+      "Repo Standards templates at the monorepo root .sdd/templates/repo-standards, referred to through layout.monorepo_package.templates_root_path (this package holds no templates)"
     ],
     "compliance_tier": "baseline"
   },
@@ -1297,16 +2188,17 @@
       "domain_data_across_components": true,
       "caches_data": true,
       "observability_convention": true,
-      "deploys_to_infra": true,
+      "deploys_to_infra": false,
       "shared_base_libs": true,
-      "is_monorepo": true,
+      "is_monorepo": false,
       "multi_platform": false,
       "published_package": true,
       "embedded_in_host": true,
       "cross_repo_deps_material": true,
-      "security_arch_warranted": true
+      "security_arch_warranted": true,
+      "exposes_commands_or_artifacts": true
     },
-    "resolved_by": "codex (bootstrap questionnaire)",
-    "resolved_at": "2026-08-18T15:33:39Z"
+    "resolved_by": "codex bootstrap questionnaire (2026-08-18), reconfirmed by claude-code: is_monorepo and deploys_to_infra false for a library package inside the workspace",
+    "resolved_at": "2026-11-16T13:50:45Z"
   }
 }

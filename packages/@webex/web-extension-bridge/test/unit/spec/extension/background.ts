@@ -1,7 +1,11 @@
 import {assert} from '@webex/test-helper-chai';
 import sinon from 'sinon';
 
-import {CONTROL_TOPIC, DEFAULT_CHANNEL} from '../../../../src/core/constants';
+import {
+  CONTROL_TOPIC,
+  DEFAULT_CHANNEL,
+  MAX_STORED_URL_LENGTH,
+} from '../../../../src/core/constants';
 import {BridgeError} from '../../../../src/core/errors';
 import type {JsonValue} from '../../../../src/core/json';
 import {EnvelopeKind, EnvelopeSource, createEnvelope} from '../../../../src/core/protocol';
@@ -9,7 +13,7 @@ import type {Envelope} from '../../../../src/core/protocol';
 import {createExtensionBridgeWith} from '../../../../src/extension/background';
 import {ClientCommand, RelayKind} from '../../../../src/extension/messages';
 import type {RelayRequest, RelayResult} from '../../../../src/extension/messages';
-import type {ChromeSender} from '../../../../src/extension/platform';
+import type {ChromeSender, ChromeTabChangeInfo} from '../../../../src/extension/platform';
 import type {ExtensionBridge, ExtensionBridgeOptions, PushMeta} from '../../../../src/types';
 import {createFakeExtensionWorld} from '../../lib/fakeChrome';
 import type {FakeExtensionWorld} from '../../lib/fakeChrome';
@@ -247,10 +251,30 @@ describe('extension/background', () => {
           ).then(() => undefined),
       ],
       ['the tab closing', (fake) => fake.fireTabRemoved(fake.tabId)],
-      ['the tab navigating', (fake) => fake.fireTabUpdated(fake.tabId, {status: 'loading'})],
       [
-        'the tab changing url',
+        'the tab changing to another origin',
         (fake) => fake.fireTabUpdated(fake.tabId, {url: 'https://elsewhere.example.com/'}),
+      ],
+      [
+        'the tab changing to another origin while loading',
+        (fake) =>
+          fake.fireTabUpdated(fake.tabId, {
+            status: 'loading',
+            url: 'https://elsewhere.example.com/',
+          }),
+      ],
+      [
+        'the tab changing to an over-long url on another origin',
+        // The storage ceiling must not become a way to keep a connection alive while
+        // leaving the allow-listed origin, so the origin is read before the length.
+        (fake) =>
+          fake.fireTabUpdated(fake.tabId, {
+            url: `https://elsewhere.example.com/${'a'.repeat(MAX_STORED_URL_LENGTH)}`,
+          }),
+      ],
+      [
+        'the tab changing to a scheme with no usable origin',
+        (fake) => fake.fireTabUpdated(fake.tabId, {url: 'about:blank'}),
       ],
     ];
 
@@ -278,6 +302,229 @@ describe('extension/background', () => {
       await drain();
 
       assert.lengthOf(await bridge.listConnections(), 1);
+    });
+
+    /**
+     * Navigation on the connected origin. Chrome reports a single-page app's route
+     * change and a followed link to another document with exactly the same fields —
+     * `{status: 'loading', url}` — so neither can be read as the end of a connection.
+     * The record follows the url instead; if the document really was replaced, its
+     * successor's CONNECT overwrites the record moments later.
+     */
+    const sameOriginCases: [string, ChromeTabChangeInfo, string][] = [
+      [
+        'a pushState route change',
+        {status: 'loading', url: `${ORIGIN}/meetings`},
+        `${ORIGIN}/meetings`,
+      ],
+      [
+        'a replaceState route change',
+        {status: 'loading', url: `${ORIGIN}/meetings/42`},
+        `${ORIGIN}/meetings/42`,
+      ],
+      [
+        'a query string change',
+        {status: 'loading', url: `${ORIGIN}/index.html?view=grid`},
+        `${ORIGIN}/index.html?view=grid`,
+      ],
+      [
+        'a fragment change',
+        {status: 'loading', url: `${ORIGIN}/index.html#/settings`},
+        `${ORIGIN}/index.html#/settings`,
+      ],
+      [
+        'a url reported with no status at all',
+        {url: `${ORIGIN}/index.html`},
+        `${ORIGIN}/index.html`,
+      ],
+      [
+        'a followed link to another document on the same origin',
+        {status: 'loading', url: `${ORIGIN}/other.html`},
+        `${ORIGIN}/other.html`,
+      ],
+    ];
+
+    sameOriginCases.forEach(([why, changeInfo, url]) => {
+      it(`keeps the connection on ${why}`, async () => {
+        await attach();
+        world.fireTabUpdated(world.tabId, changeInfo);
+        await drain();
+
+        const connections = await bridge.listConnections();
+
+        assert.lengthOf(connections, 1);
+        assert.equal(connections[0].tabId, world.tabId);
+        assert.equal(connections[0].url, url);
+      });
+    });
+
+    it('keeps the connection on a reload, which reports no url', async () => {
+      await attach();
+      world.fireTabUpdated(world.tabId, {status: 'loading'});
+      await drain();
+
+      assert.lengthOf(await bridge.listConnections(), 1);
+    });
+
+    it('keeps the connection when a navigation reports no url to judge', async () => {
+      // Chrome withholds `url` for a destination the extension has no host permission
+      // for, so a tab can leave the origin without this ever being able to tell. The
+      // record stays until a send to it fails, which is the only honest thing to do
+      // with an update that carries no evidence — and harmless, because an extension
+      // without host permission cannot reach that document either.
+      await attach();
+      world.fireTabUpdated(world.tabId, {status: 'loading'});
+      world.fireTabUpdated(world.tabId, {});
+      world.fireTabUpdated(world.tabId, {status: 'complete'});
+      await drain();
+
+      assert.lengthOf(await bridge.listConnections(), 1);
+    });
+
+    it('keeps the connection but not the url when the url is over-long', async () => {
+      await attach();
+
+      const url = `${ORIGIN}/${'a'.repeat(MAX_STORED_URL_LENGTH)}`;
+
+      world.fireTabUpdated(world.tabId, {url});
+      await drain();
+
+      const connections = await bridge.listConnections();
+
+      assert.lengthOf(connections, 1);
+      assert.notEqual(connections[0].url, url);
+    });
+
+    it('replaces the record when a new document connects on the same tab', async () => {
+      await attach();
+      world.fireTabUpdated(world.tabId, {status: 'loading', url: `${ORIGIN}/other.html`});
+      await drain();
+      await attach('a-second-session');
+
+      const connections = await bridge.listConnections();
+
+      assert.lengthOf(connections, 1);
+      assert.equal(connections[0].tabId, world.tabId);
+    });
+
+    it('settles a request left in flight by a document that was replaced', async () => {
+      // The tab update could not say the document had gone, so the request is still
+      // waiting. The replacement relay announcing itself is the proof that it has.
+      relayGoesQuiet();
+      await attach();
+
+      // Asserted before the replacement attaches, so the rejection is never momentarily
+      // unhandled.
+      const rejected = assert.isRejected(bridge.request('across.nav'), BridgeError);
+
+      await drain();
+      await attach('a-second-session');
+      await rejected;
+    });
+
+    it('accepts a push sent straight behind its CONNECT', async () => {
+      // A relay whose page bridge missed the first HELLO sends CONNECT and its first
+      // PUSH back to back. Before the fix, CONNECT read the old record before queueing
+      // its write, so the push's read landed in between and it was dropped as stale.
+      const received = sinon.stub();
+
+      bridge.subscribe(received);
+      await Promise.all([
+        fromContent(relayMessage(RelayKind.CONNECT)),
+        fromContent(relayMessage(RelayKind.PUSH, {envelope: pushEnvelope('first.push')})),
+      ]);
+      await drain();
+
+      assert.calledOnce(received);
+    });
+
+    it('keeps a session that connects on the new origin while the old one is torn down', async () => {
+      // Before the fix, leaving the origin removed by tab ID alone, so a relay on the
+      // new origin connecting while that teardown read the record was removed with it.
+      const other = 'https://other.example.com';
+
+      setup({allowedOrigins: [ORIGIN, other]});
+      await attach();
+      world.fireTabUpdated(world.tabId, {status: 'loading', url: `${other}/`});
+      await attach('a-second-session', {origin: other});
+
+      const connections = await bridge.listConnections();
+
+      assert.lengthOf(connections, 1);
+      assert.equal(connections[0].origin, other);
+    });
+
+    it('drops a record whose relay no longer holds its session', async () => {
+      // A same-origin page without a page bridge replaced the document: its relay is
+      // listening but never connects, so no CONNECT will overwrite the stale record.
+      // Before the fix the relay's rejection left it in place for every later request.
+      relayAnswers((): RelayResult => ({
+        ok: false,
+        error: {code: 'NOT_CONNECTED', message: 'The tab is not connected'},
+      }));
+      await attach();
+
+      assert.equal((await rejection(bridge.request('demo.topic'))).code, 'NOT_CONNECTED');
+      await drain();
+
+      assert.lengthOf(await bridge.listConnections(), 0);
+    });
+
+    it('keeps the record when the relay rejects a request for another reason', async () => {
+      relayAnswers((): RelayResult => ({
+        ok: false,
+        error: {code: 'INVALID_PAYLOAD', message: 'The payload was rejected'},
+      }));
+      await attach();
+
+      assert.equal((await rejection(bridge.request('demo.topic'))).code, 'INVALID_PAYLOAD');
+      await drain();
+
+      assert.lengthOf(await bridge.listConnections(), 1);
+    });
+
+    it('keeps accepting pushes after a route change', async () => {
+      const received = sinon.stub();
+
+      bridge.subscribe(received);
+      await attach();
+      world.fireTabUpdated(world.tabId, {status: 'loading', url: `${ORIGIN}/meetings`});
+      await drain();
+      await push('route.changed', {ok: true});
+
+      assert.calledOnce(received);
+    });
+
+    it('leaves an in-flight request alone across a route change', async () => {
+      relayAnswers((envelope) => ({
+        ok: true,
+        envelope: createEnvelope({
+          channel: DEFAULT_CHANNEL,
+          kind: EnvelopeKind.RESPONSE,
+          source: EnvelopeSource.PAGE,
+          topic: envelope.topic,
+          id: 'response-across-nav',
+          correlationId: envelope.id,
+          session: SESSION,
+          ok: true,
+          payload: {served: true},
+        }),
+      }));
+      await attach();
+
+      const settled = bridge.request('across.nav');
+
+      world.fireTabUpdated(world.tabId, {status: 'loading', url: `${ORIGIN}/meetings`});
+      await drain();
+
+      assert.deepEqual(await settled, {served: true});
+    });
+
+    it('does nothing for a navigation on an unconnected tab', async () => {
+      world.fireTabUpdated(world.tabId, {status: 'loading', url: `${ORIGIN}/meetings`});
+      await drain();
+
+      assert.lengthOf(await bridge.listConnections(), 0);
     });
   });
 

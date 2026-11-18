@@ -6,7 +6,7 @@
     "purpose": "Internal Webex JS SDK plugin that manages LLM data-channel connections for meetings. It registers webex.internal.llm, a Mercury subclass that registers each session with the data-channel service over HTTP, connects the returned WebSocket through Mercury, and keeps per-session URLs, binding, owner meeting, and token-refresh handler, plus a session-keyed data-channel token cache guarded by owner-meeting checks."
   },
   "commands": {
-    "install": "yarn install",
+    "install": "yarn",
     "compile": "yarn workspace @webex/internal-plugin-llm build:src",
     "build": "yarn workspace @webex/internal-plugin-llm build",
     "unit-test": "yarn workspace @webex/internal-plugin-llm test:unit",

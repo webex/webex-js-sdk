@@ -21,6 +21,13 @@ export const CHANNEL_PATTERN = TOPIC_PATTERN;
 
 export const MAX_ID_LENGTH = 128;
 
+/**
+ * Ceiling on a url kept in a connection record. Comfortably above any real route and
+ * far below anything that would strain the session-storage quota, which matters
+ * because the url is the one stored value the page can grow at will.
+ */
+export const MAX_STORED_URL_LENGTH = 4096;
+
 export const DEFAULT_MAX_PAYLOAD_BYTES = 262144;
 export const MAX_PAYLOAD_BYTES_CEILING = 1048576;
 

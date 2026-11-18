@@ -49,7 +49,7 @@ Run every command from the Webex JS SDK workspace root. Use only documented comm
 
 | Task | Command |
 | --- | --- |
-| Install dependencies | `yarn install` |
+| Install dependencies | `yarn` |
 | Start dev environment | N/A — the package is a library with no runnable entry point |
 | Run tests | `yarn workspace @webex/webex-core test:unit` |
 | Run linters | `yarn workspace @webex/webex-core test:style` |
@@ -60,7 +60,7 @@ Run every command from the Webex JS SDK workspace root. Use only documented comm
 | Run one unit file | `yarn workspace @webex/webex-core test:unit --targets <path relative to test/unit/spec>` |
 | Publish | `yarn workspace @webex/webex-core deploy:npm` |
 
-The repository requires Node 22.14 (`nvm install 22.14 && nvm use 22.14`); the package itself declares
+The repository requires Node 22.14; the package itself declares
 `engines.node >=18`. The aggregate `test` script chains lint, unit, integration and browser tiers, so it
 needs provisioned test users and live services. `build` delegates to `build:src`; no command builds and
 tests together. If a required command is unknown, stop and ask for the exact command.

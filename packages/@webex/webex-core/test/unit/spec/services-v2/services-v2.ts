@@ -6,8 +6,10 @@ import {assert} from '@webex/test-helper-chai';
 import MockWebex from '@webex/test-helper-mock-webex';
 import sinon from 'sinon';
 import {ServicesV2} from '@webex/webex-core';
+import grantErrors from '@webex/webex-core/dist/lib/credentials/grant-errors';
 import {NewMetrics} from '@webex/internal-plugin-metrics';
 import {formattedServiceHostmapV2, serviceHostmapV2} from '../../../fixtures/host-catalog-v2';
+import fedRampServices from '../../../../src/lib/services-v2/service-fed-ramp';
 
 const waitForAsync = () =>
   new Promise<void>((resolve) =>
@@ -31,6 +33,100 @@ describe('webex-core', () => {
       });
       services = webex.internal.services;
       catalog = services._getCatalog();
+    });
+
+    describe('#initConfig', () => {
+      it.each([
+        'https://u2c.gov.ciscospark.com/u2c/api/v1',
+        'https://u2c.svc.webexgov.us/u2c/api/v1',
+        'https://u2c.example.com/u2c/api/v1',
+        'https://u2c.svc.webex.com/u2c/api/v1',
+      ])('preserves the existing FedRAMP U2C discovery URL %s', (u2c) => {
+        const discovery = {
+          hydra: 'https://hydra.example.com/v1',
+          u2c,
+          sqdiscovery: 'https://region.example.com/v1/region',
+        };
+        const defaults = {...fedRampServices};
+        webex.config = {
+          fedramp: true,
+          services: {discovery, allowedDomains: ['webexgov.us'], validateDomains: true},
+        };
+
+        services.initConfig();
+
+        assert.deepEqual(webex.config.services.discovery, {...defaults, u2c});
+        assert.strictEqual(services.get('u2c', 'discovery'), u2c);
+        assert.strictEqual(services.get('hydra', 'discovery'), defaults.hydra);
+        assert.strictEqual(services.get('sqdiscovery', 'discovery'), defaults.sqdiscovery);
+        assert.notStrictEqual(webex.config.services.discovery, fedRampServices);
+        assert.deepEqual(fedRampServices, defaults);
+        assert.deepEqual(catalog.getAllowedDomains(), ['webexgov.us']);
+        assert.isTrue(services.validateDomains);
+      });
+
+      it.each([undefined, null, {}, {u2c: undefined}, {u2c: null}, {u2c: ''}])(
+        'uses the FedRAMP defaults when discovery has no U2C URL: %p',
+        (discovery) => {
+          webex.config = {
+            fedramp: true,
+            services: {discovery, allowedDomains: [], validateDomains: true},
+          };
+
+          services.initConfig();
+
+          assert.deepEqual(webex.config.services.discovery, fedRampServices);
+          assert.strictEqual(services.get('u2c', 'discovery'), fedRampServices.u2c);
+          assert.notStrictEqual(webex.config.services.discovery, fedRampServices);
+        }
+      );
+
+      it('leaves commercial discovery configuration unchanged', () => {
+        const discovery = {
+          hydra: 'https://api.ciscospark.com/v1',
+          u2c: 'https://u2c.svc.webex.com/u2c/api/v1',
+          sqdiscovery: 'https://ds.ciscospark.com/v1/region',
+        };
+        webex.config = {
+          fedramp: false,
+          services: {discovery, allowedDomains: [], validateDomains: true},
+        };
+
+        services.initConfig();
+
+        assert.strictEqual(webex.config.services.discovery, discovery);
+        assert.strictEqual(services.get('u2c', 'discovery'), discovery.u2c);
+        assert.strictEqual(services.get('hydra', 'discovery'), discovery.hydra);
+        assert.strictEqual(services.get('sqdiscovery', 'discovery'), discovery.sqdiscovery);
+      });
+
+      it('keeps FedRAMP discovery URLs isolated between instances', () => {
+        const oldU2c = 'https://u2c.gov.ciscospark.com/u2c/api/v1';
+        const newU2c = 'https://u2c.svc.webexgov.us/u2c/api/v1';
+        const defaults = {...fedRampServices};
+        const otherWebex = MockWebex({children: {services: ServicesV2}});
+        webex.config = {
+          fedramp: true,
+          services: {discovery: {u2c: oldU2c}, allowedDomains: []},
+        };
+        otherWebex.config = {
+          fedramp: true,
+          services: {discovery: {u2c: newU2c}, allowedDomains: []},
+        };
+
+        services.initConfig();
+        otherWebex.internal.services.initConfig();
+
+        assert.deepEqual(webex.config.services.discovery, {...defaults, u2c: oldU2c});
+        assert.deepEqual(otherWebex.config.services.discovery, {...defaults, u2c: newU2c});
+        assert.strictEqual(services.get('u2c', 'discovery'), oldU2c);
+        assert.strictEqual(otherWebex.internal.services.get('u2c', 'discovery'), newU2c);
+        assert.notStrictEqual(
+          webex.config.services.discovery,
+          otherWebex.config.services.discovery
+        );
+        assert.deepEqual(fedRampServices, defaults);
+      });
     });
 
     describe('#initialize', () => {
@@ -607,6 +703,232 @@ describe('webex-core', () => {
 
         sinon.assert.calledWith(services.collectPreauthCatalog, {orgId: 'orgId'});
         sinon.assert.calledWith(services.logger.warn, 'services: cannot retrieve postauth catalog');
+        assert.isNull(services._getCatalogAuthFailure());
+      });
+
+      it.each([
+        {statusField: 'statusCode', status: 401, reason: 'invalid_access_token'},
+        {statusField: 'status', status: 403, reason: 'access_denied'},
+      ])(
+        'keeps a stored $reason when a second init times out during the postauth fetch',
+        async ({statusField, status, reason}) => {
+          let rejectFetch: (error: Error) => void = () => undefined;
+          const fetchPromise = new Promise((resolve, reject) => {
+            rejectFetch = reject;
+          });
+          const clock = sinon.useFakeTimers({toFake: ['setTimeout', 'clearTimeout']});
+
+          services.webex.credentials = {
+            getOrgId: sinon.stub().returns('orgId'),
+            canAuthorize: true,
+            supertoken: {access_token: 'token'},
+          };
+          services.collectPreauthCatalog = sinon.stub().resolves();
+          sinon.stub(services, '_fetchNewServiceHostmap').returns(fetchPromise);
+
+          try {
+            const firstInit = services.initServiceCatalogs();
+
+            await waitForAsync();
+            assert.isTrue(catalog.status.postauth.collecting);
+
+            const secondInit = services.initServiceCatalogs();
+
+            await waitForAsync();
+            assert.calledOnce(services._fetchNewServiceHostmap);
+
+            const error = Object.assign(new Error('catalog failed'), {[statusField]: status});
+
+            rejectFetch(error);
+            await firstInit;
+
+            assert.deepEqual(services._getCatalogAuthFailure(), {status, reason});
+
+            clock.tick(60 * 1000);
+            await secondInit;
+
+            assert.deepEqual(services._getCatalogAuthFailure(), {status, reason});
+          } finally {
+            clock.restore();
+          }
+        }
+      );
+    });
+
+    describe('#updateServices catalog auth failure', () => {
+      const emptyHostmap = {
+        services: [],
+        timestamp: '1',
+      };
+
+      const recordAuthFailure = (status: number) => {
+        services._recordCatalogAuthFailure(
+          Object.assign(new Error('catalog failed'), {statusCode: status})
+        );
+      };
+
+      const rejectMissingService = async (expected: {
+        message: string;
+        reason?: string;
+        statusCode?: number;
+      }) => {
+        services.webex.config.services = {
+          servicesNotNeedValidation: [],
+        };
+        services.webex.internal.metrics = {
+          submitClientMetrics: sinon.stub(),
+        };
+        catalog.isReady = true;
+
+        try {
+          await services.waitForService({name: 'wcc-api-gateway'});
+          assert.fail('expected waitForService to reject');
+        } catch (error) {
+          assert.equal(error.message, expected.message);
+          if (expected.reason) {
+            assert.equal(error.reason, expected.reason);
+            assert.equal(error.statusCode, expected.statusCode);
+          } else {
+            assert.isUndefined(error.reason);
+          }
+        }
+      };
+
+      it.each([
+        {status: 401, reason: 'invalid_access_token'},
+        {status: 403, reason: 'access_denied'},
+      ])(
+        'stores $reason when a postauth catalog update fails with $status and surfaces it for a missing service',
+        async ({status, reason}) => {
+          const error = Object.assign(new Error('catalog failed'), {statusCode: status});
+
+          sinon.stub(services, '_fetchNewServiceHostmap').rejects(error);
+
+          try {
+            await services.updateServices();
+            assert.fail('expected updateServices to reject');
+          } catch (rejected) {
+            assert.equal(rejected, error);
+          }
+
+          assert.deepEqual(services._getCatalogAuthFailure(), {status, reason});
+          await rejectMissingService({message: reason, reason, statusCode: status});
+        }
+      );
+
+      it('stores invalid_access_token when a refresh 403 replaced a catalog 401', async () => {
+        const error = Object.assign(new Error('forbidden'), {
+          statusCode: 403,
+          catalogAuthStatus: 401,
+        });
+
+        sinon.stub(services, '_fetchNewServiceHostmap').rejects(error);
+
+        try {
+          await services.updateServices();
+          assert.fail('expected updateServices to reject');
+        } catch (rejected) {
+          assert.equal(rejected, error);
+          assert.equal(rejected.statusCode, 403);
+        }
+
+        assert.deepEqual(services._getCatalogAuthFailure(), {
+          status: 401,
+          reason: 'invalid_access_token',
+        });
+      });
+
+      it('stores invalid_access_token when a postauth update fails with InvalidGrantError', async () => {
+        const error = new grantErrors.InvalidGrantError({
+          body: {
+            error: 'invalid_grant',
+            error_description: 'The refresh token is invalid',
+          },
+        });
+
+        sinon.stub(services, '_fetchNewServiceHostmap').rejects(error);
+
+        try {
+          await services.updateServices();
+          assert.fail('expected updateServices to reject');
+        } catch (rejected) {
+          assert.equal(rejected, error);
+        }
+
+        assert.deepEqual(services._getCatalogAuthFailure(), {
+          status: 401,
+          reason: 'invalid_access_token',
+        });
+      });
+
+      it('stores invalid_access_token when a postauth update fails after the auth replay limit', async () => {
+        const error = new Error('Failed after 1 replay attempts');
+
+        sinon.stub(services, '_fetchNewServiceHostmap').rejects(error);
+
+        try {
+          await services.updateServices();
+          assert.fail('expected updateServices to reject');
+        } catch (rejected) {
+          assert.equal(rejected, error);
+        }
+
+        assert.deepEqual(services._getCatalogAuthFailure(), {
+          status: 401,
+          reason: 'invalid_access_token',
+        });
+      });
+
+      it('clears a stored auth failure when a postauth update fails with a statusless error', async () => {
+        const error = new Error('catalog failed');
+
+        recordAuthFailure(401);
+        sinon.stub(services, '_fetchNewServiceHostmap').rejects(error);
+
+        try {
+          await services.updateServices();
+          assert.fail('expected updateServices to reject');
+        } catch (rejected) {
+          assert.equal(rejected, error);
+        }
+
+        assert.isNull(services._getCatalogAuthFailure());
+        await rejectMissingService({
+          message: "services: service 'wcc-api-gateway' was not found in any of the catalogs",
+        });
+      });
+
+      it.each([
+        {status: 401, reason: 'invalid_access_token'},
+        {status: 403, reason: 'access_denied'},
+      ])(
+        'clears a stored $reason after a successful postauth update and reports a missing service as unknown',
+        async ({status}) => {
+          recordAuthFailure(status);
+          sinon.stub(services, '_fetchNewServiceHostmap').resolves(emptyHostmap);
+
+          await services.updateServices();
+
+          assert.isNull(services._getCatalogAuthFailure());
+          await rejectMissingService({
+            message: "services: service 'wcc-api-gateway' was not found in any of the catalogs",
+          });
+        }
+      );
+
+      it.each([
+        {label: 'preauth', args: {from: 'limited', query: {orgId: 'urn:EXAMPLE:org'}}},
+        {label: 'signin', args: {from: 'signin', query: {email: 'user@example.com'}}},
+      ])('leaves a postauth auth failure in place after a successful $label update', async ({args}) => {
+        recordAuthFailure(401);
+        sinon.stub(services, '_fetchNewServiceHostmap').resolves(emptyHostmap);
+
+        await services.updateServices(args);
+
+        assert.deepEqual(services._getCatalogAuthFailure(), {
+          status: 401,
+          reason: 'invalid_access_token',
+        });
       });
     });
 
@@ -1283,6 +1605,32 @@ describe('webex-core', () => {
     });
 
     describe('#isIntegrationEnvironment', () => {
+      it('uses the integration environment config when set, regardless of the u2c URL', () => {
+        services.webex.config = {
+          environment: 'integration',
+          services: {
+            discovery: {
+              u2c: 'https://u2c.svc.webex.com/u2c/api/v1',
+            },
+          },
+        };
+
+        assert.isTrue(services.isIntegrationEnvironment());
+      });
+
+      it('uses the production environment config when set, regardless of the u2c URL', () => {
+        services.webex.config = {
+          environment: 'production',
+          services: {
+            discovery: {
+              u2c: 'https://u2c-intb.ciscospark.com/u2c/api/v1',
+            },
+          },
+        };
+
+        assert.isFalse(services.isIntegrationEnvironment());
+      });
+
       it('returns true when u2c URL contains "intb"', () => {
         services.webex.config = {
           services: {
@@ -1298,7 +1646,7 @@ describe('webex-core', () => {
         services.webex.config = {
           services: {
             discovery: {
-              u2c: 'https://u2c.wbx2.com/u2c/api/v1',
+              u2c: 'https://u2c.svc.webex.com/u2c/api/v1',
             },
           },
         };
@@ -1363,7 +1711,7 @@ describe('webex-core', () => {
         services.webex.config = services.webex.config || {};
         services.webex.config.services = services.webex.config.services || {discovery: {}};
         services.webex.config.services.discovery.u2c =
-          services.webex.config.services.discovery.u2c || 'https://u2c.wbx2.com/u2c/api/v1';
+          services.webex.config.services.discovery.u2c || 'https://u2c.svc.webex.com/u2c/api/v1';
         services.webex.config.fedramp =
           typeof services.webex.config.fedramp === 'boolean'
             ? services.webex.config.fedramp
@@ -1385,7 +1733,7 @@ describe('webex-core', () => {
 
       it('stores selection metadata and env on cache write for preauth', async () => {
         // Arrange env
-        services.webex.config.services.discovery.u2c = 'https://u2c.wbx2.com/u2c/api/v1';
+        services.webex.config.services.discovery.u2c = 'https://u2c.svc.webex.com/u2c/api/v1';
         services.webex.config.fedramp = false;
 
         // Act
@@ -1401,7 +1749,7 @@ describe('webex-core', () => {
         const parsed = JSON.parse(raw as string);
         assert.deepEqual(parsed.env, {
           fedramp: false,
-          u2cDiscoveryUrl: 'https://u2c.wbx2.com/u2c/api/v1',
+          u2cDiscoveryUrl: 'https://u2c.svc.webex.com/u2c/api/v1',
         });
         assert.isObject(parsed.preauth);
         assert.deepEqual(parsed.preauth.meta, {
@@ -1412,7 +1760,7 @@ describe('webex-core', () => {
 
       it('warms preauth from cache when selection meta matches intended orgId', async () => {
         // Arrange current env and credentials
-        services.webex.config.services.discovery.u2c = 'https://u2c.wbx2.com/u2c/api/v1';
+        services.webex.config.services.discovery.u2c = 'https://u2c.svc.webex.com/u2c/api/v1';
         services.webex.config.fedramp = false;
         services.webex.credentials = {
           canAuthorize: true,
@@ -1423,7 +1771,7 @@ describe('webex-core', () => {
           CATALOG_CACHE_KEY_V2,
           JSON.stringify({
             cachedAt: Date.now(),
-            env: {fedramp: false, u2cDiscoveryUrl: 'https://u2c.wbx2.com/u2c/api/v1'},
+            env: {fedramp: false, u2cDiscoveryUrl: 'https://u2c.svc.webex.com/u2c/api/v1'},
             preauth: {
               hostMap: {services: [], timestamp: '1'},
               meta: {selectionType: 'orgId', selectionValue: 'urn:EXAMPLE:org'},
@@ -1447,13 +1795,13 @@ describe('webex-core', () => {
 
       it('does not warm preauth when selection meta is proximity mode', async () => {
         // Arrange env
-        services.webex.config.services.discovery.u2c = 'https://u2c.wbx2.com/u2c/api/v1';
+        services.webex.config.services.discovery.u2c = 'https://u2c.svc.webex.com/u2c/api/v1';
         services.webex.config.fedramp = false;
         window.localStorage.setItem(
           CATALOG_CACHE_KEY_V2,
           JSON.stringify({
             cachedAt: Date.now(),
-            env: {fedramp: false, u2cDiscoveryUrl: 'https://u2c.wbx2.com/u2c/api/v1'},
+            env: {fedramp: false, u2cDiscoveryUrl: 'https://u2c.svc.webex.com/u2c/api/v1'},
             preauth: {
               hostMap: {services: [], timestamp: '1'},
               meta: {selectionType: 'mode', selectionValue: 'DEFAULT_BY_PROXIMITY'},
@@ -1476,7 +1824,7 @@ describe('webex-core', () => {
 
       it('does not warm preauth when selection meta mismatches intended selection', async () => {
         // Arrange env and credentials
-        services.webex.config.services.discovery.u2c = 'https://u2c.wbx2.com/u2c/api/v1';
+        services.webex.config.services.discovery.u2c = 'https://u2c.svc.webex.com/u2c/api/v1';
         services.webex.config.fedramp = false;
         services.webex.credentials = {
           canAuthorize: true,
@@ -1486,7 +1834,7 @@ describe('webex-core', () => {
           CATALOG_CACHE_KEY_V2,
           JSON.stringify({
             cachedAt: Date.now(),
-            env: {fedramp: false, u2cDiscoveryUrl: 'https://u2c.wbx2.com/u2c/api/v1'},
+            env: {fedramp: false, u2cDiscoveryUrl: 'https://u2c.svc.webex.com/u2c/api/v1'},
             preauth: {
               hostMap: {services: [], timestamp: '1'},
               meta: {selectionType: 'orgId', selectionValue: 'urn:DIFF:org'},

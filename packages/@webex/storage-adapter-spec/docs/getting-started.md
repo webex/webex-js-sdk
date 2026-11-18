@@ -34,7 +34,7 @@ running a *consumer's* tests — and only one of them actually runs it under Nod
 Dependencies are resolved for the whole workspace, not per package:
 
 ```bash
-yarn install
+yarn
 ```
 
 Run it from the workspace root. This package's `@webex/*` dependencies resolve to workspace siblings.

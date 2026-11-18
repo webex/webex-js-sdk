@@ -32,7 +32,7 @@ directory.
 ## Install
 
 ```bash
-yarn install
+yarn
 ```
 
 Run it once from the workspace root. It installs this package's dependencies together with the
@@ -109,7 +109,7 @@ Mocha and Karma, through `@webex/legacy-tools`.
 
 ## First-run verification
 
-1. Run `yarn install` from the workspace root.
+1. Run `yarn` from the workspace root.
 2. Run `yarn workspace @webex/helper-image build` and confirm `dist/` is produced.
 3. Run `yarn workspace @webex/helper-image test:unit`.
 

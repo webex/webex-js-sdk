@@ -209,6 +209,11 @@ export const CC_EVENTS = {
   ...CC_TASK_EVENTS,
 } as const;
 
+/** Public Contact Center browser voice event names. */
+export enum VOICE_CONNECTION_EVENTS {
+  STATE_CHANGE = 'voice:connectionStateChange',
+}
+
 /**
  * Event data received when agent connects to the system
  * @public
