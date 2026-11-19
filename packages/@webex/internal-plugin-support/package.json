@@ -38,7 +38,8 @@
     "test:browser": "webex-legacy-tools test --integration --runner karma",
     "test:integratio:broken": "webex-legacy-tools test --integration --runner mocha",
     "test:style": "eslint ./src/**/*.*",
-    "test:unit": "webex-legacy-tools test --unit --runner jest"
+    "test:unit": "webex-legacy-tools test --unit --runner jest",
+    "test:integration": "webex-legacy-tools test --integration --runner mocha"
   },
   "devDependencies": {
     "@babel/core": "^7.17.10",
