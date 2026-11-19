@@ -538,8 +538,14 @@ describe('plugin-meetings', () => {
           TriggerProxy.trigger.restore();
           const e2ee = new EventEmitter();
 
-          e2ee.state = 'joined';
+          e2ee.state = 'disabled';
           e2ee.hasUntrustedMediaServices = false;
+          e2ee.start = sinon.stub().callsFake(() => {
+            e2ee.state = 'initializing';
+            e2ee.emit(EVENT_TRIGGERS.MEETING_E2EE_STATE_CHANGED, {state: 'initializing'});
+
+            return Promise.resolve();
+          });
           const meetingWithE2ee = new Meeting(
             {
               userId: uuid1,
@@ -556,7 +562,6 @@ describe('plugin-meetings', () => {
           );
           const listener = sinon.spy();
 
-          meetingWithE2ee.joinedWith = {state: 'JOINED'};
           assert.equal(EVENT_TRIGGERS.MEETING_TRUST_STATE_CHANGED, 'meeting:trustStateChanged');
           meetingWithE2ee.on(EVENT_TRIGGERS.MEETING_TRUST_STATE_CHANGED, listener);
           meetingWithE2ee.locusInfo.info = {isV2E2EEncrypted: true};
@@ -566,17 +571,26 @@ describe('plugin-meetings', () => {
             {isInitializing: false}
           );
 
-          assert.equal(meetingWithE2ee.trustState, 'zeroTrust');
-          assert.deepEqual(listener.args, [[{trustState: 'zeroTrust'}]]);
+          assert.isUndefined(meetingWithE2ee.trustState);
+          assert.notCalled(listener);
 
-          e2ee.state = 'joining';
-          e2ee.emit(EVENT_TRIGGERS.MEETING_E2EE_STATE_CHANGED, {state: 'joining'});
+          meetingWithE2ee.joinedWith = {state: 'JOINED'};
+          meetingWithE2ee.locusInfo.emitScoped({}, EVENTS.LOCUS_INFO_UPDATE_SELF, {
+            oldSelf: {joinedWith: {url: uuid3, state: 'NOT_JOINED'}},
+            newSelf: {joinedWith: {url: uuid3, state: 'JOINED'}},
+          });
 
           assert.equal(meetingWithE2ee.trustState, 'calculating');
-          assert.calledTwice(listener);
-          assert.calledWithExactly(listener.secondCall, {trustState: 'calculating'});
+          assert.calledOnce(listener);
+          assert.calledWithExactly(listener.firstCall, {trustState: 'calculating'});
 
           e2ee.state = 'joined';
+          e2ee.emit(EVENT_TRIGGERS.MEETING_E2EE_STATE_CHANGED, {state: 'joined'});
+
+          assert.equal(meetingWithE2ee.trustState, 'zeroTrust');
+          assert.calledTwice(listener);
+          assert.calledWithExactly(listener.secondCall, {trustState: 'zeroTrust'});
+
           e2ee.hasUntrustedMediaServices = true;
           e2ee.emit(EVENT_TRIGGERS.MEETING_E2EE_MEDIA_SERVICES_CHANGED, {hasMediaServices: true});
 
