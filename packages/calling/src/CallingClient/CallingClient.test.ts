@@ -61,6 +61,7 @@ import {ICall} from './calling/types';
 import {ServiceHost} from '../SDKConnector/types';
 import {METHOD_START_MESSAGE} from '../common/constants';
 import {METRIC_EVENT, CONNECTION_ACTION, METRIC_TYPE} from '../Metrics/types';
+import {getMetricManager} from '../Metrics';
 import windowsChromiumIceWarmup from './windowsChromiumIceWarmupUtils';
 import {APIRequest} from './utils/request';
 
@@ -540,6 +541,130 @@ describe('CallingClient Tests', () => {
         'https://mobius-eu-central-1.prod.infra.webex.com/api/v1'
       );
       expect(callingClient.primaryMobiusUris).toEqual([primaryUrl]);
+    });
+
+    const regionDiscoveryCases = [
+      {
+        name: 'uses the region and country pair when both are present',
+        regionFields: {clientRegion: 'US-EAST', countryCode: 'US', regionCode: 'EU-CENTRAL'},
+        expectedQuery: '?regionCode=US-EAST&countryCode=US',
+      },
+      {
+        name: 'uses regionCode as the region when clientRegion is absent',
+        regionFields: {clientRegion: undefined, countryCode: 'US', regionCode: 'EU-CENTRAL'},
+        expectedQuery: '?regionCode=EU-CENTRAL&countryCode=US',
+      },
+      {
+        name: 'defaults to the catalog when country is absent even though regionCode is present',
+        regionFields: {clientRegion: undefined, countryCode: undefined, regionCode: 'EU-CENTRAL'},
+        expectedQuery: undefined,
+      },
+      {
+        name: 'defaults to the catalog when only country is absent',
+        regionFields: {clientRegion: 'US-EAST', countryCode: undefined, regionCode: 'EU-CENTRAL'},
+        expectedQuery: undefined,
+      },
+      {
+        name: 'defaults to the catalog when none of the region fields are present',
+        regionFields: {clientRegion: undefined, countryCode: undefined, regionCode: undefined},
+        expectedQuery: undefined,
+      },
+    ];
+
+    it.each(regionDiscoveryCases)(
+      'region discovery $name',
+      async ({regionFields, expectedQuery}) => {
+        webex.request.mockResolvedValueOnce({
+          statusCode: 200,
+          body: {...regionBody, ...regionFields},
+        });
+
+        /* Only queue a discovery response when the region fields are good enough to query
+         * for one; an unconsumed `once` response would leak into the next test.
+         */
+        if (expectedQuery) {
+          webex.request.mockResolvedValueOnce(discoveryPayload);
+        }
+
+        callingClient = await createClient(webex, {logger: {level: LOGGER.INFO}});
+
+        if (expectedQuery) {
+          expect(webex.request).toBeCalledTimes(2);
+          expect(webex.request).nthCalledWith(2, {
+            method: 'GET',
+            ...getMockRequestTemplate(),
+            uri: `${callingClient['mobiusHost']}${URL_ENDPOINT}${expectedQuery}`,
+          });
+          expect(callingClient.primaryMobiusUris).toEqual([primaryUrl]);
+          expect(handleErrorSpy).not.toBeCalled();
+        } else {
+          expect(webex.request).toBeCalledTimes(1);
+          expect(callingClient.primaryMobiusUris).toEqual([
+            `${callingClient['mobiusHost']}${URL_ENDPOINT}`,
+          ]);
+          expect(warnSpy).toBeCalledWith(
+            `Couldn't resolve the region and country code. Defaulting to the catalog entries to discover mobius servers`,
+            expect.objectContaining({
+              file: CALLING_CLIENT_FILE,
+              method: 'getMobiusServers',
+            })
+          );
+        }
+      }
+    );
+
+    it('resolves regionCode as the client region in logs and metrics when clientRegion is absent', async () => {
+      const submitRegionInfoMetricSpy = jest.spyOn(
+        getMetricManager(webex, defaultServiceIndicator),
+        'submitRegionInfoMetric'
+      );
+
+      webex.request
+        .mockResolvedValueOnce({
+          statusCode: 200,
+          body: {
+            ...regionBody,
+            clientRegion: undefined,
+            countryCode: 'US',
+            regionCode: 'EU-CENTRAL',
+          },
+        })
+        .mockResolvedValueOnce(discoveryPayload);
+
+      callingClient = await createClient(webex, {logger: {level: LOGGER.INFO}});
+
+      expect(logSpy).toBeCalledWith(
+        expect.stringContaining(
+          'Successfully fetched Client region info: EU-CENTRAL, countryCode: US'
+        ),
+        {
+          file: CALLING_CLIENT_FILE,
+          method: 'getClientRegionInfo',
+        }
+      );
+      expect(logSpy).toBeCalledWith(
+        'Found Region: EU-CENTRAL and country: US, going to fetch Mobius server',
+        {
+          file: CALLING_CLIENT_FILE,
+          method: 'getMobiusServers',
+        }
+      );
+
+      /* The metric reports the raw response fields, so regionCode stays distinguishable
+       * from a genuinely reported clientRegion.
+       */
+      expect(submitRegionInfoMetricSpy).toBeCalledWith(
+        expect.anything(),
+        expect.anything(),
+        expect.anything(),
+        expect.anything(),
+        undefined,
+        'US',
+        expect.anything(),
+        'EU-CENTRAL'
+      );
+
+      submitRegionInfoMetricSpy.mockRestore();
     });
   });
 

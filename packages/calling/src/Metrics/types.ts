@@ -157,7 +157,8 @@ export interface IMetricManager {
     mobiusHost: string,
     clientRegion: string,
     countryCode: string,
-    trackingId: string
+    trackingId: string,
+    regionCode?: string
   ) => void;
 
   submitMobiusServersMetric: (

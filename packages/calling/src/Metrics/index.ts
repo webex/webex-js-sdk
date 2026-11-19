@@ -132,8 +132,12 @@ class MetricManager implements IMetricManager {
    * @param name - Name of the metric being submitted.
    * @param metricAction - Type of action sent in the metric.
    * @param type - Type of metric.
-   * @param region - Region string.
+   * @param mobiusHost - Mobius host queried for discovery.
+   * @param clientRegion - Client region string reported by region discovery.
+   * @param countryCode - Country code string reported by region discovery.
    * @param trackingId - Tracking ID string.
+   * @param regionCode - Region code string reported by region discovery, used for discovery when
+   * clientRegion and countryCode are both absent.
    */
   public submitRegionInfoMetric(
     name: METRIC_EVENT,
@@ -142,7 +146,8 @@ class MetricManager implements IMetricManager {
     mobiusHost: string,
     clientRegion: string,
     countryCode: string,
-    trackingId?: string
+    trackingId?: string,
+    regionCode?: string
   ) {
     const data = {
       tags: {
@@ -157,6 +162,7 @@ class MetricManager implements IMetricManager {
         mobius_host: mobiusHost,
         client_region: clientRegion,
         country_code: countryCode,
+        region_code: regionCode,
         tracking_id: trackingId,
       },
       type,
