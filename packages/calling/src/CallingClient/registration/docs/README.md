@@ -621,6 +621,9 @@ flowchart TD
 
 ### 429 retry
 
+The keepalive worker error handoff and shared registration error handler accept `retry-after`
+and `Retry-After`, with the lowercase value taking precedence.
+
 When Mobius responds with HTTP 429, the `handle429Retry` callback routes to one of three distinct
 paths depending on the caller context:
 
