@@ -8,6 +8,7 @@ import E2eeController from '@webex/plugin-meetings/src/e2ee/E2eeController';
 import MLS from '@webex/plugin-meetings/src/e2ee/mls';
 import * as MLSModule from '@webex/plugin-meetings/src/e2ee/mls';
 import E2eeSignaling from '@webex/plugin-meetings/src/e2ee/E2eeSignaling';
+import MeetingsUtil from '@webex/plugin-meetings/src/meetings/util';
 import WasmLoader from '@webex/plugin-meetings/src/common/wasm-loader';
 import LoggerProxy from '@webex/plugin-meetings/src/common/logs/logger-proxy';
 import {EVENT_TRIGGERS} from '@webex/plugin-meetings/src/constants';
@@ -160,6 +161,10 @@ describe('plugin-meetings', () => {
         {
           when: 'E2EE is disabled in config',
           setup: () => (webex.config.meetings.enableE2ee = false),
+        },
+        {
+          when: 'WebAssembly is unsupported',
+          setup: () => sinon.stub(MeetingsUtil, 'isE2eeEnabledAndSupported').returns(false),
         },
         {
           when: 'the meeting is not V2 E2E encrypted',
