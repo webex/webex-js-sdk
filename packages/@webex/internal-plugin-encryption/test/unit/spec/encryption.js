@@ -3,6 +3,7 @@
  */
 /* eslint-disable no-underscore-dangle */
 import Url from 'url';
+import {EventEmitter} from 'events';
 
 import {assert} from '@webex/test-helper-chai';
 import MockWebex from '@webex/test-helper-mock-webex';
@@ -18,6 +19,145 @@ describe('internal-plugin-encryption', () => {
         children: {
           encryption: Encryption,
         },
+      });
+    });
+
+    describe('file download headers', () => {
+      const fileUrl = 'https://example.com/encrypted-file';
+      const downloadUrl = 'https://storage.example.com/encrypted-file';
+      const headers = Object.freeze({Authorization: 'Bearer download-token', 'X-File-Version': '1'});
+      const scr = {};
+      const encryptedBytes = Buffer.from('encrypted file');
+      const decryptedBytes = Buffer.from('decrypted file');
+      let request;
+      let decryptBinary;
+      let downloadEvents;
+
+      beforeEach(() => {
+        downloadEvents = new EventEmitter();
+        request = sinon.stub(webex.internal.encryption, 'request').callsFake((options) => {
+          if (options.method === 'POST') {
+            return Promise.resolve({body: {endpoints: {[fileUrl]: downloadUrl}}});
+          }
+
+          options.download = downloadEvents;
+
+          return Promise.resolve({body: encryptedBytes});
+        });
+        decryptBinary = sinon.stub(webex.internal.encryption, 'decryptBinary').resolves(decryptedBytes);
+      });
+
+      afterEach(() => {
+        sinon.restore();
+      });
+
+      ['Authorization', 'authorization', 'AUTHORIZATION', 'aUtHoRiZaTiOn'].forEach((headerName) => {
+        it(`should allow ${headerName} and ignore other supplied download headers`, async () => {
+          const inputHeaders = Object.freeze({[headerName]: 'Bearer download-token', 'X-File-Version': '1'});
+          request.callsFake((options) => {
+            options.headers['X-Request-Id'] = 'request-id';
+            options.download = downloadEvents;
+
+            return Promise.resolve({body: encryptedBytes});
+          });
+
+          const result = await webex.internal.encryption.download(fileUrl, scr, {
+            useFileService: false,
+            headers: inputHeaders,
+          });
+
+          assert.calledOnceWithExactly(request, {
+            method: 'GET',
+            uri: fileUrl,
+            responseType: 'buffer',
+            headers: {authorization: 'Bearer download-token', 'X-Request-Id': 'request-id'},
+            download: downloadEvents,
+          });
+          assert.calledOnceWithExactly(decryptBinary, scr, encryptedBytes);
+          assert.strictEqual(result, decryptedBytes);
+          assert.notProperty(inputHeaders, 'X-Request-Id');
+        });
+      });
+
+      it('should send custom headers only to the resolved file download URL', async () => {
+        await webex.internal.encryption.download(fileUrl, scr, {
+          useFileService: true,
+          headers,
+        });
+
+        assert.calledTwice(request);
+        assert.deepEqual(request.firstCall.args, [{
+          method: 'POST',
+          uri: 'https://example.com/v1/download/endpoints',
+          body: {endpoints: [fileUrl]},
+        }]);
+        assert.deepEqual(request.secondCall.args, [{
+          method: 'GET',
+          uri: downloadUrl,
+          responseType: 'buffer',
+          headers: {authorization: 'Bearer download-token'},
+          download: downloadEvents,
+        }]);
+        assert.calledOnceWithExactly(decryptBinary, scr, encryptedBytes);
+      });
+
+      it('should ignore supplied headers when none are allowed', async () => {
+        await webex.internal.encryption.download(fileUrl, scr, {
+          useFileService: false,
+          headers: {'X-Api-Key': 'test-value', Cookie: 'test-cookie'},
+        });
+
+        assert.calledOnceWithExactly(request, {
+          method: 'GET',
+          uri: fileUrl,
+          responseType: 'buffer',
+          headers: {},
+          download: downloadEvents,
+        });
+      });
+
+      it('should download a presigned URL without custom headers', async () => {
+        const result = await webex.internal.encryption.download(fileUrl, scr);
+
+        assert.deepEqual(request.secondCall.args, [{
+          method: 'GET',
+          uri: downloadUrl,
+          responseType: 'buffer',
+          headers: {},
+          download: downloadEvents,
+        }]);
+        assert.strictEqual(result, decryptedBytes);
+      });
+
+      it('should reject direct HTTP URLs before sending headers', async () => {
+        await assert.isRejected(
+          webex.internal.encryption.download('http://example.com/encrypted-file', scr, {
+            useFileService: false,
+            headers,
+          }),
+          'Direct file URLs must use HTTPS'
+        );
+
+        assert.notCalled(request);
+        assert.notCalled(decryptBinary);
+      });
+
+      [401, 403].forEach((statusCode) => {
+        it(`should propagate a ${statusCode} download failure without decrypting`, async () => {
+          const error = Object.assign(new Error('Artifact access denied'), {statusCode});
+          request.callsFake((options) => {
+            options.download = downloadEvents;
+
+            return Promise.reject(error);
+          });
+
+          const result = await assert.isRejected(
+            webex.internal.encryption.download(fileUrl, scr, {useFileService: false, headers})
+          );
+
+          assert.strictEqual(result, error);
+          assert.notCalled(decryptBinary);
+        });
       });
     });
 
