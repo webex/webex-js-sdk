@@ -184,14 +184,36 @@ const validatePublicCertificate = ([certificate], {e: publicExponent, n: modulus
  * @returns {Promise} rejects if unable to validate the certificates
  */
 const validateCertificatesSignature = (certificates, caroots = []) => {
+  const [leaf, ...issuers] = certificates;
+  const leafTBS = Buffer.from(leaf.tbsView);
+  const isLeaf = (certificate) => leafTBS.equals(Buffer.from(certificate.tbsView));
+  const trustedCerts = caroots.map(decodeCert);
+  const trustedSelfIssued =
+    leaf.subject.isEqual(leaf.issuer) &&
+    trustedCerts.some((certificate) =>
+      Buffer.from(leaf.toSchema().toBER(false)).equals(
+        Buffer.from(certificate.toSchema().toBER(false))
+      )
+    );
+
+  // PKI.js removes TBS duplicates before selecting its last certificate as the leaf.
+  // Isolate an explicitly trusted self-issued leaf; otherwise keep only the original leaf last.
   const certificateEngine = new CertificateChainValidationEngine({
-    trustedCerts: caroots.map(decodeCert),
-    certs: certificates,
+    trustedCerts: trustedSelfIssued
+      ? [leaf]
+      : trustedCerts.filter((certificate) => !isLeaf(certificate)),
+    certs: trustedSelfIssued
+      ? [leaf]
+      : [...issuers.filter((certificate) => !isLeaf(certificate)), leaf],
   });
 
-  return certificateEngine.verify().then(({result, resultCode, resultMessage}) => {
+  return certificateEngine.verify().then(({result, resultCode, resultMessage, certificatePath}) => {
     if (!result) {
       throwError(`Certificate Validation failed [${resultCode}]: ${resultMessage}`);
+    }
+
+    if (certificatePath?.[0] !== leaf) {
+      throwError('validated certificate path does not start with the KMS identity certificate');
     }
   });
 };
