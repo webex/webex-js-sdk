@@ -599,7 +599,7 @@ describe('plugin-meetings', () => {
           assert.calledWithExactly(listener.thirdCall, {trustState: 'strong'});
         });
 
-        it('returns undefined for the E2EE trust state when the local device is not joined', () => {
+        it('is undefined until this device joins, then calculating while MLS is not joined', () => {
           const e2ee = new EventEmitter();
 
           e2ee.state = 'joining';
