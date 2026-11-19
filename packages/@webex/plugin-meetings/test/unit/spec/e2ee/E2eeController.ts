@@ -369,6 +369,23 @@ describe('plugin-meetings', () => {
         });
       });
 
+      it('defers fatal event cleanup until an MLS callback returns during initialization', async () => {
+        initializeStub.callsFake(() => {
+          emitSession('joinFailure', {reason: 'join_failure'});
+          assert.notCalled(leaveStub);
+          assert.notCalled(events.failure);
+
+          return Promise.resolve();
+        });
+
+        await e2ee.start();
+
+        assert.calledOnce(leaveStub);
+        assert.notCalled(joinStub);
+        assert.equal(e2ee.state, 'failed');
+        assert.calledOnceWithExactly(events.failure, {reason: 'join_failure'});
+      });
+
       [
         {
           when: 'the credentials cannot be fetched',
@@ -518,11 +535,12 @@ describe('plugin-meetings', () => {
         },
         {event: 'evicted', payload: undefined, state: 'evicted', reason: 'evicted', details: {}},
       ].forEach(({event, payload, state, reason, details}) => {
-        it(`tears down the session, moves to ${state} and reports a failure on ${event}`, () => {
+        it(`tears down the session, moves to ${state} and reports a failure on ${event}`, async () => {
           emitSession('joinSuccess', {securityCode: 'SEC-1'});
           resetEventSpies();
 
           emitSession(event, payload);
+          await Promise.resolve();
 
           assertSessionTornDown();
           assert.equal(e2ee.state, state);
@@ -542,6 +560,7 @@ describe('plugin-meetings', () => {
           const failedSession = initializeStub.firstCall.thisValue;
 
           emitSession(event, payload);
+          await Promise.resolve();
           resetEventSpies();
 
           await e2ee.start();

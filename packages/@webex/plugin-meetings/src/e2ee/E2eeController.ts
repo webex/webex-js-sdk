@@ -286,14 +286,37 @@ export default class E2eeController extends TypedEventsScope<E2eeControllerEvent
       this.updateFromRoster();
     });
 
-    subscribe('joinFailure', ({reason}) => this.handleFatal('failed', reason));
+    subscribe('joinFailure', ({reason}) => this.deferFatal(session, 'failed', reason));
     subscribe('mediaEncryptionServiceFailure', ({errorCode, message}) =>
-      this.handleFatal('failed', 'mediaEncryptionServiceFailure', {
+      this.deferFatal(session, 'failed', 'mediaEncryptionServiceFailure', {
         errorCode,
         errorMessage: message,
       })
     );
-    subscribe('evicted', () => this.handleFatal('evicted', 'evicted'));
+    subscribe('evicted', () => this.deferFatal(session, 'evicted', 'evicted'));
+  }
+
+  /**
+   * Defers teardown until the WASM callback that emitted the event has returned.
+   * @param {MLS} session
+   * @param {'failed'|'evicted'} state
+   * @param {string} reason
+   * @param {Object} [details]
+   * @returns {void}
+   */
+  private deferFatal(
+    session: MLS,
+    state: 'failed' | 'evicted',
+    reason: string,
+    details: {errorCode?: number; errorMessage?: string} = {}
+  ): void {
+    Promise.resolve().then(() => {
+      if (this.mlsSession !== session) {
+        return;
+      }
+
+      this.handleFatal(state, reason, details);
+    });
   }
 
   /**
@@ -339,6 +362,7 @@ export default class E2eeController extends TypedEventsScope<E2eeControllerEvent
     reason: string,
     details: {errorCode?: number; errorMessage?: string} = {}
   ): void {
+    this.startAttempt += 1;
     LoggerProxy.logger.error(
       `e2ee: E2eeController --> fatal E2EE error: state=${state} reason=${reason} details=`,
       details
