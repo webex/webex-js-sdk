@@ -127,7 +127,7 @@ describe('plugin-meetings', () => {
       createController = () =>
         new E2eeController({
           context: {
-            correlationId: meeting.correlationId,
+            getCorrelationId: () => meeting.correlationId,
             getLocusInfo: () => meeting.locusInfo,
             getLlmChannel,
             members: meeting.members,

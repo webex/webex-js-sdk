@@ -84,7 +84,6 @@ export default class E2eeController extends TypedEventsScope<E2eeControllerEvent
     this.wasmLoader = wasmLoader;
     this.wasmUrl = wasmUrl;
     this.identityProvider = identityProvider;
-
   }
 
   /**
@@ -206,7 +205,7 @@ export default class E2eeController extends TypedEventsScope<E2eeControllerEvent
           participantId: device.userId,
           deviceUrl: device.url,
           deviceType: this.webex.config.meetings.deviceType,
-          correlationId: this.context.correlationId,
+          correlationId: this.context.getCorrelationId(),
           displayName: this.getSelfDisplayName(),
           serviceUrl: mediaEncryptionGroupUrl,
           credentials,
@@ -345,7 +344,7 @@ export default class E2eeController extends TypedEventsScope<E2eeControllerEvent
       details
     );
     Metrics.sendBehavioralMetric(BEHAVIORAL_METRICS.E2EE_FAILURE, {
-      correlation_id: this.context.correlationId,
+      correlation_id: this.context.getCorrelationId(),
       state,
       reason,
       ...details,

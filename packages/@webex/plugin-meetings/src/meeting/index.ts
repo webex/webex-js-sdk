@@ -1160,7 +1160,7 @@ export default class Meeting extends StatelessWebexPlugin {
     this.roap = new Roap({}, {parent: this.webex});
 
     const e2eeContext: E2eeMeetingContext = {
-      correlationId: this.correlationId,
+      getCorrelationId: () => this.correlationId,
       getLocusInfo: (): E2eeLocusInfo | undefined => this.locusInfo,
       getLlmChannel: () => this.llmChannel,
       members: this.members,

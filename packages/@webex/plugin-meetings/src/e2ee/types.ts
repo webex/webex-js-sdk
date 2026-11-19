@@ -14,7 +14,7 @@ export type E2eeLocusInfo = Pick<LocusDTO, 'url' | 'info'>;
 
 /** Per-meeting context supplied by Meetings without exposing its Meeting class to E2EE. */
 export interface E2eeMeetingContext {
-  correlationId: string;
+  getCorrelationId(): string;
   getLocusInfo(): E2eeLocusInfo | undefined;
   getLlmChannel(): LLMChannel | undefined;
   members: Members;
