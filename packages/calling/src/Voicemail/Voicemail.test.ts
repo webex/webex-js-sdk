@@ -324,9 +324,7 @@ describe('Voicemail Client tests', () => {
           expect.anything()
         );
         expect(logSpy).toHaveBeenCalledWith(
-          expect.stringContaining(
-            'Successfully marked voicemail as unread: messageId=[REDACTED]'
-          ),
+          expect.stringContaining('Successfully marked voicemail as unread: messageId=[REDACTED]'),
           expect.objectContaining({
             file: 'VoicemailClient',
             method: METHODS.VOICEMAIL_MARK_AS_UNREAD,
@@ -504,9 +502,7 @@ describe('Voicemail Client tests', () => {
           expect.anything()
         );
         expect(logSpy).toHaveBeenCalledWith(
-          expect.stringContaining(
-            'Successfully marked voicemail as unread: messageId=[REDACTED]'
-          ),
+          expect.stringContaining('Successfully marked voicemail as unread: messageId=[REDACTED]'),
           expect.objectContaining({
             file: 'VoicemailClient',
             method: METHODS.VOICEMAIL_MARK_AS_UNREAD,
