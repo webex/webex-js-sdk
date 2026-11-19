@@ -56,7 +56,12 @@ const fetchAccessToken = async (
   password: string,
   tokenPortalUrl: string
 ): Promise<string> => {
-  const context = await browser.newContext({ignoreHTTPSErrors: true});
+  // Test-only: TLS verification bypass required only when the OAuth portal
+  // presents a self-signed certificate. Controlled via PW_IGNORE_HTTPS_ERRORS
+  // env var so the bypass is never a hardcoded source-code default.
+  const context = await browser.newContext({
+    ignoreHTTPSErrors: process.env.PW_IGNORE_HTTPS_ERRORS === 'true',
+  });
   const page = await context.newPage();
 
   // Build a regex to match the portal's domain for post-login redirect

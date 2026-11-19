@@ -202,14 +202,14 @@ export class Voicemail extends Eventing<VoicemailEventTypes> implements IVoicema
       method: METHODS.GET_VOICEMAIL_CONTENT,
     };
 
-    log.info(`${METHOD_START_MESSAGE} with: messageId=${messageId}`, loggerContext);
+    log.info(`${METHOD_START_MESSAGE} with: messageId=[REDACTED]`, loggerContext);
 
     const response = await this.backendConnector.getVoicemailContent(messageId);
 
     this.submitMetric(response, VOICEMAIL_ACTION.GET_VOICEMAIL_CONTENT, messageId);
 
     log.log(
-      `Successfully retrieved voicemail content for messageId=${messageId}, statusCode=${response.statusCode}`,
+      `Successfully retrieved voicemail content for messageId=[REDACTED], statusCode=${response.statusCode}`,
       loggerContext
     );
 
@@ -254,14 +254,14 @@ export class Voicemail extends Eventing<VoicemailEventTypes> implements IVoicema
       method: METHODS.VOICEMAIL_MARK_AS_READ,
     };
 
-    log.info(`${METHOD_START_MESSAGE} with: messageId=${messageId}`, loggerContext);
+    log.info(`${METHOD_START_MESSAGE} with: messageId=[REDACTED]`, loggerContext);
 
     const response = await this.backendConnector.voicemailMarkAsRead(messageId);
 
     this.submitMetric(response, VOICEMAIL_ACTION.MARK_READ, messageId);
 
     log.log(
-      `Successfully marked voicemail as read: messageId=${messageId}, statusCode=${response.statusCode}`,
+      `Successfully marked voicemail as read: messageId=[REDACTED], statusCode=${response.statusCode}`,
       loggerContext
     );
 
@@ -279,14 +279,14 @@ export class Voicemail extends Eventing<VoicemailEventTypes> implements IVoicema
       method: METHODS.VOICEMAIL_MARK_AS_UNREAD,
     };
 
-    log.info(`${METHOD_START_MESSAGE} with: messageId=${messageId}`, loggerContext);
+    log.info(`${METHOD_START_MESSAGE} with: messageId=[REDACTED]`, loggerContext);
 
     const response = await this.backendConnector.voicemailMarkAsUnread(messageId);
 
     this.submitMetric(response, VOICEMAIL_ACTION.MARK_UNREAD, messageId);
 
     log.log(
-      `Successfully marked voicemail as unread: messageId=${messageId}, statusCode=${response.statusCode}`,
+      `Successfully marked voicemail as unread: messageId=[REDACTED], statusCode=${response.statusCode}`,
       loggerContext
     );
 
@@ -304,14 +304,14 @@ export class Voicemail extends Eventing<VoicemailEventTypes> implements IVoicema
       method: METHODS.DELETE_VOICEMAIL,
     };
 
-    log.info(`${METHOD_START_MESSAGE} with: messageId=${messageId}`, loggerContext);
+    log.info(`${METHOD_START_MESSAGE} with: messageId=[REDACTED]`, loggerContext);
 
     const response = await this.backendConnector.deleteVoicemail(messageId);
 
     this.submitMetric(response, VOICEMAIL_ACTION.DELETE, messageId);
 
     log.log(
-      `Successfully deleted voicemail: messageId=${messageId}, statusCode=${response.statusCode}`,
+      `Successfully deleted voicemail: messageId=[REDACTED], statusCode=${response.statusCode}`,
       loggerContext
     );
 
@@ -329,7 +329,7 @@ export class Voicemail extends Eventing<VoicemailEventTypes> implements IVoicema
       method: METHODS.GET_VM_TRANSCRIPT,
     };
 
-    log.info(`${METHOD_START_MESSAGE} with: messageId=${messageId}`, loggerContext);
+    log.info(`${METHOD_START_MESSAGE} with: messageId=[REDACTED]`, loggerContext);
 
     const response = await this.backendConnector.getVMTranscript(messageId);
 
@@ -337,7 +337,7 @@ export class Voicemail extends Eventing<VoicemailEventTypes> implements IVoicema
       this.submitMetric(response, VOICEMAIL_ACTION.TRANSCRIPT, messageId);
 
       log.log(
-        `Successfully retrieved voicemail transcript: messageId=${messageId}, statusCode=${response.statusCode}`,
+        `Successfully retrieved voicemail transcript: messageId=[REDACTED], statusCode=${response.statusCode}`,
         loggerContext
       );
     }

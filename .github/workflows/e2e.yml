@@ -12,7 +12,7 @@ run-name: ${{ github.actor }} is running E2E tests (${{ github.event_name }})
 #                                                      _INT_ variants; see packages/calling/playwright/test-data.ts)
 #
 # Triggers: manual and workflow_call. pull-request.yml calls this workflow for PRs that carry
-# the `test_e2e` label (the label is removed again on every new push, like `validated`).
+# the `test_e2e` label.
 
 on:
   workflow_call:
