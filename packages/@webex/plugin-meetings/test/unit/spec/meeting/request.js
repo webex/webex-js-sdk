@@ -15,6 +15,7 @@ describe('plugin-meetings', () => {
   let meetingsRequest;
   let locusDeltaRequestSpy;
   let webex;
+  let supportsWasmStub;
   const geoHintInfoDefaults = {
     countryCode: 'US',
     regionCode: 'WEST-COAST',
@@ -70,6 +71,8 @@ describe('plugin-meetings', () => {
 
   afterEach(() => {
     anonymizeIpSpy.restore();
+    supportsWasmStub?.restore();
+    supportsWasmStub = undefined;
   });
 
   const checkRequest = (expectedParams) => {
@@ -388,7 +391,7 @@ describe('plugin-meetings', () => {
 
       it('does not advertise E2EE when WebAssembly is unavailable', async () => {
         webex.meetings.config.enableE2ee = true;
-        const supportsWasmStub = sinon
+        supportsWasmStub = sinon
           .stub(WebCapabilities, 'supportsWasm')
           .returns(CapabilityState.NOT_CAPABLE);
 
@@ -397,7 +400,6 @@ describe('plugin-meetings', () => {
 
         assert.deepEqual(requestParams.body.deviceCapabilities, undefined);
         assert.equal(requestParams.body.supportsV2E2EEncryption, false);
-        supportsWasmStub.restore();
       });
 
       it('adds deviceCapabilities and locale to request when they are provided', async () => {
