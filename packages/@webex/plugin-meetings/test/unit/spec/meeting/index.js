@@ -3644,6 +3644,53 @@ describe('plugin-meetings', () => {
               }
             });
 
+            it('updates E2EE signaling after the LLM channel connects', async () => {
+              const llmChannelChanged = sinon.stub();
+              const mockChannel = createMockLLMChannel();
+
+              meeting.e2ee = {llmChannelChanged};
+              sinon.stub(meeting, 'isJoined').returns(true);
+              webex.internal.llm.createChannel = sinon.stub().returns(mockChannel);
+              meeting.updateLLMConnection.restore();
+
+              await meeting.updateLLMConnection();
+
+              assert.calledOnce(llmChannelChanged);
+              assert.strictEqual(meeting.llmChannel, mockChannel);
+            });
+
+            it('updates E2EE signaling when the LLM connection fails', async () => {
+              const llmChannelChanged = sinon.stub();
+              const mockChannel = createMockLLMChannel({
+                registerAndConnect: sinon.stub().rejects(new Error('connect failed')),
+              });
+
+              meeting.e2ee = {llmChannelChanged};
+              sinon.stub(meeting, 'isJoined').returns(true);
+              webex.internal.llm.createChannel = sinon.stub().returns(mockChannel);
+              meeting.updateLLMConnection.restore();
+
+              await assert.isRejected(meeting.updateLLMConnection(), 'connect failed');
+
+              assert.calledTwice(llmChannelChanged);
+              assert.isUndefined(meeting.llmChannel);
+            });
+
+            it('updates E2EE signaling when the LLM channel is cleaned up', async () => {
+              const llmChannelChanged = sinon.stub();
+              const mockChannel = createMockLLMChannel();
+
+              meeting.e2ee = {llmChannelChanged};
+              meeting.llmChannel = mockChannel;
+              meeting.annotation.deregisterEvents = sinon.stub();
+              meeting.clearLLMHealthCheckTimer = sinon.stub();
+
+              await meeting.cleanupLLMConneciton({preserveVoiceaChannel: true});
+
+              assert.calledOnce(llmChannelChanged);
+              assert.isUndefined(meeting.llmChannel);
+            });
+
             it('handles Locus LLM events', async () => {
               const locusInfoParseStub = sinon.stub(meeting.locusInfo, 'parse');
               sinon.stub(meeting, 'isJoined').returns(true);
