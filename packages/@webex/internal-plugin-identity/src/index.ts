@@ -16,4 +16,5 @@ export type {
   IdentityProvider,
   IdentityTrustAnchors,
   UserIdentityCredentialsInput,
+  UserIdentityRoots,
 } from './types';

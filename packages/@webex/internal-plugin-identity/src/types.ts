@@ -13,6 +13,12 @@ export interface UserIdentityCredentialsInput {
   certificateChainPem: string;
 }
 
+/** Customer CA certificates trusted to verify customer-provided member identity certificates. */
+export interface UserIdentityRoots {
+  /** One or more PEM-encoded CA certificates, concatenated when there are multiple roots. */
+  userIdentityRootsPem: string;
+}
+
 export interface IdentityTrustAnchors {
   webexCaRoots?: string;
   /** PEM-encoded domain-name trust anchors. */

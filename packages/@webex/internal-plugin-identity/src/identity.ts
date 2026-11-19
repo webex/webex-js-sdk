@@ -14,6 +14,7 @@ import type {
   IdentityCredentials,
   IdentityTrustAnchors,
   UserIdentityCredentialsInput,
+  UserIdentityRoots,
 } from './types';
 import {
   CERTIFICATE_RENEWAL_WINDOW_MS,
@@ -61,12 +62,18 @@ class Identity extends WebexPlugin {
   }
 
   /**
-   * Sets the PEM-encoded user identity CA roots used to verify member certificates.
-   * Pass multiple roots as concatenated PEM certificates. Pass an empty string to clear them.
-   * @param {string} userIdentityRoots
+   * Sets the customer CA certificates trusted to verify customer-provided member identity
+   * certificates. `userIdentityRootsPem` must contain one or more PEM-encoded CA certificates
+   * (each in a `-----BEGIN CERTIFICATE-----` block). Concatenate the PEM blocks when providing
+   * multiple roots. Pass an empty string to remove the configured customer roots.
+   *
+   * These roots are trust anchors for E2EE identity verification. They do not include the
+   * member's identity certificate or private key; provide those through the credentials API.
+   *
+   * @param {UserIdentityRoots} roots - Object containing the trusted customer CA certificates.
    */
-  public setUserIdentityRoots(userIdentityRoots: string): void {
-    this.userIdentityRoots = userIdentityRoots;
+  public setUserIdentityRoots(roots: UserIdentityRoots): void {
+    this.userIdentityRoots = roots.userIdentityRootsPem;
   }
 
   /**
