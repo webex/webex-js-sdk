@@ -21,6 +21,8 @@ import LoggerRequest from '../common/logs/request';
 import Trigger from '../common/events/trigger-proxy';
 import Media from '../media';
 import MeetingUtil from '../meeting/util';
+import WasmLoader from '../common/wasm-loader';
+import E2eeManager from '../e2ee/E2eeManager';
 import {
   MEETINGS,
   EVENTS,
@@ -210,6 +212,8 @@ export default class Meetings extends WebexPlugin {
   breakoutLocusForHandleLater: any;
   namespace = MEETINGS;
   registrationStatus: MeetingRegistrationStatus;
+  wasmLoader?: WasmLoader;
+  e2eeManager?: E2eeManager;
 
   /**
    * Emits a metric describing how well this browser runs WebAssembly, used to spot browsers
@@ -347,6 +351,9 @@ export default class Meetings extends WebexPlugin {
     this.media = {
       getUserMedia: Media.getUserMedia,
     };
+
+    // Shared runtime cache for WASM modules used by meetings.
+    this.wasmLoader = new WasmLoader();
 
     this.onReady();
   }
@@ -759,7 +766,14 @@ export default class Meetings extends WebexPlugin {
 
     // @ts-ignore
     this.webex.internal.mercury.on(ONLINE, () => {
-      this.syncMeetings({keepOnlyLocusMeetings: false});
+      // Fire-and-forget sync on socket recovery. Unlike the reconnection manager (which awaits and
+      // retries), nothing consumes this promise, so catch its rejection to avoid an unhandled
+      // promise rejection (a transient guest classic-sync failure would otherwise crash Node hosts).
+      this.syncMeetings({keepOnlyLocusMeetings: false}).catch((error) => {
+        LoggerProxy.logger.warn(
+          `Meetings:index#listenForEvents --> syncMeetings after ONLINE event failed: ${error}`
+        );
+      });
     });
 
     // @ts-ignore
@@ -800,6 +814,10 @@ export default class Meetings extends WebexPlugin {
 
       mediaLogger = new MediaLogger();
       setLogger(mediaLogger);
+
+      // Construct after READY because the manager uses the initialized webex client and config.
+      // @ts-ignore
+      this.e2eeManager = new E2eeManager({webex: this.webex, wasmLoader: this.wasmLoader});
 
       /**
        * The MeetingInfo object to interact with server
@@ -1118,6 +1136,13 @@ export default class Meetings extends WebexPlugin {
         );
         this.registered = true;
         Metrics.sendBehavioralMetric(BEHAVIORAL_METRICS.MEETINGS_REGISTRATION_SUCCESS);
+
+        // Preload is best-effort and must not delay or fail Meetings registration.
+        this.e2eeManager?.preload().catch((error) => {
+          LoggerProxy.logger.warn(
+            `Meetings:index#register --> E2EE preload failed: ${error?.message || error}`
+          );
+        });
       })
       .catch((error) => {
         LoggerProxy.logger.error(
@@ -1485,7 +1510,11 @@ export default class Meetings extends WebexPlugin {
    * @memberof Meetings
    */
   private destroy(meeting: Meeting, reason: object) {
-    MeetingUtil.cleanUp(meeting);
+    MeetingUtil.cleanUp(meeting, {preserveVoiceaChannel: false});
+
+    // Tear down hash tree parsers here (and not in MeetingUtil.cleanUp) so they survive
+    // leave/endMeetingForAll to consume the final sentinel END message from Locus.
+    meeting.locusInfo?.cleanUp();
     // keep some basic info about the deleted meeting forever
     this.deletedMeetings.set(meeting.id, {
       id: meeting.id,
@@ -1956,7 +1985,8 @@ export default class Meetings extends WebexPlugin {
   }
 
   /**
-   * Syncs all the meetings from server. Does nothing and returns immediately if unverified guest.
+   * Syncs all the meetings from server. For unverified guests it skips the getActiveMeetings() call
+   * (which Locus rejects for them) and instead resyncs each meeting individually via LocusInfo#sync.
    * @param {boolean} keepOnlyLocusMeetings - whether the sync should keep only locus meetings or any other meeting in meetingCollection
    * @returns {Promise<void>}
    * @public
@@ -1967,10 +1997,15 @@ export default class Meetings extends WebexPlugin {
     skipHashTreeSync = false,
   } = {}): Promise<void> {
     // @ts-ignore
-    if (this.webex.credentials.isUnverifiedGuest) {
+    const isUnverifiedGuest = Boolean(this.webex.credentials.isUnverifiedGuest);
+
+    if (isUnverifiedGuest) {
       LoggerProxy.logger.info(
         'Meetings:index#syncMeetings --> user is unverified guest, skipping calling Locus for meeting sync'
       );
+
+      // Locus rejects getActiveMeetings() for unverified guests, so the per-meeting sync below
+      // (with canSyncClassicLocus enabled) resyncs each classic meeting individually instead.
     } else {
       try {
         const locusArray = await this.request.getActiveMeetings();
@@ -2025,20 +2060,24 @@ export default class Meetings extends WebexPlugin {
       }
     }
 
-    if (!skipHashTreeSync) {
-      // Trigger hash tree syncs for all remaining meetings
-      const remainingMeetings = this.meetingCollection.getAll();
-      const syncPromises = [];
+    // Resync each remaining meeting via LocusInfo#sync, which routes to hash tree or classic. For
+    // signed-in users classic meetings were already synced above, so only the hash tree sync runs.
+    const remainingMeetings = this.meetingCollection.getAll();
+    const syncPromises = [];
 
-      for (const meeting of Object.values(remainingMeetings) as any[]) {
-        if (meeting.locusInfo) {
-          syncPromises.push(meeting.locusInfo.syncAllHashTreeDatasets());
-        }
+    for (const meeting of Object.values(remainingMeetings) as any[]) {
+      if (meeting.locusInfo) {
+        syncPromises.push(
+          meeting.locusInfo.sync(meeting, {
+            canSyncClassicLocus: isUnverifiedGuest,
+            canSyncHashTree: !skipHashTreeSync,
+          })
+        );
       }
+    }
 
-      if (syncPromises.length > 0) {
-        await Promise.all(syncPromises);
-      }
+    if (syncPromises.length > 0) {
+      await Promise.all(syncPromises);
     }
   }
 

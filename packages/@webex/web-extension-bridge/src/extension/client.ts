@@ -4,7 +4,7 @@ import type {JsonValue} from '../core/json';
 import {readOwn} from '../core/json';
 import {ListenerSet} from '../core/listeners';
 import {createLogger} from '../core/logger';
-import type {LogSink} from '../core/logger';
+import type {LogLevelSetting, LogSink} from '../core/logger';
 import {assertPayload, assertTopic} from '../core/serialize';
 import {ClientCommand, asClientPushEvent} from './messages';
 import type {ClientCommandMessage} from './messages';
@@ -23,6 +23,9 @@ import type {
 
 export interface ExtensionClientOptions {
   channel?: string;
+  /** As {@link WebBridgeOptions.logLevel}. */
+  logLevel?: LogLevelSetting;
+  /** Alias for `logLevel: 'debug'`. Ignored when `logLevel` is given. */
   debug?: boolean;
   logSink?: LogSink;
 }
@@ -30,13 +33,13 @@ export interface ExtensionClientOptions {
 /**
  * Create the popup / options / side-panel proxy to the service-worker bridge.
  *
- * An MV3 extension page cannot own the bridge, because the bridge lives in the
- * service worker and the page is torn down whenever it closes. Rather than making
- * every consumer hand-write a `chrome.runtime.sendMessage` command protocol, this
- * mirrors the {@link ExtensionBridge} surface and proxies to the worker.
+ * An MV3 extension page can't own the bridge (it lives in the service worker, and the
+ * page is torn down whenever it closes), so this mirrors the {@link ExtensionBridge}
+ * surface and proxies to the worker instead of making every consumer hand-write a
+ * `chrome.runtime.sendMessage` command protocol.
  *
  * @param options - Client options. The channel must match the worker's.
- * @returns A bridge-shaped client.
+ * @returns The bridge-shaped client.
  */
 export function createExtensionClient(options?: ExtensionClientOptions): ExtensionBridge {
   return createExtensionClientWith(resolveChrome(), options);
@@ -61,6 +64,7 @@ export function createExtensionClientWith(
 
   const logger = createLogger({
     debug: options.debug === true,
+    ...(options.logLevel === undefined ? {} : {logLevel: options.logLevel}),
     prefix: '[web-extension-bridge:client]',
     ...(options.logSink ? {sink: options.logSink} : {}),
   });
@@ -71,6 +75,8 @@ export function createExtensionClientWith(
         reason: error instanceof Error ? error.name : typeof error,
       }),
   });
+
+  logger.info('extension client created', {channel});
 
   let attached = false;
 
@@ -86,6 +92,7 @@ export function createExtensionClientWith(
       return;
     }
 
+    logger.debug('push received from worker', {channel, topic: event.topic});
     pushListeners.emit(event.topic, event.payload as JsonValue, event.meta as PushMeta);
   };
 
@@ -96,6 +103,7 @@ export function createExtensionClientWith(
 
     attached = true;
     chromeApi.runtime.onMessage.addListener(onRuntimeMessage);
+    logger.info('listening for worker broadcasts', {channel});
   };
 
   const send = async (command: ClientCommandMessage): Promise<unknown> => {
@@ -105,7 +113,16 @@ export function createExtensionClientWith(
       return readOwn(response, 'value');
     }
 
-    throw fromWireError(readOwn(response, 'error'), command.topic);
+    const error = fromWireError(readOwn(response, 'error'), command.topic);
+
+    logger.debug('worker command failed', {
+      channel,
+      kind: command.command,
+      ...(command.topic === undefined ? {} : {topic: command.topic}),
+      reason: error.code,
+    });
+
+    throw error;
   };
 
   const client: ExtensionBridge = {
@@ -134,18 +151,14 @@ export function createExtensionClientWith(
       assertTopic(topic);
 
       // The worker enforces its own configured cap; this side only rejects what no cap
-      // could admit. Without it a cyclic object, a `BigInt` or a nested function reaches
-      // `runtime.sendMessage` directly, where Chrome either throws an uncoded transport
-      // error or coerces the value — so the worker's validation never sees what the
-      // caller actually passed, and the caller does not get the documented
-      // `INVALID_PAYLOAD` BridgeError.
+      // could admit. Without it, a cyclic object or `BigInt` reaches `runtime.sendMessage`
+      // directly, where Chrome throws an uncoded transport error instead of the
+      // documented `INVALID_PAYLOAD` BridgeError.
       assertPayload(payload, MAX_PAYLOAD_BYTES_CEILING, topic);
 
       // An abort that arrived before the send is a cancellation, not a race: `send` is
       // evaluated eagerly as `raceAbort`'s argument, so leaving this to the race would
-      // still start the worker request — and the page handler's side effects — for a
-      // caller that is already gone. The race covers only requests that were genuinely
-      // in flight when the abort landed.
+      // still start the worker request for a caller that's already gone.
       if (opts.signal?.aborted) {
         throw new BridgeError('ABORTED', undefined, topic);
       }
@@ -186,11 +199,9 @@ export function createExtensionClientWith(
         assertTopic(opts.topic);
       }
 
-      // `topic` goes to the worker so it can filter *before* applying the limit.
-      // Filtering here instead meant the worker trimmed to the newest `limit` entries
-      // across every topic and this side then filtered the survivors, so a topic whose
-      // entries sat behind newer pushes on other topics came back short or empty even
-      // though the buffer still held them.
+      // `topic` goes to the worker so it can filter *before* applying `limit` — see
+      // `background.ts`'s `GET_BUFFERED` handler for why filtering here instead
+      // truncates a topic's entries short.
       const value = await send({
         __webexBridgeClient: true,
         channel,
@@ -219,18 +230,16 @@ export function createExtensionClientWith(
 /**
  * Settle on whichever comes first: the worker's answer, or an abort.
  *
- * The listener is removed on *either* outcome. Racing against a bare
- * `new Promise(... addEventListener('abort') ...)` leaked: when the request won the
- * race, the losing promise stayed pending forever and its abort listener stayed
- * attached to the caller's signal, holding the closure — and the rejection it would
- * eventually construct — alive. `{once: true}` does not help, because the event that
- * would fire it never comes. A long-lived signal reused across many requests, which is
- * exactly what a signal is for, therefore accumulated one dead listener per request.
+ * The listener is removed on *either* outcome — racing against a bare `new Promise(...
+ * addEventListener('abort') ...)` leaked, because when the request won the race, the
+ * losing promise (and its still-attached abort listener) stayed alive forever, and a
+ * signal reused across many requests accumulated one dead listener per request.
  *
- * @param work - The in-flight command.
- * @param signal - Caller's abort signal.
- * @param topic - Topic, for the error.
- * @returns The command's value, or a rejection with `ABORTED`.
+ * @param work - The in-flight worker request.
+ * @param signal - Abort signal to race against.
+ * @param topic - Topic, for the thrown error.
+ * @returns Whatever `work` resolves with.
+ * @throws BridgeError `ABORTED` when `signal` fires first.
  */
 async function raceAbort(
   work: Promise<unknown>,

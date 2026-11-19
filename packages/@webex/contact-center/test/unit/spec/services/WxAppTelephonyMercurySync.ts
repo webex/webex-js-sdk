@@ -42,7 +42,7 @@ describe('WxAppTelephonyMercurySync', () => {
     expect(sync.isSubscribed()).toBe(true);
     expect(trackEvent).toHaveBeenCalledWith(
       METRIC_EVENT_NAMES.WXAPP_MERCURY_SUBSCRIBE_SUCCESS,
-      {},
+      {mercurySubscribed: true},
       ['operational', 'behavioral']
     );
   });

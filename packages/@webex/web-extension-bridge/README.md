@@ -191,6 +191,47 @@ There are three hops, and each one has its own check:
 3. **Extension page ↔ service worker** is the client command protocol, accepted only when
    `sender.id === chrome.runtime.id` and `sender.tab === undefined`.
 
+### Connection lifecycle and navigation
+
+A connection belongs to a **document**, not to a tab or a URL. The content script mints one
+session token per document load, and that token is what the page and the worker agree on.
+
+**Single-page app routing does not affect the connection.** `history.pushState`,
+`replaceState` and fragment changes do not reload the document, so the page bridge, the
+relay and the worker's connection record all survive a route change — including any request
+in flight across it. You do not need to re-create the bridge, re-register handlers, or
+reconnect on navigation. The worker refreshes the `url` it reports from
+`listConnections()` so it keeps describing the route the tab is actually on.
+
+A navigation that **replaces** the document does end the connection, and there is nothing to
+preserve when it does: a reload or a followed link builds a new page context, so the
+`WebBridge` object, its handlers and its session all cease to exist. The incoming document's
+content script connects again with a fresh session, which replaces the old record in
+`listConnections()`; a request still in flight when that happens is rejected with
+`DISCONNECTED`. Leaving the allow-listed origin ends the connection for good, since no
+content script is injected there to re-announce one.
+
+Chrome does not tell an extension whether a navigation replaced the document — a route change
+and a followed link are reported identically — so the worker does not guess. It keeps the
+record for any navigation that stays on the connected origin and lets the next document
+correct it. Briefly, between a document being replaced and its successor connecting,
+`listConnections()` can name a tab whose relay has already gone; the first `request()` to it
+fails with `NOT_CONNECTED` and clears the record.
+
+| Tab event | Effect on the connection |
+| --- | --- |
+| Route change on the connected origin (`pushState` / `replaceState` / fragment) | Kept; stored `url` refreshed |
+| Reload, or a link to another document on the connected origin | Replaced when the new document connects |
+| Navigation to any other origin | Dropped, if the extension can see it (below) |
+| Tab closed, or page `destroy()` / `pagehide` | Dropped |
+
+Chrome only discloses a tab's new URL to an extension that holds host permission for it. So a
+tab navigating to an origin outside your `host_permissions` is invisible, and its record
+lingers until the first `request()` fails and clears it. Nothing is exposed by that: without
+host permission the extension cannot reach the new document either. Where host permissions
+*are* broader than `allowedOrigins` — the case worth caring about — the URL is disclosed and
+the connection is dropped immediately.
+
 ### Push flow (FR1)
 
 `publish()` validates the topic and payload synchronously and throws on failure, so a
@@ -292,9 +333,10 @@ then reload the page.
 | --- | --- | --- | --- |
 | `allowedOrigins` | `string[]` | `[location.origin]` | Non-empty list of exact origins. `'*'`, an empty array, a wildcard pattern, or a list that omits the document's own origin all throw `INSECURE_CONFIG` at construction. |
 | `channel` | `string` | `'webex-bridge'` | Namespace, must match the extension. `^[a-zA-Z0-9._:-]{1,128}$`. |
-| `debug` | `boolean` | `false` | Metadata-only logging. There is no option that logs payloads or tokens. |
+| `logLevel` | `'silent' \| 'error' \| 'warn' \| 'info' \| 'debug'` | `'warn'` | Lowest severity to emit. Metadata only at every level — there is no option that logs payloads or tokens. |
+| `debug` | `boolean` | `false` | Alias for `logLevel: 'debug'`. Ignored when `logLevel` is given. |
 | `maxPayloadBytes` | `number` | `262144` | Clamped to `[1, 1048576]`. |
-| `logSink` | `LogSink` | console | Receives `{level, message, context}` with metadata only. |
+| `logSink` | `LogSink` | console | Receives `(message, context)` with metadata only. Replaces the console entirely — see below. |
 
 | Member | Signature | Notes |
 | --- | --- | --- |
@@ -321,7 +363,7 @@ rather than throwing inside `postMessage`.
 | `maxPayloadBytes` | `number` | `262144` | Clamped to `[1, 1048576]`. |
 | `buffer` | `{maxEntries?, ttlMs?, maxBytes?}` | `{maxEntries: 200, ttlMs: 1800000, maxBytes: 4194304}` | FR8 buffer in `chrome.storage.session`. Oldest-out eviction against **both** the entry cap and the byte budget, plus TTL. `maxBytes` has one documented exception — see below. |
 | `rateLimit` | `{pushesPerSecond?, aggregatePushesPerSecond?, maxInFlightPerTab?}` | `{pushesPerSecond: 20, aggregatePushesPerSecond: 80, maxInFlightPerTab: 16}` | Token bucket per `(tabId, topic)` **and** per `tabId` across all topics; in-flight cap per tab. |
-| `debug` / `logSink` | | `false` / console | As above. |
+| `logLevel` / `debug` / `logSink` | | `'warn'` / `false` / console | As above. |
 
 Sizes and timeouts are *clamped* — a too-large value there is a safe intent, just an
 unsupported one. Limiter and buffer bounds are *validated*: a non-integer, non-finite or
@@ -353,7 +395,7 @@ is simply absent while `origin` remains available.
 
 ### `createExtensionClient(options?): ExtensionBridge`
 
-Same surface as `ExtensionBridge`, proxied to the worker; takes `{channel?, debug?,
+Same surface as `ExtensionBridge`, proxied to the worker; takes `{channel?, logLevel?, debug?,
 logSink?}`. Only accepted by the worker from extension pages (`sender.id ===
 chrome.runtime.id && sender.tab === undefined`).
 
@@ -426,6 +468,46 @@ Logging is metadata only: `{channel, kind, topic, id, correlationId, tabId, reas
 count}`, never payloads and never the session token. That is enforced by construction —
 there is no field a payload would fit in — not by convention.
 
+`logLevel` is a threshold, so each level has a defined job:
+
+| Level | Carries | Volume |
+| --- | --- | --- |
+| `silent` | Nothing at all. | — |
+| `error` | Nothing. The bridge fails closed by throwing a coded `BridgeError` instead. | — |
+| `warn` | A failure no caller will observe: a refused `chrome.storage.session` write, a `runtime.sendMessage` that never arrived, a consumer listener that threw, a message refused by a sender check. | Bounded — none of it is reachable by a web page. |
+| `info` | Lifecycle: bridge, relay and client start and stop; connect and disconnect; tab and page attach and detach. | One per connection. |
+| `debug` | Per-message detail: pushes, requests issued/served/failed, timeouts, correlation misses, dropped envelopes. | Proportional to traffic. |
+
+A failure already reported to a caller — anything `request()` rejects with, including
+`ABORTED` and `TIMEOUT` — is logged at `debug`, not `error`: the caller decides whether it
+was a fault, and a library that both throws and writes to the console reports it twice.
+
+### Where a line goes
+
+Supplying a `logSink` hands it the **whole** destination. Every method on it is optional,
+and a level left unwired is dropped — it is *not* diverted to the console:
+
+```js
+createWebBridge({logLevel: 'debug', logSink: {warn: myWarn}});
+// warn  -> myWarn
+// debug, info, error -> dropped
+```
+
+This keeps a host's chosen destination the only one in play. Per-missing-method console
+fallback would put bridge metadata on a surface the host never asked for, and at `debug`
+or `info` that surface is the page console. A host that wants both writes to the console
+from inside its own sink.
+
+With **no** `logSink`, anything the threshold admits goes to `console` at its own level.
+
+One exception: an unrecognised `logLevel` is reported on `console.warn` regardless of
+sink, because a logger that cannot report its own misconfiguration is the silence the
+threshold is supposed to make impossible.
+
+> **Note on `debug: true`** — with no `logSink`, `debug` and `info` lines now reach
+> `console.debug` / `console.info`. They were previously discarded unless a sink was
+> supplied, so `debug: true` on its own produced no output at all.
+
 ## 6. Security architecture
 
 ### Controls
@@ -480,12 +562,13 @@ needs a new failing test before the fix is accepted.
 | Area | Requirement before production |
 | --- | --- |
 | Origins | Replace every `localhost`/`127.0.0.1` entry in `manifest.json` (`content_scripts.matches`, `host_permissions`) and in `allowedOrigins` with your exact production origins. Never ship `localhost`. |
+| Match paths | Keep `content_scripts.matches` origin-wide (`https://your.origin/*`). Narrowing it to a path prefix breaks single-page apps: content scripts are injected on document load only, so entering the app at a URL outside the prefix and then routing into it leaves the page with no relay to connect to — and once injected, a script is *not* removed when routing back out. Scope access with `allowedOrigins`, which is re-checked on every message, rather than with `matches`. |
 | Transport | Serve the web application over HTTPS only, with HSTS. |
 | Wildcards | No `'*'` in `allowedOrigins` (the SDK rejects it) and no `'*'` `targetOrigin`. Confirm by lint. |
 | Extension resources | No `web_accessible_resources`. If unavoidable, a single named file with `use_dynamic_url: true`. |
 | Permissions | `permissions` is `["storage"]` or narrower. No `tabs`. No `externally_connectable`. |
 | CSP | `extension_pages` CSP set on the extension; a strict CSP, ideally with Trusted Types, on the web app. |
-| Logging | `debug: false`. Verify no payloads or tokens reach any log sink. |
+| Logging | `logLevel` at `'warn'` or quieter (`'silent'` / `'error'`); never `'info'`, `'debug'` or `debug: true`. Verify no payloads or tokens reach any log sink. |
 | Payload validation | Every `requestHandler` topic validates its payload against a strict schema, and every push topic is validated on receipt. |
 | Data classification | No secrets, tokens or credentials traverse the bridge. Where authenticity matters, sign server-side. |
 | Rendering | Extension and web UI render untrusted values with `textContent` only. |

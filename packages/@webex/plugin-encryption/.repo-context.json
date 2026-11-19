@@ -1,0 +1,467 @@
+{
+  "$schema": "./schemas/repo-context.schema.json",
+  "version": 1,
+  "repository": {
+    "name": "@webex/plugin-encryption",
+    "purpose": "Public Webex JS SDK plugin registered as webex.cypher that downloads and decrypts encrypted Webex files. downloadAndDecryptFile reads the KMS key URI and the JWE-encrypted SCR from the keyUri and JWE query parameters of the file URL, or from the options, asks webex.internal.encryption to decrypt the SCR with the KMS key, and returns the internal download of the file decrypted with that SCR, either directly from the URL (the default) or through the Webex files service. register and deregister register the SDK device with WDM through webex.internal.device and track the result in a registered flag. The package main, src/webex.js, is a small CommonJS Webex constructor that loads only the authorization, internal encryption, and cypher plugins; the workspace also builds it as the UMD encryption bundle."
+  },
+  "commands": {
+    "install": "yarn",
+    "compile": "yarn workspace @webex/plugin-encryption build",
+    "build": "yarn workspace @webex/plugin-encryption build:src",
+    "unit-test": "yarn workspace @webex/plugin-encryption test:unit",
+    "lint": "yarn workspace @webex/plugin-encryption test:style",
+    "browser-test": "yarn workspace @webex/plugin-encryption test:browser",
+    "docs-build": "yarn workspace @webex/plugin-encryption build:docs",
+    "deploy": "yarn workspace @webex/plugin-encryption deploy:npm"
+  },
+  "public_interfaces": [
+    {
+      "name": "@webex/plugin-encryption package main",
+      "kind": "package_export",
+      "source": "src/webex.js",
+      "entrypoints": [
+        "const Webex = require('@webex/plugin-encryption')",
+        "import Webex from '@webex/plugin-encryption'",
+        "Webex.init(attrs)"
+      ],
+      "audience": "applications that only download and decrypt files",
+      "notes": "main and exports['.'] load dist/webex.js, whose CommonJS export is a Webex constructor with authorization, internal encryption, and cypher. Webex.init merges the compiled webex-config module object, so its defaults land under config.default and are not applied, and the types entry declares a default Cypher instead; both are known defects in the module spec Evidence register."
+    },
+    {
+      "name": "cypher plugin registration and types",
+      "kind": "package_export",
+      "source": "src/index.ts",
+      "entrypoints": [
+        "require('@webex/plugin-encryption')",
+        "import type {FileDownloadOptions, IEncryption} from '@webex/plugin-encryption'"
+      ],
+      "audience": "SDK bundles (webex, webex-node) and TypeScript consumers",
+      "notes": "Registers public plugin cypher with config {cypher: {}}; first registration of the name wins. Requiring the package loads the main, which requires this entry, so the webex and webex-node packages get cypher as a side effect. devMain and the typedoc entry point here, but no workspace resolver reads devMain; types is dist/types/index.d.ts, emitted by yarn build."
+    },
+    {
+      "name": "webex.cypher methods",
+      "kind": "plugin_api",
+      "source": "src/cypher/index.ts",
+      "entrypoints": [
+        "webex.cypher.register()",
+        "webex.cypher.deregister()",
+        "webex.cypher.downloadAndDecryptFile(fileUri, options)",
+        "webex.cypher.registered"
+      ],
+      "audience": "applications",
+      "notes": "register and deregister call webex.internal.device and flip the registered flag only on success; registered is a public writable field, so callers can also set it without a device call. downloadAndDecryptFile takes keyUri and JWE from the URL query, else both from options.keyUri and options.jwe, calls internal decryptScr then download with useFileService (default false). decryptScr errors are wrapped with cause (MOD-008); download errors are not (a known defect)."
+    },
+    {
+      "name": "package scripts",
+      "kind": "npm_scripts",
+      "source": "package.json",
+      "entrypoints": [
+        "build",
+        "build:src",
+        "build:docs",
+        "test:unit",
+        "test:style",
+        "test:browser",
+        "deploy:npm"
+      ],
+      "audience": "contributors and CI",
+      "notes": "build:src compiles src to dist with webex-legacy-tools and then runs build, which emits declarations to dist/types. test:unit runs jest with an 85% global coverage threshold (jest.config.js). test:browser runs nothing because there is no test/integration directory. build:docs writes typedoc output outside the package. There is no aggregate test script and no test:integration script."
+    }
+  ],
+  "source_of_truth": [
+    {
+      "surface": "Cypher plugin implementation",
+      "paths": [
+        "src/index.ts",
+        "src/cypher/index.ts",
+        "src/cypher/types.ts",
+        "src/cypher/constants.ts",
+        "src/types.ts",
+        "src/config.ts",
+        "src/webex.js",
+        "src/webex-config.ts"
+      ],
+      "generated_artifacts": [
+        "dist"
+      ],
+      "refresh_with": [
+        "yarn workspace @webex/plugin-encryption build:src"
+      ],
+      "validate_with": [
+        "yarn workspace @webex/plugin-encryption test:unit",
+        "yarn workspace @webex/plugin-encryption test:style"
+      ]
+    },
+    {
+      "surface": "module specification",
+      "paths": [
+        "src/docs/README.md"
+      ],
+      "generated_artifacts": [],
+      "refresh_with": [
+        "update alongside the behavior change in the same commit"
+      ],
+      "validate_with": [
+        "spec-validator on an independent runtime"
+      ]
+    }
+  ],
+  "generated_artifacts": [
+    {
+      "path": "dist",
+      "generated_from": "src",
+      "refresh_with": "yarn workspace @webex/plugin-encryption build:src"
+    },
+    {
+      "path": "../../../.sdd/templates/repo-standards/template-map.json",
+      "generated_from": "WebexTools/repo-standards@d89a7fe59126ae3ad9bac9ca352aa7f12b4c85dc",
+      "refresh_with": "The package holds no templates. It refers to the monorepo root snapshot at ../../../.sdd/templates/repo-standards through layout.monorepo_package.templates_root_path in .sdd/manifest.json. Refresh the root snapshot, not this package."
+    }
+  ],
+  "validation_matrix": [
+    {
+      "paths": [
+        "src/**"
+      ],
+      "minimum": [
+        "yarn workspace @webex/plugin-encryption build:src",
+        "yarn workspace @webex/plugin-encryption test:unit",
+        "yarn workspace @webex/plugin-encryption test:style"
+      ],
+      "recommended": [
+        "add a test/unit/spec/cypher case for the changed behavior; keep the 85% coverage threshold met"
+      ]
+    },
+    {
+      "paths": [
+        "src/webex.js",
+        "src/webex-config.ts",
+        "src/index.ts"
+      ],
+      "minimum": [
+        "yarn workspace @webex/plugin-encryption build:src",
+        "yarn workspace @webex/plugin-encryption test:style"
+      ],
+      "recommended": [
+        "no unit case loads these files and the coverage threshold does not measure them; check the built dist/webex.js by hand and the webex and webex-node packages that require this one"
+      ]
+    }
+  ],
+  "change_impact": [
+    {
+      "paths": [
+        "src/cypher/index.ts"
+      ],
+      "affects": [
+        "the three webex.cypher methods, their errors, and the registered flag"
+      ],
+      "refresh_with": [
+        "yarn workspace @webex/plugin-encryption build:src"
+      ],
+      "validate_with": [
+        "yarn workspace @webex/plugin-encryption test:unit",
+        "yarn workspace @webex/plugin-encryption test:style"
+      ],
+      "avoid_direct_edits": [
+        "dist"
+      ],
+      "notes": "decryptScr errors are wrapped (MOD-008); the unwrapped download error and the unobservable progress events are known defects in the module spec Evidence register."
+    },
+    {
+      "paths": [
+        "src/webex.js",
+        "src/webex-config.ts"
+      ],
+      "affects": [
+        "the package main",
+        "the UMD encryption bundle built by the workspace"
+      ],
+      "refresh_with": [
+        "yarn workspace @webex/plugin-encryption build:src"
+      ],
+      "validate_with": [
+        "yarn workspace @webex/plugin-encryption test:style"
+      ],
+      "avoid_direct_edits": [
+        "dist"
+      ],
+      "notes": "The webex-config defaults are not applied today (a known defect in the module spec Evidence register); fixing that changes the device and storage config of every standalone instance."
+    },
+    {
+      "paths": [
+        "src/index.ts",
+        "src/cypher/types.ts",
+        "package.json"
+      ],
+      "affects": [
+        "the registered plugin name",
+        "the published types"
+      ],
+      "refresh_with": [
+        "yarn workspace @webex/plugin-encryption build:src"
+      ],
+      "validate_with": [
+        "yarn workspace @webex/plugin-encryption test:unit",
+        "yarn workspace @webex/plugin-encryption test:style"
+      ],
+      "avoid_direct_edits": [
+        "dist"
+      ],
+      "notes": "The types entry and main disagree on the default export (a known defect in the module spec Evidence register)."
+    }
+  ],
+  "evidence_rules": [
+    {
+      "claim_category": "command_name",
+      "sources": [
+        "package.json"
+      ],
+      "requirement": "The script must exist in package.json scripts.",
+      "notes": "There is no test, test:integration, or test:coverage script in this package."
+    },
+    {
+      "claim_category": "import_path",
+      "sources": [
+        "src/index.ts",
+        "src/webex.js",
+        "package.json"
+      ],
+      "requirement": "The runtime default export is what package.json main loads (src/webex.js); the typed exports are those of src/index.ts.",
+      "notes": "They differ (a known defect in the module spec Evidence register)."
+    },
+    {
+      "claim_category": "behavior_claim",
+      "sources": [
+        "src",
+        "test/unit/spec"
+      ],
+      "requirement": "Ground every behavioral claim in source or test evidence.",
+      "notes": "Commit history is not an evidence source for this package. README.md and developer-quickstart.md are context only (docs/adr/0001-retain-product-docs.md). Dependency specs were consulted where present (internal-plugin-encryption, internal-plugin-device, webex-core, plugin-authorization, webex); test-helper-mock-webex has no spec, so its code was read."
+    }
+  ],
+  "negative_guidance": [
+    {
+      "rule": "Do not decrypt, fetch keys, or download in this plugin; call webex.internal.encryption.",
+      "why": "One implementation of key handling and download rules (module spec Design overview)."
+    },
+    {
+      "rule": "Do not mix a key URI from the URL with a JWE from the options.",
+      "why": "They are one pair from one source (INV-001)."
+    },
+    {
+      "rule": "Do not log key URIs, JWEs, SCRs, file bytes, or tokens.",
+      "why": "They grant access to encrypted content (INV-003)."
+    },
+    {
+      "rule": "Do not assume src/webex-config.ts defaults apply to Webex.init instances.",
+      "why": "They are merged under config.default (a known defect in the module spec Evidence register)."
+    },
+    {
+      "rule": "Do not trust a test:unit result without a fresh build:src of the sibling packages.",
+      "why": "The unit spec imports @webex/internal-plugin-encryption by name, which loads its dist."
+    }
+  ],
+  "confidence_policy": {
+    "high": {
+      "action": "update",
+      "expectation": "Source and a unit case agree, as for register, deregister, the options fallback, and the missing-values rejection."
+    },
+    "medium": {
+      "action": "narrow-scope",
+      "expectation": "Only source or a generator probe exists, as for the URL-wins rule, Webex.init, and the known defects. Pin current behavior with a unit case before modifying."
+    },
+    "low": {
+      "action": "noop",
+      "expectation": "Neither source, tests, nor a dependency's spec or code settles the question, as for why the invalid-URL message names the JWE. Stop and report the gap."
+    }
+  },
+  "repository_topology": {
+    "main_entrypoints": [
+      {
+        "name": "package main",
+        "path": "src/webex.js",
+        "purpose": "Standalone Webex constructor; also the workspace UMD encryption entry",
+        "notes": "package.json main and exports['.'] are dist/webex.js."
+      },
+      {
+        "name": "typed entry",
+        "path": "src/index.ts",
+        "purpose": "Registers the cypher plugin and exports its types",
+        "notes": "package.json devMain; types is dist/types/index.d.ts."
+      }
+    ],
+    "workspace_packages": [
+      {
+        "name": "@webex/plugin-encryption",
+        "paths": [
+          "src",
+          "test"
+        ],
+        "notes": "One module; this SDD root is the package directory inside the webex-js-sdk monorepo."
+      }
+    ],
+    "source_surfaces": [
+      {
+        "name": "Cypher plugin",
+        "paths": [
+          "src"
+        ],
+        "notes": "Eight source files. Specified at src/docs/README.md."
+      },
+      {
+        "name": "tests",
+        "paths": [
+          "test/unit/spec"
+        ],
+        "notes": "One jest unit file with 11 cases; no integration tests."
+      }
+    ],
+    "generated_surfaces": [
+      {
+        "name": "build output",
+        "paths": [
+          "dist"
+        ],
+        "generated_from": "src",
+        "refresh_with": "yarn workspace @webex/plugin-encryption build:src",
+        "notes": "JavaScript, source maps, and dist/types declarations. Do not edit by hand."
+      },
+      {
+        "name": "repo-standards template map",
+        "paths": [
+          "../../../.sdd/templates/repo-standards"
+        ],
+        "generated_from": "WebexTools/repo-standards@d89a7fe59126ae3ad9bac9ca352aa7f12b4c85dc",
+        "refresh_with": "The package holds no templates. It refers to the monorepo root snapshot at ../../../.sdd/templates/repo-standards through layout.monorepo_package.templates_root_path in .sdd/manifest.json. Refresh the root snapshot, not this package.",
+        "notes": "The package holds no templates. It refers to the monorepo root snapshot at ../../../.sdd/templates/repo-standards through layout.monorepo_package.templates_root_path in .sdd/manifest.json. Refresh the root snapshot, not this package."
+      }
+    ],
+    "validation_entrypoints": [
+      {
+        "name": "compile",
+        "command": "yarn workspace @webex/plugin-encryption build",
+        "scope": "src",
+        "notes": "tsc emitting declarations only to dist/types."
+      },
+      {
+        "name": "unit-test",
+        "command": "yarn workspace @webex/plugin-encryption test:unit",
+        "scope": "test/unit/spec",
+        "notes": "Jest through webex-legacy-tools with the 85% global coverage threshold over the files the spec loads."
+      },
+      {
+        "name": "lint",
+        "command": "yarn workspace @webex/plugin-encryption test:style",
+        "scope": "src",
+        "notes": "eslint via the local .eslintrc.js; docs/** and *.md are ignored."
+      }
+    ],
+    "sync_paths": [
+      {
+        "source": "src/cypher/index.ts",
+        "targets": [
+          "src/docs/README.md",
+          "README.md"
+        ],
+        "mechanism": "Manual; update the module specification in the same change that alters observable behavior, and check the README sample code.",
+        "notes": "Keep requirements, invariants, the state machine, and failure modes aligned with src/."
+      },
+      {
+        "source": "WebexTools/repo-standards@d89a7fe59126ae3ad9bac9ca352aa7f12b4c85dc",
+        "targets": [
+          "../../../.sdd/templates/repo-standards"
+        ],
+        "mechanism": "The package holds no templates. It refers to the monorepo root snapshot at ../../../.sdd/templates/repo-standards through layout.monorepo_package.templates_root_path in .sdd/manifest.json. Refresh the root snapshot, not this package.",
+        "notes": "The package holds no templates. It refers to the monorepo root snapshot at ../../../.sdd/templates/repo-standards through layout.monorepo_package.templates_root_path in .sdd/manifest.json. Refresh the root snapshot, not this package."
+      }
+    ]
+  },
+  "folder_readme_contract": {
+    "required_sections": [
+      "purpose",
+      "boundaries",
+      "key-files",
+      "common-tasks"
+    ],
+    "rules": [
+      "Orient the reader before describing detail.",
+      "Link to the module specification rather than duplicating it."
+    ],
+    "example_policy": "Examples are allowed only when verified against src/ or test/.",
+    "fallback": "Omit a section rather than inventing content; report unresolved facts as gaps."
+  },
+  "regression_feedback_rules": [
+    {
+      "trigger": "downloadAndDecryptFile changes in src/cypher/index.ts.",
+      "required_followups": [
+        "Add cases for the URL-wins, one-value, invalid-URL, and error-shape paths to test/unit/spec/cypher/index.ts",
+        "Update MOD-005 to MOD-008, INV-001, and the download known defects in src/docs/README.md"
+      ],
+      "notes": "Today the failure cases assert substrings only."
+    },
+    {
+      "trigger": "register or deregister changes.",
+      "required_followups": [
+        "Assert the registered flag after failures",
+        "Update MOD-003, MOD-004, INV-002, and the State machine in src/docs/README.md"
+      ],
+      "notes": "Concurrent calls are not deduplicated."
+    },
+    {
+      "trigger": "src/webex.js, src/webex-config.ts, or the package.json entries change.",
+      "required_followups": [
+        "Re-run the main-entry probe or add a unit case that loads the built main",
+        "Update MOD-011 and the types and config known defects in src/docs/README.md and check the webex package spec MOD-019"
+      ],
+      "notes": "These files have no unit coverage."
+    }
+  ],
+  "surface_owners": [
+    {
+      "surface": "module implementation and specifications",
+      "owner": "@webex/web-sdk",
+      "edit_boundary": "The monorepo .github/CODEOWNERS default rule assigns @webex/web-sdk; no line names this package."
+    }
+  ],
+  "do_not_edit": [
+    "dist",
+    "../../../.sdd/templates/repo-standards"
+  ],
+  "marker_scopes": {
+    "sdd": [
+      ".sdd/manifest.json",
+      "src/docs/README.md",
+      "docs"
+    ]
+  },
+  "fallback_rules": [
+    "When source and tests disagree, code is the referee and the disagreement is recorded rather than silently resolved.",
+    "When neither source nor tests settle a question, report it as a gap instead of inferring.",
+    "Commit history is not a valid rationale source for this package.",
+    "When a dependency's specification disagrees with that dependency's code, use the code and record the disagreement; when a dependency has no specification, use its code."
+  ],
+  "downstream_context_pack": {
+    "required_human_surfaces": [
+      "README.md",
+      "docs/index.md",
+      "docs/architecture.md",
+      "src/docs/README.md"
+    ],
+    "required_agent_operational_surfaces": [
+      "AGENTS.md",
+      "docs/specs/README.md"
+    ],
+    "required_machine_readable_surface": ".sdd/manifest.json",
+    "recommended_machine_readable_sections": [
+      "public_interfaces",
+      "change_impact",
+      "evidence_rules",
+      "negative_guidance",
+      "confidence_policy",
+      "repository_topology",
+      "folder_readme_contract",
+      "regression_feedback_rules"
+    ]
+  }
+}

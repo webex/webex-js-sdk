@@ -360,25 +360,37 @@ describe('extension/content', () => {
       assert.equal(settled.ok === false && settled.error.code, 'NOT_CONNECTED');
     });
 
-    it('answers INVALID_PAYLOAD for a request that fails validation', async () => {
-      attachPage();
+    /**
+     * A request for another session is the worker addressing a document this relay
+     * replaced, so it is told `NOT_CONNECTED` and drops its stale record. Anything else
+     * that fails validation is a malformed request.
+     */
+    const rejectedCases: [string, {source: EnvelopeSource; session?: string}, string][] = [
+      ['another session', {source: EnvelopeSource.EXTENSION, session: 'a-forged-session'}, 'NOT_CONNECTED'],
+      ['the wrong source', {source: EnvelopeSource.PAGE}, 'INVALID_PAYLOAD'],
+    ];
 
-      const settled = (await world.sendToContent(
-        workerRequest({
-          envelope: createEnvelope({
-            channel: DEFAULT_CHANNEL,
-            kind: EnvelopeKind.REQUEST,
-            source: EnvelopeSource.EXTENSION,
-            topic: 'demo.topic',
-            id: 'req-forged',
-            session: 'a-forged-session',
-          }),
-        })
-      )) as RelayResult;
+    rejectedCases.forEach(([why, {source, session}, code]) => {
+      it(`answers ${code} for a request from ${why}`, async () => {
+        attachPage();
 
-      assert.isFalse(settled.ok);
-      assert.equal(settled.ok === false && settled.error.code, 'INVALID_PAYLOAD');
-      assert.lengthOf(posted(EnvelopeKind.REQUEST), 0);
+        const settled = (await world.sendToContent(
+          workerRequest({
+            envelope: createEnvelope({
+              channel: DEFAULT_CHANNEL,
+              kind: EnvelopeKind.REQUEST,
+              source,
+              topic: 'demo.topic',
+              id: 'req-rejected',
+              session: session ?? relay.session,
+            }),
+          })
+        )) as RelayResult;
+
+        assert.isFalse(settled.ok);
+        assert.equal(settled.ok === false && settled.error.code, code);
+        assert.lengthOf(posted(EnvelopeKind.REQUEST), 0);
+      });
     });
 
     it('arms its own timer, so a page that goes quiet still settles the worker', async () => {

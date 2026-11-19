@@ -20,7 +20,10 @@ export class ListenerSet<TListener extends (...args: never[]) => void> {
 
   private readonly onError?: (error: unknown) => void;
 
-  public constructor(options: ListenerSetOptions = {}) {
+  /**
+   * @param options - Size cap and the sink for whatever a listener throws.
+   */
+  constructor(options: ListenerSetOptions = {}) {
     this.maxListeners = options.maxListeners ?? MAX_LISTENERS;
     if (options.onError) {
       this.onError = options.onError;
@@ -30,6 +33,7 @@ export class ListenerSet<TListener extends (...args: never[]) => void> {
   /**
    * @param listener - Listener to add. Adding the same function twice is a no-op.
    * @returns An unsubscribe function, safe to call more than once.
+   * @throws RangeError when adding a new listener would exceed `maxListeners`.
    */
   public add(listener: TListener): () => void {
     if (this.listeners.size >= this.maxListeners && !this.listeners.has(listener)) {
@@ -44,6 +48,8 @@ export class ListenerSet<TListener extends (...args: never[]) => void> {
   }
 
   /**
+   * Deliver to every listener, isolated per-listener (see class doc).
+   *
    * @param args - Arguments passed to every listener.
    */
   public emit(...args: Parameters<TListener>): void {
@@ -57,10 +63,12 @@ export class ListenerSet<TListener extends (...args: never[]) => void> {
     }
   }
 
+  /** Remove every listener. */
   public clear(): void {
     this.listeners.clear();
   }
 
+  /** Number of registered listeners. */
   public get size(): number {
     return this.listeners.size;
   }

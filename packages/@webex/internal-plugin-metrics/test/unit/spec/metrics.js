@@ -13,7 +13,7 @@ import {BrowserDetection} from '@webex/common';
 const {getOSVersion} = BrowserDetection();
 
 //@ts-ignore
-global.window = {location: {hostname: 'whatever'}};
+global.window = {location: {hostname: 'whatever', origin: 'https://whatever'}};
 function promiseTick(count) {
   let promise = Promise.resolve();
 
@@ -30,6 +30,7 @@ describe('plugin-metrics', () => {
     let webex;
     let metrics;
     let clock;
+    let previousWindow;
 
     const eventName = 'test_event';
     const mockPayload = {
@@ -67,10 +68,15 @@ describe('plugin-metrics', () => {
 
     beforeEach(() => {
       clock = FakeTimers.install({now: 0});
+      previousWindow = global.window;
+      // Other test files also replace the shared browser mock. Restore the
+      // location needed to verify that app_url prefers the browser origin.
+      global.window = {location: {hostname: 'whatever', origin: 'https://whatever'}};
     });
 
     afterEach(() => {
       clock.uninstall();
+      global.window = previousWindow;
     });
 
     beforeEach(() => {
@@ -107,10 +113,10 @@ describe('plugin-metrics', () => {
       webex.meetings = {
         config: {
           metrics: {
-            clientVersion: '43.0.105'
-          }
-        }
-      }
+            clientVersion: '43.0.105',
+          },
+        },
+      };
 
       sinon.spy(webex, 'request');
       sinon.spy(metrics, 'aliasUser');
@@ -186,6 +192,9 @@ describe('plugin-metrics', () => {
           },
           metricName: 'test',
           tags: {
+            app_name: 'appName',
+            app_url: 'https://whatever',
+            app_version: 'appVersion',
             appVersion: '43.0.105',
             browser: '',
             domain: 'whatever',

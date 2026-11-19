@@ -22,7 +22,9 @@ export default defineConfig({
   retries: 0,
   fullyParallel: true,
   workers: Object.keys(USER_SETS).length, // Dynamic worker count based on USER_SETS
-  reporter: 'html',
+  // Never serve the report inline: it blocks the process until Ctrl+C, which stalls
+  // `yarn workspaces foreach run test:e2e` before it reaches the other packages.
+  reporter: [['html', {open: 'never'}]],
   use: {
     baseURL: 'https://localhost:8000/samples/contact-center/',
     ignoreHTTPSErrors: true,

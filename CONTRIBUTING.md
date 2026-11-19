@@ -265,6 +265,12 @@ Examples:
 * `yarn workspace {module name} test:unit --targets {path-relative-to-spec}` - Run the unit test only for the target file.
 * `yarn workspace @webex/plugin-meetings test:unit --targets locus-info/controlsUtils.js` - Run a specific test file within a subdirectory.
 
+**Browser tests over HTTPS:** Webex services reject requests from `http://` origins such as the default Karma page (`http://localhost:9001`), so browser tests that call them fail unless Karma is served over HTTPS. Do this one-time setup from the repository root:
+
+* `yarn setup:karma-https` - Installs and trusts [mkcert](https://github.com/FiloSottile/mkcert), makes `localhost.webex.com` resolve to `127.0.0.1` and, on Linux, allows listening on port 443. Pass `--persist` (`./scripts/setup-karma-https.sh --persist`) to keep the port setting across reboots.
+
+Then add `KARMA_HTTPS=true` to your `./.env` file (or prefix a single run with it). Karma will be served from `https://localhost.webex.com`. CI always runs browser tests this way. See the [Legacy Tools README](./packages/legacy/tools/README.md#serving-karma-over-https) for details.
+
 #### Submitting Changes
 
 When submitting changes to this project, all changes must go through the [GitHub Pull Request](https://docs.github.com/en/pull-requests/collaborating-with-pull-requests/proposing-changes-to-your-work-with-pull-requests/about-pull-requests) process. Below are the steps outlining the process:

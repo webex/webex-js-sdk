@@ -1,0 +1,408 @@
+{
+  "$schema": "./schemas/repo-context.schema.json",
+  "version": 1,
+  "repository": {
+    "name": "@webex/internal-plugin-feature",
+    "purpose": "Internal Webex JS SDK plugin that exposes feature toggles as webex.internal.feature. It is a stateless facade over the device plugin's developer, user, and entitlement feature collections: promise-based reads, writes of user and developer toggles to the Feature service (single and bundled), handling of toggle records pushed by Mercury, and re-emission of device collection changes as change:developer, change:entitlement, and change:user events."
+  },
+  "commands": {
+    "install": "yarn",
+    "compile": "yarn workspace @webex/internal-plugin-feature build:src",
+    "build": "yarn workspace @webex/internal-plugin-feature build",
+    "unit-test": "yarn workspace @webex/internal-plugin-feature test:unit",
+    "lint": "yarn workspace @webex/internal-plugin-feature test:style",
+    "deploy": "yarn workspace @webex/internal-plugin-feature deploy:npm",
+    "browser-test-broken": "yarn workspace @webex/internal-plugin-feature test:browser:broken"
+  },
+  "public_interfaces": [
+    {
+      "name": "@webex/internal-plugin-feature package entry",
+      "kind": "package_export",
+      "source": "src/index.js",
+      "entrypoints": [
+        "import Feature from '@webex/internal-plugin-feature'",
+        "import '@webex/internal-plugin-feature'"
+      ],
+      "audience": "internal-plugin-mercury, internal-plugin-board, internal-plugin-lyra, calling, webex-server, and recipe-private-web-client in the webex-js-sdk workspace",
+      "notes": "Importing the package registers Feature as internal plugin 'feature' with config.feature (an empty object). The default export is the Feature class."
+    },
+    {
+      "name": "webex.internal.feature runtime methods and events",
+      "kind": "plugin_api",
+      "source": "src/feature.js",
+      "entrypoints": [
+        "webex.internal.feature.getFeature()",
+        "webex.internal.feature.setFeature()",
+        "webex.internal.feature.setBundledFeatures()",
+        "webex.internal.feature.updateFeature()",
+        "webex.internal.feature.on('change:developer')",
+        "webex.internal.feature.on('change:entitlement')",
+        "webex.internal.feature.on('change:user')"
+      ],
+      "audience": "Mercury, LLM, board, conversation, and presence plugins, and first-party clients",
+      "notes": "getFeature rejects for key types other than developer, user, and entitlement; setFeature rejects for anything but developer and user; updateFeature applies only user and developer records; setBundledFeatures mutates its input array."
+    },
+    {
+      "name": "package scripts",
+      "kind": "npm_scripts",
+      "source": "package.json",
+      "entrypoints": [
+        "build",
+        "build:src",
+        "test:style",
+        "test:unit",
+        "test:browser:broken",
+        "deploy:npm"
+      ],
+      "audience": "contributors and CI",
+      "notes": "Do not run the aggregate test script: it chains test:integration, which is not defined. test:browser:broken is named broken and the integration spec it would run references methods Feature does not define."
+    }
+  ],
+  "source_of_truth": [
+    {
+      "surface": "feature toggle plugin implementation",
+      "paths": [
+        "src/index.js",
+        "src/feature.js",
+        "src/config.js"
+      ],
+      "generated_artifacts": [
+        "dist"
+      ],
+      "refresh_with": [
+        "yarn workspace @webex/internal-plugin-feature build:src"
+      ],
+      "validate_with": [
+        "yarn workspace @webex/internal-plugin-feature test:unit",
+        "yarn workspace @webex/internal-plugin-feature test:style"
+      ]
+    },
+    {
+      "surface": "module specification",
+      "paths": [
+        "src/docs/README.md"
+      ],
+      "generated_artifacts": [],
+      "refresh_with": [
+        "update alongside the behavior change in the same commit"
+      ],
+      "validate_with": [
+        "spec-validator on an independent runtime"
+      ]
+    }
+  ],
+  "generated_artifacts": [
+    {
+      "path": "dist",
+      "generated_from": "src",
+      "refresh_with": "yarn workspace @webex/internal-plugin-feature build:src"
+    },
+    {
+      "path": "../../../.sdd/templates/repo-standards/template-map.json",
+      "generated_from": "WebexTools/repo-standards@d89a7fe59126ae3ad9bac9ca352aa7f12b4c85dc",
+      "refresh_with": "The package holds no templates. It refers to the monorepo root snapshot at ../../../.sdd/templates/repo-standards through layout.monorepo_package.templates_root_path in .sdd/manifest.json. Refresh the root snapshot, not this package."
+    }
+  ],
+  "validation_matrix": [
+    {
+      "paths": [
+        "src/**"
+      ],
+      "minimum": [
+        "yarn workspace @webex/internal-plugin-feature test:unit"
+      ],
+      "recommended": [
+        "yarn workspace @webex/internal-plugin-feature test:style",
+        "yarn workspace @webex/internal-plugin-feature build:src"
+      ]
+    },
+    {
+      "paths": [
+        "src/feature.js"
+      ],
+      "minimum": [
+        "yarn workspace @webex/internal-plugin-feature test:unit"
+      ],
+      "recommended": [
+        "review the sibling package files packages/@webex/internal-plugin-mercury/src/mercury.js and packages/@webex/internal-plugin-device/src/device.js when method signatures, key types, or the change events change"
+      ]
+    }
+  ],
+  "change_impact": [
+    {
+      "paths": [
+        "src/feature.js"
+      ],
+      "affects": [
+        "Mercury featureToggle_update handling and getFeature callers",
+        "LLM, board, conversation, and presence plugins that read toggles",
+        "listeners on change:developer, change:entitlement, and change:user"
+      ],
+      "refresh_with": [
+        "yarn workspace @webex/internal-plugin-feature build:src"
+      ],
+      "validate_with": [
+        "yarn workspace @webex/internal-plugin-feature test:unit"
+      ],
+      "avoid_direct_edits": [
+        "dist"
+      ],
+      "notes": "Method names, the promise return, the key-type allow-lists, and the feature service resources are relied on across packages."
+    },
+    {
+      "paths": [
+        "src/index.js",
+        "src/config.js"
+      ],
+      "affects": [
+        "plugin registration as webex.internal.feature",
+        "webex.config.feature"
+      ],
+      "refresh_with": [
+        "yarn workspace @webex/internal-plugin-feature build:src"
+      ],
+      "validate_with": [
+        "yarn workspace @webex/internal-plugin-feature test:unit"
+      ],
+      "avoid_direct_edits": [
+        "dist"
+      ],
+      "notes": "The plugin name feature and the namespace Feature must stay in step with the config key."
+    }
+  ],
+  "evidence_rules": [
+    {
+      "claim_category": "command_name",
+      "sources": [
+        "package.json"
+      ],
+      "requirement": "The script must exist in package.json scripts. test:integration is referenced by test but undefined.",
+      "notes": "Never cite the aggregate test script as runnable."
+    },
+    {
+      "claim_category": "import_path",
+      "sources": [
+        "src/index.js"
+      ],
+      "requirement": "A binding is public only if exported from src/index.js.",
+      "notes": "Only the default export Feature is exported; config is registered but not exported."
+    },
+    {
+      "claim_category": "behavior_claim",
+      "sources": [
+        "src",
+        "test/unit/spec"
+      ],
+      "requirement": "Ground every behavioral claim in source or test evidence.",
+      "notes": "Commit history is not an evidence source for this package. README.md is retained product documentation, not the behavioral authority. Toggle storage and typing are owned by the sibling package internal-plugin-device; test/integration/spec is not evidence because it is stale and unwired."
+    }
+  ],
+  "negative_guidance": [
+    {
+      "rule": "Do not keep toggle data on the Feature instance.",
+      "why": "The device plugin's feature collections are the single store; a second copy would diverge."
+    },
+    {
+      "rule": "Do not let setFeature, updateFeature, or setBundledFeatures write the entitlement collection.",
+      "why": "Entitlements are server-granted and read-only from this plugin."
+    },
+    {
+      "rule": "Do not rename updateFeature or change getFeature to return synchronously.",
+      "why": "Mercury calls updateFeature by name and callers chain .then on getFeature."
+    },
+    {
+      "rule": "Do not trust the JSDoc return annotations over the code.",
+      "why": "getFeature and setFeature document resolved values or an endpoint response that differ from what the code returns."
+    },
+    {
+      "rule": "Do not treat README.md as the list of methods.",
+      "why": "It lists none and contains a WHATEVER placeholder. See docs/adr/0001-retain-product-readme.md."
+    },
+    {
+      "rule": "Do not infer a coverage threshold for this package.",
+      "why": "The developer confirmed no coverage gate applies; the legacy Jest config disables coverage collection."
+    }
+  ],
+  "confidence_policy": {
+    "high": {
+      "action": "update",
+      "expectation": "Source and unit test evidence both support the change, and the behavior has a case in test/unit/spec/feature.js."
+    },
+    "medium": {
+      "action": "narrow-scope",
+      "expectation": "Only source evidence exists, for example setBundledFeatures, getFeature for a missing key, or updateFeature with a developer record. Pin current behavior with a characterization test before modifying."
+    },
+    "low": {
+      "action": "noop",
+      "expectation": "Neither source nor tests settle the question. Stop and report the gap."
+    }
+  },
+  "repository_topology": {
+    "main_entrypoints": [
+      {
+        "name": "package entry",
+        "path": "src/index.js",
+        "purpose": "Registers the plugin and re-exports the Feature class",
+        "notes": "No subpath exports."
+      }
+    ],
+    "workspace_packages": [
+      {
+        "name": "@webex/internal-plugin-feature",
+        "paths": [
+          "src",
+          "test"
+        ],
+        "notes": "One module; this SDD root is the package directory inside the webex-js-sdk monorepo."
+      }
+    ],
+    "source_surfaces": [
+      {
+        "name": "feature toggle plugin",
+        "paths": [
+          "src"
+        ],
+        "notes": "index.js, feature.js, config.js. Specified at src/docs/README.md."
+      },
+      {
+        "name": "tests",
+        "paths": [
+          "test/unit/spec",
+          "test/integration/spec"
+        ],
+        "notes": "One unit spec run by Jest through webex-legacy-tools. The integration spec is not wired to any script."
+      }
+    ],
+    "generated_surfaces": [
+      {
+        "name": "build output",
+        "paths": [
+          "dist"
+        ],
+        "generated_from": "src",
+        "refresh_with": "yarn workspace @webex/internal-plugin-feature build:src",
+        "notes": "Produced by webex-legacy-tools. Do not edit by hand."
+      },
+      {
+        "name": "repo-standards template map",
+        "paths": [
+          "../../../.sdd/templates/repo-standards"
+        ],
+        "generated_from": "WebexTools/repo-standards@d89a7fe59126ae3ad9bac9ca352aa7f12b4c85dc",
+        "refresh_with": "The package holds no templates. It refers to the monorepo root snapshot at ../../../.sdd/templates/repo-standards through layout.monorepo_package.templates_root_path in .sdd/manifest.json. Refresh the root snapshot, not this package.",
+        "notes": "The package holds no templates. It refers to the monorepo root snapshot at ../../../.sdd/templates/repo-standards through layout.monorepo_package.templates_root_path in .sdd/manifest.json. Refresh the root snapshot, not this package."
+      }
+    ],
+    "validation_entrypoints": [
+      {
+        "name": "unit tests",
+        "command": "yarn workspace @webex/internal-plugin-feature test:unit",
+        "scope": "test/unit/spec",
+        "notes": "jest via webex-legacy-tools --runner jest."
+      },
+      {
+        "name": "lint",
+        "command": "yarn workspace @webex/internal-plugin-feature test:style",
+        "scope": "src",
+        "notes": "eslint via the local .eslintrc.js."
+      }
+    ],
+    "sync_paths": [
+      {
+        "source": "src/config.js",
+        "targets": [
+          "src/index.js",
+          "src/feature.js"
+        ],
+        "mechanism": "Manual; the config key feature must match the plugin namespace Feature lower-cased.",
+        "notes": "Update the key and the namespace together."
+      },
+      {
+        "source": "WebexTools/repo-standards@d89a7fe59126ae3ad9bac9ca352aa7f12b4c85dc",
+        "targets": [
+          "../../../.sdd/templates/repo-standards"
+        ],
+        "mechanism": "The package holds no templates. It refers to the monorepo root snapshot at ../../../.sdd/templates/repo-standards through layout.monorepo_package.templates_root_path in .sdd/manifest.json. Refresh the root snapshot, not this package.",
+        "notes": "The package holds no templates. It refers to the monorepo root snapshot at ../../../.sdd/templates/repo-standards through layout.monorepo_package.templates_root_path in .sdd/manifest.json. Refresh the root snapshot, not this package."
+      }
+    ]
+  },
+  "folder_readme_contract": {
+    "required_sections": [
+      "purpose",
+      "boundaries",
+      "key-files",
+      "common-tasks"
+    ],
+    "rules": [
+      "Orient the reader before describing detail.",
+      "Link to the module specification rather than duplicating it."
+    ],
+    "example_policy": "Examples are allowed only when verified against src/ or test/.",
+    "fallback": "Omit a section rather than inventing content; report unresolved facts as gaps."
+  },
+  "regression_feedback_rules": [
+    {
+      "trigger": "A pushed or written toggle reaches the entitlement collection, or a key type is silently accepted that was rejected before.",
+      "required_followups": [
+        "Add a case to test/unit/spec/feature.js",
+        "Update INV-002 in src/docs/README.md"
+      ],
+      "notes": "Covers setFeature, updateFeature, and setBundledFeatures routing."
+    },
+    {
+      "trigger": "setBundledFeatures changes its input handling or response routing.",
+      "required_followups": [
+        "Add a unit case for setBundledFeatures to test/unit/spec/feature.js",
+        "Update MOD-007 in src/docs/README.md"
+      ],
+      "notes": "No unit case exists today."
+    }
+  ],
+  "surface_owners": [
+    {
+      "surface": "module implementation and specifications",
+      "owner": "@webex/web-sdk",
+      "edit_boundary": "Owner per the monorepo .github/CODEOWNERS default entry; no package-specific entry exists."
+    }
+  ],
+  "do_not_edit": [
+    "dist",
+    "../../../.sdd/templates/repo-standards"
+  ],
+  "marker_scopes": {
+    "sdd": [
+      ".sdd/manifest.json",
+      "src/docs/README.md",
+      "docs"
+    ]
+  },
+  "fallback_rules": [
+    "When source and tests disagree, code is the referee and the disagreement is recorded rather than silently resolved.",
+    "When neither source nor tests settle a question, report it as a gap instead of inferring.",
+    "Commit history is not a valid rationale source for this package."
+  ],
+  "downstream_context_pack": {
+    "required_human_surfaces": [
+      "README.md",
+      "docs/index.md",
+      "docs/architecture.md",
+      "src/docs/README.md"
+    ],
+    "required_agent_operational_surfaces": [
+      "AGENTS.md",
+      "docs/specs/README.md"
+    ],
+    "required_machine_readable_surface": ".sdd/manifest.json",
+    "recommended_machine_readable_sections": [
+      "public_interfaces",
+      "change_impact",
+      "evidence_rules",
+      "negative_guidance",
+      "confidence_policy",
+      "repository_topology",
+      "folder_readme_contract",
+      "regression_feedback_rules"
+    ]
+  }
+}

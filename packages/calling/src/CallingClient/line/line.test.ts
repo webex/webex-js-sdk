@@ -1,4 +1,5 @@
 import {Mutex} from 'async-mutex';
+import {LocalMicrophoneStream} from '@webex/internal-media-core';
 import {
   getMobiusDiscoveryResponse,
   getMockDeviceInfo,
@@ -18,6 +19,7 @@ import {
 import {LINE_EVENTS} from './types';
 import Line from '.';
 import * as utils from '../../common/Utils';
+import * as callUtils from '../../common/callUtils';
 import SDKConnector from '../../SDKConnector';
 import {createLineError} from '../../Errors/catalog/LineError';
 import {ERROR_TYPE} from '../../Errors/types';
@@ -115,6 +117,7 @@ describe('Line Tests', () => {
           userId,
           clientDeviceUri,
           serviceData: defaultServiceData,
+          hostIps: [],
         },
         uri: `${primaryUrl}device`,
         method: 'POST',
@@ -167,6 +170,7 @@ describe('Line Tests', () => {
           userId,
           clientDeviceUri,
           serviceData: {...guestServiceData, jwe: mockJwe},
+          hostIps: [],
         },
         uri: `${primaryUrl}device`,
         method: 'POST',
@@ -214,6 +218,38 @@ describe('Line Tests', () => {
         expect.anything(),
         expect.any(Number)
       );
+    });
+
+    it('discovers the host ips before triggering the registration', async () => {
+      const localAudioStream = {
+        outputStream: {getAudioTracks: () => [{id: 'audio-track'}]},
+      } as unknown as LocalMicrophoneStream;
+      const lineWithStream = new Line(
+        userId,
+        clientDeviceUri,
+        mutex,
+        primaryMobiusUris(),
+        backupMobiusUris(),
+        LOGGER.INFO,
+        undefined,
+        undefined,
+        localAudioStream
+      );
+      const discoverHostIpsSpy = jest
+        .spyOn(callUtils, 'discoverHostIps')
+        .mockResolvedValue(undefined);
+      const triggerRegistrationSpy = jest.spyOn(lineWithStream.registration, 'triggerRegistration');
+
+      webex.request.mockReturnValue(registrationPayload);
+
+      await lineWithStream.register();
+
+      expect(discoverHostIpsSpy).toBeCalledOnceWith(localAudioStream);
+      expect(discoverHostIpsSpy.mock.invocationCallOrder[0]).toBeLessThan(
+        triggerRegistrationSpy.mock.invocationCallOrder[0]
+      );
+
+      lineWithStream.removeAllListeners();
     });
 
     it('verify successful de-registration cases', async () => {

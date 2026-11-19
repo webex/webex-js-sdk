@@ -52,7 +52,7 @@ export default class LocusRetryStatusInterceptor extends Interceptor {
       if (hasRetriedLocusRequest) {
         rateLimitExpiryTime.set(this, false);
 
-        return Promise.reject(options);
+        return Promise.reject(reason);
       }
       rateLimitExpiryTime.set(this, true);
 

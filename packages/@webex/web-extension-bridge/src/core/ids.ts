@@ -28,12 +28,13 @@ export function isUsableCrypto(source: unknown): source is CryptoLike {
 /**
  * Build the id factory, failing closed when no CSPRNG exists.
  *
- * There is deliberately no `Math.random` fallback. Correlation integrity depends on
- * ids being unguessable (T3), so a silent downgrade to predictable ids would be
- * worse than refusing to start (spec 8.4).
+ * There is deliberately no `Math.random` fallback: correlation integrity depends on
+ * ids being unguessable (T3), so a silent downgrade to predictable ids would be worse
+ * than refusing to start.
  *
  * @param source - Crypto object. Defaults to the ambient `globalThis.crypto`.
- * @returns A factory producing unique, unguessable ids.
+ * @returns A function producing a fresh, unguessable id on each call.
+ * @throws BridgeError `CRYPTO_UNAVAILABLE` when no usable crypto source exists.
  */
 export function createIdFactory(source?: unknown): IdFactory {
   const cryptoObj = source ?? (typeof globalThis === 'undefined' ? undefined : globalThis.crypto);

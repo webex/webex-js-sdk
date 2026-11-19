@@ -1,4 +1,5 @@
 import * as Media from '@webex/internal-media-core';
+import {LocalMicrophoneStream} from '@webex/internal-media-core';
 import {LOGGER} from '../Logger/types';
 import {ISDKConnector} from '../SDKConnector/types';
 import {Eventing} from '../Events/impl';
@@ -29,6 +30,14 @@ export interface CallingClientConfig {
    * Optional configuration to tune ICE candidate gathering during media negotiation.
    */
   iceGathering?: IceGatheringConfig;
+
+  /**
+   * Microphone stream to discover the host ip addresses of this client with during
+   * initialization, which are then reported to Mobius on registration. Leave it out to skip that
+   * discovery: without a stream the browser withholds the addresses, so there is nothing to
+   * report.
+   */
+  localAudioStream?: LocalMicrophoneStream;
 }
 
 export type CallingClientErrorEmitterCallback = (

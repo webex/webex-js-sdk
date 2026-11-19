@@ -97,7 +97,7 @@ export default class AnswerCallOnWebexService {
     try {
       const uri = `${this.getTelephonyBaseUrl()}${resource}`;
 
-      LoggerProxy.info(`AnswerCallOnWebexService.${logMethod} request`, {
+      LoggerProxy.log(`AnswerCallOnWebexService.${logMethod} request`, {
         module: ANSWER_CALL_ON_WEBEX_FILE,
         method: logMethod,
         data: {uri, bodyKeys: Object.keys(body)},
@@ -110,7 +110,7 @@ export default class AnswerCallOnWebexService {
         addAuthHeader: true,
       })) as IHttpResponse;
 
-      LoggerProxy.info(`AnswerCallOnWebexService.${logMethod} success`, {
+      LoggerProxy.log(`AnswerCallOnWebexService.${logMethod} success`, {
         module: ANSWER_CALL_ON_WEBEX_FILE,
         method: logMethod,
         data: {statusCode: response.statusCode},
@@ -197,10 +197,10 @@ export default class AnswerCallOnWebexService {
     const uri = `${this.getTelephonyBaseUrl()}/${callId}${lineOwnerIdQuery}`;
 
     try {
-      LoggerProxy.info('AnswerCallOnWebexService.getCallDetails request', {
+      LoggerProxy.log('AnswerCallOnWebexService.getCallDetails request', {
         module: ANSWER_CALL_ON_WEBEX_FILE,
         method: METHODS.GET_CALL_DETAILS_ON_WEBEX,
-        data: {callId},
+        data: {callIdSuffix: callId.length <= 8 ? callId : callId.slice(-8)},
       });
 
       const response = (await this.webex.request({

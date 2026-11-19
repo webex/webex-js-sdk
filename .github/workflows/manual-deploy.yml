@@ -574,6 +574,11 @@ jobs:
           # `git add docs/` would stage nothing and `git commit` would fail with
           # exit 1 — after publish-npm already uploaded — blocking tag creation.
           git add docs/
+          # The web sample's bundle is generated rather than committed (see
+          # .gitignore), so a plain `git add` skips it and the hosted page 404s.
+          # Force only this path: the extension half stays unpublished because its
+          # manifest is origin-baked for local testing and must not ship.
+          git add -f docs/samples/web-extension-bridge/vendor
           if ! git diff --cached --quiet; then
             git commit -m "chore(docs): update docs for manual deployment v$VERSION"
             # --force-with-lease prevents overwriting concurrent commits to the

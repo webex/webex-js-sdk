@@ -38,7 +38,7 @@ yarn build:local
 ## Testing
 
 ```bash
- yarn workspace @webex/calling run test
+ yarn workspace @webex/calling run test:unit
 ```
 
 ## Samples 

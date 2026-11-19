@@ -91,7 +91,7 @@ async function initializeAgent() {
 
     // 2. Login with browser-based calling
     await cc.stationLogin({
-      teamId: profile.teams[0].teamId,
+      teamId: profile.teams[0].id,
       loginOption: 'BROWSER',
     });
 

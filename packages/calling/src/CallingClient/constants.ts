@@ -14,7 +14,7 @@ export const DEFAULT_REHOMING_INTERVAL_MIN = 60;
 export const DEFAULT_SESSION_TIMER = 1000 * 60 * 10;
 export const MAX_CALL_KEEPALIVE_RETRY_COUNT = 4;
 export const DEVICES_ENDPOINT_RESOURCE = 'devices';
-export const DISCOVERY_URL = 'https://ds.ciscospark.com/v1/region';
+export const DISCOVERY_URL = 'https://sqdiscovery.webex.com/region';
 export const DUMMY_METRICS = {
   'rtp-rxstat': {
     Dur: 0,
@@ -63,6 +63,7 @@ export const WEBEX = 'webex';
 export const WEBEX_WEB_CLIENT = 'webex-web-client';
 export const CALLER_ID_FILE = 'CallerId';
 export const UTILS_FILE = 'src/common/Utils.ts';
+export const CALL_UTILS_FILE = 'src/common/callUtils.ts';
 export const CALLING_CLIENT_FILE = 'CallingClient';
 export const LINE_FILE = 'line';
 export const CALL_FILE = 'call';

@@ -641,13 +641,87 @@ describe('plugin-meetings', () => {
       });
     });
 
+    describe('#registerLLMChannel', () => {
+      it('registers an LLM channel', () => {
+        const mockChannel = {
+          isConnected: sinon.stub().returns(true),
+          on: sinon.stub(),
+          off: sinon.stub(),
+        };
+
+        breakouts.registerLLMChannel(mockChannel);
+
+        assert.equal(breakouts._llmChannel, mockChannel);
+      });
+
+      it('cleans up previous channel before registering new one', () => {
+        const oldChannel = {
+          isConnected: sinon.stub().returns(true),
+          on: sinon.stub(),
+          off: sinon.stub(),
+        };
+        const newChannel = {
+          isConnected: sinon.stub().returns(false),
+          on: sinon.stub(),
+          off: sinon.stub(),
+        };
+
+        breakouts.registerLLMChannel(oldChannel);
+        // After registering connected channel, hasSubscribedToMessage becomes true
+        assert.equal(breakouts.hasSubscribedToMessage, true);
+
+        const stopListeningSpy = sinon.spy(breakouts, 'stopListening');
+        breakouts.registerLLMChannel(newChannel);
+
+        // Should have called stopListening to clean up old channel
+        assert.calledWith(stopListeningSpy, oldChannel);
+        assert.equal(breakouts._llmChannel, newChannel);
+        // Since newChannel is not connected, hasSubscribedToMessage stays false
+        assert.equal(breakouts.hasSubscribedToMessage, false);
+      });
+    });
+
+    describe('#unregisterLLMChannel', () => {
+      it('unregisters the LLM channel', () => {
+        const mockChannel = {
+          isConnected: sinon.stub().returns(true),
+          on: sinon.stub(),
+          off: sinon.stub(),
+        };
+
+        breakouts.registerLLMChannel(mockChannel);
+        breakouts.hasSubscribedToMessage = true;
+
+        breakouts.unregisterLLMChannel();
+
+        assert.equal(breakouts._llmChannel, undefined);
+        assert.equal(breakouts.hasSubscribedToMessage, false);
+      });
+
+      it('does nothing if no channel is registered', () => {
+        breakouts.unregisterLLMChannel();
+        assert.equal(breakouts._llmChannel, undefined);
+      });
+    });
+
     describe('#listenToBroadcastMessages', () => {
-      it('do not subscribe message if llm not connected', () => {
-        webex.internal.llm.isConnected = sinon.stub().returns(false);
-        breakouts.listenTo = sinon.stub();
+      it('do not subscribe message if no channel registered', () => {
+        const listenToSpy = sinon.spy(breakouts, 'listenTo');
         breakouts.locusUrlUpdate('newUrl');
         assert.equal(breakouts.locusUrl, 'newUrl');
-        assert.notCalled(breakouts.listenTo);
+        assert.notCalled(listenToSpy);
+      });
+
+      it('do not subscribe message if channel not connected', () => {
+        const mockChannel = {
+          isConnected: sinon.stub().returns(false),
+          on: sinon.stub(),
+          off: sinon.stub(),
+        };
+        breakouts._llmChannel = mockChannel;
+        const listenToSpy = sinon.spy(breakouts, 'listenTo');
+        breakouts.listenToBroadcastMessages();
+        assert.notCalled(listenToSpy);
       });
 
       it('do not subscribe message if the connected llm does not belong to this meeting', () => {
@@ -660,32 +734,54 @@ describe('plugin-meetings', () => {
       });
 
       it('do not subscribe message if already done', () => {
-        webex.internal.llm.isConnected = sinon.stub().returns(true);
+        const mockChannel = {
+          isConnected: sinon.stub().returns(true),
+          on: sinon.stub(),
+          off: sinon.stub(),
+        };
+        breakouts._llmChannel = mockChannel;
         breakouts.hasSubscribedToMessage = true;
-        breakouts.listenTo = sinon.stub();
-        breakouts.locusUrlUpdate('newUrl');
-        assert.equal(breakouts.locusUrl, 'newUrl');
-        assert.notCalled(breakouts.listenTo);
+        const listenToSpy = sinon.spy(breakouts, 'listenTo');
+        breakouts.listenToBroadcastMessages();
+        assert.notCalled(listenToSpy);
+      });
+
+      it('subscribes to breakout.message events on connected channel', () => {
+        const mockChannel = {
+          isConnected: sinon.stub().returns(true),
+          on: sinon.stub(),
+          off: sinon.stub(),
+        };
+        breakouts._llmChannel = mockChannel;
+        const listenToSpy = sinon.spy(breakouts, 'listenTo');
+        breakouts.listenToBroadcastMessages();
+
+        assert.calledOnce(listenToSpy);
+        assert.calledWith(listenToSpy, mockChannel, 'event:breakout.message', sinon.match.func);
+        assert.equal(breakouts.hasSubscribedToMessage, true);
       });
 
       it('triggers message event when a message received', () => {
-        webex.internal.llm.isConnected = sinon.stub().returns(true);
-        breakouts.locusUrlUpdate('newUrl');
-        const call = webex.internal.llm.on
-          .getCalls()
-          .find((c) => c.args[0] === 'event:breakout.message');
-        const callback = call.args[1];
+        const mockChannel = {
+          isConnected: sinon.stub().returns(true),
+          on: sinon.stub(),
+          off: sinon.stub(),
+        };
+        breakouts._llmChannel = mockChannel;
+        const listenToSpy = sinon.spy(breakouts, 'listenTo');
+        breakouts.listenToBroadcastMessages();
 
-        assert.equal(call.args[0], 'event:breakout.message');
+        // Get the callback passed to listenTo
+        const callback = listenToSpy.getCall(0).args[2];
 
         let message;
-
         breakouts.listenTo(breakouts, BREAKOUTS.EVENTS.MESSAGE, (event) => {
           message = event;
         });
 
         breakouts.currentBreakoutSession.sessionId = 'sessionId';
 
+        // Simulate the LLM channel event
         callback({
           data: {
             senderUserId: 'senderUserId',
@@ -703,20 +799,25 @@ describe('plugin-meetings', () => {
       });
 
       it('re-checks the subscription when the llm emits online', () => {
-        const onlineCall = webex.internal.llm.on
-          .getCalls()
-          .find((c) => c.args[0] === 'online');
+        const onlineCall = webex.internal.llm.on.getCalls().find((c) => c.args[0] === 'online');
         assert.exists(onlineCall, 'expected an online listener to be registered');
         const onlineHandler = onlineCall.args[1];
 
-        webex.internal.llm.isConnected = sinon.stub().returns(true);
-        webex.internal.llm.getLocusUrl = sinon.stub().returns(breakouts.locusUrl);
+        // Set up _llmChannel so listenToBroadcastMessages can subscribe
+        const mockChannel = {
+          isConnected: sinon.stub().returns(true),
+          on: sinon.stub(),
+          off: sinon.stub(),
+        };
+        breakouts._llmChannel = mockChannel;
+
+        const listenToSpy = sinon.spy(breakouts, 'listenTo');
 
         onlineHandler.call(breakouts);
 
-        const call = webex.internal.llm.on
+        const call = listenToSpy
           .getCalls()
-          .find((c) => c.args[0] === 'event:breakout.message');
+          .find((c) => c.args[0] === mockChannel && c.args[1] === 'event:breakout.message');
         assert.exists(call, 'expected broadcast message subscription after online');
         assert.isTrue(breakouts.hasSubscribedToMessage);
       });
@@ -1658,7 +1759,7 @@ describe('plugin-meetings', () => {
           state: 'LOCKED',
         };
 
-        await expect(breakouts.lockBreakout()).to.be.rejectedWith('Breakout already locked');
+        await assert.isRejected(breakouts.lockBreakout(), Error, 'Breakout already locked');
       });
 
       it('lock breakout without editLock', async () => {

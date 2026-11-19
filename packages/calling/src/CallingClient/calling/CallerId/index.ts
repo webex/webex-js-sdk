@@ -9,7 +9,7 @@ import {CALLER_ID_FILE, VALID_PHONE_REGEX} from '../../constants';
 import SDKConnector from '../../../SDKConnector';
 import {ICallerId} from './types';
 import {CallEmitterCallBack} from '../types';
-import {resolveCallerIdDisplay} from '../../../common';
+import {resolveCallerIdDisplay, escapeScimFilterValue} from '../../../common';
 
 /**
  *
@@ -112,7 +112,8 @@ export class CallerId implements ICallerId {
         method: 'parseRemotePartyInfo',
       });
 
-      this.resolveCallerId(`id eq "${externalId}"`);
+      /* Escape SCIM filter-grammar metacharacters before interpolation (AC-1 / U-01) */
+      this.resolveCallerId(`id eq "${escapeScimFilterValue(externalId)}"`);
     } else {
       log.warn(`externalId not found!`, {
         file: CALLER_ID_FILE,

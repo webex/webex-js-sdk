@@ -1,5 +1,5 @@
 #!/bin/bash
-# PreToolUse hook: Block git commit if contact-center code/docs changed without spec-drift verification
+# PreToolUse hook: Block git commit if contact-center code/specs changed without spec-drift verification
 #
 # Flow:
 #   1. Read stdin to get the Bash command (JSON at tool_input.command)
@@ -52,11 +52,11 @@ if [ -f "$MARKER" ]; then
 fi
 
 # Block the commit
-echo "BLOCKED: contact-center files are staged but ai-docs have not been verified for spec drift."
+echo "BLOCKED: contact-center files are staged but the specs have not been verified for spec drift."
 echo ""
 echo "Staged contact-center files:"
 echo "$STAGED_CC" | sed 's/^/  - /'
 echo ""
-echo "Run /spec-drift-changed to validate ai-docs against source code before committing."
+echo "Run /spec-drift-changed to validate the affected specs (routed by packages/@webex/contact-center/.sdd/manifest.json) against source code before committing."
 echo "The command will check documentation accuracy and create a verification marker."
 exit 2  # Exit code 2 = blocking error in Claude Code hooks

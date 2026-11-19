@@ -213,6 +213,7 @@ export default class WebexCrossClientService {
             METRIC_EVENT_NAMES.WXAPP_USERSUB_PUBLISH_FAILED,
             {
               enableWxBetterTogether: enable,
+              usersubPublished: this.answerCallsState,
               error: error instanceof Error ? error.toString() : String(error),
             },
             ['operational', 'behavioral']
@@ -243,12 +244,15 @@ export default class WebexCrossClientService {
     if (trackPublishMetrics) {
       metricsManager.trackEvent(
         METRIC_EVENT_NAMES.WXAPP_USERSUB_PUBLISH_SUCCESS,
-        {enableWxBetterTogether: enable},
+        {
+          enableWxBetterTogether: enable,
+          usersubPublished: enable,
+        },
         ['operational', 'behavioral']
       );
     }
 
-    LoggerProxy.info(`Cross-client answer-calls-on-wxcc set to ${enable}`, {
+    LoggerProxy.log(`Cross-client answer-calls-on-wxcc set to ${enable}`, {
       module: WEBEX_CROSS_CLIENT_FILE,
       method: METHODS.SET_MANAGE_WEBEX_CALLING_IN_WXCC,
       data: {
@@ -273,6 +277,7 @@ export default class WebexCrossClientService {
       METRIC_EVENT_NAMES.WXAPP_USERSUB_PUBLISH_FAILED,
       {
         enableWxBetterTogether: enable,
+        usersubPublished: this.answerCallsState,
         skipReason,
         error,
       },

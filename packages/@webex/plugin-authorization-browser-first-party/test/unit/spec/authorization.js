@@ -15,6 +15,7 @@ import {merge, times} from 'lodash';
 import CryptoJS from 'crypto-js';
 import Authorization from '@webex/plugin-authorization-browser-first-party';
 import {Events, InitialAuthorizationCodeGrantOutcomes} from '../../../src';
+import authorizationConfig from '../../../src/config';
 
 // Necessary to require lodash this way in order to stub the method
 const lodash = require('lodash');
@@ -139,8 +140,14 @@ describe('plugin-authorization-browser-first-party', () => {
 
     describe('#initialize()', () => {
       describe('when there is a code in the url', () => {
+        const csrfToken = 'initialization-csrf-token';
+        const makeAuthorizationCallbackUrl = (code, state = {}) =>
+          `http://example.com/?code=${code}&state=${base64.encode(
+            JSON.stringify({...state, csrf_token: csrfToken})
+          )}`;
+
         it('exchanges it for an access token and sets ready', () => {
-          const webex = makeWebex('http://example.com/?code=5');
+          const webex = makeWebex(makeAuthorizationCallbackUrl('5'), csrfToken);
 
           assert.isFalse(webex.authorization.ready);
           assert.isFalse(webex.credentials.canAuthorize);
@@ -160,7 +167,7 @@ describe('plugin-authorization-browser-first-party', () => {
         });
 
         it('retains the initialization exchange outcome after logout', async () => {
-          const webex = makeWebex('http://example.com/?code=5');
+          const webex = makeWebex(makeAuthorizationCallbackUrl('5'), csrfToken);
 
           await webex.authorization.when('change:ready');
           webex.authorization.logout({noRedirect: true});
@@ -234,9 +241,8 @@ describe('plugin-authorization-browser-first-party', () => {
         it('collects the preauth catalog when emailhash is present in the state', async () => {
           const code = 'authcode_clusterid_theOrgId';
           const webex = makeWebex(
-            `http://example.com/?code=${code}&state=${base64.encode(
-              JSON.stringify({emailhash: 'someemailhash'})
-            )}`
+            makeAuthorizationCallbackUrl(code, {emailhash: 'someemailhash'}),
+            csrfToken
           );
 
           const requestAuthorizationCodeGrantStub = sinon.stub(
@@ -257,7 +263,7 @@ describe('plugin-authorization-browser-first-party', () => {
 
         it('collects the preauth catalog no emailhash is present in the state', async () => {
           const code = 'authcode_clusterid_theOrgId';
-          const webex = makeWebex(`http://example.com/?code=${code}`);
+          const webex = makeWebex(makeAuthorizationCallbackUrl(code), csrfToken);
 
           const requestAuthorizationCodeGrantStub = sinon.stub(
             Authorization.prototype,
@@ -277,7 +283,7 @@ describe('plugin-authorization-browser-first-party', () => {
 
         it('collects the preauth catalog with no emailhash and no orgId', async () => {
           const code = 'authcode_clusterid';
-          const webex = makeWebex(`http://example.com/?code=${code}`);
+          const webex = makeWebex(makeAuthorizationCallbackUrl(code), csrfToken);
 
           const requestAuthorizationCodeGrantStub = sinon.stub(
             Authorization.prototype,
@@ -302,7 +308,7 @@ describe('plugin-authorization-browser-first-party', () => {
             .stub(Authorization.prototype, 'requestAuthorizationCodeGrant')
             .throws(error);
 
-          const webex = makeWebex(`http://example.com?code=${code}`);
+          const webex = makeWebex(makeAuthorizationCallbackUrl(code), csrfToken);
 
           return webex.authorization.when('change:ready').then(() => {
             assert.calledOnce(requestAuthorizationCodeGrantStub);
@@ -325,7 +331,7 @@ describe('plugin-authorization-browser-first-party', () => {
 
           sinon.stub(Authorization.prototype, 'requestAuthorizationCodeGrant').rejects(error);
 
-          const webex = makeWebex('http://example.com?code=5');
+          const webex = makeWebex(makeAuthorizationCallbackUrl('5'), csrfToken);
 
           await webex.authorization.when('change:ready');
 
@@ -381,8 +387,14 @@ describe('plugin-authorization-browser-first-party', () => {
       describe('when code verifier is present in session storage', () => {
         it('passes codeVerifier to requestAuthorizationCodeGrant', () => {
           const expectedVerifier = 'test verifier';
+          const csrfToken = 'initialization-csrf-token';
+          const state = base64.encode(JSON.stringify({csrf_token: csrfToken}));
 
-          const webex = makeWebex('http://example.com?code=5', undefined, expectedVerifier);
+          const webex = makeWebex(
+            `http://example.com?code=5&state=${state}`,
+            csrfToken,
+            expectedVerifier
+          );
 
           return webex.authorization.when('change:ready').then(() => {
             assert.calledTwice(webex.request);
@@ -391,6 +403,139 @@ describe('plugin-authorization-browser-first-party', () => {
             assert.equal(webex.request.getCall(1).args[0].form.code_verifier, expectedVerifier);
           });
         });
+      });
+    });
+
+    describe('#requestAuthorizationCodeGrant()', () => {
+      it('uses the client ID in the form for a public client', async () => {
+        const webex = makeWebex('http://example.com', undefined, undefined, {
+          credentials: {
+            clientType: 'public',
+            client_id: 'public-client-id',
+          },
+        });
+
+        await webex.authorization.requestAuthorizationCodeGrant({
+          code: 'authorization-code',
+          codeVerifier: 'code-verifier',
+        });
+
+        assert.calledOnceWithExactly(webex.request, {
+          method: 'POST',
+          uri: webex.config.credentials.tokenUrl,
+          form: {
+            grant_type: 'authorization_code',
+            redirect_uri: 'http://example.com',
+            code: 'authorization-code',
+            self_contained_token: true,
+            code_verifier: 'code-verifier',
+            client_id: 'public-client-id',
+          },
+          addAuthHeader: false,
+          shouldRefreshAccessToken: false,
+        });
+      });
+
+      it('uses HTTP Basic authentication for a confidential client', async () => {
+        const webex = makeWebex('http://example.com', undefined, undefined, {
+          credentials: {
+            clientType: 'confidential',
+            client_id: 'confidential-client-id',
+            client_secret: 'confidential-client-secret',
+          },
+        });
+
+        await webex.authorization.requestAuthorizationCodeGrant({
+          code: 'authorization-code',
+          codeVerifier: 'code-verifier',
+        });
+
+        assert.calledOnceWithExactly(webex.request, {
+          method: 'POST',
+          uri: webex.config.credentials.tokenUrl,
+          form: {
+            grant_type: 'authorization_code',
+            redirect_uri: 'http://example.com',
+            code: 'authorization-code',
+            self_contained_token: true,
+            code_verifier: 'code-verifier',
+          },
+          auth: {
+            user: 'confidential-client-id',
+            pass: 'confidential-client-secret',
+            sendImmediately: true,
+          },
+          shouldRefreshAccessToken: false,
+        });
+      });
+    });
+
+    describe('refreshCallback()', () => {
+      const tokenResponse = {
+        access_token: 'access-token',
+        refresh_token: 'refresh-token',
+      };
+
+      it('uses the client ID in the form for a public client', async () => {
+        const webex = {request: sinon.stub().resolves({body: tokenResponse})};
+        const token = {
+          refresh_token: 'current-refresh-token',
+          config: {
+            clientType: 'public',
+            client_id: 'public-client-id',
+            redirect_uri: 'http://example.com',
+            tokenUrl: 'https://idbroker.example.com/access_token',
+          },
+        };
+
+        const response = await authorizationConfig.credentials.refreshCallback(webex, token);
+
+        assert.calledOnceWithExactly(webex.request, {
+          method: 'POST',
+          uri: 'https://idbroker.example.com/access_token',
+          form: {
+            grant_type: 'refresh_token',
+            redirect_uri: 'http://example.com',
+            refresh_token: 'current-refresh-token',
+            client_id: 'public-client-id',
+          },
+          addAuthHeader: false,
+          shouldRefreshAccessToken: false,
+        });
+        assert.deepEqual(response, tokenResponse);
+      });
+
+      it('uses HTTP Basic authentication for a confidential client', async () => {
+        const webex = {request: sinon.stub().resolves({body: tokenResponse})};
+        const token = {
+          refresh_token: 'current-refresh-token',
+          config: {
+            clientType: 'confidential',
+            client_id: 'confidential-client-id',
+            client_secret: 'confidential-client-secret',
+            redirect_uri: 'http://example.com',
+            tokenUrl: 'https://idbroker.example.com/access_token',
+          },
+        };
+
+        const response = await authorizationConfig.credentials.refreshCallback(webex, token);
+
+        assert.calledOnceWithExactly(webex.request, {
+          method: 'POST',
+          uri: 'https://idbroker.example.com/access_token',
+          form: {
+            grant_type: 'refresh_token',
+            redirect_uri: 'http://example.com',
+            refresh_token: 'current-refresh-token',
+          },
+          auth: {
+            user: 'confidential-client-id',
+            pass: 'confidential-client-secret',
+            sendImmediately: true,
+          },
+          shouldRefreshAccessToken: false,
+        });
+        assert.deepEqual(response, tokenResponse);
       });
     });
 
@@ -770,22 +915,13 @@ describe('plugin-authorization-browser-first-party', () => {
       });
     });
 
-    describe('#_verifySecurityToken() requireMatch', () => {
-      it('silently returns undefined when no stored token and requireMatch is false', () => {
-        const webex = makeWebex();
-        webex.getWindow().sessionStorage.getItem = sinon.stub().returns(null);
-
-        const result = webex.authorization._verifySecurityToken({});
-
-        assert.isUndefined(result);
-      });
-
-      it('throws when no stored token and requireMatch is true', () => {
+    describe('#_verifySecurityToken()', () => {
+      it('throws when no stored token exists', () => {
         const webex = makeWebex();
         webex.getWindow().sessionStorage.getItem = sinon.stub().returns(null);
 
         assert.throws(() => {
-          webex.authorization._verifySecurityToken({}, {requireMatch: true});
+          webex.authorization._verifySecurityToken({});
         }, /CSRF token missing from session storage/);
       });
     });
@@ -884,7 +1020,7 @@ describe('plugin-authorization-browser-first-party', () => {
         );
       });
 
-      it('throws when state is absent even if no stored CSRF token exists (requireMatch)', () => {
+      it('throws when state is absent and no stored CSRF token exists', () => {
         const webex = makeWebex('http://example.com/?id_token=id-1');
         webex.getWindow().sessionStorage.getItem = sinon.stub().returns(null);
 
