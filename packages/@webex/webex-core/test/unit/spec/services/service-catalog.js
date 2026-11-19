@@ -505,6 +505,110 @@ describe('webex-core', () => {
         assert.equal(service, exampleService);
       });
 
+      it('matches an alternate host using the non-default port from the default url', () => {
+        const exampleService = {
+          defaultUrl: 'https://example.com:8443/resource',
+          hosts: [{host: 'alternate.example.com'}],
+        };
+
+        catalog.serviceGroups.postauth.push(exampleService);
+
+        assert.equal(
+          catalog.findServiceUrlFromUrl('https://alternate.example.com:8443/resource/id'),
+          exampleService
+        );
+      });
+
+      it('matches the default url when separate host metadata disagrees', () => {
+        const exampleService = {
+          defaultHost: 'stale.example.com',
+          defaultUrl: 'https://actual.example.com/resource',
+          hosts: [],
+        };
+
+        catalog.serviceGroups.postauth.push(exampleService);
+
+        assert.equal(
+          catalog.findServiceUrlFromUrl('https://actual.example.com/resource/id'),
+          exampleService
+        );
+      });
+
+      it('normalizes the case of an alternate hostname before matching', () => {
+        const exampleService = {
+          defaultUrl: 'https://example.com/resource',
+          hosts: [{host: 'ALTERNATE.EXAMPLE.COM'}],
+        };
+
+        catalog.serviceGroups.postauth.push(exampleService);
+
+        assert.equal(
+          catalog.findServiceUrlFromUrl('https://alternate.example.com/resource/id'),
+          exampleService
+        );
+      });
+
+      it('normalizes an internationalized alternate hostname before matching', () => {
+        const exampleService = {
+          defaultUrl: 'https://example.com/resource',
+          hosts: [{host: 'b\u00fccher.example'}],
+        };
+
+        catalog.serviceGroups.postauth.push(exampleService);
+
+        assert.equal(
+          catalog.findServiceUrlFromUrl('https://xn--bcher-kva.example/resource/id'),
+          exampleService
+        );
+      });
+
+      it('replaces refreshed URLs and removes stale legacy matches', () => {
+        const serviceName = 'refreshable-service';
+        const oldDefaultUrl = 'https://old.example.com:8443/resource';
+        const oldAlternateUrl = 'https://old-alternate.example.com:8443/resource';
+        const newDefaultUrl = 'https://new.example.com:9443/resource';
+        const newAlternateUrl = 'https://new-alternate.example.com:9443/resource';
+
+        catalog.updateServiceUrls('postauth', [
+          {
+            name: serviceName,
+            defaultUrl: oldDefaultUrl,
+            hosts: [{host: 'old-alternate.example.com'}],
+          },
+        ]);
+
+        const service = catalog._getUrl(serviceName, 'postauth');
+
+        assert.equal(catalog.findServiceUrlFromUrl(`${oldDefaultUrl}/id`), service);
+        assert.equal(catalog.findServiceUrlFromUrl(`${oldAlternateUrl}/id`), service);
+
+        catalog.updateServiceUrls('postauth', [
+          {
+            name: serviceName,
+            defaultUrl: newDefaultUrl,
+            hosts: [{host: 'new-alternate.example.com'}],
+          },
+        ]);
+
+        assert.equal(catalog._getUrl(serviceName, 'postauth'), service);
+        assert.equal(catalog.findServiceUrlFromUrl(`${newDefaultUrl}/id`), service);
+        assert.equal(catalog.findServiceUrlFromUrl(`${newAlternateUrl}/id`), service);
+        assert.isUndefined(catalog.findServiceUrlFromUrl(`${oldDefaultUrl}/id`));
+        assert.isUndefined(catalog.findServiceUrlFromUrl(`${oldAlternateUrl}/id`));
+
+        catalog.updateServiceUrls('postauth', [
+          {name: serviceName, defaultUrl: newDefaultUrl, hosts: []},
+        ]);
+
+        assert.equal(catalog.findServiceUrlFromUrl(`${newDefaultUrl}/id`), service);
+        assert.isUndefined(catalog.findServiceUrlFromUrl(`${newAlternateUrl}/id`));
+
+        catalog.updateServiceUrls('postauth', []);
+
+        assert.isUndefined(catalog._getUrl(serviceName, 'postauth'));
+        assert.isUndefined(catalog.findServiceUrlFromUrl(`${newDefaultUrl}/id`));
+      });
+
       describe('security: origin validation', () => {
         it('rejects URLs where the catalog host is a prefix of the candidate host (SECURITY)', () => {
           // Attack: https://trusted.example.attacker.com should NOT match https://trusted.example
