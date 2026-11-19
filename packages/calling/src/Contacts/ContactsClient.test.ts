@@ -996,6 +996,250 @@ describe('ContactClient Tests', () => {
     });
   });
 
+  it('concurrent fetchEncryptionKeyUrl creates one key and one default group', async () => {
+    const successGroupResponsePayload = <WebexRequestPayload>{
+      statusCode: 201,
+      body: mockGroupResponse,
+    };
+
+    // No existing encryptionKeyUrl and empty groups — forces the key/group creation path
+    contactClient['groups'] = [];
+    contactClient['encryptionKeyUrl'] = '';
+
+    webex.internal.encryption.kms.createUnboundKeys.mockResolvedValue([mockKmsKey]);
+    webex.internal.encryption.kms.createResource.mockResolvedValue(mockKmsKey);
+    webex.internal.encryption.encryptText.mockResolvedValue('Encrypted group name');
+    webex.request.mockResolvedValue(successGroupResponsePayload);
+
+    // Two concurrent invocations before either resolves
+    const [result1, result2] = await Promise.all([
+      contactClient['fetchEncryptionKeyUrl'](),
+      contactClient['fetchEncryptionKeyUrl'](),
+    ]);
+
+    // Both callers must receive the same key URL
+    expect(result1).toBe(mockKmsKey.uri);
+    expect(result2).toBe(mockKmsKey.uri);
+
+    // Only one KMS key and one default group must be created
+    expect(webex.internal.encryption.kms.createUnboundKeys).toHaveBeenCalledTimes(1);
+    expect(webex.internal.encryption.kms.createUnboundKeys).toHaveBeenCalledWith({count: 1});
+    expect(webex.internal.encryption.kms.createResource).toHaveBeenCalledTimes(1);
+    expect(webex.request).toHaveBeenCalledTimes(1);
+  });
+
+  it('clears the in-flight promise after successful resolution', async () => {
+    const successGroupResponsePayload = <WebexRequestPayload>{
+      statusCode: 201,
+      body: mockGroupResponse,
+    };
+
+    // No existing encryptionKeyUrl and empty groups — forces the key/group creation path
+    contactClient['groups'] = [];
+    contactClient['encryptionKeyUrl'] = '';
+
+    webex.internal.encryption.kms.createUnboundKeys.mockResolvedValue([mockKmsKey]);
+    webex.internal.encryption.kms.createResource.mockResolvedValue(mockKmsKey);
+    webex.internal.encryption.encryptText.mockResolvedValue('Encrypted group name');
+    webex.request.mockResolvedValue(successGroupResponsePayload);
+
+    await contactClient['fetchEncryptionKeyUrl']();
+
+    // The single-flight promise must not be left cached after success, so it
+    // can't be mistakenly re-read as fresh if encryptionKeyUrl is ever reset.
+    expect(contactClient['encryptionKeyUrlPromise']).toBeUndefined();
+  });
+
+  it('cached-key path awaits in-flight group creation instead of creating a duplicate default group', async () => {
+    const successGroupResponsePayload = <WebexRequestPayload>{
+      statusCode: 201,
+      body: mockGroupResponse,
+    };
+
+    // No existing encryptionKeyUrl and empty groups — forces the key/group creation path
+    contactClient['groups'] = [];
+    contactClient['encryptionKeyUrl'] = '';
+
+    webex.internal.encryption.kms.createUnboundKeys.mockResolvedValue([mockKmsKey]);
+    webex.internal.encryption.kms.createResource.mockResolvedValue(mockKmsKey);
+    webex.internal.encryption.encryptText.mockResolvedValue('Encrypted group name');
+
+    // Hold the default-group POST in flight so a second caller can arrive
+    // in the window between the KMS key resolving and the group being created.
+    let resolveGroupRequest: (value: WebexRequestPayload) => void = () => {};
+    const groupRequestPromise = new Promise<WebexRequestPayload>((resolve) => {
+      resolveGroupRequest = resolve;
+    });
+
+    webex.request.mockReturnValue(groupRequestPromise);
+
+    const firstCall = contactClient['fetchEncryptionKeyUrl']();
+
+    // Flush microtasks until the default-group POST has been issued, i.e. the
+    // KMS key has resolved but the group creation itself is still pending.
+    for (let i = 0; i < 20 && webex.request.mock.calls.length === 0; i += 1) {
+      // eslint-disable-next-line no-await-in-loop
+      await Promise.resolve();
+    }
+
+    expect(webex.request).toHaveBeenCalledTimes(1);
+
+    // A second caller arrives while the default-group creation is still in
+    // flight and must not race ahead to create a competing default group.
+    const secondCall = contactClient['fetchDefaultGroup']();
+
+    resolveGroupRequest(successGroupResponsePayload);
+
+    await Promise.all([firstCall, secondCall]);
+
+    // Only one default-group POST should ever be issued.
+    expect(webex.request).toHaveBeenCalledTimes(1);
+  });
+
+  it('failed key resolution does not cache a rejected promise', async () => {
+    const successGroupResponsePayload = <WebexRequestPayload>{
+      statusCode: 201,
+      body: mockGroupResponse,
+    };
+
+    contactClient['groups'] = [];
+    contactClient['encryptionKeyUrl'] = '';
+
+    const kmsError = new Error('KMS unavailable');
+
+    // First resolution attempt rejects at the KMS step
+    webex.internal.encryption.kms.createUnboundKeys.mockRejectedValueOnce(kmsError);
+
+    await expect(contactClient['fetchEncryptionKeyUrl']()).rejects.toThrow('KMS unavailable');
+
+    // After rejection the in-flight promise must be cleared so a subsequent
+    // call retries resolution rather than returning the cached rejection
+    webex.internal.encryption.kms.createUnboundKeys.mockResolvedValue([mockKmsKey]);
+    webex.internal.encryption.kms.createResource.mockResolvedValue(mockKmsKey);
+    webex.internal.encryption.encryptText.mockResolvedValue('Encrypted group name');
+    webex.request.mockResolvedValue(successGroupResponsePayload);
+
+    const result = await contactClient['fetchEncryptionKeyUrl']();
+
+    expect(result).toBe(mockKmsKey.uri);
+    // createUnboundKeys called once for the failed attempt and once for the retry
+    expect(webex.internal.encryption.kms.createUnboundKeys).toHaveBeenCalledTimes(2);
+  });
+
+  it('re-checks encryptionKeyUrl after getContacts when concurrent caller already set it', async () => {
+    // groups=undefined forces fetchEncryptionKeyUrl to call getContacts().  While
+    // that await is pending, a concurrent caller completes key+group creation and
+    // sets encryptionKeyUrl.  After getContacts resolves the caller must re-check
+    // encryptionKeyUrl and return the already-cached value instead of creating a
+    // second KMS key.
+    contactClient['groups'] = undefined;
+    contactClient['encryptionKeyUrl'] = '';
+
+    let resolveContactsRequest: (v: WebexRequestPayload) => void = () => {};
+    const contactsRequestPromise = new Promise<WebexRequestPayload>((resolve) => {
+      resolveContactsRequest = resolve;
+    });
+
+    // Hold the contacts fetch in flight so we can mutate state before it returns.
+    webex.request.mockReturnValueOnce(contactsRequestPromise);
+
+    const fetchPromise = contactClient['fetchEncryptionKeyUrl']();
+
+    // Simulate a concurrent caller that completed while we were awaiting getContacts.
+    contactClient['encryptionKeyUrl'] = mockKmsKey.uri;
+    contactClient['groups'] = [];
+
+    // Resolve getContacts with an empty-groups response.
+    resolveContactsRequest(<WebexRequestPayload>{
+      statusCode: 200,
+      body: {contacts: [], groups: []},
+    });
+
+    const result = await fetchPromise;
+
+    // Must return the already-set key, not create a new one.
+    expect(result).toBe(mockKmsKey.uri);
+    expect(webex.internal.encryption.kms.createUnboundKeys).not.toHaveBeenCalled();
+  });
+
+  it('fetchDefaultGroup returns created group ID when awaiting in-flight key creation', async () => {
+    // fetchEncryptionKeyUrl creates the default group as part of key creation.
+    // A concurrent fetchDefaultGroup call that arrives while the group POST is
+    // in flight must await that promise and return the resulting group ID rather
+    // than issuing a duplicate group creation that would receive a 400 error and
+    // return an empty string.
+    const successGroupResponsePayload = <WebexRequestPayload>{
+      statusCode: 201,
+      body: mockGroupResponse,
+    };
+
+    contactClient['groups'] = [];
+    contactClient['encryptionKeyUrl'] = '';
+
+    webex.internal.encryption.kms.createUnboundKeys.mockResolvedValue([mockKmsKey]);
+    webex.internal.encryption.kms.createResource.mockResolvedValue(mockKmsKey);
+    webex.internal.encryption.encryptText.mockResolvedValue('Encrypted group name');
+
+    // Hold the group-creation POST in flight.
+    let resolveGroupRequest: (v: WebexRequestPayload) => void = () => {};
+    const groupRequestPromise = new Promise<WebexRequestPayload>((resolve) => {
+      resolveGroupRequest = resolve;
+    });
+    webex.request.mockReturnValue(groupRequestPromise);
+
+    const keyPromise = contactClient['fetchEncryptionKeyUrl']();
+
+    // Flush microtasks until the KMS key has resolved and the group POST is in flight.
+    for (let i = 0; i < 20 && webex.request.mock.calls.length === 0; i += 1) {
+      // eslint-disable-next-line no-await-in-loop
+      await Promise.resolve();
+    }
+    expect(webex.request).toHaveBeenCalledTimes(1);
+
+    // A second caller wants the default group while creation is still in flight.
+    const groupIdPromise = contactClient['fetchDefaultGroup']();
+
+    resolveGroupRequest(successGroupResponsePayload);
+
+    const [, groupId] = await Promise.all([keyPromise, groupIdPromise]);
+
+    // Must return the real group ID, not an empty string caused by a 400 duplicate error.
+    expect(groupId).toBe(mockGroupResponse.groupId);
+    // Only one POST must have been issued.
+    expect(webex.request).toHaveBeenCalledTimes(1);
+  });
+
+  it('fetchDefaultGroup reuses defaultGroupId when createContactGroup returns duplicate-name 400 after fetchEncryptionKeyUrl created the group', async () => {
+    // fetchDefaultGroup calls createContactGroup(DEFAULT_GROUP_NAME) with no explicit key.
+    // Inside createContactGroup, fetchEncryptionKeyUrl() runs the IIFE which creates
+    // the group as a side effect (setting this.defaultGroupId and pushing to this.groups).
+    // The outer createContactGroup then finds the group already in this.groups and returns
+    // a 400 duplicate response.  fetchDefaultGroup must reuse this.defaultGroupId instead
+    // of falling through to return ''.
+    const successGroupResponsePayload = <WebexRequestPayload>{
+      statusCode: 201,
+      body: mockGroupResponse,
+    };
+
+    contactClient['groups'] = [];
+    contactClient['encryptionKeyUrl'] = '';
+
+    webex.internal.encryption.kms.createUnboundKeys.mockResolvedValue([mockKmsKey]);
+    webex.internal.encryption.kms.createResource.mockResolvedValue(mockKmsKey);
+    webex.internal.encryption.encryptText.mockResolvedValue('Encrypted group name');
+    // The inner createContactGroup (from fetchEncryptionKeyUrl's IIFE) succeeds.
+    // The outer createContactGroup short-circuits with a 400 because the group was
+    // already pushed to this.groups by the inner call.
+    webex.request.mockResolvedValue(successGroupResponsePayload);
+
+    const groupId = await contactClient['fetchDefaultGroup']();
+
+    // Must return the real group ID, not '' from the duplicate-name fallthrough.
+    expect(groupId).toBe(mockGroupResponse.groupId);
+    // Only one POST should be issued (by the inner createContactGroup).
+    expect(webex.request).toHaveBeenCalledTimes(1);
+  });
+
   it('logs error for chunk when scimQuery API call fails in the loop for getContacts', async () => {
     const mockData = errorCodes[0];
     const respPayload = {
