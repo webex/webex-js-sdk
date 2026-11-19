@@ -708,7 +708,7 @@
         "publication": "published",
         "source_kind": "external",
         "source": "@webex/calling (workspace package)",
-        "summary": "Calling client, line registration, and call objects used for BROWSER station login and WebRTC voice tasks."
+        "summary": "Best-effort microphone capture before calling client creation with optional localAudioStream; capture falls back within 20 seconds or on supersession, late streams are stopped, and attempt audio is released after initial registration settles or is superseded. Line registration and separate call media support BROWSER station login and WebRTC voice tasks."
       },
       "webex-internal-mercury": {
         "kind": "sdk",
