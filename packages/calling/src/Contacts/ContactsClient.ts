@@ -611,6 +611,12 @@ export class ContactsClient implements IContacts {
       return groupId;
     }
 
+    // createContactGroup may return a duplicate-name 400 when fetchEncryptionKeyUrl
+    // already created the group as part of its key-creation flow; reuse that ID.
+    if (this.defaultGroupId) {
+      return this.defaultGroupId;
+    }
+
     return '';
   }
 

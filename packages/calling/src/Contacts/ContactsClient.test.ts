@@ -1209,6 +1209,37 @@ describe('ContactClient Tests', () => {
     expect(webex.request).toHaveBeenCalledTimes(1);
   });
 
+  it('fetchDefaultGroup reuses defaultGroupId when createContactGroup returns duplicate-name 400 after fetchEncryptionKeyUrl created the group', async () => {
+    // fetchDefaultGroup calls createContactGroup(DEFAULT_GROUP_NAME) with no explicit key.
+    // Inside createContactGroup, fetchEncryptionKeyUrl() runs the IIFE which creates
+    // the group as a side effect (setting this.defaultGroupId and pushing to this.groups).
+    // The outer createContactGroup then finds the group already in this.groups and returns
+    // a 400 duplicate response.  fetchDefaultGroup must reuse this.defaultGroupId instead
+    // of falling through to return ''.
+    const successGroupResponsePayload = <WebexRequestPayload>{
+      statusCode: 201,
+      body: mockGroupResponse,
+    };
+
+    contactClient['groups'] = [];
+    contactClient['encryptionKeyUrl'] = '';
+
+    webex.internal.encryption.kms.createUnboundKeys.mockResolvedValue([mockKmsKey]);
+    webex.internal.encryption.kms.createResource.mockResolvedValue(mockKmsKey);
+    webex.internal.encryption.encryptText.mockResolvedValue('Encrypted group name');
+    // The inner createContactGroup (from fetchEncryptionKeyUrl's IIFE) succeeds.
+    // The outer createContactGroup short-circuits with a 400 because the group was
+    // already pushed to this.groups by the inner call.
+    webex.request.mockResolvedValue(successGroupResponsePayload);
+
+    const groupId = await contactClient['fetchDefaultGroup']();
+
+    // Must return the real group ID, not '' from the duplicate-name fallthrough.
+    expect(groupId).toBe(mockGroupResponse.groupId);
+    // Only one POST should be issued (by the inner createContactGroup).
+    expect(webex.request).toHaveBeenCalledTimes(1);
+  });
+
   it('logs error for chunk when scimQuery API call fails in the loop for getContacts', async () => {
     const mockData = errorCodes[0];
     const respPayload = {
