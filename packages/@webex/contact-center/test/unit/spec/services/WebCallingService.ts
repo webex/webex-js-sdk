@@ -260,6 +260,48 @@ describe('WebCallingService', () => {
       expect(line.register).toHaveBeenCalledTimes(1);
     });
 
+    it.each(['resolves', 'rejects'])(
+      'registers without waiting indefinitely for capture that later %s',
+      async (captureOutcome) => {
+        jest.useFakeTimers();
+        setBrowserVoiceRequired();
+        const capture = deferred<LocalMicrophoneStream>();
+        const captureStarted = deferred<void>();
+        (createMicrophoneStream as jest.Mock).mockImplementationOnce(() => {
+          captureStarted.resolve();
+          return capture.promise;
+        });
+        registerLineImmediately();
+        const registration = webRTCCalling.registerWebCallingLine();
+        await captureStarted.promise;
+        expect(createClient).not.toHaveBeenCalled();
+
+        jest.advanceTimersByTime(TIMEOUT_DURATION);
+        await expect(registration).resolves.toBeUndefined();
+
+        expect(createClient).toHaveBeenCalledWith(webex, {
+          localAudioStream: undefined,
+          logger: {level: 'info'},
+          serviceData: {indicator: 'contactcenter', domain: 'rtw.prod-us1.rtmsprod.net'},
+        });
+        expect(line.register).toHaveBeenCalledTimes(1);
+        const currentState = webRTCCalling.getVoiceConnectionState();
+        expect(currentState.status).toBe(VOICE_CONNECTION_STATUS.READY);
+        expect(jest.getTimerCount()).toBe(0);
+
+        if (captureOutcome === 'resolves') {
+          capture.resolve(microphoneStream);
+          await capture.promise;
+          expect(microphoneStream.stop).toHaveBeenCalledTimes(1);
+        } else {
+          capture.reject(new Error('Late capture failure'));
+          await capture.promise.catch(() => undefined);
+        }
+        expect(createClient).toHaveBeenCalledTimes(1);
+        expect(webRTCCalling.getVoiceConnectionState()).toEqual(currentState);
+      }
+    );
+
     it.each(['client initialization', 'line error'])(
       'releases capture and preserves a genuine %s failure',
       async (failure) => {
@@ -312,6 +354,7 @@ describe('WebCallingService', () => {
     it.each(['deregistration', 'new registration'])(
       'releases late capture after %s without creating a stale client',
       async (supersession) => {
+        jest.useFakeTimers();
         const capture = deferred<LocalMicrophoneStream>();
         const captureStarted = deferred<void>();
         (createMicrophoneStream as jest.Mock).mockImplementationOnce(() => {
@@ -330,8 +373,10 @@ describe('WebCallingService', () => {
         const currentState = webRTCCalling.getVoiceConnectionState();
         const clientCreations = supersession === 'deregistration' ? 0 : 1;
 
-        capture.resolve(microphoneStream);
         await expect(firstRegistration).resolves.toBeUndefined();
+        expect(jest.getTimerCount()).toBe(0);
+        capture.resolve(microphoneStream);
+        await capture.promise;
 
         expect(microphoneStream.stop).toHaveBeenCalledTimes(1);
         expect(createClient).toHaveBeenCalledTimes(clientCreations);

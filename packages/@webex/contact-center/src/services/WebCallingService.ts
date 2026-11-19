@@ -424,13 +424,37 @@ export default class WebCallingService extends EventEmitter {
         return;
       }
 
+      let capturePending = true;
+      let captureTimeout: ReturnType<typeof setTimeout> | undefined;
       try {
-        localAudioStream = await createMicrophoneStream();
+        localAudioStream = await Promise.race([
+          createMicrophoneStream().then((stream) => {
+            if (!capturePending) {
+              localAudioStream = stream;
+              releaseMicrophoneStream();
+
+              return undefined;
+            }
+
+            return stream;
+          }),
+          new Promise<undefined>((resolve) => {
+            const skipCapture = (): void => {
+              capturePending = false;
+              resolve(undefined);
+            };
+            this.registrationListenerCleanup.push(skipCapture);
+            captureTimeout = setTimeout(skipCapture, TIMEOUT_DURATION);
+          }),
+        ]);
       } catch (error) {
         LoggerProxy.error(`Registration microphone capture failed: ${error}`, {
           module: WEB_CALLING_SERVICE_FILE,
           method: METHODS.REGISTER_WEB_CALLING_LINE,
         });
+      } finally {
+        capturePending = false;
+        clearTimeout(captureTimeout);
       }
       if (registrationGeneration !== this.registrationGeneration) {
         return;
