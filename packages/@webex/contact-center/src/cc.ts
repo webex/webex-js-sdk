@@ -391,13 +391,6 @@ export default class ContactCenter extends WebexPlugin implements IContactCenter
    * @private
    */
   private pinnedVersion?: SessionVersion;
-
-  /**
-   * Pre-login declared V2 eligibility (from profile manageChannelAvailability), for diagnostics.
-   * @private
-   */
-  private declaredEligibility?: boolean;
-
   /**
    * API instance for managing Webex Contact Center entry points
    * Provides functionality to fetch entry points with caching support
@@ -1291,6 +1284,8 @@ export default class ContactCenter extends WebexPlugin implements IContactCenter
         },
       };
 
+      await this.refreshManageChannelAvailability();
+
       // Resolve V2 eligibility before login to select the right API path
       const preLoginV2Eligible = this.isV2Eligible(this.agentConfig?.manageChannelAvailability);
 
@@ -1324,24 +1319,7 @@ export default class ContactCenter extends WebexPlugin implements IContactCenter
         );
       }
 
-      // V2 login can 202 without ever emitting AgentStationLoginSuccess on orgs
-      // that are not V2-provisioned; fall back to V1 on that AQM timeout.
-      let effectiveV2Eligible = preLoginV2Eligible;
-      let resp: Awaited<typeof loginResponse>;
-      try {
-        resp = await loginResponse;
-      } catch (loginError) {
-        if (preLoginV2Eligible && this.isAqmTimeout(loginError)) {
-          LoggerProxy.log(
-            'V2 station login timed out; falling back to V1 (/v1/agents/login)',
-            loggerContext
-          );
-          effectiveV2Eligible = false;
-          resp = await this.services.agent.stationLogin(loginPayload);
-        } else {
-          throw loginError;
-        }
-      }
+      const resp = await loginResponse;
       const {channelsMap, ...loginData} = resp.data;
       this.updateWellnessSession(resp.data.agentSessionId);
       this.agentConfig.currentTeamId = resp.data.teamId;
@@ -1356,24 +1334,9 @@ export default class ContactCenter extends WebexPlugin implements IContactCenter
         notifsTrackingId: resp.trackingId,
       };
 
-      // Record declared (pre-login) eligibility for diagnostics.
-      // This always reflects the profile's manageChannelAvailability — NOT the
-      // post-fallback value — so that getAgentStateControl().declared shows what
-      // the admin configured even when V2 timed out and fell back to V1.
-      this.declaredEligibility = preLoginV2Eligible;
-
-      // Pin based solely on profile manageChannelAvailability (the only real V2 signal).
-      // NOTE: handleWebsocketMessage also pins eagerly (before this resumes)
-      // so widget listeners see the correct version synchronously on the event.
-      // This re-pin is idempotent in the normal case. In the V2-timeout-fallback
-      // path it is authoritative: the timed-out V2 attempt never fires a WS
-      // event (that is what "timeout" means), so the early-pin ran only for the
-      // V1 fallback's event, and both agree on V1.
-      if (effectiveV2Eligible) {
-        this.pinSessionVersion('V2');
-      } else {
-        this.pinSessionVersion('V1');
-      }
+      // handleWebsocketMessage pins the same version before this resumes so
+      // event listeners can read getAgentStateControl() synchronously.
+      this.pinSessionVersion(preLoginV2Eligible ? 'V2' : 'V1');
 
       // Idempotent with the early-pin seeding in handleWebsocketMessage — the
       // WS handler seeds these synchronously before emit, and this runs after
@@ -1438,10 +1401,6 @@ export default class ContactCenter extends WebexPlugin implements IContactCenter
     }
   }
 
-  private isAqmTimeout(error: unknown): boolean {
-    return (error as {id?: string})?.id === 'Service.aqm.reqs.Timeout';
-  }
-
   /**
    * Performs a station logout operation for the agent
    * @remarks
@@ -1473,7 +1432,7 @@ export default class ContactCenter extends WebexPlugin implements IContactCenter
         METRIC_EVENT_NAMES.STATION_LOGOUT_SUCCESS,
         METRIC_EVENT_NAMES.STATION_LOGOUT_FAILED,
       ]);
-      const logoutResponse = this.isV2Session()
+      const logoutResponse = this.shouldRouteV2()
         ? this.services.agent.logoutV2({data})
         : this.services.agent.logout({data});
 
@@ -1833,6 +1792,7 @@ export default class ContactCenter extends WebexPlugin implements IContactCenter
             eventData.data.agentSessionId === this.currentAgentSessionId)
         ) {
           this.updateWellnessSession();
+          this.clearV2LocalState();
         }
         // @ts-ignore
         this.emit(AGENT_EVENTS.AGENT_MULTI_LOGIN, eventData.data);
@@ -1860,7 +1820,7 @@ export default class ContactCenter extends WebexPlugin implements IContactCenter
         // to the same value when its promise resumes — this is idempotent.
         //
         // V2 eligibility is determined solely by the profile's
-        // manageChannelAvailability flag fetched during register().
+        // manageChannelAvailability flag, re-read before each stationLogin().
         const earlyV2 = this.isV2Eligible(this.agentConfig?.manageChannelAvailability);
 
         if (earlyV2) {
@@ -2607,6 +2567,10 @@ export default class ContactCenter extends WebexPlugin implements IContactCenter
     // Guard: ignore if session is not V2
     if (!this.isV2Session()) return;
 
+    // Guard: the bind also matches routing messages about other agents
+    const ownAgentId = this.agentConfig?.agentId;
+    if (ownAgentId && data.agentId && data.agentId !== ownAgentId) return;
+
     // Guard: ignore unknown channel types to prevent polluting the aggregate bridge
     if (!SELECTABLE_CHANNEL_TYPES.includes(channelType)) {
       LoggerProxy.warn(
@@ -2689,7 +2653,7 @@ export default class ContactCenter extends WebexPlugin implements IContactCenter
    * @private
    */
   private setupEventListeners() {
-    this.services.connectionService.on('connectionLost', this.handleConnectionLost.bind(this));
+    this.services.connectionService.on('connectionLost', this.handleConnectionLost);
   }
 
   /**
@@ -2711,24 +2675,26 @@ export default class ContactCenter extends WebexPlugin implements IContactCenter
    * @param {ConnectionLostDetails} msg Connection lost details
    * @private
    */
-  private async handleConnectionLost(msg: ConnectionLostDetails): Promise<void> {
+  private handleConnectionLost = async (msg: ConnectionLostDetails): Promise<void> => {
     if (msg.isConnectionLost) {
-      // TODO: Emit an event saying connection is lost
       LoggerProxy.log('event=handleConnectionLost | Connection lost', {
         module: CC_FILE,
         method: METHODS.HANDLE_CONNECTION_LOST,
       });
+      // @ts-ignore
+      this.emit(AGENT_EVENTS.AGENT_CONNECTION_LOST, {});
     } else if (msg.isSocketReconnected) {
-      // TODO: Emit an event saying connection is re-estabilished
       LoggerProxy.log(
         'event=handleConnectionReconnect | Connection reconnected attempting to request silent relogin',
         {module: CC_FILE, method: METHODS.HANDLE_CONNECTION_LOST}
       );
+      // @ts-ignore
+      this.emit(AGENT_EVENTS.AGENT_CONNECTION_RECONNECTED, {});
       if (this.$config && this.$config.allowAutomatedRelogin) {
         await this.silentRelogin();
       }
     }
-  }
+  };
 
   /**
    * Handles silent relogin after registration completion
@@ -2741,12 +2707,12 @@ export default class ContactCenter extends WebexPlugin implements IContactCenter
     });
 
     try {
-      // Unified reload: bind accepts both V1 (AgentReloginSuccess) and V2
-      // (AgentChannelReloginSuccess). Per the API contract the response type
-      // is determined by the persisted login-session version on the server,
-      // NOT by the reload endpoint version. After a page refresh the SDK's
-      // in-memory session pin is lost, so we must handle either response.
-      const reLoginResponse = await this.services.agent.reload();
+      // Both reload endpoints bind V1 (AgentReloginSuccess) and V2
+      // (AgentChannelReloginSuccess): the response type follows the persisted
+      // session version, which can differ from the profile flag after a refresh.
+      const reLoginResponse = this.shouldRouteV2()
+        ? await this.services.agent.reloadV2()
+        : await this.services.agent.reload();
       this.updateWellnessSession(reLoginResponse.data.agentSessionId);
 
       const responseType = reLoginResponse.data?.type;
@@ -2773,10 +2739,12 @@ export default class ContactCenter extends WebexPlugin implements IContactCenter
           this.loginChannelsMap = channelsMap;
         }
 
-        // V2 disconnect recovery: find channels idled by WSS disconnect
+        // V2 disconnect recovery: find channels idled by WSS disconnect. Only
+        // selectable channels with capacity, or setAgentState rejects the whole batch.
+        const recoverableChannels = this.selectDefaultChannels(this.loginChannelsMap);
         const disconnectedChannelTypes = this.selectDisconnectedChannels(
           agentChannelStateDetailMap || ({} as Record<ChannelType, AgentChannelTypeStates>)
-        );
+        ).filter((ct) => recoverableChannels.includes(ct));
 
         if (disconnectedChannelTypes.length > 0) {
           LoggerProxy.log(
@@ -2911,6 +2879,15 @@ export default class ContactCenter extends WebexPlugin implements IContactCenter
           module: CC_FILE,
           method: METHODS.SILENT_RELOGIN,
         });
+        // The server session is gone; drop the stale pin so consumers see a logged-out agent.
+        this.clearV2LocalState();
+        if (this.agentConfig) {
+          this.agentConfig.isAgentLoggedIn = false;
+        }
+        // @ts-ignore
+        this.emit(AGENT_EVENTS.AGENT_RELOGIN_SESSION_NOT_FOUND, {
+          agentId: this.agentConfig?.agentId,
+        });
 
         return;
       }
@@ -2973,7 +2950,9 @@ export default class ContactCenter extends WebexPlugin implements IContactCenter
   public getChannelStates(): Record<ChannelType, AgentChannelTypeStates> {
     if (!this.isV2Session()) return {} as Record<ChannelType, AgentChannelTypeStates>;
 
-    return {...this.channelStatesMap};
+    return Object.fromEntries(
+      Object.entries(this.channelStatesMap).map(([channelType, state]) => [channelType, {...state}])
+    ) as Record<ChannelType, AgentChannelTypeStates>;
   }
 
   /**
@@ -2989,12 +2968,36 @@ export default class ContactCenter extends WebexPlugin implements IContactCenter
     }
 
     return {
-      declared: this.declaredEligibility,
+      declared: this.agentConfig
+        ? this.isV2Eligible(this.agentConfig.manageChannelAvailability)
+        : undefined,
       active: sessionActive,
     };
   }
 
   // ─── V2 Granular Agent State — session version helpers ──────────────────
+
+  /**
+   * Re-reads `manageChannelAvailability` from the user desktop-login profile so a
+   * profile change applies on the next login without a new register(). Keeps the
+   * cached value when the request fails so login is never blocked.
+   * @private
+   */
+  private async refreshManageChannelAvailability(): Promise<void> {
+    if (!this.agentConfig?.agentId) return;
+    try {
+      const {agentProfile} = await this.services.config.getUserDesktopLoginConfig(
+        this.$webex.credentials.getOrgId(),
+        this.agentConfig.agentId
+      );
+      this.agentConfig.manageChannelAvailability = agentProfile?.manageChannelAvailability === true;
+    } catch (error) {
+      LoggerProxy.warn(
+        `Could not refresh manageChannelAvailability (${error}), using cached value: ${this.agentConfig.manageChannelAvailability}`,
+        {module: CC_FILE, method: METHODS.STATION_LOGIN}
+      );
+    }
+  }
 
   /**
    * Resolves whether the session is eligible for V2 granular agent state.
@@ -3007,7 +3010,9 @@ export default class ContactCenter extends WebexPlugin implements IContactCenter
   }
 
   /**
-   * Pins the session version for the current login session.
+   * Pins the session version for the current login session. A reload pins the
+   * server's session version, which can differ from the profile flag until the
+   * agent signs in again.
    * @private
    */
   private pinSessionVersion(version: SessionVersion): void {
@@ -3023,12 +3028,22 @@ export default class ContactCenter extends WebexPlugin implements IContactCenter
   }
 
   /**
+   * Chooses V2 for reload and logout: the pinned session version when set,
+   * otherwise the profile flag (no session pinned yet, e.g. after a refresh).
+   * @private
+   */
+  private shouldRouteV2(): boolean {
+    if (this.pinnedVersion) return this.pinnedVersion === 'V2';
+
+    return this.isV2Eligible(this.agentConfig?.manageChannelAvailability);
+  }
+
+  /**
    * Clears the pinned session version and derived state. Called on logout.
    * @private
    */
   private clearSessionVersion(): void {
     this.pinnedVersion = undefined;
-    this.declaredEligibility = undefined;
   }
 
   /**

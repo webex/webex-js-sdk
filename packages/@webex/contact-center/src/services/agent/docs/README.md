@@ -1,7 +1,7 @@
 ---
 type: Module Spec
 title: 'Agent service specification'
-description: Responsibilities, boundaries, design, invariants, and verification for the agent service module, the routingAgent request factory behind station login, logout, state change, buddy agents, and reload.
+description: Responsibilities, boundaries, design, invariants, and verification for the agent service module, the routingAgent request factory behind station login, logout, state change, buddy agents, and reload (V1 and V2), and the V2-to-V1 state bridge.
 tags: [module, specification]
 ---
 <!-- sdd-generated-metadata
@@ -18,7 +18,7 @@ validation_status: pass-with-warnings
 This source-local document at `src/services/agent/docs/README.md` owns the stable specification for
 **the agent service**: the `routingAgent(AqmReqs)` request factory in `src/services/agent/index.ts`,
 the agent request, notification, and event types in `src/services/agent/types.ts` (contract
-`contact-center-agent-events`), and the agent-specific behavior of the ContactCenter methods that wrap
+`contact-center-agent-events`), the V2-to-V1 state bridge in `src/services/agent/aggregate.ts`, and the agent-specific behavior of the ContactCenter methods that wrap
 it (`stationLogin`, `stationLogout`, `setAgentState`, `getBuddyAgents`, and the private silent relogin).
 The ContactCenter class as a whole belongs to the [root module specification](../../../docs/README.md);
 the AqmReqs transport belongs to the [core module specification](../../core/docs/README.md); the
@@ -73,6 +73,9 @@ Related context: [documentation index](../../../../docs/index.md) ·
 | -------- | ------------------- |
 | `src/services/agent/index.ts` | The `routingAgent` request functions with their endpoints, methods, `CC_EVENTS` binds, error transformers, and errIds |
 | `src/services/agent/types.ts` | `AGENT_EVENTS`, request types (`Logout`, `StateChange`, `UserStationLogin`, `BuddyAgents`), notification types (`StationLoginSuccess`, `LogoutSuccess`, `StateChangeSuccess`, `BuddyAgentsSuccess`, `ReloginSuccess`), `StationLoginSuccessResponse`, `DeviceTypeUpdateSuccess`, `AgentState`, `LoginOption`, and their JSDoc |
+| `src/services/agent/aggregate.ts` | `projectAggregate`, `shouldEmitLegacyEvent`, `bridgeStateChangeSuccess`, `shouldBridgeChannelState`, and the primary channel order `telephony`, `chat`, `email`, `social` |
+| `src/services/agent/types.ts` (V2 section) | `ChannelType`, `ChannelStateChangeRequest`, `AgentChannelTypeStates`, `AgentChannelStateChanged`, `AgentChannelStateChangeFailed`, `AgentChannelReloginSuccess`, `SessionVersion`, `AgentStateControlStatus`, and the four `agent:channel*` events |
+| `test/unit/spec/services/agent/aggregate.ts` | Projection, bridge payload, and duplicate-suppression cases |
 | `src/services/config/types.ts` | The `CC_EVENTS` string values the binds use, for example `StationLogin` with nested `AgentStationLoginSuccess` |
 | `src/services/index.ts` | The services root builds `agent` as `routingAgent(aqmReq)` |
 | `src/cc.ts` | ContactCenter wrappers `stationLogin`, `stationLogout`, `setAgentState`, `getBuddyAgents`, `updateAgentProfile`; `getDeviceId`; `handleWebsocketMessage`; `handleConnectionLost`; `silentRelogin`; the in-code reason for the `webrtc-` dial number |
@@ -85,7 +88,7 @@ Related context: [documentation index](../../../../docs/index.md) ·
 | `src/config.ts` | `allowAutomatedRelogin` defaults to true |
 | `src/index.ts` | Public exports of `routingAgent`, `AGENT_EVENTS`, and the agent types |
 | `src/metrics/constants.ts` | The station, state-change, and buddy-agent metric names |
-| `test/unit/spec/services/agent/index.ts` | Five cases; each asserts only that the request function delegates to `req` or `reqEmpty` and returns a value |
+| `test/unit/spec/services/agent/index.ts` | Nine cases. The V1 cases and `reloadV2` assert only delegation to `req` or `reqEmpty`; the `stationLoginV2`, `stateChangeV2`, and `logoutV2` cases assert the url, method, binds, and errIds |
 | `test/unit/spec/cc.ts` | `stationLogin`, `stationLogout`, `setAgentStatus`, `getBuddyAgents`, `silentRelogin`, `cc.getDeviceId`, `handleWebsocketMessage events`, and `updateAgentProfile` suites |
 | `test/unit/spec/services/core/Utils.ts` | `getStationLoginErrorData` message and fieldName cases |
 | `src/cc.ts` | Justifies the extension subsections under Data flow and sequence coverage: one subsection per operation group the wrappers implement (station login, station logout, state change, buddy-agent lookup, recovery reload) plus the WebSocket event mapping and silent-relogin flows |
@@ -94,7 +97,7 @@ Related context: [documentation index](../../../../docs/index.md) ·
 
 - Purpose: Manage agent lifecycle including login, logout, state changes, and buddy agent queries.
 - Responsibility: Agent owns the `routingAgent(AqmReqs)` request factory for station login, station logout, agent-state change, buddy-agent lookup, and agent-session reload. ContactCenter exposes the application-facing methods/events and owns profile/device updates plus recovery policy.
-- In scope: Own AQM request definitions for station login/logout, state change, buddy-agent queries, and reload, the routing payload and notification types, and `AGENT_EVENTS`.
+- In scope: Own AQM request definitions for station login/logout, state change, buddy-agent queries, and reload (V1 and V2), the V2-to-V1 bridge functions, the routing payload and notification types, and `AGENT_EVENTS`.
 - Out of scope: Device/profile update and automated relogin orchestration belong to ContactCenter. Request correlation, timeouts, and the socket belong to AqmReqs and the core module.
 - Consumers: the services root (`services.agent`), ContactCenter, and applications that import `routingAgent` or `AGENT_EVENTS` from the package.
 
@@ -104,6 +107,7 @@ The capabilities applications reach through ContactCenter:
 - **Station Logout**: Logout from current station with reason
 - **State Management**: Toggle between Available/Idle states with aux codes
 - **Buddy Agents**: Query available agents for consult/transfer
+- **Granular agent state (V2)**: Per-channel Available/Idle when the agent profile sets `manageChannelAvailability` (WXCC-15791)
 - **Silent Relogin**: Automatic re-authentication on reconnection, and during `cc.register()`, when `allowAutomatedRelogin` is enabled
 
 ## Structure and key files
@@ -111,10 +115,12 @@ The capabilities applications reach through ContactCenter:
 | Path | Responsibility |
 | ---- | -------------- |
 | `src/services/agent/index.ts` | Agent service factory: the AQM request definitions |
-| `src/services/agent/types.ts` | Agent types and events: request payloads, notification messages, `AGENT_EVENTS` |
+| `src/services/agent/types.ts` | Agent types and events: request payloads, notification messages, `AGENT_EVENTS`, and the V2 channel types |
+| `src/services/agent/aggregate.ts` | Pure V2-to-V1 bridge: projects per-channel state to one agent-wide state for V1 listeners |
 | `src/cc.ts` | ContactCenter wrappers, WebSocket-to-event mapping, and silent relogin around the factory |
 | `src/services/index.ts` | Builds the factory once as `services.agent` |
-| `test/unit/spec/services/agent/index.ts` | Factory delegation tests |
+| `test/unit/spec/services/agent/index.ts` | Factory delegation and V2 builder tests |
+| `test/unit/spec/services/agent/aggregate.ts` | Bridge tests |
 | `test/unit/spec/cc.ts` | Wrapper, event-mapping, relogin, and profile-update tests |
 
 ## Public surface
@@ -126,6 +132,8 @@ The public `cc.*` methods are part of the published `contact-center-sdk` contrac
 | ------- | -------- | ------------------------ | ------ |
 | `contact-center-agent-events`: `AGENT_EVENTS`, the routing request types (`Logout`, `StateChange`, `UserStationLogin`, `BuddyAgents`), the notification types (`StationLoginSuccess`, `LogoutSuccess`, `StateChangeSuccess`, `BuddyAgentsSuccess`, `ReloginSuccess`), `StationLoginSuccessResponse`, and `AgentState` | Applications listening on `webex.cc`; TypeScript consumers | Published; event names and payload shapes change only with a package release | `src/services/agent/types.ts` |
 | `contact-center-sdk`: the `routingAgent` export, the ContactCenter agent methods (`stationLogin`, `stationLogout`, `setAgentState`, `getBuddyAgents`, `updateAgentProfile`), and the response aliases `StationLoginResponse`, `StationLogoutResponse`, `BuddyAgentsResponse`, `SetStateResponse`, and `UpdateDeviceTypeResponse` | Applications | Published; the request function names and the method signatures are stable | `src/index.ts`, `src/types.ts` |
+| `contact-center-agent-events` (V2): `ChannelType`, `ChannelStateChangeRequest`, `AgentChannelTypeStates`, `AgentChannelStateChanged`, `AgentChannelStateChangeFailed`, `AgentChannelReloginSuccess`, `AgentStateControlStatus`, and the `agent:channelStateChange`, `agent:channelStateChangeFailed`, `agent:channelReloginSuccess`, `agent:channelRecoveryDeferred` events | Applications on a V2 session | Published and additive; V1 sessions never emit them | `src/services/agent/types.ts`, `src/index.ts`; [V2 events contract](../../../../ai-docs/features/WXCC-15791-user-granular-agent-state/design/contracts/v2-events.md) |
+| `contact-center-sdk` (V2): `cc.getChannelStates()`, `cc.getAgentStateControl()`, and the optional `channelType` on `cc.setAgentState` | Applications | Published and additive; `channelType` is ignored on V1 | `src/cc.ts`, `src/types.ts`; [V2 state change contract](../../../../ai-docs/features/WXCC-15791-user-granular-agent-state/design/contracts/v2-state-change.md) |
 
 Login options:
 
@@ -178,8 +186,9 @@ await cc.stationLogout({
 - `auxCodeId` (string): Auxiliary code ID
 - `lastStateChangeReason` (string, optional): Reason for change
 - `agentId` (string, optional): Agent ID (defaults to current agent)
+- `channelType` (`ChannelType | ChannelType[]`, optional): V2 sessions only. The channels to change; when omitted, every selectable channel (`telephony`, `chat`, `email`, `social`) with capacity. Ignored on V1.
 
-**Returns**: `Promise<SetStateResponse>`
+**Returns**: `Promise<SetStateResponse>`; on a V2 session, the first `AgentChannelStateChanged`.
 
 ```typescript
 // Go Available
@@ -194,6 +203,11 @@ await cc.setAgentState({
   auxCodeId: 'break-code-123',
   lastStateChangeReason: 'Coffee break',
 });
+
+// V2 session: chat Available only
+await cc.setAgentState({state: 'Available', auxCodeId: '0', channelType: 'chat'});
+const channels = cc.getChannelStates(); // {telephony: {...}, chat: {...}, ...}; {} on V1
+const control = cc.getAgentStateControl(); // {declared, active}
 ```
 
 `cc.getBuddyAgents(params)`: Get list of agents for consult/transfer.
@@ -253,7 +267,17 @@ Events (`AGENT_EVENTS`) that ContactCenter emits:
 | `agent:stateChangeFailed` | Failure notification data | State change failed |
 | `agent:multiLogin` | Object | Multi-login detected |
 | `agent:reloginSuccess` | `ReloginSuccess` with `mmProfile` and `notifsTrackingId` in place of `channelsMap` | Silent relogin succeeded |
+| `agent:reloginSessionNotFound` | `{agentId}` | Silent relogin found no server session (`AGENT_NOT_FOUND`); session state is cleared and `isAgentLoggedIn` is `false` |
+| `agent:connectionLost` | `{}` | Contact center WebSocket connection lost |
+| `agent:connectionReconnected` | `{}` | WebSocket reconnected; emitted before the silent relogin, and also when `allowAutomatedRelogin` is `false` |
 | `agent:dnRegistered` | Object | DN registration complete |
+| `agent:channelStateChange` | `AgentChannelStateChanged` | V2: one channel changed state (this agent, selectable channel) |
+| `agent:channelStateChangeFailed` | `AgentChannelStateChangeFailed` | V2: one channel's state change failed |
+| `agent:channelReloginSuccess` | `AgentChannelReloginSuccess` | V2: reload restored the per-channel map |
+| `agent:channelRecoveryDeferred` | `{channelTypes, agentId}` | V2: telephony recovery is deferred because the browser voice line is not ready; the SDK retries once after 60 s |
+
+On a V2 session, `agent:stateChange` and `agent:stateChangeSuccess` carry the bridged agent-wide
+state (`BridgedV1StateChange`) and fire only when the projected state or idle code changes.
 
 ```typescript
 cc.on('agent:stateChange', (event) => {
@@ -309,15 +333,20 @@ Preconditions for the wrappers:
 | AGENT-R-007 | An AGENT_DN station login whose dial number fails `isValidDialNumber` against the profile dial plan rejects with `INVALID_DIAL_NUMBER` before any request is sent. | The backend would otherwise register an unreachable DN; the reason maps to a field message for the login form. | `src/cc.ts` | `test/unit/spec/services/core/Utils.ts` | No `test/unit/spec/cc.ts` case drives the AGENT_DN rejection. | PRESENT |
 | AGENT-R-008 | `setAgentState` rejects a change to Available with `VOICE_CONNECTION_ERROR.NOT_READY` (type `SDK_VALIDATION_ERROR`) when browser voice is required and not ready; Idle and non-browser changes proceed. | An Available agent without a registered browser line would be offered calls it cannot answer. | `src/cc.ts` | `test/unit/spec/cc.ts` | None. | PRESENT |
 | AGENT-R-009 | `getBuddyAgents` sends `agentProfileId` from the profile, defaults `mediaType` to `telephony`, and, when `state` is omitted, filters on Available for `action: 'Transfer'` and sends no state for Consult. | A transfer needs an agent who can take the call now; a consult may target an Idle agent. | `src/cc.ts`, `src/types.ts` | `test/unit/spec/cc.ts` | None. | PRESENT |
+| AGENT-R-011 | V2 request functions: `stationLoginV2` (`POST /v2/agents/login`), `stateChangeV2` (`PUT /v2/agents/session/state`, success on nested `AgentChannelStateChanged`, failure on nested `AgentChannelStateChangeFailed`), `logoutV2` (`POST /v2/agents/logout`), and `reloadV2` (`POST /v2/agents/reload`). V2 login and logout reuse the V1 success and failure binds with their own errIds. ContactCenter alone chooses V1 or V2. | The backend serves granular sessions on `/v2`; the version choice needs the profile flag and session pin, which only ContactCenter holds. | `src/services/agent/index.ts`, `src/cc.ts` | `test/unit/spec/services/agent/index.ts` (`stationLoginV2`, `stateChangeV2`, `logoutV2`, `reloadV2`) | No integration test against a V2 backend. | PRESENT |
+| AGENT-R-012 | Both `reload` and `reloadV2` settle on `AgentReloginSuccess` or `AgentChannelReloginSuccess`; ContactCenter pins the session version from the type that arrives. | The server answers from the persisted session version, not from the endpoint version. | `src/services/agent/index.ts`, `src/cc.ts` | `test/unit/spec/cc.ts` (`session version pin (server wins)`) | None. | PRESENT |
+| AGENT-R-013 | The bridge projects per-channel state to one agent-wide state: any Available channel gives Available, otherwise all-Idle gives Idle; only Available and Idle are bridged. Scalar fields come from the first matching channel in the order `telephony`, `chat`, `email`, `social`. `shouldEmitLegacyEvent` suppresses an event whose projected state and idle code match the last one emitted. | V1 listeners keep working on V2 sessions without duplicates or V2-only states. | `src/services/agent/aggregate.ts` | `test/unit/spec/services/agent/aggregate.ts` | `workItem` and `customMessaging` never take part. | PRESENT |
 | AGENT-R-010 | Station login success and relogin success replace `channelsMap` with `mmProfile` counts per channel and add `notifsTrackingId`. | Applications receive capacity numbers instead of raw channel id lists. | `src/cc.ts`, `src/services/agent/types.ts` | `test/unit/spec/cc.ts` | None. | PRESENT |
 
 ## Design overview
 
-The agent service uses a factory pattern: `routingAgent` is a pure AQM factory. It receives an initialized AqmReqs instance and returns five request functions: `reload`, `logout`, `stationLogin`, `stateChange`, and `buddyAgents`. Each request config declares the endpoint/payload plus exact `CC_EVENTS` notification binds.
+The agent service uses a factory pattern: `routingAgent` is a pure AQM factory. It receives an initialized AqmReqs instance and returns nine request functions: `reload`, `logout`, `stationLogin`, `stateChange`, `buddyAgents`, and the V2 `reloadV2`, `stationLoginV2`, `stateChangeV2`, and `logoutV2`. Each request config declares the endpoint/payload plus exact `CC_EVENTS` notification binds.
 
 The factory initiates authenticated HTTP requests and supplies `CC_EVENTS` success/failure binds to AqmReqs. The services root builds it once as `services.agent` (`src/services/index.ts`); the factory holds no state.
 
-ContactCenter validates and enriches public inputs, starts metrics, delegates to the factory, performs browser-calling work when required, and maps backend notifications to application-facing events. `updateAgentProfile()` and private `silentRelogin()` are ContactCenter methods; the latter calls `services.agent.reload()` only after package-level recovery policy permits it.
+ContactCenter validates and enriches public inputs, starts metrics, delegates to the factory, performs browser-calling work when required, and maps backend notifications to application-facing events. `updateAgentProfile()` and private `silentRelogin()` are ContactCenter methods; the latter calls `services.agent.reloadV2()` or `reload()` (by session pin, else the profile flag) only after package-level recovery policy permits it.
+
+V2 routing: ContactCenter re-reads `manageChannelAvailability` before each `stationLogin`, then calls `stationLoginV2` or `stationLogin` with no fallback, and pins the version for `stateChangeV2`/`stateChange` and `logoutV2`/`logout`. The bridge in `aggregate.ts` is a set of pure functions with no state; ContactCenter keeps the channel map and the last bridged state. Session-level design is in the [root module specification](../../../docs/README.md) and the [feature design](../../../../ai-docs/features/WXCC-15791-user-granular-agent-state/design/feature-design.md).
 
 Stack: TypeScript 5.4 AQM request factory, REST initiation, WebSocket completion events, Jest 27.
 
@@ -344,12 +373,12 @@ Sequence coverage:
 
 | Operation group | Entry and outcome | Diagram or evidence | Failure and recovery coverage |
 | --------------- | ----------------- | ------------------- | ----------------------------- |
-| Station login | `cc.stationLogin` → `stationLogin` → `POST /v1/agents/login`; resolves `StationLoginResponse` | Station login | Pre-request `INVALID_DIAL_NUMBER` rejection, nested failure notification, HTTP rejection, and timeout throw |
-| Station logout | `cc.stationLogout` → `logout` → `POST /v1/agents/logout`; resolves `StationLogoutResponse` | Station logout | Nested failure/timeout rejects and calling deregistration occurs only after success |
-| State change | `cc.setAgentState` → `stateChange` → `PUT /v1/agents/session/state`; resolves `SetStateResponse` | State change | Pre-request browser-voice rejection; failure notification or timeout returns a structured rejection |
+| Station login | `cc.stationLogin` → `stationLoginV2` (`POST /v2/agents/login`) when the re-read flag is true, else `stationLogin` (`POST /v1/agents/login`); resolves `StationLoginResponse` | Station login | Pre-request `INVALID_DIAL_NUMBER` rejection, nested failure notification, HTTP rejection, and timeout throw; a V2 failure never retries on V1 |
+| Station logout | `cc.stationLogout` → `logoutV2` or `logout` (pin, else flag) → `POST /v2/agents/logout` or `/v1/agents/logout`; resolves `StationLogoutResponse` | Station logout | Nested failure/timeout rejects and calling deregistration occurs only after success |
+| State change | `cc.setAgentState` → `stateChangeV2` (`PUT /v2/agents/session/state`) on a V2 session, else `stateChange` (`PUT /v1/agents/session/state`); resolves `SetStateResponse` | State change | Pre-request channel validation (V2) and browser-voice rejection; failure notification or timeout returns a structured rejection |
 | Buddy agents | `cc.getBuddyAgents` → `buddyAgents` → `POST /v1/agents/buddyList`; resolves `BuddyAgentsResponse` | Buddy-agent lookup | Correlated retrieval failure/timeout rejects |
-| Reload | Reconnect or `cc.register()` → private `silentRelogin` → `reload` → `POST /v1/agents/reload` | Recovery reload | Disabled policy keeps the reported state; `AGENT_NOT_FOUND` is silent; other relogin failures throw |
-| Event mapping | WebSocket message → `handleWebsocketMessage` → `AGENT_EVENTS` emit | WebSocket-to-application event mapping | Types outside `CC_EVENTS` are not emitted |
+| Reload | Reconnect or `cc.register()` → private `silentRelogin` → `reloadV2` or `reload` (pin, else flag) → `POST /v2/agents/reload` or `/v1/agents/reload` | Recovery reload | Disabled policy keeps the reported state; `AGENT_NOT_FOUND` does not throw and emits `agent:reloginSessionNotFound`; other relogin failures throw |
+| Event mapping | WebSocket message → `handleWebsocketMessage` → `AGENT_EVENTS` emit, including the V2 channel events and the bridge | WebSocket-to-application event mapping | Types outside `CC_EVENTS` are not emitted; V2 events off a V2 session, for another agent, or for an unknown channel are ignored |
 
 ### Station login
 
@@ -367,21 +396,23 @@ sequenceDiagram
       CC->>CC: trackEvent(LOGIN_FAILED)
       CC-->>App: throw INVALID_DIAL_NUMBER (no request sent)
     else valid input
-      CC->>Svc: stationLogin({data})
+      CC->>CC: refreshManageChannelAvailability()
+      CC->>Svc: stationLoginV2({data}) if flag true, else stationLogin({data})
       Svc->>AQM: req(config)
-      AQM->>BE: HTTP POST /v1/agents/login
+      AQM->>BE: HTTP POST /v2 or /v1/agents/login
       alt nested success
         BE-->>WS: AgentStationLoginSuccess
         WS-->>AQM: matching success notification
         AQM-->>Svc: StationLoginSuccess
         Svc-->>CC: login response
+        CC->>CC: pin V1 or V2, seed channel maps on V2
         CC->>CC: Register WebCalling if BROWSER and enabled
         CC->>CC: trackEvent(LOGIN_SUCCESS)
         CC-->>App: StationLoginResponse
       else nested failure, HTTP rejection, or timeout
         WS-->>AQM: failure notification or no completion
         AQM-->>CC: structured rejection
-        CC->>CC: trackEvent(LOGIN_FAILED)
+        CC->>CC: trackEvent(LOGIN_FAILED), no V1 retry after a V2 failure
         CC-->>App: throw detailed error
       end
     end
@@ -401,12 +432,12 @@ sequenceDiagram
   participant AQM as AqmReqs
   participant WS as Primary WebSocket
   App->>CC: stationLogout({logoutReason})
-  CC->>Agent: logout({data})
-  Agent->>AQM: POST /v1/agents/logout + nested binds
+  CC->>Agent: logoutV2({data}) or logout({data}) (pin, else flag)
+  Agent->>AQM: POST /v2 or /v1/agents/logout + nested binds
   alt AGENT_LOGOUT_SUCCESS
     WS-->>AQM: matching nested success
     AQM-->>CC: LogoutSuccess
-    CC->>CC: track success; deregister WebCalling line
+    CC->>CC: track success, deregister WebCalling line, clearV2LocalState()
     CC-->>App: StationLogoutResponse
   else failure, HTTP rejection, or timeout
     WS-->>AQM: matching failure or no completion
@@ -425,10 +456,23 @@ sequenceDiagram
   participant AQM as AqmReqs
   participant WS as Primary WebSocket
   App->>CC: setAgentState(data)
-  alt Available while browser voice is required and not ready
+  alt V2 session and a channel is unselectable or has no capacity
+    CC-->>App: throw SDK_VALIDATION_ERROR (no request sent)
+  else Available (with telephony on V2) while browser voice is required and not ready
     CC-->>App: throw VOICE_CONNECTION_ERROR.NOT_READY (no request sent)
-  else request allowed
-    CC->>Agent: stateChange({data + agentId})
+  else V2 session
+    CC->>Agent: stateChangeV2({channelType[], state, auxCodeId, agentId})
+    Agent->>AQM: PUT /v2/agents/session/state + binds
+    alt nested AgentChannelStateChanged
+      WS-->>AQM: first matching channel success
+      AQM-->>CC: AgentChannelStateChanged
+      CC-->>App: SetStateResponse
+    else AgentChannelStateChangeFailed, HTTP rejection, or timeout
+      AQM-->>CC: structured rejection
+      CC-->>App: throw detailed error
+    end
+  else V1 session
+    CC->>Agent: stateChange({data + agentId}, channelType removed)
     Agent->>AQM: PUT /v1/agents/session/state + binds
     alt AGENT_STATE_CHANGE_SUCCESS
       WS-->>AQM: matching nested success
@@ -470,19 +514,29 @@ sequenceDiagram
   participant CS as ConnectionService
   participant CC as ContactCenter
   participant Agent as routingAgent
+  participant App
   CS-->>CC: connectionLost(details)
+  CC-->>App: agent:connectionReconnected
   alt automated relogin allowed
     CC->>CC: silentRelogin()
-    CC->>Agent: reload()
+    CC->>Agent: reloadV2() or reload() (pin, else flag)
     alt AgentReloginSuccess
       Agent-->>CC: relogin result
-      CC->>CC: update agentConfig and device state
+      CC->>CC: pin V1, update agentConfig and device state
       opt lastStateChangeReason is agent-wss-disconnect
         CC->>CC: setAgentState Available (aux code 0)
       end
+    else AgentChannelReloginSuccess
+      Agent-->>CC: per-channel map
+      CC->>CC: pin V2, restore channel and capacity maps
+      CC->>CC: setAgentState Available for agent-wss-disconnect channels (selectable, with capacity)
+      opt BROWSER and voice not ready
+        CC-->>App: agent:channelRecoveryDeferred (telephony retried once after 60 s)
+      end
     else AGENT_NOT_FOUND
       Agent-->>CC: relogin failure
-      CC->>CC: handle silently
+      CC->>CC: clearV2LocalState(), isAgentLoggedIn false
+      CC-->>App: agent:reloginSessionNotFound
     else other failure
       Agent-->>CC: relogin failure
       CC->>CC: throw detailed error
@@ -493,6 +547,20 @@ sequenceDiagram
 ```
 
 Automatic relogin on WebSocket reconnection: `handleConnectionLost` runs the relogin only for a `connectionLost` message with `isSocketReconnected`; `connectWebsocket` during `cc.register()` also calls `silentRelogin()` when `allowAutomatedRelogin` is set, and a relogin failure there rejects `cc.register()`.
+
+#### Refresh and reconnect: SDK vs application
+
+The SDK owns everything that only it can rebuild after a page refresh or socket reconnect:
+- the reload call, routed by the pinned session version;
+- restoring `agentConfig`, the session version pin, and the per-channel state map;
+- requesting Available for channels whose `lastStateChangeReason` is `agent-wss-disconnect` (V1 behavior, extended per channel for V2).
+
+The application owns the policy around it:
+- retries or backoff when the reload fails;
+- whether to run `stationLogin` again;
+- showing the station login screen, banners, or a reconnecting indicator.
+
+It reacts to `agent:connectionLost`, `agent:connectionReconnected`, `agent:reloginSuccess` and `agent:reloginSessionNotFound`. With `allowAutomatedRelogin: false` the SDK makes no reload call, so the session stays unpinned until the next `stationLogin`.
 
 ### WebSocket-to-application event mapping
 
@@ -513,6 +581,10 @@ The diagram shows the main branches. On the outer type, `AGENT_MULTI_LOGIN` also
 and emits `agent:reloginSuccess`; the state-change success and failure, station-login failure, logout
 failure, and `AGENT_DN_REGISTERED` types emit their `AGENT_EVENTS` value with the notification data.
 Before this mapping, any `data.type` found in `CC_EVENTS` is also re-emitted under its raw name.
+On a V2 session, nested `AgentChannelStateChanged` updates the channel map, emits
+`agent:channelStateChange`, and runs the bridge; `AgentChannelStateChangeFailed` emits
+`agent:channelStateChangeFailed`; `AgentChannelReloginSuccess` pins V2, replaces the maps, and emits
+`agent:channelReloginSuccess`.
 
 The login success event transforms `channelsMap` to `mmProfile`:
 
@@ -555,15 +627,16 @@ classDiagram
 | `UC-1` Station login/logout | Application | validate public input in ContactCenter, initiate through routingAgent, settle from nested WebSocket notification | Invalid AGENT_DN dial number, failure notification, HTTP rejection, or timeout throws a detailed error | `src/cc.ts`, `src/services/agent/index.ts`, `test/unit/spec/services/agent/index.ts` |
 | `UC-2` State change | Application or silent relogin | PUT the state payload and return the correlated typed response | Browser voice not ready, failure notification, or timeout throws | `src/services/agent/index.ts`, `test/unit/spec/services/agent/index.ts` |
 | `UC-3` Buddy-agent query | Application selecting a consult or transfer target | retrieve backend-filtered candidates for consult/transfer | Retrieval failure or timeout throws | `src/services/agent/index.ts`, `test/unit/spec/services/agent/index.ts` |
-| `UC-4` Recovery reload | ConnectionService reconnect or `cc.register()` | ContactCenter decides whether to invoke private relogin and the factory's `reload` | `AGENT_NOT_FOUND` returns silently; other failures throw | `src/cc.ts`, `test/unit/spec/cc.ts` |
+| `UC-4` Recovery reload | ConnectionService reconnect or `cc.register()` | ContactCenter decides whether to invoke private relogin and the factory's `reload` | `AGENT_NOT_FOUND` returns without throwing and emits `agent:reloginSessionNotFound`; other failures throw | `src/cc.ts`, `test/unit/spec/cc.ts` |
 | `UC-5` Device/profile update | Application | ContactCenter owns `updateAgentProfile`; the agent factory has no device-update method | A failing logout or login is tracked and rethrown | `src/cc.ts`, `test/unit/spec/cc.ts` |
+| `UC-6` Granular agent state | Application on a V2 session | ContactCenter sends `stateChangeV2` for the chosen channels; each channel's result arrives as `agent:channelStateChange`, and the bridge keeps V1 listeners informed | Invalid channel rejects before transport; a channel failure emits `agent:channelStateChangeFailed` | `src/cc.ts`, `src/services/agent/index.ts`, `src/services/agent/aggregate.ts`, `test/unit/spec/cc.ts` |
 
 ### Cross-boundary use-case flow
 
 | Boundary | Transport and ordering | Compatibility | Timeout, retry, and recovery |
 | -------- | ---------------------- | ------------- | ---------------------------- |
-| WCC API gateway (`UC-1` to `UC-5`) | Authenticated HTTP through `webex.request` with service `wcc-api-gateway`; the HTTP response is only an acknowledgement | Paths under `/v1/agents/`; contract `wxcc-api-gateway` | HTTP rejection rejects at once; no retry in this module |
-| Contact Center WebSocket (`UC-1` to `UC-5`) | AqmReqs matches the outer `type` and the nested `data.type` of each notification against the request's binds | Contract `wxcc-websocket-notifications`; `CC_EVENTS` values | No matching notification within 20000 ms rejects with `Service.aqm.reqs.Timeout`; recovery after reconnect is the silent relogin (`UC-4`) |
+| WCC API gateway (`UC-1` to `UC-6`) | Authenticated HTTP through `webex.request` with service `wcc-api-gateway`; the HTTP response is only an acknowledgement | Paths under `/v1/agents/` and `/v2/agents/`; contract `wxcc-api-gateway` | HTTP rejection rejects at once; no retry in this module |
+| Contact Center WebSocket (`UC-1` to `UC-6`) | AqmReqs matches the outer `type` and the nested `data.type` of each notification against the request's binds | Contract `wxcc-websocket-notifications`; `CC_EVENTS` values | No matching notification within 20000 ms rejects with `Service.aqm.reqs.Timeout`; recovery after reconnect is the silent relogin (`UC-4`) |
 
 ## Business rules and invariants
 
@@ -571,7 +644,9 @@ classDiagram
 | -- | --------- | --- | ------------------ | ------------- |
 | `INV-001` | Every request's success and failure binds match both the outer notification `type` and the nested `data.type`; flattening either bind can settle the wrong request. | One outer type carries several outcomes (`StationLogin` carries both `AgentStationLoginSuccess` and `AgentStationLoginFailed`), so only the nested type tells success from failure. | `src/services/agent/index.ts`, `src/services/core/aqm-reqs.ts` | none found for the agent binds |
 | `INV-002` | After a successful EXTENSION or AGENT_DN login, `agentConfig.dn` and `defaultDn` hold the dial number, and `deviceType` holds the login option. | Later calls and relogin read the DN from the profile. | `src/cc.ts` | `test/unit/spec/cc.ts` |
-| `INV-003` | Silent relogin after an `agent-wss-disconnect` requests Available with aux code `0`; any other last reason keeps the backend state. | A socket drop moved the agent out of Available without the agent asking. | `src/cc.ts` | `test/unit/spec/cc.ts` |
+| `INV-003` | Silent relogin after an `agent-wss-disconnect` requests Available with aux code `0`; any other last reason keeps the backend state. On V2 this applies per channel. | A socket drop moved the agent out of Available without the agent asking. | `src/cc.ts` | `test/unit/spec/cc.ts` |
+| `INV-004` | The bridge functions are pure: same channel map in, same projection out; they read only `telephony`, `chat`, `email`, and `social`. | Deterministic V1 output that tests can pin (AGENT-R-013). | `src/services/agent/aggregate.ts` | `test/unit/spec/services/agent/aggregate.ts` |
+| `INV-005` | No request function falls back to another version; a V2 rejection is returned to ContactCenter as is. | A session lives on one version (AGENT-R-011). | `src/services/agent/index.ts`, `src/cc.ts` | `test/unit/spec/cc.ts` (no-fallback login cases) |
 
 ## Concurrency and reactive flow
 
@@ -593,14 +668,18 @@ For example, station login defines the real outer and nested event binds shown i
 | `POST /v1/agents/logout` with `Logout` | v1 path | `logout` | WCC API gateway | Completes on outer `Logout` with nested `AgentLogoutSuccess` or `AgentLogoutFailed` |
 | `PUT /v1/agents/session/state` with `StateChange` | v1 path | `stateChange` | WCC API gateway | Completes on outer `AgentStateChange` with nested `AgentStateChangeSuccess` or `AgentStateChangeFailed` |
 | `POST /v1/agents/buddyList` with `BuddyAgents` | v1 path | `buddyAgents` | WCC API gateway | Completes on outer and nested `BuddyAgents`, or nested `BuddyAgentsRetrieveFailed` |
-| `POST /v1/agents/reload` with an empty body | v1 path | `reload` | WCC API gateway | Completes on outer and nested `AgentReloginSuccess` or `AgentReloginFailed` |
+| `POST /v1/agents/reload` with an empty body | v1 path | `reload` | WCC API gateway | Completes on outer and nested `AgentReloginSuccess` or `AgentChannelReloginSuccess` (by session version), or `AgentReloginFailed` |
+| `POST /v2/agents/login` with `UserStationLogin` | v2 path | `stationLoginV2` | WCC API gateway | Same binds as V1 login; errId `Service.aqm.agent.stationLoginV2Failed` |
+| `PUT /v2/agents/session/state` with `ChannelStateChangeRequest` | v2 path | `stateChangeV2` | WCC API gateway | Outer type `AgentRequestEvent`, `RoutingMessage`, or `AgentChannelStateChange`; nested `AgentChannelStateChanged` or `AgentChannelStateChangeFailed`; errId `Service.aqm.agent.stateChangeV2` |
+| `POST /v2/agents/logout` with `Logout` | v2 path | `logoutV2` | WCC API gateway | Same binds as V1 logout; errId `Service.aqm.agent.logoutV2` |
+| `POST /v2/agents/reload` with an empty body | v2 path | `reloadV2` | WCC API gateway | Same binds as `reload` |
 
 Each agent method defines a `routing.req` (or, for `reload`, `routing.reqEmpty`) callback returning `url`,
 `host: WCC_API_GATEWAY`, `data: p.data`, an `err` transformer, an optional `method`, `notifSuccess` with
 a `bind` of outer `type` and nested `data: {type}` plus a `msg` type hint such as
 `Agent.StationLoginSuccess`, and `notifFail` with its `bind` and an `errId` such as
 `Service.aqm.agent.stationLoginFailed`; see [the factory](../index.ts). AqmReqs uses the given `method`,
-or POST if data present, GET otherwise; only `stateChange` (PUT) and `buddyAgents` (POST) set it.
+or POST if data present, GET otherwise; only `stateChange` and `stateChangeV2` (PUT) and `buddyAgents` (POST) set it; logout and login are POST in both versions.
 
 Key nested WebSocket binds use the actual outer/data constants, for example `CC_EVENTS.AGENT_STATION_LOGIN` with `data.type = CC_EVENTS.AGENT_STATION_LOGIN_SUCCESS` or `CC_EVENTS.AGENT_STATION_LOGIN_FAILED`. The package export index is in the [root module specification](../../../docs/README.md).
 
@@ -613,7 +692,10 @@ Key nested WebSocket binds use the actual outer/data constants, for example `CC_
 | Other backend failure notification | `Error` whose message is the notification `data.reason`; for `stationLogin`, `error.data` has the generic login message and fieldName `generic` | Branch on `error.message` | Logs are uploaded with the failure tracking id | `src/cc.ts`, `src/services/core/Utils.ts` |
 | HTTP rejection, timeout after 20000 ms, or the same request already pending | AqmReqs rejects with `Service.aqm.agent.stationLogin`, `Service.reqs.generic.failure`, `Service.aqm.reqs.Timeout`, or `Service.aqm.reqs.Pending` details; these carry no `data.reason`, so the wrapper throws `Error` with the message Error while performing followed by the method name | Treat the outcome as unknown and wait for an agent event; never synthesize success | Call again once the pending call has settled | `src/services/core/aqm-reqs.ts`, `src/services/core/Utils.ts` |
 | Available requested while browser voice is not ready | `Error` whose message is `VOICE_CONNECTION_ERROR.NOT_READY`; no request sent | Wait for `voice:connectionStateChange` to report voice ready, or choose an Idle code | Call again when voice is ready | `src/cc.ts`, `test/unit/spec/cc.ts` |
-| Silent relogin finds no agent session | Reason `AGENT_NOT_FOUND`; returns without throwing, error logging, or log upload | Nothing to handle; the agent is logged out | Call `stationLogin` | `src/cc.ts`, `src/services/core/Utils.ts` |
+| Silent relogin finds no agent session | Reason `AGENT_NOT_FOUND`; returns without throwing, error logging, or log upload; clears session state, sets `isAgentLoggedIn` to `false`, and emits `agent:reloginSessionNotFound` | Listen for `agent:reloginSessionNotFound`; the agent is logged out | Call `stationLogin` | `src/cc.ts`, `src/services/core/Utils.ts` |
+| V2 `setAgentState` with an unselectable channel or one without capacity | `SDK_VALIDATION_ERROR` before any request | Choose a channel from `cc.getChannelStates()` | Call again with a valid channel | `src/cc.ts`, `test/unit/spec/cc.ts` |
+| V2 login fails or times out | The `stationLoginV2` rejection, rethrown; no V1 attempt | Show the reason | Call `stationLogin` again | `src/cc.ts`, `test/unit/spec/cc.ts` |
+| A V2 channel change fails after the request | `agent:channelStateChangeFailed` with `channelType`, `reason`, `reasonCode` | Show the failure for that channel | Caller decides | `src/cc.ts`, `test/unit/spec/cc.ts` |
 | Silent relogin does not run | `allowAutomatedRelogin` is false (it defaults to true) | Set `config.cc.allowAutomatedRelogin` to true in `Webex.init` | Relogin then runs on the next reconnect or register | `src/config.ts`, `src/cc.ts` |
 
 For `stationLogin`, special error handling extracts field-specific messages: `getStationLoginErrorData`
@@ -641,6 +723,8 @@ try {
 
 - `CC_EVENTS.AGENT_BUDDY_AGENTS` and `AGENT_BUDDY_AGENTS_SUCCESS` share the value `BuddyAgents`, so the buddy-list success bind is the same string at both levels.
 - The `stationLogin` HTTP error transformer is marked `istanbul ignore next` and has no unit test.
+- `reload` calls the V1 endpoint but can receive `AgentChannelReloginSuccess`; never infer the session version from the endpoint.
+- `stateChangeV2` settles on the first channel's `AgentChannelStateChanged`; other channels arrive later as `agent:channelStateChange` events in no guaranteed order.
 
 ## Module-specific rules
 
@@ -648,6 +732,7 @@ try {
 - DO keep browser-calling registration/deregistration in ContactCenter around successful station operations.
 - DON'T resolve an agent operation from HTTP acknowledgement.
 - DON'T move automated relogin policy into the agent factory or ConnectionService.
+- DON'T choose V1 or V2 inside the factory; ContactCenter owns the flag and the pin.
 
 ## Key design trade-off
 
@@ -657,7 +742,7 @@ try {
 
 ## Verification
 
-Use `test/unit/spec/services/agent/index.ts` for the factory and `test/unit/spec/cc.ts` for public validation, metrics, calling, updateAgentProfile, and recovery ownership. Cover success, nested failure, HTTP rejection, and timeout without inventing a `deviceUpdate` factory method. The factory test only checks that each request function delegates to `req` or `reqEmpty`; endpoint, method, bind, and payload values are not asserted. Run `yarn workspace @webex/contact-center test:unit` from the workspace root.
+Use `test/unit/spec/services/agent/index.ts` for the factory and `test/unit/spec/cc.ts` for public validation, metrics, calling, updateAgentProfile, and recovery ownership. Cover success, nested failure, HTTP rejection, and timeout without inventing a `deviceUpdate` factory method. The V1 factory cases only check delegation to `req` or `reqEmpty`; the V2 builder cases assert url, method, binds, and errIds. Use `test/unit/spec/services/agent/aggregate.ts` for the bridge. Run `yarn workspace @webex/contact-center test:unit` from the workspace root.
 
 | Requirement or invariant | Test level | Positive evidence | Negative or boundary evidence | Gap |
 | ------------------------ | ---------- | ----------------- | ----------------------------- | --- |
@@ -670,4 +755,7 @@ Use `test/unit/spec/services/agent/index.ts` for the factory and `test/unit/spec
 | `AGENT-R-007` | Unit | `test/unit/spec/services/core/Utils.ts` isValidDialNumber and getStationLoginErrorData cases | none found | No wrapper-level AGENT_DN rejection case |
 | `AGENT-R-008` | Unit | `test/unit/spec/cc.ts` setAgentStatus Idle and non-browser cases | `test/unit/spec/cc.ts` browser-voice rejection case | None |
 | `AGENT-R-010`, `INV-002` | Unit | `test/unit/spec/cc.ts` stationLogin and handleWebsocketMessage events mapped-payload cases | none found | None |
-| `INV-001` | None | none found | none found | No test asserts the agent bind values |
+| `AGENT-R-011`, `INV-005` | Unit | `test/unit/spec/services/agent/index.ts` V2 builder cases; `test/unit/spec/cc.ts` V2 login, state change, and logout cases | `test/unit/spec/cc.ts` no-fallback login cases, invalid-channel rejection | No integration test |
+| `AGENT-R-012` | Unit | `test/unit/spec/cc.ts` `session version pin (server wins)` | `test/unit/spec/cc.ts` AGENT_NOT_FOUND clears V2 state | None |
+| `AGENT-R-013`, `INV-004` | Unit | `test/unit/spec/services/agent/aggregate.ts` | `test/unit/spec/services/agent/aggregate.ts` non-bridgeable and empty cases | None |
+| `INV-001` | Unit (V2 only) | `test/unit/spec/services/agent/index.ts` V2 builder cases | none found | No test asserts the V1 bind values |

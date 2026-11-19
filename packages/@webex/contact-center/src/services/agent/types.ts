@@ -434,6 +434,15 @@ export enum AGENT_EVENTS {
   /** Emitted when an agent successfully re-authenticates */
   AGENT_RELOGIN_SUCCESS = 'agent:reloginSuccess',
 
+  /** Emitted when the automated relogin (refresh or reconnect) finds no active session on the server */
+  AGENT_RELOGIN_SESSION_NOT_FOUND = 'agent:reloginSessionNotFound',
+
+  /** Emitted when the contact center WebSocket connection is lost */
+  AGENT_CONNECTION_LOST = 'agent:connectionLost',
+
+  /** Emitted when the contact center WebSocket reconnects, before the automated relogin runs */
+  AGENT_CONNECTION_RECONNECTED = 'agent:connectionReconnected',
+
   /** Emitted when agent state change is successful */
   AGENT_STATE_CHANGE_SUCCESS = 'agent:stateChangeSuccess',
 

@@ -152,6 +152,32 @@ export default function routingAgent(routing: AqmReqs) {
     // ─── V2 Granular Agent State Control Operations ─────────────────────
 
     /**
+     * V2 reload for granular sessions. Binds both relogin response types; the
+     * server answers with the persisted session version.
+     * @public
+     */
+    reloadV2: routing.reqEmpty(() => ({
+      host: WCC_API_GATEWAY,
+      url: '/v2/agents/reload',
+      data: {},
+      err,
+      notifSuccess: {
+        bind: {
+          type: [CC_EVENTS.AGENT_RELOGIN_SUCCESS, CC_EVENTS.AGENT_CHANNEL_RELOGIN_SUCCESS],
+          data: {type: [CC_EVENTS.AGENT_RELOGIN_SUCCESS, CC_EVENTS.AGENT_CHANNEL_RELOGIN_SUCCESS]},
+        },
+        msg: {} as Agent.ReloginSuccess | Agent.AgentChannelReloginSuccess,
+      },
+      notifFail: {
+        bind: {
+          type: CC_EVENTS.AGENT_RELOGIN_FAILED,
+          data: {type: CC_EVENTS.AGENT_RELOGIN_FAILED},
+        },
+        errId: 'Service.aqm.agent.reload',
+      },
+    })),
+
+    /**
      * V2 station login with per-channel routing
      * @param p.data - Station login parameters
      * @public
