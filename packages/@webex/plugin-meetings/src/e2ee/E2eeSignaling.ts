@@ -4,6 +4,7 @@
 
 import type LLMChannel from '@webex/internal-plugin-llm';
 import {ONLINE} from '../constants';
+import LoggerProxy from '../common/logs/logger-proxy';
 import {MEDIA_ENCRYPTION_MERCURY_EVENTS} from './constants';
 import type {E2eeSignalingSource} from './types';
 
@@ -129,10 +130,14 @@ export default class E2eeSignaling {
    * @returns {void}
    */
   private forwardEvent(envelope: any, source: E2eeSignalingSource): void {
-    const eventData = envelope?.data ?? envelope;
-    const bytes = new TextEncoder().encode(JSON.stringify(eventData));
+    try {
+      const eventData = envelope?.data ?? envelope;
+      const bytes = new TextEncoder().encode(JSON.stringify(eventData));
 
-    this.session.handleEvent(new Uint8Array(bytes), source);
+      this.session.handleEvent(new Uint8Array(bytes), source);
+    } catch (error) {
+      LoggerProxy.logger.warn(`e2ee: E2eeSignaling --> error forwarding signaling event: ${error}`);
+    }
   }
 
   /**
