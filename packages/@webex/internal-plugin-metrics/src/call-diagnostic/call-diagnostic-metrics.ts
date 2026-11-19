@@ -3,7 +3,7 @@
 /* eslint-disable valid-jsdoc */
 import {BrowserDetection, getBrowserSerial} from '@webex/common';
 import uuid from 'uuid';
-import {merge} from 'lodash';
+import {merge, pick} from 'lodash';
 import {StatelessWebexPlugin} from '@webex/webex-core';
 import {getOSNameInternal} from '../metrics';
 import * as AutomatedUserUtils from '../automated-user';
@@ -1288,6 +1288,41 @@ export default class CallDiagnosticMetrics extends StatelessWebexPlugin {
     return clientEventObject;
   }
 
+  /** Build auth diagnostics without meeting context. */
+  private createClientEventObjectAuthAnalysis({
+    name,
+    options,
+    errors,
+  }: {
+    name: ClientEvent['name'];
+    options: SubmitClientEventOptions;
+    errors?: ClientEventPayloadError;
+  }): ClientEvent['payload'] {
+    const {correlationId} = options;
+
+    if (!correlationId) {
+      throw new Error('Auth diagnostics require a correlation ID');
+    }
+
+    return {
+      name,
+      errors,
+      canProceed: true,
+      identifiers: pick(this.getIdentifiers({correlationId}), [
+        'correlationId',
+        'userId',
+        'deviceId',
+        'orgId',
+        'machineId',
+      ]),
+      eventData: {webClientDomain: window.location.hostname},
+      loginType: this.getCurLoginType(),
+      telemetryOptOut: this.getTelemetryOptOut(),
+      isAutomatedUser: AutomatedUserUtils.isAutomatedUser(),
+      userActivation: this.getUserActivation(),
+    };
+  }
+
   /**
    * Prepare Client Event CA event.
    * @param arg - submit params
@@ -1324,8 +1359,9 @@ export default class CallDiagnosticMetrics extends StatelessWebexPlugin {
       );
     }
 
-    // events that will most likely happen in join phase
-    if (meetingId) {
+    if (options.diagnosticType === 'auth') {
+      clientEventObject = this.createClientEventObjectAuthAnalysis({name, options, errors});
+    } else if (meetingId) {
       clientEventObject = this.createClientEventObjectInMeeting({name, options, errors});
     } else if (correlationId) {
       // any pre join events or events that are outside the meeting.

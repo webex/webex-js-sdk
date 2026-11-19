@@ -129,7 +129,15 @@ export type MetricEventVerb =
 export type MetricEventJoinFlowVersion = 'Other' | 'NewFTE';
 export type MetricEventMeetingJoinPhase = 'pre-join' | 'join' | 'in-meeting';
 
+export type ClientType = NonNullable<RawEvent['origin']['clientInfo']>['clientType'];
+export type SubClientType = NonNullable<RawEvent['origin']['clientInfo']>['subClientType'];
+export type NetworkType = NonNullable<RawEvent['origin']>['networkType'];
+
 export type SubmitClientEventOptions = {
+  diagnosticType?: 'auth';
+  clientType?: ClientType;
+  subClientType?: SubClientType;
+  networkType?: NetworkType;
   meetingId?: string;
   mediaConnections?: any[];
   rawError?: any;
@@ -268,9 +276,6 @@ export type MetricEventNames =
   | MediaQualityEvent['name'];
 
 export type ClientInfo = NonNullable<RawEvent['origin']['clientInfo']>;
-export type ClientType = NonNullable<RawEvent['origin']['clientInfo']>['clientType'];
-export type SubClientType = NonNullable<RawEvent['origin']['clientInfo']>['subClientType'];
-export type NetworkType = NonNullable<RawEvent['origin']>['networkType'];
 
 export type ClientSubServiceType = NonNullable<ClientEvent['payload']>['webexSubServiceType'];
 export type ClientEventPayload = RecursivePartial<ClientEvent['payload']>;
