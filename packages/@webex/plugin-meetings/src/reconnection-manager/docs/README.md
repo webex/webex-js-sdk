@@ -402,6 +402,13 @@ restored by this module.
   resetting the status so the guard passes; the inner run's `finally` and the outer one both reset.
   A failed rejoin retries without `await` (Evidence register).
 - Shared-state protection: the single `status` field; no lock.
+- Media request readiness belongs to `MediaRequestManager`, not to this manager or a separate task
+  queue. After `await webrtcMediaConnection.reconnect(iceServers)`, `reconnectMedia()` commits each
+  multistream manager; the commit either sends the latest state or marks it as pending, depending on
+  connection readiness.
+  See [multistream synchronization](../../multistream/docs/README.md#concurrency-and-reactive-flow)
+  for readiness checks, synchronization on `Connected`, pending-state lifecycle, and data-channel
+  behavior. A reconnect failure does not itself flush pending state.
 - Blocking restrictions: none; every external step is a promise.
 
 ## State machine

@@ -652,6 +652,13 @@ operations require current capability/role data.
   in MEETING-R-009.
 - Shared-state protection: Mercury is shared with other plugins, so only bound handlers are removed
   in `stopListeningForMercuryEvents`.
+- Multistream media requests go through the four `MediaRequestManager` instances. Meeting injects
+  `isReadyToSendRequests: isReadyToSendMediaRequests`, whose callback reads
+  `webrtcMediaConnection?.getConnectionState() === ConnectionState.Connected` live; the private
+  `sendMediaRequests()` method is only called from manager callbacks. On `Connected`, Meeting calls
+  `sendPendingRequests()` on every manager. The managers retain the latest state rather than a task
+  queue; see [multistream synchronization](../../multistream/docs/README.md#concurrency-and-reactive-flow).
+  Send errors propagate synchronously; an error in one manager interrupts that listener's loop.
 - Blocking restrictions: the LLM connection after join and the voicea channel switch are not awaited,
   so a data-channel failure never fails the join.
 
