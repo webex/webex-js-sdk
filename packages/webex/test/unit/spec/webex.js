@@ -165,8 +165,8 @@ describe('Calling call queue client', () => {
     assert.calledOnceWithExactly(factory, webex, logger, options, undefined);
     assert.strictEqual(calling.callQueueClient, queue);
     await calling.deregister();
-    assert.calledOnce(queue.dispose);
-    assert.isUndefined(calling.callQueueClient);
+    assert.notCalled(queue.dispose);
+    assert.strictEqual(calling.callQueueClient, queue);
   });
 
   it('does not create a client unless enabled', async () => {
@@ -238,7 +238,7 @@ describe('Calling call queue client', () => {
     await calling.deregister();
   });
 
-  it('deregisters the queue and Calling clients after registration', async () => {
+  it('deregisters active Calling lines after registration', async () => {
     const calling = await Calling.init({webex, callingConfig: config(false)});
     const line = {getStatus: sinon.stub().returns('active'), deregister: sinon.spy()};
     sinon.stub(WebexCalling, 'createClient').resolves({getLines: () => ({line})});
@@ -248,7 +248,7 @@ describe('Calling call queue client', () => {
     await calling.register();
     await calling.deregister();
 
-    assert.calledOnce(queue.dispose);
+    assert.notCalled(queue.dispose);
     assert.calledOnceWithExactly(line.deregister, true);
     assert.calledOnce(webex.internal.mercury.disconnect);
     assert.calledOnce(webex.internal.device.unregister);
@@ -261,10 +261,23 @@ describe('Calling call queue client', () => {
     await calling.register();
     await calling.deregister();
 
-    assert.calledOnce(queue.dispose);
+    assert.notCalled(queue.dispose);
     assert.calledOnceWithExactly(webex.internal.mercury.disconnect);
     assert.calledOnceWithExactly(webex.internal.device.unregister);
     assert.isFalse(calling.registered);
-    assert.isUndefined(calling.callQueueClient);
+    assert.strictEqual(calling.callQueueClient, queue);
+  });
+
+  it('passes the retained queue client to the factory when registering again', async () => {
+    const calling = await Calling.init({webex, callingConfig: config(true)});
+
+    await calling.register();
+    await calling.deregister();
+    await calling.register();
+
+    assert.calledThrice(factory);
+    assert.calledWithExactly(factory.thirdCall, webex, logger, options, queue);
+    assert.notCalled(queue.dispose);
+    assert.strictEqual(calling.callQueueClient, queue);
   });
 });

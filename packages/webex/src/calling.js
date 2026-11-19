@@ -82,10 +82,6 @@ class Calling extends EventEmitter {
   }
 
   async deregister() {
-    if (this.callQueueClient) {
-      this.callQueueClient.dispose();
-      this.callQueueClient = undefined;
-    }
     if (!this.registered) {
       this.log.info('Authentication: webex.internal.device.deregister already done', logContext);
 
