@@ -67,3 +67,7 @@ junit.xml
 .matrix/
 .prog/
 requirementVersion/
+
+# Playwright E2E output
+packages/calling/playwright-report/
+packages/calling/test-results/

@@ -52,6 +52,26 @@ export const getActiveMobiusUrl = (page: Page): Promise<string> =>
     ).registration.getActiveMobiusUrl()
   );
 
+/**
+ * Mobius URLs the SDK discovered for this account, rather than hardcoded ones:
+ * accounts get rehomed between servers, so the catalog is the only reliable source.
+ */
+export const getDiscoveredMobiusUrls = (
+  page: Page
+): Promise<{primary: string[]; backup: string[]}> =>
+  page.evaluate(() => {
+    const client = (window as any).callingClient;
+
+    return {
+      primary: client?.primaryMobiusUris ?? [],
+      backup: client?.backupMobiusUris ?? [],
+    };
+  });
+
+/** Active Mobius URLs carry a path suffix, so match on prefix rather than equality. */
+export const isKnownMobiusUrl = (url: string | undefined, urls: string[]): boolean =>
+  Boolean(url && urls.some((knownUrl) => url.startsWith(knownUrl)));
+
 export const getDeviceInfo = (page: Page) =>
   page.evaluate(() => {
     const ln = Object.values((window as any).callingClient.getLines())[0] as any;
