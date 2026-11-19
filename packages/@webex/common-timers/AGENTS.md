@@ -48,7 +48,7 @@ alternatives when a command is missing.
 
 | Task                   | Command                                             |
 | ---------------------- | --------------------------------------------------- |
-| Install dependencies   | `yarn install`                                      |
+| Install dependencies   | `yarn`                                              |
 | Start dev environment  | N/A — the package is a library with no runnable entry point |
 | Run tests              | `yarn workspace @webex/common-timers test:unit`     |
 | Run linters            | `yarn workspace @webex/common-timers test:style`    |

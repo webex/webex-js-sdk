@@ -56,15 +56,14 @@ Command forms follow the root `AGENTS.md` workspace convention.
 
 | Task                   | Command             |
 | ---------------------- | ------------------- |
-| Install dependencies   | `yarn install` (from the monorepo root) |
+| Install dependencies   | `yarn` (from the monorepo root) |
 | Start dev environment  | Not applicable — this is a library, not a runnable app |
 | Run tests              | `yarn workspace @webex/internal-plugin-call-ai-summary test:unit` |
 | Run linters            | `yarn workspace @webex/internal-plugin-call-ai-summary test:style` |
 | Build/release artifact | `yarn workspace @webex/internal-plugin-call-ai-summary build:src` |
 | Format code            | `prettier` via the repository configuration |
 
-Running `yarn build`, `yarn test:style` or `yarn test:unit` from inside the package directory is
-equivalent.
+Run every command from the workspace root.
 
 If a required command is unknown, stop and ask for the exact command.
 
@@ -123,10 +122,10 @@ what makes `webex.internal.aisummary` available.
 
 ## 4. Testing Workflow
 
-Run checks in this order:
+Run checks in this order, from the workspace root:
 
-1. `yarn test:unit`
-2. `yarn test:style`
+1. `yarn workspace @webex/internal-plugin-call-ai-summary test:unit`
+2. `yarn workspace @webex/internal-plugin-call-ai-summary test:style`
 3. No integration or e2e tier exists; `src/manual-integration-test.js` is a manual script requiring a live token.
 
 Testing rules:

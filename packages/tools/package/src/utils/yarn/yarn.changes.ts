@@ -18,17 +18,23 @@ const DOCUMENTATION_PATHS = [
  * Find the comparison commit when the change set can affect a package release.
  *
  * @param since - Git reference used to find changes.
+ * @param committed - Whether to check only committed changes.
  * @returns - The merge base, or undefined for documentation-only changes.
  */
-const getReleaseRef = async (since: string): Promise<string | undefined> => {
+const getReleaseRef = async (since: string, committed = false): Promise<string | undefined> => {
   const { stdout: base } = await execute('git', ['merge-base', '--', since, 'HEAD']);
   const reference = base.trim();
   const { stdout: tracked } = await execute('git', [
-    'diff', '--name-only', '--no-renames', '-z', reference, '--', ':/', ...DOCUMENTATION_PATHS,
+    'diff', '--name-only', '--no-renames', '-z', reference,
+    ...(committed ? ['HEAD'] : []), '--', ':/', ...DOCUMENTATION_PATHS,
   ]);
 
   if (tracked) {
     return reference;
+  }
+
+  if (committed) {
+    return undefined;
   }
 
   const { stdout: untracked } = await execute('git', [

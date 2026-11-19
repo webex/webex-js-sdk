@@ -1,0 +1,121 @@
+---
+type: Getting Started
+title: Getting started
+description: Local setup, build, run, and test routing for @webex/plugin-people.
+tags: [onboarding]
+---
+<!-- sdd-generated-metadata
+doc_kind: standing-doc
+generated_from: getting-started@0.3.0
+generated_by: claude-code
+approved_by: rarajes2@cisco.com
+updated_at: 2026-11-12T16:20:06Z
+validation_status: pass-with-warnings
+-->
+
+# Getting started
+
+Onboarding for **@webex/plugin-people**, a package inside the `webex-js-sdk` Yarn workspace.
+Run `yarn` and the package scripts from the workspace root, as `yarn workspace @webex/plugin-people <script>`.
+
+## Prerequisites
+
+| Tool or access | Version or requirement |
+| -------------- | ---------------------- |
+| Node.js        | Use 22.14: the workspace root `AGENTS.md` requires it and the workspace `.nvmrc` selects `lts/jod` (Node 22). This package's `engines` accepts `>=18`. The workspace root `package.json` `engines.node` reads `18.x`, which conflicts with the other pins; the build, unit tests, and lint pass on 22.14 |
+| Yarn           | `yarn@3.4.1` (`packageManager` in the workspace root `package.json`) |
+| Registry or account access | N/A for building, unit tests, and linting |
+
+## Install
+
+```bash
+yarn
+```
+
+The workspace `deploy.yml` workflow installs with the same command.
+
+Fresh-checkout workspace setup (building `webex-legacy-tools` and sibling `dist/`) is owned by the workspace root; see [Prebuilding](../../../../CONTRIBUTING.md#prebuilding).
+
+## Build
+
+```bash
+yarn workspace @webex/plugin-people build:src
+```
+
+`build:src` writes JavaScript and source maps for the four source files to `dist/` through
+`webex-legacy-tools`. `dist/` is ignored by Git. The `build` script runs `build:src`; the package
+emits no type declarations.
+
+```bash
+yarn workspace @webex/plugin-people build
+```
+
+## Run
+
+N/A — this is a library with no start script. Importing `@webex/plugin-people` registers
+`webex.people`.
+
+## Tests
+
+```bash
+yarn workspace @webex/plugin-people test:unit
+```
+
+```bash
+yarn workspace @webex/plugin-people test:style
+```
+
+| Tier | Command | Test location | Framework | External dependencies |
+| ---- | ------- | ------------- | --------- | --------------------- |
+| Unit | `yarn workspace @webex/plugin-people test:unit` | `test/unit/spec` | jest through `webex-legacy-tools` and `@webex/jest-config-legacy` | None; `@webex/test-helper-mock-webex` and sinon stubs |
+
+Run `build:src` before `test:unit`. The unit specs import `@webex/plugin-people` by name, which
+resolves to `dist/index.js`, so a stale build tests old code.
+
+`test:style` lints `src/` with eslint through `@webex/eslint-config-legacy`.
+
+- Coverage or quality gate: none; the package defines no coverage script, and the legacy Jest
+  configuration it re-exports sets no threshold
+- Enforcement source: N/A
+- Test environment or QA dependencies: none for unit tests and lint
+
+`yarn workspace @webex/plugin-people test:browser:broken` (manifest command `browser-test`) runs `webex-legacy-tools test
+--integration --runner karma` over `test/integration/spec/people.js`, whose 13 cases (1 skipped) create
+test users and call the live service. On 2026-11-12 under Node 22.14 the karma bundle failed to parse
+`isbot` (an ES module in the workspace `node_modules`), so the run reported "0 tests completed" and
+still exited zero. It is not listed in the table above because it verifies nothing today, and its exit
+code is not a test result.
+
+Do not run the aggregate `test` script in `package.json`. It runs `test:style` and `test:unit`, then
+exits 1 with `Couldn't find a script named "test:integration"` (checked 2026-11-12); it would also call
+`test:browser`, which this package does not define either. It is deliberately not a manifest command;
+run the commands above instead.
+
+## Configuration and secrets
+
+- Required configuration: none. `config.people` ships defaults for the batcher timings (100 ms quiet,
+  1500 ms at most, 10 ids per request) and `showAllTypes: false` (`src/config.js`); a host can override
+  them through the webex config
+- Environment overrides: none read by this package
+- Secret source: N/A; the package holds no secret
+- Package or artifact access: N/A
+- Required neighboring packages: `@webex/webex-core` and `@webex/common` resolve through the workspace;
+  `@webex/internal-plugin-mercury` is declared but only the integration spec imports it
+- Platform, simulator, device, or SDK setup: none
+- Never commit credentials or copy production secrets into a local config.
+
+## First-run verification
+
+1. Run `yarn workspace @webex/plugin-people build:src` and check that it reports `Built plugin-people: 4 files`.
+2. Run `yarn workspace @webex/plugin-people test:unit`.
+3. Run `yarn workspace @webex/plugin-people test:style`.
+
+Expected result: all three commands exit zero. The unit run reports 5 passing tests in 2 suites.
+`test:style` prints warnings but no errors: 3 in `src/` (missing JSDoc in `src/people-batcher.js` and
+`src/people.js`) and "File ignored" for `src/docs/README.md`.
+
+## Next steps
+
+- [Package architecture](architecture.md)
+- [Specification registry](specs/README.md)
+- [Documentation index](index.md)

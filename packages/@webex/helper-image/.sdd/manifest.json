@@ -8,13 +8,12 @@
       "javascript"
     ]
   },
-  "topology": "Single-repo",
+  "topology": "Orchestrator-plus-components",
   "commands": {
     "install": {
-      "command": "yarn install",
-      "source_file": "package.json",
-      "role": "install",
-      "verified_at": "2026-09-28T13:42:25Z"
+      "command": "yarn",
+      "source_file": "../../../.github/workflows/deploy.yml",
+      "role": "install"
     },
     "compile": "[NEEDS HUMAN INPUT] -- no standalone compile step exists: the sources are JavaScript transpiled by Babel as part of build:src, and package.json declares no typecheck or compile-only target.",
     "build": {
@@ -288,7 +287,12 @@
       "canonical": ".sdd/templates/repo-standards"
     },
     "repo_skills_root": ".sdd/skills",
-    "contract_index_path": "docs/architecture.md"
+    "contract_index_path": "docs/architecture.md",
+    "monorepo_package": {
+      "package_path": "packages/@webex/helper-image",
+      "root_manifest_path": "../../../.sdd/manifest.json",
+      "templates_root_path": "../../../.sdd/templates/repo-standards"
+    }
   },
   "coverage_ratchet": {
     "enabled": true
@@ -324,5 +328,10 @@
     },
     "resolved_by": "claude-opus-5",
     "resolved_at": "2026-09-28T13:42:25Z"
+  },
+  "tooling": {
+    "sdlc_skills": {
+      "source_ref": "repo-annotation@2.3.1"
+    }
   }
 }

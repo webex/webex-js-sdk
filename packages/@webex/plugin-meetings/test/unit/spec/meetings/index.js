@@ -20,6 +20,7 @@ import {Services} from '@webex/webex-core';
 import MeetingUtil from '@webex/plugin-meetings/src/meeting/util';
 import Meetings from '@webex/plugin-meetings/src/meetings';
 import MeetingCollection from '@webex/plugin-meetings/src/meetings/collection';
+import E2eeManager from '@webex/plugin-meetings/src/e2ee/E2eeManager';
 import MeetingsUtil from '@webex/plugin-meetings/src/meetings/util';
 import {SitePreferenceSelectOption} from '@webex/plugin-meetings/src/meetings/meetings.types';
 import PersonalMeetingRoom from '@webex/plugin-meetings/src/personal-meeting-room';
@@ -128,6 +129,7 @@ describe('plugin-meetings', () => {
           enable: true,
           verboseEvents: true,
         },
+        assetsBaseUrl: '/assets/plugin-meetings/',
       });
 
       Object.assign(webex, {
@@ -461,6 +463,24 @@ describe('plugin-meetings', () => {
             {file: 'meetings', function: 'register'},
             'meetings:registered'
           );
+          assert.isTrue(webex.meetings.registered);
+        });
+
+        it('preloads E2EE resources after successful registration', async () => {
+          webex.canAuthorize = true;
+          const preloadStub = sinon.stub(E2eeManager.prototype, 'preload').resolves();
+
+          await webex.meetings.register();
+
+          assert.calledOnce(preloadStub);
+        });
+
+        it('does not fail registration when E2EE preloading rejects', async () => {
+          webex.canAuthorize = true;
+          sinon.stub(E2eeManager.prototype, 'preload').rejects(new Error('asset load failed'));
+
+          await webex.meetings.register();
+
           assert.isTrue(webex.meetings.registered);
         });
 

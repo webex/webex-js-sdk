@@ -39,6 +39,7 @@
     "prebuild": "yarn run clean",
     "build:publish": "yarn build:package && yarn workspaces foreach --parallel --topological --verbose run build:src",
     "build:tools": "yarn workspaces foreach --from '@webex/*-tools' --topological-dev --parallel --verbose run build:src",
+    "setup:karma-https": "./scripts/setup-karma-https.sh",
     "build:local": "yarn ws:tools && yarn workspace @webex/webex-core run build:src && yarn workspaces foreach --parallel --topological --verbose run build:src && yarn run samples:build",
     "build": "yarn workspace @webex/media-helpers run build:src && yarn workspace @webex/calling run build:src && node ./tooling/index.js build && yarn && yarn ws:tools build && yarn run build:tsc",
     "build:tsc": "yarn run tsc -p ./config/tsconfig.typecheck.json --noEmit && yarn workspace @webex/internal-plugin-metrics run build && yarn workspace @webex/plugin-meetings run build && yarn workspace @webex/plugin-encryption run build",
@@ -59,6 +60,7 @@
     "test:integration": "node ./tooling/index.js test --integration --browser",
     "test:ci:github": "node ./tooling/index.js ci --github",
     "test:ci:integration": "node ./tooling/index.js ci --integration",
+    "caroots:generate": "yarn workspace @webex/kms-caroots run webex-kms-caroots",
     "distsrc": "find ./packages -name 'package.json' -print0 | xargs -0 sed -ibak 's#\"main\": \"dist/index.js#\"main\": \"src/index.js#' && find ./packages -name '*bak' -print0 | xargs -0 rimraf",
     "srcdist": "find ./packages -name 'package.json' -print0 | xargs -0 sed -ibak 's#\"main\": \"src/index.js#\"main\": \"dist/index.js#' && find ./packages -name '*bak' -print0 | xargs -0 rimraf",
     "get-current-version": "node ./tooling/index.js version current",
@@ -81,6 +83,7 @@
   },
   "resolutions": {
     "@webex/json-multistream": "2.4.3",
+    "node-forge": "^1.4.3",
     "pkijs/asn1js": "3.0.10"
   },
   "devDependencies": {

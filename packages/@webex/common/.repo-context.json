@@ -6,6 +6,7 @@
     "purpose": "Zero-Webex-dependency shared helpers that more than one Webex JS SDK plugin needs. Sits at the bottom of the workspace dependency graph: src/ imports no @webex/* package at runtime."
   },
   "commands": {
+    "install": "yarn",
     "compile": "yarn workspace @webex/common build:src",
     "build": "yarn workspace @webex/common build",
     "unit-test": "yarn workspace @webex/common test:unit",

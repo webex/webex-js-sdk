@@ -154,7 +154,7 @@ All 40 symbols re-exported by `src/index.js`, with their defining file.
 | `INTERNAL_US_CLUSTER_NAME` | `src/constants.js` | `urn:TEAM:us-east-2_a`; normalises to cluster `us` |
 | `INTERNAL_US_INTEGRATION_CLUSTER_NAME` | `src/constants.js` | `urn:TEAM:us-east-1_int13`; normalises to cluster `us` |
 | `BrowserDetection` | `src/browser-detection.js` | Memoised bowser parser with an os-based Node fallback |
-| `getUmdAssetsBaseUrl` | `src/umd-assets.js` | Uses a local asset path in development/versionless builds, otherwise returns the versioned `webex` UMD CDN asset directory URL |
+| `getUmdAssetsBaseUrl` | `src/umd-assets.js` | Uses a local asset path in development/versionless builds, the versioned `webex` UMD CDN URL when an SDK version is available, or the versioned plugin npm package URL otherwise |
 | `getBrowserSerial` | `src/browser-detection.js` | Raw bowser parser, or an object carrying `error` when the user agent is unreachable |
 | `constructHydraId` | `src/uuid-utils.js` | Encodes type, id, and cluster into a Hydra id |
 | `deconstructHydraId` | `src/uuid-utils.js` | Decodes a Hydra id into `{id, type, cluster}` |

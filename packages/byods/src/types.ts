@@ -1,4 +1,4 @@
-import {TokenStorageAdapter} from './token-storage-adapter/types';
+import type {TokenStorageAdapter} from './token-storage-adapter/types';
 import {LOGGER} from './Logger/types';
 
 export interface LoggerConfig {
@@ -20,6 +20,11 @@ export interface SDKConfig {
    * The client secret of the service app.
    */
   clientSecret: string;
+
+  /**
+   * The organization used by this SDK instance.
+   */
+  orgId: string;
 
   /**
    * The token storage adapter passed by the client
@@ -91,23 +96,6 @@ export interface ServiceAppToken {
    * The expiration date of the refresh token.
    */
   refreshAccessTokenExpiresAt: Date;
-}
-
-/**
- * Represents a service app authorization token info for an organization.
- *
- * @public
- */
-export interface OrgServiceAppAuthorization {
-  /**
-   * The organization ID.
-   */
-  orgId: string;
-
-  /**
-   * The token details.
-   */
-  serviceAppToken: ServiceAppToken;
 }
 
 /**

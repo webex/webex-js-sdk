@@ -41,6 +41,7 @@ const list: CommandsCommand<Options> = {
    * @returns - Promise that resolves once the process is complete.
    */
   handler: (options: Options) => Yarn.list({
+    committed: options.committed,
     noPrivate: !options.private,
     recursive: options.recursive,
     since: options.since,

@@ -1,3 +1,10 @@
+import {
+  VOICE_CONNECTION_STATUS,
+  VoiceConnectionState,
+  VoiceLineStatus,
+  VoiceMobiusSocketStatus,
+} from './types';
+
 export const EVENT = 'event';
 export const READY = 'ready';
 export const TIMEOUT_DURATION = 20000; // 20 seconds timeout duration for webrtc registration
@@ -25,6 +32,11 @@ export const OUTBOUND_TYPE = 'OUTDIAL';
 // Log related constants
 export const UNKNOWN_ERROR = 'Unknown error';
 export const MERCURY_DISCONNECTED_SUCCESS = 'Mercury disconnected successfully';
+export const DEFAULT_VOICE_CONNECTION_STATE: Readonly<VoiceConnectionState> = Object.freeze({
+  status: VOICE_CONNECTION_STATUS.NOT_REQUIRED,
+  lineStatus: VoiceLineStatus.UNKNOWN,
+  mobiusSocketStatus: VoiceMobiusSocketStatus.UNKNOWN,
+});
 
 // METHOD NAMES
 export const METHODS = {

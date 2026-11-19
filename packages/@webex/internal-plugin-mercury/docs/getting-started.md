@@ -32,7 +32,7 @@ The repository is already cloned when you are reading this file. Dependencies ar
 whole workspace:
 
 ```bash
-yarn install
+yarn
 ```
 
 ## Build
@@ -89,7 +89,7 @@ yarn workspace @webex/internal-plugin-mercury test:unit
 
 ## First-run verification
 
-1. Run `yarn install` from the workspace root.
+1. Run `yarn` from the workspace root.
 2. Run `yarn workspace @webex/internal-plugin-mercury build` and check that `dist/index.js` exists.
 3. Run `yarn workspace @webex/internal-plugin-mercury test:unit`.
 

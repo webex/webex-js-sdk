@@ -29,7 +29,7 @@ runs from the workspace root.
 ## Install
 
 ```bash
-yarn install
+yarn
 ```
 
 ## Build
@@ -83,7 +83,7 @@ yarn workspace @webex/webex-core test:unit
 
 ## First-run verification
 
-1. Run `yarn install`.
+1. Run `yarn`.
 2. Run `yarn workspace @webex/webex-core test:unit --targets lib/batcher.js`.
 3. Run `yarn workspace @webex/webex-core test:style`.
 

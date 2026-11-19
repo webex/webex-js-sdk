@@ -46,7 +46,7 @@ Related context: [documentation index](../../docs/index.md) ·
 | `module.has_tiers`                   | N/A        | No tier policy exists in this package or its `package.json` | Tier |
 | `module.has_ui`                      | N/A        | No view or screen. The module manages sockets and emits events. | UI use-case flow |
 | `module.crosses_service_boundaries`  | Applicable | Opens WebSocket connections to the Mercury service and calls device, credentials, services, and metrics plugins from `src/mercury.js` | Cross-boundary use-case flow |
-| `module.holds_client_state`          | Applicable | `connected`, `connecting`, `hasEverConnected`, `sockets`, `sessionWebSocketUrls`, `backoffCalls`, and `mercuryTimeOffset` are session properties in `src/mercury.js` | Client state model |
+| `module.holds_client_state`          | Applicable | connected, connecting, hasEverConnected, sockets, sessionWebSocketUrls, backoffCalls, and mercuryTimeOffset are session properties in `src/mercury.js` | Client state model |
 | `module.enforces_domain_rules`       | Applicable | Close-code reconnect policy, reconnect reasons, and retry limits in `src/mercury.js` | Business rules and invariants |
 | `module.is_concurrent_async`         | Applicable | Promise-based connect with backoff timers, per-session in-flight deduplication, and event-driven message handling | Concurrency and reactive flow |
 | `module.owns_persistence`            | N/A        | Nothing is written to storage. All state is in memory. | Data, schema, and migration discipline |
@@ -54,12 +54,12 @@ Related context: [documentation index](../../docs/index.md) ·
 | `module.exposes_wire_protocol`       | Applicable | The connection URL query parameters and the inbound envelope fields read in `src/mercury.js` | Protocol and wire format |
 | `module.ui_multi_screen`             | N/A        | No UI | UI flow |
 | `module.large_data_model`            | N/A        | No entity model. Config has eight keys and envelopes are routed, not modelled. | Data model |
-| `module.returns_caller_errors`       | Applicable | `connect()` rejects, `lastError` records the failure, and `src/errors.js` exports error classes | Caller-visible failure modes |
-| `module.module_specific_conventions` | Applicable | `:<sessionId>` event suffix, `process<Name>Event` autowiring, and the `Mercury:` log prefix | Module-specific rules |
-| `module.published_package`           | Applicable | `package.json` names the package @webex/internal-plugin-mercury and `deploy:npm` publishes it | Export stability |
+| `module.returns_caller_errors`       | Applicable | connect() rejects, lastError records the failure, and `src/errors.js` exports error classes | Caller-visible failure modes |
+| `module.module_specific_conventions` | Applicable | :\<sessionId\> event suffix, process\<Name\>Event autowiring, and the Mercury: log prefix | Module-specific rules |
+| `module.published_package`           | Applicable | `package.json` names the package @webex/internal-plugin-mercury and deploy:npm publishes it | Export stability |
 | `module.embedded_in_host`            | N/A        | No host theme or embed API | Host integration and theming |
 | `module.has_design_tradeoff`         | Applicable | Make-before-break shutdown switchover, unlimited default retries, and metric suppression for close code 1006 | Key design trade-off |
-| `module.has_submodules`              | Applicable | Computed true by the Repo Annotation module_tree.py script: `src/socket` is a child module | Sub-modules |
+| `module.has_submodules`              | Applicable | Computed true by the Repo Annotation module_tree.py script: src/socket is a child module | Sub-modules |
 
 ## Evidence register
 
@@ -103,11 +103,11 @@ Related context: [documentation index](../../docs/index.md) ·
 | `src/mercury.js` | `Mercury` plugin definition: session state, public methods, and private connection, routing, and close handlers |
 | `src/config.js` | Default `mercury` config merged at registration |
 | `src/errors.js` | `ConnectionError` (extends `Exception`) and `UnknownResponse`, `BadRequest`, `NotAuthorized`, `Forbidden`; a commented-out `NotFound` |
-| `src/socket/` | Child module. See Sub-modules. |
+| src/socket/ | Child module. See Sub-modules. |
 | `test/unit/spec/mercury.js` | Main unit spec |
 | `test/unit/spec/mercury-events.js` | Event and close-code unit spec |
 | `test/unit/lib/promise-tick.js` | Test helper that yields a number of microtask ticks |
-| `test/integration/spec/` | Integration specs, run only through `test:browser` (see Verification) |
+| test/integration/spec/ | Integration specs, run only through `test:browser` (see Verification) |
 
 ## Sub-modules
 
@@ -484,7 +484,7 @@ Frames on the socket itself are owned by the child module.
 | Retry limit reached | `connect()` rejects with the last attempt error | Decide whether to call `connect()` again | None | `src/mercury.js`, `test/unit/spec/mercury.js` |
 | `disconnect()` during connect | `connect()` rejects with `Mercury Connection Aborted for <sessionId>` | Expected | None | `src/mercury.js`, `test/unit/spec/mercury.js` |
 | Device registration fails | `connect()` rejects with the device error | Handle device error | None here | `src/mercury.js` |
-| Handler or listener throws | Logged by `Mercury`; routing and emits continue | None | — | `src/mercury.js`, `test/unit/spec/mercury.js` `#_emit()` |
+| Handler or listener throws | Logged by `Mercury`; routing and emits continue | None | — | `src/mercury.js`, `test/unit/spec/mercury.js` #\_emit() |
 
 ## Pitfalls and constraints
 
@@ -556,10 +556,10 @@ No TypeScript declaration or API report exists for this package.
 
 | Chosen trade-off | Preserved invariant or benefit | Cost or limitation | Decision evidence |
 | ---------------- | ------------------------------ | ------------------ | ----------------- |
-| Make-before-break shutdown switchover with a separate backoff map | Session stays online while the server drains a node | Two sockets per session during switchover; the bookkeeping gap under Pitfalls | `src/mercury.js` `_handleImminentShutdown` |
-| Unlimited retries unless `maxRetries` or `initialConnectionMaxRetries` is set | Clients recover from long outages without app code | `connect()` may never settle during an outage | `src/mercury.js` `_connectWithBackoff` |
-| Suppress `connection_failed` for 1006 and first attempts | Less metric noise during outages | Outage failures can go unreported, as the source comment notes | `src/mercury.js` `_attemptConnection` |
-| Default session events unsuffixed | Backward-compatible event names | Callers must build suffixed names for other sessions | `src/mercury.js` `_emit` |
+| Make-before-break shutdown switchover with a separate backoff map | Session stays online while the server drains a node | Two sockets per session during switchover; the bookkeeping gap under Pitfalls | `src/mercury.js` \_handleImminentShutdown |
+| Unlimited retries unless `maxRetries` or `initialConnectionMaxRetries` is set | Clients recover from long outages without app code | `connect()` may never settle during an outage | `src/mercury.js` \_connectWithBackoff |
+| Suppress `connection_failed` for 1006 and first attempts | Less metric noise during outages | Outage failures can go unreported, as the source comment notes | `src/mercury.js` \_attemptConnection |
+| Default session events unsuffixed | Backward-compatible event names | Callers must build suffixed names for other sessions | `src/mercury.js` \_emit |
 
 ## Verification
 
