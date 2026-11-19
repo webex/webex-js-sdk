@@ -21,7 +21,10 @@ export class MercuryPlugin extends (WebexPlugin as any) {
 
   constructor(...args: any[]) {
     super(...args);
-    this._mercury = new (Mercury as any)({parent: (this as any).webex});
+    this._mercury = new (Mercury as any)({
+      parent: (this as any).webex,
+      _isPrimaryMercury: true,
+    });
 
     // Re-emit every event from Mercury on this plugin so listeners attached to
     // `this.webex.internal.mercury` continue to work.

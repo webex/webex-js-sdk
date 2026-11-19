@@ -163,6 +163,9 @@ describe('plugin-mercury', () => {
         // This test is here because the buffer states message may arrive before
         // the mercury Promise resolves.
         it('gets emitted', (done) => {
+          // This case delivers its own open event before the readiness message.
+          socketOpenStub.restore();
+          socketOpenStub = sinon.spy(Socket.prototype, 'open');
           const spy = mockWebSocket.send;
 
           assert.notCalled(spy);
