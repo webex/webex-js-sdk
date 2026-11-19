@@ -76,7 +76,7 @@ missing or contradictory evidence blocks promotion.
 | `src/services/config/index.ts` | `AgentConfigService` and its twelve public methods; the staged `getAgentConfig` orchestration; the per-method log, status-check, and rethrow pattern; the operation groups that justify the `Profile aggregation`, `Pagination`, and `Wellness idle-code lookup` subsections under Data flow and sequence coverage |
 | `src/services/config/Util.ts` | `parseAgentConfigs` and its helpers `getFilterAuxCodes`, `getFilteredDialplanEntries`, `getDefaultWrapUpCode`, `getMsftConfig`, `getWebexConfig`, `getDefaultAgentDN`; the wellness gate |
 | `src/services/config/constants.ts` | `endPointMap`, `DEFAULT_PAGE` (0), `DEFAULT_PAGE_SIZE` (100), `DEFAULT_AUXCODE_ATTRIBUTES`, `WELLBEING_BREAK_IDLE_CODE`, `WELLNESS_BREAK_REMINDERS_ENABLED`, `COLLABORATION_ACCESS`, `METHODS` |
-| `src/services/config/types.ts` | `CC_TASK_EVENTS` (66 keys), `CC_AGENT_EVENTS` (19 keys), `CC_EVENTS`, `VOICE_CONNECTION_EVENTS`, `Profile`, and the response types (catalog source of `contact-center-cc-events`) |
+| `src/services/config/types.ts` | `CC_TASK_EVENTS` (66 keys), `CC_AGENT_EVENTS` (23 keys, including the four V2 channel types), `CC_EVENTS`, `VOICE_CONNECTION_EVENTS`, `Profile`, and the response types (catalog source of `contact-center-cc-events`) |
 | `src/services/index.ts` | `Services` constructs one `AgentConfigService` as `services.config` |
 | `src/cc.ts` | Consumers: `connectWebsocket` stores `getAgentConfig` as `this.agentConfig`; `getWellbeingBreakIdleCode` and `getOutdialAniEntries` wrap the service; `CC_EVENT_ALLOW_LIST` filters re-emitted WebSocket event names |
 | `src/index.ts`, `src/webex.js` | Public re-export of `CC_EVENTS`, `CC_AGENT_EVENTS`, `CC_TASK_EVENTS`, `VOICE_CONNECTION_EVENTS`, `IDLE_CODE`, `WRAP_UP_CODE`, and the config types; `Webex.CC_AGENT_EVENTS` |
@@ -161,6 +161,7 @@ The AgentProfile is defined as the [`Profile`](../types.ts) type. This is not an
 | `accessQueue` | `'ALL' \| 'SPECIFIC' \| 'NONE'` | Collaboration tab queue access scope from Desktop Profile |
 | `accessEntryPoint` | `'ALL' \| 'SPECIFIC' \| 'NONE'` | Collaboration tab entry-point access scope from Desktop Profile |
 | `accessBuddyTeam` | `'ALL' \| 'SPECIFIC' \| 'NONE'` | Collaboration tab buddy-team access scope from Desktop Profile |
+| `manageChannelAvailability` | boolean | Granular agent state (V2) is enabled for this agent profile; `true` only when the aggregate's `agentProfile.manageChannelAvailability` is exactly `true`. ContactCenter re-reads it before each `stationLogin` (WXCC-15791) |
 | `isWellnessBreakEnabled` | boolean | Effective wellness gate derived from backend enablement/reminder configuration and positive AI Assistant license quantity |
 
 `parseAgentConfigs()` maps the three `access*` fields from the user aggregate's `AgentProfile` section onto the public `Profile` returned by `cc.register()`.
@@ -220,6 +221,8 @@ Types used by the config service, all defined in [`types.ts`](../types.ts):
 | CONFIG-R-010 | `getOutdialAniEntries(orgId, params)` adds only the provided `page`, `pageSize`, `search`, `filter`, and `attributes` query parameters, resolves `response.body?.data`, and rethrows a request rejection; it does not check `statusCode`. | `cc.getOutdialAniEntries` is the public caller-ID lookup and records the result count in metrics. | `src/services/config/index.ts`, `src/cc.ts` | `test/unit/spec/services/config/index.ts` | A resolved non-200 response yields `undefined`, not an error (asserted by the 404 and 500 cases). | Present |
 | CONFIG-R-011 | `parseAgentConfigs` keeps active aux codes of each `workTypeCode` from the full pool as `Entity` values, appends the synthetic idle code `{id: '0', name: 'Available'}`, and sets `defaultWrapupCode` to the default wrap-up code id or an empty string. | The desktop-login aggregate does not carry per-agent restriction lists, so the whole pool applies (JSDoc of `getFilterAuxCodes`). | `src/services/config/Util.ts` | `test/unit/spec/services/config/Util.ts` | None. | Present |
 | CONFIG-R-012 | When `dialPlanEnabled` is true, `Profile.dialPlan` is `{type: 'adhocDial', dialPlanEntity}` built from every active plan; otherwise it is `undefined` and no dial-plan request is made. | The aggregate does not carry the per-profile `dialPlans` selection, so all active plans apply (JSDoc of `getFilteredDialplanEntries`). | `src/services/config/Util.ts`, `src/services/config/index.ts` | `test/unit/spec/services/config/Util.ts`, `test/unit/spec/services/config/index.ts` | None. | Present |
+| CONFIG-R-013 | `parseAgentConfigs` sets `Profile.manageChannelAvailability` to `agentProfile.manageChannelAvailability === true`, so a missing or non-boolean value means V1. `getUserDesktopLoginConfig` is also called by ContactCenter before each `stationLogin` to re-read the flag; ContactCenter keeps the cached value when that call fails. | The flag is the only V2 switch in the SDK, and an admin change must apply at the next login without a new `register()`. | `src/services/config/Util.ts`, `src/services/config/types.ts`, `src/cc.ts` | `test/unit/spec/services/config/Util.ts` (`maps manageChannelAvailability %s to %s`), `test/unit/spec/cc.ts` (`profile flag refresh before login`) | None. | Present |
+| CONFIG-R-014 | `CC_AGENT_EVENTS` carries the V2 notification types `AgentChannelStateChanged`, `AgentChannelStateChangeFailed`, `AgentChannelReloginSuccess`, and the outer category `AgentChannelStateChange`, so the allow-list re-emits them and the V2 binds can match them. | V2 notifications must pass the same allow-list as V1 (CONFIG-R-008). | `src/services/config/types.ts` | `test/unit/spec/cc.ts` (V2 event cases), `test/unit/spec/services/agent/index.ts` (V2 binds) | None. | Present |
 
 ## Design overview
 
@@ -303,7 +306,7 @@ sequenceDiagram
     Util-->>Cfg: Profile including aiFeature
     Cfg-->>CC: Profile
   else any fails
-    Cfg-->>CC: throw; no partial Profile
+    Cfg-->>CC: throw, no partial Profile
   end
 ```
 
@@ -333,7 +336,7 @@ sequenceDiagram
       Cfg->>Cfg: concatenate responses in request order
       Cfg-->>Caller: complete accumulated list
     else any remaining page rejects
-      Cfg-->>Caller: reject; do not return a partial list
+      Cfg-->>Caller: reject, do not return a partial list
     end
   else first page rejects
     Cfg-->>Caller: reject
@@ -423,7 +426,7 @@ All Config operations are authenticated REST calls through WebexRequest. Importa
 | Message or frame | Version | Producer or serializer | Consumer or parser | Compatibility and ordering rule |
 | ---------------- | ------- | ---------------------- | ------------------ | ------------------------------- |
 | Organization desktop-login aggregate: `endPointMap.orgDesktopLogin(orgId)` builds `organization/{orgId}/desktop-login`; response `OrgDesktopLoginResponse` | — | Contact Center API gateway | `getOrgDesktopLoginConfig`, `parseAgentConfigs` | Key fields: `organization`: `tenantId`, `timezone`. `organizationSetting`: `webRtcEnabled`, `maskSensitiveData`, `campaignManagerEnabled`, `aiAssistantQuantity`. `tenantConfiguration`: `outdialEnabled`, `forceDefaultDn`, `privacyShieldVisible`, `timeoutDesktopInactivityEnabled`. Optional `urlMappings`, `aiFeature`, `microsoftConfig`, `webexConfig`. All organization-, tenant- and feature-scoped configuration in one call |
-| User desktop-login aggregate: `endPointMap.userDesktopLogin(orgId, ciUserId)` builds `organization/{orgId}/v2/user/by-ci-user-id/{ciUserId}/desktop-login`; response `UserDesktopLoginResponse` | v2 | Contact Center API gateway | `getUserDesktopLoginConfig`, `getAgentConfig`, `parseAgentConfigs` | Key fields: `user`: `ciUserId`, `id`, `dbId`, `firstName`, `lastName`, `email`, `agentProfileId`, `siteId`. `agentProfile`: `dialPlanEnabled`, `accessWrapUpCode`, `accessIdleCode`, `loginVoiceOptions`, `viewableStatistics`. Agent identity, team-filter id, site reference, and desktop settings in one call |
+| User desktop-login aggregate: `endPointMap.userDesktopLogin(orgId, ciUserId)` builds `organization/{orgId}/v2/user/by-ci-user-id/{ciUserId}/desktop-login`; response `UserDesktopLoginResponse` | v2 | Contact Center API gateway | `getUserDesktopLoginConfig`, `getAgentConfig`, `parseAgentConfigs` | Key fields: `user`: `ciUserId`, `id`, `dbId`, `firstName`, `lastName`, `email`, `agentProfileId`, `siteId`. `agentProfile`: `dialPlanEnabled`, `accessWrapUpCode`, `accessIdleCode`, `loginVoiceOptions`, `viewableStatistics`, `manageChannelAvailability`. Agent identity, team-filter id, site reference, and desktop settings in one call |
 | Teams: `endPointMap.listTeams(orgId, page, pageSize, userDbId)` builds `organization/{orgId}/v2/team?page={page}&pageSize={pageSize}&agentView=true&filter=userId=={userDbId}`; response `ListTeamsResponse` of `TeamList` records | v2 | Contact Center API gateway | `getListOfTeams`, `getAllTeams` | The wire field is `userId` but the value is the user's database id (`user.dbId`); `meta.totalPages` drives pagination; channel capacities belong to `MultimediaProfileResponse` |
 | Auxiliary codes: `endPointMap.listAuxCodes(orgId, page, pageSize, filter, attributes)` builds `organization/{orgId}/v2/auxiliary-code?page={page}&pageSize={pageSize}`, then `&filter=id=in=({filter})` only when filter has length, then `&attributes={attributes}&desktopProfileFilter=true`; response `ListAuxCodesResponse` | v2 | Contact Center API gateway | `getListOfAuxCodes`, `getAllAuxCodes`, `getFilterAuxCodes` | `getAgentConfig` requests `DEFAULT_AUXCODE_ATTRIBUTES`: `id`, `isSystemCode`, `name`, `defaultCode`, `workTypeCode`, `active` |
 | Wellness system idle code: `endPointMap.systemIdleCodes(orgId, page, pageSize)` builds `organization/{orgId}/v2/auxiliary-code?page={page}&pageSize={pageSize}&workType=IDLE_CODE&customFilter=isSystemCode==true&desktopProfileFilter=false` | v2 | Contact Center API gateway | `getWellbeingBreakIdleCode` | Desktop Profile filtering is bypassed |
@@ -524,6 +527,8 @@ try {
 | `CONFIG-R-008` | Unit | `test/unit/spec/cc.ts` (known type emitted), `test/unit/spec/index.ts` (exports) | `test/unit/spec/cc.ts` (unknown type not emitted) | None |
 | `CONFIG-R-010` | Unit | `test/unit/spec/services/config/index.ts` (minimal, full, partial parameters) | `test/unit/spec/services/config/index.ts` (rejection, 404, 500, missing body) | None |
 | `CONFIG-R-011`, `CONFIG-R-012` | Unit | `test/unit/spec/services/config/Util.ts` (aux codes, dial plan) | `test/unit/spec/services/config/Util.ts` (no default code, dial planning disabled) | None |
+| `CONFIG-R-013` | Unit | `test/unit/spec/services/config/Util.ts` (`true` case), `test/unit/spec/cc.ts` (flag re-read) | `test/unit/spec/services/config/Util.ts` (`false` and `undefined` cases), `test/unit/spec/cc.ts` (`keeps the cached flag when the re-fetch fails`) | None |
+| `CONFIG-R-014` | Unit | `test/unit/spec/cc.ts` V2 event cases | `test/unit/spec/cc.ts` unknown-channel and other-agent cases | None |
 
 Run `yarn workspace @webex/contact-center test:unit` from the workspace root. A module specification is complete only when its public surface,
 invariants, failure modes, and test evidence agree with the implementation; coverage is pending a fresh

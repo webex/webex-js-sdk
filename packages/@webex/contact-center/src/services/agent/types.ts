@@ -287,6 +287,8 @@ export type StateChange = {
   lastStateChangeReason?: string;
   /** ID of the agent whose state is being changed */
   agentId?: string;
+  /** V2: Specific channel types to change state for. When provided with V2 active, per-channel state change is used. */
+  channelType?: ChannelType[];
 };
 
 /**
@@ -432,9 +434,173 @@ export enum AGENT_EVENTS {
   /** Emitted when an agent successfully re-authenticates */
   AGENT_RELOGIN_SUCCESS = 'agent:reloginSuccess',
 
+  /** Emitted when the automated relogin (refresh or reconnect) finds no active session on the server */
+  AGENT_RELOGIN_SESSION_NOT_FOUND = 'agent:reloginSessionNotFound',
+
+  /** Emitted when the contact center WebSocket connection is lost */
+  AGENT_CONNECTION_LOST = 'agent:connectionLost',
+
+  /** Emitted when the contact center WebSocket reconnects, before the automated relogin runs */
+  AGENT_CONNECTION_RECONNECTED = 'agent:connectionReconnected',
+
   /** Emitted when agent state change is successful */
   AGENT_STATE_CHANGE_SUCCESS = 'agent:stateChangeSuccess',
 
   /** Emitted when agent state change attempt fails */
   AGENT_STATE_CHANGE_FAILED = 'agent:stateChangeFailed',
+
+  /** V2: Emitted when per-channel state change succeeds */
+  AGENT_CHANNEL_STATE_CHANGE = 'agent:channelStateChange',
+
+  /** V2: Emitted when per-channel state change fails */
+  AGENT_CHANNEL_STATE_CHANGE_FAILED = 'agent:channelStateChangeFailed',
+
+  /** V2: Emitted when V2 reload/relogin succeeds with per-channel state map */
+  AGENT_CHANNEL_RELOGIN_SUCCESS = 'agent:channelReloginSuccess',
+
+  /** V2: Emitted when channel recovery is deferred (e.g., telephony waiting for WebRTC line) */
+  AGENT_CHANNEL_RECOVERY_DEFERRED = 'agent:channelRecoveryDeferred',
 }
+
+// ─── V2 Granular Agent State Control Types ────────────────────────────────────
+
+/**
+ * Channel types supported by V2 granular state control
+ * @public
+ */
+export type ChannelType =
+  | 'telephony'
+  | 'chat'
+  | 'email'
+  | 'social'
+  | 'workItem'
+  | 'customMessaging';
+
+/**
+ * Per-channel state change request input for granular (V2) agent state.
+ * Mirrors {@link StateChange} but targets specific channel types.
+ * @public
+ */
+export type ChannelStateChangeRequest = {
+  /** Target channel types */
+  channelType: ChannelType[];
+  /** Target state */
+  state: AgentState;
+  /** Auxiliary code ID */
+  auxCodeId: string;
+  /** Reason for the state change */
+  reason?: string;
+  /** Agent ID (defaults to current agent) */
+  agentId?: string;
+};
+
+/**
+ * Per-channel state detail from backend
+ * @public
+ */
+export type AgentChannelTypeStates = {
+  /** Current agent state on this channel */
+  agentState: AgentState;
+  /** Whether an idle state change is pending */
+  pendingIdle: boolean;
+  /** Auxiliary code ID for the current state */
+  auxCodeId?: string;
+  /** Number of available (open) channel slots */
+  availableChannelCount: number;
+  /** Total channel slots configured for this type */
+  totalChannelCount: number;
+  /** Number of manually assigned channel slots */
+  manuallyAssignedChannelCount?: number;
+  /** Total number of manually assigned channel slots */
+  totalManuallyAssignedChannelCount?: number;
+  /** Number of manually assigned channel slots currently available */
+  manuallyAssignedAvailableChannelCount?: number | null;
+  /** Human-readable reason for the state change */
+  stateChangeReason: string;
+  /** Unix timestamp (ms) of the state change */
+  stateChangeTimestamp: number;
+  /** Unix timestamp (ms) of the last idle code change */
+  lastIdleCodeChangeTimestamp?: number;
+};
+
+/**
+ * V2 channel state change success notification
+ * @public
+ */
+export type AgentChannelStateChanged = Msg<{
+  type: 'AgentChannelStateChanged';
+  channelType: ChannelType;
+  agentChannelStateDetail: AgentChannelTypeStates;
+  subStatus: string;
+  status: string;
+  isClientInitiated: boolean;
+  changedBy: string;
+  changedById: string | null;
+  changedByName: string | null;
+  queueId?: string | null;
+  eventTime?: number;
+  connectedChannels: ChannelType[];
+  isAgentLogin: boolean;
+}>;
+
+/**
+ * V2 channel state change failure notification
+ * @public
+ */
+export type AgentChannelStateChangeFailed = Msg<{
+  type: 'AgentChannelStateChangeFailed';
+  channelType: ChannelType;
+  reason: string;
+  reasonCode: number;
+  isClientInitiated?: boolean;
+  eventTime?: number;
+}>;
+
+/**
+ * V2 channel relogin success notification
+ * @public
+ */
+export type AgentChannelReloginSuccess = Msg<{
+  type: 'AgentChannelReloginSuccess';
+  agentChannelStateDetailMap: Record<ChannelType, AgentChannelTypeStates>;
+  channelsMap: Record<string, string[]>;
+  interactionIds: string[];
+  reservedAgentChannelIds: string[];
+  profileType: string;
+  deviceType: string;
+  dn: string;
+  siteId: string;
+  teamId: string;
+  agentId: string;
+  agentSessionId: string;
+  trackingId: string;
+  orgId: string;
+  deviceId: string;
+  isExtension: boolean;
+  roles: string[];
+  eventTime?: number;
+}>;
+
+/**
+ * Map of channel type to its capacity (number of channel IDs)
+ * @public
+ */
+export type ChannelsMap = Record<string, string[]>;
+
+/**
+ * Session version: V1 (agent-wide) or V2 (per-channel).
+ * Pinned once per login session.
+ * @public
+ */
+export type SessionVersion = 'V1' | 'V2';
+
+/**
+ * Session version control status for diagnostics/observability
+ * @public
+ */
+export type AgentStateControlStatus = {
+  /** Profile-derived V2 eligibility (manageChannelAvailability) */
+  declared: boolean | undefined;
+  /** Whether V2 granular agent state is active for this session */
+  active: boolean | undefined;
+};

@@ -209,6 +209,20 @@ export type {
   BuddyDetails,
   /** Buddy agents success response */
   BuddyAgentsSuccess,
+  /** V2: Channel type for granular state control */
+  ChannelType,
+  /** V2: Per-channel state detail */
+  AgentChannelTypeStates,
+  /** V2: Channel state change success notification */
+  AgentChannelStateChanged,
+  /** V2: Channel state change failure notification */
+  AgentChannelStateChangeFailed,
+  /** V2: Channel relogin success notification */
+  AgentChannelReloginSuccess,
+  /** V2: Per-channel state change request input */
+  ChannelStateChangeRequest,
+  /** V2: Agent state control status for diagnostics */
+  AgentStateControlStatus,
 } from './services/agent/types';
 
 /** Config related types */

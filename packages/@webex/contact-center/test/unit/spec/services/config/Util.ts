@@ -377,6 +377,19 @@ describe('parseAgentConfigs', () => {
 
       expect(profile.timeoutDesktopInactivityMins).toBeUndefined();
     });
+
+    it.each([
+      [true, true],
+      [false, false],
+      [undefined, false],
+    ])('maps manageChannelAvailability %s to %s', (flag, expected) => {
+      const profile = parseAgentConfigs({
+        ...baseProfileData,
+        agentProfileData: {...baseAgentProfile, manageChannelAvailability: flag},
+      });
+
+      expect(profile.manageChannelAvailability).toBe(expected);
+    });
   });
 
   describe('auxiliary codes', () => {
