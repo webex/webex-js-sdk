@@ -12,8 +12,12 @@ import {capitalize, get, has} from 'lodash';
 
 import Conversation from './conversation';
 import config from './config';
+import ConversationRetryAfterInterceptor from './interceptors/conversation-retry-after';
 
 registerInternalPlugin('conversation', Conversation, {
+  interceptors: {
+    ConversationRetryAfterInterceptor: ConversationRetryAfterInterceptor.create,
+  },
   payloadTransformer: {
     predicates: [
       {
@@ -329,5 +333,6 @@ registerInternalPlugin('conversation', Conversation, {
 });
 
 export {default} from './conversation';
+export {default as ConversationRetryAfterInterceptor} from './interceptors/conversation-retry-after';
 export {default as ShareActivity} from './share-activity';
 export {ConversationError, InvalidUserCreation} from './convo-error';
