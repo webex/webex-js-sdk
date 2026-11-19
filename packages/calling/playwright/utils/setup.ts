@@ -37,14 +37,18 @@ export const navigateToCallingApp = async (page: Page): Promise<void> => {
  *    - calling.register() is called automatically
  *    - After register, registerElm is enabled and callingClient + line are set up
  */
-export const initializeCallingSDK = async (page: Page, accessToken: string): Promise<void> => {
+export const initializeCallingSDK = async (
+  page: Page,
+  accessToken: string,
+  mobiusWss: boolean = isMobiusWsMode()
+): Promise<void> => {
   if (!accessToken) {
     throw new Error('Access token is required to initialize Calling SDK');
   }
 
-  if (isMobiusWsMode()) {
-    await setMobiusWebSocket(page, true);
-  }
+  // Always pin the override: leaving it unset lets the backend flag choose the
+  // transport, and HTTP route interceptors silently never fire over WebSocket.
+  await setMobiusWebSocket(page, mobiusWss);
 
   // Fill in the access token
   await page
@@ -58,6 +62,8 @@ export const initializeCallingSDK = async (page: Page, accessToken: string): Pro
   await expect(page.locator(CALLING_SELECTORS.AUTH_STATUS)).toHaveText('Saved access token!', {
     timeout: SDK_INIT_TIMEOUT,
   });
+
+  await verifyMobiusTransport(page, mobiusWss);
 };
 
 /**
@@ -149,22 +155,38 @@ export const setMobiusWebSocket = async (page: Page, enabled: boolean): Promise<
 };
 
 /**
- * Verify that the initialized CallingClient is using Mobius WebSocket transport.
+ * Verify the initialized CallingClient is using the transport the test expects.
+ *
+ * Worth asserting in both directions: when the sample app defers to the backend flag it
+ * can pick WebSocket while a test is intercepting HTTP (or vice versa), and the only
+ * symptom is every route counter staying at zero until some unrelated poll times out.
  */
-export const verifyMobiusWebSocketEnabled = async (page: Page): Promise<void> => {
+export const verifyMobiusTransport = async (
+  page: Page,
+  expectWebSocket: boolean
+): Promise<void> => {
+  const expected = expectWebSocket ? 'WebSocket' : 'HTTP';
+  const actual = expectWebSocket ? 'HTTP' : 'WebSocket';
+
   await expect
     .poll(
       () =>
-        page.evaluate(
-          () => (window as any).callingClient?.apiRequest?.isSocketEnabled?.() === true
-        ),
+        page.evaluate(() => {
+          const apiRequest = (window as any).callingClient?.apiRequest;
+
+          // null (not false) while the client is still coming up, so that waiting for HTTP
+          // does not match a page that has no CallingClient at all.
+          return apiRequest?.isSocketEnabled ? apiRequest.isSocketEnabled() === true : null;
+        }),
       {
-        message: 'Expected Mobius WebSocket transport to be enabled',
+        message:
+          `Expected Mobius transport to be ${expected} but CallingClient is using ${actual}. ` +
+          `${expected} route interceptors will not fire.`,
         timeout: SDK_INIT_TIMEOUT,
         intervals: [1000],
       }
     )
-    .toBe(true);
+    .toBe(expectWebSocket);
 };
 
 /**
