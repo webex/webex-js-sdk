@@ -4,6 +4,8 @@
 
 import {Interceptor} from '@webex/http-core';
 
+import {matchAllowedDomain, normalizeAllowedDomains} from '../lib/domains';
+
 /**
  * Validates that request URLs are in the service catalog.
  * Prevents SSRF attacks by blocking requests to unknown hosts.
@@ -54,6 +56,15 @@ export default class CatalogUrlInterceptor extends Interceptor {
       services.validateDomains &&
       services.hasAllowedDomains() &&
       services.isAllowedDomainUrl(url)
+    ) {
+      return Promise.resolve(options);
+    }
+
+    if (
+      matchAllowedDomain(
+        url,
+        normalizeAllowedDomains(this.webex.config?.services?.allowedWithoutAuthHeader)
+      )
     ) {
       return Promise.resolve(options);
     }

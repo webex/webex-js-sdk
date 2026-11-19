@@ -116,6 +116,14 @@ export default {
      * @type {Array<string>}
      */
     allowedDomains: [],
+
+    /**
+     * Domain fallback for requests outside the catalog and allowedDomains.
+     * Matching requests do not get the SDK bearer token. Domains include subdomains.
+     *
+     * @type {Array<string>}
+     */
+    allowedWithoutAuthHeader: [],
   },
   device: {
     preDiscoveryServices: {

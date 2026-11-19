@@ -202,11 +202,32 @@ keys below are read by the interceptors themselves.
 | `util` (Node built-in) | `util.inspect` in the two loggers | Polyfilled by bundlers |
 | Identity broker service (`idbroker-oauth-service`) | Named by `RateLimitInterceptor` and `RedirectInterceptor` as URL patterns; `AuthInterceptor` reaches it indirectly through credentials refresh | Not called directly from this module |
 
+## Anonymous domain fallback
+
+The existing Catalog and Auth interceptors reuse the domain matcher for
+`config.services.allowedWithoutAuthHeader: string[]`. Catalog and ordinary
+`allowedDomains` trust keep their existing authentication behavior. The new list
+only admits otherwise-untrusted domains without granting credential trust.
+
+- `CatalogUrlInterceptor` tries this fallback after existing trusted checks.
+- `AuthInterceptor` removes existing Bearer headers before its supplied-header shortcut.
+
+The existing request and interceptor chain remain unchanged. Auth uses the
+existing `addAuthHeader` and `shouldRefreshAccessToken` controls. Auth copies headers
+and removes each Authorization header with a Bearer scheme, regardless of who added it.
+Header names and the Bearer scheme are matched without case sensitivity.
+The source request keeps its headers. Each SDK redirect checks its destination again.
+There is no request tracking or token ownership map. Other authorization schemes,
+URL credentials, and transport signers retain their existing behavior.
+SDK redirect replay checks each destination. Existing per-request chain replacement
+remains an application customization, as it is for ordinary domain validation.
+There are no new URL-object, `baseUrl`, path, scheme, port, or runtime config rules.
+
 ## Requirements
 
 | ID | WHAT | WHY | Source evidence | Test or example evidence | Assumptions or gaps | Confidence |
 | --- | --- | --- | --- | --- | --- | --- |
-| `INT-001` | `AuthInterceptor` leaves the request untouched when `options.headers` already holds an `authorization` key or `options.auth` is present; a falsy `authorization` value is deleted | A caller-supplied credential must win, and a null header must not trigger a CORS preflight | `src/interceptors/auth.js` | `test/unit/spec/interceptors/auth.js` | none | Present |
+| `INT-001` | Except for Bearer headers removed by the domain fallback, `AuthInterceptor` preserves caller-provided authentication when `options.headers` already holds an `authorization` key or `options.auth` is present; a falsy `authorization` value is deleted | A caller-supplied credential must win, and a null header must not trigger a CORS preflight | `src/interceptors/auth.js` | `test/unit/spec/interceptors/auth.js` | none | Present |
 | `INT-002` | `AuthInterceptor` sets `authorization` to `webex.credentials.getUserToken()` stringified only when `requiresCredentials` resolves true | Only requests bound for Webex services should carry the user token | `src/interceptors/auth.js` | `test/unit/spec/interceptors/auth.js` | none | Present |
 | `INT-003` | `requiresCredentials` resolves false when `options.addAuthHeader === false` or when the services plugin is not mounted | Lets callers opt out, and avoids a catalog lookup before the plugin exists | `src/interceptors/auth.js` | `test/unit/spec/interceptors/auth.js` | none | Present |
 | `INT-004` | The `u2c` service (by `options.service`, `options.api`, or URL match) requires credentials unless `options.resource` or `options.uri` contains `limited` | The limited U2C catalog is the unauthenticated bootstrap path | `src/interceptors/auth.js` | `test/unit/spec/interceptors/auth.js` | none | Present |
@@ -216,7 +237,7 @@ keys below are read by the interceptors themselves.
 | `INT-008` | A non-refreshable 401, a non-401 error, or an opted-out request re-rejects the original reason | Callers must see the server's error when no recovery is possible | `src/interceptors/auth.js` | `test/unit/spec/interceptors/auth.js` | none | Present |
 | `INT-009` | `replay` increments `options.replayCount` and rejects with `Error('Failed after N replay attempts')` once the count exceeds `config.maxAuthenticationReplays`; otherwise it calls `webex.request(options)` | Bounds the refresh-and-retry loop | `src/interceptors/auth.js`, `src/config.js` | none found | Gap: the over-limit branch is not asserted; see the second-401 pitfall | Present |
 | `INT-010` | `CatalogUrlInterceptor` passes a request that has `options.service` and no URI or URL, and a request with no URL at all | A service-addressed request is resolved to a URL later in the chain, by the services interceptor | `src/interceptors/catalog-url.js` | `test/unit/spec/interceptors/catalog-url.js` | none | Present |
-| `INT-011` | `CatalogUrlInterceptor` passes a URL that `services.getServiceFromUrl` recognizes, or one that `isAllowedDomainUrl` accepts when `validateDomains` is on and allowed domains exist, and otherwise rejects with `Request blocked: URL not in service catalog or allowed domains: <url>.` | Blocks request-forgery through attacker-supplied URLs, for example ones injected from server messages | `src/interceptors/catalog-url.js` | `test/unit/spec/interceptors/catalog-url.js` | none | Present |
+| `INT-011` | `CatalogUrlInterceptor` passes an anonymous domain fallback, a URL that `services.getServiceFromUrl` recognizes, or one that `isAllowedDomainUrl` accepts when `validateDomains` is on and allowed domains exist, and otherwise rejects with `Request blocked: URL not in service catalog or allowed domains: <url>.` | Blocks request-forgery through attacker-supplied URLs, for example ones injected from server messages | `src/interceptors/catalog-url.js` | `test/unit/spec/interceptors/catalog-url.js` | none | Present |
 | `INT-012` | `CatalogUrlInterceptor` allows the request and logs a `warn` when the services plugin is not mounted | The catalog cannot be consulted, and failing closed would break startup | `src/interceptors/catalog-url.js` | `test/unit/spec/interceptors/catalog-url.js` | The `warn` call is not asserted | Present |
 | `INT-013` | Whether `CatalogUrlInterceptor` is in the chain at all is decided by the parent (`MOD-025`: only when `config.services.validateCatalogUrls === true`); this module owns only what it does once present (`INT-010` to `INT-012`) | Opt-in gate is chain assembly, not interceptor behavior; recorded once in the parent | `src/interceptors/catalog-url.js` | `test/unit/spec/interceptors/catalog-url.js` | Gate and its tests are parent-owned (`MOD-025`) | Present |
 | `INT-014` | `DefaultOptionsInterceptor` copies each `config.defaultRequestOptions` key onto the request unless the request already has that key | Lets an integrator set, for example, a global `timeout` without overriding per-call values | `src/interceptors/default-options.js` | `test/unit/spec/interceptors/default-options.js` | none | Present |
