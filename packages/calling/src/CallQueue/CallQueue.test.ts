@@ -1,12 +1,25 @@
 import sinon from 'sinon';
 import {assert} from '@webex/test-helper-chai';
+import {EventEmitter} from 'events';
 import {LOGGER} from '../Logger/types';
 import {getTestUtilsWebex} from '../common/testUtil';
 import {CALLING_BACKEND, HTTP_METHODS, WebexRequestPayload} from '../common/types';
 import {COMMON_EVENT_KEYS, MOBIUS_EVENT_KEYS} from '../Events/types';
 import * as utils from '../common/Utils';
-import {createCallQueueClient} from './CallQueue';
+import SDKConnector from '../SDKConnector';
+import {createCallQueueClient as createQueueClient} from './CallQueue';
 import {ACD_STATE, ICallQueue} from './types';
+
+jest.mock('../SDKConnector', () => ({
+  __esModule: true,
+  default: {getWebex: jest.fn(), setWebex: jest.fn()},
+}));
+
+const createCallQueueClient = (...args: Parameters<typeof createQueueClient>) => {
+  jest.mocked(SDKConnector.getWebex).mockReturnValue(args[0]);
+
+  return createQueueClient(...args);
+};
 
 const webex = getTestUtilsWebex();
 const WEBEX_API_INT = 'https://integration.webexapis.com/v1/';
@@ -43,6 +56,28 @@ describe('CallQueue client', () => {
         'event:telephony_agent.sync',
       ])
     );
+  });
+
+  it('rolls back partially registered Mercury listeners if initialization fails', () => {
+    const failedWebex = getTestUtilsWebex();
+    const mercury = new EventEmitter();
+    const existingSubscriber = jest.fn();
+    mercury.on(MOBIUS_EVENT_KEYS.TELEPHONY_AGENT_SYNC, existingSubscriber);
+    let registrations = 0;
+    failedWebex.internal.mercury.on.mockImplementation((event, listener) => {
+      mercury.on(event, listener);
+      registrations += 1;
+      if (registrations === 2) throw new Error('Mercury registration failed');
+    });
+    failedWebex.internal.mercury.off.mockImplementation((event, listener) => {
+      mercury.off(event, listener);
+    });
+
+    expect(() => createCallQueueClient(failedWebex, {level: LOGGER.INFO}, TEST_OPTIONS)).toThrow(
+      'Mercury registration failed'
+    );
+    expect(mercury.listeners(MOBIUS_EVENT_KEYS.TELEPHONY_AGENT_SYNC)).toEqual([existingSubscriber]);
+    expect(mercury.listenerCount(MOBIUS_EVENT_KEYS.TELEPHONY_AGENT_STATE)).toBe(0);
   });
 
   it('loads primary-line queue settings', async () => {
@@ -240,6 +275,49 @@ describe('CallQueue client', () => {
     assert.lengthOf(lateWebex.internal.mercury.on.mock.calls, 6);
     assert.lengthOf(lateWebex.request.mock.calls, 0);
     earlyClient.dispose();
+  });
+
+  it('reuses a compatible client in the factory without duplicating listeners', () => {
+    const boundWebex = getTestUtilsWebex();
+    const first = createCallQueueClient(boundWebex, {level: LOGGER.INFO}, TEST_OPTIONS);
+    const reused = createCallQueueClient(boundWebex, {level: LOGGER.INFO}, TEST_OPTIONS, first);
+
+    assert.strictEqual(reused, first);
+    assert.lengthOf(boundWebex.internal.mercury.on.mock.calls, 6);
+    assert.lengthOf(boundWebex.internal.mercury.off.mock.calls, 0);
+    reused.dispose();
+  });
+
+  it.each(['apiBaseUrl', 'logger', 'account'])(
+    'replaces and cleans up a prior client when %s changes',
+    (changed) => {
+      const boundWebex = getTestUtilsWebex();
+      const first = createCallQueueClient(boundWebex, {level: LOGGER.INFO}, TEST_OPTIONS);
+      const logger = {level: changed === 'logger' ? LOGGER.TRACE : LOGGER.INFO};
+      const options =
+        changed === 'apiBaseUrl' ? {webexApiBaseUrl: 'https://webexapis.com'} : TEST_OPTIONS;
+      if (changed === 'account') boundWebex.internal.device.userId = 'another-user';
+
+      const replacement = createCallQueueClient(boundWebex, logger, options, first);
+
+      assert.notStrictEqual(replacement, first);
+      assert.lengthOf(boundWebex.internal.mercury.off.mock.calls, 6);
+      assert.lengthOf(boundWebex.internal.mercury.on.mock.calls, 12);
+      replacement.dispose();
+    }
+  );
+
+  it('disposes a prior client when reuse readiness throws', () => {
+    const boundWebex = getTestUtilsWebex();
+    const first = createCallQueueClient(boundWebex, {level: LOGGER.INFO}, TEST_OPTIONS);
+    jest.spyOn(first, 'prepareForReuse').mockImplementation(() => {
+      throw new Error('Backend failed');
+    });
+
+    expect(() =>
+      createCallQueueClient(boundWebex, {level: LOGGER.INFO}, TEST_OPTIONS, first)
+    ).toThrow('Backend failed');
+    assert.lengthOf(boundWebex.internal.mercury.off.mock.calls, 6);
   });
 
   it('rejects reuse and requests after disposal', async () => {
@@ -1203,7 +1281,7 @@ describe('CallQueue client', () => {
     other.dispose();
   });
 
-  it('uses the supplied Webex instance and unregisters its queue event names on disposal', async () => {
+  it('uses the bound Webex instance and unregisters only its queue listeners on disposal', async () => {
     const otherWebex = getTestUtilsWebex();
     const other = createCallQueueClient(otherWebex, {level: LOGGER.INFO}, TEST_OPTIONS);
     otherWebex.request.mockResolvedValue(<WebexRequestPayload>(<unknown>{
@@ -1214,15 +1292,48 @@ describe('CallQueue client', () => {
     expect(otherWebex.request).toHaveBeenCalledTimes(1);
     expect(webex.request).not.toHaveBeenCalled();
     other.dispose();
-    expect(otherWebex.internal.mercury.off.mock.calls).toEqual([
-      [MOBIUS_EVENT_KEYS.TELEPHONY_AGENT_SYNC],
-      [MOBIUS_EVENT_KEYS.TELEPHONY_AGENT_STATE],
-      [MOBIUS_EVENT_KEYS.TELEPHONY_AGENT_JOIN],
-      ['event:telephony_agent.sync'],
-      ['event:telephony_agent.state'],
-      ['event:telephony_agent.join'],
-    ]);
+    expect(otherWebex.internal.mercury.off.mock.calls).toEqual(
+      otherWebex.internal.mercury.on.mock.calls
+    );
     expect(webex.internal.mercury.off).not.toHaveBeenCalled();
+  });
+
+  it('rejects a Webex instance different from the one bound to SDKConnector', () => {
+    jest.mocked(SDKConnector.getWebex).mockReturnValue(webex);
+    expect(() =>
+      createQueueClient(getTestUtilsWebex(), {level: LOGGER.INFO}, TEST_OPTIONS)
+    ).toThrow('Call queue Webex instance must match the SDKConnector instance');
+  });
+
+  it('keeps other subscribers receiving events when one queue client is disposed', async () => {
+    const boundWebex = getTestUtilsWebex();
+    const mercury = new EventEmitter();
+    boundWebex.internal.mercury.on.mockImplementation((event, handler) => {
+      mercury.on(event, handler);
+    });
+    boundWebex.internal.mercury.off.mockImplementation((event, handler) => {
+      mercury.off(event, handler);
+    });
+    const first = createCallQueueClient(boundWebex, {level: LOGGER.INFO}, TEST_OPTIONS);
+    const second = createCallQueueClient(boundWebex, {level: LOGGER.INFO}, TEST_OPTIONS);
+    boundWebex.request.mockResolvedValue(<WebexRequestPayload>(<unknown>{
+      statusCode: 200,
+      body: {agentACDState: 'UNAVAILABLE', queues: []},
+    }));
+    await second.getCallQueueSettings();
+    const unrelated = jest.fn();
+    const observed = jest.fn();
+    mercury.on(MOBIUS_EVENT_KEYS.TELEPHONY_AGENT_STATE, unrelated);
+    second.on(COMMON_EVENT_KEYS.CALL_QUEUE_UPDATED, observed);
+
+    first.dispose();
+    mercury.emit(MOBIUS_EVENT_KEYS.TELEPHONY_AGENT_STATE, {
+      data: {agentACDState: 'AVAILABLE', queues: []},
+    });
+
+    expect(unrelated).toHaveBeenCalledTimes(1);
+    expect(observed).toHaveBeenCalledTimes(1);
+    second.dispose();
   });
 
   it('emits the merged status when a Mercury state event arrives', () => {

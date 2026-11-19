@@ -37,6 +37,11 @@ export type CallQueueAgentStatus = {
   queues: CallQueue[];
 };
 
+export type CallQueueCatalogPage = {
+  entries: Array<{id: string; name?: string}>;
+  next?: string;
+};
+
 export type CallQueueJoinUpdate = {
   id: string;
   available: boolean;
@@ -81,7 +86,7 @@ export interface ICallQueue {
   syncTelephonyCalls(): Promise<CallQueueResponse>;
   /** Refresh backend readiness and invalidate cached state and pending requests before reuse. */
   prepareForReuse?(): boolean;
-  /** Remove all Mercury listeners for the queue event names on this Webex instance. */
+  /** Remove this client's Mercury listeners for the queue event names. */
   dispose(): void;
 }
 

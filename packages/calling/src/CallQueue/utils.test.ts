@@ -7,7 +7,7 @@ import {
   parseCallQueueSettings,
   publicApiId,
   queueIdKey,
-} from './state';
+} from './utils';
 
 describe('call queue state', () => {
   it.each(['CALL_QUEUE', 'VIRTUAL_LINE'] as const)('encodes %s UUIDs for public APIs', (type) => {

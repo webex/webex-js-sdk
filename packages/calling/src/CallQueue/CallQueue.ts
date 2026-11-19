@@ -25,7 +25,7 @@ import {
   SYNC_PATH,
   UNSUPPORTED_BACKEND_MESSAGE,
 } from './constants';
-import {
+import actorIdentity, {
   applyCallQueueEvent,
   applyQueueNames,
   normalizeAcdState,
@@ -34,7 +34,8 @@ import {
   publicApiId,
   queueIdKey,
   unwrapAgentPayload,
-} from './state';
+  hasReadyEntitlementModels,
+} from './utils';
 import {
   ACD_STATE,
   CallQueueAgentStatus,
@@ -47,7 +48,6 @@ import {
   LoggerInterface,
   UpdateCallQueueSettingsRequest,
 } from './types';
-import actorIdentity, {hasReadyEntitlementModels} from './utils';
 
 const SUPPORTED_STATES = new Set<string>(Object.values(ACD_STATE));
 
@@ -85,7 +85,7 @@ export class CallQueueClient extends Eventing<CallQueueEventTypes> implements IC
 
   private pendingEventRefresh = new Map<string | undefined, Promise<void>>();
 
-  private mercuryListeners: string[] = [];
+  private mercuryListeners: Array<{event: string; listener: (data?: unknown) => void}> = [];
 
   private disposed = false;
 
@@ -96,7 +96,10 @@ export class CallQueueClient extends Eventing<CallQueueEventTypes> implements IC
     if (!SDKConnector.getWebex()) {
       SDKConnector.setWebex(webex);
     }
-    this.webex = webex;
+    if (SDKConnector.getWebex() !== webex) {
+      throw new Error('Call queue Webex instance must match the SDKConnector instance');
+    }
+    this.webex = SDKConnector.getWebex();
     const apiBaseUrl = options?.webexApiBaseUrl;
     const allowedOrigins = [WEBEX_API_BTS, WEBEX_API_PROD, WEBEX_API_FEDRAMP];
     const normalized = typeof apiBaseUrl === 'string' ? apiBaseUrl.replace(/\/$/, '') : '';
@@ -104,14 +107,22 @@ export class CallQueueClient extends Eventing<CallQueueEventTypes> implements IC
     this.callingBackend = hasReadyEntitlementModels(this.webex)
       ? getCallingBackEnd(this.webex)
       : CALLING_BACKEND.INVALID;
-    this.registerAgentListeners();
     log.setLogger(logger.level, CALL_QUEUE_FILE);
+    this.registerAgentListeners();
   }
 
   /**
    * Reads the signed-in agent's ACD state and queue join list.
    * Pass `lineOwnerId` to read a secondary line.
    * Queue display names are filled from the queue catalog when settings omit them.
+   *
+   * @param lineOwnerId - Optional secondary line owner ID; omit for the primary line.
+   * @returns The current call queue settings or an error response.
+   * @example
+   * ```js
+   * const result = await callQueue.getCallQueueSettings();
+   * ```
+   * @public
    */
   public async getCallQueueSettings(lineOwnerId?: string): Promise<CallQueueResponse> {
     const loggerContext = {file: CALL_QUEUE_FILE, method: METHODS.GET_CALL_QUEUE_SETTINGS};
@@ -196,30 +207,32 @@ export class CallQueueClient extends Eventing<CallQueueEventTypes> implements IC
         message: SUCCESS_MESSAGE,
       };
     } catch (err: unknown) {
-      if (epoch !== this.lifecycleEpoch) {
-        return {
-          statusCode: 409,
-          data: {error: 'Call queue client was reinitialized; refresh settings'},
-          message: FAILURE_MESSAGE,
-        };
-      }
+      const failure =
+        epoch === this.lifecycleEpoch
+          ? await this.fail(err, loggerContext, 'Failed to get call queue settings')
+          : undefined;
+      if (failure && epoch === this.lifecycleEpoch) return failure;
 
-      const failure = await this.fail(err, loggerContext, 'Failed to get call queue settings');
-      if (epoch !== this.lifecycleEpoch) {
-        return {
-          statusCode: 409,
-          data: {error: 'Call queue client was reinitialized; refresh settings'},
-          message: FAILURE_MESSAGE,
-        };
-      }
-
-      return failure;
+      return {
+        statusCode: 409,
+        data: {error: 'Call queue client was reinitialized; refresh settings'},
+        message: FAILURE_MESSAGE,
+      };
     }
   }
 
   /**
    * Sets ACD state, queue join, or both.
    * A queue with `allowLogOffEnabled: false` stays joined.
+   *
+   * @param request - The agent state and/or queue membership updates.
+   * @param lineOwnerId - Optional secondary line owner ID; omit for the primary line.
+   * @returns The updated call queue settings or an error response.
+   * @example
+   * ```js
+   * await callQueue.updateCallQueueSettings({agentACDState: 'AVAILABLE'});
+   * ```
+   * @public
    */
   public async updateCallQueueSettings(
     request: UpdateCallQueueSettingsRequest,
@@ -330,38 +343,34 @@ export class CallQueueClient extends Eventing<CallQueueEventTypes> implements IC
         message: SUCCESS_MESSAGE,
       };
     } catch (err: unknown) {
-      if (epoch !== this.lifecycleEpoch) {
-        return {
-          statusCode: 409,
-          data: {
-            error: requestSent
-              ? 'Call queue client was reinitialized; request may have completed; refresh settings before retrying'
-              : 'Call queue client was reinitialized; refresh settings',
-          },
-          message: FAILURE_MESSAGE,
-        };
-      }
+      const failure =
+        epoch === this.lifecycleEpoch
+          ? await this.fail(err, loggerContext, 'Failed to update call queue settings')
+          : undefined;
+      if (failure && epoch === this.lifecycleEpoch) return failure;
 
-      const failure = await this.fail(err, loggerContext, 'Failed to update call queue settings');
-      if (epoch !== this.lifecycleEpoch) {
-        return {
-          statusCode: 409,
-          data: {
-            error: requestSent
-              ? 'Call queue client was reinitialized; request may have completed; refresh settings before retrying'
-              : 'Call queue client was reinitialized; refresh settings',
-          },
-          message: FAILURE_MESSAGE,
-        };
-      }
-
-      return failure;
+      return {
+        statusCode: 409,
+        data: {
+          error: requestSent
+            ? 'Call queue client was reinitialized; request may have completed; refresh settings before retrying'
+            : 'Call queue client was reinitialized; refresh settings',
+        },
+        message: FAILURE_MESSAGE,
+      };
     }
   }
 
   /**
    * Asks the calling service to publish the current agent state on Mercury.
    * Sends the registered WDM device URL. The queue list arrives on `telephony_agents.sync`.
+   *
+   * @returns The sync request result or an error response.
+   * @example
+   * ```js
+   * await callQueue.syncTelephonyCalls();
+   * ```
+   * @public
    */
   public async syncTelephonyCalls(): Promise<CallQueueResponse> {
     const loggerContext = {file: CALL_QUEUE_FILE, method: METHODS.SYNC_TELEPHONY_CALLS};
@@ -405,24 +414,17 @@ export class CallQueueClient extends Eventing<CallQueueEventTypes> implements IC
         message: SUCCESS_MESSAGE,
       };
     } catch (err: unknown) {
-      if (epoch !== this.lifecycleEpoch) {
-        return {
-          statusCode: 409,
-          data: {error: 'Call queue client was reinitialized; refresh settings'},
-          message: FAILURE_MESSAGE,
-        };
-      }
+      const failure =
+        epoch === this.lifecycleEpoch
+          ? await this.fail(err, loggerContext, 'Failed to sync telephony calls')
+          : undefined;
+      if (failure && epoch === this.lifecycleEpoch) return failure;
 
-      const failure = await this.fail(err, loggerContext, 'Failed to sync telephony calls');
-      if (epoch !== this.lifecycleEpoch) {
-        return {
-          statusCode: 409,
-          data: {error: 'Call queue client was reinitialized; refresh settings'},
-          message: FAILURE_MESSAGE,
-        };
-      }
-
-      return failure;
+      return {
+        statusCode: 409,
+        data: {error: 'Call queue client was reinitialized; refresh settings'},
+        message: FAILURE_MESSAGE,
+      };
     }
   }
 
@@ -438,17 +440,39 @@ export class CallQueueClient extends Eventing<CallQueueEventTypes> implements IC
       ['event:telephony_agent.state', 'state'],
       ['event:telephony_agent.join', 'join'],
     ];
-    events.forEach(([event, kind]) => {
-      const listener = (data?: unknown) => this.handleAgentEvent(kind, data);
-      this.webex.internal.mercury.on(event, listener);
-      this.mercuryListeners.push(event);
-    });
+    const startingCount = this.mercuryListeners.length;
+    try {
+      events.forEach(([event, kind]) => {
+        const listener = (data?: unknown) => this.handleAgentEvent(kind, data);
+        this.mercuryListeners.push({event, listener});
+        this.webex.internal.mercury.on(event, listener);
+      });
+    } catch (error) {
+      const added = this.mercuryListeners.splice(startingCount);
+      added.forEach(({event, listener}) => {
+        try {
+          this.webex.internal.mercury.off(event, listener);
+        } catch {
+          this.mercuryListeners.push({event, listener});
+          log.warn('Failed to remove call queue Mercury listener after registration failed', {
+            file: CALL_QUEUE_FILE,
+            method: 'registerAgentListeners',
+          });
+        }
+      });
+      throw error;
+    }
   }
 
   /**
    * Refresh backend readiness before reusing this client without issuing a request.
    *
    * @returns False if the client is disposed or its registered backend changed.
+   * @example
+   * ```js
+   * const reusable = callQueue.prepareForReuse();
+   * ```
+   * @public
    */
   public prepareForReuse(): boolean {
     if (this.disposed) return false;
@@ -472,12 +496,21 @@ export class CallQueueClient extends Eventing<CallQueueEventTypes> implements IC
     return true;
   }
 
-  /** Unsubscribe from the queue's Mercury event names. */
+  /**
+   * Unsubscribe this client from queue Mercury events and clear its local state.
+   *
+   * @returns Nothing.
+   * @example
+   * ```js
+   * callQueue.dispose();
+   * ```
+   * @public
+   */
   public dispose(): void {
     this.disposed = true;
     this.lifecycleEpoch += 1;
-    this.mercuryListeners.forEach((event) => {
-      this.webex.internal.mercury.off(event);
+    this.mercuryListeners.forEach(({event, listener}) => {
+      this.webex.internal.mercury.off(event, listener);
     });
     this.mercuryListeners = [];
     this.currentByLine.clear();
@@ -940,11 +973,59 @@ export class CallQueueClient extends Eventing<CallQueueEventTypes> implements IC
   }
 }
 
+const clientConfigurations = new WeakMap<
+  CallQueueClient,
+  {webex: WebexSDK; apiBaseUrl?: string; loggerLevel?: string; userId?: string; orgId?: string}
+>();
+
 /**
  * Creates a call-queue client for the signed-in Webex Calling user.
+ *
+ * @param webex - The Webex SDK instance used for requests and events.
+ * @param logger - Logging configuration for the Calling SDK.
+ * @param options - Call queue options, including the public API base URL.
+ * @param previousClient - Optional existing client to reuse when its configuration still matches.
+ * @returns A call-queue client.
+ * @example
+ * ```js
+ * const callQueue = createCallQueueClient(webex, logger, {webexApiBaseUrl});
+ * ```
+ * @public
  */
 export const createCallQueueClient = (
   webex: WebexSDK,
   logger: LoggerInterface,
-  options: CallQueueClientOptions
-): CallQueueClient => new CallQueueClient(webex, logger, options);
+  options: CallQueueClientOptions,
+  previousClient?: CallQueueClient
+): CallQueueClient => {
+  const config = {
+    webex,
+    apiBaseUrl: options?.webexApiBaseUrl,
+    loggerLevel: logger?.level,
+    userId: webex.internal.device?.userId,
+    orgId: webex.internal.device?.orgId,
+  };
+  const previousConfig = previousClient && clientConfigurations.get(previousClient);
+  const compatible =
+    previousConfig &&
+    previousConfig.webex === config.webex &&
+    previousConfig.apiBaseUrl === config.apiBaseUrl &&
+    previousConfig.loggerLevel === config.loggerLevel &&
+    previousConfig.userId === config.userId &&
+    previousConfig.orgId === config.orgId;
+
+  if (previousClient && compatible) {
+    try {
+      if (previousClient.prepareForReuse()) return previousClient;
+    } catch (error) {
+      previousClient.dispose();
+      throw error;
+    }
+  }
+  previousClient?.dispose();
+
+  const client = new CallQueueClient(webex, logger, options);
+  clientConfigurations.set(client, config);
+
+  return client;
+};
