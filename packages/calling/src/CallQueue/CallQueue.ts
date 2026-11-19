@@ -22,22 +22,22 @@ import {
   QUEUES_CATALOG_PATH,
   QUEUES_PATH,
   SECONDARY_LINES_PATH,
+  SUPPORTED_STATES,
   SYNC_PATH,
   UNSUPPORTED_BACKEND_MESSAGE,
 } from './constants';
 import actorIdentity, {
   applyCallQueueEvent,
   applyQueueNames,
-  normalizeAcdState,
   parseCallQueueCatalog,
   parseCallQueueSettings,
+  hasMalformedQueueRecords,
   publicApiId,
   queueIdKey,
   unwrapAgentPayload,
   hasReadyEntitlementModels,
 } from './utils';
 import {
-  ACD_STATE,
   CallQueueAgentStatus,
   CallQueueClientOptions,
   CallQueueEventKind,
@@ -48,8 +48,6 @@ import {
   LoggerInterface,
   UpdateCallQueueSettingsRequest,
 } from './types';
-
-const SUPPORTED_STATES = new Set<string>(Object.values(ACD_STATE));
 
 /**
  * Webex Calling cloud client for call-queue agent status.
@@ -187,7 +185,7 @@ export class CallQueueClient extends Eventing<CallQueueEventTypes> implements IC
       if (!named) {
         return {
           statusCode: 502,
-          data: {error: 'Call queue settings response did not include agent status'},
+          data: {error: 'Call queue settings response was invalid or did not include agent status'},
           message: FAILURE_MESSAGE,
         };
       }
@@ -294,7 +292,11 @@ export class CallQueueClient extends Eventing<CallQueueEventTypes> implements IC
       log.log(`Response trackingId: ${response?.headers?.trackingid}`, loggerContext);
       const current = this.currentByLine.get(lineOwnerId);
       const parsed = parseCallQueueSettings(response.body, current);
-      const local = parsed ?? (current ? this.applyLocalUpdate(request, lineOwnerId) : undefined);
+      const local =
+        parsed ??
+        (current && !hasMalformedQueueRecords(response.body)
+          ? this.applyLocalUpdate(request, lineOwnerId)
+          : undefined);
       const named = local ? await this.fillQueueNames(local) : undefined;
       if (epoch !== this.lifecycleEpoch) {
         return supersededAfterUpdate;
@@ -543,32 +545,25 @@ export class CallQueueClient extends Eventing<CallQueueEventTypes> implements IC
     const line = this.eventLine(event);
     if (line.kind === 'ignore') return;
     const lineOwnerId = line.kind === 'secondary' ? line.lineOwnerId : undefined;
+    const current = this.currentByLine.get(lineOwnerId);
+    const next = applyCallQueueEvent(current, kind, event);
+    if (!next || (current && next === current)) return;
+
     const generation = (this.eventGeneration.get(lineOwnerId) ?? 0) + 1;
     this.eventGeneration.set(lineOwnerId, generation);
-    const current = this.currentByLine.get(lineOwnerId);
-    const payload = unwrapAgentPayload(event);
-    const eventState = normalizeAcdState(
-      payload?.agentACDState ?? payload?.acdStateInfo?.state ?? payload?.state
-    );
     if (!current) {
-      if (eventState || Array.isArray(payload?.joinInfo) || Array.isArray(payload?.queues)) {
-        const pending = this.refreshEventLine(lineOwnerId, generation);
-        if (epoch !== this.lifecycleEpoch) return;
-        this.pendingEventRefresh.set(lineOwnerId, pending);
-        pending.then(() => {
-          if (this.pendingEventRefresh.get(lineOwnerId) === pending) {
-            this.pendingEventRefresh.delete(lineOwnerId);
-          }
-        });
-      }
+      const pending = this.refreshEventLine(lineOwnerId, generation);
+      if (epoch !== this.lifecycleEpoch) return;
+      this.pendingEventRefresh.set(lineOwnerId, pending);
+      pending.then(() => {
+        if (this.pendingEventRefresh.get(lineOwnerId) === pending) {
+          this.pendingEventRefresh.delete(lineOwnerId);
+        }
+      });
 
       return;
     }
-    const next = applyCallQueueEvent(current, kind, event);
-    if (
-      !next ||
-      (current && next.acdState === current.acdState && next.queues === current.queues)
-    ) {
+    if (next.acdState === current.acdState && next.queues === current.queues) {
       return;
     }
     const named = applyQueueNames(next, this.queueNames);

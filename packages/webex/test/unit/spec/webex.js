@@ -254,4 +254,17 @@ describe('Calling call queue client', () => {
     assert.calledOnce(webex.internal.device.unregister);
     assert.isFalse(calling.registered);
   });
+
+  it('deregisters a queue-only client after registration', async () => {
+    const calling = await Calling.init({webex, callingConfig: config(true)});
+
+    await calling.register();
+    await calling.deregister();
+
+    assert.calledOnce(queue.dispose);
+    assert.calledOnceWithExactly(webex.internal.mercury.disconnect);
+    assert.calledOnceWithExactly(webex.internal.device.unregister);
+    assert.isFalse(calling.registered);
+    assert.isUndefined(calling.callQueueClient);
+  });
 });

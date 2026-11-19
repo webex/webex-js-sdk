@@ -1111,6 +1111,123 @@ describe('CallQueue client', () => {
     other.dispose();
   });
 
+  it.each([
+    ['unknown state', {state: 'future-unknown-state'}],
+    ['unrecognized join status', {joinInfo: [{queueId: 'q1', status: 'unknown'}]}],
+    ['empty event', {eventType: 'heartbeat'}],
+  ])('does not invalidate an in-flight GET for a %s event', async (_, payload) => {
+    const otherWebex = getTestUtilsWebex();
+    const other = createCallQueueClient(otherWebex, {level: LOGGER.INFO}, TEST_OPTIONS);
+    otherWebex.request.mockResolvedValueOnce(<WebexRequestPayload>(<unknown>{
+      statusCode: 200,
+      body: {agentACDState: 'AVAILABLE', queues: []},
+    }));
+    await other.getCallQueueSettings();
+
+    const deferred = deferredResponse();
+    otherWebex.request.mockReturnValueOnce(deferred.promise);
+    const pending = other.getCallQueueSettings();
+    const handlers = new Map<string, (event?: unknown) => void>(
+      (otherWebex.internal.mercury.on as jest.Mock).mock.calls.map((call) => [call[0], call[1]])
+    );
+    handlers.get(MOBIUS_EVENT_KEYS.TELEPHONY_AGENT_STATE)?.({
+      data: {actorType: 'PERSON', actorId: otherWebex.internal.device.userId, ...payload},
+    });
+    deferred.resolve(<WebexRequestPayload>(<unknown>{
+      statusCode: 200,
+      body: {agentACDState: 'UNAVAILABLE', queues: []},
+    }));
+
+    assert.equal((await pending).data.callQueue?.acdState, ACD_STATE.UNAVAILABLE);
+    other.dispose();
+  });
+
+  it.each([
+    ['unrecognized join status', {joinInfo: [{queueId: 'q1', status: 'unknown'}]}],
+    ['malformed queue record', {queues: [{name: 'Missing id'}]}],
+  ])('does not invalidate the initial GET for an event with %s', async (_, payload) => {
+    const otherWebex = getTestUtilsWebex();
+    const other = createCallQueueClient(otherWebex, {level: LOGGER.INFO}, TEST_OPTIONS);
+    const deferred = deferredResponse();
+    otherWebex.request.mockReturnValueOnce(deferred.promise);
+    const pending = other.getCallQueueSettings();
+    const handlers = new Map<string, (event?: unknown) => void>(
+      (otherWebex.internal.mercury.on as jest.Mock).mock.calls.map((call) => [call[0], call[1]])
+    );
+    handlers.get(MOBIUS_EVENT_KEYS.TELEPHONY_AGENT_SYNC)?.({
+      data: {actorType: 'PERSON', actorId: otherWebex.internal.device.userId, ...payload},
+    });
+    deferred.resolve(<WebexRequestPayload>(<unknown>{
+      statusCode: 200,
+      body: {agentACDState: 'AVAILABLE', queues: []},
+    }));
+
+    const result = await pending;
+    assert.equal(result.statusCode, 200);
+    assert.equal(result.data.callQueue?.acdState, ACD_STATE.AVAILABLE);
+    assert.lengthOf(otherWebex.request.mock.calls, 1);
+    other.dispose();
+  });
+
+  it.each([
+    ['queue', {queues: []}],
+    ['membership', {joinInfo: []}],
+  ])('refreshes an uncached line for a valid empty %s list', async (_, payload) => {
+    const otherWebex = getTestUtilsWebex();
+    const other = createCallQueueClient(otherWebex, {level: LOGGER.INFO}, TEST_OPTIONS);
+    const initial = deferredResponse();
+    const refresh = deferredResponse();
+    otherWebex.request.mockReturnValueOnce(initial.promise).mockReturnValueOnce(refresh.promise);
+    const pending = other.getCallQueueSettings();
+    const handlers = new Map<string, (event?: unknown) => void>(
+      (otherWebex.internal.mercury.on as jest.Mock).mock.calls.map((call) => [call[0], call[1]])
+    );
+    handlers.get(MOBIUS_EVENT_KEYS.TELEPHONY_AGENT_SYNC)?.({
+      data: {actorType: 'PERSON', actorId: otherWebex.internal.device.userId, ...payload},
+    });
+    assert.lengthOf(otherWebex.request.mock.calls, 2);
+    refresh.resolve(<WebexRequestPayload>(<unknown>{
+      statusCode: 200,
+      body: {agentACDState: 'UNAVAILABLE', queues: []},
+    }));
+    initial.resolve(<WebexRequestPayload>(<unknown>{
+      statusCode: 200,
+      body: {agentACDState: 'AVAILABLE', queues: []},
+    }));
+
+    const result = await pending;
+    assert.equal(result.statusCode, 200);
+    assert.equal(result.data.callQueue?.acdState, ACD_STATE.UNAVAILABLE);
+    other.dispose();
+  });
+
+  it('keeps an unchanged valid event newer than an in-flight GET', async () => {
+    const otherWebex = getTestUtilsWebex();
+    const other = createCallQueueClient(otherWebex, {level: LOGGER.INFO}, TEST_OPTIONS);
+    otherWebex.request.mockResolvedValueOnce(<WebexRequestPayload>(<unknown>{
+      statusCode: 200,
+      body: {agentACDState: 'AVAILABLE', queues: []},
+    }));
+    await other.getCallQueueSettings();
+
+    const deferred = deferredResponse();
+    otherWebex.request.mockReturnValueOnce(deferred.promise);
+    const pending = other.getCallQueueSettings();
+    const handlers = new Map<string, (event?: unknown) => void>(
+      (otherWebex.internal.mercury.on as jest.Mock).mock.calls.map((call) => [call[0], call[1]])
+    );
+    handlers.get(MOBIUS_EVENT_KEYS.TELEPHONY_AGENT_STATE)?.({
+      data: {actorType: 'PERSON', actorId: otherWebex.internal.device.userId, state: 'available'},
+    });
+    deferred.resolve(<WebexRequestPayload>(<unknown>{
+      statusCode: 200,
+      body: {agentACDState: 'UNAVAILABLE', queues: []},
+    }));
+
+    assert.equal((await pending).data.callQueue?.acdState, ACD_STATE.AVAILABLE);
+    other.dispose();
+  });
+
   it('does not overwrite a newer Mercury state with an older in-flight GET', async () => {
     const otherWebex = getTestUtilsWebex();
     const other = createCallQueueClient(otherWebex, {level: LOGGER.INFO}, TEST_OPTIONS);
@@ -1302,6 +1419,95 @@ describe('CallQueue client', () => {
     const response = await other.getCallQueueSettings();
     expect(response.statusCode).toBe(502);
     expect(response.data.callQueue).toBeUndefined();
+    other.dispose();
+  });
+
+  it('rejects a malformed GET queue list without replacing cached settings', async () => {
+    const otherWebex = getTestUtilsWebex();
+    const other = createCallQueueClient(otherWebex, {level: LOGGER.INFO}, TEST_OPTIONS);
+    otherWebex.request
+      .mockResolvedValueOnce(<WebexRequestPayload>(<unknown>{
+        statusCode: 200,
+        body: {agentACDState: 'AVAILABLE', queues: [{id: 'q1', name: 'Sales', available: true}]},
+      }))
+      .mockResolvedValueOnce(<WebexRequestPayload>(<unknown>{
+        statusCode: 200,
+        body: {agentACDState: 'UNAVAILABLE', queues: [{name: 'Missing id'}]},
+      }))
+      .mockResolvedValueOnce(<WebexRequestPayload>(<unknown>{
+        statusCode: 200,
+        body: {agentACDState: 'UNAVAILABLE'},
+      }));
+    await other.getCallQueueSettings();
+
+    const rejected = await other.getCallQueueSettings();
+    assert.equal(rejected.statusCode, 502);
+    assert.isUndefined(rejected.data.callQueue);
+    const refreshed = await other.getCallQueueSettings();
+    assert.deepEqual(refreshed.data.callQueue?.queues, [
+      {id: 'q1', name: 'Sales', available: true},
+    ]);
+    other.dispose();
+  });
+
+  it.each([true, false])(
+    'refreshes after a malformed PUT settings body (refresh valid: %s)',
+    async (refreshValid) => {
+      const otherWebex = getTestUtilsWebex();
+      const other = createCallQueueClient(otherWebex, {level: LOGGER.INFO}, TEST_OPTIONS);
+      otherWebex.request
+        .mockResolvedValueOnce(<WebexRequestPayload>(<unknown>{
+          statusCode: 200,
+          body: {agentACDState: 'AVAILABLE', queues: [{id: 'q1', name: 'Sales'}]},
+        }))
+        .mockResolvedValueOnce(<WebexRequestPayload>(<unknown>{
+          statusCode: 200,
+          body: {agentACDState: 'AVAILABLE', queues: [{name: 'Missing id'}]},
+        }))
+        .mockResolvedValueOnce(<WebexRequestPayload>(<unknown>{
+          statusCode: 200,
+          body: refreshValid
+            ? {agentACDState: 'UNAVAILABLE', queues: [{id: 'q2', name: 'Support'}]}
+            : {agentACDState: 'UNAVAILABLE', queues: [{name: 'Missing id'}]},
+        }));
+      await other.getCallQueueSettings();
+
+      const response = await other.updateCallQueueSettings({agentACDState: ACD_STATE.UNAVAILABLE});
+      assert.lengthOf(otherWebex.request.mock.calls, 3);
+      if (refreshValid) {
+        assert.equal(response.statusCode, 200);
+        assert.equal(response.data.callQueue?.acdState, ACD_STATE.UNAVAILABLE);
+        assert.deepEqual(response.data.callQueue?.queues, [{id: 'q2', name: 'Support'}]);
+      } else {
+        assert.equal(response.statusCode, 502);
+        assert.isUndefined(response.data.callQueue);
+      }
+      other.dispose();
+    }
+  );
+
+  it.each([
+    ['non-settings body', {status: 'ok'}],
+    ['malformed state with null queues', {agentACDState: 'unknown', queues: null}],
+    ['no body', undefined],
+  ])('keeps the local update fallback for a %s', async (_, body) => {
+    const otherWebex = getTestUtilsWebex();
+    const other = createCallQueueClient(otherWebex, {level: LOGGER.INFO}, TEST_OPTIONS);
+    otherWebex.request
+      .mockResolvedValueOnce(<WebexRequestPayload>(<unknown>{
+        statusCode: 200,
+        body: {agentACDState: 'AVAILABLE', queues: [{id: 'q1', name: 'Sales'}]},
+      }))
+      .mockResolvedValueOnce(<WebexRequestPayload>(<unknown>{
+        statusCode: 200,
+        body,
+      }));
+    await other.getCallQueueSettings();
+
+    const response = await other.updateCallQueueSettings({agentACDState: ACD_STATE.UNAVAILABLE});
+    assert.equal(response.statusCode, 200);
+    assert.equal(response.data.callQueue?.acdState, ACD_STATE.UNAVAILABLE);
+    assert.lengthOf(otherWebex.request.mock.calls, 2);
     other.dispose();
   });
 

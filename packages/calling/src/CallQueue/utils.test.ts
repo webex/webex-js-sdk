@@ -51,7 +51,7 @@ describe('call queue state', () => {
   });
 
   describe('parseCallQueueSettings', () => {
-    it('keeps known queue fields and drops a queue with no id', () => {
+    it('keeps known queue fields', () => {
       const parsed = parseCallQueueSettings({
         agentACDState: 'AVAILABLE',
         queues: [
@@ -63,7 +63,6 @@ describe('call queue state', () => {
             allowLogOffEnabled: false,
             extra: 'ignore',
           },
-          {available: true},
         ],
       });
 
@@ -78,6 +77,41 @@ describe('call queue state', () => {
             allowLogOffEnabled: false,
           },
         ],
+      });
+    });
+
+    it.each([
+      ['all-invalid', [{available: true}]],
+      ['partially invalid', [{id: 'queue-1'}, {available: true}]],
+    ])('rejects a settings response with %s queues', (_, queues) => {
+      expect(
+        parseCallQueueSettings(
+          {agentACDState: 'AVAILABLE', queues},
+          {acdState: ACD_STATE.UNAVAILABLE, queues: [{id: 'previous'}]}
+        )
+      ).toBeUndefined();
+    });
+
+    it.each([
+      ['non-array', {id: 'queue-1'}],
+      ['null', null],
+    ])('retains cached queues for a %s field as before', (_, queues) => {
+      const previous = {acdState: ACD_STATE.AVAILABLE, queues: [{id: 'previous'}]};
+      expect(parseCallQueueSettings({agentACDState: 'UNAVAILABLE', queues}, previous)).toEqual({
+        acdState: ACD_STATE.UNAVAILABLE,
+        queues: previous.queues,
+      });
+    });
+
+    it('preserves explicit empty queues and retains cached queues when omitted', () => {
+      const previous = {acdState: ACD_STATE.AVAILABLE, queues: [{id: 'previous'}]};
+      expect(parseCallQueueSettings({agentACDState: 'UNAVAILABLE', queues: []}, previous)).toEqual({
+        acdState: ACD_STATE.UNAVAILABLE,
+        queues: [],
+      });
+      expect(parseCallQueueSettings({agentACDState: 'UNAVAILABLE'}, previous)).toEqual({
+        acdState: ACD_STATE.UNAVAILABLE,
+        queues: previous.queues,
       });
     });
 
@@ -175,6 +209,28 @@ describe('call queue state', () => {
       });
     });
 
+    it('ignores a sync queue list containing only malformed records', () => {
+      expect(applyCallQueueEvent(current, 'sync', {queues: [{name: 'Missing id'}]})).toBe(current);
+      expect(
+        applyCallQueueEvent(current, 'sync', {
+          acdStateInfo: {state: 'unavailable'},
+          queues: [{name: 'Missing id'}],
+        })
+      ).toEqual({...current, acdState: ACD_STATE.UNAVAILABLE});
+    });
+
+    it('merges valid records without clearing other queues when a sync list is incomplete', () => {
+      const next = applyCallQueueEvent(current, 'sync', {
+        queues: [{id: 'queue-1', name: 'Updated'}, {name: 'Missing id'}],
+      });
+
+      expect(next?.queues).toEqual([{...current.queues[0], name: 'Updated'}, current.queues[1]]);
+    });
+
+    it('clears queues for an explicitly empty sync queue list', () => {
+      expect(applyCallQueueEvent(current, 'sync', {queues: []})?.queues).toEqual([]);
+    });
+
     it('merges a join event by queue id and keeps the other queues', () => {
       const next = applyCallQueueEvent(current, 'join', {
         data: {
@@ -214,6 +270,61 @@ describe('call queue state', () => {
         acdState: ACD_STATE.UNAVAILABLE,
         queues: [{id: 'queue-2', name: 'Support', available: true, allowLogOffEnabled: true}],
       });
+    });
+
+    it('preserves other memberships when a sync join list is incomplete', () => {
+      const next = applyCallQueueEvent(current, 'sync', {
+        joinInfo: [
+          {queueId: 'queue-1', status: 'unjoined'},
+          {queueId: 'queue-2', status: 'unknown'},
+        ],
+      });
+
+      expect(next?.queues).toEqual([{...current.queues[0], available: false}, current.queues[1]]);
+    });
+
+    it('preserves other memberships when an incomplete sync contains an unassigned queue', () => {
+      const next = applyCallQueueEvent(current, 'sync', {
+        joinInfo: [
+          {queueId: 'queue-1', status: 'unassigned'},
+          {queueId: 'queue-2', status: 'unknown'},
+        ],
+      });
+
+      expect(next?.queues).toEqual([current.queues[1]]);
+    });
+
+    it('does not drop a cached membership when the sync queue list and join list disagree', () => {
+      const next = applyCallQueueEvent(current, 'sync', {
+        queues: [{id: 'queue-1', name: 'Updated'}],
+        joinInfo: [
+          {queueId: 'queue-1', status: 'unjoined'},
+          {queueId: 'queue-2', status: 'unknown'},
+        ],
+      });
+
+      expect(next?.queues).toEqual([
+        {...current.queues[0], name: 'Updated', available: false},
+        current.queues[1],
+      ]);
+    });
+
+    it('ignores an all-invalid sync join list and clears an explicitly empty one', () => {
+      expect(
+        applyCallQueueEvent(current, 'sync', {
+          joinInfo: [{queueId: 'queue-1', status: 'unknown'}],
+        })
+      ).toBe(current);
+      expect(applyCallQueueEvent(current, 'sync', {joinInfo: []})?.queues).toEqual([]);
+    });
+
+    it('honors an explicitly empty sync queue list when join records are invalid', () => {
+      expect(
+        applyCallQueueEvent(current, 'sync', {
+          queues: [],
+          joinInfo: [{queueId: 'queue-1', status: 'unknown'}],
+        })?.queues
+      ).toEqual([]);
     });
 
     it('merges sync queue metadata with joinInfo and keeps stable encoded IDs', () => {

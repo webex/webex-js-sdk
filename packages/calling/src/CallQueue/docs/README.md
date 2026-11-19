@@ -24,7 +24,11 @@ The factory accepts an optional previous client for reuse and replaces it when i
 
 ACD values are `SIGN_IN`, `SIGN_OUT`, `AVAILABLE`, `UNAVAILABLE`, and `WRAP_UP`. Mercury camelCase values (`signIn`, `wrapUp`) map onto those names. Mercury `joinInfo` entries carry `queueId` and joined/unjoined/unassigned status; sync events replace the queue list while join events merge or remove entries. Actor IDs scope changes to the primary user or a secondary virtual line. Queue availability may be absent and must not be treated as a known false value. If an initial response omits agent status, the client returns an error rather than inventing a signed-out state. When a 204 update has no cached state, the client reloads settings before returning a snapshot.
 
+A REST settings response with an array containing queue records without IDs is rejected rather than interpreted as a partial or empty list. Omitted or non-array queues retain the previously cached list as before, and an explicit empty array remains valid. If a successful update returns an invalid queue array, the client reloads settings before returning a snapshot; if the reload fails, the update may already have been applied and the caller should refresh before retrying.
+
 When a Mercury event includes both queue records and `joinInfo`, retain metadata from the incoming records while applying membership from `joinInfo`; use previously known metadata for joined queues absent from the incoming records. Match raw and encoded queue IDs while preserving an existing public ID.
+
+An explicit empty sync queue or `joinInfo` list clears the cached list. If a sync list contains invalid records, merge any valid queue records or membership updates without removing other cached queues; an entirely invalid list is ignored. A valid `joinInfo` list still determines membership independently, including removal of unassigned queues.
 
 Do not log tokens or queue payloads. Unavailable reason codes are not part of this client.
 

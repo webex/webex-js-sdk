@@ -1,3 +1,7 @@
+import {ACD_STATE} from './types';
+
+export const SUPPORTED_STATES = new Set<string>(Object.values(ACD_STATE));
+
 export const UUID_PATTERN = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
 
 export const CALL_QUEUE_FILE = 'CallQueue';

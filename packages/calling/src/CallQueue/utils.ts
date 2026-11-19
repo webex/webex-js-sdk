@@ -108,6 +108,14 @@ function readQueue(value: unknown): CallQueue | undefined {
   return queue;
 }
 
+/** Detect an incomplete settings queue list without treating omitted or non-array fields as lists. */
+export function hasMalformedQueueRecords(body: unknown): boolean {
+  if (!body || typeof body !== 'object') return false;
+  const queues = (body as Record<string, unknown>).queues;
+
+  return Array.isArray(queues) && queues.some((queue) => !readQueue(queue));
+}
+
 /** Match CSG UUIDs with catalog IDs encoded as ciscospark queue URIs. */
 export function queueIdKey(id: string): string {
   if (UUID_PATTERN.test(id)) {
@@ -194,7 +202,7 @@ export function applyQueueNames(
 }
 
 /**
- * Reads a GET/PATCH body. Returns undefined when the body is not a queue settings document.
+ * Reads a GET/PUT body. Returns undefined when the body is not a queue settings document.
  */
 export function parseCallQueueSettings(
   body: unknown,
@@ -209,9 +217,9 @@ export function parseCallQueueSettings(
   if ((!Array.isArray(record.queues) && !rawState) || !acdState) {
     return undefined;
   }
-  const queues = Array.isArray(record.queues)
-    ? record.queues.map(readQueue).filter((queue): queue is CallQueue => Boolean(queue))
-    : previous?.queues ?? [];
+  const parsedQueues = Array.isArray(record.queues) ? record.queues.map(readQueue) : undefined;
+  if (parsedQueues?.some((queue) => !queue)) return undefined;
+  const queues = parsedQueues ? (parsedQueues as CallQueue[]) : previous?.queues ?? [];
 
   return {acdState, queues};
 }
@@ -256,9 +264,16 @@ export function applyCallQueueEvent(
   const acdState = normalizeAcdState(
     payload.agentACDState ?? payload.acdStateInfo?.state ?? payload.state
   );
-  const incomingQueues = Array.isArray(payload.queues)
-    ? payload.queues.map(readQueue).filter((queue): queue is CallQueue => Boolean(queue))
+  const rawQueues = Array.isArray(payload.queues) ? payload.queues : undefined;
+  const incomingQueues = rawQueues
+    ? rawQueues.map(readQueue).filter((queue): queue is CallQueue => Boolean(queue))
     : undefined;
+  const incompleteQueues = Boolean(
+    rawQueues && incomingQueues && rawQueues.length !== incomingQueues.length
+  );
+  const hasQueueUpdates = Boolean(
+    rawQueues && incomingQueues && (!rawQueues.length || incomingQueues.length)
+  );
   const joinUpdates = Array.isArray(payload.joinInfo)
     ? payload.joinInfo.flatMap((entry) => {
         const id = readString(entry?.queueId);
@@ -272,13 +287,20 @@ export function applyCallQueueEvent(
     : undefined;
   const hasJoinUpdates =
     joinUpdates !== undefined && (payload.joinInfo?.length === 0 || joinUpdates.length > 0);
-  if (!acdState && !incomingQueues && !hasJoinUpdates) {
+  const incompleteJoinUpdates = Boolean(
+    Array.isArray(payload.joinInfo) && joinUpdates && payload.joinInfo.length !== joinUpdates.length
+  );
+  if (!acdState && !hasQueueUpdates && !hasJoinUpdates) {
     return current;
   }
   const base = current ?? {acdState: ACD_STATE.SIGN_OUT, queues: []};
   let queues = base.queues;
-  if (incomingQueues) {
-    if (kind === 'sync') {
+  if (hasQueueUpdates && incomingQueues) {
+    if (
+      kind === 'sync' &&
+      !incompleteQueues &&
+      (!incompleteJoinUpdates || rawQueues?.length === 0)
+    ) {
       const previous = new Map(base.queues.map((queue) => [queueIdKey(queue.id), queue]));
       queues = incomingQueues.map((queue) => {
         const existing = previous.get(queueIdKey(queue.id));
@@ -298,7 +320,7 @@ export function applyCallQueueEvent(
 
       return [{...previous, id: previous?.id ?? id, available: status === 'joined'}];
     });
-    if (kind === 'sync') {
+    if (kind === 'sync' && !incompleteJoinUpdates) {
       queues = joined;
     } else {
       const removed = new Set(
