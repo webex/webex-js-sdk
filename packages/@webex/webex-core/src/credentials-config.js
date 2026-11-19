@@ -110,6 +110,15 @@ const CredentialsConfig = AmpState.extend({
      * @type {string}
      */
     cisService: ['string', false, 'webex'],
+
+    /**
+     * Whether the client is permitted to upgrade its refresh token scope
+     * Should only be set to true if client has extended feature 'refresh-token-scopes-upgrade-allowed'
+     * If true, the refresh token scope will be requested to be increased or decreased on refresh,
+     * to match the configured scope.
+     * @type {boolean}
+     */
+    canUpgradeScope: ['boolean', false, false],
   },
 
   derived: {
