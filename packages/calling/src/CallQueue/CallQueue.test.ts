@@ -400,6 +400,49 @@ describe('CallQueue client', () => {
     }
   );
 
+  it.each(['queue name lookup', 'settings refresh'])(
+    'returns a lifecycle conflict when reinitialized during an update %s',
+    async (operation) => {
+      const otherWebex = getTestUtilsWebex();
+      const other = createCallQueueClient(otherWebex, {level: LOGGER.INFO}, TEST_OPTIONS);
+      const pendingRead = deferredResponse();
+      let readStarted!: () => void;
+      const started = new Promise<void>((resolve) => {
+        readStarted = resolve;
+      });
+      const updateBody =
+        operation === 'queue name lookup'
+          ? {agentACDState: 'AVAILABLE', queues: [{id: 'q1', available: true}]}
+          : undefined;
+      otherWebex.request
+        .mockResolvedValueOnce(<WebexRequestPayload>(<unknown>{statusCode: 200, body: updateBody}))
+        .mockImplementationOnce(() => {
+          readStarted();
+
+          return pendingRead.promise;
+        });
+
+      const update = other.updateCallQueueSettings({agentACDState: ACD_STATE.AVAILABLE});
+      await started;
+      assert.include(
+        otherWebex.request.mock.calls[1][0].uri,
+        operation === 'queue name lookup' ? '/telephony/config/queues' : '/settings/queues'
+      );
+      assert.isTrue(other.prepareForReuse());
+      pendingRead.resolve(<WebexRequestPayload>(<unknown>{
+        statusCode: 200,
+        body: {agentACDState: 'AVAILABLE', queues: []},
+      }));
+
+      const response = await update;
+      assert.equal(response.statusCode, 409);
+      assert.include(response.data.error, 'request may have completed');
+      assert.include(response.data.error, 'refresh settings before retrying');
+      assert.lengthOf(otherWebex.request.mock.calls, 2);
+      other.dispose();
+    }
+  );
+
   it('does not send a membership update after its policy read is superseded', async () => {
     const otherWebex = getTestUtilsWebex();
     const other = createCallQueueClient(otherWebex, {level: LOGGER.INFO}, TEST_OPTIONS);

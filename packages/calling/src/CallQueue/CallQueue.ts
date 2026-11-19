@@ -246,16 +246,25 @@ export class CallQueueClient extends Eventing<CallQueueEventTypes> implements IC
     }
 
     const epoch = this.lifecycleEpoch;
+    const supersededBeforeUpdate: CallQueueResponse = {
+      statusCode: 409,
+      data: {error: 'Call queue client was reinitialized; refresh settings'},
+      message: FAILURE_MESSAGE,
+    };
+    const supersededAfterUpdate: CallQueueResponse = {
+      statusCode: 409,
+      data: {
+        error:
+          'Call queue client was reinitialized; request may have completed; refresh settings before retrying',
+      },
+      message: FAILURE_MESSAGE,
+    };
     let requestSent = false;
     try {
       if (this.needsQueuePolicyRefresh(request, lineOwnerId)) {
         const settings = await this.getCallQueueSettings(lineOwnerId);
         if (epoch !== this.lifecycleEpoch) {
-          return {
-            statusCode: 409,
-            data: {error: 'Call queue client was reinitialized; refresh settings'},
-            message: FAILURE_MESSAGE,
-          };
+          return supersededBeforeUpdate;
         }
         if (settings.statusCode >= 400) {
           return settings;
@@ -280,14 +289,7 @@ export class CallQueueClient extends Eventing<CallQueueEventTypes> implements IC
         body,
       });
       if (epoch !== this.lifecycleEpoch) {
-        return {
-          statusCode: 409,
-          data: {
-            error:
-              'Call queue client was reinitialized; request may have completed; refresh settings before retrying',
-          },
-          message: FAILURE_MESSAGE,
-        };
+        return supersededAfterUpdate;
       }
       log.log(`Response trackingId: ${response?.headers?.trackingid}`, loggerContext);
       const current = this.currentByLine.get(lineOwnerId);
@@ -295,14 +297,7 @@ export class CallQueueClient extends Eventing<CallQueueEventTypes> implements IC
       const local = parsed ?? (current ? this.applyLocalUpdate(request, lineOwnerId) : undefined);
       const named = local ? await this.fillQueueNames(local) : undefined;
       if (epoch !== this.lifecycleEpoch) {
-        return {
-          statusCode: 409,
-          data: {
-            error:
-              'Call queue client was reinitialized; request may have completed; refresh settings before retrying',
-          },
-          message: FAILURE_MESSAGE,
-        };
+        return supersededAfterUpdate;
       }
       if (
         !named ||
@@ -312,14 +307,7 @@ export class CallQueueClient extends Eventing<CallQueueEventTypes> implements IC
         const refreshed = await this.getCallQueueSettings(lineOwnerId);
 
         if (epoch !== this.lifecycleEpoch) {
-          return {
-            statusCode: 409,
-            data: {
-              error:
-                'Call queue client was reinitialized; request may have completed; refresh settings before retrying',
-            },
-            message: FAILURE_MESSAGE,
-          };
+          return supersededAfterUpdate;
         }
 
         return refreshed.data.callQueue
@@ -349,15 +337,7 @@ export class CallQueueClient extends Eventing<CallQueueEventTypes> implements IC
           : undefined;
       if (failure && epoch === this.lifecycleEpoch) return failure;
 
-      return {
-        statusCode: 409,
-        data: {
-          error: requestSent
-            ? 'Call queue client was reinitialized; request may have completed; refresh settings before retrying'
-            : 'Call queue client was reinitialized; refresh settings',
-        },
-        message: FAILURE_MESSAGE,
-      };
+      return requestSent ? supersededAfterUpdate : supersededBeforeUpdate;
     }
   }
 
