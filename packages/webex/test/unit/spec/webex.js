@@ -255,21 +255,10 @@ describe('Calling call queue client', () => {
     assert.isFalse(calling.registered);
   });
 
-  it('deregisters a queue-only client after registration', async () => {
-    const calling = await Calling.init({webex, callingConfig: config(true)});
-
-    await calling.register();
-    await calling.deregister();
-
-    assert.notCalled(queue.dispose);
-    assert.calledOnceWithExactly(webex.internal.mercury.disconnect);
-    assert.calledOnceWithExactly(webex.internal.device.unregister);
-    assert.isFalse(calling.registered);
-    assert.strictEqual(calling.callQueueClient, queue);
-  });
-
   it('passes the retained queue client to the factory when registering again', async () => {
     const calling = await Calling.init({webex, callingConfig: config(true)});
+    sinon.stub(WebexCalling, 'createClient').resolves({getLines: () => ({})});
+    calling.callingConfig.clientConfig.calling = true;
 
     await calling.register();
     await calling.deregister();

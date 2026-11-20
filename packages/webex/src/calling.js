@@ -88,13 +88,11 @@ class Calling extends EventEmitter {
       return Promise.resolve();
     }
 
-    if (this.callingClient) {
-      const lines = Object.values(this.callingClient.getLines());
+    const lines = Object.values(this.callingClient?.getLines());
 
-      for (const line of lines) {
-        if (line.getStatus() === 'active') {
-          line.deregister(true); // Close Mobius WSS by passing true
-        }
+    for (const line of lines) {
+      if (line.getStatus() === 'active') {
+        line.deregister(true); // Close Mobius WSS by passing true
       }
     }
 
