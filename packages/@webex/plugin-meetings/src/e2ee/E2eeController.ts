@@ -20,6 +20,8 @@ import type {E2eeControllerEvent, E2eeControllerEventMap, E2eeMeetingContext} fr
 
 const TRIGGER_SCOPE = {file: 'e2ee/E2eeController', function: 'e2ee'};
 
+type FatalE2eeState = typeof E2eeState.Failed | typeof E2eeState.Evicted;
+
 /**
  * Per-meeting E2EE controller (owned by Meeting as `this.e2ee`). It orchestrates the MLS engine, the
  * signaling adapter and the HTTP transport for one meeting, exposes the security code, media-service
@@ -303,7 +305,7 @@ export default class E2eeController extends TypedEventsScope<E2eeControllerEvent
    */
   private deferFatal(
     session: MLS,
-    state: E2eeState.Failed | E2eeState.Evicted,
+    state: FatalE2eeState,
     reason: string,
     details: {errorCode?: number; errorMessage?: string} = {}
   ): void {
@@ -355,7 +357,7 @@ export default class E2eeController extends TypedEventsScope<E2eeControllerEvent
    * @returns {void}
    */
   private handleFatal(
-    state: E2eeState.Failed | E2eeState.Evicted,
+    state: FatalE2eeState,
     reason: string,
     details: {errorCode?: number; errorMessage?: string} = {}
   ): void {
