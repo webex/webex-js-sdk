@@ -1374,7 +1374,9 @@ export async function getXsiActionEndpoint(
 
       case CALLING_BACKEND.BWRKS: {
         const bwTokenResponse = <WebexRequestPayload>await webex.request({
-          uri: `${webex.internal.services._serviceUrls.wdm}/${DEVICES}`,
+          uri: `${
+            webex.internal.services._serviceUrls?.wdm || webex.internal.services.get('wdm')
+          }/${DEVICES}`,
           method: HTTP_METHODS.GET,
         });
 
@@ -1425,7 +1427,10 @@ export async function getXsiActionEndpoint(
 export function getVgActionEndpoint(webex: WebexSDK, callingBackend: CALLING_BACKEND) {
   try {
     if (callingBackend && callingBackend === CALLING_BACKEND.UCM) {
-      return webex.internal.services._serviceUrls['ucmgmt-gateway'];
+      return (
+        webex.internal.services._serviceUrls?.['ucmgmt-gateway'] ||
+        webex.internal.services.get('ucmgmt-gateway')
+      );
     }
     throw new Error('Calling backend is not identified, exiting....');
   } catch (err: unknown) {

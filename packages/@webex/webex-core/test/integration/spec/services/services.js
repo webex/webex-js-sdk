@@ -11,6 +11,7 @@ import WebexCore, {
   ServiceRegistry,
   ServiceState,
   Services,
+  ServicesV2,
   ServiceInterceptor,
   ServerErrorInterceptor,
   registerInternalPlugin,
@@ -54,14 +55,24 @@ describe('webex-core', () => {
       )
     );
 
-    beforeEach('create webex instance', () => {
-      registerInternalPlugin('services', Services, {
+    const registerServices = (plugin) =>
+      registerInternalPlugin('services', plugin, {
         interceptors: {
           ServiceInterceptor: ServiceInterceptor.create,
           ServerErrorInterceptor: ServerErrorInterceptor.create,
         },
         replace: true,
       });
+
+    // These specs cover services v1, which is no longer the default plugin. Register it in
+    // `before` too: nested `before` hooks (which create unauthenticated instances) run before
+    // the outer `beforeEach`.
+    before('register services v1', () => registerServices(Services));
+
+    after('restore the default services plugin', () => registerServices(ServicesV2));
+
+    beforeEach('create webex instance', () => {
+      registerServices(Services);
       webex = new WebexCore({credentials: {supertoken: webexUser.token}});
       webexEU = new WebexCore({credentials: {supertoken: webexUserEU.token}});
       services = webex.internal.services;
@@ -870,8 +881,12 @@ describe('webex-core', () => {
     });
 
     describe('#validateUser()', () => {
-      const unauthWebex = new WebexCore();
-      const unauthServices = unauthWebex.internal.services;
+      let unauthServices;
+
+      // Created in a hook, not at load time, so it picks up the services v1 registered above.
+      before('create unauthenticated instance', () => {
+        unauthServices = new WebexCore().internal.services;
+      });
       let sandbox = null;
 
       const getActivationRequest = (requestStub, useUserOnboarding = false) => {
@@ -1244,8 +1259,13 @@ describe('webex-core', () => {
     });
 
     describe('#collectPreauthCatalog()', () => {
-      const unauthWebex = new WebexCore({config: {credentials: {federation: true}}});
-      const unauthServices = unauthWebex.internal.services;
+      let unauthServices;
+
+      // Created in a hook, not at load time, so it picks up the services v1 registered above.
+      before('create unauthenticated instance', () => {
+        unauthServices = new WebexCore({config: {credentials: {federation: true}}}).internal
+          .services;
+      });
       const forceRefresh = true;
 
       it('updates the preauth catalog without email', () =>
@@ -1298,8 +1318,13 @@ describe('webex-core', () => {
     });
 
     describe('#collectSigninCatalog()', () => {
-      const unauthWebex = new WebexCore({config: {credentials: {federation: true}}});
-      const unauthServices = unauthWebex.internal.services;
+      let unauthServices;
+
+      // Created in a hook, not at load time, so it picks up the services v1 registered above.
+      before('create unauthenticated instance', () => {
+        unauthServices = new WebexCore({config: {credentials: {federation: true}}}).internal
+          .services;
+      });
 
       it('requires an email as the parameter', () =>
         unauthServices.collectPreauthCatalog().catch((e) => {

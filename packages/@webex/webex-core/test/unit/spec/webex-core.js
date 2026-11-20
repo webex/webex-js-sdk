@@ -11,6 +11,7 @@ import WebexCore, {
   WebexPlugin,
   PayloadTransformerInterceptor,
   RequestTimingInterceptor,
+  ServicesV2,
 } from '@webex/webex-core';
 import {set} from 'lodash';
 import {version} from '@webex/webex-core/package';
@@ -31,6 +32,12 @@ describe('Webex', () => {
       assert.doesNotThrow(() => {
         webex.logger.log('test');
       });
+    });
+  });
+
+  describe('#internal.services', () => {
+    it('is services v2 by default', () => {
+      assert.instanceOf(webex.internal.services, ServicesV2);
     });
   });
 

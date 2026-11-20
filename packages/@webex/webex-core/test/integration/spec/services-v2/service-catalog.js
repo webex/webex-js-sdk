@@ -12,7 +12,6 @@ import WebexCore, {
   ServicesV2,
   ServiceInterceptor,
   ServerErrorInterceptor,
-  Services,
 } from '@webex/webex-core';
 import testUsers from '@webex/test-helper-test-users';
 import {
@@ -58,18 +57,6 @@ describe('webex-core', () => {
           query: {userId: webexUser.id},
         })
       );
-    });
-
-    afterEach(() => {
-      registerInternalPlugin('services', Services, {
-        interceptors: {
-          ServiceInterceptor: ServiceInterceptor.create,
-          ServerErrorInterceptor: ServerErrorInterceptor.create,
-        },
-        replace: true,
-      });
-      services = webex.internal.services;
-      catalog = services._getCatalog();
     });
 
     describe('#status()', () => {

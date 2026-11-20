@@ -6,7 +6,14 @@ import '@webex/internal-plugin-device';
 
 import {assert} from '@webex/test-helper-chai';
 import sinon from 'sinon';
-import WebexCore, {ServiceUrl} from '@webex/webex-core';
+import WebexCore, {
+  ServiceUrl,
+  Services,
+  ServicesV2,
+  ServiceInterceptor,
+  ServerErrorInterceptor,
+  registerInternalPlugin,
+} from '@webex/webex-core';
 import testUsers from '@webex/test-helper-test-users';
 
 /* eslint-disable no-underscore-dangle */
@@ -16,6 +23,20 @@ describe('webex-core', () => {
     let webex;
     let services;
     let catalog;
+
+    const registerServices = (plugin) =>
+      registerInternalPlugin('services', plugin, {
+        interceptors: {
+          ServiceInterceptor: ServiceInterceptor.create,
+          ServerErrorInterceptor: ServerErrorInterceptor.create,
+        },
+        replace: true,
+      });
+
+    // These specs cover services v1, which is no longer the default plugin.
+    before('register services v1', () => registerServices(Services));
+
+    after('restore the default services plugin', () => registerServices(ServicesV2));
 
     before('create users', () =>
       testUsers
