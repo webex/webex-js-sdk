@@ -120,7 +120,7 @@ class Calling extends EventEmitter {
   }
 
   async initializeClients() {
-    const {clientConfig, callingClientConfig, logger} = this.callingConfig;
+    const {clientConfig, callingClientConfig, callQueueClientConfig, logger} = this.callingConfig;
 
     this.callingClient = clientConfig.calling
       ? await WebexCalling.createClient(this.webex, callingClientConfig)
@@ -141,6 +141,31 @@ class Calling extends EventEmitter {
     this.callSettingsClient = clientConfig.callSettings
       ? WebexCalling.createCallSettingsClient(this.webex, logger)
       : undefined;
+
+    try {
+      if (clientConfig.callQueue) {
+        this.callQueueClient = WebexCalling.createCallQueueClient(
+          this.webex,
+          logger,
+          callQueueClientConfig,
+          this.callQueueClient
+        );
+      } else {
+        this.callQueueClient?.dispose();
+        this.callQueueClient = undefined;
+      }
+    } catch (error) {
+      this.log.warn(`Error occurred while initializing callQueue client ${error}`, logContext);
+      try {
+        this.callQueueClient?.dispose();
+      } catch (cleanupError) {
+        this.log.warn(
+          `Error occurred while disposing callQueue client ${cleanupError}`,
+          logContext
+        );
+      }
+      this.callQueueClient = undefined;
+    }
 
     if (clientConfig.callRecording === undefined) {
       clientConfig.callRecording = false;

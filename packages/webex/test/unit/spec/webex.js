@@ -4,6 +4,7 @@
 import 'jsdom-global/register';
 
 import {assert} from '@webex/test-helper-chai';
+import sinon from 'sinon';
 import Webex from 'webex';
 // As part of npm its trying to pull all the dependencies, internal-media-core
 // tries to access the winow object which causes the test to fail. Mocking the
@@ -89,5 +90,183 @@ describe('webex', () => {
         assert.equal(webex.config.services.discovery.u2c, fedramp.u2c);
       });
     });
+  });
+});
+
+describe('Calling call queue client', () => {
+  let Calling;
+  let WebexCalling;
+  let factory;
+  let webex;
+  let logger;
+  let options;
+  let queue;
+
+  beforeAll(() => {
+    jest.isolateModules(() => {
+      jest.doMock('@webex/calling', () => ({
+        __esModule: true,
+        Logger: {setLogger() {}, setWebexLogger() {}, info() {}, warn() {}},
+        createClient() {},
+        createCallQueueClient() {},
+        createCallRecordingClient() {},
+      }));
+      jest.doMock('@webex/internal-plugin-device', () => ({}));
+      jest.doMock('@webex/internal-plugin-mercury', () => ({}));
+      jest.doMock('@webex/internal-plugin-encryption', () => ({}));
+      jest.doMock('@webex/plugin-logger', () => ({}));
+      jest.doMock('@webex/internal-plugin-support', () => ({}));
+      jest.doMock('@webex/webex-core', () => ({default: {extend: () => function Webex() {}}}));
+      WebexCalling = require('@webex/calling');
+      Calling = require('../../../dist/calling').default;
+    });
+  });
+
+  afterAll(() => {
+    [
+      '@webex/calling',
+      '@webex/internal-plugin-device',
+      '@webex/internal-plugin-mercury',
+      '@webex/internal-plugin-encryption',
+      '@webex/plugin-logger',
+      '@webex/internal-plugin-support',
+      '@webex/webex-core',
+    ].forEach((name) => jest.dontMock(name));
+  });
+
+  beforeEach(() => {
+    queue = {dispose: sinon.spy(), prepareForReuse: sinon.stub().returns(true)};
+    factory = sinon.stub(WebexCalling, 'createCallQueueClient').returns(queue);
+    logger = {level: 'info'};
+    options = {webexApiBaseUrl: 'https://integration.webexapis.com'};
+    webex = {
+      logger: {config: {}},
+      internal: {
+        device: {register: sinon.stub().resolves(), unregister: sinon.stub().resolves()},
+        mercury: {connect: sinon.stub().resolves(), disconnect: sinon.stub().resolves()},
+      },
+    };
+  });
+
+  afterEach(() => sinon.restore());
+
+  function config(callQueue) {
+    return {
+      clientConfig: {callQueue},
+      callingClientConfig: {},
+      callQueueClientConfig: options,
+      logger,
+    };
+  }
+
+  it('creates the client using the configured API origin', async () => {
+    const calling = await Calling.init({webex, callingConfig: config(true)});
+
+    assert.calledOnceWithExactly(factory, webex, logger, options, undefined);
+    assert.strictEqual(calling.callQueueClient, queue);
+    await calling.deregister();
+    assert.notCalled(queue.dispose);
+    assert.strictEqual(calling.callQueueClient, queue);
+  });
+
+  it('does not create a client unless enabled', async () => {
+    const calling = await Calling.init({webex, callingConfig: config(false)});
+
+    assert.notCalled(factory);
+    assert.isUndefined(calling.callQueueClient);
+  });
+
+  it('continues initializing call recording when queue creation fails', async () => {
+    const recording = {};
+    const recordingFactory = sinon.stub(WebexCalling, 'createCallRecordingClient').returns(recording);
+    const warning = sinon.spy(WebexCalling.Logger, 'warn');
+    const callingConfig = config(true);
+    callingConfig.clientConfig.callRecording = true;
+    factory.throws(new Error('Invalid call queue configuration'));
+
+    const calling = await Calling.init({webex, callingConfig});
+
+    assert.calledOnceWithExactly(factory, webex, logger, options, undefined);
+    assert.calledOnceWithExactly(recordingFactory, webex, logger);
+    assert.isUndefined(calling.callQueueClient);
+    assert.strictEqual(calling.callRecordingClient, recording);
+    assert.calledOnce(warning);
+  });
+
+  it('passes the previous client to the queue factory when initialized again', async () => {
+    const calling = await Calling.init({webex, callingConfig: config(true)});
+
+    await calling.initializeClients();
+
+    assert.calledTwice(factory);
+    assert.calledWithExactly(factory.secondCall, webex, logger, options, queue);
+    assert.notCalled(queue.dispose);
+    assert.strictEqual(calling.callQueueClient, queue);
+  });
+
+  it('disposes the previous client when call queues are disabled', async () => {
+    const callingConfig = config(true);
+    const calling = await Calling.init({webex, callingConfig});
+    callingConfig.clientConfig.callQueue = false;
+
+    await calling.initializeClients();
+
+    assert.calledOnce(queue.dispose);
+    assert.calledOnce(factory);
+    assert.isUndefined(calling.callQueueClient);
+  });
+
+  it('continues initializing call recording when queue creation fails during registration', async () => {
+    const recording = {};
+    const recordingFactory = sinon.stub(WebexCalling, 'createCallRecordingClient').returns(recording);
+    const callingConfig = config(true);
+    callingConfig.clientConfig.callRecording = true;
+    const calling = await Calling.init({webex, callingConfig});
+    sinon.stub(WebexCalling, 'createClient').resolves({getLines: () => ({})});
+    callingConfig.clientConfig.calling = true;
+    factory.throws(new Error('Queue initialization failed'));
+
+    await calling.register();
+
+    assert.calledTwice(factory);
+    assert.calledWithExactly(factory.secondCall, webex, logger, options, queue);
+    assert.calledOnce(queue.dispose);
+    assert.calledTwice(recordingFactory);
+    assert.isUndefined(calling.callQueueClient);
+    assert.strictEqual(calling.callRecordingClient, recording);
+    assert.isTrue(calling.registered);
+    await calling.deregister();
+  });
+
+  it('deregisters active Calling lines after registration', async () => {
+    const calling = await Calling.init({webex, callingConfig: config(false)});
+    const line = {getStatus: sinon.stub().returns('active'), deregister: sinon.spy()};
+    sinon.stub(WebexCalling, 'createClient').resolves({getLines: () => ({line})});
+    calling.callingConfig.clientConfig.calling = true;
+    calling.callingConfig.clientConfig.callQueue = true;
+
+    await calling.register();
+    await calling.deregister();
+
+    assert.notCalled(queue.dispose);
+    assert.calledOnceWithExactly(line.deregister, true);
+    assert.calledOnce(webex.internal.mercury.disconnect);
+    assert.calledOnce(webex.internal.device.unregister);
+    assert.isFalse(calling.registered);
+  });
+
+  it('passes the retained queue client to the factory when registering again', async () => {
+    const calling = await Calling.init({webex, callingConfig: config(true)});
+    sinon.stub(WebexCalling, 'createClient').resolves({getLines: () => ({})});
+    calling.callingConfig.clientConfig.calling = true;
+
+    await calling.register();
+    await calling.deregister();
+    await calling.register();
+
+    assert.calledThrice(factory);
+    assert.calledWithExactly(factory.thirdCall, webex, logger, options, queue);
+    assert.notCalled(queue.dispose);
+    assert.strictEqual(calling.callQueueClient, queue);
   });
 });
