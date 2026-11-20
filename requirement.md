@@ -22,9 +22,9 @@ These three proposal documents live at the checkout root. Bare SDK paths (`src/`
 
 ### Problem
 
-An agent using an embedded SDK client needs a controlled way to recover when the platform moves an organization or region. Reopening a WebSocket is insufficient: the agent session, regional task state, realtime subscriptions and host UI must agree on readiness. Ordinary network reconnection must continue without regional cleanup.
+An agent using an embedded SDK client needs a controlled way to recover when the platform moves an organization or region. Reopening a WebSocket is insufficient: the agent session, regional task state, realtime subscriptions and host applications must agree on readiness. Ordinary network reconnection must continue without regional cleanup.
 
-The current package has authenticated service discovery, fresh notification subscription, ordinary reconnect, silent relogin, a separate RTD socket, browser-voice state, and typed task state/UI controls. It has no explicit `SYSTEM_REGION_SWITCH` / region-mismatch recovery contract. The relevant current code is in this `contact-center` checkout; findings from the older `/Users/rsarika/dev/CCSDK/webex-js-sdk/packages/@webex/plugin-cc` checkout are not its implementation baseline.
+The current package has authenticated service discovery, fresh notification subscription, ordinary reconnect, silent relogin, a separate RTD socket, browser-voice state, and typed task state and action controls. It has no explicit `SYSTEM_REGION_SWITCH` / region-mismatch recovery contract. The relevant current code is in this `contact-center` checkout; findings from the older `/Users/rsarika/dev/CCSDK/webex-js-sdk/packages/@webex/plugin-cc` checkout are not its implementation baseline.
 
 ### Goals and outcomes
 
@@ -54,7 +54,7 @@ This contract covers the existing Contact Center agent package: registration, no
 3. The platform produces the event and mismatch reasons defined below. The client does not trigger platform failover or provision entitlement.
 4. Supported station modes retain their existing backend and calling prerequisites, including `disableWebRTCRegistration` and Webex App integration.
 5. An entitled org, agent credentials/team/DN, deployed version identifiers and a coordinated operator window are required for live acceptance. The validation document records that evidence separately from local tests.
-6. An implementation runner must support an SDK/library change without synthesizing a host UI, visual harness or live operator actions. Before admission it must check access to the target checkout and package dependencies, Node 22.14 and Yarn 3.4.1, the documented build/test commands, and an authorized independent validation integration for canonical spec changes. An unmet prerequisite stops that stage with an explicit environment/gate result; it is not a feature-test pass. Tool and flow prerequisites belong to the runner, not new SDK runtime configuration.
+6. Scope the implementation to the SDK library, its documentation and package-level verification. Host presentation, rendered test harnesses and live operator actions belong outside this change. Before SDK implementation, the runner must check access to the target checkout and package dependencies, Node 22.14 and Yarn 3.4.1, and the documented build and test commands. Before canonical specification work, the runner must verify an authorized independent validation integration. An unmet prerequisite stops the affected stage with an explicit environment/gate result. The runner owns tool and flow preparation.
 
 ### Data contracts and public interfaces
 
@@ -190,7 +190,7 @@ Why: A placement restart is distinct from transient failure and cannot be inferr
 
 A recognized mismatch MUST invalidate old work, reject interrupted registration with `REGION_RELOAD_REQUIRED`, and emit `reloadRequired/region-mismatch` once per generation. The SDK MUST NOT call `window.location.reload()`. The documented host integration MUST permit at most one restart per active org/browser tab within 120 seconds and surface repeated mismatch instead of looping.
 
-Why: Embedded clients own navigation, unsaved UI and restart persistence across page loads.
+Why: Embedded clients own navigation, unsaved application state and restart persistence across page loads.
 
 #### REQ-MR-010 — Preserve a successful station snapshot
 
@@ -233,9 +233,9 @@ During the wait and while awaiting manual station login, new conflicting task/ca
 
 Why: Clearing a map alone does not prevent a host's retained object or old completion from acting against the wrong session.
 
-#### REQ-MR-014 — Integrate Task/XState and UI controls
+#### REQ-MR-014 — Integrate Task/XState and task action controls
 
-Task invalidation, listener cleanup and rehydration MUST pass through the owning Task/TaskManager/state-machine interfaces. Existing `TaskUIControls` shape and `task:ui-controls-updated` delivery MUST be preserved; invalidated task actions MUST become disabled. Cleanup MUST NOT synthesize backend `ContactEnded`, successful wrap-up or `task:end`. Restored backend tasks MUST use existing hydration mapping.
+Task invalidation, listener cleanup and rehydration MUST pass through the owning Task/TaskManager/state-machine interfaces. Existing `TaskUIControls` shape and delivery of the existing `TASK_EVENTS.TASK_UI_CONTROLS_UPDATED` event MUST be preserved; invalidated task actions MUST become disabled. Cleanup MUST NOT synthesize backend `ContactEnded`, successful wrap-up or `task:end`. Restored backend tasks MUST use existing hydration mapping.
 
 Why: A parallel host-side task policy would diverge from the SDK's typed lifecycle and misrepresent backend outcomes.
 
