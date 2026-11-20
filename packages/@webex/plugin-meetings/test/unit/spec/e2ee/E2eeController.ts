@@ -159,11 +159,7 @@ describe('plugin-meetings', () => {
     describe('start', () => {
       [
         {
-          when: 'E2EE is disabled in config',
-          setup: () => (webex.config.meetings.enableE2ee = false),
-        },
-        {
-          when: 'WebAssembly is unsupported',
+          when: 'WebAssembly is unsupported or disabled',
           setup: () => sinon.stub(MeetingsUtil, 'isE2eeEnabledAndSupported').returns(false),
         },
         {
