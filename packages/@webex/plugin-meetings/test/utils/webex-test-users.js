@@ -2,6 +2,7 @@
 
 const WebexCore = require('@webex/webex-core').default;
 const testUser = require('@webex/test-helper-test-users');
+const {setPreferredSite} = require('@webex/test-users');
 const sinon = require('sinon');
 
 const config = require('./webex-config');
@@ -20,11 +21,64 @@ require('@webex/plugin-meetings');
 const generateTestUsers = async (options = {}) => {
   options.config = options.config || {};
   options.config.orgId = options.config.orgId || process.env.WEBEX_CONVERGED_ORG_ID;
+  const webexSite = options.config.webexSite || process.env.WEBEX_SITE;
+  const provisionMeetingSite = !!webexSite && !options.whistler;
 
-  return testUser.create(options)
+  if (provisionMeetingSite) {
+    const orgAdminAuthorization =
+      options.config.orgAdminAuthorization || process.env.WEBEX_TEST_USERS_ORG_ADMIN_AUTHORIZATION;
+
+    if (!orgAdminAuthorization || !process.env.IDENTITY_BASE_URL) {
+      throw new Error(
+        'Meeting site provisioning requires org admin authorization and IDENTITY_BASE_URL'
+      );
+    }
+
+    Object.assign(options.config, {
+      clientId:
+        options.config.clientId ||
+        process.env.WEBEX_TEST_USERS_CLIENT_ID ||
+        process.env.WEBEX_CLIENT_ID,
+      clientSecret:
+        options.config.clientSecret ||
+        process.env.WEBEX_TEST_USERS_CLIENT_SECRET ||
+        process.env.WEBEX_CLIENT_SECRET,
+      entitlements: [
+        'spark',
+        'squaredCallInitiation',
+        'squaredRoomModeration',
+        'squaredInviter',
+        'basicMessage',
+        'basicMeeting',
+        'webExSquared',
+      ],
+      forceCreate: true,
+      ensureExistsInWebexSites: true,
+      syncInWebexSites: [webexSite],
+      orgAdminAuthorization,
+    });
+  }
+
+  return testUser
+    .create(options)
     .then(async (userSet) => {
       if (userSet.length !== options.count) {
         return Promise.reject(new Error('Test users not created'));
+      }
+
+      if (provisionMeetingSite) {
+        await Promise.all(
+          userSet.map((user) =>
+            setPreferredSite({
+              authorization: user.token.authorization,
+              orgId: options.config.orgId,
+              userId: user.id,
+              preferredSite: webexSite,
+              identityServiceUrl: process.env.IDENTITY_BASE_URL,
+            })
+          )
+        );
+        console.info('Meeting site synchronization and preferred-site provisioning completed');
       }
 
       // Pause for 5 seconds for CI

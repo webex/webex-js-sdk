@@ -1,0 +1,7 @@
+.env
+*.json
+*.header
+response*.txt
+request-tracking*.txt
+basic/
+full/
