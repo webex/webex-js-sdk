@@ -1,7 +1,6 @@
 #!/bin/sh
-# Skip if in CI
+# Skip if in CI or explicitly disabled.
 [ -n "$CI" ] && exit 0
-
-. "$(dirname "$0")/_/husky.sh"
+[ "${HUSKY:-}" = "0" ] && exit 0
 
 yarn run --silent srcdist && yarn run --silent lint:staged
