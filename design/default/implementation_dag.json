@@ -1,0 +1,1012 @@
+{
+  "tasks": [
+    {
+      "id": "MR-01",
+      "title": "Define additive recovery contracts and safe error normalization",
+      "description": "REQ-005, REQ-018, REQ-019, REQ-021, REQ-MR-018, REQ-MR-021, AC-017, AC-020 / Component: Public recovery contracts and Component: Admission and reconnect scheduling. Extend existing constants/types/index with REGION_RECOVERY_EVENTS, REGION_RECOVERY_ERROR_CODES and the five public recovery types including RegionRecoveryErrorCode; add internal SystemRegionSwitch vocabulary, RecoveryFailure and normalized status/reason/reasonCode/tracking handling in Core Utils. Implement createRegionRecoveryError/isRegionRecoveryError and lifecycle passthrough in getErrorDetails/generateTaskErrorObject while preserving unrelated backend errors. Retain structured HTTP status/reason/reasonCode in getCommonErrorDetails/createErrDetailsObject and compatible optional ErrDetails/generic-failure diagnostics without changing Err classes. Add exact export, type-consumer, mismatch precedence and plain-Error regression assertions to existing index/Core suites. No prerequisite task; establishes shared contracts without changing public operation signatures or Profile. All files are modifications; no new dependency or file.",
+      "files": [
+        "packages/@webex/contact-center/src/constants.ts",
+        "packages/@webex/contact-center/src/types.ts",
+        "packages/@webex/contact-center/src/index.ts",
+        "packages/@webex/contact-center/src/services/config/types.ts",
+        "packages/@webex/contact-center/src/services/core/types.ts",
+        "packages/@webex/contact-center/src/services/core/Err.ts",
+        "packages/@webex/contact-center/src/services/core/Utils.ts",
+        "packages/@webex/contact-center/test/unit/spec/index.ts",
+        "packages/@webex/contact-center/test/unit/spec/services/core/Utils.ts"
+      ],
+      "dependencies": [],
+      "acceptance": "yarn workspace @webex/contact-center test:unit --targets '{index.ts,services/core/Utils.ts}'",
+      "acceptance_timeout_seconds": 600,
+      "acceptance_phase": "implementation"
+    },
+    {
+      "id": "MR-02",
+      "title": "Hydrate live MR entitlement once per registration",
+      "description": "REQ-010, REQ-016, REQ-MR-001, REQ-MR-002, AC-001, AC-002 / Component: Authoritative MR eligibility. Modify AgentConfigService.getMultiRegionSettings, endPointMap.organizationSettings, decodeMultiRegionSettings and internal array types in existing Config files; add actual Webex body-envelope contract fixtures inline in current tests. Wire registration-scoped ContactCenter.hydrateMultiRegionSettings after Welcome and complete Profile without awaiting hydration at register completion. Keep first-element-only true/false/legacy/unknown semantics, treating an empty first object as unknown without searching later elements; republish existing snapshots only for actual metadata changes without inventing readiness; five attempts with 1/2/3/4-second waits; terminal reader auth failure stops only that cycle; cancellation and re-register invalidate old-org results. Characterize complete Profile aggregation before extending. MR-01 provides safe types/failure classification. Do not reread on ordinary/DR reconnect or introduce runtime configuration. All files are modifications.",
+      "files": [
+        "packages/@webex/contact-center/src/cc.ts",
+        "packages/@webex/contact-center/src/services/config/index.ts",
+        "packages/@webex/contact-center/src/services/config/types.ts",
+        "packages/@webex/contact-center/src/services/config/constants.ts",
+        "packages/@webex/contact-center/src/services/config/Util.ts",
+        "packages/@webex/contact-center/test/unit/spec/cc.ts",
+        "packages/@webex/contact-center/test/unit/spec/services/config/index.ts",
+        "packages/@webex/contact-center/test/unit/spec/services/config/Util.ts"
+      ],
+      "dependencies": [
+        "MR-01"
+      ],
+      "acceptance": "yarn workspace @webex/contact-center test:unit --targets '{services/config/index.ts,services/config/Util.ts,cc.ts}'",
+      "acceptance_timeout_seconds": 900,
+      "acceptance_phase": "implementation"
+    },
+    {
+      "id": "MR-03",
+      "title": "Bound admission and serialize ordinary and DR transport recovery",
+      "description": "REQ-006, REQ-011, REQ-MR-005, REQ-MR-006, REQ-MR-007, REQ-MR-008, AC-004, AC-005, AC-006, AC-007 / Component: Admission and reconnect scheduling; region parser portion of Component: Public recovery contracts. Extend WebSocketManager.initWebSocket/close/cancelPending/getServingRegion and attempt-local socket/worker/Blob ownership; enforce fresh subscribe plus existing wss/host and INT checks, 20-second subscribe and 30-second socket/Welcome deadlines. Replace overlapping ConnectionService interval with reset/pause/stop/recoverRegion single-attempt scheduling, keeping ordinary five-second slots/50-second watchdog and adding DR 100/60/30/15-second positive jitter waits. Use MR-01 subscription-only exact 409 classification, reject late installation and keep serving-region parsing separate from URL authorization with the exact 13-label registry. Delegate the broad AGENT_MULTI_LOGIN close to the ContactCenter current-session termination owner rather than closing every notification of that type. Redact signed URL/error logging on affected connect paths. Extend existing WS/connection suites with characterization, fake-clock, failure, supersession and listener/worker tests. MR-01 supplies normalized errors; no agent policy or new worker protocol in Core. All files are modifications. REQ-006 preservation uses the existing authenticated Webex request/refresh boundary and keeps ordinary recovery out of regional interruption, cleanup and station policy. T-003 preservesHostAuthentication and T-004 ordinaryReconnectDoesNotEnterDrPolicy characterize these boundaries.",
+      "files": [
+        "packages/@webex/contact-center/src/services/core/constants.ts",
+        "packages/@webex/contact-center/src/services/core/websocket/WebSocketManager.ts",
+        "packages/@webex/contact-center/src/services/core/websocket/connection-service.ts",
+        "packages/@webex/contact-center/src/services/core/websocket/types.ts",
+        "packages/@webex/contact-center/test/unit/spec/services/core/websocket/WebSocketManager.ts",
+        "packages/@webex/contact-center/test/unit/spec/services/core/websocket/connection-service.ts"
+      ],
+      "dependencies": [
+        "MR-01"
+      ],
+      "acceptance": "yarn workspace @webex/contact-center test:unit --targets 'services/core/websocket/{WebSocketManager,connection-service}.ts'",
+      "acceptance_timeout_seconds": 600,
+      "acceptance_phase": "implementation"
+    },
+    {
+      "id": "MR-04",
+      "title": "Interrupt AQM operations and correlate independent state requests",
+      "description": "REQ-006, REQ-MR-012, REQ-MR-013, REQ-MR-020, AC-012, AC-013 / Component: Request interruption and correlation. Extend AqmReqs.createPromise/onMessage ownership with one settle/cleanup function, retained rejects/timeout/abort handles, operation generations/kinds, optional trailing req/reqEmpty AbortSignal context and alias-owner checks; implement beginGeneration/setRecoveryGate/interruptPending, including timeout-disabled work. Services retains its AqmReqs instance. Extend routingAgent session/query/teardown kinds and stateChange optional requestId/context with trackingid header forwarding and nested data.trackingId binds, preserving body/public signatures and non-state binding semantics. Preserve status/numeric reason/tracking through affected station HTTP translation using compatible optional ErrDetails diagnostics. Extend existing AQM/agent/cc suites to characterize wiring, immediate rejection/no second timer, stale HTTP/alternate-cancel aliases, notification-before-HTTP and different notification/request IDs. MR-01 provides lifecycle errors; MR-03 provides current socket ownership. All files are modifications; no automatic request replay. The api_contracts metadata on this task serializes the inspected SDK adapter operation/allowed-value design for UX bindings. It is design metadata only, adds no product file, and creates no runtime or package-test dependency on the DAG. REQ-006 preservation keeps ordinary authentication/error translation, request bindings and Task/XState control ownership unchanged; only accepted regional recovery activates interruption/gating. T-008 ordinaryRequestAndTaskOwnershipUnchanged pins existing owner behavior.",
+      "files": [
+        "packages/@webex/contact-center/src/services/core/aqm-reqs.ts",
+        "packages/@webex/contact-center/src/services/core/types.ts",
+        "packages/@webex/contact-center/src/services/agent/index.ts",
+        "packages/@webex/contact-center/src/services/index.ts",
+        "packages/@webex/contact-center/test/unit/spec/services/core/aqm-reqs.ts",
+        "packages/@webex/contact-center/test/unit/spec/services/agent/index.ts",
+        "packages/@webex/contact-center/test/unit/spec/cc.ts"
+      ],
+      "dependencies": [
+        "MR-01",
+        "MR-03"
+      ],
+      "acceptance": "yarn workspace @webex/contact-center test:unit --targets '{services/core/aqm-reqs.ts,services/agent/index.ts,cc.ts}'",
+      "acceptance_timeout_seconds": 900,
+      "acceptance_phase": "implementation",
+      "api_contracts": {
+        "schema_version": 1,
+        "contract_kind": "sdk_adapter_design",
+        "authority": "Requirement-owned target constraints and inspected SDK adapter values; not a deployed backend/OpenAPI certification.",
+        "design_refs": [
+          "Component: Request interruption and correlation",
+          "Component: Station snapshot and restoration",
+          "Component: Deferred auto-Available"
+        ],
+        "source_evidence": [
+          {
+            "path": "requirement.md",
+            "sha256": "a3b4d3ae7a0163e1fb145f4a8b36a6a2858490a1544e6fca99561239f57a4bb5",
+            "locator": "REQ-MR-010, REQ-MR-012; AC-009, AC-011, AC-012",
+            "role": "requirement authority"
+          },
+          {
+            "path": "packages/@webex/contact-center/src/services/agent/index.ts",
+            "sha256": "5453dc4536c7c28f014dacec25eaf6a6c6be0c7605dc6a5efd1b7ce6e3c7db4a",
+            "locator": "routingAgent.stationLogin and routingAgent.stateChange",
+            "role": "inspected source baseline"
+          },
+          {
+            "path": "packages/@webex/contact-center/src/services/agent/types.ts",
+            "sha256": "1bdfbe380dc46a8c990f4f23aaf7529d369bca3973b90ab507caa4e54502fa81",
+            "locator": "StateChange; UserStationLogin; AgentState",
+            "role": "inspected source baseline"
+          },
+          {
+            "path": "packages/@webex/contact-center/src/types.ts",
+            "sha256": "90ebdaf85f90aaf7b5e9aec69bb336271b494c159682b2f9f340e6d771aa1a1d",
+            "locator": "LoginOption; AgentLogin",
+            "role": "inspected source baseline"
+          },
+          {
+            "path": "packages/@webex/contact-center/src/cc.ts",
+            "sha256": "f5393be9ae1391a5b70faf7d1516d6b97093e8466791ed3503e7dd7414b42943",
+            "locator": "stationLogin effective payload; silentRelogin disconnect-state action",
+            "role": "inspected source baseline"
+          },
+          {
+            "path": "packages/@webex/contact-center/src/services/config/constants.ts",
+            "sha256": "08f308e0dae4f172903daa51eac80595b8c60a0574c07ad1d41e046ca6614180",
+            "locator": "AGENT_STATE_AVAILABLE; AGENT_STATE_AVAILABLE_ID",
+            "role": "inspected source baseline"
+          },
+          {
+            "path": "packages/@webex/contact-center/src/services/core/aqm-reqs.ts",
+            "sha256": "9e5130d9cd63644cc450338d9ad44df83cc7dbb522c3b11f80914f7d4f92a1a7",
+            "locator": "createPromise default POST for a data-bearing request and body: c.data",
+            "role": "inspected source baseline"
+          }
+        ],
+        "operations": {
+          "stationLogin": {
+            "operationId": "routingAgent.stationLogin",
+            "public_entry": "ContactCenter.stationLogin(data: AgentLogin): Promise<StationLoginResponse>",
+            "adapter_source": "packages/@webex/contact-center/src/services/agent/index.ts",
+            "payload_type_source": "packages/@webex/contact-center/src/services/agent/types.ts#UserStationLogin",
+            "transport": {
+              "service": "wcc-api-gateway",
+              "method": "POST",
+              "resource": "/v1/agents/login",
+              "completion": "Existing AQM station-login success/failure notification binds; HTTP acknowledgment alone is not completion."
+            },
+            "preconditions": [
+              "Transport restored and manual station login admitted by ordered REQ-MR-012 policy.",
+              "Regional Task/session owners cleaned before accepting replacement-session data.",
+              "Current registration, organization, agent, station intent and request-generation guards apply."
+            ],
+            "request": {
+              "public_input_type": "AgentLogin",
+              "body_type": "UserStationLogin",
+              "body_mapping": "The service receives p.data; the HTTP request body is p.data with no additional data wrapper.",
+              "body_fields": {
+                "deviceType": {
+                  "type": "string",
+                  "allowed_values": [
+                    "BROWSER",
+                    "EXTENSION",
+                    "AGENT_DN"
+                  ],
+                  "mapping": "AgentLogin.loginOption via ContactCenter.buildStationLoginPayload; retain LoginOption values."
+                },
+                "teamId": {
+                  "type": "string",
+                  "nonblank": true,
+                  "mapping": "Accepted/validated AgentLogin.teamId."
+                },
+                "dialNumber": {
+                  "type": "string",
+                  "mapping": "BROWSER uses webrtc-{agentId}; DN/extension use the validated caller number."
+                },
+                "deviceId": {
+                  "type": "string",
+                  "mapping": "Existing ContactCenter.getDeviceId semantics."
+                },
+                "isExtension": {
+                  "type": "boolean",
+                  "mapping": "True only for EXTENSION."
+                },
+                "auxCodeId": {
+                  "type": "string",
+                  "allowed_values": [
+                    ""
+                  ],
+                  "mapping": "Existing SDK default-aux behavior for station login/fallback; restored state comes from backend responses."
+                }
+              }
+            },
+            "proof_obligations": [
+              "T-007 orderedPolicyCombinedCases and defaultAuxNotReplayed",
+              "T-013 additiveRecoveryExportsAndTypedConsumer",
+              "Keep existing station-login backend binds and public method types; do not add a backend operation."
+            ]
+          },
+          "automaticAvailable": {
+            "operationId": "routingAgent.stateChange",
+            "public_entry": "Internal ContactCenter.performAgentStateChange for source dr-auto; public setAgentState signature unchanged.",
+            "adapter_source": "packages/@webex/contact-center/src/services/agent/index.ts",
+            "payload_type_source": "packages/@webex/contact-center/src/services/agent/types.ts#StateChange",
+            "transport": {
+              "service": "wcc-api-gateway",
+              "method": "PUT",
+              "resource": "/v1/agents/session/state",
+              "completion": "Matching AQM agent-state success/failure notification under distinct request tracking; HTTP acknowledgment alone is not completion."
+            },
+            "preconditions": [
+              "Successful automatic DR reload with exact backend lastStateChangeReason agent-wss-disconnect.",
+              "Current recovery/station/session and captured state-intent revisions still match.",
+              "Existing browser-voice policy is ready or browser voice is not required; consume pending work and detach listener before dispatch."
+            ],
+            "request": {
+              "body_type": "StateChange",
+              "constraint_scope": "Only the conditional DR automatic action; the general existing StateChange API retains its broader state type.",
+              "body_mapping": "The service receives p.data; the HTTP request body is p.data with no additional data wrapper.",
+              "body_fields": {
+                "state": {
+                  "type": "string",
+                  "allowed_values": [
+                    "Available"
+                  ],
+                  "mapping": "Existing AGENT_STATE_AVAILABLE constant."
+                },
+                "auxCodeId": {
+                  "type": "string",
+                  "allowed_values": [
+                    "0"
+                  ],
+                  "mapping": "Existing AGENT_STATE_AVAILABLE_ID constant."
+                },
+                "lastStateChangeReason": {
+                  "type": "string",
+                  "allowed_values": [
+                    "agent-wss-disconnect"
+                  ],
+                  "mapping": "Use only the successful automatic reload result; never infer from elapsed time or a stale cache."
+                },
+                "agentId": {
+                  "type": "string",
+                  "mapping": "Authenticated agent identity from accepted current session."
+                }
+              },
+              "request_tracking": "MR-04 supplies one distinct trackingid header matched to notification data.trackingId; do not add a StateChange body field."
+            },
+            "proof_obligations": [
+              "T-007 exactDisconnectAutoStateOnly, voiceDeferredReadyAndSingleDispatch and timeoutLateReplyCannotCompleteExplicit",
+              "Retain authoritative backend state until correlated acknowledgment; no hidden Available retry or fabricated backend failure event."
+            ]
+          }
+        }
+      }
+    },
+    {
+      "id": "MR-05",
+      "title": "Fence Task commands and dispose owned media while preserving calling",
+      "description": "REQ-006, REQ-013, REQ-MR-013, REQ-MR-014, REQ-MR-015, REQ-MR-016, AC-013, AC-014, AC-015 / Component: Task invalidation and owned media and Component: Browser calling preservation. Add internal TaskRecoveryGuard and Task.bindRecoveryGuard/interruptOperations/runTaskOperation/invalidateForRegionRecovery/disposeRegionalResources; bind through every TaskFactory path and concrete private TaskManager collection/helper, with startSession/stopSession stored-handler ownership and guarded incoming-call mapping. Guard every mutating base/Voice/WebRTC/Digital entry plus wxApp multi-await/tail continuations and auto-answer/wrapup. Add TaskManager interruption and post-Welcome/manual-replacement invalidation through existing actor/control owners; implement pure disableTaskUIControls without synthetic terminal events. WebRTC tracks SDK-acquired streams and stops late/existing owned tracks without answer/end/host-track effects. Extend WebCallingService.ensureWebCallingLine with one in-flight preserve/ensure path, existing voice prerequisites and generation-aware cleanup. Characterize existing Task/XState/hydration/line behavior in existing suites and cover retained objects, wait-period media, wxApp continuations and healthy-line preservation. MR-04 supplies interruption/gate behavior; complete these owners before event coordination uses them. All files are modifications; public ITask required fields and control/event shapes stay compatible.",
+      "files": [
+        "packages/@webex/contact-center/src/services/task/Task.ts",
+        "packages/@webex/contact-center/src/services/task/TaskManager.ts",
+        "packages/@webex/contact-center/src/services/task/TaskFactory.ts",
+        "packages/@webex/contact-center/src/services/task/types.ts",
+        "packages/@webex/contact-center/src/services/task/voice/Voice.ts",
+        "packages/@webex/contact-center/src/services/task/voice/WebRTC.ts",
+        "packages/@webex/contact-center/src/services/task/voice/wxAppVoiceMethods.ts",
+        "packages/@webex/contact-center/src/services/task/digital/Digital.ts",
+        "packages/@webex/contact-center/src/services/task/state-machine/uiControlsComputer.ts",
+        "packages/@webex/contact-center/src/services/WebCallingService.ts",
+        "packages/@webex/contact-center/test/unit/spec/services/task/Task.ts",
+        "packages/@webex/contact-center/test/unit/spec/services/task/TaskManager.ts",
+        "packages/@webex/contact-center/test/unit/spec/services/task/TaskFactory.ts",
+        "packages/@webex/contact-center/test/unit/spec/services/task/voice/Voice.ts",
+        "packages/@webex/contact-center/test/unit/spec/services/task/voice/WebRTC.ts",
+        "packages/@webex/contact-center/test/unit/spec/services/task/voice/wxAppVoiceMethods.ts",
+        "packages/@webex/contact-center/test/unit/spec/services/task/digital/Digital.ts",
+        "packages/@webex/contact-center/test/unit/spec/services/task/state-machine/uiControlsComputer.ts",
+        "packages/@webex/contact-center/test/unit/spec/services/task/state-machine/TaskStateMachine.ts",
+        "packages/@webex/contact-center/test/unit/spec/services/WebCallingService.ts"
+      ],
+      "dependencies": [
+        "MR-04"
+      ],
+      "acceptance": "yarn workspace @webex/contact-center test:unit --targets 'services/{task/**/*.ts,WebCallingService.ts}'",
+      "acceptance_timeout_seconds": 1200,
+      "acceptance_phase": "implementation"
+    },
+    {
+      "id": "MR-06",
+      "title": "Coordinate switch acceptance and restore the accepted station session",
+      "description": "REQ-006, REQ-003, REQ-004, REQ-009, REQ-012, REQ-017, REQ-019, REQ-MR-003, REQ-MR-004, REQ-MR-009, REQ-MR-010, REQ-MR-011, REQ-MR-012, REQ-MR-013, REQ-MR-018, REQ-MR-019, AC-003, AC-007, AC-009, AC-010, AC-011, AC-017, AC-018 / Component: Switch coordination and lifecycle cancellation; Component: Station snapshot and restoration; SDK half of Component: Host restart integration. Modify ContactCenter.handleWebsocketMessage/register/deregister/stationLogout/stationLogin/silentRelogin/handleConnectionLost/handleDeviceType/updateAgentProfile and add named context/snapshot/restoration helpers. Validate org/IDs, maintain registration-scoped FIFO/Set of 128 accepted switch IDs, ignore unknown without replay and stop both transports for disabled while retaining calling. Install MR-04/MR-05 protections before recovering callbacks/socket close/DR wait, then recheck generation for reentrant termination. Save only accepted station state; run ordered prior-station/automation/config policy after Welcome, post-Welcome/manual replacement cleanup, normalized reload allowlist retries 2/4/8 seconds, fallback and one 1035 reload. Apply backend state/team/timestamps/wellness/Webex App effects; preserve line on DR; publish complete snapshots and subscription-mismatch register rejection exactly once. Correct preemptive cached Available in shared silentRelogin application without adding DR deferral to ordinary reconnect. Extend existing cc tests with every ordered-policy/fallback/race and real owner-call assertions. Dependencies provide current entitlement, settled transport and finished command/media owners. All files are modifications. REQ-006 preservation retains ordinary authenticated silentRelogin, existing calling policy and Task controls, with no regional Task/store/media wipe or DR deferral. T-007 ordinaryReloginKeepsTasksAndAuth and manualLoginFailureStaysManualAndSuccessReady use real owner calls.",
+      "files": [
+        "packages/@webex/contact-center/src/cc.ts",
+        "packages/@webex/contact-center/test/unit/spec/cc.ts"
+      ],
+      "dependencies": [
+        "MR-02",
+        "MR-03",
+        "MR-05"
+      ],
+      "acceptance": "yarn workspace @webex/contact-center test:unit --targets cc.ts",
+      "acceptance_timeout_seconds": 900,
+      "acceptance_phase": "implementation"
+    },
+    {
+      "id": "MR-07",
+      "title": "Coordinate conditional auto-Available with voice and explicit intent",
+      "description": "REQ-020, REQ-MR-012, AC-012 / Component: Deferred auto-Available. Modify ContactCenter.setAgentState and shared accepted-state application, add armAutoAvailable/dispatchAutoAvailable/cancelAutoAvailable/performAgentStateChange, one state-change tail, DR-entry intent revision and one named voice listener. Arm only exact successful automatic reload agent-wss-disconnect; report waitingForVoice/requesting/succeeded/failed/cancelled separately from ready, consume/detach before dispatch and rearm only proven local pre-dispatch voice races. Preserve backend state until matching acknowledgment and reconcile later authoritative events without old automatic responses settling explicit requests or overwriting newer accepted state. Explicit intent cancels synchronously even during reload; dispatch after a sent automatic operation settles with MR-04 correlation. Extend cc suite for all outcomes, voice double callbacks, timeout/late reply, before-arm/during-flight intent and lifecycle/session cancellations. MR-06 supplies accepted station/session generations and MR-04 is transitively available. All files are modifications; no state body field or polling/retry driver added.",
+      "files": [
+        "packages/@webex/contact-center/src/cc.ts",
+        "packages/@webex/contact-center/test/unit/spec/cc.ts"
+      ],
+      "dependencies": [
+        "MR-06"
+      ],
+      "acceptance": "yarn workspace @webex/contact-center test:unit --targets cc.ts",
+      "acceptance_timeout_seconds": 900,
+      "acceptance_phase": "implementation"
+    },
+    {
+      "id": "MR-08",
+      "title": "Restore owned RTD and finish teardown and re-registration integration",
+      "description": "REQ-MR-017, REQ-MR-019, AC-016, AC-018 / Component: Realtime restoration and Component: Switch coordination and lifecycle cancellation. Factor ContactCenter.shouldSubscribeRtd/pauseRtd/resumeRtd using the full existing five-feature condition, fresh admission and RTD epochs; resume after session recovery or no-prior-station transport recovery while containing failure. Extend TaskManager stored listener ownership and summary/enablement clearing; extend ApiAiAssistant.clearAllRtdRequests optional error and setRecoveryGuard to fence late HTTP/RTD/summary/transcript work. Finish same-reference detach/reset/reattach across register/deregister/multi-login/identity and both transports after MR-07 adds the auto-state listener. Extend cc/ApiAiAssistant/TaskManager suites for stale feature/wellness/summary deliveries, no-prior vs prior manual policy, failure containment and listener cardinality through re-register. Depends on the completed station/auto-state lifecycle so realtime work cannot attach to an obsolete session. All files are modifications; no separate RTD interval or new feed.",
+      "files": [
+        "packages/@webex/contact-center/src/cc.ts",
+        "packages/@webex/contact-center/src/services/task/TaskManager.ts",
+        "packages/@webex/contact-center/src/services/ApiAiAssistant.ts",
+        "packages/@webex/contact-center/test/unit/spec/cc.ts",
+        "packages/@webex/contact-center/test/unit/spec/services/task/TaskManager.ts",
+        "packages/@webex/contact-center/test/unit/spec/services/ApiAiAssistant.ts"
+      ],
+      "dependencies": [
+        "MR-07"
+      ],
+      "acceptance": "yarn workspace @webex/contact-center test:unit --targets '{cc.ts,services/ApiAiAssistant.ts,services/task/TaskManager.ts}'",
+      "acceptance_timeout_seconds": 900,
+      "acceptance_phase": "implementation"
+    },
+    {
+      "id": "MR-09",
+      "title": "Complete safe diagnostics, tested host guidance and product integration",
+      "description": "REQ-007, REQ-008, REQ-022, REQ-024, REQ-025, REQ-MR-009, REQ-MR-020, REQ-MR-021, AC-008, AC-019, AC-020 / Component: Failure isolation and diagnostics; Component: Host restart integration; product/host portion of Component: Documentation and engineering verification. Extend ContactCenter.recordRecoveryDiagnostic and affected observer/cleanup catches; add recovery metric pair/taxonomy and method constants without renaming old metrics. Test redaction and throwing logger/metrics/observers across actual ContactCenter/Services/AQM/TaskManager wiring (T-012/T-013). Update existing package README/getting-started with recovery/rollout/release responsibilities and the exact extractable decideRegionRestart example; execute that example from existing cc/index suites across its org/tab 120-second storage policy (T-006). T-013 docContractLinksAndExactHostExample checks these delivered host guidance/API links and typed public contracts, without depending on later canonical registration. MR-08 completes product behaviors before these controlled integration/compatibility checks. This product node has no independent-validation prerequisite; missing canonical integration must not block these changes or MR-10. Canonical architecture/module specs, registry and manifest runtime/content-fingerprint provenance belong to the separate MR-11 node. Git-derived validation.source_commit/base_ref and other commit/branch provenance are flow-owned delivery metadata, left unchanged; this node must not create or inspect commits or derive Git references. Keep authoritative positive wire fixtures, independent-reader isolation proof, compatibility review and AC-021 live results as separate release evidence; do not manufacture live results. All files are modifications; no host UI/browser scaffold, package/config/lockfile change or new canonical module.",
+      "files": [
+        "packages/@webex/contact-center/src/cc.ts",
+        "packages/@webex/contact-center/src/constants.ts",
+        "packages/@webex/contact-center/src/metrics/constants.ts",
+        "packages/@webex/contact-center/src/metrics/behavioral-events.ts",
+        "packages/@webex/contact-center/test/unit/spec/cc.ts",
+        "packages/@webex/contact-center/test/unit/spec/index.ts",
+        "packages/@webex/contact-center/test/unit/spec/services/core/Utils.ts",
+        "packages/@webex/contact-center/test/unit/spec/services/core/websocket/WebSocketManager.ts",
+        "packages/@webex/contact-center/test/unit/spec/metrics/behavioral-events.ts",
+        "packages/@webex/contact-center/test/unit/spec/metrics/MetricsManager.ts",
+        "packages/@webex/contact-center/README.md",
+        "packages/@webex/contact-center/docs/getting-started.md"
+      ],
+      "dependencies": [
+        "MR-08"
+      ],
+      "acceptance": "yarn workspace @webex/contact-center test:unit --targets '{cc.ts,index.ts,services/core/Utils.ts,services/core/websocket/WebSocketManager.ts,metrics/*.ts}'",
+      "acceptance_timeout_seconds": 1200,
+      "acceptance_phase": "implementation"
+    },
+    {
+      "id": "MR-10",
+      "title": "Verify package build, full unit coverage and style compatibility",
+      "description": "REQ-023, REQ-025, REQ-MR-001, REQ-MR-002, REQ-MR-003, REQ-MR-004, REQ-MR-005, REQ-MR-006, REQ-MR-007, REQ-MR-008, REQ-MR-009, REQ-MR-010, REQ-MR-011, REQ-MR-012, REQ-MR-013, REQ-MR-014, REQ-MR-015, REQ-MR-016, REQ-MR-017, REQ-MR-018, REQ-MR-019, REQ-MR-020, REQ-MR-021, AC-001, AC-002, AC-003, AC-004, AC-005, AC-006, AC-007, AC-008, AC-009, AC-010, AC-011, AC-012, AC-013, AC-014, AC-015, AC-016, AC-017, AC-018, AC-019, AC-020 / Component: Documentation and engineering verification and Test Strategy. Product verification only: files lists the existing package script, TypeScript and Jest configuration inputs checked by this node; do not modify those files. After MR-09 completes product code/tests and the tested host guide, independently of MR-11 canonical documentation and its flow validation, execute the documented package build:src, full test:unit with existing 85-percent thresholds, then test:style in order. All T-001 through T-013 scenarios must be discovered/executed; keep prerequisite/baseline failures distinct and do not suppress them. This build also checks @webex/calling output and Contact Center declaration compatibility. No live tenant, host UI, browser/audio fixture or AC-021 execution belongs to local acceptance; release remains incomplete until QA/platform live evidence is actually collected. Only the package-scoped MR-01 through MR-10 commands are SDK product acceptance. Root flow yarn run build/yarn run test and runner-owned installation/compilation are not required acceptance. Report any MR-11 integration/validation gate result separately; it cannot prevent this node from running.",
+      "files": [
+        "packages/@webex/contact-center/package.json",
+        "packages/@webex/contact-center/tsconfig.json",
+        "packages/@webex/contact-center/jest.config.js"
+      ],
+      "dependencies": [
+        "MR-09"
+      ],
+      "acceptance": "yarn workspace @webex/contact-center build:src && yarn workspace @webex/contact-center test:unit && yarn workspace @webex/contact-center test:style",
+      "acceptance_timeout_seconds": 3600,
+      "acceptance_phase": "implementation"
+    },
+    {
+      "id": "MR-11",
+      "title": "Update canonical recovery contracts with independent validation",
+      "description": "REQ-002, REQ-008, REQ-022, REQ-023, REQ-024, REQ-025 / Component: Documentation and engineering verification. After MR-09 product diagnostics/host guidance/integration is complete, update only the existing architecture contract index, eight owning module specifications, docs/specs registry and .sdd/manifest.json contract registration plus runtime/content-fingerprint provenance. Preserve authored as-built meaning, add WHAT/WHY, signatures, lifecycle/failure behavior and named T-001 through T-013 evidence references, keep every module Partial, add no module and do not recreate historical ai-docs. Record only actual flow-supplied generator/validator runtime/model/run identity and current source/spec content fingerprints. Git-derived validation.source_commit, validation.base_ref and every other commit- or branch-keyed provenance field are flow-owned delivery metadata and must remain unchanged; implementors must not set/derive those values, create or inspect commits, or claim historical Git fields identify current uncommitted content. No acceptance or prerequisite depends on commit/branch metadata. The authorized independent-validation prerequisite applies only to this node; a missing receipt/integration is a canonical-stage environment/gate result, not a product failure and cannot block MR-09 or MR-10. Run the read-only documentation/registry consistency acceptance separately from SDK product tests. The flow must also execute actual generator conformance and authorized different-runtime semantic validation on current content fingerprints, covering C1-C6/K1-K4/X1-X3 with no Blocking findings and retained other findings before this canonical stage completes; the preflight and structural command alone cannot satisfy that requirement. Keep validation findings as drafts and independently report environment/baseline/product/canonical/live results. Preserve release requirements for authoritative fixture, isolation/compatibility evidence and human AC-021; no live evidence is manufactured. No product source/test, host-example, dependency or config changes belong to this node.",
+      "files": [
+        "packages/@webex/contact-center/docs/architecture.md",
+        "packages/@webex/contact-center/docs/specs/README.md",
+        "packages/@webex/contact-center/src/docs/README.md",
+        "packages/@webex/contact-center/src/metrics/docs/README.md",
+        "packages/@webex/contact-center/src/services/docs/README.md",
+        "packages/@webex/contact-center/src/services/agent/docs/README.md",
+        "packages/@webex/contact-center/src/services/config/docs/README.md",
+        "packages/@webex/contact-center/src/services/core/docs/README.md",
+        "packages/@webex/contact-center/src/services/task/docs/README.md",
+        "packages/@webex/contact-center/src/services/task/state-machine/docs/README.md",
+        "packages/@webex/contact-center/.sdd/manifest.json"
+      ],
+      "dependencies": [
+        "MR-09"
+      ],
+      "acceptance": "node -e 'const fs=require('\"'\"'fs'\"'\"'),path=require('\"'\"'path'\"'\"'),a=require('\"'\"'assert'\"'\"'); const base='\"'\"'packages/@webex/contact-center'\"'\"'; const m=JSON.parse(fs.readFileSync(path.join(base,'\"'\"'.sdd/manifest.json'\"'\"'),'\"'\"'utf8'\"'\"')); a.strictEqual(m.contract_catalog.index_path,'\"'\"'docs/architecture.md'\"'\"'); a(m.contract_catalog.definitions['\"'\"'contact-center-region-recovery'\"'\"'],'\"'\"'Missing recovery contract registration'\"'\"'); const docs=[\"docs/architecture.md\",\"docs/specs/README.md\",\"src/docs/README.md\",\"src/metrics/docs/README.md\",\"src/services/docs/README.md\",\"src/services/agent/docs/README.md\",\"src/services/config/docs/README.md\",\"src/services/core/docs/README.md\",\"src/services/task/docs/README.md\",\"src/services/task/state-machine/docs/README.md\"]; for(const file of docs) a(fs.readFileSync(path.join(base,file),'\"'\"'utf8'\"'\"').trim(),file); a(fs.readFileSync(path.join(base,m.contract_catalog.index_path),'\"'\"'utf8'\"'\"').includes('\"'\"'contact-center-region-recovery'\"'\"'),'\"'\"'Contract index missing recovery ID'\"'\"'); for(const mod of m.modules.filter(mod=>docs.includes(mod.canonical_spec))) a.strictEqual(mod.coverage_status,'\"'\"'Partial'\"'\"',mod.path); console.log('\"'\"'Canonical documentation/registry consistency checked; actual current conformance, content fingerprints and independent semantic validation remain required flow-owned stage evidence'\"'\"');'",
+      "acceptance_timeout_seconds": 60,
+      "acceptance_phase": "implementation",
+      "prerequisites": [
+        {
+          "kind": "service",
+          "name": "authorized-independent-canonical-spec-validation",
+          "required": true,
+          "check_command": [
+            "node",
+            "-e",
+            "const fs=require('fs'),a=require('assert'); const file=process.env.CCSDK_VALIDATION_PREFLIGHT; a(file,'Missing flow-owned independent-validation preflight receipt'); const r=JSON.parse(fs.readFileSync(file,'utf8')); a.strictEqual(r.schema_version,1); for(const k of ['authorized','integration_checked','repository_access']) a.strictEqual(r[k],true,k); a.strictEqual(r.target_package,'packages/@webex/contact-center'); a.strictEqual(r.minimum_independence,'different-runtime'); for(const k of ['generator_runtime','validator_runtime']) a(typeof r[k]==='string'&&r[k].trim(),k); a.notStrictEqual(r.generator_runtime,r.validator_runtime); const m=JSON.parse(fs.readFileSync('packages/@webex/contact-center/.sdd/manifest.json','utf8')); a.strictEqual(m.validation.minimum_independence,'different-runtime'); console.log('Independent-validation integration preflight declared; current semantic validation remains flow-owned');"
+          ],
+          "working_directory": ".",
+          "timeout_seconds": 15,
+          "required_env": [
+            "CCSDK_VALIDATION_PREFLIGHT"
+          ],
+          "fix_hint": "At MR-11 only, the flow owner resolves/probes an authorized validator on a runtime different from the current generator, verifies repository access and current runtime identities/source-spec content fingerprints, and supplies CCSDK_VALIDATION_PREFLIGHT as defined in Cross-Cutting Concerns. Missing integration is an environment/gate result for the canonical-spec stage, independent of MR-09/MR-10 product work. Do not copy historical validator UUIDs or create a receipt from same-runtime self-review. Do not create/inspect commits, set/derive validation.source_commit or base_ref, or require commit/branch metadata. The runner separately executes actual current canonical conformance and independent semantic validation; this prerequisite alone is not review evidence."
+        }
+      ]
+    }
+  ],
+  "prerequisites": [
+    {
+      "kind": "service",
+      "name": "authorized-library-only-ux-evidence",
+      "required": true,
+      "check_command": [
+        "node",
+        "-e",
+        "const fs=require('fs'),crypto=require('crypto'),a=require('assert'); const file=process.env.CCSDK_UX_PREFLIGHT; a(file,'Environment/gate: missing flow-owned library-only UX admission receipt'); const r=JSON.parse(fs.readFileSync(file,'utf8')); const ux=JSON.parse(fs.readFileSync('design/default/implementation_dag.json','utf8')).ux_contract; a.strictEqual(r.schema_version,1); for(const k of ['authorized','integration_checked','repository_access','library_scope_accepted','ux_required']) a.strictEqual(r[k],true,k); a.strictEqual(r.target_package,'packages/@webex/contact-center'); a.strictEqual(r.basis,'requirements_design'); a.strictEqual(r.evidence_mode,'non-visual-jest'); a.strictEqual(r.rendered_captures_required,false); a.strictEqual(r.raw_render_required,false); a.strictEqual(r.source_contract_sha256,ux.source_contract_sha256); a.strictEqual(r.requirement_sha256,ux.requirement_sha256); a.strictEqual(crypto.createHash('sha256').update(fs.readFileSync('requirement.md')).digest('hex'),ux.requirement_sha256); a(ux.states.every(s=>s.basis==='requirements_design')); a(Array.isArray(r.accepted_state_ids),'accepted_state_ids'); a.deepStrictEqual([...r.accepted_state_ids].sort(),ux.states.map(s=>s.state_id).sort()); console.log('Flow admitted all library UX states with named non-visual Jest evidence, without raw-render or rendered captures; product evidence remains to execute');"
+      ],
+      "working_directory": ".",
+      "timeout_seconds": 15,
+      "required_env": [
+        "CCSDK_UX_PREFLIGHT"
+      ],
+      "fix_hint": "Before MR-01 or any task, the flow owner must resolve/probe the frontend evidence capability conflict and supply a current CCSDK_UX_PREFLIGHT receipt accepting all eleven requirements_design SDK/library states with assertion-by-assertion named Jest evidence, without raw-render.json or rendered browser PNG/DOM/mount/visible-control captures. Use the schema/hashes/state IDs defined in Cross-Cutting Concerns. Missing/incompatible receipt or a runner that still mandates rendered captures is an environment/gate result, not a feature-test pass. Implementors must not manufacture this receipt, synthesize a host UI or use CCSDK_VALIDATION_PREFLIGHT as UX admission; ux_required stays true."
+    },
+    {
+      "kind": "tool",
+      "name": "Node 22.14 development runtime",
+      "command": "node",
+      "check_command": [
+        "node",
+        "--version"
+      ],
+      "version_regex": "^v22\\.14\\.\\d+\\s*$",
+      "required": true,
+      "working_directory": ".",
+      "timeout_seconds": 10,
+      "fix_hint": "Runner selects the installed Node 22.14.x runtime using the repository nvm instructions before product acceptance. A PATH mismatch is an environment failure; do not relax the version or edit SDK configuration."
+    },
+    {
+      "kind": "tool",
+      "name": "Yarn 3.4.1 workspace package manager",
+      "command": "yarn",
+      "check_command": [
+        "yarn",
+        "--version"
+      ],
+      "version_regex": "^3\\.4\\.1\\s*$",
+      "required": true,
+      "working_directory": ".",
+      "timeout_seconds": 15,
+      "fix_hint": "Use the repository-pinned Yarn release; runner-owned dependency preparation must finish before tests. Do not assume network or package installation access."
+    },
+    {
+      "kind": "tool",
+      "name": "Installed and compiled local legacy SDK test/build dependencies",
+      "command": "node",
+      "check_command": [
+        "node",
+        "-e",
+        "const fs=require('fs'),path=require('path'),a=require('assert'); const base=path.resolve('packages/@webex/contact-center'); fs.accessSync(base,fs.constants.R_OK); const pkg=JSON.parse(fs.readFileSync(path.join(base,'package.json'),'utf8')); for(const k of ['build:src','test:unit','test:style']) a(pkg.scripts[k],k); const modules=['@webex/legacy-tools','@webex/calling','@webex/webex-core','@webex/internal-plugin-mercury','@webex/internal-plugin-metrics','@webex/internal-plugin-support','@webex/plugin-authorization','@webex/plugin-logger','@webex/test-helper-mock-webex','jest','typescript','@babel/core','babel-jest','eslint','jest-junit','jest-html-reporters']; for(const m of modules) { const entry=require.resolve(m,{paths:[base]}); fs.accessSync(entry,fs.constants.R_OK); } for(const [m,v] of [['jest','27.5.1'],['typescript','5.4.5']]) a.strictEqual(JSON.parse(fs.readFileSync(require.resolve(m+'/package.json',{paths:[base]}),'utf8')).version,v,m); console.log('Local legacy build/Jest/TypeScript/calling workspace entries readable; controlled unit boundaries require no daemon or live tenant');"
+      ],
+      "required": true,
+      "working_directory": ".",
+      "timeout_seconds": 20,
+      "fix_hint": "Runner prepares the documented Yarn workspace dependencies and, on a fresh/outdated build, the documented contact-center compile command, then repeats this read-only availability probe. Legacy CLI/Babel, Jest 27, TypeScript 5.4.5, calling and mock Webex package entry points must exist. All platform/calling/Worker/media boundaries in local acceptance are controlled in-process fixtures; no external service, browser driver or live credentials are implicit. Dependency installation and root postinstall patch-package/husky install, including the core.hooksPath write to .git/config, are flow/runner-owned preparation only; neither installation nor dependency compilation is task acceptance or part of this read-only probe. Root flow yarn run build/yarn run test are not required by this package design."
+    }
+  ],
+  "ux_contract": {
+    "schema_version": 1,
+    "source_contract_sha256": "1151b7dc4cef69caded68a5958263ceaddc852ec8de66193f8994406ad05c3e2",
+    "requirement_sha256": "a3b4d3ae7a0163e1fb145f4a8b36a6a2858490a1544e6fca99561239f57a4bb5",
+    "observations": [],
+    "states": [
+      {
+        "screen_id": "contact-center-sdk-contract",
+        "state_id": "recovering",
+        "route_or_story": "@webex/contact-center library entry src/index.ts; no production route, rendered screen or story",
+        "basis": "requirements_design",
+        "source_ids": [],
+        "observation_ids": [],
+        "requirement_refs": [
+          "REQ-MR-013"
+        ],
+        "design_refs": [
+          "Component: Switch coordination and lifecycle cancellation"
+        ],
+        "derivation_reason": "No host UI screen is supplied. This binding describes the SDK API state derived from the cited requirement and design, without inventing a visual source or waiving ux_required. Written authority: root requirement.md, SHA-256 a3b4d3ae7a0163e1fb145f4a8b36a6a2858490a1544e6fca99561239f57a4bb5; source ID ux-requirement-description is prose only and intentionally not a visual source binding. Non-visual evidence is owned assertion-by-assertion by the named Jest scenarios in Test Strategy, with suite paths relative to test/unit/spec/. Required root CCSDK_UX_PREFLIGHT admission must confirm that the flow supports this library-only evidence without raw-render or rendered captures; implementors cannot generate that admission receipt.",
+        "owner_task_ids": [
+          "MR-04",
+          "MR-06",
+          "MR-08"
+        ],
+        "controls": [
+          {
+            "control_id": "region-state-event",
+            "kind": "region",
+            "label": "region:stateChange",
+            "effect": "Emit recovering only after synchronous old-work interruption, guards and RTD pause.",
+            "required": true,
+            "requirement_ref": "REQ-MR-013"
+          }
+        ],
+        "api_bindings": [],
+        "assertions": [
+          "RECOVERY_INTERRUPTED settles pending old AQM operations before any socket close or first DR wait. [Jest evidence: MR-04/MR-06; T-008 services/core/aqm-reqs.ts::entryInterruptBefore100sWait.]",
+          "Conflicting commands reject RECOVERY_IN_PROGRESS; getters/logout/deregister remain callable. [Jest evidence: MR-06; T-008 cc.ts::recoveringCommandsBlockedBeforeIo and cc.ts::manualLoginAndGettersAllowed.]",
+          "Reentrant teardown from the observer prevents scheduling or closing a replacement session. [Jest evidence: MR-06/MR-08; T-012 cc.ts::observerReentrantLogoutDeregister.]"
+        ]
+      },
+      {
+        "screen_id": "contact-center-sdk-contract",
+        "state_id": "ready",
+        "route_or_story": "@webex/contact-center library entry src/index.ts; no production route, rendered screen or story",
+        "basis": "requirements_design",
+        "source_ids": [],
+        "observation_ids": [],
+        "requirement_refs": [
+          "REQ-MR-018",
+          "`ready` requires a restored/logged-in station session."
+        ],
+        "design_refs": [
+          "Component: Public recovery contracts"
+        ],
+        "derivation_reason": "No host UI screen is supplied. This binding describes the SDK API state derived from the cited requirement and design, without inventing a visual source or waiving ux_required. Written authority: root requirement.md, SHA-256 a3b4d3ae7a0163e1fb145f4a8b36a6a2858490a1544e6fca99561239f57a4bb5; source ID ux-requirement-description is prose only and intentionally not a visual source binding. Non-visual evidence is owned assertion-by-assertion by the named Jest scenarios in Test Strategy, with suite paths relative to test/unit/spec/. Required root CCSDK_UX_PREFLIGHT admission must confirm that the flow supports this library-only evidence without raw-render or rendered captures; implementors cannot generate that admission receipt.",
+        "owner_task_ids": [
+          "MR-06",
+          "MR-07",
+          "MR-08"
+        ],
+        "controls": [
+          {
+            "control_id": "region-state-event",
+            "kind": "region",
+            "label": "region:stateChange",
+            "effect": "Publish complete station-ready snapshot independently of voice readiness and auto-Available.",
+            "required": true,
+            "requirement_ref": "REQ-MR-018"
+          }
+        ],
+        "api_bindings": [],
+        "assertions": [
+          "No ready on socket-open/Welcome alone. [Jest evidence: MR-06; T-007 cc.ts::noEarlyReady; T-011 cc.ts::socketOnlyNeverReady.]",
+          "Omitted metadata clears old values; limitedService is present only with enabled eligibility and known home/serving regions. [Jest evidence: MR-06; T-011 cc.ts::unknownMetadataClearsPriorValues and cc.ts::enabledOnlyLimitedService.]",
+          "Ready does not claim Available, migrated ongoing-call audio or supported RTD success. [Jest evidence: MR-06/MR-07/MR-08; T-007 cc.ts::voiceDeferredReadyAndSingleDispatch; T-010 cc.ts::rtdFailureLeavesCoreReady; T-011 cc.ts::completeSnapshotEachAutoOutcome.]"
+        ]
+      },
+      {
+        "screen_id": "contact-center-sdk-contract",
+        "state_id": "stationLoginRequired",
+        "route_or_story": "@webex/contact-center library entry src/index.ts; no production route, rendered screen or story",
+        "basis": "requirements_design",
+        "source_ids": [],
+        "observation_ids": [],
+        "requirement_refs": [
+          "REQ-MR-012"
+        ],
+        "design_refs": [
+          "Component: Station snapshot and restoration"
+        ],
+        "derivation_reason": "No host UI screen is supplied. This binding describes the SDK API state derived from the cited requirement and design, without inventing a visual source or waiving ux_required. Written authority: root requirement.md, SHA-256 a3b4d3ae7a0163e1fb145f4a8b36a6a2858490a1544e6fca99561239f57a4bb5; source ID ux-requirement-description is prose only and intentionally not a visual source binding. Non-visual evidence is owned assertion-by-assertion by the named Jest scenarios in Test Strategy, with suite paths relative to test/unit/spec/. Required root CCSDK_UX_PREFLIGHT admission must confirm that the flow supports this library-only evidence without raw-render or rendered captures; implementors cannot generate that admission receipt.",
+        "owner_task_ids": [
+          "MR-06"
+        ],
+        "controls": [
+          {
+            "control_id": "region-state-event",
+            "kind": "region",
+            "label": "region:stateChange",
+            "effect": "Publish ordered manual-login reason and retain complete Profile.",
+            "required": true,
+            "requirement_ref": "REQ-MR-012"
+          },
+          {
+            "control_id": "station-login-api",
+            "kind": "action",
+            "label": "stationLogin()",
+            "effect": "Permit manual station login after transport restoration and clean up Task/session owners before replacement data.",
+            "required": true,
+            "requirement_ref": "REQ-MR-012"
+          }
+        ],
+        "api_bindings": [
+          {
+            "control_id": "station-login-api",
+            "contract_path": "design/default/implementation_dag.json",
+            "operation_id": "routingAgent.stationLogin",
+            "effect": "Permit manual station login after transport restoration and clean up Task/session owners before replacement data.",
+            "value_pointer": "/tasks/3/api_contracts/operations/stationLogin/request/body_fields/deviceType/allowed_values",
+            "value": "BROWSER"
+          },
+          {
+            "control_id": "station-login-api",
+            "contract_path": "design/default/implementation_dag.json",
+            "operation_id": "routingAgent.stationLogin",
+            "effect": "Permit manual station login after transport restoration and clean up Task/session owners before replacement data.",
+            "value_pointer": "/tasks/3/api_contracts/operations/stationLogin/request/body_fields/deviceType/allowed_values",
+            "value": "EXTENSION"
+          },
+          {
+            "control_id": "station-login-api",
+            "contract_path": "design/default/implementation_dag.json",
+            "operation_id": "routingAgent.stationLogin",
+            "effect": "Permit manual station login after transport restoration and clean up Task/session owners before replacement data.",
+            "value_pointer": "/tasks/3/api_contracts/operations/stationLogin/request/body_fields/deviceType/allowed_values",
+            "value": "AGENT_DN"
+          }
+        ],
+        "assertions": [
+          "No prior station takes precedence over automation disabled, then missing snapshot. [Jest evidence: MR-06; T-007 cc.ts::orderedPolicyCombinedCases.]",
+          "No automatic session request is dispatched for an earlier manual branch. [Jest evidence: MR-06; T-007 cc.ts::orderedPolicyCombinedCases (zero automatic requests on each earlier manual branch).]",
+          "A failed manual operation remains manual; successful backend station login may publish ready. [Jest evidence: MR-06; T-007 cc.ts::manualLoginFailureStaysManualAndSuccessReady; T-011 cc.ts::firstStationLoginReady.]"
+        ]
+      },
+      {
+        "screen_id": "host-integration-contract",
+        "state_id": "reloadRequired",
+        "route_or_story": "@webex/contact-center library entry src/index.ts; no production route, rendered screen or story",
+        "basis": "requirements_design",
+        "source_ids": [],
+        "observation_ids": [],
+        "requirement_refs": [
+          "REQ-MR-008",
+          "REQ-MR-009"
+        ],
+        "design_refs": [
+          "Component: Host restart integration"
+        ],
+        "derivation_reason": "No host UI screen is supplied. This binding describes the SDK API state derived from the cited requirement and design, without inventing a visual source or waiving ux_required. Written authority: root requirement.md, SHA-256 a3b4d3ae7a0163e1fb145f4a8b36a6a2858490a1544e6fca99561239f57a4bb5; source ID ux-requirement-description is prose only and intentionally not a visual source binding. Non-visual evidence is owned assertion-by-assertion by the named Jest scenarios in Test Strategy, with suite paths relative to test/unit/spec/. Required root CCSDK_UX_PREFLIGHT admission must confirm that the flow supports this library-only evidence without raw-render or rendered captures; implementors cannot generate that admission receipt.",
+        "owner_task_ids": [
+          "MR-06",
+          "MR-09"
+        ],
+        "controls": [
+          {
+            "control_id": "region-state-event",
+            "kind": "region",
+            "label": "region:stateChange",
+            "effect": "Publish reloadRequired/region-mismatch once for a recognized subscription 409.",
+            "required": true,
+            "requirement_ref": "REQ-MR-008"
+          },
+          {
+            "control_id": "host-restart-policy",
+            "kind": "navigation",
+            "label": "host restart",
+            "effect": "Document guard with sessionStorage before navigation; repeated/unsafe storage condition surfaces failure without restart loops.",
+            "required": true,
+            "requirement_ref": "REQ-MR-008"
+          }
+        ],
+        "api_bindings": [],
+        "assertions": [
+          "SDK does not call window.location.reload and exposes no rollback/failover endpoint. [Jest evidence: MR-06/MR-09; T-005 cc.ts::registerRejectAndSingleReloadSnapshot; T-006 cc.ts::firstRestartStoredBeforeNavigation.]",
+          "Initial registration rejects REGION_RELOAD_REQUIRED independently of event observers. [Jest evidence: MR-06; T-005 cc.ts::registerRejectAndSingleReloadSnapshot.]",
+          "Exact example permits at most one restart per authenticated org/tab per 120 seconds, failing closed if guard persistence is unavailable. [Jest evidence: MR-09; T-006 cc.ts::perOrgPerTabPersistsAcrossReloadContexts, cc.ts::119999Blocked120000Allowed and cc.ts::clockRollbackAndStorageFailureBlocked.]"
+        ]
+      },
+      {
+        "screen_id": "contact-center-sdk-contract",
+        "state_id": "unavailable",
+        "route_or_story": "@webex/contact-center library entry src/index.ts; no production route, rendered screen or story",
+        "basis": "requirements_design",
+        "source_ids": [],
+        "observation_ids": [],
+        "requirement_refs": [
+          "REQ-MR-004",
+          "REQ-MR-020"
+        ],
+        "design_refs": [
+          "Component: Switch coordination and lifecycle cancellation"
+        ],
+        "derivation_reason": "No host UI screen is supplied. This binding describes the SDK API state derived from the cited requirement and design, without inventing a visual source or waiving ux_required. Written authority: root requirement.md, SHA-256 a3b4d3ae7a0163e1fb145f4a8b36a6a2858490a1544e6fca99561239f57a4bb5; source ID ux-requirement-description is prose only and intentionally not a visual source binding. Non-visual evidence is owned assertion-by-assertion by the named Jest scenarios in Test Strategy, with suite paths relative to test/unit/spec/. Required root CCSDK_UX_PREFLIGHT admission must confirm that the flow supports this library-only evidence without raw-render or rendered captures; implementors cannot generate that admission receipt.",
+        "owner_task_ids": [
+          "MR-03",
+          "MR-06",
+          "MR-08",
+          "MR-09"
+        ],
+        "controls": [
+          {
+            "control_id": "region-state-event",
+            "kind": "region",
+            "label": "region:stateChange",
+            "effect": "Report terminal unavailable reason without global credential revocation.",
+            "required": true,
+            "requirement_ref": "REQ-MR-004"
+          }
+        ],
+        "api_bindings": [],
+        "assertions": [
+          "Disabled MR stops/aborts/closes both sockets and retry ownership while retaining the existing browser line. [Jest evidence: MR-06; T-002 cc.ts::disabledStopsBothTransportsKeepsLine.]",
+          "Terminal primary/session auth ends recovery; terminal MR-reader auth only leaves eligibility unknown. [Jest evidence: MR-08/MR-09; T-012 cc.ts::readerVsPrimaryVsRtdAuthBoundaries.]",
+          "No stale result can install a replacement connection. [Jest evidence: MR-03/MR-06; T-002 cc.ts::lateDisabledSubscribeCannotInstall; T-003 services/core/websocket/WebSocketManager.ts::supersededHttpOpenWelcomeInert.]"
+        ]
+      },
+      {
+        "screen_id": "contact-center-sdk-contract",
+        "state_id": "autoAvailable-waitingForVoice",
+        "route_or_story": "@webex/contact-center library entry src/index.ts; no production route, rendered screen or story",
+        "basis": "requirements_design",
+        "source_ids": [],
+        "observation_ids": [],
+        "requirement_refs": [
+          "REQ-MR-012",
+          "`autoAvailable` reports the conditional DR state-change action separately from session readiness."
+        ],
+        "design_refs": [
+          "Component: Deferred auto-Available"
+        ],
+        "derivation_reason": "No host UI screen is supplied. This binding describes the SDK API state derived from the cited requirement and design, without inventing a visual source or waiving ux_required. Written authority: root requirement.md, SHA-256 a3b4d3ae7a0163e1fb145f4a8b36a6a2858490a1544e6fca99561239f57a4bb5; source ID ux-requirement-description is prose only and intentionally not a visual source binding. Non-visual evidence is owned assertion-by-assertion by the named Jest scenarios in Test Strategy, with suite paths relative to test/unit/spec/. Required root CCSDK_UX_PREFLIGHT admission must confirm that the flow supports this library-only evidence without raw-render or rendered captures; implementors cannot generate that admission receipt.",
+        "owner_task_ids": [
+          "MR-07"
+        ],
+        "controls": [
+          {
+            "control_id": "region-state-event",
+            "kind": "region",
+            "label": "region:stateChange",
+            "effect": "Publish a full snapshot with autoAvailable:waitingForVoice while preserving initiating reason/tracking metadata.",
+            "required": true,
+            "requirement_ref": "REQ-MR-012"
+          },
+          {
+            "control_id": "automatic-agent-state",
+            "kind": "text",
+            "label": "waitingForVoice",
+            "effect": "Expose this automatic state-action outcome in the complete region event snapshot; no action is dispatched by this outcome control.",
+            "required": true,
+            "requirement_ref": "REQ-MR-012"
+          }
+        ],
+        "api_bindings": [],
+        "assertions": [
+          "Exactly one current-generation/session voice listener; restored backend aux/state remain intact. [Jest evidence: MR-07; T-007 cc.ts::voiceDeferredReadyAndSingleDispatch and cc.ts::exactDisconnectAutoStateOnly ; T-011 cc.ts::completeSnapshotEachAutoOutcome / MR-07.]",
+          "Usable station ready is not held indefinitely; DN/extension and no-required-voice modes do not wait. [Jest evidence: MR-07; T-007 cc.ts::voiceDeferredReadyAndSingleDispatch and cc.ts::exactDisconnectAutoStateOnly ; T-011 cc.ts::completeSnapshotEachAutoOutcome / MR-07.]"
+        ]
+      },
+      {
+        "screen_id": "contact-center-sdk-contract",
+        "state_id": "autoAvailable-requesting",
+        "route_or_story": "@webex/contact-center library entry src/index.ts; no production route, rendered screen or story",
+        "basis": "requirements_design",
+        "source_ids": [],
+        "observation_ids": [],
+        "requirement_refs": [
+          "REQ-MR-012",
+          "`autoAvailable` reports the conditional DR state-change action separately from session readiness."
+        ],
+        "design_refs": [
+          "Component: Deferred auto-Available"
+        ],
+        "derivation_reason": "No host UI screen is supplied. This binding describes the SDK API state derived from the cited requirement and design, without inventing a visual source or waiving ux_required. Written authority: root requirement.md, SHA-256 a3b4d3ae7a0163e1fb145f4a8b36a6a2858490a1544e6fca99561239f57a4bb5; source ID ux-requirement-description is prose only and intentionally not a visual source binding. Non-visual evidence is owned assertion-by-assertion by the named Jest scenarios in Test Strategy, with suite paths relative to test/unit/spec/. Required root CCSDK_UX_PREFLIGHT admission must confirm that the flow supports this library-only evidence without raw-render or rendered captures; implementors cannot generate that admission receipt.",
+        "owner_task_ids": [
+          "MR-07"
+        ],
+        "controls": [
+          {
+            "control_id": "region-state-event",
+            "kind": "region",
+            "label": "region:stateChange",
+            "effect": "Publish a full snapshot with autoAvailable:requesting while preserving initiating reason/tracking metadata.",
+            "required": true,
+            "requirement_ref": "REQ-MR-012"
+          },
+          {
+            "control_id": "automatic-agent-state",
+            "kind": "action",
+            "label": "Available",
+            "effect": "Conditional automatic DR action; no new host UI control is delivered.",
+            "required": true,
+            "requirement_ref": "REQ-MR-012"
+          }
+        ],
+        "api_bindings": [
+          {
+            "control_id": "automatic-agent-state",
+            "contract_path": "design/default/implementation_dag.json",
+            "operation_id": "routingAgent.stateChange",
+            "effect": "Conditional automatic DR action; no new host UI control is delivered.",
+            "value_pointer": "/tasks/3/api_contracts/operations/automaticAvailable/request/body_fields/state/allowed_values",
+            "value": "Available"
+          },
+          {
+            "control_id": "automatic-agent-state",
+            "contract_path": "design/default/implementation_dag.json",
+            "operation_id": "routingAgent.stateChange",
+            "effect": "Conditional automatic DR action; no new host UI control is delivered.",
+            "value_pointer": "/tasks/3/api_contracts/operations/automaticAvailable/request/body_fields/auxCodeId/allowed_values",
+            "value": "0"
+          }
+        ],
+        "assertions": [
+          "Consume pending action and detach listener before sending one correlated request. [Jest evidence: MR-07; T-007 cc.ts::voiceDeferredReadyAndSingleDispatch ; T-011 cc.ts::completeSnapshotEachAutoOutcome / MR-07.]",
+          "Explicit requests cancel intent immediately and are serialized after a sent automatic operation settles. [Jest evidence: MR-07; T-007 cc.ts::explicitIntentBeforeArmAndDuringFlight ; T-011 cc.ts::completeSnapshotEachAutoOutcome / MR-07.]"
+        ]
+      },
+      {
+        "screen_id": "contact-center-sdk-contract",
+        "state_id": "autoAvailable-succeeded",
+        "route_or_story": "@webex/contact-center library entry src/index.ts; no production route, rendered screen or story",
+        "basis": "requirements_design",
+        "source_ids": [],
+        "observation_ids": [],
+        "requirement_refs": [
+          "REQ-MR-012",
+          "`autoAvailable` reports the conditional DR state-change action separately from session readiness."
+        ],
+        "design_refs": [
+          "Component: Deferred auto-Available"
+        ],
+        "derivation_reason": "No host UI screen is supplied. This binding describes the SDK API state derived from the cited requirement and design, without inventing a visual source or waiving ux_required. Written authority: root requirement.md, SHA-256 a3b4d3ae7a0163e1fb145f4a8b36a6a2858490a1544e6fca99561239f57a4bb5; source ID ux-requirement-description is prose only and intentionally not a visual source binding. Non-visual evidence is owned assertion-by-assertion by the named Jest scenarios in Test Strategy, with suite paths relative to test/unit/spec/. Required root CCSDK_UX_PREFLIGHT admission must confirm that the flow supports this library-only evidence without raw-render or rendered captures; implementors cannot generate that admission receipt.",
+        "owner_task_ids": [
+          "MR-07"
+        ],
+        "controls": [
+          {
+            "control_id": "region-state-event",
+            "kind": "region",
+            "label": "region:stateChange",
+            "effect": "Publish a full snapshot with autoAvailable:succeeded while preserving initiating reason/tracking metadata.",
+            "required": true,
+            "requirement_ref": "REQ-MR-012"
+          },
+          {
+            "control_id": "automatic-agent-state",
+            "kind": "text",
+            "label": "succeeded",
+            "effect": "Expose this automatic state-action outcome in the complete region event snapshot; no action is dispatched by this outcome control.",
+            "required": true,
+            "requirement_ref": "REQ-MR-012"
+          }
+        ],
+        "api_bindings": [],
+        "assertions": [
+          "Only its correlated backend acknowledgment establishes success and Available cache state. [Jest evidence: MR-07; T-007 cc.ts::exactDisconnectAutoStateOnly and cc.ts::authoritativeStateReconciliation ; T-011 cc.ts::completeSnapshotEachAutoOutcome / MR-07.]",
+          "Its own acknowledgment is a result, not an independent cancellation trigger. [Jest evidence: MR-07; T-007 cc.ts::exactDisconnectAutoStateOnly and cc.ts::authoritativeStateReconciliation ; T-011 cc.ts::completeSnapshotEachAutoOutcome / MR-07.]"
+        ]
+      },
+      {
+        "screen_id": "contact-center-sdk-contract",
+        "state_id": "autoAvailable-failed",
+        "route_or_story": "@webex/contact-center library entry src/index.ts; no production route, rendered screen or story",
+        "basis": "requirements_design",
+        "source_ids": [],
+        "observation_ids": [],
+        "requirement_refs": [
+          "REQ-MR-012",
+          "`autoAvailable` reports the conditional DR state-change action separately from session readiness."
+        ],
+        "design_refs": [
+          "Component: Deferred auto-Available"
+        ],
+        "derivation_reason": "No host UI screen is supplied. This binding describes the SDK API state derived from the cited requirement and design, without inventing a visual source or waiving ux_required. Written authority: root requirement.md, SHA-256 a3b4d3ae7a0163e1fb145f4a8b36a6a2858490a1544e6fca99561239f57a4bb5; source ID ux-requirement-description is prose only and intentionally not a visual source binding. Non-visual evidence is owned assertion-by-assertion by the named Jest scenarios in Test Strategy, with suite paths relative to test/unit/spec/. Required root CCSDK_UX_PREFLIGHT admission must confirm that the flow supports this library-only evidence without raw-render or rendered captures; implementors cannot generate that admission receipt.",
+        "owner_task_ids": [
+          "MR-07"
+        ],
+        "controls": [
+          {
+            "control_id": "region-state-event",
+            "kind": "region",
+            "label": "region:stateChange",
+            "effect": "Publish a full snapshot with autoAvailable:failed while preserving initiating reason/tracking metadata.",
+            "required": true,
+            "requirement_ref": "REQ-MR-012"
+          },
+          {
+            "control_id": "automatic-agent-state",
+            "kind": "text",
+            "label": "failed",
+            "effect": "Expose this automatic state-action outcome in the complete region event snapshot; no action is dispatched by this outcome control.",
+            "required": true,
+            "requirement_ref": "REQ-MR-012"
+          }
+        ],
+        "api_bindings": [],
+        "assertions": [
+          "Other rejection/timeout reports failure without hidden retry or fabricated backend failure event. [Jest evidence: MR-07; T-007 cc.ts::timeoutLateReplyCannotCompleteExplicit ; T-011 cc.ts::completeSnapshotEachAutoOutcome / MR-07.]",
+          "Local pre-dispatch BROWSER_VOICE_NOT_READY races return to waitingForVoice instead. [Jest evidence: MR-07; T-007 cc.ts::voiceDeferredReadyAndSingleDispatch ; T-011 cc.ts::completeSnapshotEachAutoOutcome / MR-07.]",
+          "Later authoritative state remains authoritative without a stale reply completing an explicit Promise. [Jest evidence: MR-07; T-007 cc.ts::timeoutLateReplyCannotCompleteExplicit and cc.ts::authoritativeStateReconciliation ; T-011 cc.ts::completeSnapshotEachAutoOutcome / MR-07.]"
+        ]
+      },
+      {
+        "screen_id": "contact-center-sdk-contract",
+        "state_id": "autoAvailable-cancelled",
+        "route_or_story": "@webex/contact-center library entry src/index.ts; no production route, rendered screen or story",
+        "basis": "requirements_design",
+        "source_ids": [],
+        "observation_ids": [],
+        "requirement_refs": [
+          "REQ-MR-012",
+          "`autoAvailable` reports the conditional DR state-change action separately from session readiness."
+        ],
+        "design_refs": [
+          "Component: Deferred auto-Available"
+        ],
+        "derivation_reason": "No host UI screen is supplied. This binding describes the SDK API state derived from the cited requirement and design, without inventing a visual source or waiving ux_required. Written authority: root requirement.md, SHA-256 a3b4d3ae7a0163e1fb145f4a8b36a6a2858490a1544e6fca99561239f57a4bb5; source ID ux-requirement-description is prose only and intentionally not a visual source binding. Non-visual evidence is owned assertion-by-assertion by the named Jest scenarios in Test Strategy, with suite paths relative to test/unit/spec/. Required root CCSDK_UX_PREFLIGHT admission must confirm that the flow supports this library-only evidence without raw-render or rendered captures; implementors cannot generate that admission receipt.",
+        "owner_task_ids": [
+          "MR-07",
+          "MR-08"
+        ],
+        "controls": [
+          {
+            "control_id": "region-state-event",
+            "kind": "region",
+            "label": "region:stateChange",
+            "effect": "Publish a full snapshot with autoAvailable:cancelled while preserving initiating reason/tracking metadata.",
+            "required": true,
+            "requirement_ref": "REQ-MR-012"
+          },
+          {
+            "control_id": "automatic-agent-state",
+            "kind": "text",
+            "label": "cancelled",
+            "effect": "Expose this automatic state-action outcome in the complete region event snapshot; no action is dispatched by this outcome control.",
+            "required": true,
+            "requirement_ref": "REQ-MR-012"
+          }
+        ],
+        "api_bindings": [],
+        "assertions": [
+          "Cancel on explicit state intent, superseding recovery or the specified lifecycle/precondition changes, detaching listeners. [Jest evidence: MR-07/MR-08; T-007 cc.ts::explicitIntentBeforeArmAndDuringFlight; T-012 cc.ts::everyTerminationDuringEveryAwait ; T-011 cc.ts::completeSnapshotEachAutoOutcome / MR-07.]",
+          "Already-sent backend work is not undone; no old-generation result appears in a replacement session. [Jest evidence: MR-07/MR-08; T-007 cc.ts::timeoutLateReplyCannotCompleteExplicit; T-012 cc.ts::lateHttpWelcomeReloadMedia ; T-011 cc.ts::completeSnapshotEachAutoOutcome / MR-07.]"
+        ]
+      },
+      {
+        "screen_id": "task-sdk-contract",
+        "state_id": "invalidated",
+        "route_or_story": "@webex/contact-center library entry src/index.ts; no production route, rendered screen or story",
+        "basis": "requirements_design",
+        "source_ids": [],
+        "observation_ids": [],
+        "requirement_refs": [
+          "REQ-MR-013",
+          "REQ-MR-014",
+          "REQ-MR-015"
+        ],
+        "design_refs": [
+          "Component: Task invalidation and owned media"
+        ],
+        "derivation_reason": "No host UI screen is supplied. This binding describes the SDK API state derived from the cited requirement and design, without inventing a visual source or waiving ux_required. Written authority: root requirement.md, SHA-256 a3b4d3ae7a0163e1fb145f4a8b36a6a2858490a1544e6fca99561239f57a4bb5; source ID ux-requirement-description is prose only and intentionally not a visual source binding. Non-visual evidence is owned assertion-by-assertion by the named Jest scenarios in Test Strategy, with suite paths relative to test/unit/spec/. Required root CCSDK_UX_PREFLIGHT admission must confirm that the flow supports this library-only evidence without raw-render or rendered captures; implementors cannot generate that admission receipt.",
+        "owner_task_ids": [
+          "MR-05"
+        ],
+        "controls": [
+          {
+            "control_id": "task-ui-controls",
+            "kind": "region",
+            "label": "TaskUIControls",
+            "effect": "Disable main/consult actions through Task owners with unchanged public shape.",
+            "required": true,
+            "requirement_ref": "REQ-MR-013"
+          }
+        ],
+        "api_bindings": [],
+        "assertions": [
+          "Retained Task actions reject STALE_TASK after the cleanup boundary; no synthetic ContactEnded, wrap-up success or task:end. [Jest evidence: MR-05; T-008 services/task/{Task,TaskManager}.ts::postWelcomeStaleTaskDisabledControlsNoEnd.]",
+          "Old media acquisitions stop owned tracks before answer; host tracks and healthy calling line remain owned by their existing owners. [Jest evidence: MR-05; T-009 services/task/voice/WebRTC.ts::lateMediaDuringWaitAndAfterWipeStopsTracks, services/task/voice/WebRTC.ts::hostTracksUntouched and services/task/voice/WebRTC.ts::noAnswerEndOrHealthyDeregister.]"
+        ]
+      }
+    ],
+    "deviations": [],
+    "prohibited_states": [
+      {
+        "screen_id": "contact-center-sdk-contract",
+        "state_id": "sdk-page-reload",
+        "requirement_quote": "The SDK MUST NOT call `window.location.reload()`."
+      },
+      {
+        "screen_id": "contact-center-sdk-contract",
+        "state_id": "transport-only-ready",
+        "requirement_quote": "`ready` requires a restored/logged-in station session."
+      },
+      {
+        "screen_id": "contact-center-sdk-contract",
+        "state_id": "preacknowledgment-available",
+        "requirement_quote": "Cached state/aux/timestamps MUST change to Available only on backend acknowledgment."
+      },
+      {
+        "screen_id": "task-sdk-contract",
+        "state_id": "synthetic-task-end",
+        "requirement_quote": "Cleanup MUST NOT synthesize backend `ContactEnded`, successful wrap-up or `task:end`."
+      },
+      {
+        "screen_id": "task-sdk-contract",
+        "state_id": "late-stale-media-answer",
+        "requirement_quote": "A late old-generation HTTP/WebSocket/media completion MUST NOT answer a call, install state or settle a replacement operation."
+      },
+      {
+        "screen_id": "contact-center-sdk-contract",
+        "state_id": "client-failover-trigger",
+        "requirement_quote": "The client does not trigger platform failover or provision entitlement."
+      }
+    ],
+    "acquisitions": {}
+  }
+}
