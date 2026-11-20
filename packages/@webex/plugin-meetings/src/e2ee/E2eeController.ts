@@ -53,8 +53,8 @@ export default class E2eeController extends TypedEventsScope<E2eeControllerEvent
 
   private mediaServicesPresent = false;
 
-  // Incremented by every start() and stop(); an in-flight start() whose attempt is no longer the
-  // latest was cancelled by stop() while it was awaiting, and must not continue.
+  // Incremented by every start() and cleanupSession(); an in-flight start() whose attempt is no
+  // longer the latest was cancelled during teardown and must not continue.
   private startAttempt = 0;
 
   /**
@@ -250,7 +250,6 @@ export default class E2eeController extends TypedEventsScope<E2eeControllerEvent
     }
 
     LoggerProxy.logger.info('e2ee: E2eeController#stop --> stopping E2EE session');
-    this.startAttempt += 1;
     this.cleanupSession();
     this.setState('left');
   }
@@ -362,7 +361,6 @@ export default class E2eeController extends TypedEventsScope<E2eeControllerEvent
     reason: string,
     details: {errorCode?: number; errorMessage?: string} = {}
   ): void {
-    this.startAttempt += 1;
     LoggerProxy.logger.error(
       `e2ee: E2eeController --> fatal E2EE error: state=${state} reason=${reason} details=`,
       details
@@ -383,6 +381,8 @@ export default class E2eeController extends TypedEventsScope<E2eeControllerEvent
    * @returns {void}
    */
   private cleanupSession(): void {
+    this.startAttempt += 1;
+
     try {
       this.signaling?.stop();
     } catch (error) {
