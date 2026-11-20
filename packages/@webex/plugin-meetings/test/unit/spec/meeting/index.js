@@ -410,14 +410,7 @@ describe('plugin-meetings', () => {
             },
             {parent: webex}
           );
-          const e2eeContext = e2eeManager.createE2eeController.firstCall.args[0];
 
-          assert.strictEqual(e2eeContext.members, meetingWithE2ee.members);
-          assert.strictEqual(e2eeContext.getCorrelationId(), meetingWithE2ee.correlationId);
-          meetingWithE2ee.correlationId = 'updated-correlation-id';
-          assert.strictEqual(e2eeContext.getCorrelationId(), 'updated-correlation-id');
-          assert.strictEqual(e2eeContext.getLocusInfo(), meetingWithE2ee.locusInfo);
-          assert.strictEqual(e2eeContext.getLlmChannel(), meetingWithE2ee.llmChannel);
           const events = [
             [EVENT_TRIGGERS.MEETING_E2EE_SECURITY_CODE_UPDATED, {securityCode: 'SEC'}],
             [EVENT_TRIGGERS.MEETING_E2EE_STATE_CHANGED, {state: 'joined'}],
@@ -432,6 +425,42 @@ describe('plugin-meetings', () => {
             e2ee.emit(event, payload);
             assert.calledOnceWithExactly(listener, payload);
           });
+        });
+
+        it('provides the current meeting context to the E2EE controller', () => {
+          TriggerProxy.trigger.restore();
+          const e2ee = new EventEmitter();
+          const e2eeManager = {createE2eeController: sinon.stub().returns(e2ee)};
+          const meetingWithE2ee = new Meeting(
+            {
+              userId: uuid1,
+              resource: uuid2,
+              deviceUrl: uuid3,
+              locus: {url: url1},
+              destination: testDestination,
+              destinationType: DESTINATION_TYPE.MEETING_ID,
+              correlationId,
+              selfId: uuid1,
+              e2eeManager,
+            },
+            {parent: webex}
+          );
+          const e2eeContext = e2eeManager.createE2eeController.firstCall.args[0];
+
+          assert.strictEqual(e2eeContext.members, meetingWithE2ee.members);
+          assert.strictEqual(e2eeContext.getCorrelationId(), meetingWithE2ee.correlationId);
+          assert.strictEqual(e2eeContext.getLocusInfo(), meetingWithE2ee.locusInfo);
+          assert.strictEqual(e2eeContext.getLlmChannel(), meetingWithE2ee.llmChannel);
+
+          meetingWithE2ee.correlationId = 'updated-correlation-id';
+          const updatedLocusInfo = {url: 'https://locus.example.com/updated'};
+          const updatedLlmChannel = createMockLLMChannel();
+          meetingWithE2ee.locusInfo = updatedLocusInfo;
+          meetingWithE2ee.llmChannel = updatedLlmChannel;
+
+          assert.strictEqual(e2eeContext.getCorrelationId(), 'updated-correlation-id');
+          assert.strictEqual(e2eeContext.getLocusInfo(), updatedLocusInfo);
+          assert.strictEqual(e2eeContext.getLlmChannel(), updatedLlmChannel);
         });
 
         it('starts E2EE only when the current WDM device joins', () => {
