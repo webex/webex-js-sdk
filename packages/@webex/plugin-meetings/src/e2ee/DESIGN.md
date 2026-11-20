@@ -284,9 +284,9 @@ It also cancels a `start()` still awaiting the WASM module, credentials or MLS i
 - Lifecycle (`updateE2eeOnSelfChange`, on `LOCUS_INFO_UPDATE_SELF`):
   - **start** when this device's `joinedWith` transitions to `JOINED`. Gating on this device, not the
     aggregate self state, avoids starting when another of the user's devices joins.
-  - **stop** when the device is moved back into the lobby (`isUserUnadmitted` becomes true); a later
-    re-admit starts again.
-  - **stop** in `clearMeetingData()`.
+  - **stop** when this device leaves `JOINED` or is moved back into the lobby
+    (`isUserUnadmitted` becomes true); a later re-admit starts again.
+  - **stop** in `MeetingUtil.cleanUp()` for meeting teardown.
 - `llmChannelChanged()` is called whenever `Meeting` replaces its LLM channel.
 - `trustState` getter:
 

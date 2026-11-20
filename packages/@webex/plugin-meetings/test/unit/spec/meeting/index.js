@@ -564,6 +564,38 @@ describe('plugin-meetings', () => {
           assert.calledOnce(e2ee.stop);
         });
 
+        it('stops E2EE when the current WDM device leaves the joined state', () => {
+          TriggerProxy.trigger.restore();
+          const e2ee = new EventEmitter();
+
+          e2ee.stop = sinon.stub().resolves();
+          const meetingWithE2ee = new Meeting(
+            {
+              userId: uuid1,
+              resource: uuid2,
+              deviceUrl: uuid3,
+              locus: {url: url1},
+              destination: testDestination,
+              destinationType: DESTINATION_TYPE.MEETING_ID,
+              correlationId,
+              selfId: uuid1,
+              e2eeManager: {createE2eeController: sinon.stub().returns(e2ee)},
+            },
+            {parent: webex}
+          );
+
+          sinon.stub(meetingWithE2ee.members, 'locusSelfUpdate');
+          sinon.stub(meetingWithE2ee, 'pstnUpdate');
+          sinon.stub(meetingWithE2ee, 'requestScreenShareFloorIfPending');
+
+          meetingWithE2ee.locusInfo.emitScoped({}, EVENTS.LOCUS_INFO_UPDATE_SELF, {
+            oldSelf: {joinedWith: {url: uuid3, state: 'JOINED'}},
+            newSelf: {joinedWith: {url: uuid3, state: 'LEFT'}},
+          });
+
+          assert.calledOnce(e2ee.stop);
+        });
+
         it('emits trust state changes caused by Locus and E2EE updates', () => {
           TriggerProxy.trigger.restore();
           const e2ee = new EventEmitter();
@@ -16148,6 +16180,10 @@ describe('plugin-meetings', () => {
             meeting.annotation.deregisterEvents = sinon.stub();
             meeting.clearLLMHealthCheckTimer = sinon.stub();
             meeting.stopTranscription = sinon.stub();
+            meeting.e2ee = {
+              llmChannelChanged: sinon.stub(),
+              stop: sinon.stub().resolves(),
+            };
             meeting.shareStatus = 'no-share';
           });
 

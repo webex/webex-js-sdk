@@ -383,7 +383,8 @@ const MeetingUtil = {
       ? meeting.statsAnalyzer.stopAnalyzer()
       : Promise.resolve();
 
-    return stopStatsAnalyzer
+    return Promise.resolve(meeting.e2ee?.stop())
+      .then(() => stopStatsAnalyzer)
       .then(() => meeting.closeRemoteStreams())
       .then(() => meeting.closePeerConnections())
       .then(() => {

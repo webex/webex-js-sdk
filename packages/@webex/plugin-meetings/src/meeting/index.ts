@@ -2939,12 +2939,11 @@ export default class Meeting extends StatelessWebexPlugin {
       });
     }
 
-    // Leave when the host moves this device back into the lobby. stop() self-guards when no MLS
-    // session is active, and resets to 'left' so a later re-admit re-runs start().
+    // Leave when this device stops being joined or the host moves it back into the lobby.
     const wasDeviceUnadmitted = payload.oldSelf?.isUserUnadmitted === true;
     const isDeviceUnadmitted = payload.newSelf?.isUserUnadmitted === true;
 
-    if (!wasDeviceUnadmitted && isDeviceUnadmitted) {
+    if ((wasDeviceJoined && !isDeviceJoined) || (!wasDeviceUnadmitted && isDeviceUnadmitted)) {
       this.e2ee?.stop().catch((error) => {
         LoggerProxy.logger.error(
           'Meeting:index#updateE2eeOnSelfChange --> E2EE stop failed',
@@ -10694,8 +10693,6 @@ export default class Meeting extends StatelessWebexPlugin {
     // practice-session transitions use their own cleanup paths and preserve the channel.
 
     await this.cleanupLLMConneciton({throwOnError: false, preserveVoiceaChannel: false});
-
-    await this.e2ee?.stop();
   };
 
   /**
