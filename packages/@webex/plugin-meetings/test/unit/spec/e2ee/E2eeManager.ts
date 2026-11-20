@@ -7,6 +7,7 @@ import sinon from 'sinon';
 import E2eeManager from '@webex/plugin-meetings/src/e2ee/E2eeManager';
 import WasmLoader from '@webex/plugin-meetings/src/common/wasm-loader';
 import {E2EE_WASM_ASSET} from '@webex/plugin-meetings/src/e2ee/constants';
+import {E2eeState} from '@webex/plugin-meetings/src/e2ee/types';
 import {CapabilityState, WebCapabilities} from '@webex/web-capabilities';
 
 describe('plugin-meetings', () => {
@@ -98,7 +99,7 @@ describe('plugin-meetings', () => {
         const e2eeController = manager.createE2eeController(context);
 
         assert.isDefined(e2eeController);
-        assert.equal(e2eeController.state, 'disabled');
+        assert.equal(e2eeController.state, E2eeState.Disabled);
       });
     });
   });

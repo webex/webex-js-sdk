@@ -13,7 +13,7 @@ import WasmLoader from '@webex/plugin-meetings/src/common/wasm-loader';
 import LoggerProxy from '@webex/plugin-meetings/src/common/logs/logger-proxy';
 import {EVENT_TRIGGERS} from '@webex/plugin-meetings/src/constants';
 import Metrics from '@webex/plugin-meetings/src/metrics';
-import {E2eeValidationResult} from '@webex/plugin-meetings/src/e2ee/types';
+import {E2eeState, E2eeValidationResult} from '@webex/plugin-meetings/src/e2ee/types';
 
 describe('plugin-meetings', () => {
   describe('E2eeController', () => {
@@ -177,7 +177,7 @@ describe('plugin-meetings', () => {
 
           await e2ee.start();
 
-          assert.equal(e2ee.state, 'disabled');
+          assert.equal(e2ee.state, E2eeState.Disabled);
           assert.notCalled(identityProvider.getCredentials);
           assert.notCalled(initializeStub);
           assert.notCalled(events.state);
@@ -200,8 +200,8 @@ describe('plugin-meetings', () => {
           trustAnchors: TRUST_ANCHORS,
         });
         sinon.assert.callOrder(initializeStub, signalingStartStub, joinStub);
-        assert.deepEqual(events.state.args, [[{state: 'initializing'}], [{state: 'joining'}]]);
-        assert.equal(e2ee.state, 'joining');
+        assert.deepEqual(events.state.args, [[{state: E2eeState.Initializing}], [{state: E2eeState.Joining}]]);
+        assert.equal(e2ee.state, E2eeState.Joining);
       });
 
       it('uses an empty display name when the self member is unknown', async () => {
@@ -284,7 +284,7 @@ describe('plugin-meetings', () => {
 
         assert.calledOnce(initializeStub);
         assert.calledOnce(joinStub);
-        assert.equal(e2ee.state, 'joining');
+        assert.equal(e2ee.state, E2eeState.Joining);
       });
 
       it('can start again after stop', async () => {
@@ -295,7 +295,7 @@ describe('plugin-meetings', () => {
 
         assert.calledTwice(initializeStub);
         assert.calledTwice(joinStub);
-        assert.equal(e2ee.state, 'joining');
+        assert.equal(e2ee.state, E2eeState.Joining);
       });
 
       describe('when stopped during startup', () => {
@@ -312,8 +312,8 @@ describe('plugin-meetings', () => {
           assert.notCalled(initializeStub);
           assert.notCalled(signalingStartStub);
           assert.notCalled(joinStub);
-          assert.equal(e2ee.state, 'left');
-          assert.deepEqual(events.state.args, [[{state: 'initializing'}], [{state: 'left'}]]);
+          assert.equal(e2ee.state, E2eeState.Left);
+          assert.deepEqual(events.state.args, [[{state: E2eeState.Initializing}], [{state: E2eeState.Left}]]);
         });
 
         it('leaves the session and does not join if stopped while MLS initializes', async () => {
@@ -333,7 +333,7 @@ describe('plugin-meetings', () => {
           assert.deepEqual(sessionHandlers, {});
           assert.notCalled(signalingStartStub);
           assert.notCalled(joinStub);
-          assert.equal(e2ee.state, 'left');
+          assert.equal(e2ee.state, E2eeState.Left);
         });
 
         it('does not report a failure when the cancelled startup step then rejects', async () => {
@@ -348,7 +348,7 @@ describe('plugin-meetings', () => {
           initialized.reject(new Error('session left'));
           await starting;
 
-          assert.equal(e2ee.state, 'left');
+          assert.equal(e2ee.state, E2eeState.Left);
           assert.notCalled(events.failure);
           assert.notCalled(sendBehavioralMetricStub);
         });
@@ -366,7 +366,7 @@ describe('plugin-meetings', () => {
 
           assert.calledOnce(initializeStub);
           assert.calledOnce(joinStub);
-          assert.equal(e2ee.state, 'joining');
+          assert.equal(e2ee.state, E2eeState.Joining);
         });
       });
 
@@ -383,7 +383,7 @@ describe('plugin-meetings', () => {
 
         assert.calledOnce(leaveStub);
         assert.notCalled(joinStub);
-        assert.equal(e2ee.state, 'failed');
+        assert.equal(e2ee.state, E2eeState.Failed);
         assert.calledOnceWithExactly(events.failure, {reason: 'join_failure'});
       });
 
@@ -423,12 +423,12 @@ describe('plugin-meetings', () => {
 
           await e2ee.start();
 
-          assert.equal(e2ee.state, 'failed');
-          assert.deepEqual(events.state.args, [[{state: 'initializing'}], [{state: 'failed'}]]);
+          assert.equal(e2ee.state, E2eeState.Failed);
+          assert.deepEqual(events.state.args, [[{state: E2eeState.Initializing}], [{state: E2eeState.Failed}]]);
           assert.calledOnceWithExactly(events.failure, {reason: 'startFailed', errorMessage});
           assert.calledOnceWithExactly(sendBehavioralMetricStub, 'js_sdk_e2ee_failure', {
             correlation_id: 'corr-1',
-            state: 'failed',
+            state: E2eeState.Failed,
             reason: 'startFailed',
             errorMessage,
           });
@@ -480,7 +480,7 @@ describe('plugin-meetings', () => {
 
         assert.equal(e2ee.getSecurityCode(), 'SEC-1');
         assert.calledOnceWithExactly(events.securityCode, {securityCode: 'SEC-1'});
-        assert.equal(e2ee.state, 'joined');
+        assert.equal(e2ee.state, E2eeState.Joined);
       });
 
       it('updates the security code on securityCodeChanged', () => {
@@ -493,12 +493,12 @@ describe('plugin-meetings', () => {
       it('marks joined only once our own device url is in the roster', () => {
         rosterStub.returns([makeRosterEntry({url: 'https://wdm.webex.com/other'})]);
         emitSession('rosterAdded', []);
-        assert.equal(e2ee.state, 'joining');
+        assert.equal(e2ee.state, E2eeState.Joining);
 
         rosterStub.returns([makeRosterEntry({url: OWN_DEVICE_URL})]);
         emitSession('rosterAdded', []);
-        assert.equal(e2ee.state, 'joined');
-        assert.calledOnceWithExactly(events.state, {state: 'joined'});
+        assert.equal(e2ee.state, E2eeState.Joined);
+        assert.calledOnceWithExactly(events.state, {state: E2eeState.Joined});
       });
 
       it('emits a media-services change only when their presence in the roster changes', () => {
@@ -523,18 +523,18 @@ describe('plugin-meetings', () => {
         {
           event: 'joinFailure',
           payload: {reason: 'join_failure'},
-          state: 'failed',
+          state: E2eeState.Failed,
           reason: 'join_failure',
           details: {},
         },
         {
           event: 'mediaEncryptionServiceFailure',
           payload: {errorCode: 78400011, message: 'not leader'},
-          state: 'failed',
+          state: E2eeState.Failed,
           reason: 'mediaEncryptionServiceFailure',
           details: {errorCode: 78400011, errorMessage: 'not leader'},
         },
-        {event: 'evicted', payload: undefined, state: 'evicted', reason: 'evicted', details: {}},
+        {event: 'evicted', payload: undefined, state: E2eeState.Evicted, reason: 'evicted', details: {}},
       ].forEach(({event, payload, state, reason, details}) => {
         it(`tears down the session, moves to ${state} and reports a failure on ${event}`, async () => {
           emitSession('joinSuccess', {securityCode: 'SEC-1'});
@@ -569,8 +569,8 @@ describe('plugin-meetings', () => {
           assert.calledTwice(initializeStub);
           assert.notStrictEqual(initializeStub.secondCall.thisValue, failedSession);
           assert.calledTwice(joinStub);
-          assert.equal(e2ee.state, 'joining');
-          assert.deepEqual(events.state.args, [[{state: 'initializing'}], [{state: 'joining'}]]);
+          assert.equal(e2ee.state, E2eeState.Joining);
+          assert.deepEqual(events.state.args, [[{state: E2eeState.Initializing}], [{state: E2eeState.Joining}]]);
           assert.notCalled(events.failure);
         });
       });
@@ -582,7 +582,7 @@ describe('plugin-meetings', () => {
         await e2ee.start();
 
         assert.calledOnce(initializeStub);
-        assert.equal(e2ee.state, 'joined');
+        assert.equal(e2ee.state, E2eeState.Joined);
       });
     });
 
@@ -596,7 +596,7 @@ describe('plugin-meetings', () => {
 
         await e2ee.stop();
 
-        assert.equal(e2ee.state, 'disabled');
+        assert.equal(e2ee.state, E2eeState.Disabled);
         assert.notCalled(signalingStopStub);
         assert.notCalled(leaveStub);
         assert.notCalled(events.state);
@@ -611,10 +611,10 @@ describe('plugin-meetings', () => {
         await e2ee.stop();
 
         assertSessionTornDown();
-        assert.equal(e2ee.state, 'left');
+        assert.equal(e2ee.state, E2eeState.Left);
         assert.isUndefined(e2ee.getSecurityCode());
         assert.calledOnceWithExactly(events.securityCode, {securityCode: undefined});
-        assert.calledOnceWithExactly(events.state, {state: 'left'});
+        assert.calledOnceWithExactly(events.state, {state: E2eeState.Left});
         assert.notCalled(events.failure);
         assert.notCalled(sendBehavioralMetricStub);
       });
@@ -639,7 +639,7 @@ describe('plugin-meetings', () => {
 
         await e2ee.stop();
 
-        assert.equal(e2ee.state, 'left');
+        assert.equal(e2ee.state, E2eeState.Left);
         assert.notCalled(signalingStopStub);
         assert.notCalled(leaveStub);
         assert.notCalled(events.state);
@@ -662,7 +662,7 @@ describe('plugin-meetings', () => {
           assert.calledOnce(leaveStub);
           assert.equal(offStub.callCount, onStub.callCount);
           assert.calledOnceWithExactly(events.mediaServices, {hasMediaServices: false});
-          assert.equal(e2ee.state, 'left');
+          assert.equal(e2ee.state, E2eeState.Left);
         });
       });
     });

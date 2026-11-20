@@ -294,7 +294,7 @@ It also cancels a `start()` still awaiting the WASM module, credentials or MLS i
   if (!this.isJoined()) return undefined;
   const adaptive = !!info?.isBestEffortE2EEncryption;
   const isEncrypted = !!info?.isV2E2EEncrypted;
-  if (isEncrypted && this.e2ee?.state !== 'joined') return 'calculating';
+  if (isEncrypted && this.e2ee?.state !== E2eeState.Joined) return 'calculating';
   const zeroTrust = isEncrypted && !this.e2ee?.hasUntrustedMediaServices;
   if (adaptive) return zeroTrust ? 'adaptiveZeroTrust' : 'adaptiveStrong';
   return zeroTrust ? 'zeroTrust' : 'strong';

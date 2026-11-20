@@ -15,12 +15,8 @@ import E2eeSignaling from './E2eeSignaling';
 import {MEDIA_SERVICE_DEVICE_TYPE} from './constants';
 import MeetingsUtil from '../meetings/util';
 import type WasmLoader from '../common/wasm-loader';
-import type {
-  E2eeControllerEvent,
-  E2eeControllerEventMap,
-  E2eeMeetingContext,
-  E2eeState,
-} from './types';
+import {E2eeState} from './types';
+import type {E2eeControllerEvent, E2eeControllerEventMap, E2eeMeetingContext} from './types';
 
 const TRIGGER_SCOPE = {file: 'e2ee/E2eeController', function: 'e2ee'};
 
@@ -47,7 +43,7 @@ export default class E2eeController extends TypedEventsScope<E2eeControllerEvent
 
   private sessionUnsubscribers: Array<() => void> = [];
 
-  private currentState: E2eeState = 'disabled';
+  private currentState: E2eeState = E2eeState.Disabled;
 
   private securityCode?: string;
 
@@ -139,9 +135,9 @@ export default class E2eeController extends TypedEventsScope<E2eeControllerEvent
    */
   async start(): Promise<void> {
     if (
-      this.currentState === 'initializing' ||
-      this.currentState === 'joining' ||
-      this.currentState === 'joined'
+      this.currentState === E2eeState.Initializing ||
+      this.currentState === E2eeState.Joining ||
+      this.currentState === E2eeState.Joined
     ) {
       LoggerProxy.logger.info(
         `e2ee: E2eeController#start --> ignoring, already in state: ${this.currentState}`
@@ -172,7 +168,7 @@ export default class E2eeController extends TypedEventsScope<E2eeControllerEvent
       return result;
     };
 
-    this.setState('initializing');
+    this.setState(E2eeState.Initializing);
 
     try {
       const {device} = this.webex.internal;
@@ -221,7 +217,7 @@ export default class E2eeController extends TypedEventsScope<E2eeControllerEvent
       });
       this.signaling.start();
 
-      this.setState('joining');
+      this.setState(E2eeState.Joining);
       session.join();
     } catch (error) {
       if (isCancelled()) {
@@ -233,7 +229,9 @@ export default class E2eeController extends TypedEventsScope<E2eeControllerEvent
       }
 
       LoggerProxy.logger.error(`e2ee: E2eeController#start --> failed to start E2EE: ${error}`);
-      this.handleFatal('failed', 'startFailed', {errorMessage: error?.message ?? String(error)});
+      this.handleFatal(E2eeState.Failed, 'startFailed', {
+        errorMessage: error?.message ?? String(error),
+      });
     }
   }
 
@@ -243,7 +241,7 @@ export default class E2eeController extends TypedEventsScope<E2eeControllerEvent
    * @returns {Promise<void>}
    */
   async stop(): Promise<void> {
-    if (this.currentState === 'disabled') {
+    if (this.currentState === E2eeState.Disabled) {
       // E2EE was never started (not required for this meeting, or still pre-join). Nothing to tear
       // down, and we stay silent so callers can invoke stop() unconditionally without log noise.
       return;
@@ -251,7 +249,7 @@ export default class E2eeController extends TypedEventsScope<E2eeControllerEvent
 
     LoggerProxy.logger.info('e2ee: E2eeController#stop --> stopping E2EE session');
     this.cleanupSession();
-    this.setState('left');
+    this.setState(E2eeState.Left);
   }
 
   /**
@@ -285,27 +283,27 @@ export default class E2eeController extends TypedEventsScope<E2eeControllerEvent
       this.updateFromRoster();
     });
 
-    subscribe('joinFailure', ({reason}) => this.deferFatal(session, 'failed', reason));
+    subscribe('joinFailure', ({reason}) => this.deferFatal(session, E2eeState.Failed, reason));
     subscribe('mediaEncryptionServiceFailure', ({errorCode, message}) =>
-      this.deferFatal(session, 'failed', 'mediaEncryptionServiceFailure', {
+      this.deferFatal(session, E2eeState.Failed, 'mediaEncryptionServiceFailure', {
         errorCode,
         errorMessage: message,
       })
     );
-    subscribe('evicted', () => this.deferFatal(session, 'evicted', 'evicted'));
+    subscribe('evicted', () => this.deferFatal(session, E2eeState.Evicted, 'evicted'));
   }
 
   /**
    * Defers teardown until the WASM callback that emitted the event has returned.
    * @param {MLS} session
-   * @param {'failed'|'evicted'} state
+   * @param {E2eeState.Failed|E2eeState.Evicted} state
    * @param {string} reason
    * @param {Object} [details]
    * @returns {void}
    */
   private deferFatal(
     session: MLS,
-    state: 'failed' | 'evicted',
+    state: E2eeState.Failed | E2eeState.Evicted,
     reason: string,
     details: {errorCode?: number; errorMessage?: string} = {}
   ): void {
@@ -339,17 +337,17 @@ export default class E2eeController extends TypedEventsScope<E2eeControllerEvent
       this.emitE2eeEvent(EVENT_TRIGGERS.MEETING_E2EE_MEDIA_SERVICES_CHANGED, {hasMediaServices});
     }
 
-    if (this.currentState === 'joining') {
+    if (this.currentState === E2eeState.Joining) {
       const ownDeviceUrl = this.webex.internal.device.url;
 
       if (roster.some((member) => member.url === ownDeviceUrl)) {
-        this.setState('joined');
+        this.setState(E2eeState.Joined);
       }
     }
   }
 
   /**
-   * @param {E2eeState} state
+   * @param {E2eeState.Failed|E2eeState.Evicted} state
    * @param {string} reason
    * @param {Object} [details] - Extra diagnostics included only in the behavioral metric.
    * @param {number} [details.errorCode] - Media-encryption service error code.
@@ -357,7 +355,7 @@ export default class E2eeController extends TypedEventsScope<E2eeControllerEvent
    * @returns {void}
    */
   private handleFatal(
-    state: 'failed' | 'evicted',
+    state: E2eeState.Failed | E2eeState.Evicted,
     reason: string,
     details: {errorCode?: number; errorMessage?: string} = {}
   ): void {
@@ -448,7 +446,7 @@ export default class E2eeController extends TypedEventsScope<E2eeControllerEvent
       return;
     }
 
-    if (state === 'failed' || state === 'evicted' || state === 'left') {
+    if (state === E2eeState.Failed || state === E2eeState.Evicted || state === E2eeState.Left) {
       this.clearSecurityCode();
     }
 

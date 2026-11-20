@@ -90,6 +90,7 @@ import ReconnectionNotStartedError from '../common/errors/reconnection-not-start
 import MeetingRequest from './request';
 import Members from '../members/index';
 import type E2eeController from '../e2ee/E2eeController';
+import {E2eeState} from '../e2ee/types';
 import type {E2eeLocusInfo, E2eeMeetingContext, TrustState} from '../e2ee/types';
 import MeetingUtil from './util';
 import MeetingsUtil from '../meetings/util';
@@ -4501,7 +4502,7 @@ export default class Meeting extends StatelessWebexPlugin {
     const adaptive = !!info?.isBestEffortE2EEncryption;
     const isEncrypted = !!info?.isV2E2EEncrypted;
 
-    if (isEncrypted && this.e2ee?.state !== 'joined') {
+    if (isEncrypted && this.e2ee?.state !== E2eeState.Joined) {
       return 'calculating';
     }
 

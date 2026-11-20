@@ -53,6 +53,7 @@ import {CapabilityState, WebCapabilities} from '@webex/web-capabilities';
 import EventsScope from '@webex/plugin-meetings/src/common/events/events-scope';
 import Meetings, {CONSTANTS} from '@webex/plugin-meetings';
 import Meeting from '@webex/plugin-meetings/src/meeting';
+import {E2eeState} from '@webex/plugin-meetings/src/e2ee/types';
 import Members from '@webex/plugin-meetings/src/members';
 import * as MembersImport from '@webex/plugin-meetings/src/members';
 import Roap from '@webex/plugin-meetings/src/roap';
@@ -413,7 +414,7 @@ describe('plugin-meetings', () => {
 
           const events = [
             [EVENT_TRIGGERS.MEETING_E2EE_SECURITY_CODE_UPDATED, {securityCode: 'SEC'}],
-            [EVENT_TRIGGERS.MEETING_E2EE_STATE_CHANGED, {state: 'joined'}],
+            [EVENT_TRIGGERS.MEETING_E2EE_STATE_CHANGED, {state: E2eeState.Joined}],
             [EVENT_TRIGGERS.MEETING_E2EE_MEDIA_SERVICES_CHANGED, {hasMediaServices: true}],
             [EVENT_TRIGGERS.MEETING_E2EE_FAILURE, {reason: 'joinFailure'}],
           ];
@@ -567,11 +568,11 @@ describe('plugin-meetings', () => {
           TriggerProxy.trigger.restore();
           const e2ee = new EventEmitter();
 
-          e2ee.state = 'disabled';
+          e2ee.state = E2eeState.Disabled;
           e2ee.hasUntrustedMediaServices = false;
           e2ee.start = sinon.stub().callsFake(() => {
-            e2ee.state = 'initializing';
-            e2ee.emit(EVENT_TRIGGERS.MEETING_E2EE_STATE_CHANGED, {state: 'initializing'});
+            e2ee.state = E2eeState.Initializing;
+            e2ee.emit(EVENT_TRIGGERS.MEETING_E2EE_STATE_CHANGED, {state: E2eeState.Initializing});
 
             return Promise.resolve();
           });
@@ -613,8 +614,8 @@ describe('plugin-meetings', () => {
           assert.calledOnce(listener);
           assert.calledWithExactly(listener.firstCall, {trustState: 'calculating'});
 
-          e2ee.state = 'joined';
-          e2ee.emit(EVENT_TRIGGERS.MEETING_E2EE_STATE_CHANGED, {state: 'joined'});
+          e2ee.state = E2eeState.Joined;
+          e2ee.emit(EVENT_TRIGGERS.MEETING_E2EE_STATE_CHANGED, {state: E2eeState.Joined});
 
           assert.equal(meetingWithE2ee.trustState, 'zeroTrust');
           assert.calledTwice(listener);
@@ -631,7 +632,7 @@ describe('plugin-meetings', () => {
         it('is undefined until this device joins, then calculating while MLS is not joined', () => {
           const e2ee = new EventEmitter();
 
-          e2ee.state = 'joining';
+          e2ee.state = E2eeState.Joining;
           const meetingWithE2ee = new Meeting(
             {
               userId: uuid1,
