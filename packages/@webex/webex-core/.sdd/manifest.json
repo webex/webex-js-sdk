@@ -2,7 +2,7 @@
   "manifest_version": 1,
   "repository": {
     "name": "@webex/webex-core",
-    "purpose": "Core library of the Cisco Webex JS SDK: the plugin host and WebexCore class, the HTTP interceptor pipeline, OAuth credentials and token lifecycle, U2C service discovery (v1 and opt-in v2), and the pluggable storage layer that every other SDK plugin builds on.",
+    "purpose": "Core library of the Cisco Webex JS SDK: the plugin host and WebexCore class, the HTTP interceptor pipeline, OAuth credentials and token lifecycle, U2C service discovery (default v2, plus v1 for apps that register it), and the pluggable storage layer that every other SDK plugin builds on.",
     "category": "cat2-legacy",
     "primary_languages": [
       "javascript",
@@ -380,14 +380,14 @@
         "publication": "published",
         "source_kind": "repository-path",
         "source": "package.json",
-        "summary": "v1 services plugin and its ServiceCatalog, ServiceRegistry, ServiceState, ServiceHost and ServiceUrl classes, plus the ServiceInterceptor, HostMapInterceptor and ServerErrorInterceptor: U2C catalog collection, name/URL resolution and host failover. Native declaration: src/lib/services/index.js (re-exported by the package entry point declared in package.json)."
+        "summary": "v1 services plugin (exported, no longer registered by default) and its ServiceCatalog, ServiceRegistry, ServiceState, ServiceHost and ServiceUrl classes, plus the ServiceInterceptor, HostMapInterceptor and ServerErrorInterceptor: U2C catalog collection, name/URL resolution and host failover. Native declaration: src/lib/services/index.js (re-exported by the package entry point declared in package.json)."
       },
       "webex-core-services-v2": {
         "kind": "sdk",
         "publication": "published",
         "source_kind": "repository-path",
         "source": "package.json",
-        "summary": "Opt-in v2 services plugin: ServicesV2, ServiceCatalogV2 and ServiceDetail over the U2CV2 hostmap. Not registered by default; a host must register it with replace. Native declaration: src/lib/services-v2/index.ts (re-exported by the package entry point declared in package.json)."
+        "summary": "Default services plugin (v2): ServicesV2, ServiceCatalogV2 and ServiceDetail over the U2CV2 hostmap, registered as internal plugin services with ServiceInterceptor and ServerErrorInterceptor by src/lib/services-v2/register.js. Native declaration: src/lib/services-v2/index.ts (re-exported by the package entry point declared in package.json)."
       },
       "webex-core-storage": {
         "kind": "sdk",

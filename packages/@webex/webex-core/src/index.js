@@ -11,7 +11,7 @@
 
 import './plugins/logger';
 import './lib/credentials';
-import './lib/services';
+import './lib/services-v2/register';
 
 export {Credentials, filterScope, grantErrors, sortScope, Token} from './lib/credentials';
 

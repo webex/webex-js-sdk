@@ -11,7 +11,6 @@ import WebexCore, {
   ServiceDetail,
   serviceConstants,
   registerInternalPlugin,
-  Services,
   ServiceInterceptor,
   ServerErrorInterceptor,
   ServicesV2,
@@ -84,20 +83,6 @@ describe('webex-core', () => {
           query: {userId: webexUser.id},
         })
       );
-    });
-
-    afterEach(() => {
-      registerInternalPlugin('services', Services, {
-        interceptors: {
-          ServiceInterceptor: ServiceInterceptor.create,
-          ServerErrorInterceptor: ServerErrorInterceptor.create,
-        },
-        replace: true,
-      });
-      services = webex.internal.services;
-      servicesEU = webexEU.internal.services;
-      catalog = services._getCatalog();
-      catalogEU = servicesEU._getCatalog();
     });
 
     describe('#_getCatalog()', () => {

@@ -21,7 +21,7 @@ each cluster-scoped service as a `ServiceDetail` with an ordered list of full ba
 service names and URLs, failing over between base URLs, caching the catalog, and gating `webex.ready` on
 catalog readiness.
 
-It is an **opt-in sibling of v1**. Everything the two share (the lifecycle shape, the cache envelope,
+It is the **default `services` plugin**, replacing v1, which is still exported for apps that register it themselves. Everything the two share (the lifecycle shape, the cache envelope,
 user validation, the URL-matching helpers) is described once in the v1 specification at
 [`src/lib/services/docs/README.md`](../../services/docs/README.md) and is not restated here; this
 document records only what v2 does, and where it differs. The package-level surface, interceptor
@@ -38,7 +38,7 @@ Related context: [repository architecture](../../../../docs/architecture.md) ·
 | ----------------- | ---------------------------------------------------------------------------- |
 | Owner             | Cisco Webex for Developers                                                   |
 | Source path       | `src/lib/services-v2`                                                        |
-| Resource kind     | Capability module (opt-in internal plugin `services`, plus catalog models)   |
+| Resource kind     | Capability module (default internal plugin `services`, plus catalog models) |
 | Status            | Active                                                                       |
 | Last verified     | 2026-10-07                                                                   |
 | Module id         | `src/lib/services-v2`                                                        |
@@ -73,7 +73,8 @@ Related context: [repository architecture](../../../../docs/architecture.md) ·
 
 | Evidence                                           | What it establishes                                                                                                                                        |
 | -------------------------------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------ |
-| `src/lib/services-v2/index.ts`                     | Three named re-exports and no plugin registration                                                                                                          |
+| `src/lib/services-v2/index.ts`                     | Three named re-exports                                                                                                                                     |
+| `src/lib/services-v2/register.js`                  | Registers `ServicesV2` as the default `services` internal plugin with `ServiceInterceptor` and `ServerErrorInterceptor`                                    |
 | `src/lib/services-v2/services-v2.ts`               | The `Services` plugin extension: config init, U2CV2 collection, cache, init lifecycle, service and URL resolution, user validation                         |
 | `src/lib/services-v2/service-catalog.ts`           | The in-memory catalog: five groups, status flags, ordering, URL matching delegation, allowed domains, failover entry point                                 |
 | `src/lib/services-v2/service-detail.ts`            | One cluster-scoped service with its ordered base URLs; priority selection and host failure marking                                                         |
@@ -82,7 +83,7 @@ Related context: [repository architecture](../../../../docs/architecture.md) ·
 | `src/lib/services-v2/metrics.ts`                   | A metric-name constant file that nothing in the module imports                                                                                             |
 | `src/lib/services-v2/README.md`                    | Existing work-in-progress note (DNSSec-oriented, "continue to use /services"), read as evidence only                                                       |
 | `src/lib/metrics.js`                               | The metric names the v2 plugin actually imports                                                                                                            |
-| `src/lib/services/index.js`                        | The only code that registers the `services` internal plugin by default (v1)                                                                                |
+| `src/lib/services/index.js`                        | Re-exports the v1 classes; no longer registers a plugin                                                                                                    |
 | `src/lib/services/service-catalog.js`              | The URL-parsing and URL-matching helpers that v2 imports from v1                                                                                           |
 | `src/lib/services/service-fed-ramp.js`             | The v1 FedRAMP URL set, identical in content to the v2 file                                                                                                |
 | `src/lib/domains.ts`                               | Allowed-domain normalization and matching shared with v1                                                                                                   |
@@ -127,7 +128,8 @@ Related context: [repository architecture](../../../../docs/architecture.md) ·
 
 | Path                                        | Responsibility                                                                                                                                          |
 | ------------------------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| `src/lib/services-v2/index.ts`              | Re-exports `ServicesV2`, `ServiceCatalogV2` and `ServiceDetail`; registers nothing                                                                      |
+| `src/lib/services-v2/index.ts`              | Re-exports `ServicesV2`, `ServiceCatalogV2` and `ServiceDetail`                                                                                         |
+| `src/lib/services-v2/register.js`           | Side-effect registration of `ServicesV2` as the `services` plugin and the two interceptors it owns                                                     |
 | `src/lib/services-v2/services-v2.ts`        | The plugin (ampersand-state extension of the webex plugin base); the only file that talks to U2C, hydra, license and storage                            |
 | `src/lib/services-v2/service-catalog.ts`    | `ServiceCatalog` (ampersand-state): groups, status flags, `updateServiceGroups`, lookups, allowed domains, `waitForCatalog`                             |
 | `src/lib/services-v2/service-detail.ts`     | `ServiceDetail` (ampersand-state): `id`, `serviceName`, ordered `serviceUrls`; `get`, `failHost`, host-URL generation                                    |
@@ -169,7 +171,7 @@ Related context: [repository architecture](../../../../docs/architecture.md) ·
 
 | ID | WHAT | WHY | Source evidence | Test or example evidence | Assumptions or gaps | Confidence |
 | --- | --- | --- | --- | --- | --- | --- |
-| `SV2-001` | v2 is exported but not registered: the default `services` plugin is v1, and v2 becomes active only through an explicit `registerInternalPlugin('services', ServicesV2, {replace: true, interceptors})` call | A work-in-progress implementation must not change default behavior for existing integrators | `src/index.js`, `src/lib/services-v2/index.ts`, `src/lib/services/index.js`, `src/lib/webex-internal-core-plugin-mixin.js`, `src/config.js` | `test/integration/spec/services-v2/services-v2.js` | No unit test asserts the absence of default registration | Present |
+| `SV2-001` | v2 is the default `services` plugin, registered with `ServiceInterceptor` and `ServerErrorInterceptor`; v1 is exported but active only through an explicit `registerInternalPlugin('services', Services, {replace: true, interceptors})` call | v2 is the actively developed implementation (U2CV2 catalog, Mercury-driven invalidation and cluster moves) | `src/index.js`, `src/lib/services-v2/register.js`, `src/lib/services/index.js`, `src/lib/webex-internal-core-plugin-mixin.js` | `test/unit/spec/webex-core.js` (`#internal.services` is services v2 by default) | None | Present |
 | `SV2-002` | Collection issues `GET` to service `u2c`, resource `/catalog` (postauth), `/limited/catalog` (preauth) or `/signin/catalog`, with query `format=U2CV2`, plus `useCatalogOverride=true` when configured and `timestamp=<now ms>` when `forceRefresh` is set; the `signin` group sends the supplied token as the `authorization` header | The server returns the cluster-scoped format only for U2CV2, supports a catalog override, and a changing `timestamp` defeats HTTP cache control | `src/lib/services-v2/services-v2.ts` | `test/unit/spec/services-v2/services-v2.ts`, `test/integration/spec/services-v2/services-v2.js` | Unit tests cover request resolve/reject and the override query; the signin header and timestamp are only exercised against live U2C | Present |
 | `SV2-003` | When `webex.internal.newMetrics` exists the request is wrapped in `callDiagnosticLatencies.measureLatency` under the name `internal.get.u2c.time`; otherwise it is sent directly | Records U2C latency without making metrics a hard dependency | `src/lib/services-v2/services-v2.ts` | `test/unit/spec/services-v2/services-v2.ts` | The unit fixture installs `newMetrics`; the no-metrics branch is not asserted | Weak |
 | `SV2-004` | `updateServices` maps `from` to a group (`limited` to `preauth`, `signin` to `signin`, anything else to `postauth`); a preauth query must have a first key in `email`, `emailhash`, `userId`, `orgId`, `mode` or the call rejects; for preauth and signin only the **first** query key is sent, and an `email` key is replaced by `emailhash` of the lower-cased email's SHA-256 | Keeps raw emails off the wire and limits the selector to what U2C accepts | `src/lib/services-v2/services-v2.ts` | `test/integration/spec/services-v2/services-v2.js` | Additional keys are silently dropped; unit tests do not cover this method | Present |
@@ -214,15 +216,15 @@ where `id` is a cluster-scoped identifier (for example `urn:TEAM:us-east-2_a:con
 maps a plain service name to the cluster id currently in use. A "priority host" is therefore another complete
 `baseUrl` ranked by `priority`, not a host swapped into a default URL.
 
-**Registration.** `src/index.js` side-effect-imports only `./lib/services`, whose `src/lib/services/index.js`
-registers the v1 `Services` class under the `services` internal plugin name; `src/lib/services-v2/index.ts` holds three
-re-exports and no `registerInternalPlugin` call, and `src/config.js` has no version selector. v2 is therefore not wired by
-default: a host or test must register it itself (for example `registerInternalPlugin('services', ServicesV2, {interceptors, replace: true})`
-before constructing the instance), as the integration spec does in `beforeEach`, re-registering v1 in `afterEach`. The
-`replace` option is honoured by `src/lib/webex-internal-core-plugin-mixin.js`; without it a second registration under the
-same name is refused. `ServiceInterceptor` and `ServerErrorInterceptor` are not registered by v2 and must be passed by the
-registrar; `HostMapInterceptor` is registered by the core and calls `replaceHostFromHostmap`, which v2 implements. The
-opt-in flow is `UC-001`.
+**Registration.** `src/index.js` side-effect-imports `./lib/services-v2/register`, which
+registers `ServicesV2` under the `services` internal plugin name together with `ServiceInterceptor` and
+`ServerErrorInterceptor`; `src/lib/services/index.js` only re-exports the v1 classes, and `src/config.js` has no version
+selector. An app that still needs v1 must register it itself before constructing the instance
+(`registerInternalPlugin('services', Services, {interceptors, replace: true})`, passing both interceptors), as the v1
+integration specs do, restoring v2 afterwards. The `replace` option is honoured by
+`src/lib/webex-internal-core-plugin-mixin.js`; without it a second registration under the same name is refused.
+`HostMapInterceptor` is registered by the core and calls `replaceHostFromHostmap`, which v2 implements. The opt-back-in
+flow is `UC-001`.
 
 **Differences from v1** (v1 behavior is in [`src/lib/services/docs/README.md`](../../services/docs/README.md)):
 
@@ -237,8 +239,8 @@ opt-in flow is `UC-001`.
 | `markFailedUrl` | `markFailedUrl(url, noPriorityHosts)` | `markFailedUrl(url)` only |
 | Cache key | `services.v1.u2cHostMap` | `services.v2.u2cHostMap` |
 | Cache warm | Formats the cached hostmap, which also refreshes active services and the service list | Loads groups into the catalog only; `_activeServices` and `_services` are **not** rehydrated (see Pitfalls) |
-| Interceptors | Registers `ServiceInterceptor` and `ServerErrorInterceptor` with the plugin | Registers nothing (see Registration) |
-| Default | Registered by `src/lib/services/index.js` | Not registered (see Registration) |
+| Interceptors | None registered by default; whoever registers v1 must pass `ServiceInterceptor` and `ServerErrorInterceptor` | Registers `ServiceInterceptor` and `ServerErrorInterceptor` with the plugin |
+| Default | Not registered; exported for apps that register it (see Registration) | Registered by `src/lib/services-v2/register.js` |
 | Language | JavaScript | TypeScript (compiled by the package build) |
 
 Shared with v1 unchanged in behavior: the gated and ungated init lifecycle and `ready` semantics, the init timeout
@@ -536,7 +538,7 @@ classDiagram
 
 | Use case | Actor or caller | Primary steps and outcome | Failure or boundary behavior | Evidence |
 | --- | --- | --- | --- | --- |
-| `UC-001` Opt in to v2 | Integrator or test | Register `ServicesV2` as the `services` plugin with `replace: true` and the two interceptors, then construct the webex instance; `webex.internal.services` is v2 | Without `replace` the second registration is refused and v1 stays; without the interceptors, requests that use `service` are not resolved | `src/lib/webex-internal-core-plugin-mixin.js`, `test/integration/spec/services-v2/services-v2.js` |
+| `UC-001` Opt back in to v1 | Integrator or test | Register `Services` as the `services` plugin with `replace: true` and the two interceptors, then construct the webex instance; `webex.internal.services` is v1 | Without `replace` the second registration is refused and v2 stays; without the interceptors, requests that use `service` are not resolved | `src/lib/webex-internal-core-plugin-mixin.js`, `test/integration/spec/services/services.js` |
 | `UC-002` Start up with a token | SDK | Config change seeds discovery; on `ready` (or `loaded` when gated) warm from cache or fetch preauth by org then postauth; `isReady` becomes true; `ready` flips | Postauth failure sets `initFailed`; timeout (gated) finalizes anyway | `src/lib/services-v2/services-v2.ts`, `test/unit/spec/services-v2/services-v2.ts` |
 | `UC-003` Start up unauthenticated | SDK | Preauth catalog by configured email hash or proximity mode; later sign-in triggers postauth | `skipPreauthCatalogOnUnauthenticated` skips the fetch; failure sets `initFailed` | `src/lib/services-v2/services-v2.ts`, `test/unit/spec/services-v2/services-v2.ts` |
 | `UC-004` Send a request by service name | `ServiceInterceptor` | `waitForService` returns the priority URL; the interceptor appends the resource | A stored postauth catalog auth failure rejects with `error.message` and `error.reason` `invalid_access_token` and `error.statusCode` 401, or `access_denied` and `error.statusCode` 403, and the interceptor rethrows that error. Every other missing service rejects with the not-found text, which the interceptor re-wraps as "is not a known service" | `src/lib/interceptors/service.js`, `src/lib/services/catalog-auth.js`, `src/lib/services-v2/services-v2.ts` |
@@ -704,7 +706,7 @@ stateDiagram-v2
 
 | Export or entry point | Consumer | Stability | Versioning and deprecation rule | Declaration or API report |
 | --- | --- | --- | --- | --- |
-| `ServicesV2`, `ServiceCatalogV2`, `ServiceDetail` | Package consumers and tests | Published through the package entry; the module README states it is a work in progress and may be updated many times | None declared in code or `src/lib/services-v2/README.md`; gap (see SV2-032) | `src/lib/services-v2/index.ts`, `src/index.js` |
+| `ServicesV2`, `ServiceCatalogV2`, `ServiceDetail` | Package consumers and tests | Published through the package entry; `ServicesV2` is the default `services` plugin | None declared in code or `src/lib/services-v2/README.md`; gap (see SV2-032) | `src/lib/services-v2/index.ts`, `src/index.js` |
 | Plugin methods on `webex.internal.services` when v2 is registered | Sibling plugins | Internal namespace; underscore members are private by convention | None declared in code or `src/lib/services-v2/README.md`; gap (see SV2-032) | `src/lib/services-v2/services-v2.ts` |
 
 ## Key design trade-off
@@ -713,7 +715,7 @@ stateDiagram-v2
 | --- | --- | --- | --- |
 | Model priority hosts as complete ranked base URLs per cluster-scoped service | Failover is a simple ordered scan; no host substitution; different clusters coexist in one catalog | Hosts may repeat across services, so host-keyed lookup and failure marking are ambiguous | `src/lib/services-v2/service-detail.ts`, `src/lib/services-v2/types.ts`, `test/fixtures/host-catalog-v2.ts` |
 | Import URL-matching helpers from the v1 catalog file instead of copying them | One security boundary for both versions | v2 has a compile-time dependency on v1's file | `src/lib/services-v2/service-catalog.ts`, `src/lib/services/service-catalog.js` |
-| Export v2 but do not register it | Zero impact on default integrators while it is a work in progress | Adopting it needs plugin re-registration with correct interceptors | `src/index.js`, `src/lib/services-v2/index.ts`, `test/integration/spec/services-v2/services-v2.js` |
+| Register v2 as the default and keep exporting v1 | New catalog and resilience work lands only in v2, so every integrator gets it | Callers of v1-only members (`list`, `hasService`, `isServiceUrl`, `getState`, `getRegistry`, `_serviceUrls`, `_hostCatalog`, `get(name, priorityHost, …)`) must migrate or register v1 themselves | `src/index.js`, `src/lib/services-v2/register.js`, `src/lib/services/index.js`, `test/unit/spec/webex-core.js` |
 | Gated readiness is opt-in and a cache warm skips the network | Non-blocking default startup; faster reloads | Two code paths; a warm start leaves plugin maps empty (see Pitfalls) | `src/lib/services-v2/services-v2.ts`, `src/config.js` |
 
 No design record states why two parallel implementations are maintained; the code and `src/lib/services-v2/README.md` say only that v2 is a work in progress (gap, see SV2-032).
@@ -748,4 +750,4 @@ sinon, the shared chai assert helper and `MockWebex`; there are about 119 unit `
 `test/unit/spec/services-v2` (some parametrized with `it.each`) and about 124 integration `it` blocks across the two files under
 `test/integration/spec/services-v2`. Integration tests are Mocha files that create real test users and talk to live U2C, idbroker and license services
 (flaky and 429-retry wrappers are used), so they are not part of the offline unit run. Notable gaps: no unit test of `updateServices`,
-`waitForService`, `validateUser`, in-flight sharing or the stuck-group defect, and no test that v2 is absent from the default plugin set.
+`waitForService`, `validateUser`, in-flight sharing or the stuck-group defect.

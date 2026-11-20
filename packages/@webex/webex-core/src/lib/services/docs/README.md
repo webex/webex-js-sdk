@@ -21,8 +21,9 @@ and URLs, resolving service names and URLs, selecting and failing over hosts, ga
 on catalog readiness, and the three interceptors (`ServiceInterceptor`, `HostMapInterceptor`,
 `ServerErrorInterceptor`) in `src/lib/interceptors` that apply the catalog to outgoing requests.
 
-The sibling v2 implementation is specified in
-[`src/lib/services-v2/docs/README.md`](../../services-v2/docs/README.md) and is not restated here.
+v1 is no longer the default `services` plugin: `ServicesV2` is registered instead, and v1 is only
+exported for apps that register it themselves (see `SVC-001`). The sibling v2 implementation is
+specified in [`src/lib/services-v2/docs/README.md`](../../services-v2/docs/README.md) and is not restated here.
 The package-level surface, interceptor ordering, and the auth and catalog-URL interceptors that
 *consume* this module belong to the parent, specified in [`src/docs/README.md`](../../../docs/README.md).
 
@@ -71,7 +72,7 @@ Related context: [repository architecture](../../../../docs/architecture.md) ·
 
 | Evidence                                           | What it establishes                                                                                                                   |
 | -------------------------------------------------- | -------------------------------------------------------------------------------------------------------------------------------------- |
-| `src/lib/services/index.js`                        | Registers the `services` internal plugin with two interceptors and re-exports six classes                                             |
+| `src/lib/services/index.js`                        | Re-exports six classes; no longer registers the plugin (`ServicesV2` is the default)                                                  |
 | `src/lib/services/services.js`                     | The plugin: config init, U2C collection, cache, init lifecycle, service and URL resolution, user validation                           |
 | `src/lib/services/service-catalog.js`              | The in-memory catalog: groups, status flags, precedence, URL matching, allowed domains, failover entry point                          |
 | `src/lib/services/service-url.js`                  | One service with its default URL and hosts; priority-host selection and failure marking                                              |
@@ -127,7 +128,7 @@ Related context: [repository architecture](../../../../docs/architecture.md) ·
 
 | Path                                      | Responsibility                                                                                                                         |
 | ----------------------------------------- | ---------------------------------------------------------------------------------------------------------------------------------------- |
-| `src/lib/services/index.js`               | Side-effect registration of the plugin and the two interceptors it owns, plus named re-exports                                          |
+| `src/lib/services/index.js`               | Named re-exports only; apps that need v1 register it themselves with the two interceptors                                               |
 | `src/lib/services/services.js`            | The `Services` plugin (ampersand-state extension of the webex plugin base); the only module that talks to U2C and storage              |
 | `src/lib/services/service-catalog.js`     | `ServiceCatalog` (ampersand-state), plus exported URL-matching helpers `parseCatalogUrl`, `matchesParsedCatalogUrl`, `matchesCatalogUrl` |
 | `src/lib/services/service-url.js`         | `ServiceUrl` (ampersand-state): a default URL and hosts; priority-host selection and failure marking                                   |
@@ -147,7 +148,7 @@ Related context: [repository architecture](../../../../docs/architecture.md) ·
 | --- | --- | --- | --- | --- |
 | Internal plugin `services` (reached as `webex.internal.services`) | `webex-core-services` | Sibling plugins and the parent's interceptors | Method names and result shapes are relied on across about 27 packages; the behavior of the lookup, wait, failover and cache methods is summarized under Requirements. No version policy is declared in code | `src/lib/services/services.js` |
 | `Services`, `ServiceCatalog`, `ServiceRegistry`, `ServiceState`, `ServiceHost`, `ServiceUrl` | `webex-core-services` | Package consumers and tests importing from the package entry | Named exports; no deprecation markers in code | `src/lib/services/index.js`, `src/index.js` |
-| `ServiceInterceptor`, `ServerErrorInterceptor` (registered by the plugin) and `HostMapInterceptor` (registered by the core) | `webex-core-services` | The request pipeline; also exported for tests | Created by static `create()` with `this` bound to the webex instance | `src/lib/interceptors/service.js`, `src/lib/interceptors/server-error.js`, `src/lib/interceptors/hostmap.js`, `src/webex-core.js` |
+| `ServiceInterceptor`, `ServerErrorInterceptor` (registered with the `services` plugin) and `HostMapInterceptor` (registered by the core) | `webex-core-services` | The request pipeline; also exported for tests | Created by static `create()` with `this` bound to the webex instance | `src/lib/interceptors/service.js`, `src/lib/interceptors/server-error.js`, `src/lib/interceptors/hostmap.js`, `src/webex-core.js` |
 | `parseCatalogUrl`, `matchesParsedCatalogUrl`, `matchesCatalogUrl` | `webex-core-services` | Catalog internals; exported from the catalog file | Not re-exported from the package entry | `src/lib/services/service-catalog.js` |
 | Configuration `services.*` (`discovery`, `override`, `allowedDomains`, `validateDomains`, `validateCatalogUrls`, `servicesNotNeedValidation`, `waitForCatalogInit`, `catalogInitTimeout`, `skipPreauthCatalogOnUnauthenticated`, `useUserOnboardingServiceForActivations`), `calling.cacheU2C`, `fedramp` | `webex-core-services` | SDK integrators | Keys are read at the moment of `change:config`, not live | `src/config.js` |
 | Session property `ready` and props `validateDomains`, `initFailed` | `webex-core-services` | `webex.ready` derivation, auth and catalog-URL interceptors | `ready` participates in `webex.ready` when it is `false` | `src/lib/services/services.js`, `src/webex-core.js` |
@@ -175,7 +176,7 @@ Related context: [repository architecture](../../../../docs/architecture.md) ·
 
 | ID | WHAT | WHY | Source evidence | Test or example evidence | Assumptions or gaps | Confidence |
 | --- | --- | --- | --- | --- | --- | --- |
-| `SVC-001` | The plugin registers itself as internal plugin `services` together with `ServiceInterceptor` and `ServerErrorInterceptor`; `HostMapInterceptor` is registered by the core, not by this plugin | Request interception must exist whenever the plugin is loaded, while the host rewrite applies even in cores that do not load the plugin | `src/lib/services/index.js`, `src/webex-core.js`, `src/lib/webex-core-plugin-mixin.js` | `test/unit/spec/services/services.js` (initialize creates catalog, registry, state) | No test asserts the interceptor registration itself | Present |
+| `SVC-001` | The plugin is not registered by default (`ServicesV2` is). An app that needs v1 registers it as internal plugin `services` with `replace: true`, passing `ServiceInterceptor` and `ServerErrorInterceptor`; `HostMapInterceptor` is registered by the core, not by this plugin | Request interception must exist whenever a services plugin is loaded, while the host rewrite applies even in cores that do not load the plugin | `src/lib/services/index.js`, `src/lib/services-v2/register.js`, `src/webex-core.js`, `src/lib/webex-core-plugin-mixin.js` | `test/integration/spec/services/services.js` (registers v1 explicitly) | No test asserts the interceptor registration itself | Present |
 | `SVC-002` | On `change:config` (once) the plugin loads discovery URLs and `services.override` into catalog groups `discovery` and `override`, substitutes the FedRAMP set for discovery when `fedramp` is on, sets allowed domains, and copies `validateDomains` from config | The u2c, hydra and sqdiscovery URLs must be resolvable before any catalog fetch, and the allowed-domain policy must exist before the first authenticated request | `src/lib/services/services.js`, `src/lib/services/service-fed-ramp.js`, `src/config.js` | `test/unit/spec/services/services.js` | The FedRAMP substitution branch is not unit tested | Present |
 | `SVC-003` | Outside FedRAMP, `services.allowedDomains` is unioned with the commercial allowed-domain list (`wbx2.com`, `ciscospark.com`, `webex.com`, `webexapis.com` and four broadcloud domains); in FedRAMP only the configured list applies | Commercial builds must authorize Webex hosts by default while FedRAMP must not silently trust commercial domains | `src/lib/services/services.js`, `src/lib/constants.js` | `test/unit/spec/services/services.js` (allowed domains set from config) | No test pins the union or the FedRAMP exclusion | Present |
 | `SVC-004` | Catalog groups are searched by name in precedence override, postauth, signin, preauth, discovery for `get` and cluster lookups; `list` builds its map from discovery up to override so higher groups overwrite lower ones | An explicit override or authenticated catalog must win over bootstrap URLs | `src/lib/services/service-catalog.js` | `test/unit/spec/services/service-catalog.js`, `test/integration/spec/services/service-catalog.js` | `findServiceUrlFromUrl` iterates the opposite order (see `SVC-014`) | Present |
@@ -679,7 +680,7 @@ and never becomes true for an unauthenticated user whose cache is cold.
 - Do: keep catalog lookups synchronous and in `ServiceCatalog`/`ServiceUrl`; keep network and
   storage in `Services` (`src/lib/services/services.js`).
 - Do: read configuration only after `change:config` (`initConfig`, `initialize`), never at construction.
-- Do: add new interceptors through the plugin `interceptors` option so they merge into the core registry (`src/lib/services/index.js`, `src/lib/webex-core-plugin-mixin.js`).
+- Do: add new interceptors through the plugin `interceptors` option so they merge into the core registry (`src/lib/services-v2/register.js`, `src/lib/webex-core-plugin-mixin.js`).
 - Do: change v1 and v2 together when the behavior is intended to match; `src/lib/services-v2/services-v2.ts` closely mirrors the init lifecycle code.
 - Do not: depend on `ServiceRegistry` or `ServiceState` for live data; they are not wired.
 - Do not: narrow URL matching to string prefix or `includes`; `INV-001` and `INV-002` are security boundaries.
