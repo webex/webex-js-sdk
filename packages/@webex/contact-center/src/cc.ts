@@ -63,12 +63,10 @@ import {
   ChannelStateChangeRequest,
   SessionVersion,
   ChannelsMap,
-} from './services/agent/types';
-import {
-  bridgeStateChangeSuccess,
   LastEmittedV1State,
+  bridgeStateChangeSuccess,
   shouldEmitLegacyEvent,
-} from './services/agent/aggregate';
+} from './services/agent/types';
 import {
   getErrorDetails,
   isRecord,
