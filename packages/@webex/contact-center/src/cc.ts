@@ -2591,8 +2591,6 @@ export default class ContactCenter extends WebexPlugin implements IContactCenter
         this.lastEmittedV1 = {subStatus: bridged.subStatus, auxCodeId: bridged.auxCodeId};
         // @ts-ignore
         this.emit(AGENT_EVENTS.AGENT_STATE_CHANGE, bridged);
-        // @ts-ignore
-        this.emit(AGENT_EVENTS.AGENT_STATE_CHANGE_SUCCESS, bridged);
       }
     }
   }

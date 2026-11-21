@@ -276,8 +276,8 @@ Events (`AGENT_EVENTS`) that ContactCenter emits:
 | `agent:channelReloginSuccess` | `AgentChannelReloginSuccess` | V2: reload restored the per-channel map |
 | `agent:channelRecoveryDeferred` | `{channelTypes, agentId}` | V2: telephony recovery is deferred because the browser voice line is not ready; the SDK retries once after 60 s |
 
-On a V2 session, `agent:stateChange` and `agent:stateChangeSuccess` carry the bridged agent-wide
-state (`BridgedV1StateChange`) and fire only when the projected state or idle code changes.
+On a V2 session, `agent:stateChange` carries the bridged agent-wide state (`BridgedV1StateChange`)
+and fires only when the projected state or idle code changes.
 
 ```typescript
 cc.on('agent:stateChange', (event) => {

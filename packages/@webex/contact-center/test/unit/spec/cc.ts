@@ -6858,7 +6858,7 @@ describe('webex.cc', () => {
         );
       });
 
-      it('should bridge to V1 AGENT_STATE_CHANGE and AGENT_STATE_CHANGE_SUCCESS when aggregate changes', () => {
+      it('should bridge to V1 AGENT_STATE_CHANGE when aggregate changes', () => {
         setV2();
         webex.cc['lastEmittedV1'] = undefined;
         const detail = makeChannelState('Available', {
@@ -6889,12 +6889,9 @@ describe('webex.cc', () => {
             agentId: 'agent-1',
           })
         );
-        expect(emitSpy).toHaveBeenCalledWith(
+        expect(emitSpy).not.toHaveBeenCalledWith(
           AGENT_EVENTS.AGENT_STATE_CHANGE_SUCCESS,
-          expect.objectContaining({
-            type: 'AgentStateChangeSuccess',
-            subStatus: 'Available',
-          })
+          expect.anything()
         );
       });
 
