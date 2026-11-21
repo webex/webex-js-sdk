@@ -239,13 +239,12 @@ Evidence: `src/cc.ts`, `src/config.ts`, `src/services/WebexCrossClientService.ts
 
 Contract ID: `contact-center-sdk` ([package architecture](../../docs/architecture.md)). The feature design with every flow and failure path is [`feature-design.md`](../../ai-docs/features/WXCC-15791-user-granular-agent-state/design/feature-design.md); request builders, event constants, and the bridge are in the [agent module spec](../services/agent/docs/README.md).
 
-- **Switch:** `Profile.manageChannelAvailability`, re-read before each `stationLogin`. There is no SDK flag or config override (CONTACT_CENTER-R-013).
-- **Session pin:** `pinnedVersion` (`'V1'`, `'V2'`, or unset). It is set by login (from the flag), by `AgentStationLoginSuccess` (early, so listeners can read the getters), and by the reload response type. `isV2Session()` reads the pin. Routing decisions use `manageChannelAvailability === true` directly.
+- **Switch:** `Profile.manageChannelAvailability`, re-read before each `stationLogin`. There is no SDK flag or config override (CONTACT_CENTER-R-013). All V1/V2 routing decisions use `this.agentConfig?.manageChannelAvailability === true` directly.
 - **State:**
   - `channelStatesMap` and `loginChannelsMap` hold per-channel state and capacity;
   - `lastEmittedV1` holds the last bridged V1 state;
   - `telephonyRecoveryTimer` holds the deferred telephony recovery.
-  `clearV2LocalState()` resets all of them and the pin.
+  `clearV2LocalState()` resets all of them.
 - **Refresh and reconnect:** ContactCenter keeps running the automated relogin (`allowAutomatedRelogin`) and emits `agent:connectionLost`, `agent:connectionReconnected`, and `agent:reloginSessionNotFound`. Recovery policy (retries, showing login) stays with the application (CONTACT_CENTER-R-005).
 
 Design rationale: the backend keeps a session on the version it was created with, so one pinned version avoids mixing V1 and V2 calls. The server's version wins after a refresh because the flag may have changed since the session started.
@@ -264,7 +263,7 @@ Sequence coverage:
 | Registration | `register()`; resolves the Profile | Register | Connection/subscription failure is logged, metrics record failure, logs upload, and the error is rethrown; RTD and Mercury failures are contained |
 | Deregistration | `deregister()`; resolves void | Deregister | Cleanup failure is measured, logged, and rethrown; no synthetic success; a throw after listener removal leaves a partial teardown (State machine) |
 | Connection recovery | ConnectionService `connectionLost` event; session reloaded | Recovery | ContactCenter chooses silent relogin or preserves failure state; `AGENT_NOT_FOUND` clears session state and emits `agent:reloginSessionNotFound` |
-| Station login, logout, and agent state | `stationLogin`, `stationLogout`, `setAgentState`, `updateAgentProfile`; resolve the AQM response; V1 or V2 chosen by the re-read profile flag and then the session pin | Station login, logout, and agent state | Dial-number, browser-voice, and V2 channel validation, AQM failure or timeout (no V1 fallback for V2 login), and line registration failure reject with detailed errors |
+| Station login, logout, and agent state | `stationLogin`, `stationLogout`, `setAgentState`, `updateAgentProfile`; resolve the AQM response; V1 or V2 chosen by `manageChannelAvailability === true` | Station login, logout, and agent state | Dial-number, browser-voice, and V2 channel validation, AQM failure or timeout (no V1 fallback for V2 login), and line registration failure reject with detailed errors |
 | Granular channel events | `AgentChannelStateChanged`, `AgentChannelStateChangeFailed`, `AgentChannelReloginSuccess` notifications; emit `agent:channel*` and bridged V1 events | Granular channel events | Not a V2 session, another agent, or an unknown channel is ignored; no Available or Idle channel produces no V1 event |
 | Preview campaign and outdial | `acceptPreviewContact`, `skipPreviewContact`, `removePreviewContact`, `startOutdial`; resolve `TaskResponse` | Preview campaign and outdial | Disabled skip or remove throws before transport; AQM failures are tracked and rethrown |
 | Wellness notifications | `Wellness_Break_Handler` on the primary or RTD socket; emits `WellnessBreak` | Wellness notifications | Invalid notifications are dropped and measured |
@@ -375,15 +374,15 @@ sequenceDiagram
   else details.isSocketReconnected and allowAutomatedRelogin
     CC-->>App: emit agent:connectionReconnected
     CC->>CC: silentRelogin()
-    CC->>Agent: reloadV2() or reload() (pin, else profile flag)
+    CC->>Agent: reloadV2() or reload() (by manageChannelAvailability flag)
     alt V1 relogin (AgentReloginSuccess)
-      Agent-->>CC: relogin result, pin V1, update agent config/device state
+      Agent-->>CC: relogin result, update agent config/device state
       opt lastStateChangeReason is agent-wss-disconnect
         CC->>CC: setAgentState(Available), log but contain failure
       end
       CC->>CC: ensureWxAppPostStationLogin()
     else V2 relogin (AgentChannelReloginSuccess)
-      Agent-->>CC: pin V2, restore channel and capacity maps
+      Agent-->>CC: restore channel and capacity maps
       CC->>CC: setAgentState(Available, disconnected channels), log but contain failure
       opt BROWSER and voice not ready
         CC->>CC: defer telephony (60 s timer), emit agent:channelRecoveryDeferred
@@ -424,7 +423,7 @@ sequenceDiagram
   opt browser voice required
     CC->>Calling: registerWebCallingLine()
   end
-  CC->>CC: pin session version, seed channel maps on V2
+  CC->>CC: seed channel maps on V2 (from manageChannelAvailability flag)
   CC->>CC: keep agentSessionId, update agentConfig, ensureWxAppPostStationLogin()
   CC-->>App: response with mmProfile counts and notifsTrackingId
   App->>CC: setAgentState({state, auxCodeId, channelType?})
@@ -475,7 +474,7 @@ sequenceDiagram
   WS-->>CC: AgentChannelStateChangeFailed
   CC-->>App: emit agent:channelStateChangeFailed
   WS-->>CC: AgentChannelReloginSuccess
-  CC->>CC: pin V2, replace maps, reset lastEmittedV1
+  CC->>CC: replace channel maps, reset lastEmittedV1
   CC-->>App: emit agent:channelReloginSuccess
 ```
 
@@ -633,7 +632,6 @@ ContactCenter retains in-memory `agentConfig`, collaborator references, event li
 | `wellbeingBreakIdleCode`, `wellnessRegistrationGeneration` | `ContactCenter` | undefined, 0 | A lookup fills the cache; each `register()` and `deregister()` increments the generation | The cache is cleared on every register, profile fetch, and deregister |
 | `$config.enableWxBetterTogether` | `ContactCenter` | From init config | Rolled back to false when an enabled post-login hook fails | Cleared by `deregister()` |
 | wxApp ownership flags and retry timer | `ContactCenter` | false, none | Set when wxApp opened Mercury or registered the device; timer set on a failed false publish | Cleared on release and teardown |
-| `pinnedVersion` | `ContactCenter` | undefined | Set by `stationLogin` (from the profile flag), early by `AgentStationLoginSuccess`, and by the reload response type (`AgentChannelReloginSuccess` pins V2, `AgentReloginSuccess` pins V1) | Cleared by `clearV2LocalState()`: `stationLogout`, `deregister()`, an `AgentLogoutSuccess` or `AgentMultiLoginCloseSession` for this session, and `AGENT_NOT_FOUND` |
 | `channelStatesMap`, `loginChannelsMap`, `lastEmittedV1` | `ContactCenter` | `{}`, `{}`, undefined | Seeded by V2 login and V2 reload; a channel entry is replaced by each accepted `AgentChannelStateChanged`; `lastEmittedV1` is updated when the bridge emits | Cleared by `clearV2LocalState()`; `getChannelStates()` returns copies |
 | `telephonyRecoveryTimer` | `ContactCenter` | none | Set when V2 recovery defers telephony on `BROWSER` without voice | Fires once after 60 s and requests Available only if the session is still V2, the same `agentSessionId`, and telephony is still in the `agent-wss-disconnect` idle; cleared by `clearV2LocalState()` |
 | `agentConfig.manageChannelAvailability` | `ContactCenter` | From the profile | Re-read by `refreshManageChannelAvailability()` before each `stationLogin` | Cached value kept when the re-read fails |

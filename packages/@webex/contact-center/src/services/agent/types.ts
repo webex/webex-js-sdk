@@ -588,13 +588,6 @@ export type AgentChannelReloginSuccess = Msg<{
 export type ChannelsMap = Record<string, string[]>;
 
 /**
- * Session version: V1 (agent-wide) or V2 (per-channel).
- * Pinned once per login session.
- * @public
- */
-export type SessionVersion = 'V1' | 'V2';
-
-/**
  * Session version control status for diagnostics/observability
  * @public
  */

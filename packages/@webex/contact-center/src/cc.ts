@@ -61,7 +61,6 @@ import {
   AgentChannelReloginSuccess,
   AgentStateControlStatus,
   ChannelStateChangeRequest,
-  SessionVersion,
   ChannelsMap,
   LastEmittedV1State,
   bridgeStateChangeSuccess,
@@ -384,11 +383,6 @@ export default class ContactCenter extends WebexPlugin implements IContactCenter
    */
   private loginChannelsMap: Record<string, string[]> = {};
 
-  /**
-   * Pinned session version (V1 or V2). Set once per login session.
-   * @private
-   */
-  private pinnedVersion?: SessionVersion;
   /**
    * API instance for managing Webex Contact Center entry points
    * Provides functionality to fetch entry points with caching support
@@ -1334,14 +1328,8 @@ export default class ContactCenter extends WebexPlugin implements IContactCenter
         notifsTrackingId: resp.trackingId,
       };
 
-      // handleWebsocketMessage pins the same version before this resumes so
-      // event listeners can read getAgentStateControl() synchronously.
-      this.pinSessionVersion(this.agentConfig?.manageChannelAvailability === true ? 'V2' : 'V1');
-
-      // Idempotent with the early-pin seeding in handleWebsocketMessage — the
-      // WS handler seeds these synchronously before emit, and this runs after
-      // the await resumes. Both use the same response data.
-      if (this.isV2Session()) {
+      // Seed channel state maps for V2 sessions after login completes.
+      if (this.agentConfig?.manageChannelAvailability === true) {
         this.loginChannelsMap = channelsMap;
         this.channelStatesMap = this.seedChannelStates(
           channelsMap,
@@ -1815,17 +1803,16 @@ export default class ContactCenter extends WebexPlugin implements IContactCenter
         const {channelsMap, ...loginData} = eventData.data;
         this.updateWellnessSession(loginData.agentSessionId);
 
-        // Pin session version eagerly so event listeners (e.g. widget store's
-        // refreshAgentStateControl) can read getAgentStateControl().active and
-        // getChannelStates() correctly. The stationLogin() method will re-pin
-        // to the same value when its promise resumes — this is idempotent.
+        // Determine V2 eligibility eagerly so event listeners (e.g. widget
+        // store's refreshAgentStateControl) can read getAgentStateControl()
+        // and getChannelStates() correctly inside the stationLoginSuccess
+        // handler.
         //
         // V2 eligibility is determined solely by the profile's
         // manageChannelAvailability flag, re-read before each stationLogin().
         const earlyV2 = this.agentConfig?.manageChannelAvailability === true;
 
         if (earlyV2) {
-          this.pinSessionVersion('V2');
           if (channelsMap) {
             this.loginChannelsMap = channelsMap;
             this.channelStatesMap = this.seedChannelStates(
@@ -1834,8 +1821,6 @@ export default class ContactCenter extends WebexPlugin implements IContactCenter
               eventData.data.auxCodeId
             ) as Record<ChannelType, AgentChannelTypeStates>;
           }
-        } else {
-          this.pinSessionVersion('V1');
         }
 
         if (
@@ -1861,9 +1846,7 @@ export default class ContactCenter extends WebexPlugin implements IContactCenter
       }
       case CC_EVENTS.AGENT_RELOGIN_SUCCESS: {
         // V1-only relogin event. V2 sessions receive AGENT_CHANNEL_RELOGIN_SUCCESS
-        // instead (handled by handleChannelReloginSuccess). Pin V1 unconditionally.
-        this.pinSessionVersion('V1');
-
+        // instead (handled by handleChannelReloginSuccess).
         const {channelsMap, ...loginData} = eventData.data;
         this.updateWellnessSession(loginData.agentSessionId);
         const stationReLoginData = {
@@ -2566,7 +2549,7 @@ export default class ContactCenter extends WebexPlugin implements IContactCenter
     const channelType = data.channelType as ChannelType;
 
     // Guard: ignore if session is not V2
-    if (!this.isV2Session()) return;
+    if (this.agentConfig?.manageChannelAvailability !== true) return;
 
     // Guard: the bind also matches routing messages about other agents
     const ownAgentId = this.agentConfig?.agentId;
@@ -2621,17 +2604,6 @@ export default class ContactCenter extends WebexPlugin implements IContactCenter
    */
   private handleChannelReloginSuccess(eventData: any): void {
     const data = eventData.data;
-
-    // AgentChannelReloginSuccess is V2-only; warn if pinned state was V1.
-    if (this.pinnedVersion === 'V1') {
-      LoggerProxy.warn(
-        'Received AgentChannelReloginSuccess while session was pinned to V1 — possible backend/protocol mismatch',
-        {module: CC_FILE, method: 'handleChannelReloginSuccess'}
-      );
-    }
-
-    // Pin session to V2 on channel relogin (matches desktop behavior)
-    this.pinSessionVersion('V2');
 
     if (data.agentChannelStateDetailMap) {
       this.channelStatesMap = {...data.agentChannelStateDetailMap};
@@ -2718,9 +2690,6 @@ export default class ContactCenter extends WebexPlugin implements IContactCenter
 
       if (responseType === 'AgentChannelReloginSuccess') {
         // ─── V2 path ─────────────────────────────────────────────
-        // Pin session to V2 (restores the pin lost on page refresh)
-        this.pinSessionVersion('V2');
-
         const {agentId, deviceType, dn, teamId, agentChannelStateDetailMap, channelsMap} =
           reLoginResponse.data as AgentChannelReloginSuccess['data'];
 
@@ -2808,8 +2777,6 @@ export default class ContactCenter extends WebexPlugin implements IContactCenter
         );
       } else {
         // ─── V1 path ─────────────────────────────────────────────
-        // Pin session to V1 (matches desktop's pinSessionRoutingVersion(false))
-        this.pinSessionVersion('V1');
 
         const {
           agentId,
@@ -2947,7 +2914,8 @@ export default class ContactCenter extends WebexPlugin implements IContactCenter
    * @public
    */
   public getChannelStates(): Record<ChannelType, AgentChannelTypeStates> {
-    if (!this.isV2Session()) return {} as Record<ChannelType, AgentChannelTypeStates>;
+    if (this.agentConfig?.manageChannelAvailability !== true)
+      return {} as Record<ChannelType, AgentChannelTypeStates>;
 
     return Object.fromEntries(
       Object.entries(this.channelStatesMap).map(([channelType, state]) => [channelType, {...state}])
@@ -2959,16 +2927,11 @@ export default class ContactCenter extends WebexPlugin implements IContactCenter
    * @public
    */
   public getAgentStateControl(): AgentStateControlStatus {
-    let sessionActive: boolean | undefined;
-    if (this.pinnedVersion === 'V2') {
-      sessionActive = true;
-    } else if (this.pinnedVersion === 'V1') {
-      sessionActive = false;
-    }
+    const isV2 = this.agentConfig?.manageChannelAvailability === true;
 
     return {
-      declared: this.agentConfig ? this.agentConfig.manageChannelAvailability === true : undefined,
-      active: sessionActive,
+      declared: this.agentConfig ? isV2 : undefined,
+      active: this.agentConfig ? isV2 : undefined,
     };
   }
 
@@ -2997,39 +2960,12 @@ export default class ContactCenter extends WebexPlugin implements IContactCenter
   }
 
   /**
-   * Pins the session version for the current login session. A reload pins the
-   * server's session version, which can differ from the profile flag until the
-   * agent signs in again.
-   * @private
-   */
-  private pinSessionVersion(version: SessionVersion): void {
-    this.pinnedVersion = version;
-  }
-
-  /**
-   * Returns true when the session is pinned to V2.
-   * @private
-   */
-  private isV2Session(): boolean {
-    return this.pinnedVersion === 'V2';
-  }
-
-  /**
-   * Clears the pinned session version and derived state. Called on logout.
-   * @private
-   */
-  private clearSessionVersion(): void {
-    this.pinnedVersion = undefined;
-  }
-
-  /**
    * Drops the deferred telephony timer and the in-memory V2 session.
    * Called on logout, deregister, and a remote logout for this session.
    * @private
    */
   private clearV2LocalState(): void {
     this.clearTelephonyRecoveryTimer();
-    this.clearSessionVersion();
     this.channelStatesMap = {} as Record<ChannelType, AgentChannelTypeStates>;
     this.loginChannelsMap = {};
     this.lastEmittedV1 = undefined;
@@ -3063,7 +2999,7 @@ export default class ContactCenter extends WebexPlugin implements IContactCenter
       const telephony = this.channelStatesMap.telephony;
       const stillDisconnected = telephony?.stateChangeReason === WSS_DISCONNECT_REASON;
       if (
-        !this.isV2Session() ||
+        this.agentConfig?.manageChannelAvailability !== true ||
         this.currentAgentSessionId !== sessionAtSchedule ||
         !stillDisconnected
       ) {

@@ -74,7 +74,7 @@ Related context: [documentation index](../../../../docs/index.md) ·
 | `src/services/agent/index.ts` | The `routingAgent` request functions with their endpoints, methods, `CC_EVENTS` binds, error transformers, and errIds |
 | `src/services/agent/types.ts` | `AGENT_EVENTS`, request types (`Logout`, `StateChange`, `UserStationLogin`, `BuddyAgents`), notification types (`StationLoginSuccess`, `LogoutSuccess`, `StateChangeSuccess`, `BuddyAgentsSuccess`, `ReloginSuccess`), `StationLoginSuccessResponse`, `DeviceTypeUpdateSuccess`, `AgentState`, `LoginOption`, and their JSDoc |
 | `src/services/agent/types.ts` (V1 bridge functions) | `projectAggregate`, `shouldEmitLegacyEvent`, `bridgeStateChangeSuccess`, `shouldBridgeChannelState`, and the primary channel order `telephony`, `chat`, `email`, `social` |
-| `src/services/agent/types.ts` (V2 section) | `ChannelType`, `ChannelStateChangeRequest`, `AgentChannelTypeStates`, `AgentChannelStateChanged`, `AgentChannelStateChangeFailed`, `AgentChannelReloginSuccess`, `SessionVersion`, `AgentStateControlStatus`, and the four `agent:channel*` events |
+| `src/services/agent/types.ts` (V2 section) | `ChannelType`, `ChannelStateChangeRequest`, `AgentChannelTypeStates`, `AgentChannelStateChanged`, `AgentChannelStateChangeFailed`, `AgentChannelReloginSuccess`, `AgentStateControlStatus`, and the four `agent:channel*` events |
 | `test/unit/spec/services/agent/types.ts` | Projection, bridge payload, and duplicate-suppression cases |
 | `src/services/config/types.ts` | The `CC_EVENTS` string values the binds use, for example `StationLogin` with nested `AgentStationLoginSuccess` |
 | `src/services/index.ts` | The services root builds `agent` as `routingAgent(aqmReq)` |
@@ -333,8 +333,8 @@ Preconditions for the wrappers:
 | AGENT-R-007 | An AGENT_DN station login whose dial number fails `isValidDialNumber` against the profile dial plan rejects with `INVALID_DIAL_NUMBER` before any request is sent. | The backend would otherwise register an unreachable DN; the reason maps to a field message for the login form. | `src/cc.ts` | `test/unit/spec/services/core/Utils.ts` | No `test/unit/spec/cc.ts` case drives the AGENT_DN rejection. | PRESENT |
 | AGENT-R-008 | `setAgentState` rejects a change to Available with `VOICE_CONNECTION_ERROR.NOT_READY` (type `SDK_VALIDATION_ERROR`) when browser voice is required and not ready; Idle and non-browser changes proceed. | An Available agent without a registered browser line would be offered calls it cannot answer. | `src/cc.ts` | `test/unit/spec/cc.ts` | None. | PRESENT |
 | AGENT-R-009 | `getBuddyAgents` sends `agentProfileId` from the profile, defaults `mediaType` to `telephony`, and, when `state` is omitted, filters on Available for `action: 'Transfer'` and sends no state for Consult. | A transfer needs an agent who can take the call now; a consult may target an Idle agent. | `src/cc.ts`, `src/types.ts` | `test/unit/spec/cc.ts` | None. | PRESENT |
-| AGENT-R-011 | V2 request functions: `stationLoginV2` (`POST /v2/agents/login`), `stateChangeV2` (`PUT /v2/agents/session/state`, success on nested `AgentChannelStateChanged`, failure on nested `AgentChannelStateChangeFailed`), `logoutV2` (`POST /v2/agents/logout`), and `reloadV2` (`POST /v2/agents/reload`). V2 login and logout reuse the V1 success and failure binds with their own errIds. ContactCenter alone chooses V1 or V2. | The backend serves granular sessions on `/v2`; the version choice needs the profile flag and session pin, which only ContactCenter holds. | `src/services/agent/index.ts`, `src/cc.ts` | `test/unit/spec/services/agent/index.ts` (`stationLoginV2`, `stateChangeV2`, `logoutV2`, `reloadV2`) | No integration test against a V2 backend. | PRESENT |
-| AGENT-R-012 | Both `reload` and `reloadV2` settle on `AgentReloginSuccess` or `AgentChannelReloginSuccess`; ContactCenter pins the session version from the type that arrives. | The server answers from the persisted session version, not from the endpoint version. | `src/services/agent/index.ts`, `src/cc.ts` | `test/unit/spec/cc.ts` (`session version pin (server wins)`) | None. | PRESENT |
+| AGENT-R-011 | V2 request functions: `stationLoginV2` (`POST /v2/agents/login`), `stateChangeV2` (`PUT /v2/agents/session/state`, success on nested `AgentChannelStateChanged`, failure on nested `AgentChannelStateChangeFailed`), `logoutV2` (`POST /v2/agents/logout`), and `reloadV2` (`POST /v2/agents/reload`). V2 login and logout reuse the V1 success and failure binds with their own errIds. ContactCenter alone chooses V1 or V2. | The backend serves granular sessions on `/v2`; the version choice uses `agentConfig.manageChannelAvailability === true`, which only ContactCenter holds. | `src/services/agent/index.ts`, `src/cc.ts` | `test/unit/spec/services/agent/index.ts` (`stationLoginV2`, `stateChangeV2`, `logoutV2`, `reloadV2`) | No integration test against a V2 backend. | PRESENT |
+| AGENT-R-012 | Both `reload` and `reloadV2` settle on `AgentReloginSuccess` or `AgentChannelReloginSuccess`; ContactCenter routes by `manageChannelAvailability`. | The server answers from the persisted session version, not from the endpoint version. | `src/services/agent/index.ts`, `src/cc.ts` | `test/unit/spec/cc.ts` | None. | PRESENT |
 | AGENT-R-013 | The bridge projects per-channel state to one agent-wide state: any Available channel gives Available, otherwise all-Idle gives Idle; only Available and Idle are bridged. Scalar fields come from the first matching channel in the order `telephony`, `chat`, `email`, `social`. `shouldEmitLegacyEvent` suppresses an event whose projected state and idle code match the last one emitted. | V1 listeners keep working on V2 sessions without duplicates or V2-only states. | `src/services/agent/types.ts` | `test/unit/spec/services/agent/types.ts` | `workItem` and `customMessaging` never take part. | PRESENT |
 | AGENT-R-010 | Station login success and relogin success replace `channelsMap` with `mmProfile` counts per channel and add `notifsTrackingId`. | Applications receive capacity numbers instead of raw channel id lists. | `src/cc.ts`, `src/services/agent/types.ts` | `test/unit/spec/cc.ts` | None. | PRESENT |
 
@@ -344,9 +344,9 @@ The agent service uses a factory pattern: `routingAgent` is a pure AQM factory. 
 
 The factory initiates authenticated HTTP requests and supplies `CC_EVENTS` success/failure binds to AqmReqs. The services root builds it once as `services.agent` (`src/services/index.ts`); the factory holds no state.
 
-ContactCenter validates and enriches public inputs, starts metrics, delegates to the factory, performs browser-calling work when required, and maps backend notifications to application-facing events. `updateAgentProfile()` and private `silentRelogin()` are ContactCenter methods; the latter calls `services.agent.reloadV2()` or `reload()` (by session pin, else the profile flag) only after package-level recovery policy permits it.
+ContactCenter validates and enriches public inputs, starts metrics, delegates to the factory, performs browser-calling work when required, and maps backend notifications to application-facing events. `updateAgentProfile()` and private `silentRelogin()` are ContactCenter methods; the latter calls `services.agent.reloadV2()` or `reload()` (by `manageChannelAvailability`) only after package-level recovery policy permits it.
 
-V2 routing: ContactCenter re-reads `manageChannelAvailability` before each `stationLogin`, then calls `stationLoginV2` or `stationLogin` with no fallback, and pins the version for `stateChangeV2`/`stateChange` and `logoutV2`/`logout`. The bridge functions in `types.ts` are pure with no state; ContactCenter keeps the channel map and the last bridged state. Session-level design is in the [root module specification](../../../docs/README.md).
+V2 routing: ContactCenter re-reads `manageChannelAvailability` before each `stationLogin`, then calls `stationLoginV2` or `stationLogin` with no fallback, and uses `manageChannelAvailability === true` for `stateChangeV2`/`stateChange` and `logoutV2`/`logout`. The bridge functions in `types.ts` are pure with no state; ContactCenter keeps the channel map and the last bridged state. Session-level design is in the [root module specification](../../../docs/README.md).
 
 Stack: TypeScript 5.4 AQM request factory, REST initiation, WebSocket completion events, Jest 27.
 
@@ -405,7 +405,7 @@ sequenceDiagram
         WS-->>AQM: matching success notification
         AQM-->>Svc: StationLoginSuccess
         Svc-->>CC: login response
-        CC->>CC: pin V1 or V2, seed channel maps on V2
+        CC->>CC: seed channel maps on V2 (from manageChannelAvailability flag)
         CC->>CC: Register WebCalling if BROWSER and enabled
         CC->>CC: trackEvent(LOGIN_SUCCESS)
         CC-->>App: StationLoginResponse
@@ -519,16 +519,16 @@ sequenceDiagram
   CC-->>App: agent:connectionReconnected
   alt automated relogin allowed
     CC->>CC: silentRelogin()
-    CC->>Agent: reloadV2() or reload() (pin, else flag)
+    CC->>Agent: reloadV2() or reload() (by manageChannelAvailability flag)
     alt AgentReloginSuccess
       Agent-->>CC: relogin result
-      CC->>CC: pin V1, update agentConfig and device state
+      CC->>CC: update agentConfig and device state
       opt lastStateChangeReason is agent-wss-disconnect
         CC->>CC: setAgentState Available (aux code 0)
       end
     else AgentChannelReloginSuccess
       Agent-->>CC: per-channel map
-      CC->>CC: pin V2, restore channel and capacity maps
+      CC->>CC: restore channel and capacity maps
       CC->>CC: setAgentState Available for agent-wss-disconnect channels (selectable, with capacity)
       opt BROWSER and voice not ready
         CC-->>App: agent:channelRecoveryDeferred (telephony retried once after 60 s)
@@ -583,7 +583,7 @@ failure, and `AGENT_DN_REGISTERED` types emit their `AGENT_EVENTS` value with th
 Before this mapping, any `data.type` found in `CC_EVENTS` is also re-emitted under its raw name.
 On a V2 session, nested `AgentChannelStateChanged` updates the channel map, emits
 `agent:channelStateChange`, and runs the bridge; `AgentChannelStateChangeFailed` emits
-`agent:channelStateChangeFailed`; `AgentChannelReloginSuccess` pins V2, replaces the maps, and emits
+`agent:channelStateChangeFailed`; `AgentChannelReloginSuccess` restores the channel maps and emits
 `agent:channelReloginSuccess`.
 
 The login success event transforms `channelsMap` to `mmProfile`:
