@@ -3208,7 +3208,7 @@ describe('webex.cc', () => {
   });
 
   describe('stationLogout', () => {
-    it('routes by the flag when no session is pinned, and by the pin when set', async () => {
+    it('routes V2 when manageChannelAvailability is true, V1 when false', async () => {
       webex.cc.agentConfig = {agentId: 'agentId', manageChannelAvailability: true} as Profile;
       const v2Mock = jest
         .spyOn(webex.cc.services.agent, 'logoutV2')
@@ -3221,10 +3221,11 @@ describe('webex.cc', () => {
       expect(v2Mock).toHaveBeenCalledTimes(1);
       expect(v1Mock).not.toHaveBeenCalled();
 
-      webex.cc['pinnedVersion'] = 'V1';
+      jest.clearAllMocks();
+      webex.cc.agentConfig.manageChannelAvailability = false;
       await webex.cc.stationLogout({logoutReason: 'Logout reason'});
       expect(v1Mock).toHaveBeenCalledTimes(1);
-      expect(v2Mock).toHaveBeenCalledTimes(1);
+      expect(v2Mock).not.toHaveBeenCalled();
     });
 
     it('should wait for browser voice deregistration to finish', async () => {
@@ -4575,17 +4576,17 @@ describe('webex.cc', () => {
         expect(webex.cc.services.agent.reloadV2).not.toHaveBeenCalled();
       });
 
-      it('reloads by the pinned version over the flag', async () => {
+      it('routes by manageChannelAvailability regardless of pinnedVersion', async () => {
         webex.cc['pinnedVersion'] = 'V1';
-        await runReload(true, v1Reload);
-        expect(webex.cc.services.agent.reload).toHaveBeenCalledTimes(1);
-        expect(webex.cc.services.agent.reloadV2).not.toHaveBeenCalled();
+        await runReload(true, v2Reload);
+        expect(webex.cc.services.agent.reloadV2).toHaveBeenCalledTimes(1);
+        expect(webex.cc.services.agent.reload).not.toHaveBeenCalled();
 
         jest.clearAllMocks();
         webex.cc['pinnedVersion'] = 'V2';
-        await runReload(false, v2Reload);
-        expect(webex.cc.services.agent.reloadV2).toHaveBeenCalledTimes(1);
-        expect(webex.cc.services.agent.reload).not.toHaveBeenCalled();
+        await runReload(false, v1Reload);
+        expect(webex.cc.services.agent.reload).toHaveBeenCalledTimes(1);
+        expect(webex.cc.services.agent.reloadV2).not.toHaveBeenCalled();
       });
 
       it('clears the session and marks the agent logged out on AGENT_NOT_FOUND', async () => {
@@ -7389,8 +7390,7 @@ describe('webex.cc', () => {
       let stateChangeSpy: jest.SpyInstance;
 
       beforeEach(() => {
-        pinV2();
-        webex.cc.agentConfig = {agentId: 'agent-1', teams: []} as Profile;
+        webex.cc.agentConfig = {agentId: 'agent-1', teams: [], manageChannelAvailability: true} as Profile;
         webex.cc['loginChannelsMap'] = {telephony: ['t1'], chat: ['c1'], email: [], social: ['s1']};
         stateChangeV2Spy = jest
           .spyOn(webex.cc.services.agent, 'stateChangeV2')
@@ -7448,8 +7448,8 @@ describe('webex.cc', () => {
         expect(stateChangeV2Spy).toHaveBeenCalledTimes(1);
       });
 
-      it('drops channelType and uses the V1 request on a V1 session', async () => {
-        pinV1();
+      it('drops channelType and uses the V1 request when manageChannelAvailability is false', async () => {
+        webex.cc.agentConfig.manageChannelAvailability = false;
         stateChangeSpy.mockResolvedValue({data: {}});
 
         await webex.cc.setAgentState({state: 'Idle', auxCodeId: 'idle-1', channelType: ['chat']});

@@ -551,7 +551,7 @@ Automatic relogin on WebSocket reconnection: `handleConnectionLost` runs the rel
 #### Refresh and reconnect: SDK vs application
 
 The SDK owns everything that only it can rebuild after a page refresh or socket reconnect:
-- the reload call, routed by the pinned session version;
+- the reload call, routed by `manageChannelAvailability`;
 - restoring `agentConfig`, the session version pin, and the per-channel state map;
 - requesting Available for channels whose `lastStateChangeReason` is `agent-wss-disconnect` (V1 behavior, extended per channel for V2).
 
