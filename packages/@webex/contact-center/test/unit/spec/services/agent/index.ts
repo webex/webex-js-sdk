@@ -43,10 +43,23 @@ describe('AQM routing agent', () => {
     expect(reqSpy).toHaveBeenCalled();
   });
 
+  it('reload binds only V1 AgentReloginSuccess', () => {
+    const req = (agent.reload as unknown as () => any)();
+    expect(req.url).toBe('/v1/agents/reload');
+    expect(req.notifSuccess.bind.type).toBe('AgentReloginSuccess');
+    expect(req.notifSuccess.bind.data.type).toBe('AgentReloginSuccess');
+  });
+
   it('reloadV2', async () => {
     const req = (agent.reloadV2 as unknown as () => {url: string; data: object})();
     expect(req.url).toBe('/v2/agents/reload');
     expect(req.data).toEqual({});
+  });
+
+  it('reloadV2 binds only V2 AgentChannelReloginSuccess', () => {
+    const req = (agent.reloadV2 as unknown as () => any)();
+    expect(req.notifSuccess.bind.type).toBe('AgentChannelReloginSuccess');
+    expect(req.notifSuccess.bind.data.type).toBe('AgentChannelReloginSuccess');
   });
 
   it('stationLoginV2', () => {

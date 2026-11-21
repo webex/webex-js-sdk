@@ -2707,9 +2707,6 @@ export default class ContactCenter extends WebexPlugin implements IContactCenter
     });
 
     try {
-      // Both reload endpoints bind V1 (AgentReloginSuccess) and V2
-      // (AgentChannelReloginSuccess): the response type follows the persisted
-      // session version, which can differ from the profile flag after a refresh.
       const reLoginResponse = this.shouldRouteV2()
         ? await this.services.agent.reloadV2()
         : await this.services.agent.reload();

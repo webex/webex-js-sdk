@@ -14,10 +14,7 @@ import {CC_EVENTS} from '../config/types';
 export default function routingAgent(routing: AqmReqs) {
   return {
     /**
-     * Reloads the agent session. Uses the V1 endpoint but accepts both V1
-     * (AgentReloginSuccess) and V2 (AgentChannelReloginSuccess) responses —
-     * the server determines the response type from the persisted session
-     * version, NOT from the reload endpoint version.
+     * Reloads the agent session
      * @public
      */
     reload: routing.reqEmpty(() => ({
@@ -27,10 +24,10 @@ export default function routingAgent(routing: AqmReqs) {
       err,
       notifSuccess: {
         bind: {
-          type: [CC_EVENTS.AGENT_RELOGIN_SUCCESS, CC_EVENTS.AGENT_CHANNEL_RELOGIN_SUCCESS],
-          data: {type: [CC_EVENTS.AGENT_RELOGIN_SUCCESS, CC_EVENTS.AGENT_CHANNEL_RELOGIN_SUCCESS]},
+          type: CC_EVENTS.AGENT_RELOGIN_SUCCESS,
+          data: {type: CC_EVENTS.AGENT_RELOGIN_SUCCESS},
         },
-        msg: {} as Agent.ReloginSuccess | Agent.AgentChannelReloginSuccess,
+        msg: {} as Agent.ReloginSuccess,
       },
       notifFail: {
         bind: {
@@ -152,8 +149,7 @@ export default function routingAgent(routing: AqmReqs) {
     // ─── V2 Granular Agent State Control Operations ─────────────────────
 
     /**
-     * V2 reload for granular sessions. Binds both relogin response types; the
-     * server answers with the persisted session version.
+     * V2 reload for granular sessions
      * @public
      */
     reloadV2: routing.reqEmpty(() => ({
@@ -163,10 +159,10 @@ export default function routingAgent(routing: AqmReqs) {
       err,
       notifSuccess: {
         bind: {
-          type: [CC_EVENTS.AGENT_RELOGIN_SUCCESS, CC_EVENTS.AGENT_CHANNEL_RELOGIN_SUCCESS],
-          data: {type: [CC_EVENTS.AGENT_RELOGIN_SUCCESS, CC_EVENTS.AGENT_CHANNEL_RELOGIN_SUCCESS]},
+          type: CC_EVENTS.AGENT_CHANNEL_RELOGIN_SUCCESS,
+          data: {type: CC_EVENTS.AGENT_CHANNEL_RELOGIN_SUCCESS},
         },
-        msg: {} as Agent.ReloginSuccess | Agent.AgentChannelReloginSuccess,
+        msg: {} as Agent.AgentChannelReloginSuccess,
       },
       notifFail: {
         bind: {
