@@ -58,6 +58,7 @@ import {
   AGENT_EVENTS,
   ChannelType,
   AgentChannelTypeStates,
+  AgentChannelStateChanged,
   AgentChannelReloginSuccess,
   AgentStateControlStatus,
   ChannelStateChangeRequest,
@@ -2544,7 +2545,7 @@ export default class ContactCenter extends WebexPlugin implements IContactCenter
    * Updates internal channel state, emits V2 event, and bridges to V1.
    * @private
    */
-  private handleChannelStateChanged(eventData: any): void {
+  private handleChannelStateChanged(eventData: AgentChannelStateChanged): void {
     const data = eventData.data;
     const channelType = data.channelType as ChannelType;
 
@@ -2600,7 +2601,7 @@ export default class ContactCenter extends WebexPlugin implements IContactCenter
    * Restores channel states and capacity from the reload response.
    * @private
    */
-  private handleChannelReloginSuccess(eventData: any): void {
+  private handleChannelReloginSuccess(eventData: AgentChannelReloginSuccess): void {
     const data = eventData.data;
 
     if (data.agentChannelStateDetailMap) {
