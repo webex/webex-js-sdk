@@ -6975,6 +6975,58 @@ describe('webex.cc', () => {
         );
       });
 
+      it('should forward attribution fields to V1 bridged event', () => {
+        setV2();
+        webex.cc['channelStatesMap'] = {} as Record<ChannelType, AgentChannelTypeStates>;
+
+        const detail = makeChannelState('Available', {auxCodeId: 'aux-avail'});
+
+        messageCallback(
+          JSON.stringify({
+            type: CC_EVENTS.AGENT_CHANNEL_STATE_CHANGED,
+            data: {
+              channelType: 'telephony',
+              agentChannelStateDetail: detail,
+              agentId: 'agent-1',
+              agentSessionId: 'session-1',
+              orgId: 'org-1',
+              changedBy: 'supervisor',
+              changedById: 'sup-001',
+              changedByName: 'Jane Doe',
+              type: CC_EVENTS.AGENT_CHANNEL_STATE_CHANGED,
+            },
+          })
+        );
+
+        expect(emitSpy).toHaveBeenCalledWith(
+          AGENT_EVENTS.AGENT_STATE_CHANGE,
+          expect.objectContaining({
+            changedBy: 'supervisor',
+            changedById: 'sup-001',
+            changedByName: 'Jane Doe',
+          })
+        );
+      });
+
+      it('should not crash when agentChannelStateDetail is null', () => {
+        setV2();
+        webex.cc['channelStatesMap'] = {} as Record<ChannelType, AgentChannelTypeStates>;
+
+        messageCallback(
+          JSON.stringify({
+            type: CC_EVENTS.AGENT_CHANNEL_STATE_CHANGED,
+            data: {
+              channelType: 'telephony',
+              agentChannelStateDetail: null,
+              agentId: 'agent-1',
+              type: CC_EVENTS.AGENT_CHANNEL_STATE_CHANGED,
+            },
+          })
+        );
+
+        expect(webex.cc['channelStatesMap'].telephony).toBeUndefined();
+      });
+
       it('should ignore unknown channelType and not update channelStatesMap', () => {
         setV2();
 
@@ -7073,6 +7125,42 @@ describe('webex.cc', () => {
         );
       });
 
+      it('should not overwrite channelStatesMap when agentChannelStateDetailMap is missing', () => {
+        webex.cc['channelStatesMap'] = {
+          telephony: makeChannelState('Available'),
+        } as Record<ChannelType, AgentChannelTypeStates>;
+
+        messageCallback(
+          JSON.stringify({
+            type: CC_EVENTS.AGENT_CHANNEL_RELOGIN_SUCCESS,
+            data: {
+              channelsMap: {telephony: ['t1']},
+              type: CC_EVENTS.AGENT_CHANNEL_RELOGIN_SUCCESS,
+            },
+          })
+        );
+
+        expect(webex.cc['channelStatesMap']).toEqual({
+          telephony: makeChannelState('Available'),
+        });
+      });
+
+      it('should not overwrite loginChannelsMap when channelsMap is missing', () => {
+        webex.cc['loginChannelsMap'] = {telephony: ['t1']};
+
+        messageCallback(
+          JSON.stringify({
+            type: CC_EVENTS.AGENT_CHANNEL_RELOGIN_SUCCESS,
+            data: {
+              agentChannelStateDetailMap: {chat: makeChannelState('Idle')},
+              type: CC_EVENTS.AGENT_CHANNEL_RELOGIN_SUCCESS,
+            },
+          })
+        );
+
+        expect(webex.cc['loginChannelsMap']).toEqual({telephony: ['t1']});
+      });
+
       it('should emit AGENT_CHANNEL_RELOGIN_SUCCESS', () => {
         const reloginData = {
           agentChannelStateDetailMap: {telephony: makeChannelState('Available')},
@@ -7169,6 +7257,50 @@ describe('webex.cc', () => {
         states.telephony.agentState = 'Idle';
 
         expect(webex.cc['channelStatesMap'].telephony.agentState).toBe('Available');
+      });
+
+      it('returns empty object when session is V1', () => {
+        setV1();
+        webex.cc['channelStatesMap'] = {telephony: makeChannelState('Available')} as any;
+
+        const states = webex.cc.getChannelStates();
+
+        expect(states).toEqual({});
+      });
+    });
+
+    describe('restoreV2AgentConfigFromChannels', () => {
+      it('updates agentConfig with bridged timestamps and aux code', () => {
+        setV2();
+        webex.cc.agentConfig = {agentId: 'agent-1', manageChannelAvailability: true} as Profile;
+        webex.cc['currentAgentSessionId'] = 'session-1';
+        webex.cc['channelStatesMap'] = {
+          telephony: makeChannelState('Available', {
+            auxCodeId: 'aux-avail',
+            stateChangeTimestamp: 9999,
+            lastIdleCodeChangeTimestamp: 8888,
+          }),
+        } as Record<ChannelType, AgentChannelTypeStates>;
+
+        webex.cc['restoreV2AgentConfigFromChannels']('agent-1', 'session-1', 'org-1');
+
+        expect(webex.cc.agentConfig.lastStateChangeTimestamp).toBe(9999);
+        expect(webex.cc.agentConfig.lastIdleCodeChangeTimestamp).toBe(8888);
+        expect(webex.cc.agentConfig.lastStateAuxCodeId).toBe('aux-avail');
+        expect(webex.cc['lastEmittedV1']).toEqual({subStatus: 'Available', auxCodeId: 'aux-avail'});
+      });
+
+      it('does not mutate agentConfig when no channels are bridgeable', () => {
+        setV2();
+        webex.cc.agentConfig = {agentId: 'agent-1', manageChannelAvailability: true} as Profile;
+        webex.cc['channelStatesMap'] = {
+          telephony: makeChannelState('Engaged'),
+        } as Record<ChannelType, AgentChannelTypeStates>;
+
+        webex.cc['restoreV2AgentConfigFromChannels']('agent-1', 'session-1', 'org-1');
+
+        expect(webex.cc.agentConfig.lastStateChangeTimestamp).toBeUndefined();
+        expect(webex.cc['lastEmittedV1']).toBeUndefined();
       });
     });
 
@@ -7279,6 +7411,24 @@ describe('webex.cc', () => {
         await Promise.resolve();
 
         expect(setAgentStateSpy).not.toHaveBeenCalled();
+      });
+
+      it('should log error but not throw when setAgentState fails inside timer', async () => {
+        const setAgentStateSpy = jest
+          .spyOn(webex.cc, 'setAgentState')
+          .mockRejectedValue(new Error('state change failed'));
+
+        webex.cc['channelStatesMap'] = {
+          telephony: makeChannelState('Idle', {stateChangeReason: 'agent-wss-disconnect'}),
+        } as Record<ChannelType, AgentChannelTypeStates>;
+
+        webex.cc['scheduleTelephonyRecovery']('agent-1', ['telephony']);
+
+        jest.advanceTimersByTime(60_000);
+        await Promise.resolve();
+        await Promise.resolve();
+
+        expect(setAgentStateSpy).toHaveBeenCalledTimes(1);
       });
 
       it('should clear any previous timer before scheduling a new one', () => {
@@ -7432,6 +7582,14 @@ describe('webex.cc', () => {
           webex.cc.setAgentState({state: 'Available', auxCodeId: '0', channelType: ['telephony']})
         ).rejects.toThrow(VOICE_CONNECTION_ERROR.NOT_READY);
         expect(stateChangeV2Spy).toHaveBeenCalledTimes(1);
+      });
+
+      it('auto-selects all selectable channels when channelType is explicitly set to empty array', async () => {
+        await webex.cc.setAgentState({state: 'Available', auxCodeId: '0', channelType: []});
+
+        expect(stateChangeV2Spy).toHaveBeenCalledWith({
+          data: expect.objectContaining({channelType: ['telephony', 'chat', 'social']}),
+        });
       });
 
       it('drops channelType and uses the V1 request when manageChannelAvailability is false', async () => {

@@ -4467,7 +4467,7 @@ async function requestWellnessBreak() {
 async function setWellnessAgentState(state, options = {}) {
   return webex.cc.setAgentState({
     state,
-    auxCodeId: state === 'Idle' ? options.auxCodeId || wellnessState.idleCode.id : '0',
+    auxCodeId: state === 'Idle' ? options.auxCodeId || wellnessState.idleCode?.id || '0' : '0',
     lastStateChangeReason:
       options.reason ||
       (state === 'Idle' ? 'wellness-break' : 'wellness-break-complete'),
@@ -5014,7 +5014,7 @@ function register() {
           handleGranularStateLogout();
         }
         agentMultiLoginAlert.innerHTML = 'Multiple Agent Login Session Detected!';
-        agentMultiLoginAlert.style.color = 'red';``
+        agentMultiLoginAlert.style.color = 'red';
       }
     });
 
@@ -7266,7 +7266,7 @@ function registerChannelStateEventListeners() {
   // Covers remote logouts (supervisor, inactivity, another client). The SDK
   // clears the session pin before emitting when the logout is for this session.
   webex.cc.on('agent:logoutSuccess', () => {
-    if (webex.cc.getAgentStateControl?.().active === undefined) {
+    if (webex.cc.getAgentStateControl?.()?.active === undefined) {
       handleGranularStateLogout();
     }
   });

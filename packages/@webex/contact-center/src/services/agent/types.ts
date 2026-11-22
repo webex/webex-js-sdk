@@ -531,6 +531,9 @@ export type AgentChannelStateChanged = Msg<{
   type: 'AgentChannelStateChanged';
   channelType: ChannelType;
   agentChannelStateDetail: AgentChannelTypeStates;
+  agentId: string;
+  agentSessionId: string;
+  orgId: string;
   subStatus: string;
   status: string;
   isClientInitiated: boolean;

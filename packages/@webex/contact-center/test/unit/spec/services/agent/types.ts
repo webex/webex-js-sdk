@@ -183,7 +183,7 @@ describe('types – V1 bridge functions', () => {
       expect(result).toBeNull();
     });
 
-    it('should include changedBy fields as null', () => {
+    it('should include changedBy fields as null when no attribution is provided', () => {
       const states = {
         telephony: makeChannelState('Available'),
       };
@@ -191,6 +191,37 @@ describe('types – V1 bridge functions', () => {
       const result = bridgeStateChangeSuccess(states, agentId, agentSessionId, orgId);
 
       expect(result!.changedBy).toBeNull();
+      expect(result!.changedById).toBeNull();
+      expect(result!.changedByName).toBeNull();
+    });
+
+    it('should forward attribution fields when provided', () => {
+      const states = {
+        telephony: makeChannelState('Available'),
+      };
+      const attribution = {
+        changedBy: 'supervisor',
+        changedById: 'sup-001',
+        changedByName: 'Jane Doe',
+      };
+
+      const result = bridgeStateChangeSuccess(states, agentId, agentSessionId, orgId, attribution);
+
+      expect(result!.changedBy).toBe('supervisor');
+      expect(result!.changedById).toBe('sup-001');
+      expect(result!.changedByName).toBe('Jane Doe');
+    });
+
+    it('should use null for missing attribution fields', () => {
+      const states = {
+        telephony: makeChannelState('Available'),
+      };
+
+      const result = bridgeStateChangeSuccess(states, agentId, agentSessionId, orgId, {
+        changedBy: 'agent',
+      });
+
+      expect(result!.changedBy).toBe('agent');
       expect(result!.changedById).toBeNull();
       expect(result!.changedByName).toBeNull();
     });
