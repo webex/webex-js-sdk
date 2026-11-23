@@ -473,14 +473,13 @@ describe('plugin-meetings', () => {
         resetEventSpies();
       });
 
-      it('records the security code on joinSuccess and refreshes the join state', () => {
-        rosterStub.returns([makeRosterEntry({url: OWN_DEVICE_URL})]);
-
+      it('records the security code on joinSuccess without changing the join state', () => {
         emitSession('joinSuccess', {securityCode: 'SEC-1'});
 
         assert.equal(e2ee.getSecurityCode(), 'SEC-1');
         assert.calledOnceWithExactly(events.securityCode, {securityCode: 'SEC-1'});
-        assert.equal(e2ee.state, E2eeState.Joined);
+        assert.equal(e2ee.state, E2eeState.Joining);
+        assert.notCalled(rosterStub);
       });
 
       it('updates the security code on securityCodeChanged', () => {
@@ -491,26 +490,41 @@ describe('plugin-meetings', () => {
       });
 
       it('marks joined only once our own device url is in the roster', () => {
-        rosterStub.returns([makeRosterEntry({url: 'https://wdm.webex.com/other'})]);
-        emitSession('rosterAdded', []);
+        emitSession('rosterAdded', [makeRosterEntry({url: 'https://wdm.webex.com/other'})]);
         assert.equal(e2ee.state, E2eeState.Joining);
 
-        rosterStub.returns([makeRosterEntry({url: OWN_DEVICE_URL})]);
-        emitSession('rosterAdded', []);
+        emitSession('rosterAdded', [makeRosterEntry({url: OWN_DEVICE_URL})]);
         assert.equal(e2ee.state, E2eeState.Joined);
         assert.calledOnceWithExactly(events.state, {state: E2eeState.Joined});
+      });
+
+      it('uses roster changes without reading the full roster', async () => {
+        await e2ee.start();
+        emitSession('rosterAdded', [
+          MEDIA_SERVICE,
+          makeRosterEntry({url: OWN_DEVICE_URL}),
+        ]);
+
+        assert.equal(e2ee.state, E2eeState.Joined);
+        assert.isTrue(e2ee.hasUntrustedMediaServices);
+        assert.notCalled(rosterStub);
       });
 
       it('emits a media-services change only when their presence in the roster changes', () => {
         assert.isFalse(e2ee.hasUntrustedMediaServices);
 
-        addMediaServiceToRoster();
+        const anotherMediaService = makeRosterEntry({
+          url: 'https://ms.webex.com/2',
+          deviceType: 'MEDIA_SERVICE',
+        });
+
+        emitSession('rosterAdded', [MEDIA_SERVICE, anotherMediaService]);
         assert.isTrue(e2ee.hasUntrustedMediaServices);
 
-        emitSession('rosterAdded', []);
-
-        rosterStub.returns([]);
         emitSession('rosterRemoved', {urls: [MEDIA_SERVICE.url]});
+        assert.isTrue(e2ee.hasUntrustedMediaServices);
+
+        emitSession('rosterRemoved', {urls: [anotherMediaService.url]});
         assert.isFalse(e2ee.hasUntrustedMediaServices);
 
         assert.deepEqual(events.mediaServices.args, [
@@ -576,8 +590,8 @@ describe('plugin-meetings', () => {
       });
 
       it('ignores start once joined', async () => {
-        rosterStub.returns([makeRosterEntry({url: OWN_DEVICE_URL})]);
-        emitSession('joinSuccess', {securityCode: 'SEC-1'});
+        await e2ee.start();
+        emitSession('rosterAdded', [makeRosterEntry({url: OWN_DEVICE_URL})]);
 
         await e2ee.start();
 

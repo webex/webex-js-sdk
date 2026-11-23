@@ -16,7 +16,12 @@ import {MEDIA_SERVICE_DEVICE_TYPE} from './constants';
 import MeetingsUtil from '../meetings/util';
 import type WasmLoader from '../common/wasm-loader';
 import {E2eeState} from './types';
-import type {E2eeControllerEvent, E2eeControllerEventMap, E2eeMeetingContext} from './types';
+import type {
+  E2eeControllerEvent,
+  E2eeControllerEventMap,
+  E2eeMeetingContext,
+  E2eeRosterMember,
+} from './types';
 
 const TRIGGER_SCOPE = {file: 'e2ee/E2eeController', function: 'e2ee'};
 
@@ -49,7 +54,7 @@ export default class E2eeController extends TypedEventsScope<E2eeControllerEvent
 
   private securityCode?: string;
 
-  private mediaServicesPresent = false;
+  private readonly mediaServiceUrls = new Set<string>(); // todo: remove this as part of SPARK-876976 work
 
   // Incremented by every start() and cleanupSession(); an in-flight start() whose attempt is no
   // longer the latest was cancelled during teardown and must not continue.
@@ -97,7 +102,7 @@ export default class E2eeController extends TypedEventsScope<E2eeControllerEvent
   get hasUntrustedMediaServices(): boolean {
     // For now, assume every media service is untrusted. Determining which services are trusted is
     // tracked by SPARK-863974.
-    return this.mediaServicesPresent;
+    return this.mediaServiceUrls.size > 0;
   }
 
   /**
@@ -270,7 +275,6 @@ export default class E2eeController extends TypedEventsScope<E2eeControllerEvent
     subscribe('joinSuccess', ({securityCode}) => {
       this.securityCode = securityCode;
       this.emitE2eeEvent(EVENT_TRIGGERS.MEETING_E2EE_SECURITY_CODE_UPDATED, {securityCode});
-      this.updateFromRoster();
     });
 
     subscribe('securityCodeChanged', ({code}) => {
@@ -279,10 +283,10 @@ export default class E2eeController extends TypedEventsScope<E2eeControllerEvent
     });
 
     subscribe('rosterAdded', (added) => {
-      this.updateFromRoster();
+      this.updateFromRoster({added, removed: []});
     });
     subscribe('rosterRemoved', ({urls}) => {
-      this.updateFromRoster();
+      this.updateFromRoster({added: [], removed: urls});
     });
 
     subscribe('joinFailure', ({reason}) => this.deferFatal(session, E2eeState.Failed, reason));
@@ -319,32 +323,39 @@ export default class E2eeController extends TypedEventsScope<E2eeControllerEvent
   }
 
   /**
-   * Recomputes media-service presence and MLS-join completion from the current roster. MLS join is
+   * Updates media-service presence and MLS-join completion from roster changes. MLS join is
    * complete only once our own device URL appears in the roster.
+   * @param {Object} rosterChanges
+   * @param {E2eeRosterMember[]} rosterChanges.added
+   * @param {string[]} rosterChanges.removed
    * @returns {void}
    */
-  private updateFromRoster(): void {
-    if (!this.mlsSession) {
-      return;
+  private updateFromRoster({added, removed}: {added: E2eeRosterMember[]; removed: string[]}): void {
+    const hadMediaServices = this.mediaServiceUrls.size > 0;
+    let ownDeviceAdded = false;
+
+    for (const member of added) {
+      if (member.deviceType === MEDIA_SERVICE_DEVICE_TYPE) {
+        this.mediaServiceUrls.add(member.url);
+      }
+
+      if (member.url === this.webex.internal.device.url) {
+        ownDeviceAdded = true;
+      }
     }
 
-    const roster = this.mlsSession.getRoster();
+    for (const url of removed) {
+      this.mediaServiceUrls.delete(url);
+    }
 
-    const hasMediaServices = roster.some(
-      (member) => member.deviceType === MEDIA_SERVICE_DEVICE_TYPE
-    );
+    const hasMediaServices = this.mediaServiceUrls.size > 0;
 
-    if (hasMediaServices !== this.mediaServicesPresent) {
-      this.mediaServicesPresent = hasMediaServices;
+    if (hasMediaServices !== hadMediaServices) {
       this.emitE2eeEvent(EVENT_TRIGGERS.MEETING_E2EE_MEDIA_SERVICES_CHANGED, {hasMediaServices});
     }
 
-    if (this.currentState === E2eeState.Joining) {
-      const ownDeviceUrl = this.webex.internal.device.url;
-
-      if (roster.some((member) => member.url === ownDeviceUrl)) {
-        this.setState(E2eeState.Joined);
-      }
+    if (this.currentState === E2eeState.Joining && ownDeviceAdded) {
+      this.setState(E2eeState.Joined);
     }
   }
 
@@ -399,6 +410,10 @@ export default class E2eeController extends TypedEventsScope<E2eeControllerEvent
     });
     this.sessionUnsubscribers = [];
 
+    const hadMediaServices = this.mediaServiceUrls.size > 0;
+
+    this.mediaServiceUrls.clear();
+
     const {mlsSession} = this;
 
     this.mlsSession = undefined;
@@ -409,8 +424,7 @@ export default class E2eeController extends TypedEventsScope<E2eeControllerEvent
       LoggerProxy.logger.warn(`e2ee: E2eeController --> error leaving MLS session: ${error}`);
     }
 
-    if (this.mediaServicesPresent) {
-      this.mediaServicesPresent = false;
+    if (hadMediaServices) {
       this.emitE2eeEvent(EVENT_TRIGGERS.MEETING_E2EE_MEDIA_SERVICES_CHANGED, {
         hasMediaServices: false,
       });
