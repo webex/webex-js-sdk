@@ -40,7 +40,7 @@ transport lifecycle.
 - Once prepared, a changed registration uses Mercury's transport-only teardown with an explicit
   permanent close reason, checks operation identity, then publishes the new binding and opens its
   socket. It preserves the factory registry entry, token, refresh handler, and registration promise.
-  Missing, malformed, or unroutable replacement socket URLs reject before closing an active socket.
+  The active socket stays open if the response lacks a URL or Mercury cannot resolve the route.
   The first connection attempt uses the prepared URL. Retries resolve the registration URL again.
 - Explicit `disconnect()` invalidates pending registration first, clears channel metadata and
   refresh state, and releases ownership via `disconnected`. Stale registration responses, delayed

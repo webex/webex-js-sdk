@@ -162,7 +162,6 @@ export default class LLMChannel extends (Mercury as any) implements ILLMChannel 
           const connectUrl = isDataChannelTokenEnabled
             ? LLMChannel.buildUrlWithAwareSubchannels(webSocketUrl, AWARE_DATA_CHANNEL)
             : webSocketUrl;
-          LLMChannel.validateWebSocketUrl(connectUrl);
 
           let preparedUrl: string | undefined;
           const hasTransport = this.connected || this.getSocket();
@@ -175,7 +174,6 @@ export default class LLMChannel extends (Mercury as any) implements ILLMChannel 
               if (!preparedUrl) {
                 throw new Error('Mercury could not resolve the replacement LLM WebSocket URL');
               }
-              LLMChannel.validateWebSocketUrl(preparedUrl);
             }
 
             await this._disconnect({code: 1000, reason: 'LLM registration changed'});
@@ -376,19 +374,6 @@ export default class LLMChannel extends (Mercury as any) implements ILLMChannel 
   public isDataChannelTokenEnabled(): Promise<boolean> {
     // @ts-ignore
     return this.webex.internal.feature.getFeature('developer', DATA_CHANNEL_WITH_JWT_TOKEN);
-  }
-
-  /**
-   * Validate the URL before replacing an active socket.
-   * @param {string} webSocketUrl The registration or prepared URL.
-   * @returns {void}
-   */
-  private static validateWebSocketUrl(webSocketUrl: string): void {
-    const {protocol, hash} = new URL(webSocketUrl);
-
-    if (!['ws:', 'wss:', 'http:', 'https:'].includes(protocol) || hash) {
-      throw new Error('LLM registration returned an invalid WebSocket URL');
-    }
   }
 
   /**

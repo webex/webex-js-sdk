@@ -376,31 +376,15 @@ describe('LLMChannel inherited Mercury lifecycle', () => {
       assertOriginalRegistrationRemainsActive(oldSocket);
     });
 
-    [
-      ['is malformed', 'not-a-url'],
-      ['uses an unsupported protocol', 'ftp://llm.example.com/socket'],
-      ['contains a fragment', `${nextSocketUrl}#fragment`],
-    ].forEach(([condition, webSocketUrl]) => {
-      it(`keeps the old registration when the replacement URL ${condition} with tokens off`, async () => {
-        webex.internal.feature.getFeature
-          .withArgs('developer', DATA_CHANNEL_WITH_JWT_TOKEN)
-          .resolves(false);
-        const oldSocket = await connectLLM();
-
-        channel.request.resolves({body: {webSocketUrl, binding: 'invalid-binding'}});
-        await assert.isRejected(channel.registerAndConnect(nextLocusUrl, nextDatachannelUrl));
-
-        assertOriginalRegistrationRemainsActive(oldSocket);
-      });
-    });
-
     it('keeps the old registration when the service catalog rejects the replacement socket host', async () => {
       const oldSocket = await connectLLM();
       const unavailableHost = 'unavailable.example.com';
       const isValidHost = sinon.stub().returns(false);
 
       webex.internal.services = {
-        convertUrlToPriorityHostUrl: sinon.stub().returns(undefined),
+        convertUrlToPriorityHostUrl: sinon
+          .stub()
+          .throws(new Error('No service associated with URL')),
         isValidHost,
       };
       webex.internal.feature.getFeature
@@ -412,7 +396,10 @@ describe('LLMChannel inherited Mercury lifecycle', () => {
           binding: 'invalid-binding',
         },
       });
-      await assert.isRejected(channel.registerAndConnect(nextLocusUrl, nextDatachannelUrl));
+      await assert.isRejected(
+        channel.registerAndConnect(nextLocusUrl, nextDatachannelUrl),
+        'Mercury could not resolve the replacement LLM WebSocket URL'
+      );
 
       assert.calledOnceWithExactly(isValidHost, unavailableHost);
       assertOriginalRegistrationRemainsActive(oldSocket);
