@@ -192,18 +192,11 @@ describe('plugin-llm', () => {
         clock.restore();
       });
 
-      it('clears connectingPromise after successful connection', async () => {
+      it('clears connection progress after successful connection', async () => {
         await llmChannel.registerAndConnect(locusUrl, datachannelUrl);
 
-        // After completion, a new call should create a fresh promise (not deduplicated)
-        llmChannel.connect.resetHistory();
-        llmChannel.request.resetHistory();
-
-        // Simulate different URLs to force new connection
-        await llmChannel.registerAndConnect('newLocusUrl', 'newDatachannelUrl');
-
-        // Should have called request again since connectingPromise was cleared
-        sinon.assert.calledOnce(llmChannel.request);
+        assert.isFalse(llmChannel.isConnecting());
+        assert.isTrue(llmChannel.isConnected());
       });
 
       it('clears connectingPromise after failed connection', async () => {
@@ -705,6 +698,5 @@ describe('plugin-llm', () => {
         assert.include(result, 'subscriptionAwareSubchannels=channel1');
       });
     });
-
   });
 });

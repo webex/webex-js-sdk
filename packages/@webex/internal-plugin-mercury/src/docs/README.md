@@ -34,6 +34,8 @@ supersedes the older session-map descriptions below for connection, replacement,
   keeps device registration discovery active. Automatic reconnects use `resolvedWebSocketUrl`
   without overwriting that source. Shutdown replacement re-prepares the caller source, retaining
   channel registration paths and subscription parameters while applying current routing.
+  LLM registration replacement can supply a prepared URL for the first attempt. Retries prepare
+  the original caller URL again to use current routing.
 - A shutdown candidate leaves the active socket and its resolved URL intact until it opens.
   Promotion commits the socket, resolved pre-proxy URL, and connected state before notification.
   Successful completion clears the shutdown controller, emits `online` with no arguments once,

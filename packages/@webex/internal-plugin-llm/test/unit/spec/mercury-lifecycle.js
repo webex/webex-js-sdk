@@ -1,6 +1,6 @@
 import {assert} from '@webex/test-helper-chai';
 import MockWebex from '@webex/test-helper-mock-webex';
-import Mercury, {MercuryPlugin, Socket} from '@webex/internal-plugin-mercury';
+import Mercury, {ConnectionError, MercuryPlugin, Socket} from '@webex/internal-plugin-mercury';
 import {config} from '@webex/internal-plugin-llm/src/llm';
 import LLMPlugin from '@webex/internal-plugin-llm/src/llm-plugin';
 import {DATA_CHANNEL_WITH_JWT_TOKEN} from '@webex/internal-plugin-llm/src/constants';
@@ -95,6 +95,17 @@ describe('LLMChannel inherited Mercury lifecycle', () => {
     assert.equal(actual.origin, expected.origin, 'the LLM channel must stay on the LLM service');
     assert.equal(actual.pathname, expected.pathname, 'the meeting registration must be preserved');
     assert.equal(actual.searchParams.get('subscriptionAwareSubchannels'), 'transcription');
+  }
+
+  function assertOriginalRegistrationRemainsActive(oldSocket) {
+    assert.isTrue(channel.isConnected());
+    assert.isFalse(channel.isConnecting());
+    assert.strictEqual(channel.getSocket(), oldSocket);
+    assert.equal(channel.getBinding(), 'meeting-binding');
+    assert.equal(channel.getLocusUrl(), locusUrl);
+    assert.equal(channel.getDatachannelUrl(), datachannelUrl);
+    assert.notCalled(Socket.prototype.close);
+    assert.calledOnce(socketOpen);
   }
 
   describe('choosing a replacement URL', () => {
@@ -279,6 +290,45 @@ describe('LLMChannel inherited Mercury lifecycle', () => {
       assert.equal(new URL(channel.getSocket().url).pathname, new URL(nextSocketUrl).pathname);
     });
 
+    it('uses the prepared replacement route first and selects a new route after an open failure', async () => {
+      const oldSocket = await connectLLM();
+      const convertUrlToPriorityHostUrl = sinon.stub();
+      const markFailedUrl = sinon.stub().resolves();
+
+      convertUrlToPriorityHostUrl
+        .onFirstCall()
+        .returns('wss://priority-one.example.com/registrations/another-meeting');
+      convertUrlToPriorityHostUrl
+        .onSecondCall()
+        .returns('wss://priority-two.example.com/registrations/another-meeting');
+      webex.internal.services = {convertUrlToPriorityHostUrl, markFailedUrl};
+      webex.internal.device.refresh = sinon.stub().resolves();
+      webex.internal.feature.getFeature
+        .withArgs('developer', 'web-high-availability')
+        .resolves(true);
+      webex.internal.feature.getFeature
+        .withArgs('developer', DATA_CHANNEL_WITH_JWT_TOKEN)
+        .resolves(false);
+      socketOpen.onSecondCall().rejects(new ConnectionError({code: 1006, reason: 'route failed'}));
+
+      await Promise.all([registerNext(), clock.tickAsync(10)]);
+
+      assert.deepEqual(convertUrlToPriorityHostUrl.args, [[nextSocketUrl], [nextSocketUrl]]);
+      const firstClose = Socket.prototype.close.firstCall;
+      assert.strictEqual(firstClose.thisValue, oldSocket);
+      assert.isTrue(convertUrlToPriorityHostUrl.firstCall.calledBefore(firstClose));
+
+      assert.calledThrice(socketOpen);
+      const failedSocketUrl = socketOpen.secondCall.args[0];
+      assert.equal(new URL(failedSocketUrl).host, 'priority-one.example.com');
+      assert.calledOnceWithExactly(markFailedUrl, failedSocketUrl);
+      assert.isTrue(convertUrlToPriorityHostUrl.secondCall.calledAfter(markFailedUrl.firstCall));
+
+      assert.equal(new URL(channel.getSocket().url).host, 'priority-two.example.com');
+      assert.equal(channel.getBinding(), 'another-meeting-binding');
+      assert.isTrue(channel.isConnected());
+    });
+
     it('preserves ownership and refresh state while changing registrations', async () => {
       await connectLLM();
       const disconnected = sinon.spy();
@@ -323,9 +373,78 @@ describe('LLMChannel inherited Mercury lifecycle', () => {
       channel.request.resolves({body: {binding: 'invalid-binding'}});
       await assert.isRejected(channel.registerAndConnect(nextLocusUrl, nextDatachannelUrl));
 
-      assert.strictEqual(channel.getSocket(), oldSocket);
-      assert.equal(channel.getBinding(), 'meeting-binding');
+      assertOriginalRegistrationRemainsActive(oldSocket);
+    });
+
+    [
+      ['is malformed', 'not-a-url'],
+      ['uses an unsupported protocol', 'ftp://llm.example.com/socket'],
+      ['contains a fragment', `${nextSocketUrl}#fragment`],
+    ].forEach(([condition, webSocketUrl]) => {
+      it(`keeps the old registration when the replacement URL ${condition} with tokens off`, async () => {
+        webex.internal.feature.getFeature
+          .withArgs('developer', DATA_CHANNEL_WITH_JWT_TOKEN)
+          .resolves(false);
+        const oldSocket = await connectLLM();
+
+        channel.request.resolves({body: {webSocketUrl, binding: 'invalid-binding'}});
+        await assert.isRejected(channel.registerAndConnect(nextLocusUrl, nextDatachannelUrl));
+
+        assertOriginalRegistrationRemainsActive(oldSocket);
+      });
+    });
+
+    it('keeps the old registration when the service catalog rejects the replacement socket host', async () => {
+      const oldSocket = await connectLLM();
+      const unavailableHost = 'unavailable.example.com';
+      const isValidHost = sinon.stub().returns(false);
+
+      webex.internal.services = {
+        convertUrlToPriorityHostUrl: sinon.stub().returns(undefined),
+        isValidHost,
+      };
+      webex.internal.feature.getFeature
+        .withArgs('developer', 'web-high-availability')
+        .resolves(true);
+      channel.request.resolves({
+        body: {
+          webSocketUrl: `wss://${unavailableHost}/registrations/another-meeting`,
+          binding: 'invalid-binding',
+        },
+      });
+      await assert.isRejected(channel.registerAndConnect(nextLocusUrl, nextDatachannelUrl));
+
+      assert.calledOnceWithExactly(isValidHost, unavailableHost);
+      assertOriginalRegistrationRemainsActive(oldSocket);
+    });
+
+    it('honors explicit disconnect during replacement URL preparation', async () => {
+      await connectLLM();
+      const highAvailability = webex.internal.feature.getFeature.withArgs(
+        'developer',
+        'web-high-availability'
+      );
+      highAvailability.resetHistory();
+      let finishPreparation;
+      highAvailability.returns(
+        new Promise((resolve) => {
+          finishPreparation = resolve;
+        })
+      );
+
+      const replacement = registerNext();
+      await clock.tickAsync(0);
+      assert.calledOnce(highAvailability);
+      assert.notCalled(Socket.prototype.close);
+
+      await channel.disconnect(permanentClose);
+      finishPreparation(false);
+      await replacement;
+
+      assert.calledOnce(Socket.prototype.close);
       assert.calledOnce(socketOpen);
+      assert.isFalse(channel.isConnected());
+      assert.isUndefined(channel.getBinding());
     });
 
     it('honors explicit disconnect while the old registration socket is closing', async () => {

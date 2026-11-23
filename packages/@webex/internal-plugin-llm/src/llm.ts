@@ -158,40 +158,57 @@ export default class LLMChannel extends (Mercury as any) implements ILLMChannel 
         if (!webSocketUrl) {
           throw new Error('LLM registration did not return a WebSocket URL');
         }
-        const connectUrl = isDataChannelTokenEnabled
-          ? LLMChannel.buildUrlWithAwareSubchannels(webSocketUrl, AWARE_DATA_CHANNEL)
-          : webSocketUrl;
+        try {
+          const connectUrl = isDataChannelTokenEnabled
+            ? LLMChannel.buildUrlWithAwareSubchannels(webSocketUrl, AWARE_DATA_CHANNEL)
+            : webSocketUrl;
+          LLMChannel.validateWebSocketUrl(connectUrl);
 
-        if (urlsChanged && (this.connected || this.connecting || this.getSocket())) {
-          await this._disconnect({code: 1000, reason: 'LLM registration changed'});
+          let preparedUrl: string | undefined;
+          const hasTransport = this.connected || this.getSocket();
+          if (urlsChanged && (hasTransport || this.connecting)) {
+            if (hasTransport) {
+              preparedUrl = await this._prepareUrl(connectUrl);
+              if (this.connectingPromise !== connectionPromise) {
+                return;
+              }
+              if (!preparedUrl) {
+                throw new Error('Mercury could not resolve the replacement LLM WebSocket URL');
+              }
+              LLMChannel.validateWebSocketUrl(preparedUrl);
+            }
+
+            await this._disconnect({code: 1000, reason: 'LLM registration changed'});
+            if (this.connectingPromise !== connectionPromise) {
+              return;
+            }
+          }
+
+          registrationPrepared = true;
+          this.webSocketUrl = webSocketUrl;
+          this.binding = binding;
+
+          const connectStart = performance.now();
+
+          if (preparedUrl) {
+            await this._connect(connectUrl, false, preparedUrl);
+          } else {
+            await this.connect(connectUrl);
+          }
+
           if (this.connectingPromise !== connectionPromise) {
             return;
           }
-        }
 
-        registrationPrepared = true;
-        this.webSocketUrl = webSocketUrl;
-        this.binding = binding;
+          const clientLLMWebSocketConnectTime = Math.round(performance.now() - connectStart);
 
-        const connectStart = performance.now();
-
-        try {
-          await this.connect(connectUrl);
+          return {clientLLMDatachannelResponseTime, clientLLMWebSocketConnectTime};
         } catch (error) {
-          // register() succeeded; only connect() failed. Attach the measured datachannel time so
-          // callers don't misreport a websocket failure as a registration that never completed.
+          // Keep the HTTP registration timing when WebSocket preparation or connection fails.
           // @ts-ignore
           error.timing = {clientLLMDatachannelResponseTime};
           throw error;
         }
-
-        if (this.connectingPromise !== connectionPromise) {
-          return;
-        }
-
-        const clientLLMWebSocketConnectTime = Math.round(performance.now() - connectStart);
-
-        return {clientLLMDatachannelResponseTime, clientLLMWebSocketConnectTime};
       })
       .catch((error) => {
         if (this.connectingPromise === connectionPromise && !registrationPrepared) {
@@ -359,6 +376,19 @@ export default class LLMChannel extends (Mercury as any) implements ILLMChannel 
   public isDataChannelTokenEnabled(): Promise<boolean> {
     // @ts-ignore
     return this.webex.internal.feature.getFeature('developer', DATA_CHANNEL_WITH_JWT_TOKEN);
+  }
+
+  /**
+   * Validate the URL before replacing an active socket.
+   * @param {string} webSocketUrl The registration or prepared URL.
+   * @returns {void}
+   */
+  private static validateWebSocketUrl(webSocketUrl: string): void {
+    const {protocol, hash} = new URL(webSocketUrl);
+
+    if (!['ws:', 'wss:', 'http:', 'https:'].includes(protocol) || hash) {
+      throw new Error('LLM registration returned an invalid WebSocket URL');
+    }
   }
 
   /**

@@ -212,7 +212,7 @@ const Mercury = WebexPlugin.extend({
     return this._connect(webSocketUrl);
   },
 
-  _connect(webSocketUrl, isReconnect = false) {
+  _connect(webSocketUrl, isReconnect = false, preparedUrl = undefined) {
     if (this.connected) {
       this.logger.info(`${this.namespace}: already connected, will not connect again`);
 
@@ -244,7 +244,7 @@ const Mercury = WebexPlugin.extend({
         }
         this.logger.info(`${this.namespace}: connecting`);
 
-        return this._connectWithBackoff(webSocketUrl);
+        return this._connectWithBackoff(webSocketUrl, {preparedUrl});
       })
       .finally(() => {
         if (this._connectPromise === connectPromise) {
@@ -395,7 +395,7 @@ const Mercury = WebexPlugin.extend({
   },
 
   _attemptConnection(socketUrl, callback, options = {}) {
-    const {isShutdownSwitchover = false, onSuccess = null} = options;
+    const {isShutdownSwitchover = false, onSuccess = null, preparedUrl} = options;
 
     const socket = new Socket();
     let newWSUrl;
@@ -441,7 +441,7 @@ const Mercury = WebexPlugin.extend({
       this.socket = socket;
     }
 
-    return this._prepareAndOpenSocket(socket, socketUrl, isShutdownSwitchover)
+    return this._prepareAndOpenSocket(socket, socketUrl, isShutdownSwitchover, preparedUrl)
       .then((webSocketUrl) => {
         if (!isCurrentAttempt()) {
           socket.removeAllListeners();
@@ -576,13 +576,15 @@ const Mercury = WebexPlugin.extend({
       });
   },
 
-  _prepareAndOpenSocket(socket, socketUrl, isShutdownSwitchover = false) {
+  _prepareAndOpenSocket(socket, socketUrl, isShutdownSwitchover, preparedUrl) {
     const logPrefix = isShutdownSwitchover ? '[shutdown] switchover' : 'connection';
     const backoffCall = isShutdownSwitchover
       ? this._shutdownSwitchoverBackoffCall
       : this.backoffCall;
 
-    return Promise.all([this._prepareUrl(socketUrl), this.webex.credentials.getUserToken()]).then(
+    const urlToOpen = preparedUrl ?? this._prepareUrl(socketUrl);
+
+    return Promise.all([urlToOpen, this.webex.credentials.getUserToken()]).then(
       ([webSocketUrl, token]) => {
         if (
           backoffCall !==
@@ -630,7 +632,8 @@ const Mercury = WebexPlugin.extend({
   },
 
   _connectWithBackoff(webSocketUrl, context = {}) {
-    const {isShutdownSwitchover = false, attemptOptions = {}} = context;
+    const {isShutdownSwitchover = false, attemptOptions = {}, preparedUrl} = context;
+    const firstAttemptOptions = preparedUrl ? {...attemptOptions, preparedUrl} : attemptOptions;
 
     return new Promise((resolve, reject) => {
       // eslint gets confused about whether or not call is actually used
@@ -676,7 +679,11 @@ const Mercury = WebexPlugin.extend({
         const logPrefix = isShutdownSwitchover ? '[shutdown] switchover' : 'connection';
 
         this.logger.info(`${this.namespace}: executing ${logPrefix} attempt ${attemptNum}`);
-        this._attemptConnection(webSocketUrl, callback, attemptOptions);
+        this._attemptConnection(
+          webSocketUrl,
+          callback,
+          attemptNum === 0 ? firstAttemptOptions : attemptOptions
+        );
       }, onComplete);
 
       call.setStrategy(
