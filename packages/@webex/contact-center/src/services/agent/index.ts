@@ -13,7 +13,7 @@ import {CC_EVENTS} from '../config/types';
  */
 export default function routingAgent(routing: AqmReqs) {
   // Shared configs for V1/V2 pairs that differ only in URL path and error IDs.
-  const logoutConfig = (url: string, errId: string) =>
+  const logoutConfig = (url: string, errId: Err.IdsDetails) =>
     routing.req((p: {data: Agent.Logout}) => ({
       url,
       host: WCC_API_GATEWAY,
@@ -35,7 +35,7 @@ export default function routingAgent(routing: AqmReqs) {
       },
     }));
 
-  const stationLoginConfig = (url: string, errId: string, errLabel: string) =>
+  const stationLoginConfig = (url: string, errId: Err.IdsDetails, errLabel: Err.IdsDetails) =>
     routing.req((p: {data: Agent.UserStationLogin}) => ({
       url,
       host: WCC_API_GATEWAY,
@@ -164,10 +164,10 @@ export default function routingAgent(routing: AqmReqs) {
       err,
       notifSuccess: {
         bind: {
-          type: CC_EVENTS.AGENT_CHANNEL_RELOGIN_SUCCESS,
-          data: {type: CC_EVENTS.AGENT_CHANNEL_RELOGIN_SUCCESS},
+          type: [CC_EVENTS.AGENT_RELOGIN_SUCCESS, CC_EVENTS.AGENT_CHANNEL_RELOGIN_SUCCESS],
+          data: {type: [CC_EVENTS.AGENT_RELOGIN_SUCCESS, CC_EVENTS.AGENT_CHANNEL_RELOGIN_SUCCESS]},
         },
-        msg: {} as Agent.AgentChannelReloginSuccess,
+        msg: {} as Agent.ReloginSuccess | Agent.AgentChannelReloginSuccess,
       },
       notifFail: {
         bind: {

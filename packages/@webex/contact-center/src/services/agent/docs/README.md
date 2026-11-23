@@ -88,7 +88,7 @@ Related context: [documentation index](../../../../docs/index.md) ·
 | `src/config.ts` | `allowAutomatedRelogin` defaults to true |
 | `src/index.ts` | Public exports of `routingAgent`, `AGENT_EVENTS`, and the agent types |
 | `src/metrics/constants.ts` | The station, state-change, and buddy-agent metric names |
-| `test/unit/spec/services/agent/index.ts` | Nine cases. The V1 cases and `reloadV2` assert only delegation to `req` or `reqEmpty`; the `stationLoginV2`, `stateChangeV2`, and `logoutV2` cases assert the url, method, binds, and errIds |
+| `test/unit/spec/services/agent/index.ts` | Thirteen cases. The V1 `reload` case asserts delegation and its V1-only bind; the `reloadV2` case asserts the dual-type bind (`[AgentReloginSuccess, AgentChannelReloginSuccess]`) matching the server contract (AGENT-R-012); the `stationLoginV2`, `stateChangeV2`, and `logoutV2` cases assert the url, method, binds, and errIds; additional `stateChangeV2` cases assert per-channel correlation and distinct bind keys |
 | `test/unit/spec/cc.ts` | `stationLogin`, `stationLogout`, `setAgentStatus`, `getBuddyAgents`, `silentRelogin`, `cc.getDeviceId`, `handleWebsocketMessage events`, and `updateAgentProfile` suites |
 | `test/unit/spec/services/core/Utils.ts` | `getStationLoginErrorData` message and fieldName cases |
 | `src/cc.ts` | Justifies the extension subsections under Data flow and sequence coverage: one subsection per operation group the wrappers implement (station login, station logout, state change, buddy-agent lookup, recovery reload) plus the WebSocket event mapping and silent-relogin flows |

@@ -56,10 +56,18 @@ describe('AQM routing agent', () => {
     expect(req.data).toEqual({});
   });
 
-  it('reloadV2 binds only V2 AgentChannelReloginSuccess', () => {
+  it('reloadV2 accepts both V1 and V2 relogin response types', () => {
     const req = (agent.reloadV2 as unknown as () => any)();
-    expect(req.notifSuccess.bind.type).toBe('AgentChannelReloginSuccess');
-    expect(req.notifSuccess.bind.data.type).toBe('AgentChannelReloginSuccess');
+    expect(req.notifSuccess.bind.type).toEqual([
+      'AgentReloginSuccess',
+      'AgentChannelReloginSuccess',
+    ]);
+    expect(req.notifSuccess.bind.data.type).toEqual([
+      'AgentReloginSuccess',
+      'AgentChannelReloginSuccess',
+    ]);
+    expect(req.notifFail.bind.type).toBe('AgentReloginFailed');
+    expect(req.notifFail.bind.data.type).toBe('AgentReloginFailed');
   });
 
   it('stationLoginV2', () => {
