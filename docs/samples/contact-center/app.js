@@ -6475,7 +6475,9 @@ function buildChannelStates() {
         // Desktop showMultiIdleTimer: idle-code time / total idle time.
         hasDualTimer: isIdle && idleCodeChangeTimestamp > 0 && idleCodeChangeTimestamp !== stateChangeTimestamp,
         elapsedTime: Math.max(0, Math.floor((now - stateChangeTimestamp) / 1000)),
-        isAvailable: state.agentState === GRANULAR_AGENT_STATE_AVAILABLE && !pendingIdle,
+        // Desktop rule: non-Idle channels are "on" unless Idle is pending.
+        // Engaged/Reserved/WrapUp toggles are disabled separately (ACTIVE_TASK_STATES).
+        isAvailable: state.agentState !== GRANULAR_AGENT_STATE_IDLE && !pendingIdle,
       };
     });
 }

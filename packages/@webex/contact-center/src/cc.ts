@@ -2576,11 +2576,14 @@ export default class ContactCenter extends WebexPlugin implements IContactCenter
       this.channelStatesMap[channelType] = data.agentChannelStateDetail;
     }
 
-    // Emit V2 event
+    // Emit the V2 per-channel event for new V2 consumers.
     // @ts-ignore
     this.emit(AGENT_EVENTS.AGENT_CHANNEL_STATE_CHANGE, data);
 
-    // Bridge to V1 if aggregate state changed
+    // V2→V1 bridge: the server sends per-channel events on V2, but existing
+    // V1 consumers (Widgets, integrations) need the agent-wide `agent:stateChange`.
+    // Emit only when the projected aggregate (any Available → Available,
+    // all Idle → Idle) or auxCodeId actually changed.
     if (shouldEmitLegacyEvent(this.channelStatesMap, this.lastEmittedV1)) {
       const bridged = bridgeStateChangeSuccess(
         this.channelStatesMap,
@@ -2698,24 +2701,45 @@ export default class ContactCenter extends WebexPlugin implements IContactCenter
           reLoginResponse.data as AgentChannelReloginSuccess['data'];
 
         this.agentConfig.currentTeamId = teamId;
-        await this.handleDeviceType(deviceType as LoginOption, dn);
 
-        // Restore V2 channel states from reload response
+        // Seed channel states from the reload snapshot only for channels not
+        // already updated by a live WebSocket notification. The WebSocket handler
+        // (handleChannelReloginSuccess) already seeded channelStatesMap before
+        // this await resumes; individual AgentChannelStateChanged events may have
+        // updated specific channels since then, so we must not overwrite them.
         if (agentChannelStateDetailMap) {
-          this.channelStatesMap = agentChannelStateDetailMap as Record<
+          const snapshot = agentChannelStateDetailMap as Record<
             ChannelType,
             AgentChannelTypeStates
           >;
+          for (const [ct, detail] of Object.entries(snapshot)) {
+            if (!this.channelStatesMap[ct as ChannelType]) {
+              this.channelStatesMap[ct as ChannelType] = detail;
+            }
+          }
         }
         if (channelsMap) {
           this.loginChannelsMap = channelsMap;
         }
 
+        // Handle device type (browser voice registration) in a try-catch so
+        // that a voice registration failure does not block digital channel recovery.
+        try {
+          await this.handleDeviceType(deviceType as LoginOption, dn);
+        } catch (error) {
+          LoggerProxy.error(
+            `event=silentRelogin | V2: device type handling failed, proceeding with digital channel recovery: ${error}`,
+            {module: CC_FILE, method: METHODS.SILENT_RELOGIN}
+          );
+        }
+
         // V2 disconnect recovery: find channels idled by WSS disconnect. Only
         // selectable channels with capacity, or setAgentState rejects the whole batch.
+        // Use the live channelStatesMap (which reflects WebSocket updates) rather
+        // than the reload snapshot for disconnect detection.
         const recoverableChannels = this.selectDefaultChannels(this.loginChannelsMap);
         const disconnectedChannelTypes = this.selectDisconnectedChannels(
-          agentChannelStateDetailMap || ({} as Record<ChannelType, AgentChannelTypeStates>)
+          this.channelStatesMap
         ).filter((ct) => recoverableChannels.includes(ct));
 
         if (disconnectedChannelTypes.length > 0) {
@@ -2924,6 +2948,22 @@ export default class ContactCenter extends WebexPlugin implements IContactCenter
     return Object.fromEntries(
       Object.entries(this.channelStatesMap).map(([channelType, state]) => [channelType, {...state}])
     ) as Record<ChannelType, AgentChannelTypeStates>;
+  }
+
+  /**
+   * Returns the per-channel capacity map (number of configured queues per channel).
+   * Empty if V2 is not active.
+   * @public
+   */
+  public getChannelCapacity(): Record<ChannelType, number> {
+    if (this.agentConfig?.manageChannelAvailability !== true)
+      return {} as Record<ChannelType, number>;
+
+    return Object.fromEntries(
+      SELECTABLE_CHANNEL_TYPES.filter(
+        (ct) => this.loginChannelsMap[ct] && this.loginChannelsMap[ct].length > 0
+      ).map((ct) => [ct, this.loginChannelsMap[ct].length])
+    ) as Record<ChannelType, number>;
   }
 
   /**

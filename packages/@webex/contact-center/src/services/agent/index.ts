@@ -219,14 +219,20 @@ export default function routingAgent(routing: AqmReqs) {
       notifSuccess: {
         bind: {
           type: ['AgentRequestEvent', 'RoutingMessage', CC_EVENTS.AGENT_CHANNEL_STATE_CHANGE],
-          data: {type: CC_EVENTS.AGENT_CHANNEL_STATE_CHANGED},
+          data: {
+            type: CC_EVENTS.AGENT_CHANNEL_STATE_CHANGED,
+            channelType: p.data.channelType,
+          },
         },
         msg: {} as Agent.AgentChannelStateChanged,
       },
       notifFail: {
         bind: {
           type: ['AgentRequestEvent', 'RoutingMessage', CC_EVENTS.AGENT_CHANNEL_STATE_CHANGE],
-          data: {type: CC_EVENTS.AGENT_CHANNEL_STATE_CHANGE_FAILED},
+          data: {
+            type: CC_EVENTS.AGENT_CHANNEL_STATE_CHANGE_FAILED,
+            channelType: p.data.channelType,
+          },
         },
         errId: 'Service.aqm.agent.stateChangeV2',
       },

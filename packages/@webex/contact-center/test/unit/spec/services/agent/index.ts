@@ -84,6 +84,27 @@ describe('AQM routing agent', () => {
     expect(req.notifFail.errId).toBe('Service.aqm.agent.stateChangeV2');
   });
 
+  it('stateChangeV2 correlates notifications to the requested channels', () => {
+    const data = {state: 'Available', auxCodeId: '0', channelType: ['chat', 'voice']} as any;
+    const req = (agent.stateChangeV2 as unknown as (p: {data: object}) => any)({data});
+    expect(req.notifSuccess.bind.data.channelType).toEqual(['chat', 'voice']);
+    expect(req.notifFail.bind.data.channelType).toEqual(['chat', 'voice']);
+  });
+
+  it('stateChangeV2 uses distinct bind keys per channel set', () => {
+    const chatReq = (agent.stateChangeV2 as unknown as (p: {data: object}) => any)({
+      data: {state: 'Available', auxCodeId: '0', channelType: ['chat']},
+    });
+    const emailReq = (agent.stateChangeV2 as unknown as (p: {data: object}) => any)({
+      data: {state: 'Available', auxCodeId: '0', channelType: ['email']},
+    });
+    expect(chatReq.notifSuccess.bind.data.channelType).toEqual(['chat']);
+    expect(emailReq.notifSuccess.bind.data.channelType).toEqual(['email']);
+    expect(chatReq.notifSuccess.bind.data.channelType).not.toEqual(
+      emailReq.notifSuccess.bind.data.channelType
+    );
+  });
+
   it('logoutV2', () => {
     const data = {logoutReason: 'User requested logout'};
     const req = (agent.logoutV2 as unknown as (p: {data: object}) => any)({data});

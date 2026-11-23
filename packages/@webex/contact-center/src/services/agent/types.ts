@@ -666,8 +666,9 @@ export function shouldBridgeChannelState(agentState: string): boolean {
 }
 
 /**
- * Determines whether to emit a V1 legacy event based on the aggregate state change.
- * Returns true when the projected subStatus or the winning channel's aux code changed.
+ * Returns true when the V2→V1 bridge should emit `agent:stateChange`.
+ * Suppresses duplicate emissions when the projected aggregate and auxCodeId
+ * haven't changed since the last emission.
  */
 export function shouldEmitLegacyEvent(
   channelStates: Record<string, AgentChannelTypeStates>,
@@ -683,15 +684,10 @@ export function shouldEmitLegacyEvent(
 }
 
 /**
- * Projects per-channel V2 states to an agent-wide V1 aggregate.
- * Returns null if no channels have bridgeable states.
- *
- * Rules:
- * - Any channel Available → Available agent-wide
- * - All channels Idle → Idle agent-wide
- * - Mixed Available + Idle → Available (any-available wins)
- * - Scalar fields come from the first channel in PRIMARY_CHANNEL_ORDER whose
- *   agentState equals that projected subStatus.
+ * Collapses per-channel V2 states into one agent-wide V1 aggregate.
+ * Any Available → Available; all Idle → Idle. Scalar fields come from
+ * the first matching channel in PRIMARY_CHANNEL_ORDER.
+ * Returns null when no channels have bridgeable states.
  */
 export function projectAggregate(
   channelStates: Record<string, AgentChannelTypeStates>
@@ -722,11 +718,9 @@ export function projectAggregate(
 }
 
 /**
- * Bridges a V2 AgentChannelStateChanged notification to a V1 StateChangeSuccess shape.
- * Returns null if the state is not bridgeable.
- *
- * When `attribution` is provided (from the V2 channel event), those fields are
- * forwarded into the V1 payload so consumers retain who initiated the change.
+ * Builds a V1 StateChangeSuccess payload from V2 per-channel states.
+ * Returns null when the aggregate is not bridgeable.
+ * Forwards `attribution` (changedBy/changedById/changedByName) when provided.
  */
 export function bridgeStateChangeSuccess(
   channelStates: Record<string, AgentChannelTypeStates>,
