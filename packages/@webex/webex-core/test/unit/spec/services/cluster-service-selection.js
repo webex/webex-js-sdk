@@ -1,6 +1,6 @@
 import {assert} from '@webex/test-helper-chai';
 import MockWebex from '@webex/test-helper-mock-webex';
-import {Services, ServicesV2, ServiceUrl, ServiceDetail} from '@webex/webex-core';
+import {ServiceInterceptor, Services, ServicesV2} from '@webex/webex-core';
 
 const clusterId = 'urn:TEAM:remote:board';
 const boardUrl = 'https://board-remote.example.com/board/api/v1';
@@ -10,46 +10,52 @@ const webappUrl = 'https://board-remote.example.com/webapp';
   {
     name: 'Services',
     Plugin: Services,
-    makeService(name, url) {
-      return new ServiceUrl({
-        name,
-        defaultUrl: `https://board-home.example.com${new URL(url).pathname}`,
-        hosts: [
-          {
-            id: 'urn:TEAM:home:board',
-            host: 'board-home.example.com',
-            priority: 1,
-            homeCluster: true,
-          },
-          {id: clusterId, host: new URL(url).host, priority: 1},
-        ],
-      });
+    loadServices(services, serviceGroup, entries) {
+      services._getCatalog().updateServiceUrls(
+        serviceGroup,
+        entries.map(({name, url}) => ({
+          name,
+          defaultUrl: `https://board-home.example.com${new URL(url).pathname}`,
+          hosts: [
+            {
+              id: 'urn:TEAM:home:board',
+              host: 'board-home.example.com',
+              priority: 1,
+              homeCluster: true,
+            },
+            {id: clusterId, host: new URL(url).host, priority: 1},
+          ],
+        }))
+      );
     },
   },
   {
     name: 'ServicesV2',
     Plugin: ServicesV2,
-    makeService(name, url) {
-      return new ServiceDetail({
-        id: clusterId,
-        serviceName: name,
-        serviceUrls: [{baseUrl: url, host: new URL(url).host, priority: 1}],
+    loadServices(services, serviceGroup, entries) {
+      services.updateCatalog(serviceGroup, {
+        activeServices: Object.fromEntries(entries.map(({name}) => [name, clusterId])),
+        services: entries.map(({name, url}) => ({
+          id: clusterId,
+          serviceName: name,
+          serviceUrls: [{baseUrl: url, priority: 1}],
+        })),
       });
     },
   },
-].forEach(({name, Plugin, makeService}) => {
+].forEach(({name, Plugin, loadServices}) => {
   describe(`${name} cluster service selection`, () => {
     let services;
-    let catalog;
 
     beforeEach(() => {
-      services = new Plugin(undefined, {parent: new MockWebex()});
-      catalog = services._getCatalog();
+      services = new Plugin(undefined, {
+        parent: new MockWebex({config: {services: {servicesNotNeedValidation: []}}}),
+      });
       // WDM advertises the web UI before the REST API, with the same cluster ID.
-      catalog.serviceGroups.postauth.push(
-        makeService('whiteboardWebappUrl', webappUrl),
-        makeService('board', boardUrl)
-      );
+      loadServices(services, 'postauth', [
+        {name: 'whiteboardWebappUrl', url: webappUrl},
+        {name: 'board', url: boardUrl},
+      ]);
     });
 
     [
@@ -90,7 +96,7 @@ const webappUrl = 'https://board-remote.example.com/webapp';
     });
 
     it('skips differently named services in a higher-precedence group', () => {
-      catalog.serviceGroups.override.push(makeService('whiteboardWebappUrl', webappUrl));
+      loadServices(services, 'override', [{name: 'whiteboardWebappUrl', url: webappUrl}]);
 
       assert.deepEqual(services.getServiceFromClusterId({clusterId, serviceName: 'board'}), {
         name: 'board',
@@ -101,7 +107,7 @@ const webappUrl = 'https://board-remote.example.com/webapp';
     it('preserves group precedence for the requested service name', () => {
       const overrideUrl = 'https://board-override.example.com/board/api/v1';
 
-      catalog.serviceGroups.override.push(makeService('board', overrideUrl));
+      loadServices(services, 'override', [{name: 'board', url: overrideUrl}]);
 
       assert.deepEqual(services.getServiceFromClusterId({clusterId, serviceName: 'board'}), {
         name: 'board',
@@ -110,10 +116,85 @@ const webappUrl = 'https://board-remote.example.com/webapp';
     });
 
     it('returns no match when only the UI entry exists', () => {
-      catalog.serviceGroups.postauth.pop();
+      loadServices(services, 'postauth', [{name: 'whiteboardWebappUrl', url: webappUrl}]);
 
       assert.isUndefined(services.getServiceFromClusterId({clusterId, serviceName: 'board'}));
     });
+
+    if (Plugin === ServicesV2) {
+      it('routes Board registration requests to the active API service', async () => {
+        const interceptor = new ServiceInterceptor({webex: {internal: {services}}});
+        const request = await interceptor.onRequest({api: 'board', resource: '/registrations'});
+
+        assert.deepEqual(request, {
+          resource: '/registrations',
+          service: 'board',
+          uri: `${boardUrl}/registrations`,
+        });
+      });
+
+      it('falls back to the cluster ID for an active service alias', () => {
+        services.updateCatalog('postauth', {
+          activeServices: {boardAlias: clusterId},
+          services: [
+            {
+              id: clusterId,
+              serviceName: 'board',
+              serviceUrls: [{baseUrl: boardUrl, priority: 1}],
+            },
+          ],
+        });
+
+        assert.strictEqual(services.get('boardAlias'), boardUrl);
+      });
+
+      [
+        [
+          {name: 'whiteboardWebappUrl', url: webappUrl},
+          {name: 'board', url: boardUrl},
+        ],
+        [
+          {name: 'board', url: boardUrl},
+          {name: 'whiteboardWebappUrl', url: webappUrl},
+        ],
+      ].forEach(([first, second]) => {
+        it(`keeps both services in a shared cluster when ${first.name} loads first`, () => {
+          const updatedFirst = {...first, url: `${first.url}/updated`};
+          const updatedSecond = {...second, url: `${second.url}/updated`};
+
+          loadServices(services, 'postauth', []);
+          loadServices(services, 'postauth', [first, second]);
+
+          assert.deepEqual(services.getServiceFromClusterId({clusterId}), first);
+          assert.deepEqual(
+            services.getServiceFromClusterId({clusterId, serviceName: first.name}),
+            first
+          );
+          assert.deepEqual(
+            services.getServiceFromClusterId({clusterId, serviceName: second.name}),
+            second
+          );
+
+          loadServices(services, 'postauth', [updatedSecond, updatedFirst]);
+
+          assert.deepEqual(services.getServiceFromClusterId({clusterId}), updatedFirst);
+          assert.deepEqual(
+            services.getServiceFromClusterId({clusterId, serviceName: second.name}),
+            updatedSecond
+          );
+
+          loadServices(services, 'postauth', [updatedFirst]);
+
+          assert.deepEqual(
+            services.getServiceFromClusterId({clusterId, serviceName: first.name}),
+            updatedFirst
+          );
+          assert.isUndefined(
+            services.getServiceFromClusterId({clusterId, serviceName: second.name})
+          );
+        });
+      });
+    }
 
     if (Plugin === Services) {
       it('preserves the explicit non-priority URL option for a named service', () => {

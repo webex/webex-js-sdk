@@ -166,7 +166,9 @@ const Services = WebexPlugin.extend({
 
     const clusterId = this._activeServices[name];
 
-    const urlById = catalog.get(clusterId, serviceGroup);
+    const urlById =
+      catalog.findServiceFromClusterId({clusterId, serviceGroup, serviceName: name})?.url ||
+      catalog.get(clusterId, serviceGroup);
     const urlByName = catalog.get(name, serviceGroup);
 
     // if both are undefined, then we cannot find the service

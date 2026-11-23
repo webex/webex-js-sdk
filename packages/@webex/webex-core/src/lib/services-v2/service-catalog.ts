@@ -78,16 +78,23 @@ const ServiceCatalog = AmpState.extend({
 
   /**
    * @private
-   * Search the service details array to locate a `ServiceDetails`
-   * class object based on its id.
+   * Find the first service detail with the given cluster id and optional name.
    * @param {string} clusterId
    * @param {ServiceGroup} [serviceGroup]
+   * @param {string} [serviceName]
    * @returns {IServiceDetail}
    */
-  _getServiceDetail(clusterId: string, serviceGroup?: ServiceGroup): IServiceDetail | undefined {
+  _getServiceDetail(
+    clusterId: string,
+    serviceGroup?: ServiceGroup,
+    serviceName?: string
+  ): IServiceDetail | undefined {
     const serviceDetails = this._getAllServiceDetails(serviceGroup);
 
-    return serviceDetails.find((serviceDetail: IServiceDetail) => serviceDetail.id === clusterId);
+    return serviceDetails.find(
+      (detail: IServiceDetail) =>
+        detail.id === clusterId && (serviceName === undefined || detail.serviceName === serviceName)
+    );
   },
 
   /**
@@ -102,7 +109,7 @@ const ServiceCatalog = AmpState.extend({
     let existingService: IServiceDetail | undefined;
 
     serviceDetails.forEach((service) => {
-      existingService = this._getServiceDetail(service.id, serviceGroup);
+      existingService = this._getServiceDetail(service.id, serviceGroup, service.serviceName);
 
       if (!existingService) {
         this.serviceGroups[serviceGroup].push(service);
@@ -122,7 +129,7 @@ const ServiceCatalog = AmpState.extend({
     let existingService: IServiceDetail | undefined;
 
     serviceDetails?.forEach((service) => {
-      existingService = this._getServiceDetail(service.id, serviceGroup);
+      existingService = this._getServiceDetail(service.id, serviceGroup, service.serviceName);
 
       if (existingService) {
         this.serviceGroups[serviceGroup].splice(
@@ -185,10 +192,7 @@ const ServiceCatalog = AmpState.extend({
       serviceGroup?: ServiceGroup;
     }
   ): {name: string; url: string} | undefined {
-    const serviceDetails = this._getAllServiceDetails(serviceGroup).find(
-      (detail: IServiceDetail) =>
-        detail.id === clusterId && (serviceName === undefined || detail.serviceName === serviceName)
-    );
+    const serviceDetails = this._getServiceDetail(clusterId, serviceGroup, serviceName);
 
     if (serviceDetails) {
       return {
@@ -324,13 +328,19 @@ const ServiceCatalog = AmpState.extend({
     const currentServiceDetails = this.serviceGroups[serviceGroup];
 
     const unusedServicesDetails = currentServiceDetails?.filter((serviceDetail) =>
-      serviceDetails?.every(({id}) => id !== serviceDetail.id)
+      serviceDetails?.every(
+        ({id, serviceName}) => id !== serviceDetail.id || serviceName !== serviceDetail.serviceName
+      )
     );
 
     this._unloadServiceDetails(serviceGroup, unusedServicesDetails);
 
     serviceDetails?.forEach((serviceObj) => {
-      const serviceDetail = this._getServiceDetail(serviceObj.id, serviceGroup);
+      const serviceDetail = this._getServiceDetail(
+        serviceObj.id,
+        serviceGroup,
+        serviceObj.serviceName
+      );
       serviceObj?.serviceUrls?.sort((a, b) => {
         if (a.priority < 0 && b.priority < 0) return 0;
         if (a.priority < 0) return 1;
