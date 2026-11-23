@@ -72,6 +72,7 @@ export interface IServiceCatalog {
   findClusterId(url: string): string | undefined;
   findServiceFromClusterId(params: {
     clusterId: ClusterId;
+    serviceName?: ServiceName;
     serviceGroup?: ServiceGroup;
   }): {name: string; url: string} | undefined;
   findServiceDetailFromUrl(url: string): IServiceDetail | undefined;

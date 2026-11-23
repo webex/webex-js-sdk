@@ -497,7 +497,8 @@ const Board = WebexPlugin.extend({
     // Swap the trailing service token (e.g. `acl-write`) for the board API token.
     const boardClusterId = [...clusterId.split(':').slice(0, -1), 'board'].join(':');
 
-    return services.getServiceFromClusterId({clusterId: boardClusterId})?.url;
+    // The whiteboard web UI can share this cluster ID with the REST API.
+    return services.getServiceFromClusterId({clusterId: boardClusterId, serviceName: 'board'})?.url;
   },
 
   /**

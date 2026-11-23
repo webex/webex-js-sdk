@@ -172,15 +172,23 @@ const ServiceCatalog = AmpState.extend({
    * clusterId.
    * @param {object} params
    * @param {string} params.clusterId - clusterId of found service
+   * @param {string} [params.serviceName] - require this service name when cluster ids are shared
    * @param {ServiceGroup} [params.serviceGroup] - specify service group
    * @returns {object} service
    * @returns {string} service.name
    * @returns {string} service.url
    */
   findServiceFromClusterId(
-    {clusterId, serviceGroup} = {} as {clusterId: string; serviceGroup?: ServiceGroup}
+    {clusterId, serviceName, serviceGroup} = {} as {
+      clusterId: string;
+      serviceName?: string;
+      serviceGroup?: ServiceGroup;
+    }
   ): {name: string; url: string} | undefined {
-    const serviceDetails = this._getServiceDetail(clusterId, serviceGroup);
+    const serviceDetails = this._getAllServiceDetails(serviceGroup).find(
+      (detail: IServiceDetail) =>
+        detail.id === clusterId && (serviceName === undefined || detail.serviceName === serviceName)
+    );
 
     if (serviceDetails) {
       return {

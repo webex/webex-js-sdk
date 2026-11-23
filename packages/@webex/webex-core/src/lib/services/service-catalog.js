@@ -293,13 +293,14 @@ const ServiceCatalog = AmpState.extend({
    * Services plugin methods.
    * @param {object} params
    * @param {string} params.clusterId - clusterId of found service
+   * @param {string} [params.serviceName] - require this service name when cluster ids are shared
    * @param {boolean} [params.priorityHost = true] - returns priority host url if true
    * @param {string} [params.serviceGroup] - specify service group
    * @returns {object} service
    * @returns {string} service.name
    * @returns {string} service.url
    */
-  findServiceFromClusterId({clusterId, priorityHost = true, serviceGroup} = {}) {
+  findServiceFromClusterId({clusterId, serviceName, priorityHost = true, serviceGroup} = {}) {
     const serviceUrls =
       typeof serviceGroup === 'string'
         ? this.serviceGroups[serviceGroup] || []
@@ -311,8 +312,10 @@ const ServiceCatalog = AmpState.extend({
             ...this.serviceGroups.discovery,
           ];
 
-    const identifiedServiceUrl = serviceUrls.find((serviceUrl) =>
-      serviceUrl.hosts.find((host) => host.id === clusterId)
+    const identifiedServiceUrl = serviceUrls.find(
+      (serviceUrl) =>
+        (serviceName === undefined || serviceUrl.name === serviceName) &&
+        serviceUrl.hosts.some((host) => host.id === clusterId)
     );
 
     if (identifiedServiceUrl) {

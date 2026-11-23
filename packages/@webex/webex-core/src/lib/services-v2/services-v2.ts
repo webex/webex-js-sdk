@@ -989,6 +989,7 @@ const Services = WebexPlugin.extend({
    * return an object containing both the name and url of a found service.
    * @param {object} params
    * @param {string} params.clusterId - clusterId of found service
+   * @param {string} [params.serviceName] - require this service name when cluster ids are shared
    * @param {ServiceGroup} [params.serviceGroup] - specify service group
    * @returns {object} service
    * @returns {string} service.name
@@ -996,6 +997,7 @@ const Services = WebexPlugin.extend({
    */
   getServiceFromClusterId(params: {
     clusterId: string;
+    serviceName?: string;
     serviceGroup?: ServiceGroup;
   }): {name: string; url: string} | undefined {
     const catalog = this._getCatalog();
