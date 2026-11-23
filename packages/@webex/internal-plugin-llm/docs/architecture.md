@@ -22,6 +22,10 @@ plugin registration, the contract index, and how the package meets the rest of t
 Related context: [specification registry](specs/README.md) ·
 [package agent instructions](../AGENTS.md)
 
+Current channel lifecycle, replacement notification ordering, and primary-only diagnostics are
+specified in [the channel lifecycle contract](../src/docs/README.md#channel-lifecycle-2026-11-20).
+The older session-map descriptions below predate the per-channel transport/factory model.
+
 ## Applicability
 
 | Condition ID                         | Status     | Evidence or reason | Owned section |

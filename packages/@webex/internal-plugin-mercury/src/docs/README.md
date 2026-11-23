@@ -24,6 +24,40 @@ Related context: [documentation index](../../docs/index.md) ·
 [package agent instructions](../../AGENTS.md) ·
 [Socket sub-module specification](../socket/docs/README.md)
 
+## Channel lifecycle (2026-11-20)
+
+This section specifies the current single-transport implementation in `src/mercury.js` and
+supersedes the older session-map descriptions below for connection, replacement, and diagnostics.
+`MercuryPlugin` owns the primary transport; LLM and dedicated board channels own separate transports.
+
+- An accepted `connect(url)` remembers the caller URL as `connectionWebSocketUrl`. An omitted URL
+  keeps device registration discovery active. Automatic reconnects use `resolvedWebSocketUrl`
+  without overwriting that source. Shutdown replacement re-prepares the caller source, retaining
+  channel registration paths and subscription parameters while applying current routing.
+- A shutdown candidate leaves the active socket and its resolved URL intact until it opens.
+  Promotion commits the socket, resolved pre-proxy URL, and connected state before notification.
+  Successful completion clears the shutdown controller, emits `online` with no arguments once,
+  then emits `event:mercury_shutdown_switchover_complete` with `{url}` if that socket is still active.
+  This lets meeting consumers restore subscriptions and datasets and board consumers refresh
+  shared socket references. No server-side subscription-loss guarantee is implied.
+- Failed candidates retain the active connection. Disconnect and ordinary reconnect cancel
+  speculative shutdown work. An old socket's early 4001 close allows a pending candidate to finish.
+  Late URL preparation or open completion cannot open or promote a
+  superseded attempt. A retained old socket's 4001 close leaves the active connection intact.
+- `_disconnect(options)` stops transport work and awaits socket closure without emitting
+  `disconnected`. Public `disconnect(options)` adds that ownership-release event after teardown.
+  Connection progress is cleared on terminal error and disconnect; stale connect finalizers cannot
+  clear newer attempts. Explicit registration replacement uses a permanent close reason.
+  A native network close during local teardown cannot restart that socket's registration.
+- Only the primary transport, whether directly registered or owned by `MercuryPlugin`, calls
+  `setMercuryConnectedStatus` on ordinary connect and active close, or when a pending replacement
+  restores an offline primary connection. Independent LLM and board transports cannot alter this
+  primary call-diagnostics flag. A failed post-connect HA device refresh leaves the open socket up.
+
+Evidence: `src/mercury.js`; `test/unit/spec/mercury.js`, `mercury-events.js`, and
+`../../internal-plugin-llm/test/unit/spec/mercury-lifecycle.js` (real lifecycle with fake socket I/O
+and timers). This change preserves close-code policy, retry defaults, and event payloads.
+
 ## Metadata
 
 | Field             | Value |

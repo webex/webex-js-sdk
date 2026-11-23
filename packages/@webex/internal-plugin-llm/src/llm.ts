@@ -67,7 +67,7 @@ export default class LLMChannel extends (Mercury as any) implements ILLMChannel 
    * @returns {boolean} True if connecting
    */
   public isConnecting(): boolean {
-    return !!this.connectingPromise;
+    return !!(this.connectingPromise || (this.connecting && this.webSocketUrl));
   }
 
   /**
@@ -119,13 +119,19 @@ export default class LLMChannel extends (Mercury as any) implements ILLMChannel 
 
     // If already connected to the exact same datachannel URL, avoid triggering
     // a reconnect that would cause the server to replace with 4000 Replaced
-    if (
-      this.isConnected() &&
-      this.datachannelUrl === datachannelUrl &&
-      this.locusUrl === locusUrl
-    ) {
-      return Promise.resolve();
+    if (this.datachannelUrl === datachannelUrl && this.locusUrl === locusUrl) {
+      if (this.isConnected()) {
+        return Promise.resolve();
+      }
+      if (this._connectPromise) {
+        return this._connectPromise;
+      }
     }
+
+    const previousLocusUrl = this.locusUrl;
+    const previousDatachannelUrl = this.datachannelUrl;
+    const urlsChanged = previousLocusUrl !== locusUrl || previousDatachannelUrl !== datachannelUrl;
+    let registrationPrepared = false;
 
     this.locusUrl = locusUrl;
     this.datachannelUrl = datachannelUrl;
@@ -141,9 +147,6 @@ export default class LLMChannel extends (Mercury as any) implements ILLMChannel 
           return;
         }
 
-        this.webSocketUrl = webSocketUrl;
-        this.binding = binding;
-
         const clientLLMDatachannelResponseTime = Math.round(performance.now() - registerStart);
         const isDataChannelTokenEnabled = await this.isDataChannelTokenEnabled();
 
@@ -152,10 +155,23 @@ export default class LLMChannel extends (Mercury as any) implements ILLMChannel 
           return;
         }
 
-        const connectUrl =
-          isDataChannelTokenEnabled && this.webSocketUrl
-            ? LLMChannel.buildUrlWithAwareSubchannels(this.webSocketUrl, AWARE_DATA_CHANNEL)
-            : this.webSocketUrl;
+        if (!webSocketUrl) {
+          throw new Error('LLM registration did not return a WebSocket URL');
+        }
+        const connectUrl = isDataChannelTokenEnabled
+          ? LLMChannel.buildUrlWithAwareSubchannels(webSocketUrl, AWARE_DATA_CHANNEL)
+          : webSocketUrl;
+
+        if (urlsChanged && (this.connected || this.connecting || this.getSocket())) {
+          await this._disconnect({code: 1000, reason: 'LLM registration changed'});
+          if (this.connectingPromise !== connectionPromise) {
+            return;
+          }
+        }
+
+        registrationPrepared = true;
+        this.webSocketUrl = webSocketUrl;
+        this.binding = binding;
 
         const connectStart = performance.now();
 
@@ -169,9 +185,20 @@ export default class LLMChannel extends (Mercury as any) implements ILLMChannel 
           throw error;
         }
 
+        if (this.connectingPromise !== connectionPromise) {
+          return;
+        }
+
         const clientLLMWebSocketConnectTime = Math.round(performance.now() - connectStart);
 
         return {clientLLMDatachannelResponseTime, clientLLMWebSocketConnectTime};
+      })
+      .catch((error) => {
+        if (this.connectingPromise === connectionPromise && !registrationPrepared) {
+          this.locusUrl = previousLocusUrl;
+          this.datachannelUrl = previousDatachannelUrl;
+        }
+        throw error;
       })
       .finally(() => {
         // Only clear if this operation is still current

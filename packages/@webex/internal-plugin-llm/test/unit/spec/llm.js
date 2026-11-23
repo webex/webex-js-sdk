@@ -532,11 +532,10 @@ describe('plugin-llm', () => {
         // Start connection
         const connectPromise = llmChannel.registerAndConnect(locusUrl, datachannelUrl);
 
-        // Wait for register() to complete and state to be set
+        // Wait for register() to complete; binding is staged until URL preparation finishes.
         await new Promise((resolve) => setImmediate(resolve));
 
-        // Binding should be set after register() completes
-        assert.equal(llmChannel.getBinding(), 'binding');
+        assert.isUndefined(llmChannel.getBinding());
 
         // Disconnect while isDataChannelTokenEnabled() is pending
         await llmChannel.disconnect({code: 1000, reason: 'test'});
