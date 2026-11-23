@@ -21,6 +21,8 @@ package webex-core and a chosen set of plugin packages. Ground every claim in pa
 link to the [package architecture](../../docs/architecture.md) instead of repeating broader facts.
 No service specification exists because this package is a library.
 
+With the default services v2 plugin, `fedramp: true` applies FedRAMP Hydra and region discovery defaults but preserves any existing truthy `services.discovery.u2c` seed, including one merged from SDK defaults. Applications must explicitly configure the intended FedRAMP U2C URL. The bundle unit tests cover preservation of both the merged seed and explicitly supplied legacy and DNSSEC FedRAMP URLs; the owning implementation and fallback rules are documented in [services v2](../../../@webex/webex-core/src/lib/services-v2/docs/README.md).
+
 Related context: [documentation index](../../docs/index.md) ·
 [package agent instructions](../../AGENTS.md)
 

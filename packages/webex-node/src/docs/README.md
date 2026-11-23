@@ -22,6 +22,8 @@ every claim in package evidence and link to the [package architecture](../../doc
 instead of repeating broader facts. No service specification exists because this package is a
 library.
 
+With the default services v2 plugin, `fedramp: true` applies FedRAMP Hydra and region discovery defaults but preserves any existing truthy `services.discovery.u2c` seed, including one merged from SDK defaults. Applications must explicitly configure the intended FedRAMP U2C URL. The bundle unit tests cover preservation of both the merged seed and explicitly supplied legacy and DNSSEC FedRAMP URLs; the owning implementation and fallback rules are documented in [services v2](../../../@webex/webex-core/src/lib/services-v2/docs/README.md).
+
 Related context: [documentation index](../../docs/index.md) ·
 [package agent instructions](../../AGENTS.md)
 
@@ -71,12 +73,12 @@ Related context: [documentation index](../../docs/index.md) ·
 | `src/config.js` | The configuration object this package declares |
 | `src/config-storage.js` | The storage adapter object referenced by `src/config.js` |
 | `package.json` | Name, entry points, `exports`, dependencies, scripts, and the `engines` floor |
-| `test/unit/spec/webex-node.test.js` | Five Jest tests for `init` merging and the fedramp setting |
+| `test/unit/spec/webex-node.test.js` | Jest tests for `init` merging, the fedramp setting, and U2C discovery seed preservation |
 | `README.md` | Retained product documentation, not the behavioral authority. See ADR 0001. |
 | Sibling package webex-core, file src/webex-core.js | The constructor's credential normalization, `initialize` merging the webex-core config under `attrs.config`, and the default interceptor set |
 | Sibling package webex-core, files src/config.js and src/lib/webex-core-plugin-mixin.js | webex-core configuration defaults (including `fedramp`, `services`, `device`, and `storage`) and plugin registration merging each plugin's config into them |
 | Sibling package webex-core, file src/index.js | `MemoryStoreAdapter` is a named export, not a property of the default export |
-| Sibling package webex-core, file src/lib/services/services.js | `initConfig` replaces `services.discovery` with the FedRAMP set when `config.fedramp` is truthy |
+| Sibling package webex-core, file src/lib/services-v2/services-v2.ts | `initConfig` uses FedRAMP discovery defaults when `config.fedramp` is truthy, preserving any existing truthy U2C seed |
 | Sibling package internal-plugin-device, SDD module spec src/docs/README.md and file src/config.js | The device plugin's `ephemeral` default (`false`) and how it is used |
 | Sibling package plugin-authorization, file src/index.js | In Node.js it re-exports plugin-authorization-node |
 | Sibling package babel-config-legacy (packages/legacy/babel), file static/plugins/inject-package-version.js | The build-time `version` value |
@@ -267,7 +269,7 @@ classDiagram
 
 | ID | Invariant | WHY | Enforcement source | Test evidence |
 | -- | --------- | --- | ------------------ | ------------- |
-| `INV-001` | `init` merges in this order, later sources winning, with deep merging of plain objects: `{sdkType: 'webex-node'}`, then the `src/config.js` module object (`MOD-007`), then `attrs.config`. webex-core's `initialize` then merges its configuration under the result, so in both merges a defined caller value wins. These are lodash `merge` semantics: a caller value that is `undefined` is ignored, and arrays merge by index. | In those two merges a caller value replaces the package and webex-core defaults, including `sdkType`. Later initialization owned by webex-core and the plugins can still change configuration; for example, webex-core services replaces `services.discovery` with its FedRAMP set when `fedramp` is truthy (sibling package webex-core, file src/lib/services/services.js). | `src/webex-node.js` | `test/unit/spec/webex-node.test.js` "should merge user provided config with the default configuration", "should override default config with user provided configuration" |
+| `INV-001` | `init` merges in this order, later sources winning, with deep merging of plain objects: `{sdkType: 'webex-node'}`, then the `src/config.js` module object (`MOD-007`), then `attrs.config`. webex-core's `initialize` then merges its configuration under the result, so in both merges a defined caller value wins. These are lodash `merge` semantics: a caller value that is `undefined` is ignored, and arrays merge by index. | In those two merges a caller value replaces the package and webex-core defaults, including `sdkType`. Later initialization owned by webex-core and the plugins can still change configuration; for example, webex-core services v2 applies FedRAMP discovery defaults while preserving any existing truthy U2C seed when `fedramp` is truthy (sibling package webex-core, file src/lib/services-v2/services-v2.ts). | `src/webex-node.js` | `test/unit/spec/webex-node.test.js` "should merge user provided config with the default configuration", "should override default config with user provided configuration" |
 | `INV-002` | `init` assigns the merged object to `attrs.config` on the object the caller passed, replacing any previous `config` property. | Avoids a copy; the caller's object is reused as the constructor argument. | `src/webex-node.js` | Gap: no test |
 | `INV-003` | Every plugin package in the list is required before `WebexCore.extend` runs. | `extend` copies the public plugin map when the class is created, so public plugins registered later are absent from WebexNode instances. Internal plugins, plugin configuration, and interceptors are registered on shared webex-core objects and apply either way. | `src/webex-node.js` | Gap: no test |
 
@@ -287,7 +289,7 @@ classDiagram
 - `HYDRA_SERVICE_URL` is read when `src/config.js` loads, so setting it later has no effect on that
   module's values. Those values are the unused aliases of `MOD-007`; the variable itself still sets
   the Hydra discovery URL through webex-core's configuration (sibling package webex-core, file
-  src/config.js), unless the caller overrides it or FedRAMP replaces `services.discovery`.
+  src/config.js), unless the caller overrides it or FedRAMP applies its Hydra discovery default.
 - `init` mutates its argument (`INV-002`). Reusing one `attrs` object for two `init` calls merges
   the earlier result into the next one.
 - `new WebexNode(attrs)` does not add `sdkType` or the package configuration; only webex-core, plugin, and caller configuration apply (`MOD-005`).
@@ -347,7 +349,7 @@ No TypeScript declaration or API report exists for this package.
 | `MOD-003` | Unit | `test/unit/spec/webex-node.test.js` "should create an instance of WebexNode with default configuration" | none found | version not asserted |
 | `MOD-004`, `INV-001` | Unit | "should merge user provided config with the default configuration", "should override default config with user provided configuration" | sdkType override | No assertion of any `src/config.js` value |
 | `MOD-005` | Unit | "is set false by default" constructs directly with no arguments | none found | sdkType absence and caller-config retention not asserted |
-| webex-core FedRAMP discovery | Unit | "sets correct services when fedramp is true" | none found | Asserts webex-core behavior, not this package |
+| webex-core FedRAMP discovery | Unit | "preserves the merged U2C seed when fedramp is true" and explicit legacy/DNSSEC FedRAMP U2C cases | none found | Asserts webex-core behavior, not this package |
 | `MOD-001` | none | `src/index.js` | none found | No polyfill guard or export test |
 | `MOD-002`, `INV-003` | none | `src/webex-node.js` | none found | No plugin registration test |
 | `MOD-006`, `MOD-007`, `MOD-008` | none | `src/config.js`, `src/config-storage.js` | none found | No test of the effective configuration |
