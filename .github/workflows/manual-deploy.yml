@@ -381,12 +381,16 @@ jobs:
     name: Publish - NPM
     needs: resolve
     runs-on: ubuntu-latest
+    permissions:
+      contents: read
+      id-token: write
 
     steps:
       - name: Checkout Project
         uses: actions/checkout@v6
         with:
           fetch-depth: 0
+          persist-credentials: false
 
       - name: Setup Node
         uses: actions/setup-node@v6
@@ -438,13 +442,6 @@ jobs:
       - name: Build a webex UMD
         run: yarn run build:script
 
-      - name: Add NPM token to .yarnrc.yml file
-        if: ${{ inputs.dry-run != true }}
-        env:
-          NPM_TOKEN: ${{ secrets.NPM_TOKEN }}
-        run: |
-          echo "npmAuthToken: $NPM_TOKEN" >> ~/.yarnrc.yml
-
       - name: Deploy Packages
         if: ${{ inputs.dry-run != true }}
         # `--tolerate-republish` makes reruns idempotent: npm versions are
@@ -454,19 +451,16 @@ jobs:
         # packages and publishes only the remaining ones. Args after
         # `run deploy:npm` forward to each workspace's `yarn npm publish`.
         env:
-          NODE_AUTH_TOKEN: ${{ secrets.NPM_TOKEN }}
           DIST_TAG: ${{ inputs.dist-tag }}
           PACKAGES_GLOB: ${{ needs.resolve.outputs.packages-glob }}
-        run: yarn workspaces foreach --from "$PACKAGES_GLOB" --verbose run deploy:npm --access public --tag "$DIST_TAG" --tolerate-republish
+        run: bash scripts/publish-npm.sh "$PACKAGES_GLOB" "$DIST_TAG" --tolerate-republish --provenance
 
       - name: Deploy Packages (Dry Run)
         if: ${{ inputs.dry-run == true }}
-        # `yarn npm publish` has no `--dry-run`, so use `yarn pack --dry-run`,
-        # which resolves `workspace:*` deps and exercises the full packaging path
-        # (file selection, prepack scripts) without uploading anything.
         env:
+          DIST_TAG: ${{ inputs.dist-tag }}
           PACKAGES_GLOB: ${{ needs.resolve.outputs.packages-glob }}
-        run: yarn workspaces foreach --from "$PACKAGES_GLOB" --verbose pack --dry-run
+        run: bash scripts/publish-npm.sh "$PACKAGES_GLOB" "$DIST_TAG" --dry-run
 
   publish-documentation:
     name: Publish - Documentation
