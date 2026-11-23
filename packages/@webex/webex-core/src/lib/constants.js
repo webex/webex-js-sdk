@@ -25,10 +25,17 @@ const COMMERCIAL_ALLOWED_DOMAINS = [
   'broadcloudpbx.net',
 ];
 
+// Query parameter used to bypass the browser HTTP cache (U2C sends
+// Cache-Control: max-age) when a catalog refresh is forced. It must not be
+// `timestamp`: U2C gives that parameter a meaning (RR-005) and returns 204 with
+// no body when it is newer than the invalidation threshold.
+const U2C_CACHE_BUSTER_PARAM = '_';
+
 export {
   SERVICE_CATALOGS_ENUM_TYPES,
   NAMESPACE,
   SERVICE_CATALOGS,
   COMMERCIAL_ALLOWED_DOMAINS,
   METRICS,
+  U2C_CACHE_BUSTER_PARAM,
 };

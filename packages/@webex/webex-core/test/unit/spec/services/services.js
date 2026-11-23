@@ -1106,6 +1106,17 @@ describe('webex-core', () => {
         assert.calledOnceWithExactly(webex.internal.newMetrics.callDiagnosticLatencies.measureLatency, sinon.match.func, 'internal.get.u2c.time');
       });
 
+      it('busts the HTTP cache on a forced refresh without sending timestamp', async () => {
+        sinon.stub(services, 'request').resolves({});
+
+        await services._fetchNewServiceHostmap({from: 'limited', forceRefresh: true});
+
+        const {qs} = services.request.firstCall.args[0];
+
+        assert.notProperty(qs, 'timestamp');
+        assert.isNumber(qs._);
+      });
+
       it('checks service request rejects', async () => {
         const error = new Error('some error');
 

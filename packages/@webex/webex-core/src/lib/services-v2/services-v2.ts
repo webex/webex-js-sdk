@@ -6,7 +6,7 @@ import WebexPlugin from '../webex-plugin';
 import METRICS from '../metrics';
 import ServiceCatalog from './service-catalog';
 import fedRampServices from './service-fed-ramp';
-import {COMMERCIAL_ALLOWED_DOMAINS} from '../constants';
+import {COMMERCIAL_ALLOWED_DOMAINS, U2C_CACHE_BUSTER_PARAM} from '../constants';
 import {
   clearCatalogAuthFailure,
   getCatalogAuthFailure,
@@ -1302,7 +1302,7 @@ const Services = WebexPlugin.extend({
     };
 
     if (forceRefresh) {
-      qs.timestamp = new Date().getTime();
+      qs[U2C_CACHE_BUSTER_PARAM] = new Date().getTime();
     }
 
     const requestObject = {
