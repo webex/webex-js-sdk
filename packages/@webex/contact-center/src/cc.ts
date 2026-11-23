@@ -8,6 +8,7 @@
 
 import {WebexPlugin} from '@webex/webex-core';
 import EventEmitter from 'events';
+import isEqual from 'lodash/isEqual';
 import {v4 as uuidv4} from 'uuid';
 import {
   SetStateResponse,
@@ -45,27 +46,49 @@ import {
   METHODS,
   WELLNESS_BREAK_HANDLER,
   DEFAULT_VOICE_CONNECTION_STATE,
+  REGION_RECOVERY_EVENTS,
+  REGION_RECOVERY_ERROR_CODES,
 } from './constants';
 import {AGENT_STATE_AVAILABLE, AGENT_STATE_AVAILABLE_ID} from './services/config/constants';
 import {AGENT, RTD_SUBSCRIBE_API, SUBSCRIBE_API, WEB_RTC_PREFIX} from './services/constants';
 import Services from './services';
 import WebexRequest from './services/core/WebexRequest';
 import LoggerProxy from './logger-proxy';
-import {StateChange, Logout, StateChangeSuccess, AGENT_EVENTS} from './services/agent/types';
+import {StateChange, Logout, AGENT_EVENTS} from './services/agent/types';
 import {
   getErrorDetails,
   isRecord,
   isValidDialNumber,
   sanitizeForObservability,
+  createRegionRecoveryError,
+  normalizeRecoveryFailure,
+  getSubscriptionMismatchReason,
+  isRegionRecoveryError,
 } from './services/core/Utils';
+import type {MultiRegionSettings, SystemRegionSwitch} from './services/config/types';
+import {LOCAL_MR_SETTINGS_ERROR} from './services/config/Util';
+import type * as Agent from './services/agent/types';
+import type {AqmRequestContext, AqmSessionOwner, RecoveryFailure} from './services/core/types';
+import type {TaskRecoveryGuard} from './services/task/types';
+import * as Err from './services/core/Err';
+import type {
+  RegionRecoveryErrorCode,
+  RegionRecoveryState,
+  RegionRecoveryStatus,
+  RegionRecoveryReason,
+  EntryPointListResponse,
+  EntryPointSearchParams,
+  ContactServiceQueuesResponse,
+  ContactServiceQueueSearchParams,
+} from './types';
 import {
   Profile,
-  WelcomeEvent,
   CC_EVENTS,
   VOICE_CONNECTION_EVENTS,
   OutdialAniEntriesResponse,
   OutdialAniParams,
   Entity,
+  SYSTEM_EVENTS,
 } from './services/config/types';
 import {ConnectionLostDetails} from './services/core/websocket/types';
 import TaskManager from './services/task/TaskManager';
@@ -89,12 +112,6 @@ import {AddressBook} from './services/AddressBook';
 import {Queue} from './services/Queue';
 import {ApiAIAssistant} from './services/ApiAiAssistant';
 import {UserPreference} from './services/UserPreference';
-import type {
-  EntryPointListResponse,
-  EntryPointSearchParams,
-  ContactServiceQueuesResponse,
-  ContactServiceQueueSearchParams,
-} from './types';
 
 /**
  * Typed allow-list of server-controlled websocket event names this SDK re-emits verbatim.
@@ -102,6 +119,140 @@ import type {
  * @ignore
  */
 const CC_EVENT_ALLOW_LIST = new Set<string>(Object.values(CC_EVENTS));
+
+type RecoveryPhase =
+  | 'idle'
+  | 'waiting'
+  | 'subscribing'
+  | 'awaitingWelcome'
+  | 'restoringSession'
+  | 'ready'
+  | 'manualLoginRequired'
+  | 'unavailable'
+  | 'reloadRequired'
+  | 'cancelled';
+
+type AcceptedStation = {
+  orgId: string;
+  agentId: string;
+  sessionId?: string;
+  revision: number;
+  payload: Agent.UserStationLogin;
+};
+
+type InitialRegistration = {
+  readonly registration: number;
+  readonly orgId: string;
+  readonly controller: AbortController;
+  reloadRequired?: Error;
+  rejectConnectionWait?: (error: Error) => void;
+};
+
+type RegionRecovery = {
+  registration: number;
+  station: number;
+  orgId: string;
+  agentId: string;
+  controller: AbortController;
+  detach: () => void;
+  cleaned: boolean;
+  stage: 'reload' | 'fallback' | 'post1035' | 'manual';
+  reloads: number;
+  fallbackSent: boolean;
+  post1035Sent: boolean;
+  retryNotBefore: number;
+  intentRevision: number;
+};
+
+type RecoveryDiagnosticStage =
+  | 'settings-read'
+  | 'ignored-event'
+  | 'scheduled-wait'
+  | 'admission'
+  | 'welcome'
+  | 'reload'
+  | 'fallback-login'
+  | 'rtd'
+  | 'auto-available';
+type RecoveryDiagnosticOutcome =
+  | 'succeeded'
+  | 'retrying'
+  | 'terminal'
+  | 'failed'
+  | 'cancelled'
+  | 'dropped'
+  | 'waiting';
+type RecoveryDiagnosticPayload = Readonly<{
+  stage: RecoveryDiagnosticStage;
+  outcome: RecoveryDiagnosticOutcome;
+  attempt: number;
+  elapsedMs: number;
+  reason?: RegionRecoveryReason | RegionRecoveryErrorCode;
+  status?: number;
+  reasonCode?: number;
+  id?: string;
+  trackingId?: string;
+}>;
+
+const RECOVERY_DIAGNOSTIC_REASONS = new Set<string>([
+  ...Object.values(REGION_RECOVERY_ERROR_CODES),
+  'initial-login',
+  'region-switch',
+  'region-mismatch',
+  'not-eligible',
+  'session-restore-failed',
+  'automatic-relogin-disabled',
+  'authentication-failed',
+  'recovery-failed',
+]);
+
+type RtdEpoch = {
+  registration: number;
+  station: number;
+  orgId: string;
+  agentId: string;
+  sessionId?: string;
+  parent: AbortSignal;
+  controller: AbortController;
+  detach: () => void;
+  active: boolean;
+  promise: Promise<void>;
+};
+
+type AgentStateChangeDispatchResult =
+  | {kind: 'acknowledged'; response: Agent.StateChangeSuccess}
+  | {kind: 'not-dispatched'; cause: 'browser-voice-not-ready'; error: Error};
+
+type StateDispatchContext = {
+  source: 'explicit' | 'dr-auto' | 'relogin-auto';
+  intentRevision: number;
+  stationRevision: number;
+  generation: number;
+  signal: AbortSignal;
+};
+
+// Late replies have no expiry; retain correlation scalars, never invocation cancellation owners.
+type StateDispatch = Pick<StateDispatchContext, 'source' | 'stationRevision' | 'generation'> & {
+  registration: number;
+  sessionId: string;
+  ordinal: number;
+  outcome?: 'succeeded' | 'failed' | 'cancelled';
+};
+
+type AutoAvailable = {
+  registration: number;
+  generation: number;
+  stationRevision: number;
+  sessionId: string;
+  intentRevision: number;
+  signal: AbortSignal;
+  disconnect: Agent.ReloginSuccess['data'];
+  published: boolean;
+  dispatching: boolean;
+  sent: boolean;
+  requestId?: string;
+  startedAt: number;
+};
 
 /**
  * The main Contact Center plugin class that enables integration with Webex Contact Center.
@@ -324,9 +475,1503 @@ export default class ContactCenter extends WebexPlugin implements IContactCenter
   private wellbeingBreakIdleCode?: Entity;
 
   /** Registration generation that owns the wellness idle-code cache and in-flight lookups. */
-  private wellnessRegistrationGeneration = 0;
+  private registrationGeneration = 0;
+  /** Reject station mutations for an ended owner, independently of replacement-register entry. */
+  private terminatedRegistrationGeneration?: number;
+  private registrationAbortController?: AbortController;
+  private pendingRegistration?: InitialRegistration;
+  private registrationOrgId?: string;
+  private registrationAgentId?: string;
+  private stationRevision = 0;
+  private recoveryGeneration = 0;
+  private recoveryPhase: RecoveryPhase = 'idle';
+  private recovery?: RegionRecovery;
+  private recoveryAttempt?: {
+    owner: RegionRecovery;
+    attempt: number;
+    startedAt: number;
+    welcomeStartedAt?: number;
+  };
+
+  private commandController?: AbortController;
+  private taskLifetimeController?: AbortController;
+  private interruptedTaskGeneration?: number;
+  private sessionRequest?: {
+    owner: AqmSessionOwner<'restore'> | AqmSessionOwner<'manual'>;
+    controller: AbortController;
+    detach: () => void;
+  };
+
+  private acceptedSwitchIds: string[] = [];
+  private acceptedSwitchIdSet = new Set<string>();
+  private acceptedStation?: AcceptedStation;
+  private priorStationActive = false;
+  private suppressAutomaticRelogin = false;
+  private logoutAttempt?: {priorSuppression: boolean};
+  private get logoutPending(): boolean {
+    return Boolean(this.logoutAttempt);
+  }
+
+  private rtdPaused = true;
+  private rtdEpoch?: RtdEpoch;
+  private rtdTerminatedFor?: {registration: number; sessionId?: string};
+  private stateIntentRevision = 0;
+  private autoAvailable?: AutoAvailable;
+  private inFlightDrAutoState?: Promise<void>;
+  private explicitStateWaiter?: object;
+  private stateDispatches = new Map<string, StateDispatch>();
+  private stateOrdinal = 0;
+  private acceptedExplicitOrdinal = 0;
+  private confirmedState?: {
+    data: Pick<
+      Agent.StateChangeSuccess['data'],
+      | 'auxCodeId'
+      | 'lastStateChangeTimestamp'
+      | 'lastIdleCodeChangeTimestamp'
+      | 'status'
+      | 'subStatus'
+    > & {lastStateChangeReason?: string};
+    ordinal: number;
+    dispatchOrdinal?: number;
+    independent: boolean;
+  };
+
+  private multiRegionSettings: MultiRegionSettings | {eligibility: 'unknown'} = {
+    eligibility: 'unknown',
+  };
+
+  private lastPublishedRegionState?: RegionRecoveryState;
+  private regionStateContext: Pick<
+    RegionRecoveryState,
+    'trackingId' | 'operation' | 'scope' | 'autoAvailable'
+  > = {};
+
+  private recordBestEffort(effect: () => void): void {
+    try {
+      effect();
+    } catch {
+      /* Diagnostics and host observers do not own SDK progress. */
+    }
+  }
+
+  private publishHostEvent(event: string, payload: unknown, trigger = false): void {
+    try {
+      // @ts-ignore - ampersand-events methods are provided by WebexPlugin at runtime.
+      if (trigger) this.trigger(event, payload);
+      // @ts-ignore - ampersand-events methods are provided by WebexPlugin at runtime.
+      else this.emit(event, payload);
+    } catch {
+      /* Inherited delivery skips remaining listeners for this call. */
+    }
+  }
+
+  private static isRecoveryDiagnosticReason(
+    value: unknown
+  ): value is RegionRecoveryReason | RegionRecoveryErrorCode {
+    return typeof value === 'string' && RECOVERY_DIAGNOSTIC_REASONS.has(value);
+  }
+
+  private static normalizeRecoveryDiagnosticId(value: unknown): string | undefined {
+    const id = sanitizeForObservability(value);
+
+    return /^[A-Za-z0-9_.:-]{1,200}$/.test(id) ? id : undefined;
+  }
+
+  private recordRecoveryDiagnostic(
+    stage: RecoveryDiagnosticStage,
+    outcome: RecoveryDiagnosticOutcome,
+    attempt: number,
+    startedAt: number,
+    failure?: RecoveryFailure
+  ): void {
+    if (
+      !Number.isFinite(attempt) ||
+      !Number.isInteger(attempt) ||
+      attempt < 0 ||
+      !Number.isFinite(startedAt)
+    )
+      return;
+    const elapsedMs = Math.max(0, Date.now() - startedAt);
+    if (!Number.isFinite(elapsedMs)) return;
+    const registration = this.registrationGeneration;
+    const generation = this.recoveryGeneration;
+    const station = this.stationRevision;
+    const recovery = this.recovery;
+    const controller = this.registrationAbortController;
+    let org: string;
+    try {
+      org = this.$webex.credentials.getOrgId();
+    } catch {
+      return;
+    }
+    const id = ContactCenter.normalizeRecoveryDiagnosticId(failure?.id);
+    const trackingId = ContactCenter.normalizeRecoveryDiagnosticId(failure?.trackingId);
+    const payload: RecoveryDiagnosticPayload = Object.freeze({
+      stage,
+      outcome,
+      attempt,
+      elapsedMs,
+      ...(Number.isFinite(failure?.status) ? {status: failure.status} : {}),
+      ...(Number.isFinite(failure?.reasonCode) ? {reasonCode: failure.reasonCode} : {}),
+      ...(id ? {id} : {}),
+      ...(trackingId ? {trackingId} : {}),
+      ...(ContactCenter.isRecoveryDiagnosticReason(failure?.reason)
+        ? {reason: failure.reason}
+        : {}),
+    });
+    const current = () => {
+      try {
+        return (
+          registration === this.registrationGeneration &&
+          generation === this.recoveryGeneration &&
+          station === this.stationRevision &&
+          recovery === this.recovery &&
+          controller === this.registrationAbortController &&
+          (!controller?.signal.aborted || outcome === 'cancelled') &&
+          org === this.$webex.credentials.getOrgId()
+        );
+      } catch {
+        return false;
+      }
+    };
+    if (current()) {
+      try {
+        LoggerProxy.info('Region recovery', {
+          module: CC_FILE,
+          method: METHODS.RECORD_RECOVERY_DIAGNOSTIC,
+          data: {...payload},
+        });
+      } catch {
+        // The metric sink remains independently eligible for this owner.
+      }
+    }
+    if (!current()) return;
+    let metric:
+      | typeof METRIC_EVENT_NAMES.REGION_RECOVERY_SUCCESS
+      | typeof METRIC_EVENT_NAMES.REGION_RECOVERY_FAILED
+      | typeof METRIC_EVENT_NAMES.STATION_RELOGIN_SUCCESS
+      | typeof METRIC_EVENT_NAMES.STATION_RELOGIN_FAILED
+      | undefined;
+    if (stage === 'admission') {
+      if (outcome === 'succeeded') metric = METRIC_EVENT_NAMES.REGION_RECOVERY_SUCCESS;
+      else if (outcome === 'retrying' || outcome === 'terminal')
+        metric = METRIC_EVENT_NAMES.REGION_RECOVERY_FAILED;
+    } else if (stage === 'reload') {
+      if (outcome === 'succeeded') metric = METRIC_EVENT_NAMES.STATION_RELOGIN_SUCCESS;
+      else if (['retrying', 'terminal', 'failed'].includes(outcome))
+        metric = METRIC_EVENT_NAMES.STATION_RELOGIN_FAILED;
+    }
+    if (!metric) return;
+    try {
+      this.metricsManager.trackEvent(metric, {...payload}, ['operational']);
+    } catch {
+      // Diagnostic delivery cannot alter the scheduler's fixed next transition.
+    }
+  }
+
+  /** Refresh placement; ended owners can publish detached settings after live invalidation. */
+  private publishRegionState(
+    state: RegionRecoveryState,
+    settings: MultiRegionSettings | {eligibility: 'unknown'} = this.multiRegionSettings
+  ): void {
+    const retained = {...state};
+    delete retained.homeRegion;
+    delete retained.servingRegion;
+    delete retained.limitedService;
+    const homeRegion = settings.eligibility !== 'unknown' ? settings.homeRegion : undefined;
+    const servingRegion = this.services.webSocketManager.getServingRegion();
+    const snapshot = Object.freeze({
+      ...retained,
+      ...(homeRegion ? {homeRegion} : {}),
+      ...(servingRegion ? {servingRegion} : {}),
+      ...(settings.eligibility === 'enabled' && homeRegion && servingRegion
+        ? {limitedService: homeRegion.trim().toLowerCase() !== servingRegion.trim().toLowerCase()}
+        : {}),
+    });
+    if (isEqual(snapshot, this.lastPublishedRegionState)) return;
+    this.lastPublishedRegionState = snapshot;
+    try {
+      // @ts-ignore - WebexPlugin inherits ampersand-events trigger without a declaration.
+      this.trigger(REGION_RECOVERY_EVENTS.STATE_CHANGE, snapshot);
+    } catch {
+      // Delivery retains ampersand-events semantics; the host cannot interrupt SDK work.
+    }
+  }
+
+  /** Builds initiating recovery context; publication adds the current placement metadata. */
+  private buildRegionState(
+    status: RegionRecoveryStatus,
+    reason: RegionRecoveryReason,
+    retryAfterMs?: number
+  ): RegionRecoveryState {
+    return {
+      status,
+      reason,
+      ...this.regionStateContext,
+      ...(Number.isFinite(retryAfterMs) ? {retryAfterMs: Math.max(0, retryAfterMs)} : {}),
+    };
+  }
+
+  /** Ends publication context independently from the registration entitlement lifetime. */
+  private resetRegionState(): void {
+    this.lastPublishedRegionState = undefined;
+    this.regionStateContext = {};
+  }
+
+  /** Checks immutable registration ownership against the live authenticated organization. */
+  private isCurrentRegistration(
+    registration: number,
+    orgId: string,
+    signal: AbortSignal,
+    agentId?: string
+  ): boolean {
+    if (
+      registration === this.registrationGeneration &&
+      signal === this.registrationAbortController?.signal &&
+      !signal?.aborted &&
+      this.$webex.credentials.getOrgId() !== orgId
+    ) {
+      this.terminateRegistration(true);
+
+      return false;
+    }
+
+    return (
+      registration === this.registrationGeneration &&
+      this.registrationOrgId === orgId &&
+      signal === this.registrationAbortController?.signal &&
+      !signal.aborted &&
+      this.$webex.credentials.getOrgId() === orgId &&
+      (agentId === undefined ||
+        (this.registrationAgentId === agentId && this.agentConfig?.agentId === agentId))
+    );
+  }
+
+  /** Preserves a pending registration's terminal outcome across aborts and replacement. */
+  private assertInitialRegistration(attempt: InitialRegistration, agentId?: string): void {
+    if (attempt.reloadRequired) throw attempt.reloadRequired;
+    if (
+      !this.isCurrentRegistration(
+        attempt.registration,
+        attempt.orgId,
+        attempt.controller.signal,
+        agentId
+      )
+    )
+      throw createRegionRecoveryError('RECOVERY_INTERRUPTED');
+  }
+
+  /** Fences station completion independently of registration-scoped entitlement reads. */
+  private isCurrentStation(
+    registration: number,
+    station: number,
+    orgId: string,
+    profile: Profile
+  ): boolean {
+    if (
+      registration === this.registrationGeneration &&
+      this.registrationOrgId &&
+      this.$webex.credentials.getOrgId() !== orgId
+    ) {
+      this.terminateRegistration(true);
+
+      return false;
+    }
+
+    return (
+      registration === this.registrationGeneration &&
+      station === this.stationRevision &&
+      profile === this.agentConfig &&
+      this.$webex.credentials.getOrgId() === orgId &&
+      !this.registrationAbortController?.signal.aborted
+    );
+  }
+
+  /** Observes abandoned work while promptly releasing its local cancellation continuation. */
+  private static awaitRegistrationWork<T>(work: Promise<T>, signal: AbortSignal): Promise<T> {
+    return new Promise<T>((resolve, reject) => {
+      const onAbort = () => {
+        signal.removeEventListener('abort', onAbort);
+        reject(createRegionRecoveryError('RECOVERY_INTERRUPTED'));
+      };
+      signal.addEventListener('abort', onAbort, {once: true});
+      Promise.resolve(work).then(
+        (value) => {
+          signal.removeEventListener('abort', onAbort);
+          resolve(value);
+        },
+        (error) => {
+          signal.removeEventListener('abort', onAbort);
+          reject(error);
+        }
+      );
+      if (signal.aborted) onAbort();
+    });
+  }
+
+  /** Owns the bounded, serial entitlement read; ordinary reconnect never calls this method. */
+  private async hydrateMultiRegionSettings(
+    registration: number,
+    orgId: string,
+    agentId: string,
+    signal: AbortSignal
+  ): Promise<void> {
+    for (let attempt = 1; attempt <= 5; attempt += 1) {
+      if (!this.isCurrentRegistration(registration, orgId, signal, agentId)) return;
+      const startedAt = Date.now();
+      let settings: MultiRegionSettings;
+      try {
+        // eslint-disable-next-line no-await-in-loop -- Reads are deliberately serial and bounded.
+        settings = await ContactCenter.awaitRegistrationWork(
+          this.services.config.getMultiRegionSettings(orgId, signal),
+          signal
+        );
+      } catch (error) {
+        if (!this.isCurrentRegistration(registration, orgId, signal, agentId)) return;
+        const failure = normalizeRecoveryFailure(error);
+        const {status} = failure;
+        const localReason =
+          isRecord(error) && LOCAL_MR_SETTINGS_ERROR in error
+            ? error[LOCAL_MR_SETTINGS_ERROR]
+            : undefined;
+        const retryable =
+          localReason !== 'INVALID_ORG_ID' &&
+          (localReason === 'INVALID_MR_SETTINGS' ||
+            status === undefined ||
+            status === 0 ||
+            status === 408 ||
+            status === 429 ||
+            (status >= 500 && status <= 599));
+        const terminal = status === 401 || status === 403 || !retryable || attempt === 5;
+        this.recordRecoveryDiagnostic(
+          'settings-read',
+          terminal ? 'terminal' : 'retrying',
+          attempt,
+          startedAt,
+          failure
+        );
+        if (terminal) return;
+        if (!this.isCurrentRegistration(registration, orgId, signal, agentId)) return;
+        // eslint-disable-next-line no-await-in-loop -- Each next read waits its exact backoff.
+        await new Promise<void>((resolve) => {
+          let timer: ReturnType<typeof setTimeout>;
+          const finish = () => {
+            clearTimeout(timer);
+            signal.removeEventListener('abort', finish);
+            resolve();
+          };
+          timer = setTimeout(finish, attempt * 1000);
+          signal.addEventListener('abort', finish, {once: true});
+          if (signal.aborted) finish();
+        });
+        // eslint-disable-next-line no-continue -- Only failed reads advance the retry cycle.
+        continue;
+      }
+
+      if (!this.isCurrentRegistration(registration, orgId, signal, agentId)) return;
+      this.multiRegionSettings = settings;
+      this.recordRecoveryDiagnostic('settings-read', 'succeeded', attempt, startedAt);
+      if (!this.isCurrentRegistration(registration, orgId, signal, agentId)) return;
+      this.recordBestEffort(() => this.onMultiRegionSettingsChanged(registration));
+
+      return;
+    }
+  }
+
+  /** Settings completion is independent of station publication and transport policy. */
+  private onMultiRegionSettingsChanged(registration: number): void {
+    const signal = this.registrationAbortController?.signal;
+    const previous = this.lastPublishedRegionState;
+    if (
+      !previous ||
+      ['reloadRequired', 'unavailable'].includes(this.recoveryPhase) ||
+      ['reloadRequired', 'unavailable'].includes(previous.status) ||
+      !signal ||
+      !this.isCurrentRegistration(
+        registration,
+        this.registrationOrgId,
+        signal,
+        this.registrationAgentId
+      )
+    )
+      return;
+    this.publishRegionState(previous);
+  }
+
+  /** Admission is checked before preparation and again by the AQM owner at dispatch. */
+  private assertRecoveryAdmission(kind: 'command' | 'session'): void {
+    if (this.registrationOrgId && this.$webex.credentials.getOrgId() !== this.registrationOrgId)
+      this.terminateRegistration(true);
+    if (this.recoveryPhase === 'reloadRequired')
+      throw createRegionRecoveryError('REGION_RELOAD_REQUIRED');
+    if (this.recoveryPhase === 'unavailable' || this.recoveryPhase === 'cancelled')
+      throw createRegionRecoveryError('RECOVERY_INTERRUPTED');
+    if (
+      !['idle', 'ready'].includes(this.recoveryPhase) &&
+      !(kind === 'session' && this.recoveryPhase === 'manualLoginRequired')
+    )
+      throw createRegionRecoveryError('RECOVERY_IN_PROGRESS');
+  }
+
+  /** Rotate request ownership; only regional or terminal fences end the Task lifetime. */
+  private fenceRecoveryWork(phase: RecoveryPhase): void {
+    this.recoveryPhase = phase;
+    this.recoveryGeneration += 1;
+    this.sessionRequest?.controller.abort();
+    this.sessionRequest?.detach();
+    this.sessionRequest = undefined;
+    this.commandController?.abort();
+    this.commandController = new AbortController();
+    this.services.aqmReqs.beginGeneration(this.recoveryGeneration);
+    this.setRecoveryPhase(phase);
+    this.services.aqmReqs.interruptPending(() => createRegionRecoveryError('RECOVERY_INTERRUPTED'));
+    if (['waiting', 'unavailable', 'reloadRequired'].includes(phase)) {
+      this.interruptedTaskGeneration = this.recoveryGeneration;
+      this.taskLifetimeController?.abort();
+      this.taskManager.interruptTaskOperations(() =>
+        createRegionRecoveryError('RECOVERY_INTERRUPTED')
+      );
+    }
+  }
+
+  private setRecoveryPhase(phase: RecoveryPhase): void {
+    this.recoveryPhase = phase;
+    const request = this.sessionRequest;
+    if (phase === 'idle' || phase === 'ready') {
+      this.services.aqmReqs.setRecoveryGate({state: 'open'});
+    } else if (phase === 'manualLoginRequired') {
+      this.services.aqmReqs.setRecoveryGate({
+        state: 'manualLoginRequired',
+        ...(request?.owner.phase === 'manual' ? {sessionOwner: request.owner} : {}),
+      });
+    } else if (phase === 'unavailable' || phase === 'reloadRequired' || phase === 'cancelled') {
+      this.services.aqmReqs.setRecoveryGate({
+        state: 'unavailable',
+        reason: phase === 'reloadRequired' ? 'REGION_RELOAD_REQUIRED' : 'RECOVERY_INTERRUPTED',
+      });
+    } else {
+      this.services.aqmReqs.setRecoveryGate({
+        state: 'recovering',
+        ...(phase === 'restoringSession' && request?.owner.phase === 'restore'
+          ? {sessionOwner: request.owner}
+          : {}),
+      });
+    }
+  }
+
+  private getTaskRecoveryGuard(): TaskRecoveryGuard {
+    if (!this.taskLifetimeController || this.taskLifetimeController.signal.aborted)
+      this.taskLifetimeController = new AbortController();
+    const controller = this.taskLifetimeController;
+    const generation = this.recoveryGeneration;
+
+    return {
+      generation,
+      signal: controller.signal,
+      assertCommandAllowed: () => {
+        this.assertRecoveryAdmission('command');
+        if (controller.signal.aborted || controller !== this.taskLifetimeController)
+          throw createRegionRecoveryError('RECOVERY_INTERRUPTED');
+      },
+    };
+  }
+
+  /** Retire interrupted objects before a replacement owner can admit Task deliveries. */
+  private startTaskSession(isCurrent: () => boolean, invalidateTasks = false): boolean {
+    const ownsSession = () =>
+      isCurrent() &&
+      !this.registrationAbortController?.signal.aborted &&
+      !['unavailable', 'reloadRequired'].includes(this.recoveryPhase);
+    if (!ownsSession()) return false;
+    const interrupted = this.interruptedTaskGeneration;
+    if (invalidateTasks || interrupted !== undefined) {
+      this.taskManager.invalidateRegionalTasks();
+      if (!ownsSession()) return false;
+      this.taskManager.clearAISummaryState();
+      if (!ownsSession()) return false;
+      if (this.interruptedTaskGeneration === interrupted)
+        this.interruptedTaskGeneration = undefined;
+    }
+    if (this.commandController) this.taskManager.startSession(this.getTaskRecoveryGuard());
+
+    return ownsSession();
+  }
+
+  private beginSessionRequest(phase: 'restore' | 'manual', parent: AbortSignal): AqmRequestContext {
+    this.sessionRequest?.controller.abort();
+    this.sessionRequest?.detach();
+    const controller = new AbortController();
+    const abort = () => controller.abort();
+    parent.addEventListener('abort', abort, {once: true});
+    if (parent.aborted) abort();
+    const owner =
+      phase === 'restore'
+        ? {
+            generation: this.recoveryGeneration,
+            phase: 'restore' as const,
+            signal: controller.signal,
+          }
+        : {
+            generation: this.recoveryGeneration,
+            phase: 'manual' as const,
+            signal: controller.signal,
+          };
+    this.sessionRequest = {
+      owner,
+      controller,
+      detach: () => parent.removeEventListener('abort', abort),
+    };
+    this.setRecoveryPhase(phase === 'restore' ? 'restoringSession' : 'manualLoginRequired');
+
+    return {generation: owner.generation, signal: owner.signal, sessionOwner: owner};
+  }
+
+  private endSessionRequest(context: AqmRequestContext): void {
+    if (!this.sessionRequest || this.sessionRequest.owner !== context.sessionOwner) return;
+    this.sessionRequest.detach();
+    this.sessionRequest = undefined;
+  }
+
+  private cancelRegionRecovery(): boolean {
+    const recovery = this.recovery;
+    const slot = this.recoveryAttempt;
+    const registration = this.registrationGeneration;
+    const generation = this.recoveryGeneration;
+    const station = this.stationRevision;
+    // Consume before aborting: obsolete continuations cannot consume a replacement's timing.
+    if (slot?.owner === recovery) this.recoveryAttempt = undefined;
+    this.recovery = undefined;
+    recovery?.detach();
+    recovery?.controller.abort();
+    if (slot && slot.owner === recovery)
+      this.recordRecoveryDiagnostic('admission', 'cancelled', slot.attempt, slot.startedAt);
+
+    return (
+      registration === this.registrationGeneration &&
+      generation === this.recoveryGeneration &&
+      station === this.stationRevision &&
+      this.recovery === undefined
+    );
+  }
+
+  private clearAcceptedStation(): void {
+    this.stateDispatches.clear();
+    this.confirmedState = undefined;
+    this.acceptedExplicitOrdinal = 0;
+    this.acceptedStation = undefined;
+    this.priorStationActive = false;
+    if (this.agentConfig) {
+      this.agentConfig.isAgentLoggedIn = false;
+      this.agentConfig.currentTeamId = undefined;
+      this.agentConfig.deviceType = undefined;
+      this.agentConfig.dn = undefined;
+      this.agentConfig.defaultDn = undefined;
+    }
+  }
+
+  private clearSwitchHistory(): void {
+    this.acceptedSwitchIds = [];
+    this.acceptedSwitchIdSet.clear();
+  }
+
+  /** Full registration boundaries are distinct from station logout and optional RTD loss. */
+  private terminateRegistration(identityFailure = false): number | undefined {
+    const cancelled = this.cancelAutoAvailable();
+    const publicationSettings = this.multiRegionSettings;
+    this.registrationGeneration += 1;
+    this.terminatedRegistrationGeneration = this.registrationGeneration;
+    this.stationRevision += 1;
+    this.logoutAttempt = undefined;
+    // Invalidate the ended owner before aborts, diagnostics or host publication can reenter.
+    this.clearSwitchHistory();
+    this.clearAcceptedStation();
+    this.services.aqmReqs.clearSessionTrackingIds();
+    this.multiRegionSettings = {eligibility: 'unknown'};
+    this.registrationAgentId = undefined;
+    this.wellbeingBreakIdleCode = undefined;
+    this.registrationAbortController?.abort();
+    if (!this.cancelRegionRecovery()) return undefined;
+    this.fenceRecoveryWork('unavailable');
+    const termination = this.registrationGeneration;
+    const terminationStation = this.stationRevision;
+    const terminationGeneration = this.recoveryGeneration;
+    this.services.connectionService.stop();
+    const hadRtdEpoch = Boolean(this.rtdEpoch);
+    this.pauseRtd();
+    if (!hadRtdEpoch) this.services.rtdWebSocketManager.close(false, 'registrationEnded');
+    this.services.webSocketManager.close(false, 'registrationEnded');
+    this.interruptedTaskGeneration = undefined;
+    this.taskManager.stopSession();
+    if (cancelled) {
+      this.publishRegionState(cancelled, publicationSettings);
+      if (
+        termination !== this.registrationGeneration ||
+        terminationStation !== this.stationRevision ||
+        terminationGeneration !== this.recoveryGeneration
+      )
+        return undefined;
+    }
+    if (
+      termination !== this.registrationGeneration ||
+      terminationStation !== this.stationRevision ||
+      terminationGeneration !== this.recoveryGeneration
+    )
+      return undefined;
+    if (identityFailure) {
+      delete this.regionStateContext.autoAvailable;
+      this.publishRegionState(
+        this.buildRegionState('unavailable', 'recovery-failed'),
+        publicationSettings
+      );
+      if (
+        termination !== this.registrationGeneration ||
+        terminationStation !== this.stationRevision ||
+        terminationGeneration !== this.recoveryGeneration
+      )
+        return undefined;
+    }
+    this.resetRegionState();
+
+    return termination;
+  }
+
+  private normalizeRegionSwitch(payload: unknown): SystemRegionSwitch | undefined {
+    if (!isRecord(payload) || payload.type !== SYSTEM_EVENTS.SYSTEM_REGION_SWITCH) return undefined;
+    if (
+      typeof payload.orgId !== 'string' ||
+      !payload.orgId.trim() ||
+      typeof payload.trackingId !== 'string' ||
+      !payload.trackingId.trim()
+    )
+      return undefined;
+    const data = isRecord(payload.data) ? payload.data : {};
+
+    return {
+      type: SYSTEM_EVENTS.SYSTEM_REGION_SWITCH,
+      orgId: payload.orgId.trim(),
+      trackingId: payload.trackingId.trim(),
+      data: {
+        ...(data.operation === 'FAILOVER' || data.operation === 'FAILBACK'
+          ? {operation: data.operation}
+          : {}),
+        ...(data.scope === 'REGION' || data.scope === 'ORG' ? {scope: data.scope} : {}),
+      },
+    };
+  }
+
+  private isCurrentRecovery(recovery: RegionRecovery): boolean {
+    return (
+      this.recovery === recovery &&
+      !recovery.controller.signal.aborted &&
+      recovery.station === this.stationRevision &&
+      this.isCurrentRegistration(
+        recovery.registration,
+        recovery.orgId,
+        this.registrationAbortController?.signal,
+        recovery.agentId
+      )
+    );
+  }
+
+  private resetOrdinaryConnection(recoverIfDisconnected = false): void {
+    const registration = this.registrationGeneration;
+    const orgId = this.registrationOrgId;
+    const agentId = this.registrationAgentId;
+    const signal = this.registrationAbortController.signal;
+    this.services.connectionService.reset({
+      subscribeRequest: this.getConnectionConfig(),
+      signal,
+      recoverIfDisconnected,
+      onTerminalFailure: (error) => {
+        if (!this.isCurrentRegistration(registration, orgId, signal, agentId)) return;
+        const pending = this.pendingRegistration;
+        if (pending?.registration === registration && pending.controller.signal === signal)
+          pending.rejectConnectionWait?.(error);
+        this.handleRecoveryTerminal(error);
+      },
+    });
+  }
+
+  /** Registration owns its relogin even when ordinary recovery supplies the primary. */
+  private async awaitRegistrationConnection(attempt: InitialRegistration): Promise<void> {
+    this.assertInitialRegistration(attempt);
+    this.assertRecoveryAdmission('session');
+    const manager = this.services.webSocketManager;
+    if (manager.hasUsableSocket()) return;
+    if (manager.shouldReconnect === false) throw createRegionRecoveryError('RECOVERY_INTERRUPTED');
+
+    let onConnection: (details: ConnectionLostDetails) => void;
+    let onClose: (event: {shouldReconnect: boolean}) => void;
+    const connected = new Promise<void>((resolve, reject) => {
+      attempt.rejectConnectionWait = reject;
+      onConnection = (details) => {
+        if (details.isRestoreFailed) reject(createRegionRecoveryError('RECOVERY_INTERRUPTED'));
+        else if (details.isSocketReconnected && manager.hasUsableSocket()) resolve();
+      };
+      onClose = ({shouldReconnect}) => {
+        if (!shouldReconnect) reject(createRegionRecoveryError('RECOVERY_INTERRUPTED'));
+      };
+      this.services.connectionService.on('connectionLost', onConnection);
+      manager.on('socketClose', onClose);
+    });
+    try {
+      await ContactCenter.awaitRegistrationWork(connected, attempt.controller.signal);
+    } finally {
+      attempt.rejectConnectionWait = undefined;
+      this.services.connectionService.off('connectionLost', onConnection);
+      manager.off('socketClose', onClose);
+    }
+    this.assertInitialRegistration(attempt);
+    this.assertRecoveryAdmission('session');
+  }
+
+  private hasRegionalConnectionOwner(): boolean {
+    return (
+      !['unavailable', 'reloadRequired'].includes(this.recoveryPhase) &&
+      (Boolean(this.recovery) || !['idle', 'ready', 'cancelled'].includes(this.recoveryPhase))
+    );
+  }
+
+  private handleRecoveryTerminal(error: unknown): void {
+    const failure = normalizeRecoveryFailure(error);
+    const kind = isRecord(error) && isRecord(error.data) ? error.data.kind : undefined;
+    if (kind === 'cancelled' || failure.reason === 'RECOVERY_INTERRUPTED') {
+      this.cancelRegionRecovery();
+
+      return;
+    }
+    if (kind === 'region-mismatch' || getSubscriptionMismatchReason(error)) {
+      this.requireRegionReload();
+
+      return;
+    }
+    const cancelled = this.cancelAutoAvailable();
+    if (!this.cancelRegionRecovery()) return;
+    this.fenceRecoveryWork('unavailable');
+    this.services.connectionService.stop();
+    this.services.webSocketManager.close(false, 'recoveryFailed');
+    this.pauseRtd('recoveryFailed');
+    const generation = this.recoveryGeneration;
+    if (cancelled) this.publishRegionState(cancelled);
+    if (generation !== this.recoveryGeneration) return;
+    delete this.regionStateContext.autoAvailable;
+    this.publishRegionState(
+      this.buildRegionState(
+        'unavailable',
+        kind === 'authentication-failed' || failure.status === 401 || failure.status === 403
+          ? 'authentication-failed'
+          : 'recovery-failed'
+      )
+    );
+  }
+
+  private requireRegionReload(): void {
+    const pending = this.pendingRegistration;
+    if (
+      pending?.registration === this.registrationGeneration &&
+      pending.controller === this.registrationAbortController
+    ) {
+      pending.reloadRequired ??= createRegionRecoveryError('REGION_RELOAD_REQUIRED');
+    }
+    if (this.recoveryPhase === 'reloadRequired') return;
+    const cancelled = this.cancelAutoAvailable();
+    if (!this.cancelRegionRecovery()) return;
+    this.fenceRecoveryWork('reloadRequired');
+    this.services.connectionService.stop();
+    this.services.webSocketManager.close(false, 'regionMismatch');
+    this.pauseRtd('regionMismatch');
+    const generation = this.recoveryGeneration;
+    if (cancelled) this.publishRegionState(cancelled);
+    if (generation !== this.recoveryGeneration) return;
+    delete this.regionStateContext.autoAvailable;
+    this.publishRegionState(this.buildRegionState('reloadRequired', 'region-mismatch'));
+  }
+
+  private handleRegionSwitch(event: SystemRegionSwitch): void {
+    const startedAt = Date.now();
+    const signal = this.registrationAbortController?.signal;
+    const orgId = this.registrationOrgId;
+    const pending = this.pendingRegistration;
+    if (
+      !signal ||
+      signal.aborted ||
+      (!this.registrationAgentId &&
+        (pending?.registration !== this.registrationGeneration ||
+          pending.controller.signal !== signal))
+    )
+      return;
+    if (['unavailable', 'reloadRequired'].includes(this.recoveryPhase)) {
+      this.recordRecoveryDiagnostic('ignored-event', 'dropped', 0, startedAt, {
+        trackingId: event.trackingId,
+      });
+
+      return;
+    }
+    if (this.$webex.credentials.getOrgId() !== orgId) {
+      this.terminateRegistration(true);
+
+      return;
+    }
+    if (event.orgId !== orgId) {
+      this.recordRecoveryDiagnostic('ignored-event', 'dropped', 0, startedAt, {
+        trackingId: event.trackingId,
+      });
+
+      return;
+    }
+    if (
+      !this.isCurrentRegistration(
+        this.registrationGeneration,
+        orgId,
+        signal,
+        this.registrationAgentId
+      )
+    )
+      return;
+    if (!this.registrationAgentId || this.multiRegionSettings.eligibility === 'unknown') {
+      this.recordRecoveryDiagnostic('ignored-event', 'dropped', 0, startedAt, {
+        trackingId: event.trackingId,
+      });
+
+      return;
+    }
+    if (this.acceptedSwitchIdSet.has(event.trackingId)) {
+      this.recordRecoveryDiagnostic('ignored-event', 'dropped', 0, startedAt, {
+        trackingId: event.trackingId,
+      });
+
+      return;
+    }
+    this.acceptedSwitchIds.push(event.trackingId);
+    this.acceptedSwitchIdSet.add(event.trackingId);
+    if (this.acceptedSwitchIds.length > 128)
+      this.acceptedSwitchIdSet.delete(this.acceptedSwitchIds.shift());
+    const cancelled = this.cancelAutoAvailable();
+    this.services.webSocketManager.clearServingRegion();
+    if (!this.cancelRegionRecovery()) return;
+    this.fenceRecoveryWork('waiting');
+    this.services.connectionService.pause();
+    this.pauseRtd();
+    const registration = this.registrationGeneration;
+    const generation = this.recoveryGeneration;
+    const station = this.stationRevision;
+    if (cancelled) {
+      this.publishRegionState(cancelled);
+      if (
+        registration !== this.registrationGeneration ||
+        generation !== this.recoveryGeneration ||
+        station !== this.stationRevision ||
+        signal.aborted ||
+        this.$webex.credentials.getOrgId() !== event.orgId
+      )
+        return;
+    }
+    this.resetRegionState();
+    this.regionStateContext = {trackingId: event.trackingId, ...event.data};
+    if (this.multiRegionSettings.eligibility === 'disabled') {
+      this.setRecoveryPhase('unavailable');
+      this.services.connectionService.stop();
+      this.services.webSocketManager.close(false, 'notEligible');
+      this.services.rtdWebSocketManager.close(false, 'notEligible');
+      this.publishRegionState(this.buildRegionState('unavailable', 'not-eligible'));
+
+      return;
+    }
+    const controller = new AbortController();
+    const abort = () => controller.abort();
+    signal.addEventListener('abort', abort, {once: true});
+    const recovery: RegionRecovery = {
+      registration: this.registrationGeneration,
+      station: this.stationRevision,
+      orgId: event.orgId,
+      agentId: this.registrationAgentId,
+      controller,
+      detach: () => signal.removeEventListener('abort', abort),
+      cleaned: false,
+      stage: 'reload',
+      reloads: 0,
+      fallbackSent: false,
+      post1035Sent: false,
+      retryNotBefore: 0,
+      intentRevision: this.stateIntentRevision,
+    };
+    this.recovery = recovery;
+    this.publishRegionState(this.buildRegionState('recovering', 'region-switch'));
+    if (!this.isCurrentRecovery(recovery)) return;
+    this.services.webSocketManager.close(false, 'regionRecovery');
+    this.services.connectionService
+      .recoverRegion({
+        signal: controller.signal,
+        canAttempt: () => {
+          if (!this.isCurrentRecovery(recovery)) return false;
+          const slot = this.recoveryAttempt;
+          if (slot?.owner === recovery) slot.welcomeStartedAt = Date.now();
+
+          return true;
+        },
+        onScheduled: (attempt, retryAfterMs) => {
+          if (!this.isCurrentRecovery(recovery)) return;
+          this.recoveryAttempt = {owner: recovery, attempt, startedAt: Date.now()};
+          this.recordRecoveryDiagnostic(
+            'scheduled-wait',
+            'waiting',
+            attempt,
+            this.recoveryAttempt.startedAt
+          );
+          if (!this.isCurrentRecovery(recovery)) return;
+          this.setRecoveryPhase('waiting');
+          this.publishRegionState(
+            this.buildRegionState('recovering', 'region-switch', retryAfterMs)
+          );
+        },
+        onAttemptSettled: (attempt, outcome, failure) => {
+          const slot = this.recoveryAttempt;
+          if (
+            !this.isCurrentRecovery(recovery) ||
+            slot?.owner !== recovery ||
+            slot.attempt !== attempt
+          )
+            return;
+          this.recoveryAttempt = undefined;
+          this.recordRecoveryDiagnostic('admission', outcome, attempt, slot.startedAt, failure);
+        },
+        afterWelcome: async (welcome, attemptSignal) => {
+          if (!this.isCurrentRecovery(recovery))
+            throw createRegionRecoveryError('RECOVERY_INTERRUPTED');
+          const slot = this.recoveryAttempt;
+          const attempt = slot?.attempt;
+          const agentId = isRecord(welcome) ? welcome.agentId : undefined;
+          const valid = agentId === recovery.agentId;
+          this.recordRecoveryDiagnostic(
+            'welcome',
+            valid ? 'succeeded' : 'failed',
+            attempt,
+            slot?.welcomeStartedAt ?? slot?.startedAt
+          );
+          if (!this.isCurrentRecovery(recovery) || attemptSignal.aborted)
+            throw createRegionRecoveryError('RECOVERY_INTERRUPTED');
+          this.assertPrimaryIdentity(agentId);
+          await this.restoreRegionSession(recovery, attemptSignal);
+        },
+      })
+      .then(
+        () => {
+          const slot = this.recoveryAttempt;
+          if (!this.isCurrentRecovery(recovery) || slot?.owner !== recovery) return;
+          this.recoveryAttempt = undefined;
+          this.recordRecoveryDiagnostic('admission', 'succeeded', slot.attempt, slot.startedAt);
+        },
+        (error) => {
+          if (this.isCurrentRecovery(recovery)) this.handleRecoveryTerminal(error);
+        }
+      );
+  }
+
+  private assertPrimaryIdentity(agentId: unknown): void {
+    if (
+      typeof agentId !== 'string' ||
+      !agentId.trim() ||
+      (this.registrationAgentId && agentId !== this.registrationAgentId)
+    ) {
+      this.terminateRegistration(true);
+      throw createRegionRecoveryError('RECOVERY_INTERRUPTED');
+    }
+  }
+
+  private buildStationLoginPayload(data: AgentLogin): Agent.UserStationLogin {
+    const deviceId = this.getDeviceId(data.loginOption, data.dialNumber);
+
+    return {
+      dialNumber: data.loginOption === LoginOption.BROWSER ? deviceId : data.dialNumber,
+      teamId: data.teamId,
+      deviceType: data.loginOption,
+      isExtension: data.loginOption === LoginOption.EXTENSION,
+      deviceId,
+      roles: [AGENT],
+      teamName: EMPTY_STRING,
+      siteId: EMPTY_STRING,
+      usesOtherDN: false,
+      auxCodeId: EMPTY_STRING,
+    };
+  }
+
+  private rememberAcceptedStation(
+    input:
+      | {source: 'login'; payload: Agent.UserStationLogin; response: Agent.StationLoginSuccess}
+      | {source: 'reload'; response: Agent.ReloginSuccess}
+      | {source: 'notification'; response: Agent.StationLoginSuccess | Agent.ReloginSuccess}
+  ): void {
+    const {response} = input;
+    this.assertPrimaryIdentity(response.data.agentId);
+    const data = response.data;
+    const nonblank = (value: unknown): value is string =>
+      typeof value === 'string' && Boolean(value.trim());
+    const sessionId = nonblank(data.agentSessionId) ? data.agentSessionId : undefined;
+    const epoch = this.rtdEpoch;
+    if (epoch) {
+      // A registration-only subscription can acquire its first accepted station. An
+      // established subscription belongs to exactly one accepted session.
+      if (
+        this.isCurrentRtdEpoch(epoch) &&
+        (epoch.sessionId === sessionId ||
+          (!this.priorStationActive && epoch.sessionId === undefined))
+      )
+        epoch.sessionId = sessionId;
+      else if (this.rtdEpoch === epoch) this.pauseRtd();
+    }
+    const old = this.acceptedStation;
+    const compatible =
+      old?.orgId === this.registrationOrgId &&
+      old?.agentId === data.agentId &&
+      (old?.sessionId === sessionId || old?.revision === this.stationRevision)
+        ? old.payload
+        : undefined;
+    this.agentConfig.lastStateAuxCodeId = data.auxCodeId;
+    this.agentConfig.lastStateChangeTimestamp = data.lastStateChangeTimestamp;
+    this.agentConfig.lastIdleCodeChangeTimestamp = data.lastIdleCodeChangeTimestamp;
+    this.priorStationActive = true;
+    this.agentConfig.isAgentLoggedIn = true;
+    this.updateWellnessSession(sessionId);
+    if (
+      Number.isFinite(data.lastStateChangeTimestamp) &&
+      Number.isFinite(data.lastIdleCodeChangeTimestamp)
+    )
+      this.confirmedState = {
+        data: {...data},
+        ordinal: (this.stateOrdinal += 1),
+        independent: true,
+      };
+    this.agentConfig.currentTeamId = data.teamId;
+    let payload: Agent.UserStationLogin;
+    if (input.source === 'login') {
+      payload = {
+        ...input.payload,
+        teamId: nonblank(data.teamId) ? data.teamId : input.payload.teamId,
+      };
+    } else {
+      const fields = data as typeof data & {
+        isExtension?: boolean;
+        dn?: string;
+        deviceType?: string;
+      };
+      let number: string | undefined;
+      if (nonblank(fields.dn)) number = fields.dn;
+      else if (nonblank(fields.dialNumber)) number = fields.dialNumber;
+      let mode = nonblank(fields.deviceType) ? fields.deviceType : undefined;
+      if (!mode) {
+        if (fields.isExtension === true) mode = LoginOption.EXTENSION;
+        else if (number === `${WEB_RTC_PREFIX}${data.agentId}`) mode = LoginOption.BROWSER;
+        else if (number && fields.isExtension === false) mode = LoginOption.AGENT_DN;
+        else mode = compatible?.deviceType;
+      }
+      const dialNumber =
+        number || (compatible?.deviceType === mode ? compatible?.dialNumber : undefined);
+      if (
+        !Object.values(LoginOption).includes(mode as LoginOption) ||
+        !nonblank(data.teamId) ||
+        (mode !== LoginOption.BROWSER && !nonblank(dialNumber))
+      ) {
+        this.acceptedStation = undefined;
+        this.agentConfig.deviceType = mode as LoginOption;
+        this.agentConfig.dn = number;
+        this.agentConfig.defaultDn = number;
+
+        return;
+      }
+      payload = this.buildStationLoginPayload({
+        teamId: data.teamId,
+        loginOption: mode as LoginOption,
+        dialNumber,
+      });
+    }
+    this.agentConfig.currentTeamId = payload.teamId;
+    this.acceptedStation = {
+      orgId: this.registrationOrgId,
+      agentId: data.agentId,
+      sessionId,
+      revision: this.stationRevision,
+      payload,
+    };
+    this.agentConfig.deviceType = payload.deviceType as LoginOption;
+    this.agentConfig.dn = payload.dialNumber;
+    this.agentConfig.defaultDn = payload.dialNumber;
+  }
+
+  private reconcileStationSnapshot(): Agent.UserStationLogin | undefined {
+    const accepted = this.acceptedStation;
+    if (
+      !accepted ||
+      accepted.orgId !== this.registrationOrgId ||
+      accepted.agentId !== this.registrationAgentId ||
+      !accepted.payload.teamId?.trim() ||
+      !Object.values(LoginOption).includes(accepted.payload.deviceType as LoginOption) ||
+      (accepted.payload.deviceType !== LoginOption.BROWSER && !accepted.payload.dialNumber?.trim())
+    )
+      return undefined;
+
+    return {...accepted.payload};
+  }
+
+  private async applyStationSession(
+    response: Agent.StationLoginSuccess | Agent.ReloginSuccess,
+    options: {signal: AbortSignal; calling: 'replace' | 'preserve'}
+  ): Promise<void> {
+    if (options.signal.aborted) throw createRegionRecoveryError('RECOVERY_INTERRUPTED');
+    this.assertPrimaryIdentity(response.data.agentId);
+    this.agentConfig.lastStateAuxCodeId = response.data.auxCodeId;
+    this.agentConfig.lastStateChangeTimestamp = response.data.lastStateChangeTimestamp;
+    this.agentConfig.lastIdleCodeChangeTimestamp = response.data.lastIdleCodeChangeTimestamp;
+    const payload = this.acceptedStation?.payload;
+    if (payload)
+      await ContactCenter.awaitRegistrationWork(
+        this.handleDeviceType(
+          payload.deviceType as LoginOption,
+          payload.dialNumber,
+          options.calling
+        ),
+        options.signal
+      );
+    if (options.signal.aborted) throw createRegionRecoveryError('RECOVERY_INTERRUPTED');
+    await ContactCenter.awaitRegistrationWork(this.ensureWxAppPostStationLogin(), options.signal);
+  }
+
+  private static recoveryFailureCategory(
+    failure: RecoveryFailure
+  ): 'cancelled' | 'auth' | 'transient' | 'fallback' | 'exists' | 'other' {
+    if (failure.reason === 'RECOVERY_INTERRUPTED' || failure.id === 'AbortError')
+      return 'cancelled';
+    if (failure.status === 401 || failure.status === 403) return 'auth';
+    const codes = {1037: 'transient', 1038: 'fallback', 1041: 'fallback', 1035: 'exists'} as const;
+    if (codes[failure.reasonCode]) return codes[failure.reasonCode];
+    if (['AGENT_NOT_FOUND', 'AGENT_DN_NOT_REGISTERED'].includes(failure.reason)) return 'fallback';
+    if (failure.reason === 'AGENT_SESSION_ALREADY_EXISTS') return 'exists';
+    if (failure.reason === 'INTERNAL_ERROR') return 'transient';
+    if (
+      [
+        'Timeout',
+        'TimeoutEvent',
+        'Service.aqm.reqs.Timeout',
+        'Service.aqm.reqs.TimeoutEvent',
+      ].includes(failure.id) ||
+      [429, 502, 503].includes(failure.status)
+    )
+      return 'transient';
+
+    return 'other';
+  }
+
+  private async waitForRecoveryRetry(deadline: number, signal: AbortSignal): Promise<void> {
+    if (signal.aborted) throw createRegionRecoveryError('RECOVERY_INTERRUPTED');
+    if (deadline <= Date.now()) return;
+    await new Promise<void>((resolve, reject) => {
+      const finish = () => {
+        signal.removeEventListener('abort', abort);
+        resolve();
+      };
+      const timer = setTimeout(finish, Math.max(0, deadline - Date.now()));
+      const abort = () => {
+        clearTimeout(timer);
+        signal.removeEventListener('abort', abort);
+        reject(createRegionRecoveryError('RECOVERY_INTERRUPTED'));
+      };
+      signal.addEventListener('abort', abort, {once: true});
+      if (signal.aborted) abort();
+    });
+  }
+
+  private async restoreRegionSession(recovery: RegionRecovery, signal: AbortSignal): Promise<void> {
+    const manual = (reason: RegionRecoveryReason) => {
+      if (!this.isCurrentRecovery(recovery) || signal.aborted) return;
+      if (this.sessionRequest) {
+        this.sessionRequest.controller.abort();
+        this.sessionRequest.detach();
+        this.sessionRequest = undefined;
+      }
+      this.setRecoveryPhase('manualLoginRequired');
+      this.publishRegionState(this.buildRegionState('stationLoginRequired', reason));
+    };
+    if (!this.priorStationActive) {
+      manual('region-switch');
+      if (this.isCurrentRecovery(recovery) && !signal.aborted)
+        this.resumeRtd(this.registrationAbortController.signal);
+
+      return;
+    }
+    if (
+      !this.$config.allowAutomatedRelogin ||
+      this.logoutPending ||
+      this.suppressAutomaticRelogin
+    ) {
+      manual('automatic-relogin-disabled');
+
+      return;
+    }
+    const payload = this.reconcileStationSnapshot();
+    if (!payload) {
+      manual('session-restore-failed');
+
+      return;
+    }
+    if (!recovery.cleaned) {
+      recovery.cleaned = true;
+      if (!this.startTaskSession(() => this.isCurrentRecovery(recovery) && !signal.aborted))
+        throw createRegionRecoveryError('RECOVERY_INTERRUPTED');
+    }
+    const context = this.beginSessionRequest('restore', signal);
+    try {
+      while (this.isCurrentRecovery(recovery) && !context.signal.aborted) {
+        // eslint-disable-next-line no-await-in-loop -- Generation-owned retries are serial.
+        await this.waitForRecoveryRetry(recovery.retryNotBefore, context.signal);
+        if (!this.isCurrentRecovery(recovery) || context.signal.aborted)
+          throw createRegionRecoveryError('RECOVERY_INTERRUPTED');
+        if (recovery.stage === 'reload' && recovery.reloads >= 4) recovery.stage = 'fallback';
+        const stage = recovery.stage;
+        if (
+          stage === 'manual' ||
+          (stage === 'reload' && recovery.reloads >= 4) ||
+          (stage === 'fallback' && recovery.fallbackSent) ||
+          (stage === 'post1035' && recovery.post1035Sent)
+        )
+          break;
+        const diagnosticStage = stage === 'fallback' ? 'fallback-login' : 'reload';
+        const attempt = stage === 'fallback' ? 1 : recovery.reloads + 1;
+        const startedAt = Date.now();
+        let applying = false;
+        try {
+          let response: Agent.ReloginSuccess | Agent.StationLoginSuccess;
+          if (stage === 'fallback') {
+            recovery.fallbackSent = true;
+            recovery.stage = 'manual';
+            // eslint-disable-next-line no-await-in-loop -- At most one fallback dispatch.
+            response = await ContactCenter.awaitRegistrationWork(
+              this.services.agent.stationLogin({data: payload}, undefined, context),
+              context.signal
+            );
+          } else {
+            if (stage === 'post1035') {
+              recovery.post1035Sent = true;
+              recovery.stage = 'manual';
+            } else recovery.reloads += 1;
+            // eslint-disable-next-line no-await-in-loop -- Bounded reload budget survives sockets.
+            response = await ContactCenter.awaitRegistrationWork(
+              this.services.agent.reload(undefined, context),
+              context.signal
+            );
+          }
+          if (!this.isCurrentRecovery(recovery) || context.signal.aborted)
+            throw createRegionRecoveryError('RECOVERY_INTERRUPTED');
+          this.assertPrimaryIdentity(response.data.agentId);
+          if (stage === 'fallback')
+            this.rememberAcceptedStation({
+              source: 'login',
+              payload,
+              response: response as Agent.StationLoginSuccess,
+            });
+          else
+            this.rememberAcceptedStation({
+              source: 'reload',
+              response: response as Agent.ReloginSuccess,
+            });
+          applying = true;
+          this.recordRecoveryDiagnostic(diagnosticStage, 'succeeded', attempt, startedAt);
+          if (!this.isCurrentRecovery(recovery) || context.signal.aborted)
+            throw createRegionRecoveryError('RECOVERY_INTERRUPTED');
+          // eslint-disable-next-line no-await-in-loop -- Apply only this accepted session.
+          await this.applyStationSession(response, {signal: context.signal, calling: 'preserve'});
+          if (!this.isCurrentRecovery(recovery) || context.signal.aborted)
+            throw createRegionRecoveryError('RECOVERY_INTERRUPTED');
+          this.endSessionRequest(context);
+          this.setRecoveryPhase('ready');
+          if (stage !== 'fallback') this.armAutoAvailable(response as Agent.ReloginSuccess, signal);
+          this.publishRegionState(this.buildRegionState('ready', 'region-switch'));
+          if (this.isCurrentRecovery(recovery) && !signal.aborted)
+            this.resumeRtd(this.registrationAbortController.signal);
+          if (this.isCurrentRecovery(recovery) && this.autoAvailable) {
+            this.autoAvailable.published = true;
+            this.dispatchAutoAvailable(this.autoAvailable).catch(() => undefined);
+          }
+
+          return;
+        } catch (error) {
+          if (!this.isCurrentRecovery(recovery) || context.signal.aborted) {
+            if (this.isCurrentRecovery(recovery) && stage === 'reload' && recovery.reloads < 4)
+              recovery.retryNotBefore = Math.max(
+                recovery.retryNotBefore,
+                Date.now() + [2000, 4000, 8000][recovery.reloads - 1]
+              );
+            throw error;
+          }
+          if (applying) throw error;
+          const failure = normalizeRecoveryFailure(error);
+          const category = ContactCenter.recoveryFailureCategory(failure);
+          if (category === 'cancelled' || category === 'auth') {
+            this.recordRecoveryDiagnostic(
+              diagnosticStage,
+              category === 'auth' ? 'failed' : 'cancelled',
+              attempt,
+              startedAt,
+              failure
+            );
+            throw error;
+          }
+          if (stage === 'fallback' && category === 'exists') recovery.stage = 'post1035';
+          else if (stage === 'reload' && category === 'transient' && recovery.reloads < 4) {
+            recovery.retryNotBefore = Date.now() + [2000, 4000, 8000][recovery.reloads - 1];
+          } else if (stage === 'reload') {
+            recovery.stage = 'fallback';
+            recovery.retryNotBefore = 0;
+          } else {
+            this.recordRecoveryDiagnostic(diagnosticStage, 'failed', attempt, startedAt, failure);
+            break;
+          }
+          this.recordRecoveryDiagnostic(diagnosticStage, 'retrying', attempt, startedAt, failure);
+        }
+      }
+      manual('session-restore-failed');
+    } finally {
+      this.endSessionRequest(context);
+    }
+  }
+
+  /** Foreign accepted station notifications are separate from locally correlated completions. */
+  private reconcileStationNotification(event: Record<string, any>): void {
+    const data = event.data;
+    const signal = this.registrationAbortController?.signal;
+    if (
+      !signal ||
+      !this.registrationAgentId ||
+      !isRecord(data) ||
+      !this.isCurrentRegistration(
+        this.registrationGeneration,
+        this.registrationOrgId,
+        signal,
+        this.registrationAgentId
+      ) ||
+      data.orgId !== this.registrationOrgId ||
+      data.agentId !== this.registrationAgentId ||
+      typeof data.agentSessionId !== 'string' ||
+      !data.agentSessionId.trim() ||
+      !this.currentAgentSessionId
+    )
+      return;
+    if (data.type === CC_EVENTS.AGENT_LOGOUT_SUCCESS) {
+      if (data.agentSessionId !== this.currentAgentSessionId || this.logoutPending) return;
+      const terminal = ['unavailable', 'reloadRequired'].includes(this.recoveryPhase);
+      const wasRegional = this.hasRegionalConnectionOwner();
+      const cancelled = this.cancelAutoAvailable();
+      this.stationRevision += 1;
+      const station = this.stationRevision;
+      const registration = this.registrationGeneration;
+      if (!this.cancelRegionRecovery()) return;
+      this.fenceRecoveryWork(terminal ? this.recoveryPhase : 'cancelled');
+      this.pauseRtd();
+      this.clearAcceptedStation();
+      this.updateWellnessSession();
+      this.suppressAutomaticRelogin = true;
+      if (wasRegional) this.resetOrdinaryConnection(true);
+      const generation = this.recoveryGeneration;
+      const ownsStation = () =>
+        station === this.stationRevision &&
+        generation === this.recoveryGeneration &&
+        this.isCurrentRegistration(
+          registration,
+          this.registrationOrgId,
+          signal,
+          this.registrationAgentId
+        );
+      if (cancelled) this.publishRegionState(cancelled);
+      if (!ownsStation()) return;
+      this.resetRegionState();
+      if (!terminal) {
+        this.setRecoveryPhase('idle');
+        if (this.interruptedTaskGeneration !== undefined) this.startTaskSession(ownsStation);
+      }
+
+      return;
+    }
+    if (
+      ![CC_EVENTS.AGENT_STATION_LOGIN_SUCCESS, CC_EVENTS.AGENT_RELOGIN_SUCCESS].includes(
+        data.type as any
+      ) ||
+      !['idle', 'ready'].includes(this.recoveryPhase) ||
+      this.sessionRequest ||
+      this.logoutPending ||
+      this.suppressAutomaticRelogin ||
+      typeof data.trackingId !== 'string' ||
+      !data.trackingId.trim() ||
+      this.services.aqmReqs.isLocalSessionTrackingId(data.trackingId)
+    )
+      return;
+    if (data.agentSessionId !== this.currentAgentSessionId) {
+      const wasRegional = this.hasRegionalConnectionOwner();
+      const cancelled = this.cancelAutoAvailable();
+      this.stationRevision += 1;
+      const station = this.stationRevision;
+      const registration = this.registrationGeneration;
+      if (!this.cancelRegionRecovery()) return;
+      this.fenceRecoveryWork('cancelled');
+      this.pauseRtd();
+      this.clearAcceptedStation();
+      this.updateWellnessSession();
+      this.suppressAutomaticRelogin = true;
+      if (wasRegional) this.resetOrdinaryConnection(true);
+      const generation = this.recoveryGeneration;
+      const ownsStation = () =>
+        station === this.stationRevision &&
+        generation === this.recoveryGeneration &&
+        this.isCurrentRegistration(
+          registration,
+          this.registrationOrgId,
+          signal,
+          this.registrationAgentId
+        );
+      if (cancelled) this.publishRegionState(cancelled);
+      if (!ownsStation()) return;
+      this.resetRegionState();
+      this.setRecoveryPhase('idle');
+      if (this.interruptedTaskGeneration !== undefined) this.startTaskSession(ownsStation);
+
+      return;
+    }
+    const previous = {...this.acceptedStation?.payload};
+    this.rememberAcceptedStation({
+      source: 'notification',
+      response: event as Agent.StationLoginSuccess | Agent.ReloginSuccess,
+    });
+    const payloadChanged = !isEqual(previous, {...this.acceptedStation?.payload});
+    const cancelled =
+      payloadChanged || this.invalidatesAutoAvailableDisconnect(data, this.autoAvailable)
+        ? this.cancelAutoAvailable()
+        : undefined;
+    if (payloadChanged) {
+      this.stationRevision += 1;
+      if (this.acceptedStation) this.acceptedStation.revision = this.stationRevision;
+      if (this.rtdEpoch?.sessionId === this.currentAgentSessionId)
+        this.rtdEpoch.station = this.stationRevision;
+    }
+    const generation = this.recoveryGeneration;
+    if (cancelled) this.publishRegionState(cancelled);
+    if (generation !== this.recoveryGeneration) return;
+    if (this.acceptedStation) {
+      const mode = this.acceptedStation.payload.deviceType as LoginOption;
+      this.webCallingService.setLoginOption(mode);
+      this.webCallingService.setBrowserVoiceRequired(this.isBrowserVoiceRequired(mode));
+    }
+  }
 
   private updateWellnessSession(agentSessionId?: string): void {
+    // RTD ownership loss survives transient station revisions and unknown identities.
+    if (
+      agentSessionId &&
+      this.rtdTerminatedFor?.registration === this.registrationGeneration &&
+      agentSessionId !== this.rtdTerminatedFor.sessionId
+    )
+      this.rtdTerminatedFor = undefined;
+    if (agentSessionId !== this.currentAgentSessionId) {
+      this.stateDispatches.clear();
+      this.confirmedState = undefined;
+      this.acceptedExplicitOrdinal = 0;
+    }
     this.currentAgentSessionId = agentSessionId;
   }
 
@@ -478,11 +2123,15 @@ export default class ContactCenter extends WebexPlugin implements IContactCenter
       this.answerCallOnWebexService = new AnswerCallOnWebexService(this.$webex);
       this.webexCrossClientService = new WebexCrossClientService(this.$webex);
       this.wxAppTelephonyMercurySync = new WxAppTelephonyMercurySync(this.$webex);
-      this.apiAIAssistant = new ApiAIAssistant(this.$webex, () => ({
-        isWellnessBreakEnabled: this.agentConfig?.isWellnessBreakEnabled === true,
-        agentId: this.agentConfig?.agentId,
-        agentSessionId: this.currentAgentSessionId,
-      }));
+      this.apiAIAssistant = new ApiAIAssistant(
+        this.$webex,
+        () => ({
+          isWellnessBreakEnabled: this.agentConfig?.isWellnessBreakEnabled === true,
+          agentId: this.agentConfig?.agentId,
+          agentSessionId: this.currentAgentSessionId,
+        }),
+        () => this.getHttpRecoveryGuard()
+      );
       this.metricsManager = MetricsManager.getInstance({webex: this.$webex});
       this.taskManager = TaskManager.getTaskManager(
         this.apiAIAssistant,
@@ -517,7 +2166,7 @@ export default class ContactCenter extends WebexPlugin implements IContactCenter
   private handleVoiceConnectionStateChange = (state: VoiceConnectionState): void => {
     // WebexPlugin exposes `trigger` at runtime, though it is missing from its TypeScript types.
     // @ts-ignore
-    this.trigger(VOICE_CONNECTION_EVENTS.STATE_CHANGE, state);
+    this.publishHostEvent(VOICE_CONNECTION_EVENTS.STATE_CHANGE, state, true);
   };
 
   /**
@@ -561,10 +2210,12 @@ export default class ContactCenter extends WebexPlugin implements IContactCenter
   };
 
   private trackInvalidWellnessEvent(reason: string): void {
-    this.metricsManager.trackEvent(
-      METRIC_EVENT_NAMES.AI_ASSISTANT_WELLNESS_EVENT_INVALID,
-      {reason},
-      ['operational']
+    this.recordBestEffort(() =>
+      this.metricsManager.trackEvent(
+        METRIC_EVENT_NAMES.AI_ASSISTANT_WELLNESS_EVENT_INVALID,
+        {reason},
+        ['operational']
+      )
     );
   }
 
@@ -662,13 +2313,174 @@ export default class ContactCenter extends WebexPlugin implements IContactCenter
     const wellnessEvent = this.normalizeWellnessBreakEvent(payload);
     if (wellnessEvent) {
       // @ts-ignore - WebexPlugin emit is available at runtime but absent from its declaration.
-      this.emit(CC_EVENTS.WELLNESS_BREAK, wellnessEvent);
+      this.publishHostEvent(CC_EVENTS.WELLNESS_BREAK, wellnessEvent);
     }
 
     return true;
   }
 
+  private shouldSubscribeRtd(): boolean {
+    return Boolean(
+      this.agentConfig?.aiFeature?.realtimeTranscripts?.enable ||
+        this.agentConfig?.aiFeature?.suggestedResponses?.enable ||
+        this.agentConfig?.aiFeature?.generatedSummaries?.wrapUpSummariesEnabled === true ||
+        this.agentConfig?.aiFeature?.generatedSummaries?.consultTransferSummariesEnabled === true ||
+        this.agentConfig?.isWellnessBreakEnabled
+    );
+  }
+
+  /** Borrow shared lifecycle ownership independently of the optional RTD connection. */
+  private getHttpRecoveryGuard(): Pick<TaskRecoveryGuard, 'generation' | 'signal'> | undefined {
+    const signal = this.registrationAbortController?.signal;
+    if (
+      !signal ||
+      signal.aborted ||
+      !this.commandController ||
+      this.commandController.signal.aborted ||
+      this.suppressAutomaticRelogin ||
+      !this.registrationAgentId ||
+      this.registrationOrgId !== this.$webex.credentials.getOrgId() ||
+      !(
+        ['idle', 'ready'].includes(this.recoveryPhase) ||
+        (this.recoveryPhase === 'manualLoginRequired' && !this.priorStationActive)
+      )
+    )
+      return undefined;
+
+    return {generation: this.recoveryGeneration, signal: this.commandController.signal};
+  }
+
+  private isCurrentRtdEpoch(epoch: RtdEpoch): boolean {
+    return (
+      this.rtdEpoch === epoch &&
+      !epoch.controller.signal.aborted &&
+      !epoch.parent.aborted &&
+      epoch.parent === this.registrationAbortController?.signal &&
+      epoch.registration === this.registrationGeneration &&
+      epoch.station === this.stationRevision &&
+      epoch.sessionId === this.currentAgentSessionId &&
+      this.isCurrentRegistration(epoch.registration, epoch.orgId, epoch.parent, epoch.agentId)
+    );
+  }
+
+  /** An explicit terminal reason also closes the manager after an epoch was already released. */
+  private pauseRtd(terminalReason?: 'recoveryFailed' | 'regionMismatch'): void {
+    this.rtdPaused = true;
+    const epoch = this.rtdEpoch;
+    this.rtdEpoch = undefined;
+    epoch?.detach();
+    epoch?.controller.abort();
+    const release = [
+      () => this.services.rtdWebSocketManager.off('message', this.handleRTDWebsocketMessage),
+      () =>
+        this.services.rtdWebSocketManager.cancelPending(
+          createRegionRecoveryError('RECOVERY_INTERRUPTED')
+        ),
+      () =>
+        this.apiAIAssistant.clearAllRtdRequests(() =>
+          createRegionRecoveryError('RECOVERY_INTERRUPTED')
+        ),
+      () => {
+        if (epoch || this.registrationAbortController) this.taskManager.clearAISummaryState();
+      },
+      () => {
+        if (epoch || terminalReason)
+          this.services.rtdWebSocketManager.close(false, terminalReason ?? 'regionRecovery');
+      },
+    ];
+    release.forEach((dispose) => {
+      try {
+        dispose();
+      } catch {
+        /* Each optional owner releases independently. */
+      }
+    });
+  }
+
+  private resumeRtd(signal: AbortSignal): Promise<void> {
+    if (
+      signal.aborted ||
+      signal !== this.registrationAbortController?.signal ||
+      !this.shouldSubscribeRtd() ||
+      !this.getHttpRecoveryGuard() ||
+      (this.rtdTerminatedFor?.registration === this.registrationGeneration &&
+        (!this.currentAgentSessionId ||
+          this.rtdTerminatedFor.sessionId === this.currentAgentSessionId))
+    )
+      return Promise.resolve();
+    const current = this.rtdEpoch;
+    if (current && this.isCurrentRtdEpoch(current)) return current.promise;
+    if (current) this.pauseRtd();
+    const startedAt = Date.now();
+    const controller = new AbortController();
+    const abort = () => {
+      if (this.rtdEpoch === epoch) this.pauseRtd();
+      else controller.abort();
+    };
+    const epoch: RtdEpoch = {
+      registration: this.registrationGeneration,
+      station: this.stationRevision,
+      orgId: this.registrationOrgId,
+      agentId: this.registrationAgentId,
+      sessionId: this.currentAgentSessionId,
+      parent: signal,
+      controller,
+      detach: () => signal.removeEventListener('abort', abort),
+      active: false,
+      promise: Promise.resolve(),
+    };
+    this.rtdEpoch = epoch;
+    signal.addEventListener('abort', abort, {once: true});
+    this.services.rtdWebSocketManager.off('message', this.handleRTDWebsocketMessage);
+    this.services.rtdWebSocketManager.on('message', this.handleRTDWebsocketMessage);
+    epoch.promise = Promise.resolve()
+      .then(() => {
+        if (!this.isCurrentRtdEpoch(epoch)) throw createRegionRecoveryError('RECOVERY_INTERRUPTED');
+
+        return this.services.rtdWebSocketManager.initWebSocket({
+          body: this.getConnectionConfig(),
+          resource: RTD_SUBSCRIBE_API,
+          signal: controller.signal,
+        });
+      })
+      .then(() => {
+        if (!this.isCurrentRtdEpoch(epoch)) {
+          if (this.rtdEpoch === epoch) this.pauseRtd();
+
+          return;
+        }
+        epoch.active = true;
+        this.rtdPaused = false;
+        this.recordRecoveryDiagnostic('rtd', 'succeeded', 1, startedAt);
+      })
+      .catch((error) => {
+        if (!this.isCurrentRtdEpoch(epoch)) {
+          if (this.rtdEpoch === epoch) this.pauseRtd();
+
+          return;
+        }
+        const failure = normalizeRecoveryFailure(error);
+        // WebSocketManager owns these exact deadline errors; never forward error text.
+        const deadline =
+          error instanceof Error &&
+          ['Subscribe deadline exceeded', 'Welcome deadline exceeded'].includes(error.message);
+        this.recordRecoveryDiagnostic('rtd', 'failed', 1, startedAt, {
+          ...failure,
+          ...(failure.status === 401 || failure.status === 403
+            ? {reason: 'authentication-failed'}
+            : {}),
+          ...(deadline ? {id: 'RTD_DEADLINE'} : {}),
+          ...(!deadline && failure.status === undefined && !failure.id ? {id: 'RTD_NETWORK'} : {}),
+        });
+        if (this.isCurrentRtdEpoch(epoch)) this.pauseRtd();
+      });
+
+    return epoch.promise;
+  }
+
   private handleRTDWebsocketMessage = (event: string) => {
+    const epoch = this.rtdEpoch;
+    if (this.rtdPaused || !epoch?.active || !this.isCurrentRtdEpoch(epoch)) return;
     let payload: unknown;
     try {
       payload = JSON.parse(event);
@@ -676,6 +2488,16 @@ export default class ContactCenter extends WebexPlugin implements IContactCenter
       // TaskManager retains its existing malformed RTD message handling.
     }
 
+    if (isRecord(payload) && payload.type === CC_EVENTS.AGENT_MULTI_LOGIN) {
+      this.rtdTerminatedFor = {
+        registration: this.registrationGeneration,
+        sessionId: this.currentAgentSessionId,
+      };
+      this.pauseRtd();
+
+      return;
+    }
+    if (!this.isCurrentRtdEpoch(epoch)) return;
     if (isRecord(payload) && this.handleWellnessBreakWebsocketPayload(payload)) {
       return;
     }
@@ -689,6 +2511,14 @@ export default class ContactCenter extends WebexPlugin implements IContactCenter
    * @private
    */
   private incomingTaskListener() {
+    this.taskManager.off(TASK_EVENTS.TASK_INCOMING, this.handleIncomingTask);
+    this.taskManager.off(TASK_EVENTS.TASK_HYDRATE, this.handleTaskHydrate);
+    this.taskManager.off(TASK_EVENTS.TASK_MULTI_LOGIN_HYDRATE, this.handleTaskMultiLoginHydrate);
+    this.taskManager.off(TASK_EVENTS.TASK_MERGED, this.handleTaskMerged);
+    this.taskManager.off(
+      TASK_EVENTS.TASK_CAMPAIGN_PREVIEW_RESERVATION,
+      this.handleCampaignPreviewReservation
+    );
     this.taskManager.on(TASK_EVENTS.TASK_INCOMING, this.handleIncomingTask);
     this.taskManager.on(TASK_EVENTS.TASK_HYDRATE, this.handleTaskHydrate);
     this.taskManager.on(TASK_EVENTS.TASK_MULTI_LOGIN_HYDRATE, this.handleTaskMultiLoginHydrate);
@@ -736,60 +2566,174 @@ export default class ContactCenter extends WebexPlugin implements IContactCenter
    * ```
    */
   public async register(): Promise<Profile> {
-    this.wellnessRegistrationGeneration += 1;
+    const cancelled = this.cancelAutoAvailable();
+    const publicationSettings = this.multiRegionSettings;
+    if (!this.cancelRegionRecovery()) throw createRegionRecoveryError('RECOVERY_INTERRUPTED');
+    this.fenceRecoveryWork('cancelled');
+    this.pauseRtd();
+    this.services.connectionService.stop();
+    if (this.registrationAbortController) {
+      this.services.webSocketManager.close(false, 'register');
+      this.services.rtdWebSocketManager.close(false, 'register');
+      this.taskLifetimeController?.abort();
+      this.interruptedTaskGeneration = undefined;
+      this.taskManager.stopSession();
+    }
+    this.clearSwitchHistory();
+    this.clearAcceptedStation();
+    this.services.aqmReqs.clearSessionTrackingIds();
+    this.registrationAbortController?.abort();
+    this.registrationGeneration += 1;
+    this.registrationAgentId = undefined;
+    this.multiRegionSettings = {eligibility: 'unknown'};
     this.wellbeingBreakIdleCode = undefined;
-    LoggerProxy.log('Starting CC SDK registration', {
-      module: CC_FILE,
-      method: METHODS.REGISTER,
-    });
-    try {
-      this.metricsManager.timeEvent([
-        METRIC_EVENT_NAMES.WEBSOCKET_REGISTER_SUCCESS,
-        METRIC_EVENT_NAMES.WEBSOCKET_REGISTER_FAILED,
-      ]);
-      this.setupEventListeners();
-      this.services.webSocketManager.on('message', this.handleWebsocketMessage);
-
-      const resp = await this.connectWebsocket();
-      // Ensure 'dn' is always populated from 'defaultDn'
-      resp.dn = resp.defaultDn;
-      this.metricsManager.trackEvent(
-        METRIC_EVENT_NAMES.WEBSOCKET_REGISTER_SUCCESS,
-        {
-          ...MetricsManager.getCommonTrackingFieldForAQMResponse(resp),
-          deviceType: resp.deviceType || EMPTY_STRING,
-        },
-        ['operational']
-      );
-
-      LoggerProxy.log(`CC SDK registration completed successfully with agentId: ${resp.agentId}`, {
+    const entry = this.registrationGeneration;
+    const entryRecovery = this.recoveryGeneration;
+    const entryStation = this.stationRevision;
+    if (cancelled) {
+      this.publishRegionState(cancelled, publicationSettings);
+      if (
+        entry !== this.registrationGeneration ||
+        entryRecovery !== this.recoveryGeneration ||
+        entryStation !== this.stationRevision
+      )
+        throw createRegionRecoveryError('RECOVERY_INTERRUPTED');
+    }
+    this.stationRevision += 1;
+    const registration = this.registrationGeneration;
+    const controller = new AbortController();
+    this.registrationAbortController = controller;
+    const orgId = this.$webex.credentials.getOrgId();
+    const attempt: InitialRegistration = {registration, orgId, controller};
+    this.pendingRegistration = attempt;
+    this.registrationOrgId = orgId;
+    this.suppressAutomaticRelogin = false;
+    this.logoutAttempt = undefined;
+    this.setRecoveryPhase('idle');
+    this.resetRegionState();
+    this.recordBestEffort(() =>
+      LoggerProxy.log('Starting CC SDK registration', {
         module: CC_FILE,
         method: METHODS.REGISTER,
-      });
+      })
+    );
+    try {
+      this.recordBestEffort(() =>
+        this.metricsManager.timeEvent([
+          METRIC_EVENT_NAMES.WEBSOCKET_REGISTER_SUCCESS,
+          METRIC_EVENT_NAMES.WEBSOCKET_REGISTER_FAILED,
+        ])
+      );
+      this.setupEventListeners();
+      this.incomingTaskListener();
+      this.services.webSocketManager.off('message', this.handleWebsocketMessage);
+      this.services.webSocketManager.on('message', this.handleWebsocketMessage);
+
+      const resp = await this.connectWebsocket(attempt);
+      this.assertInitialRegistration(attempt, resp.agentId);
+      // Ensure 'dn' is always populated from 'defaultDn'
+      resp.dn = resp.defaultDn;
+      this.recordBestEffort(() =>
+        this.metricsManager.trackEvent(
+          METRIC_EVENT_NAMES.WEBSOCKET_REGISTER_SUCCESS,
+          {
+            ...MetricsManager.getCommonTrackingFieldForAQMResponse(resp),
+            deviceType: resp.deviceType || EMPTY_STRING,
+          },
+          ['operational']
+        )
+      );
+
+      this.recordBestEffort(() =>
+        LoggerProxy.log(
+          `CC SDK registration completed successfully with agentId: ${resp.agentId}`,
+          {
+            module: CC_FILE,
+            method: METHODS.REGISTER,
+          }
+        )
+      );
 
       // Registration can silently restore a station session without emitting a
       // relogin event. Project the active session for consumers that must
       // recover session-scoped state after a page refresh.
+      this.assertInitialRegistration(attempt, resp.agentId);
+
       return resp.isAgentLoggedIn && this.currentAgentSessionId
         ? {...resp, agentSessionId: this.currentAgentSessionId}
         : resp;
     } catch (error) {
-      this.metricsManager.trackEvent(
-        METRIC_EVENT_NAMES.WEBSOCKET_REGISTER_FAILED,
-        {
-          orgId: error.orgId,
-        },
-        ['operational']
+      const ownsRegistration = () =>
+        registration === this.registrationGeneration &&
+        this.registrationAbortController === controller;
+      if (ownsRegistration()) {
+        const recovery = this.recovery;
+        const ownsRecovery = recovery?.registration === registration;
+        const recoveryCancelled = ownsRecovery ? this.cancelAutoAvailable() : undefined;
+        controller.abort();
+        // Registration failure owns termination even when the restore was interrupted by DR.
+        if (
+          ownsRegistration() &&
+          ownsRecovery &&
+          this.recovery === recovery &&
+          this.cancelRegionRecovery() &&
+          ownsRegistration()
+        ) {
+          this.fenceRecoveryWork('unavailable');
+          const generation = this.recoveryGeneration;
+          this.services.connectionService.stop();
+          this.services.webSocketManager.close(false, 'recoveryFailed');
+          this.pauseRtd('recoveryFailed');
+          if (recoveryCancelled) this.publishRegionState(recoveryCancelled);
+          if (ownsRegistration() && generation === this.recoveryGeneration) {
+            delete this.regionStateContext.autoAvailable;
+            this.publishRegionState(this.buildRegionState('unavailable', 'recovery-failed'));
+          }
+        }
+        if (ownsRegistration()) this.multiRegionSettings = {eligibility: 'unknown'};
+      }
+      if (attempt.reloadRequired) throw attempt.reloadRequired;
+      if (isRegionRecoveryError(error)) throw error;
+      this.recordBestEffort(() =>
+        this.metricsManager.trackEvent(
+          METRIC_EVENT_NAMES.WEBSOCKET_REGISTER_FAILED,
+          {
+            orgId: ContactCenter.normalizeRecoveryDiagnosticId(
+              isRecord(error) ? error.orgId : undefined
+            ),
+          },
+          ['operational']
+        )
       );
-      LoggerProxy.error(`Error during register: ${error}`, {
-        module: CC_FILE,
-        method: METHODS.REGISTER,
+      let correlationId: string | undefined;
+      this.recordBestEffort(() => {
+        const failure = normalizeRecoveryFailure(error);
+        const id = ContactCenter.normalizeRecoveryDiagnosticId(failure.id);
+        correlationId =
+          ContactCenter.normalizeRecoveryDiagnosticId(failure.trackingId) ??
+          ContactCenter.normalizeRecoveryDiagnosticId(
+            isRecord(error) ? error.trackingId : undefined
+          );
+        LoggerProxy.error('Error during register', {
+          module: CC_FILE,
+          method: METHODS.REGISTER,
+          data: {
+            ...(Number.isFinite(failure.status) ? {status: failure.status} : {}),
+            ...(Number.isFinite(failure.reasonCode) ? {reasonCode: failure.reasonCode} : {}),
+            ...(id ? {id} : {}),
+            ...(correlationId ? {trackingId: correlationId} : {}),
+          },
+        });
       });
-      this.webexRequest.uploadLogs({
-        correlationId: error?.trackingId,
+      this.recordBestEffort(() => {
+        Promise.resolve(this.webexRequest.uploadLogs({correlationId})).catch(() => {
+          /* Log upload failure must not replace the registration error. */
+        });
       });
 
       throw error;
+    } finally {
+      if (this.pendingRegistration === attempt) this.pendingRegistration = undefined;
     }
   }
 
@@ -825,14 +2769,30 @@ export default class ContactCenter extends WebexPlugin implements IContactCenter
 
    */
   public async deregister(): Promise<void> {
-    this.wellnessRegistrationGeneration += 1;
+    const orgAtEntry = this.$webex.credentials.getOrgId();
+    const termination = this.terminateRegistration();
+    const assertOwned = () => {
+      if (
+        termination === undefined ||
+        termination !== this.registrationGeneration ||
+        this.$webex.credentials.getOrgId() !== orgAtEntry
+      )
+        throw createRegionRecoveryError('RECOVERY_INTERRUPTED');
+    };
+    assertOwned();
+    this.registrationAgentId = undefined;
+    this.registrationOrgId = undefined;
+    this.multiRegionSettings = {eligibility: 'unknown'};
+    this.resetRegionState();
     this.wellbeingBreakIdleCode = undefined;
     this.updateWellnessSession();
     try {
-      this.metricsManager.timeEvent([
-        METRIC_EVENT_NAMES.WEBSOCKET_DEREGISTER_SUCCESS,
-        METRIC_EVENT_NAMES.WEBSOCKET_DEREGISTER_FAIL,
-      ]);
+      this.recordBestEffort(() =>
+        this.metricsManager.timeEvent([
+          METRIC_EVENT_NAMES.WEBSOCKET_DEREGISTER_SUCCESS,
+          METRIC_EVENT_NAMES.WEBSOCKET_DEREGISTER_FAIL,
+        ])
+      );
 
       this.taskManager.clearAISummaryState();
       this.taskManager.off(TASK_EVENTS.TASK_INCOMING, this.handleIncomingTask);
@@ -851,6 +2811,7 @@ export default class ContactCenter extends WebexPlugin implements IContactCenter
       const {publishError: wxAppPublishError} = await this.teardownWxAppLocalState({
         clearInitFlag: true,
       });
+      assertOwned();
 
       if (
         this.agentConfig.webRtcEnabled &&
@@ -860,24 +2821,17 @@ export default class ContactCenter extends WebexPlugin implements IContactCenter
           this.$webex.internal.mercury.off('online');
           this.$webex.internal.mercury.off('offline');
           await this.$webex.internal.mercury.disconnect();
+          assertOwned();
           // @ts-ignore
           await this.$webex.internal.device.unregister();
-          LoggerProxy.log(MERCURY_DISCONNECTED_SUCCESS, {
-            module: CC_FILE,
-            method: METHODS.DEREGISTER,
-          });
+          assertOwned();
+          this.recordBestEffort(() =>
+            LoggerProxy.log(MERCURY_DISCONNECTED_SUCCESS, {
+              module: CC_FILE,
+              method: METHODS.DEREGISTER,
+            })
+          );
         }
-      }
-
-      if (!this.services.webSocketManager.isSocketClosed) {
-        this.services.webSocketManager.close(false, 'Unregistering the SDK');
-      }
-      if (this.services.rtdWebSocketManager && !this.services.rtdWebSocketManager.isSocketClosed) {
-        this.services.rtdWebSocketManager.close(false, 'Unregistering the SDK');
-      }
-
-      if (this.services.rtdWebSocketManager && !this.services.rtdWebSocketManager.isSocketClosed) {
-        this.services.rtdWebSocketManager.close(false, 'Unregistering the RTD websocket');
       }
 
       // Clear any cached agent configuration
@@ -889,27 +2843,35 @@ export default class ContactCenter extends WebexPlugin implements IContactCenter
         throw wxAppPublishError;
       }
 
-      LoggerProxy.log('Deregistered successfully', {
-        module: CC_FILE,
-        method: METHODS.DEREGISTER,
-      });
-
-      this.metricsManager.trackEvent(METRIC_EVENT_NAMES.WEBSOCKET_DEREGISTER_SUCCESS, {}, [
-        'operational',
-      ]);
-    } catch (error) {
-      this.metricsManager.trackEvent(
-        METRIC_EVENT_NAMES.WEBSOCKET_DEREGISTER_FAIL,
-        {
-          error: error.message || UNKNOWN_ERROR,
-        },
-        ['operational']
+      this.recordBestEffort(() =>
+        LoggerProxy.log('Deregistered successfully', {
+          module: CC_FILE,
+          method: METHODS.DEREGISTER,
+        })
       );
 
-      LoggerProxy.error(`Error during deregister: ${error}`, {
-        module: CC_FILE,
-        method: METHODS.DEREGISTER,
-      });
+      this.recordBestEffort(() =>
+        this.metricsManager.trackEvent(METRIC_EVENT_NAMES.WEBSOCKET_DEREGISTER_SUCCESS, {}, [
+          'operational',
+        ])
+      );
+    } catch (error) {
+      this.recordBestEffort(() =>
+        this.metricsManager.trackEvent(
+          METRIC_EVENT_NAMES.WEBSOCKET_DEREGISTER_FAIL,
+          {
+            error: error.message || UNKNOWN_ERROR,
+          },
+          ['operational']
+        )
+      );
+
+      this.recordBestEffort(() =>
+        LoggerProxy.error(`Error during deregister: ${error}`, {
+          module: CC_FILE,
+          method: METHODS.DEREGISTER,
+        })
+      );
 
       throw error;
     }
@@ -1012,26 +2974,75 @@ export default class ContactCenter extends WebexPlugin implements IContactCenter
    * @throws {Error} If connection fails or profile cannot be fetched
    * @private
    */
-  private async connectWebsocket() {
-    LoggerProxy.log('Connecting to websocket', {
-      module: CC_FILE,
-      method: METHODS.CONNECT_WEBSOCKET,
-    });
-
-    try {
-      const data = (await this.services.webSocketManager.initWebSocket({
-        body: this.getConnectionConfig(),
-        resource: SUBSCRIBE_API,
-      })) as WelcomeEvent;
-
-      const agentId = data.agentId;
-      const orgId = this.$webex.credentials.getOrgId();
-      this.agentConfig = await this.services.config.getAgentConfig(orgId, agentId);
-
-      LoggerProxy.log(`Agent config is fetched successfully`, {
+  private async connectWebsocket(attempt: InitialRegistration) {
+    const {registration, orgId, controller} = attempt;
+    const {signal} = controller;
+    this.recordBestEffort(() =>
+      LoggerProxy.log('Connecting to websocket', {
         module: CC_FILE,
         method: METHODS.CONNECT_WEBSOCKET,
+      })
+    );
+
+    try {
+      let data: unknown;
+      try {
+        data = await ContactCenter.awaitRegistrationWork(
+          this.services.webSocketManager.initWebSocket({
+            body: this.getConnectionConfig(),
+            resource: SUBSCRIBE_API,
+            signal,
+          }),
+          signal
+        );
+      } catch (error) {
+        if (
+          getSubscriptionMismatchReason(error) &&
+          this.isCurrentRegistration(registration, orgId, signal)
+        ) {
+          this.requireRegionReload();
+          throw createRegionRecoveryError('REGION_RELOAD_REQUIRED');
+        }
+        throw error;
+      }
+      this.assertInitialRegistration(attempt);
+      if (!isRecord(data) || typeof data.agentId !== 'string' || !data.agentId.trim()) {
+        this.terminateRegistration(true);
+        throw new Error('Primary Welcome agent identity is required');
+      }
+      const agentId = data.agentId;
+      const profile = await ContactCenter.awaitRegistrationWork(
+        this.services.config.getAgentConfig(orgId, agentId),
+        signal
+      );
+      this.assertInitialRegistration(attempt);
+      if (profile.agentId !== agentId) {
+        this.terminateRegistration(true);
+        throw new Error('Primary Welcome and Profile agent identities differ');
+      }
+      this.agentConfig = profile;
+      this.registrationAgentId = agentId;
+      this.resetOrdinaryConnection(true);
+      this.taskManager.startSession(this.getTaskRecoveryGuard());
+      this.hydrateMultiRegionSettings(registration, orgId, agentId, signal).catch(() => {
+        try {
+          this.recordBestEffort(() =>
+            LoggerProxy.warn('Organization recovery settings hydration ended', {
+              module: CC_FILE,
+              method: METHODS.HYDRATE_MULTI_REGION_SETTINGS,
+            })
+          );
+        } catch {
+          // The terminal handler always observes an abandoned reader.
+        }
       });
+
+      this.recordBestEffort(() =>
+        LoggerProxy.log(`Agent config is fetched successfully`, {
+          module: CC_FILE,
+          method: METHODS.CONNECT_WEBSOCKET,
+        })
+      );
 
       const configFlags: ConfigFlags = {
         isEndTaskEnabled: this.agentConfig.isEndTaskEnabled,
@@ -1058,43 +3069,6 @@ export default class ContactCenter extends WebexPlugin implements IContactCenter
       this.wellbeingBreakIdleCode = undefined;
       this.updateWellnessSession();
 
-      /**
-       * RTD websocket currently supports realtime transcripts and suggested responses.
-       * Extend this condition when additional AI RTD features are introduced.
-       * Wellness break notifications also arrive on this websocket.
-       */
-      if (
-        this.agentConfig.aiFeature?.realtimeTranscripts?.enable ||
-        this.agentConfig.aiFeature?.suggestedResponses?.enable ||
-        this.agentConfig.aiFeature?.generatedSummaries?.wrapUpSummariesEnabled === true ||
-        this.agentConfig.aiFeature?.generatedSummaries?.consultTransferSummariesEnabled === true ||
-        this.agentConfig.isWellnessBreakEnabled
-      ) {
-        LoggerProxy.info('Connecting to RTD websocket', {
-          module: CC_FILE,
-          method: METHODS.CONNECT_WEBSOCKET,
-        });
-
-        this.services.rtdWebSocketManager
-          .initWebSocket({
-            body: this.getConnectionConfig(),
-            resource: RTD_SUBSCRIBE_API,
-          })
-          .then(() => {
-            LoggerProxy.log('RTD websocket connected successfully', {
-              module: CC_FILE,
-              method: METHODS.CONNECT_WEBSOCKET,
-            });
-            this.services.rtdWebSocketManager.on('message', this.handleRTDWebsocketMessage);
-          })
-          .catch((error) => {
-            LoggerProxy.error(`Error connecting to RTD websocket ${error}`, {
-              module: CC_FILE,
-              method: METHODS.CONNECT_WEBSOCKET,
-            });
-          });
-      }
-
       if (
         this.agentConfig.loginVoiceOptions.some((loginOption) =>
           this.isBrowserVoiceRequired(loginOption)
@@ -1102,41 +3076,72 @@ export default class ContactCenter extends WebexPlugin implements IContactCenter
       ) {
         try {
           await this.$webex.internal.mercury.connect();
-          LoggerProxy.log('Authentication: webex.internal.mercury.connect successful', {
-            module: CC_FILE,
-            method: METHODS.CONNECT_WEBSOCKET,
-          });
+          this.recordBestEffort(() =>
+            LoggerProxy.log('Authentication: webex.internal.mercury.connect successful', {
+              module: CC_FILE,
+              method: METHODS.CONNECT_WEBSOCKET,
+            })
+          );
         } catch (error) {
-          LoggerProxy.error(`Error occurred during mercury.connect() ${error}`, {
-            module: CC_FILE,
-            method: METHODS.CONNECT_WEBSOCKET,
-          });
+          this.recordBestEffort(() =>
+            LoggerProxy.error(`Error occurred during mercury.connect() ${error}`, {
+              module: CC_FILE,
+              method: METHODS.CONNECT_WEBSOCKET,
+            })
+          );
         }
       } else if (this.isWebRTCRegistrationDisabled()) {
-        LoggerProxy.info(
-          'Skipping Mobius registration because disableWebRTCRegistration is enabled',
-          {
-            module: CC_FILE,
-            method: METHODS.CONNECT_WEBSOCKET,
-          }
+        this.recordBestEffort(() =>
+          LoggerProxy.info(
+            'Skipping Mobius registration because disableWebRTCRegistration is enabled',
+            {
+              module: CC_FILE,
+              method: METHODS.CONNECT_WEBSOCKET,
+            }
+          )
         );
       }
 
+      this.assertInitialRegistration(attempt, agentId);
       if (this.$config && this.$config.allowAutomatedRelogin) {
-        await this.silentRelogin();
+        await this.awaitRegistrationConnection(attempt);
+        this.assertInitialRegistration(attempt, agentId);
+        await this.silentRelogin(true);
       } else {
-        LoggerProxy.log('Skipping silent relogin: allowAutomatedRelogin is disabled', {
-          module: CC_FILE,
-          method: METHODS.CONNECT_WEBSOCKET,
-        });
+        this.recordBestEffort(() =>
+          LoggerProxy.log('Skipping silent relogin: allowAutomatedRelogin is disabled', {
+            module: CC_FILE,
+            method: METHODS.CONNECT_WEBSOCKET,
+          })
+        );
       }
+
+      this.assertInitialRegistration(attempt, agentId);
+      this.resumeRtd(signal);
 
       return this.agentConfig;
     } catch (error) {
-      this.updateWellnessSession();
-      LoggerProxy.error(`Error during register: ${error}`, {
-        module: CC_FILE,
-        method: METHODS.CONNECT_WEBSOCKET,
+      if (attempt.reloadRequired) throw attempt.reloadRequired;
+      if (this.isCurrentRegistration(registration, orgId, signal)) this.updateWellnessSession();
+      if (isRegionRecoveryError(error)) throw error;
+      this.recordBestEffort(() => {
+        const failure = normalizeRecoveryFailure(error);
+        const id = ContactCenter.normalizeRecoveryDiagnosticId(failure.id);
+        const trackingId =
+          ContactCenter.normalizeRecoveryDiagnosticId(failure.trackingId) ??
+          ContactCenter.normalizeRecoveryDiagnosticId(
+            isRecord(error) ? error.trackingId : undefined
+          );
+        LoggerProxy.error('Error during register', {
+          module: CC_FILE,
+          method: METHODS.CONNECT_WEBSOCKET,
+          data: {
+            ...(Number.isFinite(failure.status) ? {status: failure.status} : {}),
+            ...(Number.isFinite(failure.reasonCode) ? {reasonCode: failure.reasonCode} : {}),
+            ...(id ? {id} : {}),
+            ...(trackingId ? {trackingId} : {}),
+          },
+        });
       });
 
       throw error;
@@ -1172,30 +3177,89 @@ export default class ContactCenter extends WebexPlugin implements IContactCenter
    * ```
    */
   public async stationLogin(data: AgentLogin): Promise<StationLoginResponse> {
+    this.assertRecoveryAdmission('session');
+    const manual = this.recoveryPhase === 'manualLoginRequired';
+    if (!manual && this.regionStateContext.trackingId) {
+      const cancelled = this.cancelAutoAvailable();
+      if (!this.cancelRegionRecovery()) throw createRegionRecoveryError('RECOVERY_INTERRUPTED');
+      this.fenceRecoveryWork('cancelled');
+      const generation = this.recoveryGeneration;
+      if (cancelled) this.publishRegionState(cancelled);
+      if (generation !== this.recoveryGeneration)
+        throw createRegionRecoveryError('RECOVERY_INTERRUPTED');
+      this.resetRegionState();
+      this.setRecoveryPhase('idle');
+    }
+    const calling = manual ? 'preserve' : 'replace';
     const loggerContext = {module: CC_FILE, method: METHODS.STATION_LOGIN};
+    const registration = this.registrationGeneration;
+    const epoch = this.rtdEpoch;
+    const retainRtd = epoch && this.isCurrentRtdEpoch(epoch);
+    this.stationRevision += 1;
+    const station = this.stationRevision;
+    // The revision fences competing station requests; it does not accept a new session.
+    if (retainRtd) epoch.station = station;
+    else if (epoch && this.rtdEpoch === epoch) this.pauseRtd();
+    if (this.logoutAttempt) {
+      this.suppressAutomaticRelogin = this.logoutAttempt.priorSuppression;
+      this.logoutAttempt = undefined;
+    }
+    const orgId = this.$webex.credentials.getOrgId();
+    const profile = this.agentConfig;
+    const context: AqmRequestContext = manual
+      ? this.beginSessionRequest('manual', this.registrationAbortController.signal)
+      : {generation: this.recoveryGeneration, signal: this.registrationAbortController?.signal};
+    if (
+      !this.startTaskSession(
+        () =>
+          this.isCurrentStation(registration, station, orgId, profile) &&
+          context.generation === this.recoveryGeneration &&
+          !context.signal?.aborted,
+        manual
+      )
+    )
+      throw createRegionRecoveryError('RECOVERY_INTERRUPTED');
+    // Only a first station may prepare calling before backend acceptance. Replacing an
+    // accepted station's line or mode must wait for its owned backend result.
+    const prepareCalling = !this.priorStationActive;
+    const reconcileCallingState = () => {
+      if (!this.isCurrentStation(registration, station, orgId, profile)) return;
+      const mode = this.priorStationActive ? this.agentConfig.deviceType : undefined;
+
+      this.webCallingService.setLoginOption(mode);
+      this.webCallingService.setBrowserVoiceRequired(!!mode && this.isBrowserVoiceRequired(mode));
+    };
 
     try {
-      LoggerProxy.log(
-        `Starting agent station login | loginOption: ${data?.loginOption} teamId: ${data?.teamId}`,
-        loggerContext
+      this.recordBestEffort(() =>
+        LoggerProxy.log(
+          `Starting agent station login | loginOption: ${data?.loginOption} teamId: ${data?.teamId}`,
+          loggerContext
+        )
       );
-      this.metricsManager.timeEvent([
-        METRIC_EVENT_NAMES.STATION_LOGIN_SUCCESS,
-        METRIC_EVENT_NAMES.STATION_LOGIN_FAILED,
-      ]);
+      this.recordBestEffort(() =>
+        this.metricsManager.timeEvent([
+          METRIC_EVENT_NAMES.STATION_LOGIN_SUCCESS,
+          METRIC_EVENT_NAMES.STATION_LOGIN_FAILED,
+        ])
+      );
 
       const dialPlanEntries = this.agentConfig?.dialPlan?.dialPlanEntity ?? [];
       if (data.loginOption === LoginOption.AGENT_DN) {
-        LoggerProxy.log(
-          `Validating dial number | dialPlanEnabled: ${!!this.agentConfig
-            ?.dialPlan} | dialPlanEntryCount: ${dialPlanEntries.length}`,
-          loggerContext
+        this.recordBestEffort(() =>
+          LoggerProxy.log(
+            `Validating dial number | dialPlanEnabled: ${!!this.agentConfig
+              ?.dialPlan} | dialPlanEntryCount: ${dialPlanEntries.length}`,
+            loggerContext
+          )
         );
 
         if (!isValidDialNumber(data.dialNumber, dialPlanEntries)) {
-          LoggerProxy.log(
-            `Dial number validation failed | dialNumber: ${data.dialNumber} | dialPlanEntryCount: ${dialPlanEntries.length}`,
-            loggerContext
+          this.recordBestEffort(() =>
+            LoggerProxy.log(
+              `Dial number validation failed | dialNumber: ${data.dialNumber} | dialPlanEntryCount: ${dialPlanEntries.length}`,
+              loggerContext
+            )
           );
           const error = new Error('INVALID_DIAL_NUMBER');
           // @ts-ignore - adding custom key to the error object
@@ -1205,100 +3269,147 @@ export default class ContactCenter extends WebexPlugin implements IContactCenter
         }
       }
 
-      const deviceId = this.getDeviceId(data.loginOption, data.dialNumber);
-      const loginResponse = await this.services.agent.stationLogin({
-        data: {
-          // BROWSER DN must be webrtc-{agentId} so VPOP/RTMS do not treat a bare UUID as PSTN.
-          dialNumber: data.loginOption === LoginOption.BROWSER ? deviceId : data.dialNumber,
-          teamId: data.teamId,
-          deviceType: data.loginOption,
-          isExtension: data.loginOption === LoginOption.EXTENSION,
-          deviceId,
-          roles: [AGENT],
-          teamName: EMPTY_STRING,
-          siteId: EMPTY_STRING,
-          usesOtherDN: false,
-          auxCodeId: EMPTY_STRING,
-        },
-      });
+      this.assertRecoveryAdmission('session');
+      const payload = this.buildStationLoginPayload(data);
+      const loginResponse = this.services.agent
+        .stationLogin({data: payload}, undefined, context)
+        .then(
+          (resp) => {
+            if (
+              !this.isCurrentStation(registration, station, orgId, profile) ||
+              context.signal?.aborted
+            )
+              throw createRegionRecoveryError('RECOVERY_INTERRUPTED');
+            this.assertPrimaryIdentity(resp.data.agentId);
+            this.rememberAcceptedStation({source: 'login', payload, response: resp});
+            reconcileCallingState();
+            if (!this.isCurrentStation(registration, station, orgId, profile))
+              throw createRegionRecoveryError('RECOVERY_INTERRUPTED');
+            this.suppressAutomaticRelogin = false;
+            this.endSessionRequest(context);
+            this.setRecoveryPhase('ready');
+            this.publishRegionState(
+              this.buildRegionState('ready', manual ? 'region-switch' : 'initial-login')
+            );
+            if (
+              this.isCurrentStation(registration, station, orgId, profile) &&
+              this.registrationAbortController
+            )
+              this.resumeRtd(this.registrationAbortController.signal);
 
-      this.webCallingService.setLoginOption(data.loginOption);
-      this.webCallingService.setBrowserVoiceRequired(this.isBrowserVoiceRequired(data.loginOption));
+            return resp;
+          },
+          (error) => {
+            if (prepareCalling) reconcileCallingState();
+            this.endSessionRequest(context);
+            throw error;
+          }
+        );
+      // Keep backend rejection observed even when an ancillary line await rejects first.
+      loginResponse.catch(() => undefined);
+
+      if (prepareCalling) {
+        this.webCallingService.setLoginOption(data.loginOption);
+        this.webCallingService.setBrowserVoiceRequired(
+          this.isBrowserVoiceRequired(data.loginOption)
+        );
+      } else await loginResponse;
+
+      if (!this.isCurrentStation(registration, station, orgId, profile) || context.signal?.aborted)
+        throw createRegionRecoveryError('RECOVERY_INTERRUPTED');
 
       if (this.isBrowserVoiceRequired(data.loginOption)) {
-        await this.webCallingService.registerWebCallingLine();
+        if (calling === 'preserve') {
+          try {
+            await this.webCallingService.ensureWebCallingLine(context.signal);
+          } catch {
+            /* Voice ownership cannot fail an accepted DR station. */
+            this.recordBestEffort(() =>
+              LoggerProxy.error('Unexpected web calling ensure failure', {
+                module: CC_FILE,
+                method: METHODS.STATION_LOGIN,
+              })
+            );
+          }
+        } else await this.webCallingService.registerWebCallingLine();
       } else if (
         this.agentConfig.webRtcEnabled &&
         data.loginOption === LoginOption.BROWSER &&
         this.isWebRTCRegistrationDisabled()
       ) {
-        LoggerProxy.info(
-          'Skipping web calling line registration because disableWebRTCRegistration is enabled',
-          {
-            module: CC_FILE,
-            method: METHODS.STATION_LOGIN,
-          }
+        this.recordBestEffort(() =>
+          LoggerProxy.info(
+            'Skipping web calling line registration because disableWebRTCRegistration is enabled',
+            {
+              module: CC_FILE,
+              method: METHODS.STATION_LOGIN,
+            }
+          )
         );
       }
 
+      if (!this.isCurrentStation(registration, station, orgId, profile) || context.signal?.aborted)
+        throw createRegionRecoveryError('RECOVERY_INTERRUPTED');
       const resp = await loginResponse;
+      if (!this.isCurrentStation(registration, station, orgId, profile)) {
+        throw createRegionRecoveryError('RECOVERY_INTERRUPTED');
+      }
       const {channelsMap, ...loginData} = resp.data;
-      this.updateWellnessSession(resp.data.agentSessionId);
-      this.agentConfig.currentTeamId = resp.data.teamId;
       const response = {
         ...loginData,
         mmProfile: {
-          chat: channelsMap.chat?.length,
-          email: channelsMap.email?.length,
-          social: channelsMap.social?.length,
-          telephony: channelsMap.telephony?.length,
+          chat: channelsMap?.chat?.length,
+          email: channelsMap?.email?.length,
+          social: channelsMap?.social?.length,
+          telephony: channelsMap?.telephony?.length,
         },
         notifsTrackingId: resp.trackingId,
       };
 
-      if (this.agentConfig) {
-        this.agentConfig.deviceType = data.loginOption;
-        if (
-          data.loginOption === LoginOption.AGENT_DN ||
-          data.loginOption === LoginOption.EXTENSION
-        ) {
-          this.agentConfig.defaultDn = data.dialNumber;
-          this.agentConfig.dn = data.dialNumber;
-        }
-      }
-      this.metricsManager.trackEvent(
-        METRIC_EVENT_NAMES.STATION_LOGIN_SUCCESS,
-        {
-          ...MetricsManager.getCommonTrackingFieldForAQMResponse(resp),
-          loginType: data.loginOption,
-          status: resp.data.status,
-          type: resp.data.type,
-          roles: resp.data.roles?.join(',') || EMPTY_STRING,
-        },
-        ['behavioral', 'business', 'operational']
+      this.recordBestEffort(() =>
+        this.metricsManager.trackEvent(
+          METRIC_EVENT_NAMES.STATION_LOGIN_SUCCESS,
+          {
+            ...MetricsManager.getCommonTrackingFieldForAQMResponse(resp),
+            loginType: data.loginOption,
+            status: resp.data.status,
+            type: resp.data.type,
+            roles: resp.data.roles?.join(',') || EMPTY_STRING,
+          },
+          ['behavioral', 'business', 'operational']
+        )
       );
 
-      LoggerProxy.log(
-        `Agent station login completed successfully agentId: ${resp.data.agentId} loginOption: ${data.loginOption} teamId: ${data.teamId}`,
-        {
-          module: CC_FILE,
-          method: METHODS.STATION_LOGIN,
-          trackingId: resp.trackingId,
-        }
+      this.recordBestEffort(() =>
+        LoggerProxy.log(
+          `Agent station login completed successfully agentId: ${resp.data.agentId} loginOption: ${data.loginOption} teamId: ${data.teamId}`,
+          {
+            module: CC_FILE,
+            method: METHODS.STATION_LOGIN,
+            trackingId: resp.trackingId,
+          }
+        )
       );
 
       await this.ensureWxAppPostStationLogin();
+      if (!this.isCurrentStation(registration, station, orgId, profile))
+        throw createRegionRecoveryError('RECOVERY_INTERRUPTED');
 
       return response;
     } catch (error) {
+      // Ancillary failure does not retire the backend observer. Reconcile from current
+      // acceptance so a later owned success can still commit and newer stations win.
+      if (prepareCalling) reconcileCallingState();
       const failure = error.details as Failure;
-      this.metricsManager.trackEvent(
-        METRIC_EVENT_NAMES.STATION_LOGIN_FAILED,
-        {
-          ...MetricsManager.getCommonTrackingFieldForAQMResponseFailed(failure),
-          loginType: data.loginOption,
-        },
-        ['behavioral', 'business', 'operational']
+      this.recordBestEffort(() =>
+        this.metricsManager.trackEvent(
+          METRIC_EVENT_NAMES.STATION_LOGIN_FAILED,
+          {
+            ...MetricsManager.getCommonTrackingFieldForAQMResponseFailed(failure),
+            loginType: data.loginOption,
+          },
+          ['behavioral', 'business', 'operational']
+        )
       );
       error.loginOption = data.loginOption;
       const {error: detailedError} = getErrorDetails(error, METHODS.STATION_LOGIN, CC_FILE);
@@ -1329,53 +3440,128 @@ export default class ContactCenter extends WebexPlugin implements IContactCenter
    * ```
    */
   public async stationLogout(data: Logout): Promise<StationLogoutResponse> {
-    LoggerProxy.info('Starting agent station logout', {
-      module: CC_FILE,
-      method: METHODS.STATION_LOGOUT,
-    });
+    if (
+      this.terminatedRegistrationGeneration === this.registrationGeneration &&
+      this.registrationAbortController?.signal.aborted
+    )
+      throw createRegionRecoveryError('RECOVERY_INTERRUPTED');
+    const cancelled = this.cancelAutoAvailable();
+    const wasRegional = this.hasRegionalConnectionOwner();
+    const priorSuppression = this.logoutAttempt?.priorSuppression ?? this.suppressAutomaticRelogin;
+    const logoutAttempt = {priorSuppression};
+    const acceptedStation = this.acceptedStation;
+    const registrationSignal = this.registrationAbortController?.signal;
+    this.stationRevision += 1;
+    const station = this.stationRevision;
+    const registration = this.registrationGeneration;
+    const orgId = this.registrationOrgId;
+    const sessionId = this.currentAgentSessionId;
+    const logoutGeneration = this.recoveryGeneration + 1;
+    const ownsStation = () =>
+      station === this.stationRevision &&
+      registration === this.registrationGeneration &&
+      sessionId === this.currentAgentSessionId &&
+      (!orgId || this.$webex.credentials.getOrgId() === orgId);
+    const ownsLogout = () => ownsStation() && logoutGeneration === this.recoveryGeneration;
+    let logoutConfirmed = false;
+    this.logoutAttempt = logoutAttempt;
+    this.suppressAutomaticRelogin = true;
     try {
-      this.metricsManager.timeEvent([
-        METRIC_EVENT_NAMES.STATION_LOGOUT_SUCCESS,
-        METRIC_EVENT_NAMES.STATION_LOGOUT_FAILED,
-      ]);
-      const logoutResponse = this.services.agent.logout({
-        data,
+      if (!this.cancelRegionRecovery()) throw createRegionRecoveryError('RECOVERY_INTERRUPTED');
+      const terminal = ['unavailable', 'reloadRequired'].includes(this.recoveryPhase);
+      this.fenceRecoveryWork(terminal ? this.recoveryPhase : 'cancelled');
+      this.pauseRtd();
+      if (
+        wasRegional &&
+        this.registrationAbortController &&
+        !this.registrationAbortController.signal.aborted
+      )
+        this.resetOrdinaryConnection(true);
+      if (cancelled) this.publishRegionState(cancelled);
+      if (!ownsLogout()) throw createRegionRecoveryError('RECOVERY_INTERRUPTED');
+      this.resetRegionState();
+      if (!terminal) this.setRecoveryPhase('idle');
+      if (
+        !terminal &&
+        this.interruptedTaskGeneration !== undefined &&
+        !this.startTaskSession(ownsLogout)
+      )
+        throw createRegionRecoveryError('RECOVERY_INTERRUPTED');
+      this.recordBestEffort(() =>
+        LoggerProxy.info('Starting agent station logout', {
+          module: CC_FILE,
+          method: METHODS.STATION_LOGOUT,
+        })
+      );
+      this.recordBestEffort(() =>
+        this.metricsManager.timeEvent([
+          METRIC_EVENT_NAMES.STATION_LOGOUT_SUCCESS,
+          METRIC_EVENT_NAMES.STATION_LOGOUT_FAILED,
+        ])
+      );
+      if (!ownsLogout() || !this.services.webSocketManager.hasUsableSocket())
+        throw createRegionRecoveryError('RECOVERY_INTERRUPTED');
+      const resp = await this.services.agent.logout({data}, undefined, {
+        generation: this.recoveryGeneration,
       });
+      logoutConfirmed = true;
+      if (!ownsLogout()) throw createRegionRecoveryError('RECOVERY_INTERRUPTED');
+      this.clearAcceptedStation();
+      this.logoutAttempt = undefined;
 
-      const resp = await logoutResponse;
-
-      this.metricsManager.trackEvent(
-        METRIC_EVENT_NAMES.STATION_LOGOUT_SUCCESS,
-        {
-          ...MetricsManager.getCommonTrackingFieldForAQMResponse(resp),
-          logoutReason: sanitizeForObservability(data.logoutReason),
-        },
-        ['behavioral', 'business', 'operational']
+      this.recordBestEffort(() =>
+        this.metricsManager.trackEvent(
+          METRIC_EVENT_NAMES.STATION_LOGOUT_SUCCESS,
+          {
+            ...MetricsManager.getCommonTrackingFieldForAQMResponse(resp),
+            logoutReason: sanitizeForObservability(data.logoutReason),
+          },
+          ['behavioral', 'business', 'operational']
+        )
       );
 
       if (this.webCallingService) {
         await this.webCallingService.deregisterWebCallingLine();
+        if (!ownsLogout()) throw createRegionRecoveryError('RECOVERY_INTERRUPTED');
       }
 
       await this.teardownWxAppLocalState();
+      if (!ownsLogout()) throw createRegionRecoveryError('RECOVERY_INTERRUPTED');
       this.updateWellnessSession();
 
-      LoggerProxy.log(`Agent station logout completed successfully`, {
-        module: CC_FILE,
-        method: METHODS.STATION_LOGOUT,
-        trackingId: resp.trackingId,
-      });
+      this.recordBestEffort(() =>
+        LoggerProxy.log(`Agent station logout completed successfully`, {
+          module: CC_FILE,
+          method: METHODS.STATION_LOGOUT,
+          trackingId: resp.trackingId,
+        })
+      );
 
       return resp;
     } catch (error) {
+      if (this.logoutAttempt === logoutAttempt) this.logoutAttempt = undefined;
+      if (ownsStation() && !logoutConfirmed) {
+        this.suppressAutomaticRelogin = priorSuppression;
+        if (
+          ownsLogout() &&
+          acceptedStation &&
+          this.acceptedStation === acceptedStation &&
+          registrationSignal &&
+          !registrationSignal.aborted
+        )
+          // Caught admission creates a fresh epoch without reviving cancelled work.
+          this.resumeRtd(registrationSignal);
+      }
       const failure = error.details as Failure;
-      this.metricsManager.trackEvent(
-        METRIC_EVENT_NAMES.STATION_LOGOUT_FAILED,
-        {
-          ...MetricsManager.getCommonTrackingFieldForAQMResponseFailed(failure),
-          logoutReason: sanitizeForObservability(data.logoutReason),
-        },
-        ['behavioral', 'business', 'operational']
+      this.recordBestEffort(() =>
+        this.metricsManager.trackEvent(
+          METRIC_EVENT_NAMES.STATION_LOGOUT_FAILED,
+          {
+            ...MetricsManager.getCommonTrackingFieldForAQMResponseFailed(failure),
+            logoutReason: sanitizeForObservability(data.logoutReason),
+          },
+          ['behavioral', 'business', 'operational']
+        )
       );
       const {error: detailedError} = getErrorDetails(error, METHODS.STATION_LOGOUT, CC_FILE);
       throw detailedError;
@@ -1442,20 +3628,385 @@ export default class ContactCenter extends WebexPlugin implements IContactCenter
    * ```
    */
   public async setAgentState(data: StateChange): Promise<SetStateResponse> {
-    LoggerProxy.info('Setting agent state', {
-      module: CC_FILE,
-      method: METHODS.SET_AGENT_STATE,
-    });
+    this.stateIntentRevision += 1;
+    const cancelled = this.cancelAutoAvailable();
+    const station = this.stationRevision;
+    const generation = this.recoveryGeneration;
+    if (cancelled) this.publishRegionState(cancelled);
+    this.assertRecoveryAdmission('command');
+    const context: StateDispatchContext = {
+      source: 'explicit',
+      intentRevision: this.stateIntentRevision,
+      stationRevision: station,
+      generation,
+      signal: this.commandController?.signal,
+    };
+    this.assertStateDispatchCurrent(context);
+    const barrier = this.inFlightDrAutoState;
+    if (barrier) {
+      if (this.explicitStateWaiter) {
+        const error = new Err.Details('Service.aqm.reqs.Pending', {
+          key:
+            `type=${CC_EVENTS.AGENT_STATE_CHANGE},data=(type=${CC_EVENTS.AGENT_STATE_CHANGE_SUCCESS})` +
+            `type=${CC_EVENTS.AGENT_STATE_CHANGE},data=(type=${CC_EVENTS.AGENT_STATE_CHANGE_FAILED})`,
+          msg: 'The request has been already created, multiple requests are not allowed.',
+        });
+        throw getErrorDetails(error, METHODS.SET_AGENT_STATE, CC_FILE).error;
+      }
+      const reservation = {};
+      this.explicitStateWaiter = reservation;
+      try {
+        if (
+          data.state === AGENT_STATE_AVAILABLE &&
+          this.webCallingService.isBrowserVoiceRequired() &&
+          !this.webCallingService.isVoiceReady()
+        ) {
+          const rejected = await this.performAgentStateChange(data, context);
+          if (rejected.kind === 'not-dispatched') throw rejected.error;
+
+          return rejected.response;
+        }
+        await ContactCenter.awaitRegistrationWork(barrier, context.signal);
+        this.assertStateDispatchCurrent(context);
+      } finally {
+        if (this.explicitStateWaiter === reservation) this.explicitStateWaiter = undefined;
+      }
+    }
+    const dispatched = await this.performAgentStateChange(data, context);
+    if (dispatched.kind === 'not-dispatched') throw dispatched.error;
+
+    return dispatched.response;
+  }
+
+  private assertStateDispatchCurrent(context: StateDispatchContext): void {
+    if (
+      context.generation !== this.recoveryGeneration ||
+      context.stationRevision !== this.stationRevision ||
+      context.signal?.aborted
+    )
+      throw createRegionRecoveryError('RECOVERY_INTERRUPTED');
+    this.assertRecoveryAdmission('command');
+    if (context.source === 'dr-auto' && context.intentRevision !== this.stateIntentRevision)
+      throw createRegionRecoveryError('RECOVERY_INTERRUPTED');
+  }
+
+  private isCurrentAutoAvailable(auto: AutoAvailable): boolean {
+    // Ownership survives transport abort long enough to consume and report the action.
+    return (
+      this.autoAvailable === auto &&
+      auto.registration === this.registrationGeneration &&
+      auto.generation === this.recoveryGeneration &&
+      auto.stationRevision === this.stationRevision &&
+      auto.sessionId === this.currentAgentSessionId &&
+      auto.intentRevision === this.stateIntentRevision &&
+      this.recoveryPhase === 'ready' &&
+      this.registrationOrgId === this.$webex.credentials.getOrgId()
+    );
+  }
+
+  private invalidatesAutoAvailableDisconnect(data: unknown, auto?: AutoAvailable): boolean {
+    if (!auto || !isRecord(data)) return false;
+    const semantics = ['status', 'subStatus', 'auxCodeId', 'lastStateChangeReason'];
+    if (
+      data.orgId !== this.registrationOrgId ||
+      data.agentId !== this.registrationAgentId ||
+      !this.currentAgentSessionId ||
+      data.agentSessionId !== this.currentAgentSessionId ||
+      !semantics.every((key) => typeof data[key] === 'string') ||
+      !Number.isFinite(data.lastStateChangeTimestamp) ||
+      !Number.isFinite(data.lastIdleCodeChangeTimestamp)
+    )
+      return false;
+    const restored = auto.disconnect;
+    const version =
+      Number(data.lastStateChangeTimestamp) - restored.lastStateChangeTimestamp ||
+      Number(data.lastIdleCodeChangeTimestamp) - restored.lastIdleCodeChangeTimestamp;
+
+    return version >= 0 && semantics.some((key) => data[key] !== restored[key]);
+  }
+
+  private armAutoAvailable(result: Agent.ReloginSuccess, signal: AbortSignal): void {
+    if (
+      result.data.lastStateChangeReason !== 'agent-wss-disconnect' ||
+      this.recovery?.intentRevision !== this.stateIntentRevision ||
+      signal.aborted
+    )
+      return;
+    const data = result.data;
+    if (
+      !this.currentAgentSessionId ||
+      data.agentSessionId !== this.currentAgentSessionId ||
+      data.agentId !== this.registrationAgentId ||
+      data.orgId !== this.registrationOrgId
+    )
+      return;
+    const auto: AutoAvailable = {
+      registration: this.registrationGeneration,
+      generation: this.recoveryGeneration,
+      stationRevision: this.stationRevision,
+      sessionId: data.agentSessionId,
+      intentRevision: this.stateIntentRevision,
+      signal,
+      disconnect: {...data},
+      published: false,
+      dispatching: false,
+      sent: false,
+      startedAt: Date.now(),
+    };
+    this.autoAvailable = auto;
+    this.regionStateContext.autoAvailable =
+      this.webCallingService.isBrowserVoiceRequired() && !this.webCallingService.isVoiceReady()
+        ? 'waitingForVoice'
+        : 'requesting';
+    this.webCallingService.off(
+      VOICE_CONNECTION_EVENTS.STATE_CHANGE,
+      this.handleAutoAvailableVoiceChange
+    );
+    this.webCallingService.on(
+      VOICE_CONNECTION_EVENTS.STATE_CHANGE,
+      this.handleAutoAvailableVoiceChange
+    );
+    signal.addEventListener('abort', this.handleAutoAvailableAbort, {once: true});
+  }
+
+  private handleAutoAvailableVoiceChange = (): void => {
+    const auto = this.autoAvailable;
+    if (auto) this.dispatchAutoAvailable(auto).catch(() => undefined);
+  };
+
+  private handleAutoAvailableAbort = (): void => {
+    const auto = this.autoAvailable;
+    if (!auto?.signal.aborted || !this.isCurrentAutoAvailable(auto)) return;
+    const outcome = auto.sent ? 'failed' : 'cancelled';
+    if (!this.consumeAutoAvailable(auto, outcome)) return;
+    this.regionStateContext.autoAvailable = outcome;
+    this.publishRegionState(this.buildRegionState('ready', 'region-switch'));
+  };
+
+  /** Release active work once, retaining sent-request correlation and its settlement barrier. */
+  private consumeAutoAvailable(
+    auto: AutoAvailable,
+    outcome: NonNullable<StateDispatch['outcome']>,
+    failure?: RecoveryFailure
+  ): boolean {
+    if (this.autoAvailable !== auto) return false;
+    const current = outcome !== 'cancelled' && this.isCurrentAutoAvailable(auto);
+    this.autoAvailable = undefined;
+    auto.signal.removeEventListener('abort', this.handleAutoAvailableAbort);
+    this.webCallingService.off(
+      VOICE_CONNECTION_EVENTS.STATE_CHANGE,
+      this.handleAutoAvailableVoiceChange
+    );
+    const dispatch = auto.requestId && this.stateDispatches.get(auto.requestId);
+    if (dispatch && !dispatch.outcome) dispatch.outcome = outcome;
+    // Commit settlement before the sink: a reentrant notification cannot settle twice.
+    if (current)
+      this.recordRecoveryDiagnostic('auto-available', outcome, 1, auto.startedAt, failure);
+
+    return (
+      this.autoAvailable === undefined &&
+      auto.registration === this.registrationGeneration &&
+      auto.generation === this.recoveryGeneration &&
+      auto.stationRevision === this.stationRevision &&
+      auto.intentRevision === this.stateIntentRevision &&
+      auto.sessionId === this.currentAgentSessionId
+    );
+  }
+
+  /** Consume first; lifecycle owners publish the captured snapshot after their own fences. */
+  private cancelAutoAvailable(): RegionRecoveryState | undefined {
+    const auto = this.autoAvailable;
+    if (!auto) return undefined;
+    this.consumeAutoAvailable(auto, 'cancelled');
+    const previous = this.lastPublishedRegionState;
+    if (!previous || previous.status !== 'ready') return undefined;
+
+    this.regionStateContext.autoAvailable = 'cancelled';
+
+    return {...previous, autoAvailable: 'cancelled'};
+  }
+
+  private async dispatchAutoAvailable(auto: AutoAvailable): Promise<void> {
+    if (
+      auto.sent ||
+      auto.dispatching ||
+      !auto.published ||
+      auto.signal.aborted ||
+      !this.isCurrentAutoAvailable(auto)
+    )
+      return;
+    if (this.invalidatesAutoAvailableDisconnect(this.confirmedState?.data, auto)) {
+      const cancelled = this.cancelAutoAvailable();
+      if (cancelled) this.publishRegionState(cancelled);
+
+      return;
+    }
+    if (this.webCallingService.isBrowserVoiceRequired() && !this.webCallingService.isVoiceReady()) {
+      auto.dispatching = true;
+      this.recordRecoveryDiagnostic('auto-available', 'waiting', 1, auto.startedAt);
+      if (!this.isCurrentAutoAvailable(auto) || auto.signal.aborted) return;
+      auto.dispatching = false;
+      this.regionStateContext.autoAvailable = 'waitingForVoice';
+      this.publishRegionState(this.buildRegionState('ready', 'region-switch'));
+
+      return;
+    }
+    auto.dispatching = true;
+    auto.startedAt = Date.now();
+    this.webCallingService.off(
+      VOICE_CONNECTION_EVENTS.STATE_CHANGE,
+      this.handleAutoAvailableVoiceChange
+    );
+    this.regionStateContext.autoAvailable = 'requesting';
+    this.publishRegionState(this.buildRegionState('ready', 'region-switch'));
+    if (!this.isCurrentAutoAvailable(auto) || auto.signal.aborted) return;
     try {
-      this.metricsManager.timeEvent([
-        METRIC_EVENT_NAMES.AGENT_STATE_CHANGE_SUCCESS,
-        METRIC_EVENT_NAMES.AGENT_STATE_CHANGE_FAILED,
-      ]);
+      const result = await this.performAgentStateChange(
+        {
+          state: AGENT_STATE_AVAILABLE,
+          auxCodeId: AGENT_STATE_AVAILABLE_ID,
+          lastStateChangeReason: 'agent-wss-disconnect',
+          agentId: this.registrationAgentId,
+        },
+        {
+          source: 'dr-auto',
+          intentRevision: auto.intentRevision,
+          stationRevision: auto.stationRevision,
+          generation: auto.generation,
+          signal: auto.signal,
+        }
+      );
+      if (!this.isCurrentAutoAvailable(auto)) return;
+      if (result.kind === 'not-dispatched') {
+        auto.dispatching = false;
+        this.webCallingService.on(
+          VOICE_CONNECTION_EVENTS.STATE_CHANGE,
+          this.handleAutoAvailableVoiceChange
+        );
+        // A ready event may have occurred while the listener was detached.
+        if (
+          !this.webCallingService.isBrowserVoiceRequired() ||
+          this.webCallingService.isVoiceReady()
+        )
+          await this.dispatchAutoAvailable(auto);
+        else {
+          this.regionStateContext.autoAvailable = 'waitingForVoice';
+          this.publishRegionState(this.buildRegionState('ready', 'region-switch'));
+        }
+      } else {
+        // AQM settled, but the synchronous notification applier did not accept this result.
+        if (!this.consumeAutoAvailable(auto, 'failed')) return;
+        this.regionStateContext.autoAvailable = 'failed';
+        this.publishRegionState(this.buildRegionState('ready', 'region-switch'));
+      }
+    } catch (error) {
+      if (!this.isCurrentAutoAvailable(auto)) return;
+      if (!this.consumeAutoAvailable(auto, 'failed', normalizeRecoveryFailure(error))) return;
+      this.regionStateContext.autoAvailable = 'failed';
+      this.publishRegionState(this.buildRegionState('ready', 'region-switch'));
+    }
+  }
+
+  private reconcileAgentStateNotification(payload: unknown): void {
+    if (!isRecord(payload) || !isRecord(payload.data)) return;
+    const data = payload.data;
+    if (
+      data.type !== CC_EVENTS.AGENT_STATE_CHANGE_SUCCESS ||
+      !this.registrationAbortController ||
+      this.registrationAbortController.signal.aborted ||
+      this.registrationOrgId !== this.$webex.credentials.getOrgId() ||
+      !this.registrationAgentId ||
+      data.agentId !== this.registrationAgentId ||
+      data.orgId !== this.registrationOrgId ||
+      !this.currentAgentSessionId ||
+      data.agentSessionId !== this.currentAgentSessionId ||
+      !['status', 'subStatus', 'auxCodeId', 'lastStateChangeReason'].every(
+        (key) => typeof data[key] === 'string'
+      ) ||
+      !Number.isFinite(data.lastStateChangeTimestamp) ||
+      !Number.isFinite(data.lastIdleCodeChangeTimestamp)
+    )
+      return;
+    const request =
+      typeof data.trackingId === 'string' ? this.stateDispatches.get(data.trackingId) : undefined;
+    if (
+      request &&
+      (request.registration !== this.registrationGeneration ||
+        request.stationRevision !== this.stationRevision ||
+        request.generation !== this.recoveryGeneration ||
+        request.sessionId !== this.currentAgentSessionId)
+    )
+      return;
+    if (request?.source === 'dr-auto' && request.ordinal < this.acceptedExplicitOrdinal) return;
+    const previous = this.confirmedState;
+    const version = previous
+      ? Number(data.lastStateChangeTimestamp) - previous.data.lastStateChangeTimestamp ||
+        Number(data.lastIdleCodeChangeTimestamp) - previous.data.lastIdleCodeChangeTimestamp
+      : 1;
+    if (version < 0) return;
+    const semantics = ['status', 'subStatus', 'auxCodeId', 'lastStateChangeReason'];
+    const identical = previous && semantics.every((key) => data[key] === previous.data[key]);
+    if (
+      !version &&
+      !identical &&
+      request &&
+      previous &&
+      ((previous.independent && previous.ordinal > request.ordinal) ||
+        (!previous.independent && previous.dispatchOrdinal > request.ordinal))
+    )
+      return;
+    if (request?.source === 'explicit')
+      this.acceptedExplicitOrdinal = Math.max(this.acceptedExplicitOrdinal, request.ordinal);
+    if (version || !identical) {
+      this.agentConfig.lastStateAuxCodeId = data.auxCodeId as string;
+      this.agentConfig.lastStateChangeTimestamp = data.lastStateChangeTimestamp as number;
+      this.agentConfig.lastIdleCodeChangeTimestamp = data.lastIdleCodeChangeTimestamp as number;
+      this.confirmedState = {
+        data: {...data} as Agent.StateChangeSuccess['data'],
+        ordinal: (this.stateOrdinal += 1),
+        independent: !request,
+        dispatchOrdinal: request?.ordinal,
+      };
+    }
+    const auto = this.autoAvailable;
+    const ownAuto = request?.source === 'dr-auto' && auto?.requestId === data.trackingId;
+    if (ownAuto && this.isCurrentAutoAvailable(auto) && !auto.signal.aborted && !request.outcome) {
+      if (!this.consumeAutoAvailable(auto, 'succeeded')) return;
+      this.regionStateContext.autoAvailable = 'succeeded';
+      this.publishRegionState(this.buildRegionState('ready', 'region-switch'));
+    } else if (!ownAuto && this.invalidatesAutoAvailableDisconnect(data, auto)) {
+      const cancelled = this.cancelAutoAvailable();
+      if (cancelled) this.publishRegionState(cancelled);
+    }
+  }
+
+  private async performAgentStateChange(
+    data: StateChange,
+    context: StateDispatchContext
+  ): Promise<AgentStateChangeDispatchResult> {
+    let localVoiceFailure = false;
+    const timeDispatch = () =>
+      this.recordBestEffort(() =>
+        this.metricsManager.timeEvent([
+          METRIC_EVENT_NAMES.AGENT_STATE_CHANGE_SUCCESS,
+          METRIC_EVENT_NAMES.AGENT_STATE_CHANGE_FAILED,
+        ])
+      );
+    this.assertStateDispatchCurrent(context);
+    this.recordBestEffort(() =>
+      LoggerProxy.info('Setting agent state', {
+        module: CC_FILE,
+        method: METHODS.SET_AGENT_STATE,
+      })
+    );
+    try {
+      if (context.source !== 'dr-auto') timeDispatch();
       if (
         data.state === AGENT_STATE_AVAILABLE &&
         this.webCallingService?.isBrowserVoiceRequired() &&
         !this.webCallingService.isVoiceReady()
       ) {
+        localVoiceFailure = true;
         const error = new Error(VOICE_CONNECTION_ERROR.NOT_READY) as GenericError;
         error.details = {
           type: 'SDK_VALIDATION_ERROR',
@@ -1465,47 +4016,117 @@ export default class ContactCenter extends WebexPlugin implements IContactCenter
         };
         throw error;
       }
-      const agentStatusResponse = await this.services.agent.stateChange({
-        data: {...data, agentId: data.agentId || this.agentConfig.agentId},
-      });
-
-      this.metricsManager.trackEvent(
-        METRIC_EVENT_NAMES.AGENT_STATE_CHANGE_SUCCESS,
-        {
-          ...MetricsManager.getCommonTrackingFieldForAQMResponse(agentStatusResponse),
-          requestedState: data.state,
-          teamId: this.agentConfig?.teams[0]?.id ?? EMPTY_STRING,
-          status: agentStatusResponse.data?.status,
-          subStatus: agentStatusResponse.data?.subStatus,
-          auxCodeId: data.auxCodeId,
-          lastStateChangeReason: sanitizeForObservability(data.lastStateChangeReason),
-        },
-        ['behavioral', 'business', 'operational']
-      );
-
-      LoggerProxy.log(
-        `Agent state changed successfully to auxCodeId: ${agentStatusResponse.data.auxCodeId}`,
-        {
-          module: CC_FILE,
-          method: METHODS.SET_AGENT_STATE,
-          trackingId: agentStatusResponse.trackingId,
+      if (context.source === 'dr-auto') timeDispatch();
+      this.assertStateDispatchCurrent(context);
+      if (context.source === 'dr-auto') {
+        if (
+          this.invalidatesAutoAvailableDisconnect(this.confirmedState?.data, this.autoAvailable)
+        ) {
+          const cancelled = this.cancelAutoAvailable();
+          if (cancelled) this.publishRegionState(cancelled);
         }
+        if (!this.autoAvailable) throw createRegionRecoveryError('RECOVERY_INTERRUPTED');
+      }
+      const requestId = `WX_CC_SDK_${uuidv4()}`;
+      const dispatch: StateDispatch = {
+        source: context.source,
+        stationRevision: context.stationRevision,
+        generation: context.generation,
+        registration: this.registrationGeneration,
+        sessionId: this.currentAgentSessionId,
+        ordinal: (this.stateOrdinal += 1),
+      };
+      this.stateDispatches.set(requestId, dispatch);
+      if (context.source === 'dr-auto' && this.autoAvailable) {
+        this.autoAvailable.sent = true;
+        this.autoAvailable.requestId = requestId;
+      }
+      const pending = this.services.agent.stateChange(
+        {
+          data: {...data, agentId: data.agentId || this.agentConfig.agentId},
+          requestId,
+        },
+        undefined,
+        {generation: context.generation, signal: context.signal}
+      );
+      if (context.source === 'dr-auto') {
+        const settlement = pending.then(
+          () => undefined,
+          () => undefined
+        );
+        this.inFlightDrAutoState = settlement;
+        settlement.then(() => {
+          if (this.inFlightDrAutoState === settlement) this.inFlightDrAutoState = undefined;
+        });
+      }
+      const agentStatusResponse = await pending;
+      if (context.source === 'dr-auto') this.assertStateDispatchCurrent(context);
+
+      this.recordBestEffort(() =>
+        this.metricsManager.trackEvent(
+          METRIC_EVENT_NAMES.AGENT_STATE_CHANGE_SUCCESS,
+          {
+            ...MetricsManager.getCommonTrackingFieldForAQMResponse(agentStatusResponse),
+            requestedState: data.state,
+            teamId: this.agentConfig?.teams[0]?.id ?? EMPTY_STRING,
+            status: agentStatusResponse.data?.status,
+            subStatus: agentStatusResponse.data?.subStatus,
+            auxCodeId: data.auxCodeId,
+            lastStateChangeReason: sanitizeForObservability(data.lastStateChangeReason),
+          },
+          ['behavioral', 'business', 'operational']
+        )
       );
 
-      return agentStatusResponse;
+      this.recordBestEffort(() =>
+        LoggerProxy.log(
+          `Agent state changed successfully to auxCodeId: ${agentStatusResponse.data.auxCodeId}`,
+          {
+            module: CC_FILE,
+            method: METHODS.SET_AGENT_STATE,
+            trackingId: agentStatusResponse.trackingId,
+          }
+        )
+      );
+
+      return {kind: 'acknowledged', response: agentStatusResponse};
     } catch (error) {
+      if (context.source === 'dr-auto') {
+        if (localVoiceFailure)
+          return {kind: 'not-dispatched', cause: 'browser-voice-not-ready', error};
+        const auto = this.autoAvailable;
+        if (auto && this.isCurrentAutoAvailable(auto))
+          this.recordBestEffort(() =>
+            this.metricsManager.trackEvent(
+              METRIC_EVENT_NAMES.AGENT_STATE_CHANGE_FAILED,
+              {
+                state: AGENT_STATE_AVAILABLE,
+                auxCodeId: AGENT_STATE_AVAILABLE_ID,
+                lastStateChangeReason: 'agent-wss-disconnect',
+              },
+              ['behavioral', 'business', 'operational']
+            )
+          );
+        // The private recovery caller owns safe failure diagnostics. The public error
+        // adapter logs arbitrary backend reasons and discards their structured fields.
+        throw error;
+      }
       const failure = error.details as Failure;
-      this.metricsManager.trackEvent(
-        METRIC_EVENT_NAMES.AGENT_STATE_CHANGE_FAILED,
-        {
-          ...MetricsManager.getCommonTrackingFieldForAQMResponseFailed(failure),
-          state: data.state,
-          auxCodeId: data.auxCodeId,
-          lastStateChangeReason: sanitizeForObservability(data.lastStateChangeReason),
-        },
-        ['behavioral', 'business', 'operational']
+      this.recordBestEffort(() =>
+        this.metricsManager.trackEvent(
+          METRIC_EVENT_NAMES.AGENT_STATE_CHANGE_FAILED,
+          {
+            ...MetricsManager.getCommonTrackingFieldForAQMResponseFailed(failure),
+            state: data.state,
+            auxCodeId: data.auxCodeId,
+            lastStateChangeReason: sanitizeForObservability(data.lastStateChangeReason),
+          },
+          ['behavioral', 'business', 'operational']
+        )
       );
       const {error: detailedError} = getErrorDetails(error, METHODS.SET_AGENT_STATE, CC_FILE);
+      if (localVoiceFailure)
+        return {kind: 'not-dispatched', cause: 'browser-voice-not-ready', error: detailedError};
       throw detailedError;
     }
   }
@@ -1541,12 +4162,12 @@ export default class ContactCenter extends WebexPlugin implements IContactCenter
         METRIC_EVENT_NAMES.WELLBEING_BREAK_IDLE_CODE_FETCH_SUCCESS,
         METRIC_EVENT_NAMES.WELLBEING_BREAK_IDLE_CODE_FETCH_FAILED,
       ]);
-      const registrationGeneration = this.wellnessRegistrationGeneration;
+      const registrationGeneration = this.registrationGeneration;
       const orgId = this.$webex.credentials.getOrgId();
       const idleCode = await this.services.config.getWellbeingBreakIdleCode(orgId);
 
       if (
-        registrationGeneration !== this.wellnessRegistrationGeneration ||
+        registrationGeneration !== this.registrationGeneration ||
         orgId !== this.$webex.credentials.getOrgId() ||
         !this.agentConfig?.isWellnessBreakEnabled
       ) {
@@ -1610,7 +4231,61 @@ export default class ContactCenter extends WebexPlugin implements IContactCenter
    * @param {string} event The raw websocket event message
    */
   private handleWebsocketMessage = (event: string) => {
-    const eventData = JSON.parse(event);
+    let parsed: unknown;
+    try {
+      parsed = JSON.parse(event);
+    } catch {
+      return;
+    }
+    if (!isRecord(parsed)) return;
+    const eventData = parsed as Record<string, any>;
+    if (eventData.type === SYSTEM_EVENTS.SYSTEM_REGION_SWITCH) {
+      const regionSwitch = this.normalizeRegionSwitch(eventData);
+      if (regionSwitch) this.handleRegionSwitch(regionSwitch);
+
+      return;
+    }
+    if (
+      eventData.type === CC_EVENTS.WELCOME &&
+      this.registrationAgentId &&
+      this.registrationAbortController &&
+      !this.registrationAbortController.signal.aborted
+    ) {
+      try {
+        const recovery = this.recovery;
+        const slot = this.recoveryAttempt;
+        if (recovery && slot?.owner === recovery && eventData.data?.agentId !== recovery.agentId) {
+          this.recordRecoveryDiagnostic(
+            'welcome',
+            'failed',
+            slot.attempt,
+            slot.welcomeStartedAt ?? slot.startedAt
+          );
+          if (!this.isCurrentRecovery(recovery)) return;
+        }
+        this.assertPrimaryIdentity(eventData.data?.agentId);
+      } catch {
+        return;
+      }
+    }
+    if (eventData.type === CC_EVENTS.AGENT_MULTI_LOGIN) {
+      const resetWellness =
+        eventData.data?.type === 'AgentMultiLoginCloseSession' &&
+        (!eventData.data.agentSessionId ||
+          eventData.data.agentSessionId === this.currentAgentSessionId);
+      const termination = this.terminateRegistration();
+      if (termination !== undefined && resetWellness) this.updateWellnessSession();
+    }
+    this.reconcileStationNotification(eventData);
+    const registration = this.registrationGeneration;
+    const generation = this.recoveryGeneration;
+    const station = this.stationRevision;
+    const ownsMessage = () =>
+      registration === this.registrationGeneration &&
+      generation === this.recoveryGeneration &&
+      station === this.stationRevision;
+    this.reconcileAgentStateNotification(eventData);
+    if (!ownsMessage()) return;
     // Re-emit all the events related to agent except keep-alives. Only event names present in
     // the typed CC_EVENTS allow-list are emitted; unknown/server-injected types are ignored.
     if (
@@ -1620,19 +4295,22 @@ export default class ContactCenter extends WebexPlugin implements IContactCenter
       CC_EVENT_ALLOW_LIST.has(eventData.data.type)
     ) {
       // @ts-ignore
-      this.emit(eventData.data.type, eventData.data);
+      this.publishHostEvent(eventData.data.type, eventData.data);
+      if (!ownsMessage()) return;
     }
 
     if (!eventData.type) {
       return;
     }
 
-    LoggerProxy.log(
-      `Received event: ${sanitizeForObservability(eventData?.data?.type ?? eventData.type)}`,
-      {
-        module: CC_FILE,
-        method: METHODS.HANDLE_WEBSOCKET_MESSAGE,
-      }
+    this.recordBestEffort(() =>
+      LoggerProxy.log(
+        `Received event: ${sanitizeForObservability(eventData?.data?.type ?? eventData.type)}`,
+        {
+          module: CC_FILE,
+          method: METHODS.HANDLE_WEBSOCKET_MESSAGE,
+        }
+      )
     );
 
     // Emit metrics for all websocket events except keepalive and welcome
@@ -1644,9 +4322,13 @@ export default class ContactCenter extends WebexPlugin implements IContactCenter
         top_level_type: sanitizeForObservability(topLevelType),
         has_data: Boolean(eventData.data),
       };
-      this.metricsManager.trackEvent(METRIC_EVENT_NAMES.WEBSOCKET_EVENT_RECEIVED, metricsPayload, [
-        'operational',
-      ]);
+      this.recordBestEffort(() =>
+        this.metricsManager.trackEvent(
+          METRIC_EVENT_NAMES.WEBSOCKET_EVENT_RECEIVED,
+          metricsPayload,
+          ['operational']
+        )
+      );
     }
 
     if (this.handleWellnessBreakWebsocketPayload(eventData)) {
@@ -1655,19 +4337,14 @@ export default class ContactCenter extends WebexPlugin implements IContactCenter
 
     switch (eventData.type) {
       case CC_EVENTS.AGENT_MULTI_LOGIN:
-        if (
-          eventData.data?.type === 'AgentMultiLoginCloseSession' &&
-          (!eventData.data.agentSessionId ||
-            eventData.data.agentSessionId === this.currentAgentSessionId)
-        ) {
-          this.updateWellnessSession();
-        }
         // @ts-ignore
-        this.emit(AGENT_EVENTS.AGENT_MULTI_LOGIN, eventData.data);
-        break;
+        this.publishHostEvent(AGENT_EVENTS.AGENT_MULTI_LOGIN, eventData.data);
+
+        return;
       case CC_EVENTS.AGENT_STATE_CHANGE:
         // @ts-ignore
-        this.emit(AGENT_EVENTS.AGENT_STATE_CHANGE, eventData.data);
+        this.publishHostEvent(AGENT_EVENTS.AGENT_STATE_CHANGE, eventData.data);
+        if (!ownsMessage()) return;
         break;
       default:
         break;
@@ -1680,74 +4357,59 @@ export default class ContactCenter extends WebexPlugin implements IContactCenter
     switch (eventData.data.type) {
       case CC_EVENTS.AGENT_STATION_LOGIN_SUCCESS: {
         const {channelsMap, ...loginData} = eventData.data;
-        this.updateWellnessSession(loginData.agentSessionId);
-        if (
-          loginData.deviceType === LoginOption.EXTENSION ||
-          loginData.deviceType === LoginOption.AGENT_DN
-        ) {
-          this.webCallingService.setBrowserVoiceRequired(false);
-        }
         const stationLoginData = {
           ...loginData,
           mmProfile: {
-            chat: channelsMap.chat?.length,
-            email: channelsMap.email?.length,
-            social: channelsMap.social?.length,
-            telephony: channelsMap.telephony?.length,
+            chat: channelsMap?.chat?.length,
+            email: channelsMap?.email?.length,
+            social: channelsMap?.social?.length,
+            telephony: channelsMap?.telephony?.length,
           },
           notifsTrackingId: eventData.trackingId,
         };
-        this.webCallingService.setLoginOption(loginData.deviceType as LoginOption);
         // @ts-ignore
-        this.emit(AGENT_EVENTS.AGENT_STATION_LOGIN_SUCCESS, stationLoginData);
+        this.publishHostEvent(AGENT_EVENTS.AGENT_STATION_LOGIN_SUCCESS, stationLoginData);
         break;
       }
       case CC_EVENTS.AGENT_RELOGIN_SUCCESS: {
         const {channelsMap, ...loginData} = eventData.data;
-        this.updateWellnessSession(loginData.agentSessionId);
         const stationReLoginData = {
           ...loginData,
           mmProfile: {
-            chat: channelsMap.chat?.length,
-            email: channelsMap.email?.length,
-            social: channelsMap.social?.length,
-            telephony: channelsMap.telephony?.length,
+            chat: channelsMap?.chat?.length,
+            email: channelsMap?.email?.length,
+            social: channelsMap?.social?.length,
+            telephony: channelsMap?.telephony?.length,
           },
           notifsTrackingId: eventData.trackingId,
         };
         // @ts-ignore
-        this.emit(AGENT_EVENTS.AGENT_RELOGIN_SUCCESS, stationReLoginData);
+        this.publishHostEvent(AGENT_EVENTS.AGENT_RELOGIN_SUCCESS, stationReLoginData);
         break;
       }
       case CC_EVENTS.AGENT_STATE_CHANGE_SUCCESS:
         // @ts-ignore
-        this.emit(AGENT_EVENTS.AGENT_STATE_CHANGE_SUCCESS, eventData.data);
+        this.publishHostEvent(AGENT_EVENTS.AGENT_STATE_CHANGE_SUCCESS, eventData.data);
         break;
       case CC_EVENTS.AGENT_STATE_CHANGE_FAILED:
         // @ts-ignore
-        this.emit(AGENT_EVENTS.AGENT_STATE_CHANGE_FAILED, eventData.data);
+        this.publishHostEvent(AGENT_EVENTS.AGENT_STATE_CHANGE_FAILED, eventData.data);
         break;
       case CC_EVENTS.AGENT_STATION_LOGIN_FAILED:
         // @ts-ignore
-        this.emit(AGENT_EVENTS.AGENT_STATION_LOGIN_FAILED, eventData.data);
+        this.publishHostEvent(AGENT_EVENTS.AGENT_STATION_LOGIN_FAILED, eventData.data);
         break;
       case CC_EVENTS.AGENT_LOGOUT_SUCCESS:
-        if (
-          !eventData.data.agentSessionId ||
-          eventData.data.agentSessionId === this.currentAgentSessionId
-        ) {
-          this.updateWellnessSession();
-        }
         // @ts-ignore
-        this.emit(AGENT_EVENTS.AGENT_LOGOUT_SUCCESS, eventData.data);
+        this.publishHostEvent(AGENT_EVENTS.AGENT_LOGOUT_SUCCESS, eventData.data);
         break;
       case CC_EVENTS.AGENT_LOGOUT_FAILED:
         // @ts-ignore
-        this.emit(AGENT_EVENTS.AGENT_LOGOUT_FAILED, eventData.data);
+        this.publishHostEvent(AGENT_EVENTS.AGENT_LOGOUT_FAILED, eventData.data);
         break;
       case CC_EVENTS.AGENT_DN_REGISTERED:
         // @ts-ignore
-        this.emit(AGENT_EVENTS.AGENT_DN_REGISTERED, eventData.data);
+        this.publishHostEvent(AGENT_EVENTS.AGENT_DN_REGISTERED, eventData.data);
         break;
       default:
         break;
@@ -1928,24 +4590,28 @@ export default class ContactCenter extends WebexPlugin implements IContactCenter
 
     if (loginOption === LoginOption.BROWSER) {
       if (flagEnabled) {
-        logWxAppSessionReadiness({
-          enableWxBetterTogether: true,
-          loginOption,
-          wxAppHooksApplied: false,
-          usersubPublished: false,
-          mercurySubscribed: false,
-          telephonyTaskType,
-          skipReason: 'unsupported_browser_login',
-        });
-
-        this.metricsManager.trackEvent(
-          METRIC_EVENT_NAMES.WXAPP_SESSION_SKIPPED,
-          {
-            loginOption,
+        this.recordBestEffort(() =>
+          logWxAppSessionReadiness({
             enableWxBetterTogether: true,
+            loginOption,
+            wxAppHooksApplied: false,
+            usersubPublished: false,
+            mercurySubscribed: false,
+            telephonyTaskType,
             skipReason: 'unsupported_browser_login',
-          },
-          ['operational', 'behavioral']
+          })
+        );
+
+        this.recordBestEffort(() =>
+          this.metricsManager.trackEvent(
+            METRIC_EVENT_NAMES.WXAPP_SESSION_SKIPPED,
+            {
+              loginOption,
+              enableWxBetterTogether: true,
+              skipReason: 'unsupported_browser_login',
+            },
+            ['operational', 'behavioral']
+          )
         );
       }
 
@@ -1957,10 +4623,12 @@ export default class ContactCenter extends WebexPlugin implements IContactCenter
 
     try {
       if (flagEnabled) {
-        this.metricsManager.timeEvent([
-          METRIC_EVENT_NAMES.WXAPP_SESSION_INIT_SUCCESS,
-          METRIC_EVENT_NAMES.WXAPP_SESSION_INIT_FAILED,
-        ]);
+        this.recordBestEffort(() =>
+          this.metricsManager.timeEvent([
+            METRIC_EVENT_NAMES.WXAPP_SESSION_INIT_SUCCESS,
+            METRIC_EVENT_NAMES.WXAPP_SESSION_INIT_FAILED,
+          ])
+        );
 
         await this.ensureWxAppMercuryAndSubscribe();
         wxAppInitStage = 'publish';
@@ -1972,41 +4640,47 @@ export default class ContactCenter extends WebexPlugin implements IContactCenter
         const mercurySubscribed = this.wxAppTelephonyMercurySync.isSubscribed();
         const usersubPublished = this.webexCrossClientService.isAnswerCallsStateActive();
 
-        logWxAppSessionReadiness({
-          enableWxBetterTogether: true,
-          loginOption,
-          wxAppHooksApplied: true,
-          usersubPublished,
-          mercurySubscribed,
-          telephonyTaskType,
-        });
+        this.recordBestEffort(() =>
+          logWxAppSessionReadiness({
+            enableWxBetterTogether: true,
+            loginOption,
+            wxAppHooksApplied: true,
+            usersubPublished,
+            mercurySubscribed,
+            telephonyTaskType,
+          })
+        );
 
         const sessionInitReady = mercurySubscribed && usersubPublished;
 
         if (sessionInitReady) {
-          this.metricsManager.trackEvent(
-            METRIC_EVENT_NAMES.WXAPP_SESSION_INIT_SUCCESS,
-            {
-              loginOption,
-              enableWxBetterTogether: true,
-              usersubPublished,
-              mercurySubscribed,
-              telephonyTaskType,
-            },
-            ['operational', 'behavioral']
+          this.recordBestEffort(() =>
+            this.metricsManager.trackEvent(
+              METRIC_EVENT_NAMES.WXAPP_SESSION_INIT_SUCCESS,
+              {
+                loginOption,
+                enableWxBetterTogether: true,
+                usersubPublished,
+                mercurySubscribed,
+                telephonyTaskType,
+              },
+              ['operational', 'behavioral']
+            )
           );
         } else {
-          this.metricsManager.trackEvent(
-            METRIC_EVENT_NAMES.WXAPP_SESSION_INIT_FAILED,
-            {
-              loginOption,
-              enableWxBetterTogether: true,
-              usersubPublished,
-              mercurySubscribed,
-              telephonyTaskType,
-              skipReason: !usersubPublished ? 'usersub_not_published' : 'mercury_not_subscribed',
-            },
-            ['operational', 'behavioral']
+          this.recordBestEffort(() =>
+            this.metricsManager.trackEvent(
+              METRIC_EVENT_NAMES.WXAPP_SESSION_INIT_FAILED,
+              {
+                loginOption,
+                enableWxBetterTogether: true,
+                usersubPublished,
+                mercurySubscribed,
+                telephonyTaskType,
+                skipReason: !usersubPublished ? 'usersub_not_published' : 'mercury_not_subscribed',
+              },
+              ['operational', 'behavioral']
+            )
           );
         }
       } else {
@@ -2016,55 +4690,65 @@ export default class ContactCenter extends WebexPlugin implements IContactCenter
         this.wxAppTelephonyMercurySync.unsubscribe();
         await this.releaseWxAppMercuryResources();
 
-        logWxAppSessionReadiness({
-          enableWxBetterTogether: false,
-          loginOption,
-          wxAppHooksApplied: true,
-          usersubPublished: false,
-          mercurySubscribed: false,
-          telephonyTaskType,
-          skipReason: 'flag_disabled',
-        });
+        this.recordBestEffort(() =>
+          logWxAppSessionReadiness({
+            enableWxBetterTogether: false,
+            loginOption,
+            wxAppHooksApplied: true,
+            usersubPublished: false,
+            mercurySubscribed: false,
+            telephonyTaskType,
+            skipReason: 'flag_disabled',
+          })
+        );
 
-        this.metricsManager.trackEvent(
-          METRIC_EVENT_NAMES.WXAPP_SESSION_SKIPPED,
-          {loginOption, enableWxBetterTogether: false, skipReason: 'flag_disabled'},
-          ['operational', 'behavioral']
+        this.recordBestEffort(() =>
+          this.metricsManager.trackEvent(
+            METRIC_EVENT_NAMES.WXAPP_SESSION_SKIPPED,
+            {loginOption, enableWxBetterTogether: false, skipReason: 'flag_disabled'},
+            ['operational', 'behavioral']
+          )
         );
       }
     } catch (error) {
-      LoggerProxy.error(`Failed to initialize wxApp post-station-login: ${error}`, {
-        module: CC_FILE,
-        method: METHODS.STATION_LOGIN,
-      });
+      this.recordBestEffort(() =>
+        LoggerProxy.error(`Failed to initialize wxApp post-station-login: ${error}`, {
+          module: CC_FILE,
+          method: METHODS.STATION_LOGIN,
+        })
+      );
 
       if (flagEnabled) {
         const sessionInitFailureReason =
           wxAppInitStage === 'mercury' ? 'mercury_subscribe_failed' : 'publish_failed';
 
-        this.metricsManager.trackEvent(
-          METRIC_EVENT_NAMES.WXAPP_SESSION_INIT_FAILED,
-          {
-            loginOption,
+        this.recordBestEffort(() =>
+          this.metricsManager.trackEvent(
+            METRIC_EVENT_NAMES.WXAPP_SESSION_INIT_FAILED,
+            {
+              loginOption,
+              enableWxBetterTogether: true,
+              usersubPublished: this.webexCrossClientService.isAnswerCallsStateActive(),
+              mercurySubscribed: this.wxAppTelephonyMercurySync.isSubscribed(),
+              telephonyTaskType,
+              skipReason: sessionInitFailureReason,
+              error: error instanceof Error ? error.toString() : String(error),
+            },
+            ['operational', 'behavioral']
+          )
+        );
+
+        this.recordBestEffort(() =>
+          logWxAppSessionReadiness({
             enableWxBetterTogether: true,
+            loginOption,
+            wxAppHooksApplied: false,
             usersubPublished: this.webexCrossClientService.isAnswerCallsStateActive(),
             mercurySubscribed: this.wxAppTelephonyMercurySync.isSubscribed(),
             telephonyTaskType,
             skipReason: sessionInitFailureReason,
-            error: error instanceof Error ? error.toString() : String(error),
-          },
-          ['operational', 'behavioral']
+          })
         );
-
-        logWxAppSessionReadiness({
-          enableWxBetterTogether: true,
-          loginOption,
-          wxAppHooksApplied: false,
-          usersubPublished: this.webexCrossClientService.isAnswerCallsStateActive(),
-          mercurySubscribed: this.wxAppTelephonyMercurySync.isSubscribed(),
-          telephonyTaskType,
-          skipReason: sessionInitFailureReason,
-        });
 
         if (publishedEnable) {
           await this.revertWxAppCrossClientPublish();
@@ -2154,12 +4838,14 @@ export default class ContactCenter extends WebexPlugin implements IContactCenter
     try {
       await this.publishAnswerOnWebexCrossClientState(false, {force: true});
     } catch (error) {
-      LoggerProxy.error(
-        `Failed to publish compensating answer-calls-on-wxcc false during wxApp rollback: ${error}`,
-        {
-          module: CC_FILE,
-          method: METHODS.SET_MANAGE_WEBEX_CALLING_IN_WXCC,
-        }
+      this.recordBestEffort(() =>
+        LoggerProxy.error(
+          `Failed to publish compensating answer-calls-on-wxcc false during wxApp rollback: ${error}`,
+          {
+            module: CC_FILE,
+            method: METHODS.SET_MANAGE_WEBEX_CALLING_IN_WXCC,
+          }
+        )
       );
       this.scheduleCompensatingFalsePublishRetry();
     }
@@ -2175,10 +4861,12 @@ export default class ContactCenter extends WebexPlugin implements IContactCenter
     if (device && !device.registered && device.register) {
       await device.register();
       this.wxAppDeviceRegisteredByCc = true;
-      LoggerProxy.log('WxApp: device registered for cross-client publish', {
-        module: CC_FILE,
-        method: METHODS.ENSURE_WXAPP_MERCURY_CONNECTED,
-      });
+      this.recordBestEffort(() =>
+        LoggerProxy.log('WxApp: device registered for cross-client publish', {
+          module: CC_FILE,
+          method: METHODS.ENSURE_WXAPP_MERCURY_CONNECTED,
+        })
+      );
     }
   }
 
@@ -2190,10 +4878,12 @@ export default class ContactCenter extends WebexPlugin implements IContactCenter
     if (mercury && !mercury.connected) {
       await mercury.connect();
       this.wxAppMercuryConnectedByCc = true;
-      LoggerProxy.log('WxApp mute sync: mercury connected', {
-        module: CC_FILE,
-        method: METHODS.ENSURE_WXAPP_MERCURY_CONNECTED,
-      });
+      this.recordBestEffort(() =>
+        LoggerProxy.log('WxApp mute sync: mercury connected', {
+          module: CC_FILE,
+          method: METHODS.ENSURE_WXAPP_MERCURY_CONNECTED,
+        })
+      );
     }
   }
 
@@ -2209,15 +4899,19 @@ export default class ContactCenter extends WebexPlugin implements IContactCenter
       try {
         await mercury.disconnect();
         this.wxAppMercuryConnectedByCc = false;
-        LoggerProxy.log('WxApp mute sync: mercury disconnected', {
-          module: CC_FILE,
-          method: METHODS.ENSURE_WXAPP_MERCURY_CONNECTED,
-        });
+        this.recordBestEffort(() =>
+          LoggerProxy.log('WxApp mute sync: mercury disconnected', {
+            module: CC_FILE,
+            method: METHODS.ENSURE_WXAPP_MERCURY_CONNECTED,
+          })
+        );
       } catch (error) {
-        LoggerProxy.error(`Failed to disconnect wxApp Mercury: ${error}`, {
-          module: CC_FILE,
-          method: METHODS.ENSURE_WXAPP_MERCURY_CONNECTED,
-        });
+        this.recordBestEffort(() =>
+          LoggerProxy.error(`Failed to disconnect wxApp Mercury: ${error}`, {
+            module: CC_FILE,
+            method: METHODS.ENSURE_WXAPP_MERCURY_CONNECTED,
+          })
+        );
       }
     }
 
@@ -2226,15 +4920,19 @@ export default class ContactCenter extends WebexPlugin implements IContactCenter
         // @ts-ignore
         await device.unregister();
         this.wxAppDeviceRegisteredByCc = false;
-        LoggerProxy.log('WxApp mute sync: device unregistered', {
-          module: CC_FILE,
-          method: METHODS.ENSURE_WXAPP_MERCURY_CONNECTED,
-        });
+        this.recordBestEffort(() =>
+          LoggerProxy.log('WxApp mute sync: device unregistered', {
+            module: CC_FILE,
+            method: METHODS.ENSURE_WXAPP_MERCURY_CONNECTED,
+          })
+        );
       } catch (error) {
-        LoggerProxy.error(`Failed to unregister wxApp device: ${error}`, {
-          module: CC_FILE,
-          method: METHODS.ENSURE_WXAPP_MERCURY_CONNECTED,
-        });
+        this.recordBestEffort(() =>
+          LoggerProxy.error(`Failed to unregister wxApp device: ${error}`, {
+            module: CC_FILE,
+            method: METHODS.ENSURE_WXAPP_MERCURY_CONNECTED,
+          })
+        );
       }
     } else if (this.wxAppDeviceRegisteredByCc) {
       this.wxAppDeviceRegisteredByCc = false;
@@ -2262,12 +4960,14 @@ export default class ContactCenter extends WebexPlugin implements IContactCenter
       });
     } catch (error) {
       publishError = error;
-      LoggerProxy.error(
-        `Failed to publish answer-calls-on-wxcc false during wxApp teardown: ${error}`,
-        {
-          module: CC_FILE,
-          method: METHODS.SET_MANAGE_WEBEX_CALLING_IN_WXCC,
-        }
+      this.recordBestEffort(() =>
+        LoggerProxy.error(
+          `Failed to publish answer-calls-on-wxcc false during wxApp teardown: ${error}`,
+          {
+            module: CC_FILE,
+            method: METHODS.SET_MANAGE_WEBEX_CALLING_IN_WXCC,
+          }
+        )
       );
     }
 
@@ -2301,15 +5001,19 @@ export default class ContactCenter extends WebexPlugin implements IContactCenter
 
     const agentId = this.agentConfig?.agentId;
     if (!agentId) {
-      LoggerProxy.error('Cannot subscribe wxApp mute sync: agentId unavailable', {
-        module: CC_FILE,
-        method: METHODS.SYNC_WXAPP_MUTE_FROM_MERCURY,
-      });
+      this.recordBestEffort(() =>
+        LoggerProxy.error('Cannot subscribe wxApp mute sync: agentId unavailable', {
+          module: CC_FILE,
+          method: METHODS.SYNC_WXAPP_MUTE_FROM_MERCURY,
+        })
+      );
 
-      this.metricsManager.trackEvent(
-        METRIC_EVENT_NAMES.WXAPP_MERCURY_SUBSCRIBE_FAILED,
-        {error: 'agentId unavailable', mercurySubscribed: false},
-        ['operational', 'behavioral']
+      this.recordBestEffort(() =>
+        this.metricsManager.trackEvent(
+          METRIC_EVENT_NAMES.WXAPP_MERCURY_SUBSCRIBE_FAILED,
+          {error: 'agentId unavailable', mercurySubscribed: false},
+          ['operational', 'behavioral']
+        )
       );
 
       return;
@@ -2321,17 +5025,21 @@ export default class ContactCenter extends WebexPlugin implements IContactCenter
         this.taskManager.applyWxAppMuteStateFromSync(callId, muted);
       });
     } catch (error) {
-      LoggerProxy.error(`Failed to ensure wxApp Mercury mute sync: ${error}`, {
-        module: CC_FILE,
-        method: METHODS.SYNC_WXAPP_MUTE_FROM_MERCURY,
-      });
-      this.metricsManager.trackEvent(
-        METRIC_EVENT_NAMES.WXAPP_MERCURY_SUBSCRIBE_FAILED,
-        {
-          error: error instanceof Error ? error.toString() : String(error),
-          mercurySubscribed: false,
-        },
-        ['operational', 'behavioral']
+      this.recordBestEffort(() =>
+        LoggerProxy.error(`Failed to ensure wxApp Mercury mute sync: ${error}`, {
+          module: CC_FILE,
+          method: METHODS.SYNC_WXAPP_MUTE_FROM_MERCURY,
+        })
+      );
+      this.recordBestEffort(() =>
+        this.metricsManager.trackEvent(
+          METRIC_EVENT_NAMES.WXAPP_MERCURY_SUBSCRIBE_FAILED,
+          {
+            error: error instanceof Error ? error.toString() : String(error),
+            mercurySubscribed: false,
+          },
+          ['operational', 'behavioral']
+        )
       );
       this.wxAppTelephonyMercurySync.unsubscribe();
       await this.releaseWxAppMercuryResources();
@@ -2354,15 +5062,17 @@ export default class ContactCenter extends WebexPlugin implements IContactCenter
     const userId = this.$webex.internal.device?.userId;
     if (!userId) {
       if (enable && this.isWxBetterTogetherEnabled()) {
-        this.metricsManager.trackEvent(
-          METRIC_EVENT_NAMES.WXAPP_USERSUB_PUBLISH_FAILED,
-          {
-            enableWxBetterTogether: true,
-            usersubPublished: this.webexCrossClientService.isAnswerCallsStateActive(),
-            skipReason: 'user_id_unavailable',
-            error: 'User ID is unavailable for cross-client publish',
-          },
-          ['operational', 'behavioral']
+        this.recordBestEffort(() =>
+          this.metricsManager.trackEvent(
+            METRIC_EVENT_NAMES.WXAPP_USERSUB_PUBLISH_FAILED,
+            {
+              enableWxBetterTogether: true,
+              usersubPublished: this.webexCrossClientService.isAnswerCallsStateActive(),
+              skipReason: 'user_id_unavailable',
+              error: 'User ID is unavailable for cross-client publish',
+            },
+            ['operational', 'behavioral']
+          )
         );
       }
 
@@ -2385,7 +5095,8 @@ export default class ContactCenter extends WebexPlugin implements IContactCenter
    * @private
    */
   private setupEventListeners() {
-    this.services.connectionService.on('connectionLost', this.handleConnectionLost.bind(this));
+    this.services.connectionService.off('connectionLost', this.handleConnectionLost);
+    this.services.connectionService.on('connectionLost', this.handleConnectionLost);
   }
 
   /**
@@ -2407,38 +5118,98 @@ export default class ContactCenter extends WebexPlugin implements IContactCenter
    * @param {ConnectionLostDetails} msg Connection lost details
    * @private
    */
-  private async handleConnectionLost(msg: ConnectionLostDetails): Promise<void> {
+  private handleConnectionLost = async (msg: ConnectionLostDetails): Promise<void> => {
     if (msg.isConnectionLost) {
       // TODO: Emit an event saying connection is lost
-      LoggerProxy.log('event=handleConnectionLost | Connection lost', {
-        module: CC_FILE,
-        method: METHODS.HANDLE_CONNECTION_LOST,
-      });
+      this.recordBestEffort(() =>
+        LoggerProxy.log('event=handleConnectionLost | Connection lost', {
+          module: CC_FILE,
+          method: METHODS.HANDLE_CONNECTION_LOST,
+        })
+      );
     } else if (msg.isSocketReconnected) {
       // TODO: Emit an event saying connection is re-estabilished
-      LoggerProxy.log(
-        'event=handleConnectionReconnect | Connection reconnected attempting to request silent relogin',
-        {module: CC_FILE, method: METHODS.HANDLE_CONNECTION_LOST}
+      this.recordBestEffort(() =>
+        LoggerProxy.log(
+          'event=handleConnectionReconnect | Connection reconnected attempting to request silent relogin',
+          {module: CC_FILE, method: METHODS.HANDLE_CONNECTION_LOST}
+        )
       );
-      if (this.$config && this.$config.allowAutomatedRelogin) {
-        await this.silentRelogin();
+      if (
+        this.$config?.allowAutomatedRelogin &&
+        !this.pendingRegistration &&
+        !this.suppressAutomaticRelogin &&
+        ['idle', 'ready'].includes(this.recoveryPhase)
+      ) {
+        const registration = this.registrationGeneration;
+        const generation = this.recoveryGeneration;
+        const signal = this.registrationAbortController?.signal;
+        try {
+          await this.silentRelogin();
+        } catch (error) {
+          if (
+            registration !== this.registrationGeneration ||
+            generation !== this.recoveryGeneration ||
+            signal?.aborted
+          )
+            return;
+          const failure = normalizeRecoveryFailure(error);
+          if (failure.status === 401 || failure.status === 403) this.handleRecoveryTerminal(error);
+        }
       }
     }
-  }
+  };
 
   /**
    * Handles silent relogin after registration completion
    * @private
    */
-  private async silentRelogin(): Promise<void> {
-    LoggerProxy.log('Starting silent relogin process', {
-      module: CC_FILE,
-      method: METHODS.SILENT_RELOGIN,
-    });
+  private async silentRelogin(initialRegistration = false): Promise<void> {
+    const registration = this.registrationGeneration;
+    const generation = this.recoveryGeneration;
+    const station = this.stationRevision;
+    const orgId = this.$webex.credentials.getOrgId();
+    const profile = this.agentConfig;
+    if (!initialRegistration) {
+      const cancelled = this.cancelAutoAvailable();
+      if (cancelled) {
+        const phase = this.recoveryPhase;
+        this.setRecoveryPhase('cancelled');
+        this.publishRegionState(cancelled);
+        if (!this.isCurrentStation(registration, station, orgId, profile))
+          throw createRegionRecoveryError('RECOVERY_INTERRUPTED');
+        this.setRecoveryPhase(phase);
+      }
+    }
+    this.recordBestEffort(() =>
+      LoggerProxy.log('Starting silent relogin process', {
+        module: CC_FILE,
+        method: METHODS.SILENT_RELOGIN,
+      })
+    );
 
     try {
-      const reLoginResponse = await this.services.agent.reload();
-      this.updateWellnessSession(reLoginResponse.data.agentSessionId);
+      this.assertRecoveryAdmission('session');
+      if (
+        this.interruptedTaskGeneration !== undefined &&
+        !this.startTaskSession(
+          () =>
+            this.isCurrentStation(registration, station, orgId, profile) &&
+            generation === this.recoveryGeneration
+        )
+      )
+        throw createRegionRecoveryError('RECOVERY_INTERRUPTED');
+      const reLoginResponse = await this.services.agent.reload(undefined, {
+        generation: this.recoveryGeneration,
+        signal: this.registrationAbortController?.signal,
+      });
+      if (!this.isCurrentStation(registration, station, orgId, profile)) {
+        throw createRegionRecoveryError('RECOVERY_INTERRUPTED');
+      }
+      this.assertRecoveryAdmission('session');
+      this.rememberAcceptedStation({source: 'reload', response: reLoginResponse});
+      if (!initialRegistration && this.registrationAbortController)
+        this.resumeRtd(this.registrationAbortController.signal);
 
       const {
         agentId,
@@ -2448,52 +5219,79 @@ export default class ContactCenter extends WebexPlugin implements IContactCenter
         lastStateChangeTimestamp,
         lastIdleCodeChangeTimestamp,
       } = reLoginResponse.data;
-      let {auxCodeId} = reLoginResponse.data;
+      const {auxCodeId} = reLoginResponse.data;
+      this.agentConfig.lastStateAuxCodeId = auxCodeId;
       this.agentConfig.lastStateChangeTimestamp = lastStateChangeTimestamp;
       this.agentConfig.lastIdleCodeChangeTimestamp = lastIdleCodeChangeTimestamp;
       this.agentConfig.currentTeamId = reLoginResponse.data.teamId;
-      await this.handleDeviceType(deviceType as LoginOption, dn);
+      const acceptedPayload = this.acceptedStation?.payload;
+      if (acceptedPayload)
+        await this.handleDeviceType(
+          acceptedPayload.deviceType as LoginOption,
+          acceptedPayload.dialNumber
+        );
+      else if (Object.values(LoginOption).includes(deviceType as LoginOption))
+        await this.handleDeviceType(deviceType as LoginOption, dn);
+
+      if (!this.isCurrentStation(registration, station, orgId, profile))
+        throw createRegionRecoveryError('RECOVERY_INTERRUPTED');
+      this.assertRecoveryAdmission('session');
 
       if (lastStateChangeReason === 'agent-wss-disconnect') {
-        LoggerProxy.log(
-          'event=requestAutoStateChange | Requesting state change to available on socket reconnect',
-          {module: CC_FILE, method: METHODS.SILENT_RELOGIN}
+        this.recordBestEffort(() =>
+          LoggerProxy.log(
+            'event=requestAutoStateChange | Requesting state change to available on socket reconnect',
+            {module: CC_FILE, method: METHODS.SILENT_RELOGIN}
+          )
         );
-        auxCodeId = AGENT_STATE_AVAILABLE_ID;
         const stateChangeData: StateChange = {
           state: AGENT_STATE_AVAILABLE,
-          auxCodeId,
+          auxCodeId: AGENT_STATE_AVAILABLE_ID,
           lastStateChangeReason,
           agentId,
         };
         try {
-          const agentStatusResponse = (await this.setAgentState(
-            stateChangeData
-          )) as StateChangeSuccess;
-          this.agentConfig.lastStateChangeTimestamp =
-            agentStatusResponse.data.lastStateChangeTimestamp;
-
-          this.agentConfig.lastIdleCodeChangeTimestamp =
-            agentStatusResponse.data.lastIdleCodeChangeTimestamp;
+          const dispatched = await this.performAgentStateChange(stateChangeData, {
+            source: 'relogin-auto',
+            intentRevision: this.stateIntentRevision,
+            stationRevision: this.stationRevision,
+            generation: this.recoveryGeneration,
+            signal: this.commandController?.signal,
+          });
+          if (dispatched.kind === 'not-dispatched') throw dispatched.error;
         } catch (error) {
-          LoggerProxy.error(
-            `event=requestAutoStateChange | Error requesting state change to available on socket reconnect: ${error}`,
-            {module: CC_FILE, method: METHODS.SILENT_RELOGIN}
+          this.recordBestEffort(() =>
+            LoggerProxy.error(
+              `event=requestAutoStateChange | Error requesting state change to available on socket reconnect: ${error}`,
+              {module: CC_FILE, method: METHODS.SILENT_RELOGIN}
+            )
           );
         }
       }
-      this.agentConfig.lastStateAuxCodeId = auxCodeId;
+      if (!this.isCurrentStation(registration, station, orgId, profile))
+        throw createRegionRecoveryError('RECOVERY_INTERRUPTED');
+      this.assertRecoveryAdmission('session');
       this.agentConfig.isAgentLoggedIn = true;
 
       await this.ensureWxAppPostStationLogin();
 
-      LoggerProxy.log(
-        `Silent relogin process completed successfully with login Option: ${reLoginResponse.data.deviceType} teamId: ${reLoginResponse.data.teamId}`,
-        {
-          module: CC_FILE,
-          method: METHODS.SILENT_RELOGIN,
-          trackingId: reLoginResponse.trackingId,
-        }
+      if (!this.isCurrentStation(registration, station, orgId, profile))
+        throw createRegionRecoveryError('RECOVERY_INTERRUPTED');
+      this.assertRecoveryAdmission('session');
+      if (initialRegistration) {
+        this.setRecoveryPhase('ready');
+        this.publishRegionState(this.buildRegionState('ready', 'initial-login'));
+      }
+
+      this.recordBestEffort(() =>
+        LoggerProxy.log(
+          `Silent relogin process completed successfully with login Option: ${reLoginResponse.data.deviceType} teamId: ${reLoginResponse.data.teamId}`,
+          {
+            module: CC_FILE,
+            method: METHODS.SILENT_RELOGIN,
+            trackingId: reLoginResponse.trackingId,
+          }
+        )
       );
     } catch (error) {
       const {reason, error: detailedError} = getErrorDetails(
@@ -2502,13 +5300,19 @@ export default class ContactCenter extends WebexPlugin implements IContactCenter
         CC_FILE
       );
       if (reason === 'AGENT_NOT_FOUND') {
-        LoggerProxy.log('Agent not found during relogin, handling silently', {
-          module: CC_FILE,
-          method: METHODS.SILENT_RELOGIN,
-        });
+        this.recordBestEffort(() =>
+          LoggerProxy.log('Agent not found during relogin, handling silently', {
+            module: CC_FILE,
+            method: METHODS.SILENT_RELOGIN,
+          })
+        );
 
         return;
       }
+      // Keep the structured HTTP classification across the public Error translation.
+      const {status} = normalizeRecoveryFailure(error);
+      if (status !== undefined && !isRegionRecoveryError(error))
+        Object.assign(detailedError, {statusCode: status});
       throw detailedError;
     }
   }
@@ -2518,32 +5322,59 @@ export default class ContactCenter extends WebexPlugin implements IContactCenter
    * Configures services and settings based on the login device type
    * @param {LoginOption} deviceType The type of device being used for login
    * @param {string} dn The dial number associated with the device
+   * @param {'replace' | 'preserve'} calling Ordinary registration or DR line preservation policy
    * @returns {Promise<void>}
    * @private
    */
-  private async handleDeviceType(deviceType: LoginOption, dn: string): Promise<void> {
+  private async handleDeviceType(
+    deviceType: LoginOption,
+    dn: string,
+    calling: 'replace' | 'preserve' = 'replace'
+  ): Promise<void> {
     this.webCallingService.setLoginOption(deviceType);
     this.webCallingService.setBrowserVoiceRequired(this.isBrowserVoiceRequired(deviceType));
     this.agentConfig.deviceType = deviceType;
     switch (deviceType) {
       case LoginOption.BROWSER:
-        if (this.isWebRTCRegistrationDisabled()) {
-          LoggerProxy.info(
-            'Skipping web calling line registration because disableWebRTCRegistration is enabled',
-            {
-              module: CC_FILE,
-              method: METHODS.HANDLE_DEVICE_TYPE,
-            }
+        // Ordinary relogin replaces the line even when the profile does not require browser voice.
+        if (
+          this.isWebRTCRegistrationDisabled() ||
+          (calling === 'preserve' && !this.isBrowserVoiceRequired(deviceType))
+        ) {
+          this.recordBestEffort(() =>
+            LoggerProxy.info(
+              this.isWebRTCRegistrationDisabled()
+                ? 'Skipping web calling line registration because disableWebRTCRegistration is enabled'
+                : 'Skipping web calling line registration because browser voice is not required',
+              {
+                module: CC_FILE,
+                method: METHODS.HANDLE_DEVICE_TYPE,
+              }
+            )
           );
           break;
         }
         try {
-          await this.webCallingService.registerWebCallingLine();
+          if (calling === 'preserve') {
+            try {
+              await this.webCallingService.ensureWebCallingLine(this.commandController?.signal);
+            } catch {
+              // The calling owner reports voice failures independently of station acceptance.
+              this.recordBestEffort(() =>
+                LoggerProxy.error('Unexpected web calling ensure failure', {
+                  module: CC_FILE,
+                  method: METHODS.HANDLE_DEVICE_TYPE,
+                })
+              );
+            }
+          } else await this.webCallingService.registerWebCallingLine();
         } catch (error) {
-          LoggerProxy.error(`Error registering web calling line: ${error}`, {
-            module: CC_FILE,
-            method: METHODS.HANDLE_DEVICE_TYPE,
-          });
+          this.recordBestEffort(() =>
+            LoggerProxy.error(`Error registering web calling line: ${error}`, {
+              module: CC_FILE,
+              method: METHODS.HANDLE_DEVICE_TYPE,
+            })
+          );
           throw error;
         }
         break;
@@ -2553,10 +5384,12 @@ export default class ContactCenter extends WebexPlugin implements IContactCenter
         this.agentConfig.dn = dn;
         break;
       default:
-        LoggerProxy.error(`Unsupported device type: ${deviceType}`, {
-          module: CC_FILE,
-          method: METHODS.HANDLE_DEVICE_TYPE,
-        });
+        this.recordBestEffort(() =>
+          LoggerProxy.error(`Unsupported device type: ${deviceType}`, {
+            module: CC_FILE,
+            method: METHODS.HANDLE_DEVICE_TYPE,
+          })
+        );
         throw new Error(`Unsupported device type: ${deviceType}`);
     }
   }
@@ -2670,6 +5503,7 @@ export default class ContactCenter extends WebexPlugin implements IContactCenter
    * ```
    */
   public async startOutdial(destination: string, origin: string): Promise<TaskResponse> {
+    this.assertRecoveryAdmission('command');
     LoggerProxy.info('Starting outbound dial', {
       module: CC_FILE,
       method: METHODS.START_OUTDIAL,
@@ -2752,6 +5586,7 @@ export default class ContactCenter extends WebexPlugin implements IContactCenter
    * ```
    */
   public async acceptPreviewContact(payload: PreviewContactPayload): Promise<TaskResponse> {
+    this.assertRecoveryAdmission('command');
     LoggerProxy.info('Accepting campaign preview contact', {
       module: CC_FILE,
       method: METHODS.ACCEPT_PREVIEW_CONTACT,
@@ -2824,6 +5659,7 @@ export default class ContactCenter extends WebexPlugin implements IContactCenter
    * ```
    */
   public async skipPreviewContact(payload: PreviewContactPayload): Promise<TaskResponse> {
+    this.assertRecoveryAdmission('command');
     const task = this.taskManager.getTask(payload.interactionId);
     if (task?.data?.interaction?.callProcessingDetails?.campaignPreviewSkipDisabled === 'true') {
       LoggerProxy.warn('Skip action is disabled for this campaign preview contact', {
@@ -2902,6 +5738,7 @@ export default class ContactCenter extends WebexPlugin implements IContactCenter
    * ```
    */
   public async removePreviewContact(payload: PreviewContactPayload): Promise<TaskResponse> {
+    this.assertRecoveryAdmission('command');
     const task = this.taskManager.getTask(payload.interactionId);
     if (task?.data?.interaction?.callProcessingDetails?.campaignPreviewRemoveDisabled === 'true') {
       LoggerProxy.warn('Remove action is disabled for this campaign preview contact', {
@@ -3135,6 +5972,7 @@ export default class ContactCenter extends WebexPlugin implements IContactCenter
    * @public
    */
   public async updateAgentProfile(data: AgentProfileUpdate): Promise<UpdateDeviceTypeResponse> {
+    this.assertRecoveryAdmission('command');
     this.metricsManager.timeEvent([
       METRIC_EVENT_NAMES.AGENT_DEVICE_TYPE_UPDATE_SUCCESS,
       METRIC_EVENT_NAMES.AGENT_DEVICE_TYPE_UPDATE_FAILED,

@@ -1,6 +1,7 @@
 import Task from '../../../../../src/services/task/Task';
 import {
   TaskData,
+  CONSULT_TRANSFER_DESTINATION_TYPE,
   DESTINATION_TYPE,
   TASK_EVENTS,
   TASK_CHANNEL_TYPE,
@@ -10,8 +11,10 @@ import {
   AISummaryResponse,
 } from '../../../../../src/services/task/types';
 import {TaskEvent} from '../../../../../src/services/task/state-machine';
+import {computeUIControls} from '../../../../../src/services/task/state-machine/uiControlsComputer';
 import {ENTRY_POINT_TRANSFER_DESTINATION_TYPE} from '../../../../../src/services/task/constants';
 import LoggerProxy from '../../../../../src/logger-proxy';
+import WebexRequest from '../../../../../src/services/core/WebexRequest';
 import {createTaskData} from './taskTestUtils';
 import {AIAssistantEventName} from '../../../../../src/types';
 import {AI_SUMMARY_ERROR_CODES} from '../../../../../src/constants';
@@ -27,7 +30,7 @@ import {
   createDeferred,
   flushEventLoopTurn,
 } from '../../../fixtures/aiSummaryTestUtils';
-import type ApiAIAssistant from '../../../../../src/services/ApiAiAssistant';
+import ApiAIAssistant from '../../../../../src/services/ApiAiAssistant';
 
 const AI_SUMMARY_TRANSPORT_ERROR_CODES = {
   VALIDATION_FAILED: 'AI_SUMMARY_TRANSPORT_VALIDATION_FAILED',
@@ -208,6 +211,7 @@ jest.mock('../../../../../src/services/task/state-machine/uiControlsComputer', (
 
   return {
     __esModule: true,
+    disableTaskUIControls: jest.requireActual('../../../../../src/services/task/state-machine/uiControlsComputer').disableTaskUIControls,
     computeUIControls: jest.fn((state) => {
       const controls = createDefaultControls();
       if (state === 'CONFERENCING') {
@@ -239,8 +243,10 @@ jest.mock('../../../../../src/services/task/TaskUtils', () => ({
 }));
 
 jest.mock('../../../../../src/services/core/Utils', () => ({
+  ...jest.requireActual('../../../../../src/services/core/Utils'),
   getErrorDetails: jest.fn((_error, method) => ({
-    error: new Error(`Error while performing ${method}`),
+    error: jest.requireActual('../../../../../src/services/core/Utils').isRegionRecoveryError(_error)
+      ? _error : new Error(`Error while performing ${method}`),
   })),
 }));
 
@@ -248,6 +254,7 @@ jest.mock('../../../../../src/metrics/MetricsManager', () => {
   const metricsInstance = {
     trackEvent: jest.fn(),
     timeEvent: jest.fn(),
+    cancelTimedEvent: jest.fn(),
   };
   const MetricsManager = jest.fn();
 
@@ -274,7 +281,7 @@ jest.mock('../../../../../src/logger-proxy', () => ({
 jest.mock('../../../../../src/services/core/WebexRequest', () => ({
   __esModule: true,
   default: {
-    getInstance: jest.fn().mockReturnValue({uploadLogs: jest.fn()}),
+    getInstance: jest.fn().mockReturnValue({uploadLogs: jest.fn().mockResolvedValue(undefined)}),
   },
 }));
 
@@ -1057,6 +1064,16 @@ const summaryRequestCases: Array<{
 
 describe('Task AI summary APIs', () => {
   const dummyContact = {} as any;
+  const createSummaryCoordinator = () => {
+    const request = jest.fn();
+    const coordinator = new ApiAIAssistant({
+      credentials: {getOrgId: () => 'org-1'},
+      internal: {services: {get: () => 'https://api.wxcc-us1.cisco.com'}},
+      request,
+    } as any);
+
+    return {coordinator, request};
+  };
   const injectSummaryDependencies = (
     task: DummyTask,
     apiAIAssistant: any,
@@ -1295,6 +1312,308 @@ describe('Task AI summary APIs', () => {
   afterEach(() => {
     jest.useRealTimers();
     jest.restoreAllMocks();
+  });
+
+  describe.each([
+    {
+      label: 'post-call',
+      createPayload: createPostCallResponsePayload,
+      invoke: (task: DummyTask, response: AISummaryResponse) =>
+        task.sendPostCallSummaryResponse(response),
+      eventName: AIAssistantEventName.POST_CALL_SUMMARY_RESPONSE,
+      timedEvents: [
+        METRIC_EVENT_NAMES.AI_SUMMARY_POST_CALL_RESPONSE_SUCCESS,
+        METRIC_EVENT_NAMES.AI_SUMMARY_POST_CALL_RESPONSE_FAILED,
+      ],
+    },
+    ...(['CONSULT', 'TRANSFER'] as const).map((action) => ({
+      label: `${action} mid-call`,
+      createPayload: createMidCallResponsePayload,
+      invoke: (task: DummyTask, response: AISummaryResponse) =>
+        task.sendMidCallSummaryResponse(response, action),
+      eventName:
+        action === 'CONSULT'
+          ? AIAssistantEventName.MID_CALL_CONSULT_SUMMARY_RESPONSE
+          : AIAssistantEventName.MID_CALL_TRANSFER_SUMMARY_RESPONSE,
+      timedEvents: [
+        METRIC_EVENT_NAMES.AI_SUMMARY_MID_CALL_RESPONSE_SUCCESS,
+        METRIC_EVENT_NAMES.AI_SUMMARY_MID_CALL_RESPONSE_FAILED,
+      ],
+    })),
+  ])(
+    'T-010 summary response recovery guards: $label',
+    ({createPayload, invoke, eventName, timedEvents}) => {
+      const {createRegionRecoveryError} = jest.requireActual(
+        '../../../../../src/services/core/Utils'
+      );
+      let task: DummyTask;
+      let adapter: {sendEvent: jest.Mock};
+      let metrics: ReturnType<typeof spyOnAISummaryMetrics>;
+      let parent: AbortController;
+      let admission: jest.Mock;
+
+      beforeEach(() => {
+        task = new DummyTask(dummyContact, createAISummaryTaskData());
+        ({adapter} = createSummaryMocks(task));
+        metrics = spyOnAISummaryMetrics(task);
+        parent = new AbortController();
+        admission = jest.fn();
+        task.bindRecoveryGuard({
+          generation: 1,
+          signal: parent.signal,
+          assertCommandAllowed: admission,
+        });
+      });
+
+      it.each(['RECOVERY_INTERRUPTED', 'STALE_TASK'] as const)(
+        'rejects admission with %s before sending or starting metrics',
+        async (reason) => {
+          if (reason === 'STALE_TASK') {
+            task.invalidateForRegionRecovery();
+          } else {
+            task.interruptOperations(() => createRegionRecoveryError(reason));
+          }
+
+          await expect(invoke(task, createPayload())).rejects.toMatchObject({data: {reason}});
+
+          expect(adapter.sendEvent).not.toHaveBeenCalled();
+          expect(metrics.timeEvent).not.toHaveBeenCalled();
+          expect(metrics.trackEvent).not.toHaveBeenCalled();
+          expect(task['taskOperations'].size).toBe(0);
+        }
+      );
+
+      it('rechecks ownership revoked during payload preparation immediately before dispatch', async () => {
+        const payload = createPayload();
+        const revoked = createRegionRecoveryError('STALE_TASK');
+        const prepareSummary = jest.fn(() => {
+          // The wrapper admitted this operation before the response payload was read.
+          expect(admission).toHaveBeenCalledTimes(1);
+          admission.mockImplementation(() => {
+            throw revoked;
+          });
+
+          return payload.summary;
+        });
+        const response = {
+          ...payload,
+          get summary() {
+            return prepareSummary();
+          },
+        };
+
+        await expect(invoke(task, response)).rejects.toBe(revoked);
+
+        expect(prepareSummary).toHaveBeenCalledTimes(1);
+        expect(parent.signal.aborted).toBe(false);
+        expect(metrics.timeEvent.mock.calls).toEqual([[timedEvents]]);
+        expect(adapter.sendEvent).not.toHaveBeenCalled();
+        expect(metrics.trackEvent).not.toHaveBeenCalled();
+        expect(task['taskOperations'].size).toBe(0);
+      });
+
+      it.each(['resolve', 'reject'] as const)(
+        'promptly rejects on parent abort and ignores an abandoned send that later %ss',
+        async (late) => {
+          const send = createDeferred<void>();
+          adapter.sendEvent.mockReturnValueOnce(send.promise);
+          const addParent = jest.spyOn(parent.signal, 'addEventListener');
+          const removeParent = jest.spyOn(parent.signal, 'removeEventListener');
+          const addScope = jest.spyOn(AbortSignal.prototype, 'addEventListener');
+          const fulfilled = jest.fn();
+          const rejected = jest.fn((error) => error);
+          const observed = invoke(task, createPayload()).then(fulfilled, rejected);
+          const scopes = [...task['taskOperations']];
+
+          expect(scopes).toHaveLength(1);
+          const [scope] = scopes;
+          const scopeListeners = addScope.mock.calls
+            .filter((_call, index) => addScope.mock.instances[index] === scope.signal)
+            .map(([event, listener]) => [event, listener]);
+          const removeScope = jest.spyOn(scope.signal, 'removeEventListener');
+          expect(scopeListeners).toEqual([['abort', expect.any(Function)]]);
+          expect(addParent.mock.calls).toEqual([['abort', expect.any(Function), {once: true}]]);
+          expect(adapter.sendEvent).toHaveBeenCalledTimes(1);
+          expect(adapter.sendEvent.mock.calls[0][3]).toBe(eventName);
+          expect(metrics.timeEvent.mock.calls).toEqual([[timedEvents]]);
+
+          parent.abort(createRegionRecoveryError('RECOVERY_INTERRUPTED'));
+          await flushEventLoopTurn();
+
+          // The send is still pending: cancellation must settle the public action on its own.
+          expect(rejected).toHaveBeenCalledTimes(1);
+          expect(fulfilled).not.toHaveBeenCalled();
+          expect(await observed).toBe(scope.signal.reason);
+          expect(scope.signal.reason).toMatchObject({data: {reason: 'RECOVERY_INTERRUPTED'}});
+          expect(task['taskOperations'].size).toBe(0);
+          expect(removeScope.mock.calls).toEqual(scopeListeners);
+          expect(removeParent.mock.calls).toEqual(
+            addParent.mock.calls.map(([event, listener]) => [event, listener])
+          );
+          expect(task['metricsManager'].cancelTimedEvent).toHaveBeenCalledTimes(1);
+          expect(task['metricsManager'].cancelTimedEvent).toHaveBeenCalledWith(timedEvents);
+          expect(metrics.trackEvent).not.toHaveBeenCalled();
+
+          // Do not attach a fixture catch: the abandoned action must observe a late failure.
+          if (late === 'resolve') send.resolve(undefined);
+          else send.reject(new Error('late summary response failure'));
+          await flushEventLoopTurn();
+
+          expect(rejected).toHaveBeenCalledTimes(1);
+          expect(fulfilled).not.toHaveBeenCalled();
+          expect(adapter.sendEvent).toHaveBeenCalledTimes(1);
+          expect(metrics.trackEvent).not.toHaveBeenCalled();
+          expect(task['metricsManager'].cancelTimedEvent).toHaveBeenCalledTimes(1);
+          expect(task['taskOperations'].size).toBe(0);
+          expect(removeScope.mock.calls).toEqual(scopeListeners);
+          expect(removeParent).toHaveBeenCalledTimes(1);
+        }
+      );
+
+      it.each(['resolve', 'reject'] as const)(
+        'rechecks ownership after a pending send %ss without relying on parent abort',
+        async (late) => {
+          const send = createDeferred<void>();
+          adapter.sendEvent.mockReturnValueOnce(send.promise);
+          const result = invoke(task, createPayload());
+          const revoked = createRegionRecoveryError('STALE_TASK');
+          const rejected = expect(result).rejects.toBe(revoked);
+          expect(adapter.sendEvent).toHaveBeenCalledTimes(1);
+          expect(adapter.sendEvent.mock.calls[0][3]).toBe(eventName);
+          expect(metrics.timeEvent.mock.calls).toEqual([[timedEvents]]);
+          expect(task['taskOperations'].size).toBe(1);
+
+          admission.mockImplementation(() => {
+            throw revoked;
+          });
+          if (late === 'resolve') send.resolve(undefined);
+          else send.reject(new Error('summary response failure after revocation'));
+          await rejected;
+
+          // The wrapper's final admission check alone would allow a response metric first.
+          expect(parent.signal.aborted).toBe(false);
+          expect(metrics.trackEvent).not.toHaveBeenCalled();
+          expect(task['taskOperations'].size).toBe(0);
+        }
+      );
+    }
+  );
+
+  describe.each([
+    {eventType: 'POST_CALL_SUMMARY', eventName: AIAssistantEventName.GET_POST_CALL_SUMMARY,
+      invoke: (task: DummyTask) => task.requestPostCallSummary(),
+      timedEvents: [METRIC_EVENT_NAMES.AI_SUMMARY_GET_POST_CALL_SUCCESS,
+        METRIC_EVENT_NAMES.AI_SUMMARY_GET_POST_CALL_FAILED]},
+    {eventType: 'MID_CALL_SUMMARY', eventName: AIAssistantEventName.GET_MID_CALL_CONSULT_SUMMARY,
+      invoke: (task: DummyTask) => task.requestMidCallSummary('CONSULT'),
+      timedEvents: [METRIC_EVENT_NAMES.AI_SUMMARY_GET_MID_CALL_SUCCESS,
+        METRIC_EVENT_NAMES.AI_SUMMARY_GET_MID_CALL_FAILED]},
+  ])('T-010 Task summary signal ownership: $eventType', ({eventType, eventName, invoke, timedEvents}) => {
+    it.each(['resolve', 'reject'] as const)(
+      'interrupts only its own real coordinator request and observes late HTTP %s', async (late) => {
+        jest.useFakeTimers();
+        const {createRegionRecoveryError} = jest.requireActual('../../../../../src/services/core/Utils');
+        const flush = async () => { for (let i = 0; i < 20; i += 1) await Promise.resolve(); };
+        const {coordinator, request} = createSummaryCoordinator();
+        const http = [createDeferred<any>(), createDeferred<any>()];
+        request.mockReturnValueOnce(http[0].promise).mockReturnValueOnce(http[1].promise);
+        const parent = new AbortController();
+        const addParent = jest.spyOn(parent.signal, 'addEventListener');
+        const removeParent = jest.spyOn(parent.signal, 'removeEventListener');
+        const addSignal = jest.spyOn(AbortSignal.prototype, 'addEventListener');
+        const register = jest.spyOn(coordinator, 'requestAndWaitForRtd');
+        const tasks = ['owned', 'unrelated'].map((id) => {
+          const task = new DummyTask(dummyContact, createAISummaryTaskData({
+            interactionId: id, interaction: {mainInteractionId: id} as any,
+          }));
+          task.bindRecoveryGuard({generation: 1, signal: parent.signal, assertCommandAllowed: jest.fn()});
+          injectSummaryDependencies(task, coordinator, {
+            wrapUpSummariesEnabled: true, consultTransferSummariesEnabled: true,
+          });
+          task.setFeatureEnablement({interactionId: id, postCallEnabled: true, midCallEnabled: true});
+          return task;
+        });
+        const settled = [jest.fn((value) => value), jest.fn((value) => value)];
+        const results = tasks.map((task, index) => invoke(task).then(settled[index], settled[index]));
+        const signals = tasks.map((task) => [...task['taskOperations']][0].signal);
+        const removeSignal = signals.map((signal) => jest.spyOn(signal, 'removeEventListener'));
+        const signalListeners = signals.map((signal) => addSignal.mock.calls
+          .filter((_call, index) => addSignal.mock.instances[index] === signal)
+          .map(([event, listener]) => [event, listener]));
+        await flush();
+
+        tasks.forEach((task, index) => {
+          expect(register).toHaveBeenNthCalledWith(index + 1, {
+            signal: expect.any(AbortSignal), correlationId: task.data.interactionId,
+            rtdEventType: eventType, timeoutMs: AI_SUMMARY_DURATION_MS,
+            createTimeoutError: expect.any(Function), agentId: 'agent-1',
+            interactionId: task.data.interactionId, eventType: 'CTI_EVENT', eventName,
+            eventMetaData: {conversationId: task.data.interactionId, clientType: 'WxCC'},
+            timeout: AI_SUMMARY_DURATION_MS,
+          });
+          expect(register.mock.calls[index][0].signal).toBe(signals[index]);
+          expect(signals[index]).not.toBe(parent.signal);
+          expect(signalListeners[index]).toHaveLength(2); // Task race and RTD record.
+        });
+        expect(request).toHaveBeenCalledTimes(2);
+        const pending = coordinator['pendingRtdRequests'];
+        const ownKey = JSON.stringify([eventType, 'owned']);
+        const otherKey = JSON.stringify([eventType, 'unrelated']);
+        const ownRecord = pending.get(ownKey);
+        const otherRecord = pending.get(otherKey);
+        expect([...pending.keys()]).toEqual([ownKey, otherKey]);
+        expect(jest.getTimerCount()).toBe(2);
+        const clearTimer = jest.spyOn(global, 'clearTimeout');
+
+        tasks[0].interruptOperations(() => createRegionRecoveryError('RECOVERY_INTERRUPTED'));
+        await flush();
+
+        // Both HTTP acknowledgements and the unrelated Task are still pending.
+        expect(settled[0]).toHaveBeenCalledTimes(1);
+        expect(await results[0]).toBe(signals[0].reason);
+        expect(await results[0]).toMatchObject({data: {reason: 'RECOVERY_INTERRUPTED'}});
+        expect(parent.signal.aborted).toBe(false);
+        expect(signals.map((signal) => signal.aborted)).toEqual([true, false]);
+        expect([...pending.entries()]).toEqual([[otherKey, otherRecord]]);
+        expect(pending.get(otherKey)).toBe(otherRecord);
+        expect(clearTimer).toHaveBeenCalledWith(ownRecord.timeoutId);
+        expect(clearTimer).not.toHaveBeenCalledWith(otherRecord.timeoutId);
+        expect(jest.getTimerCount()).toBe(1);
+        expect(removeSignal[0].mock.calls).toEqual(expect.arrayContaining(signalListeners[0]));
+        expect(removeSignal[0]).toHaveBeenCalledTimes(2);
+        expect(removeSignal[1]).not.toHaveBeenCalled();
+        expect(removeParent.mock.calls).toEqual([addParent.mock.calls[0].slice(0, 2)]);
+        expect(tasks.map((task) => task['taskOperations'].size)).toEqual([0, 1]);
+        expect(tasks[0]['metricsManager'].cancelTimedEvent).toHaveBeenCalledWith(timedEvents);
+        expect(settled[1]).not.toHaveBeenCalled();
+
+        if (late === 'resolve') http[0].resolve({statusCode: 202, body: {}});
+        else http[0].reject(new Error('late owned HTTP failure'));
+        await flush();
+        expect(coordinator.resolveFromRtdEvent(eventType, 'owned', {summaryText: 'obsolete'})).toBe('not-found');
+        expect([...pending.entries()]).toEqual([[otherKey, otherRecord]]);
+        expect(pending.get(otherKey)).toBe(otherRecord);
+        expect(jest.getTimerCount()).toBe(1);
+        expect(settled[0]).toHaveBeenCalledTimes(1);
+        expect(settled[1]).not.toHaveBeenCalled();
+        expect(tasks[0]['metricsManager'].trackEvent.mock.calls
+          .filter(([name]) => timedEvents.includes(name))).toEqual([]);
+
+        const summary = {conversationId: 'unrelated', summaryText: 'current'};
+        coordinator.resolveFromRtdEvent(eventType, 'unrelated', summary);
+        await flush();
+        expect(settled[1]).not.toHaveBeenCalled();
+        http[1].resolve({statusCode: 202, body: {}});
+        await expect(results[1]).resolves.toBe(summary);
+        expect(settled[1]).toHaveBeenCalledTimes(1);
+        expect(pending.size).toBe(0);
+        expect(jest.getTimerCount()).toBe(0);
+        expect(tasks.map((task) => task['taskOperations'].size)).toEqual([0, 0]);
+        expect(removeSignal[1].mock.calls).toEqual(expect.arrayContaining(signalListeners[1]));
+        expect(removeSignal[1]).toHaveBeenCalledTimes(2);
+        expect(removeParent.mock.calls).toEqual(addParent.mock.calls.map(([event, listener]) => [event, listener]));
+      }
+    );
   });
 
   it('defines the exact AI summary operation metric names', () => {
@@ -1677,17 +1996,12 @@ describe('Task AI summary APIs', () => {
     },
   ])(
     'leaves the real coordinator idle when $label disables a request',
-    async ({invoke, inboundType, disabledCode, flags, taskData, featureEnablement}) => {
+    async ({invoke, disabledCode, flags, taskData, featureEnablement}) => {
       jest.useFakeTimers();
       const task = new DummyTask(dummyContact, taskData ?? createAISummaryTaskData());
-      const adapter: any = {
-        sendEvent: jest.fn().mockResolvedValue(undefined),
-        requestAndWaitForRtd: jest.fn(),
-        pendingRequests: new Map(),
-      };
-      const coordinator = adapter;
+      const {coordinator, request} = createSummaryCoordinator();
       const registerSpy = jest.spyOn(coordinator, 'requestAndWaitForRtd');
-      injectSummaryDependencies(task, adapter, flags);
+      injectSummaryDependencies(task, coordinator, flags);
       task.setFeatureEnablement({
         interactionId: task.data.interactionId,
         ...(featureEnablement ?? {}),
@@ -1697,8 +2011,8 @@ describe('Task AI summary APIs', () => {
         createAISummaryErrorExpectation(disabledCode)
       );
       expect(registerSpy).not.toHaveBeenCalled();
-      expect(adapter.sendEvent).not.toHaveBeenCalled();
-      expect(getPendingRequest(coordinator, inboundType, 'conversation-1')).toBeUndefined();
+      expect(request).not.toHaveBeenCalled();
+      expect(coordinator['pendingRtdRequests'].size).toBe(0);
       expect(jest.getTimerCount()).toBe(0);
     }
   );
@@ -2718,6 +3032,452 @@ describe('Task AI summary APIs', () => {
         ['operational']
       );
       expect(responseMetrics.timeEvent).toHaveBeenCalled();
+    }
+  );
+});
+
+describe('T-008 Task regional lifetime', () => {
+  const recovery = jest.requireActual('../../../../../src/services/core/Utils');
+  const interrupted = () => recovery.createRegionRecoveryError('RECOVERY_INTERRUPTED');
+  const createGuard = () => {
+    const controller = new AbortController();
+
+    return {
+      controller,
+      guard: {generation: 1, signal: controller.signal, assertCommandAllowed: jest.fn()},
+    };
+  };
+
+  it('lifetime reads bypass command admission and release captured signal listeners', async () => {
+    const {controller, guard} = createGuard();
+    guard.assertCommandAllowed.mockImplementation(() => {
+      throw recovery.createRegionRecoveryError('RECOVERY_IN_PROGRESS');
+    });
+    const task = new DummyTask({} as any, createTaskData());
+    task.bindRecoveryGuard(guard);
+    const addListener = jest.spyOn(controller.signal, 'addEventListener');
+    const removeListener = jest.spyOn(controller.signal, 'removeEventListener');
+    const operation = jest.fn(async (signal: AbortSignal) => {
+      expect(signal.aborted).toBe(false);
+      return 'read result';
+    });
+
+    await expect(task['runTaskLifetimeOperation'](operation)).resolves.toBe('read result');
+    expect(operation).toHaveBeenCalledTimes(1);
+    expect(guard.assertCommandAllowed).not.toHaveBeenCalled();
+    expect(task['taskOperations'].size).toBe(0);
+    expect(removeListener.mock.calls).toEqual(
+      addListener.mock.calls.map(([event, listener]) => [event, listener])
+    );
+
+    const pending = createDeferred<string>();
+    const result = task['runTaskLifetimeOperation'](() => pending.promise);
+    const observed = expect(result).rejects.toMatchObject({data: {reason: 'RECOVERY_INTERRUPTED'}});
+    // Rebinding cannot move an in-flight read to a new lifetime.
+    task.bindRecoveryGuard(createGuard().guard);
+    controller.abort();
+    await observed;
+    expect(task['taskOperations'].size).toBe(0);
+    expect(removeListener.mock.calls).toEqual(
+      addListener.mock.calls.map(([event, listener]) => [event, listener])
+    );
+    expect(guard.assertCommandAllowed).not.toHaveBeenCalled();
+    pending.reject(new Error('late read failure'));
+    await flushEventLoopTurn();
+    expect(task['taskOperations'].size).toBe(0);
+  });
+
+  it('pre-aborted command admission performs no backend or timing work', async () => {
+    const {controller, guard} = createGuard();
+    const contact = {end: jest.fn()};
+    const task = new DummyTask(contact, createTaskData());
+    task.bindRecoveryGuard(guard);
+    const metrics = task['metricsManager'];
+    const addListener = jest.spyOn(controller.signal, 'addEventListener');
+    controller.abort(interrupted());
+
+    const error = await task.end().catch((failure) => failure);
+
+    expect(error).toMatchObject({data: {reason: 'RECOVERY_INTERRUPTED'}});
+    expect(error).not.toBe(controller.signal.reason);
+    expect(error.data).not.toBe(controller.signal.reason.data);
+    expect(guard.assertCommandAllowed).toHaveBeenCalledTimes(1);
+    expect(contact.end).not.toHaveBeenCalled();
+    expect(metrics.timeEvent).not.toHaveBeenCalled();
+    expect(metrics.trackEvent).not.toHaveBeenCalled();
+    expect(metrics.cancelTimedEvent).not.toHaveBeenCalled();
+    expect(addListener).not.toHaveBeenCalled();
+    expect(task['taskOperations'].size).toBe(0);
+  });
+
+  it('parent abort promptly rejects each pending operation and releases its ownership', async () => {
+    const {controller, guard} = createGuard();
+    const pending = [createDeferred<any>(), createDeferred<any>()];
+    const contact = {end: jest.fn()
+      .mockReturnValueOnce(pending[0].promise)
+      .mockReturnValueOnce(pending[1].promise)};
+    const task = new DummyTask(contact, createTaskData());
+    task.bindRecoveryGuard(guard);
+    const metrics = task['metricsManager'];
+    const addListener = jest.spyOn(controller.signal, 'addEventListener');
+    const removeListener = jest.spyOn(controller.signal, 'removeEventListener');
+    const settled = jest.fn((error) => error);
+    const results = [task.end().catch(settled), task.end().catch(settled)];
+    const scopes = [...task['taskOperations']];
+    const removeScopeListeners = scopes.map((scope) =>
+      jest.spyOn(scope.signal, 'removeEventListener')
+    );
+    const timedEvents = [METRIC_EVENT_NAMES.TASK_END_SUCCESS, METRIC_EVENT_NAMES.TASK_END_FAILED];
+    expect(contact.end.mock.calls).toEqual([
+      [{interactionId: task.data.interactionId}],
+      [{interactionId: task.data.interactionId}],
+    ]);
+    expect(metrics.timeEvent.mock.calls).toEqual([[timedEvents], [timedEvents]]);
+    expect(scopes).toHaveLength(2);
+
+    controller.abort(interrupted());
+    await flushEventLoopTurn();
+
+    // Neither invalidation nor a backend settlement may supply these rejections.
+    expect(settled).toHaveBeenCalledTimes(2);
+    const [first, second] = await Promise.all(results);
+    for (const [index, error] of [first, second].entries()) {
+      expect(error).toMatchObject({data: {reason: 'RECOVERY_INTERRUPTED'}});
+      expect(error).toBe(scopes[index].signal.reason);
+      expect(error).not.toBe(controller.signal.reason);
+      expect(error.data).not.toBe(controller.signal.reason.data);
+      expect(removeScopeListeners[index].mock.calls).toEqual([['abort', expect.any(Function)]]);
+    }
+    expect(first).not.toBe(second);
+    expect(first.data).not.toBe(second.data);
+    first.data.reason = 'changed';
+    expect(second.data.reason).toBe('RECOVERY_INTERRUPTED');
+    expect(controller.signal.reason.data.reason).toBe('RECOVERY_INTERRUPTED');
+    expect(task['taskOperations'].size).toBe(0);
+    expect(removeListener.mock.calls).toEqual(
+      addListener.mock.calls.map(([event, listener]) => [event, listener])
+    );
+    expect(metrics.cancelTimedEvent.mock.calls).toEqual([[timedEvents], [timedEvents]]);
+    expect(metrics.trackEvent).not.toHaveBeenCalled();
+
+    // Leave rejection observation to the abandoned operation, rather than the fixture.
+    pending.forEach((backend) => backend.reject(new Error('late backend failure')));
+    await flushEventLoopTurn();
+    expect(settled).toHaveBeenCalledTimes(2);
+    expect(metrics.trackEvent).not.toHaveBeenCalled();
+    expect(metrics.cancelTimedEvent).toHaveBeenCalledTimes(2);
+    expect(task['taskOperations'].size).toBe(0);
+  });
+
+  it('new command admission precedes captured interruption while invalidation stays permanent', async () => {
+    const controller = new AbortController();
+    const contact = {end: jest.fn()};
+    const admission = jest.fn(() => { throw recovery.createRegionRecoveryError('RECOVERY_IN_PROGRESS'); });
+    const task = new DummyTask(contact, createTaskData());
+    task.bindRecoveryGuard({generation: 1, signal: controller.signal, assertCommandAllowed: admission});
+    controller.abort();
+    task.interruptOperations(interrupted);
+    await expect(task.end()).rejects.toMatchObject({data: {reason: 'RECOVERY_IN_PROGRESS'}});
+    admission.mockImplementation(() => undefined);
+    await expect(task.end()).rejects.toMatchObject({data: {reason: 'RECOVERY_INTERRUPTED'}});
+    task.invalidateForRegionRecovery();
+    admission.mockImplementation(() => { throw recovery.createRegionRecoveryError('RECOVERY_IN_PROGRESS'); });
+    await expect(task.end()).rejects.toMatchObject({data: {reason: 'STALE_TASK'}});
+    admission.mockImplementation(() => undefined);
+    await expect(task.end()).rejects.toMatchObject({data: {reason: 'STALE_TASK'}});
+    expect(contact.end).not.toHaveBeenCalled();
+  });
+
+  it.each(['end', 'transfer', 'wrapup'] as const)(
+    'interruptedTaskOperationObservesLateRejectionAndReleasesScope: %s',
+    async (method) => {
+      const pending = createDeferred<any>();
+      const contact = {end: jest.fn(() => pending.promise), blindTransfer: jest.fn(() => pending.promise), wrapup: jest.fn(() => pending.promise)};
+      const task = new DummyTask(contact, createTaskData());
+      task.bindRecoveryGuard(createGuard().guard);
+      const metrics = (task as any).metricsManager;
+      metrics.trackEvent.mockClear();
+      const result = method === 'transfer'
+        ? task.transfer({to: 'agent-2', destinationType: DESTINATION_TYPE.AGENT})
+        : method === 'wrapup' ? task.wrapup({wrapUpReason: 'done', auxCodeId: '1'}) : task.end();
+      const observed = result.catch((error) => error);
+      task.interruptOperations(interrupted);
+      expect((await observed).data).toEqual({reason: 'RECOVERY_INTERRUPTED'});
+      expect((task as any).taskOperations.size).toBe(0);
+      expect(metrics.cancelTimedEvent).toHaveBeenCalled();
+      const calls = metrics.trackEvent.mock.calls.length;
+      pending.reject(new Error('late backend failure'));
+      await flushEventLoopTurn();
+      expect(metrics.trackEvent).toHaveBeenCalledTimes(calls);
+      expect((task as any).taskOperations.size).toBe(0);
+    }
+  );
+
+  it('in-flight completion queued before interruption retains the operation error reason', async () => {
+    const controller = new AbortController();
+    const admission = jest.fn();
+    const task = new DummyTask({} as any, createTaskData());
+    task.bindRecoveryGuard({generation: 1, signal: controller.signal, assertCommandAllowed: admission});
+    const result = (task as any).runTaskOperation(() => Promise.resolve('old result'));
+    const rejected = expect(result).rejects.toMatchObject({data: {reason: 'RECOVERY_INTERRUPTED'}});
+    await Promise.resolve().then(() => {
+      admission.mockImplementation(() => { throw recovery.createRegionRecoveryError('RECOVERY_IN_PROGRESS'); });
+      controller.abort();
+    });
+    await rejected;
+    expect((task as any).taskOperations.size).toBe(0);
+  });
+
+  it('interruptionErrorsAreIndependent', async () => {
+    const pending = createDeferred<any>();
+    const task = new DummyTask({end: () => pending.promise, wrapup: () => pending.promise} as any, createTaskData());
+    task.bindRecoveryGuard(createGuard().guard);
+    const first = task.end().catch((error) => error);
+    const second = task.wrapup({wrapUpReason: 'done', auxCodeId: '1'}).catch((error) => error);
+    task.interruptOperations(interrupted);
+    const [a, b] = await Promise.all([first, second]);
+    expect(a).not.toBe(b);
+    expect(a.data).not.toBe(b.data);
+    a.data.reason = 'changed';
+    expect(b.data.reason).toBe('RECOVERY_INTERRUPTED');
+    pending.reject(new Error('late'));
+    await flushEventLoopTurn();
+  });
+
+  it.each([false, true])('interruptedAndStalePublicMutatorsAreInert: stale=%s', (stale) => {
+    const task = new DummyTask({} as any, createTaskData());
+    const data = task.data;
+    const actor = task.stateMachineService;
+    task.interruptOperations(interrupted);
+    if (stale) task.invalidateForRegionRecovery();
+    const send = jest.spyOn(actor, 'send');
+    const update = jest.spyOn(task as any, 'updateUiControls');
+    expect(task.updateTaskData(createTaskData({interactionId: 'replacement'}), true)).toBe(task);
+    task.sendStateMachineEvent({type: TaskEvent.ASSIGN, taskData: createTaskData()});
+    (task as any).setupAutoWrapupTimer();
+    expect(task.data).toBe(data);
+    expect(send).not.toHaveBeenCalled();
+    expect(update).not.toHaveBeenCalled();
+    expect(task.autoWrapup).toBeUndefined();
+  });
+
+  it.each([false, true])('staleControlsPreservePreStopSnapshot: throwing observer=%s', (throws) => {
+    const {getDefaultUIControls} = jest.requireActual('../../../../../src/services/task/state-machine/uiControlsComputer');
+    const controls = getDefaultUIControls();
+    controls.main.accept = {isVisible: true, isEnabled: true};
+    controls.main.keypad = {isVisible: true, isEnabled: true};
+    controls.consult.endConsult = {isVisible: true, isEnabled: true};
+    controls.consult.mute = {isVisible: true, isEnabled: true};
+    delete controls.consult.keypad;
+    controls.activeLeg = 'consult';
+    controls.consultTransferDestinations = {
+      consult: [CONSULT_TRANSFER_DESTINATION_TYPE.AGENT, CONSULT_TRANSFER_DESTINATION_TYPE.QUEUE],
+      transfer: [CONSULT_TRANSFER_DESTINATION_TYPE.QUEUE, CONSULT_TRANSFER_DESTINATION_TYPE.AGENT],
+    };
+    const before = JSON.parse(JSON.stringify(controls));
+
+    const expected = getDefaultUIControls();
+    expected.main.accept = {isVisible: true, isEnabled: false};
+    expected.main.keypad = {isVisible: true, isEnabled: false};
+    expected.consult.endConsult = {isVisible: true, isEnabled: false};
+    expected.consult.mute = {isVisible: true, isEnabled: false};
+    delete expected.consult.keypad;
+    expected.activeLeg = 'consult';
+    expected.consultTransferDestinations = {
+      consult: [CONSULT_TRANSFER_DESTINATION_TYPE.AGENT, CONSULT_TRANSFER_DESTINATION_TYPE.QUEUE],
+      transfer: [CONSULT_TRANSFER_DESTINATION_TYPE.QUEUE, CONSULT_TRANSFER_DESTINATION_TYPE.AGENT],
+    };
+
+    const task = new DummyTask({} as any, createTaskData());
+    // Deliver a complete live snapshot through the normal actor subscription.
+    (computeUIControls as jest.Mock).mockReturnValueOnce(controls);
+    task.sendStateMachineEvent({type: TaskEvent.CONFERENCE_START, taskData: task.data});
+    expect(task.uiControls).toBe(controls);
+    expect(task.uiControls).not.toEqual(getDefaultUIControls());
+    const actor = task.stateMachineService;
+    const getSnapshot = jest.spyOn(actor, 'getSnapshot');
+    getSnapshot.mockClear();
+    (computeUIControls as jest.Mock).mockClear();
+    // Attach after construction and the live transitions: only invalidation may deliver this event.
+    const observerError = new Error('controls observer failed');
+    const updated = jest.fn(() => {
+      if (throws) throw observerError;
+    });
+    task.on(TASK_EVENTS.TASK_UI_CONTROLS_UPDATED, updated);
+    if (throws) {
+      expect(() => task.invalidateForRegionRecovery()).toThrow(observerError);
+    } else {
+      task.invalidateForRegionRecovery();
+    }
+
+    expect(actor.stop).toHaveBeenCalledTimes(1);
+    expect(task.stateMachineService).toBeUndefined();
+    expect(task.state).toBeUndefined();
+    expect(task.uiControls).toEqual(expected);
+    expect(task.uiControls).not.toBe(controls);
+    expect(Object.prototype.hasOwnProperty.call(task.uiControls.consult, 'keypad')).toBe(false);
+    expect(updated.mock.calls).toEqual([[expected]]);
+    expect(updated.mock.calls[0][0]).toBe(task.uiControls);
+
+    task.invalidateForRegionRecovery();
+    (task as any).updateUiControls();
+    expect(task.uiControls).toEqual(expected);
+    expect(Object.prototype.hasOwnProperty.call(task.uiControls.consult, 'keypad')).toBe(false);
+    if (throws) {
+      expect(() => (task as any).updateUiControls(true)).toThrow(observerError);
+    } else {
+      (task as any).updateUiControls(true);
+    }
+    expect(task.uiControls).toEqual(expected);
+    expect(Object.prototype.hasOwnProperty.call(task.uiControls.consult, 'keypad')).toBe(false);
+    expect(controls).toEqual(before);
+    expect(Object.prototype.hasOwnProperty.call(controls.consult, 'keypad')).toBe(false);
+    expect(getSnapshot).not.toHaveBeenCalled();
+    expect(computeUIControls).not.toHaveBeenCalled();
+    expect(task.stateMachineService).toBeUndefined();
+    expect(actor.stop).toHaveBeenCalledTimes(1);
+    expect(updated.mock.calls).toEqual([[expected], [expected]]);
+    expect(updated.mock.calls[1][0]).toBe(task.uiControls);
+  });
+
+  describe('lifecycle caller catch diagnostics', () => {
+    const helper = require('../../../../../src/services/core/Utils').getErrorDetails;
+    const uploadLogs = WebexRequest.getInstance().uploadLogs;
+
+    describe.each([
+      {
+        method: METHODS.END,
+        dependency: 'end',
+        invoke: (task: DummyTask) => task.end(),
+      },
+      {
+        method: METHODS.WRAPUP,
+        dependency: 'wrapup',
+        invoke: (task: DummyTask) => task.wrapup({wrapUpReason: 'done', auxCodeId: '1'}),
+      },
+      {
+        method: METHODS.TRANSFER,
+        dependency: 'blindTransfer',
+        invoke: (task: DummyTask) =>
+          task.transfer({to: 'agent-2', destinationType: DESTINATION_TYPE.AGENT}),
+      },
+      {
+        method: METHODS.REQUEST_POST_CALL_SUMMARY,
+        dependency: 'requestAndWaitForRtd',
+        invoke: (task: DummyTask) => task.requestPostCallSummary(),
+      },
+      {
+        method: METHODS.REQUEST_MID_CALL_SUMMARY,
+        dependency: 'requestAndWaitForRtd',
+        invoke: (task: DummyTask) => task.requestMidCallSummary('CONSULT'),
+      },
+      {
+        method: METHODS.SEND_POST_CALL_SUMMARY_RESPONSE,
+        dependency: 'sendEvent',
+        invoke: (task: DummyTask) => task.sendPostCallSummaryResponse(createPostCallResponsePayload()),
+      },
+      {
+        method: METHODS.SEND_MID_CALL_SUMMARY_RESPONSE,
+        dependency: 'sendEvent',
+        invoke: (task: DummyTask) =>
+          task.sendMidCallSummaryResponse(createMidCallResponsePayload(), 'CONSULT'),
+      },
+    ] as const)('$method', ({method, dependency, invoke}) => {
+      it.each(['RECOVERY_INTERRUPTED', 'STALE_TASK', 'RECOVERY_IN_PROGRESS', 'REGION_RELOAD_REQUIRED'])(
+        'lifecycleCallerCatchPreservesIdentityAndReason: %s', async (reason) => {
+          const diagnostics = {trackingId: 'task-lifecycle-tracking', status: 409};
+          const error = recovery.createRegionRecoveryError(reason, diagnostics);
+          const data = error.data;
+          const contact = {end: jest.fn(), wrapup: jest.fn(), blindTransfer: jest.fn()};
+          const apiAIAssistant = {
+            aiFeature: {
+              generatedSummaries: {
+                wrapUpSummariesEnabled: true,
+                consultTransferSummariesEnabled: true,
+              },
+            },
+            requestAndWaitForRtd: jest.fn(),
+            sendEvent: jest.fn(),
+          };
+          const dependencies = {...contact, ...apiAIAssistant};
+          dependencies[dependency].mockRejectedValue(error);
+          const task = new DummyTask(
+            contact,
+            createTaskData(),
+            undefined,
+            undefined,
+            undefined,
+            apiAIAssistant as unknown as ApiAIAssistant
+          );
+          task.setFeatureEnablement({
+            interactionId: task.data.interactionId,
+            postCallEnabled: true,
+            midCallEnabled: true,
+          });
+          const admission = createGuard().guard;
+          task.bindRecoveryGuard(admission);
+          const metrics = task['metricsManager'];
+          helper.mockImplementationOnce(recovery.getErrorDetails);
+
+          await expect(invoke(task)).rejects.toBe(error);
+          await flushEventLoopTurn();
+
+          expect(dependencies[dependency]).toHaveBeenCalledTimes(1);
+          expect(admission.assertCommandAllowed).toHaveBeenCalled();
+          expect(helper.mock.calls).toEqual([[error, method, 'cc']]);
+          expect(helper.mock.results[0].value).toEqual({error, reason});
+          expect(helper.mock.results[0].value.error).toBe(error);
+          expect(error.data).toBe(data);
+          expect(error.data).toEqual({reason, ...diagnostics});
+          expect(error.message).toBe(reason);
+          expect(metrics.trackEvent).not.toHaveBeenCalled();
+          expect(LoggerProxy.error).not.toHaveBeenCalled();
+          expect(uploadLogs).not.toHaveBeenCalled();
+        }
+      );
+    });
+
+    it('ordinary end failure reaches the metric, error log and upload sinks', async () => {
+      const error = new Error('ordinary end failure');
+      const task = new DummyTask({end: jest.fn().mockRejectedValue(error)}, createTaskData());
+      task.bindRecoveryGuard(createGuard().guard);
+      helper.mockImplementationOnce(recovery.getErrorDetails);
+
+      await expect(task.end()).rejects.toThrow('Error while performing end');
+      await flushEventLoopTurn();
+
+      expect(task['metricsManager'].trackEvent).toHaveBeenCalledWith(
+        METRIC_EVENT_NAMES.TASK_END_FAILED,
+        {taskId: task.data.interactionId, requestInteractionId: task.data.interactionId},
+        ['operational', 'behavioral', 'business']
+      );
+      expect(LoggerProxy.error).toHaveBeenCalledTimes(1);
+      expect(uploadLogs).toHaveBeenCalledTimes(1);
+      expect(uploadLogs).toHaveBeenCalledWith({correlationId: undefined});
+    });
+  });
+});
+
+describe('T-009 automatic wrapup cancellation', () => {
+  const {createRegionRecoveryError} = jest.requireActual('../../../../../src/services/core/Utils');
+  const props = {autoWrapup: true, autoWrapupInterval: 100, allowCancelAutoWrapup: false, wrapUpReasonList: [{name: 'default', id: '1', isDefault: true}]};
+  it.each(['queued', 'dispatched', 'stale'])(
+    'autoWrapupAfterInterruptionNeverRearmsOrRejectsUnhandled: %s', async phase => {
+      const pending = createDeferred<any>();
+      const contact = {wrapup: jest.fn(() => pending.promise)};
+      const task = new DummyTask(contact, createTaskData({wrapUpRequired: true}), {wrapUpProps: props});
+      const callback = (task.autoWrapup as any).start.mock.calls[0][0];
+      if (phase === 'dispatched') expect(callback()).toBeUndefined();
+      task.interruptOperations(() => createRegionRecoveryError('RECOVERY_INTERRUPTED'));
+      if (phase === 'stale') task.invalidateForRegionRecovery();
+      expect(callback()).toBeUndefined();
+      (task as any).setupAutoWrapupTimer();
+      expect(task.autoWrapup).toBeUndefined();
+      expect(contact.wrapup).toHaveBeenCalledTimes(phase === 'dispatched' ? 1 : 0);
+      pending.reject(createRegionRecoveryError('RECOVERY_INTERRUPTED'));
+      // Observe a fixture with no dispatched consumer too.
+      await pending.promise.catch(() => undefined);
+      await flushEventLoopTurn();
     }
   );
 });

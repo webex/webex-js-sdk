@@ -1,5 +1,41 @@
 import {SubscribeRequest} from '../../../types';
-import type WebSocketManager from './WebSocketManager';
+import type {WebSocketManager} from './WebSocketManager';
+import type {RecoveryFailure} from '../types';
+import type {WelcomeResponse} from '../../config/types';
+
+/** Terminal transport outcomes retained for module declarations; absent from the root barrel. */
+export type ConnectionRecoveryFailureKind =
+  | 'cancelled'
+  | 'authentication-failed'
+  | 'region-mismatch'
+  | 'after-welcome-failed';
+
+/** Safe terminal rejection; never retains a cause, request or URL. */
+export type ConnectionRecoveryError = Error & {
+  data: RecoveryFailure & {kind: ConnectionRecoveryFailureKind};
+};
+
+/** Registration-owned ordinary monitoring options, retained for emitted method signatures. */
+export type ConnectionResetOptions = {
+  subscribeRequest: SubscribeRequest;
+  signal: AbortSignal;
+  onTerminalFailure: (error: ConnectionRecoveryError) => void;
+  recoverIfDisconnected?: boolean;
+};
+
+/** Regional policy is opaque to the transport scheduler. */
+export type RegionRecoveryOptions = {
+  signal: AbortSignal;
+  /** Synchronous owner check at each wait expiry, before transport admission. */
+  canAttempt?: () => boolean;
+  onScheduled: (attempt: number, retryAfterMs: number) => void;
+  onAttemptSettled?: (
+    attempt: number,
+    outcome: 'retrying' | 'terminal',
+    failure?: RecoveryFailure
+  ) => void;
+  afterWelcome: (welcome: WelcomeResponse, signal: AbortSignal) => Promise<void>;
+};
 
 /**
  * Options for initializing a connection service.

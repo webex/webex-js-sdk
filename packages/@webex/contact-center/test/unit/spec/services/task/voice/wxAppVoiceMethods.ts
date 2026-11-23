@@ -22,6 +22,18 @@ import {TaskData} from '../../../../../../src/services/task/types';
 import AnswerCallOnWebexService from '../../../../../../src/services/AnswerCallOnWebexService';
 import MetricsManager from '../../../../../../src/metrics/MetricsManager';
 import {METRIC_EVENT_NAMES} from '../../../../../../src/metrics/constants';
+import LoggerProxy from '../../../../../../src/logger-proxy';
+import WebexRequest from '../../../../../../src/services/core/WebexRequest';
+import * as Utils from '../../../../../../src/services/core/Utils';
+import * as wxAppDiagnosticLogging from '../../../../../../src/services/wxAppDiagnosticLogging';
+import {createDeferred, flushEventLoopTurn} from '../../../../fixtures/aiSummaryTestUtils';
+
+jest.mock('../../../../../../src/services/core/WebexRequest', () => ({
+  __esModule: true,
+  default: {
+    getInstance: jest.fn().mockReturnValue({uploadLogs: jest.fn().mockResolvedValue(undefined)}),
+  },
+}));
 
 const WX_APP_DEVICE = {
   deviceType: 'wxApp',
@@ -715,5 +727,265 @@ describe('runWxAppTransmitDtmf metrics', () => {
       }),
       ['operational', 'behavioral']
     );
+  });
+});
+
+describe.each([
+  ['accept', 'answerCall', METHODS.ACCEPT, METRIC_EVENT_NAMES.WXAPP_TASK_ACCEPT_FAILED],
+  ['reject', 'rejectCall', METHODS.REJECT, METRIC_EVENT_NAMES.WXAPP_TASK_DECLINE_FAILED],
+  ['toggleMute', 'muteCall', METHODS.TOGGLE_MUTE, METRIC_EVENT_NAMES.WXAPP_TASK_MUTE_FAILED],
+  ['transmitDtmf', 'transmitDtmf', METHODS.TRANSMIT_DTMF, METRIC_EVENT_NAMES.WXAPP_TASK_DTMF_FAILED],
+  ['outdialDecline', 'cancelTask', METHODS.REJECT, METRIC_EVENT_NAMES.WXAPP_TASK_DECLINE_FAILED],
+] as const)('T-008/T-009 wxApp %s regional lifetime', (operation, serviceMethod, method, failedMetric) => {
+  const uploadLogs = WebexRequest.getInstance().uploadLogs;
+  let helper: jest.SpyInstance;
+  let errorLog: jest.SpyInstance;
+  let actionLog: jest.SpyInstance;
+  let log: jest.SpyInstance;
+  let deps: WxAppVoiceDeps;
+  let lifecycle: WxAppVoiceLifecycle;
+  let dependency: jest.Mock;
+  let admission: jest.Mock;
+  let invoke: () => Promise<unknown>;
+  let onCancelCompleted: () => void;
+
+  const successMetric = {
+    accept: METRIC_EVENT_NAMES.WXAPP_TASK_ACCEPT_SUCCESS,
+    reject: METRIC_EVENT_NAMES.WXAPP_TASK_DECLINE_SUCCESS,
+    toggleMute: METRIC_EVENT_NAMES.WXAPP_TASK_MUTE_SUCCESS,
+    transmitDtmf: METRIC_EVENT_NAMES.WXAPP_TASK_DTMF_SUCCESS,
+    outdialDecline: METRIC_EVENT_NAMES.WXAPP_TASK_DECLINE_SUCCESS,
+  }[operation];
+  const action = {
+    accept: 'accept', reject: 'decline', toggleMute: 'mute', transmitDtmf: 'dtmf',
+  }[operation];
+
+  beforeEach(() => {
+    helper = jest.spyOn(Utils, 'getErrorDetails');
+    errorLog = jest.spyOn(LoggerProxy, 'error').mockImplementation();
+    log = jest.spyOn(LoggerProxy, 'log').mockImplementation();
+    actionLog = jest.spyOn(wxAppDiagnosticLogging, 'logWxAppTelephonyAction');
+    const service = makeMockService();
+    const cancelTask = jest.fn().mockResolvedValue(undefined);
+    onCancelCompleted = () => undefined;
+    dependency = serviceMethod === 'cancelTask' ? cancelTask : service[serviceMethod];
+    admission = jest.fn();
+    deps = makeDeps({
+      answerCallOnWebexService: service,
+      assertCommandAllowed: admission,
+      getTaskState: () => operation === 'toggleMute' || operation === 'transmitDtmf'
+        ? TaskState.CONNECTED : TaskState.OFFERED,
+    });
+    jest.spyOn(deps, 'setWxAppMuted');
+    lifecycle = makeLifecycle({
+      mapWxAppVoiceError: jest.fn((error, name) => mapWxAppVoiceError(error, name, 'cc')),
+    });
+    const runners = {
+      accept: () => runWxAppAccept(deps, lifecycle),
+      reject: () => runWxAppReject(deps, lifecycle),
+      toggleMute: () => runWxAppToggleMute(deps, lifecycle, {muted: true}),
+      transmitDtmf: () => runWxAppTransmitDtmf(deps, lifecycle, {dtmf: '123'}),
+      outdialDecline: () => runWxAppOutdialDecline(deps, async () => {
+        const result = await cancelTask();
+        // Cancellation is supplied by Voice, rather than a wxApp telephony helper.
+        onCancelCompleted();
+        return result;
+      }),
+    };
+    invoke = runners[operation];
+  });
+
+  afterEach(() => {
+    helper.mockRestore();
+    errorLog.mockRestore();
+    actionLog.mockRestore();
+    log.mockRestore();
+  });
+
+  function expectNoCompletionDiagnostics() {
+    expect(deps.metricsManager.trackEvent).not.toHaveBeenCalled();
+    expect(errorLog).not.toHaveBeenCalled();
+    expect(uploadLogs).not.toHaveBeenCalled();
+    expect(lifecycle.mapWxAppVoiceError).not.toHaveBeenCalled();
+  }
+
+  function expectNoFailureEffects() {
+    expectNoCompletionDiagnostics();
+    expect(deps.setWxAppMuted).not.toHaveBeenCalled();
+    expect(lifecycle.resetWxAppMuted).not.toHaveBeenCalled();
+    expect(lifecycle.syncWxAppMuteFromCallDetails).not.toHaveBeenCalled();
+  }
+
+  it.each(['RECOVERY_INTERRUPTED', 'STALE_TASK', 'RECOVERY_IN_PROGRESS', 'REGION_RELOAD_REQUIRED'])(
+    'lifecycleCallerCatchPreservesIdentityAndReason: %s', async (reason) => {
+      const diagnostics = {trackingId: 'wxapp-lifecycle-tracking', status: 409};
+      const error = Utils.createRegionRecoveryError(reason, diagnostics);
+      const data = error.data;
+      dependency.mockRejectedValue(error);
+
+      await expect(invoke()).rejects.toBe(error);
+      await flushEventLoopTurn();
+
+      expect(dependency).toHaveBeenCalledTimes(1);
+      expect(admission).toHaveBeenCalled();
+      expect(helper.mock.calls).toEqual([[error, method, 'cc']]);
+      expect(helper.mock.results[0].value).toEqual({error, reason});
+      expect(error.data).toBe(data);
+      expect(error.data).toEqual({reason, ...diagnostics});
+      expect(error.message).toBe(reason);
+      expectNoFailureEffects();
+    }
+  );
+
+  it.each(['service pending', 'inner action completed'] as const)(
+    'chainedWxAppContinuationGuarded interruption at %s', async (boundary) => {
+      const pending = createDeferred<void>();
+      dependency.mockReturnValue(pending.promise);
+      const error = Utils.createRegionRecoveryError('RECOVERY_INTERRUPTED');
+      let callsAtRetirement: unknown[][] | undefined;
+      let logsAtRetirement: unknown[][] | undefined;
+      const retire = jest.fn(() => {
+        callsAtRetirement = actionLog.mock.calls.slice();
+        logsAtRetirement = log.mock.calls.slice();
+        admission.mockImplementation(() => { throw error; });
+      });
+      if (boundary === 'inner action completed') {
+        // Let the inner post-service guard pass. Retire synchronously at its success
+        // diagnostic, before the outer runner resumes from awaiting that helper.
+        actionLog.mockImplementation((params) => {
+          if (params.phase === 'success') retire();
+        });
+        onCancelCompleted = retire;
+      }
+      const result = invoke();
+      const rejected = expect(result).rejects.toBe(error);
+      expect(dependency).toHaveBeenCalledTimes(1);
+      if (boundary === 'service pending') retire();
+      pending.resolve();
+
+      await rejected;
+      await flushEventLoopTurn();
+
+      expect(helper.mock.calls).toEqual([[error, method, 'cc']]);
+      expect(retire).toHaveBeenCalledTimes(1);
+      expect(actionLog.mock.calls).toEqual(callsAtRetirement);
+      expect(log.mock.calls).toEqual(logsAtRetirement);
+      expect(actionLog.mock.calls).toEqual(operation === 'outdialDecline' ? [] : [
+        [{action, phase: 'started', interactionId: 'interaction-1'}],
+        ...(boundary === 'inner action completed'
+          ? [[{action, phase: 'success', interactionId: 'interaction-1'}]] : []),
+      ]);
+      expectNoCompletionDiagnostics();
+      // The mute helper legitimately commits before the outer boundary is retired.
+      expect((deps.setWxAppMuted as jest.Mock).mock.calls).toEqual(
+        operation === 'toggleMute' && boundary === 'inner action completed' ? [[true]] : []
+      );
+      expect(lifecycle.resetWxAppMuted).not.toHaveBeenCalled();
+      expect(lifecycle.syncWxAppMuteFromCallDetails).not.toHaveBeenCalled();
+      if (operation === 'accept') {
+        expect((lifecycle.setWxAppAnswerPending as jest.Mock).mock.calls).toEqual([[true]]);
+        expect((lifecycle.setWxAppAcceptInFlight as jest.Mock).mock.calls).toEqual([[true]]);
+      } else {
+        expect(lifecycle.setWxAppAnswerPending).not.toHaveBeenCalled();
+        expect(lifecycle.setWxAppAcceptInFlight).not.toHaveBeenCalled();
+      }
+    }
+  );
+
+  if (operation === 'accept') {
+    it('interrupts the continuation after deferred mute sync without undoing admitted mutations', async () => {
+      const syncing = createDeferred<void>();
+      const pendingSync = createDeferred<boolean>();
+      lifecycle.syncWxAppMuteFromCallDetails = jest.fn(() => {
+        syncing.resolve();
+        return pendingSync.promise;
+      });
+      const result = invoke();
+      const error = Utils.createRegionRecoveryError('RECOVERY_INTERRUPTED');
+      const rejected = expect(result).rejects.toBe(error);
+      await syncing.promise;
+
+      expect(dependency).toHaveBeenCalledTimes(1);
+      expect(lifecycle.resetWxAppMuted).toHaveBeenCalledTimes(1);
+      expect(lifecycle.syncWxAppMuteFromCallDetails).toHaveBeenCalledTimes(1);
+      expect(actionLog.mock.calls).toEqual([
+        [{action: 'accept', phase: 'started', interactionId: 'interaction-1'}],
+        [{action: 'accept', phase: 'success', interactionId: 'interaction-1'}],
+      ]);
+      const callsAtRetirement = actionLog.mock.calls.slice();
+      const logsAtRetirement = log.mock.calls.slice();
+      admission.mockImplementation(() => { throw error; });
+      pendingSync.resolve(true);
+
+      await rejected;
+      await flushEventLoopTurn();
+
+      expect(helper.mock.calls).toEqual([[error, method, 'cc']]);
+      expectNoCompletionDiagnostics();
+      expect(actionLog.mock.calls).toEqual(callsAtRetirement);
+      expect(log.mock.calls).toEqual(logsAtRetirement);
+      expect(deps.setWxAppMuted).not.toHaveBeenCalled();
+      expect(lifecycle.resetWxAppMuted).toHaveBeenCalledTimes(1);
+      expect(lifecycle.syncWxAppMuteFromCallDetails).toHaveBeenCalledTimes(1);
+      expect((lifecycle.setWxAppAnswerPending as jest.Mock).mock.calls).toEqual([[true]]);
+      expect((lifecycle.setWxAppAcceptInFlight as jest.Mock).mock.calls).toEqual([[true]]);
+    });
+  }
+
+  it('admitted continuations complete and accept finally clears only the in-flight flag', async () => {
+    await expect(invoke()).resolves.toBeUndefined();
+
+    expect(dependency).toHaveBeenCalledTimes(1);
+    expect(admission).toHaveBeenCalled();
+    expect((deps.metricsManager.trackEvent as jest.Mock).mock.calls).toEqual([
+      [successMetric, {
+        taskId: 'interaction-1',
+        hasDeviceCallId: true,
+        hasDeviceId: true,
+        ...(operation === 'toggleMute' ? {targetMuted: true} : {}),
+        ...(operation === 'transmitDtmf' ? {dtmfLength: 3} : {}),
+        ...(['accept', 'reject', 'outdialDecline'].includes(operation)
+          ? {acceptReason: 'wxApp_offer_ready'} : {}),
+      }, ['operational', 'behavioral']],
+    ]);
+    expect(helper).not.toHaveBeenCalled();
+    expect(errorLog).not.toHaveBeenCalled();
+    expect(uploadLogs).not.toHaveBeenCalled();
+    expect((deps.setWxAppMuted as jest.Mock).mock.calls).toEqual(
+      operation === 'toggleMute' ? [[true]] : []
+    );
+    expect((lifecycle.setWxAppAcceptInFlight as jest.Mock).mock.calls).toEqual(
+      operation === 'accept' ? [[true], [false]] : []
+    );
+    expect((lifecycle.setWxAppAnswerPending as jest.Mock).mock.calls).toEqual(
+      operation === 'accept' ? [[true]] : []
+    );
+    expect(lifecycle.resetWxAppMuted).toHaveBeenCalledTimes(operation === 'accept' ? 1 : 0);
+    expect(lifecycle.syncWxAppMuteFromCallDetails).toHaveBeenCalledTimes(operation === 'accept' ? 1 : 0);
+  });
+
+  it('ordinary failure reaches the operation failure sinks', async () => {
+    const error = new Error('ordinary wxApp failure');
+    dependency.mockRejectedValue(error);
+
+    if (operation === 'outdialDecline') await expect(invoke()).rejects.toBe(error);
+    else await expect(invoke()).rejects.toThrow(`Error while performing ${method}`);
+    await flushEventLoopTurn();
+
+    expect((deps.metricsManager.trackEvent as jest.Mock).mock.calls.map(([event]) => event)).toEqual([failedMetric]);
+    expect(errorLog).toHaveBeenCalledTimes(operation === 'outdialDecline' ? 1 : 2);
+    if (operation === 'accept') {
+      expect((lifecycle.setWxAppAcceptInFlight as jest.Mock).mock.calls).toEqual([[true], [false]]);
+      expect((lifecycle.setWxAppAnswerPending as jest.Mock).mock.calls).toEqual([[true], [false]]);
+    }
+    if (operation === 'outdialDecline') {
+      // Outdial cancellation retains the original AQM error without helper mapping.
+      expect(helper).not.toHaveBeenCalled();
+      expect(uploadLogs).not.toHaveBeenCalled();
+    } else {
+      expect(helper.mock.calls).toEqual([[error, method, 'cc']]);
+      expect(uploadLogs).toHaveBeenCalledTimes(1);
+      expect(uploadLogs).toHaveBeenCalledWith({correlationId: undefined});
+    }
   });
 });

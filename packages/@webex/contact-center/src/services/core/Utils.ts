@@ -1,6 +1,8 @@
 import * as Err from './Err';
 import {LoginOption, WebexRequestPayload} from '../../types';
-import {Failure, AugmentedError} from './GlobalTypes';
+import type {Failure, AugmentedError} from './GlobalTypes';
+import type {RecoveryFailure} from './types';
+import type {RegionRecoveryErrorCode} from '../../types';
 import LoggerProxy from '../../logger-proxy';
 import WebexRequest from './WebexRequest';
 import {
@@ -13,7 +15,7 @@ import {
   Interaction,
   InteractionParticipant,
 } from '../task/types';
-import {PARTICIPANT_TYPES, STATE_CONSULT} from './constants';
+import {PARTICIPANT_TYPES, REGION_RECOVERY_ERROR_CODES, STATE_CONSULT} from './constants';
 import {DialPlan} from '../config/types';
 
 /** Returns whether a value is a non-null object with string keys. */
@@ -39,6 +41,137 @@ export const sanitizeForObservability = (value: unknown): string => {
   return value.replace(/[\x00-\x1f\x7f]/g, '').slice(0, MAX_SANITIZED_OBSERVABILITY_VALUE_LENGTH);
 };
 
+/** Retains structured objects only, never arrays or speculative nested envelopes. */
+const asRecord = (value: unknown): Record<string, unknown> | undefined =>
+  isRecord(value) && !Array.isArray(value) ? value : undefined;
+
+/** Reads the first nonblank string without interpreting backend reason text. */
+const firstNonblankString = (...values: unknown[]): string | undefined =>
+  values.find((value): value is string => typeof value === 'string' && !!value.trim())?.trim();
+
+/** Reads only numeric HTTP status fields; Error messages are never status evidence. */
+const firstFiniteNumber = (...values: unknown[]): number | undefined =>
+  values.find((value): value is number => typeof value === 'number' && Number.isFinite(value));
+
+/** Accepts integer reason codes and digit-only wire encodings of them. */
+const normalizeReasonCode = (value: unknown): number | undefined => {
+  const numeric = typeof value === 'string' && /^\d+$/.test(value) ? Number(value) : value;
+
+  return typeof numeric === 'number' && Number.isFinite(numeric) && Number.isInteger(numeric)
+    ? numeric
+    : undefined;
+};
+
+/** Looks up a known HTTP header case-insensitively without copying any other headers. */
+const getHeader = (headers: unknown, name: string): unknown => {
+  const record = asRecord(headers);
+  const key = record && Object.keys(record).find((candidate) => candidate.toLowerCase() === name);
+
+  return key ? record[key] : undefined;
+};
+
+/**
+ * Selects structured classification candidates without deciding recovery policy.
+ * No raw response, URL, cause, request options or Error message escapes this boundary.
+ */
+export const normalizeRecoveryFailure = (error: unknown): RecoveryFailure => {
+  const source = asRecord(error) ?? {};
+  const response = asRecord(source.response);
+  const details = asRecord(source.details);
+  const safeData = asRecord(source.data);
+  const body =
+    asRecord(source.body) ??
+    asRecord(response?.body) ??
+    asRecord(response?.data) ??
+    asRecord(details?.msg);
+  const data = asRecord(details?.data) ?? asRecord(body?.data) ?? asRecord(body?.error) ?? body;
+  const status = firstFiniteNumber(
+    source.statusCode,
+    source.status,
+    response?.statusCode,
+    response?.status,
+    details?.status,
+    safeData?.status
+  );
+  const reasonCode = [data?.reasonCode, details?.reasonCode, safeData?.reasonCode]
+    .map(normalizeReasonCode)
+    .find((value) => value !== undefined);
+  const reason = firstNonblankString(data?.reason, details?.reason, safeData?.reason);
+  const trackingId = firstNonblankString(
+    data?.trackingId,
+    details?.trackingId,
+    getHeader(source.headers, 'trackingid'),
+    getHeader(response?.headers, 'trackingid'),
+    safeData?.trackingId
+  );
+  const id = firstNonblankString(source.id);
+
+  return {
+    ...(status !== undefined ? {status} : {}),
+    ...(reasonCode !== undefined ? {reasonCode} : {}),
+    ...(reason ? {reason} : {}),
+    ...(trackingId ? {trackingId: sanitizeForObservability(trackingId)} : {}),
+    ...(id ? {id: sanitizeForObservability(id)} : {}),
+  };
+};
+
+/** Recognizes only the exact region mismatch reasons on a subscribe HTTP 409. */
+export const getSubscriptionMismatchReason = (error: unknown): string | undefined => {
+  if (normalizeRecoveryFailure(error).status !== 409) {
+    return undefined;
+  }
+
+  const source = asRecord(error) ?? {};
+  const response = asRecord(source.response);
+  const body = asRecord(source.body) ?? asRecord(response?.body) ?? asRecord(response?.data);
+  const reason = firstNonblankString(
+    getHeader(source.headers, 'x-wxcc-region-reason'),
+    getHeader(response?.headers, 'x-wxcc-region-reason'),
+    body?.reason,
+    asRecord(body?.error)?.reason
+  );
+
+  return [
+    'REGION_MISMATCH_REGION_FAILOVER',
+    'REGION_MISMATCH_ORG_OVERRIDE',
+    'REGION_MISMATCH_ORG_OVERRIDE_SUPERSEDED',
+    'REGION_MISMATCH_NO_OVERRIDE',
+  ].find((candidate) => candidate === reason);
+};
+
+/** Creates an independent plain lifecycle Error with only safe supplied diagnostics. */
+export const createRegionRecoveryError = (
+  reason: RegionRecoveryErrorCode,
+  diagnostics?: Readonly<{trackingId?: string; status?: number}>
+): AugmentedError & {data: {reason: RegionRecoveryErrorCode}} => {
+  const data: {reason: RegionRecoveryErrorCode; trackingId?: string; status?: number} = {reason};
+  if (typeof diagnostics?.trackingId === 'string' && diagnostics.trackingId.trim()) {
+    data.trackingId = diagnostics.trackingId;
+  }
+  if (typeof diagnostics?.status === 'number' && Number.isFinite(diagnostics.status)) {
+    data.status = diagnostics.status;
+  }
+
+  return Object.assign(new Error(reason), {data});
+};
+
+/** Recognizes cross-realm lifecycle errors structurally and narrows their required reason. */
+export const isRegionRecoveryError = (
+  error: unknown
+): error is AugmentedError & {data: {reason: RegionRecoveryErrorCode}} => {
+  if (
+    !isRecord(error) ||
+    typeof error.name !== 'string' ||
+    typeof error.message !== 'string' ||
+    (error.stack !== undefined && typeof error.stack !== 'string') ||
+    !isRecord(error.data)
+  )
+    return false;
+  const {reason} = error.data;
+
+  return Object.values(REGION_RECOVERY_ERROR_CODES).some((code) => code === reason);
+};
+
 /**
  * Extracts common error details from a Webex request payload.
  *
@@ -48,9 +181,14 @@ export const sanitizeForObservability = (value: unknown): string => {
  * @ignore
  */
 const getCommonErrorDetails = (errObj: WebexRequestPayload) => {
+  const {status, reason, reasonCode} = normalizeRecoveryFailure(errObj);
+
   return {
     trackingId: errObj?.headers?.trackingid || errObj?.headers?.TrackingID,
     msg: errObj?.body,
+    ...(status !== undefined ? {status} : {}),
+    ...(reason !== undefined ? {reason} : {}),
+    ...(reasonCode !== undefined ? {reasonCode} : {}),
   };
 };
 
@@ -195,6 +333,10 @@ export const getStationLoginErrorData = (failure: Failure, loginOption: LoginOpt
  * @ignore
  */
 export const getErrorDetails = (error: any, methodName: string, moduleName: string) => {
+  if (isRegionRecoveryError(error)) {
+    return {error, reason: error.data.reason};
+  }
+
   let errData = {message: '', fieldName: ''};
 
   const failure = error.details as Failure;

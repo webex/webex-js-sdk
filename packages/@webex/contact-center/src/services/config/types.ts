@@ -1,6 +1,23 @@
 import * as Agent from '../agent/types';
 import {COLLABORATION_ACCESS} from './constants';
 
+/** @internal Organization-settings wire records do not certify entitlement values. */
+export type OrganizationSettingsWireRecord = {
+  id?: unknown;
+  licenseVersion?: unknown;
+  multiRegionEnabled?: unknown;
+  homeRegion?: unknown;
+  [field: string]: unknown;
+};
+
+/** @internal Body of the authoritative organization-settings response. */
+export type OrganizationSettingsResponse = OrganizationSettingsWireRecord[];
+
+/** Confirmed entitlement; retained for Config declarations, without a root API export. */
+export type MultiRegionSettings =
+  | {eligibility: 'enabled'; homeRegion?: string}
+  | {eligibility: 'disabled'; homeRegion?: string};
+
 /**
  * Generic type for converting a const enum object into a union type of its values
  * @internal
@@ -208,6 +225,17 @@ export const CC_EVENTS = {
   ...CC_AGENT_EVENTS,
   ...CC_TASK_EVENTS,
 } as const;
+
+/** @internal Wire-only system events; never part of the public event catalogs. */
+export const SYSTEM_EVENTS = {SYSTEM_REGION_SWITCH: 'SYSTEM_REGION_SWITCH'} as const;
+
+/** @internal Region-switch envelope validated by ContactCenter before use. */
+export type SystemRegionSwitch = {
+  type: typeof SYSTEM_EVENTS.SYSTEM_REGION_SWITCH;
+  orgId: string;
+  trackingId: string;
+  data?: {operation?: 'FAILOVER' | 'FAILBACK'; scope?: 'REGION' | 'ORG'};
+};
 
 /** Public Contact Center browser voice event names. */
 export enum VOICE_CONNECTION_EVENTS {

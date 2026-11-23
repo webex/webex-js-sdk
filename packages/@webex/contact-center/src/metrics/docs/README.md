@@ -7,9 +7,9 @@ tags: [module, specification]
 <!-- sdd-generated-metadata
 doc_kind: module-spec
 generated_from: module-spec@0.3.0
-generated_by: claude-code
+generated_by: codex
 approved_by: rarajes2@cisco.com
-updated_at: 2026-11-17T03:03:58Z
+updated_at: 2026-11-21T10:35:21Z
 validation_status: pass-with-warnings
 -->
 
@@ -34,12 +34,12 @@ Related context: [documentation index](../../../docs/index.md) ·
 | Source path | `src/metrics` |
 | Resource kind | module |
 | Status | Active |
-| Last verified | 2026-11-16 at `0b8c34db7f` |
+| Last verified | Historical baseline: 2026-11-16 at `0b8c34db7f` |
 | Module id | `metrics` |
 | Parent spec | [src/docs/README.md](../../docs/README.md) |
 | Doc kind | Module spec |
 | Coverage score | Pending coverage assessment |
-| Validation status | pass-with-warnings — assessed 2026-11-17; validator runtime 01a1e76f-2293-79a0-9f8f-f060038448dd; 0 Blocking, 0 Important, 4 Minor findings. |
+| Validation status | pass-with-warnings — assessed 2026-11-23 by Claude Code. 0 blocking findings and 13 nonblocking findings. Historical baseline: pass-with-warnings, assessed 2026-11-17; validator 01a1e76f-2293-79a0-9f8f-f060038448dd; 0 Blocking, 0 Important, 4 Minor. Historical 2026-11-22 review: 4a979a45-b226-4b4c-8dcb-7c5e78aa8351. Historical results do not certify this revision. |
 
 ## Applicability
 
@@ -68,8 +68,8 @@ Related context: [documentation index](../../../docs/index.md) ·
 | Evidence | What it establishes |
 | --- | --- |
 | `src/metrics/MetricsManager.ts` | The `MetricsManager` singleton: private constructor, `getInstance`, `resetInstance`, `setWebex` readiness wiring, the three pending queues, `timeEvent`, `cancelTimedEvent`, `addDurationIfTimed`, `preparePayload`, `spacesToUnderscore`, the `track*` methods, `setMetricsDisabled`, the `submittingEvents` lock, and the two AQM field helpers; its JSDoc is the recorded rationale |
-| `src/metrics/constants.ts` | The `METRIC_EVENT_NAMES` const object (121 names) and the derived `METRIC_EVENT_NAMES` type |
-| `src/metrics/behavioral-events.ts` | `BehavioralEventTaxonomy`, the private `eventTaxonomyMap` (97 names), `getEventTaxonomy`, and the comment asking authors to add new metrics to the Cypher CC metrics wiki |
+| `src/metrics/constants.ts` | The `METRIC_EVENT_NAMES` const object (123 names) and the derived `METRIC_EVENT_NAMES` type |
+| `src/metrics/behavioral-events.ts` | `BehavioralEventTaxonomy`, the private `eventTaxonomyMap` (99 names), `getEventTaxonomy`, and the comment asking authors to add new metrics to the Cypher CC metrics wiki |
 | `src/constants.ts` | `PRODUCT_NAME` (`'wxcc_sdk'`), the behavioral product and the operational and business name prefix |
 | `src/services/core/GlobalTypes.ts` | The `Failure` type read by `getCommonTrackingFieldForAQMResponseFailed` |
 | `package.json` | Declares `@webex/internal-plugin-metrics`, whose `metrics.types` supply `EventPayload` and the taxonomy enums |
@@ -80,7 +80,7 @@ Related context: [documentation index](../../../docs/index.md) ·
 | `src/services/task/voice/wxAppVoiceMethods.ts`, `src/services/task/voice/Voice.ts`, `src/services/task/voice/wxAppOfferObservability.ts`, `src/services/task/TaskManager.ts` | Webex Together task metrics, their payload helpers, the per-task tail promise chains, the 500 ms participant-field grace timer, and the participant drop metric |
 | `src/services/wxAppDiagnosticLogging.ts` | The `[CC wxApp]` log prefix, the diagnostic messages, and the accept-reason and skip-reason enums that appear in metric payloads |
 | `test/unit/spec/metrics/MetricsManager.ts` | 32 jest cases: category submission and wire names, invalid type, disabled behavior, queue clearing, the lock, singleton creation, readiness, timers, cancellation, duration, and both AQM helpers |
-| `test/unit/spec/metrics/behavioral-events.ts` | One jest case asserting the taxonomy of 31 mapped names |
+| `test/unit/spec/metrics/behavioral-events.ts` | One Jest case asserting 31 mapped names plus two parameterized regional recovery cases (33 mapped names total) |
 | `test/unit/spec/cc.ts`, `test/unit/spec/services/ApiAiAssistant.ts`, `test/unit/spec/services/WebexCrossClientService.ts` | Consumer-level assertions on wellness, usersub, and other tracked metrics |
 | `jest.config.js` | Jest with an 85% global coverage threshold; the shared config runs in the `node` environment, so the browser-only `tabHidden` branch is not exercised |
 | `src/metrics/MetricsManager.ts`, `src/services/wxAppDiagnosticLogging.ts` (extension subsections) | Justify the extension subsections: MetricsManager API, Metric event catalog, Webex Together behavioral taxonomy, and WxApp metric payload fields under Public surface; one subsection per operation group under Data flow and sequence coverage; Customer console log triage under Use cases and flows. The two Webex Together subsections are kept here on purpose (see Purpose and boundary): they are the payload-field and wire-name contract of `METRIC_EVENT_NAMES` values that the code in `src/services/task/voice/wxAppVoiceMethods.ts`, `src/services/WebexCrossClientService.ts`, and `src/cc.ts` emits, and the triage table maps those wire names to the diagnostic lines of `src/services/wxAppDiagnosticLogging.ts` |
@@ -196,12 +196,22 @@ metrics.trackEvent(METRIC_EVENT_NAMES.TASK_ACCEPT_SUCCESS, {
 
 All event names are defined in `constants.ts` as `METRIC_EVENT_NAMES`. Events follow a `{Domain} {Action} {Success|Failed}` naming convention; the exceptions are `Agent RONA`, `Websocket Event Received`, `WxApp Session Skipped`, `WxApp Offer Participant Fields Missing`, `AI Assistant Wellness Action Accepted`, `AI Assistant Wellness Event Invalid`, and the `AI_SUMMARY_*` values, whose text starts with `Post Call Summary` or `Mid Call Summary`.
 
-`STATION_RELOGIN_*` report the silent relogin. `AI_ASSISTANT_WELLNESS_ACTION_*` record the direct wellness custom-event result, `AI_ASSISTANT_WELLNESS_EVENT_INVALID` a malformed or mismatched wellness notification that was ignored, and `WELLBEING_BREAK_IDLE_CODE_FETCH_*` the system wellness idle-code lookup result.
+ContactCenter's regional recovery diagnostic owner (`recordRecoveryDiagnostic` in `src/cc.ts`) produces `STATION_RELOGIN_*` for regional `reload` attempts: `succeeded` emits `STATION_RELOGIN_SUCCESS`, while `retrying`, `terminal`, or `failed` emits `STATION_RELOGIN_FAILED`. Ordinary `silentRelogin` emits no `STATION_RELOGIN_*` metric. Fallback station login has its own `fallback-login` diagnostic stage and does not produce this pair.
 
-This table contains all 121 names from `src/metrics/constants.ts`; taxonomy presence is checked against `src/metrics/behavioral-events.ts`: 97 mapped and 24 unmapped.
+The same owner produces `REGION_RECOVERY_FAILED` once for each current admission attempt that settles as `retrying` or `terminal`, so one recovery can emit multiple failures. `REGION_RECOVERY_SUCCESS` means `recoverRegion` completed after primary Welcome and the `afterWelcome` session-restore policy. That policy can finish with manual station login required, including after failed automatic restoration; success therefore does not guarantee station or calling readiness. Cancelled or superseded attempts do not emit a region failure.
+
+Both pairs use only `['operational']` submission, even though their names have behavioral taxonomy entries. Their safe diagnostic payload contains `stage`, `outcome`, `attempt`, and finite nonnegative `elapsedMs`, with optional finite `status` / `reasonCode`, sanitized bounded `id` / `trackingId`, and an allowlisted `reason`. Raw errors, request/response bodies, headers, URLs, credentials, and station data are excluded. Timing belongs to the current generation and stage attempt: admission elapsed time starts when the attempt is scheduled, includes its scheduled wait and work through settlement (including the `afterWelcome` policy), and restarts for the next attempt. Reload timing covers that reload attempt. Neither pair uses a shared `timeEvent` timer or `duration_ms`; stale work cannot consume a newer owner's timing, and diagnostic sink failures cannot change recovery outcomes.
+
+Existing telemetry evidence in `test/unit/spec/cc.ts` includes T-012/T-013 **restore stage outcomes and actual station metrics** (reload, fallback, post-1035, and manual-login outcomes), T-012 **attemptFailureDiagnosticsPreserveClassification through real scheduler** (one failure per failed attempt and admission waits in `elapsedMs`), T-012 **regionDiagnosticSupersessionOwnsElapsed for A then B with late A failure** (stale-owner silence), and T-013 **diagnosticPayloadAllowlist** (safe payload, operational-only submission, and no shared timer). `test/unit/spec/metrics/behavioral-events.ts` checks taxonomy registration separately from emission.
+
+`AI_ASSISTANT_WELLNESS_ACTION_*` record the direct wellness custom-event result, `AI_ASSISTANT_WELLNESS_EVENT_INVALID` a malformed or mismatched wellness notification that was ignored, and `WELLBEING_BREAK_IDLE_CODE_FETCH_*` the system wellness idle-code lookup result.
+
+This table contains all 123 names from `src/metrics/constants.ts`; taxonomy presence is checked against `src/metrics/behavioral-events.ts`: 99 mapped and 24 unmapped.
 
 | Constant | Emitted name | Behavioral taxonomy? |
 |---|---|---|
+| `REGION_RECOVERY_SUCCESS` | `Region Recovery Success` | yes |
+| `REGION_RECOVERY_FAILED` | `Region Recovery Failed` | yes |
 | `STATION_LOGIN_SUCCESS` | `Station Login Success` | yes |
 | `STATION_LOGIN_FAILED` | `Station Login Failed` | yes |
 | `STATION_LOGOUT_SUCCESS` | `Station Logout Success` | yes |
@@ -396,7 +406,7 @@ Every Webex Together metric is tracked with `['operational', 'behavioral']`.
 | ID | WHAT | WHY | Source Evidence | Test / Example Evidence | Assumptions / Gaps | Confidence |
 |---|---|---|---|---|---|---|
 | METRICS-R-001 | Track only names defined by METRIC_EVENT_NAMES and keep the canonical catalog synchronized with the const object. | Telemetry queries and dashboards depend on exact stable event names. | `src/metrics/constants.ts` | None found (compile-time type check only) | No test compares this catalog with the const object; the `METRIC_EVENT_NAMES` parameter type of every `track*` method enforces the first half at compile time. | PRESENT |
-| METRICS-R-002 | Map behavioral events through eventTaxonomyMap and explicitly identify defined names without taxonomy. | Undefined taxonomy must not be mistaken for an emitted or classified behavioral event. | `src/metrics/behavioral-events.ts` | `test/unit/spec/metrics/behavioral-events.ts` | The unit case asserts 31 of the 97 mapped names and none of the 24 unmapped names. | PRESENT |
+| METRICS-R-002 | Map behavioral events through eventTaxonomyMap and explicitly identify defined names without taxonomy. | Undefined taxonomy must not be mistaken for an emitted or classified behavioral event. | `src/metrics/behavioral-events.ts` | `test/unit/spec/metrics/behavioral-events.ts` | The existing case asserts 31 mapped names; the recovery pair adds two parameterized cases (33 of 99 mapped names in total). None of the 24 defined unmapped names is asserted. | PRESENT |
 | METRICS-R-003 | When metrics are disabled, clear pending events and make `timeEvent` plus all tracking methods return without recording/submitting. | Telemetry must never block or alter product behavior and disablement must be comprehensive. | `src/metrics/MetricsManager.ts` | `test/unit/spec/metrics/MetricsManager.ts` | `cancelTimedEvent` also returns early while disabled. No module in `src` calls `setMetricsDisabled`; disabling metrics in development mode is not implemented (code comment SPARK-637285). | PRESENT |
 | METRICS-R-004 | Queue submissions until the host SDK is ready and flush through the correct behavioral/operational/business service. | Early lifecycle telemetry must not be lost solely because the host is not ready. | `src/metrics/MetricsManager.ts` | `test/unit/spec/metrics/MetricsManager.ts` | None. | PRESENT |
 | METRICS-R-005 | Submit through the host SDK's `webex.internal.newMetrics` client without storing credentials or implementing authorization policy in MetricsManager. | Host-owned authentication keeps telemetry credential handling outside the Contact Center metrics module. | `src/metrics/MetricsManager.ts` | `test/unit/spec/metrics/MetricsManager.ts` | None; authentication is inherited and credential ownership is explicitly N/A. | PRESENT |
@@ -406,6 +416,7 @@ Every Webex Together metric is tracked with `['operational', 'behavioral']`.
 | METRICS-R-009 | `preparePayload()` processes every event payload before submission: it removes empty/null/undefined fields (strips keys with `undefined`, `null`, `''`, any arrays, or empty objects), converts spaces to underscores (`spacesToUnderscore()` applied to all key names), and adds common metadata (appends `tabHidden: document.hidden` in browser environments, that is when `window` exists). | Backends reject or mis-index empty and nested values; `tabHidden` lets analysts separate background-tab activity. | `src/metrics/MetricsManager.ts` | `test/unit/spec/metrics/MetricsManager.ts` | The `tabHidden` branch is not exercised because jest runs in the `node` environment. | PRESENT |
 | METRICS-R-010 | `trackEvent` defaults to `['behavioral']`, tracks each requested category in order, and logs `[MetricsManager] Invalid metric type:` followed by the category for an unknown category without throwing. | Callers choose the categories per event; a typo must not break the product call. | `src/metrics/MetricsManager.ts` | `test/unit/spec/metrics/MetricsManager.ts` | None. | PRESENT |
 | METRICS-R-011 | `getCommonTrackingFieldForAQMResponse` and `getCommonTrackingFieldForAQMResponseFailed` return the fixed field sets listed under MetricsManager API, reading nested and flat AQM shapes. | AQM success and failure shapes differ; one helper per shape keeps correlation fields (`trackingId`, `notifTrackingId`) consistent across every metric. | `src/metrics/MetricsManager.ts`, `src/services/core/GlobalTypes.ts` | `test/unit/spec/metrics/MetricsManager.ts` | None. | PRESENT |
+| METRICS-R-012 | ContactCenter's regional recovery diagnostic owner produces `STATION_RELOGIN_SUCCESS` for `reload` / `succeeded` and `STATION_RELOGIN_FAILED` for `reload` / `retrying`, `terminal`, or `failed`; ordinary `silentRelogin` emits neither. It emits `REGION_RECOVERY_FAILED` once per current retrying/terminal admission attempt and `REGION_RECOVERY_SUCCESS` when `recoverRegion` completes after Welcome and the `afterWelcome` policy, including manual-login-required outcomes without guaranteed station/calling readiness. Both pairs submit operational-only safe `stage` / `outcome` / `attempt` / `elapsedMs` payloads with only the optional diagnostic fields described in Metric event catalog. Timing is generation- and attempt-owned, includes scheduled admission waits through settlement, and uses no shared timer or `duration_ms`; cancelled/superseded admissions emit no region failure. | Dashboard consumers need the actual producer, attempt counts, completion boundary, independent timing, and redacted evidence to interpret recovery results. | `src/metrics/constants.ts`, `src/metrics/behavioral-events.ts`, `src/cc.ts` | `test/unit/spec/cc.ts`: T-012/T-013 restore stage outcomes and actual station metrics; T-012 attemptFailureDiagnosticsPreserveClassification, regionDiagnosticSupersessionOwnsElapsed; T-013 diagnosticPayloadAllowlist. `test/unit/spec/metrics/behavioral-events.ts`: recovery taxonomy pair. | Telemetry failure does not alter recovery outcome. Ordinary registration and calling telemetry paths are preserved. | PRESENT |
 
 ## Design overview
 
@@ -636,7 +647,7 @@ MetricsManager holds three pending queues, running timing entries, a readiness f
 | ID | Invariant | WHY | Enforcement source | Test evidence |
 | --- | --- | --- | --- | --- |
 | `INV-001` | `timeEvent` and every tracking method return immediately while metrics are disabled. | Disablement must be comprehensive (METRICS-R-003). | `src/metrics/MetricsManager.ts` | `test/unit/spec/metrics/MetricsManager.ts` |
-| `INV-002` | Only names present in `eventTaxonomyMap` receive behavioral taxonomy; 97 of 121 names are mapped and all 24 exceptions are explicitly catalogued as unmapped. | Undefined taxonomy must not be mistaken for a classified behavioral event (METRICS-R-002). | `src/metrics/behavioral-events.ts` | `test/unit/spec/metrics/behavioral-events.ts` |
+| `INV-002` | Only names present in `eventTaxonomyMap` receive behavioral taxonomy; 99 of 123 names are mapped and all 24 exceptions are explicitly catalogued as unmapped. | Undefined taxonomy must not be mistaken for a classified behavioral event (METRICS-R-002). | `src/metrics/behavioral-events.ts` | `test/unit/spec/metrics/behavioral-events.ts` |
 | `INV-003` | The `submittingEvents` lock prevents overlapping, concurrent `submitPendingEvents()` queue-drain executions; each `track*` call drains its own queue directly. | A ready callback and a direct track call must not submit the same queued event twice; each drain copies and empties the queue before submitting. | `src/metrics/MetricsManager.ts` | `test/unit/spec/metrics/MetricsManager.ts` |
 | `INV-004` | Authentication is inherited from the host Webex SDK's metrics client; MetricsManager owns no credentials, tokens, or authorization policy. | METRICS-R-005. | `src/metrics/MetricsManager.ts` | `test/unit/spec/metrics/MetricsManager.ts` |
 

@@ -23,7 +23,9 @@ import {
 import WebexRequest from '../core/WebexRequest';
 import {WCC_API_GATEWAY} from '../constants';
 import {CONFIG_FILE_NAME, METHODS as MAIN_METHODS} from '../../constants';
-import {parseAgentConfigs} from './Util';
+import {decodeMultiRegionSettings, LOCAL_MR_SETTINGS_ERROR, parseAgentConfigs} from './Util';
+import type {MultiRegionSettings} from './types';
+import {createRegionRecoveryError, normalizeRecoveryFailure} from '../core/Utils';
 import {
   DEFAULT_AUXCODE_ATTRIBUTES,
   DEFAULT_PAGE,
@@ -42,6 +44,68 @@ export default class AgentConfigService {
   private webexReq: WebexRequest;
   constructor() {
     this.webexReq = WebexRequest.getInstance();
+  }
+
+  /**
+   * Reads authoritative entitlement without changing or delaying the complete Profile.
+   * Cancellation fences local application; the authenticated HTTP owner retains its request.
+   */
+  public async getMultiRegionSettings(
+    orgId: string,
+    signal?: AbortSignal
+  ): Promise<MultiRegionSettings> {
+    if (signal?.aborted) {
+      throw createRegionRecoveryError('RECOVERY_INTERRUPTED');
+    }
+    if (typeof orgId !== 'string' || !orgId.trim()) {
+      throw Object.assign(new Error('Organization ID is required'), {
+        [LOCAL_MR_SETTINGS_ERROR]: 'INVALID_ORG_ID',
+        data: {reason: 'INVALID_ORG_ID'},
+      });
+    }
+
+    const response = await new Promise<Awaited<ReturnType<WebexRequest['request']>>>(
+      (resolve, reject) => {
+        const onAbort = () => {
+          signal?.removeEventListener('abort', onAbort);
+          reject(createRegionRecoveryError('RECOVERY_INTERRUPTED'));
+        };
+        signal?.addEventListener('abort', onAbort, {once: true});
+        if (signal?.aborted) {
+          onAbort();
+
+          return;
+        }
+        this.webexReq
+          .request({
+            service: WCC_API_GATEWAY,
+            resource: endPointMap.organizationSettings(orgId),
+            method: HTTP_METHODS.GET,
+          })
+          .then(
+            (result) => {
+              signal?.removeEventListener('abort', onAbort);
+              resolve(result);
+            },
+            (error) => {
+              signal?.removeEventListener('abort', onAbort);
+              reject(error);
+            }
+          );
+      }
+    );
+    if (signal?.aborted) {
+      throw createRegionRecoveryError('RECOVERY_INTERRUPTED');
+    }
+    if (response.statusCode !== 200) {
+      const failure = normalizeRecoveryFailure(response);
+      throw Object.assign(new Error('Organization settings request failed'), {
+        ...(failure.status !== undefined ? {statusCode: failure.status} : {}),
+        data: failure,
+      });
+    }
+
+    return decodeMultiRegionSettings(response.body);
   }
 
   /**

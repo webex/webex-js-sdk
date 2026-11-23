@@ -1,10 +1,17 @@
+import {v4 as uuidv4} from 'uuid';
 import * as Err from '../core/Err';
-import {createErrDetailsObject as err} from '../core/Utils';
+import {createErrDetailsObject as err, normalizeRecoveryFailure} from '../core/Utils';
 import * as Agent from './types';
 import AqmReqs from '../core/aqm-reqs';
 import {HTTP_METHODS} from '../../types';
 import {WCC_API_GATEWAY} from '../constants';
 import {CC_EVENTS} from '../config/types';
+
+const hasNonblankStateRequestId = (p: {
+  data: Agent.StateChange;
+  requestId?: string;
+}): p is {data: Agent.StateChange; requestId: string} =>
+  typeof p?.requestId === 'string' && !!p.requestId.trim();
 
 /**
  * Agent Service provides methods to manage agent states and operations
@@ -12,12 +19,37 @@ import {CC_EVENTS} from '../config/types';
  * @ignore
  */
 export default function routingAgent(routing: AqmReqs) {
+  const dispatchState = routing.req((p: {data: Agent.StateChange; requestId: string}) => ({
+    correlationId: p.requestId,
+    kind: 'command',
+    url: '/v1/agents/session/state',
+    host: WCC_API_GATEWAY,
+    data: p.data,
+    err,
+    method: HTTP_METHODS.PUT,
+    notifSuccess: {
+      bind: {
+        type: CC_EVENTS.AGENT_STATE_CHANGE,
+        data: {type: CC_EVENTS.AGENT_STATE_CHANGE_SUCCESS},
+      },
+      msg: {} as Agent.StateChangeSuccess,
+    },
+    notifFail: {
+      bind: {
+        type: CC_EVENTS.AGENT_STATE_CHANGE,
+        data: {type: CC_EVENTS.AGENT_STATE_CHANGE_FAILED},
+      },
+      errId: 'Service.aqm.agent.stateChange',
+    },
+  }));
+
   return {
     /**
      * Reloads the agent session
      * @public
      */
     reload: routing.reqEmpty(() => ({
+      kind: 'session',
       host: WCC_API_GATEWAY,
       url: '/v1/agents/reload',
       data: {},
@@ -43,6 +75,7 @@ export default function routingAgent(routing: AqmReqs) {
      * @public
      */
     logout: routing.req((p: {data: Agent.Logout}) => ({
+      kind: 'teardown',
       url: '/v1/agents/logout',
       host: WCC_API_GATEWAY,
       data: p.data,
@@ -68,14 +101,19 @@ export default function routingAgent(routing: AqmReqs) {
      * @public
      */
     stationLogin: routing.req((p: {data: Agent.UserStationLogin}) => ({
+      kind: 'session',
       url: '/v1/agents/login',
       host: WCC_API_GATEWAY,
       data: p.data,
-      err: /* istanbul ignore next */ (e: any) => {
+      err: (e: any) => {
+        const failure = normalizeRecoveryFailure(e);
+
         return new Err.Details('Service.aqm.agent.stationLogin', {
-          status: e.response?.status ?? 0,
+          status: failure.status ?? 0,
           type: e.response?.data?.errorType,
-          trackingId: e.response?.headers?.trackingid?.split('_')[1],
+          trackingId: failure.trackingId ?? '',
+          ...(failure.reason ? {reason: failure.reason} : {}),
+          ...(failure.reasonCode !== undefined ? {reasonCode: failure.reasonCode} : {}),
         });
       },
       notifSuccess: {
@@ -96,35 +134,28 @@ export default function routingAgent(routing: AqmReqs) {
     /**
      * Changes the agent's state
      * @param p.data - State change parameters
+     * @param p.requestId - Optional correlation ID; generated when omitted
      * @public
      */
-    stateChange: routing.req((p: {data: Agent.StateChange}) => ({
-      url: '/v1/agents/session/state',
-      host: WCC_API_GATEWAY,
-      data: p.data,
-      err,
-      method: HTTP_METHODS.PUT,
-      notifSuccess: {
-        bind: {
-          type: CC_EVENTS.AGENT_STATE_CHANGE,
-          data: {type: CC_EVENTS.AGENT_STATE_CHANGE_SUCCESS},
-        },
-        msg: {} as Agent.StateChangeSuccess,
-      },
-      notifFail: {
-        bind: {
-          type: CC_EVENTS.AGENT_STATE_CHANGE,
-          data: {type: CC_EVENTS.AGENT_STATE_CHANGE_FAILED},
-        },
-        errId: 'Service.aqm.agent.stateChange',
-      },
-    })),
+    stateChange: (
+      p: {data: Agent.StateChange; requestId?: string},
+      cbRes?: Parameters<typeof dispatchState>[1],
+      context?: Parameters<typeof dispatchState>[2]
+    ): Promise<Agent.StateChangeSuccess> => {
+      const request =
+        p && p.requestId === undefined ? {...p, requestId: `WX_CC_SDK_${uuidv4()}`} : p;
+      if (!hasNonblankStateRequestId(request))
+        return Promise.reject(new Error('A nonblank state requestId is required'));
+
+      return dispatchState(request, cbRes, context);
+    },
     /**
      * Retrieves list of buddy agents
      * @param p.data - Buddy agent query parameters
      * @public
      */
     buddyAgents: routing.req((p: {data: Agent.BuddyAgents}) => ({
+      kind: 'query',
       url: `/v1/agents/buddyList`,
       host: WCC_API_GATEWAY,
       data: {...p.data},

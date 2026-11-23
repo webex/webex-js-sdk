@@ -17,7 +17,8 @@ import {
   WELLNESS_BREAK_USER_ACTIONS,
   GenericError,
 } from '../types';
-import {getErrorDetails} from './core/Utils';
+import {getErrorDetails, createRegionRecoveryError} from './core/Utils';
+import type {TaskRecoveryGuard} from './task/types';
 import type {PendingRtdRequest, RtdRequestOptions} from './core/types';
 import {
   AI_ASSISTANT_BASE_URL_TEMPLATE,
@@ -57,10 +58,66 @@ export class ApiAIAssistant {
     return error;
   }
 
-  constructor(webex: WebexSDK, wellnessContextProvider?: WellnessBreakContextProvider) {
+  constructor(
+    webex: WebexSDK,
+    wellnessContextProvider?: WellnessBreakContextProvider,
+    private readonly getRecoveryGuard?: () =>
+      | Pick<TaskRecoveryGuard, 'generation' | 'signal'>
+      | undefined
+  ) {
     this.webex = webex;
     this.wellnessContextProvider = wellnessContextProvider;
     this.metricsManager = MetricsManager.getInstance({webex});
+  }
+
+  private captureRecoveryOwner(): Pick<TaskRecoveryGuard, 'generation' | 'signal'> | undefined {
+    const owner = this.getRecoveryGuard?.();
+    if (this.getRecoveryGuard && (!owner || owner.signal.aborted))
+      throw createRegionRecoveryError('RECOVERY_INTERRUPTED');
+
+    return owner;
+  }
+
+  private assertRecoveryOwner(
+    owner: Pick<TaskRecoveryGuard, 'generation' | 'signal'> | undefined
+  ): void {
+    if (!this.getRecoveryGuard) return;
+    const current = this.getRecoveryGuard();
+    if (
+      !owner ||
+      owner.signal.aborted ||
+      current?.generation !== owner.generation ||
+      current?.signal !== owner.signal
+    )
+      throw createRegionRecoveryError('RECOVERY_INTERRUPTED');
+  }
+
+  private async awaitRecoveryOwner<T>(
+    work: Promise<T>,
+    owner: Pick<TaskRecoveryGuard, 'generation' | 'signal'> | undefined
+  ): Promise<T> {
+    if (!owner) return work;
+    const result = await new Promise<T>((resolve, reject) => {
+      const abort = () => {
+        owner.signal.removeEventListener('abort', abort);
+        reject(createRegionRecoveryError('RECOVERY_INTERRUPTED'));
+      };
+      owner.signal.addEventListener('abort', abort, {once: true});
+      Promise.resolve(work).then(
+        (value) => {
+          owner.signal.removeEventListener('abort', abort);
+          resolve(value);
+        },
+        (error) => {
+          owner.signal.removeEventListener('abort', abort);
+          reject(error);
+        }
+      );
+      if (owner.signal.aborted) abort();
+    });
+    this.assertRecoveryOwner(owner);
+
+    return result;
   }
 
   public setAIFeatureFlags(aiFeature: AIFeatureFlags): void {
@@ -83,6 +140,7 @@ export class ApiAIAssistant {
     action: WellnessBreakUserAction,
     method: string
   ): Promise<void> {
+    const recoveryOwner = this.captureRecoveryOwner();
     this.metricsManager.timeEvent([
       METRIC_EVENT_NAMES.AI_ASSISTANT_WELLNESS_ACTION_ACCEPTED,
       METRIC_EVENT_NAMES.AI_ASSISTANT_WELLNESS_ACTION_FAILED,
@@ -108,24 +166,27 @@ export class ApiAIAssistant {
       }
 
       const baseUrl = this.getBaseUrl();
-      const response = (await this.webex.request({
-        uri: `${baseUrl}${AI_ASSISTANT_API_URLS.EVENT}`,
-        method: HTTP_METHODS.POST,
-        addAuthHeader: true,
-        body: {
-          agentId,
-          orgId,
-          eventType: AIAssistantEventType.CUSTOM_EVENT,
-          eventName: AIAssistantEventName.WELLNESS_BREAK_ACTION,
-          eventDetails: {
-            data: {
-              action,
-              agentSessionId,
-              actionTimeStamp: Date.now(),
+      const response = (await this.awaitRecoveryOwner(
+        this.webex.request({
+          uri: `${baseUrl}${AI_ASSISTANT_API_URLS.EVENT}`,
+          method: HTTP_METHODS.POST,
+          addAuthHeader: true,
+          body: {
+            agentId,
+            orgId,
+            eventType: AIAssistantEventType.CUSTOM_EVENT,
+            eventName: AIAssistantEventName.WELLNESS_BREAK_ACTION,
+            eventDetails: {
+              data: {
+                action,
+                agentSessionId,
+                actionTimeStamp: Date.now(),
+              },
             },
           },
-        },
-      })) as IHttpResponse;
+        }),
+        recoveryOwner
+      )) as IHttpResponse;
 
       if (response.statusCode !== 202) {
         throw this.createWellnessError(
@@ -133,6 +194,7 @@ export class ApiAIAssistant {
         );
       }
 
+      this.assertRecoveryOwner(recoveryOwner);
       this.metricsManager.trackEvent(
         METRIC_EVENT_NAMES.AI_ASSISTANT_WELLNESS_ACTION_ACCEPTED,
         {action},
@@ -144,6 +206,8 @@ export class ApiAIAssistant {
         data: {action},
       });
     } catch (error) {
+      this.assertRecoveryOwner(recoveryOwner);
+      this.assertRecoveryOwner(recoveryOwner);
       this.metricsManager.trackEvent(
         METRIC_EVENT_NAMES.AI_ASSISTANT_WELLNESS_ACTION_FAILED,
         {
@@ -168,6 +232,8 @@ export class ApiAIAssistant {
    * @public
    */
   public async requestWellnessBreak(): Promise<void> {
+    this.captureRecoveryOwner();
+
     return this.sendWellnessBreakAction(
       WELLNESS_BREAK_USER_ACTIONS.REQUESTED,
       METHODS.REQUEST_WELLNESS_BREAK
@@ -188,6 +254,7 @@ export class ApiAIAssistant {
    * @public
    */
   public async respondToWellnessBreak(params: RespondToWellnessBreakParams): Promise<void> {
+    this.captureRecoveryOwner();
     const {action} = params;
     if (
       ![
@@ -245,57 +312,61 @@ export class ApiAIAssistant {
   }
 
   private removeRtdRequest<T>(
-    rtdEventType: string,
-    correlationId: string,
+    request: PendingRtdRequest<T>,
     settle?: (request: PendingRtdRequest<T>) => void
   ): PendingRtdRequest<T> | undefined {
-    const key = ApiAIAssistant.getRtdRequestKey(rtdEventType, correlationId);
-    const request = this.pendingRtdRequests.get(key) as PendingRtdRequest<T> | undefined;
-
-    if (!request) {
-      return undefined;
-    }
-
-    if (request.timeoutId) {
-      clearTimeout(request.timeoutId);
-    }
-
-    settle?.(request);
+    const key = ApiAIAssistant.getRtdRequestKey(request.rtdEventType, request.correlationId);
+    if (this.pendingRtdRequests.get(key) !== request) return undefined;
     this.pendingRtdRequests.delete(key);
+    clearTimeout(request.timeoutId);
+    request.detachAbort?.();
+    settle?.(request);
 
     return request;
   }
 
   /** Sends an AI event and waits for its matching RTD response. @internal */
   public async requestAndWaitForRtd<T>(options: RtdRequestOptions): Promise<T> {
+    const owner = this.captureRecoveryOwner();
+    if (options.signal?.aborted) throw createRegionRecoveryError('RECOVERY_INTERRUPTED');
     const key = ApiAIAssistant.getRtdRequestKey(options.rtdEventType, options.correlationId);
-    let resolveResult: (payload: T) => void = () => undefined;
-    let rejectResult: (error: Error) => void = () => undefined;
-    const result = new Promise<T>((resolve, reject) => {
-      resolveResult = resolve;
-      rejectResult = reject;
+    const previous = this.pendingRtdRequests.get(key);
+    if (previous)
+      this.removeRtdRequest(previous, (pending) =>
+        pending.reject(createRegionRecoveryError('RECOVERY_INTERRUPTED'))
+      );
+    let resolve!: (payload: T) => void;
+    let reject!: (error: Error) => void;
+    const result = new Promise<T>((res, rej) => {
+      resolve = res;
+      reject = rej;
     });
-    const previousRequest = this.pendingRtdRequests.get(key);
-    if (previousRequest?.timeoutId) {
-      clearTimeout(previousRequest.timeoutId);
-    }
     const request: PendingRtdRequest<T> = {
       correlationId: options.correlationId,
       rtdEventType: options.rtdEventType,
-      resolve: resolveResult,
-      reject: rejectResult,
+      resolve,
+      reject,
     };
-
-    request.timeoutId = setTimeout(() => {
-      this.removeRtdRequest<T>(options.rtdEventType, options.correlationId, (currentRequest) => {
-        currentRequest.reject(options.createTimeoutError());
-      });
-    }, options.timeoutMs);
-    this.pendingRtdRequests.set(key, request as PendingRtdRequest<unknown>);
-    const publishTimestamp = options.publishTimestamp ?? Date.now();
+    const abort = () =>
+      this.removeRtdRequest(request, (pending) =>
+        pending.reject(createRegionRecoveryError('RECOVERY_INTERRUPTED'))
+      );
+    request.detachAbort = () => options.signal?.removeEventListener('abort', abort);
+    this.pendingRtdRequests.set(key, request);
+    request.timeoutId = setTimeout(
+      () =>
+        this.removeRtdRequest(request, (pending) => pending.reject(options.createTimeoutError())),
+      options.timeoutMs
+    );
+    options.signal?.addEventListener('abort', abort, {once: true});
+    if (options.signal?.aborted) abort();
     const acknowledgement = Promise.resolve()
-      .then(() =>
-        this.sendEvent(
+      .then(() => {
+        this.assertRecoveryOwner(owner);
+        if (options.signal?.aborted || this.pendingRtdRequests.get(key) !== request)
+          throw createRegionRecoveryError('RECOVERY_INTERRUPTED');
+
+        return this.sendEvent(
           options.agentId,
           options.interactionId,
           options.eventType,
@@ -303,39 +374,41 @@ export class ApiAIAssistant {
           options.eventMetaData,
           undefined,
           undefined,
-          publishTimestamp,
+          options.publishTimestamp ?? Date.now(),
           options.timeout
-        )
-      )
+        );
+      })
       .catch((error) => {
-        this.removeRtdRequest(options.rtdEventType, options.correlationId);
+        this.removeRtdRequest(request, (pending) => pending.reject(error));
         throw error;
       });
-
     const [payload] = await Promise.all([result, acknowledgement]);
+    this.assertRecoveryOwner(owner);
 
     return payload;
   }
 
-  /** Resolves a pending request from a parsed RTD event. @internal */
+  /** Resolves only the captured current RTD request. @internal */
   public resolveFromRtdEvent<T>(
     rtdEventType: string,
     correlationId: string,
     payload: T
   ): 'resolved' | 'not-found' {
-    const request = this.removeRtdRequest<T>(rtdEventType, correlationId, (currentRequest) => {
-      currentRequest.resolve(payload);
-    });
+    const request = this.pendingRtdRequests.get(
+      ApiAIAssistant.getRtdRequestKey(rtdEventType, correlationId)
+    );
+    if (!request) return 'not-found';
+    this.removeRtdRequest(request, (pending) => pending.resolve(payload));
 
-    return request ? 'resolved' : 'not-found';
+    return 'resolved';
   }
 
-  /** Clears pending RTD requests when the RTD lifecycle ends. @internal */
-  public clearAllRtdRequests(): void {
+  /** Clears each captured request with an independent error. @internal */
+  public clearAllRtdRequests(createError?: () => Error): void {
     Array.from(this.pendingRtdRequests.values()).forEach((request) => {
-      this.removeRtdRequest(request.rtdEventType, request.correlationId, (currentRequest) => {
-        currentRequest.reject(new Error('RTD request cleared'));
-      });
+      this.removeRtdRequest(request, (pending) =>
+        pending.reject(createError ? createError() : new Error('RTD request cleared'))
+      );
     });
   }
 
@@ -360,6 +433,7 @@ export class ApiAIAssistant {
     publishTimestamp?: number,
     timeout?: number
   ): Promise<Record<string, unknown>> {
+    const recoveryOwner = this.captureRecoveryOwner();
     LoggerProxy.info('Sending event', {
       module: CC_FILE,
       method: METHODS.SEND_EVENT,
@@ -381,23 +455,27 @@ export class ApiAIAssistant {
         languageCode,
         trackingId,
       };
-      const response = (await this.webex.request({
-        uri: `${baseUrl}${AI_ASSISTANT_API_URLS.EVENT}`,
-        method: HTTP_METHODS.POST,
-        addAuthHeader: true,
-        ...(timeout !== undefined ? {timeout} : {}),
-        body: {
-          agentId,
-          orgId,
-          eventType,
-          eventName,
-          ...(publishTimestamp !== undefined ? {publishTimestamp} : {}),
-          eventDetails: {
-            data,
+      const response = (await this.awaitRecoveryOwner(
+        this.webex.request({
+          uri: `${baseUrl}${AI_ASSISTANT_API_URLS.EVENT}`,
+          method: HTTP_METHODS.POST,
+          addAuthHeader: true,
+          ...(timeout !== undefined ? {timeout} : {}),
+          body: {
+            agentId,
+            orgId,
+            eventType,
+            eventName,
+            ...(publishTimestamp !== undefined ? {publishTimestamp} : {}),
+            eventDetails: {
+              data,
+            },
           },
-        },
-      })) as IHttpResponse;
+        }),
+        recoveryOwner
+      )) as IHttpResponse;
 
+      this.assertRecoveryOwner(recoveryOwner);
       this.metricsManager.trackEvent(
         METRIC_EVENT_NAMES.AI_ASSISTANT_SEND_EVENT_SUCCESS,
         {agentId, orgId, interactionId, eventType, eventName},
@@ -406,6 +484,8 @@ export class ApiAIAssistant {
 
       return response?.body || {};
     } catch (error) {
+      this.assertRecoveryOwner(recoveryOwner);
+      this.assertRecoveryOwner(recoveryOwner);
       this.metricsManager.trackEvent(
         METRIC_EVENT_NAMES.AI_ASSISTANT_SEND_EVENT_FAILED,
         {
@@ -430,6 +510,7 @@ export class ApiAIAssistant {
    * @public
    */
   public async getRealTimeAssistance(params: RealTimeAssistanceParams) {
+    const recoveryOwner = this.captureRecoveryOwner();
     const {agentId, interactionId, context} = params;
     const trimmedContext = context?.trim();
     const languageCode = params.languageCode ?? 'en';
@@ -475,6 +556,7 @@ export class ApiAIAssistant {
         trackingId
       );
 
+      this.assertRecoveryOwner(recoveryOwner);
       this.metricsManager.trackEvent(
         METRIC_EVENT_NAMES.AI_ASSISTANT_GET_REAL_TIME_ASSISTANCE_SUCCESS,
         {
@@ -491,7 +573,9 @@ export class ApiAIAssistant {
 
       return response;
     } catch (error) {
+      this.assertRecoveryOwner(recoveryOwner);
       LoggerProxy.error('Real-time assistance request failed', {...loggerContext, error});
+      this.assertRecoveryOwner(recoveryOwner);
       this.metricsManager.trackEvent(
         METRIC_EVENT_NAMES.AI_ASSISTANT_GET_REAL_TIME_ASSISTANCE_FAILED,
         {
@@ -523,6 +607,7 @@ export class ApiAIAssistant {
   public async sendRealTimeAssistanceUserAction(
     params: RealTimeAssistanceUserActionParams
   ): Promise<Record<string, unknown>> {
+    const recoveryOwner = this.captureRecoveryOwner();
     const {agentId, interactionId, adaptiveCardId, actionId} = params;
     const actionType = 'Action.Submit';
     const languageCode = params.languageCode ?? 'en';
@@ -570,6 +655,7 @@ export class ApiAIAssistant {
         trackingId
       );
 
+      this.assertRecoveryOwner(recoveryOwner);
       this.metricsManager.trackEvent(
         METRIC_EVENT_NAMES.AI_ASSISTANT_SEND_REAL_TIME_ASSISTANCE_USER_ACTION_SUCCESS,
         {
@@ -586,7 +672,9 @@ export class ApiAIAssistant {
 
       return response;
     } catch (error) {
+      this.assertRecoveryOwner(recoveryOwner);
       LoggerProxy.error('Real-time assistance user action failed', {...loggerContext, error});
+      this.assertRecoveryOwner(recoveryOwner);
       this.metricsManager.trackEvent(
         METRIC_EVENT_NAMES.AI_ASSISTANT_SEND_REAL_TIME_ASSISTANCE_USER_ACTION_FAILED,
         {
@@ -619,6 +707,7 @@ export class ApiAIAssistant {
     agentId: string,
     interactionId: string
   ): Promise<HistoricTranscriptsResponse> {
+    const recoveryOwner = this.captureRecoveryOwner();
     LoggerProxy.info('Fetching historic transcripts', {
       module: CC_FILE,
       method: METHODS.FETCH_HISTORIC_TRANSCRIPTS,
@@ -652,17 +741,21 @@ export class ApiAIAssistant {
     try {
       const baseUrl = this.getBaseUrl();
       const orgId = this.webex.credentials.getOrgId();
-      const response = (await this.webex.request({
-        uri: `${baseUrl}${AI_ASSISTANT_API_URLS.TRANSCRIPTS_LIST}`,
-        method: HTTP_METHODS.POST,
-        addAuthHeader: true,
-        body: {
-          agentId,
-          orgId,
-          interactionId,
-        },
-      })) as IHttpResponse;
+      const response = (await this.awaitRecoveryOwner(
+        this.webex.request({
+          uri: `${baseUrl}${AI_ASSISTANT_API_URLS.TRANSCRIPTS_LIST}`,
+          method: HTTP_METHODS.POST,
+          addAuthHeader: true,
+          body: {
+            agentId,
+            orgId,
+            interactionId,
+          },
+        }),
+        recoveryOwner
+      )) as IHttpResponse;
 
+      this.assertRecoveryOwner(recoveryOwner);
       this.metricsManager.trackEvent(
         METRIC_EVENT_NAMES.AI_ASSISTANT_FETCH_HISTORIC_TRANSCRIPTS_SUCCESS,
         {agentId, orgId, interactionId},
@@ -671,6 +764,8 @@ export class ApiAIAssistant {
 
       return response.body as HistoricTranscriptsResponse;
     } catch (error) {
+      this.assertRecoveryOwner(recoveryOwner);
+      this.assertRecoveryOwner(recoveryOwner);
       this.metricsManager.trackEvent(
         METRIC_EVENT_NAMES.AI_ASSISTANT_FETCH_HISTORIC_TRANSCRIPTS_FAILED,
         {

@@ -7,9 +7,9 @@ tags: [module, specification]
 <!-- sdd-generated-metadata
 doc_kind: module-spec
 generated_from: module-spec@0.3.0
-generated_by: claude-code
+generated_by: codex
 approved_by: rarajes2@cisco.com
-updated_at: 2026-11-17T03:03:58Z
+updated_at: 2026-11-21T10:35:21Z
 validation_status: pass-with-warnings
 -->
 
@@ -37,12 +37,12 @@ Related context: [documentation index](../../../../docs/index.md) ·
 | Source path | `src/services/config` |
 | Resource kind | module |
 | Status | Active |
-| Last verified | 2026-11-16 at `0b8c34db7f` |
+| Last verified | Historical baseline: 2026-11-16 at `0b8c34db7f` |
 | Module id | `config` |
 | Parent spec | [src/services](../../docs/README.md) |
 | Doc kind | Module spec |
 | Coverage score | Pending coverage assessment |
-| Validation status | pass-with-warnings — assessed 2026-11-17; validator runtime 01a1e76f-2293-79a0-9f8f-f060038448dd; 0 Blocking, 0 Important, 4 Minor findings. |
+| Validation status | pass-with-warnings — assessed 2026-11-23 by Claude Code. 0 blocking findings and 13 nonblocking findings. Historical baseline: pass-with-warnings, assessed 2026-11-17; validator 01a1e76f-2293-79a0-9f8f-f060038448dd; 0 Blocking, 0 Important, 4 Minor. Historical 2026-11-22 review: 4a979a45-b226-4b4c-8dcb-7c5e78aa8351. Historical results do not certify this revision. |
 
 ## Applicability
 
@@ -220,6 +220,7 @@ Types used by the config service, all defined in [`types.ts`](../types.ts):
 | CONFIG-R-010 | `getOutdialAniEntries(orgId, params)` adds only the provided `page`, `pageSize`, `search`, `filter`, and `attributes` query parameters, resolves `response.body?.data`, and rethrows a request rejection; it does not check `statusCode`. | `cc.getOutdialAniEntries` is the public caller-ID lookup and records the result count in metrics. | `src/services/config/index.ts`, `src/cc.ts` | `test/unit/spec/services/config/index.ts` | A resolved non-200 response yields `undefined`, not an error (asserted by the 404 and 500 cases). | Present |
 | CONFIG-R-011 | `parseAgentConfigs` keeps active aux codes of each `workTypeCode` from the full pool as `Entity` values, appends the synthetic idle code `{id: '0', name: 'Available'}`, and sets `defaultWrapupCode` to the default wrap-up code id or an empty string. | The desktop-login aggregate does not carry per-agent restriction lists, so the whole pool applies (JSDoc of `getFilterAuxCodes`). | `src/services/config/Util.ts` | `test/unit/spec/services/config/Util.ts` | None. | Present |
 | CONFIG-R-012 | When `dialPlanEnabled` is true, `Profile.dialPlan` is `{type: 'adhocDial', dialPlanEntity}` built from every active plan; otherwise it is `undefined` and no dial-plan request is made. | The aggregate does not carry the per-profile `dialPlans` selection, so all active plans apply (JSDoc of `getFilteredDialplanEntries`). | `src/services/config/Util.ts`, `src/services/config/index.ts` | `test/unit/spec/services/config/Util.ts`, `test/unit/spec/services/config/index.ts` | None. | Present |
+| CONFIG-R-013 | Internal `getMultiRegionSettings(orgId: string, signal?: AbortSignal): Promise<MultiRegionSettings>` sends authenticated `GET organization/{orgId}/organization-setting` through `wcc-api-gateway`. It decodes the first record in the response body array only. A malformed first record or non-array leaves eligibility unknown. Never merge this response into the ordinary Profile. Abort fences local application. | Aggregate settings may omit a projection and cannot prove that an org is ineligible. | `src/services/config/index.ts`, `src/services/config/Util.ts`, `src/services/config/types.ts` | `test/unit/spec/cc.ts`, `test/unit/spec/services/config/index.ts` | T-001, T-012. The façade owns the bounded serial retries and terminal auth. Local fixture evidence is client-only. | PRESENT |
 
 ## Design overview
 

@@ -1,3 +1,11 @@
+/** Plain lifecycle-error reasons shared by recovery consumers. */
+export const REGION_RECOVERY_ERROR_CODES = {
+  RECOVERY_INTERRUPTED: 'RECOVERY_INTERRUPTED',
+  RECOVERY_IN_PROGRESS: 'RECOVERY_IN_PROGRESS',
+  STALE_TASK: 'STALE_TASK',
+  REGION_RELOAD_REQUIRED: 'REGION_RELOAD_REQUIRED',
+} as const;
+
 /**
  * Interval in milliseconds for sending keepalive pings to the worker.
  * @ignore
@@ -27,6 +35,23 @@ export const PING_API_URL = '/health';
  * @ignore
  */
 export const WELCOME_TIMEOUT = 30000;
+
+/** Exact supported hostname labels; placement never authorizes a socket URL. */
+export const REFERENCE_SERVING_REGIONS = [
+  'intgus1',
+  'qaus1',
+  'loadus1',
+  'loadus2',
+  'produs1',
+  'produs2',
+  'prodanz1',
+  'prodca1',
+  'prodeu1',
+  'prodeu2',
+  'prodin1',
+  'prodjp1',
+  'prodsg1',
+] as const;
 
 /**
  * Event name used for real-time device (RTD) ping status.
@@ -98,9 +123,20 @@ export const METHODS = {
   GET_ERROR_DETAILS: 'getErrorDetails',
   GET_COMMON_ERROR_DETAILS: 'getCommonErrorDetails',
   CREATE_ERR_DETAILS_OBJECT: 'createErrDetailsObject',
+  NORMALIZE_RECOVERY_FAILURE: 'normalizeRecoveryFailure',
+  GET_SUBSCRIPTION_MISMATCH_REASON: 'getSubscriptionMismatchReason',
+  CREATE_REGION_RECOVERY_ERROR: 'createRegionRecoveryError',
+  IS_REGION_RECOVERY_ERROR: 'isRegionRecoveryError',
 
   // AqmReqs methods
   REQ: 'req',
+  BEGIN_GENERATION: 'beginGeneration',
+  SET_RECOVERY_GATE: 'setRecoveryGate',
+  INTERRUPT_PENDING: 'interruptPending',
+  IS_LOCAL_SESSION_TRACKING_ID: 'isLocalSessionTrackingId',
+  CLEAR_SESSION_TRACKING_IDS: 'clearSessionTrackingIds',
+  ASSERT_ADMISSION: 'assertAdmission',
+  HAS_USABLE_PRIMARY: 'hasUsablePrimary',
   REQ_EMPTY: 'reqEmpty',
   MAKE_API_REQUEST: 'makeAPIRequest',
   CREATE_PROMISE: 'createPromise',
@@ -110,6 +146,15 @@ export const METHODS = {
 
   // WebSocketManager methods
   INIT_WEB_SOCKET: 'initWebSocket',
+  CANCEL_PENDING: 'cancelPending',
+  GET_SERVING_REGION: 'getServingRegion',
+  CLEAR_SERVING_REGION: 'clearServingRegion',
+  HAS_USABLE_SOCKET: 'hasUsableSocket',
+  OWNS_ATTEMPT: 'ownsAttempt',
+  DISPOSE_ATTEMPT: 'disposeAttempt',
+  DELIVER_MESSAGE: 'deliverMessage',
+  NOTIFY_SOCKET_CLOSE: 'notifySocketClose',
+  DIAGNOSE: 'diagnose',
   CLOSE: 'close',
   HANDLE_CONNECTION_LOST: 'handleConnectionLost',
   REGISTER: 'register',
@@ -118,6 +163,21 @@ export const METHODS = {
 
   // ConnectionService methods
   SETUP_EVENT_LISTENERS: 'setupEventListeners',
+  RESET: 'reset',
+  PAUSE: 'pause',
+  STOP: 'stop',
+  RECOVER_REGION: 'recoverRegion',
+  CLEAR_TIMERS: 'clearTimers',
+  CANCEL_WORK: 'cancelWork',
+  CREATE_FLIGHT: 'createFlight',
+  DISPOSE_FLIGHT: 'disposeFlight',
+  OWNS_INVOCATION: 'ownsInvocation',
+  SCHEDULE_REGION: 'scheduleRegion',
+  RUN_REGION_ATTEMPT: 'runRegionAttempt',
+  FAIL_REGION: 'failRegion',
+  MONITOR_ORDINARY: 'monitorOrdinary',
+  SCHEDULE_ORDINARY: 'scheduleOrdinary',
+  OBSERVE: 'observe',
   DISPATCH_CONNECTION_EVENT: 'dispatchConnectionEvent',
   CS_HANDLE_CONNECTION_LOST: 'handleConnectionLost',
   CLEAR_TIMER_ON_RESTORE_FAILED: 'clearTimerOnRestoreFailed',

@@ -1,4 +1,5 @@
 import path from 'path';
+import fs from 'fs';
 import ts from 'typescript';
 
 const CONTACT_CENTER_ROOT = path.resolve(__dirname, '../../..');
@@ -8,6 +9,13 @@ const TYPES_PATH = path.join(SRC_ROOT, 'types.ts');
 const CONFIG_TYPES_PATH = path.join(SRC_ROOT, 'services/config/types.ts');
 
 const EXPECTED_ROOT_EXPORTS = Object.freeze([
+  'REGION_RECOVERY_EVENTS',
+  'REGION_RECOVERY_ERROR_CODES',
+  'RegionRecoveryErrorCode',
+  'RegionRecoveryStatus',
+  'RegionRecoveryReason',
+  'RegionAutoAvailableStatus',
+  'RegionRecoveryState',
   'AGENT_EVENTS',
   'AISummaryAction',
   'AISummary',
@@ -131,7 +139,105 @@ const EXPECTED_ROOT_EXPORTS = Object.freeze([
   'routingAgent',
 ]);
 
+const EXPECTED_CC_EVENT_CATALOGS = {
+  "CC_AGENT_EVENTS": {
+    "WELCOME": "Welcome",
+    "AGENT_RELOGIN_SUCCESS": "AgentReloginSuccess",
+    "AGENT_RELOGIN_FAILED": "AgentReloginFailed",
+    "AGENT_DN_REGISTERED": "AgentDNRegistered",
+    "AGENT_LOGOUT": "Logout",
+    "AGENT_LOGOUT_SUCCESS": "AgentLogoutSuccess",
+    "AGENT_LOGOUT_FAILED": "AgentLogoutFailed",
+    "AGENT_STATION_LOGIN": "StationLogin",
+    "AGENT_STATION_LOGIN_SUCCESS": "AgentStationLoginSuccess",
+    "AGENT_STATION_LOGIN_FAILED": "AgentStationLoginFailed",
+    "AGENT_STATE_CHANGE": "AgentStateChange",
+    "AGENT_MULTI_LOGIN": "AGENT_MULTI_LOGIN",
+    "AGENT_STATE_CHANGE_SUCCESS": "AgentStateChangeSuccess",
+    "AGENT_STATE_CHANGE_FAILED": "AgentStateChangeFailed",
+    "AGENT_BUDDY_AGENTS": "BuddyAgents",
+    "AGENT_BUDDY_AGENTS_SUCCESS": "BuddyAgents",
+    "AGENT_BUDDY_AGENTS_RETRIEVE_FAILED": "BuddyAgentsRetrieveFailed",
+    "AGENT_CONTACT_RESERVED": "AgentContactReserved",
+    "WELLNESS_BREAK": "WellnessBreak"
+  },
+  "CC_TASK_EVENTS": {
+    "AGENT_CONTACT_ASSIGN_FAILED": "AgentContactAssignFailed",
+    "AGENT_CONTACT_OFFER_RONA": "AgentOfferContactRona",
+    "AGENT_CONTACT_HELD": "AgentContactHeld",
+    "AGENT_CONTACT_HOLD_FAILED": "AgentContactHoldFailed",
+    "AGENT_CONTACT_UNHELD": "AgentContactUnheld",
+    "AGENT_CONTACT_UNHOLD_FAILED": "AgentContactUnHoldFailed",
+    "AGENT_CONSULT_CREATED": "AgentConsultCreated",
+    "AGENT_OFFER_CONSULT": "AgentOfferConsult",
+    "AGENT_CONSULTING": "AgentConsulting",
+    "AGENT_CONSULT_FAILED": "AgentConsultFailed",
+    "AGENT_CTQ_FAILED": "AgentCtqFailed",
+    "AGENT_CTQ_CANCELLED": "AgentCtqCancelled",
+    "AGENT_CTQ_CANCEL_FAILED": "AgentCtqCancelFailed",
+    "AGENT_CONSULT_ENDED": "AgentConsultEnded",
+    "AGENT_CONSULT_END_FAILED": "AgentConsultEndFailed",
+    "AGENT_CONSULT_CONFERENCE_ENDED": "AgentConsultConferenceEnded",
+    "AGENT_CONSULT_CONFERENCING": "AgentConsultConferencing",
+    "AGENT_CONSULT_CONFERENCED": "AgentConsultConferenced",
+    "AGENT_CONSULT_CONFERENCE_FAILED": "AgentConsultConferenceFailed",
+    "PARTICIPANT_JOINED_CONFERENCE": "ParticipantJoinedConference",
+    "PARTICIPANT_LEFT_CONFERENCE": "ParticipantLeftConference",
+    "PARTICIPANT_LEFT_CONFERENCE_FAILED": "ParticipantLeftConferenceFailed",
+    "PARTICIPANT_DROP_CONFERENCE_FAILED": "ParticipantDropConferenceFailed",
+    "AGENT_CONSULT_CONFERENCE_END_FAILED": "AgentConsultConferenceEndFailed",
+    "AGENT_CONFERENCE_TRANSFERRED": "AgentConferenceTransferred",
+    "AGENT_CONFERENCE_TRANSFER_FAILED": "AgentConferenceTransferFailed",
+    "PARTICIPANT_POST_CALL_ACTIVITY": "ParticipantPostCallActivity",
+    "CONSULTED_PARTICIPANT_MOVING": "ConsultedParticipantMoving",
+    "AGENT_BLIND_TRANSFERRED": "AgentBlindTransferred",
+    "AGENT_BLIND_TRANSFER_FAILED": "AgentBlindTransferFailed",
+    "AGENT_VTEAM_TRANSFERRED": "AgentVteamTransferred",
+    "AGENT_VTEAM_TRANSFER_FAILED": "AgentVteamTransferFailed",
+    "AGENT_CONSULT_TRANSFERRING": "AgentConsultTransferring",
+    "AGENT_CONSULT_TRANSFERRED": "AgentConsultTransferred",
+    "AGENT_CONSULT_TRANSFER_FAILED": "AgentConsultTransferFailed",
+    "CONTACT_RECORDING_PAUSED": "ContactRecordingPaused",
+    "CONTACT_RECORDING_STARTED": "ContactRecordingStarted",
+    "CONTACT_RECORDING_PAUSE_FAILED": "ContactRecordingPauseFailed",
+    "CONTACT_RECORDING_RESUMED": "ContactRecordingResumed",
+    "CONTACT_RECORDING_RESUME_FAILED": "ContactRecordingResumeFailed",
+    "CONTACT_ENDED": "ContactEnded",
+    "CONTACT_MERGED": "ContactMerged",
+    "CONTACT_UPDATED": "ContactUpdated",
+    "CONTACT_OWNER_CHANGED": "ContactOwnerChanged",
+    "AGENT_CONTACT_END_FAILED": "AgentContactEndFailed",
+    "AGENT_WRAPUP": "AgentWrapup",
+    "AGENT_WRAPPEDUP": "AgentWrappedUp",
+    "AGENT_WRAPUP_FAILED": "AgentWrapupFailed",
+    "AGENT_OUTBOUND_FAILED": "AgentOutboundFailed",
+    "AGENT_CONTACT": "AgentContact",
+    "AGENT_OFFER_CONTACT": "AgentOfferContact",
+    "AGENT_CONTACT_ASSIGNED": "AgentContactAssigned",
+    "AGENT_CONTACT_UNASSIGNED": "AgentContactUnassigned",
+    "AGENT_INVITE_FAILED": "AgentInviteFailed",
+    "AGENT_OFFER_CAMPAIGN_RESERVATION": "AgentOfferCampaignReservation",
+    "CAMPAIGN_CONTACT_UPDATED": "CampaignContactUpdated",
+    "CAMPAIGN_PREVIEW_ACCEPT_FAILED": "CampaignPreviewAcceptFailed",
+    "CAMPAIGN_PREVIEW_SKIP_FAILED": "CampaignPreviewSkipFailed",
+    "CAMPAIGN_PREVIEW_REMOVE_FAILED": "CampaignPreviewRemoveFailed",
+    "REAL_TIME_TRANSCRIPTION": "REAL_TIME_TRANSCRIPTION",
+    "SUGGESTED_RESPONSE": "SUGGESTED_RESPONSE",
+    "SUGGESTED_RESPONSE_ACKNOWLEDGE": "SUGGESTED_RESPONSE_ACKNOWLEDGE",
+    "POST_CALL_SUMMARY": "POST_CALL_SUMMARY",
+    "MID_CALL_SUMMARY": "MID_CALL_SUMMARY",
+    "FEATURE_ENABLEMENT": "FEATURE_ENABLEMENT",
+    "MID_CALL_SUMMARY_RESPONSE_SUBSEQUENT_AGENT": "MID_CALL_SUMMARY_RESPONSE_SUBSEQUENT_AGENT"
+  }
+} as const;
+
 const INTERNAL_ROOT_EXPORTS = Object.freeze([
+  'SYSTEM_EVENTS',
+  'SystemRegionSwitch',
+  'ConnectionRecoveryFailureKind',
+  'ConnectionRecoveryError',
+  'RecoveryFailure',
+  'TaskRecoveryGuard',
   'AIAssistantEventName',
   'AISummaryTimeoutCodeByInboundType',
   'AI_SUMMARY_DURATION_MS',
@@ -782,6 +888,258 @@ const resolveSymbol = (checker: ts.TypeChecker, symbol: ts.Symbol | undefined) =
 };
 
 describe('contact-center root public contract', () => {
+  it('T-013 retains the module recovery failure type referenced by emitted Utils declarations', () => {
+    const sourceProgram = createProgram();
+    const program = ts.createProgram(sourceProgram.getRootFileNames(), {
+      ...sourceProgram.getCompilerOptions(), noEmit: false, declaration: true, emitDeclarationOnly: true,
+    });
+    const outputs = new Map<string, string>();
+    const result = program.emit(undefined, (file, content) => outputs.set(file.replace(/\\/g, '/'), content));
+    expect(result.emitSkipped).toBe(false);
+    expect(result.diagnostics).toEqual([]);
+    const coreTypes = [...outputs].find(([file]) => file.endsWith('/services/core/types.d.ts'))?.[1];
+    const utils = [...outputs].find(([file]) => file.endsWith('/services/core/Utils.d.ts'))?.[1];
+    expect(coreTypes).toMatch(/export declare?\s*type RecoveryFailure|export type RecoveryFailure/);
+    expect(utils).toBeDefined();
+    const utilsDeclaration = ts.createSourceFile('Utils.d.ts', utils!, ts.ScriptTarget.Latest, true);
+    const failureImport = utilsDeclaration.statements.find((statement): statement is ts.ImportDeclaration =>
+      ts.isImportDeclaration(statement) && ts.isStringLiteral(statement.moduleSpecifier) &&
+      statement.moduleSpecifier.text === './types'
+    );
+    expect(failureImport?.importClause?.isTypeOnly).toBe(true);
+    const bindings = failureImport?.importClause?.namedBindings;
+    expect(bindings && ts.isNamedImports(bindings)).toBe(true);
+    const recoveryFailure = (bindings as ts.NamedImports).elements.find(
+      element => (element.propertyName ?? element.name).text === 'RecoveryFailure'
+    );
+    expect(recoveryFailure).toBeDefined();
+    const normalize = utilsDeclaration.statements.filter(ts.isVariableStatement)
+      .flatMap(statement => [...statement.declarationList.declarations])
+      .find(declaration => ts.isIdentifier(declaration.name) && declaration.name.text === 'normalizeRecoveryFailure');
+    expect(normalize?.type && ts.isFunctionTypeNode(normalize.type)).toBe(true);
+    const returnType = (normalize!.type as ts.FunctionTypeNode).type;
+    expect(ts.isTypeReferenceNode(returnType)).toBe(true);
+    expect((returnType as ts.TypeReferenceNode).typeName.getText(utilsDeclaration)).toBe(recoveryFailure!.name.text);
+    expect(getRootExportNames(sourceProgram)).not.toContain('RecoveryFailure');
+  });
+
+  it('T-013 oldPublicSignaturesVoiceControls', () => {
+    const fixture = path.join(CONTACT_CENTER_ROOT, 'test/unit/spec/__legacy_voice_controls.ts');
+    const program = createProgram({[fixture]: `
+      import {VOICE_CONNECTION_STATUS, VoiceLineStatus, VoiceMobiusSocketStatus} from '../../../src';
+      import type {
+        ContactCenter, IContactCenter, Profile, StationLoginSuccessResponse, LogoutSuccess,
+        StateChangeSuccess, StationLoginResponse, StationLogoutResponse, SetStateResponse,
+        VoiceConnectionState, TaskUIControls, InteractionUIControls, TaskUIControlState, TaskUILeg, ITask,
+      } from '../../../src';
+      type Assert<T extends true> = T;
+      type Exact<A, B> = (<T>() => T extends A ? 1 : 2) extends
+        (<T>() => T extends B ? 1 : 2) ? true : false;
+      type RegisterArgs = Assert<Exact<Parameters<ContactCenter['register']>, []>>;
+      type RegisterReturn = Assert<Exact<ReturnType<ContactCenter['register']>, Promise<Profile>>>;
+      type DeregisterArgs = Assert<Exact<Parameters<ContactCenter['deregister']>, []>>;
+      type DeregisterReturn = Assert<Exact<ReturnType<ContactCenter['deregister']>, Promise<void>>>;
+      type LoginArgs = Assert<Exact<Parameters<ContactCenter['stationLogin']>, [data: {
+        teamId: string; loginOption: 'AGENT_DN' | 'EXTENSION' | 'BROWSER'; dialNumber?: string;
+      }]>>;
+      type LoginReturn = Assert<Exact<ReturnType<ContactCenter['stationLogin']>, Promise<StationLoginSuccessResponse | Error>>>;
+      type LogoutArgs = Assert<Exact<Parameters<ContactCenter['stationLogout']>, [data: {
+        logoutReason?: 'User requested logout' | 'Inactivity Logout' | 'User requested agent profile update';
+      }]>>;
+      type LogoutReturn = Assert<Exact<ReturnType<ContactCenter['stationLogout']>, Promise<LogoutSuccess | Error>>>;
+      type StateArgs = Assert<Exact<Parameters<ContactCenter['setAgentState']>, [data: {
+        state: string; auxCodeId: string; lastStateChangeReason?: string; agentId?: string;
+      }]>>;
+      type StateReturn = Assert<Exact<ReturnType<ContactCenter['setAgentState']>, Promise<StateChangeSuccess | Error>>>;
+      type VoiceArgs = Assert<Exact<Parameters<ContactCenter['getVoiceConnectionState']>, []>>;
+      type VoiceReturn = Assert<Exact<ReturnType<ContactCenter['getVoiceConnectionState']>, VoiceConnectionState>>;
+      type InterfaceRegister = Assert<Exact<IContactCenter['register'], () => Promise<Profile>>>;
+      type InterfaceVoice = Assert<Exact<IContactCenter['getVoiceConnectionState'], () => VoiceConnectionState>>;
+      type Voice = Assert<Exact<VoiceConnectionState, {
+        status: VOICE_CONNECTION_STATUS; lineStatus: VoiceLineStatus;
+        mobiusSocketStatus: VoiceMobiusSocketStatus; reason?: string; retryable?: boolean;
+      }>>;
+      type VoiceStatuses = Assert<Exact<\`\${VOICE_CONNECTION_STATUS}\`, 'ready' | 'unavailable' | 'not-required'>>;
+      type LineStatuses = Assert<Exact<\`\${VoiceLineStatus}\`, 'unknown' | 'connecting' | 'registered' | 'reconnecting' | 'reconnected' | 'unregistered' | 'error'>>;
+      type SocketStatuses = Assert<Exact<\`\${VoiceMobiusSocketStatus}\`, 'unknown' | 'not-in-use' | 'connected' | 'disconnected'>>;
+      type Control = {isVisible: boolean; isEnabled: boolean};
+      type Leg = {
+        accept: Control; decline: Control; hold: Control; transfer: Control; consult: Control;
+        end: Control; recording: Control; mute: Control; consultTransfer: Control; endConsult: Control;
+        conference: Control; exitConference: Control; transferConference: Control;
+        mergeToConference: Control; wrapup: Control; switch: Control; keypad?: Control;
+      };
+      type ControlContract = Assert<Exact<TaskUIControlState, Control>>;
+      type LegContract = Assert<Exact<InteractionUIControls, Leg>>;
+      type ActiveLeg = Assert<Exact<TaskUILeg, 'main' | 'consult'>>;
+      type Controls = Assert<Exact<TaskUIControls, {
+        main: Leg; consult: Leg; activeLeg: 'main' | 'consult';
+        consultTransferDestinations: {consult: string[]; transfer: string[]};
+      }>>;
+      type TaskControls = Assert<Exact<ITask['uiControls'], TaskUIControls>>;
+      declare const cc: ContactCenter;
+      declare const task: ITask;
+      // Existing host expressions keep their Promise and synchronous snapshot boundaries.
+      const registered: Promise<Profile> = cc.register();
+      const deregistered: Promise<void> = cc.deregister();
+      const loggedIn: Promise<StationLoginResponse> = cc.stationLogin({teamId: 'team', loginOption: 'BROWSER'});
+      cc.stationLogin({teamId: 'team', loginOption: 'EXTENSION', dialNumber: '1234'});
+      const loggedOut: Promise<StationLogoutResponse> = cc.stationLogout({});
+      cc.stationLogout({logoutReason: 'User requested logout'});
+      const changed: Promise<SetStateResponse> = cc.setAgentState({state: 'Available', auxCodeId: '0'});
+      cc.setAgentState({state: 'Idle', auxCodeId: 'break', agentId: 'agent', lastStateChangeReason: 'manual'});
+      const voice: VoiceConnectionState = cc.getVoiceConnectionState();
+      const enabled: boolean = task.uiControls[task.uiControls.activeLeg].hold.isEnabled;
+      const keypad: boolean | undefined = task.uiControls.main.keypad?.isVisible;
+      const destinations: string[] = task.uiControls.consultTransferDestinations.transfer;
+      // @ts-expect-error registration has no public options argument
+      cc.register({signal: new AbortController().signal});
+      // @ts-expect-error deregistration has no public options argument
+      cc.deregister(true);
+      // @ts-expect-error login still requires its payload
+      cc.stationLogin();
+      // @ts-expect-error login still requires a team
+      cc.stationLogin({loginOption: 'BROWSER'});
+      // @ts-expect-error logout still requires its payload even though the reason is optional
+      cc.stationLogout();
+      // @ts-expect-error logout reason remains a fixed vocabulary
+      cc.stationLogout({logoutReason: 'arbitrary'});
+      // @ts-expect-error state change still requires an auxiliary code
+      cc.setAgentState({state: 'Available'});
+      // @ts-expect-error voice getter remains synchronous
+      const asyncVoice: Promise<VoiceConnectionState> = cc.getVoiceConnectionState();
+      // @ts-expect-error voice getter has no public options argument
+      cc.getVoiceConnectionState({});
+      // @ts-expect-error underlying line state remains required
+      const incompleteVoice: VoiceConnectionState = {status: VOICE_CONNECTION_STATUS.READY, mobiusSocketStatus: VoiceMobiusSocketStatus.CONNECTED};
+      // @ts-expect-error controls keep per-leg ownership
+      task.uiControls.hold.isEnabled;
+      // @ts-expect-error active leg is closed
+      const invalidLeg: TaskUILeg = 'other';
+      // @ts-expect-error a control requires both flags
+      const invalidControl: TaskUIControlState = {isEnabled: true};
+      // @ts-expect-error controls retain both interaction legs
+      const incompleteControls: TaskUIControls = {main: task.uiControls.main, activeLeg: 'main', consultTransferDestinations: {consult: [], transfer: []}};
+      void [registered, deregistered, loggedIn, loggedOut, changed, voice, enabled, keypad, destinations];
+    `});
+    expect(getDiagnosticsForFiles(program, [fixture]).map(diagnostic =>
+      ts.flattenDiagnosticMessageText(diagnostic.messageText, '\n')
+    )).toEqual([]);
+  });
+
+  it('T-013 publicCcEventsKeysUnchanged', () => {
+    const fixture = path.join(CONTACT_CENTER_ROOT, 'test/unit/spec/__recovery_event_union.ts');
+    const expectedValues = Object.values(EXPECTED_CC_EVENT_CATALOGS).flatMap(Object.values);
+    const program = createProgram({[fixture]: `
+      import type {ContactCenterEvents} from '../../../src';
+      type Expected = ${[...new Set(expectedValues)].map((value) => JSON.stringify(value)).join(' | ')};
+      type Assert<T extends true> = T;
+      type Exact = Assert<[ContactCenterEvents] extends [Expected] ? [Expected] extends [ContactCenterEvents] ? true : false : false>;
+    `});
+
+    Object.entries(EXPECTED_CC_EVENT_CATALOGS).forEach(([name, entries]) => {
+      expect(entriesToObject(getStringLiteralObjectEntries(
+        getObjectLiteralInitializer(getRootExportSymbol(program, name), name)
+      ))).toEqual(entries);
+    });
+    const checker = program.getTypeChecker();
+    const combined = getRootExportSymbol(program, 'CC_EVENTS');
+    const actual = checker.getTypeOfSymbolAtLocation(combined, combined.valueDeclaration!);
+    const entries = actual.getProperties().map((property) => [
+      property.name,
+      (checker.getTypeOfSymbolAtLocation(property, property.valueDeclaration!) as ts.StringLiteralType).value,
+    ]);
+    expect(entriesToObject(entries)).toEqual({...EXPECTED_CC_EVENT_CATALOGS.CC_AGENT_EVENTS, ...EXPECTED_CC_EVENT_CATALOGS.CC_TASK_EVENTS});
+    expect(getDiagnosticsForFiles(program, [fixture])).toEqual([]);
+  });
+
+  it('T-007 root routingAgent preserves optional requestId, callback and context types', () => {
+    const fixture = path.join(CONTACT_CENTER_ROOT, 'test/unit/spec/__state_id_consumer.ts');
+    const program = createProgram({[fixture]: `
+      import {routingAgent} from '../../../src';
+      import type {StateChangeSuccess} from '../../../src';
+      declare const agent: ReturnType<typeof routingAgent>;
+      const data = {state: 'Available', auxCodeId: '0'};
+      const callback = (response: any): void => {};
+      const context = {generation: 3, signal: new AbortController().signal};
+      const legacy: Promise<StateChangeSuccess> = agent.stateChange({data});
+      const withCallback: Promise<StateChangeSuccess> = agent.stateChange({data}, callback);
+      const withContext: Promise<StateChangeSuccess> = agent.stateChange({data}, undefined, context);
+      const withBoth: Promise<StateChangeSuccess> = agent.stateChange({data}, callback, context);
+      const explicit: Promise<StateChangeSuccess> = agent.stateChange({data, requestId: 'WX_CC_SDK_request'}, callback, context);
+      agent.stateChange({data, requestId: undefined});
+      // @ts-expect-error supplied request IDs must remain strings.
+      agent.stateChange({data, requestId: 42});
+      // @ts-expect-error state changes still require their payload.
+      agent.stateChange({});
+      // @ts-expect-error context still requires an explicit generation.
+      agent.stateChange({data}, callback, {signal: context.signal});
+    `});
+    expect(getDiagnosticsForFiles(program, [fixture]).map(diagnostic =>
+      ts.flattenDiagnosticMessageText(diagnostic.messageText, '\n')
+    )).toEqual([]);
+  });
+
+  it('T-013 docContractLinksAndExactHostExample API links', () => {
+    const readme = fs.readFileSync(path.join(CONTACT_CENTER_ROOT, 'README.md'), 'utf8');
+    const guide = fs.readFileSync(path.join(CONTACT_CENTER_ROOT, 'docs/getting-started.md'), 'utf8');
+    expect(readme).toContain('docs/getting-started.md#multi-region-recovery-host-restart');
+    expect(readme).not.toContain('decideRegionRestart');
+    expect(guide.split('<!-- region-recovery-host-example:start -->')).toHaveLength(2);
+    for (const contract of ['RegionRecoveryState', 'RegionRecoveryStatus', 'RegionRecoveryReason', 'RegionAutoAvailableStatus', 'RegionRecoveryErrorCode', 'REL-AQM-TRACKING-ECHO']) expect(guide).toContain(contract);
+  });
+
+  it('T-013 additiveRecoveryExportsAndTypedConsumer / plainErrorCatalogRoundTrip typed narrowing', () => {
+    const fixture = path.join(CONTACT_CENTER_ROOT, 'test/unit/spec/__recovery_consumer.ts');
+    const program = createProgram({[fixture]: `
+      import {REGION_RECOVERY_EVENTS, REGION_RECOVERY_ERROR_CODES} from '../../../src';
+      import type {RegionRecoveryState, RegionRecoveryStatus, RegionRecoveryReason, RegionAutoAvailableStatus, RegionRecoveryErrorCode} from '../../../src';
+      import {isRegionRecoveryError, createRegionRecoveryError} from '../../../src/services/core/Utils';
+      type Assert<T extends true> = T;
+      type Exact<A, B> = [A] extends [B] ? [B] extends [A] ? true : false : false;
+      type Status = Assert<Exact<RegionRecoveryStatus, 'recovering' | 'ready' | 'reloadRequired' | 'stationLoginRequired' | 'unavailable'>>;
+      type Reason = Assert<Exact<RegionRecoveryReason, 'initial-login' | 'region-switch' | 'region-mismatch' | 'not-eligible' | 'session-restore-failed' | 'automatic-relogin-disabled' | 'authentication-failed' | 'recovery-failed'>>;
+      type Auto = Assert<Exact<RegionAutoAvailableStatus, 'waitingForVoice' | 'requesting' | 'succeeded' | 'failed' | 'cancelled'>>;
+      type Codes = Assert<Exact<RegionRecoveryErrorCode, 'RECOVERY_INTERRUPTED' | 'RECOVERY_IN_PROGRESS' | 'STALE_TASK' | 'REGION_RELOAD_REQUIRED'>>;
+      const event: 'region:stateChange' = REGION_RECOVERY_EVENTS.STATE_CHANGE;
+      const state: RegionRecoveryState = {status: 'ready', reason: 'region-switch', operation: 'FAILOVER', scope: 'ORG', limitedService: false, retryAfterMs: 0, autoAvailable: 'requesting'};
+      const created: RegionRecoveryErrorCode = createRegionRecoveryError(REGION_RECOVERY_ERROR_CODES.STALE_TASK).data.reason;
+      declare const candidate: unknown;
+      if (isRegionRecoveryError(candidate)) {
+        const error: Error = candidate;
+        const reason: RegionRecoveryErrorCode = candidate.data.reason;
+        void [error, reason];
+      }
+      // @ts-expect-error no extra lifecycle codes
+      const invalid: RegionRecoveryErrorCode = 'INVALID_MR_SETTINGS';
+      // @ts-expect-error recovering is not an automatic action outcome
+      const invalidAuto: RegionAutoAvailableStatus = 'recovering';
+      void [event, state, created, invalid, invalidAuto];
+    `});
+    const catalogs = {
+      REGION_RECOVERY_EVENTS: {STATE_CHANGE: 'region:stateChange'},
+      REGION_RECOVERY_ERROR_CODES: {
+        RECOVERY_INTERRUPTED: 'RECOVERY_INTERRUPTED',
+        RECOVERY_IN_PROGRESS: 'RECOVERY_IN_PROGRESS',
+        STALE_TASK: 'STALE_TASK',
+        REGION_RELOAD_REQUIRED: 'REGION_RELOAD_REQUIRED',
+      },
+    };
+    Object.entries(catalogs).forEach(([name, expected]) => {
+      expect(entriesToObject(getStringLiteralObjectEntries(
+        getObjectLiteralInitializer(getRootExportSymbol(program, name), name)
+      ))).toEqual(expected);
+    });
+    expect(getDiagnosticsForFiles(program, [fixture])).toEqual([]);
+    const types = program.getSourceFile(TYPES_PATH)!;
+    const catalogImport = types.statements.find((statement) =>
+      ts.isImportDeclaration(statement) && ts.isStringLiteral(statement.moduleSpecifier) && statement.moduleSpecifier.text === './services/core/constants'
+    ) as ts.ImportDeclaration;
+    expect(catalogImport.importClause?.isTypeOnly).toBe(true);
+    const leaf = program.getSourceFile(path.join(SRC_ROOT, 'services/core/constants.ts'))!;
+    expect(leaf.statements.some(ts.isImportDeclaration)).toBe(false);
+  });
+
   it('preserves the literal root barrel export list and omits package internals', () => {
     const program = createProgram();
     const exportNames = getRootExportNames(program);

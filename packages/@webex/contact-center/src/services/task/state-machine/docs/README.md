@@ -7,9 +7,9 @@ tags: [module, specification]
 <!-- sdd-generated-metadata
 doc_kind: module-spec
 generated_from: module-spec@0.3.0
-generated_by: claude-code
+generated_by: codex
 approved_by: rarajes2@cisco.com
-updated_at: 2026-11-17T03:03:58Z
+updated_at: 2026-11-21T10:35:21Z
 validation_status: pass-with-warnings
 -->
 
@@ -34,12 +34,12 @@ Related context: [documentation index](../../../../../docs/index.md) ·
 | Source path | `src/services/task/state-machine` |
 | Resource kind | module |
 | Status | Active |
-| Last verified | 2026-11-16 at `0b8c34db7f` |
+| Last verified | Historical baseline: 2026-11-16 at `0b8c34db7f` |
 | Module id | `task-state-machine` |
 | Parent spec | [`src/services/task/docs/README.md`](../../docs/README.md) |
 | Doc kind | Module spec |
 | Coverage score | Pending coverage assessment |
-| Validation status | pass-with-warnings — assessed 2026-11-17; validator runtime 01a1e76f-2293-79a0-9f8f-f060038448dd; 0 Blocking, 0 Important, 4 Minor findings. |
+| Validation status | pass-with-warnings — assessed 2026-11-23 by Claude Code. 0 blocking findings and 13 nonblocking findings. Historical baseline: pass-with-warnings, assessed 2026-11-17; validator 01a1e76f-2293-79a0-9f8f-f060038448dd; 0 Blocking, 0 Important, 4 Minor. Historical 2026-11-22 review: 4a979a45-b226-4b4c-8dcb-7c5e78aa8351. Historical results do not certify this revision. |
 
 ## Applicability
 
@@ -168,6 +168,7 @@ The module is internal to the package (contract `contact-center-task-state-machi
 | TASK_STATE_MACHINE-R-008 | `CONTACT_OWNER_CHANGED` must synchronize task/context data and emit `task:hydrate` without transitioning state. Participant Drop must rely on the existing `ParticipantLeftConference` mapping rather than adding an initiating state event. `PARTICIPANT_LEAVE` and `CONSULT_END` end the task for the current Agent only when `guards.didCurrentAgentLeaveMainInteraction` passes; `CONSULT_END` does not use mainCall membership as self-departure evidence. Removed accepted Agents emit `task:consultEnd` plus `task:end`, surviving initiators recover to their main call, and an unaccepted OFFERED consultee emits only `task:consultEnd`. Starting Consult must preserve the prior task snapshot used by the guard. TaskManager's owner-change mapping and recovery are TASK-R-010 in the [task module specification](../../docs/README.md). | Owner-sensitive consumers must rerender promptly while participant removal and consult removal remain backend-authoritative and compatible with existing incoming-task callback behavior. | `src/services/task/state-machine/TaskStateMachine.ts`, `src/services/task/state-machine/actions.ts`, `src/services/task/state-machine/guards.ts` | `test/unit/spec/services/task/state-machine/TaskStateMachine.ts`, `test/unit/spec/services/task/state-machine/guards.ts`, `test/unit/spec/services/task/Task.ts` | Backend delivery of complete departure payloads is outside this module. | PRESENT |
 | TASK_STATE_MACHINE-R-009 | Every implemented state except the final ones handles `OUTBOUND_FAILED`: `IDLE` terminates (race before `TASK_INCOMING`), and every other active state enters `WRAPPING_UP` when `guards.shouldWrapUp` passes, otherwise `TERMINATED`, always emitting `emitTaskOutdialFailed`. | An outdial failure can arrive in any phase of the call, including before the task is offered, and must never leave a task stuck in an active state. | `src/services/task/state-machine/TaskStateMachine.ts` | `test/unit/spec/services/task/state-machine/TaskStateMachine.ts` | None. | PRESENT |
 | TASK_STATE_MACHINE-R-010 | `COMPLETED` and `TERMINATED` are final states; `COMPLETED` entry runs `emitTaskWrappedup` before `cleanupResources`, `TERMINATED` entry runs `cleanupResources`, and `computeUIControls` returns `getDefaultUIControls()` for both. | Subscribers must receive intact task data before cleanup removes the task from the collection, and no control may stay enabled on a finished task. | `src/services/task/state-machine/TaskStateMachine.ts`, `src/services/task/state-machine/uiControlsComputer.ts` | `test/unit/spec/services/task/state-machine/TaskStateMachine.ts` | None. | PRESENT |
+| TASK_STATE_MACHINE-R-011 | Internal `disableTaskUIControls(controls: TaskUIControls): TaskUIControls` preserves the control layout while disabling each present main and consult action when the Task is regionally invalidated. Current Tasks keep the existing state-machine and control rules. | A host can keep rendering a stale Task safely while replacement work is hydrated. | `src/services/task/state-machine/uiControlsComputer.ts`, `src/services/task/Task.ts` | `test/unit/spec/services/task/Task.ts`, `test/unit/spec/services/task/TaskManager.ts`, `test/unit/spec/services/task/state-machine/uiControlsComputer.ts` | T-008, T-009. Host control shapes and the public `getDefaultUIControls` export are preserved. | PRESENT |
 
 ## Design overview
 

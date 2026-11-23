@@ -1,11 +1,17 @@
 import Digital from '../../../../../../src/services/task/digital/Digital';
 import {MEDIA_CHANNEL, TaskData, TaskResponse} from '../../../../../../src/services/task/types';
 import {TaskEvent, TaskEventPayload} from '../../../../../../src/services/task/state-machine';
+import LoggerProxy from '../../../../../../src/logger-proxy';
+import WebexRequest from '../../../../../../src/services/core/WebexRequest';
+import MetricsManager from '../../../../../../src/metrics/MetricsManager';
+import {METRIC_EVENT_NAMES} from '../../../../../../src/metrics/constants';
+import * as Utils from '../../../../../../src/services/core/Utils';
+import {flushEventLoopTurn} from '../../../../fixtures/aiSummaryTestUtils';
 
 jest.mock('../../../../../../src/services/core/WebexRequest', () => ({
   __esModule: true,
   default: {
-    getInstance: () => ({ uploadLogs: jest.fn() }),
+    getInstance: jest.fn().mockReturnValue({uploadLogs: jest.fn().mockResolvedValue(undefined)}),
   },
 }));
 
@@ -101,5 +107,72 @@ describe('Digital Task', () => {
       expect(task.uiControls.main.transfer.isVisible).toBe(false);
       expect(task.uiControls.main.end.isVisible).toBe(false);
     });
+  });
+});
+
+describe('T-008 Digital regional lifetime', () => {
+  const uploadLogs = WebexRequest.getInstance().uploadLogs;
+  let helper: jest.SpyInstance;
+  let errorLog: jest.SpyInstance;
+  let metrics: jest.SpyInstance;
+  let task: Digital;
+  let accept: jest.Mock;
+  let admission: jest.Mock;
+
+  beforeEach(() => {
+    helper = jest.spyOn(Utils, 'getErrorDetails');
+    errorLog = jest.spyOn(LoggerProxy, 'error').mockImplementation();
+    metrics = jest.spyOn(MetricsManager.getInstance(), 'trackEvent').mockImplementation();
+    accept = jest.fn();
+    task = new Digital({accept} as any, {interactionId: 'digital', interaction: {mediaType: MEDIA_CHANNEL.CHAT}} as TaskData);
+    admission = jest.fn();
+    task.bindRecoveryGuard({generation: 1, signal: new AbortController().signal, assertCommandAllowed: admission});
+  });
+
+  afterEach(() => {
+    task.invalidateForRegionRecovery();
+    helper.mockRestore();
+    errorLog.mockRestore();
+    metrics.mockRestore();
+  });
+
+  it.each(['RECOVERY_INTERRUPTED', 'STALE_TASK', 'RECOVERY_IN_PROGRESS', 'REGION_RELOAD_REQUIRED'])(
+    'lifecycleCallerCatchPreservesIdentityAndReason: %s', async (reason) => {
+      const diagnostics = {trackingId: 'digital-lifecycle-tracking', status: 409};
+      const error = Utils.createRegionRecoveryError(reason, diagnostics);
+      const data = error.data;
+      accept.mockRejectedValue(error);
+
+      await expect(task.accept()).rejects.toBe(error);
+      await flushEventLoopTurn();
+
+      expect(accept).toHaveBeenCalledTimes(1);
+      expect(admission).toHaveBeenCalled();
+      expect(helper.mock.calls).toEqual([[error, 'accept', 'cc']]);
+      expect(helper.mock.results[0].value).toEqual({error, reason});
+      expect(error.data).toBe(data);
+      expect(error.data).toEqual({reason, ...diagnostics});
+      expect(error.message).toBe(reason);
+      expect(metrics).not.toHaveBeenCalled();
+      expect(errorLog).not.toHaveBeenCalled();
+      expect(uploadLogs).not.toHaveBeenCalled();
+    }
+  );
+
+  it('ordinary accept failure reaches the metric, error log and upload sinks', async () => {
+    const error = new Error('ordinary accept failure');
+    accept.mockRejectedValue(error);
+
+    await expect(task.accept()).rejects.toThrow('Error while performing accept');
+    await flushEventLoopTurn();
+
+    expect(metrics).toHaveBeenCalledWith(
+      METRIC_EVENT_NAMES.TASK_ACCEPT_FAILED,
+      {taskId: 'digital', error: error.toString(), trackingId: undefined},
+      ['operational', 'behavioral', 'business']
+    );
+    expect(errorLog).toHaveBeenCalledTimes(1);
+    expect(uploadLogs).toHaveBeenCalledTimes(1);
+    expect(uploadLogs).toHaveBeenCalledWith({correlationId: undefined});
   });
 });

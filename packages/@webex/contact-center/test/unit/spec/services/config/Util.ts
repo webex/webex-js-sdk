@@ -1,4 +1,30 @@
-import {parseAgentConfigs} from '../../../../../src/services/config/Util';
+import {decodeMultiRegionSettings, LOCAL_MR_SETTINGS_ERROR, parseAgentConfigs} from '../../../../../src/services/config/Util';
+
+describe('T-001 decodeMultiRegionSettings', () => {
+  it.each([
+    [[{multiRegionEnabled: true, homeRegion: '  US1  '}], {eligibility: 'enabled', homeRegion: 'us1'}],
+    [[{multiRegionEnabled: false, homeRegion: ' EU2 '}], {eligibility: 'disabled', homeRegion: 'eu2'}],
+    [[{id: 'sanitized-org', licenseVersion: '4.0'}], {eligibility: 'disabled'}],
+    [[{multiRegionEnabled: true, homeRegion: null}], {eligibility: 'enabled'}],
+    [[{multiRegionEnabled: true, homeRegion: ' '}], {eligibility: 'enabled'}],
+    [[{multiRegionEnabled: true, homeRegion: 123}], {eligibility: 'enabled'}],
+    [[{multiRegionEnabled: false}, {multiRegionEnabled: true}], {eligibility: 'disabled'}],
+  ])('authoritativeArrayFirstOnly / legacyDisabledNotAggregateOmission record %#', (body, expected) => {
+    expect(decodeMultiRegionSettings(body)).toEqual(expected);
+  });
+
+  it.each([undefined, null, {}, [], [null], [[]], [{}], [{}, {multiRegionEnabled: true}],
+    [{multiRegionEnabled: undefined}], [{multiRegionEnabled: null}], [{multiRegionEnabled: 'true'}], [{multiRegionEnabled: 1}]
+  ].map((body) => [body]))('unknownMalformedFirst rejects without scanning later records %#', (body) => {
+    try {
+      decodeMultiRegionSettings(body);
+      throw new Error('Expected invalid settings');
+    } catch (error) {
+      expect(error[LOCAL_MR_SETTINGS_ERROR]).toBe('INVALID_MR_SETTINGS');
+      expect(error.data).toEqual({reason: 'INVALID_MR_SETTINGS'});
+    }
+  });
+});
 import {
   AgentProfile,
   AuxCode,

@@ -140,3 +140,289 @@ Expected result: all three commands exit zero and Jest prints no coverage thresh
 - Agent entry: [`AGENTS.md`](../AGENTS.md) · System shape: [package architecture](architecture.md) · Routing: [specification registry](specs/README.md)
 - Conventions: the coding patterns and rules in [`AGENTS.md`](../AGENTS.md), and the manifest-routed module specification for the target capability.
 - [Documentation index](index.md)
+
+## Multi-region recovery
+
+`REGION_RECOVERY_EVENTS.STATE_CHANGE` (`region:stateChange`) publishes frozen, complete
+`RegionRecoveryState` snapshots. Replace the displayed snapshot rather than merging it:
+omitted `homeRegion`, `servingRegion`, `limitedService`, retry or automatic-action fields
+clear their previous values. The additive public API is the two recovery catalogs and
+`RegionRecoveryState`, `RegionRecoveryStatus`, `RegionRecoveryReason`,
+`RegionAutoAvailableStatus` and `RegionRecoveryErrorCode` from `src/index.ts`.
+`SYSTEM_REGION_SWITCH` and transport terminal types are internal.
+
+The five statuses are `recovering`, `ready`, `stationLoginRequired`, `reloadRequired` and
+`unavailable`. A socket Welcome alone never means ready: ready requires a backend-accepted
+station session. Region placement comes only from the admitted primary socket. During a
+switch or primary loss, unknown placement and limited-service fields are omitted. Ready
+is independent of voice registration, optional realtime services and conditional
+`autoAvailable`; it does not promise Available state or uninterrupted migration of an
+ongoing call or its audio. The backend acknowledgment controls cached agent state.
+
+During automatic restoration, public `stationLogin()` rejects `RECOVERY_IN_PROGRESS`.
+After `stationLoginRequired`, use the existing station login API with `BROWSER`,
+`EXTENSION` or `AGENT_DN` and its normal validation. Successful manual DR login emits
+ready/region-switch with the initiating `trackingId`, `operation` and `scope`, current
+placement, and no `autoAvailable` or `retryAfterMs`. A failed manual attempt stays manual.
+For failed auto-Available, retain the usable session and offer the existing state action;
+Available still requires ready browser voice when that policy applies. There is no hidden
+retry, polling, new failover operation or public refresh method.
+
+Prior-station manual outcomes keep the entire RTD socket closed, including wellness,
+until a successful manual login. Failed/invalid login keeps it closed. Successful retry
+launches registration-owned RTD resume independently of ready and of the station-login
+Promise; retiring its request owner cannot abort that child. Resuming an already active
+matching epoch is a no-op. Optional RTD auth/failure cannot revoke a ready primary station;
+settings-reader auth leaves eligibility unknown, while terminal primary/session auth
+ends recovery. Host Webex authentication remains owned by the host.
+
+Restored Tasks start with `aiSummaryCapabilities` disabled. Profile flags do not rehydrate
+those capabilities: only fresh current-epoch `FEATURE_ENABLEMENT`, including a current
+buffered frame, can enable a new Task. If the backend does not resend it,
+`POST_CALL_SUMMARY_DISABLED` and `MID_CALL_SUMMARY_DISABLED` remain valid despite core ready.
+Retained invalidated Tasks have disabled controls and reject `STALE_TASK`; read current
+`task.uiControls` and obtain replacement Tasks through the existing events. Cleanup does
+not synthesize ContactEnded, successful wrap-up or task:end, and does not end a call.
+
+### Lifecycle and observer delivery
+
+Clear the host's region display at `stationLogout()` and `deregister()` invocation, even
+when logout immediately rejects. Clear it on primary multi-login and identity/register
+replacement as well. No standalone logout status or snapshot is emitted when no automatic
+state action is pending; do not leave the old recovering display waiting for that event.
+When an action is pending, SDK owners consume/detach it and install lifecycle, AQM,
+command, continuation and transport/RTD fences first. They then publish only a captured
+last-ready snapshot with its old reason/initiating metadata and `autoAvailable: cancelled`,
+or nothing without an old ready snapshot. An immediate post-fence ownership recheck
+precedes cache reset. Cancelled is never attached to recovering or terminal status.
+The next accepted initial-login ready can be identical to the previous session and emits again.
+
+Station logout retains registration, accepted switch history and ordinary reconnect.
+Only still-owned backend-confirmed logout clears accepted station data before ancillary
+teardown. Failed or undispatchable logout preserves the latest accepted station data and
+releases provisional relogin suppression; cancelled DR/automatic work and its old publication
+remain cancelled. Without a usable primary, logout sends no request and immediately rejects
+with `RECOVERY_INTERRUPTED`. Retry after ordinary five-second transport recovery; this
+rejection does not claim that the backend logged the agent out.
+
+Delivery inherits ampersand-events semantics. An earlier throwing listener skips later
+named listeners and `all` listeners for that call, including ready, stationLoginRequired,
+unavailable and legacy agent events. The SDK contains that exception and continues its
+work and later publications. Deduplication does not replay the cached snapshot; there is
+no per-listener delivery guarantee. Attach essential listeners before registration and
+detach the same references at teardown.
+
+## Multi-region recovery host restart
+
+The SDK never calls `window.location.reload()`. A recognized subscription-region mismatch
+publishes reloadRequired/region-mismatch; initial `register()` independently rejects the
+plain Error with `data.reason: REGION_RELOAD_REQUIRED`. An already-completed register
+Promise is not rejected again. Use the live authenticated organization at decision time.
+The example allows at most one automatic restart per org/tab per 120 seconds, including
+across page reload contexts. It persists before navigation, blocks clock rollback and
+malformed guard data, and fails closed when authenticated-org or session-storage access is unavailable.
+Do not clear its guard during ordinary SDK teardown.
+
+<!-- region-recovery-host-example:start -->
+```ts
+function decideRegionRestart(
+  getOrgId: () => string | null | undefined,
+  now: number,
+  getStorage: () => Pick<Storage, 'getItem' | 'setItem'>
+): 'restart' | 'blocked' {
+  try {
+    const authenticatedOrg = getOrgId();
+    if (typeof authenticatedOrg !== 'string' || !authenticatedOrg.trim() ||
+        !Number.isFinite(now) || now < 0) return 'blocked';
+    const orgId = authenticatedOrg.trim();
+    const storage = getStorage();
+    const key = `ccsdk:region-reload:${orgId}`;
+    const previous = storage.getItem(key);
+    if (previous !== null) {
+      const last = JSON.parse(previous);
+      if (typeof last !== 'number' || !Number.isFinite(last) || last < 0 ||
+          last > now || now - last < 120000) return 'blocked';
+    }
+    storage.setItem(key, JSON.stringify(now));
+    return 'restart';
+  } catch {
+    return 'blocked';
+  }
+}
+```
+<!-- region-recovery-host-example:end -->
+
+With an initialized `webex` and the helper above, keep host wiring separate from the
+pure decision. Clear the display immediately after invoking register or logout so the
+SDK's synchronous cancellation publication cannot restore the previous ready snapshot.
+Operation results and rejections remain visible to their callers. A registration's mismatch
+event and rejection share one guarded restart attempt, including when a reload returns
+without unloading the page. The rejection requests a restart only if that registration's
+mismatch event was not observed. Later independent mismatches still consult the persisted
+guard; blocked requests show manual-restart guidance.
+
+A valid stored timestamp becomes eligible when at least 120 seconds have elapsed since
+that timestamp. A future timestamp blocks until the clock reaches 120 seconds after it,
+so clock rollback extends the wait. Malformed or non-finite stored data fails closed and
+does not expire automatically. For explicit manual recovery, the host can expose a user-invoked
+restart control that checks the authenticated session and mismatch cause, removes only
+`ccsdk:region-reload:${orgId}` for the live authenticated organization from sessionStorage,
+and restarts the application. Resolve unavailable identity or storage access before trying
+to reset the guard. Keep this reset out of automatic retries and ordinary register,
+logout, or teardown paths.
+
+```ts
+import {REGION_RECOVERY_EVENTS, REGION_RECOVERY_ERROR_CODES} from '@webex/contact-center';
+import type {RegionRecoveryState} from '@webex/contact-center';
+
+let region: RegionRecoveryState | undefined;
+let registrationAttempt: {mismatchObserved: boolean} | undefined;
+function requestHostRestart(): void {
+  const decision = decideRegionRestart(
+    () => webex.credentials.getOrgId(), Date.now(), () => window.sessionStorage
+  );
+  if (decision === 'restart') {
+    window.location.reload();
+  } else {
+    console.error('Automatic restart blocked. Check the session and restart manually.');
+  }
+}
+function onRegionState(snapshot: RegionRecoveryState): void {
+  region = snapshot;
+  if (snapshot.status === 'reloadRequired') {
+    if (registrationAttempt) registrationAttempt.mismatchObserved = true;
+    requestHostRestart();
+  }
+}
+async function registerAgent() {
+  webex.cc.off(REGION_RECOVERY_EVENTS.STATE_CHANGE, onRegionState);
+  webex.cc.on(REGION_RECOVERY_EVENTS.STATE_CHANGE, onRegionState);
+  const attempt = {mismatchObserved: false};
+  registrationAttempt = attempt;
+  try {
+    const pending = webex.cc.register();
+    region = undefined;
+    return await pending;
+  } catch (error) {
+    const reason = (error as {data?: {reason?: unknown}} | null | undefined)?.data?.reason;
+    if (reason === REGION_RECOVERY_ERROR_CODES.REGION_RELOAD_REQUIRED && !attempt.mismatchObserved)
+      requestHostRestart();
+    throw error;
+  } finally {
+    if (registrationAttempt === attempt) registrationAttempt = undefined;
+  }
+}
+async function logoutAgent() {
+  const pending = webex.cc.stationLogout({logoutReason: 'User requested logout'});
+  region = undefined;
+  return pending;
+}
+async function teardownAgent() {
+  region = undefined;
+  webex.cc.off(REGION_RECOVERY_EVENTS.STATE_CHANGE, onRegionState);
+  await webex.cc.deregister();
+}
+```
+
+## Recovery accessibility guidance
+
+Host applications should announce recovering and action-required changes in a screen reader status region and preserve keyboard access to manual login, state actions and logout; do not rely on color alone.
+
+Clear omitted metadata and preserve the host's existing manual-login and agent-state
+paths. This is host guidance; this SDK delivers no rendered screen or browser harness.
+
+## Multi-region recovery rollout and rollback
+
+Rollout requires both a compatible SDK release and backend multi-region entitlement.
+The first authoritative organization-settings record's literal `true` enables recovery;
+`false` or a legacy record without the MR field disables it. Changes are observed only on
+the next `register()`: an active registration never polls or rereads entitlement. There
+is no public refresh method, SDK toggle or client-side entitlement override.
+
+Reader dependency failure leaves eligibility unknown, without manufacturing false,
+changing backend entitlement, delaying the complete Profile or failing a valid session.
+An unknown-window switch is ignored without replay/history; ordinary recovery remains
+available. Rollback is delivery-owned SDK release rollback together with platform
+entitlement management, observed through a fresh registration. The candidate stays
+unreleased until the evidence below passes; the existing released SDK remains in use.
+
+### Release evidence and REL-AQM-TRACKING-ECHO
+
+The SDK maintainer/release owner is accountable. Routing platform API owners and
+QA/recovery operators supply sanctioned, sanitized actual request-header/notification
+captures from supported deployed APIs and entitled test organizations, covering ordinary
+and DR paths. The flow/runtime release owner obtains and reviews the evidence in the
+flow-owned release record alongside AC-021. Local unit fixtures are client-only evidence,
+not deployed backend certification.
+
+Before release/rollout, require all of the following separately:
+
+- An authoritative positive organization-settings array fixture with sanitized id/licenseVersion,
+  explicit true entitlement and deployment/version provenance.
+- Reader-isolation and compatibility evidence: valid complete Profile/session despite reader
+  dependency/auth failure, next-register-only entitlement changes, unchanged public events,
+  ordinary reconnect/authentication, station prerequisites and browser calling ownership.
+- Blocking `REL-AQM-TRACKING-ECHO`: actual success **and** failure pairs for stateChange
+  (`AgentStateChangeSuccess` / `AgentStateChangeFailed`), stationLogin
+  (`AgentStationLoginSuccess` / `AgentStationLoginFailed`) and reload
+  (`AgentReloginSuccess` / `AgentReloginFailed`). For all six outcomes, exact full SDK HTTP
+  `trackingid` equals nested `data.trackingId`, with distinct outer notification tracking.
+  Preserve backend failure reason/code. Record SDK/backend/API versions, timestamps,
+  sanitized org/agent references, tested deployment coverage and capture links. SDK maintainer
+  and Routing platform owner review every applicable supported deployment.
+- The separate human live release gate, AC-021: reviewed QA/platform live recovery and
+  browser/audio evidence, with explicit outcomes and links in the delivery-owned release record.
+  For **DN, extension and browser**, separately in **both failover and failback**,
+  QA/platform owners must capture the
+  **authoritative live organization-settings payload**, **admission placement**,
+  **station result**, **new-call results**, and **supported RTD/voice evidence**, with
+  explicit outcomes and capture links in the delivery-owned release record. The array
+  fixture above is a separate client-contract input and cannot replace the live payload.
+
+AC-021 prerequisites are tracked separately below. The SDK maintainer/release owner is
+accountable for the release decision; the named QA/platform owners supply each item.
+AC-021 is a separate human/operator-executed release gate, independent of local build/test
+acceptance. Use the following collection template in the delivery-owned release record;
+replace the italic placeholders with actual statuses, reasons and evidence links supplied
+by the named owners. Record missing evidence as not-executed and failed evidence as failed;
+neither permits release. The final evidence task records actual results after all SDK
+changes; local tests do not supply live evidence.
+
+| Live prerequisite | Accountable evidence owner | Status | Reason | Evidence refs |
+| --- | --- | --- | --- | --- |
+| Multi-region-entitled test organization | Routing platform owner | _record status_ | _record reason_ | _record evidence links_ |
+| Agent credentials, team and DN | QA/recovery operator | _record status_ | _record reason_ | _record evidence links_ |
+| Deployed SDK/backend/API version identifiers | SDK maintainer and Routing platform owner | _record status_ | _record reason_ | _record evidence links_ |
+| Coordinated failover/failback operator window | QA/recovery lead and platform operations owner | _record status_ | _record reason_ | _record evidence links_ |
+
+Live drill collection template: create one separate record for each combination below,
+including all five capture fields, the actual outcome and capture links in every record.
+QA/platform owners collect and review the live evidence; these placeholders claim no result.
+
+- **DN, failover**: authoritative live organization-settings payload; admission
+  placement; station result; new-call results; supported RTD/voice evidence.
+  Status: _record status_. Evidence refs: _record evidence links_.
+- **DN, failback**: authoritative live organization-settings payload; admission
+  placement; station result; new-call results; supported RTD/voice evidence.
+  Status: _record status_. Evidence refs: _record evidence links_.
+- **extension, failover**: authoritative live organization-settings payload; admission
+  placement; station result; new-call results; supported RTD/voice evidence.
+  Status: _record status_. Evidence refs: _record evidence links_.
+- **extension, failback**: authoritative live organization-settings payload; admission
+  placement; station result; new-call results; supported RTD/voice evidence.
+  Status: _record status_. Evidence refs: _record evidence links_.
+- **browser, failover**: authoritative live organization-settings payload; admission
+  placement; station result; new-call results; supported RTD/voice evidence.
+  Status: _record status_. Evidence refs: _record evidence links_.
+- **browser, failback**: authoritative live organization-settings payload; admission
+  placement; station result; new-call results; supported RTD/voice evidence.
+  Status: _record status_. Evidence refs: _record evidence links_.
+
+Keep these four entries and the separate AC-021 and REL-AQM-TRACKING-ECHO outcomes in
+the delivery-owned release record. See the [local validation report](multi-region-validation.md#release-evidence)
+for current accounting; local passing tests do not supply any of these prerequisites.
+
+Missing or negative echo evidence blocks candidate release/rollout and leaves the existing
+released SDK in use. There is no type-only runtime fallback, timeout-as-compatibility policy
+or client rollback/failover endpoint. A backend contract fix or separately reviewed compatible
+design requires repeated deployed evidence. Local Jest passes do not close these gates.

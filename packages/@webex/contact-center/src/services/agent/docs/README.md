@@ -7,9 +7,9 @@ tags: [module, specification]
 <!-- sdd-generated-metadata
 doc_kind: module-spec
 generated_from: module-spec@0.3.0
-generated_by: claude-code
+generated_by: codex
 approved_by: rarajes2@cisco.com
-updated_at: 2026-11-17T03:03:58Z
+updated_at: 2026-11-21T10:35:21Z
 validation_status: pass-with-warnings
 -->
 
@@ -38,12 +38,12 @@ Related context: [documentation index](../../../../docs/index.md) ·
 | Source path | `src/services/agent` |
 | Resource kind | module |
 | Status | Active |
-| Last verified | 2026-11-16 at `0b8c34db7f` |
+| Last verified | Historical baseline: 2026-11-16 at `0b8c34db7f` |
 | Module id | `agent` |
 | Parent spec | [src/services](../../docs/README.md) |
 | Doc kind | Module spec |
 | Coverage score | Pending coverage assessment |
-| Validation status | pass-with-warnings — assessed 2026-11-17; validator runtime 01a1e76f-2293-79a0-9f8f-f060038448dd; 0 Blocking, 0 Important, 4 Minor findings. |
+| Validation status | pass-with-warnings — assessed 2026-11-23 by Claude Code. 0 blocking findings and 13 nonblocking findings. Historical baseline: pass-with-warnings, assessed 2026-11-17; validator 01a1e76f-2293-79a0-9f8f-f060038448dd; 0 Blocking, 0 Important, 4 Minor. Historical 2026-11-22 review: 4a979a45-b226-4b4c-8dcb-7c5e78aa8351. Historical results do not certify this revision. |
 
 ## Applicability
 
@@ -310,6 +310,7 @@ Preconditions for the wrappers:
 | AGENT-R-008 | `setAgentState` rejects a change to Available with `VOICE_CONNECTION_ERROR.NOT_READY` (type `SDK_VALIDATION_ERROR`) when browser voice is required and not ready; Idle and non-browser changes proceed. | An Available agent without a registered browser line would be offered calls it cannot answer. | `src/cc.ts` | `test/unit/spec/cc.ts` | None. | PRESENT |
 | AGENT-R-009 | `getBuddyAgents` sends `agentProfileId` from the profile, defaults `mediaType` to `telephony`, and, when `state` is omitted, filters on Available for `action: 'Transfer'` and sends no state for Consult. | A transfer needs an agent who can take the call now; a consult may target an Idle agent. | `src/cc.ts`, `src/types.ts` | `test/unit/spec/cc.ts` | None. | PRESENT |
 | AGENT-R-010 | Station login success and relogin success replace `channelsMap` with `mmProfile` counts per channel and add `notifsTrackingId`. | Applications receive capacity numbers instead of raw channel id lists. | `src/cc.ts`, `src/services/agent/types.ts` | `test/unit/spec/cc.ts` | None. | PRESENT |
+| AGENT-R-011 | Reload and station login use the existing authenticated AQM request routing and its session-operation context. A locally issued recovery completion must correlate to the full tracking identifier under the current owner. Session restoration applies accepted backend data. Failure mapping retains normalized status, reason and correlation for the owning policy. Teardown retains its own admission and settlement path. | A late notification from another operation or session must not publish a restored station. | `src/services/agent/index.ts`, `src/services/core/aqm-reqs.ts`, `src/cc.ts` | `test/unit/spec/cc.ts`, `test/unit/spec/services/agent/index.ts` | T-007, T-008, T-011, T-012. The SDK façade owns the ordered restore policy. | PRESENT |
 
 ## Design overview
 
@@ -471,7 +472,7 @@ sequenceDiagram
   participant CC as ContactCenter
   participant Agent as routingAgent
   CS-->>CC: connectionLost(details)
-  alt automated relogin allowed
+  alt reconnected, automation enabled, no pending registration or suppression, phase idle or ready
     CC->>CC: silentRelogin()
     CC->>Agent: reload()
     alt AgentReloginSuccess
@@ -492,7 +493,15 @@ sequenceDiagram
   end
 ```
 
-Automatic relogin on WebSocket reconnection: `handleConnectionLost` runs the relogin only for a `connectionLost` message with `isSocketReconnected`; `connectWebsocket` during `cc.register()` also calls `silentRelogin()` when `allowAutomatedRelogin` is set, and a relogin failure there rejects `cc.register()`.
+Automatic relogin on WebSocket reconnection: `handleConnectionLost` runs `silentRelogin()` only
+when `isConnectionLost` is false, `isSocketReconnected` is true, `allowAutomatedRelogin` is enabled,
+no initial registration is pending, `suppressAutomaticRelogin` is false, and the recovery phase is
+`idle` or `ready`. Explicit logout suppresses automatic restoration; enabling the config flag alone
+does not bypass suppression or regional recovery ownership. Separately, `connectWebsocket` during
+`cc.register()` calls `silentRelogin(true)` when `allowAutomatedRelogin` is enabled, after awaiting
+registration connection ownership; a relogin failure there rejects `cc.register()`. Regional restore
+uses its own generation-owned session path, and `stationLoginRequired` requires explicit station
+login. Evidence: `src/cc.ts`, `test/unit/spec/cc.ts`.
 
 ### WebSocket-to-application event mapping
 
@@ -606,17 +615,32 @@ Key nested WebSocket binds use the actual outer/data constants, for example `CC_
 
 ## Caller-visible failure modes
 
+Lifecycle rejections are plain `Error` objects identified by `error.data.reason`, not backend
+`Err.Details`. `getErrorDetails` returns the same error and data unchanged, with no reason logging,
+log upload, or station-login field-message rewriting. Pre-`try` admission failures bypass operation
+catch diagnostics. A lifecycle rejection caught later by station login/logout or state dispatch can
+still emit a failure metric; an `updateAgentProfile` catch also logs and emits its failure metric.
+Ordinary backend, HTTP, voice-validation, and timeout failures retain their existing logging,
+upload, and metric paths. Evidence: `src/cc.ts`, `src/services/core/Utils.ts`,
+`test/unit/spec/cc.ts`, `test/unit/spec/services/core/Utils.ts`.
+
 | Condition | Signal or result | Caller behavior | Retry or recovery | Evidence |
 | --------- | ---------------- | --------------- | ----------------- | -------- |
+| Public `stationLogin` or `setAgentState` reaches recovery admission during recovery | Plain `Error` with `data.reason = RECOVERY_IN_PROGRESS`. State commands require `idle` or `ready`; station login is also admitted in `manualLoginRequired`. The façade applies the command gate to outdial, preview actions, and `updateAgentProfile` too | Observe `region:stateChange`; disable commands while recovery owns the session | Wait for `ready`, or call `stationLogin` explicitly after `stationLoginRequired` | `src/cc.ts`, `test/unit/spec/cc.ts` |
+| Agent AQM request dispatch while the recovery gate is closed | `stateChange` is a command; `stationLogin` and `reload` are session requests and require the exact active restore/manual owner and signal. Otherwise dispatch rejects `RECOVERY_IN_PROGRESS`; an unavailable gate returns its terminal reason | Do not call `reload` or unowned station login to bypass recovery | Use the façade's owned manual-login path or wait for readiness. `buddyAgents` is a query and remains admitted for a current, unaborted context | `src/services/agent/index.ts`, `src/services/core/aqm-reqs.ts`, `test/unit/spec/services/core/aqm-reqs.ts` |
+| Session or command admission in phase `reloadRequired`, or registration marked for reload | Plain `Error` with `data.reason = REGION_RELOAD_REQUIRED` | Follow host restart/re-registration policy instead of replaying agent commands | Restart registration using the bounded host reload policy | `src/cc.ts`, `test/unit/spec/cc.ts` |
+| Admission in phase `unavailable` or `cancelled`, stale/aborted AQM context, or pending work superseded by recovery, register, logout, deregister, or identity replacement | Plain `Error` with `data.reason = RECOVERY_INTERRUPTED`; an older `register`, station request, or state request can reject after losing ownership | Discard stale completion and inspect the current registration and session | Reconcile before retrying a safe operation; context checks precede query/teardown exemptions | `src/cc.ts`, `src/services/core/aqm-reqs.ts`, `test/unit/spec/cc.ts`, `test/unit/spec/services/core/aqm-reqs.ts` |
+| `stationLogout` with an unusable primary socket, during recovery, or after logout ownership changes | Logout cancels recovery and uses AQM kind `teardown` instead of the command gate. The façade rejects a plain `Error` with `data.reason = RECOVERY_INTERRUPTED` before any AQM dispatch whenever the primary socket is unusable, including an ordinary logout in phase `idle` with an open gate, regardless of recovery state. Separately, AQM requires a usable primary for teardown through a closed gate; stale/aborted contexts or superseded logout also reject `RECOVERY_INTERRUPTED` | Do not infer backend logout from local recovery cancellation or cleanup; an unconfirmed logout preserves the accepted station | Reconcile the current session and accepted station before retrying logout | `src/cc.ts`, `src/services/agent/index.ts`, `src/services/core/aqm-reqs.ts`; `test/unit/spec/cc.ts`: T-007 “failedLogoutPreservesAcceptedStation no-primary” (ordinary), T-012 “stationLogoutDuringDrWithoutPrimaryRejectsImmediately” (DR); `test/unit/spec/services/core/aqm-reqs.ts`: “gateKindAndSessionOwnerMatrix” |
+| `deregister` is superseded or changes organization before entering its `try` | `assertOwned()` synthesizes `RECOVERY_INTERRUPTED` before deregister logging/metrics begin; later ownership failures inside the `try` do reach its logging/metric catch | Leave the replacement registration authoritative | Reconcile ownership before another teardown | `src/cc.ts`, `test/unit/spec/cc.ts` |
 | AGENT_DN dial number fails the dial plan | `Error('INVALID_DIAL_NUMBER')` before any request; `error.data` has the field message and `fieldName` | Show `error.data.message` on the dial-number field | Correct the number and call again | `src/cc.ts`, `src/services/core/Utils.ts` |
 | Extension or DN already in use by another session | Backend reason `DUPLICATE_LOCATION`: `Error('DUPLICATE_LOCATION')` with the in-use message for the login option | Show `error.data.message` on the `error.data.fieldName` field | Log in with another extension or DN | `src/services/core/Utils.ts`, `test/unit/spec/services/core/Utils.ts` |
-| Other backend failure notification | `Error` whose message is the notification `data.reason`; for `stationLogin`, `error.data` has the generic login message and fieldName `generic` | Branch on `error.message` | Logs are uploaded with the failure tracking id | `src/cc.ts`, `src/services/core/Utils.ts` |
+| Other ordinary backend failure notification | New `Error` whose message is the notification `data.reason`; for `stationLogin`, `error.data` has the generic login message and fieldName `generic` | Branch on `error.message`; lifecycle errors instead retain their `data.reason` as described above | Logs are uploaded with the failure tracking id | `src/cc.ts`, `src/services/core/Utils.ts` |
 | HTTP rejection, timeout after 20000 ms, or the same request already pending | AqmReqs rejects with `Service.aqm.agent.stationLogin`, `Service.reqs.generic.failure`, `Service.aqm.reqs.Timeout`, or `Service.aqm.reqs.Pending` details; these carry no `data.reason`, so the wrapper throws `Error` with the message Error while performing followed by the method name | Treat the outcome as unknown and wait for an agent event; never synthesize success | Call again once the pending call has settled | `src/services/core/aqm-reqs.ts`, `src/services/core/Utils.ts` |
 | Available requested while browser voice is not ready | `Error` whose message is `VOICE_CONNECTION_ERROR.NOT_READY`; no request sent | Wait for `voice:connectionStateChange` to report voice ready, or choose an Idle code | Call again when voice is ready | `src/cc.ts`, `test/unit/spec/cc.ts` |
 | Silent relogin finds no agent session | Reason `AGENT_NOT_FOUND`; returns without throwing, error logging, or log upload | Nothing to handle; the agent is logged out | Call `stationLogin` | `src/cc.ts`, `src/services/core/Utils.ts` |
-| Silent relogin does not run | `allowAutomatedRelogin` is false (it defaults to true) | Set `config.cc.allowAutomatedRelogin` to true in `Webex.init` | Relogin then runs on the next reconnect or register | `src/config.ts`, `src/cc.ts` |
+| Ordinary reconnect does not run silent relogin | No reload unless `isConnectionLost` is false, `isSocketReconnected` is true, `allowAutomatedRelogin` is true (the default), no registration is pending, `suppressAutomaticRelogin` is false, and phase is `idle` or `ready` | Preserve logout intent and recovery ownership; changing the flag alone does not satisfy all gates | A later eligible reconnect can relogin; `stationLoginRequired` needs explicit login. Register-time relogin is a separate path gated by the flag and current registration ownership | `src/config.ts`, `src/cc.ts`, `test/unit/spec/cc.ts` |
 
-For `stationLogin`, special error handling extracts field-specific messages: `getStationLoginErrorData`
+For ordinary `stationLogin` failures, special error handling extracts field-specific messages: `getStationLoginErrorData`
 in `src/services/core/Utils.ts` builds an `errorCodeMessageMap` in which `DUPLICATE_LOCATION` gives the
 message 'This extension is already in use' for EXTENSION, a 'Dial number is in use' message for
 AGENT_DN, and 'This value is already in use' otherwise, and `INVALID_DIAL_NUMBER` gives 'Enter a valid

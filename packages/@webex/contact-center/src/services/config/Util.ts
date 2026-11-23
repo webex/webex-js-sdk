@@ -1,3 +1,5 @@
+import type {MultiRegionSettings} from './types';
+import {isRecord} from '../core/Utils';
 import {LOST_CONNECTION_RECOVERY_TIMEOUT} from '../core/constants';
 import {WELLNESS_BREAK_REMINDERS_ENABLED} from './constants';
 import {
@@ -237,3 +239,31 @@ function parseAgentConfigs(profileData: {
 }
 
 export {parseAgentConfigs};
+
+/** Internal provenance for SDK-created MR input/decode errors, never backend reason text. */
+export const LOCAL_MR_SETTINGS_ERROR = Symbol('localMrSettingsError');
+
+/** Decodes only the authoritative first organization-settings record. */
+export const decodeMultiRegionSettings = (body: unknown): MultiRegionSettings => {
+  const first = Array.isArray(body) ? body[0] : undefined;
+  if (
+    !isRecord(first) ||
+    Array.isArray(first) ||
+    Object.keys(first).length === 0 ||
+    (Object.prototype.hasOwnProperty.call(first, 'multiRegionEnabled') &&
+      typeof first.multiRegionEnabled !== 'boolean')
+  ) {
+    throw Object.assign(new Error('Invalid organization settings'), {
+      [LOCAL_MR_SETTINGS_ERROR]: 'INVALID_MR_SETTINGS',
+      data: {reason: 'INVALID_MR_SETTINGS'},
+    });
+  }
+
+  const homeRegion =
+    typeof first.homeRegion === 'string' ? first.homeRegion.trim().toLowerCase() : undefined;
+
+  return {
+    eligibility: first.multiRegionEnabled === true ? 'enabled' : 'disabled',
+    ...(homeRegion ? {homeRegion} : {}),
+  };
+};

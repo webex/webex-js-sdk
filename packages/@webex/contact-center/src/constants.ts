@@ -5,6 +5,11 @@ import {
   VoiceMobiusSocketStatus,
 } from './types';
 
+export {REGION_RECOVERY_ERROR_CODES} from './services/core/constants';
+
+/** Complete region recovery snapshots emitted to the host. */
+export const REGION_RECOVERY_EVENTS = {STATE_CHANGE: 'region:stateChange'} as const;
+
 export const EVENT = 'event';
 export const READY = 'ready';
 export const TIMEOUT_DURATION = 20000; // 20 seconds timeout duration for webrtc registration
@@ -41,6 +46,60 @@ export const DEFAULT_VOICE_CONNECTION_STATE: Readonly<VoiceConnectionState> = Ob
 // METHOD NAMES
 export const METHODS = {
   REGISTER: 'register',
+  RECORD_BEST_EFFORT: 'recordBestEffort',
+  PUBLISH_HOST_EVENT: 'publishHostEvent',
+  IS_RECOVERY_DIAGNOSTIC_REASON: 'isRecoveryDiagnosticReason',
+  RECORD_RECOVERY_DIAGNOSTIC: 'recordRecoveryDiagnostic',
+  NORMALIZE_RECOVERY_DIAGNOSTIC_ID: 'normalizeRecoveryDiagnosticId',
+  SHOULD_SUBSCRIBE_RTD: 'shouldSubscribeRtd',
+  GET_RTD_RECOVERY_GUARD: 'getRtdRecoveryGuard',
+  IS_CURRENT_RTD_EPOCH: 'isCurrentRtdEpoch',
+  PAUSE_RTD: 'pauseRtd',
+  RESUME_RTD: 'resumeRtd',
+  CAPTURE_RECOVERY_OWNER: 'captureRecoveryOwner',
+  ASSERT_RECOVERY_OWNER: 'assertRecoveryOwner',
+  AWAIT_RECOVERY_OWNER: 'awaitRecoveryOwner',
+  ASSERT_STATE_DISPATCH_CURRENT: 'assertStateDispatchCurrent',
+  IS_CURRENT_AUTO_AVAILABLE: 'isCurrentAutoAvailable',
+  ARM_AUTO_AVAILABLE: 'armAutoAvailable',
+  HANDLE_AUTO_AVAILABLE_VOICE_CHANGE: 'handleAutoAvailableVoiceChange',
+  CANCEL_AUTO_AVAILABLE: 'cancelAutoAvailable',
+  DISPATCH_AUTO_AVAILABLE: 'dispatchAutoAvailable',
+  RECONCILE_AGENT_STATE_NOTIFICATION: 'reconcileAgentStateNotification',
+  PERFORM_AGENT_STATE_CHANGE: 'performAgentStateChange',
+  ASSERT_RECOVERY_ADMISSION: 'assertRecoveryAdmission',
+  FENCE_RECOVERY_WORK: 'fenceRecoveryWork',
+  SET_RECOVERY_PHASE: 'setRecoveryPhase',
+  GET_TASK_RECOVERY_GUARD: 'getTaskRecoveryGuard',
+  BEGIN_SESSION_REQUEST: 'beginSessionRequest',
+  END_SESSION_REQUEST: 'endSessionRequest',
+  CANCEL_REGION_RECOVERY: 'cancelRegionRecovery',
+  CLEAR_ACCEPTED_STATION: 'clearAcceptedStation',
+  CLEAR_SWITCH_HISTORY: 'clearSwitchHistory',
+  TERMINATE_REGISTRATION: 'terminateRegistration',
+  NORMALIZE_REGION_SWITCH: 'normalizeRegionSwitch',
+  IS_CURRENT_RECOVERY: 'isCurrentRecovery',
+  RESET_ORDINARY_CONNECTION: 'resetOrdinaryConnection',
+  HANDLE_RECOVERY_TERMINAL: 'handleRecoveryTerminal',
+  REQUIRE_REGION_RELOAD: 'requireRegionReload',
+  HANDLE_REGION_SWITCH: 'handleRegionSwitch',
+  ASSERT_PRIMARY_IDENTITY: 'assertPrimaryIdentity',
+  BUILD_STATION_LOGIN_PAYLOAD: 'buildStationLoginPayload',
+  REMEMBER_ACCEPTED_STATION: 'rememberAcceptedStation',
+  RECONCILE_STATION_SNAPSHOT: 'reconcileStationSnapshot',
+  APPLY_STATION_SESSION: 'applyStationSession',
+  RECOVERY_FAILURE_CATEGORY: 'recoveryFailureCategory',
+  WAIT_FOR_RECOVERY_RETRY: 'waitForRecoveryRetry',
+  RESTORE_REGION_SESSION: 'restoreRegionSession',
+  RECONCILE_STATION_NOTIFICATION: 'reconcileStationNotification',
+  PUBLISH_REGION_STATE: 'publishRegionState',
+  BUILD_REGION_STATE: 'buildRegionState',
+  RESET_REGION_STATE: 'resetRegionState',
+  IS_CURRENT_REGISTRATION: 'isCurrentRegistration',
+  IS_CURRENT_STATION: 'isCurrentStation',
+  AWAIT_REGISTRATION_WORK: 'awaitRegistrationWork',
+  HYDRATE_MULTI_REGION_SETTINGS: 'hydrateMultiRegionSettings',
+  ON_MULTI_REGION_SETTINGS_CHANGED: 'onMultiRegionSettingsChanged',
   DEREGISTER: 'deregister',
   GET_BUDDY_AGENTS: 'getBuddyAgents',
   CONNECT_WEBSOCKET: 'connectWebsocket',

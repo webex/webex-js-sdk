@@ -29,6 +29,14 @@ export {default as Task} from './services/task/Task';
 export {default as AddressBook} from './services/AddressBook';
 export {default as ApiAIAssistant} from './services/ApiAiAssistant';
 export {AI_SUMMARY_ERROR_CODES} from './constants';
+export {REGION_RECOVERY_EVENTS, REGION_RECOVERY_ERROR_CODES} from './constants';
+export type {
+  RegionRecoveryErrorCode,
+  RegionRecoveryStatus,
+  RegionRecoveryReason,
+  RegionAutoAvailableStatus,
+  RegionRecoveryState,
+} from './types';
 export {default as UserPreference} from './services/UserPreference';
 
 /** Agent Wellness Break notification and action wire values. */

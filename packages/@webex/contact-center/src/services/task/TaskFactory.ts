@@ -7,6 +7,7 @@ import WebRTC from './voice/WebRTC';
 import Digital from './digital/Digital';
 import {MEDIA_CHANNEL, TaskData} from './types';
 import {ConfigFlags, LoginOption} from '../../types';
+import type {TaskRecoveryGuard} from './types';
 import type {WrapupData} from '../config/types';
 import type ApiAIAssistant from '../ApiAiAssistant';
 
@@ -19,6 +20,7 @@ export default class TaskFactory {
     webCallingService: WebCallingService,
     data: TaskData,
     configFlags: ConfigFlags,
+    recoveryGuard: TaskRecoveryGuard,
     wrapupData?: WrapupData,
     agentId?: string,
     agentName?: string,
@@ -37,42 +39,53 @@ export default class TaskFactory {
       getUsersubPublished: configFlags.getWxAppUsersubPublished,
       consultTransferConfig: consultTransfer,
     };
+    const bind = (task: Task): Task => {
+      task.bindRecoveryGuard(recoveryGuard);
+
+      return task;
+    };
     switch (mediaType) {
       case MEDIA_CHANNEL.TELEPHONY:
         if (webCallingService.loginOption === LoginOption.BROWSER) {
-          return new WebRTC(
+          return bind(
+            new WebRTC(
+              contact,
+              webCallingService,
+              data,
+              voiceControlOptions,
+              wrapupData,
+              agentId,
+              agentName,
+              apiAIAssistant
+            )
+          );
+        }
+
+        return bind(
+          new Voice(
             contact,
-            webCallingService,
             data,
             voiceControlOptions,
             wrapupData,
             agentId,
             agentName,
             apiAIAssistant
-          );
-        }
-
-        return new Voice(
-          contact,
-          data,
-          voiceControlOptions,
-          wrapupData,
-          agentId,
-          agentName,
-          apiAIAssistant
+          )
         );
 
       case MEDIA_CHANNEL.CHAT:
       case MEDIA_CHANNEL.EMAIL:
       case MEDIA_CHANNEL.SOCIAL:
-        return new Digital(
-          contact,
-          data,
-          wrapupData,
-          agentId,
-          consultTransfer,
-          agentName,
-          apiAIAssistant
+        return bind(
+          new Digital(
+            contact,
+            data,
+            wrapupData,
+            agentId,
+            consultTransfer,
+            agentName,
+            apiAIAssistant
+          )
         );
 
       default:

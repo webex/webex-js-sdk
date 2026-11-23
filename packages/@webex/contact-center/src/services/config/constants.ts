@@ -67,6 +67,7 @@ export const DEFAULT_AUXCODE_ATTRIBUTES = [
 export const METHODS = {
   // AgentConfigService methods
   GET_AGENT_CONFIG: 'getAgentConfig',
+  GET_MULTI_REGION_SETTINGS: 'getMultiRegionSettings',
   GET_ORG_DESKTOP_LOGIN_CONFIG: 'getOrgDesktopLoginConfig',
   GET_USER_DESKTOP_LOGIN_CONFIG: 'getUserDesktopLoginConfig',
   GET_MULTIMEDIA_PROFILE_BY_ID: 'getMultimediaProfileById',
@@ -81,6 +82,7 @@ export const METHODS = {
 
   // Util methods
   PARSE_AGENT_CONFIGS: 'parseAgentConfigs',
+  DECODE_MULTI_REGION_SETTINGS: 'decodeMultiRegionSettings',
   GET_MSFT_CONFIG: 'getMsftConfig',
   GET_WEBEX_CONFIG: 'getWebexConfig',
   GET_DEFAULT_AGENT_DN: 'getDefaultAgentDN',
@@ -96,6 +98,9 @@ export const METHODS = {
  * const url = endPointMap.userDesktopLogin('org123', 'agent456');
  */
 export const endPointMap = {
+  /** Authoritative entitlement endpoint, independent of the Profile aggregate. */
+  organizationSettings: (orgId: string) =>
+    `organization/${encodeURIComponent(orgId)}/organization-setting`,
   /**
    * Gets the endpoint for the aggregated organization desktop-login configuration.
    * @param orgId - Organization ID.

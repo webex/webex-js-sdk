@@ -7,9 +7,9 @@ tags: [module, specification]
 <!-- sdd-generated-metadata
 doc_kind: module-spec
 generated_from: module-spec@0.3.0
-generated_by: claude-code
+generated_by: codex
 approved_by: rarajes2@cisco.com
-updated_at: 2026-11-17T03:03:58Z
+updated_at: 2026-11-21T10:35:21Z
 validation_status: pass-with-warnings
 -->
 
@@ -36,12 +36,12 @@ Related context: [documentation index](../../../docs/index.md) ·
 | Source path | `src/services` |
 | Resource kind | module |
 | Status | Active |
-| Last verified | 2026-11-16 at `0b8c34db7f` |
+| Last verified | Historical baseline: 2026-11-16 at `0b8c34db7f` |
 | Module id | `services` |
 | Parent spec | [Contact Center SDK package spec](../../docs/README.md) |
 | Doc kind | Module spec |
 | Coverage score | Pending coverage assessment |
-| Validation status | pass-with-warnings — assessed 2026-11-17; validator runtime 01a1e76f-2293-79a0-9f8f-f060038448dd; 0 Blocking, 0 Important, 4 Minor findings. |
+| Validation status | pass-with-warnings — assessed 2026-11-23 by Claude Code. 0 blocking findings and 13 nonblocking findings. Historical baseline: pass-with-warnings, assessed 2026-11-17; validator 01a1e76f-2293-79a0-9f8f-f060038448dd; 0 Blocking, 0 Important, 4 Minor. Historical 2026-11-22 review: 4a979a45-b226-4b4c-8dcb-7c5e78aa8351. Historical results do not certify this revision. |
 
 ## Applicability
 
@@ -211,6 +211,7 @@ Use [`constants.ts`](../constants.ts) as the canonical source for service-level 
 | SERVICES-R-014 | `WxAppTelephonyMercurySync.subscribe(agentId, onMuteChange)` replaces any earlier subscription, listens to `event:telephony_calls.muted` and `event:telephony_calls.unmuted`, base64-decodes `actorId` and `callId`, and calls back only when all fields are present and the decoded actor id ends with the agent id; without Mercury it tracks a failure metric and does not subscribe. | Mute state changed in Webex App must be mirrored to the Contact Center task for Agent Desktop parity, without reacting to another user's calls. | `src/services/WxAppTelephonyMercurySync.ts` | `test/unit/spec/services/WxAppTelephonyMercurySync.ts` | None. | PRESENT |
 | SERVICES-R-015 | `UserPreference.getUserPreference(params?)` defaults the user id to the agent id from the agent configuration; create requires `data.userId`, update (PUT) and delete require a `userId`, and each method throws an `Error` before any request when the id is missing. | User preferences are per-user records; a request without a user id would target the wrong resource. | `src/services/UserPreference.ts`, `src/cc.ts` | `test/unit/spec/services/UserPreference.ts` | None. | PRESENT |
 | SERVICES-R-016 | `AddressBook.getEntries(params?)` uses `params.addressBookId` or the agent profile address book, sorts by `name,ASC` by default, and throws `AddressBook: addressBookId is not available for the current agent.` before any request when neither exists. | The code validates the address book id early to avoid bad requests, and agents normally browse their own address book. | `src/services/AddressBook.ts`, `src/cc.ts` | `test/unit/spec/services/AddressBook.ts` | None. | PRESENT |
+| SERVICES-R-017 | Keep the existing agent, configuration, calling and RTD collaborators on their current owners. Pass recovery operation contexts below the façade for the affected operations. RTD admission and interruption are scoped to their own generation. Browser line resource retention belongs to the calling owner. Recovery hooks do not add an app-facing configuration toggle. | Transport, task handling and local telephony must finish or be interrupted within their own lifetimes. | `src/services/index.ts`, `src/services/ApiAiAssistant.ts`, `src/services/WebCallingService.ts`, `src/cc.ts` | `test/unit/spec/cc.ts`, `test/unit/spec/services/ApiAiAssistant.ts`, `test/unit/spec/services/WebCallingService.ts` | T-007, T-008, T-009, T-010, T-013. The façade owns the region policy. | PRESENT |
 
 ## Design overview
 

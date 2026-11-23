@@ -8,10 +8,49 @@ import {
 import * as Err from './Err';
 import {Msg} from './GlobalTypes';
 
+/** Selected structured diagnostics; retained for module declaration consumers, not root-exported. */
+export type RecoveryFailure = {
+  status?: number;
+  reason?: string;
+  reasonCode?: number;
+  trackingId?: string;
+  id?: string;
+};
+
+/** Command admission belongs to the current generation; retained for Req declarations. */
+export type AqmOperationKind = 'command' | 'query' | 'session' | 'teardown';
+export type AqmSessionOwner<P extends 'restore' | 'manual'> = Readonly<{
+  generation: number;
+  phase: P;
+  signal: AbortSignal;
+}>;
+export type AqmRequestContext = Readonly<{
+  generation: number;
+  signal?: AbortSignal;
+  sessionOwner?: AqmSessionOwner<'restore' | 'manual'>;
+}>;
+export type AqmRecoveryGate =
+  | Readonly<{state: 'open'}>
+  | Readonly<{state: 'recovering'; sessionOwner?: AqmSessionOwner<'restore'>}>
+  | Readonly<{state: 'manualLoginRequired'; sessionOwner?: AqmSessionOwner<'manual'>}>
+  | Readonly<{state: 'unavailable'; reason: 'RECOVERY_INTERRUPTED' | 'REGION_RELOAD_REQUIRED'}>;
+
+/** @internal The sole pending-operation lifetime record, independent of aliases. */
+export type OperationRecord = {
+  operationId: string;
+  generation: number;
+  timeoutId?: ReturnType<typeof setTimeout>;
+  reject: (error: Error) => void;
+  cleanup: () => void;
+  settled: boolean;
+};
+
 export type Pending = {
   check: (msg: Msg) => boolean;
   handle: (msg: Msg) => void;
   alternateBind?: string;
+  operationId: string;
+  logicalBindKey: string;
 };
 
 export type BindType = string | string[] | {[key: string]: BindType};
@@ -23,6 +62,9 @@ interface Bind {
 export type Timeout = number | 'disabled';
 
 export type Req<TRes, TErr> = {
+  kind?: AqmOperationKind;
+  context?: AqmRequestContext;
+  correlationId?: string;
   url: string;
   host?: string;
   method?: HTTP_METHODS;
@@ -51,12 +93,17 @@ export type Req<TRes, TErr> = {
 
 export type Conf<TRes, TErr, TReq> = (p: TReq) => Req<TRes, TErr>;
 export type ConfEmpty<TRes, TErr> = () => Req<TRes, TErr>;
-export type Res<TRes, TReq> = (p: TReq, cbRes?: CbRes<TRes>) => Promise<TRes>;
-export type ResEmpty<TRes> = (cbRes?: CbRes<TRes>) => Promise<TRes>;
+export type Res<TRes, TReq> = (
+  p: TReq,
+  cbRes?: CbRes<TRes>,
+  context?: AqmRequestContext
+) => Promise<TRes>;
+export type ResEmpty<TRes> = (cbRes?: CbRes<TRes>, context?: AqmRequestContext) => Promise<TRes>;
 export type CbRes<TRes> = (res: any) => void | TRes;
 
 /** @internal Pending request completed by a correlated RTD response. */
 export type PendingRtdRequest<T> = {
+  detachAbort?: () => void;
   correlationId: string;
   rtdEventType: string;
   timeoutId?: ReturnType<typeof setTimeout>;
@@ -66,6 +113,7 @@ export type PendingRtdRequest<T> = {
 
 /** @internal Request configuration for an event completed by an RTD response. */
 export type RtdRequestOptions = Readonly<{
+  signal?: AbortSignal;
   correlationId: string;
   rtdEventType: string;
   timeoutMs: number;

@@ -1,5 +1,6 @@
-/* eslint-disable import/no-cycle */
 import type {AnyActorRef} from 'xstate';
+import type Task from './Task';
+/* eslint-disable import/no-cycle */
 import {TaskEventPayload} from './state-machine';
 import {Msg} from '../core/GlobalTypes';
 import AutoWrapup from './AutoWrapup';
@@ -2300,7 +2301,7 @@ export type WebSocketMessage = {
  * - State Machine: Task state transitions, event emissions, UI controls
  */
 export interface TaskEventActions {
-  task?: ITask;
+  task?: Task;
 }
 
 /**
@@ -2314,6 +2315,12 @@ export interface TaskEventActions {
 export interface EventContext {
   eventType: string;
   payload: WebSocketPayload;
-  task?: ITask;
+  task?: Task;
   stateMachineEvent?: TaskEventPayload | null;
 }
+
+export type TaskRecoveryGuard = Readonly<{
+  generation: number;
+  signal: AbortSignal;
+  assertCommandAllowed: () => void;
+}>;
