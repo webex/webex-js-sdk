@@ -7,8 +7,6 @@ import testUsers from '@webex/test-helper-test-users';
 import sinon from 'sinon';
 import Webex from 'webex';
 
-import pkg from '../../../package';
-
 describe('webex', function () {
   this.timeout(60000);
 
@@ -48,7 +46,7 @@ describe('webex', function () {
             assert.property(res.options.headers, 'spark-user-agent');
             assert.equal(
               res.options.headers['spark-user-agent'],
-              `webex/${pkg.version} (${typeof window === 'undefined' ? 'node' : 'web'})`
+              `webex/${webex.version} (${typeof window === 'undefined' ? 'node' : 'web'})`
             );
           }));
 

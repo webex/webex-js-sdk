@@ -44,7 +44,7 @@
     "test": "yarn test:style && yarn test:unit && yarn test:integration",
     "test:browser": "yarn run -T playwright test --config ./test/browser/playwright.config.js",
     "test:browser:broken": "webex-legacy-tools test --integration --runner karma",
-    "test:integration": "webex-legacy-tools test --integration --runner mocha",
+    "test:integration": "node ./test/integration/run-node.cjs test --integration --runner mocha",
     "test:style": "eslint ./src/**/*.*",
     "test:unit": "webex-legacy-tools test --unit --runner jest",
     "deploy:npm": "yarn npm publish"

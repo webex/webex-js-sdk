@@ -12,7 +12,7 @@ describe('webex', function () {
     browserOnly(it)('does not work in web browsers', () => {
       assert.throws(() => {
         // eslint-disable-next-line
-        const webex = require(`webex/env`);
+        const webex = require('../../../env');
       }, /webex\/env cannot be used in browser environments/);
     });
 
@@ -31,8 +31,9 @@ describe('webex', function () {
       });
 
       it('exports (commonjs-style) an authorized webex instance', () => {
+        // Test the package file directly: webex/env is not an exported subpath.
         // eslint-disable-next-line global-require
-        const webex = require('webex/env');
+        const webex = require('../../../env');
 
         assert.isTrue(webex.canAuthorize);
 
