@@ -90,8 +90,8 @@ import ReconnectionNotStartedError from '../common/errors/reconnection-not-start
 import MeetingRequest from './request';
 import Members from '../members/index';
 import type E2eeController from '../e2ee/E2eeController';
-import {E2eeState} from '../e2ee/types';
-import type {E2eeLocusInfo, E2eeMeetingContext, TrustState} from '../e2ee/types';
+import {E2eeState, TrustState} from '../e2ee/types';
+import type {E2eeLocusInfo, E2eeMeetingContext} from '../e2ee/types';
 import MeetingUtil from './util';
 import MeetingsUtil from '../meetings/util';
 import RecordingUtil from '../recording-controller/util';
@@ -2909,6 +2909,7 @@ export default class Meeting extends StatelessWebexPlugin {
       this.requestScreenShareFloorIfPending();
 
       this.updateE2eeOnSelfChange(payload);
+      this.updateTrustState();
     });
   }
 
@@ -4486,7 +4487,7 @@ export default class Meeting extends StatelessWebexPlugin {
   }
 
   /**
-   * The meeting's overall E2EE trust state, derived from the Locus E2EE flags, the MLS join state
+   * The meeting's overall trust state, derived from the Locus E2EE flags, the MLS join state
    * and media-service presence. Undefined when the local device is not joined to the meeting.
    * @returns {TrustState | undefined}
    * @public
@@ -4501,17 +4502,24 @@ export default class Meeting extends StatelessWebexPlugin {
     const adaptive = !!info?.isBestEffortE2EEncryption;
     const isEncrypted = !!info?.isV2E2EEncrypted;
 
-    if (isEncrypted && this.e2ee?.state !== E2eeState.Joined) {
-      return 'calculating';
+    if (isEncrypted) {
+      if (this.e2ee?.state === E2eeState.Failed) {
+        return TrustState.Failed;
+      }
+
+      if (this.e2ee?.state === E2eeState.Initializing || this.e2ee?.state === E2eeState.Joining) {
+        return TrustState.Calculating;
+      }
     }
 
-    const zeroTrust = isEncrypted && !this.e2ee?.hasUntrustedMediaServices;
+    const zeroTrust =
+      isEncrypted && this.e2ee?.state === E2eeState.Joined && !this.e2ee?.hasUntrustedMediaServices;
 
     if (adaptive) {
-      return zeroTrust ? 'adaptiveZeroTrust' : 'adaptiveStrong';
+      return zeroTrust ? TrustState.AdaptiveZeroTrust : TrustState.AdaptiveStrong;
     }
 
-    return zeroTrust ? 'zeroTrust' : 'strong';
+    return zeroTrust ? TrustState.ZeroTrust : TrustState.Strong;
   }
 
   /**

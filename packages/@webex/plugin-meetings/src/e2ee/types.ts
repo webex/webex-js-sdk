@@ -54,6 +54,7 @@ export type E2eeControllerEvent = keyof E2eeControllerEventMap;
 /** The meeting's overall E2EE trust state, surfaced to the app for its UI indicator. */
 export const TrustState = {
   Calculating: 'calculating',
+  Failed: 'failed',
   Strong: 'strong',
   ZeroTrust: 'zeroTrust',
   AdaptiveStrong: 'adaptiveStrong',
