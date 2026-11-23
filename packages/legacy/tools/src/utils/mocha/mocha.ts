@@ -20,6 +20,8 @@ class Mocha {
   public static test({ files }: { files: Array<string> }) {
     Babel({
       only: ['../../**/*.js', '../../**/*.ts'],
+      // Hoisted dependencies can sit outside Babel's cwd-based default ignore.
+      ignore: [/[/\\]node_modules[/\\]/],
       extensions: ['.js', '.ts'],
       sourceMaps: true,
     });

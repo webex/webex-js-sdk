@@ -41,6 +41,8 @@ This package was intended to be used with [@webex/jest-config-legacy](https://gi
 
 This package is expected to be used as a CLI or Module within a consuming package.
 
+The Mocha runner transforms workspace JavaScript and TypeScript and explicitly excludes every `node_modules` directory. This includes hoisted dependencies outside the consuming package's working directory, which must remain untransformed so Babel does not rewrite its own runtime while loading it. A subprocess regression test exercises runtime loading from the top-level `webex` workspace.
+
 ### General Consumption
 
 In order to consume this package, it is recommended that the following files exist within the consuming package:
