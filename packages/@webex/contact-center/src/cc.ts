@@ -1279,7 +1279,22 @@ export default class ContactCenter extends WebexPlugin implements IContactCenter
         },
       };
 
-      await this.refreshManageChannelAvailability();
+      // Re-read the agent profile to pick up any admin-side changes to manageChannelAvailability.
+      if (this.agentConfig?.agentId) {
+        try {
+          const {agentProfile} = await this.services.config.getUserDesktopLoginConfig(
+            this.$webex.credentials.getOrgId(),
+            this.agentConfig.agentId
+          );
+          this.agentConfig.manageChannelAvailability =
+            agentProfile?.manageChannelAvailability === true;
+        } catch (error) {
+          LoggerProxy.warn(
+            `Could not refresh manageChannelAvailability (${error}), using cached value: ${this.agentConfig.manageChannelAvailability}`,
+            {module: CC_FILE, method: METHODS.STATION_LOGIN}
+          );
+        }
+      }
 
       LoggerProxy.log(
         `Resolved routing version for login | manageChannelAvailability: ${
@@ -1547,8 +1562,31 @@ export default class ContactCenter extends WebexPlugin implements IContactCenter
         channels =
           data.channelType && data.channelType.length > 0
             ? data.channelType
-            : this.selectDefaultChannels(this.loginChannelsMap);
-        this.assertChannelsSelectable(channels, this.loginChannelsMap);
+            : SELECTABLE_CHANNEL_TYPES.filter((ct) => this.loginChannelsMap[ct]?.length > 0);
+
+        // Validate requested channels are selectable
+        const selectable = SELECTABLE_CHANNEL_TYPES.filter(
+          (ct) => this.loginChannelsMap[ct]?.length > 0
+        );
+        const invalid = channels.filter((ct) => !selectable.includes(ct));
+        if (invalid.length > 0) {
+          const error = new Error(
+            `Invalid channel types for state change: ${invalid.join(
+              ', '
+            )}. Selectable channels: ${selectable.join(', ')}`
+          ) as GenericError;
+          error.details = {
+            type: 'SDK_VALIDATION_ERROR',
+            orgId: this.$webex.credentials.getOrgId(),
+            trackingId: EMPTY_STRING,
+            data: {
+              reason: `Invalid channel types for state change: ${invalid.join(
+                ', '
+              )}. Selectable channels: ${selectable.join(', ')}`,
+            },
+          };
+          throw error;
+        }
       }
 
       const affectsTelephony = !channels || channels.includes('telephony');
@@ -2739,7 +2777,9 @@ export default class ContactCenter extends WebexPlugin implements IContactCenter
         // selectable channels with capacity, or setAgentState rejects the whole batch.
         // Use the live channelStatesMap (which reflects WebSocket updates) rather
         // than the reload snapshot for disconnect detection.
-        const recoverableChannels = this.selectDefaultChannels(this.loginChannelsMap);
+        const recoverableChannels = SELECTABLE_CHANNEL_TYPES.filter(
+          (ct) => this.loginChannelsMap[ct]?.length > 0
+        );
         const disconnectedChannelTypes = this.selectDisconnectedChannels(
           this.channelStatesMap
         ).filter((ct) => recoverableChannels.includes(ct));
@@ -2985,28 +3025,6 @@ export default class ContactCenter extends WebexPlugin implements IContactCenter
   // ─── V2 Granular Agent State — session version helpers ──────────────────
 
   /**
-   * Re-reads `manageChannelAvailability` from the user desktop-login profile so a
-   * profile change applies on the next login without a new register(). Keeps the
-   * cached value when the request fails so login is never blocked.
-   * @private
-   */
-  private async refreshManageChannelAvailability(): Promise<void> {
-    if (!this.agentConfig?.agentId) return;
-    try {
-      const {agentProfile} = await this.services.config.getUserDesktopLoginConfig(
-        this.$webex.credentials.getOrgId(),
-        this.agentConfig.agentId
-      );
-      this.agentConfig.manageChannelAvailability = agentProfile?.manageChannelAvailability === true;
-    } catch (error) {
-      LoggerProxy.warn(
-        `Could not refresh manageChannelAvailability (${error}), using cached value: ${this.agentConfig.manageChannelAvailability}`,
-        {module: CC_FILE, method: METHODS.STATION_LOGIN}
-      );
-    }
-  }
-
-  /**
    * Drops the deferred telephony timer and the in-memory V2 session.
    * Called on logout, deregister, and a remote logout for this session.
    * @private
@@ -3094,14 +3112,6 @@ export default class ContactCenter extends WebexPlugin implements IContactCenter
   // ─── V2 Granular Agent State — channel helpers ──────────────────────────
 
   /**
-   * Returns the selectable channel types that have capacity in the channelsMap.
-   * @private
-   */
-  private selectDefaultChannels(channelsMap: ChannelsMap): ChannelType[] {
-    return SELECTABLE_CHANNEL_TYPES.filter((ct) => channelsMap[ct] && channelsMap[ct].length > 0);
-  }
-
-  /**
    * Seeds initial per-channel states from the login response channelsMap.
    * @private
    */
@@ -3111,7 +3121,9 @@ export default class ContactCenter extends WebexPlugin implements IContactCenter
     auxCodeId: string
   ): Record<ChannelType, AgentChannelTypeStates> {
     const states: Partial<Record<ChannelType, AgentChannelTypeStates>> = {};
-    for (const channelType of this.selectDefaultChannels(channelsMap)) {
+    for (const channelType of SELECTABLE_CHANNEL_TYPES.filter(
+      (ct) => channelsMap[ct]?.length > 0
+    )) {
       const channelIds = channelsMap[channelType] || [];
       states[channelType] = {
         agentState: initialState,
@@ -3125,40 +3137,6 @@ export default class ContactCenter extends WebexPlugin implements IContactCenter
     }
 
     return states as Record<ChannelType, AgentChannelTypeStates>;
-  }
-
-  /**
-   * Validates that all requested channel types are selectable for the agent.
-   * Throws an SDK validation error (same shape as other setAgentState guards).
-   * @private
-   */
-  private assertChannelsSelectable(
-    requestedChannels: ChannelType[],
-    channelsMap: ChannelsMap
-  ): void {
-    const throwValidation = (reason: string): never => {
-      const error = new Error(reason) as GenericError;
-      error.details = {
-        type: 'SDK_VALIDATION_ERROR',
-        orgId: this.$webex.credentials.getOrgId(),
-        trackingId: EMPTY_STRING,
-        data: {reason},
-      };
-      throw error;
-    };
-
-    if (!requestedChannels || requestedChannels.length === 0) {
-      throwValidation('No channels specified for V2 state change');
-    }
-    const selectable = this.selectDefaultChannels(channelsMap);
-    const invalid = requestedChannels.filter((ct) => !selectable.includes(ct));
-    if (invalid.length > 0) {
-      throwValidation(
-        `Invalid channel types for state change: ${invalid.join(
-          ', '
-        )}. Selectable channels: ${selectable.join(', ')}`
-      );
-    }
   }
 
   // ─── V2 Granular Agent State — reconnect recovery helpers ───────────────
