@@ -3,8 +3,8 @@ import {
   projectAggregate,
   bridgeStateChangeSuccess,
   shouldEmitLegacyEvent,
-  AgentChannelTypeStates,
-} from '../../../../../src/services/agent/types';
+} from '../../../../../src/services/agent/utils';
+import {AgentChannelTypeStates} from '../../../../../src/services/agent/types';
 
 function makeChannelState(
   agentState: string,
@@ -22,7 +22,7 @@ function makeChannelState(
   };
 }
 
-describe('types – V1 bridge functions', () => {
+describe('utils – V1 bridge functions', () => {
   describe('shouldBridgeChannelState', () => {
     it('should return true for Available', () => {
       expect(shouldBridgeChannelState('Available')).toBe(true);
