@@ -12,6 +12,57 @@ import {CC_EVENTS} from '../config/types';
  * @ignore
  */
 export default function routingAgent(routing: AqmReqs) {
+  // Shared configs for V1/V2 pairs that differ only in URL path and error IDs.
+  const logoutConfig = (url: string, errId: string) =>
+    routing.req((p: {data: Agent.Logout}) => ({
+      url,
+      host: WCC_API_GATEWAY,
+      data: p.data,
+      err,
+      notifSuccess: {
+        bind: {
+          type: CC_EVENTS.AGENT_LOGOUT,
+          data: {type: CC_EVENTS.AGENT_LOGOUT_SUCCESS},
+        },
+        msg: {} as Agent.LogoutSuccess,
+      },
+      notifFail: {
+        bind: {
+          type: CC_EVENTS.AGENT_LOGOUT,
+          data: {type: CC_EVENTS.AGENT_LOGOUT_FAILED},
+        },
+        errId,
+      },
+    }));
+
+  const stationLoginConfig = (url: string, errId: string, errLabel: string) =>
+    routing.req((p: {data: Agent.UserStationLogin}) => ({
+      url,
+      host: WCC_API_GATEWAY,
+      data: p.data,
+      err: /* istanbul ignore next */ (e: any) => {
+        return new Err.Details(errLabel, {
+          status: e.response?.status ?? 0,
+          type: e.response?.data?.errorType,
+          trackingId: e.response?.headers?.trackingid?.split('_')[1],
+        });
+      },
+      notifSuccess: {
+        bind: {
+          type: CC_EVENTS.AGENT_STATION_LOGIN,
+          data: {type: CC_EVENTS.AGENT_STATION_LOGIN_SUCCESS},
+        },
+        msg: {} as Agent.StationLoginSuccess,
+      },
+      notifFail: {
+        bind: {
+          type: CC_EVENTS.AGENT_STATION_LOGIN,
+          data: {type: CC_EVENTS.AGENT_STATION_LOGIN_FAILED},
+        },
+        errId,
+      },
+    }));
+
   return {
     /**
      * Reloads the agent session
@@ -37,62 +88,16 @@ export default function routingAgent(routing: AqmReqs) {
         errId: 'Service.aqm.agent.reload',
       },
     })),
-    /**
-     * Logs out the agent
-     * @param p.data - Logout parameters
-     * @public
-     */
-    logout: routing.req((p: {data: Agent.Logout}) => ({
-      url: '/v1/agents/logout',
-      host: WCC_API_GATEWAY,
-      data: p.data,
-      err,
-      notifSuccess: {
-        bind: {
-          type: CC_EVENTS.AGENT_LOGOUT,
-          data: {type: CC_EVENTS.AGENT_LOGOUT_SUCCESS},
-        },
-        msg: {} as Agent.LogoutSuccess,
-      },
-      notifFail: {
-        bind: {
-          type: CC_EVENTS.AGENT_LOGOUT,
-          data: {type: CC_EVENTS.AGENT_LOGOUT_FAILED},
-        },
-        errId: 'Service.aqm.agent.logout',
-      },
-    })),
-    /**
-     * Logs in the agent to a station
-     * @param p.data - Station login parameters
-     * @public
-     */
-    stationLogin: routing.req((p: {data: Agent.UserStationLogin}) => ({
-      url: '/v1/agents/login',
-      host: WCC_API_GATEWAY,
-      data: p.data,
-      err: /* istanbul ignore next */ (e: any) => {
-        return new Err.Details('Service.aqm.agent.stationLogin', {
-          status: e.response?.status ?? 0,
-          type: e.response?.data?.errorType,
-          trackingId: e.response?.headers?.trackingid?.split('_')[1],
-        });
-      },
-      notifSuccess: {
-        bind: {
-          type: CC_EVENTS.AGENT_STATION_LOGIN,
-          data: {type: CC_EVENTS.AGENT_STATION_LOGIN_SUCCESS},
-        },
-        msg: {} as Agent.StationLoginSuccess,
-      },
-      notifFail: {
-        bind: {
-          type: CC_EVENTS.AGENT_STATION_LOGIN,
-          data: {type: CC_EVENTS.AGENT_STATION_LOGIN_FAILED},
-        },
-        errId: 'Service.aqm.agent.stationLoginFailed',
-      },
-    })),
+
+    /** @public */
+    logout: logoutConfig('/v1/agents/logout', 'Service.aqm.agent.logout'),
+
+    /** @public */
+    stationLogin: stationLoginConfig(
+      '/v1/agents/login',
+      'Service.aqm.agent.stationLoginFailed',
+      'Service.aqm.agent.stationLogin'
+    ),
     /**
      * Changes the agent's state
      * @param p.data - State change parameters
@@ -173,37 +178,12 @@ export default function routingAgent(routing: AqmReqs) {
       },
     })),
 
-    /**
-     * V2 station login with per-channel routing
-     * @param p.data - Station login parameters
-     * @public
-     */
-    stationLoginV2: routing.req((p: {data: Agent.UserStationLogin}) => ({
-      url: '/v2/agents/login',
-      host: WCC_API_GATEWAY,
-      data: p.data,
-      err: (e: any) => {
-        return new Err.Details('Service.aqm.agent.stationLoginV2', {
-          status: e.response?.status ?? 0,
-          type: e.response?.data?.errorType,
-          trackingId: e.response?.headers?.trackingid?.split('_')[1],
-        });
-      },
-      notifSuccess: {
-        bind: {
-          type: CC_EVENTS.AGENT_STATION_LOGIN,
-          data: {type: CC_EVENTS.AGENT_STATION_LOGIN_SUCCESS},
-        },
-        msg: {} as Agent.StationLoginSuccess,
-      },
-      notifFail: {
-        bind: {
-          type: CC_EVENTS.AGENT_STATION_LOGIN,
-          data: {type: CC_EVENTS.AGENT_STATION_LOGIN_FAILED},
-        },
-        errId: 'Service.aqm.agent.stationLoginV2Failed',
-      },
-    })),
+    /** @public */
+    stationLoginV2: stationLoginConfig(
+      '/v2/agents/login',
+      'Service.aqm.agent.stationLoginV2Failed',
+      'Service.aqm.agent.stationLoginV2'
+    ),
 
     /**
      * V2 per-channel state change
@@ -238,30 +218,7 @@ export default function routingAgent(routing: AqmReqs) {
       },
     })),
 
-    /**
-     * V2 logout
-     * @param p.data - Logout parameters
-     * @public
-     */
-    logoutV2: routing.req((p: {data: Agent.Logout}) => ({
-      url: '/v2/agents/logout',
-      host: WCC_API_GATEWAY,
-      data: p.data,
-      err,
-      notifSuccess: {
-        bind: {
-          type: CC_EVENTS.AGENT_LOGOUT,
-          data: {type: CC_EVENTS.AGENT_LOGOUT_SUCCESS},
-        },
-        msg: {} as Agent.LogoutSuccess,
-      },
-      notifFail: {
-        bind: {
-          type: CC_EVENTS.AGENT_LOGOUT,
-          data: {type: CC_EVENTS.AGENT_LOGOUT_FAILED},
-        },
-        errId: 'Service.aqm.agent.logoutV2',
-      },
-    })),
+    /** @public */
+    logoutV2: logoutConfig('/v2/agents/logout', 'Service.aqm.agent.logoutV2'),
   };
 }
