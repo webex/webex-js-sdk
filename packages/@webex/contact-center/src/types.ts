@@ -735,7 +735,7 @@ export type StationReLoginResponse = Agent.ReloginSuccess | Error;
  * function handleStateChange(resp: SetStateResponse) { ... }
  * @ignore
  */
-export type SetStateResponse = Agent.StateChangeSuccess | Agent.AgentChannelStateChanged | Error;
+export type SetStateResponse = Agent.StateChangeSuccess | Error;
 
 /**
  * AddressBook types

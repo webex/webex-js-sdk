@@ -289,7 +289,9 @@ deregisterBtn.style.backgroundColor = 'red';
 let enableProd = true;
 
 // Granular Agent State (WXCC-15791) — constants
-const GRANULAR_CHANNEL_ORDER = ['telephony', 'chat', 'email', 'social', 'workItem', 'customMessaging'];
+// User-selectable channels only; workItem and customMessaging are internal channel
+// types that do not participate in user-facing state control.
+const GRANULAR_CHANNEL_ORDER = ['telephony', 'chat', 'email', 'social'];
 const GRANULAR_CHANNEL_LABELS = {
   telephony: 'Voice',
   chat: 'Chat',
@@ -368,7 +370,7 @@ function mdIcon(name, cls = '') {
 function escapeHTML(str) {
   const div = document.createElement('div');
   div.appendChild(document.createTextNode(str ?? ''));
-  return div.innerHTML;
+  return div.innerHTML.replace(/"/g, '&quot;');
 }
 const GRANULAR_AVAILABLE_AUX_CODE_ID = '0';
 const GRANULAR_AGENT_STATE_AVAILABLE = 'Available';
@@ -6858,8 +6860,13 @@ function renderManageChannelAvailability() {
   granularManageInitial = initial;
 
   // Desktop ChannelsStateManager disables the Voice and All toggles while voice is down.
+  // Channels in active-task states (Engaged, Reserved, WrapUp) cannot be toggled.
+  const ACTIVE_TASK_STATES = ['Engaged', 'EngagedOther', 'Reserved', 'WrapUp'];
   const telephonyBlocked =
     isTelephonyAvailableBlocked() && channels.some((ch) => ch.channelType === 'telephony');
+  const isChannelBlocked = (ch) =>
+    (telephonyBlocked && ch.channelType === 'telephony') ||
+    ACTIVE_TASK_STATES.includes(ch.agentState);
   const toggleRow = (key, icon, title, subtitle, checked, blocked) =>
     `<div class="manage-channel-availability-row"${blocked ? ` title="${escapeHTML(TELEPHONY_DISCONNECTED_TOOLTIP)}"` : ''}>` +
       mdIcon(icon, 'manage-channel-availability-icon') +
@@ -6881,7 +6888,8 @@ function renderManageChannelAvailability() {
         `<h3>Manage channel availability</h3>` +
       `</div>` +
       `<div class="manage-channel-availability-body">` +
-        toggleRow('all', 'checkbox-group-regular', 'All', 'Available on all channels', false, telephonyBlocked) +
+        toggleRow('all', 'checkbox-group-regular', 'All', 'Available on all channels', false,
+          telephonyBlocked || channels.some((ch) => isChannelBlocked(ch))) +
         channels.map((ch) =>
           toggleRow(
             ch.channelType,
@@ -6889,7 +6897,7 @@ function renderManageChannelAvailability() {
             ch.label,
             `State : ${ch.displayState}`,
             Boolean(granularManageDraft[ch.channelType]),
-            telephonyBlocked && ch.channelType === 'telephony'
+            isChannelBlocked(ch)
           )
         ).join('') +
       `</div>` +
@@ -7264,9 +7272,9 @@ function registerChannelStateEventListeners() {
   });
 
   // Covers remote logouts (supervisor, inactivity, another client). The SDK
-  // clears the session pin before emitting when the logout is for this session.
+  // clears V2 session state before emitting when the logout is for this session.
   webex.cc.on('agent:logoutSuccess', () => {
-    if (webex.cc.getAgentStateControl?.()?.active === undefined) {
+    if (webex.cc.getAgentStateControl?.()?.active !== true) {
       handleGranularStateLogout();
     }
   });

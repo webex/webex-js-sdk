@@ -3104,7 +3104,9 @@ describe('webex.cc', () => {
 
       expect(v2Mock).toHaveBeenCalled();
       expect(v1Mock).not.toHaveBeenCalled();
-      expect(webex.cc.getAgentStateControl().active).toBe(true);
+      // V2 routing was chosen (declared), but login failed so no channel states were seeded
+      expect(webex.cc.getAgentStateControl().declared).toBe(true);
+      expect(webex.cc.getAgentStateControl().active).toBeUndefined();
     });
 
     it('should rethrow non-timeout V2 login errors without falling back to V1', async () => {
@@ -3178,7 +3180,7 @@ describe('webex.cc', () => {
         expect(v1Mock).toHaveBeenCalled();
         expect(v2Mock).not.toHaveBeenCalled();
         expect(webex.cc.agentConfig.manageChannelAvailability).toBe(false);
-        expect(webex.cc.getAgentStateControl()).toEqual({declared: false, active: false});
+        expect(webex.cc.getAgentStateControl()).toEqual({declared: false, active: undefined});
       });
 
       it('keeps the cached flag when the re-fetch fails', async () => {
@@ -4601,7 +4603,8 @@ describe('webex.cc', () => {
 
         await webex.cc['silentRelogin']();
 
-        expect(webex.cc.getAgentStateControl()).toEqual({declared: true, active: true});
+        // After AGENT_NOT_FOUND, clearV2LocalState empties channelStatesMap so active is undefined
+        expect(webex.cc.getAgentStateControl()).toEqual({declared: true, active: undefined});
         expect(webex.cc.getChannelStates()).toEqual({});
         expect(webex.cc.agentConfig.isAgentLoggedIn).toBe(false);
         const notFoundCalls = emitSpy.mock.calls.filter(
@@ -4629,16 +4632,19 @@ describe('webex.cc', () => {
         expect(webex.cc.getAgentStateControl()).toEqual({declared: true, active: true});
       });
 
-      it('active follows the flag even when the server returns V1', async () => {
+      it('active is undefined when flag is true but server returns V1 (no channel states seeded)', async () => {
         await runReload(true, v1Reload);
 
-        expect(webex.cc.getAgentStateControl()).toEqual({declared: true, active: true});
+        // V1 response path does not populate channelStatesMap
+        expect(webex.cc.getAgentStateControl()).toEqual({declared: true, active: undefined});
       });
 
-      it('active follows the flag even when the server returns V2', async () => {
+      it('active is undefined when flag is false even when server returns V2', async () => {
         await runReload(false, v2Reload);
 
-        expect(webex.cc.getAgentStateControl()).toEqual({declared: false, active: false});
+        // The V2 response path populates channelStatesMap, but declared (flag) is false
+        // so active = (false && hasEntries) = undefined
+        expect(webex.cc.getAgentStateControl()).toEqual({declared: false, active: undefined});
       });
     });
   });
@@ -6793,7 +6799,8 @@ describe('webex.cc', () => {
         expect(webex.cc['channelStatesMap'].telephony).toEqual(detail);
       });
 
-      it('should emit AGENT_CHANNEL_STATE_CHANGE_FAILED for a channel failure', () => {
+      it('should emit AGENT_CHANNEL_STATE_CHANGE_FAILED for a channel failure when V2 is active', () => {
+        setV2();
         const failure = {
           type: CC_EVENTS.AGENT_CHANNEL_STATE_CHANGE_FAILED,
           channelType: 'chat',
@@ -6806,6 +6813,25 @@ describe('webex.cc', () => {
         );
 
         expect(emitSpy).toHaveBeenCalledWith(AGENT_EVENTS.AGENT_CHANNEL_STATE_CHANGE_FAILED, failure);
+      });
+
+      it('should NOT emit AGENT_CHANNEL_STATE_CHANGE_FAILED when V2 is not active', () => {
+        setV1();
+        const failure = {
+          type: CC_EVENTS.AGENT_CHANNEL_STATE_CHANGE_FAILED,
+          channelType: 'chat',
+          reason: 'NOT_ALLOWED',
+          reasonCode: 400,
+        };
+
+        messageCallback(
+          JSON.stringify({type: CC_EVENTS.AGENT_CHANNEL_STATE_CHANGE, data: failure})
+        );
+
+        expect(emitSpy).not.toHaveBeenCalledWith(
+          AGENT_EVENTS.AGENT_CHANNEL_STATE_CHANGE_FAILED,
+          expect.anything()
+        );
       });
 
       it('should ignore events for another agent', () => {
@@ -7238,13 +7264,19 @@ describe('webex.cc', () => {
         expect(webex.cc.getAgentStateControl()).toEqual({declared: undefined, active: undefined});
       });
 
-      it('reports the profile flag before login and after logout', () => {
+      it('derives active from channelStatesMap, not from the profile flag alone', () => {
+        // Before login: declared is true (profile flag), active is undefined (no channel states)
         webex.cc.agentConfig = {agentId: 'agentId', manageChannelAvailability: true} as Profile;
+        expect(webex.cc.getAgentStateControl()).toEqual({declared: true, active: undefined});
+
+        // After V2 login: channelStatesMap is populated, so active is true
+        setV2();
+        webex.cc['channelStatesMap'] = {telephony: makeChannelState('Available')} as any;
         expect(webex.cc.getAgentStateControl()).toEqual({declared: true, active: true});
 
-        setV2();
+        // After clearV2LocalState (logout): map is empty, active becomes undefined
         webex.cc['clearV2LocalState']();
-        expect(webex.cc.getAgentStateControl()).toEqual({declared: true, active: true});
+        expect(webex.cc.getAgentStateControl()).toEqual({declared: true, active: undefined});
       });
     });
 

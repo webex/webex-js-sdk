@@ -1295,6 +1295,10 @@ export default class ContactCenter extends WebexPlugin implements IContactCenter
           ? this.services.agent.stationLoginV2(loginPayload)
           : this.services.agent.stationLogin(loginPayload);
 
+      // Prevent unhandled rejection if login fails while voice registration is pending.
+      // The actual error is re-thrown when `await loginResponse` runs below.
+      loginResponse.catch(() => {});
+
       this.webCallingService.setLoginOption(data.loginOption);
       this.webCallingService.setBrowserVoiceRequired(this.isBrowserVoiceRequired(data.loginOption));
 
@@ -1329,14 +1333,10 @@ export default class ContactCenter extends WebexPlugin implements IContactCenter
         notifsTrackingId: resp.trackingId,
       };
 
-      // Seed channel state maps for V2 sessions after login completes.
+      // The WebSocket handler for AGENT_STATION_LOGIN_SUCCESS already seeds
+      // channelStatesMap and loginChannelsMap before this promise resolves.
+      // Only reset the V1 bridge dedup so the first post-login event is emitted.
       if (this.agentConfig?.manageChannelAvailability === true) {
-        this.loginChannelsMap = channelsMap;
-        this.channelStatesMap = this.seedChannelStates(
-          channelsMap,
-          resp.data.subStatus,
-          resp.data.auxCodeId
-        ) as Record<ChannelType, AgentChannelTypeStates>;
         this.lastEmittedV1 = undefined;
       }
       if (this.agentConfig) {
@@ -1613,7 +1613,10 @@ export default class ContactCenter extends WebexPlugin implements IContactCenter
         trackingId: agentStatusResponse.trackingId,
       });
 
-      return agentStatusResponse;
+      // V2 stateChangeV2 returns AgentChannelStateChanged; cast to preserve the
+      // public SetStateResponse contract (StateChangeSuccess | Error) for V1 callers.
+      // V2 callers consume channel state via events and getChannelStates().
+      return agentStatusResponse as unknown as SetStateResponse;
     } catch (error) {
       const failure = error.details as Failure;
       this.metricsManager.trackEvent(
@@ -1902,8 +1905,10 @@ export default class ContactCenter extends WebexPlugin implements IContactCenter
         break;
 
       case CC_EVENTS.AGENT_CHANNEL_STATE_CHANGE_FAILED:
-        // @ts-ignore
-        this.emit(AGENT_EVENTS.AGENT_CHANNEL_STATE_CHANGE_FAILED, eventData.data);
+        if (this.agentConfig?.manageChannelAvailability === true) {
+          // @ts-ignore
+          this.emit(AGENT_EVENTS.AGENT_CHANNEL_STATE_CHANGE_FAILED, eventData.data);
+        }
         break;
 
       case CC_EVENTS.AGENT_CHANNEL_RELOGIN_SUCCESS:
@@ -2927,10 +2932,11 @@ export default class ContactCenter extends WebexPlugin implements IContactCenter
    */
   public getAgentStateControl(): AgentStateControlStatus {
     const isV2 = this.agentConfig?.manageChannelAvailability === true;
+    const hasActiveV2Session = isV2 && Object.keys(this.channelStatesMap).length > 0;
 
     return {
       declared: this.agentConfig ? isV2 : undefined,
-      active: this.agentConfig ? isV2 : undefined,
+      active: hasActiveV2Session || undefined,
     };
   }
 
