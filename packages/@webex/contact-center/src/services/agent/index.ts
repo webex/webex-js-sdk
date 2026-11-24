@@ -217,7 +217,6 @@ export default function routingAgent(routing: AqmReqs) {
           data: {
             type: CC_EVENTS.AGENT_CHANNEL_STATE_CHANGE_FAILED,
             channelType: p.data.channelType,
-            ...(p.data.agentId ? {agentId: p.data.agentId} : {}),
           },
         },
         errId: 'Service.aqm.agent.stateChangeV2',
