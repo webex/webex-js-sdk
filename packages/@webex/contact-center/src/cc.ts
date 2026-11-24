@@ -387,13 +387,6 @@ export default class ContactCenter extends WebexPlugin implements IContactCenter
   private loginChannelsMap: Record<string, string[]> = {};
 
   /**
-   * Guards against overlapping setAgentState calls whose channel sets could
-   * cross-resolve in the AQM notification matching layer.
-   * @private
-   */
-  private stateChangeInProgress = false;
-
-  /**
    * API instance for managing Webex Contact Center entry points
    * Provides functionality to fetch entry points with caching support
    * @type {EntryPoint}
@@ -1243,9 +1236,6 @@ export default class ContactCenter extends WebexPlugin implements IContactCenter
    */
   public async stationLogin(data: AgentLogin): Promise<StationLoginResponse> {
     const loggerContext = {module: CC_FILE, method: METHODS.STATION_LOGIN};
-    // Captured before the profile refresh so the catch block can restore it
-    // if the login attempt fails (INV-012 — one-version-per-session).
-    const previousManageChannelAvailability = this.agentConfig?.manageChannelAvailability;
 
     try {
       LoggerProxy.log(
@@ -1417,16 +1407,6 @@ export default class ContactCenter extends WebexPlugin implements IContactCenter
 
       return response;
     } catch (error) {
-      // Restore the previous routing mode so a rejected login cannot leave
-      // the live session with the wrong V1/V2 flag (INV-012).
-      if (this.agentConfig && previousManageChannelAvailability !== undefined) {
-        this.agentConfig.manageChannelAvailability = previousManageChannelAvailability;
-        LoggerProxy.info(
-          `Login failed — restored manageChannelAvailability to ${previousManageChannelAvailability}`,
-          loggerContext
-        );
-      }
-
       const failure = error.details as Failure;
       this.metricsManager.trackEvent(
         METRIC_EVENT_NAMES.STATION_LOGIN_FAILED,
@@ -1586,24 +1566,6 @@ export default class ContactCenter extends WebexPlugin implements IContactCenter
       method: METHODS.SET_AGENT_STATE,
     });
 
-    // Reject overlapping calls. Concurrent requests with different channel
-    // sets can cross-resolve in the AQM notification matching layer, causing
-    // a later failure notification to be missed. The desktop UI prevents
-    // this by disabling state controls while a request is in-flight.
-    if (this.stateChangeInProgress) {
-      const error = new Error(
-        'A state change request is already in progress. Wait for it to complete before issuing another.'
-      ) as GenericError;
-      error.details = {
-        type: 'SDK_VALIDATION_ERROR',
-        orgId: this.$webex.credentials.getOrgId(),
-        trackingId: EMPTY_STRING,
-        data: {reason: 'STATE_CHANGE_IN_PROGRESS'},
-      };
-      throw error;
-    }
-
-    this.stateChangeInProgress = true;
     try {
       this.metricsManager.timeEvent([
         METRIC_EVENT_NAMES.AGENT_STATE_CHANGE_SUCCESS,
@@ -1760,8 +1722,6 @@ export default class ContactCenter extends WebexPlugin implements IContactCenter
       );
       const {error: detailedError} = getErrorDetails(error, METHODS.SET_AGENT_STATE, CC_FILE);
       throw detailedError;
-    } finally {
-      this.stateChangeInProgress = false;
     }
   }
 
@@ -2856,14 +2816,6 @@ export default class ContactCenter extends WebexPlugin implements IContactCenter
       module: CC_FILE,
       method: METHODS.SILENT_RELOGIN,
     });
-
-    // Invalidate any stale in-flight state change from the dead socket.
-    // stateChangeInProgress is a global boolean that blocks ALL setAgentState
-    // calls — including the recovery call below that targets *different*
-    // channels. The stale AQM bind will never receive a response on the new
-    // connection and will time out (up to 20 s), at which point its finally
-    // block harmlessly sets the flag to false again.
-    this.stateChangeInProgress = false;
 
     try {
       // Always use the V2 reload endpoint — it accepts both V1 AgentReloginSuccess

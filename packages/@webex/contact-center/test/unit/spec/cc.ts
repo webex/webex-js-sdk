@@ -3207,52 +3207,6 @@ describe('webex.cc', () => {
         );
       });
 
-      it('restores manageChannelAvailability when V1 login fails on a live V2 session', async () => {
-        // Scenario: V2 agent's profile flag was disabled by admin, re-fetch
-        // returns false, but the V1 login attempt is rejected.  The live V2
-        // session must keep manageChannelAvailability = true so routing,
-        // channel states, and logout continue to use V2 (INV-012).
-        webex.cc.agentConfig.manageChannelAvailability = true;
-        jest
-          .spyOn(webex.cc.services.config, 'getUserDesktopLoginConfig')
-          .mockResolvedValue({agentProfile: {manageChannelAvailability: false}} as any);
-        jest
-          .spyOn(webex.cc.services.agent, 'stationLogin')
-          .mockRejectedValue({details: {data: {reason: 'ALREADY_LOGGED_IN'}}});
-
-        await expect(
-          webex.cc.stationLogin({
-            teamId: 'teamId',
-            loginOption: LoginOption.EXTENSION,
-            dialNumber: '1001',
-          })
-        ).rejects.toThrow();
-
-        // Flag must be restored to V2 — the live session is still V2.
-        expect(webex.cc.agentConfig.manageChannelAvailability).toBe(true);
-      });
-
-      it('restores manageChannelAvailability when V2 login fails on a live V1 session', async () => {
-        // Mirror scenario: V1 session, profile now enables V2, but login fails.
-        webex.cc.agentConfig.manageChannelAvailability = false;
-        jest
-          .spyOn(webex.cc.services.config, 'getUserDesktopLoginConfig')
-          .mockResolvedValue({agentProfile: {manageChannelAvailability: true}} as any);
-        jest
-          .spyOn(webex.cc.services.agent, 'stationLoginV2')
-          .mockRejectedValue({details: {data: {reason: 'ALREADY_LOGGED_IN'}}});
-
-        await expect(
-          webex.cc.stationLogin({
-            teamId: 'teamId',
-            loginOption: LoginOption.EXTENSION,
-            dialNumber: '1001',
-          })
-        ).rejects.toThrow();
-
-        // Flag must be restored to V1 — the live session is still V1.
-        expect(webex.cc.agentConfig.manageChannelAvailability).toBe(false);
-      });
     });
   });
 
@@ -7976,47 +7930,6 @@ describe('webex.cc', () => {
         expect(result.trackingId).toBe('track-v2');
       });
 
-      it('rejects overlapping setAgentState calls while one is in-flight', async () => {
-        const makeV2Response = (subStatus: string, auxCodeId: string, trackingId: string) => ({
-          type: 'AgentChannelStateChanged',
-          orgId: 'org-1',
-          trackingId,
-          data: {
-            agentId: 'agent-1',
-            agentSessionId: 'session-1',
-            orgId: 'org-1',
-            status: 'LoggedIn',
-            subStatus,
-            changedBy: 'AGENT',
-            changedById: null,
-            changedByName: null,
-            agentChannelStateDetail: {
-              agentState: subStatus,
-              auxCodeId,
-              stateChangeTimestamp: Date.now(),
-              lastIdleCodeChangeTimestamp: Date.now(),
-              stateChangeReason: 'agent-explicit',
-            },
-          },
-        });
-
-        // First call: starts but doesn't resolve yet
-        let resolveFirst!: (v: any) => void;
-        jest.spyOn(webex.cc.services.agent, 'stateChangeV2').mockReturnValueOnce(
-          new Promise((r) => { resolveFirst = r; })
-        );
-
-        const first = webex.cc.setAgentState({state: 'Idle', auxCodeId: 'break-1', channelType: ['chat']});
-
-        // Second call while first is still pending — should be rejected
-        await expect(
-          webex.cc.setAgentState({state: 'Available', auxCodeId: '0', channelType: ['email']})
-        ).rejects.toThrow('A state change request is already in progress');
-
-        // Resolve the first call so it completes normally
-        resolveFirst(makeV2Response('Idle', 'break-1', 'track-first'));
-        await expect(first).resolves.toBeDefined();
-      });
     });
 
     describe('silentRelogin V2 recovery', () => {
@@ -8152,19 +8065,6 @@ describe('webex.cc', () => {
 
         // Clean up the dangling promise.
         resolveRegistration();
-      });
-
-      it('clears stateChangeInProgress so recovery is not blocked by a stale in-flight request', async () => {
-        // Simulate a state change that was in-flight when the socket disconnected.
-        webex.cc['stateChangeInProgress'] = true;
-
-        await runV2Reload(LoginOption.EXTENSION);
-
-        // silentRelogin clears the global flag before attempting recovery.
-        expect(setAgentStateSpy).toHaveBeenCalledTimes(1);
-        expect(setAgentStateSpy).toHaveBeenCalledWith(
-          expect.objectContaining({state: 'Available', channelType: ['telephony', 'chat']})
-        );
       });
 
       it('does not overwrite live channel updates with the stale reload snapshot', async () => {

@@ -4284,9 +4284,26 @@ function captureWellnessSession(event) {
     wellnessState.legacyAuxCodeId = undefined;
   }
   wellnessState.agentSessionId = event.agentSessionId;
-  if (Object.prototype.hasOwnProperty.call(event, 'auxCodeId')) {
+
+  // V2 channel relogin events carry per-channel states in
+  // agentChannelStateDetailMap instead of a top-level auxCodeId.
+  // Normalize by picking the first channel's auxCodeId so
+  // legacyStateKnown is hydrated and getRecoveryDecision() doesn't
+  // return 'wait' indefinitely.
+  let hydratedEvent = event;
+  if (
+    !Object.prototype.hasOwnProperty.call(event, 'auxCodeId') &&
+    event.agentChannelStateDetailMap
+  ) {
+    const firstChannel = Object.values(event.agentChannelStateDetailMap)[0];
+    if (firstChannel && typeof firstChannel.auxCodeId === 'string') {
+      hydratedEvent = {...event, auxCodeId: firstChannel.auxCodeId};
+    }
+  }
+
+  if (Object.prototype.hasOwnProperty.call(hydratedEvent, 'auxCodeId')) {
     wellnessState.legacyStateKnown = true;
-    wellnessState.legacyAuxCodeId = event.auxCodeId?.trim() || '0';
+    wellnessState.legacyAuxCodeId = hydratedEvent.auxCodeId?.trim() || '0';
   }
   if (!WELLNESS_OWNED_LIFECYCLES.has(wellnessState.lifecycle)) {
     wellnessState.lifecycle = isWellnessReady() ? 'Ready' : 'Unavailable';
