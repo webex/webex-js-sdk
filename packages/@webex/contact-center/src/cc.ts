@@ -3026,6 +3026,10 @@ export default class ContactCenter extends WebexPlugin implements IContactCenter
           method: METHODS.SILENT_RELOGIN,
         });
         // The server session is gone; drop the stale pin so consumers see a logged-out agent.
+        // Clear currentAgentSessionId so the live-session guard in
+        // handleChannelStateChanged rejects queued notifications for the
+        // ended session — matching logout and multi-login close cleanup.
+        this.updateWellnessSession();
         this.clearV2LocalState();
         if (this.agentConfig) {
           this.agentConfig.isAgentLoggedIn = false;

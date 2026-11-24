@@ -4580,6 +4580,7 @@ describe('webex.cc', () => {
           isAgentLoggedIn: true,
           manageChannelAvailability: true,
         } as Profile;
+        webex.cc['currentAgentSessionId'] = 'session-before';
         webex.cc['channelStatesMap'] = {
           telephony: {agentState: 'Available', auxCodeId: '0'},
         } as any;
@@ -4595,6 +4596,8 @@ describe('webex.cc', () => {
         expect(webex.cc.getAgentStateControl()).toEqual({declared: true, active: undefined});
         expect(webex.cc.getChannelStates()).toEqual({});
         expect(webex.cc.agentConfig.isAgentLoggedIn).toBe(false);
+        // currentAgentSessionId must be cleared so late notifications are blocked
+        expect(webex.cc['currentAgentSessionId']).toBeUndefined();
         const notFoundCalls = emitSpy.mock.calls.filter(
           ([evt]) => evt === AGENT_EVENTS.AGENT_RELOGIN_SESSION_NOT_FOUND
         );
