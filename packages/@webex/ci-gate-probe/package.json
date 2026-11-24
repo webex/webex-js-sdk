@@ -1,0 +1,10 @@
+{
+  "name": "@webex/ci-gate-probe",
+  "private": true,
+  "version": "0.0.0",
+  "description": "Disposable CI merge-gate evidence fixture. DO NOT MERGE.",
+  "scripts": {
+    "test:unit": "node probe.cjs unit",
+    "test:integration": "node probe.cjs integration"
+  }
+}
