@@ -4991,6 +4991,76 @@ describe('internal-plugin-metrics', () => {
         assert.notCalled(submitClientEventSpy);
       });
 
+      it('submits each valid delayed event once when another event fails preparation', async () => {
+        const submit = sinon.stub(cd, 'submitToCallDiagnostics').resolves();
+
+        await cd.submitClientEvent({
+          name: 'client.alert.displayed',
+          options: {correlationId: 'before-failure'},
+          delaySubmitEvent: true,
+        });
+        await cd.submitClientEvent({
+          name: 'client.alert.removed',
+          options: {},
+          delaySubmitEvent: true,
+        });
+        await cd.submitClientEvent({
+          name: 'client.call.aborted',
+          options: {correlationId: 'after-failure'},
+          delaySubmitEvent: true,
+        });
+
+        assert.notCalled(submit);
+        await assert.isRejected(cd.submitDelayedClientEvents(), 'Not implemented');
+
+        assert.deepEqual(
+          submit.args.map(([event]) => ({
+            name: event.event.name,
+            correlationId: event.event.identifiers.correlationId,
+          })),
+          [
+            {name: 'client.alert.displayed', correlationId: 'before-failure'},
+            {name: 'client.call.aborted', correlationId: 'after-failure'},
+          ]
+        );
+        assert.isEmpty(cd.delayedClientEvents);
+
+        await cd.submitDelayedClientEvents();
+
+        assert.calledTwice(submit);
+      });
+
+      it('keeps an event queued during submission for the next flush', async () => {
+        const options = {correlationId: 'correlationId'};
+        const submit = sinon.stub(cd, 'submitToCallDiagnostics').resolves();
+
+        submit.onFirstCall().callsFake(async () => {
+          await cd.submitClientEvent({
+            name: 'client.alert.removed',
+            options,
+            delaySubmitEvent: true,
+          });
+        });
+
+        await cd.submitClientEvent({
+          name: 'client.alert.displayed',
+          options,
+          delaySubmitEvent: true,
+        });
+        await cd.submitDelayedClientEvents();
+
+        assert.calledOnce(submit);
+        assert.lengthOf(cd.delayedClientEvents, 1);
+
+        await cd.submitDelayedClientEvents();
+
+        assert.deepEqual(
+          submit.args.map(([event]) => event.event.name),
+          ['client.alert.displayed', 'client.alert.removed']
+        );
+        assert.isEmpty(cd.delayedClientEvents);
+      });
+
       it('calls submitClientEvent for every delayed event and clears delayedClientEvents array', () => {
         const submitClientEventSpy = sinon.spy(cd, 'submitClientEvent');
         const submitToCallDiagnosticsSpy = sinon.spy(cd, 'submitToCallDiagnostics');

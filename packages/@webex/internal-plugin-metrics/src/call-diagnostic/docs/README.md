@@ -261,11 +261,15 @@ sequenceDiagram
   alt queue is empty
     CD-->>Facade: resolve
   else queued events
-    loop for each queued event
+    CD->>CD: take the current batch out of the queue
+    loop for each event in the batch
       CD->>CD: submitClientEvent with options merged with overrides
     end
-    CD->>CD: empty the queue
-    CD-->>Facade: resolve when all submissions settle
+    alt all submissions succeed
+      CD-->>Facade: resolve
+    else any submission fails
+      CD-->>Facade: reject with the submission error
+    end
   end
 ```
 
@@ -466,6 +470,9 @@ The envelope is declared through `src/metrics.types.ts`; it is not restated here
   `clearEventLimitsForCorrelationId` depends on that layout.
 - Delay mode stores call arguments, not built events, so identity and origin are resolved at flush
   time. Only the trigger time is captured at queue time.
+- A delayed client-event flush takes the current batch out of the queue before submission and
+  attempts every event in that batch. A preparation or submission failure rejects the flush.
+  Events queued during the flush stay in the queue for the next flush.
 - `getIdentifiers` defaults the correlation identifier to the string `unknown`, which Call Analyzer's
   UUID validation rejects; the limiter treats `unknown` as unlimited for the same reason.
 - Device details are injected by the device plugin to avoid a circular import; do not import the
