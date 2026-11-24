@@ -666,7 +666,7 @@ describe('webex.cc', () => {
       const mercuryConnect = jest.spyOn(webex.internal.mercury, 'connect').mockResolvedValue(true);
       const connectWebsocketSpy = jest.spyOn(webex.cc, 'connectWebsocket');
       const setupEventListenersSpy = jest.spyOn(webex.cc, 'setupEventListeners');
-      const reloadSpy = jest.spyOn(webex.cc.services.agent, 'reload').mockResolvedValue({
+      const reloadSpy = jest.spyOn(webex.cc.services.agent, 'reloadV2').mockResolvedValue({
         data: {
           auxCodeId: 'auxCodeId',
           agentId: 'agentId',
@@ -773,7 +773,7 @@ describe('webex.cc', () => {
       webex.cc.$config = undefined;
       jest.spyOn(webex.internal.mercury, 'connect').mockResolvedValue(true);
       const connectWebsocketSpy = jest.spyOn(webex.cc, 'connectWebsocket');
-      const reloadSpy = jest.spyOn(webex.cc.services.agent, 'reload').mockResolvedValue({
+      const reloadSpy = jest.spyOn(webex.cc.services.agent, 'reloadV2').mockResolvedValue({
         data: {
           auxCodeId: 'auxCodeId',
           agentId: 'agentId',
@@ -864,7 +864,7 @@ describe('webex.cc', () => {
 
       const connectWebsocketSpy = jest.spyOn(webex.cc, 'connectWebsocket');
       const setupEventListenersSpy = jest.spyOn(webex.cc, 'setupEventListeners');
-      const reloadSpy = jest.spyOn(webex.cc.services.agent, 'reload').mockResolvedValue({
+      const reloadSpy = jest.spyOn(webex.cc.services.agent, 'reloadV2').mockResolvedValue({
         data: {
           auxCodeId: 'auxCodeId',
           agentId: 'agentId',
@@ -959,7 +959,7 @@ describe('webex.cc', () => {
       const mercurySpy = jest.spyOn(webex.internal.mercury, 'connect');
       const connectWebsocketSpy = jest.spyOn(webex.cc, 'connectWebsocket');
       const setupEventListenersSpy = jest.spyOn(webex.cc, 'setupEventListeners');
-      const reloadSpy = jest.spyOn(webex.cc.services.agent, 'reload').mockResolvedValue({
+      const reloadSpy = jest.spyOn(webex.cc.services.agent, 'reloadV2').mockResolvedValue({
         data: {
           auxCodeId: 'auxCodeId',
           agentId: 'agentId',
@@ -1001,7 +1001,7 @@ describe('webex.cc', () => {
       } as any;
       mockAgentProfile.isWellnessBreakEnabled = true;
       jest.spyOn(webex.internal.mercury, 'connect').mockResolvedValue(true);
-      jest.spyOn(webex.cc.services.agent, 'reload').mockResolvedValue({
+      jest.spyOn(webex.cc.services.agent, 'reloadV2').mockResolvedValue({
         data: {
           auxCodeId: 'auxCodeId',
           agentId: 'agentId',
@@ -1036,7 +1036,7 @@ describe('webex.cc', () => {
       } as any;
       mockAgentProfile.isWellnessBreakEnabled = false;
       jest.spyOn(webex.internal.mercury, 'connect').mockResolvedValue(true);
-      jest.spyOn(webex.cc.services.agent, 'reload').mockResolvedValue({
+      jest.spyOn(webex.cc.services.agent, 'reloadV2').mockResolvedValue({
         data: {
           auxCodeId: 'auxCodeId',
           agentId: 'agentId',
@@ -1060,7 +1060,7 @@ describe('webex.cc', () => {
 
     it('should connect RTD websocket when either generated summary organization flag is enabled', async () => {
       jest.spyOn(webex.internal.mercury, 'connect').mockResolvedValue(true);
-      jest.spyOn(webex.cc.services.agent, 'reload').mockResolvedValue({
+      jest.spyOn(webex.cc.services.agent, 'reloadV2').mockResolvedValue({
         data: {
           auxCodeId: 'auxCodeId',
           agentId: 'agentId',
@@ -4235,7 +4235,7 @@ describe('webex.cc', () => {
         agentId: 'agentId',
         webRtcEnabled: false,
       } as Profile;
-      jest.spyOn(webex.cc.services.agent, 'reload').mockResolvedValue({
+      jest.spyOn(webex.cc.services.agent, 'reloadV2').mockResolvedValue({
         data: {
           auxCodeId: 'auxCodeId',
           agentId: 'agentId',
@@ -4283,7 +4283,7 @@ describe('webex.cc', () => {
       const setAgentStateSpy = jest.spyOn(webex.cc, 'setAgentState').mockResolvedValue({
         data: {lastStateChangeTimestamp: 1234, lastIdleCodeChangeTimestamp: 12345},
       } as unknown as SetStateResponse);
-      jest.spyOn(webex.cc.services.agent, 'reload').mockResolvedValue(mockReLoginResponse);
+      jest.spyOn(webex.cc.services.agent, 'reloadV2').mockResolvedValue(mockReLoginResponse);
 
       const registerWebCallingLineSpy = jest.spyOn(
         webex.cc.webCallingService,
@@ -4341,7 +4341,7 @@ describe('webex.cc', () => {
         },
       };
 
-      jest.spyOn(webex.cc.services.agent, 'reload').mockRejectedValue(error);
+      jest.spyOn(webex.cc.services.agent, 'reloadV2').mockRejectedValue(error);
       await webex.cc['silentRelogin']();
       expect(LoggerProxy.log).toHaveBeenCalledWith('Starting silent relogin process', {
         module: CC_FILE,
@@ -4355,7 +4355,7 @@ describe('webex.cc', () => {
 
     it('should handle errors during silent relogin', async () => {
       const error = new Error('Error while performing silentRelogin');
-      jest.spyOn(webex.cc.services.agent, 'reload').mockRejectedValue(error);
+      jest.spyOn(webex.cc.services.agent, 'reloadV2').mockRejectedValue(error);
 
       await expect(webex.cc['silentRelogin']()).rejects.toThrow(error);
       expect(LoggerProxy.log).toHaveBeenCalledWith('Starting silent relogin process', {
@@ -4396,7 +4396,7 @@ describe('webex.cc', () => {
         webex.cc.webCallingService,
         'registerWebCallingLine'
       );
-      jest.spyOn(webex.cc.services.agent, 'reload').mockResolvedValue(mockReLoginResponse);
+      jest.spyOn(webex.cc.services.agent, 'reloadV2').mockResolvedValue(mockReLoginResponse);
 
       await webex.cc['silentRelogin']();
 
@@ -4438,7 +4438,7 @@ describe('webex.cc', () => {
         isAgentLoggedIn: false,
       } as Profile;
 
-      jest.spyOn(webex.cc.services.agent, 'reload').mockResolvedValue(mockReLoginResponse);
+      jest.spyOn(webex.cc.services.agent, 'reloadV2').mockResolvedValue(mockReLoginResponse);
 
       await webex.cc['silentRelogin']();
 
@@ -4462,7 +4462,7 @@ describe('webex.cc', () => {
         isAgentLoggedIn: false,
       } as Profile;
 
-      jest.spyOn(webex.cc.services.agent, 'reload').mockResolvedValue({
+      jest.spyOn(webex.cc.services.agent, 'reloadV2').mockResolvedValue({
         data: {
           auxCodeId: 'auxCodeId',
           agentId: 'agentId',
@@ -4498,7 +4498,7 @@ describe('webex.cc', () => {
         isAgentLoggedIn: false,
       } as Profile;
 
-      jest.spyOn(webex.cc.services.agent, 'reload').mockResolvedValue({
+      jest.spyOn(webex.cc.services.agent, 'reloadV2').mockResolvedValue({
         data: {
           auxCodeId: 'auxCodeId',
           agentId: 'agentId',
@@ -4559,31 +4559,19 @@ describe('webex.cc', () => {
           isAgentLoggedIn: true,
           manageChannelAvailability,
         } as Profile;
-        jest.spyOn(webex.cc.services.agent, 'reload').mockResolvedValue(reload as any);
         jest.spyOn(webex.cc.services.agent, 'reloadV2').mockResolvedValue(reload as any);
         await webex.cc['silentRelogin']();
       };
 
-      it('reloads on /v2 when unpinned and the flag is true, /v1 when the flag is false', async () => {
+      it('always uses reloadV2 regardless of manageChannelAvailability flag', async () => {
         await runReload(true, v2Reload);
         expect(webex.cc.services.agent.reloadV2).toHaveBeenCalledTimes(1);
         expect(webex.cc.services.agent.reload).not.toHaveBeenCalled();
 
         jest.clearAllMocks();
         await runReload(false, v1Reload);
-        expect(webex.cc.services.agent.reload).toHaveBeenCalledTimes(1);
-        expect(webex.cc.services.agent.reloadV2).not.toHaveBeenCalled();
-      });
-
-      it('routes solely by manageChannelAvailability', async () => {
-        await runReload(true, v2Reload);
         expect(webex.cc.services.agent.reloadV2).toHaveBeenCalledTimes(1);
         expect(webex.cc.services.agent.reload).not.toHaveBeenCalled();
-
-        jest.clearAllMocks();
-        await runReload(false, v1Reload);
-        expect(webex.cc.services.agent.reload).toHaveBeenCalledTimes(1);
-        expect(webex.cc.services.agent.reloadV2).not.toHaveBeenCalled();
       });
 
       it('clears the session and marks the agent logged out on AGENT_NOT_FOUND', async () => {
@@ -4641,12 +4629,12 @@ describe('webex.cc', () => {
         expect(webex.cc.getAgentStateControl()).toEqual({declared: false, active: undefined});
       });
 
-      it('active is undefined when flag is false even when server returns V2', async () => {
+      it('upgrades manageChannelAvailability when flag is false but server returns V2', async () => {
         await runReload(false, v2Reload);
 
-        // The V2 response path populates channelStatesMap, but declared (flag) is false
-        // so active = (false && hasEntries) = undefined
-        expect(webex.cc.getAgentStateControl()).toEqual({declared: false, active: undefined});
+        // The V2 response upgrades the flag to true to match the persisted session.
+        expect(webex.cc.agentConfig.manageChannelAvailability).toBe(true);
+        expect(webex.cc.getAgentStateControl()).toEqual({declared: true, active: true});
       });
 
       it('V1 disconnect recovery uses V1 setAgentState when flag was downgraded from true', async () => {

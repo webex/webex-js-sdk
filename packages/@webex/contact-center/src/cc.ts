@@ -2801,16 +2801,33 @@ export default class ContactCenter extends WebexPlugin implements IContactCenter
     });
 
     try {
-      const reLoginResponse =
-        this.agentConfig?.manageChannelAvailability === true
-          ? await this.services.agent.reloadV2()
-          : await this.services.agent.reload();
+      // Always use the V2 reload endpoint — it accepts both V1 AgentReloginSuccess
+      // and V2 AgentChannelReloginSuccess. The persisted server session determines the
+      // response type, which may differ from the current profile flag when an admin
+      // toggles manageChannelAvailability between sessions. The response type drives
+      // V1/V2 routing below; mismatch guards reconcile the flag.
+      const reLoginResponse = await this.services.agent.reloadV2();
       this.updateWellnessSession(reLoginResponse.data.agentSessionId);
 
       const responseType = reLoginResponse.data?.type;
 
       if (responseType === 'AgentChannelReloginSuccess') {
         // ─── V2 path ─────────────────────────────────────────────
+
+        // Guard: the persisted session is V2 but the profile flag was disabled
+        // after the original login. Upgrade the flag for this session so that
+        // setAgentState, event handlers, and getAgentStateControl() route
+        // through the V2 path matching the live server session.
+        if (this.agentConfig?.manageChannelAvailability !== true) {
+          LoggerProxy.warn(
+            'event=sessionModeMismatch | Server returned V2 session but manageChannelAvailability is false; upgrading to V2 for this session',
+            {module: CC_FILE, method: METHODS.SILENT_RELOGIN}
+          );
+          if (this.agentConfig) {
+            this.agentConfig.manageChannelAvailability = true;
+          }
+        }
+
         const {agentId, deviceType, dn, teamId, agentChannelStateDetailMap, channelsMap} =
           reLoginResponse.data as AgentChannelReloginSuccess['data'];
 
