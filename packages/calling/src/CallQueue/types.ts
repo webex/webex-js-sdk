@@ -1,5 +1,6 @@
 import {LOGGER} from '../Logger/types';
 import {COMMON_EVENT_KEYS} from '../Events/types';
+import {ACD_STATE} from './constants';
 
 export interface LoggerInterface {
   level: LOGGER;
@@ -9,17 +10,6 @@ export interface LoggerInterface {
 export type CallQueueClientOptions = {
   webexApiBaseUrl: string;
 };
-
-/**
- * Agent ACD state. REST uses these names. Mercury may send the camelCase form.
- */
-export enum ACD_STATE {
-  SIGN_IN = 'SIGN_IN',
-  SIGN_OUT = 'SIGN_OUT',
-  AVAILABLE = 'AVAILABLE',
-  UNAVAILABLE = 'UNAVAILABLE',
-  WRAP_UP = 'WRAP_UP',
-}
 
 export type CallQueue = {
   id: string;

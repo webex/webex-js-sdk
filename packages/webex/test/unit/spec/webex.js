@@ -136,7 +136,14 @@ describe('Calling call queue client', () => {
 
   beforeEach(() => {
     queue = {dispose: sinon.spy(), prepareForReuse: sinon.stub().returns(true)};
-    factory = sinon.stub(WebexCalling, 'createCallQueueClient').returns(queue);
+    factory = sinon.stub(WebexCalling, 'createCallQueueClient').callsFake(
+      (instance, configLogger, configOptions, previous, enabled) => {
+        if (enabled) return queue;
+        previous?.dispose();
+
+        return undefined;
+      }
+    );
     logger = {level: 'info'};
     options = {webexApiBaseUrl: 'https://integration.webexapis.com'};
     webex = {
@@ -162,7 +169,7 @@ describe('Calling call queue client', () => {
   it('creates the client using the configured API origin', async () => {
     const calling = await Calling.init({webex, callingConfig: config(true)});
 
-    assert.calledOnceWithExactly(factory, webex, logger, options, undefined);
+    assert.calledOnceWithExactly(factory, webex, logger, options, undefined, true);
     assert.strictEqual(calling.callQueueClient, queue);
     await calling.deregister();
     assert.notCalled(queue.dispose);
@@ -172,25 +179,23 @@ describe('Calling call queue client', () => {
   it('does not create a client unless enabled', async () => {
     const calling = await Calling.init({webex, callingConfig: config(false)});
 
-    assert.notCalled(factory);
+    assert.calledOnceWithExactly(factory, webex, logger, options, undefined, false);
     assert.isUndefined(calling.callQueueClient);
   });
 
   it('continues initializing call recording when queue creation fails', async () => {
     const recording = {};
     const recordingFactory = sinon.stub(WebexCalling, 'createCallRecordingClient').returns(recording);
-    const warning = sinon.spy(WebexCalling.Logger, 'warn');
     const callingConfig = config(true);
     callingConfig.clientConfig.callRecording = true;
-    factory.throws(new Error('Invalid call queue configuration'));
+    factory.returns(undefined);
 
     const calling = await Calling.init({webex, callingConfig});
 
-    assert.calledOnceWithExactly(factory, webex, logger, options, undefined);
+    assert.calledOnceWithExactly(factory, webex, logger, options, undefined, true);
     assert.calledOnceWithExactly(recordingFactory, webex, logger);
     assert.isUndefined(calling.callQueueClient);
     assert.strictEqual(calling.callRecordingClient, recording);
-    assert.calledOnce(warning);
   });
 
   it('passes the previous client to the queue factory when initialized again', async () => {
@@ -199,7 +204,7 @@ describe('Calling call queue client', () => {
     await calling.initializeClients();
 
     assert.calledTwice(factory);
-    assert.calledWithExactly(factory.secondCall, webex, logger, options, queue);
+    assert.calledWithExactly(factory.secondCall, webex, logger, options, queue, true);
     assert.notCalled(queue.dispose);
     assert.strictEqual(calling.callQueueClient, queue);
   });
@@ -212,7 +217,8 @@ describe('Calling call queue client', () => {
     await calling.initializeClients();
 
     assert.calledOnce(queue.dispose);
-    assert.calledOnce(factory);
+    assert.calledTwice(factory);
+    assert.calledWithExactly(factory.secondCall, webex, logger, options, queue, false);
     assert.isUndefined(calling.callQueueClient);
   });
 
@@ -224,12 +230,16 @@ describe('Calling call queue client', () => {
     const calling = await Calling.init({webex, callingConfig});
     sinon.stub(WebexCalling, 'createClient').resolves({getLines: () => ({})});
     callingConfig.clientConfig.calling = true;
-    factory.throws(new Error('Queue initialization failed'));
+    factory.callsFake((instance, configLogger, configOptions, previous) => {
+      previous?.dispose();
+
+      return undefined;
+    });
 
     await calling.register();
 
     assert.calledTwice(factory);
-    assert.calledWithExactly(factory.secondCall, webex, logger, options, queue);
+    assert.calledWithExactly(factory.secondCall, webex, logger, options, queue, true);
     assert.calledOnce(queue.dispose);
     assert.calledTwice(recordingFactory);
     assert.isUndefined(calling.callQueueClient);
@@ -265,7 +275,7 @@ describe('Calling call queue client', () => {
     await calling.register();
 
     assert.calledThrice(factory);
-    assert.calledWithExactly(factory.thirdCall, webex, logger, options, queue);
+    assert.calledWithExactly(factory.thirdCall, webex, logger, options, queue, true);
     assert.notCalled(queue.dispose);
     assert.strictEqual(calling.callQueueClient, queue);
   });

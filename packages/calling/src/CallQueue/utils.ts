@@ -1,7 +1,6 @@
 import type {WebexSDK} from '../SDKConnector/types';
-import {UUID_PATTERN} from './constants';
+import {ACD_STATE, ACD_STATE_VALUES, UUID_PATTERN} from './constants';
 import {
-  ACD_STATE,
   CallQueue,
   CallQueueAgentStatus,
   CallQueueCatalogPage,
@@ -38,25 +37,9 @@ export default function actorIdentity(value: string): {id: string; type?: string
  * Unknown values are dropped so a bad event cannot invent a state.
  */
 export function normalizeAcdState(value: string | undefined): ACD_STATE | undefined {
-  switch (value) {
-    case ACD_STATE.SIGN_IN:
-    case 'signIn':
-      return ACD_STATE.SIGN_IN;
-    case ACD_STATE.SIGN_OUT:
-    case 'signOut':
-      return ACD_STATE.SIGN_OUT;
-    case ACD_STATE.AVAILABLE:
-    case 'available':
-      return ACD_STATE.AVAILABLE;
-    case ACD_STATE.UNAVAILABLE:
-    case 'unavailable':
-      return ACD_STATE.UNAVAILABLE;
-    case ACD_STATE.WRAP_UP:
-    case 'wrapUp':
-      return ACD_STATE.WRAP_UP;
-    default:
-      return undefined;
-  }
+  return value === undefined
+    ? undefined
+    : ACD_STATE_VALUES.find(({values}) => values.includes(value))?.state;
 }
 
 function readString(value: unknown): string | undefined {

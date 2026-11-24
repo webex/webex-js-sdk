@@ -41,8 +41,8 @@ export {
 } from './CallRecording/types';
 export {getRemoteParty} from './CallRecording/utils';
 export {CallQueueClient} from './CallQueue/CallQueue';
+export {ACD_STATE} from './CallQueue/constants';
 export {
-  ACD_STATE,
   CallQueue,
   CallQueueAgentStatus,
   CallQueueClientOptions,

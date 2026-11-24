@@ -1,4 +1,4 @@
-import {ACD_STATE} from './types';
+import {ACD_STATE} from './constants';
 import {
   applyCallQueueEvent,
   applyQueueNames,

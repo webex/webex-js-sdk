@@ -13,9 +13,10 @@ import {
   WEBEX_API_PROD,
 } from '../common/constants';
 import {Eventing} from '../Events/impl';
-import {COMMON_EVENT_KEYS, MOBIUS_EVENT_KEYS} from '../Events/types';
+import {COMMON_EVENT_KEYS} from '../Events/types';
 import {
   CALL_QUEUE_FILE,
+  CALL_QUEUE_MERCURY_EVENT_KEYS,
   LINE_OWNER_ID_PATTERN,
   METHODS,
   MAX_QUEUE_CATALOG_PAGES,
@@ -25,6 +26,7 @@ import {
   SUPPORTED_STATES,
   SYNC_PATH,
   UNSUPPORTED_BACKEND_MESSAGE,
+  WDM_DEVICE_ID_PATTERN,
 } from './constants';
 import actorIdentity, {
   applyCallQueueEvent,
@@ -415,12 +417,12 @@ export class CallQueueClient extends Eventing<CallQueueEventTypes> implements IC
       return;
     }
     const events: Array<[string, CallQueueEventKind]> = [
-      [MOBIUS_EVENT_KEYS.TELEPHONY_AGENT_SYNC, 'sync'],
-      [MOBIUS_EVENT_KEYS.TELEPHONY_AGENT_STATE, 'state'],
-      [MOBIUS_EVENT_KEYS.TELEPHONY_AGENT_JOIN, 'join'],
-      ['event:telephony_agent.sync', 'sync'],
-      ['event:telephony_agent.state', 'state'],
-      ['event:telephony_agent.join', 'join'],
+      [CALL_QUEUE_MERCURY_EVENT_KEYS.TELEPHONY_AGENT_SYNC, 'sync'],
+      [CALL_QUEUE_MERCURY_EVENT_KEYS.TELEPHONY_AGENT_STATE, 'state'],
+      [CALL_QUEUE_MERCURY_EVENT_KEYS.TELEPHONY_AGENT_JOIN, 'join'],
+      [CALL_QUEUE_MERCURY_EVENT_KEYS.TELEPHONY_AGENT_SYNC_SINGULAR, 'sync'],
+      [CALL_QUEUE_MERCURY_EVENT_KEYS.TELEPHONY_AGENT_STATE_SINGULAR, 'state'],
+      [CALL_QUEUE_MERCURY_EVENT_KEYS.TELEPHONY_AGENT_JOIN_SINGULAR, 'join'],
     ];
     const startingCount = this.mercuryListeners.length;
     try {
@@ -730,7 +732,7 @@ export class CallQueueClient extends Eventing<CallQueueEventTypes> implements IC
   private wdmDeviceId(): string | undefined {
     const url = this.webex.internal.device?.url;
     const id = typeof url === 'string' ? url.split('/').filter(Boolean).pop() : undefined;
-    if (!id || !/^[A-Za-z0-9-]{1,128}$/.test(id)) {
+    if (!id || !WDM_DEVICE_ID_PATTERN.test(id)) {
       return undefined;
     }
 
@@ -960,47 +962,82 @@ const clientConfigurations = new WeakMap<
  * @param logger - Logging configuration for the Calling SDK.
  * @param options - Call queue options, including the public API base URL.
  * @param previousClient - Optional existing client to reuse when its configuration still matches.
- * @returns A call-queue client.
+ * @param enabled - When supplied, manage the optional client without interrupting other clients.
+ * @returns A call-queue client, or undefined when managed mode is disabled or fails.
  * @example
  * ```js
  * const callQueue = createCallQueueClient(webex, logger, {webexApiBaseUrl});
  * ```
  * @public
  */
-export const createCallQueueClient = (
+export function createCallQueueClient(
+  webex: WebexSDK,
+  logger: LoggerInterface,
+  options: CallQueueClientOptions,
+  previousClient: CallQueueClient | undefined,
+  enabled: boolean
+): CallQueueClient | undefined;
+export function createCallQueueClient(
   webex: WebexSDK,
   logger: LoggerInterface,
   options: CallQueueClientOptions,
   previousClient?: CallQueueClient
-): CallQueueClient => {
-  const config = {
-    webex,
-    apiBaseUrl: options?.webexApiBaseUrl,
-    loggerLevel: logger?.level,
-    userId: webex.internal.device?.userId,
-    orgId: webex.internal.device?.orgId,
-  };
-  const previousConfig = previousClient && clientConfigurations.get(previousClient);
-  const compatible =
-    previousConfig &&
-    previousConfig.webex === config.webex &&
-    previousConfig.apiBaseUrl === config.apiBaseUrl &&
-    previousConfig.loggerLevel === config.loggerLevel &&
-    previousConfig.userId === config.userId &&
-    previousConfig.orgId === config.orgId;
+): CallQueueClient;
+export function createCallQueueClient(
+  webex: WebexSDK,
+  logger: LoggerInterface,
+  options: CallQueueClientOptions,
+  previousClient?: CallQueueClient,
+  enabled?: boolean
+): CallQueueClient | undefined {
+  const createOrReuse = (): CallQueueClient => {
+    const config = {
+      webex,
+      apiBaseUrl: options?.webexApiBaseUrl,
+      loggerLevel: logger?.level,
+      userId: webex.internal.device?.userId,
+      orgId: webex.internal.device?.orgId,
+    };
+    const previousConfig = previousClient && clientConfigurations.get(previousClient);
+    const compatible =
+      previousConfig &&
+      previousConfig.webex === config.webex &&
+      previousConfig.apiBaseUrl === config.apiBaseUrl &&
+      previousConfig.loggerLevel === config.loggerLevel &&
+      previousConfig.userId === config.userId &&
+      previousConfig.orgId === config.orgId;
 
-  if (previousClient && compatible) {
+    if (previousClient && compatible) {
+      try {
+        if (previousClient.prepareForReuse()) return previousClient;
+      } catch (error) {
+        previousClient.dispose();
+        throw error;
+      }
+    }
+    previousClient?.dispose();
+
+    const client = new CallQueueClient(webex, logger, options);
+    clientConfigurations.set(client, config);
+
+    return client;
+  };
+
+  // Direct consumers retain their existing return and error behavior.
+  if (enabled === undefined) return createOrReuse();
+
+  try {
+    if (enabled) return createOrReuse();
+    previousClient?.dispose();
+  } catch (error) {
+    const context = {file: CALL_QUEUE_FILE, method: 'createCallQueueClient'};
+    log.warn(`Error occurred while initializing callQueue client ${String(error)}`, context);
     try {
-      if (previousClient.prepareForReuse()) return previousClient;
-    } catch (error) {
-      previousClient.dispose();
-      throw error;
+      previousClient?.dispose();
+    } catch (cleanupError) {
+      log.warn(`Error occurred while disposing callQueue client ${String(cleanupError)}`, context);
     }
   }
-  previousClient?.dispose();
 
-  const client = new CallQueueClient(webex, logger, options);
-  clientConfigurations.set(client, config);
-
-  return client;
-};
+  return undefined;
+}
