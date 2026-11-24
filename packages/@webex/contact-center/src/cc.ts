@@ -1243,6 +1243,9 @@ export default class ContactCenter extends WebexPlugin implements IContactCenter
    */
   public async stationLogin(data: AgentLogin): Promise<StationLoginResponse> {
     const loggerContext = {module: CC_FILE, method: METHODS.STATION_LOGIN};
+    // Captured before the profile refresh so the catch block can restore it
+    // if the login attempt fails (INV-012 — one-version-per-session).
+    const previousManageChannelAvailability = this.agentConfig?.manageChannelAvailability;
 
     try {
       LoggerProxy.log(
@@ -1293,6 +1296,10 @@ export default class ContactCenter extends WebexPlugin implements IContactCenter
       };
 
       // Re-read the agent profile to pick up any admin-side changes to manageChannelAvailability.
+      // previousManageChannelAvailability (hoisted above the try) lets the
+      // catch block restore the flag if the login fails (INV-012).
+      // Desktop equivalent: pinStationLoginRoutingVersion() runs only inside the
+      // eAgentStationLoginSuccess listener, never before the request.
       if (this.agentConfig?.agentId) {
         try {
           const {agentProfile} = await this.services.config.getUserDesktopLoginConfig(
@@ -1410,6 +1417,16 @@ export default class ContactCenter extends WebexPlugin implements IContactCenter
 
       return response;
     } catch (error) {
+      // Restore the previous routing mode so a rejected login cannot leave
+      // the live session with the wrong V1/V2 flag (INV-012).
+      if (this.agentConfig && previousManageChannelAvailability !== undefined) {
+        this.agentConfig.manageChannelAvailability = previousManageChannelAvailability;
+        LoggerProxy.info(
+          `Login failed — restored manageChannelAvailability to ${previousManageChannelAvailability}`,
+          loggerContext
+        );
+      }
+
       const failure = error.details as Failure;
       this.metricsManager.trackEvent(
         METRIC_EVENT_NAMES.STATION_LOGIN_FAILED,
@@ -2770,6 +2787,12 @@ export default class ContactCenter extends WebexPlugin implements IContactCenter
     // Reset lastEmittedV1 from the restored channel states so the V2→V1
     // bridge does not suppress the first post-reconnect legacy event.
     this.restoreV2AgentConfigFromChannels(data.agentId, data.agentSessionId, data.orgId);
+
+    // Initialize the live session before emitting so that wellness-enabled
+    // listeners calling requestWellnessBreak() observe the current session
+    // (CONTACT_CENTER-R-006).  Mirrors the V1 handler which calls
+    // updateWellnessSession() before emitting agent:reloginSuccess.
+    this.updateWellnessSession(data.agentSessionId);
 
     // @ts-ignore
     this.emit(AGENT_EVENTS.AGENT_CHANNEL_RELOGIN_SUCCESS, data);

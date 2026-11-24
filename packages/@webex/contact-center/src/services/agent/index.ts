@@ -221,6 +221,12 @@ export default function routingAgent(routing: AqmReqs) {
           data: {
             type: CC_EVENTS.AGENT_CHANNEL_STATE_CHANGE_FAILED,
             channelType: p.data.channelType,
+            // Correlate: only match client-initiated failures to prevent a
+            // supervisor-visible failure for another agent (same channelType)
+            // from settling this request.  Failures that omit the field won't
+            // match, falling through to the AQM timeout — safer than falsely
+            // settling with another agent's error.
+            isClientInitiated: true,
           },
         },
         errId: 'Service.aqm.agent.stateChangeV2',

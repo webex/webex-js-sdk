@@ -105,10 +105,10 @@ describe('AQM routing agent', () => {
 
     expect(req.notifSuccess.bind.data.isClientInitiated).toBe(true);
     expect(req.notifSuccess.bind.data.agentId).toBe('agent-1');
-    // Failure bind omits isClientInitiated and agentId — the wire contract
-    // (AgentChannelStateChangeFailed) does not guarantee either field, and
-    // bindCheck rejects messages missing a bound field.
-    expect(req.notifFail.bind.data.isClientInitiated).toBeUndefined();
+    // Failure bind includes isClientInitiated to filter supervisor-visible
+    // failures for other agents, but omits agentId because the wire contract
+    // (AgentChannelStateChangeFailed) does not guarantee it.
+    expect(req.notifFail.bind.data.isClientInitiated).toBe(true);
     expect(req.notifFail.bind.data.agentId).toBeUndefined();
   });
 

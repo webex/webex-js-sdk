@@ -3206,6 +3206,53 @@ describe('webex.cc', () => {
           {module: CC_FILE, method: 'stationLogin'}
         );
       });
+
+      it('restores manageChannelAvailability when V1 login fails on a live V2 session', async () => {
+        // Scenario: V2 agent's profile flag was disabled by admin, re-fetch
+        // returns false, but the V1 login attempt is rejected.  The live V2
+        // session must keep manageChannelAvailability = true so routing,
+        // channel states, and logout continue to use V2 (INV-012).
+        webex.cc.agentConfig.manageChannelAvailability = true;
+        jest
+          .spyOn(webex.cc.services.config, 'getUserDesktopLoginConfig')
+          .mockResolvedValue({agentProfile: {manageChannelAvailability: false}} as any);
+        jest
+          .spyOn(webex.cc.services.agent, 'stationLogin')
+          .mockRejectedValue({details: {data: {reason: 'ALREADY_LOGGED_IN'}}});
+
+        await expect(
+          webex.cc.stationLogin({
+            teamId: 'teamId',
+            loginOption: LoginOption.EXTENSION,
+            dialNumber: '1001',
+          })
+        ).rejects.toThrow();
+
+        // Flag must be restored to V2 — the live session is still V2.
+        expect(webex.cc.agentConfig.manageChannelAvailability).toBe(true);
+      });
+
+      it('restores manageChannelAvailability when V2 login fails on a live V1 session', async () => {
+        // Mirror scenario: V1 session, profile now enables V2, but login fails.
+        webex.cc.agentConfig.manageChannelAvailability = false;
+        jest
+          .spyOn(webex.cc.services.config, 'getUserDesktopLoginConfig')
+          .mockResolvedValue({agentProfile: {manageChannelAvailability: true}} as any);
+        jest
+          .spyOn(webex.cc.services.agent, 'stationLoginV2')
+          .mockRejectedValue({details: {data: {reason: 'ALREADY_LOGGED_IN'}}});
+
+        await expect(
+          webex.cc.stationLogin({
+            teamId: 'teamId',
+            loginOption: LoginOption.EXTENSION,
+            dialNumber: '1001',
+          })
+        ).rejects.toThrow();
+
+        // Flag must be restored to V1 — the live session is still V1.
+        expect(webex.cc.agentConfig.manageChannelAvailability).toBe(false);
+      });
     });
   });
 
@@ -7359,6 +7406,35 @@ describe('webex.cc', () => {
             data: {
               agentId: 'agent-1',
               agentSessionId: 'sess-1',
+              orgId: 'org-1',
+              agentChannelStateDetailMap: {telephony: makeChannelState('Available')},
+              channelsMap: {telephony: ['t1']},
+              type: CC_EVENTS.AGENT_CHANNEL_RELOGIN_SUCCESS,
+            },
+          })
+        );
+
+        expect(handler).toHaveBeenCalledTimes(1);
+        webex.cc.off(AGENT_EVENTS.AGENT_CHANNEL_RELOGIN_SUCCESS, handler);
+      });
+
+      it('should initialize currentAgentSessionId before emitting relogin success', () => {
+        webex.cc.agentConfig = {agentId: 'agent-1'} as Profile;
+        webex.cc['currentAgentSessionId'] = undefined;
+
+        const handler = jest.fn(() => {
+          // A wellness-enabled listener calling requestWellnessBreak() needs
+          // the live session to be set at emit time (CONTACT_CENTER-R-006).
+          expect(webex.cc['currentAgentSessionId']).toBe('restored-sess');
+        });
+        webex.cc.on(AGENT_EVENTS.AGENT_CHANNEL_RELOGIN_SUCCESS, handler);
+
+        messageCallback(
+          JSON.stringify({
+            type: CC_EVENTS.AGENT_CHANNEL_RELOGIN_SUCCESS,
+            data: {
+              agentId: 'agent-1',
+              agentSessionId: 'restored-sess',
               orgId: 'org-1',
               agentChannelStateDetailMap: {telephony: makeChannelState('Available')},
               channelsMap: {telephony: ['t1']},
