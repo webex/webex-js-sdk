@@ -10190,9 +10190,9 @@ __metadata:
   linkType: hard
 
 "adm-zip@npm:~0.5.x":
-  version: 0.5.16
-  resolution: "adm-zip@npm:0.5.16"
-  checksum: 1f4104f3462b99e1b34d78ccfbdcf47e533a9cc7f894cedec6cd67b06cc6ad0b3a45241d66df5471050c7abbdd67e5707e3959fc76d75176ed6101a5b2a580d5
+  version: 0.5.18
+  resolution: "adm-zip@npm:0.5.18"
+  checksum: c680bb8315f9c87aa81778eb3c94220d2ec8c8f8d8174241f2051765daa9aaa85cb68f0ce8182d23d11f92c733e5ec0aa6200bb506f49dcbbf305225d87f3ed4
   languageName: node
   linkType: hard
 
