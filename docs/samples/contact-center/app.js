@@ -4287,17 +4287,38 @@ function captureWellnessSession(event) {
 
   // V2 channel relogin events carry per-channel states in
   // agentChannelStateDetailMap instead of a top-level auxCodeId.
-  // Normalize by picking the first channel's auxCodeId so
-  // legacyStateKnown is hydrated and getRecoveryDecision() doesn't
-  // return 'wait' indefinitely.
+  // Project the selectable-channel aggregate (same order and rules as the
+  // SDK's bridgeStateChangeSuccess / projectAggregate) so that the
+  // hydrated auxCodeId matches the V1 bridge emission.  Using the first
+  // map entry would depend on object-property order and could pick a
+  // non-representative channel (e.g. Voice=WellbeingBreak while
+  // Chat=Available), causing getRecoveryDecision() to falsely restore.
   let hydratedEvent = event;
   if (
     !Object.prototype.hasOwnProperty.call(event, 'auxCodeId') &&
     event.agentChannelStateDetailMap
   ) {
-    const firstChannel = Object.values(event.agentChannelStateDetailMap)[0];
-    if (firstChannel && typeof firstChannel.auxCodeId === 'string') {
-      hydratedEvent = {...event, auxCodeId: firstChannel.auxCodeId};
+    const SELECTABLE_ORDER = ['telephony', 'chat', 'email', 'social'];
+    const BRIDGEABLE = new Set(['Available', 'Idle']);
+    let hasAvailable = false;
+    let hasIdle = false;
+    let hasNonBridgeable = false;
+    for (const ct of SELECTABLE_ORDER) {
+      const ch = event.agentChannelStateDetailMap[ct];
+      if (!ch) continue;
+      if (!BRIDGEABLE.has(ch.agentState)) { hasNonBridgeable = true; continue; }
+      if (ch.agentState === 'Available') hasAvailable = true;
+      if (ch.agentState === 'Idle') hasIdle = true;
+    }
+    const aggregateStatus = hasAvailable ? 'Available' : (hasIdle && !hasNonBridgeable) ? 'Idle' : null;
+    if (aggregateStatus) {
+      const primaryCt = SELECTABLE_ORDER.find(
+        (ct) => event.agentChannelStateDetailMap[ct]?.agentState === aggregateStatus
+      );
+      const primaryCh = primaryCt && event.agentChannelStateDetailMap[primaryCt];
+      if (primaryCh && typeof primaryCh.auxCodeId === 'string') {
+        hydratedEvent = {...event, auxCodeId: primaryCh.auxCodeId};
+      }
     }
   }
 
