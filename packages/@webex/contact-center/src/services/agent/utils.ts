@@ -88,17 +88,26 @@ export function shouldEmitLegacyEvent(
  * Collapses per-channel V2 states into one agent-wide V1 aggregate.
  * Any Available → Available; all Idle → Idle. Scalar fields come from
  * the first matching channel in PRIMARY_CHANNEL_ORDER.
- * Returns null when no channels have bridgeable states.
+ * Returns null when no channels have bridgeable states, or when only Idle
+ * channels remain while other channels are in non-bridgeable states
+ * (Engaged, Reserved, WrapUp) — a task transition must not make V1
+ * listeners see an Idle transition.
  */
 export function projectAggregate(
   channelStates: Record<string, AgentChannelTypeStates>
 ): {subStatus: 'Available' | 'Idle'; primaryChannel: ChannelType} | null {
   let hasAvailable = false;
   let hasIdle = false;
+  let hasNonBridgeable = false;
 
   for (const ct of PRIMARY_CHANNEL_ORDER) {
     const state = channelStates[ct];
-    if (!state || !shouldBridgeChannelState(state.agentState)) {
+    if (!state) {
+      // eslint-disable-next-line no-continue
+      continue;
+    }
+    if (!shouldBridgeChannelState(state.agentState)) {
+      hasNonBridgeable = true;
       // eslint-disable-next-line no-continue
       continue;
     }
@@ -107,6 +116,11 @@ export function projectAggregate(
   }
 
   if (!hasAvailable && !hasIdle) return null;
+
+  // Only Idle channels remain but at least one channel is in a non-bridgeable
+  // state (Engaged, Reserved, WrapUp). The agent is handling a task, so the
+  // aggregate is not "all Idle" and must not be bridged.
+  if (!hasAvailable && hasNonBridgeable) return null;
 
   const subStatus: 'Available' | 'Idle' = hasAvailable ? 'Available' : 'Idle';
   const primaryChannel = PRIMARY_CHANNEL_ORDER.find(

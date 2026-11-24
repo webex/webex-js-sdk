@@ -126,6 +126,38 @@ describe('utils – V1 bridge functions', () => {
       expect(result!.subStatus).toBe('Available');
       expect(result!.primaryChannel).toBe('email');
     });
+
+    it('should return null when Idle channels exist but a channel is Engaged', () => {
+      const states = {
+        telephony: makeChannelState('Engaged'),
+        chat: makeChannelState('Idle'),
+      };
+      const result = projectAggregate(states);
+
+      expect(result).toBeNull();
+    });
+
+    it('should return null when Idle channels exist but a channel is in WrapUp', () => {
+      const states = {
+        telephony: makeChannelState('WrapUp'),
+        chat: makeChannelState('Idle'),
+        email: makeChannelState('Idle'),
+      };
+      const result = projectAggregate(states);
+
+      expect(result).toBeNull();
+    });
+
+    it('should return Available when Available and non-bridgeable both exist', () => {
+      const states = {
+        telephony: makeChannelState('Engaged'),
+        chat: makeChannelState('Available'),
+      };
+      const result = projectAggregate(states);
+
+      expect(result!.subStatus).toBe('Available');
+      expect(result!.primaryChannel).toBe('chat');
+    });
   });
 
   describe('bridgeStateChangeSuccess', () => {
@@ -270,6 +302,15 @@ describe('utils – V1 bridge functions', () => {
 
     it('should return false for empty channel states', () => {
       expect(shouldEmitLegacyEvent({}, undefined)).toBe(false);
+    });
+
+    it('should return false when Idle channels exist but a non-bridgeable channel prevents projection', () => {
+      const states = {
+        telephony: makeChannelState('Engaged'),
+        chat: makeChannelState('Idle'),
+      };
+
+      expect(shouldEmitLegacyEvent(states, {subStatus: 'Available', auxCodeId: 'aux-001'})).toBe(false);
     });
   });
 });

@@ -7763,6 +7763,48 @@ describe('webex.cc', () => {
         expect(result.data.changedBy).toBe('AGENT');
         expect(result.trackingId).toBe('track-v2');
       });
+
+      it('rejects overlapping setAgentState calls while one is in-flight', async () => {
+        const makeV2Response = (subStatus: string, auxCodeId: string, trackingId: string) => ({
+          type: 'AgentChannelStateChanged',
+          orgId: 'org-1',
+          trackingId,
+          data: {
+            agentId: 'agent-1',
+            agentSessionId: 'session-1',
+            orgId: 'org-1',
+            status: 'LoggedIn',
+            subStatus,
+            changedBy: 'AGENT',
+            changedById: null,
+            changedByName: null,
+            agentChannelStateDetail: {
+              agentState: subStatus,
+              auxCodeId,
+              stateChangeTimestamp: Date.now(),
+              lastIdleCodeChangeTimestamp: Date.now(),
+              stateChangeReason: 'agent-explicit',
+            },
+          },
+        });
+
+        // First call: starts but doesn't resolve yet
+        let resolveFirst!: (v: any) => void;
+        jest.spyOn(webex.cc.services.agent, 'stateChangeV2').mockReturnValueOnce(
+          new Promise((r) => { resolveFirst = r; })
+        );
+
+        const first = webex.cc.setAgentState({state: 'Idle', auxCodeId: 'break-1', channelType: ['chat']});
+
+        // Second call while first is still pending — should be rejected
+        await expect(
+          webex.cc.setAgentState({state: 'Available', auxCodeId: '0', channelType: ['email']})
+        ).rejects.toThrow('A state change request is already in progress');
+
+        // Resolve the first call so it completes normally
+        resolveFirst(makeV2Response('Idle', 'break-1', 'track-first'));
+        await expect(first).resolves.toBeDefined();
+      });
     });
 
     describe('silentRelogin V2 recovery', () => {

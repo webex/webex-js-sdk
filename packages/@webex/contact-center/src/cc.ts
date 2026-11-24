@@ -387,6 +387,13 @@ export default class ContactCenter extends WebexPlugin implements IContactCenter
   private loginChannelsMap: Record<string, string[]> = {};
 
   /**
+   * Guards against overlapping setAgentState calls whose channel sets could
+   * cross-resolve in the AQM notification matching layer.
+   * @private
+   */
+  private stateChangeInProgress = false;
+
+  /**
    * API instance for managing Webex Contact Center entry points
    * Provides functionality to fetch entry points with caching support
    * @type {EntryPoint}
@@ -1548,6 +1555,25 @@ export default class ContactCenter extends WebexPlugin implements IContactCenter
       module: CC_FILE,
       method: METHODS.SET_AGENT_STATE,
     });
+
+    // Reject overlapping calls. Concurrent requests with different channel
+    // sets can cross-resolve in the AQM notification matching layer, causing
+    // a later failure notification to be missed. The desktop UI prevents
+    // this by disabling state controls while a request is in-flight.
+    if (this.stateChangeInProgress) {
+      const error = new Error(
+        'A state change request is already in progress. Wait for it to complete before issuing another.'
+      ) as GenericError;
+      error.details = {
+        type: 'SDK_VALIDATION_ERROR',
+        orgId: this.$webex.credentials.getOrgId(),
+        trackingId: EMPTY_STRING,
+        data: {reason: 'STATE_CHANGE_IN_PROGRESS'},
+      };
+      throw error;
+    }
+
+    this.stateChangeInProgress = true;
     try {
       this.metricsManager.timeEvent([
         METRIC_EVENT_NAMES.AGENT_STATE_CHANGE_SUCCESS,
@@ -1703,6 +1729,8 @@ export default class ContactCenter extends WebexPlugin implements IContactCenter
       );
       const {error: detailedError} = getErrorDetails(error, METHODS.SET_AGENT_STATE, CC_FILE);
       throw detailedError;
+    } finally {
+      this.stateChangeInProgress = false;
     }
   }
 
