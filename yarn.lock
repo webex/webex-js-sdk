@@ -7496,6 +7496,12 @@ __metadata:
   languageName: unknown
   linkType: soft
 
+"@webex/ci-gate-probe@workspace:packages/@webex/ci-gate-probe":
+  version: 0.0.0-use.local
+  resolution: "@webex/ci-gate-probe@workspace:packages/@webex/ci-gate-probe"
+  languageName: unknown
+  linkType: soft
+
 "@webex/cli-tools@workspace:*, @webex/cli-tools@workspace:packages/tools/cli":
   version: 0.0.0-use.local
   resolution: "@webex/cli-tools@workspace:packages/tools/cli"
