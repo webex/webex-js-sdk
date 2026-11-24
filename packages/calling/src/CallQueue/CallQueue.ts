@@ -193,10 +193,12 @@ export class CallQueueClient extends Eventing<CallQueueEventTypes> implements IC
         message: SUCCESS_MESSAGE,
       };
     } catch (err: unknown) {
-      const failure =
-        epoch === this.lifecycleEpoch
-          ? await this.fail(err, loggerContext, 'Failed to get call queue settings')
-          : undefined;
+      const failure = await this.fail(
+        err,
+        loggerContext,
+        'Failed to get call queue settings',
+        epoch
+      );
       if (failure && epoch === this.lifecycleEpoch) return failure;
 
       return lifecycleConflictResponse();
@@ -304,10 +306,12 @@ export class CallQueueClient extends Eventing<CallQueueEventTypes> implements IC
         message: SUCCESS_MESSAGE,
       };
     } catch (err: unknown) {
-      const failure =
-        epoch === this.lifecycleEpoch
-          ? await this.fail(err, loggerContext, 'Failed to update call queue settings')
-          : undefined;
+      const failure = await this.fail(
+        err,
+        loggerContext,
+        'Failed to update call queue settings',
+        epoch
+      );
       if (failure && epoch === this.lifecycleEpoch) return failure;
 
       return lifecycleConflictResponse(requestSent);
@@ -363,10 +367,7 @@ export class CallQueueClient extends Eventing<CallQueueEventTypes> implements IC
         message: SUCCESS_MESSAGE,
       };
     } catch (err: unknown) {
-      const failure =
-        epoch === this.lifecycleEpoch
-          ? await this.fail(err, loggerContext, 'Failed to sync telephony calls')
-          : undefined;
+      const failure = await this.fail(err, loggerContext, 'Failed to sync telephony calls', epoch);
       if (failure && epoch === this.lifecycleEpoch) return failure;
 
       return lifecycleConflictResponse();
@@ -891,8 +892,10 @@ export class CallQueueClient extends Eventing<CallQueueEventTypes> implements IC
   private async fail(
     err: unknown,
     loggerContext: {file: string; method: string},
-    message: string
-  ): Promise<CallQueueResponse> {
+    message: string,
+    epoch: number
+  ): Promise<CallQueueResponse | undefined> {
+    if (epoch !== this.lifecycleEpoch) return undefined;
     const statusCode =
       err && typeof err === 'object' && 'statusCode' in err
         ? (err as {statusCode?: number}).statusCode

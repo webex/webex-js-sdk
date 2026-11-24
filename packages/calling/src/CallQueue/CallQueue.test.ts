@@ -52,6 +52,15 @@ function deferredResponse() {
   return {promise, resolve};
 }
 
+function startQueueRequest(queueClient: ICallQueue, method: string) {
+  if (method === 'GET') return queueClient.getCallQueueSettings();
+  if (method === 'PUT') {
+    return queueClient.updateCallQueueSettings({agentACDState: ACD_STATE.AVAILABLE});
+  }
+
+  return queueClient.syncTelephonyCalls();
+}
+
 describe('CallQueue client', () => {
   beforeEach(() => {
     jest.spyOn(utils, 'uploadLogs').mockResolvedValue();
@@ -491,11 +500,7 @@ describe('CallQueue client', () => {
       });
       (utils.uploadLogs as jest.Mock).mockReturnValueOnce(upload);
       otherWebex.request.mockRejectedValueOnce({statusCode: 500});
-      let pending;
-      if (method === 'GET') pending = other.getCallQueueSettings();
-      else if (method === 'PUT') {
-        pending = other.updateCallQueueSettings({agentACDState: ACD_STATE.AVAILABLE});
-      } else pending = other.syncTelephonyCalls();
+      const pending = startQueueRequest(other, method);
       await Promise.resolve();
       assert.lengthOf((utils.uploadLogs as jest.Mock).mock.calls, 1);
 
@@ -509,6 +514,86 @@ describe('CallQueue client', () => {
       );
       assert.lengthOf(otherWebex.request.mock.calls, 1);
       other.dispose();
+    }
+  );
+
+  it.each(['GET', 'PUT', 'SYNC'])(
+    'does not start diagnostic handling for a stale %s failure',
+    async (method) => {
+      const otherWebex = getTestUtilsWebex();
+      const other = createCallQueueClient(otherWebex, {level: LOGGER.INFO}, TEST_OPTIONS);
+      let rejectRequest!: (error: unknown) => void;
+      const request = new Promise<WebexRequestPayload>((_, reject) => {
+        rejectRequest = reject;
+      });
+      otherWebex.request.mockReturnValueOnce(request);
+      const pending = startQueueRequest(other, method);
+
+      assert.isTrue(other.prepareForReuse());
+      rejectRequest({statusCode: 500});
+
+      assert.deepEqual(
+        await pending,
+        method === 'PUT' ? EXPECTED_LIFECYCLE_CONFLICT_AFTER_UPDATE : EXPECTED_LIFECYCLE_CONFLICT
+      );
+      assert.lengthOf((utils.uploadLogs as jest.Mock).mock.calls, 0);
+      other.dispose();
+    }
+  );
+
+  it.each([
+    ['GET', 'during'],
+    ['GET', 'after'],
+    ['PUT', 'during'],
+    ['PUT', 'after'],
+    ['SYNC', 'during'],
+    ['SYNC', 'after'],
+  ])(
+    'returns a lifecycle conflict for %s when reinitialized %s error processing',
+    async (method, timing) => {
+      const otherWebex = getTestUtilsWebex();
+      const other = createCallQueueClient(otherWebex, {level: LOGGER.INFO}, TEST_OPTIONS);
+      let finishHandling!: (
+        response: Awaited<ReturnType<typeof utils.serviceErrorCodeHandler>>
+      ) => void;
+      let handlingStarted!: () => void;
+      const started = new Promise<void>((resolve) => {
+        handlingStarted = resolve;
+      });
+      const handler = jest.spyOn(utils, 'serviceErrorCodeHandler').mockImplementationOnce(() => {
+        handlingStarted();
+
+        return new Promise((resolve) => {
+          finishHandling = resolve;
+        });
+      });
+      otherWebex.request.mockRejectedValueOnce({statusCode: 500});
+      const pending = startQueueRequest(other, method);
+      let reused = false;
+
+      try {
+        await started;
+        if (timing === 'during') reused = other.prepareForReuse();
+        finishHandling({
+          statusCode: 500,
+          data: {error: 'Server error'},
+          message: 'FAILURE',
+        } as Awaited<ReturnType<typeof utils.serviceErrorCodeHandler>>);
+        if (timing === 'after') {
+          queueMicrotask(() => {
+            reused = other.prepareForReuse();
+          });
+        }
+
+        assert.deepEqual(
+          await pending,
+          method === 'PUT' ? EXPECTED_LIFECYCLE_CONFLICT_AFTER_UPDATE : EXPECTED_LIFECYCLE_CONFLICT
+        );
+        assert.isTrue(reused);
+      } finally {
+        handler.mockRestore();
+        other.dispose();
+      }
     }
   );
 
