@@ -49,7 +49,11 @@ import {
   REGION_RECOVERY_EVENTS,
   REGION_RECOVERY_ERROR_CODES,
 } from './constants';
-import {AGENT_STATE_AVAILABLE, AGENT_STATE_AVAILABLE_ID} from './services/config/constants';
+import {
+  AGENT_STATE_AVAILABLE,
+  AGENT_STATE_AVAILABLE_ID,
+  LOCAL_MR_SETTINGS_ERROR,
+} from './services/config/constants';
 import {AGENT, RTD_SUBSCRIBE_API, SUBSCRIBE_API, WEB_RTC_PREFIX} from './services/constants';
 import Services from './services';
 import WebexRequest from './services/core/WebexRequest';
@@ -66,7 +70,6 @@ import {
   isRegionRecoveryError,
 } from './services/core/Utils';
 import type {MultiRegionSettings, SystemRegionSwitch} from './services/config/types';
-import {LOCAL_MR_SETTINGS_ERROR} from './services/config/Util';
 import type * as Agent from './services/agent/types';
 import type {AqmRequestContext, AqmSessionOwner, RecoveryFailure} from './services/core/types';
 import type {TaskRecoveryGuard} from './services/task/types';
@@ -847,10 +850,7 @@ export default class ContactCenter extends WebexPlugin implements IContactCenter
       let settings: MultiRegionSettings;
       try {
         // eslint-disable-next-line no-await-in-loop -- Reads are deliberately serial and bounded.
-        settings = await ContactCenter.awaitRegistrationWork(
-          this.services.config.getMultiRegionSettings(orgId, signal),
-          signal
-        );
+        settings = await this.services.config.getMultiRegionSettings(orgId, signal);
       } catch (error) {
         if (!this.isCurrentRegistration(registration, orgId, signal, agentId)) return;
         const failure = normalizeRecoveryFailure(error);
@@ -1634,31 +1634,16 @@ export default class ContactCenter extends WebexPlugin implements IContactCenter
     return {...accepted.payload};
   }
 
-  private async applyStationSession(
-    response: Agent.StationLoginSuccess | Agent.ReloginSuccess,
-    options: {signal: AbortSignal; calling: 'replace' | 'preserve'}
-  ): Promise<void> {
-    if (options.signal.aborted) throw createRegionRecoveryError('RECOVERY_INTERRUPTED');
-    this.assertPrimaryIdentity(response.data.agentId);
-    this.agentConfig.lastStateAuxCodeId = response.data.auxCodeId;
-    this.agentConfig.lastStateChangeTimestamp = response.data.lastStateChangeTimestamp;
-    this.agentConfig.lastIdleCodeChangeTimestamp =
-      response.data.lastIdleCodeChangeTimestamp ?? undefined;
+  private async applyRestoredStationEffects(signal: AbortSignal): Promise<void> {
+    if (signal.aborted) throw createRegionRecoveryError('RECOVERY_INTERRUPTED');
     const payload = this.acceptedStation?.payload;
     if (payload)
       await ContactCenter.awaitRegistrationWork(
-        this.handleDeviceType(
-          payload.deviceType as LoginOption,
-          payload.dialNumber,
-          options.calling
-        ),
-        options.signal
+        this.handleDeviceType(payload.deviceType as LoginOption, payload.dialNumber, 'preserve'),
+        signal
       );
-    if (options.signal.aborted) throw createRegionRecoveryError('RECOVERY_INTERRUPTED');
-    await ContactCenter.awaitRegistrationWork(
-      this.ensureWxAppPostStationLogin(options.signal),
-      options.signal
-    );
+    if (signal.aborted) throw createRegionRecoveryError('RECOVERY_INTERRUPTED');
+    await ContactCenter.awaitRegistrationWork(this.ensureWxAppPostStationLogin(signal), signal);
   }
 
   private static recoveryFailureCategory(
@@ -1813,7 +1798,7 @@ export default class ContactCenter extends WebexPlugin implements IContactCenter
           if (!this.isCurrentRecovery(recovery) || context.signal.aborted)
             throw createRegionRecoveryError('RECOVERY_INTERRUPTED');
           // eslint-disable-next-line no-await-in-loop -- Apply only this accepted session.
-          await this.applyStationSession(response, {signal: context.signal, calling: 'preserve'});
+          await this.applyRestoredStationEffects(context.signal);
           if (!this.isCurrentRecovery(recovery) || context.signal.aborted)
             throw createRegionRecoveryError('RECOVERY_INTERRUPTED');
 
@@ -5310,19 +5295,7 @@ export default class ContactCenter extends WebexPlugin implements IContactCenter
       if (!initialRegistration && this.registrationAbortController)
         this.resumeRtd(this.registrationAbortController.signal);
 
-      const {
-        agentId,
-        lastStateChangeReason,
-        deviceType,
-        dn,
-        lastStateChangeTimestamp,
-        lastIdleCodeChangeTimestamp,
-      } = reLoginResponse.data;
-      const {auxCodeId} = reLoginResponse.data;
-      this.agentConfig.lastStateAuxCodeId = auxCodeId;
-      this.agentConfig.lastStateChangeTimestamp = lastStateChangeTimestamp;
-      this.agentConfig.lastIdleCodeChangeTimestamp = lastIdleCodeChangeTimestamp;
-      this.agentConfig.currentTeamId = reLoginResponse.data.teamId;
+      const {agentId, lastStateChangeReason, deviceType, dn} = reLoginResponse.data;
       const acceptedPayload = this.acceptedStation?.payload;
       if (acceptedPayload)
         await this.handleDeviceType(

@@ -51,18 +51,6 @@ const product: MetricEventProduct = PRODUCT_NAME;
  * @see METRIC_EVENT_NAMES
  */
 const eventTaxonomyMap: Record<string, BehavioralEventTaxonomy> = {
-  [METRIC_EVENT_NAMES.REGION_RECOVERY_SUCCESS]: {
-    product,
-    agent: 'user',
-    target: 'region_recovery',
-    verb: 'complete',
-  },
-  [METRIC_EVENT_NAMES.REGION_RECOVERY_FAILED]: {
-    product,
-    agent: 'user',
-    target: 'region_recovery',
-    verb: 'fail',
-  },
   [METRIC_EVENT_NAMES.STATION_LOGIN_SUCCESS]: {
     product,
     agent: 'user',

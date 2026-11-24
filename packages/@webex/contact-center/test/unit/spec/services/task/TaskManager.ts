@@ -165,6 +165,7 @@ jest.mock('../../../../../src/services/task/voice/WebRTC', () => {
         this.webCallingService.off('remote_media', this.handleRemoteMedia);
       });
       cancelAutoWrapupTimer = jest.fn();
+      bindRecoveryGuard = jest.fn();
       invalidateForRegionRecovery = jest.fn();
       updateUiControls = jest.fn();
       updateTaskData = jest.fn((newData) => {
@@ -329,6 +330,7 @@ describe('TaskManager', () => {
       decline: jest.fn(),
       updateTaskData,
       setFeatureEnablement: jest.fn(),
+      bindRecoveryGuard: jest.fn(),
       unregisterWebCallListeners: jest.fn(),
       cancelAutoWrapupTimer: jest.fn(),
     });
@@ -2162,7 +2164,7 @@ describe('TaskManager', () => {
   });
 
   const expectTaskConstructedForAISummary = () => {
-    expect((TaskFactory.createTask as jest.Mock).mock.calls.at(-1)?.[9]).toBe(mockApiAIAssistant);
+    expect((TaskFactory.createTask as jest.Mock).mock.calls.at(-1)?.[8]).toBe(mockApiAIAssistant);
   };
 
   it.each([
@@ -2211,15 +2213,13 @@ describe('TaskManager', () => {
       },
     ],
   ] as const)(
-    'should pass AI summary dependencies and the live guard into task construction before publishing %s',
+    'should provide AI summary dependencies and bind the live guard before publishing %s',
     (_name, publicationEvent, payload) => {
       taskManager.taskCollection = {};
       (TaskFactory.createTask as jest.Mock).mockClear();
       const publishedTasks: any[] = [];
-      const publishedGuards: unknown[] = [];
       let registryEntryDuringConstruction: unknown = 'not-observed';
       let injectedApiAIAssistant;
-      let injectedGuard;
       const taskManagerEmitSpy = jest.spyOn(taskManager, 'emit');
 
       (TaskFactory.createTask as jest.Mock).mockImplementationOnce(
@@ -2228,7 +2228,6 @@ describe('TaskManager', () => {
           _webCallingService,
           data,
           _configFlags,
-          guard,
           _wrapupData,
           _agentId,
           _agentName,
@@ -2239,8 +2238,6 @@ describe('TaskManager', () => {
 
           registryEntryDuringConstruction = taskManager.getTask(payload.interactionId);
           injectedApiAIAssistant = apiAIAssistant;
-          injectedGuard = guard;
-          expect(guard).toBe(taskManager['recoveryGuard']);
 
           return createdTask;
         }
@@ -2248,8 +2245,8 @@ describe('TaskManager', () => {
 
       taskManager.on(publicationEvent, (publishedTask) => {
         publishedTasks.push(publishedTask);
-        publishedGuards.push(taskManager['recoveryGuard']);
         expect(publishedTask).toBe((TaskFactory.createTask as jest.Mock).mock.results[0].value);
+        expect(publishedTask.bindRecoveryGuard).toHaveBeenCalledWith(taskManager['recoveryGuard']);
         expectTaskConstructedForAISummary();
       });
 
@@ -2263,9 +2260,6 @@ describe('TaskManager', () => {
       expectTaskConstructedForAISummary();
       expect(registryEntryDuringConstruction).toBeUndefined();
       expect(injectedApiAIAssistant).toBe(mockApiAIAssistant);
-      expect(injectedGuard).toBe(taskManager['recoveryGuard']);
-      expect(publishedGuards).toHaveLength(1);
-      expect(publishedGuards[0]).toBe(injectedGuard);
       const publicationCallIndex = taskManagerEmitSpy.mock.calls.findIndex(
         ([eventName]) => eventName === publicationEvent
       );
@@ -2347,7 +2341,6 @@ describe('TaskManager', () => {
         isAutoAnswering: false,
       }),
       undefined,
-      taskManager['recoveryGuard'],
       undefined,
       'test-agent-id',
       undefined,
@@ -3082,7 +3075,7 @@ describe('TaskManager', () => {
       expect(replacement.off).not.toHaveBeenCalled();
     });
 
-    it('retains an unmapped incoming call during the DR wait for a replacement Task', () => {
+    it('fences an incoming call during recovery and admits a fresh offer once ready', () => {
       const retiring = reserveTask();
       retiring.data.interaction.state = 'wrapUp';
       const guard = taskManager.recoveryGuard;
@@ -3115,22 +3108,27 @@ describe('TaskManager', () => {
       const replacement = reserveTask();
       expect(replacement).not.toBe(retiring);
       guard.assertCommandAllowed.mockImplementation(() => undefined);
-      webCallingService.emit(LINE_EVENTS.INCOMING_CALL, call);
-      expect(webCallingService.getTaskIdForCall(call.getCallId())).toBe(
+      const freshCall = createCall('fresh-call');
+      webCallingService.call = freshCall;
+      webCallingService.emit(LINE_EVENTS.INCOMING_CALL, freshCall);
+      expect(webCallingService.getTaskIdForCall(freshCall.getCallId())).toBe(
         replacement.data.interactionId
       );
-      expect(taskManager.call).toBe(call);
+      expect(webCallingService.getTaskIdForCall(call.getCallId())).toBeUndefined();
+      expect(taskManager.call).toBe(freshCall);
       const stream = {} as any;
       webCallingService.answerCall(stream, replacement.data.interactionId);
       const track = {} as MediaStreamTrack;
-      call.emit(CALL_EVENT_KEYS.REMOTE_MEDIA, track);
+      freshCall.emit(CALL_EVENT_KEYS.REMOTE_MEDIA, track);
 
-      expect(call.answer.mock.calls).toEqual([[stream]]);
+      expect(freshCall.answer.mock.calls).toEqual([[stream]]);
+      expect(call.answer).not.toHaveBeenCalled();
       expect(replacement.handleRemoteMedia.mock.calls).toEqual([[track]]);
       expect(retiring.handleRemoteMedia).not.toHaveBeenCalled();
-      expect(call.listenerCount(CALL_EVENT_KEYS.REMOTE_MEDIA)).toBe(1);
-      expect(call.listenerCount(CALL_EVENT_KEYS.DISCONNECT)).toBe(1);
+      expect(freshCall.listenerCount(CALL_EVENT_KEYS.REMOTE_MEDIA)).toBe(1);
+      expect(freshCall.listenerCount(CALL_EVENT_KEYS.DISCONNECT)).toBe(1);
       expect(call.end).not.toHaveBeenCalled();
+      expect(freshCall.end).not.toHaveBeenCalled();
       expect(webCallingService.line).toBe(line);
       expect(line.deregister).not.toHaveBeenCalled();
     });
@@ -5760,20 +5758,16 @@ describe('TaskManager', () => {
 
     it('recovers a missing promoted-agent task under the main interaction and emits one hydrate', () => {
       clearTasksAndFactoryHistory();
-      let injectedGuard;
       let registryEntryDuringConstruction: unknown = 'not-observed';
       (TaskFactory.createTask as jest.Mock).mockImplementationOnce(
-        (_contact, _webCallingService, data, _configFlags, guard) => {
-          injectedGuard = guard;
+        (_contact, _webCallingService, data) => {
           registryEntryDuringConstruction = taskManager.getTask(taskId);
-          expect(guard).toBe(taskManager['recoveryGuard']);
 
           return createStateMachineTask(data);
         }
       );
-      const publishedGuards: unknown[] = [];
-      const hydrateHandler = jest.fn(() => {
-        publishedGuards.push(taskManager['recoveryGuard']);
+      const hydrateHandler = jest.fn((task) => {
+        expect(task.bindRecoveryGuard).toHaveBeenCalledWith(taskManager['recoveryGuard']);
       });
       const incomingHandler = jest.fn();
       taskManager.on(TASK_EVENTS.TASK_HYDRATE, hydrateHandler);
@@ -5796,7 +5790,6 @@ describe('TaskManager', () => {
           wrapUpRequired: false,
         }),
         undefined,
-        taskManager['recoveryGuard'],
         undefined,
         currentAgentId,
         undefined,
@@ -5806,9 +5799,6 @@ describe('TaskManager', () => {
 
       const recoveredTask = (TaskFactory.createTask as jest.Mock).mock.results[0].value;
       expect(registryEntryDuringConstruction).toBeUndefined();
-      expect(injectedGuard).toBe(taskManager['recoveryGuard']);
-      expect(publishedGuards).toHaveLength(1);
-      expect(publishedGuards[0]).toBe(injectedGuard);
       expectTaskConstructedForAISummary();
       expect(recoveredTask.sendStateMachineEvent).toHaveBeenCalledTimes(2);
       expect(recoveredTask.sendStateMachineEvent).toHaveBeenNthCalledWith(
@@ -7316,9 +7306,8 @@ describe('T-008 TaskManager recovery owners', () => {
       expect(hydrated.mock.calls[0][0]).toBe(fresh);
       expect(TaskFactory.createTask).toHaveBeenLastCalledWith(
         contact, expect.anything(), expect.objectContaining(replacementData), flags,
-        replacementGuard, undefined, 'agent-1', undefined, undefined, undefined
+        undefined, 'agent-1', undefined, undefined, undefined
       );
-      expect((TaskFactory.createTask as jest.Mock).mock.calls.at(-1)[4]).toBe(replacementGuard);
       await expect(fresh.accept()).rejects.toMatchObject({data: {reason: 'RECOVERY_IN_PROGRESS'}});
       expect(contact.accept).not.toHaveBeenCalled();
       replacementGuard.assertCommandAllowed.mockImplementation(() => undefined);

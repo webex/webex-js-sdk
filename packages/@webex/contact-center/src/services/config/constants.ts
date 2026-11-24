@@ -63,11 +63,13 @@ export const DEFAULT_AUXCODE_ATTRIBUTES = [
   'active',
 ];
 
+/** Identifies local settings validation failures independently of backend reasons. */
+export const LOCAL_MR_SETTINGS_ERROR = Symbol('localMrSettingsError');
+
 // Method names for config services
 export const METHODS = {
   // AgentConfigService methods
   GET_AGENT_CONFIG: 'getAgentConfig',
-  GET_MULTI_REGION_SETTINGS: 'getMultiRegionSettings',
   GET_ORG_DESKTOP_LOGIN_CONFIG: 'getOrgDesktopLoginConfig',
   GET_USER_DESKTOP_LOGIN_CONFIG: 'getUserDesktopLoginConfig',
   GET_MULTIMEDIA_PROFILE_BY_ID: 'getMultimediaProfileById',
@@ -82,7 +84,6 @@ export const METHODS = {
 
   // Util methods
   PARSE_AGENT_CONFIGS: 'parseAgentConfigs',
-  DECODE_MULTI_REGION_SETTINGS: 'decodeMultiRegionSettings',
   GET_MSFT_CONFIG: 'getMsftConfig',
   GET_WEBEX_CONFIG: 'getWebexConfig',
   GET_DEFAULT_AGENT_DN: 'getDefaultAgentDN',

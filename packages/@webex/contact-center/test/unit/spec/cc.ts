@@ -5199,17 +5199,12 @@ describe('webex.cc', () => {
           _webCallingService,
           taskData: TaskData,
           _configFlags,
-          guard,
           _wrapupData,
           _agentId,
           _agentName,
           _answerCallService,
           taskApiAIAssistant: ApiAIAssistant
-        ) => {
-          const created = createAISummaryLifecycleTask(taskData, taskApiAIAssistant);
-          created.bindRecoveryGuard(guard);
-          return created;
-        }
+        ) => createAISummaryLifecycleTask(taskData, taskApiAIAssistant)
       );
       const task = createAISummaryLifecycleTask(undefined, apiAIAssistant);
       const guard = {generation: 0, signal: new AbortController().signal,
@@ -12157,8 +12152,8 @@ describe('realRecoveryWiring', () => {
       const readyStations: ReturnType<typeof stationState>[] = [];
       const trace: string[] = [];
       const applications: Array<{phase: string; station: ReturnType<typeof stationState>}> = [];
-      const apply = cc['applyStationSession'].bind(cc);
-      jest.spyOn(cc, 'applyStationSession').mockImplementation(async (...args) => {
+      const apply = cc['applyRestoredStationEffects'].bind(cc);
+      jest.spyOn(cc, 'applyRestoredStationEffects').mockImplementation(async (...args) => {
         applications.push({phase: cc['recoveryPhase'], station: stationState()});
         await apply(...args);
         trace.push('station-applied');
@@ -14277,7 +14272,7 @@ describe('realRecoveryWiring', () => {
       await login(); cc.$config.allowAutomatedRelogin = true;
       const sink = jest.spyOn(graph.LoggerProxy, 'info');
       const metric = jest.spyOn(cc.metricsManager, 'trackEvent');
-      const apply = jest.spyOn(cc, 'applyStationSession');
+      const apply = jest.spyOn(cc, 'applyRestoredStationEffects');
       sockets[0].message({type: 'SYSTEM_REGION_SWITCH', orgId: 'org', trackingId: 'A'});
       jest.advanceTimersByTime(105000); await flush(); sockets[1].welcome(); await flush();
       const replace = () => {
@@ -17564,8 +17559,8 @@ function hostRecoveryGuideSources() {
 }
 
 describe('T-006/T-013 exact host recovery guide', () => {
-  const fs = require('fs'), path = require('path'), ts = require('typescript'), vm = require('vm');
-  const {guide, helperSource, wiringSource} = hostRecoveryGuideSources();
+  const ts = require('typescript'), vm = require('vm');
+  const {helperSource, wiringSource} = hostRecoveryGuideSources();
   const load = () => {
     const result = ts.transpileModule(helperSource(), {reportDiagnostics: true,
       compilerOptions: {target: ts.ScriptTarget.ES2019, module: ts.ModuleKind.None}});
@@ -17625,108 +17620,6 @@ describe('T-006/T-013 exact host recovery guide', () => {
     expect(helper(() => {throw new Error('identity unavailable');}, 100, () => tab)).toBe('blocked');
     expect(tab.setItem).toHaveBeenCalledTimes(2);
   });
-  const normalize = (value: string) => value.replace(/\s+/g, ' ').trim();
-  const section = (source: string, heading: string) => {
-    const parts = source.split(`${heading}\n`);
-    expect(parts).toHaveLength(2);
-    return parts[1].split(/^#{1,3} /m)[0];
-  };
-  const releaseHeading = '### Release evidence and REL-AQM-TRACKING-ECHO';
-  const drillLabels = ['DN', 'extension', 'browser'].flatMap(mode =>
-    ['failover', 'failback'].map(direction => `${mode}, ${direction}`));
-  const captureFields = ['authoritative live organization-settings payload', 'admission placement',
-    'station result', 'new-call results', 'supported RTD/voice evidence'];
-  // A record ends before any unindented line, so adjacent records cannot supply missing fields.
-  const drillRecords = (source: string) => Array.from(section(source, releaseHeading).matchAll(
-    /^- \*\*([^*\n]+)\*\*:([^\n]*(?:\n[ \t]+[^\n]*)*)/gm));
-  const assertGuideReleaseEvidence = (guideText: string) => {
-    const release = normalize(section(guideText, '### Release evidence and REL-AQM-TRACKING-ECHO'));
-    for (const fragment of [
-      'Before release/rollout, require all of the following separately:',
-      'The SDK maintainer/release owner is accountable.',
-      'Routing platform API owners and QA/recovery operators supply sanctioned, sanitized actual request-header/notification captures',
-      'The flow/runtime release owner obtains and reviews the evidence in the flow-owned release record alongside AC-021.',
-      'An authoritative positive organization-settings array fixture with sanitized id/licenseVersion, explicit true entitlement and deployment/version provenance.',
-      'Reader-isolation and compatibility evidence: valid complete Profile/session despite reader dependency/auth failure, next-register-only entitlement changes, unchanged public events, ordinary reconnect/authentication, station prerequisites and browser calling ownership.',
-      'Blocking `REL-AQM-TRACKING-ECHO`: actual success **and** failure pairs for stateChange',
-      'The separate human live release gate, AC-021: reviewed QA/platform live recovery and browser/audio evidence, with explicit outcomes and links in the delivery-owned release record.',
-      'AC-021 is a separate human/operator-executed release gate, independent of local build/test acceptance.',
-      'Use the following collection template in the delivery-owned release record;',
-      'Live drill collection template: create one separate record for each combination below,',
-      'Keep these four entries and the separate AC-021 and REL-AQM-TRACKING-ECHO outcomes in the delivery-owned release record.',
-      'Missing or negative echo evidence blocks candidate release/rollout and leaves the existing released SDK in use.',
-      'Local Jest passes do not close these gates.',
-    ]) expect(release).toContain(fragment);
-
-    const tableRows = section(guideText, releaseHeading).split('\n').map(normalize)
-      .filter(line => line.startsWith('|'));
-    expect(tableRows[0]).toBe('| Live prerequisite | Accountable evidence owner | Status | Reason | Evidence refs |');
-    expect(tableRows.slice(2).map(row => row.split('|').slice(1, 3).map(cell => cell.trim())))
-      .toEqual([
-        ['Multi-region-entitled test organization', 'Routing platform owner'],
-        ['Agent credentials, team and DN', 'QA/recovery operator'],
-        ['Deployed SDK/backend/API version identifiers', 'SDK maintainer and Routing platform owner'],
-        ['Coordinated failover/failback operator window', 'QA/recovery lead and platform operations owner'],
-      ]);
-    const records = drillRecords(guideText);
-    expect(records.map(([, label]) => label).sort()).toEqual([...drillLabels].sort());
-    for (const [, , record] of records) {
-      for (const field of captureFields) expect(normalize(record)).toContain(field);
-    }
-  };
-  const assertDocContract = () => {
-    load(); const guideText = guide(), text = normalize(guideText);
-    const wiring = wiringSource().replace(/\s+/g, ' ');
-    expect(wiring.match(/window\.location\.reload\s*\(/g)).toHaveLength(1);
-    const readme = fs.readFileSync(path.resolve(__dirname, '../../../README.md'), 'utf8');
-    expect(readme).toContain('docs/getting-started.md#multi-region-recovery-host-restart');
-    expect(readme).toContain('docs/getting-started.md#multi-region-recovery-rollout-and-rollback');
-    expect(readme).not.toMatch(/decideRegionRestart|window\.location/);
-    for (const fragment of ['Profile flags do not rehydrate', 'FEATURE_ENABLEMENT', 'POST_CALL_SUMMARY_DISABLED',
-      'MID_CALL_SUMMARY_DISABLED', 'entire RTD socket closed, including wellness', 'registration-owned RTD resume',
-      'next `register()`', 'never polls or rereads', 'no public refresh method, SDK toggle',
-      'Reader dependency failure leaves eligibility unknown', 'SDK release rollback together with platform entitlement management',
-      'REL-AQM-TRACKING-ECHO', 'existing released SDK remains in use']) expect(text).toContain(fragment);
-    expect(normalize(section(guideText, '## Multi-region recovery'))).toContain(
-      'it does not promise Available state or uninterrupted migration of an ongoing call or its audio.');
-    assertGuideReleaseEvidence(guideText);
-    expect(text).toContain('Host applications should announce recovering and action-required changes in a screen reader status region and preserve keyboard access to manual login, state actions and logout; do not rely on color alone.');
-  };
-  it('docContractLinksAndExactHostExample', assertDocContract);
-  it('docContractOpensOnlyReadmeAndGuideWithoutReleaseReport', () => {
-    const allowed = ['../../../README.md', '../../../docs/getting-started.md']
-      .map(file => path.resolve(__dirname, file));
-    const readFileSync = fs.readFileSync;
-    const read = jest.spyOn(fs, 'readFileSync').mockImplementation((file, ...args) => {
-      // All other files, including the later MR-10 report, are unavailable at this boundary.
-      if (!allowed.includes(file)) throw Object.assign(new Error(`ENOENT: ${file}`), {code: 'ENOENT'});
-      return readFileSync(file, ...args);
-    });
-    try {
-      assertDocContract();
-      expect([...new Set(read.mock.calls.map(([file]) => file))].sort()).toEqual(allowed.sort());
-    } finally {
-      read.mockRestore();
-    }
-  });
-  it.each(drillLabels)('guidance rejects missing or duplicate live drill record: %s', label => {
-    const source = guide(), record = drillRecords(source).find(([, name]) => name === label)[0];
-    expect(() => assertGuideReleaseEvidence(source.replace(record, ''))).toThrow();
-    expect(() => assertGuideReleaseEvidence(source.replace(record, `${record}\n${record}`))).toThrow();
-  });
-  it.each(drillLabels.flatMap(label => captureFields.map(field => [label, field])))(
-    'guidance rejects incomplete live drill record: %s / %s', (label, field) => {
-      const source = guide(), record = drillRecords(source).find(([, name]) => name === label)[0];
-      const incomplete = normalize(record).replace(field, 'capture omitted');
-      expect(() => assertGuideReleaseEvidence(source.replace(record, incomplete))).toThrow();
-    });
-  it.each(['passed', 'failed', 'partial', 'not-executed'])(
-    'guidance accepts updated release status, reason and evidence: %s', status => {
-      const updated = guide().replace(/_record status_/g, status)
-        .replace(/_record reason_/g, 'Owner-reviewed collection result')
-        .replace(/_record evidence links_/g, '[sanitized captures](https://example.test/release-evidence)');
-      assertGuideReleaseEvidence(updated);
-    });
   it('deliveredHostWiringCompilesWithStrictTypeScript', () => {
     const exampleFile = '/region-recovery-host-example.ts';
     const declarationsFile = '/region-recovery-host-declarations.d.ts';

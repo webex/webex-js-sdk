@@ -6,7 +6,7 @@ import {CONFIG_FILE_NAME} from '../../../../../src/constants';
 import MockWebex from '@webex/test-helper-mock-webex';
 import LoggerProxy from '../../../../../src/logger-proxy';
 import * as util from '../../../../../src/services/config/Util';
-import {DEFAULT_AUXCODE_ATTRIBUTES} from '../../../../../src/services/config/constants';
+import {DEFAULT_AUXCODE_ATTRIBUTES, LOCAL_MR_SETTINGS_ERROR} from '../../../../../src/services/config/constants';
 import {normalizeRecoveryFailure} from '../../../../../src/services/core/Utils';
 import {createDeferred, flushMicrotasks} from '../../../fixtures/aiSummaryTestUtils';
 
@@ -53,10 +53,24 @@ describe('AgentConfigService', () => {
     });
 
     it.each([
-      [{id: 'org-sanitized', licenseVersion: '4.0', multiRegionEnabled: true, homeRegion: ' US1 '}, {eligibility: 'enabled', homeRegion: 'us1'}],
-      [{id: 'org-sanitized', licenseVersion: '4.0'}, {eligibility: 'disabled'}],
-    ])('reads the Webex array-body contract fixture %# (constructed, not deployed evidence)', async (record, expected) => {
-      (mockWebexRequest.request as jest.Mock).mockResolvedValue({statusCode: 200, body: [record]});
+      {
+        body: [{id: 'org-sanitized', licenseVersion: '4.0', multiRegionEnabled: true, homeRegion: ' US1 '}],
+        expected: {eligibility: 'enabled', homeRegion: 'us1'},
+      },
+      {
+        body: [{multiRegionEnabled: false, homeRegion: ' EU2 '}, {multiRegionEnabled: true}],
+        expected: {eligibility: 'disabled', homeRegion: 'eu2'},
+      },
+      {
+        body: [{id: 'org-sanitized', licenseVersion: '4.0'}],
+        expected: {eligibility: 'disabled'},
+      },
+      ...[null, ' ', 123].map(homeRegion => ({
+        body: [{multiRegionEnabled: true, homeRegion}],
+        expected: {eligibility: 'enabled'},
+      })),
+    ])('uses only the first Webex array-body record %#', async ({body, expected}) => {
+      (mockWebexRequest.request as jest.Mock).mockResolvedValue({statusCode: 200, body});
       await expect(agentConfigService.getMultiRegionSettings('org/escaped')).resolves.toEqual(expected);
       expect(mockWebexRequest.request).toHaveBeenCalledWith({service: WCC_API_GATEWAY, method: 'GET', resource: 'organization/org%2Fescaped/organization-setting', timeout: 10000});
     });
@@ -86,6 +100,8 @@ describe('AgentConfigService', () => {
     });
 
     it.each([
+      {description: 'a missing body', body: undefined},
+      {description: 'a null body', body: null},
       {description: 'an empty array', body: []},
       {description: 'a nested data envelope', body: {data: [{multiRegionEnabled: true}]}},
       {description: 'an empty first record', body: [{}]},
@@ -101,6 +117,7 @@ describe('AgentConfigService', () => {
       (mockWebexRequest.request as jest.Mock).mockResolvedValue({statusCode: 200, body});
 
       await expect(agentConfigService.getMultiRegionSettings(mockOrgId)).rejects.toMatchObject({
+        [LOCAL_MR_SETTINGS_ERROR]: 'INVALID_MR_SETTINGS',
         data: {reason: 'INVALID_MR_SETTINGS'},
       });
       expect(mockWebexRequest.request).toHaveBeenCalledTimes(1);
@@ -111,7 +128,7 @@ describe('AgentConfigService', () => {
     ))('retains structured returned status $status and backend reason $reason without local provenance', async ({status, reason}) => {
       (mockWebexRequest.request as jest.Mock).mockResolvedValue({statusCode: status, headers: {TrackingID: 'request-id'}, body: {reason, reasonCode: '1037'}});
       const result = await agentConfigService.getMultiRegionSettings(mockOrgId).catch((error) => error);
-      expect(result[util.LOCAL_MR_SETTINGS_ERROR]).toBeUndefined();
+      expect(result[LOCAL_MR_SETTINGS_ERROR]).toBeUndefined();
       expect(normalizeRecoveryFailure(result)).toEqual({status, reason, reasonCode: 1037, trackingId: 'request-id'});
     });
 
@@ -126,13 +143,13 @@ describe('AgentConfigService', () => {
       });
       (mockWebexRequest.request as jest.Mock).mockRejectedValue(error);
       await expect(agentConfigService.getMultiRegionSettings(mockOrgId)).rejects.toBe(error);
-      expect(error[util.LOCAL_MR_SETTINGS_ERROR]).toBeUndefined();
+      expect(error[LOCAL_MR_SETTINGS_ERROR]).toBeUndefined();
       expect(normalizeRecoveryFailure(error)).toEqual({status, ...(status === 503 ? {reason} : {}), trackingId: 'request-id'});
     });
 
     it.each(['', '   '])('rejects blank orgId before dispatch %#', async (orgId) => {
       const error = await agentConfigService.getMultiRegionSettings(orgId).catch(error => error);
-      expect(error[util.LOCAL_MR_SETTINGS_ERROR]).toBe('INVALID_ORG_ID');
+      expect(error[LOCAL_MR_SETTINGS_ERROR]).toBe('INVALID_ORG_ID');
       expect(normalizeRecoveryFailure(error)).toEqual({reason: 'INVALID_ORG_ID'});
       expect(mockWebexRequest.request).not.toHaveBeenCalled();
     });

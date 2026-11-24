@@ -7,9 +7,9 @@ tags: [module, specification]
 <!-- sdd-generated-metadata
 doc_kind: module-spec
 generated_from: module-spec@0.3.0
-generated_by: codex
+generated_by: claude-code
 approved_by: rarajes2@cisco.com
-updated_at: 2026-11-23T05:53:55Z
+updated_at: 2026-11-17T03:03:58Z
 validation_status: pass-with-warnings
 -->
 
@@ -34,12 +34,12 @@ Related context: [documentation index](../../../../docs/index.md) ·
 | Source path | `src/services/core` |
 | Resource kind | module |
 | Status | Active |
-| Last verified | Historical baseline: 2026-11-16 at `0b8c34db7f` |
+| Last verified | 2026-11-16 at `0b8c34db7f` |
 | Module id | `core` |
 | Parent spec | [src/services](../../docs/README.md) |
 | Doc kind | Module spec |
 | Coverage score | Pending coverage assessment |
-| Validation status | pass-with-warnings — assessed 2026-11-23 by Claude Code. 0 blocking findings and 13 nonblocking findings. Historical baseline: pass-with-warnings, assessed 2026-11-17; validator 01a1e76f-2293-79a0-9f8f-f060038448dd; 0 Blocking, 0 Important, 4 Minor. Historical 2026-11-22 review: 4a979a45-b226-4b4c-8dcb-7c5e78aa8351. Historical results do not certify this revision. |
+| Validation status | pass-with-warnings — assessed 2026-11-17; validator runtime 01a1e76f-2293-79a0-9f8f-f060038448dd; 0 Blocking, 0 Important, 4 Minor findings. |
 
 ## Applicability
 
@@ -205,24 +205,6 @@ Do not remove or reinterpret exported symbols/events without a documented consum
 | CORE-R-017 | Ordinary reconnect uses five-second slots under the 50-second watchdog. An expired reconnect episode disposes its candidate. An admitted quiet socket can still receive a late keepalive. Region recovery uses one in-flight attempt, with base delays of 100/60/30/15 seconds plus fresh jitter up to 50 percent and repeated 15-second slots. A recognized subscribe mismatch and terminal authentication stop the relevant recovery. The region driver never uses the ordinary watchdog. | Each retry policy needs its own timing and terminal behavior while preventing overlapping admission. | `src/services/core/websocket/connection-service.ts`, `src/services/core/Utils.ts` | `test/unit/spec/services/core/websocket/connection-service.ts`, `test/unit/spec/cc.ts` | T-004, T-005, T-012. Socket success is separate from session acceptance. | PRESENT |
 | CORE-R-018 | A generation-owned AQM request follows the per-kind recovery gate and settles once, clearing timers and owned binds on abort or interruption. For recovery-owned session and state operations, both outcome bindings match the bare nested `data.trackingId` UUID from the request header `webex-js-sdk_<uuid>`. Ordinary operations use the existing outer and nested event types and preserve duplicate rejection. Recent known local IDs fence late replies. Recovery diagnostics retain normalized tracking and reason fields while redacting credentials and station payloads. | Only the current operation can consume a recovery result. Ordinary bindings remain compatible with backends that assign their own notification tracking IDs. | `src/services/core/aqm-reqs.ts`, `src/services/core/Utils.ts`, `src/services/core/types.ts` | `test/unit/spec/services/core/aqm-reqs.ts`, `test/unit/spec/cc.ts` | T-007, T-008, T-012, T-013, including “gateKindAndSessionOwnerMatrix” and “exact session owner”. Deployed nested UUID echo and compatibility sign-off remain release evidence. | PRESENT |
 | CORE-R-019 | In ordinary mode without an admission flight, `ConnectionService.onPing` guards JSON parsing and object validation. Malformed JSON and non-object/array payloads produce fixed `LoggerProxy.error` diagnostics and return without throwing or changing liveness state/timers; valid objects retain keepalive and recovery handling. Diagnostic sink exceptions are contained. | One malformed server frame or failing logger must not disrupt the liveness loop, and the frame must not enter logs. | `src/services/core/websocket/connection-service.ts` (onPing, diagnose) | `test/unit/spec/services/core/websocket/connection-service.ts` T-012 malformed-ping matrix and ordinary recovery cases | Non-ordinary modes and an active admission flight return before parsing or logging. | PRESENT |
-| CORE-R-020 | AQM `__typeMap` discrimination reads `msg[typeMap.typeField \|\| 'type']` and selects a condition only through `Object.prototype.hasOwnProperty.call(typeMap.conditions, msgType)`. Inherited type names cannot select conditions. The selected condition's `Object.keys` fields must each match a truthy message value by strict equality. | A remote type such as `constructor` must not match an undeclared prototype property and resolve a bind. | `src/services/core/aqm-reqs.ts` (typeMapCheck) | `test/unit/spec/services/core/aqm-reqs.ts` typeMapCheck cases | The type-name guard checks ownership, not enumerability: an own non-enumerable type key is eligible. `Object.keys` enumerates the selected condition's own enumerable fields. | PRESENT |
-| CORE-R-021 | The embedded keepalive worker contains no console logging; it communicates keepalive and close-socket status through `postMessage` and handles lifecycle/network events. | The worker string is implementation code and must obey the package logging boundary without bypassing `LoggerProxy`. | `src/services/core/websocket/keepalive.worker.js` | `test/unit/spec/services/core/websocket/keepalive.worker.ts` | Existing assertions inspect script content; they do not execute a browser worker. | PRESENT |
-| CORE-R-022 | `sanitizeForObservability(value: unknown): string` returns an empty string for non-string input; for strings it removes U+0000–U+001F (including CR/LF) and U+007F, then caps the result at 200 JavaScript string code units. Legitimate strings within that limit pass through unchanged. | Remote event names and reasons must not inject log lines or control characters or unbounded diagnostic values. | `src/services/core/Utils.ts` | `test/unit/spec/services/core/Utils.ts` sanitizeForObservability cases | Callers apply the helper at their own logs/metrics trust boundary; it does not redact arbitrary sensitive content. | PRESENT |
-
-### Source reconciliation
-
-The authorized `review_fix_plan_00002__rf2_canonical_source_fidelity` reconciliation (2026-11-22)
-preserves the four clauses added in commit `37524c29e2`, extends their canonical test mapping,
-and replaces the stale timeout description in CORE-R-010 with the current safe projection.
-Existing canonical IDs retain their meanings. The retired source remains deleted; historical
-source-fidelity inventories and review artifacts remain provenance, not validation of this revision.
-
-| File-qualified legacy requirement at `37524c29e2` | Canonical requirement in this document | Preserved meaning / precision |
-| --- | --- | --- |
-| `packages/@webex/contact-center/src/services/core/ai-docs/core-spec.md#CORE-R-009` | CORE-R-019 | Guard, log and ignore malformed pings; include the restored fixed diagnostics and logger-failure containment. |
-| `packages/@webex/contact-center/src/services/core/ai-docs/core-spec.md#CORE-R-010` | CORE-R-020 | Reject inherited discriminator keys. The legacy “own enumerable” wording is narrowed to the actual ownership check; enumerability applies to condition fields. |
-| `packages/@webex/contact-center/src/services/core/ai-docs/core-spec.md#CORE-R-011` | CORE-R-021 | No console logging in the worker; retain message/event control flow. |
-| `packages/@webex/contact-center/src/services/core/ai-docs/core-spec.md#CORE-R-012` | CORE-R-022 | Strip controls, cap at 200, and reject non-strings at the observability boundary. |
 
 ## Design overview
 
@@ -654,9 +636,6 @@ bindings and operation settlement. ConnectionService owns transport scheduling a
 | `INV-001` | Core must preserve its typed public/event contracts and must not invent backend states or responses. | Callers trust that a resolved AQM promise is the backend's own notification (CORE-R-003). | `src/services/core/WebexRequest.ts`, `src/services/core/aqm-reqs.ts` | `test/unit/spec/services/core/aqm-reqs.ts` |
 | `INV-002` | A subscribe/register `webSocketUrl` is trusted only when it is a `wss` URL on the `ALLOWED_ROUTING_NOTIFS_DOMAINS` allow-list; otherwise `WebSocketManager` throws and never opens a socket. | CORE-R-008 | `src/services/core/websocket/WebSocketManager.ts`, `src/services/core/Utils.ts` | `test/unit/spec/services/core/websocket/WebSocketManager.ts`, `test/unit/spec/services/core/Utils.ts` |
 | `INV-003` | Invalid ping input cannot alter liveness state, emit a connection event, schedule work, leak frame data, or throw through a diagnostic sink. | CORE-R-019 | `src/services/core/websocket/connection-service.ts` | `test/unit/spec/services/core/websocket/connection-service.ts` T-012 malformed-ping matrix |
-| `INV-004` | A type-map condition is eligible only for an own type key; selected condition fields keep their truthy strict-equality checks. | CORE-R-020 | `src/services/core/aqm-reqs.ts` | `test/unit/spec/services/core/aqm-reqs.ts` `typeMapCheck` |
-| `INV-005` | Worker status/lifecycle communication never uses console logging. | CORE-R-021 | `src/services/core/websocket/keepalive.worker.js` | `test/unit/spec/services/core/websocket/keepalive.worker.ts` |
-| `INV-006` | Sanitized observability values contain no U+0000–U+001F/U+007F, have length at most 200, and are empty for non-string input. | CORE-R-022 | `src/services/core/Utils.ts` | `test/unit/spec/services/core/Utils.ts` `sanitizeForObservability` |
 
 ## Concurrency and reactive flow
 
@@ -951,22 +930,8 @@ Unit tests mirror module paths under `test/unit/spec/services/core`. Preserve po
 | `CORE-R-018` | Unit | `test/unit/spec/services/core/aqm-reqs.ts` T-007/T-008 “gateKindAndSessionOwnerMatrix” and “exact session owner” | Stale/aborted contexts, both unavailable reasons, unusable-primary teardown, pre-HTTP resource assertions, “timeoutDisabledAliasDisplacementInterrupted”, duplicate and foreign correlation tests with redacted T-013 diagnostics | Deployed nested UUID echo remains release evidence |
 | `CORE-R-010` timeout projection | Unit | `test/unit/spec/services/core/aqm-reqs.ts` T-013 aqmTimeoutAndInterruptDiagnosticsRedacted: error details equal the four-field projection and use a new object; the acknowledgement callback retains the original response | The same matrix excludes credential/body sentinel values from the serialized error, settles once and clears binds/timers with throwing diagnostics | No dedicated assertion of the null/empty-object timeout projection |
 | `CORE-R-019`, `INV-003` | Unit | `test/unit/spec/services/core/websocket/connection-service.ts` ordinary ping/reconnect cases | T-012 malformed ping is ignored safely crosses malformed JSON, null, boolean, number, string and array with normal/throwing logging; asserts exact fixed diagnostics, unchanged timers/events, no secrets and next retry at five seconds | No browser execution required |
-| `CORE-R-020`, `INV-004` | Unit | `test/unit/spec/services/core/aqm-reqs.ts` still matches valid own-key condition | `test/unit/spec/services/core/aqm-reqs.ts` rejects inherited prototype key supplies constructor against an empty conditions object | No dedicated non-enumerable own type-key case; ownership semantics come from `hasOwnProperty` |
-| `CORE-R-021`, `INV-005` | Unit (static script) | `test/unit/spec/services/core/websocket/keepalive.worker.ts` still defines the keepalive control flow checks both output messages and message/online/offline listeners | `test/unit/spec/services/core/websocket/keepalive.worker.ts` omits console logging rejects any console. occurrence | Does not execute interval/offline behavior in a worker |
-| `CORE-R-022`, `INV-006` | Unit | `test/unit/spec/services/core/Utils.ts` leaves a legitimate value effectively unchanged preserves AGENT_LOGOUT | Non-string undefined/null/number/object → empty; CR/LF and NUL/U+001F/U+007F removed; 500-character input → length 200 | No dedicated exact-200 input assertion |
 
 Run `yarn workspace @webex/contact-center build:src` and then `yarn workspace @webex/contact-center test:unit` from the workspace root. A module specification is
 complete only when its public surface, invariants, failure modes, and test evidence agree with the
 implementation. Module coverage remains Partial under `.sdd/manifest.json`; independent semantic
 approval does not itself satisfy coverage review and promotion criteria.
-
-The 2026-11-22 source reconciliation above and earlier test/review results are historical evidence,
-including their findings and warnings. Current semantic validation is recorded in `validation_status`
-and the Validation status row above, supported by flow-owned evidence bound to the final source/spec
-bytes. Historical review fingerprints, run IDs, archived artifacts, and focused regressions alone
-do not certify a changed revision.
-
-Body-text edits are new specification inputs. After a substantive source or specification change,
-the existing validation flow must invalidate prior current approval and independently validate the
-final source/spec bytes before projecting a new result. Changes to specification body text cannot
-be classified as an automatic metadata-only projection.

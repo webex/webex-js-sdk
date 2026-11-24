@@ -925,7 +925,7 @@ describe('WebCallingService', () => {
             'Unable to ensure web calling line',
             {
               module: WEB_CALLING_SERVICE_FILE,
-              method: METHODS.ENSURE_WEB_CALLING_LINE,
+              method: METHODS.REGISTER_WEB_CALLING_LINE,
             },
           ],
         ]);
@@ -952,7 +952,7 @@ describe('WebCallingService', () => {
           'Web calling preserve registration failed',
           {
             module: WEB_CALLING_SERVICE_FILE,
-            method: METHODS.ENSURE_WEB_CALLING_LINE,
+            method: METHODS.REGISTER_WEB_CALLING_LINE,
           },
         ],
       ]);

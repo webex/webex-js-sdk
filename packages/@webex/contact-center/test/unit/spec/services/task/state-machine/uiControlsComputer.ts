@@ -6,7 +6,6 @@ import {
 import {TaskState} from '../../../../../../src/services/task/state-machine/constants';
 import {
   computeUIControls,
-  disableTaskUIControls,
   getDefaultUIControls,
   haveUIControlsChanged,
 } from '../../../../../../src/services/task/state-machine/uiControlsComputer';
@@ -3098,56 +3097,5 @@ describe('uiControlsComputer wxApp thick-client answer (WXCC-6026)', () => {
 
       expect(controls.main.mute).toEqual({isVisible: true, isEnabled: true});
     });
-  });
-});
-
-describe('T-008 disableTaskUIControls', () => {
-  it('preserves visibility, optional absence, leg and ordered destinations without mutation', () => {
-    const original = getDefaultUIControls();
-    original.main.accept = {isVisible: true, isEnabled: true};
-    original.main.keypad = {isVisible: true, isEnabled: true};
-    original.consult.endConsult = {isVisible: true, isEnabled: true};
-    original.consult.mute = {isVisible: true, isEnabled: true};
-    delete original.consult.keypad;
-    original.activeLeg = 'consult';
-    original.consultTransferDestinations = {
-      consult: [CONSULT_TRANSFER_DESTINATION_TYPE.AGENT, CONSULT_TRANSFER_DESTINATION_TYPE.QUEUE],
-      transfer: [CONSULT_TRANSFER_DESTINATION_TYPE.QUEUE, CONSULT_TRANSFER_DESTINATION_TYPE.AGENT],
-    };
-    const before = JSON.parse(JSON.stringify(original));
-
-    const expected = getDefaultUIControls();
-    expected.main.accept = {isVisible: true, isEnabled: false};
-    expected.main.keypad = {isVisible: true, isEnabled: false};
-    expected.consult.endConsult = {isVisible: true, isEnabled: false};
-    expected.consult.mute = {isVisible: true, isEnabled: false};
-    delete expected.consult.keypad;
-    expected.activeLeg = 'consult';
-    expected.consultTransferDestinations = {
-      consult: [CONSULT_TRANSFER_DESTINATION_TYPE.AGENT, CONSULT_TRANSFER_DESTINATION_TYPE.QUEUE],
-      transfer: [CONSULT_TRANSFER_DESTINATION_TYPE.QUEUE, CONSULT_TRANSFER_DESTINATION_TYPE.AGENT],
-    };
-
-    const disabled = disableTaskUIControls(original);
-
-    expect(disabled).toEqual(expected);
-    expect(disabled).not.toBe(original);
-    expect(original).toEqual(before);
-    expect(original.main.accept).toEqual({isVisible: true, isEnabled: true});
-    expect(original.consult.endConsult).toEqual({isVisible: true, isEnabled: true});
-    expect(Object.prototype.hasOwnProperty.call(original.consult, 'keypad')).toBe(false);
-    expect(Object.prototype.hasOwnProperty.call(disabled.consult, 'keypad')).toBe(false);
-    expect(disabled.activeLeg).toBe('consult');
-    expect(disabled.consultTransferDestinations).toEqual({
-      consult: [CONSULT_TRANSFER_DESTINATION_TYPE.AGENT, CONSULT_TRANSFER_DESTINATION_TYPE.QUEUE],
-      transfer: [CONSULT_TRANSFER_DESTINATION_TYPE.QUEUE, CONSULT_TRANSFER_DESTINATION_TYPE.AGENT],
-    });
-    for (const leg of ['main', 'consult'] as const) {
-      expect(disabled[leg]).not.toBe(original[leg]);
-      expect(Object.keys(disabled[leg])).toEqual(Object.keys(original[leg]));
-      for (const control of Object.values(disabled[leg])) {
-        expect(control.isEnabled).toBe(false);
-      }
-    }
   });
 });

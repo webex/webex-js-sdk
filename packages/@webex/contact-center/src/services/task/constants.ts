@@ -64,24 +64,6 @@ export const KEYS_TO_NOT_DELETE: string[] = Object.values(PRESERVED_TASK_DATA_FI
  */
 // METHOD NAMES
 export const METHODS = {
-  BIND_RECOVERY_GUARD: 'bindRecoveryGuard',
-  INTERRUPT_OPERATIONS: 'interruptOperations',
-  RUN_TASK_OPERATION: 'runTaskOperation',
-  RUN_TASK_LIFETIME_OPERATION: 'runTaskLifetimeOperation',
-  RUN_OWNED_TASK_OPERATION: 'runOwnedTaskOperation',
-  ASSERT_TASK_COMMAND_ALLOWED: 'assertTaskCommandAllowed',
-  ASSERT_TASK_LIFETIME_ACTIVE: 'assertTaskLifetimeActive',
-  INVALIDATE_FOR_REGION_RECOVERY: 'invalidateForRegionRecovery',
-  DISPOSE_REGIONAL_RESOURCES: 'disposeRegionalResources',
-  SET_RECOVERY_GUARD: 'setRecoveryGuard',
-  START_SESSION: 'startSession',
-  STOP_SESSION: 'stopSession',
-  INTERRUPT_TASK_OPERATIONS: 'interruptTaskOperations',
-  INVALIDATE_REGIONAL_TASKS: 'invalidateRegionalTasks',
-  CLEANUP_TASK_CALL_RESOURCES: 'cleanupTaskCallResources',
-  CAN_HANDLE_INCOMING_CALL: 'canHandleIncomingCall',
-  HANDLE_WEBSOCKET_MESSAGE: 'handleWebsocketMessage',
-
   // Task class methods
   ACCEPT: 'accept',
   TOGGLE_MUTE: 'toggleMute',

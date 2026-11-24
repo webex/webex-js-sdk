@@ -23,19 +23,45 @@ import {
 import WebexRequest from '../core/WebexRequest';
 import {WCC_API_GATEWAY} from '../constants';
 import {CONFIG_FILE_NAME, METHODS as MAIN_METHODS} from '../../constants';
-import {decodeMultiRegionSettings, LOCAL_MR_SETTINGS_ERROR, parseAgentConfigs} from './Util';
+import {parseAgentConfigs} from './Util';
 import type {MultiRegionSettings} from './types';
-import {createRegionRecoveryError, normalizeRecoveryFailure} from '../core/Utils';
+import {createRegionRecoveryError, isRecord, normalizeRecoveryFailure} from '../core/Utils';
 import {
   DEFAULT_AUXCODE_ATTRIBUTES,
   DEFAULT_PAGE,
   DEFAULT_PAGE_SIZE,
   endPointMap,
+  LOCAL_MR_SETTINGS_ERROR,
   METHODS,
   WELLBEING_BREAK_IDLE_CODE,
 } from './constants';
 
 const ORGANIZATION_SETTINGS_TIMEOUT_MS = 10_000;
+
+/** Decodes the authoritative first organization-settings record. */
+const decodeMultiRegionSettings = (body: unknown): MultiRegionSettings => {
+  const first = Array.isArray(body) ? body[0] : undefined;
+  if (
+    !isRecord(first) ||
+    Array.isArray(first) ||
+    Object.keys(first).length === 0 ||
+    (Object.prototype.hasOwnProperty.call(first, 'multiRegionEnabled') &&
+      typeof first.multiRegionEnabled !== 'boolean')
+  ) {
+    throw Object.assign(new Error('Invalid organization settings'), {
+      [LOCAL_MR_SETTINGS_ERROR]: 'INVALID_MR_SETTINGS',
+      data: {reason: 'INVALID_MR_SETTINGS'},
+    });
+  }
+
+  const homeRegion =
+    typeof first.homeRegion === 'string' ? first.homeRegion.trim().toLowerCase() : undefined;
+
+  return {
+    eligibility: first.multiRegionEnabled === true ? 'enabled' : 'disabled',
+    ...(homeRegion ? {homeRegion} : {}),
+  };
+};
 
 /**
  * The AgentConfigService class provides methods to fetch agent configuration data.

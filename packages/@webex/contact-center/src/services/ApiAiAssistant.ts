@@ -207,7 +207,6 @@ export class ApiAIAssistant {
       });
     } catch (error) {
       this.assertRecoveryOwner(recoveryOwner);
-      this.assertRecoveryOwner(recoveryOwner);
       this.metricsManager.trackEvent(
         METRIC_EVENT_NAMES.AI_ASSISTANT_WELLNESS_ACTION_FAILED,
         {
@@ -484,7 +483,6 @@ export class ApiAIAssistant {
 
       return response?.body || {};
     } catch (error) {
-      this.assertRecoveryOwner(recoveryOwner);
       this.assertRecoveryOwner(recoveryOwner);
       this.metricsManager.trackEvent(
         METRIC_EVENT_NAMES.AI_ASSISTANT_SEND_EVENT_FAILED,
@@ -764,7 +762,6 @@ export class ApiAIAssistant {
 
       return response.body as HistoricTranscriptsResponse;
     } catch (error) {
-      this.assertRecoveryOwner(recoveryOwner);
       this.assertRecoveryOwner(recoveryOwner);
       this.metricsManager.trackEvent(
         METRIC_EVENT_NAMES.AI_ASSISTANT_FETCH_HISTORIC_TRANSCRIPTS_FAILED,

@@ -3,9 +3,6 @@ import {getEventTaxonomy} from '../../../../src/metrics/behavioral-events';
 import {METRIC_EVENT_NAMES} from '../../../../src/metrics/constants';
 
 describe('metrics/behavioral-events', () => {
-  it.each([[METRIC_EVENT_NAMES.REGION_RECOVERY_SUCCESS, 'complete'], [METRIC_EVENT_NAMES.REGION_RECOVERY_FAILED, 'fail']])('region recovery taxonomy %s', (event, verb) => {
-    expect(getEventTaxonomy(event as any)).toEqual({product, agent: 'user', target: 'region_recovery', verb});
-  });
   describe('getEventTaxonomy', () => {
     it('returns the correct taxonomy for the given event', () => {
       expect(getEventTaxonomy(METRIC_EVENT_NAMES.AGENT_RONA)).toEqual({

@@ -2,16 +2,12 @@ import {expect} from '@jest/globals';
 import AnswerCallOnWebexService from '../../../../src/services/AnswerCallOnWebexService';
 import {WebexSDK} from '../../../../src/types';
 import LoggerProxy from '../../../../src/logger-proxy';
-import {CC_FILE, METHODS} from '../../../../src/constants';
-import {createRegionRecoveryError} from '../../../../src/services/core/Utils';
-
-const mockUploadLogs = jest.fn();
 
 jest.mock('../../../../src/logger-proxy');
 jest.mock('../../../../src/services/core/WebexRequest', () => ({
   __esModule: true,
   default: {
-    getInstance: () => ({uploadLogs: mockUploadLogs}),
+    getInstance: () => ({uploadLogs: jest.fn()}),
   },
 }));
 
@@ -38,68 +34,6 @@ describe('AnswerCallOnWebexService', () => {
     jest.clearAllMocks();
     webex = makeMockWebex();
     service = new AnswerCallOnWebexService(webex);
-  });
-
-  describe.each([
-    {
-      name: 'answerCall',
-      method: METHODS.ACCEPT,
-      logName: METHODS.ACCEPT,
-      invoke: (instance: AnswerCallOnWebexService) =>
-        instance.answerCall({callId: 'call', endpointId: 'endpoint'}),
-    },
-    {
-      name: 'getCallDetails',
-      method: METHODS.GET_CALL_DETAILS_ON_WEBEX,
-      logName: 'getCallDetails',
-      invoke: (instance: AnswerCallOnWebexService) => instance.getCallDetails({callId: 'call'}),
-    },
-  ])('$name catch diagnostics', ({method, logName, invoke}) => {
-    it('T-013 lifecycleCallerCatchPreservesIdentityAndReason', async () => {
-      const reason = 'RECOVERY_INTERRUPTED';
-      const diagnostics = {trackingId: 'telephony-lifecycle-tracking', status: 409};
-      const error = createRegionRecoveryError(reason, diagnostics);
-      const data = error.data;
-      (webex.request as jest.Mock).mockRejectedValue(error);
-
-      await expect(invoke(service)).rejects.toBe(error);
-
-      expect(webex.request).toHaveBeenCalledTimes(1);
-      expect(error.message).toBe(reason);
-      expect(error.data).toBe(data);
-      expect(error.data).toEqual({reason, ...diagnostics});
-      // The caller retains its own diagnostic; getErrorDetails must stay silent.
-      expect((LoggerProxy.error as jest.Mock).mock.calls).toEqual([
-        [
-          `AnswerCallOnWebexService.${logName} failed: ${error}`,
-          {
-            module: 'AnswerCallOnWebexService',
-            method,
-            data: {trackingId: undefined, status: undefined},
-          },
-        ],
-      ]);
-      expect(mockUploadLogs).not.toHaveBeenCalled();
-    });
-
-    it('ordinary HTTP failure reaches the helper log and upload sinks', async () => {
-      const error = {
-        statusCode: 503,
-        details: {trackingId: 'telephony-http-tracking', data: {reason: 'HTTP_FAILURE'}},
-      };
-      (webex.request as jest.Mock).mockRejectedValue(error);
-
-      await expect(invoke(service)).rejects.toThrow('HTTP_FAILURE');
-
-      expect(webex.request).toHaveBeenCalledTimes(1);
-      expect(LoggerProxy.error).toHaveBeenCalledTimes(2);
-      expect(LoggerProxy.error).toHaveBeenCalledWith(`${method} failed with reason: HTTP_FAILURE`, {
-        module: CC_FILE,
-        method,
-        trackingId: 'telephony-http-tracking',
-      });
-      expect(mockUploadLogs.mock.calls).toEqual([[{correlationId: 'telephony-http-tracking'}]]);
-    });
   });
 
   describe('getTelephonyBaseUrl resolution', () => {

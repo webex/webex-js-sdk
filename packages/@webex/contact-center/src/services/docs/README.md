@@ -7,9 +7,9 @@ tags: [module, specification]
 <!-- sdd-generated-metadata
 doc_kind: module-spec
 generated_from: module-spec@0.3.0
-generated_by: codex
+generated_by: claude-code
 approved_by: rarajes2@cisco.com
-updated_at: 2026-11-21T10:35:21Z
+updated_at: 2026-11-17T03:03:58Z
 validation_status: pass-with-warnings
 -->
 
@@ -36,12 +36,12 @@ Related context: [documentation index](../../../docs/index.md) ·
 | Source path | `src/services` |
 | Resource kind | module |
 | Status | Active |
-| Last verified | Historical baseline: 2026-11-16 at `0b8c34db7f` |
+| Last verified | 2026-11-16 at `0b8c34db7f` |
 | Module id | `services` |
 | Parent spec | [Contact Center SDK package spec](../../docs/README.md) |
 | Doc kind | Module spec |
 | Coverage score | Pending coverage assessment |
-| Validation status | pass-with-warnings — assessed 2026-11-23 by Claude Code. 0 blocking findings and 13 nonblocking findings. Historical baseline: pass-with-warnings, assessed 2026-11-17; validator 01a1e76f-2293-79a0-9f8f-f060038448dd; 0 Blocking, 0 Important, 4 Minor. Historical 2026-11-22 review: 4a979a45-b226-4b4c-8dcb-7c5e78aa8351. Historical results do not certify this revision. |
+| Validation status | pass-with-warnings — assessed 2026-11-17; validator runtime 01a1e76f-2293-79a0-9f8f-f060038448dd; 0 Blocking, 0 Important, 4 Minor findings. |
 
 ## Applicability
 

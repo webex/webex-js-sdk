@@ -157,9 +157,9 @@
     }
   },
   "coverage_status_definitions": {
-    "specced": ">=80% public surface specced, drift <5% \u2014 spec is authoritative",
-    "partial": "40-80% specced \u2014 spec is a hint, cross-check code",
-    "untracked": "<40% specced \u2014 code is the source of truth"
+    "specced": ">=80% public surface specced, drift <5% — spec is authoritative",
+    "partial": "40-80% specced — spec is a hint, cross-check code",
+    "untracked": "<40% specced — code is the source of truth"
   },
   "template_migration": {
     "status": "staged",
@@ -185,7 +185,7 @@
       "path": "src",
       "canonical_spec": "src/docs/README.md",
       "coverage_status": "Partial",
-      "coverage_evidence": "Historical baseline: Canonical spec is structurally complete with 15/15 required documentation fields and source/test evidence mapped by requirement. Independent PR #5088 remediation validation completed on claude-code (2026-07-15); coverage remains Partial until post-baseline promotion criteria are satisfied. Migrated on 2026-11-16 from the older ai-docs layout to the source-local repo-standards spec; coverage is carried, not reassessed, and coverage review remains pending. Independent validation on 2026-11-17 passed with warnings (0 Blocking, 0 Important, 4 Minor; validator runtime 01a1e76f-2293-79a0-9f8f-f060038448dd); no coverage promotion was performed. Current multi-region test mapping: T-001, T-002, T-005\u2013T-013. Current multi-region independent validation: pass-with-warnings. Product-validation and historical-review context: docs/multi-region-validation.md#independent-spec-review. Historical validator run: 4a979a45-b226-4b4c-8dcb-7c5e78aa8351.",
+      "coverage_evidence": "Canonical spec is structurally complete with 15/15 required documentation fields and source/test evidence mapped by requirement. Independent PR #5088 remediation validation completed on claude-code (2026-07-15); coverage remains Partial until post-baseline promotion criteria are satisfied. Migrated on 2026-11-16 from the older ai-docs layout to the source-local repo-standards spec; coverage is carried, not reassessed, and coverage review remains pending. Independent validation on 2026-11-17 passed with warnings (0 Blocking, 0 Important, 4 Minor; validator runtime 01a1e76f-2293-79a0-9f8f-f060038448dd); no coverage promotion was performed.",
       "contracts": {
         "provides": [
           "contact-center-sdk",
@@ -236,7 +236,7 @@
       "path": "src/metrics",
       "canonical_spec": "src/metrics/docs/README.md",
       "coverage_status": "Partial",
-      "coverage_evidence": "Historical baseline: Canonical spec is structurally complete with 15/15 required documentation fields and source/test evidence mapped by requirement. Independent PR #5088 remediation validation completed on claude-code (2026-07-15); coverage remains Partial until post-baseline promotion criteria are satisfied. Migrated on 2026-11-16 from the older ai-docs layout to the source-local repo-standards spec; coverage is carried, not reassessed, and coverage review remains pending. Independent validation on 2026-11-17 passed with warnings (0 Blocking, 0 Important, 4 Minor; validator runtime 01a1e76f-2293-79a0-9f8f-f060038448dd); no coverage promotion was performed. Current multi-region test mapping: T-012, T-013. Current multi-region independent validation: pass-with-warnings. Product-validation and historical-review context: docs/multi-region-validation.md#independent-spec-review. Historical validator run: 4a979a45-b226-4b4c-8dcb-7c5e78aa8351.",
+      "coverage_evidence": "Canonical spec is structurally complete with 15/15 required documentation fields and source/test evidence mapped by requirement. Independent PR #5088 remediation validation completed on claude-code (2026-07-15); coverage remains Partial until post-baseline promotion criteria are satisfied. Migrated on 2026-11-16 from the older ai-docs layout to the source-local repo-standards spec; coverage is carried, not reassessed, and coverage review remains pending. Independent validation on 2026-11-17 passed with warnings (0 Blocking, 0 Important, 4 Minor; validator runtime 01a1e76f-2293-79a0-9f8f-f060038448dd); no coverage promotion was performed.",
       "contracts": {
         "provides": [
           "contact-center-metrics"
@@ -284,7 +284,7 @@
       "path": "src/services",
       "canonical_spec": "src/services/docs/README.md",
       "coverage_status": "Partial",
-      "coverage_evidence": "Historical baseline: Canonical spec is structurally complete with 15/15 required documentation fields and source/test evidence mapped by requirement. Independent PR #5088 remediation validation completed on claude-code (2026-07-15); coverage remains Partial until post-baseline promotion criteria are satisfied. Migrated on 2026-11-16 from the older ai-docs layout to the source-local repo-standards spec; coverage is carried, not reassessed, and coverage review remains pending. Independent validation on 2026-11-17 passed with warnings (0 Blocking, 0 Important, 4 Minor; validator runtime 01a1e76f-2293-79a0-9f8f-f060038448dd); no coverage promotion was performed. Current multi-region test mapping: T-007, T-008, T-009, T-010, T-013. Current multi-region independent validation: pass-with-warnings. Product-validation and historical-review context: docs/multi-region-validation.md#independent-spec-review. Historical validator run: 4a979a45-b226-4b4c-8dcb-7c5e78aa8351.",
+      "coverage_evidence": "Canonical spec is structurally complete with 15/15 required documentation fields and source/test evidence mapped by requirement. Independent PR #5088 remediation validation completed on claude-code (2026-07-15); coverage remains Partial until post-baseline promotion criteria are satisfied. Migrated on 2026-11-16 from the older ai-docs layout to the source-local repo-standards spec; coverage is carried, not reassessed, and coverage review remains pending. Independent validation on 2026-11-17 passed with warnings (0 Blocking, 0 Important, 4 Minor; validator runtime 01a1e76f-2293-79a0-9f8f-f060038448dd); no coverage promotion was performed.",
       "contracts": {
         "provides": [
           "contact-center-services"
@@ -332,7 +332,7 @@
       "path": "src/services/agent",
       "canonical_spec": "src/services/agent/docs/README.md",
       "coverage_status": "Partial",
-      "coverage_evidence": "Historical baseline: Canonical spec is structurally complete with 15/15 required documentation fields and source/test evidence mapped by requirement. Independent PR #5088 remediation validation completed on claude-code (2026-07-15); coverage remains Partial until post-baseline promotion criteria are satisfied. Migrated on 2026-11-16 from the older ai-docs layout to the source-local repo-standards spec; coverage is carried, not reassessed, and coverage review remains pending. Independent validation on 2026-11-17 passed with warnings (0 Blocking, 0 Important, 4 Minor; validator runtime 01a1e76f-2293-79a0-9f8f-f060038448dd); no coverage promotion was performed. Current multi-region test mapping: T-007, T-008, T-011, T-012. Current multi-region independent validation: pass-with-warnings. Product-validation and historical-review context: docs/multi-region-validation.md#independent-spec-review. Historical validator run: 4a979a45-b226-4b4c-8dcb-7c5e78aa8351.",
+      "coverage_evidence": "Canonical spec is structurally complete with 15/15 required documentation fields and source/test evidence mapped by requirement. Independent PR #5088 remediation validation completed on claude-code (2026-07-15); coverage remains Partial until post-baseline promotion criteria are satisfied. Migrated on 2026-11-16 from the older ai-docs layout to the source-local repo-standards spec; coverage is carried, not reassessed, and coverage review remains pending. Independent validation on 2026-11-17 passed with warnings (0 Blocking, 0 Important, 4 Minor; validator runtime 01a1e76f-2293-79a0-9f8f-f060038448dd); no coverage promotion was performed.",
       "contracts": {
         "provides": [
           "contact-center-agent-events"
@@ -380,15 +380,14 @@
       "path": "src/services/config",
       "canonical_spec": "src/services/config/docs/README.md",
       "coverage_status": "Partial",
-      "coverage_evidence": "Historical baseline: Canonical spec is structurally complete with 15/15 required documentation fields and source/test evidence mapped by requirement. Independent PR #5088 remediation validation completed on claude-code (2026-07-15); coverage remains Partial until post-baseline promotion criteria are satisfied. Migrated on 2026-11-16 from the older ai-docs layout to the source-local repo-standards spec; coverage is carried, not reassessed, and coverage review remains pending. Independent validation on 2026-11-17 passed with warnings (0 Blocking, 0 Important, 4 Minor; validator runtime 01a1e76f-2293-79a0-9f8f-f060038448dd); no coverage promotion was performed. Current multi-region test mapping: T-001, T-012. Current multi-region independent validation: pass-with-warnings. Product-validation and historical-review context: docs/multi-region-validation.md#independent-spec-review. Historical validator run: 4a979a45-b226-4b4c-8dcb-7c5e78aa8351.",
+      "coverage_evidence": "Canonical spec is structurally complete with 15/15 required documentation fields and source/test evidence mapped by requirement. Independent PR #5088 remediation validation completed on claude-code (2026-07-15); coverage remains Partial until post-baseline promotion criteria are satisfied. Migrated on 2026-11-16 from the older ai-docs layout to the source-local repo-standards spec; coverage is carried, not reassessed, and coverage review remains pending. Independent validation on 2026-11-17 passed with warnings (0 Blocking, 0 Important, 4 Minor; validator runtime 01a1e76f-2293-79a0-9f8f-f060038448dd); no coverage promotion was performed.",
       "contracts": {
         "provides": [
           "contact-center-cc-events"
         ],
         "requires": [
           "wxcc-api-gateway",
-          "wxcc-websocket-notifications",
-          "contact-center-region-recovery"
+          "wxcc-websocket-notifications"
         ]
       },
       "section_profile": {
@@ -429,7 +428,7 @@
       "path": "src/services/core",
       "canonical_spec": "src/services/core/docs/README.md",
       "coverage_status": "Partial",
-      "coverage_evidence": "Historical baseline: Canonical spec is structurally complete with 15/15 required documentation fields and source/test evidence mapped by requirement. Independent PR #5088 remediation validation completed on claude-code (2026-07-15); coverage remains Partial until post-baseline promotion criteria are satisfied. Migrated on 2026-11-16 from the older ai-docs layout to the source-local repo-standards spec; coverage is carried, not reassessed, and coverage review remains pending. Independent validation on 2026-11-17 passed with warnings (0 Blocking, 0 Important, 4 Minor; validator runtime 01a1e76f-2293-79a0-9f8f-f060038448dd); no coverage promotion was performed. Current multi-region test mapping: T-003, T-004, T-005, T-007, T-008, T-010, T-012, T-013. Historical multi-region independent validation: pass-with-warnings (before this reconciliation). Product-validation and historical-review context: docs/multi-region-validation.md#independent-spec-review. Historical validator run: 34c8c1e5-b794-4a46-9871-0a3de885d548. Current multi-region independent validation: pass-with-warnings. Historical validator run: 4a979a45-b226-4b4c-8dcb-7c5e78aa8351. Coverage remains Partial.",
+      "coverage_evidence": "Canonical spec is structurally complete with 15/15 required documentation fields and source/test evidence mapped by requirement. Independent PR #5088 remediation validation completed on claude-code (2026-07-15); coverage remains Partial until post-baseline promotion criteria are satisfied. Migrated on 2026-11-16 from the older ai-docs layout to the source-local repo-standards spec; coverage is carried, not reassessed, and coverage review remains pending. Independent validation on 2026-11-17 passed with warnings (0 Blocking, 0 Important, 4 Minor; validator runtime 01a1e76f-2293-79a0-9f8f-f060038448dd); no coverage promotion was performed.",
       "contracts": {
         "provides": [
           "contact-center-core-transport"
@@ -480,7 +479,7 @@
       "path": "src/services/task",
       "canonical_spec": "src/services/task/docs/README.md",
       "coverage_status": "Partial",
-      "coverage_evidence": "Historical baseline: Canonical spec is structurally complete with 15/15 required documentation fields and source/test evidence mapped by requirement. Independent PR #5088 remediation validation completed on claude-code (2026-07-15); AI summary method, delivery, enablement, and cleanup updates are pending independent review (2026-10-06); coverage remains Partial until post-baseline promotion criteria are satisfied. Migrated on 2026-11-16 from the older ai-docs layout to the source-local repo-standards spec; coverage is carried, not reassessed, and coverage review remains pending. Independent validation on 2026-11-17 passed with warnings (0 Blocking, 0 Important, 4 Minor; validator runtime 01a1e76f-2293-79a0-9f8f-f060038448dd); no coverage promotion was performed. Current multi-region test mapping: T-008, T-009, T-010, T-013. Historical multi-region independent validation: pass-with-warnings (before this reconciliation). Product-validation and historical-review context: docs/multi-region-validation.md#independent-spec-review. Historical validator run: 34c8c1e5-b794-4a46-9871-0a3de885d548. Current multi-region independent validation: pass-with-warnings. Historical validator run: 4a979a45-b226-4b4c-8dcb-7c5e78aa8351. Coverage remains Partial.",
+      "coverage_evidence": "Canonical spec is structurally complete with 15/15 required documentation fields and source/test evidence mapped by requirement. Independent PR #5088 remediation validation completed on claude-code (2026-07-15); AI summary method, delivery, enablement, and cleanup updates are pending independent review (2026-10-06); coverage remains Partial until post-baseline promotion criteria are satisfied. Migrated on 2026-11-16 from the older ai-docs layout to the source-local repo-standards spec; coverage is carried, not reassessed, and coverage review remains pending. Independent validation on 2026-11-17 passed with warnings (0 Blocking, 0 Important, 4 Minor; validator runtime 01a1e76f-2293-79a0-9f8f-f060038448dd); no coverage promotion was performed.",
       "contracts": {
         "provides": [
           "contact-center-task-events"
@@ -489,8 +488,7 @@
           "wxcc-api-gateway",
           "wxcc-websocket-notifications",
           "webex-calling-sdk",
-          "webex-internal-mercury",
-          "contact-center-region-recovery"
+          "webex-internal-mercury"
         ]
       },
       "section_profile": {
@@ -532,7 +530,7 @@
       "path": "src/services/task/state-machine",
       "canonical_spec": "src/services/task/state-machine/docs/README.md",
       "coverage_status": "Partial",
-      "coverage_evidence": "Historical baseline: Canonical spec is structurally complete with 15/15 required documentation fields and source/test evidence mapped by requirement. Independent PR #5088 remediation validation completed on claude-code (2026-07-15); coverage remains Partial until post-baseline promotion criteria are satisfied. Migrated on 2026-11-16 from the older ai-docs layout to the source-local repo-standards spec; coverage is carried, not reassessed, and coverage review remains pending. Independent validation on 2026-11-17 passed with warnings (0 Blocking, 0 Important, 4 Minor; validator runtime 01a1e76f-2293-79a0-9f8f-f060038448dd); no coverage promotion was performed. Current multi-region test mapping: T-008, T-009. Current multi-region independent validation: pass-with-warnings. Product-validation and historical-review context: docs/multi-region-validation.md#independent-spec-review. Historical validator run: 4a979a45-b226-4b4c-8dcb-7c5e78aa8351.",
+      "coverage_evidence": "Canonical spec is structurally complete with 15/15 required documentation fields and source/test evidence mapped by requirement. Independent PR #5088 remediation validation completed on claude-code (2026-07-15); coverage remains Partial until post-baseline promotion criteria are satisfied. Migrated on 2026-11-16 from the older ai-docs layout to the source-local repo-standards spec; coverage is carried, not reassessed, and coverage review remains pending. Independent validation on 2026-11-17 passed with warnings (0 Blocking, 0 Important, 4 Minor; validator runtime 01a1e76f-2293-79a0-9f8f-f060038448dd); no coverage promotion was performed.",
       "contracts": {
         "provides": [
           "contact-center-task-state-machine"
@@ -1472,21 +1470,20 @@
     ]
   },
   "validation": {
-    "generator_runtime": "codex",
-    "generator_model": "GPT-6",
+    "generator_runtime": "claude-code",
+    "generator_model": "claude-opus-5-5",
     "generator_runtime_source": "host-metadata",
-    "generator_run_id": "01a2070e-dd48-7cf0-95f7-ab83c484adc5",
+    "generator_run_id": "cc-migration-20261116",
     "source_commit": "0b8c34db7f3768b8f5bfd219c73c205b95f8c551",
     "base_ref": "next",
     "minimum_independence": "different-runtime",
     "blocking_severities": [
       "Blocking"
     ],
-    "validator_runtime": "claude-code",
+    "validator_runtime": "01a1e76f-2293-79a0-9f8f-f060038448dd",
     "validator_runtime_source": "invocation-input",
     "runtime_fallback_tier": "different-runtime",
-    "validator_run_id": "d3b64ec8-3ce9-48e1-a9c3-f0f87ac4293e",
-    "validator_model": "claude-sonnet-5-5"
+    "validator_run_id": "01a1e76f-2293-79a0-9f8f-f060038448dd"
   },
   "layout": {
     "sdd_root": ".sdd",

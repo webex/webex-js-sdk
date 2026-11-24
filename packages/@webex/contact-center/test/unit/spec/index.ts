@@ -1,12 +1,10 @@
 import path from 'path';
-import fs from 'fs';
 import ts from 'typescript';
 
 const CONTACT_CENTER_ROOT = path.resolve(__dirname, '../../..');
 const SRC_ROOT = path.join(CONTACT_CENTER_ROOT, 'src');
 const INDEX_PATH = path.join(SRC_ROOT, 'index.ts');
 const TYPES_PATH = path.join(SRC_ROOT, 'types.ts');
-const CONFIG_TYPES_PATH = path.join(SRC_ROOT, 'services/config/types.ts');
 
 const EXPECTED_ROOT_EXPORTS = Object.freeze([
   'REGION_RECOVERY_EVENTS',
@@ -138,98 +136,6 @@ const EXPECTED_ROOT_EXPORTS = Object.freeze([
   'getDefaultUIControls',
   'routingAgent',
 ]);
-
-const EXPECTED_CC_EVENT_CATALOGS = {
-  "CC_AGENT_EVENTS": {
-    "WELCOME": "Welcome",
-    "AGENT_RELOGIN_SUCCESS": "AgentReloginSuccess",
-    "AGENT_RELOGIN_FAILED": "AgentReloginFailed",
-    "AGENT_DN_REGISTERED": "AgentDNRegistered",
-    "AGENT_LOGOUT": "Logout",
-    "AGENT_LOGOUT_SUCCESS": "AgentLogoutSuccess",
-    "AGENT_LOGOUT_FAILED": "AgentLogoutFailed",
-    "AGENT_STATION_LOGIN": "StationLogin",
-    "AGENT_STATION_LOGIN_SUCCESS": "AgentStationLoginSuccess",
-    "AGENT_STATION_LOGIN_FAILED": "AgentStationLoginFailed",
-    "AGENT_STATE_CHANGE": "AgentStateChange",
-    "AGENT_MULTI_LOGIN": "AGENT_MULTI_LOGIN",
-    "AGENT_STATE_CHANGE_SUCCESS": "AgentStateChangeSuccess",
-    "AGENT_STATE_CHANGE_FAILED": "AgentStateChangeFailed",
-    "AGENT_BUDDY_AGENTS": "BuddyAgents",
-    "AGENT_BUDDY_AGENTS_SUCCESS": "BuddyAgents",
-    "AGENT_BUDDY_AGENTS_RETRIEVE_FAILED": "BuddyAgentsRetrieveFailed",
-    "AGENT_CONTACT_RESERVED": "AgentContactReserved",
-    "WELLNESS_BREAK": "WellnessBreak"
-  },
-  "CC_TASK_EVENTS": {
-    "AGENT_CONTACT_ASSIGN_FAILED": "AgentContactAssignFailed",
-    "AGENT_CONTACT_OFFER_RONA": "AgentOfferContactRona",
-    "AGENT_CONTACT_HELD": "AgentContactHeld",
-    "AGENT_CONTACT_HOLD_FAILED": "AgentContactHoldFailed",
-    "AGENT_CONTACT_UNHELD": "AgentContactUnheld",
-    "AGENT_CONTACT_UNHOLD_FAILED": "AgentContactUnHoldFailed",
-    "AGENT_CONSULT_CREATED": "AgentConsultCreated",
-    "AGENT_OFFER_CONSULT": "AgentOfferConsult",
-    "AGENT_CONSULTING": "AgentConsulting",
-    "AGENT_CONSULT_FAILED": "AgentConsultFailed",
-    "AGENT_CTQ_FAILED": "AgentCtqFailed",
-    "AGENT_CTQ_CANCELLED": "AgentCtqCancelled",
-    "AGENT_CTQ_CANCEL_FAILED": "AgentCtqCancelFailed",
-    "AGENT_CONSULT_ENDED": "AgentConsultEnded",
-    "AGENT_CONSULT_END_FAILED": "AgentConsultEndFailed",
-    "AGENT_CONSULT_CONFERENCE_ENDED": "AgentConsultConferenceEnded",
-    "AGENT_CONSULT_CONFERENCING": "AgentConsultConferencing",
-    "AGENT_CONSULT_CONFERENCED": "AgentConsultConferenced",
-    "AGENT_CONSULT_CONFERENCE_FAILED": "AgentConsultConferenceFailed",
-    "PARTICIPANT_JOINED_CONFERENCE": "ParticipantJoinedConference",
-    "PARTICIPANT_LEFT_CONFERENCE": "ParticipantLeftConference",
-    "PARTICIPANT_LEFT_CONFERENCE_FAILED": "ParticipantLeftConferenceFailed",
-    "PARTICIPANT_DROP_CONFERENCE_FAILED": "ParticipantDropConferenceFailed",
-    "AGENT_CONSULT_CONFERENCE_END_FAILED": "AgentConsultConferenceEndFailed",
-    "AGENT_CONFERENCE_TRANSFERRED": "AgentConferenceTransferred",
-    "AGENT_CONFERENCE_TRANSFER_FAILED": "AgentConferenceTransferFailed",
-    "PARTICIPANT_POST_CALL_ACTIVITY": "ParticipantPostCallActivity",
-    "CONSULTED_PARTICIPANT_MOVING": "ConsultedParticipantMoving",
-    "AGENT_BLIND_TRANSFERRED": "AgentBlindTransferred",
-    "AGENT_BLIND_TRANSFER_FAILED": "AgentBlindTransferFailed",
-    "AGENT_VTEAM_TRANSFERRED": "AgentVteamTransferred",
-    "AGENT_VTEAM_TRANSFER_FAILED": "AgentVteamTransferFailed",
-    "AGENT_CONSULT_TRANSFERRING": "AgentConsultTransferring",
-    "AGENT_CONSULT_TRANSFERRED": "AgentConsultTransferred",
-    "AGENT_CONSULT_TRANSFER_FAILED": "AgentConsultTransferFailed",
-    "CONTACT_RECORDING_PAUSED": "ContactRecordingPaused",
-    "CONTACT_RECORDING_STARTED": "ContactRecordingStarted",
-    "CONTACT_RECORDING_PAUSE_FAILED": "ContactRecordingPauseFailed",
-    "CONTACT_RECORDING_RESUMED": "ContactRecordingResumed",
-    "CONTACT_RECORDING_RESUME_FAILED": "ContactRecordingResumeFailed",
-    "CONTACT_ENDED": "ContactEnded",
-    "CONTACT_MERGED": "ContactMerged",
-    "CONTACT_UPDATED": "ContactUpdated",
-    "CONTACT_OWNER_CHANGED": "ContactOwnerChanged",
-    "AGENT_CONTACT_END_FAILED": "AgentContactEndFailed",
-    "AGENT_WRAPUP": "AgentWrapup",
-    "AGENT_WRAPPEDUP": "AgentWrappedUp",
-    "AGENT_WRAPUP_FAILED": "AgentWrapupFailed",
-    "AGENT_OUTBOUND_FAILED": "AgentOutboundFailed",
-    "AGENT_CONTACT": "AgentContact",
-    "AGENT_OFFER_CONTACT": "AgentOfferContact",
-    "AGENT_CONTACT_ASSIGNED": "AgentContactAssigned",
-    "AGENT_CONTACT_UNASSIGNED": "AgentContactUnassigned",
-    "AGENT_INVITE_FAILED": "AgentInviteFailed",
-    "AGENT_OFFER_CAMPAIGN_RESERVATION": "AgentOfferCampaignReservation",
-    "CAMPAIGN_CONTACT_UPDATED": "CampaignContactUpdated",
-    "CAMPAIGN_PREVIEW_ACCEPT_FAILED": "CampaignPreviewAcceptFailed",
-    "CAMPAIGN_PREVIEW_SKIP_FAILED": "CampaignPreviewSkipFailed",
-    "CAMPAIGN_PREVIEW_REMOVE_FAILED": "CampaignPreviewRemoveFailed",
-    "REAL_TIME_TRANSCRIPTION": "REAL_TIME_TRANSCRIPTION",
-    "SUGGESTED_RESPONSE": "SUGGESTED_RESPONSE",
-    "SUGGESTED_RESPONSE_ACKNOWLEDGE": "SUGGESTED_RESPONSE_ACKNOWLEDGE",
-    "POST_CALL_SUMMARY": "POST_CALL_SUMMARY",
-    "MID_CALL_SUMMARY": "MID_CALL_SUMMARY",
-    "FEATURE_ENABLEMENT": "FEATURE_ENABLEMENT",
-    "MID_CALL_SUMMARY_RESPONSE_SUBSEQUENT_AGENT": "MID_CALL_SUMMARY_RESPONSE_SUBSEQUENT_AGENT"
-  }
-} as const;
 
 const INTERNAL_ROOT_EXPORTS = Object.freeze([
   'SYSTEM_EVENTS',
@@ -888,41 +794,6 @@ const resolveSymbol = (checker: ts.TypeChecker, symbol: ts.Symbol | undefined) =
 };
 
 describe('contact-center root public contract', () => {
-  it('T-013 retains the module recovery failure type referenced by emitted Utils declarations', () => {
-    const sourceProgram = createProgram();
-    const program = ts.createProgram(sourceProgram.getRootFileNames(), {
-      ...sourceProgram.getCompilerOptions(), noEmit: false, declaration: true, emitDeclarationOnly: true,
-    });
-    const outputs = new Map<string, string>();
-    const result = program.emit(undefined, (file, content) => outputs.set(file.replace(/\\/g, '/'), content));
-    expect(result.emitSkipped).toBe(false);
-    expect(result.diagnostics).toEqual([]);
-    const coreTypes = [...outputs].find(([file]) => file.endsWith('/services/core/types.d.ts'))?.[1];
-    const utils = [...outputs].find(([file]) => file.endsWith('/services/core/Utils.d.ts'))?.[1];
-    expect(coreTypes).toMatch(/export declare?\s*type RecoveryFailure|export type RecoveryFailure/);
-    expect(utils).toBeDefined();
-    const utilsDeclaration = ts.createSourceFile('Utils.d.ts', utils!, ts.ScriptTarget.Latest, true);
-    const failureImport = utilsDeclaration.statements.find((statement): statement is ts.ImportDeclaration =>
-      ts.isImportDeclaration(statement) && ts.isStringLiteral(statement.moduleSpecifier) &&
-      statement.moduleSpecifier.text === './types'
-    );
-    expect(failureImport?.importClause?.isTypeOnly).toBe(true);
-    const bindings = failureImport?.importClause?.namedBindings;
-    expect(bindings && ts.isNamedImports(bindings)).toBe(true);
-    const recoveryFailure = (bindings as ts.NamedImports).elements.find(
-      element => (element.propertyName ?? element.name).text === 'RecoveryFailure'
-    );
-    expect(recoveryFailure).toBeDefined();
-    const normalize = utilsDeclaration.statements.filter(ts.isVariableStatement)
-      .flatMap(statement => [...statement.declarationList.declarations])
-      .find(declaration => ts.isIdentifier(declaration.name) && declaration.name.text === 'normalizeRecoveryFailure');
-    expect(normalize?.type && ts.isFunctionTypeNode(normalize.type)).toBe(true);
-    const returnType = (normalize!.type as ts.FunctionTypeNode).type;
-    expect(ts.isTypeReferenceNode(returnType)).toBe(true);
-    expect((returnType as ts.TypeReferenceNode).typeName.getText(utilsDeclaration)).toBe(recoveryFailure!.name.text);
-    expect(getRootExportNames(sourceProgram)).not.toContain('RecoveryFailure');
-  });
-
   it('T-013 oldPublicSignaturesVoiceControls', () => {
     const fixture = path.join(CONTACT_CENTER_ROOT, 'test/unit/spec/__legacy_voice_controls.ts');
     const program = createProgram({[fixture]: `
@@ -1027,29 +898,15 @@ describe('contact-center root public contract', () => {
     )).toEqual([]);
   });
 
-  it('T-013 publicCcEventsKeysUnchanged', () => {
-    const fixture = path.join(CONTACT_CENTER_ROOT, 'test/unit/spec/__recovery_event_union.ts');
-    const expectedValues = Object.values(EXPECTED_CC_EVENT_CATALOGS).flatMap(Object.values);
+  it('keeps the backend region-switch event out of the public event catalog', () => {
+    const fixture = path.join(CONTACT_CENTER_ROOT, 'test/unit/spec/__region_event_consumer.ts');
     const program = createProgram({[fixture]: `
+      import {CC_EVENTS} from '../../../src';
       import type {ContactCenterEvents} from '../../../src';
-      type Expected = ${[...new Set(expectedValues)].map((value) => JSON.stringify(value)).join(' | ')};
       type Assert<T extends true> = T;
-      type Exact = Assert<[ContactCenterEvents] extends [Expected] ? [Expected] extends [ContactCenterEvents] ? true : false : false>;
+      type PrivateKey = Assert<'SYSTEM_REGION_SWITCH' extends keyof typeof CC_EVENTS ? false : true>;
+      type PrivateEvent = Assert<'SYSTEM_REGION_SWITCH' extends ContactCenterEvents ? false : true>;
     `});
-
-    Object.entries(EXPECTED_CC_EVENT_CATALOGS).forEach(([name, entries]) => {
-      expect(entriesToObject(getStringLiteralObjectEntries(
-        getObjectLiteralInitializer(getRootExportSymbol(program, name), name)
-      ))).toEqual(entries);
-    });
-    const checker = program.getTypeChecker();
-    const combined = getRootExportSymbol(program, 'CC_EVENTS');
-    const actual = checker.getTypeOfSymbolAtLocation(combined, combined.valueDeclaration!);
-    const entries = actual.getProperties().map((property) => [
-      property.name,
-      (checker.getTypeOfSymbolAtLocation(property, property.valueDeclaration!) as ts.StringLiteralType).value,
-    ]);
-    expect(entriesToObject(entries)).toEqual({...EXPECTED_CC_EVENT_CATALOGS.CC_AGENT_EVENTS, ...EXPECTED_CC_EVENT_CATALOGS.CC_TASK_EVENTS});
     expect(getDiagnosticsForFiles(program, [fixture])).toEqual([]);
   });
 
@@ -1076,15 +933,6 @@ describe('contact-center root public contract', () => {
     expect(getDiagnosticsForFiles(program, [fixture]).map(diagnostic =>
       ts.flattenDiagnosticMessageText(diagnostic.messageText, '\n')
     )).toEqual([]);
-  });
-
-  it('T-013 docContractLinksAndExactHostExample API links', () => {
-    const readme = fs.readFileSync(path.join(CONTACT_CENTER_ROOT, 'README.md'), 'utf8');
-    const guide = fs.readFileSync(path.join(CONTACT_CENTER_ROOT, 'docs/getting-started.md'), 'utf8');
-    expect(readme).toContain('docs/getting-started.md#multi-region-recovery-host-restart');
-    expect(readme).not.toContain('decideRegionRestart');
-    expect(guide.split('<!-- region-recovery-host-example:start -->')).toHaveLength(2);
-    for (const contract of ['RegionRecoveryState', 'RegionRecoveryStatus', 'RegionRecoveryReason', 'RegionAutoAvailableStatus', 'RegionRecoveryErrorCode', 'REL-AQM-TRACKING-ECHO']) expect(guide).toContain(contract);
   });
 
   it('T-013 additiveRecoveryExportsAndTypedConsumer / plainErrorCatalogRoundTrip typed narrowing', () => {

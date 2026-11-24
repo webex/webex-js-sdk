@@ -132,6 +132,24 @@ export default class TaskManager extends EventEmitter {
     this.registerIncomingCallEvent();
   }
 
+  private createTask(data: TaskData): Task {
+    const guard = this.recoveryGuard;
+    const task = TaskFactory.createTask(
+      this.contact,
+      this.webCallingService,
+      data,
+      this.configFlags,
+      this.wrapupData,
+      this.agentId,
+      this.agentName,
+      this.answerCallOnWebexService,
+      this.apiAIAssistant
+    );
+    task.bindRecoveryGuard(guard);
+
+    return task;
+  }
+
   public stopSession(): void {
     this.recoveryGuard = undefined;
     this.webSocketManager.off('message', this.handleWebsocketMessage);
@@ -1328,18 +1346,7 @@ export default class TaskManager extends EventEmitter {
       isConsulted: false,
       isAutoAnswering: false,
     };
-    const task = TaskFactory.createTask(
-      this.contact,
-      this.webCallingService,
-      taskData,
-      this.configFlags,
-      this.recoveryGuard,
-      this.wrapupData,
-      this.agentId,
-      this.agentName,
-      this.answerCallOnWebexService,
-      this.apiAIAssistant
-    );
+    const task = this.createTask(taskData);
 
     this.taskCollection[stableInteractionId] = task;
 
@@ -1437,23 +1444,12 @@ export default class TaskManager extends EventEmitter {
     });
 
     if (!task) {
-      task = TaskFactory.createTask(
-        this.contact,
-        this.webCallingService,
-        {
-          ...payload,
-          wrapUpRequired: false,
-          isConferenceInProgress: false,
-          isAutoAnswering: false,
-        },
-        this.configFlags,
-        this.recoveryGuard,
-        this.wrapupData,
-        this.agentId,
-        this.agentName,
-        this.answerCallOnWebexService,
-        this.apiAIAssistant
-      );
+      task = this.createTask({
+        ...payload,
+        wrapUpRequired: false,
+        isConferenceInProgress: false,
+        isAutoAnswering: false,
+      });
       this.setupTaskListeners(task);
       this.taskCollection[payload.interactionId] = task;
     } else {
@@ -1484,18 +1480,7 @@ export default class TaskManager extends EventEmitter {
       isAutoAnswering: shouldAutoAnswer,
     };
 
-    const task = TaskFactory.createTask(
-      this.contact,
-      this.webCallingService,
-      taskData,
-      this.configFlags,
-      this.recoveryGuard,
-      this.wrapupData,
-      this.agentId,
-      this.agentName,
-      this.answerCallOnWebexService,
-      this.apiAIAssistant
-    );
+    const task = this.createTask(taskData);
 
     this.setupTaskListeners(task);
     this.taskCollection[payload.interactionId] = task;
@@ -1528,18 +1513,7 @@ export default class TaskManager extends EventEmitter {
         isAutoAnswering: shouldAutoAnswer,
       };
 
-      task = TaskFactory.createTask(
-        this.contact,
-        this.webCallingService,
-        taskData,
-        this.configFlags,
-        this.recoveryGuard,
-        this.wrapupData,
-        this.agentId,
-        this.agentName,
-        this.answerCallOnWebexService,
-        this.apiAIAssistant
-      );
+      task = this.createTask(taskData);
       this.setupTaskListeners(task);
       this.taskCollection[payload.interactionId] = task;
     }
@@ -1733,18 +1707,7 @@ export default class TaskManager extends EventEmitter {
         isConsulted: false,
       };
 
-      task = TaskFactory.createTask(
-        this.contact,
-        this.webCallingService,
-        taskData,
-        this.configFlags,
-        this.recoveryGuard,
-        this.wrapupData,
-        this.agentId,
-        this.agentName,
-        this.answerCallOnWebexService,
-        this.apiAIAssistant
-      );
+      task = this.createTask(taskData);
       this.taskCollection[payload.interactionId] = task;
 
       // Transition the new task out of IDLE immediately so UI controls are

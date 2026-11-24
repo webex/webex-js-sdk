@@ -112,11 +112,6 @@ export const DEREGISTER_WEBCALLING_LINE_MSG =
 
 // WebCallingService method names
 export const METHODS = {
-  PERFORM_REGISTRATION_ATTEMPT: 'performRegistrationAttempt',
-  ENSURE_WEB_CALLING_LINE: 'ensureWebCallingLine',
-  START_REGISTRATION_ATTEMPT: 'startRegistrationAttempt',
-  CANCEL_REGISTRATION_ATTEMPT: 'cancelRegistrationAttempt',
-
   SET_LOGIN_OPTION: 'setLoginOption',
   HANDLE_MEDIA_EVENT: 'handleMediaEvent',
   HANDLE_DISCONNECT_EVENT: 'handleDisconnectEvent',

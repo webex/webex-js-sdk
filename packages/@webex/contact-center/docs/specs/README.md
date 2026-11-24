@@ -7,9 +7,9 @@ tags: [specifications, registry]
 <!-- sdd-generated-metadata
 doc_kind: standing-doc
 generated_from: spec-index@0.3.0
-generated_by: codex
+generated_by: claude-code
 approved_by: rarajes2@cisco.com
-updated_at: 2026-11-21T10:35:21Z
+updated_at: 2026-11-17T03:03:58Z
 validation_status: pass-with-warnings
 -->
 
@@ -36,7 +36,7 @@ this package is a library: `package.json` has no start script or deployment desc
 
 ## Instantiated specification registry
 
-| Resource | Role | Canonical path | Owner | Status | Baseline verified |
+| Resource | Role | Canonical path | Owner | Status | Last verified |
 | -------- | ---- | -------------- | ----- | ------ | ------------- |
 | Package | Architecture | `docs/architecture.md` | @webex/web-sdk | Active | 2026-11-16 |
 | Contact Center public plugin | Module | `src/docs/README.md` | @webex/web-sdk | Active | 2026-11-16 |
@@ -66,7 +66,8 @@ this package is a library: `package.json` has no start script or deployment desc
 | ↳ ↳ ↳ `src/services/task/state-machine/` | Own deterministic task lifecycle states, transition guards/actions, typed internal events, and state-derived UI-control availability. | Partial | `src/services/task/state-machine/docs/README.md` |
 | ↳ `src/utils/` | Own shared pagination contracts and the bounded in-memory page cache used by Contact Center data services. | Partial | `src/utils/docs/README.md` |
 
-All nine modules remain `Partial` in `.sdd/manifest.json`. The 2026-11-17 independent review is historical (0 Blocking, 0 Important, 4 Minor).
+All nine modules remain `Partial` in `.sdd/manifest.json`; coverage review is pending. Independent
+validation on 2026-11-17 passed with warnings (0 Blocking, 0 Important, 4 Minor). No coverage promotion was performed.
 
 Three documentation-only correction records from July 2026 (a validator drift fix, a residual-warning
 completion, and a conformance and fidelity remediation) are folded into the nine module specifications.
@@ -94,4 +95,4 @@ state, native source, and owning module, and indexed in the
 [package architecture](../architecture.md#public-and-consumer-surfaces). The published surface is the
 npm package (`contact-center-sdk`, native source `package.json`) and its event enums; the Contact
 Center REST and WebSocket contracts are external and consumed, so the package has no OpenAPI document.
-For `contact-center-region-recovery`, start with the [Contact Center plugin spec](../../src/docs/README.md). Use the Config, Core and Task entries in the Module registry for eligibility, transport and task ownership. See the [package architecture](../architecture.md#release-and-versioning) for rollout and rollback evidence. This page provides navigation and ownership.
+This page provides navigation and ownership rather than a copied contract.

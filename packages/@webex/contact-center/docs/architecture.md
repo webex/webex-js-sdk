@@ -7,9 +7,9 @@ tags: [architecture]
 <!-- sdd-generated-metadata
 doc_kind: standing-doc
 generated_from: architecture@0.3.0
-generated_by: codex
+generated_by: claude-code
 approved_by: rarajes2@cisco.com
-updated_at: 2026-11-21T10:35:21Z
+updated_at: 2026-11-17T03:03:58Z
 validation_status: pass-with-warnings
 -->
 
@@ -164,7 +164,7 @@ the owning module specification linked in the Owner column.
 | Surface | Type | Owner | Consumers | Compatibility policy | Source |
 | ------- | ---- | ----- | --------- | -------------------- | ------ |
 | `contact-center-sdk` — npm package @webex/contact-center: `webex.cc` (`ContactCenter`, implementing `IContactCenter`) with station login, agent state, browser voice state (`getVoiceConnectionState`), buddy agents, queue and entry-point lists, campaign preview, Better Together, and wellness methods; `routingAgent`, `Task`, `AddressBook`, `ApiAIAssistant`, `UserPreference`, `getDefaultUIControls`, the event enums, and the public types Adds REGION_RECOVERY_EVENTS, REGION_RECOVERY_ERROR_CODES and the five public region-recovery types from src/index.ts; existing exports/signatures remain compatible. | SDK, published | [`src`](../src/docs/README.md); data services in [`src/services`](../src/services/docs/README.md); consult and transfer defaults in [ADR-0002](adr/0002-consult-transfer-list-policy.md) | Agent desktop applications, the Contact Center sample, widgets | Public, semver: removals, renames, payload reinterpretation, or semantic breaks need a major version | `package.json` |
-| `contact-center-region-recovery` — Published region:stateChange complete snapshots (RegionRecoveryState, RegionRecoveryStatus, RegionRecoveryReason, RegionAutoAvailableStatus), REGION_RECOVERY_EVENTS and plain Error data.reason codes (REGION_RECOVERY_ERROR_CODES, RegionRecoveryErrorCode); additive exports in src/index.ts. Specified in src/docs/README.md. | Event, published | [`src`](../src/docs/README.md) | `src/services/config`, `src/services/core`, `src/services/task` | Additive snapshot and error-reason contract | `src/types.ts` (repository-path) |
+| `contact-center-region-recovery` — Complete `region:stateChange` snapshots and recovery error reasons. | Event, published | [`src`](../src/docs/README.md) | Applications and `src/services/core` | Additive snapshot and error-reason contract | `src/types.ts` |
 | `contact-center-cc-events` — `CC_EVENTS`, `CC_AGENT_EVENTS` (including `WELLNESS_BREAK`), `CC_TASK_EVENTS`, `VOICE_CONNECTION_EVENTS` (`voice:connectionStateChange`) | Event, published | [`src/services/config`](../src/services/config/docs/README.md); emission by ContactCenter in [`src`](../src/docs/README.md) | Applications; AqmReqs, ContactCenter, and TaskManager | Additive; values equal backend message names | `src/services/config/types.ts` |
 | `contact-center-agent-events` — `AGENT_EVENTS` (`agent:*`) and agent request and response types | Event, published | [`src/services/agent`](../src/services/agent/docs/README.md) | Applications | Additive constants | `src/services/agent/types.ts` |
 | `contact-center-task-events` — `TASK_EVENTS` (`task:*`, including `task:hydrate`, `task:wrapup`, `task:midCallSummaryReceived`, `task:wxapp-mute-state-updated`), `TaskData`, `TaskResponse`, and task payload types | Event, published | [`src/services/task`](../src/services/task/docs/README.md) | Applications holding `ITask` objects | Additive constants; semantic extensions keep existing event names | `src/services/task/types.ts` |
@@ -228,7 +228,7 @@ Package compatibility and event-loop safety are primary: published exports/types
 |---|---|---|
 | Unit coverage | 85% branches/functions/lines/statements | package Jest configuration |
 | Operation duration/success/failure | no local numeric SLO routed | MetricsManager event taxonomy |
-| Connection recovery | ordinary 8s loss detection, 5s retry slots and fixed 50s watchdog. Region recovery has separate pacing and no ordinary watchdog | Core constants/ConnectionService |
+| Connection recovery | Ordinary 8s loss detection, 5s retry slots, and a 50s default watchdog. Region recovery uses separate pacing. | Core constants/ConnectionService |
 
 <!-- Include if: repository resources call, import, or exchange events with one another. [condition-id: repo.components_interact] -->
 

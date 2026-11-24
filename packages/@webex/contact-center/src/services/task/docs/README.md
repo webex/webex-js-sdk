@@ -7,9 +7,9 @@ tags: [module, specification]
 <!-- sdd-generated-metadata
 doc_kind: module-spec
 generated_from: module-spec@0.3.0
-generated_by: codex
+generated_by: claude-code
 approved_by: rarajes2@cisco.com
-updated_at: 2026-11-23T05:53:55Z
+updated_at: 2026-11-17T03:03:58Z
 validation_status: pass-with-warnings
 -->
 
@@ -34,12 +34,12 @@ Related context: [documentation index](../../../../docs/index.md) ·
 | Source path       | `src/services/task` |
 | Resource kind     | module |
 | Status            | Active |
-| Last verified     | Historical baseline: 2026-11-16 at `0b8c34db7f` |
+| Last verified     | 2026-11-16 at `0b8c34db7f` |
 | Module id         | `task` |
 | Parent spec       | [Services specification](../../docs/README.md) |
 | Doc kind          | Module spec |
 | Coverage score    | Pending coverage assessment |
-| Validation status | pass-with-warnings — assessed 2026-11-23 by Claude Code. 0 blocking findings and 13 nonblocking findings. Historical baseline: pass-with-warnings, assessed 2026-11-17; validator 01a1e76f-2293-79a0-9f8f-f060038448dd; 0 Blocking, 0 Important, 4 Minor. Historical 2026-11-22 review: 4a979a45-b226-4b4c-8dcb-7c5e78aa8351. Historical results do not certify this revision. |
+| Validation status | pass-with-warnings — assessed 2026-11-17; validator runtime 01a1e76f-2293-79a0-9f8f-f060038448dd; 0 Blocking, 0 Important, 4 Minor findings. |
 
 ## Applicability
 
@@ -438,19 +438,6 @@ Stack: TypeScript 5.4, EventEmitter, XState 5, @webex/calling, AQM/WebSocket int
 | TASK-R-013 | Summary requests require both the organization-level generated-summary flag (`ApiAIAssistant.aiFeature.generatedSummaries.wrapUpSummariesEnabled` or `consultTransferSummariesEnabled`; missing flags disable the corresponding request) and the task-level feature enablement flag (`aiSummaryCapabilities`). A request resolves only after the event POST succeeds and the matching RTD payload arrives within `AI_SUMMARY_DURATION_MS` (15000 ms); otherwise it rejects with `POST_CALL_SUMMARY_DISABLED`, `MID_CALL_SUMMARY_DISABLED`, `POST_CALL_SUMMARY_TIMEOUT`, `MID_CALL_SUMMARY_TIMEOUT`, or the transport error. | The `AI_SUMMARY_DURATION_MS` comment in `constants.ts` fixes the RTD result deadline at 15 seconds while the initiating HTTP acknowledgement keeps the 20-second service timeout; a summary must never be requested for an organization or task that has not enabled it. | `src/services/task/Task.ts`, `src/services/task/constants.ts`, `src/services/ApiAiAssistant.ts` | `test/unit/spec/services/task/Task.ts`, `test/unit/spec/services/ApiAiAssistant.ts` | None. | Present |
 | TASK-R-014 | TaskManager buffers RTD feature-enablement frames that arrive before their task exists and receiving-agent summaries that arrive before the task exists or leaves `IDLE` or `OFFERED` (latest summary per conversation, no expiry timer); it applies the flags when the task is created or re-keyed, emits `task:midCallSummaryReceived` once the task is answered, drops a held summary when an unanswered task is removed, and empties both maps in `clearAISummaryState()`. Task-level feature flags survive `updateTaskData()`, including interaction ID changes during consults or task re-keying, remain available throughout wrapup for post-call summary requests, and are cleared when the task is removed or the session is cleaned up. | The code comments state that RTD feature frames can arrive before AQM creates the task and that a receiving summary is emitted only once the task is answered; an unanswered offer's summary must be dropped instead of emitted. | `src/services/task/TaskManager.ts`, `src/services/task/Task.ts` | `test/unit/spec/services/task/TaskManager.ts` | No expiry bounds the buffers; they are cleared only by delivery, removal, or session cleanup. | Present |
 | TASK-R-015 | Existing task operations carry a generation-owned guard and interruption signal. Before admitting replacement work, the owner invalidates stale Tasks, removes them from the collection, and cleans call/media resources and AI summary state. If the replacement socket is lost before adoption, Tasks hydrated during that attempt are retired. The next attempt opens a new Task lifetime after Welcome. Old Task actions fail with `STALE_TASK` or a current recovery admission reason. | Hosts may retain old objects across transport recovery. Those objects must not act on a newer station. | `src/services/task/Task.ts`, `src/services/task/TaskManager.ts`, `src/services/task/TaskFactory.ts`, `src/services/task/types.ts`, `src/cc.ts` | `test/unit/spec/services/task/Task.ts`, `test/unit/spec/services/task/TaskManager.ts`, `test/unit/spec/cc.ts` | T-008, T-009, T-010, T-013. The internal `TaskRecoveryGuard` has no root package export. | PRESENT |
-| TASK-R-016 | Preserve both Task trust boundaries: `requestRealTimeTranscripts(eventType: string, interactionId: string): void` sends only mapped START/STOP actions when an AI Assistant exists, realtime transcripts are explicitly enabled, and the typed identifier is non-empty after trimming; a blank identifier is logged and ignored without `sendEvent`. `isEpDnConsultPendingConferenceMerge(taskData, selfAgentId): boolean` uses fixed, case-sensitive comparisons of remote state/consult/customer-left fields and the participant/ownership gates described under Participant departure and merge. Unexpected values cannot themselves satisfy those comparisons. | Untrusted realtime data must not dispatch blank transcript identifiers or coerce arbitrary state strings into EP-DN merge evidence. | `src/services/task/TaskManager.ts` (requestRealTimeTranscripts), `src/services/task/TaskUtils.ts` (isEpDnConsultPendingConferenceMerge), `src/services/task/state-machine/constants.ts` | `test/unit/spec/services/task/TaskManager.ts` transcript start/stop, blank/trimmed ID and disabled-feature cases; `test/unit/spec/services/task/TaskUtils.ts` valid/unexpected merge-field cases | The typed transcript helper assumes a string before `.trim()`; these tests do not establish handling of runtime non-string input. The merge helper compares state fields directly; it does not broadly normalize them. | PRESENT |
-
-### Source reconciliation
-
-The authorized `review_fix_plan_00002__rf2_canonical_source_fidelity` reconciliation (2026-11-22)
-preserves both clauses from commit `37524c29e2` under the unused TASK-R-016 and extends their
-canonical test mapping. Existing canonical TASK-R-012 retains its data-reconciliation meaning.
-The retired source remains deleted; historical inventories and archived reviews remain provenance.
-
-| File-qualified legacy requirement at `37524c29e2` | Canonical requirement in this document | Preserved meaning / precision |
-| --- | --- | --- |
-| `packages/@webex/contact-center/src/services/task/ai-docs/task-spec.md#TASK-R-012` (transcript clause) | TASK-R-016, INV-007 | Enabled transcript requests require a nonblank trimmed identifier; blank requests log and return without dispatch. Disabled/unmapped requests return silently. |
-| `packages/@webex/contact-center/src/services/task/ai-docs/task-spec.md#TASK-R-012` (EP-DN clause) | TASK-R-016, INV-008 | Fixed comparisons and independent participant/owner evidence bound the merge decision. The legacy “normalizes ... against fixed allow-sets” wording is expressed as the actual exact comparisons below. |
 
 ## Design overview
 
@@ -463,7 +450,7 @@ state engine enforce capability differences.
 
 ### Task creation and state machine initialization
 
-`TaskFactory.createTask(contact, webCallingService, data, configFlags, recoveryGuard, wrapupData?, agentId?, agentName?, answerCallOnWebexService?, apiAIAssistant?)`
+`TaskFactory.createTask(contact, webCallingService, data, configFlags, wrapupData?, agentId?, agentName?, answerCallOnWebexService?, apiAIAssistant?)`
 returns a `Task`:
 
 - Chooses `WebRTC` vs `Voice` for `MEDIA_CHANNEL.TELEPHONY` based on `webCallingService.loginOption`.
@@ -472,6 +459,8 @@ returns a `Task`:
 - A missing `interaction.mediaType` defaults to telephony; `configFlags` supplies `isEndTaskEnabled`,
   `isEndConsultEnabled`, `enableWxBetterTogether`, and the `consultTransfer` Desktop Profile policy,
   and `callProcessingDetails.pauseResumeEnabled` (default true) sets `isRecordingEnabled` for voice.
+
+TaskManager binds its current recovery guard to the returned Task before hydration or delivery.
 
 | Channel | Description |
 | ------- | ----------- |
@@ -654,24 +643,6 @@ This module's part of a departure is the correlation above and the `wrapUpRequir
 departed, and the consult-end outcomes for consultees and consult initiators are specified in the
 [state machine specification](../state-machine/docs/README.md) (contract `contact-center-task-state-machine`).
 
-`TaskUtils.isEpDnConsultPendingConferenceMerge` (TASK-R-016) requires an interaction, self agent ID,
-and main-call ID; terminal `AGENT_CONSULT_ENDED`/`AGENT_CONSULT_CONFERENCE_ENDED` events, more than
-one counted main-call conference participant, `isConsulted === true`, or self `consultState ===
-'consultCompleted'` return false. An active EP-DN participant must be on a consult media leg and
-absent from the main leg. Only its `pType` is uppercased for comparison with `EP-DN`, `EP_DN`, or `DN`.
-The remaining remote fields use direct, case-sensitive comparisons:
-
-- Conference evidence is `interaction.state === 'conference'`, `getIsConferenceInProgress(taskData)`,
-  or `interaction.state === 'post_call'` with customer-left evidence. Customer-left evidence is
-  `callProcessingDetails.hasCustomerLeft === 'true'` or no active customer on the main call according
-  to `getIsCustomerInCall`; boolean true does not itself satisfy the string comparison.
-- Self must be `consultingAgentId`, interaction owner, or have `consultState` exactly `consulting`,
-  `conferencing`, or `consultInitiated`.
-
-There is no general case folding/coercion or global allow-set rejection for these three fields.
-An unexpected field cannot supply a matching comparison, but independent participant or ownership
-evidence can still satisfy an alternative branch. Payload normalization elsewhere is a separate step.
-
 ### Contact owner change propagation
 
 Owner-change propagation preserves the behavior required by Participant Drop: when the backend
@@ -742,12 +713,6 @@ TaskManager also sends a `GET_TRANSCRIPTS` custom event with action `START` (on 
 `ParticipantLeftConference`) when `aiFeature.realtimeTranscripts.enable` is true; failures are logged
 and do not interrupt event processing.
 
-`requestRealTimeTranscripts` returns silently for an unmapped event, missing AI Assistant, or a
-feature flag other than true. For its typed string identifier it calls `.trim()` first; an empty
-result logs `Rejected transcript START event with invalid interactionId` (or STOP) with fixed
-module/method metadata and returns without sending. A valid request sends the trimmed ID,
-`CUSTOM_EVENT`, `GET_TRANSCRIPTS`, and the mapped action to `apiAIAssistant.sendEvent`; an async
-send failure is logged. Local rejection means a void return, not a rejected Promise (TASK-R-016).
 
 ### AI summary delivery
 
@@ -1313,7 +1278,7 @@ classDiagram
     }
 
     class TaskFactory {
-      + createTask(contact, webCallingService, data, configFlags, recoveryGuard, wrapupData, agentId, agentName, answerCallOnWebexService, apiAIAssistant) Task
+      + createTask(contact, webCallingService, data, configFlags, wrapupData, agentId, agentName, answerCallOnWebexService, apiAIAssistant) Task
     }
 
     class TaskManager {
@@ -1432,8 +1397,6 @@ task.on('task:wrappedup', () => {
 | `INV-004` | One Task object per interaction: TaskManager never replaces an existing task with a new one; aliases of one object are deduplicated and removed together. | TASK-R-004, TASK-R-010 | `src/services/task/TaskManager.ts` | `test/unit/spec/services/task/TaskManager.ts` |
 | `INV-005` | The SDK never elects a conference owner; owner changes come only from backend payloads. | TASK-R-010 | `src/services/task/TaskManager.ts` | `test/unit/spec/services/task/TaskManager.ts` |
 | `INV-006` | `wrapUpRequired` is stamped once at ingress for the four wrap-up events, before data update and mapping. | TASK-R-011 | `src/services/task/TaskManager.ts` | `test/unit/spec/services/task/TaskManager.ts` |
-| `INV-007` | A transcript event requires an available AI Assistant, mapped action, explicit realtime enablement, and a nonblank trimmed string ID; a blank typed ID logs and never dispatches. | TASK-R-016 | `src/services/task/TaskManager.ts` | `test/unit/spec/services/task/TaskManager.ts` transcript start/stop, blank/trimmed ID and disabled-feature cases |
-| `INV-008` | EP-DN merge state evidence uses exact conference/post_call, consult-state and string 'true' comparisons plus independent participant/ownership gates; unexpected remote values cannot coerce those comparisons to true. | TASK-R-016 | `src/services/task/TaskUtils.ts` | `test/unit/spec/services/task/TaskUtils.ts` valid and unexpected server-field cases |
 
 ## Concurrency and reactive flow
 
@@ -1600,8 +1563,6 @@ Use `test/unit/spec/services/task/Task.ts`, `TaskFactory.ts`, `TaskManager.ts`, 
 | `TASK-R-012` | Unit | `test/unit/spec/services/task/Task.ts` stale media and participants case | `test/unit/spec/services/task/Task.ts` partial-update case | `normalizeTaskData` has no dedicated suite |
 | `TASK-R-013` | Unit | `test/unit/spec/services/task/Task.ts` (Task AI summary APIs), `test/unit/spec/services/ApiAiAssistant.ts` | `test/unit/spec/services/task/Task.ts` disabled and timeout cases | None |
 | `TASK-R-014` | Unit | `test/unit/spec/services/task/TaskManager.ts` | `test/unit/spec/services/task/TaskManager.ts` case dropping a receiving summary held for a ringing task | No expiry bounds the pending maps |
-| `TASK-R-016`, `INV-007` | Unit | `test/unit/spec/services/task/TaskManager.ts` should invoke sendEvent for configured start/stop backend events asserts six sends and START/STOP payloads; requestRealTimeTranscripts trims whitespace from interactionId before sending asserts the trimmed ID | `test/unit/spec/services/task/TaskManager.ts` requestRealTimeTranscripts rejects invalid interactionId passes whitespace and asserts no send; should not invoke sendEvent when realtime transcripts are disabled in aiFeature asserts no dispatch | No direct assertion of the blank-ID log or runtime non-string input; the helper's string parameter is a precondition |
-| `TASK-R-016`, `INV-008` | Unit | `test/unit/spec/services/task/TaskUtils.ts` merge decision preserved for valid values supplies post_call, string 'true', conferencing and an active EP-DN consult leg, expecting true | `test/unit/spec/services/task/TaskUtils.ts` merge decision ignores unexpected server field values supplies bogus state/consultState and 'maybe', expecting false | The two cases do not isolate every comparison or independently prove every alternate participant/owner branch |
 
 The focused TaskManager tests cover owner-changing versus data-only
 `ContactUpdated`, exact and child-keyed correlation, collection-key and
@@ -1611,21 +1572,7 @@ later `AgentContact` and `ContactMerged` reuse, exact-child/main-task collision
 protection, and both owner-change/participant-left orders (the Contact owner propagation block of
 `test/unit/spec/services/task/TaskManager.ts`).
 
-Unit tests run with `yarn workspace @webex/contact-center test:unit` from the workspace root. The
-historical 2026-11-16 Jest run passed 191 tests in `TaskManager.ts`, 105 in `Task.ts`, 92 in
-`voice/Voice.ts`, and 6 in `TaskFactory.ts`; coverage measurement and independent validation had not
-yet run at that snapshot. A module specification is complete only when its public surface,
-invariants, failure modes, and test evidence agree with the implementation. Module coverage remains
-Partial under `.sdd/manifest.json`; independent semantic approval does not itself satisfy coverage
-review and promotion criteria.
-
-The 2026-11-22 source reconciliation above and earlier test/review results are historical evidence,
-including their findings and warnings. Current semantic validation is recorded in `validation_status`
-and the Validation status row above, supported by flow-owned evidence bound to the final source/spec
-bytes. Historical review fingerprints, run IDs, archived artifacts, and focused regressions alone
-do not certify a changed revision.
-
-Body-text edits are new specification inputs. After a substantive source or specification change,
-the existing validation flow must invalidate prior current approval and independently validate the
-final source/spec bytes before projecting a new result. Changes to specification body text cannot
-be classified as an automatic metadata-only projection.
+Unit tests run with `yarn workspace @webex/contact-center test:unit` from the workspace root. On 2026-11-16 jest ran 191 tests in `TaskManager.ts`, 105 in `Task.ts`, 92 in
+`voice/Voice.ts`, and 6 in `TaskFactory.ts`, all passing. Coverage measurement and independent
+validation are pending. A module specification is complete only when its public surface, invariants,
+failure modes, and test evidence agree with the implementation.

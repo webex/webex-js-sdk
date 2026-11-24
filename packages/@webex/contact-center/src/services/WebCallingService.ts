@@ -517,7 +517,7 @@ export default class WebCallingService extends EventEmitter {
         try {
           LoggerProxy.error('Web calling preserve registration failed', {
             module: WEB_CALLING_SERVICE_FILE,
-            method: METHODS.ENSURE_WEB_CALLING_LINE,
+            method: METHODS.REGISTER_WEB_CALLING_LINE,
           });
         } catch {
           // Diagnostics must not reject the observed completion.
@@ -527,7 +527,7 @@ export default class WebCallingService extends EventEmitter {
       try {
         LoggerProxy.error('Unable to ensure web calling line', {
           module: WEB_CALLING_SERVICE_FILE,
-          method: METHODS.ENSURE_WEB_CALLING_LINE,
+          method: METHODS.REGISTER_WEB_CALLING_LINE,
         });
       } catch {
         // Uncertain calling ownership is delegated; station acceptance stays independent.

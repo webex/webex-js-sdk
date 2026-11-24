@@ -1,18 +1,6 @@
 import * as Agent from '../agent/types';
 import {COLLABORATION_ACCESS} from './constants';
 
-/** @internal Organization-settings wire records do not certify entitlement values. */
-export type OrganizationSettingsWireRecord = {
-  id?: unknown;
-  licenseVersion?: unknown;
-  multiRegionEnabled?: unknown;
-  homeRegion?: unknown;
-  [field: string]: unknown;
-};
-
-/** @internal Body of the authoritative organization-settings response. */
-export type OrganizationSettingsResponse = OrganizationSettingsWireRecord[];
-
 /** Confirmed entitlement; retained for Config declarations, without a root API export. */
 export type MultiRegionSettings =
   | {eligibility: 'enabled'; homeRegion?: string}
