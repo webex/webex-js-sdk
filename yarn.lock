@@ -12075,7 +12075,7 @@ __metadata:
   languageName: node
   linkType: hard
 
-"body-parser@npm:^1.19.0, body-parser@npm:~1.20.3":
+"body-parser@npm:^1.19.0, body-parser@npm:~1.20.5":
   version: 1.20.9
   resolution: "body-parser@npm:1.20.9"
   dependencies:
@@ -17674,12 +17674,12 @@ __metadata:
   linkType: hard
 
 "express@npm:^4.14.0, express@npm:^4.17.3, express@npm:^4.19.2, express@npm:^4.21.1":
-  version: 4.22.1
-  resolution: "express@npm:4.22.1"
+  version: 4.22.3
+  resolution: "express@npm:4.22.3"
   dependencies:
     accepts: ~1.3.8
     array-flatten: 1.1.1
-    body-parser: ~1.20.3
+    body-parser: ~1.20.5
     content-disposition: ~0.5.4
     content-type: ~1.0.4
     cookie: ~0.7.1
@@ -17696,9 +17696,9 @@ __metadata:
     methods: ~1.1.2
     on-finished: ~2.4.1
     parseurl: ~1.3.3
-    path-to-regexp: ~0.1.12
+    path-to-regexp: ~0.1.13
     proxy-addr: ~2.0.7
-    qs: ~6.14.0
+    qs: ~6.16.0
     range-parser: ~1.2.1
     safe-buffer: 5.2.1
     send: ~0.19.0
@@ -17708,7 +17708,7 @@ __metadata:
     type-is: ~1.6.18
     utils-merge: 1.0.1
     vary: ~1.1.2
-  checksum: 38fd76585f6a2394e02d499f852fc70c94c9b1527bd5812eb5ee45c23b7f1297baaf13c55162253b14c1e36939b8401429d6594095e63d01ca77447dac72894e
+  checksum: 847cc2c07e21a0c49de44e213628f057b836cba30f766cbf44b18827b8aedf62cce88cca34392e1f46ce2af155c8fae9f3f8473a8b924c79d5d410bfb2cdfc1e
   languageName: node
   linkType: hard
 
@@ -27770,7 +27770,7 @@ __metadata:
   languageName: node
   linkType: hard
 
-"path-to-regexp@npm:~0.1.12":
+"path-to-regexp@npm:~0.1.13":
   version: 0.1.13
   resolution: "path-to-regexp@npm:0.1.13"
   checksum: 0bf61c6068a0d92dbd3c2f4b24a9b8f153be2d8ec13c99bb7a45f31e5f7e153b91811e63b895ac9e0942ae16890ee15526e842f6f1b4920aa01335f94f6ce58e
@@ -28564,15 +28564,6 @@ __metadata:
     es-define-property: ^1.0.1
     side-channel: ^1.1.1
   checksum: ec7b5f2f622e86d65d74110c1e9f92302dbb813b2e10cd4f22677338baf4f8fd1e2fc82d0fcc6444951ac66ca6c083da18ce50ca6690c79ba7e5acc7545c899f
-  languageName: node
-  linkType: hard
-
-"qs@npm:~6.14.0":
-  version: 6.14.3
-  resolution: "qs@npm:6.14.3"
-  dependencies:
-    side-channel: ^1.1.1
-  checksum: 9d1be835b73da02bb8fb73ca305ebaaabbda412ff08e0f0a4272961a50160526927171cc08a30b3b874ba4a71ca2c2da94a60e65693e9e4957bdcbdc73334edc
   languageName: node
   linkType: hard
 
