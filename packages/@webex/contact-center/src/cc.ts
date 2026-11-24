@@ -2889,14 +2889,19 @@ export default class ContactCenter extends WebexPlugin implements IContactCenter
           );
 
           // Split telephony from other channels if browser login needs WebRTC line first.
-          // When browser voice is not required (e.g. disableWebRTCRegistration: true),
-          // skip the deferral — isVoiceReady() is false but no local line is needed,
-          // so setAgentState() would permit immediate recovery.
+          // Voice re-registration was just kicked off (fire-and-forget above).
+          // Don't trust isVoiceReady() — the old line's READY state hasn't been
+          // invalidated yet (cleanupWebCallingRegistration is async, and
+          // updateVoiceConnectionState(CONNECTING) runs only after its await).
+          // Always defer telephony on BROWSER with voice required; when voice is
+          // NOT required (e.g. disableWebRTCRegistration: true), skip the deferral
+          // because no local line is needed and setAgentState() permits immediate
+          // recovery.  Matches the desktop pattern where handleChannelReloginSuccess
+          // checks isWebrtcDeviceDisconnectedOrDenied() rather than line readiness.
           const deviceTypeStr = (this.agentConfig?.deviceType as string) ?? '';
           const webRtcRegistered =
             deviceTypeStr !== LoginOption.BROWSER ||
-            !this.webCallingService?.isBrowserVoiceRequired() ||
-            Boolean(this.webCallingService?.isVoiceReady());
+            !this.webCallingService?.isBrowserVoiceRequired();
           const {immediate, deferred} = this.splitTelephonyRecovery(
             disconnectedChannelTypes,
             deviceTypeStr,
