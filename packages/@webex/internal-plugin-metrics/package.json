@@ -52,7 +52,6 @@
     "deploy:npm": "yarn npm publish",
     "test": "yarn test:style && yarn test:unit && yarn test:integration && yarn test:browser",
     "test:style": "eslint ./src/**/*.*",
-    "test:syntax": "yarn run -T tsc --noEmit --strict --skipLibCheck --types node --moduleResolution node --target ES2020 test/type-checks/client-events.ts",
     "test:unit": "webex-legacy-tools test --unit --runner mocha"
   }
 }

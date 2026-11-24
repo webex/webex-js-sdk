@@ -1,15 +1,20 @@
+import {createRequire} from 'module';
+import path from 'path';
+import {assert} from '@webex/test-helper-chai';
+
+const clientEventFixture = `
 import type {
   AuthClientEventOptions,
   CallDiagnosticMetrics,
   ClientEvent,
   NewMetrics,
   SubmitClientEvent,
-} from '../../dist/types';
+} from '../dist/types';
 import type {
   BuildClientEventFetchRequestOptions,
   DelayedClientEvent,
   FeatureEvent,
-} from '../../dist/types/metrics.types';
+} from '../dist/types/metrics.types';
 
 declare const metrics: NewMetrics;
 declare const diagnostics: CallDiagnosticMetrics;
@@ -72,3 +77,37 @@ diagnostics.submitClientEvent({name, options: invalidSubClientType});
 buildClientEventFetchRequestOptions({name, options: invalidNetworkType});
 // @ts-expect-error The diagnostic builder also requires the auth correlation ID.
 diagnostics.buildClientEventFetchRequestOptions({name, options: {diagnosticType: 'auth'}});
+`;
+
+describe('client event types', () => {
+  it('preserves legacy client calls and checks explicit auth options', () => {
+    const packageRoot = path.resolve(__dirname, '../../..');
+    const sdkRequire = createRequire(path.resolve(packageRoot, '../../../package.json'));
+    const ts: typeof import('typescript') = sdkRequire('typescript');
+    const configPath = path.join(packageRoot, 'tsconfig.json');
+    const {config, error} = ts.readConfigFile(configPath, ts.sys.readFile);
+
+    assert.isUndefined(error, error && ts.flattenDiagnosticMessageText(error.messageText, '\n'));
+
+    const {options, errors} = ts.parseJsonConfigFileContent(
+      config,
+      ts.sys,
+      packageRoot,
+      {noEmit: true, emitDeclarationOnly: false},
+      configPath
+    );
+    const fixturePath = path.join(packageRoot, 'test/client-events.ts');
+    const host = ts.createCompilerHost(options);
+    const {getSourceFile} = host;
+
+    host.getSourceFile = (fileName, languageVersion, ...args) =>
+      path.resolve(fileName) === fixturePath
+        ? ts.createSourceFile(fileName, clientEventFixture, languageVersion)
+        : getSourceFile(fileName, languageVersion, ...args);
+
+    const program = ts.createProgram([fixturePath], options, host);
+    const diagnostics = [...errors, ...ts.getPreEmitDiagnostics(program)];
+
+    assert.equal(diagnostics.length, 0, ts.formatDiagnostics(diagnostics, host));
+  });
+});
