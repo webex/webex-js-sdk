@@ -28356,16 +28356,7 @@ __metadata:
   languageName: node
   linkType: hard
 
-"qs@npm:^6.12.3, qs@npm:^6.14.1, qs@npm:^6.5.1, qs@npm:^6.7.3":
-  version: 6.15.0
-  resolution: "qs@npm:6.15.0"
-  dependencies:
-    side-channel: ^1.1.0
-  checksum: 65e797e3747fa1092e062da7b3e0684a9194e07ccab3a9467d416d2579d2feab0adf3aa4b94446e9f69ba7426589a8728f78a10a549308c97563a79d1c0d8595
-  languageName: node
-  linkType: hard
-
-"qs@npm:^6.15.2":
+"qs@npm:^6.12.3, qs@npm:^6.14.1, qs@npm:^6.15.2, qs@npm:^6.5.1, qs@npm:^6.7.3":
   version: 6.17.1
   resolution: "qs@npm:6.17.1"
   dependencies:
@@ -28376,11 +28367,11 @@ __metadata:
   linkType: hard
 
 "qs@npm:~6.14.0":
-  version: 6.14.2
-  resolution: "qs@npm:6.14.2"
+  version: 6.14.3
+  resolution: "qs@npm:6.14.3"
   dependencies:
-    side-channel: ^1.1.0
-  checksum: e613d0b8d02cec33c20d1a6015ec2a5db614bf3dd2ffd9bde08bc34a76419213f291c91fb00519a3d8a74e4727f565b350f8394f9d381bc64e6da663d9e031d4
+    side-channel: ^1.1.1
+  checksum: 9d1be835b73da02bb8fb73ca305ebaaabbda412ff08e0f0a4272961a50160526927171cc08a30b3b874ba4a71ca2c2da94a60e65693e9e4957bdcbdc73334edc
   languageName: node
   linkType: hard
 
