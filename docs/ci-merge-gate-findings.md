@@ -81,7 +81,8 @@ For additional confirmation, GitHub's GraphQL API was queried for each
 prefixed test checks returned `false` after restoring the original settings.
 There were no separate commit statuses bridging the shorter names on that SHA.
 
-The settings therefore match direct runs, but the successful prefixed checks
+The controlled draft experiments in section 5 independently reproduce these
+API classifications. The settings therefore match direct runs, but the successful prefixed checks
 from the push path do not satisfy those configured names. This can leave the
 required shorter checks expected/pending despite a green workflow run.
 
@@ -124,6 +125,127 @@ Consequently, these are separate questions:
 3. Are the PR's other merge requirements satisfied?
 
 See [GitHub's required-check troubleshooting guidance](https://docs.github.com/en/pull-requests/how-tos/merge-and-close-pull-requests/troubleshooting-required-status-checks).
+
+## 5. Controlled draft PR experiments
+
+Three disposable draft PRs were opened as **Coread**, all based on `next` at
+`a79d396337`. No merge was attempted. No workflow or branch protection setting
+was changed for these experiments. The probe PRs are explicitly marked **DO NOT
+MERGE** and should be closed after maintainer review.
+
+The docs probe changes one Markdown file. Each test probe initially adds four
+files (31 lines): a note, a private dependency-free `@webex/ci-gate-probe`
+workspace, its native Node assertion script, and its lockfile entry. The fixture
+has no dependents and performs no SDK or network operations. Its only test
+scripts are unit and integration. Package-selection logs select the root and
+this fixture; the test commands exclude the root, so only the fixture's scripts
+run. Browser, coverage, syntax and style jobs can therefore succeed without
+running package scripts in this fixture. Those green jobs do not demonstrate
+SDK test coverage.
+
+### Completed initial runs and the unvalidated push
+
+| Experiment                                                                                | Commit       | Run                                                                           | Observed result                                                                                                       | GitHub `CheckRun.isRequired`                                    |
+| ----------------------------------------------------------------------------------------- | ------------ | ----------------------------------------------------------------------------- | --------------------------------------------------------------------------------------------------------------------- | --------------------------------------------------------------- |
+| [#5433: docs baseline](https://github.com/webex/webex-js-sdk/pull/5433)                   | `3d62a5da5a` | [45390276766](https://github.com/webex/webex-js-sdk/actions/runs/45390276766) | All six test jobs succeeded; package selection was empty                                                              | Five short test names required; integration not required        |
+| [#5434: intentional unit failure](https://github.com/webex/webex-js-sdk/pull/5434)        | `8ccb31414d` | [45390400845](https://github.com/webex/webex-js-sdk/actions/runs/45390400845) | Unit failed; integration and the other four test jobs succeeded                                                       | Failed `Test - Unit`: `true`                                    |
+| [#5435: intentional integration failure](https://github.com/webex/webex-js-sdk/pull/5435) | `ef43a532a3` | [45390540343](https://github.com/webex/webex-js-sdk/actions/runs/45390540343) | Integration failed; all five configured required test checks succeeded                                                | Failed `Test - Integration`: `false`                            |
+| #5433: subsequent docs push, without `validated`                                          | `80ed234429` | [45391189540](https://github.com/webex/webex-js-sdk/actions/runs/45391189540) | Workflow succeeded; label job succeeded and `Pull Request CI` was skipped; no fresh test checks appeared on this head | None of the five required test names were reported on this head |
+
+The unit log contains `CI_GATE_PROBE suite=unit outcome=fail`, followed by the
+intentional assertion and process exit code 1. The integration log similarly
+contains `CI_GATE_PROBE suite=integration outcome=fail` and exit code 1. These
+were intended test failures, rather than installation or infrastructure errors.
+The integration experiment produced a red overall workflow while the five
+configured required test checks were green.
+
+### Validated push and cancellation
+
+The existing `validated` label was then applied to #5434 and #5435 before new
+commits were pushed by Coread. The synchronization workflow retained the label
+and started the reusable workflow path. A label event can also start a direct
+run on the preceding commit; the observations below concern the new head and
+its synchronization run, not that superseded run.
+
+On #5434, commit `f62f832342` kept the same intentional unit failure. In
+[run 45391747279](https://github.com/webex/webex-js-sdk/actions/runs/45391747279),
+`Pull Request CI / Test - Unit` failed with the same assertion and exit code 1,
+while the other five test jobs succeeded. GitHub reported `isRequired: false`
+for that failed check and for every other prefixed test check. None of the five
+required short names was reported on this head. This reproduces the mismatch
+with a controlled failure rather than just comparing successful runs.
+
+On #5435, commit `6f237427be` kept unit passing and changed integration to a
+bounded 120-second cancellation window. In
+[run 45391798649](https://github.com/webex/webex-js-sdk/actions/runs/45391798649),
+the integration log recorded `CI_GATE_PROBE suite=integration outcome=wait`
+and the cancellation-window marker at 12:21:15 UTC. After the test step was
+observed running, cancellation was requested for this probe run alone. The
+log reported `The operation was canceled` at 12:21:42 UTC. Both the integration
+job and workflow finished with `conclusion: cancelled`; the other five test
+jobs succeeded. The cancelled `Pull Request CI / Test - Integration` check
+was classified `isRequired: false`.
+
+This is a controlled cancellation, not a reproduction of the one-hour timeout
+or proof of a new hanging-test defect. The fixture would fail after 120 seconds
+if cancellation did not occur. It demonstrates the grey cancelled outcome and
+its lack of a matching integration requirement without waiting an hour. The
+missing required short names on this head remain a separate constraint.
+
+### Rechecking the evidence
+
+Run metadata and jobs can be read without relying on the latest PR check list:
+
+```sh
+gh api repos/webex/webex-js-sdk/actions/runs/45390400845/jobs
+gh api repos/webex/webex-js-sdk/actions/runs/45390540343/jobs
+gh api repos/webex/webex-js-sdk/branches/next/protection/required_status_checks
+```
+
+For a recorded commit SHA, query its check runs and use GraphQL
+`CheckRun.isRequired(pullRequestNumber: 5434)` (or the corresponding probe PR
+number). Required classification reflects current repository settings; it is
+not an immutable part of the historical job result. The observations in the
+table were captured while the original five requirements were in effect.
+
+### Other observed gates (configuration evidence only)
+
+A fresh read of `GET /repos/webex/webex-js-sdk/branches/next/protection`
+also reported:
+
+- Two approving reviews and code-owner review required.
+- Stale reviews are not automatically dismissed; approval of the last push is
+  not required.
+- Strict status checks enabled (branch freshness is required).
+- Administrator enforcement disabled; the `web-sdk-widget-admins` team is listed
+  in PR-review bypass allowances.
+- Push restrictions list the `web-client`, `web-sdk`, `wcme` and
+  `epic-web-sdk-contributors` teams.
+- Conversation resolution, signed commits and linear history are not required
+  by this protection response.
+
+`GET /repos/webex/webex-js-sdk/rules/branches/next` returned an empty list of
+active ruleset rules. These settings were inspected, not tested by attempting a
+merge, approval bypass or restricted push. All probe runs skipped the optional
+`Test - E2E` job because no `test_e2e` label was applied; that check is absent
+from the required-check list.
+
+### What these experiments establish
+
+The probes separate workflow colour from configured check requirements. They
+confirm that direct unit failures match a required name, direct integration
+failures do not, and an unvalidated push can finish its wrapper workflow green
+without reporting the required test checks for that commit. A validated push
+reproduces the unit failure under a different name that GitHub does not mark
+required; the configured short names are missing on that head.
+
+The PRs remain drafts, lack approving reviews and have not been merged. API
+classification is evidence of the configured status-check requirement; it is
+not a complete end-to-end demonstration of merge eligibility or administrator
+bypass. The probes do not exercise external fork approval, a failed validation
+job, merge queues, or deliberate failures in each of browser, coverage, syntax
+and style. The empty-package docs case demonstrates legitimate zero-package
+execution, not an unexpected skipped dependency being accepted by a gate.
 
 ## Recommended follow-up
 
