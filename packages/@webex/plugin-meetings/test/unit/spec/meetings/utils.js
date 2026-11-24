@@ -84,6 +84,8 @@ describe('plugin-meetings', () => {
       let isCapableOfReceivingVideoCodecStub;
 
       beforeEach(() => {
+        // Other suites can leave the shared logger's methods stubbed.
+        sinon.stub(LoggerProxy, 'logger').value({warn: sinon.stub()});
         isCapableOfReceivingVideoCodecStub = sinon.stub(
           WebCapabilities,
           'isCapableOfReceivingVideoCodec'
@@ -157,7 +159,6 @@ describe('plugin-meetings', () => {
         });
 
         it('logs a warning and returns false when createOffer throws', async () => {
-          sinon.stub(LoggerProxy.logger, 'warn');
           mockPc.createOffer.rejects(new Error('createOffer failed'));
 
           assert.equal(await MeetingsUtil.hasH264Codec(), false);
@@ -169,7 +170,6 @@ describe('plugin-meetings', () => {
         });
 
         it('logs a warning and returns false when RTCPeerConnection constructor throws', async () => {
-          sinon.stub(LoggerProxy.logger, 'warn');
           global.window.RTCPeerConnection = sinon.stub().throws(new Error('no RTCPeerConnection'));
 
           assert.equal(await MeetingsUtil.hasH264Codec(), false);
