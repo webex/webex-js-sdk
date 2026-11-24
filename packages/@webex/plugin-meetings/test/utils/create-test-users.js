@@ -65,7 +65,14 @@ const createTestUsers = async (options = {}) => {
       forceCreate: true,
       ensureExistsInWebexSites: true,
       syncInWebexSites: [webexSite],
-      licenseIds: licenseIds.length ? licenseIds : undefined,
+      licenseIds: licenseIds.length
+        ? licenseIds
+        : await testUsers.getMeetingTestUserLicenseIds({
+            authorization: orgAdminAuthorization,
+            orgId: config.orgId,
+            webexSite,
+            atlasServiceUrl: config.atlasServiceUrl || process.env.ATLAS_SERVICE_URL,
+          }),
       orgAdminAuthorization,
     });
   }

@@ -13,6 +13,7 @@ describe('meeting test-user provisioning', () => {
     'WEBEX_CLIENT_SECRET',
     'WEBEX_SCOPE',
     'IDENTITY_BASE_URL',
+    'ATLAS_SERVICE_URL',
     'WEBEX_TEST_USERS_LICENSE_IDS',
     'WEBEX_TEST_USERS_ORG_ADMIN_AUTHORIZATION',
     'WEBEX_TEST_USERS_ORG_ADMIN_USER',
@@ -25,6 +26,7 @@ describe('meeting test-user provisioning', () => {
   let create;
   let login;
   let preferredSite;
+  let discoverLicenses;
 
   beforeEach(() => {
     environment = Object.fromEntries(environmentKeys.map((key) => [key, process.env[key]]));
@@ -35,6 +37,7 @@ describe('meeting test-user provisioning', () => {
       WEBEX_CLIENT_SECRET: 'test-secret',
       WEBEX_SCOPE: 'spark:kms meeting:preferences_read',
       IDENTITY_BASE_URL: 'https://identity.example.test',
+      ATLAS_SERVICE_URL: 'https://atlas.example.test/admin/api/v1',
     });
     user = {
       id: 'test-user',
@@ -47,6 +50,9 @@ describe('meeting test-user provisioning', () => {
     create = sandbox.stub(testUser, 'create').resolves([user]);
     login = sandbox.stub(testUsers, 'loginTestUser').resolves(freshToken);
     preferredSite = sandbox.stub(testUsers, 'setPreferredSite').resolves();
+    discoverLicenses = sandbox
+      .stub(testUsers, 'getMeetingTestUserLicenseIds')
+      .resolves(['FTM_discovered', 'FTC_discovered', 'FMS_discovered', 'WXSFREE_discovered']);
   });
 
   afterEach(() => {
@@ -71,6 +77,7 @@ describe('meeting test-user provisioning', () => {
     assert.deepEqual(options, {count: 1, config: {orgId: 'custom-org'}});
     assert.notCalled(login);
     assert.notCalled(preferredSite);
+    assert.notCalled(discoverLicenses);
   });
 
   it('preserves Whistler creation even when meeting provisioning is configured', async () => {
@@ -85,6 +92,7 @@ describe('meeting test-user provisioning', () => {
     });
     assert.notCalled(login);
     assert.notCalled(preferredSite);
+    assert.notCalled(discoverLicenses);
   });
 
   it('assigns explicit licenses and refreshes the token after preferred-site setup', async () => {
@@ -131,6 +139,7 @@ describe('meeting test-user provisioning', () => {
       scopes: 'spark:kms meeting:preferences_read',
     });
     assert.callOrder(create, preferredSite, login);
+    assert.notCalled(discoverLicenses);
     assert.strictEqual(users[0], user);
     assert.strictEqual(users[0].token, freshToken);
   });
@@ -138,6 +147,7 @@ describe('meeting test-user provisioning', () => {
   it('obtains org-admin authorization before creating users when credentials are configured', async () => {
     configureSite();
     Reflect.deleteProperty(process.env, 'WEBEX_TEST_USERS_ORG_ADMIN_AUTHORIZATION');
+    Reflect.deleteProperty(process.env, 'WEBEX_TEST_USERS_LICENSE_IDS');
     process.env.WEBEX_TEST_USERS_ORG_ADMIN_USER = 'admin@example.test';
     process.env.WEBEX_TEST_USERS_ORG_ADMIN_PASSWORD = 'admin-password';
     login.onFirstCall().resolves({authorization: 'Bearer acquired-admin-token'});
@@ -156,6 +166,13 @@ describe('meeting test-user provisioning', () => {
       create.firstCall.args[0].config.orgAdminAuthorization,
       'Bearer acquired-admin-token'
     );
+    assert.calledOnceWithExactly(discoverLicenses, {
+      authorization: 'Bearer acquired-admin-token',
+      orgId: 'test-org',
+      webexSite: 'meetings.example.webex.com',
+      atlasServiceUrl: 'https://atlas.example.test/admin/api/v1',
+    });
+    assert.callOrder(login, discoverLicenses, create);
     assert.isTrue(login.firstCall.calledBefore(create.firstCall));
     assert.isTrue(preferredSite.firstCall.calledBefore(login.secondCall));
     assert.strictEqual(user.token, freshToken);
@@ -190,13 +207,26 @@ describe('meeting test-user provisioning', () => {
     assert.notProperty(options.config, 'forceCreate');
   });
 
-  it('allows automatic templates when no explicit licenses are configured', async () => {
+  it('discovers licenses once before creating a batch when no explicit IDs are configured', async () => {
     configureSite();
     Reflect.deleteProperty(process.env, 'WEBEX_TEST_USERS_LICENSE_IDS');
+    create.resolves([user, {...user, id: 'second-user', emailAddress: 'second@example.test'}]);
 
-    await createTestUsers({count: 1});
+    await createTestUsers({count: 2});
 
-    assert.isUndefined(create.firstCall.args[0].config.licenseIds);
+    assert.calledOnceWithExactly(discoverLicenses, {
+      authorization: 'Bearer admin-token',
+      orgId: 'test-org',
+      webexSite: 'meetings.example.webex.com',
+      atlasServiceUrl: 'https://atlas.example.test/admin/api/v1',
+    });
+    assert.deepEqual(create.firstCall.args[0].config.licenseIds, [
+      'FTM_discovered',
+      'FTC_discovered',
+      'FMS_discovered',
+      'WXSFREE_discovered',
+    ]);
+    assert.callOrder(discoverLicenses, create);
   });
 
   ['IDENTITY_BASE_URL', 'WEBEX_TEST_USERS_ORG_ADMIN_AUTHORIZATION'].forEach((missing) => {
@@ -213,26 +243,32 @@ describe('meeting test-user provisioning', () => {
     });
   });
 
-  ['admin login', 'creation', 'preferred site', 'fresh login'].forEach((stage) => {
-    it(`propagates ${stage} errors`, async () => {
-      configureSite();
-      const error = new Error(`${stage} failed`);
+  ['admin login', 'license discovery', 'creation', 'preferred site', 'fresh login'].forEach(
+    (stage) => {
+      it(`propagates ${stage} errors`, async () => {
+        configureSite();
+        const error = new Error(`${stage} failed`);
 
-      if (stage === 'admin login') {
-        Reflect.deleteProperty(process.env, 'WEBEX_TEST_USERS_ORG_ADMIN_AUTHORIZATION');
-        process.env.WEBEX_TEST_USERS_ORG_ADMIN_USER = 'admin@example.test';
-        process.env.WEBEX_TEST_USERS_ORG_ADMIN_PASSWORD = 'admin-password';
-        login.rejects(error);
-      } else if (stage === 'creation') create.rejects(error);
-      else if (stage === 'preferred site') preferredSite.rejects(error);
-      else login.rejects(error);
+        if (stage === 'admin login') {
+          Reflect.deleteProperty(process.env, 'WEBEX_TEST_USERS_ORG_ADMIN_AUTHORIZATION');
+          process.env.WEBEX_TEST_USERS_ORG_ADMIN_USER = 'admin@example.test';
+          process.env.WEBEX_TEST_USERS_ORG_ADMIN_PASSWORD = 'admin-password';
+          login.rejects(error);
+        } else if (stage === 'license discovery') {
+          Reflect.deleteProperty(process.env, 'WEBEX_TEST_USERS_LICENSE_IDS');
+          discoverLicenses.rejects(error);
+        } else if (stage === 'creation') create.rejects(error);
+        else if (stage === 'preferred site') preferredSite.rejects(error);
+        else login.rejects(error);
 
-      await createTestUsers({count: 1}).then(
-        () => assert.fail('Expected provisioning failure'),
-        (failure) => assert.strictEqual(failure, error)
-      );
-    });
-  });
+        await createTestUsers({count: 1}).then(
+          () => assert.fail('Expected provisioning failure'),
+          (failure) => assert.strictEqual(failure, error)
+        );
+        if (stage === 'license discovery') assert.notCalled(create);
+      });
+    }
+  );
 
   it('rejects incomplete user creation results', async () => {
     create.resolves([]);

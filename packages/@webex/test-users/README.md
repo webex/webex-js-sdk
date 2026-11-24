@@ -55,6 +55,13 @@ assigned meeting licenses are needed for scope eligibility.
 User-creation requests include unique tracking IDs with a shared session prefix.
 Creation errors include the sent ID for tracing failures across services.
 
+`getMeetingTestUserLicenseIds({authorization, orgId, webexSite, atlasServiceUrl})`
+queries the org's Atlas license catalog, including synthetic licenses, and returns the
+active FTM, FTC, FMS and site-specific WXSFREE IDs used by the meeting integration fixtures.
+`atlasServiceUrl` defaults to `ATLAS_SERVICE_URL`; `authorization` must be an org-admin bearer
+authorization. Missing or ambiguous licenses reject the lookup. Meeting test setup uses this
+lookup once per batch unless explicit license IDs are configured.
+
 ## Implementation
 
 Test User creation follows a different flow than standard users due to the fact that they are created on the fly.
