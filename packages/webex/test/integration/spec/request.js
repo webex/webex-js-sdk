@@ -15,6 +15,10 @@ describe('webex', function () {
   before(() =>
     testUsers.create({count: 1}).then(([user]) => {
       webex = new Webex({credentials: user.token});
+
+      // SDK ready does not wait for catalogs by default. Resolve the user's
+      // Hydra endpoint before testing HTTP rather than racing the discovery seed.
+      return webex.internal.services.waitForCatalog('postauth');
     })
   );
 

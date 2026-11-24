@@ -33,10 +33,14 @@ describe('webex', function () {
 
           assert.isTrue(webex.canAuthorize);
 
-          return webex.request({
-            service: 'hydra',
-            resource: '/build_info',
-          });
+          // Initialization starts catalog collection asynchronously; wait for
+          // the authenticated service URLs before issuing the first request.
+          return webex.internal.services.waitForCatalog('postauth').then(() =>
+            webex.request({
+              service: 'hydra',
+              resource: '/build_info',
+            })
+          );
         }));
     });
   });

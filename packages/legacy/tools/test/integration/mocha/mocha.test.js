@@ -1,27 +1,8 @@
 const MochaRunner = require('mocha');
-const { spawnSync } = require('child_process');
-const { resolve } = require('path');
 
 const { Mocha } = require('@webex/legacy-tools');
 
 describe('Mocha', () => {
-  it('loads hoisted Babel runtime dependencies from a top-level workspace', () => {
-    const fixture = resolve(__dirname, 'fixtures/runtime.js');
-    const result = spawnSync(process.execPath, [
-      '-e',
-      'require("@webex/legacy-tools").Mocha.test({files: [process.argv[1]]});',
-      fixture,
-    ], {
-      cwd: resolve(__dirname, '../../../../../webex'),
-      encoding: 'utf8',
-      timeout: 30000,
-    });
-
-    expect(result.error).toBeUndefined();
-    expect(result.status).withContext(result.stdout + result.stderr).toBe(0);
-    expect(result.stdout).toContain('1 passing');
-  });
-
   describe('static', () => {
     describe('test()', () => {
       let config;

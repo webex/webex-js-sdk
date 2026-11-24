@@ -41,7 +41,7 @@ This package was intended to be used with [@webex/jest-config-legacy](https://gi
 
 This package is expected to be used as a CLI or Module within a consuming package.
 
-The Mocha runner transforms workspace JavaScript and TypeScript and explicitly excludes every `node_modules` directory. This includes hoisted dependencies outside the consuming package's working directory, which must remain untransformed so Babel does not rewrite its own runtime while loading it. A subprocess regression test exercises runtime loading from the top-level `webex` workspace.
+The Mocha runner transforms workspace JavaScript and TypeScript and explicitly excludes every `node_modules` directory. This includes hoisted dependencies outside the consuming package's working directory, which must remain untransformed so Babel does not rewrite its own runtime while loading it. The `test:integration` command runs the Jasmine suite followed by a standalone subprocess smoke check from the top-level `webex` workspace. The smoke check runs outside NYC: changing Babel transforms between the parent and child processes produces incompatible coverage maps for the same tooling files. `test:coverage` retains the full instrumented Jasmine suite and the existing per-file thresholds.
 
 ### General Consumption
 

@@ -36,7 +36,7 @@
     "test": "yarn test:style && yarn test:syntax && yarn test:integration && yarn test:coverage",
     "test:coverage": "nyc node ./jasmine.config.js test --integration --silent",
     "test:coverage:report": "nyc --reporter=lcov yarn test:coverage",
-    "test:integration": "node ./jasmine.config.js test --integration",
+    "test:integration": "node ./jasmine.config.js test --integration && node ./test/smoke/mocha-runtime.cjs",
     "test:style": "eslint ./src/**/*.*",
     "test:syntax": "tsc --noEmit"
   },
