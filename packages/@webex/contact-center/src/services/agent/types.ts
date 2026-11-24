@@ -492,6 +492,8 @@ export type ChannelStateChangeRequest = {
   reason?: string;
   /** Agent ID (defaults to current agent) */
   agentId?: string;
+  /** Session ID for AQM bind correlation (not sent to server) */
+  agentSessionId?: string;
 };
 
 /**

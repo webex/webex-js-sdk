@@ -5605,6 +5605,39 @@ describe('webex.cc', () => {
       });
     });
 
+    it('should downgrade manageChannelAvailability before emitting V1 relogin success', () => {
+      webex.cc.agentConfig = {agentId: 'agent-1', manageChannelAvailability: true} as Profile;
+      // Pre-seed stale V2 state
+      webex.cc['channelStatesMap'] = {telephony: {agentState: 'Available'}} as any;
+      webex.cc['loginChannelsMap'] = {telephony: ['t1']};
+
+      const handler = jest.fn(() => {
+        // Inside the listener, the flag must already be false.
+        expect(webex.cc.agentConfig.manageChannelAvailability).toBe(false);
+        expect(webex.cc.getAgentStateControl()).toEqual({declared: false, active: undefined});
+      });
+      webex.cc.on(AGENT_EVENTS.AGENT_RELOGIN_SUCCESS, handler);
+
+      messageCallback(
+        JSON.stringify({
+          type: CC_EVENTS.AGENT_RELOGIN_SUCCESS,
+          trackingId: 'trk-v1',
+          data: {
+            agentId: 'agent-1',
+            agentSessionId: 'sess-1',
+            channelsMap: {telephony: ['t1']},
+            type: CC_EVENTS.AGENT_RELOGIN_SUCCESS,
+          },
+        })
+      );
+
+      expect(handler).toHaveBeenCalledTimes(1);
+      // V2 state should be cleared
+      expect(webex.cc['channelStatesMap']).toEqual({});
+      expect(webex.cc['loginChannelsMap']).toEqual({});
+      webex.cc.off(AGENT_EVENTS.AGENT_RELOGIN_SUCCESS, handler);
+    });
+
     [
       {
         ccEvent: CC_EVENTS.AGENT_STATION_LOGIN_FAILED,

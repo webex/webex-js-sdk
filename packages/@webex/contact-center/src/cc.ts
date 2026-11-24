@@ -1645,6 +1645,7 @@ export default class ContactCenter extends WebexPlugin implements IContactCenter
           auxCodeId: data.auxCodeId,
           reason: data.lastStateChangeReason,
           agentId: data.agentId || this.agentConfig.agentId,
+          agentSessionId: this.currentAgentSessionId,
         };
 
         agentStatusResponse = await this.services.agent.stateChangeV2({
@@ -1958,6 +1959,17 @@ export default class ContactCenter extends WebexPlugin implements IContactCenter
       case CC_EVENTS.AGENT_RELOGIN_SUCCESS: {
         // V1-only relogin event. V2 sessions receive AGENT_CHANNEL_RELOGIN_SUCCESS
         // instead (handled by handleChannelReloginSuccess).
+
+        // Reconcile: if manageChannelAvailability was enabled after the
+        // original V1 login, downgrade it now — before emitting — so that
+        // listeners calling setAgentState() inside agent:reloginSuccess
+        // route through V1 (not V2 with empty loginChannelsMap).
+        // Mirrors desktop handleReloginSuccess → pinSessionRoutingVersion(false).
+        if (this.agentConfig?.manageChannelAvailability === true) {
+          this.agentConfig.manageChannelAvailability = false;
+          this.clearV2LocalState();
+        }
+
         const {channelsMap, ...loginData} = eventData.data;
         this.updateWellnessSession(loginData.agentSessionId);
         const stationReLoginData = {

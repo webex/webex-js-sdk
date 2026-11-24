@@ -120,6 +120,20 @@ describe('AQM routing agent', () => {
     expect(req.notifSuccess.bind.data.agentId).toBeUndefined();
   });
 
+  it('stateChangeV2 success bind includes agentSessionId when provided', () => {
+    const data = {state: 'Available', auxCodeId: '0', channelType: ['chat'], agentId: 'agent-1', agentSessionId: 'sess-1'} as any;
+    const req = (agent.stateChangeV2 as unknown as (p: {data: object}) => any)({data});
+
+    expect(req.notifSuccess.bind.data.agentSessionId).toBe('sess-1');
+  });
+
+  it('stateChangeV2 omits agentSessionId from bind when not provided', () => {
+    const data = {state: 'Available', auxCodeId: '0', channelType: ['chat'], agentId: 'agent-1'} as any;
+    const req = (agent.stateChangeV2 as unknown as (p: {data: object}) => any)({data});
+
+    expect(req.notifSuccess.bind.data.agentSessionId).toBeUndefined();
+  });
+
   it('stateChangeV2 uses distinct bind keys per channel set', () => {
     const chatReq = (agent.stateChangeV2 as unknown as (p: {data: object}) => any)({
       data: {state: 'Available', auxCodeId: '0', channelType: ['chat']},

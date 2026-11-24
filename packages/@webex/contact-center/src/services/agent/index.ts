@@ -207,6 +207,10 @@ export default function routingAgent(routing: AqmReqs) {
             isClientInitiated: true,
             // Correlate: only match this agent's notifications.
             ...(p.data.agentId ? {agentId: p.data.agentId} : {}),
+            // Correlate: only match this session's notifications to prevent
+            // a delayed notification from a prior session from resolving a
+            // new-session request.
+            ...(p.data.agentSessionId ? {agentSessionId: p.data.agentSessionId} : {}),
           },
         },
         msg: {} as Agent.AgentChannelStateChanged,
