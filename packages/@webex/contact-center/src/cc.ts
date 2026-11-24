@@ -1312,9 +1312,10 @@ export default class ContactCenter extends WebexPlugin implements IContactCenter
           ? this.services.agent.stationLoginV2(loginPayload)
           : this.services.agent.stationLogin(loginPayload);
 
-      // Prevent unhandled rejection if login fails while voice registration is pending.
-      // The actual error is re-thrown when `await loginResponse` runs below.
-      loginResponse.catch(() => {});
+      // Wait for routing login success before registering browser voice.
+      // Registering in parallel would leave a WebCalling line (and its
+      // listeners) active without an agent session when the login rejects.
+      const resp = await loginResponse;
 
       this.webCallingService.setLoginOption(data.loginOption);
       this.webCallingService.setBrowserVoiceRequired(this.isBrowserVoiceRequired(data.loginOption));
@@ -1334,8 +1335,6 @@ export default class ContactCenter extends WebexPlugin implements IContactCenter
           }
         );
       }
-
-      const resp = await loginResponse;
       const {channelsMap, ...loginData} = resp.data;
       this.updateWellnessSession(resp.data.agentSessionId);
       this.agentConfig.currentTeamId = resp.data.teamId;
@@ -1653,10 +1652,43 @@ export default class ContactCenter extends WebexPlugin implements IContactCenter
         trackingId: agentStatusResponse.trackingId,
       });
 
-      // V2 stateChangeV2 returns AgentChannelStateChanged; cast to preserve the
-      // public SetStateResponse contract (StateChangeSuccess | Error) for V1 callers.
-      // V2 callers consume channel state via events and getChannelStates().
-      return agentStatusResponse as unknown as SetStateResponse;
+      // V2 stateChangeV2 returns AgentChannelStateChanged; bridge it to the
+      // V1 StateChangeSuccess shape so callers reading response.data.auxCodeId,
+      // response.data.lastStateChangeTimestamp, etc. get the expected values.
+      if (
+        this.agentConfig?.manageChannelAvailability === true &&
+        agentStatusResponse.data?.agentChannelStateDetail
+      ) {
+        const v2Data = agentStatusResponse.data as AgentChannelStateChanged['data'];
+        const detail = v2Data.agentChannelStateDetail;
+
+        const bridged: StateChangeSuccess = {
+          type: agentStatusResponse.type,
+          orgId: agentStatusResponse.orgId,
+          trackingId: agentStatusResponse.trackingId,
+          data: {
+            eventType: 'AgentDesktopMessage',
+            type: 'AgentStateChangeSuccess',
+            agentId: v2Data.agentId,
+            agentSessionId: v2Data.agentSessionId,
+            orgId: v2Data.orgId,
+            status: v2Data.status,
+            subStatus: v2Data.subStatus as 'Available' | 'Idle',
+            auxCodeId: detail.auxCodeId ?? data.auxCodeId,
+            lastStateChangeTimestamp: detail.stateChangeTimestamp,
+            lastIdleCodeChangeTimestamp: detail.lastIdleCodeChangeTimestamp ?? 0,
+            lastStateChangeReason: detail.stateChangeReason,
+            trackingId: agentStatusResponse.trackingId,
+            changedBy: v2Data.changedBy ?? null,
+            changedById: v2Data.changedById ?? null,
+            changedByName: v2Data.changedByName ?? null,
+          },
+        };
+
+        return bridged as SetStateResponse;
+      }
+
+      return agentStatusResponse as SetStateResponse;
     } catch (error) {
       const failure = error.details as Failure;
       this.metricsManager.trackEvent(

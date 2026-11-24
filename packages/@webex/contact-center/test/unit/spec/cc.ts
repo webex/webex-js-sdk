@@ -7638,12 +7638,40 @@ describe('webex.cc', () => {
       let stateChangeV2Spy: jest.SpyInstance;
       let stateChangeSpy: jest.SpyInstance;
 
+      const mockV2Response = {
+        type: 'AgentChannelStateChange',
+        orgId: 'org-1',
+        trackingId: 'track-v2',
+        data: {
+          type: 'AgentChannelStateChanged',
+          channelType: 'chat',
+          agentChannelStateDetail: {
+            agentState: 'Available',
+            auxCodeId: '0',
+            stateChangeTimestamp: 1700000000000,
+            lastIdleCodeChangeTimestamp: 1700000000001,
+            stateChangeReason: 'agent-explicit',
+            pendingIdle: false,
+            availableChannelCount: 1,
+            totalChannelCount: 1,
+          },
+          agentId: 'agent-1',
+          agentSessionId: 'session-1',
+          orgId: 'org-1',
+          status: 'LoggedIn',
+          subStatus: 'Available',
+          changedBy: 'AGENT',
+          changedById: 'agent-1',
+          changedByName: 'Test Agent',
+        },
+      };
+
       beforeEach(() => {
         webex.cc.agentConfig = {agentId: 'agent-1', teams: [], manageChannelAvailability: true} as Profile;
         webex.cc['loginChannelsMap'] = {telephony: ['t1'], chat: ['c1'], email: [], social: ['s1']};
         stateChangeV2Spy = jest
           .spyOn(webex.cc.services.agent, 'stateChangeV2')
-          .mockResolvedValue({data: {}} as any);
+          .mockResolvedValue(mockV2Response as any);
         stateChangeSpy = jest.spyOn(webex.cc.services.agent, 'stateChange');
         jest.spyOn(webex.cc.webCallingService, 'isBrowserVoiceRequired').mockReturnValue(false);
       });
@@ -7715,6 +7743,25 @@ describe('webex.cc', () => {
           data: {state: 'Idle', auxCodeId: 'idle-1', agentId: 'agent-1'},
         });
         expect(stateChangeV2Spy).not.toHaveBeenCalled();
+      });
+
+      it('bridges V2 AgentChannelStateChanged response to V1 StateChangeSuccess shape', async () => {
+        const result = await webex.cc.setAgentState({
+          state: 'Available',
+          auxCodeId: '0',
+          channelType: ['chat'],
+        });
+
+        // Callers reading V1 fields should get the values from agentChannelStateDetail
+        expect(result.data.type).toBe('AgentStateChangeSuccess');
+        expect(result.data.auxCodeId).toBe('0');
+        expect(result.data.lastStateChangeTimestamp).toBe(1700000000000);
+        expect(result.data.lastIdleCodeChangeTimestamp).toBe(1700000000001);
+        expect(result.data.lastStateChangeReason).toBe('agent-explicit');
+        expect(result.data.subStatus).toBe('Available');
+        expect(result.data.agentId).toBe('agent-1');
+        expect(result.data.changedBy).toBe('AGENT');
+        expect(result.trackingId).toBe('track-v2');
       });
     });
 
