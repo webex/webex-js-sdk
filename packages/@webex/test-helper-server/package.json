@@ -12,6 +12,7 @@
     "node": ">=18"
   },
   "dependencies": {
+    "@cypress/request": "^4.0.1",
     "@webex/test-helper-appid": "workspace:*",
     "body-parser": "^1.19.0",
     "browserify-middleware": "^8.1.1",
@@ -24,7 +25,6 @@
     "mkdirp": "^0.5.1",
     "morgan": "^1.9.1",
     "multer": "^1.4.5-lts.1",
-    "request": "^2.88.0",
     "urlsafe-base64": "^1.0.0",
     "uuid": "^3.3.2"
   },

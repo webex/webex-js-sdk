@@ -39,6 +39,7 @@
     "sinon": "^9.2.4"
   },
   "dependencies": {
+    "@cypress/request": "^4.0.1",
     "@webex/common": "workspace:*",
     "file-type": "^16.0.1",
     "global": "^4.4.0",
@@ -46,7 +47,6 @@
     "lodash": "^4.17.21",
     "parse-headers": "^2.0.2",
     "qs": "^6.7.3",
-    "request": "^2.88.0",
     "safe-buffer": "^5.2.0",
     "xtend": "^4.0.2"
   },

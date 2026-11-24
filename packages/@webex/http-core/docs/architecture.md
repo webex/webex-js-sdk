@@ -116,7 +116,7 @@ flowchart LR
 | Dependency         | Type     | Used by       | Purpose                                                    | Version, failure, or fallback policy                                          |
 | ------------------ | -------- | ------------- | ---------------------------------------------------------- | ------------------------------------------------------------------------------ |
 | `@webex/common`    | Internal | `src`, `src/request` | `Exception` base class for `HttpError`; `isBuffer` predicate | `workspace:*` in `package.json` — versioned with the workspace                |
-| `request`          | External | `src/request` | The Node transport                                          | `^2.88.0` in `package.json`; an unmaintained library, which constrains upgrades |
+| `@cypress/request` | External | `src/request` | The Node transport                                          | `^4.0.1` in `package.json`; the maintained fork of the deprecated `request` library, with the same option vocabulary |
 | `file-type`        | External | `src`         | MIME detection from a buffer in `src/lib/detect.js`         | `^16.0.1` in `package.json`                                                     |
 | `lodash`           | External | `src`, `src/request` | Option merging, currying, and picking                | `^4.17.21` in `package.json`                                                    |
 | `qs`               | External | `src/request` | Query-string and form-body serialization in the browser shim | `^6.7.3` in `package.json`                                                     |
