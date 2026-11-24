@@ -1358,9 +1358,16 @@ export default class ContactCenter extends WebexPlugin implements IContactCenter
 
       // The WebSocket handler for AGENT_STATION_LOGIN_SUCCESS already seeds
       // channelStatesMap and loginChannelsMap before this promise resolves.
-      // Only reset the V1 bridge dedup so the first post-login event is emitted.
+      // Seed the V1 bridge dedup baseline from the login response so that
+      // intermediate aggregate snapshots (e.g. one channel updated but others
+      // still at the login idle code) are suppressed. Only genuine projection
+      // changes will emit, consistent with CONTACT_CENTER-R-014.
+      // Desktop equivalent: updateSubStatus(subStatus, ...) in updateAgentProfileLogin.
       if (this.agentConfig?.manageChannelAvailability === true) {
-        this.lastEmittedV1 = undefined;
+        this.lastEmittedV1 = {
+          subStatus: (resp.data.subStatus as 'Available' | 'Idle') ?? 'Available',
+          auxCodeId: resp.data.auxCodeId ?? '',
+        };
       }
       if (this.agentConfig) {
         this.agentConfig.deviceType = data.loginOption;
@@ -2853,16 +2860,16 @@ export default class ContactCenter extends WebexPlugin implements IContactCenter
           this.loginChannelsMap = channelsMap;
         }
 
-        // Handle device type (browser voice registration) in a try-catch so
-        // that a voice registration failure does not block digital channel recovery.
-        try {
-          await this.handleDeviceType(deviceType as LoginOption, dn);
-        } catch (error) {
-          LoggerProxy.error(
-            `event=silentRelogin | V2: device type handling failed, proceeding with digital channel recovery: ${error}`,
-            {module: CC_FILE, method: METHODS.SILENT_RELOGIN}
-          );
-        }
+        // Fire-and-forget browser voice registration; digital channel recovery
+        // does not depend on it.  splitTelephonyRecovery already defers telephony
+        // when voice isn't ready, matching the desktop pattern
+        // (AgentEventListenerUtils.handleChannelReloginSuccess).
+        this.handleDeviceType(deviceType as LoginOption, dn).catch((error) => {
+          LoggerProxy.error(`event=silentRelogin | V2: device type handling failed: ${error}`, {
+            module: CC_FILE,
+            method: METHODS.SILENT_RELOGIN,
+          });
+        });
 
         // V2 disconnect recovery: find channels idled by WSS disconnect. Only
         // selectable channels with capacity, or setAgentState rejects the whole batch.

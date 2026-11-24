@@ -7679,6 +7679,36 @@ describe('webex.cc', () => {
       });
     });
 
+    describe('lastEmittedV1 seeded from login state', () => {
+      it('should seed dedup baseline from channelStatesMap after V2 login', async () => {
+        webex.cc.agentConfig = {
+          manageChannelAvailability: true,
+          agentId: 'agent-1',
+          webRtcEnabled: false,
+        } as Profile;
+        // Simulate the WebSocket handler having already seeded channelStatesMap
+        webex.cc['channelStatesMap'] = {
+          telephony: makeChannelState('Idle', {auxCodeId: 'break-1'}),
+          chat: makeChannelState('Idle', {auxCodeId: 'break-1'}),
+        } as Record<ChannelType, AgentChannelTypeStates>;
+
+        jest.spyOn(webex.cc.services.agent, 'stationLoginV2').mockResolvedValue({
+          data: {
+            subStatus: 'Idle',
+            auxCodeId: 'break-1',
+            agentSessionId: 'session-1',
+            teamId: 'team-1',
+            channelsMap: {telephony: ['t1'], chat: ['c1']},
+          },
+        } as any);
+
+        await webex.cc.stationLogin({teamId: 'team-1', loginOption: LoginOption.EXTENSION, dialNumber: '1001'});
+
+        // lastEmittedV1 should be seeded from the login projection, not undefined
+        expect(webex.cc['lastEmittedV1']).toEqual({subStatus: 'Idle', auxCodeId: 'break-1'});
+      });
+    });
+
     describe('setAgentState on a V2 session', () => {
       let stateChangeV2Spy: jest.SpyInstance;
       let stateChangeSpy: jest.SpyInstance;
@@ -7963,6 +7993,28 @@ describe('webex.cc', () => {
         );
         expect(scheduleSpy).toHaveBeenCalledWith('agent-1', ['telephony']);
         expect(webex.cc.agentConfig.isAgentLoggedIn).toBe(true);
+      });
+
+      it('recovers digital channels without awaiting browser voice registration', async () => {
+        // Voice registration that stays pending throughout the test.
+        let resolveRegistration!: () => void;
+        jest.spyOn(webex.cc.webCallingService, 'registerWebCallingLine').mockReturnValue(
+          new Promise<void>((resolve) => { resolveRegistration = resolve; })
+        );
+        jest.spyOn(webex.cc.webCallingService, 'isBrowserVoiceRequired').mockReturnValue(true);
+        jest.spyOn(webex.cc.webCallingService, 'isVoiceReady').mockReturnValue(false);
+
+        await runV2Reload(LoginOption.BROWSER);
+
+        // Digital channels recovered immediately — not blocked by pending voice registration.
+        expect(setAgentStateSpy).toHaveBeenCalledTimes(1);
+        expect(setAgentStateSpy).toHaveBeenCalledWith(
+          expect.objectContaining({state: 'Available', channelType: ['chat']})
+        );
+        expect(scheduleSpy).toHaveBeenCalledWith('agent-1', ['telephony']);
+
+        // Clean up the dangling promise.
+        resolveRegistration();
       });
 
       it('does not overwrite live channel updates with the stale reload snapshot', async () => {
