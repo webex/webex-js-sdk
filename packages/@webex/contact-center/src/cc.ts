@@ -916,6 +916,12 @@ export default class ContactCenter extends WebexPlugin implements IContactCenter
         clearInitFlag: true,
       });
 
+      // Cancel any background voice registration (e.g. fire-and-forget
+      // handleDeviceType from silentRelogin). deregisterWebCallingLine()
+      // increments registrationGeneration, causing the in-flight
+      // registerWebCallingLine() to bail at its next generation check.
+      await this.webCallingService.deregisterWebCallingLine();
+
       if (
         this.agentConfig.webRtcEnabled &&
         this.agentConfig.loginVoiceOptions.includes(LoginOption.BROWSER)

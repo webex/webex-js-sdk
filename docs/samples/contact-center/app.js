@@ -392,7 +392,7 @@ const granularRonaAlertsElm = document.getElementById('granular-rona-alerts');
 // Granular Agent State — mutable state
 let isGranularAgentStateActive = false;
 let granularIdleCodes = [];
-let channelStateListenersRegistered = false;
+let channelStateListenersClient;
 let isTelephonyRecoveryDeferred = false;
 let isGranularStateErrorShown = false;
 let isSettingAgentState = false;
@@ -4856,10 +4856,12 @@ function attachWellnessSdkListeners() {
   webex.cc.off(CC_AGENT_EVENTS.WELLNESS_BREAK, handleWellnessBreak);
   webex.cc.off('agent:stationLoginSuccess', captureWellnessSession);
   webex.cc.off('agent:reloginSuccess', captureWellnessSession);
+  webex.cc.off('agent:channelReloginSuccess', captureWellnessSession);
   webex.cc.off('agent:logoutSuccess', handleWellnessLogout);
   webex.cc.on(CC_AGENT_EVENTS.WELLNESS_BREAK, handleWellnessBreak);
   webex.cc.on('agent:stationLoginSuccess', captureWellnessSession);
   webex.cc.on('agent:reloginSuccess', captureWellnessSession);
+  webex.cc.on('agent:channelReloginSuccess', captureWellnessSession);
   webex.cc.on('agent:logoutSuccess', handleWellnessLogout);
 }
 
@@ -4867,6 +4869,7 @@ function detachWellnessSdkListeners() {
   webex.cc.off(CC_AGENT_EVENTS.WELLNESS_BREAK, handleWellnessBreak);
   webex.cc.off('agent:stationLoginSuccess', captureWellnessSession);
   webex.cc.off('agent:reloginSuccess', captureWellnessSession);
+  webex.cc.off('agent:channelReloginSuccess', captureWellnessSession);
   webex.cc.off('agent:logoutSuccess', handleWellnessLogout);
 }
 
@@ -7232,11 +7235,14 @@ function handleGranularStateLogout() {
 
 /**
  * Registers SDK event listeners for channel state changes. Guarded by
- * channelStateListenersRegistered to prevent duplicate registration.
+ * channelStateListenersClient to prevent duplicate registration on the
+ * same cc instance while re-attaching when the instance is replaced
+ * (e.g. initWebex / initOauth).
  */
 function registerChannelStateEventListeners() {
-  if (channelStateListenersRegistered) return;
-  channelStateListenersRegistered = true;
+  const cc = webex?.cc;
+  if (!cc || channelStateListenersClient === cc) return;
+  channelStateListenersClient = cc;
 
   webex.cc.on('agent:channelStateChange', (data) => {
     console.log('agent:channelStateChange', data);
