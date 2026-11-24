@@ -162,23 +162,32 @@ export default class LLMChannel extends (Mercury as any) implements ILLMChannel 
           ? LLMChannel.buildUrlWithAwareSubchannels(webSocketUrl, AWARE_DATA_CHANNEL)
           : webSocketUrl;
 
-        if (urlsChanged && (this.connected || this.connecting || this.getSocket())) {
-          await this._disconnect({code: 1000, reason: 'LLM registration changed'});
-          if (this.connectingPromise !== connectionPromise) {
-            return;
-          }
-        }
-
-        registrationPrepared = true;
-        this.webSocketUrl = webSocketUrl;
-        this.binding = binding;
-
         const connectStart = performance.now();
 
         try {
+          if (urlsChanged && (this.connected || this.connecting || this.getSocket())) {
+            // Mercury can reject a service-returned URL if HA cannot resolve its catalog route.
+            // Check that before taking a working registration offline.
+            const resolvedUrl = await this._prepareUrl(connectUrl);
+            if (this.connectingPromise !== connectionPromise) {
+              return;
+            }
+            if (!resolvedUrl) {
+              throw new Error('LLM registration WebSocket URL could not be resolved');
+            }
+
+            await this._disconnect({code: 1000, reason: 'LLM registration changed'});
+            if (this.connectingPromise !== connectionPromise) {
+              return;
+            }
+          }
+
+          registrationPrepared = true;
+          this.webSocketUrl = webSocketUrl;
+          this.binding = binding;
           await this.connect(connectUrl);
         } catch (error) {
-          // register() succeeded; only connect() failed. Attach the measured datachannel time so
+          // Registration succeeded; connection preparation or connect failed. Attach its time so
           // callers don't misreport a websocket failure as a registration that never completed.
           // @ts-ignore
           error.timing = {clientLLMDatachannelResponseTime};

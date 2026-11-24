@@ -232,6 +232,66 @@ describe('LLMChannel inherited Mercury lifecycle', () => {
   });
 
   describe('registering an already connected channel', () => {
+    it('preserves the working registration when HA cannot resolve the replacement route', async () => {
+      const oldSocket = await connectLLM();
+      const oldResolvedUrl = channel.resolvedWebSocketUrl;
+      const disconnected = sinon.spy();
+
+      channel.on('disconnected', disconnected);
+      webex.internal.feature.getFeature
+        .withArgs('developer', 'web-high-availability')
+        .resolves(true);
+      webex.internal.services = {
+        convertUrlToPriorityHostUrl: sinon.stub().returns(undefined),
+        isValidHost: sinon.stub().returns(false),
+      };
+      const error = await assert.isRejected(registerNext());
+
+      assert.strictEqual(channel.getSocket(), oldSocket);
+      assert.isTrue(channel.isConnected());
+      assert.isFalse(channel.isConnecting());
+      assert.equal(channel.getBinding(), 'meeting-binding');
+      assert.equal(channel.getLocusUrl(), locusUrl);
+      assert.equal(channel.getDatachannelUrl(), datachannelUrl);
+      assert.equal(channel.resolvedWebSocketUrl, oldResolvedUrl);
+      assert.property(error.timing, 'clientLLMDatachannelResponseTime');
+      assert.notCalled(Socket.prototype.close);
+      assert.notCalled(disconnected);
+      assert.isTrue(webex.internal.llm.getAllChannels().has(channel));
+      assert.calledOnce(socketOpen);
+
+      // A refreshed catalog can make the same requested registration usable later.
+      webex.internal.services.isValidHost.returns(true);
+      webex.internal.device.refresh = sinon.stub().resolves();
+      await registerNext();
+      assert.notStrictEqual(channel.getSocket(), oldSocket);
+      assert.equal(new URL(channel.getSocket().url).pathname, new URL(nextSocketUrl).pathname);
+    });
+
+    it('ignores replacement route preparation that completes after explicit disconnect', async () => {
+      await connectLLM();
+      let finishRoute;
+      const featureCheck = webex.internal.feature.getFeature;
+
+      featureCheck.withArgs('developer', 'web-high-availability').returns(
+        new Promise((resolve) => {
+          finishRoute = resolve;
+        })
+      );
+      const replacement = registerNext();
+
+      await clock.tickAsync(0);
+      assert.notCalled(Socket.prototype.close);
+      await channel.disconnect(permanentClose);
+      finishRoute(false);
+      await replacement;
+
+      assert.isFalse(channel.isConnected());
+      assert.isFalse(channel.isConnecting());
+      assert.isUndefined(channel.getBinding());
+      assert.calledOnce(socketOpen);
+    });
+
     it('reuses the registration while the same channel is automatically reconnecting', async () => {
       const oldSocket = await connectLLM();
       let finishOpen;

@@ -40,7 +40,7 @@ transport lifecycle.
 - Once prepared, a changed registration uses Mercury's transport-only teardown with an explicit
   permanent close reason, checks operation identity, then publishes the new binding and opens its
   socket. It preserves the factory registry entry, token, refresh handler, and registration promise.
-  Missing response socket URLs reject before closing an active socket.
+  Missing response socket URLs and HA catalog-route misses reject before closing an active socket. Route preflight uses Mercury `_prepareUrl`; failure retains the previous socket, binding, lookup URLs, and factory entry, and reports the completed registration timing. Disconnect invalidates a pending route preflight before it can tear down or reopen transport.
 - Explicit `disconnect()` invalidates pending registration first, clears channel metadata and
   refresh state, and releases ownership via `disconnected`. Stale registration responses, delayed
   preparation, and old socket completions cannot replace newer channel work.

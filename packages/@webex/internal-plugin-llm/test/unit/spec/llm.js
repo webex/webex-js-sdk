@@ -45,6 +45,7 @@ describe('plugin-llm', () => {
       llmChannel.connect = sinon.stub().callsFake(() => {
         llmChannel.connected = true;
       });
+      sinon.stub(llmChannel, '_prepareUrl').callsFake((url) => Promise.resolve(url));
     });
 
     afterEach(() => sinon.restore());
