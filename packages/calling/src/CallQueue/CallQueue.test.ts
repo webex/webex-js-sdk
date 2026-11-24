@@ -25,6 +25,19 @@ const createCallQueueClient = (...args: Parameters<typeof createQueueClient>) =>
 const webex = getTestUtilsWebex();
 const WEBEX_API_INT = 'https://integration.webexapis.com/v1/';
 const TEST_OPTIONS = {webexApiBaseUrl: 'https://integration.webexapis.com'};
+const EXPECTED_LIFECYCLE_CONFLICT = {
+  statusCode: 409,
+  data: {error: 'Call queue client was reinitialized; refresh settings'},
+  message: 'FAILURE',
+};
+const EXPECTED_LIFECYCLE_CONFLICT_AFTER_UPDATE = {
+  statusCode: 409,
+  data: {
+    error:
+      'Call queue client was reinitialized; request may have completed; refresh settings before retrying',
+  },
+  message: 'FAILURE',
+};
 const client = createCallQueueClient(webex, {level: LOGGER.INFO}, TEST_OPTIONS);
 const mercuryHandlers = new Map<string, (event?: unknown) => void>(
   (webex.internal.mercury.on as jest.Mock).mock.calls.map((call) => [call[0], call[1]])
@@ -391,11 +404,10 @@ describe('CallQueue client', () => {
         body: {agentACDState: 'AVAILABLE', queues: []},
       }));
       const staleResponse = await pending;
-      assert.equal(staleResponse.statusCode, 409);
-      if (method === 'PUT') {
-        assert.include(staleResponse.data.error, 'request may have completed');
-        assert.include(staleResponse.data.error, 'refresh settings before retrying');
-      }
+      assert.deepEqual(
+        staleResponse,
+        method === 'PUT' ? EXPECTED_LIFECYCLE_CONFLICT_AFTER_UPDATE : EXPECTED_LIFECYCLE_CONFLICT
+      );
       assert.equal(
         (await other.syncTelephonyCalls()).data.callQueue?.acdState,
         ACD_STATE.UNAVAILABLE
@@ -440,9 +452,7 @@ describe('CallQueue client', () => {
       }));
 
       const response = await update;
-      assert.equal(response.statusCode, 409);
-      assert.include(response.data.error, 'request may have completed');
-      assert.include(response.data.error, 'refresh settings before retrying');
+      assert.deepEqual(response, EXPECTED_LIFECYCLE_CONFLICT_AFTER_UPDATE);
       assert.lengthOf(otherWebex.request.mock.calls, 2);
       other.dispose();
     }
@@ -465,13 +475,12 @@ describe('CallQueue client', () => {
     }));
 
     const response = await update;
-    assert.equal(response.statusCode, 409);
-    assert.notInclude(response.data.error, 'request may have completed');
+    assert.deepEqual(response, EXPECTED_LIFECYCLE_CONFLICT);
     assert.lengthOf(otherWebex.request.mock.calls, 1);
     other.dispose();
   });
 
-  it.each(['GET', 'PUT'])(
+  it.each(['GET', 'PUT', 'SYNC'])(
     'returns a lifecycle conflict if reinitialized during %s diagnostic upload',
     async (method) => {
       const otherWebex = getTestUtilsWebex();
@@ -482,10 +491,11 @@ describe('CallQueue client', () => {
       });
       (utils.uploadLogs as jest.Mock).mockReturnValueOnce(upload);
       otherWebex.request.mockRejectedValueOnce({statusCode: 500});
-      const pending =
-        method === 'GET'
-          ? other.getCallQueueSettings()
-          : other.updateCallQueueSettings({agentACDState: ACD_STATE.AVAILABLE});
+      let pending;
+      if (method === 'GET') pending = other.getCallQueueSettings();
+      else if (method === 'PUT') {
+        pending = other.updateCallQueueSettings({agentACDState: ACD_STATE.AVAILABLE});
+      } else pending = other.syncTelephonyCalls();
       await Promise.resolve();
       assert.lengthOf((utils.uploadLogs as jest.Mock).mock.calls, 1);
 
@@ -493,8 +503,10 @@ describe('CallQueue client', () => {
       finishUpload();
       const response = await pending;
 
-      assert.equal(response.statusCode, 409);
-      if (method === 'PUT') assert.include(response.data.error, 'request may have completed');
+      assert.deepEqual(
+        response,
+        method === 'PUT' ? EXPECTED_LIFECYCLE_CONFLICT_AFTER_UPDATE : EXPECTED_LIFECYCLE_CONFLICT
+      );
       assert.lengthOf(otherWebex.request.mock.calls, 1);
       other.dispose();
     }
@@ -510,7 +522,7 @@ describe('CallQueue client', () => {
     assert.isTrue(other.prepareForReuse());
     oldSync.resolve(<WebexRequestPayload>(<unknown>{statusCode: 204}));
 
-    assert.equal((await sync).statusCode, 409);
+    assert.deepEqual(await sync, EXPECTED_LIFECYCLE_CONFLICT);
     assert.lengthOf(otherWebex.request.mock.calls, 1);
     other.dispose();
   });

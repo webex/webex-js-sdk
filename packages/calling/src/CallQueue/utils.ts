@@ -1,12 +1,27 @@
 import type {WebexSDK} from '../SDKConnector/types';
+import {FAILURE_MESSAGE} from '../common/constants';
 import {ACD_STATE, ACD_STATE_VALUES, UUID_PATTERN} from './constants';
 import {
   CallQueue,
   CallQueueAgentStatus,
   CallQueueCatalogPage,
   CallQueueEventKind,
+  CallQueueResponse,
   TelephonyAgentPayload,
 } from './types';
+
+/** An update may have reached the server even if its response is stale. */
+export function lifecycleConflictResponse(requestSent = false): CallQueueResponse {
+  return {
+    statusCode: 409,
+    data: {
+      error: requestSent
+        ? 'Call queue client was reinitialized; request may have completed; refresh settings before retrying'
+        : 'Call queue client was reinitialized; refresh settings',
+    },
+    message: FAILURE_MESSAGE,
+  };
+}
 
 /** Device registration may populate entitlement models incrementally. */
 export function hasReadyEntitlementModels(webex: WebexSDK): boolean {

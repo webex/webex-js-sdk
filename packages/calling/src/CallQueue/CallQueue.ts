@@ -38,6 +38,7 @@ import actorIdentity, {
   queueIdKey,
   unwrapAgentPayload,
   hasReadyEntitlementModels,
+  lifecycleConflictResponse,
 } from './utils';
 import {
   CallQueueAgentStatus,
@@ -142,21 +143,13 @@ export class CallQueueClient extends Eventing<CallQueueEventTypes> implements IC
         method: HTTP_METHODS.GET,
       });
       if (epoch !== this.lifecycleEpoch) {
-        return {
-          statusCode: 409,
-          data: {error: 'Call queue client was reinitialized; refresh settings'},
-          message: FAILURE_MESSAGE,
-        };
+        return lifecycleConflictResponse();
       }
       log.log(`Response trackingId: ${response?.headers?.trackingid}`, loggerContext);
       const parsed = parseCallQueueSettings(response.body, this.currentByLine.get(lineOwnerId));
       const named = parsed ? await this.fillQueueNames(parsed) : undefined;
       if (epoch !== this.lifecycleEpoch) {
-        return {
-          statusCode: 409,
-          data: {error: 'Call queue client was reinitialized; refresh settings'},
-          message: FAILURE_MESSAGE,
-        };
+        return lifecycleConflictResponse();
       }
       if (
         (this.eventGeneration.get(lineOwnerId) ?? 0) !== generation ||
@@ -164,11 +157,7 @@ export class CallQueueClient extends Eventing<CallQueueEventTypes> implements IC
       ) {
         await this.waitForEventRefreshes(lineOwnerId);
         if (epoch !== this.lifecycleEpoch) {
-          return {
-            statusCode: 409,
-            data: {error: 'Call queue client was reinitialized; refresh settings'},
-            message: FAILURE_MESSAGE,
-          };
+          return lifecycleConflictResponse();
         }
         const latest = this.currentByLine.get(lineOwnerId);
 
@@ -193,11 +182,8 @@ export class CallQueueClient extends Eventing<CallQueueEventTypes> implements IC
       }
       this.currentByLine.set(lineOwnerId, named);
       this.committedSequence.set(lineOwnerId, sequence);
-      const current = this.currentByLine.get(lineOwnerId);
       log.log(
-        `Call queue settings loaded, state=${current?.acdState ?? 'unknown'}, queues=${
-          current?.queues.length ?? 0
-        }`,
+        `Call queue settings loaded, state=${named.acdState}, queues=${named.queues.length}`,
         loggerContext
       );
 
@@ -213,11 +199,7 @@ export class CallQueueClient extends Eventing<CallQueueEventTypes> implements IC
           : undefined;
       if (failure && epoch === this.lifecycleEpoch) return failure;
 
-      return {
-        statusCode: 409,
-        data: {error: 'Call queue client was reinitialized; refresh settings'},
-        message: FAILURE_MESSAGE,
-      };
+      return lifecycleConflictResponse();
     }
   }
 
@@ -246,25 +228,12 @@ export class CallQueueClient extends Eventing<CallQueueEventTypes> implements IC
     }
 
     const epoch = this.lifecycleEpoch;
-    const supersededBeforeUpdate: CallQueueResponse = {
-      statusCode: 409,
-      data: {error: 'Call queue client was reinitialized; refresh settings'},
-      message: FAILURE_MESSAGE,
-    };
-    const supersededAfterUpdate: CallQueueResponse = {
-      statusCode: 409,
-      data: {
-        error:
-          'Call queue client was reinitialized; request may have completed; refresh settings before retrying',
-      },
-      message: FAILURE_MESSAGE,
-    };
     let requestSent = false;
     try {
       if (this.needsQueuePolicyRefresh(request, lineOwnerId)) {
         const settings = await this.getCallQueueSettings(lineOwnerId);
         if (epoch !== this.lifecycleEpoch) {
-          return supersededBeforeUpdate;
+          return lifecycleConflictResponse();
         }
         if (settings.statusCode >= 400) {
           return settings;
@@ -289,7 +258,7 @@ export class CallQueueClient extends Eventing<CallQueueEventTypes> implements IC
         body,
       });
       if (epoch !== this.lifecycleEpoch) {
-        return supersededAfterUpdate;
+        return lifecycleConflictResponse(true);
       }
       log.log(`Response trackingId: ${response?.headers?.trackingid}`, loggerContext);
       const current = this.currentByLine.get(lineOwnerId);
@@ -301,7 +270,7 @@ export class CallQueueClient extends Eventing<CallQueueEventTypes> implements IC
           : undefined);
       const named = local ? await this.fillQueueNames(local) : undefined;
       if (epoch !== this.lifecycleEpoch) {
-        return supersededAfterUpdate;
+        return lifecycleConflictResponse(true);
       }
       if (
         !named ||
@@ -311,7 +280,7 @@ export class CallQueueClient extends Eventing<CallQueueEventTypes> implements IC
         const refreshed = await this.getCallQueueSettings(lineOwnerId);
 
         if (epoch !== this.lifecycleEpoch) {
-          return supersededAfterUpdate;
+          return lifecycleConflictResponse(true);
         }
 
         return refreshed.data.callQueue
@@ -341,7 +310,7 @@ export class CallQueueClient extends Eventing<CallQueueEventTypes> implements IC
           : undefined;
       if (failure && epoch === this.lifecycleEpoch) return failure;
 
-      return requestSent ? supersededAfterUpdate : supersededBeforeUpdate;
+      return lifecycleConflictResponse(requestSent);
     }
   }
 
@@ -381,11 +350,7 @@ export class CallQueueClient extends Eventing<CallQueueEventTypes> implements IC
         body: {wdmUrl, resources: [{resource: 'telephony_agents'}]},
       });
       if (epoch !== this.lifecycleEpoch) {
-        return {
-          statusCode: 409,
-          data: {error: 'Call queue client was reinitialized; refresh settings'},
-          message: FAILURE_MESSAGE,
-        };
+        return lifecycleConflictResponse();
       }
       log.log(`Response trackingId: ${response?.headers?.trackingid}`, loggerContext);
       // The sync endpoint returns 204; authoritative settings arrive via Mercury.
@@ -404,11 +369,7 @@ export class CallQueueClient extends Eventing<CallQueueEventTypes> implements IC
           : undefined;
       if (failure && epoch === this.lifecycleEpoch) return failure;
 
-      return {
-        statusCode: 409,
-        data: {error: 'Call queue client was reinitialized; refresh settings'},
-        message: FAILURE_MESSAGE,
-      };
+      return lifecycleConflictResponse();
     }
   }
 
