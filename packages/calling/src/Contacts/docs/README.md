@@ -9,7 +9,7 @@ doc_kind: module-spec
 generated_from: module-spec@0.3.0
 generated_by: claude-code
 approved_by: rarajes2@cisco.com
-updated_at: 2026-11-17T03:23:21Z
+updated_at: 2026-11-24T00:00:00Z
 validation_status: pass-with-warnings
 -->
 
@@ -33,7 +33,7 @@ Related context: [documentation index](../../../docs/index.md) ·
 | Source path | `src/Contacts` |
 | Resource kind | module |
 | Status | Active |
-| Last verified | 2026-11-16 at `0b8c34db7f` |
+| Last verified | 2026-11-24 at `71f9f18607aa` |
 | Module id | `contacts` |
 | Parent spec | — |
 | Doc kind | Module spec |
@@ -236,16 +236,24 @@ differ after that:
 `fetchEncryptionKeyUrl()` follows this logic:
 
 1. If `this.encryptionKeyUrl` is already cached, return it
-2. If `this.groups` is undefined, await `getContacts()` to populate
+2. If `this.groups` is undefined, await `getContacts()` to populate; re-check `this.encryptionKeyUrl`
+   after the await in case a concurrent caller completed key creation while `getContacts()` was
+   in flight
 3. If groups exist, use `groups[0].encryptionKeyUrl` (returned, not cached)
 4. If no groups exist:
+   - Single-flight guard: if `this.encryptionKeyUrlPromise` is already set by a concurrent caller,
+     await it and return the result; otherwise create an IIFE and assign it to
+     `this.encryptionKeyUrlPromise` so concurrent callers await the same operation
    - Create unbound KMS key via `this.webex.internal.encryption.kms.createUnboundKeys({count: 1})`
    - Create KMS resource via `this.webex.internal.encryption.kms.createResource({keyUris: [uri]})`
      (not awaited)
-   - Cache the new key URL, create default group named "Other contacts" with it, and cache its ID
+   - Create default group named "Other contacts" with the new key
+   - Publish `this.encryptionKeyUrl` and `this.defaultGroupId` after group creation succeeds, then
+     clear `this.encryptionKeyUrlPromise`; on failure clear the promise so callers can retry
 
 `fetchDefaultGroup()` returns the cached default group ID, else the ID of a cached group named
-`Other contacts` (and caches it), else creates that group and returns its ID without caching it,
+`Other contacts` (and caches it), else awaits `this.encryptionKeyUrlPromise` if key creation is
+in-flight (returning the group ID it creates), else creates that group directly and returns its ID,
 or an empty string when creation fails.
 
 ## Data flow and sequence coverage
@@ -606,6 +614,7 @@ response) are returned with `resolved: false`.
 | `this.contacts: Contact[]` | `ContactsClient` instance | `undefined` | Replaced on get; pushed on create (only once the cache exists); spliced on delete. Full contact list (both CUSTOM and resolved CLOUD) | Instance lifetime; no clear API |
 | `this.groups: ContactGroup[]` | `ContactsClient` instance | `undefined` | Replaced on get; pushed on create (only once the cache exists); spliced on delete. All contact groups, with decrypted names | Instance lifetime |
 | `this.encryptionKeyUrl: string` | `ContactsClient` instance | Empty string | Cached only when the client creates a new KMS key (`MOD-008`); a key taken from the first group is not cached | Never cleared |
+| `this.encryptionKeyUrlPromise: Promise<string> \| undefined` | `ContactsClient` instance | `undefined` | Set at the start of KMS key/default-group creation; cleared once the IIFE resolves or rejects; in-process single-flight guard | Cleared on success or failure; never persisted |
 | `this.defaultGroupId: string` | `ContactsClient` instance | Empty string | Cached default group ID: set when the client creates the default group with a new key or finds it by name | Cleared when the last group is deleted |
 | `contactsServiceUrl` | `ContactsClient` instance | Resolved at construction (`MOD-010`) | None | Instance lifetime |
 
@@ -649,8 +658,11 @@ The encrypted field set is the `encryptedFields` enum:
   batches run one after another, while field encryption and decryption run in parallel.
 - Idempotency and retry: none; local map mutations occur after successful service operations so
   rejected requests do not leave optimistic stale state.
-- Shared-state protection: none. Two concurrent first calls on an empty account can each create a
-  KMS key and an "Other contacts" group, because nothing serializes key or default-group creation.
+- Shared-state protection: an in-process single-flight guard on `this.encryptionKeyUrlPromise`
+  serializes KMS key and default-group creation; concurrent first callers all await the same
+  in-flight promise so only one key and one "Other contacts" group are ever created per client
+  instance. The guard is in-process only and does not cover concurrent callers on separate client
+  instances.
 - Blocking restrictions: none; no method blocks the event loop. Evidence:
   `src/Contacts/ContactsClient.ts`.
 
@@ -736,7 +748,7 @@ behavior; the module has no retry or cleanup paths. Package journeys in
 | `MOD-005` | `src/Contacts/ContactsClient.test.ts` | Default group ID reset not asserted |
 | `MOD-006`, `INV-002` | `src/Contacts/ContactsClient.test.ts` | Address sub-field encryption not asserted |
 | `MOD-007`, `INV-003` | `src/Contacts/ContactsClient.test.ts` | More than 50 CLOUD contacts not tested |
-| `MOD-008` | `src/Contacts/ContactsClient.test.ts` | Concurrent first use not tested |
+| `MOD-008` | `src/Contacts/ContactsClient.test.ts` | none |
 | `MOD-009` | `src/Contacts/ContactsClient.test.ts` | Log upload on failure not asserted |
 | `MOD-010` | `src/Contacts/ContactsClient.test.ts` | Active-services fallback not tested |
 | `INV-005` | `src/Contacts/ContactsClient.test.ts` | Log content not asserted |
