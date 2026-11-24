@@ -378,21 +378,20 @@ export function setPreferredSite(options = {}) {
 }
 
 /**
- * Discover the basic and site-specific licenses used by meeting integration users.
+ * Discover the site and licenses used by meeting integration users.
  * @param {Object} options
  * @param {string} options.authorization org-admin authorization
  * @param {string} options.orgId organization to query
- * @param {string} options.webexSite configured meeting site hostname
+ * @param {string} [options.webexSite] overrides the first available meeting site
+ * @param {Array<string>} [options.licenseIds] overrides discovered license IDs
  * @param {string} [options.atlasServiceUrl] defaults to ATLAS_SERVICE_URL
- * @returns {Promise<Array<string>>} FTM, FTC, FMS and site-specific WXSFREE license IDs
+ * @returns {Promise<Object>} webexSite and FTM, FTC, FMS and WXSFREE licenseIds
  */
-export async function getMeetingTestUserLicenseIds(options = {}) {
+export async function getMeetingTestUserProvisioning(options = {}) {
   const atlasServiceUrl = options.atlasServiceUrl || process.env.ATLAS_SERVICE_URL;
 
-  if (!atlasServiceUrl || !options.authorization || !options.orgId || !options.webexSite) {
-    throw new Error(
-      'License discovery requires Atlas URL, org-admin authorization, orgId and webexSite'
-    );
+  if (!atlasServiceUrl || !options.authorization || !options.orgId) {
+    throw new Error('License discovery requires Atlas URL, org-admin authorization and orgId');
   }
 
   trackingIdSequence += 1;
@@ -413,26 +412,48 @@ export async function getMeetingTestUserLicenseIds(options = {}) {
     throw new Error('Expected an array from the organization license catalog');
   }
 
-  return ['FTM', 'FTC', 'FMS', 'WXSFREE'].map((offerCode) => {
-    const matches = response.body.filter(
-      (license) =>
-        license?.status === 'ACTIVE' &&
-        license.offerCode === offerCode &&
-        typeof license.licenseID === 'string' &&
-        license.licenseID.startsWith(`${offerCode}_`) &&
-        (offerCode !== 'WXSFREE' || license.siteUrl === options.webexSite)
+  const siteLicenses = response.body.filter(
+    (license) =>
+      license?.status === 'ACTIVE' &&
+      license.offerCode === 'WXSFREE' &&
+      typeof license.licenseID === 'string' &&
+      license.licenseID.startsWith('WXSFREE_') &&
+      typeof license.siteUrl === 'string' &&
+      license.siteUrl.length > 0 &&
+      (!options.licenseIds?.length || options.licenseIds.includes(license.licenseID))
+  );
+  const webexSite = options.webexSite || siteLicenses[0]?.siteUrl;
+
+  if (!webexSite || !siteLicenses.some((license) => license.siteUrl === webexSite)) {
+    throw new Error(
+      'Expected one active WXSFREE license for the requested or available meeting site; found 0'
     );
+  }
 
-    if (matches.length !== 1) {
-      throw new Error(
-        `Expected one active ${offerCode} license${
-          offerCode === 'WXSFREE' ? ' for the configured meeting site' : ''
-        }; found ${matches.length}`
-      );
-    }
+  const licenseIds = options.licenseIds?.length
+    ? options.licenseIds
+    : ['FTM', 'FTC', 'FMS', 'WXSFREE'].map((offerCode) => {
+        const matches = response.body.filter(
+          (license) =>
+            license?.status === 'ACTIVE' &&
+            license.offerCode === offerCode &&
+            typeof license.licenseID === 'string' &&
+            license.licenseID.startsWith(`${offerCode}_`) &&
+            (offerCode !== 'WXSFREE' || license.siteUrl === webexSite)
+        );
 
-    return matches[0].licenseID;
-  });
+        if (matches.length !== 1) {
+          throw new Error(
+            `Expected one active ${offerCode} license${
+              offerCode === 'WXSFREE' ? ' for the configured meeting site' : ''
+            }; found ${matches.length}`
+          );
+        }
+
+        return matches[0].licenseID;
+      });
+
+  return {webexSite, licenseIds};
 }
 
 export {

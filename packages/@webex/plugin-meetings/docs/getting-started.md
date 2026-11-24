@@ -114,17 +114,19 @@ and the command exited 1.
 
 ### Meeting-site test users
 
-For CIG users, set `WEBEX_SITE` to enable meeting-site provisioning and provide either
+For CIG users, enable meeting-site provisioning by providing either
 `WEBEX_TEST_USERS_ORG_ADMIN_AUTHORIZATION`
 (including `Bearer`) or `WEBEX_TEST_USERS_ORG_ADMIN_USER` and
 `WEBEX_TEST_USERS_ORG_ADMIN_PASSWORD`. `IDENTITY_BASE_URL` must address the same environment.
 Keep actual credentials in local or managed test configuration.
 
 Before creating each batch, the helper uses the org-admin authorization and `ATLAS_SERVICE_URL`
-to discover the organization's active FTM, FTC and FMS basic licenses and the WXSFREE license
-whose `siteUrl` matches `WEBEX_SITE`. The catalog request includes synthetic licenses. Missing
-or ambiguous matches fail setup before user creation. `WEBEX_TEST_USERS_LICENSE_IDS` can
-optionally override discovery with a comma-separated list of IDs for the target org/site.
+to discover the first active site with a WXSFREE meeting license in catalog order, along with
+the organization's active FTM, FTC and FMS basic licenses. The catalog request includes
+synthetic licenses. Set `WEBEX_SITE` to override the site and/or `WEBEX_TEST_USERS_LICENSE_IDS`
+to override the licenses with a comma-separated list of IDs for the target org/site. When
+only license IDs are supplied, discovery selects their matching site. Missing or ambiguous
+license matches fail setup before user creation.
 
 The helper requests `basicMeeting`, explicitly assigns the configured licenses, synchronizes
 the site, sets the preferred site, and obtains a fresh user token before SDK registration.
@@ -134,7 +136,8 @@ include that scope for meeting tests. The helper uses the configured scopes for 
 creation and the fresh login. CIG's initial token predates site provisioning and may omit
 meeting scopes.
 
-Without `WEBEX_SITE`, and for Whistler users, the helper retains the default creation flow.
+Without org-admin credentials/authorization or an explicit site, and for Whistler users,
+the helper retains the default creation flow. An explicit site requires org-admin authorization.
 Provisioning errors fail setup. Space-meeting fixtures must provide `displayName`, because
 App API requires a non-null `title` when the SDK creates an instant space meeting.
 

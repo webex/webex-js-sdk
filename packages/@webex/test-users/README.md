@@ -55,12 +55,15 @@ assigned meeting licenses are needed for scope eligibility.
 User-creation requests include unique tracking IDs with a shared session prefix.
 Creation errors include the sent ID for tracing failures across services.
 
-`getMeetingTestUserLicenseIds({authorization, orgId, webexSite, atlasServiceUrl})`
-queries the org's Atlas license catalog, including synthetic licenses, and returns the
-active FTM, FTC, FMS and site-specific WXSFREE IDs used by the meeting integration fixtures.
+`getMeetingTestUserProvisioning({authorization, orgId, webexSite, licenseIds, atlasServiceUrl})`
+queries the org's Atlas license catalog, including synthetic licenses, and returns
+`{webexSite, licenseIds}` for the meeting integration fixtures. It selects the first active
+site with a WXSFREE license in catalog order and the active FTM, FTC and FMS basic licenses.
+`webexSite` and `licenseIds` are optional overrides. With only a license override, the selected
+site must match one of those IDs.
 `atlasServiceUrl` defaults to `ATLAS_SERVICE_URL`; `authorization` must be an org-admin bearer
 authorization. Missing or ambiguous licenses reject the lookup. Meeting test setup uses this
-lookup once per batch unless explicit license IDs are configured.
+lookup once per batch unless both the site and license IDs are configured explicitly.
 
 ## Implementation
 

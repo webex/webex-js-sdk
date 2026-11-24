@@ -11,8 +11,13 @@ const createTestUsers = async (options = {}) => {
     ...options.config,
     orgId: options.config?.orgId || process.env.WEBEX_CONVERGED_ORG_ID,
   };
-  const webexSite = config.webexSite || process.env.WEBEX_SITE;
-  const provisionMeetingSite = Boolean(webexSite && !options.whistler);
+  let webexSite = config.webexSite || process.env.WEBEX_SITE;
+  let orgAdminAuthorization =
+    config.orgAdminAuthorization || process.env.WEBEX_TEST_USERS_ORG_ADMIN_AUTHORIZATION;
+  const email = process.env.WEBEX_TEST_USERS_ORG_ADMIN_USER;
+  const password = process.env.WEBEX_TEST_USERS_ORG_ADMIN_PASSWORD;
+  const provisionMeetingSite =
+    !options.whistler && Boolean(webexSite || orgAdminAuthorization || (email && password));
 
   if (provisionMeetingSite) {
     if (!process.env.IDENTITY_BASE_URL) {
@@ -21,16 +26,11 @@ const createTestUsers = async (options = {}) => {
 
     const clientId = config.clientId || process.env.WEBEX_CLIENT_ID;
     const clientSecret = config.clientSecret || process.env.WEBEX_CLIENT_SECRET;
-    const licenseIds =
+    let licenseIds =
       config.licenseIds ||
       (process.env.WEBEX_TEST_USERS_LICENSE_IDS || '').split(/[,\s]+/).filter(Boolean);
-    let orgAdminAuthorization =
-      config.orgAdminAuthorization || process.env.WEBEX_TEST_USERS_ORG_ADMIN_AUTHORIZATION;
 
     if (!orgAdminAuthorization) {
-      const email = process.env.WEBEX_TEST_USERS_ORG_ADMIN_USER;
-      const password = process.env.WEBEX_TEST_USERS_ORG_ADMIN_PASSWORD;
-
       if (!email || !password) {
         throw new Error(
           'Meeting-site provisioning requires org-admin authorization or credentials'
@@ -49,6 +49,16 @@ const createTestUsers = async (options = {}) => {
       orgAdminAuthorization = token.authorization;
     }
 
+    if (!webexSite || !licenseIds.length) {
+      ({webexSite, licenseIds} = await testUsers.getMeetingTestUserProvisioning({
+        authorization: orgAdminAuthorization,
+        orgId: config.orgId,
+        webexSite,
+        licenseIds,
+        atlasServiceUrl: config.atlasServiceUrl || process.env.ATLAS_SERVICE_URL,
+      }));
+    }
+
     Object.assign(config, {
       clientId,
       clientSecret,
@@ -65,14 +75,7 @@ const createTestUsers = async (options = {}) => {
       forceCreate: true,
       ensureExistsInWebexSites: true,
       syncInWebexSites: [webexSite],
-      licenseIds: licenseIds.length
-        ? licenseIds
-        : await testUsers.getMeetingTestUserLicenseIds({
-            authorization: orgAdminAuthorization,
-            orgId: config.orgId,
-            webexSite,
-            atlasServiceUrl: config.atlasServiceUrl || process.env.ATLAS_SERVICE_URL,
-          }),
+      licenseIds,
       orgAdminAuthorization,
     });
   }

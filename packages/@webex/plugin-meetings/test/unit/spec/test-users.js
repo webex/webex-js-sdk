@@ -50,9 +50,10 @@ describe('meeting test-user provisioning', () => {
     create = sandbox.stub(testUser, 'create').resolves([user]);
     login = sandbox.stub(testUsers, 'loginTestUser').resolves(freshToken);
     preferredSite = sandbox.stub(testUsers, 'setPreferredSite').resolves();
-    discoverLicenses = sandbox
-      .stub(testUsers, 'getMeetingTestUserLicenseIds')
-      .resolves(['FTM_discovered', 'FTC_discovered', 'FMS_discovered', 'WXSFREE_discovered']);
+    discoverLicenses = sandbox.stub(testUsers, 'getMeetingTestUserProvisioning').resolves({
+      webexSite: 'meetings.example.webex.com',
+      licenseIds: ['FTM_discovered', 'FTC_discovered', 'FMS_discovered', 'WXSFREE_discovered'],
+    });
   });
 
   afterEach(() => {
@@ -146,6 +147,7 @@ describe('meeting test-user provisioning', () => {
 
   it('obtains org-admin authorization before creating users when credentials are configured', async () => {
     configureSite();
+    Reflect.deleteProperty(process.env, 'WEBEX_SITE');
     Reflect.deleteProperty(process.env, 'WEBEX_TEST_USERS_ORG_ADMIN_AUTHORIZATION');
     Reflect.deleteProperty(process.env, 'WEBEX_TEST_USERS_LICENSE_IDS');
     process.env.WEBEX_TEST_USERS_ORG_ADMIN_USER = 'admin@example.test';
@@ -169,7 +171,8 @@ describe('meeting test-user provisioning', () => {
     assert.calledOnceWithExactly(discoverLicenses, {
       authorization: 'Bearer acquired-admin-token',
       orgId: 'test-org',
-      webexSite: 'meetings.example.webex.com',
+      webexSite: undefined,
+      licenseIds: [],
       atlasServiceUrl: 'https://atlas.example.test/admin/api/v1',
     });
     assert.callOrder(login, discoverLicenses, create);
@@ -218,6 +221,7 @@ describe('meeting test-user provisioning', () => {
       authorization: 'Bearer admin-token',
       orgId: 'test-org',
       webexSite: 'meetings.example.webex.com',
+      licenseIds: [],
       atlasServiceUrl: 'https://atlas.example.test/admin/api/v1',
     });
     assert.deepEqual(create.firstCall.args[0].config.licenseIds, [
@@ -227,6 +231,39 @@ describe('meeting test-user provisioning', () => {
       'WXSFREE_discovered',
     ]);
     assert.callOrder(discoverLicenses, create);
+  });
+
+  it('discovers the site and licenses with only org-admin authorization configured', async () => {
+    process.env.WEBEX_TEST_USERS_ORG_ADMIN_AUTHORIZATION = 'Bearer admin-token';
+
+    await createTestUsers({count: 1});
+
+    assert.calledOnceWithExactly(discoverLicenses, {
+      authorization: 'Bearer admin-token',
+      orgId: 'test-org',
+      webexSite: undefined,
+      licenseIds: [],
+      atlasServiceUrl: 'https://atlas.example.test/admin/api/v1',
+    });
+    assert.deepEqual(create.firstCall.args[0].config.syncInWebexSites, [
+      'meetings.example.webex.com',
+    ]);
+    assert.equal(preferredSite.firstCall.args[0].preferredSite, 'meetings.example.webex.com');
+    assert.callOrder(discoverLicenses, create, preferredSite, login);
+  });
+
+  it('passes explicit license IDs into site discovery when no site override is set', async () => {
+    configureSite();
+    Reflect.deleteProperty(process.env, 'WEBEX_SITE');
+    const licenseIds = ['FTM_override', 'WXSFREE_override'];
+    discoverLicenses.resolves({webexSite: 'override.webex.com', licenseIds});
+
+    await createTestUsers({count: 1, config: {licenseIds}});
+
+    assert.deepEqual(discoverLicenses.firstCall.args[0].licenseIds, licenseIds);
+    assert.strictEqual(create.firstCall.args[0].config.licenseIds, licenseIds);
+    assert.deepEqual(create.firstCall.args[0].config.syncInWebexSites, ['override.webex.com']);
+    assert.equal(preferredSite.firstCall.args[0].preferredSite, 'override.webex.com');
   });
 
   ['IDENTITY_BASE_URL', 'WEBEX_TEST_USERS_ORG_ADMIN_AUTHORIZATION'].forEach((missing) => {
