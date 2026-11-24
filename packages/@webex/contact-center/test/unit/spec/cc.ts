@@ -7309,6 +7309,34 @@ describe('webex.cc', () => {
           })
         );
       });
+
+      it('should reconcile manageChannelAvailability before emitting relogin success', () => {
+        webex.cc.agentConfig = {agentId: 'agent-1', manageChannelAvailability: false} as Profile;
+
+        const handler = jest.fn(() => {
+          // Inside the listener, the flag must already be true.
+          expect(webex.cc.agentConfig.manageChannelAvailability).toBe(true);
+          expect(webex.cc.getAgentStateControl()).toEqual({declared: true, active: true});
+        });
+        webex.cc.on(AGENT_EVENTS.AGENT_CHANNEL_RELOGIN_SUCCESS, handler);
+
+        messageCallback(
+          JSON.stringify({
+            type: CC_EVENTS.AGENT_CHANNEL_RELOGIN_SUCCESS,
+            data: {
+              agentId: 'agent-1',
+              agentSessionId: 'sess-1',
+              orgId: 'org-1',
+              agentChannelStateDetailMap: {telephony: makeChannelState('Available')},
+              channelsMap: {telephony: ['t1']},
+              type: CC_EVENTS.AGENT_CHANNEL_RELOGIN_SUCCESS,
+            },
+          })
+        );
+
+        expect(handler).toHaveBeenCalledTimes(1);
+        webex.cc.off(AGENT_EVENTS.AGENT_CHANNEL_RELOGIN_SUCCESS, handler);
+      });
     });
 
     describe('clearV2LocalState', () => {
@@ -8015,6 +8043,19 @@ describe('webex.cc', () => {
 
         // Clean up the dangling promise.
         resolveRegistration();
+      });
+
+      it('clears stateChangeInProgress so recovery is not blocked by a stale in-flight request', async () => {
+        // Simulate a state change that was in-flight when the socket disconnected.
+        webex.cc['stateChangeInProgress'] = true;
+
+        await runV2Reload(LoginOption.EXTENSION);
+
+        // silentRelogin clears the global flag before attempting recovery.
+        expect(setAgentStateSpy).toHaveBeenCalledTimes(1);
+        expect(setAgentStateSpy).toHaveBeenCalledWith(
+          expect.objectContaining({state: 'Available', channelType: ['telephony', 'chat']})
+        );
       });
 
       it('does not overwrite live channel updates with the stale reload snapshot', async () => {

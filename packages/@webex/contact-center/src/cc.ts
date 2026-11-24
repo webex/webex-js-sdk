@@ -2733,6 +2733,15 @@ export default class ContactCenter extends WebexPlugin implements IContactCenter
   private handleChannelReloginSuccess(eventData: AgentChannelReloginSuccess): void {
     const data = eventData.data;
 
+    // Reconcile the live session mode before restoring state or emitting,
+    // matching the desktop pattern where handleChannelReloginSuccess calls
+    // pinSessionRoutingVersion(true) first.  Without this, listeners that
+    // call getAgentStateControl() or getChannelStates() inside the
+    // agent:channelReloginSuccess handler see the stale V1 flag.
+    if (this.agentConfig && this.agentConfig.manageChannelAvailability !== true) {
+      this.agentConfig.manageChannelAvailability = true;
+    }
+
     if (data.agentChannelStateDetailMap) {
       this.channelStatesMap = {...data.agentChannelStateDetailMap};
     }
@@ -2806,6 +2815,14 @@ export default class ContactCenter extends WebexPlugin implements IContactCenter
       module: CC_FILE,
       method: METHODS.SILENT_RELOGIN,
     });
+
+    // Invalidate any stale in-flight state change from the dead socket.
+    // stateChangeInProgress is a global boolean that blocks ALL setAgentState
+    // calls — including the recovery call below that targets *different*
+    // channels. The stale AQM bind will never receive a response on the new
+    // connection and will time out (up to 20 s), at which point its finally
+    // block harmlessly sets the flag to false again.
+    this.stateChangeInProgress = false;
 
     try {
       // Always use the V2 reload endpoint — it accepts both V1 AgentReloginSuccess
