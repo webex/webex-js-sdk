@@ -87,6 +87,11 @@ conference identifiers, preload state or Mercury connection state. Existing call
 auth selector retain their meeting and pre-meeting behavior. Auth uses the existing payload merge,
 envelope, normal submission, prepared fetch and delayed submission paths.
 
+TypeScript callers can use the exported `AuthClientEventOptions` type to declare auth options
+before submission. The type requires a correlation ID and checks any supplied client type,
+sub-client type and network type against the Event Dictionary. Run `build:src` before
+`test:unit` to check these types against the built declarations.
+
 The auth builder includes `userId` only when the device or credentials provide the user UUID.
 Sent JSON omits an unknown user ID. The `preLoginId` option still selects the unauthenticated
 endpoint and request header. It is not an auth user ID. Caller payloads retain the existing ability

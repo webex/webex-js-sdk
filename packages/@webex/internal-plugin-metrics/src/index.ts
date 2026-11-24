@@ -68,6 +68,7 @@ export {
   PreLoginMetrics,
 };
 export {isAutomatedUser, isAutomatedUserAgent} from './automated-user';
+export type {AuthClientEventOptions, SubmitClientEventArgs} from './metrics.types';
 export type {
   ClientEvent,
   ClientEventLeaveReason,
