@@ -1,5 +1,7 @@
 Manual meeting test users
 
+See INVESTIGATION.txt for the findings, validation status, and remaining work.
+
 From the SDK repository root, with Node 22.14 and workspace dependencies built:
 
   node scripts/manual-meeting-users/create-user-basic.cjs

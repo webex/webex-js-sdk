@@ -49,6 +49,10 @@ Each CIG user-creation request sends a `trackingid` header in the form
 `webex-js-sdk_test-users_<session UUID>_<request number>`. Retries get a new request number.
 Creation errors include `WEBEX_TRACKING_ID` in their message so the ID appears in retry logs.
 
+For manual comparisons of default and meeting-site provisioning, see the
+[manual test-user scripts](../../../scripts/manual-meeting-users/USAGE.txt) and
+[work-in-progress investigation](../../../scripts/manual-meeting-users/INVESTIGATION.txt).
+
 ## Implementation
 
 Test User creation follows a different flow than standard users due to the fact that they are created on the fly.

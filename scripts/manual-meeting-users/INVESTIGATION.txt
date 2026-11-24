@@ -1,0 +1,92 @@
+Meeting integration test-user provisioning investigation
+Status: work in progress, updated 2026-11-24
+
+Problem and objective
+
+The plugin-meetings space-meeting integration test fails before a successful
+meeting start in the INT environment. We are comparing the SDK's default CIG
+test-user provisioning with the fuller meeting-site provisioning used by the
+web client's end-to-end tests. This branch contains diagnostic tooling and an
+opt-in provisioning experiment; it is not a verified fix for the failing suite.
+
+What we established
+
+1. An obsolete local Hydra bootstrap URL originally prevented people/me from
+   resolving. Correcting that local configuration let the lookup succeed.
+   HTTPS Karma mode was retained. These local environment changes are not
+   committed, and the branch does not change SDK service URL defaults.
+
+2. GET /meetingPreferences subsequently returned 403. Hydra forwarded the
+   request to the meeting REST backend, which rejected it. A direct curl call
+   using a manually created test user's token also reproduced the 403.
+   The generic response did not distinguish missing scope, role, license,
+   or site eligibility. The integration test later timed out; some earlier
+   runs failed while fetching meetingInfo through a legacy fallback endpoint.
+
+3. We added meeting:preferences_read to the requested scopes. The returned
+   token's scope list still omitted it. After the client registration was
+   updated, an explicit fresh login also returned a different token without
+   that scope. Thus a cached CIG test-user token alone does not explain that
+   fresh-login result. The effective client registration at token issuance
+   and the exact scope-filtering decision have not been confirmed.
+
+4. The CIG source inspected accepts the meeting: scope prefix and passes the
+   requested scopes into its OAuth provider. Its disallowed-prefix and
+   restricted-scope checks reject requests rather than silently trimming them.
+
+5. Identity Broker source shows both client-scope checks and user eligibility
+   filtering. The legacy meeting-specific path checks CI-enabled or linked
+   meeting sites. The newer path applies configured role and user-attribute
+   bindings. These rules make missing meeting-site provisioning a plausible
+   explanation, but we have not proved which rule affected this user.
+   Source inspection also found client-cache TTLs of 10 minutes for the normal
+   manager and 30 minutes for the federated manager; these are not verified
+   effective runtime settings for the requests under investigation.
+
+6. The latest basic users had the SDK's default entitlements without
+   basicMeeting, and preferred-site discovery failed. Absence of basicMeeting
+   alone does not prove why the scope was removed. Full meeting provisioning
+   had been implemented as an opt-in helper path, but WEBEX_SITE was unset
+   following restoration of the local environment, so later runs used defaults.
+
+7. Separate setup failures occurred during earlier attempts: CIG returned
+   authorization-code-related 502 errors, and meeting onboarding encountered
+   downstream license-service/Atlas rate limiting. One later export also
+   showed Redis timeouts and open circuit breakers across INT services.
+   None of these observations by itself explains the remaining 403.
+
+Changes in this branch
+
+- CIG user-creation requests carry unique tracking IDs with a shared session
+  prefix. Failure messages include the ID; two focused mocked tests cover it.
+- The plugin-meetings test-user helper can opt into basicMeeting entitlement,
+  forced creation, site synchronization, and preferred-site configuration.
+  It requires WEBEX_SITE and matching org-admin authorization. The space-meeting
+  setup hook allows 180 seconds for provisioning.
+- create-user-basic.cjs preserves default provisioning without site setup.
+- create-user.cjs requests full provisioning, sets the preferred site, then
+  obtains a fresh user token. This last step matters because the CIG source
+  inspected obtains its initial token before meeting-site synchronization.
+- request.sh makes a direct request with a unique tracking ID and can select
+  either user's authorization file. See USAGE.txt for commands and settings.
+
+Validation and remaining work
+
+The two tracking-ID unit tests passed. Script syntax checks and mocked full-flow
+checks passed, including configuration validation and retaining credentials
+after a later provisioning failure. Live basic creation and a direct 403 were
+reproduced. The full manual provisioning flow has not been validated end to end
+with a matching INT org, meeting site, and admin configuration.
+
+Next, run the full manual flow with those settings and compare the resulting
+site associations, granted scopes, and /meetingPreferences response with a
+basic user. If the scope remains absent, trace the fresh authorization request
+in Identity Broker to identify the actual filtering decision.
+
+The integration helper does not yet perform the manual script's post-sync fresh
+login. If the manual experiment succeeds, bring that behavior into the helper
+with focused coverage before treating this branch as a proposed fix. Also
+review existing setup-error handling before relying on the test's final error.
+
+Credentials, generated users/tokens, raw server logs, and private investigation
+artifacts stay outside version control. Do not attach them to a public PR.
