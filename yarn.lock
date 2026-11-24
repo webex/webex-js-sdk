@@ -26196,15 +26196,15 @@ __metadata:
   linkType: hard
 
 "morgan@npm:^1.10.0, morgan@npm:^1.7.0, morgan@npm:^1.9.1":
-  version: 1.10.1
-  resolution: "morgan@npm:1.10.1"
+  version: 1.12.1
+  resolution: "morgan@npm:1.12.1"
   dependencies:
     basic-auth: ~2.0.1
     debug: 2.6.9
     depd: ~2.0.0
-    on-finished: ~2.3.0
+    on-finished: ~2.4.1
     on-headers: ~1.1.0
-  checksum: 8e637a2795d0f6dafb7dbc6a3ef6870731d160123cd56c496d305f1a185c9b0831699c456081328c107b3be49f25fade40519fa1b4990546040595fa44312fe3
+  checksum: 847daa272de93c824c10140916808946c2f507ca75d8ddc8106dfea6dd65f1ccb1fb8c05f7638072bef6bbe992f1fed4e4e11eaa7cbd4beb6f08dc934141c4fe
   languageName: node
   linkType: hard
 
