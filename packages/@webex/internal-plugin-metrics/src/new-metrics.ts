@@ -16,7 +16,7 @@ import {
   MetricEventProduct,
   MetricEventAgent,
   MetricEventVerb,
-  ClientEvent,
+  SubmitClientEventArgs,
   FeatureEvent,
   EventPayload,
   MediaQualityEvent,
@@ -374,15 +374,7 @@ class Metrics extends WebexPlugin {
    * @public
    * @param args
    */
-  public submitClientEvent({
-    name,
-    payload,
-    options,
-  }: {
-    name: ClientEvent['name'];
-    payload?: RecursivePartial<ClientEvent['payload']>;
-    options?: SubmitClientEventOptions;
-  }): Promise<any> {
+  public submitClientEvent({name, payload, options}: SubmitClientEventArgs): Promise<any> {
     if (!this.isReady) {
       // @ts-ignore
       this.webex.logger.log(
@@ -494,11 +486,7 @@ class Metrics extends WebexPlugin {
     name,
     payload,
     options,
-  }: {
-    name: ClientEvent['name'];
-    payload?: RecursivePartial<ClientEvent['payload']>;
-    options?: SubmitClientEventOptions;
-  }): Promise<any> {
+  }: SubmitClientEventArgs): Promise<any> {
     return this.callDiagnosticMetrics.buildClientEventFetchRequestOptions({
       name,
       payload,

@@ -134,10 +134,6 @@ export type SubClientType = NonNullable<RawEvent['origin']['clientInfo']>['subCl
 export type NetworkType = NonNullable<RawEvent['origin']>['networkType'];
 
 export type SubmitClientEventOptions = {
-  diagnosticType?: 'auth';
-  clientType?: ClientType;
-  subClientType?: SubClientType;
-  networkType?: NetworkType;
   meetingId?: string;
   mediaConnections?: any[];
   rawError?: any;
@@ -157,6 +153,14 @@ export type SubmitClientEventOptions = {
   emailInput?: ClientEmailInput;
   userNameInput?: ClientUserNameInput;
   vendorId?: string;
+};
+
+export type AuthClientEventOptions = SubmitClientEventOptions & {
+  diagnosticType: 'auth';
+  correlationId: string;
+  clientType?: ClientType;
+  subClientType?: SubClientType;
+  networkType?: NetworkType;
 };
 
 export type SubmitMQEOptions = {
@@ -309,11 +313,13 @@ export type SubmitBehavioralEvent = (args: {
   payload?: EventPayload;
 }) => void;
 
-export type SubmitClientEvent = (args: {
+export type SubmitClientEventArgs = {
   name: ClientEvent['name'];
-  payload?: RecursivePartial<ClientEvent['payload']>;
-  options?: SubmitClientEventOptions;
-}) => Promise<any>;
+  payload?: ClientEventPayload;
+  options?: (SubmitClientEventOptions & {diagnosticType?: undefined}) | AuthClientEventOptions;
+};
+
+export type SubmitClientEvent = (args: SubmitClientEventArgs) => Promise<any>;
 
 export type SubmitOperationalEvent = (args: {
   name: OperationalEvent['metricName'];
@@ -333,11 +339,7 @@ export type SubmitMQE = (args: {
   options: any;
 }) => void;
 
-export type BuildClientEventFetchRequestOptions = (args: {
-  name: ClientEvent['name'];
-  payload?: RecursivePartial<ClientEvent['payload']>;
-  options?: SubmitClientEventOptions;
-}) => Promise<any>;
+export type BuildClientEventFetchRequestOptions = (args: SubmitClientEventArgs) => Promise<any>;
 
 export type PreComputedLatencies =
   | 'internal.client.pageJMT'
