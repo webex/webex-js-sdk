@@ -34,8 +34,10 @@ skipInNode(describe)('plugin-meetings', () => {
   describe('space-meeting', () => {
     let space = null;
 
-    before(() =>
-      webexTestUsers
+    before(function setupUsers() {
+      this.timeout(180000);
+
+      return webexTestUsers
         .generateTestUsers({
           count: 4,
           whistler: process.env.WHISTLER || process.env.JENKINS,
@@ -53,19 +55,18 @@ skipInNode(describe)('plugin-meetings', () => {
         })
         .then(() =>
           Promise.all([testUtils.syncAndEndMeeting(alice), testUtils.syncAndEndMeeting(bob)])
-        )
-        .catch((error) => {
-          console.log(error);
-        })
-    );
+        );
+    });
 
     it('Alice starts a space meeting', () =>
       alice.webex.internal.conversation
-        .create({participants: [bob, chris]})
+        .create({
+          displayName: 'SDK space meeting integration',
+          participants: [bob, chris],
+        })
         .then((conversation) => {
           assert.lengthOf(conversation.participants.items, 3);
           assert.lengthOf(conversation.activities.items, 1);
-          console.log('CONVERSATION', conversation);
           space = conversation;
         })
         .then(async () => {

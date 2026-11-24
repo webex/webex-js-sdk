@@ -50,6 +50,7 @@
     "@webex/test-helper-mock-webex": "workspace:*",
     "@webex/test-helper-retry": "workspace:*",
     "@webex/test-helper-test-users": "workspace:*",
+    "@webex/test-users": "workspace:*",
     "chai": "^4.3.4",
     "chai-as-promised": "^7.1.1",
     "eslint": "^8.24.0",

@@ -112,6 +112,26 @@ Browser/integration tests live under `test/integration/spec/` and use the packag
 browsers: the transcription cases passed, `space-meeting` failed because no test user was created,
 and the command exited 1.
 
+### Meeting-site test users
+
+For CIG users, set `WEBEX_SITE` to enable meeting-site provisioning. Configure
+`WEBEX_TEST_USERS_LICENSE_IDS` with a comma-separated list of license IDs belonging to
+`WEBEX_CONVERGED_ORG_ID`, and provide either `WEBEX_TEST_USERS_ORG_ADMIN_AUTHORIZATION`
+(including `Bearer`) or `WEBEX_TEST_USERS_ORG_ADMIN_USER` and
+`WEBEX_TEST_USERS_ORG_ADMIN_PASSWORD`. `IDENTITY_BASE_URL` must address the same environment.
+Keep actual credentials and organization-specific license IDs in local or managed test configuration.
+
+The helper requests `basicMeeting`, explicitly assigns the configured licenses, synchronizes
+the site, sets the preferred site, and obtains a fresh user token before SDK registration.
+The OAuth client must allow `meeting:preferences_read`; the helper includes that scope in
+both user creation and the fresh login. CIG's initial token predates site provisioning and
+may omit meeting scopes. If license IDs are omitted, CIG relies on the organization's
+automatic license template, which must assign the requested site.
+
+Without `WEBEX_SITE`, and for Whistler users, the helper retains the default creation flow.
+Provisioning errors fail setup. Space-meeting fixtures must provide `displayName`, because
+App API requires a non-null `title` when the SDK creates an instant space meeting.
+
 When adding tests, follow the existing file's style, use Sinon and `@webex/test-helper-chai`, prefer
 `calledOnceWithExactly`, use fake timers for timer/retry behavior, and parameterize more than three
 similar cases. Use Sinon for mocks/stubs and assertions from `@webex/test-helper-chai`.

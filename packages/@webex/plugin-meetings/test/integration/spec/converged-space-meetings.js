@@ -39,7 +39,8 @@ skipInNode(describe)('plugin-meetings', () => {
       let space = null;
       let mediaReadyListener = null;
 
-      before('setup users', async () => {
+      before('setup users', async function setupUsers() {
+        this.timeout(180000);
         const userSet = await webexTestUsers.generateTestUsers({
           count: 3,
           whistler: process.env.WHISTLER || process.env.JENKINS,
@@ -83,6 +84,7 @@ skipInNode(describe)('plugin-meetings', () => {
 
       it('user "alice" starts a space', async () => {
         const conversation = await alice.webex.internal.conversation.create({
+          displayName: 'SDK converged space meeting integration',
           participants: [bob, chris],
         });
 

@@ -8969,6 +8969,7 @@ __metadata:
     "@webex/test-helper-mock-webex": "workspace:*"
     "@webex/test-helper-retry": "workspace:*"
     "@webex/test-helper-test-users": "workspace:*"
+    "@webex/test-users": "workspace:*"
     "@webex/ts-sdp": ^1.8.1
     "@webex/web-capabilities": ^1.13.1
     "@webex/webex-core": "workspace:*"
@@ -9618,6 +9619,7 @@ __metadata:
     chai: ^4.3.4
     chai-as-promised: ^7.1.1
     eslint: ^8.24.0
+    jest: ^29.3.1
     lodash: ^4.17.21
     node-random-name: ^1.0.1
     prettier: ^2.7.1

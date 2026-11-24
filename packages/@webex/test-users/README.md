@@ -45,6 +45,16 @@ The test users library falls back to a few environment variables if they aren't 
 - `IDBROKER_BASE_URL` - The Webex auth endpoint to get a client based access token
 - [DEPRECATED] `WEBEX_TEST_USERS_CONVERSATION_SERVICE_URL` - use `WEBEX_TEST_USERS_CI_GATEWAY_SERVICE_URL` instead
 
+`createTestUser` accepts `licenseIds`, an array of organization-specific license IDs,
+alongside `ensureExistsInWebexSites`, `syncInWebexSites`, and `orgAdminAuthorization`.
+CIG uses these IDs for explicit license assignment during site provisioning. Omitting
+them preserves automatic template assignment. CIG issues the initial user token before
+site synchronization; obtain a fresh token with `loginTestUser` afterward when newly
+assigned meeting licenses are needed for scope eligibility.
+
+User-creation requests include unique tracking IDs with a shared session prefix.
+Creation errors include the sent ID for tracing failures across services.
+
 ## Implementation
 
 Test User creation follows a different flow than standard users due to the fact that they are created on the fly.

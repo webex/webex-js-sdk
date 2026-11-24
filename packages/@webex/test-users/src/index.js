@@ -6,6 +6,8 @@ import {request} from '@webex/http-core';
 
 const BASE_PATH_SECURE = '/users/test_users_s';
 const BASE_PATH = '/users/test_users';
+const TRACKING_ID_PREFIX = `webex-js-sdk_test-users_${uuid.v4()}`;
+let trackingIdSequence = 0;
 
 /**
  * Computes `expires` and `refresh_token_expires` from `expires_in` and
@@ -130,6 +132,7 @@ function requestWithAuth(options) {
  * @property {boolean} [forceCreate] force creates the user, to be used in conjunction with ensureExistsInWebexSites
  * @property {boolean} [ensureExistsInWebexSites] syncs the user in provided webexSites (syncInWebexSites)
  * @property {Array.<string>} [syncInWebexSites] used to define in which sites account should be synced
+ * @property {Array.<string>} [licenseIds] license IDs explicitly assigned during meeting-site provisioning
  * @property {string} [orgAdminAuthorization] bearer token of org admin to use syncInWebexSites
  */
 
@@ -206,21 +209,31 @@ export function createTestUser(options = {}) {
     forceCreate: options.forceCreate || false,
     ensureExistsInWebexSites: options.ensureExistsInWebexSites || false,
     syncInWebexSites: options.syncInWebexSites,
+    licenseIds: options.licenseIds,
     orgAdminAuthorization: options.orgAdminAuthorization,
   };
+
+  trackingIdSequence += 1;
+  const trackingId = `${TRACKING_ID_PREFIX}_${trackingIdSequence}`;
 
   return requestWithAuth({
     method: 'POST',
     uri: `${cigServiceUrl}${BASE_PATH_SECURE}`,
     json: true,
+    headers: {trackingid: trackingId},
     body,
-  }).then((res) => ({
-    password: body.password,
-    emailAddress: res.body.user.email,
-    displayName: res.body.user.name,
-    ...res.body.user,
-    token: fixToken(res.body.token),
-  }));
+  })
+    .then((res) => ({
+      password: body.password,
+      emailAddress: res.body.user.email,
+      displayName: res.body.user.name,
+      ...res.body.user,
+      token: fixToken(res.body.token),
+    }))
+    .catch((error) => {
+      error.message += `\nWEBEX_TRACKING_ID: ${trackingId}`;
+      throw error;
+    });
 }
 
 /**
