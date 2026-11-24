@@ -11460,6 +11460,18 @@ __metadata:
   languageName: node
   linkType: hard
 
+"b4a@npm:^1.9.0":
+  version: 1.9.0
+  resolution: "b4a@npm:1.9.0"
+  peerDependencies:
+    react-native-b4a: "*"
+  peerDependenciesMeta:
+    react-native-b4a:
+      optional: true
+  checksum: 84d6115557b8f6a39c5fbc411302fb3a95e2959dc986c535ade06b06d124dd89d7a9b5cdb8e395549cd713b4d903d3305cd654a017261f43d8df7ee2b3d35057
+  languageName: node
+  linkType: hard
+
 "b64-lite@npm:^1.3.1, b64-lite@npm:^1.4.0":
   version: 1.4.0
   resolution: "b64-lite@npm:1.4.0"
@@ -11774,6 +11786,24 @@ __metadata:
     bare-buffer:
       optional: true
   checksum: d4cceda826760f4b7b09fedd22d3a32cad054dcce05047f2ef3153fc382ab200332cfffa3a99dee8de7063374453300f502938c9e447e968d8abc17947006477
+  languageName: node
+  linkType: hard
+
+"bare-fs@npm:^4.8.2":
+  version: 4.8.7
+  resolution: "bare-fs@npm:4.8.7"
+  dependencies:
+    bare-events: ^2.5.4
+    bare-path: ^3.0.0
+    bare-stream: ^2.6.4
+    bare-url: ^2.2.2
+    fast-fifo: ^1.3.2
+  peerDependencies:
+    bare-buffer: "*"
+  peerDependenciesMeta:
+    bare-buffer:
+      optional: true
+  checksum: 5ae2f1e773228db7db20b6e92107c8e23eae1472f80594fcbda98fc0b54beeda91a19dec88834aa6847dab7b76e14fe800f15d9d567c2db92372b98058b48992
   languageName: node
   linkType: hard
 
@@ -31453,6 +31483,17 @@ __metadata:
   languageName: node
   linkType: hard
 
+"streamx@npm:^2.28.1":
+  version: 2.28.1
+  resolution: "streamx@npm:2.28.1"
+  dependencies:
+    events-universal: ^1.0.0
+    fast-fifo: ^1.3.2
+    text-decoder: ^1.1.0
+  checksum: 4726dbb84cb32be9469fa7bcec4c91856d6ce73a9f2d83a021bf1033daf722a5032c1feb608c49cb0598794a1008b00d6906a03e0b2b3b6dc8000afe36be1cf2
+  languageName: node
+  linkType: hard
+
 "strict-event-emitter@npm:^0.1.0":
   version: 0.1.0
   resolution: "strict-event-emitter@npm:0.1.0"
@@ -31951,31 +31992,31 @@ __metadata:
   linkType: hard
 
 "tar-fs@npm:^2.0.0":
-  version: 2.1.4
-  resolution: "tar-fs@npm:2.1.4"
+  version: 2.1.6
+  resolution: "tar-fs@npm:2.1.6"
   dependencies:
     chownr: ^1.1.1
     mkdirp-classic: ^0.5.2
     pump: ^3.0.0
     tar-stream: ^2.1.4
-  checksum: a9e18e2e6114b8ac2568d7c2b42d006b1fe30d83957e4e75ba2361a889c2fc54e54236476782d06494e081358a393feacdf19311df12b3056c8a64dc1f7ed309
+  checksum: 6049ef49744c6c6c7c8af395a152884c9c8f2690417e5d72e4107b79b01ca91d6f2b7428c1cebdf71b911fae9930e3cfa0092c1bf645d0e34e46770daf918622
   languageName: node
   linkType: hard
 
 "tar-fs@npm:^3.0.4, tar-fs@npm:^3.0.6":
-  version: 3.1.2
-  resolution: "tar-fs@npm:3.1.2"
+  version: 3.1.4
+  resolution: "tar-fs@npm:3.1.4"
   dependencies:
     bare-fs: ^4.0.1
     bare-path: ^3.0.0
     pump: ^3.0.0
-    tar-stream: ^3.1.5
+    tar-stream: ^3.3.0
   dependenciesMeta:
     bare-fs:
       optional: true
     bare-path:
       optional: true
-  checksum: 2c591863823bfe90b9a1fe75dd53a340d90621390873cc8c313a5d6755a986af42562eaa2d6c2e5fc557c76c1882f4566d653e46453d5b93d96a80217d6c9711
+  checksum: 18d215e4e6cc9f6da3c35b3954b924afcce50d12372864b06ff4b925591d3aaddcf7c3f7b5f0249f3e81398e11f5817516281dd635e05ff1d82272147cd27b29
   languageName: node
   linkType: hard
 
@@ -32016,6 +32057,18 @@ __metadata:
     fast-fifo: ^1.2.0
     streamx: ^2.15.0
   checksum: 2064263433bd2ab93cecc6048101f9a104fdc402d5e15571354fcbf93b8a91c72d94b11113d2292c8dc93e0f0a34c5b57ea39418fda61cb3aaa75a21f9faecfb
+  languageName: node
+  linkType: hard
+
+"tar-stream@npm:^3.3.0":
+  version: 3.3.0
+  resolution: "tar-stream@npm:3.3.0"
+  dependencies:
+    b4a: ^1.9.0
+    bare-fs: ^4.8.2
+    fast-fifo: ^1.3.2
+    streamx: ^2.28.1
+  checksum: b72ff7b66e6d607667a4aea62c9f9251665bd0595d1f0baa30fb51fb32e62ead0bfdd8f73f7d99792aa8dfda61b0956db9af01689828e7d5fa240f2590c38529
   languageName: node
   linkType: hard
 
