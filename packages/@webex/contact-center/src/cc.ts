@@ -2790,10 +2790,14 @@ export default class ContactCenter extends WebexPlugin implements IContactCenter
             {module: CC_FILE, method: METHODS.SILENT_RELOGIN}
           );
 
-          // Split telephony from other channels if browser login needs WebRTC line first
+          // Split telephony from other channels if browser login needs WebRTC line first.
+          // When browser voice is not required (e.g. disableWebRTCRegistration: true),
+          // skip the deferral — isVoiceReady() is false but no local line is needed,
+          // so setAgentState() would permit immediate recovery.
           const deviceTypeStr = (this.agentConfig?.deviceType as string) ?? '';
           const webRtcRegistered =
             deviceTypeStr !== LoginOption.BROWSER ||
+            !this.webCallingService?.isBrowserVoiceRequired() ||
             Boolean(this.webCallingService?.isVoiceReady());
           const {immediate, deferred} = this.splitTelephonyRecovery(
             disconnectedChannelTypes,
@@ -2847,6 +2851,21 @@ export default class ContactCenter extends WebexPlugin implements IContactCenter
         );
       } else {
         // ─── V1 path ─────────────────────────────────────────────
+
+        // Guard: if manageChannelAvailability was enabled after the original V1
+        // login, the reloadV2() call returns a V1 AgentReloginSuccess because
+        // the server session is still V1.  Downgrade the flag to match the
+        // actual session mode so that setAgentState routes through V1 (instead
+        // of sending a V2 request with channelType: [] that can never match a
+        // channel notification) and clear any stale V2 local state.
+        if (this.agentConfig?.manageChannelAvailability === true) {
+          LoggerProxy.warn(
+            'event=sessionModeMismatch | Server returned V1 session but manageChannelAvailability is true; downgrading to V1 for this session',
+            {module: CC_FILE, method: METHODS.SILENT_RELOGIN}
+          );
+          this.agentConfig.manageChannelAvailability = false;
+          this.clearV2LocalState();
+        }
 
         const {
           agentId,

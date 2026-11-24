@@ -4632,11 +4632,13 @@ describe('webex.cc', () => {
         expect(webex.cc.getAgentStateControl()).toEqual({declared: true, active: true});
       });
 
-      it('active is undefined when flag is true but server returns V1 (no channel states seeded)', async () => {
+      it('downgrades manageChannelAvailability when flag is true but server returns V1', async () => {
         await runReload(true, v1Reload);
 
-        // V1 response path does not populate channelStatesMap
-        expect(webex.cc.getAgentStateControl()).toEqual({declared: true, active: undefined});
+        // The V1 response path downgrades manageChannelAvailability to false to
+        // match the actual server session mode and clears V2 local state.
+        expect(webex.cc.agentConfig.manageChannelAvailability).toBe(false);
+        expect(webex.cc.getAgentStateControl()).toEqual({declared: false, active: undefined});
       });
 
       it('active is undefined when flag is false even when server returns V2', async () => {
@@ -4645,6 +4647,60 @@ describe('webex.cc', () => {
         // The V2 response path populates channelStatesMap, but declared (flag) is false
         // so active = (false && hasEntries) = undefined
         expect(webex.cc.getAgentStateControl()).toEqual({declared: false, active: undefined});
+      });
+
+      it('V1 disconnect recovery uses V1 setAgentState when flag was downgraded from true', async () => {
+        const v1DisconnectReload = {
+          data: {
+            type: 'AgentReloginSuccess',
+            auxCodeId: 'auxCodeId',
+            agentId: 'agentId',
+            deviceType: LoginOption.EXTENSION,
+            dn: '1001',
+            teamId: 'teamId',
+            lastStateChangeTimestamp: 1738575135188,
+            lastIdleCodeChangeTimestamp: 1738575135189,
+            lastStateChangeReason: 'agent-wss-disconnect',
+          },
+        };
+
+        webex.cc.agentConfig = {
+          agentId: 'agentId',
+          isAgentLoggedIn: true,
+          manageChannelAvailability: true,
+        } as Profile;
+
+        // Pre-seed stale V2 state to verify it gets cleared
+        webex.cc['loginChannelsMap'] = {telephony: ['t1']};
+        webex.cc['channelStatesMap'] = {telephony: {agentState: 'Available', auxCodeId: '0'}} as any;
+
+        const setAgentStateSpy = jest.spyOn(webex.cc, 'setAgentState').mockResolvedValue({
+          data: {
+            lastStateChangeTimestamp: 9999,
+            lastIdleCodeChangeTimestamp: 8888,
+          },
+        } as any);
+        jest.spyOn(webex.cc.services.agent, 'reloadV2').mockResolvedValue(v1DisconnectReload as any);
+
+        await webex.cc['silentRelogin']();
+
+        // Flag downgraded to match the V1 session
+        expect(webex.cc.agentConfig.manageChannelAvailability).toBe(false);
+
+        // V2 local state cleared
+        expect(webex.cc['loginChannelsMap']).toEqual({});
+        expect(webex.cc['channelStatesMap']).toEqual({});
+
+        // The state change was issued (V1 path, no channelType)
+        expect(setAgentStateSpy).toHaveBeenCalledWith({
+          state: 'Available',
+          auxCodeId: '0',
+          lastStateChangeReason: 'agent-wss-disconnect',
+          agentId: 'agentId',
+        });
+
+        // Session is logged in and usable
+        expect(webex.cc.agentConfig.isAgentLoggedIn).toBe(true);
       });
     });
   });
@@ -7696,6 +7752,7 @@ describe('webex.cc', () => {
       });
 
       it('recovers only disconnected channels and defers telephony while browser voice is not ready', async () => {
+        jest.spyOn(webex.cc.webCallingService, 'isBrowserVoiceRequired').mockReturnValue(true);
         jest.spyOn(webex.cc.webCallingService, 'isVoiceReady').mockReturnValue(false);
 
         await runV2Reload(LoginOption.BROWSER);
@@ -7743,10 +7800,25 @@ describe('webex.cc', () => {
         expect(scheduleSpy).not.toHaveBeenCalled();
       });
 
+      it('recovers telephony immediately on BROWSER when browser voice is not required (disableWebRTCRegistration)', async () => {
+        jest.spyOn(webex.cc.webCallingService, 'isVoiceReady').mockReturnValue(false);
+        jest.spyOn(webex.cc.webCallingService, 'isBrowserVoiceRequired').mockReturnValue(false);
+
+        await runV2Reload(LoginOption.BROWSER);
+
+        // Telephony should be recovered immediately (not deferred) because
+        // browser voice is not required even though isVoiceReady() is false.
+        expect(setAgentStateSpy).toHaveBeenCalledWith(
+          expect.objectContaining({channelType: ['telephony', 'chat']})
+        );
+        expect(scheduleSpy).not.toHaveBeenCalled();
+      });
+
       it('recovers digital channels even when browser voice registration fails', async () => {
         jest.spyOn(webex.cc.webCallingService, 'registerWebCallingLine').mockRejectedValue(
           new Error('WebRTC registration failed')
         );
+        jest.spyOn(webex.cc.webCallingService, 'isBrowserVoiceRequired').mockReturnValue(true);
         jest.spyOn(webex.cc.webCallingService, 'isVoiceReady').mockReturnValue(false);
 
         await runV2Reload(LoginOption.BROWSER);
