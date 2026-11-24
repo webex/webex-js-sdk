@@ -3144,6 +3144,20 @@ describe('webex.cc', () => {
       ]);
     });
 
+    it('logout reason is sanitized before metrics', async () => {
+      const data = {logoutReason: 'Logout\r\ninjected: evil'};
+
+      jest.spyOn(webex.cc.services.agent, 'logout').mockResolvedValue({} as StationLogoutResponse);
+
+      await webex.cc.stationLogout(data);
+
+      expect(mockMetricsManager.trackEvent).toHaveBeenCalledWith(
+        METRIC_EVENT_NAMES.STATION_LOGOUT_SUCCESS,
+        expect.objectContaining({logoutReason: 'Logoutinjected: evil'}),
+        ['behavioral', 'business', 'operational']
+      );
+    });
+
     it('should not publish usersub false on logout when wxApp was never enabled', async () => {
       webex.internal.device = {userId: 'user-123'};
       const publishSpy = jest
@@ -3378,6 +3392,26 @@ describe('webex.cc', () => {
         {module: CC_FILE, method: 'stationLogout', trackingId: error.details.trackingId}
       );
     });
+
+    it('logout reason is sanitized before metrics in error path', async () => {
+      const data = {logoutReason: 'Logout\r\ninjected: evil'};
+      const error = {
+        details: {
+          trackingId: '1234',
+          data: {reason: 'station logout failed'},
+        },
+      };
+
+      jest.spyOn(webex.cc.services.agent, 'logout').mockRejectedValue(error);
+
+      await expect(webex.cc.stationLogout(data)).rejects.toThrow();
+
+      expect(mockMetricsManager.trackEvent).toHaveBeenCalledWith(
+        METRIC_EVENT_NAMES.STATION_LOGOUT_FAILED,
+        expect.objectContaining({logoutReason: 'Logoutinjected: evil'}),
+        ['behavioral', 'business', 'operational']
+      );
+    });
   });
 
   describe('setAgentStatus', () => {
@@ -3559,6 +3593,53 @@ describe('webex.cc', () => {
       expect(LoggerProxy.error).toHaveBeenCalledWith(
         `setAgentState failed with reason: ${error.details.data.reason}`,
         {module: CC_FILE, method: 'setAgentState', trackingId: error.details.trackingId}
+      );
+    });
+
+    it('state change reason is sanitized before metrics on success', async () => {
+      const expectedPayload = {
+        state: 'Available',
+        auxCodeId: '0',
+        agentId: '123',
+        lastStateChangeReason: 'Available\r\ninjected: evil',
+      };
+
+      jest
+        .spyOn(webex.cc.services.agent, 'stateChange')
+        .mockResolvedValue({data: expectedPayload});
+
+      await webex.cc.setAgentState(expectedPayload);
+
+      expect(mockMetricsManager.trackEvent).toHaveBeenCalledWith(
+        METRIC_EVENT_NAMES.AGENT_STATE_CHANGE_SUCCESS,
+        expect.objectContaining({lastStateChangeReason: 'Availableinjected: evil'}),
+        ['behavioral', 'business', 'operational']
+      );
+    });
+
+    it('state change reason is sanitized before metrics on failure', async () => {
+      const expectedPayload = {
+        state: 'Meeting',
+        auxCodeId: '12345',
+        agentId: '123',
+        lastStateChangeReason: 'Meeting\r\ninjected: evil',
+      };
+      const error = {
+        details: {
+          trackingId: '1234',
+          data: {reason: 'missing status'},
+        },
+      };
+      jest.spyOn(webex.cc.services.agent, 'stateChange').mockRejectedValue(error);
+
+      await expect(webex.cc.setAgentState(expectedPayload)).rejects.toThrow(
+        error.details.data.reason
+      );
+
+      expect(mockMetricsManager.trackEvent).toHaveBeenCalledWith(
+        METRIC_EVENT_NAMES.AGENT_STATE_CHANGE_FAILED,
+        expect.objectContaining({lastStateChangeReason: 'Meetinginjected: evil'}),
+        ['behavioral', 'business', 'operational']
       );
     });
   });
@@ -3903,6 +3984,26 @@ describe('webex.cc', () => {
         .mockResolvedValue(buddyAgentsResponse);
 
       await webex.cc.getBuddyAgents({action: 'Consult'});
+
+      expect(buddyAgentsSpy).toHaveBeenCalledWith({
+        data: {
+          agentProfileId: 'test-agent-profile-id',
+          mediaType: 'telephony',
+        },
+      });
+    });
+
+    it('uses config agentProfileId and ignores override', async () => {
+      webex.cc.agentConfig = {agentProfileID: 'test-agent-profile-id'};
+      const buddyAgentsResponse = {data: {agentList: []}};
+      const buddyAgentsSpy = jest
+        .spyOn(webex.cc.services.agent, 'buddyAgents')
+        .mockResolvedValue(buddyAgentsResponse);
+
+      await webex.cc.getBuddyAgents({
+        mediaType: 'telephony',
+        agentProfileId: 'malicious-override-id',
+      } as BuddyAgents);
 
       expect(buddyAgentsSpy).toHaveBeenCalledWith({
         data: {
@@ -5018,6 +5119,29 @@ describe('webex.cc', () => {
       );
 
       expect(emitSpy).toHaveBeenCalledWith(CC_EVENTS.AGENT_STATE_CHANGE_SUCCESS, sample);
+    });
+
+    it('websocket event type is sanitized before logging and metrics', () => {
+      const maliciousType = 'ContactUpdated\r\ninjected: evil';
+      const payload = {
+        type: maliciousType,
+        data: {foo: 'bar'},
+      };
+
+      messageCallback(JSON.stringify(payload));
+
+      expect(LoggerProxy.log).toHaveBeenCalledWith(
+        'Received event: ContactUpdatedinjected: evil',
+        {module: CC_FILE, method: 'handleWebsocketMessage'}
+      );
+      expect(mockMetricsManager.trackEvent).toHaveBeenCalledWith(
+        METRIC_EVENT_NAMES.WEBSOCKET_EVENT_RECEIVED,
+        expect.objectContaining({
+          ws_event_type: 'ContactUpdatedinjected: evil',
+          top_level_type: 'ContactUpdatedinjected: evil',
+        }),
+        ['operational']
+      );
     });
 
     it('should call webCallingService.setLoginOption with correct deviceType on AGENT_STATION_LOGIN_SUCCESS', () => {
