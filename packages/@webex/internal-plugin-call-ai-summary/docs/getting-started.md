@@ -32,7 +32,7 @@ Onboarding for **@webex/internal-plugin-call-ai-summary**.
 This plugin is part of the Webex JS SDK monorepo. It self-registers when imported — no changes to `packages/webex` are needed.
 
 ```bash
-yarn install   # From the SDK monorepo root
+yarn   # From the SDK monorepo root
 ```
 
 To use in a consuming application:
@@ -45,8 +45,7 @@ import '@webex/internal-plugin-call-ai-summary';
 ## Build
 
 ```bash
-cd packages/@webex/internal-plugin-call-ai-summary
-yarn build
+yarn workspace @webex/internal-plugin-call-ai-summary build
 ```
 
 ## Run
@@ -58,7 +57,7 @@ scripts in the Tests section below.
 ## Tests
 
 ```bash
-yarn test:unit
+yarn workspace @webex/internal-plugin-call-ai-summary test:unit
 ```
 
 Use the table as the repository-level test router. List only tiers that
@@ -67,9 +66,7 @@ cases remain in the repository's native test sources.
 
 | Tier         | Command              | Test location | Framework   | External dependencies               |
 | ------------ | -------------------- | ------------- | ----------- | ----------------------------------- |
-| Unit         | `yarn test:unit`     | `test/unit/spec/` | Jest via `@webex/jest-config-legacy` | None |
-| Manual       | `node src/manual-pragya-api-test.js` | `src/manual-pragya-api-test.js` | Plain Node script | Live Webex token |
-| Manual       | `node src/manual-integration-test.js` | `src/manual-integration-test.js` | Plain Node script | Live Webex token and container ID |
+| Unit         | `yarn workspace @webex/internal-plugin-call-ai-summary test:unit`     | `test/unit/spec/` | Jest via `@webex/jest-config-legacy` | None |
 
 - Coverage or quality gate: none. The repository owner verified on 2026-09-23 that no coverage gate applies to this package; no threshold exists in this package, in `@webex/jest-config-legacy`, or in any repository-level Sonar configuration.
 - Enforcement source: none found.
@@ -88,13 +85,6 @@ Two manual test scripts are provided in `src/`. Both scripts require a valid Web
 
 `manual-pragya-api-test.js` validates the Pragya container response structure (34 checks).
 
-```bash
-cd packages/@webex/internal-plugin-call-ai-summary
-node src/manual-pragya-api-test.js
-```
-
-Provide the token as `WEBEX_TOKEN='<token>'` on the same line.
-
 A manual integration test is provided for verifying against live APIs. `manual-integration-test.js` tests the full end-to-end flow using the SDK service catalog:
 
 1. Device registration (WDM) to populate the service catalog
@@ -102,13 +92,6 @@ A manual integration test is provided for verifying against live APIs. `manual-i
 3. `getSummary` via plugin (fetches + decrypts note, short note, and action items via KMS)
 4. `getTranscriptUrl` via plugin
 5. Transcript content fetch
-
-```bash
-cd packages/@webex/internal-plugin-call-ai-summary
-node src/manual-integration-test.js
-```
-
-Provide a fresh token and container ID as `WEBEX_TOKEN='<token>' CONTAINER_ID='<id>'` on the same line.
 
 This script registers a device (WDM), resolves the Pragya service via the SDK service catalog, fetches the container, decrypts summary content, and prints the results.
 
@@ -124,18 +107,17 @@ This script registers a device (WDM), resolves the Pragya service via the SDK se
 ## Development
 
 ```bash
-cd packages/@webex/internal-plugin-call-ai-summary
-yarn build        # Build
-yarn test:style   # Lint
-yarn test:unit    # Unit tests
-yarn test         # All checks
+yarn workspace @webex/internal-plugin-call-ai-summary build        # Build
+yarn workspace @webex/internal-plugin-call-ai-summary test:style   # Lint
+yarn workspace @webex/internal-plugin-call-ai-summary test:unit    # Unit tests
+yarn workspace @webex/internal-plugin-call-ai-summary test         # All checks
 ```
 
 ## First-run verification
 
-1. Run `yarn build` from the package directory.
+1. Run `yarn workspace @webex/internal-plugin-call-ai-summary build` from the workspace root.
 2. Check that `dist/index.js` and its type declarations are produced.
-3. Run `yarn test:style`.
+3. Run `yarn workspace @webex/internal-plugin-call-ai-summary test:style`.
 
 Expected result: the build emits `dist/` output and ESLint reports no errors.
 

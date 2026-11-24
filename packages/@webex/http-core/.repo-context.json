@@ -6,6 +6,7 @@
     "purpose": "Promise-based core HTTP client for the Cisco Webex JS SDK: request execution through an interceptor pipeline, interchangeable Node and browser transports, an HTTP status to error-class taxonomy, upload/download progress events, and buffer file-type detection."
   },
   "commands": {
+    "install": "yarn",
     "compile": "yarn workspace @webex/http-core build:src",
     "unit-test": "yarn workspace @webex/http-core test:unit",
     "integration-test": "yarn workspace @webex/http-core test:integration",
@@ -13,7 +14,7 @@
     "lint": "yarn workspace @webex/http-core test:style",
     "test-all": "yarn workspace @webex/http-core test",
     "deploy": "yarn workspace @webex/http-core deploy:npm",
-    "build": "[NEEDS HUMAN INPUT] -- no committed command runs the build and its tests together; `build` delegates to `build:src` (compile only) and `test` chains the style/unit/integration/browser tiers without building. Absence confirmed by the repository owner during bootstrap."
+    "build": "yarn workspace @webex/http-core build:src"
   },
   "public_interfaces": [
     {

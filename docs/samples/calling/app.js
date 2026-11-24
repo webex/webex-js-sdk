@@ -22,6 +22,12 @@ let callRecording;
 let contacts;
 let callSettings;
 let line;
+let callQueue;
+let callQueueApiBase;
+let callQueueSettings;
+let callQueueBusy = false;
+let callQueueGeneration = 0;
+let callQueueHandler;
 
 let transferInitiated;
 const numberOfDays = 7;
@@ -99,6 +105,18 @@ const devicesUserIdInput = document.getElementById('devices-user-id');
 const fetchDevicesButton = document.getElementById('fetch-devices');
 const devicesHeader = document.getElementById('devicesHeaderId');
 const devicesTableBody = document.getElementById('devicesTableBody');
+const queueConnection = document.getElementById('queue-connection');
+const queueLineOwner = document.getElementById('queue-line-owner');
+const queueRefresh = document.getElementById('queue-refresh');
+const queueSync = document.getElementById('queue-sync');
+const queueStatus = document.getElementById('queue-status');
+const queueAgentStatus = document.getElementById('queue-agent-status');
+const queueSignIn = document.getElementById('queue-sign-in');
+const queueSignOut = document.getElementById('queue-sign-out');
+const queueSetStatus = document.getElementById('queue-set-status');
+const queueList = document.getElementById('queue-list');
+const queueResponses = document.getElementById('queue-responses');
+const queueEvents = document.getElementById('queue-events');
 
 let base64;
 let audio64;
@@ -139,6 +157,147 @@ async function ensureVoicemailInitialized() {
 
   return voicemailInitPromise;
 }
+
+function queueOwnerId() {
+  return queueLineOwner.value.trim() || undefined;
+}
+
+function queueLog(element, label, value) {
+  let details;
+  try {
+    details = JSON.stringify(value, null, 2);
+  } catch {
+    details = String(value);
+  }
+  const token = tokenElm.value;
+  if (token) details = String(details).split(token).join('[redacted]');
+  const entry = `${new Date().toLocaleTimeString()} ${label}\n${details}\n\n`;
+  const previous = element.textContent.startsWith('No ') ? '' : element.textContent;
+  element.textContent = (entry + previous).slice(0, 30000);
+}
+
+function renderCallQueue() {
+  const state = callQueueSettings?.acdState;
+  const signedIn = Boolean(state && state !== 'SIGN_OUT');
+  const enabled = Boolean(callQueue) && !callQueueBusy;
+  queueLineOwner.disabled = !enabled;
+  queueRefresh.disabled = !enabled;
+  queueSync.disabled = !enabled;
+  queueSignIn.disabled = !enabled || state !== 'SIGN_OUT';
+  queueSignOut.disabled = !enabled || !signedIn;
+  queueStatus.disabled = !enabled || !signedIn;
+  queueSetStatus.disabled = !enabled || !signedIn;
+  queueAgentStatus.textContent = state ? `Agent status: ${state.replace(/_/g, ' ')}` : 'Agent status has not been loaded.';
+  if (['AVAILABLE', 'UNAVAILABLE', 'WRAP_UP'].includes(state)) queueStatus.value = state;
+  queueList.replaceChildren();
+  if (!callQueueSettings) return;
+  const queues = callQueueSettings.queues || [];
+  if (!queues.length) {
+    queueList.textContent = 'No queues on this line.';
+    return;
+  }
+  queues.forEach((queue) => {
+    const row = document.createElement('div');
+    row.className = 'queue-item';
+    const label = document.createElement('span');
+    label.textContent = `${queue.name || 'Unnamed queue'}${queue.extension ? ` (${queue.extension})` : ''}`;
+    const action = document.createElement('button');
+    action.type = 'button';
+    action.textContent = queue.available === undefined ? 'Membership unknown' : queue.available ? 'Leave queue' : 'Join queue';
+    action.disabled = !enabled || !signedIn || queue.available === undefined || (queue.available && queue.allowLogOffEnabled === false);
+    action.addEventListener('click', () => updateCallQueue({queues: [{id: queue.id, available: !queue.available}]}));
+    row.append(label, action);
+    queueList.appendChild(row);
+  });
+}
+
+async function queueRequest(label, operation, loadSettings = false, applySettings = true) {
+  if (!callQueue || callQueueBusy) return;
+  const generation = callQueueGeneration;
+  const selectedOwner = queueOwnerId();
+  callQueueBusy = true;
+  renderCallQueue();
+  try {
+    const response = await operation(selectedOwner);
+    if (generation !== callQueueGeneration) return;
+    queueLog(queueResponses, `${label} response`, response);
+    if (response.statusCode < 200 || response.statusCode >= 300) {
+      if (loadSettings) callQueueSettings = undefined;
+      queueConnection.textContent = `${label} failed. See the SDK response below.`;
+      return;
+    }
+    if (applySettings && response.data?.callQueue && selectedOwner === queueOwnerId()) callQueueSettings = response.data.callQueue;
+    if (loadSettings && !response.data?.callQueue) {
+      callQueueSettings = undefined;
+      queueConnection.textContent = 'The SDK response did not include queue settings.';
+      return;
+    }
+    if (applySettings) queueConnection.textContent = `Queue client connected to ${callQueueApiBase}.`;
+  } catch (error) {
+    if (generation !== callQueueGeneration) return;
+    if (loadSettings) callQueueSettings = undefined;
+    queueLog(queueResponses, `${label} error`, {message: error?.message || String(error)});
+    queueConnection.textContent = `${label} failed. See the SDK response below.`;
+  } finally {
+    if (generation === callQueueGeneration) {
+      callQueueBusy = false;
+      renderCallQueue();
+    }
+  }
+}
+
+function refreshCallQueue() {
+  return queueRequest('Get queue settings', (owner) => callQueue.getCallQueueSettings(owner), true);
+}
+
+function updateCallQueue(update) {
+  return queueRequest('Update queue settings', (owner) => callQueue.updateCallQueueSettings(update, owner));
+}
+
+function syncCallQueue() {
+  return queueRequest('Request event sync', () => callQueue.syncTelephonyCalls(), false, false);
+}
+
+function detachCallQueue() {
+  callQueueGeneration += 1;
+  if (callQueue && callQueueHandler) callQueue.off('callQueue:updated', callQueueHandler);
+  callQueue = undefined;
+  callQueueHandler = undefined;
+  callQueueSettings = undefined;
+  callQueueBusy = false;
+  renderCallQueue();
+}
+
+async function initializeCallQueue() {
+  detachCallQueue();
+  if (!calling?.registered || !calling.callQueueClient) {
+    queueConnection.textContent = 'Queue client unavailable: device or event connection failed, or the account is unsupported. Reload the page to retry.';
+    return;
+  }
+  callQueue = calling.callQueueClient;
+  callQueueHandler = (event) => {
+    queueLog(queueEvents, 'callQueue:updated', event);
+    if ((event.lineOwnerId || undefined) === queueOwnerId()) {
+      callQueueSettings = event;
+      renderCallQueue();
+    }
+  };
+  callQueue.on('callQueue:updated', callQueueHandler);
+  queueConnection.textContent = `Queue client connected to ${callQueueApiBase}. Loading settings...`;
+  renderCallQueue();
+  await refreshCallQueue();
+  if (callQueue) await syncCallQueue();
+}
+
+queueLineOwner.addEventListener('input', () => {
+  callQueueSettings = undefined;
+  renderCallQueue();
+});
+queueRefresh.addEventListener('click', refreshCallQueue);
+queueSync.addEventListener('click', syncCallQueue);
+queueSignIn.addEventListener('click', () => updateCallQueue({agentACDState: 'UNAVAILABLE'}));
+queueSignOut.addEventListener('click', () => updateCallQueue({agentACDState: 'SIGN_OUT'}));
+queueSetStatus.addEventListener('click', () => updateCallQueue({agentACDState: queueStatus.value}));
 
 async function uploadLogs() {
     try {
@@ -257,6 +416,8 @@ async function handleServiceSelect(e) {
 async function initCalling(e) {
   e.preventDefault();
   console.log('Authentication#initWebex()');
+  detachCallQueue();
+  queueConnection.textContent = 'Initializing Calling...';
 
   tokenElm.disabled = true;
   saveElm.disabled = true;
@@ -315,6 +476,7 @@ async function initCalling(e) {
     callSettings: true,
     voicemail: true,
     callRecording: true,
+    callQueue: true,
   }
 
   const loggerConfig = {
@@ -373,8 +535,14 @@ async function initCalling(e) {
   const callingConfig = {
     clientConfig : clientConfig,
     callingClientConfig: callingClientConfig,
+    callQueueClientConfig: {
+      webexApiBaseUrl: fedrampBox.checked
+        ? 'https://api-usgov.webex.com'
+        : enableProd ? 'https://webexapis.com' : 'https://integration.webexapis.com',
+    },
     logger:loggerConfig,
   }
+  callQueueApiBase = callingConfig.callQueueClientConfig.webexApiBaseUrl;
 
   calling = await Calling.init({webexConfig, callingConfig});
 
@@ -425,6 +593,7 @@ async function initCalling(e) {
       }
 
       if(callingClient) fetchLines();
+      await initializeCallQueue();
     });
   });
 
@@ -646,6 +815,8 @@ function holdResume() {
 }
 
 async function deleteDevice() {
+  detachCallQueue();
+  queueConnection.textContent = 'Calling is disconnected. Reload the page and initialize Calling to reconnect call queues.';
   await calling.deregister();
   registerElm.disabled = false;
   unregisterElm.disabled = true;

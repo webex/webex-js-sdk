@@ -6,7 +6,7 @@
     "purpose": "Timer primitives for the Cisco Webex JS SDK that never hold a Node process open: unref-ing wrappers over setTimeout and setInterval, plus a restartable one-shot Timer with a guarded init-running-done lifecycle."
   },
   "commands": {
-    "install": "yarn install",
+    "install": "yarn",
     "compile": "yarn workspace @webex/common-timers build:src",
     "build": "yarn workspace @webex/common-timers build",
     "unit-test": "yarn workspace @webex/common-timers test:unit",

@@ -218,14 +218,14 @@ through `Promise.all` for snippet collections.
 
 | Platform | Shared versus platform-specific boundary | Entry or build | Support and compatibility constraints |
 | -------- | ---------------------------------------- | -------------- | ------------------------------------- |
-| Browser | Fully shared; no platform-specific source | `dist/index.js` via `yarn build` | Requires a registered device and Mercury connection for KMS |
-| Node.js | Fully shared; no platform-specific source | `dist/index.js` via `yarn build` | `engines.node >=16` per `package.json` |
+| Browser | Fully shared; no platform-specific source | `dist/index.js` via `yarn workspace @webex/internal-plugin-call-ai-summary build` | Requires a registered device and Mercury connection for KMS |
+| Node.js | Fully shared; no platform-specific source | `dist/index.js` via `yarn workspace @webex/internal-plugin-call-ai-summary build` | `engines.node >=16` per `package.json` |
 
 ## Release and versioning
 
 | Artifact | Publish target | Versioning rule | Deprecation window | Changelog or migration obligation |
 | -------- | -------------- | --------------- | ------------------ | --------------------------------- |
-| `@webex/internal-plugin-call-ai-summary` | npm via `yarn deploy:npm` | Internal plugin; does not strictly adhere to semantic versioning | None declared | Monorepo release tooling owns changelog generation |
+| `@webex/internal-plugin-call-ai-summary` | npm via `yarn workspace @webex/internal-plugin-call-ai-summary deploy:npm` | Internal plugin; does not strictly adhere to semantic versioning | None declared | Monorepo release tooling owns changelog generation |
 
 ## Host integration and theming
 
@@ -237,9 +237,9 @@ through `Promise.all` for snippet collections.
 
 | Command or artifact | Owner | Inputs | Output or side effect | Compatibility boundary |
 | ------------------- | ----- | ------ | --------------------- | ---------------------- |
-| `yarn build` | `src/` | `src/**/*.ts` | Compiled JS, type declarations, and maps in `dist/` | `main` entry point `dist/index.js` |
-| `yarn test:style` | `src/` | `src/**/*` | ESLint report | Repository lint configuration |
-| `yarn test:unit` | `src/` | Unit test sources | Jest run | No test sources exist yet; see the module spec |
+| `yarn workspace @webex/internal-plugin-call-ai-summary build` | `src/` | `src/**/*.ts` | Compiled JS, type declarations, and maps in `dist/` | `main` entry point `dist/index.js` |
+| `yarn workspace @webex/internal-plugin-call-ai-summary test:style` | `src/` | `src/**/*` | ESLint report | Repository lint configuration |
+| `yarn workspace @webex/internal-plugin-call-ai-summary test:unit` | `src/` | Unit test sources | Jest run | No test sources exist yet; see the module spec |
 
 ## Cross-repository topology
 

@@ -1692,7 +1692,11 @@ describe('Registration Tests', () => {
       expect(registerSpy).toBeCalledOnceWith(KEEPALIVE_UTIL);
     });
 
-    it('checks for keep-alive failure with 429', async () => {
+    it.each([
+      {headerNames: ['retry-after']},
+      {headerNames: ['Retry-After']},
+      {headerNames: ['retry-after', 'Retry-After']},
+    ])('checks for keep-alive failure with 429 and $headerNames', async ({headerNames}) => {
       await beforeEachSetupForKeepalive();
       const keepaliveSpy = jest.spyOn(reg, 'startKeepaliveTimer');
       const postMessageSpy = jest.spyOn(Worker.prototype, 'postMessage');
@@ -1702,12 +1706,32 @@ describe('Registration Tests', () => {
       // Choose a retryAfter strictly greater than keepaliveInterval so the
       // adjusted resume delay (retryAfter - keepaliveInterval) is positive and verifiable.
       const retryAfter = keepaliveInterval + 30;
+      const headers = Object.fromEntries(
+        headerNames.map((name, index) => [name, String(retryAfter - index * 30)])
+      );
       const adjustedResumeDelayMs = (retryAfter - keepaliveInterval) * SEC_TO_MSEC_MFACTOR;
 
-      reg.webWorker.onmessage({
+      const worker = reg.webWorker;
+      jest.spyOn(reg, 'postKeepAlive').mockRejectedValueOnce({statusCode: 429, headers});
+
+      await worker.onmessage({data: {type: WorkerMessageType.SEND_KEEPALIVE}} as MessageEvent);
+      const [result] = postMessageSpy.mock.calls.find(
+        ([message]) => message.type === WorkerMessageType.KEEPALIVE_RESULT
+      );
+      expect(result).toEqual({
+        type: WorkerMessageType.KEEPALIVE_RESULT,
+        err: {
+          statusCode: 429,
+          headers: {trackingid: undefined, 'retry-after': String(retryAfter)},
+          statusText: undefined,
+          type: undefined,
+        },
+      });
+
+      await worker.onmessage({
         data: {
           type: WorkerMessageType.KEEPALIVE_FAILURE,
-          err: {statusCode: 429, headers: {'retry-after': retryAfter}},
+          err: result.err,
           keepAliveRetryCount: 1,
         },
       } as MessageEvent);
@@ -1721,7 +1745,7 @@ describe('Registration Tests', () => {
         })
       );
       expect(handleErrorSpy).toBeCalledOnceWith(
-        {statusCode: 429, headers: {'retry-after': retryAfter}},
+        result.err,
         expect.anything(),
         {
           file: REGISTRATION_FILE,
