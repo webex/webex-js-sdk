@@ -123,9 +123,11 @@ Keep actual credentials and organization-specific license IDs in local or manage
 
 The helper requests `basicMeeting`, explicitly assigns the configured licenses, synchronizes
 the site, sets the preferred site, and obtains a fresh user token before SDK registration.
-The OAuth client must allow `meeting:preferences_read`; the helper includes that scope in
-both user creation and the fresh login. CIG's initial token predates site provisioning and
-may omit meeting scopes. If license IDs are omitted, CIG relies on the organization's
+The OAuth client must allow `meeting:preferences_read`, which is included in the shared
+`WEBEX_SCOPE` in `.env.default`. If you override `WEBEX_SCOPE` or provide `config.scope`,
+include that scope for meeting tests. The helper uses the configured scopes for both user
+creation and the fresh login. CIG's initial token predates site provisioning and may omit
+meeting scopes. If license IDs are omitted, CIG relies on the organization's
 automatic license template, which must assign the requested site.
 
 Without `WEBEX_SITE`, and for Whistler users, the helper retains the default creation flow.

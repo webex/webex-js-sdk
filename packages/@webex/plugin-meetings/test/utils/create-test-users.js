@@ -49,15 +49,10 @@ const createTestUsers = async (options = {}) => {
       orgAdminAuthorization = token.authorization;
     }
 
-    const scopes = new Set(
-      (config.scope || process.env.WEBEX_SCOPE || '').split(/\s+/).filter(Boolean)
-    );
-
-    scopes.add('meeting:preferences_read');
     Object.assign(config, {
       clientId,
       clientSecret,
-      scope: [...scopes].join(' '),
+      scope: config.scope || process.env.WEBEX_SCOPE,
       entitlements: [
         'spark',
         'squaredCallInitiation',

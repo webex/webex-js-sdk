@@ -33,7 +33,7 @@ describe('meeting test-user provisioning', () => {
       WEBEX_CONVERGED_ORG_ID: 'test-org',
       WEBEX_CLIENT_ID: 'test-client',
       WEBEX_CLIENT_SECRET: 'test-secret',
-      WEBEX_SCOPE: 'spark:kms',
+      WEBEX_SCOPE: 'spark:kms meeting:preferences_read',
       IDENTITY_BASE_URL: 'https://identity.example.test',
     });
     user = {
@@ -161,7 +161,7 @@ describe('meeting test-user provisioning', () => {
     assert.strictEqual(user.token, freshToken);
   });
 
-  it('honors explicit configuration and avoids duplicating the meeting scope', async () => {
+  it('honors explicit configuration without adding scopes', async () => {
     configureSite();
     const options = {
       count: 1,
@@ -170,7 +170,7 @@ describe('meeting test-user provisioning', () => {
         clientId: 'custom-client',
         clientSecret: 'custom-secret',
         webexSite: 'custom.webex.com',
-        scope: 'meeting:preferences_read spark:kms',
+        scope: 'spark:kms',
         licenseIds: ['custom-license'],
         orgAdminAuthorization: 'Bearer custom-admin',
       },
@@ -183,7 +183,8 @@ describe('meeting test-user provisioning', () => {
     assert.deepEqual(config.licenseIds, ['custom-license']);
     assert.deepEqual(config.syncInWebexSites, ['custom.webex.com']);
     assert.equal(config.orgAdminAuthorization, 'Bearer custom-admin');
-    assert.equal(login.firstCall.args[0].scopes, 'meeting:preferences_read spark:kms');
+    assert.equal(config.scope, 'spark:kms');
+    assert.equal(login.firstCall.args[0].scopes, 'spark:kms');
     assert.equal(login.firstCall.args[0].clientId, 'custom-client');
     assert.equal(login.firstCall.args[0].orgId, 'custom-org');
     assert.notProperty(options.config, 'forceCreate');
