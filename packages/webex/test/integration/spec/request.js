@@ -7,6 +7,8 @@ import testUsers from '@webex/test-helper-test-users';
 import sinon from 'sinon';
 import Webex from 'webex';
 
+import withoutClientMetrics from '../lib/without-client-metrics';
+
 describe('webex', function () {
   this.timeout(60000);
 
@@ -14,7 +16,7 @@ describe('webex', function () {
 
   before(() =>
     testUsers.create({count: 1}).then(([user]) => {
-      webex = new Webex({credentials: user.token});
+      webex = withoutClientMetrics(new Webex({credentials: user.token}));
 
       // SDK ready does not wait for catalogs by default. Resolve the user's
       // Hydra endpoint before testing HTTP rather than racing the discovery seed.
@@ -56,6 +58,7 @@ describe('webex', function () {
 
       describe('after registering against wdm', () => {
         before(() => webex.internal.device.register());
+        after(() => webex.internal.device.unregister());
         it('can make authorized requests', () =>
           webex
             .request({

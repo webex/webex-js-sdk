@@ -6,6 +6,8 @@ import {browserOnly, nodeOnly} from '@webex/test-helper-mocha';
 import {assert} from '@webex/test-helper-chai';
 import testUsers from '@webex/test-helper-test-users';
 
+import withoutClientMetrics from '../lib/without-client-metrics';
+
 describe('webex', function () {
   this.timeout(60000);
   describe('webex/env', () => {
@@ -33,7 +35,7 @@ describe('webex', function () {
       it('exports (commonjs-style) an authorized webex instance', () => {
         // Test the package file directly: webex/env is not an exported subpath.
         // eslint-disable-next-line global-require
-        const webex = require('../../../env');
+        const webex = withoutClientMetrics(require('../../../env'));
 
         assert.isTrue(webex.canAuthorize);
 
