@@ -34775,14 +34775,25 @@ __metadata:
   languageName: node
   linkType: hard
 
-"websocket-driver@npm:>=0.5.1, websocket-driver@npm:^0.7.4":
-  version: 0.7.4
-  resolution: "websocket-driver@npm:0.7.4"
+"websocket-driver@npm:>=0.5.1":
+  version: 0.8.0
+  resolution: "websocket-driver@npm:0.8.0"
+  dependencies:
+    http-parser-js: ">=0.5.1"
+    safe-buffer: ">=5.1.0"
+    websocket-extensions: ">=0.2.0"
+  checksum: 93abfd757263d997aaebf5561c492aa6ae945ed06bfe957089322b520758e52a6298710ef21e16de52f5a31588464bebf76b8481c8bc1c24c598c361df98c53f
+  languageName: node
+  linkType: hard
+
+"websocket-driver@npm:^0.7.4":
+  version: 0.7.5
+  resolution: "websocket-driver@npm:0.7.5"
   dependencies:
     http-parser-js: ">=0.5.1"
     safe-buffer: ">=5.1.0"
     websocket-extensions: ">=0.1.1"
-  checksum: fffe5a33fe8eceafd21d2a065661d09e38b93877eae1de6ab5d7d2734c6ed243973beae10ae48c6613cfd675f200e5a058d1e3531bc9e6c5d4f1396ff1f0bfb9
+  checksum: 2ad622f4627bde71ce0f25a9466ced1cfc4e789603530a67944824cbafffd518224c4cc131da0f0aafe46c1b36f968326e0199845dfa56f7d15e5774aa53119d
   languageName: node
   linkType: hard
 
@@ -34790,6 +34801,13 @@ __metadata:
   version: 0.1.4
   resolution: "websocket-extensions@npm:0.1.4"
   checksum: 5976835e68a86afcd64c7a9762ed85f2f27d48c488c707e67ba85e717b90fa066b98ab33c744d64255c9622d349eedecf728e65a5f921da71b58d0e9591b9038
+  languageName: node
+  linkType: hard
+
+"websocket-extensions@npm:>=0.2.0":
+  version: 0.2.0
+  resolution: "websocket-extensions@npm:0.2.0"
+  checksum: f4529dd411a35096f48f12ee02aaf3f8a951a9f869fe2e48b1105766ebcc04b02b0fbfd26b2f294b448d721b62c269fc5c2db2048d12c7fb8728e14db067ef71
   languageName: node
   linkType: hard
 
