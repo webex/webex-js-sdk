@@ -1,10 +1,10 @@
 # Multi-region local validation
 
-Current cycle: `rf_825b48075e300a6057be48c7`. Package checks completed 2026-11-23T14:49:22.186380+00:00.
+Historical cycle `rf_825b48075e300a6057be48c7` completed package checks on 2026-11-23 at 14:49:22 UTC against the implementation before the AQM correlation correction.
 
-**Product verification passed.** 4,345 tests across 43 suites, zero failures or skips, and 265/265 exact named contracts. **Independent MR-11 review pass-with-warnings.** The five deployed and live release evidence items remain open.
+**Historical product verification passed.** 4,345 tests across 43 suites, zero failures or skips, and 265/265 exact named contracts. The independent MR-11 review recorded **pass-with-warnings** for those inputs. Current verification for the AQM correction is separate. The five deployed and live release evidence items remain open.
 
-SDK source and tests are frozen. All 61 pinned product inputs were byte-identical before and after the six-segment run. This report supersedes earlier current-status claims. Earlier report bytes and reviews are retained as historical evidence in the consolidated record; their hashes, counts and pass labels never certify this checkout. No browser, development server, live tenant or audio test ran.
+All 61 pinned product inputs were byte-identical before and after that six-segment run. The consolidated record retains the historical reports, reviews, hashes, and test counts for those inputs. The run used local package tests and did not exercise a browser, live tenant, or audio.
 
 Evidence record: `.matrix/validation-runs/rf_825b48075e300a6057be48c7/implementation-validation-report.json`. JSON fragment references below resolve inside that file.
 
@@ -174,11 +174,11 @@ The previous full independent review remains in the recovery archive. Its unchan
 
 This subsection records the superseded November 23 review-fix attempt. Its acceptance command ran from 06:33:45 to 06:35:45 UTC. The MR-10 portion passed 4,341 tests across 43 suites with zero failures or skips. It also passed the build, 85% Babel coverage thresholds, style, import-cycle, and declaration checks. The packet exited 1 because MR-11 independent validation was pending at the time. Its standalone MR-11 check also exited 1 before the recovery review.
 
-The original JUnit SHA-256 is `5bb9daf72d862c4a5448e7b996e034552e8a2ad2a4161bec664548ada24f0263`. The retained run accounted for 265/265 exact named contracts, including 26/26 for T-009. The consolidated record retains the original logs and digests. The later completed MR-11 review above supplies the current canonical verdict.
+The original JUnit SHA-256 is `5bb9daf72d862c4a5448e7b996e034552e8a2ad2a4161bec664548ada24f0263`. The retained run accounted for 265/265 exact named contracts, including 26/26 for T-009. The consolidated record retains the original logs and digests. The later MR-11 review above supplies the verdict for the pre-correction snapshot.
 
 ## Release evidence
 
-Local product verification is complete. Release and rollout remain blocked on separately owned deployed evidence. Local client fixtures, JUnit and this review do not establish deployed compatibility or active-call audio continuity.
+Release and rollout require deployed evidence for the corrected AQM correlation contract and live failover/failback testing. The local evidence above covers the pre-correction snapshot.
 
 | Evidence | Owner | Status |
 | --- | --- | --- |
@@ -188,9 +188,9 @@ Local product verification is complete. Release and rollout remain blocked on se
 | REL-AQM-TRACKING-ECHO | SDK maintainer and Routing platform API owner | not-executed |
 | AC-021 | QA and platform owners | not-executed |
 
-AC-021 remains **not-executed**. Its four prerequisites and six DN/extension/browser × failover/failback records are retained under `release_evidence`; none has supplied live evidence. Required captures include authoritative organization settings, admission placement, station result, new-call results and supported RTD/voice evidence with timestamps and deployed versions.
+AC-021 remains **not-executed**. Its four prerequisites and six DN/extension/browser × failover/failback records are retained under `release_evidence`; none has supplied live evidence. Required captures include authoritative organization settings, admission placement, station result, new-call results and supported RTD/voice evidence with timestamps and deployed versions. For the browser runs, capture the order of the Calling offer and Routing Task hydration, whether Calling emits the offer once, and which identifiers both payloads carry.
 
-REL-AQM-TRACKING-ECHO requires sanctioned deployed full-ID request/success and notification-failure pairs for stateChange, stationLogin and reload. Missing/negative evidence blocks this candidate release. The SDK maintainer and Routing platform API owner own the compatibility decision; QA/platform operators produce captures. Existing released SDK delivery remains in use.
+REL-AQM-TRACKING-ECHO requires sanctioned deployed request, success, and failure pairs for stateChange, stationLogin, and reload. Compare the UUID segment of the submitted `webex-js-sdk_<uuid>` header with nested `data.trackingId` and verify backend failure reason/code. Keep HTTP response tracking and outer notification tracking separate from the match. The SDK maintainer and Routing platform API owner own the compatibility decision. QA/platform operators produce the captures for the supported deployments.
 
 The authoritative fixture, deployed independent-reader isolation and maintainer compatibility review are also not executed. See the exact owners/reasons/evidence_refs in `release_evidence` and the checklist in [getting-started.md](getting-started.md#multi-region-recovery-rollout-and-rollback).
 

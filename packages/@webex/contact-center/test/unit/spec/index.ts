@@ -1053,7 +1053,7 @@ describe('contact-center root public contract', () => {
     expect(getDiagnosticsForFiles(program, [fixture])).toEqual([]);
   });
 
-  it('T-007 root routingAgent preserves optional requestId, callback and context types', () => {
+  it('T-007 root routingAgent preserves the state payload, callback and context types', () => {
     const fixture = path.join(CONTACT_CENTER_ROOT, 'test/unit/spec/__state_id_consumer.ts');
     const program = createProgram({[fixture]: `
       import {routingAgent} from '../../../src';
@@ -1066,10 +1066,8 @@ describe('contact-center root public contract', () => {
       const withCallback: Promise<StateChangeSuccess> = agent.stateChange({data}, callback);
       const withContext: Promise<StateChangeSuccess> = agent.stateChange({data}, undefined, context);
       const withBoth: Promise<StateChangeSuccess> = agent.stateChange({data}, callback, context);
-      const explicit: Promise<StateChangeSuccess> = agent.stateChange({data, requestId: 'WX_CC_SDK_request'}, callback, context);
-      agent.stateChange({data, requestId: undefined});
-      // @ts-expect-error supplied request IDs must remain strings.
-      agent.stateChange({data, requestId: 42});
+      // @ts-expect-error SDK correlation is owned by its request context.
+      agent.stateChange({data, requestId: '8f5ec5e4-80b8-4f5d-9720-10bfe56e7ca1'});
       // @ts-expect-error state changes still require their payload.
       agent.stateChange({});
       // @ts-expect-error context still requires an explicit generation.

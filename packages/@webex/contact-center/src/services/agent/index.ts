@@ -1,4 +1,3 @@
-import {v4 as uuidv4} from 'uuid';
 import * as Err from '../core/Err';
 import {createErrDetailsObject as err, normalizeRecoveryFailure} from '../core/Utils';
 import * as Agent from './types';
@@ -7,20 +6,13 @@ import {HTTP_METHODS} from '../../types';
 import {WCC_API_GATEWAY} from '../constants';
 import {CC_EVENTS} from '../config/types';
 
-const hasNonblankStateRequestId = (p: {
-  data: Agent.StateChange;
-  requestId?: string;
-}): p is {data: Agent.StateChange; requestId: string} =>
-  typeof p?.requestId === 'string' && !!p.requestId.trim();
-
 /**
  * Agent Service provides methods to manage agent states and operations
  * @param routing - AqmReqs instance for making API requests
  * @ignore
  */
 export default function routingAgent(routing: AqmReqs) {
-  const dispatchState = routing.req((p: {data: Agent.StateChange; requestId: string}) => ({
-    correlationId: p.requestId,
+  const dispatchState = routing.req((p: {data: Agent.StateChange}) => ({
     kind: 'command',
     url: '/v1/agents/session/state',
     host: WCC_API_GATEWAY,
@@ -131,24 +123,8 @@ export default function routingAgent(routing: AqmReqs) {
         errId: 'Service.aqm.agent.stationLoginFailed',
       },
     })),
-    /**
-     * Changes the agent's state
-     * @param p.data - State change parameters
-     * @param p.requestId - Optional correlation ID; generated when omitted
-     * @public
-     */
-    stateChange: (
-      p: {data: Agent.StateChange; requestId?: string},
-      cbRes?: Parameters<typeof dispatchState>[1],
-      context?: Parameters<typeof dispatchState>[2]
-    ): Promise<Agent.StateChangeSuccess> => {
-      const request =
-        p && p.requestId === undefined ? {...p, requestId: `WX_CC_SDK_${uuidv4()}`} : p;
-      if (!hasNonblankStateRequestId(request))
-        return Promise.reject(new Error('A nonblank state requestId is required'));
-
-      return dispatchState(request, cbRes, context);
-    },
+    /** Changes the agent's state. @public */
+    stateChange: dispatchState,
     /**
      * Retrieves list of buddy agents
      * @param p.data - Buddy agent query parameters

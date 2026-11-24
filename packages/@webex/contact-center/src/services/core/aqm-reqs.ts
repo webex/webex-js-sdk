@@ -31,7 +31,8 @@ export default class AqmReqs {
   private pendingRequests: Record<string, Pending> = {};
   private pendingNotifCancelrequest: Record<string, Pending> = {};
   private readonly operations = new Map<string, OperationRecord>();
-  private readonly sessionTrackingIds = new Set<string>();
+  // Retain recent IDs across registration replacement to recognize late local notifications.
+  private readonly trackingIds = new Map<string, {url: string; session: boolean}>();
   private generation = 0;
   private recoveryGate: AqmRecoveryGate = {state: 'open'};
   private webexRequest: WebexRequest;
@@ -63,11 +64,12 @@ export default class AqmReqs {
   }
 
   public isLocalSessionTrackingId(trackingId: string): boolean {
-    return this.sessionTrackingIds.has(trackingId);
+    return this.trackingIds.get(trackingId)?.session === true;
   }
 
-  public clearSessionTrackingIds(): void {
-    this.sessionTrackingIds.clear();
+  private rememberTrackingId(id: string, url: string, session: boolean): void {
+    this.trackingIds.set(id, {url, session});
+    if (this.trackingIds.size > 128) this.trackingIds.delete(this.trackingIds.keys().next().value);
   }
 
   req<TRes, TErr, TReq>(config: Conf<TRes, TErr, TReq>): Res<TRes, TReq> {
@@ -151,9 +153,11 @@ export default class AqmReqs {
         return;
       }
       const operationId = uuidv4();
-      const correlationId = c.kind === 'session' ? `WX_CC_SDK_${uuidv4()}` : c.correlationId;
+      const session = c.kind === 'session';
+      const correlationId = session ? uuidv4() : context.correlationId;
+      const strict = context.requireCorrelation || !!context.sessionOwner;
       const correlate = (bind: any) =>
-        correlationId ? {...bind, data: {...bind.data, trackingId: correlationId}} : bind;
+        strict && correlationId ? {...bind, data: {...bind.data, trackingId: correlationId}} : bind;
       const successBind = correlate(c.notifSuccess.bind);
       const failBind = c.notifFail && correlate(c.notifFail.bind);
       const cancelBind = c.notifCancel?.bind;
@@ -202,13 +206,23 @@ export default class AqmReqs {
 
         return true;
       };
+      const matches = (bind: any, msg: Msg): boolean => {
+        const id = msg.data?.trackingId;
+        if (id !== correlationId && this.trackingIds.get(id)?.url === c.url) return false;
+
+        return this.bindCheck(bind, msg);
+      };
       const success = (msg: Msg) => {
-        if (current()) finish({value: msg as unknown as TRes});
+        if (!current()) return;
+        // Legacy binds also own the server-assigned ID of a matched local station outcome.
+        if (session && typeof msg.data?.trackingId === 'string')
+          this.rememberTrackingId(msg.data.trackingId, c.url, true);
+        finish({value: msg as unknown as TRes});
       };
       this.pendingRequests[keySuccess] = {
         operationId,
         logicalBindKey: logicalSuccess,
-        check: (msg) => this.bindCheck(successBind, msg),
+        check: (msg) => matches(successBind, msg),
         handle: success,
         ...(keyCancel ? {alternateBind: keyCancel} : {}),
       };
@@ -216,7 +230,7 @@ export default class AqmReqs {
         this.pendingRequests[keyFail] = {
           operationId,
           logicalBindKey: logicalFail,
-          check: (msg) => this.bindCheck(failBind, msg),
+          check: (msg) => matches(failBind, msg),
           handle: (msg) => {
             if (!current()) return;
             try {
@@ -266,7 +280,7 @@ export default class AqmReqs {
           c.timeout && c.timeout > 0 ? c.timeout : TIMEOUT_REQ
         );
       }
-      if (c.kind === 'session') this.sessionTrackingIds.add(correlationId);
+      if (correlationId) this.rememberTrackingId(correlationId, c.url, session);
       const onHttpFailure = (error: WebexRequestPayload) => {
         if (!current()) return;
         if (isRegionRecoveryError(error)) {
@@ -293,7 +307,12 @@ export default class AqmReqs {
             method: c.method ?? (c.data ? HTTP_METHODS.POST : HTTP_METHODS.GET),
             body: c.data,
             ...(c.headers || correlationId
-              ? {headers: {...c.headers, ...(correlationId ? {trackingid: correlationId} : {})}}
+              ? {
+                  headers: {
+                    ...c.headers,
+                    ...(correlationId ? {trackingid: `webex-js-sdk_${correlationId}`} : {}),
+                  },
+                }
               : {}),
           })
           .then((res) => {

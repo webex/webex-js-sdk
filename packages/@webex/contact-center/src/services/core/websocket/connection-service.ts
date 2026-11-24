@@ -317,7 +317,7 @@ export class ConnectionService extends EventEmitter {
       if (!this.ownsInvocation(invocation) || this.flight !== flight) return;
       if (flight.controller.signal.aborted) throw terminalError('cancelled');
       flight.afterWelcome = true;
-      await ConnectionService.observe(
+      const publishOutcome = await ConnectionService.observe(
         Promise.resolve().then(() => invocation.afterWelcome(welcome, flight.controller.signal)),
         flight.controller.signal
       );
@@ -331,6 +331,7 @@ export class ConnectionService extends EventEmitter {
       this.updateConnectionData();
       this.monitorOrdinary();
       invocation.resolve();
+      if (publishOutcome) publishOutcome();
     } catch (error) {
       if (!this.ownsInvocation(invocation) || this.flight !== flight) return;
       const failure = safeFailure(error);
@@ -410,7 +411,10 @@ export class ConnectionService extends EventEmitter {
     clearTimeout(this.reconnectingTimer);
     clearTimeout(this.restoreTimer);
     this.reconnectingTimer = setTimeout(this.handleConnectionLost, WS_DISCONNECT_ALLOWED);
-    this.restoreTimer = setTimeout(this.handleRestoreFailed, LOST_CONNECTION_RECOVERY_TIMEOUT);
+    this.restoreTimer = setTimeout(
+      this.handleRestoreFailed,
+      this.connectionProp.lostConnectionRecoveryTimeout
+    );
   }
 
   private handleConnectionLost = (): void => {
@@ -421,8 +425,14 @@ export class ConnectionService extends EventEmitter {
 
   private handleRestoreFailed = (): void => {
     if (this.mode !== 'ordinary') return;
-    this.stop();
-    this.webSocketManager.close(false, 'Restore watchdog expired');
+    if (this.lossEpisode || !this.webSocketManager.hasUsableSocket()) {
+      this.stop();
+      this.webSocketManager.close(false, 'Restore watchdog expired');
+    } else {
+      // An admitted socket can still deliver a late keepalive without a reconnect.
+      this.restoreTimer = undefined;
+      this.webSocketManager.shouldReconnect = false;
+    }
     this.isRestoreFailed = true;
     this.isConnectionLost = true;
     this.dispatchConnectionEvent();

@@ -752,15 +752,20 @@ describe('T-007/T-008 real AQM operation and session owners', () => {
   };
   const flush = async () => { for (let i = 0; i < 8; i += 1) await Promise.resolve(); };
   const command = (extra: Record<string, any> = {}) => ({url: '/command', notifSuccess: {bind: {type: 'DONE'}, msg: {}}, ...extra});
-  const invoke = (operation: string, {data, requestId, context, callback}: {
+  const invoke = (operation: string, {data, context, callback}: {
     data: Record<string, unknown>;
-    requestId?: string;
     context?: AqmRequestContext;
     callback?: jest.Mock;
   }) => operation === 'stateChange'
-    ? agent.stateChange({data, ...(requestId === undefined ? {} : {requestId})}, callback, context)
+    ? agent.stateChange({data}, callback, context)
     : operation === 'reload' ? agent.reload(callback, context) : agent.stationLogin({data}, callback, context);
-  const frame = (operation: string, success: boolean, trackingId?: string, outer = 'different-outer') => ({
+  const requestUuid = (call = 0): string => {
+    const header = http.mock.calls[call][0].headers.trackingid;
+    expect(header).toMatch(/^webex-js-sdk_[0-9a-f]{8}(-[0-9a-f]{4}){3}-[0-9a-f]{12}$/);
+
+    return header.split('_')[1];
+  };
+  const frame = (operation: string, success: boolean, trackingId?: string, outer = 'routing_5d159995-5e3d-478c-94c7-d0a3fbcb5f6b') => ({
     type: operation === 'stateChange' ? 'AgentStateChange' : operation === 'reload' ? (success ? 'AgentReloginSuccess' : 'AgentReloginFailed') : 'StationLogin',
     trackingId: outer,
     data: {type: operation === 'stateChange' ? (success ? 'AgentStateChangeSuccess' : 'AgentStateChangeFailed') : operation === 'reload' ? (success ? 'AgentReloginSuccess' : 'AgentReloginFailed') : (success ? 'AgentStationLoginSuccess' : 'AgentStationLoginFailed'),
@@ -796,7 +801,7 @@ describe('T-007/T-008 real AQM operation and session owners', () => {
     const ids: string[] = [];
     const localAtDispatch: boolean[] = [];
     http.mockImplementation((options) => {
-      localAtDispatch.push(aqm.isLocalSessionTrackingId(options.headers.trackingid));
+      localAtDispatch.push(aqm.isLocalSessionTrackingId(options.headers.trackingid.split('_')[1]));
       return Promise.resolve({statusCode: 202, headers: {}});
     });
     const data = operation === 'reload' ? {} : {teamId: 'team', dialNumber: 'number', roles: ['agent']};
@@ -808,8 +813,7 @@ describe('T-007/T-008 real AQM operation and session owners', () => {
       expect(localAtDispatch).toEqual(Array(generation + 1).fill(true));
       const request = http.mock.calls[generation][0];
       expect(request.body).toEqual(data);
-      const id = request.headers.trackingid; ids.push(id);
-      expect(id).toMatch(/^WX_CC_SDK_[0-9a-f-]{36}$/);
+      const id = requestUuid(generation); ids.push(id);
       expect(aqm.isLocalSessionTrackingId(id)).toBe(true);
       expect(aqm['operations'].size).toBe(1);
       expect(jest.getTimerCount()).toBe(1);
@@ -835,34 +839,90 @@ describe('T-007/T-008 real AQM operation and session owners', () => {
     }
     expect(new Set(ids).size).toBe(2);
     expect(aqm.isLocalSessionTrackingId('not-local')).toBe(false);
-    aqm.clearSessionTrackingIds(); ids.forEach((id) => expect(aqm.isLocalSessionTrackingId(id)).toBe(false));
   });
 
   it.each(['reload', 'stationLogin', 'stateChange'].flatMap((operation) =>
-    [true, false].flatMap((success) => (operation === 'stateChange' ? [false, true] : [false])
-      .map((omitRequestId) => ({operation, success, omitRequestId})))
+    [true, false].map((success) => ({operation, success}))
   ))(
-    'stateAndSessionRequireNestedTracking missing/mismatched/outer-only then matching $operation success=$success omitRequestId=$omitRequestId', async ({operation, success, omitRequestId}) => {
-      const requestId = omitRequestId ? undefined : 'WX_CC_SDK_8f5ec5e4-80b8-4f5d-9720-10bfe56e7ca1';
+    'strict $operation matches the nested UUID only, success=$success', async ({operation, success}) => {
+      const uuid = '8f5ec5e4-80b8-4f5d-9720-10bfe56e7ca1';
+      const signal = new AbortController().signal;
+      const sessionOwner = operation === 'stationLogin'
+        ? {generation: 0, signal, phase: 'manual' as const}
+        : {generation: 0, signal, phase: 'restore' as const};
+      const context: AqmRequestContext = operation === 'stateChange'
+        ? {generation: 0, signal, correlationId: uuid, requireCorrelation: true}
+        : {generation: 0, signal, sessionOwner};
+      if (sessionOwner.phase === 'manual') aqm.setRecoveryGate({state: 'manualLoginRequired', sessionOwner});
+      else if (operation === 'reload') aqm.setRecoveryGate({state: 'recovering', sessionOwner});
       const data = operation === 'stateChange' ? {state: 'Available', auxCodeId: '0'}
         : operation === 'reload' ? {} : {teamId: 'team', dialNumber: 'number', roles: ['agent']};
-      const promise = invoke(operation as string, {data, requestId}); const settled = jest.fn();
+      const promise = invoke(operation, {data, context});
+      const settled = jest.fn();
       const observed = promise.then(settled, settled);
       expect(http).toHaveBeenCalledTimes(1);
       expect(http.mock.calls[0][0].body).toEqual(data);
-      const id = http.mock.calls[0][0].headers.trackingid;
-      if (operation === 'stateChange' && !omitRequestId) expect(id).toBe(requestId);
-      else expect(id).toMatch(/^WX_CC_SDK_[0-9a-f-]{36}$/);
-      send(frame(operation as string, success as boolean, undefined, id));
-      send(frame(operation as string, success as boolean, 'wrong', id));
-      send(frame(operation as string, success as boolean, id.slice(10)));
+      const id = requestUuid();
+      if (operation === 'stateChange') expect(id).toBe(uuid);
+      send(frame(operation, success, undefined, id));
+      send(frame(operation, success, '5d159995-5e3d-478c-94c7-d0a3fbcb5f6b', id));
+      send(frame(operation, success, http.mock.calls[0][0].headers.trackingid));
       await flush(); expect(settled).not.toHaveBeenCalled();
-      const matching = frame(operation as string, success as boolean, id);
+      const matching = frame(operation, success, id);
       send(matching); await observed;
       expect(settled).toHaveBeenCalledTimes(1);
       if (success) expect(settled.mock.calls[0][0]).toEqual(matching);
       else expect(settled.mock.calls[0][0].details).toEqual(matching);
       expect(aqm['operations'].size).toBe(0); expect(jest.getTimerCount()).toBe(0);
+    }
+  );
+
+  it.each(['reload', 'stationLogin', 'stateChange'].flatMap((operation) => [true, false].map((success) => ({operation, success}))))(
+    'ordinary $operation preserves subtype matching despite missing or server-assigned UUID, success=$success', async ({operation, success}) => {
+      const serverId = 'e5e67e95-627a-4db1-aed8-bd2ee3e44df7';
+      const data = operation === 'stateChange' ? {state: 'Available', auxCodeId: '0'} : {};
+      const promise = invoke(operation, {data});
+      if (operation === 'stateChange') expect(http.mock.calls[0][0].headers).toBeUndefined();
+      const matched = frame(operation, success, success && operation === 'stateChange' ? undefined : serverId);
+      const localAtFanout = jest.fn(() => aqm.isLocalSessionTrackingId(serverId));
+      socket.on('message', localAtFanout);
+      const observed = success ? expect(promise).resolves.toEqual(matched)
+        : expect(promise).rejects.toMatchObject({details: matched});
+      send(matched);
+      await observed;
+      if (success && operation !== 'stateChange') expect(localAtFanout.mock.results[0].value).toBe(true);
+    }
+  );
+
+  it.each(['reload', 'stationLogin', 'stateChange'])(
+    'ordinary %s ignores a retired recovery UUID and still accepts an unknown backend UUID', async (operation) => {
+      const data = operation === 'stateChange' ? {state: 'Available', auxCodeId: '0'} : {};
+      const controller = new AbortController();
+      const first = invoke(operation, {data, context: {
+        generation: 0,
+        signal: controller.signal,
+        correlationId: '8f5ec5e4-80b8-4f5d-9720-10bfe56e7ca1',
+        requireCorrelation: true,
+      }});
+      const retiredId = requestUuid();
+      const interrupted = expect(first).rejects.toMatchObject({data: {reason: 'RECOVERY_INTERRUPTED'}});
+      controller.abort();
+      await interrupted;
+
+      aqm.beginGeneration(1);
+      const pending = invoke(operation, {data});
+      if (operation === 'stateChange') expect(http.mock.calls[1][0].headers).toBeUndefined();
+      const settled = jest.fn();
+      const observed = pending.then(settled, settled);
+      send(frame(operation, true, retiredId));
+      send(frame(operation, false, retiredId));
+      await flush();
+      expect(settled).not.toHaveBeenCalled();
+
+      const matching = frame(operation, true, 'e5e67e95-627a-4db1-aed8-bd2ee3e44df7');
+      send(matching);
+      await observed;
+      expect(settled).toHaveBeenCalledWith(matching);
     }
   );
 
@@ -894,7 +954,7 @@ describe('T-007/T-008 real AQM operation and session owners', () => {
           controller.abort();
           await rejected;
         } else {
-          const matching = frame('stateChange', true, http.mock.calls[0][0].headers.trackingid);
+          const matching = frame('stateChange', true);
           send(matching);
           await expect(promise).resolves.toEqual(matching);
         }
@@ -911,13 +971,13 @@ describe('T-007/T-008 real AQM operation and session owners', () => {
       let resolve!: (value: any) => void, reject!: (error: any) => void;
       http.mockReturnValue(new Promise((res, rej) => { resolve = res; reject = rej; }));
       const callback = jest.fn();
-      const requestId = 'WX_CC_SDK_5d159995-5e3d-478c-94c7-d0a3fbcb5f6b';
+      const correlationId = '5d159995-5e3d-478c-94c7-d0a3fbcb5f6b';
       const data = {};
-      const promise = invoke(operation as string, {data, requestId, callback});
+      const promise = invoke(operation as string, {data, callback, context: {generation: 0, correlationId, requireCorrelation: true}});
       expect(http).toHaveBeenCalledTimes(1);
       expect(http.mock.calls[0][0].body).toEqual(data);
-      if (operation === 'stateChange') expect(http.mock.calls[0][0].headers.trackingid).toBe(requestId);
-      const id = operation === 'stateChange' ? requestId : http.mock.calls[0][0].headers.trackingid;
+      const id = requestUuid();
+      if (operation === 'stateChange') expect(id).toBe(correlationId);
       const observed = promise.catch((error) => error);
       send(frame(operation as string, success as boolean, id)); await observed;
       if (late === 'resolve') resolve({statusCode: 202, options: {body: {dialNumber: 'secret'}}});
@@ -930,21 +990,22 @@ describe('T-007/T-008 real AQM operation and session owners', () => {
   it.each(['reload', 'stationLogin', 'stateChange'])('correlationDoesNotBypassDuplicateAdmission and ordinaryRequestAndTaskOwnershipUnchanged %s', async (operation) => {
     const data = operation === 'stateChange' ? {state: 'Available', auxCodeId: '0'}
       : operation === 'reload' ? {} : {teamId: 'team', dialNumber: 'number', roles: ['agent']};
-    const first = invoke(operation, {data});
+    const first = invoke(operation, {data, context: {
+      generation: 0,
+      correlationId: '8f5ec5e4-80b8-4f5d-9720-10bfe56e7ca1',
+      requireCorrelation: true,
+    }});
     const settled = jest.fn();
     const observed = first.then(settled, settled);
-    await expect(invoke(operation, {data})).rejects.toMatchObject({id: 'Service.aqm.reqs.Pending'});
+    await expect(invoke(operation, {data, context: {
+      generation: 0,
+      correlationId: 'a0010213-add8-47f0-88ca-de81bfa7ec6f',
+      requireCorrelation: true,
+    }})).rejects.toMatchObject({id: 'Service.aqm.reqs.Pending'});
     expect(http).toHaveBeenCalledTimes(1);
     expect(aqm['operations'].size).toBe(1);
     expect(jest.getTimerCount()).toBe(1);
-    const id = http.mock.calls[0][0].headers.trackingid;
-    send(frame(operation, true, 'unrelated-tracking-id', id));
-    send(frame(operation, false, 'unrelated-tracking-id', id));
-    await flush();
-    expect(settled).not.toHaveBeenCalled();
-    expect(aqm['operations'].size).toBe(1);
-    expect(jest.getTimerCount()).toBe(1);
-    const matching = frame(operation, true, id);
+    const matching = frame(operation, true, requestUuid());
     send(matching);
     await expect(first).resolves.toEqual(matching);
     await observed;
@@ -999,7 +1060,7 @@ describe('T-007/T-008 real AQM operation and session owners', () => {
       );
       if (allowed) {
         const notification = kind === 'session'
-          ? {type: 'DONE', data: {trackingId: http.mock.calls[0][0].headers.trackingid}}
+          ? {type: 'DONE', data: {trackingId: requestUuid()}}
           : {type: 'DONE'};
         send(notification);
         await expect(observed).resolves.toEqual(notification);
@@ -1208,7 +1269,7 @@ describe('T-007/T-008 real AQM operation and session owners', () => {
     const data = {teamId: 'team', dialNumber: 'number'};
     const promise = agent.stationLogin({data});
     expect(http.mock.calls[0][0].body).toBe(data);
-    send(frame('stationLogin', true, http.mock.calls[0][0].headers.trackingid)); await promise;
+    send(frame('stationLogin', true, requestUuid())); await promise;
     const request = aqm.req(() => command({headers: {'X-Request': 'retained'}}));
     const normal = request({}); expect(http.mock.calls[1][0].headers).toEqual({'X-Request': 'retained'});
     send({type: 'DONE'}); await normal;
@@ -1218,7 +1279,7 @@ describe('T-007/T-008 real AQM operation and session owners', () => {
     (LoggerProxy.info as jest.Mock).mockImplementation(() => { throw new Error('sink'); });
     expect(() => send({type: 'Welcome', data: {}})).not.toThrow();
     const promise = agent.reload(); const observed = promise.catch((error) => error);
-    const id = http.mock.calls[0][0].headers.trackingid;
+    const id = requestUuid();
     expect(() => send(frame('reload', outcome === 'success', id))).not.toThrow();
     await observed; expect(aqm['operations'].size).toBe(0); expect(aqm['pendingRequests']).toEqual({});
     expect(jest.getTimerCount()).toBe(0);
@@ -1248,10 +1309,16 @@ describe('T-007/T-008 real AQM operation and session owners', () => {
       // Materialize the real adapter config only to vary this internal log flag;
       // separate wire scenarios above exercise routingAgent(new AqmReqs(socket)) directly.
       const configs = routingAgent({req: (config) => config, reqEmpty: (config) => config});
-      const config = operation === 'stateChange' ? configs.stateChange({data: {state: 'Available', auxCodeId: '0'}, requestId: 'WX_CC_SDK_state-redacted'}) : operation === 'reload' ? configs.reload() : configs.stationLogin({data: {teamId: 'TEAM_SENTINEL', dialNumber: 'STATION_DN_SENTINEL', roles: ['agent']}});
+      const config = operation === 'stateChange' ? configs.stateChange({data: {state: 'Available', auxCodeId: '0'}}) : operation === 'reload' ? configs.reload() : configs.stationLogin({data: {teamId: 'TEAM_SENTINEL', dialNumber: 'STATION_DN_SENTINEL', roles: ['agent']}});
       expect(config.kind).toBe(operation === 'stateChange' ? 'command' : 'session');
       const acknowledged = jest.fn();
-      const promise = aqm['createPromise']({...config, redactSensitiveLogs: flag, context: {generation: 0, signal: controller.signal}}, acknowledged);
+      const requestContext = {
+        generation: 0,
+        signal: controller.signal,
+        correlationId: '8f5ec5e4-80b8-4f5d-9720-10bfe56e7ca1',
+        requireCorrelation: true,
+      };
+      const promise = aqm['createPromise']({...config, redactSensitiveLogs: flag, context: requestContext}, acknowledged);
       const resolved = jest.fn();
       const settled = jest.fn((error) => error);
       const observed = promise.then(resolved, settled);
@@ -1281,7 +1348,7 @@ describe('T-007/T-008 real AQM operation and session owners', () => {
       const originalResponse = JSON.parse(JSON.stringify(response));
       const httpFailure = Object.assign(new Error('ERROR_MESSAGE_SENTINEL'), response);
       Object.defineProperty(httpFailure, 'cause', {value: new Error('ERROR_CAUSE_SENTINEL')});
-      const id = http.mock.calls[0][0].headers.trackingid;
+      const id = requestUuid();
       const failureFrame = frame(operation, false, id);
       const notification = {
         ...failureFrame,

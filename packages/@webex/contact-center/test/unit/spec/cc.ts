@@ -120,7 +120,7 @@ jest.mock('../../../src/services', () => ({
       hasUsableSocket: jest.fn(() => true),
       },
       aqmReqs: {beginGeneration: jest.fn(), setRecoveryGate: jest.fn(), interruptPending: jest.fn(),
-        clearSessionTrackingIds: jest.fn(), isLocalSessionTrackingId: jest.fn(() => true)},
+        isLocalSessionTrackingId: jest.fn(() => true)},
       connectionService: {
         reset: jest.fn(), stop: jest.fn(), pause: jest.fn(),
         recoverRegion: jest.fn(() => new Promise(() => {})),
@@ -512,7 +512,7 @@ describe('webex.cc', () => {
       hasUsableSocket: jest.fn(() => true),
       },
       aqmReqs: {beginGeneration: jest.fn(), setRecoveryGate: jest.fn(), interruptPending: jest.fn(),
-        clearSessionTrackingIds: jest.fn(), isLocalSessionTrackingId: jest.fn(() => true)},
+        isLocalSessionTrackingId: jest.fn(() => true)},
       connectionService: {
         reset: jest.fn(), stop: jest.fn(), pause: jest.fn(),
         recoverRegion: jest.fn(() => new Promise(() => {})),
@@ -825,7 +825,8 @@ describe('webex.cc', () => {
         return webex.cc.services.connectionService.recoverRegion.mock.calls.slice(-1)[0]?.[0];
       };
       const welcome = async (options, controller = new AbortController()) => {
-        await options.afterWelcome({agentId: 'agent123'}, controller.signal);
+        const publishOutcome = await options.afterWelcome({agentId: 'agent123'}, controller.signal);
+        publishOutcome?.();
         await settle();
       };
       it.each(['stationLogin', 'silentRelogin', 'stationLogout', 'setAgentState', 'updateAgentProfile', 'startOutdial']
@@ -915,13 +916,15 @@ describe('webex.cc', () => {
         expect(calling.registerWebCallingLine).not.toHaveBeenCalled();
         expect(calling.deregisterWebCallingLine).not.toHaveBeenCalled();
         expect(effects.postLogin).toHaveBeenCalledTimes(1);
+        expect(effects.postLogin).toHaveBeenCalledWith(expect.any(AbortSignal));
         expect(effects.acceptStation.mock.invocationCallOrder[0])
           .toBeLessThan(effects.postLogin.mock.invocationCallOrder[0]);
         expect(effects.connect).toHaveBeenCalledTimes(browser ? 0 : 1);
         expect(effects.subscribe.mock.calls).toEqual(browser ? [] : [['agent123', expect.any(Function)]]);
         expect(effects.publish.mock.calls).toEqual(browser ? [] : [[true, {
-          userId: 'restored-user', trackPublishMetrics: true,
+          userId: 'restored-user', trackPublishMetrics: true, signal: expect.any(AbortSignal),
         }]]);
+        if (!browser) expect(effects.publish.mock.calls[0][1].signal).toBe(effects.postLogin.mock.calls[0][0]);
         for (const effect of [effects.subscribe, effects.publish]) {
           if (!browser) expect(effects.acceptStation.mock.invocationCallOrder[0])
             .toBeLessThan(effect.mock.invocationCallOrder[0]);
@@ -967,7 +970,7 @@ describe('webex.cc', () => {
             manager.initWebSocket, manager.close, manager.cancelPending, manager.clearServingRegion,
           ]),
           services.aqmReqs.beginGeneration, services.aqmReqs.setRecoveryGate,
-          services.aqmReqs.interruptPending, services.aqmReqs.clearSessionTrackingIds,
+          services.aqmReqs.interruptPending,
           mockTaskManager.startSession, mockTaskManager.stopSession,
           mockTaskManager.setRecoveryGuard, mockTaskManager.interruptTaskOperations,
           mockTaskManager.invalidateRegionalTasks, services.agent.reload, services.agent.stationLogin,
@@ -1314,8 +1317,8 @@ describe('webex.cc', () => {
           const backend = createDeferred<any>(); webex.cc.services.agent.stateChange.mockReturnValue(backend.promise);
           await startAuto();
           expect(webex.cc.services.agent.stateChange).toHaveBeenCalledTimes(1);
-          const id = webex.cc.services.agent.stateChange.mock.calls[0][0].requestId;
-          expect(id).toBe('WX_CC_SDK_state-1');
+          const id = webex.cc.services.agent.stateChange.mock.calls[0][2].correlationId;
+          expect(id).toBe('state-1');
           expect(webex.cc.agentConfig.lastStateAuxCodeId).toBe('idle');
           const observer = jest.fn(() => expect(webex.cc.agentConfig.lastStateAuxCodeId).toBe('0'));
           webex.cc.on(CC_EVENTS.AGENT_STATE_CHANGE_SUCCESS, observer);
@@ -1341,7 +1344,7 @@ describe('webex.cc', () => {
           await settle(); expect(webex.cc.services.agent.stateChange).toHaveBeenCalledTimes(1);
           expect(webex.cc.webCallingService.off).toHaveBeenCalledWith(VOICE_CONNECTION_EVENTS.STATE_CHANGE,
             webex.cc['handleAutoAvailableVoiceChange']);
-          const id = webex.cc.services.agent.stateChange.mock.calls[0][0].requestId;
+          const id = webex.cc.services.agent.stateChange.mock.calls[0][2].correlationId;
           const frame = ack(id);
           webex.cc['handleWebsocketMessage'](JSON.stringify(frame)); backend.resolve(frame); await settle();
           expect(snapshots).toEqual([
@@ -1393,7 +1396,7 @@ describe('webex.cc', () => {
           expect(webex.cc.services.agent.stateChange).toHaveBeenCalledTimes(1);
           automatic.reject(new Error('timeout')); await settle();
           expect(webex.cc.services.agent.stateChange).toHaveBeenCalledTimes(2);
-          const id = webex.cc.services.agent.stateChange.mock.calls[1][0].requestId;
+          const id = webex.cc.services.agent.stateChange.mock.calls[1][2].correlationId;
           const frame = ack(id, {auxCodeId: 'manual', subStatus: 'Idle'});
           webex.cc['handleWebsocketMessage'](JSON.stringify(frame)); explicit.resolve(frame);
           await first; await observed;
@@ -1407,7 +1410,7 @@ describe('webex.cc', () => {
           webex.cc.services.agent.stateChange.mockReturnValueOnce(automatic.promise).mockReturnValueOnce(explicit.promise);
           const snapshots: any[] = [];
           await startAuto(true, () => webex.cc.on('region:stateChange', state => snapshots.push(state)));
-          const id = webex.cc.services.agent.stateChange.mock.calls[0][0].requestId;
+          const id = webex.cc.services.agent.stateChange.mock.calls[0][2].correlationId;
           const generic = jest.fn(); const success = jest.fn(); const raw = jest.fn();
           webex.cc.on(AGENT_EVENTS.AGENT_STATE_CHANGE, generic);
           webex.cc.on(AGENT_EVENTS.AGENT_STATE_CHANGE_SUCCESS, success);
@@ -1422,7 +1425,7 @@ describe('webex.cc', () => {
           expect(generic.mock.calls).toEqual([[frame.data]]);
           expect(success.mock.calls).toEqual([[frame.data]]);
           expect(raw.mock.calls).toEqual([[frame.data]]);
-          const explicitId = webex.cc.services.agent.stateChange.mock.calls[1][0].requestId;
+          const explicitId = webex.cc.services.agent.stateChange.mock.calls[1][2].correlationId;
           const accepted = ack(explicitId, {subStatus: 'Idle', auxCodeId: 'manual', lastStateChangeTimestamp: 30});
           webex.cc['handleWebsocketMessage'](JSON.stringify(accepted)); explicit.resolve(accepted); await request;
           expect(webex.cc['lastPublishedRegionState']).toEqual(readySnapshot('cancelled'));
@@ -1433,7 +1436,7 @@ describe('webex.cc', () => {
           const dispatch = jest.spyOn(webex.cc, 'performAgentStateChange');
           const revision = webex.cc['stateIntentRevision'];
           const disconnected = result({lastStateChangeReason: 'agent-wss-disconnect', status: 'LoggedIn', subStatus: 'Idle'});
-          webex.cc.services.agent.stateChange.mockImplementation(({requestId, data}) => {
+          webex.cc.services.agent.stateChange.mockImplementation(({data}, _callback, {correlationId: requestId}) => {
             expect(webex.cc['inFlightDrAutoState']).toBeUndefined();
             const frame = ack(requestId, {subStatus: data.state, auxCodeId: data.auxCodeId});
             webex.cc['handleWebsocketMessage'](JSON.stringify(frame));
@@ -1452,8 +1455,8 @@ describe('webex.cc', () => {
           expect(webex.cc['stateIntentRevision']).toBe(revision + 1);
           expect(dispatch.mock.calls.map(([, context]) => context.source))
             .toEqual(['relogin-auto', 'dr-auto', 'explicit', 'relogin-auto']);
-          expect(webex.cc.services.agent.stateChange.mock.calls.map(([request]) => request.requestId))
-            .toEqual(['WX_CC_SDK_state-1', 'WX_CC_SDK_state-2', 'WX_CC_SDK_state-3', 'WX_CC_SDK_state-4']);
+          expect(webex.cc.services.agent.stateChange.mock.calls.map(([, , context]) => context.correlationId))
+            .toEqual(['state-1', 'state-2', 'state-3', 'state-4']);
           expect(webex.cc['inFlightDrAutoState']).toBeUndefined();
         });
 
@@ -1478,7 +1481,7 @@ describe('webex.cc', () => {
           expect(dispatch.mock.calls[0][1].source).toBe(source === 'explicit' ? 'explicit' : 'relogin-auto');
           expect(webex.cc['inFlightDrAutoState']).toBeUndefined();
           expect(webex.cc['stateIntentRevision']).toBe(revision + (source === 'explicit' ? 1 : 0));
-          const {requestId, data} = webex.cc.services.agent.stateChange.mock.calls[0][0];
+          const [{data}, , {correlationId: requestId}] = webex.cc.services.agent.stateChange.mock.calls[0];
           const frame = ack(requestId, {subStatus: data.state, auxCodeId: data.auxCodeId});
           webex.cc['handleWebsocketMessage'](JSON.stringify(frame)); pending.resolve(frame); await operation;
           expect(webex.cc['inFlightDrAutoState']).toBeUndefined();
@@ -1513,7 +1516,7 @@ describe('webex.cc', () => {
           webex.cc.services.agent.reload.mockResolvedValue(result());
           await triggerLifecycle('ordinary relogin');
           expect(webex.cc['inFlightDrAutoState']).toBe(barrier);
-          if (outcome === 'fulfilled') automatic.resolve(ack('WX_CC_SDK_state-1'));
+          if (outcome === 'fulfilled') automatic.resolve(ack('state-1'));
           else automatic.reject(new Error('late rejection'));
           await settle();
           expect(webex.cc['inFlightDrAutoState']).toBeUndefined();
@@ -1531,11 +1534,11 @@ describe('webex.cc', () => {
           expect(currentBarrier).toBeInstanceOf(Promise);
           expect(currentBarrier).not.toBe(oldBarrier);
           expect(webex.cc.services.agent.stateChange).toHaveBeenCalledTimes(2);
-          if (outcome === 'fulfilled') old.resolve(ack('WX_CC_SDK_state-1'));
+          if (outcome === 'fulfilled') old.resolve(ack('state-1'));
           else old.reject(new Error('obsolete rejection'));
           await settle();
           expect(webex.cc['inFlightDrAutoState']).toBe(currentBarrier);
-          const id = webex.cc.services.agent.stateChange.mock.calls[1][0].requestId;
+          const id = webex.cc.services.agent.stateChange.mock.calls[1][2].correlationId;
           const frame = ack(id); webex.cc['handleWebsocketMessage'](JSON.stringify(frame));
           current.resolve(frame); await settle();
           expect(webex.cc['inFlightDrAutoState']).toBeUndefined();
@@ -1546,7 +1549,7 @@ describe('webex.cc', () => {
           const automatic = createDeferred<any>(); webex.cc.services.agent.stateChange.mockReturnValue(automatic.promise);
           const snapshots: any[] = [];
           await startAuto(true, () => webex.cc.on('region:stateChange', state => snapshots.push(state)));
-          const id = webex.cc.services.agent.stateChange.mock.calls[0][0].requestId;
+          const id = webex.cc.services.agent.stateChange.mock.calls[0][2].correlationId;
           automatic.reject(new Error('timeout')); await settle();
           const last = webex.cc['lastPublishedRegionState']; expect(last.autoAvailable).toBe('failed');
           webex.cc['handleWebsocketMessage'](JSON.stringify(ack(id))); await settle();
@@ -1585,7 +1588,7 @@ describe('webex.cc', () => {
           if (!after) webex.cc['handleWebsocketMessage'](JSON.stringify(independent));
           const explicit = webex.cc.setAgentState({state: 'Idle', auxCodeId: 'explicit'});
           const observed = explicit.catch(() => undefined);
-          const id = webex.cc.services.agent.stateChange.mock.calls[0][0].requestId;
+          const id = webex.cc.services.agent.stateChange.mock.calls[0][2].correlationId;
           if (after) webex.cc['handleWebsocketMessage'](JSON.stringify(independent));
           const local = ack(id, {auxCodeId: 'explicit', subStatus: 'Idle'});
           webex.cc['handleWebsocketMessage'](JSON.stringify(local)); pending.resolve(local);
@@ -1598,11 +1601,11 @@ describe('webex.cc', () => {
         it('T-007 timeoutLateReplyCannotCompleteExplicit or overwrite accepted explicit state', async () => {
           const automatic = createDeferred<any>(); const explicit = createDeferred<any>();
           webex.cc.services.agent.stateChange.mockReturnValueOnce(automatic.promise).mockReturnValueOnce(explicit.promise);
-          await startAuto(); const oldId = webex.cc.services.agent.stateChange.mock.calls[0][0].requestId;
+          await startAuto(); const oldId = webex.cc.services.agent.stateChange.mock.calls[0][2].correlationId;
           automatic.reject(new Error('timeout')); await settle();
           const request = webex.cc.setAgentState({state: 'Idle', auxCodeId: 'manual'});
           const observed = request.catch(() => undefined); const settled = jest.fn(); request.then(settled, settled);
-          const id = webex.cc.services.agent.stateChange.mock.calls[1][0].requestId;
+          const id = webex.cc.services.agent.stateChange.mock.calls[1][2].correlationId;
           webex.cc['handleWebsocketMessage'](JSON.stringify(ack(oldId))); await settle();
           expect(settled).not.toHaveBeenCalled();
           const accepted = ack(id, {auxCodeId: 'manual', subStatus: 'Idle', lastStateChangeTimestamp: 30});
@@ -1610,7 +1613,7 @@ describe('webex.cc', () => {
           await request; await observed;
           // Correlation survives settlements and arbitrary age/count; old automatic replies
           // must never be reclassified as independent authoritative notifications.
-          webex.cc.services.agent.stateChange.mockImplementation(({requestId}) => {
+          webex.cc.services.agent.stateChange.mockImplementation((_request, _callback, {correlationId: requestId}) => {
             const frame = ack(requestId, {auxCodeId: 'manual', subStatus: 'Idle', lastStateChangeTimestamp: 30});
             webex.cc['handleWebsocketMessage'](JSON.stringify(frame));
             return Promise.resolve(frame);
@@ -1670,7 +1673,7 @@ describe('webex.cc', () => {
           webex.cc['handleAutoAvailableVoiceChange']();
           webex.cc['handleAutoAvailableVoiceChange'](); await settle();
           expect(webex.cc.services.agent.stateChange).toHaveBeenCalledTimes(1);
-          expect(webex.cc.services.agent.stateChange.mock.calls[0][0].requestId).toBe('WX_CC_SDK_state-1');
+          expect(webex.cc.services.agent.stateChange.mock.calls[0][2].correlationId).toBe('state-1');
         });
 
         it.each(['explicit', 'relogin-auto'])('T-007 local voice rejection preserves %s failure diagnostics', async source => {
@@ -1821,7 +1824,7 @@ describe('webex.cc', () => {
           const automatic = createDeferred<any>();
           webex.cc.services.agent.stateChange.mockReturnValue(automatic.promise);
           await startAuto();
-          const id = webex.cc.services.agent.stateChange.mock.calls[0][0].requestId;
+          const id = webex.cc.services.agent.stateChange.mock.calls[0][2].correlationId;
           const frame = ack(id);
           if (outcome === 'succeeded') {
             webex.cc['handleWebsocketMessage'](JSON.stringify(frame));
@@ -7329,7 +7332,7 @@ describe('webex.cc', () => {
 
       await webex.cc.setAgentState(payload);
 
-      expect(stateChangeSpy).toHaveBeenCalledWith({data: payload, requestId: 'WX_CC_SDK_mock-tracking-uuid'}, undefined, {generation: 0, signal: undefined});
+      expect(stateChangeSpy).toHaveBeenCalledWith({data: payload}, undefined, {generation: 0, signal: undefined, correlationId: 'mock-tracking-uuid'});
     });
 
     it('should preserve state changes when browser voice registration is not required', async () => {
@@ -7343,7 +7346,7 @@ describe('webex.cc', () => {
 
       await webex.cc.setAgentState(expectedPayload);
 
-      expect(stateChangeSpy).toHaveBeenCalledWith({data: expectedPayload, requestId: 'WX_CC_SDK_mock-tracking-uuid'}, undefined, {generation: 0, signal: undefined});
+      expect(stateChangeSpy).toHaveBeenCalledWith({data: expectedPayload}, undefined, {generation: 0, signal: undefined, correlationId: 'mock-tracking-uuid'});
     });
 
     it('should set agent status successfully when status is Available', async () => {
@@ -7373,7 +7376,7 @@ describe('webex.cc', () => {
         }
       );
 
-      expect(setAgentStatusMock).toHaveBeenCalledWith({data: expectedPayload, requestId: 'WX_CC_SDK_mock-tracking-uuid'}, undefined, {generation: 0, signal: undefined});
+      expect(setAgentStatusMock).toHaveBeenCalledWith({data: expectedPayload}, undefined, {generation: 0, signal: undefined, correlationId: 'mock-tracking-uuid'});
       expect(result).toEqual({data: expectedPayload});
       expect(mockMetricsManager.timeEvent).toHaveBeenCalledWith([
         METRIC_EVENT_NAMES.AGENT_STATE_CHANGE_SUCCESS,
@@ -7395,7 +7398,7 @@ describe('webex.cc', () => {
 
       const result = await webex.cc.setAgentState(expectedPayload);
 
-      expect(setAgentStatusMock).toHaveBeenCalledWith({data: expectedPayload, requestId: 'WX_CC_SDK_mock-tracking-uuid'}, undefined, {generation: 0, signal: undefined});
+      expect(setAgentStatusMock).toHaveBeenCalledWith({data: expectedPayload}, undefined, {generation: 0, signal: undefined, correlationId: 'mock-tracking-uuid'});
       expect(result).toEqual({data: expectedPayload});
       expect(LoggerProxy.log).toHaveBeenCalledWith(
         `Agent state changed successfully to auxCodeId: ${expectedPayload.auxCodeId}`,
@@ -7404,7 +7407,7 @@ describe('webex.cc', () => {
           method: 'setAgentState',
         }
       );
-      expect(setAgentStatusMock).toHaveBeenCalledWith({data: expectedPayload, requestId: 'WX_CC_SDK_mock-tracking-uuid'}, undefined, {generation: 0, signal: undefined});
+      expect(setAgentStatusMock).toHaveBeenCalledWith({data: expectedPayload}, undefined, {generation: 0, signal: undefined, correlationId: 'mock-tracking-uuid'});
       expect(result).toEqual({data: expectedPayload});
       expect(mockMetricsManager.timeEvent).toHaveBeenCalledWith([
         METRIC_EVENT_NAMES.AGENT_STATE_CHANGE_SUCCESS,
@@ -8093,7 +8096,7 @@ describe('webex.cc', () => {
         auxCodeId: '0', // even if get auxcodeId from relogin response, it should be 0 for available state
         lastStateChangeReason: 'agent-wss-disconnect',
         agentId: 'agentId',
-      }, requestId: 'WX_CC_SDK_mock-tracking-uuid'});
+      }});
       expect(webex.cc.agentConfig.isAgentLoggedIn).toBe(true);
       expect(webex.cc.agentConfig.lastStateAuxCodeId).toBe('auxCodeId');
       expect(webex.cc.agentConfig.lastStateChangeTimestamp).toStrictEqual(1738575135188); // it should be updated with the new timestamp of setAgentState response
@@ -10315,7 +10318,7 @@ describe('realRecoveryWiring', () => {
       expect(jest.isMockFunction(cc.handleRegionSwitch)).toBe(false);
       expect(jest.isMockFunction(cc.services.agent.reload)).toBe(false);
       const frame = (type: string, id: string, extra = {}) => ({type, orgId: 'org', trackingId: 'outer', data: {
-        type, trackingId: id, orgId: 'org', agentId: 'agent', agentSessionId: 'session',
+        type, trackingId: id?.replace(/^webex-js-sdk_/, ''), orgId: 'org', agentId: 'agent', agentSessionId: 'session',
         teamId: 'team', deviceType: 'EXTENSION', dn: '1234', isExtension: true, channelsMap: {},
         auxCodeId: 'idle', status: 'LoggedIn', subStatus: 'Idle', lastStateChangeReason: 'initial',
         lastStateChangeTimestamp: 1, lastIdleCodeChangeTimestamp: 1, ...extra,
@@ -11074,7 +11077,7 @@ describe('realRecoveryWiring', () => {
             {agentSessionId: 'PRIVATE_SESSION'});
           if (manual) await expect(pending).resolves.toEqual({
             type: CC_EVENTS.AGENT_STATION_LOGIN_SUCCESS,
-            trackingId: requests.filter(r => r.resource === '/v1/agents/login').slice(-1)[0].headers.trackingid,
+            trackingId: requests.filter(r => r.resource === '/v1/agents/login').slice(-1)[0].headers.trackingid.replace(/^webex-js-sdk_/, ''),
             orgId: 'org', agentId: 'agent', agentSessionId: 'PRIVATE_SESSION', teamId: 'team',
             deviceType: LoginOption.BROWSER, dn: 'webrtc-agent', isExtension: false,
             auxCodeId: 'idle', status: 'LoggedIn', subStatus: 'Idle', lastStateChangeReason: 'initial',
@@ -11267,12 +11270,10 @@ describe('realRecoveryWiring', () => {
           expect(relogin).toHaveBeenCalledTimes(1);
           const request = requests[requestCount + 1];
           expect(request.resource).toBe('/v1/agents/reload');
-          const response = frame(CC_EVENTS.AGENT_RELOGIN_SUCCESS, request.headers.trackingid,
+          const response = frame(CC_EVENTS.AGENT_RELOGIN_SUCCESS, 'server-assigned-reload-id',
             {deviceType, isExtension: deviceType === LoginOption.EXTENSION,
               dn: deviceType === LoginOption.BROWSER ? 'webrtc-agent' : '1234',
               lastStateChangeReason: 'agent-wss-disconnect'});
-          sockets[1].message({...response, data: {...response.data, trackingId: 'wrong-id'}});
-          await flush();
           expect(stateChange).not.toHaveBeenCalled(); assertPreserved();
           sockets[1].message(response); await flush();
           await expect(reload.mock.results[0].value).resolves.toEqual(response);
@@ -11422,7 +11423,7 @@ describe('realRecoveryWiring', () => {
       const changes = requests.filter(r => r.resource === '/v1/agents/session/state');
       expect(changes).toHaveLength(1);
       const id = changes[0].headers.trackingid;
-      expect(cc['stateDispatches'].get(id).source).toBe('explicit');
+      expect(cc['stateDispatches'].get(id.replace(/^webex-js-sdk_/, '')).source).toBe('explicit');
       expect(cc['stateIntentRevision']).toBe(revision + 1);
       expect(settled).not.toHaveBeenCalled();
       const response = {...frame(CC_EVENTS.AGENT_STATE_CHANGE_SUCCESS, id,
@@ -12334,6 +12335,113 @@ describe('realRecoveryWiring', () => {
       expect(restored.getWxAppMuted()).toBe(false);
       await expect(retained.syncWxAppMuteFromCallDetails()).rejects.toMatchObject({data: {reason: 'STALE_TASK'}});
       expect(details).toHaveBeenCalledTimes(2);
+    }, undefined, {}, {allowAutomatedRelogin: true});
+  });
+
+  it.each([
+    {stage: 'device', rejects: false},
+    {stage: 'Mercury', rejects: false},
+    {stage: 'Mercury', rejects: true},
+    {stage: 'usersub', rejects: false},
+    {stage: 'usersub', rejects: true},
+    {stage: 'disabled usersub', rejects: false},
+    {stage: 'cleanup', rejects: false},
+  ])('ignores cancelled regional wxApp $stage completion (rejects=$rejects)', async ({stage, rejects}) => {
+    await withGraph(async h => {
+      const {cc, host, login, flush} = h;
+      await login();
+      const enableWxBetterTogether = stage !== 'disabled usersub';
+      cc.$config.enableWxBetterTogether = enableWxBetterTogether;
+
+      const pending = createDeferred<{statusCode: number; body: object}>();
+      const device = {
+        registered: false,
+        userId: 'agent',
+        url: 'https://wdm.example.com/devices/device',
+        register: jest.fn(async () => {
+          if (stage === 'device') await pending.promise;
+          device.registered = true;
+        }),
+        unregister: jest.fn(),
+      };
+      const mercury = Object.assign(new EventEmitter(), {
+        connected: false,
+        connect: jest.fn(async () => {
+          if (stage === 'Mercury') await pending.promise;
+          mercury.connected = true;
+        }),
+        disconnect: jest.fn(async () => {
+          if (stage === 'cleanup') await pending.promise;
+          mercury.connected = false;
+        }),
+      });
+      host.internal.device = device;
+      host.internal.mercury = mercury;
+
+      const crossClient = cc['webexCrossClientService'];
+      if (!enableWxBetterTogether) {
+        await crossClient.setManageWebexCallingInWxcc(true);
+        expect(crossClient.isAnswerCallsStateActive()).toBe(true);
+      }
+      const publish = jest.fn(() => {
+        if (stage === 'cleanup') return Promise.reject(new Error('usersub publish failed'));
+
+        return pending.promise;
+      });
+      const request = host.request.getMockImplementation();
+      host.request.mockImplementation(options => (
+        options.service === 'usersub' ? publish() : request(options)
+      ));
+      const sync = cc['wxAppTelephonyMercurySync'];
+      const subscribe = jest.spyOn(sync, 'subscribe');
+      const unsubscribe = jest.spyOn(sync, 'unsubscribe');
+      const teardown = jest.spyOn(crossClient, 'teardown');
+      const syncMute = jest.spyOn(cc.taskManager, 'applyWxAppMuteStateFromSync');
+      const hydrateMute = jest.spyOn(cc.taskManager, 'syncWxAppMuteFromCallDetailsForAllTasks');
+      const resetFlag = jest.spyOn(cc, 'resetEnableWxBetterTogetherConfig');
+
+      const restore = await deferAutomaticStationRestore(h);
+      const {signal} = cc['sessionRequest'].owner;
+      await restore.accept();
+      expect(cc['recoveryPhase']).toBe('restoringSession');
+      const suspended = {
+        device: device.register,
+        Mercury: mercury.connect,
+        usersub: publish,
+        'disabled usersub': publish,
+        cleanup: mercury.disconnect,
+      };
+      expect(suspended[stage]).toHaveBeenCalledTimes(1);
+
+      restore.primary.lost();
+      await flush();
+      expect(signal.aborted).toBe(true);
+      const subscriptions = subscribe.mock.calls.length;
+      const unsubscriptions = unsubscribe.mock.calls.length;
+      const publishes = publish.mock.calls.length;
+
+      if (rejects) pending.reject(new Error('obsolete session failed'));
+      else pending.resolve({statusCode: 200, body: {}});
+      await flush();
+      mercury.emit('event:telephony_calls.muted', {data: {actorId: 'agent', callId: 'call-id', muted: true}});
+
+      expect(subscribe).toHaveBeenCalledTimes(subscriptions);
+      expect(unsubscribe).toHaveBeenCalledTimes(unsubscriptions);
+      expect(publish).toHaveBeenCalledTimes(publishes);
+      expect(teardown).not.toHaveBeenCalled();
+      expect(syncMute).not.toHaveBeenCalled();
+      expect(hydrateMute).not.toHaveBeenCalled();
+      expect(resetFlag).not.toHaveBeenCalled();
+      expect(cc.isWxBetterTogetherEnabled()).toBe(enableWxBetterTogether);
+      expect(crossClient.isAnswerCallsStateActive()).toBe(!enableWxBetterTogether);
+      expect(device.unregister).not.toHaveBeenCalled();
+      if (stage === 'device') {
+        expect(cc['wxAppDeviceRegisteredByCc']).toBe(false);
+        expect(mercury.connect).not.toHaveBeenCalled();
+      }
+      if (stage === 'Mercury') expect(cc['wxAppMercuryConnectedByCc']).toBe(false);
+      if (stage === 'cleanup') expect(cc['wxAppMercuryConnectedByCc']).toBe(true);
+      else expect(mercury.disconnect).not.toHaveBeenCalled();
     }, undefined, {}, {allowAutomatedRelogin: true});
   });
 
@@ -14154,7 +14262,7 @@ describe('realRecoveryWiring', () => {
         }
         expect(diagnostics(sink).filter(record => record.stage === 'auto-available')).toEqual([
           {stage: 'auto-available', outcome, attempt: 1, elapsedMs: outcome === 'waiting' ? 0 : 43,
-            ...(outcome === 'failed' ? {reasonCode: 1037, id: 'Service.aqm.agent.stateChange', trackingId: requests.filter(r => r.resource === '/v1/agents/session/state')[0].headers.trackingid} : {})},
+            ...(outcome === 'failed' ? {reasonCode: 1037, id: 'Service.aqm.agent.stateChange', trackingId: requests.filter(r => r.resource === '/v1/agents/session/state')[0].headers.trackingid.replace(/^webex-js-sdk_/, '')} : {})},
         ]);
         expect(regionMetrics(metric)).toHaveLength(1);
         expect(regionMetrics(metric)[0][0]).toBe(METRIC_EVENT_NAMES.REGION_RECOVERY_SUCCESS);
@@ -14822,9 +14930,7 @@ describe('realRecoveryWiring', () => {
       expect(loginSettled).not.toHaveBeenCalled(); // HTTP acknowledgement is not station completion.
       sockets[0].message(frame(CC_EVENTS.AGENT_RELOGIN_SUCCESS, loginId)); await flush();
       expect(loginSettled).not.toHaveBeenCalled();
-      sockets[0].message({...frame(CC_EVENTS.AGENT_STATION_LOGIN_SUCCESS, 'unrelated-login'), type: CC_EVENTS.AGENT_STATION_LOGIN});
-      await flush(); expect(loginSettled).not.toHaveBeenCalled();
-      const loginResponse = {...frame(CC_EVENTS.AGENT_STATION_LOGIN_SUCCESS, loginId), type: CC_EVENTS.AGENT_STATION_LOGIN};
+      const loginResponse = {...frame(CC_EVENTS.AGENT_STATION_LOGIN_SUCCESS, 'server-assigned-id'), type: CC_EVENTS.AGENT_STATION_LOGIN};
       sockets[0].message(loginResponse);
       const {channelsMap, ...loginData} = loginResponse.data;
       await expect(login).resolves.toEqual({...loginData, notifsTrackingId: 'outer',
@@ -14882,16 +14988,26 @@ describe('realRecoveryWiring', () => {
     await withGraph(async ({cc, requests, sockets, login, frame, flush}) => {
       await login(); cc.$config.allowAutomatedRelogin = true;
       sockets[0].message({type: 'SYSTEM_REGION_SWITCH', orgId: 'org', trackingId: 'switch'});
-      jest.advanceTimersByTime(105000); await flush(); sockets[1].welcome(); await flush();
-      const reload = requests.find(r => r.resource === '/v1/agents/reload');
-      sockets[1].message(frame(CC_EVENTS.AGENT_RELOGIN_SUCCESS, reload.headers.trackingid));
-      await flush();
-      expect(cc['lastPublishedRegionState'].status).toBe('ready');
-      const recovery = cc['recovery'];
+      jest.advanceTimersByTime(105000); await flush();
       const primary = sockets[1];
-      const logout = cc.stationLogout({logoutReason: 'user'});
-      const observed = logout.catch(() => undefined);
+      primary.message({...frame(CC_EVENTS.AGENT_LOGOUT_SUCCESS, 'early-logout'), type: CC_EVENTS.AGENT_LOGOUT});
       await flush();
+      expect(cc['acceptedStation']).toBeDefined();
+      expect(cc['lastPublishedRegionState'].status).toBe('recovering');
+      primary.welcome(); await flush();
+      const reload = requests.find(r => r.resource === '/v1/agents/reload');
+      const recovery = cc['recovery'];
+      let logout;
+      let observed;
+      cc.on('region:stateChange', state => {
+        if (state.status === 'ready' && !logout) {
+          logout = cc.stationLogout({logoutReason: 'user'});
+          observed = logout.catch(() => undefined);
+        }
+      });
+      primary.message(frame(CC_EVENTS.AGENT_RELOGIN_SUCCESS, reload.headers.trackingid));
+      await flush();
+      expect(logout).toBeDefined();
       expect(recovery.controller.signal.aborted).toBe(true);
       expect(cc.services.webSocketManager.hasUsableSocket()).toBe(true);
       expect(primary.close).not.toHaveBeenCalled();
@@ -15506,7 +15622,40 @@ describe('realRecoveryWiring', () => {
     });
   });
 
-  it('T-007 readyCarriesInitialAutoOutcomeBeforeDispatch and real automatic acknowledgment', async () => {
+  it('discards tasks hydrated by a failed regional socket before the next restore', async () => {
+    await withGraph(async ({cc, requests, sockets, login, frame, flush}) => {
+      await login();
+      cc.$config.allowAutomatedRelogin = true;
+      sockets[0].message({type: 'SYSTEM_REGION_SWITCH', orgId: 'org', trackingId: 'switch'});
+      jest.advanceTimersByTime(105000); await flush();
+      sockets[1].welcome(); await flush();
+
+      const data = createAISummaryLifecycleTaskData({interactionId: 'provisional',
+        agentId: 'agent', orgId: 'org', type: CC_EVENTS.AGENT_CONTACT_RESERVED,
+        interaction: {mediaType: 'chat', state: 'new'} as any});
+      const offer = {type: 'RoutingMessage', data};
+      sockets[1].message(offer);
+      const stale = cc.taskManager.getTask(data.interactionId);
+      await expect(stale.accept()).rejects.toMatchObject({data: {reason: 'RECOVERY_IN_PROGRESS'}});
+      sockets[1].lost(); await flush();
+      expect(cc.taskManager.getTask(data.interactionId)).toBeUndefined();
+
+      jest.advanceTimersByTime(63000); await flush();
+      sockets[2].welcome(); await flush();
+      sockets[2].message(offer);
+      expect(cc.taskManager.getTask(data.interactionId)).toBeDefined();
+      expect(cc.taskManager.getTask(data.interactionId)).not.toBe(stale);
+      const reload = requests.filter(request => request.resource === '/v1/agents/reload').slice(-1)[0];
+      sockets[2].message(frame(CC_EVENTS.AGENT_RELOGIN_SUCCESS, reload.headers.trackingid));
+      await flush();
+      expect(cc['lastPublishedRegionState'].status).toBe('ready');
+      const requestCount = requests.length;
+      await expect(stale.accept()).rejects.toMatchObject({data: {reason: 'STALE_TASK'}});
+      expect(requests).toHaveLength(requestCount);
+    });
+  });
+
+  it.each([3, null, undefined])('T-007 readyCarriesInitialAutoOutcomeBeforeDispatch and real automatic acknowledgment with idle timestamp %s', async (idleTimestamp) => {
     await withGraph(async ({cc, requests, sockets, login, frame, flush}) => {
       await login(); cc.$config.allowAutomatedRelogin = true;
       const snapshots: any[] = [];
@@ -15526,9 +15675,11 @@ describe('realRecoveryWiring', () => {
       const state = requests.filter(r => r.resource === '/v1/agents/session/state')[0];
       const ack = frame(CC_EVENTS.AGENT_STATE_CHANGE_SUCCESS, state.headers.trackingid,
         {subStatus: 'Available', auxCodeId: '0', lastStateChangeReason: 'agent-wss-disconnect',
-          lastStateChangeTimestamp: 2, lastIdleCodeChangeTimestamp: 3});
+          lastStateChangeTimestamp: 2, lastIdleCodeChangeTimestamp: idleTimestamp});
       sockets[1].message({...ack, type: CC_EVENTS.AGENT_STATE_CHANGE}); await flush();
       expect(snapshots.filter(s => s.status === 'ready').map(s => s.autoAvailable)).toEqual(['requesting', 'succeeded']);
+      expect(cc.agentConfig.lastStateAuxCodeId).toBe('0');
+      expect(cc.agentConfig.lastIdleCodeChangeTimestamp).toBe(idleTimestamp ?? undefined);
       expectAutoListenersDetached(cc, removed);
       expect(cc['stateDispatches'].get(auto.requestId).outcome).toBe('succeeded');
       sockets[1].message({...ack, type: CC_EVENTS.AGENT_STATE_CHANGE});
@@ -15572,6 +15723,7 @@ describe('realRecoveryWiring', () => {
         `equal version changed ${key}`, {[key]: 'changed'}, true,
       ]),
       ['newer state', {auxCodeId: 'other', lastStateChangeTimestamp: 10, lastIdleCodeChangeTimestamp: 0}, true],
+      ['newer Available without idle timestamp', {subStatus: 'Available', lastStateChangeTimestamp: 10, lastIdleCodeChangeTimestamp: undefined}, true],
       ['newer idle', {auxCodeId: 'other', lastIdleCodeChangeTimestamp: 10}, true],
       ['changed station and state', {teamId: 'new-team', auxCodeId: 'other'}, true],
       ...['status', 'subStatus', 'auxCodeId', 'lastStateChangeReason'].map(key => [
@@ -15981,13 +16133,12 @@ describe('realRecoveryWiring', () => {
       station: cc['acceptedStation'], active: cc['priorStationActive'],
       dispatches: cc['stateDispatches'].size, confirmed: cc['confirmedState'],
       ordinal: cc['acceptedExplicitOrdinal'],
-      sessions: [...cc.services.aqmReqs['sessionTrackingIds']],
       idleCode: cc['wellbeingBreakIdleCode'],
     });
     const cleared = {
       settings: {eligibility: 'unknown'}, agentId: undefined, history: [[], []],
       station: undefined, active: false, dispatches: 0, confirmed: undefined,
-      ordinal: 0, sessions: [], idleCode: undefined,
+      ordinal: 0, idleCode: undefined,
     };
     const runBoundary = (h, boundary) => {
       const {cc, host, sockets} = h;
@@ -16042,7 +16193,6 @@ describe('realRecoveryWiring', () => {
           const registration = cc['registrationAbortController'];
           const epoch = cc['rtdEpoch'];
           expect(cc['stateDispatches'].size).toBeGreaterThan(0);
-          expect(cc.services.aqmReqs['sessionTrackingIds'].size).toBeGreaterThan(0);
           cc['wellbeingBreakIdleCode'] = {id: 'old-idle-code'};
           host.internal.mercury = {connected: true, off: jest.fn(), disconnect: jest.fn().mockResolvedValue(undefined)};
           host.internal.device = {unregister: jest.fn().mockResolvedValue(undefined)};
@@ -16226,7 +16376,7 @@ describe('realRecoveryWiring', () => {
     ['missing auxCodeId', {auxCodeId: undefined}],
     ['missing reason', {lastStateChangeReason: undefined}],
     ['invalid state timestamp', {lastStateChangeTimestamp: null}],
-    ['invalid idle timestamp', {lastIdleCodeChangeTimestamp: null}],
+    ['invalid idle timestamp', {lastIdleCodeChangeTimestamp: '3'}],
     ['stale version', {lastStateChangeTimestamp: 0}],
   ])('T-007 real AQM acknowledged but unconfirmed auto-Available fails: %s', async (_name, fields) => {
     await withGraph(async h => {
@@ -16436,7 +16586,7 @@ describe('realRecoveryWiring', () => {
       expect(listener.mock.calls).toEqual([[{status, reason: terminalReason}]]);
       const terminal = cc['lastPublishedRegionState'];
       expect(registration.signal.aborted).toBe(false);
-      expect(jest.getTimerCount()).toBe(0);
+      expect(jest.getTimerCount()).toBe(1); // The independent settings deadline is still pending.
 
       settings.resolve({id: 'org', multiRegionEnabled: true, homeRegion: 'produs1'});
       await flush();
@@ -16607,7 +16757,7 @@ describe('realRecoveryWiring', () => {
       const published = cc['lastPublishedRegionState'];
       expect(published).toEqual(terminal);
       const requestCount = host.request.mock.calls.length;
-      const assertTerminal = () => {
+      const assertTerminal = (pendingTimers = 0) => {
         expect(terminalCallback).toHaveBeenCalledTimes(1);
         expect(terminalCallback.mock.calls[0][0].data).toEqual({kind: 'region-mismatch',
           status: 409, reason: 'REGION_MISMATCH_NO_OVERRIDE'});
@@ -16628,11 +16778,11 @@ describe('realRecoveryWiring', () => {
         expect(cc['rtdEpoch']).toBeUndefined();
         expect(cc['rtdPaused']).toBe(true);
         expect(cc.services.rtdWebSocketManager.listenerCount('message')).toBe(0);
-        expect(jest.getTimerCount()).toBe(0);
+        expect(jest.getTimerCount()).toBe(pendingTimers);
       };
-      assertTerminal();
-      jest.advanceTimersByTime(180000); await flush();
-      assertTerminal();
+      assertTerminal(1);
+      jest.advanceTimersByTime(4999); await flush();
+      assertTerminal(1);
 
       // Integrates the terminal-hydration guard from ci_16749e915e076cfc2090649c:
       // settings may complete, but cannot enrich/re-publish the terminal snapshot.
@@ -17240,7 +17390,7 @@ describe('realRecoveryWiring', () => {
     ['foreign session', {agentSessionId: 'foreign'}, 2, 3, false],
     ['missing session', {agentSessionId: undefined}, 2, 3, false],
     ['non-numeric timestamp', {}, '2', 3, false],
-    ['non-finite timestamp', {}, 2, Infinity, false],
+    ['non-finite state timestamp on the wire', {}, Infinity, 3, false],
     ['missing status', {status: undefined}, 2, 3, false],
     ['malformed aux', {auxCodeId: 1}, 2, 3, false],
   ])('T-007 authoritativeStateReconciliation field table %s', async (_name, fields, stateVersion, idleVersion, applies) => {

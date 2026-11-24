@@ -59,10 +59,14 @@ describe('AQM routing agent', () => {
   });
 
   it('stateChange forwards the payload, callback and context to its dispatcher by reference', async () => {
-    const requestId = 'WX_CC_SDK_state';
-    const payload = {data: {state: 'Available', auxCodeId: '0'}, requestId};
+    const payload = {data: {state: 'Available', auxCodeId: '0'}};
     const callback = jest.fn();
-    const context = {generation: 3, signal: new AbortController().signal};
+    const context = {
+      generation: 3,
+      signal: new AbortController().signal,
+      correlationId: '8f5ec5e4-80b8-4f5d-9720-10bfe56e7ca1',
+      requireCorrelation: true,
+    };
     const req = await agent.stateChange(payload, callback, context);
 
     expect(dispatchState).toHaveBeenCalledTimes(1);
@@ -72,7 +76,6 @@ describe('AQM routing agent', () => {
     expect(dispatchState.mock.calls[0][2]).toBe(context);
     expect(req).toBe(dispatchState.mock.results[0].value);
     expect(req).toEqual({
-      correlationId: requestId,
       kind: 'command',
       url: '/v1/agents/session/state',
       host: WCC_API_GATEWAY,
@@ -98,7 +101,7 @@ describe('AQM routing agent', () => {
   it.each(['neither', 'callback', 'context'])(
     'stateChange preserves optional trailing arguments with %s supplied',
     async (supplied) => {
-      const payload = {data: {state: 'Available', auxCodeId: '0'}, requestId: 'WX_CC_SDK_state'};
+      const payload = {data: {state: 'Available', auxCodeId: '0'}};
       const callback = supplied === 'callback' ? jest.fn() : undefined;
       const context = supplied === 'context'
         ? {generation: 3, signal: new AbortController().signal} : undefined;
@@ -107,38 +110,16 @@ describe('AQM routing agent', () => {
           : agent.stateChange(payload, undefined, context));
 
       expect(dispatchState).toHaveBeenCalledTimes(1);
-      expect(dispatchState.mock.calls[0]).toEqual([payload, callback, context]);
+      const expectedArgs = {
+        neither: [payload],
+        callback: [payload, callback],
+        context: [payload, undefined, context],
+      };
+      expect(dispatchState.mock.calls[0]).toEqual(expectedArgs[supplied]);
       expect(req).toBe(dispatchState.mock.results[0].value);
       expect(req.data).toBe(payload.data);
-      expect(req.correlationId).toBe(payload.requestId);
     }
   );
-  it.each(['omitted', 'undefined'])('generates a fresh correlation ID when requestId is %s', async (supplied) => {
-    const data = {state: 'Available', auxCodeId: '0'};
-    const payload = Object.freeze(supplied === 'omitted' ? {data} : {data, requestId: undefined});
-    const callback = jest.fn();
-    const context = {generation: 3, signal: new AbortController().signal};
-    const first = await agent.stateChange(payload, callback, context);
-    const second = await agent.stateChange(payload);
-
-    expect(dispatchState).toHaveBeenCalledTimes(2);
-    for (const [index, req] of [first, second].entries()) {
-      expect(req.correlationId).toMatch(/^WX_CC_SDK_[0-9a-f-]{36}$/);
-      expect(req.data).toBe(data);
-      expect(dispatchState.mock.calls[index][0]).toEqual({data, requestId: req.correlationId});
-      expect(req).toBe(dispatchState.mock.results[index].value);
-    }
-    expect(first.correlationId).not.toBe(second.correlationId);
-    expect(dispatchState.mock.calls[0][1]).toBe(callback);
-    expect(dispatchState.mock.calls[0][2]).toBe(context);
-    expect(dispatchState.mock.calls[1].slice(1)).toEqual([undefined, undefined]);
-    expect(payload).toEqual(supplied === 'omitted' ? {data} : {data, requestId: undefined});
-  });
-  it.each(['', '   ', '\n', null, 42, false, {}, []])('T-007 stateRequestIdRequired rejects supplied invalid ID %p', async (requestId) => {
-    await expect(agent.stateChange({data: {state: 'Available', auxCodeId: '0'}, requestId: requestId as string}))
-      .rejects.toThrow('A nonblank state requestId is required');
-    expect(dispatchState).not.toHaveBeenCalled();
-  });
   it('buddyAgents' , async () => {
     const reqSpy = jest.spyOn(fakeAqm, 'req');
     const req = await agent.buddyAgents({data: {} as any});
@@ -165,7 +146,7 @@ describe('AQM routing agent', () => {
       data: {state: 'Idle', auxCodeId: 'state-idle-code', lastStateChangeReason: 'Lunch'},
     },
   ])('declares $operation operation kind $kind without changing its body', ({operation, kind, data}) => {
-    const config = operation === 'reload' ? agent.reload() : agent[operation]({data, requestId: 'WX_CC_SDK_state'});
+    const config = operation === 'reload' ? agent.reload() : agent[operation]({data});
     expect(config.kind).toBe(kind);
     expect(config.data).toStrictEqual(data);
   });

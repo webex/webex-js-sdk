@@ -365,11 +365,13 @@ Before release/rollout, require all of the following separately:
 - Blocking `REL-AQM-TRACKING-ECHO`: actual success **and** failure pairs for stateChange
   (`AgentStateChangeSuccess` / `AgentStateChangeFailed`), stationLogin
   (`AgentStationLoginSuccess` / `AgentStationLoginFailed`) and reload
-  (`AgentReloginSuccess` / `AgentReloginFailed`). For all six outcomes, exact full SDK HTTP
-  `trackingid` equals nested `data.trackingId`, with distinct outer notification tracking.
-  Preserve backend failure reason/code. Record SDK/backend/API versions, timestamps,
-  sanitized org/agent references, tested deployment coverage and capture links. SDK maintainer
-  and Routing platform owner review every applicable supported deployment.
+  (`AgentReloginSuccess` / `AgentReloginFailed`). For all six outcomes, the UUID in the SDK's
+  HTTP `trackingid` (`webex-js-sdk_<uuid>`) equals the bare UUID in nested `data.trackingId`.
+  The HTTP response can use a service-specific sender prefix. Outer notification tracking
+  is separate from request matching. Verify the ordinary event-type bindings and strict UUID
+  matching for recovery-owned requests. Preserve backend failure reason/code. Record SDK/backend/API
+  versions, timestamps, sanitized org/agent references, tested deployment coverage and capture links.
+  SDK maintainer and Routing platform owner review every applicable supported deployment.
 - The separate human live release gate, AC-021: reviewed QA/platform live recovery and
   browser/audio evidence, with explicit outcomes and links in the delivery-owned release record.
   For **DN, extension and browser**, separately in **both failover and failback**,

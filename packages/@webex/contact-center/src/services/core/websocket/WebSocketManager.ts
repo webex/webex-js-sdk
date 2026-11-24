@@ -3,7 +3,7 @@ import {HTTP_METHODS} from '../../../types';
 import type {WebexSDK, SubscribeRequest} from '../../../types';
 import {WCC_API_GATEWAY, SUBSCRIBE_API} from '../../constants';
 import type {ConnectionLostDetails} from './types';
-import {CC_EVENTS} from '../../config/types';
+import {CC_EVENTS, SYSTEM_EVENTS} from '../../config/types';
 import type {SubscribeResponse, WelcomeResponse} from '../../config/types';
 import LoggerProxy from '../../../logger-proxy';
 import workerScript from './keepalive.worker';
@@ -247,7 +247,7 @@ export class WebSocketManager extends EventEmitter {
       try {
         data = JSON.parse(event.data);
       } catch {
-        this.deliverMessage(event.data);
+        if (attempt.accepted) this.deliverMessage(event.data);
 
         return;
       }
@@ -270,6 +270,11 @@ export class WebSocketManager extends EventEmitter {
         this.shouldReconnect = false;
         this.disposeAttempt(attempt, createRegionRecoveryError('RECOVERY_INTERRUPTED'));
         this.notifySocketClose(false);
+      } else if (
+        !attempt.accepted &&
+        (!isRecord(data) || data.type !== SYSTEM_EVENTS.SYSTEM_REGION_SWITCH)
+      ) {
+        return;
       }
       this.deliverMessage(event.data);
     };

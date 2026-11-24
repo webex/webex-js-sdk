@@ -58,7 +58,31 @@ describe('AgentConfigService', () => {
     ])('reads the Webex array-body contract fixture %# (constructed, not deployed evidence)', async (record, expected) => {
       (mockWebexRequest.request as jest.Mock).mockResolvedValue({statusCode: 200, body: [record]});
       await expect(agentConfigService.getMultiRegionSettings('org/escaped')).resolves.toEqual(expected);
-      expect(mockWebexRequest.request).toHaveBeenCalledWith({service: WCC_API_GATEWAY, method: 'GET', resource: 'organization/org%2Fescaped/organization-setting'});
+      expect(mockWebexRequest.request).toHaveBeenCalledWith({service: WCC_API_GATEWAY, method: 'GET', resource: 'organization/org%2Fescaped/organization-setting', timeout: 10000});
+    });
+
+    it('times out an unanswered settings GET and ignores its late completion', async () => {
+      jest.useFakeTimers();
+      try {
+        const pending = createDeferred<any>();
+        (mockWebexRequest.request as jest.Mock).mockReturnValueOnce(pending.promise);
+        const received = jest.fn();
+        const result = agentConfigService.getMultiRegionSettings(mockOrgId).then(received, received);
+
+        jest.advanceTimersByTime(9999);
+        await flushMicrotasks();
+        expect(received).not.toHaveBeenCalled();
+        jest.advanceTimersByTime(1);
+        await result;
+        expect(received).toHaveBeenCalledWith(new Error('Organization settings request timed out'));
+
+        pending.resolve({statusCode: 200, body: [{multiRegionEnabled: true}]});
+        await flushMicrotasks();
+        expect(received).toHaveBeenCalledTimes(1);
+        expect(jest.getTimerCount()).toBe(0);
+      } finally {
+        jest.useRealTimers();
+      }
     });
 
     it.each([
@@ -141,6 +165,7 @@ describe('AgentConfigService', () => {
     it('rejects an abort after HTTP settlement removes the listener but before the reader resumes', async () => {
       const controller = new AbortController();
       const addListener = jest.spyOn(controller.signal, 'addEventListener');
+      const detach = controller.signal.removeEventListener.bind(controller.signal);
       const removeListener = jest.spyOn(controller.signal, 'removeEventListener');
       const response = {statusCode: 200, body: [{multiRegionEnabled: true}]};
       const pending = createDeferred<typeof response>();
@@ -152,9 +177,13 @@ describe('AgentConfigService', () => {
       const onAbort = addListener.mock.calls[0][1];
       expect(removeListener).not.toHaveBeenCalled();
 
+      const detached = createDeferred<void>();
+      removeListener.mockImplementationOnce((type, listener, options) => {
+        detach(type, listener, options);
+        detached.resolve(undefined);
+      });
       pending.resolve(response);
-      // Queue this barrier behind HTTP settlement and ahead of the reader's await continuation.
-      await Promise.resolve();
+      await detached.promise;
       expect(controller.signal.aborted).toBe(false);
       expect(removeListener.mock.calls).toEqual([['abort', onAbort]]);
       controller.abort();

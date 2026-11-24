@@ -873,6 +873,23 @@ describe('CallingClient Tests', () => {
       );
     });
 
+    it.each([false, true])(
+      'forwards idle notification only when Calling has no pending reconnect (%s)',
+      async (reconnectPending) => {
+        reg.setStatus(RegistrationStatus.INACTIVE);
+        jest.spyOn(reg, 'isReconnectPending').mockReturnValue(reconnectPending);
+        const reconnect = jest.spyOn(reg, 'reconnectOnFailure').mockResolvedValue(undefined);
+        const listener = jest.fn();
+        callingClient.on(CALLING_CLIENT_EVENT_KEYS.ALL_CALLS_CLEARED, listener);
+
+        callManager.emit(CALLING_CLIENT_EVENT_KEYS.ALL_CALLS_CLEARED);
+        await flushPromises();
+
+        expect(reconnect).toHaveBeenCalledTimes(reconnectPending ? 1 : 0);
+        expect(listener).toHaveBeenCalledTimes(reconnectPending ? 0 : 1);
+      }
+    );
+
     it('handles reconnection with no active calls after network flap, once mercury comes back up', async () => {
       const handleConnectionRestoreSpy = jest.spyOn(reg, 'handleConnectionRestoration');
 

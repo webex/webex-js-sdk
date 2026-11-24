@@ -239,6 +239,37 @@ type StateDispatch = Pick<StateDispatchContext, 'source' | 'stationRevision' | '
   outcome?: 'succeeded' | 'failed' | 'cancelled';
 };
 
+type AgentStateVersion = {
+  lastStateChangeTimestamp: number;
+  lastIdleCodeChangeTimestamp?: number | null;
+};
+
+function hasAgentStateVersion<
+  T extends {
+    lastStateChangeTimestamp?: unknown;
+    lastIdleCodeChangeTimestamp?: unknown;
+    subStatus?: unknown;
+  }
+>(data: T): data is T & AgentStateVersion {
+  return (
+    Number.isFinite(data.lastStateChangeTimestamp) &&
+    (Number.isFinite(data.lastIdleCodeChangeTimestamp) ||
+      (data.subStatus === AGENT_STATE_AVAILABLE && data.lastIdleCodeChangeTimestamp == null))
+  );
+}
+
+function compareAgentStateVersions(
+  current: AgentStateVersion,
+  previous: AgentStateVersion
+): number {
+  const stateDifference = current.lastStateChangeTimestamp - previous.lastStateChangeTimestamp;
+  const currentIdle = current.lastIdleCodeChangeTimestamp;
+  const previousIdle = previous.lastIdleCodeChangeTimestamp;
+  if (stateDifference || currentIdle == null || previousIdle == null) return stateDifference;
+
+  return currentIdle - previousIdle;
+}
+
 type AutoAvailable = {
   registration: number;
   generation: number;
@@ -523,14 +554,8 @@ export default class ContactCenter extends WebexPlugin implements IContactCenter
   private stateOrdinal = 0;
   private acceptedExplicitOrdinal = 0;
   private confirmedState?: {
-    data: Pick<
-      Agent.StateChangeSuccess['data'],
-      | 'auxCodeId'
-      | 'lastStateChangeTimestamp'
-      | 'lastIdleCodeChangeTimestamp'
-      | 'status'
-      | 'subStatus'
-    > & {lastStateChangeReason?: string};
+    data: Pick<Agent.StateChangeSuccess['data'], 'auxCodeId' | 'status' | 'subStatus'> &
+      AgentStateVersion & {lastStateChangeReason?: string};
     ordinal: number;
     dispatchOrdinal?: number;
     independent: boolean;
@@ -1085,7 +1110,6 @@ export default class ContactCenter extends WebexPlugin implements IContactCenter
     // Invalidate the ended owner before aborts, diagnostics or host publication can reenter.
     this.clearSwitchHistory();
     this.clearAcceptedStation();
-    this.services.aqmReqs.clearSessionTrackingIds();
     this.multiRegionSettings = {eligibility: 'unknown'};
     this.registrationAgentId = undefined;
     this.wellbeingBreakIdleCode = undefined;
@@ -1451,7 +1475,8 @@ export default class ContactCenter extends WebexPlugin implements IContactCenter
           if (!this.isCurrentRecovery(recovery) || attemptSignal.aborted)
             throw createRegionRecoveryError('RECOVERY_INTERRUPTED');
           this.assertPrimaryIdentity(agentId);
-          await this.restoreRegionSession(recovery, attemptSignal);
+
+          return this.restoreRegionSession(recovery, attemptSignal);
         },
       })
       .then(
@@ -1528,14 +1553,11 @@ export default class ContactCenter extends WebexPlugin implements IContactCenter
         : undefined;
     this.agentConfig.lastStateAuxCodeId = data.auxCodeId;
     this.agentConfig.lastStateChangeTimestamp = data.lastStateChangeTimestamp;
-    this.agentConfig.lastIdleCodeChangeTimestamp = data.lastIdleCodeChangeTimestamp;
+    this.agentConfig.lastIdleCodeChangeTimestamp = data.lastIdleCodeChangeTimestamp ?? undefined;
     this.priorStationActive = true;
     this.agentConfig.isAgentLoggedIn = true;
     this.updateWellnessSession(sessionId);
-    if (
-      Number.isFinite(data.lastStateChangeTimestamp) &&
-      Number.isFinite(data.lastIdleCodeChangeTimestamp)
-    )
+    if (hasAgentStateVersion(data))
       this.confirmedState = {
         data: {...data},
         ordinal: (this.stateOrdinal += 1),
@@ -1620,7 +1642,8 @@ export default class ContactCenter extends WebexPlugin implements IContactCenter
     this.assertPrimaryIdentity(response.data.agentId);
     this.agentConfig.lastStateAuxCodeId = response.data.auxCodeId;
     this.agentConfig.lastStateChangeTimestamp = response.data.lastStateChangeTimestamp;
-    this.agentConfig.lastIdleCodeChangeTimestamp = response.data.lastIdleCodeChangeTimestamp;
+    this.agentConfig.lastIdleCodeChangeTimestamp =
+      response.data.lastIdleCodeChangeTimestamp ?? undefined;
     const payload = this.acceptedStation?.payload;
     if (payload)
       await ContactCenter.awaitRegistrationWork(
@@ -1632,7 +1655,10 @@ export default class ContactCenter extends WebexPlugin implements IContactCenter
         options.signal
       );
     if (options.signal.aborted) throw createRegionRecoveryError('RECOVERY_INTERRUPTED');
-    await ContactCenter.awaitRegistrationWork(this.ensureWxAppPostStationLogin(), options.signal);
+    await ContactCenter.awaitRegistrationWork(
+      this.ensureWxAppPostStationLogin(options.signal),
+      options.signal
+    );
   }
 
   private static recoveryFailureCategory(
@@ -1679,44 +1705,54 @@ export default class ContactCenter extends WebexPlugin implements IContactCenter
     });
   }
 
-  private async restoreRegionSession(recovery: RegionRecovery, signal: AbortSignal): Promise<void> {
-    const manual = (reason: RegionRecoveryReason) => {
-      if (!this.isCurrentRecovery(recovery) || signal.aborted) return;
-      if (this.sessionRequest) {
-        this.sessionRequest.controller.abort();
-        this.sessionRequest.detach();
-        this.sessionRequest = undefined;
-      }
-      this.setRecoveryPhase('manualLoginRequired');
-      this.publishRegionState(this.buildRegionState('stationLoginRequired', reason));
-    };
-    if (!this.priorStationActive) {
-      manual('region-switch');
-      if (this.isCurrentRecovery(recovery) && !signal.aborted)
-        this.resumeRtd(this.registrationAbortController.signal);
-
-      return;
-    }
-    if (
-      !this.$config.allowAutomatedRelogin ||
-      this.logoutPending ||
-      this.suppressAutomaticRelogin
-    ) {
-      manual('automatic-relogin-disabled');
-
-      return;
-    }
+  private async restoreRegionSession(
+    recovery: RegionRecovery,
+    signal: AbortSignal
+  ): Promise<void | (() => void)> {
+    const manual =
+      (reason: RegionRecoveryReason, resumeRtd = false) =>
+      () => {
+        if (!this.isCurrentRecovery(recovery) || signal.aborted) return;
+        if (this.sessionRequest) {
+          this.sessionRequest.controller.abort();
+          this.sessionRequest.detach();
+          this.sessionRequest = undefined;
+        }
+        this.setRecoveryPhase('manualLoginRequired');
+        this.publishRegionState(this.buildRegionState('stationLoginRequired', reason));
+        if (resumeRtd && this.isCurrentRecovery(recovery) && !signal.aborted)
+          this.resumeRtd(this.registrationAbortController.signal);
+      };
+    if (!this.priorStationActive) return manual('region-switch', true);
+    if (!this.$config.allowAutomatedRelogin || this.logoutPending || this.suppressAutomaticRelogin)
+      return manual('automatic-relogin-disabled');
     const payload = this.reconcileStationSnapshot();
-    if (!payload) {
-      manual('session-restore-failed');
-
-      return;
-    }
-    if (!recovery.cleaned) {
+    if (!payload) return manual('session-restore-failed');
+    if (!recovery.cleaned || this.taskLifetimeController?.signal.aborted) {
       recovery.cleaned = true;
       if (!this.startTaskSession(() => this.isCurrentRecovery(recovery) && !signal.aborted))
         throw createRegionRecoveryError('RECOVERY_INTERRUPTED');
     }
+    const taskLifetime = this.taskLifetimeController;
+    const discardProvisionalTasks = () => {
+      if (
+        !taskLifetime ||
+        taskLifetime !== this.taskLifetimeController ||
+        taskLifetime.signal.aborted
+      )
+        return;
+      taskLifetime.abort();
+      if (
+        taskLifetime === this.taskLifetimeController &&
+        Object.keys(this.taskManager.getAllTasks() ?? {}).length > 0
+      )
+        this.taskManager.invalidateRegionalTasks();
+    };
+    signal.addEventListener('abort', discardProvisionalTasks, {once: true});
+    const publishForAdoptedSocket = (publish: () => void) => () => {
+      signal.removeEventListener('abort', discardProvisionalTasks);
+      publish();
+    };
     const context = this.beginSessionRequest('restore', signal);
     try {
       while (this.isCurrentRecovery(recovery) && !context.signal.aborted) {
@@ -1780,18 +1816,20 @@ export default class ContactCenter extends WebexPlugin implements IContactCenter
           await this.applyStationSession(response, {signal: context.signal, calling: 'preserve'});
           if (!this.isCurrentRecovery(recovery) || context.signal.aborted)
             throw createRegionRecoveryError('RECOVERY_INTERRUPTED');
-          this.endSessionRequest(context);
-          this.setRecoveryPhase('ready');
-          if (stage !== 'fallback') this.armAutoAvailable(response as Agent.ReloginSuccess, signal);
-          this.publishRegionState(this.buildRegionState('ready', 'region-switch'));
-          if (this.isCurrentRecovery(recovery) && !signal.aborted)
-            this.resumeRtd(this.registrationAbortController.signal);
-          if (this.isCurrentRecovery(recovery) && this.autoAvailable) {
-            this.autoAvailable.published = true;
-            this.dispatchAutoAvailable(this.autoAvailable).catch(() => undefined);
-          }
 
-          return;
+          return publishForAdoptedSocket(() => {
+            if (!this.isCurrentRecovery(recovery) || context.signal.aborted) return;
+            this.setRecoveryPhase('ready');
+            if (stage !== 'fallback')
+              this.armAutoAvailable(response as Agent.ReloginSuccess, signal);
+            this.publishRegionState(this.buildRegionState('ready', 'region-switch'));
+            if (this.isCurrentRecovery(recovery) && !signal.aborted)
+              this.resumeRtd(this.registrationAbortController.signal);
+            if (this.isCurrentRecovery(recovery) && this.autoAvailable) {
+              this.autoAvailable.published = true;
+              this.dispatchAutoAvailable(this.autoAvailable).catch(() => undefined);
+            }
+          });
         } catch (error) {
           if (!this.isCurrentRecovery(recovery) || context.signal.aborted) {
             if (this.isCurrentRecovery(recovery) && stage === 'reload' && recovery.reloads < 4)
@@ -1827,7 +1865,8 @@ export default class ContactCenter extends WebexPlugin implements IContactCenter
           this.recordRecoveryDiagnostic(diagnosticStage, 'retrying', attempt, startedAt, failure);
         }
       }
-      manual('session-restore-failed');
+
+      return publishForAdoptedSocket(manual('session-restore-failed'));
     } finally {
       this.endSessionRequest(context);
     }
@@ -2581,7 +2620,6 @@ export default class ContactCenter extends WebexPlugin implements IContactCenter
     }
     this.clearSwitchHistory();
     this.clearAcceptedStation();
-    this.services.aqmReqs.clearSessionTrackingIds();
     this.registrationAbortController?.abort();
     this.registrationGeneration += 1;
     this.registrationAgentId = undefined;
@@ -3209,6 +3247,7 @@ export default class ContactCenter extends WebexPlugin implements IContactCenter
     const context: AqmRequestContext = manual
       ? this.beginSessionRequest('manual', this.registrationAbortController.signal)
       : {generation: this.recoveryGeneration, signal: this.registrationAbortController?.signal};
+    const manualSignal = manual ? this.commandController?.signal : undefined;
     if (
       !this.startTaskSession(
         () =>
@@ -3391,7 +3430,12 @@ export default class ContactCenter extends WebexPlugin implements IContactCenter
         )
       );
 
-      await this.ensureWxAppPostStationLogin();
+      if (manualSignal) {
+        await ContactCenter.awaitRegistrationWork(
+          this.ensureWxAppPostStationLogin(manualSignal),
+          manualSignal
+        );
+      } else await this.ensureWxAppPostStationLogin();
       if (!this.isCurrentStation(registration, station, orgId, profile))
         throw createRegionRecoveryError('RECOVERY_INTERRUPTED');
 
@@ -3713,14 +3757,11 @@ export default class ContactCenter extends WebexPlugin implements IContactCenter
       !this.currentAgentSessionId ||
       data.agentSessionId !== this.currentAgentSessionId ||
       !semantics.every((key) => typeof data[key] === 'string') ||
-      !Number.isFinite(data.lastStateChangeTimestamp) ||
-      !Number.isFinite(data.lastIdleCodeChangeTimestamp)
+      !hasAgentStateVersion(data)
     )
       return false;
     const restored = auto.disconnect;
-    const version =
-      Number(data.lastStateChangeTimestamp) - restored.lastStateChangeTimestamp ||
-      Number(data.lastIdleCodeChangeTimestamp) - restored.lastIdleCodeChangeTimestamp;
+    const version = compareAgentStateVersions(data, restored);
 
     return version >= 0 && semantics.some((key) => data[key] !== restored[key]);
   }
@@ -3923,8 +3964,7 @@ export default class ContactCenter extends WebexPlugin implements IContactCenter
       !['status', 'subStatus', 'auxCodeId', 'lastStateChangeReason'].every(
         (key) => typeof data[key] === 'string'
       ) ||
-      !Number.isFinite(data.lastStateChangeTimestamp) ||
-      !Number.isFinite(data.lastIdleCodeChangeTimestamp)
+      !hasAgentStateVersion(data)
     )
       return;
     const request =
@@ -3939,10 +3979,7 @@ export default class ContactCenter extends WebexPlugin implements IContactCenter
       return;
     if (request?.source === 'dr-auto' && request.ordinal < this.acceptedExplicitOrdinal) return;
     const previous = this.confirmedState;
-    const version = previous
-      ? Number(data.lastStateChangeTimestamp) - previous.data.lastStateChangeTimestamp ||
-        Number(data.lastIdleCodeChangeTimestamp) - previous.data.lastIdleCodeChangeTimestamp
-      : 1;
+    const version = previous ? compareAgentStateVersions(data, previous.data) : 1;
     if (version < 0) return;
     const semantics = ['status', 'subStatus', 'auxCodeId', 'lastStateChangeReason'];
     const identical = previous && semantics.every((key) => data[key] === previous.data[key]);
@@ -3959,8 +3996,8 @@ export default class ContactCenter extends WebexPlugin implements IContactCenter
       this.acceptedExplicitOrdinal = Math.max(this.acceptedExplicitOrdinal, request.ordinal);
     if (version || !identical) {
       this.agentConfig.lastStateAuxCodeId = data.auxCodeId as string;
-      this.agentConfig.lastStateChangeTimestamp = data.lastStateChangeTimestamp as number;
-      this.agentConfig.lastIdleCodeChangeTimestamp = data.lastIdleCodeChangeTimestamp as number;
+      this.agentConfig.lastStateChangeTimestamp = data.lastStateChangeTimestamp;
+      this.agentConfig.lastIdleCodeChangeTimestamp = data.lastIdleCodeChangeTimestamp ?? undefined;
       this.confirmedState = {
         data: {...data} as Agent.StateChangeSuccess['data'],
         ordinal: (this.stateOrdinal += 1),
@@ -4027,7 +4064,7 @@ export default class ContactCenter extends WebexPlugin implements IContactCenter
         }
         if (!this.autoAvailable) throw createRegionRecoveryError('RECOVERY_INTERRUPTED');
       }
-      const requestId = `WX_CC_SDK_${uuidv4()}`;
+      const requestId = uuidv4();
       const dispatch: StateDispatch = {
         source: context.source,
         stationRevision: context.stationRevision,
@@ -4042,12 +4079,16 @@ export default class ContactCenter extends WebexPlugin implements IContactCenter
         this.autoAvailable.requestId = requestId;
       }
       const pending = this.services.agent.stateChange(
-        {
-          data: {...data, agentId: data.agentId || this.agentConfig.agentId},
-          requestId,
-        },
+        {data: {...data, agentId: data.agentId || this.agentConfig.agentId}},
         undefined,
-        {generation: context.generation, signal: context.signal}
+        {
+          generation: context.generation,
+          signal: context.signal,
+          correlationId: requestId,
+          ...(context.source === 'dr-auto' || this.regionStateContext.trackingId
+            ? {requireCorrelation: true}
+            : {}),
+        }
       );
       if (context.source === 'dr-auto') {
         const settlement = pending.then(
@@ -4583,7 +4624,12 @@ export default class ContactCenter extends WebexPlugin implements IContactCenter
     return 'unknown';
   }
 
-  private async ensureWxAppPostStationLogin(): Promise<void> {
+  private static assertWxAppSessionActive(signal?: AbortSignal): void {
+    if (signal?.aborted) throw createRegionRecoveryError('RECOVERY_INTERRUPTED');
+  }
+
+  private async ensureWxAppPostStationLogin(signal?: AbortSignal): Promise<void> {
+    ContactCenter.assertWxAppSessionActive(signal);
     const loginOption = this.getCurrentStationLoginOption();
     const flagEnabled = this.isWxBetterTogetherEnabled();
     const telephonyTaskType = this.getWxAppTelephonyTaskType();
@@ -4630,9 +4676,11 @@ export default class ContactCenter extends WebexPlugin implements IContactCenter
           ])
         );
 
-        await this.ensureWxAppMercuryAndSubscribe();
+        await this.ensureWxAppMercuryAndSubscribe(signal);
+        ContactCenter.assertWxAppSessionActive(signal);
         wxAppInitStage = 'publish';
-        await this.publishAnswerOnWebexCrossClientState(true);
+        await this.publishAnswerOnWebexCrossClientState(true, signal ? {signal} : undefined);
+        ContactCenter.assertWxAppSessionActive(signal);
         publishedEnable = true;
         this.taskManager.syncWxAppMuteFromCallDetailsForAllTasks();
         this.taskManager.refreshWxAppOfferObservabilityForAllTasks();
@@ -4684,11 +4732,16 @@ export default class ContactCenter extends WebexPlugin implements IContactCenter
           );
         }
       } else {
-        await this.ensureWxAppDeviceRegistered();
-        await this.publishAnswerOnWebexCrossClientState(false, {force: true});
+        await this.ensureWxAppDeviceRegistered(signal);
+        await this.publishAnswerOnWebexCrossClientState(false, {
+          force: true,
+          ...(signal && {signal}),
+        });
+        ContactCenter.assertWxAppSessionActive(signal);
         this.webexCrossClientService.teardown();
         this.wxAppTelephonyMercurySync.unsubscribe();
-        await this.releaseWxAppMercuryResources();
+        await this.releaseWxAppMercuryResources(signal);
+        ContactCenter.assertWxAppSessionActive(signal);
 
         this.recordBestEffort(() =>
           logWxAppSessionReadiness({
@@ -4711,6 +4764,7 @@ export default class ContactCenter extends WebexPlugin implements IContactCenter
         );
       }
     } catch (error) {
+      ContactCenter.assertWxAppSessionActive(signal);
       this.recordBestEffort(() =>
         LoggerProxy.error(`Failed to initialize wxApp post-station-login: ${error}`, {
           module: CC_FILE,
@@ -4750,15 +4804,18 @@ export default class ContactCenter extends WebexPlugin implements IContactCenter
           })
         );
 
+        ContactCenter.assertWxAppSessionActive(signal);
         if (publishedEnable) {
-          await this.revertWxAppCrossClientPublish();
+          await this.revertWxAppCrossClientPublish(signal);
         } else {
           this.wxAppTelephonyMercurySync.unsubscribe();
-          await this.releaseWxAppMercuryResources();
+          await this.releaseWxAppMercuryResources(signal);
         }
+        ContactCenter.assertWxAppSessionActive(signal);
         this.resetEnableWxBetterTogetherConfig();
       } else {
-        this.scheduleForcedFalsePublishRetry();
+        ContactCenter.assertWxAppSessionActive(signal);
+        this.scheduleForcedFalsePublishRetry(signal);
       }
     }
   }
@@ -4770,23 +4827,23 @@ export default class ContactCenter extends WebexPlugin implements IContactCenter
     }
   }
 
-  private scheduleForcedFalsePublishRetry(retryAttempt = 0): void {
-    this.scheduleFalsePublishRetry(retryAttempt, {requireDisabled: true});
+  private scheduleForcedFalsePublishRetry(signal?: AbortSignal): void {
+    this.scheduleFalsePublishRetry(0, {requireDisabled: true, signal});
   }
 
   /**
    * Retries compensating false publish after rollback failure, regardless of enabled flag.
    * @private
    */
-  private scheduleCompensatingFalsePublishRetry(retryAttempt = 0): void {
-    this.scheduleFalsePublishRetry(retryAttempt);
+  private scheduleCompensatingFalsePublishRetry(signal?: AbortSignal): void {
+    this.scheduleFalsePublishRetry(0, {signal});
   }
 
   private scheduleFalsePublishRetry(
     retryAttempt = 0,
-    options: {requireDisabled?: boolean} = {}
+    options: {requireDisabled?: boolean; signal?: AbortSignal} = {}
   ): void {
-    if (retryAttempt >= ContactCenter.WXAPP_FALSE_PUBLISH_MAX_RETRIES) {
+    if (options.signal?.aborted || retryAttempt >= ContactCenter.WXAPP_FALSE_PUBLISH_MAX_RETRIES) {
       return;
     }
 
@@ -4795,9 +4852,14 @@ export default class ContactCenter extends WebexPlugin implements IContactCenter
     }
 
     this.clearWxAppFalsePublishRetryTimer();
+    const {signal} = options;
+    // A completed restore detaches its attempt signal. The command signal still ends on a region fence.
+    const owner = signal ? this.commandController?.signal ?? signal : undefined;
 
     this.wxAppFalsePublishRetryTimer = setTimeout(async () => {
       this.wxAppFalsePublishRetryTimer = undefined;
+
+      if (signal?.aborted || owner?.aborted) return;
 
       if (options?.requireDisabled && this.isWxBetterTogetherEnabled()) {
         return;
@@ -4811,13 +4873,23 @@ export default class ContactCenter extends WebexPlugin implements IContactCenter
         return;
       }
 
+      const retryController = signal ? new AbortController() : undefined;
+      const abortRetry = () => retryController?.abort();
+      signal?.addEventListener('abort', abortRetry, {once: true});
+      if (owner !== signal) owner?.addEventListener('abort', abortRetry, {once: true});
+      const retrySignal = retryController?.signal;
       try {
-        await this.ensureWxAppDeviceRegistered();
-        await this.publishAnswerOnWebexCrossClientState(false, {force: true});
+        await this.ensureWxAppDeviceRegistered(retrySignal);
+        await this.publishAnswerOnWebexCrossClientState(false, {
+          force: true,
+          ...(retrySignal && {signal: retrySignal}),
+        });
+        ContactCenter.assertWxAppSessionActive(retrySignal);
         this.webexCrossClientService.teardown();
         this.wxAppTelephonyMercurySync.unsubscribe();
-        await this.releaseWxAppMercuryResources();
+        await this.releaseWxAppMercuryResources(retrySignal);
       } catch (retryError) {
+        if (retrySignal?.aborted) return;
         LoggerProxy.error(
           `Failed to retry forced answer-calls-on-wxcc false publish: ${retryError}`,
           {
@@ -4825,7 +4897,10 @@ export default class ContactCenter extends WebexPlugin implements IContactCenter
             method: METHODS.SET_MANAGE_WEBEX_CALLING_IN_WXCC,
           }
         );
-        this.scheduleFalsePublishRetry(retryAttempt + 1, options);
+        if (!retrySignal?.aborted) this.scheduleFalsePublishRetry(retryAttempt + 1, options);
+      } finally {
+        signal?.removeEventListener('abort', abortRetry);
+        if (owner !== signal) owner?.removeEventListener('abort', abortRetry);
       }
     }, ContactCenter.WXAPP_FALSE_PUBLISH_RETRY_DELAY_MS);
   }
@@ -4834,10 +4909,14 @@ export default class ContactCenter extends WebexPlugin implements IContactCenter
    * Best-effort rollback when usersub true was published but wxApp setup did not complete.
    * @private
    */
-  private async revertWxAppCrossClientPublish(): Promise<void> {
+  private async revertWxAppCrossClientPublish(signal?: AbortSignal): Promise<void> {
     try {
-      await this.publishAnswerOnWebexCrossClientState(false, {force: true});
+      await this.publishAnswerOnWebexCrossClientState(false, {
+        force: true,
+        ...(signal && {signal}),
+      });
     } catch (error) {
+      ContactCenter.assertWxAppSessionActive(signal);
       this.recordBestEffort(() =>
         LoggerProxy.error(
           `Failed to publish compensating answer-calls-on-wxcc false during wxApp rollback: ${error}`,
@@ -4847,19 +4926,23 @@ export default class ContactCenter extends WebexPlugin implements IContactCenter
           }
         )
       );
-      this.scheduleCompensatingFalsePublishRetry();
+      ContactCenter.assertWxAppSessionActive(signal);
+      this.scheduleCompensatingFalsePublishRetry(signal);
     }
 
+    ContactCenter.assertWxAppSessionActive(signal);
     this.webexCrossClientService.teardown();
     this.wxAppTelephonyMercurySync.unsubscribe();
-    await this.releaseWxAppMercuryResources();
+    await this.releaseWxAppMercuryResources(signal);
   }
 
-  private async ensureWxAppDeviceRegistered(): Promise<void> {
+  private async ensureWxAppDeviceRegistered(signal?: AbortSignal): Promise<void> {
+    ContactCenter.assertWxAppSessionActive(signal);
     const device = this.$webex.internal.device;
 
     if (device && !device.registered && device.register) {
       await device.register();
+      ContactCenter.assertWxAppSessionActive(signal);
       this.wxAppDeviceRegisteredByCc = true;
       this.recordBestEffort(() =>
         LoggerProxy.log('WxApp: device registered for cross-client publish', {
@@ -4870,13 +4953,15 @@ export default class ContactCenter extends WebexPlugin implements IContactCenter
     }
   }
 
-  private async ensureWxAppMercuryConnected(): Promise<void> {
+  private async ensureWxAppMercuryConnected(signal?: AbortSignal): Promise<void> {
     const mercury = this.$webex.internal.mercury;
 
-    await this.ensureWxAppDeviceRegistered();
+    await this.ensureWxAppDeviceRegistered(signal);
+    ContactCenter.assertWxAppSessionActive(signal);
 
     if (mercury && !mercury.connected) {
       await mercury.connect();
+      ContactCenter.assertWxAppSessionActive(signal);
       this.wxAppMercuryConnectedByCc = true;
       this.recordBestEffort(() =>
         LoggerProxy.log('WxApp mute sync: mercury connected', {
@@ -4891,13 +4976,15 @@ export default class ContactCenter extends WebexPlugin implements IContactCenter
    * Disconnects Mercury and unregisters the device when wxApp mute sync opened them.
    * @private
    */
-  private async releaseWxAppMercuryResources(): Promise<void> {
+  private async releaseWxAppMercuryResources(signal?: AbortSignal): Promise<void> {
+    ContactCenter.assertWxAppSessionActive(signal);
     const mercury = this.$webex.internal.mercury;
     const device = this.$webex.internal.device;
 
     if (this.wxAppMercuryConnectedByCc && mercury?.connected) {
       try {
         await mercury.disconnect();
+        ContactCenter.assertWxAppSessionActive(signal);
         this.wxAppMercuryConnectedByCc = false;
         this.recordBestEffort(() =>
           LoggerProxy.log('WxApp mute sync: mercury disconnected', {
@@ -4906,6 +4993,7 @@ export default class ContactCenter extends WebexPlugin implements IContactCenter
           })
         );
       } catch (error) {
+        ContactCenter.assertWxAppSessionActive(signal);
         this.recordBestEffort(() =>
           LoggerProxy.error(`Failed to disconnect wxApp Mercury: ${error}`, {
             module: CC_FILE,
@@ -4915,10 +5003,12 @@ export default class ContactCenter extends WebexPlugin implements IContactCenter
       }
     }
 
+    ContactCenter.assertWxAppSessionActive(signal);
     if (this.wxAppDeviceRegisteredByCc && device?.registered && device.unregister) {
       try {
         // @ts-ignore
         await device.unregister();
+        ContactCenter.assertWxAppSessionActive(signal);
         this.wxAppDeviceRegisteredByCc = false;
         this.recordBestEffort(() =>
           LoggerProxy.log('WxApp mute sync: device unregistered', {
@@ -4927,6 +5017,7 @@ export default class ContactCenter extends WebexPlugin implements IContactCenter
           })
         );
       } catch (error) {
+        ContactCenter.assertWxAppSessionActive(signal);
         this.recordBestEffort(() =>
           LoggerProxy.error(`Failed to unregister wxApp device: ${error}`, {
             module: CC_FILE,
@@ -4990,7 +5081,8 @@ export default class ContactCenter extends WebexPlugin implements IContactCenter
     return {publishError: publishError ?? undefined};
   }
 
-  private async ensureWxAppMercuryAndSubscribe(): Promise<void> {
+  private async ensureWxAppMercuryAndSubscribe(signal?: AbortSignal): Promise<void> {
+    ContactCenter.assertWxAppSessionActive(signal);
     if (!this.isWxBetterTogetherEnabled()) {
       return;
     }
@@ -5020,11 +5112,13 @@ export default class ContactCenter extends WebexPlugin implements IContactCenter
     }
 
     try {
-      await this.ensureWxAppMercuryConnected();
+      await this.ensureWxAppMercuryConnected(signal);
+      ContactCenter.assertWxAppSessionActive(signal);
       this.wxAppTelephonyMercurySync.subscribe(agentId, (callId, muted) => {
-        this.taskManager.applyWxAppMuteStateFromSync(callId, muted);
+        if (!signal?.aborted) this.taskManager.applyWxAppMuteStateFromSync(callId, muted);
       });
     } catch (error) {
+      ContactCenter.assertWxAppSessionActive(signal);
       this.recordBestEffort(() =>
         LoggerProxy.error(`Failed to ensure wxApp Mercury mute sync: ${error}`, {
           module: CC_FILE,
@@ -5041,16 +5135,19 @@ export default class ContactCenter extends WebexPlugin implements IContactCenter
           ['operational', 'behavioral']
         )
       );
+      ContactCenter.assertWxAppSessionActive(signal);
       this.wxAppTelephonyMercurySync.unsubscribe();
-      await this.releaseWxAppMercuryResources();
+      await this.releaseWxAppMercuryResources(signal);
       throw error;
     }
   }
 
   private async publishAnswerOnWebexCrossClientState(
     enable: boolean,
-    options?: {force?: boolean}
+    options?: {force?: boolean; signal?: AbortSignal}
   ): Promise<void> {
+    const signal = options?.signal;
+    ContactCenter.assertWxAppSessionActive(signal);
     if (enable && !this.isWxBetterTogetherEnabled()) {
       return;
     }
@@ -5082,8 +5179,10 @@ export default class ContactCenter extends WebexPlugin implements IContactCenter
     await this.webexCrossClientService.setManageWebexCallingInWxcc(enable, {
       userId,
       trackPublishMetrics: true,
+      ...(signal && {signal}),
     });
 
+    ContactCenter.assertWxAppSessionActive(signal);
     if (enable) {
       this.clearWxAppFalsePublishRetryTimer();
     }

@@ -1005,11 +1005,13 @@ describe('ConnectionService with actual WebSocketManager', () => {
     await tick(1);
     expect(events.mock.calls).toEqual([...before, [lost], [{...lost, isRestoreFailed: true}]]);
     expect(events.mock.calls.filter(([event]) => event.isRestoreFailed)).toHaveLength(1);
-    expect(socket.close).toHaveBeenCalledTimes(1);
-    expect(signal.aborted).toBe(true);
-    expect(manager.hasUsableSocket()).toBe(false);
+    expect(socket.close).not.toHaveBeenCalled();
+    expect(signal.aborted).toBe(false);
+    expect(manager.hasUsableSocket()).toBe(true);
     expect(jest.getTimerCount()).toBe(0);
-    await tick(600000);
+    socket.message({keepalive: 'true'});
+    expect(events).toHaveBeenLastCalledWith({...lost, isConnectionLost: false, isKeepAlive: true});
+    expect(manager.hasUsableSocket()).toBe(true);
     expect(events.mock.calls.filter(([event]) => event.isRestoreFailed)).toHaveLength(1);
     expect(request).toHaveBeenCalledTimes(1);
     expect(run.onScheduled.mock.calls).toEqual([[1, 100000]]);

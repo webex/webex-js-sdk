@@ -143,7 +143,7 @@ export default class AuthInterceptor extends Interceptor {
 
               return Promise.reject(error);
             })
-            .then(() => this.replay(options));
+            .then(() => this.replay(options, reason.statusCode));
         }
       }
 
@@ -154,9 +154,10 @@ export default class AuthInterceptor extends Interceptor {
   /**
    * Replays the request
    * @param {Object} options
+   * @param {number} [statusCode] Status that triggered reauthentication
    * @returns {Object}
    */
-  replay(options) {
+  replay(options, statusCode) {
     if (options.replayCount) {
       options.replayCount += 1;
     } else {
@@ -168,9 +169,13 @@ export default class AuthInterceptor extends Interceptor {
         `auth: failed after ${this.webex.config.maxAuthenticationReplays} replay attempts`
       );
 
-      return Promise.reject(
-        new Error(`Failed after ${this.webex.config.maxAuthenticationReplays} replay attempts`)
+      const error = new Error(
+        `Failed after ${this.webex.config.maxAuthenticationReplays} replay attempts`
       );
+
+      if (statusCode !== undefined) error.statusCode = statusCode;
+
+      return Promise.reject(error);
     }
 
     this.webex.logger.info(`auth: replaying request ${options.replayCount} time`);

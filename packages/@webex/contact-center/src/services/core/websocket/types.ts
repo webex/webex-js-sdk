@@ -34,7 +34,7 @@ export type RegionRecoveryOptions = {
     outcome: 'retrying' | 'terminal',
     failure?: RecoveryFailure
   ) => void;
-  afterWelcome: (welcome: WelcomeResponse, signal: AbortSignal) => Promise<void>;
+  afterWelcome: (welcome: WelcomeResponse, signal: AbortSignal) => Promise<void | (() => void)>;
 };
 
 /**

@@ -134,7 +134,6 @@ export const METHODS = {
   SET_RECOVERY_GATE: 'setRecoveryGate',
   INTERRUPT_PENDING: 'interruptPending',
   IS_LOCAL_SESSION_TRACKING_ID: 'isLocalSessionTrackingId',
-  CLEAR_SESSION_TRACKING_IDS: 'clearSessionTrackingIds',
   ASSERT_ADMISSION: 'assertAdmission',
   HAS_USABLE_PRIMARY: 'hasUsablePrimary',
   REQ_EMPTY: 'reqEmpty',

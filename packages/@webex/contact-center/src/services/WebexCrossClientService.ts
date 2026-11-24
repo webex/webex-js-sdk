@@ -115,7 +115,7 @@ export default class WebexCrossClientService {
     users: string[],
     ttl: number,
     composition: Record<string, unknown>,
-    logContext: string
+    signal?: AbortSignal
   ): Promise<unknown> {
     const body = {
       users,
@@ -137,10 +137,15 @@ export default class WebexCrossClientService {
       })
       .then((response: {body?: unknown}) => response?.body)
       .catch((error: unknown) => {
-        LoggerProxy.error(`WebexCrossClientService.${logContext} failed: ${error}`, {
-          module: WEBEX_CROSS_CLIENT_FILE,
-          method: METHODS.SET_MANAGE_WEBEX_CALLING_IN_WXCC,
-        });
+        if (!signal?.aborted) {
+          LoggerProxy.error(
+            `WebexCrossClientService.setManageWebexCallingInWxcc failed: ${error}`,
+            {
+              module: WEBEX_CROSS_CLIENT_FILE,
+              method: METHODS.SET_MANAGE_WEBEX_CALLING_IN_WXCC,
+            }
+          );
+        }
 
         return Promise.reject(error);
       });
@@ -148,8 +153,16 @@ export default class WebexCrossClientService {
 
   public async setManageWebexCallingInWxcc(
     enable: boolean,
-    options?: {userId?: string; ttl?: number; appName?: string; trackPublishMetrics?: boolean}
+    options?: {
+      userId?: string;
+      ttl?: number;
+      appName?: string;
+      trackPublishMetrics?: boolean;
+      signal?: AbortSignal;
+    }
   ): Promise<void> {
+    const signal = options?.signal;
+    if (signal?.aborted) return;
     const operationGeneration = this.refreshGeneration;
     const userId = options?.userId ?? this.webex.internal.device?.userId;
     const ttl = options?.ttl ?? DEFAULT_CROSS_CLIENT_STATE_TTL;
@@ -201,10 +214,10 @@ export default class WebexCrossClientService {
     }
 
     try {
-      await this.publishCrossClientState([userId], ttl, composition, 'setManageWebexCallingInWxcc');
+      await this.publishCrossClientState([userId], ttl, composition, signal);
     } catch (error) {
       if (trackPublishMetrics) {
-        if (operationGeneration !== this.refreshGeneration) {
+        if (signal?.aborted || operationGeneration !== this.refreshGeneration) {
           if (publishMetricsId === this.usersubPublishMetricsId) {
             metricsManager.cancelTimedEvent(usersubPublishEventKeys);
           }
@@ -224,7 +237,7 @@ export default class WebexCrossClientService {
       throw error;
     }
 
-    if (operationGeneration !== this.refreshGeneration) {
+    if (signal?.aborted || operationGeneration !== this.refreshGeneration) {
       if (trackPublishMetrics && publishMetricsId === this.usersubPublishMetricsId) {
         metricsManager.cancelTimedEvent(usersubPublishEventKeys);
       }

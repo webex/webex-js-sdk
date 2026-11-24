@@ -1798,7 +1798,7 @@ describe('WebCallingService', () => {
       await webRTCCalling.registerWebCallingLine();
       webRTCCalling.cleanUpCall();
       if (hardStop) {
-        line.emit(LINE_EVENTS.UNREGISTERED, {status: 'inactive', message: 'Session superseded'});
+        line.emit(LINE_EVENTS.UNREGISTERED, {status: 'inactive', message: 'Registration stopped'});
       }
 
       const acknowledgements: Array<Promise<void>> = [];
@@ -1873,13 +1873,15 @@ describe('WebCallingService', () => {
     });
 
     it.each([
-      {terminal: true, activeCall: false, scenario: 'terminalStoppedLineWithoutCallReplaced'},
-      {terminal: true, activeCall: true, scenario: 'terminal line with an active call'},
-      {terminal: false, activeCall: false, scenario: 'calling-owned retry without a call'},
-      {terminal: false, activeCall: true, scenario: 'calling-owned retry with an active call'},
+      {outcome: 'stopped', activeCall: false, scenario: 'terminalStoppedLineWithoutCallReplaced'},
+      {outcome: 'stopped', activeCall: true, scenario: 'terminal line with an active call'},
+      {outcome: 'retrying', activeCall: false, scenario: 'calling-owned retry without a call'},
+      {outcome: 'retrying', activeCall: true, scenario: 'calling-owned retry with an active call'},
+      {outcome: 'superseded', activeCall: false, scenario: 'superseded line without a call'},
+      {outcome: 'superseded', activeCall: true, scenario: 'superseded line with an active call'},
     ])(
-      'ensureLineStatusOwnershipMatrix keeps UNREGISTERED retryable: $scenario',
-      async ({terminal, activeCall}) => {
+      'ensureLineStatusOwnershipMatrix handles UNREGISTERED: $scenario',
+      async ({outcome, activeCall}) => {
         jest.useFakeTimers();
         const {line, client} = owned();
         const replacement = owned(false);
@@ -1890,12 +1892,20 @@ describe('WebCallingService', () => {
         await webRTCCalling.registerWebCallingLine();
         webRTCCalling.cleanUpCall();
         client.getActiveCalls.mockReturnValue(activeCall ? {held: [mockCall]} : {});
+        if (outcome === 'stopped') {
+          line.emit(
+            LINE_EVENTS.ERROR,
+            registrationError(ERROR_TYPE.BAD_REQUEST, 'startKeepaliveTimer')
+          );
+        }
         const stateChangeListener = jest.fn();
         webRTCCalling.on(VOICE_CONNECTION_EVENTS.STATE_CHANGE, stateChangeListener);
 
         line.emit(
           LINE_EVENTS.UNREGISTERED,
-          terminal ? {status: 'inactive', message: 'Session superseded'} : undefined
+          outcome === 'superseded'
+            ? registrationError(ERROR_TYPE.SESSION_SUPERSEDED, 'startKeepaliveTimer')
+            : undefined
         );
 
         const expectedState = {
@@ -1903,7 +1913,7 @@ describe('WebCallingService', () => {
           lineStatus: 'unregistered',
           mobiusSocketStatus: 'not-in-use',
           reason: 'LINE_UNREGISTERED',
-          retryable: true,
+          retryable: outcome !== 'superseded',
         };
         expect(webRTCCalling.getVoiceConnectionState()).toEqual(expectedState);
         expect(stateChangeListener.mock.calls).toEqual([[expectedState]]);
@@ -1914,7 +1924,7 @@ describe('WebCallingService', () => {
         ]);
         await flush();
 
-        const shouldReplace = terminal && !activeCall;
+        const shouldReplace = outcome === 'stopped' && !activeCall;
         expect(createClient).toHaveBeenCalledTimes(shouldReplace ? 2 : 1);
         expect(line.register).toHaveBeenCalledTimes(1);
         expect(line.deregister).toHaveBeenCalledTimes(shouldReplace ? 1 : 0);
@@ -1939,6 +1949,65 @@ describe('WebCallingService', () => {
           ).toHaveLength(1);
         }
 
+        if (activeCall) {
+          client.getActiveCalls.mockReturnValue({});
+          client.emit(CALLING_CLIENT_EVENT_KEYS.ALL_CALLS_CLEARED);
+          client.emit(CALLING_CLIENT_EVENT_KEYS.ALL_CALLS_CLEARED);
+          await flush();
+
+          const shouldRepair = outcome === 'stopped';
+          expect(createClient).toHaveBeenCalledTimes(shouldRepair ? 2 : 1);
+          expect(line.deregister).toHaveBeenCalledTimes(shouldRepair ? 1 : 0);
+          expect(replacement.line.register).toHaveBeenCalledTimes(shouldRepair ? 1 : 0);
+          expect(mockCall.end).not.toHaveBeenCalled();
+
+          if (shouldRepair) {
+            replacement.line.emit(LINE_EVENTS.REGISTERED, replacement.line);
+            await flush();
+          }
+        }
+
+        await webRTCCalling.deregisterWebCallingLine();
+      }
+    );
+
+    it.each(['abort', 'deregister', 'disable voice', 'superseded', 'Calling reconnect'])(
+      'discards an idle repair after %s',
+      async (cancelledBy) => {
+        const {line, client} = owned();
+        const registration = {isReconnectPending: jest.fn().mockReturnValue(false)};
+        Object.assign(line, {registration});
+        (createClient as jest.Mock).mockResolvedValue(client);
+        setBrowserVoiceRequired();
+        await webRTCCalling.registerWebCallingLine();
+        client.getActiveCalls.mockReturnValue({held: [mockCall]});
+        line.emit(
+          LINE_EVENTS.ERROR,
+          registrationError(ERROR_TYPE.BAD_REQUEST, 'startKeepaliveTimer')
+        );
+        line.emit(LINE_EVENTS.UNREGISTERED);
+        const controller = new AbortController();
+        await webRTCCalling.ensureWebCallingLine(controller.signal);
+        const callsCleared = getHandler(client, CALLING_CLIENT_EVENT_KEYS.ALL_CALLS_CLEARED);
+
+        if (cancelledBy === 'abort') controller.abort();
+        if (cancelledBy === 'deregister') await webRTCCalling.deregisterWebCallingLine();
+        if (cancelledBy === 'disable voice') webRTCCalling.setBrowserVoiceRequired(false);
+        if (cancelledBy === 'superseded') {
+          line.emit(LINE_EVENTS.UNREGISTERED, registrationError(ERROR_TYPE.SESSION_SUPERSEDED));
+        }
+        if (cancelledBy === 'Calling reconnect') {
+          registration.isReconnectPending.mockReturnValue(true);
+        }
+
+        client.getActiveCalls.mockReturnValue({});
+        expect(callsCleared).toBeDefined();
+        callsCleared();
+        await flush();
+
+        expect(createClient).toHaveBeenCalledTimes(1);
+        expect(line.register).toHaveBeenCalledTimes(1);
+        expect(line.deregister).toHaveBeenCalledTimes(cancelledBy === 'deregister' ? 1 : 0);
         await webRTCCalling.deregisterWebCallingLine();
       }
     );

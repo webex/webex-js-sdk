@@ -35,6 +35,8 @@ import {
   WELLBEING_BREAK_IDLE_CODE,
 } from './constants';
 
+const ORGANIZATION_SETTINGS_TIMEOUT_MS = 10_000;
+
 /**
  * The AgentConfigService class provides methods to fetch agent configuration data.
  * @private
@@ -64,12 +66,15 @@ export default class AgentConfigService {
       });
     }
 
+    let timer: ReturnType<typeof setTimeout>;
+    let onAbort: () => void;
     const response = await new Promise<Awaited<ReturnType<WebexRequest['request']>>>(
       (resolve, reject) => {
-        const onAbort = () => {
-          signal?.removeEventListener('abort', onAbort);
-          reject(createRegionRecoveryError('RECOVERY_INTERRUPTED'));
-        };
+        onAbort = () => reject(createRegionRecoveryError('RECOVERY_INTERRUPTED'));
+        timer = setTimeout(
+          () => reject(new Error('Organization settings request timed out')),
+          ORGANIZATION_SETTINGS_TIMEOUT_MS
+        );
         signal?.addEventListener('abort', onAbort, {once: true});
         if (signal?.aborted) {
           onAbort();
@@ -81,19 +86,14 @@ export default class AgentConfigService {
             service: WCC_API_GATEWAY,
             resource: endPointMap.organizationSettings(orgId),
             method: HTTP_METHODS.GET,
+            timeout: ORGANIZATION_SETTINGS_TIMEOUT_MS,
           })
-          .then(
-            (result) => {
-              signal?.removeEventListener('abort', onAbort);
-              resolve(result);
-            },
-            (error) => {
-              signal?.removeEventListener('abort', onAbort);
-              reject(error);
-            }
-          );
+          .then(resolve, reject);
       }
-    );
+    ).finally(() => {
+      clearTimeout(timer);
+      signal?.removeEventListener('abort', onAbort);
+    });
     if (signal?.aborted) {
       throw createRegionRecoveryError('RECOVERY_INTERRUPTED');
     }

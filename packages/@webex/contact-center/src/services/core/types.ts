@@ -28,6 +28,8 @@ export type AqmRequestContext = Readonly<{
   generation: number;
   signal?: AbortSignal;
   sessionOwner?: AqmSessionOwner<'restore' | 'manual'>;
+  correlationId?: string;
+  requireCorrelation?: boolean;
 }>;
 export type AqmRecoveryGate =
   | Readonly<{state: 'open'}>
@@ -64,7 +66,6 @@ export type Timeout = number | 'disabled';
 export type Req<TRes, TErr> = {
   kind?: AqmOperationKind;
   context?: AqmRequestContext;
-  correlationId?: string;
   url: string;
   host?: string;
   method?: HTTP_METHODS;
