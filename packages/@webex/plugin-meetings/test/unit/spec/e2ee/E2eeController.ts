@@ -32,6 +32,7 @@ describe('plugin-meetings', () => {
     let offStub;
     let joinStub;
     let leaveStub;
+    let cleanUpStub;
     let signalingStartStub;
     let signalingStopStub;
     let sendBehavioralMetricStub;
@@ -67,6 +68,7 @@ describe('plugin-meetings', () => {
     const assertSessionTornDown = () => {
       assert.calledOnce(signalingStopStub);
       assert.calledOnce(leaveStub);
+      assert.calledOnce(cleanUpStub);
       assert.deepEqual(sessionHandlers, {});
     };
 
@@ -83,9 +85,10 @@ describe('plugin-meetings', () => {
 
     beforeEach(() => {
       sessionHandlers = {};
-      initializeStub = sinon.stub(MLS.prototype, 'initialize').resolves();
+      initializeStub = sinon.stub(MLS.prototype, 'initialize');
       joinStub = sinon.stub(MLS.prototype, 'join');
       leaveStub = sinon.stub(MLS.prototype, 'leave');
+      cleanUpStub = sinon.stub(MLS.prototype, 'cleanUp');
       rosterStub = sinon.stub(MLS.prototype, 'getRoster').returns([]);
       onStub = sinon.stub(MLS.prototype, 'on').callsFake((event, handler) => {
         sessionHandlers[event] = handler;
@@ -212,20 +215,21 @@ describe('plugin-meetings', () => {
         assert.equal(initializeStub.firstCall.args[0].displayName, '');
       });
 
-      it('gives MLS the WASM loader and a media-encryption service bound to webex.request', async () => {
+      it('gives MLS the loaded WASM module and a media-encryption service bound to webex.request', async () => {
+        const module = {WebE2EE: sinon.stub()};
+
+        wasmLoader.get.resolves(module);
         const mlsCtorSpy = sinon.spy(MLSModule, 'default');
 
         await e2ee.start();
 
         assert.calledOnceWithExactly(mlsCtorSpy, {
           httpClient: sinon.match.object,
-          loadModule: sinon.match.func,
+          module,
         });
         assert.isTrue(mlsCtorSpy.calledWithNew());
-        const [{httpClient, loadModule}] = mlsCtorSpy.firstCall.args;
+        const [{httpClient}] = mlsCtorSpy.firstCall.args;
 
-        wasmLoader.get.resetHistory();
-        await loadModule();
         assert.calledOnceWithExactly(wasmLoader.get, WASM_URL);
 
         webex.request.resolves({body: {ok: true}});
@@ -316,41 +320,17 @@ describe('plugin-meetings', () => {
           assert.deepEqual(events.state.args, [[{state: E2eeState.Initializing}], [{state: E2eeState.Left}]]);
         });
 
-        it('leaves the session and does not join if stopped while MLS initializes', async () => {
-          const initialized = createDeferred();
-
-          initializeStub.returns(initialized.promise);
-          const starting = e2ee.start();
-
-          await new Promise((resolve) => setImmediate(resolve));
-          assert.calledOnce(initializeStub);
+        it('cleans up the initialized session when stopped', async () => {
+          await e2ee.start();
           await e2ee.stop();
-          initialized.resolve();
-          await starting;
 
           assert.calledOnce(initializeStub);
           assert.calledOnce(leaveStub);
+          assert.calledOnce(cleanUpStub);
           assert.deepEqual(sessionHandlers, {});
-          assert.notCalled(signalingStartStub);
-          assert.notCalled(joinStub);
+          assert.calledOnce(signalingStartStub);
+          assert.calledOnce(joinStub);
           assert.equal(e2ee.state, E2eeState.Left);
-        });
-
-        it('does not report a failure when the cancelled startup step then rejects', async () => {
-          const initialized = createDeferred();
-
-          initializeStub.returns(initialized.promise);
-          const starting = e2ee.start();
-
-          await new Promise((resolve) => setImmediate(resolve));
-          assert.calledOnce(initializeStub);
-          await e2ee.stop();
-          initialized.reject(new Error('session left'));
-          await starting;
-
-          assert.equal(e2ee.state, E2eeState.Left);
-          assert.notCalled(events.failure);
-          assert.notCalled(sendBehavioralMetricStub);
         });
 
         it('lets a new start proceed while the cancelled one is still pending', async () => {
@@ -370,19 +350,17 @@ describe('plugin-meetings', () => {
         });
       });
 
-      it('defers fatal event cleanup until an MLS callback returns during initialization', async () => {
-        initializeStub.callsFake(() => {
+      it('defers fatal event cleanup until an MLS callback returns during join', async () => {
+        joinStub.callsFake(() => {
           emitSession('joinFailure', {reason: 'join_failure'});
           assert.notCalled(leaveStub);
           assert.notCalled(events.failure);
-
-          return Promise.resolve();
         });
 
         await e2ee.start();
 
         assert.calledOnce(leaveStub);
-        assert.notCalled(joinStub);
+        assert.calledOnce(joinStub);
         assert.equal(e2ee.state, E2eeState.Failed);
         assert.calledOnceWithExactly(events.failure, {reason: 'join_failure'});
       });
@@ -413,7 +391,7 @@ describe('plugin-meetings', () => {
         },
         {
           when: 'the MLS session fails to initialize',
-          fail: () => initializeStub.rejects(new Error('MLS init failed')),
+          fail: () => initializeStub.throws(new Error('MLS init failed')),
           errorMessage: 'MLS init failed',
           sessionCreated: true,
         },

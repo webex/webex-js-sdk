@@ -22,6 +22,7 @@ import type {
   E2eeMeetingContext,
   E2eeRosterMember,
 } from './types';
+import type {ModuleInstance} from './wasm';
 
 const TRIGGER_SCOPE = {file: 'e2ee/E2eeController', function: 'e2ee'};
 
@@ -179,9 +180,9 @@ export default class E2eeController extends TypedEventsScope<E2eeControllerEvent
 
     try {
       const {device} = this.webex.internal;
-      const [, credentials] = await step(
+      const [module, credentials] = await step(
         Promise.all([
-          this.wasmLoader.get(this.wasmUrl),
+          this.wasmLoader.get<ModuleInstance>(this.wasmUrl),
           this.identityProvider.getCredentials(device.userId),
         ])
       );
@@ -191,7 +192,7 @@ export default class E2eeController extends TypedEventsScope<E2eeControllerEvent
       });
       const session = new MLS({
         httpClient,
-        loadModule: () => this.wasmLoader.get(this.wasmUrl),
+        module,
       });
       const mediaEncryptionGroupUrl = this.context.getLocusInfo()?.info?.mediaEncryptionGroupUrl;
 
@@ -202,19 +203,16 @@ export default class E2eeController extends TypedEventsScope<E2eeControllerEvent
       this.mlsSession = session;
       this.setupMlsSessionListeners(session);
 
-      // If cancelled, stop() has already left and detached this session.
-      await step(
-        session.initialize({
-          participantId: device.userId,
-          deviceUrl: device.url,
-          deviceType: this.webex.config.meetings.deviceType,
-          correlationId: this.context.getCorrelationId(),
-          displayName: this.getSelfDisplayName(),
-          serviceUrl: mediaEncryptionGroupUrl,
-          credentials,
-          trustAnchors: this.identityProvider.getTrustAnchors(),
-        })
-      );
+      session.initialize({
+        participantId: device.userId,
+        deviceUrl: device.url,
+        deviceType: this.webex.config.meetings.deviceType,
+        correlationId: this.context.getCorrelationId(),
+        displayName: this.getSelfDisplayName(),
+        serviceUrl: mediaEncryptionGroupUrl,
+        credentials,
+        trustAnchors: this.identityProvider.getTrustAnchors(),
+      });
 
       this.signaling = new E2eeSignaling({
         llm: this.context.getLlmChannel(),
@@ -422,6 +420,12 @@ export default class E2eeController extends TypedEventsScope<E2eeControllerEvent
       mlsSession?.leave();
     } catch (error) {
       LoggerProxy.logger.warn(`e2ee: E2eeController --> error leaving MLS session: ${error}`);
+    }
+
+    try {
+      mlsSession?.cleanUp();
+    } catch (error) {
+      LoggerProxy.logger.warn(`e2ee: E2eeController --> error cleaning up MLS session: ${error}`);
     }
 
     if (hadMediaServices) {

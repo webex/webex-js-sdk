@@ -50,7 +50,7 @@ export type MLSEvent = keyof MLSEventMap;
  * emitted as typed events. This keeps it unit-testable in isolation.
  */
 export default class MLS {
-  private readonly loadModule: () => Promise<ModuleInstance>;
+  private readonly module: ModuleInstance;
 
   private readonly httpClient: IMlsHttpClient;
 
@@ -60,22 +60,18 @@ export default class MLS {
 
   private e2ee: WebE2EEInstance | null = null;
 
+  private readonly waitTimeouts = new Set<ReturnType<typeof setTimeout>>();
+
   private lastSecurityCode = '';
 
   /**
    * @param {Object} deps
+   * @param {ModuleInstance} deps.module - The loaded WASM module used to instantiate the engine.
    * @param {IMlsHttpClient} deps.httpClient - Transport for the engine's protocol requests.
-   * @param {Function} deps.loadModule - Loads the WASM module instance; supplied by the integration layer.
    */
-  constructor({
-    httpClient,
-    loadModule,
-  }: {
-    httpClient: IMlsHttpClient;
-    loadModule: () => Promise<ModuleInstance>;
-  }) {
+  constructor({httpClient, module}: {httpClient: IMlsHttpClient; module: ModuleInstance}) {
     this.httpClient = httpClient;
-    this.loadModule = loadModule;
+    this.module = module;
   }
 
   /**
@@ -109,24 +105,20 @@ export default class MLS {
   }
 
   /**
-   * Loads the WASM module, instantiates the engine, wires its callbacks, and applies credentials,
-   * trust anchors and timeouts. Must be called before {@link join}.
+   * Instantiates the engine, wires its callbacks, and applies credentials, trust anchors and
+   * timeouts. Must be called before {@link join}.
    * @param {MLSConfig} config
-   * @returns {Promise<void>}
+   * @returns {void}
    */
-  async initialize(config: MLSConfig): Promise<void> {
-    LoggerProxy.logger.info('e2ee: MLS --> initialize: loading WASM and instantiating engine');
-    const module = await this.loadModule();
-
-    // When loadModule uses WasmLoader.get(), repeated calls share the in-flight promise or return
-    // the cached module, so this check can stay after loading.
+  initialize(config: MLSConfig): void {
+    LoggerProxy.logger.info('e2ee: MLS --> initialize: instantiating engine');
     if (this.e2ee) {
       LoggerProxy.logger.info('e2ee: MLS --> initialize: already initialized');
 
       return;
     }
 
-    this.e2ee = new module.WebE2EE();
+    this.e2ee = new this.module.WebE2EE();
     this.setupCallbacks();
 
     this.e2ee.initialize(
@@ -253,9 +245,12 @@ export default class MLS {
     });
 
     e2ee.setOnWait((milliseconds, handlerId) => {
-      setTimeout(() => {
+      const timeout = setTimeout(() => {
+        this.waitTimeouts.delete(timeout);
         this.e2ee?.completeWait(handlerId);
       }, milliseconds);
+
+      this.waitTimeouts.add(timeout);
     });
 
     e2ee.setOnGotKey((epoch: EpochInfo) => {
@@ -446,6 +441,41 @@ export default class MLS {
     LoggerProxy.logger.info('e2ee: MLS --> leave: leaving MLS group');
     this.transactions.clear();
     this.assertInitialized().leave();
+  }
+
+  /**
+   * Detaches engine callbacks and releases the WASM engine and wrapper resources.
+   * @returns {void}
+   */
+  cleanUp(): void {
+    this.waitTimeouts.forEach((timeout) => clearTimeout(timeout));
+    this.waitTimeouts.clear();
+    this.transactions.clear();
+    this.lastSecurityCode = '';
+
+    const {e2ee} = this;
+
+    this.e2ee = null;
+
+    if (e2ee) {
+      e2ee.setOnNewTransaction(null);
+      e2ee.setOnCompleteTransaction(null);
+      e2ee.setOnHttpRequest(null);
+      e2ee.setOnWait(null);
+      e2ee.setOnGotKey(null);
+      e2ee.setOnUseKey(null);
+      e2ee.setOnLeader(null);
+      e2ee.setOnPurgeBefore(null);
+      e2ee.setOnEvicted(null);
+      e2ee.setOnAddRoster(null);
+      e2ee.setOnRemoveRoster(null);
+      e2ee.setOnE2eeVersion(null);
+      e2ee.setOnMissingCommit(null);
+      e2ee.setOnLog(null);
+      e2ee.delete();
+    }
+
+    this.emitter.removeAllListeners();
   }
 
   /**
