@@ -247,60 +247,170 @@ job, merge queues, or deliberate failures in each of browser, coverage, syntax
 and style. The empty-package docs case demonstrates legitimate zero-package
 execution, not an unexpected skipped dependency being accepted by a gate.
 
-## Recommended follow-up
+## Proposed remediation plan
 
-### Give both execution paths a consistent merge contract
+Recommendation: use one PR workflow entry point and one stable final required
+check named `SDK CI Required`. That check should cover validation, package
+selection and all six suites, including integration. Keep each suite's job
+visible for diagnosis. This is a proposed implementation for a separate PR;
+the findings PR changes documentation only.
 
-Make the direct-event and new-push paths produce the same required check names.
-Preserve the existing validation, fork/trust, secret-handling and concurrency
-rules while doing so. This should be reviewed as a separate workflow change.
+### 1. Consolidate event handling before changing required checks
 
-One option is a stable final check such as `CI / Required`, required in branch
-protection. It would depend on validation, package selection, unit, integration,
-browser, coverage, syntax and style. Requiring the six individual test checks is
-also valid if their reported names are consistent across the trigger paths.
+In [`.github/workflows/pull-request.yml`](../.github/workflows/pull-request.yml),
+handle `opened`, `reopened`, `labeled` and `synchronize` through the same
+top-level workflow. Move the membership/label handling from
+[`.github/workflows/remove-validated-on-synchronize.yml`](../.github/workflows/remove-validated-on-synchronize.yml)
+into an initial admission job, then retire that separate synchronize workflow.
+Inventory any other callers before removing its `workflow_call` interface;
+any retained reusable jobs must still feed the same top-level final check.
 
-### Make an aggregate check evaluate all outcomes explicitly
+The admission job must run trusted workflow code without checking out or
+executing the PR head. Preserve the current event-specific trust policy:
 
-If maintainers choose an aggregate check:
+- Opening/reopening/labeling uses the existing same-repository or validated-PR
+  policy. Document that same-repository PRs currently have different admission
+  rules from new pushes; do not silently broaden either path.
+- On synchronize, retain validation only for an active `webex/web-sdk` push
+  actor, following the existing membership lookup and label-removal behavior.
+  Missing or inconclusive membership must not authorize testing.
+- Emit an explicit authorization result and the exact PR head SHA. Resolve
+  current PR state and reject a stale event rather than authorizing a newer
+  head using an older validation decision. Jobs must check out that exact SHA.
+- Gate package selection, installation, builds and test jobs on authorization.
+  Keep the organization-read token confined to the membership step, keep write
+  permissions limited to jobs that need them, and expose test secrets only to
+  authorized jobs. The final check needs neither PR code nor test secrets.
 
-- Schedule it even after dependencies fail, using `needs` with `if: always()`.
-- Require successful validation and package selection before accepting results.
-- Treat failures, cancellations, timeouts and missing results as unsuccessful.
-- Permit skips only when package selection explicitly establishes that the test
-  is not applicable. Do not accept every skipped dependency automatically.
-- Ensure an unvalidated PR cannot obtain a passing gate by skipping its tests.
+An unauthorized push must still produce a failing final check explaining that
+maintainer validation is needed. Applying `validated` should start a fresh run
+for the current head. This replaces the current green wrapper with no tests.
 
-GitHub treats skipped jobs as successful for merge requirements. A dependent
-gate that is itself skipped can therefore fail to enforce the intended policy.
-See [handling skipped required checks](https://docs.github.com/en/pull-requests/how-tos/merge-and-close-pull-requests/troubleshooting-required-status-checks#handling-skipped-but-required-checks).
+Use one PR-number concurrency group at the entry point, cancelling superseded
+runs across all events. Do not place the entry point behind path filters. Keep
+manual dispatch diagnostic unless it has a separately verified PR association;
+GitHub documents that workflow-job checks from `workflow_dispatch` do not
+satisfy PR requirements. Use a PR event or rerun the associated PR run to clear
+the gate. See [required-check event guidance](https://docs.github.com/en/pull-requests/how-tos/merge-and-close-pull-requests/troubleshooting-required-status-checks#checks-from-some-workflow-jobs-are-not-evaluated).
 
-### Verify the policy before switching requirements
+### 2. Make applicability and execution explicit
 
-Exercise both direct and reusable paths on fresh commits, including:
+Extend `generate-package-matrix` to emit validated structured outputs: selected
+packages for each suite, whether that suite is applicable, and why. Preserve
+the current changed-package versus dependent-package scopes unless maintainers
+approve a separate change. Determine applicability using the selected
+packages' supported scripts, so a package without a browser script is not
+mistaken for an executed browser suite.
 
-- Successful tests.
-- A deliberately failing test and an upstream validation failure.
-- A cancelled run and a timed-out test job.
-- An explicitly inapplicable package test and an unexpectedly skipped job.
-- A new commit after an earlier successful run.
-- The existing fork/trust approval flow.
+Define valid zero-package cases, including docs-only edits. A failed diff,
+malformed output or missing expected script must not become an empty successful
+selection. Define an explicit mapping for shared tooling, workflow and global
+configuration changes so they select the affected suites, or conservatively
+select all suites, instead of accidentally behaving like docs-only changes.
 
-Confirm the reported names and `CheckRun.isRequired` values through the API, as
-well as the PR merge box. Then align the branch requirements with the verified
-checks. Avoid assuming a workflow's green badge proves the merge policy works.
+Keep job summaries showing selected packages, scripts actually invoked, skip
+reasons and the tested SHA. Where a suite is applicable, require successful
+execution; where it is inapplicable, permit a skip only with successful
+selection and an explicit reason. Build failures still fail the gate even if
+there are no test assertion failures.
 
-If merge queues are adopted, include the `merge_group` trigger so required
-checks are reported for queued changes. Keep any administrator or emergency
-bypass policy explicit and review it separately from check-name alignment.
+### 3. Add a final check that evaluates every outcome
+
+Add a top-level job with the fixed name `SDK CI Required`. Give it `needs` on
+admission, package selection and all six suite jobs, plus optional E2E if the
+maintainers keep the `test_e2e` label policy. Use job-level `if: always()` so a
+failed dependency does not automatically skip the final check. Evaluate all
+`needs` results and applicability outputs in a small trusted gate evaluator.
+The evaluator should have focused tests for the following decision table:
+
+| Condition                                                            | Final check behavior                                                              |
+| -------------------------------------------------------------------- | --------------------------------------------------------------------------------- |
+| Authorized head; selection succeeds; every applicable suite succeeds | Succeed                                                                           |
+| Docs-only or a suite explicitly inapplicable                         | Succeed only with successful authorization/selection and documented applicability |
+| Unit, integration, browser, coverage, syntax or style fails          | Fail                                                                              |
+| Admission, selection, installation or build fails                    | Fail                                                                              |
+| Applicable suite is skipped, cancelled, timed out or missing         | Never succeed                                                                     |
+| Admission is denied or its result is missing                         | Fail with validation instructions                                                 |
+| Optional E2E not requested                                           | Allow its documented skip                                                         |
+| Optional E2E requested                                               | Require its success                                                               |
+
+Integration must contribute exactly like unit and browser. Do not use
+`continue-on-error` to hide a failed suite. Keep the current bounded job timeouts
+initially; address a hanging test's resource cleanup in the owning package.
+For new timeout probes, use a disposable short job limit rather than waiting
+an hour or increasing production timeouts.
+
+A cancelled workflow may prevent the evaluator from finishing. In that case,
+the required check must remain absent/pending or cancelled, never successful,
+neutral or skipped. Verify cancellation before scheduling, during testing and
+while the final check is starting; `always()` alone is not sufficient evidence
+that cancellation is safe. GitHub accepts skipped required jobs, so any path
+that skips the final check is a release blocker for this design. See
+[skipped-check guidance](https://docs.github.com/en/pull-requests/how-tos/merge-and-close-pull-requests/troubleshooting-required-status-checks#handling-skipped-but-required-checks)
+and [status expressions](https://docs.github.com/en/actions/reference/workflows-and-actions/expressions#status-check-functions).
+
+### 4. Repeat controlled probes against the proposed workflows
+
+Before changing protection, use fresh draft heads to verify:
+
+- Passing package tests, explicit docs-only selection, and a package without a
+  particular suite script.
+- An intentional failure in each of the six suites; requested E2E failure if
+  E2E remains label-controlled.
+- Admission denied, membership lookup failure, selection failure, missing
+  output and an unexpected skipped applicable suite.
+- Controlled cancellation at the stages above and a short real job timeout.
+- Initial opening, validated label application, trusted push, untrusted push
+  and reopening, including the existing external-fork approval flow.
+- A passing run followed by a failing new commit; rapid consecutive pushes and
+  label/push races, verifying that only the authorized current SHA is tested.
+
+For every case, record the head SHA, run/job URLs, final check name/conclusion
+and the PR check list. Confirm one consistent final check name and no skipped
+final check that could satisfy protection. On a safe passing case, compare
+with a failing case in the merge box using an eligible non-bypass reviewer;
+keep draft/review/freshness constraints distinct and do not merge a probe.
+An implementation PR's green run on the old base workflows does not validate
+its proposed workflows: exercise them on an isolated validation base or after
+the workflow-only rollout, before switching requirements.
+
+### 5. Roll out protection as a separate maintainer action
+
+1. Merge a reviewed workflow/tooling PR implementing steps 1–3, with the old
+   short test-job names retained and the existing five requirements unchanged.
+   The unified entry point should emit those names on both open and push paths.
+2. Complete step 4 on fresh commits using the deployed workflows. Make sure the
+   new final check has reported successfully and is selectable in protection.
+3. Add `SDK CI Required`, restricted to GitHub Actions, alongside the existing
+   five requirements. Preserve `strict: true` and the current review settings.
+   Re-read protection and confirm `CheckRun.isRequired` is true for the final
+   check on fresh direct and push-triggered runs, including a failing probe.
+4. Only after that verification, remove the five redundant individual
+   requirements. Integration remains enforced through the final check. Do not
+   require both short and prefixed versions of each suite.
+5. Revalidate the effective policy without bypass; document the final settings
+   and close the disposable probe PRs after review. Decide any administrator
+   bypass or approval-policy changes separately; they are not needed to fix
+   the test gate mismatch. Add `merge_group` support before adopting a merge
+   queue, rather than expanding this change to queues now.
+
+Rollback must keep a working gate: if the new requirement misbehaves, retain or
+restore the five short requirements against the unified workflow before
+removing the aggregate requirement. That restores the old five-suite policy
+and temporarily loses the new integration guarantee; record that explicitly.
+Do not revert to the split naming paths while protection expects only the new
+check, or temporarily remove every required test check to unblock a merge.
 
 ## Decisions requested from maintainers
 
-1. Should integration be a required merge condition whenever applicable?
-2. Should protection require six stable test checks or one aggregate gate?
-3. How should both trigger paths expose the same merge requirements while
-   preserving the existing trust model?
-4. Which package-selection skips are valid, and how should they be evidenced?
+1. Approve integration as a required condition whenever applicable, as requested
+   in this investigation.
+2. Approve the proposed single entry point and aggregate check, or choose six
+   consistently named individual requirements with equivalent admission and
+   skip safeguards.
+3. Confirm the current event-specific trust policy before consolidating it.
+4. Agree the per-suite applicability rules and who owns the staged protection
+   update and rollback.
 
 The observed settings are a dated snapshot. Re-read live protection and check
 results when implementing a follow-up; this document is not executable policy.
