@@ -1,6 +1,6 @@
 import sha256 from 'crypto-js/sha256';
 
-import {toNumber, union, unionBy} from 'lodash';
+import {toNumber, union, unionWith} from 'lodash';
 import WebexPlugin from '../webex-plugin';
 
 import METRICS from '../metrics';
@@ -166,7 +166,7 @@ const Services = WebexPlugin.extend({
 
     const clusterId = this._activeServices[name];
 
-    const urlById = catalog.get(clusterId, serviceGroup);
+    const urlById = catalog.get(clusterId, serviceGroup, name);
     const urlByName = catalog.get(name, serviceGroup);
 
     // if both are undefined, then we cannot find the service
@@ -298,7 +298,12 @@ const Services = WebexPlugin.extend({
    * @returns {void}
    */
   _updateServices(services: Array<Service>): void {
-    this._services = unionBy(services, this._services, 'id');
+    this._services = unionWith(
+      services,
+      this._services,
+      (service, existing) =>
+        service.id === existing.id && service.serviceName === existing.serviceName
+    );
   },
 
   /**

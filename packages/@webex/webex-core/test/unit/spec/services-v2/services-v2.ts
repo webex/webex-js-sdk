@@ -1294,7 +1294,7 @@ describe('webex-core', () => {
 
       it('has hostCatalog updated', () => {
         services._services = [
-          {id: 'urn:TEAM:us-east-2_a:conversation'},
+          {id: 'urn:TEAM:us-east-2_a:conversation', serviceName: 'conversation'},
           {id: 'test-left-over-services'},
         ];
         services._formatReceivedHostmap(serviceHostmap);

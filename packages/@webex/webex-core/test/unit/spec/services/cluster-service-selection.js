@@ -25,6 +25,12 @@ const webappUrl = 'https://board-remote.example.com/webapp';
         ],
       });
     },
+    loadServices(services, group, entries) {
+      services._getCatalog().updateServiceUrls(
+        group,
+        entries.map((entry) => entry.serialize())
+      );
+    },
   },
   {
     name: 'ServicesV2',
@@ -36,20 +42,24 @@ const webappUrl = 'https://board-remote.example.com/webapp';
         serviceUrls: [{baseUrl: url, host: new URL(url).host, priority: 1}],
       });
     },
+    loadServices(services, group, entries) {
+      services.updateCatalog(group, {
+        activeServices: Object.fromEntries(entries.map((entry) => [entry.serviceName, entry.id])),
+        services: entries.map((entry) => entry.serialize()),
+      });
+    },
   },
-].forEach(({name, Plugin, makeService}) => {
+].forEach(({name, Plugin, makeService, loadServices}) => {
   describe(`${name} cluster service selection`, () => {
     let services;
-    let catalog;
 
     beforeEach(() => {
       services = new Plugin(undefined, {parent: new MockWebex()});
-      catalog = services._getCatalog();
       // WDM advertises the web UI before the REST API, with the same cluster ID.
-      catalog.serviceGroups.postauth.push(
+      loadServices(services, 'postauth', [
         makeService('whiteboardWebappUrl', webappUrl),
-        makeService('board', boardUrl)
-      );
+        makeService('board', boardUrl),
+      ]);
     });
 
     [
@@ -90,7 +100,7 @@ const webappUrl = 'https://board-remote.example.com/webapp';
     });
 
     it('skips differently named services in a higher-precedence group', () => {
-      catalog.serviceGroups.override.push(makeService('whiteboardWebappUrl', webappUrl));
+      loadServices(services, 'override', [makeService('whiteboardWebappUrl', webappUrl)]);
 
       assert.deepEqual(services.getServiceFromClusterId({clusterId, serviceName: 'board'}), {
         name: 'board',
@@ -101,7 +111,7 @@ const webappUrl = 'https://board-remote.example.com/webapp';
     it('preserves group precedence for the requested service name', () => {
       const overrideUrl = 'https://board-override.example.com/board/api/v1';
 
-      catalog.serviceGroups.override.push(makeService('board', overrideUrl));
+      loadServices(services, 'override', [makeService('board', overrideUrl)]);
 
       assert.deepEqual(services.getServiceFromClusterId({clusterId, serviceName: 'board'}), {
         name: 'board',
@@ -110,7 +120,7 @@ const webappUrl = 'https://board-remote.example.com/webapp';
     });
 
     it('returns no match when only the UI entry exists', () => {
-      catalog.serviceGroups.postauth.pop();
+      loadServices(services, 'postauth', [makeService('whiteboardWebappUrl', webappUrl)]);
 
       assert.isUndefined(services.getServiceFromClusterId({clusterId, serviceName: 'board'}));
     });
