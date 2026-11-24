@@ -2006,6 +2006,11 @@ export default class ContactCenter extends WebexPlugin implements IContactCenter
 
       case CC_EVENTS.AGENT_CHANNEL_STATE_CHANGE_FAILED:
         if (this.agentConfig?.manageChannelAvailability === true) {
+          // Guard: ignore failures for other agents (supervisor-visible notifications)
+          const failAgentId = eventData.data?.agentId;
+          const ownId = this.agentConfig?.agentId;
+          if (ownId && failAgentId && failAgentId !== ownId) break;
+
           // @ts-ignore
           this.emit(AGENT_EVENTS.AGENT_CHANNEL_STATE_CHANGE_FAILED, eventData.data);
         }
@@ -2656,6 +2661,15 @@ export default class ContactCenter extends WebexPlugin implements IContactCenter
 
     // Guard: ignore if session is not V2
     if (this.agentConfig?.manageChannelAvailability !== true) return;
+
+    // Guard: ignore notifications after the session has ended (logout,
+    // multi-login close, AGENT_NOT_FOUND). clearV2LocalState() empties
+    // channelStatesMap and clears currentAgentSessionId, but the profile
+    // flag manageChannelAvailability stays true. Without this check a
+    // queued notification would repopulate channelStatesMap and emit a
+    // stale V1 event with status 'LoggedIn'.
+    if (!this.currentAgentSessionId) return;
+    if (data.agentSessionId && data.agentSessionId !== this.currentAgentSessionId) return;
 
     // Guard: the bind also matches routing messages about other agents
     const ownAgentId = this.agentConfig?.agentId;

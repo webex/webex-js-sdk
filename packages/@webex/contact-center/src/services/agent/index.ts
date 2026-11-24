@@ -202,6 +202,11 @@ export default function routingAgent(routing: AqmReqs) {
           data: {
             type: CC_EVENTS.AGENT_CHANNEL_STATE_CHANGED,
             channelType: p.data.channelType,
+            // Correlate: only match client-initiated notifications to prevent
+            // supervisor/system pushes from resolving the pending request.
+            isClientInitiated: true,
+            // Correlate: only match this agent's notifications.
+            ...(p.data.agentId ? {agentId: p.data.agentId} : {}),
           },
         },
         msg: {} as Agent.AgentChannelStateChanged,
@@ -212,6 +217,7 @@ export default function routingAgent(routing: AqmReqs) {
           data: {
             type: CC_EVENTS.AGENT_CHANNEL_STATE_CHANGE_FAILED,
             channelType: p.data.channelType,
+            ...(p.data.agentId ? {agentId: p.data.agentId} : {}),
           },
         },
         errId: 'Service.aqm.agent.stateChangeV2',

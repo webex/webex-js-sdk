@@ -6818,7 +6818,8 @@ describe('webex.cc', () => {
     });
 
     const setV2 = () => {
-      webex.cc.agentConfig = {...(webex.cc.agentConfig || {}), manageChannelAvailability: true} as Profile;
+      webex.cc.agentConfig = {...(webex.cc.agentConfig || {}), manageChannelAvailability: true, agentId: 'agent-1'} as Profile;
+      webex.cc['currentAgentSessionId'] = 'session-1';
     };
 
     const setV1 = () => {
@@ -6910,6 +6911,59 @@ describe('webex.cc', () => {
         );
 
         expect(webex.cc['channelStatesMap'].telephony).toBeUndefined();
+        expect(emitSpy).not.toHaveBeenCalledWith(
+          AGENT_EVENTS.AGENT_CHANNEL_STATE_CHANGE,
+          expect.anything()
+        );
+      });
+
+      it('should ignore late notifications after session has ended (no currentAgentSessionId)', () => {
+        setV2();
+        // Simulate logout clearing the session while manageChannelAvailability stays true
+        webex.cc['currentAgentSessionId'] = undefined;
+        webex.cc['channelStatesMap'] = {} as any;
+
+        messageCallback(
+          JSON.stringify({
+            type: CC_EVENTS.AGENT_CHANNEL_STATE_CHANGED,
+            data: {
+              channelType: 'chat',
+              agentChannelStateDetail: makeChannelState('Available'),
+              agentId: 'agent-1',
+              agentSessionId: 'session-old',
+              orgId: 'org-1',
+              type: CC_EVENTS.AGENT_CHANNEL_STATE_CHANGED,
+            },
+          })
+        );
+
+        // channelStatesMap must NOT be repopulated
+        expect(webex.cc['channelStatesMap'].chat).toBeUndefined();
+        expect(emitSpy).not.toHaveBeenCalledWith(
+          AGENT_EVENTS.AGENT_CHANNEL_STATE_CHANGE,
+          expect.anything()
+        );
+      });
+
+      it('should ignore notifications from a different session', () => {
+        setV2();
+        webex.cc['channelStatesMap'] = {} as any;
+
+        messageCallback(
+          JSON.stringify({
+            type: CC_EVENTS.AGENT_CHANNEL_STATE_CHANGED,
+            data: {
+              channelType: 'chat',
+              agentChannelStateDetail: makeChannelState('Available'),
+              agentId: 'agent-1',
+              agentSessionId: 'session-different',
+              orgId: 'org-1',
+              type: CC_EVENTS.AGENT_CHANNEL_STATE_CHANGED,
+            },
+          })
+        );
+
+        expect(webex.cc['channelStatesMap'].chat).toBeUndefined();
         expect(emitSpy).not.toHaveBeenCalledWith(
           AGENT_EVENTS.AGENT_CHANNEL_STATE_CHANGE,
           expect.anything()

@@ -205,7 +205,7 @@ await cc.setAgentState({
 });
 
 // V2 session: chat Available only
-await cc.setAgentState({state: 'Available', auxCodeId: '0', channelType: 'chat'});
+await cc.setAgentState({state: 'Available', auxCodeId: '0', channelType: ['chat']});
 const channels = cc.getChannelStates(); // {telephony: {...}, chat: {...}, ...}; {} on V1
 const control = cc.getAgentStateControl(); // {declared, active}
 ```

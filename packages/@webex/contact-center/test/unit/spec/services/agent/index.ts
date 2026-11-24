@@ -99,6 +99,25 @@ describe('AQM routing agent', () => {
     expect(req.notifFail.bind.data.channelType).toEqual(['chat', 'voice']);
   });
 
+  it('stateChangeV2 success bind includes isClientInitiated and agentId for correlation', () => {
+    const data = {state: 'Available', auxCodeId: '0', channelType: ['chat'], agentId: 'agent-1'} as any;
+    const req = (agent.stateChangeV2 as unknown as (p: {data: object}) => any)({data});
+
+    expect(req.notifSuccess.bind.data.isClientInitiated).toBe(true);
+    expect(req.notifSuccess.bind.data.agentId).toBe('agent-1');
+    // Failure bind omits isClientInitiated (optional on server) but includes agentId
+    expect(req.notifFail.bind.data.isClientInitiated).toBeUndefined();
+    expect(req.notifFail.bind.data.agentId).toBe('agent-1');
+  });
+
+  it('stateChangeV2 omits agentId from bind when not provided', () => {
+    const data = {state: 'Available', auxCodeId: '0', channelType: ['chat']} as any;
+    const req = (agent.stateChangeV2 as unknown as (p: {data: object}) => any)({data});
+
+    expect(req.notifSuccess.bind.data.isClientInitiated).toBe(true);
+    expect(req.notifSuccess.bind.data.agentId).toBeUndefined();
+  });
+
   it('stateChangeV2 uses distinct bind keys per channel set', () => {
     const chatReq = (agent.stateChangeV2 as unknown as (p: {data: object}) => any)({
       data: {state: 'Available', auxCodeId: '0', channelType: ['chat']},
