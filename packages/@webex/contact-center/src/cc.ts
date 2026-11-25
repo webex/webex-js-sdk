@@ -365,6 +365,15 @@ export default class ContactCenter extends WebexPlugin implements IContactCenter
   >;
 
   /**
+   * Channels updated by live AgentChannelStateChanged notifications since
+   * the last WebSocket reconnect.  handleChannelReloginSuccess uses this
+   * to avoid overwriting newer live state with the stale reload snapshot.
+   * Cleared after each reload merge.
+   * @private
+   */
+  private liveUpdatedChannels: Set<ChannelType> = new Set();
+
+  /**
    * Handle for the deferred BROWSER telephony recovery timer.
    * @private
    */
@@ -2783,6 +2792,9 @@ export default class ContactCenter extends WebexPlugin implements IContactCenter
     // Update internal channel state map
     if (data.agentChannelStateDetail) {
       this.channelStatesMap[channelType] = data.agentChannelStateDetail;
+      // Track this channel as live-updated so handleChannelReloginSuccess
+      // does not overwrite it with the stale reload snapshot.
+      this.liveUpdatedChannels.add(channelType);
     }
 
     // Unified enriched event: batch by data.trackingId (request correlation ID
@@ -2873,7 +2885,18 @@ export default class ContactCenter extends WebexPlugin implements IContactCenter
     }
 
     if (data.agentChannelStateDetailMap) {
-      this.channelStatesMap = {...data.agentChannelStateDetailMap};
+      // Merge-not-overwrite: preserve channels that received a live
+      // AgentChannelStateChanged notification while the reload was
+      // in-flight.  A full overwrite would discard a supervisor-selected
+      // state change (e.g. Lunch) and replace it with the stale
+      // disconnect-idle snapshot, causing silentRelogin() to send an
+      // unwanted Available recovery for that channel.
+      for (const [ct, detail] of Object.entries(data.agentChannelStateDetailMap)) {
+        if (!this.liveUpdatedChannels.has(ct as ChannelType)) {
+          this.channelStatesMap[ct as ChannelType] = detail as AgentChannelTypeStates;
+        }
+      }
+      this.liveUpdatedChannels.clear();
     }
     if (data.channelsMap) {
       this.loginChannelsMap = data.channelsMap;
@@ -3349,6 +3372,7 @@ export default class ContactCenter extends WebexPlugin implements IContactCenter
   private clearV2LocalState(): void {
     this.clearTelephonyRecoveryTimer();
     this.channelStatesMap = {} as Record<ChannelType, AgentChannelTypeStates>;
+    this.liveUpdatedChannels.clear();
     this.loginChannelsMap = {};
     this.pendingBatches.forEach((batch) => clearTimeout(batch.timer));
     this.pendingBatches.clear();

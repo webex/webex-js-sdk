@@ -4313,10 +4313,18 @@ function captureWellnessSession(event) {
       // Bridgeable: the SDK's bridge-computed auxCodeId is valid.
       wellnessState.legacyStateKnown = true;
       wellnessState.legacyAuxCodeId = event.auxCodeId?.trim() || '0';
+    } else {
+      // Non-bridgeable aggregate — explicitly invalidate the cached legacy
+      // projection.  On a same-session reconnect, legacyStateKnown may
+      // already be true with a stale auxCodeId from the pre-break Available
+      // state.  Retaining that stale projection would let
+      // recoverWellnessBreakIfNeeded() clear the recovery marker and cancel
+      // the pending-break lifecycle; when the task finishes, wasDeferred is
+      // false so recovery is never retried, leaving channels in
+      // WellbeingBreak.  handleWellnessLegacyStateChanged will re-promote
+      // legacyStateKnown once the aggregate becomes bridgeable.
+      wellnessState.legacyStateKnown = false;
     }
-    // else: non-bridgeable aggregate — leave legacyStateKnown=false.
-    // handleWellnessLegacyStateChanged will retry recovery once the
-    // aggregate becomes bridgeable.
   } else if (Object.prototype.hasOwnProperty.call(event, 'auxCodeId')) {
     // V1: auxCodeId comes directly from the backend.
     wellnessState.legacyStateKnown = true;

@@ -7616,6 +7616,39 @@ describe('webex.cc', () => {
         expect(handler).toHaveBeenCalledTimes(1);
         webex.cc.off(AGENT_EVENTS.AGENT_RELOGIN_SUCCESS, handler);
       });
+
+      it('preserves channels updated by live notifications during reload', () => {
+        setV2();
+        // Simulate a live supervisor-selected Lunch update arriving while
+        // the reload was in-flight.
+        const liveChat = makeChannelState('Idle', {auxCodeId: 'lunch', stateChangeReason: 'supervisor-selected'});
+        webex.cc['channelStatesMap'] = {chat: liveChat} as any;
+        webex.cc['liveUpdatedChannels'] = new Set(['chat'] as ChannelType[]);
+
+        // Reload snapshot has an older disconnect-idle for chat
+        messageCallback(
+          JSON.stringify({
+            type: CC_EVENTS.AGENT_CHANNEL_RELOGIN_SUCCESS,
+            data: {
+              agentId: 'agent-1',
+              agentChannelStateDetailMap: {
+                chat: makeChannelState('Idle', {stateChangeReason: 'agent-wss-disconnect'}),
+                telephony: makeChannelState('Idle', {stateChangeReason: 'agent-wss-disconnect'}),
+              },
+              channelsMap: {chat: ['c1'], telephony: ['t1']},
+              type: CC_EVENTS.AGENT_CHANNEL_RELOGIN_SUCCESS,
+            },
+          })
+        );
+
+        // Chat must retain the live supervisor update, not the stale snapshot
+        expect(webex.cc['channelStatesMap'].chat).toBe(liveChat);
+        expect(webex.cc['channelStatesMap'].chat.stateChangeReason).toBe('supervisor-selected');
+        // Telephony was not live-updated, so it gets the reload snapshot
+        expect(webex.cc['channelStatesMap'].telephony.stateChangeReason).toBe('agent-wss-disconnect');
+        // liveUpdatedChannels is cleared after merge
+        expect(webex.cc['liveUpdatedChannels'].size).toBe(0);
+      });
     });
 
     describe('clearV2LocalState', () => {
