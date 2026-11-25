@@ -38,6 +38,7 @@ yarn install
 ## Dev Environment
 
 - The package runs inside the parent Yarn workspace; use workspace commands from the repository root. Browser journeys use `packages/calling/playwright.config.ts`.
+- E2E browser journeys reach a self-signed local dev server, so the Playwright config and OAuth setup deliberately relax transport and web-security checks (`--ignore-certificate-errors`, `--disable-web-security`, and `ignoreHTTPSErrors`). These bypasses are confined to Playwright launch/context/`webServer` options and never apply to `src/` runtime code or the published package.
 
 ## Where to Go Next
 

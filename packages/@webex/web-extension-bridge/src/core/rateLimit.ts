@@ -51,7 +51,11 @@ class BucketMap {
 
   private readonly maxKeys: number;
 
-  public constructor(perSecond: number, maxKeys: number) {
+  /**
+   * @param perSecond - Sustained refill rate, which is also the burst capacity.
+   * @param maxKeys - Cap on tracked keys, beyond which the least recently used is evicted.
+   */
+  constructor(perSecond: number, maxKeys: number) {
     this.perSecond = perSecond;
     this.maxKeys = maxKeys;
   }
@@ -115,15 +119,13 @@ class BucketMap {
  * Two-level token-bucket limiter: one bucket per `(tabId, topic)`, and one aggregate
  * bucket per `tabId` across every topic.
  *
- * The aggregate level exists because the per-topic map has to be bounded — an
- * unbounded map is itself the memory exhaustion it was meant to prevent — and a
- * bounded map alone can be walked straight past. A page that emits every push under a
- * fresh topic name takes the new-key path each time, evicts somebody else's bucket,
- * and starts again on a full budget, so the per-topic limit constrains nothing at all.
- * The aggregate bucket is keyed on the tab, which the sender cannot vary at will, and
- * that is what makes it a real bound.
+ * The aggregate level exists because the per-topic map must be bounded, and a bounded
+ * map alone can be walked straight past: a page that emits every push under a fresh
+ * topic name evicts somebody else's bucket and starts again on a full budget each
+ * time, so the per-topic limit alone constrains nothing. The aggregate bucket is keyed
+ * on the tab, which the sender can't vary at will, making it a real bound.
  *
- * Excess is rejected outright rather than queued: queueing a flood just moves the
+ * Excess is rejected outright rather than queued — queueing a flood just moves the
  * denial of service from the CPU to memory (T4).
  */
 export class RateLimiter {
@@ -133,7 +135,11 @@ export class RateLimiter {
 
   private readonly now: () => number;
 
-  public constructor(options: RateLimiterOptions = {}) {
+  /**
+   * @param options - Limiter options.
+   * @throws BridgeError `INSECURE_CONFIG` when any rate or key bound is out of range.
+   */
+  constructor(options: RateLimiterOptions = {}) {
     const perSecond = requireBoundedInteger(options.perSecond, 'rateLimit.pushesPerSecond', {
       min: MIN_RATE_PER_SECOND,
       max: MAX_RATE_PER_SECOND,
@@ -166,10 +172,9 @@ export class RateLimiter {
 
   /**
    * @param key - Limiter key, from {@link rateLimitKey}.
-   * @returns Whether the message is within both the per-topic and the aggregate
-   *   budget. A rejected message consumes no token at either level, so the caller can
-   *   retry after a backoff, and so a push refused by its own topic bucket cannot
-   *   drain the tab's aggregate allowance on its way out.
+   * @returns Whether the message is within both the per-topic and aggregate budget. A
+   *   rejected message consumes no token at either level, so a push refused by its own
+   *   topic bucket cannot drain the tab's aggregate allowance on its way out.
    */
   public allow(key: string): boolean {
     const at = this.now();
@@ -192,6 +197,7 @@ export class RateLimiter {
     return true;
   }
 
+  /** Forget every tracked bucket, at both levels. */
   public reset(): void {
     this.perTopic.clear();
     this.aggregate.clear();
@@ -242,7 +248,11 @@ export class InFlightLimiter {
 
   private readonly max: number;
 
-  public constructor(options: InFlightLimiterOptions = {}) {
+  /**
+   * @param options - Concurrency options.
+   * @throws BridgeError `INSECURE_CONFIG` when `max` is out of range.
+   */
+  constructor(options: InFlightLimiterOptions = {}) {
     this.max = requireBoundedInteger(options.max, 'rateLimit.maxInFlightPerTab', {
       min: MIN_IN_FLIGHT_PER_TAB,
       max: MAX_IN_FLIGHT_PER_TAB,
@@ -267,6 +277,11 @@ export class InFlightLimiter {
     return true;
   }
 
+  /**
+   * Release one slot previously taken by {@link acquire}.
+   *
+   * @param tabId - Target tab.
+   */
   public release(tabId: number): void {
     const current = this.counts.get(tabId) ?? 0;
 
@@ -279,10 +294,19 @@ export class InFlightLimiter {
     this.counts.set(tabId, current - 1);
   }
 
+  /**
+   * Release every slot held for a tab, for disconnect/teardown.
+   *
+   * @param tabId - Target tab.
+   */
   public releaseAll(tabId: number): void {
     this.counts.delete(tabId);
   }
 
+  /**
+   * @param tabId - Target tab.
+   * @returns Slots currently held for `tabId`.
+   */
   public count(tabId: number): number {
     return this.counts.get(tabId) ?? 0;
   }

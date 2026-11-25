@@ -4,7 +4,7 @@ import ContactCenter from './cc';
 
 /**
  * @module ContactCenterModule
- * /
+ */
 
 // Core exports
 /**
@@ -28,7 +28,11 @@ export {default as Task} from './services/task/Task';
 // API exports (AddressBook is public, EntryPoint and Queue are accessed via cc wrappers)
 export {default as AddressBook} from './services/AddressBook';
 export {default as ApiAIAssistant} from './services/ApiAiAssistant';
+export {AI_SUMMARY_ERROR_CODES} from './constants';
 export {default as UserPreference} from './services/UserPreference';
+
+/** Agent Wellness Break notification and action wire values. */
+export {WELLNESS_BREAK_NOTIFICATION_ACTIONS, WELLNESS_BREAK_USER_ACTIONS} from './types';
 
 /** EntryPoint API types */
 export type {
@@ -61,7 +65,7 @@ export {AGENT_EVENTS} from './services/agent/types';
 export type {AGENT_EVENTS as AgentEvents} from './services/agent/types';
 
 /**
- * Contact Center Task Events
+ * Contact Center task, realtime, and AI Assistant events
  * @enum {string}
  * @category Enums
  */
@@ -79,8 +83,16 @@ export {CC_AGENT_EVENTS} from './services/config/types';
  * @enum {string}
  * @category Enums
  */
-export {CC_EVENTS} from './services/config/types';
+export {CC_EVENTS, VOICE_CONNECTION_EVENTS} from './services/config/types';
 export type {CC_EVENTS as ContactCenterEvents} from './services/config/types';
+
+/** Browser voice connection state event and status values */
+export {
+  VOICE_CONNECTION_ERROR,
+  VOICE_CONNECTION_STATUS,
+  VoiceLineStatus,
+  VoiceMobiusSocketStatus,
+} from './types';
 
 // Interfaces
 /** Main types and interfaces for Contact Center functionality */
@@ -91,6 +103,7 @@ export type {
   CCPluginConfig,
   /** WebexSDK interface */
   WebexSDK,
+  VoiceConnectionState,
 } from './types';
 
 // Types
@@ -120,6 +133,14 @@ export type {
   GenericError,
   /** Set state response */
   SetStateResponse,
+  /** Wellness notification action */
+  WellnessBreakNotificationAction,
+  /** Wellness action API value */
+  WellnessBreakUserAction,
+  /** Validated agent-scoped wellness notification */
+  WellnessBreakEvent,
+  /** Wellness offer-response parameters */
+  RespondToWellnessBreakParams,
 } from './types';
 
 /** Task related types */
@@ -148,6 +169,13 @@ export type {
   TaskUILeg,
   TaskUIControls,
   TaskUIControlState,
+  AISummaryAction,
+  AISummaryFeedback,
+  AISummaryState,
+  AISummarySections,
+  AISummary,
+  AISummaryFeatureEnablement,
+  AISummaryResponse,
 } from './services/task/types';
 
 /** UI controls utilities */
@@ -187,10 +215,14 @@ export type {
 export type {
   /** Profile interface */
   Profile,
-  /** Response type from getUserUsingCI method */
+  /** Aggregated organization configuration from getOrgDesktopLoginConfig */
+  OrgDesktopLoginResponse,
+  /** Aggregated user configuration from getUserDesktopLoginConfig */
+  UserDesktopLoginResponse,
+  /** Agent identity, the `user` section of the user desktop-login aggregate */
   AgentResponse,
-  /** Response from getDesktopProfileById */
-  DesktopProfileResponse,
+  /** Desktop Profile settings, the `agentProfile` section of the user desktop-login aggregate */
+  AgentProfile,
   /** Response from getMultimediaProfileById */
   MultimediaProfileResponse,
   /** Response from getListOfTeams */
@@ -199,14 +231,18 @@ export type {
   ListAuxCodesResponse,
   /** Response from getSiteInfo */
   SiteInfo,
-  /** Response from getOrgInfo */
+  /** Organization identity, the `organization` section of the org desktop-login aggregate */
   OrgInfo,
-  /** Response from getOrganizationSetting */
+  /** Organization settings, the `organizationSetting` section of the org desktop-login aggregate */
   OrgSettings,
-  /** Response from getTenantData */
+  /** Tenant configuration, the `tenantConfiguration` section of the org desktop-login aggregate */
   TenantData,
-  /** Response from getURLMapping */
-  URLMapping,
+  /** Microsoft Teams integration configuration, from the org desktop-login aggregate */
+  MicrosoftConfig,
+  /** Webex integration configuration, from the org desktop-login aggregate */
+  WebexConfig,
+  /** External integration URLs, the `urlMappings` section of the org desktop-login aggregate */
+  OrgUrlMappings,
   /** Response from getDialPlanData */
   DialPlanEntity,
   /** Auxiliary code information */

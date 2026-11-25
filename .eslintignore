@@ -44,3 +44,4 @@ yarn.lock
 *.html
 packages/calling/calling/docs/
 jest.global.d.ts
+packages/@webex/plugin-meetings/assets/

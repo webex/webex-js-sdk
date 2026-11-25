@@ -120,7 +120,7 @@ class Calling extends EventEmitter {
   }
 
   async initializeClients() {
-    const {clientConfig, callingClientConfig, logger} = this.callingConfig;
+    const {clientConfig, callingClientConfig, callQueueClientConfig, logger} = this.callingConfig;
 
     this.callingClient = clientConfig.calling
       ? await WebexCalling.createClient(this.webex, callingClientConfig)
@@ -142,13 +142,34 @@ class Calling extends EventEmitter {
       ? WebexCalling.createCallSettingsClient(this.webex, logger)
       : undefined;
 
+    this.callQueueClient = WebexCalling.createCallQueueClient?.(
+      this.webex,
+      logger,
+      callQueueClientConfig,
+      this.callQueueClient,
+      Boolean(clientConfig.callQueue)
+    );
+
     if (clientConfig.callRecording === undefined) {
       clientConfig.callRecording = false;
     }
 
-    this.callRecordingClient = clientConfig.callRecording
-      ? WebexCalling.createCallRecordingClient(this.webex, logger)
-      : undefined;
+    try {
+      if (!clientConfig.callRecording) {
+        this.callRecordingClient = undefined;
+      } else if (typeof WebexCalling.createCallRecordingClient !== 'function') {
+        this.log.warn(
+          'createCallRecordingClient is not exported from @webex/calling; rebuild docs/samples/calling.min.js',
+          logContext
+        );
+        this.callRecordingClient = undefined;
+      } else {
+        this.callRecordingClient = WebexCalling.createCallRecordingClient(this.webex, logger);
+      }
+    } catch (error) {
+      this.log.warn(`Error occurred while initializing callRecording client ${error}`, logContext);
+      this.callRecordingClient = undefined;
+    }
   }
 
   static get createMicrophoneStream() {

@@ -20,6 +20,7 @@ import {cloneDeep, isEmpty, omit, isObject} from 'lodash';
 import uuid from 'uuid';
 import base64url from 'crypto-js/enc-base64url';
 import CryptoJS from 'crypto-js';
+import {getClientAuthenticationOptions} from './config';
 
 const OAUTH2_CSRF_TOKEN = 'oauth2-csrf-token';
 const OAUTH2_CODE_VERIFIER = 'oauth2-code-verifier';
@@ -474,7 +475,7 @@ const Authorization = WebexPlugin.extend({
 
     location.query.state = decodeState(location.query.state || 'e30');
 
-    this._verifySecurityToken(location.query, {requireMatch: true});
+    this._verifySecurityToken(location.query);
     this._cleanUrl(location);
 
     const {
@@ -544,16 +545,16 @@ const Authorization = WebexPlugin.extend({
       form.code_verifier = options.codeVerifier;
     }
 
+    const {form: clientForm = {}, ...clientAuthentication} = getClientAuthenticationOptions(
+      this.config
+    );
+
     return this.webex
       .request({
         method: 'POST',
         uri: this.config.tokenUrl,
-        form,
-        auth: {
-          user: this.config.client_id,
-          pass: this.config.client_secret,
-          sendImmediately: true,
-        },
+        form: {...form, ...clientForm},
+        ...clientAuthentication,
         shouldRefreshAccessToken: false, // This is the token acquisition call itself
       })
       .then((res) => {
@@ -943,29 +944,20 @@ const Authorization = WebexPlugin.extend({
    * - Ensure state + state.csrf_token exist.
    * - Compare values; throw descriptive errors on mismatch / absence.
    *
-   * If no stored token (e.g., user navigated directly), silently returns
-   * unless `options.requireMatch` is `true`, in which case absence of a
-   * stored token is treated as a CSRF failure.
+   * If no stored token exists, treats the callback as a CSRF failure.
    *
    * @instance
    * @memberof AuthorizationBrowserFirstParty
    * @param {Object} query - Parsed query (location.query)
-   * @param {Object} [options]
-   * @param {boolean} [options.requireMatch=false] - When true, throws if
-   *   no stored sessionToken is present.
    * @private
    * @returns {void}
    */
-  _verifySecurityToken(query, options = {}) {
+  _verifySecurityToken(query) {
     const sessionToken = this.webex.getWindow().sessionStorage.getItem(OAUTH2_CSRF_TOKEN);
 
     this.webex.getWindow().sessionStorage.removeItem(OAUTH2_CSRF_TOKEN);
     if (!sessionToken) {
-      if (options.requireMatch) {
-        throw new Error('CSRF token missing from session storage');
-      }
-
-      return;
+      throw new Error('CSRF token missing from session storage');
     }
 
     if (!query.state?.csrf_token) {

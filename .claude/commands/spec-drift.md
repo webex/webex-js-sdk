@@ -1,45 +1,46 @@
 # Spec Drift Detection — Full Scan
 
-Run a comprehensive validation of all SDD ai-docs against actual source code. Deploys a parallel agent team to catch documentation drift across 7 categories.
+Run a comprehensive validation of all contact-center SDD specs against actual source code. Deploys a parallel agent team to catch documentation drift across 7 categories.
 
 ## Step 1: Auto-Discovery
 
-Detect repo type and discover all ai-docs:
+Discover every spec from the package manifest, `packages/@webex/contact-center/.sdd/manifest.json`:
 
 1. **Repo detection**: This is ccSDK — `packages/@webex/contact-center/` exists
-2. **Root AGENTS.md**: `packages/@webex/contact-center/AGENTS.md`
-3. **Framework docs**: `packages/@webex/contact-center/ai-docs/` (README, RULES, patterns/*, templates/*)
-4. **Service-level ai-docs**: Glob for `packages/@webex/contact-center/**/ai-docs/` to find all ai-docs folders
-5. **Source root**: `packages/@webex/contact-center/src/`
+2. **Module specs**: each `modules[]` entry gives a source `path` and its `canonical_spec` (normally `<path>/docs/README.md`), both relative to the package root
+3. **Package docs**: `AGENTS.md`, `docs/index.md`, `docs/architecture.md`, `docs/getting-started.md`, `docs/specs/README.md` (module registry), and `docs/adr/*.md`
+4. **Source root**: `packages/@webex/contact-center/src/`
 
-For each ai-docs folder found, identify its corresponding source code directory (the parent directory of `ai-docs/`).
+A module spec covers the files under its `path` except those owned by a deeper module (for example `src/services/task/state-machine` has its own spec).
 
-Build an inventory (example — actual results will vary based on current branch):
+Build an inventory:
+```bash
+(cd packages/@webex/contact-center && python3 -c "import json; [print(m['canonical_spec'], '->', m['path']) for m in json.load(open('.sdd/manifest.json'))['modules']]")
 ```
-ai-docs folder                                          → source directory
-packages/@webex/contact-center/src/services/core/ai-docs/    → src/services/core/
-packages/@webex/contact-center/src/services/config/ai-docs/  → src/services/config/
-packages/@webex/contact-center/src/services/task/ai-docs/    → src/services/task/
-packages/@webex/contact-center/src/services/agent/ai-docs/   → src/services/agent/
-packages/@webex/contact-center/playwright/ai-docs/           → playwright/
-... (discover all that exist on the current branch)
+```
+module spec                                         → source directory
+src/docs/README.md                                  → src/
+src/services/core/docs/README.md                    → src/services/core/
+src/services/task/docs/README.md                    → src/services/task/
+src/services/task/state-machine/docs/README.md      → src/services/task/state-machine/
+... (every module listed in the manifest)
 ```
 
 ## Step 2: Spawn Checker Agents in Parallel
 
 Use the Agent tool to spawn agents. **All agents run in parallel.**
 
-### Per-Service Checker Agents (one per ai-docs folder)
+### Per-Module Checker Agents (one per module spec)
 
-For EACH ai-docs folder discovered, spawn one Explore agent with this prompt:
+For EACH module spec discovered, spawn one Explore agent with this prompt:
 
 ```
 You are validating SDD documentation accuracy.
 
-SOURCE OF TRUTH (actual code): {source_code_directory}
-DOCS TO VALIDATE: {ai_docs_folder}
+SOURCE OF TRUTH (actual code): {module path; files owned by a deeper module in .sdd/manifest.json belong to that module's spec}
+DOCS TO VALIDATE: {module spec path}
 
-Read every markdown file in the ai-docs folder. For each document, check these 7 categories:
+Read the spec. Check these 7 categories:
 
 ### Category 1: FILE TREE
 Read any documented file/directory trees in the docs. Glob the actual directory. Report:
@@ -92,7 +93,7 @@ For every inline code block or code snippet:
 ## Output Format
 
 For each finding, report:
-- **File**: (path to the ai-docs file with the issue)
+- **File**: (path to the spec with the issue)
 - **Line/Section**: (approximate line number or section heading)
 - **Category**: (1-7 from above)
 - **Severity**:
@@ -107,38 +108,29 @@ For each finding, report:
 If no issues found in a category, state "No issues found" for that category.
 ```
 
-### Framework Agent
+### Package Docs Agent
 
-Spawn one additional Explore agent for root-level framework validation:
+Spawn one additional Explore agent for the package-level docs:
 
 ```
-Validate the root-level SDD framework documents for packages/@webex/contact-center/:
+Validate the package-level SDD documents for packages/@webex/contact-center/:
 
-1. **Root AGENTS.md** (packages/@webex/contact-center/AGENTS.md):
-   - Service Routing Table: Every service listed must exist on disk at the documented path
-   - Every actual service directory under src/services/ should be listed
-   - Task classification types must be consistent with template directories that exist
-   - Quick Start Workflow steps must reference files that exist
+1. **AGENTS.md**:
+   - Every module and spec it routes to must exist on disk at the documented path
+   - Every module in .sdd/manifest.json should be reachable from it
+   - Commands must match `commands` in .sdd/manifest.json and package.json scripts (test:unit, test:style, not test:styles)
 
-2. **ai-docs/RULES.md**:
-   - Test commands: Verify yarn workspace commands are correct (test:unit, test:style, not test:styles)
-   - Naming conventions: Verify claims against actual code
-   - Pattern references: All referenced patterns should exist
+2. **docs/specs/README.md** (module registry):
+   - One row per manifest module; each spec link must resolve
 
-3. **ai-docs/README.md**:
-   - File tree must match actual ai-docs directory structure
-   - All referenced documents must exist
+3. **docs/architecture.md** and **docs/getting-started.md**:
+   - Contract IDs must match `contract_catalog` in .sdd/manifest.json
+   - Naming, event, and type-location claims (public in src/types.ts, internal in services/*/types.ts) must match code
+   - Setup and test steps must reference correct commands and configs
 
-4. **ai-docs/patterns/*.md**:
-   - Each pattern file's code examples must match actual source conventions
-   - Event patterns must use correct trigger vs emit based on class type
-   - Type location claims (public in src/types.ts, internal in services/*/types.ts) must be accurate
-   - Test patterns must reference correct commands and configs
-
-5. **ai-docs/templates/**:
-   - Cross-references to AGENTS.md sections must be valid
-   - Referenced file paths in templates must exist
-   - Workflow steps must be internally consistent
+4. **docs/index.md** and **docs/adr/*.md**:
+   - All referenced documents and file paths must exist
+   - ADR status and cross-references must be internally consistent
 
 For each finding, report:
 - **File**: (path)
@@ -157,14 +149,14 @@ After ALL agents complete, consolidate into this report format:
 ```markdown
 ## Spec Drift Report — ccSDK (@webex/contact-center)
 Generated: {date}
-Scanned: {N} ai-docs folders, {M} documents
+Scanned: {N} module specs, {M} package docs
 
 ### Summary
 
-| ai-docs Folder | Findings | Blocking | Important | Medium | Minor |
+| Spec           | Findings | Blocking | Important | Medium | Minor |
 |----------------|----------|----------|-----------|--------|-------|
-| (each folder)  |          |          |           |        |       |
-| framework      |          |          |           |        |       |
+| (each spec)    |          |          |           |        |       |
+| package docs   |          |          |           |        |       |
 | **Total**      | **N**    |          |           |        |       |
 
 ### Blocking Findings
@@ -190,5 +182,5 @@ Scanned: {N} ai-docs folders, {M} documents
 - Use the Agent tool with `subagent_type: "Explore"` for all checker agents
 - Run all agents in parallel for speed
 - If an agent does not return within a reasonable time, note it as "Timed out — manual review needed" in the report and continue with available results
-- If an ai-docs folder has no corresponding source directory, flag it as a Category 1 (File Tree) finding
+- If a manifest module has no source directory or its `canonical_spec` is missing, flag it as a Category 1 (File Tree) finding
 - Count findings by severity in the summary table

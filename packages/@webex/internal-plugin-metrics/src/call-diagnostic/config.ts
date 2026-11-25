@@ -8,6 +8,8 @@ export const CALL_DIAGNOSTIC_LOG_IDENTIFIER = 'call-diagnostic-events -> ';
 export const CALL_FEATURE_LOG_IDENTIFIER = 'call-diagnostic-events-feature -> ';
 
 export const AUTHENTICATION_FAILED_CODE = 1010;
+export const LOCUS_RATE_LIMITED_OUTGOING_CLIENT_CODE = 1002;
+export const LOCUS_UNAVAILABLE_CLIENT_CODE = 1003;
 export const NETWORK_ERROR = 1026;
 export const NEW_LOCUS_ERROR_CLIENT_CODE = 4008;
 export const MEETING_INFO_LOOKUP_ERROR_CLIENT_CODE = 4100;

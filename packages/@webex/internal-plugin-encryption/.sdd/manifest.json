@@ -1,0 +1,490 @@
+{
+  "manifest_version": 1,
+  "repository": {
+    "name": "@webex/internal-plugin-encryption",
+    "purpose": "Internal plugin registered as webex.internal.encryption that encrypts and decrypts Webex content with keys held by the Key Management Service (KMS). Encryption wraps text and binary data as JWE and files as SCRs, fetches each key from KMS once, and caches it, private key material included, in the SDK unbounded storage. Its child webex.internal.encryption.kms negotiates an ECDH session with KMS, wraps every KMS request (resources, authorizations, unbound keys, customer master keys), batches the requests to the encryption service, and matches the responses that arrive as Mercury encryption.kms_message events. Before negotiating, it validates the KMS static key: the mandatory key checks always run, and certificate-chain trust is checked only when shouldValidateKMSCertificate is true, against configured roots or the signed Cisco Union bundle shipped in assets/. Optional report-only checks only emit metrics. Registered payload transforms wrap outbound kmsMessage bodies, unwrap inbound ones, and turn DRY error responses into DryError. KMS failures reject with KmsError, KmsTimeoutError, or KMSError.",
+    "category": "cat2-legacy",
+    "primary_languages": [
+      "javascript"
+    ]
+  },
+  "topology": "Orchestrator-plus-components",
+  "commands": {
+    "install": {
+      "command": "yarn",
+      "source_file": "../../../.github/workflows/deploy.yml",
+      "role": "install"
+    },
+    "compile": {
+      "command": "yarn workspace @webex/internal-plugin-encryption build",
+      "source_file": "package.json",
+      "role": "compile"
+    },
+    "build": {
+      "command": "yarn workspace @webex/internal-plugin-encryption build:src",
+      "source_file": "package.json",
+      "role": "package"
+    },
+    "unit-test": {
+      "command": "yarn workspace @webex/internal-plugin-encryption test:unit",
+      "source_file": "package.json",
+      "role": "unit-test"
+    },
+    "lint": {
+      "command": "yarn workspace @webex/internal-plugin-encryption test:style",
+      "source_file": "package.json",
+      "role": "lint"
+    },
+    "integration-test": {
+      "command": "yarn workspace @webex/internal-plugin-encryption test:integration",
+      "source_file": "package.json",
+      "role": "integration-test"
+    },
+    "browser-test": {
+      "command": "yarn workspace @webex/internal-plugin-encryption test:browser",
+      "source_file": "package.json",
+      "role": "other"
+    },
+    "assets-refresh": {
+      "command": "yarn workspace @webex/internal-plugin-encryption assets:refresh",
+      "source_file": "package.json",
+      "role": "other"
+    },
+    "deploy": {
+      "command": "yarn workspace @webex/internal-plugin-encryption deploy:npm",
+      "source_file": "package.json",
+      "role": "deploy"
+    }
+  },
+  "tests": {
+    "unit": {
+      "command_ref": "unit-test",
+      "dir": "test/unit/spec",
+      "framework": "jest"
+    },
+    "integration": {
+      "command_ref": "integration-test",
+      "dir": "test/integration/spec",
+      "framework": "mocha"
+    }
+  },
+  "toolchain": [
+    {
+      "name": "node",
+      "version": ">=18",
+      "origin": "repo-config",
+      "source_file": "package.json"
+    },
+    {
+      "name": "node",
+      "version": "22.14",
+      "origin": "repo-config",
+      "source_file": "../../../AGENTS.md"
+    },
+    {
+      "name": "node",
+      "version": "lts/jod",
+      "origin": "repo-config",
+      "source_file": "../../../.nvmrc"
+    },
+    {
+      "name": "node",
+      "version": "18.x",
+      "origin": "repo-config",
+      "source_file": "../../../package.json"
+    },
+    {
+      "name": "yarn",
+      "version": "3.4.1",
+      "origin": "repo-config",
+      "source_file": "../../../package.json"
+    },
+    {
+      "name": "babel",
+      "version": "^7.17.10",
+      "origin": "repo-config",
+      "source_file": "package.json"
+    },
+    {
+      "name": "eslint",
+      "version": "^8.24.0",
+      "origin": "repo-config",
+      "source_file": "package.json"
+    },
+    {
+      "name": "prettier",
+      "version": "^2.7.1",
+      "origin": "repo-config",
+      "source_file": "package.json"
+    }
+  ],
+  "quality_gates": {
+    "code_coverage": {
+      "origin": "none",
+      "declared_by": "rarajes2@cisco.com via the bootstrap questionnaire (generator check: test:unit runs webex-legacy-tools with --runner jest; jest.config.js re-exports @webex/jest-config-legacy, which sets no coverageThreshold; package.json defines no coverage script, so the pull-request Test - Coverage job runs nothing for this package)"
+    }
+  },
+  "coverage_status_definitions": {
+    "specced": ">=80% public surface specced, drift <5% - spec is authoritative",
+    "partial": "40-80% specced - spec is a hint, cross-check code",
+    "untracked": "<40% specced - code is the source of truth"
+  },
+  "spec_source_policy": {
+    "mode": "keep-separate",
+    "migrated_source_disposition": "retain",
+    "disposition_decided_by": "rarajes2@cisco.com",
+    "disposition_decided_at": "2026-11-16T05:39:00Z",
+    "decided_by": "rarajes2@cisco.com",
+    "decided_at": "2026-11-16T05:39:00Z",
+    "decision_record": "docs/adr/0001-retain-product-readme.md"
+  },
+  "spec_sources": [
+    {
+      "path": "README.md",
+      "scope": "repo",
+      "role": "reference-only",
+      "canonical": false,
+      "use_by_agents": "context-only",
+      "post_migration_action": "retain",
+      "deletion_status": "not-applicable",
+      "notes": "npm page, kept unchanged under keep-separate. Its usage snippet reads webex.internal.encryption.WHATEVER. Its KMS certificate validation guide (configuration, the enforced and report-only behavior table, asset verification and caching, metrics, hosting, offline roots, refreshing the bundle) agrees with src/kms.js, src/config.js, and src/caroots-asset*.js as of this onboarding; the module specification restates that behavior from code. See docs/adr/0001-retain-product-readme.md."
+    },
+    {
+      "path": "assets/README.md",
+      "scope": "repo",
+      "role": "reference-only",
+      "canonical": false,
+      "use_by_agents": "context-only",
+      "post_migration_action": "retain",
+      "deletion_status": "not-applicable",
+      "notes": "Maintainer note for the shipped Union bundle, kept unchanged. It says the SDK downloads the bundle on first KMS use; in Node, src/caroots-asset.js reads the packaged copy first. Its UMD copy claim is owned by the workspace build, not this package. See docs/adr/0001-retain-product-readme.md."
+    }
+  ],
+  "modules": [
+    {
+      "path": "src",
+      "canonical_spec": "src/docs/README.md",
+      "coverage_status": "Partial",
+      "coverage_evidence": "Field coverage 100% (17/17) assessed 2026-11-16 by the generator; critical field coverage 8/8. On a current install (yarn and yarn prebuild:modules at the workspace root), build:src and test:unit pass: 4 suites, 92 of 92 jest cases (2026-11-16T05:54:18Z). The unit cases cover certificate validation, the CA-roots policy and cache, fetchKey redirects, the CMK requests, KMS errors, the revoke trigger, _fetchDownloadUrl, and the binary-data JWE methods; there is no unit case for the payload transforms, the batcher, request retries, processKmsMessageEvent, getKey caching, or the SCR methods. test:integration (mocha, needs the CI test-user secrets) was not run by the generator. test:style exits 0 (13 warnings; src/kms.js is never linted). Independent validation passed on 2026-11-16 (0 Blocking, 0 findings; previous finding VAL-001 closed after 92 of 92 current-install unit tests passed), using validator runtime 01a1e2e3-e45b-7a33-bbd8-125f8d07b508. The module remains Partial pending unit cases for the untested requirements, a characterization baseline, and promotion review.",
+      "last_assessed": "2026-11-16",
+      "contracts": {
+        "provides": [
+          "internal-plugin-encryption-sdk",
+          "encryption-key-cache-entry",
+          "encryption-kms-events",
+          "cisco-union-bundle"
+        ],
+        "requires": [
+          "kms-encryption-service-http",
+          "mercury-kms-message-events",
+          "node-kms-message-format",
+          "kms-caroots-verifier",
+          "webex-core-plugin-host",
+          "webex-core-batcher",
+          "webex-core-static-asset-loader",
+          "webex-core-storage",
+          "common-utilities",
+          "internal-plugin-device-registration",
+          "internal-plugin-metrics-client-metrics",
+          "files-download-endpoints-http"
+        ]
+      },
+      "section_profile": {
+        "has_tiers": false,
+        "has_ui": false,
+        "crosses_service_boundaries": true,
+        "holds_client_state": true,
+        "enforces_domain_rules": true,
+        "is_concurrent_async": true,
+        "owns_persistence": true,
+        "stateful_transitions": true,
+        "exposes_wire_protocol": true,
+        "ui_multi_screen": false,
+        "large_data_model": false,
+        "returns_caller_errors": true,
+        "module_specific_conventions": true,
+        "published_package": true,
+        "embedded_in_host": false,
+        "has_design_tradeoff": true,
+        "resolved_by": "claude-code (code evidence; bootstrap questionnaire)",
+        "resolved_at": "2026-11-16T05:39:00Z",
+        "has_submodules": false,
+        "has_submodules_computed_by": "scripts/module_tree.py",
+        "has_submodules_computed_at": "2026-11-16T05:39:00Z"
+      }
+    }
+  ],
+  "contract_catalog": {
+    "index_path": "docs/architecture.md",
+    "definitions": {
+      "internal-plugin-encryption-sdk": {
+        "kind": "sdk",
+        "publication": "published",
+        "source_kind": "repository-path",
+        "source": "package.json",
+        "summary": "Published npm package (internal plugin). main is dist/index.js and devMain is src/index.js; the browser field swaps caroots-asset and ensure-buffer for browser builds; no type declarations are published. Importing it imports @webex/internal-plugin-device and @webex/internal-plugin-mercury and registers Encryption as internal plugin 'encryption' with its config, three payload predicates and transforms (encryptKmsMessage, decryptKmsMessage, decryptErrorResponse), and, only when NODE_ENV is test, KmsDryErrorInterceptor. The entry exports the default Encryption, KMS, KmsError, and DryError. webex.internal.encryption exposes encryptText, decryptText, encryptBinaryData, decryptBinaryData, encryptScr, decryptScr, encryptBinary, decryptBinary, download, getKey, and processKmsMessageEvent; webex.internal.encryption.kms exposes the KMS request methods; config lives under webex.config.encryption. Specified in src/docs/README.md."
+      },
+      "encryption-key-cache-entry": {
+        "kind": "file",
+        "publication": "internal",
+        "source_kind": "repository-path",
+        "source": "src/encryption.js",
+        "summary": "getKey stores each fetched key in the plugin's unbounded storage (webex-core plugin store, namespace Encryption) under the key URI, or under the key URI plus /onBehalfOf/ plus a user id, as JSON.stringify of the KMS key object with its JWK serialized by toJSON(true), so private key material is included. No version field, TTL, or eviction exists; an unreadable entry is replaced by a fresh KMS fetch."
+      },
+      "encryption-kms-events": {
+        "kind": "event",
+        "publication": "internal",
+        "source_kind": "repository-path",
+        "source": "src/kms-errors.js",
+        "summary": "webex.internal.encryption triggers event:kms:key:revoke:encryption:failure when a KMS response item has status 405 and errorCode 405005 or 405006 (src/constants.js, src/kms-batcher.js). src/kms.js triggers client:InvalidRequestError on the webex instance when a request fails with KMSError. No in-repository source listens for either event."
+      },
+      "kms-encryption-service-http": {
+        "kind": "http",
+        "publication": "internal",
+        "source_kind": "external",
+        "source": "Webex encryption service (catalog service name encryption; route definitions are not in this repository)",
+        "summary": "GET kms/<userId> answers {kmsCluster, rsaPublicKey}, where rsaPublicKey is a JSON string holding the KMS static JWK (kid, kty, n, e, x5c). POST kms/messages takes {destination: kmsCluster, kmsMessages: [wrapped JWE]}; its HTTP response is ignored, and each KMS response arrives later over Mercury."
+      },
+      "mercury-kms-message-events": {
+        "kind": "event",
+        "publication": "internal",
+        "source_kind": "external",
+        "source": "@webex/internal-plugin-mercury (workspace package; module spec consulted: packages/@webex/internal-plugin-mercury/src/docs/README.md, autowiring rule; code consulted: src/mercury.js)",
+        "summary": "Mercury routes an envelope whose data.eventType is encryption.kms_message to webex.internal.encryption.processKmsMessageEvent(data), where data.encryption.kmsMessages holds the wrapped responses; handler errors are logged by Mercury and not rethrown. mercury.connect() resolves at once when connected, joins an in-flight connect, and registers the device first. The mercury spec is stale on its multi-session API, which this package does not use."
+      },
+      "node-kms-message-format": {
+        "kind": "sdk",
+        "publication": "published",
+        "source_kind": "external",
+        "source": "node-kms npm package (^0.4.1 in package.json; not in this repository)",
+        "summary": "Context (clientInfo, serverInfo, ephemeralKey, createECDHKey, deriveEphemeralKey), Request (wrap with serverKey for the ECDHE request), and Response (unwrap). The KMS JSON request bodies (method, uri, and fields) are wrapped as compact JWE by this library."
+      },
+      "cisco-union-bundle": {
+        "kind": "file",
+        "publication": "published",
+        "source_kind": "repository-path",
+        "source": "src/union-bundle.js",
+        "summary": "Cisco Trusted Root Store Union bundle, a CMS-signed .p7b shipped as assets/ios_union-<version>.p7b and copied to dist/assets by build:assets. src/union-bundle.js (generated by scripts/refresh-union-bundle.js) names the file and sets the rollback floor UNION_BUNDLE_VERSION; the default config loads it from assetsBaseUrl (getUmdAssetsBaseUrl) or, in Node, from the packaged copy."
+      },
+      "kms-caroots-verifier": {
+        "kind": "sdk",
+        "publication": "published",
+        "source_kind": "external",
+        "source": "@webex/kms-caroots (workspace package; no spec exists; code consulted: packages/@webex/kms-caroots/verify.js and index.js)",
+        "summary": "verifyUnionBundle(bytes, {crypto, minBundleVersion}) resolves {caroots, bundleName, bundleVersion, signingTime} after checking the CMS signature against the pinned TRS bundle root, or rejects with UnionBundleVerificationError whose reason is parse, signature, attributes, name, version, signing-time, or no-certificates. loadUnionBundle({input}) exists only in the Node entry and is used by scripts/refresh-union-bundle.js."
+      },
+      "webex-core-plugin-host": {
+        "kind": "sdk",
+        "publication": "published",
+        "source_kind": "external",
+        "source": "@webex/webex-core (workspace package; module spec consulted: packages/@webex/webex-core/src/docs/README.md MOD-008, MOD-016, MOD-027, MOD-037, MOD-044, MOD-048, UC-004)",
+        "summary": "registerInternalPlugin merges config and concatenates payloadTransformer predicates and transforms; transform runs predicates by direction (outbound on requests, inbound on responses and on response errors, which then still reject); WebexPlugin gives logger, request, and config from webex.config[namespace lowercased]; interceptor create functions run with this bound to the webex instance; webex.request with service and resource goes through the interceptor chain and rejects with WebexHttpError."
+      },
+      "webex-core-batcher": {
+        "kind": "sdk",
+        "publication": "published",
+        "source_kind": "external",
+        "source": "@webex/webex-core Batcher (module spec consulted: packages/@webex/webex-core/src/docs/README.md MOD-050 to MOD-053)",
+        "summary": "Batcher.request runs fingerprintRequest, prepareItem, enqueue, and a capped debounce driven by batcherWait, batcherMaxCalls, and batcherMaxWait from the subclass namespace config; executeQueue sends up to batcherMaxCalls items through prepareRequest and submitHttpRequest; acceptItem routes each response through didItemFail to handleItemSuccess or handleItemFailure; a flush failure is fanned out and never thrown."
+      },
+      "webex-core-static-asset-loader": {
+        "kind": "sdk",
+        "publication": "published",
+        "source_kind": "external",
+        "source": "@webex/webex-core StaticAssetLoader (no webex-core spec covers it; code consulted: packages/@webex/webex-core/src/lib/static-asset-loader.ts)",
+        "summary": "new StaticAssetLoader({baseUrl}, {parent: webex}).getBytes(name) GETs the asset as a buffer without the auth header, tracking id, user agent, or redirect header, rejects a non-2xx, HTML, or non-binary response, caches one promise per URL with eviction on failure, and resolves a fresh Uint8Array. When services.validateCatalogUrls is true, the catalog URL interceptor rejects asset hosts that are not in allowedDomains."
+      },
+      "webex-core-storage": {
+        "kind": "sdk",
+        "publication": "published",
+        "source_kind": "external",
+        "source": "@webex/webex-core storage (module spec consulted: packages/@webex/webex-core/src/lib/storage/docs/README.md MOD-030)",
+        "summary": "WebexPlugin.unboundedStorage get rejects NotFoundError for a missing key; put serializes and stores the value; where it persists depends on the host's unbounded storage adapter."
+      },
+      "common-utilities": {
+        "kind": "sdk",
+        "publication": "published",
+        "source_kind": "external",
+        "source": "@webex/common and @webex/common-timers (module specs consulted: packages/@webex/common/src/docs/README.md MOD-002, MOD-003, MOD-005; packages/@webex/common-timers/src/docs/README.md MOD-001, MOD-002)",
+        "summary": "oneFlight shares one in-flight promise per method and key on an instance and evicts it when it settles; tap passes the value through after awaiting the callback's promise; proxyEvents and transferEvents forward progress events; Exception builds the message from parse; isBuffer; getUmdAssetsBaseUrl picks the development path, the webex UMD assets on unpkg, the plugin dist assets on unpkg, or the page-relative path; safeSetTimeout forwards to setTimeout and unrefs the timer."
+      },
+      "internal-plugin-device-registration": {
+        "kind": "sdk",
+        "publication": "published",
+        "source_kind": "external",
+        "source": "@webex/internal-plugin-device (workspace package; module spec consulted: packages/@webex/internal-plugin-device/src/docs/README.md MOD-001, MOD-012)",
+        "summary": "Importing the package registers internal plugin device; webex.internal.device.userId and url are set from the WDM registration body and read here for the KMS details request and the KMS client identity."
+      },
+      "internal-plugin-metrics-client-metrics": {
+        "kind": "sdk",
+        "publication": "published",
+        "source_kind": "external",
+        "source": "@webex/internal-plugin-metrics (workspace package, not declared in package.json; module spec consulted: packages/@webex/internal-plugin-metrics/src/docs/README.md MOD-008)",
+        "summary": "webex.internal.metrics.submitClientMetrics(name, payload) returns the batcher promise and throws synchronously for a missing name. This package assumes the plugin is registered by the host and guards both the throw and the rejection."
+      },
+      "files-download-endpoints-http": {
+        "kind": "http",
+        "publication": "internal",
+        "source_kind": "external",
+        "source": "Webex files service (reached on the host of the caller's file URL; route definitions are not in this repository)",
+        "summary": "POST https://<file host>/v1/download/endpoints with {endpoints: [fileUrl], allow?} answers {endpoints: {fileUrl: downloadUrl}}; the encrypted bytes are then fetched with GET from the returned URL."
+      }
+    }
+  },
+  "spec_policy": {
+    "require_what_and_why": true,
+    "require_provenance": true,
+    "protected_specs": [
+      "src/docs/README.md"
+    ]
+  },
+  "validation": {
+    "generator_runtime": "claude-code",
+    "generator_model": "claude-opus-5-5",
+    "generator_runtime_source": "host-metadata",
+    "source_commit": "4c8995f5ff3dbff82243e62e0c4dca9280acb013",
+    "base_ref": "next",
+    "minimum_independence": "different-runtime",
+    "blocking_severities": [
+      "Blocking"
+    ],
+    "validator_runtime": "01a1e2e3-e45b-7a33-bbd8-125f8d07b508",
+    "validator_runtime_source": "invocation-input",
+    "runtime_fallback_tier": "different-runtime"
+  },
+  "layout": {
+    "sdd_root": ".sdd",
+    "docs_root": "docs",
+    "agent_entry_path": "AGENTS.md",
+    "standing_docs_root": "docs",
+    "spec_index_path": "docs/specs/README.md",
+    "module_docs_strategy": "source-local",
+    "module_docs_relative_path": "docs/README.md",
+    "module_docs_decision": {
+      "basis": "repo-standards-default",
+      "reason": "No module-local documentation existed. The source-local default gives src/docs/README.md. test:style runs eslint ./src/**/*.*, and the shared @webex/eslint-config-legacy ignore patterns exclude docs/** and *.md; build:src processes -js -ts only and build:assets copies only assets/, so Markdown under src/ does not enter dist/.",
+      "decided_by": "rarajes2@cisco.com (bootstrap questionnaire)",
+      "decided_at": "2026-11-16T05:39:00Z"
+    },
+    "repo_context_decision": {
+      "path": ".repo-context.json",
+      "schema_path": "schemas/repo-context.schema.json",
+      "action": "create",
+      "schema_action": "create",
+      "reason": "Neither the operational context nor its schema existed in this package. The context is created from package evidence and the schema is copied from the repository-root .sdd/templates/repo-standards/schemas/repo-context.schema.json.",
+      "decided_by": "rarajes2@cisco.com (bootstrap questionnaire)",
+      "decided_at": "2026-11-16T05:39:00Z"
+    },
+    "artifact_decisions": [
+      {
+        "path": "docs/service.md",
+        "action": "omit",
+        "reason": "Library package, not a deployable service. package.json has no start script, container, or deployment descriptor.",
+        "decided_by": "claude-code (code evidence)",
+        "decided_at": "2026-11-16T05:39:00Z"
+      },
+      {
+        "path": "mkdocs.yml",
+        "action": "omit",
+        "reason": "No package-level documentation site exists. Documentation publishing stays with the workspace.",
+        "decided_by": "claude-code (code evidence)",
+        "decided_at": "2026-11-16T05:39:00Z"
+      },
+      {
+        "path": "api-specs/openapi.yaml",
+        "action": "omit",
+        "reason": "The package serves no HTTP routes. It is a client of the encryption service, KMS, and the files service; its published surface is the npm export described by internal-plugin-encryption-sdk.",
+        "decided_by": "claude-code (code evidence)",
+        "decided_at": "2026-11-16T05:39:00Z"
+      },
+      {
+        "path": "SECURITY.md",
+        "action": "omit",
+        "reason": "No package-level security policy exists. The workspace owns security policy, and a per-package copy would duplicate it; security architecture is described in docs/architecture.md.",
+        "decided_by": "claude-code (code evidence)",
+        "decided_at": "2026-11-16T05:39:00Z"
+      },
+      {
+        "path": "CONTRIBUTING.md",
+        "action": "omit",
+        "reason": "Contribution instructions are owned at the workspace root CONTRIBUTING.md.",
+        "decided_by": "claude-code (code evidence)",
+        "decided_at": "2026-11-16T05:39:00Z"
+      },
+      {
+        "path": "CHANGELOG.md",
+        "action": "omit",
+        "reason": "Changelog generation is owned at the workspace root. This package has no changelog file.",
+        "decided_by": "claude-code (code evidence)",
+        "decided_at": "2026-11-16T05:39:00Z"
+      },
+      {
+        "path": "CTO_CHECKLIST.yml",
+        "action": "omit",
+        "reason": "The CTO readiness checklist applies to deployable services. This package is a library.",
+        "decided_by": "claude-code (code evidence)",
+        "decided_at": "2026-11-16T05:39:00Z"
+      },
+      {
+        "path": "schemas/cto-checklist.schema.json",
+        "action": "omit",
+        "reason": "Omitted together with CTO_CHECKLIST.yml.",
+        "decided_by": "claude-code (code evidence)",
+        "decided_at": "2026-11-16T05:39:00Z"
+      }
+    ],
+    "template_roots": {
+      "canonical": ".sdd/templates/repo-standards"
+    },
+    "contract_index_path": "docs/architecture.md",
+    "repo_skills_root": ".sdd/skills",
+    "monorepo_package": {
+      "package_path": "packages/@webex/internal-plugin-encryption",
+      "root_manifest_path": "../../../.sdd/manifest.json",
+      "templates_root_path": "../../../.sdd/templates/repo-standards"
+    }
+  },
+  "tooling": {
+    "sdlc_skills": {
+      "source_ref": "repo-annotation@2.3.1"
+    }
+  },
+  "coverage_ratchet": {
+    "enabled": true,
+    "waivers": []
+  },
+  "substrate": {
+    "source": "WebexTools/repo-standards@d89a7fe59126ae3ad9bac9ca352aa7f12b4c85dc",
+    "consumed": [
+      "@webex/eslint-config-legacy via .eslintrc.js",
+      "@webex/babel-config-legacy via babel.config.js",
+      "@webex/jest-config-legacy via jest.config.js",
+      "@webex/legacy-tools build and test runner via package.json",
+      "workspace scripts/copy-plugin-assets.js via the build:assets script",
+      "package README.md and assets/README.md (context only)",
+      "Repo Standards templates at the monorepo root .sdd/templates/repo-standards, referred to through layout.monorepo_package.templates_root_path (this package holds no templates)"
+    ],
+    "compliance_tier": "baseline"
+  },
+  "section_profiles": {
+    "repo": {
+      "owns_datastore": true,
+      "holds_client_state": true,
+      "components_interact": true,
+      "domain_data_across_components": true,
+      "caches_data": true,
+      "observability_convention": true,
+      "deploys_to_infra": false,
+      "shared_base_libs": true,
+      "is_monorepo": false,
+      "multi_platform": true,
+      "published_package": true,
+      "embedded_in_host": false,
+      "cross_repo_deps_material": true,
+      "security_arch_warranted": true,
+      "exposes_commands_or_artifacts": true
+    },
+    "resolved_by": "claude-code (code evidence; bootstrap questionnaire)",
+    "resolved_at": "2026-11-16T05:39:00Z"
+  }
+}

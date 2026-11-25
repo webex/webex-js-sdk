@@ -347,8 +347,12 @@ describe('extension review regressions', () => {
       failSend();
       await drain();
 
-      // The failed send is still evidence about *its own* request.
-      assert.equal(await doomed, 'NOT_CONNECTED');
+      // Session B attaching is itself proof that session A's document is gone, and it
+      // arrives before Chrome gets around to reporting the failed send, so the doomed
+      // request is settled as `DISCONNECTED` there rather than waiting to be told
+      // `NOT_CONNECTED` by its own rejection. Either way it is session A's request that
+      // is settled, which is what this guards.
+      assert.equal(await doomed, 'DISCONNECTED');
 
       // Before the fix the cleanup removed by tab ID alone, so session A's rejection
       // deleted session B's healthy record and settled its in-flight requests as

@@ -71,16 +71,13 @@ const WIRE_ERROR_KEYS = new Set<string>(['code', 'message']);
 /**
  * Validate the `error` sub-object of a failed `RESPONSE`.
  *
- * `fromWireError` already refuses to trust an unrecognised `code`, so this is not the
- * only thing standing between a hostile peer and a consumer's `switch`. It is here so
- * the validator enforces the whole wire contract in one place: a `RESPONSE` that does
- * not carry a well-formed error is malformed, and a malformed envelope should be
- * dropped and counted at the boundary rather than quietly normalised three hops later.
- * Unknown keys are rejected too, so an error object cannot be used to smuggle fields
- * past the envelope-level key checks.
+ * A malformed one is dropped and counted at this boundary rather than quietly
+ * normalised downstream (`fromWireError` separately refuses to trust an unrecognised
+ * `code`). Unknown keys are rejected too, so an error object can't smuggle fields past
+ * the envelope-level key checks.
  *
  * @param value - The `error` field of an inbound `RESPONSE`.
- * @returns Whether it is a well-formed `{code, message}` pair.
+ * @returns Whether `value` is a valid `{code, message?}` wire error.
  */
 function isValidWireError(value: unknown): boolean {
   if (typeof value !== 'object' || value === null || Array.isArray(value)) {
@@ -105,12 +102,11 @@ function isValidWireError(value: unknown): boolean {
 }
 
 /**
- * Validate an inbound value against every protocol rule.
+ * Validate an untrusted inbound value against every protocol rule.
  *
- * This runs at every hop — page inbound, content script inbound from the page,
- * content script inbound from the runtime, service worker inbound. No hop trusts an
- * upstream hop's validation, because a hop can be reached without passing through
- * the one before it.
+ * Runs at every hop (page inbound, content script inbound from either side, service
+ * worker inbound); no hop trusts an upstream hop's validation, since a hop can be
+ * reached without passing through the one before it.
  *
  * @param value - Untrusted inbound value.
  * @param context - What this hop expects.
@@ -172,10 +168,9 @@ export function validateEnvelope(value: unknown, context: ValidateContext): Vali
     return drop(DropReason.INVALID_CORRELATION_ID);
   }
 
-  // Only a `RESPONSE` correlates to anything. A `REQUEST`, `PUSH` or handshake kind
-  // carrying a correlation id is either a peer that does not implement the protocol
-  // or an attempt to have a downstream hop treat one kind as a reply to another, so
-  // the field is required to be null rather than merely ignored.
+  // Only a `RESPONSE` correlates to anything, so any other kind carrying a
+  // correlation id is required to be null rather than merely ignored — otherwise a
+  // downstream hop could be tricked into treating one kind as a reply to another.
   if (kind !== EnvelopeKind.RESPONSE && correlationId !== null) {
     return drop(DropReason.INVALID_CORRELATION_ID);
   }
@@ -192,10 +187,9 @@ export function validateEnvelope(value: unknown, context: ValidateContext): Vali
     return drop(DropReason.SESSION_MISMATCH);
   }
 
-  // Handshake kinds are what establish a session, so they are the only ones that may
-  // precede it. `HELLO` stays exempt after that too, because a new token means the peer
-  // restarted; `HELLO_ACK` does not, so an established session cannot be switched by an
-  // acknowledgement nobody asked for.
+  // Handshake kinds establish a session, so only they may precede one. `HELLO` stays
+  // exempt afterwards too (a new token means the peer restarted); `HELLO_ACK` doesn't,
+  // so an established session can't be switched by an unsolicited acknowledgement.
   const establishesSession =
     kind === EnvelopeKind.HELLO || (kind === EnvelopeKind.HELLO_ACK && context.session === null);
 

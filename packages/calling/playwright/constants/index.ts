@@ -9,6 +9,8 @@ export const CC_SERVICE_DOMAIN = 'rtw.prod-us1.rtmsprod.net';
 // Discovery
 export const REGION = 'US-EAST';
 export const COUNTRY = 'US';
+// Host of the client region lookup the SDK calls when no region/country is configured.
+export const REGION_DISCOVERY_HOST = 'sqdiscovery.webex.com';
 
 // Server region names returned in Mobius discovery response when REGION='US-EAST'.
 // These are internal server names and don't match the logical regionCode in the request.

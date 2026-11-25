@@ -239,7 +239,7 @@ describe('webex-core', () => {
         beforeEach(() => {
           services = {
             hydra: 'https://hydra-a.wbx.com',
-            u2c: 'https://u2c.wbx2.com/u2c/api/v1',
+            u2c: 'https://u2c.svc.webex.com/u2c/api/v1',
             example: 'https://service.example.com',
           };
 
@@ -544,6 +544,41 @@ describe('webex-core', () => {
                 .then((err2) => {
                   assert.equal(err2, err);
                 });
+            });
+          });
+
+          it('marks a refresh 403 after a 401 with the original catalog status', () => {
+            webex.config.credentials.refreshCallback = sinon.stub();
+            webex.credentials.supertoken = new Token(
+              {
+                access_token: 'ST1',
+                refresh_token: 'RT1',
+              },
+              {parent: webex}
+            );
+
+            const refreshError = new Error('forbidden');
+
+            refreshError.statusCode = 403;
+            sinon.stub(webex.credentials, 'refresh').rejects(refreshError);
+
+            const err = new WebexHttpError.Unauthorized({
+              statusCode: 401,
+              options: {
+                headers: {
+                  trackingid: 'blarg',
+                },
+                uri: `${config.services.discovery.hydra}/ping`,
+              },
+              body: {
+                error: 'fake error',
+              },
+            });
+
+            return assert.isRejected(interceptor.onResponseError(err.options, err)).then((err2) => {
+              assert.equal(err2, refreshError);
+              assert.equal(err2.statusCode, 403);
+              assert.equal(err2.catalogAuthStatus, 401);
             });
           });
 

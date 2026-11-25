@@ -12,6 +12,12 @@ export type Mode = 'node' | 'yarn';
  */
 export interface Options {
   /**
+   * Whether to use only committed changes for documentation-only detection.
+   * Applies when `since` is provided.
+   */
+  committed?: boolean;
+
+  /**
    * Compatability mode for finalized output.
    *
    * @remarks

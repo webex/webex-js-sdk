@@ -1,4 +1,6 @@
 /* eslint-disable no-underscore-dangle */
+import fs from 'fs';
+import path from 'path';
 import {v4 as uuid} from 'uuid';
 import {CallingPartyInfo, MessageInfo} from '../Voicemail/types';
 import {Call} from '../CallingClient/calling';
@@ -50,7 +52,6 @@ import {
   getXsiActionEndpoint,
   getVgActionEndpoint,
   filterMobiusUris,
-  modifySdpForIPv4,
   uploadLogs,
   handleCallingClientErrors,
   resolveCallingBackend,
@@ -86,6 +87,12 @@ const mockRestoreCb = jest.fn();
 const mock429RetryCb = jest.fn();
 const mockSessionSupersededCb = jest.fn();
 
+const retryAfterCases = [
+  {headers: {'retry-after': '120'}, retryAfter: 120},
+  {headers: {'Retry-After': '120'}, retryAfter: 120},
+  {headers: {'retry-after': '0', 'Retry-After': '120'}, retryAfter: 0},
+];
+
 const webex = getTestUtilsWebex();
 SDKConnector.setWebex(webex);
 webex.internal.metrics.submitClientMetrics = mockSubmitRegistrationMetric;
@@ -116,6 +123,42 @@ describe('Mobius service discovery tests', () => {
     expect(filteredUris.primary[0]).toBe(defaultMobiusUrl + callingContext);
 
     expect(filteredUris.backup.length).toBe(0);
+  });
+
+  it('filterMobiusUris drops untrusted wss hosts', () => {
+    const defaultMobiusUrl = 'https://mobius.webex.com/api/v1/calling/web';
+    const discoveryResponse = getMobiusDiscoveryResponse();
+
+    discoveryResponse.primary.wss = [
+      'wss://mobius-dfw.webex.com/socket',
+      'wss://evil.example.com/socket',
+    ];
+    discoveryResponse.backup.wss = [
+      'wss://mobius-sjc.webex.com/socket',
+      'wss://attacker.example.org/socket',
+    ];
+
+    const filteredUris = filterMobiusUris(discoveryResponse, defaultMobiusUrl);
+
+    expect(filteredUris.primaryWss).toHaveLength(1);
+    expect(filteredUris.primaryWss[0]).toBe('wss://mobius-dfw.webex.com/socket');
+    expect(filteredUris.backupWss).toHaveLength(1);
+    expect(filteredUris.backupWss[0]).toBe('wss://mobius-sjc.webex.com/socket');
+  });
+
+  it('filterMobiusUris drops malformed/unparseable wss hosts', () => {
+    const defaultMobiusUrl = 'https://mobius.webex.com/api/v1/calling/web';
+    const discoveryResponse = getMobiusDiscoveryResponse();
+
+    discoveryResponse.primary.wss = ['wss://mobius-dfw.webex.com/socket', 'wss://', 'not a url'];
+    discoveryResponse.backup.wss = ['not a url', 'wss://mobius-sjc.webex.com/socket'];
+
+    const filteredUris = filterMobiusUris(discoveryResponse, defaultMobiusUrl);
+
+    expect(filteredUris.primaryWss).toHaveLength(1);
+    expect(filteredUris.primaryWss[0]).toBe('wss://mobius-dfw.webex.com/socket');
+    expect(filteredUris.backupWss).toHaveLength(1);
+    expect(filteredUris.backupWss[0]).toBe('wss://mobius-sjc.webex.com/socket');
   });
 });
 
@@ -185,14 +228,14 @@ describe('Call Tests - keepalive (handleCallEstablished) cases', () => {
     expect(retrySpy).not.toHaveBeenCalled();
   });
 
-  it('500 during keepalive with retry-after triggers retryCb with interval', async () => {
+  it.each(retryAfterCases)('500 keepalive honors $headers', async ({headers, retryAfter}) => {
     let emitted = false;
     const endSpy = jest.fn();
     const retrySpy = jest.fn();
 
     const payload = <WebexRequestPayload>(<unknown>{
       statusCode: 500,
-      headers: {trackingid: 't', 'retry-after': 2},
+      headers: {trackingid: 't', ...headers},
       body: {device: {deviceId: 'd'}, errorCode: 0},
     });
 
@@ -211,7 +254,7 @@ describe('Call Tests - keepalive (handleCallEstablished) cases', () => {
 
     expect(emitted).toBe(true);
     expect(endSpy).not.toHaveBeenCalled();
-    expect(retrySpy).toHaveBeenCalledWith(2);
+    expect(retrySpy).toBeCalledOnceWith(retryAfter);
   });
 
   it('500 during keepalive without retry-after triggers retryCb without args', async () => {
@@ -268,13 +311,13 @@ describe('Call Tests - keepalive (handleCallEstablished) cases', () => {
     expect(retrySpy).not.toHaveBeenCalled();
   });
 
-  it('503 during keepalive with retry-after does not invoke emitterCb and retries with interval', async () => {
+  it.each(retryAfterCases)('503 keepalive honors $headers', async ({headers, retryAfter}) => {
     let emitted = false;
     const retrySpy = jest.fn();
 
     const payload = <WebexRequestPayload>(<unknown>{
       statusCode: 503,
-      headers: {trackingid: 't', 'retry-after': 7},
+      headers: {trackingid: 't', ...headers},
       body: {device: {deviceId: 'd'}, errorCode: 0},
     });
 
@@ -292,7 +335,7 @@ describe('Call Tests - keepalive (handleCallEstablished) cases', () => {
 
     expect(abort).toBe(false);
     expect(emitted).toBe(false);
-    expect(retrySpy).toHaveBeenCalledWith(7);
+    expect(retrySpy).toBeCalledOnceWith(retryAfter);
   });
 
   it('503 during keepalive without retry-after invokes emitterCb and triggers retryCb without args', async () => {
@@ -604,6 +647,20 @@ describe('Registration Tests', () => {
 
     expect(logSpy).toHaveBeenCalledWith(`Status code: -> ${codeObj.statusCode}`, logObj);
     expect(logSpy).toHaveBeenCalledWith(codeObj.logMsg, logObj);
+  });
+
+  it.each(retryAfterCases)('429 honors $headers', async ({headers, retryAfter}) => {
+    const webexPayload = <WebexRequestPayload>(<unknown>{
+      statusCode: ERROR_CODE.TOO_MANY_REQUESTS,
+      headers,
+    });
+
+    await handleRegistrationErrors(webexPayload, mockEmitterCb, logObj, {
+      retry429Cb: mock429RetryCb,
+    });
+
+    expect(mock429RetryCb).toBeCalledOnceWith(retryAfter, logObj.method);
+    expect(mockEmitterCb).not.toHaveBeenCalled();
   });
 
   it('verify 409 response for a caller that does not handle a superseded session', async () => {
@@ -1498,6 +1555,41 @@ describe('resolveContact tests', () => {
     });
   });
 
+  it('resolveContact escapes SCIM filter injection in userExternalId', async () => {
+    const callingPartyInfo = {} as CallingPartyInfo;
+    const injectionPayload = 'x" or userName pr "';
+    const webexSpy = jest.spyOn(webex, 'request').mockResolvedValueOnce({
+      statusCode: 200,
+      body: getSampleScimResponse(),
+    });
+
+    callingPartyInfo.userExternalId = {$: injectionPayload};
+    await resolveContact(callingPartyInfo);
+
+    // After escaping: backslash → \\ then double-quote → \"
+    const escapedValue = injectionPayload.replace(/\\/g, '\\\\').replace(/"/g, '\\"');
+    const expectedQuery = scimUrl + encodeURIComponent(`id eq "${escapedValue}"`);
+
+    expect(webexSpy).toHaveBeenCalledWith(expect.objectContaining({uri: expectedQuery}));
+  });
+
+  it('legitimate externalId still resolves', async () => {
+    const callingPartyInfo = {} as CallingPartyInfo;
+    const legitimateId = '69fde5ad-fb8b-4a1b-9998-b0999e95719b';
+    const webexSpy = jest.spyOn(webex, 'request').mockResolvedValueOnce({
+      statusCode: 200,
+      body: getSampleScimResponse(),
+    });
+
+    callingPartyInfo.userExternalId = {$: legitimateId};
+    await resolveContact(callingPartyInfo);
+
+    // A UUID contains no SCIM metacharacters; the query string is unchanged
+    const expectedQuery = scimUrl + encodeURIComponent(`id eq "${legitimateId}"`);
+
+    expect(webexSpy).toHaveBeenCalledWith(expect.objectContaining({uri: expectedQuery}));
+  });
+
   it('Resolve with minimal response from SCIM', () => {
     const callingPartyInfo = {} as CallingPartyInfo;
     const scimResponse = getSampleMinimumScimResponse();
@@ -1671,6 +1763,38 @@ describe('Store and Fetch voicemail tests', () => {
       vmListStorage[key] = value;
     });
     global.Storage.prototype.getItem = jest.fn((key) => vmListStorage[key]);
+  });
+
+  it('storeVoicemailList/fetchVoicemailList JSDoc omits encrypted/decrypted labeling', () => {
+    const utilsSource = fs.readFileSync(path.resolve(__dirname, 'Utils.ts'), 'utf8');
+
+    const extractJsDoc = (functionName: string): string => {
+      const exportIndex = utilsSource.indexOf(`export function ${functionName}(`);
+
+      if (exportIndex === -1) {
+        return '';
+      }
+
+      const beforeExport = utilsSource.slice(0, exportIndex);
+      const jsDocStart = beforeExport.lastIndexOf('/**');
+      const jsDocEnd = beforeExport.lastIndexOf('*/');
+
+      if (jsDocStart === -1 || jsDocEnd === -1 || jsDocEnd < jsDocStart) {
+        return '';
+      }
+
+      return beforeExport.slice(jsDocStart, jsDocEnd + 2);
+    };
+
+    const storeJsDoc = extractJsDoc('storeVoicemailList');
+    const fetchJsDoc = extractJsDoc('fetchVoicemailList');
+
+    expect(storeJsDoc).not.toEqual('');
+    expect(fetchJsDoc).not.toEqual('');
+    expect(storeJsDoc.toLowerCase()).not.toContain('encrypted');
+    expect(storeJsDoc.toLowerCase()).not.toContain('decrypted');
+    expect(fetchJsDoc.toLowerCase()).not.toContain('encrypted');
+    expect(fetchJsDoc.toLowerCase()).not.toContain('decrypted');
   });
 
   it('verify saving Voicemails in session storage', () => {
@@ -1965,105 +2089,6 @@ describe('Get XSI Action Endpoint tests', () => {
 
     expect(mockWebex.request).toHaveBeenCalledTimes(1);
     expect(xsiEndpoint).toBe('https://fake-broadworks-url.com');
-  });
-});
-
-describe('modifySdpForIPv4', () => {
-  it('should return original SDP if input is empty', () => {
-    expect(modifySdpForIPv4('')).toBe('');
-  });
-
-  it('should return original SDP if there is no IPv6 c= line', () => {
-    const sdp = `v=0\no=- 12345 67890 IN IP4 192.168.1.1\n\ns=Test Session`;
-    expect(modifySdpForIPv4(sdp)).toEqual(sdp);
-  });
-
-  it('should replace IPv6 c= line with default IPv4 if no IPv4 candidate exists', () => {
-    const sdp = `v=0
-    o=- 12345 67890 IN IP6 2001:db8::1
-    s=Test Session
-    c=IN IP6 2001:db8::1
-    a=candidate:1 1 UDP 2122260223 2001:db8::1 3478 typ host`;
-
-    const expectedSdp = `v=0\no=- 12345 67890 IN IP6 2001:db8::1\ns=Test Session\nc=IN IP4 192.1.1.1\na=candidate:1 1 UDP 2122260223 2001:db8::1 3478 typ host\na=candidate:2 1 UDP 2122260223 192.1.1.1 3478 typ host generation 0 network-id 1 network-cost 10`;
-    const result = modifySdpForIPv4(sdp);
-    expect(result).toEqual(expectedSdp);
-  });
-
-  it('should replace IPv6 c= line with an existing IPv4 candidate address', () => {
-    const sdp = `v=0
-    o=- 12345 67890 IN IP6 2001:db8::1
-    s=Test Session
-    c=IN IP6 2001:db8::1
-    a=candidate:1 1 UDP 2122260223 192.168.1.2 3478 typ host`;
-
-    const expectedSdp = `v=0\no=- 12345 67890 IN IP6 2001:db8::1\ns=Test Session\nc=IN IP4 192.168.1.2\na=candidate:1 1 UDP 2122260223 192.168.1.2 3478 typ host`;
-
-    expect(modifySdpForIPv4(sdp).trim()).toEqual(expectedSdp.trim());
-  });
-
-  it('should correctly handle both UDP and TCP candidates by adding only one IPv4 candidate UDP first', () => {
-    const sdp = `v=0
-    o=- 12345 67890 IN IP6 2001:db8::1
-    s=Test Session
-    c=IN IP6 2001:db8::1
-    a=candidate:1 1 UDP 2122260223 2001:db8::1 3478 typ host
-    a=candidate:2 1 TCP 2122260223 2001:db8::2 3479 typ host`;
-
-    const expectedSdp = `v=0\no=- 12345 67890 IN IP6 2001:db8::1\ns=Test Session\nc=IN IP4 192.1.1.1\na=candidate:1 1 UDP 2122260223 2001:db8::1 3478 typ host\na=candidate:2 1 UDP 2122260223 192.1.1.1 3478 typ host generation 0 network-id 1 network-cost 10\na=candidate:2 1 TCP 2122260223 2001:db8::2 3479 typ host\n`;
-
-    expect(modifySdpForIPv4(sdp).trim()).toEqual(expectedSdp.trim());
-  });
-
-  it('should correctly handle both UDP and TCP candidates by adding only one IPv4 candidate TCP first', () => {
-    const sdp = `v=0
-    o=- 12345 67890 IN IP6 2001:db8::1
-    s=Test Session
-    c=IN IP6 2001:db8::1
-    a=candidate:1 1 TCP 2122260223 2001:db8::2 3479 typ host
-    a=candidate:1 1 UDP 2122260223 2001:db8::1 3478 typ host`;
-
-    const expectedSdp = `v=0\no=- 12345 67890 IN IP6 2001:db8::1\ns=Test Session\nc=IN IP4 192.1.1.1\na=candidate:1 1 TCP 2122260223 2001:db8::2 3479 typ host\na=candidate:2 1 TCP 2122260223 192.1.1.1 3479 typ host generation 0 network-id 1 network-cost 10\na=candidate:1 1 UDP 2122260223 2001:db8::1 3478 typ host`;
-
-    expect(modifySdpForIPv4(sdp).trim()).toEqual(expectedSdp.trim());
-  });
-
-  it('should replace all IPv6 c= line if multiple exist', () => {
-    const sdp = `v=0
-    o=- 12345 67890 IN IP6 2001:db8::1
-    s=Test Session
-    c=IN IP6 2001:db8::1
-    c=IN IP6 2001:db8::2
-    a=candidate:1 1 UDP 2122260223 2001:db8::1 3478 typ host`;
-
-    const expectedSdp = `v=0\no=- 12345 67890 IN IP6 2001:db8::1\ns=Test Session\nc=IN IP4 192.1.1.1\nc=IN IP4 192.1.1.1\na=candidate:1 1 UDP 2122260223 2001:db8::1 3478 typ host\na=candidate:2 1 UDP 2122260223 192.1.1.1 3478 typ host generation 0 network-id 1 network-cost 10`;
-
-    expect(modifySdpForIPv4(sdp).trim()).toEqual(expectedSdp.trim());
-  });
-
-  it('should not modify SDP if IPv6 c= line is absent and IPv4 candidate already exists', () => {
-    const sdp = `v=0\no=- 12345 67890 IN IP4 192.168.1.1\ns=Test Session\nc=IN IP4 192.168.1.1\na=candidate:1 1 UDP 2122260223 192.168.1.1 3478 typ host`;
-
-    expect(modifySdpForIPv4(sdp).trim()).toEqual(sdp.trim());
-  });
-
-  it('should handle malformed SDP gracefully and return unmodified input', () => {
-    const malformedSdp = `random text without proper format`;
-
-    expect(modifySdpForIPv4(malformedSdp).trim()).toEqual(malformedSdp.trim());
-  });
-
-  it('should handle an SDP with both IP6 and IP4 c= lines correctly', () => {
-    const sdp = `v=0
-    o=- 12345 67890 IN IP6 2001:db8::1
-    s=Test Session
-    c=IN IP6 2001:db8::1
-    c=IN IP4 192.168.1.3
-    a=candidate:1 1 UDP 2122260223 192.168.1.3 3478 typ host`;
-
-    const expectedSdp = `v=0\no=- 12345 67890 IN IP6 2001:db8::1\ns=Test Session\nc=IN IP4 192.168.1.3\nc=IN IP4 192.168.1.3\na=candidate:1 1 UDP 2122260223 192.168.1.3 3478 typ host`;
-
-    expect(modifySdpForIPv4(sdp).trim()).toEqual(expectedSdp.trim());
   });
 });
 

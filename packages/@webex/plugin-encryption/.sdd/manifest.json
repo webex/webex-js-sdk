@@ -1,0 +1,425 @@
+{
+  "manifest_version": 1,
+  "repository": {
+    "name": "@webex/plugin-encryption",
+    "purpose": "Public Webex JS SDK plugin registered as webex.cypher that downloads and decrypts encrypted Webex files. downloadAndDecryptFile reads the KMS key URI and the JWE-encrypted SCR from the keyUri and JWE query parameters of the file URL, or from the options, asks webex.internal.encryption to decrypt the SCR with the KMS key, and returns the internal download of the file decrypted with that SCR, either directly from the URL (the default) or through the Webex files service. register and deregister register the SDK device with WDM through webex.internal.device and track the result in a registered flag. The package main, src/webex.js, is a small CommonJS Webex constructor that loads only the authorization, internal encryption, and cypher plugins; the workspace also builds it as the UMD encryption bundle.",
+    "category": "cat2-legacy",
+    "primary_languages": [
+      "typescript",
+      "javascript"
+    ]
+  },
+  "topology": "Orchestrator-plus-components",
+  "commands": {
+    "install": {
+      "command": "yarn",
+      "source_file": "../../../.github/workflows/deploy.yml",
+      "role": "install"
+    },
+    "compile": {
+      "command": "yarn workspace @webex/plugin-encryption build",
+      "source_file": "package.json",
+      "role": "compile"
+    },
+    "build": {
+      "command": "yarn workspace @webex/plugin-encryption build:src",
+      "source_file": "package.json",
+      "role": "package"
+    },
+    "unit-test": {
+      "command": "yarn workspace @webex/plugin-encryption test:unit",
+      "source_file": "package.json",
+      "role": "unit-test"
+    },
+    "lint": {
+      "command": "yarn workspace @webex/plugin-encryption test:style",
+      "source_file": "package.json",
+      "role": "lint"
+    },
+    "browser-test": {
+      "command": "yarn workspace @webex/plugin-encryption test:browser",
+      "source_file": "package.json",
+      "role": "other"
+    },
+    "docs-build": {
+      "command": "yarn workspace @webex/plugin-encryption build:docs",
+      "source_file": "package.json",
+      "role": "other"
+    },
+    "deploy": {
+      "command": "yarn workspace @webex/plugin-encryption deploy:npm",
+      "source_file": "package.json",
+      "role": "deploy"
+    }
+  },
+  "tests": {
+    "unit": {
+      "command_ref": "unit-test",
+      "dir": "test/unit/spec",
+      "framework": "jest"
+    }
+  },
+  "toolchain": [
+    {
+      "name": "node",
+      "version": ">=16",
+      "origin": "repo-config",
+      "source_file": "package.json"
+    },
+    {
+      "name": "node",
+      "version": "22.14",
+      "origin": "repo-config",
+      "source_file": "../../../AGENTS.md"
+    },
+    {
+      "name": "node",
+      "version": "lts/jod",
+      "origin": "repo-config",
+      "source_file": "../../../.nvmrc"
+    },
+    {
+      "name": "node",
+      "version": "18.x",
+      "origin": "repo-config",
+      "source_file": "../../../package.json"
+    },
+    {
+      "name": "yarn",
+      "version": "3.4.1",
+      "origin": "repo-config",
+      "source_file": "../../../package.json"
+    },
+    {
+      "name": "typescript",
+      "version": "^4.9.5",
+      "origin": "repo-config",
+      "source_file": "package.json"
+    },
+    {
+      "name": "babel",
+      "version": "^7.22.11",
+      "origin": "repo-config",
+      "source_file": "package.json"
+    },
+    {
+      "name": "eslint",
+      "version": "^8.24.0",
+      "origin": "repo-config",
+      "source_file": "package.json"
+    },
+    {
+      "name": "prettier",
+      "version": "^2.7.1",
+      "origin": "repo-config",
+      "source_file": "package.json"
+    },
+    {
+      "name": "typedoc",
+      "version": "0.23.26",
+      "origin": "repo-config",
+      "source_file": "package.json"
+    }
+  ],
+  "quality_gates": {
+    "code_coverage": {
+      "origin": "repo-config",
+      "source_file": "jest.config.js",
+      "min": 85,
+      "kind": "unit-test",
+      "applies_to": "total",
+      "enforced": true
+    }
+  },
+  "coverage_status_definitions": {
+    "specced": ">=80% public surface specced, drift <5% - spec is authoritative",
+    "partial": "40-80% specced - spec is a hint, cross-check code",
+    "untracked": "<40% specced - code is the source of truth"
+  },
+  "spec_source_policy": {
+    "mode": "keep-separate",
+    "migrated_source_disposition": "retain",
+    "disposition_decided_by": "rarajes2@cisco.com",
+    "disposition_decided_at": "2026-11-16T06:56:00Z",
+    "decided_by": "rarajes2@cisco.com",
+    "decided_at": "2026-11-16T06:56:00Z",
+    "decision_record": "docs/adr/0001-retain-product-docs.md"
+  },
+  "spec_sources": [
+    {
+      "path": "README.md",
+      "scope": "repo",
+      "role": "reference-only",
+      "canonical": false,
+      "use_by_agents": "context-only",
+      "post_migration_action": "retain",
+      "deletion_status": "not-applicable",
+      "notes": "npm page, kept unchanged under keep-separate. Its install, CDN, and sample-code sections agree with src/webex.js and src/cypher/index.ts. Its KMS certificate validation section describes config.encryption fields owned by @webex/internal-plugin-encryption, not this package. Its Development section names a src/@webex/plugin-encryption folder that does not exist. See docs/adr/0001-retain-product-docs.md."
+    },
+    {
+      "path": "developer-quickstart.md",
+      "scope": "repo",
+      "role": "reference-only",
+      "canonical": false,
+      "use_by_agents": "context-only",
+      "post_migration_action": "retain",
+      "deletion_status": "not-applicable",
+      "notes": "Guide for the encryption sample app in the workspace docs/samples/plugin-encryption, kept unchanged. Its token, init, register, and decrypt snippets agree with the code; its build steps are workspace scripts. See docs/adr/0001-retain-product-docs.md."
+    }
+  ],
+  "modules": [
+    {
+      "path": "src",
+      "canonical_spec": "src/docs/README.md",
+      "coverage_status": "Partial",
+      "coverage_evidence": "Field coverage 100% (16/16 applicable; data, schema, and migration discipline not applicable) assessed 2026-11-16 by the generator; critical field coverage 7/7. build:src and test:unit pass: 1 suite, 11 of 11 jest cases (2026-11-16T06:52:35Z), with statements 96.95% and branches 95.65% over the two measured files against the enforced 85% threshold. The unit cases cover register, deregister, and the downloadAndDecryptFile happy path, options fallback, missing values, and failures by substring; there is no unit case for plugin registration, the invalid-URL path, the URL-wins and one-value cases, the standalone constructor, or the four known defects. Generator probes against the built dist found four behaviors the owner records as known defects, not promises: unwrapped download errors, unobservable progress events, types disagreeing with main, and Webex.init merging src/webex-config.ts under config.default so its defaults are not applied. test:browser runs nothing (no test/integration). test:style exits 0 (6 warnings in src/webex.js, plus File ignored for src/docs/README.md; 2026-11-16T07:06:32Z). Independent validation passed on 2026-11-16 by validator runtime 01a1e332-5dfd-75c0-a6ab-fce7e722caa5: 0 Blocking, 0 findings. The module remains Partial pending the documented test gaps, a characterization baseline, and promotion review.",
+      "last_assessed": "2026-11-16",
+      "contracts": {
+        "provides": [
+          "plugin-encryption-sdk",
+          "encryption-umd-entry",
+          "encrypted-attachment-url"
+        ],
+        "requires": [
+          "internal-plugin-encryption-sdk",
+          "internal-plugin-device-registration",
+          "webex-core-plugin-host",
+          "plugin-authorization-entry"
+        ]
+      },
+      "section_profile": {
+        "has_tiers": false,
+        "has_ui": false,
+        "crosses_service_boundaries": true,
+        "holds_client_state": true,
+        "enforces_domain_rules": true,
+        "is_concurrent_async": true,
+        "owns_persistence": false,
+        "stateful_transitions": true,
+        "exposes_wire_protocol": true,
+        "ui_multi_screen": false,
+        "large_data_model": false,
+        "returns_caller_errors": true,
+        "module_specific_conventions": true,
+        "published_package": true,
+        "embedded_in_host": false,
+        "has_design_tradeoff": true,
+        "resolved_by": "claude-code (code evidence; bootstrap questionnaire)",
+        "resolved_at": "2026-11-16T06:56:00Z",
+        "has_submodules": false,
+        "has_submodules_computed_by": "scripts/module_tree.py",
+        "has_submodules_computed_at": "2026-11-16T06:56:00Z"
+      }
+    }
+  ],
+  "contract_catalog": {
+    "index_path": "docs/architecture.md",
+    "definitions": {
+      "plugin-encryption-sdk": {
+        "kind": "sdk",
+        "publication": "published",
+        "source_kind": "repository-path",
+        "source": "package.json",
+        "summary": "Published npm package @webex/plugin-encryption. main and exports['.'] are dist/webex.js (src/webex.js), whose CommonJS export is a Webex constructor with Webex.init(attrs); devMain is src/index.ts and types is dist/types/index.d.ts, which declares the default export Cypher and the types FileDownloadOptions and IEncryption, so the declared default does not match the runtime main. Importing src/index.ts registers public plugin cypher with config {cypher: {}}. webex.cypher exposes register(), deregister(), downloadAndDecryptFile(fileUri, {useFileService, keyUri, jwe}), and the public registered flag. Specified in src/docs/README.md."
+      },
+      "encryption-umd-entry": {
+        "kind": "file",
+        "publication": "published",
+        "source_kind": "repository-path",
+        "source": "src/webex.js",
+        "summary": "The workspace webpack.config.js builds its UMD entry encryption, library name Webex, from this file; the webex package ships it as umd/encryption.min.js (webex module spec MOD-019 names this package as the owner of its behavior). It requires the polyfill when needed, @webex/plugin-authorization, @webex/internal-plugin-encryption, and ./index, then extends WebexCore with version PACKAGE_VERSION."
+      },
+      "encrypted-attachment-url": {
+        "kind": "http",
+        "publication": "internal",
+        "source_kind": "repository-path",
+        "source": "src/cypher/index.ts",
+        "summary": "An encrypted attachment URL is an absolute https file URL whose case-sensitive query parameters keyUri (the KMS key URI) and JWE (the compact JWE of the file SCR) carry the decryption inputs. downloadAndDecryptFile reads both with URLSearchParams.get, and GETs the whole URL, query included, through webex.internal.encryption.download."
+      },
+      "internal-plugin-encryption-sdk": {
+        "kind": "sdk",
+        "publication": "published",
+        "source_kind": "external",
+        "source": "@webex/internal-plugin-encryption (workspace package; module spec consulted: packages/@webex/internal-plugin-encryption/src/docs/README.md MOD-007, MOD-009, MOD-010)",
+        "summary": "webex.internal.encryption.decryptScr(key, cipherScr) resolves the key through getKey (key cache, then KMS) and resolves SCR.fromJWE. download(fileUrl, scr, options) rejects without both arguments, defaults useFileService to true, rejects a direct URL that does not start with https:// when useFileService is false, otherwise looks up the download URL with POST /v1/download/endpoints and falls back to the original URL, GETs the bytes, emits progress events on its returned promise, and resolves decryptBinary(scr, body)."
+      },
+      "internal-plugin-device-registration": {
+        "kind": "sdk",
+        "publication": "published",
+        "source_kind": "external",
+        "source": "@webex/internal-plugin-device (workspace package, not declared in package.json; module spec consulted: packages/@webex/internal-plugin-device/src/docs/README.md MOD-001, MOD-005, MOD-011)",
+        "summary": "webex.internal.device.register() registers with WDM, or refreshes when already registered; unregister() resolves at once when unregistered, otherwise DELETEs the device and clears local state, and a 404 clears local state but still rejects. The device plugin's onBeforeLogout hook calls unregister()."
+      },
+      "webex-core-plugin-host": {
+        "kind": "sdk",
+        "publication": "published",
+        "source_kind": "external",
+        "source": "@webex/webex-core (workspace package; module spec consulted: packages/@webex/webex-core/src/docs/README.md MOD-008, MOD-009, MOD-013, MOD-044)",
+        "summary": "registerPlugin(name, ctor, {config}) returns without change when the name is already registered unless replace is set, and merges config into the default config; WebexPlugin.config reads the lowercased namespace key of webex.config; the default config uses memory storage adapters; WebexCore.extend builds a constructor whose instances carry the public plugins registered before it; MemoryStoreAdapter is re-exported."
+      },
+      "plugin-authorization-entry": {
+        "kind": "sdk",
+        "publication": "published",
+        "source_kind": "external",
+        "source": "@webex/plugin-authorization (workspace package, not declared in package.json; module spec consulted: packages/@webex/plugin-authorization/src/docs/README.md)",
+        "summary": "Importing the package loads the Node or browser authorization plugin, chosen by its browser field; each imports @webex/internal-plugin-device and registers public plugin authorization."
+      }
+    }
+  },
+  "spec_policy": {
+    "require_what_and_why": true,
+    "require_provenance": true,
+    "protected_specs": [
+      "src/docs/README.md"
+    ]
+  },
+  "validation": {
+    "generator_runtime": "claude-code",
+    "generator_model": "claude-opus-5-5",
+    "generator_runtime_source": "host-metadata",
+    "source_commit": "d5b58d84f152969a44cb4999fc54a9bdd7bd4456",
+    "base_ref": "next",
+    "minimum_independence": "different-runtime",
+    "blocking_severities": [
+      "Blocking"
+    ],
+    "validator_runtime": "01a1e332-5dfd-75c0-a6ab-fce7e722caa5",
+    "validator_runtime_source": "invocation-input",
+    "runtime_fallback_tier": "different-runtime"
+  },
+  "layout": {
+    "sdd_root": ".sdd",
+    "docs_root": "docs",
+    "agent_entry_path": "AGENTS.md",
+    "standing_docs_root": "docs",
+    "spec_index_path": "docs/specs/README.md",
+    "module_docs_strategy": "source-local",
+    "module_docs_relative_path": "docs/README.md",
+    "module_docs_decision": {
+      "basis": "repo-standards-default",
+      "reason": "No module-local documentation existed. The source-local default gives src/docs/README.md. test:style runs eslint ./src/**/*.*, and the shared @webex/eslint-config-legacy ignore patterns exclude docs/** and *.md; build:src compiles -js -ts only and yarn workspace @webex/plugin-encryption build emits declarations for src (tsconfig.json include), so Markdown under src/ does not enter dist/.",
+      "decided_by": "rarajes2@cisco.com (bootstrap questionnaire)",
+      "decided_at": "2026-11-16T06:56:00Z"
+    },
+    "repo_context_decision": {
+      "path": ".repo-context.json",
+      "schema_path": "schemas/repo-context.schema.json",
+      "action": "create",
+      "schema_action": "create",
+      "reason": "Neither the operational context nor its schema existed in this package. The context is created from package evidence and the schema is copied from the repository-root .sdd/templates/repo-standards/schemas/repo-context.schema.json.",
+      "decided_by": "rarajes2@cisco.com (bootstrap questionnaire)",
+      "decided_at": "2026-11-16T06:56:00Z"
+    },
+    "artifact_decisions": [
+      {
+        "path": "docs/service.md",
+        "action": "omit",
+        "reason": "Library package, not a deployable service. package.json has no start script, container, or deployment descriptor.",
+        "decided_by": "claude-code (code evidence)",
+        "decided_at": "2026-11-16T06:56:00Z"
+      },
+      {
+        "path": "mkdocs.yml",
+        "action": "omit",
+        "reason": "No package-level documentation site exists. The build:docs typedoc output and documentation publishing stay with the workspace.",
+        "decided_by": "claude-code (code evidence)",
+        "decided_at": "2026-11-16T06:56:00Z"
+      },
+      {
+        "path": "api-specs/openapi.yaml",
+        "action": "omit",
+        "reason": "The package serves no HTTP routes. It reaches KMS, WDM, and file hosts only through internal plugins; its published surface is the npm export described by plugin-encryption-sdk.",
+        "decided_by": "claude-code (code evidence)",
+        "decided_at": "2026-11-16T06:56:00Z"
+      },
+      {
+        "path": "SECURITY.md",
+        "action": "omit",
+        "reason": "No package-level security policy exists. The workspace owns security policy, and a per-package copy would duplicate it; security architecture is described in docs/architecture.md.",
+        "decided_by": "claude-code (code evidence)",
+        "decided_at": "2026-11-16T06:56:00Z"
+      },
+      {
+        "path": "CONTRIBUTING.md",
+        "action": "omit",
+        "reason": "Contribution instructions are owned at the workspace root CONTRIBUTING.md.",
+        "decided_by": "claude-code (code evidence)",
+        "decided_at": "2026-11-16T06:56:00Z"
+      },
+      {
+        "path": "CHANGELOG.md",
+        "action": "omit",
+        "reason": "Changelog generation is owned at the workspace root. This package has no changelog file.",
+        "decided_by": "claude-code (code evidence)",
+        "decided_at": "2026-11-16T06:56:00Z"
+      },
+      {
+        "path": "CTO_CHECKLIST.yml",
+        "action": "omit",
+        "reason": "The CTO readiness checklist applies to deployable services. This package is a library.",
+        "decided_by": "claude-code (code evidence)",
+        "decided_at": "2026-11-16T06:56:00Z"
+      },
+      {
+        "path": "schemas/cto-checklist.schema.json",
+        "action": "omit",
+        "reason": "Omitted together with CTO_CHECKLIST.yml.",
+        "decided_by": "claude-code (code evidence)",
+        "decided_at": "2026-11-16T06:56:00Z"
+      }
+    ],
+    "template_roots": {
+      "canonical": ".sdd/templates/repo-standards"
+    },
+    "contract_index_path": "docs/architecture.md",
+    "repo_skills_root": ".sdd/skills",
+    "monorepo_package": {
+      "package_path": "packages/@webex/plugin-encryption",
+      "root_manifest_path": "../../../.sdd/manifest.json",
+      "templates_root_path": "../../../.sdd/templates/repo-standards"
+    }
+  },
+  "tooling": {
+    "sdlc_skills": {
+      "source_ref": "repo-annotation@2.3.1"
+    }
+  },
+  "coverage_ratchet": {
+    "enabled": true,
+    "waivers": []
+  },
+  "substrate": {
+    "source": "WebexTools/repo-standards@d89a7fe59126ae3ad9bac9ca352aa7f12b4c85dc",
+    "consumed": [
+      "@webex/eslint-config-legacy via .eslintrc.js",
+      "@webex/babel-config-legacy inject-package-version plugin via babel.config.js",
+      "@webex/jest-config-legacy via jest.config.js",
+      "@webex/legacy-tools build and test runner via package.json",
+      "workspace tsconfig.json via the package tsconfig.json extends",
+      "package README.md and developer-quickstart.md (context only)",
+      "Repo Standards templates at the monorepo root .sdd/templates/repo-standards, referred to through layout.monorepo_package.templates_root_path (this package holds no templates)"
+    ],
+    "compliance_tier": "baseline"
+  },
+  "section_profiles": {
+    "repo": {
+      "owns_datastore": false,
+      "holds_client_state": true,
+      "components_interact": true,
+      "domain_data_across_components": false,
+      "caches_data": false,
+      "observability_convention": true,
+      "deploys_to_infra": false,
+      "shared_base_libs": true,
+      "is_monorepo": false,
+      "multi_platform": false,
+      "published_package": true,
+      "embedded_in_host": false,
+      "cross_repo_deps_material": true,
+      "security_arch_warranted": true,
+      "exposes_commands_or_artifacts": true
+    },
+    "resolved_by": "claude-code (code evidence; bootstrap questionnaire)",
+    "resolved_at": "2026-11-16T06:56:00Z"
+  }
+}

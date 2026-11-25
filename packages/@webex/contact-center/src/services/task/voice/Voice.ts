@@ -28,8 +28,10 @@ import Task from '../Task';
 import LoggerProxy from '../../../logger-proxy';
 import MetricsManager from '../../../metrics/MetricsManager';
 import {METRIC_EVENT_NAMES} from '../../../metrics/constants';
-import {TaskState, TaskEvent, TaskActionArgs} from '../state-machine';
-import {WrapupData} from '../../config/types';
+import {TaskState, TaskEvent, TaskActionArgs, type TaskContext} from '../state-machine';
+import {shouldWrapUpForThisAgent} from '../state-machine/guards';
+import type {WrapupData} from '../../config/types';
+import type ApiAIAssistant from '../../ApiAiAssistant';
 import {getConsultMediaResourceId, getIsConferenceInProgress} from '../TaskUtils';
 import AnswerCallOnWebexService from '../../AnswerCallOnWebexService';
 import {isWxAppCallNotFoundError} from '../../wxAppTelephonyUtils';
@@ -41,12 +43,37 @@ import {
   isWebexAppInboundCallingOffer as wxIsWebexAppInboundCallingOffer,
   mapWxAppVoiceError,
   runWxAppAccept,
+  runWxAppOutdialDecline,
   runWxAppReject,
   runWxAppToggleMute,
   runWxAppTransmitDtmf,
   WxAppVoiceDependencies,
   WxAppVoiceLifecycle,
 } from './wxAppVoiceMethods';
+import {
+  logWxAppMercuryMuteSync,
+  callIdSuffix,
+  type WxAppAcceptReason,
+} from '../../wxAppDiagnosticLogging';
+import {WxAppOfferObservability, WxAppOfferObservabilityContext} from './wxAppOfferObservability';
+
+const hasNonemptyPendingWrapUp = (taskData?: TaskData): boolean =>
+  Array.isArray(taskData?.agentsPendingWrapUp) && taskData.agentsPendingWrapUp.length > 0;
+
+/**
+ * Same consulted-non-owner rule as TaskManager leave stamp. Used only for the
+ * HTTP exitConference self-exit fallback (shouldWrapUpForThisAgent stays unchanged).
+ */
+const isConsultedNonOwner = (taskData: TaskData, fallback?: TaskData): boolean => {
+  const isConsulted = taskData.isConsulted ?? fallback?.isConsulted;
+  if (isConsulted !== true) {
+    return false;
+  }
+  const owner = taskData.interaction?.owner ?? fallback?.interaction?.owner;
+  const selfAgentId = taskData.agentId ?? fallback?.agentId;
+
+  return Boolean(selfAgentId && owner && owner !== selfAgentId);
+};
 
 export default class Voice extends Task implements IVoice {
   private static readonly WXAPP_MUTE_SYNC_RETRY_DELAY_MS = 50;
@@ -58,14 +85,20 @@ export default class Voice extends Task implements IVoice {
   private wxAppAnswerPending = false;
   private wxAppAcceptInFlight = false;
   private wxAppMuteSyncInFlight?: Promise<boolean | undefined>;
-  private wxAppMuteToggleInFlight?: Promise<void>;
+  private wxAppMuteToggleTail: Promise<void> = Promise.resolve();
+  private wxAppDtmfTail: Promise<void> = Promise.resolve();
+  /** Lazy — `super()` may call `updateUiControls` before field initializers run. */
+  private wxAppOfferObservability: WxAppOfferObservability | null = null;
+  private getUsersubPublished?: () => boolean;
 
   constructor(
     contact: ReturnType<typeof routingContact>,
     data: TaskData,
     callOptions?: VoiceUIControlOptions,
     wrapupData?: WrapupData,
-    agentId?: string
+    agentId?: string,
+    agentName?: string,
+    apiAIAssistant?: ApiAIAssistant
   ) {
     const resolvedOptions = {
       isEndTaskEnabled: callOptions?.isEndTaskEnabled ?? true,
@@ -83,11 +116,14 @@ export default class Voice extends Task implements IVoice {
         consultTransferConfig: callOptions?.consultTransferConfig,
       },
       wrapupData,
-      agentId
+      agentId,
+      agentName,
+      apiAIAssistant
     );
 
     this.enableWxBetterTogether = resolvedOptions.enableWxBetterTogether;
     this.answerCallOnWebexService = callOptions?.answerCallOnWebexService;
+    this.getUsersubPublished = callOptions?.getUsersubPublished;
   }
 
   private getWxAppVoiceDependencies(): WxAppVoiceDependencies {
@@ -95,12 +131,14 @@ export default class Voice extends Task implements IVoice {
       enableWxBetterTogether: this.enableWxBetterTogether,
       answerCallOnWebexService: this.answerCallOnWebexService,
       agentId: this.agentId,
+      metricsManager: this.metricsManager,
       getTaskData: () => this.data,
       getTaskState: () => this.stateMachineService?.getSnapshot?.()?.value as TaskState | undefined,
       getWxAppMuted: () => this.wxAppMuted,
       setWxAppMuted: (muted: boolean) => {
         this.wxAppMuted = muted;
       },
+      getUsersubPublished: this.getUsersubPublished,
     };
   }
 
@@ -135,17 +173,96 @@ export default class Voice extends Task implements IVoice {
     this.updateUiControls(true);
   }
 
+  private getOrCreateWxAppOfferObservability(): WxAppOfferObservability {
+    if (!this.wxAppOfferObservability) {
+      this.wxAppOfferObservability = new WxAppOfferObservability();
+    }
+
+    return this.wxAppOfferObservability;
+  }
+
+  protected updateUiControls(forceEmit = false): void {
+    super.updateUiControls(forceEmit);
+    this.getOrCreateWxAppOfferObservability().handleUiControlsUpdate(
+      this.getWxAppOfferObservabilityContext()
+    );
+  }
+
+  /**
+   * Re-run OFFERED wxApp diagnostics without emitting UI controls.
+   * Used after usersub publish so a pre-publish offer can schedule mismatch grace.
+   */
+  public refreshWxAppOfferObservability(): void {
+    this.getOrCreateWxAppOfferObservability().handleUiControlsUpdate(
+      this.getWxAppOfferObservabilityContext()
+    );
+  }
+
+  /**
+   * Cancel pending participant-mismatch grace timer. Observability only.
+   */
+  public disposeWxAppOfferObservability(): void {
+    this.wxAppOfferObservability?.dispose();
+  }
+
+  private getWxAppOfferObservabilityContext(): WxAppOfferObservabilityContext {
+    return {
+      getInteractionId: () => this.data.interactionId,
+      getTaskState: () => this.stateMachineService?.getSnapshot?.()?.value as TaskState | undefined,
+      getAcceptControl: () => this.currentUiControls?.main?.accept,
+      getVoiceVariant: () => this.uiControlConfig.voiceVariant ?? VOICE_VARIANT.PSTN,
+      isOutdial: () => this.data?.interaction?.outboundType === 'OUTDIAL',
+      isWxAppInboundOffer: () => this.isWebexAppInboundCallingOffer(),
+      isWxAppCallingOffer: () => this.isWebexAppCallingOffer(),
+      getWxAppAcceptInFlight: () => this.wxAppAcceptInFlight,
+      getWxAppAnswerPending: () => this.wxAppAnswerPending,
+      getEnableWxBetterTogether: () => this.enableWxBetterTogether,
+      getUsersubPublished: () => this.getUsersubPublished?.() ?? false,
+      getWxAppVoiceDependencies: () => this.getWxAppVoiceDependencies(),
+      getMetricsManager: () => this.metricsManager,
+    };
+  }
+
   public applyWxAppMuteStateFromSync(incomingCallId: string, muted: boolean): void {
     if (!this.enableWxBetterTogether) {
       return;
     }
 
     const activeCallId = this.getWebexCallingCallId();
-    if (!activeCallId || !incomingCallId.endsWith(activeCallId) || this.wxAppMuted === muted) {
+    const incomingSuffix = callIdSuffix(incomingCallId);
+    const activeSuffix = callIdSuffix(activeCallId);
+
+    if (!activeCallId || !incomingCallId.endsWith(activeCallId)) {
+      logWxAppMercuryMuteSync({
+        phase: 'dropped',
+        muted,
+        callIdSuffix: incomingSuffix,
+        interactionId: this.data.interactionId,
+        dropReason: !activeCallId ? 'no_active_wxApp_call' : 'call_id_mismatch',
+      });
+
+      return;
+    }
+
+    if (this.wxAppMuted === muted) {
+      logWxAppMercuryMuteSync({
+        phase: 'dropped',
+        muted,
+        callIdSuffix: incomingSuffix,
+        interactionId: this.data.interactionId,
+        dropReason: 'mute_state_unchanged',
+      });
+
       return;
     }
 
     this.wxAppMuted = muted;
+    logWxAppMercuryMuteSync({
+      phase: 'applied',
+      muted,
+      callIdSuffix: activeSuffix,
+      interactionId: this.data.interactionId,
+    });
     this.emit(TASK_EVENTS.TASK_WXAPP_MUTE_STATE_UPDATED, {muted});
   }
 
@@ -312,12 +429,26 @@ export default class Voice extends Task implements IVoice {
     return this.stateMachineService?.getSnapshot?.();
   }
 
+  private getWxAppAcceptReasonForMetrics(): WxAppAcceptReason {
+    if (this.wxAppAcceptInFlight) {
+      return 'wxApp_accept_in_flight';
+    }
+
+    if (this.wxAppAnswerPending) {
+      return 'wxApp_answer_pending';
+    }
+
+    return 'wxApp_offer_ready';
+  }
+
   /**
    * Accepts the task. Routes to wxApp telephony answer when `enableWxBetterTogether` and wxApp offer.
    */
   public async accept(): Promise<TaskResponse> {
     if (this.enableWxBetterTogether && this.isWebexAppCallingOffer()) {
-      await runWxAppAccept(this.getWxAppVoiceDependencies(), this.createWxAppLifecycle());
+      await runWxAppAccept(this.getWxAppVoiceDependencies(), this.createWxAppLifecycle(), {
+        acceptReason: this.getWxAppAcceptReasonForMetrics(),
+      });
 
       return Promise.resolve();
     }
@@ -330,7 +461,9 @@ export default class Voice extends Task implements IVoice {
    */
   public async decline(): Promise<TaskResponse> {
     if (this.enableWxBetterTogether && this.isWebexAppInboundCallingOffer()) {
-      await runWxAppReject(this.getWxAppVoiceDependencies(), this.createWxAppLifecycle());
+      await runWxAppReject(this.getWxAppVoiceDependencies(), this.createWxAppLifecycle(), {
+        acceptReason: this.getWxAppAcceptReasonForMetrics(),
+      });
 
       return Promise.resolve();
     }
@@ -353,8 +486,15 @@ export default class Voice extends Task implements IVoice {
         METRIC_EVENT_NAMES.TASK_DECLINE_FAILED,
       ]);
 
+      const declineAcceptReason = this.wxAppAnswerPending
+        ? 'wxApp_answer_pending'
+        : 'wxApp_offer_ready';
       this.setWxAppAnswerPending(false);
-      const response = await this.contact.cancelTask({interactionId});
+      const response = await runWxAppOutdialDecline(
+        this.getWxAppVoiceDependencies(),
+        () => this.contact.cancelTask({interactionId}),
+        {acceptReason: declineAcceptReason}
+      );
 
       this.metricsManager.trackEvent(
         METRIC_EVENT_NAMES.TASK_DECLINE_SUCCESS,
@@ -388,25 +528,13 @@ export default class Voice extends Task implements IVoice {
    */
   public async toggleMute(options?: TaskToggleMuteOptions): Promise<void> {
     if (this.enableWxBetterTogether && this.getWebexCallingCallId()) {
-      if (this.wxAppMuteToggleInFlight) {
-        await this.wxAppMuteToggleInFlight.catch(() => undefined);
-      }
+      const togglePromise = this.wxAppMuteToggleTail
+        .catch(() => undefined)
+        .then(() =>
+          runWxAppToggleMute(this.getWxAppVoiceDependencies(), this.createWxAppLifecycle(), options)
+        );
 
-      const togglePromise = runWxAppToggleMute(
-        this.getWxAppVoiceDependencies(),
-        this.createWxAppLifecycle(),
-        options
-      );
-
-      this.wxAppMuteToggleInFlight = togglePromise;
-      togglePromise
-        .finally(() => {
-          if (this.wxAppMuteToggleInFlight === togglePromise) {
-            this.wxAppMuteToggleInFlight = undefined;
-          }
-        })
-        .catch(() => undefined);
-
+      this.wxAppMuteToggleTail = togglePromise.catch(() => undefined);
       await togglePromise;
 
       return;
@@ -420,11 +548,18 @@ export default class Voice extends Task implements IVoice {
    */
   public async transmitDtmf(options: TaskTransmitDtmfOptions): Promise<void> {
     if (this.enableWxBetterTogether && this.getWebexCallingCallId()) {
-      await runWxAppTransmitDtmf(
-        this.getWxAppVoiceDependencies(),
-        this.createWxAppLifecycle(),
-        options
-      );
+      const dtmfPromise = this.wxAppDtmfTail
+        .catch(() => undefined)
+        .then(() =>
+          runWxAppTransmitDtmf(
+            this.getWxAppVoiceDependencies(),
+            this.createWxAppLifecycle(),
+            options
+          )
+        );
+
+      this.wxAppDtmfTail = dtmfPromise.catch(() => undefined);
+      await dtmfPromise;
 
       return;
     }
@@ -1337,9 +1472,32 @@ export default class Voice extends Task implements IVoice {
 
       // Send success event to transition state
       if (this.stateMachineService) {
+        const responseTaskData = (response?.data ?? {}) as TaskData;
+        const snapshot = this.stateMachineService.getSnapshot();
+        const wrapUpContext = (snapshot?.context ?? {
+          uiControlConfig: this.uiControlConfig,
+          taskData: this.data,
+        }) as TaskContext;
+        const mergedTaskData = {
+          ...this.data,
+          ...responseTaskData,
+        };
+        // Pending-list precedence is response-only; do not keep a cached snapshot list.
+        if (!Object.prototype.hasOwnProperty.call(responseTaskData, 'agentsPendingWrapUp')) {
+          delete mergedTaskData.agentsPendingWrapUp;
+        }
+        let wrapUpRequired = shouldWrapUpForThisAgent(wrapUpContext, mergedTaskData);
+        // Confirmed self-exit: empty/absent response pending matches TaskManager leave stamp.
+        if (!wrapUpRequired && !hasNonemptyPendingWrapUp(responseTaskData)) {
+          wrapUpRequired = !isConsultedNonOwner(mergedTaskData, this.data);
+        }
+
         this.stateMachineService.send({
           type: TaskEvent.EXIT_CONFERENCE_SUCCESS,
-          taskData: response.data,
+          taskData: {
+            ...responseTaskData,
+            wrapUpRequired,
+          },
         });
       }
 

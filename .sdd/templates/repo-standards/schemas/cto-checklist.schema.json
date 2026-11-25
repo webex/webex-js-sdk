@@ -1,0 +1,121 @@
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "$id": "https://github.com/WebexTools/repo-standards/blob/main/schemas/cto-checklist.schema.json",
+  "title": "CTO Checklist Configuration",
+  "description": "Schema for normalized CTO architecture checklist files",
+  "type": "object",
+  "required": ["metadata", "document_evidence", "controls"],
+  "additionalProperties": false,
+  "properties": {
+    "metadata": {
+      "type": "object",
+      "required": ["service", "owner", "reviewed_on", "checklist_version"],
+      "additionalProperties": false,
+      "properties": {
+        "service": {
+          "type": "string",
+          "minLength": 1,
+          "description": "Service or component identifier"
+        },
+        "owner": {
+          "type": "string",
+          "minLength": 1,
+          "description": "Owning team or responsible party"
+        },
+        "reviewed_on": {
+          "type": "string",
+          "format": "date",
+          "description": "Most recent checklist review date"
+        },
+        "checklist_version": {
+          "type": "integer",
+          "minimum": 1,
+          "description": "Checklist schema/content revision"
+        }
+      }
+    },
+    "document_evidence": {
+      "type": "object",
+      "required": ["architecture", "security", "contributing", "changelog"],
+      "additionalProperties": false,
+      "properties": {
+        "architecture": {
+          "type": "string",
+          "minLength": 1
+        },
+        "service": {
+          "type": "string",
+          "minLength": 1,
+          "description": "Optional deployable-service specification evidence"
+        },
+        "security": {
+          "type": "string",
+          "minLength": 1
+        },
+        "contributing": {
+          "type": "string",
+          "minLength": 1
+        },
+        "changelog": {
+          "type": "string",
+          "minLength": 1
+        }
+      }
+    },
+    "controls": {
+      "type": "array",
+      "minItems": 1,
+      "items": {
+        "type": "object",
+        "required": ["id", "domain", "title", "status", "evidence"],
+        "additionalProperties": false,
+        "properties": {
+          "id": {
+            "type": "string",
+            "pattern": "^[A-Z][A-Z0-9_]*-[0-9]{3}$"
+          },
+          "domain": {
+            "type": "string",
+            "enum": [
+              "cost",
+              "data",
+              "scale",
+              "environments",
+              "availability",
+              "observability",
+              "platform",
+              "validation",
+              "resilience",
+              "security",
+              "disaster_recovery"
+            ]
+          },
+          "title": {
+            "type": "string",
+            "minLength": 1
+          },
+          "status": {
+            "type": "string",
+            "enum": [
+              "not_started",
+              "in_progress",
+              "completed",
+              "not_applicable"
+            ]
+          },
+          "evidence": {
+            "type": "array",
+            "minItems": 1,
+            "items": {
+              "type": "string",
+              "minLength": 1
+            }
+          },
+          "notes": {
+            "type": "string"
+          }
+        }
+      }
+    }
+  }
+}

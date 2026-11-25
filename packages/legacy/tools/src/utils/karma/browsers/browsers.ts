@@ -20,10 +20,13 @@ class Browsers {
    * @param options - Options Object.
    * @returns - Formatted browser configuration object for Karma test runner.
    */
-  public static get({ debug, browsers }: { debug?: boolean, browsers?: Array<string> }) {
+  public static get({ debug, browsers }: { debug?: boolean, browsers?: Array<string> | string }) {
     let config: any = {};
 
-    if (!browsers) {
+    // The CLI array option can arrive as a single string; normalize to an array.
+    const requested = typeof browsers === 'string' ? [browsers] : browsers;
+
+    if (!requested) {
       config = {
         ...(debug ? Browsers.CONSTANTS.CHROME.HEADED : Browsers.CONSTANTS.CHROME.HEADLESS),
         ...(debug ? Browsers.CONSTANTS.FIREFOX.HEADED : Browsers.CONSTANTS.FIREFOX.HEADLESS),
@@ -32,7 +35,7 @@ class Browsers {
       return config;
     }
 
-    browsers.forEach((browser) => {
+    requested.forEach((browser) => {
       switch (browser) {
         case 'chrome':
           config = {

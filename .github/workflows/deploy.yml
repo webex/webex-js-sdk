@@ -8,7 +8,6 @@ on:
 
 env:
   rid: ${{ github.run_id }}-${{ github.run_number }}
-  token: ${{ secrets.NPM_TOKEN }}
   GIT_AUTHOR_NAME: ${{ github.actor }}
   GIT_AUTHOR_EMAIL: ${{ github.actor }}@users.noreply.github.com
 
@@ -130,22 +129,29 @@ jobs:
         # Used for running node scripts against all changed packages since the last push to the target branch.
       - id: generate-package-matrix-node-changed
         name: Generate Package Matrix
-        run: echo "node-changed=$(yarn package-tools list --mode node --since ${{ github.event.before }})" >> $GITHUB_OUTPUT
+        # webexconnect is a private package and is already omitted by `list` (--no-private is the default);
+        # this sed is an explicit second guard so `@webex/webexconnect` can never leak into the deploy matrix
+        # even if `private: true` is ever accidentally removed from its package.json.
+        run: |
+          echo "node-changed=$(yarn package-tools list --mode node --committed --since ${{ github.event.before }} | sed -E 's#@webex/webexconnect##g; s#,+#,#g; s#\{,#{#g; s#,\}#}#g; s#  +# #g; s#^ ##; s# $##')" >> $GITHUB_OUTPUT
 
         # Used for running node scripts against all changed packages, and their dependents, since the last push to the target branch.
       - id: generate-package-matrix-node-recursive
         name: Generate Package Matrix
-        run: echo "node-recursive=$(yarn package-tools list --mode node --recursive --since ${{ github.event.before }})" >> $GITHUB_OUTPUT
+        run: |
+          echo "node-recursive=$(yarn package-tools list --mode node --recursive --committed --since ${{ github.event.before }} | sed -E 's#@webex/webexconnect##g; s#,+#,#g; s#\{,#{#g; s#,\}#}#g; s#  +# #g; s#^ ##; s# $##')" >> $GITHUB_OUTPUT
 
         # Used for running yarn tools against all changed packages since the last push to the target branch.
       - id: generate-package-matrix-yarn-changed
         name: Generate Package Matrix
-        run: echo "yarn-changed=$(yarn package-tools list --since ${{ github.event.before }})" >> $GITHUB_OUTPUT
+        run: |
+          echo "yarn-changed=$(yarn package-tools list --committed --since ${{ github.event.before }} | sed -E 's#@webex/webexconnect##g; s#,+#,#g; s#\{,#{#g; s#,\}#}#g; s#  +# #g; s#^ ##; s# $##')" >> $GITHUB_OUTPUT
 
         # Used for running yarn tools against all changed packages, and their dependents, since the last push to the target branch.
       - id: generate-package-matrix-yarn-recursive
         name: Generate Package Matrix
-        run: echo "yarn-recursive=$(yarn package-tools list --recursive --since ${{ github.event.before }})" >> $GITHUB_OUTPUT
+        run: |
+          echo "yarn-recursive=$(yarn package-tools list --recursive --committed --since ${{ github.event.before }} | sed -E 's#@webex/webexconnect##g; s#,+#,#g; s#\{,#{#g; s#,\}#}#g; s#  +# #g; s#^ ##; s# $##')" >> $GITHUB_OUTPUT
 
       - name: Display Package Matrix
         run: |
@@ -159,6 +165,9 @@ jobs:
     name: Publish - NPM
     needs: generate-package-matrix
     runs-on: ubuntu-latest
+    permissions:
+      contents: read
+      id-token: write
 
     outputs:
       package_versions: ${{ steps.increment.outputs.package_versions }}
@@ -166,6 +175,8 @@ jobs:
     steps:
       - name: Checkout Project
         uses: actions/checkout@v6
+        with:
+          persist-credentials: false
 
       - name: Setup Node
         uses: actions/setup-node@v6
@@ -185,10 +196,6 @@ jobs:
         with:
           path: '**/dist'
           key: dist-${{ env.rid }}
-
-      - name: Add NPM token to .yarnrc.yml file
-        run: |
-          echo "npmAuthToken: ${{ env.token }}" >> ~/.yarnrc.yml
 
       - name: Synchronize Packages
         run: |
@@ -216,9 +223,9 @@ jobs:
         run: yarn run build:script
 
       - name: Deploy Packages
-        run: yarn workspaces foreach --from '${{ needs.generate-package-matrix.outputs.yarn-recursive }}' --verbose run deploy:npm --access public --tag ${GITHUB_REF##*/}
         env:
-          NODE_AUTH_TOKEN: ${{ secrets.NPM_TOKEN }}
+          PACKAGES_GLOB: ${{ needs.generate-package-matrix.outputs.yarn-recursive }}
+        run: bash scripts/publish-npm.sh "$PACKAGES_GLOB" "$GITHUB_REF_NAME" --provenance
 
   publish-documentation:
     name: Publish - Documentation
@@ -286,6 +293,11 @@ jobs:
           # Check if there's anything to commit before committing
           if [ -n "$(git status --porcelain)" ]; then
             git add docs/
+            # The web sample's bundle is generated rather than committed (see
+            # .gitignore), so a plain `git add` skips it and the hosted page 404s.
+            # Force only this path: the extension half stays unpublished because its
+            # manifest is origin-baked for local testing and must not ship.
+            git add -f docs/samples/web-extension-bridge/vendor
             git commit -m "chore(docs): update docs"
             git push origin HEAD:documentation --force
           fi

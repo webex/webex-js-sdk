@@ -22,6 +22,12 @@ let callRecording;
 let contacts;
 let callSettings;
 let line;
+let callQueue;
+let callQueueApiBase;
+let callQueueSettings;
+let callQueueBusy = false;
+let callQueueGeneration = 0;
+let callQueueHandler;
 
 let transferInitiated;
 const numberOfDays = 7;
@@ -31,6 +37,7 @@ const callHistorySortBy = 'startTime';
 const voicemailOffset = 0;
 const voicemailOffsetLimit = 20;
 const voicemailSort = 'DESC';
+
 const credentialsFormElm = document.querySelector('#credentials');
 const fedrampBox = document.getElementById('fedramp');
 const tokenElm = document.querySelector('#access-token');
@@ -68,8 +75,6 @@ const callHistoryElm = document.querySelector('#Call-history');
 const voicemailElm = document.querySelector('#Voice-mail');
 const callRecordingElm = document.querySelector('#Call-recording');
 const recordingDataElm = document.querySelector('#recording-data');
-const recordingSessionDataElm = document.querySelector('#recording-session-data');
-const recordingEventsElm = document.querySelector('#recording-events');
 const registrationForm = document.querySelector('#auth-registration');
 const serviceIndicator = document.querySelector('#ServiceIndicator');
 const serviceDomain = document.querySelector('#ServiceDomain');
@@ -100,6 +105,18 @@ const devicesUserIdInput = document.getElementById('devices-user-id');
 const fetchDevicesButton = document.getElementById('fetch-devices');
 const devicesHeader = document.getElementById('devicesHeaderId');
 const devicesTableBody = document.getElementById('devicesTableBody');
+const queueConnection = document.getElementById('queue-connection');
+const queueLineOwner = document.getElementById('queue-line-owner');
+const queueRefresh = document.getElementById('queue-refresh');
+const queueSync = document.getElementById('queue-sync');
+const queueStatus = document.getElementById('queue-status');
+const queueAgentStatus = document.getElementById('queue-agent-status');
+const queueSignIn = document.getElementById('queue-sign-in');
+const queueSignOut = document.getElementById('queue-sign-out');
+const queueSetStatus = document.getElementById('queue-set-status');
+const queueList = document.getElementById('queue-list');
+const queueResponses = document.getElementById('queue-responses');
+const queueEvents = document.getElementById('queue-events');
 
 let base64;
 let audio64;
@@ -107,6 +124,7 @@ let call;
 let callTransferObj;
 let broadworksCorrelationInfo;
 let localAudioStream;
+let lineRegistered = false;
 let effect;
 
 const devicesById = {};
@@ -139,6 +157,147 @@ async function ensureVoicemailInitialized() {
 
   return voicemailInitPromise;
 }
+
+function queueOwnerId() {
+  return queueLineOwner.value.trim() || undefined;
+}
+
+function queueLog(element, label, value) {
+  let details;
+  try {
+    details = JSON.stringify(value, null, 2);
+  } catch {
+    details = String(value);
+  }
+  const token = tokenElm.value;
+  if (token) details = String(details).split(token).join('[redacted]');
+  const entry = `${new Date().toLocaleTimeString()} ${label}\n${details}\n\n`;
+  const previous = element.textContent.startsWith('No ') ? '' : element.textContent;
+  element.textContent = (entry + previous).slice(0, 30000);
+}
+
+function renderCallQueue() {
+  const state = callQueueSettings?.acdState;
+  const signedIn = Boolean(state && state !== 'SIGN_OUT');
+  const enabled = Boolean(callQueue) && !callQueueBusy;
+  queueLineOwner.disabled = !enabled;
+  queueRefresh.disabled = !enabled;
+  queueSync.disabled = !enabled;
+  queueSignIn.disabled = !enabled || state !== 'SIGN_OUT';
+  queueSignOut.disabled = !enabled || !signedIn;
+  queueStatus.disabled = !enabled || !signedIn;
+  queueSetStatus.disabled = !enabled || !signedIn;
+  queueAgentStatus.textContent = state ? `Agent status: ${state.replace(/_/g, ' ')}` : 'Agent status has not been loaded.';
+  if (['AVAILABLE', 'UNAVAILABLE', 'WRAP_UP'].includes(state)) queueStatus.value = state;
+  queueList.replaceChildren();
+  if (!callQueueSettings) return;
+  const queues = callQueueSettings.queues || [];
+  if (!queues.length) {
+    queueList.textContent = 'No queues on this line.';
+    return;
+  }
+  queues.forEach((queue) => {
+    const row = document.createElement('div');
+    row.className = 'queue-item';
+    const label = document.createElement('span');
+    label.textContent = `${queue.name || 'Unnamed queue'}${queue.extension ? ` (${queue.extension})` : ''}`;
+    const action = document.createElement('button');
+    action.type = 'button';
+    action.textContent = queue.available === undefined ? 'Membership unknown' : queue.available ? 'Leave queue' : 'Join queue';
+    action.disabled = !enabled || !signedIn || queue.available === undefined || (queue.available && queue.allowLogOffEnabled === false);
+    action.addEventListener('click', () => updateCallQueue({queues: [{id: queue.id, available: !queue.available}]}));
+    row.append(label, action);
+    queueList.appendChild(row);
+  });
+}
+
+async function queueRequest(label, operation, loadSettings = false, applySettings = true) {
+  if (!callQueue || callQueueBusy) return;
+  const generation = callQueueGeneration;
+  const selectedOwner = queueOwnerId();
+  callQueueBusy = true;
+  renderCallQueue();
+  try {
+    const response = await operation(selectedOwner);
+    if (generation !== callQueueGeneration) return;
+    queueLog(queueResponses, `${label} response`, response);
+    if (response.statusCode < 200 || response.statusCode >= 300) {
+      if (loadSettings) callQueueSettings = undefined;
+      queueConnection.textContent = `${label} failed. See the SDK response below.`;
+      return;
+    }
+    if (applySettings && response.data?.callQueue && selectedOwner === queueOwnerId()) callQueueSettings = response.data.callQueue;
+    if (loadSettings && !response.data?.callQueue) {
+      callQueueSettings = undefined;
+      queueConnection.textContent = 'The SDK response did not include queue settings.';
+      return;
+    }
+    if (applySettings) queueConnection.textContent = `Queue client connected to ${callQueueApiBase}.`;
+  } catch (error) {
+    if (generation !== callQueueGeneration) return;
+    if (loadSettings) callQueueSettings = undefined;
+    queueLog(queueResponses, `${label} error`, {message: error?.message || String(error)});
+    queueConnection.textContent = `${label} failed. See the SDK response below.`;
+  } finally {
+    if (generation === callQueueGeneration) {
+      callQueueBusy = false;
+      renderCallQueue();
+    }
+  }
+}
+
+function refreshCallQueue() {
+  return queueRequest('Get queue settings', (owner) => callQueue.getCallQueueSettings(owner), true);
+}
+
+function updateCallQueue(update) {
+  return queueRequest('Update queue settings', (owner) => callQueue.updateCallQueueSettings(update, owner));
+}
+
+function syncCallQueue() {
+  return queueRequest('Request event sync', () => callQueue.syncTelephonyCalls(), false, false);
+}
+
+function detachCallQueue() {
+  callQueueGeneration += 1;
+  if (callQueue && callQueueHandler) callQueue.off('callQueue:updated', callQueueHandler);
+  callQueue = undefined;
+  callQueueHandler = undefined;
+  callQueueSettings = undefined;
+  callQueueBusy = false;
+  renderCallQueue();
+}
+
+async function initializeCallQueue() {
+  detachCallQueue();
+  if (!calling?.registered || !calling.callQueueClient) {
+    queueConnection.textContent = 'Queue client unavailable: device or event connection failed, or the account is unsupported. Reload the page to retry.';
+    return;
+  }
+  callQueue = calling.callQueueClient;
+  callQueueHandler = (event) => {
+    queueLog(queueEvents, 'callQueue:updated', event);
+    if ((event.lineOwnerId || undefined) === queueOwnerId()) {
+      callQueueSettings = event;
+      renderCallQueue();
+    }
+  };
+  callQueue.on('callQueue:updated', callQueueHandler);
+  queueConnection.textContent = `Queue client connected to ${callQueueApiBase}. Loading settings...`;
+  renderCallQueue();
+  await refreshCallQueue();
+  if (callQueue) await syncCallQueue();
+}
+
+queueLineOwner.addEventListener('input', () => {
+  callQueueSettings = undefined;
+  renderCallQueue();
+});
+queueRefresh.addEventListener('click', refreshCallQueue);
+queueSync.addEventListener('click', syncCallQueue);
+queueSignIn.addEventListener('click', () => updateCallQueue({agentACDState: 'UNAVAILABLE'}));
+queueSignOut.addEventListener('click', () => updateCallQueue({agentACDState: 'SIGN_OUT'}));
+queueSetStatus.addEventListener('click', () => updateCallQueue({agentACDState: queueStatus.value}));
 
 async function uploadLogs() {
     try {
@@ -257,6 +416,8 @@ async function handleServiceSelect(e) {
 async function initCalling(e) {
   e.preventDefault();
   console.log('Authentication#initWebex()');
+  detachCallQueue();
+  queueConnection.textContent = 'Initializing Calling...';
 
   tokenElm.disabled = true;
   saveElm.disabled = true;
@@ -283,7 +444,6 @@ async function initCalling(e) {
         kmsInitialTimeout: 8000,
         kmsMaxTimeout: 40000,
         batcherMaxCalls: 30,
-        caroots: null,
       },
       dss: {},
     },
@@ -316,6 +476,7 @@ async function initCalling(e) {
     callSettings: true,
     voicemail: true,
     callRecording: true,
+    callQueue: true,
   }
 
   const loggerConfig = {
@@ -338,6 +499,17 @@ async function initCalling(e) {
     serviceData.guestName = guestName.value
   }
 
+  /*
+   * Created ahead of the client so that it can discover this client's host ip addresses from a
+   * local offer and report them to Mobius on registration. The same stream is then reused for
+   * dialling and answering.
+   */
+  try {
+    localAudioStream = await Calling.createMicrophoneStream({audio: true});
+  } catch (error) {
+    console.error('Authentication#initCalling() :: unable to get the microphone stream', error);
+  }
+
   const callingClientConfig = {
     logger: loggerConfig,
     discovery: {
@@ -349,6 +521,7 @@ async function initCalling(e) {
     iceGathering: {
       reduceTimeoutForIceLite: true,
     },
+    localAudioStream,
   };
 
   if (callingClientConfig.discovery.country === 'Country') {
@@ -362,8 +535,14 @@ async function initCalling(e) {
   const callingConfig = {
     clientConfig : clientConfig,
     callingClientConfig: callingClientConfig,
+    callQueueClientConfig: {
+      webexApiBaseUrl: fedrampBox.checked
+        ? 'https://api-usgov.webex.com'
+        : enableProd ? 'https://webexapis.com' : 'https://integration.webexapis.com',
+    },
     logger:loggerConfig,
   }
+  callQueueApiBase = callingConfig.callQueueClientConfig.webexApiBaseUrl;
 
   calling = await Calling.init({webexConfig, callingConfig});
 
@@ -411,10 +590,10 @@ async function initCalling(e) {
 
       if (window.callRecording === undefined && calling.callRecordingClient !== undefined) {
         callRecording = window.callRecording = calling.callRecordingClient;
-        registerCallRecordingListeners();
       }
 
       if(callingClient) fetchLines();
+      await initializeCallQueue();
     });
   });
 
@@ -438,6 +617,15 @@ function toggleDisplay(elementId, status) {
   } else {
     element.classList.add('hidden');
   }
+}
+
+/*
+ * Dialling needs a registered line and a microphone stream. The stream is captured during
+ * initialization, so registering is what normally unblocks the button, but that capture can be
+ * denied and retried later with getMediaStreams().
+ */
+function refreshMakeCallState() {
+  makeCallBtn.disabled = !(lineRegistered && localAudioStream);
 }
 
 const callNotifyEvent = new CustomEvent('line:incoming_call', {
@@ -494,6 +682,8 @@ function createDevice() {
         ? `Registered, deviceId: ${deviceInfo.mobiusDeviceId}`
         : 'Not Registered';
     unregisterElm.disabled = false;
+    lineRegistered = true;
+    refreshMakeCallState();
   });
 
   line.on('error', (error) => {
@@ -513,6 +703,8 @@ function createDevice() {
       reason?.type === 'session_superseded'
         ? 'Session superseded by another tab or device'
         : 'Not Registered';
+    lineRegistered = false;
+    refreshMakeCallState();
   });
 
   // Start listening for incoming calls
@@ -532,7 +724,7 @@ function createDevice() {
 
     call.on('disconnect', () => {
       callDetailsElm.innerText = `${correlationId}: Call Disconnected`;
-      makeCallBtn.disabled = false;
+      refreshMakeCallState();
       endElm.disabled = true;
       muteElm.value = 'Mute';
       holdResumeElm.value = 'Hold';
@@ -557,7 +749,7 @@ function endCall() {
   call.end();
   callDetailsElm.innerText = `${call.getCorrelationId()}: Call Disconnected`;
   outboundEndElm.disabled = true;
-  makeCallBtn.disabled = false;
+  refreshMakeCallState();
   endElm.disabled = true;
   answerElm.disabled = true;
   muteElm.value = 'Mute';
@@ -623,6 +815,8 @@ function holdResume() {
 }
 
 async function deleteDevice() {
+  detachCallQueue();
+  queueConnection.textContent = 'Calling is disconnected. Reload the page and initialize Calling to reconnect call queues.';
   await calling.deregister();
   registerElm.disabled = false;
   unregisterElm.disabled = true;
@@ -730,7 +924,7 @@ function createCall(e) {
   });
   call.on('disconnect', (correlationId) => {
     callDetailsElm.innerText = `${correlationId}: Call Disconnected`;
-    makeCallBtn.disabled = false;
+    refreshMakeCallState();
     endElm.disabled = true;
     muteElm.value = 'Mute';
     outboundEndElm.disabled = true;
@@ -892,10 +1086,12 @@ function initiateTransfer() {
 }
 
 async function getMediaStreams() {
-  localAudioStream  = await Calling.createMicrophoneStream({audio: true});
+  if (!localAudioStream) {
+    localAudioStream = await Calling.createMicrophoneStream({audio: true});
+  }
 
   localAudioElem.srcObject = localAudioStream.outputStream;
-  makeCallBtn.disabled = false;
+  refreshMakeCallState();
 }
 
 async function toggleNoiseReductionEffect() {
@@ -1160,35 +1356,40 @@ function renderRecordingsTable(recordings) {
 }
 
 /**
- * Subscribe to typed Call Recording events and log them in the events panel.
- */
-function registerCallRecordingListeners() {
-  if (!callRecording) {
-    return;
-  }
-
-  const logEvent = (label) => (event) => {
-    console.log(`Call Recording event :: ${label}`, event);
-    recordingEventsElm.innerText = `${label}: ${JSON.stringify(event, null, 2)}\n${recordingEventsElm.innerText}`;
-  };
-
-  callRecording.on('callRecording:created', logEvent('callRecording:created'));
-  callRecording.on('callRecording:updated', logEvent('callRecording:updated'));
-  callRecording.on('callRecording:deleted', logEvent('callRecording:deleted'));
-}
-
-/**
  * Fetch the list of recordings for the logged-in user.
  */
 async function fetchRecordings() {
+  if (!callRecording) {
+    const message =
+      'Call Recording client is not initialized. Save a token and register first, then check the console for initialize errors.';
+    console.log(message);
+    recordingDataElm.innerText = message;
+
+    return;
+  }
+
   try {
     callRecordingElm.disabled = true;
-    const response = await callRecording.getCallRecording({type: 'list'});
+    const response = await callRecording.getCallRecording({
+      type: 'list',
+    });
 
     console.log('Call Recording list response ', response);
     renderRecordingsTable(response.data?.recordings);
+    if (response.statusCode !== 200) {
+      const detail = response.data?.error || JSON.stringify(response.data);
+      recordingDataElm.innerText = JSON.stringify(response, null, 2);
+      const tbody = document.getElementById('callRecordingTableId');
+      if (tbody) {
+        tbody.innerHTML = '';
+        const cell = tbody.insertRow().insertCell();
+        cell.colSpan = 7;
+        cell.textContent = detail;
+      }
+    }
   } catch (err) {
     console.log(`Call Recording list error response ${err}`);
+    recordingDataElm.innerText = `${err}`;
   } finally {
     callRecordingElm.disabled = false;
   }
@@ -1201,7 +1402,10 @@ async function fetchRecording() {
   const recordingId = document.getElementById('recordingId').value;
 
   try {
-    const response = await callRecording.getCallRecording({type: 'detail', recordingId});
+    const response = await callRecording.getCallRecording({
+      type: 'detail',
+      recordingId,
+    });
 
     console.log('Call Recording get response ', response);
     recordingDataElm.innerText = JSON.stringify(response.data?.recording ?? response.data, null, 2);
@@ -1212,24 +1416,7 @@ async function fetchRecording() {
 }
 
 /**
- * Fetch metadata for a single recording by its UUID.
- */
-async function fetchRecordingMetadata() {
-  const recordingId = document.getElementById('recordingId').value;
-
-  try {
-    const response = await callRecording.getCallRecording({type: 'metadata', recordingId});
-
-    console.log('Call Recording metadata response ', response);
-    recordingDataElm.innerText = JSON.stringify(response.data?.metadata ?? response.data, null, 2);
-  } catch (err) {
-    console.log(`Call Recording metadata error response ${err}`);
-    recordingDataElm.innerText = `${err}`;
-  }
-}
-
-/**
- * Permanently delete a single recording by its id. Per the API this cannot be undone.
+ * Moves a recording to the recycle bin (soft delete). It can be restored from the recycle bin.
  */
 async function removeRecording() {
   const recordingId = document.getElementById('recordingId').value;
@@ -1241,7 +1428,7 @@ async function removeRecording() {
   }
 
   // eslint-disable-next-line no-alert
-  if (!window.confirm(`Permanently delete recording ${recordingId}? This cannot be undone.`)) {
+  if (!window.confirm(`Move recording ${recordingId} to the recycle bin?`)) {
     return;
   }
 
@@ -1256,23 +1443,6 @@ async function removeRecording() {
   } catch (err) {
     console.log(`Call Recording delete error response ${err}`);
     recordingDataElm.innerText = `${err}`;
-  }
-}
-
-/**
- * Fetch all recordings that belong to a given call session id.
- */
-async function fetchRecordingsBySession() {
-  const callSessionId = document.getElementById('callSessionId').value;
-
-  try {
-    const response = await callRecording.getCallRecording({type: 'byCallSession', callSessionId});
-
-    console.log('Call Recording by session response ', response);
-    recordingSessionDataElm.innerText = JSON.stringify(response.data, null, 2);
-  } catch (err) {
-    console.log(`Call Recording by session error response ${err}`);
-    recordingSessionDataElm.innerText = `${err}`;
   }
 }
 

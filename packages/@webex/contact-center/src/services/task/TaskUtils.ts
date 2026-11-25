@@ -12,6 +12,19 @@ import {TaskContext} from './state-machine/types';
 import {CC_EVENTS} from '../config/types';
 import {OUTBOUND_TYPE, OUTDIAL_DIRECTION, OUTDIAL_MEDIA_TYPE} from '../../constants';
 
+type AISummaryError = Error & {data?: Record<string, unknown>};
+
+export const isNonEmptyString = (value: unknown): value is string =>
+  typeof value === 'string' && value.length > 0;
+
+export const createSummaryError = (errorCode: string): AISummaryError => {
+  const error = new Error(errorCode) as AISummaryError;
+
+  error.data = {errorCode};
+
+  return error;
+};
+
 const CAMPAIGN_PREVIEW_OUTBOUND_TYPES = ['STANDARD_PREVIEW_CAMPAIGN', 'DIRECT_PREVIEW_CAMPAIGN'];
 const CAMPAIGN_PREVIEW_CAMPAIGN_TYPES = ['preview_standard', 'preview_direct'];
 
@@ -272,7 +285,8 @@ export const isEpDnConsultPendingConferenceMerge = (
   const selfParticipant = interaction.participants?.[selfAgentId] as
     | {consultState?: string}
     | undefined;
-  if (taskData.isConsulted === true || selfParticipant?.consultState === 'consultCompleted') {
+  const selfConsultState = selfParticipant?.consultState;
+  if (taskData.isConsulted === true || selfConsultState === 'consultCompleted') {
     return false;
   }
 
@@ -295,22 +309,22 @@ export const isEpDnConsultPendingConferenceMerge = (
   const callProcessingDetails = interaction.callProcessingDetails as
     | {hasCustomerLeft?: string}
     | undefined;
-  const customerLeft =
-    callProcessingDetails?.hasCustomerLeft === 'true' ||
-    !getIsCustomerInCall(interaction, mainCallId);
+  const hasCustomerLeft = callProcessingDetails?.hasCustomerLeft;
+  const customerLeft = hasCustomerLeft === 'true' || !getIsCustomerInCall(interaction, mainCallId);
 
+  const interactionState = interaction.state;
   const conferenceFromPayload =
-    interaction.state === INTERACTION_STATE.CONFERENCE ||
+    interactionState === INTERACTION_STATE.CONFERENCE ||
     getIsConferenceInProgress(taskData) ||
-    (interaction.state === INTERACTION_STATE.POST_CALL && customerLeft);
+    (interactionState === INTERACTION_STATE.POST_CALL && customerLeft);
   if (!conferenceFromPayload) return false;
 
   return (
     taskData.consultingAgentId === selfAgentId ||
     interaction.owner === selfAgentId ||
-    selfParticipant?.consultState === CONSULT_STATE.CONSULTING ||
-    selfParticipant?.consultState === CONSULT_STATE.CONFERENCING ||
-    selfParticipant?.consultState === 'consultInitiated'
+    selfConsultState === CONSULT_STATE.CONSULTING ||
+    selfConsultState === CONSULT_STATE.CONFERENCING ||
+    selfConsultState === 'consultInitiated'
   );
 };
 

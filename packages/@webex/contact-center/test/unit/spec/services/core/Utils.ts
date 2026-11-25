@@ -1036,4 +1036,53 @@ describe('Utils', () => {
     });
   });
 
+  describe('isAllowedUrlHost', () => {
+    it('returns true when the hostname exactly matches an allowed domain', () => {
+      expect(Utils.isAllowedUrlHost('wss://cisco.com', ['cisco.com'])).toBe(true);
+    });
+
+    it('returns true when the hostname is a subdomain of an allowed domain', () => {
+      expect(Utils.isAllowedUrlHost('wss://notifs.wxcc-us1.cisco.com', ['cisco.com'])).toBe(true);
+    });
+
+    it('returns false when the hostname is not in the allowed domains list', () => {
+      expect(Utils.isAllowedUrlHost('wss://evil.attacker.com', ['cisco.com'])).toBe(false);
+    });
+
+    it('returns false for an unparsable url', () => {
+      expect(Utils.isAllowedUrlHost('not-a-url', ['cisco.com'])).toBe(false);
+    });
+
+    it('returns false for a null/undefined url', () => {
+      expect(Utils.isAllowedUrlHost(null as any, ['cisco.com'])).toBe(false);
+      expect(Utils.isAllowedUrlHost(undefined as any, ['cisco.com'])).toBe(false);
+    });
+  });
+
+  describe('sanitizeForObservability', () => {
+    it('returns an empty string for non-string input', () => {
+      expect(Utils.sanitizeForObservability(undefined)).toBe('');
+      expect(Utils.sanitizeForObservability(null)).toBe('');
+      expect(Utils.sanitizeForObservability(42)).toBe('');
+      expect(Utils.sanitizeForObservability({})).toBe('');
+    });
+
+    it('leaves a legitimate value effectively unchanged', () => {
+      expect(Utils.sanitizeForObservability('AGENT_LOGOUT')).toBe('AGENT_LOGOUT');
+    });
+
+    it('strips CR/LF to block log-line injection', () => {
+      expect(Utils.sanitizeForObservability('ok\r\nINJECTED fake log line')).toBe(
+        'okINJECTED fake log line'
+      );
+    });
+
+    it('strips other control characters', () => {
+      expect(Utils.sanitizeForObservability('a\x00b\x1f\x7fc')).toBe('abc');
+    });
+
+    it('caps the length at 200 characters', () => {
+      expect(Utils.sanitizeForObservability('x'.repeat(500))).toHaveLength(200);
+    });
+  });
 });

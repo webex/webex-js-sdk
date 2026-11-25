@@ -14,9 +14,15 @@ import {
   isSecondaryEpDnAgent,
   getConsultMediaResourceId,
   getIsConsultInProgressForConferenceControls,
+  getIsConsultedAgentForControls,
+  getServerHoldStateForControls,
+  isCampaignPreviewTask,
+  isCampaignPreviewReservation,
+  isEpDnConsultPendingConferenceMerge,
 } from '../../../../../src/services/task/TaskUtils';
 import {ITask, Interaction, TaskData} from '../../../../../src/services/task/types';
 import {LoginOption} from '../../../../../src/types';
+import {CC_EVENTS} from '../../../../../src/services/config/types';
 
 describe('TaskUtils', () => {
   let mockTask: ITask;
@@ -45,6 +51,73 @@ describe('TaskUtils', () => {
       emit: jest.fn(),
       updateTaskData: jest.fn(),
     } as any;
+  });
+
+  describe('state-control helper branches', () => {
+    it('should derive consulted-agent and hold states from task context', () => {
+      expect(
+        getIsConsultedAgentForControls({isConsulted: true} as TaskData, {} as any, false)
+      ).toBe(true);
+      expect(
+        getIsConsultedAgentForControls(
+          {} as TaskData,
+          {consultInitiator: false} as any,
+          true
+        )
+      ).toBe(true);
+      expect(
+        getIsConsultedAgentForControls(
+          {} as TaskData,
+          {consultInitiator: true} as any,
+          true
+        )
+      ).toBe(false);
+
+      const taskData = {
+        interaction: {
+          media: {
+            main: {isHold: true},
+            fallback: {isHold: false},
+          },
+        },
+        mediaResourceId: 'fallback',
+      } as TaskData;
+
+      expect(getServerHoldStateForControls({taskData} as any, 'main')).toBe(true);
+      expect(getServerHoldStateForControls({taskData} as any)).toBe(false);
+      expect(getServerHoldStateForControls({} as any)).toBeUndefined();
+    });
+
+    it('should detect campaign preview tasks and reservations', () => {
+      expect(
+        isCampaignPreviewTask({
+          interaction: {
+            outboundType: 'STANDARD_PREVIEW_CAMPAIGN',
+            callProcessingDetails: {},
+          },
+        } as TaskData)
+      ).toBe(true);
+      expect(
+        isCampaignPreviewTask({
+          interaction: {
+            outboundType: 'OUTDIAL',
+            callProcessingDetails: {campaignType: 'preview_standard'},
+          },
+        } as unknown as TaskData)
+      ).toBe(true);
+      expect(isCampaignPreviewTask({interaction: {callProcessingDetails: {}}} as TaskData)).toBe(
+        false
+      );
+
+      expect(
+        isCampaignPreviewReservation({
+          data: {type: CC_EVENTS.AGENT_OFFER_CAMPAIGN_RESERVATION},
+        } as ITask)
+      ).toBe(true);
+      expect(isCampaignPreviewReservation({data: {type: CC_EVENTS.AGENT_CONTACT}} as ITask)).toBe(
+        false
+      );
+    });
   });
 
   describe('isPrimary', () => {
@@ -663,6 +736,56 @@ describe('TaskUtils', () => {
       expect(
         getIsConsultInProgressForConferenceControls(interaction, 'interaction-1', 'agent-1')
       ).toBe(true);
+    });
+  });
+
+  describe('isEpDnConsultPendingConferenceMerge', () => {
+    const buildTaskData = (overrides: {
+      state?: unknown;
+      hasCustomerLeft?: unknown;
+      selfConsultState?: unknown;
+    }) =>
+      ({
+        type: 'ParticipantPostCallActivity',
+        consultingAgentId: 'agent-1',
+        isConsulted: false,
+        interactionId: 'interaction-1',
+        interaction: {
+          state: overrides.state ?? 'post_call',
+          mainInteractionId: 'interaction-1',
+          owner: 'agent-1',
+          callProcessingDetails: {hasCustomerLeft: overrides.hasCustomerLeft ?? 'true'},
+          participants: {
+            'agent-1': {
+              id: 'agent-1',
+              pType: 'Agent',
+              hasLeft: false,
+              consultState: overrides.selfConsultState ?? 'conferencing',
+            },
+            '+13159998059': {id: '+13159998059', pType: 'EP-DN', hasLeft: false, hasJoined: false},
+            'customer-1': {id: 'customer-1', pType: 'Customer', hasJoined: true, hasLeft: true},
+          },
+          media: {
+            'interaction-1': {mType: 'mainCall', participants: ['agent-1']},
+            'consult-media-1': {mType: 'consult', participants: ['+13159998059', 'agent-1']},
+          },
+        },
+      }) as any;
+
+    it('merge decision preserved for valid values', () => {
+      const taskData = buildTaskData({});
+
+      expect(isEpDnConsultPendingConferenceMerge(taskData, 'agent-1')).toBe(true);
+    });
+
+    it('merge decision ignores unexpected server field values', () => {
+      const taskData = buildTaskData({
+        state: 'bogus-state',
+        hasCustomerLeft: 'maybe',
+        selfConsultState: 'bogus-consult-state',
+      });
+
+      expect(isEpDnConsultPendingConferenceMerge(taskData, 'agent-1')).toBe(false);
     });
   });
 });

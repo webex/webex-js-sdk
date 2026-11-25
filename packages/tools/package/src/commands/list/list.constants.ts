@@ -18,6 +18,10 @@ const CONFIG: CommandsConfig = {
   description: 'List packages within this project based on the provided options',
   options: [
     {
+      description: 'Use committed changes for documentation-only detection with --since',
+      name: 'committed',
+    },
+    {
       default: MODES.YARN,
       description: 'Output mode for downstream consumption',
       name: 'mode',

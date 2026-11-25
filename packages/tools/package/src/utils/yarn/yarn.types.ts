@@ -5,6 +5,12 @@
  */
 export interface ListConfig {
   /**
+   * Whether to use only committed changes for documentation-only detection.
+   * Applies when `since` is provided. Other change sets use Yarn's selection.
+   */
+  committed?: boolean;
+
+  /**
    * Whether to output the results as JSON.
    */
   json?: boolean;
@@ -20,7 +26,8 @@ export interface ListConfig {
   recursive?: boolean;
 
   /**
-   * Git Reference to collect a list of packages from based on local changes.
+   * Git reference to collect packages from based on local changes.
+   * Documentation-only change sets return an empty list.
    */
   since?: string;
 

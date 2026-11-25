@@ -587,7 +587,12 @@ if (response.statusCode === 200) {
 - Missed-call and delete mutations require valid `endTime`/`sessionId` pairs.
 - The `limit` reaching the Janus query is always a bounded integer within `[MIN_LIMIT, MAX_LIMIT]`, and `sort`/`sortBy` are always members of their respective enums (defaulting otherwise).
 - WXC queries include shared sessions; UCM results are enriched by matching `self.cucmDN` to line `dnorpattern`.
+<<<<<<< HEAD
 - Mercury events retain their typed payload and event-key mapping; a session-event handler emits only when the expected nested payload is present and otherwise ignores the event without throwing. Evidence: `src/CallHistory/CallHistory.ts`, `src/CallHistory/CallHistory.test.ts`.
+=======
+- Mercury events retain their typed payload and event-key mapping. Evidence: `src/CallHistory/CallHistory.ts`, `src/CallHistory/CallHistory.test.ts`.
+- Diagnostic logging does not emit session identifiers; `updateMissedCalls` logs only the count of sessions being processed rather than the serialized `endTime`/`sessionId` array. Evidence: `src/CallHistory/CallHistory.ts`, `src/CallHistory/CallHistory.test.ts`.
+>>>>>>> 17095af914c84ad5f371eae1288abf405e03d518
 
 ## Concurrency & Reactive Flow
 

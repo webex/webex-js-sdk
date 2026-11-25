@@ -365,14 +365,13 @@ const MeetingUtil = {
       });
   },
 
-  cleanUp: (meeting) => {
+  cleanUp: (meeting, {preserveVoiceaChannel = true}: {preserveVoiceaChannel?: boolean} = {}) => {
     meeting.getWebexObject().internal.device.meetingEnded();
     meeting.stopPeriodicLogUpload();
 
     meeting.breakouts.cleanUp();
     meeting.webinar.cleanUp();
     meeting.simultaneousInterpretation.cleanUp();
-    meeting.locusInfo.cleanUp();
     meeting.locusMediaRequest = undefined;
 
     meeting.webex?.internal?.newMetrics?.callDiagnosticMetrics?.clearEventLimitsForCorrelationId(
@@ -396,7 +395,7 @@ const MeetingUtil = {
       .then(() => meeting.stopKeepAlive())
       .then(() => {
         if (meeting.config?.enableAutomaticLLM) {
-          return meeting.cleanupLLMConneciton({throwOnError: false});
+          return meeting.cleanupLLMConneciton({throwOnError: false, preserveVoiceaChannel});
         }
 
         return undefined;
@@ -1008,7 +1007,11 @@ const MeetingUtil = {
         renameKey(language, 'languageGroupId', 'languageCode');
       }
       if (!meeting.simultaneousInterpretation?.siLanguages?.length) {
-        meeting.simultaneousInterpretation.updateInterpretation({siLanguages: lanuagesInfo});
+        // Meeting-info only carries siLanguages; preserve siEnabled owned by locus controls.
+        meeting.simultaneousInterpretation.updateInterpretation(
+          {siLanguages: lanuagesInfo},
+          {preserveSiEnabled: true}
+        );
       }
     }
     Trigger.trigger(

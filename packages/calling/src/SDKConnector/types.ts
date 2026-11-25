@@ -10,7 +10,7 @@ import {
 /* eslint-disable no-shadow */
 
 type Listener = (e: string, data?: unknown) => void;
-type ListenerOff = (e: string) => void;
+type ListenerOff = (e: string, listener?: (data?: unknown) => void) => void;
 
 export type ServiceHost = {
   host: string;
@@ -155,6 +155,7 @@ export interface WebexSDK {
         'ucmgmt-gateway': string;
         contactsService: string;
         hydraDeveloperApi?: string;
+        'webex-user-hub-service'?: string;
       };
       _activeServices: {
         broadworksIdpProxy: string;
