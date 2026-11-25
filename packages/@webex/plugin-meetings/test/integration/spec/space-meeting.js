@@ -215,7 +215,8 @@ skipInNode(describe)('plugin-meetings', () => {
 
     it('alice adds x user as guest to space meeting', () =>
       Promise.all([
-        testUtils.delayedPromise(guest.webex.meetings.create(alice.meeting.sipUri)),
+        // Preserve the invitation's MTID when joining as a non-space participant.
+        testUtils.delayedPromise(guest.webex.meetings.create(alice.meeting.meetingJoinUrl)),
         testUtils.waitForEvents([
           {scope: guest.webex.meetings, event: 'meeting:added', user: guest},
         ]),
@@ -265,7 +266,7 @@ skipInNode(describe)('plugin-meetings', () => {
         ]),
       ]).then(() => testUtils.waitForStateChange(alice.meeting, 'LEFT')));
 
-    it('bob and chris leave meeting', () =>
+    it('bob, chris and guest leave meeting', () =>
       Promise.all([
         testUtils.delayedPromise(bob.meeting.leave()),
         testUtils.waitForEvents([
@@ -277,8 +278,9 @@ skipInNode(describe)('plugin-meetings', () => {
         ]),
       ])
         .then(() => testUtils.waitForStateChange(bob.meeting, 'LEFT'))
-        .then(() => chris.meeting.leave())
-        .then(() => testUtils.waitUntil(4000)));
+        .then(() => guest.meeting.leave())
+        .then(() => testUtils.waitForStateChange(guest.meeting, 'LEFT'))
+        .then(() => chris.meeting.leave()));
 
     it('alice, bob and chris stop all local tracks', () => {
       if (localTracks.alice.microphone) {
@@ -309,23 +311,25 @@ skipInNode(describe)('plugin-meetings', () => {
       }
     });
 
-    it('check for meeting cleanup', () => {
-      console.log('Alice ', alice.webex.meetings.getAllMeetings());
-      console.log('Bob ', bob.webex.meetings.getAllMeetings());
-      console.log('Chris ', chris.webex.meetings.getAllMeetings());
-      assert.notExists(
-        alice.webex.meetings.getMeetingByType('correlationId', alice.meeting.correlationId),
-        'alice meeting exists'
-      );
-      assert.notExists(
-        bob.webex.meetings.getMeetingByType('correlationId', bob.meeting.correlationId),
-        'bob meeting exists'
-      );
-      assert.notExists(
-        chris.webex.meetings.getMeetingByType('correlationId', chris.meeting.correlationId),
-        'chris meeting exists'
-      );
-    });
+    it('check for meeting cleanup', () => new Promise((resolve, reject) => {
+      const remaining = () => userSet.filter((user) => user.webex.meetings.getMeetingByType(
+        'correlationId', user.meeting.correlationId
+      )).map((user) => user.name);
+      const cleanup = () => {
+        clearInterval(intervalId);
+        clearTimeout(timeoutId);
+      };
+      const intervalId = setInterval(() => {
+        if (remaining().length === 0) {
+          cleanup();
+          resolve();
+        }
+      }, 250);
+      const timeoutId = setTimeout(() => {
+        cleanup();
+        reject(new Error(`Meetings still exist after all participants left: ${remaining().join(', ')}`));
+      }, 15000);
+    }));
   });
 
   jenkinsOnly(describe.skip)('Unclaimed PMR', () => {
