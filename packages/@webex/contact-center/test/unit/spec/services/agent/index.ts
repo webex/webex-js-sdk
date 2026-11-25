@@ -134,21 +134,21 @@ describe('AQM routing agent', () => {
     expect(req.notifSuccess.bind.data.agentSessionId).toBeUndefined();
   });
 
-  it('stateChangeV2 success bind uses pendingIdle typeMap for non-Idle requests', () => {
+  it('stateChangeV2 success bind uses array filters for non-Idle requests', () => {
     const availReq = (agent.stateChangeV2 as unknown as (p: {data: object}) => any)({
       data: {state: 'Available', auxCodeId: '0', channelType: ['chat']},
     });
     const detail = availReq.notifSuccess.bind.data.agentChannelStateDetail;
-    // Non-Idle bind uses __typeMap on pendingIdle to reject stale
-    // Idle-pending confirmations that share the same agentState.
-    expect(detail.__typeMap).toBeDefined();
-    expect(detail.__typeMap.typeField).toBe('pendingIdle');
-    // pendingIdle: false condition is empty — accepts any agentState so
-    // Available-cancels-Idle on busy channels (Engaged/WrapUp) resolves
-    // without waiting for task completion.
-    expect(detail.__typeMap.conditions.false).toEqual({});
-    // pendingIdle: true must NOT have a matching condition
-    expect(detail.__typeMap.conditions.true).toBeUndefined();
+    // Non-Idle bind uses array filters (not __typeMap) so bindCheck's
+    // Array.includes path handles boolean false correctly.
+    expect(detail.__typeMap).toBeUndefined();
+    // agentState array: requested state + busy-channel task states; excludes 'Idle'
+    expect(detail.agentState).toEqual([
+      'Available', 'Engaged', 'EngagedOther', 'WrapUp', 'Reserved', 'RONA',
+    ]);
+    expect(detail.agentState).not.toContain('Idle');
+    // pendingIdle: [false] rejects queued-Idle (true) and accepts completed (false)
+    expect(detail.pendingIdle).toEqual([false]);
   });
 
   it('stateChangeV2 success bind uses __typeMap for Idle to accept pending confirmations', () => {
@@ -206,34 +206,43 @@ describe('AQM routing agent', () => {
     );
   });
 
-  it('stateChangeV2 Available bind rejects pending-Idle confirmations with agentState Available', () => {
-    // Scenario: Idle request resolves on first channel, caller sends Available,
-    // remaining Idle confirmation arrives with agentState='Available', pendingIdle=true.
-    // The Available bind must NOT match that notification.
+  it('stateChangeV2 Available bind rejects completed Idle confirmations from prior request', () => {
+    // Scenario: bulk Idle/Lunch resolves on Voice, Available sent, Chat's late
+    // Idle confirmation arrives with agentState='Idle', pendingIdle=false.
     const availReq = (agent.stateChangeV2 as unknown as (p: {data: object}) => any)({
       data: {state: 'Available', auxCodeId: '0', channelType: ['chat']},
     });
     const detail = availReq.notifSuccess.bind.data.agentChannelStateDetail;
-    // pendingIdle=true notifications have no matching condition → typeMapCheck returns false
-    expect(detail.__typeMap.conditions).not.toHaveProperty('true');
-    // pendingIdle=false → passes (empty condition accepts any agentState,
-    // so Available-cancels-Idle on busy channels resolves immediately)
-    expect(detail.__typeMap.conditions.false).toEqual({});
+    // 'Idle' is excluded from agentState array → bindCheck rejects
+    expect(detail.agentState).not.toContain('Idle');
+    // pendingIdle: [false] is present but Idle agentState fails first
+    expect(detail.pendingIdle).toEqual([false]);
   });
 
-  it('stateChangeV2 Available bind accepts busy-channel confirmation where pendingIdle was cleared', () => {
-    // Scenario: Available request cancels a queued Idle on a channel currently
-    // in Engaged state.  Server confirms with pendingIdle: false but keeps
-    // agentState: 'Engaged' (task still active).
+  it('stateChangeV2 Available bind rejects queued-Idle confirmations from prior request', () => {
+    // Scenario: Idle/Lunch sent, Available sent after first channel resolves,
+    // remaining channel confirms with agentState='Engaged', pendingIdle=true
+    // (queued Idle on busy channel from the prior request).
+    const availReq = (agent.stateChangeV2 as unknown as (p: {data: object}) => any)({
+      data: {state: 'Available', auxCodeId: '0', channelType: ['chat']},
+    });
+    const detail = availReq.notifSuccess.bind.data.agentChannelStateDetail;
+    // pendingIdle: [false] rejects pendingIdle: true notifications
+    expect(detail.pendingIdle).toEqual([false]);
+    expect(detail.pendingIdle).not.toContain(true);
+  });
+
+  it('stateChangeV2 Available bind accepts busy-channel cancellation confirmation', () => {
+    // Scenario: Available cancels a queued Idle on an Engaged channel.
+    // Server confirms with agentState='Engaged', pendingIdle=false.
     const availReq = (agent.stateChangeV2 as unknown as (p: {data: object}) => any)({
       data: {state: 'Available', auxCodeId: '0', channelType: ['chat'], agentId: 'a1', agentSessionId: 's1'},
     });
     const detail = availReq.notifSuccess.bind.data.agentChannelStateDetail;
-
-    // The bind must match — pendingIdle: false condition is empty
-    expect(detail.__typeMap.conditions.false).toEqual({});
-    // And must reject pendingIdle: true (stale Idle confirmation)
-    expect(detail.__typeMap.conditions).not.toHaveProperty('true');
+    // Engaged is in the accepted agentState array
+    expect(detail.agentState).toContain('Engaged');
+    // pendingIdle: [false] matches the confirmation's pendingIdle: false
+    expect(detail.pendingIdle).toEqual([false]);
   });
 
   it('stateChangeV2 uses distinct bind keys per channel set', () => {

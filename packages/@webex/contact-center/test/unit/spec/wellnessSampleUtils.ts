@@ -61,19 +61,31 @@ describe('Contact Center wellness sample utilities', () => {
       ['OnBreak', 'rona-code', 'ignore'],
       ['WaitingForSafeState', 'rona-code', 'cancel'],
       ['Ready', '0', 'ignore'],
-    ])(
-      'returns %s / %s as %s',
-      (lifecycle, nextAuxCodeId, expected) => {
-        expect(
-          getLegacyExternalTransitionDecision({
-            lifecycle,
-            nextAuxCodeId,
-            wellnessAuxCodeId: 'wellness',
-            validIdleCodeIds: ['user-idle'],
-          })
-        ).toBe(expected);
-      }
-    );
+    ])('returns %s / %s as %s', (lifecycle, nextAuxCodeId, expected) => {
+      expect(
+        getLegacyExternalTransitionDecision({
+          lifecycle,
+          nextAuxCodeId,
+          wellnessAuxCodeId: 'wellness',
+          validIdleCodeIds: ['user-idle'],
+        })
+      ).toBe(expected);
+    });
+
+    it('returns complete for OnBreak with aggregate Available (auxCodeId 0)', () => {
+      // This is the scalar decision that the sample's handleWellnessLegacyStateChanged
+      // must guard against when V2 channelStates show some channels still on break.
+      // The utility itself correctly returns 'complete' — the caller must check
+      // per-channel states before invoking.
+      expect(
+        getLegacyExternalTransitionDecision({
+          lifecycle: 'OnBreak',
+          nextAuxCodeId: '0',
+          wellnessAuxCodeId: 'wellness',
+          validIdleCodeIds: ['user-idle'],
+        })
+      ).toBe('complete');
+    });
   });
 
   describe('ordinary status selector', () => {
@@ -94,21 +106,16 @@ describe('Contact Center wellness sample utilities', () => {
 
   describe('sample public surface guard', () => {
     it('attaches the wellness constants consumed by the standalone browser sample', () => {
-      const webexSource = readFileSync(
-        resolve(__dirname, '../../../src/webex.js'),
-        'utf8'
-      );
+      const webexSource = readFileSync(resolve(__dirname, '../../../src/webex.js'), 'utf8');
       const appSource = readFileSync(
         resolve(__dirname, '../../../../../../docs/samples/contact-center/app.js'),
         'utf8'
       );
 
-      ['WELLNESS_BREAK_NOTIFICATION_ACTIONS', 'WELLNESS_BREAK_USER_ACTIONS'].forEach(
-        (surface) => {
-          expect(webexSource).toContain(`Webex.${surface} = ${surface};`);
-          expect(appSource).toContain(surface);
-        }
-      );
+      ['WELLNESS_BREAK_NOTIFICATION_ACTIONS', 'WELLNESS_BREAK_USER_ACTIONS'].forEach((surface) => {
+        expect(webexSource).toContain(`Webex.${surface} = ${surface};`);
+        expect(appSource).toContain(surface);
+      });
     });
 
     it('keeps the intake v0.4 US English wellness copy in the sample surfaces', () => {
@@ -145,7 +152,6 @@ describe('Contact Center wellness sample utilities', () => {
         "We couldn't start your well-being break due to a system issue.",
       ].forEach((copy) => expect(sampleSource).toContain(copy));
     });
-
   });
 
   describe('lifecycle transitions', () => {
@@ -280,7 +286,11 @@ describe('Contact Center wellness sample utilities', () => {
       expect(parseRecoveryMarker(JSON.stringify({version: 2}))).toBeUndefined();
       expect(
         parseRecoveryMarker(
-          JSON.stringify({version: 1, agentSessionId: 'session-1', stateModel: 'agent-state-control'})
+          JSON.stringify({
+            version: 1,
+            agentSessionId: 'session-1',
+            stateModel: 'agent-state-control',
+          })
         )
       ).toBeUndefined();
     });

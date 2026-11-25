@@ -4478,6 +4478,21 @@ function handleWellnessLegacyStateChanged(event, nextAuxCodeId) {
       // Keep legacyStateKnown as-is and wait for a fully bridgeable event.
       return;
     }
+
+    // Partial wellness transition: the aggregate is bridgeable (e.g. Voice=Available)
+    // but other channels still carry the wellness idle code (e.g. Chat=Idle/WellbeingBreak).
+    // The bridge's primary-channel auxCodeId '0' would fool getLegacyExternalTransitionDecision
+    // into returning 'complete', clearing the break timer and recovery marker while Chat
+    // remains on break with no scheduled restoration.  Wait until every selectable channel
+    // has left the wellness state before allowing the legacy decision to proceed.
+    if (wellnessState.idleCode?.id) {
+      for (const ct of SELECTABLE_ORDER) {
+        const ch = event.channelStates[ct];
+        if (ch && ch.auxCodeId === wellnessState.idleCode.id) {
+          return;
+        }
+      }
+    }
   }
   const wasDeferred = !wellnessState.legacyStateKnown;
   wellnessState.legacyStateKnown = true;

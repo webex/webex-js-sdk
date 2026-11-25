@@ -202,9 +202,12 @@ export default function routingAgent(routing: AqmReqs) {
           data: {
             type: CC_EVENTS.AGENT_CHANNEL_STATE_CHANGED,
             channelType: p.data.channelType,
-            // Idle: __typeMap on agentState accepts immediate + queued (pendingIdle) confirmations.
-            // Non-Idle: __typeMap on pendingIdle rejects stale Idle confirmations; empty {} accepts any state.
-            // auxCodeId as a regular key prevents cross-resolution between different idle codes.
+            // Idle bind: __typeMap on agentState accepts immediate Idle + queued (pendingIdle: true).
+            //   auxCodeId prevents cross-resolution between different idle codes.
+            // Non-Idle bind: array filters reject completed Idle and queued-Idle-pending
+            //   notifications from a prior request. pendingIdle: [false] uses the array
+            //   path in bindCheck (line ~247), which correctly handles boolean false —
+            //   the primitive path (!msgValue) would treat false as absent.
             agentChannelStateDetail:
               p.data.state === 'Idle'
                 ? {
@@ -223,13 +226,15 @@ export default function routingAgent(routing: AqmReqs) {
                     auxCodeId: p.data.auxCodeId,
                   }
                 : {
-                    // false: {} accepts any agentState (busy-channel confirmations keep task state).
-                    __typeMap: {
-                      typeField: 'pendingIdle',
-                      conditions: {
-                        false: {},
-                      },
-                    },
+                    agentState: [
+                      p.data.state,
+                      'Engaged',
+                      'EngagedOther',
+                      'WrapUp',
+                      'Reserved',
+                      'RONA',
+                    ],
+                    pendingIdle: [false],
                   },
             isClientInitiated: true, // Skip supervisor/system pushes
             ...(p.data.agentId ? {agentId: p.data.agentId} : {}), // Match this agent only
