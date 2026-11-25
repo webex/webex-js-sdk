@@ -200,7 +200,7 @@ contracts are owned by the services modules that declare them; this module re-ex
 | CONTACT_CENTER-R-011 | `enableWxBetterTogether` (default false) is an init-only flag read by `isWxBetterTogetherEnabled()`. After station login and silent relogin, ContactCenter applies the wxApp session hooks described under Design overview without failing the login, and `deregister()` clears the flag. | The private setter's JSDoc makes the init flag the Phase 1 host contract and keeps the runtime toggle internal; usersub state suppresses Webex App toasts, so a stale value must be cleared after a page refresh. | `src/cc.ts`, `src/config.ts`, `src/services/WebexCrossClientService.ts`, `src/services/WxAppTelephonyMercurySync.ts` | `test/unit/spec/cc.ts`, `test/unit/spec/services/WebexCrossClientService.ts`, `test/unit/spec/services/WxAppTelephonyMercurySync.ts` | Compatibility with `allowMultiLogin: true` is stated by the design but has no dedicated case. | PRESENT |
 | CONTACT_CENTER-R-012 | At READY, ContactCenter throws `Invalid Contact Center configuration: disableWebRTCRegistration cannot be true when allowMultiLogin is false. …` when that combination is configured, before any collaborator is created. The subscribe request carries `force`, `isKeepAliveEnabled`, `clientType`, and `allowMultiLogin` from the plugin config. | The error text states the reason: an SDK instance can receive Mobius/WebRTC task events only when it registers WebRTC or allows multi-login. | `src/cc.ts`, `src/config.ts`, `src/types.ts` | `test/unit/spec/cc.ts` | `getConnectionConfig` falls back to `allowMultiLogin` true when no config is present, while the registered default is false. | PRESENT |
 | CONTACT_CENTER-R-013 | Granular agent state session version (WXCC-15791):<br>- Before each `stationLogin`, re-read `manageChannelAvailability` from the user desktop-login API; keep the cached value if that fails.<br>- Log in on `/v2` when it is `true`, else `/v1`, with no fallback in either direction.<br>- All V1/V2 routing reads `manageChannelAvailability` directly with no intermediate state.<br>- `getAgentStateControl()` returns `{declared, active}`: `declared` from the current profile flag, `active` derived from whether a V2 session has populated `channelStatesMap`.<br>- `stationLogout`, `deregister()`, an `AgentLogoutSuccess` or `AgentMultiLoginCloseSession` for this session, and `AGENT_NOT_FOUND` on reload clear the channel maps and the telephony timer via `clearV2LocalState()`, which causes `active` to become `undefined`. | One routing version per session, matching wxcc-desktop; a profile change applies at next login. | `src/cc.ts` | `test/unit/spec/cc.ts` (`profile flag refresh before login`, `stationLogin` no-fallback cases, `stationLogout` routing, `getAgentStateControl`, `clearV2LocalState`, own-session logout) | No integration test against a V2 backend. | PRESENT |
-| CONTACT_CENTER-R-014 | On a V2 session:<br>- `setAgentState` sends `stateChangeV2` for the requested channels, or for every selectable channel with capacity. It rejects unselectable or capacity-less channels with `SDK_VALIDATION_ERROR` before any request, and applies the browser voice check only when `telephony` is requested.<br>- `AgentChannelStateChanged` for this agent and a selectable channel replaces that channel's entry and emits `agent:channelStateChange`. The bridge functions in `utils.ts` emit V1 state events only when the projection changes.<br>- `getChannelStates()` returns copies, or `{}` off V2.<br>- A V2 reload restores the maps (including any non-selectable channel the server returns), requests Available for `agent-wss-disconnect` channels that are selectable and have capacity, and defers telephony on `BROWSER` without voice (60 s timer, `agent:channelRecoveryDeferred`). | Per-channel control without breaking V1 listeners; telephony needs a working line before it goes Available. | `src/cc.ts`, `src/services/agent/types.ts` | `test/unit/spec/cc.ts` (`V2 granular agent state` block), `test/unit/spec/services/agent/types.ts` | Cross-channel ordering is not guaranteed by the backend and not asserted. | PRESENT |
+| CONTACT_CENTER-R-014 | On a V2 session:<br>- `setAgentState` sends `stateChangeV2` for the requested channels, or for every selectable channel with capacity. It rejects unselectable or capacity-less channels with `SDK_VALIDATION_ERROR` before any request, and applies the browser voice check only when `telephony` is requested.<br>- `AgentChannelStateChanged` for this agent and a selectable channel replaces that channel's entry and emits an enriched `agent:stateChange` (batched by `data.trackingId`; flushed on count OR 50ms timeout). The enriched payload carries V1 base fields + V2 fields (`channelStates`, `changedChannels`, `channelDetail`, `requestTrackingId`).<br>- `getChannelStates()` returns copies, or `{}` off V2.<br>- A V2 reload restores the maps (including any non-selectable channel the server returns), requests Available for `agent-wss-disconnect` channels that are selectable and have capacity, and defers telephony on `BROWSER` without voice (60 s timer, emitted as enriched `agent:connectionReconnected` with `deferredChannels`). | Per-channel control without breaking V1 listeners; telephony needs a working line before it goes Available. | `src/cc.ts`, `src/services/agent/types.ts` | `test/unit/spec/cc.ts` (`V2 granular agent state` block), `test/unit/spec/services/agent/utils.ts` | Cross-channel ordering is not guaranteed by the backend and not asserted. | PRESENT |
 
 ## Design overview
 
@@ -242,7 +242,7 @@ Contract ID: `contact-center-sdk` ([package architecture](../../docs/architectur
 - **Switch:** `Profile.manageChannelAvailability`, re-read before each `stationLogin`. There is no SDK flag or config override (CONTACT_CENTER-R-013). All V1/V2 routing decisions use `this.agentConfig?.manageChannelAvailability === true` directly.
 - **State:**
   - `channelStatesMap` and `loginChannelsMap` hold per-channel state and capacity;
-  - `lastEmittedV1` holds the last bridged V1 state;
+  - `pendingBatches` holds in-flight trackingId batches for the unified event debounce;
   - `telephonyRecoveryTimer` holds the deferred telephony recovery.
   `clearV2LocalState()` resets all of them.
 - **Refresh and reconnect:** ContactCenter keeps running the automated relogin (`allowAutomatedRelogin`) and emits `agent:connectionLost`, `agent:connectionReconnected`, and `agent:reloginSessionNotFound`. Recovery policy (retries, showing login) stays with the application (CONTACT_CENTER-R-005).
@@ -385,7 +385,7 @@ sequenceDiagram
       Agent-->>CC: restore channel and capacity maps
       CC->>CC: setAgentState(Available, disconnected channels), log but contain failure
       opt BROWSER and voice not ready
-        CC->>CC: defer telephony (60 s timer), emit agent:channelRecoveryDeferred
+        CC->>CC: defer telephony (60 s timer), emit enriched agent:connectionReconnected with deferredChannels
       end
       CC->>CC: ensureWxAppPostStationLogin()
     else AGENT_NOT_FOUND
@@ -464,18 +464,16 @@ sequenceDiagram
     CC->>CC: ignore (warn on unknown channel)
   else accepted
     CC->>CC: channelStatesMap[channelType] = agentChannelStateDetail
-    CC-->>App: emit agent:channelStateChange
-    CC->>Agg: shouldEmitLegacyEvent(map, lastEmittedV1)
-    opt projection changed
-      Agg-->>CC: bridged V1 payload
-      CC-->>App: emit agent:stateChange (bridged V1)
-    end
+    CC->>CC: batch by data.trackingId (flush on count OR 50ms)
+    CC->>Agg: buildAgentStateChangeEvent(map, enrichment)
+    Agg-->>CC: enriched V1+V2 payload
+    CC-->>App: emit agent:stateChange (enriched, always)
   end
   WS-->>CC: AgentChannelStateChangeFailed
-  CC-->>App: emit agent:channelStateChangeFailed
+  CC-->>App: emit agent:stateChangeFailed (with channelType)
   WS-->>CC: AgentChannelReloginSuccess
-  CC->>CC: replace channel maps, reset lastEmittedV1
-  CC-->>App: emit agent:channelReloginSuccess
+  CC->>CC: replace channel maps, restore agentConfig
+  CC-->>App: emit agent:reloginSuccess (enriched with channelStates)
 ```
 
 ### Preview campaign and outdial
@@ -632,7 +630,7 @@ ContactCenter retains in-memory `agentConfig`, collaborator references, event li
 | `wellbeingBreakIdleCode`, `wellnessRegistrationGeneration` | `ContactCenter` | undefined, 0 | A lookup fills the cache; each `register()` and `deregister()` increments the generation | The cache is cleared on every register, profile fetch, and deregister |
 | `$config.enableWxBetterTogether` | `ContactCenter` | From init config | Rolled back to false when an enabled post-login hook fails | Cleared by `deregister()` |
 | wxApp ownership flags and retry timer | `ContactCenter` | false, none | Set when wxApp opened Mercury or registered the device; timer set on a failed false publish | Cleared on release and teardown |
-| `channelStatesMap`, `loginChannelsMap`, `lastEmittedV1` | `ContactCenter` | `{}`, `{}`, undefined | Seeded by V2 login and V2 reload; a channel entry is replaced by each accepted `AgentChannelStateChanged`; `lastEmittedV1` is updated when the bridge emits | Cleared by `clearV2LocalState()`; `getChannelStates()` returns copies |
+| `channelStatesMap`, `loginChannelsMap`, `pendingBatches` | `ContactCenter` | `{}`, `{}`, empty Map | Seeded by V2 login and V2 reload; a channel entry is replaced by each accepted `AgentChannelStateChanged`; `pendingBatches` holds in-flight trackingId batches for unified event debounce | Cleared by `clearV2LocalState()`; `getChannelStates()` returns copies |
 | `telephonyRecoveryTimer` | `ContactCenter` | none | Set when V2 recovery defers telephony on `BROWSER` without voice | Fires once after 60 s and requests Available only if the session is still V2, the same `agentSessionId`, and telephony is still in the `agent-wss-disconnect` idle; cleared by `clearV2LocalState()` |
 | `agentConfig.manageChannelAvailability` | `ContactCenter` | From the profile | Re-read by `refreshManageChannelAvailability()` before each `stationLogin` | Cached value kept when the re-read fails |
 | Voice connection snapshot | `WebCallingService` | `DEFAULT_VOICE_CONNECTION_STATE` (`not-required`) | Line and Mobius socket events | Reset on line deregistration at station logout; `getVoiceConnectionState()` returns the default when no service exists |
@@ -717,7 +715,7 @@ Authenticated REST initiates direct data/config operations and AQM agent/task op
 | `setAgentState` to `Available` while required browser voice is not ready | `BROWSER_VOICE_NOT_READY` with `details.type` `SDK_VALIDATION_ERROR` | Wait for `voice:connectionStateChange` to report ready | Retry after ready | `src/cc.ts`, `test/unit/spec/cc.ts` |
 | V2 `setAgentState` with an unselectable channel or a channel without capacity | `SDK_VALIDATION_ERROR` thrown before any request | Pick a channel from `getChannelStates()` | Retry with a valid channel | `src/cc.ts`, `test/unit/spec/cc.ts` |
 | V2 station login fails or times out | The `stationLoginV2` error rethrown through `getErrorDetails`; no V1 attempt and no pin | Show the reason | Retry the login; the flag is re-read first | `src/cc.ts`, `test/unit/spec/cc.ts` |
-| V2 state change fails | The `stateChangeV2` error rethrown; a later per-channel failure arrives as `agent:channelStateChangeFailed` | Show the reason for that channel | Caller decides | `src/cc.ts`, `test/unit/spec/cc.ts` |
+| V2 state change fails | The `stateChangeV2` error rethrown; a later per-channel failure arrives as enriched `agent:stateChangeFailed` with `channelType` | Show the reason for that channel | Caller decides | `src/cc.ts`, `test/unit/spec/cc.ts` |
 | Wellness lookup while disabled, or after the registration or organization changed | `WELLNESS_BREAK_NOT_ENABLED` or `WELLNESS_BREAK_REGISTRATION_CHANGED` (`SDK_VALIDATION_ERROR`) | Re-read the profile | Retry after the new registration | `src/cc.ts`, `test/unit/spec/cc.ts` |
 | Preview skip or remove disabled by the campaign | Plain `Error` `Skip action is disabled …` or `Remove action is disabled …`, not wrapped | Hide the action | None | `src/cc.ts` |
 | `getOutdialAniEntries` with no organization id | Plain `Error('Org ID not found.')` | Authorize the host SDK first | Retry after authorization | `src/cc.ts`, `test/unit/spec/cc.ts` |

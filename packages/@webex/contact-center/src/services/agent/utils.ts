@@ -22,13 +22,77 @@ export interface BridgedV1StateChange {
   changedByName: string | null;
 }
 
+// ─── Enriched Event Types (Unified SDK Event Surface) ─────────────────────────
+
 /**
- * Last V1 aggregate the bridge emitted. Idle-code changes keep the same
- * subStatus, so auxCodeId is part of the comparison.
+ * Enriched state-change payload emitted on `agent:stateChange`.
+ * Extends the V1 base with optional V2 per-channel fields.
+ * In V1 sessions the V2 fields are undefined; in V2 sessions they carry
+ * the full per-channel detail so clients render from one event.
  */
-export interface LastEmittedV1State {
+export interface AgentStateChangeEvent extends BridgedV1StateChange {
+  /** Which channel triggered this specific event. */
+  changedChannelType?: ChannelType;
+
+  /** All channels that changed in this batch.
+   *  Single-channel: ['chat']. Bulk: ['telephony','chat','email','social']. */
+  changedChannels?: ChannelType[];
+
+  /** Per-channel state detail for the changed channel.
+   *  Shortcut for channelStates[changedChannelType]. */
+  channelDetail?: AgentChannelTypeStates;
+
+  /** Full snapshot of ALL channel states at the time of the event. */
+  channelStates?: Record<ChannelType, AgentChannelTypeStates>;
+
+  /** Backend request correlation ID — shared across all channel
+   *  notifications from the same setAgentState() call. */
+  requestTrackingId?: string;
+}
+
+/**
+ * Enriched failure payload emitted on `agent:stateChangeFailed`.
+ * V1 sessions emit the base fields; V2 sessions add channelType.
+ */
+export interface AgentStateChangeFailedEvent {
+  type: string;
+  reason?: string;
+  reasonCode?: number;
+  isClientInitiated?: boolean;
+  eventTime?: number;
+  /** V2 enrichment: which channel failed. Undefined in V1 sessions. */
+  channelType?: ChannelType;
+}
+
+/**
+ * Enriched relogin payload emitted on `agent:reloginSuccess`.
+ * V2 sessions include the full channel-state snapshot.
+ */
+export interface AgentReloginSuccessEvent {
+  type: string;
+  agentId: string;
+  agentSessionId: string;
+  orgId: string;
+  status: string;
   subStatus: string;
-  auxCodeId?: string;
+  auxCodeId: string;
+  lastStateChangeTimestamp: number;
+  lastIdleCodeChangeTimestamp: number;
+  /** Full snapshot of ALL channel states after relogin. */
+  channelStates?: Record<ChannelType, AgentChannelTypeStates>;
+}
+
+/**
+ * Enriched reconnect payload emitted on `agent:connectionReconnected`.
+ * V2 sessions with deferred BROWSER telephony recovery add deferral fields.
+ */
+export interface AgentReconnectedEvent {
+  /** Channels whose recovery was deferred (e.g. ['telephony']). */
+  deferredChannels?: ChannelType[];
+  /** 'deferred' when telephony recovery is pending. */
+  recoveryStatus?: 'deferred' | 'recovered';
+  /** Timeout in ms before automatic recovery attempt. */
+  deferralTimeoutMs?: number;
 }
 
 /**
@@ -64,24 +128,6 @@ const BRIDGEABLE_STATES = new Set(['Available', 'Idle']);
  */
 export function shouldBridgeChannelState(agentState: string): boolean {
   return BRIDGEABLE_STATES.has(agentState);
-}
-
-/**
- * Returns true when the V2→V1 bridge should emit `agent:stateChange`.
- * Suppresses duplicate emissions when the projected aggregate and auxCodeId
- * haven't changed since the last emission.
- */
-export function shouldEmitLegacyEvent(
-  channelStates: Record<string, AgentChannelTypeStates>,
-  lastEmitted?: LastEmittedV1State
-): boolean {
-  const projected = projectAggregate(channelStates);
-  if (!projected) return false;
-  if (!lastEmitted) return true;
-  if (projected.subStatus !== lastEmitted.subStatus) return true;
-  const auxCodeId = channelStates[projected.primaryChannel]?.auxCodeId ?? '';
-
-  return auxCodeId !== (lastEmitted.auxCodeId ?? '');
 }
 
 /**
@@ -163,5 +209,77 @@ export function bridgeStateChangeSuccess(
     changedBy: attribution?.changedBy ?? null,
     changedById: attribution?.changedById ?? null,
     changedByName: attribution?.changedByName ?? null,
+  };
+}
+
+/**
+ * V2 enrichment context attached to the unified event payload.
+ */
+export interface V2EnrichmentContext {
+  channelStates: Record<ChannelType, AgentChannelTypeStates>;
+  changedChannelType: ChannelType;
+  channelDetail: AgentChannelTypeStates;
+  requestTrackingId?: string;
+  changedChannels: ChannelType[];
+}
+
+/**
+ * Builds an enriched V1+V2 state-change payload for the unified `agent:stateChange` event.
+ * Computes V1 base fields via bridgeStateChangeSuccess, then attaches V2 enrichment.
+ *
+ * When the aggregate is bridgeable (Available/Idle), the V1 base fields come from the
+ * projected aggregate. When the aggregate is NOT bridgeable (e.g. a channel is Engaged,
+ * Reserved, or WrapUp during task handling), the V1 base fields are omitted and the
+ * enrichment still carries the full per-channel detail so V2 clients can update.
+ *
+ * Always returns a payload — never drops V2 channel state changes.
+ */
+export function buildAgentStateChangeEvent(
+  channelStates: Record<string, AgentChannelTypeStates>,
+  agentId: string,
+  agentSessionId: string,
+  orgId: string,
+  attribution: BridgeAttributionContext | undefined,
+  enrichment: V2EnrichmentContext
+): AgentStateChangeEvent {
+  const base = bridgeStateChangeSuccess(channelStates, agentId, agentSessionId, orgId, attribution);
+
+  if (base) {
+    return {
+      ...base,
+      changedChannelType: enrichment.changedChannelType,
+      changedChannels: enrichment.changedChannels,
+      channelDetail: enrichment.channelDetail,
+      channelStates: enrichment.channelStates,
+      requestTrackingId: enrichment.requestTrackingId,
+    };
+  }
+
+  // Non-bridgeable aggregate (Engaged, Reserved, WrapUp) — the V1 projection
+  // cannot produce a valid Available/Idle, but V2 clients still need the
+  // per-channel update. Emit with V1 base fields set to 'Idle' (safe default
+  // for V1 clients that check subStatus) + full V2 enrichment. V2-aware clients
+  // should read channelDetail.agentState for the actual per-channel state.
+  const detail = enrichment.channelDetail;
+
+  return {
+    type: 'AgentStateChangeSuccess',
+    agentId,
+    agentSessionId,
+    orgId,
+    status: 'LoggedIn',
+    subStatus: 'Idle',
+    auxCodeId: detail?.auxCodeId ?? '',
+    lastStateChangeTimestamp: detail?.stateChangeTimestamp ?? 0,
+    lastIdleCodeChangeTimestamp: detail?.lastIdleCodeChangeTimestamp ?? 0,
+    lastStateChangeReason: detail?.stateChangeReason ?? '',
+    changedBy: attribution?.changedBy ?? null,
+    changedById: attribution?.changedById ?? null,
+    changedByName: attribution?.changedByName ?? null,
+    changedChannelType: enrichment.changedChannelType,
+    changedChannels: enrichment.changedChannels,
+    channelDetail: enrichment.channelDetail,
+    channelStates: enrichment.channelStates,
+    requestTrackingId: enrichment.requestTrackingId,
   };
 }

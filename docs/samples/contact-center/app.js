@@ -4894,12 +4894,10 @@ function attachWellnessSdkListeners() {
   webex.cc.off(CC_AGENT_EVENTS.WELLNESS_BREAK, handleWellnessBreak);
   webex.cc.off('agent:stationLoginSuccess', captureWellnessSession);
   webex.cc.off('agent:reloginSuccess', captureWellnessSession);
-  webex.cc.off('agent:channelReloginSuccess', captureWellnessSession);
   webex.cc.off('agent:logoutSuccess', handleWellnessLogout);
   webex.cc.on(CC_AGENT_EVENTS.WELLNESS_BREAK, handleWellnessBreak);
   webex.cc.on('agent:stationLoginSuccess', captureWellnessSession);
   webex.cc.on('agent:reloginSuccess', captureWellnessSession);
-  webex.cc.on('agent:channelReloginSuccess', captureWellnessSession);
   webex.cc.on('agent:logoutSuccess', handleWellnessLogout);
 }
 
@@ -4907,7 +4905,6 @@ function detachWellnessSdkListeners() {
   webex.cc.off(CC_AGENT_EVENTS.WELLNESS_BREAK, handleWellnessBreak);
   webex.cc.off('agent:stationLoginSuccess', captureWellnessSession);
   webex.cc.off('agent:reloginSuccess', captureWellnessSession);
-  webex.cc.off('agent:channelReloginSuccess', captureWellnessSession);
   webex.cc.off('agent:logoutSuccess', handleWellnessLogout);
 }
 
@@ -7152,8 +7149,8 @@ function stopGranularTimer() {
  * alert for that channel only; Available on that channel closes it.
  */
 function handleGranularRonaEvent(data) {
-  const channelType = data?.channelType;
-  const detail = data?.agentChannelStateDetail;
+  const channelType = data?.changedChannelType;
+  const detail = data?.channelDetail;
   if (!channelType || !detail) return;
   if (detail.agentState === GRANULAR_AGENT_STATE_AVAILABLE) {
     delete granularRonaAlerts[channelType];
@@ -7282,39 +7279,39 @@ function registerChannelStateEventListeners() {
   if (!cc || channelStateListenersClient === cc) return;
   channelStateListenersClient = cc;
 
-  webex.cc.on('agent:channelStateChange', (data) => {
-    console.log('agent:channelStateChange', data);
-    if (isTelephonyRecoveryDeferred && data?.channelType === 'telephony') {
-      isTelephonyRecoveryDeferred = false;
-      setAgentSessionStatus('');
-    }
-    if (isGranularAgentStateActive) {
-      handleGranularRonaEvent(data);
-      updateGranularUI();
+  // Unified agent:stateChange — works for V1 (base fields) and V2 (enriched with per-channel data)
+  webex.cc.on('agent:stateChange', (data) => {
+    console.log('agent:stateChange (unified)', data);
+    if (data?.channelStates) {
+      // V2 enrichment available — update per-channel UI
+      if (isTelephonyRecoveryDeferred && data.changedChannelType === 'telephony') {
+        isTelephonyRecoveryDeferred = false;
+        setAgentSessionStatus('');
+      }
+      if (isGranularAgentStateActive) {
+        handleGranularRonaEvent(data);
+        updateGranularUI();
+      }
     }
   });
 
-  webex.cc.on('agent:channelStateChangeFailed', (data) => {
-    console.error('agent:channelStateChangeFailed', data);
-    const label = GRANULAR_CHANNEL_LABELS[data?.channelType] || data?.channelType || 'Channel';
-    showGranularStateError(null, `${label} state change failed${data?.reason ? `: ${data.reason}` : ''}.`);
+  // Unified agent:stateChangeFailed — V2 adds channelType
+  webex.cc.on('agent:stateChangeFailed', (data) => {
+    console.error('agent:stateChangeFailed (unified)', data);
+    if (data?.channelType) {
+      const label = GRANULAR_CHANNEL_LABELS[data.channelType] || data.channelType || 'Channel';
+      showGranularStateError(null, `${label} state change failed${data?.reason ? `: ${data.reason}` : ''}.`);
+    }
     if (isGranularAgentStateActive) updateGranularUI();
   });
 
-  webex.cc.on('agent:channelReloginSuccess', (data) => {
-    console.log('agent:channelReloginSuccess', data);
-    handleGranularStateLogin();
-  });
-
-  // Telephony stays idle until the browser voice line is ready; the SDK
-  // retries it once after 60 s.
-  webex.cc.on('agent:channelRecoveryDeferred', (data) => {
-    console.log('agent:channelRecoveryDeferred', data);
-    isTelephonyRecoveryDeferred = true;
-    setAgentSessionStatus(
-      'Voice is reconnecting. Telephony will retry Available automatically in about a minute.',
-      'info'
-    );
+  // Unified agent:reloginSuccess — V2 enriched with channelStates
+  webex.cc.on('agent:reloginSuccess', (data) => {
+    console.log('agent:reloginSuccess (unified)', data);
+    if (data?.channelStates) {
+      handleGranularStateLogin();
+    }
+    setAgentSessionStatus('');
   });
 
   // Covers remote logouts (supervisor, inactivity, another client). The SDK
@@ -7338,14 +7335,18 @@ function registerChannelStateEventListeners() {
     setAgentSessionStatus('Connection lost. Reconnecting…', 'warning');
   });
 
-  // The SDK runs the relogin right after this event; reloginSuccess,
-  // channelReloginSuccess, or reloginSessionNotFound follows.
-  webex.cc.on('agent:connectionReconnected', () => {
+  // Unified agent:connectionReconnected — V2 enriched with deferredChannels
+  webex.cc.on('agent:connectionReconnected', (data) => {
     setAgentSessionStatus('Reconnected. Restoring your session…', 'info');
+    if (data?.deferredChannels?.length > 0) {
+      isTelephonyRecoveryDeferred = true;
+      setAgentSessionStatus(
+        'Voice is reconnecting. Telephony will retry Available automatically in about a minute.',
+        'info'
+      );
+    }
   });
 
-  webex.cc.on('agent:reloginSuccess', () => setAgentSessionStatus(''));
-  webex.cc.on('agent:channelReloginSuccess', () => setAgentSessionStatus(''));
   webex.cc.on('agent:stationLoginSuccess', () => setAgentSessionStatus(''));
 }
 

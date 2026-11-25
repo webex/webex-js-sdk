@@ -2,9 +2,9 @@ import {
   shouldBridgeChannelState,
   projectAggregate,
   bridgeStateChangeSuccess,
-  shouldEmitLegacyEvent,
+  buildAgentStateChangeEvent,
 } from '../../../../../src/services/agent/utils';
-import {AgentChannelTypeStates} from '../../../../../src/services/agent/types';
+import {AgentChannelTypeStates, ChannelType} from '../../../../../src/services/agent/types';
 
 function makeChannelState(
   agentState: string,
@@ -259,58 +259,191 @@ describe('utils – V1 bridge functions', () => {
     });
   });
 
-  describe('shouldEmitLegacyEvent', () => {
-    it('should return true when projected state differs from last emitted', () => {
+  describe('buildAgentStateChangeEvent', () => {
+    const agentId = 'agent-1';
+    const agentSessionId = 'session-1';
+    const orgId = 'org-1';
+    const attribution = {changedBy: 'agent', changedById: 'agent-1', changedByName: 'Agent One'};
+
+    function makeEnrichment(
+      channelStates: Record<string, AgentChannelTypeStates>,
+      changedChannelType: ChannelType = 'telephony',
+      changedChannels: ChannelType[] = [changedChannelType]
+    ) {
+      return {
+        channelStates: channelStates as Record<ChannelType, AgentChannelTypeStates>,
+        changedChannelType,
+        channelDetail: channelStates[changedChannelType],
+        requestTrackingId: 'track-001',
+        changedChannels,
+      };
+    }
+
+    it('should return enriched payload with V1 base when aggregate is bridgeable (Available)', () => {
       const states = {
-        telephony: makeChannelState('Available'),
+        telephony: makeChannelState('Available', {auxCodeId: 'aux-avail', stateChangeTimestamp: 9999}),
+        chat: makeChannelState('Available', {auxCodeId: 'aux-avail'}),
       };
 
-      expect(shouldEmitLegacyEvent(states, {subStatus: 'Idle', auxCodeId: 'aux-001'})).toBe(true);
+      const result = buildAgentStateChangeEvent(
+        states, agentId, agentSessionId, orgId, attribution, makeEnrichment(states)
+      );
+
+      expect(result.type).toBe('AgentStateChangeSuccess');
+      expect(result.subStatus).toBe('Available');
+      expect(result.auxCodeId).toBe('aux-avail');
+
+      expect(result.changedChannelType).toBe('telephony');
+      expect(result.changedChannels).toEqual(['telephony']);
+      expect(result.channelStates).toBeDefined();
+      expect(result.requestTrackingId).toBe('track-001');
+      expect(result.changedBy).toBe('agent');
     });
 
-    it('should return false when projected state equals last emitted', () => {
+    it('should return enriched payload with V1 base when aggregate is bridgeable (all Idle)', () => {
       const states = {
-        telephony: makeChannelState('Available'),
+        telephony: makeChannelState('Idle', {auxCodeId: 'break-1'}),
+        chat: makeChannelState('Idle', {auxCodeId: 'break-1'}),
       };
 
-      expect(shouldEmitLegacyEvent(states, {subStatus: 'Available', auxCodeId: 'aux-001'})).toBe(false);
+      const result = buildAgentStateChangeEvent(
+        states, agentId, agentSessionId, orgId, attribution,
+        makeEnrichment(states, 'chat', ['telephony', 'chat'])
+      );
+
+      expect(result.subStatus).toBe('Idle');
+
+      expect(result.changedChannelType).toBe('chat');
+      expect(result.changedChannels).toEqual(['telephony', 'chat']);
     });
 
-    it('should return true when the idle code changes at the same subStatus', () => {
+    it('should return fallback payload when aggregate is NOT bridgeable (Engaged)', () => {
       const states = {
-        telephony: makeChannelState('Idle', {auxCodeId: 'aux-lunch'}),
+        telephony: makeChannelState('Engaged', {
+          auxCodeId: '',
+          stateChangeTimestamp: 5000,
+          stateChangeReason: 'task accepted',
+        }),
+        chat: makeChannelState('Idle', {auxCodeId: 'break-1'}),
       };
 
-      expect(shouldEmitLegacyEvent(states, {subStatus: 'Idle', auxCodeId: 'aux-break'})).toBe(true);
+      const result = buildAgentStateChangeEvent(
+        states, agentId, agentSessionId, orgId, attribution, makeEnrichment(states)
+      );
+
+      // Non-bridgeable: V1 subStatus defaults to 'Idle'
+      expect(result.type).toBe('AgentStateChangeSuccess');
+      expect(result.subStatus).toBe('Idle');
+
+      expect(result.changedChannelType).toBe('telephony');
+      expect(result.channelDetail?.agentState).toBe('Engaged');
+      expect(result.channelStates).toBeDefined();
+      expect(result.requestTrackingId).toBe('track-001');
     });
 
-    it('should return true when last emitted is undefined and state is bridgeable', () => {
+    it('should return fallback payload for Reserved state (non-bridgeable)', () => {
       const states = {
-        telephony: makeChannelState('Idle'),
+        telephony: makeChannelState('Reserved', {
+          stateChangeTimestamp: 7000,
+          stateChangeReason: 'incoming task',
+        }),
       };
 
-      expect(shouldEmitLegacyEvent(states, undefined)).toBe(true);
+      const result = buildAgentStateChangeEvent(
+        states, agentId, agentSessionId, orgId, undefined, makeEnrichment(states)
+      );
+
+      expect(result.subStatus).toBe('Idle');
+
+      expect(result.channelDetail?.agentState).toBe('Reserved');
+      expect(result.changedBy).toBeNull();
     });
 
-    it('should return false when no channels are bridgeable', () => {
+    it('should return fallback payload for WrapUp state (non-bridgeable)', () => {
+      const states = {
+        chat: makeChannelState('WrapUp', {
+          stateChangeTimestamp: 8000,
+          stateChangeReason: 'task ended',
+        }),
+      };
+
+      const result = buildAgentStateChangeEvent(
+        states, agentId, agentSessionId, orgId, attribution,
+        makeEnrichment(states, 'chat')
+      );
+
+      expect(result.subStatus).toBe('Idle');
+
+      expect(result.channelDetail?.agentState).toBe('WrapUp');
+    });
+
+    it('should never return null — always produces a payload', () => {
       const states = {
         telephony: makeChannelState('Engaged'),
+        chat: makeChannelState('Reserved'),
+        email: makeChannelState('WrapUp'),
       };
 
-      expect(shouldEmitLegacyEvent(states, {subStatus: 'Available'})).toBe(false);
+      const result = buildAgentStateChangeEvent(
+        states, agentId, agentSessionId, orgId, undefined, makeEnrichment(states)
+      );
+
+      expect(result).toBeDefined();
+      expect(result.type).toBe('AgentStateChangeSuccess');
+
     });
 
-    it('should return false for empty channel states', () => {
-      expect(shouldEmitLegacyEvent({}, undefined)).toBe(false);
-    });
-
-    it('should return false when Idle channels exist but a non-bridgeable channel prevents projection', () => {
+    it('should populate multi-channel changedChannels correctly', () => {
       const states = {
-        telephony: makeChannelState('Engaged'),
-        chat: makeChannelState('Idle'),
+        telephony: makeChannelState('Idle', {auxCodeId: 'break-1'}),
+        chat: makeChannelState('Idle', {auxCodeId: 'break-1'}),
+        email: makeChannelState('Idle', {auxCodeId: 'break-1'}),
+        social: makeChannelState('Idle', {auxCodeId: 'break-1'}),
       };
 
-      expect(shouldEmitLegacyEvent(states, {subStatus: 'Available', auxCodeId: 'aux-001'})).toBe(false);
+      const result = buildAgentStateChangeEvent(
+        states, agentId, agentSessionId, orgId, attribution,
+        makeEnrichment(states, 'social', ['telephony', 'chat', 'email', 'social'])
+      );
+
+      expect(result.changedChannels).toEqual(['telephony', 'chat', 'email', 'social']);
+      expect(result.changedChannelType).toBe('social');
+    });
+
+    it('should omit requestTrackingId when not provided', () => {
+      const states = {telephony: makeChannelState('Available')};
+      const enrichment = {
+        channelStates: states as Record<ChannelType, AgentChannelTypeStates>,
+        changedChannelType: 'telephony' as ChannelType,
+        channelDetail: states.telephony,
+        changedChannels: ['telephony'] as ChannelType[],
+      };
+
+      const result = buildAgentStateChangeEvent(
+        states, agentId, agentSessionId, orgId, attribution, enrichment
+      );
+
+      expect(result.requestTrackingId).toBeUndefined();
+    });
+
+    it('should not include isGranular in the payload (removed — clients check channelStates instead)', () => {
+      const states = {
+        telephony: makeChannelState('Available', {auxCodeId: 'aux-avail'}),
+        chat: makeChannelState('Idle', {auxCodeId: 'break-1'}),
+      };
+
+      const bridgeable = buildAgentStateChangeEvent(
+        states, agentId, agentSessionId, orgId, attribution, makeEnrichment(states)
+      );
+      expect(bridgeable).not.toHaveProperty('isGranular');
+
+      const nonBridgeable = buildAgentStateChangeEvent(
+        {telephony: makeChannelState('Engaged')},
+        agentId, agentSessionId, orgId, attribution,
+        makeEnrichment({telephony: makeChannelState('Engaged')})
+      );
+      expect(nonBridgeable).not.toHaveProperty('isGranular');
     });
   });
+
 });

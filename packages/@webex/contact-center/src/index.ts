@@ -213,17 +213,19 @@ export type {
   ChannelType,
   /** V2: Per-channel state detail */
   AgentChannelTypeStates,
-  /** V2: Channel state change success notification */
-  AgentChannelStateChanged,
-  /** V2: Channel state change failure notification */
-  AgentChannelStateChangeFailed,
-  /** V2: Channel relogin success notification */
-  AgentChannelReloginSuccess,
   /** V2: Per-channel state change request input */
   ChannelStateChangeRequest,
   /** V2: Agent state control status for diagnostics */
   AgentStateControlStatus,
 } from './services/agent/types';
+
+/** Agent event payload types (V1 base + optional V2 per-channel enrichment) */
+export type {
+  AgentStateChangeEvent,
+  AgentStateChangeFailedEvent,
+  AgentReloginSuccessEvent,
+  AgentReconnectedEvent,
+} from './services/agent/utils';
 
 /** Config related types */
 export type {

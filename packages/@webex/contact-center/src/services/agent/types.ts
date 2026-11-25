@@ -448,18 +448,6 @@ export enum AGENT_EVENTS {
 
   /** Emitted when agent state change attempt fails */
   AGENT_STATE_CHANGE_FAILED = 'agent:stateChangeFailed',
-
-  /** V2: Emitted when per-channel state change succeeds */
-  AGENT_CHANNEL_STATE_CHANGE = 'agent:channelStateChange',
-
-  /** V2: Emitted when per-channel state change fails */
-  AGENT_CHANNEL_STATE_CHANGE_FAILED = 'agent:channelStateChangeFailed',
-
-  /** V2: Emitted when V2 reload/relogin succeeds with per-channel state map */
-  AGENT_CHANNEL_RELOGIN_SUCCESS = 'agent:channelReloginSuccess',
-
-  /** V2: Emitted when channel recovery is deferred (e.g., telephony waiting for WebRTC line) */
-  AGENT_CHANNEL_RECOVERY_DEFERRED = 'agent:channelRecoveryDeferred',
 }
 
 // ─── V2 Granular Agent State Control Types ────────────────────────────────────
@@ -546,6 +534,10 @@ export type AgentChannelStateChanged = Msg<{
   eventTime?: number;
   connectedChannels: ChannelType[];
   isAgentLogin: boolean;
+  /** Backend request correlation ID shared across all channel notifications
+   *  from the same setAgentState() call. Used as the batch key for
+   *  collapsing per-channel notifications into one unified event. */
+  trackingId?: string;
 }>;
 
 /**

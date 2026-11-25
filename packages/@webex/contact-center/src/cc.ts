@@ -64,11 +64,7 @@ import {
   ChannelStateChangeRequest,
   ChannelsMap,
 } from './services/agent/types';
-import {
-  LastEmittedV1State,
-  bridgeStateChangeSuccess,
-  shouldEmitLegacyEvent,
-} from './services/agent/utils';
+import {bridgeStateChangeSuccess, buildAgentStateChangeEvent} from './services/agent/utils';
 import {
   getErrorDetails,
   isRecord,
@@ -369,12 +365,6 @@ export default class ContactCenter extends WebexPlugin implements IContactCenter
   >;
 
   /**
-   * Last emitted V1 aggregate (subStatus + aux code) for bridging dedup.
-   * @private
-   */
-  private lastEmittedV1?: LastEmittedV1State;
-
-  /**
    * Handle for the deferred BROWSER telephony recovery timer.
    * @private
    */
@@ -385,6 +375,24 @@ export default class ContactCenter extends WebexPlugin implements IContactCenter
    * @private
    */
   private loginChannelsMap: Record<string, string[]> = {};
+
+  /**
+   * Pending batches for trackingId-based debounce of V2 channel state notifications.
+   * Key = data.trackingId (request correlation ID shared across channels from one setAgentState call).
+   * Flushed when all active channels are received (count-based) OR after 50ms timeout.
+   * @private
+   */
+  private pendingBatches = new Map<
+    string,
+    {
+      channels: Array<{channelType: ChannelType; detail: AgentChannelTypeStates}>;
+      timer: ReturnType<typeof setTimeout>;
+      agentId: string;
+      agentSessionId: string;
+      orgId: string;
+      attribution: {changedBy: string; changedById: string | null; changedByName: string | null};
+    }
+  >();
 
   /**
    * API instance for managing Webex Contact Center entry points
@@ -1366,12 +1374,6 @@ export default class ContactCenter extends WebexPlugin implements IContactCenter
       // still at the login idle code) are suppressed. Only genuine projection
       // changes will emit, consistent with CONTACT_CENTER-R-014.
       // Desktop equivalent: updateSubStatus(subStatus, ...) in updateAgentProfileLogin.
-      if (this.agentConfig?.manageChannelAvailability === true) {
-        this.lastEmittedV1 = {
-          subStatus: (resp.data.subStatus as 'Available' | 'Idle') ?? 'Available',
-          auxCodeId: resp.data.auxCodeId ?? '',
-        };
-      }
       if (this.agentConfig) {
         this.agentConfig.deviceType = data.loginOption;
         if (
@@ -1940,8 +1942,8 @@ export default class ContactCenter extends WebexPlugin implements IContactCenter
         break;
       }
       case CC_EVENTS.AGENT_RELOGIN_SUCCESS: {
-        // V1-only relogin event. V2 sessions receive AGENT_CHANNEL_RELOGIN_SUCCESS
-        // instead (handled by handleChannelReloginSuccess).
+        // V1-only relogin event. V2 sessions receive AgentChannelReloginSuccess
+        // instead (handled by handleChannelReloginSuccess, emits enriched agent:reloginSuccess).
 
         // Reconcile: if manageChannelAvailability was enabled after the
         // original V1 login, downgrade it now — before emitting — so that
@@ -2013,8 +2015,12 @@ export default class ContactCenter extends WebexPlugin implements IContactCenter
           const ownId = this.agentConfig?.agentId;
           if (ownId && failAgentId && failAgentId !== ownId) break;
 
+          // Unified: emit on agent:stateChangeFailed with channelType enrichment
           // @ts-ignore
-          this.emit(AGENT_EVENTS.AGENT_CHANNEL_STATE_CHANGE_FAILED, eventData.data);
+          this.emit(AGENT_EVENTS.AGENT_STATE_CHANGE_FAILED, {
+            ...eventData.data,
+            channelType: eventData.data?.channelType,
+          });
         }
         break;
 
@@ -2653,8 +2659,41 @@ export default class ContactCenter extends WebexPlugin implements IContactCenter
   }
 
   /**
+   * Flushes a pending trackingId batch: builds one enriched `agent:stateChange`
+   * event from all collected channel notifications and emits it.
+   * @private
+   */
+  private flushBatch(batchKey: string): void {
+    const batch = this.pendingBatches.get(batchKey);
+    this.pendingBatches.delete(batchKey);
+    if (!batch || batch.channels.length === 0) return;
+
+    const changedChannels = batch.channels.map((c) => c.channelType);
+    const lastChannel = batch.channels[batch.channels.length - 1];
+
+    const enriched = buildAgentStateChangeEvent(
+      this.channelStatesMap,
+      batch.agentId,
+      batch.agentSessionId,
+      batch.orgId,
+      batch.attribution,
+      {
+        channelStates: {...this.channelStatesMap} as Record<ChannelType, AgentChannelTypeStates>,
+        changedChannelType: lastChannel.channelType,
+        channelDetail: lastChannel.detail,
+        requestTrackingId: batchKey,
+        changedChannels,
+      }
+    );
+
+    // @ts-ignore
+    this.emit(AGENT_EVENTS.AGENT_STATE_CHANGE, enriched);
+  }
+
+  /**
    * Handles V2 AgentChannelStateChanged WebSocket notification.
-   * Updates internal channel state, emits V2 event, and bridges to V1.
+   * Updates internal channel state, then emits one unified enriched
+   * `agent:stateChange` event (batched by trackingId when available).
    * @private
    */
   private handleChannelStateChanged(eventData: AgentChannelStateChanged): void {
@@ -2692,31 +2731,60 @@ export default class ContactCenter extends WebexPlugin implements IContactCenter
       this.channelStatesMap[channelType] = data.agentChannelStateDetail;
     }
 
-    // Emit the V2 per-channel event for new V2 consumers.
-    // @ts-ignore
-    this.emit(AGENT_EVENTS.AGENT_CHANNEL_STATE_CHANGE, data);
+    // Unified enriched event: batch by data.trackingId (request correlation ID
+    // shared across all channels from one setAgentState call), then emit one
+    // enriched agent:stateChange per batch. Always emits in V2 mode — no
+    // aggregate-unchanged suppression.
+    const batchKey = data.trackingId;
+    const agentId = data.agentId || this.agentConfig?.agentId || '';
+    const agentSessionId = data.agentSessionId || '';
+    const orgId = data.orgId || '';
+    const attribution = {
+      changedBy: data.changedBy,
+      changedById: data.changedById,
+      changedByName: data.changedByName,
+    };
 
-    // V2→V1 bridge: the server sends per-channel events on V2, but existing
-    // V1 consumers (Widgets, integrations) need the agent-wide `agent:stateChange`.
-    // Emit only when the projected aggregate (any Available → Available,
-    // all Idle → Idle) or auxCodeId actually changed.
-    if (shouldEmitLegacyEvent(this.channelStatesMap, this.lastEmittedV1)) {
-      const bridged = bridgeStateChangeSuccess(
+    if (batchKey) {
+      if (!this.pendingBatches.has(batchKey)) {
+        const timer = setTimeout(() => this.flushBatch(batchKey), 50);
+        this.pendingBatches.set(batchKey, {
+          channels: [],
+          timer,
+          agentId,
+          agentSessionId,
+          orgId,
+          attribution,
+        });
+      }
+      const batch = this.pendingBatches.get(batchKey)!;
+      batch.channels.push({channelType, detail: data.agentChannelStateDetail});
+
+      // Count-based flush: all active channels received — flush immediately
+      const activeChannelCount = SELECTABLE_CHANNEL_TYPES.filter(
+        (ct) => this.loginChannelsMap[ct]?.length > 0
+      ).length;
+      if (batch.channels.length >= activeChannelCount) {
+        clearTimeout(batch.timer);
+        this.flushBatch(batchKey);
+      }
+    } else {
+      // No trackingId — emit enriched event immediately (fallback)
+      const enriched = buildAgentStateChangeEvent(
         this.channelStatesMap,
-        data.agentId || this.agentConfig?.agentId || '',
-        data.agentSessionId || '',
-        data.orgId || '',
+        agentId,
+        agentSessionId,
+        orgId,
+        attribution,
         {
-          changedBy: data.changedBy,
-          changedById: data.changedById,
-          changedByName: data.changedByName,
+          channelStates: {...this.channelStatesMap} as Record<ChannelType, AgentChannelTypeStates>,
+          changedChannelType: channelType,
+          channelDetail: data.agentChannelStateDetail,
+          changedChannels: [channelType],
         }
       );
-      if (bridged) {
-        this.lastEmittedV1 = {subStatus: bridged.subStatus, auxCodeId: bridged.auxCodeId};
-        // @ts-ignore
-        this.emit(AGENT_EVENTS.AGENT_STATE_CHANGE, bridged);
-      }
+      // @ts-ignore
+      this.emit(AGENT_EVENTS.AGENT_STATE_CHANGE, enriched);
     }
   }
 
@@ -2732,7 +2800,7 @@ export default class ContactCenter extends WebexPlugin implements IContactCenter
     // matching the desktop pattern where handleChannelReloginSuccess calls
     // pinSessionRoutingVersion(true) first.  Without this, listeners that
     // call getAgentStateControl() or getChannelStates() inside the
-    // agent:channelReloginSuccess handler see the stale V1 flag.
+    // agent:reloginSuccess handler see the stale V1 flag.
     if (this.agentConfig && this.agentConfig.manageChannelAvailability !== true) {
       this.agentConfig.manageChannelAvailability = true;
     }
@@ -2744,8 +2812,7 @@ export default class ContactCenter extends WebexPlugin implements IContactCenter
       this.loginChannelsMap = data.channelsMap;
     }
 
-    // Reset lastEmittedV1 from the restored channel states so the V2→V1
-    // bridge does not suppress the first post-reconnect legacy event.
+    // Restore agentConfig scalar fields from the refreshed channel states.
     this.restoreV2AgentConfigFromChannels(data.agentId, data.agentSessionId, data.orgId);
 
     // Initialize the live session before emitting so that wellness-enabled
@@ -2754,8 +2821,27 @@ export default class ContactCenter extends WebexPlugin implements IContactCenter
     // updateWellnessSession() before emitting agent:reloginSuccess.
     this.updateWellnessSession(data.agentSessionId);
 
+    // Unified: emit enriched agent:reloginSuccess with V2 channel states
+    const bridged = bridgeStateChangeSuccess(
+      this.channelStatesMap,
+      data.agentId || this.agentConfig?.agentId || '',
+      data.agentSessionId || '',
+      data.orgId || ''
+    );
+    const reloginPayload = {
+      type: 'AgentReloginSuccess',
+      agentId: data.agentId || this.agentConfig?.agentId || '',
+      agentSessionId: data.agentSessionId || '',
+      orgId: data.orgId || '',
+      status: bridged?.status ?? 'LoggedIn',
+      subStatus: bridged?.subStatus ?? 'Available',
+      auxCodeId: bridged?.auxCodeId ?? '',
+      lastStateChangeTimestamp: bridged?.lastStateChangeTimestamp ?? 0,
+      lastIdleCodeChangeTimestamp: bridged?.lastIdleCodeChangeTimestamp ?? 0,
+      channelStates: {...this.channelStatesMap} as Record<ChannelType, AgentChannelTypeStates>,
+    };
     // @ts-ignore
-    this.emit(AGENT_EVENTS.AGENT_CHANNEL_RELOGIN_SUCCESS, data);
+    this.emit(AGENT_EVENTS.AGENT_RELOGIN_SUCCESS, reloginPayload);
   }
 
   /**
@@ -3169,7 +3255,8 @@ export default class ContactCenter extends WebexPlugin implements IContactCenter
     this.clearTelephonyRecoveryTimer();
     this.channelStatesMap = {} as Record<ChannelType, AgentChannelTypeStates>;
     this.loginChannelsMap = {};
-    this.lastEmittedV1 = undefined;
+    this.pendingBatches.forEach((batch) => clearTimeout(batch.timer));
+    this.pendingBatches.clear();
   }
 
   /**
@@ -3192,8 +3279,16 @@ export default class ContactCenter extends WebexPlugin implements IContactCenter
     this.clearTelephonyRecoveryTimer();
     const sessionAtSchedule = this.currentAgentSessionId;
 
+    // Unified: emit enriched agent:connectionReconnected with deferral context.
+    // Note: a standard agent:connectionReconnected (empty payload) already fires
+    // from handleConnectionReconnected before silentRelogin. This second emit
+    // carries deferredChannels so clients can distinguish it via event.deferredChannels.
     // @ts-ignore
-    this.emit(AGENT_EVENTS.AGENT_CHANNEL_RECOVERY_DEFERRED, {channelTypes: deferred, agentId});
+    this.emit(AGENT_EVENTS.AGENT_CONNECTION_RECONNECTED, {
+      deferredChannels: deferred,
+      recoveryStatus: 'deferred' as const,
+      deferralTimeoutMs: TELEPHONY_DEFERRAL_TIMEOUT_MS,
+    });
 
     this.telephonyRecoveryTimer = setTimeout(async () => {
       this.telephonyRecoveryTimer = undefined;
@@ -3242,7 +3337,6 @@ export default class ContactCenter extends WebexPlugin implements IContactCenter
     this.agentConfig.lastStateChangeTimestamp = bridged.lastStateChangeTimestamp;
     this.agentConfig.lastIdleCodeChangeTimestamp = bridged.lastIdleCodeChangeTimestamp;
     this.agentConfig.lastStateAuxCodeId = bridged.auxCodeId;
-    this.lastEmittedV1 = {subStatus: bridged.subStatus, auxCodeId: bridged.auxCodeId};
   }
 
   // ─── V2 Granular Agent State — channel helpers ──────────────────────────
