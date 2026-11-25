@@ -32,7 +32,15 @@ export default {
      */
     clientType: 'public',
 
-    refreshCallback(webex, token) {
+    /**
+     * Exchanges the current refresh token for new credentials.
+     * @param {Object} webex The SDK instance.
+     * @param {Object} token The current token.
+     * @param {Object} [options]
+     * @param {boolean} [options.selfContainedToken=false] Request a self-contained access token.
+     * @returns {Promise<Object>}
+     */
+    refreshCallback(webex, token, {selfContainedToken = false} = {}) {
       /* eslint-disable camelcase */
       const {form: clientForm = {}, ...clientAuthentication} = getClientAuthenticationOptions(
         token.config
@@ -47,6 +55,7 @@ export default {
             redirect_uri: token.config.redirect_uri,
             refresh_token: token.refresh_token,
             ...clientForm,
+            ...(selfContainedToken === true ? {self_contained_token: true} : {}),
           },
           ...clientAuthentication,
           shouldRefreshAccessToken: false,

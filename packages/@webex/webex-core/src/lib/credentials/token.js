@@ -2,7 +2,7 @@
  * Copyright (c) 2015-2020 Cisco Systems, Inc. See LICENSE file.
  */
 
-import {pick} from 'lodash';
+import {isString, pick} from 'lodash';
 import {inBrowser, oneFlight} from '@webex/common';
 import {safeSetTimeout} from '@webex/common-timers';
 
@@ -339,9 +339,13 @@ const Token = WebexPlugin.extend({
    * {@link config.credentials.refreshCallback()}
    * @instance
    * @memberof Token
+   * @param {Object} [options]
+   * @param {boolean} [options.selfContainedToken=false] Request a self-contained access token.
    * @returns {Promise<Token>}
    */
-  refresh() {
+  refresh(options = {}) {
+    const selfContainedToken = options.selfContainedToken === true;
+
     if (!this.canRefresh) {
       throw new Error('Not enough information available to refresh this access token');
     }
@@ -353,7 +357,9 @@ const Token = WebexPlugin.extend({
         throw new Error('Cannot refresh access token without refreshCallback');
       }
 
-      promise = Promise.resolve(this.config.refreshCallback(this.webex, this));
+      const refreshOptions = selfContainedToken ? [{selfContainedToken}] : [];
+
+      promise = Promise.resolve(this.config.refreshCallback(this.webex, this, ...refreshOptions));
     }
 
     return (
@@ -366,6 +372,7 @@ const Token = WebexPlugin.extend({
             grant_type: 'refresh_token',
             redirect_uri: this.config.redirect_uri,
             refresh_token: this.refresh_token,
+            ...(selfContainedToken && {self_contained_token: true}),
           },
           auth: {
             user: this.config.client_id,
@@ -380,6 +387,10 @@ const Token = WebexPlugin.extend({
         if (!obj) {
           throw new Error('token: refreshCallback() did not produce an object');
         }
+        if (selfContainedToken && (!isString(obj.access_token) || !obj.access_token)) {
+          throw new Error('token: refresh did not return an access token');
+        }
+
         // If the authentication server did not send back a refresh token, copy
         // the current refresh token and related values to the response (note:
         // at time of implementation, CI never sends a new refresh token)
@@ -395,7 +406,7 @@ const Token = WebexPlugin.extend({
         if (this.access_token === obj.access_token) {
           this.logger.error('token: new token matches current token');
           // log the tokens if it is not production
-          if (process.env.NODE_ENV !== 'production') {
+          if (!selfContainedToken && process.env.NODE_ENV !== 'production') {
             this.logger.error('token: current token:', this.access_token);
             this.logger.error('token: new token:', obj.access_token);
           }
@@ -409,7 +420,9 @@ const Token = WebexPlugin.extend({
         }
 
         obj.previousToken = this;
-        obj.scope = this.scope;
+        if (!selfContainedToken || !isString(obj.scope)) {
+          obj.scope = this.scope;
+        }
 
         return new Token(obj, {parent: this.parent});
       })

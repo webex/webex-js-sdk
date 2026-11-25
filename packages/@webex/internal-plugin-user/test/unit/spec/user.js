@@ -6,6 +6,7 @@ import UserService from '@webex/internal-plugin-user';
 import {buildPreferredSiteBody, buildMeetingSiteList, SCIM_SCHEMAS} from '@webex/internal-plugin-user/src/user';
 import {assert} from '@webex/test-helper-chai';
 import MockWebex from '@webex/test-helper-mock-webex';
+import {Token} from '@webex/webex-core';
 import sinon from 'sinon';
 import uuid from 'uuid';
 
@@ -101,11 +102,147 @@ describe('plugin-user', () => {
     });
 
     describe('#activate()', () => {
-      it('requires a `verificationToken` or a confirmationCode + user id', () => {
+      const confirmation = {
+        confirmationCode: 'test-code',
+        id: 'test-user',
+        email: 'user@example.com',
+      };
+      const activationTokenData = {access_token: 'test-activation', refresh_token: 'test-refresh'};
+      const session = {email: confirmation.email, tokenData: activationTokenData};
+      const selfContained = {selfContainedToken: true};
+      const sandbox = sinon.createSandbox();
+      let refresh;
+
+      beforeEach(() => {
+        sandbox.useFakeTimers({now: 0});
+        refresh = sandbox.stub(Token.prototype, 'refresh');
+        webex.credentials.set = sinon.spy();
+        webex.credentials.trigger = sinon.spy();
+        webex.logger.warn = sinon.spy();
+        webex.request.resolves({body: session});
+      });
+
+      afterEach(() => sandbox.restore());
+
+      it('requires a `verificationToken` or a confirmationCode + user id', () =>
         assert.isRejected(
           userService.activate(),
           /either options.verificationToken is required or both options.confirmationCode and options.id are required/
+        ));
+
+      it('publishes the refreshed credential only after the opt-in refresh settles', async () => {
+        let startRefresh;
+        let finishRefresh;
+        const refreshStarted = new Promise((resolve) => {
+          startRefresh = resolve;
+        });
+
+        refresh.callsFake(function refreshActivationToken() {
+          startRefresh(this);
+
+          return new Promise((resolve) => {
+            finishRefresh = resolve;
+          });
+        });
+
+        const activation = userService.activate({...confirmation}, selfContained);
+        const activationToken = await refreshStarted;
+
+        assert.calledOnceWithExactly(webex.request, {
+          uri: webex.config.credentials.activationUrl,
+          method: 'POST',
+          body: {
+            confirmationCode: confirmation.confirmationCode,
+            id: confirmation.id,
+            scope: webex.config.credentials.scope,
+          },
+          auth: {
+            user: webex.config.credentials.client_id,
+            pass: webex.config.credentials.client_secret,
+            sendImmediately: true,
+          },
+        });
+        assert.calledOnceWithExactly(refresh, selfContained);
+        assert.instanceOf(activationToken, Token);
+        assert.strictEqual(activationToken.parent, webex.credentials);
+        assert.equal(activationToken.refresh_token, activationTokenData.refresh_token);
+        assert.notCalled(webex.credentials.set);
+
+        const refreshedTokenData = {
+          access_token: 'test-refreshed',
+          refresh_token: 'test-rotated',
+          expires: 60000,
+          expires_in: 60,
+          scope: 'scope:one',
+        };
+        const refreshedToken = new Token(
+          {...refreshedTokenData, previousToken: activationToken},
+          {parent: webex.credentials}
         );
+
+        finishRefresh(refreshedToken);
+
+        assert.deepEqual(await activation, {
+          ...session,
+          tokenData: {...refreshedTokenData, token_type: 'Bearer'},
+        });
+        assert.calledOnceWithExactly(webex.credentials.set, {supertoken: refreshedToken});
+        assert.notCalled(webex.logger.warn);
+      });
+
+      it('publishes the original activation credential if refresh fails', async () => {
+        refresh.rejects(new Error('refresh failed'));
+
+        assert.strictEqual(await userService.activate({...confirmation}, selfContained), session);
+        assert.calledOnceWithExactly(refresh, selfContained);
+        assert.calledOnceWithExactly(webex.credentials.set, {supertoken: activationTokenData});
+        assert.calledOnceWithExactly(
+          webex.logger.warn,
+          'user: self-contained activation token refresh failed'
+        );
+      });
+
+      const passthroughCases = [
+        {
+          name: 'the caller uses the default activation behavior',
+          options: confirmation,
+          userSession: session,
+        },
+        {
+          name: 'the caller supplies a verification token',
+          options: {...confirmation, verificationToken: 'test-verification'},
+          activationOptions: selfContained,
+          userSession: session,
+        },
+        {
+          name: 'the activation response has no refresh token',
+          options: confirmation,
+          activationOptions: selfContained,
+          userSession: {...session, tokenData: {access_token: activationTokenData.access_token}},
+        },
+      ];
+
+      passthroughCases.forEach(({name, options, activationOptions, userSession}) => {
+        it(`uses the activation credential when ${name}`, async () => {
+          webex.request.resolves({body: userSession});
+
+          const result = await userService.activate({...options}, activationOptions);
+
+          assert.strictEqual(result, userSession);
+          assert.notCalled(refresh);
+          assert.calledOnceWithExactly(webex.credentials.set, {supertoken: userSession.tokenData});
+        });
+      });
+
+      it('propagates an activation failure without attempting to refresh', async () => {
+        webex.request.rejects(new Error('activation failed'));
+
+        await assert.isRejected(
+          userService.activate({...confirmation}, selfContained),
+          /activation failed/
+        );
+        assert.notCalled(refresh);
+        assert.notCalled(webex.credentials.set);
       });
     });
 

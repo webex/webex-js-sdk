@@ -169,7 +169,7 @@ used.
 | `MOD-009` | `update` requires `options.displayName`, PATCHes `users/user` on the conversation service with `options`, and resolves the response body. | Updates the current user's display name. | `src/user.js` | `test/unit/spec/user.js` `#update()` (guard only); `test/integration/spec/user.js` `#update()` | Request shape is not unit-tested | Present |
 | `MOD-010` | `verify` merges `config.verifyDefaults` under `options`, requires `email`, collects the preauth catalog, obtains a user token and falls back to a client token on any failure of those two steps, POSTs `users/activations` on the atlas service with the token header, `x-prelogin-userid`, and `shouldRefreshAccessToken: false`, sets `hasPassword` when the response says `hasPassword` or `sso`, and resolves the response body. `register` calls `verify`. | Determines whether the user needs to sign up or can sign in, and triggers the activation email when client credentials are used. The request disables token refresh. | `src/user.js` | `test/unit/spec/user.js` `#verify()` (guard only); `test/integration/spec/user.js` `#verify()` | The token fallback and the request shape are untested at unit level | Present |
 | `MOD-011` | `getUserCI(email, lookupCI)` calls `verify` with `suppressEmail: true` and resolves its `userEntities` when `lookupCI` is truthy; otherwise it resolves the configured idbroker and identity URLs. | Federation callers learn the user's identity URLs without sending another email. | `src/user.js` | none found | No test | Weak |
-| `MOD-012` | `activate` requires `verificationToken` or both `confirmationCode` and `id`, sets `options.scope` from credentials config, strips `email`, POSTs to `activationUrl` with client credentials as basic auth, stores `tokenData` as the supertoken, and resolves the body. It waits for stored state to load first. | Exchanges an activation proof for a user token. | `src/user.js` | `test/unit/spec/user.js` `#activate()` (guard only); `test/integration/spec/user.js` `#activate()` | Request shape and supertoken write are unit-untested | Present |
+| `MOD-012` | `activate` requires `verificationToken` or both `confirmationCode` and `id`. It waits for stored state, sets `options.scope` from credentials config, strips `email`, and POSTs to `activationUrl` with client credentials as Basic auth. It stores the result as the supertoken and returns the user session. The optional second argument `{selfContainedToken: true}` requests a self-contained bearer before publishing credentials when email-code activation returns a refresh token. This argument stays local to the SDK. On refresh success, the returned session contains the refreshed token fields. On refresh failure, the SDK logs a fixed warning and uses the original activation result. | Exchanges an activation proof for a user token. The opt-in delays publication until a refresh attempt finishes. | `src/user.js` | `test/unit/spec/user.js` `#activate()` and `test/integration/spec/user.js` `#activate()` | The opt-in also needs live coverage of the Identity response. | Present |
 | `MOD-013` | `generateOTP` requires `email` or `id`; `validateOTP` requires `email` or `id` and `oneTimePassword`, sets `scope`, and stores `tokenData` as the supertoken. Both POST with client credentials as basic auth. | Generates and validates a one-time password; validation stores the returned token data as the supertoken. | `src/user.js` | `test/unit/spec/user.js` `#generateOTP()`, `#validateOTP()` (guards); `test/integration/spec/user.js` OTP case | Request shape is unit-untested | Present |
 | `MOD-014` | `setPassword` requires `options.password`; `updateName` requires one of `givenName`, `familyName`, or `displayName`. Both PATCH `${setPasswordUrl}/${device.userId}` with the user token as the authorization header and the SCIM schemas in the body. `setPassword` sets `hasPassword` to `true`; both resolve the response body. | Updates the user's password and name through the identity set-password URL. | `src/user.js` | `test/unit/spec/user.js` `#setPassword()`, `#updateName()` (guards); `test/integration/spec/user.js` | Request shape is unit-untested | Present |
 | `MOD-015` | `updatePreferredWebexSite` requires `newSiteUrl`, resolves the org id from `options.orgId` or `credentials.getOrgId()`, rejects when `device.userId` is unset, PATCHes `<identity url>/identity/scim/<org>/v1/Users/<user>` with the SCIM body from `buildPreferredSiteBody`, sets no authorization header itself, and resolves the response body. Any synchronous throw becomes a rejection. | Changes the preferred meeting site under the org-scoped SCIM API. | `src/user.js` | `test/unit/spec/user.js` `#updatePreferredWebexSite()` | — | Present |
@@ -296,8 +296,16 @@ sequenceDiagram
   Caller->>User: activate(options) or validateOTP(options)
   User->>Svc: POST credentials URL with client credentials as basic auth
   Svc-->>User: body with tokenData
+  opt opted-in email-code activation has a refresh token
+    User->>Svc: request a self-contained bearer through token refresh
+    alt refresh succeeds
+      Svc-->>User: refreshed token data
+    else refresh fails
+      User->>User: keep the activation result
+    end
+  end
   User->>Creds: set supertoken
-  User-->>Caller: body
+  User-->>Caller: user session
 ```
 
 Profile and password:
@@ -385,7 +393,7 @@ classDiagram
 | `UC-002` | Code that must address a real user | `asUUID(email, {create: true})` goes through the `creator` batcher and caches an entry marked as existing | A cached entry without `userExists` is refetched | `src/user.js`, `test/integration/spec/user.js` |
 | `UC-003` | Conversation fetch | `recordUUID(participant)` caches a participant's id and email | A malformed participant rejects; conversation logs and continues | `src/user.js` |
 | `UC-004` | Sign-in screen | `verify({email})` reports sign-in or sign-up status and may set `hasPassword` | Token lookup falls back to a client token | `src/user.js`, `test/integration/spec/user.js` |
-| `UC-005` | Activation link | `activate({id, confirmationCode})` exchanges the code for a supertoken | Missing arguments reject before any request | `src/user.js`, `test/unit/spec/user.js` |
+| `UC-005` | Account activation | `activate({id, confirmationCode})` exchanges the code for a supertoken. With the opt-in, the SDK refreshes before publishing when the result has a refresh token. | Missing arguments reject before any request. Verification-token activation keeps the original result. | `src/user.js`, `test/unit/spec/user.js` |
 | `UC-006` | Settings screen | `updatePreferredWebexSite({newSiteUrl, oldSiteUrl})` PATCHes the SCIM user | Rejects without `userId` or an org id | `src/user.js`, `test/unit/spec/user.js` |
 | `UC-007` | Meeting scheduling | `getMeetingSiteList(user)` returns the sorted, de-duplicated site list | Missing arrays give an empty list | `src/user.js`, `test/unit/spec/user.js` |
 
@@ -504,7 +512,7 @@ classDiagram
 | `MOD-009` | Unit (guard) and integration | `test/unit/spec/user.js` #update() | missing displayName | Request shape |
 | `MOD-010` | Unit (guard) and integration | `test/unit/spec/user.js` #verify(); `test/integration/spec/user.js` #verify() | missing email | Token fallback, request shape |
 | `MOD-011` | none | none found | none found | Whole method |
-| `MOD-012`, `MOD-013`, `INV-005` | Unit (guards) and integration | `test/unit/spec/user.js` #activate(), #generateOTP(), #validateOTP(); `test/integration/spec/user.js` | missing arguments | Request shape, supertoken write |
+| `MOD-012`, `MOD-013`, `INV-005` | Unit and integration | `test/unit/spec/user.js` #activate(), #generateOTP(), #validateOTP(); `test/integration/spec/user.js` | Missing arguments, opt-in refresh failure, and direct activation paths | OTP request shape and supertoken write. Live validation of the opt-in refresh. |
 | `MOD-014` | Unit (guards) and integration | `test/unit/spec/user.js` #setPassword(), #updateName() | missing arguments | Request shape, `hasPassword` write |
 | `MOD-015` | Unit | `test/unit/spec/user.js` #updatePreferredWebexSite() | missing site, org error, missing user id, request errors | — |
 | `MOD-016` | Unit | `test/unit/spec/user.js` helper and #getMeetingSiteList() cases | empty and missing inputs | — |

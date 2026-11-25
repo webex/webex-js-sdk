@@ -4,7 +4,7 @@
 
 import {isArray} from 'lodash';
 import {deprecated, oneFlight, patterns, tap} from '@webex/common';
-import {persist, WebexPlugin, waitForValue} from '@webex/webex-core';
+import {persist, Token, WebexPlugin, waitForValue} from '@webex/webex-core';
 
 import UserUUIDBatcher from './user-uuid-batcher';
 import UserUUIDStore from './user-uuid-store';
@@ -97,10 +97,15 @@ const User = WebexPlugin.extend({
    * @param {Object} options.id (required -- optional if verification token is provided)
    * @param {Object} options.verificationToken (required -- optional if uuid and verification token provided)
    * @param {Object} options.email (required with verificationToken for Federation/global user)
+   * @param {Object} [activationOptions] SDK options for this activation
+   * @param {boolean} [activationOptions.selfContainedToken=false] Request a self-contained token
+   * before publishing credentials for confirmation-code activation
    * @returns {Promise} Resolves with a userSession
    */
-  activate(options = {}) {
-    if (!(options.verificationToken || (options.confirmationCode && options.id))) {
+  activate(options = {}, {selfContainedToken = false} = {}) {
+    const hasConfirmationCode = options.confirmationCode && options.id;
+
+    if (!(options.verificationToken || hasConfirmationCode)) {
       return Promise.reject(
         new Error(
           'either options.verificationToken is required or both options.confirmationCode and options.id are required'
@@ -126,10 +131,33 @@ const User = WebexPlugin.extend({
         pass: this.webex.config.credentials.client_secret,
         sendImmediately: true,
       },
-    }).then((res) => {
-      this.webex.credentials.set({supertoken: res.body.tokenData});
+    }).then(async ({body}) => {
+      const {credentials} = this.webex;
+      const {tokenData} = body;
+      let supertoken = tokenData;
+      let userSession = body;
 
-      return res.body;
+      if (
+        selfContainedToken === true &&
+        hasConfirmationCode &&
+        !options.verificationToken &&
+        tokenData?.refresh_token
+      ) {
+        try {
+          // Keep the activation token out of the credentials store until the refresh settles.
+          const activationToken = new Token(tokenData, {parent: credentials});
+          const refreshedToken = await activationToken.refresh({selfContainedToken: true});
+
+          userSession = {...body, tokenData: refreshedToken.serialize()};
+          supertoken = refreshedToken;
+        } catch {
+          this.logger.warn('user: self-contained activation token refresh failed');
+        }
+      }
+
+      credentials.set({supertoken});
+
+      return userSession;
     });
   },
 
