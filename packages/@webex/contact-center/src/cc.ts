@@ -1253,6 +1253,14 @@ export default class ContactCenter extends WebexPlugin implements IContactCenter
     // back — even when a post-login step (registerWebCallingLine, wxApp
     // setup) rejects.
     const previousManageChannelAvailability = this.agentConfig?.manageChannelAvailability;
+    // Also capture the calling context so a failed login attempt against a
+    // different device type (e.g. EXTENSION while BROWSER is active) does
+    // not leave the still-active session with the wrong loginOption /
+    // browserVoiceRequired.  Lines 1344-1345 set these eagerly before the
+    // routing request so the voice-ready guard is active when the success
+    // handler fires; on pre-acceptance failure they must be restored.
+    const previousLoginOption = this.webCallingService.loginOption;
+    const previousBrowserVoiceRequired = this.webCallingService.isBrowserVoiceRequired();
     let loginAccepted = false;
 
     try {
@@ -1428,13 +1436,22 @@ export default class ContactCenter extends WebexPlugin implements IContactCenter
 
       return response;
     } catch (error) {
-      // Restore the previous routing flag only when the routing login itself
-      // failed (INV-012).  Once the server has accepted the session
-      // (`loginAccepted`), the flag reflects the committed version and must
-      // not be reverted — even if a post-login step (registerWebCallingLine,
-      // wxApp setup) rejects.
-      if (!loginAccepted && this.agentConfig && previousManageChannelAvailability !== undefined) {
-        this.agentConfig.manageChannelAvailability = previousManageChannelAvailability;
+      // Restore the previous routing flag and calling context only when the
+      // routing login itself failed (INV-012).  Once the server has accepted
+      // the session (`loginAccepted`), the flag reflects the committed
+      // version and must not be reverted — even if a post-login step
+      // (registerWebCallingLine, wxApp setup) rejects.
+      if (!loginAccepted) {
+        if (this.agentConfig && previousManageChannelAvailability !== undefined) {
+          this.agentConfig.manageChannelAvailability = previousManageChannelAvailability;
+        }
+        // Restore the calling context so a still-active BROWSER session
+        // retains its voice-ready guard.  Without this, an EXTENSION login
+        // attempt that rejects leaves loginOption=EXTENSION and
+        // browserVoiceRequired=false, letting setAgentState bypass the
+        // BROWSER_VOICE_NOT_READY check.
+        this.webCallingService.setLoginOption(previousLoginOption);
+        this.webCallingService.setBrowserVoiceRequired(previousBrowserVoiceRequired);
       }
 
       const failure = error.details as Failure;

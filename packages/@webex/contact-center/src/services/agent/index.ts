@@ -224,6 +224,7 @@ export default function routingAgent(routing: AqmReqs) {
                         Idle: {},
                         Available: {pendingIdle: true},
                         Engaged: {pendingIdle: true},
+                        EngagedOther: {pendingIdle: true},
                         WrapUp: {pendingIdle: true},
                         Reserved: {pendingIdle: true},
                         RONA: {pendingIdle: true},

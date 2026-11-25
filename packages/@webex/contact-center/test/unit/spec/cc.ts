@@ -3267,6 +3267,51 @@ describe('webex.cc', () => {
         expect(webex.cc.agentConfig.manageChannelAvailability).toBe(true);
       });
 
+      it('restores calling context when login rejects before acceptance', async () => {
+        // Active BROWSER session with browser-voice enabled
+        webex.cc.agentConfig.manageChannelAvailability = true;
+        webex.cc.agentConfig.webRtcEnabled = true;
+        webex.cc.webCallingService.loginOption = LoginOption.BROWSER;
+        const setBrowserVoiceRequiredSpy = jest.spyOn(
+          webex.cc.webCallingService,
+          'setBrowserVoiceRequired'
+        );
+        const setLoginOptionSpy = jest.spyOn(
+          webex.cc.webCallingService,
+          'setLoginOption'
+        );
+        jest
+          .spyOn(webex.cc.webCallingService, 'isBrowserVoiceRequired')
+          .mockReturnValueOnce(true)   // captured as previousBrowserVoiceRequired
+          .mockReturnValue(false);     // isBrowserVoiceRequired(EXTENSION) = false
+
+        // Profile refresh keeps V2
+        jest
+          .spyOn(webex.cc.services.config, 'getUserDesktopLoginConfig')
+          .mockResolvedValue({agentProfile: {manageChannelAvailability: true}} as any);
+
+        // EXTENSION login rejects before server acceptance
+        jest
+          .spyOn(webex.cc.services.agent, 'stationLoginV2')
+          .mockRejectedValue({details: {trackingId: 'trk-2', data: {reason: 'rejected'}}});
+
+        await expect(
+          webex.cc.stationLogin({
+            teamId: 'teamId',
+            loginOption: LoginOption.EXTENSION,
+            dialNumber: '1001',
+          })
+        ).rejects.toThrow();
+
+        // Calling context must be restored to BROWSER session values.
+        // Last setLoginOption call should restore BROWSER
+        const setLoginCalls = setLoginOptionSpy.mock.calls;
+        expect(setLoginCalls[setLoginCalls.length - 1][0]).toBe(LoginOption.BROWSER);
+        // Last setBrowserVoiceRequired call should restore true
+        const setBrowserCalls = setBrowserVoiceRequiredSpy.mock.calls;
+        expect(setBrowserCalls[setBrowserCalls.length - 1][0]).toBe(true);
+      });
+
     });
   });
 

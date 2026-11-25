@@ -155,6 +155,7 @@ describe('AQM routing agent', () => {
     expect(detail.__typeMap.conditions.Idle).toEqual({});
     // Pending Idle while engaged: requires pendingIdle: true
     expect(detail.__typeMap.conditions.Engaged).toEqual({pendingIdle: true});
+    expect(detail.__typeMap.conditions.EngagedOther).toEqual({pendingIdle: true});
     expect(detail.__typeMap.conditions.WrapUp).toEqual({pendingIdle: true});
     expect(detail.__typeMap.conditions.Reserved).toEqual({pendingIdle: true});
     expect(detail.__typeMap.conditions.RONA).toEqual({pendingIdle: true});
