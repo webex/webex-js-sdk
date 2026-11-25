@@ -123,6 +123,34 @@ describe('ConnectionService single-flight scheduler', () => {
     service.stop(); expect(manager.listenerCount('message')).toBe(0); expect(manager.listenerCount('socketClose')).toBe(0);
   });
 
+  it.each(['socket close', 'keepalive'])(
+    'leaves a reset idle when a connectionLost observer replaces the registration during %s',
+    async (source) => {
+      const reset = jest.fn(() => {
+        manager.usable = false;
+        service.reset({subscribeRequest, signal: registration.signal, onTerminalFailure: terminal});
+      });
+      service.once('connectionLost', reset);
+
+      if (source === 'socket close') lose();
+      else {
+        manager.usable = true;
+        manager.emit('message', JSON.stringify({keepalive: 'true'}));
+      }
+
+      expect(reset).toHaveBeenCalledTimes(1);
+      expect(jest.getTimerCount()).toBe(0);
+      await tick(60000);
+      expect(manager.initWebSocket).not.toHaveBeenCalled();
+      expect(events).toHaveBeenCalledTimes(1);
+      expect(terminal).not.toHaveBeenCalled();
+
+      lose();
+      await tick(5000);
+      expect(manager.initWebSocket).toHaveBeenCalledTimes(1);
+    }
+  );
+
   it('T-004 noOverlapUnderSlowAttempt / ordinaryReconnectDoesNotEnterDrPolicy five-second slots', async () => {
     const admission = createDeferred<any>(); manager.initWebSocket.mockReturnValueOnce(admission.promise);
     lose(); await tick(4999); expect(manager.initWebSocket).not.toHaveBeenCalled();
@@ -1114,6 +1142,31 @@ describe('ConnectionService with actual WebSocketManager', () => {
     expect(request).toHaveBeenCalledTimes(1);
   });
 
+  it.each(['stop', 'reset'] as const)(
+    'abandons the native close when an adopted socket abort reenters %s', async (action) => {
+      const init = jest.spyOn(manager, 'initWebSocket');
+      await recover();
+      const {signal} = init.mock.calls[0][0];
+      const onAbort = jest.fn(() => {
+        if (action === 'stop') service.stop();
+        else service.reset({subscribeRequest, signal: registration.signal, onTerminalFailure: terminal});
+      });
+      signal.addEventListener('abort', onAbort, {once: true});
+      const socket = Socket.instances[0];
+
+      socket.readyState = 3;
+      socket.onclose?.();
+
+      expect(onAbort).toHaveBeenCalledTimes(1);
+      expect(events).not.toHaveBeenCalled();
+      expect(jest.getTimerCount()).toBe(0);
+      await tick(60000);
+      expect(request).toHaveBeenCalledTimes(1);
+      expect(events).not.toHaveBeenCalled();
+      expect(terminal).not.toHaveBeenCalled();
+    }
+  );
+
   it.each(['multi-login', 'close(false)'])(
     'stops silently for %s before ordinary Welcome', async (action) => {
       manager.emit('socketClose', {shouldReconnect: true});
@@ -1135,6 +1188,36 @@ describe('ConnectionService with actual WebSocketManager', () => {
       expect(manager.listenerCount('socketClose')).toBe(0);
       expect(jest.getTimerCount()).toBe(0);
       expect(events).toHaveBeenCalledTimes(notifications);
+      expect(terminal).not.toHaveBeenCalled();
+    }
+  );
+
+  it.each(['ordinary', 'regional'] as const)(
+    'retries a %s close(true) before Welcome without a backend failure', async (mode) => {
+      const info = jest.spyOn(LoggerProxy, 'info').mockImplementation(() => undefined);
+      const run = mode === 'regional' ? startRecovery() : undefined;
+      if (!run) manager.emit('socketClose', {shouldReconnect: true});
+      await tick(run ? 100000 : 5000);
+      const socket = Socket.instances[0];
+
+      manager.close(true);
+      await flush();
+
+      expect(socket.close).toHaveBeenCalledTimes(1);
+      if (run) {
+        expect(run.onAttemptSettled.mock.calls).toEqual([[1, 'retrying', {}]]);
+        expect(run.afterWelcome).not.toHaveBeenCalled();
+      } else {
+        expect(info).toHaveBeenCalledWith('Ordinary reconnect attempt settled', {
+          module: CONNECTION_SERVICE_FILE, method: METHODS.HANDLE_SOCKET_CLOSE,
+          data: {attempt: 1, elapsedMs: 5000, outcome: 'retrying'},
+        });
+      }
+
+      await tick(run ? 59999 : 4999);
+      expect(request).toHaveBeenCalledTimes(1);
+      await tick(1);
+      expect(request).toHaveBeenCalledTimes(2);
       expect(terminal).not.toHaveBeenCalled();
     }
   );

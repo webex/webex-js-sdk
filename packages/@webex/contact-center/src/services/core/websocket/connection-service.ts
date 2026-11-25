@@ -11,6 +11,7 @@ import type {
 } from './types';
 import type {RecoveryFailure} from '../types';
 import type {SubscribeRequest} from '../../../types';
+import type {WelcomeResponse} from '../../config/types';
 import LoggerProxy from '../../../logger-proxy';
 import {CONNECTION_SERVICE_FILE} from '../../../constants';
 import {
@@ -24,9 +25,7 @@ import {getSubscriptionMismatchReason, isRecord, normalizeRecoveryFailure} from 
 
 type Flight = {
   controller: AbortController;
-  socketLost: boolean;
-  noReconnect: boolean;
-  afterWelcome: boolean;
+  close?: 'retry' | 'stop';
 };
 type Invocation = RegionRecoveryOptions & {
   attempt: number;
@@ -49,13 +48,14 @@ const SAFE_REASONS = new Set([
   'AGENT_DN_NOT_REGISTERED',
   'AGENT_SESSION_ALREADY_EXISTS',
 ]);
-const safeFailure = (error: unknown): RecoveryFailure => {
+const safeFailure = (error: unknown, mismatch?: string): RecoveryFailure => {
   const {status, reasonCode, reason, id, trackingId} = normalizeRecoveryFailure(error);
+  const safeReason = mismatch ?? (reason && SAFE_REASONS.has(reason) ? reason : undefined);
 
   return {
     ...(status !== undefined ? {status} : {}),
     ...(reasonCode !== undefined ? {reasonCode} : {}),
-    ...(reason && SAFE_REASONS.has(reason) ? {reason} : {}),
+    ...(safeReason ? {reason: safeReason} : {}),
     ...(id ? {id} : {}),
     ...(trackingId ? {trackingId} : {}),
   };
@@ -84,7 +84,6 @@ export class ConnectionService extends EventEmitter {
   private invocation?: Invocation;
   private registrationSignal?: AbortSignal;
   private onTerminalFailure?: ConnectionResetOptions['onTerminalFailure'];
-  private listening = false;
   private webSocketManager: WebSocketManager;
   private subscribeRequest: SubscribeRequest;
   private readonly onRegistrationAbort = () => this.stop();
@@ -132,11 +131,8 @@ export class ConnectionService extends EventEmitter {
     this.registrationSignal?.removeEventListener('abort', this.onRegistrationAbort);
     this.registrationSignal = undefined;
     this.onTerminalFailure = undefined;
-    if (this.listening) {
-      this.webSocketManager.off('message', this.onPing);
-      this.webSocketManager.off('socketClose', this.onSocketClose);
-      this.listening = false;
-    }
+    this.webSocketManager.off('message', this.onPing);
+    this.webSocketManager.off('socketClose', this.onSocketClose);
   }
 
   public recoverRegion(options: RegionRecoveryOptions): Promise<void> {
@@ -166,10 +162,8 @@ export class ConnectionService extends EventEmitter {
   }
 
   private setupEventListeners(): void {
-    if (this.listening) return;
     this.webSocketManager.on('message', this.onPing);
     this.webSocketManager.on('socketClose', this.onSocketClose);
-    this.listening = true;
   }
 
   private clearTimers(): void {
@@ -204,15 +198,19 @@ export class ConnectionService extends EventEmitter {
 
   private createFlight(): Flight {
     this.disposeFlight(this.socketOwner);
-    const flight: Flight = {
-      controller: new AbortController(),
-      socketLost: false,
-      noReconnect: false,
-      afterWelcome: false,
-    };
+    const flight: Flight = {controller: new AbortController()};
     this.flight = flight;
 
     return flight;
+  }
+
+  private subscribePrimary(signal: AbortSignal): Promise<WelcomeResponse> {
+    return this.webSocketManager
+      .initWebSocket({body: this.subscribeRequest, resource: SUBSCRIBE_API, signal})
+      .catch((error: unknown) => {
+        // A forced close can reject admission and abort the flight in the same turn.
+        throw signal.aborted ? terminalError('cancelled') : error;
+      });
   }
 
   private ownsInvocation(invocation: Invocation): boolean {
@@ -283,24 +281,19 @@ export class ConnectionService extends EventEmitter {
       return;
     }
     const flight = this.createFlight();
+    const {signal} = flight.controller;
+    let welcomed = false;
     try {
-      const welcome = await ConnectionService.observe(
-        this.webSocketManager.initWebSocket({
-          body: this.subscribeRequest,
-          resource: SUBSCRIBE_API,
-          signal: flight.controller.signal,
-        }),
-        flight.controller.signal
-      );
+      const welcome = await this.subscribePrimary(signal);
       if (!this.ownsInvocation(invocation) || this.flight !== flight) return;
-      if (flight.controller.signal.aborted) throw terminalError('cancelled');
-      flight.afterWelcome = true;
+      if (signal.aborted) throw terminalError('cancelled');
+      welcomed = true;
       const publishOutcome = await ConnectionService.observe(
-        Promise.resolve().then(() => invocation.afterWelcome(welcome, flight.controller.signal)),
-        flight.controller.signal
+        Promise.resolve().then(() => invocation.afterWelcome(welcome, signal)),
+        signal
       );
       if (!this.ownsInvocation(invocation) || this.flight !== flight) return;
-      if (flight.controller.signal.aborted) throw terminalError('cancelled');
+      if (signal.aborted) throw terminalError('cancelled');
       this.flight = undefined;
       this.socketOwner = flight;
       this.invocation = undefined;
@@ -312,28 +305,26 @@ export class ConnectionService extends EventEmitter {
       if (publishOutcome) publishOutcome();
     } catch (error) {
       if (!this.ownsInvocation(invocation) || this.flight !== flight) return;
-      const failure = safeFailure(error);
-      const mismatch = !flight.afterWelcome && getSubscriptionMismatchReason(error);
+      const mismatch = welcomed ? undefined : getSubscriptionMismatchReason(error);
+      const failure = safeFailure(error, mismatch);
       const auth = failure.status === 401 || failure.status === 403;
-      const cancelled =
-        flight.noReconnect || (flight.controller.signal.aborted && !flight.socketLost);
+      const cancelled = flight.close === 'stop' || (signal.aborted && !flight.close);
       let kind: ConnectionRecoveryFailureKind | undefined;
       if (cancelled) kind = 'cancelled';
       else if (auth) kind = 'authentication-failed';
       else if (mismatch) kind = 'region-mismatch';
-      else if (flight.afterWelcome && !flight.socketLost) kind = 'after-welcome-failed';
-      const detached = {...failure, ...(mismatch ? {reason: mismatch} : {})};
+      else if (welcomed && !flight.close) kind = 'after-welcome-failed';
       if (kind) {
         this.failRegion(
           invocation,
-          terminalError(kind, kind === 'cancelled' ? undefined : detached)
+          terminalError(kind, kind === 'cancelled' ? undefined : failure)
         );
 
         return;
       }
       this.disposeFlight(flight);
       try {
-        invocation.onAttemptSettled?.(invocation.attempt, 'retrying', {...detached});
+        invocation.onAttemptSettled?.(invocation.attempt, 'retrying', failure);
       } catch {
         /* Best-effort diagnostic seam. */
       }
@@ -435,11 +426,11 @@ export class ConnectionService extends EventEmitter {
       return;
     }
     this.isKeepAlive = data.keepalive === 'true';
+    this.monitorOrdinary();
     if (this.isConnectionLost || this.isKeepAlive) {
       this.updateConnectionData();
       this.dispatchConnectionEvent();
     }
-    this.monitorOrdinary();
   };
 
   private scheduleOrdinary(): void {
@@ -463,7 +454,6 @@ export class ConnectionService extends EventEmitter {
       outcome: 'retrying' | 'terminal' | 'succeeded',
       failure: RecoveryFailure = {}
     ) => {
-      const {status, reasonCode, reason, id, trackingId} = failure;
       ConnectionService.diagnose(
         'info',
         'Ordinary reconnect attempt settled',
@@ -472,11 +462,7 @@ export class ConnectionService extends EventEmitter {
           attempt,
           elapsedMs: Math.max(0, Date.now() - episode.startedAt),
           outcome,
-          ...(status !== undefined ? {status} : {}),
-          ...(reasonCode !== undefined ? {reasonCode} : {}),
-          ...(reason ? {reason} : {}),
-          ...(id ? {id} : {}),
-          ...(trackingId ? {trackingId} : {}),
+          ...failure,
         }
       );
     };
@@ -484,14 +470,7 @@ export class ConnectionService extends EventEmitter {
     try {
       if (typeof navigator !== 'undefined' && navigator.onLine === false)
         throw new Error('Browser offline');
-      await ConnectionService.observe(
-        this.webSocketManager.initWebSocket({
-          body: this.subscribeRequest,
-          resource: SUBSCRIBE_API,
-          signal: flight.controller.signal,
-        }),
-        flight.controller.signal
-      );
+      await this.subscribePrimary(flight.controller.signal);
       if (this.mode !== 'ordinary' || this.flight !== flight) return;
       if (flight.controller.signal.aborted) throw terminalError('cancelled');
       diagnose('succeeded');
@@ -508,19 +487,16 @@ export class ConnectionService extends EventEmitter {
     } catch (error) {
       if (this.mode !== 'ordinary' || this.flight !== flight) return;
       this.disposeFlight(flight);
-      if (flight.noReconnect || !this.webSocketManager.shouldReconnect) {
+      if (flight.close === 'stop' || !this.webSocketManager.shouldReconnect) {
         this.stop();
 
         return;
       }
-      const failure = safeFailure(error);
-      const {status} = failure;
       const mismatch = getSubscriptionMismatchReason(error);
+      const failure = safeFailure(error, mismatch);
+      const {status} = failure;
       const isTerminal = status === 401 || status === 403 || !!mismatch;
-      diagnose(isTerminal ? 'terminal' : 'retrying', {
-        ...failure,
-        ...(mismatch ? {reason: mismatch} : {}),
-      });
+      diagnose(isTerminal ? 'terminal' : 'retrying', failure);
       if (this.mode !== 'ordinary' || this.lossEpisode !== episode) return;
       if (isTerminal) {
         const callback = this.onTerminalFailure;
@@ -528,7 +504,6 @@ export class ConnectionService extends EventEmitter {
           mismatch ? 'region-mismatch' : 'authentication-failed',
           failure
         );
-        if (mismatch) terminal.data.reason = mismatch;
         this.stop();
         this.webSocketManager.close(false, 'Terminal admission');
         try {
@@ -560,28 +535,31 @@ export class ConnectionService extends EventEmitter {
 
   private onSocketClose = (event?: {shouldReconnect?: boolean}): void => {
     if (this.mode !== 'ordinary' && this.mode !== 'region') return;
-    if (this.flight) {
-      this.flight.socketLost = true;
-      this.flight.noReconnect =
-        event?.shouldReconnect === false || !this.webSocketManager.shouldReconnect;
-      this.flight.controller.abort();
+    const shouldReconnect =
+      event?.shouldReconnect !== false && this.webSocketManager.shouldReconnect;
+    const flight = this.flight;
+    if (flight) {
+      flight.close = shouldReconnect ? 'retry' : 'stop';
+      flight.controller.abort();
 
       return;
     }
-    if (event?.shouldReconnect === false || !this.webSocketManager.shouldReconnect) {
+    if (!shouldReconnect) {
       this.stop();
 
       return;
     }
     if (this.mode !== 'ordinary') return;
-    this.disposeFlight(this.socketOwner);
+    // Aborting the adopted socket and emitting loss can synchronously reset the scheduler.
+    const episode = this.lossEpisode ?? {startedAt: Date.now(), attempt: 0};
+    this.lossEpisode = episode;
     clearTimeout(this.reconnectingTimer);
     this.isConnectionLost = true;
-    this.dispatchConnectionEvent();
-    if (!this.lossEpisode) this.lossEpisode = {startedAt: Date.now(), attempt: 0};
     if (!this.restoreTimer)
       this.restoreTimer = setTimeout(this.handleRestoreFailed, LOST_CONNECTION_RECOVERY_TIMEOUT);
     this.scheduleOrdinary();
+    this.disposeFlight(this.socketOwner);
+    if (this.lossEpisode === episode) this.dispatchConnectionEvent();
   };
 }
 
