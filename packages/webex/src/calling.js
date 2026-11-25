@@ -120,7 +120,7 @@ class Calling extends EventEmitter {
   }
 
   async initializeClients() {
-    const {clientConfig, callingClientConfig, logger} = this.callingConfig;
+    const {clientConfig, callingClientConfig, callQueueClientConfig, logger} = this.callingConfig;
 
     this.callingClient = clientConfig.calling
       ? await WebexCalling.createClient(this.webex, callingClientConfig)
@@ -141,6 +141,14 @@ class Calling extends EventEmitter {
     this.callSettingsClient = clientConfig.callSettings
       ? WebexCalling.createCallSettingsClient(this.webex, logger)
       : undefined;
+
+    this.callQueueClient = WebexCalling.createCallQueueClient?.(
+      this.webex,
+      logger,
+      callQueueClientConfig,
+      this.callQueueClient,
+      Boolean(clientConfig.callQueue)
+    );
 
     if (clientConfig.callRecording === undefined) {
       clientConfig.callRecording = false;
