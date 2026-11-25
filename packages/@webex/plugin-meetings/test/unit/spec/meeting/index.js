@@ -535,6 +535,85 @@ describe('plugin-meetings', () => {
           assert.equal(meetingWithE2ee.trustState, expected);
         });
       });
+
+      [
+        {
+          description: 'non-E2EE',
+          info: {},
+          e2eeState: E2eeState.Disabled,
+          expectedTrustStates: ['strong'],
+        },
+        {
+          description: 'strict E2EE',
+          info: {isV2E2EEncrypted: true},
+          e2eeState: E2eeState.Initializing,
+          expectedTrustStates: ['calculating', 'zeroTrust'],
+        },
+        {
+          description: 'best-effort E2EE',
+          info: {isV2E2EEncrypted: true, isBestEffortE2EEncryption: true},
+          e2eeState: E2eeState.Initializing,
+          expectedTrustStates: ['calculating', 'adaptiveZeroTrust'],
+        },
+      ].forEach(({description, info, e2eeState, expectedTrustStates}) => {
+        it(`emits trust updates for ${description} joins via Locus updateSelf`, () => {
+          TriggerProxy.trigger.restore();
+          const e2ee = new EventEmitter();
+
+          e2ee.state = e2eeState;
+          e2ee.start = sinon.stub().resolves();
+          const meetingWithE2ee = new Meeting(
+            {
+              userId: uuid1,
+              resource: uuid2,
+              deviceUrl: uuid3,
+              locus: {url: url1},
+              destination: testDestination,
+              destinationType: DESTINATION_TYPE.MEETING_ID,
+              correlationId,
+              selfId: uuid1,
+              e2eeManager: {createE2eeController: sinon.stub().returns(e2ee)},
+            },
+            {parent: webex}
+          );
+          const listener = sinon.spy();
+          const self = (state) => ({
+            id: uuid1,
+            identity: uuid1,
+            state,
+            devices: [{url: uuid3, state, mediaSessions: []}],
+            status: {audioStatus: 'UNKNOWN', videoStatus: 'UNKNOWN'},
+            controls: {audio: {}, role: {roles: []}},
+          });
+
+          webex.internal.device.url = uuid3;
+          meetingWithE2ee.locusInfo.info = info;
+          sinon.stub(meetingWithE2ee.members, 'locusSelfUpdate');
+          sinon.stub(meetingWithE2ee, 'pstnUpdate');
+          sinon.stub(meetingWithE2ee, 'requestScreenShareFloorIfPending');
+          meetingWithE2ee.locusInfo.updateSelf(self('LEFT'));
+          meetingWithE2ee.on(EVENT_TRIGGERS.MEETING_TRUST_STATE_CHANGED, listener);
+
+          meetingWithE2ee.locusInfo.updateSelf(self('JOINED'));
+
+          assert.equal(meetingWithE2ee.joinedWith.state, 'JOINED');
+          assert.equal(meetingWithE2ee.trustState, expectedTrustStates[0]);
+
+          if (expectedTrustStates.length > 1) {
+            e2ee.state = E2eeState.Joined;
+            e2ee.emit(EVENT_TRIGGERS.MEETING_E2EE_STATE_CHANGED, {state: E2eeState.Joined});
+          }
+
+          assert.equal(
+            meetingWithE2ee.trustState,
+            expectedTrustStates[expectedTrustStates.length - 1]
+          );
+          assert.callCount(listener, expectedTrustStates.length);
+          expectedTrustStates.forEach((trustState, index) => {
+            assert.calledWithExactly(listener.getCall(index), {trustState});
+          });
+        });
+      });
     });
 
     describe('Public Api Contract', () => {
@@ -14101,6 +14180,37 @@ describe('plugin-meetings', () => {
 
       describe('#setUpLocusInfoMeetingListener', () => {
         let cleanUpSpy;
+
+        [
+          {
+            description: 'host ends the meeting',
+            parsedLocus: {fullState: {type: 'MEETING', state: 'INACTIVE'}},
+          },
+          {
+            description: 'host removes this user',
+            parsedLocus: {
+              fullState: {type: 'MEETING', state: 'ACTIVE'},
+              self: {removed: true},
+            },
+          },
+        ].forEach(({description, parsedLocus}) => {
+          it(`stops E2EE when Locus destroys the meeting without a leave (${description})`, async () => {
+            const e2eeStop = sinon.stub().resolves();
+            const destroyListener = sinon.spy();
+
+            meeting.e2ee = {stop: e2eeStop};
+            meeting.locusInfo.parsedLocus = parsedLocus;
+            meeting.locusInfo.fullState = parsedLocus.fullState;
+            meeting.locusInfo.on(EVENTS.DESTROY_MEETING, destroyListener);
+
+            meeting.locusInfo.isMeetingActive();
+            await testUtils.flushPromises();
+
+            assert.calledOnceWithMatch(destroyListener, {shouldLeave: false});
+            assert.calledOnce(e2eeStop);
+          });
+        });
+
         it('listens to destroy meeting event from locus info  ', (done) => {
           TriggerProxy.trigger.reset();
           sinon.stub(meeting.reconnectionManager, 'cleanUp');
