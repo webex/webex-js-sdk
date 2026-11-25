@@ -3235,6 +3235,38 @@ describe('webex.cc', () => {
         expect(webex.cc.agentConfig.manageChannelAvailability).toBe(false);
       });
 
+      it('preserves the accepted V2 flag when a post-login step fails', async () => {
+        // Start with V1 session, but enable WebRTC so BROWSER login triggers
+        // registerWebCallingLine().
+        webex.cc.agentConfig.manageChannelAvailability = false;
+        webex.cc.agentConfig.webRtcEnabled = true;
+
+        // Profile refresh returns V2 — flag flips before login request
+        jest
+          .spyOn(webex.cc.services.config, 'getUserDesktopLoginConfig')
+          .mockResolvedValue({agentProfile: {manageChannelAvailability: true}} as any);
+
+        // V2 login succeeds — server accepted a V2 session
+        jest
+          .spyOn(webex.cc.services.agent, 'stationLoginV2')
+          .mockResolvedValue(v1LoginData);
+
+        // Post-login voice registration fails
+        jest
+          .spyOn(webex.cc.webCallingService, 'registerWebCallingLine')
+          .mockRejectedValue(new Error('WebRTC registration failed'));
+
+        await expect(
+          webex.cc.stationLogin({
+            teamId: 'teamId',
+            loginOption: LoginOption.BROWSER,
+          })
+        ).rejects.toThrow();
+
+        // Flag must remain V2 — the server session is already committed
+        expect(webex.cc.agentConfig.manageChannelAvailability).toBe(true);
+      });
+
     });
   });
 

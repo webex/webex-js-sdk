@@ -1245,10 +1245,15 @@ export default class ContactCenter extends WebexPlugin implements IContactCenter
   public async stationLogin(data: AgentLogin): Promise<StationLoginResponse> {
     const loggerContext = {module: CC_FILE, method: METHODS.STATION_LOGIN};
     // Captured before the profile refresh so the catch block can restore it
-    // if the login request fails (INV-012).  Without this, a rejected login
-    // leaves the flag flipped and the existing session routes through the
-    // wrong version until the next login attempt.
+    // if the routing login request itself fails (INV-012).  Without this, a
+    // rejected login leaves the flag flipped and the existing session routes
+    // through the wrong version until the next login attempt.
+    // Once the routing login succeeds (`loginAccepted = true`), the server
+    // has committed to the session version and the flag must NOT be rolled
+    // back — even when a post-login step (registerWebCallingLine, wxApp
+    // setup) rejects.
     const previousManageChannelAvailability = this.agentConfig?.manageChannelAvailability;
+    let loginAccepted = false;
 
     try {
       LoggerProxy.log(
@@ -1348,6 +1353,9 @@ export default class ContactCenter extends WebexPlugin implements IContactCenter
       // Registering in parallel would leave a WebCalling line (and its
       // listeners) active without an agent session when the login rejects.
       const resp = await loginResponse;
+      // The server has accepted the session version — do not roll back
+      // manageChannelAvailability from this point on.
+      loginAccepted = true;
 
       if (this.isBrowserVoiceRequired(data.loginOption)) {
         await this.webCallingService.registerWebCallingLine();
@@ -1420,9 +1428,12 @@ export default class ContactCenter extends WebexPlugin implements IContactCenter
 
       return response;
     } catch (error) {
-      // Restore the previous routing flag so an existing session continues
-      // using the version it was started with (INV-012).
-      if (this.agentConfig && previousManageChannelAvailability !== undefined) {
+      // Restore the previous routing flag only when the routing login itself
+      // failed (INV-012).  Once the server has accepted the session
+      // (`loginAccepted`), the flag reflects the committed version and must
+      // not be reverted — even if a post-login step (registerWebCallingLine,
+      // wxApp setup) rejects.
+      if (!loginAccepted && this.agentConfig && previousManageChannelAvailability !== undefined) {
         this.agentConfig.manageChannelAvailability = previousManageChannelAvailability;
       }
 

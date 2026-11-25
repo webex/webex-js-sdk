@@ -202,6 +202,12 @@ export default function routingAgent(routing: AqmReqs) {
           data: {
             type: CC_EVENTS.AGENT_CHANNEL_STATE_CHANGED,
             channelType: p.data.channelType,
+            // Correlate: only match the requested state to prevent a stale
+            // notification from a prior request (e.g. Available) from settling
+            // the current request (e.g. Idle).  Without this, a bulk Available
+            // that resolves on the first channel leaves late Available
+            // notifications that can match the next Idle request's bind.
+            agentChannelStateDetail: {agentState: p.data.state},
             // Correlate: only match client-initiated notifications to prevent
             // supervisor/system pushes from resolving the pending request.
             isClientInitiated: true,

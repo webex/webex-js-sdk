@@ -134,6 +134,21 @@ describe('AQM routing agent', () => {
     expect(req.notifSuccess.bind.data.agentSessionId).toBeUndefined();
   });
 
+  it('stateChangeV2 success bind correlates on requested state via agentChannelStateDetail', () => {
+    const availReq = (agent.stateChangeV2 as unknown as (p: {data: object}) => any)({
+      data: {state: 'Available', auxCodeId: '0', channelType: ['chat']},
+    });
+    const idleReq = (agent.stateChangeV2 as unknown as (p: {data: object}) => any)({
+      data: {state: 'Idle', auxCodeId: 'aux-1', channelType: ['chat']},
+    });
+    expect(availReq.notifSuccess.bind.data.agentChannelStateDetail).toEqual({agentState: 'Available'});
+    expect(idleReq.notifSuccess.bind.data.agentChannelStateDetail).toEqual({agentState: 'Idle'});
+    // A stale Available notification cannot match the Idle request
+    expect(availReq.notifSuccess.bind.data.agentChannelStateDetail).not.toEqual(
+      idleReq.notifSuccess.bind.data.agentChannelStateDetail
+    );
+  });
+
   it('stateChangeV2 uses distinct bind keys per channel set', () => {
     const chatReq = (agent.stateChangeV2 as unknown as (p: {data: object}) => any)({
       data: {state: 'Available', auxCodeId: '0', channelType: ['chat']},

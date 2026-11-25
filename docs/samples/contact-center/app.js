@@ -4439,6 +4439,7 @@ function handleWellnessBreak(event) {
 }
 
 function handleWellnessLegacyStateChanged(event, nextAuxCodeId) {
+  const wasDeferred = !wellnessState.legacyStateKnown;
   wellnessState.legacyStateKnown = true;
   wellnessState.legacyAuxCodeId = nextAuxCodeId;
   const stateName = nextAuxCodeId === '0' ? 'Available' : event.subStatus || 'another state';
@@ -4460,12 +4461,20 @@ function handleWellnessLegacyStateChanged(event, nextAuxCodeId) {
     );
     return;
   }
-  // Retry deferred recovery: on a V2 reload with non-bridgeable channels
+  // Retry deferred recovery ONLY when legacyStateKnown was just promoted
+  // from false → true.  On a V2 reload with non-bridgeable channels
   // (e.g. Voice=Engaged), captureWellnessSession leaves legacyStateKnown
   // false and getRecoveryDecision returns 'wait'. When the task completes
-  // and the aggregate becomes bridgeable, this state-change event updates
-  // legacyStateKnown above — retry recovery so the break timer can start.
-  void recoverWellnessBreakIfNeeded();
+  // and the aggregate becomes bridgeable, this state-change event promotes
+  // legacyStateKnown — retry recovery so the break timer can start.
+  //
+  // Without the wasDeferred guard, a normal wellness break's own
+  // state-change event (Idle/WellbeingBreak) would reach here via the
+  // 'ignore' decision, call recoverWellnessBreakIfNeeded(), match the
+  // marker, and immediately undo the break before its timer runs.
+  if (wasDeferred) {
+    void recoverWellnessBreakIfNeeded();
+  }
 }
 
 async function requestWellnessBreak() {
