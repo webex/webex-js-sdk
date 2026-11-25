@@ -20,6 +20,7 @@ Doc map for developers and agents.
 - WebRTC call management (dial, answer, hold, transfer, mute, DTMF)
 - Call history retrieval and management
 - Call recording retrieval and deletion
+- Call queue agent status, membership, and events
 - Call settings (forwarding, voicemail configuration)
 - Contacts resolution (SCIM, People API)
 - Voicemail management (list, playback, delete, transcription)
@@ -67,6 +68,7 @@ flowchart TD
     SDK --> CC[CallingClient]
     SDK --> CH[CallHistory]
     SDK --> CR[CallRecording]
+    SDK --> CQ[CallQueue]
     SDK --> CS[CallSettings]
     SDK --> CT[Contacts]
     SDK --> VM[Voicemail]
