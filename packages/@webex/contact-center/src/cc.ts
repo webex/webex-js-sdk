@@ -380,6 +380,15 @@ export default class ContactCenter extends WebexPlugin implements IContactCenter
   private telephonyRecoveryTimer?: ReturnType<typeof setTimeout>;
 
   /**
+   * Serialization chain for V2 setAgentState requests.  Each V2 request
+   * awaits the previous one before dispatching so a delayed notification
+   * from request N cannot resolve request N+1 when both target
+   * overlapping channels.
+   * @private
+   */
+  private v2StateChangeChain: Promise<unknown> = Promise.resolve();
+
+  /**
    * Stored channelsMap from login for channel selection validation.
    * @private
    */
@@ -1320,32 +1329,36 @@ export default class ContactCenter extends WebexPlugin implements IContactCenter
         },
       };
 
-      // Re-read the agent profile to pick up any admin-side changes to manageChannelAvailability.
-      // previousManageChannelAvailability (captured above the try) lets the
-      // catch block restore the flag if the login request fails (INV-012).
-      // Desktop equivalent: pinStationLoginRoutingVersion() runs only inside the
-      // eAgentStationLoginSuccess listener, never before the request.
+      // Re-read the agent profile to pick up any admin-side changes to
+      // manageChannelAvailability.  Commit the refreshed value to the live
+      // agentConfig immediately so the WebSocket login-success handler sees
+      // the correct routing mode when seeding V2 channel maps.
+      // stationLogin() is only called without an active session (first
+      // login, or after logout during profile update), so committing early
+      // cannot disrupt in-flight V2 notifications.  If the login request
+      // fails, the catch block restores previousManageChannelAvailability.
+      let requestManageChannelAvailability = this.agentConfig?.manageChannelAvailability ?? false;
       if (this.agentConfig?.agentId) {
         try {
           const {agentProfile} = await this.services.config.getUserDesktopLoginConfig(
             this.$webex.credentials.getOrgId(),
             this.agentConfig.agentId
           );
-          this.agentConfig.manageChannelAvailability =
-            agentProfile?.manageChannelAvailability === true;
+          requestManageChannelAvailability = agentProfile?.manageChannelAvailability === true;
         } catch (error) {
           LoggerProxy.warn(
-            `Could not refresh manageChannelAvailability (${error}), using cached value: ${this.agentConfig.manageChannelAvailability}`,
+            `Could not refresh manageChannelAvailability (${error}), using cached value: ${requestManageChannelAvailability}`,
             {module: CC_FILE, method: METHODS.STATION_LOGIN}
           );
         }
       }
+      if (this.agentConfig) {
+        this.agentConfig.manageChannelAvailability = requestManageChannelAvailability;
+      }
 
       LoggerProxy.log(
-        `Resolved routing version for login | manageChannelAvailability: ${
-          this.agentConfig?.manageChannelAvailability
-        } => ${
-          this.agentConfig?.manageChannelAvailability === true
+        `Resolved routing version for login | manageChannelAvailability: ${requestManageChannelAvailability} => ${
+          requestManageChannelAvailability === true
             ? 'V2 (/v2/agents/login)'
             : 'V1 (/v1/agents/login)'
         }`,
@@ -1362,7 +1375,7 @@ export default class ContactCenter extends WebexPlugin implements IContactCenter
       this.webCallingService.setBrowserVoiceRequired(this.isBrowserVoiceRequired(data.loginOption));
 
       const loginResponse =
-        this.agentConfig?.manageChannelAvailability === true
+        requestManageChannelAvailability === true
           ? this.services.agent.stationLoginV2(loginPayload)
           : this.services.agent.stationLogin(loginPayload);
 
@@ -1370,8 +1383,7 @@ export default class ContactCenter extends WebexPlugin implements IContactCenter
       // Registering in parallel would leave a WebCalling line (and its
       // listeners) active without an agent session when the login rejects.
       const resp = await loginResponse;
-      // The server has accepted the session version — do not roll back
-      // manageChannelAvailability from this point on.
+      // The server has accepted the session — do not roll back from here.
       loginAccepted = true;
 
       if (this.isBrowserVoiceRequired(data.loginOption)) {
@@ -1636,9 +1648,7 @@ export default class ContactCenter extends WebexPlugin implements IContactCenter
         // Wrap it in an array so .filter() / .includes() work correctly.
         const rawChannelType = data.channelType;
         const normalizedChannelType: ChannelType[] | undefined =
-          typeof rawChannelType === 'string'
-            ? [rawChannelType as ChannelType]
-            : rawChannelType;
+          typeof rawChannelType === 'string' ? [rawChannelType as ChannelType] : rawChannelType;
 
         // V2 per-channel state change — auto-select all selectable channels if none specified
         channels =
@@ -1718,9 +1728,36 @@ export default class ContactCenter extends WebexPlugin implements IContactCenter
           agentSessionId: this.currentAgentSessionId,
         };
 
-        agentStatusResponse = await this.services.agent.stateChangeV2({
-          data: channelStateChangeData,
-        });
+        // Serialize V2 requests: await the previous V2 request so a delayed
+        // notification from request N cannot resolve request N+1 when both
+        // target overlapping channels.  The chain swallows prior rejections
+        // (`.catch(() => {})`) so a failed request doesn't block the next.
+        // The callback re-checks the active session before dispatching so
+        // a queued request that outlives a logout is rejected rather than
+        // sent with stale session data.
+        const capturedSessionId = this.currentAgentSessionId;
+        const previousChain = this.v2StateChangeChain;
+        const thisRequest = previousChain
+          .catch(() => {})
+          .then(() => {
+            if (
+              this.agentConfig?.manageChannelAvailability !== true ||
+              !this.currentAgentSessionId ||
+              this.currentAgentSessionId !== capturedSessionId
+            ) {
+              throw Object.assign(new Error('V2 session ended while request was queued'), {
+                details: {
+                  type: 'SDK_VALIDATION_ERROR',
+                  trackingId: '',
+                  data: {reason: 'V2 session ended while request was queued'},
+                },
+              });
+            }
+
+            return this.services.agent.stateChangeV2({data: channelStateChangeData});
+          });
+        this.v2StateChangeChain = thisRequest;
+        agentStatusResponse = await thisRequest;
       } else {
         // V1 agent-wide state change (default path). channelType is V2-only.
         const v1Data: StateChange = {
@@ -1986,10 +2023,8 @@ export default class ContactCenter extends WebexPlugin implements IContactCenter
         // Determine V2 eligibility eagerly so event listeners (e.g. widget
         // store's refreshAgentStateControl) can read getAgentStateControl()
         // and getChannelStates() correctly inside the stationLoginSuccess
-        // handler.
-        //
-        // V2 eligibility is determined solely by the profile's
-        // manageChannelAvailability flag, re-read before each stationLogin().
+        // handler.  The live agentConfig flag is already committed by
+        // stationLogin() before the request is sent.
         const earlyV2 = this.agentConfig?.manageChannelAvailability === true;
 
         if (earlyV2) {
@@ -2097,6 +2132,18 @@ export default class ContactCenter extends WebexPlugin implements IContactCenter
           const failAgentId = eventData.data?.agentId;
           const ownId = this.agentConfig?.agentId;
           if (ownId && failAgentId && failAgentId !== ownId) break;
+
+          // Guard: ignore late failures that arrive after the V2 session
+          // has ended (logout / deregister).  Logout clears the session ID
+          // but retains the profile flag, so a delayed failure for the
+          // same agent would still reach the client without this check.
+          if (
+            !this.currentAgentSessionId ||
+            (eventData.data?.agentSessionId &&
+              eventData.data.agentSessionId !== this.currentAgentSessionId)
+          ) {
+            break;
+          }
 
           // Unified: emit on agent:stateChangeFailed with channelType enrichment
           // @ts-ignore
@@ -3420,6 +3467,7 @@ export default class ContactCenter extends WebexPlugin implements IContactCenter
     this.loginChannelsMap = {};
     this.pendingBatches.forEach((batch) => clearTimeout(batch.timer));
     this.pendingBatches.clear();
+    this.v2StateChangeChain = Promise.resolve();
   }
 
   /**

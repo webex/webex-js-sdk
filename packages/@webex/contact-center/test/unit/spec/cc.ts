@@ -3312,6 +3312,55 @@ describe('webex.cc', () => {
         expect(setBrowserCalls[setBrowserCalls.length - 1][0]).toBe(true);
       });
 
+      it('restores routing flag when login with refreshed profile rejects', async () => {
+        // Previous session was V2
+        webex.cc.agentConfig.manageChannelAvailability = true;
+
+        // Profile refresh disables granular availability
+        jest
+          .spyOn(webex.cc.services.config, 'getUserDesktopLoginConfig')
+          .mockResolvedValue({agentProfile: {manageChannelAvailability: false}} as any);
+
+        // Login rejects before acceptance
+        jest
+          .spyOn(webex.cc.services.agent, 'stationLogin')
+          .mockRejectedValue({details: {trackingId: 'trk-3', data: {reason: 'rejected'}}});
+
+        await expect(
+          webex.cc.stationLogin({
+            teamId: 'teamId',
+            loginOption: LoginOption.EXTENSION,
+            dialNumber: '1001',
+          })
+        ).rejects.toThrow();
+
+        // Catch block restores the previous value
+        expect(webex.cc.agentConfig.manageChannelAvailability).toBe(true);
+      });
+
+      it('commits refreshed profile flag on successful login', async () => {
+        // Previous session was V1
+        webex.cc.agentConfig.manageChannelAvailability = false;
+
+        // Profile refresh enables granular availability
+        jest
+          .spyOn(webex.cc.services.config, 'getUserDesktopLoginConfig')
+          .mockResolvedValue({agentProfile: {manageChannelAvailability: true}} as any);
+
+        // V2 login succeeds
+        jest
+          .spyOn(webex.cc.services.agent, 'stationLoginV2')
+          .mockResolvedValue(v1LoginData);
+
+        await webex.cc.stationLogin({
+          teamId: 'teamId',
+          loginOption: LoginOption.EXTENSION,
+          dialNumber: '1001',
+        });
+
+        expect(webex.cc.agentConfig.manageChannelAvailability).toBe(true);
+      });
+
     });
   });
 
@@ -7053,6 +7102,31 @@ describe('webex.cc', () => {
         );
       });
 
+      it('should suppress late V2 failure after session ends', () => {
+        setV2();
+        webex.cc.agentConfig = {agentId: 'agent-1', manageChannelAvailability: true} as Profile;
+        // Simulate logout clearing the session ID but retaining the flag
+        webex.cc['currentAgentSessionId'] = undefined;
+
+        const failure = {
+          type: CC_EVENTS.AGENT_CHANNEL_STATE_CHANGE_FAILED,
+          channelType: 'chat',
+          agentId: 'agent-1',
+          agentSessionId: 'old-session',
+          reason: 'NOT_ALLOWED',
+          reasonCode: 400,
+        };
+
+        messageCallback(
+          JSON.stringify({type: CC_EVENTS.AGENT_CHANNEL_STATE_CHANGE, data: failure})
+        );
+
+        expect(emitSpy).not.toHaveBeenCalledWith(
+          AGENT_EVENTS.AGENT_STATE_CHANGE_FAILED,
+          expect.anything()
+        );
+      });
+
       it('should ignore events for another agent', () => {
         setV2();
         webex.cc.agentConfig = {agentId: 'agent-1'} as Profile;
@@ -8087,6 +8161,7 @@ describe('webex.cc', () => {
 
       beforeEach(() => {
         webex.cc.agentConfig = {agentId: 'agent-1', teams: [], manageChannelAvailability: true} as Profile;
+        webex.cc['currentAgentSessionId'] = 'session-1';
         webex.cc['loginChannelsMap'] = {telephony: ['t1'], chat: ['c1'], email: [], social: ['s1']};
         stateChangeV2Spy = jest
           .spyOn(webex.cc.services.agent, 'stateChangeV2')
@@ -8110,6 +8185,7 @@ describe('webex.cc', () => {
             auxCodeId: 'idle-1',
             reason: 'Lunch',
             agentId: 'agent-1',
+            agentSessionId: 'session-1',
           },
         });
         expect(stateChangeSpy).not.toHaveBeenCalled();
@@ -8154,6 +8230,14 @@ describe('webex.cc', () => {
         expect(stateChangeV2Spy).toHaveBeenCalledTimes(1);
       });
 
+      it('normalizes a scalar channelType string to an array', async () => {
+        await webex.cc.setAgentState({state: 'Available', auxCodeId: '0', channelType: 'chat' as any});
+
+        expect(stateChangeV2Spy).toHaveBeenCalledWith({
+          data: expect.objectContaining({channelType: ['chat']}),
+        });
+      });
+
       it('auto-selects all selectable channels when channelType is explicitly set to empty array', async () => {
         await webex.cc.setAgentState({state: 'Available', auxCodeId: '0', channelType: []});
 
@@ -8172,6 +8256,61 @@ describe('webex.cc', () => {
           data: {state: 'Idle', auxCodeId: 'idle-1', agentId: 'agent-1'},
         });
         expect(stateChangeV2Spy).not.toHaveBeenCalled();
+      });
+
+      it('serializes overlapping V2 requests so notifications cannot cross-resolve', async () => {
+        let resolveFirst!: (v: any) => void;
+        const firstPromise = new Promise((resolve) => { resolveFirst = resolve; });
+
+        // First call: hangs until we resolve it manually
+        stateChangeV2Spy
+          .mockReturnValueOnce(firstPromise)
+          .mockResolvedValueOnce(mockV2Response);
+
+        const call1 = webex.cc.setAgentState({state: 'Available', auxCodeId: '0', channelType: ['chat', 'social']});
+        // Let microtasks settle so call1's chain fires stateChangeV2
+        await Promise.resolve();
+        const call2 = webex.cc.setAgentState({state: 'Available', auxCodeId: '0', channelType: ['social']});
+        // Let microtasks settle
+        await Promise.resolve();
+
+        // Only the first request should have been dispatched so far
+        expect(stateChangeV2Spy).toHaveBeenCalledTimes(1);
+
+        // Resolve the first request — the second should now dispatch
+        resolveFirst(mockV2Response);
+        await call1;
+        await call2;
+
+        expect(stateChangeV2Spy).toHaveBeenCalledTimes(2);
+      });
+
+      it('rejects queued V2 request after session ends', async () => {
+        let resolveFirst!: (v: any) => void;
+        const firstPromise = new Promise((resolve) => { resolveFirst = resolve; });
+
+        stateChangeV2Spy.mockReturnValueOnce(firstPromise);
+
+        const call1 = webex.cc.setAgentState({state: 'Available', auxCodeId: '0', channelType: ['chat']});
+        await Promise.resolve();
+
+        // Simulate logout while call1 is in-flight
+        const call2 = webex.cc.setAgentState({state: 'Idle', auxCodeId: 'idle-1', channelType: ['chat']});
+        await Promise.resolve();
+
+        // Clear the session (what logout does)
+        webex.cc['currentAgentSessionId'] = undefined;
+        webex.cc.agentConfig!.manageChannelAvailability = false;
+
+        // Complete the first request so the queued second fires its guard
+        resolveFirst(mockV2Response);
+        await call1;
+
+        // The second should reject with a session-ended error
+        await expect(call2).rejects.toThrow('V2 session ended while request was queued');
+
+        // stateChangeV2 should only have been called once (for call1)
+        expect(stateChangeV2Spy).toHaveBeenCalledTimes(1);
       });
 
       it('bridges V2 AgentChannelStateChanged response to V1 StateChangeSuccess shape', async () => {
