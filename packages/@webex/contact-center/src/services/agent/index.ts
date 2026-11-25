@@ -202,12 +202,30 @@ export default function routingAgent(routing: AqmReqs) {
           data: {
             type: CC_EVENTS.AGENT_CHANNEL_STATE_CHANGED,
             channelType: p.data.channelType,
-            // Correlate: only match the requested state to prevent a stale
-            // notification from a prior request (e.g. Available) from settling
-            // the current request (e.g. Idle).  Without this, a bulk Available
-            // that resolves on the first channel leaves late Available
-            // notifications that can match the next Idle request's bind.
-            agentChannelStateDetail: {agentState: p.data.state},
+            // Correlate: prevent a stale notification from a prior request
+            // (e.g. Available) from settling the current request (e.g. Idle).
+            // For non-Idle requests the notification must carry the exact
+            // requested agentState (immediate transitions).  For Idle
+            // requests the agent may be busy (Engaged/WrapUp/Reserved/RONA);
+            // the backend confirms with pendingIdle: true while keeping the
+            // current agentState.  A __typeMap discriminated on agentState
+            // accepts both immediate Idle and queued confirmations.
+            agentChannelStateDetail:
+              p.data.state === 'Idle'
+                ? {
+                    __typeMap: {
+                      typeField: 'agentState',
+                      conditions: {
+                        Idle: {},
+                        Available: {pendingIdle: true},
+                        Engaged: {pendingIdle: true},
+                        WrapUp: {pendingIdle: true},
+                        Reserved: {pendingIdle: true},
+                        RONA: {pendingIdle: true},
+                      },
+                    },
+                  }
+                : {agentState: p.data.state},
             // Correlate: only match client-initiated notifications to prevent
             // supervisor/system pushes from resolving the pending request.
             isClientInitiated: true,

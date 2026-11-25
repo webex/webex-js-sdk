@@ -2849,6 +2849,21 @@ export default class ContactCenter extends WebexPlugin implements IContactCenter
     // updateWellnessSession() before emitting agent:reloginSuccess.
     this.updateWellnessSession(data.agentSessionId);
 
+    // Establish the browser-voice requirement from the restored session's
+    // device type BEFORE emitting, mirroring the station-login path
+    // (setBrowserVoiceRequired before await loginResponse).  On a fresh
+    // page restore the WebCallingService is newly constructed with
+    // browserVoiceRequired === false; without this, a listener calling
+    // setAgentState({state:'Available'}) inside the agent:reloginSuccess
+    // handler bypasses the BROWSER_VOICE_NOT_READY guard and dispatches
+    // the request before browser-line registration starts.
+    if (data.deviceType) {
+      this.webCallingService.setLoginOption(data.deviceType as LoginOption);
+      this.webCallingService.setBrowserVoiceRequired(
+        this.isBrowserVoiceRequired(data.deviceType as LoginOption)
+      );
+    }
+
     // Unified: emit enriched agent:reloginSuccess preserving V1-normalized
     // metadata (deviceType, dn, teamId, siteId, roles, etc.) so existing
     // listeners that read these fields keep working, then add channelStates.

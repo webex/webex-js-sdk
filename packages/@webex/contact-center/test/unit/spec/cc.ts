@@ -7529,6 +7529,48 @@ describe('webex.cc', () => {
         expect(handler).toHaveBeenCalledTimes(1);
         webex.cc.off(AGENT_EVENTS.AGENT_RELOGIN_SUCCESS, handler);
       });
+
+      it('should set browser-voice requirement before emitting relogin success', () => {
+        webex.cc.agentConfig = {
+          agentId: 'agent-1',
+          webRtcEnabled: true,
+        } as Profile;
+        // Fresh page restore: browserVoiceRequired is still false
+        const setBrowserVoiceSpy = jest.spyOn(
+          webex.cc.webCallingService, 'setBrowserVoiceRequired'
+        );
+        const setLoginOptionSpy = jest.spyOn(
+          webex.cc.webCallingService, 'setLoginOption'
+        );
+
+        const handler = jest.fn(() => {
+          // Inside the listener, the browser-voice guard must already be
+          // active so that setAgentState({state:'Available'}) with telephony
+          // hits the BROWSER_VOICE_NOT_READY check.
+          expect(setBrowserVoiceSpy).toHaveBeenCalledWith(true);
+          expect(setLoginOptionSpy).toHaveBeenCalledWith('BROWSER');
+        });
+        webex.cc.on(AGENT_EVENTS.AGENT_RELOGIN_SUCCESS, handler);
+
+        messageCallback(
+          JSON.stringify({
+            type: CC_EVENTS.AGENT_CHANNEL_RELOGIN_SUCCESS,
+            data: {
+              agentId: 'agent-1',
+              agentSessionId: 'sess-1',
+              orgId: 'org-1',
+              deviceType: 'BROWSER',
+              dn: '',
+              agentChannelStateDetailMap: {telephony: makeChannelState('Available')},
+              channelsMap: {telephony: ['t1']},
+              type: CC_EVENTS.AGENT_CHANNEL_RELOGIN_SUCCESS,
+            },
+          })
+        );
+
+        expect(handler).toHaveBeenCalledTimes(1);
+        webex.cc.off(AGENT_EVENTS.AGENT_RELOGIN_SUCCESS, handler);
+      });
     });
 
     describe('clearV2LocalState', () => {

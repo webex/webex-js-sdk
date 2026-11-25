@@ -4439,6 +4439,31 @@ function handleWellnessBreak(event) {
 }
 
 function handleWellnessLegacyStateChanged(event, nextAuxCodeId) {
+  // When the enriched V2 event carries channelStates, verify that the
+  // aggregate is bridgeable before promoting legacyStateKnown.  A
+  // non-bridgeable aggregate (Engaged/WrapUp/Reserved) produces V1
+  // fallback scalars (subStatus='Idle', auxCodeId='') that normalize to
+  // auxCodeId '0'.  Promoting that would make wasDeferred recovery treat
+  // the unknown aggregate as Available and clear the wellness marker,
+  // leaving channels in WellbeingBreak without recovery.  Same check as
+  // captureWellnessSession() uses for non-bridgeable relogin payloads.
+  if (event.channelStates) {
+    const BRIDGEABLE_STATES = new Set(['Available', 'Idle']);
+    let hasAvailable = false;
+    let hasIdle = false;
+    let hasNonBridgeable = false;
+    for (const ch of Object.values(event.channelStates)) {
+      if (!BRIDGEABLE_STATES.has(ch.agentState)) { hasNonBridgeable = true; continue; }
+      if (ch.agentState === 'Available') hasAvailable = true;
+      if (ch.agentState === 'Idle') hasIdle = true;
+    }
+    const aggregateStatus = hasAvailable ? 'Available' : (hasIdle && !hasNonBridgeable) ? 'Idle' : null;
+    if (!aggregateStatus) {
+      // Non-bridgeable — the V1 scalar fields are unreliable.
+      // Keep legacyStateKnown as-is and wait for a fully bridgeable event.
+      return;
+    }
+  }
   const wasDeferred = !wellnessState.legacyStateKnown;
   wellnessState.legacyStateKnown = true;
   wellnessState.legacyAuxCodeId = nextAuxCodeId;
