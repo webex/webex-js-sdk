@@ -3,6 +3,7 @@
  */
 
 import LoggerProxy from '../common/logs/logger-proxy';
+import type Member from '../member';
 import type MembersCollection from '../members/collection';
 import type {MembersUpdatePayload} from '../members';
 import type {E2eeDeviceVerification, E2eeRosterMember} from './types';
@@ -22,7 +23,7 @@ import type {E2eeDeviceVerification, E2eeRosterMember} from './types';
 export default class MemberMLSReconciler {
   private readonly membersCollection: MembersCollection;
 
-  private readonly reportMembersUpdated: (updatedMembers: any[]) => void;
+  private readonly reportMembersUpdated: (updatedMembers: Member[]) => void;
 
   private readonly rosterByDeviceUrl = new Map<string, E2eeRosterMember>();
 
@@ -37,7 +38,7 @@ export default class MemberMLSReconciler {
     reportMembersUpdated,
   }: {
     membersCollection: MembersCollection;
-    reportMembersUpdated: (updatedMembers: any[]) => void;
+    reportMembersUpdated: (updatedMembers: Member[]) => void;
   }) {
     this.membersCollection = membersCollection;
     this.reportMembersUpdated = reportMembersUpdated;
