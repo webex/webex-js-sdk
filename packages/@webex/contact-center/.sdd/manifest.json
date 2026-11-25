@@ -638,7 +638,7 @@
         "publication": "published",
         "source_kind": "repository-path",
         "source": "src/services/agent/types.ts",
-        "summary": "AGENT_EVENTS and the agent request and response types for station login, logout, state change, buddy agents, and relogin, including the V2 per-channel types and events (ChannelType, AgentChannelTypeStates, agent:channel*) and the session lifecycle events (agent:connectionLost, agent:connectionReconnected, agent:reloginSessionNotFound). Specified in src/services/agent/docs/README.md."
+        "summary": "AGENT_EVENTS and the agent request and response types for station login, logout, state change, buddy agents, and relogin, including the V2 per-channel types (ChannelType, AgentChannelTypeStates, AgentStateChangeEvent, AgentReloginSuccessEvent) emitted as enriched payloads on unified V1 events (agent:stateChange, agent:stateChangeFailed, agent:reloginSuccess), and the session lifecycle events (agent:connectionLost, agent:connectionReconnected, agent:reloginSessionNotFound). Specified in src/services/agent/docs/README.md."
       },
       "contact-center-task-events": {
         "kind": "event",

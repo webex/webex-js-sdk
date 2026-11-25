@@ -1244,6 +1244,11 @@ export default class ContactCenter extends WebexPlugin implements IContactCenter
    */
   public async stationLogin(data: AgentLogin): Promise<StationLoginResponse> {
     const loggerContext = {module: CC_FILE, method: METHODS.STATION_LOGIN};
+    // Captured before the profile refresh so the catch block can restore it
+    // if the login request fails (INV-012).  Without this, a rejected login
+    // leaves the flag flipped and the existing session routes through the
+    // wrong version until the next login attempt.
+    const previousManageChannelAvailability = this.agentConfig?.manageChannelAvailability;
 
     try {
       LoggerProxy.log(
@@ -1294,8 +1299,8 @@ export default class ContactCenter extends WebexPlugin implements IContactCenter
       };
 
       // Re-read the agent profile to pick up any admin-side changes to manageChannelAvailability.
-      // previousManageChannelAvailability (hoisted above the try) lets the
-      // catch block restore the flag if the login fails (INV-012).
+      // previousManageChannelAvailability (captured above the try) lets the
+      // catch block restore the flag if the login request fails (INV-012).
       // Desktop equivalent: pinStationLoginRoutingVersion() runs only inside the
       // eAgentStationLoginSuccess listener, never before the request.
       if (this.agentConfig?.agentId) {
@@ -1325,6 +1330,15 @@ export default class ContactCenter extends WebexPlugin implements IContactCenter
         loggerContext
       );
 
+      // Set the browser-voice requirement BEFORE awaiting login so the
+      // BROWSER_VOICE_NOT_READY guard is active when the WebSocket handler
+      // emits agent:stationLoginSuccess.  Without this, a listener calling
+      // setAgentState({state:'Available'}) between the WS notification and
+      // this await would bypass the voice-ready check and make the agent
+      // available for calls before a browser line exists.
+      this.webCallingService.setLoginOption(data.loginOption);
+      this.webCallingService.setBrowserVoiceRequired(this.isBrowserVoiceRequired(data.loginOption));
+
       const loginResponse =
         this.agentConfig?.manageChannelAvailability === true
           ? this.services.agent.stationLoginV2(loginPayload)
@@ -1334,9 +1348,6 @@ export default class ContactCenter extends WebexPlugin implements IContactCenter
       // Registering in parallel would leave a WebCalling line (and its
       // listeners) active without an agent session when the login rejects.
       const resp = await loginResponse;
-
-      this.webCallingService.setLoginOption(data.loginOption);
-      this.webCallingService.setBrowserVoiceRequired(this.isBrowserVoiceRequired(data.loginOption));
 
       if (this.isBrowserVoiceRequired(data.loginOption)) {
         await this.webCallingService.registerWebCallingLine();
@@ -1409,6 +1420,12 @@ export default class ContactCenter extends WebexPlugin implements IContactCenter
 
       return response;
     } catch (error) {
+      // Restore the previous routing flag so an existing session continues
+      // using the version it was started with (INV-012).
+      if (this.agentConfig && previousManageChannelAvailability !== undefined) {
+        this.agentConfig.manageChannelAvailability = previousManageChannelAvailability;
+      }
+
       const failure = error.details as Failure;
       this.metricsManager.trackEvent(
         METRIC_EVENT_NAMES.STATION_LOGIN_FAILED,

@@ -4285,26 +4285,24 @@ function captureWellnessSession(event) {
   }
   wellnessState.agentSessionId = event.agentSessionId;
 
-  // V2 channel relogin events carry per-channel states in
-  // agentChannelStateDetailMap instead of a top-level auxCodeId.
-  // Project the selectable-channel aggregate (same order and rules as the
-  // SDK's bridgeStateChangeSuccess / projectAggregate) so that the
-  // hydrated auxCodeId matches the V1 bridge emission.  Using the first
-  // map entry would depend on object-property order and could pick a
-  // non-representative channel (e.g. Voice=WellbeingBreak while
-  // Chat=Available), causing getRecoveryDecision() to falsely restore.
-  let hydratedEvent = event;
-  if (
-    !Object.prototype.hasOwnProperty.call(event, 'auxCodeId') &&
-    event.agentChannelStateDetailMap
-  ) {
+  // V2 relogin payloads carry channelStates (per-channel snapshot) plus
+  // bridge-computed scalar fields (auxCodeId, subStatus).  When all channels
+  // are non-bridgeable (Engaged/WrapUp), the bridge returns null and the
+  // scalars fall back to subStatus='Idle', auxCodeId=''.  In that case,
+  // the aggregate is unknown — do NOT mark legacyStateKnown=true or
+  // getRecoveryDecision() will clear the wellness marker prematurely.
+  //
+  // V1 relogin payloads carry auxCodeId directly from the backend and have
+  // no channelStates; treat them as before.
+  if (event.channelStates) {
+    // V2: inspect channelStates to decide whether the aggregate is bridgeable.
     const SELECTABLE_ORDER = ['telephony', 'chat', 'email', 'social'];
     const BRIDGEABLE = new Set(['Available', 'Idle']);
     let hasAvailable = false;
     let hasIdle = false;
     let hasNonBridgeable = false;
     for (const ct of SELECTABLE_ORDER) {
-      const ch = event.agentChannelStateDetailMap[ct];
+      const ch = event.channelStates[ct];
       if (!ch) continue;
       if (!BRIDGEABLE.has(ch.agentState)) { hasNonBridgeable = true; continue; }
       if (ch.agentState === 'Available') hasAvailable = true;
@@ -4312,19 +4310,17 @@ function captureWellnessSession(event) {
     }
     const aggregateStatus = hasAvailable ? 'Available' : (hasIdle && !hasNonBridgeable) ? 'Idle' : null;
     if (aggregateStatus) {
-      const primaryCt = SELECTABLE_ORDER.find(
-        (ct) => event.agentChannelStateDetailMap[ct]?.agentState === aggregateStatus
-      );
-      const primaryCh = primaryCt && event.agentChannelStateDetailMap[primaryCt];
-      if (primaryCh && typeof primaryCh.auxCodeId === 'string') {
-        hydratedEvent = {...event, auxCodeId: primaryCh.auxCodeId};
-      }
+      // Bridgeable: the SDK's bridge-computed auxCodeId is valid.
+      wellnessState.legacyStateKnown = true;
+      wellnessState.legacyAuxCodeId = event.auxCodeId?.trim() || '0';
     }
-  }
-
-  if (Object.prototype.hasOwnProperty.call(hydratedEvent, 'auxCodeId')) {
+    // else: non-bridgeable aggregate — leave legacyStateKnown=false.
+    // handleWellnessLegacyStateChanged will retry recovery once the
+    // aggregate becomes bridgeable.
+  } else if (Object.prototype.hasOwnProperty.call(event, 'auxCodeId')) {
+    // V1: auxCodeId comes directly from the backend.
     wellnessState.legacyStateKnown = true;
-    wellnessState.legacyAuxCodeId = hydratedEvent.auxCodeId?.trim() || '0';
+    wellnessState.legacyAuxCodeId = event.auxCodeId?.trim() || '0';
   }
   if (!WELLNESS_OWNED_LIFECYCLES.has(wellnessState.lifecycle)) {
     wellnessState.lifecycle = isWellnessReady() ? 'Ready' : 'Unavailable';

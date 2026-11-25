@@ -3207,6 +3207,34 @@ describe('webex.cc', () => {
         );
       });
 
+      it('restores the previous flag when login fails (INV-012)', async () => {
+        // Start with V1 session (manageChannelAvailability = false)
+        webex.cc.agentConfig.manageChannelAvailability = false;
+
+        // Profile refresh returns V2 — flag flips before login request
+        jest
+          .spyOn(webex.cc.services.config, 'getUserDesktopLoginConfig')
+          .mockResolvedValue({agentProfile: {manageChannelAvailability: true}} as any);
+
+        const loginError = {
+          details: {trackingId: 'trk-1', data: {reason: 'login rejected'}},
+        };
+        jest
+          .spyOn(webex.cc.services.agent, 'stationLoginV2')
+          .mockRejectedValue(loginError);
+
+        await expect(
+          webex.cc.stationLogin({
+            teamId: 'teamId',
+            loginOption: LoginOption.EXTENSION,
+            dialNumber: '1001',
+          })
+        ).rejects.toThrow();
+
+        // Flag must be restored to the previous V1 value
+        expect(webex.cc.agentConfig.manageChannelAvailability).toBe(false);
+      });
+
     });
   });
 
