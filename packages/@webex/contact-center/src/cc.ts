@@ -1631,11 +1631,40 @@ export default class ContactCenter extends WebexPlugin implements IContactCenter
       let channels: ChannelType[] | undefined;
 
       if (this.agentConfig?.manageChannelAvailability === true) {
+        // Normalize channelType: the TypeScript type is ChannelType[] but
+        // JavaScript consumers following the docs may pass a scalar string.
+        // Wrap it in an array so .filter() / .includes() work correctly.
+        const rawChannelType = data.channelType;
+        const normalizedChannelType: ChannelType[] | undefined =
+          typeof rawChannelType === 'string'
+            ? [rawChannelType as ChannelType]
+            : rawChannelType;
+
         // V2 per-channel state change — auto-select all selectable channels if none specified
         channels =
-          data.channelType && data.channelType.length > 0
-            ? data.channelType
+          normalizedChannelType && normalizedChannelType.length > 0
+            ? normalizedChannelType
             : SELECTABLE_CHANNEL_TYPES.filter((ct) => this.loginChannelsMap[ct]?.length > 0);
+
+        // Validate: at least one eligible channel after selection.
+        // When loginChannelsMap is empty (no capacity), auto-select produces []
+        // which passes the invalid-channel check below but causes the bind to
+        // time out because no notification can match an empty channelType list.
+        if (channels.length === 0) {
+          const error = new Error(
+            'No eligible channels for state change. Ensure the agent has capacity on at least one selectable channel.'
+          ) as GenericError;
+          error.details = {
+            type: 'SDK_VALIDATION_ERROR',
+            orgId: this.$webex.credentials.getOrgId(),
+            trackingId: EMPTY_STRING,
+            data: {
+              reason:
+                'No eligible channels for state change. Ensure the agent has capacity on at least one selectable channel.',
+            },
+          };
+          throw error;
+        }
 
         // Validate requested channels are selectable
         const selectable = SELECTABLE_CHANNEL_TYPES.filter(
@@ -2996,6 +3025,13 @@ export default class ContactCenter extends WebexPlugin implements IContactCenter
         module: CC_FILE,
         method: METHODS.HANDLE_CONNECTION_LOST,
       });
+      // Cancel any pending deferred telephony recovery.  Dispatching
+      // Available while the Contact Center socket is down would leave the
+      // AQM operation unable to receive its completion notification,
+      // and the agent would remain in disconnect-idle.  silentRelogin()
+      // will re-evaluate and re-schedule recovery after the next
+      // successful reload.
+      this.clearTelephonyRecoveryTimer();
       // @ts-ignore
       this.emit(AGENT_EVENTS.AGENT_CONNECTION_LOST, {});
     } else if (msg.isSocketReconnected) {

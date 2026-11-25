@@ -4841,6 +4841,34 @@ describe('webex.cc', () => {
       expect(silentReloginSpy).not.toHaveBeenCalled();
     });
 
+    it('cancels deferred telephony recovery on connection loss', async () => {
+      jest.useFakeTimers();
+      try {
+        // Schedule a deferred telephony recovery
+        webex.cc.agentConfig = {agentId: 'agent-1', manageChannelAvailability: true} as Profile;
+        webex.cc['channelStatesMap'] = {
+          telephony: {agentState: 'Idle', stateChangeReason: 'agent-wss-disconnect', pendingIdle: false},
+        } as any;
+        webex.cc['currentAgentSessionId'] = 'sess-1';
+        const setAgentStateSpy = jest.spyOn(webex.cc, 'setAgentState').mockResolvedValue({} as any);
+
+        webex.cc['scheduleTelephonyRecovery']('agent-1', ['telephony']);
+        expect(webex.cc['telephonyRecoveryTimer']).toBeDefined();
+
+        // Connection drops again before the timer fires
+        await webex.cc['handleConnectionLost']({isConnectionLost: true} as any);
+
+        // Timer must be cancelled
+        expect(webex.cc['telephonyRecoveryTimer']).toBeUndefined();
+
+        // Advance past the deferral timeout — recovery must NOT fire
+        jest.advanceTimersByTime(70000);
+        expect(setAgentStateSpy).not.toHaveBeenCalled();
+      } finally {
+        jest.useRealTimers();
+      }
+    });
+
     it('emits reconnected before running the silent relogin', async () => {
       webex.cc.$config = {...webex.cc.$config, allowAutomatedRelogin: true};
       const order: string[] = [];
@@ -8099,6 +8127,16 @@ describe('webex.cc', () => {
         await expect(
           webex.cc.setAgentState({state: 'Available', auxCodeId: '0', channelType: ['email']})
         ).rejects.toThrow('Invalid channel types for state change: email');
+
+        expect(stateChangeV2Spy).not.toHaveBeenCalled();
+      });
+
+      it('rejects with no eligible channels when loginChannelsMap is empty', async () => {
+        webex.cc['loginChannelsMap'] = {};
+
+        await expect(
+          webex.cc.setAgentState({state: 'Available', auxCodeId: '0'})
+        ).rejects.toThrow('No eligible channels for state change');
 
         expect(stateChangeV2Spy).not.toHaveBeenCalled();
       });

@@ -287,8 +287,9 @@ export type StateChange = {
   lastStateChangeReason?: string;
   /** ID of the agent whose state is being changed */
   agentId?: string;
-  /** V2: Specific channel types to change state for. When provided with V2 active, per-channel state change is used. */
-  channelType?: ChannelType[];
+  /** V2: Specific channel types to change state for. When provided with V2 active, per-channel state change is used.
+   *  Accepts a single ChannelType string or an array. Scalars are normalized to arrays internally. */
+  channelType?: ChannelType | ChannelType[];
 };
 
 /**
