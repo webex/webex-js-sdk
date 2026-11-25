@@ -1486,7 +1486,7 @@ export default class ContactCenter extends WebexPlugin implements IContactCenter
     const payload = this.acceptedStation?.payload;
     if (payload)
       await awaitRecoveryWork(
-        this.handleDeviceType(payload.deviceType as LoginOption, payload.dialNumber, 'preserve'),
+        this.handleDeviceType(payload.deviceType as LoginOption, payload.dialNumber, signal),
         signal
       );
     if (signal.aborted) throw createRegionRecoveryError('RECOVERY_INTERRUPTED');
@@ -3050,7 +3050,6 @@ export default class ContactCenter extends WebexPlugin implements IContactCenter
       this.resetRegionState();
       this.setRecoveryPhase('idle');
     }
-    const calling = manual ? 'preserve' : 'replace';
     const loggerContext = {module: CC_FILE, method: METHODS.STATION_LOGIN};
     const registration = this.registrationGeneration;
     const epoch = this.rtdEpoch;
@@ -3180,9 +3179,10 @@ export default class ContactCenter extends WebexPlugin implements IContactCenter
         throw createRegionRecoveryError('RECOVERY_INTERRUPTED');
 
       if (this.isBrowserVoiceRequired(data.loginOption)) {
-        if (calling === 'preserve') {
+        if (manual) {
           try {
-            await this.webCallingService.ensureWebCallingLine(context.signal);
+            // The request detaches on acceptance, but deferred voice repair still belongs to the station.
+            await this.webCallingService.ensureWebCallingLine(context.signal, manualSignal);
           } catch {
             /* Voice ownership cannot fail an accepted DR station. */
             this.recordBestEffort(() =>
@@ -5220,14 +5220,14 @@ export default class ContactCenter extends WebexPlugin implements IContactCenter
    * Configures services and settings based on the login device type
    * @param {LoginOption} deviceType The type of device being used for login
    * @param {string} dn The dial number associated with the device
-   * @param {'replace' | 'preserve'} calling Ordinary registration or DR line preservation policy
+   * @param {AbortSignal} [restoreSignal] Identifies a regional restore that preserves Calling's line
    * @returns {Promise<void>}
    * @private
    */
   private async handleDeviceType(
     deviceType: LoginOption,
     dn: string,
-    calling: 'replace' | 'preserve' = 'replace'
+    restoreSignal?: AbortSignal
   ): Promise<void> {
     this.webCallingService.setLoginOption(deviceType);
     this.webCallingService.setBrowserVoiceRequired(this.isBrowserVoiceRequired(deviceType));
@@ -5237,7 +5237,7 @@ export default class ContactCenter extends WebexPlugin implements IContactCenter
         // Ordinary relogin replaces the line even when the profile does not require browser voice.
         if (
           this.isWebRTCRegistrationDisabled() ||
-          (calling === 'preserve' && !this.isBrowserVoiceRequired(deviceType))
+          (restoreSignal && !this.isBrowserVoiceRequired(deviceType))
         ) {
           this.recordBestEffort(() =>
             LoggerProxy.info(
@@ -5253,27 +5253,23 @@ export default class ContactCenter extends WebexPlugin implements IContactCenter
           break;
         }
         try {
-          if (calling === 'preserve') {
-            try {
-              await this.webCallingService.ensureWebCallingLine(this.commandController?.signal);
-            } catch {
-              // The calling owner reports voice failures independently of station acceptance.
-              this.recordBestEffort(() =>
-                LoggerProxy.error('Unexpected web calling ensure failure', {
-                  module: CC_FILE,
-                  method: METHODS.HANDLE_DEVICE_TYPE,
-                })
-              );
-            }
+          if (restoreSignal) {
+            await this.webCallingService.ensureWebCallingLine(
+              restoreSignal,
+              this.commandController?.signal
+            );
           } else await this.webCallingService.registerWebCallingLine();
         } catch (error) {
           this.recordBestEffort(() =>
-            LoggerProxy.error(`Error registering web calling line: ${error}`, {
-              module: CC_FILE,
-              method: METHODS.HANDLE_DEVICE_TYPE,
-            })
+            LoggerProxy.error(
+              restoreSignal
+                ? 'Unexpected web calling ensure failure'
+                : `Error registering web calling line: ${error}`,
+              {module: CC_FILE, method: METHODS.HANDLE_DEVICE_TYPE}
+            )
           );
-          throw error;
+          // During a regional restore, voice can recover independently of station acceptance.
+          if (!restoreSignal) throw error;
         }
         break;
       case LoginOption.AGENT_DN:

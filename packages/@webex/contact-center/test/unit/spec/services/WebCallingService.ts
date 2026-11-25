@@ -637,7 +637,6 @@ describe('WebCallingService', () => {
     it.each([
       CALLING_CLIENT_EVENT_KEYS.MOBIUS_SOCKET_CONNECTED,
       CALLING_CLIENT_EVENT_KEYS.MOBIUS_SOCKET_DISCONNECTED,
-      CALLING_CLIENT_EVENT_KEYS.ALL_CALLS_CLEARED,
     ])('detaches the %s listener after deregistration', async (event) => {
       setBrowserVoiceRequired();
       registerLineImmediately();
@@ -1945,12 +1944,17 @@ describe('WebCallingService', () => {
         }
 
         if (activeCall) {
+          const shouldRepair = outcome === 'stopped';
+          expect(jest.getTimerCount()).toBe(shouldRepair ? 1 : 0);
+          client.getActiveCalls.mockReturnValue({replacement: [{...mockCall}]});
+          jest.advanceTimersByTime(1000);
+          expect(createClient).toHaveBeenCalledTimes(1);
+          expect(jest.getTimerCount()).toBe(shouldRepair ? 1 : 0);
+
           client.getActiveCalls.mockReturnValue({});
-          client.emit(CALLING_CLIENT_EVENT_KEYS.ALL_CALLS_CLEARED);
-          client.emit(CALLING_CLIENT_EVENT_KEYS.ALL_CALLS_CLEARED);
+          jest.advanceTimersByTime(1000);
           await flush();
 
-          const shouldRepair = outcome === 'stopped';
           expect(createClient).toHaveBeenCalledTimes(shouldRepair ? 2 : 1);
           expect(line.deregister).toHaveBeenCalledTimes(shouldRepair ? 1 : 0);
           expect(replacement.line.register).toHaveBeenCalledTimes(shouldRepair ? 1 : 0);
@@ -1966,9 +1970,13 @@ describe('WebCallingService', () => {
       }
     );
 
-    it.each(['abort', 'deregister', 'disable voice', 'superseded', 'Calling reconnect'])(
+    it.each([
+      'request abort', 'station abort', 'deregister', 'disable voice', 'superseded',
+      'Calling reconnect', 'Calling registered',
+    ])(
       'discards an idle repair after %s',
       async (cancelledBy) => {
+        jest.useFakeTimers();
         const {line, client} = owned();
         const registration = {isReconnectPending: jest.fn().mockReturnValue(false)};
         Object.assign(line, {registration});
@@ -1982,10 +1990,12 @@ describe('WebCallingService', () => {
         );
         line.emit(LINE_EVENTS.UNREGISTERED);
         const controller = new AbortController();
-        await webRTCCalling.ensureWebCallingLine(controller.signal);
-        const callsCleared = getHandler(client, CALLING_CLIENT_EVENT_KEYS.ALL_CALLS_CLEARED);
+        const station = new AbortController();
+        await webRTCCalling.ensureWebCallingLine(controller.signal, station.signal);
+        expect(jest.getTimerCount()).toBe(1);
 
-        if (cancelledBy === 'abort') controller.abort();
+        if (cancelledBy === 'request abort') controller.abort();
+        if (cancelledBy === 'station abort') station.abort();
         if (cancelledBy === 'deregister') await webRTCCalling.deregisterWebCallingLine();
         if (cancelledBy === 'disable voice') webRTCCalling.setBrowserVoiceRequired(false);
         if (cancelledBy === 'superseded') {
@@ -1993,11 +2003,14 @@ describe('WebCallingService', () => {
         }
         if (cancelledBy === 'Calling reconnect') {
           registration.isReconnectPending.mockReturnValue(true);
+          jest.advanceTimersByTime(1000);
+          registration.isReconnectPending.mockReturnValue(false);
         }
+        if (cancelledBy === 'Calling registered') line.emit(LINE_EVENTS.REGISTERED, line);
 
+        expect(jest.getTimerCount()).toBe(0);
         client.getActiveCalls.mockReturnValue({});
-        expect(callsCleared).toBeDefined();
-        callsCleared();
+        jest.advanceTimersByTime(1000);
         await flush();
 
         expect(createClient).toHaveBeenCalledTimes(1);

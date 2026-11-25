@@ -43,6 +43,7 @@ import {isAllowedUrlHost} from './core/Utils';
 
 // Match RegistrationStatus.ACTIVE; @webex/calling does not export the enum from its public barrel.
 const ACTIVE_REGISTRATION_STATUS = 'active' as LineError['status'];
+const VOICE_IDLE_CHECK_INTERVAL_MS = 1000;
 
 /**
  * WebCallingService provides WebRTC calling functionality for Contact Center agents.
@@ -100,8 +101,9 @@ export default class WebCallingService extends EventEmitter {
     generation: number;
     line: ILine;
     keepaliveFailure?: boolean;
-    repairOnIdle?: {signal?: AbortSignal};
   };
+
+  private cancelIdleRepair?: () => void;
 
   private registrationListenerCleanup: Array<() => void> = [];
 
@@ -133,7 +135,7 @@ export default class WebCallingService extends EventEmitter {
   /** Sets whether the current local login registers a browser voice line. */
   public setBrowserVoiceRequired(required: boolean): void {
     this.browserVoiceRequired = required;
-    if (!required && this.terminalLine) this.terminalLine.repairOnIdle = undefined;
+    if (!required) this.cancelIdleRepair?.();
     this.updateVoiceConnectionState({});
   }
 
@@ -248,7 +250,7 @@ export default class WebCallingService extends EventEmitter {
   private async cleanupWebCallingRegistration(): Promise<void> {
     this.cancelRegistrationAttempt(this.registrationGeneration);
     this.registrationGeneration += 1;
-    this.terminalLine = undefined;
+    this.setTerminalLine();
     this.rejectRegistration?.(new Error('WebCallingService registration superseded'));
     this.rejectRegistration = undefined;
     this.registrationListenerCleanup.forEach((cleanup) => cleanup());
@@ -262,15 +264,20 @@ export default class WebCallingService extends EventEmitter {
     }
   }
 
+  private setTerminalLine(terminal?: WebCallingService['terminalLine']): void {
+    this.cancelIdleRepair?.();
+    this.terminalLine = terminal;
+  }
+
   private handleLineConnecting = (): void => {
-    this.terminalLine = undefined;
+    this.setTerminalLine();
     this.lineReason = undefined;
     this.lineRetryable = undefined;
     this.updateVoiceConnectionState({lineStatus: VoiceLineStatus.CONNECTING});
   };
 
   private handleLineRegistered = (line: ILine): void => {
-    this.terminalLine = undefined;
+    this.setTerminalLine();
     this.lineReason = undefined;
     this.lineRetryable = undefined;
     this.updateVoiceConnectionState({lineStatus: VoiceLineStatus.REGISTERED});
@@ -281,14 +288,14 @@ export default class WebCallingService extends EventEmitter {
   };
 
   private handleLineReconnecting = (): void => {
-    this.terminalLine = undefined;
+    this.setTerminalLine();
     this.lineReason = 'LINE_RECONNECTING';
     this.lineRetryable = true;
     this.updateVoiceConnectionState({lineStatus: VoiceLineStatus.RECONNECTING});
   };
 
   private handleLineReconnected = (): void => {
-    this.terminalLine = undefined;
+    this.setTerminalLine();
     this.lineReason = undefined;
     this.lineRetryable = undefined;
     this.updateVoiceConnectionState({lineStatus: VoiceLineStatus.RECONNECTED});
@@ -303,14 +310,14 @@ export default class WebCallingService extends EventEmitter {
     // A bare UNREGISTERED can follow a final keepalive ERROR for the same line.
     // A superseded line must stay stopped so automatic recovery cannot evict the new device.
     if (line && error?.status === 'inactive' && !superseded) {
-      this.terminalLine = {generation, line};
+      this.setTerminalLine({generation, line});
     } else if (
       error ||
       !terminal?.keepaliveFailure ||
       terminal.line !== line ||
       terminal.generation !== generation
     ) {
-      this.terminalLine = undefined;
+      this.setTerminalLine();
     }
     this.lineReason = 'LINE_UNREGISTERED';
     this.lineRetryable = !superseded;
@@ -332,14 +339,15 @@ export default class WebCallingService extends EventEmitter {
         (error.type === ERROR_TYPE.SERVICE_UNAVAILABLE &&
           error.context.method === 'startFailoverTimer'));
 
-    this.terminalLine =
+    this.setTerminalLine(
       terminalRegistrationError && this.line
         ? {
             generation: this.registrationGeneration,
             line: this.line,
             keepaliveFailure: error.context?.method === 'startKeepaliveTimer',
           }
-        : undefined;
+        : undefined
+    );
     if (error.status !== ACTIVE_REGISTRATION_STATUS) {
       this.lineReason = error.message || 'LINE_ERROR';
       this.lineRetryable = false;
@@ -486,8 +494,15 @@ export default class WebCallingService extends EventEmitter {
   }
 
   /** A caller acknowledgement never waits for the calling owner's registration. */
-  public async ensureWebCallingLine(signal?: AbortSignal): Promise<void> {
-    if (signal?.aborted || !this.browserVoiceRequired || this.registrationAttempt) return;
+  public async ensureWebCallingLine(signal?: AbortSignal, stationSignal = signal): Promise<void> {
+    if (
+      signal?.aborted ||
+      stationSignal?.aborted ||
+      !this.browserVoiceRequired ||
+      this.registrationAttempt
+    )
+      return;
+    this.cancelIdleRepair?.();
     try {
       const terminal = this.terminalLine;
       if (this.line) {
@@ -504,9 +519,9 @@ export default class WebCallingService extends EventEmitter {
           return;
       }
       const activeCalls = this.callingClient?.getActiveCalls();
-      if (signal?.aborted || terminal !== this.terminalLine) return;
+      if (signal?.aborted || stationSignal?.aborted || terminal !== this.terminalLine) return;
       if (activeCalls && Object.values(activeCalls).some((calls) => calls.length > 0)) {
-        if (terminal) terminal.repairOnIdle = {signal};
+        if (terminal) this.scheduleIdleRepair(signal, stationSignal);
 
         return;
       }
@@ -519,13 +534,25 @@ export default class WebCallingService extends EventEmitter {
     }
   }
 
-  private handleAllCallsCleared = (): void => {
-    const terminal = this.terminalLine;
-    if (!terminal?.repairOnIdle) return;
-    const {signal} = terminal.repairOnIdle;
-    terminal.repairOnIdle = undefined;
-    this.ensureWebCallingLine(signal);
-  };
+  /** Check Calling's registry again while an active or held call blocks line repair. */
+  private scheduleIdleRepair(signal?: AbortSignal, stationSignal?: AbortSignal): void {
+    const signals = new Set([signal, stationSignal]);
+    let timer: ReturnType<typeof setTimeout>;
+    const cancel = () => {
+      if (this.cancelIdleRepair !== cancel) return false;
+      this.cancelIdleRepair = undefined;
+      clearTimeout(timer);
+      signals.forEach((lifetime) => lifetime?.removeEventListener('abort', cancel));
+
+      return true;
+    };
+    timer = setTimeout(() => {
+      if (cancel()) this.ensureWebCallingLine(signal, stationSignal);
+    }, VOICE_IDLE_CHECK_INTERVAL_MS);
+    this.cancelIdleRepair = cancel;
+    signals.forEach((lifetime) => lifetime?.addEventListener('abort', cancel, {once: true}));
+    if (signal?.aborted || stationSignal?.aborted) cancel();
+  }
 
   private cancelRegistrationAttempt(expectedGeneration: number): void {
     const attempt = this.registrationAttempt;
@@ -618,12 +645,6 @@ export default class WebCallingService extends EventEmitter {
         CALLING_CLIENT_EVENT_KEYS.MOBIUS_SOCKET_DISCONNECTED,
         this.handleMobiusSocketDisconnected
       );
-      this.addRegistrationListener(
-        this.callingClient,
-        CALLING_CLIENT_EVENT_KEYS.ALL_CALLS_CLEARED,
-        this.handleAllCallsCleared
-      );
-
       this.addRegistrationListener(this.line, LINE_EVENTS.CONNECTING, this.handleLineConnecting);
       this.addRegistrationListener(
         this.line,

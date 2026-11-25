@@ -818,7 +818,6 @@ export class CallingClient extends Eventing<CallingClientEventTypes> implements 
    * If re-register attempt was deferred earlier due to active call(s), then it
    * will be attempted here on receiving a notification from callManager that all
    * calls are cleaned up.
-   * Otherwise, notify client listeners if the call collection is still empty.
    */
   private callsClearedHandler = async () => {
     log.info(METHOD_START_MESSAGE, {
@@ -827,32 +826,18 @@ export class CallingClient extends Eventing<CallingClientEventTypes> implements 
     });
     // this is a temporary logic to get registration obj
     // it will change once we have proper lineId and multiple lines as well
-    const registration = Object.values(this.lineDict)[0]?.registration;
+    const {registration} = Object.values(this.lineDict)[0];
 
-    if (registration && !registration.isDeviceRegistered()) {
-      const reconnectStarted = await this.mutex.runExclusive(async () => {
-        if (!registration.isReconnectPending()) return false;
-        log.info('All calls cleared, reconnecting', {
-          file: CALLING_CLIENT_FILE,
-          method: CALLS_CLEARED_HANDLER_UTIL,
-        });
-        await registration.reconnectOnFailure(CALLS_CLEARED_HANDLER_UTIL);
-
-        return true;
+    if (!registration.isDeviceRegistered()) {
+      await this.mutex.runExclusive(async () => {
+        if (registration.isReconnectPending()) {
+          log.info('All calls cleared, reconnecting', {
+            file: CALLING_CLIENT_FILE,
+            method: CALLS_CLEARED_HANDLER_UTIL,
+          });
+          await registration.reconnectOnFailure(CALLS_CLEARED_HANDLER_UTIL);
+        }
       });
-      // Calling may have scheduled another attempt even though this call completed.
-      if (reconnectStarted) return;
-    }
-
-    if (!Object.keys(this.callManager.getActiveCalls()).length) {
-      try {
-        this.emit(CALLING_CLIENT_EVENT_KEYS.ALL_CALLS_CLEARED);
-      } catch {
-        log.warn('All calls cleared listener failed', {
-          file: CALLING_CLIENT_FILE,
-          method: METHODS.CALLS_CLEARED_HANDLER,
-        });
-      }
     }
   };
 

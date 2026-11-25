@@ -289,6 +289,8 @@ through `WebexRequest`, as do AnswerCallOnWebexService (Hydra) and WebexCrossCli
 ContactCenter calls `registerWebCallingLine()` at station login and silent relogin only when the
 login option is `BROWSER`, the agent profile has `webRtcEnabled`, and `disableWebRTCRegistration`
 is not set.
+When calls block repair of a stopped browser line, `WebCallingService` rechecks Calling's
+`getActiveCalls()` until the calls clear or the repair is cancelled.
 
 ## Data flow and sequence coverage
 

@@ -902,7 +902,8 @@ describe('webex.cc', () => {
         expect(calling.setLoginOption).toHaveBeenLastCalledWith(deviceType);
         expect(calling.setBrowserVoiceRequired).toHaveBeenLastCalledWith(voiceRequired);
         expect(calling.ensureWebCallingLine).toHaveBeenCalledTimes(voiceRequired ? 1 : 0);
-        if (voiceRequired) expect(calling.ensureWebCallingLine).toHaveBeenCalledWith(expect.any(AbortSignal));
+        if (voiceRequired)
+          expect(calling.ensureWebCallingLine.mock.calls[0][0]).toBeInstanceOf(AbortSignal);
         expect(calling.registerWebCallingLine).not.toHaveBeenCalled();
         expect(calling.deregisterWebCallingLine).not.toHaveBeenCalled();
         expect(effects.postLogin).toHaveBeenCalledTimes(1);
@@ -1022,7 +1023,8 @@ describe('webex.cc', () => {
 
           const number = browser ? 'webrtc-agent123' : route === 'reload' ? '18005550222' : '18005550111';
           expectAcceptedStation(stationPayload(deviceType, number, 'restored-team'), response);
-          expect(effects.device.mock.calls).toEqual([[deviceType, number, 'preserve']]);
+          expect(effects.device).toHaveBeenCalledTimes(1);
+          expect(effects.device).toHaveBeenCalledWith(deviceType, number, expect.any(AbortSignal));
           expect(effects.acceptStation.mock.invocationCallOrder[0])
             .toBeLessThan(effects.device.mock.invocationCallOrder[0]);
           expect(webex.cc.services.agent.reload).toHaveBeenCalledTimes(1);
@@ -10655,7 +10657,7 @@ describe('realRecoveryWiring', () => {
             await reply('/v1/agents/login', CC_EVENTS.AGENT_STATION_LOGIN_SUCCESS);
           } else await reply('/v1/agents/reload', CC_EVENTS.AGENT_RELOGIN_SUCCESS);
           expect(ensure).toHaveBeenCalledTimes(1);
-          expect(ensure).toHaveBeenCalledWith(signal);
+          expect(ensure).toHaveBeenCalledWith(expect.any(AbortSignal), signal);
           expect(signal.aborted).toBe(false);
           assertRetained();
           expect(calling.isVoiceReady()).toBe(true);
@@ -10968,9 +10970,10 @@ describe('realRecoveryWiring', () => {
           const rejected = expect(failed).rejects.toBeInstanceOf(Error);
           await flush();
           const failedSignal = dispatch.mock.calls[0][2].signal;
+          const stationSignal = cc['commandController'].signal;
           if (reason === 'region-switch') {
             expect(ensure).toHaveBeenCalledTimes(1);
-            expect(ensure).toHaveBeenLastCalledWith(failedSignal);
+            expect(ensure).toHaveBeenLastCalledWith(failedSignal, stationSignal);
           }
           await reply('/v1/agents/login', CC_EVENTS.AGENT_STATION_LOGIN_FAILED, {reasonCode: 9999});
           await rejected;
@@ -10984,7 +10987,7 @@ describe('realRecoveryWiring', () => {
           await reply('/v1/agents/login', CC_EVENTS.AGENT_STATION_LOGIN_SUCCESS);
           await retry;
           expect(ensure).toHaveBeenCalledTimes(reason === 'region-switch' ? 2 : 1);
-          expect(ensure).toHaveBeenLastCalledWith(retrySignal);
+          expect(ensure).toHaveBeenLastCalledWith(retrySignal, stationSignal);
           expect(retrySignal.aborted).toBe(false);
           assertRetained();
           expect(calling.isVoiceReady()).toBe(true);
@@ -11006,7 +11009,7 @@ describe('realRecoveryWiring', () => {
           await recover();
           await reply('/v1/agents/reload', CC_EVENTS.AGENT_RELOGIN_SUCCESS);
           expect(ensure).toHaveBeenCalledTimes(1);
-          expect(ensure).toHaveBeenCalledWith(cc['commandController'].signal);
+          expect(ensure).toHaveBeenCalledWith(expect.any(AbortSignal), cc['commandController'].signal);
           await expect(ensure.mock.results[0].value).resolves.toBeUndefined();
           const registration = calling['registrationAttempt'].promise;
           const completed = jest.fn(); registration.then(completed, completed);
@@ -11031,6 +11034,42 @@ describe('realRecoveryWiring', () => {
           expect(cc['lastPublishedRegionState']).toBe(ready);
           expect(states.mock.calls.map(([state]) => state)).toEqual(publications);
           expect(replace).not.toHaveBeenCalled();
+        });
+      });
+
+    it.each(['no disconnect', 'before adoption', 'after adoption'])(
+      'ties deferred browser line repair to the current station (%s)', async disconnect => {
+        await withBrowserGraph(async ({cc, line, client, api, createClient, login, recover, reply,
+          sockets, flush, spy}) => {
+          await login(LoginOption.BROWSER);
+          line.emit(api.LINE_EVENTS.ERROR, Object.assign(new Error('Calling stopped'), {
+            status: 'inactive', type: api.ERROR_TYPE.BAD_REQUEST,
+            context: {file: 'register', method: 'startKeepaliveTimer'},
+          }));
+          line.emit(api.LINE_EVENTS.UNREGISTERED);
+          client.getActiveCalls.mockReturnValue({browser: [{}]});
+          cc.$config.allowAutomatedRelogin = true;
+          await recover();
+
+          const postLogin = createDeferred<void>();
+          spy(cc, 'ensureWxAppPostStationLogin').mockReturnValueOnce(postLogin.promise);
+          await reply('/v1/agents/reload', CC_EVENTS.AGENT_RELOGIN_SUCCESS);
+          expect(createClient).toHaveBeenCalledTimes(1);
+          expect(cc['recoveryPhase']).toBe('restoringSession');
+          if (disconnect === 'before adoption') sockets[1].lost();
+          postLogin.resolve();
+          await flush();
+          if (disconnect === 'after adoption') {
+            sockets[1].lost();
+            await flush();
+          }
+
+          client.getActiveCalls.mockReturnValue({});
+          jest.advanceTimersByTime(1000); await flush();
+          const abandoned = disconnect === 'before adoption';
+          expect(createClient).toHaveBeenCalledTimes(abandoned ? 1 : 2);
+          expect(line.deregister).toHaveBeenCalledTimes(abandoned ? 0 : 1);
+          expect(cc['lastPublishedRegionState'].status).toBe(abandoned ? 'recovering' : 'ready');
         });
       });
 
