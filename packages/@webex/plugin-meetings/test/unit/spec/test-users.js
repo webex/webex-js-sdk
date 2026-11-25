@@ -18,6 +18,8 @@ describe('meeting test-user provisioning', () => {
     'WEBEX_TEST_USERS_ORG_ADMIN_AUTHORIZATION',
     'WEBEX_TEST_USERS_ORG_ADMIN_USER',
     'WEBEX_TEST_USERS_ORG_ADMIN_PASSWORD',
+    'WEBEX_TEST_USERS_CI_GATEWAY_SERVICE_URL',
+    'WEBEX_TEST_USERS_CONVERSATION_SERVICE_URL',
   ];
   let environment;
   let sandbox;
@@ -134,6 +136,7 @@ describe('meeting test-user provisioning', () => {
     assert.calledOnceWithExactly(login, {
       clientId: 'test-client',
       clientSecret: 'test-secret',
+      cigServiceUrl: undefined,
       email: 'user@example.test',
       password: 'test-password',
       orgId: 'test-org',
@@ -159,6 +162,7 @@ describe('meeting test-user provisioning', () => {
     assert.calledWithExactly(login.firstCall, {
       clientId: 'test-client',
       clientSecret: 'test-secret',
+      cigServiceUrl: undefined,
       email: 'admin@example.test',
       password: 'admin-password',
       orgId: 'test-org',
@@ -208,6 +212,26 @@ describe('meeting test-user provisioning', () => {
     assert.equal(login.firstCall.args[0].clientId, 'custom-client');
     assert.equal(login.firstCall.args[0].orgId, 'custom-org');
     assert.notProperty(options.config, 'forceCreate');
+  });
+
+  [undefined, 'https://environment-cig.example.test'].forEach((environmentUrl) => {
+    it(`forwards the CIG override to both logins when the environment URL is ${
+      environmentUrl ? 'different' : 'missing'
+    }`, async () => {
+      configureSite();
+      Reflect.deleteProperty(process.env, 'WEBEX_TEST_USERS_ORG_ADMIN_AUTHORIZATION');
+      process.env.WEBEX_TEST_USERS_ORG_ADMIN_USER = 'admin@example.test';
+      process.env.WEBEX_TEST_USERS_ORG_ADMIN_PASSWORD = 'admin-password';
+      if (environmentUrl) process.env.WEBEX_TEST_USERS_CI_GATEWAY_SERVICE_URL = environmentUrl;
+      login.onFirstCall().resolves({authorization: 'Bearer acquired-admin-token'});
+      const cigServiceUrl = 'https://configured-cig.example.test';
+
+      await createTestUsers({count: 1, config: {cigServiceUrl}});
+
+      assert.equal(create.firstCall.args[0].config.cigServiceUrl, cigServiceUrl);
+      assert.calledTwice(login);
+      login.getCalls().forEach((call) => assert.equal(call.args[0].cigServiceUrl, cigServiceUrl));
+    });
   });
 
   it('discovers licenses once before creating a batch when no explicit IDs are configured', async () => {

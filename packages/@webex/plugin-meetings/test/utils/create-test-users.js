@@ -40,6 +40,7 @@ const createTestUsers = async (options = {}) => {
       const token = await testUsers.loginTestUser({
         clientId,
         clientSecret,
+        cigServiceUrl: config.cigServiceUrl,
         email,
         password,
         orgId: config.orgId,
@@ -102,6 +103,7 @@ const createTestUsers = async (options = {}) => {
         user.token = await testUsers.loginTestUser({
           clientId: config.clientId,
           clientSecret: config.clientSecret,
+          cigServiceUrl: config.cigServiceUrl,
           email: user.emailAddress || user.email,
           password: user.password,
           orgId: config.orgId,

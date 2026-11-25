@@ -1,10 +1,11 @@
-import {request} from '@webex/http-core';
+import {assert} from '@webex/test-helper-chai';
+import * as httpCore from '@webex/http-core';
+import sinon from 'sinon';
 
 import {getMeetingTestUserProvisioning} from '../../../src';
 
-jest.mock('@webex/http-core', () => ({request: jest.fn()}));
-
 describe('meeting test-user license discovery', () => {
+  let request;
   const options = {
     authorization: 'Bearer admin-token',
     orgId: 'test-org',
@@ -24,12 +25,13 @@ describe('meeting test-user license discovery', () => {
   };
 
   beforeEach(() => {
-    request.mockReset();
-    request.mockResolvedValue({body: [...basicLicenses, siteLicense]});
+    request = sinon.stub(httpCore, 'request').resolves({body: [...basicLicenses, siteLicense]});
   });
 
+  afterEach(() => sinon.restore());
+
   it('fetches synthetic licenses and selects the basic licenses and matching active site', async () => {
-    request.mockResolvedValue({
+    request.resolves({
       body: [
         ...basicLicenses,
         {...siteLicense, siteUrl: 'other.webex.com', licenseID: 'WXSFREE_other-site'},
@@ -39,59 +41,60 @@ describe('meeting test-user license discovery', () => {
       ],
     });
 
-    await expect(getMeetingTestUserProvisioning(options)).resolves.toEqual({
+    assert.deepEqual(await getMeetingTestUserProvisioning(options), {
       webexSite: options.webexSite,
       licenseIds: [...basicLicenses.map(({licenseID}) => licenseID), siteLicense.licenseID],
     });
-    expect(request).toHaveBeenCalledTimes(1);
-    expect(request).toHaveBeenCalledWith({
+    assert.calledOnceWithExactly(request, {
       method: 'GET',
       uri: 'https://atlas.example.test/admin/api/v1/organizations/test-org/licenses',
       qs: {includeUsage: false, syntheticLicenses: true},
       json: true,
       headers: {
         authorization: options.authorization,
-        trackingid: expect.stringMatching(/^webex-js-sdk_test-users_[a-f\d-]{36}_\d+$/),
+        trackingid: sinon.match(/^webex-js-sdk_test-users_[a-f\d-]{36}_\d+$/),
       },
     });
   });
 
   it.each(['FTM', 'FTC', 'FMS', 'WXSFREE'])('rejects a missing %s license', async (offerCode) => {
-    request.mockResolvedValue({
+    request.resolves({
       body: [...basicLicenses, siteLicense].filter((license) => license.offerCode !== offerCode),
     });
 
-    await expect(getMeetingTestUserProvisioning(options)).rejects.toThrow(
+    await assert.isRejected(
+      getMeetingTestUserProvisioning(options),
       new RegExp(`Expected one active ${offerCode} license`)
     );
   });
 
   it('rejects multiple matching site licenses rather than choosing one arbitrarily', async () => {
-    request.mockResolvedValue({
+    request.resolves({
       body: [...basicLicenses, siteLicense, {...siteLicense, licenseID: 'WXSFREE_second'}],
     });
 
-    await expect(getMeetingTestUserProvisioning(options)).rejects.toThrow('found 2');
+    await assert.isRejected(getMeetingTestUserProvisioning(options), 'found 2');
   });
 
   it('rejects a malformed catalog response', async () => {
-    request.mockResolvedValue({body: {licenses: []}});
+    request.resolves({body: {licenses: []}});
 
-    await expect(getMeetingTestUserProvisioning(options)).rejects.toThrow(
+    await assert.isRejected(
+      getMeetingTestUserProvisioning(options),
       'Expected an array from the organization license catalog'
     );
   });
 
   it('propagates lookup failures', async () => {
     const error = new Error('Atlas unavailable');
-    request.mockRejectedValue(error);
+    request.rejects(error);
 
-    await expect(getMeetingTestUserProvisioning(options)).rejects.toBe(error);
+    assert.strictEqual(await assert.isRejected(getMeetingTestUserProvisioning(options)), error);
   });
 
   it('defaults to the first active site with a supported meeting license', async () => {
     const firstSite = {...siteLicense, licenseID: 'WXSFREE_first', siteUrl: 'first.webex.com'};
-    request.mockResolvedValue({
+    request.resolves({
       body: [
         ...basicLicenses,
         {...siteLicense, status: 'SUSPENDED', siteUrl: 'suspended.webex.com'},
@@ -102,9 +105,7 @@ describe('meeting test-user license discovery', () => {
       ],
     });
 
-    await expect(
-      getMeetingTestUserProvisioning({...options, webexSite: undefined})
-    ).resolves.toEqual({
+    assert.deepEqual(await getMeetingTestUserProvisioning({...options, webexSite: undefined}), {
       webexSite: firstSite.siteUrl,
       licenseIds: [...basicLicenses.map(({licenseID}) => licenseID), firstSite.licenseID],
     });
@@ -112,35 +113,38 @@ describe('meeting test-user license discovery', () => {
 
   it('discovers the site matching an explicit license override and preserves those IDs', async () => {
     const licenseIds = ['FTM_override', siteLicense.licenseID];
-    request.mockResolvedValue({
+    request.resolves({
       body: [{...siteLicense, licenseID: 'WXSFREE_other', siteUrl: 'other.webex.com'}, siteLicense],
     });
 
-    await expect(
-      getMeetingTestUserProvisioning({
+    assert.deepEqual(
+      await getMeetingTestUserProvisioning({
         ...options,
         webexSite: undefined,
         licenseIds,
-      })
-    ).resolves.toEqual({webexSite: siteLicense.siteUrl, licenseIds});
+      }),
+      {webexSite: siteLicense.siteUrl, licenseIds}
+    );
   });
 
   it('rejects an explicit site absent from the active catalog', async () => {
-    await expect(
+    await assert.isRejected(
       getMeetingTestUserProvisioning({
         ...options,
         webexSite: 'missing.webex.com',
-      })
-    ).rejects.toThrow('found 0');
+      }),
+      'found 0'
+    );
   });
 
   it.each(['authorization', 'orgId'])(
     'rejects missing %s before requesting the catalog',
     async (key) => {
-      await expect(getMeetingTestUserProvisioning({...options, [key]: undefined})).rejects.toThrow(
+      await assert.isRejected(
+        getMeetingTestUserProvisioning({...options, [key]: undefined}),
         'License discovery requires'
       );
-      expect(request).not.toHaveBeenCalled();
+      assert.notCalled(request);
     }
   );
 });
