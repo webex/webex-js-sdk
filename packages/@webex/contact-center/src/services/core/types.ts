@@ -37,16 +37,6 @@ export type AqmRecoveryGate =
   | Readonly<{state: 'manualLoginRequired'; sessionOwner?: AqmSessionOwner<'manual'>}>
   | Readonly<{state: 'unavailable'; reason: 'RECOVERY_INTERRUPTED' | 'REGION_RELOAD_REQUIRED'}>;
 
-/** @internal The sole pending-operation lifetime record, independent of aliases. */
-export type OperationRecord = {
-  operationId: string;
-  generation: number;
-  timeoutId?: ReturnType<typeof setTimeout>;
-  reject: (error: Error) => void;
-  cleanup: () => void;
-  settled: boolean;
-};
-
 export type Pending = {
   check: (msg: Msg) => boolean;
   handle: (msg: Msg) => void;
@@ -64,7 +54,6 @@ export type Timeout = number | 'disabled';
 
 export type Req<TRes, TErr> = {
   kind?: AqmOperationKind;
-  context?: AqmRequestContext;
   url: string;
   host?: string;
   method?: HTTP_METHODS;

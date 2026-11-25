@@ -136,6 +136,21 @@ describe('ApiAIAssistant', () => {
       jest.useRealTimers();
     });
 
+    it('captures the default publish timestamp when the RTD request starts', async () => {
+      const startedAt = Date.now();
+      (mockWebex.request as jest.Mock).mockResolvedValue({body: {accepted: true}});
+      const request = apiAIAssistant.requestAndWaitForRtd(options());
+
+      jest.setSystemTime(startedAt + 1_000);
+      await flush();
+      const payload = {summary: 'ready'};
+      apiAIAssistant.resolveFromRtdEvent('POST_CALL_SUMMARY', 'conversation', payload);
+
+      await expect(request).resolves.toEqual(payload);
+      const [{body}] = (mockWebex.request as jest.Mock).mock.calls[0];
+      expect(body.publishTimestamp).toBe(startedAt);
+    });
+
     it.each(['before', 'queued', 'pending'])('cancels an RTD request when abort occurs %s', async (phase) => {
       const controller = new AbortController();
       const http = deferred<unknown>();
@@ -267,11 +282,19 @@ describe('ApiAIAssistant', () => {
       expect(mockMetricsManager.trackEvent).not.toHaveBeenCalled();
     });
 
-    it.each([
+    const ownedHttpOperations = [
       ['event', sendEvent],
       ['transcripts', (instance: ApiAIAssistant) => instance.fetchHistoricTranscripts('agent', 'interaction')],
       ['wellness', (instance: ApiAIAssistant) => instance.requestWellnessBreak()],
-    ] as const)('interrupts a pending %s HTTP request without waiting for its result', async (_name, invoke) => {
+    ] as const;
+
+    it.each(ownedHttpOperations)('rejects %s before dispatch when preparation invalidates its owner', async (_name, invoke) => {
+      mockMetricsManager.timeEvent.mockImplementationOnce(() => controller.abort());
+      await expect(invoke(createOwnedAssistant())).rejects.toMatchObject({data: {reason: 'RECOVERY_INTERRUPTED'}});
+      expect(mockWebex.request).not.toHaveBeenCalled();
+    });
+
+    it.each(ownedHttpOperations)('interrupts a pending %s HTTP request without waiting for its result', async (_name, invoke) => {
       const http = deferred<unknown>();
       (mockWebex.request as jest.Mock).mockReturnValue(http.promise);
       const observed = expect(invoke(createOwnedAssistant())).rejects.toMatchObject({data: {reason: 'RECOVERY_INTERRUPTED'}});

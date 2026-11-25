@@ -64,6 +64,7 @@ import {
   isRecord,
   isValidDialNumber,
   sanitizeForObservability,
+  awaitRecoveryWork,
   createRegionRecoveryError,
   normalizeRecoveryFailure,
   getSubscriptionMismatchReason,
@@ -126,8 +127,6 @@ const CC_EVENT_ALLOW_LIST = new Set<string>(Object.values(CC_EVENTS));
 type RecoveryPhase =
   | 'idle'
   | 'waiting'
-  | 'subscribing'
-  | 'awaitingWelcome'
   | 'restoringSession'
   | 'ready'
   | 'manualLoginRequired'
@@ -163,6 +162,7 @@ type RegionRecovery = {
   reloads: number;
   retryNotBefore: number;
   intentRevision: number;
+  attempt?: {attempt: number; startedAt: number; welcomeStartedAt?: number};
 };
 
 type RecoveryDiagnosticStage =
@@ -517,12 +517,6 @@ export default class ContactCenter extends WebexPlugin implements IContactCenter
   private recoveryGeneration = 0;
   private recoveryPhase: RecoveryPhase = 'idle';
   private recovery?: RegionRecovery;
-  private recoveryAttempt?: {
-    owner: RegionRecovery;
-    attempt: number;
-    startedAt: number;
-    welcomeStartedAt?: number;
-  };
 
   private commandController?: AbortController;
   private taskLifetimeController?: AbortController;
@@ -542,7 +536,6 @@ export default class ContactCenter extends WebexPlugin implements IContactCenter
     return Boolean(this.logoutAttempt);
   }
 
-  private rtdPaused = true;
   private rtdEpoch?: RtdEpoch;
   private rtdTerminatedFor?: {registration: number; sessionId?: string};
   private stateIntentRevision = 0;
@@ -714,12 +707,7 @@ export default class ContactCenter extends WebexPlugin implements IContactCenter
     });
     if (isEqual(snapshot, this.lastPublishedRegionState)) return;
     this.lastPublishedRegionState = snapshot;
-    try {
-      // @ts-ignore - WebexPlugin inherits ampersand-events trigger without a declaration.
-      this.trigger(REGION_RECOVERY_EVENTS.STATE_CHANGE, snapshot);
-    } catch {
-      // Delivery retains ampersand-events semantics; the host cannot interrupt SDK work.
-    }
+    this.publishHostEvent(REGION_RECOVERY_EVENTS.STATE_CHANGE, snapshot, true);
   }
 
   /** Builds initiating recovery context; publication adds the current placement metadata. */
@@ -750,22 +738,20 @@ export default class ContactCenter extends WebexPlugin implements IContactCenter
     agentId?: string
   ): boolean {
     if (
-      registration === this.registrationGeneration &&
-      signal === this.registrationAbortController?.signal &&
-      !signal?.aborted &&
-      this.$webex.credentials.getOrgId() !== orgId
-    ) {
+      !signal ||
+      signal.aborted ||
+      signal !== this.registrationAbortController?.signal ||
+      registration !== this.registrationGeneration
+    )
+      return false;
+    if (this.$webex.credentials.getOrgId() !== orgId) {
       this.terminateRegistration(true);
 
       return false;
     }
 
     return (
-      registration === this.registrationGeneration &&
       this.registrationOrgId === orgId &&
-      signal === this.registrationAbortController?.signal &&
-      !signal.aborted &&
-      this.$webex.credentials.getOrgId() === orgId &&
       (agentId === undefined ||
         (this.registrationAgentId === agentId && this.agentConfig?.agentId === agentId))
     );
@@ -792,45 +778,20 @@ export default class ContactCenter extends WebexPlugin implements IContactCenter
     orgId: string,
     profile: Profile
   ): boolean {
-    if (
-      registration === this.registrationGeneration &&
-      this.registrationOrgId &&
-      this.$webex.credentials.getOrgId() !== orgId
-    ) {
+    if (registration !== this.registrationGeneration) return false;
+    const sameOrg = this.$webex.credentials.getOrgId() === orgId;
+    if (this.registrationOrgId && !sameOrg) {
       this.terminateRegistration(true);
 
       return false;
     }
 
     return (
-      registration === this.registrationGeneration &&
       station === this.stationRevision &&
       profile === this.agentConfig &&
-      this.$webex.credentials.getOrgId() === orgId &&
+      sameOrg &&
       !this.registrationAbortController?.signal.aborted
     );
-  }
-
-  /** Observes abandoned work while promptly releasing its local cancellation continuation. */
-  private static awaitRegistrationWork<T>(work: Promise<T>, signal: AbortSignal): Promise<T> {
-    return new Promise<T>((resolve, reject) => {
-      const onAbort = () => {
-        signal.removeEventListener('abort', onAbort);
-        reject(createRegionRecoveryError('RECOVERY_INTERRUPTED'));
-      };
-      signal.addEventListener('abort', onAbort, {once: true});
-      Promise.resolve(work).then(
-        (value) => {
-          signal.removeEventListener('abort', onAbort);
-          resolve(value);
-        },
-        (error) => {
-          signal.removeEventListener('abort', onAbort);
-          reject(error);
-        }
-      );
-      if (signal.aborted) onAbort();
-    });
   }
 
   /** Owns the bounded, serial entitlement read; ordinary reconnect never calls this method. */
@@ -874,17 +835,7 @@ export default class ContactCenter extends WebexPlugin implements IContactCenter
         if (terminal) return;
         if (!this.isCurrentRegistration(registration, orgId, signal, agentId)) return;
         // eslint-disable-next-line no-await-in-loop -- Each next read waits its exact backoff.
-        await new Promise<void>((resolve) => {
-          let timer: ReturnType<typeof setTimeout>;
-          const finish = () => {
-            clearTimeout(timer);
-            signal.removeEventListener('abort', finish);
-            resolve();
-          };
-          timer = setTimeout(finish, attempt * 1000);
-          signal.addEventListener('abort', finish, {once: true});
-          if (signal.aborted) finish();
-        });
+        await ContactCenter.waitForRecoveryDelay(attempt * 1000, signal);
         // eslint-disable-next-line no-continue -- Only failed reads advance the retry cycle.
         continue;
       }
@@ -1055,17 +1006,16 @@ export default class ContactCenter extends WebexPlugin implements IContactCenter
 
   private cancelRegionRecovery(): boolean {
     const recovery = this.recovery;
-    const slot = this.recoveryAttempt;
+    const slot = recovery?.attempt;
     const registration = this.registrationGeneration;
     const generation = this.recoveryGeneration;
     const station = this.stationRevision;
     // Consume before aborting: obsolete continuations cannot consume a replacement's timing.
-    if (slot?.owner === recovery) this.recoveryAttempt = undefined;
+    if (recovery) recovery.attempt = undefined;
     this.recovery = undefined;
     recovery?.detach();
     recovery?.controller.abort();
-    if (slot && slot.owner === recovery)
-      this.recordRecoveryDiagnostic('admission', 'cancelled', slot.attempt, slot.startedAt);
+    if (slot) this.recordRecoveryDiagnostic('admission', 'cancelled', slot.attempt, slot.startedAt);
 
     return (
       registration === this.registrationGeneration &&
@@ -1230,7 +1180,7 @@ export default class ContactCenter extends WebexPlugin implements IContactCenter
       manager.on('socketClose', onClose);
     });
     try {
-      await ContactCenter.awaitRegistrationWork(connected, attempt.controller.signal);
+      await awaitRecoveryWork(connected, attempt.controller.signal);
     } finally {
       attempt.rejectConnectionWait = undefined;
       this.services.connectionService.off('connectionLost', onConnection);
@@ -1416,20 +1366,15 @@ export default class ContactCenter extends WebexPlugin implements IContactCenter
         signal: controller.signal,
         canAttempt: () => {
           if (!this.isCurrentRecovery(recovery)) return false;
-          const slot = this.recoveryAttempt;
-          if (slot?.owner === recovery) slot.welcomeStartedAt = Date.now();
+          if (recovery.attempt) recovery.attempt.welcomeStartedAt = Date.now();
 
           return true;
         },
         onScheduled: (attempt, retryAfterMs) => {
           if (!this.isCurrentRecovery(recovery)) return;
-          this.recoveryAttempt = {owner: recovery, attempt, startedAt: Date.now()};
-          this.recordRecoveryDiagnostic(
-            'scheduled-wait',
-            'waiting',
-            attempt,
-            this.recoveryAttempt.startedAt
-          );
+          const attemptStartedAt = Date.now();
+          recovery.attempt = {attempt, startedAt: attemptStartedAt};
+          this.recordRecoveryDiagnostic('scheduled-wait', 'waiting', attempt, attemptStartedAt);
           if (!this.isCurrentRecovery(recovery)) return;
           this.setRecoveryPhase('waiting');
           this.publishRegionState(
@@ -1437,20 +1382,15 @@ export default class ContactCenter extends WebexPlugin implements IContactCenter
           );
         },
         onAttemptSettled: (attempt, outcome, failure) => {
-          const slot = this.recoveryAttempt;
-          if (
-            !this.isCurrentRecovery(recovery) ||
-            slot?.owner !== recovery ||
-            slot.attempt !== attempt
-          )
-            return;
-          this.recoveryAttempt = undefined;
+          const slot = recovery.attempt;
+          if (!this.isCurrentRecovery(recovery) || slot?.attempt !== attempt) return;
+          recovery.attempt = undefined;
           this.recordRecoveryDiagnostic('admission', outcome, attempt, slot.startedAt, failure);
         },
         afterWelcome: async (welcome, attemptSignal) => {
           if (!this.isCurrentRecovery(recovery))
             throw createRegionRecoveryError('RECOVERY_INTERRUPTED');
-          const slot = this.recoveryAttempt;
+          const slot = recovery.attempt;
           const attempt = slot?.attempt;
           const agentId = isRecord(welcome) ? welcome.agentId : undefined;
           const valid = agentId === recovery.agentId;
@@ -1469,9 +1409,9 @@ export default class ContactCenter extends WebexPlugin implements IContactCenter
       })
       .then(
         () => {
-          const slot = this.recoveryAttempt;
-          if (!this.isCurrentRecovery(recovery) || slot?.owner !== recovery) return;
-          this.recoveryAttempt = undefined;
+          const slot = recovery.attempt;
+          if (!this.isCurrentRecovery(recovery) || !slot) return;
+          recovery.attempt = undefined;
           this.recordRecoveryDiagnostic('admission', 'succeeded', slot.attempt, slot.startedAt);
         },
         (error) => {
@@ -1626,12 +1566,12 @@ export default class ContactCenter extends WebexPlugin implements IContactCenter
     if (signal.aborted) throw createRegionRecoveryError('RECOVERY_INTERRUPTED');
     const payload = this.acceptedStation?.payload;
     if (payload)
-      await ContactCenter.awaitRegistrationWork(
+      await awaitRecoveryWork(
         this.handleDeviceType(payload.deviceType as LoginOption, payload.dialNumber, 'preserve'),
         signal
       );
     if (signal.aborted) throw createRegionRecoveryError('RECOVERY_INTERRUPTED');
-    await ContactCenter.awaitRegistrationWork(this.ensureWxAppPostStationLogin(signal), signal);
+    await awaitRecoveryWork(this.ensureWxAppPostStationLogin(signal), signal);
   }
 
   private static recoveryFailureCategory(
@@ -1659,22 +1599,18 @@ export default class ContactCenter extends WebexPlugin implements IContactCenter
     return 'other';
   }
 
-  private async waitForRecoveryRetry(deadline: number, signal: AbortSignal): Promise<void> {
-    if (signal.aborted) throw createRegionRecoveryError('RECOVERY_INTERRUPTED');
-    if (deadline <= Date.now()) return;
-    await new Promise<void>((resolve, reject) => {
+  private static waitForRecoveryDelay(delay: number, signal: AbortSignal): Promise<void> {
+    if (delay <= 0 || signal.aborted) return Promise.resolve();
+
+    return new Promise<void>((resolve) => {
       const finish = () => {
-        signal.removeEventListener('abort', abort);
+        clearTimeout(timer);
+        signal.removeEventListener('abort', finish);
         resolve();
       };
-      const timer = setTimeout(finish, Math.max(0, deadline - Date.now()));
-      const abort = () => {
-        clearTimeout(timer);
-        signal.removeEventListener('abort', abort);
-        reject(createRegionRecoveryError('RECOVERY_INTERRUPTED'));
-      };
-      signal.addEventListener('abort', abort, {once: true});
-      if (signal.aborted) abort();
+      const timer = setTimeout(finish, delay);
+      signal.addEventListener('abort', finish, {once: true});
+      if (signal.aborted) finish();
     });
   }
 
@@ -1730,8 +1666,11 @@ export default class ContactCenter extends WebexPlugin implements IContactCenter
     try {
       while (this.isCurrentRecovery(recovery) && !context.signal.aborted) {
         // eslint-disable-next-line no-await-in-loop -- Generation-owned retries are serial.
-        await this.waitForRecoveryRetry(recovery.retryNotBefore, context.signal);
-        if (!this.isCurrentRecovery(recovery) || context.signal.aborted)
+        await ContactCenter.waitForRecoveryDelay(
+          recovery.retryNotBefore - Date.now(),
+          context.signal
+        );
+        if (context.signal.aborted || !this.isCurrentRecovery(recovery))
           throw createRegionRecoveryError('RECOVERY_INTERRUPTED');
         if (recovery.stage === 'reload' && recovery.reloads >= 4) recovery.stage = 'fallback';
         const stage = recovery.stage;
@@ -1747,13 +1686,13 @@ export default class ContactCenter extends WebexPlugin implements IContactCenter
           else recovery.stage = 'manual';
           if (stage === 'fallback') {
             // eslint-disable-next-line no-await-in-loop -- At most one fallback dispatch.
-            response = await ContactCenter.awaitRegistrationWork(
+            response = await awaitRecoveryWork(
               this.services.agent.stationLogin({data: payload}, undefined, context),
               context.signal
             );
           } else {
             // eslint-disable-next-line no-await-in-loop -- Bounded reload budget survives sockets.
-            response = await ContactCenter.awaitRegistrationWork(
+            response = await awaitRecoveryWork(
               this.services.agent.reload(undefined, context),
               context.signal
             );
@@ -2357,9 +2296,6 @@ export default class ContactCenter extends WebexPlugin implements IContactCenter
     return (
       this.rtdEpoch === epoch &&
       !epoch.controller.signal.aborted &&
-      !epoch.parent.aborted &&
-      epoch.parent === this.registrationAbortController?.signal &&
-      epoch.registration === this.registrationGeneration &&
       epoch.station === this.stationRevision &&
       epoch.sessionId === this.currentAgentSessionId &&
       this.isCurrentRegistration(epoch.registration, epoch.orgId, epoch.parent, epoch.agentId)
@@ -2368,7 +2304,6 @@ export default class ContactCenter extends WebexPlugin implements IContactCenter
 
   /** An explicit terminal reason also closes the manager after an epoch was already released. */
   private pauseRtd(terminalReason?: 'recoveryFailed' | 'regionMismatch'): void {
-    this.rtdPaused = true;
     const epoch = this.rtdEpoch;
     this.rtdEpoch = undefined;
     epoch?.detach();
@@ -2391,13 +2326,7 @@ export default class ContactCenter extends WebexPlugin implements IContactCenter
           this.services.rtdWebSocketManager.close(false, terminalReason ?? 'regionRecovery');
       },
     ];
-    release.forEach((dispose) => {
-      try {
-        dispose();
-      } catch {
-        /* Each optional owner releases independently. */
-      }
-    });
+    release.forEach((dispose) => this.recordBestEffort(dispose));
   }
 
   private resumeRtd(signal: AbortSignal): Promise<void> {
@@ -2453,7 +2382,6 @@ export default class ContactCenter extends WebexPlugin implements IContactCenter
           return;
         }
         epoch.active = true;
-        this.rtdPaused = false;
         this.recordRecoveryDiagnostic('rtd', 'succeeded', 1, startedAt);
       })
       .catch((error) => {
@@ -2483,7 +2411,7 @@ export default class ContactCenter extends WebexPlugin implements IContactCenter
 
   private handleRTDWebsocketMessage = (event: string) => {
     const epoch = this.rtdEpoch;
-    if (this.rtdPaused || !epoch?.active || !this.isCurrentRtdEpoch(epoch)) return;
+    if (!epoch?.active || !this.isCurrentRtdEpoch(epoch)) return;
     let payload: unknown;
     try {
       payload = JSON.parse(event);
@@ -2626,6 +2554,7 @@ export default class ContactCenter extends WebexPlugin implements IContactCenter
           METRIC_EVENT_NAMES.WEBSOCKET_REGISTER_FAILED,
         ])
       );
+      this.assertInitialRegistration(attempt);
       this.setupEventListeners();
       this.incomingTaskListener();
       this.services.webSocketManager.off('message', this.handleWebsocketMessage);
@@ -2987,9 +2916,10 @@ export default class ContactCenter extends WebexPlugin implements IContactCenter
     );
 
     try {
+      this.assertInitialRegistration(attempt);
       let data: unknown;
       try {
-        data = await ContactCenter.awaitRegistrationWork(
+        data = await awaitRecoveryWork(
           this.services.webSocketManager.initWebSocket({
             body: this.getConnectionConfig(),
             resource: SUBSCRIBE_API,
@@ -3013,7 +2943,7 @@ export default class ContactCenter extends WebexPlugin implements IContactCenter
         throw new Error('Primary Welcome agent identity is required');
       }
       const agentId = data.agentId;
-      const profile = await ContactCenter.awaitRegistrationWork(
+      const profile = await awaitRecoveryWork(
         this.services.config.getAgentConfig(orgId, agentId),
         signal
       );
@@ -3025,19 +2955,16 @@ export default class ContactCenter extends WebexPlugin implements IContactCenter
       this.agentConfig = profile;
       this.registrationAgentId = agentId;
       this.resetOrdinaryConnection(true);
+      this.assertInitialRegistration(attempt, agentId);
       this.taskManager.startSession(this.getTaskRecoveryGuard());
-      this.hydrateMultiRegionSettings(registration, orgId, agentId, signal).catch(() => {
-        try {
-          this.recordBestEffort(() =>
-            LoggerProxy.warn('Organization recovery settings hydration ended', {
-              module: CC_FILE,
-              method: METHODS.HYDRATE_MULTI_REGION_SETTINGS,
-            })
-          );
-        } catch {
-          // The terminal handler always observes an abandoned reader.
-        }
-      });
+      this.hydrateMultiRegionSettings(registration, orgId, agentId, signal).catch(() =>
+        this.recordBestEffort(() =>
+          LoggerProxy.warn('Organization recovery settings hydration ended', {
+            module: CC_FILE,
+            method: METHODS.HYDRATE_MULTI_REGION_SETTINGS,
+          })
+        )
+      );
 
       this.recordBestEffort(() =>
         LoggerProxy.log(`Agent config is fetched successfully`, {
@@ -3395,10 +3322,7 @@ export default class ContactCenter extends WebexPlugin implements IContactCenter
       );
 
       if (manualSignal) {
-        await ContactCenter.awaitRegistrationWork(
-          this.ensureWxAppPostStationLogin(manualSignal),
-          manualSignal
-        );
+        await awaitRecoveryWork(this.ensureWxAppPostStationLogin(manualSignal), manualSignal);
       } else await this.ensureWxAppPostStationLogin();
       if (!this.isCurrentStation(registration, station, orgId, profile))
         throw createRegionRecoveryError('RECOVERY_INTERRUPTED');
@@ -3674,7 +3598,7 @@ export default class ContactCenter extends WebexPlugin implements IContactCenter
 
           return rejected.response;
         }
-        await ContactCenter.awaitRegistrationWork(barrier, context.signal);
+        await awaitRecoveryWork(barrier, context.signal);
         this.assertStateDispatchCurrent(context);
       } finally {
         if (this.explicitStateWaiter === reservation) this.explicitStateWaiter = undefined;
@@ -4255,8 +4179,8 @@ export default class ContactCenter extends WebexPlugin implements IContactCenter
     ) {
       try {
         const recovery = this.recovery;
-        const slot = this.recoveryAttempt;
-        if (recovery && slot?.owner === recovery && eventData.data?.agentId !== recovery.agentId) {
+        const slot = recovery?.attempt;
+        if (slot && eventData.data?.agentId !== recovery.agentId) {
           this.recordRecoveryDiagnostic(
             'welcome',
             'failed',
@@ -5319,7 +5243,7 @@ export default class ContactCenter extends WebexPlugin implements IContactCenter
       }
       assertReloginAdmission();
       const wxApp = this.ensureWxAppPostStationLogin(commandSignal);
-      await (commandSignal ? ContactCenter.awaitRegistrationWork(wxApp, commandSignal) : wxApp);
+      await (commandSignal ? awaitRecoveryWork(wxApp, commandSignal) : wxApp);
       assertReloginAdmission();
       if (initialRegistration) {
         this.setRecoveryPhase('ready');

@@ -2,9 +2,10 @@ import * as Agent from '../agent/types';
 import {COLLABORATION_ACCESS} from './constants';
 
 /** Confirmed entitlement; retained for Config declarations, without a root API export. */
-export type MultiRegionSettings =
-  | {eligibility: 'enabled'; homeRegion?: string}
-  | {eligibility: 'disabled'; homeRegion?: string};
+export type MultiRegionSettings = {
+  eligibility: 'enabled' | 'disabled';
+  homeRegion?: string;
+};
 
 /**
  * Generic type for converting a const enum object into a union type of its values

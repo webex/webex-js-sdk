@@ -873,9 +873,13 @@ describe('CallingClient Tests', () => {
       );
     });
 
-    it.each([false, true])(
-      'forwards idle notification only when Calling has no pending reconnect (%s)',
-      async (reconnectPending) => {
+    it.each([
+      {scenario: 'idle', reconnectPending: false, nextCall: false},
+      {scenario: 'pending reconnect', reconnectPending: true, nextCall: false},
+      {scenario: 'new call', reconnectPending: false, nextCall: true},
+    ])(
+      'forwards call clearance when idle and no reconnect is pending ($scenario)',
+      async ({reconnectPending, nextCall}) => {
         reg.setStatus(RegistrationStatus.INACTIVE);
         jest.spyOn(reg, 'isReconnectPending').mockReturnValue(reconnectPending);
         const reconnect = jest.spyOn(reg, 'reconnectOnFailure').mockResolvedValue(undefined);
@@ -883,10 +887,11 @@ describe('CallingClient Tests', () => {
         callingClient.on(CALLING_CLIENT_EVENT_KEYS.ALL_CALLS_CLEARED, listener);
 
         callManager.emit(CALLING_CLIENT_EVENT_KEYS.ALL_CALLS_CLEARED);
+        if (nextCall) callManager.createCall();
         await flushPromises();
 
         expect(reconnect).toHaveBeenCalledTimes(reconnectPending ? 1 : 0);
-        expect(listener).toHaveBeenCalledTimes(reconnectPending ? 0 : 1);
+        expect(listener).toHaveBeenCalledTimes(reconnectPending || nextCall ? 0 : 1);
       }
     );
 

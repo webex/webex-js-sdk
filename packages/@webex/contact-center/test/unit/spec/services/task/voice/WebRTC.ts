@@ -287,6 +287,7 @@ describe('WebRTC Task', () => {
       'lateMediaDuringWaitAndAfterWipeStopsTracks: path=%s cleanup=%s', async (path, cleanup) => {
         let acquired: (stream: MediaStream) => void;
         const stream = new Promise<MediaStream>(resolve => { acquired = resolve; });
+        const brokenTrack = {stop: jest.fn(() => {throw new Error('track stop failed');})};
         const track = {stop: jest.fn()};
         jest.spyOn(navigator.mediaDevices, 'getUserMedia').mockReturnValue(stream);
         const contact = {end: jest.fn()};
@@ -319,8 +320,9 @@ describe('WebRTC Task', () => {
           if (cleanup) manager.invalidateRegionalTasks();
           expect(calling.listenerCount(CALL_EVENT_KEYS.REMOTE_MEDIA)).toBe(cleanup ? 0 : 1);
           expect(track.stop).not.toHaveBeenCalled();
-          acquired({getTracks: () => [track], getAudioTracks: () => [track]} as unknown as MediaStream);
+          acquired({getTracks: () => [brokenTrack, track], getAudioTracks: () => [track]} as unknown as MediaStream);
           await new Promise(resolve => setImmediate(resolve));
+          expect(brokenTrack.stop).toHaveBeenCalledTimes(1);
           expect(track.stop).toHaveBeenCalledTimes(1);
           expect(answer).not.toHaveBeenCalled();
           expect(call.answer).not.toHaveBeenCalled();

@@ -86,10 +86,7 @@ export default abstract class Task extends EventEmitter implements ITask {
       throw createRegionRecoveryError(REGION_RECOVERY_ERROR_CODES.STALE_TASK);
     }
     this.recoveryGuard?.assertCommandAllowed();
-    if (this.recoveryGuard?.signal.aborted) {
-      throw createRegionRecoveryError(REGION_RECOVERY_ERROR_CODES.RECOVERY_INTERRUPTED);
-    }
-    if (this.operationsInterrupted) {
+    if (this.operationsInterrupted || this.recoveryGuard?.signal.aborted) {
       throw createRegionRecoveryError(REGION_RECOVERY_ERROR_CODES.RECOVERY_INTERRUPTED);
     }
   }
@@ -450,8 +447,7 @@ export default abstract class Task extends EventEmitter implements ITask {
 
           return result;
         } catch (error) {
-          if (isRegionRecoveryError(error))
-            throw getErrorDetails(error, 'requestPostCallSummary', CC_FILE).error;
+          if (isRegionRecoveryError(error)) throw error;
           this.assertTaskCommandAllowed();
           this.metricsManager.trackEvent(
             METRIC_EVENT_NAMES.AI_SUMMARY_GET_POST_CALL_FAILED,
@@ -521,8 +517,7 @@ export default abstract class Task extends EventEmitter implements ITask {
           ['operational']
         );
       } catch (error) {
-        if (isRegionRecoveryError(error))
-          throw getErrorDetails(error, 'sendPostCallSummaryResponse', CC_FILE).error;
+        if (isRegionRecoveryError(error)) throw error;
         this.assertTaskCommandAllowed();
         this.metricsManager.trackEvent(
           METRIC_EVENT_NAMES.AI_SUMMARY_POST_CALL_RESPONSE_FAILED,
@@ -600,8 +595,7 @@ export default abstract class Task extends EventEmitter implements ITask {
 
           return result;
         } catch (error) {
-          if (isRegionRecoveryError(error))
-            throw getErrorDetails(error, 'requestMidCallSummary', CC_FILE).error;
+          if (isRegionRecoveryError(error)) throw error;
           this.assertTaskCommandAllowed();
           this.metricsManager.trackEvent(
             METRIC_EVENT_NAMES.AI_SUMMARY_GET_MID_CALL_FAILED,
@@ -678,8 +672,7 @@ export default abstract class Task extends EventEmitter implements ITask {
           ['operational']
         );
       } catch (error) {
-        if (isRegionRecoveryError(error))
-          throw getErrorDetails(error, 'sendMidCallSummaryResponse', CC_FILE).error;
+        if (isRegionRecoveryError(error)) throw error;
         this.assertTaskCommandAllowed();
         this.metricsManager.trackEvent(
           METRIC_EVENT_NAMES.AI_SUMMARY_MID_CALL_RESPONSE_FAILED,
@@ -1297,7 +1290,7 @@ export default abstract class Task extends EventEmitter implements ITask {
 
         return result;
       } catch (error) {
-        if (isRegionRecoveryError(error)) throw getErrorDetails(error, 'transfer', CC_FILE).error;
+        if (isRegionRecoveryError(error)) throw error;
         this.assertTaskCommandAllowed();
         const {error: detailedError} = getErrorDetails(error, 'transfer', CC_FILE);
         this.metricsManager.trackEvent(
@@ -1358,7 +1351,7 @@ export default abstract class Task extends EventEmitter implements ITask {
 
         return response;
       } catch (error) {
-        if (isRegionRecoveryError(error)) throw getErrorDetails(error, 'end', CC_FILE).error;
+        if (isRegionRecoveryError(error)) throw error;
         this.assertTaskCommandAllowed();
         const {error: detailedError} = getErrorDetails(error, 'end', CC_FILE);
         this.metricsManager.trackEvent(
@@ -1429,7 +1422,7 @@ export default abstract class Task extends EventEmitter implements ITask {
 
         return response;
       } catch (error) {
-        if (isRegionRecoveryError(error)) throw getErrorDetails(error, 'wrapup', CC_FILE).error;
+        if (isRegionRecoveryError(error)) throw error;
         this.assertTaskCommandAllowed();
         const {error: detailedError} = getErrorDetails(error, 'wrapup', CC_FILE);
         this.metricsManager.trackEvent(

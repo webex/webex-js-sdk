@@ -89,7 +89,7 @@ export default class Digital extends Task implements IDigital {
 
         return response;
       } catch (error) {
-        if (isRegionRecoveryError(error)) throw getErrorDetails(error, 'accept', CC_FILE).error;
+        if (isRegionRecoveryError(error)) throw error;
         this.assertTaskCommandAllowed();
         const {error: detailedError} = getErrorDetails(error, METHODS.ACCEPT, CC_FILE);
         this.metricsManager.trackEvent(

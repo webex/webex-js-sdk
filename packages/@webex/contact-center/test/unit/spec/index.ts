@@ -794,9 +794,12 @@ const resolveSymbol = (checker: ts.TypeChecker, symbol: ts.Symbol | undefined) =
 };
 
 describe('contact-center root public contract', () => {
-  it('T-013 preserves station, voice and Task consumer signatures', () => {
-    const fixture = path.join(CONTACT_CENTER_ROOT, 'test/unit/spec/__legacy_voice_controls.ts');
-    const program = createProgram({[fixture]: `
+  it('T-007/T-013 preserves existing consumer signatures and adds the typed recovery contract', () => {
+    const legacy = path.join(CONTACT_CENTER_ROOT, 'test/unit/spec/__legacy_voice_controls.ts');
+    const stateChange = path.join(CONTACT_CENTER_ROOT, 'test/unit/spec/__state_id_consumer.ts');
+    const recovery = path.join(CONTACT_CENTER_ROOT, 'test/unit/spec/__recovery_consumer.ts');
+    const program = createProgram({
+      [legacy]: `
       import type {
         ContactCenter, IContactCenter, ITask, Profile, SetStateResponse,
         StationLoginResponse, StationLogoutResponse, VoiceConnectionState,
@@ -828,13 +831,8 @@ describe('contact-center root public contract', () => {
       // @ts-expect-error controls keep per-leg ownership
       task.uiControls.hold.isEnabled;
       void [registered, deregistered, loggedIn, loggedOut, changed, voice, enabled, keypad, destinations];
-    `});
-    expect(getDiagnosticsForFiles(program, [fixture])).toEqual([]);
-  });
-
-  it('T-007 root routingAgent preserves the state payload, callback and context types', () => {
-    const fixture = path.join(CONTACT_CENTER_ROOT, 'test/unit/spec/__state_id_consumer.ts');
-    const program = createProgram({[fixture]: `
+      `,
+      [stateChange]: `
       import {routingAgent} from '../../../src';
       import type {StateChangeSuccess} from '../../../src';
       declare const agent: ReturnType<typeof routingAgent>;
@@ -851,15 +849,8 @@ describe('contact-center root public contract', () => {
       agent.stateChange({});
       // @ts-expect-error context still requires an explicit generation.
       agent.stateChange({data}, callback, {signal: context.signal});
-    `});
-    expect(getDiagnosticsForFiles(program, [fixture]).map(diagnostic =>
-      ts.flattenDiagnosticMessageText(diagnostic.messageText, '\n')
-    )).toEqual([]);
-  });
-
-  it('T-013 additiveRecoveryExportsAndTypedConsumer / plainErrorCatalogRoundTrip typed narrowing', () => {
-    const fixture = path.join(CONTACT_CENTER_ROOT, 'test/unit/spec/__recovery_consumer.ts');
-    const program = createProgram({[fixture]: `
+      `,
+      [recovery]: `
       import {CC_EVENTS, REGION_RECOVERY_EVENTS, REGION_RECOVERY_ERROR_CODES} from '../../../src';
       import type {ContactCenterEvents, RegionRecoveryState, RegionRecoveryStatus, RegionRecoveryReason, RegionAutoAvailableStatus, RegionRecoveryErrorCode} from '../../../src';
       import {isRegionRecoveryError, createRegionRecoveryError} from '../../../src/services/core/Utils';
@@ -885,7 +876,8 @@ describe('contact-center root public contract', () => {
       // @ts-expect-error recovering is not an automatic action outcome
       const invalidAuto: RegionAutoAvailableStatus = 'recovering';
       void [event, state, created, invalid, invalidAuto];
-    `});
+      `,
+    });
     const catalogs = {
       REGION_RECOVERY_EVENTS: {STATE_CHANGE: 'region:stateChange'},
       REGION_RECOVERY_ERROR_CODES: {
@@ -900,7 +892,7 @@ describe('contact-center root public contract', () => {
         getObjectLiteralInitializer(getRootExportSymbol(program, name), name)
       ))).toEqual(expected);
     });
-    expect(getDiagnosticsForFiles(program, [fixture])).toEqual([]);
+    expect(getDiagnosticsForFiles(program, [legacy, stateChange, recovery])).toEqual([]);
     const types = program.getSourceFile(TYPES_PATH)!;
     const catalogImport = types.statements.find((statement) =>
       ts.isImportDeclaration(statement) && ts.isStringLiteral(statement.moduleSpecifier) && statement.moduleSpecifier.text === './services/core/constants'

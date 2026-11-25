@@ -637,6 +637,7 @@ describe('WebCallingService', () => {
     it.each([
       CALLING_CLIENT_EVENT_KEYS.MOBIUS_SOCKET_CONNECTED,
       CALLING_CLIENT_EVENT_KEYS.MOBIUS_SOCKET_DISCONNECTED,
+      CALLING_CLIENT_EVENT_KEYS.ALL_CALLS_CLEARED,
     ])('detaches the %s listener after deregistration', async (event) => {
       setBrowserVoiceRequired();
       registerLineImmediately();
@@ -778,7 +779,7 @@ describe('WebCallingService', () => {
           if (state.lineStatus !== 'error') return;
           settlementAtDelivery({
             reject: webRTCCalling['rejectRegistration'],
-            complete: webRTCCalling['registrationCompleteHandler'],
+            registeredListeners: ownedLine.handlers.get(LINE_EVENTS.REGISTERED)?.length,
             attempt: webRTCCalling['registrationAttempt'],
             timers: jest.getTimerCount(),
           });
@@ -797,7 +798,7 @@ describe('WebCallingService', () => {
         // Flush the direct register-rejection callback without waiting on a potentially stuck job.
         await Promise.resolve();
         expect(settlementAtDelivery.mock.calls).toEqual([
-          [{reject: undefined, complete: undefined, attempt: undefined, timers: 0}],
+          [{reject: undefined, registeredListeners: 1, attempt: undefined, timers: 0}],
         ]);
         await registration;
         expect(rejected.mock.calls).toEqual([[error]]);
@@ -1507,9 +1508,11 @@ describe('WebCallingService', () => {
           });
           expect(jest.getTimerCount()).toBe(replacing ? 1 : 0);
           const currentReject = webRTCCalling['rejectRegistration'];
-          const currentComplete = webRTCCalling['registrationCompleteHandler'];
+          const currentRegisteredListeners = [
+            ...(replacement.line.handlers.get(LINE_EVENTS.REGISTERED) ?? []),
+          ];
           expect(currentReject).toEqual(replacing ? expect.any(Function) : undefined);
-          expect(currentComplete).toEqual(replacing ? expect.any(Function) : undefined);
+          expect(currentRegisteredListeners).toHaveLength(replacing ? 2 : 0);
           const state = webRTCCalling.getVoiceConnectionState();
           const call = webRTCCalling['call'];
           const stateChanged = jest.fn();
@@ -1544,7 +1547,9 @@ describe('WebCallingService', () => {
           expect(webRTCCalling['line']).toBe(replacing ? replacement.line : undefined);
           expect(webRTCCalling['callingClient']).toBe(replacing ? replacement.client : undefined);
           expect(webRTCCalling['rejectRegistration']).toBe(currentReject);
-          expect(webRTCCalling['registrationCompleteHandler']).toBe(currentComplete);
+          expect(replacement.line.handlers.get(LINE_EVENTS.REGISTERED) ?? []).toEqual(
+            currentRegisteredListeners
+          );
           expect(webRTCCalling['terminalLine']).toBeUndefined();
           expect(webRTCCalling['call']).toBe(call);
           expect(webRTCCalling.getVoiceConnectionState()).toEqual(state);

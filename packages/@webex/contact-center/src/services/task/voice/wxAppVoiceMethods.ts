@@ -2,7 +2,7 @@ import {EventPayload} from '@webex/internal-plugin-metrics/src/metrics.types';
 
 import AnswerCallOnWebexService, {WxAppTelephonyError} from '../../AnswerCallOnWebexService';
 import LoggerProxy from '../../../logger-proxy';
-import {CC_FILE, METHODS} from '../../../constants';
+import {METHODS} from '../../../constants';
 import {getErrorDetails, isRegionRecoveryError} from '../../core/Utils';
 import {Failure} from '../../core/GlobalTypes';
 import {TaskData, TaskToggleMuteOptions, TaskTransmitDtmfOptions} from '../types';
@@ -429,7 +429,7 @@ export async function runWxAppAccept(
       ['operational', 'behavioral']
     );
   } catch (error) {
-    if (isRegionRecoveryError(error)) throw getErrorDetails(error, METHODS.ACCEPT, CC_FILE).error;
+    if (isRegionRecoveryError(error)) throw error;
     deps.assertCommandAllowed?.();
     lifecycle.setWxAppAnswerPending(false);
     logTelephonyFailure('accept', deps, error);
@@ -477,7 +477,7 @@ export async function runWxAppReject(
       ['operational', 'behavioral']
     );
   } catch (error) {
-    if (isRegionRecoveryError(error)) throw getErrorDetails(error, METHODS.REJECT, CC_FILE).error;
+    if (isRegionRecoveryError(error)) throw error;
     deps.assertCommandAllowed?.();
     logTelephonyFailure('decline', deps, error);
     deps.metricsManager.trackEvent(
@@ -519,7 +519,7 @@ export async function runWxAppOutdialDecline<T>(
 
     return result;
   } catch (error) {
-    if (isRegionRecoveryError(error)) throw getErrorDetails(error, METHODS.REJECT, CC_FILE).error;
+    if (isRegionRecoveryError(error)) throw error;
     deps.assertCommandAllowed?.();
     logWxAppOutdialDeclineFailure(deps, error);
     deps.metricsManager.trackEvent(
@@ -554,8 +554,7 @@ export async function runWxAppToggleMute(
       ['operational', 'behavioral']
     );
   } catch (error) {
-    if (isRegionRecoveryError(error))
-      throw getErrorDetails(error, METHODS.TOGGLE_MUTE, CC_FILE).error;
+    if (isRegionRecoveryError(error)) throw error;
     deps.assertCommandAllowed?.();
     logTelephonyFailure('mute', deps, error);
     deps.metricsManager.trackEvent(
@@ -590,8 +589,7 @@ export async function runWxAppTransmitDtmf(
       ['operational', 'behavioral']
     );
   } catch (error) {
-    if (isRegionRecoveryError(error))
-      throw getErrorDetails(error, METHODS.TRANSMIT_DTMF, CC_FILE).error;
+    if (isRegionRecoveryError(error)) throw error;
     deps.assertCommandAllowed?.();
     logTelephonyFailure('dtmf', deps, error);
     deps.metricsManager.trackEvent(

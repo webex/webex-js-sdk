@@ -46,15 +46,20 @@ export default class WebRTC extends Voice implements IWebRTC {
 
   protected disposeRegionalResources(): void {
     super.disposeRegionalResources();
-    for (const track of [...this.ownedTracks]) {
-      this.ownedTracks.delete(track);
+    const tracks = [...this.ownedTracks];
+    this.ownedTracks.clear();
+    this.localAudioStream = undefined;
+    WebRTC.stopTracks(tracks);
+  }
+
+  private static stopTracks(tracks: MediaStreamTrack[]): void {
+    for (const track of tracks) {
       try {
         track.stop();
       } catch {
         // A failed track does not retain the remaining owned tracks.
       }
     }
-    this.localAudioStream = undefined;
   }
 
   private registerWebCallListeners() {
@@ -102,13 +107,14 @@ export default class WebRTC extends Voice implements IWebRTC {
 
         const constraints = {audio: true};
         const localStream = await navigator.mediaDevices.getUserMedia(constraints);
+        const tracks = localStream.getTracks();
         try {
           this.assertTaskCommandAllowed();
         } catch (error) {
-          localStream.getTracks().forEach((track) => track.stop());
+          WebRTC.stopTracks(tracks);
           throw error;
         }
-        localStream.getTracks().forEach((track) => this.ownedTracks.add(track));
+        tracks.forEach((track) => this.ownedTracks.add(track));
         const audioTrack = localStream.getAudioTracks()[0];
         this.localAudioStream = new LocalMicrophoneStream(new MediaStream([audioTrack]));
         this.assertTaskCommandAllowed();
@@ -125,7 +131,7 @@ export default class WebRTC extends Voice implements IWebRTC {
 
         return Promise.resolve();
       } catch (error) {
-        if (isRegionRecoveryError(error)) throw getErrorDetails(error, 'accept', CC_FILE).error;
+        if (isRegionRecoveryError(error)) throw error;
         this.assertTaskCommandAllowed();
         this.metricsManager.trackEvent(
           METRIC_EVENT_NAMES.TASK_ACCEPT_FAILED,
@@ -178,7 +184,7 @@ export default class WebRTC extends Voice implements IWebRTC {
 
         return Promise.resolve();
       } catch (error) {
-        if (isRegionRecoveryError(error)) throw getErrorDetails(error, 'decline', CC_FILE).error;
+        if (isRegionRecoveryError(error)) throw error;
         this.assertTaskCommandAllowed();
         this.metricsManager.trackEvent(
           METRIC_EVENT_NAMES.TASK_DECLINE_FAILED,
@@ -221,7 +227,7 @@ export default class WebRTC extends Voice implements IWebRTC {
 
         return Promise.resolve();
       } catch (error) {
-        if (isRegionRecoveryError(error)) throw getErrorDetails(error, 'toggleMute', CC_FILE).error;
+        if (isRegionRecoveryError(error)) throw error;
         this.assertTaskCommandAllowed();
         const {error: detailedError} = getErrorDetails(error, 'mute', CC_FILE);
         throw detailedError;

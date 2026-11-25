@@ -445,13 +445,19 @@ describe('webex-core', () => {
               {access_token: 'ST1', refresh_token: 'RT1'},
               {parent: webex}
             );
-            sinon.stub(webex.credentials, 'refresh').resolves();
-            const options = {uri: `${config.services.discovery.hydra}/ping`, headers: {}, replayCount: 1};
+            const refresh = sinon.stub(webex.credentials, 'refresh').resolves();
+            const options = {
+              uri: `${config.services.discovery.hydra}/ping`,
+              headers: {},
+              replayCount: 1,
+            };
             const unauthorized = new WebexHttpError.Unauthorized({statusCode: 401, options});
 
             const error = await assert.isRejected(interceptor.onResponseError(options, unauthorized));
 
+            assert.equal(error.message, 'Failed after 1 replay attempts');
             assert.equal(error.statusCode, 401);
+            assert.calledOnceWithExactly(refresh);
             assert.notCalled(webex.request);
           });
 

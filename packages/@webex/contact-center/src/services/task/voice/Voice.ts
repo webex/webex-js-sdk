@@ -399,8 +399,7 @@ export default class Voice extends Task implements IVoice {
       return this.wxAppMuted;
     } catch (error) {
       this.assertTaskLifetimeActive(signal);
-      if (isRegionRecoveryError(error))
-        throw getErrorDetails(error, 'performWxAppMuteSync', CC_FILE).error;
+      if (isRegionRecoveryError(error)) throw error;
       if (!isWxAppCallNotFoundError(error)) {
         LoggerProxy.error(`Failed to sync wxApp mute from call details: ${error}`, {
           module: CC_FILE,
@@ -562,7 +561,7 @@ export default class Voice extends Task implements IVoice {
 
         return response;
       } catch (error) {
-        if (isRegionRecoveryError(error)) throw getErrorDetails(error, 'decline', CC_FILE).error;
+        if (isRegionRecoveryError(error)) throw error;
         this.assertTaskCommandAllowed();
         this.metricsManager.trackEvent(
           METRIC_EVENT_NAMES.TASK_DECLINE_FAILED,
@@ -816,7 +815,7 @@ export default class Voice extends Task implements IVoice {
 
         return response;
       } catch (error) {
-        if (isRegionRecoveryError(error)) throw getErrorDetails(error, 'holdResume', CC_FILE).error;
+        if (isRegionRecoveryError(error)) throw error;
         this.assertTaskCommandAllowed();
         const failureEvent = shouldHold ? TaskEvent.HOLD_FAILED : TaskEvent.UNHOLD_FAILED;
         this.stateMachineService.send({
@@ -907,8 +906,7 @@ export default class Voice extends Task implements IVoice {
 
         return result;
       } catch (error) {
-        if (isRegionRecoveryError(error))
-          throw getErrorDetails(error, 'pauseRecording', CC_FILE).error;
+        if (isRegionRecoveryError(error)) throw error;
         this.assertTaskCommandAllowed();
         const {error: detailedError} = getErrorDetails(error, 'pauseRecording', CC_FILE);
         this.metricsManager.trackEvent(
@@ -996,8 +994,7 @@ export default class Voice extends Task implements IVoice {
 
         return result;
       } catch (error) {
-        if (isRegionRecoveryError(error))
-          throw getErrorDetails(error, 'resumeRecording', CC_FILE).error;
+        if (isRegionRecoveryError(error)) throw error;
         this.assertTaskCommandAllowed();
         const {error: detailedError} = getErrorDetails(error, 'resumeRecording', CC_FILE);
         this.metricsManager.trackEvent(
@@ -1109,7 +1106,7 @@ export default class Voice extends Task implements IVoice {
 
         return result;
       } catch (error) {
-        if (isRegionRecoveryError(error)) throw getErrorDetails(error, 'consult', CC_FILE).error;
+        if (isRegionRecoveryError(error)) throw error;
         this.assertTaskCommandAllowed();
         this.stateMachineService.send({
           type: TaskEvent.CONSULT_FAILED,
@@ -1190,7 +1187,7 @@ export default class Voice extends Task implements IVoice {
 
         return result;
       } catch (error) {
-        if (isRegionRecoveryError(error)) throw getErrorDetails(error, 'endConsult', CC_FILE).error;
+        if (isRegionRecoveryError(error)) throw error;
         this.assertTaskCommandAllowed();
         const {error: detailedError} = getErrorDetails(error, 'endConsult', CC_FILE);
         this.metricsManager.trackEvent(
@@ -1291,8 +1288,7 @@ export default class Voice extends Task implements IVoice {
           destinationType: payload.destinationType,
         });
       } catch (err) {
-        if (isRegionRecoveryError(err))
-          throw getErrorDetails(err, METHODS.TRANSFER_CALL, CC_FILE).error;
+        if (isRegionRecoveryError(err)) throw err;
         this.assertTaskCommandAllowed();
         const {error: detailedError} = getErrorDetails(err, METHODS.TRANSFER_CALL, CC_FILE);
         this.metricsManager.trackEvent(
@@ -1401,8 +1397,7 @@ export default class Voice extends Task implements IVoice {
 
         return response;
       } catch (error) {
-        if (isRegionRecoveryError(error))
-          throw getErrorDetails(error, 'consultConference', CC_FILE).error;
+        if (isRegionRecoveryError(error)) throw error;
         this.assertTaskCommandAllowed();
         // Send failure event to revert state
         if (this.stateMachineService) {
@@ -1509,8 +1504,7 @@ export default class Voice extends Task implements IVoice {
 
         return response;
       } catch (error) {
-        if (isRegionRecoveryError(error))
-          throw getErrorDetails(error, 'dropConferenceParticipant', CC_FILE).error;
+        if (isRegionRecoveryError(error)) throw error;
         this.assertTaskCommandAllowed();
         const failureTrackingFields = MetricsManager.getCommonTrackingFieldForAQMResponseFailed(
           error?.details || {}
@@ -1664,8 +1658,7 @@ export default class Voice extends Task implements IVoice {
 
         return response;
       } catch (error) {
-        if (isRegionRecoveryError(error))
-          throw getErrorDetails(error, 'exitConference', CC_FILE).error;
+        if (isRegionRecoveryError(error)) throw error;
         this.assertTaskCommandAllowed();
         // Send failure event
         if (this.stateMachineService) {
@@ -1790,8 +1783,7 @@ export default class Voice extends Task implements IVoice {
 
         return response;
       } catch (error) {
-        if (isRegionRecoveryError(error))
-          throw getErrorDetails(error, 'transferConference', CC_FILE).error;
+        if (isRegionRecoveryError(error)) throw error;
         this.assertTaskCommandAllowed();
         // Send failure event
         if (this.stateMachineService) {
@@ -1948,7 +1940,7 @@ export default class Voice extends Task implements IVoice {
 
         return response;
       } catch (error) {
-        if (isRegionRecoveryError(error)) throw getErrorDetails(error, 'switchCall', CC_FILE).error;
+        if (isRegionRecoveryError(error)) throw error;
         this.assertTaskCommandAllowed();
         if (this.stateMachineService) {
           this.stateMachineService.send({type: revertEvent});

@@ -1,9 +1,8 @@
 import type {AnyActorRef} from 'xstate';
 import type Task from './Task';
-/* eslint-disable import/no-cycle */
-import {TaskEventPayload} from './state-machine';
-import {Msg} from '../core/GlobalTypes';
-import AutoWrapup from './AutoWrapup';
+import type {TaskEventPayload} from './state-machine';
+import type {Msg} from '../core/GlobalTypes';
+import type AutoWrapup from './AutoWrapup';
 import type {CollaborationAccess} from '../config/types';
 
 /**

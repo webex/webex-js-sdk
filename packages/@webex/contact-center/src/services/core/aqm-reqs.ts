@@ -12,7 +12,6 @@ import type {
   Req,
   Res,
   ResEmpty,
-  OperationRecord,
   AqmRequestContext,
   AqmRecoveryGate,
 } from './types';
@@ -30,7 +29,7 @@ import {
 export default class AqmReqs {
   private pendingRequests: Record<string, Pending> = {};
   private pendingNotifCancelrequest: Record<string, Pending> = {};
-  private readonly operations = new Map<string, OperationRecord>();
+  private readonly operations = new Map<string, (error: Error) => void>();
   // Retain recent IDs across registration replacement to recognize late local notifications.
   private readonly trackingIds = new Map<string, {url: string; session: boolean}>();
   private generation = 0;
@@ -53,11 +52,11 @@ export default class AqmReqs {
   }
 
   public interruptPending(createError: () => Error): void {
-    [...this.operations.values()].forEach((record) => {
+    [...this.operations.values()].forEach((reject) => {
       try {
-        record.reject(createError());
+        reject(createError());
       } catch {
-        record.reject(createRegionRecoveryError('RECOVERY_INTERRUPTED'));
+        reject(createRegionRecoveryError('RECOVERY_INTERRUPTED'));
       }
     });
     AqmReqs.diagnose('info', 'Routing operations interrupted');
@@ -73,25 +72,11 @@ export default class AqmReqs {
   }
 
   req<TRes, TErr, TReq>(config: Conf<TRes, TErr, TReq>): Res<TRes, TReq> {
-    return (p: TReq, cbRes?: CbRes<TRes>, context?: AqmRequestContext) => {
-      const request = config(p);
-
-      return this.createPromise(
-        {...request, context: context ?? request.context ?? {generation: this.generation}},
-        cbRes
-      );
-    };
+    return (p, cbRes, context) => this.createPromise({...config(p)}, cbRes, context);
   }
 
   reqEmpty<TRes, TErr>(config: ConfEmpty<TRes, TErr>): ResEmpty<TRes> {
-    return (cbRes?: CbRes<TRes>, context?: AqmRequestContext) => {
-      const request = config();
-
-      return this.createPromise(
-        {...request, context: context ?? request.context ?? {generation: this.generation}},
-        cbRes
-      );
-    };
+    return (cbRes, context) => this.createPromise({...config()}, cbRes, context);
   }
 
   private assertAdmission<TRes, TErr>(c: Req<TRes, TErr>, context: AqmRequestContext): void {
@@ -123,10 +108,15 @@ export default class AqmReqs {
     throw createRegionRecoveryError('RECOVERY_IN_PROGRESS');
   }
 
-  private async createPromise<TRes, TErr>(c: Req<TRes, TErr>, cbRes?: CbRes<TRes>): Promise<TRes> {
+  private async createPromise<TRes, TErr>(
+    c: Req<TRes, TErr>,
+    cbRes?: CbRes<TRes>,
+    requestContext?: AqmRequestContext
+  ): Promise<TRes> {
     return new Promise<TRes>((resolve, reject) => {
-      const context = c.context ?? {generation: this.generation};
+      const context = requestContext ?? {generation: this.generation};
       this.assertAdmission(c, context);
+      const {generation} = context;
       const logicalSuccess = this.bindPrint(c.notifSuccess.bind);
       const logicalFail = c.notifFail ? this.bindPrint(c.notifFail.bind) : undefined;
       const duplicates = Object.values(this.pendingRequests).filter(
@@ -157,9 +147,10 @@ export default class AqmReqs {
       const keyFail = failBind && this.bindPrint(failBind);
       const keyCancel = cancelBind && this.bindPrint(cancelBind);
       let response: WebexRequestPayload | null = null;
-      const cleanup = () => {
-        this.operations.delete(operationId);
-        clearTimeout(record.timeoutId);
+      let timeoutId: ReturnType<typeof setTimeout>;
+      const finish = (result: {value: TRes} | {error: Error}) => {
+        if (!this.operations.delete(operationId)) return;
+        clearTimeout(timeoutId);
         context.signal?.removeEventListener('abort', onAbort);
         [keySuccess, keyFail].forEach((key) => {
           if (key && this.pendingRequests[key]?.operationId === operationId)
@@ -167,31 +158,20 @@ export default class AqmReqs {
         });
         if (keyCancel && this.pendingNotifCancelrequest[keyCancel]?.operationId === operationId)
           delete this.pendingNotifCancelrequest[keyCancel];
-      };
-      const finish = (result: {value: TRes} | {error: Error}) => {
-        if (record.settled) return;
-        record.settled = true;
-        record.cleanup();
         if ('error' in result) reject(result.error);
         else resolve(result.value);
       };
+      const rejectOperation = (error: Error) => finish({error});
       const onAbort = () => {
-        const operation = this.operations.get(operationId);
-        operation?.reject(createRegionRecoveryError('RECOVERY_INTERRUPTED'));
-        if (operation) AqmReqs.diagnose('info', 'Routing operation aborted');
+        if (!this.operations.has(operationId)) return;
+        rejectOperation(createRegionRecoveryError('RECOVERY_INTERRUPTED'));
+        AqmReqs.diagnose('info', 'Routing operation aborted');
       };
-      const record: OperationRecord = {
-        operationId,
-        generation: context.generation,
-        settled: false,
-        cleanup,
-        reject: (error) => finish({error}),
-      };
-      this.operations.set(operationId, record);
+      this.operations.set(operationId, rejectOperation);
       const current = () => {
-        if (record.settled) return false;
-        if (record.generation !== this.generation || context.signal?.aborted) {
-          record.reject(createRegionRecoveryError('RECOVERY_INTERRUPTED'));
+        if (!this.operations.has(operationId)) return false;
+        if (generation !== this.generation || context.signal?.aborted) {
+          rejectOperation(createRegionRecoveryError('RECOVERY_INTERRUPTED'));
 
           return false;
         }
@@ -230,9 +210,9 @@ export default class AqmReqs {
                 'errId' in failure
                   ? new Err.Details(failure.errId, msg as any)
                   : failure.err(msg as any);
-              record.reject(error);
+              rejectOperation(error);
             } catch (error) {
-              record.reject(error);
+              rejectOperation(error);
             }
             AqmReqs.diagnose('log', 'Routing notification failed', msg);
           },
@@ -249,7 +229,7 @@ export default class AqmReqs {
       context.signal?.addEventListener('abort', onAbort, {once: true});
       if (!current()) return;
       if (c.timeout !== 'disabled') {
-        record.timeoutId = setTimeout(
+        timeoutId = setTimeout(
           () => {
             if (!current()) return;
             const {status, reasonCode, trackingId, id} = normalizeRecoveryFailure(response);
@@ -262,7 +242,7 @@ export default class AqmReqs {
                   ...(id ? {id} : {}),
                 }
               : null;
-            record.reject(
+            rejectOperation(
               new Err.Details('Service.aqm.reqs.Timeout', {key: keySuccess, response: safeResponse})
             );
             AqmReqs.diagnose('error', 'Routing request timeout', response);
@@ -274,18 +254,18 @@ export default class AqmReqs {
       const onHttpFailure = (error: WebexRequestPayload) => {
         if (!current()) return;
         if (isRegionRecoveryError(error)) {
-          record.reject(error);
+          rejectOperation(error);
 
           return;
         }
         try {
-          record.reject(
+          rejectOperation(
             typeof c.err === 'function'
               ? c.err(error)
               : new Err.Message(c.err ?? 'Service.aqm.reqs.GenericRequestError')
           );
         } catch (translated) {
-          record.reject(translated);
+          rejectOperation(translated);
         }
         AqmReqs.diagnose('info', 'Routing HTTP request failed', error);
       };

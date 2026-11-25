@@ -30,7 +30,7 @@ import {
   shouldAutoAnswerTask,
 } from './TaskUtils';
 import TaskFactory from './TaskFactory';
-import Task from './Task';
+import type Task from './Task';
 import type {TaskRecoveryGuard} from './types';
 import {createRegionRecoveryError} from '../core/Utils';
 import {REGION_RECOVERY_ERROR_CODES} from '../core/constants';
@@ -194,21 +194,25 @@ export default class TaskManager extends EventEmitter {
     }
   }
 
-  private canHandleIncomingCall(): boolean {
-    if (
-      !this.recoveryGuard ||
-      this.recoveryGuard.signal.aborted ||
-      this.regionalCleanupDepth > 0 ||
-      !this.webCallingService.isBrowserVoiceRequired()
-    )
+  private canHandleIncomingCall(owner: TaskRecoveryGuard): boolean {
+    if (!this.ownsTaskDelivery(owner) || !this.webCallingService.isBrowserVoiceRequired())
       return false;
     try {
-      this.recoveryGuard.assertCommandAllowed();
+      owner.assertCommandAllowed();
 
-      return true;
+      return this.ownsTaskDelivery(owner);
     } catch {
       return false;
     }
+  }
+
+  private ownsTaskDelivery(owner: TaskRecoveryGuard | undefined): boolean {
+    return Boolean(
+      owner &&
+        owner.signal === this.recoveryGuard?.signal &&
+        !owner.signal.aborted &&
+        this.regionalCleanupDepth === 0
+    );
   }
 
   public handleRealtimeWebsocketEvent(event: string) {
@@ -346,7 +350,8 @@ export default class TaskManager extends EventEmitter {
   }
 
   private handleIncomingWebCall = (call: ICall) => {
-    if (!this.canHandleIncomingCall()) return;
+    const owner = this.recoveryGuard;
+    if (!this.canHandleIncomingCall(owner)) return;
     const currentTask = Object.values(this.taskCollection).find(
       (task) =>
         task.data.interaction.mediaType === 'telephony' && !isCampaignPreviewReservation(task)
@@ -365,11 +370,11 @@ export default class TaskManager extends EventEmitter {
         CC_EVENTS.AGENT_CONTACT_RESERVED,
         currentTask.data
       );
-      if (eventPayload && currentTask && this.canHandleIncomingCall()) {
+      if (eventPayload && this.canHandleIncomingCall(owner)) {
         currentTask.sendStateMachineEvent(eventPayload);
       }
     }
-    if (this.canHandleIncomingCall()) this.call = call;
+    if (this.canHandleIncomingCall(owner)) this.call = call;
   };
 
   public registerIncomingCallEvent() {
@@ -871,8 +876,8 @@ export default class TaskManager extends EventEmitter {
   }
 
   private handleWebsocketMessage = (event: string): void => {
-    if (!this.recoveryGuard || this.recoveryGuard.signal.aborted || this.regionalCleanupDepth > 0)
-      return;
+    const owner = this.recoveryGuard;
+    if (!this.ownsTaskDelivery(owner)) return;
     // Step 1: Parse and validate the message
     const message = TaskManager.parseWebSocketMessage(event);
     if (!message) return;
@@ -881,24 +886,23 @@ export default class TaskManager extends EventEmitter {
     const eventContext = this.prepareEventContext(message);
     if (!eventContext) return;
 
-    const actions = this.handleTaskLifecycleEvent(eventContext);
+    const actions = this.handleTaskLifecycleEvent(eventContext, owner);
 
     const {task} = actions;
-    if (!task) return;
+    if (!task || !this.ownsTaskDelivery(owner)) return;
 
     const {payload, stateMachineEvent} = eventContext;
 
     // Always keep task.data updated (even for mapped events) so consumers relying
     // on TaskManager-managed task instances see the latest payload.
-    if (payload) {
-      this.updateTaskData(task, payload);
-    }
+    if (payload && !this.updateTaskData(task, payload)) return;
 
     // Send event to state machine - this will trigger all TASK_EVENTS emissions
     // including TASK_INCOMING which is now handled via the state machine callbacks
     if (stateMachineEvent) {
       task.sendStateMachineEvent(stateMachineEvent);
     }
+    if (!this.ownsTaskDelivery(owner)) return;
 
     // A receiving summary held while the task rang is emitted right after the answer
     // event above (AgentContactAssigned / AgentConsulting) has been emitted.
@@ -911,12 +915,16 @@ export default class TaskManager extends EventEmitter {
 
     // Emit TASK_POST_CALL_ACTIVITY for ParticipantPostCallActivity events so
     // consumers (Widgets) can detect the interaction state change to post_call.
-    if (eventContext.eventType === CC_EVENTS.PARTICIPANT_POST_CALL_ACTIVITY) {
+    if (
+      eventContext.eventType === CC_EVENTS.PARTICIPANT_POST_CALL_ACTIVITY &&
+      this.ownsTaskDelivery(owner)
+    ) {
       task.emit(TASK_EVENTS.TASK_POST_CALL_ACTIVITY, task);
     }
 
     // Send transcript start/stop events for relevant CC events
-    this.requestRealTimeTranscripts(eventContext.eventType, payload.interactionId);
+    if (this.ownsTaskDelivery(owner))
+      this.requestRealTimeTranscripts(eventContext.eventType, payload.interactionId);
   };
 
   /**
@@ -1275,9 +1283,11 @@ export default class TaskManager extends EventEmitter {
    * Note: Task-level state transitions and event emissions are handled by
    * the task state machine via sendStateMachineEvent()
    */
-  private handleTaskLifecycleEvent(context: EventContext): TaskEventActions {
-    if (!this.recoveryGuard || this.recoveryGuard.signal.aborted || this.regionalCleanupDepth > 0)
-      return {};
+  private handleTaskLifecycleEvent(
+    context: EventContext,
+    owner: TaskRecoveryGuard
+  ): TaskEventActions {
+    if (!this.ownsTaskDelivery(owner)) return {};
     const {eventType} = context;
 
     switch (eventType) {
@@ -1419,7 +1429,7 @@ export default class TaskManager extends EventEmitter {
       });
 
       task = this.updateTaskData(task, updatedData);
-      task.emit(TASK_EVENTS.TASK_CAMPAIGN_CONTACT_UPDATED, task);
+      task?.emit(TASK_EVENTS.TASK_CAMPAIGN_CONTACT_UPDATED, task);
     }
 
     return {task};
@@ -1517,7 +1527,7 @@ export default class TaskManager extends EventEmitter {
     return {task};
   }
 
-  private updateTaskData(task: Task, taskData: TaskData): Task {
+  private updateTaskData(task: Task, taskData: TaskData): Task | undefined {
     if (!task) {
       throw new Error('Task not found for update');
     }
@@ -1535,14 +1545,18 @@ export default class TaskManager extends EventEmitter {
         }
       : taskData;
 
+    const owner = this.recoveryGuard;
     task.updateTaskData(updateTaskData);
+    if (!this.ownsTaskDelivery(owner)) return undefined;
 
     // A main-interaction lifecycle event can re-key a child consult task. Remove
     // any aliases first so consumers never observe duplicate task entries.
-    Object.entries(this.taskCollection).forEach(([taskId, candidate]) => {
-      if (candidate === task && taskId !== taskData.interactionId) {
-        delete this.taskCollection[taskId];
-      }
+    const keys = Object.keys(this.taskCollection).filter(
+      (taskId) => this.taskCollection[taskId] === task
+    );
+    if (!keys.length) return undefined;
+    keys.forEach((taskId) => {
+      if (taskId !== taskData.interactionId) delete this.taskCollection[taskId];
     });
     this.taskCollection[taskData.interactionId] = task;
     const enablement = this.pendingFeatureEnablement.get(task.data.interactionId);
@@ -1551,6 +1565,15 @@ export default class TaskManager extends EventEmitter {
     }
 
     return task;
+  }
+
+  private emitPendingTaskEnablement(task: Task, owner: TaskRecoveryGuard): void {
+    if (!this.ownsTaskDelivery(owner) || !Object.values(this.taskCollection).includes(task)) return;
+    const {interactionId} = task.data;
+    const enablement = this.pendingFeatureEnablement.get(interactionId);
+    if (!enablement) return;
+    this.pendingFeatureEnablement.delete(interactionId);
+    task.emit(TASK_EVENTS.TASK_FEATURE_ENABLEMENT, enablement);
   }
 
   /**
@@ -1578,6 +1601,8 @@ export default class TaskManager extends EventEmitter {
       TASK_EVENTS.TASK_ASSIGNED,
     ].forEach((eventName) => {
       on(eventName, (t: Task) => {
+        const owner = this.recoveryGuard;
+        if (!this.ownsTaskDelivery(owner)) return;
         if (
           eventName === TASK_EVENTS.TASK_INCOMING ||
           eventName === TASK_EVENTS.TASK_CAMPAIGN_PREVIEW_RESERVATION
@@ -1595,15 +1620,11 @@ export default class TaskManager extends EventEmitter {
         }
 
         // Assignment is already emitted on the task; the other events publish it to consumers.
-        if (eventName !== TASK_EVENTS.TASK_ASSIGNED) {
+        if (eventName !== TASK_EVENTS.TASK_ASSIGNED && this.ownsTaskDelivery(owner)) {
           this.emit(eventName, t);
         }
 
-        const pendingEnablement = this.pendingFeatureEnablement.get(task.data.interactionId);
-        if (pendingEnablement) {
-          this.pendingFeatureEnablement.delete(task.data.interactionId);
-          task.emit(TASK_EVENTS.TASK_FEATURE_ENABLEMENT, pendingEnablement);
-        }
+        this.emitPendingTaskEnablement(task, owner);
       });
     });
 
@@ -1634,9 +1655,15 @@ export default class TaskManager extends EventEmitter {
       },
       () => task.cancelAutoWrapupTimer(),
       () => {
-        for (const [event, listener] of this.taskListeners.get(task) ?? [])
-          task.off(event, listener);
+        const listeners = this.taskListeners.get(task) ?? [];
         this.taskListeners.delete(task);
+        for (const [event, listener] of listeners) {
+          try {
+            task.off(event, listener);
+          } catch {
+            // A throwing removeListener observer cannot retain the other listeners.
+          }
+        }
       },
       () => {
         this.pendingFeatureEnablement.delete(task.data.interactionId);
@@ -1687,7 +1714,7 @@ export default class TaskManager extends EventEmitter {
         interactionId: payload.interactionId,
       });
       // update the task data
-      this.updateTaskData(task, payload);
+      task = this.updateTaskData(task, payload);
     } else {
       // Case2 : Task is not present in taskCollection
       LoggerProxy.log(`Got CONTACT_MERGED : Creating new task in taskManager`, {
@@ -1721,12 +1748,9 @@ export default class TaskManager extends EventEmitter {
     }
 
     if (task) {
+      const owner = this.recoveryGuard;
       this.emit(TASK_EVENTS.TASK_MERGED, task);
-      const enablement = this.pendingFeatureEnablement.get(task.data.interactionId);
-      if (enablement) {
-        this.pendingFeatureEnablement.delete(task.data.interactionId);
-        task.emit(TASK_EVENTS.TASK_FEATURE_ENABLEMENT, enablement);
-      }
+      this.emitPendingTaskEnablement(task, owner);
     }
 
     return {task};

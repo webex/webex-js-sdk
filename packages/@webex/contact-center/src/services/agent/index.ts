@@ -12,29 +12,6 @@ import {CC_EVENTS} from '../config/types';
  * @ignore
  */
 export default function routingAgent(routing: AqmReqs) {
-  const dispatchState = routing.req((p: {data: Agent.StateChange}) => ({
-    kind: 'command',
-    url: '/v1/agents/session/state',
-    host: WCC_API_GATEWAY,
-    data: p.data,
-    err,
-    method: HTTP_METHODS.PUT,
-    notifSuccess: {
-      bind: {
-        type: CC_EVENTS.AGENT_STATE_CHANGE,
-        data: {type: CC_EVENTS.AGENT_STATE_CHANGE_SUCCESS},
-      },
-      msg: {} as Agent.StateChangeSuccess,
-    },
-    notifFail: {
-      bind: {
-        type: CC_EVENTS.AGENT_STATE_CHANGE,
-        data: {type: CC_EVENTS.AGENT_STATE_CHANGE_FAILED},
-      },
-      errId: 'Service.aqm.agent.stateChange',
-    },
-  }));
-
   return {
     /**
      * Reloads the agent session
@@ -123,8 +100,33 @@ export default function routingAgent(routing: AqmReqs) {
         errId: 'Service.aqm.agent.stationLoginFailed',
       },
     })),
-    /** Changes the agent's state. @public */
-    stateChange: dispatchState,
+    /**
+     * Changes the agent's state
+     * @param p.data - State change parameters
+     * @public
+     */
+    stateChange: routing.req((p: {data: Agent.StateChange}) => ({
+      kind: 'command',
+      url: '/v1/agents/session/state',
+      host: WCC_API_GATEWAY,
+      data: p.data,
+      err,
+      method: HTTP_METHODS.PUT,
+      notifSuccess: {
+        bind: {
+          type: CC_EVENTS.AGENT_STATE_CHANGE,
+          data: {type: CC_EVENTS.AGENT_STATE_CHANGE_SUCCESS},
+        },
+        msg: {} as Agent.StateChangeSuccess,
+      },
+      notifFail: {
+        bind: {
+          type: CC_EVENTS.AGENT_STATE_CHANGE,
+          data: {type: CC_EVENTS.AGENT_STATE_CHANGE_FAILED},
+        },
+        errId: 'Service.aqm.agent.stateChange',
+      },
+    })),
     /**
      * Retrieves list of buddy agents
      * @param p.data - Buddy agent query parameters

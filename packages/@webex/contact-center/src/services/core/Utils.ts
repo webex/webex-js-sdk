@@ -57,9 +57,7 @@ const firstFiniteNumber = (...values: unknown[]): number | undefined =>
 const normalizeReasonCode = (value: unknown): number | undefined => {
   const numeric = typeof value === 'string' && /^\d+$/.test(value) ? Number(value) : value;
 
-  return typeof numeric === 'number' && Number.isFinite(numeric) && Number.isInteger(numeric)
-    ? numeric
-    : undefined;
+  return typeof numeric === 'number' && Number.isInteger(numeric) ? numeric : undefined;
 };
 
 /** Looks up a known HTTP header case-insensitively without copying any other headers. */
@@ -154,6 +152,27 @@ export const createRegionRecoveryError = (
 
   return Object.assign(new Error(reason), {data});
 };
+
+/** Observes abandoned work while promptly releasing its local cancellation continuation. */
+export const awaitRecoveryWork = <T>(work: Promise<T>, signal: AbortSignal): Promise<T> =>
+  new Promise<T>((resolve, reject) => {
+    const onAbort = () => {
+      signal.removeEventListener('abort', onAbort);
+      reject(createRegionRecoveryError('RECOVERY_INTERRUPTED'));
+    };
+    signal.addEventListener('abort', onAbort, {once: true});
+    Promise.resolve(work).then(
+      (value) => {
+        signal.removeEventListener('abort', onAbort);
+        resolve(value);
+      },
+      (error) => {
+        signal.removeEventListener('abort', onAbort);
+        reject(error);
+      }
+    );
+    if (signal.aborted) onAbort();
+  });
 
 /** Recognizes cross-realm lifecycle errors structurally and narrows their required reason. */
 export const isRegionRecoveryError = (

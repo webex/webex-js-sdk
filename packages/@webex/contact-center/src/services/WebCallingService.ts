@@ -94,10 +94,6 @@ export default class WebCallingService extends EventEmitter {
 
   private rejectRegistration?: (error: Error) => void;
 
-  private registrationCompleteHandler?: (line: ILine) => void;
-
-  private incomingCallHandler?: (call: ICall) => void;
-
   private registrationGeneration = 0;
   private registrationAttempt?: {generation: number; promise: Promise<void>; cancel: () => void};
   private terminalLine?: {
@@ -216,14 +212,18 @@ export default class WebCallingService extends EventEmitter {
     try {
       callback();
     } catch {
-      try {
-        LoggerProxy.error('Web calling registration callback failed', {
-          module: WEB_CALLING_SERVICE_FILE,
-          method: METHODS.REGISTER_WEB_CALLING_LINE,
-        });
-      } catch {
-        // Diagnostics must not interrupt calling ownership or later listeners.
-      }
+      WebCallingService.logRegistrationError('Web calling registration callback failed');
+    }
+  }
+
+  private static logRegistrationError(message: string): void {
+    try {
+      LoggerProxy.error(message, {
+        module: WEB_CALLING_SERVICE_FILE,
+        method: METHODS.REGISTER_WEB_CALLING_LINE,
+      });
+    } catch {
+      // Diagnostics must not interrupt calling ownership or later listeners.
     }
   }
 
@@ -253,8 +253,6 @@ export default class WebCallingService extends EventEmitter {
     this.rejectRegistration = undefined;
     this.registrationListenerCleanup.forEach((cleanup) => cleanup());
     this.registrationListenerCleanup = [];
-    this.incomingCallHandler = undefined;
-    this.registrationCompleteHandler = undefined;
 
     const line = this.line;
     this.line = undefined;
@@ -514,24 +512,10 @@ export default class WebCallingService extends EventEmitter {
       }
       // Install one observed owner before returning. Caller abort never cancels that owner.
       this.startRegistrationAttempt('preserve').catch(() => {
-        try {
-          LoggerProxy.error('Web calling preserve registration failed', {
-            module: WEB_CALLING_SERVICE_FILE,
-            method: METHODS.REGISTER_WEB_CALLING_LINE,
-          });
-        } catch {
-          // Diagnostics must not reject the observed completion.
-        }
+        WebCallingService.logRegistrationError('Web calling preserve registration failed');
       });
     } catch {
-      try {
-        LoggerProxy.error('Unable to ensure web calling line', {
-          module: WEB_CALLING_SERVICE_FILE,
-          method: METHODS.REGISTER_WEB_CALLING_LINE,
-        });
-      } catch {
-        // Uncertain calling ownership is delegated; station acceptance stays independent.
-      }
+      WebCallingService.logRegistrationError('Unable to ensure web calling line');
     }
   }
 
@@ -566,14 +550,10 @@ export default class WebCallingService extends EventEmitter {
       cancel,
     };
     this.registrationAttempt = attempt;
-    attempt.promise.then(
-      () => {
-        if (this.registrationAttempt === attempt) this.registrationAttempt = undefined;
-      },
-      () => {
-        if (this.registrationAttempt === attempt) this.registrationAttempt = undefined;
-      }
-    );
+    const clearAttempt = () => {
+      if (this.registrationAttempt === attempt) this.registrationAttempt = undefined;
+    };
+    attempt.promise.then(clearAttempt, clearAttempt);
 
     return attempt.promise;
   }
@@ -659,14 +639,10 @@ export default class WebCallingService extends EventEmitter {
       this.addRegistrationListener(this.line, LINE_EVENTS.ERROR, this.handleLineError);
 
       // Start listening for incoming calls
-      this.incomingCallHandler = this.addRegistrationListener(
-        this.line,
-        LINE_EVENTS.INCOMING_CALL,
-        (call: ICall) => {
-          this.call = call;
-          this.emit(LINE_EVENTS.INCOMING_CALL, call);
-        }
-      );
+      this.addRegistrationListener(this.line, LINE_EVENTS.INCOMING_CALL, (call: ICall) => {
+        this.call = call;
+        this.emit(LINE_EVENTS.INCOMING_CALL, call);
+      });
 
       const ownedLine = this.line;
       await new Promise<void>((resolve, reject) => {
@@ -681,9 +657,6 @@ export default class WebCallingService extends EventEmitter {
             clearTimeout(timeout);
           }
           if (this.rejectRegistration === rejectRegistration) this.rejectRegistration = undefined;
-          if (this.registrationCompleteHandler === registrationCompleteHandler) {
-            this.registrationCompleteHandler = undefined;
-          }
           if (registrationCompleteHandler) {
             ownedLine.off(LINE_EVENTS.REGISTERED, registrationCompleteHandler);
           }
@@ -721,7 +694,6 @@ export default class WebCallingService extends EventEmitter {
           }
         );
         if (settled) ownedLine.off(LINE_EVENTS.REGISTERED, registrationCompleteHandler);
-        else this.registrationCompleteHandler = registrationCompleteHandler;
 
         // ILine declares register() as void, although its implementation is async.
         Promise.resolve(this.line.register()).catch((error: LineError) => {

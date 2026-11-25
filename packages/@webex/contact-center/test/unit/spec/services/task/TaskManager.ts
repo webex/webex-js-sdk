@@ -7162,6 +7162,63 @@ describe('T-008 TaskManager recovery owners', () => {
     }
   });
 
+  it('does not reinsert a retired Task when a controls observer replaces the session', () => {
+    const {manager, controller, guard, data, hydrate} = setup();
+    try {
+      manager.startSession(guard);
+      hydrate();
+      const retired = manager.getTask(data.interactionId) as Task;
+      const controls = retired.uiControls;
+      jest.spyOn(retired as any, 'computeUIControls').mockReturnValueOnce({
+        ...controls,
+        main: {...controls.main, accept: {isEnabled: !controls.main.accept?.isEnabled, isVisible: true}},
+      });
+      const replace = jest.fn(() => {
+        controller.abort();
+        manager.invalidateRegionalTasks();
+        manager.startSession(createGuard(2).guard);
+        hydrate({...data, trackingId: 'fresh-frame'});
+      });
+      retired.once(TASK_EVENTS.TASK_UI_CONTROLS_UPDATED, replace);
+
+      hydrate({...data, trackingId: 'retiring-frame'});
+
+      const fresh = manager.getTask(data.interactionId);
+      expect(replace).toHaveBeenCalledTimes(1);
+      expect(fresh).not.toBe(retired);
+      expect(fresh.data.trackingId).toBe('fresh-frame');
+      expect(retired.stateMachineService).toBeUndefined();
+    } finally {
+      manager.stopSession();
+    }
+  });
+
+  it('keeps replacement enablement buffered when a hydrate observer retires the published Task', () => {
+    const {manager, controller, guard, data, hydrate} = setup();
+    const retiredEnablement = jest.fn();
+    try {
+      manager.startSession(guard);
+      manager.once(TASK_EVENTS.TASK_HYDRATE, (retired: Task) => {
+        retired.on(TASK_EVENTS.TASK_FEATURE_ENABLEMENT, retiredEnablement);
+        controller.abort();
+        manager.invalidateRegionalTasks();
+        manager.startSession(createGuard(2).guard);
+        manager.handleRealtimeWebsocketEvent(JSON.stringify({type: CC_TASK_EVENTS.FEATURE_ENABLEMENT, data: {data: {
+          interactionId: data.interactionId, postCallEnabled: true, midCallEnabled: true,
+        }}}));
+      });
+
+      hydrate();
+      expect(manager.getTask(data.interactionId)).toBeUndefined();
+      expect(retiredEnablement).not.toHaveBeenCalled();
+      hydrate();
+      expect((manager.getTask(data.interactionId) as Task).aiSummaryCapabilities)
+        .toEqual({postCallEnabled: true, midCallEnabled: true});
+    } finally {
+      manager.stopSession();
+    }
+  });
+
   it('startSession owns one detachable listener set', () => {
     const {manager, guard, primary, calling, hydrate} = setup();
     hydrate();
@@ -7287,6 +7344,35 @@ describe('T-008 TaskManager recovery owners', () => {
       }
     }
   );
+
+  it('does not replace the new call reference after an incoming event supersedes its session', () => {
+    const {manager, controller, guard, calling, hydrate} = setup(createTaskData({
+      type: CC_EVENTS.AGENT_CONTACT,
+      interaction: {mediaType: 'telephony', state: 'connected'},
+    }));
+    const incoming = {getCallId: () => 'retired-call'};
+    const fresh = {getCallId: () => 'replacement-call'};
+    try {
+      manager.startSession(guard);
+      hydrate();
+      const retired = manager.getTask('interaction-1') as Task;
+      const completeTransition = jest.spyOn(retired, 'sendStateMachineEvent').mockImplementationOnce(() => {
+        controller.abort();
+        manager.invalidateRegionalTasks();
+        manager.startSession(createGuard(2).guard);
+        hydrate();
+        calling.emit(LINE_EVENTS.INCOMING_CALL, fresh);
+      });
+
+      calling.emit(LINE_EVENTS.INCOMING_CALL, incoming);
+
+      expect(completeTransition).toHaveBeenCalledTimes(1);
+      expect(manager.getTask('interaction-1')).not.toBe(retired);
+      expect(manager['call']).toBe(fresh);
+    } finally {
+      manager.stopSession();
+    }
+  });
 
   it('blocked auto-answer offers are not replayed on readiness and fresh offers remain usable', async () => {
     const {manager, guard, contact, data, hydrate} = setup(createTaskData({
@@ -7444,6 +7530,7 @@ describe('T-008 TaskManager recovery owners', () => {
       const remove = jest.spyOn(manager as any, 'removeTaskFromCollection');
       const updated = jest.fn(() => { throw new Error('host observer'); });
       task.on(TASK_EVENTS.TASK_UI_CONTROLS_UPDATED, updated);
+      task.on('removeListener', () => {throw new Error('host listener observer');});
       const syntheticSuccess = jest.fn();
       for (const event of [TASK_EVENTS.TASK_END, CC_EVENTS.CONTACT_ENDED, TASK_EVENTS.TASK_WRAPPEDUP]) {
         task.on(event, syntheticSuccess);

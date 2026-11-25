@@ -1173,20 +1173,16 @@ describe('T-007/T-008 real AQM operation and session owners', () => {
         return {controller, removeAbortListener, abortListener, notifications, acknowledged,
           resolved, rejected, observed, resolveHttp, rejectHttp};
       });
-      const records = [...aqm['operations'].values()];
-      expect(records).toHaveLength(2);
-      expect(new Set(records.map((record) => record.operationId)).size).toBe(2);
+      const operationIds = [...aqm['operations'].keys()];
+      expect(operationIds).toHaveLength(2);
       expect(Object.keys(aqm['pendingRequests'])).toHaveLength(4);
       expect(Object.keys(aqm['pendingNotifCancelrequest'])).toHaveLength(2);
       expect(jest.getTimerCount()).toBe(2);
-      const recordSpies = records.map((record) => {
-        expect(record.settled).toBe(false);
+      operationIds.forEach((operationId) => {
         expect(Object.values(aqm['pendingRequests'])
-          .filter((entry) => entry.operationId === record.operationId)).toHaveLength(2);
+          .filter((entry) => entry.operationId === operationId)).toHaveLength(2);
         expect(Object.values(aqm['pendingNotifCancelrequest'])
-          .filter((entry) => entry.operationId === record.operationId)).toHaveLength(1);
-
-        return {reject: jest.spyOn(record, 'reject'), cleanup: jest.spyOn(record, 'cleanup')};
+          .filter((entry) => entry.operationId === operationId)).toHaveLength(1);
       });
       await flush();
       operations.forEach(({resolved, rejected}) => {
@@ -1214,10 +1210,6 @@ describe('T-007/T-008 real AQM operation and session owners', () => {
         expect(aqm['pendingNotifCancelrequest']).toEqual({});
         expect(jest.getTimerCount()).toBe(0);
         operations.forEach((operation, index) => {
-          expect(records[index].settled).toBe(true);
-          expect(recordSpies[index].reject).toHaveBeenCalledTimes(1);
-          expect(recordSpies[index].reject).toHaveBeenCalledWith(errors[index]);
-          expect(recordSpies[index].cleanup).toHaveBeenCalledTimes(1);
           expect(operation.resolved).not.toHaveBeenCalled();
           expect(operation.rejected).toHaveBeenCalledTimes(1);
           expect(operation.rejected).toHaveBeenCalledWith(errors[index]);
@@ -1318,6 +1310,7 @@ describe('T-007/T-008 real AQM operation and session owners', () => {
       const pending = new Promise((resolve, reject) => { complete = resolve; fail = reject; });
       http.mockReturnValue(pending);
       const controller = new AbortController();
+      const removeAbortListener = jest.spyOn(controller.signal, 'removeEventListener');
       // Materialize the real adapter config only to vary this internal log flag;
       // separate wire scenarios above exercise routingAgent(new AqmReqs(socket)) directly.
       const configs = routingAgent({req: (config) => config, reqEmpty: (config) => config});
@@ -1330,11 +1323,10 @@ describe('T-007/T-008 real AQM operation and session owners', () => {
         correlationId: '8f5ec5e4-80b8-4f5d-9720-10bfe56e7ca1',
         requireCorrelation: true,
       };
-      const promise = aqm['createPromise']({...config, redactSensitiveLogs: flag, context: requestContext}, acknowledged);
+      const promise = aqm['createPromise']({...config, redactSensitiveLogs: flag}, acknowledged, requestContext);
       const resolved = jest.fn();
       const settled = jest.fn((error) => error);
       const observed = promise.then(resolved, settled);
-      const cleanup = jest.spyOn([...aqm['operations'].values()][0], 'cleanup');
       expect(aqm['operations'].size).toBe(1);
       expect(jest.getTimerCount()).toBe(1);
       const [key] = Object.keys(aqm['pendingRequests']);
@@ -1404,7 +1396,7 @@ describe('T-007/T-008 real AQM operation and session owners', () => {
         expect(resolved).not.toHaveBeenCalled();
         expect(settled).toHaveBeenCalledTimes(1);
         expect(settled).toHaveBeenCalledWith(error);
-        expect(cleanup).toHaveBeenCalledTimes(1);
+        expect(removeAbortListener).toHaveBeenCalledTimes(1);
         expect(aqm['operations'].size).toBe(0);
         expect(aqm['pendingRequests']).toEqual({});
         expect(aqm['pendingNotifCancelrequest']).toEqual({});

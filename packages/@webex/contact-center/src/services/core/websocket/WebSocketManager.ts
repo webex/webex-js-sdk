@@ -249,28 +249,27 @@ export class WebSocketManager extends EventEmitter {
 
         return;
       }
+      const frame = isRecord(data) ? data : undefined;
+      const messageType = frame?.type;
+      const messageData = frame?.data;
       if (
-        isRecord(data) &&
-        data.type === CC_EVENTS.WELCOME &&
-        isRecord(data.data) &&
-        !Array.isArray(data.data) &&
-        !attempt.accepted
+        messageType === CC_EVENTS.WELCOME &&
+        !attempt.accepted &&
+        isRecord(messageData) &&
+        !Array.isArray(messageData)
       ) {
         attempt.accepted = true;
         clearTimeout(attempt.timer);
         if (attempt.resource === SUBSCRIBE_API)
           this.servingRegion = parseServingRegion(attempt.url);
-        attempt.resolve(data.data as WelcomeResponse);
+        attempt.resolve(messageData as WelcomeResponse);
       }
-      if (isRecord(data) && data.type === CC_EVENTS.AGENT_MULTI_LOGIN) {
+      if (messageType === CC_EVENTS.AGENT_MULTI_LOGIN) {
         // Capture and close the receiving owner before observers can replace it.
         this.shouldReconnect = false;
         this.disposeAttempt(attempt, createRegionRecoveryError('RECOVERY_INTERRUPTED'));
         this.notifySocketClose(false);
-      } else if (
-        !attempt.accepted &&
-        (!isRecord(data) || data.type !== SYSTEM_EVENTS.SYSTEM_REGION_SWITCH)
-      ) {
+      } else if (!attempt.accepted && messageType !== SYSTEM_EVENTS.SYSTEM_REGION_SWITCH) {
         return;
       }
       this.deliverMessage(event.data);

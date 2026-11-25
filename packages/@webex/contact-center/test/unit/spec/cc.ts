@@ -421,7 +421,6 @@ describe('webex.cc', () => {
 
   const bindRtdUnitOwner = () => {
     const epochController = new AbortController();
-    webex.cc['rtdPaused'] = false;
     webex.cc['rtdEpoch'] = {active: true, controller: epochController,
       parent: epochController.signal, registration: 0, station: 0,
       orgId: 'mockOrgId', agentId: undefined, promise: Promise.resolve(), detach: () => undefined};
@@ -952,7 +951,7 @@ describe('webex.cc', () => {
             cc['commandController'], cc['commandController']?.signal.aborted,
             cc['sessionRequest'], cc['sessionRequest']?.controller.signal.aborted,
             cc['autoAvailable'] && {...cc['autoAvailable']}],
-          rtd: [cc['rtdPaused'], cc['rtdEpoch'], cc['rtdEpoch']?.controller.signal.aborted],
+          rtd: [!cc['rtdEpoch']?.active, cc['rtdEpoch'], cc['rtdEpoch']?.controller.signal.aborted],
           settings: {...cc['multiRegionSettings']},
           history: [...cc['acceptedSwitchIds']],
           publication: [cc['lastPublishedRegionState'] && {...cc['lastPublishedRegionState']},
@@ -2472,7 +2471,7 @@ describe('webex.cc', () => {
         const resume = jest.spyOn(webex.cc, 'resumeRtd');
         const options = accept();
         // Every switch pauses RTD first; only later station/task wipes are forbidden here.
-        expect(webex.cc['rtdPaused']).toBe(true);
+        expect(webex.cc['rtdEpoch']?.active).not.toBe(true);
         mockTaskManager.invalidateRegionalTasks.mockClear();
         mockTaskManager.clearAISummaryState.mockClear();
 
@@ -2793,7 +2792,7 @@ describe('webex.cc', () => {
         expect(webex.cc['lastPublishedRegionState'].status).toBe('stationLoginRequired');
       });
 
-      it.each(['waiting', 'subscribing', 'awaitingWelcome', 'restoringSession', 'manualLoginRequired',
+      it.each(['waiting', 'restoringSession', 'manualLoginRequired',
         'unavailable', 'reloadRequired', 'cancelled'])('T-008 setAgentStateAdmissionAdvancesIntent %s', async (phase) => {
         await prepare(); webex.cc['setRecoveryPhase'](phase);
         const revision = webex.cc['stateIntentRevision'];
@@ -2805,7 +2804,7 @@ describe('webex.cc', () => {
         expect(webex.cc.services.agent.stateChange).not.toHaveBeenCalled();
       });
 
-      it.each(['waiting', 'subscribing', 'awaitingWelcome', 'restoringSession'])('T-008 publicSessionAdmissionByRecoveryPhase / publicStationLoginRejectedDuringAutomaticRestore %s', async (phase) => {
+      it.each(['waiting', 'restoringSession'])('T-008 publicSessionAdmissionByRecoveryPhase / publicStationLoginRejectedDuringAutomaticRestore %s', async (phase) => {
         await prepare(); webex.cc['setRecoveryPhase'](phase);
         await expect(webex.cc.stationLogin({teamId: 'team', loginOption: 'BROWSER'}))
           .rejects.toMatchObject({data: {reason: 'RECOVERY_IN_PROGRESS'}});
@@ -3302,6 +3301,22 @@ describe('webex.cc', () => {
           webRtcEnabled: false, loginVoiceOptions: [LoginOption.EXTENSION],
         }));
       });
+
+      it.each(['logger', 'ordinary reset'])(
+        'stops the old registration when %s synchronously starts a replacement', async (boundary) => {
+          let replacement: Promise<Profile>;
+          const replace = () => { replacement = webex.cc.register(); };
+          if (boundary === 'logger') LoggerProxy.log.mockImplementationOnce(replace);
+          else webex.cc.services.connectionService.reset.mockImplementationOnce(replace);
+
+          await expect(webex.cc.register()).rejects.toMatchObject({
+            data: {reason: 'RECOVERY_INTERRUPTED'},
+          });
+          await expect(replacement).resolves.toHaveProperty('agentId', 'agent123');
+          expect(mockWebSocketManager.initWebSocket).toHaveBeenCalledTimes(boundary === 'logger' ? 1 : 2);
+          expect(mockTaskManager.startSession).toHaveBeenCalledTimes(1);
+        }
+      );
 
       it.each<[string, object]>([
         ['header', {headers: {'X-WxCC-Region-Reason': ` ${recognizedReason} `}}],
@@ -10838,7 +10853,7 @@ describe('realRecoveryWiring', () => {
           expect(manager.isSocketClosed).toBe(true);
           expect(manager.shouldReconnect).toBe(false);
         }
-        expect(cc['rtdPaused']).toBe(true);
+        expect(cc['rtdEpoch']?.active).not.toBe(true);
         expect(cc['rtdEpoch']).toBeUndefined();
         assertRetained();
         expect(calling.getVoiceConnectionState()).toEqual(voiceState);
@@ -11475,7 +11490,7 @@ describe('realRecoveryWiring', () => {
     rtd.welcome(); await flush();
     const epoch = cc['rtdEpoch'];
     expect(epoch.active).toBe(true);
-    expect(cc['rtdPaused']).toBe(false);
+    expect(cc['rtdEpoch']?.active).toBe(true);
     const detached = jest.spyOn(epoch.parent, 'removeEventListener');
     const releaseLink = jest.spyOn(epoch, 'detach');
     const callback = rtd.onmessage;
@@ -11509,7 +11524,7 @@ describe('realRecoveryWiring', () => {
     return {epoch, task, data, deliver, summary, settled, acknowledgement, close,
       assertReleased: async reason => {
         expect(cc['rtdEpoch']).toBeUndefined();
-        expect(cc['rtdPaused']).toBe(true);
+        expect(cc['rtdEpoch']?.active).not.toBe(true);
         expect(epoch.controller.signal.aborted).toBe(true);
         expect(releaseLink).toHaveBeenCalledTimes(1);
         expect(detached).toHaveBeenCalledWith('abort', expect.any(Function));
@@ -11577,7 +11592,7 @@ describe('realRecoveryWiring', () => {
         expect(command.signal.aborted).toBe(false);
         expect(task['operationsInterrupted']).toBe(false);
         expect(cc['rtdEpoch']).toBe(epoch);
-        expect(cc['rtdPaused']).toBe(false);
+        expect(cc['rtdEpoch']?.active).toBe(true);
         expect(cc.services.aqmReqs['recoveryGate']).toEqual({state: 'open'});
         expect(work.settled).not.toHaveBeenCalled();
         deliver(CC_EVENTS.AGENT_CONTACT_HELD, {interaction: {...data.interaction, state: 'connected'}});
@@ -11677,7 +11692,7 @@ describe('realRecoveryWiring', () => {
       expect(epoch.controller.signal.aborted).toBe(true);
       expect(detached).toHaveBeenCalledWith('abort', expect.any(Function));
       expect(cc['rtdEpoch']).toBeUndefined();
-      expect(cc['rtdPaused']).toBe(true);
+      expect(cc['rtdEpoch']?.active).not.toBe(true);
       expect(cc.services.rtdWebSocketManager.listenerCount('message')).toBe(0);
       expect(cc.services.rtdWebSocketManager.shouldReconnect).toBe(false);
       expect(close.mock.calls).toEqual([[false, 'regionRecovery'], [false, 'recoveryFailed']]);
@@ -12411,7 +12426,7 @@ describe('realRecoveryWiring', () => {
       const application = createDeferred<void>();
       jest.spyOn(cc, 'ensureWxAppPostStationLogin').mockReturnValueOnce(application.promise);
       const restore = await deferAutomaticStationRestore(h);
-      expect(cc['rtdPaused']).toBe(true);
+      expect(cc['rtdEpoch']?.active).not.toBe(true);
       expect(oldEpoch.controller.signal.aborted).toBe(true);
       expect(old.close).toHaveBeenCalledTimes(1);
       delivered.mockClear();
@@ -12444,7 +12459,7 @@ describe('realRecoveryWiring', () => {
       const current = sockets.filter(s => s.url.includes('rtd.')).slice(-1)[0];
       expect(current).not.toBe(old);
       current.welcome(); await epoch.promise; await flush();
-      expect(cc['rtdPaused']).toBe(false);
+      expect(cc['rtdEpoch']?.active).toBe(true);
       expect(cc.services.rtdWebSocketManager.listeners('message')).toEqual([stored]);
       const hydrate = jest.fn(); cc.on(TASK_EVENTS.TASK_HYDRATE, hydrate);
       restore.primary.message({type: 'RoutingMessage', data: {...data, type: CC_EVENTS.AGENT_CONTACT,
@@ -12506,19 +12521,19 @@ describe('realRecoveryWiring', () => {
       if (initiallyEnabled) {
         expect(cc['rtdEpoch']).toBeUndefined();
         expect(sockets.filter(s => s.url.includes('rtd.'))).toHaveLength(1);
-        expect(cc['rtdPaused']).toBe(true);
+        expect(cc['rtdEpoch']?.active).not.toBe(true);
       } else {
         const epoch = cc['rtdEpoch'];
         expect(epoch.parent).toBe(cc['registrationAbortController'].signal);
         const rtd = sockets.find(s => s.url.includes('rtd.')); rtd.welcome(); await epoch.promise;
-        expect(cc['rtdPaused']).toBe(false);
+        expect(cc['rtdEpoch']?.active).toBe(true);
       }
     }, undefined, {aiFeature: initiallyEnabled ? {realtimeTranscripts: {enable: true}} : {}},
     {allowAutomatedRelogin: true});
   });
 
   it.each([
-    ['rtdPaused', true], ['registrationGeneration', -1], ['stationRevision', -1],
+    ['registrationGeneration', -1], ['stationRevision', -1],
     ['currentAgentSessionId', 'obsolete-session'], ['registrationAbortController', new AbortController()],
   ])('T-010 storedRtdCallbackUsesContactCenterEpoch: %s', async (key, mismatch) => {
     await withGraph(async h => {
@@ -12586,7 +12601,7 @@ describe('realRecoveryWiring', () => {
         expect(cc['registrationAbortController'].signal.aborted).toBe(false);
         expect(cc['getHttpRecoveryGuard']()).toEqual(guard);
         expect(guard.signal.aborted).toBe(false);
-        expect(cc['rtdPaused']).toBe(true);
+        expect(cc['rtdEpoch']?.active).not.toBe(true);
         expect(cc['rtdEpoch']).toBeUndefined();
         expect(epoch.controller.signal.aborted).toBe(true);
         const command = cc.setAgentState({state: 'Idle', auxCodeId: 'idle'});
@@ -12711,7 +12726,7 @@ describe('realRecoveryWiring', () => {
         await flush();
       }
       const rtd = sockets.find(s => s.url.includes('rtd.')); rtd.welcome(); await pending;
-      expect(cc['rtdPaused']).toBe(false);
+      expect(cc['rtdEpoch']?.active).toBe(true);
       expect(epoch.active).toBe(true);
       expect(requests.filter(r => r.resource === 'v1/realtime/subscribe')).toHaveLength(1);
       expect(sockets.filter(s => s.url.includes('rtd.'))).toHaveLength(1);
@@ -12794,7 +12809,7 @@ describe('realRecoveryWiring', () => {
       } else await pending;
       await flush();
       expect(cc['rtdEpoch']).toBe(replacement);
-      expect(cc['rtdPaused']).toBe(false);
+      expect(cc['rtdEpoch']?.active).toBe(true);
       expect(requests.filter(r => r.resource === 'v1/realtime/subscribe')).toHaveLength(subscribeCount + 1);
       expect(sockets.filter(s => s.url.includes('rtd.'))).toHaveLength(subscribeCount + 1);
       expect(cc.services.rtdWebSocketManager.listenerCount('message')).toBe(1);
@@ -12871,7 +12886,7 @@ describe('realRecoveryWiring', () => {
       else if (phase === 'welcome') rtd.onerror?.();
       await epoch.promise; await flush();
       expect(cc['rtdEpoch']).toBeUndefined();
-      expect(cc['rtdPaused']).toBe(true);
+      expect(cc['rtdEpoch']?.active).not.toBe(true);
       expect(epoch.controller.signal.aborted).toBe(true);
       expect(epoch.parent.aborted).toBe(drift === 'organization');
       expect(detach).toHaveBeenCalledTimes(1);
@@ -12918,7 +12933,7 @@ describe('realRecoveryWiring', () => {
       current.welcome(); await pending; await flush();
       expect(cc['rtdEpoch']).toBe(replacement);
       expect(replacement.active).toBe(true);
-      expect(cc['rtdPaused']).toBe(false);
+      expect(cc['rtdEpoch']?.active).toBe(true);
       expect(diagnostics(sink).filter(record => record.stage === 'rtd')).toEqual([
         {stage: 'rtd', outcome: 'succeeded', attempt: 1, elapsedMs: 0},
       ]);
@@ -13038,7 +13053,7 @@ describe('realRecoveryWiring', () => {
         }
         expect(requests.filter(request => request.resource === 'v1/realtime/subscribe')).toHaveLength(count);
         expect(cc['rtdEpoch']).toBeUndefined();
-        expect(cc['rtdPaused']).toBe(true);
+        expect(cc['rtdEpoch']?.active).not.toBe(true);
         expect(primary.readyState).toBe(1);
         expect(cc['registrationGeneration']).toBe(generation);
         expect(cc['currentAgentSessionId']).toBe(session);
@@ -13334,7 +13349,7 @@ describe('realRecoveryWiring', () => {
       expect(cc['registrationAbortController'].signal.aborted).toBe(false);
       expect(cc.services.webSocketManager.hasUsableSocket()).toBe(true);
       expect(cc['lastPublishedRegionState'].status).toBe('ready');
-      expect(cc['rtdPaused']).toBe(true);
+      expect(cc['rtdEpoch']?.active).not.toBe(true);
       expect(cc['getHttpRecoveryGuard']()).toBeDefined();
     }, undefined, {enabled: true, pending: pending.promise});
   });
@@ -13419,7 +13434,7 @@ describe('realRecoveryWiring', () => {
     const expectWithheld = () => {
       expect(old.close).toHaveBeenCalledTimes(1);
       expect(old.readyState).toBe(3);
-      expect(cc['rtdPaused']).toBe(true);
+      expect(cc['rtdEpoch']?.active).not.toBe(true);
       expect(cc['rtdEpoch']).toBeUndefined();
       expect(requests.filter(r => r.resource === 'v1/realtime/subscribe')).toHaveLength(admissions);
       expect(sockets.filter(s => s.url.includes('rtd.'))).toHaveLength(admissions);
@@ -13485,7 +13500,7 @@ describe('realRecoveryWiring', () => {
         expect(pendingResume).toBe(epoch.promise);
         const rtd = sockets.filter(s => s.url.includes('rtd.')).slice(-1)[0];
         rtd.welcome(); await pendingResume; await flush();
-        expect(cc['rtdPaused']).toBe(false);
+        expect(cc['rtdEpoch']?.active).toBe(true);
         manual.replay(false);
         expect(manual.delivered).not.toHaveBeenCalled();
         expect(manual.wellnessEvent).not.toHaveBeenCalled();
@@ -13828,7 +13843,7 @@ describe('realRecoveryWiring', () => {
           } else if (path === 'optional-rtd') {
             expect(proof.requireDiagnostic('rtd', 'failed')).toEqual({stage: 'rtd', outcome: 'failed', attempt: 1,
               elapsedMs: 0, status: 503, reasonCode: 1037, trackingId: 'safe-tracking'});
-            expect(cc['rtdPaused']).toBe(true);
+            expect(cc['rtdEpoch']?.active).not.toBe(true);
             expect(cc['lastPublishedRegionState'].status).toBe('ready');
             expect(cc.services.webSocketManager.hasUsableSocket()).toBe(true);
           } else if (path === 'optional-rtd-socket') {
@@ -13836,7 +13851,7 @@ describe('realRecoveryWiring', () => {
             proof.requireDiagnostic('rtd', 'succeeded');
             expect(cc['lastPublishedRegionState'].status).toBe('ready');
             expect(cc.services.webSocketManager.hasUsableSocket()).toBe(true);
-            expect(cc['rtdPaused']).toBe(false);
+            expect(cc['rtdEpoch']?.active).toBe(true);
           } else {
             await expect(cc.deregister()).resolves.toBeUndefined();
             expect(proof.metric.mock.calls.filter(([name]) => name === METRIC_EVENT_NAMES.WEBSOCKET_DEREGISTER_SUCCESS)).toHaveLength(1);
@@ -14111,7 +14126,7 @@ describe('realRecoveryWiring', () => {
         }]);
         expect(regionMetrics(metric)).toEqual([]);
         expect(cc.services.webSocketManager.hasUsableSocket()).toBe(true);
-        expect(cc['rtdPaused']).toBe(scenario !== 'success');
+        expect(Boolean(cc['rtdEpoch']?.active)).toBe(scenario === 'success');
         expect(JSON.stringify(diagnostics(sink))).not.toMatch(/SECRET|options|headers|dialNumber|response/);
         sink.mockRestore(); metric.mockRestore();
       }, undefined, {enabled: true, pending: admission.promise});
@@ -14133,13 +14148,13 @@ describe('realRecoveryWiring', () => {
         return log(message, context);
       });
       await expect(cc.stationLogout({logoutReason: 'user'})).rejects.toMatchObject({data: {reason: 'RECOVERY_INTERRUPTED'}});
-      const slot = cc['recoveryAttempt'];
-      expect(slot.owner).toBe(cc['recovery']);
+      const slot = cc['recovery']?.attempt;
+      expect(slot).toBeDefined();
       expect(cc['regionStateContext'].trackingId).toBe('B');
       expect(diagnostics(sink).filter(record => record.outcome === 'cancelled')).toEqual([
         {stage: 'admission', outcome: 'cancelled', attempt: 1, elapsedMs: 19},
       ]);
-      await flush(); expect(cc['recoveryAttempt']).toBe(slot);
+      await flush(); expect(cc['recovery']?.attempt).toBe(slot);
       jest.advanceTimersByTime(105000); await flush(); sockets[1].welcome(); await flush();
       expect(regionMetrics(metric).map(([name, data]) => [name, data])).toEqual([
         [METRIC_EVENT_NAMES.REGION_RECOVERY_SUCCESS, {stage: 'admission', outcome: 'succeeded', attempt: 1, elapsedMs: 105000}],
@@ -14213,7 +14228,7 @@ describe('realRecoveryWiring', () => {
       sockets[1].message(frame(CC_EVENTS.AGENT_RELOGIN_SUCCESS, request.headers.trackingid)); await flush();
       expect(apply).not.toHaveBeenCalled();
       expect(cc['regionStateContext'].trackingId).toBe('B');
-      expect(cc['recoveryAttempt'].owner).toBe(cc['recovery']);
+      expect(cc['recovery']?.attempt).toBeDefined();
       expect(regionMetrics(metric)).toEqual([]);
       expect(metric.mock.calls.filter(([name]) => name === METRIC_EVENT_NAMES.STATION_RELOGIN_SUCCESS)).toHaveLength(boundary === 'logger' ? 0 : 1);
       sink.mockRestore(); metric.mockRestore(); apply.mockRestore();
@@ -14277,19 +14292,19 @@ describe('realRecoveryWiring', () => {
       sockets[0].message({type: 'SYSTEM_REGION_SWITCH', orgId: 'org', trackingId: 'A'});
       jest.advanceTimersByTime(105000); await flush();
       cc['handleWebsocketMessage'](JSON.stringify({type: 'SYSTEM_REGION_SWITCH', orgId: 'org', trackingId: 'B'}));
-      const slotB = cc['recoveryAttempt']; expect(slotB.owner).toBe(cc['recovery']);
+      const slotB = cc['recovery']?.attempt; expect(slotB).toBeDefined();
       const beforeLate = diagnostics(sink);
       expect(beforeLate.filter(record => record.outcome === 'cancelled')).toEqual([
         {stage: 'admission', outcome: 'cancelled', attempt: 1, elapsedMs: 105000},
       ]);
       pending.reject({statusCode: 503, body: {reason: 'INTERNAL_ERROR'}}); await flush();
-      expect(cc['recoveryAttempt']).toBe(slotB);
+      expect(cc['recovery']?.attempt).toBe(slotB);
       expect(diagnostics(sink)).toEqual(beforeLate);
       expect(metric.mock.calls.filter(([name]) => name === METRIC_EVENT_NAMES.REGION_RECOVERY_FAILED)).toHaveLength(0);
       jest.advanceTimersByTime(105000); await flush(); sockets[1].welcome(); await flush();
       const records = metric.mock.calls.filter(([name]) => name === METRIC_EVENT_NAMES.REGION_RECOVERY_SUCCESS);
       expect(records).toHaveLength(1); expect(records[0][1].elapsedMs).toBe(105000);
-      expect(cc['recoveryAttempt']).toBeUndefined();
+      expect(cc['recovery']?.attempt).toBeUndefined();
       sink.mockRestore(); metric.mockRestore();
     });
   });
@@ -14423,7 +14438,7 @@ describe('realRecoveryWiring', () => {
       expect(cc.services.webSocketManager.getServingRegion()).toBeUndefined();
       expect(cc.services.aqmReqs['operations'].size).toBe(0);
       expect(cc['sessionRequest']).toBeUndefined();
-      expect(cc['rtdEpoch']).toBeUndefined(); expect(cc['rtdPaused']).toBe(true);
+      expect(cc['rtdEpoch']).toBeUndefined(); expect(cc['rtdEpoch']?.active).not.toBe(true);
       expect(epoch.controller.signal.aborted).toBe(true);
       expect(cc.services.rtdWebSocketManager.listenerCount('message')).toBe(0);
       expect(sockets.every(socket => socket.close.mock.calls.length === 1)).toBe(true);
@@ -15162,7 +15177,7 @@ describe('realRecoveryWiring', () => {
       expect(cc.services.webSocketManager.hasUsableSocket()).toBe(true);
       expect(cc['suppressAutomaticRelogin']).toBe(false);
       expect(cc['rtdEpoch']).toBeUndefined();
-      expect(cc['rtdPaused']).toBe(true);
+      expect(cc['rtdEpoch']?.active).not.toBe(true);
       expect(cc.services.rtdWebSocketManager.listenerCount('message')).toBe(0);
     }, undefined, {enabled: true});
   });
@@ -15769,7 +15784,7 @@ describe('realRecoveryWiring', () => {
     const delivered = jest.spyOn(cc.taskManager, 'handleRealtimeWebsocketEvent');
     const oldSends = old?.send.mock.calls.length;
     const records: any[] = [];
-    const record = state => records.push({state: {...state}, paused: cc['rtdPaused'],
+    const record = state => records.push({state: {...state}, paused: !cc['rtdEpoch']?.active,
       epochRemoved: cc['rtdEpoch'] === undefined, epochAborted: epoch.controller.signal.aborted,
       admissionRemoved: manager['attempt'] === undefined, admissionAborted: attempt.signal.aborted,
       pendingRequests: cc.apiAIAssistant['pendingRtdRequests'].size,
@@ -15819,7 +15834,7 @@ describe('realRecoveryWiring', () => {
         }
         replayCallbacks(); await epoch.promise; await flush();
       },
-      currentOwner: () => ({paused: cc['rtdPaused'], epoch: cc['rtdEpoch'],
+      currentOwner: () => ({paused: !cc['rtdEpoch']?.active, epoch: cc['rtdEpoch'],
         epochState: cc['rtdEpoch'] && [cc['rtdEpoch'].active, cc['rtdEpoch'].controller.signal.aborted,
           cc['rtdEpoch'].registration, cc['rtdEpoch'].station, cc['rtdEpoch'].sessionId],
         attempt: manager['attempt'], usable: manager.hasUsableSocket(), reconnect: manager.shouldReconnect,
@@ -16531,7 +16546,7 @@ describe('realRecoveryWiring', () => {
       const oldRtd = sockets.find(socket => socket.url.includes('rtd.'));
       oldRtd.welcome(); await flush();
       const rtdEpoch = cc['rtdEpoch'];
-      expect(cc['rtdPaused']).toBe(false);
+      expect(cc['rtdEpoch']?.active).toBe(true);
       const stale = sockets.map(socket => ({open: socket.onopen, message: socket.onmessage, close: socket.onclose}));
       const listener = jest.fn(); cc.on('region:stateChange', listener);
       const connectionEvents = jest.fn(); connection.on('connectionLost', connectionEvents);
@@ -16569,9 +16584,8 @@ describe('realRecoveryWiring', () => {
       expect(cc['lastPublishedRegionState']).toEqual(terminal);
       expect(recovery.controller.signal.aborted).toBe(true);
       expect(cc['recovery']).toBeUndefined();
-      expect(cc['recoveryAttempt']).toBeUndefined();
       expect(cc['recoveryPhase']).toBe('reloadRequired');
-      expect(cc['rtdPaused']).toBe(true);
+      expect(cc['rtdEpoch']?.active).not.toBe(true);
       expect(cc['getHttpRecoveryGuard']()).toBeUndefined();
       expect(primary.shouldReconnect).toBe(false);
       expect(rtd.shouldReconnect).toBe(false);
@@ -16688,7 +16702,7 @@ describe('realRecoveryWiring', () => {
         forbidden.forEach(spy => expect(spy).not.toHaveBeenCalled());
         expect(clearSummaries).toHaveBeenCalledTimes(1);
         expect(cc['rtdEpoch']).toBeUndefined();
-        expect(cc['rtdPaused']).toBe(true);
+        expect(cc['rtdEpoch']?.active).not.toBe(true);
         expect(cc.services.rtdWebSocketManager.listenerCount('message')).toBe(0);
         expect(jest.getTimerCount()).toBe(pendingTimers);
       };
@@ -16873,7 +16887,7 @@ describe('realRecoveryWiring', () => {
           primary.message({...frame(CC_EVENTS.AGENT_STATION_LOGIN_FAILED, request.headers.trackingid, {reasonCode: 9999}),
             type: CC_EVENTS.AGENT_STATION_LOGIN}); await rejected; await flush();
           expect(cc['recoveryPhase']).toBe('manualLoginRequired');
-          expect(cc['rtdPaused']).toBe(true);
+          expect(cc['rtdEpoch']?.active).not.toBe(true);
           expect(cc['rtdEpoch']).toBeUndefined();
           expect(requests.filter(r => r.resource === 'v1/realtime/subscribe')).toHaveLength(1);
         }

@@ -17,7 +17,7 @@ import {
   WELLNESS_BREAK_USER_ACTIONS,
   GenericError,
 } from '../types';
-import {getErrorDetails, createRegionRecoveryError} from './core/Utils';
+import {awaitRecoveryWork, getErrorDetails, createRegionRecoveryError} from './core/Utils';
 import type {TaskRecoveryGuard} from './task/types';
 import type {PendingRtdRequest, RtdRequestOptions} from './core/types';
 import {
@@ -33,6 +33,8 @@ type WellnessBreakContextProvider = () => {
   agentId?: string;
   agentSessionId?: string;
 };
+
+type RecoveryOwner = Pick<TaskRecoveryGuard, 'generation' | 'signal'>;
 
 /**
  * ApiAIAssistant provides AI Assistant APIs for transcript controls.
@@ -61,16 +63,14 @@ export class ApiAIAssistant {
   constructor(
     webex: WebexSDK,
     wellnessContextProvider?: WellnessBreakContextProvider,
-    private readonly getRecoveryGuard?: () =>
-      | Pick<TaskRecoveryGuard, 'generation' | 'signal'>
-      | undefined
+    private readonly getRecoveryGuard?: () => RecoveryOwner | undefined
   ) {
     this.webex = webex;
     this.wellnessContextProvider = wellnessContextProvider;
     this.metricsManager = MetricsManager.getInstance({webex});
   }
 
-  private captureRecoveryOwner(): Pick<TaskRecoveryGuard, 'generation' | 'signal'> | undefined {
+  private captureRecoveryOwner(): RecoveryOwner | undefined {
     const owner = this.getRecoveryGuard?.();
     if (this.getRecoveryGuard && (!owner || owner.signal.aborted))
       throw createRegionRecoveryError('RECOVERY_INTERRUPTED');
@@ -78,9 +78,7 @@ export class ApiAIAssistant {
     return owner;
   }
 
-  private assertRecoveryOwner(
-    owner: Pick<TaskRecoveryGuard, 'generation' | 'signal'> | undefined
-  ): void {
+  private assertRecoveryOwner(owner?: RecoveryOwner): void {
     if (!this.getRecoveryGuard) return;
     const current = this.getRecoveryGuard();
     if (
@@ -92,29 +90,9 @@ export class ApiAIAssistant {
       throw createRegionRecoveryError('RECOVERY_INTERRUPTED');
   }
 
-  private async awaitRecoveryOwner<T>(
-    work: Promise<T>,
-    owner: Pick<TaskRecoveryGuard, 'generation' | 'signal'> | undefined
-  ): Promise<T> {
+  private async awaitRecoveryOwner<T>(work: Promise<T>, owner?: RecoveryOwner): Promise<T> {
     if (!owner) return work;
-    const result = await new Promise<T>((resolve, reject) => {
-      const abort = () => {
-        owner.signal.removeEventListener('abort', abort);
-        reject(createRegionRecoveryError('RECOVERY_INTERRUPTED'));
-      };
-      owner.signal.addEventListener('abort', abort, {once: true});
-      Promise.resolve(work).then(
-        (value) => {
-          owner.signal.removeEventListener('abort', abort);
-          resolve(value);
-        },
-        (error) => {
-          owner.signal.removeEventListener('abort', abort);
-          reject(error);
-        }
-      );
-      if (owner.signal.aborted) abort();
-    });
+    const result = await awaitRecoveryWork(work, owner.signal);
     this.assertRecoveryOwner(owner);
 
     return result;
@@ -138,9 +116,9 @@ export class ApiAIAssistant {
 
   private async sendWellnessBreakAction(
     action: WellnessBreakUserAction,
-    method: string
+    method: string,
+    recoveryOwner: RecoveryOwner | undefined
   ): Promise<void> {
-    const recoveryOwner = this.captureRecoveryOwner();
     this.metricsManager.timeEvent([
       METRIC_EVENT_NAMES.AI_ASSISTANT_WELLNESS_ACTION_ACCEPTED,
       METRIC_EVENT_NAMES.AI_ASSISTANT_WELLNESS_ACTION_FAILED,
@@ -166,6 +144,7 @@ export class ApiAIAssistant {
       }
 
       const baseUrl = this.getBaseUrl();
+      this.assertRecoveryOwner(recoveryOwner);
       const response = (await this.awaitRecoveryOwner(
         this.webex.request({
           uri: `${baseUrl}${AI_ASSISTANT_API_URLS.EVENT}`,
@@ -231,11 +210,10 @@ export class ApiAIAssistant {
    * @public
    */
   public async requestWellnessBreak(): Promise<void> {
-    this.captureRecoveryOwner();
-
     return this.sendWellnessBreakAction(
       WELLNESS_BREAK_USER_ACTIONS.REQUESTED,
-      METHODS.REQUEST_WELLNESS_BREAK
+      METHODS.REQUEST_WELLNESS_BREAK,
+      this.captureRecoveryOwner()
     );
   }
 
@@ -253,7 +231,7 @@ export class ApiAIAssistant {
    * @public
    */
   public async respondToWellnessBreak(params: RespondToWellnessBreakParams): Promise<void> {
-    this.captureRecoveryOwner();
+    const recoveryOwner = this.captureRecoveryOwner();
     const {action} = params;
     if (
       ![
@@ -270,7 +248,7 @@ export class ApiAIAssistant {
       throw error;
     }
 
-    return this.sendWellnessBreakAction(action, METHODS.RESPOND_TO_WELLNESS_BREAK);
+    return this.sendWellnessBreakAction(action, METHODS.RESPOND_TO_WELLNESS_BREAK, recoveryOwner);
   }
 
   private getBaseUrl(): string {
@@ -357,6 +335,7 @@ export class ApiAIAssistant {
     );
     options.signal?.addEventListener('abort', abort, {once: true});
     if (options.signal?.aborted) abort();
+    const publishTimestamp = options.publishTimestamp ?? Date.now();
     const acknowledgement = Promise.resolve()
       .then(() => {
         this.assertRecoveryOwner(owner);
@@ -371,7 +350,7 @@ export class ApiAIAssistant {
           options.eventMetaData,
           undefined,
           undefined,
-          options.publishTimestamp ?? Date.now(),
+          publishTimestamp,
           options.timeout
         );
       })
@@ -452,6 +431,7 @@ export class ApiAIAssistant {
         languageCode,
         trackingId,
       };
+      this.assertRecoveryOwner(recoveryOwner);
       const response = (await this.awaitRecoveryOwner(
         this.webex.request({
           uri: `${baseUrl}${AI_ASSISTANT_API_URLS.EVENT}`,
@@ -737,6 +717,7 @@ export class ApiAIAssistant {
     try {
       const baseUrl = this.getBaseUrl();
       const orgId = this.webex.credentials.getOrgId();
+      this.assertRecoveryOwner(recoveryOwner);
       const response = (await this.awaitRecoveryOwner(
         this.webex.request({
           uri: `${baseUrl}${AI_ASSISTANT_API_URLS.TRANSCRIPTS_LIST}`,

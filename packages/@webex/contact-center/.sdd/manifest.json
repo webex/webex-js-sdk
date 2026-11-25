@@ -626,7 +626,7 @@
         "publication": "published",
         "source_kind": "repository-path",
         "source": "package.json",
-        "summary": "Published npm package @webex/contact-center. main and exports[.] are dist/webex.js (src/webex.js); types is dist/types/index.d.ts built from src/index.ts, which exports ContactCenter (src/cc.ts, registered as webex.cc), routingAgent, Task, AddressBook, ApiAIAssistant, UserPreference, getDefaultUIControls, the event enums, and the public types. Specified in src/docs/README.md. Adds REGION_RECOVERY_EVENTS, REGION_RECOVERY_ERROR_CODES and the five public region-recovery types from src/index.ts; existing exports/signatures remain compatible."
+        "summary": "Published npm package @webex/contact-center. main and exports[.] are dist/webex.js (src/webex.js); types is dist/types/index.d.ts built from src/index.ts, which exports ContactCenter (src/cc.ts, registered as webex.cc), routingAgent, Task, AddressBook, ApiAIAssistant, UserPreference, getDefaultUIControls, the event enums, and the public types. Specified in src/docs/README.md."
       },
       "contact-center-cc-events": {
         "kind": "event",
