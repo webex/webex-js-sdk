@@ -2699,6 +2699,15 @@ export default class ContactCenter extends WebexPlugin implements IContactCenter
     const changedChannels = batch.channels.map((c) => c.channelType);
     const lastChannel = batch.channels[batch.channels.length - 1];
 
+    // Reconcile: read channelDetail from the live channelStatesMap rather
+    // than the batch-stored snapshot.  When a newer batch has already
+    // flushed (count-based) and updated channelStatesMap, the stored
+    // detail is stale and would contradict the channelStates snapshot
+    // built from the same live map below.  Consumers applying the
+    // documented channelDetail shortcut now always see a value consistent
+    // with channelStates[changedChannelType].
+    const reconciledDetail = this.channelStatesMap[lastChannel.channelType] ?? lastChannel.detail;
+
     const enriched = buildAgentStateChangeEvent(
       this.channelStatesMap,
       batch.agentId,
@@ -2708,7 +2717,7 @@ export default class ContactCenter extends WebexPlugin implements IContactCenter
       {
         channelStates: {...this.channelStatesMap} as Record<ChannelType, AgentChannelTypeStates>,
         changedChannelType: lastChannel.channelType,
-        channelDetail: lastChannel.detail,
+        channelDetail: reconciledDetail,
         requestTrackingId: batchKey,
         changedChannels,
       }
@@ -2788,12 +2797,25 @@ export default class ContactCenter extends WebexPlugin implements IContactCenter
       const batch = this.pendingBatches.get(batchKey)!;
       batch.channels.push({channelType, detail: data.agentChannelStateDetail});
 
-      // Count-based flush: all active channels received — flush immediately
+      // Count-based flush: all active channels received — flush immediately.
+      // Flush older pending batches first so consumers receive events in
+      // request order, not arrival order. Map iteration follows insertion
+      // order; collect keys before mutating to avoid iterator invalidation.
       const activeChannelCount = SELECTABLE_CHANNEL_TYPES.filter(
         (ct) => this.loginChannelsMap[ct]?.length > 0
       ).length;
       if (batch.channels.length >= activeChannelCount) {
         clearTimeout(batch.timer);
+        const olderKeys: string[] = [];
+        for (const [key] of this.pendingBatches) {
+          if (key === batchKey) break;
+          olderKeys.push(key);
+        }
+        for (const key of olderKeys) {
+          const older = this.pendingBatches.get(key);
+          if (older) clearTimeout(older.timer);
+          this.flushBatch(key);
+        }
         this.flushBatch(batchKey);
       }
     } else {

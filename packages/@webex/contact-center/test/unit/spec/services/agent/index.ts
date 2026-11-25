@@ -160,6 +160,26 @@ describe('AQM routing agent', () => {
     expect(detail.__typeMap.conditions.RONA).toEqual({pendingIdle: true});
     // Stale Available without pendingIdle rejected
     expect(detail.__typeMap.conditions.Available).toEqual({pendingIdle: true});
+    // auxCodeId is a regular key (not inside __typeMap) so bindCheck verifies
+    // the notification's idle code matches the request and bindPrint includes
+    // it in the pending-request key.
+    expect(detail.auxCodeId).toBe('aux-1');
+  });
+
+  it('stateChangeV2 Idle binds with different auxCodes cannot cross-resolve', () => {
+    const lunchReq = (agent.stateChangeV2 as unknown as (p: {data: object}) => any)({
+      data: {state: 'Idle', auxCodeId: 'lunch', channelType: ['chat']},
+    });
+    const wellnessReq = (agent.stateChangeV2 as unknown as (p: {data: object}) => any)({
+      data: {state: 'Idle', auxCodeId: 'wellness', channelType: ['chat']},
+    });
+    const lunchDetail = lunchReq.notifSuccess.bind.data.agentChannelStateDetail;
+    const wellnessDetail = wellnessReq.notifSuccess.bind.data.agentChannelStateDetail;
+    // Each Idle bind carries its own auxCodeId
+    expect(lunchDetail.auxCodeId).toBe('lunch');
+    expect(wellnessDetail.auxCodeId).toBe('wellness');
+    // Different auxCodeId → different bind keys → no cross-resolution
+    expect(lunchDetail).not.toEqual(wellnessDetail);
   });
 
   it('stateChangeV2 Available and Idle binds produce different keys', () => {

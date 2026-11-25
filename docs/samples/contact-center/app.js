@@ -4448,11 +4448,18 @@ function handleWellnessLegacyStateChanged(event, nextAuxCodeId) {
   // leaving channels in WellbeingBreak without recovery.  Same check as
   // captureWellnessSession() uses for non-bridgeable relogin payloads.
   if (event.channelStates) {
+    // Iterate only selectable channels — the same set captureWellnessSession()
+    // and the SDK's projectAggregate() use.  Internal channels (workItem,
+    // customMessaging) in a non-bridgeable state would otherwise block
+    // promotion even when all selectable channels are bridgeable.
+    const SELECTABLE_ORDER = ['telephony', 'chat', 'email', 'social'];
     const BRIDGEABLE_STATES = new Set(['Available', 'Idle']);
     let hasAvailable = false;
     let hasIdle = false;
     let hasNonBridgeable = false;
-    for (const ch of Object.values(event.channelStates)) {
+    for (const ct of SELECTABLE_ORDER) {
+      const ch = event.channelStates[ct];
+      if (!ch) continue;
       if (!BRIDGEABLE_STATES.has(ch.agentState)) { hasNonBridgeable = true; continue; }
       if (ch.agentState === 'Available') hasAvailable = true;
       if (ch.agentState === 'Idle') hasIdle = true;

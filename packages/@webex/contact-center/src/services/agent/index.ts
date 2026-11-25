@@ -203,13 +203,18 @@ export default function routingAgent(routing: AqmReqs) {
             type: CC_EVENTS.AGENT_CHANNEL_STATE_CHANGED,
             channelType: p.data.channelType,
             // Correlate: prevent a stale notification from a prior request
-            // (e.g. Available) from settling the current request (e.g. Idle).
-            // For non-Idle requests the notification must carry the exact
-            // requested agentState (immediate transitions).  For Idle
-            // requests the agent may be busy (Engaged/WrapUp/Reserved/RONA);
-            // the backend confirms with pendingIdle: true while keeping the
-            // current agentState.  A __typeMap discriminated on agentState
-            // accepts both immediate Idle and queued confirmations.
+            // from settling the current request.  For non-Idle requests the
+            // notification must carry the exact requested agentState
+            // (immediate transitions).  For Idle requests the agent may be
+            // busy (Engaged/WrapUp/Reserved/RONA); the backend confirms
+            // with pendingIdle: true while keeping the current agentState.
+            // A __typeMap discriminated on agentState accepts both immediate
+            // Idle and queued confirmations.  auxCodeId is a regular key
+            // so bindCheck verifies the notification's idle code matches
+            // the requested one — two successive Idle requests with
+            // different codes (e.g. Lunch then WellbeingBreak) cannot
+            // cross-resolve.  auxCodeId also appears in bindPrint, giving
+            // each code its own pending-request slot.
             agentChannelStateDetail:
               p.data.state === 'Idle'
                 ? {
@@ -224,6 +229,7 @@ export default function routingAgent(routing: AqmReqs) {
                         RONA: {pendingIdle: true},
                       },
                     },
+                    auxCodeId: p.data.auxCodeId,
                   }
                 : {agentState: p.data.state},
             // Correlate: only match client-initiated notifications to prevent
