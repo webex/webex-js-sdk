@@ -1441,7 +1441,12 @@ describe('Call Tests', () => {
         },
       } as RoapMessageEvent);
 
-      const allLogCalls = [...infoSpy.mock.calls, ...warnSpy.mock.calls, ...logSpy.mock.calls, ...errorSpy.mock.calls];
+      const allLogCalls = [
+        ...infoSpy.mock.calls,
+        ...warnSpy.mock.calls,
+        ...logSpy.mock.calls,
+        ...errorSpy.mock.calls,
+      ];
 
       allLogCalls.forEach((callArgs) => {
         const message = String(callArgs[0]);

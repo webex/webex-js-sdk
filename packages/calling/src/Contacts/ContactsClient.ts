@@ -168,7 +168,7 @@ export class ContactsClient implements IContacts {
     }
 
     this.groups?.forEach((group) => {
-      if (group.encryptionKeyUrl) {
+      if (group.encryptionKeyUrl && this.isValidEncryptionKeyUrl(group.encryptionKeyUrl)) {
         knownEncryptionKeyUrls.add(group.encryptionKeyUrl);
       }
     });
@@ -565,8 +565,13 @@ export class ContactsClient implements IContacts {
     }
     // istanbul ignore else
     if (this.groups && this.groups.length) {
-      /** Use the encryptionKeyUrl of any one of the groups */
-      return this.groups[0].encryptionKeyUrl;
+      const trustedGroup = this.groups.find(
+        (g) => g.encryptionKeyUrl && this.isValidEncryptionKeyUrl(g.encryptionKeyUrl)
+      );
+
+      if (trustedGroup?.encryptionKeyUrl) {
+        return trustedGroup.encryptionKeyUrl;
+      }
     }
 
     this.encryptionKeyUrl = await this.createNewEncryptionKeyUrl();

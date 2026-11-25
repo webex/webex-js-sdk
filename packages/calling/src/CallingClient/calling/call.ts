@@ -216,21 +216,9 @@ export class Call extends Eventing<CallEventTypes> implements ICall {
           });
           break;
         }
-        // TODO: Remove these after the Media-Core adds the fix
-        // Check if at least one IPv6 "c=" line is present
-        log.info(`before modifying sdp: ${event.roapMessage.sdp}`, {
-          file: CALL_FILE,
-          method: METHODS.MEDIA_ROAP_EVENTS_LISTENER,
-        });
-
         event.roapMessage.sdp = modifySdpForIPv4(event.roapMessage.sdp);
 
         const sdpVideoPortZero = event.roapMessage.sdp.replace(/^m=(video) (?:\d+) /gim, 'm=$1 0 ');
-
-        log.info(`after modification sdp: ${sdpVideoPortZero}`, {
-          file: CALL_FILE,
-          method: METHODS.MEDIA_ROAP_EVENTS_LISTENER,
-        });
 
         event.roapMessage.sdp = sdpVideoPortZero;
         this.localRoapMessage = event.roapMessage;

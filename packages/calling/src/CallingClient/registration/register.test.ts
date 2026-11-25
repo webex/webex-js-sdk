@@ -2231,7 +2231,7 @@ describe('Registration Tests', () => {
             err: {statusCode: 503},
             keepAliveRetryCount: reg.isCCFlow ? 4 : 5,
           },
-        }) as MessageEvent;
+        } as MessageEvent);
 
       it('keepalive terminal failure is serialized under the mutex', async () => {
         await beforeEachSetupForKeepalive();

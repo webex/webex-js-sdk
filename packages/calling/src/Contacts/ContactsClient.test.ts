@@ -697,7 +697,46 @@ describe('ContactClient Tests', () => {
         contact.displayName
       );
       expect(encryptedContact.displayName).toEqual('Encrypted contact name');
-      expect(encryptedContact.encryptionKeyUrl).toEqual(mockContactGroupListOne[0].encryptionKeyUrl);
+      expect(encryptedContact.encryptionKeyUrl).toEqual(
+        mockContactGroupListOne[0].encryptionKeyUrl
+      );
+    });
+
+    it('does not use an attacker URL that was poisoned into the group allowlist', async () => {
+      const attackerUrl = 'kms://attacker.example.com/keys/evil-key';
+
+      contactClient['groups'] = [
+        {
+          meta: {created: '2024-01-01T00:00:00.000Z', lastModified: '2024-01-01T00:00:00.000Z'},
+          groupId: 'attacker-group-id',
+          groupType: GroupType.NORMAL,
+          ownerId: 'test-owner',
+          displayName: 'Attacker Group',
+          encryptionKeyUrl: attackerUrl,
+          members: [],
+          isMigration: false,
+        } as ContactGroup,
+      ];
+      contactClient['encryptionKeyUrl'] = '';
+
+      webex.internal.encryption.kms.createUnboundKeys.mockResolvedValue([mockKmsKey]);
+      webex.internal.encryption.kms.createResource.mockResolvedValue(mockKmsKey);
+      webex.request.mockResolvedValue({statusCode: 201, body: mockGroupResponse});
+      webex.internal.encryption.encryptText.mockResolvedValue('Encrypted value');
+
+      const contact = {
+        contactType: 'CUSTOM',
+        displayName: 'Test Contact',
+        encryptionKeyUrl: attackerUrl,
+      } as Contact;
+
+      await contactClient['encryptContact'](contact);
+
+      expect(webex.internal.encryption.encryptText).not.toHaveBeenCalledWith(
+        attackerUrl,
+        expect.anything()
+      );
+      expect(webex.internal.encryption.kms.createUnboundKeys).toHaveBeenCalledWith({count: 1});
     });
   });
 
@@ -1241,6 +1280,7 @@ describe('ContactClient Tests', () => {
        * of N, it does not step through N sequential awaits. */
       const advanceMicrotasks = async (steps: number) => {
         for (let i = 0; i < steps; i += 1) {
+          // eslint-disable-next-line no-await-in-loop
           await flushPromises(1);
         }
       };
