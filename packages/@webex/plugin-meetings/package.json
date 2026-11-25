@@ -33,7 +33,7 @@
     "build:assets": "node ../../../scripts/copy-plugin-assets.js",
     "deploy:npm": "yarn npm publish",
     "test:broken": "yarn test:style && yarn test:unit && yarn test:integration && yarn test:browser",
-    "test:browser": "webex-legacy-tools test --integration --runner karma",
+    "test:browser": "node test/utils/check-karma-https.js && webex-legacy-tools test --integration --runner karma",
     "test:style": "eslint ./src/**/*.*",
     "test:unit": "webex-legacy-tools test --unit --runner mocha"
   },
@@ -41,6 +41,7 @@
     "@babel/core": "^7.17.10",
     "@types/jsdom": "^21",
     "@webex/babel-config-legacy": "workspace:*",
+    "@webex/env-config-legacy": "workspace:*",
     "@webex/eslint-config-legacy": "workspace:*",
     "@webex/jest-config-legacy": "workspace:*",
     "@webex/legacy-tools": "workspace:*",

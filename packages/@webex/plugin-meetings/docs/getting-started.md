@@ -112,6 +112,19 @@ Browser/integration tests live under `test/integration/spec/` and use the packag
 browsers: the transcription cases passed, `space-meeting` failed because no test user was created,
 and the command exited 1.
 
+### HTTPS for browser tests
+
+Meeting browser tests require HTTPS. From the repository root, run
+`yarn setup:karma-https` once to prepare the machine, then add `KARMA_HTTPS=true` to
+the root `.env` file. Alternatively, enable HTTPS for one run:
+
+```sh
+KARMA_HTTPS=true yarn workspace @webex/plugin-meetings test:browser --karma-browsers chrome --targets converged-space-meetings.js
+```
+
+The browser-test command checks this setting before bundling or creating users and prints
+these setup instructions if it is missing or disabled. Unit tests do not require HTTPS.
+
 ### Meeting-site test users
 
 For CIG users, enable meeting-site provisioning by providing either

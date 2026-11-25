@@ -8947,6 +8947,7 @@ __metadata:
     "@types/jsdom": ^21
     "@webex/babel-config-legacy": "workspace:*"
     "@webex/common": "workspace:*"
+    "@webex/env-config-legacy": "workspace:*"
     "@webex/eslint-config-legacy": "workspace:*"
     "@webex/event-dictionary-ts": ^1.0.2215
     "@webex/internal-media-core": 2.32.1
