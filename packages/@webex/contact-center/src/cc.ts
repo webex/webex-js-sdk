@@ -3022,6 +3022,14 @@ export default class ContactCenter extends WebexPlugin implements IContactCenter
     });
 
     try {
+      // Reset the live-update tracker so only notifications received during
+      // THIS reload window are protected from the snapshot merge.  Without
+      // this, pre-disconnect updates (e.g. Chat Available from normal
+      // operation) would cause handleChannelReloginSuccess to skip the
+      // newer disconnect-Idle snapshot, leaving silentRelogin() unable to
+      // detect and recover the disconnected channel.
+      this.liveUpdatedChannels.clear();
+
       // Always use the V2 reload endpoint — it accepts both V1 AgentReloginSuccess
       // and V2 AgentChannelReloginSuccess. The persisted server session determines the
       // response type, which may differ from the current profile flag when an admin

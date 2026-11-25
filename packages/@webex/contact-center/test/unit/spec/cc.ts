@@ -8292,6 +8292,48 @@ describe('webex.cc', () => {
         resolveRegistration();
       });
 
+      it('clears pre-disconnect live-update marks so reload snapshot is applied', async () => {
+        webex.cc.agentConfig = {agentId: 'agent-1', isAgentLoggedIn: true, manageChannelAvailability: true} as Profile;
+
+        // Simulate a pre-disconnect notification that marked chat as live-updated
+        webex.cc['channelStatesMap'] = {
+          chat: makeChannelState('Available', {stateChangeReason: 'agent-explicit'}),
+        } as any;
+        webex.cc['liveUpdatedChannels'] = new Set(['chat'] as ChannelType[]);
+
+        const reloadSnapshot = {
+          chat: makeChannelState('Idle', disconnected),
+          telephony: makeChannelState('Idle', disconnected),
+        };
+
+        // Mock reloadV2 to also trigger handleChannelReloginSuccess (simulating
+        // the WebSocket notification path that fires before the await resumes).
+        jest.spyOn(webex.cc.services.agent, 'reloadV2').mockImplementation(async () => {
+          const eventData = {
+            data: {
+              type: 'AgentChannelReloginSuccess',
+              agentId: 'agent-1',
+              deviceType: LoginOption.EXTENSION,
+              dn: '1001',
+              teamId: 'team-1',
+              agentChannelStateDetailMap: reloadSnapshot,
+              channelsMap: {chat: ['c1'], telephony: ['t1']},
+            },
+          };
+          // Simulate WebSocket handler firing during the await
+          webex.cc['handleChannelReloginSuccess'](eventData as any);
+          return eventData as any;
+        });
+
+        await webex.cc['silentRelogin']();
+
+        // silentRelogin() clears liveUpdatedChannels before reloadV2(), so
+        // the pre-disconnect mark is gone and handleChannelReloginSuccess
+        // applies the snapshot for all channels.
+        expect(webex.cc['channelStatesMap'].chat.stateChangeReason).toBe('agent-wss-disconnect');
+        expect(webex.cc['channelStatesMap'].telephony.stateChangeReason).toBe('agent-wss-disconnect');
+      });
+
       it('does not overwrite live channel updates with the stale reload snapshot', async () => {
         webex.cc.agentConfig = {agentId: 'agent-1', isAgentLoggedIn: true, manageChannelAvailability: true} as Profile;
 
