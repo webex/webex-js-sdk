@@ -312,16 +312,14 @@ export class ApiAIAssistant {
 
   private removeRtdRequest<T>(
     request: PendingRtdRequest<T>,
-    settle?: (request: PendingRtdRequest<T>) => void
-  ): PendingRtdRequest<T> | undefined {
+    settle: (request: PendingRtdRequest<T>) => void
+  ): void {
     const key = ApiAIAssistant.getRtdRequestKey(request.rtdEventType, request.correlationId);
-    if (this.pendingRtdRequests.get(key) !== request) return undefined;
+    if (this.pendingRtdRequests.get(key) !== request) return;
     this.pendingRtdRequests.delete(key);
     clearTimeout(request.timeoutId);
     request.detachAbort?.();
-    settle?.(request);
-
-    return request;
+    settle(request);
   }
 
   /** Sends an AI event and waits for its matching RTD response. @internal */

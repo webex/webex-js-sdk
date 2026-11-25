@@ -44,7 +44,6 @@ type SocketAttempt = {
   workerUrl?: string;
   url?: string;
   accepted: boolean;
-  settled: boolean;
   timer?: ReturnType<typeof setTimeout>;
   resolve: (welcome: WelcomeResponse) => void;
   reject: (error: unknown) => void;
@@ -83,7 +82,6 @@ export class WebSocketManager extends EventEmitter {
         resource: options.resource,
         signal: options.signal,
         accepted: false,
-        settled: false,
         resolve,
         reject,
         onAbort: () =>
@@ -122,7 +120,7 @@ export class WebSocketManager extends EventEmitter {
 
   public cancelPending(error: Error): void {
     const attempt = this.attempt;
-    if (attempt && !attempt.settled) this.disposeAttempt(attempt, error);
+    if (attempt && !attempt.accepted) this.disposeAttempt(attempt, error);
   }
 
   public getServingRegion(): string | undefined {
@@ -259,7 +257,6 @@ export class WebSocketManager extends EventEmitter {
         !attempt.accepted
       ) {
         attempt.accepted = true;
-        attempt.settled = true;
         clearTimeout(attempt.timer);
         if (attempt.resource === SUBSCRIBE_API)
           this.servingRegion = parseServingRegion(attempt.url);
@@ -318,10 +315,7 @@ export class WebSocketManager extends EventEmitter {
     this.clearServingRegion();
     clearTimeout(attempt.timer);
     attempt.signal?.removeEventListener('abort', attempt.onAbort);
-    if (!attempt.settled) {
-      attempt.settled = true;
-      attempt.reject(error);
-    }
+    if (!attempt.accepted) attempt.reject(error);
     if (attempt.socket) {
       attempt.socket.onopen = null;
       attempt.socket.onmessage = null;

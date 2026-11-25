@@ -329,89 +329,88 @@ export default class Voice extends Task implements IVoice {
   }
 
   public async syncWxAppMuteFromCallDetails(retryAttempt = 0): Promise<boolean | undefined> {
-    return this.runTaskLifetimeOperation(async () => {
-      if (!this.enableWxBetterTogether || !this.answerCallOnWebexService) {
-        return undefined;
-      }
+    this.assertTaskLifetimeActive();
+    if (!this.enableWxBetterTogether || !this.answerCallOnWebexService) {
+      return undefined;
+    }
 
-      if (retryAttempt === 0 && this.shouldSkipWxAppMuteSync()) {
-        return undefined;
-      }
+    if (retryAttempt === 0 && this.shouldSkipWxAppMuteSync()) {
+      return undefined;
+    }
 
-      if (retryAttempt === 0 && this.wxAppMuteSyncInFlight) {
-        return this.wxAppMuteSyncInFlight;
-      }
+    if (retryAttempt === 0 && this.wxAppMuteSyncInFlight) {
+      return this.wxAppMuteSyncInFlight;
+    }
 
-      const syncPromise = this.performWxAppMuteSync(retryAttempt);
+    const syncPromise = this.runTaskLifetimeOperation((signal) =>
+      this.performWxAppMuteSync(retryAttempt, signal)
+    );
+    if (retryAttempt === 0) {
+      this.wxAppMuteSyncInFlight = syncPromise;
+      syncPromise
+        .finally(() => {
+          if (this.wxAppMuteSyncInFlight === syncPromise) {
+            this.wxAppMuteSyncInFlight = undefined;
+          }
+        })
+        .catch(() => undefined);
+    }
 
-      if (retryAttempt === 0) {
-        this.wxAppMuteSyncInFlight = syncPromise;
-        syncPromise
-          .finally(() => {
-            if (this.wxAppMuteSyncInFlight === syncPromise) {
-              this.wxAppMuteSyncInFlight = undefined;
-            }
-          })
-          .catch(() => undefined);
-
-        return syncPromise;
-      }
-
-      return syncPromise;
-    });
+    return syncPromise;
   }
 
-  private async performWxAppMuteSync(retryAttempt: number): Promise<boolean | undefined> {
-    return this.runTaskLifetimeOperation(async (signal) => {
-      if (this.shouldSkipWxAppMuteSync()) {
-        return undefined;
+  private async performWxAppMuteSync(
+    retryAttempt: number,
+    signal: AbortSignal
+  ): Promise<boolean | undefined> {
+    if (this.shouldSkipWxAppMuteSync()) {
+      return undefined;
+    }
+
+    let callId = this.getWebexCallingCallId();
+    if (!callId) {
+      if (retryAttempt < Voice.WXAPP_MUTE_SYNC_MAX_RETRIES && this.canRetryWxAppMuteSync()) {
+        await Voice.delay(Voice.WXAPP_MUTE_SYNC_RETRY_DELAY_MS, signal);
+        this.assertTaskLifetimeActive(signal);
+
+        return this.performWxAppMuteSync(retryAttempt + 1, signal);
       }
 
-      let callId = this.getWebexCallingCallId();
+      callId = getCallingDeviceDetails(this.getWxAppVoiceDeps())?.deviceCallId ?? null;
       if (!callId) {
-        if (retryAttempt < Voice.WXAPP_MUTE_SYNC_MAX_RETRIES && this.canRetryWxAppMuteSync()) {
-          await Voice.delay(Voice.WXAPP_MUTE_SYNC_RETRY_DELAY_MS, signal);
-          this.assertTaskLifetimeActive(signal);
-
-          return this.performWxAppMuteSync(retryAttempt + 1);
-        }
-
-        callId = getCallingDeviceDetails(this.getWxAppVoiceDeps())?.deviceCallId ?? null;
-        if (!callId) {
-          return undefined;
-        }
-      }
-
-      try {
-        const lineOwnerId = resolveWxAppLineOwnerId(this.getWxAppVoiceDeps());
-        const details = await this.answerCallOnWebexService.getCallDetails({callId, lineOwnerId});
-        this.assertTaskLifetimeActive(signal);
-        if (details.muted !== undefined) {
-          this.applyWxAppMuteStateFromSync(callId, details.muted);
-          this.assertTaskLifetimeActive(signal);
-          if (this.wxAppMuted !== details.muted) {
-            this.applyWxAppMuteFromBackfill(callId, details.muted);
-          }
-
-          return details.muted;
-        }
-
-        return this.wxAppMuted;
-      } catch (error) {
-        this.assertTaskLifetimeActive(signal);
-        if (isRegionRecoveryError(error))
-          throw getErrorDetails(error, 'performWxAppMuteSync', CC_FILE).error;
-        if (!isWxAppCallNotFoundError(error)) {
-          LoggerProxy.error(`Failed to sync wxApp mute from call details: ${error}`, {
-            module: CC_FILE,
-            method: METHODS.GET_CALL_DETAILS_ON_WEBEX,
-            interactionId: this.data?.interactionId,
-          });
-        }
-
         return undefined;
       }
-    });
+    }
+
+    try {
+      const lineOwnerId = resolveWxAppLineOwnerId(this.getWxAppVoiceDeps());
+      const details = await this.answerCallOnWebexService.getCallDetails({callId, lineOwnerId});
+      this.assertTaskLifetimeActive(signal);
+      if (details.muted !== undefined) {
+        this.applyWxAppMuteStateFromSync(callId, details.muted);
+        this.assertTaskLifetimeActive(signal);
+        if (this.wxAppMuted !== details.muted) {
+          this.applyWxAppMuteFromBackfill(callId, details.muted);
+        }
+
+        return details.muted;
+      }
+
+      return this.wxAppMuted;
+    } catch (error) {
+      this.assertTaskLifetimeActive(signal);
+      if (isRegionRecoveryError(error))
+        throw getErrorDetails(error, 'performWxAppMuteSync', CC_FILE).error;
+      if (!isWxAppCallNotFoundError(error)) {
+        LoggerProxy.error(`Failed to sync wxApp mute from call details: ${error}`, {
+          module: CC_FILE,
+          method: METHODS.GET_CALL_DETAILS_ON_WEBEX,
+          interactionId: this.data?.interactionId,
+        });
+      }
+
+      return undefined;
+    }
   }
 
   protected onTaskAssigned(): void {
@@ -646,9 +645,7 @@ export default class Voice extends Task implements IVoice {
    * ```
    * */
   public async hold(): Promise<TaskResponse> {
-    return this.runTaskOperation(async () => {
-      return this.holdResume();
-    });
+    return this.holdResume();
   }
 
   /**
@@ -661,9 +658,7 @@ export default class Voice extends Task implements IVoice {
    * ```
    * */
   public async resume(): Promise<TaskResponse> {
-    return this.runTaskOperation(async () => {
-      return this.holdResume();
-    });
+    return this.holdResume();
   }
 
   /**

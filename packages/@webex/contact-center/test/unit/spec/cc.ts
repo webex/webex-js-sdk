@@ -158,7 +158,7 @@ jest.mock('../../../src/services/task/TaskManager', () => ({
       getActiveTasks: jest.fn(),
       handleRealtimeWebsocketEvent: jest.fn(),
       clearAISummaryState: jest.fn(),
-      startSession: jest.fn(), stopSession: jest.fn(), setRecoveryGuard: jest.fn(),
+      startSession: jest.fn(), stopSession: jest.fn(),
       interruptTaskOperations: jest.fn(), invalidateRegionalTasks: jest.fn(),
     })),
   },
@@ -561,7 +561,7 @@ describe('webex.cc', () => {
       unregisterIncomingCallEvent: jest.fn(),
       handleRealtimeWebsocketEvent: jest.fn(),
       clearAISummaryState: jest.fn(),
-      startSession: jest.fn(), stopSession: jest.fn(), setRecoveryGuard: jest.fn(),
+      startSession: jest.fn(), stopSession: jest.fn(),
       interruptTaskOperations: jest.fn(), invalidateRegionalTasks: jest.fn(),
     };
 
@@ -954,7 +954,7 @@ describe('webex.cc', () => {
             cc['autoAvailable'] && {...cc['autoAvailable']}],
           rtd: [cc['rtdPaused'], cc['rtdEpoch'], cc['rtdEpoch']?.controller.signal.aborted],
           settings: {...cc['multiRegionSettings']},
-          history: [[...cc['acceptedSwitchIds']], [...cc['acceptedSwitchIdSet']]],
+          history: [...cc['acceptedSwitchIds']],
           publication: [cc['lastPublishedRegionState'] && {...cc['lastPublishedRegionState']},
             {...cc['regionStateContext']}],
           placement: [mockWebSocketManager.getServingRegion(),
@@ -972,7 +972,7 @@ describe('webex.cc', () => {
           services.aqmReqs.beginGeneration, services.aqmReqs.setRecoveryGate,
           services.aqmReqs.interruptPending,
           mockTaskManager.startSession, mockTaskManager.stopSession,
-          mockTaskManager.setRecoveryGuard, mockTaskManager.interruptTaskOperations,
+          mockTaskManager.interruptTaskOperations,
           mockTaskManager.invalidateRegionalTasks, services.agent.reload, services.agent.stationLogin,
           services.agent.logout, services.agent.stateChange,
           webex.cc.webCallingService.registerWebCallingLine,
@@ -1305,29 +1305,6 @@ describe('webex.cc', () => {
           webex.cc['handleAutoAvailableVoiceChange'](); await settle();
           expect(snapshots).toEqual(lifecycleSnapshots(boundary, false));
           expect(webex.cc.services.agent.stateChange).not.toHaveBeenCalled();
-        });
-
-        it('T-007/T-011 readyCarriesInitialAutoOutcomeBeforeDispatch and stateNotificationSingleApplierBeforeGenericEmit', async () => {
-          const snapshots: any[] = [];
-          webex.cc.on('region:stateChange', state => {
-            snapshots.push(state);
-            if (state.status === 'ready' && state.autoAvailable === 'requesting')
-              expect(webex.cc.services.agent.stateChange).not.toHaveBeenCalled();
-          });
-          const backend = createDeferred<any>(); webex.cc.services.agent.stateChange.mockReturnValue(backend.promise);
-          await startAuto();
-          expect(webex.cc.services.agent.stateChange).toHaveBeenCalledTimes(1);
-          const id = webex.cc.services.agent.stateChange.mock.calls[0][2].correlationId;
-          expect(id).toBe('state-1');
-          expect(webex.cc.agentConfig.lastStateAuxCodeId).toBe('idle');
-          const observer = jest.fn(() => expect(webex.cc.agentConfig.lastStateAuxCodeId).toBe('0'));
-          webex.cc.on(CC_EVENTS.AGENT_STATE_CHANGE_SUCCESS, observer);
-          const frame = ack(id); webex.cc['handleWebsocketMessage'](JSON.stringify(frame));
-          backend.resolve(frame); await settle();
-          expect(observer).toHaveBeenCalledTimes(1);
-          expect(snapshots.filter(s => s.autoAvailable === 'succeeded')).toHaveLength(1);
-          webex.cc['handleWebsocketMessage'](JSON.stringify(frame)); await settle();
-          expect(snapshots.filter(s => s.autoAvailable === 'succeeded')).toHaveLength(1);
         });
 
         it('T-007 voiceDeferredReadyAndSingleDispatch waits without holding station ready', async () => {
@@ -2109,8 +2086,7 @@ describe('webex.cc', () => {
           ['boolean tracking', {trackingId: true}],
         ])('invalidEnvelopeNoSocketAction: %s', async (_name, overrides) => {
           await prepare(eligibility, true);
-          webex.cc['acceptedSwitchIds'].push('remembered');
-          webex.cc['acceptedSwitchIdSet'].add('remembered');
+          webex.cc['acceptedSwitchIds'].add('remembered');
           mockWebSocketManager.getServingRegion.mockReturnValue('produs2');
           webex.cc.services.rtdWebSocketManager.getServingRegion.mockReturnValue('produs2');
           const listener = jest.fn(); webex.cc.on('region:stateChange', listener);
@@ -2132,8 +2108,7 @@ describe('webex.cc', () => {
 
         it('preserves teardown for live credential replacement before rejecting a foreign envelope', async () => {
           await prepare(eligibility, true);
-          webex.cc['acceptedSwitchIds'].push('remembered');
-          webex.cc['acceptedSwitchIdSet'].add('remembered');
+          webex.cc['acceptedSwitchIds'].add('remembered');
           const registration = webex.cc['registrationGeneration'];
           const controller = webex.cc['registrationAbortController'];
           const listener = jest.fn(); webex.cc.on('region:stateChange', listener);
@@ -2147,8 +2122,7 @@ describe('webex.cc', () => {
 
           expect(webex.cc['registrationGeneration']).toBe(registration + 1);
           expect(controller.signal.aborted).toBe(true);
-          expect(webex.cc['acceptedSwitchIds']).toEqual([]);
-          expect([...webex.cc['acceptedSwitchIdSet']]).toEqual([]);
+          expect([...webex.cc['acceptedSwitchIds']]).toEqual([]);
           expect(webex.cc['acceptedStation']).toBeUndefined();
           expect(webex.cc['priorStationActive']).toBe(false);
           expect(webex.cc.services.connectionService.stop).toHaveBeenCalledTimes(stops + 1);
@@ -2257,8 +2231,7 @@ describe('webex.cc', () => {
         ]]);
         expect(captureSwitchOwner()).toEqual(owner);
         expect(switchActions()).toEqual(actions);
-        expect(webex.cc['acceptedSwitchIds']).toEqual([]);
-        expect([...webex.cc['acceptedSwitchIdSet']]).toEqual([]);
+        expect([...webex.cc['acceptedSwitchIds']]).toEqual([]);
         expect(states).not.toHaveBeenCalled();
 
         profile.resolve(createFreshAgentProfile({webRtcEnabled: false, loginVoiceOptions: [LoginOption.EXTENSION]}));
@@ -2271,8 +2244,7 @@ describe('webex.cc', () => {
           await expect(replacement).rejects.toMatchObject({data: {reason: 'RECOVERY_INTERRUPTED'}});
         }
         await settle();
-        expect(webex.cc['acceptedSwitchIds']).toEqual([]);
-        expect([...webex.cc['acceptedSwitchIdSet']]).toEqual([]);
+        expect([...webex.cc['acceptedSwitchIds']]).toEqual([]);
         expect(webex.cc.services.connectionService.recoverRegion).not.toHaveBeenCalled();
         expect(webex.cc.services.connectionService.pause).not.toHaveBeenCalled();
         expect(states).not.toHaveBeenCalled();
@@ -2306,8 +2278,7 @@ describe('webex.cc', () => {
         }
         expect(captureSwitchOwner()).toEqual(owner);
         expect(switchActions()).toEqual(actions);
-        expect(webex.cc['acceptedSwitchIds']).toEqual([]);
-        expect([...webex.cc['acceptedSwitchIdSet']]).toEqual([]);
+        expect([...webex.cc['acceptedSwitchIds']]).toEqual([]);
         expect(effects.map(effect => effect.mock.calls.length)).toEqual(baseline);
         expect(listener.mock.calls).toEqual([]);
         expect(LoggerProxy.info.mock.calls).toEqual([[
@@ -2316,8 +2287,7 @@ describe('webex.cc', () => {
         ]]);
         reader.resolve({eligibility: 'enabled'}); await settle();
         expect(webex.cc['multiRegionSettings']).toEqual({eligibility: 'enabled'});
-        expect(webex.cc['acceptedSwitchIds']).toEqual([]);
-        expect([...webex.cc['acceptedSwitchIdSet']]).toEqual([]);
+        expect([...webex.cc['acceptedSwitchIds']]).toEqual([]);
         expect(switchActions()).toEqual(actions);
         expect(effects.map(effect => effect.mock.calls.length)).toEqual(baseline);
         expect(listener.mock.calls).toEqual([]);
@@ -2327,8 +2297,7 @@ describe('webex.cc', () => {
           status: 'recovering', reason: 'region-switch', trackingId: 'switch',
           operation: 'FAILOVER', scope: 'ORG',
         }]]);
-        expect(webex.cc['acceptedSwitchIds']).toEqual(['switch']);
-        expect([...webex.cc['acceptedSwitchIdSet']]).toEqual(['switch']);
+        expect([...webex.cc['acceptedSwitchIds']]).toEqual(['switch']);
       });
 
       const registrationBoundaries = ['same-identity register', 'different-identity register',
@@ -2352,8 +2321,7 @@ describe('webex.cc', () => {
         return Promise.resolve();
       };
       const expectHistoryAndStation = (ids: string[], station, active = Boolean(station)) => {
-        expect(webex.cc['acceptedSwitchIds']).toEqual(ids);
-        expect([...webex.cc['acceptedSwitchIdSet']]).toEqual(ids);
+        expect([...webex.cc['acceptedSwitchIds']]).toEqual(ids);
         expect(webex.cc['acceptedStation']).toBe(station);
         expect(webex.cc['priorStationActive']).toBe(active);
       };
@@ -2361,9 +2329,8 @@ describe('webex.cc', () => {
       it('T-002 switchHistoryFifoCapacityAndDuplicateHistory', async () => {
         await prepare('enabled', true);
         for (let i = 0; i < 130; i += 1) webex.cc['handleWebsocketMessage'](switchEvent(`s${i}`));
-        expect(webex.cc['acceptedSwitchIds']).toHaveLength(128);
-        expect([...webex.cc['acceptedSwitchIdSet']]).toEqual(webex.cc['acceptedSwitchIds']);
-        expect(webex.cc['acceptedSwitchIds'][0]).toBe('s2');
+        expect([...webex.cc['acceptedSwitchIds']]).toHaveLength(128);
+        expect([...webex.cc['acceptedSwitchIds']][0]).toBe('s2');
         webex.cc.services.connectionService.recoverRegion.mockClear();
         webex.cc['handleWebsocketMessage'](switchEvent('s3'));
         expect(webex.cc.services.connectionService.recoverRegion).not.toHaveBeenCalled();
@@ -2375,16 +2342,15 @@ describe('webex.cc', () => {
         const driver = webex.cc.services.connectionService.recoverRegion;
         for (const id of ['A', 'B', 'A']) webex.cc['handleWebsocketMessage'](switchEvent(id));
         expect(driver).toHaveBeenCalledTimes(2);
-        expect(webex.cc['acceptedSwitchIds']).toEqual(['A', 'B']);
+        expect([...webex.cc['acceptedSwitchIds']]).toEqual(['A', 'B']);
         for (let i = 0; i < 127; i += 1) webex.cc['handleWebsocketMessage'](switchEvent(`new-${i}`));
-        expect(webex.cc['acceptedSwitchIds']).toEqual(['B', ...Array.from({length: 127}, (_, i) => `new-${i}`)]);
+        expect([...webex.cc['acceptedSwitchIds']]).toEqual(['B', ...Array.from({length: 127}, (_, i) => `new-${i}`)]);
         const count = driver.mock.calls.length;
         webex.cc['handleWebsocketMessage'](switchEvent('B'));
         expect(driver).toHaveBeenCalledTimes(count);
         webex.cc['handleWebsocketMessage'](switchEvent('A'));
         expect(driver).toHaveBeenCalledTimes(count + 1);
-        expect(webex.cc['acceptedSwitchIds']).toEqual([...Array.from({length: 127}, (_, i) => `new-${i}`), 'A']);
-        expect([...webex.cc['acceptedSwitchIdSet']]).toEqual(webex.cc['acceptedSwitchIds']);
+        expect([...webex.cc['acceptedSwitchIds']]).toEqual([...Array.from({length: 127}, (_, i) => `new-${i}`), 'A']);
       });
 
       it.each([...registrationBoundaries, 'pending station logout', 'successful station logout',
@@ -2710,8 +2676,7 @@ describe('webex.cc', () => {
         await cc.deregister();
         expect(cc['acceptedStation']).toBeUndefined();
         expect(cc['priorStationActive']).toBe(false);
-        expect(cc['acceptedSwitchIds']).toEqual([]);
-        expect([...cc['acceptedSwitchIdSet']]).toEqual([]);
+        expect([...cc['acceptedSwitchIds']]).toEqual([]);
       });
 
       it.each(['calling line', 'wxApp'])(
@@ -2968,7 +2933,7 @@ describe('webex.cc', () => {
           expect(webex.cc['registrationAbortController'].signal.aborted).toBe(true);
           expect(webex.cc.services.connectionService.stop).toHaveBeenCalled();
           expect(webex.cc.services.rtdWebSocketManager.close).toHaveBeenCalledWith(false, 'registrationEnded');
-          expect(webex.cc['acceptedSwitchIds']).toEqual([]);
+          expect([...webex.cc['acceptedSwitchIds']]).toEqual([]);
           expect(webex.cc['acceptedStation']).toBeUndefined();
         });
         webex.cc.on(AGENT_EVENTS.AGENT_MULTI_LOGIN, listener);
@@ -3268,14 +3233,12 @@ describe('webex.cc', () => {
         await prepare('enabled', true); accept();
         expect(webex.cc['acceptedStation']).toBeDefined();
         expect(webex.cc['priorStationActive']).toBe(true);
-        expect(webex.cc['acceptedSwitchIds']).toEqual(['switch']);
-        expect([...webex.cc['acceptedSwitchIdSet']]).toEqual(['switch']);
+        expect([...webex.cc['acceptedSwitchIds']]).toEqual(['switch']);
         webex.cc['handleWebsocketMessage'](JSON.stringify({type: 'Welcome', data: {agentId}}));
         expect(webex.cc['registrationAbortController'].signal.aborted).toBe(true);
         expect(webex.cc['acceptedStation']).toBeUndefined();
         expect(webex.cc['priorStationActive']).toBe(false);
-        expect(webex.cc['acceptedSwitchIds']).toEqual([]);
-        expect([...webex.cc['acceptedSwitchIdSet']]).toEqual([]);
+        expect([...webex.cc['acceptedSwitchIds']]).toEqual([]);
         expect(webex.cc.services.connectionService.stop).toHaveBeenCalled();
       });
 
@@ -3350,8 +3313,7 @@ describe('webex.cc', () => {
               homeRegion: 'produs1', ...snapshotFields};
             expect(states.mock.calls).toEqual([[snapshot]]);
             expect(webex.cc['lastPublishedRegionState']).toEqual(snapshot);
-            expect(webex.cc['acceptedSwitchIds']).toEqual([snapshot.trackingId]);
-            expect([...webex.cc['acceptedSwitchIdSet']]).toEqual([snapshot.trackingId]);
+            expect([...webex.cc['acceptedSwitchIds']]).toEqual([snapshot.trackingId]);
             expect(webex.cc.services.connectionService.recoverRegion).toHaveBeenCalledTimes(recoveries + 1);
           }
         }
@@ -10523,7 +10485,8 @@ describe('realRecoveryWiring', () => {
             type: CC_EVENTS.AGENT_STATE_CHANGE});
           await registered; await flush();
           expect(device.mock.calls).toEqual([[LoginOption.EXTENSION, '1234']]);
-          expect(wxApp.mock.calls).toEqual([[]]);
+          expect(wxApp).toHaveBeenCalledTimes(1);
+          expect(wxApp.mock.calls[0][0]).toBe(cc['commandController'].signal);
           expect(states.mock.calls).toEqual([[{status: 'ready', reason: 'initial-login',
             homeRegion: 'produs1', servingRegion: 'produs1', limitedService: false}]]);
           expect(cc['currentAgentSessionId']).toBe('session');
@@ -12918,11 +12881,10 @@ describe('realRecoveryWiring', () => {
       const detach = jest.spyOn(epoch, 'detach');
       const removed = jest.spyOn(epoch.parent, 'removeEventListener');
       const manager = cc.services.rtdWebSocketManager;
-      const attempt = manager['attempt'];
       const cancel = jest.spyOn(manager, 'cancelPending');
       const close = jest.spyOn(manager, 'close');
       const sink = jest.spyOn(graph.LoggerProxy, 'info');
-      expect(attempt.settled).toBe(false);
+      expect(manager.hasUsableSocket()).toBe(false);
       expect(manager.listenerCount('message')).toBe(1);
       // Drift without a synchronous lifecycle pause so settlement must dispose this owner.
       if (drift === 'organization') jest.spyOn(host.credentials, 'getOrgId').mockReturnValue('other-org');
@@ -12946,7 +12908,6 @@ describe('realRecoveryWiring', () => {
       expect(removed).toHaveBeenCalledWith('abort', expect.any(Function));
       expect(manager.listenerCount('message')).toBe(0);
       expect(manager['attempt']).toBeUndefined();
-      expect(attempt.settled).toBe(true);
       expect(cancel).toHaveBeenCalled();
       expect(cancel.mock.calls[0][0].data).toEqual({reason: 'RECOVERY_INTERRUPTED'});
       expect(close).toHaveBeenCalledWith(false, 'regionRecovery');
@@ -13048,8 +13009,7 @@ describe('realRecoveryWiring', () => {
         expect(rtd.readyState).toBe(3); expect(primary.readyState).toBe(1);
         expect(cc['registrationGeneration']).toBe(generation);
         expect(lifecycleOwner(cc)).toEqual(owner);
-        expect(cc['acceptedSwitchIds']).toEqual(['switch']);
-        expect([...cc['acceptedSwitchIdSet']]).toEqual(['switch']);
+        expect([...cc['acceptedSwitchIds']]).toEqual(['switch']);
         expect(cc['acceptedStation']).toBeDefined();
         expect(cc['priorStationActive']).toBe(true);
         expect(listener).not.toHaveBeenCalled();
@@ -14089,7 +14049,7 @@ describe('realRecoveryWiring', () => {
         elapsedMs: 23, status: 503, reasonCode: 1037, trackingId: 'safe-tracking'});
       jest.advanceTimersByTime(1000); await flush();
       expect(diagnostics(sink).slice(-1)[0]).toEqual({stage: 'settings-read', outcome: 'succeeded', attempt: 2, elapsedMs: 0});
-      expect(cc['acceptedSwitchIds']).toEqual([]);
+      expect([...cc['acceptedSwitchIds']]).toEqual([]);
       sockets[0].message({type: 'SYSTEM_REGION_SWITCH', orgId: 'foreign', trackingId: 'foreign'});
       sockets[0].message({type: 'SYSTEM_REGION_SWITCH', orgId: 'org', trackingId: 'switch'});
       cc['handleWebsocketMessage'](JSON.stringify({type: 'SYSTEM_REGION_SWITCH', orgId: 'org', trackingId: 'switch'}));
@@ -14452,7 +14412,7 @@ describe('realRecoveryWiring', () => {
       cc['commandController']?.signal.aborted],
     station: [cc['stationRevision'], cc['acceptedStation'], cc['priorStationActive'], cc['currentAgentSessionId'],
       cc['acceptedStation'] && {...cc['acceptedStation'], payload: {...cc['acceptedStation'].payload}}],
-    history: [[...cc['acceptedSwitchIds']], [...cc['acceptedSwitchIdSet']]],
+    history: [...cc['acceptedSwitchIds']],
     profile: cc.agentConfig && {...cc.agentConfig},
     publication: cc['lastPublishedRegionState'],
     settings: {...cc['multiRegionSettings']},
@@ -14543,7 +14503,7 @@ describe('realRecoveryWiring', () => {
           recoveryAborted: old.recovery.controller.signal.aborted,
           mode: cc.services.connectionService['mode'],
           primaryUsable: cc.services.webSocketManager.hasUsableSocket(),
-          history: [[...cc['acceptedSwitchIds']], [...cc['acceptedSwitchIdSet']]],
+          history: [...cc['acceptedSwitchIds']],
           station: cc['acceptedStation'], active: cc['priorStationActive'],
         }));
         const data = {type: 'AgentMultiLoginCloseSession', ...(session ? {agentSessionId: session} : {})};
@@ -14554,7 +14514,7 @@ describe('realRecoveryWiring', () => {
         else cc.services.webSocketManager.emit('message', JSON.stringify(notification));
         await flush();
         expect(forwarded).toEqual([{data, registrationAborted: true, recoveryAborted: true,
-          mode: 'stopped', primaryUsable: false, history: [[], []], station: undefined, active: false}]);
+          mode: 'stopped', primaryUsable: false, history: [], station: undefined, active: false}]);
         expect(cc['registrationGeneration']).toBe(generation + 1);
         expect((await old.observed).error.data.kind).toBe('cancelled');
         const states = jest.fn(); cc.on('region:stateChange', states);
@@ -14626,8 +14586,7 @@ describe('realRecoveryWiring', () => {
         expect(cc['registrationGeneration']).toBe(generation + 1);
         expect(registration.signal.aborted).toBe(true);
         expect(old.recovery.controller.signal.aborted).toBe(true);
-        expect(cc['acceptedSwitchIds']).toEqual([]);
-        expect([...cc['acceptedSwitchIdSet']]).toEqual([]);
+        expect([...cc['acceptedSwitchIds']]).toEqual([]);
         expect(cc['acceptedStation']).toBeUndefined();
         expect(cc['priorStationActive']).toBe(false);
         expect((await old.observed).error).toBeDefined();
@@ -15384,7 +15343,7 @@ describe('realRecoveryWiring', () => {
         data: {operation: 'FAILBACK', scope: 'REGION'}});
       expect(failover.controller.signal.aborted).toBe(true);
       const failback = cc['recovery']; expect(failback).not.toBe(failover);
-      expect(cc['acceptedSwitchIds']).toEqual(['A', 'B']);
+      expect([...cc['acceptedSwitchIds']]).toEqual(['A', 'B']);
       expect(sockets[1].close).toHaveBeenCalledTimes(1);
       jest.advanceTimersByTime(105000); await flush(); sockets[2].welcome(); await flush();
       const second = requests.filter(r => r.resource === '/v1/agents/reload')[1];
@@ -15406,8 +15365,7 @@ describe('realRecoveryWiring', () => {
       expect(cc['currentAgentSessionId']).toBe('failback-session');
       expect(cc.agentConfig).toMatchObject({currentTeamId: 'restored-team', deviceType: 'AGENT_DN',
         dn: '5678', defaultDn: '5678', isAgentLoggedIn: true});
-      expect(cc['acceptedSwitchIds']).toEqual(['A', 'B']);
-      expect([...cc['acceptedSwitchIdSet']]).toEqual(['A', 'B']);
+      expect([...cc['acceptedSwitchIds']]).toEqual(['A', 'B']);
       expect(cleanup).toHaveBeenCalledTimes(2);
       expect(failover.cleaned).toBe(true); expect(failback.cleaned).toBe(true);
       expect(cc.services.connectionService['mode']).toBe('ordinary');
@@ -15424,6 +15382,8 @@ describe('realRecoveryWiring', () => {
   });
 
   const failRemainingNormalReloads = async ({cc, requests, frame, flush}, primary) => {
+    const logins = () => requests.filter(request => request.resource === '/v1/agents/login');
+    const previousLoginCount = logins().length;
     for (let attempt = cc['recovery'].reloads; attempt <= 4; attempt += 1) {
       const reloads = requests.filter(r => r.resource === '/v1/agents/reload');
       expect(cc['recovery'].reloads).toBe(attempt);
@@ -15438,8 +15398,8 @@ describe('realRecoveryWiring', () => {
         expect(requests.filter(r => r.resource === '/v1/agents/reload')).toHaveLength(reloads.length + 1);
       }
     }
-    expect(cc['recovery'].fallbackSent).toBe(true);
-    return requests.filter(r => r.resource === '/v1/agents/login').slice(-1)[0];
+    expect(logins()).toHaveLength(previousLoginCount + 1);
+    return logins().at(-1);
   };
 
   it.each([2000, 4000, 8000])('T-007 socketLossPreservesGenerationRestoreBudget during %sms retry wait', async delay => {
@@ -15523,8 +15483,6 @@ describe('realRecoveryWiring', () => {
               {reasonCode: 1038})); await flush();
             await failFallback(requests.filter(r => r.resource === '/v1/agents/login')[1], 1035);
           }
-          expect(recovery.fallbackSent).toBe(true);
-          expect(recovery.post1035Sent).toBe(true);
           expect(recovery.stage).toBe('manual');
           expect(requests.filter(r => r.resource === '/v1/agents/reload'))
             .toHaveLength(lossPoint === 'superseding-switch' ? 5 : 2);
@@ -15535,14 +15493,12 @@ describe('realRecoveryWiring', () => {
           expect(recovery.controller.signal.aborted).toBe(true);
           expect(owner.controller.signal.aborted).toBe(true);
           const fresh = cc['recovery']; expect(fresh).not.toBe(recovery);
-          expect({cleaned: fresh.cleaned, stage: fresh.stage, reloads: fresh.reloads,
-            fallbackSent: fresh.fallbackSent, post1035Sent: fresh.post1035Sent, retryNotBefore: fresh.retryNotBefore})
-            .toEqual({cleaned: false, stage: 'reload', reloads: 0, fallbackSent: false, post1035Sent: false, retryNotBefore: 0});
+          expect(fresh).toMatchObject({cleaned: false, stage: 'reload', reloads: 0, retryNotBefore: 0});
           jest.advanceTimersByTime(105000); await flush(); current = sockets[2]; current.welcome(); await flush();
           expect(fresh.reloads).toBe(1);
           const fallback = await failRemainingNormalReloads(h, current);
           await failFallback(fallback, 1035);
-          expect(fresh.post1035Sent).toBe(true);
+          expect(fresh.stage).toBe('manual');
           const extra = requests.filter(r => r.resource === '/v1/agents/reload').slice(-1)[0];
           current.message(frame(CC_EVENTS.AGENT_RELOGIN_FAILED, extra.headers.trackingid,
             {reasonCode: 1037})); await flush();
@@ -15564,10 +15520,10 @@ describe('realRecoveryWiring', () => {
             cc.$config.allowAutomatedRelogin = false;
           }
           const deadline = recovery.retryNotBefore;
-          const spent = {reloads: recovery.reloads, fallback: recovery.fallbackSent, post1035: recovery.post1035Sent};
+          const spent = {reloads: recovery.reloads, stage: recovery.stage};
           jest.advanceTimersByTime(63000); await flush();
           expect(recovery.retryNotBefore).toBe(deadline);
-          expect({reloads: recovery.reloads, fallback: recovery.fallbackSent, post1035: recovery.post1035Sent}).toEqual(spent);
+          expect(recovery).toMatchObject(spent);
           current = sockets[2]; current.welcome(); await flush();
           if (lossPoint === 'pre-dispatch') {
             expect(recovery.reloads).toBe(1);
@@ -15583,7 +15539,7 @@ describe('realRecoveryWiring', () => {
         expect(cc['acceptedStation']).toBe(accepted);
         expect(cc['sessionRequest']).toBeUndefined();
         expect(cc.services.aqmReqs['operations'].size).toBe(0);
-        expect(cc['acceptedSwitchIds']).toEqual(superseded ? ['budget', 'fresh'] : ['budget']);
+        expect([...cc['acceptedSwitchIds']]).toEqual(superseded ? ['budget', 'fresh'] : ['budget']);
         expect(cleanup).toHaveBeenCalledTimes(superseded ? 2 : 1);
         expect(requests.filter(r => r.resource === SUBSCRIBE_API)).toHaveLength(3);
         const counts = {'post1035': [2, 2], 'pre-dispatch': [4, 2],
@@ -15654,11 +15610,14 @@ describe('realRecoveryWiring', () => {
     await withGraph(async ({cc, requests, sockets, login, frame, flush}) => {
       await login(); cc.$config.allowAutomatedRelogin = true;
       const snapshots: any[] = [];
+      const stateRequests = () => requests.filter(request => request.resource === '/v1/agents/session/state');
+      const requestsAtReady: number[] = [];
+      const auxAtNotification: string[] = [];
       cc.on('region:stateChange', state => {
         snapshots.push(state);
-        if (state.autoAvailable === 'requesting')
-          expect(requests.filter(r => r.resource === '/v1/agents/session/state')).toHaveLength(0);
+        if (state.autoAvailable === 'requesting') requestsAtReady.push(stateRequests().length);
       });
+      cc.on(CC_EVENTS.AGENT_STATE_CHANGE_SUCCESS, () => auxAtNotification.push(cc.agentConfig.lastStateAuxCodeId));
       sockets[0].message({type: 'SYSTEM_REGION_SWITCH', orgId: 'org', trackingId: 'switch'});
       jest.advanceTimersByTime(105000); await flush(); sockets[1].welcome(); await flush();
       const reload = requests.filter(r => r.resource === '/v1/agents/reload')[0];
@@ -15667,12 +15626,15 @@ describe('realRecoveryWiring', () => {
       expect(snapshots.filter(s => s.status === 'ready').map(s => s.autoAvailable)).toEqual(['requesting']);
       const auto = cc['autoAvailable'];
       const removed = jest.spyOn(auto.signal, 'removeEventListener');
-      const state = requests.filter(r => r.resource === '/v1/agents/session/state')[0];
+      expect(requestsAtReady).toEqual([0]);
+      expect(cc.agentConfig.lastStateAuxCodeId).toBe('idle');
+      const state = stateRequests()[0];
       const ack = frame(CC_EVENTS.AGENT_STATE_CHANGE_SUCCESS, state.headers.trackingid,
         {subStatus: 'Available', auxCodeId: '0', lastStateChangeReason: 'agent-wss-disconnect',
           lastStateChangeTimestamp: 2, lastIdleCodeChangeTimestamp: idleTimestamp});
       sockets[1].message({...ack, type: CC_EVENTS.AGENT_STATE_CHANGE}); await flush();
       expect(snapshots.filter(s => s.status === 'ready').map(s => s.autoAvailable)).toEqual(['requesting', 'succeeded']);
+      expect(auxAtNotification).toEqual(['0']);
       expect(cc.agentConfig.lastStateAuxCodeId).toBe('0');
       expect(cc.agentConfig.lastIdleCodeChangeTimestamp).toBe(idleTimestamp ?? undefined);
       expectAutoListenersDetached(cc, removed);
@@ -15984,8 +15946,7 @@ describe('realRecoveryWiring', () => {
         expect(cc['registrationGeneration']).toBe(registration + (boundary === 'logout' ? 0 : 1));
         expect(cc['recovery']).toBeUndefined();
         expect(cc['autoAvailable']).toBeUndefined();
-        expect(cc['acceptedSwitchIds']).toEqual(boundary === 'logout' ? ['switch', 'B'] : []);
-        expect([...cc['acceptedSwitchIdSet']]).toEqual(cc['acceptedSwitchIds']);
+        expect([...cc['acceptedSwitchIds']]).toEqual(boundary === 'logout' ? ['switch', 'B'] : []);
         expect(snapshots.map(s => [s.status, s.trackingId, s.autoAvailable])).toEqual(observer === 'recovering'
           ? [['recovering', 'B', undefined]] : [['ready', 'switch', 'cancelled']]);
         const owner = lifecycleOwner(cc); const count = host.request.mock.calls.length;
@@ -16065,8 +16026,7 @@ describe('realRecoveryWiring', () => {
       expect(cc['registrationGeneration']).toBe(generation);
       expect(cc['acceptedStation'].sessionId).toBe('B-session');
       expect(cc['priorStationActive']).toBe(true);
-      expect(cc['acceptedSwitchIds']).toEqual(['A', 'B']);
-      expect([...cc['acceptedSwitchIdSet']]).toEqual(['A', 'B']);
+      expect([...cc['acceptedSwitchIds']]).toEqual(['A', 'B']);
       expect(cc['lastPublishedRegionState']).toEqual({status: 'ready', reason: 'region-switch',
         trackingId: 'B', homeRegion: 'produs1', servingRegion: 'produs1', limitedService: false});
       const readyOwner = lifecycleOwner(cc);
@@ -16124,14 +16084,14 @@ describe('realRecoveryWiring', () => {
   describe('T-012 registration boundary ownership', () => {
     const invalidatedState = cc => ({
       settings: {...cc['multiRegionSettings']}, agentId: cc['registrationAgentId'],
-      history: [[...cc['acceptedSwitchIds']], [...cc['acceptedSwitchIdSet']]],
+      history: [...cc['acceptedSwitchIds']],
       station: cc['acceptedStation'], active: cc['priorStationActive'],
       dispatches: cc['stateDispatches'].size, confirmed: cc['confirmedState'],
       ordinal: cc['acceptedExplicitOrdinal'],
       idleCode: cc['wellbeingBreakIdleCode'],
     });
     const cleared = {
-      settings: {eligibility: 'unknown'}, agentId: undefined, history: [[], []],
+      settings: {eligibility: 'unknown'}, agentId: undefined, history: [],
       station: undefined, active: false, dispatches: 0, confirmed: undefined,
       ordinal: 0, idleCode: undefined,
     };
@@ -16566,7 +16526,7 @@ describe('realRecoveryWiring', () => {
       sockets[0].message({type: 'SYSTEM_REGION_SWITCH', orgId: 'org', trackingId: 'ignored-switch'});
       expect(sockets[0].close).not.toHaveBeenCalled();
       expect(cc.services.webSocketManager.getServingRegion()).toBe('produs1');
-      expect(cc['acceptedSwitchIds']).toEqual([]);
+      expect([...cc['acceptedSwitchIds']]).toEqual([]);
       expect(listener).not.toHaveBeenCalled();
 
       const boundary = host.request.getMockImplementation();
@@ -16591,8 +16551,7 @@ describe('realRecoveryWiring', () => {
       expect(listener.mock.calls).toEqual([[{status, reason: terminalReason}]]);
       expect(recover).not.toHaveBeenCalled();
       expect(cleanup).not.toHaveBeenCalled();
-      expect(cc['acceptedSwitchIds']).toEqual([]);
-      expect([...cc['acceptedSwitchIdSet']]).toEqual([]);
+      expect([...cc['acceptedSwitchIds']]).toEqual([]);
       expect(cc['recovery']).toBeUndefined();
       expect(requests.filter(r => r.resource === '/v1/agents/reload')).toHaveLength(0);
       expect(requests.filter(r => r.resource.endsWith('/organization-setting'))).toHaveLength(1);
@@ -16728,8 +16687,7 @@ describe('realRecoveryWiring', () => {
       sockets[0].message({type: 'SYSTEM_REGION_SWITCH', orgId: 'org', trackingId: 'ignored-switch'});
       expect(listener).not.toHaveBeenCalled();
       expect(sockets[0].close).not.toHaveBeenCalled();
-      expect(cc['acceptedSwitchIds']).toEqual([]);
-      expect([...cc['acceptedSwitchIdSet']]).toEqual([]);
+      expect([...cc['acceptedSwitchIds']]).toEqual([]);
       forbidden.forEach(spy => expect(spy).not.toHaveBeenCalled());
       expect(clearSummaries).not.toHaveBeenCalled();
 
@@ -16759,8 +16717,7 @@ describe('realRecoveryWiring', () => {
         expect(listener.mock.calls).toEqual([[terminal]]);
         expect(cc['lastPublishedRegionState']).toBe(published);
         expect(cc['recoveryPhase']).toBe('reloadRequired');
-        expect(cc['acceptedSwitchIds']).toEqual([]);
-        expect([...cc['acceptedSwitchIdSet']]).toEqual([]);
+        expect([...cc['acceptedSwitchIds']]).toEqual([]);
         expect(host.request).toHaveBeenCalledTimes(requestCount);
         expect(subscriptions()).toHaveLength(2);
         expect(sockets).toHaveLength(1);
@@ -16988,6 +16945,54 @@ describe('realRecoveryWiring', () => {
     });
   });
 
+  it('T-007 abandoned ordinary relogin cannot set Available or initialize wxApp after a switch', async () => {
+    await withGraph(async ({cc, requests, sockets, frame, login, flush}) => {
+      await login();
+      cc.$config.allowAutomatedRelogin = true;
+      const device = createDeferred<void>();
+      const setupDevice = jest.spyOn(cc, 'handleDeviceType').mockReturnValueOnce(device.promise);
+      const setupWxApp = jest.spyOn(cc, 'ensureWxAppPostStationLogin');
+      const reloads = () => requests.filter(request => request.resource === '/v1/agents/reload');
+      const ordinary = cc['handleConnectionLost']({isSocketReconnected: true});
+      await flush();
+      sockets[0].message(frame(CC_EVENTS.AGENT_RELOGIN_SUCCESS, reloads()[0].headers.trackingid,
+        {lastStateChangeReason: 'agent-wss-disconnect'}));
+      await flush();
+      expect(setupDevice).toHaveBeenCalledTimes(1);
+
+      sockets[0].message({type: 'SYSTEM_REGION_SWITCH', orgId: 'org', trackingId: 'switch'});
+      jest.advanceTimersByTime(105000); await flush();
+      sockets[1].welcome(); await flush();
+      sockets[1].message(frame(CC_EVENTS.AGENT_RELOGIN_SUCCESS, reloads()[1].headers.trackingid));
+      await flush();
+      expect(cc['lastPublishedRegionState'].status).toBe('ready');
+
+      device.resolve(undefined);
+      await flush();
+      expect(requests.filter(request => request.resource === '/v1/agents/session/state')).toHaveLength(0);
+      await ordinary;
+      expect(setupWxApp).toHaveBeenCalledTimes(1);
+    });
+  });
+
+  it('T-007 ordinary relogin cannot reopen admission after a switch from its cancellation observer', async () => {
+    await withGraph(async h => {
+      const {cc, sockets, requests, flush} = h;
+      await restoreAutoAvailable(h, false);
+      cc.on('region:stateChange', state => {
+        if (state.autoAvailable === 'cancelled')
+          sockets[1].message({type: 'SYSTEM_REGION_SWITCH', orgId: 'org', trackingId: 'new-switch'});
+      });
+
+      const ordinary = cc['handleConnectionLost']({isSocketReconnected: true});
+      await flush();
+      expect(cc['recoveryPhase']).toBe('waiting');
+      expect(cc['lastPublishedRegionState']).toMatchObject({status: 'recovering', trackingId: 'new-switch'});
+      expect(requests.filter(request => request.resource === '/v1/agents/reload')).toHaveLength(1);
+      await ordinary;
+    });
+  });
+
   it.each(['waitingForVoice', 'requesting', 'succeeded', 'failed', 'cancelled'])(
     'T-011 completeSnapshotEachAutoOutcome %s', async outcome => {
       await withGraph(async h => {
@@ -17056,8 +17061,7 @@ describe('realRecoveryWiring', () => {
         expect(cc['multiRegionSettings']).toEqual({eligibility: 'unknown'});
         expect(states).not.toHaveBeenCalled();
         expect(cc['lastPublishedRegionState']).toBeUndefined();
-        expect(cc['acceptedSwitchIds']).toEqual([]);
-        expect(cc['acceptedSwitchIdSet'].size).toBe(0);
+        expect([...cc['acceptedSwitchIds']]).toEqual([]);
         expect(cc['recovery']).toBeUndefined();
         expect(recover).not.toHaveBeenCalled();
         expect(stop).not.toHaveBeenCalled();
@@ -17074,11 +17078,11 @@ describe('realRecoveryWiring', () => {
           homeRegion: 'produs1'});
         expect(readTimes).toHaveLength(reads + 1);
         expect(states).not.toHaveBeenCalled();
-        expect(cc['acceptedSwitchIds']).toEqual([]);
+        expect([...cc['acceptedSwitchIds']]).toEqual([]);
         stop.mockClear(); primaryClose.mockClear(); rtdClose.mockClear();
         sockets[1].message({type: 'SYSTEM_REGION_SWITCH', orgId: 'org', trackingId: 'fresh'});
         await flush();
-        expect(cc['acceptedSwitchIds']).toEqual(['fresh']);
+        expect([...cc['acceptedSwitchIds']]).toEqual(['fresh']);
         expect(recover).toHaveBeenCalledTimes(enabled ? 1 : 0);
         expect(stop).toHaveBeenCalledTimes(enabled ? 0 : 1);
         expect(primaryClose.mock.calls).toEqual([[false, enabled ? 'regionRecovery' : 'notEligible']]);

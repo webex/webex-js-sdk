@@ -95,7 +95,7 @@ export default abstract class Task extends EventEmitter implements ITask {
   }
 
   /** @internal */
-  protected assertTaskLifetimeActive(signal: AbortSignal | undefined): void {
+  protected assertTaskLifetimeActive(signal = this.recoveryGuard?.signal): void {
     if (this.regionallyInvalidated) {
       throw createRegionRecoveryError(REGION_RECOVERY_ERROR_CODES.STALE_TASK);
     }
@@ -264,61 +264,47 @@ export default abstract class Task extends EventEmitter implements ITask {
   // Voice-specific methods with default implementations that throw errors
   // Voice class will override these with actual implementations
   public async decline(): Promise<TaskResponse> {
-    return this.runTaskOperation(async () => {
-      this.unsupportedMethodError('decline');
-    });
+    this.unsupportedMethodError('decline');
   }
 
   public async pauseRecording(): Promise<TaskResponse> {
-    return this.runTaskOperation(async () => {
-      this.unsupportedMethodError('pauseRecording');
-    });
+    this.unsupportedMethodError('pauseRecording');
   }
 
   public async resumeRecording(
     resumeRecordingPayload: ResumeRecordingPayload
   ): Promise<TaskResponse> {
-    return this.runTaskOperation(async () => {
-      if (resumeRecordingPayload) {
-        // parameter intentionally unused
-      }
-      this.unsupportedMethodError('resumeRecording');
-    });
+    if (resumeRecordingPayload) {
+      // parameter intentionally unused
+    }
+    this.unsupportedMethodError('resumeRecording');
   }
 
   public async consult(consultPayload: ConsultPayload): Promise<TaskResponse> {
-    return this.runTaskOperation(async () => {
-      if (consultPayload) {
-        // parameter intentionally unused
-      }
-      this.unsupportedMethodError('consult');
-    });
+    if (consultPayload) {
+      // parameter intentionally unused
+    }
+    this.unsupportedMethodError('consult');
   }
 
   public async endConsult(consultEndPayload: ConsultEndPayload): Promise<TaskResponse> {
-    return this.runTaskOperation(async () => {
-      if (consultEndPayload) {
-        // parameter intentionally unused
-      }
-      this.unsupportedMethodError('endConsult');
-    });
+    if (consultEndPayload) {
+      // parameter intentionally unused
+    }
+    this.unsupportedMethodError('endConsult');
   }
 
   public async consultTransfer(
     consultTransferPayload?: ConsultTransferPayLoad
   ): Promise<TaskResponse> {
-    return this.runTaskOperation(async () => {
-      if (consultTransferPayload) {
-        // parameter intentionally unused
-      }
-      this.unsupportedMethodError('consultTransfer');
-    });
+    if (consultTransferPayload) {
+      // parameter intentionally unused
+    }
+    this.unsupportedMethodError('consultTransfer');
   }
 
   public async consultConference(): Promise<TaskResponse> {
-    return this.runTaskOperation(async () => {
-      this.unsupportedMethodError('consultConference');
-    });
+    this.unsupportedMethodError('consultConference');
   }
 
   public async dropConferenceParticipant(
@@ -326,45 +312,33 @@ export default abstract class Task extends EventEmitter implements ITask {
     // eslint-disable-next-line @typescript-eslint/no-unused-vars
     payload: DropConferenceParticipantPayload
   ): Promise<TaskResponse> {
-    return this.runTaskOperation(async () => {
-      this.unsupportedMethodError(METHODS.DROP_CONFERENCE_PARTICIPANT);
-    });
+    this.unsupportedMethodError(METHODS.DROP_CONFERENCE_PARTICIPANT);
   }
 
   public async exitConference(): Promise<TaskResponse> {
-    return this.runTaskOperation(async () => {
-      this.unsupportedMethodError('exitConference');
-    });
+    this.unsupportedMethodError('exitConference');
   }
 
   public async transferConference(): Promise<TaskResponse> {
-    return this.runTaskOperation(async () => {
-      this.unsupportedMethodError('transferConference');
-    });
+    this.unsupportedMethodError('transferConference');
   }
 
   public async switchCall(): Promise<TaskResponse> {
-    return this.runTaskOperation(async () => {
-      this.unsupportedMethodError('switchCall');
-    });
+    this.unsupportedMethodError('switchCall');
   }
 
   public async toggleMute(options?: TaskToggleMuteOptions): Promise<void> {
-    return this.runTaskOperation(async () => {
-      if (options) {
-        // parameter intentionally unused
-      }
-      this.unsupportedMethodError('toggleMute');
-    });
+    if (options) {
+      // parameter intentionally unused
+    }
+    this.unsupportedMethodError('toggleMute');
   }
 
   public async transmitDtmf(options: TaskTransmitDtmfOptions): Promise<void> {
-    return this.runTaskOperation(async () => {
-      if (options) {
-        // parameter intentionally unused
-      }
-      this.unsupportedMethodError('transmitDtmf');
-    });
+    if (options) {
+      // parameter intentionally unused
+    }
+    this.unsupportedMethodError('transmitDtmf');
   }
 
   public unregisterWebCallListeners(): void {
@@ -394,21 +368,15 @@ export default abstract class Task extends EventEmitter implements ITask {
 
   // Voice tasks use holdResume(), but provide separate methods for interface compliance
   public async hold(): Promise<TaskResponse> {
-    return this.runTaskOperation(async () => {
-      this.unsupportedMethodError('hold');
-    });
+    this.unsupportedMethodError('hold');
   }
 
   public async resume(): Promise<TaskResponse> {
-    return this.runTaskOperation(async () => {
-      this.unsupportedMethodError('resume');
-    });
+    this.unsupportedMethodError('resume');
   }
 
   public async holdResume(): Promise<TaskResponse> {
-    return this.runTaskOperation(async () => {
-      this.unsupportedMethodError('holdResume');
-    });
+    this.unsupportedMethodError('holdResume');
   }
 
   public setFeatureEnablement(enablement: AISummaryFeatureEnablement): void {
@@ -1203,6 +1171,7 @@ export default abstract class Task extends EventEmitter implements ITask {
    * @throws Error
    */
   protected unsupportedMethodError(methodName: string): never {
+    this.assertTaskCommandAllowed();
     LoggerProxy.error(`Unsupported operation`, {
       module: 'TASK',
       method: methodName,

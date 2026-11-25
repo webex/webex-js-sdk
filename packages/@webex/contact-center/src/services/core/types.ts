@@ -50,7 +50,6 @@ export type OperationRecord = {
 export type Pending = {
   check: (msg: Msg) => boolean;
   handle: (msg: Msg) => void;
-  alternateBind?: string;
   operationId: string;
   logicalBindKey: string;
 };

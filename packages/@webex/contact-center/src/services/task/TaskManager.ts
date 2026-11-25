@@ -120,12 +120,8 @@ export default class TaskManager extends EventEmitter {
   private taskListeners = new Map<Task, Array<[string, (...args: any[]) => void]>>();
   private regionalCleanupDepth = 0;
 
-  public setRecoveryGuard(guard: TaskRecoveryGuard): void {
-    this.recoveryGuard = guard;
-  }
-
   public startSession(guard: TaskRecoveryGuard): void {
-    this.setRecoveryGuard(guard);
+    this.recoveryGuard = guard;
     if (this.sessionListening) return;
     this.sessionListening = true;
     this.registerTaskListeners();

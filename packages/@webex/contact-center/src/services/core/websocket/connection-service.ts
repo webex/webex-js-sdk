@@ -24,7 +24,6 @@ import {getSubscriptionMismatchReason, isRecord, normalizeRecoveryFailure} from 
 
 type Flight = {
   controller: AbortController;
-  detach: () => void;
   socketLost: boolean;
   noReconnect: boolean;
   afterWelcome: boolean;
@@ -78,7 +77,6 @@ export class ConnectionService extends EventEmitter {
   private restoreTimer?: ReturnType<typeof setTimeout>;
   private isConnectionLost = false;
   private isRestoreFailed = false;
-  private isSocketReconnected = false;
   private isKeepAlive = false;
   private lossEpisode?: {startedAt: number; attempt: number};
   private flight?: Flight;
@@ -101,10 +99,7 @@ export class ConnectionService extends EventEmitter {
   public reset(options: ConnectionResetOptions): void {
     const retained =
       !this.flight && this.webSocketManager.hasUsableSocket() ? this.socketOwner : undefined;
-    if (retained) {
-      retained.detach();
-      this.socketOwner = undefined;
-    }
+    if (retained) this.socketOwner = undefined;
     this.stop();
     this.subscribeRequest = options.subscribeRequest;
     this.registrationSignal = options.signal;
@@ -114,7 +109,7 @@ export class ConnectionService extends EventEmitter {
 
       return;
     }
-    if (retained) this.adoptSocket(retained);
+    this.socketOwner = retained;
     this.mode = 'ordinary';
     this.webSocketManager.shouldReconnect = true;
     this.updateConnectionData();
@@ -191,9 +186,7 @@ export class ConnectionService extends EventEmitter {
     if (!flight) return;
     if (this.flight === flight) this.flight = undefined;
     if (this.socketOwner === flight) this.socketOwner = undefined;
-    flight.detach();
     flight.controller.abort();
-    this.webSocketManager.cancelPending(terminalError('cancelled'));
   }
 
   private cancelWork(preserveSocket = false): void {
@@ -209,32 +202,17 @@ export class ConnectionService extends EventEmitter {
     }
   }
 
-  private createFlight(signal?: AbortSignal): Flight {
+  private createFlight(): Flight {
     this.disposeFlight(this.socketOwner);
-    const controller = new AbortController();
-    const onAbort = () => controller.abort();
-    signal?.addEventListener('abort', onAbort, {once: true});
     const flight: Flight = {
-      controller,
+      controller: new AbortController(),
       socketLost: false,
       noReconnect: false,
       afterWelcome: false,
-      detach: () => signal?.removeEventListener('abort', onAbort),
     };
     this.flight = flight;
-    if (signal?.aborted) controller.abort();
 
     return flight;
-  }
-
-  private adoptSocket(flight: Flight): void {
-    // The admitted socket follows registration ownership after its recovery invocation settles.
-    flight.detach();
-    const signal = this.registrationSignal;
-    const onAbort = () => flight.controller.abort();
-    signal?.addEventListener('abort', onAbort, {once: true});
-    flight.detach = () => signal?.removeEventListener('abort', onAbort);
-    this.socketOwner = flight;
   }
 
   private ownsInvocation(invocation: Invocation): boolean {
@@ -304,7 +282,7 @@ export class ConnectionService extends EventEmitter {
 
       return;
     }
-    const flight = this.createFlight(invocation.signal);
+    const flight = this.createFlight();
     try {
       const welcome = await ConnectionService.observe(
         this.webSocketManager.initWebSocket({
@@ -324,7 +302,7 @@ export class ConnectionService extends EventEmitter {
       if (!this.ownsInvocation(invocation) || this.flight !== flight) return;
       if (flight.controller.signal.aborted) throw terminalError('cancelled');
       this.flight = undefined;
-      this.adoptSocket(flight);
+      this.socketOwner = flight;
       this.invocation = undefined;
       invocation.signal.removeEventListener('abort', invocation.onAbort);
       this.mode = 'ordinary';
@@ -403,7 +381,6 @@ export class ConnectionService extends EventEmitter {
   private updateConnectionData(): void {
     this.isConnectionLost = false;
     this.isRestoreFailed = false;
-    this.isSocketReconnected = false;
   }
 
   private monitorOrdinary(): void {
@@ -503,7 +480,7 @@ export class ConnectionService extends EventEmitter {
         }
       );
     };
-    const flight = this.createFlight(this.registrationSignal);
+    const flight = this.createFlight();
     try {
       if (typeof navigator !== 'undefined' && navigator.onLine === false)
         throw new Error('Browser offline');
@@ -526,7 +503,6 @@ export class ConnectionService extends EventEmitter {
       this.retryTimer = undefined;
       this.lossEpisode = undefined;
       this.updateConnectionData();
-      this.isSocketReconnected = true;
       this.monitorOrdinary();
       this.dispatchConnectionEvent(true);
     } catch (error) {

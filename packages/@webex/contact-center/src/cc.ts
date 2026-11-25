@@ -161,8 +161,6 @@ type RegionRecovery = {
   cleaned: boolean;
   stage: 'reload' | 'fallback' | 'post1035' | 'manual';
   reloads: number;
-  fallbackSent: boolean;
-  post1035Sent: boolean;
   retryNotBefore: number;
   intentRevision: number;
 };
@@ -283,7 +281,6 @@ type AutoAvailable = {
   disconnect: Agent.ReloginSuccess['data'];
   published: boolean;
   dispatching: boolean;
-  sent: boolean;
   requestId?: string;
   startedAt: number;
 };
@@ -536,8 +533,7 @@ export default class ContactCenter extends WebexPlugin implements IContactCenter
     detach: () => void;
   };
 
-  private acceptedSwitchIds: string[] = [];
-  private acceptedSwitchIdSet = new Set<string>();
+  private readonly acceptedSwitchIds = new Set<string>();
   private acceptedStation?: AcceptedStation;
   private priorStationActive = false;
   private suppressAutomaticRelogin = false;
@@ -1094,11 +1090,6 @@ export default class ContactCenter extends WebexPlugin implements IContactCenter
     }
   }
 
-  private clearSwitchHistory(): void {
-    this.acceptedSwitchIds = [];
-    this.acceptedSwitchIdSet.clear();
-  }
-
   /** Full registration boundaries are distinct from station logout and optional RTD loss. */
   private terminateRegistration(identityFailure = false): number | undefined {
     const cancelled = this.cancelAutoAvailable();
@@ -1108,7 +1099,7 @@ export default class ContactCenter extends WebexPlugin implements IContactCenter
     this.stationRevision += 1;
     this.logoutAttempt = undefined;
     // Invalidate the ended owner before aborts, diagnostics or host publication can reenter.
-    this.clearSwitchHistory();
+    this.acceptedSwitchIds.clear();
     this.clearAcceptedStation();
     this.multiRegionSettings = {eligibility: 'unknown'};
     this.registrationAgentId = undefined;
@@ -1359,17 +1350,16 @@ export default class ContactCenter extends WebexPlugin implements IContactCenter
 
       return;
     }
-    if (this.acceptedSwitchIdSet.has(event.trackingId)) {
+    if (this.acceptedSwitchIds.has(event.trackingId)) {
       this.recordRecoveryDiagnostic('ignored-event', 'dropped', 0, startedAt, {
         trackingId: event.trackingId,
       });
 
       return;
     }
-    this.acceptedSwitchIds.push(event.trackingId);
-    this.acceptedSwitchIdSet.add(event.trackingId);
-    if (this.acceptedSwitchIds.length > 128)
-      this.acceptedSwitchIdSet.delete(this.acceptedSwitchIds.shift());
+    this.acceptedSwitchIds.add(event.trackingId);
+    if (this.acceptedSwitchIds.size > 128)
+      this.acceptedSwitchIds.delete(this.acceptedSwitchIds.values().next().value);
     const cancelled = this.cancelAutoAvailable();
     this.services.webSocketManager.clearServingRegion();
     if (!this.cancelRegionRecovery()) return;
@@ -1414,8 +1404,6 @@ export default class ContactCenter extends WebexPlugin implements IContactCenter
       cleaned: false,
       stage: 'reload',
       reloads: 0,
-      fallbackSent: false,
-      post1035Sent: false,
       retryNotBefore: 0,
       intentRevision: this.stateIntentRevision,
     };
@@ -1747,32 +1735,23 @@ export default class ContactCenter extends WebexPlugin implements IContactCenter
           throw createRegionRecoveryError('RECOVERY_INTERRUPTED');
         if (recovery.stage === 'reload' && recovery.reloads >= 4) recovery.stage = 'fallback';
         const stage = recovery.stage;
-        if (
-          stage === 'manual' ||
-          (stage === 'reload' && recovery.reloads >= 4) ||
-          (stage === 'fallback' && recovery.fallbackSent) ||
-          (stage === 'post1035' && recovery.post1035Sent)
-        )
-          break;
+        if (stage === 'manual') break;
         const diagnosticStage = stage === 'fallback' ? 'fallback-login' : 'reload';
         const attempt = stage === 'fallback' ? 1 : recovery.reloads + 1;
         const startedAt = Date.now();
         let applying = false;
         try {
           let response: Agent.ReloginSuccess | Agent.StationLoginSuccess;
+          if (stage === 'reload') recovery.reloads += 1;
+          // Consume each one-shot stage before dispatch so a lost socket cannot repeat it.
+          else recovery.stage = 'manual';
           if (stage === 'fallback') {
-            recovery.fallbackSent = true;
-            recovery.stage = 'manual';
             // eslint-disable-next-line no-await-in-loop -- At most one fallback dispatch.
             response = await ContactCenter.awaitRegistrationWork(
               this.services.agent.stationLogin({data: payload}, undefined, context),
               context.signal
             );
           } else {
-            if (stage === 'post1035') {
-              recovery.post1035Sent = true;
-              recovery.stage = 'manual';
-            } else recovery.reloads += 1;
             // eslint-disable-next-line no-await-in-loop -- Bounded reload budget survives sockets.
             response = await ContactCenter.awaitRegistrationWork(
               this.services.agent.reload(undefined, context),
@@ -2603,7 +2582,7 @@ export default class ContactCenter extends WebexPlugin implements IContactCenter
       this.interruptedTaskGeneration = undefined;
       this.taskManager.stopSession();
     }
-    this.clearSwitchHistory();
+    this.acceptedSwitchIds.clear();
     this.clearAcceptedStation();
     this.registrationAbortController?.abort();
     this.registrationGeneration += 1;
@@ -3776,7 +3755,6 @@ export default class ContactCenter extends WebexPlugin implements IContactCenter
       disconnect: {...data},
       published: false,
       dispatching: false,
-      sent: false,
       startedAt: Date.now(),
     };
     this.autoAvailable = auto;
@@ -3803,7 +3781,7 @@ export default class ContactCenter extends WebexPlugin implements IContactCenter
   private handleAutoAvailableAbort = (): void => {
     const auto = this.autoAvailable;
     if (!auto?.signal.aborted || !this.isCurrentAutoAvailable(auto)) return;
-    const outcome = auto.sent ? 'failed' : 'cancelled';
+    const outcome = auto.requestId ? 'failed' : 'cancelled';
     if (!this.consumeAutoAvailable(auto, outcome)) return;
     this.regionStateContext.autoAvailable = outcome;
     this.publishRegionState(this.buildRegionState('ready', 'region-switch'));
@@ -3854,7 +3832,7 @@ export default class ContactCenter extends WebexPlugin implements IContactCenter
 
   private async dispatchAutoAvailable(auto: AutoAvailable): Promise<void> {
     if (
-      auto.sent ||
+      auto.requestId ||
       auto.dispatching ||
       !auto.published ||
       auto.signal.aborted ||
@@ -4059,10 +4037,8 @@ export default class ContactCenter extends WebexPlugin implements IContactCenter
         ordinal: (this.stateOrdinal += 1),
       };
       this.stateDispatches.set(requestId, dispatch);
-      if (context.source === 'dr-auto' && this.autoAvailable) {
-        this.autoAvailable.sent = true;
+      if (context.source === 'dr-auto' && this.autoAvailable)
         this.autoAvailable.requestId = requestId;
-      }
       const pending = this.services.agent.stateChange(
         {data: {...data, agentId: data.agentId || this.agentConfig.agentId}},
         undefined,
@@ -5254,14 +5230,23 @@ export default class ContactCenter extends WebexPlugin implements IContactCenter
     const station = this.stationRevision;
     const orgId = this.$webex.credentials.getOrgId();
     const profile = this.agentConfig;
+    const registrationSignal = this.registrationAbortController?.signal;
+    const commandSignal = this.commandController?.signal;
+    const ownsStation = () => this.isCurrentStation(registration, station, orgId, profile);
+    const ownsRelogin = () => generation === this.recoveryGeneration && ownsStation();
+    const assertReloginAdmission = () => {
+      if (!ownsStation()) throw createRegionRecoveryError('RECOVERY_INTERRUPTED');
+      this.assertRecoveryAdmission('session');
+      if (generation !== this.recoveryGeneration)
+        throw createRegionRecoveryError('RECOVERY_INTERRUPTED');
+    };
     if (!initialRegistration) {
       const cancelled = this.cancelAutoAvailable();
       if (cancelled) {
         const phase = this.recoveryPhase;
         this.setRecoveryPhase('cancelled');
         this.publishRegionState(cancelled);
-        if (!this.isCurrentStation(registration, station, orgId, profile))
-          throw createRegionRecoveryError('RECOVERY_INTERRUPTED');
+        if (!ownsRelogin()) throw createRegionRecoveryError('RECOVERY_INTERRUPTED');
         this.setRecoveryPhase(phase);
       }
     }
@@ -5273,27 +5258,20 @@ export default class ContactCenter extends WebexPlugin implements IContactCenter
     );
 
     try {
-      this.assertRecoveryAdmission('session');
-      if (
-        this.interruptedTaskGeneration !== undefined &&
-        !this.startTaskSession(
-          () =>
-            this.isCurrentStation(registration, station, orgId, profile) &&
-            generation === this.recoveryGeneration
-        )
-      )
+      assertReloginAdmission();
+      if (this.interruptedTaskGeneration !== undefined && !this.startTaskSession(ownsRelogin))
         throw createRegionRecoveryError('RECOVERY_INTERRUPTED');
       const reLoginResponse = await this.services.agent.reload(undefined, {
-        generation: this.recoveryGeneration,
-        signal: this.registrationAbortController?.signal,
+        generation,
+        signal: registrationSignal,
       });
-      if (!this.isCurrentStation(registration, station, orgId, profile)) {
-        throw createRegionRecoveryError('RECOVERY_INTERRUPTED');
-      }
-      this.assertRecoveryAdmission('session');
+      assertReloginAdmission();
       this.rememberAcceptedStation({source: 'reload', response: reLoginResponse});
-      if (!initialRegistration && this.registrationAbortController)
-        this.resumeRtd(this.registrationAbortController.signal);
+      assertReloginAdmission();
+      if (!initialRegistration && registrationSignal) {
+        this.resumeRtd(registrationSignal);
+        assertReloginAdmission();
+      }
 
       const {agentId, lastStateChangeReason, deviceType, dn} = reLoginResponse.data;
       const acceptedPayload = this.acceptedStation?.payload;
@@ -5305,9 +5283,7 @@ export default class ContactCenter extends WebexPlugin implements IContactCenter
       else if (Object.values(LoginOption).includes(deviceType as LoginOption))
         await this.handleDeviceType(deviceType as LoginOption, dn);
 
-      if (!this.isCurrentStation(registration, station, orgId, profile))
-        throw createRegionRecoveryError('RECOVERY_INTERRUPTED');
-      this.assertRecoveryAdmission('session');
+      assertReloginAdmission();
 
       if (lastStateChangeReason === 'agent-wss-disconnect') {
         this.recordBestEffort(() =>
@@ -5323,12 +5299,13 @@ export default class ContactCenter extends WebexPlugin implements IContactCenter
           agentId,
         };
         try {
+          assertReloginAdmission();
           const dispatched = await this.performAgentStateChange(stateChangeData, {
             source: 'relogin-auto',
             intentRevision: this.stateIntentRevision,
-            stationRevision: this.stationRevision,
-            generation: this.recoveryGeneration,
-            signal: this.commandController?.signal,
+            stationRevision: station,
+            generation,
+            signal: commandSignal,
           });
           if (dispatched.kind === 'not-dispatched') throw dispatched.error;
         } catch (error) {
@@ -5340,16 +5317,10 @@ export default class ContactCenter extends WebexPlugin implements IContactCenter
           );
         }
       }
-      if (!this.isCurrentStation(registration, station, orgId, profile))
-        throw createRegionRecoveryError('RECOVERY_INTERRUPTED');
-      this.assertRecoveryAdmission('session');
-      this.agentConfig.isAgentLoggedIn = true;
-
-      await this.ensureWxAppPostStationLogin();
-
-      if (!this.isCurrentStation(registration, station, orgId, profile))
-        throw createRegionRecoveryError('RECOVERY_INTERRUPTED');
-      this.assertRecoveryAdmission('session');
+      assertReloginAdmission();
+      const wxApp = this.ensureWxAppPostStationLogin(commandSignal);
+      await (commandSignal ? ContactCenter.awaitRegistrationWork(wxApp, commandSignal) : wxApp);
+      assertReloginAdmission();
       if (initialRegistration) {
         this.setRecoveryPhase('ready');
         this.publishRegionState(this.buildRegionState('ready', 'initial-login'));

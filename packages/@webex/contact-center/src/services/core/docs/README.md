@@ -575,8 +575,9 @@ with `RECOVERY_INTERRUPTED`; settlement removes only that operation's resources.
 ### ConnectionService members
 
 - `reset(options)` binds ordinary transport to the current registration and clears obsolete work.
-- `pause()` cancels the current retry and flight while retaining the usable socket when requested
-  by the driver. `stop()` cancels work and detaches the current registration and socket listeners.
+- `pause()` cancels the current retry and flight while retaining an adopted socket. `stop()`
+  also disposes the adopted socket and detaches the registration and socket listeners. A regional
+  invocation abort pauses its work. A registration abort stops its work.
 - `recoverRegion(options): Promise<void>` runs one current region attempt at a time, invoking
   `onScheduled` and handing the accepted Welcome to `afterWelcome`. It adopts the current socket
   and resumes ordinary monitoring before invoking the returned outcome publisher. Terminal failures

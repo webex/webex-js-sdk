@@ -76,7 +76,7 @@ export default class AqmReqs {
     return (p: TReq, cbRes?: CbRes<TRes>, context?: AqmRequestContext) => {
       const request = config(p);
 
-      return this.makeAPIRequest(
+      return this.createPromise(
         {...request, context: context ?? request.context ?? {generation: this.generation}},
         cbRes
       );
@@ -87,15 +87,11 @@ export default class AqmReqs {
     return (cbRes?: CbRes<TRes>, context?: AqmRequestContext) => {
       const request = config();
 
-      return this.makeAPIRequest(
+      return this.createPromise(
         {...request, context: context ?? request.context ?? {generation: this.generation}},
         cbRes
       );
     };
-  }
-
-  private async makeAPIRequest<TRes, TErr>(c: Req<TRes, TErr>, cbRes?: CbRes<TRes>): Promise<TRes> {
-    return this.createPromise(c, cbRes);
   }
 
   private assertAdmission<TRes, TErr>(c: Req<TRes, TErr>, context: AqmRequestContext): void {
@@ -106,7 +102,7 @@ export default class AqmReqs {
     const gate = this.recoveryGate;
     if (gate.state === 'open' || kind === 'query') return;
     if (kind === 'teardown') {
-      if (!this.hasUsablePrimary()) throw createRegionRecoveryError('RECOVERY_INTERRUPTED');
+      if (!this.primary.hasUsableSocket()) throw createRegionRecoveryError('RECOVERY_INTERRUPTED');
 
       return;
     }
@@ -127,11 +123,7 @@ export default class AqmReqs {
     throw createRegionRecoveryError('RECOVERY_IN_PROGRESS');
   }
 
-  private hasUsablePrimary(): boolean {
-    return this.primary.hasUsableSocket();
-  }
-
-  private createPromise<TRes, TErr>(c: Req<TRes, TErr>, cbRes?: CbRes<TRes>): Promise<TRes> {
+  private async createPromise<TRes, TErr>(c: Req<TRes, TErr>, cbRes?: CbRes<TRes>): Promise<TRes> {
     return new Promise<TRes>((resolve, reject) => {
       const context = c.context ?? {generation: this.generation};
       this.assertAdmission(c, context);
@@ -224,7 +216,6 @@ export default class AqmReqs {
         logicalBindKey: logicalSuccess,
         check: (msg) => matches(successBind, msg),
         handle: success,
-        ...(keyCancel ? {alternateBind: keyCancel} : {}),
       };
       if (keyFail) {
         this.pendingRequests[keyFail] = {
@@ -251,7 +242,6 @@ export default class AqmReqs {
         this.pendingNotifCancelrequest[keyCancel] = {
           operationId,
           logicalBindKey: this.bindPrint(cancelBind),
-          alternateBind: keySuccess,
           check: (msg) => this.bindCheck(cancelBind, msg),
           handle: success,
         };
