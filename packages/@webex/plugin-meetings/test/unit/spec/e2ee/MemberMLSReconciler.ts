@@ -107,10 +107,6 @@ describe('plugin-meetings', () => {
         member.getE2eeDeviceVerification('device-a').identityResults,
         identityResults
       );
-      assert.deepEqual(
-        reconciler.getDeviceVerification('device-a').identityResults,
-        identityResults
-      );
     });
 
     it("leaves a member 'unknown' (and reports nothing) when none of its devices are in the roster", () => {
@@ -180,23 +176,6 @@ describe('plugin-meetings', () => {
 
       assert.equal(member.e2eeVerificationState, E2eeMemberVerificationState.Unknown);
       assert.calledOnceWithExactly(reportMembersUpdated, [member]);
-    });
-
-    it('getDeviceVerification returns the mapped verification or undefined', () => {
-      reconciler.applyRosterAdded([rosterMember('device-a'), unverifiedRosterMember('device-b')]);
-
-      assert.deepEqual(reconciler.getDeviceVerification('device-a'), {
-        deviceUrl: 'device-a',
-        validationResult: E2eeValidationResult.Success,
-        displayName: 'Alice',
-        deviceType: 'WEB',
-        identityResults: VERIFIED_IDENTITY_RESULTS,
-      });
-      assert.equal(
-        reconciler.getDeviceVerification('device-b').validationResult,
-        E2eeValidationResult.Failure
-      );
-      assert.isUndefined(reconciler.getDeviceVerification('device-missing'));
     });
 
     it('reports only when a roster change actually alters a member verification', () => {
@@ -304,7 +283,6 @@ describe('plugin-meetings', () => {
         },
       ]);
 
-      assert.deepEqual(reconciler.getDeviceVerification('device-a'), expected);
       assert.deepEqual(member.getE2eeDeviceVerification('device-a'), expected);
       assert.equal(member.e2eeVerificationState, E2eeMemberVerificationState.Unknown);
     });
@@ -316,7 +294,6 @@ describe('plugin-meetings', () => {
       const member = makeMember('m1', ['device-a']);
       addMember(member);
 
-      assert.isUndefined(reconciler.getDeviceVerification('device-a'));
       assert.deepEqual(member.getE2eeDeviceVerifications(), []);
       assert.equal(member.e2eeVerificationState, E2eeMemberVerificationState.Unknown);
       assert.notCalled(reportMembersUpdated);
@@ -337,7 +314,6 @@ describe('plugin-meetings', () => {
       const member = makeMember('m1', ['device-a']);
       addMember(member);
 
-      assert.isUndefined(reconciler.getDeviceVerification('device-a'));
       assert.equal(member.e2eeVerificationState, E2eeMemberVerificationState.Unknown);
       assert.notCalled(reportMembersUpdated);
     });

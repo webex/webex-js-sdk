@@ -112,16 +112,6 @@ export default class MemberMLSReconciler {
   }
 
   /**
-   * @param {string} deviceUrl
-   * @returns {E2eeDeviceVerification | undefined} the verification for a single device URL.
-   */
-  getDeviceVerification(deviceUrl: string): E2eeDeviceVerification | undefined {
-    const rosterEntry = this.rosterByDeviceUrl.get(deviceUrl);
-
-    return rosterEntry ? MemberMLSReconciler.toDeviceVerification(rosterEntry) : undefined;
-  }
-
-  /**
    * Clears the roster and the verification it had applied, reporting the affected members.
    * @returns {void}
    */
