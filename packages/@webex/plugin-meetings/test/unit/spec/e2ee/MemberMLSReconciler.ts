@@ -6,7 +6,11 @@ import sinon from 'sinon';
 import MemberMLSReconciler from '@webex/plugin-meetings/src/e2ee/MemberMLSReconciler';
 import MembersCollection from '@webex/plugin-meetings/src/members/collection';
 import Member from '@webex/plugin-meetings/src/member';
-import {E2eeIdentityType, E2eeValidationResult} from '@webex/plugin-meetings/src/e2ee/types';
+import {
+  E2eeIdentityType,
+  E2eeMemberVerificationState,
+  E2eeValidationResult,
+} from '@webex/plugin-meetings/src/e2ee/types';
 import type {E2eeIdentityResult} from '@webex/plugin-meetings/src/e2ee/types';
 
 describe('plugin-meetings', () => {
@@ -28,13 +32,13 @@ describe('plugin-meetings', () => {
 
     // Defaults to a device whose credential validated as a Webex user identity.
     const rosterMember = (
-      url,
+      deviceUrl,
       {
         validationResult = E2eeValidationResult.Success,
         identityResults = VERIFIED_IDENTITY_RESULTS,
       }: {validationResult?: E2eeValidationResult; identityResults?: E2eeIdentityResult[]} = {}
     ) => ({
-      url,
+      deviceUrl,
       displayName: 'Alice',
       deviceType: 'WEB',
       validationResult,
@@ -83,7 +87,7 @@ describe('plugin-meetings', () => {
         member.getE2eeDeviceVerification('device-b').validationResult,
         E2eeValidationResult.Failure
       );
-      assert.equal(member.e2eeVerificationState, 'partiallyVerified');
+      assert.equal(member.e2eeVerificationState, E2eeMemberVerificationState.PartiallyVerified);
       assert.calledOnceWithExactly(reportMembersUpdated, [member]);
     });
 
@@ -115,7 +119,7 @@ describe('plugin-meetings', () => {
 
       reconciler.applyRosterAdded([rosterMember('device-a')]);
 
-      assert.equal(member.e2eeVerificationState, 'unknown');
+      assert.equal(member.e2eeVerificationState, E2eeMemberVerificationState.Unknown);
       assert.deepEqual(member.getE2eeDeviceVerifications(), []);
       assert.notCalled(reportMembersUpdated);
     });
@@ -126,7 +130,7 @@ describe('plugin-meetings', () => {
 
       reconciler.applyRosterAdded([rosterMember('device-a'), rosterMember('device-b')]);
 
-      assert.equal(member.e2eeVerificationState, 'verified');
+      assert.equal(member.e2eeVerificationState, E2eeMemberVerificationState.Verified);
     });
 
     it('stamps verification (no report) for a roster entry that arrived before the member', () => {
@@ -136,7 +140,7 @@ describe('plugin-meetings', () => {
       const member = makeMember('m1', ['device-a']);
       addMember(member);
 
-      assert.equal(member.e2eeVerificationState, 'verified');
+      assert.equal(member.e2eeVerificationState, E2eeMemberVerificationState.Verified);
       // Member-driven: verification is stamped in place; Members emits the members:update, not us.
       assert.notCalled(reportMembersUpdated);
     });
@@ -144,12 +148,12 @@ describe('plugin-meetings', () => {
     it('reports a member when its roster entry arrives after it (roster-driven)', () => {
       const member = makeMember('m1', ['device-a']);
       addMember(member);
-      assert.equal(member.e2eeVerificationState, 'unknown');
+      assert.equal(member.e2eeVerificationState, E2eeMemberVerificationState.Unknown);
       reportMembersUpdated.resetHistory();
 
       reconciler.applyRosterAdded([rosterMember('device-a')]);
 
-      assert.equal(member.e2eeVerificationState, 'verified');
+      assert.equal(member.e2eeVerificationState, E2eeMemberVerificationState.Verified);
       assert.calledOnceWithExactly(reportMembersUpdated, [member]);
     });
 
@@ -162,7 +166,7 @@ describe('plugin-meetings', () => {
       reconciler.applyRosterRemoved(['device-a']);
 
       assert.isUndefined(member.getE2eeDeviceVerification('device-a'));
-      assert.equal(member.e2eeVerificationState, 'unknown');
+      assert.equal(member.e2eeVerificationState, E2eeMemberVerificationState.Unknown);
       assert.calledOnceWithExactly(reportMembersUpdated, [member]);
     });
 
@@ -174,7 +178,7 @@ describe('plugin-meetings', () => {
 
       reconciler.reset();
 
-      assert.equal(member.e2eeVerificationState, 'unknown');
+      assert.equal(member.e2eeVerificationState, E2eeMemberVerificationState.Unknown);
       assert.calledOnceWithExactly(reportMembersUpdated, [member]);
     });
 
@@ -217,7 +221,7 @@ describe('plugin-meetings', () => {
       const recreated = makeMember('m1', ['device-a']);
       updateMember(recreated);
 
-      assert.equal(recreated.e2eeVerificationState, 'verified');
+      assert.equal(recreated.e2eeVerificationState, E2eeMemberVerificationState.Verified);
       assert.notCalled(reportMembersUpdated);
     });
 
@@ -244,7 +248,7 @@ describe('plugin-meetings', () => {
 
       assert.isUndefined(recreated.getE2eeDeviceVerification('device-a'));
       assert.equal(recreated.getE2eeDeviceVerification('device-b').deviceUrl, 'device-b');
-      assert.equal(recreated.e2eeVerificationState, 'verified');
+      assert.equal(recreated.e2eeVerificationState, E2eeMemberVerificationState.Verified);
       assert.notCalled(reportMembersUpdated);
 
       reconciler.applyRosterRemoved(['device-a']); // no longer owned by the member -> silent
@@ -266,7 +270,7 @@ describe('plugin-meetings', () => {
         member.getE2eeDeviceVerification('device-a').validationResult,
         E2eeValidationResult.Failure
       );
-      assert.equal(member.e2eeVerificationState, 'unverified');
+      assert.equal(member.e2eeVerificationState, E2eeMemberVerificationState.Unverified);
       assert.calledOnceWithExactly(reportMembersUpdated, [member]);
     });
 
@@ -293,7 +297,7 @@ describe('plugin-meetings', () => {
 
       reconciler.applyRosterAdded([
         {
-          url: 'device-a',
+          deviceUrl: 'device-a',
           displayName: 'Alice',
           deviceType: 'WEB',
           validationResult: E2eeValidationResult.Success,
@@ -302,7 +306,7 @@ describe('plugin-meetings', () => {
 
       assert.deepEqual(reconciler.getDeviceVerification('device-a'), expected);
       assert.deepEqual(member.getE2eeDeviceVerification('device-a'), expected);
-      assert.equal(member.e2eeVerificationState, 'unknown');
+      assert.equal(member.e2eeVerificationState, E2eeMemberVerificationState.Unknown);
     });
 
     it('does not stamp a member whose roster entry was removed before it arrived', () => {
@@ -314,7 +318,7 @@ describe('plugin-meetings', () => {
 
       assert.isUndefined(reconciler.getDeviceVerification('device-a'));
       assert.deepEqual(member.getE2eeDeviceVerifications(), []);
-      assert.equal(member.e2eeVerificationState, 'unknown');
+      assert.equal(member.e2eeVerificationState, E2eeMemberVerificationState.Unknown);
       assert.notCalled(reportMembersUpdated);
     });
 
@@ -334,7 +338,7 @@ describe('plugin-meetings', () => {
       addMember(member);
 
       assert.isUndefined(reconciler.getDeviceVerification('device-a'));
-      assert.equal(member.e2eeVerificationState, 'unknown');
+      assert.equal(member.e2eeVerificationState, E2eeMemberVerificationState.Unknown);
       assert.notCalled(reportMembersUpdated);
     });
 
@@ -366,7 +370,7 @@ describe('plugin-meetings', () => {
         addMember(member);
 
         assert.deepEqual(member.getE2eeDeviceVerifications(), []);
-        assert.equal(member.e2eeVerificationState, 'unknown');
+        assert.equal(member.e2eeVerificationState, E2eeMemberVerificationState.Unknown);
       });
     });
   });

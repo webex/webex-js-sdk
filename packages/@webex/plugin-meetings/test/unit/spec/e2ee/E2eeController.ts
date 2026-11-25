@@ -49,15 +49,15 @@ describe('plugin-meetings', () => {
 
     const emitSession = (event, payload?) => sessionHandlers[event]?.(payload);
 
-    const makeRosterEntry = ({url, deviceType = 'WEB'}) => ({
-      url,
+    const makeRosterEntry = ({deviceUrl, deviceType = 'WEB'}) => ({
+      deviceUrl,
       deviceType,
       displayName: '',
       validationResult: E2eeValidationResult.Success,
     });
 
     const MEDIA_SERVICE = makeRosterEntry({
-      url: 'https://ms.webex.com/1',
+      deviceUrl: 'https://ms.webex.com/1',
       deviceType: 'MEDIA_SERVICE',
     });
 
@@ -515,10 +515,10 @@ describe('plugin-meetings', () => {
       });
 
       it('marks joined only once our own device url is in the roster', () => {
-        emitSession('rosterAdded', [makeRosterEntry({url: 'https://wdm.webex.com/other'})]);
+        emitSession('rosterAdded', [makeRosterEntry({deviceUrl: 'https://wdm.webex.com/other'})]);
         assert.equal(e2ee.state, E2eeState.Joining);
 
-        emitSession('rosterAdded', [makeRosterEntry({url: OWN_DEVICE_URL})]);
+        emitSession('rosterAdded', [makeRosterEntry({deviceUrl: OWN_DEVICE_URL})]);
         assert.equal(e2ee.state, E2eeState.Joined);
         assert.calledOnceWithExactly(events.state, {state: E2eeState.Joined});
       });
@@ -527,7 +527,7 @@ describe('plugin-meetings', () => {
         await e2ee.start();
         emitSession('rosterAdded', [
           MEDIA_SERVICE,
-          makeRosterEntry({url: OWN_DEVICE_URL}),
+          makeRosterEntry({deviceUrl: OWN_DEVICE_URL}),
         ]);
 
         assert.equal(e2ee.state, E2eeState.Joined);
@@ -539,17 +539,17 @@ describe('plugin-meetings', () => {
         assert.isFalse(e2ee.hasUntrustedMediaServices);
 
         const anotherMediaService = makeRosterEntry({
-          url: 'https://ms.webex.com/2',
+          deviceUrl: 'https://ms.webex.com/2',
           deviceType: 'MEDIA_SERVICE',
         });
 
         emitSession('rosterAdded', [MEDIA_SERVICE, anotherMediaService]);
         assert.isTrue(e2ee.hasUntrustedMediaServices);
 
-        emitSession('rosterRemoved', {urls: [MEDIA_SERVICE.url]});
+        emitSession('rosterRemoved', {urls: [MEDIA_SERVICE.deviceUrl]});
         assert.isTrue(e2ee.hasUntrustedMediaServices);
 
-        emitSession('rosterRemoved', {urls: [anotherMediaService.url]});
+        emitSession('rosterRemoved', {urls: [anotherMediaService.deviceUrl]});
         assert.isFalse(e2ee.hasUntrustedMediaServices);
 
         assert.deepEqual(events.mediaServices.args, [
@@ -617,7 +617,7 @@ describe('plugin-meetings', () => {
 
       it('ignores start once joined', async () => {
         await e2ee.start();
-        emitSession('rosterAdded', [makeRosterEntry({url: OWN_DEVICE_URL})]);
+        emitSession('rosterAdded', [makeRosterEntry({deviceUrl: OWN_DEVICE_URL})]);
 
         await e2ee.start();
 
@@ -627,7 +627,7 @@ describe('plugin-meetings', () => {
     });
 
     describe('roster reconciliation', () => {
-      const entry = makeRosterEntry({url: OWN_DEVICE_URL});
+      const entry = makeRosterEntry({deviceUrl: OWN_DEVICE_URL});
 
       beforeEach(async () => {
         await e2ee.start();

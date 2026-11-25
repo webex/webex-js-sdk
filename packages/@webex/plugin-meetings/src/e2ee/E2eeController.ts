@@ -352,10 +352,10 @@ export default class E2eeController extends TypedEventsScope<E2eeControllerEvent
 
     for (const member of added) {
       if (member.deviceType === MEDIA_SERVICE_DEVICE_TYPE) {
-        this.mediaServiceUrls.add(member.url);
+        this.mediaServiceUrls.add(member.deviceUrl);
       }
 
-      if (member.url === this.webex.internal.device.url) {
+      if (member.deviceUrl === this.webex.internal.device.url) {
         ownDeviceAdded = true;
       }
     }

@@ -65,13 +65,13 @@ export default class MemberMLSReconciler {
     const changed = new Set<any>();
 
     added.forEach((entry) => {
-      this.rosterByDeviceUrl.set(entry.url, entry);
+      this.rosterByDeviceUrl.set(entry.deviceUrl, entry);
 
-      const member = this.membersCollection.getMemberByDeviceUrl(entry.url);
+      const member = this.membersCollection.getMemberByDeviceUrl(entry.deviceUrl);
 
       if (
         member?.setE2eeDeviceVerification?.(
-          entry.url,
+          entry.deviceUrl,
           MemberMLSReconciler.toDeviceVerification(entry)
         )
       ) {
@@ -174,7 +174,7 @@ export default class MemberMLSReconciler {
    */
   private static toDeviceVerification(rosterEntry: E2eeRosterMember): E2eeDeviceVerification {
     return {
-      deviceUrl: rosterEntry.url,
+      deviceUrl: rosterEntry.deviceUrl,
       validationResult: rosterEntry.validationResult,
       displayName: rosterEntry.displayName,
       deviceType: rosterEntry.deviceType,

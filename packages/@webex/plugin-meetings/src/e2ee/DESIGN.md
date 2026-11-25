@@ -203,7 +203,7 @@ breakout moves. `setLlmChannel()` swaps the channel when `Meeting` replaces it o
 
 Holds only the MLS roster (`Map<deviceUrl, E2eeRosterMember>`). The `deviceUrl → Member` index
 lives in `MembersCollection.getMemberByDeviceUrl()`, and verification is stored on each `Member`.
-Matching is per device: `rosterMember.url === member.participant.devices[i].url`.
+Matching is per device: `rosterMember.deviceUrl === member.participant.devices[i].url`.
 
 Verification is surfaced through the existing `members:update` event; there is no dedicated event:
 

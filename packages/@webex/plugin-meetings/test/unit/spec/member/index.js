@@ -3,7 +3,11 @@ import {assert} from '@webex/test-helper-chai';
 
 import MemberUtil from '@webex/plugin-meetings/src/member/util';
 import Member from '@webex/plugin-meetings/src/member';
-import {E2eeIdentityType, E2eeValidationResult} from '@webex/plugin-meetings/src/e2ee/types';
+import {
+  E2eeIdentityType,
+  E2eeMemberVerificationState,
+  E2eeValidationResult,
+} from '@webex/plugin-meetings/src/e2ee/types';
 
 describe('member', () => {
   const participant = {controls: {}, status: {}};
@@ -151,7 +155,7 @@ describe('member', () => {
 
       assert.instanceOf(freshMember.e2eeDeviceVerifications, Map);
       assert.equal(freshMember.e2eeDeviceVerifications.size, 0);
-      assert.equal(freshMember.e2eeVerificationState, 'unknown');
+      assert.equal(freshMember.e2eeVerificationState, E2eeMemberVerificationState.Unknown);
       assert.deepEqual(freshMember.getE2eeDeviceVerifications(), []);
     });
 
@@ -181,10 +185,26 @@ describe('member', () => {
     });
 
     [
-      {name: 'all devices verified', verifications: [true, true], expected: 'verified'},
-      {name: 'no devices verified', verifications: [false, false], expected: 'unverified'},
-      {name: 'some devices verified', verifications: [true, false], expected: 'partiallyVerified'},
-      {name: 'no devices present', verifications: [], expected: 'unknown'},
+      {
+        name: 'all devices verified',
+        verifications: [true, true],
+        expected: E2eeMemberVerificationState.Verified,
+      },
+      {
+        name: 'no devices verified',
+        verifications: [false, false],
+        expected: E2eeMemberVerificationState.Unverified,
+      },
+      {
+        name: 'some devices verified',
+        verifications: [true, false],
+        expected: E2eeMemberVerificationState.PartiallyVerified,
+      },
+      {
+        name: 'no devices present',
+        verifications: [],
+        expected: E2eeMemberVerificationState.Unknown,
+      },
     ].forEach(({name, verifications, expected}) => {
       it(`aggregate state is '${expected}' when ${name}`, () => {
         const freshMember = createMember();
@@ -210,44 +230,44 @@ describe('member', () => {
         {
           name: 'a WebexMachineIdentity leaf',
           identityResults: [successfulIdentity(WebexMachineIdentity)],
-          expected: 'verified',
+          expected: E2eeMemberVerificationState.Verified,
         },
         {
           name: 'a WebexUserIdentity leaf',
           identityResults: [successfulIdentity(WebexUserIdentity)],
-          expected: 'verified',
+          expected: E2eeMemberVerificationState.Verified,
         },
         {
           name: 'an ExternalVerifiedIdentity leaf',
           identityResults: [successfulIdentity(ExternalVerifiedIdentity)],
-          expected: 'verified',
+          expected: E2eeMemberVerificationState.Verified,
         },
         {
           name: 'a WebexAnonymousIdentity leaf',
           identityResults: [successfulIdentity(WebexAnonymousIdentity)],
-          expected: 'unverified',
+          expected: E2eeMemberVerificationState.Unverified,
         },
         {
           name: 'a leaf without an identity type',
           identityResults: [{result: Success, certificateChain: [{}]}],
-          expected: 'unknown',
+          expected: E2eeMemberVerificationState.Unknown,
         },
         {
           name: 'an empty certificate chain',
           identityResults: [{result: Success, certificateChain: []}],
-          expected: 'unknown',
+          expected: E2eeMemberVerificationState.Unknown,
         },
         {
           name: 'a failed result for a verified identity type',
           identityResults: [
             {result: Failure, certificateChain: [{identityType: WebexUserIdentity}]},
           ],
-          expected: 'unverified',
+          expected: E2eeMemberVerificationState.Unverified,
         },
         {
           name: 'a later successful result after a failed one',
           identityResults: [failedIdentity(), successfulIdentity(WebexUserIdentity)],
-          expected: 'verified',
+          expected: E2eeMemberVerificationState.Verified,
         },
         {
           name: 'several successful results (the first one wins)',
@@ -255,10 +275,18 @@ describe('member', () => {
             successfulIdentity(WebexAnonymousIdentity),
             successfulIdentity(WebexUserIdentity),
           ],
-          expected: 'unverified',
+          expected: E2eeMemberVerificationState.Unverified,
         },
-        {name: 'no identity results', identityResults: undefined, expected: 'unknown'},
-        {name: 'empty identity results', identityResults: [], expected: 'unknown'},
+        {
+          name: 'no identity results',
+          identityResults: undefined,
+          expected: E2eeMemberVerificationState.Unknown,
+        },
+        {
+          name: 'empty identity results',
+          identityResults: [],
+          expected: E2eeMemberVerificationState.Unknown,
+        },
       ].forEach(({name, identityResults, expected}) => {
         it(`classifies a device with ${name} as '${expected}'`, () => {
           const freshMember = createMember();
@@ -275,17 +303,17 @@ describe('member', () => {
         {
           name: 'all devices are unknown',
           identityResults: [undefined, undefined],
-          expected: 'unknown',
+          expected: E2eeMemberVerificationState.Unknown,
         },
         {
           name: 'devices are unknown or unverified',
           identityResults: [undefined, [failedIdentity()]],
-          expected: 'unverified',
+          expected: E2eeMemberVerificationState.Unverified,
         },
         {
           name: 'devices are unknown or verified',
           identityResults: [undefined, [successfulIdentity(WebexUserIdentity)]],
-          expected: 'partiallyVerified',
+          expected: E2eeMemberVerificationState.PartiallyVerified,
         },
       ].forEach(({name, identityResults, expected}) => {
         it(`aggregate state is '${expected}' when ${name}`, () => {
@@ -315,7 +343,7 @@ describe('member', () => {
           freshMember.getE2eeDeviceVerification('device-a').validationResult,
           E2eeValidationResult.PartialSuccess
         );
-        assert.equal(freshMember.e2eeVerificationState, 'verified');
+        assert.equal(freshMember.e2eeVerificationState, E2eeMemberVerificationState.Verified);
       });
 
       it('keeps other devices when upserting one', () => {
@@ -335,7 +363,10 @@ describe('member', () => {
           freshMember.getE2eeDeviceVerification('device-b').validationResult,
           E2eeValidationResult.Failure
         );
-        assert.equal(freshMember.e2eeVerificationState, 'partiallyVerified');
+        assert.equal(
+          freshMember.e2eeVerificationState,
+          E2eeMemberVerificationState.PartiallyVerified
+        );
       });
 
       it('returns false and does nothing when the verification is unchanged', () => {
@@ -354,7 +385,7 @@ describe('member', () => {
 
         assert.isTrue(freshMember.setE2eeDeviceVerification('device-a', updated));
         assert.deepEqual(freshMember.getE2eeDeviceVerifications(), [updated]);
-        assert.equal(freshMember.e2eeVerificationState, 'unverified');
+        assert.equal(freshMember.e2eeVerificationState, E2eeMemberVerificationState.Unverified);
       });
 
       it('removes a single device verification and returns true', () => {
@@ -363,7 +394,7 @@ describe('member', () => {
 
         assert.isTrue(freshMember.removeE2eeDeviceVerification('device-a'));
         assert.isUndefined(freshMember.getE2eeDeviceVerification('device-a'));
-        assert.equal(freshMember.e2eeVerificationState, 'unknown');
+        assert.equal(freshMember.e2eeVerificationState, E2eeMemberVerificationState.Unknown);
       });
 
       it('returns false when removing a device that has no verification', () => {
