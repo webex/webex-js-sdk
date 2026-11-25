@@ -134,11 +134,18 @@ describe('AQM routing agent', () => {
     expect(req.notifSuccess.bind.data.agentSessionId).toBeUndefined();
   });
 
-  it('stateChangeV2 success bind uses strict agentState match for non-Idle requests', () => {
+  it('stateChangeV2 success bind uses pendingIdle typeMap for non-Idle requests', () => {
     const availReq = (agent.stateChangeV2 as unknown as (p: {data: object}) => any)({
       data: {state: 'Available', auxCodeId: '0', channelType: ['chat']},
     });
-    expect(availReq.notifSuccess.bind.data.agentChannelStateDetail).toEqual({agentState: 'Available'});
+    const detail = availReq.notifSuccess.bind.data.agentChannelStateDetail;
+    // Non-Idle bind uses __typeMap on pendingIdle to reject stale
+    // Idle-pending confirmations that share the same agentState.
+    expect(detail.__typeMap).toBeDefined();
+    expect(detail.__typeMap.typeField).toBe('pendingIdle');
+    expect(detail.__typeMap.conditions.false).toEqual({agentState: 'Available'});
+    // pendingIdle: true must NOT have a matching condition
+    expect(detail.__typeMap.conditions.true).toBeUndefined();
   });
 
   it('stateChangeV2 success bind uses __typeMap for Idle to accept pending confirmations', () => {
@@ -194,6 +201,20 @@ describe('AQM routing agent', () => {
     expect(availReq.notifSuccess.bind.data.agentChannelStateDetail).not.toEqual(
       idleReq.notifSuccess.bind.data.agentChannelStateDetail
     );
+  });
+
+  it('stateChangeV2 Available bind rejects pending-Idle confirmations with agentState Available', () => {
+    // Scenario: Idle request resolves on first channel, caller sends Available,
+    // remaining Idle confirmation arrives with agentState='Available', pendingIdle=true.
+    // The Available bind must NOT match that notification.
+    const availReq = (agent.stateChangeV2 as unknown as (p: {data: object}) => any)({
+      data: {state: 'Available', auxCodeId: '0', channelType: ['chat']},
+    });
+    const detail = availReq.notifSuccess.bind.data.agentChannelStateDetail;
+    // pendingIdle=true notifications have no matching condition → typeMapCheck returns false
+    expect(detail.__typeMap.conditions).not.toHaveProperty('true');
+    // pendingIdle=false with matching agentState → passes
+    expect(detail.__typeMap.conditions.false).toEqual({agentState: 'Available'});
   });
 
   it('stateChangeV2 uses distinct bind keys per channel set', () => {

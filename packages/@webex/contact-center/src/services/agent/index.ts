@@ -232,7 +232,19 @@ export default function routingAgent(routing: AqmReqs) {
                     },
                     auxCodeId: p.data.auxCodeId,
                   }
-                : {agentState: p.data.state},
+                : {
+                    // Use __typeMap on pendingIdle to reject stale Idle-pending
+                    // confirmations (pendingIdle: true) that share the same
+                    // agentState.  Without this, a remaining Idle confirmation
+                    // with agentState: 'Available' and pendingIdle: true would
+                    // resolve an Available request and strip its failure listener.
+                    __typeMap: {
+                      typeField: 'pendingIdle',
+                      conditions: {
+                        false: {agentState: p.data.state},
+                      },
+                    },
+                  },
             // Correlate: only match client-initiated notifications to prevent
             // supervisor/system pushes from resolving the pending request.
             isClientInitiated: true,
