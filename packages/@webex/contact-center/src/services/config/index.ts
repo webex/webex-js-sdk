@@ -25,43 +25,14 @@ import {WCC_API_GATEWAY} from '../constants';
 import {CONFIG_FILE_NAME, METHODS as MAIN_METHODS} from '../../constants';
 import {parseAgentConfigs} from './Util';
 import type {MultiRegionSettings} from './types';
-import {createRegionRecoveryError, isRecord, normalizeRecoveryFailure} from '../core/Utils';
 import {
   DEFAULT_AUXCODE_ATTRIBUTES,
   DEFAULT_PAGE,
   DEFAULT_PAGE_SIZE,
   endPointMap,
-  LOCAL_MR_SETTINGS_ERROR,
   METHODS,
   WELLBEING_BREAK_IDLE_CODE,
 } from './constants';
-
-const ORGANIZATION_SETTINGS_TIMEOUT_MS = 10_000;
-
-/** Decodes the authoritative first organization-settings record. */
-const decodeMultiRegionSettings = (body: unknown): MultiRegionSettings => {
-  const first = Array.isArray(body) ? body[0] : undefined;
-  if (
-    !isRecord(first) ||
-    Array.isArray(first) ||
-    Object.keys(first).length === 0 ||
-    (Object.prototype.hasOwnProperty.call(first, 'multiRegionEnabled') &&
-      typeof first.multiRegionEnabled !== 'boolean')
-  ) {
-    throw Object.assign(new Error('Invalid organization settings'), {
-      [LOCAL_MR_SETTINGS_ERROR]: 'INVALID_MR_SETTINGS',
-      data: {reason: 'INVALID_MR_SETTINGS'},
-    });
-  }
-
-  const homeRegion =
-    typeof first.homeRegion === 'string' ? first.homeRegion.trim().toLowerCase() : undefined;
-
-  return {
-    eligibility: first.multiRegionEnabled === true ? 'enabled' : 'disabled',
-    ...(homeRegion ? {homeRegion} : {}),
-  };
-};
 
 /**
  * The AgentConfigService class provides methods to fetch agent configuration data.
@@ -75,74 +46,17 @@ export default class AgentConfigService {
   }
 
   /**
-   * Reads authoritative entitlement without changing or delaying the complete Profile.
-   * Cancellation fences local application; the authenticated HTTP owner retains its request.
-   */
-  public async getMultiRegionSettings(
-    orgId: string,
-    signal?: AbortSignal
-  ): Promise<MultiRegionSettings> {
-    if (signal?.aborted) {
-      throw createRegionRecoveryError('RECOVERY_INTERRUPTED');
-    }
-    if (typeof orgId !== 'string' || !orgId.trim()) {
-      throw Object.assign(new Error('Organization ID is required'), {
-        [LOCAL_MR_SETTINGS_ERROR]: 'INVALID_ORG_ID',
-        data: {reason: 'INVALID_ORG_ID'},
-      });
-    }
-
-    let timer: ReturnType<typeof setTimeout>;
-    let onAbort: () => void;
-    const response = await new Promise<Awaited<ReturnType<WebexRequest['request']>>>(
-      (resolve, reject) => {
-        onAbort = () => reject(createRegionRecoveryError('RECOVERY_INTERRUPTED'));
-        timer = setTimeout(
-          () => reject(new Error('Organization settings request timed out')),
-          ORGANIZATION_SETTINGS_TIMEOUT_MS
-        );
-        signal?.addEventListener('abort', onAbort, {once: true});
-        if (signal?.aborted) {
-          onAbort();
-
-          return;
-        }
-        this.webexReq
-          .request({
-            service: WCC_API_GATEWAY,
-            resource: endPointMap.organizationSettings(orgId),
-            method: HTTP_METHODS.GET,
-            timeout: ORGANIZATION_SETTINGS_TIMEOUT_MS,
-          })
-          .then(resolve, reject);
-      }
-    ).finally(() => {
-      clearTimeout(timer);
-      signal?.removeEventListener('abort', onAbort);
-    });
-    if (signal?.aborted) {
-      throw createRegionRecoveryError('RECOVERY_INTERRUPTED');
-    }
-    if (response.statusCode !== 200) {
-      const failure = normalizeRecoveryFailure(response);
-      throw Object.assign(new Error('Organization settings request failed'), {
-        ...(failure.status !== undefined ? {statusCode: failure.status} : {}),
-        data: failure,
-      });
-    }
-
-    return decodeMultiRegionSettings(response.body);
-  }
-
-  /**
    * Fetches the agent configuration data for the given orgId and agentId.
    * @param {string} orgId - organization ID for which the agent configuration is to be fetched.
    * @param {string} agentId - agent ID for which the configuration is to be fetched.
-   * @returns {Promise<Profile>} - A promise that resolves to the agent configuration profile.
+   * @returns {Promise<{profile: Profile; multiRegionSettings?: MultiRegionSettings}>} - The profile and optional regional settings.
    * @throws {Error} - Throws an error if any API call fails or if the response status is not 200.
    * @public
    */
-  public async getAgentConfig(orgId: string, agentId: string): Promise<Profile> {
+  public async getAgentConfig(
+    orgId: string,
+    agentId: string
+  ): Promise<{profile: Profile; multiRegionSettings?: MultiRegionSettings}> {
     try {
       const orgConfigPromise = this.getOrgDesktopLoginConfig(orgId);
       const userConfigPromise = this.getUserDesktopLoginConfig(orgId, agentId);
@@ -177,7 +91,7 @@ export default class AgentConfigService {
         method: METHODS.GET_AGENT_CONFIG,
       });
 
-      const response = parseAgentConfigs({
+      const profile = parseAgentConfigs({
         orgConfig,
         userData,
         agentProfileData,
@@ -196,7 +110,19 @@ export default class AgentConfigService {
         method: METHODS.GET_AGENT_CONFIG,
       });
 
-      return response;
+      const {multiRegionEnabled, homeRegion} = orgConfig.organizationSetting;
+      if (typeof multiRegionEnabled !== 'boolean') return {profile};
+
+      const normalizedHomeRegion =
+        typeof homeRegion === 'string' ? homeRegion.trim().toLowerCase() : undefined;
+
+      return {
+        profile,
+        multiRegionSettings: {
+          eligibility: multiRegionEnabled ? 'enabled' : 'disabled',
+          ...(normalizedHomeRegion ? {homeRegion: normalizedHomeRegion} : {}),
+        },
+      };
     } catch (error) {
       LoggerProxy.error(`getAgentConfig call failed with ${error}`, {
         module: CONFIG_FILE_NAME,

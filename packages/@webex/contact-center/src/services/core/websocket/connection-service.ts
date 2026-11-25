@@ -3,7 +3,6 @@ import type {WebSocketManager} from './WebSocketManager';
 import type {
   ConnectionServiceOptions,
   ConnectionLostDetails,
-  ConnectionProp,
   ConnectionResetOptions,
   RegionRecoveryOptions,
   ConnectionRecoveryError,
@@ -67,10 +66,6 @@ const terminalError = (
 
 /** Single-flight transport scheduler; station/session policy stays with ContactCenter. */
 export class ConnectionService extends EventEmitter {
-  private connectionProp: ConnectionProp = {
-    lostConnectionRecoveryTimeout: LOST_CONNECTION_RECOVERY_TIMEOUT,
-  };
-
   private mode: 'ordinary' | 'paused' | 'region' | 'stopped' = 'ordinary';
   private retryTimer?: ReturnType<typeof setTimeout>;
   private reconnectingTimer?: ReturnType<typeof setTimeout>;
@@ -155,10 +150,6 @@ export class ConnectionService extends EventEmitter {
       if (options.signal.aborted) invocation.onAbort();
       else this.scheduleRegion(invocation);
     });
-  }
-
-  public setConnectionProp(prop: ConnectionProp): void {
-    this.connectionProp = prop;
   }
 
   private setupEventListeners(): void {
@@ -379,10 +370,7 @@ export class ConnectionService extends EventEmitter {
     clearTimeout(this.reconnectingTimer);
     clearTimeout(this.restoreTimer);
     this.reconnectingTimer = setTimeout(this.handleConnectionLost, WS_DISCONNECT_ALLOWED);
-    this.restoreTimer = setTimeout(
-      this.handleRestoreFailed,
-      this.connectionProp.lostConnectionRecoveryTimeout
-    );
+    this.restoreTimer = setTimeout(this.handleRestoreFailed, LOST_CONNECTION_RECOVERY_TIMEOUT);
   }
 
   private handleConnectionLost = (): void => {

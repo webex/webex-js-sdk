@@ -1133,16 +1133,3 @@ export function haveUIControlsChanged(
     haveInteractionUIControlsChanged(previous.consult, next.consult)
   );
 }
-
-/** Preserve the host control layout while disabling every present action. */
-export function disableTaskUIControls(controls: TaskUIControls): TaskUIControls {
-  const disable = (leg: InteractionUIControls): InteractionUIControls =>
-    Object.fromEntries(
-      Object.entries(leg).map(([key, control]) => [
-        key,
-        control ? {...control, isEnabled: false} : control,
-      ])
-    ) as InteractionUIControls;
-
-  return {...controls, main: disable(controls.main), consult: disable(controls.consult)};
-}

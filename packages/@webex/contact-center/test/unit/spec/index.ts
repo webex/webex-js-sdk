@@ -871,11 +871,9 @@ describe('contact-center root public contract', () => {
         const reason: RegionRecoveryErrorCode = candidate.data.reason;
         void [error, reason];
       }
-      // @ts-expect-error no extra lifecycle codes
-      const invalid: RegionRecoveryErrorCode = 'INVALID_MR_SETTINGS';
       // @ts-expect-error recovering is not an automatic action outcome
       const invalidAuto: RegionAutoAvailableStatus = 'recovering';
-      void [event, state, created, invalid, invalidAuto];
+      void [event, state, created, invalidAuto];
       `,
     });
     const catalogs = {

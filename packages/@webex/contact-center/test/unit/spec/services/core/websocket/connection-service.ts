@@ -10,11 +10,10 @@ import {METHODS} from '../../../../../../src/services/core/constants';
 
 class ManagerDouble extends EventEmitter {
   shouldReconnect = true;
-  isSocketClosed = false;
   usable = false;
   initWebSocket = jest.fn(async (_options?: any) => { this.shouldReconnect = true; this.usable = true; return {}; });
   cancelPending = jest.fn();
-  close = jest.fn((reconnect: boolean) => { this.shouldReconnect = reconnect; this.usable = false; this.isSocketClosed = true; });
+  close = jest.fn((reconnect: boolean) => { this.shouldReconnect = reconnect; this.usable = false; });
   handleConnectionLost = jest.fn();
   hasUsableSocket = jest.fn(() => this.usable);
 }
@@ -475,7 +474,7 @@ describe('ConnectionService single-flight scheduler', () => {
     expect(jest.getTimerCount()).toBe(0);
   });
 
-  it.each([401, 403])('T-012 readerVsPrimaryVsRtdAuthBoundaries transport status=%s', async (status) => {
+  it.each([401, 403])('T-012 stops regional admission after an authentication failure (%s)', async (status) => {
     manager.initWebSocket.mockRejectedValue({statusCode: status, body: {reason: 'AUTH_TEXT', reasonCode: 9999}, headers: {trackingid: 'auth-id'}});
     const run = recover(); await tick(100000);
     await expect(run.promise).rejects.toMatchObject({data: {kind: 'authentication-failed', status, reasonCode: 9999, trackingId: 'auth-id'}});

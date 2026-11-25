@@ -154,8 +154,10 @@ export const createRegionRecoveryError = (
 };
 
 /** Observes abandoned work while promptly releasing its local cancellation continuation. */
-export const awaitRecoveryWork = <T>(work: Promise<T>, signal: AbortSignal): Promise<T> =>
-  new Promise<T>((resolve, reject) => {
+export const awaitRecoveryWork = <T>(work: Promise<T>, signal?: AbortSignal): Promise<T> => {
+  if (!signal) return work;
+
+  return new Promise<T>((resolve, reject) => {
     const onAbort = () => {
       signal.removeEventListener('abort', onAbort);
       reject(createRegionRecoveryError('RECOVERY_INTERRUPTED'));
@@ -173,6 +175,7 @@ export const awaitRecoveryWork = <T>(work: Promise<T>, signal: AbortSignal): Pro
     );
     if (signal.aborted) onAbort();
   });
+};
 
 /** Recognizes cross-realm lifecycle errors structurally and narrows their required reason. */
 export const isRegionRecoveryError = (

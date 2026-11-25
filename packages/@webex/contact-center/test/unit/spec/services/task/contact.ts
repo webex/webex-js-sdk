@@ -227,7 +227,6 @@ describe("Routing contacts", () => {
       data: {},
       host: 'wcc-api-gateway',
       err: expect.any(Function),
-      redactSensitiveLogs: true,
       notifSuccess: {
         bind: {
           type: 'RoutingMessage',

@@ -64,13 +64,3 @@ export type ConnectionLostDetails = {
   isSocketReconnected: boolean;
   isKeepAlive: boolean;
 };
-
-/**
- * Properties for connection configuration.
- * @typedef ConnectionProp
- * @property {number} lostConnectionRecoveryTimeout - Timeout in milliseconds for lost connection recovery.
- * @ignore
- */
-export type ConnectionProp = {
-  lostConnectionRecoveryTimeout: number;
-};

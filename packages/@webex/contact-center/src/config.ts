@@ -25,6 +25,8 @@ export default {
      * @default true
      */
     allowAutomatedRelogin: true,
+    /** Allow regional recovery to use opted-in saved Desktop station choices. */
+    allowSavedStationLoginOnRecovery: false,
     /**
      * Whether to skip Mobius/WebRTC registration for browser login flows.
      * @type {boolean}

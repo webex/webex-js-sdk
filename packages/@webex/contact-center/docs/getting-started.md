@@ -153,9 +153,17 @@ along with `RegionRecoveryState`, `RegionRecoveryStatus`, `RegionRecoveryReason`
 | --- | --- |
 | `recovering` | Show recovery progress and keep commands disabled. |
 | `ready` | The current socket and an initial or restored station session are accepted. Track `autoAvailable` and voice readiness separately. |
-| `stationLoginRequired` | Use the existing `stationLogin()` with `BROWSER`, `EXTENSION` or `AGENT_DN`. Failed attempts stay in this state. |
+| `stationLoginRequired` | The SDK needs the app’s station sign-in flow. Use the existing `stationLogin()` with `BROWSER`, `EXTENSION` or `AGENT_DN`. Failed attempts stay in this state. |
 | `reloadRequired` | Follow the [host restart guidance](#multi-region-recovery-host-restart). |
 | `unavailable` | Show the terminal reason and follow the host's recovery flow. |
+
+With `allowAutomatedRelogin` enabled, the SDK tries to restore the previous station. Apps can also
+enable `config.cc.allowSavedStationLoginOnRecovery` to let the SDK try one saved DN or extension when it
+needs a new station login and has no usable previous station details. The SDK uses saved choices
+only when the agent opted into Desktop Enhanced Sign-in and the choices match the current profile.
+Existing browser stations can recover automatically. Starting a new browser station still uses the
+app’s sign-in flow for device permissions and any required prompts. Ask the agent for station details
+when no eligible automatic sign-in succeeds.
 
 A Welcome frame establishes transport. A successful station acknowledgment establishes readiness.
 Active calls and audio can be interrupted by a switch. Retained Tasks have disabled controls and
@@ -170,9 +178,10 @@ reconnect. Attach essential listeners before registration and remove them at tea
 
 ## Multi-region recovery host restart
 
-A region mismatch emits `reloadRequired`; a pending initial `register()` can also reject with
-`REGION_RELOAD_REQUIRED`. The host owns navigation. This example shares one restart decision
-between the event and rejection and uses the authenticated organization at decision time. It
+A region mismatch emits `reloadRequired`. A pending initial `register()` can also reject with
+`REGION_RELOAD_REQUIRED`. The app owns the restart so it can reinitialize regional routing. A browser
+app can do this automatically. This example shares one restart decision between the event and
+rejection and uses the authenticated organization at decision time. It
 persists the guard before navigation and allows one automatic restart per organization and tab
 per 120 seconds. Missing storage, malformed timestamps and clock rollback block automatic restart.
 
@@ -269,25 +278,26 @@ state actions and logout accessible from the keyboard.
 
 ## Multi-region recovery rollout and rollback
 
-A compatible SDK release and backend entitlement are both required. Registration starts a separate
-organization-settings read with up to five attempts. In a valid first record, literal `true`
-enables recovery and `false` or an absent field disables it. A missing, empty, or malformed record
-leaves eligibility unknown. Ordinary registration proceeds while the read is pending or if it fails.
-Roll back through SDK release and backend entitlement management, then register again.
+A compatible SDK release and backend entitlement are both required. During registration, the SDK
+reads `organizationSetting.multiRegionEnabled` from the existing organization desktop-login
+response. Literal `true` enables recovery and literal `false` disables it. Missing or invalid
+values leave eligibility unknown and preserve ordinary registration. Register again to pick up
+entitlement changes. Roll back through SDK release and backend entitlement management.
 
 ### Release evidence and REL-AQM-TRACKING-ECHO
 
 The SDK maintainer owns the release decision. Routing and QA must provide sanitized deployed
-captures with API versions and timestamps. Verify an entitled organization-settings response,
-reader isolation from normal registration, and ordinary station and reconnect compatibility.
+captures with API versions and timestamps. Verify the entitlement fields in the deployed
+`GET organization/{orgId}/desktop-login` response and ordinary station and reconnect compatibility.
 
 For `stateChange`, `stationLogin` and `reload`, capture the successful and failed outcomes.
 Compare the UUID segment of the request header `trackingid: webex-js-sdk_<uuid>` with nested
 `data.trackingId`. Also verify backend reasons and reason codes and the ordinary event-type binds.
 The outer notification tracking ID is separate from request matching.
 
-AC-021 requires a live drill for each combination below. Record the authoritative settings,
-serving region, station result, new-call result, and supported RTD and voice evidence for each run.
+AC-021 requires a live drill for each combination below. Record the desktop-login entitlement and
+home region, serving region, station result, new-call result, and supported RTD and voice evidence
+for each run.
 Record deployed SDK, backend and API versions and links to each capture.
 
 | Login mode | Failover | Failback |

@@ -344,7 +344,6 @@ describe('AqmReqs', () => {
       url: `/v1/tasks/interaction/conference/participants/${participantId}/drop`,
       data: {},
       timeout,
-      redactSensitiveLogs: true,
       err: (error: any) => error,
       notifSuccess: {
         bind: {
@@ -611,36 +610,9 @@ describe('AqmReqs', () => {
         'Routing notification failed',
         expect.objectContaining({module: AQM_REQS_FILE})
       );
-      expect(JSON.stringify((LoggerProxy.log as jest.Mock).mock.calls)).not.toContain(participantId);
-      expect(aqm['pendingRequests']).toEqual({});
-    });
-
-    it('never logs the raw routing-failure payload even when redactSensitiveLogs is not set', async () => {
-      const participantId = '+1/plain-failure-secret';
-      webexRequestInstance.request.mockResolvedValueOnce(mockWebexRequestResolvedValue);
-      const conf = {
-        ...participantDropConfig(participantId, 'disabled'),
-        redactSensitiveLogs: false,
-      };
-      const promise = aqm['createPromise'](conf);
-
-      webSocketManagerInstance.emit(
-        'message',
-        JSON.stringify({
-          type: 'RoutingMessage',
-          data: {type: 'ParticipantDropConferenceFailed', participantId},
-        })
-      );
-
-      await expect(promise).rejects.toBeDefined();
-      expect(LoggerProxy.log).toHaveBeenCalledWith(
-        'Routing notification failed',
-        expect.objectContaining({module: AQM_REQS_FILE})
-      );
-
-      const loggedCalls = JSON.stringify((LoggerProxy.log as jest.Mock).mock.calls);
-      expect(loggedCalls).not.toContain(participantId);
-      expect(loggedCalls).not.toContain('ParticipantDropConferenceFailed');
+      const logs = JSON.stringify((LoggerProxy.log as jest.Mock).mock.calls);
+      expect(logs).not.toContain(participantId);
+      expect(logs).not.toContain('ParticipantDropConferenceFailed');
       expect(aqm['pendingRequests']).toEqual({});
     });
 
@@ -1288,16 +1260,16 @@ describe('T-007/T-008 real AQM operation and session owners', () => {
 
   it.each([
     {operation: 'stateChange', scenario: 'timeout'},
-    {operation: 'stationLogin', scenario: 'timeout', flag: true, diagnostics: 'throwing'},
-    {operation: 'stationLogin', scenario: 'notification', flag: false},
+    {operation: 'stationLogin', scenario: 'timeout', diagnostics: 'throwing'},
+    {operation: 'stationLogin', scenario: 'notification'},
     {operation: 'reload', scenario: 'http'},
     {operation: 'stateChange', scenario: 'http-error', diagnostics: 'throwing'},
     {operation: 'reload', scenario: 'abort'},
     {operation: 'stateChange', scenario: 'interrupt', diagnostics: 'throwing'},
     {operation: 'stationLogin', scenario: 'late-resolve'},
     {operation: 'reload', scenario: 'late-reject'},
-  ].map(row => ({flag: undefined, diagnostics: 'normal', ...row})))(
-    'T-013 aqmTimeoutAndInterruptDiagnosticsRedacted flag=$flag operation=$operation scenario=$scenario diagnostics=$diagnostics', async ({flag, operation, scenario, diagnostics}) => {
+  ].map(row => ({diagnostics: 'normal', ...row})))(
+    'T-013 redacts AQM diagnostics for $operation $scenario with $diagnostics sinks', async ({operation, scenario, diagnostics}) => {
       const diagnosticObjects = new Set<object>();
       const diagnosticValues: string[] = [];
       const sinks = [...loggerSinks, ...Object.values(metrics), uploadLogs];
@@ -1311,11 +1283,6 @@ describe('T-007/T-008 real AQM operation and session owners', () => {
       http.mockReturnValue(pending);
       const controller = new AbortController();
       const removeAbortListener = jest.spyOn(controller.signal, 'removeEventListener');
-      // Materialize the real adapter config only to vary this internal log flag;
-      // separate wire scenarios above exercise routingAgent(new AqmReqs(socket)) directly.
-      const configs = routingAgent({req: (config) => config, reqEmpty: (config) => config});
-      const config = operation === 'stateChange' ? configs.stateChange({data: {state: 'Available', auxCodeId: '0'}}) : operation === 'reload' ? configs.reload() : configs.stationLogin({data: {teamId: 'TEAM_SENTINEL', dialNumber: 'STATION_DN_SENTINEL', roles: ['agent']}});
-      expect(config.kind).toBe(operation === 'stateChange' ? 'command' : 'session');
       const acknowledged = jest.fn();
       const requestContext = {
         generation: 0,
@@ -1323,7 +1290,9 @@ describe('T-007/T-008 real AQM operation and session owners', () => {
         correlationId: '8f5ec5e4-80b8-4f5d-9720-10bfe56e7ca1',
         requireCorrelation: true,
       };
-      const promise = aqm['createPromise']({...config, redactSensitiveLogs: flag}, acknowledged, requestContext);
+      const requestData = operation === 'stateChange' ? {state: 'Available', auxCodeId: '0'}
+        : operation === 'stationLogin' ? {teamId: 'TEAM_SENTINEL', dialNumber: 'STATION_DN_SENTINEL', roles: ['agent']} : {};
+      const promise = invoke(operation, {data: requestData, callback: acknowledged, context: requestContext});
       const resolved = jest.fn();
       const settled = jest.fn((error) => error);
       const observed = promise.then(resolved, settled);
@@ -1359,7 +1328,7 @@ describe('T-007/T-008 real AQM operation and session owners', () => {
         data: {...failureFrame.data, reason: 'NOTIFICATION_REASON_SENTINEL', credentials: response.body.credentials},
       };
       const rawObjects = new Set<object>();
-      [config, http.mock.calls[0][0], response, httpFailure, notification].forEach((value) => collectDiagnostic(value, rawObjects));
+      [requestData, http.mock.calls[0][0], response, httpFailure, notification].forEach((value) => collectDiagnostic(value, rawObjects));
       if (scenario === 'timeout') { complete(response); await flush(); jest.advanceTimersByTime(20000); }
       if (scenario === 'notification') { complete(response); await flush(); send(notification); }
       if (scenario === 'http') fail(response);

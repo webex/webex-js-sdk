@@ -468,7 +468,6 @@ export default function routingContact(aqm: AqmReqs) {
       data: {},
       host: WCC_API_GATEWAY,
       err,
-      redactSensitiveLogs: true,
       notifSuccess: {
         bind: {
           type: TASK_MESSAGE_TYPE,

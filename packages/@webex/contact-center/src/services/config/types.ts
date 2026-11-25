@@ -642,6 +642,10 @@ export type OrgSettings = {
   campaignManagerEnabled: boolean;
   /** Number of AI Assistant licenses assigned to the organization */
   aiAssistantQuantity?: number | null;
+  /** Whether multi-region recovery is enabled for the organization. */
+  multiRegionEnabled?: boolean;
+  /** The region that normally serves the organization. */
+  homeRegion?: string;
 };
 
 /**

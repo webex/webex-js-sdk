@@ -413,8 +413,8 @@ sequenceDiagram
   participant AI as ApiAIAssistant
   participant SVC as AI Assistant event API
   participant TM as TaskManager
-  T->>AI: requestAndWaitForRtd(eventType, correlationId, timeoutMs)
-  AI->>AI: clear the timer of an earlier request with the same key, store request, start timer
+  T->>AI: requestAndWaitForRtd(options)
+  AI->>AI: reject the prior request for this key, then store the new request and start its timer
   AI->>SVC: sendEvent, POST /event
   alt HTTP failure
     AI->>AI: remove pending request
@@ -426,7 +426,7 @@ sequenceDiagram
     AI-->>T: reject createTimeoutError()
   else RTD lifecycle ends
     TM->>AI: clearAllRtdRequests()
-    AI-->>T: reject with the cleanup or recovery interruption error
+    AI-->>T: reject pending request
   end
 ```
 

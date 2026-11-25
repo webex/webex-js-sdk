@@ -16,9 +16,16 @@ import {
 import {PaginatedResponse, BaseSearchParams} from './utils/PageCache';
 import type {REGION_RECOVERY_ERROR_CODES} from './services/core/constants';
 
+/**
+ * Generic type for converting a const enum object into a union type of its values.
+ * @template T The enum object type
+ * @internal
+ * @ignore
+ */
+type Enum<T extends Record<string, unknown>> = T[keyof T];
+
 /** Plain lifecycle-error reasons exposed by recovery operations. */
-export type RegionRecoveryErrorCode =
-  (typeof REGION_RECOVERY_ERROR_CODES)[keyof typeof REGION_RECOVERY_ERROR_CODES];
+export type RegionRecoveryErrorCode = Enum<typeof REGION_RECOVERY_ERROR_CODES>;
 
 /**
  * Station recovery status; transport admission alone never implies ready.
@@ -53,7 +60,11 @@ export type RegionAutoAvailableStatus =
   | 'failed'
   | 'cancelled';
 
-/** Complete recovery snapshot; absent optional fields clear prior metadata. */
+/**
+ * Complete recovery snapshot. Replace the previous snapshot so omitted fields clear.
+ * `stationLoginRequired` hands off to the app's sign-in flow after SDK recovery ends.
+ * `reloadRequired` asks the app to restart with fresh regional routing.
+ */
 export type RegionRecoveryState = {
   status: RegionRecoveryStatus;
   reason: RegionRecoveryReason;
@@ -66,14 +77,6 @@ export type RegionRecoveryState = {
   retryAfterMs?: number;
   autoAvailable?: RegionAutoAvailableStatus;
 };
-
-/**
- * Generic type for converting a const enum object into a union type of its values.
- * @template T The enum object type
- * @internal
- * @ignore
- */
-type Enum<T extends Record<string, unknown>> = T[keyof T];
 
 /**
  * HTTP methods supported by WebexRequest.
@@ -201,6 +204,8 @@ export interface CCPluginConfig {
   allowMultiLogin: boolean;
   /** Whether to automatically attempt relogin on connection loss */
   allowAutomatedRelogin: boolean;
+  /** Allow one regional recovery sign-in using the agent's opted-in saved Desktop DN or extension. Defaults to false. */
+  allowSavedStationLoginOnRecovery?: boolean;
   /** The type of client making the connection */
   clientType: string;
   /** Whether to enable keep-alive messages */

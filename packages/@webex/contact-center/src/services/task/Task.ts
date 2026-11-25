@@ -38,7 +38,7 @@ import {
 } from '../../constants';
 import {createRegionRecoveryError, getErrorDetails, isRegionRecoveryError} from '../core/Utils';
 import {REGION_RECOVERY_ERROR_CODES} from '../core/constants';
-import type {TaskRecoveryGuard} from './types';
+import type {InteractionUIControls, TaskRecoveryGuard} from './types';
 import routingContact from './contact';
 import MetricsManager from '../../metrics/MetricsManager';
 import {METRIC_EVENT_NAMES} from '../../metrics/constants';
@@ -54,7 +54,6 @@ import type {
 } from './state-machine';
 import {
   computeUIControls,
-  disableTaskUIControls,
   getDefaultUIControls,
   haveUIControlsChanged,
 } from './state-machine/uiControlsComputer';
@@ -806,7 +805,18 @@ export default abstract class Task extends EventEmitter implements ITask {
   }
 
   protected computeUIControls(): TaskUIControls {
-    if (this.regionallyInvalidated) return disableTaskUIControls(this.currentUiControls);
+    if (this.regionallyInvalidated) {
+      const disable = (leg: InteractionUIControls): InteractionUIControls =>
+        Object.fromEntries(
+          Object.entries(leg).map(([key, control]) => [
+            key,
+            control ? {...control, isEnabled: false} : control,
+          ])
+        ) as InteractionUIControls;
+      const controls = this.currentUiControls;
+
+      return {...controls, main: disable(controls.main), consult: disable(controls.consult)};
+    }
     const snapshot = this.stateMachineService?.getSnapshot?.();
 
     if (!snapshot) {

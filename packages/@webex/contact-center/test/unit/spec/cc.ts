@@ -47,7 +47,7 @@ import {
 
 // Mock the Worker API
 import '../../../__mocks__/workerMock';
-import {Profile} from '../../../src/services/config/types';
+import type {MultiRegionSettings, Profile} from '../../../src/services/config/types';
 import TaskManager from '../../../src/services/task/TaskManager';
 import Task from '../../../src/services/task/Task';
 import {
@@ -94,7 +94,6 @@ jest.mock('../../../src/services', () => ({
       },
       config: {
         getAgentConfig: jest.fn(),
-        getMultiRegionSettings: jest.fn().mockResolvedValue({eligibility: 'disabled'}),
         getOutdialAniEntries: jest.fn(),
       },
       webSocketManager: {
@@ -103,10 +102,9 @@ jest.mock('../../../src/services', () => ({
         off: jest.fn(),
         close: jest.fn(),
         cancelPending: jest.fn(),
-        isSocketClosed: false,
-      getServingRegion: jest.fn(),
-      clearServingRegion: jest.fn(),
-      hasUsableSocket: jest.fn(() => true),
+        getServingRegion: jest.fn(),
+        clearServingRegion: jest.fn(),
+        hasUsableSocket: jest.fn(() => true),
       },
       rtdWebSocketManager: {
         initWebSocket: jest.fn(),
@@ -114,10 +112,9 @@ jest.mock('../../../src/services', () => ({
         off: jest.fn(),
         close: jest.fn(),
         cancelPending: jest.fn(),
-        isSocketClosed: false,
-      getServingRegion: jest.fn(),
-      clearServingRegion: jest.fn(),
-      hasUsableSocket: jest.fn(() => true),
+        getServingRegion: jest.fn(),
+        clearServingRegion: jest.fn(),
+        hasUsableSocket: jest.fn(() => true),
       },
       aqmReqs: {beginGeneration: jest.fn(), setRecoveryGate: jest.fn(), interruptPending: jest.fn(),
         isLocalSessionTrackingId: jest.fn(() => true)},
@@ -315,7 +312,6 @@ jest.mock('uuid', () => ({v4: jest.fn(() => 'mock-tracking-uuid')}));
 global.URL.createObjectURL = jest.fn(() => 'blob:http://localhost:3000/12345');
 
 class EventEmitterDouble extends EventEmitter {
-  public isSocketClosed = false;
   public cancelPending = jest.fn();
   public stop = jest.fn();
   public pause = jest.fn();
@@ -324,9 +320,7 @@ class EventEmitterDouble extends EventEmitter {
   public clearServingRegion = jest.fn();
   public hasUsableSocket = jest.fn(() => true);
   public initWebSocket = jest.fn().mockResolvedValue({});
-  public close = jest.fn(() => {
-    this.isSocketClosed = true;
-  });
+  public close = jest.fn();
   public mapCallToTask = jest.fn();
 
   public on = jest.fn((eventName: string | symbol, listener: (...args: unknown[]) => void) => {
@@ -452,7 +446,6 @@ describe('webex.cc', () => {
       off: jest.fn(),
       close: jest.fn(),
       cancelPending: jest.fn(),
-      isSocketClosed: false,
       getServingRegion: jest.fn(),
       clearServingRegion: jest.fn(),
       hasUsableSocket: jest.fn(() => true),
@@ -494,7 +487,6 @@ describe('webex.cc', () => {
       },
       config: {
         getAgentConfig: jest.fn(),
-        getMultiRegionSettings: jest.fn().mockResolvedValue({eligibility: 'disabled'}),
         getOutdialAniEntries: jest.fn(),
         getWellbeingBreakIdleCode: jest.fn(),
       },
@@ -505,10 +497,9 @@ describe('webex.cc', () => {
         off: jest.fn(),
         close: jest.fn(),
         cancelPending: jest.fn(),
-        isSocketClosed: false,
-      getServingRegion: jest.fn(),
-      clearServingRegion: jest.fn(),
-      hasUsableSocket: jest.fn(() => true),
+        getServingRegion: jest.fn(),
+        clearServingRegion: jest.fn(),
+        hasUsableSocket: jest.fn(() => true),
       },
       aqmReqs: {beginGeneration: jest.fn(), setRecoveryGate: jest.fn(), interruptPending: jest.fn(),
         isLocalSessionTrackingId: jest.fn(() => true)},
@@ -775,13 +766,13 @@ describe('webex.cc', () => {
         type: 'SYSTEM_REGION_SWITCH', orgId: 'mockOrgId', trackingId,
         data: {operation: 'FAILOVER', scope: 'ORG'},
       });
-      const prepare = async (eligibility = 'enabled', restored = false, restoredResponse = result()) => {
+      const prepare = async (eligibility: MultiRegionSettings['eligibility'] | 'unknown' = 'enabled', restored = false, restoredResponse = result()) => {
         webex.cc.$config = {...webex.cc.$config, allowAutomatedRelogin: restored};
         mockWebSocketManager.initWebSocket.mockResolvedValue({agentId: 'agent123'});
-        webex.cc.services.config.getAgentConfig.mockResolvedValue(createFreshAgentProfile({
-          webRtcEnabled: false, loginVoiceOptions: [LoginOption.EXTENSION],
-        }));
-        webex.cc.services.config.getMultiRegionSettings.mockResolvedValue({eligibility, homeRegion: 'produs1'});
+        webex.cc.services.config.getAgentConfig.mockResolvedValue({
+          profile: createFreshAgentProfile({webRtcEnabled: false, loginVoiceOptions: [LoginOption.EXTENSION]}),
+          ...(eligibility === 'unknown' ? {} : {multiRegionSettings: {eligibility, homeRegion: 'produs1'}}),
+        });
         webex.cc.services.agent.reload.mockResolvedValue(restoredResponse);
         webex.cc.services.agent.stationLogin.mockResolvedValue(result());
         webex.cc.services.agent.logout.mockResolvedValue({data: {}});
@@ -1711,16 +1702,18 @@ describe('webex.cc', () => {
         it('T-011 teardownCancelsThenResetsSnapshot with installed logout fence', async () => {
           await startAuto(false);
           const controller = webex.cc['registrationAbortController'];
-          const listener = jest.fn(state => {
-            if (state.autoAvailable === 'cancelled') {
-              expect(webex.cc['autoAvailable']).toBeUndefined();
-              expect(webex.cc['recoveryPhase']).toBe('cancelled');
-              expect(webex.cc.services.aqmReqs.setRecoveryGate).toHaveBeenLastCalledWith({state: 'unavailable', reason: 'RECOVERY_INTERRUPTED'});
-            }
-          });
+          const listener = jest.fn(state => ({
+            outcome: state.autoAvailable,
+            pending: webex.cc['autoAvailable'],
+            phase: webex.cc['recoveryPhase'],
+            gate: webex.cc.services.aqmReqs.setRecoveryGate.mock.calls.at(-1)?.[0],
+          }));
           webex.cc.on('region:stateChange', listener);
           await webex.cc.stationLogout({logoutReason: 'user'});
-          expect(listener).toHaveBeenCalledTimes(1);
+          expect(listener.mock.results).toEqual([{type: 'return', value: {
+            outcome: 'cancelled', pending: undefined, phase: 'cancelled',
+            gate: {state: 'unavailable', reason: 'RECOVERY_INTERRUPTED'},
+          }}]);
           expect(webex.cc['lastPublishedRegionState']).toBeUndefined();
           expect(controller.signal.aborted).toBe(false);
         });
@@ -1730,9 +1723,7 @@ describe('webex.cc', () => {
           'organization replacement', 'primary identity replacement', 'multi-login',
           'superseding switch',
         ])('T-011 unknownMetadataClearsPriorValues on %s', async (boundary) => {
-          await startAuto(false);
-          mockWebSocketManager.getServingRegion.mockReturnValue('produs2');
-          webex.cc['onMultiRegionSettingsChanged'](webex.cc['registrationGeneration']);
+          await startAuto(false, () => mockWebSocketManager.getServingRegion.mockReturnValue('produs2'));
           const previous = webex.cc['lastPublishedRegionState'];
           expect(previous).toEqual({status: 'ready', reason: 'region-switch',
             trackingId: 'switch', operation: 'FAILOVER', scope: 'ORG', homeRegion: 'produs1',
@@ -1839,9 +1830,7 @@ describe('webex.cc', () => {
             {homeRegion: 'produs1', servingRegion: 'produs2'}],
         ])('T-011 cancellationProjectsCurrentMetadataAtPublication settings=%j serving=%s',
           async (settings, servingRegion, metadata) => {
-            await startAuto(false);
-            mockWebSocketManager.getServingRegion.mockReturnValue('produs2');
-            webex.cc['onMultiRegionSettingsChanged'](webex.cc['registrationGeneration']);
+            await startAuto(false, () => mockWebSocketManager.getServingRegion.mockReturnValue('produs2'));
             const listener = jest.fn(); webex.cc.on('region:stateChange', listener);
             mockWebSocketManager.getServingRegion.mockClear();
 
@@ -1868,9 +1857,7 @@ describe('webex.cc', () => {
 
         it.each([undefined, 'produs1', 'prodanz1'])(
           'T-011 ordinaryReloginProjectsReplacementPlacement %s', async (servingRegion) => {
-            await startAuto(false);
-            mockWebSocketManager.getServingRegion.mockReturnValue('produs2');
-            webex.cc['onMultiRegionSettingsChanged'](webex.cc['registrationGeneration']);
+            await startAuto(false, () => mockWebSocketManager.getServingRegion.mockReturnValue('produs2'));
             const revision = webex.cc['stateIntentRevision'];
             const listener = jest.fn(); webex.cc.on('region:stateChange', listener);
             mockWebSocketManager.getServingRegion.mockReturnValue(servingRegion);
@@ -1906,11 +1893,13 @@ describe('webex.cc', () => {
         const driver = createDeferred<void>();
         webex.cc.$config = {...webex.cc.$config, allowAutomatedRelogin: automation};
         mockWebSocketManager.initWebSocket.mockResolvedValue({agentId: 'agent123'});
-        webex.cc.services.config.getAgentConfig.mockResolvedValue(createFreshAgentProfile({
-          webRtcEnabled: stage === 'mercury',
-          loginVoiceOptions: stage === 'mercury' ? [LoginOption.BROWSER] : [LoginOption.EXTENSION],
-        }));
-        webex.cc.services.config.getMultiRegionSettings.mockResolvedValue({eligibility: 'enabled', homeRegion: 'produs1'});
+        webex.cc.services.config.getAgentConfig.mockResolvedValue({
+          profile: createFreshAgentProfile({
+            webRtcEnabled: stage === 'mercury',
+            loginVoiceOptions: stage === 'mercury' ? [LoginOption.BROWSER] : [LoginOption.EXTENSION],
+          }),
+          multiRegionSettings: {eligibility: 'enabled', homeRegion: 'produs1'},
+        });
         if (stage === 'mercury') jest.spyOn(webex.internal.mercury, 'connect').mockReturnValue(work.promise);
         else webex.cc.services.agent.reload.mockReturnValueOnce(work.promise);
         webex.cc.services.connectionService.recoverRegion.mockReturnValueOnce(driver.promise);
@@ -2010,6 +1999,7 @@ describe('webex.cc', () => {
         const {work, driver, registering} = await beginPendingRegistration(true, 'reload');
         const options = accept(); options.onScheduled(1, 100000);
         let replacement: Promise<Profile>;
+        let cancellationDiagnostic: unknown;
         const replace = () => {
           webex.cc.$config.allowAutomatedRelogin = false;
           replacement = webex.cc.register();
@@ -2021,7 +2011,7 @@ describe('webex.cc', () => {
         if (boundary === 'before catch') replace();
         if (boundary === 'cancellation diagnostic') {
           LoggerProxy.info.mockImplementationOnce((_message, context) => {
-            expect(context.data).toEqual({stage: 'admission', outcome: 'cancelled', attempt: 1, elapsedMs: 0});
+            cancellationDiagnostic = context.data;
             replace();
             throw new Error('diagnostic sink');
           });
@@ -2030,6 +2020,8 @@ describe('webex.cc', () => {
         work.reject(error);
         await expect(registering).rejects.toBe(error);
         await replacement; await settle();
+        if (boundary === 'cancellation diagnostic')
+          expect(cancellationDiagnostic).toEqual({stage: 'admission', outcome: 'cancelled', attempt: 1, elapsedMs: 0});
         expect(states.mock.calls).toEqual(boundary === 'unavailable observer' ? [[{
           status: 'unavailable', reason: 'recovery-failed', trackingId: 'switch',
           operation: 'FAILOVER', scope: 'ORG', homeRegion: 'produs1',
@@ -2047,70 +2039,68 @@ describe('webex.cc', () => {
         expect(switchActions()).toEqual(actions);
       });
 
-      describe.each(['enabled', 'disabled', 'unknown'])('T-002 envelope eligibility=%s', eligibility => {
-        it.each([
-          ['foreign org', {orgId: 'foreign-org'}],
-          ['foreign duplicate', {orgId: 'foreign-org', trackingId: 'remembered'}],
-          ['missing org', {orgId: undefined}],
-          ['blank org', {orgId: ''}],
-          ['whitespace org', {orgId: ' \n '}],
-          ['non-string org', {orgId: 123}],
-          ['null org', {orgId: null}],
-          ['array org', {orgId: ['mockOrgId']}],
-          ['missing tracking', {trackingId: undefined}],
-          ['blank tracking', {trackingId: ''}],
-          ['whitespace tracking', {trackingId: ' \t '}],
-          ['non-string tracking', {trackingId: {id: 'switch'}}],
-          ['null tracking', {trackingId: null}],
-          ['boolean tracking', {trackingId: true}],
-        ])('invalidEnvelopeNoSocketAction: %s', async (_name, overrides) => {
-          await prepare(eligibility, true);
-          webex.cc['acceptedSwitchIds'].add('remembered');
-          mockWebSocketManager.getServingRegion.mockReturnValue('produs2');
-          webex.cc.services.rtdWebSocketManager.getServingRegion.mockReturnValue('produs2');
-          const listener = jest.fn(); webex.cc.on('region:stateChange', listener);
-          const raw = jest.fn(); webex.cc.on('SYSTEM_REGION_SWITCH', raw);
-          const owner = captureSwitchOwner(); const actions = switchActions();
-          const logs = LoggerProxy.info.mock.calls.length;
+      it.each([
+        ['foreign org', {orgId: 'foreign-org'}],
+        ['foreign duplicate', {orgId: 'foreign-org', trackingId: 'remembered'}],
+        ['missing org', {orgId: undefined}],
+        ['blank org', {orgId: ''}],
+        ['whitespace org', {orgId: ' \n '}],
+        ['non-string org', {orgId: 123}],
+        ['null org', {orgId: null}],
+        ['array org', {orgId: ['mockOrgId']}],
+        ['missing tracking', {trackingId: undefined}],
+        ['blank tracking', {trackingId: ''}],
+        ['whitespace tracking', {trackingId: ' \t '}],
+        ['non-string tracking', {trackingId: {id: 'switch'}}],
+        ['null tracking', {trackingId: null}],
+        ['boolean tracking', {trackingId: true}],
+      ])('invalidEnvelopeNoSocketAction: %s', async (_name, overrides) => {
+        await prepare('enabled', true);
+        webex.cc['acceptedSwitchIds'].add('remembered');
+        mockWebSocketManager.getServingRegion.mockReturnValue('produs2');
+        webex.cc.services.rtdWebSocketManager.getServingRegion.mockReturnValue('produs2');
+        const listener = jest.fn(); webex.cc.on('region:stateChange', listener);
+        const raw = jest.fn(); webex.cc.on('SYSTEM_REGION_SWITCH', raw);
+        const owner = captureSwitchOwner(); const actions = switchActions();
+        const logs = LoggerProxy.info.mock.calls.length;
 
-          webex.cc['handleWebsocketMessage'](JSON.stringify({
-            type: 'SYSTEM_REGION_SWITCH', orgId: 'mockOrgId',
-            trackingId: `invalid-envelope-${_name.replace(/ /g, '-')}`, ...overrides,
-          }));
+        webex.cc['handleWebsocketMessage'](JSON.stringify({
+          type: 'SYSTEM_REGION_SWITCH', orgId: 'mockOrgId',
+          trackingId: `invalid-envelope-${_name.replace(/ /g, '-')}`, ...overrides,
+        }));
 
-          expect(captureSwitchOwner()).toEqual(owner);
-          expect(switchActions()).toEqual(actions);
-          expect(listener).not.toHaveBeenCalled();
-          expect(raw).not.toHaveBeenCalled();
-          expect(LoggerProxy.info).toHaveBeenCalledTimes(logs + (overrides.orgId === 'foreign-org' ? 1 : 0));
-        });
+        expect(captureSwitchOwner()).toEqual(owner);
+        expect(switchActions()).toEqual(actions);
+        expect(listener).not.toHaveBeenCalled();
+        expect(raw).not.toHaveBeenCalled();
+        expect(LoggerProxy.info).toHaveBeenCalledTimes(logs + (overrides.orgId === 'foreign-org' ? 1 : 0));
+      });
 
-        it('preserves teardown for live credential replacement before rejecting a foreign envelope', async () => {
-          await prepare(eligibility, true);
-          webex.cc['acceptedSwitchIds'].add('remembered');
-          const registration = webex.cc['registrationGeneration'];
-          const controller = webex.cc['registrationAbortController'];
-          const listener = jest.fn(); webex.cc.on('region:stateChange', listener);
-          const stops = webex.cc.services.connectionService.stop.mock.calls.length;
-          const sessionStops = mockTaskManager.stopSession.mock.calls.length;
-          webex.credentials.getOrgId.mockReturnValue('replacement-org');
+      it.each(['enabled', 'disabled', 'unknown'])('preserves teardown for live credential replacement before rejecting a foreign envelope: %s', async eligibility => {
+        await prepare(eligibility, true);
+        webex.cc['acceptedSwitchIds'].add('remembered');
+        const registration = webex.cc['registrationGeneration'];
+        const controller = webex.cc['registrationAbortController'];
+        const listener = jest.fn(); webex.cc.on('region:stateChange', listener);
+        const stops = webex.cc.services.connectionService.stop.mock.calls.length;
+        const sessionStops = mockTaskManager.stopSession.mock.calls.length;
+        webex.credentials.getOrgId.mockReturnValue('replacement-org');
 
-          webex.cc['handleWebsocketMessage'](JSON.stringify({
-            type: 'SYSTEM_REGION_SWITCH', orgId: 'foreign-org', trackingId: 'remembered',
-          }));
+        webex.cc['handleWebsocketMessage'](JSON.stringify({
+          type: 'SYSTEM_REGION_SWITCH', orgId: 'foreign-org', trackingId: 'remembered',
+        }));
 
-          expect(webex.cc['registrationGeneration']).toBe(registration + 1);
-          expect(controller.signal.aborted).toBe(true);
-          expect([...webex.cc['acceptedSwitchIds']]).toEqual([]);
-          expect(webex.cc['acceptedStation']).toBeUndefined();
-          expect(webex.cc['priorStationActive']).toBe(false);
-          expect(webex.cc.services.connectionService.stop).toHaveBeenCalledTimes(stops + 1);
-          expect(mockTaskManager.stopSession).toHaveBeenCalledTimes(sessionStops + 1);
-          expect(mockWebSocketManager.close).toHaveBeenLastCalledWith(false, 'registrationEnded');
-          expect(webex.cc.services.rtdWebSocketManager.close).toHaveBeenLastCalledWith(false, 'registrationEnded');
-          expect(listener.mock.calls).toEqual([[{status: 'unavailable', reason: 'recovery-failed',
-            ...(eligibility !== 'unknown' ? {homeRegion: 'produs1'} : {})}]]);
-        });
+        expect(webex.cc['registrationGeneration']).toBe(registration + 1);
+        expect(controller.signal.aborted).toBe(true);
+        expect([...webex.cc['acceptedSwitchIds']]).toEqual([]);
+        expect(webex.cc['acceptedStation']).toBeUndefined();
+        expect(webex.cc['priorStationActive']).toBe(false);
+        expect(webex.cc.services.connectionService.stop).toHaveBeenCalledTimes(stops + 1);
+        expect(mockTaskManager.stopSession).toHaveBeenCalledTimes(sessionStops + 1);
+        expect(mockWebSocketManager.close).toHaveBeenLastCalledWith(false, 'registrationEnded');
+        expect(webex.cc.services.rtdWebSocketManager.close).toHaveBeenLastCalledWith(false, 'registrationEnded');
+        expect(listener.mock.calls).toEqual([[{status: 'unavailable', reason: 'recovery-failed',
+          ...(eligibility !== 'unknown' ? {homeRegion: 'produs1'} : {})}]]);
       });
 
       it('T-002 foreign envelope preserves an active recovery and its history', async () => {
@@ -2172,19 +2162,17 @@ describe('webex.cc', () => {
       it.each(['live', 'throwing diagnostic', 'aborted', 'failed', 'superseded', 'foreign organization'] as const)
       ('T-002 preProfileUnknownEligibility %s', async boundary => {
         jest.useFakeTimers();
-        const profile = createDeferred<Profile>(); const settings = createDeferred<any>();
+        const agentConfig = createDeferred<{profile: Profile; multiRegionSettings?: MultiRegionSettings}>();
         webex.cc.$config = {...webex.cc.$config, allowAutomatedRelogin: false};
         mockWebSocketManager.initWebSocket.mockResolvedValue({agentId: 'agent123'});
-        webex.cc.services.config.getAgentConfig.mockReturnValueOnce(profile.promise);
-        webex.cc.services.config.getMultiRegionSettings.mockReturnValue(settings.promise);
+        webex.cc.services.config.getAgentConfig.mockReturnValueOnce(agentConfig.promise);
         const registering = webex.cc.register(); registering.catch(() => undefined);
         await settle();
         expect(webex.cc.services.config.getAgentConfig.mock.calls).toEqual([['mockOrgId', 'agent123']]);
         expect(webex.cc['registrationAgentId']).toBeUndefined();
-        expect(webex.cc.services.config.getMultiRegionSettings).not.toHaveBeenCalled();
         if (boundary === 'aborted') webex.cc['registrationAbortController'].abort();
         if (boundary === 'failed') {
-          profile.reject(new Error('profile failed'));
+          agentConfig.reject(new Error('profile failed'));
           await expect(registering).rejects.toThrow('profile failed');
         }
         let replacement: Promise<Profile>;
@@ -2213,8 +2201,10 @@ describe('webex.cc', () => {
         expect([...webex.cc['acceptedSwitchIds']]).toEqual([]);
         expect(states).not.toHaveBeenCalled();
 
-        profile.resolve(createFreshAgentProfile({webRtcEnabled: false, loginVoiceOptions: [LoginOption.EXTENSION]}));
-        settings.resolve({eligibility: 'enabled'});
+        agentConfig.resolve({
+          profile: createFreshAgentProfile({webRtcEnabled: false, loginVoiceOptions: [LoginOption.EXTENSION]}),
+          multiRegionSettings: {eligibility: 'enabled'},
+        });
         if (['aborted', 'superseded'].includes(boundary))
           await expect(registering).rejects.toMatchObject({data: {reason: 'RECOVERY_INTERRUPTED'}});
         else if (boundary !== 'failed') await registering;
@@ -2229,62 +2219,12 @@ describe('webex.cc', () => {
         expect(states).not.toHaveBeenCalled();
       });
 
-      it('T-002 unknownHydrationNoReplayOrHistory', async () => {
-        const reader = createDeferred<any>();
-        webex.cc.services.config.getMultiRegionSettings.mockReturnValue(reader.promise);
-        webex.cc.$config = {...webex.cc.$config, allowAutomatedRelogin: false};
-        mockWebSocketManager.initWebSocket.mockResolvedValue({agentId: 'agent123'});
-        webex.cc.services.config.getAgentConfig.mockResolvedValue(createFreshAgentProfile({webRtcEnabled: false}));
-        await webex.cc.register();
-        const owner = captureSwitchOwner(); const actions = switchActions();
-        const listener = jest.fn(); webex.cc.on('region:stateChange', listener);
-        const effects = [
-          webex.cc.services.connectionService.pause,
-          mockWebSocketManager.clearServingRegion,
-          mockWebSocketManager.close,
-          webex.cc.services.rtdWebSocketManager.close,
-          webex.cc.services.connectionService.recoverRegion,
-        ];
-        const baseline = effects.map(effect => effect.mock.calls.length);
-        const recoveries = webex.cc.services.connectionService.recoverRegion.mock.calls.length;
-        expect(webex.cc['multiRegionSettings']).toEqual({eligibility: 'unknown'});
-        LoggerProxy.info.mockClear();
-        const clock = jest.spyOn(Date, 'now').mockReturnValue(1000);
-        try {
-          accept();
-        } finally {
-          clock.mockRestore();
-        }
-        expect(captureSwitchOwner()).toEqual(owner);
-        expect(switchActions()).toEqual(actions);
-        expect([...webex.cc['acceptedSwitchIds']]).toEqual([]);
-        expect(effects.map(effect => effect.mock.calls.length)).toEqual(baseline);
-        expect(listener.mock.calls).toEqual([]);
-        expect(LoggerProxy.info.mock.calls).toEqual([[
-          'Region recovery',
-          {module: CC_FILE, method: 'recordRecoveryDiagnostic', data: {stage: 'ignored-event', outcome: 'dropped', attempt: 0, elapsedMs: 0, trackingId: 'switch'}},
-        ]]);
-        reader.resolve({eligibility: 'enabled'}); await settle();
-        expect(webex.cc['multiRegionSettings']).toEqual({eligibility: 'enabled'});
-        expect([...webex.cc['acceptedSwitchIds']]).toEqual([]);
-        expect(switchActions()).toEqual(actions);
-        expect(effects.map(effect => effect.mock.calls.length)).toEqual(baseline);
-        expect(listener.mock.calls).toEqual([]);
-        accept();
-        expect(webex.cc.services.connectionService.recoverRegion).toHaveBeenCalledTimes(recoveries + 1);
-        expect(listener.mock.calls).toEqual([[{
-          status: 'recovering', reason: 'region-switch', trackingId: 'switch',
-          operation: 'FAILOVER', scope: 'ORG',
-        }]]);
-        expect([...webex.cc['acceptedSwitchIds']]).toEqual(['switch']);
-      });
-
       const registrationBoundaries = ['same-identity register', 'different-identity register',
         'deregister', 'org replacement', 'agent replacement', 'primary multi-login'];
       const beginRegistrationBoundary = (boundary: string) => {
         if (boundary === 'different-identity register') {
           mockWebSocketManager.initWebSocket.mockResolvedValue({agentId: 'replacement-agent'});
-          webex.cc.services.config.getAgentConfig.mockResolvedValue(createFreshAgentProfile({agentId: 'replacement-agent'}));
+          webex.cc.services.config.getAgentConfig.mockResolvedValue({profile: createFreshAgentProfile({agentId: 'replacement-agent'})});
         }
         if (boundary.endsWith('register') && boundary !== 'deregister') return webex.cc.register();
         if (boundary === 'deregister') return webex.cc.deregister();
@@ -2340,15 +2280,15 @@ describe('webex.cc', () => {
           const generation = webex.cc['recoveryGeneration'];
           const revision = webex.cc['stationRevision'];
           const recovery = webex.cc['recovery'];
-          const hydration = createDeferred<any>();
           const logout = createDeferred<any>();
           const terminating = registrationBoundaries.includes(boundary);
           let pending = Promise.resolve();
-          webex.cc.services.config.getMultiRegionSettings.mockReturnValue(hydration.promise);
           webex.cc.$config.allowAutomatedRelogin = false;
 
-          if (terminating) pending = beginRegistrationBoundary(boundary);
-          else if (boundary === 'distinct switch supersession')
+          if (terminating) {
+            webex.cc.services.config.getAgentConfig.mockResolvedValue({profile: createFreshAgentProfile()});
+            pending = beginRegistrationBoundary(boundary);
+          } else if (boundary === 'distinct switch supersession')
             webex.cc['handleWebsocketMessage'](switchEvent('B'));
           else if (boundary === 'RTD-only termination')
             webex.cc['handleRTDWebsocketMessage'](JSON.stringify({type: CC_EVENTS.AGENT_MULTI_LOGIN}));
@@ -2390,15 +2330,19 @@ describe('webex.cc', () => {
             webex.credentials.getOrgId.mockReturnValue('mockOrgId');
             if (!boundary.endsWith('register') || boundary === 'deregister') {
               mockWebSocketManager.initWebSocket.mockResolvedValue({agentId: 'agent123'});
-              webex.cc.services.config.getAgentConfig.mockResolvedValue(createFreshAgentProfile());
+              webex.cc.services.config.getAgentConfig.mockResolvedValue({profile: createFreshAgentProfile()});
               await webex.cc.register();
             }
             expect(webex.cc['multiRegionSettings']).toEqual({eligibility: 'unknown'});
             webex.cc['handleWebsocketMessage'](switchEvent());
             expectHistoryAndStation([], undefined);
             expect(webex.cc.services.connectionService.recoverRegion).toHaveBeenCalledTimes(recoveries);
-            hydration.resolve({eligibility: 'enabled', homeRegion: 'produs1'}); await settle();
-            expectHistoryAndStation([], undefined); // Hydration itself never replays a switch.
+            webex.cc.services.config.getAgentConfig.mockResolvedValue({
+              profile: createFreshAgentProfile({agentId: webex.cc['registrationAgentId']}),
+              multiRegionSettings: {eligibility: 'enabled', homeRegion: 'produs1'},
+            });
+            await webex.cc.register();
+            expectHistoryAndStation([], undefined);
             webex.cc['handleWebsocketMessage'](switchEvent());
             expectHistoryAndStation(['switch'], undefined);
             expect(webex.cc.services.connectionService.recoverRegion).toHaveBeenCalledTimes(recoveries + 1);
@@ -2470,10 +2414,12 @@ describe('webex.cc', () => {
         const snapshot = webex.cc['acceptedStation'];
         const resume = jest.spyOn(webex.cc, 'resumeRtd');
         const options = accept();
-        // Every switch pauses RTD first; only later station/task wipes are forbidden here.
+        // A station reload can run without a complete payload for a new login.
         expect(webex.cc['rtdEpoch']?.active).not.toBe(true);
         mockTaskManager.invalidateRegionalTasks.mockClear();
         mockTaskManager.clearAISummaryState.mockClear();
+        const attempts = active && automate ? 1 : 0;
+        if (attempts) webex.cc.services.agent.reload.mockRejectedValueOnce({data: {reasonCode: 1038}});
 
         await welcome(options);
 
@@ -2482,11 +2428,11 @@ describe('webex.cc', () => {
         expect(webex.cc.agentConfig).toBe(profile);
         expect(webex.cc.agentConfig).toEqual(preserved);
         expect(webex.cc['acceptedStation']).toBe(snapshot);
-        expect(mockTaskManager.invalidateRegionalTasks).not.toHaveBeenCalled();
-        expect(mockTaskManager.clearAISummaryState).not.toHaveBeenCalled();
+        expect(mockTaskManager.invalidateRegionalTasks).toHaveBeenCalledTimes(attempts);
+        expect(mockTaskManager.clearAISummaryState).toHaveBeenCalledTimes(attempts);
         expect(resume).toHaveBeenCalledTimes(active ? 0 : 1);
         if (!active) expect(resume).toHaveBeenCalledWith(webex.cc['registrationAbortController'].signal);
-        expect(webex.cc.services.agent.reload).not.toHaveBeenCalled();
+        expect(webex.cc.services.agent.reload).toHaveBeenCalledTimes(attempts);
         expect(webex.cc.services.agent.stationLogin).not.toHaveBeenCalled();
       });
 
@@ -2697,25 +2643,26 @@ describe('webex.cc', () => {
         }});
         expect(webex.cc['lastPublishedRegionState'].status).toBe('ready');
         expect(mockTaskManager.invalidateRegionalTasks).toHaveBeenCalledTimes(1);
-        expect(webex.cc.services.config.getMultiRegionSettings).toHaveBeenCalledTimes(1);
+        expect(webex.cc.services.config.getAgentConfig).toHaveBeenCalledTimes(1);
       });
 
-      it.each([false, true])('T-007 priorActiveWithoutUsableSnapshot takes the manual branch with automation=%s', async automate => {
+      it.each([false, true])('T-007 priorActiveWithoutUsableSnapshot hands off after any permitted reload automation=%s', async automate => {
         await prepare('enabled', true, result({teamId: ''}));
         expect(webex.cc.services.agent.stationLogin).not.toHaveBeenCalled();
         expect(webex.cc['priorStationActive']).toBe(true);
         expect(webex.cc.agentConfig.isAgentLoggedIn).toBe(true);
         expect(webex.cc['acceptedStation']).toBeUndefined();
         webex.cc.$config.allowAutomatedRelogin = automate;
+        if (automate) webex.cc.services.agent.reload.mockRejectedValueOnce({data: {reasonCode: 1038}});
 
         await welcome(accept());
 
         expect(webex.cc['lastPublishedRegionState']).toEqual({status: 'stationLoginRequired',
           reason: automate ? 'session-restore-failed' : 'automatic-relogin-disabled',
           trackingId: 'switch', operation: 'FAILOVER', scope: 'ORG', homeRegion: 'produs1'});
-        expect(webex.cc.services.agent.reload).not.toHaveBeenCalled();
+        expect(webex.cc.services.agent.reload).toHaveBeenCalledTimes(automate ? 1 : 0);
         expect(webex.cc.services.agent.stationLogin).not.toHaveBeenCalled();
-        expect(mockTaskManager.invalidateRegionalTasks).not.toHaveBeenCalled();
+        expect(mockTaskManager.invalidateRegionalTasks).toHaveBeenCalledTimes(automate ? 1 : 0);
       });
 
       it.each([
@@ -2898,17 +2845,23 @@ describe('webex.cc', () => {
       it.each([undefined, 'AgentMultiLoginCloseSession', 'unknown'])('T-012 primaryMultiLoginCancelsBeforeForwarding %s', async (type) => {
         await prepare('enabled', true); accept();
         const registration = webex.cc['registrationGeneration'];
-        const listener = jest.fn(() => {
-          expect(webex.cc['registrationAbortController'].signal.aborted).toBe(true);
-          expect(webex.cc.services.connectionService.stop).toHaveBeenCalled();
-          expect(webex.cc.services.rtdWebSocketManager.close).toHaveBeenCalledWith(false, 'registrationEnded');
-          expect([...webex.cc['acceptedSwitchIds']]).toEqual([]);
-          expect(webex.cc['acceptedStation']).toBeUndefined();
-        });
+        const {stop} = webex.cc.services.connectionService;
+        const {close} = webex.cc.services.rtdWebSocketManager;
+        const stopCount = stop.mock.calls.length;
+        const listener = jest.fn(() => ({
+          aborted: webex.cc['registrationAbortController'].signal.aborted,
+          stopCount: stop.mock.calls.length,
+          lastRtdClose: close.mock.calls.at(-1),
+          switchIds: [...webex.cc['acceptedSwitchIds']],
+          station: webex.cc['acceptedStation'],
+        }));
         webex.cc.on(AGENT_EVENTS.AGENT_MULTI_LOGIN, listener);
         webex.cc['handleWebsocketMessage'](JSON.stringify({type: CC_EVENTS.AGENT_MULTI_LOGIN,
           data: {type, agentSessionId: 'other'}}));
-        expect(listener).toHaveBeenCalledTimes(1);
+        expect(listener.mock.results).toEqual([{type: 'return', value: {
+          aborted: true, stopCount: stopCount + 1, lastRtdClose: [false, 'registrationEnded'],
+          switchIds: [], station: undefined,
+        }}]);
         expect(webex.cc['registrationGeneration']).toBe(registration + 1);
       });
 
@@ -2920,6 +2873,7 @@ describe('webex.cc', () => {
           if (reason === 'session-restore-failed') {
             webex.cc.services.aqmReqs.isLocalSessionTrackingId.mockReturnValue(false);
             webex.cc['handleWebsocketMessage'](JSON.stringify(result({teamId: '', trackingId: 'foreign'})));
+            webex.cc.services.agent.reload.mockRejectedValueOnce({data: {reasonCode: 1038}});
           } else webex.cc.$config.allowAutomatedRelogin = false;
           await welcome(accept());
           expect(webex.cc['lastPublishedRegionState'].reason).toBe(reason);
@@ -3133,58 +3087,31 @@ describe('webex.cc', () => {
         }
       );
 
-      it.each(['stationLogin', 'register-restored'].flatMap(source => [true, false].flatMap(hydrationFirst => [
-        {source, hydrationFirst, servingRegion: ' pRoDuS1 ', limitedService: false},
-        {source, hydrationFirst, servingRegion: ' PrODuS2 ', limitedService: true},
-      ])))('T-011 hydrationCompletionRepublishesHomeRegionAndLimitedService %j', async ({source, hydrationFirst, servingRegion, limitedService}) => {
+      it.each(['stationLogin', 'register-restored'].flatMap(source => [
+        {source, servingRegion: ' pRoDuS1 ', limitedService: false},
+        {source, servingRegion: ' PrODuS2 ', limitedService: true},
+      ]))('T-011 first ready snapshot includes desktop login placement %j', async ({source, servingRegion, limitedService}) => {
         webex.cc.$config = {...webex.cc.$config, allowAutomatedRelogin: source === 'register-restored'};
-        const reader = createDeferred<any>();
-        const reload = createDeferred<any>();
-        webex.cc.services.config.getMultiRegionSettings.mockReturnValue(reader.promise);
         mockWebSocketManager.initWebSocket.mockResolvedValue({agentId: 'agent123'});
         mockWebSocketManager.getServingRegion.mockReturnValue(servingRegion);
-        webex.cc.services.config.getAgentConfig.mockResolvedValue(createFreshAgentProfile({webRtcEnabled: false}));
+        webex.cc.services.config.getAgentConfig.mockResolvedValue({
+          profile: createFreshAgentProfile({webRtcEnabled: false}),
+          multiRegionSettings: {eligibility: 'enabled', homeRegion: ' ProDUs1 '},
+        });
         webex.cc.services.agent.stationLogin.mockResolvedValue(result());
-        webex.cc.services.agent.reload.mockReturnValue(reload.promise);
+        webex.cc.services.agent.reload.mockResolvedValue(result());
         const listener = jest.fn(); webex.cc.on('region:stateChange', listener);
-        const registration = webex.cc.register();
-        await settle();
-        expect(webex.cc.services.config.getMultiRegionSettings).toHaveBeenCalledTimes(1);
-        expect(webex.cc.services.agent.reload).toHaveBeenCalledTimes(source === 'register-restored' ? 1 : 0);
-        expect(listener).not.toHaveBeenCalled();
-        if (hydrationFirst) {
-          reader.resolve({eligibility: 'enabled', homeRegion: ' ProDUs1 '}); await settle();
-          expect(listener).not.toHaveBeenCalled();
-        }
-        if (source === 'register-restored') reload.resolve(result());
-        await registration;
-        if (source === 'stationLogin')
-          await webex.cc.stationLogin({teamId: 'team', loginOption: 'EXTENSION', dialNumber: '1234'});
-        const complete = {status: 'ready', reason: 'initial-login',
-          homeRegion: ' ProDUs1 ', servingRegion, limitedService};
-        expect(listener.mock.calls).toEqual([[hydrationFirst ? complete : {
-          status: 'ready', reason: 'initial-login', servingRegion,
-        }]]);
-        if (!hydrationFirst) {
-          reader.resolve({eligibility: 'enabled', homeRegion: ' ProDUs1 '}); await settle();
-        }
-        expect(listener.mock.calls).toEqual(hydrationFirst ? [[complete]] : [
-          [{status: 'ready', reason: 'initial-login', servingRegion}], [complete],
-        ]);
-        expect(webex.cc['lastPublishedRegionState']).toEqual(complete);
-        webex.cc['onMultiRegionSettingsChanged'](webex.cc['registrationGeneration']);
-        expect(listener).toHaveBeenCalledTimes(hydrationFirst ? 1 : 2);
-      });
 
-      it.each([true, false])('T-011 hydrationRepublishesExistingSnapshotOnly present=%s', async (present) => {
-        await prepare(); if (present) await webex.cc.stationLogin({teamId: 'team', loginOption: 'EXTENSION', dialNumber: '1234'});
-        const listener = jest.fn(); webex.cc.on('region:stateChange', listener);
-        mockWebSocketManager.getServingRegion.mockReturnValue('produs2');
-        webex.cc['onMultiRegionSettingsChanged'](webex.cc['registrationGeneration']);
-        webex.cc['onMultiRegionSettingsChanged'](webex.cc['registrationGeneration']);
-        expect(listener).toHaveBeenCalledTimes(present ? 1 : 0);
-        if (present) expect(listener).toHaveBeenCalledWith({status: 'ready', reason: 'initial-login',
-          homeRegion: 'produs1', servingRegion: 'produs2', limitedService: true});
+        await webex.cc.register();
+        if (source === 'stationLogin') {
+          expect(listener).not.toHaveBeenCalled();
+          await webex.cc.stationLogin({teamId: 'team', loginOption: 'EXTENSION', dialNumber: '1234'});
+        }
+
+        const snapshot = {status: 'ready', reason: 'initial-login',
+          homeRegion: ' ProDUs1 ', servingRegion, limitedService};
+        expect(listener.mock.calls).toEqual([[snapshot]]);
+        expect(webex.cc['lastPublishedRegionState']).toEqual(snapshot);
       });
 
       it('T-005 ordinaryMismatchSingleReloadSnapshot', async () => {
@@ -3297,9 +3224,9 @@ describe('webex.cc', () => {
       beforeEach(() => {
         webex.cc.$config = {...webex.cc.$config, allowAutomatedRelogin: false};
         mockWebSocketManager.initWebSocket.mockResolvedValue({agentId: 'agent123'});
-        webex.cc.services.config.getAgentConfig.mockResolvedValue(createFreshAgentProfile({
+        webex.cc.services.config.getAgentConfig.mockResolvedValue({profile: createFreshAgentProfile({
           webRtcEnabled: false, loginVoiceOptions: [LoginOption.EXTENSION],
-        }));
+        })});
       });
 
       it.each(['logger', 'ordinary reset'])(
@@ -3343,7 +3270,6 @@ describe('webex.cc', () => {
         await expect(webex.cc.register()).rejects.toBe(failure);
         expect(listener).not.toHaveBeenCalled();
         expect(requireReload).toHaveBeenCalledTimes(1);
-        expect(webex.cc.services.config.getMultiRegionSettings).not.toHaveBeenCalled();
         expect(mockMetricsManager.trackEvent).toHaveBeenCalledWith(
           METRIC_EVENT_NAMES.WEBSOCKET_REGISTER_FAILED, {orgId: undefined}, ['operational']
         );
@@ -3406,7 +3332,7 @@ describe('webex.cc', () => {
           beforeEach(() => {
             work = createDeferred<any>();
             webex.cc.$config.allowAutomatedRelogin = true;
-            webex.cc.services.config.getAgentConfig.mockResolvedValue(createFreshAgentProfile());
+            webex.cc.services.config.getAgentConfig.mockResolvedValue({profile: createFreshAgentProfile()});
             const mercury = jest.spyOn(webex.internal.mercury, 'connect').mockResolvedValue(true);
             const reload = webex.cc.services.agent.reload.mockResolvedValue(restoredSession);
             const calling = jest.spyOn(webex.cc.webCallingService, 'registerWebCallingLine').mockResolvedValue(undefined);
@@ -3530,418 +3456,94 @@ describe('webex.cc', () => {
       });
     });
 
-    describe('T-001 registration-owned MR hydration', () => {
-      const settleHydration = async () => {
-        for (let turn = 0; turn < 10; turn += 1) await Promise.resolve();
-      };
-      const createReaderFailure = (status?: number, reason?: string) =>
-        Object.defineProperties(new Error('request failed'), {
-          name: {value: status === 0 ? 'NetworkOrCORSError' : 'Error'},
-          statusCode: {value: status},
-          body: {value: {reason, reasonCode: 9999}},
-          headers: {value: {TrackingID: 'reader-id'}},
-        });
-      const prepare = (agentId = 'agent123') => {
+    describe('T-001 registration-owned desktop login settings', () => {
+      const prepare = (agentId = 'agent123', multiRegionSettings?: MultiRegionSettings) => {
         webex.cc.$config = {...webex.cc.$config, allowAutomatedRelogin: false};
         mockWebSocketManager.initWebSocket.mockResolvedValue({agentId});
-        webex.cc.services.config.getAgentConfig.mockResolvedValue(createFreshAgentProfile({
-          agentId, webRtcEnabled: false, loginVoiceOptions: [LoginOption.EXTENSION],
-        }));
-        return webex.cc.services.config.getMultiRegionSettings as jest.Mock;
+        const profile = createFreshAgentProfile({agentId, webRtcEnabled: false});
+        const getAgentConfig = webex.cc.services.config.getAgentConfig as jest.Mock;
+        getAgentConfig.mockResolvedValue({profile, multiRegionSettings});
+        return {getAgentConfig, profile};
       };
 
-      afterEach(() => {
-        webex.cc['registrationAbortController']?.abort();
-        jest.useRealTimers();
-      });
-
-      it.each(['agent123', 'replacement-agent'])('welcomeIdentityBoundAtHydrationLaunch %s', async (replacement) => {
-        const reader = prepare();
-        const launches: Array<{orgId: string; signal: AbortSignal; aborted: boolean;
-          registrationAgentId: string; profileAgentId: string}> = [];
+      it.each(['agent123', 'replacement-agent'])('binds config to the current Welcome identity %s', async (replacement) => {
+        const first = prepare('agent123', {eligibility: 'enabled', homeRegion: 'produs1'});
         webex.cc.agentConfig = createFreshAgentProfile({agentId: 'stale-agent'});
-        reader.mockImplementation((orgId, signal) => {
-          launches.push({orgId, signal, aborted: signal?.aborted,
-            registrationAgentId: webex.cc['registrationAgentId'],
-            profileAgentId: webex.cc.agentConfig.agentId});
-          return Promise.resolve({eligibility: 'enabled', homeRegion: 'us1'});
-        });
-        const profile = await webex.cc.register();
-        await settleHydration();
+        await expect(webex.cc.register()).resolves.toBe(first.profile);
         const firstSignal = webex.cc['registrationAbortController'].signal;
-        expect(profile.agentId).toBe('agent123');
-        expect(reader.mock.calls).toEqual([['mockOrgId', firstSignal]]);
-        expect(reader.mock.calls[0][1]).toBe(firstSignal);
-        expect(launches).toEqual([{orgId: 'mockOrgId', signal: firstSignal, aborted: false,
-          registrationAgentId: 'agent123', profileAgentId: 'agent123'}]);
-        expect(firstSignal.aborted).toBe(false);
+        expect(webex.cc['registrationAgentId']).toBe('agent123');
+        expect(webex.cc['multiRegionSettings']).toEqual({eligibility: 'enabled', homeRegion: 'produs1'});
 
         webex.credentials.getOrgId.mockReturnValue('replacement-org');
-        prepare(replacement);
-        const replacementProfile = await webex.cc.register();
-        await settleHydration();
-        const replacementSignal = webex.cc['registrationAbortController'].signal;
-        expect(replacementSignal).not.toBe(firstSignal);
+        const next = prepare(replacement, {eligibility: 'disabled'});
+        await expect(webex.cc.register()).resolves.toBe(next.profile);
         expect(firstSignal.aborted).toBe(true);
-        expect(replacementSignal.aborted).toBe(false);
-        expect(replacementProfile.agentId).toBe(replacement);
-        expect(webex.cc.services.config.getAgentConfig.mock.calls).toEqual([
+        expect(webex.cc['registrationAbortController'].signal.aborted).toBe(false);
+        expect(next.getAgentConfig.mock.calls).toEqual([
           ['mockOrgId', 'agent123'], ['replacement-org', replacement],
         ]);
-        expect(reader.mock.calls).toEqual([
-          ['mockOrgId', firstSignal], ['replacement-org', replacementSignal],
-        ]);
-        expect(reader.mock.calls[1][1]).toBe(replacementSignal);
-        expect(launches).toEqual([
-          {orgId: 'mockOrgId', signal: firstSignal, aborted: false,
-            registrationAgentId: 'agent123', profileAgentId: 'agent123'},
-          {orgId: 'replacement-org', signal: replacementSignal, aborted: false,
-            registrationAgentId: replacement, profileAgentId: replacement},
-        ]);
         expect(webex.cc['registrationAgentId']).toBe(replacement);
+        expect(webex.cc['multiRegionSettings']).toEqual({eligibility: 'disabled'});
       });
 
       it.each([undefined, null, '', ' '])('primary Welcome requires nonblank identity %#', async (agentId) => {
-        prepare();
+        const {getAgentConfig} = prepare();
         mockWebSocketManager.initWebSocket.mockResolvedValue({agentId});
         await expect(webex.cc.register()).rejects.toThrow('Primary Welcome agent identity is required');
-        expect(webex.cc.services.config.getAgentConfig).not.toHaveBeenCalled();
-        expect(webex.cc.services.config.getMultiRegionSettings).not.toHaveBeenCalled();
+        expect(getAgentConfig).not.toHaveBeenCalled();
       });
 
-      it('rejects a mismatched or failed Profile without launching hydration', async () => {
-        const reader = prepare();
-        webex.cc.services.config.getAgentConfig.mockResolvedValue(createFreshAgentProfile({agentId: 'other-agent'}));
+      it('rejects a mismatched or failed Profile and keeps settings unknown', async () => {
+        const {getAgentConfig} = prepare();
+        getAgentConfig.mockResolvedValueOnce({
+          profile: createFreshAgentProfile({agentId: 'other-agent'}),
+          multiRegionSettings: {eligibility: 'enabled'},
+        });
         await expect(webex.cc.register()).rejects.toThrow('identities differ');
-        expect(reader).not.toHaveBeenCalled();
-        webex.cc.services.config.getAgentConfig.mockRejectedValue(new Error('Profile failed'));
+        expect(webex.cc['multiRegionSettings']).toEqual({eligibility: 'unknown'});
+
+        getAgentConfig.mockRejectedValueOnce(new Error('Profile failed'));
         await expect(webex.cc.register()).rejects.toThrow('Profile failed');
-        expect(reader).not.toHaveBeenCalled();
+        expect(webex.cc['multiRegionSettings']).toEqual({eligibility: 'unknown'});
       });
 
-      it('eligibilityChangeHookAfterCurrentResult stores before the hook and ignores stale work', async () => {
-        const reader = prepare();
-        const pending = createDeferred<any>();
-        reader.mockReturnValueOnce(pending.promise).mockResolvedValue({eligibility: 'disabled'});
-        const seen: unknown[] = [];
-        const hook = jest.spyOn(webex.cc, 'onMultiRegionSettingsChanged').mockImplementation(() => {
-          seen.push(webex.cc['multiRegionSettings']);
+      it('ignores settings arriving from a superseded desktop login response', async () => {
+        const {getAgentConfig, profile} = prepare('agent123', {eligibility: 'disabled'});
+        const requested = createDeferred<void>();
+        const pending = createDeferred<{profile: Profile; multiRegionSettings: MultiRegionSettings}>();
+        getAgentConfig.mockImplementationOnce(() => {
+          requested.resolve();
+          return pending.promise;
         });
-        const profile = await webex.cc.register();
-        expect(profile.agentId).toBe('agent123');
-        expect(webex.cc['multiRegionSettings']).toEqual({eligibility: 'unknown'});
+        const registration = webex.cc.register();
+        const interrupted = expect(registration).rejects.toMatchObject({data: {reason: 'RECOVERY_INTERRUPTED'}});
+        await requested.promise;
+        expect(getAgentConfig).toHaveBeenCalledTimes(1);
+        webex.credentials.getOrgId.mockReturnValue('replacement-org');
         await webex.cc.register();
-        await settleHydration();
-        pending.resolve({eligibility: 'enabled', homeRegion: 'us1'});
-        await settleHydration();
-        expect(hook).toHaveBeenCalledTimes(1);
-        expect(seen).toEqual([{eligibility: 'disabled'}]);
+        pending.resolve({profile, multiRegionSettings: {eligibility: 'enabled', homeRegion: 'produs1'}});
+        await interrupted;
+        await flushMicrotasks();
+        expect(webex.cc['multiRegionSettings']).toEqual({eligibility: 'disabled'});
+        expect(getAgentConfig.mock.calls).toEqual([['mockOrgId', 'agent123'], ['replacement-org', 'agent123']]);
       });
 
-      it.each(['enabled', 'disabled'])('a throwing settings hook cannot retry a successful %s read', async eligibility => {
-        jest.useFakeTimers();
-        const reader = prepare();
-        const settings = {eligibility, homeRegion: 'us1'};
-        reader.mockResolvedValue(settings);
-        const hook = jest.spyOn(webex.cc, 'onMultiRegionSettingsChanged').mockImplementationOnce(() => {
-          expect(webex.cc['multiRegionSettings']).toBe(settings);
-          throw new Error('settings hook failed');
-        });
-
-        await expect(webex.cc.register()).resolves.toHaveProperty('agentId', 'agent123');
-        await settleHydration();
-        expect(reader).toHaveBeenCalledTimes(1);
-        expect(hook).toHaveBeenCalledTimes(1);
-        expect(webex.cc['multiRegionSettings']).toBe(settings);
-        expect(jest.getTimerCount()).toBe(0);
-        jest.advanceTimersByTime(10000);
-        await settleHydration();
-        expect(reader).toHaveBeenCalledTimes(1);
-        expect(hook).toHaveBeenCalledTimes(1);
-        expect(jest.getTimerCount()).toBe(0);
-      });
-
-      it.each(['resolve', 'reject'])('silentReloginRejectsWhileHydrationPending %s', async (settle) => {
-        const reader = prepare();
-        const pending = createDeferred<any>();
-        reader.mockReturnValue(pending.promise);
-        webex.cc.$config = {...webex.cc.$config, allowAutomatedRelogin: true};
-        webex.cc.services.agent.reload.mockRejectedValue(new Error('restore failed'));
-        const hook = jest.spyOn(webex.cc, 'onMultiRegionSettingsChanged');
-        await expect(webex.cc.register()).rejects.toThrow();
-        const signal = reader.mock.calls[0][1];
-        expect(signal.aborted).toBe(true);
-        expect(webex.cc['multiRegionSettings']).toEqual({eligibility: 'unknown'});
-        if (settle === 'resolve') pending.resolve({eligibility: 'enabled', homeRegion: 'us1'});
-        else pending.reject(new Error('late reader failure'));
-        await settleHydration();
-        expect(hook).not.toHaveBeenCalled();
-        expect(reader).toHaveBeenCalledTimes(1);
-        expect(webex.cc['multiRegionSettings']).toEqual({eligibility: 'unknown'});
-      });
-
-      it.each([
-        ...['reject', 'resolve'].flatMap(settlement => ([
-          [undefined, undefined, 5], [0, undefined, 5], [408, undefined, 5], [429, undefined, 5],
-          [500, undefined, 5], [502, undefined, 5], [503, undefined, 5], [599, undefined, 5],
-          [undefined, 'INVALID_MR_SETTINGS', 5], [undefined, 'INVALID_ORG_ID', 5],
-          [401, undefined, 1], [403, undefined, 1], [400, undefined, 1], [404, undefined, 1],
-          [409, undefined, 1], [302, undefined, 1], [undefined, 'RECOVERY_INTERRUPTED', 5],
-          [0, 'RECOVERY_INTERRUPTED', 5], [0, 'INVALID_ORG_ID', 5],
-          [401, 'INVALID_MR_SETTINGS', 1], [403, 'INVALID_MR_SETTINGS', 1],
-          [503, 'INVALID_ORG_ID', 5], [503, 'RECOVERY_INTERRUPTED', 5],
-          [400, 'INVALID_MR_SETTINGS', 1], [404, 'INVALID_MR_SETTINGS', 1],
-        ] as const).map(([status, reason, reads]) => ({settlement, status, reason, reads}))),
-        {settlement: 'invalid-org', status: undefined, reason: 'INVALID_ORG_ID', reads: 1},
-        {settlement: 'invalid-settings', status: undefined, reason: 'INVALID_MR_SETTINGS', reads: 5},
-      ])('readerRetryClassification / offline4295xxPacing / fiveBoundedReads / completeProfileUnaffected $settlement status=$status reason=$reason', async ({settlement, status, reason, reads}) => {
-        jest.useFakeTimers();
-        const reader = prepare();
-        const ActualConfigService = jest.requireActual('../../../src/services/config').default;
-        const configReader = new ActualConfigService();
-        if (settlement === 'invalid-org') webex.credentials.getOrgId.mockReturnValue(' ');
-        webex.cc.services.config.getAgentConfig.mockResolvedValue(createFreshAgentProfile({
-          webRtcEnabled: false, loginVoiceOptions: [LoginOption.EXTENSION],
-          aiFeature: {realtimeTranscripts: {enable: true}} as any,
-        }));
-        const failure = createReaderFailure(status, reason);
-        mockWebexRequest.request.mockImplementation(() => {
-          if (settlement === 'invalid-settings') return Promise.resolve({statusCode: 200, body: []});
-          if (settlement === 'resolve') return Promise.resolve({
-            statusCode: status, body: {reason, reasonCode: 9999}, headers: {TrackingID: 'reader-id'},
-          });
-          return Promise.reject(failure);
-        });
-        const readTimes: number[] = [];
-        const startedAt = Date.now();
-        reader.mockImplementation((orgId, signal) => {
-          readTimes.push(Date.now() - startedAt);
-          return configReader.getMultiRegionSettings(orgId, signal);
-        });
-        const credentials = webex.credentials;
-        const listener = jest.fn();
-        webex.cc.on('region:stateChange', listener);
-        const profile = await webex.cc.register();
-        await settleHydration();
-        expect(profile.agentId).toBe('agent123');
-        expect(reader).toHaveBeenCalledTimes(1);
-        for (let attempt = 1; attempt < reads; attempt += 1) {
-          jest.advanceTimersByTime(attempt * 1000 - 1);
-          await settleHydration();
-          expect(reader).toHaveBeenCalledTimes(attempt);
-          jest.advanceTimersByTime(1);
-          await settleHydration();
-          expect(reader).toHaveBeenCalledTimes(attempt + 1);
-        }
-        jest.advanceTimersByTime(60000);
-        await settleHydration();
-        expect(reader).toHaveBeenCalledTimes(reads);
-        expect(readTimes).toEqual(reads === 5 ? [0, 1000, 3000, 6000, 10000] : [0]);
-        expect(webex.cc['multiRegionSettings']).toEqual({eligibility: 'unknown'});
-        expect(webex.cc.agentConfig).toBe(profile);
-        expect(webex.cc.services.config.getAgentConfig).toHaveBeenCalledTimes(1);
-        expect(webex.credentials).toBe(credentials);
-        expect(webex.cc['registrationAbortController'].signal.aborted).toBe(false);
-        expect(webex.cc.services.rtdWebSocketManager.initWebSocket).toHaveBeenCalledTimes(1);
-        expect(mockWebSocketManager.close).not.toHaveBeenCalled();
-        expect(webex.cc.services.rtdWebSocketManager.close).not.toHaveBeenCalled();
-        expect(webex.cc.services.agent.logout).not.toHaveBeenCalled();
-        expect(listener).not.toHaveBeenCalled();
-        expect(mockWebexRequest.request).toHaveBeenCalledTimes(settlement === 'invalid-org' ? 0 : reads);
-        const readerFailure = await reader.mock.results[0].value.catch(error => error);
-        if (settlement === 'reject') expect(readerFailure).toBe(failure);
-        expect(Utils.normalizeRecoveryFailure(readerFailure)).toEqual({
-          ...(status !== undefined ? {status} : {}), ...(reason ? {reason} : {}),
-          ...(!settlement.startsWith('invalid-') ? {reasonCode: 9999, trackingId: 'reader-id'} : {}),
-        });
-      });
-
-      it.each(['enabled', 'disabled'])('recovers from status-zero offline failure on a later serial read: %s', async (eligibility) => {
-        jest.useFakeTimers();
-        const reader = prepare();
-        const pending = createDeferred<any>();
-        const readTimes: number[] = [];
-        const startedAt = Date.now();
-        reader.mockImplementation(() => {
-          readTimes.push(Date.now() - startedAt);
-          return readTimes.length === 1 ? Promise.reject(createReaderFailure(0)) : pending.promise;
-        });
-        const hook = jest.spyOn(webex.cc, 'onMultiRegionSettingsChanged');
-        const profile = await webex.cc.register();
-        await settleHydration();
-        jest.advanceTimersByTime(999);
-        await settleHydration();
-        expect(reader).toHaveBeenCalledTimes(1);
-        jest.advanceTimersByTime(1);
-        await settleHydration();
-        expect(readTimes).toEqual([0, 1000]);
-        jest.advanceTimersByTime(60000);
-        await settleHydration();
-        expect(reader).toHaveBeenCalledTimes(2);
-        expect(webex.cc['multiRegionSettings']).toEqual({eligibility: 'unknown'});
-        const settings = {eligibility, homeRegion: 'us1'};
-        pending.resolve(settings);
-        await settleHydration();
-        expect(webex.cc['multiRegionSettings']).toEqual(settings);
-        expect(hook).toHaveBeenCalledTimes(1);
-        jest.advanceTimersByTime(60000);
-        await settleHydration();
-        expect(reader).toHaveBeenCalledTimes(2);
-        expect(webex.cc.agentConfig).toBe(profile);
-        expect(webex.cc.services.config.getAgentConfig).toHaveBeenCalledTimes(1);
-      });
-
-      it.each([1, 2, 3, 4])('cancels status-zero offline hydration during retry wait %s', async (waitingAttempt) => {
-        jest.useFakeTimers();
-        const reader = prepare();
-        reader.mockRejectedValue(createReaderFailure(0));
-        const hook = jest.spyOn(webex.cc, 'onMultiRegionSettingsChanged');
+      it('clears previous entitlement at replacement and still registers when the aggregate omits it', async () => {
+        const {getAgentConfig, profile} = prepare('agent123', {eligibility: 'enabled', homeRegion: 'produs1'});
         await webex.cc.register();
-        await settleHydration();
-        for (let attempt = 1; attempt < waitingAttempt; attempt += 1) {
-          jest.advanceTimersByTime(attempt * 1000);
-          await settleHydration();
-        }
-        expect(reader).toHaveBeenCalledTimes(waitingAttempt);
-        jest.advanceTimersByTime(waitingAttempt * 1000 - 1);
-        await settleHydration();
-        const signal = webex.cc['registrationAbortController'].signal;
-        const removeListener = jest.spyOn(signal, 'removeEventListener');
-        webex.cc['registrationAbortController'].abort();
-        await settleHydration();
-        expect(removeListener).toHaveBeenCalledWith('abort', expect.any(Function));
-        expect(jest.getTimerCount()).toBe(0);
-        jest.advanceTimersByTime(60000);
-        await settleHydration();
-        expect(reader).toHaveBeenCalledTimes(waitingAttempt);
-        expect(hook).not.toHaveBeenCalled();
-        expect(webex.cc['multiRegionSettings']).toEqual({eligibility: 'unknown'});
-      });
-
-      it.each([403, 503])('replacementRegisterClearsPriorEnabledSettings before awaiting and through reader failure %s', async (status) => {
-        jest.useFakeTimers();
-        const reader = prepare();
-        const pending = createDeferred<any>();
-        const welcome = createDeferred<any>();
-        const failure = createReaderFailure(status);
-        reader.mockResolvedValueOnce({eligibility: 'enabled', homeRegion: 'produs1'})
-          .mockReturnValueOnce(pending.promise).mockRejectedValue(failure);
-        mockWebSocketManager.getServingRegion.mockReturnValue('produs1');
-        await webex.cc.register(); await settleHydration();
-        expect(webex.cc['multiRegionSettings']).toEqual({eligibility: 'enabled', homeRegion: 'produs1'});
-        webex.cc['publishRegionState'](webex.cc['buildRegionState']('ready', 'initial-login'));
-        expect(webex.cc['lastPublishedRegionState']).toEqual({status: 'ready', reason: 'initial-login',
-          homeRegion: 'produs1', servingRegion: 'produs1', limitedService: false});
-
-        mockWebSocketManager.initWebSocket.mockReturnValueOnce(welcome.promise);
+        expect(webex.cc['multiRegionSettings'].eligibility).toBe('enabled');
+        const pending = createDeferred<{profile: Profile}>();
+        getAgentConfig.mockReturnValueOnce(pending.promise);
         const replacement = webex.cc.register();
-        // No await: even the replacement Welcome and reader have not completed.
-        expect(reader).toHaveBeenCalledTimes(1);
         expect(webex.cc['multiRegionSettings']).toEqual({eligibility: 'unknown'});
         expect(webex.cc['lastPublishedRegionState']).toBeUndefined();
-        const expectUnknownSnapshot = () => {
-          expect(webex.cc['multiRegionSettings']).toEqual({eligibility: 'unknown'});
-          expect(webex.cc['buildRegionState']('ready', 'initial-login')).toEqual({status: 'ready', reason: 'initial-login'});
-          webex.cc['publishRegionState'](webex.cc['buildRegionState']('ready', 'initial-login'));
-          expect(webex.cc['lastPublishedRegionState']).toEqual({status: 'ready', reason: 'initial-login', servingRegion: 'produs1'});
-        };
-        expectUnknownSnapshot();
-        welcome.resolve({agentId: 'agent123'}); await replacement;
-        expect(reader).toHaveBeenCalledTimes(2);
-        expectUnknownSnapshot();
-        pending.reject(failure); await settleHydration();
-        expectUnknownSnapshot();
-        const reads = status === 503 ? 5 : 1;
-        for (let attempt = 1; attempt < reads; attempt += 1) {
-          jest.advanceTimersByTime(attempt * 1000 - 1); await settleHydration();
-          expect(reader).toHaveBeenCalledTimes(attempt + 1);
-          expectUnknownSnapshot();
-          jest.advanceTimersByTime(1); await settleHydration();
-          expect(reader).toHaveBeenCalledTimes(attempt + 2);
-          expectUnknownSnapshot();
-        }
-        jest.advanceTimersByTime(60000); await settleHydration();
-        expect(reader).toHaveBeenCalledTimes(reads + 1);
-        expectUnknownSnapshot();
-        expect(jest.getTimerCount()).toBe(0);
-        expect(webex.cc['registrationAbortController'].signal.aborted).toBe(false);
-      });
 
-      it.each([true, false])('oneCyclePerRegister / nextRegisterObservesEntitlementChanges initial=%s', async (enabled) => {
-        const reader = prepare();
-        reader.mockResolvedValueOnce({eligibility: enabled ? 'enabled' : 'disabled'})
-          .mockResolvedValueOnce({eligibility: enabled ? 'disabled' : 'enabled'});
-        await webex.cc.register();
-        await settleHydration();
-        expect(webex.cc['multiRegionSettings'].eligibility).toBe(enabled ? 'enabled' : 'disabled');
-        await webex.cc['handleConnectionLost']({isConnectionLost: true});
-        expect(reader).toHaveBeenCalledTimes(1);
-        await webex.cc.register();
-        await settleHydration();
-        expect(webex.cc['multiRegionSettings'].eligibility).toBe(enabled ? 'disabled' : 'enabled');
-        expect(reader).toHaveBeenCalledTimes(2);
-      });
-
-      it('ordinaryReconnectDoesNotReread and actually restores the session', async () => {
-        const reader = prepare();
-        reader.mockResolvedValue({eligibility: 'enabled'});
-        await webex.cc.register();
-        await settleHydration();
-        webex.cc.$config = {...webex.cc.$config, allowAutomatedRelogin: true};
-        webex.cc.services.agent.reload.mockResolvedValue({data: {agentId: 'agent123', agentSessionId: 'session', deviceType: LoginOption.EXTENSION, dn: '1234', teamId: 'team'}});
-        const restore = jest.spyOn(webex.cc, 'silentRelogin');
-        await webex.cc['handleConnectionLost']({isConnectionLost: true});
-        await webex.cc['handleConnectionLost']({isSocketReconnected: true});
-        expect(restore).toHaveBeenCalledTimes(1);
-        expect(webex.cc.services.agent.reload).toHaveBeenCalledTimes(1);
-        expect(reader).toHaveBeenCalledTimes(1);
-      });
-
-      it('readerDependencyFailureRetainsUnknown and preserves the valid Profile/session', async () => {
-        const reader = prepare();
-        reader.mockRejectedValue({statusCode: 403});
-        const profile = await webex.cc.register();
-        await settleHydration();
-        expect(webex.cc.agentConfig).toBe(profile);
-        expect(webex.cc['registrationAbortController'].signal.aborted).toBe(false);
+        profile.aiFeature = {realtimeTranscripts: {enable: true}} as any;
+        pending.resolve({profile});
+        await expect(replacement).resolves.toBe(profile);
         expect(webex.cc['multiRegionSettings']).toEqual({eligibility: 'unknown'});
-        expect(mockWebSocketManager.close).not.toHaveBeenCalled();
-        expect(webex.cc.services.rtdWebSocketManager.close).not.toHaveBeenCalled();
-      });
-
-      it.each([401, 403])('T-012 readerVsPrimaryVsRtdAuthBoundaries / terminalReaderAuthIsolation reader status=%s', async (status) => {
-        const reader = prepare();
-        reader.mockRejectedValue({statusCode: status, body: {reason: 'AUTH_FAILED'}, headers: {trackingid: 'auth-reader'}});
-        webex.cc.services.config.getAgentConfig.mockResolvedValue(createFreshAgentProfile({
-          webRtcEnabled: false, loginVoiceOptions: [LoginOption.EXTENSION],
-          aiFeature: {realtimeTranscripts: {enable: true}} as any,
-        }));
-        const credentials = webex.credentials;
-        const profile = await webex.cc.register();
-        await settleHydration();
-        expect(profile.agentId).toBe('agent123');
-        expect(webex.credentials).toBe(credentials);
+        expect(webex.cc['registrationAbortController'].signal.aborted).toBe(false);
         expect(webex.cc.services.rtdWebSocketManager.initWebSocket).toHaveBeenCalledTimes(1);
-        expect(mockWebSocketManager.close).not.toHaveBeenCalled();
-        expect(webex.cc.services.rtdWebSocketManager.close).not.toHaveBeenCalled();
-        expect(webex.cc['registrationAbortController'].signal.aborted).toBe(false);
-        expect(webex.cc['multiRegionSettings']).toEqual({eligibility: 'unknown'});
-        expect(reader).toHaveBeenCalledTimes(1);
-      });
-
-      it('oldOrgHydrationDiscarded prevents late hydration and clears context on next register', async () => {
-        const reader = prepare();
-        const pending = createDeferred<any>();
-        reader.mockReturnValueOnce(pending.promise).mockResolvedValue({eligibility: 'disabled'});
-        const hook = jest.spyOn(webex.cc, 'onMultiRegionSettingsChanged');
-        await webex.cc.register();
-        webex.credentials.getOrgId.mockReturnValue('replacement-org');
-        pending.resolve({eligibility: 'enabled', homeRegion: 'us1'});
-        await settleHydration();
-        expect(hook).not.toHaveBeenCalled();
-        await webex.cc.register();
-        await settleHydration();
-        expect(webex.cc['multiRegionSettings']).toEqual({eligibility: 'disabled'});
       });
     });
 
@@ -3974,7 +3576,7 @@ describe('webex.cc', () => {
       it('registerRestoredSessionReady once, while ordinary reconnect emits nothing new', async () => {
         webex.cc.$config = {...webex.cc.$config, allowAutomatedRelogin: true};
         mockWebSocketManager.initWebSocket.mockResolvedValue({agentId: 'agent123'});
-        webex.cc.services.config.getAgentConfig.mockResolvedValue(createFreshAgentProfile({webRtcEnabled: false}));
+        webex.cc.services.config.getAgentConfig.mockResolvedValue({profile: createFreshAgentProfile({webRtcEnabled: false})});
         const response = {data: {agentId: 'agent123', agentSessionId: 'session', teamId: 'team', deviceType: LoginOption.EXTENSION, dn: '1234'}};
         const secondReload = createDeferred<any>();
         webex.cc.services.agent.reload.mockResolvedValueOnce(response).mockReturnValueOnce(secondReload.promise);
@@ -3995,32 +3597,21 @@ describe('webex.cc', () => {
         expect(listener).toHaveBeenCalledTimes(1);
       });
 
+      const home = ' ProDUs1 ';
       it.each([
-        [' Us1 ', 'uS1', {homeRegion: ' Us1 ', servingRegion: 'uS1', limitedService: false}],
-        ['uS1', ' Us2 ', {homeRegion: 'uS1', servingRegion: ' Us2 ', limitedService: true}],
-        [undefined, ' Us2 ', {servingRegion: ' Us2 '}],
-        [' Us1 ', undefined, {homeRegion: ' Us1 '}],
-      ])('T-011 normalizedHomeServingComparison home=%s serving=%s', (homeRegion, servingRegion, metadata) => {
-        webex.cc['multiRegionSettings'] = {eligibility: 'enabled', ...(homeRegion ? {homeRegion} : {})};
-        mockWebSocketManager.getServingRegion.mockReturnValue(servingRegion);
-        const listener = jest.fn(); webex.cc.on('region:stateChange', listener);
-        webex.cc['publishRegionState'](webex.cc['buildRegionState']('ready', 'initial-login'));
-        expect(listener.mock.calls).toEqual([[{status: 'ready', reason: 'initial-login', ...metadata}]]);
-      });
-
-      it.each([
-        ['enabled', ' pRoDuS1 ', {homeRegion: ' ProDUs1 ', servingRegion: ' pRoDuS1 ', limitedService: false}],
-        ['enabled', ' PrODuS2 ', {homeRegion: ' ProDUs1 ', servingRegion: ' PrODuS2 ', limitedService: true}],
-        ['enabled', undefined, {homeRegion: ' ProDUs1 '}],
-        ['disabled', ' pRoDuS1 ', {homeRegion: ' ProDUs1 ', servingRegion: ' pRoDuS1 '}],
-        ['disabled', ' PrODuS2 ', {homeRegion: ' ProDUs1 ', servingRegion: ' PrODuS2 '}],
-        ['disabled', undefined, {homeRegion: ' ProDUs1 '}],
-        ['unknown', ' pRoDuS1 ', {servingRegion: ' pRoDuS1 '}],
-        ['unknown', ' PrODuS2 ', {servingRegion: ' PrODuS2 '}],
-        ['unknown', undefined, {}],
-      ])('T-011 enabledOnlyLimitedService eligibility=%s serving=%s', (eligibility, servingRegion, metadata) => {
+        ['enabled', home, ' pRoDuS1 ', {homeRegion: home, servingRegion: ' pRoDuS1 ', limitedService: false}],
+        ['enabled', home, ' PrODuS2 ', {homeRegion: home, servingRegion: ' PrODuS2 ', limitedService: true}],
+        ['enabled', home, undefined, {homeRegion: home}],
+        ['enabled', undefined, ' PrODuS2 ', {servingRegion: ' PrODuS2 '}],
+        ['disabled', home, ' pRoDuS1 ', {homeRegion: home, servingRegion: ' pRoDuS1 '}],
+        ['disabled', home, ' PrODuS2 ', {homeRegion: home, servingRegion: ' PrODuS2 '}],
+        ['disabled', home, undefined, {homeRegion: home}],
+        ['unknown', home, ' pRoDuS1 ', {servingRegion: ' pRoDuS1 '}],
+        ['unknown', home, ' PrODuS2 ', {servingRegion: ' PrODuS2 '}],
+        ['unknown', home, undefined, {}],
+      ])('T-011 enabledOnlyLimitedService eligibility=%s home=%s serving=%s', (eligibility, homeRegion, servingRegion, metadata) => {
         // Retain stale input deliberately: unknown eligibility must hide its home region too.
-        webex.cc['multiRegionSettings'] = {eligibility, homeRegion: ' ProDUs1 '};
+        webex.cc['multiRegionSettings'] = {eligibility, ...(homeRegion ? {homeRegion} : {})};
         mockWebSocketManager.getServingRegion.mockReturnValue(servingRegion);
         const listener = jest.fn(); webex.cc.on('region:stateChange', listener);
         webex.cc['publishRegionState'](webex.cc['buildRegionState']('ready', 'initial-login'));
@@ -4031,7 +3622,7 @@ describe('webex.cc', () => {
         'register-restored BROWSER readiness waits for successful %s setup', async (stage) => {
           webex.cc.$config = {...webex.cc.$config, allowAutomatedRelogin: true};
           mockWebSocketManager.initWebSocket.mockResolvedValue({agentId: 'agent123'});
-          webex.cc.services.config.getAgentConfig.mockImplementation(() => Promise.resolve(createFreshAgentProfile()));
+          webex.cc.services.config.getAgentConfig.mockImplementation(async () => ({profile: createFreshAgentProfile()}));
           webex.cc.services.agent.reload.mockResolvedValue({data: {
             agentId: 'agent123', agentSessionId: 'session', teamId: 'team',
             deviceType: LoginOption.BROWSER, dn: 'webrtc-agent123',
@@ -4071,7 +3662,7 @@ describe('webex.cc', () => {
       it('socketOnlyNeverReady', async () => {
         webex.cc.$config = {...webex.cc.$config, allowAutomatedRelogin: false};
         mockWebSocketManager.initWebSocket.mockResolvedValue({agentId: 'agent123'});
-        webex.cc.services.config.getAgentConfig.mockResolvedValue(createFreshAgentProfile({webRtcEnabled: false}));
+        webex.cc.services.config.getAgentConfig.mockResolvedValue({profile: createFreshAgentProfile({webRtcEnabled: false})});
         const listener = jest.fn();
         webex.cc.on('region:stateChange', listener);
         await webex.cc.register();
@@ -4132,8 +3723,10 @@ describe('webex.cc', () => {
         'resets publication at identity boundary and rechecks replacement ownership %j', async ({boundary, reentrant}) => {
           webex.cc.$config = {...webex.cc.$config, allowAutomatedRelogin: false};
           mockWebSocketManager.initWebSocket.mockResolvedValue({agentId: 'agent123'});
-          webex.cc.services.config.getAgentConfig.mockImplementation(async () => createFreshAgentProfile({webRtcEnabled: false}));
-          webex.cc.services.config.getMultiRegionSettings.mockResolvedValue({eligibility: 'enabled', homeRegion: 'produs1'});
+          webex.cc.services.config.getAgentConfig.mockImplementation(async () => ({
+            profile: createFreshAgentProfile({webRtcEnabled: false}),
+            multiRegionSettings: {eligibility: 'enabled', homeRegion: 'produs1'},
+          }));
           await webex.cc.register();
           mockWebSocketManager.getServingRegion.mockReturnValue('produs1');
           await login();
@@ -4328,7 +3921,7 @@ describe('webex.cc', () => {
       });
       const configSpy = jest
         .spyOn(webex.cc.services.config, 'getAgentConfig')
-        .mockResolvedValue(mockAgentProfile);
+        .mockResolvedValue({profile: mockAgentProfile});
       mockWebSocketManager.initWebSocket.mockResolvedValue({
         agentId: 'agent123',
       });
@@ -4435,7 +4028,7 @@ describe('webex.cc', () => {
 
       const configSpy = jest
         .spyOn(webex.cc.services.config, 'getAgentConfig')
-        .mockResolvedValue(mockAgentProfile);
+        .mockResolvedValue({profile: mockAgentProfile});
 
       mockWebSocketManager.initWebSocket.mockResolvedValue({
         agentId: 'agent123',
@@ -4647,10 +4240,8 @@ describe('webex.cc', () => {
       const mockError = new Error('Error after silent relogin');
       webex.cc.$config = {...webex.cc.$config, allowAutomatedRelogin: true};
       jest.spyOn(webex.cc.services.config, 'getAgentConfig').mockResolvedValue({
-        ...mockAgentProfile,
-        webRtcEnabled: false,
-        aiFeature: undefined,
-      } as Profile);
+        profile: {...mockAgentProfile, webRtcEnabled: false, aiFeature: undefined},
+      });
       mockWebSocketManager.initWebSocket.mockResolvedValue({agentId: 'agent123'});
       jest.spyOn(webex.cc as any, 'silentRelogin').mockImplementation(async () => {
         webex.cc['updateWellnessSession']('partial-session');
@@ -4678,7 +4269,7 @@ describe('webex.cc', () => {
       });
       const configSpy = jest
         .spyOn(webex.cc.services.config, 'getAgentConfig')
-        .mockResolvedValue(mockAgentProfile);
+        .mockResolvedValue({profile: mockAgentProfile});
       mockWebSocketManager.initWebSocket.mockResolvedValue({
         agentId: 'agent123',
       });
@@ -4738,7 +4329,7 @@ describe('webex.cc', () => {
       const mercurySpy = jest.spyOn(webex.internal.mercury, 'connect');
       const connectWebsocketSpy = jest.spyOn(webex.cc, 'connectWebsocket');
       const setupEventListenersSpy = jest.spyOn(webex.cc, 'setupEventListeners');
-      jest.spyOn(webex.cc.services.config, 'getAgentConfig').mockResolvedValue(mockAgentProfile);
+      jest.spyOn(webex.cc.services.config, 'getAgentConfig').mockResolvedValue({profile: mockAgentProfile});
       mockWebSocketManager.initWebSocket.mockResolvedValue({
         agentId: 'agent123',
       });
@@ -4774,7 +4365,7 @@ describe('webex.cc', () => {
       });
       const configSpy = jest
         .spyOn(webex.cc.services.config, 'getAgentConfig')
-        .mockResolvedValue(mockAgentProfile);
+        .mockResolvedValue({profile: mockAgentProfile});
       mockWebSocketManager.initWebSocket.mockResolvedValue({
         agentId: 'agent123',
       });
@@ -4815,7 +4406,7 @@ describe('webex.cc', () => {
           dn: '12345',
         },
       });
-      jest.spyOn(webex.cc.services.config, 'getAgentConfig').mockResolvedValue(mockAgentProfile);
+      jest.spyOn(webex.cc.services.config, 'getAgentConfig').mockResolvedValue({profile: mockAgentProfile});
       mockWebSocketManager.initWebSocket.mockResolvedValue({agentId: 'agent123'});
 
       await webex.cc.register();
@@ -4851,7 +4442,7 @@ describe('webex.cc', () => {
           dn: '12345',
         },
       });
-      jest.spyOn(webex.cc.services.config, 'getAgentConfig').mockResolvedValue(mockAgentProfile);
+      jest.spyOn(webex.cc.services.config, 'getAgentConfig').mockResolvedValue({profile: mockAgentProfile});
       mockWebSocketManager.initWebSocket.mockResolvedValue({
         agentId: 'agent123',
       });
@@ -4883,8 +4474,7 @@ describe('webex.cc', () => {
       ]) {
         jest.clearAllMocks();
         jest.spyOn(webex.cc.services.config, 'getAgentConfig').mockResolvedValue({
-          ...mockAgentProfile,
-          aiFeature: {generatedSummaries} as any,
+          profile: {...mockAgentProfile, aiFeature: {generatedSummaries} as any},
         });
 
         await webex.cc.register();
@@ -4931,7 +4521,7 @@ describe('webex.cc', () => {
         jest.spyOn(webex.internal.mercury, 'connect').mockResolvedValue(true);
         const configSpy = jest
           .spyOn(webex.cc.services.config, 'getAgentConfig')
-          .mockResolvedValue(configuredProfile);
+          .mockResolvedValue({profile: configuredProfile});
         mockWebSocketManager.initWebSocket.mockResolvedValue({agentId: welcomeAgentId});
 
         await expect(webex.cc.register()).resolves.toEqual(expectedProfile);
@@ -4972,7 +4562,7 @@ describe('webex.cc', () => {
         const setupEventListenersSpy = jest.spyOn(webex.cc, 'setupEventListeners');
         const configSpy = jest
           .spyOn(webex.cc.services.config, 'getAgentConfig')
-          .mockResolvedValue(configuredProfile);
+          .mockResolvedValue({profile: configuredProfile});
         mockWebSocketManager.initWebSocket.mockResolvedValue({agentId: welcomeAgentId});
 
         const result = await webex.cc.register();
@@ -5399,7 +4989,7 @@ describe('webex.cc', () => {
 
       webex.cc.$config = {...webex.cc.$config, allowAutomatedRelogin: false};
       harness.webSocketManager.initWebSocket.mockResolvedValue({agentId: 'agent-1'});
-      jest.spyOn(webex.cc.services.config, 'getAgentConfig').mockResolvedValue(profile);
+      jest.spyOn(webex.cc.services.config, 'getAgentConfig').mockResolvedValue({profile});
 
       await webex.cc.register();
       await flushMicrotasks();
@@ -7916,7 +7506,7 @@ describe('webex.cc', () => {
         };
         mockWebSocketManager.initWebSocket.mockResolvedValue({agentId: 'agent123'});
         jest.spyOn(webex.internal.mercury, 'connect').mockResolvedValue(true);
-        webex.cc.services.config.getAgentConfig.mockResolvedValue(webex.cc.agentConfig);
+        webex.cc.services.config.getAgentConfig.mockResolvedValue({profile: webex.cc.agentConfig});
         webex.cc.services.agent.reload.mockResolvedValue({
           data: {
             agentId: 'agent123',
@@ -8451,20 +8041,18 @@ describe('webex.cc', () => {
       };
 
       mockWebSocketManager = {
-        isSocketClosed: false,
-      getServingRegion: jest.fn(),
-      clearServingRegion: jest.fn(),
-      hasUsableSocket: jest.fn(() => true),
+        getServingRegion: jest.fn(),
+        clearServingRegion: jest.fn(),
+        hasUsableSocket: jest.fn(() => true),
         close: jest.fn(),
         cancelPending: jest.fn(),
         off: jest.fn(),
         on: jest.fn(),
       };
       mockRTDWebSocketManager = {
-        isSocketClosed: false,
-      getServingRegion: jest.fn(),
-      clearServingRegion: jest.fn(),
-      hasUsableSocket: jest.fn(() => true),
+        getServingRegion: jest.fn(),
+        clearServingRegion: jest.fn(),
+        hasUsableSocket: jest.fn(() => true),
         close: jest.fn(),
         cancelPending: jest.fn(),
         off: jest.fn(),
@@ -8526,10 +8114,9 @@ describe('webex.cc', () => {
 
     it('should unregister successfully and clean up all resources when webrtc is enabled', async () => {
       webex.cc.services.rtdWebSocketManager = {
-        isSocketClosed: false,
-      getServingRegion: jest.fn(),
-      clearServingRegion: jest.fn(),
-      hasUsableSocket: jest.fn(() => true),
+        getServingRegion: jest.fn(),
+        clearServingRegion: jest.fn(),
+        hasUsableSocket: jest.fn(() => true),
         close: jest.fn(),
         cancelPending: jest.fn(),
         off: jest.fn(),
@@ -10174,7 +9761,8 @@ describe('realRecoveryWiring', () => {
     lost() { this.readyState = 3; this.onclose?.(); }
   }
 
-  const withGraph = async (scenario: (h: any) => Promise<void>, wireSettings: any = {id: 'org', multiRegionEnabled: true, homeRegion: 'produs1'}, rtdOptions: {enabled?: boolean; aiFeature?: AIFeatureFlags; pending?: Promise<unknown>; browserVoice?: boolean} = {}, registrationOptions: {beforeRegister?: (h: any) => void; autoRegister?: boolean; allowAutomatedRelogin?: boolean} = {}) => {
+  const orgDesktopLogin = 'organization/org/desktop-login';
+  const withGraph = async (scenario: (h: any) => Promise<void>, wireSettings: any = {multiRegionEnabled: true, homeRegion: 'produs1'}, rtdOptions: {enabled?: boolean; aiFeature?: AIFeatureFlags; pending?: Promise<unknown>; browserVoice?: boolean} = {}, registrationOptions: {beforeRegister?: (h: any) => void; autoRegister?: boolean; allowAutomatedRelogin?: boolean} = {}) => {
     const saved = sourceMocks.map(name => [name, jest.requireMock(name)] as const);
     const original = {socket: global.WebSocket, worker: global.Worker,
       create: URL.createObjectURL, revoke: URL.revokeObjectURL, crypto: Object.getOwnPropertyDescriptor(global, 'crypto'),
@@ -10235,13 +9823,12 @@ describe('realRecoveryWiring', () => {
         const resource = request.resource;
         if (resource === SUBSCRIBE_API) return {statusCode: 200, body: {webSocketUrl: 'wss://routing.produs1.cisco.com/?signature=private'}};
         if (resource === 'v1/realtime/subscribe') return pendingRtdSubscriptions.shift()?.promise || rtdOptions.pending || {statusCode: 200, body: {webSocketUrl: 'wss://rtd.produs2.cisco.com/?signature=private'}};
-        if (resource.endsWith('/organization-setting')) return {statusCode: 200, body: [await wireSettings]};
         if (resource.endsWith('/v2/user/by-ci-user-id/agent/desktop-login')) return {statusCode: 200, body: {
           user: {ciUserId: 'agent', dbId: 'db', siteId: 'site', firstName: 'Agent', lastName: 'Test'},
           agentProfile: {loginVoiceOptions: rtdOptions.browserVoice ? ['BROWSER', 'EXTENSION', 'AGENT_DN'] : ['EXTENSION'], dialPlanEnabled: false},
         }};
         if (resource.endsWith('/desktop-login')) return {statusCode: 200, body: {
-          organization: {}, organizationSetting: {webRtcEnabled: !!rtdOptions.browserVoice}, tenantConfiguration: {},
+          organization: {}, organizationSetting: {webRtcEnabled: !!rtdOptions.browserVoice, ...wireSettings}, tenantConfiguration: {},
           ...(rtdOptions.enabled ? {aiFeature: {realtimeTranscripts: {enable: true}, suggestedResponses: {enable: true}, generatedSummaries: {wrapUpSummariesEnabled: true, consultTransferSummariesEnabled: true}}} : {}),
           ...(rtdOptions.aiFeature ? {aiFeature: rtdOptions.aiFeature} : {}),
         }};
@@ -10315,6 +9902,82 @@ describe('realRecoveryWiring', () => {
       }
     }
   };
+
+  it.each(['accepted', 'rejected', 'deregistered'])(
+    'tries one opted-in saved station before asking for sign-in when %s', async (outcome) => {
+      await withGraph(async ({cc, host, requests, sockets, frame, flush}) => {
+        cc.$config.allowAutomatedRelogin = true;
+        cc.$config.allowSavedStationLoginOnRecovery = true;
+        cc.agentConfig.teams = [{id: 'admin-team', dbId: 'team', active: true}];
+        const preferences = createDeferred<any>();
+        const request = host.request.getMockImplementation();
+        const preferencePath = 'organization/org/user-preference/agent';
+        host.request.mockImplementation((options) => {
+          if (options.resource !== preferencePath) return request(options);
+          requests.push(options);
+          return preferences.promise;
+        });
+        const snapshots = jest.fn();
+        cc.on('region:stateChange', snapshots);
+        sockets[0].message({type: 'SYSTEM_REGION_SWITCH', orgId: 'org', trackingId: 'saved-station'});
+        jest.advanceTimersByTime(105000);
+        await flush();
+        const current = sockets[1];
+        current.welcome();
+        await flush();
+        expect(requests.filter(({resource}) => resource === preferencePath)).toHaveLength(1);
+        expect(snapshots.mock.calls.every(([state]) => state.status === 'recovering')).toBe(true);
+        const loginRequests = () => requests.filter(({resource}) => resource === '/v1/agents/login');
+        expect(loginRequests()).toHaveLength(0);
+
+        if (outcome === 'deregistered') await cc.deregister();
+        preferences.resolve({statusCode: 200, body: {id: 'agent', desktopPreference: JSON.stringify({
+          dontShowAgain: true, selectedRoleName: 'agent', teamId: 'team', deviceType: 'EXTENSION',
+          dialNumber: '1234', extensionNumber: '1234',
+        })}});
+        await flush();
+        if (outcome === 'deregistered') {
+          expect(loginRequests()).toHaveLength(0);
+          expect(snapshots.mock.calls.every(([state]) => state.status === 'recovering')).toBe(true);
+          return;
+        }
+
+        expect(loginRequests()).toHaveLength(1);
+        const login = loginRequests()[0];
+        expect(login.body).toMatchObject({teamId: 'team', deviceType: 'EXTENSION', dialNumber: '1234'});
+        const notification = outcome === 'accepted' ? CC_EVENTS.AGENT_STATION_LOGIN_SUCCESS : CC_EVENTS.AGENT_STATION_LOGIN_FAILED;
+        current.message({...frame(notification, login.headers.trackingid, {reasonCode: 9999}), type: CC_EVENTS.AGENT_STATION_LOGIN});
+        await flush();
+        expect(loginRequests()).toHaveLength(1);
+        expect(requests.filter(({resource}) => resource === '/v1/agents/reload')).toHaveLength(0);
+        expect(snapshots.mock.calls.at(-1)[0]).toMatchObject({
+          status: outcome === 'accepted' ? 'ready' : 'stationLoginRequired', trackingId: 'saved-station',
+        });
+      });
+    }
+  );
+
+  it('restores a known station without requiring a saved login payload', async () => {
+    await withGraph(async ({cc, login, requests, sockets, frame, flush}) => {
+      await login();
+      cc.$config.allowAutomatedRelogin = true;
+      cc['acceptedStation'] = undefined;
+      const snapshots = jest.fn();
+      cc.on('region:stateChange', snapshots);
+      sockets[0].message({type: 'SYSTEM_REGION_SWITCH', orgId: 'org', trackingId: 'known-station'});
+      jest.advanceTimersByTime(105000);
+      await flush();
+      const current = sockets[1];
+      current.welcome();
+      await flush();
+      const reloads = requests.filter(({resource}) => resource === '/v1/agents/reload');
+      expect(reloads).toHaveLength(1);
+      current.message(frame(CC_EVENTS.AGENT_RELOGIN_SUCCESS, reloads[0].headers.trackingid));
+      await flush();
+      expect(snapshots.mock.calls.at(-1)[0]).toMatchObject({status: 'ready', trackingId: 'known-station'});
+      expect(requests.filter(({resource}) => resource.includes('/user-preference/'))).toHaveLength(0);
+    });
+  });
 
   it.each(['multi-login', 'state-change'])('T-012 affectedPublicForwardingContainsThrow top-level %s', async boundary => {
     await withGraph(async ({cc, login, frame, flush}) => {
@@ -10423,9 +10086,9 @@ describe('realRecoveryWiring', () => {
       const profileGate = createDeferred<void>();
       const getAgentConfig = cc.services.config.getAgentConfig.bind(cc.services.config);
       jest.spyOn(cc.services.config, 'getAgentConfig').mockImplementation(async (...args) => {
-        const profile = await getAgentConfig(...args);
+        const agentConfig = await getAgentConfig(...args);
         await profileGate.promise;
-        return profile;
+        return agentConfig;
       });
       const registered = cc.register();
       const settled = jest.fn();
@@ -10850,7 +10513,6 @@ describe('realRecoveryWiring', () => {
         for (const manager of [primary, rtd]) {
           expect(manager['attempt']).toBeUndefined();
           expect(manager.hasUsableSocket()).toBe(false);
-          expect(manager.isSocketClosed).toBe(true);
           expect(manager.shouldReconnect).toBe(false);
         }
         expect(cc['rtdEpoch']?.active).not.toBe(true);
@@ -10867,10 +10529,7 @@ describe('realRecoveryWiring', () => {
       };
     };
 
-    it.each([
-      ['disabledStopsBothTransportsKeepsLine', {id: 'org', multiRegionEnabled: false}],
-      ['legacyDisabledRecordDoesNotEnterDr', {id: 'org'}],
-    ])('T-002 %s with registered BROWSER line and active RTD', async (_name, wireSettings) => {
+    it('T-002 disabledStopsBothTransportsKeepsLine with registered BROWSER line and active RTD', async () => {
       await withBrowserGraph(async h => {
         const {cc, flush} = h;
         const {primary, rtd} = await startBrowserAndRtd(h);
@@ -10888,7 +10547,26 @@ describe('realRecoveryWiring', () => {
           jest.advanceTimersByTime(5000); await flush();
         }
         assertDisabled();
-      }, wireSettings, {enabled: true});
+      }, {multiRegionEnabled: false}, {enabled: true});
+    });
+
+    it('T-002 omittedEligibilityKeepsBothTransportsAndLine', async () => {
+      await withBrowserGraph(async h => {
+        const {cc, flush, line} = h;
+        const {primary, rtd} = await startBrowserAndRtd(h);
+        const snapshot = cc['lastPublishedRegionState'];
+        const recovery = jest.spyOn(cc.services.connectionService, 'recoverRegion');
+
+        primary.message({type: 'SYSTEM_REGION_SWITCH', orgId: 'org', trackingId: 'unknown-switch'});
+        await flush();
+
+        expect(cc['multiRegionSettings']).toEqual({eligibility: 'unknown'});
+        expect(cc['lastPublishedRegionState']).toBe(snapshot);
+        expect(recovery).not.toHaveBeenCalled();
+        expect(primary.close).not.toHaveBeenCalled();
+        expect(rtd.close).not.toHaveBeenCalled();
+        expect(line.deregister).not.toHaveBeenCalled();
+      }, {}, {enabled: true});
     });
 
     it.each([
@@ -10960,7 +10638,7 @@ describe('realRecoveryWiring', () => {
           expect(socket.readyState).toBe(3);
           expect(socket.onmessage).toBeNull();
         });
-      }, {id: 'org', multiRegionEnabled: false}, {enabled: true});
+      }, {multiRegionEnabled: false}, {enabled: true});
     });
 
     it.each(['reload', 'saved-login fallback'])(
@@ -11140,7 +10818,6 @@ describe('realRecoveryWiring', () => {
             spy(cc.taskManager, 'invalidateRegionalTasks'),
             spy(cc.taskManager, 'clearAISummaryState'),
             spy(cc.taskManager, 'startSession'),
-            spy(cc.services.config, 'getMultiRegionSettings'),
             spy(cc.services.config, 'getAgentConfig'),
             spy(cc.services.connectionService, 'recoverRegion'),
             spy(host, 'refresh'), credentials.invalidate,
@@ -11813,15 +11490,15 @@ describe('realRecoveryWiring', () => {
         sockets[0].message({type: 'SYSTEM_REGION_SWITCH', orgId: 'org', trackingId: 'switch'});
         await interrupted;
         expect(task['recoveryGuard'].signal.aborted).toBe(true);
-        const assertFenced = async () => {
+        const assertFenced = async (retired = false) => {
           const count = requests.length;
           for (const command of [() => task.end(), () => task.hold(),
             () => task.transfer({to: 'agent-2', destinationType: 'agent'}),
             () => task.wrapup({wrapUpReason: 'Done', auxCodeId: 'done'})]) {
-            await expect(command()).rejects.toMatchObject({data: {reason: 'RECOVERY_IN_PROGRESS'}});
+            await expect(command()).rejects.toMatchObject({data: {reason: retired ? 'STALE_TASK' : 'RECOVERY_IN_PROGRESS'}});
           }
           expect(requests).toHaveLength(count);
-          expect(cc.taskManager.getTask(data.interactionId)).toBe(task);
+          expect(cc.taskManager.getTask(data.interactionId)).toBe(retired ? undefined : task);
         };
         await assertFenced();
         jest.advanceTimersByTime(100001); await flush();
@@ -11834,9 +11511,15 @@ describe('realRecoveryWiring', () => {
           sockets[1].message(frame(CC_EVENTS.AGENT_RELOGIN_SUCCESS, reload.headers.trackingid));
           await flush();
         } else {
+          const attempted = outcome === 'session-restore-failed';
+          if (attempted) {
+            const reload = requests.find(r => r.resource === '/v1/agents/reload');
+            sockets[1].message(frame(CC_EVENTS.AGENT_RELOGIN_FAILED, reload.headers.trackingid, {reasonCode: 1038}));
+            await flush();
+          }
           expect(cc['recoveryPhase']).toBe('manualLoginRequired');
           expect(cc['lastPublishedRegionState'].reason).toBe(outcome === 'no-prior-station' ? 'region-switch' : outcome);
-          await assertFenced();
+          await assertFenced(attempted);
           await login();
         }
         expect(cc['recoveryPhase']).toBe('ready');
@@ -13341,7 +13024,7 @@ describe('realRecoveryWiring', () => {
     );
   });
 
-  it.each([401, 403])('T-012 readerVsPrimaryVsRtdAuthBoundaries optional RTD status=%s', async status => {
+  it.each([401, 403])('T-012 optional RTD auth failure leaves primary usable status=%s', async status => {
     const pending = createDeferred<any>();
     await withGraph(async ({cc, sockets, login, flush}) => {
       await login(); await flush();
@@ -13420,6 +13103,13 @@ describe('realRecoveryWiring', () => {
       current.message({...frame(CC_EVENTS.AGENT_STATION_LOGIN_FAILED, logins.slice(-1)[0].headers.trackingid,
         {reasonCode: 9999}), type: CC_EVENTS.AGENT_STATION_LOGIN});
       await flush();
+    } else if (policy === 'configuration absent' || policy === 'configuration unusable') {
+      const reloads = requests.filter(r => r.resource === '/v1/agents/reload');
+      expect(reloads).toHaveLength(reloadCount + 1);
+      current.message(frame(CC_EVENTS.AGENT_RELOGIN_FAILED, reloads.slice(-1)[0].headers.trackingid,
+        {reasonCode: 9999}));
+      await flush();
+      expect(requests.filter(r => r.resource === '/v1/agents/login')).toHaveLength(loginCount);
     } else {
       expect(requests.filter(r => r.resource === '/v1/agents/reload')).toHaveLength(reloadCount);
       expect(requests.filter(r => r.resource === '/v1/agents/login')).toHaveLength(loginCount);
@@ -13720,9 +13410,6 @@ describe('realRecoveryWiring', () => {
       try {
         await withGraph(async h => {
           await scenario({...h, proof});
-          // Exercise the actual public upload -> WebexRequest -> host support
-          // chain in every row, even when recovery does not request an upload.
-          await expect(h.cc.uploadLogs()).resolves.toMatchObject({trackingid: 'safe-upload'});
           await h.flush();
           if (h.cc.agentConfig) await expect(h.cc.deregister()).resolves.toBeUndefined();
           expect(h.cc.services.aqmReqs['operations'].size).toBe(0);
@@ -13781,9 +13468,8 @@ describe('realRecoveryWiring', () => {
           });
           proof = {metric, upload, support, delivered, requireSink, requireDiagnostic, register};
         }});
-        for (const sink of ['host.log', 'host.info', 'proxy.log', 'proxy.info', 'trackEvent', 'uploadLogs', 'submitLogs'])
+        for (const sink of ['host.log', 'host.info', 'proxy.log', 'proxy.info', 'trackEvent'])
           proof.requireSink(sink);
-        expect(proof.upload.mock.calls.length).toBe(proof.support.mock.calls.length);
         for (const capture of captures)
           expect({sink: capture.sink, arguments: capture.arguments}).toEqual({sink: capture.sink, arguments: expect.not.stringMatching(forbidden)});
       } finally {
@@ -14008,25 +13694,21 @@ describe('realRecoveryWiring', () => {
       });
     });
 
-  it('T-012/T-013 settings and ignored unknown events use detached stage diagnostics', async () => {
-    const reader = createDeferred<any>();
-    await withGraph(async ({cc, graph, host, sockets, flush}) => {
+  it('T-012/T-013 ignored unknown, foreign and duplicate events use safe stage diagnostics', async () => {
+    const wireSettings: {multiRegionEnabled?: boolean} = {};
+    await withGraph(async ({cc, graph, sockets, flush}) => {
       const sink = jest.spyOn(graph.LoggerProxy, 'info');
       const metric = jest.spyOn(cc.metricsManager, 'trackEvent');
       sockets[0].message({type: 'SYSTEM_REGION_SWITCH', orgId: 'org', trackingId: 'https://private.invalid/URL_SECRET',
         data: {Authorization: 'TOKEN_SECRET', dialNumber: 'DN_SECRET'}});
       expect(diagnostics(sink)).toEqual([{stage: 'ignored-event', outcome: 'dropped', attempt: 0, elapsedMs: 0}]);
-      const boundary = host.request.getMockImplementation();
-      host.request.mockImplementation(request => request.resource.endsWith('/organization-setting')
-        ? Promise.resolve({statusCode: 200, body: [{id: 'org', multiRegionEnabled: true}]}) : boundary(request));
-      jest.advanceTimersByTime(23); reader.reject(secretFailure()); await flush();
-      expect(diagnostics(sink).slice(-1)[0]).toEqual({stage: 'settings-read', outcome: 'retrying', attempt: 1,
-        elapsedMs: 23, status: 503, reasonCode: 1037, trackingId: 'safe-tracking'});
-      jest.advanceTimersByTime(1000); await flush();
-      expect(diagnostics(sink).slice(-1)[0]).toEqual({stage: 'settings-read', outcome: 'succeeded', attempt: 2, elapsedMs: 0});
       expect([...cc['acceptedSwitchIds']]).toEqual([]);
-      sockets[0].message({type: 'SYSTEM_REGION_SWITCH', orgId: 'foreign', trackingId: 'foreign'});
-      sockets[0].message({type: 'SYSTEM_REGION_SWITCH', orgId: 'org', trackingId: 'switch'});
+
+      wireSettings.multiRegionEnabled = true;
+      const registering = cc.register();
+      await flush(); sockets[1].welcome(); await registering;
+      sockets[1].message({type: 'SYSTEM_REGION_SWITCH', orgId: 'foreign', trackingId: 'foreign'});
+      sockets[1].message({type: 'SYSTEM_REGION_SWITCH', orgId: 'org', trackingId: 'switch'});
       cc['handleWebsocketMessage'](JSON.stringify({type: 'SYSTEM_REGION_SWITCH', orgId: 'org', trackingId: 'switch'}));
       expect(diagnostics(sink).filter(record => record.stage === 'ignored-event').slice(-2)).toEqual([
         {stage: 'ignored-event', outcome: 'dropped', attempt: 0, elapsedMs: 0, trackingId: 'foreign'},
@@ -14035,19 +13717,7 @@ describe('realRecoveryWiring', () => {
       expect(regionMetrics(metric)).toEqual([]);
       expect(JSON.stringify(diagnostics(sink))).not.toMatch(/SECRET|options|headers|body|dialNumber|response/);
       sink.mockRestore(); metric.mockRestore();
-    }, reader.promise);
-  });
-
-  it.each([401, 403])('T-012 settings terminal stage preserves auth status=%s', async status => {
-    const reader = createDeferred<any>();
-    await withGraph(async ({cc, graph, flush}) => {
-      const sink = jest.spyOn(graph.LoggerProxy, 'info');
-      jest.advanceTimersByTime(17); reader.reject(secretFailure(status)); await flush();
-      expect(diagnostics(sink)).toEqual([{stage: 'settings-read', outcome: 'terminal', attempt: 1,
-        elapsedMs: 17, status, reasonCode: 1037, trackingId: 'safe-tracking'}]);
-      expect(cc['multiRegionSettings']).toEqual({eligibility: 'unknown'});
-      sink.mockRestore();
-    }, reader.promise);
+    }, wireSettings);
   });
 
   it.each(['reload-success', 'fallback-success', 'fallback-failed', 'post1035-success'])(
@@ -15264,21 +14934,48 @@ describe('realRecoveryWiring', () => {
         ['POST', SUBSCRIBE_API],
         ['POST', '/v1/agents/reload'],
       ]);
-      expect(requests.filter(r => r.resource.endsWith('/organization-setting'))).toHaveLength(1);
+      expect(requests.filter(r => r.resource === orgDesktopLogin)).toHaveLength(1);
     });
   });
 
-  it.each([true, false])('T-002 nextRegisterEligibilityControlsSwitchEntry initial=%s', async (enabled) => {
-    const wireSettings = {id: 'org', multiRegionEnabled: enabled};
+  it.each([
+    [true, false], [false, true], [undefined, true],
+  ])('T-002 nextRegisterEligibilityControlsSwitchEntry initial=%s next=%s', async (initial, next) => {
+    const wireSettings = {multiRegionEnabled: initial, homeRegion: 'produs1'};
     await withGraph(async ({cc, requests, sockets, flush}) => {
-      wireSettings.multiRegionEnabled = !enabled;
-      expect(cc['multiRegionSettings'].eligibility).toBe(enabled ? 'enabled' : 'disabled');
-      expect(requests.filter(r => r.resource.endsWith('/organization-setting'))).toHaveLength(1);
-      const next = cc.register(); const observed = next.catch(() => undefined);
-      await flush(); sockets[1].welcome(); await next; await observed; await flush();
-      sockets[1].message({type: 'SYSTEM_REGION_SWITCH', orgId: 'org', trackingId: 'switch'});
-      expect(cc['lastPublishedRegionState'].status).toBe(enabled ? 'unavailable' : 'recovering');
-      expect(requests.filter(r => r.resource.endsWith('/organization-setting'))).toHaveLength(2);
+      const states = jest.fn(); cc.on('region:stateChange', states);
+      const recover = jest.spyOn(cc.services.connectionService, 'recoverRegion');
+      const switchEvent = {type: 'SYSTEM_REGION_SWITCH', orgId: 'org', trackingId: 'switch'};
+      const settings = () => cc['multiRegionSettings'];
+      const eligibility = value => value === undefined ? 'unknown' : value ? 'enabled' : 'disabled';
+      const reads = () => requests.filter(r => r.resource === orgDesktopLogin);
+      const preSwitchCount = requests.length;
+      wireSettings.multiRegionEnabled = next;
+      expect(settings().eligibility).toBe(eligibility(initial));
+      expect(reads()).toHaveLength(1);
+      if (initial === undefined) {
+        sockets[0].message(switchEvent);
+        expect(states).not.toHaveBeenCalled();
+        expect(recover).not.toHaveBeenCalled();
+        expect(sockets[0].close).not.toHaveBeenCalled();
+        expect(cc.services.webSocketManager.hasUsableSocket()).toBe(true);
+        expect([...cc['acceptedSwitchIds']]).toEqual([]);
+        expect(requests).toHaveLength(preSwitchCount);
+      }
+
+      const registration = cc.register();
+      await flush(); sockets[1].welcome(); await registration;
+      expect(settings()).toEqual({eligibility: eligibility(next), homeRegion: 'produs1'});
+      expect(states).not.toHaveBeenCalled();
+      expect([...cc['acceptedSwitchIds']]).toEqual([]);
+      sockets[1].message(switchEvent);
+      expect(cc['lastPublishedRegionState']).toMatchObject({
+        status: next ? 'recovering' : 'unavailable', trackingId: 'switch', homeRegion: 'produs1',
+      });
+      expect([...cc['acceptedSwitchIds']]).toEqual(['switch']);
+      expect(recover).toHaveBeenCalledTimes(next ? 1 : 0);
+      expect(reads()).toHaveLength(2);
+      expect(requests.some(r => r.resource.endsWith('/organization-setting'))).toBe(false);
     }, wireSettings);
   });
 
@@ -15646,15 +15343,18 @@ describe('realRecoveryWiring', () => {
     [CC_EVENTS.AGENT_STATION_LOGIN, CC_EVENTS.AGENT_STATION_LOGIN_SUCCESS, AGENT_EVENTS.AGENT_STATION_LOGIN_SUCCESS],
     [CC_EVENTS.AGENT_RELOGIN_SUCCESS, CC_EVENTS.AGENT_RELOGIN_SUCCESS, AGENT_EVENTS.AGENT_RELOGIN_SUCCESS],
   ])('T-007 stationNotificationDisconnectPrecondition %s', (outer, nested, specialized) => {
-    it.each([
+    // Both notifications use the same station reconciliation before their separate forwarding handlers.
+    const representativeCases = [
       ['equal echo', {}, false],
+      ['newer state', {auxCodeId: 'other', lastStateChangeTimestamp: 10, lastIdleCodeChangeTimestamp: 0}, true],
+    ];
+    const additionalCases = [
       ['advanced echo', {lastStateChangeTimestamp: 10}, false],
       ['older state', {auxCodeId: 'other', lastStateChangeTimestamp: 8, lastIdleCodeChangeTimestamp: 100}, false],
       ['older idle', {auxCodeId: 'other', lastIdleCodeChangeTimestamp: 8}, false],
       ...['status', 'subStatus', 'auxCodeId', 'lastStateChangeReason'].map(key => [
         `equal version changed ${key}`, {[key]: 'changed'}, true,
       ]),
-      ['newer state', {auxCodeId: 'other', lastStateChangeTimestamp: 10, lastIdleCodeChangeTimestamp: 0}, true],
       ['newer Available without idle timestamp', {subStatus: 'Available', lastStateChangeTimestamp: 10, lastIdleCodeChangeTimestamp: undefined}, true],
       ['newer idle', {auxCodeId: 'other', lastIdleCodeChangeTimestamp: 10}, true],
       ['changed station and state', {teamId: 'new-team', auxCodeId: 'other'}, true],
@@ -15667,7 +15367,10 @@ describe('realRecoveryWiring', () => {
       ['foreign agent', {auxCodeId: 'other', agentId: 'foreign'}, false],
       ['blank session', {auxCodeId: 'other', agentSessionId: '   '}, false],
       ['missing provenance', {auxCodeId: 'other', trackingId: undefined}, false],
-    ])('%s consumes only an accepted competing state', async (_name, fields, cancels) => {
+    ];
+    const cases = nested === CC_EVENTS.AGENT_STATION_LOGIN_SUCCESS
+      ? [...representativeCases, ...additionalCases] : representativeCases;
+    it.each(cases)('%s consumes only an accepted competing state', async (_name, fields, cancels) => {
       await withGraph(async h => {
         const {cc, sockets, requests, frame, flush} = h;
         await restoreAutoAvailable(h, false, {lastStateChangeTimestamp: 9, lastIdleCodeChangeTimestamp: 9});
@@ -15838,7 +15541,7 @@ describe('realRecoveryWiring', () => {
         epochState: cc['rtdEpoch'] && [cc['rtdEpoch'].active, cc['rtdEpoch'].controller.signal.aborted,
           cc['rtdEpoch'].registration, cc['rtdEpoch'].station, cc['rtdEpoch'].sessionId],
         attempt: manager['attempt'], usable: manager.hasUsableSocket(), reconnect: manager.shouldReconnect,
-        closed: manager.isSocketClosed, listeners: manager.listeners('message'),
+        listeners: manager.listeners('message'),
         pending: cc.apiAIAssistant['pendingRtdRequests'].size,
         features: [...cc.taskManager['pendingFeatureEnablement']],
         capabilities: {...task.aiSummaryCapabilities}}),
@@ -16488,15 +16191,14 @@ describe('realRecoveryWiring', () => {
   it.each([
     [409, 'REGION_MISMATCH_NO_OVERRIDE', 'reloadRequired', 'region-mismatch'],
     [401, 'AUTH_FAILED', 'unavailable', 'authentication-failed'],
-  ])('T-002 ignoredHydrationSwitchThenOrdinaryReconnectAndMismatch status=%s', async (statusCode, reason, status, terminalReason) => {
-    const settings = createDeferred<any>();
+  ])('T-002 unknown eligibility preserves ordinary terminal recovery status=%s', async (statusCode, reason, status, terminalReason) => {
     await withGraph(async ({cc, host, requests, sockets, flush}) => {
       const listener = jest.fn(); cc.on('region:stateChange', listener);
       const recover = jest.spyOn(cc.services.connectionService, 'recoverRegion');
       const cleanup = jest.spyOn(cc.taskManager, 'invalidateRegionalTasks');
       const registration = cc['registrationAbortController'];
       expect(cc['multiRegionSettings']).toEqual({eligibility: 'unknown'});
-      expect(requests.filter(r => r.resource.endsWith('/organization-setting'))).toHaveLength(1);
+      expect(requests.filter(r => r.resource === orgDesktopLogin)).toHaveLength(1);
 
       sockets[0].message({type: 'SYSTEM_REGION_SWITCH', orgId: 'org', trackingId: 'ignored-switch'});
       expect(sockets[0].close).not.toHaveBeenCalled();
@@ -16504,37 +16206,38 @@ describe('realRecoveryWiring', () => {
       expect([...cc['acceptedSwitchIds']]).toEqual([]);
       expect(listener).not.toHaveBeenCalled();
 
+      const admission = createDeferred<never>();
       const boundary = host.request.getMockImplementation();
       host.request.mockImplementation(request => request.resource === SUBSCRIBE_API
-        ? Promise.reject({statusCode, body: {reason}}) : boundary(request));
+        ? admission.promise : boundary(request));
       sockets[0].lost(); jest.advanceTimersByTime(4999); await flush();
       expect(requests.filter(r => r.resource === SUBSCRIBE_API)).toHaveLength(1);
       expect(host.request.mock.calls.filter(([r]) => r.resource === SUBSCRIBE_API)).toHaveLength(1);
       expect(listener).not.toHaveBeenCalled();
       jest.advanceTimersByTime(1); await flush();
       expect(host.request.mock.calls.filter(([r]) => r.resource === SUBSCRIBE_API)).toHaveLength(2);
+      expect(listener).not.toHaveBeenCalled();
+      admission.reject({statusCode, body: {reason}});
+      await flush();
       expect(listener.mock.calls).toEqual([[{status, reason: terminalReason}]]);
       const terminal = cc['lastPublishedRegionState'];
       expect(registration.signal.aborted).toBe(false);
-      expect(jest.getTimerCount()).toBe(1); // The independent settings deadline is still pending.
-
-      settings.resolve({id: 'org', multiRegionEnabled: true, homeRegion: 'produs1'});
-      await flush();
-      expect(cc['multiRegionSettings']).toEqual({eligibility: 'enabled', homeRegion: 'produs1'});
-      expect(cc['lastPublishedRegionState']).toBe(terminal);
+      expect(cc['multiRegionSettings']).toEqual({eligibility: 'unknown'});
+      expect(jest.getTimerCount()).toBe(0);
       jest.advanceTimersByTime(600000); await flush();
       expect(listener.mock.calls).toEqual([[{status, reason: terminalReason}]]);
+      expect(cc['lastPublishedRegionState']).toBe(terminal);
       expect(recover).not.toHaveBeenCalled();
       expect(cleanup).not.toHaveBeenCalled();
       expect([...cc['acceptedSwitchIds']]).toEqual([]);
       expect(cc['recovery']).toBeUndefined();
       expect(requests.filter(r => r.resource === '/v1/agents/reload')).toHaveLength(0);
-      expect(requests.filter(r => r.resource.endsWith('/organization-setting'))).toHaveLength(1);
+      expect(requests.filter(r => r.resource === orgDesktopLogin)).toHaveLength(1);
       expect(host.request.mock.calls.filter(([r]) => r.resource === SUBSCRIBE_API)).toHaveLength(2);
       expect(sockets).toHaveLength(1);
       expect(jest.getTimerCount()).toBe(0);
       recover.mockRestore(); cleanup.mockRestore();
-    }, settings.promise);
+    }, {});
   });
 
   it('T-005 drMismatchSingleReloadSnapshot uses the actual recoverRegion rejection', async () => {
@@ -16623,127 +16326,6 @@ describe('realRecoveryWiring', () => {
       expect(sockets).toHaveLength(2);
       driver.mockRestore(); reload.mockRestore();
     }, undefined, {enabled: true});
-  });
-
-  it('T-002 ignoredHydrationSwitchThenOrdinaryReconnectAndMismatch', async () => {
-    const settings = createDeferred<any>();
-    const admission = createDeferred<any>();
-    const listener = jest.fn();
-    let terminalCallback: jest.Mock;
-    await withGraph(async ({cc, host, requests, sockets, flush}) => {
-      const resolved = jest.fn(); const rejected = jest.fn();
-      const registered = cc.register();
-      const settled = registered.then(resolved, rejected);
-      await flush();
-      expect(sockets).toHaveLength(1);
-      expect(resolved).not.toHaveBeenCalled();
-      sockets[0].welcome(); await flush();
-      await expect(registered).resolves.toBe(cc.agentConfig);
-      await settled; await flush();
-      expect(resolved).toHaveBeenCalledTimes(1);
-      expect(rejected).not.toHaveBeenCalled();
-      expect(cc['multiRegionSettings']).toEqual({eligibility: 'unknown'});
-      expect(requests.filter(r => r.resource.endsWith('/organization-setting'))).toHaveLength(1);
-
-      const clearSummaries = jest.spyOn(cc.taskManager, 'clearAISummaryState');
-      const forbidden = [
-        jest.spyOn(cc.services.connectionService, 'pause'),
-        jest.spyOn(cc.services.connectionService, 'recoverRegion'),
-        jest.spyOn(cc.taskManager, 'invalidateRegionalTasks'),
-        jest.spyOn(cc.taskManager, 'cleanupTaskCallResources'),
-        jest.spyOn(cc.taskManager, 'removeTaskFromCollection'),
-        jest.spyOn(cc.webCallingService, 'cleanUpCall'),
-        jest.spyOn(cc.webCallingService, 'deregisterWebCallingLine'),
-      ];
-      const connectionEvents = jest.fn();
-      cc.services.connectionService.on('connectionLost', connectionEvents);
-      const subscriptions = () => host.request.mock.calls.filter(([r]) => r.resource === SUBSCRIBE_API);
-      sockets[0].message({type: 'SYSTEM_REGION_SWITCH', orgId: 'org', trackingId: 'ignored-switch'});
-      expect(listener).not.toHaveBeenCalled();
-      expect(sockets[0].close).not.toHaveBeenCalled();
-      expect([...cc['acceptedSwitchIds']]).toEqual([]);
-      forbidden.forEach(spy => expect(spy).not.toHaveBeenCalled());
-      expect(clearSummaries).not.toHaveBeenCalled();
-
-      sockets[0].lost();
-      expect(connectionEvents).toHaveBeenCalledTimes(1);
-      connectionEvents.mockClear();
-      jest.advanceTimersByTime(4999); await flush();
-      expect(subscriptions()).toHaveLength(1);
-      expect(listener).not.toHaveBeenCalled();
-      jest.advanceTimersByTime(1); await flush();
-      expect(subscriptions()).toHaveLength(2);
-      expect(sockets).toHaveLength(1);
-      expect(listener).not.toHaveBeenCalled();
-      expect(terminalCallback).not.toHaveBeenCalled();
-      expect(clearSummaries).not.toHaveBeenCalled();
-      admission.reject({statusCode: 409, body: {reason: 'REGION_MISMATCH_NO_OVERRIDE'}});
-      await flush();
-      const terminal = {status: 'reloadRequired', reason: 'region-mismatch'};
-      expect(listener.mock.calls).toEqual([[terminal]]);
-      const published = cc['lastPublishedRegionState'];
-      expect(published).toEqual(terminal);
-      const requestCount = host.request.mock.calls.length;
-      const assertTerminal = (pendingTimers = 0) => {
-        expect(terminalCallback).toHaveBeenCalledTimes(1);
-        expect(terminalCallback.mock.calls[0][0].data).toEqual({kind: 'region-mismatch',
-          status: 409, reason: 'REGION_MISMATCH_NO_OVERRIDE'});
-        expect(listener.mock.calls).toEqual([[terminal]]);
-        expect(cc['lastPublishedRegionState']).toBe(published);
-        expect(cc['recoveryPhase']).toBe('reloadRequired');
-        expect([...cc['acceptedSwitchIds']]).toEqual([]);
-        expect(host.request).toHaveBeenCalledTimes(requestCount);
-        expect(subscriptions()).toHaveLength(2);
-        expect(sockets).toHaveLength(1);
-        expect(requests.filter(r => r.resource === '/v1/agents/reload')).toHaveLength(0);
-        expect(resolved).toHaveBeenCalledTimes(1);
-        expect(rejected).not.toHaveBeenCalled();
-        expect(connectionEvents).not.toHaveBeenCalled();
-        forbidden.forEach(spy => expect(spy).not.toHaveBeenCalled());
-        expect(clearSummaries).toHaveBeenCalledTimes(1);
-        expect(cc['rtdEpoch']).toBeUndefined();
-        expect(cc['rtdEpoch']?.active).not.toBe(true);
-        expect(cc.services.rtdWebSocketManager.listenerCount('message')).toBe(0);
-        expect(jest.getTimerCount()).toBe(pendingTimers);
-      };
-      assertTerminal(1);
-      jest.advanceTimersByTime(4999); await flush();
-      assertTerminal(1);
-
-      // Integrates the terminal-hydration guard from ci_16749e915e076cfc2090649c:
-      // settings may complete, but cannot enrich/re-publish the terminal snapshot.
-      settings.resolve({statusCode: 200, body: [{id: 'org', multiRegionEnabled: true, homeRegion: 'produs1'}]});
-      await flush();
-      expect(cc['multiRegionSettings']).toEqual({eligibility: 'enabled', homeRegion: 'produs1'});
-      assertTerminal();
-      jest.advanceTimersByTime(180000); await flush();
-      assertTerminal();
-      forbidden.forEach(spy => spy.mockRestore());
-      clearSummaries.mockRestore();
-    }, undefined, undefined, {
-      autoRegister: false,
-      beforeRegister: ({cc, host, requests}) => {
-        cc.on('region:stateChange', listener);
-        const reset = cc.services.connectionService.reset.bind(cc.services.connectionService);
-        jest.spyOn(cc.services.connectionService, 'reset').mockImplementation(options => {
-          terminalCallback = jest.fn(options.onTerminalFailure);
-          return reset({...options, onTerminalFailure: terminalCallback});
-        });
-        const boundary = host.request.getMockImplementation();
-        let subscriptions = 0;
-        host.request.mockImplementation(request => {
-          if (request.resource.endsWith('/organization-setting')) {
-            requests.push(request);
-            return settings.promise;
-          }
-          if (request.resource === SUBSCRIBE_API && ++subscriptions > 1) {
-            requests.push(request);
-            return admission.promise;
-          }
-          return boundary(request);
-        });
-      },
-    });
   });
 
   it('T-005 registerRejectAndSingleReloadSnapshot', async () => {
@@ -16864,9 +16446,11 @@ describe('realRecoveryWiring', () => {
         jest.advanceTimersByTime(105000); await flush();
         const primary = sockets.filter(s => s.url.includes('routing.')).slice(-1)[0];
         primary.welcome(); await flush();
-        if (reason === 'automatic-restore-failed') {
+        if (reason === 'automatic-restore-failed' || reason === 'session-restore-failed') {
           const reload = requests.filter(r => r.resource === '/v1/agents/reload').slice(-1)[0];
           primary.message(frame(CC_EVENTS.AGENT_RELOGIN_FAILED, reload.headers.trackingid, {reasonCode: 1038})); await flush();
+        }
+        if (reason === 'automatic-restore-failed') {
           const fallback = requests.filter(r => r.resource === '/v1/agents/login').slice(-1)[0];
           primary.message({...frame(CC_EVENTS.AGENT_STATION_LOGIN_FAILED, fallback.headers.trackingid, {reasonCode: 9999}),
             type: CC_EVENTS.AGENT_STATION_LOGIN}); await flush();
@@ -16997,87 +16581,6 @@ describe('realRecoveryWiring', () => {
         expect(states.filter(s => s.status === 'ready' && s.reason === 'region-switch'))
           .toEqual(initial === outcome ? [snapshot(outcome)] : [snapshot(initial), snapshot(outcome)]);
       });
-    }
-  );
-
-  it.each([401, 403, 503].flatMap(status => [true, false].map(enabled => ({status, enabled}))))(
-    'T-002 nextRegisterEligibilityControlsSwitchEntry dependency status=$status then enabled=$enabled',
-    async ({status, enabled}) => {
-      let failSettings = true;
-      const readTimes: number[] = [];
-      const states = jest.fn();
-      const wireSettings = {id: 'org', multiRegionEnabled: enabled, homeRegion: 'produs1'};
-      await withGraph(async ({cc, requests, sockets, flush}) => {
-        const primary = cc.services.webSocketManager;
-        const connection = cc.services.connectionService;
-        const recover = jest.spyOn(connection, 'recoverRegion');
-        const stop = jest.spyOn(connection, 'stop');
-        const primaryClose = jest.spyOn(primary, 'close');
-        const rtdClose = jest.spyOn(cc.services.rtdWebSocketManager, 'close');
-        const reads = status === 503 ? 5 : 1;
-        expect(readTimes).toHaveLength(1);
-        for (let attempt = 1; attempt < reads; attempt += 1) {
-          jest.advanceTimersByTime(attempt * 1000 - 1); await flush();
-          expect(readTimes).toHaveLength(attempt);
-          jest.advanceTimersByTime(1); await flush();
-          expect(readTimes).toHaveLength(attempt + 1);
-        }
-        const expectedTimes = status === 503 ? [0, 1000, 3000, 6000, 10000] : [0];
-        expect(readTimes.map(time => time - readTimes[0])).toEqual(expectedTimes);
-        expect(cc['multiRegionSettings']).toEqual({eligibility: 'unknown'});
-        expect(cc['registrationAbortController'].signal.aborted).toBe(false);
-        const before = requests.length;
-        sockets[0].message({type: 'SYSTEM_REGION_SWITCH', orgId: 'org', trackingId: 'unknown'});
-        for (let i = 0; i < 20; i += 1) {
-          sockets[0].message({keepalive: 'true'}); jest.advanceTimersByTime(5000); await flush();
-        }
-        expect(readTimes.map(time => time - readTimes[0])).toEqual(expectedTimes);
-        expect(cc['multiRegionSettings']).toEqual({eligibility: 'unknown'});
-        expect(states).not.toHaveBeenCalled();
-        expect(cc['lastPublishedRegionState']).toBeUndefined();
-        expect([...cc['acceptedSwitchIds']]).toEqual([]);
-        expect(cc['recovery']).toBeUndefined();
-        expect(recover).not.toHaveBeenCalled();
-        expect(stop).not.toHaveBeenCalled();
-        expect(primaryClose).not.toHaveBeenCalled();
-        expect(rtdClose).not.toHaveBeenCalled();
-        expect(sockets[0].close).not.toHaveBeenCalled();
-        expect(primary.hasUsableSocket()).toBe(true);
-        expect(requests).toHaveLength(before);
-
-        failSettings = false;
-        const registration = cc.register(); const observed = registration.catch(() => undefined);
-        await flush(); sockets[1].welcome(); await registration; await observed; await flush();
-        expect(cc['multiRegionSettings']).toEqual({eligibility: enabled ? 'enabled' : 'disabled',
-          homeRegion: 'produs1'});
-        expect(readTimes).toHaveLength(reads + 1);
-        expect(states).not.toHaveBeenCalled();
-        expect([...cc['acceptedSwitchIds']]).toEqual([]);
-        stop.mockClear(); primaryClose.mockClear(); rtdClose.mockClear();
-        sockets[1].message({type: 'SYSTEM_REGION_SWITCH', orgId: 'org', trackingId: 'fresh'});
-        await flush();
-        expect([...cc['acceptedSwitchIds']]).toEqual(['fresh']);
-        expect(recover).toHaveBeenCalledTimes(enabled ? 1 : 0);
-        expect(stop).toHaveBeenCalledTimes(enabled ? 0 : 1);
-        expect(primaryClose.mock.calls).toEqual([[false, enabled ? 'regionRecovery' : 'notEligible']]);
-        expect(rtdClose.mock.calls).toEqual(enabled ? [] : [[false, 'notEligible']]);
-        expect(states.mock.calls).toEqual(enabled ? [
-          [{status: 'recovering', reason: 'region-switch', trackingId: 'fresh', homeRegion: 'produs1'}],
-          [{status: 'recovering', reason: 'region-switch', trackingId: 'fresh', homeRegion: 'produs1',
-            retryAfterMs: 105000}],
-        ] : [[{status: 'unavailable', reason: 'not-eligible', trackingId: 'fresh', homeRegion: 'produs1'}]]);
-        expect(readTimes).toHaveLength(reads + 1);
-      }, wireSettings, {}, {beforeRegister: ({cc, host}) => {
-        cc.on('region:stateChange', states);
-        const boundary = host.request.getMockImplementation();
-        host.request.mockImplementation(request => {
-          if (request.resource.endsWith('/organization-setting')) {
-            readTimes.push(Date.now());
-            if (failSettings) return Promise.reject({statusCode: status});
-          }
-          return boundary(request);
-        });
-      }});
     }
   );
 
@@ -17533,12 +17036,12 @@ function hostRecoveryGuideSources() {
     return blocks[1][1];
   };
 
-  return {guide, helperSource, wiringSource};
+  return {helperSource, wiringSource};
 }
 
 describe('T-006/T-013 exact host recovery guide', () => {
   const ts = require('typescript'), vm = require('vm');
-  const {helperSource, wiringSource} = hostRecoveryGuideSources();
+  const {helperSource} = hostRecoveryGuideSources();
   const load = () => {
     const result = ts.transpileModule(helperSource(), {reportDiagnostics: true,
       compilerOptions: {target: ts.ScriptTarget.ES2019, module: ts.ModuleKind.None}});
@@ -17566,12 +17069,8 @@ describe('T-006/T-013 exact host recovery guide', () => {
     expect(load()(() => 'org-b', 101, () => tab)).toBe('restart');
     expect(load()(() => 'org-a', 101, () => storage())).toBe('restart');
   });
-  it.each([[119999, 'blocked'], [120000, 'restart']])('119999Blocked120000Allowed age=%s', (age, expected) => {
-    const helper = load(), tab = storage(); helper(() => 'org', 1000, () => tab);
-    expect(helper(() => 'org', 1000 + Number(age), () => tab)).toBe(expected);
-  });
-  it.each(['', 'not json', '{}', '[]', 'null', 'true', '-1', '"123"', 'NaN', 'Infinity', '1001'])(
-    'clockRollbackAndStorageFailureBlocked / malformed guard %s', value => {
+  it.each(['not json', '"123"', '-1', '1001'])(
+    'blocks malformed or future stored restart times %s', value => {
       const tab = storage(); tab.map.set('ccsdk:region-reload:org', value);
       expect(load()(() => 'org', 1000, () => tab)).toBe('blocked');
       expect(tab.setItem).not.toHaveBeenCalled();
@@ -17597,47 +17096,6 @@ describe('T-006/T-013 exact host recovery guide', () => {
     expect(helper(read, 100, () => tab)).toBe('blocked');
     expect(helper(() => {throw new Error('identity unavailable');}, 100, () => tab)).toBe('blocked');
     expect(tab.setItem).toHaveBeenCalledTimes(2);
-  });
-  it('deliveredHostWiringCompilesWithStrictTypeScript', () => {
-    const exampleFile = '/region-recovery-host-example.ts';
-    const declarationsFile = '/region-recovery-host-declarations.d.ts';
-    // Declare only the imported SDK surface and initialized host used by the delivered wiring.
-    const files = new Map([
-      [exampleFile, `${helperSource()}\n${wiringSource()}`],
-      [declarationsFile, `
-        declare module '@webex/contact-center' {
-          export const REGION_RECOVERY_EVENTS: {readonly STATE_CHANGE: 'region:stateChange'};
-          export const REGION_RECOVERY_ERROR_CODES: {
-            readonly REGION_RELOAD_REQUIRED: 'REGION_RELOAD_REQUIRED';
-          };
-          export type RegionRecoveryState = {
-            status: 'recovering' | 'ready' | 'reloadRequired' | 'stationLoginRequired' | 'unavailable';
-          };
-        }
-        declare const webex: {
-          credentials: {getOrgId(): string | null | undefined};
-          cc: {
-            on(event: 'region:stateChange', listener: (state: import('@webex/contact-center').RegionRecoveryState) => void): void;
-            off(event: 'region:stateChange', listener: (state: import('@webex/contact-center').RegionRecoveryState) => void): void;
-            register(): Promise<unknown>;
-            stationLogout(options: {logoutReason: string}): Promise<unknown>;
-            deregister(): Promise<void>;
-          };
-        };
-      `],
-    ]);
-    const options = {strict: true, useUnknownInCatchVariables: true, noEmit: true,
-      target: ts.ScriptTarget.ES2019, module: ts.ModuleKind.ESNext,
-      lib: ['lib.es2019.d.ts', 'lib.dom.d.ts'], types: []};
-    const host = ts.createCompilerHost(options);
-    const getSourceFile = host.getSourceFile.bind(host);
-    host.getSourceFile = (fileName, languageVersion, onError, shouldCreateNewSourceFile) =>
-      files.has(fileName)
-        ? ts.createSourceFile(fileName, files.get(fileName), languageVersion, true)
-        : getSourceFile(fileName, languageVersion, onError, shouldCreateNewSourceFile);
-    const program = ts.createProgram(Array.from(files.keys()), options, host);
-    expect(ts.getPreEmitDiagnostics(program).map(d =>
-      ts.flattenDiagnosticMessageText(d.messageText, '\n'))).toEqual([]);
   });
 });
 

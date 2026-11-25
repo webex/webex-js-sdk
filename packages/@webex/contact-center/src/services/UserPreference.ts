@@ -1,16 +1,98 @@
-import {HTTP_METHODS, WebexSDK} from '../types';
+import {HTTP_METHODS, LoginOption, WebexSDK} from '../types';
+import type {AgentLogin} from '../types';
 import type {
   UserPreference as UserPreferenceResponse,
   CreateUserPreferenceRequest,
   UpdateUserPreferenceRequest,
   GetUserPreferenceParams,
+  Profile,
 } from './config/types';
 import LoggerProxy from '../logger-proxy';
 import WebexRequest from './core/WebexRequest';
 import MetricsManager from '../metrics/MetricsManager';
-import {WCC_API_GATEWAY} from './constants';
+import {AGENT, WCC_API_GATEWAY} from './constants';
 import {endPointMap} from './config/constants';
+import {awaitRecoveryWork, isRecord, isValidDialNumber} from './core/Utils';
 import {METRIC_EVENT_NAMES} from '../metrics/constants';
+
+const SAVED_STATION_READ_TIMEOUT = 10000;
+
+const normalizeSavedNumber = (value: unknown): string =>
+  typeof value === 'string' ? value.trim().replace(/ /g, '') : '';
+
+/** Reads an opted-in Desktop station for the current profile. @internal */
+export async function readSavedStationLogin(
+  webexRequest: WebexRequest,
+  orgId: string,
+  profile: Profile,
+  signal: AbortSignal
+): Promise<AgentLogin | undefined> {
+  const {agentId} = profile;
+  if (signal.aborted || !orgId?.trim() || !agentId?.trim()) return undefined;
+
+  let timer: ReturnType<typeof setTimeout> | undefined;
+  try {
+    const deadline = new Promise<undefined>((resolve) => {
+      timer = setTimeout(() => resolve(undefined), SAVED_STATION_READ_TIMEOUT);
+    });
+    const request = webexRequest.request({
+      service: WCC_API_GATEWAY,
+      resource: endPointMap.userPreference(orgId, agentId),
+      method: HTTP_METHODS.GET,
+      headers: {'X-ORGANIZATION-ID': orgId},
+      timeout: SAVED_STATION_READ_TIMEOUT,
+    });
+    const response = await awaitRecoveryWork(Promise.race([request, deadline]), signal);
+    const body: unknown = response?.body;
+    if (
+      signal.aborted ||
+      profile.agentId !== agentId ||
+      response?.statusCode !== 200 ||
+      !isRecord(body) ||
+      Array.isArray(body) ||
+      body.id !== agentId ||
+      (body.organizationId !== undefined && body.organizationId !== orgId) ||
+      (body.userId !== undefined && body.userId !== agentId) ||
+      typeof body.desktopPreference !== 'string'
+    )
+      return undefined;
+
+    const saved: unknown = JSON.parse(body.desktopPreference);
+    if (
+      !isRecord(saved) ||
+      Array.isArray(saved) ||
+      saved.dontShowAgain !== true ||
+      saved.selectedRoleName !== AGENT
+    )
+      return undefined;
+    const {deviceType: loginOption, teamId} = saved;
+    if (
+      (loginOption !== LoginOption.AGENT_DN && loginOption !== LoginOption.EXTENSION) ||
+      !profile.loginVoiceOptions?.includes(loginOption) ||
+      typeof teamId !== 'string' ||
+      !teamId.trim() ||
+      !profile.teams.some((team) => team.active === true && (team.dbId ?? team.id) === teamId)
+    )
+      return undefined;
+
+    const dialNumber = normalizeSavedNumber(saved.dialNumber);
+    if (
+      ((profile.forceDefaultDn || profile.forceDefaultDnForAgent) &&
+        dialNumber !== normalizeSavedNumber(profile.defaultDn)) ||
+      (loginOption === LoginOption.EXTENSION
+        ? !/^\d+$/.test(dialNumber) || dialNumber !== normalizeSavedNumber(saved.extensionNumber)
+        : !/^\+?\d+$/.test(dialNumber) ||
+          !isValidDialNumber(dialNumber, profile.dialPlan?.dialPlanEntity))
+    )
+      return undefined;
+
+    return {loginOption, teamId, dialNumber};
+  } catch {
+    return undefined;
+  } finally {
+    clearTimeout(timer);
+  }
+}
 
 /**
  * UserPreference API class for managing Webex Contact Center user preferences.

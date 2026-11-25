@@ -90,14 +90,6 @@ export class ApiAIAssistant {
       throw createRegionRecoveryError('RECOVERY_INTERRUPTED');
   }
 
-  private async awaitRecoveryOwner<T>(work: Promise<T>, owner?: RecoveryOwner): Promise<T> {
-    if (!owner) return work;
-    const result = await awaitRecoveryWork(work, owner.signal);
-    this.assertRecoveryOwner(owner);
-
-    return result;
-  }
-
   public setAIFeatureFlags(aiFeature: AIFeatureFlags): void {
     this.aiFeature = aiFeature;
   }
@@ -145,7 +137,7 @@ export class ApiAIAssistant {
 
       const baseUrl = this.getBaseUrl();
       this.assertRecoveryOwner(recoveryOwner);
-      const response = (await this.awaitRecoveryOwner(
+      const response = (await awaitRecoveryWork(
         this.webex.request({
           uri: `${baseUrl}${AI_ASSISTANT_API_URLS.EVENT}`,
           method: HTTP_METHODS.POST,
@@ -164,7 +156,7 @@ export class ApiAIAssistant {
             },
           },
         }),
-        recoveryOwner
+        recoveryOwner?.signal
       )) as IHttpResponse;
 
       if (response.statusCode !== 202) {
@@ -432,7 +424,7 @@ export class ApiAIAssistant {
         trackingId,
       };
       this.assertRecoveryOwner(recoveryOwner);
-      const response = (await this.awaitRecoveryOwner(
+      const response = (await awaitRecoveryWork(
         this.webex.request({
           uri: `${baseUrl}${AI_ASSISTANT_API_URLS.EVENT}`,
           method: HTTP_METHODS.POST,
@@ -449,7 +441,7 @@ export class ApiAIAssistant {
             },
           },
         }),
-        recoveryOwner
+        recoveryOwner?.signal
       )) as IHttpResponse;
 
       this.assertRecoveryOwner(recoveryOwner);
@@ -718,7 +710,7 @@ export class ApiAIAssistant {
       const baseUrl = this.getBaseUrl();
       const orgId = this.webex.credentials.getOrgId();
       this.assertRecoveryOwner(recoveryOwner);
-      const response = (await this.awaitRecoveryOwner(
+      const response = (await awaitRecoveryWork(
         this.webex.request({
           uri: `${baseUrl}${AI_ASSISTANT_API_URLS.TRANSCRIPTS_LIST}`,
           method: HTTP_METHODS.POST,
@@ -729,7 +721,7 @@ export class ApiAIAssistant {
             interactionId,
           },
         }),
-        recoveryOwner
+        recoveryOwner?.signal
       )) as IHttpResponse;
 
       this.assertRecoveryOwner(recoveryOwner);

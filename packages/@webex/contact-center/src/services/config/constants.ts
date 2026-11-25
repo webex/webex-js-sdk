@@ -63,9 +63,6 @@ export const DEFAULT_AUXCODE_ATTRIBUTES = [
   'active',
 ];
 
-/** Identifies local settings validation failures independently of backend reasons. */
-export const LOCAL_MR_SETTINGS_ERROR = Symbol('localMrSettingsError');
-
 // Method names for config services
 export const METHODS = {
   // AgentConfigService methods
@@ -99,9 +96,6 @@ export const METHODS = {
  * const url = endPointMap.userDesktopLogin('org123', 'agent456');
  */
 export const endPointMap = {
-  /** Authoritative entitlement endpoint, independent of the Profile aggregate. */
-  organizationSettings: (orgId: string) =>
-    `organization/${encodeURIComponent(orgId)}/organization-setting`,
   /**
    * Gets the endpoint for the aggregated organization desktop-login configuration.
    * @param orgId - Organization ID.

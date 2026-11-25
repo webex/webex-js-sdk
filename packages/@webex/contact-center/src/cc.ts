@@ -49,11 +49,7 @@ import {
   REGION_RECOVERY_EVENTS,
   REGION_RECOVERY_ERROR_CODES,
 } from './constants';
-import {
-  AGENT_STATE_AVAILABLE,
-  AGENT_STATE_AVAILABLE_ID,
-  LOCAL_MR_SETTINGS_ERROR,
-} from './services/config/constants';
+import {AGENT_STATE_AVAILABLE, AGENT_STATE_AVAILABLE_ID} from './services/config/constants';
 import {AGENT, RTD_SUBSCRIBE_API, SUBSCRIBE_API, WEB_RTC_PREFIX} from './services/constants';
 import Services from './services';
 import WebexRequest from './services/core/WebexRequest';
@@ -115,7 +111,7 @@ import {EntryPoint} from './services/EntryPoint';
 import {AddressBook} from './services/AddressBook';
 import {Queue} from './services/Queue';
 import {ApiAIAssistant} from './services/ApiAiAssistant';
-import {UserPreference} from './services/UserPreference';
+import {readSavedStationLogin, UserPreference} from './services/UserPreference';
 
 /**
  * Typed allow-list of server-controlled websocket event names this SDK re-emits verbatim.
@@ -166,7 +162,6 @@ type RegionRecovery = {
 };
 
 type RecoveryDiagnosticStage =
-  | 'settings-read'
   | 'ignored-event'
   | 'scheduled-wait'
   | 'admission'
@@ -771,7 +766,7 @@ export default class ContactCenter extends WebexPlugin implements IContactCenter
       throw createRegionRecoveryError('RECOVERY_INTERRUPTED');
   }
 
-  /** Fences station completion independently of registration-scoped entitlement reads. */
+  /** Fences station completion against registration and station changes. */
   private isCurrentStation(
     registration: number,
     station: number,
@@ -792,82 +787,6 @@ export default class ContactCenter extends WebexPlugin implements IContactCenter
       sameOrg &&
       !this.registrationAbortController?.signal.aborted
     );
-  }
-
-  /** Owns the bounded, serial entitlement read; ordinary reconnect never calls this method. */
-  private async hydrateMultiRegionSettings(
-    registration: number,
-    orgId: string,
-    agentId: string,
-    signal: AbortSignal
-  ): Promise<void> {
-    for (let attempt = 1; attempt <= 5; attempt += 1) {
-      if (!this.isCurrentRegistration(registration, orgId, signal, agentId)) return;
-      const startedAt = Date.now();
-      let settings: MultiRegionSettings;
-      try {
-        // eslint-disable-next-line no-await-in-loop -- Reads are deliberately serial and bounded.
-        settings = await this.services.config.getMultiRegionSettings(orgId, signal);
-      } catch (error) {
-        if (!this.isCurrentRegistration(registration, orgId, signal, agentId)) return;
-        const failure = normalizeRecoveryFailure(error);
-        const {status} = failure;
-        const localReason =
-          isRecord(error) && LOCAL_MR_SETTINGS_ERROR in error
-            ? error[LOCAL_MR_SETTINGS_ERROR]
-            : undefined;
-        const retryable =
-          localReason !== 'INVALID_ORG_ID' &&
-          (localReason === 'INVALID_MR_SETTINGS' ||
-            status === undefined ||
-            status === 0 ||
-            status === 408 ||
-            status === 429 ||
-            (status >= 500 && status <= 599));
-        const terminal = status === 401 || status === 403 || !retryable || attempt === 5;
-        this.recordRecoveryDiagnostic(
-          'settings-read',
-          terminal ? 'terminal' : 'retrying',
-          attempt,
-          startedAt,
-          failure
-        );
-        if (terminal) return;
-        if (!this.isCurrentRegistration(registration, orgId, signal, agentId)) return;
-        // eslint-disable-next-line no-await-in-loop -- Each next read waits its exact backoff.
-        await ContactCenter.waitForRecoveryDelay(attempt * 1000, signal);
-        // eslint-disable-next-line no-continue -- Only failed reads advance the retry cycle.
-        continue;
-      }
-
-      if (!this.isCurrentRegistration(registration, orgId, signal, agentId)) return;
-      this.multiRegionSettings = settings;
-      this.recordRecoveryDiagnostic('settings-read', 'succeeded', attempt, startedAt);
-      if (!this.isCurrentRegistration(registration, orgId, signal, agentId)) return;
-      this.recordBestEffort(() => this.onMultiRegionSettingsChanged(registration));
-
-      return;
-    }
-  }
-
-  /** Settings completion is independent of station publication and transport policy. */
-  private onMultiRegionSettingsChanged(registration: number): void {
-    const signal = this.registrationAbortController?.signal;
-    const previous = this.lastPublishedRegionState;
-    if (
-      !previous ||
-      ['reloadRequired', 'unavailable'].includes(this.recoveryPhase) ||
-      ['reloadRequired', 'unavailable'].includes(previous.status) ||
-      !signal ||
-      !this.isCurrentRegistration(
-        registration,
-        this.registrationOrgId,
-        signal,
-        this.registrationAgentId
-      )
-    )
-      return;
-    this.publishRegionState(previous);
   }
 
   /** Admission is checked before preparation and again by the AQM owner at dispatch. */
@@ -1138,7 +1057,7 @@ export default class ContactCenter extends WebexPlugin implements IContactCenter
     );
   }
 
-  private resetOrdinaryConnection(recoverIfDisconnected = false): void {
+  private resetOrdinaryConnection(): void {
     const registration = this.registrationGeneration;
     const orgId = this.registrationOrgId;
     const agentId = this.registrationAgentId;
@@ -1146,7 +1065,7 @@ export default class ContactCenter extends WebexPlugin implements IContactCenter
     this.services.connectionService.reset({
       subscribeRequest: this.getConnectionConfig(),
       signal,
-      recoverIfDisconnected,
+      recoverIfDisconnected: true,
       onTerminalFailure: (error) => {
         if (!this.isCurrentRegistration(registration, orgId, signal, agentId)) return;
         const pending = this.pendingRegistration;
@@ -1632,11 +1551,15 @@ export default class ContactCenter extends WebexPlugin implements IContactCenter
         if (resumeRtd && this.isCurrentRecovery(recovery) && !signal.aborted)
           this.resumeRtd(this.registrationAbortController.signal);
       };
-    if (!this.priorStationActive) return manual('region-switch', true);
-    if (!this.$config.allowAutomatedRelogin || this.logoutPending || this.suppressAutomaticRelogin)
-      return manual('automatic-relogin-disabled');
-    const payload = this.reconcileStationSnapshot();
-    if (!payload) return manual('session-restore-failed');
+    const hadStation = this.priorStationActive;
+    const allowSavedStation = this.$config.allowSavedStationLoginOnRecovery === true;
+    const canRelogin =
+      this.$config.allowAutomatedRelogin && !this.logoutPending && !this.suppressAutomaticRelogin;
+    if (!hadStation && (!canRelogin || !allowSavedStation)) return manual('region-switch', true);
+    if (!canRelogin) return manual('automatic-relogin-disabled');
+
+    let payload = this.reconcileStationSnapshot();
+    if (!hadStation && recovery.stage === 'reload') recovery.stage = 'fallback';
     if (!recovery.cleaned || this.taskLifetimeController?.signal.aborted) {
       recovery.cleaned = true;
       if (!this.startTaskSession(() => this.isCurrentRecovery(recovery) && !signal.aborted))
@@ -1685,6 +1608,19 @@ export default class ContactCenter extends WebexPlugin implements IContactCenter
           // Consume each one-shot stage before dispatch so a lost socket cannot repeat it.
           else recovery.stage = 'manual';
           if (stage === 'fallback') {
+            if (!payload && allowSavedStation) {
+              // eslint-disable-next-line no-await-in-loop -- The fallback owns one bounded read.
+              const saved = await readSavedStationLogin(
+                this.webexRequest,
+                recovery.orgId,
+                this.agentConfig,
+                context.signal
+              );
+              if (!this.isCurrentRecovery(recovery) || context.signal.aborted)
+                throw createRegionRecoveryError('RECOVERY_INTERRUPTED');
+              if (saved) payload = this.buildStationLoginPayload(saved);
+            }
+            if (!payload) break;
             // eslint-disable-next-line no-await-in-loop -- At most one fallback dispatch.
             response = await awaitRecoveryWork(
               this.services.agent.stationLogin({data: payload}, undefined, context),
@@ -1769,7 +1705,9 @@ export default class ContactCenter extends WebexPlugin implements IContactCenter
         }
       }
 
-      return publishForAdoptedSocket(manual('session-restore-failed'));
+      return publishForAdoptedSocket(
+        manual(hadStation ? 'session-restore-failed' : 'region-switch', !hadStation)
+      );
     } finally {
       this.endSessionRequest(context);
     }
@@ -1810,7 +1748,7 @@ export default class ContactCenter extends WebexPlugin implements IContactCenter
       this.clearAcceptedStation();
       this.updateWellnessSession();
       this.suppressAutomaticRelogin = true;
-      if (wasRegional) this.resetOrdinaryConnection(true);
+      if (wasRegional) this.resetOrdinaryConnection();
       const generation = this.recoveryGeneration;
       const ownsStation = () =>
         station === this.stationRevision &&
@@ -1856,7 +1794,7 @@ export default class ContactCenter extends WebexPlugin implements IContactCenter
       this.clearAcceptedStation();
       this.updateWellnessSession();
       this.suppressAutomaticRelogin = true;
-      if (wasRegional) this.resetOrdinaryConnection(true);
+      if (wasRegional) this.resetOrdinaryConnection();
       const generation = this.recoveryGeneration;
       const ownsStation = () =>
         station === this.stationRevision &&
@@ -2943,7 +2881,7 @@ export default class ContactCenter extends WebexPlugin implements IContactCenter
         throw new Error('Primary Welcome agent identity is required');
       }
       const agentId = data.agentId;
-      const profile = await awaitRecoveryWork(
+      const {profile, multiRegionSettings} = await awaitRecoveryWork(
         this.services.config.getAgentConfig(orgId, agentId),
         signal
       );
@@ -2954,17 +2892,10 @@ export default class ContactCenter extends WebexPlugin implements IContactCenter
       }
       this.agentConfig = profile;
       this.registrationAgentId = agentId;
-      this.resetOrdinaryConnection(true);
+      this.resetOrdinaryConnection();
       this.assertInitialRegistration(attempt, agentId);
+      this.multiRegionSettings = multiRegionSettings ?? {eligibility: 'unknown'};
       this.taskManager.startSession(this.getTaskRecoveryGuard());
-      this.hydrateMultiRegionSettings(registration, orgId, agentId, signal).catch(() =>
-        this.recordBestEffort(() =>
-          LoggerProxy.warn('Organization recovery settings hydration ended', {
-            module: CC_FILE,
-            method: METHODS.HYDRATE_MULTI_REGION_SETTINGS,
-          })
-        )
-      );
 
       this.recordBestEffort(() =>
         LoggerProxy.log(`Agent config is fetched successfully`, {
@@ -3408,7 +3339,7 @@ export default class ContactCenter extends WebexPlugin implements IContactCenter
         this.registrationAbortController &&
         !this.registrationAbortController.signal.aborted
       )
-        this.resetOrdinaryConnection(true);
+        this.resetOrdinaryConnection();
       if (cancelled) this.publishRegionState(cancelled);
       if (!ownsLogout()) throw createRegionRecoveryError('RECOVERY_INTERRUPTED');
       this.resetRegionState();
@@ -5243,7 +5174,7 @@ export default class ContactCenter extends WebexPlugin implements IContactCenter
       }
       assertReloginAdmission();
       const wxApp = this.ensureWxAppPostStationLogin(commandSignal);
-      await (commandSignal ? awaitRecoveryWork(wxApp, commandSignal) : wxApp);
+      await awaitRecoveryWork(wxApp, commandSignal);
       assertReloginAdmission();
       if (initialRegistration) {
         this.setRecoveryPhase('ready');

@@ -182,8 +182,6 @@ the owning module specification linked in the Owner column.
 | `webex-internal-support` — log upload | SDK, external | `@webex/internal-plugin-support` | `uploadLogs` | Workspace version | @webex/internal-plugin-support workspace package (external) |
 | `xstate-runtime` — actor and state-machine runtime | SDK, external | `xstate` | Task state machine | Pinned 5.24.0 | xstate npm dependency (external) |
 
-Runtime constant ownership for `contact-center-region-recovery`: `src/constants.ts` defines `REGION_RECOVERY_EVENTS` and re-exports `REGION_RECOVERY_ERROR_CODES`, whose values are defined in `src/services/core/constants.ts`. The canonical type source remains `src/types.ts`; `src/index.ts` exports the public types and constants.
-
 No OpenAPI/AsyncAPI/proto schema was found in scope; exact SDK and event contracts remain in TypeScript declarations and owning module specs.
 
 <!-- Include if: the repository holds client-side or in-memory session state. [condition-id: repo.holds_client_state] -->
@@ -197,7 +195,7 @@ No OpenAPI/AsyncAPI/proto schema was found in scope; exact SDK and event contrac
 | -------------- | ----- | ------------------- | ----------------------------- |
 | Agent profile (`agentConfig`) and active station session | `ContactCenter` (`src/cc.ts`) | `register()`, station login, logout, silent relogin | Memory; cleared by `deregister()` |
 | Task collection | TaskManager (`src/services/task/TaskManager.ts`) | Contact notifications, hydration, task removal | Memory; one XState actor per task |
-| Regional recovery, entitlement, and last published station snapshot | ContactCenter (`src/cc.ts`) | Registration hydration, eligible switch, transport and station recovery, or terminal outcome | Current registration owns the state and clears it on teardown |
+| Regional recovery, entitlement, and last published station snapshot | ContactCenter (`src/cc.ts`) | Registration applies entitlement from the organization desktop-login aggregate. Switch, restore, and terminal outcomes update the snapshot. | Each registration starts with unknown eligibility and clears its state on teardown. |
 | Voice connection state | WebCallingService (`src/services/WebCallingService.ts`) | Line registration and Mobius socket events | Memory; reset on line deregistration |
 | Pending metrics events | MetricsManager (`src/metrics/MetricsManager.ts`) | `trackEvent`, the metrics ready signal | Memory; cleared when metrics are disabled |
 | Cached pages | PageCache (`src/utils/PageCache.ts`) | `cachePage`, expiry on read | Memory; five-minute TTL |
@@ -221,7 +219,7 @@ Package compatibility and event-loop safety are primary: published exports/types
 |---|---|---|
 | Unit coverage | 85% branches/functions/lines/statements | package Jest configuration |
 | Operation duration/success/failure | no local numeric SLO routed | MetricsManager event taxonomy |
-| Connection recovery | Ordinary 8s loss detection, 5s retry slots, and a 50s default watchdog. Region recovery uses separate pacing. | Core constants/ConnectionService |
+| Connection recovery | Ordinary 8s loss detection, 5s retry slots, and a 50s watchdog. Region recovery uses separate pacing. | Core constants/ConnectionService |
 
 <!-- Include if: repository resources call, import, or exchange events with one another. [condition-id: repo.components_interact] -->
 
@@ -329,6 +327,7 @@ Host configuration (`config.cc`, defaults in `src/config.ts`) and remote profile
 | Flag/config | Gates | Current default | Owner | Safe to remove when |
 |---|---|---|---|---|
 | `allowAutomatedRelogin` | silent relogin after recovery | `true` (`src/config.ts`) | ContactCenter | replacement recovery contract exists |
+| `allowSavedStationLoginOnRecovery` | opt into one eligible saved Desktop DN or extension sign-in during regional recovery | `false` (`src/config.ts`) | ContactCenter | requires automatic relogin and the agent’s saved sign-in consent |
 | `Profile.webRtcEnabled` and `Profile.loginVoiceOptions` | browser calling path (BROWSER login option) | remote profile | Config/WCC | remote contract removed |
 | `Profile.allowConsultToQueue` and the other Desktop Profile access flags | task consult/transfer destinations and controls | remote profile (`consultToQueue`) | Task/Config | owning behavior removed |
 | `Profile.isWellnessBreakEnabled` | wellness event/action APIs and system-code access | false unless backend AI enablement, reminders, and positive license quantity are all present | Config/ContactCenter | wellness contract removed |

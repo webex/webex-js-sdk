@@ -210,7 +210,6 @@ jest.mock('../../../../../src/services/task/state-machine/uiControlsComputer', (
 
   return {
     __esModule: true,
-    disableTaskUIControls: jest.requireActual('../../../../../src/services/task/state-machine/uiControlsComputer').disableTaskUIControls,
     computeUIControls: jest.fn((state) => {
       const controls = createDefaultControls();
       if (state === 'CONFERENCING') {

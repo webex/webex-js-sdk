@@ -52,7 +52,6 @@ type SocketAttempt = {
 /** Owns one admitted socket and every resource associated with its lifetime. @ignore */
 export class WebSocketManager extends EventEmitter {
   public shouldReconnect = true;
-  public isSocketClosed = false;
   private isConnectionLost = false;
   private attempt?: SocketAttempt;
   private servingRegion?: string;
@@ -75,7 +74,6 @@ export class WebSocketManager extends EventEmitter {
     if (previous) this.disposeAttempt(previous, createRegionRecoveryError('RECOVERY_INTERRUPTED'));
     this.clearServingRegion();
     this.shouldReconnect = true;
-    this.isSocketClosed = true;
 
     return new Promise((resolve, reject) => {
       const attempt: SocketAttempt = {
@@ -209,7 +207,6 @@ export class WebSocketManager extends EventEmitter {
     attempt.socket = socket;
     socket.onopen = () => {
       if (!this.ownsAttempt(attempt) || attempt.worker) return;
-      this.isSocketClosed = false;
       try {
         socket.send(JSON.stringify({keepalive: 'true'}));
         const blob = new Blob([workerScript], {type: 'application/javascript'});
@@ -310,7 +307,6 @@ export class WebSocketManager extends EventEmitter {
   private disposeAttempt(attempt: SocketAttempt, error: unknown, closeSocket = true): void {
     if (this.attempt !== attempt) return;
     this.attempt = undefined;
-    this.isSocketClosed = true;
     this.clearServingRegion();
     clearTimeout(attempt.timer);
     attempt.signal?.removeEventListener('abort', attempt.onAbort);

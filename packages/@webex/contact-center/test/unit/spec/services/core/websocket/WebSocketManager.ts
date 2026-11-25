@@ -173,7 +173,6 @@ describe('WebSocketManager owned admission', () => {
   const expectInactive = () => {
     expect(manager.hasUsableSocket()).toBe(false);
     expect(manager.getServingRegion()).toBeUndefined();
-    expect(manager.isSocketClosed).toBe(true);
     expect(jest.getTimerCount()).toBe(0);
   };
 
@@ -606,7 +605,6 @@ describe('WebSocketManager owned admission', () => {
       expect(SocketDouble.instances).toHaveLength(0);
       expect(workers).toHaveLength(0);
       expect(manager.hasUsableSocket()).toBe(false);
-      expect(manager.isSocketClosed).toBe(true);
       expect(manager.getServingRegion()).toBeUndefined();
       expect(socketClose).not.toHaveBeenCalled();
       expect(jest.getTimerCount()).toBe(0);
@@ -637,7 +635,6 @@ describe('WebSocketManager owned admission', () => {
       expect(URL.revokeObjectURL).toHaveBeenCalledTimes(1);
       expect(URL.revokeObjectURL).toHaveBeenCalledWith('blob:attempt-0');
       expect(manager.hasUsableSocket()).toBe(false);
-      expect(manager.isSocketClosed).toBe(true);
       expect(socketClose).not.toHaveBeenCalled();
       expect(jest.getTimerCount()).toBe(0);
       expectSafeDiagnostics([
@@ -670,7 +667,6 @@ describe('WebSocketManager owned admission', () => {
       expect(socketClose.mock.calls).toEqual([[{shouldReconnect: false}]]);
       expect(manager.shouldReconnect).toBe(false);
       expect(manager.hasUsableSocket()).toBe(false);
-      expect(manager.isSocketClosed).toBe(true);
       expect(manager.getServingRegion()).toBeUndefined();
       expect(jest.getTimerCount()).toBe(0);
       expectSafeDiagnostics([

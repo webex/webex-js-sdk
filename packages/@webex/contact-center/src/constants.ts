@@ -47,7 +47,6 @@ export const DEFAULT_VOICE_CONNECTION_STATE: Readonly<VoiceConnectionState> = Ob
 export const METHODS = {
   REGISTER: 'register',
   RECORD_RECOVERY_DIAGNOSTIC: 'recordRecoveryDiagnostic',
-  HYDRATE_MULTI_REGION_SETTINGS: 'hydrateMultiRegionSettings',
   DEREGISTER: 'deregister',
   GET_BUDDY_AGENTS: 'getBuddyAgents',
   CONNECT_WEBSOCKET: 'connectWebsocket',

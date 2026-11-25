@@ -185,6 +185,7 @@
       "path": "src",
       "canonical_spec": "src/docs/README.md",
       "coverage_status": "Partial",
+      "characterization_baseline": "test/unit/spec/cc.ts",
       "coverage_evidence": "Canonical spec is structurally complete with 15/15 required documentation fields and source/test evidence mapped by requirement. Independent PR #5088 remediation validation completed on claude-code (2026-07-15); coverage remains Partial until post-baseline promotion criteria are satisfied. Migrated on 2026-11-16 from the older ai-docs layout to the source-local repo-standards spec; coverage is carried, not reassessed, and coverage review remains pending. Independent validation on 2026-11-17 passed with warnings (0 Blocking, 0 Important, 4 Minor; validator runtime 01a1e76f-2293-79a0-9f8f-f060038448dd); no coverage promotion was performed.",
       "contracts": {
         "provides": [
@@ -380,6 +381,7 @@
       "path": "src/services/config",
       "canonical_spec": "src/services/config/docs/README.md",
       "coverage_status": "Partial",
+      "characterization_baseline": "test/unit/spec/services/config/index.ts",
       "coverage_evidence": "Canonical spec is structurally complete with 15/15 required documentation fields and source/test evidence mapped by requirement. Independent PR #5088 remediation validation completed on claude-code (2026-07-15); coverage remains Partial until post-baseline promotion criteria are satisfied. Migrated on 2026-11-16 from the older ai-docs layout to the source-local repo-standards spec; coverage is carried, not reassessed, and coverage review remains pending. Independent validation on 2026-11-17 passed with warnings (0 Blocking, 0 Important, 4 Minor; validator runtime 01a1e76f-2293-79a0-9f8f-f060038448dd); no coverage promotion was performed.",
       "contracts": {
         "provides": [
@@ -745,7 +747,7 @@
         "publication": "published",
         "source_kind": "repository-path",
         "source": "src/types.ts",
-        "summary": "Published region:stateChange complete snapshots (RegionRecoveryState, RegionRecoveryStatus, RegionRecoveryReason, RegionAutoAvailableStatus), REGION_RECOVERY_EVENTS and plain Error data.reason codes (REGION_RECOVERY_ERROR_CODES, RegionRecoveryErrorCode); additive exports in src/index.ts. Specified in src/docs/README.md."
+        "summary": "Published region:stateChange complete snapshots (RegionRecoveryState, RegionRecoveryStatus, RegionRecoveryReason, RegionAutoAvailableStatus), REGION_RECOVERY_EVENTS and plain Error data.reason codes (REGION_RECOVERY_ERROR_CODES, RegionRecoveryErrorCode); additive exports in src/index.ts. Entitlement comes from the existing organization desktop-login response. Optional allowSavedStationLoginOnRecovery uses consented Desktop DN or extension sign-in before handing off to the app. Specified in src/docs/README.md."
       }
     }
   },
