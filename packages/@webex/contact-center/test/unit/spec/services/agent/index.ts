@@ -143,7 +143,10 @@ describe('AQM routing agent', () => {
     // Idle-pending confirmations that share the same agentState.
     expect(detail.__typeMap).toBeDefined();
     expect(detail.__typeMap.typeField).toBe('pendingIdle');
-    expect(detail.__typeMap.conditions.false).toEqual({agentState: 'Available'});
+    // pendingIdle: false condition is empty — accepts any agentState so
+    // Available-cancels-Idle on busy channels (Engaged/WrapUp) resolves
+    // without waiting for task completion.
+    expect(detail.__typeMap.conditions.false).toEqual({});
     // pendingIdle: true must NOT have a matching condition
     expect(detail.__typeMap.conditions.true).toBeUndefined();
   });
@@ -213,8 +216,24 @@ describe('AQM routing agent', () => {
     const detail = availReq.notifSuccess.bind.data.agentChannelStateDetail;
     // pendingIdle=true notifications have no matching condition → typeMapCheck returns false
     expect(detail.__typeMap.conditions).not.toHaveProperty('true');
-    // pendingIdle=false with matching agentState → passes
-    expect(detail.__typeMap.conditions.false).toEqual({agentState: 'Available'});
+    // pendingIdle=false → passes (empty condition accepts any agentState,
+    // so Available-cancels-Idle on busy channels resolves immediately)
+    expect(detail.__typeMap.conditions.false).toEqual({});
+  });
+
+  it('stateChangeV2 Available bind accepts busy-channel confirmation where pendingIdle was cleared', () => {
+    // Scenario: Available request cancels a queued Idle on a channel currently
+    // in Engaged state.  Server confirms with pendingIdle: false but keeps
+    // agentState: 'Engaged' (task still active).
+    const availReq = (agent.stateChangeV2 as unknown as (p: {data: object}) => any)({
+      data: {state: 'Available', auxCodeId: '0', channelType: ['chat'], agentId: 'a1', agentSessionId: 's1'},
+    });
+    const detail = availReq.notifSuccess.bind.data.agentChannelStateDetail;
+
+    // The bind must match — pendingIdle: false condition is empty
+    expect(detail.__typeMap.conditions.false).toEqual({});
+    // And must reject pendingIdle: true (stale Idle confirmation)
+    expect(detail.__typeMap.conditions).not.toHaveProperty('true');
   });
 
   it('stateChangeV2 uses distinct bind keys per channel set', () => {

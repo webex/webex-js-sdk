@@ -434,7 +434,8 @@ sequenceDiagram
   else V2 session
     CC->>Agent: stateChangeV2 (AQM, channels or every channel with capacity)
     Agent-->>CC: first AgentChannelStateChanged or failure
-    CC-->>App: response
+    CC->>CC: bridge to StateChangeSuccess (drop V2-only fields)
+    CC-->>App: normalized StateChangeSuccess (same shape as V1)
   else V1 session
     CC->>Agent: stateChange (AQM, channelType removed)
     Agent-->>CC: StateChangeSuccess or failure
@@ -731,6 +732,7 @@ Authenticated REST initiates direct data/config operations and AQM agent/task op
 - The `startOutdial` JSDoc in `src/cc.ts` lists errors (agent not configured for outbound, invalid E.164 number, agent not Available) and an example that calls `task.on` on the result; the method performs none of those checks and resolves with the offer notification, not a `Task`.
 - `IContactCenter` in `src/types.ts` declares only `register`, `getWellbeingBreakIdleCode`, and `getVoiceConnectionState`; the rest of the public API, including `getChannelStates()` and `getAgentStateControl()`, is declared by the class alone.
 - Granular agent state has no SDK flag or config override; `Profile.manageChannelAvailability` alone selects V2 at login.
+- `setAgentState()` on a V2 session bridges the raw `AgentChannelStateChanged` notification to a `StateChangeSuccess` shape before returning to the caller. V2-only fields (`agentChannelStateDetail`, `channelType`, `connectedChannels`) are **not** on the return value. Reading `result.data.agentChannelStateDetail.agentState` on a V2 return throws a `TypeError`. Use the enriched `agent:stateChange` event (which carries `channelStates`, `channelDetail`, `changedChannelType`) or call `getChannelStates()` for per-channel detail.
 - `getEntryPoints` and `getQueues` are façade wrappers; `entryPoint` is private while `addressBook`, `queue`, `userPreference`, and `apiAIAssistant` are public properties.
 
 ## Module-specific rules

@@ -202,19 +202,9 @@ export default function routingAgent(routing: AqmReqs) {
           data: {
             type: CC_EVENTS.AGENT_CHANNEL_STATE_CHANGED,
             channelType: p.data.channelType,
-            // Correlate: prevent a stale notification from a prior request
-            // from settling the current request.  For non-Idle requests the
-            // notification must carry the exact requested agentState
-            // (immediate transitions).  For Idle requests the agent may be
-            // busy (Engaged/WrapUp/Reserved/RONA); the backend confirms
-            // with pendingIdle: true while keeping the current agentState.
-            // A __typeMap discriminated on agentState accepts both immediate
-            // Idle and queued confirmations.  auxCodeId is a regular key
-            // so bindCheck verifies the notification's idle code matches
-            // the requested one — two successive Idle requests with
-            // different codes (e.g. Lunch then WellbeingBreak) cannot
-            // cross-resolve.  auxCodeId also appears in bindPrint, giving
-            // each code its own pending-request slot.
+            // Idle: __typeMap on agentState accepts immediate + queued (pendingIdle) confirmations.
+            // Non-Idle: __typeMap on pendingIdle rejects stale Idle confirmations; empty {} accepts any state.
+            // auxCodeId as a regular key prevents cross-resolution between different idle codes.
             agentChannelStateDetail:
               p.data.state === 'Idle'
                 ? {
@@ -233,27 +223,17 @@ export default function routingAgent(routing: AqmReqs) {
                     auxCodeId: p.data.auxCodeId,
                   }
                 : {
-                    // Use __typeMap on pendingIdle to reject stale Idle-pending
-                    // confirmations (pendingIdle: true) that share the same
-                    // agentState.  Without this, a remaining Idle confirmation
-                    // with agentState: 'Available' and pendingIdle: true would
-                    // resolve an Available request and strip its failure listener.
+                    // false: {} accepts any agentState (busy-channel confirmations keep task state).
                     __typeMap: {
                       typeField: 'pendingIdle',
                       conditions: {
-                        false: {agentState: p.data.state},
+                        false: {},
                       },
                     },
                   },
-            // Correlate: only match client-initiated notifications to prevent
-            // supervisor/system pushes from resolving the pending request.
-            isClientInitiated: true,
-            // Correlate: only match this agent's notifications.
-            ...(p.data.agentId ? {agentId: p.data.agentId} : {}),
-            // Correlate: only match this session's notifications to prevent
-            // a delayed notification from a prior session from resolving a
-            // new-session request.
-            ...(p.data.agentSessionId ? {agentSessionId: p.data.agentSessionId} : {}),
+            isClientInitiated: true, // Skip supervisor/system pushes
+            ...(p.data.agentId ? {agentId: p.data.agentId} : {}), // Match this agent only
+            ...(p.data.agentSessionId ? {agentSessionId: p.data.agentSessionId} : {}), // Match this session only
           },
         },
         msg: {} as Agent.AgentChannelStateChanged,
