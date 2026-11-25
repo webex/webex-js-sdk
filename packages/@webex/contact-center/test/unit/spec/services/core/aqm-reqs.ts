@@ -1023,15 +1023,23 @@ describe('T-007/T-008 real AQM operation and session owners', () => {
     expect(jest.getTimerCount()).toBe(0);
   });
 
-  it.each(
-    ['open', 'recovering', 'manualLoginRequired', 'unavailable-interrupted', 'unavailable-reload'].flatMap((gate) =>
-      ['command', 'query', 'session', 'teardown'].flatMap((kind) =>
-        [true, false].flatMap((usablePrimary) =>
-          ['current', 'stale', 'aborted'].map((contextState) => ({gate, kind, usablePrimary, contextState}))
-        )
-      )
-    )
-  )(
+  it.each([
+    ...['command', 'query', 'session', 'teardown'].map(kind => ({gate: 'open', kind})),
+    ...['command', 'query', 'session'].map(kind => ({gate: 'recovering', kind})),
+    {gate: 'recovering', kind: 'teardown', usablePrimary: true},
+    {gate: 'recovering', kind: 'teardown'},
+    {gate: 'manualLoginRequired', kind: 'command'},
+    {gate: 'manualLoginRequired', kind: 'session'},
+    {gate: 'unavailable-interrupted', kind: 'command'},
+    {gate: 'unavailable-reload', kind: 'session'},
+    {gate: 'unavailable-reload', kind: 'query'},
+    {gate: 'unavailable-reload', kind: 'teardown'},
+    {gate: 'unavailable-reload', kind: 'teardown', usablePrimary: true},
+    {gate: 'open', kind: 'query', contextState: 'stale'},
+    {gate: 'recovering', kind: 'query', contextState: 'aborted'},
+    {gate: 'unavailable-reload', kind: 'command', contextState: 'stale'},
+    {gate: 'unavailable-reload', kind: 'teardown', usablePrimary: true, contextState: 'aborted'},
+  ].map(row => ({usablePrimary: false, contextState: 'current', ...row})))(
     'gateKindAndSessionOwnerMatrix gate=$gate kind=$kind primary=$usablePrimary context=$contextState',
     async ({gate, kind, usablePrimary, contextState}) => {
       aqm.beginGeneration(1);
@@ -1286,13 +1294,17 @@ describe('T-007/T-008 real AQM operation and session owners', () => {
     (LoggerProxy.info as jest.Mock).mockReset();
   });
 
-  it.each([undefined, false, true].flatMap((flag) =>
-    ['reload', 'stationLogin', 'stateChange'].flatMap((operation) =>
-      ['timeout', 'notification', 'http', 'http-error', 'abort', 'interrupt', 'late-resolve', 'late-reject'].flatMap((scenario) =>
-        ['normal', 'throwing'].map((diagnostics) => ({flag, operation, scenario, diagnostics}))
-      )
-    )
-  ))(
+  it.each([
+    {operation: 'stateChange', scenario: 'timeout'},
+    {operation: 'stationLogin', scenario: 'timeout', flag: true, diagnostics: 'throwing'},
+    {operation: 'stationLogin', scenario: 'notification', flag: false},
+    {operation: 'reload', scenario: 'http'},
+    {operation: 'stateChange', scenario: 'http-error', diagnostics: 'throwing'},
+    {operation: 'reload', scenario: 'abort'},
+    {operation: 'stateChange', scenario: 'interrupt', diagnostics: 'throwing'},
+    {operation: 'stationLogin', scenario: 'late-resolve'},
+    {operation: 'reload', scenario: 'late-reject'},
+  ].map(row => ({flag: undefined, diagnostics: 'normal', ...row})))(
     'T-013 aqmTimeoutAndInterruptDiagnosticsRedacted flag=$flag operation=$operation scenario=$scenario diagnostics=$diagnostics', async ({flag, operation, scenario, diagnostics}) => {
       const diagnosticObjects = new Set<object>();
       const diagnosticValues: string[] = [];

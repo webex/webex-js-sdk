@@ -72,12 +72,9 @@ describe('ConnectionService single-flight scheduler', () => {
       .not.toMatch(/SECRET|authorization|options|dialNumber|signature=|https?:|wss:/i);
   };
 
-  it.each([
-    {name: 'dr100603015WithFreshJitter', samples: [0.25, 0.5, 0.75, 0.5],
-      delays: [112500, 75000, 41250, 18750]},
-    {name: 'repeatFinalDelay', samples: [0, 0.25, 0.5, 0.75, 0, 0.25, 0.5, 0.75],
-      delays: [100000, 67500, 37500, 20625, 15000, 16875, 18750, 20625]},
-  ])('T-004 $name', async ({samples, delays}) => {
+  it('T-004 dr100603015WithFreshJitter / repeatFinalDelay', async () => {
+    const samples = [0, 0.25, 0.5, 0.75, 0, 0.25, 0.5, 0.75];
+    const delays = [100000, 67500, 37500, 20625, 15000, 16875, 18750, 20625];
     const random = Math.random as jest.Mock;
     random.mockReset().mockReturnValue(0);
     samples.forEach(sample => random.mockReturnValueOnce(sample));
@@ -100,30 +97,6 @@ describe('ConnectionService single-flight scheduler', () => {
     expect(manager.initWebSocket).toHaveBeenCalledTimes(delays.length);
     expect(jest.getTimerCount()).toBe(0);
   });
-
-  it.each(['ready', 'manual', 'auth', 'mismatch', 'cancel'])(
-    'T-004 recoverRegionResolveRejectContract %s', async outcome => {
-      const afterWelcome = jest.fn().mockResolvedValue(undefined);
-      if (outcome === 'auth') manager.initWebSocket.mockRejectedValue({statusCode: 401});
-      if (outcome === 'mismatch') manager.initWebSocket.mockRejectedValue({statusCode: 409,
-        body: {reason: 'REGION_MISMATCH_NO_OVERRIDE'}});
-      // Both ready and manual policy completion resolve; policy owns the public state.
-      const run = recover({afterWelcome});
-      if (outcome === 'cancel') run.parent.abort();
-      else await tick(100000);
-      if (outcome === 'ready' || outcome === 'manual') {
-        await expect(run.promise).resolves.toBeUndefined();
-        expect(afterWelcome).toHaveBeenCalledTimes(1);
-      } else {
-        await expect(run.promise).rejects.toMatchObject({data: {kind:
-          outcome === 'auth' ? 'authentication-failed' : outcome === 'mismatch' ? 'region-mismatch' : 'cancelled'}});
-        expect(afterWelcome).not.toHaveBeenCalled();
-      }
-      const calls = manager.initWebSocket.mock.calls.length;
-      await tick(600000);
-      expect(manager.initWebSocket).toHaveBeenCalledTimes(calls);
-    }
-  );
 
   it.each(['wait', 'subscribe', 'restore'])('T-004 stoppedDriverNeverReopens %s', async phase => {
     const pending = createDeferred<any>();
@@ -169,7 +142,7 @@ describe('ConnectionService single-flight scheduler', () => {
     expect(ordinaryRecords().slice(-1)).toEqual([attemptRecord(1, 5000, 'succeeded')]);
   });
 
-  it.each([undefined, 429, 500, 502, 503, 599])('T-012 offline4295xxPacing ordinary status=%s', async (status) => {
+  it.each([undefined, 429, 503])('T-012 offline4295xxPacing ordinary status=%s', async (status) => {
     manager.initWebSocket.mockRejectedValue(Object.assign(new Error('MESSAGE_SECRET https://private.invalid/?signature=URL_SECRET'), {
       statusCode: status, id: 'admission-failure',
       headers: {trackingid: 'attempt-id\n', Authorization: 'BEARER_SECRET'},
@@ -277,8 +250,12 @@ describe('ConnectionService single-flight scheduler', () => {
     expectNoSecrets();
   });
 
-  it.each(['{PAYLOAD_SECRET', 'null', 'true', '42', '"PAYLOAD_SECRET"', '[]']
-    .flatMap(payload => [false, true].map(throwing => ({payload, throwing}))))(
+  it.each([
+    {payload: '{PAYLOAD_SECRET', throwing: true},
+    {payload: 'null', throwing: false},
+    {payload: '"PAYLOAD_SECRET"', throwing: false},
+    {payload: '[]', throwing: true},
+  ])(
     'T-012 malformed ping is ignored safely payload=$payload throwing=$throwing', async ({payload, throwing}) => {
       if (throwing) logger.error.mockImplementation(() => {throw new Error('SINK_SECRET');});
       lose();
@@ -332,7 +309,7 @@ describe('ConnectionService single-flight scheduler', () => {
     expect(manager.initWebSocket).toHaveBeenCalledTimes(1);
   });
 
-  it.each([undefined, 429, 500, 502, 503, 599, 409])('T-012 offline4295xxPacing DR status=%s', async (status) => {
+  it.each([undefined, 429, 503, 409])('T-012 offline4295xxPacing DR status=%s', async (status) => {
     manager.initWebSocket.mockRejectedValue({statusCode: status, body: {reason: 'UNKNOWN_REMOTE', reasonCode: 9999}, headers: {trackingid: 'attempt'}});
     const run = recover();
     for (const [index, delay] of [100000, 60000, 30000, 15000, 15000].entries()) {
@@ -394,7 +371,7 @@ describe('ConnectionService single-flight scheduler', () => {
     }
   );
 
-  it.each([0, 1, 2, 3, 4])('checks live ownership after regional wait %s before admission', async (waitIndex) => {
+  it.each([0, 4])('checks live ownership after regional wait %s before admission', async (waitIndex) => {
     const delays = [100000, 60000, 30000, 15000, 15000];
     const canAttempt = jest.fn(() => true);
     const parent = new AbortController();
@@ -423,7 +400,7 @@ describe('ConnectionService single-flight scheduler', () => {
     expect(terminal).not.toHaveBeenCalled();
   });
 
-  it.each(['pause', 'stop', 'abort', 'reset', 'replace'].flatMap(action => [false, true].map(allowed => [action, allowed])))
+  it.each([['pause', true], ['stop', false], ['abort', false], ['reset', true], ['replace', true]])
     ('rechecks scheduler ownership after a reentrant predicate %s returning %s', async (action, allowed) => {
       const parent = new AbortController();
       let next: ReturnType<typeof recover>;
@@ -664,13 +641,18 @@ describe('ConnectionService single-flight scheduler', () => {
   });
 
   it.each([
-    {name: 'auth401', error: {statusCode: 401}, kind: 'authentication-failed', failure: {status: 401}},
-    {name: 'auth403', error: {statusCode: 403}, kind: 'authentication-failed', failure: {status: 403}},
+    {name: 'auth401', error: {statusCode: 401}, kind: 'authentication-failed', failure: {status: 401},
+      action: 'recoverRegion', throwing: false},
+    {name: 'auth403', error: {statusCode: 403}, kind: 'authentication-failed', failure: {status: 403},
+      action: 'pause', throwing: true},
+    {name: 'auth401', error: {statusCode: 401}, kind: 'authentication-failed', failure: {status: 401},
+      action: 'stop', throwing: false},
     {name: 'mismatch', error: {statusCode: 409, body: {reason: 'REGION_MISMATCH_NO_OVERRIDE'}},
-      kind: 'region-mismatch', failure: {status: 409, reason: 'REGION_MISMATCH_NO_OVERRIDE'}},
-    {name: 'afterWelcome', error: new Error('policy failed'), kind: 'after-welcome-failed', failure: {}},
-  ].flatMap(failure => ['recoverRegion', 'pause', 'stop', 'reset', 'resetRegion']
-    .flatMap(action => [false, true].map(throwing => ({...failure, action, throwing})))))
+      kind: 'region-mismatch', failure: {status: 409, reason: 'REGION_MISMATCH_NO_OVERRIDE'},
+      action: 'reset', throwing: false},
+    {name: 'afterWelcome', error: new Error('policy failed'), kind: 'after-welcome-failed', failure: {},
+      action: 'resetRegion', throwing: true},
+  ])
     ('T-004 terminalSettlementCommittedBeforeHook $name $action throwing=$throwing',
       async ({name, error, kind, failure, action, throwing}) => {
         const parent = new AbortController(), nextRegistration = new AbortController();

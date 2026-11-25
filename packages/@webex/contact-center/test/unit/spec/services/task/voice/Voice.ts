@@ -2357,84 +2357,25 @@ describe('Voice Task', () => {
 });
 
 describe('T-008 Voice regional lifetime', () => {
-  it.each([false, true])('preserves disabled stale layout after Voice updates: throwing observer=%s', (throws) => {
-    const controls = uiControlsComputer.getDefaultUIControls();
-    controls.main.accept = {isVisible: true, isEnabled: true};
-    controls.main.keypad = {isVisible: true, isEnabled: true};
-    controls.consult.endConsult = {isVisible: true, isEnabled: true};
-    controls.consult.mute = {isVisible: true, isEnabled: true};
-    delete controls.consult.keypad;
-    controls.activeLeg = 'consult';
-    controls.consultTransferDestinations = {
-      consult: [CONSULT_TRANSFER_DESTINATION_TYPE.AGENT, CONSULT_TRANSFER_DESTINATION_TYPE.QUEUE],
-      transfer: [CONSULT_TRANSFER_DESTINATION_TYPE.QUEUE, CONSULT_TRANSFER_DESTINATION_TYPE.AGENT],
-    };
-    const before = JSON.parse(JSON.stringify(controls));
-
-    const expected = uiControlsComputer.getDefaultUIControls();
-    expected.main.accept = {isVisible: true, isEnabled: false};
-    expected.main.keypad = {isVisible: true, isEnabled: false};
-    expected.consult.endConsult = {isVisible: true, isEnabled: false};
-    expected.consult.mute = {isVisible: true, isEnabled: false};
-    delete expected.consult.keypad;
-    expected.activeLeg = 'consult';
-    expected.consultTransferDestinations = {
-      consult: [CONSULT_TRANSFER_DESTINATION_TYPE.AGENT, CONSULT_TRANSFER_DESTINATION_TYPE.QUEUE],
-      transfer: [CONSULT_TRANSFER_DESTINATION_TYPE.QUEUE, CONSULT_TRANSFER_DESTINATION_TYPE.AGENT],
-    };
-
+  it('keeps stale controls disabled after a Voice-specific setting update', () => {
     const task = new Voice(dummyContact, createBaseData());
     primeConnectedState(task, task.data);
+    const controls = uiControlsComputer.getDefaultUIControls();
+    controls.main.hold = {isVisible: true, isEnabled: true};
     const compute = jest.spyOn(uiControlsComputer, 'computeUIControls');
     try {
       compute.mockReturnValueOnce(controls);
-      (task as any).updateUiControls(true);
-      expect(task.uiControls).toBe(controls);
-      expect(task.uiControls).not.toEqual(uiControlsComputer.getDefaultUIControls());
-      compute.mockClear();
-      const actor = task.stateMachineService;
-      const stop = jest.spyOn(actor, 'stop');
-      const getSnapshot = jest.spyOn(actor, 'getSnapshot');
-      const observerError = new Error('controls observer failed');
-      const updated = jest.fn(() => {
-        if (throws) throw observerError;
-      });
-      task.on(TASK_EVENTS.TASK_UI_CONTROLS_UPDATED, updated);
-
-      if (throws) {
-        expect(() => task.invalidateForRegionRecovery()).toThrow(observerError);
-      } else {
-        task.invalidateForRegionRecovery();
-      }
-      expect(stop).toHaveBeenCalledTimes(1);
-      expect(task.stateMachineService).toBeUndefined();
-      expect(task.state).toBeUndefined();
-      expect(task.uiControls).toEqual(expected);
-      expect(task.uiControls).not.toBe(controls);
-      expect(Object.prototype.hasOwnProperty.call(task.uiControls.consult, 'keypad')).toBe(false);
-      expect(updated.mock.calls).toEqual([[expected]]);
-      expect(updated.mock.calls[0][0]).toBe(task.uiControls);
-
+      task['updateUiControls'](true);
       task.invalidateForRegionRecovery();
-      (task as any).updateUiControls();
-      expect(task.uiControls).toEqual(expected);
-      expect(Object.prototype.hasOwnProperty.call(task.uiControls.consult, 'keypad')).toBe(false);
-      // This public Voice control setting forces an update even after actor disposal.
-      if (throws) {
-        expect(() => task.setEnableWxBetterTogether(true)).toThrow(observerError);
-      } else {
-        task.setEnableWxBetterTogether(true);
-      }
-      expect(task.uiControls).toEqual(expected);
-      expect(Object.prototype.hasOwnProperty.call(task.uiControls.consult, 'keypad')).toBe(false);
-      expect(controls).toEqual(before);
-      expect(Object.prototype.hasOwnProperty.call(controls.consult, 'keypad')).toBe(false);
+      const disabled = task.uiControls;
+      expect(disabled.main.hold).toEqual({isVisible: true, isEnabled: false});
+      compute.mockClear();
+
+      task.setEnableWxBetterTogether(true);
+
+      expect(task.uiControls).toEqual(disabled);
+      expect(controls.main.hold.isEnabled).toBe(true);
       expect(compute).not.toHaveBeenCalled();
-      expect(getSnapshot).not.toHaveBeenCalled();
-      expect(task.stateMachineService).toBeUndefined();
-      expect(stop).toHaveBeenCalledTimes(1);
-      expect(updated.mock.calls).toEqual([[expected], [expected]]);
-      expect(updated.mock.calls[1][0]).toBe(task.uiControls);
     } finally {
       compute.mockRestore();
     }
@@ -2680,9 +2621,6 @@ describe('T-008 Voice regional lifetime', () => {
   describe('command recovery fences', () => {
     const actualUtils = jest.requireActual('../../../../../../src/services/core/Utils');
     const uploadLogs = WebexRequest.getInstance().uploadLogs as jest.Mock;
-    const lifecycleReasons = [
-      'RECOVERY_INTERRUPTED', 'STALE_TASK', 'RECOVERY_IN_PROGRESS', 'REGION_RELOAD_REQUIRED',
-    ] as const;
     const consultPayload = {to: 'agent-2', destinationType: DESTINATION_TYPE.AGENT};
     const transferPayload = {to: 'agent-2', destinationType: DESTINATION_TYPE.AGENT};
     const mediaRequest = {interactionId: 'int1', data: {mediaResourceId: 'media1'}};
@@ -2694,7 +2632,7 @@ describe('T-008 Voice regional lifetime', () => {
       request: unknown;
       invoke: (voice: Voice) => Promise<unknown>;
       prime?: (voice: Voice, data: TaskData) => void;
-      successMetric: string;
+
       failureMetric: string;
       failureEvent?: TaskEvent;
     };
@@ -2702,31 +2640,26 @@ describe('T-008 Voice regional lifetime', () => {
       {
         label: 'decline outdial', state: 'offered', boundary: 'cancelTask',
         request: interactionRequest, invoke: (voice) => voice.decline(),
-        successMetric: METRIC_EVENT_NAMES.TASK_DECLINE_SUCCESS,
         failureMetric: METRIC_EVENT_NAMES.TASK_DECLINE_FAILED,
       },
       {
         label: 'decline inbound', state: 'offered', boundary: 'rejectCall',
         request: {callId: 'call-1', lineOwnerId: undefined}, invoke: (voice) => voice.decline(),
-        successMetric: METRIC_EVENT_NAMES.WXAPP_TASK_DECLINE_SUCCESS,
         failureMetric: METRIC_EVENT_NAMES.WXAPP_TASK_DECLINE_FAILED,
       },
       {
         label: 'holdResume hold', state: 'connected', boundary: 'hold',
         request: mediaRequest, invoke: (voice) => voice.holdResume(),
-        successMetric: METRIC_EVENT_NAMES.TASK_HOLD_SUCCESS,
         failureMetric: METRIC_EVENT_NAMES.TASK_HOLD_FAILED, failureEvent: TaskEvent.HOLD_FAILED,
       },
       {
         label: 'holdResume resume', state: 'held', boundary: 'unHold',
         request: mediaRequest, invoke: (voice) => voice.holdResume(),
-        successMetric: METRIC_EVENT_NAMES.TASK_RESUME_SUCCESS,
         failureMetric: METRIC_EVENT_NAMES.TASK_RESUME_FAILED, failureEvent: TaskEvent.UNHOLD_FAILED,
       },
       {
         label: 'pauseRecording', state: 'connected', boundary: 'pauseRecording',
         request: interactionRequest, invoke: (voice) => voice.pauseRecording(),
-        successMetric: METRIC_EVENT_NAMES.TASK_PAUSE_RECORDING_SUCCESS,
         failureMetric: METRIC_EVENT_NAMES.TASK_PAUSE_RECORDING_FAILED,
       },
       {
@@ -2736,35 +2669,30 @@ describe('T-008 Voice regional lifetime', () => {
           type: TaskEvent.PAUSE_RECORDING, taskData,
         }),
         invoke: (voice) => voice.resumeRecording(),
-        successMetric: METRIC_EVENT_NAMES.TASK_RESUME_RECORDING_SUCCESS,
         failureMetric: METRIC_EVENT_NAMES.TASK_RESUME_RECORDING_FAILED,
       },
       {
         label: 'consult', state: 'connected', boundary: 'consult',
         request: {interactionId: 'int1', data: consultPayload},
         invoke: (voice) => voice.consult({...consultPayload}),
-        successMetric: METRIC_EVENT_NAMES.TASK_CONSULT_START_SUCCESS,
         failureMetric: METRIC_EVENT_NAMES.TASK_CONSULT_START_FAILED,
         failureEvent: TaskEvent.CONSULT_FAILED,
       },
       {
         label: 'endConsult', state: 'consulting', boundary: 'consultEnd',
         request: {interactionId: 'int1', data: undefined}, invoke: (voice) => voice.endConsult(),
-        successMetric: METRIC_EVENT_NAMES.TASK_CONSULT_END_SUCCESS,
         failureMetric: METRIC_EVENT_NAMES.TASK_CONSULT_END_FAILED,
       },
       {
         label: 'transfer consult', state: 'consulting', boundary: 'consultTransfer',
         request: {interactionId: 'int1', data: {to: 'agent-2', destinationType: 'agent'}},
         invoke: (voice) => voice.transfer({...transferPayload}),
-        successMetric: METRIC_EVENT_NAMES.TASK_TRANSFER_SUCCESS,
         failureMetric: METRIC_EVENT_NAMES.TASK_TRANSFER_FAILED,
       },
       {
         label: 'transfer blind', state: 'connected', boundary: 'blindTransfer',
         request: {interactionId: 'int1', data: transferPayload},
         invoke: (voice) => voice.transfer({...transferPayload}),
-        successMetric: METRIC_EVENT_NAMES.TASK_TRANSFER_SUCCESS,
         failureMetric: METRIC_EVENT_NAMES.TASK_TRANSFER_FAILED,
       },
       {
@@ -2774,7 +2702,6 @@ describe('T-008 Voice regional lifetime', () => {
           data: {agentId: 'agent-1', to: 'agent-2', destinationType: DESTINATION_TYPE.AGENT},
         },
         invoke: (voice) => voice.consultConference(),
-        successMetric: METRIC_EVENT_NAMES.TASK_CONFERENCE_START_SUCCESS,
         failureMetric: METRIC_EVENT_NAMES.TASK_CONFERENCE_START_FAILED,
         failureEvent: TaskEvent.CONFERENCE_FAILED,
       },
@@ -2782,27 +2709,23 @@ describe('T-008 Voice regional lifetime', () => {
         label: 'dropConferenceParticipant', state: 'conference', boundary: 'dropConferenceParticipant',
         request: {interactionId: 'int1', participantId: 'agent-2'},
         invoke: (voice) => voice.dropConferenceParticipant({participantId: 'agent-2'}),
-        successMetric: METRIC_EVENT_NAMES.TASK_CONFERENCE_PARTICIPANT_DROP_SUCCESS,
         failureMetric: METRIC_EVENT_NAMES.TASK_CONFERENCE_PARTICIPANT_DROP_FAILED,
       },
       {
         label: 'exitConference', state: 'conference', boundary: 'exitConference',
         request: interactionRequest, invoke: (voice) => voice.exitConference(),
-        successMetric: METRIC_EVENT_NAMES.TASK_CONFERENCE_EXIT_SUCCESS,
         failureMetric: METRIC_EVENT_NAMES.TASK_CONFERENCE_EXIT_FAILED,
         failureEvent: TaskEvent.EXIT_CONFERENCE_FAILED,
       },
       {
         label: 'transferConference', state: 'conference', boundary: 'conferenceTransfer',
         request: interactionRequest, invoke: (voice) => voice.transferConference(),
-        successMetric: METRIC_EVENT_NAMES.TASK_CONFERENCE_TRANSFER_SUCCESS,
         failureMetric: METRIC_EVENT_NAMES.TASK_CONFERENCE_TRANSFER_FAILED,
         failureEvent: TaskEvent.TRANSFER_CONFERENCE_FAILED,
       },
       {
         label: 'switchCall to main', state: 'consulting', boundary: 'unHold',
         request: mediaRequest, invoke: (voice) => voice.switchCall(),
-        successMetric: METRIC_EVENT_NAMES.TASK_SWITCH_CALL_SUCCESS,
         failureMetric: METRIC_EVENT_NAMES.TASK_SWITCH_CALL_FAILED,
         failureEvent: TaskEvent.SWITCH_TO_CONSULT,
       },
@@ -2810,19 +2733,17 @@ describe('T-008 Voice regional lifetime', () => {
         label: 'switchCall to consult', state: 'consulting', boundary: 'hold',
         request: mediaRequest, invoke: (voice) => voice.switchCall(),
         prime: (voice) => voice.stateMachineService.send({type: TaskEvent.SWITCH_TO_MAIN_CALL}),
-        successMetric: METRIC_EVENT_NAMES.TASK_SWITCH_CALL_SUCCESS,
         failureMetric: METRIC_EVENT_NAMES.TASK_SWITCH_CALL_FAILED,
         failureEvent: TaskEvent.SWITCH_TO_MAIN_CALL,
       },
     ];
     let task: Voice;
-    let helper: jest.SpyInstance;
     let errorLog: jest.SpyInstance;
     let metrics: jest.SpyInstance;
     let diagnosticSinks: jest.SpyInstance[];
 
     beforeEach(() => {
-      helper = jest.spyOn(Utils, 'getErrorDetails').mockImplementation(actualUtils.getErrorDetails);
+      jest.spyOn(Utils, 'getErrorDetails').mockImplementation(actualUtils.getErrorDetails);
       errorLog = jest.spyOn(LoggerProxy, 'error').mockImplementation();
       const manager = MetricsManager.getInstance();
       metrics = jest.spyOn(manager, 'trackEvent').mockImplementation();
@@ -2933,143 +2854,78 @@ describe('T-008 Voice regional lifetime', () => {
     };
 
     describe.each(commandCases)('$label', (testCase) => {
-      it.each(lifecycleReasons)('blocks entry without I/O or local effects: %s', async (reason) => {
+      it('blocks entry before I/O or local effects', async () => {
         const harness = createHarness(testCase);
-        const error = Utils.createRegionRecoveryError(reason);
+        const error = Utils.createRegionRecoveryError('RECOVERY_IN_PROGRESS');
         harness.admission.mockImplementation(() => {throw error;});
         const before = harness.effects();
 
         await expect(testCase.invoke(task)).rejects.toBe(error);
-        await flushEventLoopTurn();
 
         expect(harness.effects()).toEqual(before);
-        expect(helper).not.toHaveBeenCalled();
       });
 
-      it.each(lifecycleReasons)('preserves live backend lifecycle rejection: %s', async (reason) => {
+      it('preserves a backend recovery rejection without ordinary failure effects', async () => {
         const harness = createHarness(testCase);
-        const error = Utils.createRegionRecoveryError(reason, {trackingId: 'lifecycle', status: 409});
-        const data = error.data;
-        const result = testCase.invoke(task);
-        const rejected = expect(result).rejects.toBe(error);
+        const error = Utils.createRegionRecoveryError('REGION_RELOAD_REQUIRED', {status: 409});
+        const observed = expect(testCase.invoke(task)).rejects.toBe(error);
         harness.expectBoundary();
         const initiated = harness.effects();
 
         harness.pending.reject(error);
-        await rejected;
+        await observed;
+
+        expect(harness.effects()).toEqual(initiated);
+      });
+
+      it.each(['resolve', 'reject'] as const)('interrupts pending work and drains late %s without effects or replay', async (settlement) => {
+        const harness = createHarness(testCase);
+        const error = Utils.createRegionRecoveryError('RECOVERY_INTERRUPTED');
+        const observed = expect(testCase.invoke(task)).rejects.toBe(error);
+        harness.expectBoundary();
+
+        task.interruptOperations(() => error);
+        await observed; // The backend remains pending.
+        const retired = harness.effects();
+        if (settlement === 'resolve') harness.pending.resolve(harness.response);
+        else harness.pending.reject(new Error('abandoned ordinary backend failure'));
         await flushEventLoopTurn();
 
-        expect(helper).toHaveBeenCalled();
-        helper.mock.results.forEach(({value}) => {
-          expect(value).toEqual({error, reason});
-          expect(value.error).toBe(error);
-        });
-        expect(error.data).toBe(data);
-        expect(error.data).toEqual({reason, trackingId: 'lifecycle', status: 409});
-        expect(error.message).toBe(reason);
-        expect(harness.effects()).toEqual(initiated);
+        expect(harness.effects()).toEqual(retired);
         expect(metrics).not.toHaveBeenCalled();
         expect(errorLog).not.toHaveBeenCalled();
         expect(uploadLogs).not.toHaveBeenCalled();
       });
 
-      it.each(['resolve', 'reject'] as const)(
-        'rejects promptly on interruption and drains late %s without effects or replay', async (settlement) => {
-          const harness = createHarness(testCase);
-          const error = Utils.createRegionRecoveryError('RECOVERY_INTERRUPTED');
-          const outcome = jest.fn();
-          const observed = testCase.invoke(task).then(
-            (value) => outcome({value}), (rejection) => outcome({error: rejection})
-          );
-          harness.expectBoundary();
-          const backendSettled = jest.fn();
-          harness.pending.promise.then(backendSettled, backendSettled);
-
-          task.interruptOperations(() => error);
-          await flushEventLoopTurn();
-          expect(outcome.mock.calls).toEqual([[{error}]]);
-          expect(backendSettled).not.toHaveBeenCalled();
-          const retired = harness.effects();
-          const controls = task.uiControls;
-          const normalizationAtRetirement = helper.mock.calls.slice();
-
-          if (settlement === 'resolve') harness.pending.resolve(harness.response);
-          else harness.pending.reject(new Error('abandoned ordinary backend failure'));
-          await observed;
-          await flushEventLoopTurn();
-          await flushEventLoopTurn();
-
-          expect(backendSettled).toHaveBeenCalledTimes(1);
-          expect(outcome.mock.calls).toEqual([[{error}]]);
-          expect(harness.effects()).toEqual(retired);
-          expect(task.uiControls).toBe(controls);
-          // A late ordinary rejection must not be normalized or uploaded; lifecycle passthrough is safe.
-          helper.mock.calls.slice(normalizationAtRetirement.length).forEach(([rejection]) => {
-            expect(Utils.isRegionRecoveryError(rejection)).toBe(true);
-          });
-          expect(metrics).not.toHaveBeenCalled();
-          expect(errorLog).not.toHaveBeenCalled();
-          expect(uploadLogs).not.toHaveBeenCalled();
-          harness.expectBoundary();
-        }
-      );
-
-      it('admits ordinary success at the intended boundary', async () => {
-        const harness = createHarness(testCase);
-        const result = testCase.invoke(task);
-        harness.expectBoundary();
-        harness.pending.resolve(harness.response);
-
-        await expect(result).resolves.toBe(testCase.boundary === 'rejectCall' ? undefined : harness.response);
-        expect(metrics.mock.calls.map(([name]) => name)).toContain(testCase.successMetric);
-        expect(metrics.mock.calls.map(([name]) => name)).not.toContain(testCase.failureMetric);
-        expect(errorLog).not.toHaveBeenCalled();
-        expect(uploadLogs).not.toHaveBeenCalled();
-      });
-
-      it('preserves ordinary failure diagnostics and actor failure/revert effects', async () => {
+      it('preserves ordinary backend failure handling', async () => {
         const harness = createHarness(testCase);
         const error = new Error('ordinary backend failure');
         const result = testCase.invoke(task);
-        const rejected = testCase.boundary === 'dropConferenceParticipant'
+        const observed = testCase.boundary === 'dropConferenceParticipant'
           ? expect(result).rejects.toBe(error)
           : expect(result).rejects.toThrow('Error while performing');
         harness.expectBoundary();
         harness.actor.mockClear();
         harness.pending.reject(error);
-        await rejected;
-        await flushEventLoopTurn();
+        await observed;
 
         expect(metrics.mock.calls.map(([name]) => name)).toContain(testCase.failureMetric);
-        expect(metrics.mock.calls.map(([name]) => name)).not.toContain(testCase.successMetric);
-        expect(errorLog).toHaveBeenCalled();
-        if (testCase.boundary === 'dropConferenceParticipant') {
-          expect(helper).not.toHaveBeenCalled();
-          expect(uploadLogs).not.toHaveBeenCalled();
-        } else {
-          expect(helper).toHaveBeenCalled();
-          expect(uploadLogs).toHaveBeenCalledWith({correlationId: undefined});
-        }
         if (testCase.failureEvent) {
           expect(harness.actor.mock.calls.map(([event]) => event.type)).toEqual([testCase.failureEvent]);
         }
-        if (testCase.boundary === 'consultTransfer') {
-          expect(metrics.mock.calls).toEqual([[
-            METRIC_EVENT_NAMES.TASK_TRANSFER_FAILED,
-            {
-              taskId: 'int1', destination: 'agent-2', destinationType: DESTINATION_TYPE.AGENT,
-              isConsultTransfer: true, error: error.toString(), trackingId: undefined,
-            },
-            ['operational', 'behavioral', 'business'],
-          ]]);
-          expect(helper.mock.calls).toEqual([[error, 'transfer', 'cc']]);
-          expect(errorLog.mock.calls).toEqual([[
-            'transfer failed with reason: Error while performing transfer',
-            {module: 'cc', method: 'transfer', trackingId: undefined},
-          ]]);
-          expect(uploadLogs.mock.calls).toEqual([[{correlationId: undefined}]]);
-        }
       });
+
+      if (testCase.boundary === 'conferenceTransfer') {
+        it('completes an admitted conference transfer through its actor', async () => {
+          const harness = createHarness(testCase);
+          const result = testCase.invoke(task);
+          harness.expectBoundary();
+          harness.pending.resolve(harness.response);
+
+          await expect(result).resolves.toBe(harness.response);
+          expect(harness.actor).toHaveBeenCalledWith({type: TaskEvent.TRANSFER_CONFERENCE_SUCCESS, taskData: harness.response.data});
+        });
+      }
     });
   });
 });

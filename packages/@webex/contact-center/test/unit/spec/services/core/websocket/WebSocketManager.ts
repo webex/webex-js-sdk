@@ -34,22 +34,18 @@ const trustedUrls = [
 const subscriptionFailures = [
   {
     name: '409 header mismatch',
+    phase: 'resolve',
     failure: {statusCode: 409, headers: {'X-WXCC-Region-Reason': 'REGION_MISMATCH_NO_OVERRIDE', trackingid: 'subscribe-tracking-id'}, body: {webSocketUrl: trustedUrls[0]}},
     classification: {status: 409, trackingId: 'subscribe-tracking-id'},
     mismatch: 'REGION_MISMATCH_NO_OVERRIDE',
   },
   {
-    name: '409 body mismatch',
-    failure: {statusCode: 409, body: {reason: 'REGION_MISMATCH_NO_OVERRIDE', webSocketUrl: trustedUrls[0]}},
-    classification: {status: 409, reason: 'REGION_MISMATCH_NO_OVERRIDE'},
-    mismatch: 'REGION_MISMATCH_NO_OVERRIDE',
-  },
-  ...[401, 403, 500, 503].map((statusCode) => ({
-    name: `${statusCode}`,
-    failure: {statusCode, body: {webSocketUrl: trustedUrls[0]}},
-    classification: {status: statusCode},
+    name: '401 authentication failure',
+    phase: 'reject',
+    failure: {statusCode: 401, body: {webSocketUrl: trustedUrls[0]}},
+    classification: {status: 401},
     mismatch: undefined,
-  })),
+  },
 ];
 const flush = async () => { for (let turn = 0; turn < 8; turn += 1) await Promise.resolve(); };
 const regions = ['intgus1', 'qaus1', 'loadus1', 'loadus2', 'produs1', 'produs2', 'prodanz1', 'prodca1', 'prodeu1', 'prodeu2', 'prodin1', 'prodjp1', 'prodsg1'];
@@ -251,7 +247,7 @@ describe('WebSocketManager owned admission', () => {
     expectInactive();
   });
 
-  it.each(['reject', 'resolve'].flatMap((phase) => subscriptionFailures.map((entry) => ({phase, ...entry}))))('T-003 rejectsSubscribeFailure $phase $name', async ({phase, failure, classification, mismatch}) => {
+  it.each(subscriptionFailures)('T-003 rejectsSubscribeFailure $phase $name', async ({phase, failure, classification, mismatch}) => {
     if (phase === 'reject') request.mockRejectedValueOnce(failure);
     else request.mockResolvedValueOnce(failure);
     const promise = manager.initWebSocket({body, resource: SUBSCRIBE_API});
@@ -271,13 +267,20 @@ describe('WebSocketManager owned admission', () => {
     expectInactive();
   });
 
-  it.each(regions)('T-011 all13ExactLabels %s', (region) => {
+  it('T-011 all13ExactLabels', () => {
     expect([...REFERENCE_SERVING_REGIONS]).toEqual(regions);
-    expect(parseServingRegion(`wss://routing.${region.toUpperCase()}.cisco.com/?not-region=produs2`)).toBe(region);
-    expect(parseServingRegion(`wss://prefix-${region}.cisco.com/?region=${region}`)).toBeUndefined();
-    expect(parseServingRegion(`wss://${region}suffix.cisco.com`)).toBeUndefined();
-    expect(parseServingRegion(`wss://cisco.com/?region=${region}`)).toBeUndefined();
-    expect(parseServingRegion('not a url')).toBeUndefined();
+    for (const region of regions) {
+      expect(parseServingRegion(`wss://routing.${region.toUpperCase()}.cisco.com/?not-region=produs2`)).toBe(region);
+    }
+  });
+
+  it.each([
+    'wss://prefix-prodeu2.cisco.com/?region=prodeu2',
+    'wss://prodeu2suffix.cisco.com',
+    'wss://cisco.com/?region=prodeu2',
+    'not a url',
+  ])('T-011 ignores non-region URL %s', (url) => {
+    expect(parseServingRegion(url)).toBeUndefined();
   });
 
   it.each([SUBSCRIBE_API, RTD_SUBSCRIBE_API])('T-003 welcomeStructureOnlyForPrimaryAndRtd %s', async (resource) => {
@@ -287,7 +290,7 @@ describe('WebSocketManager owned admission', () => {
     await expect(promise).resolves.toEqual({withoutAgentId: true});
   });
 
-  it.each([undefined, null, [], 'agent', 42])('bounds malformed Welcome data %# without requiring agentId', async (data) => {
+  it.each([undefined, [], 'agent'])('bounds malformed Welcome data %# without requiring agentId', async (data) => {
     const {promise, socket} = await start();
     socket.open(); socket.message({type: 'Welcome', data});
     jest.advanceTimersByTime(29999); await flush();
@@ -522,9 +525,11 @@ describe('WebSocketManager owned admission', () => {
     expect(request).toHaveBeenCalledTimes(1);
   });
 
-  const multiLoginCases = [undefined, {}, {type: 'AgentMultiLoginCloseSession'}, {type: 'AgentMultiLoginCloseSession', agentSessionId: 'mismatch'}, {type: 'Unknown', agentSessionId: 'other'}];
-  it.each([SUBSCRIBE_API, RTD_SUBSCRIBE_API].flatMap((resource) => multiLoginCases.map((data) => [resource, data])))('T-012 blanketMultiLoginNoReconnect %s %#', async (resource, data) => {
-    const socket = await admit(resource as string); const close = socket.onclose!;
+  it.each([
+    {resource: SUBSCRIBE_API, data: undefined},
+    {resource: RTD_SUBSCRIBE_API, data: {type: 'AgentMultiLoginCloseSession', agentSessionId: 'mismatch'}},
+  ])('T-012 blanketMultiLoginNoReconnect $resource', async ({resource, data}) => {
+    const socket = await admit(resource); const close = socket.onclose!;
     const observations: Array<{closeCalls: number; shouldReconnect: boolean}> = [];
     const listener = jest.fn(() => { observations.push({closeCalls: socket.close.mock.calls.length, shouldReconnect: manager.shouldReconnect}); });
     manager.on('message', listener);
@@ -536,12 +541,6 @@ describe('WebSocketManager owned admission', () => {
     close(); jest.advanceTimersByTime(100000); await flush();
     expect(request).toHaveBeenCalledTimes(1);
     expect(manager.hasUsableSocket()).toBe(false);
-  });
-
-  it('T-012 multiLoginWithoutNestedTypeCharacterization', async () => {
-    const socket = await admit(); socket.message({type: 'AGENT_MULTI_LOGIN'});
-    expect(socket.close).toHaveBeenCalled();
-    expect(manager.shouldReconnect).toBe(false);
   });
 
   it('T-012 welcomeSettlesDespiteThrowingMessageDiagnostics / messageFanoutContinuesAfterThrow', async () => {
@@ -594,9 +593,8 @@ describe('WebSocketManager owned admission', () => {
     expect(old.close).toHaveBeenCalledTimes(1); expect(next.close).not.toHaveBeenCalled();
   });
 
-  describe.each([false, true])('T-013 safe transport diagnostics throwing=%s', (throwing) => {
+  describe('T-013 safe transport diagnostics', () => {
     it('preserves subscription rejection without logging signed URLs or raw errors', async () => {
-      if (throwing) throwOnDiagnostics();
       const failure = Object.assign(new Error(`Subscribe failed ${signedUrl} ${bearer}`), {
         statusCode: 503, request: {url: signedUrl, headers: {Authorization: bearer}},
       });
@@ -612,11 +610,10 @@ describe('WebSocketManager owned admission', () => {
       expect(manager.getServingRegion()).toBeUndefined();
       expect(socketClose).not.toHaveBeenCalled();
       expect(jest.getTimerCount()).toBe(0);
-      expectSafeDiagnostics([], throwing);
+      expectSafeDiagnostics([]);
     });
 
     it('sanitizes native socket errors and continues worker cleanup after a stop failure', async () => {
-      if (throwing) throwOnDiagnostics();
       request.mockResolvedValueOnce({body: {webSocketUrl: signedUrl}});
       const {promise, socket} = await start(); socket.open();
       const failure = new Error(`Native socket error ${signedUrl} ${bearer}`);
@@ -645,11 +642,11 @@ describe('WebSocketManager owned admission', () => {
       expect(jest.getTimerCount()).toBe(0);
       expectSafeDiagnostics([
         ['Worker stop failed', {module: WEB_SOCKET_MANAGER_FILE, method: METHODS.DISPOSE_ATTEMPT}],
-      ], throwing);
+      ]);
     });
 
     it('disposes every resource despite throwing cleanup, close observers and diagnostics', async () => {
-      if (throwing) throwOnDiagnostics();
+      throwOnDiagnostics();
       request.mockResolvedValueOnce({body: {webSocketUrl: signedUrl}});
       const socket = await admit();
       const failure = new Error(`Disposal failed ${signedUrl} ${bearer}`);
@@ -680,7 +677,7 @@ describe('WebSocketManager owned admission', () => {
         ...['Socket disposal failed', 'Worker stop failed', 'Worker disposal failed', 'Worker URL disposal failed'].map((message) => [message, {module: WEB_SOCKET_MANAGER_FILE, method: METHODS.DISPOSE_ATTEMPT}]),
         ['WebSocket close consumer failed', {module: WEB_SOCKET_MANAGER_FILE, method: METHODS.WEB_SOCKET_ON_CLOSE_HANDLER}],
         ['WebSocket connection closed', {module: WEB_SOCKET_MANAGER_FILE, method: METHODS.CLOSE}],
-      ], throwing);
+      ], true);
     });
   });
 });

@@ -19,16 +19,6 @@ The `ContactCenter` package is designed to provide a set of APIs to perform vari
 - [Introduction to the Webex Web Calling SDK]()
 - [Quickstart guide]().
 
-## Multi-region recovery
-
-Recovery requires a compatible SDK release and backend entitlement. Entitlement changes
-are observed on the next register, with no polling or SDK toggle. Reader dependency
-failure retains unknown eligibility. Delivery-owned SDK release rollback and platform
-entitlement management control rollback. See [rollout, rollback and release evidence](docs/getting-started.md#multi-region-recovery-rollout-and-rollback).
-
-Use the canonical [host restart guidance](docs/getting-started.md#multi-region-recovery-host-restart)
-and [accessibility guidance](docs/getting-started.md#recovery-accessibility-guidance).
-
 ## Developing
 
 ```bash

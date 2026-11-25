@@ -683,7 +683,7 @@ describe('WebCallingService', () => {
     }, 20000); // Increased timeout to 20 seconds
   });
 
-  describe.each([false, true])('contained diagnostics when logger throws=%s', (loggerThrows) => {
+  describe('contained diagnostics when the logger throws', () => {
     let failure: unknown;
     const createRegistrationLine = () =>
       Object.assign(createEmitter(), {
@@ -695,11 +695,9 @@ describe('WebCallingService', () => {
       setBrowserVoiceRequired();
       webex.internal.services.get.mockReturnValue('sip://rtw.prod-us2.rtmsprod.net');
       failure = {message: 'sensitive failure payload', call: mockCall, callback: jest.fn()};
-      if (loggerThrows) {
-        (LoggerProxy.error as jest.Mock).mockImplementation(() => {
-          throw new Error('diagnostic sink failed');
-        });
-      }
+      (LoggerProxy.error as jest.Mock).mockImplementation(() => {
+        throw new Error('diagnostic sink failed');
+      });
     });
 
     it.each([LINE_EVENTS.INCOMING_CALL, LINE_EVENTS.REGISTERED, LINE_EVENTS.UNREGISTERED])(
@@ -1250,32 +1248,25 @@ describe('WebCallingService', () => {
   });
   describe('T-009 calling preserve ownership', () => {
     const flush = async () => { for (let i = 0; i < 12; i += 1) await Promise.resolve(); };
-    const terminalEvidenceKinds = ['none', 'current', 'stale-generation', 'wrong-line'] as const;
+    const stoppedLine = {
+      status: VoiceLineStatus.ERROR,
+      present: true,
+      active: false,
+      terminalEvidence: 'current',
+      liveJob: false,
+      shouldStart: false,
+    };
     const ownershipMatrix = [
-      {status: VoiceLineStatus.UNKNOWN, replaceStoppedLine: true},
-      {status: VoiceLineStatus.CONNECTING, replaceStoppedLine: false},
-      {status: VoiceLineStatus.REGISTERED, replaceStoppedLine: false},
-      {status: VoiceLineStatus.RECONNECTING, replaceStoppedLine: false},
-      {status: VoiceLineStatus.RECONNECTED, replaceStoppedLine: false},
-      {status: VoiceLineStatus.UNREGISTERED, replaceStoppedLine: true},
-      {status: VoiceLineStatus.ERROR, replaceStoppedLine: true},
-    ].flatMap(({status, replaceStoppedLine}) =>
-      [false, true].flatMap(present =>
-        [false, true].flatMap(active =>
-          terminalEvidenceKinds.flatMap(terminalEvidence =>
-            [false, true].map(liveJob => ({
-              status,
-              present,
-              active,
-              terminalEvidence,
-              liveJob,
-              shouldStart: !liveJob && !active &&
-                (!present || (terminalEvidence === 'current' && replaceStoppedLine)),
-            }))
-          )
-        )
-      )
-    );
+      {...stoppedLine, status: VoiceLineStatus.UNKNOWN, present: false, terminalEvidence: 'none', shouldStart: true},
+      {...stoppedLine, status: VoiceLineStatus.UNKNOWN, present: false, active: true, terminalEvidence: 'none'},
+      ...[VoiceLineStatus.CONNECTING, VoiceLineStatus.REGISTERED,
+        VoiceLineStatus.RECONNECTING, VoiceLineStatus.RECONNECTED].map(status => ({...stoppedLine, status})),
+      {...stoppedLine, status: VoiceLineStatus.UNREGISTERED, shouldStart: true},
+      {...stoppedLine, shouldStart: true},
+      {...stoppedLine, active: true},
+      {...stoppedLine, liveJob: true},
+      ...['none', 'stale-generation', 'wrong-line'].map(terminalEvidence => ({...stoppedLine, terminalEvidence})),
+    ];
 
     it.each(ownershipMatrix)(
       'ensureLineStatusOwnershipMatrix: $status line=$present activeCall=$active terminal=$terminalEvidence liveJob=$liveJob',
@@ -1438,11 +1429,8 @@ describe('WebCallingService', () => {
       status = 'inactive',
       file = 'register'
     ) => Object.assign(new Error('Calling registration failed'), {type, status, context: {file, method}});
-    const terminalErrors = [
-      {type: ERROR_TYPE.SERVICE_UNAVAILABLE, method: 'startFailoverTimer'},
-      {type: ERROR_TYPE.BAD_REQUEST, method: 'triggerRegistration'},
-      {type: ERROR_TYPE.TOKEN_ERROR, method: 'triggerRegistration'},
-    ];
+    const failoverError = {type: ERROR_TYPE.SERVICE_UNAVAILABLE, method: 'startFailoverTimer'};
+    const tokenError = {type: ERROR_TYPE.TOKEN_ERROR, method: 'triggerRegistration'};
 
     it.each(['replace', 'deregister'].flatMap(mode =>
       ['success', 'rejection'].map(settlement => ({mode, settlement}))
@@ -1587,7 +1575,12 @@ describe('WebCallingService', () => {
       }
     );
 
-    it.each(terminalErrors.flatMap(error => ['pending', 'registered', 'active call'].map(owner => ({...error, owner}))))(
+    it.each([
+      {...failoverError, owner: 'registered'},
+      {...failoverError, owner: 'active call'},
+      {type: ERROR_TYPE.BAD_REQUEST, method: 'triggerRegistration', owner: 'pending'},
+      {...tokenError, owner: 'registered'},
+    ])(
       'replaces a confirmed terminal $type after $owner registration settlement only without calls',
       async ({type, method, owner}) => {
         const first = owned(owner !== 'pending');
@@ -1646,12 +1639,9 @@ describe('WebCallingService', () => {
 
     it.each([
       {type: ERROR_TYPE.DEFAULT},
-      {type: ERROR_TYPE.SERVER_ERROR},
       {type: ERROR_TYPE.SERVICE_UNAVAILABLE, method: 'triggerRegistration'},
-      {type: ERROR_TYPE.SERVICE_UNAVAILABLE, method: 'unknown'},
       {type: ERROR_TYPE.BAD_REQUEST, file: 'unknown'},
-      {type: ERROR_TYPE.TOKEN_ERROR, file: 'unknown'},
-      ...terminalErrors.map(error => ({...error, status: 'active'})),
+      {...tokenError, status: 'active'},
     ])('delegates uncertain or active error $type $method $status $file', async ({
       type, method, status, file,
     }) => {

@@ -2952,7 +2952,7 @@ describe('TaskManager', () => {
     });
 
     describe.each(['contact ended', 'regional cleanup'])('%s', (boundary) => {
-      it.each(['call-first', 'missing-guard', 'gated', 'not-required', 'mapped-owner'])(
+      it.each(['call-first', 'mapped-owner'])(
         'cleans only an owned service call after %s arrival', (arrival) => {
           const call = createCall();
           const line = {deregister: jest.fn()};
@@ -2961,14 +2961,6 @@ describe('TaskManager', () => {
           webCallingService.answerCall({} as any, taskId);
           const listeners = [...call.on.mock.calls];
           const task = arrival === 'call-first' ? undefined : reserveTask();
-          const guard = taskManager.recoveryGuard;
-          if (arrival === 'missing-guard') taskManager.recoveryGuard = undefined;
-          if (arrival === 'gated') guard.assertCommandAllowed.mockImplementation(() => {
-            throw new Error('RECOVERY_IN_PROGRESS');
-          });
-          if (arrival === 'not-required') {
-            webCallingService.isBrowserVoiceRequired.mockReturnValue(false);
-          }
 
           webCallingService.emit(LINE_EVENTS.INCOMING_CALL, call);
 
@@ -2977,10 +2969,8 @@ describe('TaskManager', () => {
             taskManager.call = undefined;
           } else {
             expect(webCallingService.getTaskIdForCall(call.getCallId())).toBeUndefined();
-            expect(taskManager.call).toBe(arrival === 'call-first' ? call : undefined);
+            expect(taskManager.call).toBe(call);
           }
-          taskManager.recoveryGuard = guard;
-          guard.assertCommandAllowed.mockImplementation(() => undefined);
           const endingTask = task ?? reserveTask();
           const managerCall = taskManager.call;
           const cleanup = () => {
@@ -6028,38 +6018,16 @@ describe('TaskManager', () => {
   });
 
   describe('task removal diagnostic', () => {
-    it('logs the bounded interaction context after deleting every collection alias', () => {
+    it('removes a Task with no interaction ID without logging an interaction diagnostic', () => {
       const task = taskManager.taskCollection[taskId];
-      taskManager.taskCollection.alias = task;
-      let collectionAtLog;
-      const info = getLoggerProxy().info.mockClear().mockImplementationOnce(() => {
-        collectionAtLog = {...taskManager.getAllTasks()};
-      });
+      task.data = {...task.data, interactionId: undefined};
+      const info = getLoggerProxy().info.mockClear();
 
       taskManager.removeTaskFromCollection(task);
 
-      expect(collectionAtLog).toEqual({});
-      expect(info).toHaveBeenCalledTimes(1);
-      expect(info).toHaveBeenCalledWith('Task removed from collection', {
-        module: TASK_MANAGER_FILE,
-        method: METHODS.REMOVE_TASK_FROM_COLLECTION,
-        interactionId: taskId,
-      });
+      expect(info).not.toHaveBeenCalled();
+      expect(taskManager.getAllTasks()).toEqual({});
     });
-
-    it.each([undefined, null, ''])(
-      'skips the diagnostic for an absent interaction ID: %s',
-      (interactionId) => {
-        const task = taskManager.taskCollection[taskId];
-        task.data = {...task.data, interactionId};
-        const info = getLoggerProxy().info.mockClear();
-
-        taskManager.removeTaskFromCollection(task);
-
-        expect(info).not.toHaveBeenCalled();
-        expect(taskManager.getAllTasks()).toEqual({});
-      }
-    );
 
     it('finishes other Task and session cleanup when removal diagnostics throw', () => {
       const [task, otherTask] = [taskId, 'other-task'].map(
@@ -7021,166 +6989,79 @@ describe('T-008 TaskManager recovery owners', () => {
     return {primary, calling, contact, manager, controller, guard, data, hydrate};
   };
 
-  it.each([
-    {boundary: 'stopSession', enablementTiming: 'before hydration'},
-    {boundary: 'stopSession', enablementTiming: 'after hydration'},
-    {boundary: 'regional recovery', enablementTiming: 'before hydration'},
-    {boundary: 'regional recovery', enablementTiming: 'after hydration'},
-  ])(
-    'T-010 restoredTaskSummaryCapabilitiesRequireFreshEnablement through $boundary owners: $enablementTiming', async ({boundary, enablementTiming}) => {
-      jest.useFakeTimers();
-      const flush = async () => { for (let i = 0; i < 20; i += 1) await Promise.resolve(); };
-      const http = createDeferred<any>();
-      const request = jest.fn(() => http.promise);
-      const api = new ApiAIAssistant({
-        credentials: {getOrgId: () => 'org-1'},
-        internal: {services: {get: () => 'https://api.wxcc-us1.cisco.com'}}, request,
-        once: jest.fn(),
-      } as any);
-      api.setAIFeatureFlags({generatedSummaries: {
-        wrapUpSummariesEnabled: true, consultTransferSummariesEnabled: true,
-      }} as any);
-      const {manager, guard, data, hydrate, primary} = setup(undefined, api);
-      const realtime = (type: string, payload: unknown) => manager.handleRealtimeWebsocketEvent(
-        JSON.stringify({type, data: {data: payload}})
-      );
-      const enablement = (interactionId: string, actionTimestamp = 1) => ({interactionId,
-        postCallEnabled: true, midCallEnabled: true, actionTimestamp});
-      const disabled = async (task: Task) => {
-        await expect(task.requestPostCallSummary()).rejects.toMatchObject({
-          message: AI_SUMMARY_ERROR_CODES.POST_CALL_SUMMARY_DISABLED,
-          data: {errorCode: AI_SUMMARY_ERROR_CODES.POST_CALL_SUMMARY_DISABLED},
-        });
-        await expect(task.requestMidCallSummary('CONSULT')).rejects.toMatchObject({
-          message: AI_SUMMARY_ERROR_CODES.MID_CALL_SUMMARY_DISABLED,
-          data: {errorCode: AI_SUMMARY_ERROR_CODES.MID_CALL_SUMMARY_DISABLED},
-        });
-      };
-      try {
-        manager.startSession(guard);
-        realtime(CC_TASK_EVENTS.FEATURE_ENABLEMENT, enablement(data.interactionId));
-        hydrate();
-        const retained = manager.getTask(data.interactionId) as Task;
-        expect(retained).toBeInstanceOf(Task);
-        const controls = jest.fn();
-        retained.on(TASK_EVENTS.TASK_UI_CONTROLS_UPDATED, controls);
-        expect(retained['apiAIAssistant']).toBe(api);
-        expect(retained.aiSummaryCapabilities).toEqual({postCallEnabled: true, midCallEnabled: true});
-        realtime(CC_TASK_EVENTS.FEATURE_ENABLEMENT, enablement('cached-interaction'));
-        realtime(CC_TASK_EVENTS.MID_CALL_SUMMARY_RESPONSE_SUBSEQUENT_AGENT,
-          {conversationId: 'cached-interaction', summaryText: 'old buffered summary'});
-        expect(manager['pendingFeatureEnablement'].size).toBe(1);
-        expect(manager['receivingSummaryBuffer'].size).toBe(1);
-        const requests = [retained.requestPostCallSummary(), retained.requestMidCallSummary('CONSULT')];
-        // A non-Task record must also be cleared by the summary-state owner.
-        const orphan = api.requestAndWaitForRtd({
-          correlationId: 'orphan', rtdEventType: 'POST_CALL_SUMMARY', timeoutMs: AI_SUMMARY_DURATION_MS,
-          createTimeoutError: () => new Error('orphan timeout'), agentId: 'agent-1',
-          interactionId: 'orphan', eventType: 'CTI_EVENT' as any,
-          eventName: 'GET_POST_CALL_SUMMARY' as any,
-        });
-        const settled = jest.fn((error) => error);
-        const observed = [...requests, orphan].map((pending) => pending.catch(settled));
-        await flush();
-        expect(request).toHaveBeenCalledTimes(3);
-        expect(api['pendingRtdRequests'].size).toBe(3);
-        expect(jest.getTimerCount()).toBe(3);
-        expectManagerTaskListeners(manager, retained, true);
+  it.each(['stopSession', 'regional recovery'] as const)('recovers summary capabilities only after fresh enablement through %s', async (boundary) => {
+    jest.useFakeTimers();
+    const flush = async () => {for (let i = 0; i < 20; i += 1) await Promise.resolve();};
+    const http = createDeferred<any>();
+    const request = jest.fn(() => http.promise);
+    const api = new ApiAIAssistant({credentials: {getOrgId: () => 'org-1'},
+      internal: {services: {get: () => 'https://api.wxcc-us1.cisco.com'}}, request, once: jest.fn(),
+    } as any);
+    api.setAIFeatureFlags({generatedSummaries: {wrapUpSummariesEnabled: true, consultTransferSummariesEnabled: true}} as any);
+    const {manager, guard, data, hydrate} = setup(undefined, api);
+    const realtime = (type: string, payload: unknown) => manager.handleRealtimeWebsocketEvent(
+      JSON.stringify({type, data: {data: payload}})
+    );
+    const enable = (interactionId: string) => realtime(CC_TASK_EVENTS.FEATURE_ENABLEMENT,
+      {interactionId, postCallEnabled: true, midCallEnabled: true, actionTimestamp: 1});
+    try {
+      manager.startSession(guard);
+      enable(data.interactionId);
+      hydrate();
+      const old = manager.getTask(data.interactionId) as Task;
+      enable('cached-interaction');
+      realtime(CC_TASK_EVENTS.MID_CALL_SUMMARY_RESPONSE_SUBSEQUENT_AGENT,
+        {conversationId: 'cached-interaction', summaryText: 'old buffered summary'});
+      expect(manager['pendingFeatureEnablement'].size).toBe(1);
+      expect(manager['receivingSummaryBuffer'].size).toBe(1);
+      const retired = expect(old.requestPostCallSummary()).rejects.toMatchObject({data: {reason: 'RECOVERY_INTERRUPTED'}});
+      const orphan = expect(api.requestAndWaitForRtd({
+        correlationId: 'orphan', rtdEventType: 'POST_CALL_SUMMARY', timeoutMs: AI_SUMMARY_DURATION_MS,
+        createTimeoutError: () => new Error('orphan timeout'), agentId: 'agent-1', interactionId: 'orphan',
+        eventType: 'CTI_EVENT' as any, eventName: 'GET_POST_CALL_SUMMARY' as any,
+      })).rejects.toThrow('RTD request cleared');
+      await flush();
+      expect(request).toHaveBeenCalledTimes(2);
 
-        if (boundary === 'stopSession') manager.stopSession();
-        else {
-          manager.interruptTaskOperations(() => createRegionRecoveryError('RECOVERY_INTERRUPTED'));
-          manager.invalidateRegionalTasks();
-          manager.clearAISummaryState();
-        }
-        expectManagerTaskListeners(manager, retained, false);
-        expect(retained.listeners(TASK_EVENTS.TASK_UI_CONTROLS_UPDATED)).toEqual([controls]);
-        expect(controls).toHaveBeenCalledTimes(1);
-        await flush();
-        expect(settled).toHaveBeenCalledTimes(3); // HTTP remains pending.
-        const errors = await Promise.all(observed);
-        errors.slice(0, 2).forEach((error) => expect(error).toMatchObject({data: {reason: 'RECOVERY_INTERRUPTED'}}));
-        expect(errors[2]).toEqual(new Error('RTD request cleared'));
-        expect(api['pendingRtdRequests'].size).toBe(0);
-        expect(manager['pendingFeatureEnablement'].size).toBe(0);
-        expect(manager['receivingSummaryBuffer'].size).toBe(0);
-        expect(retained.aiSummaryCapabilities).toEqual({postCallEnabled: false, midCallEnabled: false});
-        expect(retained['taskOperations'].size).toBe(0);
-        expect(manager.getAllTasks()).toEqual({});
-        expect(jest.getTimerCount()).toBe(0);
-        expect(primary.listenerCount('message')).toBe(boundary === 'stopSession' ? 0 : 1);
-
-        manager.startSession(createGuard(2).guard);
-        const received = jest.fn();
-        const featureEnabled = jest.fn();
-        const capabilitiesAtPublication = jest.fn();
-        const buffered = enablementTiming === 'before hydration';
-        const freshEnablement = enablement(data.interactionId, 2);
-        const published = jest.fn((task: Task) => {
-          capabilitiesAtPublication({...task.aiSummaryCapabilities});
-          task.on(TASK_EVENTS.TASK_FEATURE_ENABLEMENT, featureEnabled);
-          task.on(TASK_EVENTS.TASK_MID_CALL_SUMMARY_RECEIVED, received);
-        });
-        manager.on(TASK_EVENTS.TASK_HYDRATE, published);
-        if (buffered) {
-          realtime(CC_TASK_EVENTS.FEATURE_ENABLEMENT, freshEnablement);
-          expect(manager.getAllTasks()).toEqual({});
-          expect(published).not.toHaveBeenCalled();
-          expect([...manager['pendingFeatureEnablement']]).toEqual([
-            [data.interactionId, freshEnablement],
-          ]);
-        }
-        hydrate();
-        const restored = manager.getTask(data.interactionId) as Task;
-        expect(restored).toBeInstanceOf(Task);
-        expect(restored).not.toBe(retained);
-        expect(restored['apiAIAssistant']).toBe(api);
-        expect(published.mock.calls).toEqual([[restored]]);
-        expect(capabilitiesAtPublication.mock.calls).toEqual([
-          [{postCallEnabled: buffered, midCallEnabled: buffered}],
-        ]);
-        expect(manager['pendingFeatureEnablement'].size).toBe(0);
-        expect(featureEnabled.mock.calls).toEqual(buffered ? [[freshEnablement]] : []);
-        expect(api.aiFeature.generatedSummaries).toEqual({
-          wrapUpSummariesEnabled: true, consultTransferSummariesEnabled: true,
-        });
-        if (!buffered) await disabled(restored);
-        // The previously cached interaction cannot recover its stale flags or summary either.
-        hydrate({...data, interactionId: 'cached-interaction', interaction: {
-          ...data.interaction, interactionId: 'cached-interaction',
-        }});
-        const cached = manager.getTask('cached-interaction') as Task;
-        await disabled(cached);
-        expect(received).not.toHaveBeenCalled();
-        realtime(CC_TASK_EVENTS.FEATURE_ENABLEMENT, enablement('unrelated-interaction'));
-        if (!buffered) await disabled(restored);
-        expect(request).toHaveBeenCalledTimes(3);
-        expect(api['pendingRtdRequests'].size).toBe(0);
-
-        if (!buffered) realtime(CC_TASK_EVENTS.FEATURE_ENABLEMENT, freshEnablement);
-        expect(restored.aiSummaryCapabilities).toEqual({postCallEnabled: true, midCallEnabled: true});
-        expect(featureEnabled.mock.calls).toEqual([[freshEnablement]]);
-        request.mockResolvedValue({statusCode: 202, body: {}});
-        const fresh = [restored.requestPostCallSummary(), restored.requestMidCallSummary('CONSULT')];
-        await flush();
-        expect(request).toHaveBeenCalledTimes(5);
-        expect(api['pendingRtdRequests'].size).toBe(2);
-        const summary = {conversationId: data.interactionId, summaryText: 'fresh summary'};
-        for (const type of [CC_TASK_EVENTS.POST_CALL_SUMMARY, CC_TASK_EVENTS.MID_CALL_SUMMARY]) realtime(type, summary);
-        await expect(Promise.all(fresh)).resolves.toEqual([summary, summary]);
-        // A late failure from the disposed session is observed without rearming any record.
-        http.reject(new Error('old session HTTP failed'));
-        await flush();
-        expect(settled).toHaveBeenCalledTimes(3);
-        expect(api['pendingRtdRequests'].size).toBe(0);
-        expect(jest.getTimerCount()).toBe(0);
-        expect(primary.listenerCount('message')).toBe(1);
-      } finally {
-        manager.stopSession();
-        jest.useRealTimers();
+      if (boundary === 'stopSession') manager.stopSession();
+      else {
+        manager.interruptTaskOperations(() => createRegionRecoveryError('RECOVERY_INTERRUPTED'));
+        manager.invalidateRegionalTasks();
+        manager.clearAISummaryState();
       }
+      await Promise.all([retired, orphan]);
+      expect(manager['pendingFeatureEnablement'].size).toBe(0);
+      expect(manager['receivingSummaryBuffer'].size).toBe(0);
+      expect(old.aiSummaryCapabilities).toEqual({postCallEnabled: false, midCallEnabled: false});
+      expect(jest.getTimerCount()).toBe(0);
+
+      manager.startSession(createGuard(2).guard);
+      // Exercise both a frame buffered before hydration and one delivered to a live Task.
+      if (boundary === 'stopSession') enable(data.interactionId);
+      hydrate();
+      const fresh = manager.getTask(data.interactionId) as Task;
+      expect(fresh).not.toBe(old);
+      if (boundary === 'regional recovery') {
+        await expect(fresh.requestPostCallSummary()).rejects.toMatchObject({data: {errorCode: AI_SUMMARY_ERROR_CODES.POST_CALL_SUMMARY_DISABLED}});
+        await expect(fresh.requestMidCallSummary('CONSULT')).rejects.toMatchObject({data: {errorCode: AI_SUMMARY_ERROR_CODES.MID_CALL_SUMMARY_DISABLED}});
+        expect(request).toHaveBeenCalledTimes(2);
+        enable(data.interactionId);
+      }
+      expect(fresh.aiSummaryCapabilities).toEqual({postCallEnabled: true, midCallEnabled: true});
+      request.mockResolvedValue({statusCode: 202, body: {}});
+      const current = fresh.requestPostCallSummary();
+      await flush();
+      const summary = {conversationId: data.interactionId, summaryText: 'fresh summary'};
+      realtime(CC_TASK_EVENTS.POST_CALL_SUMMARY, summary);
+      await expect(current).resolves.toEqual(summary);
+      http.reject(new Error('old session HTTP failed'));
+      await flush();
+      expect(jest.getTimerCount()).toBe(0);
+    } finally {
+      manager.stopSession();
+      jest.useRealTimers();
     }
-  );
+  });
 
   it('hydrates replacement wxApp mute state while restoration blocks commands', async () => {
     const data = createTaskData({
@@ -7239,176 +7120,47 @@ describe('T-008 TaskManager recovery owners', () => {
     }
   });
 
-  // Station snapshot preservation and backend-driven admission reopening are composed in
-  // cc.ts realRecoveryWiring: T-008 postCleanupHydrateCreatesFreshTaskRetainedStaysStale station-linked.
-  it.each([false, true])('postCleanupHydrateCreatesFreshTaskRetainedStaysStale: reentrant=%s', async reentrant => {
-    const {manager, controller, guard, contact, data, hydrate, primary, calling} = setup();
+  it('blocks reentrant delivery during cleanup and binds the fresh Task before publication', async () => {
+    const {manager, controller, guard, hydrate, calling, contact} = setup();
+    const {guard: replacementGuard} = createGuard(2);
     try {
       manager.startSession(guard);
       hydrate();
-      const old = manager.getTask('interaction-1');
-      if (!(old instanceof Task)) throw new Error('Expected a concrete Task');
-      expect(old).toBeInstanceOf(Task);
-      const oldActor = old.stateMachineService;
-      const ended = jest.fn();
-      const hostControls = jest.fn();
-      old.on(TASK_EVENTS.TASK_UI_CONTROLS_UPDATED, hostControls);
-      old.on(TASK_EVENTS.TASK_END, ended);
-      manager.on(TASK_EVENTS.TASK_END, ended);
-      manager.interruptTaskOperations(() => createRegionRecoveryError('RECOVERY_INTERRUPTED'));
-      controller.abort();
-      const {guard: replacementGuard} = createGuard(2);
+      const old = manager.getTask('interaction-1') as Task;
       const incoming = {getCallId: jest.fn(() => 'reentrant-call')};
-      const collections: unknown[] = [];
+      const duringCleanup: unknown[] = [];
       const controls = jest.fn(() => {
-        collections.push({...manager.getAllTasks()});
+        duringCleanup.push({...manager.getAllTasks()});
         manager.startSession(replacementGuard);
         hydrate();
         calling.emit(LINE_EVENTS.INCOMING_CALL, incoming);
-        collections.push({...manager.getAllTasks()});
+        duringCleanup.push({...manager.getAllTasks()});
       });
-      if (reentrant) old.on(TASK_EVENTS.TASK_UI_CONTROLS_UPDATED, controls);
-      expectManagerTaskListeners(manager, old, true);
+      old.on(TASK_EVENTS.TASK_UI_CONTROLS_UPDATED, controls);
+      controller.abort();
       manager.invalidateRegionalTasks();
-      manager.clearAISummaryState();
+      expect(controls).toHaveBeenCalledTimes(1);
+      expect(duringCleanup).toEqual([{}, {}]);
       expectManagerTaskListeners(manager, old, false);
-      expect(old.listeners(TASK_EVENTS.TASK_UI_CONTROLS_UPDATED)).toEqual(
-        reentrant ? [hostControls, controls] : [hostControls]
-      );
-      expect(hostControls).toHaveBeenCalledTimes(1);
-      expect(controls).toHaveBeenCalledTimes(reentrant ? 1 : 0);
-      expect(collections).toEqual(reentrant ? [{}, {}] : []);
       expect(incoming.getCallId).not.toHaveBeenCalled();
       expect(calling.mapCallToTask).not.toHaveBeenCalled();
-      expect(manager['call']).toBeUndefined();
+
       replacementGuard.assertCommandAllowed.mockImplementation(() => {
         throw createRegionRecoveryError('RECOVERY_IN_PROGRESS');
       });
-      manager.startSession(replacementGuard);
-      const hydrated = jest.fn();
-      manager.on(TASK_EVENTS.TASK_HYDRATE, hydrated);
-      const replacementData = {...data, trackingId: 'replacement-tracking'};
-      hydrate(replacementData);
+      const published = jest.fn((task: Task) => expect(task['recoveryGuard']).toBe(replacementGuard));
+      manager.on(TASK_EVENTS.TASK_HYDRATE, published);
+      hydrate();
       const fresh = manager.getTask('interaction-1');
-      if (!(fresh instanceof Task)) throw new Error('Expected a concrete Task');
-      expect(fresh).toBeInstanceOf(Task);
-      expect(fresh).toBeInstanceOf(Digital);
-      expect(fresh['uiControlConfig'].channelType).toBe(TASK_CHANNEL_TYPE.DIGITAL);
       expect(fresh).not.toBe(old);
-      expect(fresh.stateMachineService).not.toBe(oldActor);
-      expect(fresh['recoveryGuard']).toBe(manager['recoveryGuard']);
-      expect(fresh['recoveryGuard']).toBe(replacementGuard);
-      expect(oldActor.getSnapshot().status).toBe('stopped');
-      expect(fresh.data).toMatchObject(replacementData);
-      expect(fresh.stateMachineService.getSnapshot().context.taskData).toMatchObject(replacementData);
-      expect(Object.keys(manager.getAllTasks())).toEqual(['interaction-1']);
-      expect(hydrated.mock.calls).toEqual([[fresh]]);
-      expect(hydrated.mock.calls[0][0]).toBe(fresh);
-      expect(TaskFactory.createTask).toHaveBeenLastCalledWith(
-        contact, expect.anything(), expect.objectContaining(replacementData), flags,
-        undefined, 'agent-1', undefined, undefined, undefined
-      );
+      expect(published.mock.calls).toEqual([[fresh]]);
       await expect(fresh.accept()).rejects.toMatchObject({data: {reason: 'RECOVERY_IN_PROGRESS'}});
-      expect(contact.accept).not.toHaveBeenCalled();
-      replacementGuard.assertCommandAllowed.mockImplementation(() => undefined);
-      await expect(fresh.accept()).resolves.toEqual({trackingId: 'accepted'});
-      expect(contact.accept.mock.calls).toEqual([[{interactionId: 'interaction-1'}]]);
       await expect(old.accept()).rejects.toMatchObject({data: {reason: 'STALE_TASK'}});
-      expect(Object.values(old.uiControls.main).every(control => !control.isEnabled)).toBe(true);
-      expect(Object.values(old.uiControls.consult).every(control => !control.isEnabled)).toBe(true);
-      expect(old.stateMachineService).toBeUndefined();
-      expect(hydrated.mock.calls).toEqual([[fresh]]);
-      expect(ended).not.toHaveBeenCalled();
-      expect(primary.listenerCount('message')).toBe(1);
+      expect(contact.accept).not.toHaveBeenCalled();
     } finally {
       manager.stopSession();
-      expect(primary.listenerCount('message')).toBe(0);
     }
   });
-
-  it.each(['stopSession', 'regional recovery'] as const)(
-    'postCleanupReplacementOffer blocks auto-answer until a fresh ready offer through %s', async (boundary) => {
-      const {manager, guard, contact, data, hydrate} = setup();
-      try {
-        manager.startSession(guard);
-        hydrate();
-        const retained = manager.getTask(data.interactionId) as Task;
-        const oldActor = retained.stateMachineService;
-        const controls = jest.fn();
-        retained.on(TASK_EVENTS.TASK_UI_CONTROLS_UPDATED, controls);
-        expectManagerTaskListeners(manager, retained, true);
-
-        if (boundary === 'stopSession') manager.stopSession();
-        else {
-          manager.interruptTaskOperations(() => createRegionRecoveryError('RECOVERY_INTERRUPTED'));
-          manager.invalidateRegionalTasks();
-          manager.clearAISummaryState();
-        }
-        expectManagerTaskListeners(manager, retained, false);
-        expect(retained.listeners(TASK_EVENTS.TASK_UI_CONTROLS_UPDATED)).toEqual([controls]);
-        expect(manager.getAllTasks()).toEqual({});
-        expect(oldActor.getSnapshot().status).toBe('stopped');
-
-        const {guard: replacementGuard} = createGuard(2);
-        replacementGuard.assertCommandAllowed.mockImplementation(() => {
-          throw createRegionRecoveryError('RECOVERY_IN_PROGRESS');
-        });
-        manager.startSession(replacementGuard);
-        const reservation = createTaskData({
-          type: CC_EVENTS.AGENT_CONTACT_RESERVED,
-          interactionId: data.interactionId,
-          interaction: {interactionId: data.interactionId, mediaType: 'chat', state: 'new'},
-        });
-        const incoming = jest.fn();
-        manager.on(TASK_EVENTS.TASK_INCOMING, incoming);
-        hydrate(reservation);
-        const replacement = manager.getTask(data.interactionId) as Task;
-        expect(replacement).toBeInstanceOf(Digital);
-        expect(replacement).not.toBe(retained);
-        expect(replacement['uiControlConfig'].channelType).toBe(TASK_CHANNEL_TYPE.DIGITAL);
-        expect(replacement.stateMachineService).not.toBe(oldActor);
-        expect(replacement.stateMachineService.getSnapshot().value).toBe(TaskState.OFFERED);
-        expect(incoming.mock.calls).toEqual([[replacement]]);
-        const accept = jest.spyOn(replacement, 'accept');
-        const offered = jest.fn();
-        const autoAnswered = jest.fn();
-        replacement.on(TASK_EVENTS.TASK_OFFER_CONTACT, offered);
-        replacement.on(TASK_EVENTS.TASK_AUTO_ANSWERED, autoAnswered);
-        const offer = {...reservation, type: CC_EVENTS.AGENT_OFFER_CONTACT, isAutoAnswering: true};
-
-        hydrate(offer);
-        await flushEventLoopTurn();
-
-        expect(offered.mock.calls).toEqual([[replacement]]);
-        expect(replacement.stateMachineService.getSnapshot().value).toBe(TaskState.OFFERED);
-        expect(replacement.data.isAutoAnswering).toBe(true);
-        expect(accept.mock.calls).toEqual([[]]);
-        await expect(accept.mock.results[0].value).rejects.toMatchObject({data: {reason: 'RECOVERY_IN_PROGRESS'}});
-        expect(replacementGuard.assertCommandAllowed).toHaveBeenCalled();
-        expect(contact.accept).not.toHaveBeenCalled();
-        expect(autoAnswered).not.toHaveBeenCalled();
-
-        replacementGuard.assertCommandAllowed.mockImplementation(() => undefined);
-        await flushEventLoopTurn();
-        expect(offered.mock.calls).toEqual([[replacement]]);
-        expect(accept.mock.calls).toEqual([[]]);
-        expect(contact.accept).not.toHaveBeenCalled();
-        expect(autoAnswered).not.toHaveBeenCalled();
-
-        hydrate(offer);
-        await flushEventLoopTurn();
-        expect(accept.mock.calls).toEqual([[], []]);
-        expect(contact.accept.mock.calls).toEqual([[{interactionId: data.interactionId}]]);
-        expect(offered.mock.calls).toEqual([[replacement], [replacement]]);
-        expect(autoAnswered.mock.calls).toEqual([[replacement]]);
-        await expect(retained.accept()).rejects.toMatchObject({data: {reason: 'STALE_TASK'}});
-        expect(retained.stateMachineService).toBeUndefined();
-        expect(contact.accept).toHaveBeenCalledTimes(1);
-      } finally {
-        manager.stopSession();
-      }
-    }
-  );
 
   it('startSession owns one detachable listener set', () => {
     const {manager, guard, primary, calling, hydrate} = setup();

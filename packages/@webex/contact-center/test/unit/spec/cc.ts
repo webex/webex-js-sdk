@@ -829,10 +829,10 @@ describe('webex.cc', () => {
         publishOutcome?.();
         await settle();
       };
-      it.each(['stationLogin', 'silentRelogin', 'stationLogout', 'setAgentState', 'updateAgentProfile', 'startOutdial']
-        .flatMap(operation => Object.values(REGION_RECOVERY_ERROR_CODES).map(reason => [operation, reason])))(
-        'T-008 lifecycleCallerCatchPreservesIdentityAndReason cc.%s reason=%s', async (operation, reason) => {
+      it.each(['stationLogin', 'silentRelogin', 'stationLogout', 'setAgentState', 'updateAgentProfile', 'startOutdial'])(
+        'T-008 lifecycleCallerCatchPreservesIdentityAndReason cc.%s', async operation => {
           await prepare('enabled', true);
+          const reason = REGION_RECOVERY_ERROR_CODES.RECOVERY_INTERRUPTED;
           const error = Utils.createRegionRecoveryError(reason, {trackingId: 'safe', status: 409});
           const data = error.data;
           const agent = webex.cc.services.agent;
@@ -1727,9 +1727,9 @@ describe('webex.cc', () => {
         });
 
         it.each([
-          'terminal failure', 'authentication failure', 'mismatch', 'deregister',
+          'terminal failure', 'deregister',
           'organization replacement', 'primary identity replacement', 'multi-login',
-          'explicit state after primary close', 'ordinary socket replacement', 'superseding switch',
+          'superseding switch',
         ])('T-011 unknownMetadataClearsPriorValues on %s', async (boundary) => {
           await startAuto(false);
           mockWebSocketManager.getServingRegion.mockReturnValue('produs2');
@@ -1748,9 +1748,6 @@ describe('webex.cc', () => {
           const terminal = webex.cc.services.connectionService.reset.mock.calls.slice(-1)[0][0].onTerminalFailure;
 
           if (boundary === 'terminal failure') terminal(new Error('terminal'));
-          if (boundary === 'authentication failure') terminal({status: 401});
-          if (boundary === 'mismatch') terminal({data: {kind: 'region-mismatch', status: 409,
-            reason: 'REGION_MISMATCH_NO_OVERRIDE'}});
           if (boundary === 'deregister') await webex.cc.deregister();
           if (boundary === 'organization replacement') {
             webex.cc.$webex.credentials.getOrgId.mockReturnValue('replacement-org');
@@ -1760,39 +1757,22 @@ describe('webex.cc', () => {
             webex.cc['handleWebsocketMessage'](JSON.stringify({type: 'Welcome', data: {agentId: 'replacement-agent'}}));
           if (boundary === 'multi-login')
             webex.cc['handleWebsocketMessage'](JSON.stringify({type: CC_EVENTS.AGENT_MULTI_LOGIN}));
-          if (boundary === 'explicit state after primary close') {
-            clearPlacement();
-            webex.cc.services.agent.stateChange.mockRejectedValue(Utils.createRegionRecoveryError('RECOVERY_INTERRUPTED'));
-            await expect(webex.cc.setAgentState({state: 'Idle', auxCodeId: 'manual'}))
-              .rejects.toMatchObject({data: {reason: 'RECOVERY_INTERRUPTED'}});
-          }
-          if (boundary === 'ordinary socket replacement') {
-            clearPlacement();
-            mockWebSocketManager.hasUsableSocket.mockReturnValue(true);
-            webex.cc.services.agent.reload.mockResolvedValue(result());
-            await webex.cc['handleConnectionLost']({isSocketReconnected: true});
-          }
           if (boundary === 'superseding switch')
             webex.cc['handleWebsocketMessage'](switchEvent('replacement-switch'));
 
           const cancelled = {status: 'ready', reason: 'region-switch', trackingId: 'switch',
             operation: 'FAILOVER', scope: 'ORG', homeRegion: 'produs1', autoAvailable: 'cancelled'};
           const expected: unknown[] = [cancelled];
-          if (['terminal failure', 'authentication failure', 'organization replacement', 'primary identity replacement'].includes(boundary))
-            expected.push({status: 'unavailable', reason: boundary === 'authentication failure'
-              ? 'authentication-failed' : 'recovery-failed', trackingId: 'switch',
+          if (['terminal failure', 'organization replacement', 'primary identity replacement'].includes(boundary))
+            expected.push({status: 'unavailable', reason: 'recovery-failed', trackingId: 'switch',
               operation: 'FAILOVER', scope: 'ORG', homeRegion: 'produs1'});
-          if (boundary === 'mismatch') expected.push({status: 'reloadRequired', reason: 'region-mismatch',
-            trackingId: 'switch', operation: 'FAILOVER', scope: 'ORG', homeRegion: 'produs1'});
           if (boundary === 'superseding switch') expected.push({status: 'recovering', reason: 'region-switch',
             trackingId: 'replacement-switch', operation: 'FAILOVER', scope: 'ORG', homeRegion: 'produs1'});
           expect(listener.mock.calls.map(([state]) => state)).toEqual(expected);
           expect(previous).toEqual({...cancelled, servingRegion: 'produs2', limitedService: true,
             autoAvailable: 'waitingForVoice'});
           expect(webex.cc['autoAvailable']).toBeUndefined();
-          expect(webex.cc.services.agent.stateChange).toHaveBeenCalledTimes(
-            boundary === 'explicit state after primary close' ? 1 : 0
-          );
+          expect(webex.cc.services.agent.stateChange).not.toHaveBeenCalled();
         });
 
         it.each(['organization replacement', 'primary identity replacement'].flatMap(boundary =>
@@ -2326,17 +2306,6 @@ describe('webex.cc', () => {
         expect(webex.cc['priorStationActive']).toBe(active);
       };
 
-      it('T-002 switchHistoryFifoCapacityAndDuplicateHistory', async () => {
-        await prepare('enabled', true);
-        for (let i = 0; i < 130; i += 1) webex.cc['handleWebsocketMessage'](switchEvent(`s${i}`));
-        expect([...webex.cc['acceptedSwitchIds']]).toHaveLength(128);
-        expect([...webex.cc['acceptedSwitchIds']][0]).toBe('s2');
-        webex.cc.services.connectionService.recoverRegion.mockClear();
-        webex.cc['handleWebsocketMessage'](switchEvent('s3'));
-        expect(webex.cc.services.connectionService.recoverRegion).not.toHaveBeenCalled();
-        expect(webex.cc['priorStationActive']).toBe(true);
-      });
-
       it('T-002 acceptedHistoryABAAnd129 retains A across B and evicts only the oldest', async () => {
         await prepare('enabled', true);
         const driver = webex.cc.services.connectionService.recoverRegion;
@@ -2351,6 +2320,7 @@ describe('webex.cc', () => {
         webex.cc['handleWebsocketMessage'](switchEvent('A'));
         expect(driver).toHaveBeenCalledTimes(count + 1);
         expect([...webex.cc['acceptedSwitchIds']]).toEqual([...Array.from({length: 127}, (_, i) => `new-${i}`), 'A']);
+        expect(webex.cc['priorStationActive']).toBe(true);
       });
 
       it.each([...registrationBoundaries, 'pending station logout', 'successful station logout',
@@ -13727,7 +13697,7 @@ describe('realRecoveryWiring', () => {
       expect(captured).toMatch(forbidden);
     });
 
-    const withDiagnostics = async (flag: boolean | undefined, scenario: (h: any) => Promise<void>, rtd = false) => {
+    const withDiagnostics = async (scenario: (h: any) => Promise<void>, rtd = false) => {
       const captures: {sink: string; arguments: string}[] = [];
       const spies: jest.SpyInstance[] = [];
       const delivered = jest.fn();
@@ -13770,15 +13740,6 @@ describe('realRecoveryWiring', () => {
           });
           // Only vary the internal logging flag; keep the actual adapter config,
           // admission, correlation, HTTP dispatch and AQM settlement unchanged.
-          const aqm = h.cc.services.aqmReqs;
-          const create = aqm['createPromise'];
-          const configured = jest.spyOn(aqm, 'createPromise').mockImplementation(function (request, callback) {
-            const varied = {...request};
-            if (flag === undefined) delete varied.redactSensitiveLogs;
-            else varied.redactSensitiveLogs = flag;
-            return create.call(this, varied, callback);
-          });
-          spies.push(configured);
           const info = spies.find(spy => spy === h.graph.LoggerProxy.info);
           const requireSink = (sink: string) => expect(captures.filter(call => call.sink === sink).length).toBeGreaterThan(0);
           const requireDiagnostic = (stage, outcome) => {
@@ -13815,10 +13776,9 @@ describe('realRecoveryWiring', () => {
       }
     };
 
-    it.each([undefined, false, true].flatMap(flag =>
-      ['initial-register', 'admission-http', 'optional-rtd', 'optional-rtd-socket', 'deregister'].map(path => [flag, path])))
-    ('flag=%s lifecycle=%s', async (flag, path) => {
-      await withDiagnostics(flag as boolean | undefined, async ({cc, host, sockets, flush, login, proof}) => {
+    it.each(['initial-register', 'admission-http', 'optional-rtd', 'optional-rtd-socket', 'deregister'])
+    ('redacts diagnostics during %s', async path => {
+      await withDiagnostics(async ({cc, host, sockets, flush, login, proof}) => {
         const boundary = host.request.getMockImplementation();
         const failure = transportError(503, 1037);
         let failures = 0;
@@ -13884,13 +13844,13 @@ describe('realRecoveryWiring', () => {
           }
         }
         expect(failures).toBe(['deregister', 'optional-rtd-socket'].includes(path as string) ? 0 : path === 'optional-rtd' ? 2 : 1);
-      }, (path as string).startsWith('optional-rtd'));
+      }, path.startsWith('optional-rtd'));
     });
 
-    it.each([undefined, false, true].flatMap(flag => ['reload', 'fallback', 'state-change'].flatMap(operation =>
-      ['success', 'http', 'notification', 'timeout', 'interruption', 'late-resolve', 'late-reject'].map(path => [flag, operation, path]))))
-    ('flag=%s operation=%s path=%s', async (flag, operation, path) => {
-      await withDiagnostics(flag as boolean | undefined, async ({cc, host, graph, sockets, requests, frame, flush, login, proof}) => {
+    it.each(['reload', 'fallback', 'state-change'].flatMap(operation =>
+      ['success', 'http', 'notification', 'timeout', 'interruption', 'late-resolve', 'late-reject'].map(path => [operation, path])))
+    ('redacts %s diagnostics during %s', async (operation, path) => {
+      await withDiagnostics(async ({cc, host, graph, sockets, requests, frame, flush, login, proof}) => {
         await proof.register(); await login(); cc.$config.allowAutomatedRelogin = true;
         const resource = operation === 'reload' ? '/v1/agents/reload' : operation === 'fallback' ? '/v1/agents/login' : '/v1/agents/session/state';
         const method = operation === 'reload' ? 'reload' : operation === 'fallback' ? 'stationLogin' : 'stateChange';

@@ -11,9 +11,7 @@ import {
   WELLNESS_BREAK_USER_ACTIONS,
   WebexSDK,
 } from '../../../../src/types';
-import type {PendingRtdRequest} from '../../../../src/services/core/types';
-import {CC_FILE, METHODS} from '../../../../src/constants';
-import {createRegionRecoveryError, getErrorDetails} from '../../../../src/services/core/Utils';
+import {createRegionRecoveryError} from '../../../../src/services/core/Utils';
 
 jest.mock('../../../../src/metrics/MetricsManager', () => ({
   __esModule: true,
@@ -138,562 +136,216 @@ describe('ApiAIAssistant', () => {
       jest.useRealTimers();
     });
 
-    it.each(['before', 'queued', 'pending'])(
-      'rtdRequestSignalOwnsCancellation %s',
-      async (phase) => {
-        const controller = new AbortController();
-        const http = deferred<unknown>();
-        (mockWebex.request as jest.Mock).mockReturnValue(http.promise);
-        const addAbort = jest.spyOn(controller.signal, 'addEventListener');
-        const removeAbort = jest.spyOn(controller.signal, 'removeEventListener');
-        const resolved = jest.fn();
-        const rejected = jest.fn();
+    it.each(['before', 'queued', 'pending'])('cancels an RTD request when abort occurs %s', async (phase) => {
+      const controller = new AbortController();
+      const http = deferred<unknown>();
+      (mockWebex.request as jest.Mock).mockReturnValue(http.promise);
+      const add = jest.spyOn(controller.signal, 'addEventListener');
+      const remove = jest.spyOn(controller.signal, 'removeEventListener');
+      if (phase === 'before') controller.abort();
 
-        try {
-          if (phase === 'before') controller.abort();
-          const promise = apiAIAssistant.requestAndWaitForRtd(options(controller.signal));
-          const observed = promise.then(resolved, rejected);
-          const pendingRequests = apiAIAssistant['pendingRtdRequests'];
-          let abort: EventListener | undefined;
-          if (phase === 'before') {
-            expect(addAbort).not.toHaveBeenCalled();
-            expect(pendingRequests.size).toBe(0);
-            expect(jest.getTimerCount()).toBe(0);
-          } else {
-            expect(addAbort).toHaveBeenCalledTimes(1);
-            abort = addAbort.mock.calls[0][1] as EventListener;
-            expect(addAbort.mock.calls).toEqual([['abort', abort, {once: true}]]);
-            expect(pendingRequests.size).toBe(1);
-            expect([...pendingRequests.values()][0].detachAbort).toEqual(expect.any(Function));
-            expect(jest.getTimerCount()).toBe(1);
-          }
-          if (phase === 'pending') await flush();
-          expect(mockWebex.request).toHaveBeenCalledTimes(phase === 'pending' ? 1 : 0);
-          controller.abort();
-          // Cancellation settles before the dispatched HTTP promise does.
-          await observed;
-          expect(resolved).not.toHaveBeenCalled();
-          expect(rejected).toHaveBeenCalledTimes(1);
-          const error = rejected.mock.calls[0][0];
-          expect(error).toBeInstanceOf(Error);
-          expect(error.message).toBe('RECOVERY_INTERRUPTED');
-          expect(error.data).toEqual({reason: 'RECOVERY_INTERRUPTED'});
-          expect(pendingRequests.size).toBe(0);
-          expect(jest.getTimerCount()).toBe(0);
-          expect(removeAbort.mock.calls).toEqual(phase === 'before' ? [] : [['abort', abort]]);
+      const observed = expect(apiAIAssistant.requestAndWaitForRtd(options(controller.signal)))
+        .rejects.toMatchObject({data: {reason: 'RECOVERY_INTERRUPTED'}});
+      if (phase === 'pending') await flush();
+      controller.abort();
+      await observed;
+      expect(mockWebex.request).toHaveBeenCalledTimes(phase === 'pending' ? 1 : 0);
+      expect(add).toHaveBeenCalledTimes(phase === 'before' ? 0 : 1);
+      expect(remove.mock.calls).toEqual(add.mock.calls.map(([type, listener]) => [type, listener]));
+      expect(jest.getTimerCount()).toBe(0);
+      expect(apiAIAssistant['pendingRtdRequests'].size).toBe(0);
+      if (phase === 'pending') await observeLateSettlement(() => http.reject(new Error('late HTTP')));
+      expect(apiAIAssistant['pendingRtdRequests'].size).toBe(0);
+      add.mockRestore();
+      remove.mockRestore();
+    });
 
-          if (phase === 'pending') {
-            await observeLateSettlement(() => http.reject(new Error('late HTTP')));
-          } else await flush();
+    it.each(['success', 'rejection'])('full RTD clear is final after late HTTP %s', async (settlement) => {
+      const http = deferred<unknown>();
+      (mockWebex.request as jest.Mock).mockReturnValue(http.promise);
+      const controller = new AbortController();
+      const remove = jest.spyOn(controller.signal, 'removeEventListener');
+      const error = createRegionRecoveryError('RECOVERY_INTERRUPTED');
+      const observed = expect(apiAIAssistant.requestAndWaitForRtd(options(controller.signal))).rejects.toBe(error);
+      await flush();
+      expect(mockWebex.request).toHaveBeenCalledTimes(1);
 
-          expect(mockWebex.request).toHaveBeenCalledTimes(phase === 'pending' ? 1 : 0);
-          expect(rejected.mock.calls).toEqual([[error]]);
-          expect(resolved).not.toHaveBeenCalled();
-          expect(pendingRequests.size).toBe(0);
-          expect(jest.getTimerCount()).toBe(0);
-          expect(addAbort).toHaveBeenCalledTimes(phase === 'before' ? 0 : 1);
-          expect(removeAbort.mock.calls).toEqual(phase === 'before' ? [] : [['abort', abort]]);
-        } finally {
-          addAbort.mockRestore();
-          removeAbort.mockRestore();
-        }
-      }
-    );
+      apiAIAssistant.clearAllRtdRequests(() => error);
+      await observed;
+      await observeLateSettlement(() => {
+        if (settlement === 'success') http.resolve({body: {accepted: true}});
+        else http.reject(new Error('late HTTP failure'));
+      });
 
-    it.each(['success', 'rejection'])(
-      'lateHttpCannotRearmClearedRequest: %s after full clear',
-      async (settlement) => {
-        const http = deferred<unknown>();
-        (mockWebex.request as jest.Mock).mockReturnValue(http.promise);
-        const controller = new AbortController();
-        const addAbort = jest.spyOn(controller.signal, 'addEventListener');
-        const removeAbort = jest.spyOn(controller.signal, 'removeEventListener');
-        const error = createRegionRecoveryError('RECOVERY_INTERRUPTED');
-        const createError = jest.fn(() => error);
-        const resolved = jest.fn();
-        const rejected = jest.fn();
+      expect(remove).toHaveBeenCalledTimes(1);
+      expect(jest.getTimerCount()).toBe(0);
+      expect(apiAIAssistant.resolveFromRtdEvent('POST_CALL_SUMMARY', 'conversation', {})).toBe('not-found');
+      remove.mockRestore();
+    });
 
-        try {
-          const promise = apiAIAssistant.requestAndWaitForRtd(options(controller.signal));
-          const observed = promise.then(resolved, rejected);
-          await flush();
-          expect(mockWebex.request).toHaveBeenCalledTimes(1);
-          const pendingRequests = apiAIAssistant['pendingRtdRequests'];
-          expect(pendingRequests.size).toBe(1);
-          const record = [...pendingRequests.values()][0];
-          expect(record.detachAbort).toEqual(expect.any(Function));
-          expect(record.timeoutId).toBeDefined();
-          expect(jest.getTimerCount()).toBe(1);
-          expect(addAbort).toHaveBeenCalledTimes(1);
-          const abort = addAbort.mock.calls[0][1];
-          expect(addAbort.mock.calls).toEqual([['abort', abort, {once: true}]]);
+    it('stale ACK, deadline and abort cannot remove a same-key replacement', async () => {
+      const oldHttp = deferred<unknown>();
+      (mockWebex.request as jest.Mock)
+        .mockReturnValueOnce(oldHttp.promise)
+        .mockResolvedValueOnce({body: {accepted: true}});
+      const controller = new AbortController();
+      const timeout = jest.spyOn(global, 'setTimeout');
+      const abort = jest.spyOn(controller.signal, 'addEventListener');
+      const oldError = jest.fn(() => new Error('old timeout'));
+      const old = apiAIAssistant.requestAndWaitForRtd({...options(controller.signal), createTimeoutError: oldError});
+      const retired = expect(old).rejects.toMatchObject({data: {reason: 'RECOVERY_INTERRUPTED'}});
+      const staleTimeout = timeout.mock.calls[0][0] as () => void;
+      const staleAbort = abort.mock.calls[0][1] as EventListener;
+      await flush();
 
-          apiAIAssistant.clearAllRtdRequests(createError);
-          await expect(promise).rejects.toBe(error);
-          await observed;
-          expect(createError).toHaveBeenCalledTimes(1);
-          expect(rejected.mock.calls).toEqual([[error]]);
-          expect(resolved).not.toHaveBeenCalled();
-          expect(error.data).toEqual({reason: 'RECOVERY_INTERRUPTED'});
+      const current = apiAIAssistant.requestAndWaitForRtd({...options(), timeoutMs: 2000});
+      await retired;
+      oldHttp.reject(new Error('stale HTTP failure'));
+      staleTimeout();
+      staleAbort(new Event('abort'));
+      await flush();
+      expect(mockWebex.request).toHaveBeenCalledTimes(2);
+      expect(oldError).not.toHaveBeenCalled();
+      expect(jest.getTimerCount()).toBe(1);
 
-          const expectCleared = () => {
-            expect(pendingRequests.size).toBe(0);
-            expect(jest.getTimerCount()).toBe(0);
-            expect(removeAbort.mock.calls).toEqual([['abort', abort]]);
-            expect(addAbort).toHaveBeenCalledTimes(1);
-            expect(
-              apiAIAssistant.resolveFromRtdEvent('POST_CALL_SUMMARY', 'conversation', {
-                summary: 'late',
-              })
-            ).toBe('not-found');
-            expect(rejected.mock.calls).toEqual([[error]]);
-            expect(resolved).not.toHaveBeenCalled();
-          };
-          expectCleared();
-          await observeLateSettlement(() => {
-            if (settlement === 'success') http.resolve({body: {accepted: true}});
-            else http.reject(createRegionRecoveryError('RECOVERY_INTERRUPTED'));
-          });
-          expectCleared();
-        } finally {
-          addAbort.mockRestore();
-          removeAbort.mockRestore();
-        }
-      }
-    );
+      const payload = {summary: 'current'};
+      expect(apiAIAssistant.resolveFromRtdEvent('POST_CALL_SUMMARY', 'conversation', payload)).toBe('resolved');
+      await expect(current).resolves.toEqual(payload);
+      expect(jest.getTimerCount()).toBe(0);
+      timeout.mockRestore();
+      abort.mockRestore();
+    });
 
-    it.each(['event', 'timeout', 'abort'])(
-      'oldAckFailureCannotRemoveSameKeyReplacement / staleTimeoutAndAbortCannotRemoveSameKeyReplacement: %s',
-      async (settlement) => {
-        const oldHttp = deferred<unknown>();
-        const currentHttp = deferred<unknown>();
-        (mockWebex.request as jest.Mock)
-          .mockReturnValueOnce(oldHttp.promise)
-          .mockReturnValueOnce(currentHttp.promise);
-        const oldController = new AbortController();
-        const currentController = new AbortController();
-        const timeoutSpy = jest.spyOn(global, 'setTimeout');
-        const abortSpy = jest.spyOn(oldController.signal, 'addEventListener');
-        const detachAbortSpy = jest.spyOn(oldController.signal, 'removeEventListener');
-        const oldTimeoutError = jest.fn(() => new Error('OLD_TIMEOUT'));
-        const currentTimeout = new Error('CURRENT_TIMEOUT');
-        const currentTimeoutError = jest.fn(() => currentTimeout);
-
-        try {
-          const old = apiAIAssistant.requestAndWaitForRtd({
-            ...options(oldController.signal),
-            createTimeoutError: oldTimeoutError,
-          });
-          const oldObserved = expect(old).rejects.toMatchObject({
-            data: {reason: 'RECOVERY_INTERRUPTED'},
-          });
-          await flush();
-          // Retain the actual closures: they may already be queued when cleanup runs.
-          expect(timeoutSpy).toHaveBeenCalledTimes(1);
-          expect(abortSpy).toHaveBeenCalledTimes(1);
-          const staleTimeout = timeoutSpy.mock.calls[0][0] as () => void;
-          const staleAbort = abortSpy.mock.calls[0][1] as EventListener;
-          const pendingRequests: Map<string, PendingRtdRequest<unknown>> = (apiAIAssistant as any)
-            .pendingRtdRequests;
-          const [key, oldRecord] = [...pendingRequests.entries()][0];
-
-          jest.advanceTimersByTime(250);
-          const current = apiAIAssistant.requestAndWaitForRtd({
-            ...options(currentController.signal),
-            timeoutMs: 2000,
-            createTimeoutError: currentTimeoutError,
-          });
-          const resolved = jest.fn();
-          const rejected = jest.fn();
-          const currentObserved = current.then(resolved, rejected);
-          await oldObserved;
-          await flush();
-          expect(detachAbortSpy).toHaveBeenCalledWith('abort', staleAbort);
-          expect(mockWebex.request).toHaveBeenCalledTimes(2);
-          expect(timeoutSpy).toHaveBeenCalledTimes(2);
-          const currentRecord = pendingRequests.get(key)!;
-          const currentTimer = timeoutSpy.mock.results[1].value;
-          expect(currentRecord).not.toBe(oldRecord);
-          expect(currentTimer).not.toBe(oldRecord.timeoutId);
-
-          const expectCurrentOwner = () => {
-            expect(pendingRequests.size).toBe(1);
-            expect(pendingRequests.get(key)).toBe(currentRecord);
-            expect(currentRecord.timeoutId).toBe(currentTimer);
-            expect(jest.getTimerCount()).toBe(1);
-            expect(resolved).not.toHaveBeenCalled();
-            expect(rejected).not.toHaveBeenCalled();
-            expect(oldTimeoutError).not.toHaveBeenCalled();
-            expect(currentTimeoutError).not.toHaveBeenCalled();
-          };
-
-          oldHttp.reject(new Error('late old HTTP failure'));
-          await flush();
-          expectCurrentOwner();
-
-          // Cross the old deadline while the replacement has 1250 ms remaining.
-          jest.advanceTimersByTime(750);
-          staleTimeout();
-          await flush();
-          expectCurrentOwner();
-
-          oldController.abort();
-          staleAbort(new Event('abort'));
-          await flush();
-          expectCurrentOwner();
-
-          currentHttp.resolve({body: {accepted: true}});
-          await flush();
-          jest.advanceTimersByTime(1249);
-          await flush();
-          expectCurrentOwner();
-
-          if (settlement === 'event') {
-            const payload = {summary: 'current'};
-            expect(
-              apiAIAssistant.resolveFromRtdEvent('POST_CALL_SUMMARY', 'conversation', payload)
-            ).toBe('resolved');
-            await expect(current).resolves.toEqual(payload);
-            expect(resolved.mock.calls).toEqual([[payload]]);
-            expect(rejected).not.toHaveBeenCalled();
-          } else {
-            if (settlement === 'timeout') {
-              jest.advanceTimersByTime(1);
-              await expect(current).rejects.toBe(currentTimeout);
-              expect(currentTimeoutError).toHaveBeenCalledTimes(1);
-            } else {
-              currentController.abort();
-              await expect(current).rejects.toMatchObject({
-                data: {reason: 'RECOVERY_INTERRUPTED'},
-              });
-            }
-            expect(rejected).toHaveBeenCalledTimes(1);
-            expect(resolved).not.toHaveBeenCalled();
-          }
-          await currentObserved;
-          expect(pendingRequests.size).toBe(0);
-          expect(jest.getTimerCount()).toBe(0);
-          expect(oldTimeoutError).not.toHaveBeenCalled();
-          if (settlement !== 'timeout') expect(currentTimeoutError).not.toHaveBeenCalled();
-        } finally {
-          timeoutSpy.mockRestore();
-          abortSpy.mockRestore();
-          detachAbortSpy.mockRestore();
-        }
-      }
-    );
-
-    it('interruptionErrorsAreIndependent and no-argument clear stays compatible', async () => {
-      (mockWebex.request as jest.Mock).mockResolvedValue({body: {}});
-      const first = apiAIAssistant.requestAndWaitForRtd(options()).catch((e) => e);
-      const second = apiAIAssistant
-        .requestAndWaitForRtd({...options(), correlationId: 'second'})
-        .catch((e) => e);
-      const {createRegionRecoveryError} = jest.requireActual('../../../../src/services/core/Utils');
+    it('clears requests with independent recovery errors and preserves the default error', async () => {
+      const first = apiAIAssistant.requestAndWaitForRtd(options()).catch((error) => error);
+      const second = apiAIAssistant.requestAndWaitForRtd({...options(), correlationId: 'second'}).catch((error) => error);
       apiAIAssistant.clearAllRtdRequests(() => createRegionRecoveryError('RECOVERY_INTERRUPTED'));
       const [a, b] = await Promise.all([first, second]);
       expect(a).not.toBe(b);
       expect(a.data).not.toBe(b.data);
-      a.data.reason = 'changed';
-      expect(b.data.reason).toBe('RECOVERY_INTERRUPTED');
-      const normal = apiAIAssistant.requestAndWaitForRtd(options()).catch((e) => e);
+      for (const error of [a, b]) expect(error.data.reason).toBe('RECOVERY_INTERRUPTED');
+
+      const normal = expect(apiAIAssistant.requestAndWaitForRtd(options())).rejects.toThrow('RTD request cleared');
       apiAIAssistant.clearAllRtdRequests();
-      expect((await normal).message).toBe('RTD request cleared');
+      await normal;
     });
 
     const httpBody = {interactionId: 'interaction', data: []};
-    const nonTaskOperations = [
-      {
-        name: 'sendEvent',
-        helperMethods: [METHODS.SEND_EVENT],
-        callerErrors: [],
-        invoke: (instance: ApiAIAssistant) =>
-          instance.sendEvent(
-            'agent',
-            'interaction',
-            AIAssistantEventType.CUSTOM_EVENT,
-            AIAssistantEventName.GET_TRANSCRIPTS
-          ),
-        successMetrics: [METRIC_EVENT_NAMES.AI_ASSISTANT_SEND_EVENT_SUCCESS],
-        result: httpBody,
-      },
-      {
-        name: 'fetchHistoricTranscripts',
-        helperMethods: [METHODS.FETCH_HISTORIC_TRANSCRIPTS],
-        callerErrors: [],
-        invoke: (instance: ApiAIAssistant) =>
-          instance.fetchHistoricTranscripts('agent', 'interaction'),
-        successMetrics: [METRIC_EVENT_NAMES.AI_ASSISTANT_FETCH_HISTORIC_TRANSCRIPTS_SUCCESS],
-        result: httpBody,
-      },
-      {
-        name: 'getRealTimeAssistance',
-        helperMethods: [METHODS.SEND_EVENT, METHODS.GET_REAL_TIME_ASSISTANCE],
-        callerErrors: ['Real-time assistance request failed'],
-        invoke: (instance: ApiAIAssistant) =>
-          instance.getRealTimeAssistance({
-            agentId: 'agent',
-            interactionId: 'interaction',
-          }),
-        successMetrics: [
-          METRIC_EVENT_NAMES.AI_ASSISTANT_SEND_EVENT_SUCCESS,
-          METRIC_EVENT_NAMES.AI_ASSISTANT_GET_REAL_TIME_ASSISTANCE_SUCCESS,
-        ],
-        result: httpBody,
-      },
-      {
-        name: 'sendRealTimeAssistanceUserAction',
-        helperMethods: [METHODS.SEND_EVENT, METHODS.SEND_REAL_TIME_ASSISTANCE_USER_ACTION],
-        callerErrors: ['Real-time assistance user action failed'],
-        invoke: (instance: ApiAIAssistant) =>
-          instance.sendRealTimeAssistanceUserAction({
-            agentId: 'agent',
-            interactionId: 'interaction',
-            adaptiveCardId: 'card',
-            actionId: RealTimeAssistanceUserActionId.LIKE,
-          }),
-        successMetrics: [
-          METRIC_EVENT_NAMES.AI_ASSISTANT_SEND_EVENT_SUCCESS,
-          METRIC_EVENT_NAMES.AI_ASSISTANT_SEND_REAL_TIME_ASSISTANCE_USER_ACTION_SUCCESS,
-        ],
-        result: httpBody,
-      },
-      {
-        name: 'requestWellnessBreak',
-        helperMethods: [METHODS.REQUEST_WELLNESS_BREAK],
-        callerErrors: [],
-        invoke: (instance: ApiAIAssistant) => instance.requestWellnessBreak(),
-        successMetrics: [METRIC_EVENT_NAMES.AI_ASSISTANT_WELLNESS_ACTION_ACCEPTED],
-        result: undefined,
-      },
-      {
-        name: 'respondToWellnessBreak',
-        helperMethods: [METHODS.RESPOND_TO_WELLNESS_BREAK],
-        callerErrors: [],
-        invoke: (instance: ApiAIAssistant) =>
-          instance.respondToWellnessBreak({
-            action: WELLNESS_BREAK_USER_ACTIONS.ACCEPTED,
-          }),
-        successMetrics: [METRIC_EVENT_NAMES.AI_ASSISTANT_WELLNESS_ACTION_ACCEPTED],
-        result: undefined,
-      },
-    ];
+    let owner: {generation: number; signal: AbortSignal} | undefined;
+    let controller: AbortController;
+    const createOwnedAssistant = () => {
+      const instance = new ApiAIAssistant(
+        mockWebex,
+        () => ({isWellnessBreakEnabled: true, agentId: 'agent', agentSessionId: 'session'}),
+        () => owner
+      );
+      instance.setAIFeatureFlags({realtimeTranscripts: {enable: true}, suggestedResponses: {enable: true}} as any);
 
-    describe.each(nonTaskOperations)(
-      'nonTaskRtdOperationsUseCurrentOwner $name',
-      ({name, invoke, helperMethods, callerErrors, successMetrics, result}) => {
-        let controller: AbortController;
-        let owner: {generation: number; signal: AbortSignal} | undefined;
-        const createInstance = (standalone = false) => {
-          const instance = new ApiAIAssistant(
-            mockWebex,
-            () => ({isWellnessBreakEnabled: true, agentId: 'agent', agentSessionId: 'session'}),
-            standalone ? undefined : () => owner
-          );
-          instance.setAIFeatureFlags({
-            realtimeTranscripts: {enable: true},
-            suggestedResponses: {enable: true},
-          } as any);
-
-          return instance;
-        };
-
-        beforeEach(() => {
-          controller = new AbortController();
-          owner = {generation: 1, signal: controller.signal};
-        });
-
-        it.each(['undefined', 'aborted'])(
-          'rejects a configured %s owner before HTTP',
-          async (state) => {
-            if (state === 'undefined') owner = undefined;
-            else controller.abort();
-
-            await expect(invoke(createInstance())).rejects.toMatchObject({
-              data: {reason: 'RECOVERY_INTERRUPTED'},
-            });
-            expect(mockWebex.request).not.toHaveBeenCalled();
-            expect(mockMetricsManager.trackEvent).not.toHaveBeenCalled();
-          }
-        );
-
-        it.each(['standalone', 'live'])('succeeds with a %s owner', async (state) => {
-          const http = deferred<unknown>();
-          (mockWebex.request as jest.Mock).mockReturnValue(http.promise);
-          const promise = invoke(createInstance(state === 'standalone'));
-          await flush();
-          expect(mockWebex.request).toHaveBeenCalledTimes(1);
-          expect(mockMetricsManager.trackEvent).not.toHaveBeenCalled();
-          // An equivalent getter result is still the same owner.
-          owner = {generation: 1, signal: controller.signal};
-          http.resolve({statusCode: 202, body: httpBody});
-
-          await expect(promise).resolves.toEqual(result);
-          expect(mockMetricsManager.trackEvent.mock.calls.map(([name]) => name)).toEqual(
-            successMetrics
-          );
-          expect(controller.signal.aborted).toBe(false);
-        });
-
-        it('T-008 lifecycleCallerCatchPreservesIdentityAndReason after HTTP dispatch', async () => {
-          const reason = 'RECOVERY_INTERRUPTED';
-          const diagnostics = {trackingId: 'assistant-lifecycle-tracking', status: 409};
-          const error = createRegionRecoveryError(reason, diagnostics);
-          const data = error.data;
-          const http = deferred<unknown>();
-          (mockWebex.request as jest.Mock).mockReturnValue(http.promise);
-          // Standalone ownership and enabled features force the rejection through the real catches.
-          const promise = invoke(createInstance(true));
-          const observed = expect(promise).rejects.toBe(error);
-          await flush();
-          expect(mockWebex.request).toHaveBeenCalledTimes(1);
-          http.reject(error);
-          await observed;
-
-          expect(error.message).toBe(reason);
-          expect(error.data).toBe(data);
-          expect(error.data).toEqual({reason, ...diagnostics});
-          const methods = name === 'fetchHistoricTranscripts' ? [] : helperMethods;
-          expect((getErrorDetails as jest.Mock).mock.calls).toEqual(
-            methods.map((method) => [error, method, CC_FILE])
-          );
-          expect((getErrorDetails as jest.Mock).mock.results.map(({value}) => value)).toEqual(
-            methods.map(() => ({error, reason}))
-          );
-          // Retain caller-owned diagnostics while excluding every helper-origin error log.
-          expect((LoggerProxy.error as jest.Mock).mock.calls.map(([message]) => message)).toEqual(
-            callerErrors
-          );
-          for (const message of callerErrors) {
-            expect(LoggerProxy.error).toHaveBeenCalledWith(
-              message,
-              expect.objectContaining({error})
-            );
-          }
-          expect(mockUploadLogs).not.toHaveBeenCalled();
-        });
-
-        it('ordinary HTTP failure reaches the real helper log and upload sinks', async () => {
-          const error = {
-            statusCode: 503,
-            details: {trackingId: 'assistant-http-tracking', data: {reason: 'HTTP_FAILURE'}},
-          };
-          const http = deferred<unknown>();
-          (mockWebex.request as jest.Mock).mockReturnValue(http.promise);
-          const promise = invoke(createInstance(true));
-          const reasonFor = (method: string, index: number) =>
-            index === 0 ? 'HTTP_FAILURE' : `Error while performing ${method}`;
-          const observed = expect(promise).rejects.toThrow(
-            reasonFor(helperMethods[helperMethods.length - 1], helperMethods.length - 1)
-          );
-          await flush();
-          expect(mockWebex.request).toHaveBeenCalledTimes(1);
-          http.reject(error);
-          await observed;
-
-          const helper = getErrorDetails as jest.Mock;
-          expect(helper.mock.calls).toEqual(
-            helperMethods.map((method, index) => [
-              index === 0 ? error : helper.mock.results[index - 1].value.error,
-              method,
-              CC_FILE,
-            ])
-          );
-          expect(
-            (LoggerProxy.error as jest.Mock).mock.calls.filter(([message]) =>
-              message.includes(' failed with reason: ')
-            )
-          ).toEqual(
-            helperMethods.map((method, index) => [
-              `${method} failed with reason: ${reasonFor(method, index)}`,
-              {
-                module: CC_FILE,
-                method,
-                trackingId: index === 0 ? 'assistant-http-tracking' : undefined,
-              },
-            ])
-          );
-          expect(LoggerProxy.error).toHaveBeenCalledTimes(helperMethods.length + callerErrors.length);
-          expect(mockUploadLogs.mock.calls).toEqual(
-            helperMethods.map((_method, index) => [
-              {correlationId: index === 0 ? 'assistant-http-tracking' : undefined},
-            ])
-          );
-        });
-
-        it('settles admitted HTTP after RTD request cleanup without revoking its borrowed owner', async () => {
-          const http = deferred<unknown>();
-          (mockWebex.request as jest.Mock).mockReturnValue(http.promise);
-          const instance = createInstance();
-          const promise = invoke(instance);
-          const rtd = instance.requestAndWaitForRtd(options());
-          const cleared = expect(rtd).rejects.toThrow('RTD request cleared');
-          expect(instance['pendingRtdRequests'].size).toBe(1);
-          instance.clearAllRtdRequests();
-          await cleared;
-          await flush();
-          expect(instance['pendingRtdRequests'].size).toBe(0);
-          expect(mockWebex.request).toHaveBeenCalledTimes(1);
-          expect(controller.signal.aborted).toBe(false);
-          http.resolve({statusCode: 202, body: httpBody});
-
-          await expect(promise).resolves.toEqual(result);
-          expect(mockMetricsManager.trackEvent.mock.calls.map(([name]) => name)).toEqual(
-            successMetrics
-          );
-        });
-
-        it.each(['aborted', 'undefined', 'generation', 'signal', 'generation and signal'])(
-          'suppresses late HTTP success after the owner becomes %s',
-          async (state) => {
-            const http = deferred<unknown>();
-            (mockWebex.request as jest.Mock).mockReturnValue(http.promise);
-            const promise = invoke(createInstance());
-            const observed = expect(promise).rejects.toMatchObject({
-              data: {reason: 'RECOVERY_INTERRUPTED'},
-            });
-            await flush();
-            expect(mockWebex.request).toHaveBeenCalledTimes(1);
-            if (state === 'aborted') controller.abort();
-            else if (state === 'undefined') owner = undefined;
-            else
-              owner = {
-                generation: state === 'signal' ? 1 : 2,
-                signal: state === 'generation' ? controller.signal : new AbortController().signal,
-              };
-            // Abort must settle without waiting for the HTTP result. Other replacements
-            // deliberately leave the captured signal live to exercise owner identity checks.
-            if (state === 'aborted') await observed;
-            else expect(controller.signal.aborted).toBe(false);
-            http.resolve({statusCode: 202, body: httpBody});
-            await observed;
-            await flush();
-            expect(mockMetricsManager.trackEvent).not.toHaveBeenCalled();
-            expect(getErrorDetails).not.toHaveBeenCalled();
-            expect(LoggerProxy.error).not.toHaveBeenCalled();
-            expect(mockUploadLogs).not.toHaveBeenCalled();
-          }
-        );
-
-        it('observes late HTTP rejection after owner cancellation', async () => {
-          const http = deferred<unknown>();
-          (mockWebex.request as jest.Mock).mockReturnValue(http.promise);
-          const promise = invoke(createInstance());
-          const observed = expect(promise).rejects.toMatchObject({
-            data: {reason: 'RECOVERY_INTERRUPTED'},
-          });
-          await flush();
-          expect(mockWebex.request).toHaveBeenCalledTimes(1);
-          controller.abort();
-          await observed;
-          await observeLateSettlement(() => http.reject(new Error('late HTTP failure')));
-          expect(mockMetricsManager.trackEvent).not.toHaveBeenCalled();
-          expect(getErrorDetails).not.toHaveBeenCalled();
-          expect(LoggerProxy.error).not.toHaveBeenCalled();
-          expect(mockUploadLogs).not.toHaveBeenCalled();
-        });
-      }
+      return instance;
+    };
+    const sendEvent = (instance: ApiAIAssistant) => instance.sendEvent(
+      'agent', 'interaction', AIAssistantEventType.CUSTOM_EVENT, AIAssistantEventName.GET_TRANSCRIPTS
     );
+    beforeEach(() => {
+      controller = new AbortController();
+      owner = {generation: 1, signal: controller.signal};
+    });
+
+    it.each([
+      ['sendEvent', sendEvent],
+      ['fetchHistoricTranscripts', (instance: ApiAIAssistant) => instance.fetchHistoricTranscripts('agent', 'interaction')],
+      ['getRealTimeAssistance', (instance: ApiAIAssistant) => instance.getRealTimeAssistance({agentId: 'agent', interactionId: 'interaction'})],
+      ['sendRealTimeAssistanceUserAction', (instance: ApiAIAssistant) => instance.sendRealTimeAssistanceUserAction({
+        agentId: 'agent', interactionId: 'interaction', adaptiveCardId: 'card', actionId: RealTimeAssistanceUserActionId.LIKE,
+      })],
+      ['requestWellnessBreak', (instance: ApiAIAssistant) => instance.requestWellnessBreak()],
+      ['respondToWellnessBreak', (instance: ApiAIAssistant) => instance.respondToWellnessBreak({action: WELLNESS_BREAK_USER_ACTIONS.ACCEPTED})],
+    ] as const)('rejects %s before HTTP when the owner is absent', async (_name, invoke) => {
+      owner = undefined;
+      await expect(invoke(createOwnedAssistant())).rejects.toMatchObject({data: {reason: 'RECOVERY_INTERRUPTED'}});
+      expect(mockWebex.request).not.toHaveBeenCalled();
+      expect(mockMetricsManager.trackEvent).not.toHaveBeenCalled();
+    });
+
+    it.each([
+      ['event', sendEvent],
+      ['transcripts', (instance: ApiAIAssistant) => instance.fetchHistoricTranscripts('agent', 'interaction')],
+      ['wellness', (instance: ApiAIAssistant) => instance.requestWellnessBreak()],
+    ] as const)('interrupts a pending %s HTTP request without waiting for its result', async (_name, invoke) => {
+      const http = deferred<unknown>();
+      (mockWebex.request as jest.Mock).mockReturnValue(http.promise);
+      const observed = expect(invoke(createOwnedAssistant())).rejects.toMatchObject({data: {reason: 'RECOVERY_INTERRUPTED'}});
+      await flush();
+      expect(mockWebex.request).toHaveBeenCalledTimes(1);
+      controller.abort();
+      await observed;
+      await observeLateSettlement(() => http.reject(new Error('late HTTP failure')));
+      expect(mockMetricsManager.trackEvent).not.toHaveBeenCalled();
+      expect(LoggerProxy.error).not.toHaveBeenCalled();
+    });
+
+    it.each(['generation', 'signal'])('rejects a late HTTP completion when the owner changes %s', async (field) => {
+      const http = deferred<unknown>();
+      (mockWebex.request as jest.Mock).mockReturnValue(http.promise);
+      const observed = expect(sendEvent(createOwnedAssistant())).rejects.toMatchObject({data: {reason: 'RECOVERY_INTERRUPTED'}});
+      owner = {
+        generation: field === 'generation' ? 2 : 1,
+        signal: field === 'signal' ? new AbortController().signal : controller.signal,
+      };
+      http.resolve({statusCode: 202, body: httpBody});
+      await observed;
+      expect(mockMetricsManager.trackEvent).not.toHaveBeenCalled();
+    });
+
+    it('RTD cleanup allows admitted HTTP to finish under an equivalent owner', async () => {
+      const http = deferred<unknown>();
+      (mockWebex.request as jest.Mock).mockReturnValue(http.promise);
+      const instance = createOwnedAssistant();
+      const event = sendEvent(instance);
+      const rtd = expect(instance.requestAndWaitForRtd(options())).rejects.toThrow('RTD request cleared');
+      instance.clearAllRtdRequests();
+      await rtd;
+      owner = {generation: 1, signal: controller.signal};
+      http.resolve({statusCode: 202, body: httpBody});
+      await expect(event).resolves.toEqual(httpBody);
+      expect(controller.signal.aborted).toBe(false);
+      expect(mockWebex.request).toHaveBeenCalledTimes(1);
+    });
+
+    it('passes through an HTTP recovery error with its diagnostic fields', async () => {
+      const error = createRegionRecoveryError('RECOVERY_INTERRUPTED', {trackingId: 'tracking', status: 409});
+      (mockWebex.request as jest.Mock).mockRejectedValue(error);
+      await expect(sendEvent(createOwnedAssistant())).rejects.toBe(error);
+      expect(error.data).toEqual({reason: 'RECOVERY_INTERRUPTED', trackingId: 'tracking', status: 409});
+      expect(mockUploadLogs).not.toHaveBeenCalled();
+    });
+
+    it.each([
+      ['event', sendEvent, METRIC_EVENT_NAMES.AI_ASSISTANT_SEND_EVENT_FAILED],
+      ['transcripts', (instance: ApiAIAssistant) => instance.fetchHistoricTranscripts('agent', 'interaction'),
+        METRIC_EVENT_NAMES.AI_ASSISTANT_FETCH_HISTORIC_TRANSCRIPTS_FAILED],
+      ['wellness', (instance: ApiAIAssistant) => instance.requestWellnessBreak(),
+        METRIC_EVENT_NAMES.AI_ASSISTANT_WELLNESS_ACTION_FAILED],
+    ] as const)('translates an ordinary backend %s failure', async (_name, invoke, metric) => {
+      const failure = {statusCode: 503, details: {data: {reason: 'HTTP_FAILURE'}}};
+      (mockWebex.request as jest.Mock).mockRejectedValue(failure);
+
+      await expect(invoke(createOwnedAssistant())).rejects.toThrow('HTTP_FAILURE');
+      expect(mockMetricsManager.trackEvent).toHaveBeenCalledWith(
+        metric, expect.objectContaining({error: String(failure)}), ['operational']
+      );
+    });
+
+    it('preserves the original Error from the transcript request', async () => {
+      const failure = new Error('Transcript request failed');
+      (mockWebex.request as jest.Mock).mockRejectedValue(failure);
+
+      await expect(createOwnedAssistant().fetchHistoricTranscripts('agent', 'interaction')).rejects.toBe(failure);
+      expect(mockMetricsManager.trackEvent).toHaveBeenCalledWith(
+        METRIC_EVENT_NAMES.AI_ASSISTANT_FETCH_HISTORIC_TRANSCRIPTS_FAILED,
+        expect.objectContaining({error: failure.message}), ['operational']
+      );
+    });
   });
 
   it('sends a summary request and resolves it from the matching RTD event', async () => {

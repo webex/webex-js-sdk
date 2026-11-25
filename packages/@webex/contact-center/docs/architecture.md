@@ -204,13 +204,6 @@ No OpenAPI/AsyncAPI/proto schema was found in scope; exact SDK and event contrac
 
 ## Cross-cutting architecture
 
-### Task recovery
-
-A replacement Voice task can read Webex App mute state after its actor commits hydration during
-`restoringSession`. Task lifetime owns cancellation of that read and its retry timer. The recovery
-command gate continues to control mute commands until the session is ready. See the
-[Task behavior contract](../src/services/task/docs/README.md#wxapp-telephony).
-
 ### Security
 
 - Trust boundaries, identity flow, credentials, data classes, and sensitive areas: see [Security architecture](#security-architecture).
@@ -311,7 +304,8 @@ Cache eligibility rules are in the [Utils spec](../src/utils/docs/README.md) and
 
 ## Release and versioning
 
-Regional recovery is delivered by a compatible SDK release and confirmed backend entitlement. The next registration observes entitlement changes. The SDK adds no polling or client toggle. A reader dependency failure leaves eligibility unknown and preserves ordinary registration. Delivery owners roll back the SDK release and platform owners manage entitlement. The [package release checklist](getting-started.md#release-evidence-and-rel-aqm-tracking-echo) separately requires deployed echo/correlation evidence and the human live acceptance for rollout.
+The [regional recovery release checklist](getting-started.md#release-evidence-and-rel-aqm-tracking-echo)
+covers rollout, deployed correlation evidence, and live failover and failback drills.
 
 | Artifact | Publish target | Versioning rule | Deprecation window | Changelog or migration obligation |
 | -------- | -------------- | --------------- | ------------------ | --------------------------------- |

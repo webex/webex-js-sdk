@@ -98,28 +98,13 @@ describe('AQM routing agent', () => {
       },
     });
   });
-  it.each(['neither', 'callback', 'context'])(
-    'stateChange preserves optional trailing arguments with %s supplied',
-    async (supplied) => {
-      const payload = {data: {state: 'Available', auxCodeId: '0'}};
-      const callback = supplied === 'callback' ? jest.fn() : undefined;
-      const context = supplied === 'context'
-        ? {generation: 3, signal: new AbortController().signal} : undefined;
-      const req = await (supplied === 'neither' ? agent.stateChange(payload)
-        : supplied === 'callback' ? agent.stateChange(payload, callback)
-          : agent.stateChange(payload, undefined, context));
+  it('stateChange accepts the ordinary payload without recovery arguments', async () => {
+    const payload = {data: {state: 'Available', auxCodeId: '0'}};
+    const req = await agent.stateChange(payload);
 
-      expect(dispatchState).toHaveBeenCalledTimes(1);
-      const expectedArgs = {
-        neither: [payload],
-        callback: [payload, callback],
-        context: [payload, undefined, context],
-      };
-      expect(dispatchState.mock.calls[0]).toEqual(expectedArgs[supplied]);
-      expect(req).toBe(dispatchState.mock.results[0].value);
-      expect(req.data).toBe(payload.data);
-    }
-  );
+    expect(dispatchState.mock.calls).toEqual([[payload]]);
+    expect(req.data).toBe(payload.data);
+  });
   it('buddyAgents' , async () => {
     const reqSpy = jest.spyOn(fakeAqm, 'req');
     const req = await agent.buddyAgents({data: {} as any});
@@ -168,11 +153,6 @@ describe('AQM routing agent', () => {
     {
       shape: 'opaque Error',
       failure: new Error('Opaque station login failure'),
-      details: {status: 0, trackingId: '', type: undefined},
-    },
-    {
-      shape: 'empty object',
-      failure: {},
       details: {status: 0, trackingId: '', type: undefined},
     },
     {

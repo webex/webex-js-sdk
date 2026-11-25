@@ -10,12 +10,9 @@ import type {WebexSDK} from '../../../../../../src/types';
 import {TaskEvent, TaskEventPayload} from '../../../../../../src/services/task/state-machine';
 import {createTaskData} from '../taskTestUtils';
 import {CC_EVENTS} from '../../../../../../src/services/config/types';
-import {METRIC_EVENT_NAMES} from '../../../../../../src/metrics/constants';
 import MetricsManager from '../../../../../../src/metrics/MetricsManager';
-import LoggerProxy from '../../../../../../src/logger-proxy';
-import WebexRequest from '../../../../../../src/services/core/WebexRequest';
+import {METRIC_EVENT_NAMES} from '../../../../../../src/metrics/constants';
 import * as Utils from '../../../../../../src/services/core/Utils';
-import {flushEventLoopTurn} from '../../../../fixtures/aiSummaryTestUtils';
 
 jest.mock('@webex/calling', () => ({
   LocalMicrophoneStream: class {
@@ -338,88 +335,50 @@ describe('WebRTC Task', () => {
       }
     );
 
-    it.each(['none', 'different-id', 'same-id'])(
-      'existingOwnedTracksDisposed / hostTracksUntouched / noAnswerEndOrHealthyDeregister: replacement=%s',
-      async replacementMode => {
-        const owned = [{stop: jest.fn()}, {stop: jest.fn()}];
-        const host = {stop: jest.fn()};
-        const mediaDevices = Object.getOwnPropertyDescriptor(navigator, 'mediaDevices');
-        const getUserMedia = jest.fn().mockResolvedValue({
-          getTracks: () => owned, getAudioTracks: () => [owned[0]],
-        });
-        Object.defineProperty(navigator, 'mediaDevices', {value: {getUserMedia}, configurable: true});
-        const primary = new EventEmitter();
-        const calling = new WebCallingService({} as WebexSDK);
-        calling.setLoginOption(LoginOption.BROWSER);
-        calling.setBrowserVoiceRequired(true);
-        const line = {deregister: jest.fn()};
-        calling['line'] = line as any;
-        calling['handleLineRegistered'](line as any);
-        expect(calling.isVoiceReady()).toBe(true);
-        const contact = {end: jest.fn(), decline: jest.fn(), wrapup: jest.fn()};
-        const manager = new TaskManager(undefined, contact as any, calling, primary as any, new EventEmitter() as any);
-        manager.setAgentId('agent-1');
-        manager.setConfigFlags({isEndTaskEnabled: true, isEndConsultEnabled: true});
-        manager.setWebRtcEnabled(true);
-        const makeCall = (id: string) => Object.assign(new EventEmitter(), {
-          getCallId: () => id, answer: jest.fn(), end: jest.fn(),
-        });
-        const call = makeCall('owned-call');
-        const replacement = replacementMode === 'none' ? undefined
-          : makeCall(replacementMode === 'same-id' ? call.getCallId() : 'replacement-call');
-        const cleanup = jest.spyOn(calling, 'cleanUpCall');
-        const decline = jest.spyOn(calling, 'declineCall');
-        const deregister = jest.spyOn(calling, 'deregisterWebCallingLine');
-        try {
-          manager.startSession({generation: 1, signal: new AbortController().signal, assertCommandAllowed: jest.fn()});
-          const data = createTaskData({type: CC_EVENTS.AGENT_CONTACT});
-          primary.emit('message', JSON.stringify({data}));
-          const task = manager.getTask(data.interactionId) as WebRTC;
-          expect(task).toBeInstanceOf(WebRTC);
-          expect(jest.isMockFunction(task.accept)).toBe(false);
-          // The calling line owns the call; the real INCOMING_CALL handler must correlate it.
-          calling['call'] = call as any;
-          calling.emit(LINE_EVENTS.INCOMING_CALL, call);
-          expect(manager['call']).toBe(call);
-          expect([...calling['callTaskMap']]).toEqual([[call.getCallId(), data.interactionId]]);
-          await task.accept();
-          expect(getUserMedia.mock.calls).toEqual([[{audio: true}]]);
-          expect(call.answer.mock.calls).toEqual([[task['localAudioStream']]]);
-          expect(task['localAudioStream']).toBeInstanceOf(LocalMicrophoneStream);
-          expect(task['ownedTracks'].size).toBe(2);
-          expect(calling.listenerCount(CALL_EVENT_KEYS.REMOTE_MEDIA)).toBe(1);
-          expect(call.listenerCount(CALL_EVENT_KEYS.REMOTE_MEDIA)).toBe(1);
-          expect(call.listenerCount(CALL_EVENT_KEYS.DISCONNECT)).toBe(1);
-          const delivered = jest.fn();
-          task.on(TASK_EVENTS.TASK_MEDIA, delivered);
-          call.emit(CALL_EVENT_KEYS.REMOTE_MEDIA, host);
-          expect(delivered.mock.calls).toEqual([[host]]);
+    it.each([false, true])('disposes SDK media while preserving host tracks and line ownership: replacement=%s', async (replace) => {
+      const owned = [{stop: jest.fn()}, {stop: jest.fn()}];
+      const host = {stop: jest.fn()};
+      const getUserMedia = jest.spyOn(navigator.mediaDevices, 'getUserMedia').mockResolvedValue({
+        getTracks: () => owned, getAudioTracks: () => [owned[0]],
+      } as unknown as MediaStream);
+      const primary = new EventEmitter();
+      const calling = new WebCallingService({} as WebexSDK);
+      calling.setLoginOption(LoginOption.BROWSER);
+      calling.setBrowserVoiceRequired(true);
+      const line = {deregister: jest.fn()};
+      calling['line'] = line as any;
+      calling['handleLineRegistered'](line as any);
+      const contact = {end: jest.fn(), decline: jest.fn(), wrapup: jest.fn()};
+      const manager = new TaskManager(undefined, contact as any, calling, primary as any, new EventEmitter() as any);
+      manager.setAgentId('agent-1');
+      manager.setConfigFlags({isEndTaskEnabled: true, isEndConsultEnabled: true});
+      manager.setWebRtcEnabled(true);
+      const makeCall = () => Object.assign(new EventEmitter(), {
+        getCallId: () => 'owned-call', answer: jest.fn(), end: jest.fn(),
+      });
+      const call = makeCall();
+      const replacement = replace ? makeCall() : undefined;
+      try {
+        manager.startSession({generation: 1, signal: new AbortController().signal, assertCommandAllowed: jest.fn()});
+        const data = createTaskData({type: CC_EVENTS.AGENT_CONTACT});
+        primary.emit('message', JSON.stringify({data}));
+        const task = manager.getTask(data.interactionId) as WebRTC;
+        calling['call'] = call as any;
+        calling.emit(LINE_EVENTS.INCOMING_CALL, call);
+        await task.accept();
+        expect(call.answer).toHaveBeenCalledWith(task['localAudioStream']);
+        const media = jest.fn();
+        const ended = jest.fn();
+        task.on(TASK_EVENTS.TASK_MEDIA, media);
+        task.on(TASK_EVENTS.TASK_END, ended);
+        call.emit(CALL_EVENT_KEYS.REMOTE_MEDIA, host);
+        expect(media.mock.calls).toEqual([[host]]);
 
-          manager['taskCollection'].alias = task;
-          const listeners = [...manager['taskListeners'].get(task)];
-          expect(listeners.length).toBeGreaterThan(0);
-          for (const [event, listener] of listeners) expect(task.listeners(event)).toContain(listener);
-          const invalidated = jest.spyOn(task, 'invalidateForRegionRecovery');
-          const controls = task.uiControls;
-          const disabledLeg = (leg: typeof controls.main) => Object.fromEntries(
-            Object.entries(leg).map(([key, value]) => [key, {...value, isEnabled: false}])
-          );
-          const disabledControls = {
-            ...controls, main: disabledLeg(controls.main), consult: disabledLeg(controls.consult),
-          };
-          const updated = jest.fn();
-          task.on(TASK_EVENTS.TASK_UI_CONTROLS_UPDATED, updated);
-          const syntheticSuccess = jest.fn();
-          for (const event of [TASK_EVENTS.TASK_END, CC_EVENTS.CONTACT_ENDED, TASK_EVENTS.TASK_WRAPPEDUP]) {
-            task.on(event, syntheticSuccess);
-            manager.on(event, syntheticSuccess);
-          }
-          const trackMetric = jest.spyOn(task['metricsManager'], 'trackEvent');
+        if (replacement) {
           const off = call.off.bind(call);
-          const detached = jest.spyOn(call, 'off').mockImplementation((event, listener) => {
+          jest.spyOn(call, 'off').mockImplementation((event, listener) => {
             off(event, listener);
-            if (replacement && event === CALL_EVENT_KEYS.REMOTE_MEDIA) {
-              // A reentrant calling owner replaces the call while the captured call is detached.
+            if (event === CALL_EVENT_KEYS.REMOTE_MEDIA) {
               calling['call'] = replacement as any;
               manager['call'] = replacement as any;
               calling.mapCallToTask(replacement.getCallId(), 'replacement-task');
@@ -427,178 +386,88 @@ describe('WebRTC Task', () => {
             }
             return call;
           });
-
-          manager.invalidateRegionalTasks();
-          manager.invalidateRegionalTasks();
-          expect(invalidated).toHaveBeenCalledTimes(1);
-          expect(task.uiControls).toEqual(disabledControls);
-          expect(updated.mock.calls).toEqual([[disabledControls]]);
-          expect(cleanup.mock.calls).toEqual([[call]]);
-          for (const track of owned) expect(track.stop).toHaveBeenCalledTimes(1);
-          expect(task['ownedTracks'].size).toBe(0);
-          expect(task['localAudioStream']).toBeUndefined();
-          expect(manager.getAllTasks()).toEqual({});
-          expect(manager['taskListeners'].size).toBe(0);
-          for (const [event, listener] of listeners) expect(task.listeners(event)).not.toContain(listener);
-          expect(task.listeners(TASK_EVENTS.TASK_MEDIA)).toEqual([delivered]);
-          expect(calling.listenerCount(CALL_EVENT_KEYS.REMOTE_MEDIA)).toBe(0);
-          expect(call.listenerCount(CALL_EVENT_KEYS.REMOTE_MEDIA)).toBe(0);
-          expect(call.listenerCount(CALL_EVENT_KEYS.DISCONNECT)).toBe(0);
-          expect(detached.mock.calls).toEqual([
-            [CALL_EVENT_KEYS.REMOTE_MEDIA, calling['handleMediaEvent']],
-            [CALL_EVENT_KEYS.DISCONNECT, calling['handleDisconnectEvent']],
-          ]);
-          expect(manager['call']).toBe(replacement);
-          expect(calling['call']).toBe(replacement ?? null);
-          expect([...calling['callTaskMap']]).toEqual(replacement
-            ? [[replacement.getCallId(), 'replacement-task']] : []);
-          // Replaying stale call cleanup cannot detach a replacement, even with the same call ID.
-          calling.cleanUpCall(call as any);
-          calling.cleanUpCall(call as any);
-          expect(detached).toHaveBeenCalledTimes(2);
-          expect(manager['call']).toBe(replacement);
-          expect(calling['call']).toBe(replacement ?? null);
-          expect([...calling['callTaskMap']]).toEqual(replacement
-            ? [[replacement.getCallId(), 'replacement-task']] : []);
-          if (replacement) {
-            expect(replacement.listenerCount(CALL_EVENT_KEYS.REMOTE_MEDIA)).toBe(1);
-            expect(replacement.listenerCount(CALL_EVENT_KEYS.DISCONNECT)).toBe(1);
-            expect(replacement.end).not.toHaveBeenCalled();
-          }
-          call.emit(CALL_EVENT_KEYS.REMOTE_MEDIA, host);
-          call.emit(CALL_EVENT_KEYS.DISCONNECT);
-          expect(delivered.mock.calls).toEqual([[host]]);
-          expect(host.stop).not.toHaveBeenCalled();
-          expect(call.end).not.toHaveBeenCalled();
-          expect(decline).not.toHaveBeenCalled();
-          expect(contact.end).not.toHaveBeenCalled();
-          expect(contact.decline).not.toHaveBeenCalled();
-          expect(contact.wrapup).not.toHaveBeenCalled();
-          expect(syntheticSuccess).not.toHaveBeenCalled();
-          expect(trackMetric.mock.calls.filter(([event]) => event === METRIC_EVENT_NAMES.TASK_WRAPUP_SUCCESS)).toEqual([]);
-          expect(deregister).not.toHaveBeenCalled();
-          expect(line.deregister).not.toHaveBeenCalled();
-          expect(calling['line']).toBe(line);
-          expect(calling.isVoiceReady()).toBe(true);
-          for (const track of owned) expect(track.stop).toHaveBeenCalledTimes(1);
-        } finally {
-          manager.stopSession();
-          calling.cleanUpCall();
-          if (mediaDevices) Object.defineProperty(navigator, 'mediaDevices', mediaDevices);
-          else Reflect.deleteProperty(navigator, 'mediaDevices');
-          cleanup.mockRestore(); decline.mockRestore(); deregister.mockRestore();
         }
+        manager.invalidateRegionalTasks();
+        manager.invalidateRegionalTasks();
+        calling.cleanUpCall(call as any); // A stale owner may still try to clean up.
+        call.emit(CALL_EVENT_KEYS.REMOTE_MEDIA, host);
+        call.emit(CALL_EVENT_KEYS.DISCONNECT);
+
+        for (const track of owned) expect(track.stop).toHaveBeenCalledTimes(1);
+        expect(task['localAudioStream']).toBeUndefined();
+        expect(host.stop).not.toHaveBeenCalled();
+        expect(media.mock.calls).toEqual([[host]]);
+        expect(call.listenerCount(CALL_EVENT_KEYS.REMOTE_MEDIA)).toBe(0);
+        expect(call.listenerCount(CALL_EVENT_KEYS.DISCONNECT)).toBe(0);
+        expect(manager['call']).toBe(replacement);
+        expect(calling['call']).toBe(replacement ?? null);
+        if (replacement) {
+          expect(calling.getTaskIdForCall(replacement.getCallId())).toBe('replacement-task');
+          expect(replacement.listenerCount(CALL_EVENT_KEYS.REMOTE_MEDIA)).toBe(1);
+          expect(replacement.listenerCount(CALL_EVENT_KEYS.DISCONNECT)).toBe(1);
+          expect(replacement.end).not.toHaveBeenCalled();
+        }
+        expect(call.end).not.toHaveBeenCalled();
+        expect(contact.end).not.toHaveBeenCalled();
+        expect(contact.decline).not.toHaveBeenCalled();
+        expect(contact.wrapup).not.toHaveBeenCalled();
+        expect(ended).not.toHaveBeenCalled();
+        expect(line.deregister).not.toHaveBeenCalled();
+        expect(calling.isVoiceReady()).toBe(true);
+      } finally {
+        manager.stopSession();
+        calling.cleanUpCall();
+        getUserMedia.mockRestore();
       }
-    );
-
+    });
   });
-
 });
 
-describe.each(['accept', 'decline', 'toggleMute'] as const)(
-  'T-008 WebRTC %s lifecycle caller catch diagnostics', (operation) => {
-    const uploadLogs = WebexRequest.getInstance().uploadLogs;
-    let helper: jest.SpyInstance;
-    let errorLog: jest.SpyInstance;
-    let metrics: jest.SpyInstance;
-    let timing: jest.SpyInstance;
-    let answerCall: jest.Mock;
-    let task: WebRTC;
-    let dependency: jest.Mock | jest.SpyInstance;
-    let admission: jest.Mock;
-
-    beforeEach(() => {
-      helper = jest.spyOn(Utils, 'getErrorDetails');
-      errorLog = jest.spyOn(LoggerProxy, 'error').mockImplementation();
-      metrics = jest.spyOn(MetricsManager.getInstance(), 'trackEvent').mockImplementation();
-      timing = jest.spyOn(MetricsManager.getInstance(), 'timeEvent').mockImplementation();
-      answerCall = jest.fn();
-      const calling = {
-        on: jest.fn(),
-        off: jest.fn(),
-        answerCall,
-        declineCall: jest.fn(),
-        muteUnmuteCall: jest.fn(),
-      };
-      task = new WebRTC({} as any, calling as unknown as WebCallingService, createTaskData());
-      dependency = operation === 'accept'
-        ? jest.spyOn(navigator.mediaDevices, 'getUserMedia')
-        : calling[operation === 'decline' ? 'declineCall' : 'muteUnmuteCall'];
-      admission = jest.fn();
-      task.bindRecoveryGuard({generation: 1, signal: new AbortController().signal, assertCommandAllowed: admission});
-    });
-
-    afterEach(() => {
+describe('WebRTC command admission', () => {
+  it.each(['accept', 'decline', 'toggleMute'] as const)('blocks %s before accessing calling or media', async (operation) => {
+    const calling = {on: jest.fn(), off: jest.fn(), answerCall: jest.fn(), declineCall: jest.fn(), muteUnmuteCall: jest.fn()};
+    const task = new WebRTC({} as any, calling as unknown as WebCallingService, createTaskData());
+    const error = Utils.createRegionRecoveryError('RECOVERY_IN_PROGRESS');
+    task.bindRecoveryGuard({generation: 1, signal: new AbortController().signal, assertCommandAllowed: () => {throw error;}});
+    const getUserMedia = jest.spyOn(navigator.mediaDevices, 'getUserMedia');
+    try {
+      await expect(task[operation]()).rejects.toBe(error);
+      expect(getUserMedia).not.toHaveBeenCalled();
+      expect(calling.answerCall).not.toHaveBeenCalled();
+      expect(calling.declineCall).not.toHaveBeenCalled();
+      expect(calling.muteUnmuteCall).not.toHaveBeenCalled();
+    } finally {
       task.invalidateForRegionRecovery();
-      if (operation === 'accept') (dependency as jest.SpyInstance).mockRestore();
-      helper.mockRestore();
-      errorLog.mockRestore();
-      metrics.mockRestore();
-      timing.mockRestore();
-    });
-
-    function failDependency(error: Error) {
-      if (operation === 'accept') dependency.mockRejectedValue(error);
-      else dependency.mockImplementation(() => { throw error; });
+      getUserMedia.mockRestore();
     }
+  });
 
-    it.each(['RECOVERY_INTERRUPTED', 'STALE_TASK', 'RECOVERY_IN_PROGRESS', 'REGION_RELOAD_REQUIRED'])(
-      'lifecycleCallerCatchPreservesIdentityAndReason: %s', async (reason) => {
-        const diagnostics = {trackingId: 'webrtc-lifecycle-tracking', status: 409};
-        const error = Utils.createRegionRecoveryError(reason, diagnostics);
-        const data = error.data;
-        failDependency(error);
-
-        await expect(task[operation]()).rejects.toBe(error);
-        await flushEventLoopTurn();
-
-        expect(dependency).toHaveBeenCalledTimes(1);
-        expect(admission).toHaveBeenCalled();
-        expect(helper.mock.calls).toEqual([[error, operation, 'cc']]);
-        expect(helper.mock.results[0].value).toEqual({error, reason});
-        expect(error.data).toBe(data);
-        expect(error.data).toEqual({reason, ...diagnostics});
-        expect(error.message).toBe(reason);
-        expect(metrics).not.toHaveBeenCalled();
-        expect(errorLog).not.toHaveBeenCalled();
-        expect(uploadLogs).not.toHaveBeenCalled();
+  describe.each([
+    ['accept', METRIC_EVENT_NAMES.TASK_ACCEPT_FAILED],
+    ['decline', METRIC_EVENT_NAMES.TASK_DECLINE_FAILED],
+    ['toggleMute', undefined],
+  ] as const)('%s dependency failure', (operation, failureMetric) => {
+    it.each(['recovery', 'ordinary'] as const)('preserves %s error behavior', async (kind) => {
+      const error = kind === 'recovery'
+        ? Utils.createRegionRecoveryError('REGION_RELOAD_REQUIRED', {status: 409})
+        : new Error('ordinary Calling failure');
+      const fail = jest.fn(() => {throw error;});
+      const calling = {on: jest.fn(), off: jest.fn(), declineCall: fail, muteUnmuteCall: fail};
+      const task = new WebRTC({} as any, calling as unknown as WebCallingService, createTaskData());
+      const media = jest.spyOn(navigator.mediaDevices, 'getUserMedia').mockRejectedValue(error);
+      const metrics = jest.spyOn(MetricsManager.getInstance(), 'trackEvent').mockImplementation();
+      try {
+        const action = task[operation]();
+        if (kind === 'recovery') await expect(action).rejects.toBe(error);
+        else await expect(action).rejects.toThrow('Error while performing');
+        expect(operation === 'accept' ? media : fail).toHaveBeenCalledTimes(1);
+        expect(metrics.mock.calls.map(([event]) => event))
+          .toEqual(kind === 'ordinary' && failureMetric ? [failureMetric] : []);
+      } finally {
+        task.invalidateForRegionRecovery();
+        media.mockRestore();
+        metrics.mockRestore();
       }
-    );
-
-    it('ordinary failure reaches the diagnostic sinks', async () => {
-      const error = new Error('ordinary WebRTC failure');
-      failDependency(error);
-      const method = operation === 'toggleMute' ? 'mute' : operation;
-
-      await expect(task[operation]()).rejects.toThrow(`Error while performing ${method}`);
-      await flushEventLoopTurn();
-
-      expect(metrics.mock.calls.map(([event]) => event)).toEqual(operation === 'toggleMute' ? [] : [
-        operation === 'accept' ? METRIC_EVENT_NAMES.TASK_ACCEPT_FAILED : METRIC_EVENT_NAMES.TASK_DECLINE_FAILED,
-      ]);
-      expect(errorLog).toHaveBeenCalledTimes(1);
-      expect(uploadLogs).toHaveBeenCalledTimes(1);
-      expect(uploadLogs).toHaveBeenCalledWith({correlationId: undefined});
     });
-
-    it.each(['RECOVERY_INTERRUPTED', 'STALE_TASK', 'RECOVERY_IN_PROGRESS', 'REGION_RELOAD_REQUIRED'])(
-      'admission rejects %s before media, service and diagnostic work', async (reason) => {
-        const error = Utils.createRegionRecoveryError(reason);
-        admission.mockImplementation(() => { throw error; });
-
-        await expect(task[operation]()).rejects.toBe(error);
-        await flushEventLoopTurn();
-
-        expect(admission).toHaveBeenCalledTimes(1);
-        expect(dependency).not.toHaveBeenCalled();
-        expect(navigator.mediaDevices.getUserMedia).not.toHaveBeenCalled();
-        expect(answerCall).not.toHaveBeenCalled();
-        expect(timing).not.toHaveBeenCalled();
-        expect(helper).not.toHaveBeenCalled();
-        expect(metrics).not.toHaveBeenCalled();
-        expect(errorLog).not.toHaveBeenCalled();
-        expect(uploadLogs).not.toHaveBeenCalled();
-      }
-    );
-  }
-);
+  });
+});

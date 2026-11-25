@@ -152,7 +152,7 @@ along with `RegionRecoveryState`, `RegionRecoveryStatus`, `RegionRecoveryReason`
 | Status | Host behavior |
 | --- | --- |
 | `recovering` | Show recovery progress and keep commands disabled. |
-| `ready` | A replacement socket and station session are accepted. Use `autoAvailable` and the existing voice state to track those outcomes independently. |
+| `ready` | The current socket and an initial or restored station session are accepted. Track `autoAvailable` and voice readiness separately. |
 | `stationLoginRequired` | Use the existing `stationLogin()` with `BROWSER`, `EXTENSION` or `AGENT_DN`. Failed attempts stay in this state. |
 | `reloadRequired` | Follow the [host restart guidance](#multi-region-recovery-host-restart). |
 | `unavailable` | Show the terminal reason and follow the host's recovery flow. |
@@ -269,10 +269,11 @@ state actions and logout accessible from the keyboard.
 
 ## Multi-region recovery rollout and rollback
 
-A compatible SDK release and backend entitlement are both required. The SDK reads the first
-organization-settings record once per registration. Literal `true` enables recovery, while false
-or a missing field disables it. A failed read leaves eligibility unknown and preserves ordinary
-registration. Roll back through SDK release and backend entitlement management, then register again.
+A compatible SDK release and backend entitlement are both required. Registration starts a separate
+organization-settings read with up to five attempts. In a valid first record, literal `true`
+enables recovery and `false` or an absent field disables it. A missing, empty, or malformed record
+leaves eligibility unknown. Ordinary registration proceeds while the read is pending or if it fails.
+Roll back through SDK release and backend entitlement management, then register again.
 
 ### Release evidence and REL-AQM-TRACKING-ECHO
 

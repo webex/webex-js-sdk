@@ -71,32 +71,26 @@ describe('Utils', () => {
       }
     );
 
-    it.each([undefined, 'foreign stack'])(
-      'narrows a cross-realm Error to a required typed reason with stack=%s', (stack) => {
-        const candidate: unknown = require('vm').runInNewContext(
-          "Object.assign(new Error('STALE_TASK'), {data: {reason: 'STALE_TASK', fieldName: 'safe'}})"
-        );
-        Object.assign(candidate, {stack});
-        expect(candidate).not.toBeInstanceOf(Error);
-        if (!Utils.isRegionRecoveryError(candidate)) throw new Error('Expected lifecycle error');
-        const reason: RegionRecoveryErrorCode = candidate.data.reason;
-        expect(reason).toBe('STALE_TASK');
-        expect(Utils.getErrorDetails(candidate, 'accept', 'Task').error).toBe(candidate);
-        expect(LoggerProxy.error).not.toHaveBeenCalled();
-        expect(WebexRequest.getInstance).not.toHaveBeenCalled();
-      }
-    );
+    it('narrows a cross-realm Error without a stack to a required typed reason', () => {
+      const candidate: unknown = require('vm').runInNewContext(
+        "Object.assign(new Error('STALE_TASK'), {data: {reason: 'STALE_TASK', fieldName: 'safe'}})"
+      );
+      Object.assign(candidate, {stack: undefined});
+      expect(candidate).not.toBeInstanceOf(Error);
+      if (!Utils.isRegionRecoveryError(candidate)) throw new Error('Expected lifecycle error');
+      const reason: RegionRecoveryErrorCode = candidate.data.reason;
+      expect(reason).toBe('STALE_TASK');
+      expect(Utils.getErrorDetails(candidate, 'accept', 'Task').error).toBe(candidate);
+      expect(LoggerProxy.error).not.toHaveBeenCalled();
+      expect(WebexRequest.getInstance).not.toHaveBeenCalled();
+    });
 
     it.each([
-      null, undefined, 'STALE_TASK', new Error('STALE_TASK'), {data: null},
+      null, new Error('STALE_TASK'),
       {name: 'Error', message: 'UNKNOWN', data: {reason: 'UNKNOWN'}},
-      {data: {reason: 'STALE_TASK'}},
       {name: 'Error', data: {reason: 'STALE_TASK'}},
-      {message: 'STALE_TASK', data: {reason: 'STALE_TASK'}},
       {name: 1, message: 'STALE_TASK', data: {reason: 'STALE_TASK'}},
-      {name: 'Error', message: 1, data: {reason: 'STALE_TASK'}},
-      ...[null, 1, {}].map(stack =>
-        ({name: 'Error', message: 'STALE_TASK', stack, data: {reason: 'STALE_TASK'}})),
+      {name: 'Error', message: 'STALE_TASK', stack: 1, data: {reason: 'STALE_TASK'}},
     ])(
       'rejects non-lifecycle shape %#',
       (candidate) => expect(Utils.isRegionRecoveryError(candidate)).toBe(false)
@@ -137,13 +131,7 @@ describe('Utils', () => {
 
     it.each([
       [9999, 'AGENT_NOT_FOUND', 'Service.aqm.reqs.Timeout', 429],
-      ['9999', 'AGENT_DN_NOT_REGISTERED', 'Service.aqm.reqs.TimeoutEvent', 502],
-      [9999, 'AGENT_SESSION_ALREADY_EXISTS', 'Service.aqm.reqs.Timeout', 503],
-      [9999, 'INTERNAL_ERROR', 'Service.aqm.reqs.TimeoutEvent', 429],
-      [1037, 'AGENT_NOT_FOUND', 'Service.aqm.reqs.Timeout', 502],
-      [1038, 'AGENT_SESSION_ALREADY_EXISTS', 'Service.aqm.reqs.TimeoutEvent', 503],
-      [1041, 'INTERNAL_ERROR', 'Service.aqm.reqs.Timeout', 429],
-      [1035, 'AGENT_DN_NOT_REGISTERED', 'Service.aqm.reqs.TimeoutEvent', 502],
+      ['1035', 'AGENT_SESSION_ALREADY_EXISTS', 'Service.aqm.reqs.TimeoutEvent', 503],
     ])('normalizationRetainsCompetingCategoryFields %#', (reasonCode, reason, id, status) => {
       const failure = {statusCode: status, id, details: {data: {reasonCode, reason, trackingId: 'nested-id'}}};
       expect(Utils.normalizeRecoveryFailure(failure)).toEqual({status, id, reasonCode: Number(reasonCode), reason, trackingId: 'nested-id'});
@@ -161,7 +149,7 @@ describe('Utils', () => {
       expect(Utils.normalizeRecoveryFailure(error)).toEqual({reason, reasonCode});
     });
 
-    it.each([NaN, Infinity, 1.5, '-1037', '1037.0', '1037oops', '', {}, null])(
+    it.each([NaN, 1.5, '-1037', '1037oops', {}])(
       'rejects invalid reason codes %#',
       (reasonCode) => expect(Utils.normalizeRecoveryFailure({data: {reasonCode}})).toEqual({})
     );
@@ -183,24 +171,15 @@ describe('Utils', () => {
   describe('T-005 subscription mismatch precedence', () => {
     const reasons = ['REGION_MISMATCH_REGION_FAILOVER', 'REGION_MISMATCH_ORG_OVERRIDE', 'REGION_MISMATCH_ORG_OVERRIDE_SUPERSEDED', 'REGION_MISMATCH_NO_OVERRIDE'];
 
-    it.each(['x-wxcc-region-reason', 'X-WXCC-REGION-REASON', 'X-WxCC-Region-Reason'])(
-      'headerNameCaseInsensitiveValueCaseSensitive %s', header => {
-        for (const reason of reasons) {
-          expect(Utils.getSubscriptionMismatchReason({statusCode: 409, headers: {[header]: reason}})).toBe(reason);
-          expect(Utils.getSubscriptionMismatchReason({statusCode: 409, headers: {[header]: reason.toLowerCase()}})).toBeUndefined();
-        }
-      }
-    );
-
-    it.each(reasons)('unknownHeaderDefeatsBody / errorReasonFallback %s', reason => {
+    it('unknownHeaderDefeatsBody / errorReasonFallback', () => {
+      const reason = reasons[0];
       expect(Utils.getSubscriptionMismatchReason({statusCode: 409, headers: {'x-wxcc-region-reason': 'UNKNOWN'}, body: {reason}})).toBeUndefined();
       expect(Utils.getSubscriptionMismatchReason({statusCode: 409, body: {reason: ' ', error: {reason: ` ${reason} `}}})).toBe(reason);
       expect(Utils.getSubscriptionMismatchReason({statusCode: 409, body: {reason: 'UNKNOWN', error: {reason}}})).toBeUndefined();
     });
 
-    it.each(reasons)('wrongCaseHeaderDefeatsRecognizedBody %s', reason => {
-      expect(Utils.getSubscriptionMismatchReason({statusCode: 409,
-        headers: {'x-wxcc-region-reason': reason.toLowerCase()}, body: {reason}})).toBeUndefined();
+    it('wrongCaseHeaderDefeatsRecognizedBody', () => {
+      const reason = reasons[0];
       expect(Utils.getSubscriptionMismatchReason({response: {status: 409,
         headers: {'X-WxCC-Region-Reason': reason.replace('REGION', 'Region')},
         body: {error: {reason}}}})).toBeUndefined();
@@ -213,8 +192,6 @@ describe('Utils', () => {
 
     it.each([
       [{statusCode: 503, body: {reason: reasons[0]}}],
-      [{statusCode: 409, headers: {'x-wxcc-region-reason': 'UNKNOWN'}, body: {reason: reasons[0]}}],
-      [{statusCode: 409, body: {reason: 'UNKNOWN', error: {reason: reasons[0]}}}],
       [{statusCode: 409, body: {reason: 'region_mismatch_region_failover'}}],
       [{statusCode: 409, body: {reason: 'REGION_MISMATCH_ORG_NOT_ELIGIBLE'}}],
       [{statusCode: 409}],

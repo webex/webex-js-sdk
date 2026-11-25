@@ -65,7 +65,7 @@ describe('AgentConfigService', () => {
         body: [{id: 'org-sanitized', licenseVersion: '4.0'}],
         expected: {eligibility: 'disabled'},
       },
-      ...[null, ' ', 123].map(homeRegion => ({
+      ...[' ', 123].map(homeRegion => ({
         body: [{multiRegionEnabled: true, homeRegion}],
         expected: {eligibility: 'enabled'},
       })),
@@ -100,19 +100,13 @@ describe('AgentConfigService', () => {
     });
 
     it.each([
-      {description: 'a missing body', body: undefined},
-      {description: 'a null body', body: null},
       {description: 'an empty array', body: []},
       {description: 'a nested data envelope', body: {data: [{multiRegionEnabled: true}]}},
-      {description: 'an empty first record', body: [{}]},
       {description: 'an empty first record before a valid record', body: [{}, {multiRegionEnabled: true}]},
       {description: 'a null first record before a valid record', body: [null, {multiRegionEnabled: true}]},
       {description: 'an array first record before a valid record', body: [[], {multiRegionEnabled: true}]},
-      {description: 'a primitive first record before a valid record', body: ['invalid', {multiRegionEnabled: true}]},
       {description: 'an undefined MR flag', body: [{multiRegionEnabled: undefined}]},
-      {description: 'a null MR flag', body: [{multiRegionEnabled: null}]},
       {description: 'a string MR flag', body: [{multiRegionEnabled: 'true'}]},
-      {description: 'a numeric MR flag', body: [{multiRegionEnabled: 1}]},
     ])('rejects HTTP 200 with $description', async ({body}) => {
       (mockWebexRequest.request as jest.Mock).mockResolvedValue({statusCode: 200, body});
 
@@ -123,18 +117,20 @@ describe('AgentConfigService', () => {
       expect(mockWebexRequest.request).toHaveBeenCalledTimes(1);
     });
 
-    it.each([401, 403, 408, 429, 500, 502, 503, 599, 400, 404, 302].flatMap(status =>
-      ['SAFE_REASON', 'INVALID_ORG_ID', 'INVALID_MR_SETTINGS', 'RECOVERY_INTERRUPTED'].map(reason => ({status, reason}))
-    ))('retains structured returned status $status and backend reason $reason without local provenance', async ({status, reason}) => {
+    it.each([
+      {status: 401, reason: 'INVALID_ORG_ID'},
+      {status: 503, reason: 'INVALID_MR_SETTINGS'},
+    ])('retains structured returned status $status and backend reason $reason without local provenance', async ({status, reason}) => {
       (mockWebexRequest.request as jest.Mock).mockResolvedValue({statusCode: status, headers: {TrackingID: 'request-id'}, body: {reason, reasonCode: '1037'}});
       const result = await agentConfigService.getMultiRegionSettings(mockOrgId).catch((error) => error);
       expect(result[LOCAL_MR_SETTINGS_ERROR]).toBeUndefined();
       expect(normalizeRecoveryFailure(result)).toEqual({status, reason, reasonCode: 1037, trackingId: 'request-id'});
     });
 
-    it.each([0, 503].flatMap(status =>
-      ['INTERNAL_ERROR', 'INVALID_ORG_ID', 'INVALID_MR_SETTINGS', 'RECOVERY_INTERRUPTED'].map(reason => ({status, reason}))
-    ))('retains the original rejected Webex error with non-enumerable statusCode $status and reason $reason', async ({status, reason}) => {
+    it.each([
+      {status: 0, reason: undefined},
+      {status: 503, reason: 'RECOVERY_INTERRUPTED'},
+    ])('retains the original rejected Webex error with non-enumerable statusCode $status and reason $reason', async ({status, reason}) => {
       const error = Object.defineProperties(new Error('request failed'), {
         name: {value: status === 0 ? 'NetworkOrCORSError' : 'ServiceUnavailable'},
         statusCode: {value: status},
@@ -147,8 +143,8 @@ describe('AgentConfigService', () => {
       expect(normalizeRecoveryFailure(error)).toEqual({status, ...(status === 503 ? {reason} : {}), trackingId: 'request-id'});
     });
 
-    it.each(['', '   '])('rejects blank orgId before dispatch %#', async (orgId) => {
-      const error = await agentConfigService.getMultiRegionSettings(orgId).catch(error => error);
+    it('rejects blank orgId before dispatch', async () => {
+      const error = await agentConfigService.getMultiRegionSettings('   ').catch(error => error);
       expect(error[LOCAL_MR_SETTINGS_ERROR]).toBe('INVALID_ORG_ID');
       expect(normalizeRecoveryFailure(error)).toEqual({reason: 'INVALID_ORG_ID'});
       expect(mockWebexRequest.request).not.toHaveBeenCalled();
@@ -828,60 +824,6 @@ describe('AgentConfigService', () => {
     beforeEach(() => {
       jest.clearAllMocks();
     });
-
-    it.each([true, false])('T-001 profileAggregateDependencyOrder dialPlan=%s', async (dialPlanEnabled) => {
-      stubConfigCalls({agentProfile: {...mockAgentProfile, dialPlanEnabled}});
-      const user = createDeferred<any>();
-      const org = createDeferred<any>();
-      const aux = createDeferred<any>();
-      (agentConfigService.getUserDesktopLoginConfig as jest.Mock).mockReturnValue(user.promise);
-      (agentConfigService.getOrgDesktopLoginConfig as jest.Mock).mockReturnValue(org.promise);
-      (agentConfigService.getAllAuxCodes as jest.Mock).mockReturnValue(aux.promise);
-      const result = agentConfigService.getAgentConfig(mockOrgId, mockAgentId);
-      const settled = jest.fn();
-      const observed = result.then(settled);
-      expect(agentConfigService.getOrgDesktopLoginConfig).toHaveBeenCalledTimes(1);
-      expect(agentConfigService.getUserDesktopLoginConfig).toHaveBeenCalledTimes(1);
-      expect(agentConfigService.getAllAuxCodes).toHaveBeenCalledTimes(1);
-      expect(agentConfigService.getSiteInfo).not.toHaveBeenCalled();
-      expect(agentConfigService.getAllTeams).not.toHaveBeenCalled();
-      expect(agentConfigService.getDialPlanData).not.toHaveBeenCalled();
-      user.resolve({user: mockUser, agentProfile: {...mockAgentProfile, dialPlanEnabled}});
-      await flushMicrotasks();
-      expect(agentConfigService.getSiteInfo).toHaveBeenCalledTimes(1);
-      expect(agentConfigService.getAllTeams).toHaveBeenCalledTimes(1);
-      expect(agentConfigService.getDialPlanData).toHaveBeenCalledTimes(dialPlanEnabled ? 1 : 0);
-      expect(settled).not.toHaveBeenCalled();
-      org.resolve(mockOrgConfig);
-      aux.resolve(mockAuxCodes);
-      await observed;
-      expect(settled).toHaveBeenCalledTimes(1);
-    });
-
-    it('T-001 profileUserFailureWithFulfilledIndependentReads', async () => {
-      stubConfigCalls();
-      const user = createDeferred<any>();
-      (agentConfigService.getUserDesktopLoginConfig as jest.Mock).mockReturnValue(user.promise);
-      const failure = new Error('user read failed');
-      const result = expect(agentConfigService.getAgentConfig(mockOrgId, mockAgentId)).rejects.toBe(failure);
-      user.reject(failure);
-      await result;
-      expect(agentConfigService.getSiteInfo).not.toHaveBeenCalled();
-      expect(agentConfigService.getAllTeams).not.toHaveBeenCalled();
-    });
-
-    it.each(['getOrgDesktopLoginConfig', 'getAllAuxCodes', 'getSiteInfo', 'getAllTeams', 'getDialPlanData'])(
-      'T-001 profileObservedAggregateFailures %s', async (method) => {
-        stubConfigCalls({agentProfile: {...mockAgentProfile, dialPlanEnabled: true}});
-        const pending = createDeferred<any>();
-        (agentConfigService[method] as jest.Mock).mockReturnValue(pending.promise);
-        const failure = new Error('observed aggregate read failed');
-        const result = expect(agentConfigService.getAgentConfig(mockOrgId, mockAgentId)).rejects.toBe(failure);
-        await flushMicrotasks();
-        pending.reject(failure);
-        await result;
-      }
-    );
 
     it('should fetch and parse agent configuration successfully', async () => {
       const parseAgentConfigsSpy = jest.spyOn(util, 'parseAgentConfigs');

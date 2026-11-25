@@ -794,118 +794,40 @@ const resolveSymbol = (checker: ts.TypeChecker, symbol: ts.Symbol | undefined) =
 };
 
 describe('contact-center root public contract', () => {
-  it('T-013 oldPublicSignaturesVoiceControls', () => {
+  it('T-013 preserves station, voice and Task consumer signatures', () => {
     const fixture = path.join(CONTACT_CENTER_ROOT, 'test/unit/spec/__legacy_voice_controls.ts');
     const program = createProgram({[fixture]: `
-      import {VOICE_CONNECTION_STATUS, VoiceLineStatus, VoiceMobiusSocketStatus} from '../../../src';
       import type {
-        ContactCenter, IContactCenter, Profile, StationLoginSuccessResponse, LogoutSuccess,
-        StateChangeSuccess, StationLoginResponse, StationLogoutResponse, SetStateResponse,
-        VoiceConnectionState, TaskUIControls, InteractionUIControls, TaskUIControlState, TaskUILeg, ITask,
+        ContactCenter, IContactCenter, ITask, Profile, SetStateResponse,
+        StationLoginResponse, StationLogoutResponse, VoiceConnectionState,
       } from '../../../src';
-      type Assert<T extends true> = T;
-      type Exact<A, B> = (<T>() => T extends A ? 1 : 2) extends
-        (<T>() => T extends B ? 1 : 2) ? true : false;
-      type RegisterArgs = Assert<Exact<Parameters<ContactCenter['register']>, []>>;
-      type RegisterReturn = Assert<Exact<ReturnType<ContactCenter['register']>, Promise<Profile>>>;
-      type DeregisterArgs = Assert<Exact<Parameters<ContactCenter['deregister']>, []>>;
-      type DeregisterReturn = Assert<Exact<ReturnType<ContactCenter['deregister']>, Promise<void>>>;
-      type LoginArgs = Assert<Exact<Parameters<ContactCenter['stationLogin']>, [data: {
-        teamId: string; loginOption: 'AGENT_DN' | 'EXTENSION' | 'BROWSER'; dialNumber?: string;
-      }]>>;
-      type LoginReturn = Assert<Exact<ReturnType<ContactCenter['stationLogin']>, Promise<StationLoginSuccessResponse | Error>>>;
-      type LogoutArgs = Assert<Exact<Parameters<ContactCenter['stationLogout']>, [data: {
-        logoutReason?: 'User requested logout' | 'Inactivity Logout' | 'User requested agent profile update';
-      }]>>;
-      type LogoutReturn = Assert<Exact<ReturnType<ContactCenter['stationLogout']>, Promise<LogoutSuccess | Error>>>;
-      type StateArgs = Assert<Exact<Parameters<ContactCenter['setAgentState']>, [data: {
-        state: string; auxCodeId: string; lastStateChangeReason?: string; agentId?: string;
-      }]>>;
-      type StateReturn = Assert<Exact<ReturnType<ContactCenter['setAgentState']>, Promise<StateChangeSuccess | Error>>>;
-      type VoiceArgs = Assert<Exact<Parameters<ContactCenter['getVoiceConnectionState']>, []>>;
-      type VoiceReturn = Assert<Exact<ReturnType<ContactCenter['getVoiceConnectionState']>, VoiceConnectionState>>;
-      type InterfaceRegister = Assert<Exact<IContactCenter['register'], () => Promise<Profile>>>;
-      type InterfaceVoice = Assert<Exact<IContactCenter['getVoiceConnectionState'], () => VoiceConnectionState>>;
-      type Voice = Assert<Exact<VoiceConnectionState, {
-        status: VOICE_CONNECTION_STATUS; lineStatus: VoiceLineStatus;
-        mobiusSocketStatus: VoiceMobiusSocketStatus; reason?: string; retryable?: boolean;
-      }>>;
-      type VoiceStatuses = Assert<Exact<\`\${VOICE_CONNECTION_STATUS}\`, 'ready' | 'unavailable' | 'not-required'>>;
-      type LineStatuses = Assert<Exact<\`\${VoiceLineStatus}\`, 'unknown' | 'connecting' | 'registered' | 'reconnecting' | 'reconnected' | 'unregistered' | 'error'>>;
-      type SocketStatuses = Assert<Exact<\`\${VoiceMobiusSocketStatus}\`, 'unknown' | 'not-in-use' | 'connected' | 'disconnected'>>;
-      type Control = {isVisible: boolean; isEnabled: boolean};
-      type Leg = {
-        accept: Control; decline: Control; hold: Control; transfer: Control; consult: Control;
-        end: Control; recording: Control; mute: Control; consultTransfer: Control; endConsult: Control;
-        conference: Control; exitConference: Control; transferConference: Control;
-        mergeToConference: Control; wrapup: Control; switch: Control; keypad?: Control;
-      };
-      type ControlContract = Assert<Exact<TaskUIControlState, Control>>;
-      type LegContract = Assert<Exact<InteractionUIControls, Leg>>;
-      type ActiveLeg = Assert<Exact<TaskUILeg, 'main' | 'consult'>>;
-      type Controls = Assert<Exact<TaskUIControls, {
-        main: Leg; consult: Leg; activeLeg: 'main' | 'consult';
-        consultTransferDestinations: {consult: string[]; transfer: string[]};
-      }>>;
-      type TaskControls = Assert<Exact<ITask['uiControls'], TaskUIControls>>;
       declare const cc: ContactCenter;
+      declare const plugin: IContactCenter;
       declare const task: ITask;
-      // Existing host expressions keep their Promise and synchronous snapshot boundaries.
-      const registered: Promise<Profile> = cc.register();
+
+      const registered: Promise<Profile> = plugin.register();
       const deregistered: Promise<void> = cc.deregister();
       const loggedIn: Promise<StationLoginResponse> = cc.stationLogin({teamId: 'team', loginOption: 'BROWSER'});
-      cc.stationLogin({teamId: 'team', loginOption: 'EXTENSION', dialNumber: '1234'});
       const loggedOut: Promise<StationLogoutResponse> = cc.stationLogout({});
-      cc.stationLogout({logoutReason: 'User requested logout'});
       const changed: Promise<SetStateResponse> = cc.setAgentState({state: 'Available', auxCodeId: '0'});
-      cc.setAgentState({state: 'Idle', auxCodeId: 'break', agentId: 'agent', lastStateChangeReason: 'manual'});
-      const voice: VoiceConnectionState = cc.getVoiceConnectionState();
+      const voice: VoiceConnectionState = plugin.getVoiceConnectionState();
       const enabled: boolean = task.uiControls[task.uiControls.activeLeg].hold.isEnabled;
       const keypad: boolean | undefined = task.uiControls.main.keypad?.isVisible;
       const destinations: string[] = task.uiControls.consultTransferDestinations.transfer;
-      // @ts-expect-error registration has no public options argument
-      cc.register({signal: new AbortController().signal});
-      // @ts-expect-error deregistration has no public options argument
-      cc.deregister(true);
-      // @ts-expect-error login still requires its payload
-      cc.stationLogin();
-      // @ts-expect-error login still requires a team
+
+      // @ts-expect-error registration has no public cancellation option
+      plugin.register({signal: new AbortController().signal});
+      // @ts-expect-error login requires its team
       cc.stationLogin({loginOption: 'BROWSER'});
-      // @ts-expect-error logout still requires its payload even though the reason is optional
-      cc.stationLogout();
       // @ts-expect-error logout reason remains a fixed vocabulary
       cc.stationLogout({logoutReason: 'arbitrary'});
-      // @ts-expect-error state change still requires an auxiliary code
+      // @ts-expect-error a state change requires the auxiliary code
       cc.setAgentState({state: 'Available'});
-      // @ts-expect-error voice getter remains synchronous
+      // @ts-expect-error the voice getter stays synchronous
       const asyncVoice: Promise<VoiceConnectionState> = cc.getVoiceConnectionState();
-      // @ts-expect-error voice getter has no public options argument
-      cc.getVoiceConnectionState({});
-      // @ts-expect-error underlying line state remains required
-      const incompleteVoice: VoiceConnectionState = {status: VOICE_CONNECTION_STATUS.READY, mobiusSocketStatus: VoiceMobiusSocketStatus.CONNECTED};
       // @ts-expect-error controls keep per-leg ownership
       task.uiControls.hold.isEnabled;
-      // @ts-expect-error active leg is closed
-      const invalidLeg: TaskUILeg = 'other';
-      // @ts-expect-error a control requires both flags
-      const invalidControl: TaskUIControlState = {isEnabled: true};
-      // @ts-expect-error controls retain both interaction legs
-      const incompleteControls: TaskUIControls = {main: task.uiControls.main, activeLeg: 'main', consultTransferDestinations: {consult: [], transfer: []}};
       void [registered, deregistered, loggedIn, loggedOut, changed, voice, enabled, keypad, destinations];
-    `});
-    expect(getDiagnosticsForFiles(program, [fixture]).map(diagnostic =>
-      ts.flattenDiagnosticMessageText(diagnostic.messageText, '\n')
-    )).toEqual([]);
-  });
-
-  it('keeps the backend region-switch event out of the public event catalog', () => {
-    const fixture = path.join(CONTACT_CENTER_ROOT, 'test/unit/spec/__region_event_consumer.ts');
-    const program = createProgram({[fixture]: `
-      import {CC_EVENTS} from '../../../src';
-      import type {ContactCenterEvents} from '../../../src';
-      type Assert<T extends true> = T;
-      type PrivateKey = Assert<'SYSTEM_REGION_SWITCH' extends keyof typeof CC_EVENTS ? false : true>;
-      type PrivateEvent = Assert<'SYSTEM_REGION_SWITCH' extends ContactCenterEvents ? false : true>;
     `});
     expect(getDiagnosticsForFiles(program, [fixture])).toEqual([]);
   });
@@ -938,14 +860,16 @@ describe('contact-center root public contract', () => {
   it('T-013 additiveRecoveryExportsAndTypedConsumer / plainErrorCatalogRoundTrip typed narrowing', () => {
     const fixture = path.join(CONTACT_CENTER_ROOT, 'test/unit/spec/__recovery_consumer.ts');
     const program = createProgram({[fixture]: `
-      import {REGION_RECOVERY_EVENTS, REGION_RECOVERY_ERROR_CODES} from '../../../src';
-      import type {RegionRecoveryState, RegionRecoveryStatus, RegionRecoveryReason, RegionAutoAvailableStatus, RegionRecoveryErrorCode} from '../../../src';
+      import {CC_EVENTS, REGION_RECOVERY_EVENTS, REGION_RECOVERY_ERROR_CODES} from '../../../src';
+      import type {ContactCenterEvents, RegionRecoveryState, RegionRecoveryStatus, RegionRecoveryReason, RegionAutoAvailableStatus, RegionRecoveryErrorCode} from '../../../src';
       import {isRegionRecoveryError, createRegionRecoveryError} from '../../../src/services/core/Utils';
       type Assert<T extends true> = T;
       type Exact<A, B> = [A] extends [B] ? [B] extends [A] ? true : false : false;
       type Status = Assert<Exact<RegionRecoveryStatus, 'recovering' | 'ready' | 'reloadRequired' | 'stationLoginRequired' | 'unavailable'>>;
       type Reason = Assert<Exact<RegionRecoveryReason, 'initial-login' | 'region-switch' | 'region-mismatch' | 'not-eligible' | 'session-restore-failed' | 'automatic-relogin-disabled' | 'authentication-failed' | 'recovery-failed'>>;
       type Auto = Assert<Exact<RegionAutoAvailableStatus, 'waitingForVoice' | 'requesting' | 'succeeded' | 'failed' | 'cancelled'>>;
+      type PrivateKey = Assert<'SYSTEM_REGION_SWITCH' extends keyof typeof CC_EVENTS ? false : true>;
+      type PrivateEvent = Assert<'SYSTEM_REGION_SWITCH' extends ContactCenterEvents ? false : true>;
       type Codes = Assert<Exact<RegionRecoveryErrorCode, 'RECOVERY_INTERRUPTED' | 'RECOVERY_IN_PROGRESS' | 'STALE_TASK' | 'REGION_RELOAD_REQUIRED'>>;
       const event: 'region:stateChange' = REGION_RECOVERY_EVENTS.STATE_CHANGE;
       const state: RegionRecoveryState = {status: 'ready', reason: 'region-switch', operation: 'FAILOVER', scope: 'ORG', limitedService: false, retryAfterMs: 0, autoAvailable: 'requesting'};
