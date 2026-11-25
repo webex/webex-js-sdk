@@ -2821,23 +2821,36 @@ export default class ContactCenter extends WebexPlugin implements IContactCenter
     // updateWellnessSession() before emitting agent:reloginSuccess.
     this.updateWellnessSession(data.agentSessionId);
 
-    // Unified: emit enriched agent:reloginSuccess with V2 channel states
+    // Unified: emit enriched agent:reloginSuccess preserving V1-normalized
+    // metadata (deviceType, dn, teamId, siteId, roles, etc.) so existing
+    // listeners that read these fields keep working, then add channelStates.
+    const {agentChannelStateDetailMap, channelsMap, ...loginData} = data;
     const bridged = bridgeStateChangeSuccess(
       this.channelStatesMap,
       data.agentId || this.agentConfig?.agentId || '',
       data.agentSessionId || '',
       data.orgId || ''
     );
+    // When bridgeStateChangeSuccess returns null (all channels are in
+    // non-bridgeable states like Engaged/WrapUp), fall back to 'Idle' —
+    // not 'Available'. Publishing a fabricated Available with an empty
+    // auxCodeId causes wellness recovery to treat the unknown aggregate
+    // as code '0' and clear the matching marker without restoring channels.
     const reloginPayload = {
-      type: 'AgentReloginSuccess',
-      agentId: data.agentId || this.agentConfig?.agentId || '',
-      agentSessionId: data.agentSessionId || '',
-      orgId: data.orgId || '',
+      ...loginData,
+      type: 'AgentReloginSuccess' as const,
       status: bridged?.status ?? 'LoggedIn',
-      subStatus: bridged?.subStatus ?? 'Available',
+      subStatus: bridged?.subStatus ?? 'Idle',
       auxCodeId: bridged?.auxCodeId ?? '',
       lastStateChangeTimestamp: bridged?.lastStateChangeTimestamp ?? 0,
       lastIdleCodeChangeTimestamp: bridged?.lastIdleCodeChangeTimestamp ?? 0,
+      mmProfile: {
+        telephony: channelsMap?.telephony?.length,
+        chat: channelsMap?.chat?.length,
+        email: channelsMap?.email?.length,
+        social: channelsMap?.social?.length,
+      },
+      notifsTrackingId: eventData.trackingId,
       channelStates: {...this.channelStatesMap} as Record<ChannelType, AgentChannelTypeStates>,
     };
     // @ts-ignore

@@ -4462,7 +4462,14 @@ function handleWellnessLegacyStateChanged(event, nextAuxCodeId) {
     completeWellnessExternalTransition(
       `Wellness break ended because the authoritative agent state changed to ${stateName}.`
     );
+    return;
   }
+  // Retry deferred recovery: on a V2 reload with non-bridgeable channels
+  // (e.g. Voice=Engaged), captureWellnessSession leaves legacyStateKnown
+  // false and getRecoveryDecision returns 'wait'. When the task completes
+  // and the aggregate becomes bridgeable, this state-change event updates
+  // legacyStateKnown above — retry recovery so the break timer can start.
+  void recoverWellnessBreakIfNeeded();
 }
 
 async function requestWellnessBreak() {
@@ -7147,20 +7154,29 @@ function stopGranularTimer() {
 /**
  * Agent Desktop RonaDialog: a channel moved to Idle with a system code opens an
  * alert for that channel only; Available on that channel closes it.
+ *
+ * Reconciles every channel in `changedChannels` (not just the last one in
+ * the batch) so that a bulk state change (e.g. Voice+Chat → Available)
+ * clears RONA alerts for all affected channels.
  */
 function handleGranularRonaEvent(data) {
-  const channelType = data?.changedChannelType;
-  const detail = data?.channelDetail;
-  if (!channelType || !detail) return;
-  if (detail.agentState === GRANULAR_AGENT_STATE_AVAILABLE) {
-    delete granularRonaAlerts[channelType];
-    return;
-  }
-  const codeName = detail.agentState === GRANULAR_AGENT_STATE_IDLE ? getIdleCodeName(detail.auxCodeId) : undefined;
-  if (codeName && GRANULAR_RONA_MESSAGES[codeName]) {
-    granularRonaAlerts[channelType] = codeName;
-  } else if (detail.agentState === GRANULAR_AGENT_STATE_IDLE) {
-    delete granularRonaAlerts[channelType];
+  const channels = data?.changedChannels;
+  const allStates = data?.channelStates;
+  if (!channels || !allStates) return;
+
+  for (const channelType of channels) {
+    const detail = allStates[channelType];
+    if (!detail) continue;
+    if (detail.agentState === GRANULAR_AGENT_STATE_AVAILABLE) {
+      delete granularRonaAlerts[channelType];
+      continue;
+    }
+    const codeName = detail.agentState === GRANULAR_AGENT_STATE_IDLE ? getIdleCodeName(detail.auxCodeId) : undefined;
+    if (codeName && GRANULAR_RONA_MESSAGES[codeName]) {
+      granularRonaAlerts[channelType] = codeName;
+    } else if (detail.agentState === GRANULAR_AGENT_STATE_IDLE) {
+      delete granularRonaAlerts[channelType];
+    }
   }
 }
 
@@ -7284,7 +7300,7 @@ function registerChannelStateEventListeners() {
     console.log('agent:stateChange (unified)', data);
     if (data?.channelStates) {
       // V2 enrichment available — update per-channel UI
-      if (isTelephonyRecoveryDeferred && data.changedChannelType === 'telephony') {
+      if (isTelephonyRecoveryDeferred && data.changedChannels?.includes('telephony')) {
         isTelephonyRecoveryDeferred = false;
         setAgentSessionStatus('');
       }

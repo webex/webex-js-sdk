@@ -7260,7 +7260,7 @@ describe('webex.cc', () => {
         expect(webex.cc['loginChannelsMap']).toEqual({telephony: ['t1'], chat: ['c1']});
       });
 
-      it('should emit enriched AGENT_RELOGIN_SUCCESS with channelStates', () => {
+      it('should emit AGENT_RELOGIN_SUCCESS preserving V1-normalized metadata and adding channelStates', () => {
         webex.cc.agentConfig = {agentId: 'agent-1'} as any;
         const telephonyState = makeChannelState('Available', {
           auxCodeId: 'aux-avail',
@@ -7269,24 +7269,44 @@ describe('webex.cc', () => {
 
         messageCallback(
           JSON.stringify({
+            trackingId: 'notifs-track-1',
             type: CC_EVENTS.AGENT_CHANNEL_RELOGIN_SUCCESS,
             data: {
               agentId: 'agent-1',
               agentSessionId: 'sess-1',
               orgId: 'org-1',
+              deviceType: 'BROWSER',
+              dn: '',
+              teamId: 'team-1',
+              siteId: 'site-1',
+              roles: ['agent', 'supervisor'],
+              deviceId: 'dev-1',
+              isExtension: false,
               agentChannelStateDetailMap: {telephony: telephonyState},
-              channelsMap: {telephony: ['t1']},
+              channelsMap: {telephony: ['t1'], chat: ['c1', 'c2']},
               type: CC_EVENTS.AGENT_CHANNEL_RELOGIN_SUCCESS,
             },
           })
         );
 
-        expect(emitSpy).toHaveBeenCalledWith(
-          AGENT_EVENTS.AGENT_RELOGIN_SUCCESS,
-          expect.objectContaining({
-            channelStates: expect.objectContaining({telephony: telephonyState}),
-          })
-        );
+        const payload = emitSpy.mock.calls.find(
+          (c: any[]) => c[0] === AGENT_EVENTS.AGENT_RELOGIN_SUCCESS
+        )?.[1];
+
+        // V1-normalized metadata preserved
+        expect(payload.deviceType).toBe('BROWSER');
+        expect(payload.dn).toBe('');
+        expect(payload.teamId).toBe('team-1');
+        expect(payload.siteId).toBe('site-1');
+        expect(payload.roles).toEqual(['agent', 'supervisor']);
+        expect(payload.deviceId).toBe('dev-1');
+        expect(payload.isExtension).toBe(false);
+        expect(payload.notifsTrackingId).toBe('notifs-track-1');
+        expect(payload.mmProfile).toEqual({telephony: 1, chat: 2, email: undefined, social: undefined});
+
+        // V2 enrichment
+        expect(payload.channelStates).toEqual(expect.objectContaining({telephony: telephonyState}));
+        expect(payload.type).toBe('AgentReloginSuccess');
       });
 
       it('should not overwrite channelStatesMap when agentChannelStateDetailMap is missing', () => {
@@ -7325,9 +7345,14 @@ describe('webex.cc', () => {
         expect(webex.cc['loginChannelsMap']).toEqual({telephony: ['t1']});
       });
 
-      it('should emit enriched AGENT_RELOGIN_SUCCESS with channelStates', () => {
+      it('should emit AGENT_RELOGIN_SUCCESS with channelStates and without isGranular', () => {
         const telephonyState = makeChannelState('Available');
         const reloginData = {
+          agentId: 'agent-1',
+          agentSessionId: 'sess-1',
+          orgId: 'org-1',
+          deviceType: 'AGENT_DN',
+          dn: '1234',
           agentChannelStateDetailMap: {telephony: telephonyState},
           channelsMap: {telephony: ['t1']},
           type: CC_EVENTS.AGENT_CHANNEL_RELOGIN_SUCCESS,
@@ -7340,18 +7365,52 @@ describe('webex.cc', () => {
           })
         );
 
-        expect(emitSpy).toHaveBeenCalledWith(
-          AGENT_EVENTS.AGENT_RELOGIN_SUCCESS,
-          expect.objectContaining({
-            type: 'AgentReloginSuccess',
-            channelStates: expect.objectContaining({telephony: telephonyState}),
-          })
-        );
-        // isGranular removed — clients detect V2 via channelStates presence
-        const reloginPayload = emitSpy.mock.calls.find(
+        const payload = emitSpy.mock.calls.find(
           (c: any[]) => c[0] === AGENT_EVENTS.AGENT_RELOGIN_SUCCESS
         )?.[1];
-        expect(reloginPayload).not.toHaveProperty('isGranular');
+
+        expect(payload.type).toBe('AgentReloginSuccess');
+        expect(payload.channelStates).toEqual(expect.objectContaining({telephony: telephonyState}));
+        expect(payload.deviceType).toBe('AGENT_DN');
+        expect(payload.dn).toBe('1234');
+        expect(payload).not.toHaveProperty('isGranular');
+        // agentChannelStateDetailMap and channelsMap should not leak to client
+        expect(payload).not.toHaveProperty('agentChannelStateDetailMap');
+        expect(payload).not.toHaveProperty('channelsMap');
+      });
+
+      it('should fall back to Idle (not Available) when all channels are non-bridgeable on relogin', () => {
+        webex.cc.agentConfig = {agentId: 'agent-1'} as any;
+
+        messageCallback(
+          JSON.stringify({
+            type: CC_EVENTS.AGENT_CHANNEL_RELOGIN_SUCCESS,
+            data: {
+              agentId: 'agent-1',
+              agentSessionId: 'sess-1',
+              orgId: 'org-1',
+              deviceType: 'BROWSER',
+              dn: '',
+              agentChannelStateDetailMap: {
+                telephony: makeChannelState('Engaged'),
+                chat: makeChannelState('WrapUp'),
+              },
+              channelsMap: {telephony: ['t1'], chat: ['c1']},
+              type: CC_EVENTS.AGENT_CHANNEL_RELOGIN_SUCCESS,
+            },
+          })
+        );
+
+        const payload = emitSpy.mock.calls.find(
+          (c: any[]) => c[0] === AGENT_EVENTS.AGENT_RELOGIN_SUCCESS
+        )?.[1];
+
+        // Bridge returns null for Engaged+WrapUp — must NOT fabricate Available
+        expect(payload.subStatus).toBe('Idle');
+        expect(payload.type).toBe('AgentReloginSuccess');
+        // channelStates still carries the actual per-channel detail
+        expect(payload.channelStates.telephony.agentState).toBe('Engaged');
+        expect(payload.channelStates.chat.agentState).toBe('WrapUp');
       });
 
       it('should reconcile manageChannelAvailability before emitting relogin success', () => {

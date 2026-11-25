@@ -65,8 +65,10 @@ export interface AgentStateChangeFailedEvent {
 }
 
 /**
- * Enriched relogin payload emitted on `agent:reloginSuccess`.
- * V2 sessions include the full channel-state snapshot.
+ * Relogin payload emitted on `agent:reloginSuccess`.
+ * Both V1 and V2 sessions carry the full V1-normalized metadata
+ * (deviceType, dn, teamId, siteId, roles, mmProfile, etc.).
+ * V2 sessions additionally include the per-channel state snapshot.
  */
 export interface AgentReloginSuccessEvent {
   type: string;
@@ -78,7 +80,25 @@ export interface AgentReloginSuccessEvent {
   auxCodeId: string;
   lastStateChangeTimestamp: number;
   lastIdleCodeChangeTimestamp: number;
-  /** Full snapshot of ALL channel states after relogin. */
+  /** Device type used for this session (e.g. 'BROWSER', 'AGENT_DN', 'EXTENSION'). */
+  deviceType?: string;
+  /** Directory number for the agent's station. */
+  dn?: string;
+  /** Team the agent belongs to. */
+  teamId?: string;
+  /** Site where the agent is located. */
+  siteId?: string;
+  /** Roles assigned to the agent. */
+  roles?: string[];
+  /** Device identifier. */
+  deviceId?: string | null;
+  /** Whether login is via extension. */
+  isExtension?: boolean;
+  /** Channel capacity counts (from channelsMap lengths). */
+  mmProfile?: Record<string, number | undefined>;
+  /** Outer WebSocket notification trackingId. */
+  notifsTrackingId?: string;
+  /** Full snapshot of ALL channel states after relogin (V2 sessions only). */
   channelStates?: Record<ChannelType, AgentChannelTypeStates>;
 }
 
