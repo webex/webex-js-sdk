@@ -166,22 +166,51 @@ skipInNode(describe)('plugin-meetings', () => {
         .then(() => integrationTestUtils.addMedia(alice, {microphone: localTracks.alice.microphone, camera: localTracks.alice.camera})));
 
     it('Bob has flowing streams on reconnect', () => {
-      const retrieveStats = () => {
-        assert.isAbove(
-          bob.meeting.statsAnalyzer.statsResults['audio-recv-0'].recv.totalPacketsReceived,
-          0,
-          'total packets received greater than 0'
-        );
-      };
+      const waitForReceivedAudio = () =>
+        new Promise((resolve, reject) => {
+          const timeout = 15000;
+          const statsAnalyzer = bob.meeting.statsAnalyzer;
+          let availableStats = [];
+
+          const cleanup = () => {
+            clearTimeout(timeoutId);
+            statsAnalyzer.off('STATS_UPDATE', onStatsUpdate);
+          };
+
+          const onStatsUpdate = ({stats}) => {
+            availableStats = Array.from(stats.keys());
+
+            const hasReceivedAudio = Array.from(stats.values()).some(
+              (stat) =>
+                stat.type === 'inbound-rtp' &&
+                stat.kind === 'audio' &&
+                stat.packetsReceived > 0
+            );
+
+            if (hasReceivedAudio) {
+              cleanup();
+              resolve();
+            }
+          };
+
+          const timeoutId = setTimeout(() => {
+            cleanup();
+            reject(
+              new Error(
+                `No received audio packets after reconnect. Available stats: ${availableStats.join(
+                  ', '
+                )}`
+              )
+            );
+          }, timeout);
+
+          statsAnalyzer.on('STATS_UPDATE', onStatsUpdate);
+        });
 
       return Promise.all([
         testUtils.delayedPromise(bob.meeting.reconnect()),
         testUtils.waitForEvents([{scope: bob.meeting, event: 'media:ready'}]),
-        testUtils.delayedTest(retrieveStats, 9000),
-      ]).catch((error) => {
-        // eslint-disable-next-line no-console
-        console.warn('errror', error);
-      });
+      ]).then(waitForReceivedAudio);
     });
 
     it('alice adds x user as guest to space meeting', () =>
