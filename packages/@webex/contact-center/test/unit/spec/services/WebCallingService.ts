@@ -596,10 +596,11 @@ describe('WebCallingService', () => {
 
     it('keeps the REGISTERED listener active for subsequent registrations', async () => {
       setBrowserVoiceRequired();
-      registerLineImmediately();
+      const on = registerLineImmediately();
       await webRTCCalling.registerWebCallingLine();
       const registeredHandler = getHandler(line, LINE_EVENTS.REGISTERED);
 
+      expect(on.mock.calls.filter(([event]) => event === LINE_EVENTS.REGISTERED)).toHaveLength(1);
       getHandler(line, LINE_EVENTS.UNREGISTERED)();
       expect(webRTCCalling.getVoiceConnectionState().status).toBe(
         VOICE_CONNECTION_STATUS.UNAVAILABLE
@@ -703,12 +704,17 @@ describe('WebCallingService', () => {
     it.each([LINE_EVENTS.INCOMING_CALL, LINE_EVENTS.REGISTERED, LINE_EVENTS.UNREGISTERED])(
       'diagnoses a throwing %s callback and preserves later listeners and generation fences',
       async (event) => {
+        jest.useFakeTimers();
         const ownedLine = Object.assign(createEmitter(), {
           register: jest.fn(),
           deregister: jest.fn().mockResolvedValue(undefined),
         });
         (callingClient.getLines as jest.Mock).mockReturnValue({line1: ownedLine});
+        const registrationAtDelivery = jest.fn();
         const observer = jest.fn(() => {
+          if (event === LINE_EVENTS.REGISTERED) {
+            registrationAtDelivery(webRTCCalling['rejectRegistration'], jest.getTimerCount());
+          }
           throw failure;
         });
         const incoming = event === LINE_EVENTS.INCOMING_CALL;
@@ -732,6 +738,9 @@ describe('WebCallingService', () => {
         }
 
         expect(observer).toHaveBeenCalledTimes(1);
+        if (event === LINE_EVENTS.REGISTERED) {
+          expect(registrationAtDelivery).toHaveBeenCalledWith(undefined, 0);
+        }
         expect(laterListener.mock.calls).toEqual([[payload]]);
         expect((LoggerProxy.error as jest.Mock).mock.calls).toEqual([
           [
@@ -887,7 +896,6 @@ describe('WebCallingService', () => {
         staleError(error);
         jest.advanceTimersByTime(TIMEOUT_DURATION - 1);
         expect(webRTCCalling.getVoiceConnectionState().lineStatus).toBe('connecting');
-        expect(webRTCCalling['terminalLine']).toBeUndefined();
         replacementLine.emit(LINE_EVENTS.REGISTERED, replacementLine);
         await replacement;
         expect(webRTCCalling['registrationAttempt']).toBeUndefined();
@@ -905,7 +913,7 @@ describe('WebCallingService', () => {
       async (stage) => {
         webRTCCalling['callingClient'] = callingClient;
         const start = jest
-          .spyOn(webRTCCalling as any, 'startRegistrationAttempt')
+          .spyOn(webRTCCalling, 'registerWebCallingLine')
           .mockImplementation(() => {
             throw failure;
           });
@@ -939,11 +947,11 @@ describe('WebCallingService', () => {
       webex.internal.services.waitForCatalog.mockRejectedValue(failure);
       const controller = new AbortController();
       const acknowledgement = webRTCCalling.ensureWebCallingLine(controller.signal);
-      const attempt = webRTCCalling['registrationAttempt'];
+      expect(webRTCCalling['registrationAttempt']).toBeDefined();
       controller.abort();
 
       await expect(acknowledgement).resolves.toBeUndefined();
-      await expect(attempt.promise).rejects.toBe(failure);
+      await new Promise<void>((resolve) => setImmediate(resolve));
 
       expect((LoggerProxy.error as jest.Mock).mock.calls).toEqual([
         [
@@ -960,7 +968,8 @@ describe('WebCallingService', () => {
       webex.internal.services.waitForCatalog.mockResolvedValue(undefined);
       registerLineImmediately();
       await expect(webRTCCalling.ensureWebCallingLine()).resolves.toBeUndefined();
-      await expect(webRTCCalling['registrationAttempt'].promise).resolves.toBeUndefined();
+      await new Promise<void>((resolve) => setImmediate(resolve));
+      expect(webRTCCalling['registrationAttempt']).toBeUndefined();
       expect(webRTCCalling.isVoiceReady()).toBe(true);
     });
   });
@@ -1248,101 +1257,19 @@ describe('WebCallingService', () => {
   });
   describe('T-009 calling preserve ownership', () => {
     const flush = async () => { for (let i = 0; i < 12; i += 1) await Promise.resolve(); };
-    const stoppedLine = {
-      status: VoiceLineStatus.ERROR,
-      present: true,
-      active: false,
-      terminalEvidence: 'current',
-      liveJob: false,
-      shouldStart: false,
-    };
-    const ownershipMatrix = [
-      {...stoppedLine, status: VoiceLineStatus.UNKNOWN, present: false, terminalEvidence: 'none', shouldStart: true},
-      {...stoppedLine, status: VoiceLineStatus.UNKNOWN, present: false, active: true, terminalEvidence: 'none'},
-      ...[VoiceLineStatus.CONNECTING, VoiceLineStatus.REGISTERED,
-        VoiceLineStatus.RECONNECTING, VoiceLineStatus.RECONNECTED].map(status => ({...stoppedLine, status})),
-      {...stoppedLine, status: VoiceLineStatus.UNREGISTERED, shouldStart: true},
-      {...stoppedLine, shouldStart: true},
-      {...stoppedLine, active: true},
-      {...stoppedLine, liveJob: true},
-      ...['none', 'stale-generation', 'wrong-line'].map(terminalEvidence => ({...stoppedLine, terminalEvidence})),
-    ];
-
-    it.each(ownershipMatrix)(
-      'ensureLineStatusOwnershipMatrix: $status line=$present activeCall=$active terminal=$terminalEvidence liveJob=$liveJob',
-      async ({status, present, active, terminalEvidence, liveJob, shouldStart}) => {
-        setBrowserVoiceRequired();
-        const ownedLine = callingClient.getLines().line1;
-        const unrelatedLine = {...ownedLine, deregister: jest.fn()};
-        const generation = 7;
-        const currentLine = present ? ownedLine : undefined;
-        const currentCall = active ? mockCall : undefined;
-        const terminalLine = terminalEvidence === 'none' ? undefined : {
-          generation: terminalEvidence === 'stale-generation' ? generation - 1 : generation,
-          line: terminalEvidence === 'wrong-line' ? unrelatedLine : ownedLine,
-        };
-        const attempt = liveJob ? {
-          generation,
-          promise: new Promise<void>(() => {}),
-          cancel: jest.fn(),
-        } : undefined;
-        Object.assign(webRTCCalling, {
-          line: currentLine,
-          call: currentCall,
-          callingClient,
-          registrationGeneration: generation,
-          terminalLine,
-          registrationAttempt: attempt,
-        });
-        (callingClient.getActiveCalls as jest.Mock).mockReturnValue(active ? {held: [mockCall]} : {});
-        (webRTCCalling as any).voiceConnectionState.lineStatus = status;
-        const start = jest.spyOn(webRTCCalling as any, 'startRegistrationAttempt')
-          .mockResolvedValue(undefined);
-
-        await expect(webRTCCalling.ensureWebCallingLine()).resolves.toBeUndefined();
-
-        expect(start.mock.calls).toEqual(shouldStart ? [['preserve']] : []);
-        expect((webRTCCalling as any).line).toBe(currentLine);
-        expect(webRTCCalling.call).toBe(currentCall);
-        expect((webRTCCalling as any).callingClient).toBe(callingClient);
-        expect((webRTCCalling as any).registrationGeneration).toBe(generation);
-        expect((webRTCCalling as any).terminalLine).toBe(terminalLine);
-        expect((webRTCCalling as any).registrationAttempt).toBe(attempt);
-        if (attempt) expect(attempt.cancel).not.toHaveBeenCalled();
-        expect(createClient).not.toHaveBeenCalled();
-        expect(ownedLine.register).not.toHaveBeenCalled();
-        expect(ownedLine.deregister).not.toHaveBeenCalled();
-        expect(ownedLine.off).not.toHaveBeenCalled();
-        expect(unrelatedLine.deregister).not.toHaveBeenCalled();
-        expect(callingClient.off).not.toHaveBeenCalled();
-        expect(mockCall.end).not.toHaveBeenCalled();
-      }
-    );
-
-    it.each(['unregistered', 'error'])('unregisteredActiveCallDefersToCallingOwner: %s', async (status) => {
+    it('does not establish a missing line while the Calling client owns a held call', async () => {
       setBrowserVoiceRequired();
-      const ownedLine = callingClient.getLines().line1;
-      (webRTCCalling as any).callingClient = callingClient;
-      (webRTCCalling as any).line = ownedLine;
-      (webRTCCalling as any).call = undefined;
-      (webRTCCalling as any).voiceConnectionState.lineStatus = status;
-      (webRTCCalling as any).terminalLine = {generation: 0, line: ownedLine};
+      webRTCCalling['callingClient'] = callingClient;
       (callingClient.getActiveCalls as jest.Mock).mockReturnValue({held: [mockCall]});
-      const start = jest.spyOn(webRTCCalling as any, 'startRegistrationAttempt');
 
-      const acknowledgement = webRTCCalling.ensureWebCallingLine();
+      await expect(webRTCCalling.ensureWebCallingLine()).resolves.toBeUndefined();
 
-      expect(start).not.toHaveBeenCalled();
-      expect((webRTCCalling as any).registrationAttempt).toBeUndefined();
-      expect((webRTCCalling as any).line).toBe(ownedLine);
-      expect(ownedLine.deregister).not.toHaveBeenCalled();
-
-      await acknowledgement;
-      await flush();
+      expect(webRTCCalling['registrationAttempt']).toBeUndefined();
       expect(createClient).not.toHaveBeenCalled();
+      expect(mockCall.end).not.toHaveBeenCalled();
     });
 
-    it('ensureLineStatusOwnershipMatrix / ensureAcknowledgesBeforeRegistrationSettles', async () => {
+    it('acknowledges ensure before line registration settles or times out', async () => {
       jest.useFakeTimers();
       setBrowserVoiceRequired();
       await expect(webRTCCalling.ensureWebCallingLine()).resolves.toBeUndefined();
@@ -1350,27 +1277,6 @@ describe('WebCallingService', () => {
       expect((webRTCCalling as any).registrationAttempt).toBeDefined();
       jest.advanceTimersByTime(TIMEOUT_DURATION);
       await flush();
-      expect((webRTCCalling as any).registrationAttempt).toBeUndefined();
-      await webRTCCalling.deregisterWebCallingLine();
-      jest.useRealTimers();
-    });
-
-    it('abortedEnsureCallerDoesNotCancelSharedAttempt', async () => {
-      jest.useFakeTimers();
-      setBrowserVoiceRequired();
-      const first = new AbortController();
-      const second = new AbortController();
-      await webRTCCalling.ensureWebCallingLine(first.signal);
-      const owner = (webRTCCalling as any).registrationAttempt;
-      first.abort();
-      await webRTCCalling.ensureWebCallingLine(second.signal);
-      expect((webRTCCalling as any).registrationAttempt).toBe(owner);
-      await flush();
-      expect(createClient).toHaveBeenCalledTimes(1);
-      const ownedLine = callingClient.getLines().line1;
-      (ownedLine.on as jest.Mock).mock.calls.filter(([event]) => event === LINE_EVENTS.REGISTERED).forEach(([, handler]) => handler(ownedLine));
-      await flush();
-      expect(ownedLine.deregister).not.toHaveBeenCalled();
       expect((webRTCCalling as any).registrationAttempt).toBeUndefined();
       await webRTCCalling.deregisterWebCallingLine();
       jest.useRealTimers();
@@ -1429,9 +1335,6 @@ describe('WebCallingService', () => {
       status = 'inactive',
       file = 'register'
     ) => Object.assign(new Error('Calling registration failed'), {type, status, context: {file, method}});
-    const failoverError = {type: ERROR_TYPE.SERVICE_UNAVAILABLE, method: 'startFailoverTimer'};
-    const tokenError = {type: ERROR_TYPE.TOKEN_ERROR, method: 'triggerRegistration'};
-
     it.each(['replace', 'deregister'].flatMap(mode =>
       ['success', 'rejection'].map(settlement => ({mode, settlement}))
     ))(
@@ -1467,7 +1370,7 @@ describe('WebCallingService', () => {
           expect(webRTCCalling['registrationAttempt']).toBe(oldOwner);
           expect(webRTCCalling['line']).toBe(first.line);
           expect(webRTCCalling['callingClient']).toBe(first.client);
-          expect(first.line.handlers.get(LINE_EVENTS.REGISTERED)).toHaveLength(2);
+          expect(first.line.handlers.get(LINE_EVENTS.REGISTERED)).toHaveLength(1);
           expect(jest.getTimerCount()).toBe(1);
           const oldLineListeners = first.line.on.mock.calls.slice();
           const oldClientListeners = first.client.on.mock.calls.slice();
@@ -1511,7 +1414,7 @@ describe('WebCallingService', () => {
             ...(replacement.line.handlers.get(LINE_EVENTS.REGISTERED) ?? []),
           ];
           expect(currentReject).toEqual(replacing ? expect.any(Function) : undefined);
-          expect(currentRegisteredListeners).toHaveLength(replacing ? 2 : 0);
+          expect(currentRegisteredListeners).toHaveLength(replacing ? 1 : 0);
           const state = webRTCCalling.getVoiceConnectionState();
           const call = webRTCCalling['call'];
           const stateChanged = jest.fn();
@@ -1549,7 +1452,6 @@ describe('WebCallingService', () => {
           expect(replacement.line.handlers.get(LINE_EVENTS.REGISTERED) ?? []).toEqual(
             currentRegisteredListeners
           );
-          expect(webRTCCalling['terminalLine']).toBeUndefined();
           expect(webRTCCalling['call']).toBe(call);
           expect(webRTCCalling.getVoiceConnectionState()).toEqual(state);
           expect(stateChanged).not.toHaveBeenCalled();
@@ -1578,187 +1480,6 @@ describe('WebCallingService', () => {
         }
       }
     );
-
-    it.each([
-      {...failoverError, owner: 'registered'},
-      {...failoverError, owner: 'active call'},
-      {type: ERROR_TYPE.BAD_REQUEST, method: 'triggerRegistration', owner: 'pending'},
-      {...tokenError, owner: 'registered'},
-    ])(
-      'replaces a confirmed terminal $type after $owner registration settlement only without calls',
-      async ({type, method, owner}) => {
-        const first = owned(owner !== 'pending');
-        const replacement = owned(false);
-        (createClient as jest.Mock)
-          .mockResolvedValueOnce(first.client)
-          .mockResolvedValueOnce(replacement.client);
-        setBrowserVoiceRequired();
-        const rejected = jest.fn();
-        const registration = webRTCCalling.registerWebCallingLine().catch(rejected);
-        await flush();
-        expect(first.line.register).toHaveBeenCalledTimes(1);
-        webRTCCalling.cleanUpCall();
-        first.client.getActiveCalls.mockReturnValue(owner === 'active call' ? {held: [mockCall]} : {});
-        const staleError = getHandler(first.line, LINE_EVENTS.ERROR);
-        const error = registrationError(type, method);
-
-        first.line.emit(LINE_EVENTS.ERROR, error);
-        await registration;
-        await flush();
-        expect(rejected.mock.calls).toEqual(owner === 'pending' ? [[error]] : []);
-        expect(webRTCCalling['registrationAttempt']).toBeUndefined();
-        expect(webRTCCalling.getVoiceConnectionState().lineStatus).toBe('error');
-
-        await Promise.all([webRTCCalling.ensureWebCallingLine(), webRTCCalling.ensureWebCallingLine()]);
-        await flush();
-        const replace = owner !== 'active call';
-        expect(createClient).toHaveBeenCalledTimes(replace ? 2 : 1);
-        expect(first.line.register).toHaveBeenCalledTimes(1);
-        expect(first.line.deregister).toHaveBeenCalledTimes(replace ? 1 : 0);
-        expect(replacement.line.register).toHaveBeenCalledTimes(replace ? 1 : 0);
-        expect(mockCall.end).not.toHaveBeenCalled();
-
-        if (replace) {
-          // New registration clears the old stop; retired events cannot stop its live owner.
-          staleError(error);
-          expect(webRTCCalling['terminalLine']).toBeUndefined();
-          const attempt = webRTCCalling['registrationAttempt'];
-          expect(attempt).toBeDefined();
-          await webRTCCalling.ensureWebCallingLine();
-          expect(webRTCCalling['registrationAttempt']).toBe(attempt);
-          replacement.line.emit(LINE_EVENTS.REGISTERED, replacement.line);
-          await flush();
-          await webRTCCalling.ensureWebCallingLine();
-          expect(createClient).toHaveBeenCalledTimes(2);
-          expect(replacement.line.register).toHaveBeenCalledTimes(1);
-          expect(replacement.line.handlers.get(LINE_EVENTS.INCOMING_CALL)).toHaveLength(1);
-          expect([...first.line.handlers.values()].every(handlers => handlers.length === 0)).toBe(true);
-        } else {
-          expect(first.line.handlers.get(LINE_EVENTS.INCOMING_CALL)).toHaveLength(1);
-          expect(first.line.handlers.get(LINE_EVENTS.REGISTERED)).toHaveLength(1);
-        }
-        await webRTCCalling.deregisterWebCallingLine();
-      }
-    );
-
-    it.each([
-      {type: ERROR_TYPE.DEFAULT},
-      {type: ERROR_TYPE.SERVICE_UNAVAILABLE, method: 'triggerRegistration'},
-      {type: ERROR_TYPE.BAD_REQUEST, file: 'unknown'},
-      {...tokenError, status: 'active'},
-    ])('delegates uncertain or active error $type $method $status $file', async ({
-      type, method, status, file,
-    }) => {
-      const {line, client} = owned();
-      (createClient as jest.Mock).mockResolvedValue(client);
-      setBrowserVoiceRequired();
-      await webRTCCalling.registerWebCallingLine();
-      webRTCCalling.cleanUpCall();
-      const listeners = new Map(line.handlers);
-
-      line.emit(LINE_EVENTS.ERROR, registrationError(type, method, status, file));
-      await flush();
-      await webRTCCalling.ensureWebCallingLine();
-
-      expect(createClient).toHaveBeenCalledTimes(1);
-      expect(line.register).toHaveBeenCalledTimes(1);
-      expect(line.deregister).not.toHaveBeenCalled();
-      expect(line.handlers).toEqual(listeners);
-      expect(webRTCCalling['terminalLine']).toBeUndefined();
-      expect(mockCall.end).not.toHaveBeenCalled();
-      await webRTCCalling.deregisterWebCallingLine();
-    });
-
-    it.each([LINE_EVENTS.CONNECTING, LINE_EVENTS.RECONNECTING, LINE_EVENTS.REGISTERED, LINE_EVENTS.RECONNECTED])(
-      'clears final error evidence when calling resumes through %s', async event => {
-        const {line, client} = owned();
-        (createClient as jest.Mock).mockResolvedValue(client);
-        setBrowserVoiceRequired();
-        await webRTCCalling.registerWebCallingLine();
-        line.emit(LINE_EVENTS.ERROR, registrationError(ERROR_TYPE.SERVICE_UNAVAILABLE, 'startFailoverTimer'));
-
-        line.emit(event, line);
-        await webRTCCalling.ensureWebCallingLine();
-
-        expect(webRTCCalling['terminalLine']).toBeUndefined();
-        expect(createClient).toHaveBeenCalledTimes(1);
-        expect(line.register).toHaveBeenCalledTimes(1);
-        expect(line.deregister).not.toHaveBeenCalled();
-        await webRTCCalling.deregisterWebCallingLine();
-      }
-    );
-
-    it.each(
-      [ERROR_TYPE.BAD_REQUEST, ERROR_TYPE.TOKEN_ERROR].flatMap(type =>
-        [false, true].map(activeCall => ({type, activeCall}))
-      )
-    )('T-009 preserves a terminal keepalive $type through bare unregistration with active call=$activeCall', async ({
-      type,
-      activeCall,
-    }) => {
-      const {line, client} = owned();
-      const replacement = owned(false);
-      (createClient as jest.Mock)
-        .mockResolvedValueOnce(client)
-        .mockResolvedValueOnce(replacement.client);
-      setBrowserVoiceRequired();
-      await webRTCCalling.registerWebCallingLine();
-      client.getActiveCalls.mockReturnValue(activeCall ? {held: [mockCall]} : {});
-
-      line.emit(LINE_EVENTS.ERROR, registrationError(type, 'startKeepaliveTimer'));
-      line.emit(LINE_EVENTS.UNREGISTERED);
-      line.emit(LINE_EVENTS.UNREGISTERED);
-      expect(webRTCCalling.getVoiceConnectionState()).toMatchObject({
-        lineStatus: 'unregistered',
-        reason: 'LINE_UNREGISTERED',
-        retryable: true,
-      });
-
-      await Promise.all([webRTCCalling.ensureWebCallingLine(), webRTCCalling.ensureWebCallingLine()]);
-      await flush();
-
-      expect(createClient).toHaveBeenCalledTimes(activeCall ? 1 : 2);
-      expect(line.register).toHaveBeenCalledTimes(1);
-      expect(line.deregister).toHaveBeenCalledTimes(activeCall ? 0 : 1);
-      expect(replacement.line.register).toHaveBeenCalledTimes(activeCall ? 0 : 1);
-      expect(mockCall.end).not.toHaveBeenCalled();
-
-      if (!activeCall) {
-        replacement.line.emit(LINE_EVENTS.REGISTERED, replacement.line);
-        await flush();
-      }
-      await webRTCCalling.deregisterWebCallingLine();
-    });
-
-    it.each([false, true])('delegates restartable keepalive 404 events with active call=%s', async active => {
-      const {line, client} = owned();
-      (createClient as jest.Mock).mockResolvedValue(client);
-      setBrowserVoiceRequired();
-      await webRTCCalling.registerWebCallingLine();
-      webRTCCalling.cleanUpCall();
-      client.getActiveCalls.mockReturnValue(active ? {held: [mockCall]} : {});
-      const acknowledgements: Array<Promise<void>> = [];
-      line.on(LINE_EVENTS.ERROR, () => acknowledgements.push(webRTCCalling.ensureWebCallingLine()));
-      line.on(LINE_EVENTS.UNREGISTERED, () => acknowledgements.push(webRTCCalling.ensureWebCallingLine()));
-      const listeners = new Map(line.handlers);
-
-      line.emit(LINE_EVENTS.ERROR, registrationError(ERROR_TYPE.NOT_FOUND, 'startKeepaliveTimer'));
-      await Promise.all(acknowledgements.splice(0));
-      await flush();
-      expect(createClient).toHaveBeenCalledTimes(1);
-      line.emit(LINE_EVENTS.UNREGISTERED);
-      await Promise.all(acknowledgements);
-      await flush();
-      await webRTCCalling.ensureWebCallingLine();
-
-      expect(createClient).toHaveBeenCalledTimes(1);
-      expect(line.register).toHaveBeenCalledTimes(1);
-      expect(line.deregister).not.toHaveBeenCalled();
-      expect(line.handlers).toEqual(listeners);
-      expect(webRTCCalling['terminalLine']).toBeUndefined();
-      expect(mockCall.end).not.toHaveBeenCalled();
-      await webRTCCalling.deregisterWebCallingLine();
-    });
 
     it('healthyLineRetainedWithSingleListeners and registeredLineWithMobiusDisconnectedRetained', async () => {
       const {line, client} = owned();
@@ -1867,160 +1588,48 @@ describe('WebCallingService', () => {
     });
 
     it.each([
-      {outcome: 'stopped', activeCall: false, scenario: 'terminalStoppedLineWithoutCallReplaced'},
-      {outcome: 'stopped', activeCall: true, scenario: 'terminal line with an active call'},
-      {outcome: 'retrying', activeCall: false, scenario: 'calling-owned retry without a call'},
-      {outcome: 'retrying', activeCall: true, scenario: 'calling-owned retry with an active call'},
-      {outcome: 'superseded', activeCall: false, scenario: 'superseded line without a call'},
-      {outcome: 'superseded', activeCall: true, scenario: 'superseded line with an active call'},
-    ])(
-      'ensureLineStatusOwnershipMatrix handles UNREGISTERED: $scenario',
-      async ({outcome, activeCall}) => {
-        jest.useFakeTimers();
-        const {line, client} = owned();
-        const replacement = owned(false);
-        (createClient as jest.Mock)
-          .mockResolvedValueOnce(client)
-          .mockResolvedValueOnce(replacement.client);
-        setBrowserVoiceRequired();
-        await webRTCCalling.registerWebCallingLine();
-        webRTCCalling.cleanUpCall();
-        client.getActiveCalls.mockReturnValue(activeCall ? {held: [mockCall]} : {});
-        if (outcome === 'stopped') {
-          line.emit(
-            LINE_EVENTS.ERROR,
-            registrationError(ERROR_TYPE.BAD_REQUEST, 'startKeepaliveTimer')
-          );
-        }
-        const stateChangeListener = jest.fn();
-        webRTCCalling.on(VOICE_CONNECTION_EVENTS.STATE_CHANGE, stateChangeListener);
+      {name: 'stopped registration', type: ERROR_TYPE.SERVICE_UNAVAILABLE, event: LINE_EVENTS.ERROR},
+      {name: 'stopped keepalive', type: ERROR_TYPE.TOKEN_ERROR, event: LINE_EVENTS.UNREGISTERED},
+      {name: 'restartable keepalive', type: ERROR_TYPE.NOT_FOUND, event: LINE_EVENTS.UNREGISTERED},
+      {name: 'superseded registration', type: ERROR_TYPE.SESSION_SUPERSEDED, event: LINE_EVENTS.UNREGISTERED},
+    ])('retains $name without attempting deferred repair', async ({type, event}) => {
+      jest.useFakeTimers();
+      const {line, client} = owned();
+      (createClient as jest.Mock).mockResolvedValue(client);
+      setBrowserVoiceRequired();
+      await webRTCCalling.registerWebCallingLine();
+      client.getActiveCalls.mockReturnValue({held: [mockCall]});
+      const unregistering = event === LINE_EVENTS.UNREGISTERED;
+      const superseded = type === ERROR_TYPE.SESSION_SUPERSEDED;
+      const error = registrationError(type, unregistering ? 'startKeepaliveTimer' : 'startFailoverTimer');
 
-        line.emit(
-          LINE_EVENTS.UNREGISTERED,
-          outcome === 'superseded'
-            ? registrationError(ERROR_TYPE.SESSION_SUPERSEDED, 'startKeepaliveTimer')
-            : undefined
-        );
-
-        const expectedState = {
-          status: VOICE_CONNECTION_STATUS.UNAVAILABLE,
-          lineStatus: 'unregistered',
-          mobiusSocketStatus: 'not-in-use',
-          reason: 'LINE_UNREGISTERED',
-          retryable: outcome !== 'superseded',
-        };
-        expect(webRTCCalling.getVoiceConnectionState()).toEqual(expectedState);
-        expect(stateChangeListener.mock.calls).toEqual([[expectedState]]);
-
-        await Promise.all([
-          webRTCCalling.ensureWebCallingLine(),
-          webRTCCalling.ensureWebCallingLine(),
-        ]);
-        await flush();
-
-        const shouldReplace = outcome === 'stopped' && !activeCall;
-        expect(createClient).toHaveBeenCalledTimes(shouldReplace ? 2 : 1);
-        expect(line.register).toHaveBeenCalledTimes(1);
-        expect(line.deregister).toHaveBeenCalledTimes(shouldReplace ? 1 : 0);
-        expect(replacement.line.register).toHaveBeenCalledTimes(shouldReplace ? 1 : 0);
-        expect(replacement.line.deregister).not.toHaveBeenCalled();
-        expect(mockCall.end).not.toHaveBeenCalled();
-
-        if (shouldReplace) {
-          replacement.line.emit(LINE_EVENTS.REGISTERED, replacement.line);
-          await flush();
-          await webRTCCalling.ensureWebCallingLine();
-          expect(createClient).toHaveBeenCalledTimes(2);
-          expect(replacement.line.register).toHaveBeenCalledTimes(1);
-          expect(replacement.line.handlers.get(LINE_EVENTS.INCOMING_CALL)).toHaveLength(1);
-        } else {
-          expect(webRTCCalling.getVoiceConnectionState()).toEqual(expectedState);
-          expect(stateChangeListener.mock.calls).toEqual([[expectedState]]);
-          expect(line.handlers.get(LINE_EVENTS.INCOMING_CALL)).toHaveLength(1);
-          expect(line.handlers.get(LINE_EVENTS.REGISTERED)).toHaveLength(1);
-          expect(
-            client.handlers.get(CALLING_CLIENT_EVENT_KEYS.MOBIUS_SOCKET_CONNECTED)
-          ).toHaveLength(1);
-        }
-
-        if (activeCall) {
-          const shouldRepair = outcome === 'stopped';
-          expect(jest.getTimerCount()).toBe(shouldRepair ? 1 : 0);
-          client.getActiveCalls.mockReturnValue({replacement: [{...mockCall}]});
-          jest.advanceTimersByTime(1000);
-          expect(createClient).toHaveBeenCalledTimes(1);
-          expect(jest.getTimerCount()).toBe(shouldRepair ? 1 : 0);
-
-          client.getActiveCalls.mockReturnValue({});
-          jest.advanceTimersByTime(1000);
-          await flush();
-
-          expect(createClient).toHaveBeenCalledTimes(shouldRepair ? 2 : 1);
-          expect(line.deregister).toHaveBeenCalledTimes(shouldRepair ? 1 : 0);
-          expect(replacement.line.register).toHaveBeenCalledTimes(shouldRepair ? 1 : 0);
-          expect(mockCall.end).not.toHaveBeenCalled();
-
-          if (shouldRepair) {
-            replacement.line.emit(LINE_EVENTS.REGISTERED, replacement.line);
-            await flush();
-          }
-        }
-
-        await webRTCCalling.deregisterWebCallingLine();
-      }
-    );
-
-    it.each([
-      'request abort', 'station abort', 'deregister', 'disable voice', 'superseded',
-      'Calling reconnect', 'Calling registered',
-    ])(
-      'discards an idle repair after %s',
-      async (cancelledBy) => {
-        jest.useFakeTimers();
-        const {line, client} = owned();
-        const registration = {isReconnectPending: jest.fn().mockReturnValue(false)};
-        Object.assign(line, {registration});
-        (createClient as jest.Mock).mockResolvedValue(client);
-        setBrowserVoiceRequired();
-        await webRTCCalling.registerWebCallingLine();
-        client.getActiveCalls.mockReturnValue({held: [mockCall]});
-        line.emit(
-          LINE_EVENTS.ERROR,
-          registrationError(ERROR_TYPE.BAD_REQUEST, 'startKeepaliveTimer')
-        );
+      if (unregistering && !superseded) {
+        line.emit(LINE_EVENTS.ERROR, error);
         line.emit(LINE_EVENTS.UNREGISTERED);
-        const controller = new AbortController();
-        const station = new AbortController();
-        await webRTCCalling.ensureWebCallingLine(controller.signal, station.signal);
-        expect(jest.getTimerCount()).toBe(1);
-
-        if (cancelledBy === 'request abort') controller.abort();
-        if (cancelledBy === 'station abort') station.abort();
-        if (cancelledBy === 'deregister') await webRTCCalling.deregisterWebCallingLine();
-        if (cancelledBy === 'disable voice') webRTCCalling.setBrowserVoiceRequired(false);
-        if (cancelledBy === 'superseded') {
-          line.emit(LINE_EVENTS.UNREGISTERED, registrationError(ERROR_TYPE.SESSION_SUPERSEDED));
-        }
-        if (cancelledBy === 'Calling reconnect') {
-          registration.isReconnectPending.mockReturnValue(true);
-          jest.advanceTimersByTime(1000);
-          registration.isReconnectPending.mockReturnValue(false);
-        }
-        if (cancelledBy === 'Calling registered') line.emit(LINE_EVENTS.REGISTERED, line);
-
-        expect(jest.getTimerCount()).toBe(0);
-        client.getActiveCalls.mockReturnValue({});
-        jest.advanceTimersByTime(1000);
-        await flush();
-
-        expect(createClient).toHaveBeenCalledTimes(1);
-        expect(line.register).toHaveBeenCalledTimes(1);
-        expect(line.deregister).toHaveBeenCalledTimes(cancelledBy === 'deregister' ? 1 : 0);
-        await webRTCCalling.deregisterWebCallingLine();
+      } else {
+        line.emit(event, error);
       }
-    );
+      const unavailableState = webRTCCalling.getVoiceConnectionState();
+      expect(unavailableState).toMatchObject({
+        status: VOICE_CONNECTION_STATUS.UNAVAILABLE,
+        lineStatus: unregistering ? VoiceLineStatus.UNREGISTERED : VoiceLineStatus.ERROR,
+        retryable: unregistering && !superseded,
+      });
 
-    it('absentLineEstablishesOnce and duplicateEnsureAndCancelledCreate', async () => {
+      await webRTCCalling.ensureWebCallingLine();
+      client.getActiveCalls.mockReturnValue({});
+      await webRTCCalling.ensureWebCallingLine();
+      expect(jest.getTimerCount()).toBe(0);
+      expect(createClient).toHaveBeenCalledTimes(1);
+      expect(line.register).toHaveBeenCalledTimes(1);
+      expect(line.deregister).not.toHaveBeenCalled();
+      expect(line.handlers.get(LINE_EVENTS.REGISTERED)).toHaveLength(1);
+      expect(webRTCCalling.getVoiceConnectionState()).toEqual(unavailableState);
+      expect(mockCall.end).not.toHaveBeenCalled();
+      await webRTCCalling.deregisterWebCallingLine();
+    });
+
+    it('starts one missing-line registration despite an aborted caller and duplicate ensure', async () => {
       const {line, client} = owned();
       (createClient as jest.Mock).mockResolvedValue(client);
       setBrowserVoiceRequired();
@@ -2036,8 +1645,8 @@ describe('WebCallingService', () => {
       await webRTCCalling.deregisterWebCallingLine();
     });
 
-    it.each([LINE_EVENTS.CONNECTING, LINE_EVENTS.RECONNECTING, LINE_EVENTS.UNREGISTERED])(
-      'connectingAndReconnectingDelegate and unregisteredKeepaliveRetryDelegates: %s', async event => {
+    it.each([LINE_EVENTS.CONNECTING, LINE_EVENTS.RECONNECTING])(
+      'retains an existing line while Calling is %s', async event => {
         const {line, client} = owned();
         (createClient as jest.Mock).mockResolvedValue(client);
         setBrowserVoiceRequired();

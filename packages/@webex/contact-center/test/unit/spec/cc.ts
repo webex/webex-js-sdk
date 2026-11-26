@@ -669,31 +669,6 @@ describe('webex.cc', () => {
     });
   });
 
-  describe('cc.getDeviceId', () => {
-    it('should return dialNumber when loginOption is EXTENSION', () => {
-      const loginOption = LoginOption.EXTENSION;
-      const dialNumber = '12345';
-      const result = webex.cc['getDeviceId'](loginOption, dialNumber);
-      expect(result).toBe(dialNumber);
-    });
-
-    it('should return dialNumber when loginOption is AGENT_DN', () => {
-      const loginOption = LoginOption.AGENT_DN;
-      const dialNumber = '12345';
-      const result = webex.cc['getDeviceId'](loginOption, dialNumber);
-      expect(result).toBe(dialNumber);
-    });
-
-    it('should return prefix + agentId for other loginOptions', () => {
-      const loginOption = 'OTHER_OPTION';
-      webex.cc.agentConfig = {
-        agentId: 'agentId',
-      };
-      const result = webex.cc['getDeviceId'](loginOption, '');
-      expect(result).toBe(WEB_RTC_PREFIX + 'agentId');
-    });
-  });
-
   describe('register', () => {
     const createFreshAgentProfile = (overrides: Partial<Profile> = {}): Profile => ({
       agentId: 'agent123',
@@ -2663,25 +2638,6 @@ describe('webex.cc', () => {
         expect(webex.cc.services.agent.reload).toHaveBeenCalledTimes(automate ? 1 : 0);
         expect(webex.cc.services.agent.stationLogin).not.toHaveBeenCalled();
         expect(mockTaskManager.invalidateRegionalTasks).toHaveBeenCalledTimes(automate ? 1 : 0);
-      });
-
-      it.each([
-        [{reasonCode: 9999, status: 429}, 'transient'], [{reasonCode: 9999, status: 502}, 'transient'],
-        [{reasonCode: 9999, status: 503}, 'transient'], [{reasonCode: 9999, reason: 'AGENT_NOT_FOUND'}, 'fallback'],
-        [{reasonCode: 9999, reason: 'AGENT_DN_NOT_REGISTERED'}, 'fallback'],
-        [{reasonCode: 9999, reason: 'AGENT_SESSION_ALREADY_EXISTS'}, 'exists'],
-        [{reasonCode: 9999, reason: 'INTERNAL_ERROR'}, 'transient'],
-        [{id: 'Service.aqm.reqs.Timeout'}, 'transient'],
-        [{id: 'Service.aqm.reqs.TimeoutEvent'}, 'transient'],
-        [{reasonCode: 9999, id: 'Timeout'}, 'transient'], [{reasonCode: 9999, id: 'TimeoutEvent'}, 'transient'],
-        [{reasonCode: 1038, reason: 'INTERNAL_ERROR', status: 503}, 'fallback'],
-        [{reasonCode: 1041}, 'fallback'], [{reasonCode: 9999, status: 400}, 'other'],
-        [{reasonCode: 1037, reason: 'AGENT_NOT_FOUND'}, 'transient'],
-        [{reasonCode: 1035, reason: 'AGENT_NOT_FOUND'}, 'exists'],
-        [{reasonCode: 1037, status: 401}, 'auth'], [{reasonCode: 1035, status: 403}, 'auth'],
-        [{reasonCode: 1037, reason: 'RECOVERY_INTERRUPTED', status: 403}, 'cancelled'],
-      ])('T-007 recoveryFailureCategoryPrecedence %j', (failure, category) => {
-        expect(ContactCenter['recoveryFailureCategory'](failure)).toBe(category);
       });
 
       it.each([
@@ -10663,14 +10619,13 @@ describe('realRecoveryWiring', () => {
           const {ensure, assertRetained} = observePreservation();
           cc.$config.allowAutomatedRelogin = true;
           await recover();
-          const signal = cc['commandController'].signal;
           if (route === 'saved-login fallback') {
             await reply('/v1/agents/reload', CC_EVENTS.AGENT_RELOGIN_FAILED, {reasonCode: 1038});
             await reply('/v1/agents/login', CC_EVENTS.AGENT_STATION_LOGIN_SUCCESS);
           } else await reply('/v1/agents/reload', CC_EVENTS.AGENT_RELOGIN_SUCCESS);
           expect(ensure).toHaveBeenCalledTimes(1);
-          expect(ensure).toHaveBeenCalledWith(expect.any(AbortSignal), signal);
-          expect(signal.aborted).toBe(false);
+          expect(ensure).toHaveBeenCalledWith(expect.any(AbortSignal));
+          expect(ensure.mock.calls[0][0].aborted).toBe(false);
           assertRetained();
           expect(calling.isVoiceReady()).toBe(true);
           expect(cc['lastPublishedRegionState'].status).toBe('ready');
@@ -10982,10 +10937,9 @@ describe('realRecoveryWiring', () => {
           const rejected = expect(failed).rejects.toBeInstanceOf(Error);
           await flush();
           const failedSignal = dispatch.mock.calls[0][2].signal;
-          const stationSignal = cc['commandController'].signal;
           if (reason === 'region-switch') {
             expect(ensure).toHaveBeenCalledTimes(1);
-            expect(ensure).toHaveBeenLastCalledWith(failedSignal, stationSignal);
+            expect(ensure).toHaveBeenLastCalledWith(failedSignal);
           }
           await reply('/v1/agents/login', CC_EVENTS.AGENT_STATION_LOGIN_FAILED, {reasonCode: 9999});
           await rejected;
@@ -10999,7 +10953,7 @@ describe('realRecoveryWiring', () => {
           await reply('/v1/agents/login', CC_EVENTS.AGENT_STATION_LOGIN_SUCCESS);
           await retry;
           expect(ensure).toHaveBeenCalledTimes(reason === 'region-switch' ? 2 : 1);
-          expect(ensure).toHaveBeenLastCalledWith(retrySignal, stationSignal);
+          expect(ensure).toHaveBeenLastCalledWith(retrySignal);
           expect(retrySignal.aborted).toBe(false);
           assertRetained();
           expect(calling.isVoiceReady()).toBe(true);
@@ -11015,15 +10969,16 @@ describe('realRecoveryWiring', () => {
           expect(calling['line']).toBeUndefined();
           line.register.mockImplementation(() => undefined);
           const ensure = spy(calling, 'ensureWebCallingLine');
-          const replace = spy(calling, 'registerWebCallingLine');
+          const register = spy(calling, 'registerWebCallingLine');
           const states = jest.fn(); cc.on('region:stateChange', states);
           cc.$config.allowAutomatedRelogin = true;
           await recover();
           await reply('/v1/agents/reload', CC_EVENTS.AGENT_RELOGIN_SUCCESS);
           expect(ensure).toHaveBeenCalledTimes(1);
-          expect(ensure).toHaveBeenCalledWith(expect.any(AbortSignal), cc['commandController'].signal);
+          expect(ensure).toHaveBeenCalledWith(expect.any(AbortSignal));
           await expect(ensure.mock.results[0].value).resolves.toBeUndefined();
-          const registration = calling['registrationAttempt'].promise;
+          expect(register).toHaveBeenCalledTimes(1);
+          const registration = register.mock.results[0].value;
           const completed = jest.fn(); registration.then(completed, completed);
           await flush();
           expect(completed).not.toHaveBeenCalled();
@@ -11045,45 +11000,33 @@ describe('realRecoveryWiring', () => {
           if (outcome === 'timeout') expect(calling.getVoiceConnectionState().reason).toBe('REGISTRATION_TIMEOUT');
           expect(cc['lastPublishedRegionState']).toBe(ready);
           expect(states.mock.calls.map(([state]) => state)).toEqual(publications);
-          expect(replace).not.toHaveBeenCalled();
+          expect(register).toHaveBeenCalledTimes(1);
         });
       });
 
-    it.each(['no disconnect', 'before adoption', 'after adoption'])(
-      'ties deferred browser line repair to the current station (%s)', async disconnect => {
-        await withBrowserGraph(async ({cc, line, client, api, createClient, login, recover, reply,
-          sockets, flush, spy}) => {
-          await login(LoginOption.BROWSER);
-          line.emit(api.LINE_EVENTS.ERROR, Object.assign(new Error('Calling stopped'), {
-            status: 'inactive', type: api.ERROR_TYPE.BAD_REQUEST,
-            context: {file: 'register', method: 'startKeepaliveTimer'},
-          }));
-          line.emit(api.LINE_EVENTS.UNREGISTERED);
-          client.getActiveCalls.mockReturnValue({browser: [{}]});
-          cc.$config.allowAutomatedRelogin = true;
-          await recover();
-
-          const postLogin = createDeferred<void>();
-          spy(cc, 'ensureWxAppPostStationLogin').mockReturnValueOnce(postLogin.promise);
-          await reply('/v1/agents/reload', CC_EVENTS.AGENT_RELOGIN_SUCCESS);
-          expect(createClient).toHaveBeenCalledTimes(1);
-          expect(cc['recoveryPhase']).toBe('restoringSession');
-          if (disconnect === 'before adoption') sockets[1].lost();
-          postLogin.resolve();
-          await flush();
-          if (disconnect === 'after adoption') {
-            sockets[1].lost();
-            await flush();
-          }
-
-          client.getActiveCalls.mockReturnValue({});
-          jest.advanceTimersByTime(1000); await flush();
-          const abandoned = disconnect === 'before adoption';
-          expect(createClient).toHaveBeenCalledTimes(abandoned ? 1 : 2);
-          expect(line.deregister).toHaveBeenCalledTimes(abandoned ? 0 : 1);
-          expect(cc['lastPublishedRegionState'].status).toBe(abandoned ? 'recovering' : 'ready');
+    it('leaves a stopped browser line with Calling after station recovery', async () => {
+      await withBrowserGraph(async ({cc, calling, line, client, api, createClient, login, recover, reply, flush}) => {
+        await login(LoginOption.BROWSER);
+        line.emit(api.LINE_EVENTS.ERROR, {
+          status: 'inactive',
+          type: api.ERROR_TYPE.BAD_REQUEST,
+          context: {file: 'register', method: 'startKeepaliveTimer'},
+          message: 'Calling stopped',
         });
+        line.emit(api.LINE_EVENTS.UNREGISTERED);
+        client.getActiveCalls.mockReturnValue({browser: [{}]});
+        cc.$config.allowAutomatedRelogin = true;
+        await recover();
+        await reply('/v1/agents/reload', CC_EVENTS.AGENT_RELOGIN_SUCCESS);
+
+        client.getActiveCalls.mockReturnValue({});
+        jest.advanceTimersByTime(1000); await flush();
+        expect(createClient).toHaveBeenCalledTimes(1);
+        expect(line.deregister).not.toHaveBeenCalled();
+        expect(calling.getVoiceConnectionState().status).toBe(VOICE_CONNECTION_STATUS.UNAVAILABLE);
+        expect(cc['lastPublishedRegionState'].status).toBe('ready');
       });
+    });
 
     const completeExplicitAvailable = async ({cc, sockets, requests, frame, flush}) => {
       expect(requests.filter(r => r.resource === '/v1/agents/session/state')).toHaveLength(0);

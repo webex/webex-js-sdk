@@ -1,7 +1,11 @@
 import MetricsManager from '../../../../../src/metrics/MetricsManager';
-import routingAgent from '../../../../../src/services/agent';
+import routingAgent, {
+  buildStationLoginPayload,
+  getStationRecoveryFailureCategory,
+} from '../../../../../src/services/agent';
 import AqmReqs from '../../../../../src/services/core/aqm-reqs';
 import {Details} from '../../../../../src/services/core/Err';
+import {LoginOption} from '../../../../../src/types';
 
 jest.mock('../../../../../src/services/core/Utils', () => ({
   createErrDetailsObject: jest.fn(),
@@ -10,6 +14,52 @@ jest.mock('../../../../../src/services/core/Utils', () => ({
 }));
 
 jest.mock('../../../../../src/services/core/aqm-reqs');
+
+describe('station login', () => {
+  it.each([
+    [LoginOption.EXTENSION, '12345', '12345', '12345', true],
+    [LoginOption.AGENT_DN, '12345', '12345', '12345', false],
+    [LoginOption.BROWSER, undefined, 'webrtc-agentId', 'webrtc-agentId', false],
+    ['OTHER_OPTION' as LoginOption, '', 'webrtc-agentId', '', false],
+  ])('builds the payload for %s', (loginOption, dialNumber, deviceId, expectedDialNumber, isExtension) => {
+    expect(buildStationLoginPayload({loginOption, dialNumber, teamId: 'team1'}, 'agentId')).toStrictEqual({
+      dialNumber: expectedDialNumber,
+      teamId: 'team1',
+      deviceType: loginOption,
+      isExtension,
+      deviceId,
+      roles: ['agent'],
+      teamName: '',
+      siteId: '',
+      usesOtherDN: false,
+      auxCodeId: '',
+    });
+  });
+
+  it.each([
+    [{reasonCode: 9999, status: 429}, 'transient'],
+    [{reasonCode: 9999, status: 502}, 'transient'],
+    [{reasonCode: 9999, status: 503}, 'transient'],
+    [{reasonCode: 9999, reason: 'AGENT_NOT_FOUND'}, 'fallback'],
+    [{reasonCode: 9999, reason: 'AGENT_DN_NOT_REGISTERED'}, 'fallback'],
+    [{reasonCode: 9999, reason: 'AGENT_SESSION_ALREADY_EXISTS'}, 'exists'],
+    [{reasonCode: 9999, reason: 'INTERNAL_ERROR'}, 'transient'],
+    [{id: 'Service.aqm.reqs.Timeout'}, 'transient'],
+    [{id: 'Service.aqm.reqs.TimeoutEvent'}, 'transient'],
+    [{reasonCode: 9999, id: 'Timeout'}, 'transient'],
+    [{reasonCode: 9999, id: 'TimeoutEvent'}, 'transient'],
+    [{reasonCode: 1038, reason: 'INTERNAL_ERROR', status: 503}, 'fallback'],
+    [{reasonCode: 1041}, 'fallback'],
+    [{reasonCode: 9999, status: 400}, 'other'],
+    [{reasonCode: 1037, reason: 'AGENT_NOT_FOUND'}, 'transient'],
+    [{reasonCode: 1035, reason: 'AGENT_NOT_FOUND'}, 'exists'],
+    [{reasonCode: 1037, status: 401}, 'auth'],
+    [{reasonCode: 1035, status: 403}, 'auth'],
+    [{reasonCode: 1037, reason: 'RECOVERY_INTERRUPTED', status: 403}, 'cancelled'],
+  ])('T-007 recoveryFailureCategoryPrecedence %j', (failure, category) => {
+    expect(getStationRecoveryFailureCategory(failure)).toBe(category);
+  });
+});
 
 describe('AQM routing agent', () => {
   let fakeAqm: jest.Mocked<AqmReqs>;

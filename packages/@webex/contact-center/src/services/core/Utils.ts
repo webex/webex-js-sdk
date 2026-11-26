@@ -21,11 +21,37 @@ import {
   STATE_CONSULT,
   SUBSCRIPTION_MISMATCH_REASONS,
 } from './constants';
-import {DialPlan} from '../config/types';
+import {SYSTEM_EVENTS, type DialPlan, type SystemRegionSwitch} from '../config/types';
 
 /** Returns whether a value is a non-null object with string keys. */
 export const isRecord = (value: unknown): value is Record<string, unknown> =>
   typeof value === 'object' && value !== null;
+
+/** @internal Validates the fields of a system region-switch notification. */
+export const normalizeRegionSwitch = (
+  payload: Record<string, unknown>
+): SystemRegionSwitch | undefined => {
+  if (
+    typeof payload.orgId !== 'string' ||
+    !payload.orgId.trim() ||
+    typeof payload.trackingId !== 'string' ||
+    !payload.trackingId.trim()
+  )
+    return undefined;
+  const data = isRecord(payload.data) ? payload.data : {};
+
+  return {
+    type: SYSTEM_EVENTS.SYSTEM_REGION_SWITCH,
+    orgId: payload.orgId.trim(),
+    trackingId: payload.trackingId.trim(),
+    data: {
+      ...(data.operation === 'FAILOVER' || data.operation === 'FAILBACK'
+        ? {operation: data.operation}
+        : {}),
+      ...(data.scope === 'REGION' || data.scope === 'ORG' ? {scope: data.scope} : {}),
+    },
+  };
+};
 
 const MAX_SANITIZED_OBSERVABILITY_VALUE_LENGTH = 200;
 
@@ -44,6 +70,13 @@ export const sanitizeForObservability = (value: unknown): string => {
 
   // eslint-disable-next-line no-control-regex
   return value.replace(/[\x00-\x1f\x7f]/g, '').slice(0, MAX_SANITIZED_OBSERVABILITY_VALUE_LENGTH);
+};
+
+/** Restricts recovery diagnostic identifiers to the expected characters and length. */
+export const normalizeRecoveryDiagnosticId = (value: unknown): string | undefined => {
+  const id = sanitizeForObservability(value);
+
+  return /^[A-Za-z0-9_.:-]{1,200}$/.test(id) ? id : undefined;
 };
 
 /** Retains structured objects only, never arrays or speculative nested envelopes. */
@@ -178,6 +211,23 @@ export const awaitRecoveryWork = <T>(
       }
     );
     if (signal.aborted) onAbort();
+  });
+};
+
+/** Waits for the recovery delay or releases the wait when ownership ends. */
+export const waitForRecoveryDelay = (delay: number, signal: AbortSignal): Promise<void> => {
+  if (delay <= 0 || signal.aborted) return Promise.resolve();
+
+  return new Promise<void>((resolve) => {
+    let timer: ReturnType<typeof setTimeout>;
+    const finish = () => {
+      clearTimeout(timer);
+      signal.removeEventListener('abort', finish);
+      resolve();
+    };
+    timer = setTimeout(finish, delay);
+    signal.addEventListener('abort', finish, {once: true});
+    if (signal.aborted) finish();
   });
 };
 

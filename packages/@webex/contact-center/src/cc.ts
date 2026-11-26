@@ -50,11 +50,18 @@ import {
   REGION_RECOVERY_ERROR_CODES,
 } from './constants';
 import {AGENT_STATE_AVAILABLE, AGENT_STATE_AVAILABLE_ID} from './services/config/constants';
-import {AGENT, RTD_SUBSCRIBE_API, SUBSCRIBE_API, WEB_RTC_PREFIX} from './services/constants';
+import {RTD_SUBSCRIBE_API, SUBSCRIBE_API, WEB_RTC_PREFIX} from './services/constants';
 import Services from './services';
 import WebexRequest from './services/core/WebexRequest';
 import LoggerProxy from './logger-proxy';
 import {StateChange, Logout, AGENT_EVENTS} from './services/agent/types';
+import {
+  buildStationLoginPayload,
+  compareAgentStateVersions,
+  getStationRecoveryFailureCategory,
+  hasAgentStateVersion,
+} from './services/agent';
+import type {AgentStateVersion} from './services/agent';
 import {
   getErrorDetails,
   isRecord,
@@ -63,6 +70,9 @@ import {
   awaitRecoveryWork,
   createRegionRecoveryError,
   normalizeRecoveryFailure,
+  normalizeRecoveryDiagnosticId,
+  normalizeRegionSwitch,
+  waitForRecoveryDelay,
   getSubscriptionMismatchReason,
   isRegionRecoveryError,
 } from './services/core/Utils';
@@ -234,37 +244,6 @@ type StateDispatch = Pick<StateDispatchContext, 'source' | 'stationRevision' | '
   ordinal: number;
   outcome?: 'succeeded' | 'failed' | 'cancelled';
 };
-
-type AgentStateVersion = {
-  lastStateChangeTimestamp: number;
-  lastIdleCodeChangeTimestamp?: number | null;
-};
-
-function hasAgentStateVersion<
-  T extends {
-    lastStateChangeTimestamp?: unknown;
-    lastIdleCodeChangeTimestamp?: unknown;
-    subStatus?: unknown;
-  }
->(data: T): data is T & AgentStateVersion {
-  return (
-    Number.isFinite(data.lastStateChangeTimestamp) &&
-    (Number.isFinite(data.lastIdleCodeChangeTimestamp) ||
-      (data.subStatus === AGENT_STATE_AVAILABLE && data.lastIdleCodeChangeTimestamp == null))
-  );
-}
-
-function compareAgentStateVersions(
-  current: AgentStateVersion,
-  previous: AgentStateVersion
-): number {
-  const stateDifference = current.lastStateChangeTimestamp - previous.lastStateChangeTimestamp;
-  const currentIdle = current.lastIdleCodeChangeTimestamp;
-  const previousIdle = previous.lastIdleCodeChangeTimestamp;
-  if (stateDifference || currentIdle == null || previousIdle == null) return stateDifference;
-
-  return currentIdle - previousIdle;
-}
 
 type AutoAvailable = {
   registration: number;
@@ -565,26 +544,18 @@ export default class ContactCenter extends WebexPlugin implements IContactCenter
   }
 
   private publishHostEvent(event: string, payload: unknown, trigger = false): void {
-    try {
+    this.recordBestEffort(() => {
       // @ts-ignore - ampersand-events methods are provided by WebexPlugin at runtime.
       if (trigger) this.trigger(event, payload);
       // @ts-ignore - ampersand-events methods are provided by WebexPlugin at runtime.
       else this.emit(event, payload);
-    } catch {
-      /* Inherited delivery skips remaining listeners for this call. */
-    }
+    });
   }
 
   private static isRecoveryDiagnosticReason(
     value: unknown
   ): value is RegionRecoveryState['reason'] | RegionRecoveryErrorCode {
     return typeof value === 'string' && RECOVERY_DIAGNOSTIC_REASONS.has(value);
-  }
-
-  private static normalizeRecoveryDiagnosticId(value: unknown): string | undefined {
-    const id = sanitizeForObservability(value);
-
-    return /^[A-Za-z0-9_.:-]{1,200}$/.test(id) ? id : undefined;
   }
 
   private recordRecoveryDiagnostic(
@@ -608,8 +579,8 @@ export default class ContactCenter extends WebexPlugin implements IContactCenter
     } catch {
       return;
     }
-    const id = ContactCenter.normalizeRecoveryDiagnosticId(failure?.id);
-    const trackingId = ContactCenter.normalizeRecoveryDiagnosticId(failure?.trackingId);
+    const id = normalizeRecoveryDiagnosticId(failure?.id);
+    const trackingId = normalizeRecoveryDiagnosticId(failure?.trackingId);
     const payload: RecoveryDiagnosticPayload = {
       stage,
       outcome,
@@ -671,10 +642,10 @@ export default class ContactCenter extends WebexPlugin implements IContactCenter
 
   private static getRegistrationErrorDetails(error: unknown) {
     const failure = normalizeRecoveryFailure(error);
-    const id = ContactCenter.normalizeRecoveryDiagnosticId(failure.id);
+    const id = normalizeRecoveryDiagnosticId(failure.id);
     const trackingId =
-      ContactCenter.normalizeRecoveryDiagnosticId(failure.trackingId) ??
-      ContactCenter.normalizeRecoveryDiagnosticId(isRecord(error) ? error.trackingId : undefined);
+      normalizeRecoveryDiagnosticId(failure.trackingId) ??
+      normalizeRecoveryDiagnosticId(isRecord(error) ? error.trackingId : undefined);
 
     return {
       ...(Number.isFinite(failure.status) ? {status: failure.status} : {}),
@@ -1001,30 +972,6 @@ export default class ContactCenter extends WebexPlugin implements IContactCenter
     return termination;
   }
 
-  private normalizeRegionSwitch(payload: unknown): SystemRegionSwitch | undefined {
-    if (!isRecord(payload) || payload.type !== SYSTEM_EVENTS.SYSTEM_REGION_SWITCH) return undefined;
-    if (
-      typeof payload.orgId !== 'string' ||
-      !payload.orgId.trim() ||
-      typeof payload.trackingId !== 'string' ||
-      !payload.trackingId.trim()
-    )
-      return undefined;
-    const data = isRecord(payload.data) ? payload.data : {};
-
-    return {
-      type: SYSTEM_EVENTS.SYSTEM_REGION_SWITCH,
-      orgId: payload.orgId.trim(),
-      trackingId: payload.trackingId.trim(),
-      data: {
-        ...(data.operation === 'FAILOVER' || data.operation === 'FAILBACK'
-          ? {operation: data.operation}
-          : {}),
-        ...(data.scope === 'REGION' || data.scope === 'ORG' ? {scope: data.scope} : {}),
-      },
-    };
-  }
-
   private isCurrentRecovery(recovery: RegionRecovery): boolean {
     return (
       this.recovery === recovery &&
@@ -1322,23 +1269,6 @@ export default class ContactCenter extends WebexPlugin implements IContactCenter
     }
   }
 
-  private buildStationLoginPayload(data: AgentLogin): Agent.UserStationLogin {
-    const deviceId = this.getDeviceId(data.loginOption, data.dialNumber);
-
-    return {
-      dialNumber: data.loginOption === LoginOption.BROWSER ? deviceId : data.dialNumber,
-      teamId: data.teamId,
-      deviceType: data.loginOption,
-      isExtension: data.loginOption === LoginOption.EXTENSION,
-      deviceId,
-      roles: [AGENT],
-      teamName: EMPTY_STRING,
-      siteId: EMPTY_STRING,
-      usesOtherDN: false,
-      auxCodeId: EMPTY_STRING,
-    };
-  }
-
   private rememberAcceptedStation(
     input:
       | {source: 'login'; payload: Agent.UserStationLogin; response: Agent.StationLoginSuccess}
@@ -1419,11 +1349,10 @@ export default class ContactCenter extends WebexPlugin implements IContactCenter
 
         return;
       }
-      payload = this.buildStationLoginPayload({
-        teamId: data.teamId,
-        loginOption: mode as LoginOption,
-        dialNumber,
-      });
+      payload = buildStationLoginPayload(
+        {teamId: data.teamId, loginOption: mode as LoginOption, dialNumber},
+        this.agentConfig.agentId
+      );
     }
     this.agentConfig.currentTeamId = payload.teamId;
     this.acceptedStation = {
@@ -1463,46 +1392,6 @@ export default class ContactCenter extends WebexPlugin implements IContactCenter
       );
     if (signal.aborted) throw createRegionRecoveryError('RECOVERY_INTERRUPTED');
     await awaitRecoveryWork(this.ensureWxAppPostStationLogin(signal), signal);
-  }
-
-  private static recoveryFailureCategory(
-    failure: RecoveryFailure
-  ): 'cancelled' | 'auth' | 'transient' | 'fallback' | 'exists' | 'other' {
-    if (failure.reason === 'RECOVERY_INTERRUPTED' || failure.id === 'AbortError')
-      return 'cancelled';
-    if (failure.status === 401 || failure.status === 403) return 'auth';
-    const codes = {1037: 'transient', 1038: 'fallback', 1041: 'fallback', 1035: 'exists'} as const;
-    if (codes[failure.reasonCode]) return codes[failure.reasonCode];
-    if (['AGENT_NOT_FOUND', 'AGENT_DN_NOT_REGISTERED'].includes(failure.reason)) return 'fallback';
-    if (failure.reason === 'AGENT_SESSION_ALREADY_EXISTS') return 'exists';
-    if (failure.reason === 'INTERNAL_ERROR') return 'transient';
-    if (
-      [
-        'Timeout',
-        'TimeoutEvent',
-        'Service.aqm.reqs.Timeout',
-        'Service.aqm.reqs.TimeoutEvent',
-      ].includes(failure.id) ||
-      [429, 502, 503].includes(failure.status)
-    )
-      return 'transient';
-
-    return 'other';
-  }
-
-  private static waitForRecoveryDelay(delay: number, signal: AbortSignal): Promise<void> {
-    if (delay <= 0 || signal.aborted) return Promise.resolve();
-
-    return new Promise<void>((resolve) => {
-      const finish = () => {
-        clearTimeout(timer);
-        signal.removeEventListener('abort', finish);
-        resolve();
-      };
-      const timer = setTimeout(finish, delay);
-      signal.addEventListener('abort', finish, {once: true});
-      if (signal.aborted) finish();
-    });
   }
 
   private async restoreRegionSession(
@@ -1557,10 +1446,7 @@ export default class ContactCenter extends WebexPlugin implements IContactCenter
     try {
       while (this.isCurrentRecovery(recovery) && !context.signal.aborted) {
         // eslint-disable-next-line no-await-in-loop -- Generation-owned retries are serial.
-        await ContactCenter.waitForRecoveryDelay(
-          recovery.retryNotBefore - Date.now(),
-          context.signal
-        );
+        await waitForRecoveryDelay(recovery.retryNotBefore - Date.now(), context.signal);
         if (context.signal.aborted || !this.isCurrentRecovery(recovery))
           throw createRegionRecoveryError('RECOVERY_INTERRUPTED');
         if (recovery.stage === 'reload' && recovery.reloads > STATION_RELOAD_RETRY_DELAYS_MS.length)
@@ -1587,7 +1473,7 @@ export default class ContactCenter extends WebexPlugin implements IContactCenter
               );
               if (!this.isCurrentRecovery(recovery) || context.signal.aborted)
                 throw createRegionRecoveryError('RECOVERY_INTERRUPTED');
-              if (saved) payload = this.buildStationLoginPayload(saved);
+              if (saved) payload = buildStationLoginPayload(saved, this.agentConfig.agentId);
             }
             if (!payload) break;
             // eslint-disable-next-line no-await-in-loop -- At most one fallback dispatch.
@@ -1647,7 +1533,7 @@ export default class ContactCenter extends WebexPlugin implements IContactCenter
           }
           if (applying) throw error;
           const failure = normalizeRecoveryFailure(error);
-          const category = ContactCenter.recoveryFailureCategory(failure);
+          const category = getStationRecoveryFailureCategory(failure);
           if (category === 'cancelled' || category === 'auth') {
             this.recordRecoveryDiagnostic(
               diagnosticStage,
@@ -1982,8 +1868,6 @@ export default class ContactCenter extends WebexPlugin implements IContactCenter
   };
 
   private handleVoiceConnectionStateChange = (state: VoiceConnectionState): void => {
-    // WebexPlugin exposes `trigger` at runtime, though it is missing from its TypeScript types.
-    // @ts-ignore
     this.publishHostEvent(VOICE_CONNECTION_EVENTS.STATE_CHANGE, state, true);
   };
 
@@ -2019,7 +1903,6 @@ export default class ContactCenter extends WebexPlugin implements IContactCenter
 
   /**
    * Handles campaign preview reservation events when a contact is offered to the agent
-   * @private
    * @param {ITask} task The campaign reservation task
    */
   private handleCampaignPreviewReservation = (task: ITask) => {
@@ -2028,12 +1911,10 @@ export default class ContactCenter extends WebexPlugin implements IContactCenter
   };
 
   private trackInvalidWellnessEvent(reason: string): void {
-    this.recordBestEffort(() =>
-      this.metricsManager.trackEvent(
-        METRIC_EVENT_NAMES.AI_ASSISTANT_WELLNESS_EVENT_INVALID,
-        {reason},
-        ['operational']
-      )
+    this.metricsManager.trackEvent(
+      METRIC_EVENT_NAMES.AI_ASSISTANT_WELLNESS_EVENT_INVALID,
+      {reason},
+      ['operational']
     );
   }
 
@@ -2130,7 +2011,6 @@ export default class ContactCenter extends WebexPlugin implements IContactCenter
 
     const wellnessEvent = this.normalizeWellnessBreakEvent(payload);
     if (wellnessEvent) {
-      // @ts-ignore - WebexPlugin emit is available at runtime but absent from its declaration.
       this.publishHostEvent(CC_EVENTS.WELLNESS_BREAK, wellnessEvent);
     }
 
@@ -2505,9 +2385,7 @@ export default class ContactCenter extends WebexPlugin implements IContactCenter
         this.metricsManager.trackEvent(
           METRIC_EVENT_NAMES.WEBSOCKET_REGISTER_FAILED,
           {
-            orgId: ContactCenter.normalizeRecoveryDiagnosticId(
-              isRecord(error) ? error.orgId : undefined
-            ),
+            orgId: normalizeRecoveryDiagnosticId(isRecord(error) ? error.orgId : undefined),
           },
           ['operational']
         )
@@ -3048,7 +2926,7 @@ export default class ContactCenter extends WebexPlugin implements IContactCenter
       }
 
       this.assertRecoveryAdmission('session');
-      const payload = this.buildStationLoginPayload(data);
+      const payload = buildStationLoginPayload(data, this.agentConfig.agentId);
       const loginResponse = this.services.agent
         .stationLogin({data: payload}, undefined, context)
         .then(
@@ -3099,8 +2977,7 @@ export default class ContactCenter extends WebexPlugin implements IContactCenter
       if (this.isBrowserVoiceRequired(data.loginOption)) {
         if (manual) {
           try {
-            // The request detaches on acceptance, but deferred voice repair still belongs to the station.
-            await this.webCallingService.ensureWebCallingLine(context.signal, manualSignal);
+            await this.webCallingService.ensureWebCallingLine(context.signal);
           } catch {
             /* Voice ownership cannot fail an accepted DR station. */
             this.recordBestEffort(() =>
@@ -3347,21 +3224,6 @@ export default class ContactCenter extends WebexPlugin implements IContactCenter
       const {error: detailedError} = getErrorDetails(error, METHODS.STATION_LOGOUT, CC_FILE);
       throw detailedError;
     }
-  }
-
-  /**
-   * Gets the device ID based on login option and dial number
-   * @param {string} loginOption The login option (BROWSER, EXTENSION, etc)
-   * @param {string} dialNumber The dial number if applicable
-   * @returns {string} The device ID
-   * @private
-   */
-  private getDeviceId(loginOption: string, dialNumber: string): string {
-    if (loginOption === LoginOption.EXTENSION || loginOption === LoginOption.AGENT_DN) {
-      return dialNumber;
-    }
-
-    return WEB_RTC_PREFIX + this.agentConfig.agentId;
   }
 
   /**
@@ -4012,7 +3874,7 @@ export default class ContactCenter extends WebexPlugin implements IContactCenter
     if (!isRecord(parsed)) return;
     const eventData = parsed as Record<string, any>;
     if (eventData.type === SYSTEM_EVENTS.SYSTEM_REGION_SWITCH) {
-      const regionSwitch = this.normalizeRegionSwitch(eventData);
+      const regionSwitch = normalizeRegionSwitch(parsed);
       if (regionSwitch) this.handleRegionSwitch(regionSwitch);
 
       return;
@@ -5169,10 +5031,7 @@ export default class ContactCenter extends WebexPlugin implements IContactCenter
         }
         try {
           if (restoreSignal) {
-            await this.webCallingService.ensureWebCallingLine(
-              restoreSignal,
-              this.commandController?.signal
-            );
+            await this.webCallingService.ensureWebCallingLine(restoreSignal);
           } else await this.webCallingService.registerWebCallingLine();
         } catch (error) {
           this.recordBestEffort(() =>
