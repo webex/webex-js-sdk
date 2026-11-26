@@ -1,6 +1,7 @@
 import EventEmitter from 'events';
 import {
   createClient,
+  createMicrophoneStream,
   ICall,
   ICallingClient,
   ILine,
@@ -403,13 +404,41 @@ export default class WebCallingService extends EventEmitter {
     this.lineRetryable = undefined;
     this.updateVoiceConnectionState({lineStatus: VoiceLineStatus.CONNECTING});
 
+    let localAudioStream: LocalMicrophoneStream | undefined;
+    const releaseMicrophoneStream = (): void => {
+      try {
+        localAudioStream?.stop();
+      } catch (error) {
+        LoggerProxy.error(`Failed to release registration microphone stream: ${error}`, {
+          module: WEB_CALLING_SERVICE_FILE,
+          method: METHODS.REGISTER_WEB_CALLING_LINE,
+        });
+      } finally {
+        localAudioStream = undefined;
+      }
+    };
+
     try {
       const rtmsDomain = await this.getRTMSDomain(); // get the RTMS domain from the u2c catalogue
       if (registrationGeneration !== this.registrationGeneration) {
         return;
       }
 
+      try {
+        localAudioStream = await createMicrophoneStream();
+      } catch (error) {
+        LoggerProxy.error(`Registration microphone capture failed: ${error}`, {
+          module: WEB_CALLING_SERVICE_FILE,
+          method: METHODS.REGISTER_WEB_CALLING_LINE,
+        });
+      }
+      if (registrationGeneration !== this.registrationGeneration) {
+        return;
+      }
+      this.registrationListenerCleanup.push(releaseMicrophoneStream);
+
       const callingClientConfig = {
+        ...(localAudioStream ? {localAudioStream} : {}),
         logger: {
           level: LOGGER.INFO,
         },
@@ -519,6 +548,9 @@ export default class WebCallingService extends EventEmitter {
         this.updateVoiceConnectionState({lineStatus: VoiceLineStatus.ERROR});
       }
       throw error;
+    } finally {
+      // Discovery-only audio; WebRTC.accept() captures a separate stream for each call.
+      releaseMicrophoneStream();
     }
   }
 
