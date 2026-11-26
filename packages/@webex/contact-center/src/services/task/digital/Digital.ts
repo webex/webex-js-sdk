@@ -1,5 +1,4 @@
 import {CC_FILE, METHODS} from '../../../constants';
-import {getErrorDetails, isRegionRecoveryError} from '../../core/Utils';
 import {ConsultTransferDestinationConfig, IDigital, TaskResponse, TaskData} from '../types';
 import type {WrapupData} from '../../config/types';
 import type ApiAIAssistant from '../../ApiAiAssistant';
@@ -88,8 +87,7 @@ export default class Digital extends Task implements IDigital {
 
       return response;
     } catch (error) {
-      if (isRegionRecoveryError(error)) throw error;
-      const {error: detailedError} = getErrorDetails(error, METHODS.ACCEPT, CC_FILE);
+      const detailedError = Digital.getTaskError(error, METHODS.ACCEPT);
       this.metricsManager.trackEvent(
         METRIC_EVENT_NAMES.TASK_ACCEPT_FAILED,
         {

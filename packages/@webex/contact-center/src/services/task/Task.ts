@@ -122,6 +122,13 @@ export default abstract class Task extends EventEmitter implements ITask {
     return this.runOwnedTaskOperation(operation, 'command', timedEventKeys);
   }
 
+  /** @internal Maps ordinary command failures before the caller reports them. */
+  protected static getTaskError(error: unknown, method: string): Error {
+    if (isRegionRecoveryError(error)) throw error;
+
+    return getErrorDetails(error, method, CC_FILE).error;
+  }
+
   /** @internal */
   protected async runTaskLifetimeOperation<T>(
     operation: (signal: AbortSignal) => Promise<T>
@@ -1242,8 +1249,7 @@ export default abstract class Task extends EventEmitter implements ITask {
 
       return result;
     } catch (error) {
-      if (isRegionRecoveryError(error)) throw error;
-      const {error: detailedError} = getErrorDetails(error, 'transfer', CC_FILE);
+      const detailedError = Task.getTaskError(error, 'transfer');
       this.metricsManager.trackEvent(
         METRIC_EVENT_NAMES.TASK_TRANSFER_FAILED,
         {
@@ -1298,8 +1304,7 @@ export default abstract class Task extends EventEmitter implements ITask {
 
       return response;
     } catch (error) {
-      if (isRegionRecoveryError(error)) throw error;
-      const {error: detailedError} = getErrorDetails(error, 'end', CC_FILE);
+      const detailedError = Task.getTaskError(error, 'end');
       this.metricsManager.trackEvent(
         METRIC_EVENT_NAMES.TASK_END_FAILED,
         {
@@ -1367,8 +1372,7 @@ export default abstract class Task extends EventEmitter implements ITask {
 
       return response;
     } catch (error) {
-      if (isRegionRecoveryError(error)) throw error;
-      const {error: detailedError} = getErrorDetails(error, 'wrapup', CC_FILE);
+      const detailedError = Task.getTaskError(error, 'wrapup');
       this.metricsManager.trackEvent(
         METRIC_EVENT_NAMES.TASK_WRAPUP_FAILED,
         {
