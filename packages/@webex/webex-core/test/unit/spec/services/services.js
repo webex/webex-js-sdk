@@ -1663,6 +1663,64 @@ describe('webex-core', () => {
         assert.isTrue(services.isValidHost('alternate.example.com'));
       });
 
+      it('does not scan catalog entries again for repeated checks', () => {
+        const readHost = sinon.spy(() => 'alternate.example.com');
+        const entry = {priority: 1};
+
+        Object.defineProperty(entry, 'host', {get: readHost, enumerable: true});
+        services._updateHostCatalog({'logical.example.com': [entry]});
+
+        assert.isTrue(services.isValidHost('alternate.example.com'));
+        assert.called(readHost);
+        readHost.resetHistory();
+
+        assert.isTrue(services.isValidHost('logical.example.com'));
+        assert.isTrue(services.isValidHost('alternate.example.com'));
+        assert.isFalse(services.isValidHost('unknown.example.com'));
+        assert.isFalse(services.isValidHost('unknown.example.com'));
+        assert.notCalled(readHost);
+      });
+
+      it('refreshes recognised hosts when a catalog entry is replaced', () => {
+        services._updateHostCatalog({
+          'logical.example.com': [{host: 'old.example.com', priority: 1}],
+        });
+        assert.isTrue(services.isValidHost('old.example.com'));
+        assert.isFalse(services.isValidHost('new.example.com'));
+
+        services._updateHostCatalog({
+          'logical.example.com': [{host: 'new.example.com', priority: 1}],
+        });
+
+        assert.isFalse(services.isValidHost('old.example.com'));
+        assert.isTrue(services.isValidHost('new.example.com'));
+        assert.isTrue(services.isValidHost('logical.example.com'));
+        assert.isTrue(services.isValidHost('mercury-connection-partition0-r.wbx2.com'));
+      });
+
+      it('drops the index when the host catalog is cleared', () => {
+        assert.isTrue(services.isValidHost('mercury-connection-partition0-r.wbx2.com'));
+        services._hostCatalog = {};
+
+        assert.isFalse(services.isValidHost('mercury-connection-partition0-r.wbx2.com'));
+      });
+
+      it('keeps recognised hosts separate between SDK instances', () => {
+        const otherServices = new MockWebex({children: {services: Services}}).internal.services;
+
+        services._updateHostCatalog({
+          'logical.example.com': [{host: 'alternate.example.com', priority: 1}],
+        });
+        otherServices._updateHostCatalog({
+          'other.example.com': [{host: 'other-alternate.example.com', priority: 1}],
+        });
+
+        assert.isTrue(services.isValidHost('alternate.example.com'));
+        assert.isFalse(otherServices.isValidHost('alternate.example.com'));
+        assert.isTrue(otherServices.isValidHost('other-alternate.example.com'));
+        assert.isFalse(services.isValidHost('other-alternate.example.com'));
+      });
+
       it.each([1, 255, 0, -1])(
         'accepts an alternate host declared with priority %s',
         (priority) => {
