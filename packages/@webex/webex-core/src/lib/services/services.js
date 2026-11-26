@@ -1,6 +1,6 @@
 import sha256 from 'crypto-js/sha256';
 
-import {union, forEach} from 'lodash';
+import {union, forEach, isString, some} from 'lodash';
 import WebexPlugin from '../webex-plugin';
 
 import METRICS from '../metrics';
@@ -292,14 +292,25 @@ const Services = WebexPlugin.extend({
   },
 
   /**
-   * Check is valid host from the legacy host catalog.
+   * Check canonical and alternate hosts declared in the legacy host catalog.
    * @param {string} host
    * @returns {Boolean}
    */
   isValidHost(host) {
+    if (!isString(host) || !host) {
+      return false;
+    }
+
     const hostCatalog = this._hostCatalog || {};
 
-    return !!hostCatalog[host]?.length;
+    // U2C keys the hostmap by logical host; alternate hosts are in its values.
+    // Priority controls host selection, not whether a declared host is recognised.
+    return some(
+      hostCatalog,
+      (entries, logicalHost) =>
+        (logicalHost === host && !!entries?.length) ||
+        some(entries, (entry) => entry?.host === host)
+    );
   },
 
   /**

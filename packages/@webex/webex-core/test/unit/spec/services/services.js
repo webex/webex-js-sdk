@@ -1654,6 +1654,58 @@ describe('webex-core', () => {
         assert.isTrue(services.isValidHost('mercury-connection-partition0-r.wbx2.com'));
       });
 
+      it('recognises a logical host even when its entries contain only alternate hosts', () => {
+        services._hostCatalog = {
+          'logical.example.com': [{host: 'alternate.example.com', priority: 1}],
+        };
+
+        assert.isTrue(services.isValidHost('logical.example.com'));
+        assert.isTrue(services.isValidHost('alternate.example.com'));
+      });
+
+      it.each([1, 255, 0, -1])(
+        'accepts an alternate host declared with priority %s',
+        (priority) => {
+          // Live INT U2C hostmaps declare the migrated host under the legacy key.
+          services._hostCatalog = {
+            'llm1-connection-intb.ciscospark.com': [
+              {
+                host: 'llm1-connection-intb.ciscospark.com',
+                priority: 1,
+                id: 'urn:TEAM:us-east-1_int13:llm1Connection',
+                ttl: -1,
+              },
+              {
+                host: 'int-first-mercury.svc.webex.com',
+                priority,
+                id: 'urn:TEAM:us-east-1_int13:llm1Connection',
+                ttl: -1,
+              },
+            ],
+          };
+
+          assert.isTrue(services.isValidHost('int-first-mercury.svc.webex.com'));
+          assert.isTrue(services.isValidHost('llm1-connection-intb.ciscospark.com'));
+          assert.isFalse(services.isValidHost('int-first-mercury.svc.webex.com.example'));
+          assert.isFalse(services.isValidHost('fake-int-first-mercury.svc.webex.com'));
+          assert.isFalse(services.isValidHost('wss://int-first-mercury.svc.webex.com'));
+        }
+      );
+
+      it.each([null, undefined, {}])('returns false without host catalog entries: %p', (hostCatalog) => {
+        services._hostCatalog = hostCatalog;
+
+        assert.isFalse(services.isValidHost('int-first-mercury.svc.webex.com'));
+      });
+
+      it.each([
+        {toString: () => 'mercury-connection-partition0-r.wbx2.com'},
+        'constructor',
+        '__proto__',
+      ])('rejects values that do not identify a declared host: %p', (host) => {
+        assert.isFalse(services.isValidHost(host));
+      });
+
       it('returns false if the host is not in the host catalog or has an empty entry list', () => {
         assert.isFalse(services.isValidHost('test.com'));
         assert.isFalse(services.isValidHost(''));
