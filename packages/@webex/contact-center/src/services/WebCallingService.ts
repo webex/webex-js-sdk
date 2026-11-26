@@ -427,26 +427,26 @@ export default class WebCallingService extends EventEmitter {
       let capturePending = true;
       let captureTimeout: ReturnType<typeof setTimeout> | undefined;
       try {
-        localAudioStream = await Promise.race([
-          createMicrophoneStream().then((stream) => {
-            if (!capturePending) {
-              localAudioStream = stream;
-              releaseMicrophoneStream();
+        const microphoneCapture = createMicrophoneStream().then((stream) => {
+          if (!capturePending) {
+            // A prompt may resolve after timeout or supersession; release that late capture.
+            localAudioStream = stream;
+            releaseMicrophoneStream();
 
-              return undefined;
-            }
+            return undefined;
+          }
 
-            return stream;
-          }),
-          new Promise<undefined>((resolve) => {
-            const skipCapture = (): void => {
-              capturePending = false;
-              resolve(undefined);
-            };
-            this.registrationListenerCleanup.push(skipCapture);
-            captureTimeout = setTimeout(skipCapture, TIMEOUT_DURATION);
-          }),
-        ]);
+          return stream;
+        });
+        const captureFallback = new Promise<undefined>((resolve) => {
+          const skipCapture = (): void => {
+            capturePending = false;
+            resolve(undefined);
+          };
+          this.registrationListenerCleanup.push(skipCapture);
+          captureTimeout = setTimeout(skipCapture, TIMEOUT_DURATION);
+        });
+        localAudioStream = await Promise.race([microphoneCapture, captureFallback]);
       } catch (error) {
         LoggerProxy.error(`Registration microphone capture failed: ${error}`, {
           module: WEB_CALLING_SERVICE_FILE,
@@ -555,11 +555,19 @@ export default class WebCallingService extends EventEmitter {
         );
 
         // ILine declares register() as void, although its implementation is async.
-        Promise.resolve(this.line.register()).catch((error: LineError) => {
-          if (registrationGeneration === this.registrationGeneration) {
-            this.handleLineError(error);
-          }
-        });
+        const registeringLine = this.line;
+        Promise.resolve(registeringLine.register())
+          .finally(async () => {
+            // Host-IP discovery can finish after cleanup has already retired this line.
+            if (registrationGeneration !== this.registrationGeneration) {
+              await registeringLine.deregister();
+            }
+          })
+          .catch((error: LineError) => {
+            if (registrationGeneration === this.registrationGeneration) {
+              this.handleLineError(error);
+            }
+          });
       });
     } catch (error) {
       if (registrationGeneration !== this.registrationGeneration) {
@@ -573,7 +581,7 @@ export default class WebCallingService extends EventEmitter {
       }
       throw error;
     } finally {
-      // Host-IP discovery uses this stream during initial line registration only.
+      // Discovery-only audio; WebRTC.accept() captures a separate stream for each call.
       releaseMicrophoneStream();
     }
   }
