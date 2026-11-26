@@ -4336,20 +4336,31 @@ function captureWellnessSession(event) {
       }
       if (hasMixedWellnessChannels) {
         // Don't promote legacyStateKnown — keep recovery marker armed.
-        // Restore only the channels still on the wellness break so they
-        // don't stay in WellbeingBreak indefinitely; the agent's manual
-        // state (e.g. Voice/Lunch) is preserved.  The SDK's
-        // wellnessRestoration flag narrows auto-selected channels to those
-        // whose auxCodeId matches the cached WellbeingBreak idle code.
-        webex.cc.setAgentState({
-          state: 'Available',
-          auxCodeId: '0',
-          lastStateChangeReason: 'wellness-break-complete',
-          agentId,
-          wellnessRestoration: true,
-        }).catch((err) => {
-          console.warn('[Wellness] Failed to restore remaining wellness channels:', err);
-        });
+        //
+        // Ownership guard: only restore the remaining wellness channels if
+        // this client owns the break (matching session-scoped recovery
+        // marker).  A fresh tab that rejoins an existing session should not
+        // undo a break started by a different client/tab.  Without a marker,
+        // the channels stay in WellbeingBreak until the owning client's
+        // timer fires or recoverWellnessBreakIfNeeded() runs with a valid
+        // marker.
+        const marker = wellnessState.recoveryMarker;
+        if (marker && marker.agentSessionId === event.agentSessionId) {
+          webex.cc.setAgentState({
+            state: 'Available',
+            auxCodeId: '0',
+            lastStateChangeReason: 'wellness-break-complete',
+            agentId,
+            wellnessRestoration: true,
+          }).catch((err) => {
+            console.warn('[Wellness] Failed to restore remaining wellness channels:', err);
+          });
+        } else {
+          console.info(
+            '[Wellness] Mixed wellness channels detected but no matching recovery marker — skipping restoration.',
+            {hasMarker: !!marker, markerSession: marker?.agentSessionId, eventSession: event.agentSessionId}
+          );
+        }
       } else {
         // Bridgeable with no mixed wellness — the SDK's bridge-computed
         // auxCodeId is valid for the recovery decision.

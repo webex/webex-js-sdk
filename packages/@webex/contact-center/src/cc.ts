@@ -1743,6 +1743,16 @@ export default class ContactCenter extends WebexPlugin implements IContactCenter
           agentSessionId: this.currentAgentSessionId,
         };
 
+        // True when channels were auto-selected via wellnessRestoration (no
+        // explicit channelType).  Used at dequeue to know whether the dequeue
+        // refilter should run.
+        const explicitChannels =
+          typeof data.channelType === 'string' ? [data.channelType] : data.channelType;
+        const wellnessAutoSelected =
+          data.wellnessRestoration === true &&
+          !!this.wellbeingBreakIdleCode &&
+          !(explicitChannels && explicitChannels.length > 0);
+
         // Capture session+generation at enqueue; dequeue guard rejects stale closures.
         const capturedSessionId = this.currentAgentSessionId;
         const capturedChainGeneration = this.v2ChainGeneration;
@@ -1786,6 +1796,36 @@ export default class ContactCenter extends WebexPlugin implements IContactCenter
                   data: {reason: VOICE_CONNECTION_ERROR.NOT_READY},
                 },
               });
+            }
+
+            // Revalidate wellness restoration eligibility at dispatch.
+            // The initial wellness filter ran at queue entry, but a manual
+            // state change (e.g. Voice→Idle/Lunch) may have resolved while
+            // this request was queued.  Re-check channelStatesMap so only
+            // channels still carrying the WellbeingBreak idle code are
+            // targeted; channels whose auxCodeId changed are excluded.
+            // Only refilter when channels were auto-selected via wellness
+            // scoping; explicit channelType is dispatched as-is.
+            if (wellnessAutoSelected && this.wellbeingBreakIdleCode) {
+              const wellnessCodeId = this.wellbeingBreakIdleCode.id;
+              const stillWellness = channelStateChangeData.channelType.filter(
+                (ct) => this.channelStatesMap[ct]?.auxCodeId === wellnessCodeId
+              );
+              if (stillWellness.length === 0) {
+                throw Object.assign(
+                  new Error(
+                    'Wellness restoration superseded: no channels still carry the WellbeingBreak idle code'
+                  ),
+                  {
+                    details: {
+                      type: 'SDK_VALIDATION_ERROR',
+                      trackingId: '',
+                      data: {reason: 'wellness_restoration_superseded'},
+                    },
+                  }
+                );
+              }
+              channelStateChangeData.channelType = stillWellness;
             }
 
             // Revalidate disconnect-idle eligibility at actual dispatch.

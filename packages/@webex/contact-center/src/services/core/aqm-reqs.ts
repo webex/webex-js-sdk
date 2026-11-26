@@ -14,6 +14,15 @@ export default class AqmReqs {
   private webexRequest: WebexRequest;
   private webSocketManager: WebSocketManager;
 
+  /**
+   * Tracking IDs whose originating request has already resolved (success).
+   * A subsequent WebSocket notification with the same trackingId that
+   * matches a pending failure bind is absorbed so it cannot settle a
+   * newer request that reuses the same bind key.
+   * Each entry auto-expires after TIMEOUT_REQ.
+   */
+  private resolvedTrackingIds = new Map<string, ReturnType<typeof setTimeout>>();
+
   constructor(webSocketManager: WebSocketManager) {
     this.webexRequest = WebexRequest.getInstance();
     this.webSocketManager = webSocketManager;
@@ -92,6 +101,17 @@ export default class AqmReqs {
       this.pendingRequests[keySuccess] = {
         check: (msg: Msg) => this.bindCheck(c.notifSuccess.bind, msg),
         handle: (msg: Msg) => {
+          // Record the resolved trackingId so stale notifications from the
+          // same backend request (e.g. a lagged channel failure after the
+          // first channel success) cannot settle a newer pending bind that
+          // reuses the same failure key.
+          if (msg.trackingId) {
+            const tid = msg.trackingId;
+            this.resolvedTrackingIds.set(
+              tid,
+              setTimeout(() => this.resolvedTrackingIds.delete(tid), TIMEOUT_REQ)
+            );
+          }
           clear();
           resolve(msg as any);
         },
@@ -324,6 +344,15 @@ export default class AqmReqs {
     for (const thisReq of kReq) {
       const req = this.pendingRequests[thisReq];
       if (req.check(event)) {
+        // Absorb stale notifications whose originating request already
+        // resolved.  Without this, a lagged per-channel failure from a
+        // multi-channel V2 request whose promise resolved on the first
+        // channel's success could match a newer request's failure bind
+        // (identical bind key) and incorrectly reject it.
+        if (event.trackingId && this.resolvedTrackingIds.has(event.trackingId)) {
+          isHandled = true;
+          break;
+        }
         req.handle(event);
         isHandled = true;
         break;

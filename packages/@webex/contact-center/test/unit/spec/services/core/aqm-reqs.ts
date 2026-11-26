@@ -724,4 +724,172 @@ describe('AqmReqs', () => {
       expect(typeMapCheck(typeMap, msg)).toBe(true);
     });
   });
+
+  describe('resolved trackingId absorption', () => {
+    // Reproduces the P1 bug: a bulk V2 Available request resolves when
+    // Voice succeeds; the caller then starts an Idle request with the same
+    // failure bind key. Chat's lagged failure from the first request must
+    // NOT reject the new Idle promise.
+
+    const makeV2StateConfig = (state: string, channels: string[]) => ({
+      host: 'fake-host',
+      url: '/v2/agents/session/state',
+      method: 'PUT' as const,
+      data: {channelType: channels, state},
+      err: (error: any) => error,
+      notifSuccess: {
+        bind: {
+          type: 'AgentChannelStateChange',
+          data: {
+            type: 'AgentChannelStateChanged',
+            channelType: channels,
+            isClientInitiated: true,
+          },
+        },
+        msg: {} as any,
+      },
+      notifFail: {
+        bind: {
+          type: 'AgentChannelStateChange',
+          data: {
+            type: 'AgentChannelStateChangeFailed',
+            channelType: channels,
+            isClientInitiated: true,
+          },
+        },
+        errId: 'Service.aqm.agent.stateChangeV2' as const,
+      },
+    });
+
+    it('absorbs a stale failure so it does not reject a newer request with the same bind key', async () => {
+      jest.useFakeTimers();
+      (global.window as any).setTimeout = global.setTimeout;
+      try {
+        webexRequestInstance.request.mockResolvedValue(mockWebexRequestResolvedValue);
+
+        // Request A: bulk Available for telephony + chat
+        const promiseA = aqm['createPromise'](
+          makeV2StateConfig('Available', ['telephony', 'chat'])
+        );
+
+        // Voice succeeds (from request A) → promise A resolves
+        webSocketManagerInstance.emit(
+          'message',
+          JSON.stringify({
+            type: 'AgentChannelStateChange',
+            trackingId: 'req-A-track',
+            data: {
+              type: 'AgentChannelStateChanged',
+              channelType: 'telephony',
+              isClientInitiated: true,
+            },
+          })
+        );
+        await expect(promiseA).resolves.toBeDefined();
+
+        // Request B: Idle for the same channels (same failure bind key)
+        const promiseB = aqm['createPromise'](
+          makeV2StateConfig('Idle', ['telephony', 'chat'])
+        );
+
+        // Chat failure from request A arrives (stale — trackingId matches A)
+        webSocketManagerInstance.emit(
+          'message',
+          JSON.stringify({
+            type: 'AgentChannelStateChange',
+            trackingId: 'req-A-track',
+            data: {
+              type: 'AgentChannelStateChangeFailed',
+              channelType: 'chat',
+              isClientInitiated: true,
+            },
+          })
+        );
+
+        // Promise B must NOT be rejected — it should still be pending
+        // (the stale failure was absorbed). Resolve it properly:
+        webSocketManagerInstance.emit(
+          'message',
+          JSON.stringify({
+            type: 'AgentChannelStateChange',
+            trackingId: 'req-B-track',
+            data: {
+              type: 'AgentChannelStateChanged',
+              channelType: 'telephony',
+              isClientInitiated: true,
+            },
+          })
+        );
+        await expect(promiseB).resolves.toBeDefined();
+      } finally {
+        jest.useRealTimers();
+        (global.window as any).setTimeout = global.setTimeout;
+      }
+    });
+
+    it('does not absorb a failure whose trackingId belongs to the current request', async () => {
+      jest.useFakeTimers();
+      (global.window as any).setTimeout = global.setTimeout;
+      try {
+        webexRequestInstance.request.mockResolvedValue(mockWebexRequestResolvedValue);
+
+        const promiseA = aqm['createPromise'](
+          makeV2StateConfig('Available', ['telephony', 'chat'])
+        );
+
+        // Chat failure with its own trackingId (not drained) → rejects
+        webSocketManagerInstance.emit(
+          'message',
+          JSON.stringify({
+            type: 'AgentChannelStateChange',
+            trackingId: 'req-A-track',
+            data: {
+              type: 'AgentChannelStateChangeFailed',
+              channelType: 'chat',
+              isClientInitiated: true,
+            },
+          })
+        );
+        await expect(promiseA).rejects.toBeDefined();
+      } finally {
+        jest.useRealTimers();
+        (global.window as any).setTimeout = global.setTimeout;
+      }
+    });
+
+    it('expires drained trackingIds after TIMEOUT_REQ', async () => {
+      jest.useFakeTimers();
+      (global.window as any).setTimeout = global.setTimeout;
+      try {
+        webexRequestInstance.request.mockResolvedValue(mockWebexRequestResolvedValue);
+
+        const promiseA = aqm['createPromise'](
+          makeV2StateConfig('Available', ['telephony', 'chat'])
+        );
+
+        // Resolve A
+        webSocketManagerInstance.emit(
+          'message',
+          JSON.stringify({
+            type: 'AgentChannelStateChange',
+            trackingId: 'req-A-track',
+            data: {
+              type: 'AgentChannelStateChanged',
+              channelType: 'telephony',
+              isClientInitiated: true,
+            },
+          })
+        );
+        await promiseA;
+        expect(aqm['resolvedTrackingIds'].has('req-A-track')).toBe(true);
+
+        // Advance past TIMEOUT_REQ (20s)
+        jest.advanceTimersByTime(20001);
+        expect(aqm['resolvedTrackingIds'].has('req-A-track')).toBe(false);
+      } finally {
+        jest.useRealTimers();
+        (global.window as any).setTimeout = global.setTimeout;
+      }
+    });
+  });
 });

@@ -9623,7 +9623,14 @@ describe('webex.cc', () => {
 
         // Only chat carries the wellness code — voice (Lunch) must be excluded
         expect(stateChangeV2Spy).toHaveBeenCalledWith({
-          data: expect.objectContaining({channelType: ['chat']}),
+          data: {
+            channelType: ['chat'],
+            state: 'Available',
+            auxCodeId: '0',
+            reason: undefined,
+            agentId: 'agent-1',
+            agentSessionId: 'session-1',
+          },
         });
       });
 
@@ -9635,7 +9642,14 @@ describe('webex.cc', () => {
 
         // Both selectable channels with capacity: telephony and chat
         expect(stateChangeV2Spy).toHaveBeenCalledWith({
-          data: expect.objectContaining({channelType: ['telephony', 'chat']}),
+          data: {
+            channelType: ['telephony', 'chat'],
+            state: 'Available',
+            auxCodeId: '0',
+            reason: undefined,
+            agentId: 'agent-1',
+            agentSessionId: 'session-1',
+          },
         });
       });
 
@@ -9648,7 +9662,14 @@ describe('webex.cc', () => {
         });
 
         expect(stateChangeV2Spy).toHaveBeenCalledWith({
-          data: expect.objectContaining({channelType: ['telephony', 'chat']}),
+          data: {
+            channelType: ['telephony', 'chat'],
+            state: 'Available',
+            auxCodeId: '0',
+            reason: undefined,
+            agentId: 'agent-1',
+            agentSessionId: 'session-1',
+          },
         });
       });
 
@@ -9680,8 +9701,146 @@ describe('webex.cc', () => {
 
         // No wellness code → all selectable channels targeted (graceful fallback)
         expect(stateChangeV2Spy).toHaveBeenCalledWith({
-          data: expect.objectContaining({channelType: ['telephony', 'chat']}),
+          data: {
+            channelType: ['telephony', 'chat'],
+            state: 'Available',
+            auxCodeId: '0',
+            reason: undefined,
+            agentId: 'agent-1',
+            agentSessionId: 'session-1',
+          },
         });
+      });
+    });
+
+    describe('wellnessRestoration dequeue refilter', () => {
+      let stateChangeV2Spy: jest.SpyInstance;
+
+      const mockV2WellnessResponse = {
+        type: 'AgentChannelStateChange',
+        orgId: 'org-1',
+        trackingId: 'track-v2-wellness',
+        data: {
+          type: 'AgentChannelStateChanged',
+          channelType: 'chat',
+          agentChannelStateDetail: {
+            agentState: 'Available',
+            auxCodeId: '0',
+            stateChangeTimestamp: 1700000000000,
+            lastIdleCodeChangeTimestamp: 1700000000001,
+            stateChangeReason: 'wellness-restore',
+            pendingIdle: false,
+            availableChannelCount: 1,
+            totalChannelCount: 1,
+          },
+          agentId: 'agent-1',
+          agentSessionId: 'session-1',
+          orgId: 'org-1',
+          status: 'LoggedIn',
+          subStatus: 'Available',
+          changedBy: 'AGENT',
+          changedById: 'agent-1',
+          changedByName: 'Test Agent',
+        },
+      };
+
+      beforeEach(() => {
+        webex.cc.agentConfig = {
+          agentId: 'agent-1',
+          teams: [],
+          manageChannelAvailability: true,
+        } as Profile;
+        webex.cc['currentAgentSessionId'] = 'session-1';
+        webex.cc['loginChannelsMap'] = {telephony: ['t1'], chat: ['c1'], email: [], social: []};
+        webex.cc['wellbeingBreakIdleCode'] = {
+          id: 'wb-code',
+          name: 'WellbeingBreak',
+          isSystem: true,
+          isDefault: false,
+        };
+        // Both channels start in WellbeingBreak
+        webex.cc['channelStatesMap'] = {
+          telephony: makeChannelState('Idle', {auxCodeId: 'wb-code'}),
+          chat: makeChannelState('Idle', {auxCodeId: 'wb-code'}),
+        } as any;
+        stateChangeV2Spy = jest
+          .spyOn(webex.cc.services.agent, 'stateChangeV2')
+          .mockResolvedValue(mockV2WellnessResponse as any);
+        jest.spyOn(webex.cc.webCallingService, 'isBrowserVoiceRequired').mockReturnValue(false);
+      });
+
+      it('refilters wellness channels at dequeue, excluding manually changed channels', async () => {
+        // Queue the wellness restoration while both channels are in WellbeingBreak.
+        // The enqueue-time filter selects ['telephony', 'chat'].
+        // Before it dequeues, simulate Voice changing to Lunch.
+        let firstCall = true;
+        stateChangeV2Spy.mockImplementation((params: any) => {
+          if (firstCall) {
+            firstCall = false;
+            // Simulate the manual Lunch request succeeding: update channelStatesMap
+            // before the wellness request dequeues.
+            webex.cc['channelStatesMap'].telephony = makeChannelState('Idle', {auxCodeId: 'lunch-code'});
+          }
+          return Promise.resolve(mockV2WellnessResponse);
+        });
+
+        // First call: manual Lunch (chains ahead of wellness)
+        const lunchPromise = webex.cc.setAgentState({
+          state: 'Idle',
+          auxCodeId: 'lunch-code',
+          lastStateChangeReason: 'Lunch',
+          channelType: ['telephony'],
+        });
+
+        // Second call: wellness restoration (queued behind Lunch)
+        const wellnessPromise = webex.cc.setAgentState({
+          state: 'Available',
+          auxCodeId: '0',
+          wellnessRestoration: true,
+        });
+
+        await lunchPromise;
+        await wellnessPromise;
+
+        // The second call (wellness) should only target chat, not telephony
+        const wellnessCall = stateChangeV2Spy.mock.calls[1];
+        expect(wellnessCall[0].data).toEqual({
+          channelType: ['chat'],
+          state: 'Available',
+          auxCodeId: '0',
+          reason: undefined,
+          agentId: 'agent-1',
+          agentSessionId: 'session-1',
+        });
+      });
+
+      it('rejects wellness restoration when all channels changed away before dispatch', async () => {
+        let firstCall = true;
+        stateChangeV2Spy.mockImplementation(() => {
+          if (firstCall) {
+            firstCall = false;
+            // Both channels changed away from WellbeingBreak before dequeue
+            webex.cc['channelStatesMap'].telephony = makeChannelState('Idle', {auxCodeId: 'lunch-code'});
+            webex.cc['channelStatesMap'].chat = makeChannelState('Idle', {auxCodeId: 'meeting-code'});
+          }
+          return Promise.resolve(mockV2WellnessResponse);
+        });
+
+        // Chain a manual request ahead
+        const manualPromise = webex.cc.setAgentState({
+          state: 'Idle',
+          auxCodeId: 'lunch-code',
+          channelType: ['telephony'],
+        });
+
+        const wellnessPromise = webex.cc.setAgentState({
+          state: 'Available',
+          auxCodeId: '0',
+          wellnessRestoration: true,
+        });
+
+        await manualPromise;
+        await expect(wellnessPromise).rejects.toThrow('wellness_restoration_superseded');
       });
     });
 
