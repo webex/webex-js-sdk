@@ -23,10 +23,6 @@ import type {
   WebE2EEInstance,
 } from './wasm';
 
-const DEFAULT_JOIN_TIMEOUT = 180_000;
-const DEFAULT_COALESCE_WINDOW = 500;
-const DEFAULT_DEVICE_TYPE = 'WEB';
-
 // WASM log levels, indexed by the numeric level the engine emits (see LogLevel in libe2ee).
 const WASM_LOG_LEVELS = ['', 'FATAL', 'ERROR', 'WARN', 'INFO', 'DEBUG'];
 
@@ -34,7 +30,7 @@ const WASM_LOG_LEVELS = ['', 'FATAL', 'ERROR', 'WARN', 'INFO', 'DEBUG'];
 export interface MLSEventMap {
   joinSuccess: {epoch: number; securityCode: string; sframe: SframeParams; key: E2eeKey};
   joinFailure: {reason: string};
-  mediaEncryptionRequestFailure: {errorCode: number; message: string};
+  mediaEncryptionServiceFailure: {errorCode: number; message: string};
   newKey: E2eeKey;
   useKey: {epoch: number};
   purgeKeys: {epoch: number};
@@ -54,7 +50,7 @@ export type MLSEvent = keyof MLSEventMap;
  * emitted as typed events. This keeps it unit-testable in isolation.
  */
 export default class MLS {
-  private readonly loadModule: () => Promise<ModuleInstance>;
+  private readonly module: ModuleInstance;
 
   private readonly httpClient: IMlsHttpClient;
 
@@ -64,22 +60,18 @@ export default class MLS {
 
   private e2ee: WebE2EEInstance | null = null;
 
+  private readonly waitTimeouts = new Set<ReturnType<typeof setTimeout>>();
+
   private lastSecurityCode = '';
 
   /**
    * @param {Object} deps
+   * @param {ModuleInstance} deps.module - The loaded WASM module used to instantiate the engine.
    * @param {IMlsHttpClient} deps.httpClient - Transport for the engine's protocol requests.
-   * @param {Function} deps.loadModule - Loads the WASM module instance; supplied by the integration layer.
    */
-  constructor({
-    httpClient,
-    loadModule,
-  }: {
-    httpClient: IMlsHttpClient;
-    loadModule: () => Promise<ModuleInstance>;
-  }) {
+  constructor({httpClient, module}: {httpClient: IMlsHttpClient; module: ModuleInstance}) {
     this.httpClient = httpClient;
-    this.loadModule = loadModule;
+    this.module = module;
   }
 
   /**
@@ -113,30 +105,26 @@ export default class MLS {
   }
 
   /**
-   * Loads the WASM module, instantiates the engine, wires its callbacks, and applies credentials,
-   * trust anchors and timeouts. Must be called before {@link join}.
+   * Instantiates the engine, wires its callbacks, and applies credentials, trust anchors and
+   * timeouts. Must be called before {@link join}.
    * @param {MLSConfig} config
-   * @returns {Promise<void>}
+   * @returns {void}
    */
-  async initialize(config: MLSConfig): Promise<void> {
-    LoggerProxy.logger.info('e2ee: MLS --> initialize: loading WASM and instantiating engine');
-    const module = await this.loadModule();
-
-    // When loadModule uses WasmLoader.get(), repeated calls share the in-flight promise or return
-    // the cached module, so this check can stay after loading.
+  initialize(config: MLSConfig): void {
+    LoggerProxy.logger.info('e2ee: MLS --> initialize: instantiating engine');
     if (this.e2ee) {
       LoggerProxy.logger.info('e2ee: MLS --> initialize: already initialized');
 
       return;
     }
 
-    this.e2ee = new module.WebE2EE();
+    this.e2ee = new this.module.WebE2EE();
     this.setupCallbacks();
 
     this.e2ee.initialize(
       config.participantId,
       config.deviceUrl,
-      config.deviceType || DEFAULT_DEVICE_TYPE,
+      config.deviceType,
       config.correlationId,
       config.displayName,
       config.serviceUrl
@@ -157,8 +145,12 @@ export default class MLS {
       );
     }
 
-    this.e2ee.setJoinTimeout(config.joinTimeout ?? DEFAULT_JOIN_TIMEOUT);
-    this.e2ee.setCoalesceWindow(config.coalesceWindow ?? DEFAULT_COALESCE_WINDOW);
+    if (config.joinTimeout !== undefined) {
+      this.e2ee.setJoinTimeout(config.joinTimeout);
+    }
+    if (config.coalesceWindow !== undefined) {
+      this.e2ee.setCoalesceWindow(config.coalesceWindow);
+    }
 
     LoggerProxy.logger.info('e2ee: MLS --> initialize: engine initialized');
   }
@@ -253,9 +245,12 @@ export default class MLS {
     });
 
     e2ee.setOnWait((milliseconds, handlerId) => {
-      setTimeout(() => {
+      const timeout = setTimeout(() => {
+        this.waitTimeouts.delete(timeout);
         this.e2ee?.completeWait(handlerId);
       }, milliseconds);
+
+      this.waitTimeouts.add(timeout);
     });
 
     e2ee.setOnGotKey((epoch: EpochInfo) => {
@@ -264,7 +259,7 @@ export default class MLS {
         baseKey: new Uint8Array(epoch.base_key),
         index: epoch.index,
         indexBits: epoch.index_bits,
-        canEncrypt: false,
+        canEncrypt: false, // the key can only be used for encryption after onUseKey is called
       });
     });
 
@@ -379,7 +374,7 @@ export default class MLS {
    * `e2ee_negotiation_failure` out of this call when it can't recover from the service's error code
    * or fails to process a successful response; this surfaces in JS as an opaque value with no
    * message. That is unrecoverable for the in-flight operation, so it is reported as
-   * `mediaEncryptionRequestFailure` instead of escaping as an unhandled rejection.
+   * `mediaEncryptionServiceFailure` instead of escaping as an unhandled rejection.
    * @param {number} handlerId
    * @param {boolean} success
    * @param {Uint8Array} body
@@ -400,7 +395,7 @@ export default class MLS {
       LoggerProxy.logger.error(
         `e2ee: MLS --> engine threw while completing HTTP request (success=${success}, errorCode=${errorCode}): ${error}`
       );
-      this.emitEvent('mediaEncryptionRequestFailure', {
+      this.emitEvent('mediaEncryptionServiceFailure', {
         errorCode,
         message: success ? 'Engine failed to process HTTP response' : message,
       });
@@ -446,6 +441,41 @@ export default class MLS {
     LoggerProxy.logger.info('e2ee: MLS --> leave: leaving MLS group');
     this.transactions.clear();
     this.assertInitialized().leave();
+  }
+
+  /**
+   * Detaches engine callbacks and releases the WASM engine and wrapper resources.
+   * @returns {void}
+   */
+  cleanUp(): void {
+    this.waitTimeouts.forEach((timeout) => clearTimeout(timeout));
+    this.waitTimeouts.clear();
+    this.transactions.clear();
+    this.lastSecurityCode = '';
+
+    const {e2ee} = this;
+
+    this.e2ee = null;
+
+    if (e2ee) {
+      e2ee.setOnNewTransaction(null);
+      e2ee.setOnCompleteTransaction(null);
+      e2ee.setOnHttpRequest(null);
+      e2ee.setOnWait(null);
+      e2ee.setOnGotKey(null);
+      e2ee.setOnUseKey(null);
+      e2ee.setOnLeader(null);
+      e2ee.setOnPurgeBefore(null);
+      e2ee.setOnEvicted(null);
+      e2ee.setOnAddRoster(null);
+      e2ee.setOnRemoveRoster(null);
+      e2ee.setOnE2eeVersion(null);
+      e2ee.setOnMissingCommit(null);
+      e2ee.setOnLog(null);
+      e2ee.delete();
+    }
+
+    this.emitter.removeAllListeners();
   }
 
   /**

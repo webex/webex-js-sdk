@@ -2,12 +2,88 @@
  * Copyright (c) 2015-2026 Cisco Systems, Inc. See LICENSE file.
  */
 
+import type {IdentityCredentials, IdentityTrustAnchors} from '@webex/internal-plugin-identity';
+import type LLMChannel from '@webex/internal-plugin-llm';
+
+import {EVENT_TRIGGERS, type Enum} from '../constants';
+import type {LocusDTO} from '../locus-info/types';
+import type Members from '../members';
+
+/** The Locus DTO fields consumed by E2EE, matching the shape exposed by `Meeting.locusInfo`. */
+export type E2eeLocusInfo = Pick<LocusDTO, 'url' | 'info'>;
+
+/** Per-meeting context supplied by Meetings without exposing its Meeting class to E2EE. */
+export interface E2eeMeetingContext {
+  getCorrelationId(): string;
+  getLocusInfo(): E2eeLocusInfo | undefined;
+  getLlmChannel(): LLMChannel | undefined;
+  members: Members;
+}
+
 /**
- * SDK-facing shapes used by the isolated MLS protocol engine. Integration-specific meeting,
- * identity-plugin and signaling types are added by the later adapter phases.
+ * SDK-facing E2EE types (camelCase), mapped from the raw WASM boundary shapes in wasm.d.ts.
  */
 
-/** Credential-validation outcome from the MLS roster. Keep ordinals in sync with libe2ee. */
+/** Lifecycle state of a per-meeting MLS session. */
+export const E2eeState = {
+  Disabled: 'disabled',
+  Initializing: 'initializing',
+  Joining: 'joining',
+  Joined: 'joined',
+  Failed: 'failed',
+  Evicted: 'evicted',
+  Left: 'left',
+} as const;
+
+export type E2eeState = Enum<typeof E2eeState>;
+
+/** Event payloads emitted by E2eeController and forwarded through Meeting. */
+export interface E2eeControllerEventMap {
+  [EVENT_TRIGGERS.MEETING_E2EE_SECURITY_CODE_UPDATED]: {securityCode: string | undefined};
+  [EVENT_TRIGGERS.MEETING_E2EE_STATE_CHANGED]: {state: E2eeState};
+  [EVENT_TRIGGERS.MEETING_E2EE_MEDIA_SERVICES_CHANGED]: {hasMediaServices: boolean};
+  [EVENT_TRIGGERS.MEETING_E2EE_FAILURE]: {
+    reason: string;
+    errorCode?: number;
+    errorMessage?: string;
+  };
+}
+
+export type E2eeControllerEvent = keyof E2eeControllerEventMap;
+
+/** The meeting's overall E2EE trust state, surfaced to the app for its UI indicator. */
+export const TrustState = {
+  Calculating: 'calculating',
+  Failed: 'failed',
+  Strong: 'strong',
+  ZeroTrust: 'zeroTrust',
+  AdaptiveStrong: 'adaptiveStrong',
+  AdaptiveZeroTrust: 'adaptiveZeroTrust',
+} as const;
+
+export type TrustState = Enum<typeof TrustState>;
+
+/** A media-encryption (SFrame) key for a given MLS epoch. */
+export interface E2eeKey {
+  epoch: number;
+  baseKey: Uint8Array;
+  index: number;
+  indexBits: number;
+  canEncrypt: boolean;
+}
+
+/** SFrame parameters negotiated for the group, reported on a successful join. */
+export interface SframeParams {
+  cipherSuite: number;
+  epochBits: number;
+}
+
+/**
+ * Credential-validation outcome for an MLS roster member. Mirrors (by ordinal) the C++
+ * `RosterStatus::ValidationResult` enum in libe2ee (`common/include/e2ee_common/types.h`) — keep
+ * the two in sync. For MultiCredential, `PartialSuccess` means at least one credential passed and
+ * at least one failed; X.509 identity verification is derived from the individual X.509 results.
+ */
 export const E2eeValidationResult = {
   Success: 0,
   PartialSuccess: 1,
@@ -25,9 +101,12 @@ export const E2eeValidationResult = {
   MissingDisplayNameExtension: 13,
 } as const;
 
-export type E2eeValidationResult = (typeof E2eeValidationResult)[keyof typeof E2eeValidationResult];
+export type E2eeValidationResult = Enum<typeof E2eeValidationResult>;
 
-/** Identity type attached to the leaf certificate. Keep ordinals in sync with libe2ee. */
+/**
+ * Identity type attached to the leaf X.509 certificate. Mirrors the C++ `IdentityType` enum in
+ * libe2ee (`common/include/e2ee_common/types.h`) — keep the ordinals in sync.
+ */
 export const E2eeIdentityType = {
   WebexAnonymousIdentity: 0,
   WebexMachineIdentity: 1,
@@ -35,24 +114,9 @@ export const E2eeIdentityType = {
   ExternalVerifiedIdentity: 3,
 } as const;
 
-export type E2eeIdentityType = (typeof E2eeIdentityType)[keyof typeof E2eeIdentityType];
+export type E2eeIdentityType = Enum<typeof E2eeIdentityType>;
 
-/** A media-encryption (SFrame) key for an MLS epoch. */
-export interface E2eeKey {
-  epoch: number;
-  baseKey: Uint8Array;
-  index: number;
-  indexBits: number;
-  canEncrypt: boolean;
-}
-
-/** SFrame parameters negotiated for an MLS group. */
-export interface SframeParams {
-  cipherSuite: number;
-  epochBits: number;
-}
-
-/** Parsed certificate information returned with a roster member. */
+/** Parsed X.509 certificate details from a member's certificate chain. */
 export interface E2eeCertificateInfo {
   primaryName: string;
   commonName: string;
@@ -68,12 +132,13 @@ export interface E2eeCertificateInfo {
 }
 
 export interface E2eeIdentityResult {
+  /** Result for this X.509 credential, which may differ from the overall MultiCredential result. */
   result: E2eeValidationResult;
   certificateChain: E2eeCertificateInfo[];
   failedCertIndex?: number;
 }
 
-/** A member of the MLS roster and its credential-validation result. */
+/** A member of the MLS roster and its overall libe2ee credential validation result. */
 export interface E2eeRosterMember {
   url: string;
   displayName: string;
@@ -82,21 +147,16 @@ export interface E2eeRosterMember {
   identityResults?: E2eeIdentityResult[];
 }
 
-/** Credentials and trust anchors consumed by the WASM engine. */
+/** Configuration for initializing an MLS group session. */
 export interface MLSConfig {
   participantId: string;
   deviceUrl: string;
-  deviceType?: string;
+  deviceType: string;
   correlationId: string;
   displayName: string;
   serviceUrl: string;
-  credentials?: {privateKey: Uint8Array; certChain: Uint8Array[]};
-  trustAnchors?: {
-    webexCaRoots?: string;
-    domainNameRoots?: string;
-    userIdentityRoots?: string;
-    domainNameRootsP7b?: Uint8Array;
-  };
+  credentials?: IdentityCredentials;
+  trustAnchors?: IdentityTrustAnchors;
   joinTimeout?: number;
   coalesceWindow?: number;
 }
@@ -110,5 +170,10 @@ export interface IMlsHttpClient {
   request(url: string, body: unknown): Promise<unknown>;
 }
 
-/** Signaling transport that delivered an MLS protocol message. */
-export type E2eeSignalingSource = 'llm' | 'mercury';
+/** Which signaling channel an incoming MLS protocol event arrived on. */
+export const E2eeSignalingSource = {
+  Llm: 'llm',
+  Mercury: 'mercury',
+} as const;
+
+export type E2eeSignalingSource = Enum<typeof E2eeSignalingSource>;
