@@ -190,6 +190,7 @@ function makeWebex(options) {
         llm: {},
         voicea: {},
         meetings: {
+          assetsBaseUrl: '/plugin-meetings/assets',
           mediaSettings: {
             pstn: false,
           },

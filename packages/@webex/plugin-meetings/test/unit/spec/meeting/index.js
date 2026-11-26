@@ -53,6 +53,7 @@ import {CapabilityState, WebCapabilities} from '@webex/web-capabilities';
 import EventsScope from '@webex/plugin-meetings/src/common/events/events-scope';
 import Meetings, {CONSTANTS} from '@webex/plugin-meetings';
 import Meeting from '@webex/plugin-meetings/src/meeting';
+import {E2eeState} from '@webex/plugin-meetings/src/e2ee/types';
 import Members from '@webex/plugin-meetings/src/members';
 import * as MembersImport from '@webex/plugin-meetings/src/members';
 import Roap from '@webex/plugin-meetings/src/roap';
@@ -240,6 +241,7 @@ describe('plugin-meetings', () => {
           client_id: 'mock-client-id',
         },
         meetings: {
+          assetsBaseUrl: '/assets/plugin-meetings/',
           reconnection: {
             enabled: false,
           },
@@ -389,8 +391,585 @@ describe('plugin-meetings', () => {
       ...overrides,
     });
 
+    describe('Meeting.trustState', () => {
+      const createMeetingWithTrustState = ({
+        joined = true,
+        isV2E2EEncrypted = false,
+        isBestEffortE2EEncryption = false,
+        state = E2eeState.Disabled,
+        hasUntrustedMediaServices = false,
+      } = {}) => {
+        const e2ee = new EventEmitter();
+
+        e2ee.state = state;
+        e2ee.hasUntrustedMediaServices = hasUntrustedMediaServices;
+        const meetingWithE2ee = new Meeting(
+          {
+            userId: uuid1,
+            resource: uuid2,
+            deviceUrl: uuid3,
+            locus: {url: url1},
+            destination: testDestination,
+            destinationType: DESTINATION_TYPE.MEETING_ID,
+            correlationId,
+            selfId: uuid1,
+            e2eeManager: {createE2eeController: sinon.stub().returns(e2ee)},
+          },
+          {parent: webex}
+        );
+
+        meetingWithE2ee.locusInfo.info = {isV2E2EEncrypted, isBestEffortE2EEncryption};
+        if (joined) {
+          meetingWithE2ee.joinedWith = {state: 'JOINED'};
+        }
+
+        return meetingWithE2ee;
+      };
+
+      [
+        {
+          description: 'is undefined before we join Locus, even when MLS has failed',
+          options: {joined: false, isV2E2EEncrypted: true, state: E2eeState.Failed},
+          expected: undefined,
+        },
+        {
+          description: 'is undefined before we join Locus (not e2ee meeting)',
+          options: {joined: false, isV2E2EEncrypted: false},
+          expected: undefined,
+        },
+        {
+          description: 'is strong for a non-E2EE meeting with MLS disabled',
+          options: {isV2E2EEncrypted: false, isBestEffortE2EEncryption: false},
+          expected: 'strong',
+        },
+        {
+          description: 'is strong for an adaptive meeting that has not joined MLS',
+          options: {isV2E2EEncrypted: true, isBestEffortE2EEncryption: true},
+          expected: 'adaptiveStrong',
+        },
+        {
+          description: 'is calculating while MLS initializes for a strict E2EE meeting',
+          options: {isV2E2EEncrypted: true, state: E2eeState.Initializing},
+          expected: 'calculating',
+        },
+        {
+          description: 'is calculating while MLS joins an adaptive E2EE meeting',
+          options: {
+            isV2E2EEncrypted: true,
+            isBestEffortE2EEncryption: true,
+            state: E2eeState.Joining,
+          },
+          expected: 'calculating',
+        },
+        {
+          description: 'is zeroTrust after a strict E2EE meeting joins MLS without untrusted media services',
+          options: {isV2E2EEncrypted: true, state: E2eeState.Joined},
+          expected: 'zeroTrust',
+        },
+        {
+          description:
+            'is adaptiveZeroTrust after an adaptive E2EE meeting joins MLS without untrusted media services',
+          options: {
+            isV2E2EEncrypted: true,
+            isBestEffortE2EEncryption: true,
+            state: E2eeState.Joined,
+          },
+          expected: 'adaptiveZeroTrust',
+        },
+        {
+          description: 'is strong when an E2EE meeting has untrusted media services',
+          options: {
+            isV2E2EEncrypted: true,
+            state: E2eeState.Joined,
+            hasUntrustedMediaServices: true,
+          },
+          expected: 'strong',
+        },
+        {
+          description: 'is adaptiveStrong when an adaptive E2EE meeting has untrusted media services',
+          options: {
+            isV2E2EEncrypted: true,
+            isBestEffortE2EEncryption: true,
+            state: E2eeState.Joined,
+            hasUntrustedMediaServices: true,
+          },
+          expected: 'adaptiveStrong',
+        },
+        {
+          description: 'is strong when MLS is joined but the meeting is not marked E2EE', // this shouldn't ever happen in real life
+          options: {isV2E2EEncrypted: false, state: E2eeState.Joined},
+          expected: 'strong',
+        },
+        {
+          description: 'is failed when MLS fails in a strict E2EE meeting',
+          options: {isV2E2EEncrypted: true, state: E2eeState.Failed},
+          expected: 'failed',
+        },
+        {
+          description: 'is failed when MLS fails in an adaptive E2EE meeting',
+          options: {
+            isV2E2EEncrypted: true,
+            isBestEffortE2EEncryption: true,
+            state: E2eeState.Failed,
+          },
+          expected: 'failed',
+        },
+        {
+          description: 'is strong after MLS leaves an E2EE meeting',
+          options: {isV2E2EEncrypted: true, state: E2eeState.Left},
+          expected: 'strong',
+        },
+        {
+          description: 'is adaptiveStrong after MLS is evicted from an adaptive E2EE meeting',
+          options: {
+            isV2E2EEncrypted: true,
+            isBestEffortE2EEncryption: true,
+            state: E2eeState.Evicted,
+          },
+          expected: 'adaptiveStrong',
+        },
+      ].forEach(({description, options, expected}) => {
+        it(description, () => {
+          const meetingWithE2ee = createMeetingWithTrustState(options);
+
+          assert.equal(meetingWithE2ee.trustState, expected);
+        });
+      });
+
+      [
+        {
+          description: 'non-E2EE',
+          info: {},
+          e2eeState: E2eeState.Disabled,
+          expectedTrustStates: ['strong'],
+        },
+        {
+          description: 'strict E2EE',
+          info: {isV2E2EEncrypted: true},
+          e2eeState: E2eeState.Initializing,
+          expectedTrustStates: ['calculating', 'zeroTrust'],
+        },
+        {
+          description: 'best-effort E2EE',
+          info: {isV2E2EEncrypted: true, isBestEffortE2EEncryption: true},
+          e2eeState: E2eeState.Initializing,
+          expectedTrustStates: ['calculating', 'adaptiveZeroTrust'],
+        },
+      ].forEach(({description, info, e2eeState, expectedTrustStates}) => {
+        it(`emits trust updates for ${description} joins via Locus updateSelf`, () => {
+          TriggerProxy.trigger.restore();
+          const e2ee = new EventEmitter();
+
+          e2ee.state = e2eeState;
+          e2ee.start = sinon.stub().resolves();
+          const meetingWithE2ee = new Meeting(
+            {
+              userId: uuid1,
+              resource: uuid2,
+              deviceUrl: uuid3,
+              locus: {url: url1},
+              destination: testDestination,
+              destinationType: DESTINATION_TYPE.MEETING_ID,
+              correlationId,
+              selfId: uuid1,
+              e2eeManager: {createE2eeController: sinon.stub().returns(e2ee)},
+            },
+            {parent: webex}
+          );
+          const listener = sinon.spy();
+          const self = (state) => ({
+            id: uuid1,
+            identity: uuid1,
+            state,
+            devices: [{url: uuid3, state, mediaSessions: []}],
+            status: {audioStatus: 'UNKNOWN', videoStatus: 'UNKNOWN'},
+            controls: {audio: {}, role: {roles: []}},
+          });
+
+          webex.internal.device.url = uuid3;
+          meetingWithE2ee.locusInfo.info = info;
+          sinon.stub(meetingWithE2ee.members, 'locusSelfUpdate');
+          sinon.stub(meetingWithE2ee, 'pstnUpdate');
+          sinon.stub(meetingWithE2ee, 'requestScreenShareFloorIfPending');
+          meetingWithE2ee.locusInfo.updateSelf(self('LEFT'));
+          meetingWithE2ee.on(EVENT_TRIGGERS.MEETING_TRUST_STATE_CHANGED, listener);
+
+          meetingWithE2ee.locusInfo.updateSelf(self('JOINED'));
+
+          assert.equal(meetingWithE2ee.joinedWith.state, 'JOINED');
+          assert.equal(meetingWithE2ee.trustState, expectedTrustStates[0]);
+
+          if (expectedTrustStates.length > 1) {
+            e2ee.state = E2eeState.Joined;
+            e2ee.emit(EVENT_TRIGGERS.MEETING_E2EE_STATE_CHANGED, {state: E2eeState.Joined});
+          }
+
+          assert.equal(
+            meetingWithE2ee.trustState,
+            expectedTrustStates[expectedTrustStates.length - 1]
+          );
+          assert.callCount(listener, expectedTrustStates.length);
+          expectedTrustStates.forEach((trustState, index) => {
+            assert.calledWithExactly(listener.getCall(index), {trustState});
+          });
+        });
+      });
+    });
+
     describe('Public Api Contract', () => {
       describe('#constructor', () => {
+        it('forwards E2EE controller events', () => {
+          TriggerProxy.trigger.restore();
+          const e2ee = new EventEmitter();
+          const e2eeManager = {createE2eeController: sinon.stub().returns(e2ee)};
+          const meetingWithE2ee = new Meeting(
+            {
+              userId: uuid1,
+              resource: uuid2,
+              deviceUrl: uuid3,
+              locus: {url: url1},
+              destination: testDestination,
+              destinationType: DESTINATION_TYPE.MEETING_ID,
+              correlationId,
+              selfId: uuid1,
+              e2eeManager,
+            },
+            {parent: webex}
+          );
+
+          const events = [
+            [EVENT_TRIGGERS.MEETING_E2EE_SECURITY_CODE_UPDATED, {securityCode: 'SEC'}],
+            [EVENT_TRIGGERS.MEETING_E2EE_STATE_CHANGED, {state: E2eeState.Joined}],
+            [EVENT_TRIGGERS.MEETING_E2EE_MEDIA_SERVICES_CHANGED, {hasMediaServices: true}],
+            [EVENT_TRIGGERS.MEETING_E2EE_FAILURE, {reason: 'joinFailure'}],
+          ];
+
+          events.forEach(([event, payload]) => {
+            const listener = sinon.spy();
+
+            meetingWithE2ee.on(event, listener);
+            e2ee.emit(event, payload);
+            assert.calledOnceWithExactly(listener, payload);
+          });
+        });
+
+        it('provides the current meeting context to the E2EE controller', () => {
+          TriggerProxy.trigger.restore();
+          const e2ee = new EventEmitter();
+          const e2eeManager = {createE2eeController: sinon.stub().returns(e2ee)};
+          const meetingWithE2ee = new Meeting(
+            {
+              userId: uuid1,
+              resource: uuid2,
+              deviceUrl: uuid3,
+              locus: {url: url1},
+              destination: testDestination,
+              destinationType: DESTINATION_TYPE.MEETING_ID,
+              correlationId,
+              selfId: uuid1,
+              e2eeManager,
+            },
+            {parent: webex}
+          );
+          const e2eeContext = e2eeManager.createE2eeController.firstCall.args[0];
+
+          assert.strictEqual(e2eeContext.members, meetingWithE2ee.members);
+          assert.strictEqual(e2eeContext.getCorrelationId(), meetingWithE2ee.correlationId);
+          assert.strictEqual(e2eeContext.getLocusInfo(), meetingWithE2ee.locusInfo);
+          assert.strictEqual(e2eeContext.getLlmChannel(), meetingWithE2ee.llmChannel);
+
+          meetingWithE2ee.correlationId = 'updated-correlation-id';
+          const updatedLocusInfo = {url: 'https://locus.example.com/updated'};
+          const updatedLlmChannel = createMockLLMChannel();
+          meetingWithE2ee.locusInfo = updatedLocusInfo;
+          meetingWithE2ee.llmChannel = updatedLlmChannel;
+
+          assert.strictEqual(e2eeContext.getCorrelationId(), 'updated-correlation-id');
+          assert.strictEqual(e2eeContext.getLocusInfo(), updatedLocusInfo);
+          assert.strictEqual(e2eeContext.getLlmChannel(), updatedLlmChannel);
+        });
+
+        it('starts E2EE only when the current WDM device joins', () => {
+          TriggerProxy.trigger.restore();
+          const e2ee = new EventEmitter();
+
+          e2ee.start = sinon.stub().resolves();
+          const meetingWithE2ee = new Meeting(
+            {
+              userId: uuid1,
+              resource: uuid2,
+              deviceUrl: uuid3,
+              locus: {url: url1},
+              destination: testDestination,
+              destinationType: DESTINATION_TYPE.MEETING_ID,
+              correlationId,
+              selfId: uuid1,
+              e2eeManager: {createE2eeController: sinon.stub().returns(e2ee)},
+            },
+            {parent: webex}
+          );
+
+          sinon.stub(meetingWithE2ee.members, 'locusSelfUpdate');
+          sinon.stub(meetingWithE2ee, 'pstnUpdate');
+          sinon.stub(meetingWithE2ee, 'requestScreenShareFloorIfPending');
+
+          meetingWithE2ee.locusInfo.emitScoped({}, EVENTS.LOCUS_INFO_UPDATE_SELF, {
+            oldSelf: {state: 'JOINED'},
+            newSelf: {
+              state: 'JOINED',
+              joinedWith: {url: uuid4, state: 'JOINED'},
+            },
+          });
+
+          assert.notCalled(e2ee.start);
+
+          meetingWithE2ee.locusInfo.emitScoped({}, EVENTS.LOCUS_INFO_UPDATE_SELF, {
+            oldSelf: {state: 'JOINED', joinedWith: {url: uuid3, state: 'LEFT'}},
+            newSelf: {state: 'JOINED', joinedWith: {url: uuid3, state: 'JOINED'}},
+          });
+
+          assert.calledOnce(e2ee.start);
+        });
+
+        it('stops E2EE when the current WDM device is moved back to lobby', () => {
+          TriggerProxy.trigger.restore();
+          const e2ee = new EventEmitter();
+
+          e2ee.stop = sinon.stub().resolves();
+          const meetingWithE2ee = new Meeting(
+            {
+              userId: uuid1,
+              resource: uuid2,
+              deviceUrl: uuid3,
+              locus: {url: url1},
+              destination: testDestination,
+              destinationType: DESTINATION_TYPE.MEETING_ID,
+              correlationId,
+              selfId: uuid1,
+              e2eeManager: {createE2eeController: sinon.stub().returns(e2ee)},
+            },
+            {parent: webex}
+          );
+
+          sinon.stub(meetingWithE2ee.members, 'locusSelfUpdate');
+          sinon.stub(meetingWithE2ee, 'pstnUpdate');
+          sinon.stub(meetingWithE2ee, 'requestScreenShareFloorIfPending');
+
+          // Already unadmitted -> still unadmitted: not an entering-lobby edge, so do not stop.
+          meetingWithE2ee.locusInfo.emitScoped({}, EVENTS.LOCUS_INFO_UPDATE_SELF, {
+            oldSelf: {isUserUnadmitted: true},
+            newSelf: {isUserUnadmitted: true},
+          });
+
+          assert.notCalled(e2ee.stop);
+
+          // Admitted -> still admitted: not a lobby transition, so do not stop.
+          meetingWithE2ee.locusInfo.emitScoped({}, EVENTS.LOCUS_INFO_UPDATE_SELF, {
+            oldSelf: {isUserUnadmitted: false},
+            newSelf: {isUserUnadmitted: false},
+          });
+
+          assert.notCalled(e2ee.stop);
+
+          // Unadmitted -> admitted (host admits from lobby): the inverse edge must not stop E2EE.
+          meetingWithE2ee.locusInfo.emitScoped({}, EVENTS.LOCUS_INFO_UPDATE_SELF, {
+            oldSelf: {isUserUnadmitted: true},
+            newSelf: {isUserUnadmitted: false},
+          });
+
+          assert.notCalled(e2ee.stop);
+
+          // Admitted -> moved back to lobby: leave the MLS group. The controller self-guards when
+          // E2EE was never started, so the listener calls stop() unconditionally on this edge.
+          meetingWithE2ee.locusInfo.emitScoped({}, EVENTS.LOCUS_INFO_UPDATE_SELF, {
+            oldSelf: {isUserUnadmitted: false},
+            newSelf: {isUserUnadmitted: true},
+          });
+
+          assert.calledOnce(e2ee.stop);
+        });
+
+        it('stops E2EE when the current WDM device leaves the joined state', () => {
+          TriggerProxy.trigger.restore();
+          const e2ee = new EventEmitter();
+
+          e2ee.stop = sinon.stub().resolves();
+          const meetingWithE2ee = new Meeting(
+            {
+              userId: uuid1,
+              resource: uuid2,
+              deviceUrl: uuid3,
+              locus: {url: url1},
+              destination: testDestination,
+              destinationType: DESTINATION_TYPE.MEETING_ID,
+              correlationId,
+              selfId: uuid1,
+              e2eeManager: {createE2eeController: sinon.stub().returns(e2ee)},
+            },
+            {parent: webex}
+          );
+
+          sinon.stub(meetingWithE2ee.members, 'locusSelfUpdate');
+          sinon.stub(meetingWithE2ee, 'pstnUpdate');
+          sinon.stub(meetingWithE2ee, 'requestScreenShareFloorIfPending');
+
+          meetingWithE2ee.locusInfo.emitScoped({}, EVENTS.LOCUS_INFO_UPDATE_SELF, {
+            oldSelf: {joinedWith: {url: uuid3, state: 'JOINED'}},
+            newSelf: {joinedWith: {url: uuid3, state: 'LEFT'}},
+          });
+
+          assert.calledOnce(e2ee.stop);
+        });
+
+        it('emits trust state changes caused by Locus and E2EE updates', () => {
+          TriggerProxy.trigger.restore();
+          const e2ee = new EventEmitter();
+
+          e2ee.state = E2eeState.Initializing;
+          e2ee.hasUntrustedMediaServices = false;
+          e2ee.start = sinon.stub().resolves();
+          e2ee.stop = sinon.stub().resolves();
+          const meetingWithE2ee = new Meeting(
+            {
+              userId: uuid1,
+              resource: uuid2,
+              deviceUrl: uuid3,
+              locus: {url: url1},
+              destination: testDestination,
+              destinationType: DESTINATION_TYPE.MEETING_ID,
+              correlationId,
+              selfId: uuid1,
+              e2eeManager: {createE2eeController: sinon.stub().returns(e2ee)},
+            },
+            {parent: webex}
+          );
+          const listener = sinon.spy();
+
+          assert.equal(EVENT_TRIGGERS.MEETING_TRUST_STATE_CHANGED, 'meeting:trustStateChanged');
+          meetingWithE2ee.on(EVENT_TRIGGERS.MEETING_TRUST_STATE_CHANGED, listener);
+          // E2EE meeting info alone does not produce a trust state until this device joins.
+          meetingWithE2ee.locusInfo.info = {isV2E2EEncrypted: true};
+          meetingWithE2ee.locusInfo.emitScoped({}, LOCUSINFO.EVENTS.MEETING_INFO_UPDATED, {
+            isInitializing: false,
+          });
+
+          assert.isUndefined(meetingWithE2ee.trustState);
+          assert.notCalled(listener);
+
+          // This device joins while aggregate self.state stays JOINED; trust depends on joinedWith.
+          meetingWithE2ee.joinedWith = {state: 'JOINED'};
+          meetingWithE2ee.locusInfo.emitScoped({}, EVENTS.LOCUS_INFO_UPDATE_SELF, {
+            oldSelf: {state: 'JOINED', joinedWith: {url: uuid3, state: 'NOT_JOINED'}},
+            newSelf: {state: 'JOINED', joinedWith: {url: uuid3, state: 'JOINED'}},
+          });
+
+          assert.equal(meetingWithE2ee.trustState, 'calculating');
+          assert.calledOnce(listener);
+          assert.calledWithExactly(listener.getCall(0), {trustState: 'calculating'});
+
+          // No trust-state input changed, so a duplicate self update must not emit again.
+          meetingWithE2ee.locusInfo.emitScoped({}, EVENTS.LOCUS_INFO_UPDATE_SELF, {
+            oldSelf: {state: 'JOINED', joinedWith: {url: uuid3, state: 'JOINED'}},
+            newSelf: {state: 'JOINED', joinedWith: {url: uuid3, state: 'JOINED'}},
+          });
+          assert.calledOnce(listener);
+
+          // MLS joining changes the trust state from calculating to zeroTrust.
+          e2ee.state = E2eeState.Joined;
+          e2ee.emit(EVENT_TRIGGERS.MEETING_E2EE_STATE_CHANGED, {state: E2eeState.Joined});
+
+          assert.equal(meetingWithE2ee.trustState, 'zeroTrust');
+          assert.calledTwice(listener);
+          assert.calledWithExactly(listener.getCall(1), {trustState: 'zeroTrust'});
+
+          // An untrusted media service downgrades zeroTrust to strong.
+          e2ee.hasUntrustedMediaServices = true;
+          e2ee.emit(EVENT_TRIGGERS.MEETING_E2EE_MEDIA_SERVICES_CHANGED, {hasMediaServices: true});
+
+          assert.equal(meetingWithE2ee.trustState, 'strong');
+          assert.calledThrice(listener);
+          assert.calledWithExactly(listener.getCall(2), {trustState: 'strong'});
+
+          // Locus enables best-effort encryption; the untrusted service keeps trust at adaptiveStrong.
+          // (in real life best-effort encryption is not something that changes dynamically)
+          meetingWithE2ee.locusInfo.info = {
+            isV2E2EEncrypted: true,
+            isBestEffortE2EEncryption: true,
+          };
+          meetingWithE2ee.locusInfo.emitScoped(
+            {},
+            LOCUSINFO.EVENTS.MEETING_INFO_UPDATED,
+            {isInitializing: false}
+          );
+
+          assert.equal(meetingWithE2ee.trustState, 'adaptiveStrong');
+          assert.calledWithExactly(listener.getCall(3), {trustState: 'adaptiveStrong'});
+
+          // Removing the untrusted service restores the adaptive zero-trust state.
+          e2ee.hasUntrustedMediaServices = false;
+          e2ee.emit(EVENT_TRIGGERS.MEETING_E2EE_MEDIA_SERVICES_CHANGED, {hasMediaServices: false});
+
+          assert.equal(meetingWithE2ee.trustState, 'adaptiveZeroTrust');
+          assert.calledWithExactly(listener.getCall(4), {trustState: 'adaptiveZeroTrust'});
+
+          // MLS failure takes precedence over the adaptive trust calculation.
+          e2ee.state = E2eeState.Failed;
+          e2ee.emit(EVENT_TRIGGERS.MEETING_E2EE_STATE_CHANGED, {state: E2eeState.Failed});
+
+          assert.equal(meetingWithE2ee.trustState, 'failed');
+          assert.calledWithExactly(listener.getCall(5), {trustState: 'failed'});
+
+          // This device leaves while aggregate self.state remains JOINED.
+          meetingWithE2ee.joinedWith = {state: 'LEFT'};
+          meetingWithE2ee.locusInfo.emitScoped({}, EVENTS.LOCUS_INFO_UPDATE_SELF, {
+            oldSelf: {state: 'JOINED', joinedWith: {url: uuid3, state: 'JOINED'}},
+            newSelf: {state: 'JOINED', joinedWith: {url: uuid3, state: 'LEFT'}},
+          });
+
+          assert.isUndefined(meetingWithE2ee.trustState);
+          assert.calledWithExactly(listener.getCall(6), {trustState: undefined});
+
+          // The unchanged left state leaves trustState undefined without another event.
+          meetingWithE2ee.locusInfo.emitScoped({}, EVENTS.LOCUS_INFO_UPDATE_SELF, {
+            oldSelf: {state: 'JOINED', joinedWith: {url: uuid3, state: 'LEFT'}},
+            newSelf: {state: 'JOINED', joinedWith: {url: uuid3, state: 'LEFT'}},
+          });
+          assert.callCount(listener, 7);
+        });
+
+        it('reports MLS failure while joined and is undefined after leaving', () => {
+          const e2ee = new EventEmitter();
+
+          e2ee.state = E2eeState.Joining;
+          const meetingWithE2ee = new Meeting(
+            {
+              userId: uuid1,
+              resource: uuid2,
+              deviceUrl: uuid3,
+              locus: {url: url1},
+              destination: testDestination,
+              destinationType: DESTINATION_TYPE.MEETING_ID,
+              correlationId,
+              selfId: uuid1,
+              e2eeManager: {createE2eeController: sinon.stub().returns(e2ee)},
+            },
+            {parent: webex}
+          );
+          meetingWithE2ee.locusInfo.info = {isV2E2EEncrypted: true};
+
+          assert.isUndefined(meetingWithE2ee.trustState);
+
+          meetingWithE2ee.joinedWith = {state: 'JOINED'};
+          assert.equal(meetingWithE2ee.trustState, 'calculating');
+
+          e2ee.state = E2eeState.Failed;
+          e2ee.emit(EVENT_TRIGGERS.MEETING_E2EE_STATE_CHANGED, {state: E2eeState.Failed});
+          assert.equal(meetingWithE2ee.trustState, 'failed');
+
+          meetingWithE2ee.joinedWith = {state: 'NOT_JOINED'};
+          assert.isUndefined(meetingWithE2ee.trustState);
+        });
+
         it('should have created a meeting object with public properties', () => {
           assert.exists(meeting);
           assert.exists(meeting.webex);
@@ -539,6 +1118,7 @@ describe('plugin-meetings', () => {
                 client_id: 'mock-client-id',
               },
               meetings: {
+                assetsBaseUrl: '/assets/plugin-meetings/',
                 reconnection: {
                   enabled: false,
                 },
@@ -3403,6 +3983,53 @@ describe('plugin-meetings', () => {
                   },
                 ]);
               }
+            });
+
+            it('updates E2EE signaling after the LLM channel connects', async () => {
+              const e2ee = {llmChannelChanged: sinon.stub()};
+              const mockChannel = createMockLLMChannel();
+
+              meeting.e2ee = e2ee;
+              sinon.stub(meeting, 'isJoined').returns(true);
+              webex.internal.llm.createChannel.returns(mockChannel);
+              meeting.updateLLMConnection.restore();
+
+              await meeting.updateLLMConnection();
+
+              assert.calledOnce(e2ee.llmChannelChanged);
+              assert.strictEqual(meeting.llmChannel, mockChannel);
+            });
+
+            it('updates E2EE signaling when the LLM connection fails', async () => {
+              const e2ee = {llmChannelChanged: sinon.stub()};
+              const mockChannel = createMockLLMChannel({
+                registerAndConnect: sinon.stub().rejects(new Error('connect failed')),
+              });
+
+              meeting.e2ee = e2ee;
+              sinon.stub(meeting, 'isJoined').returns(true);
+              webex.internal.llm.createChannel.returns(mockChannel);
+              meeting.updateLLMConnection.restore();
+
+              await assert.isRejected(meeting.updateLLMConnection(), 'connect failed');
+
+              assert.calledTwice(e2ee.llmChannelChanged);
+              assert.isUndefined(meeting.llmChannel);
+            });
+
+            it('updates E2EE signaling when the LLM channel is cleaned up', async () => {
+              const e2ee = {llmChannelChanged: sinon.stub()};
+              const mockChannel = createMockLLMChannel();
+
+              meeting.e2ee = e2ee;
+              meeting.llmChannel = mockChannel;
+              sinon.stub(meeting.annotation, 'deregisterEvents');
+              sinon.stub(meeting, 'clearLLMHealthCheckTimer');
+
+              await meeting.cleanupLLMConneciton({preserveVoiceaChannel: true});
+
+              assert.calledOnce(e2ee.llmChannelChanged);
+              assert.isUndefined(meeting.llmChannel);
             });
 
             it('handles Locus LLM events', async () => {
@@ -13553,6 +14180,37 @@ describe('plugin-meetings', () => {
 
       describe('#setUpLocusInfoMeetingListener', () => {
         let cleanUpSpy;
+
+        [
+          {
+            description: 'host ends the meeting',
+            parsedLocus: {fullState: {type: 'MEETING', state: 'INACTIVE'}},
+          },
+          {
+            description: 'host removes this user',
+            parsedLocus: {
+              fullState: {type: 'MEETING', state: 'ACTIVE'},
+              self: {removed: true},
+            },
+          },
+        ].forEach(({description, parsedLocus}) => {
+          it(`stops E2EE when Locus destroys the meeting without a leave (${description})`, async () => {
+            const e2eeStop = sinon.stub().resolves();
+            const destroyListener = sinon.spy();
+
+            meeting.e2ee = {stop: e2eeStop};
+            meeting.locusInfo.parsedLocus = parsedLocus;
+            meeting.locusInfo.fullState = parsedLocus.fullState;
+            meeting.locusInfo.on(EVENTS.DESTROY_MEETING, destroyListener);
+
+            meeting.locusInfo.isMeetingActive();
+            await testUtils.flushPromises();
+
+            assert.calledOnceWithMatch(destroyListener, {shouldLeave: false});
+            assert.calledOnce(e2eeStop);
+          });
+        });
+
         it('listens to destroy meeting event from locus info  ', (done) => {
           TriggerProxy.trigger.reset();
           sinon.stub(meeting.reconnectionManager, 'cleanUp');
@@ -15832,6 +16490,10 @@ describe('plugin-meetings', () => {
             meeting.annotation.deregisterEvents = sinon.stub();
             meeting.clearLLMHealthCheckTimer = sinon.stub();
             meeting.stopTranscription = sinon.stub();
+            meeting.e2ee = {
+              llmChannelChanged: sinon.stub(),
+              stop: sinon.stub().resolves(),
+            };
             meeting.shareStatus = 'no-share';
           });
 
